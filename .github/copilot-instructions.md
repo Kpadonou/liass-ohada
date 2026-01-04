@@ -104,9 +104,16 @@ root/
 - Use `TransactWriteItems` when creating related entities (e.g., transaction + transaction lines).
 - CDK should separate concerns into DataStack (DynamoDB), ApiStack (API Gateway + Lambdas), and MonitoringStack (CloudWatch alarms).
 - Keep each stack self-contained and minimal
-- Use ISO timestamps for all date fields (`createdAt`, `updatedAt`).
 - Use `TransactWriteItems` for related entity creation (e.g., transactions with lines).
 - Never use `Scan` operations on DynamoDB tables — always prefer `Query` with explicit key conditions or GSIs.
+- Implement exponential backoff with jitter for retrying failed DynamoDB operations.
+- Use environment variables for configuration (table names, index names) in Lambdas.
+- Implement structured logging (JSON format) including `orgId`, `userId`, `requestId` for traceability.
+- Implement unit tests for all business logic using Jest, with at least 80% code coverage.
+- Implement integration tests for API endpoints using Supertest, covering all success and error scenarios.
+- **Formatting Rules:** Always store data in a neutral format: (Dates: ISO 8601 timestamps, Numbers: raw values, Currencies: ISO 4217 codes).
+- Format dates, numbers, and currencies at response time according to the locale.
+- Cost optimization: Use DynamoDB On-Demand mode for development and switch to Provisioned mode with Auto Scaling in production.
 
 ## 4. DynamoDB Single Table Schema (Core Ledger Matrix)
 
@@ -317,8 +324,9 @@ I. Project (PROJECT)
 You are generating backend / API code (AWS Lambda / REST APIs) for a multilingual, production-grade SaaS application.
 You must strictly follow the API response contract and internationalization rules below.
 
-1. Shared API Response Model (MANDATORY)
-   All API responses must conform to the following model.
+### 6.1. Shared API Response Model (MANDATORY)
+
+All API responses must conform to the following model:
 
 export interface ApiMessage {
 code: string; // Stable, language-independent message code
@@ -333,15 +341,17 @@ data?: T;
 error?: ApiMessage;
 }
 
-2. Forbidden Patterns (STRICT)
-   ❌ Do NOT use raw strings for message or error
-   ❌ Do NOT hardcode user-facing text
-   ❌ Do NOT return framework or exception messages directly
-   ❌ Do NOT mix multiple response formats
-   Any response containing a raw string for message or error is invalid.
+### 6.2. Forbidden Patterns (STRICT)
 
-3. Response Helpers (MANDATORY USAGE)
-   All responses must be created using these helpers.
+❌ Do NOT use raw strings for message or error
+❌ Do NOT hardcode user-facing text
+❌ Do NOT return framework or exception messages directly
+❌ Do NOT mix multiple response formats
+Any response containing a raw string for message or error is invalid.
+
+### 6.3. Response Helpers (MANDATORY USAGE)
+
+All responses must be created using these helpers:
 
 export const ok = <T>(
 data: T,
@@ -388,74 +398,113 @@ success: false,
 error,
 });
 
-4. Internationalization Rules (i18n)
-   Language must be resolved in this order:
-   .Accept-Language HTTP header
-   .User language preference
-   .Default language (en)
-   All messages must be retrieved from an i18n service or locale files (e.g. /locales/en.json, /locales/fr.json).
-   Message codes must never change across languages.
-   A fallback language must exist for missing translations.
-   Example:
-   badRequest({
-   code: 'ERROR_INVALID_PASSWORD',
-   message: i18n.t('ERROR_INVALID_PASSWORD'),
-   });
+### 6.4. Internationalization Rules (i18n)
 
-5. Error Handling Rules
-   Every error response must include:
+Language must be resolved in this order:
 
-   - a stable error code
-   - a localized message
-     Error codes must be:
-   - deterministic
-   - testable
-   - loggable
-     Messages must be safe for end users (no sensitive details).
+- Accept-Language HTTP header
+- User language preference
+- Default language (en)
 
-6. Business & Domain Messages
-   Business labels must be language-agnostic.
-   Prefer message keys or codes over hardcoded labels.
-   Never embed UI text in domain logic.
+All messages must be retrieved from an i18n service or locale files (e.g. /locales/en.json, /locales/fr.json).
+Message codes must never change across languages.
+A fallback language must exist for missing translations.
+Example:
+badRequest({
+code: 'ERROR_INVALID_PASSWORD',
+message: i18n.t('ERROR_INVALID_PASSWORD'),
+});
 
-7. Logging & Testing Expectations
-   Logs must rely on code, not message.
-   Automated tests must assert on code, never on localized text.
-   Message text may change without breaking API contracts.
+### 6.5. Error Handling Rules
 
-8. Architectural Constraints
-   Centralize i18n logic (middleware, service, interceptor).
-   Adding a new language must not require refactoring business logic.
-   All generated code must be clean, scalable, and maintainable.
+Every error response must include:
 
-9. Templates & Generated Documents (Emails, PDFs, Reports)
+- a stable error code
+- a localized message
+
+Error codes must be:
+
+- deterministic
+- testable
+- loggable
+  Messages must be safe for end users (no sensitive details).
+
+### 6.6. Business & Domain Messages
+
+Business labels must be language-agnostic.
+Prefer message keys or codes over hardcoded labels.
+Never embed UI text in domain logic.
+
+### 6.7. Logging & Testing Expectations
+
+Logs must rely on code, not message.
+Automated tests must assert on code, never on localized text.
+Message text may change without breaking API contracts.
+
+### 6.8. Architectural Constraints
+
+Centralize i18n logic (middleware, service, interceptor).
+Adding a new language must not require refactoring business logic.
+All generated code must be clean, scalable, and maintainable.
+
+### 6.9. Templates & Generated Documents (Emails, PDFs, Reports)
 
 All backend-generated documents must strictly follow the i18n rules defined in the API contract.
 
-### 📂 Template Organization
+#### 6.9.1 📂 Template Organization
 
 Templates must be isolated by locale and type to ensure maintainability:
 
 - `/templates/{locale}/email/` : HTML/Text templates for SES/Mail notifications.
 - `/templates/{locale}/pdf/` : HTML/Handlebars/React templates for invoices, balance sheets, and reports.
 
-### ⚙️ Generation Rules
+#### 6.9.2 ⚙️ Generation Rules
 
-1. **Language Resolution:** Documents must be generated based on the target entity's preference (e.g., an Invoice for a Client follows the Client's `languageCode`; a Payroll slip follows the Employee's preference).
-2. **Standard Compliance:** PDF reports (Balance Sheet, Income Statement) must strictly follow the layouts defined by **SYSCOHADA** or **SYCEBNL** based on the `FiscalYear` standard.
-3. **Storage:** Generated documents should be temporarily stored in AWS S3 with restricted access (Signed URLs).
-4. **Consistency:** Currency symbols, date formats (DD/MM/YYYY), and number separators must be localized according to the Organization's `fiscalCountryCode`.
+- **Language Resolution:** Documents must be generated based on the target entity's preference (e.g., an Invoice for a Client follows the Client's `languageCode`; a Payroll slip follows the Employee's preference).
+- **Standard Compliance:** PDF reports (Balance Sheet, Income Statement) must strictly follow the layouts defined by **SYSCOHADA** or **SYCEBNL** based on the `FiscalYear` standard.
+- **Storage:** Generated documents should be temporarily stored in AWS S3 with restricted access (Signed URLs).
+- **Consistency:** Currency symbols, date formats (eg. DD/MM/YYYY), and number separators must be localized according to the Organization's `fiscalCountryCode`.
 
-## 7. Conflict Resolution & AI Autonomy
+## 7. Cost Optimization & Sustainability
 
-1. **Critical Thinking:** If you detect a contradiction between two sections of these instructions, or between these instructions and AWS Well-Architected/OHADA best practices, **STOP** and ask for clarification before generating code.
-2. **Hierarchy of Truth:** In case of doubt, follow this priority order:
-   - Security & Multi-tenancy isolation (Top Priority).
-   - Internationalization (i18n) & Standard compliance (SYSCOHADA/SYCEBNL).
-   - Scalability & Performance (DynamoDB Best Practices).
-   - Code brevity.
-3. **Proactive Improvement:** If you identify a more efficient way to implement a feature while respecting the Domain-Driven Design (DDD) and the Single Table Design, you are encouraged to propose it and explain why.
+Every resource generated must be optimized to maintain the lowest possible AWS bill without sacrificing performance.
 
-## FINAL OBJECTIVE
+### 7.1 Compute (AWS Lambda)
+
+- **Architecture:** Use `ARM_64` (AWS Graviton2/3) for all Lambda functions (typically 20% cheaper and better performance than x86).
+- **Memory Sizing:** Start with the minimum required (128MB or 256MB) and only increase if CPU bottlenecks are detected.
+- **Log Retention:** Set CloudWatch Logs retention to **14 days** (or 30 days maximum) for development/staging to avoid storage costs. Never use 'Forever'.
+
+### 7.2 Database (DynamoDB)
+
+- **Billing Mode:** Use `PAY_PER_REQUEST` (On-Demand) to ensure we only pay for actual transactions.
+- **Sparse Indexes:** Design GSIs to be "sparse" (only include items that actually need to be indexed) to reduce storage and write costs.
+- **TTL (Time To Live):** Enable TTL on temporary data (e.g., sessions, temporary export states) to automate deletion at no cost.
+
+### 7.3 Observability (X-Ray & Tracing)
+
+- **Active Tracing:** Enable X-Ray on all Lambda functions and API Gateway stages.
+- **Trace Continuity:** Ensure API Gateway is configured to pass the trace header to backend services.
+- **Aggressive Sampling:** Implement a custom X-Ray sampling rule:
+  - **Fixed Rate:** 5% (0.05) for successful requests.
+  - **Error Capture:** 100% for 4xx and 5xx errors (via Active Tracing).
+  - **Reservoir Size:** 1 request/second to ensure baseline visibility.
+- **SDK Instrumentation:** SDK Instrumentation: Always use the AWS X-Ray SDK to wrap DynamoDB clients and external HTTP calls.
+
+### 7.4 Storage (S3)
+
+- **Lifecycle Policies:** For the `templates/` and generated PDFs, implement lifecycle rules to move old reports to 'Intelligent-Tiering' or delete temporary exports after 7 days.
+
+## 8. Conflict Resolution & AI Autonomy
+
+- **Critical Thinking:** If you detect a contradiction between two sections of these instructions, or between these instructions and AWS Well-Architected/OHADA best practices, **STOP** and ask for clarification before generating code.
+- **Hierarchy of Truth:** In case of doubt, follow this priority order:
+  - Security & Multi-tenancy isolation (Top Priority).
+  - Internationalization (i18n) & Standard compliance (SYSCOHADA/SYCEBNL).
+  - Scalability & Performance (DynamoDB Best Practices).
+  - Code brevity.
+- **Proactive Improvement:** If you identify a more efficient way to implement a feature while respecting the Domain-Driven Design (DDD) and the Single Table Design, you are encouraged to propose it and explain why.
+
+## 8. FINAL OBJECTIVE
 
 All generated backend code must be scalable, multilingual, and production-ready, suitable for international SaaS applications.
