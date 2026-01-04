@@ -495,7 +495,16 @@ Every resource generated must be optimized to maintain the lowest possible AWS b
 
 - **Lifecycle Policies:** For the `templates/` and generated PDFs, implement lifecycle rules to move old reports to 'Intelligent-Tiering' or delete temporary exports after 7 days.
 
-## 8. Conflict Resolution & AI Autonomy
+## 8. Accounting Integrity & Period Closing (OHADA)
+
+To comply with OHADA/SYCEBNL legal requirements, the Core-Ledger must enforce the following:
+
+- **Fiscal Year Status:** Every `FiscalYear` entity must have a `status` attribute (`OPEN`, `LOCKED`, `CLOSED`).
+- **Immutability:** - No `JournalEntry` can be created, modified, or deleted if the linked `FiscalYear` is `LOCKED` or `CLOSED`.
+  - Once a `JournalEntry` is validated (posted), it cannot be deleted. Corrections must be made via reversal entries (contre-passation).
+- **Validation Rule:** The `KeyFactory` and Domain Services must verify the period status before any write operation on the Ledger.
+
+## 9. Conflict Resolution & AI Autonomy
 
 - **Critical Thinking:** If you detect a contradiction between two sections of these instructions, or between these instructions and AWS Well-Architected/OHADA best practices, **STOP** and ask for clarification before generating code.
 - **Hierarchy of Truth:** In case of doubt, follow this priority order:
@@ -505,6 +514,6 @@ Every resource generated must be optimized to maintain the lowest possible AWS b
   - Code brevity.
 - **Proactive Improvement:** If you identify a more efficient way to implement a feature while respecting the Domain-Driven Design (DDD) and the Single Table Design, you are encouraged to propose it and explain why.
 
-## 8. FINAL OBJECTIVE
+## 10. FINAL OBJECTIVE
 
 All generated backend code must be scalable, multilingual, and production-ready, suitable for international SaaS applications.
