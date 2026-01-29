@@ -1,0 +1,14 @@
+{
+  "ERROR_INVALID_PASSWORD": "Invalid password provided.",
+  "ERROR_ACCOUNT_NOT_FOUND": "Account not found.",
+  "SUCCESS_ACCOUNT_CREATED": "Account created successfully.",
+  "SUCCESS_ACCOUNT_RETRIEVED": "Account retrieved successfully.",
+  "SUCCESS_ENTRY_POSTED": "Entry posted successfully.",
+  "SUCCESS_PROJECT_CREATED": "Project created successfully.",
+  "ERROR_FISCAL_YEAR_NOT_FOUND": "Fiscal year not found.",
+  "ERROR_FISCAL_YEAR_LOCKED": "Fiscal year is locked or closed.",
+  "ERROR_UNBALANCED_ENTRY": "Entry is unbalanced (debits != credits).",
+  "UNAUTHORIZED": "Unauthorized access.",
+  "ERROR_INVALID_INPUT": "Invalid input data.",
+  "ERROR_INTERNAL": "Internal server error."
+}

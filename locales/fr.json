@@ -1,0 +1,14 @@
+{
+  "ERROR_INVALID_PASSWORD": "Mot de passe invalide fourni.",
+  "ERROR_ACCOUNT_NOT_FOUND": "Compte non trouvé.",
+  "SUCCESS_ACCOUNT_CREATED": "Compte créé avec succès.",
+  "SUCCESS_ACCOUNT_RETRIEVED": "Compte récupéré avec succès.",
+  "SUCCESS_ENTRY_POSTED": "Écriture comptable enregistrée avec succès.",
+  "SUCCESS_PROJECT_CREATED": "Projet créé avec succès.",
+  "ERROR_FISCAL_YEAR_NOT_FOUND": "Année fiscale non trouvée.",
+  "ERROR_FISCAL_YEAR_LOCKED": "Année fiscale verrouillée ou clôturée.",
+  "ERROR_UNBALANCED_ENTRY": "Écriture non équilibrée (débits != crédits).",
+  "UNAUTHORIZED": "Accès non autorisé.",
+  "ERROR_INVALID_INPUT": "Données d'entrée invalides.",
+  "ERROR_INTERNAL": "Erreur interne du serveur."
+}
