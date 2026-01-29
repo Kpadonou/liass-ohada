@@ -124,6 +124,7 @@ describe("post-entry handler (unit tests with integer amounts)", () => {
 
   const createMockFiscalYear = (status: "OPEN" | "LOCKED" | "CLOSED") =>
     marshall({
+      orgId: "test-org",
       pk: "ORG#test-org",
       sk: "FY#2026",
       year: 2026,
@@ -238,7 +239,9 @@ describe("post-entry handler (unit tests with integer amounts)", () => {
 
       await handler(event);
 
-      const transactCall = dynamoMock.commandCalls(TransactWriteItemsCommand)[0];
+      const transactCall = dynamoMock.commandCalls(
+        TransactWriteItemsCommand
+      )[0];
       const transactItems = (transactCall.args[0] as any).input.TransactItems;
 
       for (const item of transactItems) {
@@ -289,7 +292,10 @@ describe("post-entry handler (unit tests with integer amounts)", () => {
       });
 
       const event = createMockEvent({
-        headers: { "Accept-Language": "fr", "Content-Type": "application/json" },
+        headers: {
+          "Accept-Language": "fr",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           year: 2026,
           entryDate: "2026-01-29",
@@ -550,7 +556,10 @@ describe("post-entry handler (unit tests with integer amounts)", () => {
 
       // Test English
       const eventEn = createMockEvent({
-        headers: { "Accept-Language": "en", "Content-Type": "application/json" },
+        headers: {
+          "Accept-Language": "en",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           year: 2026,
           entryDate: "2026-01-29",
@@ -567,7 +576,10 @@ describe("post-entry handler (unit tests with integer amounts)", () => {
 
       // Test French
       const eventFr = createMockEvent({
-        headers: { "Accept-Language": "fr", "Content-Type": "application/json" },
+        headers: {
+          "Accept-Language": "fr",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           year: 2026,
           entryDate: "2026-01-29",
