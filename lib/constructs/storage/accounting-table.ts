@@ -16,19 +16,71 @@ export class LiassOhadaAccountingTable extends Construct {
       tableName: "liass-ohada-AccountingTable",
       partitionKey: { name: "pk", type: AttributeType.STRING },
       sortKey: { name: "sk", type: AttributeType.STRING },
-      billingMode: BillingMode.PAY_PER_REQUEST, // Optimisation coût validée
-      pointInTimeRecovery: true, // Recommandé pour un ERP (sécurité des données)
+      billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    // On crée 8 GSIs génériques
-    // Chaque index peut être utilisé pour n'importe quel besoin métier
-    for (let i = 1; i <= 8; i++) {
-      this.table.addGlobalSecondaryIndex({
-        indexName: `GSI-${i}`, // On peut garder GSI-Account, etc., ou GSI-1
-        partitionKey: { name: "pk", type: AttributeType.STRING }, // On réutilise la PK principale pour le Sharding
-        sortKey: { name: `gsi${i}sk`, type: AttributeType.STRING },
-        projectionType: ProjectionType.ALL,
-      });
-    }
+    // GSI-Account
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-Account",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiAccountSK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI-ThirdParty
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-ThirdParty",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiThirdPartySK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI-Journal
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-Journal",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiJournalSK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI-Reference
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-Reference",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiReferenceSK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI-Audit
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-Audit",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiAuditSK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI-Matching
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-Matching",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiMatchingSK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI-Project
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-Project",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiProjectSK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI-Email
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI-Email",
+      partitionKey: { name: "pk", type: AttributeType.STRING },
+      sortKey: { name: "gsiEmailSK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
   }
 }
