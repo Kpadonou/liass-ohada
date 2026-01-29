@@ -4,7 +4,7 @@ import {
   TransactWriteItemsCommand,
   GetItemCommand,
 } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { EntrySchema } from "@/models/core-ledger/entry";
 import { EntryLineSchema } from "@/models/core-ledger/entry-line";
 import { FiscalYearSchema } from "@/models/core-ledger/fiscal-year";
@@ -24,8 +24,11 @@ export const handler = async (
   try {
     const body = JSON.parse(event.body || "{}");
     const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
+    const userId = event.requestContext.authorizer?.claims?.userId || "user-123";
     const year = parseInt(body.year);
     const entryId = body.entryId || `ENT-${Date.now()}`;
+    const entryDate = body.entryDate || new Date().toISOString().split("T")[0]; // ISO Date (YYYY-MM-DD)
+    const journalCode = body.journalCode || "MISC";
 
     // Check FiscalYear status
     const fyPk = KeyFactory.orgKey(orgId);
@@ -42,7 +45,7 @@ export const handler = async (
         badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND"))
       );
     }
-    const fiscalYear = FiscalYearSchema.parse(fyResult.Item);
+    const fiscalYear = FiscalYearSchema.parse(unmarshall(fyResult.Item));
     if (fiscalYear.status === "LOCKED" || fiscalYear.status === "CLOSED") {
       const i18n = new I18nResolver(event.headers["Accept-Language"]);
       return toLambdaResponse(
@@ -58,14 +61,19 @@ export const handler = async (
 
     // Entry
     const entryData = {
-      ...body,
       orgId,
       year,
       entryId,
+      voucherNumber: body.voucherNumber,
+      journalCode,
+      entryDate,
+      totalDebit: 0, // Will be updated after summing lines
+      totalCredit: 0,
       status: "POSTED",
       entityType: "ENTRY",
       pk: KeyFactory.partitionKey(orgId, year),
       sk: KeyFactory.entrySK(entryId),
+      createdBy: userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -76,14 +84,24 @@ export const handler = async (
 
       const lineId = `LINE-${Date.now()}-${Math.random()}`;
       const lineData = {
-        ...line,
         orgId,
         year,
         lineId,
         entryId,
+        accountId: line.accountId,
+        projectId: line.projectId,
+        debit: line.debit || 0,
+        credit: line.credit || 0,
+        description: line.description || "",
+        entryDate,
+        thirdPartyId: line.thirdPartyId,
+        voucherNumber: body.voucherNumber,
+        journalCode,
+        matchId: line.matchId,
         entityType: "ENTRY_LINE",
         pk: KeyFactory.partitionKey(orgId, year),
         sk: KeyFactory.entryLineSK(lineId),
+        createdBy: userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -99,7 +117,7 @@ export const handler = async (
       transactItems.push({
         Put: {
           TableName: process.env.TABLE_NAME!,
-          Item: marshall(lineValidation.data),
+          Item: marshall(lineValidation.data, { removeUndefinedValues: true }),
         },
       });
     }
@@ -126,7 +144,7 @@ export const handler = async (
     transactItems.unshift({
       Put: {
         TableName: process.env.TABLE_NAME!,
-        Item: marshall(entryValidation.data),
+        Item: marshall(entryValidation.data, { removeUndefinedValues: true }),
       },
     });
 

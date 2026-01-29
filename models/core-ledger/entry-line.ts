@@ -9,16 +9,16 @@ export const EntryLineSchema = z.object({
   projectId: z.string().optional(),
   debit: z.number(),
   credit: z.number(),
-  description: z.string(),
-  entryDate: z.string(), // ISO Date
+  description: z.string().optional(),
+  entryDate: z.string().optional(), // ISO Date
   thirdPartyId: z.string().optional(),
   voucherNumber: z.string().optional(),
-  journalCode: z.string(),
+  journalCode: z.string().optional(),
   matchId: z.string().optional(),
   entityType: z.literal("ENTRY_LINE"),
   pk: z.string(),
   sk: z.string(),
-  createdBy: z.string(),
+  createdBy: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
