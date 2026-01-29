@@ -2,13 +2,13 @@ import { z } from "zod";
 
 export const EntryLineSchema = z.object({
   orgId: z.string(),
-  year: z.number(),
+  year: z.number().int(),
   lineId: z.string(),
   entryId: z.string(),
   accountId: z.string(), // 8-digit
   projectId: z.string().optional(),
-  debit: z.number(),
-  credit: z.number(),
+  debit: z.number().int().nonnegative(), // Integer amount (smallest currency unit)
+  credit: z.number().int().nonnegative(), // Integer amount (smallest currency unit)
   description: z.string().optional(),
   entryDate: z.string().optional(), // ISO Date
   thirdPartyId: z.string().optional(),

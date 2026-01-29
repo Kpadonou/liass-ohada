@@ -21,7 +21,7 @@ jest.mock("@/lambda/shared/i18n", () => {
         const messages: Record<string, Record<string, string>> = {
           en: {
             SUCCESS_ENTRY_POSTED: "Entry successfully posted",
-            ERROR_UNBALANCED_ENTRY: "Debit and credit amounts do not match",
+            ERROR_ENTRY_NOT_BALANCED: "Debit and credit amounts do not match",
             ERROR_FISCAL_YEAR_NOT_FOUND: "Fiscal year not found",
             ERROR_FISCAL_YEAR_LOCKED: "Fiscal year is locked or closed",
             ERROR_INVALID_INPUT: "Invalid input provided",
@@ -29,7 +29,7 @@ jest.mock("@/lambda/shared/i18n", () => {
           },
           fr: {
             SUCCESS_ENTRY_POSTED: "Entrée validée avec succès",
-            ERROR_UNBALANCED_ENTRY:
+            ERROR_ENTRY_NOT_BALANCED:
               "Les montants débits et crédits ne correspondent pas",
             ERROR_FISCAL_YEAR_NOT_FOUND: "Exercice fiscal non trouvé",
             ERROR_FISCAL_YEAR_LOCKED: "Exercice fiscal est verrouillé ou fermé",
@@ -250,7 +250,7 @@ describe("post-entry handler", () => {
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(false);
-      expect(body.error.code).toBe("ERROR_UNBALANCED_ENTRY");
+      expect(body.error.code).toBe("ERROR_ENTRY_NOT_BALANCED");
       expect(body.error.message).toBeDefined();
     });
 
@@ -286,7 +286,7 @@ describe("post-entry handler", () => {
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
       expect(body.success).toBe(false);
-      expect(body.error.code).toBe("ERROR_UNBALANCED_ENTRY");
+      expect(body.error.code).toBe("ERROR_ENTRY_NOT_BALANCED");
     });
 
     test("should return French error message when Accept-Language is 'fr'", async () => {
@@ -324,7 +324,7 @@ describe("post-entry handler", () => {
 
       expect(response.statusCode).toBe(400);
       const body = JSON.parse(response.body);
-      expect(body.error.code).toBe("ERROR_UNBALANCED_ENTRY");
+      expect(body.error.code).toBe("ERROR_ENTRY_NOT_BALANCED");
       // Message should be in French (mocked version)
       expect(body.error.message).toContain(
         "débits et crédits ne correspondent pas"

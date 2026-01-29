@@ -80,8 +80,20 @@ export const handler = async (
     };
 
     for (const line of lines) {
-      totalDebit += line.debit || 0;
-      totalCredit += line.credit || 0;
+      // Ensure all amounts are integers
+      const debit = parseInt(line.debit) || 0;
+      const credit = parseInt(line.credit) || 0;
+
+      // Verify non-negative (accounting rule)
+      if (debit < 0 || credit < 0) {
+        const i18n = new I18nResolver(event.headers["Accept-Language"]);
+        return toLambdaResponse(
+          badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
+        );
+      }
+
+      totalDebit += debit;
+      totalCredit += credit;
 
       const lineId = `LINE-${Date.now()}-${Math.random()}`;
       const lineData = {
@@ -91,8 +103,8 @@ export const handler = async (
         entryId,
         accountId: line.accountId,
         projectId: line.projectId,
-        debit: line.debit || 0,
-        credit: line.credit || 0,
+        debit, // Guaranteed integer
+        credit, // Guaranteed integer
         description: line.description || "",
         entryDate,
         thirdPartyId: line.thirdPartyId,
@@ -123,11 +135,11 @@ export const handler = async (
       });
     }
 
-    // Double-entry check
+    // Strict integer double-entry check
     if (totalDebit !== totalCredit) {
       const i18n = new I18nResolver(event.headers["Accept-Language"]);
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_UNBALANCED_ENTRY"))
+        badRequest(i18n.getMessage("ERROR_ENTRY_NOT_BALANCED"))
       );
     }
 
