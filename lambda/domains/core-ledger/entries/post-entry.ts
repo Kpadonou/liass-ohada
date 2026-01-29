@@ -24,7 +24,8 @@ export const handler = async (
   try {
     const body = JSON.parse(event.body || "{}");
     const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
-    const userId = event.requestContext.authorizer?.claims?.userId || "user-123";
+    const userId =
+      event.requestContext.authorizer?.claims?.userId || "user-123";
     const year = parseInt(body.year);
     const entryId = body.entryId || `ENT-${Date.now()}`;
     const entryDate = body.entryDate || new Date().toISOString().split("T")[0]; // ISO Date (YYYY-MM-DD)

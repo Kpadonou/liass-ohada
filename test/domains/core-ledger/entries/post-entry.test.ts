@@ -29,7 +29,8 @@ jest.mock("@/lambda/shared/i18n", () => {
           },
           fr: {
             SUCCESS_ENTRY_POSTED: "Entrée validée avec succès",
-            ERROR_UNBALANCED_ENTRY: "Les montants débits et crédits ne correspondent pas",
+            ERROR_UNBALANCED_ENTRY:
+              "Les montants débits et crédits ne correspondent pas",
             ERROR_FISCAL_YEAR_NOT_FOUND: "Exercice fiscal non trouvé",
             ERROR_FISCAL_YEAR_LOCKED: "Exercice fiscal est verrouillé ou fermé",
             ERROR_INVALID_INPUT: "Entrée invalide fournie",
@@ -178,10 +179,30 @@ describe("post-entry handler", () => {
           entryDate: "2026-01-15",
           journalCode: "ACHATS",
           lines: [
-            { accountId: "41100000", debit: 200, credit: 0, description: "Invoice 1" },
-            { accountId: "44100000", debit: 100, credit: 0, description: "Tax" },
-            { accountId: "70100000", debit: 0, credit: 250, description: "Sales" },
-            { accountId: "65100000", debit: 0, credit: 50, description: "Expenses" },
+            {
+              accountId: "41100000",
+              debit: 200,
+              credit: 0,
+              description: "Invoice 1",
+            },
+            {
+              accountId: "44100000",
+              debit: 100,
+              credit: 0,
+              description: "Tax",
+            },
+            {
+              accountId: "70100000",
+              debit: 0,
+              credit: 250,
+              description: "Sales",
+            },
+            {
+              accountId: "65100000",
+              debit: 0,
+              credit: 50,
+              description: "Expenses",
+            },
           ],
         }),
       });
@@ -208,8 +229,18 @@ describe("post-entry handler", () => {
           entryDate: "2026-01-15",
           journalCode: "VENTES",
           lines: [
-            { accountId: "41100000", debit: 150, credit: 0, description: "Debit" },
-            { accountId: "70100000", debit: 0, credit: 100, description: "Credit" },
+            {
+              accountId: "41100000",
+              debit: 150,
+              credit: 0,
+              description: "Debit",
+            },
+            {
+              accountId: "70100000",
+              debit: 0,
+              credit: 100,
+              description: "Credit",
+            },
           ],
         }),
       });
@@ -234,8 +265,18 @@ describe("post-entry handler", () => {
           entryDate: "2026-01-15",
           journalCode: "VENTES",
           lines: [
-            { accountId: "41100000", debit: 100, credit: 0, description: "Debit" },
-            { accountId: "70100000", debit: 0, credit: 200, description: "Credit" },
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 0,
+              description: "Debit",
+            },
+            {
+              accountId: "70100000",
+              debit: 0,
+              credit: 200,
+              description: "Credit",
+            },
           ],
         }),
       });
@@ -254,14 +295,27 @@ describe("post-entry handler", () => {
       });
 
       const event = createMockEvent({
-        headers: { "Accept-Language": "fr", "Content-Type": "application/json" },
+        headers: {
+          "Accept-Language": "fr",
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           year: 2026,
           entryDate: "2026-01-15",
           journalCode: "VENTES",
           lines: [
-            { accountId: "41100000", debit: 100, credit: 0, description: "Debit" },
-            { accountId: "70100000", debit: 0, credit: 150, description: "Credit" },
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 0,
+              description: "Debit",
+            },
+            {
+              accountId: "70100000",
+              debit: 0,
+              credit: 150,
+              description: "Credit",
+            },
           ],
         }),
       });
@@ -289,7 +343,14 @@ describe("post-entry handler", () => {
           year: 2026,
           entryDate: "2026-01-15",
           journalCode: "VENTES",
-          lines: [{ accountId: "41100000", debit: 100, credit: 100, description: "Test" }],
+          lines: [
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 100,
+              description: "Test",
+            },
+          ],
         }),
       });
 
@@ -310,7 +371,14 @@ describe("post-entry handler", () => {
           year: 2026,
           entryDate: "2026-01-15",
           journalCode: "VENTES",
-          lines: [{ accountId: "41100000", debit: 100, credit: 100, description: "Test" }],
+          lines: [
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 100,
+              description: "Test",
+            },
+          ],
         }),
       });
 
@@ -331,7 +399,14 @@ describe("post-entry handler", () => {
           year: 2026,
           entryDate: "2026-01-15",
           journalCode: "VENTES",
-          lines: [{ accountId: "41100000", debit: 100, credit: 100, description: "Test" }],
+          lines: [
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 100,
+              description: "Test",
+            },
+          ],
         }),
       });
 
@@ -412,8 +487,18 @@ describe("post-entry handler", () => {
           entryDate: "2026-01-15",
           journalCode: "VENTES",
           lines: [
-            { accountId: "41100000", debit: 100, credit: 0, description: "Debit" },
-            { accountId: "70100000", debit: 0, credit: 100, description: "Credit" },
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 0,
+              description: "Debit",
+            },
+            {
+              accountId: "70100000",
+              debit: 0,
+              credit: 100,
+              description: "Credit",
+            },
           ],
         }),
       });
@@ -431,14 +516,23 @@ describe("post-entry handler", () => {
 
   describe("error handling", () => {
     test("should return ERROR_INTERNAL when unexpected error occurs", async () => {
-      dynamoMock.on(GetItemCommand).rejects(new Error("Database connection failed"));
+      dynamoMock
+        .on(GetItemCommand)
+        .rejects(new Error("Database connection failed"));
 
       const event = createMockEvent({
         body: JSON.stringify({
           year: 2026,
           entryDate: "2026-01-15",
           journalCode: "VENTES",
-          lines: [{ accountId: "41100000", debit: 100, credit: 100, description: "Test" }],
+          lines: [
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 100,
+              description: "Test",
+            },
+          ],
         }),
       });
 
@@ -464,8 +558,18 @@ describe("post-entry handler", () => {
           entryDate: "2026-01-15",
           journalCode: "VENTES",
           lines: [
-            { accountId: "41100000", debit: 100, credit: 0, description: "Debit" },
-            { accountId: "70100000", debit: 0, credit: 100, description: "Credit" },
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 0,
+              description: "Debit",
+            },
+            {
+              accountId: "70100000",
+              debit: 0,
+              credit: 100,
+              description: "Credit",
+            },
           ],
         }),
       });
@@ -491,8 +595,18 @@ describe("post-entry handler", () => {
           entryDate: "2026-01-15",
           journalCode: "VENTES",
           lines: [
-            { accountId: "41100000", debit: 100, credit: 0, description: "Debit" },
-            { accountId: "70100000", debit: 0, credit: 150, description: "Credit" },
+            {
+              accountId: "41100000",
+              debit: 100,
+              credit: 0,
+              description: "Debit",
+            },
+            {
+              accountId: "70100000",
+              debit: 0,
+              credit: 150,
+              description: "Credit",
+            },
           ],
         }),
       });
