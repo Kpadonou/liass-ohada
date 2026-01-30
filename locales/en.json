@@ -8,6 +8,10 @@
   "ERROR_FISCAL_YEAR_NOT_FOUND": "Fiscal year not found.",
   "ERROR_FISCAL_YEAR_LOCKED": "Fiscal year is locked or closed.",
   "ERROR_UNBALANCED_ENTRY": "Entry is unbalanced (debits != credits).",
+  "ERROR_ENTRY_NOT_BALANCED": "Entry is not balanced (debits != credits).",
+  "ERROR_OPENING_ENTRY_NOT_FIRST": "Opening entry must be the first entry of the fiscal year.",
+  "ERROR_OPENING_ENTRY_DATE_MISMATCH": "Opening entry date must match fiscal year start date.",
+  "ERROR_OPENING_ENTRY_INVALID_ACCOUNT_CLASS": "Opening entry can only use Balance Sheet accounts (Classes 1-5).",
   "UNAUTHORIZED": "Unauthorized access.",
   "ERROR_INVALID_INPUT": "Invalid input data.",
   "ERROR_INTERNAL": "Internal server error."

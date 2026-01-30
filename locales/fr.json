@@ -8,6 +8,10 @@
   "ERROR_FISCAL_YEAR_NOT_FOUND": "Année fiscale non trouvée.",
   "ERROR_FISCAL_YEAR_LOCKED": "Année fiscale verrouillée ou clôturée.",
   "ERROR_UNBALANCED_ENTRY": "Écriture non équilibrée (débits != crédits).",
+  "ERROR_ENTRY_NOT_BALANCED": "Écriture non équilibrée (débits != crédits).",
+  "ERROR_OPENING_ENTRY_NOT_FIRST": "L'écriture d'ouverture doit être la première écriture de l'année fiscale.",
+  "ERROR_OPENING_ENTRY_DATE_MISMATCH": "La date de l'écriture d'ouverture doit correspondre à la date de début de l'année fiscale.",
+  "ERROR_OPENING_ENTRY_INVALID_ACCOUNT_CLASS": "L'écriture d'ouverture ne peut utiliser que des comptes de bilan (Classes 1-5).",
   "UNAUTHORIZED": "Accès non autorisé.",
   "ERROR_INVALID_INPUT": "Données d'entrée invalides.",
   "ERROR_INTERNAL": "Erreur interne du serveur."

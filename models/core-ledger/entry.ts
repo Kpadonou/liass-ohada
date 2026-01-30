@@ -1,14 +1,21 @@
 import { z } from "zod";
 
 export const EntryStatus = z.enum(["DRAFT", "POSTED", "CANCELLED"]);
+export const EntryType = z.enum([
+  "STANDARD",
+  "OPENING",
+  "CLOSING",
+  "ADJUSTMENT",
+]);
 
 export const EntrySchema = z.object({
   orgId: z.string(),
   year: z.number().int(),
   entryId: z.string(),
+  entryType: EntryType,
   voucherNumber: z.string().optional(),
   journalCode: z.string().optional(),
-  entryDate: z.string().optional(), // ISO Date
+  entryDate: z.string(), // ISO Date (required)
   totalDebit: z.number().int().nonnegative(), // Integer amount (smallest currency unit)
   totalCredit: z.number().int().nonnegative(), // Integer amount (smallest currency unit)
   status: EntryStatus,

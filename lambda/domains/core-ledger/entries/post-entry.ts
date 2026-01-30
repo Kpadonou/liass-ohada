@@ -3,9 +3,10 @@ import {
   DynamoDBClient,
   TransactWriteItemsCommand,
   GetItemCommand,
+  QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { EntrySchema } from "@/models/core-ledger/entry";
+import { EntrySchema, EntryType } from "@/models/core-ledger/entry";
 import { EntryLineSchema } from "@/models/core-ledger/entry-line";
 import { FiscalYearSchema } from "@/models/core-ledger/fiscal-year";
 import { KeyFactory } from "../../../shared/key-builder";
@@ -18,6 +19,22 @@ import {
 
 const dynamoClient = new DynamoDBClient({});
 
+/**
+ * Extract class code from accountId (8-digit padded)
+ * Class codes are 1-8, stored as first digit
+ */
+const getAccountClassCode = (accountId: string): number => {
+  return parseInt(accountId.charAt(0), 10);
+};
+
+/**
+ * Check if an account is a Balance Sheet account (Classes 1-5)
+ */
+const isBalanceSheetAccount = (accountId: string): boolean => {
+  const classCode = getAccountClassCode(accountId);
+  return classCode >= 1 && classCode <= 5;
+};
+
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
@@ -27,7 +44,7 @@ export const handler = async (
     const userId =
       event.requestContext.authorizer?.claims?.userId || "user-123";
     const year = parseInt(body.year);
-    const entryId = body.entryId || `ENT-${Date.now()}`;
+    const entryType: string = body.entryType || "STANDARD";
     const entryDate = body.entryDate || new Date().toISOString().split("T")[0]; // ISO Date (YYYY-MM-DD)
     const journalCode = body.journalCode || "MISC";
 
@@ -54,6 +71,55 @@ export const handler = async (
       );
     }
 
+    // Opening Entry validation
+    let entryId: string;
+    if (entryType === "OPENING") {
+      // 1. Must be first entry of the fiscal year
+      const fyPartitionPk = KeyFactory.partitionKey(orgId, year);
+      const queryResult = await dynamoClient.send(
+        new QueryCommand({
+          TableName: process.env.TABLE_NAME!,
+          KeyConditionExpression: "pk = :pk",
+          ExpressionAttributeValues: {
+            ":pk": { S: fyPartitionPk },
+          },
+          Limit: 1,
+        })
+      );
+      if (queryResult.Items && queryResult.Items.length > 0) {
+        const i18n = new I18nResolver(event.headers["Accept-Language"]);
+        return toLambdaResponse(
+          badRequest(i18n.getMessage("ERROR_OPENING_ENTRY_NOT_FIRST"))
+        );
+      }
+
+      // 2. Verify date is first day of fiscal year
+      if (entryDate !== fiscalYear.startDate) {
+        const i18n = new I18nResolver(event.headers["Accept-Language"]);
+        return toLambdaResponse(
+          badRequest(i18n.getMessage("ERROR_OPENING_ENTRY_DATE_MISMATCH"))
+        );
+      }
+
+      // 3. All lines must target Balance Sheet accounts (Classes 1-5)
+      const linesToValidate = body.lines || [];
+      for (const line of linesToValidate) {
+        if (!isBalanceSheetAccount(line.accountId)) {
+          const i18n = new I18nResolver(event.headers["Accept-Language"]);
+          return toLambdaResponse(
+            badRequest(
+              i18n.getMessage("ERROR_OPENING_ENTRY_INVALID_ACCOUNT_CLASS")
+            )
+          );
+        }
+      }
+
+      // Generate opening entry ID: OPEN-YYYY
+      entryId = `OPEN-${year}`;
+    } else {
+      entryId = body.entryId || `ENT-${Date.now()}`;
+    }
+
     const lines = body.lines || [];
     let totalDebit = 0;
     let totalCredit = 0;
@@ -65,6 +131,7 @@ export const handler = async (
       orgId,
       year,
       entryId,
+      entryType,
       voucherNumber: body.voucherNumber,
       journalCode,
       entryDate,
