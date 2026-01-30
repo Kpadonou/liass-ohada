@@ -17,19 +17,18 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   try {
     const body = JSON.parse(event.body || "{}");
-    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org"; // TODO: from JWT
-    const year = parseInt(body.year);
-    const accountNumber = body.accountNumber;
+    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
+    const { year, ...rest } = body; // explicitly drop year if provided by client
 
+    const accountNumber = rest.accountNumber;
     const accountId = padAccountNumber(accountNumber);
 
     const accountData = {
-      ...body,
+      ...rest,
       orgId,
-      year,
       accountId,
       entityType: "ACCOUNT",
-      pk: KeyFactory.partitionKey(orgId, year),
+      pk: KeyFactory.orgKey(orgId),
       sk: KeyFactory.accountSK(accountId),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -43,12 +42,14 @@ export const handler = async (
       );
     }
 
-    // TODO: Check FiscalYear status
-
+    // Put item with conditional expression to ensure we don't overwrite existing account
     await dynamoClient.send(
       new PutItemCommand({
         TableName: process.env.TABLE_NAME!,
         Item: marshall(validation.data),
+        ConditionExpression:
+          "attribute_not_exists(#pk) AND attribute_not_exists(#sk)",
+        ExpressionAttributeNames: { "#pk": "pk", "#sk": "sk" },
       })
     );
 
