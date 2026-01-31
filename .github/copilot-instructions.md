@@ -2,7 +2,11 @@
 
 **Project Name**: liass-ohada
 **Primary Goal**: Build a complete, AWS Cloud-Native Serverless ERP compliant with the OHADA accounting framework, supporting both SYSCOHADA General (Commercial) and SYCEBNL (Non-Profit/Associations/NGOs) standards.
-**Naming Convention**: All AWS resources (DynamoDB tables, Cognito Pools, S3 Buckets) and primary stack identifiers must be prefixed with liass-ohada- to ensure environment isolation and clarity.
+**Naming Convention**: All AWS resources (DynamoDB tables, Cognito Pools, S3 Buckets) must follow the pattern: liass-ohada-{stage}-{resource-name}.
+
+- {stage}: The deployment environment (e.g., dev, test, prod).
+- Example: liass-ohada-dev-accounting-table.
+- Mandatory: Resources must never be hard-coded in business logic. Always use the centralized config.ts utility and reference names via environment variables (e.g., process.env.TABLE_NAME).
 
 ### ☁️ Technical Stack (AWS Serverless)
 

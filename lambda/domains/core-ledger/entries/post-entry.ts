@@ -1,6 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import {
-  DynamoDBClient,
   TransactWriteItemsCommand,
   GetItemCommand,
   QueryCommand,
@@ -16,8 +15,8 @@ import {
   created,
   toLambdaResponse,
 } from "@/models/shared/api-response";
-
-const dynamoClient = new DynamoDBClient({});
+import { dynamoClient } from "../../../shared/dynamo-client";
+import { config } from "../../../shared/config";
 
 /**
  * Extract class code from accountId (8-digit padded)
@@ -53,7 +52,7 @@ export const handler = async (
     const fySk = `FY#${year}`;
     const fyResult = await dynamoClient.send(
       new GetItemCommand({
-        TableName: process.env.TABLE_NAME!,
+        TableName: config.TABLE_NAME,
         Key: { pk: { S: fyPk }, sk: { S: fySk } },
       })
     );
@@ -78,7 +77,7 @@ export const handler = async (
       const fyPartitionPk = KeyFactory.partitionKey(orgId, year);
       const queryResult = await dynamoClient.send(
         new QueryCommand({
-          TableName: process.env.TABLE_NAME!,
+          TableName: config.TABLE_NAME,
           KeyConditionExpression: "pk = :pk",
           ExpressionAttributeValues: {
             ":pk": { S: fyPartitionPk },
@@ -196,7 +195,7 @@ export const handler = async (
 
       transactItems.push({
         Put: {
-          TableName: process.env.TABLE_NAME!,
+          TableName: config.TABLE_NAME,
           Item: marshall(lineValidation.data, { removeUndefinedValues: true }),
         },
       });
@@ -223,7 +222,7 @@ export const handler = async (
 
     transactItems.unshift({
       Put: {
-        TableName: process.env.TABLE_NAME!,
+        TableName: config.TABLE_NAME,
         Item: marshall(entryValidation.data, { removeUndefinedValues: true }),
       },
     });

@@ -1,16 +1,15 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { AccountSchema, padAccountNumber } from "@/models/core-ledger/account";
 import { KeyFactory } from "../../../shared/key-builder";
 import { I18nResolver } from "../../../shared/i18n";
+import { dynamoClient, config } from "../../../shared/dynamo-client";
 import {
   badRequest,
   created,
   toLambdaResponse,
 } from "@/models/shared/api-response";
-
-const dynamoClient = new DynamoDBClient({});
 
 export const handler = async (
   event: APIGatewayProxyEvent
@@ -45,7 +44,7 @@ export const handler = async (
     // Put item with conditional expression to ensure we don't overwrite existing account
     await dynamoClient.send(
       new PutItemCommand({
-        TableName: process.env.TABLE_NAME!,
+        TableName: config.TABLE_NAME,
         Item: marshall(validation.data),
         ConditionExpression:
           "attribute_not_exists(#pk) AND attribute_not_exists(#sk)",

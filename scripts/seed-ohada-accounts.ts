@@ -1,7 +1,9 @@
-import { DynamoDBClient, BatchWriteItemCommand } from "@aws-sdk/client-dynamodb";
+import { BatchWriteItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { padAccountNumber } from "../models/core-ledger/account";
 import { KeyFactory } from "../lambda/shared/key-builder";
+import { dynamoClient } from "../lambda/shared/dynamo-client";
+import { config } from "../lambda/shared/config";
 
 interface SeedAccount {
   accountNumber: string;
@@ -113,11 +115,7 @@ async function seedOhadaAccounts(): Promise<void> {
     process.exit(1);
   }
 
-  const tableName = process.env.TABLE_NAME || "AccountingTable";
-  const dynamoClient = new DynamoDBClient({
-    region: process.env.AWS_REGION || "us-east-1",
-  });
-
+  const tableName = config.TABLE_NAME;
   console.log(`\n🌍 Seeding OHADA Chart of Accounts for Organization: ${orgId}`);
   console.log(`📊 Table: ${tableName}\n`);
 
