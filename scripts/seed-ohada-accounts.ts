@@ -116,7 +116,9 @@ async function seedOhadaAccounts(): Promise<void> {
   }
 
   const tableName = config.TABLE_NAME;
-  console.log(`\n🌍 Seeding OHADA Chart of Accounts for Organization: ${orgId}`);
+  console.log(
+    `\n🌍 Seeding OHADA Chart of Accounts for Organization: ${orgId}`
+  );
   console.log(`📊 Table: ${tableName}\n`);
 
   try {
@@ -153,12 +155,18 @@ async function seedOhadaAccounts(): Promise<void> {
       });
 
       console.log(
-        `✓ ${accountNumber.padEnd(6)} | ${accountData.accountName.padEnd(35)} | Class ${classCode} | ${accountData.accountNature.padEnd(6)} | ${accountData.accountUsage}`
+        `✓ ${accountNumber.padEnd(6)} | ${accountData.accountName.padEnd(
+          35
+        )} | Class ${classCode} | ${accountData.accountNature.padEnd(6)} | ${
+          accountData.accountUsage
+        }`
       );
     }
 
     // Execute batch write
-    console.log(`\n📝 Writing ${OHADA_ACCOUNTS.length} accounts to DynamoDB...\n`);
+    console.log(
+      `\n📝 Writing ${OHADA_ACCOUNTS.length} accounts to DynamoDB...\n`
+    );
 
     const command = new BatchWriteItemCommand({
       RequestItems: requestItems,
@@ -166,13 +174,18 @@ async function seedOhadaAccounts(): Promise<void> {
 
     const response = await dynamoClient.send(command);
 
-    if (response.UnprocessedItems && Object.keys(response.UnprocessedItems).length > 0) {
+    if (
+      response.UnprocessedItems &&
+      Object.keys(response.UnprocessedItems).length > 0
+    ) {
       console.warn(
         "⚠️  Some items were unprocessed. This may require retry logic."
       );
       console.warn("Unprocessed:", response.UnprocessedItems);
     } else {
-      console.log(`✅ Successfully seeded ${OHADA_ACCOUNTS.length} OHADA accounts!\n`);
+      console.log(
+        `✅ Successfully seeded ${OHADA_ACCOUNTS.length} OHADA accounts!\n`
+      );
     }
   } catch (error) {
     console.error("❌ Error seeding accounts:", error);

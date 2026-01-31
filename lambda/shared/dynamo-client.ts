@@ -8,7 +8,8 @@ import { config } from "./config";
 export { config };
 export const dynamoClient = new DynamoDBClient({
   region: config.REGION,
-  ...(config.IS_LOCAL && config.DYNAMODB_ENDPOINT && {
-    endpoint: config.DYNAMODB_ENDPOINT,
-  }),
+  ...(config.IS_LOCAL &&
+    config.DYNAMODB_ENDPOINT && {
+      endpoint: config.DYNAMODB_ENDPOINT,
+    }),
 });

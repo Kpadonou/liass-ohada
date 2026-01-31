@@ -32,7 +32,7 @@ function loadConfig(): Config {
   } else {
     throw new Error(
       "TABLE_NAME environment variable is required in production. " +
-      "Set TABLE_NAME=your-table-name or LOCALSTACK_URL for local development."
+        "Set TABLE_NAME=your-table-name or LOCALSTACK_URL for local development."
     );
   }
 
