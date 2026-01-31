@@ -2,7 +2,7 @@
   "ERROR_INVALID_PASSWORD": "Invalid password provided.",
   "ERROR_ACCOUNT_NOT_FOUND": "Account not found.",
   "SUCCESS_ACCOUNT_CREATED": "Account created successfully.",
-  "SUCCESS_BALANCE_RETRIEVED": "Account balance retrieved successfully.",
+  "SUCCESS_ENTRIES_RETRIEVED": "Account entries retrieved successfully.",
   "SUCCESS_ENTRY_POSTED": "Entry posted successfully.",
   "SUCCESS_PROJECT_CREATED": "Project created successfully.",
   "ERROR_FISCAL_YEAR_NOT_FOUND": "Fiscal year not found.",
