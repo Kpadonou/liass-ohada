@@ -9,8 +9,8 @@ export const JournalSchema = z.object({
   journalName: z.string(),
   type: JournalType,
   entityType: z.literal("JOURNAL"),
-  pk: z.string(),
-  sk: z.string(),
+  PK: z.string(),
+  SK: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

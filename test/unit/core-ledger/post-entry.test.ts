@@ -1,3 +1,6 @@
+// Mock environment variables
+process.env.TABLE_NAME = "liass-ohada-AccountingTable";
+
 import { mockClient } from "aws-sdk-client-mock";
 import {
   DynamoDBClient,
@@ -9,9 +12,6 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { handler } from "@/lambda/domains/core-ledger/entries/post-entry";
 
 const dynamoMock = mockClient(DynamoDBClient);
-
-// Mock environment variables
-process.env.TABLE_NAME = "liass-ohada-AccountingTable";
 
 // Simple random integer generator (avoids faker ESM issues)
 const randomInt = (min: number, max: number) => {
@@ -125,8 +125,8 @@ describe("post-entry handler (unit tests with integer amounts)", () => {
   const createMockFiscalYear = (status: "OPEN" | "LOCKED" | "CLOSED") =>
     marshall({
       orgId: "test-org",
-      pk: "ORG#test-org",
-      sk: "FY#2026",
+      PK: "ORG#test-org",
+      SK: "FY#2026",
       year: 2026,
       fiscalYearId: "FY-2026-001",
       startDate: "2026-01-01",

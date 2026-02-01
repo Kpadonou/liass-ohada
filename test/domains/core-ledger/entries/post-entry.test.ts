@@ -1,3 +1,6 @@
+// Mock environment variables
+process.env.TABLE_NAME = "liass-ohada-AccountingTable";
+
 import { mockClient } from "aws-sdk-client-mock";
 import {
   DynamoDBClient,
@@ -9,9 +12,6 @@ import { handler } from "@/lambda/domains/core-ledger/entries/post-entry";
 import { I18nResolver } from "@/lambda/shared/i18n";
 
 const dynamoMock = mockClient(DynamoDBClient);
-
-// Mock environment variables
-process.env.TABLE_NAME = "liass-ohada-AccountingTable";
 
 // Mock I18nResolver to verify correct message codes are used
 jest.mock("@/lambda/shared/i18n", () => {
@@ -108,8 +108,8 @@ describe("post-entry handler", () => {
    * Helper to create mock FiscalYear item for DynamoDB
    */
   const createMockFiscalYear = (status = "OPEN") => ({
-    pk: { S: "ORG#test-org" },
-    sk: { S: "FY#2026" },
+    PK: { S: "ORG#test-org" },
+    SK: { S: "FY#2026" },
     orgId: { S: "test-org" },
     year: { N: "2026" },
     fiscalYearId: { S: "fy-2026" },

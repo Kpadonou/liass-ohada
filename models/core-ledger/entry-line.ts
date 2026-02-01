@@ -16,13 +16,16 @@ export const EntryLineSchema = z.object({
   journalCode: z.string(),
   matchId: z.string().optional(),
   entityType: z.literal("ENTRY_LINE"),
-  pk: z.string(),
-  sk: z.string(),
+  PK: z.string(),
+  SK: z.string(),
 
   // Indexation GSI (Obligatoires pour la cohérence comptable)
-  gsi1sk: z.string(), // ACC#account#date#id
-  gsi2sk: z.string().optional(), // TP#thirdparty#date
-  gsi3sk: z.string(), // JRN#journal#date#id
+  GSI1PK: z.string(),
+  GSI1SK: z.string(), // ACC#account#date#id
+  GSI2PK: z.string().optional(),
+  GSI2SK: z.string().optional(), // TP#thirdparty#date
+  GSI3PK: z.string(),
+  GSI3SK: z.string(), // JRN#journal#date#id
 
   createdBy: z.string().optional(),
   createdAt: z.string(),

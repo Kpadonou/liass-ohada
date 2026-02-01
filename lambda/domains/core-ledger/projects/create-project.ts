@@ -25,8 +25,8 @@ export const handler = async (
       orgId,
       projectId,
       entityType: "PROJECT",
-      pk: KeyFactory.orgKey(orgId),
-      sk: KeyFactory.projectKey(orgId, projectId).split("#")[1], // SK is PROJ#{projectId}
+      PK: KeyFactory.orgKey(orgId),
+      SK: KeyFactory.projectSK(projectId),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

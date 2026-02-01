@@ -18,8 +18,8 @@ export const FiscalYearSchema = z.object({
   accountingStandard: AccountingStandard,
   ranEntryId: z.string().optional(),
   entityType: z.literal("FISCAL_YEAR"),
-  pk: z.string(),
-  sk: z.string(),
+  PK: z.string(),
+  SK: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

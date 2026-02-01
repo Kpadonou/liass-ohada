@@ -21,8 +21,8 @@ export const ProjectSchema = z.object({
   currency: z.string(), // ISO 4217
   managerId: z.string(),
   entityType: z.literal("PROJECT"),
-  pk: z.string(),
-  sk: z.string(),
+  PK: z.string(),
+  SK: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

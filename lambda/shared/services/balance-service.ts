@@ -40,7 +40,7 @@ export async function getAccountBalance(
       new QueryCommand({
         TableName: config.TABLE_NAME,
         IndexName: "GSI-Account",
-        KeyConditionExpression: "pk = :pk AND begins_with(gsi1sk, :gsi1sk)",
+        KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: {
           ":pk": { S: `ORG#${orgId}#FY#${fiscalYear}` },
           ":gsi1sk": { S: `ACC#${paddedAccountNumber}` },

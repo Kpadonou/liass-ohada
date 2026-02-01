@@ -16,8 +16,8 @@ export const AccountSchema = z
     financialStatementCode: z.string(),
     allowReconciliation: z.boolean(),
     entityType: z.literal("ACCOUNT"),
-    pk: z.string(),
-    sk: z.string(),
+    PK: z.string(),
+    SK: z.string(),
     createdAt: z.string(),
     updatedAt: z.string(),
   })

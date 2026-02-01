@@ -27,8 +27,8 @@ export const handler = async (
       orgId,
       accountId,
       entityType: "ACCOUNT",
-      pk: KeyFactory.orgKey(orgId),
-      sk: KeyFactory.accountSK(accountId),
+      PK: KeyFactory.orgKey(orgId),
+      SK: KeyFactory.accountSK(accountId),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -47,8 +47,8 @@ export const handler = async (
         TableName: config.TABLE_NAME,
         Item: marshall(validation.data),
         ConditionExpression:
-          "attribute_not_exists(#pk) AND attribute_not_exists(#sk)",
-        ExpressionAttributeNames: { "#pk": "pk", "#sk": "sk" },
+          "attribute_not_exists(#PK) AND attribute_not_exists(#SK)",
+        ExpressionAttributeNames: { "#PK": "PK", "#SK": "SK" },
       })
     );
 

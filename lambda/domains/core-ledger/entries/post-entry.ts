@@ -47,7 +47,7 @@ export const handler = async (
     const fyResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
-        Key: { pk: { S: fyPk }, sk: { S: fySk } },
+        Key: { PK: { S: fyPk }, SK: { S: fySk } },
       })
     );
 
@@ -78,7 +78,11 @@ export const handler = async (
 
     // 3. Boucle sur les lignes
     for (const line of lines) {
-      console.log(`Processing line ${lines.indexOf(line) + 1}: accountId=${line.accountId}, debit=${line.debit}, credit=${line.credit}`);
+      console.log(
+        `Processing line ${lines.indexOf(line) + 1}: accountId=${
+          line.accountId
+        }, debit=${line.debit}, credit=${line.credit}`
+      );
       const debit = Math.round(Number(line.debit) || 0);
       const credit = Math.round(Number(line.credit) || 0);
       console.log(`Parsed: debit=${debit}, credit=${credit}`);
@@ -98,13 +102,16 @@ export const handler = async (
         entryDate,
         journalCode,
         entityType: "ENTRY_LINE" as const,
-        pk: KeyFactory.partitionKey(orgId, year),
-        sk: KeyFactory.entryLineSK(lineId),
-        gsi1sk: `ACC#${paddedAcc}#${entryDate}#${lineId}`,
-        gsi2sk: line.thirdPartyId
-          ? `TP#${line.thirdPartyId}#${entryDate}`
+        PK: KeyFactory.partitionKey(orgId, year),
+        SK: KeyFactory.entryLineSK(lineId),
+        GSI1PK: KeyFactory.partitionKey(orgId, year),
+        GSI1SK: `ACC#${paddedAcc}#DT#${entryDate}#${lineId}`,
+        GSI2PK: KeyFactory.partitionKey(orgId, year),
+        GSI2SK: line.thirdPartyId
+          ? `TP#${line.thirdPartyId}#DT#${entryDate}`
           : undefined,
-        gsi3sk: `JRN#${journalCode}#${entryDate}#${lineId}`,
+        GSI3PK: KeyFactory.partitionKey(orgId, year),
+        GSI3SK: `JRN#${journalCode}#DT#${entryDate}#${lineId}`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
@@ -129,14 +136,21 @@ export const handler = async (
 
       totalDebit += debit;
       totalCredit += credit;
-      console.log(`Running totals after adding: totalDebit=${totalDebit}, totalCredit=${totalCredit}`);
+      console.log(
+        `Running totals after adding: totalDebit=${totalDebit}, totalCredit=${totalCredit}`
+      );
     }
 
     console.log("⚖️ VÉRIFICATION ÉQUILIBRE:");
     console.log("- Total Débit:", totalDebit);
     console.log("- Total Crédit:", totalCredit);
     console.log("- Sont-ils égaux ?", totalDebit === totalCredit);
-    console.log("Condition check: totalDebit !== totalCredit is", totalDebit !== totalCredit, ", totalDebit === 0 is", totalDebit === 0);
+    console.log(
+      "Condition check: totalDebit !== totalCredit is",
+      totalDebit !== totalCredit,
+      ", totalDebit === 0 is",
+      totalDebit === 0
+    );
 
     // 4. Équilibre
     if (totalDebit !== totalCredit) {
@@ -157,8 +171,8 @@ export const handler = async (
       totalCredit,
       status: "POSTED",
       entityType: "ENTRY" as const,
-      pk: KeyFactory.partitionKey(orgId, year),
-      sk: KeyFactory.entrySK(entryId),
+      PK: KeyFactory.partitionKey(orgId, year),
+      SK: KeyFactory.entrySK(entryId),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

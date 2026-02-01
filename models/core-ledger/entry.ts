@@ -20,8 +20,8 @@ export const EntrySchema = z.object({
   totalCredit: z.number().int().nonnegative(), // Integer amount (smallest currency unit)
   status: EntryStatus,
   entityType: z.literal("ENTRY"),
-  pk: z.string(),
-  sk: z.string(),
+  PK: z.string(),
+  SK: z.string(),
   createdBy: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),

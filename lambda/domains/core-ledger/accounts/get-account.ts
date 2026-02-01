@@ -21,7 +21,7 @@ export const handler = async (
     const result = await dynamoClient.send(
       new GetItemCommand({
         TableName: process.env.TABLE_NAME!,
-        Key: { pk: { S: pk }, sk: { S: sk } },
+        Key: { PK: { S: pk }, SK: { S: sk } },
       })
     );
 

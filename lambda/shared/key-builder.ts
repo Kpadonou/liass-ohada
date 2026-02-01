@@ -126,7 +126,7 @@ export class KeyFactory {
     return this.partitionKey(orgId, year);
   }
 
-  static gsiAccountSK(accountId: string, date: string): string {
-    return `ACC#${accountId}#DT#${date}`;
+  static gsiAccountSK(accountId: string, date: string): { GSI1SK: string } {
+    return { GSI1SK: `ACC#${accountId}#DT#${date}` };
   }
 }
