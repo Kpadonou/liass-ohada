@@ -14,8 +14,8 @@ export class LiassOhadaAccountingTable extends Construct {
 
     this.table = new Table(this, "LiassOhadaAccountingTable", {
       tableName: "liass-ohada-AccountingTable",
-      partitionKey: { name: "pk", type: AttributeType.STRING },
-      sortKey: { name: "sk", type: AttributeType.STRING },
+      partitionKey: { name: "PK", type: AttributeType.STRING },
+      sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 

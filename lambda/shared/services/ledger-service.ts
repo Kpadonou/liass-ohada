@@ -78,7 +78,7 @@ export async function getAccountEntries(
       },
       Limit: limit,
       ExclusiveStartKey: exclusiveStartKey,
-      ScanIndexForward: true, // Sort by date ascending (date is in gsi1sk)
+      ScanIndexForward: true, // Sort by date ascending (date is in GSI1SK)
     })
   );
 
