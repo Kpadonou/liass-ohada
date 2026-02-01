@@ -2,7 +2,11 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { I18nResolver } from "../../../shared/i18n";
-import { ok, toLambdaResponse, badRequest } from "../../../../models/shared/api-response";
+import {
+  ok,
+  toLambdaResponse,
+  badRequest,
+} from "../../../../models/shared/api-response";
 import { dynamoClient } from "../../../shared/dynamo-client";
 import { config } from "../../../shared/config";
 
@@ -32,8 +36,8 @@ export const handler = async (
         IndexName: "GSI-Account",
         KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: {
-          ":pk": { S: `ORG#${orgId}#FY#${fiscalYear}` },
-          ":gsi1sk": { S: `ACC#${paddedAccountId}` },
+          ":pk": { S: `ORG#${orgId}` },
+          ":gsi1sk": { S: `ACC#${paddedAccountId}#FY#${fiscalYear}` },
         },
         ScanIndexForward: true, // Sort by date ascending (date is in GSI1SK)
       })
