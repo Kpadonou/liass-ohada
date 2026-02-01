@@ -38,7 +38,7 @@ function loadConfig(): Config {
 
   const config = {
     TABLE_NAME: finalTableName,
-    REGION: process.env.AWS_REGION || "eu-west-1",
+    REGION: process.env.AWS_REGION || "us-east-1",
     IS_LOCAL: isLocal,
     DYNAMODB_ENDPOINT: process.env.LOCALSTACK_URL,
   };
