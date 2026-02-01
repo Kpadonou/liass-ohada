@@ -1,5 +1,8 @@
 // test-local.ts
 import { handler } from "../lambda/domains/core-ledger/entries/post-entry";
+import { dynamoClient } from "../lambda/shared/dynamo-client";
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 
 const mockEvent = {
   body: JSON.stringify({
@@ -15,8 +18,34 @@ const mockEvent = {
   headers: {},
 } as any;
 
-handler(mockEvent).then((res) => {
+async function runTest() {
+  // Insert fiscal year
+  const fiscalYearData = {
+    orgId: "test-org-001",
+    year: 2024,
+    fiscalYearId: "FY-2024",
+    startDate: "2024-01-01",
+    endDate: "2024-12-31",
+    status: "OPEN",
+    accountingStandard: "SYSCOHADA_GENERAL",
+    pk: "ORG#test-org-001",
+    sk: "FY#2024",
+    entityType: "FISCAL_YEAR",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  await dynamoClient.send(
+    new PutItemCommand({
+      TableName: process.env.TABLE_NAME!,
+      Item: marshall(fiscalYearData, { removeUndefinedValues: true }),
+    })
+  );
+
+  const res = await handler(mockEvent);
   console.log("RÉSULTAT DU TEST LOCAL :");
   console.log(res.statusCode);
   console.log(res.body);
-});
+}
+
+runTest();

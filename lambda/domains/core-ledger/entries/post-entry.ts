@@ -71,14 +71,17 @@ export const handler = async (
         : body.entryId || `ENT-${Date.now()}`;
 
     const lines = body.lines || [];
+    console.log("Number of lines:", lines.length);
     let totalDebit = 0;
     let totalCredit = 0;
     const transactItems = [];
 
     // 3. Boucle sur les lignes
     for (const line of lines) {
-      const debit = Math.round(parseFloat(line.debit) || 0);
-      const credit = Math.round(parseFloat(line.credit) || 0);
+      console.log(`Processing line ${lines.indexOf(line) + 1}: accountId=${line.accountId}, debit=${line.debit}, credit=${line.credit}`);
+      const debit = Math.round(Number(line.debit) || 0);
+      const credit = Math.round(Number(line.credit) || 0);
+      console.log(`Parsed: debit=${debit}, credit=${credit}`);
       const lineId = `LINE-${Date.now()}-${Math.random()
         .toString(36)
         .substr(2, 5)}`;
@@ -126,15 +129,18 @@ export const handler = async (
 
       totalDebit += debit;
       totalCredit += credit;
+      console.log(`Running totals after adding: totalDebit=${totalDebit}, totalCredit=${totalCredit}`);
     }
 
     console.log("⚖️ VÉRIFICATION ÉQUILIBRE:");
     console.log("- Total Débit:", totalDebit);
     console.log("- Total Crédit:", totalCredit);
     console.log("- Sont-ils égaux ?", totalDebit === totalCredit);
+    console.log("Condition check: totalDebit !== totalCredit is", totalDebit !== totalCredit, ", totalDebit === 0 is", totalDebit === 0);
 
     // 4. Équilibre
-    if (totalDebit !== totalCredit || totalDebit === 0) {
+    if (totalDebit !== totalCredit) {
+      console.log("Condition true, returning badRequest for unbalanced entry");
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_ENTRY_NOT_BALANCED"))
       );

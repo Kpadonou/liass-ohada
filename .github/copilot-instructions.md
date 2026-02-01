@@ -95,7 +95,11 @@ root/
 
 ## 3. Critical Coding Standards (STRICT)
 
-- **Naming Convention:** Use **`lowerCamelCase`** for all TypeScript properties/variables (e.g., `orgId`, `accountNumber`), even if table headers below use PascalCase.
+- **Naming Convention:** Use lowerCamelCase for all internal TypeScript properties and variables (e.g., orgId, accountNumber).
+
+- **Database Schema:** Use UPPERCASE for all DynamoDB technical keys (PK, SK, GSI1PK, GSI1SK, etc.) to clearly separate indexing infrastructure from business data.
+
+- **Mapping Policy:** When preparing objects for DynamoDB, explicitly map camelCase properties to their Uppercase database counterparts (e.g., pk: KeyFactory.orgKey(orgId) becomes PK: KeyFactory.orgKey(orgId)).
 - **CRITICAL ATTRIBUTE:** **ALL** entities in the Single Table must include the **`entityType: string`** attribute. This value must be the **UPPERCASE** abbreviation defined in the Key Matrix (e.g., `ACCOUNT`, `THIRD_PARTY`, `ENTRY`). This is mandatory for Single Table querying and type safety.
 - **Data Integrity:** Entities (e.g. Entry and EntryLine) must be **self-contained** and include all necessary GSI key attributes to populate the indexes during the Write operation.
 - **Tenant Prefix:** Tenant is **ORGANIZATION**. Use **`ORG`** in DynamoDB keys.
