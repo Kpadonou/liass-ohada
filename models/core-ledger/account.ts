@@ -6,8 +6,9 @@ export const AccountUsage = z.enum(["DEBIT_ONLY", "CREDIT_ONLY", "BOTH"]);
 export const AccountSchema = z
   .object({
     orgId: z.string(),
-    accountNumber: z.string(),
-    accountId: z.string(), // padded
+    accountId: z
+      .string()
+      .regex(/^\d{8}$/, "Account ID must be exactly 8 digits"),
     accountName: z.string(),
     accountNature: AccountNature,
     accountUsage: AccountUsage,
@@ -23,9 +24,9 @@ export const AccountSchema = z
   })
   .refine(
     (data) => {
-      if (!data.accountNumber || typeof data.classCode === "undefined")
+      if (!data.accountId || typeof data.classCode === "undefined")
         return false;
-      return data.accountNumber.charAt(0) === String(data.classCode);
+      return data.accountId.charAt(0) === String(data.classCode);
     },
     {
       message: "ERROR_ACCOUNT_NUMBER_CLASS_MISMATCH",
@@ -34,6 +35,6 @@ export const AccountSchema = z
 
 export type Account = z.infer<typeof AccountSchema>;
 
-export const padAccountNumber = (accountNumber: string): string => {
-  return accountNumber.padStart(8, "0");
+export const padAccountId = (accountId: string): string => {
+  return accountId.padStart(8, "0");
 };

@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { AccountSchema, padAccountNumber } from "@/models/core-ledger/account";
+import { AccountSchema, padAccountId } from "@/models/core-ledger/account";
 import { KeyFactory } from "../../../shared/key-builder";
 import { I18nResolver } from "../../../shared/i18n";
 import { dynamoClient, config } from "../../../shared/dynamo-client";
@@ -19,8 +19,8 @@ export const handler = async (
     const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
     const { year, ...rest } = body; // explicitly drop year if provided by client
 
-    const accountNumber = rest.accountNumber;
-    const accountId = padAccountNumber(accountNumber);
+    const accountIdInput = rest.accountId;
+    const accountId = padAccountId(accountIdInput);
 
     const accountData = {
       ...rest,

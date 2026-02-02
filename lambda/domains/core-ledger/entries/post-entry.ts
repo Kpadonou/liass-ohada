@@ -96,7 +96,7 @@ export const handler = async (
         year,
         lineId,
         entryId,
-        accountId: line.accountId,
+        accountId: paddedAcc,
         debit,
         credit,
         entryDate,

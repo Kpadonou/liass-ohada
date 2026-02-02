@@ -5,7 +5,7 @@ export const EntryLineSchema = z.object({
   year: z.number().int(),
   lineId: z.string(),
   entryId: z.string(),
-  accountId: z.string(),
+  accountId: z.string().regex(/^\d{8}$/, "Account ID must be exactly 8 digits"),
   projectId: z.string().optional(),
   debit: z.number().int().nonnegative(),
   credit: z.number().int().nonnegative(),

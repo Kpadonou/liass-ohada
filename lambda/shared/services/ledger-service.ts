@@ -41,20 +41,20 @@ export interface AccountEntriesResult {
  * Get account entries for a specific fiscal year
  * @param orgId Organization ID
  * @param fiscalYear Fiscal year (e.g., "2024")
- * @param accountNumber Account number (e.g., "4111" - will be padded to 8 digits)
+ * @param accountId Account ID (e.g., "4111" - will be padded to 8 digits)
  * @param options Query options (limit, cursor for pagination)
  * @returns Paginated list of account entries sorted by date
  */
 export async function getAccountEntries(
   orgId: string,
   fiscalYear: string,
-  accountNumber: string,
-  options: AccountEntriesOptions = {}
+  accountId: string,
+  options?: AccountEntriesOptions
 ): Promise<AccountEntriesResult> {
-  // Pad account number to 8 digits
-  const paddedAccountNumber = accountNumber.padStart(8, "0");
+  // Pad account ID to 8 digits
+  const paddedAccountId = accountId.padStart(8, "0");
 
-  const { limit = 50, cursor } = options;
+  const { limit = 50, cursor } = options || {};
 
   // Parse cursor for pagination
   let exclusiveStartKey: any = undefined;
@@ -74,7 +74,7 @@ export async function getAccountEntries(
       KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
       ExpressionAttributeValues: {
         ":pk": { S: `ORG#${orgId}#FY#${fiscalYear}` },
-        ":gsi1sk": { S: `ACC#${paddedAccountNumber}` },
+        ":gsi1sk": { S: `ACC#${paddedAccountId}` },
       },
       Limit: limit,
       ExclusiveStartKey: exclusiveStartKey,

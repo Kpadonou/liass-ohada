@@ -1,12 +1,12 @@
 import { BatchWriteItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { padAccountNumber } from "../models/core-ledger/account";
+import { padAccountId } from "../models/core-ledger/account";
 import { KeyFactory } from "../lambda/shared/key-builder";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { config } from "../lambda/shared/config";
 
 interface SeedAccount {
-  accountNumber: string;
+  accountId: string;
   accountName: string;
   accountNature: "BALANCE" | "INCOME";
   accountUsage: "DEBIT_ONLY" | "CREDIT_ONLY" | "BOTH";
@@ -21,7 +21,7 @@ interface SeedAccount {
 const OHADA_ACCOUNTS: SeedAccount[] = [
   // Class 1: Capital and Reserves
   {
-    accountNumber: "1011",
+    accountId: "1011",
     accountName: "Capital social",
     accountNature: "BALANCE",
     accountUsage: "BOTH",
@@ -31,7 +31,7 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
 
   // Class 2: Fixed Assets
   {
-    accountNumber: "2411",
+    accountId: "2411",
     accountName: "Matériel et outillage",
     accountNature: "BALANCE",
     accountUsage: "DEBIT_ONLY",
@@ -41,7 +41,7 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
 
   // Class 4: Third Parties
   {
-    accountNumber: "4011",
+    accountId: "4011",
     accountName: "Fournisseurs",
     accountNature: "BALANCE",
     accountUsage: "CREDIT_ONLY",
@@ -49,7 +49,7 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
     allowReconciliation: true,
   },
   {
-    accountNumber: "4111",
+    accountId: "4111",
     accountName: "Clients",
     accountNature: "BALANCE",
     accountUsage: "DEBIT_ONLY",
@@ -59,7 +59,7 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
 
   // Class 5: Financial Assets
   {
-    accountNumber: "521",
+    accountId: "521",
     accountName: "Banque",
     accountNature: "BALANCE",
     accountUsage: "BOTH",
@@ -67,7 +67,7 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
     allowReconciliation: true,
   },
   {
-    accountNumber: "571",
+    accountId: "571",
     accountName: "Caisse",
     accountNature: "BALANCE",
     accountUsage: "BOTH",
@@ -77,7 +77,7 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
 
   // Class 6: Purchase/Cost Accounts
   {
-    accountNumber: "6011",
+    accountId: "6011",
     accountName: "Achats de marchandises",
     accountNature: "INCOME",
     accountUsage: "DEBIT_ONLY",
@@ -87,7 +87,7 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
 
   // Class 7: Revenue Accounts
   {
-    accountNumber: "7011",
+    accountId: "7011",
     accountName: "Ventes de marchandises",
     accountNature: "INCOME",
     accountUsage: "CREDIT_ONLY",
@@ -97,10 +97,10 @@ const OHADA_ACCOUNTS: SeedAccount[] = [
 ];
 
 /**
- * Extract class code from account number (first digit)
+ * Extract class code from account ID (first digit)
  */
-const getClassCode = (accountNumber: string): number => {
-  return parseInt(accountNumber.charAt(0), 10);
+const getClassCode = (accountId: string): number => {
+  return parseInt(accountId.charAt(0), 10);
 };
 
 /**
@@ -126,13 +126,12 @@ async function seedOhadaAccounts(): Promise<void> {
     requestItems[tableName] = [];
 
     for (const seedAccount of OHADA_ACCOUNTS) {
-      const accountNumber = seedAccount.accountNumber;
-      const accountId = padAccountNumber(accountNumber);
-      const classCode = getClassCode(accountNumber);
+      const accountIdInput = seedAccount.accountId;
+      const accountId = padAccountId(accountIdInput);
+      const classCode = getClassCode(accountIdInput);
 
       const accountData = {
         orgId,
-        accountNumber,
         accountId,
         accountName: seedAccount.accountName,
         accountNature: seedAccount.accountNature,
@@ -155,7 +154,7 @@ async function seedOhadaAccounts(): Promise<void> {
       });
 
       console.log(
-        `✓ ${accountNumber.padEnd(6)} | ${accountData.accountName.padEnd(
+        `✓ ${accountIdInput.padEnd(6)} | ${accountData.accountName.padEnd(
           35
         )} | Class ${classCode} | ${accountData.accountNature.padEnd(6)} | ${
           accountData.accountUsage

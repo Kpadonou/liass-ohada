@@ -13,7 +13,7 @@ export const handler = async (
     // Extract parameters from path
     const orgId = event.pathParameters?.orgId;
     const fiscalYear = event.pathParameters?.fiscalYear;
-    const accountNumber = event.pathParameters?.accountNumber;
+    const accountId = event.pathParameters?.accountId;
 
     // Extract query parameters
     const limit = event.queryStringParameters?.limit
@@ -22,7 +22,7 @@ export const handler = async (
     const cursor = event.queryStringParameters?.cursor;
 
     // Validate required path parameters
-    if (!orgId || !fiscalYear || !accountNumber) {
+    if (!orgId || !fiscalYear || !accountId) {
       const i18n = new I18nResolver(event.headers["Accept-Language"]);
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
@@ -46,7 +46,7 @@ export const handler = async (
     const result = await getAccountEntries(
       orgId,
       fiscalYear,
-      accountNumber,
+      accountId,
       options
     );
 

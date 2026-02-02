@@ -95,7 +95,7 @@ root/
 
 ## 3. Critical Coding Standards (STRICT)
 
-- **Naming Convention:** Use lowerCamelCase for all internal TypeScript properties and variables (e.g., orgId, accountNumber).
+- **Naming Convention:** Use lowerCamelCase for all internal TypeScript properties and variables (e.g., orgId, accountId).
 
 - **Database Schema:** Use UPPERCASE for all DynamoDB technical keys (PK, SK, GSI1PK, GSI1SK, etc.) to clearly separate indexing infrastructure from business data.
 
@@ -200,22 +200,21 @@ B. FiscalYear (FY)
 
 C. Account (ACC)
 
-Special Rule: accountId is derived from accountNumber right-padded with zeros to 8 digits (e.g., '411' -> '41100000').
+Special Rule: accountId is the account number right-padded with zeros to 8 digits (e.g., '411' -> '41100000').
 
-| Property               | Type    | Notes                           |
-| :--------------------- | :------ | :------------------------------ |
-| orgId                  | string  | PK                              |
-| accountNumber          | string  | Raw input                       |
-| accountId              | string  | Padded 8-digit ID               |
-| accountName            | string  |                                 |
-| accountNature          | ENUM    | BALANCE / INCOME                |
-| accountUsage           | ENUM    | DEBIT_ONLY / CREDIT_ONLY / BOTH |
-| isThirdPartyAccount    | boolean |                                 |
-| classCode              | number  | 1-8                             |
-| financialStatementCode | string  | e.g., "B01"                     |
-| allowReconciliation    | boolean |                                 |
-| createdAt              | string  | Audit                           |
-| updatedAt              | string  | Audit                           |
+| Property               | Type    | Notes                               |
+| :--------------------- | :------ | :---------------------------------- |
+| orgId                  | string  | PK                                  |
+| accountId              | string  | Account number padded to 8-digit ID |
+| accountName            | string  |                                     |
+| accountNature          | ENUM    | BALANCE / INCOME                    |
+| accountUsage           | ENUM    | DEBIT_ONLY / CREDIT_ONLY / BOTH     |
+| isThirdPartyAccount    | boolean |                                     |
+| classCode              | number  | 1-8                                 |
+| financialStatementCode | string  | e.g., "B01"                         |
+| allowReconciliation    | boolean |                                     |
+| createdAt              | string  | Audit                               |
+| updatedAt              | string  | Audit                               |
 
 D. ThirdParty (TP)
 

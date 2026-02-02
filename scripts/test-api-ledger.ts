@@ -4,7 +4,7 @@ const mockEvent: any = {
   pathParameters: {
     orgId: "test-org-001",
     fiscalYear: "2026",
-    accountNumber: "52100000",
+    accountId: "52100000",
   },
   queryStringParameters: { limit: "10" },
   headers: { "Accept-Language": "fr" },

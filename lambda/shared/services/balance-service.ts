@@ -7,7 +7,7 @@ import { config } from "../config";
  * Account balance result
  */
 export interface AccountBalance {
-  accountNumber: string;
+  accountId: string;
   totalDebit: number;
   totalCredit: number;
   balance: number; // debit - credit
@@ -18,16 +18,16 @@ export interface AccountBalance {
  * Get account balance for a specific fiscal year
  * @param orgId Organization ID
  * @param fiscalYear Fiscal year (e.g., "2024")
- * @param accountNumber Account number (e.g., "4111" - will be padded to 8 digits)
+ * @param accountId Account ID (e.g., "4111" - will be padded to 8 digits)
  * @returns Account balance information
  */
 export async function getAccountBalance(
   orgId: string,
   fiscalYear: string,
-  accountNumber: string
+  accountId: string
 ): Promise<AccountBalance> {
-  // Pad account number to 8 digits
-  const paddedAccountNumber = accountNumber.padStart(8, "0");
+  // Pad account ID to 8 digits
+  const paddedAccountId = accountId.padStart(8, "0");
 
   let totalDebit = 0;
   let totalCredit = 0;
@@ -43,7 +43,7 @@ export async function getAccountBalance(
         KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: {
           ":pk": { S: `ORG#${orgId}#FY#${fiscalYear}` },
-          ":gsi1sk": { S: `ACC#${paddedAccountNumber}` },
+          ":gsi1sk": { S: `ACC#${paddedAccountId}` },
         },
         ExclusiveStartKey: exclusiveStartKey,
       })
@@ -75,7 +75,7 @@ export async function getAccountBalance(
   }
 
   return {
-    accountNumber: paddedAccountNumber,
+    accountId: paddedAccountId,
     totalDebit,
     totalCredit,
     balance,

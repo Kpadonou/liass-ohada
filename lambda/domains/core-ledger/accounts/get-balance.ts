@@ -10,10 +10,10 @@ export const handler = async (
     // Extract parameters from path
     const orgId = event.pathParameters?.orgId;
     const fiscalYear = event.pathParameters?.fiscalYear;
-    const accountNumber = event.pathParameters?.accountNumber;
+    const accountId = event.pathParameters?.accountId;
 
     // Validate required parameters
-    if (!orgId || !fiscalYear || !accountNumber) {
+    if (!orgId || !fiscalYear || !accountId) {
       const i18n = new I18nResolver(event.headers["Accept-Language"]);
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
@@ -21,7 +21,7 @@ export const handler = async (
     }
 
     // Get account balance using the balance service
-    const balance = await getAccountBalance(orgId, fiscalYear, accountNumber);
+    const balance = await getAccountBalance(orgId, fiscalYear, accountId);
 
     const i18n = new I18nResolver(event.headers["Accept-Language"]);
     return toLambdaResponse(
