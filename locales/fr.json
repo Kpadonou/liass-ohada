@@ -15,5 +15,6 @@
   "ERROR_OPENING_ENTRY_INVALID_ACCOUNT_CLASS": "L'écriture d'ouverture ne peut utiliser que des comptes de bilan (Classes 1-5).",
   "UNAUTHORIZED": "Accès non autorisé.",
   "ERROR_INVALID_INPUT": "Données d'entrée invalides.",
-  "ERROR_INTERNAL": "Erreur interne du serveur."
+  "ERROR_INTERNAL": "Erreur interne du serveur.",
+  "INFO_NO_MOVEMENTS_FOUND": "Aucun mouvement trouvé pour ce compte dans la période sélectionnée."
 }

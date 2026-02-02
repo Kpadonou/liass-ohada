@@ -15,5 +15,6 @@
   "ERROR_OPENING_ENTRY_INVALID_ACCOUNT_CLASS": "Opening entry can only use Balance Sheet accounts (Classes 1-5).",
   "UNAUTHORIZED": "Unauthorized access.",
   "ERROR_INVALID_INPUT": "Invalid input data.",
-  "ERROR_INTERNAL": "Internal server error."
+  "ERROR_INTERNAL": "Internal server error.",
+  "INFO_NO_MOVEMENTS_FOUND": "No movements found for this account in the selected period."
 }
