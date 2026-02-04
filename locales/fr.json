@@ -16,5 +16,6 @@
   "UNAUTHORIZED": "Accès non autorisé.",
   "ERROR_INVALID_INPUT": "Données d'entrée invalides.",
   "ERROR_INTERNAL": "Erreur interne du serveur.",
-  "INFO_NO_MOVEMENTS_FOUND": "Aucun mouvement trouvé pour ce compte dans la période sélectionnée."
+  "INFO_NO_MOVEMENTS_FOUND": "Aucun mouvement trouvé pour ce compte dans la période sélectionnée.",
+  "SUCCESS_TRIAL_BALANCE_RETRIEVED": "Balance de vérification récupérée avec succès."
 }

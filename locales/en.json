@@ -16,5 +16,6 @@
   "UNAUTHORIZED": "Unauthorized access.",
   "ERROR_INVALID_INPUT": "Invalid input data.",
   "ERROR_INTERNAL": "Internal server error.",
-  "INFO_NO_MOVEMENTS_FOUND": "No movements found for this account in the selected period."
+  "INFO_NO_MOVEMENTS_FOUND": "No movements found for this account in the selected period.",
+  "SUCCESS_TRIAL_BALANCE_RETRIEVED": "Trial balance retrieved successfully."
 }
