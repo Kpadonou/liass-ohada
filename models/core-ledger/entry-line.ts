@@ -22,11 +22,6 @@ export const EntryLineSchema = z.object({
   // Indexation GSI (Obligatoires pour la cohérence comptable)
   GSI1PK: z.string(),
   GSI1SK: z.string(), // ACC#account#date#id
-  GSI2PK: z.string().optional(),
-  GSI2SK: z.string().optional(), // TP#thirdparty#date
-  GSI3PK: z.string(),
-  GSI3SK: z.string(), // JRN#journal#date#id
-
   createdBy: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),

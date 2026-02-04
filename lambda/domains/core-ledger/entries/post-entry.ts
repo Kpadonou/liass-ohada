@@ -64,7 +64,7 @@ export const handler = async (
       );
     }
 
-    // 2. Gestion de l'ID d'écriture
+    // 2. Validation des Comptes
     let entryId =
       entryType === "OPENING"
         ? `OPEN-${year}`
@@ -72,11 +72,33 @@ export const handler = async (
 
     const lines = body.lines || [];
     console.log("Number of lines:", lines.length);
+
+    // 4. Validation des Comptes
+    const uniqueAccountIds = [
+      ...new Set(lines.map((line: any) => formatAccount(line.accountId))),
+    ];
+    for (const accountId of uniqueAccountIds) {
+      const accountResult = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: config.TABLE_NAME,
+          Key: {
+            PK: { S: KeyFactory.orgKey(orgId) },
+            SK: { S: KeyFactory.accountSK(accountId as string) },
+          },
+        })
+      );
+      if (!accountResult.Item) {
+        return toLambdaResponse(
+          badRequest(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND"))
+        );
+      }
+    }
+
     let totalDebit = 0;
     let totalCredit = 0;
     const transactItems = [];
 
-    // 3. Boucle sur les lignes
+    // 4. Boucle sur les lignes
     for (const line of lines) {
       console.log(
         `Processing line ${lines.indexOf(line) + 1}: accountId=${
@@ -104,14 +126,8 @@ export const handler = async (
         entityType: "ENTRY_LINE" as const,
         PK: KeyFactory.partitionKey(orgId, year),
         SK: KeyFactory.entryLineSK(lineId),
-        GSI1PK: KeyFactory.partitionKey(orgId, year),
-        GSI1SK: `ACC#${paddedAcc}#DT#${entryDate}#${lineId}`,
-        GSI2PK: KeyFactory.partitionKey(orgId, year),
-        GSI2SK: line.thirdPartyId
-          ? `TP#${line.thirdPartyId}#DT#${entryDate}`
-          : undefined,
-        GSI3PK: KeyFactory.partitionKey(orgId, year),
-        GSI3SK: `JRN#${journalCode}#DT#${entryDate}#${lineId}`,
+        GSI1PK: KeyFactory.gsiAccountPK(orgId),
+        GSI1SK: KeyFactory.gsiAccountSK(paddedAcc, year, entryDate, lineId),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
