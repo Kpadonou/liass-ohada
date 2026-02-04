@@ -22,6 +22,9 @@ export class KeyFactory {
   static journalSK(journalCode: string): string {
     return `JNL#${journalCode}`;
   }
+  static projectSK(projectId: string): string {
+    return `PROJ#${projectId}`;
+  }
 
   // GSI Builders (CRITIQUE : Doit être ORG#ID pour permettre le multi-year)
   static gsiAccountPK(orgId: string): string {
