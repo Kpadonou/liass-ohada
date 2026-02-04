@@ -256,3 +256,6 @@ seedOhadaData().then(() => {
   console.log("✨ Seed complete!\n");
   process.exit(0);
 });
+
+// Cmd to run the script:
+// ORG_ID=test-org-001 LOCALSTACK_URL=http://localhost:4566 TABLE_NAME=liass-ohada-dev-accounting-table npx ts-node ./scripts/seed-ohada-accounts.ts

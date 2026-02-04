@@ -36,5 +36,5 @@ export const AccountSchema = z
 export type Account = z.infer<typeof AccountSchema>;
 
 export const padAccountId = (accountId: string): string => {
-  return accountId.padStart(8, "0");
+  return accountId.padEnd(8, "0");
 };
