@@ -95,65 +95,56 @@ root/
 
 ## 3. Critical Coding Standards (STRICT)
 
-- **Naming Convention:** Use lowerCamelCase for all internal TypeScript properties and variables (e.g., orgId, accountId).
+### A. Naming & Mapping
 
-- **Database Schema:** Use UPPERCASE for all DynamoDB technical keys (PK, SK, GSI1PK, GSI1SK, etc.) to clearly separate indexing infrastructure from business data.
+- **Naming Convention:** Use `lowerCamelCase` for internal TypeScript properties.
+- **Database Schema:** Use **UPPERCASE** for DynamoDB technical keys (`PK`, `SK`, `GSI1PK`, `GSI1SK`).
+- **Mapping Policy:** Explicitly map camelCase properties to Uppercase database keys during persistence.
+- **CRITICAL ATTRIBUTE:** Every item must include an **`entityType`** attribute in **UPPERCASE** (e.g., `ACCOUNT`, `ENTRY`).
 
-- **Mapping Policy:** When preparing objects for DynamoDB, explicitly map camelCase properties to their Uppercase database counterparts (e.g., pk: KeyFactory.orgKey(orgId) becomes PK: KeyFactory.orgKey(orgId)).
-- **CRITICAL ATTRIBUTE:** **ALL** entities in the Single Table must include the **`entityType: string`** attribute. This value must be the **UPPERCASE** abbreviation defined in the Key Matrix (e.g., `ACCOUNT`, `THIRD_PARTY`, `ENTRY`). This is mandatory for Single Table querying and type safety.
-- **Data Integrity:** Entities (e.g. Entry and EntryLine) must be **self-contained** and include all necessary GSI key attributes to populate the indexes during the Write operation.
-- **Tenant Prefix:** Tenant is **ORGANIZATION**. Use **`ORG`** in DynamoDB keys.
-- **Anti-Hot-Key:** High-volume entities (e.g. Entries/Lines) must be properly partitioned.
-- Items related to fiscal data (transactions, invoices, balances, etc.) use composite partition key `PK = ORG#<orgId>#FY#<fiscalYearId>`.
-- Canonical master data (Organization, Users, Products, Tiers, Journals, FiscalYear metadata, etc.) live at `PK = ORG#<orgId>`.
-- Use ISO 8601 timestamps for SK on time-series data to support range queries (especially invoices).
-- Add GSIs to handle alternate query paths (lookup by id, number, or name).
-- Lambdas must derive `orgId` from authentication context (JWT claims), not from client input.
-- Use `TransactWriteItems` when creating related entities (e.g., transaction + transaction lines).
-- CDK should separate concerns into DataStack (DynamoDB), ApiStack (API Gateway + Lambdas), and MonitoringStack (CloudWatch alarms).
-- Keep each stack self-contained and minimal
-- Use `TransactWriteItems` for related entity creation (e.g., transactions with lines).
-- Never use `Scan` operations on DynamoDB tables — always prefer `Query` with explicit key conditions or GSIs.
-- Implement exponential backoff with jitter for retrying failed DynamoDB operations.
-- Use environment variables for configuration (table names, index names) in Lambdas.
-- Implement structured logging (JSON format) including `orgId`, `userId`, `requestId` for traceability.
-- Implement unit tests for all business logic using Jest, with at least 80% code coverage.
-- Implement integration tests for API endpoints using Supertest, covering all success and error scenarios.
-- **Formatting Rules:** Always store data in a neutral format: (Dates: ISO 8601 timestamps, Numbers: raw values, Currencies: ISO 4217 codes).
-- Format dates, numbers, and currencies at response time according to the locale.
-- Cost optimization: Use DynamoDB On-Demand mode for development and switch to Provisioned mode with Auto Scaling in production.
+### B. Partitioning & Key Strategy (Hybrid Approach)
+
+- **Tenant Prefix:** All keys must start with **`ORG#`** for strict multi-tenancy.
+- **Master Data (Permanent):** Entities like Organization, Users, Accounts, Journals, ThirdParties, Projects use `PK = ORG#{orgId}`.
+- **Transactional Data (Fiscal Sharding):** High-volume data (Entries, Lines) use `PK = ORG#{orgId}#FY#{year}`.
+- **GSI Global Vision:** All GSIs must use **`GSI_PK = ORG#{orgId}`**. This allows cross-year queries while using the `SK` for specific fiscal filtering (`ACC#...#FY#{year}`).
+- **Account Normalization:** All `accountId` values must be stored as **8-digit strings** (padded with zeros, e.g., "52100000").
+
+### C. Security & Data Integrity
+
+- **Auth Context:** Derive `orgId` and `userId` from JWT claims, never from client input.
+- **Fiscal Validation:** Verify that the linked `FiscalYear` status is `OPEN` before any write on transactional data.
+- **Atomicity:** Use TransactWriteItems when creating related entities (e.g., ENTRY with its LINE items) to ensure "all-or-nothing" persistence.
+
+### D. Performance & DevOps
+
+- **No Scans:** Always use `Query`.
+- **Testing:** Mandatory unit tests (Jest, >80% coverage) and integration tests.
 
 ## 4. DynamoDB Single Table Schema (Core Ledger Matrix)
 
 This section defines the schema for the Core Ledger domain. Other domains will share the table or use separate structures as defined later.
 A. Primary Keys (PK/SK) Definitions
 
-| Entity       | Abbr | PK (Partition Key)    | SK (Sort Key)            | Note                                            |
-| ------------ | ---- | --------------------- | ------------------------ | ----------------------------------------------- |
-| Organization | ORG  | ORG#{orgId}           | ORG#{orgId}              | Metadata                                        |
-| FiscalYear   | FY   | ORG#{orgId}           | FY#{year}                | Period Status                                   |
-| User         | USER | ORG#{orgId}           | USER#{userId}            | User                                            |
-| Account      | ACC  | ORG#{orgId}#FY#{year} | ACC#{accountId}          | See Special Rule below                          |
-| ThirdParty   | TP   | ORG#{orgId}           | TP#{type}#{thirdPartyId} | SK starts with Type                             |
-| Journal      | JNL  | ORG#{orgId}#FY#{year} | JNL#{journalCode}        | Metadata about the journal for a specific year. |
-| Entry (Head) | ENT  | ORG#{orgId}#FY#{year} | ENT#{entryId}            | Transaction Header                              |
-| EntryLine    | LINE | ORG#{orgId}#FY#{year} | LINE#{lineId}            | Transaction Line                                |
-| Project      | PROJ | ORG#{orgId}           | PROJ#{projectId}         | Project                                         |
+| Entity       | Abbr | PK (Partition Key)    | SK (Sort Key)            | Note                                                              |
+| ------------ | ---- | --------------------- | ------------------------ | ----------------------------------------------------------------- |
+| Organization | ORG  | ORG#{orgId}           | ORG#{orgId}              | Metadata                                                          |
+| FiscalYear   | FY   | ORG#{orgId}           | FY#{year}                | Period Status                                                     |
+| User         | USER | ORG#{orgId}           | USER#{userId}            | User                                                              |
+| Account      | ACC  | ORG#{orgId}           | ACC#{accountId}          | See Special Rule below                                            |
+| ThirdParty   | TP   | ORG#{orgId}           | TP#{type}#{thirdPartyId} | {type} represents the category (e.g., CUSTOMER, SUPPLIER, DONOR). |
+| Journal      | JNL  | ORG#{orgId}           | JNL#{journalCode}        | Metadata about the journal for a specific year.                   |
+| Entry (Head) | ENT  | ORG#{orgId}#FY#{year} | ENT#{entryId}            | Transaction Header                                                |
+| EntryLine    | LINE | ORG#{orgId}#FY#{year} | LINE#{lineId}            | Transaction Line                                                  |
+| Project      | PROJ | ORG#{orgId}           | PROJ#{projectId}         | Project                                                           |
 
 B. Global Secondary Indexes (GSIs)
 
 The CDK Construct must define these exact indexes.
 
-| Index Name     | GSI_PK (Partition Key) | GSI_SK (Sort Key)            | Purpose                                       |
-| :------------- | :--------------------- | :--------------------------- | :-------------------------------------------- |
-| GSI-Account    | ORG#{orgId}#FY#{year}  | ACC#{accountId}#DT#{date}    | General Ledger / Account Statement.           |
-| GSI-ThirdParty | ORG#{orgId}#FY#{year}  | TP#{thirdPartyId}#DT#{date}  | Subsidiary Ledger (Clients/Suppliers/Donors). |
-| GSI-Journal    | ORG#{orgId}#FY#{year}  | JRN#{journalCode}#DT#{date}  | Consultation by Journal / Period.             |
-| GSI-Reference  | ORG#{orgId}#FY#{year}  | REF#{reference}              | Search by Invoice or Document Reference.      |
-| GSI-Audit      | ORG#{orgId}#FY#{year}  | USER#{userId}#DT#{date}      | Audit trail per fiscal year.                  |
-| GSI-Matching   | ORG#{orgId}#FY#{year}  | MATCH#{matchId}              | Reconciliation & Matching of open items.      |
-| GSI-Project    | ORG#{orgId}#FY#{year}  | PROJ#{projectCode}#DT#{date} | Project reporting (SYCEBNL / NGO Compliance). |
-| GSI-Email      | ORG#{orgId}            | EMAIL#{email}                | Find a user by email.                         |
+| Index Name  | GSI_PK (Partition Key) | GSI_SK (Sort Key)                   | Purpose                 |
+| :---------- | :--------------------- | :---------------------------------- | :---------------------- |
+| GSI-Account | ORG#{orgId}            | ACC#{accountId}#FY#{year}#DT#{date} | Ledger & Trial Balance. |
 
 ## 5. Entity Models & Attributes (Core Ledger Reference)
 
