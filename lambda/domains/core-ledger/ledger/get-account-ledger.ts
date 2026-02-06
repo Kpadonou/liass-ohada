@@ -73,17 +73,18 @@ export const handler = async (
     }
 
     // Pad account number to 8 digits
-    const paddedAccountId = accountId.padStart(8, "0");
+    const paddedAccountId = accountId.padEnd(8, "0");
 
     // Query the GSI-Account to get all entries for this account in the fiscal year
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
         IndexName: "GSI-Account",
-        KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
+        KeyConditionExpression:
+          "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: {
           // 1. Utilise la PK de l'organisation uniquement
-          ":pk": { S: `ORG#${orgId}` },
+          ":gsi1pk": { S: `ORG#${orgId}` },
           // 2. Filtre par compte ET par année dans la GSI1SK
           ":gsi1sk": { S: `ACC#${paddedAccountId}#FY#${fiscalYear}` },
         },
@@ -104,18 +105,18 @@ export const handler = async (
 
     // Process ledger entries and calculate running balance
     for (const item of queryResult.Items) {
-      const unmarshalled = unmarshall(item);
+      const line = unmarshall(item);
 
       // Calculate running balance (debit increases, credit decreases for asset accounts)
       // This is a simplified calculation - in reality, you'd need to know the account type
-      const debit = unmarshalled.debit || 0;
-      const credit = unmarshalled.credit || 0;
+      const debit = line.debit || 0;
+      const credit = line.credit || 0;
       runningBalance += debit - credit;
 
       ledgerEntries.push({
-        date: unmarshalled.entryDate,
-        label: unmarshalled.description || "",
-        reference: unmarshalled.voucherNumber || "",
+        date: line.entryDate,
+        label: line.description || "-",
+        reference: line.voucherNumber || line.entryId || "N/A",
         debit: debit,
         credit: credit,
         runningBalance: runningBalance,

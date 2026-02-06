@@ -1,41 +1,37 @@
 import { handler } from "../lambda/domains/core-ledger/ledger/get-account-ledger";
 
-async function testLedger() {
-  console.log("📖 TEST : Lecture du Grand Livre (Compte 52100000 - FY 2024)");
-  console.log("-----------------------------------------------------------");
+// On simule l'objet "event" qu'AWS Lambda recevrait
+const mockEvent: any = {
+  headers: { "Accept-Language": "fr" },
+  requestContext: {
+    authorizer: { claims: { orgId: "test-org-001" } },
+  },
+  queryStringParameters: {
+    accountId: "521", // On cherche le compte Banque
+    fiscalYear: "2024",
+  },
+};
 
-  const event = {
-    headers: { "Accept-Language": "fr" },
-    requestContext: {
-      authorizer: {
-        claims: { orgId: "test-org-001" },
-      },
-    },
-    queryStringParameters: {
-      fiscalYear: "2024",
-      accountId: "52100000",
-    },
-  };
+async function runTest() {
+  console.log("📖 Lecture du Grand Livre pour le compte 521 (Banque)...");
 
   try {
-    const response = await handler(event as any);
-    const body = JSON.parse(response.body);
+    const result = await handler(mockEvent);
+    const body = JSON.parse(result.body);
 
-    if (response.statusCode === 200) {
-      console.log("✅ Données récupérées avec succès !");
-      // console.table permet de voir le solde progressif s'ajuster par ligne
+    if (result.statusCode === 200) {
+      console.log("\n✅ Succès ! Voici les mouvements :");
+      // console.table permet d'afficher les données sous forme de tableau
       console.table(body.data);
-
-      const lastLine = body.data[body.data.length - 1];
-      console.log("\n💰 Résumé :");
-      console.log(`Nombre de mouvements : ${body.data.length}`);
-      console.log(`Solde final : ${lastLine?.runningBalance || 0} €`);
     } else {
-      console.error("❌ Erreur retournée par la Lambda :", body);
+      console.error("❌ Erreur :", body.message);
     }
-  } catch (error) {
-    console.error("💥 Erreur lors de l'exécution du test :", error);
+  } catch (err) {
+    console.error("💥 Crash du test :", err);
   }
 }
 
-testLedger();
+runTest();
+
+// Cmd to run the test:
+// ORG_ID=test-org-001 LOCALSTACK_URL=http://localhost:4566 TABLE_NAME=liass-ohada-dev-accounting-table npx ts-node -r tsconfig-paths/register scripts/test-ledger.ts
