@@ -4,34 +4,43 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { KeyFactory } from "../lambda/shared/key-builder";
 import { config } from "../lambda/shared/config";
 
-async function seedTestEntries() {
+async function seedCleanData() {
   const orgId = "test-org-001";
   const tableName = config.TABLE_NAME;
+  const year = 2024;
 
-  // On nettoie l'existant ou on utilise de nouveaux IDs pour éviter les conflits
   const entries = [
-    // 1. ÉCRITURE D'OUVERTURE (Report à Nouveau)
+    // 1. OPENING BALANCE (Not used in Income Statement, but good for Trial Balance)
     {
-      year: 2024,
-      entryId: "ENT-2024-OPEN",
+      entryId: "ENT-2024-001",
       date: "2024-01-01",
-      journalCode: "RAN", // Crucial pour la colonne "Ouverture"
-      description: "Solde initial - Report 2023",
+      journalCode: "RAN",
+      description: "Opening Balance",
       lines: [
-        { accountId: "52100000", debit: 5000, credit: 0 }, // Banque +5000
-        { accountId: "10110000", debit: 0, credit: 5000 }, // Capital -5000
+        { accountId: "52100000", debit: 10000, credit: 0 },
+        { accountId: "10110000", debit: 0, credit: 10000 },
       ],
     },
-    // 2. OPÉRATION COURANTE (Achat)
+    // 2. PURCHASE (Expense - Class 6)
     {
-      year: 2024,
-      entryId: "ENT-2024-MOV",
+      entryId: "ENT-2024-002",
       date: "2024-02-15",
-      journalCode: "HA", // Journal d'Achats (Mouvement classique)
-      description: "Achat de fournitures",
+      journalCode: "HA",
+      description: "Office Supplies",
       lines: [
-        { accountId: "60110000", debit: 1200, credit: 0 },
-        { accountId: "52100000", debit: 0, credit: 1200 },
+        { accountId: "60110000", debit: 1500, credit: 0 }, // Expense
+        { accountId: "52100000", debit: 0, credit: 1500 },
+      ],
+    },
+    // 3. SALE (Revenue - Class 7)
+    {
+      entryId: "ENT-2024-003",
+      date: "2024-03-10",
+      journalCode: "VT",
+      description: "Service Consulting",
+      lines: [
+        { accountId: "52100000", debit: 5000, credit: 0 },
+        { accountId: "70110000", debit: 0, credit: 5000 }, // Revenue
       ],
     },
   ];
@@ -43,41 +52,37 @@ async function seedTestEntries() {
         Put: {
           TableName: tableName,
           Item: marshall({
-            PK: KeyFactory.partitionKey(orgId, entry.year),
+            PK: KeyFactory.partitionKey(orgId, year),
             SK: KeyFactory.entryLineSK(lineId),
             GSI1PK: KeyFactory.gsiAccountPK(orgId),
             GSI1SK: KeyFactory.gsiAccountSK(
               line.accountId,
-              entry.year,
+              year,
               entry.date,
               lineId
             ),
             entityType: "ENTRY_LINE",
             accountId: line.accountId,
-            entryId: entry.entryId, // Fix pour la référence "N/A"
-            journalCode: entry.journalCode, // Pour la balance 6 colonnes
+            entryId: entry.entryId,
+            journalCode: entry.journalCode,
             description: entry.description,
             debit: line.debit,
             credit: line.credit,
             entryDate: entry.date,
-            year: entry.year,
+            year: year,
           }),
         },
       };
     });
 
-    try {
-      await dynamoClient.send(
-        new TransactWriteItemsCommand({ TransactItems: transactItems })
-      );
-      console.log(`✅ Injecté: ${entry.entryId} (${entry.journalCode})`);
-    } catch (err) {
-      console.error(`❌ Erreur:`, err);
-    }
+    await dynamoClient.send(
+      new TransactWriteItemsCommand({ TransactItems: transactItems })
+    );
+    console.log(`✅ Entry ${entry.entryId} injected`);
   }
 }
 
-seedTestEntries();
+seedCleanData();
 
 // Cmd to run the script:
 // ORG_ID=test-org-001 LOCALSTACK_URL=http://localhost:4566 TABLE_NAME=liass-ohada-dev-accounting-table npx ts-node ./scripts/seed-test-entries.ts
