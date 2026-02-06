@@ -21,3 +21,6 @@ async function runTest() {
 }
 
 runTest();
+
+// Cmd to run the script:
+// ORG_ID=test-org-001 LOCALSTACK_URL=http://localhost:4566 TABLE_NAME=liass-ohada-dev-accounting-table npx ts-node -r tsconfig-paths/register scripts/invoke-balance.ts
