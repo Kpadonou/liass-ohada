@@ -18,5 +18,6 @@
   "ERROR_INTERNAL": "Erreur interne du serveur.",
   "INFO_NO_MOVEMENTS_FOUND": "Aucun mouvement trouvé pour ce compte dans la période sélectionnée.",
   "SUCCESS_TRIAL_BALANCE_RETRIEVED": "Balance de vérification récupérée avec succès.",
-  "SUCCESS_INCOME_STATEMENT_RETRIEVED": "Le compte de résultat a été généré avec succès."
+  "SUCCESS_INCOME_STATEMENT_RETRIEVED": "Le compte de résultat a été généré avec succès.",
+  "SUCCESS_YEAR_END_CLOSED": "Clôture de fin d'année terminée avec succès."
 }
