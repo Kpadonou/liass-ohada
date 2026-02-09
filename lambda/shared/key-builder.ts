@@ -40,4 +40,25 @@ export class KeyFactory {
     // On inclut le lineId à la fin pour l'unicité dans l'index
     return `ACC#${accountId}#FY#${year}#DT#${date}#${lineId}`;
   }
+
+  // GSI 2 : Pour la recherche rapide par Tiers (Auxiliaire)
+  static gsiThirdPartyPK(
+    orgId: string,
+    accountId: string,
+    thirdPartyId: string
+  ): string {
+    return `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`;
+  }
+
+  static gsiThirdPartySK(date: string, lineId: string): string {
+    return `DT#${date}#${lineId}`;
+  }
+
+  static unletteredPK(
+    orgId: string,
+    accountId: string,
+    thirdPartyId: string
+  ): string {
+    return `UNLETTERED#${orgId}#${accountId}#${thirdPartyId}`;
+  }
 }

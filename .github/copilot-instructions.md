@@ -273,7 +273,7 @@ G. EntryLine (LINE)
 | thirdPartyId  | string | Optional                                          |
 | voucherNumber | string |                                                   |
 | journalCode   | string |                                                   |
-| matchId       | string | Lettrage (Matching) reference for reconciliation. |
+| letteringCode | string | Lettrage (Matching) reference for reconciliation. |
 | createdBy     | string |                                                   |
 | createdAt     | string | Audit                                             |
 | updatedAt     | string | Audit                                             |

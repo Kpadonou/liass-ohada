@@ -19,5 +19,12 @@
   "INFO_NO_MOVEMENTS_FOUND": "No movements found for this account in the selected period.",
   "SUCCESS_TRIAL_BALANCE_RETRIEVED": "Trial balance retrieved successfully.",
   "SUCCESS_INCOME_STATEMENT_RETRIEVED": "Income statement successfully generated.",
-  "SUCCESS_YEAR_END_CLOSED": "Year-end closing completed successfully."
+  "SUCCESS_YEAR_END_CLOSED": "Year-end closing completed successfully.",
+  "ERROR_LETTERING_INSUFFICIENT_LINES": "Select at least two lines.",
+  "ERROR_LETTERING_INCONSISTENT_LINES": "All lines must belong to the same account and third party.",
+  "ERROR_LETTERING_UNBALANCED": "Imbalance detected. The balance must be 0.",
+  "SUCCESS_LETTERING_COMPLETED": "Lettering completed successfully.",
+  "SUCCESS_LETTERING_PARTIAL": "Partial lettering completed successfully.",
+  "ERROR_LETTERING_TECHNICAL": "Technical error during lettering.",
+  "ERROR_NO_MOVEMENTS_FOUND": "No movements found to close."
 }

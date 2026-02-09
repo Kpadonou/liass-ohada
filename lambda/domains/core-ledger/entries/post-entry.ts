@@ -100,11 +100,6 @@ export const handler = async (
 
     // 4. Boucle sur les lignes
     for (const line of lines) {
-      console.log(
-        `Processing line ${lines.indexOf(line) + 1}: accountId=${
-          line.accountId
-        }, debit=${line.debit}, credit=${line.credit}`
-      );
       const debit = Math.round(Number(line.debit) || 0);
       const credit = Math.round(Number(line.credit) || 0);
       console.log(`Parsed: debit=${debit}, credit=${credit}`);
@@ -112,13 +107,15 @@ export const handler = async (
         .toString(36)
         .substr(2, 5)}`;
       const paddedAcc = formatAccount(line.accountId);
+      const thirdPartyId = line.thirdPartyId;
 
-      const lineData = {
+      const lineData: Record<string, any> = {
         orgId,
         year,
         lineId,
         entryId,
         accountId: paddedAcc,
+        thirdPartyId,
         debit,
         credit,
         entryDate,
@@ -131,6 +128,22 @@ export const handler = async (
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
+
+      // NOUVEAU : GSI 2 - Index de Tiers (uniquement si thirdPartyId est présent)
+      if (thirdPartyId) {
+        lineData.GSI2PK = KeyFactory.gsiThirdPartyPK(
+          orgId,
+          paddedAcc,
+          thirdPartyId
+        );
+        lineData.GSI2SK = KeyFactory.gsiThirdPartySK(entryDate, lineId);
+
+        // NOUVEAU : GSI 3 - Sparse Index pour le Lettrage
+        // Cet attribut ne sera présent QUE tant que la ligne n'est pas lettrée.
+        // On l'appelle 'L_PK' (Lettering PK) pour rester court.
+        lineData.L_PK = `UNLETTERED#${orgId}#${paddedAcc}#${thirdPartyId}`;
+        lineData.L_SK = entryDate;
+      }
 
       const lineValidation = EntryLineSchema.safeParse(lineData);
       if (!lineValidation.success) {
