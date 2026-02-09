@@ -26,5 +26,11 @@
   "SUCCESS_LETTERING_COMPLETED": "Lettering completed successfully.",
   "SUCCESS_LETTERING_PARTIAL": "Partial lettering completed successfully.",
   "ERROR_LETTERING_TECHNICAL": "Technical error during lettering.",
-  "ERROR_NO_MOVEMENTS_FOUND": "No movements found to close."
+  "ERROR_NO_MOVEMENTS_FOUND": "No movements found to close.",
+  "ERROR_MISSING_PARAMETERS": "Missing required parameters.",
+  "ERROR_THIRD_PARTY_LEDGER_TECHNICAL": "Technical error while fetching the auxiliary ledger.",
+  "ERROR_SUGGESTIONS_TECHNICAL": "Error generating suggestions.",
+  "INFO_NO_LINES_TO_MATCH": "No lines to match.",
+  "SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED": "Third party ledger retrieved successfully.",
+  "SUCCESS_SUGGESTIONS_RETRIEVED": "Suggestions retrieved successfully."
 }

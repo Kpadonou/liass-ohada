@@ -5,9 +5,12 @@ import { z } from "zod";
  */
 const ConfigSchema = z.object({
   TABLE_NAME: z.string().min(1, "TABLE_NAME is required"),
-  REGION: z.string().default("eu-west-1"),
+  REGION: z.string().default("us-east-1"),
   IS_LOCAL: z.boolean(),
   DYNAMODB_ENDPOINT: z.string().optional(),
+  GSI_ACCOUNT: z.string(),
+  GSI_THIRD_PARTY: z.string(),
+  GSI_LETTERING: z.string(),
 });
 
 /**
@@ -41,9 +44,9 @@ function loadConfig(): Config {
     REGION: process.env.AWS_REGION || "us-east-1",
     IS_LOCAL: isLocal,
     DYNAMODB_ENDPOINT: process.env.LOCALSTACK_URL,
-    GSI_ACCOUNT: "GSI1", // GSI1 for core-ledger queries
-    GSI_THIRD_PARTY: "GSI2", // GSI2 for third party queries
-    GSI_LETTERING: "GSI3", // GSI3 for lettering queries
+    GSI_ACCOUNT: "GSI_ACCOUNT", // GSI1 for core-ledger queries
+    GSI_THIRD_PARTY: "GSI_THIRD_PARTY", // GSI2 for third party queries
+    GSI_LETTERING: "GSI_LETTERING", // GSI3 for lettering queries
   };
 
   // Validate configuration

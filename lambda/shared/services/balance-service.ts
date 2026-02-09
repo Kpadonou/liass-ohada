@@ -35,11 +35,11 @@ export async function getAccountBalance(
 
   // Handle pagination to ensure all entries are fetched
   do {
-    // Query the GSI-Account to get all entries for this account in the fiscal year
+    // Query the GSI_ACCOUNT to get all entries for this account in the fiscal year
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI-Account",
+        IndexName: "GSI_ACCOUNT",
         KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: {
           ":pk": { S: `ORG#${orgId}#FY#${fiscalYear}` },

@@ -144,7 +144,7 @@ The CDK Construct must define these exact indexes.
 
 | Index Name  | GSI_PK (Partition Key) | GSI_SK (Sort Key)                   | Purpose                 |
 | :---------- | :--------------------- | :---------------------------------- | :---------------------- |
-| GSI-Account | ORG#{orgId}            | ACC#{accountId}#FY#{year}#DT#{date} | Ledger & Trial Balance. |
+| GSI_ACCOUNT | ORG#{orgId}            | ACC#{accountId}#FY#{year}#DT#{date} | Ledger & Trial Balance. |
 
 ## 5. Entity Models & Attributes (Core Ledger Reference)
 

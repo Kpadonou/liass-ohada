@@ -75,11 +75,11 @@ export const handler = async (
     // Pad account number to 8 digits
     const paddedAccountId = accountId.padEnd(8, "0");
 
-    // Query the GSI-Account to get all entries for this account in the fiscal year
+    // Query the GSI_ACCOUNT to get all entries for this account in the fiscal year
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI-Account",
+        IndexName: "GSI_ACCOUNT",
         KeyConditionExpression:
           "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: {

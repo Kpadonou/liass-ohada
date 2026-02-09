@@ -19,11 +19,27 @@ export class LiassOhadaAccountingTable extends Construct {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    // GSI-Account (gsi1)
+    // GSI_ACCOUNT (gsi1)
     this.table.addGlobalSecondaryIndex({
-      indexName: "GSI-Account",
+      indexName: "GSI_ACCOUNT",
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "GSI1SK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI2 - Third Party Auxiliary Index
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI_THIRD_PARTY",
+      partitionKey: { name: "GSI2PK", type: AttributeType.STRING },
+      sortKey: { name: "GSI2SK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI3 - Lettering Sparse Index
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI_LETTERING",
+      partitionKey: { name: "L_PK", type: AttributeType.STRING },
+      sortKey: { name: "L_SK", type: AttributeType.STRING },
       projectionType: ProjectionType.ALL,
     });
   }

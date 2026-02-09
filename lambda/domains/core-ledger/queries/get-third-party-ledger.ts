@@ -4,6 +4,7 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../../../shared/dynamo-client";
 import { config } from "../../../shared/config";
 import { KeyFactory } from "../../../shared/key-builder";
+import { I18nResolver } from "../../../shared/i18n";
 import {
   toLambdaResponse,
   ok,
@@ -13,15 +14,15 @@ import {
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
+  const i18n = new I18nResolver(event.headers["Accept-Language"]);
+
   try {
     const { orgId, accountId, thirdPartyId, startDate, endDate } =
       event.queryStringParameters || {};
 
     if (!orgId || !accountId || !thirdPartyId) {
       return toLambdaResponse(
-        badRequest(
-          "Missing required parameters: orgId, accountId, thirdPartyId"
-        )
+        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS"))
       );
     }
 
@@ -43,7 +44,7 @@ export const handler = async (
 
     const params = {
       TableName: config.TABLE_NAME,
-      IndexName: config.GSI_THIRD_PARTY, // "ThirdPartyAuxiliaryIndex"
+      IndexName: "GSI2", // Third Party Auxiliary Index
       KeyConditionExpression: keyCondition,
       ExpressionAttributeValues: expressionAttributeValues,
       ScanIndexForward: true, // true = Chronological, false = Newest first
@@ -63,23 +64,26 @@ export const handler = async (
     );
 
     return toLambdaResponse(
-      ok({
-        thirdPartyId,
-        accountId,
-        period: { startDate, endDate },
-        summary: {
-          totalDebit: totals.debit,
-          totalCredit: totals.credit,
-          balance: totals.debit - totals.credit,
+      ok(
+        {
+          thirdPartyId,
+          accountId,
+          period: { startDate, endDate },
+          summary: {
+            totalDebit: totals.debit,
+            totalCredit: totals.credit,
+            balance: totals.debit - totals.credit,
+          },
+          count: lines.length,
+          lines,
         },
-        count: lines.length,
-        lines,
-      })
+        i18n.getMessage("SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED")
+      )
     );
   } catch (error) {
     console.error("GetThirdPartyLedger Error:", error);
     return toLambdaResponse(
-      badRequest("Technical error while fetching the auxiliary ledger.")
+      badRequest(i18n.getMessage("ERROR_THIRD_PARTY_LEDGER_TECHNICAL"))
     );
   }
 };

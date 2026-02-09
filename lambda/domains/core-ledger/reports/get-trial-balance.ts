@@ -89,7 +89,7 @@ export const handler = async (
           const queryResult = await dynamoClient.send(
             new QueryCommand({
               TableName: config.TABLE_NAME,
-              IndexName: "GSI-Account",
+              IndexName: "GSI_ACCOUNT",
               KeyConditionExpression:
                 "GSI1PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
               ExpressionAttributeValues: {

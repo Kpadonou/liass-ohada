@@ -26,5 +26,11 @@
   "SUCCESS_LETTERING_COMPLETED": "Lettrage total réussi.",
   "SUCCESS_LETTERING_PARTIAL": "Lettrage partiel réussi.",
   "ERROR_LETTERING_TECHNICAL": "Erreur technique lors du lettrage.",
-  "ERROR_NO_MOVEMENTS_FOUND": "Aucun mouvement trouvé à clôturer."
+  "ERROR_NO_MOVEMENTS_FOUND": "Aucun mouvement trouvé à clôturer.",
+  "ERROR_MISSING_PARAMETERS": "Paramètres requis manquants.",
+  "ERROR_THIRD_PARTY_LEDGER_TECHNICAL": "Erreur technique lors de la récupération du grand livre auxiliaire.",
+  "ERROR_SUGGESTIONS_TECHNICAL": "Erreur lors de la génération des suggestions.",
+  "INFO_NO_LINES_TO_MATCH": "Aucune ligne à rapprocher.",
+  "SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED": "Grand livre auxiliaire récupéré avec succès.",
+  "SUCCESS_SUGGESTIONS_RETRIEVED": "Suggestions récupérées avec succès."
 }
