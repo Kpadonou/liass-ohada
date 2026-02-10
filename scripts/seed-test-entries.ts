@@ -54,13 +54,8 @@ async function seedCleanData() {
           Item: marshall({
             PK: KeyFactory.partitionKey(orgId, year),
             SK: KeyFactory.entryLineSK(lineId),
-            GSI1PK: KeyFactory.gsiAccountPK(orgId),
-            GSI1SK: KeyFactory.gsiAccountSK(
-              line.accountId,
-              year,
-              entry.date,
-              lineId
-            ),
+            GSI1PK: KeyFactory.gsi1PK(orgId),
+            GSI1SK: KeyFactory.gsi1SK(line.accountId, year, entry.date, lineId),
             entityType: "ENTRY_LINE",
             accountId: line.accountId,
             entryId: entry.entryId,

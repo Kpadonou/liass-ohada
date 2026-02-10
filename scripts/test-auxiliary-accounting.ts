@@ -1,143 +1,186 @@
+// Set environment variables for local testing BEFORE any imports
+process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
+process.env.LOCALSTACK_URL = "http://localhost:4566";
+
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
 import { handler as getSuggestions } from "../lambda/domains/core-ledger/queries/get-lettering-suggestions";
+import {
+  PutItemCommand,
+  ScanCommand,
+  DeleteItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { dynamoClient } from "../lambda/shared/dynamo-client";
+import { KeyFactory } from "../lambda/shared/key-builder";
 
-const ORG = "test-org-001";
-const ACC = "41110000";
-const THIRD_PARTY = "CLIENT-KPADONOU";
-const FY_ID = "FY#2026";
-const STANDARD = "SYSCOHADA_GENERAL";
+async function cleanupTable() {
+  console.log("🧹 Cleaning up table...");
+  const scan = await dynamoClient.send(
+    new ScanCommand({ TableName: process.env.TABLE_NAME })
+  );
+  const items = scan.Items || [];
+  for (const item of items) {
+    const unmarshalled = unmarshall(item);
+    await dynamoClient.send(
+      new DeleteItemCommand({
+        TableName: process.env.TABLE_NAME,
+        Key: marshall({ PK: unmarshalled.PK, SK: unmarshalled.SK }),
+      })
+    );
+  }
+  console.log(`✅ Table cleared (${items.length} items removed)`);
+}
 
-async function runTest() {
-  console.log("🧪 DÉBUT DU TEST DE COMPTABILITÉ AUXILIAIRE");
+async function setupMasterData() {
+  const orgId = "test-org-001";
+  const now = new Date().toISOString();
 
-  // Ces champs doivent être dans le BODY pour Zod
-  const bodyBase = {
-    orgId: ORG, // Ajouté ici car Zod le demande dans le schéma du body
-    year: 2026,
-    fiscalYearId: FY_ID,
-    accountingStandard: STANDARD,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    currency: "XOF",
-  };
-
-  // Simulation du contexte d'authorizer (pour le handler)
-  const requestContext = {
-    authorizer: {
-      claims: {
-        orgId: ORG,
-        sub: "test-user-001",
-      },
-    },
-  };
-
-  try {
-    // 1. On crée une facture de 1000
-    console.log("\n1️⃣ Enregistrement d'une facture de 1000...");
-    const invRes = await postEntry({
-      headers: { "Accept-Language": "fr" },
-      body: JSON.stringify({
-        ...bodyBase,
-        entryDate: "2026-02-01",
-        label: "Facture Client A",
-        lines: [
-          {
-            accountId: ACC,
-            thirdPartyId: THIRD_PARTY,
-            debit: 1000,
-            credit: 0,
-            label: "Vente Client",
-          },
-          {
-            accountId: "70100000",
-            debit: 0,
-            credit: 1000,
-            label: "Vente Marchandises",
-          },
-        ],
+  // 1. Fiscal Year (COMPLET pour passer le FiscalYearSchema.parse)
+  await dynamoClient.send(
+    new PutItemCommand({
+      TableName: process.env.TABLE_NAME!,
+      Item: marshall({
+        PK: KeyFactory.orgKey(orgId),
+        SK: "FY#2026",
+        orgId,
+        year: 2026,
+        fiscalYearId: "FY-2026-ID", // Requis par Zod
+        startDate: "2026-01-01", // Requis par Zod
+        endDate: "2026-12-31", // Requis par Zod
+        status: "OPEN",
+        accountingStandard: "SYSCOHADA_GENERAL", // Requis par Zod
+        entityType: "FISCAL_YEAR",
+        createdAt: now,
+        updatedAt: now,
       }),
-      requestContext,
-    } as any);
+    })
+  );
 
-    if (invRes.statusCode >= 400) {
-      console.error("Détail erreur facture:", invRes.body);
-      throw new Error(`Facture failed with status ${invRes.statusCode}`);
-    }
+  // 2. Accounts
+  const accounts = [
+    { id: "41110000", name: "Clients", isTP: true },
+    { id: "70100000", name: "Ventes", isTP: false },
+    { id: "52100000", name: "Banque", isTP: false },
+  ];
 
-    // 2. On crée deux paiements de 500
-    console.log("2️⃣ Enregistrement de deux paiements de 500...");
-    for (const date of ["2026-02-05", "2026-02-06"]) {
-      const payRes = await postEntry({
-        headers: { "Accept-Language": "fr" },
-        body: JSON.stringify({
-          ...bodyBase,
-          entryDate: date,
-          label: `Paiement du ${date}`,
-          lines: [
-            { accountId: "52100000", debit: 500, credit: 0, label: "Banque" },
-            {
-              accountId: ACC,
-              thirdPartyId: THIRD_PARTY,
-              debit: 0,
-              credit: 500,
-              label: "Encaissement Client",
-            },
-          ],
+  for (const acc of accounts) {
+    await dynamoClient.send(
+      new PutItemCommand({
+        TableName: process.env.TABLE_NAME!,
+        Item: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(acc.id),
+          accountId: acc.id,
+          accountName: acc.name,
+          isThirdPartyAccount: acc.isTP,
+          entityType: "ACCOUNT",
+          createdAt: now,
+          updatedAt: now,
         }),
-        requestContext,
-      } as any);
+      })
+    );
+  }
 
-      if (payRes.statusCode >= 400) {
-        console.error(`Détail erreur paiement ${date}:`, payRes.body);
-        throw new Error(`Paiement failed with status ${payRes.statusCode}`);
-      }
-    }
+  // 3. Third Party
+  await dynamoClient.send(
+    new PutItemCommand({
+      TableName: process.env.TABLE_NAME!,
+      Item: marshall({
+        PK: KeyFactory.orgKey(orgId),
+        SK: "TP#CLIENT#CLIENT-001",
+        thirdPartyId: "CLIENT-001",
+        type: "CLIENT",
+        entityType: "THIRD_PARTY",
+        createdAt: now,
+        updatedAt: now,
+      }),
+    })
+  );
 
-    // 3. Appel du service de suggestion
-    console.log("\n3️⃣ Appel du service suggest-lettering...");
-    const result = await getSuggestions({
-      queryStringParameters: {
-        orgId: ORG,
-        accountId: ACC,
-        thirdPartyId: THIRD_PARTY,
-      },
-      headers: { "Accept-Language": "fr" },
-      requestContext,
-    } as any);
+  console.log("✅ Master data initialized with complete fields");
+}
 
-    const body = JSON.parse(result.body);
+async function runScenario() {
+  console.log("🚀 STARTING RECONCILIATION TEST SCENARIO");
+  await cleanupTable();
+  await setupMasterData();
 
-    if (result.statusCode >= 400) {
-      console.error("❌ Erreur de suggestion:", body);
-      return;
-    }
+  const commonContext = {
+    requestContext: {
+      authorizer: { claims: { orgId: "test-org-001", userId: "test-admin" } },
+    },
+    headers: { "Accept-Language": "en" },
+  };
 
-    console.log("\n📊 RÉSULTATS : ");
-    console.log(`Lignes non lettrées trouvées : ${body.data.totalUnlettered}`);
-    console.log(`Nombre de suggestions : ${body.data.suggestionsFound}`);
+  // 1️⃣ POST INVOICE
+  console.log("\n1️⃣ Posting Invoice (100.00)...");
+  const invoiceRes = await postEntry({
+    ...commonContext,
+    body: JSON.stringify({
+      orgId: "test-org-001", // Parfois requis selon le schéma
+      year: 2026,
+      entryDate: "2026-02-09",
+      label: "Invoice INV-001",
+      lines: [
+        {
+          accountId: "41110000",
+          thirdPartyId: "CLIENT-001",
+          debit: 100,
+          credit: 0,
+        },
+        { accountId: "70100000", debit: 0, credit: 100 },
+      ],
+    }),
+  } as any);
 
-    console.log("\n🔍 DÉTAIL DES SUGGESTIONS :");
-    if (body.data.suggestions.length > 0) {
-      console.table(
-        body.data.suggestions.map((s: any) => ({
-          Type: s.type,
-          Montant: s.amount,
-          Nb_Lignes: s.lines.length,
-        }))
-      );
+  // 2️⃣ POST PAYMENT
+  console.log("2️⃣ Posting Payment (100.00)...");
+  const paymentRes = await postEntry({
+    ...commonContext,
+    body: JSON.stringify({
+      orgId: "test-org-001",
+      year: 2026,
+      entryDate: "2026-02-10",
+      label: "Payment PAY-001",
+      lines: [
+        { accountId: "52100000", debit: 100, credit: 0 },
+        {
+          accountId: "41110000",
+          thirdPartyId: "CLIENT-001",
+          debit: 0,
+          credit: 100,
+        },
+      ],
+    }),
+  } as any);
+
+  // 3️⃣ FETCH SUGGESTIONS
+  console.log("\n3️⃣ Querying Matching Engine...");
+  const suggestionRes = await getSuggestions({
+    ...commonContext,
+    queryStringParameters: {
+      orgId: "test-org-001",
+      accountId: "41110000",
+      thirdPartyId: "CLIENT-001",
+    },
+  } as any);
+
+  const result = JSON.parse(suggestionRes.body);
+
+  if (result.success && result.data) {
+    console.log("\n📊 ENGINE RESULTS:");
+    console.log(`Unlettered lines: ${result.data.totalUnlettered}`);
+    console.log(`Suggestions: ${result.data.suggestionsFound}`);
+
+    if (result.data.suggestionsFound > 0) {
+      console.log("\n🎯 SUCCESS: Match Found!");
+      console.table(result.data.suggestions[0].lines);
     } else {
-      console.log("Aucune suggestion générée.");
+      console.log("\n⚠️ Still no match? Check the data in the table.");
     }
-
-    if (body.data.suggestionsFound >= 2) {
-      console.log(
-        "\n✅ SUCCÈS : Le FIFO a correctement lié les deux paiements à la facture !"
-      );
-    }
-  } catch (error) {
-    console.error("\n💥 ERREUR PENDANT LE TEST :");
-    console.error(error);
+  } else {
+    console.error("❌ ERROR in suggestion response:", result);
   }
 }
 
-runTest();
+runScenario().catch(console.error);

@@ -93,7 +93,7 @@ export const handler = async (
               KeyConditionExpression:
                 "GSI1PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
               ExpressionAttributeValues: {
-                ":pk": { S: KeyFactory.gsiAccountPK(orgId) },
+                ":pk": { S: KeyFactory.gsi1PK(orgId) },
                 ":gsi1sk": { S: `ACC#${accountId}#FY#${year}#` },
               },
               ExclusiveStartKey: lastEvaluatedKey,

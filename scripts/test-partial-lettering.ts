@@ -26,8 +26,8 @@ async function runPartialTest() {
         Item: marshall({
           PK: KeyFactory.partitionKey(ORG, YEAR),
           SK: KeyFactory.entryLineSK(l.id),
-          GSI1PK: KeyFactory.gsiAccountPK(ORG),
-          GSI1SK: KeyFactory.gsiAccountSK(l.acc, YEAR, "2024-02-10", l.id),
+          GSI1PK: KeyFactory.gsi1PK(ORG),
+          GSI1SK: KeyFactory.gsi1SK(l.acc, YEAR, "2024-02-10", l.id),
           entityType: "ENTRY_LINE",
           accountId: l.acc,
           thirdPartyId: CLIENT_ID,

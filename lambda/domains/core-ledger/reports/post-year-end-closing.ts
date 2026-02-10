@@ -59,7 +59,7 @@ export const handler = async (
           IndexName: "GSI_ACCOUNT",
           KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
           ExpressionAttributeValues: {
-            ":pk": { S: KeyFactory.gsiAccountPK(orgId) },
+            ":pk": { S: KeyFactory.gsi1PK(orgId) },
             ":sk": { S: `ACC#` },
           },
           ExclusiveStartKey: lastKey,
@@ -156,13 +156,8 @@ export const handler = async (
           Item: marshall({
             PK: KeyFactory.partitionKey(orgId, year),
             SK: KeyFactory.entryLineSK(lineId),
-            GSI1PK: KeyFactory.gsiAccountPK(orgId),
-            GSI1SK: KeyFactory.gsiAccountSK(
-              l.accountId,
-              year,
-              entryDate,
-              lineId
-            ),
+            GSI1PK: KeyFactory.gsi1PK(orgId),
+            GSI1SK: KeyFactory.gsi1SK(l.accountId, year, entryDate, lineId),
             entityType: "ENTRY_LINE",
             accountId: l.accountId,
             debit: l.debit,

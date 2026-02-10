@@ -36,8 +36,8 @@ async function runTest() {
     {
       PK: KeyFactory.partitionKey(ORG, YEAR),
       SK: KeyFactory.entryLineSK("L1"),
-      GSI1PK: KeyFactory.gsiAccountPK(ORG), // Résultat: ORG#test-org-001
-      GSI1SK: KeyFactory.gsiAccountSK("60110000", YEAR, "2024-06-01", "L1"),
+      GSI1PK: KeyFactory.gsi1PK(ORG), // Résultat: ORG#test-org-001
+      GSI1SK: KeyFactory.gsi1SK("60110000", YEAR, "2024-06-01", "L1"),
       entityType: "ENTRY_LINE",
       accountId: "60110000",
       debit: 1500,
@@ -48,8 +48,8 @@ async function runTest() {
     {
       PK: KeyFactory.partitionKey(ORG, YEAR),
       SK: KeyFactory.entryLineSK("L2"),
-      GSI1PK: KeyFactory.gsiAccountPK(ORG), // Résultat: ORG#test-org-001
-      GSI1SK: KeyFactory.gsiAccountSK("70110000", YEAR, "2024-06-01", "L2"),
+      GSI1PK: KeyFactory.gsi1PK(ORG), // Résultat: ORG#test-org-001
+      GSI1SK: KeyFactory.gsi1SK("70110000", YEAR, "2024-06-01", "L2"),
       entityType: "ENTRY_LINE",
       accountId: "70110000",
       debit: 0,

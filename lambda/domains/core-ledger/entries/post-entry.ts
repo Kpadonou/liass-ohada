@@ -2,14 +2,16 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import {
   TransactWriteItemsCommand,
   GetItemCommand,
-  QueryCommand,
+  BatchGetItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { EntrySchema } from "../../../../models/core-ledger/entry";
+import {
+  EntrySchema,
+  CreateEntryRequestSchema,
+} from "../../../../models/core-ledger/entry";
 import { EntryLineSchema } from "../../../../models/core-ledger/entry-line";
 import { FiscalYearSchema } from "../../../../models/core-ledger/fiscal-year";
 import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
 import {
   badRequest,
   created,
@@ -20,42 +22,51 @@ import { config } from "../../../shared/config";
 
 const formatAccount = (acc: string) => acc.padStart(8, "0");
 
-const isBalanceSheetAccount = (accountId: string): boolean => {
-  const classCode = parseInt(accountId.charAt(0), 10);
-  return classCode >= 1 && classCode <= 5;
-};
-
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  const i18n = new I18nResolver(event.headers["Accept-Language"]);
+  const i18n = { getMessage: (code: string) => ({ code, message: code }) };
 
   try {
     const body = JSON.parse(event.body || "{}");
-    const orgId =
-      event.requestContext.authorizer?.claims?.orgId || "test-org-001";
-    const userId =
-      event.requestContext.authorizer?.claims?.userId || "user-123";
-    const year = parseInt(body.year);
-    const entryType: string = body.entryType || "STANDARD";
-    const entryDate = body.entryDate || new Date().toISOString().split("T")[0];
-    const journalCode = body.journalCode || "MISC";
+    const inputValidation = CreateEntryRequestSchema.safeParse(body);
+    if (!inputValidation.success)
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
+      );
 
-    // 1. Validation de l'Exercice Fiscal
-    const fyPk = KeyFactory.orgKey(orgId);
-    const fySk = `FY#${year}`;
+    const orgId =
+      event.requestContext?.authorizer?.claims?.orgId ||
+      inputValidation.data.orgId;
+    const year = inputValidation.data.year;
+    if (!orgId || year === undefined) {
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS"))
+      );
+    }
+    const {
+      entryType = "STANDARD",
+      journalCode = "MISC",
+      lines = [],
+    } = inputValidation.data;
+    const entryDate =
+      inputValidation.data.entryDate || new Date().toISOString().split("T")[0];
+    const entryId =
+      entryType === "OPENING"
+        ? `OPEN-${year}`
+        : inputValidation.data.entryId || `ENT-${Date.now()}`;
+
+    // 1. Fiscal Year Check
     const fyResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
-        Key: { PK: { S: fyPk }, SK: { S: fySk } },
+        Key: marshall({ PK: KeyFactory.orgKey(orgId), SK: `FY#${year}` }),
       })
     );
-
-    if (!fyResult.Item) {
+    if (!fyResult.Item)
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND"))
       );
-    }
 
     const fiscalYear = FiscalYearSchema.parse(unmarshall(fyResult.Item));
     if (fiscalYear.status === "LOCKED" || fiscalYear.status === "CLOSED") {
@@ -64,133 +75,109 @@ export const handler = async (
       );
     }
 
-    // 2. Validation des Comptes
-    let entryId =
-      entryType === "OPENING"
-        ? `OPEN-${year}`
-        : body.entryId || `ENT-${Date.now()}`;
-
-    const lines = body.lines || [];
-    console.log("Number of lines:", lines.length);
-
-    // 4. Validation des Comptes
+    // 2. OPTIMIZATION: Batch Account Validation
+    // Extract unique account IDs to avoid redundant lookups
     const uniqueAccountIds = [
-      ...new Set(lines.map((line: any) => formatAccount(line.accountId))),
+      ...new Set(lines.map((l: any) => formatAccount(l.accountId))),
     ];
-    for (const accountId of uniqueAccountIds) {
-      const accountResult = await dynamoClient.send(
-        new GetItemCommand({
-          TableName: config.TABLE_NAME,
-          Key: {
-            PK: { S: KeyFactory.orgKey(orgId) },
-            SK: { S: KeyFactory.accountSK(accountId as string) },
+
+    // Fetch all accounts in one batch
+    const batchResults = await dynamoClient.send(
+      new BatchGetItemCommand({
+        RequestItems: {
+          [config.TABLE_NAME]: {
+            Keys: uniqueAccountIds.map((accId) =>
+              marshall({
+                PK: KeyFactory.orgKey(orgId),
+                SK: KeyFactory.accountSK(accId),
+              })
+            ),
           },
-        })
-      );
-      if (!accountResult.Item) {
+        },
+      })
+    );
+
+    const foundAccounts = new Set(
+      (batchResults.Responses?.[config.TABLE_NAME] || []).map(
+        (item) => unmarshall(item).accountId
+      )
+    );
+
+    // Verify all requested accounts actually exist
+    for (const accId of uniqueAccountIds) {
+      if (!foundAccounts.has(accId)) {
         return toLambdaResponse(
           badRequest(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND"))
         );
       }
     }
 
-    let totalDebit = 0;
-    let totalCredit = 0;
-    const transactItems = [];
+    // 3. Process Lines
+    let totalDebit = 0,
+      totalCredit = 0;
+    const transactItems: any[] = [];
 
-    // 4. Boucle sur les lignes
-    for (const line of lines) {
-      const debit = Math.round(Number(line.debit) || 0);
-      const credit = Math.round(Number(line.credit) || 0);
-      console.log(`Parsed: debit=${debit}, credit=${credit}`);
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const paddedAcc = formatAccount(line.accountId);
       const lineId = `LINE-${Date.now()}-${Math.random()
         .toString(36)
-        .substr(2, 5)}`;
-      const paddedAcc = formatAccount(line.accountId);
-      const thirdPartyId = line.thirdPartyId;
+        .substring(2, 7)}`;
 
-      const lineData: Record<string, any> = {
+      const lineItem: any = {
         orgId,
         year,
         lineId,
         entryId,
         accountId: paddedAcc,
-        thirdPartyId,
-        debit,
-        credit,
+        thirdPartyId: line.thirdPartyId,
+        debit: Math.round(Number(line.debit) || 0),
+        credit: Math.round(Number(line.credit) || 0),
         entryDate,
         journalCode,
-        entityType: "ENTRY_LINE" as const,
+        entityType: "ENTRY_LINE",
         PK: KeyFactory.partitionKey(orgId, year),
         SK: KeyFactory.entryLineSK(lineId),
-        GSI1PK: KeyFactory.gsiAccountPK(orgId),
-        GSI1SK: KeyFactory.gsiAccountSK(paddedAcc, year, entryDate, lineId),
+        GSI1PK: KeyFactory.gsi1PK(orgId),
+        GSI1SK: KeyFactory.gsi1SK(paddedAcc, year, entryDate, lineId),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      // NOUVEAU : GSI 2 - Index de Tiers (uniquement si thirdPartyId est présent)
-      if (thirdPartyId) {
-        lineData.GSI2PK = KeyFactory.gsiThirdPartyPK(
+      if (line.thirdPartyId) {
+        lineItem.GSI2PK = KeyFactory.gsi2PK(
           orgId,
           paddedAcc,
-          thirdPartyId
+          line.thirdPartyId
         );
-        lineData.GSI2SK = KeyFactory.gsiThirdPartySK(entryDate, lineId);
-
-        // NOUVEAU : GSI 3 - Sparse Index pour le Lettrage
-        // Cet attribut ne sera présent QUE tant que la ligne n'est pas lettrée.
-        // On l'appelle 'L_PK' (Lettering PK) pour rester court.
-        lineData.L_PK = `UNLETTERED#${orgId}#${paddedAcc}#${thirdPartyId}`;
-        lineData.L_SK = entryDate;
-      }
-
-      const lineValidation = EntryLineSchema.safeParse(lineData);
-      if (!lineValidation.success) {
-        console.error("Zod Error:", lineValidation.error.format());
-        return toLambdaResponse(
-          badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
+        lineItem.GSI2SK = KeyFactory.gsi2SK(entryDate, lineId);
+        lineItem.L_PK = KeyFactory.letteringPK(
+          orgId,
+          paddedAcc,
+          line.thirdPartyId
         );
+        lineItem.L_SK = KeyFactory.letteringSK(entryDate, entryId, i);
       }
-
-      // FORÇAGE DES INDEX DANS L'OBJET FINAL (Bypass cache Zod)
-      const finalItem = { ...lineValidation.data, ...lineData };
 
       transactItems.push({
         Put: {
           TableName: config.TABLE_NAME,
-          Item: marshall(finalItem, { removeUndefinedValues: true }),
+          Item: marshall(EntryLineSchema.parse(lineItem), {
+            removeUndefinedValues: true,
+          }),
         },
       });
-
-      totalDebit += debit;
-      totalCredit += credit;
-      console.log(
-        `Running totals after adding: totalDebit=${totalDebit}, totalCredit=${totalCredit}`
-      );
+      totalDebit += lineItem.debit;
+      totalCredit += lineItem.credit;
     }
 
-    console.log("⚖️ VÉRIFICATION ÉQUILIBRE:");
-    console.log("- Total Débit:", totalDebit);
-    console.log("- Total Crédit:", totalCredit);
-    console.log("- Sont-ils égaux ?", totalDebit === totalCredit);
-    console.log(
-      "Condition check: totalDebit !== totalCredit is",
-      totalDebit !== totalCredit,
-      ", totalDebit === 0 is",
-      totalDebit === 0
-    );
-
-    // 4. Équilibre
-    if (totalDebit !== totalCredit) {
-      console.log("Condition true, returning badRequest for unbalanced entry");
+    if (totalDebit !== totalCredit)
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_ENTRY_NOT_BALANCED"))
       );
-    }
 
-    // 5. Header
-    const entryData = {
+    // 4. Entry Header
+    const entryHeader = {
       orgId,
       year,
       entryId,
@@ -199,36 +186,27 @@ export const handler = async (
       totalDebit,
       totalCredit,
       status: "POSTED",
-      entityType: "ENTRY" as const,
+      entityType: "ENTRY",
       PK: KeyFactory.partitionKey(orgId, year),
       SK: KeyFactory.entrySK(entryId),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    const entryValidation = EntrySchema.safeParse(entryData);
-    if (!entryValidation.success) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
-      );
-    }
-
     transactItems.unshift({
       Put: {
         TableName: config.TABLE_NAME,
-        Item: marshall(
-          { ...entryValidation.data, ...entryData },
-          { removeUndefinedValues: true }
-        ),
+        Item: marshall(EntrySchema.parse(entryHeader), {
+          removeUndefinedValues: true,
+        }),
       },
     });
 
     await dynamoClient.send(
       new TransactWriteItemsCommand({ TransactItems: transactItems })
     );
-
     return toLambdaResponse(
-      created(entryValidation.data, i18n.getMessage("SUCCESS_ENTRY_POSTED"))
+      created(entryHeader, i18n.getMessage("SUCCESS_ENTRY_POSTED"))
     );
   } catch (error) {
     console.error("PostEntry Error:", error);

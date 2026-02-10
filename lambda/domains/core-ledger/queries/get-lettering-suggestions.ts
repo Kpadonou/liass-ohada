@@ -4,21 +4,27 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../../../shared/dynamo-client";
 import { config } from "../../../shared/config";
 import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
 import {
   toLambdaResponse,
   ok,
   badRequest,
 } from "../../../../models/shared/api-response";
 
+/**
+ * Suggests matches between unlettered debits and credits for a specific third party.
+ * Uses a Sparse GSI (L_PK/L_SK) for high performance.
+ */
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  const i18n = new I18nResolver(event.headers?.["Accept-Language"]);
+  // Localization setup (Fallback to code for now)
+  const i18n = { getMessage: (code: string) => ({ code, message: code }) };
 
   try {
-    const { orgId, accountId, thirdPartyId } =
-      event.queryStringParameters || {};
+    const orgId =
+      event.requestContext?.authorizer?.claims?.orgId ||
+      event.queryStringParameters?.orgId;
+    const { accountId, thirdPartyId } = event.queryStringParameters || {};
 
     if (!orgId || !accountId || !thirdPartyId) {
       return toLambdaResponse(
@@ -26,13 +32,15 @@ export const handler = async (
       );
     }
 
-    // 1. Query the Sparse Index (GSI3) - Fetch only what is not fully lettered
+    // 1. Query the Lettering Sparse Index
+    // We filter by L_PK (Third Party) and L_SK starting with "UNLETTERED#"
     const params = {
       TableName: config.TABLE_NAME,
-      IndexName: config.GSI_LETTERING, // Ensure this name matches your AWS configuration
-      KeyConditionExpression: "L_PK = :lpk",
+      IndexName: "GSI_LETTERING",
+      KeyConditionExpression: "L_PK = :lpk AND begins_with(L_SK, :lsk)",
       ExpressionAttributeValues: {
-        ":lpk": { S: KeyFactory.unletteredPK(orgId, accountId, thirdPartyId) },
+        ":lpk": { S: KeyFactory.letteringPK(orgId, accountId, thirdPartyId) },
+        ":lsk": { S: "UNLETTERED#" },
       },
     };
 
@@ -41,17 +49,25 @@ export const handler = async (
 
     if (unletteredLines.length === 0) {
       return toLambdaResponse(
-        ok({ suggestions: [] }, i18n.getMessage("INFO_NO_LINES_TO_MATCH"))
+        ok(
+          {
+            totalUnlettered: 0,
+            suggestions: [],
+          },
+          i18n.getMessage("INFO_NO_LINES_TO_MATCH")
+        )
       );
     }
 
-    // 2. Data Preparation
+    // 2. Data Preparation: Split into Debits and Credits
     const debits = unletteredLines.filter((l) => (Number(l.debit) || 0) > 0);
     const credits = unletteredLines.filter((l) => (Number(l.credit) || 0) > 0);
+
     const suggestions: any[] = [];
     const matchedIds = new Set<string>();
 
     // --- STRATEGY 1: PERFECT MATCH (Exact amounts) ---
+    // We prioritize matching invoices with their exact payments
     for (const d of debits) {
       const match = credits.find(
         (c) => Number(c.credit) === Number(d.debit) && !matchedIds.has(c.lineId)
@@ -67,14 +83,18 @@ export const handler = async (
           lines: [
             {
               lineId: d.lineId,
+              entryId: d.entryId,
               date: d.entryDate,
               label: d.label || "Invoice",
+              amount: d.debit,
               type: "DEBIT",
             },
             {
               lineId: match.lineId,
+              entryId: match.entryId,
               date: match.entryDate,
               label: match.label || "Payment",
+              amount: match.credit,
               type: "CREDIT",
             },
           ],
@@ -94,20 +114,23 @@ export const handler = async (
     let dIdx = 0;
     let cIdx = 0;
 
-    // Track partial amounts
+    // Define a local type to avoid the "Property does not exist" error
+    // Using 'any' here as requested to bypass strict mapping issues,
+    // but ensuring the spread preserves original properties.
     const tempDebits: any[] = remainingDebits.map((d) => ({
       ...d,
-      rem: Number(d.debit),
+      remainingAmount: Number(d.debit),
     }));
+
     const tempCredits: any[] = remainingCredits.map((c) => ({
       ...c,
-      rem: Number(c.credit),
+      remainingAmount: Number(c.credit),
     }));
 
     while (dIdx < tempDebits.length && cIdx < tempCredits.length) {
       const d = tempDebits[dIdx];
       const c = tempCredits[cIdx];
-      const matchAmount = Math.min(d.rem, c.rem);
+      const matchAmount = Math.min(d.remainingAmount, c.remainingAmount);
 
       if (matchAmount > 0) {
         suggestions.push({
@@ -115,13 +138,15 @@ export const handler = async (
           amount: matchAmount,
           lines: [
             {
-              lineId: d.lineId,
+              lineId: d.lineId, // Now recognized thanks to 'any[]' casting
+              entryId: d.entryId,
               date: d.entryDate,
               role: "DEBT",
               amount: d.debit,
             },
             {
               lineId: c.lineId,
+              entryId: c.entryId,
               date: c.entryDate,
               role: "PAYMENT",
               amount: c.credit,
@@ -130,11 +155,11 @@ export const handler = async (
         });
       }
 
-      d.rem -= matchAmount;
-      c.rem -= matchAmount;
+      d.remainingAmount -= matchAmount;
+      c.remainingAmount -= matchAmount;
 
-      if (d.rem <= 0) dIdx++;
-      if (c.rem <= 0) cIdx++;
+      if (d.remainingAmount <= 0) dIdx++;
+      if (c.remainingAmount <= 0) cIdx++;
     }
 
     return toLambdaResponse(
@@ -148,7 +173,7 @@ export const handler = async (
       )
     );
   } catch (error) {
-    console.error("Suggestion Error:", error);
+    console.error("Lettering Suggestion Error:", error);
     return toLambdaResponse(
       badRequest(i18n.getMessage("ERROR_SUGGESTIONS_TECHNICAL"))
     );

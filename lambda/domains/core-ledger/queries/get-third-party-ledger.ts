@@ -32,7 +32,7 @@ export const handler = async (
 
     let keyCondition = "GSI2PK = :pk";
     const expressionAttributeValues: any = {
-      ":pk": { S: KeyFactory.gsiThirdPartyPK(orgId, accountId, thirdPartyId) },
+      ":pk": { S: KeyFactory.gsi2PK(orgId, accountId, thirdPartyId) },
     };
 
     // Optional: Filter by Date Range using the Sort Key (GSI2SK)

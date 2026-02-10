@@ -19,6 +19,7 @@ export class KeyFactory {
   static entryLineSK(lineId: string): string {
     return `LINE#${lineId}`;
   }
+
   static journalSK(journalCode: string): string {
     return `JNL#${journalCode}`;
   }
@@ -26,12 +27,16 @@ export class KeyFactory {
     return `PROJ#${projectId}`;
   }
 
-  // GSI Builders (CRITIQUE : Doit être ORG#ID pour permettre le multi-year)
-  static gsiAccountPK(orgId: string): string {
+  static thirdPartySK(type: string, thirdPartyId: string): string {
+    return `TP#${type}#${thirdPartyId}`;
+  }
+
+  // --- GSI 1: General Ledger (Account View) ---
+  static gsi1PK(orgId: string): string {
     return this.orgKey(orgId);
   }
 
-  static gsiAccountSK(
+  static gsi1SK(
     accountId: string,
     year: number,
     date: string,
@@ -41,8 +46,9 @@ export class KeyFactory {
     return `ACC#${accountId}#FY#${year}#DT#${date}#${lineId}`;
   }
 
-  // GSI 2 : Pour la recherche rapide par Tiers (Auxiliaire)
-  static gsiThirdPartyPK(
+  // --- GSI 2: Auxiliary Ledger (Third Party View) ---
+
+  static gsi2PK(
     orgId: string,
     accountId: string,
     thirdPartyId: string
@@ -50,15 +56,39 @@ export class KeyFactory {
     return `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`;
   }
 
-  static gsiThirdPartySK(date: string, lineId: string): string {
+  static gsi2SK(date: string, lineId: string): string {
     return `DT#${date}#${lineId}`;
   }
 
+  // --- GSI_LETTERING: Matching Engine ---
+
+  /** * L_PK: We use the same partition as GSI2 to group lines by Third Party.
+   */
+  static letteringPK(
+    orgId: string,
+    accountId: string,
+    thirdPartyId: string
+  ): string {
+    return `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`;
+  }
+
+  /** * L_SK: Only present when a line is not lettered.
+   * Format: UNLETTERED#DATE#ENTRY_ID#LINE_INDEX
+   */
+  static letteringSK(
+    date: string,
+    entryId: string,
+    index: number | string
+  ): string {
+    return `UNLETTERED#${date}#${entryId}#${index}`;
+  }
+
+  /** Alias used by current code to avoid breaking changes immediately */
   static unletteredPK(
     orgId: string,
     accountId: string,
     thirdPartyId: string
   ): string {
-    return `UNLETTERED#${orgId}#${accountId}#${thirdPartyId}`;
+    return this.letteringPK(orgId, accountId, thirdPartyId);
   }
 }

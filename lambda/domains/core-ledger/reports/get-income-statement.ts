@@ -66,7 +66,7 @@ export const handler = async (
             IndexName: "GSI_ACCOUNT",
             KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
             ExpressionAttributeValues: {
-              ":pk": { S: KeyFactory.gsiAccountPK(orgId) },
+              ":pk": { S: KeyFactory.gsi1PK(orgId) },
               ":sk": { S: `ACC#${classPrefix}` }, // ACC#6 or ACC#7
             },
             ExclusiveStartKey: lastEvaluatedKey,

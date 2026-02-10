@@ -16,13 +16,8 @@ async function runLetteringTest() {
   const invoiceLine = {
     PK: KeyFactory.partitionKey(ORG, YEAR),
     SK: KeyFactory.entryLineSK("INV-001-L1"),
-    GSI1PK: KeyFactory.gsiAccountPK(ORG),
-    GSI1SK: KeyFactory.gsiAccountSK(
-      "41110000",
-      YEAR,
-      "2024-02-10",
-      "INV-001-L1"
-    ),
+    GSI1PK: KeyFactory.gsi1PK(ORG),
+    GSI1SK: KeyFactory.gsi1SK("41110000", YEAR, "2024-02-10", "INV-001-L1"),
     entityType: "ENTRY_LINE",
     accountId: "41110000",
     thirdPartyId: CLIENT_ID, // <--- Notre Tiers
@@ -36,13 +31,8 @@ async function runLetteringTest() {
   const paymentLine = {
     PK: KeyFactory.partitionKey(ORG, YEAR),
     SK: KeyFactory.entryLineSK("PAY-001-L1"),
-    GSI1PK: KeyFactory.gsiAccountPK(ORG),
-    GSI1SK: KeyFactory.gsiAccountSK(
-      "41110000",
-      YEAR,
-      "2024-02-12",
-      "PAY-001-L1"
-    ),
+    GSI1PK: KeyFactory.gsi1PK(ORG),
+    GSI1SK: KeyFactory.gsi1SK("41110000", YEAR, "2024-02-12", "PAY-001-L1"),
     entityType: "ENTRY_LINE",
     accountId: "41110000",
     thirdPartyId: CLIENT_ID, // <--- Doit être identique pour que ça passe
