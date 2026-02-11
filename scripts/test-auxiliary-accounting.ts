@@ -100,8 +100,93 @@ async function setupMasterData() {
   console.log("✅ Master data initialized with complete fields");
 }
 
-async function runScenario() {
-  console.log("🚀 STARTING RECONCILIATION TEST SCENARIO");
+// async function runScenario() {
+//   console.log("🚀 STARTING RECONCILIATION TEST SCENARIO");
+//   await cleanupTable();
+//   await setupMasterData();
+
+//   const commonContext = {
+//     requestContext: {
+//       authorizer: { claims: { orgId: "test-org-001", userId: "test-admin" } },
+//     },
+//     headers: { "Accept-Language": "en" },
+//   };
+
+//   // 1️⃣ POST INVOICE
+//   console.log("\n1️⃣ Posting Invoice (100.00)...");
+//   const invoiceRes = await postEntry({
+//     ...commonContext,
+//     body: JSON.stringify({
+//       orgId: "test-org-001", // Parfois requis selon le schéma
+//       year: 2026,
+//       entryDate: "2026-02-09",
+//       label: "Invoice INV-001",
+//       lines: [
+//         {
+//           accountId: "41110000",
+//           thirdPartyId: "CLIENT-001",
+//           debit: 100,
+//           credit: 0,
+//         },
+//         { accountId: "70100000", debit: 0, credit: 100 },
+//       ],
+//     }),
+//   } as any);
+
+//   // 2️⃣ POST PAYMENT
+//   console.log("2️⃣ Posting Payment (100.00)...");
+//   const paymentRes = await postEntry({
+//     ...commonContext,
+//     body: JSON.stringify({
+//       orgId: "test-org-001",
+//       year: 2026,
+//       entryDate: "2026-02-10",
+//       label: "Payment PAY-001",
+//       lines: [
+//         { accountId: "52100000", debit: 100, credit: 0 },
+//         {
+//           accountId: "41110000",
+//           thirdPartyId: "CLIENT-001",
+//           debit: 0,
+//           credit: 100,
+//         },
+//       ],
+//     }),
+//   } as any);
+
+//   // 3️⃣ FETCH SUGGESTIONS
+//   console.log("\n3️⃣ Querying Matching Engine...");
+//   const suggestionRes = await getSuggestions({
+//     ...commonContext,
+//     queryStringParameters: {
+//       orgId: "test-org-001",
+//       accountId: "41110000",
+//       thirdPartyId: "CLIENT-001",
+//     },
+//   } as any);
+
+//   const result = JSON.parse(suggestionRes.body);
+
+//   if (result.success && result.data) {
+//     console.log("\n📊 ENGINE RESULTS:");
+//     console.log(`Unlettered lines: ${result.data.totalUnlettered}`);
+//     console.log(`Suggestions: ${result.data.suggestionsFound}`);
+
+//     if (result.data.suggestionsFound > 0) {
+//       console.log("\n🎯 SUCCESS: Match Found!");
+//       console.table(result.data.suggestions[0].lines);
+//     } else {
+//       console.log("\n⚠️ Still no match? Check the data in the table.");
+//     }
+//   } else {
+//     console.error("❌ ERROR in suggestion response:", result);
+//   }
+// }
+
+// runScenario().catch(console.error);
+
+async function runFifoScenario() {
+  console.log("🚀 STARTING FIFO RECONCILIATION TEST SCENARIO");
   await cleanupTable();
   await setupMasterData();
 
@@ -112,36 +197,54 @@ async function runScenario() {
     headers: { "Accept-Language": "en" },
   };
 
-  // 1️⃣ POST INVOICE
-  console.log("\n1️⃣ Posting Invoice (100.00)...");
-  const invoiceRes = await postEntry({
+  // 1️⃣ FACTURE 1 (50.00) le 01 Février
+  console.log("\n1️⃣ Posting Invoice 1 (50.00) - Feb 1st...");
+  await postEntry({
     ...commonContext,
     body: JSON.stringify({
-      orgId: "test-org-001", // Parfois requis selon le schéma
       year: 2026,
-      entryDate: "2026-02-09",
+      entryDate: "2026-02-01",
       label: "Invoice INV-001",
       lines: [
         {
           accountId: "41110000",
           thirdPartyId: "CLIENT-001",
-          debit: 100,
+          debit: 50,
           credit: 0,
         },
-        { accountId: "70100000", debit: 0, credit: 100 },
+        { accountId: "70100000", debit: 0, credit: 50 },
       ],
     }),
   } as any);
 
-  // 2️⃣ POST PAYMENT
-  console.log("2️⃣ Posting Payment (100.00)...");
-  const paymentRes = await postEntry({
+  // 2️⃣ FACTURE 2 (50.00) le 05 Février
+  console.log("2️⃣ Posting Invoice 2 (50.00) - Feb 5th...");
+  await postEntry({
     ...commonContext,
     body: JSON.stringify({
-      orgId: "test-org-001",
+      year: 2026,
+      entryDate: "2026-02-05",
+      label: "Invoice INV-002",
+      lines: [
+        {
+          accountId: "41110000",
+          thirdPartyId: "CLIENT-001",
+          debit: 50,
+          credit: 0,
+        },
+        { accountId: "70100000", debit: 0, credit: 50 },
+      ],
+    }),
+  } as any);
+
+  // 3️⃣ PAIEMENT GLOBAL (100.00) le 10 Février
+  console.log("3️⃣ Posting Global Payment (100.00) - Feb 10th...");
+  await postEntry({
+    ...commonContext,
+    body: JSON.stringify({
       year: 2026,
       entryDate: "2026-02-10",
-      label: "Payment PAY-001",
+      label: "Global Payment PAY-ALL",
       lines: [
         { accountId: "52100000", debit: 100, credit: 0 },
         {
@@ -154,8 +257,8 @@ async function runScenario() {
     }),
   } as any);
 
-  // 3️⃣ FETCH SUGGESTIONS
-  console.log("\n3️⃣ Querying Matching Engine...");
+  // 4️⃣ FETCH SUGGESTIONS
+  console.log("\n4️⃣ Querying Matching Engine for FIFO suggestions...");
   const suggestionRes = await getSuggestions({
     ...commonContext,
     queryStringParameters: {
@@ -168,19 +271,26 @@ async function runScenario() {
   const result = JSON.parse(suggestionRes.body);
 
   if (result.success && result.data) {
-    console.log("\n📊 ENGINE RESULTS:");
-    console.log(`Unlettered lines: ${result.data.totalUnlettered}`);
+    console.log("\n📊 FIFO ENGINE RESULTS:");
+    console.log(`Unlettered lines: ${result.data.totalUnlettered}`); // Devrait être 3 (2 factures + 1 paiement)
     console.log(`Suggestions: ${result.data.suggestionsFound}`);
 
-    if (result.data.suggestionsFound > 0) {
-      console.log("\n🎯 SUCCESS: Match Found!");
-      console.table(result.data.suggestions[0].lines);
-    } else {
-      console.log("\n⚠️ Still no match? Check the data in the table.");
-    }
-  } else {
-    console.error("❌ ERROR in suggestion response:", result);
+    result.data.suggestions.forEach((suggestion: any, idx: number) => {
+      console.log(
+        `\nSuggestion #${idx + 1} [${suggestion.type}] - Amount: ${
+          suggestion.amount
+        }`
+      );
+      console.table(
+        suggestion.lines.map((l: any) => ({
+          Date: l.date,
+          Role: l.role || l.type,
+          Amount: l.amount,
+          Entry: l.entryId,
+        }))
+      );
+    });
   }
 }
 
-runScenario().catch(console.error);
+runFifoScenario().catch(console.error);

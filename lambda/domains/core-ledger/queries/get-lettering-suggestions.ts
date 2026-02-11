@@ -4,6 +4,7 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../../../shared/dynamo-client";
 import { config } from "../../../shared/config";
 import { KeyFactory } from "../../../shared/key-builder";
+import { I18nResolver } from "../../../shared/i18n";
 import {
   toLambdaResponse,
   ok,
@@ -18,7 +19,7 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   // Localization setup (Fallback to code for now)
-  const i18n = { getMessage: (code: string) => ({ code, message: code }) };
+  const i18n = new I18nResolver(event.headers["Accept-Language"] || "en");
 
   try {
     const orgId =

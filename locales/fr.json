@@ -28,9 +28,14 @@
   "ERROR_LETTERING_TECHNICAL": "Erreur technique lors du lettrage.",
   "ERROR_NO_MOVEMENTS_FOUND": "Aucun mouvement trouvé à clôturer.",
   "ERROR_MISSING_PARAMETERS": "Paramètres requis manquants.",
+  "ERROR_LETTERING_INSUFFICIENT_DATA": "Données insuffisantes pour l'opération de lettrage.",
+  "SUCCESS_LETTERING_CONFIRMED": "Lettrage confirmé avec succès.",
+  "ERROR_ALREADY_LETTERED_OR_MISSING": "Les lignes sont déjà lettrées ou manquantes.",
   "ERROR_THIRD_PARTY_LEDGER_TECHNICAL": "Erreur technique lors de la récupération du grand livre auxiliaire.",
   "ERROR_SUGGESTIONS_TECHNICAL": "Erreur lors de la génération des suggestions.",
   "INFO_NO_LINES_TO_MATCH": "Aucune ligne à rapprocher.",
   "SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED": "Grand livre auxiliaire récupéré avec succès.",
-  "SUCCESS_SUGGESTIONS_RETRIEVED": "Suggestions récupérées avec succès."
+  "SUCCESS_SUGGESTIONS_RETRIEVED": "Suggestions récupérées avec succès.",
+  "SUCCESS_UNLETTERING_COMPLETED": "Délettrage terminé avec succès.",
+  "ERROR_UNLETTERING_FAILED": "Échec du délettrage en raison d'une erreur technique."
 }
