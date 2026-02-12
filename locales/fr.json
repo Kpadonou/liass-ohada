@@ -37,5 +37,7 @@
   "SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED": "Grand livre auxiliaire récupéré avec succès.",
   "SUCCESS_SUGGESTIONS_RETRIEVED": "Suggestions récupérées avec succès.",
   "SUCCESS_UNLETTERING_COMPLETED": "Délettrage terminé avec succès.",
-  "ERROR_UNLETTERING_FAILED": "Échec du délettrage en raison d'une erreur technique."
+  "ERROR_UNLETTERING_FAILED": "Échec du délettrage en raison d'une erreur technique.",
+  "SUCCESS_AUXILIARY_LEDGER_RETRIEVED": "Grand livre auxiliaire récupéré avec succès.",
+  "ERROR_AUXILIARY_LEDGER_TECHNICAL": "Erreur technique lors de la récupération du grand livre auxiliaire."
 }
