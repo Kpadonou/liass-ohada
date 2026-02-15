@@ -77,7 +77,10 @@ export const handler = async (
     const fyResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
-        Key: marshall({ PK: KeyFactory.orgKey(orgId), SK: `FY#${year}` }),
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(year),
+        }),
       })
     );
     if (!fyResult.Item)
@@ -102,7 +105,7 @@ export const handler = async (
         // On utilise le PK de l'année et un SK spécifique au verrou du mois
         Key: marshall({
           PK: KeyFactory.partitionKey(orgId, year),
-          SK: `LOCK#PERIOD#${month}`,
+          SK: KeyFactory.periodLockSK(month),
         }),
       })
     );

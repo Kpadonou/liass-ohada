@@ -27,7 +27,10 @@ export const handler = async (
   const fyRes = await dynamoClient.send(
     new GetItemCommand({
       TableName: config.TABLE_NAME,
-      Key: marshall({ PK: KeyFactory.orgKey(orgId), SK: `FY#${year}` }),
+      Key: marshall({
+        PK: KeyFactory.orgKey(orgId),
+        SK: KeyFactory.fiscalYearSK(year),
+      }),
     })
   );
 
@@ -54,7 +57,10 @@ export const handler = async (
   const response = {
     ...unmarshall(fyRes.Item),
     periodLocks: locks.reduce((acc, lock) => {
-      acc[lock.month] = lock.status;
+      // Extraction sécurisée : soit l'attribut month,
+      // soit les deux derniers caractères de la SK (LOCK#PERIOD#02 -> 02)
+      const monthKey = lock.month || lock.SK.split("#").pop();
+      acc[monthKey] = lock.status;
       return acc;
     }, {} as Record<string, string>),
   };

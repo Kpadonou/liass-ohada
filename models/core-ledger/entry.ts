@@ -19,16 +19,6 @@ export const EntryLineInputSchema = z.object({
   label: z.string().optional(),
 });
 
-// export const CreateEntryRequestSchema = z.object({
-//   orgId: z.string().uuid(),
-//   year: z.number().int(),
-//   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-//   label: z.string().min(3).max(255), // Obligatoire, min 3 caractères
-//   journalCode: z.string().min(1).max(10), // Obligatoire
-//   entryType: z.enum(["STANDARD", "OPENING", "CLOSING"]).default("STANDARD"),
-//   lines: z.array(CreateEntryLineSchema).min(2), // Minimum 2 lignes pour l'équilibre
-// });
-
 export const CreateEntryRequestSchema = z.object({
   orgId: z.string().optional(), // Souvent injecté par l'authorizer
   year: z.number().int(),
@@ -57,7 +47,7 @@ export const EntrySchema = z.object({
   entryType: EntryType,
   voucherNumber: z.string().optional(),
   journalCode: z.string().optional(),
-  entryDate: z.string(), // ISO Date (required)
+  entryDate: z.string(),
   totalDebit: z.number().int().nonnegative(), // Integer amount (smallest currency unit)
   totalCredit: z.number().int().nonnegative(), // Integer amount (smallest currency unit)
   status: EntryStatus,

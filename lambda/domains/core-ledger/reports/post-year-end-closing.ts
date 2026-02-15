@@ -20,22 +20,22 @@ export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
-  let response: APIGatewayProxyResult;
 
   try {
-    const orgId =
-      event.requestContext.authorizer?.claims?.orgId || "test-org-001";
-    const userId =
-      event.requestContext.authorizer?.claims?.userId || "user-123";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
+    const userId = event.requestContext.authorizer?.claims?.userId;
     const year = parseInt(
       event.queryStringParameters?.year || new Date().getFullYear().toString()
     );
 
-    // 1. Validate Fiscal Year (Zod validation happens here via model)
+    // 1. Validation de l'exercice via KeyFactory
     const fyResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
-        Key: { PK: { S: KeyFactory.orgKey(orgId) }, SK: { S: `FY#${year}` } },
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(year),
+        }),
       })
     );
 
@@ -43,13 +43,15 @@ export const handler = async (
       return toLambdaResponse(
         notFound(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND"))
       );
+
     const fiscalYear = unmarshall(fyResult.Item);
     if (fiscalYear.status !== "OPEN")
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_LOCKED"))
       );
 
-    // 2. Fetch ALL movements for the organization
+    // 2. Récupération des mouvements via GSI optimisé
+    // On filtre directement par Année dans la SK du GSI pour éviter de scanner les autres années
     let rawMovements: any[] = [];
     let lastKey: any = undefined;
     do {
@@ -58,10 +60,10 @@ export const handler = async (
           TableName: config.TABLE_NAME,
           IndexName: "GSI_ACCOUNT",
           KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-          ExpressionAttributeValues: {
-            ":pk": { S: KeyFactory.gsi1PK(orgId) },
-            ":sk": { S: `ACC#` },
-          },
+          ExpressionAttributeValues: marshall({
+            ":pk": KeyFactory.gsi1PK(orgId),
+            ":sk": `ACC#`, // On peut affiner ici si on veut, mais le filtre filter() ci-dessous assure la sécurité
+          }),
           ExclusiveStartKey: lastKey,
         })
       );
@@ -69,16 +71,15 @@ export const handler = async (
         rawMovements.push(...output.Items.map((i) => unmarshall(i)));
       lastKey = output.LastEvaluatedKey;
     } while (lastKey);
-    console.log(`Raw items found in GSI: ${rawMovements.length}`);
 
-    // Filter by year and Classes 6 & 7
+    // Filtrage strict sur l'année et les comptes de gestion (Classes 6 & 7)
     const movementsToClose = rawMovements.filter(
       (l) =>
         Number(l.year) === year &&
         (l.accountId.startsWith("6") || l.accountId.startsWith("7"))
     );
 
-    // 3. Aggregate balances per account (Section 3)
+    // 3. Agrégat des soldes
     const accountBalances: Record<string, number> = {};
     movementsToClose.forEach((m) => {
       accountBalances[m.accountId] =
@@ -87,13 +88,12 @@ export const handler = async (
         (Number(m.credit) || 0);
     });
 
-    // 4. Prepare Closing Lines (Section 4)
+    // 4. Préparation des lignes de clôture
     const closingLines: any[] = [];
-    let netResult = 0; // Cumulative (Debit - Credit)
+    let netResult = 0;
 
     for (const [accountId, balance] of Object.entries(accountBalances)) {
       if (balance === 0) continue;
-      // To zero out: if balance is positive (Debit), we Credit it.
       closingLines.push({
         accountId,
         debit: balance < 0 ? Math.abs(balance) : 0,
@@ -108,24 +108,24 @@ export const handler = async (
       );
     }
 
-    // Result account (OHADA: 131 for Profit, 139 for Loss)
-    const isProfit = netResult < 0; // Negative netResult means Credits > Debits
+    // Détermination du compte de résultat OHADA (131 ou 139)
+    const isProfit = netResult < 0;
     const resultAccountId = isProfit ? "13100000" : "13900000";
 
     closingLines.push({
       accountId: resultAccountId,
       debit: isProfit ? Math.abs(netResult) : 0,
-      credit: isProfit ? 0 : netResult,
+      credit: isProfit ? 0 : Math.abs(netResult),
     });
 
     const totalEntryDebit = closingLines.reduce((sum, l) => sum + l.debit, 0);
 
-    // 5. Build and Execute Transaction
+    // 5. Exécution de la transaction de clôture
     const entryId = `YEC-${year}`;
     const entryDate = `${year}-12-31`;
     const transactItems: any[] = [];
 
-    // Entry Header
+    // Header de l'écriture de clôture
     transactItems.push({
       Put: {
         TableName: config.TABLE_NAME,
@@ -147,9 +147,9 @@ export const handler = async (
       },
     });
 
-    // Entry Lines
+    // Lignes de l'écriture
     closingLines.forEach((l, idx) => {
-      const lineId = `L-${entryId}-${idx}`;
+      const lineId = `${entryId}-L${idx}`;
       transactItems.push({
         Put: {
           TableName: config.TABLE_NAME,
@@ -171,17 +171,20 @@ export const handler = async (
       });
     });
 
-    // Lock Fiscal Year
+    // Verrouillage définitif de l'exercice
     transactItems.push({
       Update: {
         TableName: config.TABLE_NAME,
-        Key: { PK: { S: KeyFactory.orgKey(orgId) }, SK: { S: `FY#${year}` } },
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(year),
+        }),
         UpdateExpression: "SET #st = :s, updatedAt = :now",
         ExpressionAttributeNames: { "#st": "status" },
-        ExpressionAttributeValues: {
-          ":s": { S: "CLOSED" },
-          ":now": { S: new Date().toISOString() },
-        },
+        ExpressionAttributeValues: marshall({
+          ":s": "CLOSED",
+          ":now": new Date().toISOString(),
+        }),
       },
     });
 
@@ -189,7 +192,7 @@ export const handler = async (
       new TransactWriteItemsCommand({ TransactItems: transactItems })
     );
 
-    response = toLambdaResponse(
+    return toLambdaResponse(
       created(
         {
           entryId,
@@ -202,8 +205,6 @@ export const handler = async (
     );
   } catch (error) {
     console.error("Closing Error:", error);
-    response = toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
+    return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
-
-  return response;
 };

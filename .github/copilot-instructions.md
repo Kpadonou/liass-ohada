@@ -181,8 +181,8 @@ B. FiscalYear (FY)
 | orgId              | string | PK                                                                     |
 | year               | number | SK (Example: 2024.)                                                    |
 | fiscalYearId       | string | fiscalYear Id                                                          |
-| startDate          | string | ISO Date                                                               |
-| endDate            | string | ISO Date                                                               |
+| startDate          | string | YYYY-MM-DD format                                                      |
+| endDate            | string | YYYY-MM-DD format                                                      |
 | status             | ENUM   | "OPEN, CLOSED, ARCHIVED"                                               |
 | accountingStandard | ENUM   | Snapshot of the standard (SYSCOHADA_GENERAL or SYCEBNL) at year start. |
 | ranEntryId         | string | Link to RAN                                                            |
@@ -248,7 +248,7 @@ F. Entry (ENT)
 | entryId       | string | SK                         |
 | voucherNumber | string |                            |
 | journalCode   | string |                            |
-| entryDate     | string | ISO Date                   |
+| entryDate     | string | YYYY-MM-DD format          |
 | totalDebit    | number |                            |
 | totalCredit   | number |                            |
 | status        | ENUM   | "DRAFT, POSTED, CANCELLED" |
@@ -308,8 +308,8 @@ I. Project (PROJECT)
 | name        | string | Full title of the project.                                  |
 | description | string | Optional long description of objectives.                    |
 | donorId     | string | Link to a ThirdParty entity of type DONOR (Bailleur).       |
-| startDate   | string | Official start date (ISO 8601).                             |
-| endDate     | string | Projected or actual end date (ISO 8601).                    |
+| startDate   | string | Official start date (YYYY-MM-DD format).                    |
+| endDate     | string | Projected or actual end date (YYYY-MM-DD format).           |
 | status      | ENUM   | "ACTIVE, CLOSED, SUSPENDED, PROPOSED."                      |
 | totalBudget | number | Total funding amount for this project.                      |
 | currency    | string | ISO Currency code (e.g., "XOF", "EUR").                     |

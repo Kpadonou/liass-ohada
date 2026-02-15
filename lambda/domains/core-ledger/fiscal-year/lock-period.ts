@@ -32,11 +32,11 @@ export const handler = async (
 
     const lockItem = {
       PK: KeyFactory.partitionKey(orgId, year),
-      SK: `LOCK#PERIOD#${month.toString().padStart(2, "0")}`,
+      SK: KeyFactory.periodLockSK(month),
       orgId,
       year,
-      month,
-      status,
+      month: month.toString().padStart(2, "0"), // Stockage propre pour le GSI/Query
+      status, // 'LOCKED' or 'OPEN'
       entityType: "PERIOD_LOCK",
       updatedAt: new Date().toISOString(),
     };

@@ -1,7 +1,7 @@
 process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
 process.env.LOCALSTACK_URL = "http://localhost:4566";
 
-import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
@@ -82,18 +82,49 @@ async function runReportTest() {
     headers: { "Accept-Language": "fr" },
   };
 
-  // Simulation d'un verrouillage de février
-  //   await dynamoClient.send(
-  //     new PutItemCommand({
-  //       TableName: process.env.TABLE_NAME,
-  //       Item: marshall({
-  //         PK: `ORG#test-org-001#FY#2026`, // Utilise ton KeyFactory si possible
-  //         SK: `LOCK#PERIOD#02`,
-  //         status: "LOCKED",
-  //         entityType: "PERIOD_LOCK",
-  //       }),
-  //     })
-  //   );
+  // A. On verrouille Février
+  console.log("🔒 Locking February...");
+  await dynamoClient.send(
+    new PutItemCommand({
+      TableName: process.env.TABLE_NAME,
+      Item: marshall({
+        PK: `ORG#${orgId}#FY#2026`,
+        SK: `LOCK#PERIOD#02`,
+        status: "LOCKED",
+        entityType: "PERIOD_LOCK",
+      }),
+    })
+  );
+
+  // B. On tente d'écrire (On s'attend à un échec)
+  console.log("🧪 Testing block...");
+  const failedRes = await postEntry({
+    ...commonContext,
+    body: JSON.stringify({
+      year: 2026,
+      entryDate: "2026-02-11",
+      label: "Paiement Client C-001",
+      journalCode: "BQ",
+      lines: [
+        { accountId: "52100000", debit: 250, credit: 0 },
+        { accountId: "41110000", thirdPartyId: "C-001", debit: 0, credit: 250 },
+      ],
+    }),
+  } as any);
+
+  if (failedRes.statusCode === 400) console.log("✅ Block confirmed!");
+
+  // C. ON DÉVERROUILLE !
+  console.log("🔓 Unlocking February...");
+  await dynamoClient.send(
+    new UpdateItemCommand({
+      TableName: process.env.TABLE_NAME,
+      Key: marshall({ PK: `ORG#${orgId}#FY#2026`, SK: `LOCK#PERIOD#02` }),
+      UpdateExpression: "SET #s = :status",
+      ExpressionAttributeNames: { "#s": "status" },
+      ExpressionAttributeValues: marshall({ ":status": "OPEN" }),
+    })
+  );
 
   // 1️⃣ On crée les données (250 + 250) ET l'impayé (500)
   console.log("\n1️⃣ Creating entries...");
