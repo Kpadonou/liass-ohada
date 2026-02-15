@@ -39,5 +39,8 @@
   "SUCCESS_UNLETTERING_COMPLETED": "Délettrage terminé avec succès.",
   "ERROR_UNLETTERING_FAILED": "Échec du délettrage en raison d'une erreur technique.",
   "SUCCESS_AUXILIARY_LEDGER_RETRIEVED": "Grand livre auxiliaire récupéré avec succès.",
-  "ERROR_AUXILIARY_LEDGER_TECHNICAL": "Erreur technique lors de la récupération du grand livre auxiliaire."
+  "ERROR_AUXILIARY_LEDGER_TECHNICAL": "Erreur technique lors de la récupération du grand livre auxiliaire.",
+  "SUCCESS_PERIOD_LOCKED": "Période verrouillée avec succès.",
+  "SUCCESS_PERIOD_UNLOCKED": "Période déverrouillée avec succès.",
+  "ERROR_PERIOD_LOCK_TECHNICAL": "Erreur technique lors du verrouillage/déverrouillage de la période."
 }

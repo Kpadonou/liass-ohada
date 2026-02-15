@@ -34,7 +34,7 @@ export const CreateEntryRequestSchema = z.object({
   year: z.number().int(),
   fiscalYearId: z.string().optional(),
   accountingStandard: AccountingStandard.optional(),
-  entryDate: z.string().optional(),
+  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   journalCode: z.string().min(1).max(10),
   voucherNumber: z.string().optional(),
   entryId: z.string().optional(),

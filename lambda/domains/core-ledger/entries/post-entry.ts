@@ -12,6 +12,7 @@ import {
 import { EntryLineSchema } from "../../../../models/core-ledger/entry-line";
 import { FiscalYearSchema } from "../../../../models/core-ledger/fiscal-year";
 import { KeyFactory } from "../../../shared/key-builder";
+import { I18nResolver } from "../../../shared/i18n";
 import {
   badRequest,
   created,
@@ -25,8 +26,7 @@ const formatAccount = (acc: string) => acc.padStart(8, "0");
 export const handler = async (
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> => {
-  const i18n = { getMessage: (code: string) => ({ code, message: code }) };
-
+  const i18n = new I18nResolver(event.headers["Accept-Language"]);
   try {
     const body = JSON.parse(event.body || "{}");
     const inputValidation = CreateEntryRequestSchema.safeParse(body);
@@ -90,6 +90,30 @@ export const handler = async (
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_LOCKED"))
       );
+    }
+
+    // --- NOUVEAU : 1.b Period Lock Check (Mensuel) ---
+    // On extrait le mois de "YYYY-MM-DD"
+    const month = entryDate.split("-")[1];
+
+    const lockResult = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        // On utilise le PK de l'année et un SK spécifique au verrou du mois
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, year),
+          SK: `LOCK#PERIOD#${month}`,
+        }),
+      })
+    );
+
+    if (lockResult.Item) {
+      const lockData = unmarshall(lockResult.Item);
+      if (lockData.status === "LOCKED") {
+        return toLambdaResponse(
+          badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED"))
+        );
+      }
     }
 
     // 2. OPTIMIZATION: Batch Account Validation

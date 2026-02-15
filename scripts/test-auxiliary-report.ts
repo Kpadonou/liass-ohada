@@ -1,67 +1,147 @@
 process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
 process.env.LOCALSTACK_URL = "http://localhost:4566";
 
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
+import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
 import { handler as confirmLettering } from "../lambda/domains/core-ledger/transactions/post-lettering";
 import { handler as getAuxiliaryLedger } from "../lambda/domains/core-ledger/queries/get-auxiliary-ledger";
 import { handler as getSuggestions } from "../lambda/domains/core-ledger/queries/get-lettering-suggestions";
 
+/**
+ * Prépare l'environnement de test en créant l'exercice fiscal et les comptes
+ */
+async function setupMasterData(orgId: string) {
+  console.log("🏗️  Setting up Master Data (Fiscal Year & Accounts)...");
+
+  const masterData = [
+    // 1. Exercice Fiscal 2026
+    {
+      PK: `ORG#${orgId}`,
+      SK: `FY#2026`,
+      orgId,
+      year: 2026,
+      fiscalYearId: `FY-2026`,
+      status: "OPEN",
+      entityType: "FISCAL_YEAR",
+      accountingStandard: "SYSCOHADA_GENERAL",
+      startDate: "2026-01-01",
+      endDate: "2026-12-31",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+    // 2. Compte Client 41110000
+    {
+      PK: `ORG#${orgId}`,
+      SK: `ACC#41110000`,
+      accountId: "41110000",
+      label: "Clients",
+      entityType: "ACCOUNT",
+    },
+    // 3. Compte de Ventes 70100000 (Padded à 8 chiffres par post-entry)
+    {
+      PK: `ORG#${orgId}`,
+      SK: `ACC#70100000`,
+      accountId: "70100000",
+      label: "Ventes de marchandises",
+      entityType: "ACCOUNT",
+    },
+    // 4. Compte Banque 52100000
+    {
+      PK: `ORG#${orgId}`,
+      SK: `ACC#52100000`,
+      accountId: "52100000",
+      label: "Banque",
+      entityType: "ACCOUNT",
+    },
+  ];
+
+  for (const item of masterData) {
+    await dynamoClient.send(
+      new PutItemCommand({
+        TableName: process.env.TABLE_NAME,
+        Item: marshall(item),
+      })
+    );
+  }
+  console.log("✅ Master Data ready.");
+}
+
 async function runReportTest() {
+  const orgId = "test-org-001";
   console.log("📊 STARTING AUXILIARY LEDGER REPORT TEST");
+
+  // Initialisation des données de base
+  await setupMasterData(orgId);
+
   const commonContext = {
     requestContext: {
-      authorizer: { claims: { orgId: "test-org-001", userId: "test-admin" } },
+      authorizer: { claims: { orgId, userId: "test-admin" } },
     },
     headers: { "Accept-Language": "fr" },
   };
 
   // 1️⃣ On crée les données (250 + 250) ET l'impayé (500)
   console.log("\n1️⃣ Creating entries...");
+
+  // Facture 1
   await postEntry({
     ...commonContext,
     body: JSON.stringify({
       year: 2026,
       entryDate: "2026-02-11",
-      label: "Invoice 250",
+      label: "Facture globale F-2026-001",
+      journalCode: "VE",
       lines: [
-        { accountId: "41110000", thirdPartyId: "C-001", debit: 250, credit: 0 },
-        { accountId: "701", debit: 0, credit: 250 },
+        {
+          accountId: "41110000",
+          thirdPartyId: "C-001",
+          debit: 250,
+          credit: 0,
+          label: "Partie Marchandises",
+        },
+        { accountId: "70100000", debit: 0, credit: 250 },
       ],
     }),
   } as any);
 
+  // Paiement 1
   await postEntry({
     ...commonContext,
     body: JSON.stringify({
       year: 2026,
       entryDate: "2026-02-11",
-      label: "Payment 250",
+      label: "Paiement Client C-001",
+      journalCode: "BQ",
       lines: [
-        { accountId: "521", debit: 250, credit: 0 },
+        { accountId: "52100000", debit: 250, credit: 0 },
         { accountId: "41110000", thirdPartyId: "C-001", debit: 0, credit: 250 },
       ],
     }),
   } as any);
 
+  // Facture 2 (Impayée)
   await postEntry({
     ...commonContext,
     body: JSON.stringify({
       year: 2026,
       entryDate: "2026-02-12",
-      label: "Unpaid Invoice 500",
+      label: "Facture impayée F-2026-002",
+      journalCode: "VE",
       lines: [
         { accountId: "41110000", thirdPartyId: "C-001", debit: 500, credit: 0 },
-        { accountId: "701", debit: 0, credit: 500 },
+        { accountId: "70100000", debit: 0, credit: 500 },
       ],
     }),
   } as any);
 
   // 2️⃣ Récupération dynamique des lignes pour lettrage
-  console.log("2️⃣ Fetching real lines to letter...");
+  console.log("\n2️⃣ Fetching real lines to letter...");
   const suggRes = await getSuggestions({
     ...commonContext,
     queryStringParameters: {
-      orgId: "test-org-001",
+      orgId,
       accountId: "41110000",
       thirdPartyId: "C-001",
       year: "2026",
@@ -76,7 +156,7 @@ async function runReportTest() {
     await confirmLettering({
       ...commonContext,
       body: JSON.stringify({
-        orgId: "test-org-001",
+        orgId,
         year: 2026,
         letteringCode: "B",
         lines: perfectMatch.lines.map((l: any) => ({
@@ -94,7 +174,7 @@ async function runReportTest() {
   const reportRes = await getAuxiliaryLedger({
     ...commonContext,
     queryStringParameters: {
-      orgId: "test-org-001",
+      orgId,
       year: "2026",
       accountId: "41110000",
       thirdPartyId: "C-001",
