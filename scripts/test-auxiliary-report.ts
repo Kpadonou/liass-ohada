@@ -82,6 +82,19 @@ async function runReportTest() {
     headers: { "Accept-Language": "fr" },
   };
 
+  // Simulation d'un verrouillage de février
+  //   await dynamoClient.send(
+  //     new PutItemCommand({
+  //       TableName: process.env.TABLE_NAME,
+  //       Item: marshall({
+  //         PK: `ORG#test-org-001#FY#2026`, // Utilise ton KeyFactory si possible
+  //         SK: `LOCK#PERIOD#02`,
+  //         status: "LOCKED",
+  //         entityType: "PERIOD_LOCK",
+  //       }),
+  //     })
+  //   );
+
   // 1️⃣ On crée les données (250 + 250) ET l'impayé (500)
   console.log("\n1️⃣ Creating entries...");
 

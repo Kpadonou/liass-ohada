@@ -42,5 +42,6 @@
   "ERROR_AUXILIARY_LEDGER_TECHNICAL": "Technical error while fetching the auxiliary ledger.",
   "SUCCESS_PERIOD_LOCKED": "Period locked successfully.",
   "SUCCESS_PERIOD_UNLOCKED": "Period unlocked successfully.",
-  "ERROR_PERIOD_LOCK_TECHNICAL": "Technical error while locking/unlocking the period."
+  "ERROR_PERIOD_LOCK_TECHNICAL": "Technical error while locking/unlocking the period.",
+  "SUCCESS_FISCAL_YEAR_DETAILS_RETRIEVED": "Fiscal year details retrieved successfully."
 }
