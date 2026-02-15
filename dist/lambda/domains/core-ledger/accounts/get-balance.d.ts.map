@@ -1,0 +1,1 @@
+{"version":3,"file":"get-balance.d.ts","sourceRoot":"","sources":["../../../../../lambda/domains/core-ledger/accounts/get-balance.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,qBAAqB,EAAE,MAAM,YAAY,CAAC;AAKzE,eAAO,MAAM,OAAO,UACX,oBAAoB,KAC1B,OAAO,CAAC,qBAAqB,CA2B/B,CAAC"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"api-gateway.d.ts","sourceRoot":"","sources":["../../../../lib/constructs/api/api-gateway.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,OAAO,EAA4B,MAAM,4BAA4B,CAAC;AAC/E,OAAO,EAAE,SAAS,EAAE,MAAM,YAAY,CAAC;AAEvC,qBAAa,oBAAqB,SAAQ,SAAS;IACjD,SAAgB,GAAG,EAAE,OAAO,CAAC;gBAEjB,KAAK,EAAE,SAAS,EAAE,EAAE,EAAE,MAAM;CAwBzC"}

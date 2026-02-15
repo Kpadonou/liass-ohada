@@ -1,0 +1,1 @@
+{"version":3,"file":"accounting-table.d.ts","sourceRoot":"","sources":["../../../../lib/constructs/storage/accounting-table.ts"],"names":[],"mappings":"AACA,OAAO,EACL,KAAK,EAIN,MAAM,0BAA0B,CAAC;AAClC,OAAO,EAAE,SAAS,EAAE,MAAM,YAAY,CAAC;AAEvC,qBAAa,yBAA0B,SAAQ,SAAS;IACtD,SAAgB,KAAK,EAAE,KAAK,CAAC;gBAEjB,KAAK,EAAE,SAAS,EAAE,EAAE,EAAE,MAAM;CAkCzC"}

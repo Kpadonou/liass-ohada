@@ -1,0 +1,1 @@
+{"version":3,"file":"get-account.d.ts","sourceRoot":"","sources":["../../../../../lambda/domains/core-ledger/accounts/get-account.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,qBAAqB,EAAE,MAAM,YAAY,CAAC;AASzE,eAAO,MAAM,OAAO,UACX,oBAAoB,KAC1B,OAAO,CAAC,qBAAqB,CAkC/B,CAAC"}

@@ -1,0 +1,1 @@
+{"version":3,"file":"index.d.ts","sourceRoot":"","sources":["../../../../lambda/shared/i18n/index.ts"],"names":[],"mappings":"AAEA,qBAAa,YAAY;IACvB,OAAO,CAAC,IAAI,CAAS;gBAET,cAAc,CAAC,EAAE,MAAM;IAInC,CAAC,CAAC,GAAG,EAAE,MAAM,GAAG,MAAM;IAItB,UAAU,CAAC,IAAI,EAAE,MAAM,GAAG;QAAE,IAAI,EAAE,MAAM,CAAC;QAAC,OAAO,EAAE,MAAM,CAAA;KAAE;CAM5D"}
