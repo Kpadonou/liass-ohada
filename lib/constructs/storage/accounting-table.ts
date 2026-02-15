@@ -1,3 +1,4 @@
+import { config } from "@/lambda/shared/config";
 import {
   Table,
   AttributeType,
@@ -13,7 +14,7 @@ export class LiassOhadaAccountingTable extends Construct {
     super(scope, id);
 
     this.table = new Table(this, "LiassOhadaAccountingTable", {
-      tableName: "liass-ohada-AccountingTable",
+      tableName: config.TABLE_NAME,
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
