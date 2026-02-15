@@ -1,1 +1,0 @@
-{"version":3,"file":"get-income-statement.d.ts","sourceRoot":"","sources":["../../../../../lambda/domains/core-ledger/reports/get-income-statement.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,oBAAoB,EAAE,qBAAqB,EAAE,MAAM,YAAY,CAAC;AAuBzE,eAAO,MAAM,OAAO,UACX,oBAAoB,KAC1B,OAAO,CAAC,qBAAqB,CA6F/B,CAAC"}

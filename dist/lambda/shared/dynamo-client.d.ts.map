@@ -1,1 +1,0 @@
-{"version":3,"file":"dynamo-client.d.ts","sourceRoot":"","sources":["../../../lambda/shared/dynamo-client.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,cAAc,EAAE,MAAM,0BAA0B,CAAC;AAC1D,OAAO,EAAE,MAAM,EAAE,MAAM,UAAU,CAAC;AAElC;;;GAGG;AACH,OAAO,EAAE,MAAM,EAAE,CAAC;AAClB,eAAO,MAAM,YAAY,gBAMvB,CAAC"}
