@@ -47,14 +47,31 @@ export const handler = async (
     const {
       entryType = "STANDARD",
       journalCode = "MISC",
+      label: headerLabel,
       lines = [],
     } = inputValidation.data;
     const entryDate =
       inputValidation.data.entryDate || new Date().toISOString().split("T")[0];
-    const entryId =
-      entryType === "OPENING"
-        ? `OPEN-${year}`
-        : inputValidation.data.entryId || `ENT-${Date.now()}`;
+
+    // Définition de l'ID selon le type d'écriture
+    let entryId = inputValidation.data.entryId; // On garde celui fourni si présent
+
+    if (!entryId) {
+      const timestamp = Date.now();
+      switch (entryType) {
+        case "OPENING":
+          entryId = `OPEN-${year}`; // Unique pour l'exercice
+          break;
+        case "ADJUSTMENT":
+          entryId = `ADJ-${year}-${timestamp}`; // Pour les corrections de fin d'année
+          break;
+        case "CLOSING":
+          entryId = `CLOSE-${year}`; // Unique pour l'exercice
+          break;
+        default:
+          entryId = `ENT-${timestamp}`; // Standard
+      }
+    }
 
     // 1. Fiscal Year Check
     const fyResult = await dynamoClient.send(
@@ -131,6 +148,7 @@ export const handler = async (
         entryId,
         accountId: paddedAcc,
         thirdPartyId: line.thirdPartyId,
+        label: line.label || headerLabel,
         debit: Math.round(Number(line.debit) || 0),
         credit: Math.round(Number(line.credit) || 0),
         entryDate,
@@ -185,6 +203,8 @@ export const handler = async (
       entryDate,
       totalDebit,
       totalCredit,
+      label: headerLabel,
+      journalCode,
       status: "POSTED",
       entityType: "ENTRY",
       PK: KeyFactory.partitionKey(orgId, year),

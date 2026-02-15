@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const CreateEntryLineSchema = z.object({
+  accountId: z.string(),
+  thirdPartyId: z.string().optional(),
+  debit: z.number().nonnegative().default(0),
+  credit: z.number().nonnegative().default(0),
+  label: z.string().min(3).max(255).optional(), // Optionnel ici : si absent, prend celui de l'entête
+});
+
 export const EntryLineSchema = z.object({
   orgId: z.string(),
   year: z.number().int(),
@@ -7,8 +15,9 @@ export const EntryLineSchema = z.object({
   entryId: z.string(),
   accountId: z.string().regex(/^\d{8}$/, "Account ID must be exactly 8 digits"),
   projectId: z.string().optional(),
-  debit: z.number().int().nonnegative(),
-  credit: z.number().int().nonnegative(),
+  debit: z.number().nonnegative().default(0),
+  credit: z.number().nonnegative().default(0),
+  label: z.string().min(3).max(255).optional(), // Optionnel ici : si absent, prend celui de l'entête
   description: z.string().optional(),
   entryDate: z.string(),
   thirdPartyId: z.string().optional(),

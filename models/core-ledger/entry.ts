@@ -19,23 +19,33 @@ export const EntryLineInputSchema = z.object({
   label: z.string().optional(),
 });
 
+// export const CreateEntryRequestSchema = z.object({
+//   orgId: z.string().uuid(),
+//   year: z.number().int(),
+//   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+//   label: z.string().min(3).max(255), // Obligatoire, min 3 caractères
+//   journalCode: z.string().min(1).max(10), // Obligatoire
+//   entryType: z.enum(["STANDARD", "OPENING", "CLOSING"]).default("STANDARD"),
+//   lines: z.array(CreateEntryLineSchema).min(2), // Minimum 2 lignes pour l'équilibre
+// });
+
 export const CreateEntryRequestSchema = z.object({
-  orgId: z.string().optional(),
+  orgId: z.string().optional(), // Souvent injecté par l'authorizer
   year: z.number().int(),
   fiscalYearId: z.string().optional(),
   accountingStandard: AccountingStandard.optional(),
   entryDate: z.string().optional(),
-  journalCode: z.string().optional(),
+  journalCode: z.string().min(1).max(10),
   voucherNumber: z.string().optional(),
   entryId: z.string().optional(),
   entryType: z
     .enum(["STANDARD", "OPENING", "CLOSING", "ADJUSTMENT"])
-    .optional(),
-  label: z.string().optional(),
+    .default("STANDARD"),
+  label: z.string().min(3).max(255),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
   currency: z.string().optional(),
-  lines: z.array(EntryLineInputSchema),
+  lines: z.array(EntryLineInputSchema).min(2), // Minimum 2 lignes pour l'équilibre
 });
 
 export type CreateEntryRequest = z.infer<typeof CreateEntryRequestSchema>;
