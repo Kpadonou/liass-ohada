@@ -5,6 +5,7 @@
     "liass-ohada-backend": "bin/liass-ohada-backend.js"
   },
   "scripts": {
+    "clean": "rm -rf dist",
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
