@@ -7,8 +7,12 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { ok, badRequest, toLambdaResponse } from "@/models/shared/api-response";
 
+/**
+ * Unlocks a specific period by setting its status back to 'OPEN'.
+ * This allows users to post new entries or modify existing ones for that month.
+ */
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
   try {
@@ -18,7 +22,7 @@ export const handler = async (
 
     if (!year || !month) {
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS"))
+        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
       );
     }
 
@@ -28,7 +32,7 @@ export const handler = async (
         TableName: config.TABLE_NAME,
         Key: marshall({
           PK: KeyFactory.partitionKey(orgId, year),
-          SK: `LOCK#PERIOD#${month.toString().padStart(2, "0")}`,
+          SK: KeyFactory.periodLockSK(month),
         }),
         UpdateExpression: "SET #s = :status, updatedAt = :now",
         ExpressionAttributeNames: { "#s": "status" },
@@ -36,14 +40,14 @@ export const handler = async (
           ":status": "OPEN",
           ":now": new Date().toISOString(),
         }),
-      })
+      }),
     );
 
     return toLambdaResponse(ok({}, i18n.getMessage("SUCCESS_PERIOD_UNLOCKED")));
   } catch (error: any) {
     console.error("UnlockPeriod Error:", error);
     return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_PERIOD_LOCK_TECHNICAL"))
+      badRequest(i18n.getMessage("ERROR_PERIOD_LOCK_TECHNICAL")),
     );
   }
 };

@@ -7,8 +7,13 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
 
+/**
+ * Retrieves a chronological transaction history (General Ledger view) for a specific third party.
+ * Supports date range filtering and is intended for generating account statements or audit trails.
+ * It uses the GSI2 (Third Party Index) to efficiently filter entries by date.
+ */
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
@@ -18,7 +23,7 @@ export const handler = async (
 
     if (!orgId || !accountId || !thirdPartyId) {
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS"))
+        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
       );
     }
 
@@ -40,7 +45,7 @@ export const handler = async (
 
     const params = {
       TableName: config.TABLE_NAME,
-      IndexName: "GSI2", // Third Party Auxiliary Index
+      IndexName: config.GSI_THIRD_PARTY, // Third Party Auxiliary Index
       KeyConditionExpression: keyCondition,
       ExpressionAttributeValues: expressionAttributeValues,
       ScanIndexForward: true, // true = Chronological, false = Newest first
@@ -56,7 +61,7 @@ export const handler = async (
         acc.credit += Number(line.credit) || 0;
         return acc;
       },
-      { debit: 0, credit: 0 }
+      { debit: 0, credit: 0 },
     );
 
     return toLambdaResponse(
@@ -73,13 +78,13 @@ export const handler = async (
           count: lines.length,
           lines,
         },
-        i18n.getMessage("SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED")
-      )
+        i18n.getMessage("SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED"),
+      ),
     );
   } catch (error) {
     console.error("GetThirdPartyLedger Error:", error);
     return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_THIRD_PARTY_LEDGER_TECHNICAL"))
+      badRequest(i18n.getMessage("ERROR_THIRD_PARTY_LEDGER_TECHNICAL")),
     );
   }
 };

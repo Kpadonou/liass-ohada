@@ -7,44 +7,43 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
 
+/**
+ * Retrieves the auxiliary ledger for a specific third party, grouped by lettering status.
+ * This is primarily used for credit management and matching invoices with payments.
+ * It uses the GSI_LETTERING index to organize data into lettered groups and unlettered lines.
+ */
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    const { orgId, year, accountId, thirdPartyId } =
+    const { orgId, accountId, thirdPartyId } =
       event.queryStringParameters || {};
 
-    if (!orgId || !year || !accountId || !thirdPartyId) {
+    if (!orgId || !accountId || !thirdPartyId) {
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS"))
+        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
       );
     }
 
-    // Use the lettering GSI to query auxiliary ledger
-    // L_PK = ORG#{orgId}#ACC#{accountId}#TP#{thirdPartyId}
-    const lPk = `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`;
+    // --- NORMALISATION VIA KEYFACTORY ---
+    const letteringPk = KeyFactory.letteringPK(orgId, accountId, thirdPartyId);
 
     const command = new QueryCommand({
       TableName: config.TABLE_NAME,
-      IndexName: "GSI_LETTERING",
+      IndexName: config.GSI_LETTERING,
       KeyConditionExpression: "L_PK = :lpk",
       ExpressionAttributeValues: {
-        ":lpk": { S: lPk },
+        ":lpk": { S: letteringPk },
       },
     });
 
     const { Items = [] } = await dynamoClient.send(command);
     const lines = Items.map((item) => unmarshall(item));
 
-    // Organize data for the report
     const report = {
-      summary: {
-        totalDebit: 0,
-        totalCredit: 0,
-        balance: 0,
-      },
+      summary: { totalDebit: 0, totalCredit: 0, balance: 0 },
       letteredGroups: {} as Record<string, any[]>,
       unletteredLines: [] as any[],
     };
@@ -52,15 +51,12 @@ export const handler = async (
     lines.forEach((line) => {
       const debit = Number(line.debit) || 0;
       const credit = Number(line.credit) || 0;
-
       report.summary.totalDebit += debit;
       report.summary.totalCredit += credit;
 
-      // Organize by lettering status
       if (line.letteringCode) {
-        if (!report.letteredGroups[line.letteringCode]) {
+        if (!report.letteredGroups[line.letteringCode])
           report.letteredGroups[line.letteringCode] = [];
-        }
         report.letteredGroups[line.letteringCode].push(line);
       } else {
         report.unletteredLines.push(line);
@@ -71,12 +67,12 @@ export const handler = async (
       report.summary.totalDebit - report.summary.totalCredit;
 
     return toLambdaResponse(
-      ok(report, i18n.getMessage("SUCCESS_AUXILIARY_LEDGER_RETRIEVED"))
+      ok(report, i18n.getMessage("SUCCESS_AUXILIARY_LEDGER_RETRIEVED")),
     );
   } catch (error: any) {
     console.error("AuxiliaryLedger Error:", error);
     return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_AUXILIARY_LEDGER_TECHNICAL"))
+      badRequest(i18n.getMessage("ERROR_AUXILIARY_LEDGER_TECHNICAL")),
     );
   }
 };
