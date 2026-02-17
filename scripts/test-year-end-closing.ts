@@ -1,5 +1,5 @@
 // test-year-end-closing.ts
-import { handler } from "../lambda/domains/core-ledger/reports/post-year-end-closing";
+import { handler } from "../lambda/domains/core-ledger/fiscal-year/close-year";
 
 const mockEvent = {
   requestContext: {

@@ -3,7 +3,7 @@ process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
 process.env.LOCALSTACK_URL = "http://localhost:4566";
 
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/queries/get-lettering-suggestions";
+import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-suggestions";
 import {
   PutItemCommand,
   ScanCommand,

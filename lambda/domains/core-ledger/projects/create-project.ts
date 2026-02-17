@@ -2,8 +2,8 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { ProjectSchema } from "@/models/core-ledger/project";
-import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { I18nResolver } from "@/lambda/shared/i18n";
 import {
   badRequest,
   created,

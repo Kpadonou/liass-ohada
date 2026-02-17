@@ -1,4 +1,4 @@
-import { handler } from "../lambda/domains/core-ledger/reports/post-year-end-closing";
+import { handler } from "../lambda/domains/core-ledger/fiscal-year/close-year";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";

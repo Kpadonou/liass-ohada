@@ -1,4 +1,4 @@
-import { handler } from "../lambda/domains/core-ledger/reports/get-trial-balance";
+import { handler } from "../lambda/domains/core-ledger/books/get-trial-balance";
 
 const mockEvent: any = {
   headers: { "Accept-Language": "fr" },

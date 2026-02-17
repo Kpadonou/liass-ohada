@@ -5,16 +5,16 @@ import {
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { I18nResolver } from "@/lambda/shared/i18n";
 import {
   badRequest,
   created,
   toLambdaResponse,
   notFound,
-} from "../../../../models/shared/api-response";
-import { dynamoClient } from "../../../shared/dynamo-client";
-import { config } from "../../../shared/config";
+} from "@/models/shared/api-response";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { config } from "@/lambda/shared/config";
 
 export const handler = async (
   event: APIGatewayProxyEvent

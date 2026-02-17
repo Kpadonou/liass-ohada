@@ -2,8 +2,8 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import {
   getAccountEntries,
   AccountEntriesOptions,
-} from "../../../shared/services/ledger-service";
-import { I18nResolver } from "../../../shared/i18n";
+} from "@/lambda/shared/services/ledger-service";
+import { I18nResolver } from "@/lambda/shared/i18n";
 import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 
 export const handler = async (

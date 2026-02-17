@@ -2,9 +2,9 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { AccountSchema, padAccountId } from "@/models/core-ledger/account";
-import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
-import { dynamoClient, config } from "../../../shared/dynamo-client";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { I18nResolver } from "@/lambda/shared/i18n";
+import { dynamoClient, config } from "@/lambda/shared/dynamo-client";
 import {
   badRequest,
   created,

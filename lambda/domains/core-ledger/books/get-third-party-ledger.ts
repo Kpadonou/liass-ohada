@@ -1,15 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "../../../shared/dynamo-client";
-import { config } from "../../../shared/config";
-import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
-import {
-  toLambdaResponse,
-  ok,
-  badRequest,
-} from "../../../../models/shared/api-response";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { config } from "@/lambda/shared/config";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { I18nResolver } from "@/lambda/shared/i18n";
+import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
 
 export const handler = async (
   event: APIGatewayProxyEvent

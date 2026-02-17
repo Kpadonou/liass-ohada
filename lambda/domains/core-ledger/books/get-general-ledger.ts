@@ -6,15 +6,15 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { z } from "zod";
-import { I18nResolver } from "../../../shared/i18n";
+import { I18nResolver } from "@/lambda/shared/i18n";
 import {
   ok,
   toLambdaResponse,
   badRequest,
   notFound,
-} from "../../../../models/shared/api-response";
-import { dynamoClient } from "../../../shared/dynamo-client";
-import { config } from "../../../shared/config";
+} from "@/models/shared/api-response";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { config } from "@/lambda/shared/config";
 
 /**
  * Request parameters validation schema

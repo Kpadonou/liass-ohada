@@ -1,4 +1,4 @@
-import { handler } from "../lambda/domains/core-ledger/reports/get-income-statement";
+import { handler } from "../lambda/domains/core-ledger/analytics/get-income-statement";
 
 // Mocking the API Gateway Event
 const event: any = {

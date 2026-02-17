@@ -8,18 +8,18 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   EntrySchema,
   CreateEntryRequestSchema,
-} from "../../../../models/core-ledger/entry";
-import { EntryLineSchema } from "../../../../models/core-ledger/entry-line";
-import { FiscalYearSchema } from "../../../../models/core-ledger/fiscal-year";
-import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
+} from "@/models/core-ledger/entry";
+import { EntryLineSchema } from "@/models/core-ledger/entry-line";
+import { FiscalYearSchema } from "@/models/core-ledger/fiscal-year";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { I18nResolver } from "@/lambda/shared/i18n";
 import {
   badRequest,
   created,
   toLambdaResponse,
-} from "../../../../models/shared/api-response";
-import { dynamoClient } from "../../../shared/dynamo-client";
-import { config } from "../../../shared/config";
+} from "@/models/shared/api-response";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { config } from "@/lambda/shared/config";
 
 const formatAccount = (acc: string) => acc.padStart(8, "0");
 

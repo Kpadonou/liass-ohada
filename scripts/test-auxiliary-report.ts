@@ -5,9 +5,9 @@ import { PutItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as confirmLettering } from "../lambda/domains/core-ledger/transactions/post-lettering";
-import { handler as getAuxiliaryLedger } from "../lambda/domains/core-ledger/queries/get-auxiliary-ledger";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/queries/get-lettering-suggestions";
+import { handler as confirmLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
+import { handler as getAuxiliaryLedger } from "../lambda/domains/core-ledger/books/get-auxiliary-ledger";
+import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-suggestions";
 
 /**
  * Prépare l'environnement de test en créant l'exercice fiscal et les comptes

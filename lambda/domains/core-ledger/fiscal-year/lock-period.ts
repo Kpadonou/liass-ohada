@@ -1,15 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "../../../shared/dynamo-client";
-import { config } from "../../../shared/config";
-import { KeyFactory } from "../../../shared/key-builder";
-import { I18nResolver } from "../../../shared/i18n";
-import {
-  ok,
-  badRequest,
-  toLambdaResponse,
-} from "../../../../models/shared/api-response";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { config } from "@/lambda/shared/config";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { I18nResolver } from "@/lambda/shared/i18n";
+import { ok, badRequest, toLambdaResponse } from "@/models/shared/api-response";
 
 /**
  * Locks or unlocks a specific period within a fiscal year.

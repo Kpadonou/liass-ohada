@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { getAccountBalance } from "../../../shared/services/balance-service";
-import { I18nResolver } from "../../../shared/i18n";
+import { getAccountBalance } from "@/lambda/shared/services/balance-service";
+import { I18nResolver } from "@/lambda/shared/i18n";
 import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 
 export const handler = async (

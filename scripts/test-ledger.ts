@@ -1,4 +1,4 @@
-import { handler } from "../lambda/domains/core-ledger/ledger/get-account-ledger";
+import { handler } from "../lambda/domains/core-ledger/books/get-general-ledger";
 
 // On simule l'objet "event" qu'AWS Lambda recevrait
 const mockEvent: any = {
