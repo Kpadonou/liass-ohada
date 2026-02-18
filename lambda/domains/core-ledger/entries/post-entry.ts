@@ -23,8 +23,17 @@ import { config } from "@/lambda/shared/config";
 
 const formatAccount = (acc: string) => acc.padStart(8, "0");
 
+/**
+ * Posts a multi-line accounting entry to the ledger using an atomic transaction.
+ * It validates:
+ * 1. Fiscal Year status (must be OPEN).
+ * 2. Monthly Period Lock (must be OPEN).
+ * 3. Account existence (via BatchGetItem).
+ * 4. Double-entry balance (Total Debit must equal Total Credit).
+ * It populates GSIs for the General Ledger (GSI1) and Third-party tracking (GSI2).
+ */
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
   try {
@@ -32,7 +41,7 @@ export const handler = async (
     const inputValidation = CreateEntryRequestSchema.safeParse(body);
     if (!inputValidation.success)
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
+        badRequest(i18n.getMessage("ERROR_INVALID_INPUT")),
       );
 
     const orgId =
@@ -41,7 +50,7 @@ export const handler = async (
     const year = inputValidation.data.year;
     if (!orgId || year === undefined) {
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS"))
+        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
       );
     }
     const {
@@ -53,27 +62,26 @@ export const handler = async (
     const entryDate =
       inputValidation.data.entryDate || new Date().toISOString().split("T")[0];
 
-    // Définition de l'ID selon le type d'écriture
-    let entryId = inputValidation.data.entryId; // On garde celui fourni si présent
-
+    // --- Entry ID Generation Logic based on Entry Type ---
+    let entryId = inputValidation.data.entryId;
     if (!entryId) {
       const timestamp = Date.now();
       switch (entryType) {
         case "OPENING":
-          entryId = `OPEN-${year}`; // Unique pour l'exercice
+          entryId = `OPEN-${year}`;
           break;
         case "ADJUSTMENT":
-          entryId = `ADJ-${year}-${timestamp}`; // Pour les corrections de fin d'année
+          entryId = `ADJ-${year}-${timestamp}`;
           break;
         case "CLOSING":
-          entryId = `CLOSE-${year}`; // Unique pour l'exercice
+          entryId = `CLOSE-${year}`;
           break;
         default:
-          entryId = `ENT-${timestamp}`; // Standard
+          entryId = `ENT-${timestamp}`;
       }
     }
 
-    // 1. Fiscal Year Check
+    // 1. Fiscal Year Check: Ensure the year exists and is not locked/closed
     const fyResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
@@ -81,22 +89,21 @@ export const handler = async (
           PK: KeyFactory.orgKey(orgId),
           SK: KeyFactory.fiscalYearSK(year),
         }),
-      })
+      }),
     );
     if (!fyResult.Item)
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND"))
+        badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND")),
       );
 
     const fiscalYear = FiscalYearSchema.parse(unmarshall(fyResult.Item));
     if (fiscalYear.status === "LOCKED" || fiscalYear.status === "CLOSED") {
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_LOCKED"))
+        badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_LOCKED")),
       );
     }
 
-    // --- NOUVEAU : 1.b Period Lock Check (Mensuel) ---
-    // On extrait le mois de "YYYY-MM-DD"
+    // 2. Monthly Period Lock Check
     const month = entryDate.split("-")[1];
 
     const lockResult = await dynamoClient.send(
@@ -107,25 +114,22 @@ export const handler = async (
           PK: KeyFactory.partitionKey(orgId, year),
           SK: KeyFactory.periodLockSK(month),
         }),
-      })
+      }),
     );
 
     if (lockResult.Item) {
       const lockData = unmarshall(lockResult.Item);
       if (lockData.status === "LOCKED") {
         return toLambdaResponse(
-          badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED"))
+          badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED")),
         );
       }
     }
 
-    // 2. OPTIMIZATION: Batch Account Validation
-    // Extract unique account IDs to avoid redundant lookups
+    // 3. Batch Account Validation: Verify all accounts in lines are valid
     const uniqueAccountIds = [
       ...new Set(lines.map((l: any) => formatAccount(l.accountId))),
     ];
-
-    // Fetch all accounts in one batch
     const batchResults = await dynamoClient.send(
       new BatchGetItemCommand({
         RequestItems: {
@@ -134,29 +138,28 @@ export const handler = async (
               marshall({
                 PK: KeyFactory.orgKey(orgId),
                 SK: KeyFactory.accountSK(accId),
-              })
+              }),
             ),
           },
         },
-      })
+      }),
     );
 
     const foundAccounts = new Set(
       (batchResults.Responses?.[config.TABLE_NAME] || []).map(
-        (item) => unmarshall(item).accountId
-      )
+        (item) => unmarshall(item).accountId,
+      ),
     );
 
-    // Verify all requested accounts actually exist
     for (const accId of uniqueAccountIds) {
       if (!foundAccounts.has(accId)) {
         return toLambdaResponse(
-          badRequest(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND"))
+          badRequest(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND")),
         );
       }
     }
 
-    // 3. Process Lines
+    // 4. Process Individual Entry Lines
     let totalDebit = 0,
       totalCredit = 0;
     const transactItems: any[] = [];
@@ -189,17 +192,18 @@ export const handler = async (
         updatedAt: new Date().toISOString(),
       };
 
+      // Handle Third-party specific GSIs and Lettering keys if applicable
       if (line.thirdPartyId) {
         lineItem.GSI2PK = KeyFactory.gsi2PK(
           orgId,
           paddedAcc,
-          line.thirdPartyId
+          line.thirdPartyId,
         );
         lineItem.GSI2SK = KeyFactory.gsi2SK(entryDate, lineId);
         lineItem.L_PK = KeyFactory.letteringPK(
           orgId,
           paddedAcc,
-          line.thirdPartyId
+          line.thirdPartyId,
         );
         lineItem.L_SK = KeyFactory.letteringSK(entryDate, entryId, i);
       }
@@ -216,12 +220,13 @@ export const handler = async (
       totalCredit += lineItem.credit;
     }
 
+    // 5. Integrity Check: Double-Entry Balancing
     if (totalDebit !== totalCredit)
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_ENTRY_NOT_BALANCED"))
+        badRequest(i18n.getMessage("ERROR_ENTRY_NOT_BALANCED")),
       );
 
-    // 4. Entry Header
+    // 6. Finalize Entry Header and Execute Transaction
     const entryHeader = {
       orgId,
       year,
@@ -250,10 +255,10 @@ export const handler = async (
     });
 
     await dynamoClient.send(
-      new TransactWriteItemsCommand({ TransactItems: transactItems })
+      new TransactWriteItemsCommand({ TransactItems: transactItems }),
     );
     return toLambdaResponse(
-      created(entryHeader, i18n.getMessage("SUCCESS_ENTRY_POSTED"))
+      created(entryHeader, i18n.getMessage("SUCCESS_ENTRY_POSTED")),
     );
   } catch (error) {
     console.error("PostEntry Error:", error);

@@ -43,5 +43,6 @@
   "SUCCESS_PERIOD_LOCKED": "Period locked successfully.",
   "SUCCESS_PERIOD_UNLOCKED": "Period unlocked successfully.",
   "ERROR_PERIOD_LOCK_TECHNICAL": "Technical error while locking/unlocking the period.",
-  "SUCCESS_FISCAL_YEAR_DETAILS_RETRIEVED": "Fiscal year details retrieved successfully."
+  "SUCCESS_FISCAL_YEAR_DETAILS_RETRIEVED": "Fiscal year details retrieved successfully.",
+  "ERROR_ACCOUNT_ALREADY_EXISTS": "Account already exists."
 }

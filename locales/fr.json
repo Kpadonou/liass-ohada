@@ -43,5 +43,6 @@
   "SUCCESS_PERIOD_LOCKED": "Période verrouillée avec succès.",
   "SUCCESS_PERIOD_UNLOCKED": "Période déverrouillée avec succès.",
   "ERROR_PERIOD_LOCK_TECHNICAL": "Erreur technique lors du verrouillage/déverrouillage de la période.",
-  "SUCCESS_FISCAL_YEAR_DETAILS_RETRIEVED": "Détails de l'année fiscale récupérés avec succès."
+  "SUCCESS_FISCAL_YEAR_DETAILS_RETRIEVED": "Détails de l'année fiscale récupérés avec succès.",
+  "ERROR_ACCOUNT_ALREADY_EXISTS": "Le compte existe déjà."
 }
