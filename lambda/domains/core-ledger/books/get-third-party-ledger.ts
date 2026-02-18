@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { unmarshall, marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
 import { KeyFactory } from "@/lambda/shared/key-builder";
@@ -8,9 +8,9 @@ import { I18nResolver } from "@/lambda/shared/i18n";
 import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
 
 /**
- * Retrieves a chronological transaction history (General Ledger view) for a specific third party.
- * Supports date range filtering and is intended for generating account statements or audit trails.
- * It uses the GSI2 (Third Party Index) to efficiently filter entries by date.
+ * Retrieves a chronological transaction history (Subsidiary Ledger) for a specific third party.
+ * This report is essential for generating customer/vendor statements and reconciling
+ * outstanding balances. It leverages GSI2 (Third Party Index) for efficient date-range filtering.
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -28,33 +28,31 @@ export const handler = async (
     }
 
     // 1. Prepare Query on GSI2 (Third Party Index)
-    // PK: ORG#{orgId}#ACC#{accountId}#TP#{thirdPartyId}
-    // SK: DT#{date}#{lineId} (Allows date range filtering)
-
+    // The PK is built using KeyFactory to target the specific third-party sub-ledger
     let keyCondition = "GSI2PK = :pk";
     const expressionAttributeValues: any = {
-      ":pk": { S: KeyFactory.gsi2PK(orgId, accountId, thirdPartyId) },
+      ":pk": KeyFactory.gsi2PK(orgId, accountId, thirdPartyId),
     };
 
-    // Optional: Filter by Date Range using the Sort Key (GSI2SK)
+    // Optional: Filter by Date Range using the Sort Key (GSI2SK: DT#{date}#{lineId})
     if (startDate && endDate) {
       keyCondition += " AND GSI2SK BETWEEN :start AND :end";
-      expressionAttributeValues[":start"] = { S: `DT#${startDate}` };
-      expressionAttributeValues[":end"] = { S: `DT#${endDate}#z` }; // #z to include everything on that day
+      expressionAttributeValues[":start"] = `DT#${startDate}`;
+      expressionAttributeValues[":end"] = `DT#${endDate}#z`; // '#z' ensures the entire end date is included
     }
 
     const params = {
       TableName: config.TABLE_NAME,
-      IndexName: config.GSI_THIRD_PARTY, // Third Party Auxiliary Index
+      IndexName: config.GSI_THIRD_PARTY,
       KeyConditionExpression: keyCondition,
-      ExpressionAttributeValues: expressionAttributeValues,
-      ScanIndexForward: true, // true = Chronological, false = Newest first
+      ExpressionAttributeValues: marshall(expressionAttributeValues),
+      ScanIndexForward: true, // Maintain chronological order for running balance suitability
     };
 
     const { Items } = await dynamoClient.send(new QueryCommand(params));
     const lines = (Items || []).map((item) => unmarshall(item));
 
-    // 2. Calculate totals for the ledger header
+    // 2. Data Aggregation: Calculate totals for the report header
     const totals = lines.reduce(
       (acc, line) => {
         acc.debit += Number(line.debit) || 0;

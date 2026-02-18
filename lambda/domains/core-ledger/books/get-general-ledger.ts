@@ -4,7 +4,7 @@ import {
   GetItemCommand,
   ResourceNotFoundException,
 } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { unmarshall, marshall } from "@aws-sdk/util-dynamodb";
 import { z } from "zod";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import {
@@ -15,6 +15,7 @@ import {
 } from "@/models/shared/api-response";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
+import { KeyFactory } from "@/lambda/shared/key-builder";
 
 /**
  * Request parameters validation schema
@@ -29,20 +30,21 @@ const GetAccountLedgerParamsSchema = z.object({
     .regex(/^\d{2,8}$/, "Account ID must be numeric with 2-8 digits"),
 });
 
-type GetAccountLedgerParams = z.infer<typeof GetAccountLedgerParamsSchema>;
-
+/**
+ * Generates the General Ledger for a specific account.
+ * It lists all individual transactions (lines) in chronological order
+ * and calculates a running balance to track the account's evolution.
+ */
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    // Extract and validate input parameters
-    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
-    const fiscalYear = event.queryStringParameters?.fiscalYear || "2024";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
+    const fiscalYear = event.queryStringParameters?.fiscalYear;
     const accountId = event.queryStringParameters?.accountId || "";
 
-    // Validate input parameters using Zod schema
     const validation = GetAccountLedgerParamsSchema.safeParse({
       orgId,
       fiscalYear,
@@ -51,99 +53,85 @@ export const handler = async (
 
     if (!validation.success) {
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
+        badRequest(i18n.getMessage("ERROR_INVALID_INPUT")),
       );
     }
 
-    // Verify fiscal year exists
-    const fiscalYearKey = await dynamoClient.send(
+    // 1. Verify fiscal year exists using centralized KeyFactory
+    const fyResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
-        Key: {
-          PK: { S: `ORG#${orgId}` },
-          SK: { S: `FY#${fiscalYear}` },
-        },
-      })
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(Number(fiscalYear)),
+        }),
+      }),
     );
 
-    if (!fiscalYearKey.Item) {
+    if (!fyResult.Item) {
       return toLambdaResponse(
-        notFound(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND"))
+        notFound(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND")),
       );
     }
 
-    // Pad account number to 8 digits
+    // 2. Format account ID (padding depends on your internal standard, usually 8 digits)
     const paddedAccountId = accountId.padEnd(8, "0");
 
-    // Query the GSI_ACCOUNT to get all entries for this account in the fiscal year
+    // 3. Query GSI_ACCOUNT for transaction details
+    // We use ScanIndexForward: true to ensure chronological order based on Sort Key
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI_ACCOUNT",
+        IndexName: config.GSI_ACCOUNT,
         KeyConditionExpression:
           "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
-        ExpressionAttributeValues: {
-          // 1. Utilise la PK de l'organisation uniquement
-          ":gsi1pk": { S: `ORG#${orgId}` },
-          // 2. Filtre par compte ET par année dans la GSI1SK
-          ":gsi1sk": { S: `ACC#${paddedAccountId}#FY#${fiscalYear}` },
-        },
+        ExpressionAttributeValues: marshall({
+          ":gsi1pk": KeyFactory.gsi1PK(orgId),
+          ":gsi1sk": `ACC#${paddedAccountId}#FY#${fiscalYear}`,
+        }),
         ScanIndexForward: true,
-      })
+      }),
     );
 
-    const ledgerEntries: any[] = [];
-    let runningBalance = 0;
-
-    // Process the results and calculate running balance
     if (!queryResult.Items || queryResult.Items.length === 0) {
-      // Return empty array with INFO message if no movements found
       return toLambdaResponse(
-        ok(ledgerEntries, i18n.getMessage("INFO_NO_MOVEMENTS_FOUND"))
+        ok([], i18n.getMessage("INFO_NO_MOVEMENTS_FOUND")),
       );
     }
 
-    // Process ledger entries and calculate running balance
-    for (const item of queryResult.Items) {
+    // 4. Processing entries and Running Balance calculation
+    let runningBalance = 0;
+    const ledgerEntries = queryResult.Items.map((item) => {
       const line = unmarshall(item);
+      const debit = Number(line.debit) || 0;
+      const credit = Number(line.credit) || 0;
 
-      // Calculate running balance (debit increases, credit decreases for asset accounts)
-      // This is a simplified calculation - in reality, you'd need to know the account type
-      const debit = line.debit || 0;
-      const credit = line.credit || 0;
+      // Update cumulative balance
       runningBalance += debit - credit;
 
-      ledgerEntries.push({
+      return {
         date: line.entryDate,
-        label: line.description || "-",
-        reference: line.voucherNumber || line.entryId || "N/A",
-        debit: debit,
-        credit: credit,
-        runningBalance: runningBalance,
-      });
-    }
+        label: line.label || line.description || "-",
+        reference: line.entryId || "N/A",
+        journal: line.journalCode,
+        debit,
+        credit,
+        runningBalance,
+      };
+    });
 
     return toLambdaResponse(
-      ok(ledgerEntries, i18n.getMessage("SUCCESS_LEDGER_RETRIEVED"))
+      ok(ledgerEntries, i18n.getMessage("SUCCESS_LEDGER_RETRIEVED")),
     );
   } catch (error) {
     console.error("GetAccountLedger Error:", error);
 
-    // Handle specific DynamoDB errors
     if (error instanceof ResourceNotFoundException) {
       return toLambdaResponse(
-        notFound(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND"))
+        notFound(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND")),
       );
     }
 
-    // Handle validation errors
-    if (error instanceof z.ZodError) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_INVALID_INPUT"))
-      );
-    }
-
-    // Default error response
     return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
 };

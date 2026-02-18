@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { unmarshall, marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
 import { KeyFactory } from "@/lambda/shared/key-builder";
@@ -8,10 +8,11 @@ import { I18nResolver } from "@/lambda/shared/i18n";
 import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
 
 /**
- * Retrieves a matching (lettering) report for a specific third party.
- * This report groups transactions by their lettering code to show which invoices
- * are settled and which ones remain outstanding (unlettered).
- * Uses the GSI_LETTERING index for optimized grouping.
+ * Generates a matching (lettering) status report for a specific third party.
+ * It provides a structured view of:
+ * 1. Lettered Groups: Transactions already matched and balanced.
+ * 2. Unlettered Lines: Outstanding items (unpaid invoices or unapplied payments).
+ * This is the primary tool for accounts receivable/payable reconciliation.
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -28,16 +29,16 @@ export const handler = async (
       );
     }
 
-    // Normalisation de la clé de partition via KeyFactory
+    // Target the specific lettering partition using KeyFactory
     const letteringPk = KeyFactory.letteringPK(orgId, accountId, thirdPartyId);
 
     const command = new QueryCommand({
       TableName: config.TABLE_NAME,
       IndexName: config.GSI_LETTERING,
       KeyConditionExpression: "L_PK = :lpk",
-      ExpressionAttributeValues: {
-        ":lpk": { S: letteringPk },
-      },
+      ExpressionAttributeValues: marshall({
+        ":lpk": letteringPk,
+      }),
     });
 
     const { Items = [] } = await dynamoClient.send(command);
@@ -60,7 +61,7 @@ export const handler = async (
       report.summary.totalDebit += debit;
       report.summary.totalCredit += credit;
 
-      // Organisation par statut de lettrage
+      // Grouping logic based on the presence of a letteringCode
       if (line.letteringCode) {
         if (!report.letteredGroups[line.letteringCode]) {
           report.letteredGroups[line.letteringCode] = [];
@@ -71,6 +72,7 @@ export const handler = async (
       }
     });
 
+    // Net balance of the third party account
     report.summary.balance =
       report.summary.totalDebit - report.summary.totalCredit;
 
