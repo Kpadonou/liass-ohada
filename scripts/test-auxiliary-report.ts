@@ -6,7 +6,7 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
 import { handler as confirmLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
-import { handler as getAuxiliaryLedger } from "../lambda/domains/core-ledger/books/get-auxiliary-ledger";
+import { handler as getAuxiliaryLedger } from "../lambda/domains/core-ledger/books/get-general-ledger";
 import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-suggestions";
 
 /**
@@ -62,7 +62,7 @@ async function setupMasterData(orgId: string) {
       new PutItemCommand({
         TableName: process.env.TABLE_NAME,
         Item: marshall(item),
-      })
+      }),
     );
   }
   console.log("✅ Master Data ready.");
@@ -93,7 +93,7 @@ async function runReportTest() {
         status: "LOCKED",
         entityType: "PERIOD_LOCK",
       }),
-    })
+    }),
   );
 
   // B. On tente d'écrire (On s'attend à un échec)
@@ -123,7 +123,7 @@ async function runReportTest() {
       UpdateExpression: "SET #s = :status",
       ExpressionAttributeNames: { "#s": "status" },
       ExpressionAttributeValues: marshall({ ":status": "OPEN" }),
-    })
+    }),
   );
 
   // 1️⃣ On crée les données (250 + 250) ET l'impayé (500)
@@ -242,7 +242,7 @@ async function runReportTest() {
           Label: l.label,
           Debit: l.debit,
           Credit: l.credit,
-        }))
+        })),
       );
     });
 
@@ -253,7 +253,7 @@ async function runReportTest() {
         Label: l.label,
         Debit: l.debit,
         Credit: l.credit,
-      }))
+      })),
     );
   } else {
     console.error("❌ Failed to generate report:", result);

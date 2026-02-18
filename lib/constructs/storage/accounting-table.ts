@@ -43,5 +43,13 @@ export class LiassOhadaAccountingTable extends Construct {
       sortKey: { name: "L_SK", type: AttributeType.STRING },
       projectionType: ProjectionType.ALL,
     });
+
+    // GSI4 - Project Index (SYCEBNL)
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI_PROJECT",
+      partitionKey: { name: "GSI4PK", type: AttributeType.STRING },
+      sortKey: { name: "GSI4SK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
   }
 }

@@ -48,7 +48,7 @@ export const KeyFactory = {
 
   gsi2SK: (date: string, lineId: string) => `DT#${date}#${lineId}`,
 
-  // --- GSI_LETTERING: Matching Engine ---
+  // --- GSI 3: Lettering Engine (GSI_LETTERING) ---
 
   letteringPK: (orgId: string, accountId: string, thirdPartyId: string) =>
     `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`,
@@ -59,4 +59,13 @@ export const KeyFactory = {
   /** Alias utilisé par le code existant */
   unletteredPK: (orgId: string, accountId: string, thirdPartyId: string) =>
     `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`,
+
+  // --- GSI 4: Project Ledger (SYCEBNL Analytical View) ---
+  /** PK pour l'index projet : Permet d'isoler toutes les écritures d'un projet */
+  gsi4PK: (orgId: string, projectId: string) =>
+    `ORG#${orgId}#PROJ#${projectId}`,
+
+  /** SK pour l'index projet : Tri chronologique par défaut */
+  gsi4SK: (year: number | string, date: string, lineId: string) =>
+    `FY#${year}#DT#${date}#${lineId}`,
 };
