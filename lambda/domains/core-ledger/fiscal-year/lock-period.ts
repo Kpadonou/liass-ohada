@@ -8,31 +8,34 @@ import { I18nResolver } from "@/lambda/shared/i18n";
 import { ok, badRequest, toLambdaResponse } from "@/models/shared/api-response";
 
 /**
- * Locks or unlocks a specific period within a fiscal year.
- * Used to prevent modifications to periods that have been closed or are under review.
+ * Manages the locking state of a specific monthly period.
+ * Locking a period is a preventive measure to ensure that transactions
+ * for a closed month are no longer modified or added during an audit or
+ * after tax filings.
  */
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
   try {
     const body = JSON.parse(event.body || "{}");
-    const { year, month, status } = body; // status: 'LOCKED' | 'OPEN'
+    const { year, month, status } = body; // Expected status: 'LOCKED' | 'OPEN'
     const orgId = event.requestContext?.authorizer?.claims?.orgId;
 
     if (!year || !month || !status) {
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS"))
+        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
       );
     }
 
+    // Prepare the lock item using the centralized KeyFactory
     const lockItem = {
       PK: KeyFactory.partitionKey(orgId, year),
       SK: KeyFactory.periodLockSK(month),
       orgId,
       year,
-      month: month.toString().padStart(2, "0"), // Stockage propre pour le GSI/Query
-      status, // 'LOCKED' or 'OPEN'
+      month: month.toString().padStart(2, "0"), // Normalized padding for queries
+      status,
       entityType: "PERIOD_LOCK",
       updatedAt: new Date().toISOString(),
     };
@@ -41,7 +44,7 @@ export const handler = async (
       new PutItemCommand({
         TableName: config.TABLE_NAME,
         Item: marshall(lockItem),
-      })
+      }),
     );
 
     const successKey =
@@ -51,7 +54,7 @@ export const handler = async (
   } catch (error: any) {
     console.error("LockPeriod Error:", error);
     return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_PERIOD_LOCK_TECHNICAL"))
+      badRequest(i18n.getMessage("ERROR_PERIOD_LOCK_TECHNICAL")),
     );
   }
 };
