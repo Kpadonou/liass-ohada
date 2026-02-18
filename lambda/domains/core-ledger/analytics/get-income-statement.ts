@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { QueryCommand, GetItemCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { unmarshall, marshall } from "@aws-sdk/util-dynamodb";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import {
   ok,
@@ -12,48 +12,53 @@ import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 
-// Interface strictly for the Income Statement (Profit & Loss)
+/**
+ * Simplified Income Statement (P&L) structure.
+ */
 interface IncomeStatementResponse {
   fiscalYear: string;
-  totalRevenue: number; // Class 7
-  totalExpenses: number; // Class 6
+  totalRevenue: number; // Class 7 - Products
+  totalExpenses: number; // Class 6 - Charges
   netResult: number; // Revenue - Expenses
   performanceStatus: "PROFIT" | "LOSS";
 }
 
+/**
+ * Generates the Income Statement for a given fiscal year.
+ * Aggregates all movements from account classes 6 and 7 to determine
+ * the operational performance (Profit or Loss).
+ */
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    const orgId =
-      event.requestContext.authorizer?.claims?.orgId || "test-org-001";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
     const year = parseInt(
-      event.queryStringParameters?.year || new Date().getFullYear().toString()
+      event.queryStringParameters?.year || new Date().getFullYear().toString(),
     );
 
-    // 1. Validate fiscal year
+    // 1. Validate fiscal year existence
     const fyResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
-        Key: {
-          PK: { S: KeyFactory.orgKey(orgId) },
-          SK: { S: `FY#${year}` },
-        },
-      })
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(year),
+        }),
+      }),
     );
 
     if (!fyResult.Item) {
       return toLambdaResponse(
-        notFound(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND"))
+        notFound(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND")),
       );
     }
 
-    // 2. Aggregation Logic for Classes 6 and 7
-    let totalExpenses = 0; // Class 6
-    let totalRevenue = 0; // Class 7
-
+    /**
+     * Helper to fetch totals for a specific account class prefix (e.g., '6' or '7').
+     */
     const fetchClassTotals = async (classPrefix: string) => {
       let lastEvaluatedKey: any = undefined;
       let classDebit = 0;
@@ -63,22 +68,22 @@ export const handler = async (
         const queryResult = await dynamoClient.send(
           new QueryCommand({
             TableName: config.TABLE_NAME,
-            IndexName: "GSI_ACCOUNT",
+            IndexName: config.GSI_ACCOUNT,
             KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-            ExpressionAttributeValues: {
-              ":pk": { S: KeyFactory.gsi1PK(orgId) },
-              ":sk": { S: `ACC#${classPrefix}` }, // ACC#6 or ACC#7
-            },
+            ExpressionAttributeValues: marshall({
+              ":pk": KeyFactory.gsi1PK(orgId),
+              ":sk": `ACC#${classPrefix}`, // Filtering by account class prefix
+            }),
             ExclusiveStartKey: lastEvaluatedKey,
-          })
+          }),
         );
 
         for (const item of queryResult.Items || []) {
           const line = unmarshall(item);
-          // Check year explicitly from the year attribute (more robust)
-          if (line.year === year) {
-            classDebit += line.debit || 0;
-            classCredit += line.credit || 0;
+          // Safety check: ensure the line belongs to the requested fiscal year
+          if (Number(line.year) === year) {
+            classDebit += Number(line.debit) || 0;
+            classCredit += Number(line.credit) || 0;
           }
         }
         lastEvaluatedKey = queryResult.LastEvaluatedKey;
@@ -87,17 +92,17 @@ export const handler = async (
       return { classDebit, classCredit };
     };
 
-    // 3. Parallel execution for performance
+    // 2. Parallel aggregation of Expenses (6) and Revenue (7)
     const [expensesData, revenueData] = await Promise.all([
       fetchClassTotals("6"),
       fetchClassTotals("7"),
     ]);
 
-    // In OHADA:
-    // Expenses = Debit - Credit (usually debit positive)
-    // Revenue = Credit - Debit (usually credit positive)
-    totalExpenses = expensesData.classDebit - expensesData.classCredit;
-    totalRevenue = revenueData.classCredit - revenueData.classDebit;
+    // 3. SYSCOHADA Logic:
+    // Expenses (Class 6) are typically Debit balances: Debit - Credit
+    // Revenue (Class 7) are typically Credit balances: Credit - Debit
+    const totalExpenses = expensesData.classDebit - expensesData.classCredit;
+    const totalRevenue = revenueData.classCredit - revenueData.classDebit;
 
     const netResult = totalRevenue - totalExpenses;
 
@@ -110,7 +115,7 @@ export const handler = async (
     };
 
     return toLambdaResponse(
-      ok(response, i18n.getMessage("SUCCESS_INCOME_STATEMENT_RETRIEVED"))
+      ok(response, i18n.getMessage("SUCCESS_INCOME_STATEMENT_RETRIEVED")),
     );
   } catch (error) {
     console.error("Error in get-income-statement:", error);
