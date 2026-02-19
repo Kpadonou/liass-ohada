@@ -71,12 +71,18 @@ aws --endpoint-url=$ENDPOINT dynamodb put-item \
     --item '{
         "PK": {"S": "ORG#test-org-001"},
         "SK": {"S": "FY#2026"},
+        "orgId": {"S": "test-org-001"},
+        "year": {"N": "2026"},
+        "fiscalYearId": {"S": "FY-2026"},
         "entityType": {"S": "FISCAL_YEAR"},
         "status": {"S": "OPEN"},
+        "accountingStandard": {"S": "SYSCOHADA_GENERAL"},
         "startDate": {"S": "2026-01-01"},
         "endDate": {"S": "2026-12-31"},
         "GSI1PK": {"S": "ORG#test-org-001"},
-        "GSI1SK": {"S": "FY#2026"}
+        "GSI1SK": {"S": "FY#2026"},
+        "createdAt": {"S": "2026-01-01T00:00:00.000Z"},
+        "updatedAt": {"S": "2026-01-01T00:00:00.000Z"}
     }'
 
 # Organisation test en mode SYCEBNL (pour tes tests unitaires)
@@ -89,6 +95,27 @@ aws --endpoint-url=$ENDPOINT dynamodb put-item \
         "orgId": {"S": "test-org-sycebnl"},
         "entityType": {"S": "ORGANIZATION"},
         "accountingStandard": {"S": "SYCEBNL"}
+    }'
+
+# Fiscal Year for test-org-sycebnl (required by post-entry validation)
+aws --endpoint-url=$ENDPOINT dynamodb put-item \
+    --table-name $TABLE_NAME \
+    --region $REGION \
+    --item '{
+        "PK": {"S": "ORG#test-org-sycebnl"},
+        "SK": {"S": "FY#2026"},
+        "orgId": {"S": "test-org-sycebnl"},
+        "year": {"N": "2026"},
+        "fiscalYearId": {"S": "FY-2026"},
+        "entityType": {"S": "FISCAL_YEAR"},
+        "status": {"S": "OPEN"},
+        "accountingStandard": {"S": "SYCEBNL"},
+        "startDate": {"S": "2026-01-01"},
+        "endDate": {"S": "2026-12-31"},
+        "GSI1PK": {"S": "ORG#test-org-sycebnl"},
+        "GSI1SK": {"S": "FY#2026"},
+        "createdAt": {"S": "2026-01-01T00:00:00.000Z"},
+        "updatedAt": {"S": "2026-01-01T00:00:00.000Z"}
     }'
 
 echo "✅ Environment Ready with GSI_PROJECT (GSI4) index!"

@@ -51,7 +51,7 @@ export const CreateEntryRequestSchema = z.object({
   year: z.number().int(),
   accountingStandard: AccountingStandard.default("SYSCOHADA_GENERAL"),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  journalCode: z.string().min(1).max(10),
+  journalCode: z.string().min(1).max(10).default("MISC"),
   voucherNumber: z.string().optional(),
   entryId: z.string().optional(),
   entryType: EntryType.default("STANDARD"),
@@ -92,46 +92,48 @@ export type Entry = z.infer<typeof EntrySchema>;
 /**
  * Entry Line Item (PK: ORG#{orgId}#FY#{year}, SK: ENT#{entryId}#LIN#{lineId})
  */
-export const EntryLineSchema = z.object({
-  // Identity & Links
-  orgId: z.string(),
-  year: z.number().int(),
-  entryId: z.string(),
-  lineId: z.string(),
+export const EntryLineSchema = z
+  .object({
+    // Identity & Links
+    orgId: z.string(),
+    year: z.number().int(),
+    entryId: z.string(),
+    lineId: z.string(),
 
-  // Accounting Core Data
-  accountId: z.string().regex(/^\d{8}$/),
-  projectId: z.string().optional(),
-  thirdPartyId: z.string().optional(),
-  debit: MoneySchema,
-  credit: MoneySchema,
-  label: z.string().optional(),
-  description: z.string().optional(),
-  entryDate: z.string(),
-  journalCode: z.string(),
-  voucherNumber: z.string().optional(),
+    // Accounting Core Data
+    accountId: z.string().regex(/^\d{8}$/),
+    projectId: z.string().optional(),
+    thirdPartyId: z.string().optional(),
+    debit: MoneySchema,
+    credit: MoneySchema,
+    label: z.string().optional(),
+    description: z.string().optional(),
+    entryDate: z.string(),
+    journalCode: z.string(),
+    voucherNumber: z.string().optional(),
 
-  // Metadata
-  letteringCode: z.string().optional(),
-  entityType: z.literal("ENTRY_LINE"),
+    // Metadata
+    letteringCode: z.string().optional(),
+    entityType: z.literal("ENTRY_LINE"),
 
-  // Database Keys (DynamoDB + KeyFactory)
-  PK: z.string(),
-  SK: z.string(),
+    // Database Keys (DynamoDB + KeyFactory)
+    PK: z.string(),
+    SK: z.string(),
 
-  // Index Keys (GSI 1, 2, 3, 4)
-  GSI1PK: z.string(),
-  GSI1SK: z.string(),
-  GSI2PK: z.string().optional(),
-  GSI2SK: z.string().optional(),
-  L_PK: z.string().optional(), // Pour GSI_LETTERING
-  L_SK: z.string().optional(), // Pour GSI_LETTERING
-  GSI4PK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
-  GSI4SK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
+    // Index Keys (GSI 1, 2, 3, 4)
+    GSI1PK: z.string(),
+    GSI1SK: z.string(),
+    GSI2PK: z.string().optional(),
+    GSI2SK: z.string().optional(),
+    L_PK: z.string().optional(), // Pour GSI_LETTERING
+    L_SK: z.string().optional(), // Pour GSI_LETTERING
+    GSI4PK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
+    GSI4SK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
 
-  createdBy: z.string().optional(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
+    createdBy: z.string().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+  })
+  .passthrough();
 
 export type EntryLine = z.infer<typeof EntryLineSchema>;

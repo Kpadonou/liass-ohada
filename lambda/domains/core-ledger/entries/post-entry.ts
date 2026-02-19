@@ -194,7 +194,7 @@ export const handler = async (
           paddedAcc,
           line.thirdPartyId,
         );
-        lineItem.L_SK = KeyFactory.letteringSK(entryDate, entryId, i);
+        lineItem.L_SK = KeyFactory.letteringSK(entryDate, entryId, lineId);
       }
 
       // GSI4: Project Analytical Index (SYCEBNL)

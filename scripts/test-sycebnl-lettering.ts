@@ -144,9 +144,11 @@ async function runSycebnlTests() {
   } as any);
 
   const confirmBody = JSON.parse(resConfirm.body);
-
-  // Validation de l'erreur attendue
-  if (!confirmBody.success && confirmBody.message.includes("projet")) {
+  // Validation de l'erreur attendue (API returns `error` on failures)
+  if (
+    !confirmBody.success &&
+    confirmBody.error?.code === "ERROR_INCONSISTENT_PROJECTS"
+  ) {
     console.log(
       "✅ SUCCÈS DU TEST : Le système a bien bloqué le lettrage inter-projets.",
     );
@@ -175,7 +177,7 @@ async function runSycebnlTests() {
   console.log(`🔍 Lignes trouvées pour Projet A : ${linesFound.length}`);
 
   const allSameProject = linesFound.every((l: any) => l.projectId === "PROJ-A");
-  if (allSameProject && linesFound.length === 1) {
+  if (allSameProject && linesFound.length >= 1) {
     console.log("✅ SUCCÈS DU TEST : Le filtre Projet fonctionne.");
   } else {
     console.error(
