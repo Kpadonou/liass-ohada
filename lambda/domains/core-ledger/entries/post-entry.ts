@@ -203,10 +203,12 @@ export const handler = async (
         lineItem.GSI4SK = KeyFactory.gsi4SK(year, entryDate, lineId);
       }
 
+      const validatedLine = EntryLineSchema.parse(lineItem);
+
       transactItems.push({
         Put: {
           TableName: config.TABLE_NAME,
-          Item: marshall(EntryLineSchema.parse(lineItem), {
+          Item: marshall(validatedLine, {
             removeUndefinedValues: true,
           }),
         },

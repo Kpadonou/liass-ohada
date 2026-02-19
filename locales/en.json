@@ -44,5 +44,13 @@
   "SUCCESS_PERIOD_UNLOCKED": "Period unlocked successfully.",
   "ERROR_PERIOD_LOCK_TECHNICAL": "Technical error while locking/unlocking the period.",
   "SUCCESS_FISCAL_YEAR_DETAILS_RETRIEVED": "Fiscal year details retrieved successfully.",
-  "ERROR_ACCOUNT_ALREADY_EXISTS": "Account already exists."
+  "ERROR_ACCOUNT_ALREADY_EXISTS": "Account already exists.",
+  "ERROR_MISSING_PROJECT_ID": "Missing project identifier.",
+  "ERROR_PROJECT_NOT_FOUND": "Project not found.",
+  "SUCCESS_PROJECT_REPORT_RETRIEVED": "Project analytical report retrieved successfully.",
+  "ERROR_SOME_LINES_NOT_FOUND": "Some requested entry lines could not be found.",
+  "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY": "Lettering requires all lines to belong to the same account and third party.",
+  "ERROR_INCONSISTENT_PROJECTS": "Lines belong to different projects; lettering requires all lines to share the same project in SYCEBNL mode.",
+  "ERROR_LINES_NOT_FOUND": "No lines found for the provided identifiers.",
+  "ERROR_UNLETTERING_CONDITION_FAILED": "Un-lettering condition failed. Preconditions were not met; some lines may be missing or not lettered."
 }

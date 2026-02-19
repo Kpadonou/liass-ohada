@@ -118,14 +118,16 @@ export const EntryLineSchema = z.object({
   // Database Keys (DynamoDB + KeyFactory)
   PK: z.string(),
   SK: z.string(),
-  GSI1PK: z.string(), // Account view
+
+  // Index Keys (GSI 1, 2, 3, 4)
+  GSI1PK: z.string(),
   GSI1SK: z.string(),
-  GSI2PK: z.string().optional(), // Third-party view
+  GSI2PK: z.string().optional(),
   GSI2SK: z.string().optional(),
-  L_PK: z.string().optional(), // Lettering view
-  L_SK: z.string().optional(),
-  GSI4PK: z.string().optional(), // Project view (SYCEBNL)
-  GSI4SK: z.string().optional(),
+  L_PK: z.string().optional(), // Pour GSI_LETTERING
+  L_SK: z.string().optional(), // Pour GSI_LETTERING
+  GSI4PK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
+  GSI4SK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
 
   createdBy: z.string().optional(),
   createdAt: z.string(),

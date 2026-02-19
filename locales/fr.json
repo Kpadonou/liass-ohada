@@ -44,5 +44,13 @@
   "SUCCESS_PERIOD_UNLOCKED": "Période déverrouillée avec succès.",
   "ERROR_PERIOD_LOCK_TECHNICAL": "Erreur technique lors du verrouillage/déverrouillage de la période.",
   "SUCCESS_FISCAL_YEAR_DETAILS_RETRIEVED": "Détails de l'année fiscale récupérés avec succès.",
-  "ERROR_ACCOUNT_ALREADY_EXISTS": "Le compte existe déjà."
+  "ERROR_ACCOUNT_ALREADY_EXISTS": "Le compte existe déjà.",
+  "ERROR_MISSING_PROJECT_ID": "Identifiant du projet manquant.",
+  "ERROR_PROJECT_NOT_FOUND": "Projet non trouvé.",
+  "SUCCESS_PROJECT_REPORT_RETRIEVED": "Rapport analytique du projet récupéré avec succès.",
+  "ERROR_SOME_LINES_NOT_FOUND": "Certaines lignes demandées sont introuvables.",
+  "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY": "Le lettrage nécessite que toutes les lignes appartiennent au même compte et au même tiers.",
+  "ERROR_INCONSISTENT_PROJECTS": "Les lignes appartiennent à des projets différents ; le lettrage exige que toutes les lignes aient le même projet en mode SYCEBNL.",
+  "ERROR_LINES_NOT_FOUND": "Aucune ligne trouvée pour les identifiants fournis.",
+  "ERROR_UNLETTERING_CONDITION_FAILED": "Échec du délettrage : les conditions préalables n'ont pas été remplies ; certaines lignes peuvent être manquantes ou non lettrées."
 }

@@ -2,15 +2,11 @@ process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
 process.env.LOCALSTACK_URL = "http://localhost:4566";
 
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-suggestions";
+import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
 import { handler as confirmLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
 import { handler as unLettering } from "../lambda/domains/core-ledger/lettering/cancel-lettering";
-import {
-  PutItemCommand,
-  ScanCommand,
-  DeleteItemCommand,
-} from "@aws-sdk/client-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { KeyFactory } from "../lambda/shared/key-builder";
 
@@ -38,7 +34,7 @@ async function setupBase() {
         createdAt: now,
         updatedAt: now,
       }),
-    })
+    }),
   );
   await dynamoClient.send(
     new PutItemCommand({
@@ -53,7 +49,7 @@ async function setupBase() {
         createdAt: now,
         updatedAt: now,
       }),
-    })
+    }),
   );
 }
 
@@ -120,7 +116,7 @@ async function runFullCycle() {
   if (!suggData || suggData.suggestionsFound === 0) {
     console.log(
       "⚠️ No matches found. Response was:",
-      JSON.stringify(suggBody, null, 2)
+      JSON.stringify(suggBody, null, 2),
     );
     return;
   }

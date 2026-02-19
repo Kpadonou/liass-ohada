@@ -5,12 +5,13 @@ ENDPOINT="http://localhost:4566"
 TABLE_NAME="liass-ohada-dev-accounting-table"
 REGION="us-east-1"
 
-echo "🚀 Starting LocalStack configuration..."
+echo "🚀 Starting LocalStack configuration for SYCEBNL..."
 
 # 1. Cleanup
 aws --endpoint-url=$ENDPOINT dynamodb delete-table --table-name $TABLE_NAME --region $REGION > /dev/null 2>&1
 
 # 2. Table Creation
+# Ajout de GSI4PK et GSI4SK pour le suivi des Projets (GSI4)
 aws --endpoint-url=$ENDPOINT dynamodb create-table \
     --table-name $TABLE_NAME \
     --region $REGION \
@@ -23,6 +24,8 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
         AttributeName=GSI2SK,AttributeType=S \
         AttributeName=L_PK,AttributeType=S \
         AttributeName=L_SK,AttributeType=S \
+        AttributeName=GSI4PK,AttributeType=S \
+        AttributeName=GSI4SK,AttributeType=S \
     --key-schema \
         AttributeName=PK,KeyType=HASH \
         AttributeName=SK,KeyType=RANGE \
@@ -45,6 +48,12 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
                 \"KeySchema\": [{\"AttributeName\": \"L_PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"L_SK\", \"KeyType\": \"RANGE\"}],
                 \"Projection\": {\"ProjectionType\": \"ALL\"},
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
+            },
+            {
+                \"IndexName\": \"GSI_PROJECT\",
+                \"KeySchema\": [{\"AttributeName\": \"GSI4PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI4SK\", \"KeyType\": \"RANGE\"}],
+                \"Projection\": {\"ProjectionType\": \"ALL\"},
+                \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
             }
         ]" \
     --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
@@ -52,8 +61,10 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
 echo "⏳ Waiting for table activation..."
 aws --endpoint-url=$ENDPOINT dynamodb wait table-exists --table-name $TABLE_NAME --region $REGION
 
-# 3. Fiscal Year Injection
-echo "📝 Injecting Fiscal Year 2026..."
+# 3. Master Data Injection
+echo "📝 Injecting Initial Data..."
+
+# Fiscal Year
 aws --endpoint-url=$ENDPOINT dynamodb put-item \
     --table-name $TABLE_NAME \
     --region $REGION \
@@ -68,4 +79,16 @@ aws --endpoint-url=$ENDPOINT dynamodb put-item \
         "GSI1SK": {"S": "FY#2026"}
     }'
 
-echo "✅ Environment Ready in $REGION!"
+# Organisation test en mode SYCEBNL (pour tes tests unitaires)
+aws --endpoint-url=$ENDPOINT dynamodb put-item \
+    --table-name $TABLE_NAME \
+    --region $REGION \
+    --item '{
+        "PK": {"S": "ORG#test-org-sycebnl"},
+        "SK": {"S": "ORG#test-org-sycebnl"},
+        "orgId": {"S": "test-org-sycebnl"},
+        "entityType": {"S": "ORGANIZATION"},
+        "accountingStandard": {"S": "SYCEBNL"}
+    }'
+
+echo "✅ Environment Ready with GSI_PROJECT (GSI4) index!"

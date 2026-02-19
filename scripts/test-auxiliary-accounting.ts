@@ -3,7 +3,7 @@ process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
 process.env.LOCALSTACK_URL = "http://localhost:4566";
 
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-suggestions";
+import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
 import {
   PutItemCommand,
   ScanCommand,
@@ -16,7 +16,7 @@ import { KeyFactory } from "../lambda/shared/key-builder";
 async function cleanupTable() {
   console.log("🧹 Cleaning up table...");
   const scan = await dynamoClient.send(
-    new ScanCommand({ TableName: process.env.TABLE_NAME })
+    new ScanCommand({ TableName: process.env.TABLE_NAME }),
   );
   const items = scan.Items || [];
   for (const item of items) {
@@ -25,7 +25,7 @@ async function cleanupTable() {
       new DeleteItemCommand({
         TableName: process.env.TABLE_NAME,
         Key: marshall({ PK: unmarshalled.PK, SK: unmarshalled.SK }),
-      })
+      }),
     );
   }
   console.log(`✅ Table cleared (${items.length} items removed)`);
@@ -53,7 +53,7 @@ async function setupMasterData() {
         createdAt: now,
         updatedAt: now,
       }),
-    })
+    }),
   );
 
   // 2. Accounts
@@ -77,7 +77,7 @@ async function setupMasterData() {
           createdAt: now,
           updatedAt: now,
         }),
-      })
+      }),
     );
   }
 
@@ -94,7 +94,7 @@ async function setupMasterData() {
         createdAt: now,
         updatedAt: now,
       }),
-    })
+    }),
   );
 
   console.log("✅ Master data initialized with complete fields");
@@ -279,7 +279,7 @@ async function runFifoScenario() {
       console.log(
         `\nSuggestion #${idx + 1} [${suggestion.type}] - Amount: ${
           suggestion.amount
-        }`
+        }`,
       );
       console.table(
         suggestion.lines.map((l: any) => ({
@@ -287,7 +287,7 @@ async function runFifoScenario() {
           Role: l.role || l.type,
           Amount: l.amount,
           Entry: l.entryId,
-        }))
+        })),
       );
     });
   }

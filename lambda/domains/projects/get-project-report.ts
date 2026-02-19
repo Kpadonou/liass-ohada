@@ -129,7 +129,9 @@ export const handler = async (
       },
     };
 
-    return toLambdaResponse(ok(report));
+    return toLambdaResponse(
+      ok(report, i18n.getMessage("SUCCESS_PROJECT_REPORT_RETRIEVED")),
+    );
   } catch (error) {
     console.error("GetProjectReport Error:", error);
     return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));

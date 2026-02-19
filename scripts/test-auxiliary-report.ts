@@ -7,7 +7,7 @@ import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
 import { handler as confirmLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
 import { handler as getAuxiliaryLedger } from "../lambda/domains/core-ledger/books/get-general-ledger";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-suggestions";
+import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
 
 /**
  * Prépare l'environnement de test en créant l'exercice fiscal et les comptes

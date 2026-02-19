@@ -1,18 +1,23 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import {
+  TransactWriteItemsCommand,
+  BatchGetItemCommand,
+  GetItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
+import { EntryLineSchema } from "@/models/core-ledger/entry";
 import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
 
 /**
  * Confirms a lettering (matching) operation between multiple entry lines.
- * It calculates the balance to determine if the match is COMPLETE (Uppercase code)
- * or PARTIAL (Lowercase code).
- * Updates the technical L_SK index to move lines from 'UNLETTERED' to 'LETTERED'
- * status atomically using a DynamoDB transaction.
+ * For SYCEBNL organizations, it enforces that all lines belong to the same project
+ * to ensure funding justification integrity.
+ * * @param event - APIGatewayProxyEvent containing lineKeys and letteringCode.
+ * @returns APIGatewayProxyResult with the final lettering status.
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -21,55 +26,104 @@ export const handler = async (
 
   try {
     const body = JSON.parse(event.body || "{}");
-    const { orgId, year, lines, letteringCode } = body;
+    const { orgId, year, lineKeys, letteringCode } = body;
 
-    // 1. Validation: Ensure we have enough data to perform a match
+    // 1. Basic Validation
     if (
       !orgId ||
       !year ||
       !letteringCode ||
-      !Array.isArray(lines) ||
-      lines.length < 2
+      !Array.isArray(lineKeys) ||
+      lineKeys.length < 2
     ) {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_LETTERING_INSUFFICIENT_DATA")),
       );
     }
 
-    // 2. Accounting Logic: Calculate Balance to define status
-    // In double-entry bookkeeping, a perfect match results in a zero balance.
-    const balance = lines.reduce(
-      (acc: number, l: any) =>
-        acc + (Number(l.debit) || 0) - (Number(l.credit) || 0),
-      0,
+    // 2. Fetch Organization to check Accounting Standard
+    const orgResult = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.orgKey(orgId),
+        }),
+      }),
+    );
+    const organization = unmarshall(orgResult.Item || {});
+    const isSYCEBNL = organization.accountingStandard === "SYCEBNL";
+
+    // 3. Fetch official data from DB (Source of Truth Security)
+    const batchResult = await dynamoClient.send(
+      new BatchGetItemCommand({
+        RequestItems: {
+          [config.TABLE_NAME]: {
+            Keys: lineKeys.map((key: any) =>
+              marshall({ PK: key.PK, SK: key.SK }),
+            ),
+          },
+        },
+      }),
     );
 
-    // SYSCOHADA convention: Uppercase for COMPLETE, Lowercase for PARTIAL
-    const isComplete = Math.abs(balance) < 0.01; // Handling floating point precision
+    const lines = (batchResult.Responses?.[config.TABLE_NAME] || []).map(
+      (item) => EntryLineSchema.parse(unmarshall(item)),
+    );
+
+    if (lines.length !== lineKeys.length) {
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_SOME_LINES_NOT_FOUND")),
+      );
+    }
+
+    // 4. Consistency & SYCEBNL Validation
+    const firstLine = lines[0];
+    const accountId = firstLine.accountId;
+    const thirdPartyId = firstLine.thirdPartyId;
+    const projectId = firstLine.projectId;
+
+    for (const line of lines) {
+      // Basic accounting consistency
+      if (line.accountId !== accountId || line.thirdPartyId !== thirdPartyId) {
+        return toLambdaResponse(
+          badRequest(
+            i18n.getMessage("ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY"),
+          ),
+        );
+      }
+
+      // SYCEBNL Strict project consistency
+      if (isSYCEBNL && line.projectId !== projectId) {
+        return toLambdaResponse(
+          badRequest(i18n.getMessage("ERROR_INCONSISTENT_PROJECTS")),
+        );
+      }
+    }
+
+    // 5. Accounting Logic: Calculate Balance
+    const balance = lines.reduce((acc, l) => acc + (l.debit - l.credit), 0);
+    const isComplete = Math.abs(balance) < 0.01;
     const finalCode = isComplete
       ? letteringCode.toUpperCase()
       : letteringCode.toLowerCase();
     const letteringStatus = isComplete ? "COMPLETE" : "PARTIAL";
 
-    // 3. Prepare Atomic Transaction to update all involved lines
+    // 6. Execute Atomic Transaction
     const now = new Date().toISOString();
-    const transactItems = lines.map((l: any) => {
-      // Reconstruct the Sort Key (L_SK) for the Lettering GSI
-      const metadata = l.currentLSk
-        ? l.currentLSk.replace("UNLETTERED#", "")
-        : `${l.entryDate}#${l.entryId}`;
+    const transactItems = lines.map((line) => {
+      // Reconstruct the Sort Key (L_SK) for GSI3
+      const metadata =
+        line.L_SK?.split("#").slice(1).join("#") ||
+        `${line.entryDate}#${line.lineId}`;
       const newLSk = `LETTERED#${finalCode}#${metadata}`;
 
       return {
         Update: {
           TableName: config.TABLE_NAME,
-          Key: marshall({
-            PK: KeyFactory.partitionKey(orgId, year),
-            SK: KeyFactory.entryLineSK(l.lineId),
-          }),
-          // Security: Ensure the line exists and isn't already fully lettered
+          Key: marshall({ PK: line.PK, SK: line.SK }),
           ConditionExpression:
-            "attribute_exists(L_PK) AND (attribute_not_exists(letteringStatus) OR letteringStatus = :partial)",
+            "attribute_exists(L_PK) AND (letteringStatus <> :complete)",
           UpdateExpression: `
             SET L_SK = :newLSk, 
                 letteringCode = :code, 
@@ -77,7 +131,7 @@ export const handler = async (
                 updatedAt = :now
           `,
           ExpressionAttributeValues: marshall({
-            ":partial": "PARTIAL",
+            ":complete": "COMPLETE",
             ":newLSk": newLSk,
             ":code": finalCode,
             ":status": letteringStatus,
@@ -103,8 +157,6 @@ export const handler = async (
     );
   } catch (error: any) {
     console.error("ConfirmLettering Error:", error);
-
-    // Specifically handle cases where the transaction fails due to condition checks
     if (error.name === "TransactionCanceledException") {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_ALREADY_LETTERED_OR_MISSING")),

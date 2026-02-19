@@ -8,11 +8,24 @@ import { I18nResolver } from "@/lambda/shared/i18n";
 import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
 
 /**
- * Analyzes unlettered transactions for a third party and suggests possible matches.
- * It employs two main strategies:
- * 1. PERFECT MATCH: Pairs debits and credits with identical amounts.
- * 2. FIFO (First-In-First-Out): Suggests matches based on chronological order
- * for remaining amounts, useful for partial payments or grouped settlements.
+ * Interface representing a line being processed by the FIFO algorithm.
+ * Extends the record with a tracking field for the remaining amount to match.
+ */
+interface FIFOCandidate {
+  lineId: string;
+  entryId: string;
+  entryDate: string;
+  debit: number;
+  credit: number;
+  label?: string;
+  projectId?: string;
+  remainingAmount: number;
+}
+
+/**
+ * Retrieves unlettered transaction lines and provides smart matching suggestions.
+ * Uses KeyFactory for GSI3 (Lettering Index) and supports SYCEBNL project filtering.
+ * * @param event - APIGatewayProxyEvent containing orgId, accountId, thirdPartyId, and optional projectId.
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -23,7 +36,8 @@ export const handler = async (
     const orgId =
       event.requestContext?.authorizer?.claims?.orgId ||
       event.queryStringParameters?.orgId;
-    const { accountId, thirdPartyId } = event.queryStringParameters || {};
+    const { accountId, thirdPartyId, projectId } =
+      event.queryStringParameters || {};
 
     if (!orgId || !accountId || !thirdPartyId) {
       return toLambdaResponse(
@@ -31,9 +45,8 @@ export const handler = async (
       );
     }
 
-    // 1. Query the Lettering Sparse Index using the KeyFactory
-    // We target lines that haven't been matched yet (starting with "UNLETTERED#")
-    const params = {
+    // 1. Prepare Query for GSI3 (Lettering Index)
+    const queryInput: any = {
       TableName: config.TABLE_NAME,
       IndexName: config.GSI_LETTERING,
       KeyConditionExpression: "L_PK = :lpk AND begins_with(L_SK, :lsk)",
@@ -43,7 +56,13 @@ export const handler = async (
       },
     };
 
-    const { Items } = await dynamoClient.send(new QueryCommand(params));
+    // SYCEBNL Enhancement: Analytical filter by projectId
+    if (projectId) {
+      queryInput.FilterExpression = "projectId = :pid";
+      queryInput.ExpressionAttributeValues[":pid"] = { S: projectId };
+    }
+
+    const { Items } = await dynamoClient.send(new QueryCommand(queryInput));
     const unletteredLines = (Items || []).map((item) => unmarshall(item));
 
     if (unletteredLines.length === 0) {
@@ -55,14 +74,14 @@ export const handler = async (
       );
     }
 
-    // 2. Data Preparation: Split into Debits (Invoices/Debts) and Credits (Payments)
+    // 2. Data Segregation
     const debits = unletteredLines.filter((l) => (Number(l.debit) || 0) > 0);
     const credits = unletteredLines.filter((l) => (Number(l.credit) || 0) > 0);
 
     const suggestions: any[] = [];
     const matchedIds = new Set<string>();
 
-    // --- STRATEGY 1: PERFECT MATCH (Matching exact amounts) ---
+    // --- STRATEGY 1: PERFECT MATCH ---
     for (const d of debits) {
       const match = credits.find(
         (c) =>
@@ -81,45 +100,43 @@ export const handler = async (
               lineId: d.lineId,
               entryId: d.entryId,
               date: d.entryDate,
-              label: d.label || "Invoice",
+              label: d.label,
               amount: d.debit,
               type: "DEBIT",
+              projectId: d.projectId,
             },
             {
               lineId: match.lineId,
               entryId: match.entryId,
               date: match.entryDate,
-              label: match.label || "Payment",
+              label: match.label,
               amount: match.credit,
               type: "CREDIT",
+              projectId: match.projectId,
             },
           ],
         });
       }
     }
 
-    // --- STRATEGY 2: FIFO (Chronological matching for remaining lines) ---
-    const remainingDebits = debits
+    // --- STRATEGY 2: FIFO (Chronological) ---
+    // Prepare temporary candidates with explicit FIFOCandidate typing to resolve TS errors
+    const tempDebits: FIFOCandidate[] = debits
       .filter((d) => !matchedIds.has(d.lineId))
-      .sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+      .sort((a, b) => a.entryDate.localeCompare(b.entryDate))
+      .map(
+        (d) => ({ ...d, remainingAmount: Number(d.debit) }) as FIFOCandidate,
+      );
 
-    const remainingCredits = credits
+    const tempCredits: FIFOCandidate[] = credits
       .filter((c) => !matchedIds.has(c.lineId))
-      .sort((a, b) => a.entryDate.localeCompare(b.entryDate));
+      .sort((a, b) => a.entryDate.localeCompare(b.entryDate))
+      .map(
+        (c) => ({ ...c, remainingAmount: Number(c.credit) }) as FIFOCandidate,
+      );
 
     let dIdx = 0;
     let cIdx = 0;
-
-    // Use temporary structures to track decreasing amounts during the FIFO loop
-    const tempDebits: any[] = remainingDebits.map((d) => ({
-      ...d,
-      remainingAmount: Number(d.debit),
-    }));
-
-    const tempCredits: any[] = remainingCredits.map((c) => ({
-      ...c,
-      remainingAmount: Number(c.credit),
-    }));
 
     while (dIdx < tempDebits.length && cIdx < tempCredits.length) {
       const d = tempDebits[dIdx];
@@ -135,15 +152,15 @@ export const handler = async (
               lineId: d.lineId,
               entryId: d.entryId,
               date: d.entryDate,
-              role: "DEBT",
               amount: d.debit,
+              projectId: d.projectId,
             },
             {
               lineId: c.lineId,
               entryId: c.entryId,
               date: c.entryDate,
-              role: "PAYMENT",
               amount: c.credit,
+              projectId: c.projectId,
             },
           ],
         });
@@ -161,13 +178,14 @@ export const handler = async (
         {
           totalUnlettered: unletteredLines.length,
           suggestionsFound: suggestions.length,
+          unletteredLines,
           suggestions,
         },
         i18n.getMessage("SUCCESS_SUGGESTIONS_RETRIEVED"),
       ),
     );
   } catch (error) {
-    console.error("Lettering Suggestion Error:", error);
+    console.error("GetUnletteredLines Error:", error);
     return toLambdaResponse(
       badRequest(i18n.getMessage("ERROR_SUGGESTIONS_TECHNICAL")),
     );
