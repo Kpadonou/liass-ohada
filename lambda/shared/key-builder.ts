@@ -1,19 +1,19 @@
 export const KeyFactory = {
   // --- PK (Partition Keys) ---
 
-  /** PK Globale (Master Data & GSI Root) */
+  /** Global PK for Master Data and Root Organization level */
   orgKey: (orgId: string) => `ORG#${orgId}`,
 
-  /** PK Partitionnée (Transactional Data & Period Locks) */
+  /** Partitioned PK for Transactional Data grouped by Fiscal Year */
   partitionKey: (orgId: string, year: number | string) =>
     `ORG#${orgId}#FY#${year}`,
 
   // --- SK (Sort Keys) ---
 
-  /** SK pour l'objet Fiscal Year (utilisé avec orgKey) */
+  /** SK for Fiscal Year metadata (used with orgKey) */
   fiscalYearSK: (year: number | string) => `FY#${year}`,
 
-  /** SK pour les verrous de période mensuels (utilisé avec partitionKey) */
+  /** SK for monthly period locks (used with partitionKey) */
   periodLockSK: (month: string | number) =>
     `LOCK#PERIOD#${month.toString().padStart(2, "0")}`,
 
@@ -25,10 +25,15 @@ export const KeyFactory = {
 
   journalSK: (journalCode: string) => `JNL#${journalCode}`,
 
+  /** Permanent technical ID for Project item (used with orgKey) */
   projectSK: (projectId: string) => `PROJ#${projectId}`,
 
+  /** Business Reference for Project uniqueness and lookups (used with orgKey) */
+  projectCodeSK: (projectCode: string) =>
+    `PROJCODE#${projectCode.toUpperCase()}`,
+
   thirdPartySK: (type: string, thirdPartyId: string) =>
-    `TP#${type}#${thirdPartyId}`,
+    `TP#${type.toUpperCase()}#${thirdPartyId}`,
 
   // --- GSI 1: General Ledger (Account View) ---
 
@@ -56,16 +61,22 @@ export const KeyFactory = {
   letteringSK: (date: string, entryId: string, index: number | string) =>
     `UNLETTERED#${date}#${entryId}#${index}`,
 
-  /** Alias utilisé par le code existant */
   unletteredPK: (orgId: string, accountId: string, thirdPartyId: string) =>
     `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`,
 
   // --- GSI 4: Project Ledger (SYCEBNL Analytical View) ---
-  /** PK pour l'index projet : Permet d'isoler toutes les écritures d'un projet */
+
+  /** PK for Project Index: Isolates all entry lines linked to a specific project */
   gsi4PK: (orgId: string, projectId: string) =>
     `ORG#${orgId}#PROJ#${projectId}`,
 
-  /** SK pour l'index projet : Tri chronologique par défaut */
+  /** SK for Project Index: Chronological sorting with Fiscal Year context */
   gsi4SK: (year: number | string, date: string, lineId: string) =>
     `FY#${year}#DT#${date}#${lineId}`,
+
+  // --- Analytical Extensions ---
+
+  /** Useful if you need to query projects by Donor in the future */
+  donorProjectPK: (orgId: string, donorId: string) =>
+    `ORG#${orgId}#DONOR#${donorId}`,
 };
