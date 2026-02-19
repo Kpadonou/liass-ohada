@@ -14,11 +14,21 @@ import {
 } from "@/models/shared/api-response";
 
 /**
- * Generates an analytical financial report for a specific project.
- * Fetches project metadata and aggregates all linked accounting lines from GSI4.
- * Provides a global budget overview and a detailed breakdown by account.
- * * @param event - APIGatewayProxyEvent with projectId in pathParameters.
- * @returns APIGatewayProxyResult with the analytical report data.
+ * @async
+ * @function handler
+ * @description Generates a SYCEBNL Analytical Financial Report (TER - Tableau des Emplois et Ressources) for a specific project.
+ * * Orchestrates the following steps:
+ * 1. Retrieves project metadata (budget, identity) from the main table.
+ * 2. Queries the GSI_PROJECT (GSI4) to fetch all accounting lines tagged with the projectId.
+ * 3. Aggregates financial data: Debits as 'Emplois' (Uses) and Credits as 'Ressources' (Resources).
+ * 4. Calculates budget execution metrics and account-level breakdown.
+ * * @param {APIGatewayProxyEvent} event - AWS Lambda event containing:
+ * - pathParameters.projectId: The unique identifier of the project.
+ * - requestContext.authorizer.claims.orgId: The organization context.
+ * * @returns {Promise<APIGatewayProxyResult>}
+ * - 200: Analytical report with budget overview and account breakdown.
+ * - 404: Project not found.
+ * - 400: Missing parameters or internal error.
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -35,7 +45,7 @@ export const handler = async (
       );
     }
 
-    // 1. Fetch Project Metadata (Budget, Donor, etc.)
+    // 1. Récupération des Master Data du Projet
     const projectResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
@@ -54,7 +64,7 @@ export const handler = async (
 
     const project = ProjectSchema.parse(unmarshall(projectResult.Item));
 
-    // 2. Query all accounting transactions linked to this project via GSI4
+    // 2. Query via GSI_PROJECT (Utilisation des clés GSI4PK validées)
     const linesResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -68,63 +78,62 @@ export const handler = async (
 
     const lines = (linesResult.Items || []).map((item) => unmarshall(item));
 
-    // 3. Aggregate Actuals and Build Account Breakdown
-    let totalDebit = 0;
-    let totalCredit = 0;
+    // 3. Agrégation par compte (Emplois et Ressources)
+    // Dans le TER SYCEBNL : Ressources = Crédit, Emplois = Débit
+    let totalEmplois = 0; // Débit
+    let totalRessources = 0; // Crédit
+
     const accountMap = new Map<
       string,
-      { accountId: string; debit: number; credit: number; net: number }
+      { accountId: string; debit: number; credit: number; balance: number }
     >();
 
     for (const line of lines) {
-      const accId = line.accountId;
       const debit = line.debit || 0;
       const credit = line.credit || 0;
 
-      totalDebit += debit;
-      totalCredit += credit;
+      totalEmplois += debit;
+      totalRessources += credit;
 
-      // Group by Account ID
-      const existing = accountMap.get(accId) || {
-        accountId: accId,
+      const existing = accountMap.get(line.accountId) || {
+        accountId: line.accountId,
         debit: 0,
         credit: 0,
-        net: 0,
+        balance: 0,
       };
+
       existing.debit += debit;
       existing.credit += credit;
-      existing.net = existing.debit - existing.credit;
-
-      accountMap.set(accId, existing);
+      existing.balance = existing.debit - existing.credit;
+      accountMap.set(line.accountId, existing);
     }
 
-    const actualSpending = totalDebit - totalCredit;
-
-    // 4. Build Final Analytical Report
+    // 4. Construction du rapport final
     const report = {
       projectInfo: {
-        projectId: project.projectId,
-        projectCode: project.projectCode,
+        id: project.projectId,
+        code: project.projectCode,
         name: project.name,
-        donorId: project.donorId,
-        managerId: project.managerId,
+        donor: project.donorId,
         currency: project.currency,
-        status: project.status,
       },
-      budgetOverview: {
+      terSummary: {
+        totalEmplois, // Ce qui a été dépensé/investi
+        totalRessources, // Ce qui a été reçu/financé
+        netPosition: totalRessources - totalEmplois, // Solde du projet
+      },
+      budgetExecution: {
         allocated: project.budget,
-        actual: actualSpending,
-        remaining: project.budget - actualSpending,
-        consumptionPercentage:
-          project.budget > 0
-            ? Number(((actualSpending / project.budget) * 100).toFixed(2))
-            : 0,
+        consumed: totalEmplois,
+        remaining: project.budget - totalEmplois,
+        percentage:
+          project.budget > 0 ? (totalEmplois / project.budget) * 100 : 0,
       },
-      accountBreakdown: Array.from(accountMap.values()).sort((a, b) =>
+      details: Array.from(accountMap.values()).sort((a, b) =>
         a.accountId.localeCompare(b.accountId),
       ),
       metadata: {
-        transactionCount: lines.length,
+        linesProcessed: lines.length,
         generatedAt: new Date().toISOString(),
       },
     };
