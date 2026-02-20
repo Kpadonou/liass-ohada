@@ -1,159 +1,171 @@
-process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
-process.env.LOCALSTACK_URL = "http://localhost:4566";
-
 import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
-import { handler as confirmLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
-import { handler as unLettering } from "../lambda/domains/core-ledger/lettering/cancel-lettering";
-import { PutItemCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "../lambda/shared/dynamo-client";
-import { KeyFactory } from "../lambda/shared/key-builder";
+import { handler as getUnlettered } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
+import { handler as postLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
+import { handler as cancelLettering } from "../lambda/domains/core-ledger/lettering/cancel-lettering";
 
-async function setupBase() {
-  const orgId = "test-org-001";
-  const now = new Date().toISOString();
-  console.log("🧹 Cleaning table...");
-  // ... (le cleanup est supposé être fait ici ou par un script externe)
+const ORG_ID = "test-org-sycebnl";
+const YEAR = 2026;
 
-  console.log("🏗️ Setting up Master Data...");
-  await dynamoClient.send(
-    new PutItemCommand({
-      TableName: process.env.TABLE_NAME!,
-      Item: marshall({
-        PK: KeyFactory.orgKey(orgId),
-        SK: "FY#2026",
-        orgId,
-        year: 2026,
-        fiscalYearId: "FY26",
-        startDate: "2026-01-01",
-        endDate: "2026-12-31",
-        status: "OPEN",
-        accountingStandard: "SYSCOHADA_GENERAL",
-        entityType: "FISCAL_YEAR",
-        createdAt: now,
-        updatedAt: now,
-      }),
-    }),
-  );
-  await dynamoClient.send(
-    new PutItemCommand({
-      TableName: process.env.TABLE_NAME!,
-      Item: marshall({
-        PK: KeyFactory.orgKey(orgId),
-        SK: KeyFactory.accountSK("41110000"),
-        accountId: "41110000",
-        accountName: "Clients",
-        isThirdPartyAccount: true,
-        entityType: "ACCOUNT",
-        createdAt: now,
-        updatedAt: now,
-      }),
-    }),
-  );
-}
+/** Utility to wait for LocalStack GSI indexing */
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function runFullCycle() {
-  console.log("🚀 STARTING FULL LETTERING CYCLE TEST");
+async function runFullLetteringTest() {
+  console.log("🧪 DÉMARRAGE DU TEST COMPLET DU CYCLE DE LETTRAGE\n");
+
   const commonContext = {
-    requestContext: {
-      authorizer: { claims: { orgId: "test-org-001", userId: "test-admin" } },
-    },
+    requestContext: { authorizer: { claims: { orgId: ORG_ID } } },
     headers: { "Accept-Language": "fr" },
   };
 
-  // 1️⃣ PHASE 1: Data Entry
-  console.log("\n--- PHASE 1: Data Entry ---");
-  await postEntry({
-    ...commonContext,
-    body: JSON.stringify({
-      year: 2026,
-      entryDate: "2026-02-11",
-      label: "Invoice",
-      lines: [
-        { accountId: "41110000", thirdPartyId: "C-001", debit: 250, credit: 0 },
-        { accountId: "70100000", debit: 0, credit: 250 },
-      ],
-    }),
-  } as any);
+  // --- 1. CRÉATION DES ÉCRITURES ---
+  console.log("1️⃣ Création des écritures (Facture et Paiement)...");
 
-  await postEntry({
-    ...commonContext,
-    body: JSON.stringify({
-      year: 2026,
-      entryDate: "2026-02-11",
-      label: "Payment",
-      lines: [
-        { accountId: "52100000", debit: 250, credit: 0 },
-        { accountId: "41110000", thirdPartyId: "C-001", debit: 0, credit: 250 },
-      ],
-    }),
-  } as any);
-  console.log("✅ Entries created.");
+  const entries = [
+    { label: "Facture F-001", debit: 5000, credit: 0 },
+    { label: "Paiement P-001", debit: 0, credit: 5000 },
+  ];
 
-  // 2️⃣ PHASE 2: Fetching Suggestions
-  console.log("\n--- PHASE 2: Fetching Suggestions ---");
-  const suggRes = await getSuggestions({
+  for (const data of entries) {
+    const res = await postEntry({
+      ...commonContext,
+      body: JSON.stringify({
+        year: YEAR,
+        entryDate: "2026-02-20",
+        label: data.label,
+        lines: [
+          {
+            accountId: "41110000",
+            thirdPartyId: "DONOR-001",
+            projectId: "PROJ-A",
+            debit: data.debit,
+            credit: data.credit,
+          },
+          {
+            accountId: data.debit > 0 ? "75100000" : "52100000",
+            debit: data.credit,
+            credit: data.debit,
+          },
+        ],
+      }),
+    } as any);
+
+    const body = JSON.parse(res.body);
+    if (!body.success) {
+      console.error(
+        `❌ Échec création écriture (${data.label}):`,
+        body.message || body.error,
+      );
+      return;
+    }
+  }
+
+  console.log("   ⏳ Attente de l'indexation GSI (1.5s)...");
+  await sleep(1500);
+
+  // --- 2. RÉCUPÉRATION DES LIGNES ---
+  console.log("2️⃣ Récupération des lignes non-lettrées...");
+  const resSugg = await getUnlettered({
     ...commonContext,
     queryStringParameters: {
-      orgId: "test-org-001",
+      orgId: ORG_ID,
       accountId: "41110000",
-      thirdPartyId: "C-001",
-      year: "2026",
+      thirdPartyId: "DONOR-001",
     },
   } as any);
 
-  const suggBody = JSON.parse(suggRes.body);
+  const bodySugg = JSON.parse(resSugg.body);
+  const unletteredLines = bodySugg.data?.unletteredLines || [];
 
-  if (!suggBody.success) {
-    console.error("❌ Lambda error:", JSON.stringify(suggBody, null, 2));
-    return;
-  }
-
-  const suggData = suggBody.data;
-  console.log(`🔍 Suggestions found: ${suggData?.suggestionsFound}`);
-
-  if (!suggData || suggData.suggestionsFound === 0) {
-    console.log(
-      "⚠️ No matches found. Response was:",
-      JSON.stringify(suggBody, null, 2),
+  if (unletteredLines.length < 2) {
+    console.error(
+      "❌ Erreur : Lignes non trouvées dans l'index GSI. Reçu :",
+      bodySugg,
     );
     return;
   }
+  console.log(`   ✅ ${unletteredLines.length} lignes trouvées.`);
 
-  const targetMatch = suggData.suggestions[0];
-
-  // 3️⃣ PHASE 3: Confirm Lettering
-  console.log("\n--- PHASE 3: Confirming Lettering ---");
-  const confirmRes = await confirmLettering({
+  // --- 3. EXÉCUTION DU LETTRAGE ---
+  console.log("3️⃣ Exécution du lettrage (Code 'AZ')...");
+  const lineKeys = unletteredLines.map((l: any) => ({ PK: l.PK, SK: l.SK }));
+  const resConfirm = await postLettering({
     ...commonContext,
     body: JSON.stringify({
-      orgId: "test-org-001",
-      year: 2026,
-      letteringCode: "A",
-      lines: targetMatch.lines.map((l: any) => ({
-        ...l,
-        currentLSk: l.currentLSk || `UNLETTERED#${l.date}#${l.entryId}`,
-      })),
+      orgId: ORG_ID,
+      year: YEAR,
+      letteringCode: "AZ",
+      lineKeys,
     }),
   } as any);
 
-  console.log("✅ Confirmation Response:", confirmRes.body);
+  const bodyConfirm = JSON.parse(resConfirm.body);
+  if (!bodyConfirm.success) {
+    console.error(
+      "❌ Échec du lettrage:",
+      bodyConfirm.message || bodyConfirm.error,
+    );
+    return;
+  }
+  console.log(
+    `   ✅ Lettrage réussi (Statut: ${bodyConfirm.data.letteringStatus})`,
+  );
 
-  // 4️⃣ PHASE 4: Un-lettering
-  console.log("\n--- PHASE 4: Un-lettering ---");
-  const unRes = await unLettering({
+  console.log("   ⏳ Attente mise à jour index (1s)...");
+  await sleep(1000);
+
+  // --- 4. VÉRIFICATION DISPARITION ---
+  console.log("4️⃣ Vérification que les lignes sont masquées...");
+  const resVerify = await getUnlettered({
     ...commonContext,
-    body: JSON.stringify({
-      orgId: "test-org-001",
-      year: 2026,
-      lines: targetMatch.lines.map((l: any) => ({
-        lineId: l.lineId,
-        currentLSk: `LETTERED#A#${l.date}#${l.entryId}`,
-      })),
-    }),
+    queryStringParameters: {
+      orgId: ORG_ID,
+      accountId: "41110000",
+      thirdPartyId: "DONOR-001",
+    },
   } as any);
-  console.log("✅ Un-lettering Response:", unRes.body);
+  const remaining =
+    JSON.parse(resVerify.body).data?.unletteredLines?.length || 0;
+
+  if (remaining === 0) {
+    console.log("   ✅ Les lignes ont bien disparu des suggestions.");
+  } else {
+    console.error(`   ❌ Échec : ${remaining} lignes sont toujours visibles.`);
+  }
+
+  // --- 5. ANNULATION (DÉ-LETTRAGE) ---
+  console.log("5️⃣ Annulation du lettrage (Dé-lettrage)...");
+  const resCancel = await cancelLettering({
+    ...commonContext,
+    body: JSON.stringify({ orgId: ORG_ID, year: YEAR, lineKeys }),
+  } as any);
+
+  if (!JSON.parse(resCancel.body).success) {
+    console.error("❌ Échec du dé-lettrage.");
+    return;
+  }
+  console.log("   ✅ Dé-lettrage réussi.");
+
+  console.log("   ⏳ Attente mise à jour index (1s)...");
+  await sleep(1000);
+
+  // --- 6. VÉRIFICATION FINALE ---
+  console.log("6️⃣ Vérification du retour en suggestions...");
+  const resFinal = await getUnlettered({
+    ...commonContext,
+    queryStringParameters: {
+      orgId: ORG_ID,
+      accountId: "41110000",
+      thirdPartyId: "DONOR-001",
+    },
+  } as any);
+  const finalCount =
+    JSON.parse(resFinal.body).data?.unletteredLines?.length || 0;
+
+  if (finalCount === 2) {
+    console.log("\n✨ TEST RÉUSSI : Le cycle complet est validé.");
+  } else {
+    console.error(`\n❌ ÉCHEC : Attendu 2 lignes, trouvé ${finalCount}`);
+  }
 }
 
-setupBase().then(runFullCycle).catch(console.error);
+runFullLetteringTest().catch(console.error);

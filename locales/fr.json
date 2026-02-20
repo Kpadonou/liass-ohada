@@ -52,5 +52,6 @@
   "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY": "Le lettrage nécessite que toutes les lignes appartiennent au même compte et au même tiers.",
   "ERROR_INCONSISTENT_PROJECTS": "Les lignes appartiennent à des projets différents ; le lettrage exige que toutes les lignes aient le même projet en mode SYCEBNL.",
   "ERROR_LINES_NOT_FOUND": "Aucune ligne trouvée pour les identifiants fournis.",
-  "ERROR_UNLETTERING_CONDITION_FAILED": "Échec du délettrage : les conditions préalables n'ont pas été remplies ; certaines lignes peuvent être manquantes ou non lettrées."
+  "ERROR_UNLETTERING_CONDITION_FAILED": "Échec du délettrage : les conditions préalables n'ont pas été remplies ; certaines lignes peuvent être manquantes ou non lettrées.",
+  "ERROR_PERIOD_LOCKED": "La période pour cette opération est verrouillée."
 }

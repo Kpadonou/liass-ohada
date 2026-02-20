@@ -1,3 +1,19 @@
+/**
+ * @async
+ * @function handler
+ * @description Reverts a lettering (matching) operation for a set of accounting lines.
+ * * Orchestrates the following:
+ * 1. Fetches the current state of the lines from DynamoDB.
+ * 2. Validates that the lines are actually lettered.
+ * 3. Reconstructs the original 'UNLETTERED' Sort Key (L_SK) using KeyFactory.
+ * 4. Atomically removes lettering metadata (code, status) and restores the GSI index state.
+ * * @param {APIGatewayProxyEvent} event - AWS Lambda event containing:
+ * - body.orgId: Organization ID.
+ * - body.lineKeys: Array of {PK, SK} of the lines to un-match.
+ * * @returns {Promise<APIGatewayProxyResult>}
+ * - 200: Un-lettering successful, lines are back to 'UNLETTERED' status.
+ * - 400: Lines not found, not lettered, or internal error.
+ */
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import {
   TransactWriteItemsCommand,
@@ -10,14 +26,8 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { EntryLineSchema } from "@/models/core-ledger/entry";
 import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
+import { LockService } from "@/lambda/shared/services/lock-service";
 
-/**
- * Reverts a lettering operation using KeyFactory for index reconstruction.
- * It resets entry lines to an UNLETTERED state in GSI3 and clears lettering attributes.
- * Data is fetched from DB to ensure the L_SK is restored using official metadata.
- * * @param event - APIGatewayProxyEvent containing orgId, year, and lineKeys (PK/SK).
- * @returns APIGatewayProxyResult
- */
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
@@ -25,12 +35,12 @@ export const handler = async (
 
   try {
     const body = JSON.parse(event.body || "{}");
-    const { orgId, year, lineKeys } = body;
+    const { orgId: inputOrgId, lineKeys } = body;
+    const orgId = event.requestContext?.authorizer?.claims?.orgId || inputOrgId;
 
-    // 1. Validation: Use KeyFactory logic or presence of IDs
+    // 1. Validation de base
     if (
       !orgId ||
-      !year ||
       !lineKeys ||
       !Array.isArray(lineKeys) ||
       lineKeys.length === 0
@@ -40,7 +50,7 @@ export const handler = async (
       );
     }
 
-    // 2. Fetch lines from DynamoDB (Source of Truth)
+    // 2. Récupération des données sources (Source of Truth)
     const batchResult = await dynamoClient.send(
       new BatchGetItemCommand({
         RequestItems: {
@@ -63,30 +73,36 @@ export const handler = async (
       );
     }
 
-    // 3. Prepare Atomic Transaction
+    // Sécurité : On vérifie la date de la ligne qu'on tente de dé-lettrer
+    if (await LockService.isPeriodLocked(orgId, lines[0].entryDate)) {
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED")),
+      );
+    }
+
+    // 3. Préparation de la transaction atomique
     const now = new Date().toISOString();
     const transactItems = lines.map((line) => {
       /**
-       * Restore the original UNLETTERED L_SK using KeyFactory.letteringSK.
-       * We use the data from the record (entryDate, entryId, and lineId/index)
-       * to ensure the GSI3 is perfectly restored to its pre-match state.
+       * On reconstruit le L_SK original (UNLETTERED#...) via la KeyFactory.
+       * Cela garantit que la ligne réapparaîtra immédiatement dans les suggestions.
        */
       const restoredLSk = KeyFactory.letteringSK(
         line.entryDate,
         line.entryId,
-        line.lineId, // Assuming lineId is the unique index within the entry
+        line.lineId,
       );
 
       return {
         Update: {
           TableName: config.TABLE_NAME,
           Key: marshall({ PK: line.PK, SK: line.SK }),
-          // Safety: Prevent un-lettering something that isn't lettered
+          // Sécurité : On ne peut dé-lettrer que si un code de lettrage existe
           ConditionExpression: "attribute_exists(letteringCode)",
           UpdateExpression: `
             SET L_SK = :restoredLSk, 
                 updatedAt = :now 
-            REMOVE letteringCode, letteringStatus, letteringId
+            REMOVE letteringCode, letteringStatus
           `,
           ExpressionAttributeValues: marshall({
             ":restoredLSk": restoredLSk,
@@ -96,7 +112,7 @@ export const handler = async (
       };
     });
 
-    // 4. Execute transaction
+    // 4. Exécution de la transaction
     await dynamoClient.send(
       new TransactWriteItemsCommand({
         TransactItems: transactItems,

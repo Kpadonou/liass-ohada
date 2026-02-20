@@ -52,5 +52,6 @@
   "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY": "Lettering requires all lines to belong to the same account and third party.",
   "ERROR_INCONSISTENT_PROJECTS": "Lines belong to different projects; lettering requires all lines to share the same project in SYCEBNL mode.",
   "ERROR_LINES_NOT_FOUND": "No lines found for the provided identifiers.",
-  "ERROR_UNLETTERING_CONDITION_FAILED": "Un-lettering condition failed. Preconditions were not met; some lines may be missing or not lettered."
+  "ERROR_UNLETTERING_CONDITION_FAILED": "Un-lettering condition failed. Preconditions were not met; some lines may be missing or not lettered.",
+  "ERROR_PERIOD_LOCKED": "The period for this operation is locked."
 }

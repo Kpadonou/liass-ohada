@@ -20,6 +20,7 @@ import {
 } from "@/models/shared/api-response";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
+import { LockService } from "@/lambda/shared/services/lock-service";
 
 const formatAccount = (acc: string) => acc.padStart(8, "0");
 
@@ -98,18 +99,8 @@ export const handler = async (
     }
 
     // 2. Monthly Lock Check
-    const month = entryDate.split("-")[1];
-    const lockResult = await dynamoClient.send(
-      new GetItemCommand({
-        TableName: config.TABLE_NAME,
-        Key: marshall({
-          PK: KeyFactory.partitionKey(orgId, year),
-          SK: KeyFactory.periodLockSK(month),
-        }),
-      }),
-    );
-
-    if (lockResult.Item && unmarshall(lockResult.Item).status === "LOCKED") {
+    const isLocked = await LockService.isPeriodLocked(orgId, entryDate);
+    if (isLocked) {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED")),
       );

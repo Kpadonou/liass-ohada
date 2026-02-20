@@ -118,4 +118,44 @@ aws --endpoint-url=$ENDPOINT dynamodb put-item \
         "updatedAt": {"S": "2026-01-01T00:00:00.000Z"}
     }'
 
+# scripts/setup-localstack.sh
+
+echo "Adding mandatory accounts for SYCEBNL test..."
+
+# Compte Client (Tiers)
+aws --endpoint-url=http://localhost:4566 dynamodb put-item \
+    --table-name liass-ohada-dev-accounting-table \
+    --item '{
+        "PK": {"S": "ORG#test-org-sycebnl"},
+        "SK": {"S": "ACC#41110000"},
+        "accountId": {"S": "41110000"},
+        "label": {"S": "Clients Collectifs"},
+        "type": {"S": "ASSET"},
+        "entityType": {"S": "ACCOUNT"}
+    }'
+
+# Compte de Revenus (Produits)
+aws --endpoint-url=http://localhost:4566 dynamodb put-item \
+    --table-name liass-ohada-dev-accounting-table \
+    --item '{
+        "PK": {"S": "ORG#test-org-sycebnl"},
+        "SK": {"S": "ACC#75100000"},
+        "accountId": {"S": "75100000"},
+        "label": {"S": "Subventions d exploitation"},
+        "type": {"S": "REVENUE"},
+        "entityType": {"S": "ACCOUNT"}
+    }'
+
+# Compte de Trésorerie (Banque)
+aws --endpoint-url=http://localhost:4566 dynamodb put-item \
+    --table-name liass-ohada-dev-accounting-table \
+    --item '{
+        "PK": {"S": "ORG#test-org-sycebnl"},
+        "SK": {"S": "ACC#52100000"},
+        "accountId": {"S": "52100000"},
+        "label": {"S": "Banque BOA"},
+        "type": {"S": "ASSET"},
+        "entityType": {"S": "ACCOUNT"}
+    }'
+
 echo "✅ Environment Ready with GSI_PROJECT (GSI4) index!"
