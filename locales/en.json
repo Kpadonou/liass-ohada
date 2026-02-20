@@ -53,5 +53,9 @@
   "ERROR_INCONSISTENT_PROJECTS": "Lines belong to different projects; lettering requires all lines to share the same project in SYCEBNL mode.",
   "ERROR_LINES_NOT_FOUND": "No lines found for the provided identifiers.",
   "ERROR_UNLETTERING_CONDITION_FAILED": "Un-lettering condition failed. Preconditions were not met; some lines may be missing or not lettered.",
-  "ERROR_PERIOD_LOCKED": "The period for this operation is locked."
+  "ERROR_PERIOD_LOCKED": "The period for this operation is locked.",
+  "ERROR_MISSING_ORG_ID": "Organization identifier missing or unauthorized.",
+  "ERROR_DONOR_EXISTS": "A donor with the same code already exists.",
+  "SUCCESS_DONOR_CREATED": "Donor created successfully.",
+  "ERROR_PROJECT_CODE_EXISTS": "A project with this code already exists."
 }

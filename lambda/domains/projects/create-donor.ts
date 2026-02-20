@@ -47,7 +47,9 @@ export const handler = async (
     });
 
     if (!validation.success) {
-      return toLambdaResponse(badRequest(validation.error.errors));
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_INVALID_INPUT")),
+      );
     }
 
     const donor = validation.data;

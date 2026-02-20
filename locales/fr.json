@@ -53,5 +53,9 @@
   "ERROR_INCONSISTENT_PROJECTS": "Les lignes appartiennent à des projets différents ; le lettrage exige que toutes les lignes aient le même projet en mode SYCEBNL.",
   "ERROR_LINES_NOT_FOUND": "Aucune ligne trouvée pour les identifiants fournis.",
   "ERROR_UNLETTERING_CONDITION_FAILED": "Échec du délettrage : les conditions préalables n'ont pas été remplies ; certaines lignes peuvent être manquantes ou non lettrées.",
-  "ERROR_PERIOD_LOCKED": "La période pour cette opération est verrouillée."
+  "ERROR_PERIOD_LOCKED": "La période pour cette opération est verrouillée.",
+  "ERROR_MISSING_ORG_ID": "Identifiant de l'organisation manquant ou non autorisé.",
+  "ERROR_DONOR_EXISTS": "Un donateur avec le même code existe déjà.",
+  "SUCCESS_DONOR_CREATED": "Donateur créé avec succès.",
+  "ERROR_PROJECT_CODE_EXISTS": "Un projet avec ce code existe déjà."
 }
