@@ -20,8 +20,11 @@ export const ProjectSchema = z.object({
   contractRef: z.string().optional(), // Funder's contract number
 
   // Financials
-  startDate: z.string(),
-  endDate: z.string().optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // YYYY-MM-DD
+  endDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   budget: z.number().int(),
   currency: z.string().default("XOF"), // Multi-currency support
   currentSpending: z.number().int().default(0),

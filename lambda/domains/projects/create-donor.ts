@@ -1,11 +1,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
+import {
+  TransactWriteItemsCommand,
+  GetItemCommand,
+} from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { z } from "zod";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
+import { DonorSchema } from "@/models/projects/donor"; // Utilisation du schéma complet
 import {
   toLambdaResponse,
   created,
@@ -13,22 +16,9 @@ import {
 } from "@/models/shared/api-response";
 
 /**
- * Zod schema for donor creation request.
- */
-const CreateDonorRequestSchema = z.object({
-  code: z.string().min(2).max(10).toUpperCase(),
-  name: z.string().min(3).max(100),
-  email: z.string().email().optional(),
-  associatedAccountId: z
-    .string()
-    .regex(/^\d{8}$/)
-    .optional(),
-});
-
-/**
  * Handles the creation of a new Donor.
- * Uses a transaction to ensure unique business codes per organization.
- * * @param event - APIGatewayProxyEvent
+ * Ensures business code uniqueness and existence of associated accounting accounts.
+ * @param event - APIGatewayProxyEvent
  * @returns APIGatewayProxyResult
  */
 export const handler = async (
@@ -37,37 +27,60 @@ export const handler = async (
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
-    const body = event.body ? JSON.parse(event.body) : {};
-
-    const validation = CreateDonorRequestSchema.safeParse(body);
-    if (!validation.success) {
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
+    if (!orgId)
       return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_INVALID_INPUT")),
+        badRequest(i18n.getMessage("ERROR_MISSING_ORG_ID")),
       );
-    }
 
-    const { code, name, email, associatedAccountId } = validation.data;
+    const body = JSON.parse(event.body || "{}");
     const donorId = `DONOR-${Date.now()}`; // K-Sortable technical ID
     const now = new Date().toISOString();
 
+    // 1. Validation avec le schéma complet (type, currency, address, etc.)
+    const validation = DonorSchema.safeParse({
+      ...body,
+      orgId,
+      donorId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    if (!validation.success) {
+      return toLambdaResponse(badRequest(validation.error.errors));
+    }
+
+    const donor = validation.data;
+
+    // 2. Vérification d'existence du compte comptable associé (si fourni)
+    if (donor.associatedAccountId) {
+      const accountCheck = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: config.TABLE_NAME,
+          Key: marshall({
+            PK: KeyFactory.orgKey(orgId), // On cherche dans les données de l'org
+            SK: `ACC#${donor.associatedAccountId}`,
+          }),
+        }),
+      );
+
+      if (!accountCheck.Item) {
+        return toLambdaResponse(
+          badRequest(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND")),
+        );
+      }
+    }
+
+    // 3. Exécution de la transaction (Donateur + Verrou de Code)
     const donorItem = {
       PK: KeyFactory.orgKey(orgId),
       SK: KeyFactory.thirdPartySK("DONOR", donorId),
-      orgId,
-      donorId,
-      code,
-      name,
-      email,
-      associatedAccountId,
-      entityType: "DONOR",
-      createdAt: now,
-      updatedAt: now,
+      ...donor,
     };
 
     const lockItem = {
       PK: KeyFactory.orgKey(orgId),
-      SK: `DONORCODE#${code}`,
+      SK: `DONORCODE#${donor.code}`,
       donorId,
       entityType: "DONOR_CODE_LOCK",
     };
@@ -105,7 +118,7 @@ export const handler = async (
     return toLambdaResponse(
       created(donorItem, i18n.getMessage("SUCCESS_DONOR_CREATED")),
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error("CreateDonor Error:", error);
     return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }

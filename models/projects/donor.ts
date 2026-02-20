@@ -8,15 +8,18 @@ export const DonorSchema = z.object({
   orgId: z.string(),
   donorId: z.string(), // Technical ID
   code: z.string().min(2).max(10).toUpperCase(), // Short identifier (ex: "USAID")
-  name: z.string().min(3).max(100),
+  name: z.string().min(3),
+  type: z.enum(["PUBLIC", "PRIVATE", "GOVERNMENT", "INDIVIDUAL", "OTHER"]),
+  currency: z.string().length(3).default("XOF"),
+  entityType: z.literal("DONOR").default("DONOR"),
   email: z.string().email().optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
+  // Link to the 8-digit general ledger account (e.g., 41110001)
   associatedAccountId: z
     .string()
     .regex(/^\d{8}$/)
-    .optional(), // Link to general ledger account
-  entityType: z.literal("DONOR"),
+    .optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
