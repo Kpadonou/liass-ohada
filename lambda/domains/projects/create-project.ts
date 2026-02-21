@@ -1,11 +1,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
-import { z } from "zod";
+import {
+  TransactWriteItemsCommand,
+  GetItemCommand,
+} from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
+import { ProjectSchema } from "@/models/projects/project"; // Utilisation du schéma central
 import {
   toLambdaResponse,
   created,
@@ -13,73 +16,95 @@ import {
 } from "@/models/shared/api-response";
 
 /**
- * Validation schema for project creation (Input)
+ * @async
+ * @function createProjectHandler
+ * @description
+ * Orchestrates the creation of a new Project within the SYCEBNL framework.
+ * * This handler performs a high-integrity creation process:
+ * 1. Validates the input against the centralized `ProjectSchema`.
+ * 2. Integrity Check: Ensures the referenced `donorId` exists for the current organization.
+ * 3. Business Uniqueness: Uses a DynamoDB Transaction to atomically create the Project
+ * record and a unique Project Code Lock (PRJCODE#CODE) to prevent duplicate codes.
+ * 4. Initialization: Sets `currentSpending` to 0 to support the TER (Tableau des Emplois et Ressources) reporting.
+ *
+ * @param {APIGatewayProxyEvent} event - The Lambda event containing:
+ * - body: JSON string with project details (projectCode, name, donorId, budget, etc.).
+ * - requestContext.authorizer.claims.orgId: Extracted from JWT for security.
+ * * @returns {Promise<APIGatewayProxyResult>}
+ * - 201 (Created): Project successfully persisted.
+ * - 400 (Bad Request): Validation failed, Donor not found, or Project Code already exists.
+ * - 500 (Internal Error): Unexpected system failure.
+ * * @throws {TransactionCanceledException} Handled internally for code uniqueness conflicts.
  */
-const CreateProjectRequestSchema = z.object({
-  projectCode: z
-    .string()
-    .min(2)
-    .max(20)
-    .toUpperCase()
-    .regex(/^[A-Z0-9_-]+$/),
-  name: z.string().min(3).max(100),
-  description: z.string().max(500).optional(),
-  donorId: z.string().min(1),
-  managerId: z.string().min(1),
-  contractRef: z.string().optional(),
-  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  endDate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  budget: z.number().int().nonnegative(),
-  currency: z.string().length(3).default("XOF"),
-});
-
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
+    if (!orgId)
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_MISSING_ORG_ID")),
+      );
+
     const body = event.body ? JSON.parse(event.body) : {};
 
-    const validation = CreateProjectRequestSchema.safeParse(body);
+    // Génération des IDs techniques
+    const projectId = `PRJ-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const now = new Date().toISOString();
+
+    // 1. Validation avec le schéma ProjectSchema (qui contient 'budget')
+    const validation = ProjectSchema.safeParse({
+      ...body,
+      orgId,
+      projectId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
     if (!validation.success) {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_INVALID_INPUT")),
       );
     }
 
-    const data = validation.data;
-    const projectId = `PRJ-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const now = new Date().toISOString();
+    const projectData = validation.data;
 
-    // 1. Prepare the Main Project Item
+    // 2. VÉRIFICATION : Est-ce que le donateur existe ?
+    const donorCheck = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.thirdPartySK("DONOR", projectData.donorId),
+        }),
+      }),
+    );
+
+    if (!donorCheck.Item) {
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_DONOR_NOT_FOUND")),
+      );
+    }
+
+    // 3. Préparation des items pour la transaction
     const projectItem = {
       PK: KeyFactory.orgKey(orgId),
       SK: KeyFactory.projectSK(projectId),
-      ...data,
-      projectId,
-      orgId,
-      entityType: "PROJECT",
-      currentSpending: 0,
-      status: "ACTIVE",
-      createdAt: now,
-      updatedAt: now,
+      ...projectData,
+      currentSpending: 0, // Initialisation pour le TER
     };
 
-    // 2. Prepare the Uniqueness Lock Item for Project Code
     const projectCodeLock = {
       PK: KeyFactory.orgKey(orgId),
-      SK: KeyFactory.projectCodeSK(data.projectCode),
-      projectId, // Link to the technical ID
+      SK: KeyFactory.projectCodeSK(projectData.projectCode),
+      projectId,
       entityType: "PROJECT_CODE_LOCK",
       createdAt: now,
     };
 
-    // 3. Atomic Transaction: Create both items only if they don't exist
+    // 4. Transaction Atomique
     try {
       await dynamoClient.send(
         new TransactWriteItemsCommand({
@@ -95,7 +120,7 @@ export const handler = async (
               Put: {
                 TableName: config.TABLE_NAME,
                 Item: marshall(projectCodeLock),
-                ConditionExpression: "attribute_not_exists(PK)", // Ensures projectCode uniqueness
+                ConditionExpression: "attribute_not_exists(PK)",
               },
             },
           ],

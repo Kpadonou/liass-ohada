@@ -1,4 +1,8 @@
 export const KeyFactory = {
+  // Prefixes
+  projectPrefix: () => `PROJ#`,
+  thirdPartyPrefix: (type: string) => `TP#${type.toUpperCase()}#`,
+
   // --- PK (Partition Keys) ---
 
   /** Global PK for Master Data and Root Organization level */
@@ -34,9 +38,6 @@ export const KeyFactory = {
 
   thirdPartySK: (type: string, thirdPartyId: string) =>
     `TP#${type.toUpperCase()}#${thirdPartyId}`,
-
-  // Pour les recherches begins_with sans hardcoding
-  thirdPartyPrefix: (type: string) => `TP#${type.toUpperCase()}#`,
 
   // --- GSI 1: General Ledger (Account View) ---
 
