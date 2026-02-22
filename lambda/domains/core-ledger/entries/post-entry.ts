@@ -106,34 +106,63 @@ export const handler = async (
       );
     }
 
-    // 3. Accounts Verification
+    // 3. Accounts & Projects Verification
     const uniqueAccountIds = [
       ...new Set(lines.map((l) => formatAccount(l.accountId))),
     ];
+    // Collecter les projectId uniques (en filtrant les valeurs nulles/indéfinies)
+    const uniqueProjectIds = [
+      ...new Set(
+        lines.map((l) => l.projectId).filter((id): id is string => !!id), // Type guard: élimine les undefined et assure le type string
+      ),
+    ];
+
     const batchResults = await dynamoClient.send(
       new BatchGetItemCommand({
         RequestItems: {
           [config.TABLE_NAME]: {
-            Keys: uniqueAccountIds.map((accId) =>
-              marshall({
-                PK: KeyFactory.orgKey(orgId),
-                SK: KeyFactory.accountSK(accId),
-              }),
-            ),
+            Keys: [
+              ...uniqueAccountIds.map((accId) =>
+                marshall({
+                  PK: KeyFactory.orgKey(orgId),
+                  SK: KeyFactory.accountSK(accId),
+                }),
+              ),
+              ...uniqueProjectIds.map((projId) =>
+                marshall({
+                  PK: KeyFactory.orgKey(orgId),
+                  SK: KeyFactory.projectSK(projId),
+                }),
+              ),
+            ],
           },
         },
       }),
     );
 
-    const foundAccounts = new Set(
-      (batchResults.Responses?.[config.TABLE_NAME] || []).map(
-        (item) => unmarshall(item).accountId,
-      ),
-    );
+    const responses = batchResults.Responses?.[config.TABLE_NAME] || [];
 
+    // Extraire les IDs trouvés pour validation
+    const foundAccounts = new Set();
+    const foundProjects = new Set();
+
+    responses.forEach((item) => {
+      const data = unmarshall(item);
+      if (data.entityType === "ACCOUNT") foundAccounts.add(data.accountId);
+      if (data.entityType === "PROJECT") foundProjects.add(data.projectId);
+    });
+
+    // Validation des comptes
     if (foundAccounts.size !== uniqueAccountIds.length) {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND")),
+      );
+    }
+
+    // Validation des projets
+    if (foundProjects.size !== uniqueProjectIds.length) {
+      return toLambdaResponse(
+        badRequest(i18n.getMessage("ERROR_PROJECT_NOT_FOUND")),
       );
     }
 

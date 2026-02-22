@@ -1,110 +1,68 @@
-import { handler as getReport } from "../lambda/domains/projects/get-project-report";
-import { PutItemCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "../lambda/shared/dynamo-client";
-import { KeyFactory } from "../lambda/shared/key-builder";
+import { handler } from "../lambda/domains/projects/get-project-report";
+import { APIGatewayProxyEvent } from "aws-lambda";
 
 /**
- * Test script for SYCEBNL Project Analytical Reporting.
- * Assumes Master Data (Org, FY) and Entries (Projet A) are already seeded.
+ * Test de génération du rapport TER (Tableau des Emplois et Ressources).
+ * Vérifie l'agrégation correcte des débits (Emplois) et crédits (Ressources).
  */
+async function testGetReport() {
+  console.log("--- Test du Handler GetProjectReport ---");
 
-const ORG_ID = "test-org-sycebnl";
-const PROJECT_A_ID = "PROJ-A";
-
-async function setupProjectMetadata() {
-  console.log("🏗️  Configuration des métadonnées du Projet A...");
-
-  // On s'assure que le projet existe avec un budget pour tester l'exécution
-  const now = new Date().toISOString();
-
-  await dynamoClient.send(
-    new PutItemCommand({
-      TableName: "liass-ohada-dev-accounting-table",
-      Item: marshall({
-        PK: KeyFactory.orgKey(ORG_ID),
-        SK: KeyFactory.projectSK(PROJECT_A_ID),
-        orgId: ORG_ID, // Ajouté
-        projectId: PROJECT_A_ID,
-        projectCode: "PA-2026",
-        name: "Projet de Santé Alpha",
-        donorId: "DONOR-001",
-        managerId: "MGR-001", // Ajouté
-        budget: 5000000,
-        currency: "XOF",
-        status: "ACTIVE",
-        startDate: "2026-01-01", // Ajouté
-        entityType: "PROJECT",
-        createdAt: now, // Ajouté
-        updatedAt: now, // Ajouté
-      }),
-    }),
-  );
-  console.log("✅ Métadonnées du Projet A prêtes.");
-}
-
-async function runReportTest() {
-  console.log("\n📊 DÉMARRAGE DU TEST DU RAPPORT ANALYTIQUE (TER)");
+  // Note : orgId doit correspondre à celui utilisé lors du flux-funding et post-entry
+  const orgId = "org-test-sycebnl";
+  const projectId = "PRJ-2026-WASH-001";
 
   const event = {
-    requestContext: { authorizer: { claims: { orgId: ORG_ID } } },
-    pathParameters: { projectId: PROJECT_A_ID },
     headers: { "Accept-Language": "fr" },
-  } as any;
+    pathParameters: {
+      projectId: projectId,
+    },
+    requestContext: {
+      authorizer: {
+        claims: { orgId: orgId },
+      },
+    },
+  } as unknown as APIGatewayProxyEvent;
 
   try {
-    const response = await getReport(event);
-    const body = JSON.parse(response.body);
+    const result = await handler(event);
+    const body = JSON.parse(result.body);
 
-    if (!body.success) {
-      console.error(
-        "❌ ÉCHEC : Impossible de récupérer le rapport.",
-        body.message,
-      );
-      return;
-    }
+    if (result.statusCode === 200) {
+      const { terSummary, budgetExecution, details, projectInfo } = body.data;
 
-    const report = body.data;
-
-    console.log("\n--- Résultat du Rapport ---");
-    console.log(
-      `Projet : ${report.projectInfo.name} (${report.projectInfo.code})`,
-    );
-    console.log(
-      `Total Emplois (Dépenses)    : ${report.terSummary.totalEmplois} XOF`,
-    );
-    console.log(
-      `Total Ressources (Recettes) : ${report.terSummary.totalRessources} XOF`,
-    );
-    console.log(
-      `Exécution Budgétaire        : ${report.budgetExecution.percentage}%`,
-    );
-
-    // Validations
-    if (report.terSummary.totalEmplois > 0) {
+      console.log(`\n✅ RAPPORT RÉCUPÉRÉ : ${projectInfo.name}`);
+      console.log(`-----------------------------------------------`);
       console.log(
-        "✅ SUCCÈS : Les données comptables sont correctement agrégées via GSI4.",
+        `💰 RESSOURCES (Financements) : ${terSummary.totalRessources} XOF`,
       );
+      console.log(
+        `💸 EMPLOIS (Dépenses)        : ${terSummary.totalEmplois} XOF`,
+      );
+      console.log(
+        `📊 POSITION NETTE            : ${terSummary.netPosition} XOF`,
+      );
+      console.log(`-----------------------------------------------`);
+      console.log(
+        `📈 EXÉCUTION BUDGÉTAIRE      : ${budgetExecution.percentage.toFixed(2)}%`,
+      );
+      console.log(
+        `📉 RESTE À DÉPENSER          : ${budgetExecution.remaining} XOF`,
+      );
+      console.log(`-----------------------------------------------`);
+      console.log(`🔍 DÉTAILS PAR COMPTE :`);
+      details.forEach((acc: any) => {
+        console.log(
+          `   - Compte ${acc.accountId}: D=${acc.debit} / C=${acc.credit} (Bal: ${acc.balance})`,
+        );
+      });
+      console.log(`===============================================\n`);
     } else {
-      console.warn(
-        "⚠️  ATTENTION : Le rapport est vide. Vérifie que les écritures ont bien été postées avec GSI4PK.",
-      );
-    }
-
-    if (report.details.length > 0) {
-      console.log(
-        `✅ SUCCÈS : ${report.details.length} comptes trouvés dans la ventilation.`,
-      );
+      console.log("❌ ÉCHEC DU RAPPORT:", body);
     }
   } catch (error) {
-    console.error("❌ ERREUR FATALE lors du test :", error);
+    console.error("Erreur technique:", error);
   }
 }
 
-// Exécution
-setupProjectMetadata().then(runReportTest).catch(console.error);
-
-/* LOCALSTACK_URL=http://localhost:4566 \
-TABLE_NAME=liass-ohada-dev-accounting-table \
-AWS_REGION=us-east-1 \
-npx ts-node -r tsconfig-paths/register scripts/test-project-report.ts */
+testGetReport();
