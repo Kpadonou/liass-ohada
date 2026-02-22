@@ -65,7 +65,7 @@ export type CreateEntryRequest = z.infer<typeof CreateEntryRequestSchema>;
 // --- Persistence Schemas (DynamoDB Items) ---
 
 /**
- * Entry Header Item (PK: ORG#{orgId}#FY#{year}, SK: ENT#{entryId})
+ * Entry Header Item (PK: ORG#{orgId}#FY#{year}, SK: E#{entryId})
  */
 export const EntrySchema = z.object({
   orgId: z.string(),
@@ -90,7 +90,7 @@ export const EntrySchema = z.object({
 export type Entry = z.infer<typeof EntrySchema>;
 
 /**
- * Entry Line Item (PK: ORG#{orgId}#FY#{year}, SK: ENT#{entryId}#LIN#{lineId})
+ * Entry Line Item (PK: ORG#{orgId}#FY#{year}, SK: E#{entryId}#LIN#{lineId})
  */
 export const EntryLineSchema = z.object({
   // Identity & Links

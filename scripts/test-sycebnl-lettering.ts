@@ -10,7 +10,7 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { KeyFactory } from "../lambda/shared/key-builder";
 
-const ORG_ID = "test-org-sycebnl";
+const ORG_ID = "org-test-dash";
 const YEAR = 2026;
 
 /** Utility to wait for LocalStack GSI indexing */
@@ -75,7 +75,7 @@ async function runSycebnlTests() {
         {
           accountId: "41110000",
           thirdPartyId: "DONOR-001",
-          projectId: "PROJ-A",
+          projectId: "PRJ-A",
           debit: 1000,
           credit: 0,
         },
@@ -95,7 +95,7 @@ async function runSycebnlTests() {
         {
           accountId: "41110000",
           thirdPartyId: "DONOR-001",
-          projectId: "PROJ-B",
+          projectId: "PRJ-B",
           debit: 0,
           credit: 1000,
         },
@@ -167,7 +167,7 @@ async function runSycebnlTests() {
       orgId: ORG_ID,
       accountId: "41110000",
       thirdPartyId: "DONOR-001",
-      projectId: "PROJ-A",
+      projectId: "PRJ-A",
     },
   } as any);
 
@@ -176,7 +176,7 @@ async function runSycebnlTests() {
 
   console.log(`🔍 Lignes trouvées pour Projet A : ${linesFound.length}`);
 
-  const allSameProject = linesFound.every((l: any) => l.projectId === "PROJ-A");
+  const allSameProject = linesFound.every((l: any) => l.projectId === "PRJ-A");
   if (allSameProject && linesFound.length >= 1) {
     console.log("✅ SUCCÈS DU TEST : Le filtre Projet fonctionne.");
   } else {

@@ -16,19 +16,8 @@ import {
 /**
  * @async
  * @function handler
- * @description Generates a SYCEBNL Analytical Financial Report (TER - Tableau des Emplois et Ressources) for a specific project.
- * * Orchestrates the following steps:
- * 1. Retrieves project metadata (budget, identity) from the main table.
- * 2. Queries the GSI_PROJECT (GSI4) to fetch all accounting lines tagged with the projectId.
- * 3. Aggregates financial data: Debits as 'Emplois' (Uses) and Credits as 'Ressources' (Resources).
- * 4. Calculates budget execution metrics and account-level breakdown.
- * * @param {APIGatewayProxyEvent} event - AWS Lambda event containing:
- * - pathParameters.projectId: The unique identifier of the project.
- * - requestContext.authorizer.claims.orgId: The organization context.
- * * @returns {Promise<APIGatewayProxyResult>}
- * - 200: Analytical report with budget overview and account breakdown.
- * - 404: Project not found.
- * - 400: Missing parameters or internal error.
+ * @description Generates the full Hybrid Analytical Report (TER).
+ * Restores the global account breakdown while keeping annual budget performance.
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -36,8 +25,9 @@ export const handler = async (
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
     const projectId = event.pathParameters?.projectId;
+    const reportYear = event.queryStringParameters?.year || "2026";
 
     if (!projectId) {
       return toLambdaResponse(
@@ -45,7 +35,7 @@ export const handler = async (
       );
     }
 
-    // 1. Récupération des Master Data du Projet
+    // 1. Fetch Metadata
     const projectResult = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
@@ -61,79 +51,99 @@ export const handler = async (
         notFound(i18n.getMessage("ERROR_PROJECT_NOT_FOUND")),
       );
     }
-
     const project = ProjectSchema.parse(unmarshall(projectResult.Item));
 
-    // 2. Query via GSI_PROJECT (Utilisation des clés GSI4PK validées)
+    // 2. Query ALL project lines (Global)
     const linesResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
         IndexName: "GSI_PROJECT",
-        KeyConditionExpression: "GSI4PK = :pk",
+        KeyConditionExpression: "GSI4PK = :pk AND begins_with(GSI4SK, :sk)",
         ExpressionAttributeValues: {
-          ":pk": { S: KeyFactory.gsi4PK(orgId, projectId) },
+          ":pk": { S: KeyFactory.gsi4PK(orgId) },
+          ":sk": { S: `PRJ#${projectId}#` },
         },
       }),
     );
 
-    const lines = (linesResult.Items || []).map((item) => unmarshall(item));
+    const allLines = (linesResult.Items || []).map((item) => unmarshall(item));
 
-    // 3. Agrégation par compte (Emplois et Ressources)
-    // Dans le TER SYCEBNL : Ressources = Crédit, Emplois = Débit
-    let totalEmplois = 0; // Débit
-    let totalRessources = 0; // Crédit
+    // 3. Aggregation Logic
+    let annualEmplois = 0;
+    let globalEmplois = 0;
+    let globalRessources = 0;
 
-    const accountMap = new Map<
+    // We keep a Global account breakdown (as in your previous version)
+    const globalAccountMap = new Map<
       string,
       { accountId: string; debit: number; credit: number; balance: number }
     >();
 
-    for (const line of lines) {
+    for (const line of allLines) {
       const debit = line.debit || 0;
       const credit = line.credit || 0;
 
-      totalEmplois += debit;
-      totalRessources += credit;
+      // LTD (Life-to-Date) calculations
+      globalEmplois += debit;
+      globalRessources += credit;
 
-      const existing = accountMap.get(line.accountId) || {
+      // Yearly filter for budget performance only
+      if (line.fiscalYear === reportYear) {
+        annualEmplois += debit;
+      }
+
+      // Restore Account Breakdown (Global view)
+      const existing = globalAccountMap.get(line.accountId) || {
         accountId: line.accountId,
         debit: 0,
         credit: 0,
         balance: 0,
       };
-
       existing.debit += debit;
       existing.credit += credit;
       existing.balance = existing.debit - existing.credit;
-      accountMap.set(line.accountId, existing);
+      globalAccountMap.set(line.accountId, existing);
     }
 
-    // 4. Construction du rapport final
+    const annualBudget = project.annualBudgets?.[reportYear] || 0;
+
+    // 4. Final Hybrid Report Structure
     const report = {
       projectInfo: {
         id: project.projectId,
         code: project.projectCode,
         name: project.name,
         donor: project.donorId,
-        currency: project.currency,
       },
+      // Restored: The clear financial position summary (Global)
       terSummary: {
-        totalEmplois, // Ce qui a été dépensé/investi
-        totalRessources, // Ce qui a été reçu/financé
-        netPosition: totalRessources - totalEmplois, // Solde du projet
+        totalRessources: globalRessources, // "💰 RESSOURCES"
+        totalEmplois: globalEmplois, // "💸 EMPLOIS"
+        netPosition: globalRessources - globalEmplois, // "📊 POSITION NETTE"
       },
-      budgetExecution: {
-        allocated: project.budget,
-        consumed: totalEmplois,
-        remaining: project.budget - totalEmplois,
-        percentage:
-          project.budget > 0 ? (totalEmplois / project.budget) * 100 : 0,
+      // The new SaaS "Executive" view
+      budgetPerformance: {
+        annual: {
+          year: reportYear,
+          budget: annualBudget,
+          spent: annualEmplois,
+          executionRate:
+            annualBudget > 0 ? (annualEmplois / annualBudget) * 100 : 0,
+        },
+        global: {
+          totalBudget: project.totalBudget,
+          totalSpent: globalEmplois,
+          executionRate:
+            project.totalBudget > 0
+              ? (globalEmplois / project.totalBudget) * 100
+              : 0,
+        },
       },
-      details: Array.from(accountMap.values()).sort((a, b) =>
+      // Restored: "🔍 DÉTAILS PAR COMPTE"
+      details: Array.from(globalAccountMap.values()).sort((a, b) =>
         a.accountId.localeCompare(b.accountId),
       ),
       metadata: {
-        linesProcessed: lines.length,
         generatedAt: new Date().toISOString(),
       },
     };
@@ -142,7 +152,7 @@ export const handler = async (
       ok(report, i18n.getMessage("SUCCESS_PROJECT_REPORT_RETRIEVED")),
     );
   } catch (error) {
-    console.error("GetProjectReport Error:", error);
+    console.error("HybridReport Error:", error);
     return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
 };

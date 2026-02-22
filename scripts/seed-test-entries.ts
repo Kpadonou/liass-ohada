@@ -1,83 +1,80 @@
-import { dynamoClient } from "../lambda/shared/dynamo-client";
-import { TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
+import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { KeyFactory } from "../lambda/shared/key-builder";
-import { config } from "../lambda/shared/config";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { config } from "@/lambda/shared/config";
+import { KeyFactory } from "@/lambda/shared/key-builder";
 
-async function seedCleanData() {
-  const orgId = "test-org-001";
-  const tableName = config.TABLE_NAME;
-  const year = 2024;
+/**
+ * Seed script for accounting lines linked to projects.
+ * This populates GSI4 (Project Ledger).
+ */
+async function seedTransactions() {
+  const orgId = "org-test-dash";
+  const year = "2026";
+  const date = "2026-02-22";
 
-  const entries = [
-    // 1. OPENING BALANCE (Not used in Income Statement, but good for Trial Balance)
+  // Simulation de 3 lignes : une dépense WASH, un financement EDU, et une dépense EDU
+  const transactions = [
     {
-      entryId: "ENT-2024-001",
-      date: "2024-01-01",
-      journalCode: "RAN",
-      description: "Opening Balance",
-      lines: [
-        { accountId: "52100000", debit: 10000, credit: 0 },
-        { accountId: "10110000", debit: 0, credit: 10000 },
-      ],
+      id: "L-WASH-EXP-01",
+      prj: "WASH-001",
+      acc: "62210000",
+      debit: 750000,
+      credit: 0,
+      desc: "Achat kits hygiène",
     },
-    // 2. PURCHASE (Expense - Class 6)
     {
-      entryId: "ENT-2024-002",
-      date: "2024-02-15",
-      journalCode: "HA",
-      description: "Office Supplies",
-      lines: [
-        { accountId: "60110000", debit: 1500, credit: 0 }, // Expense
-        { accountId: "52100000", debit: 0, credit: 1500 },
-      ],
+      id: "L-EDU-FUND-01",
+      prj: "EDU-002",
+      acc: "75100000",
+      debit: 0,
+      credit: 12000000,
+      desc: "Subvention Banque Mondiale",
     },
-    // 3. SALE (Revenue - Class 7)
     {
-      entryId: "ENT-2024-003",
-      date: "2024-03-10",
-      journalCode: "VT",
-      description: "Service Consulting",
-      lines: [
-        { accountId: "52100000", debit: 5000, credit: 0 },
-        { accountId: "70110000", debit: 0, credit: 5000 }, // Revenue
-      ],
+      id: "L-EDU-EXP-01",
+      prj: "EDU-002",
+      acc: "60510000",
+      debit: 2500000,
+      credit: 0,
+      desc: "Fournitures scolaires",
     },
   ];
 
-  for (const entry of entries) {
-    const transactItems = entry.lines.map((line) => {
-      const lineId = `L-${entry.entryId}-${line.accountId}`;
-      return {
-        Put: {
-          TableName: tableName,
-          Item: marshall({
-            PK: KeyFactory.partitionKey(orgId, year),
-            SK: KeyFactory.entryLineSK(lineId),
-            GSI1PK: KeyFactory.gsi1PK(orgId),
-            GSI1SK: KeyFactory.gsi1SK(line.accountId, year, entry.date, lineId),
-            entityType: "ENTRY_LINE",
-            accountId: line.accountId,
-            entryId: entry.entryId,
-            journalCode: entry.journalCode,
-            description: entry.description,
-            debit: line.debit,
-            credit: line.credit,
-            entryDate: entry.date,
-            year: year,
-          }),
-        },
-      };
-    });
+  console.log("--- 💸 Injecting Analytical Transactions (GSI4) ---");
+
+  for (const t of transactions) {
+    const item = {
+      // Primary Key (Transactional Partition by Year)
+      PK: KeyFactory.partitionKey(orgId, year),
+      SK: KeyFactory.entryLineSK(t.id), // L#...
+
+      // Core Data
+      orgId: orgId,
+      projectId: t.prj,
+      accountId: t.acc,
+      debit: t.debit,
+      credit: t.credit,
+      fiscalYear: year,
+      date: date,
+      description: t.desc,
+
+      // --- THE DASHBOARD ENGINE (GSI4) ---
+      // We use the new Global PK for the Org
+      GSI4PK: KeyFactory.gsi4PK(orgId),
+      // And the hierarchical SK: PRJ#<id>#FY#<year>...
+      GSI4SK: KeyFactory.gsi4SK(t.prj, year, date, t.id),
+    };
 
     await dynamoClient.send(
-      new TransactWriteItemsCommand({ TransactItems: transactItems })
+      new PutItemCommand({
+        TableName: config.TABLE_NAME,
+        Item: marshall(item),
+      }),
     );
-    console.log(`✅ Entry ${entry.entryId} injected`);
+
+    console.log(`✅ Line ${t.id} posted to Project ${t.prj}`);
   }
 }
 
-seedCleanData();
-
-// Cmd to run the script:
-// ORG_ID=test-org-001 LOCALSTACK_URL=http://localhost:4566 TABLE_NAME=liass-ohada-dev-accounting-table npx ts-node ./scripts/seed-test-entries.ts
+seedTransactions().catch(console.error);

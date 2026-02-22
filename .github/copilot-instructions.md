@@ -134,9 +134,9 @@ A. Primary Keys (PK/SK) Definitions
 | Account      | ACC  | ORG#{orgId}           | ACC#{accountId}          | See Special Rule below                                            |
 | ThirdParty   | TP   | ORG#{orgId}           | TP#{type}#{thirdPartyId} | {type} represents the category (e.g., CUSTOMER, SUPPLIER, DONOR). |
 | Journal      | JNL  | ORG#{orgId}           | JNL#{journalCode}        | Metadata about the journal for a specific year.                   |
-| Entry (Head) | ENT  | ORG#{orgId}#FY#{year} | ENT#{entryId}            | Transaction Header                                                |
-| EntryLine    | LINE | ORG#{orgId}#FY#{year} | LINE#{lineId}            | Transaction Line                                                  |
-| Project      | PROJ | ORG#{orgId}           | PROJ#{projectId}         | Project                                                           |
+| Entry (Head) | E    | ORG#{orgId}#FY#{year} | E#{entryId}              | Transaction Header                                                |
+| EntryLine    | L    | ORG#{orgId}#FY#{year} | L#{lineId}               | Transaction Line                                                  |
+| Project      | PRJ  | ORG#{orgId}           | PRJ#{projectId}          | Project                                                           |
 
 B. Global Secondary Indexes (GSIs)
 
@@ -239,7 +239,7 @@ E. Journal (JNL)
 | createdAt   | string | Audit                        |
 | updatedAt   | string | Audit                        |
 
-F. Entry (ENT)
+F. Entry (E)
 
 | Property      | Type   | Notes                      |
 | :------------ | :----- | :------------------------- |
@@ -256,7 +256,7 @@ F. Entry (ENT)
 | createdAt     | string | Audit                      |
 | updatedAt     | string | Audit                      |
 
-G. EntryLine (LINE)
+G. EntryLine (L)
 
 | Property      | Type   | Notes                                             |
 | :------------ | :----- | :------------------------------------------------ |

@@ -25,11 +25,12 @@ export const ProjectSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
-  budget: z.number().int(),
+  totalBudget: z.number().int(),
+  annualBudgets: z.record(z.string(), z.number().min(0)).default({}),
   currency: z.string().default("XOF"), // Multi-currency support
   currentSpending: z.number().int().default(0),
 
-  status: ProjectStatus,
+  status: ProjectStatus.default("ACTIVE"),
   entityType: z.literal("PROJECT"),
   createdAt: z.string(),
   updatedAt: z.string(),

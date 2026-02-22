@@ -15,7 +15,7 @@ import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
  * * * Execution Logic:
  * 1. Extracts `orgId` from the request context authorizer.
  * 2. Uses `KeyFactory` to generate the Partition Key and the Project Sort Key prefix.
- * 3. Performs a DynamoDB Query using `begins_with(SK, 'PROJ#')` for optimal performance.
+ * 3. Performs a DynamoDB Query using `begins_with(SK, 'PRJ#')` for optimal performance.
  * 4. Validates each retrieved item against the `ProjectSchema`.
  * * @param {APIGatewayProxyEvent} event - AWS Lambda event.
  * @returns {Promise<APIGatewayProxyResult>}
@@ -36,7 +36,7 @@ export const handler = async (
       );
     }
 
-    // Use KeyFactory to get the prefix (e.g., "PROJ#") without hardcoding
+    // Use KeyFactory to get the prefix (e.g., "PRJ#") without hardcoding
     const projectPrefix = KeyFactory.projectPrefix();
 
     const result = await dynamoClient.send(

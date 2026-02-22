@@ -71,7 +71,7 @@ export const handler = async (
     const entryId =
       inputValidation.data.entryId ||
       (entryType === "STANDARD"
-        ? `ENT-${timestamp}`
+        ? `E-${timestamp}`
         : `${entryType}-${year}-${timestamp}`);
 
     // 1. Fiscal Year & Period Validation
@@ -219,8 +219,13 @@ export const handler = async (
 
       // GSI4: Project Analytical Index (SYCEBNL)
       if (line.projectId) {
-        lineItem.GSI4PK = KeyFactory.gsi4PK(orgId, line.projectId);
-        lineItem.GSI4SK = KeyFactory.gsi4SK(year, entryDate, lineId);
+        lineItem.GSI4PK = KeyFactory.gsi4PK(orgId);
+        lineItem.GSI4SK = KeyFactory.gsi4SK(
+          line.projectId,
+          year,
+          entryDate,
+          lineId,
+        );
       }
 
       const validatedLine = EntryLineSchema.parse(lineItem);

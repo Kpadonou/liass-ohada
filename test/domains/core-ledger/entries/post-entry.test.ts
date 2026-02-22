@@ -62,7 +62,7 @@ describe("post-entry handler", () => {
    * Helper to create mock API Gateway event
    */
   const createMockEvent = (
-    overrides: Partial<APIGatewayProxyEvent> = {}
+    overrides: Partial<APIGatewayProxyEvent> = {},
   ): APIGatewayProxyEvent => ({
     resource: "/entries/post",
     path: "/entries/post",
@@ -327,7 +327,7 @@ describe("post-entry handler", () => {
       expect(body.error.code).toBe("ERROR_ENTRY_NOT_BALANCED");
       // Message should be in French (mocked version)
       expect(body.error.message).toContain(
-        "débits et crédits ne correspondent pas"
+        "débits et crédits ne correspondent pas",
       );
     });
   });
@@ -483,7 +483,7 @@ describe("post-entry handler", () => {
       const event = createMockEvent({
         body: JSON.stringify({
           year: 2026,
-          entryId: "ENT-123",
+          entryId: "E-123",
           entryDate: "2026-01-15",
           journalCode: "VENTES",
           lines: [

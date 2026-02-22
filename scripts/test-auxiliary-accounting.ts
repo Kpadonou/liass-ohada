@@ -87,7 +87,7 @@ async function setupMasterData() {
       TableName: process.env.TABLE_NAME!,
       Item: marshall({
         PK: KeyFactory.orgKey(orgId),
-        SK: "TP#CLIENT#CLIENT-001",
+        SK: "TP#CLIE#CLIENT-001",
         thirdPartyId: "CLIENT-001",
         type: "CLIENT",
         entityType: "THIRD_PARTY",

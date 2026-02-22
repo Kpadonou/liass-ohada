@@ -25,7 +25,7 @@ async function verifyReport() {
         KeyConditionExpression:
           "GSI4PK = :pk AND begins_with(GSI4SK, :skPrefix)",
         ExpressionAttributeValues: {
-          ":pk": { S: KeyFactory.gsi4PK(orgId, projectId) },
+          ":pk": { S: KeyFactory.gsi4PK(orgId) },
           ":skPrefix": { S: `FY#${year}` },
         },
       }),

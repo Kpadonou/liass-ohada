@@ -4,14 +4,17 @@
 ENDPOINT="http://localhost:4566"
 TABLE_NAME="liass-ohada-dev-accounting-table"
 REGION="us-east-1"
+ORG_ID="org-test-dash"
+NOW="2026-02-22T17:00:00.000Z"
 
-echo "🚀 Starting LocalStack configuration for SYCEBNL..."
+echo "🚀 Starting LocalStack configuration for SYCEBNL (SaaS Mode)..."
 
 # 1. Cleanup
+echo "🗑️ Deleting existing table..."
 aws --endpoint-url=$ENDPOINT dynamodb delete-table --table-name $TABLE_NAME --region $REGION > /dev/null 2>&1
 
 # 2. Table Creation
-# Ajout de GSI4PK et GSI4SK pour le suivi des Projets (GSI4)
+echo "🏗️ Creating table with GSI4 (Project Ledger)..."
 aws --endpoint-url=$ENDPOINT dynamodb create-table \
     --table-name $TABLE_NAME \
     --region $REGION \
@@ -61,101 +64,87 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
 echo "⏳ Waiting for table activation..."
 aws --endpoint-url=$ENDPOINT dynamodb wait table-exists --table-name $TABLE_NAME --region $REGION
 
-# 3. Master Data Injection
-echo "📝 Injecting Initial Data..."
+# 3. Master Data Injection (Zod-Compliant)
+echo "📝 Injecting Organization & Fiscal Year..."
 
-# Fiscal Year
+# Organisation Metadata
 aws --endpoint-url=$ENDPOINT dynamodb put-item \
     --table-name $TABLE_NAME \
-    --region $REGION \
-    --item '{
-        "PK": {"S": "ORG#test-org-001"},
-        "SK": {"S": "FY#2026"},
-        "orgId": {"S": "test-org-001"},
-        "year": {"N": "2026"},
-        "fiscalYearId": {"S": "FY-2026"},
-        "entityType": {"S": "FISCAL_YEAR"},
-        "status": {"S": "OPEN"},
-        "accountingStandard": {"S": "SYSCOHADA_GENERAL"},
-        "startDate": {"S": "2026-01-01"},
-        "endDate": {"S": "2026-12-31"},
-        "GSI1PK": {"S": "ORG#test-org-001"},
-        "GSI1SK": {"S": "FY#2026"},
-        "createdAt": {"S": "2026-01-01T00:00:00.000Z"},
-        "updatedAt": {"S": "2026-01-01T00:00:00.000Z"}
-    }'
+    --item "{
+        \"PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"SK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"orgId\": {\"S\": \"$ORG_ID\"},
+        \"name\": {\"S\": \"ONG Démo SYCEBNL\"},
+        \"entityType\": {\"S\": \"ORGANIZATION\"},
+        \"accountingStandard\": {\"S\": \"SYCEBNL\"},
+        \"status\": {\"S\": \"ACTIVE\"},
+        \"currency\": {\"S\": \"XOF\"},
+        \"createdAt\": {\"S\": \"$NOW\"},
+        \"updatedAt\": {\"S\": \"$NOW\"}
+    }"
 
-# Organisation test en mode SYCEBNL (pour tes tests unitaires)
+# Fiscal Year 2026
 aws --endpoint-url=$ENDPOINT dynamodb put-item \
     --table-name $TABLE_NAME \
-    --region $REGION \
-    --item '{
-        "PK": {"S": "ORG#test-org-sycebnl"},
-        "SK": {"S": "ORG#test-org-sycebnl"},
-        "orgId": {"S": "test-org-sycebnl"},
-        "entityType": {"S": "ORGANIZATION"},
-        "accountingStandard": {"S": "SYCEBNL"}
-    }'
+    --item "{
+        \"PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"SK\": {\"S\": \"FY#2026\"},
+        \"orgId\": {\"S\": \"$ORG_ID\"},
+        \"year\": {\"N\": \"2026\"},
+        \"fiscalYearId\": {\"S\": \"FY-2026\"},
+        \"entityType\": {\"S\": \"FISCAL_YEAR\"},
+        \"status\": {\"S\": \"OPEN\"},
+        \"accountingStandard\": {\"S\": \"SYCEBNL\"},
+        \"startDate\": {\"S\": \"2026-01-01\"},
+        \"endDate\": {\"S\": \"2026-12-31\"},
+        \"GSI1PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"GSI1SK\": {\"S\": \"FY#2026\"},
+        \"createdAt\": {\"S\": \"$NOW\"},
+        \"updatedAt\": {\"S\": \"$NOW\"}
+    }"
 
-# Fiscal Year for test-org-sycebnl (required by post-entry validation)
+echo "📂 Injecting Mandatory Accounts..."
+
+# Compte Client
 aws --endpoint-url=$ENDPOINT dynamodb put-item \
     --table-name $TABLE_NAME \
-    --region $REGION \
-    --item '{
-        "PK": {"S": "ORG#test-org-sycebnl"},
-        "SK": {"S": "FY#2026"},
-        "orgId": {"S": "test-org-sycebnl"},
-        "year": {"N": "2026"},
-        "fiscalYearId": {"S": "FY-2026"},
-        "entityType": {"S": "FISCAL_YEAR"},
-        "status": {"S": "OPEN"},
-        "accountingStandard": {"S": "SYCEBNL"},
-        "startDate": {"S": "2026-01-01"},
-        "endDate": {"S": "2026-12-31"},
-        "GSI1PK": {"S": "ORG#test-org-sycebnl"},
-        "GSI1SK": {"S": "FY#2026"},
-        "createdAt": {"S": "2026-01-01T00:00:00.000Z"},
-        "updatedAt": {"S": "2026-01-01T00:00:00.000Z"}
-    }'
+    --item "{
+        \"PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"SK\": {\"S\": \"ACC#41110000\"},
+        \"accountId\": {\"S\": \"41110000\"},
+        \"label\": {\"S\": \"Clients Collectifs\"},
+        \"type\": {\"S\": \"ASSET\"},
+        \"entityType\": {\"S\": \"ACCOUNT\"},
+        \"orgId\": {\"S\": \"$ORG_ID\"},
+        \"createdAt\": {\"S\": \"$NOW\"}
+    }"
 
-# scripts/setup-localstack.sh
+# Compte de Revenus
+aws --endpoint-url=$ENDPOINT dynamodb put-item \
+    --table-name $TABLE_NAME \
+    --item "{
+        \"PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"SK\": {\"S\": \"ACC#75100000\"},
+        \"accountId\": {\"S\": \"75100000\"},
+        \"label\": {\"S\": \"Subventions d exploitation\"},
+        \"type\": {\"S\": \"REVENUE\"},
+        \"entityType\": {\"S\": \"ACCOUNT\"},
+        \"orgId\": {\"S\": \"$ORG_ID\"},
+        \"createdAt\": {\"S\": \"$NOW\"}
+    }"
 
-echo "Adding mandatory accounts for SYCEBNL test..."
+# Compte Banque
+aws --endpoint-url=$ENDPOINT dynamodb put-item \
+    --table-name $TABLE_NAME \
+    --item "{
+        \"PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"SK\": {\"S\": \"ACC#52100000\"},
+        \"accountId\": {\"S\": \"52100000\"},
+        \"label\": {\"S\": \"Banque BOA\"},
+        \"type\": {\"S\": \"ASSET\"},
+        \"entityType\": {\"S\": \"ACCOUNT\"},
+        \"orgId\": {\"S\": \"$ORG_ID\"},
+        \"createdAt\": {\"S\": \"$NOW\"}
+    }"
 
-# Compte Client (Tiers)
-aws --endpoint-url=http://localhost:4566 dynamodb put-item \
-    --table-name liass-ohada-dev-accounting-table \
-    --item '{
-        "PK": {"S": "ORG#test-org-sycebnl"},
-        "SK": {"S": "ACC#41110000"},
-        "accountId": {"S": "41110000"},
-        "label": {"S": "Clients Collectifs"},
-        "type": {"S": "ASSET"},
-        "entityType": {"S": "ACCOUNT"}
-    }'
-
-# Compte de Revenus (Produits)
-aws --endpoint-url=http://localhost:4566 dynamodb put-item \
-    --table-name liass-ohada-dev-accounting-table \
-    --item '{
-        "PK": {"S": "ORG#test-org-sycebnl"},
-        "SK": {"S": "ACC#75100000"},
-        "accountId": {"S": "75100000"},
-        "label": {"S": "Subventions d exploitation"},
-        "type": {"S": "REVENUE"},
-        "entityType": {"S": "ACCOUNT"}
-    }'
-
-# Compte de Trésorerie (Banque)
-aws --endpoint-url=http://localhost:4566 dynamodb put-item \
-    --table-name liass-ohada-dev-accounting-table \
-    --item '{
-        "PK": {"S": "ORG#test-org-sycebnl"},
-        "SK": {"S": "ACC#52100000"},
-        "accountId": {"S": "52100000"},
-        "label": {"S": "Banque BOA"},
-        "type": {"S": "ASSET"},
-        "entityType": {"S": "ACCOUNT"}
-    }'
-
-echo "✅ Environment Ready with GSI_PROJECT (GSI4) index!"
+echo "✅ Environment Ready for $ORG_ID!"

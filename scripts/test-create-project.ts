@@ -4,7 +4,7 @@ process.env.LOCALSTACK_URL = "http://localhost:4566";
 import { handler as createProject } from "../lambda/domains/projects/create-project";
 
 const commonContext: any = {
-  requestContext: { authorizer: { claims: { orgId: "test-org-sycebnl" } } },
+  requestContext: { authorizer: { claims: { orgId: "org-test-dash" } } },
   headers: { "Accept-Language": "en" },
 };
 

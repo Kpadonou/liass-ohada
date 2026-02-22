@@ -1,6 +1,6 @@
 export const KeyFactory = {
   // Prefixes
-  projectPrefix: () => `PROJ#`,
+  projectPrefix: () => `PRJ#`,
   thirdPartyPrefix: (type: string) => `TP#${type.toUpperCase()}#`,
 
   // --- PK (Partition Keys) ---
@@ -23,18 +23,18 @@ export const KeyFactory = {
 
   accountSK: (accountId: string) => `ACC#${accountId}`,
 
-  entrySK: (entryId: string) => `ENT#${entryId}`,
+  entrySK: (entryId: string) => `E#${entryId}`,
 
-  entryLineSK: (lineId: string) => `LINE#${lineId}`,
+  entryLineSK: (lineId: string) => `L#${lineId}`,
 
   journalSK: (journalCode: string) => `JNL#${journalCode}`,
 
   /** Permanent technical ID for Project item (used with orgKey) */
-  projectSK: (projectId: string) => `PROJ#${projectId}`,
+  projectSK: (projectId: string) => `PRJ#${projectId}`,
 
   /** Business Reference for Project uniqueness and lookups (used with orgKey) */
   projectCodeSK: (projectCode: string) =>
-    `PROJCODE#${projectCode.toUpperCase()}`,
+    `PRJCODE#${projectCode.toUpperCase()}`,
 
   thirdPartySK: (type: string, thirdPartyId: string) =>
     `TP#${type.toUpperCase()}#${thirdPartyId}`,
@@ -70,13 +70,15 @@ export const KeyFactory = {
 
   // --- GSI 4: Project Ledger (SYCEBNL Analytical View) ---
 
-  /** PK for Project Index: Isolates all entry lines linked to a specific project */
-  gsi4PK: (orgId: string, projectId: string) =>
-    `ORG#${orgId}#PROJ#${projectId}`,
-
-  /** SK for Project Index: Chronological sorting with Fiscal Year context */
-  gsi4SK: (year: number | string, date: string, lineId: string) =>
-    `FY#${year}#DT#${date}#${lineId}`,
+  /** PK for Project Index: Global Organization partition (Dashboard) */
+  gsi4PK: (orgId: string) => `ORG#${orgId}#PROJECTS_ALL`,
+  /** SK for Project Index: Global sorting with Project ID (Dashboard) */
+  gsi4SK: (
+    projectId: string,
+    year: number | string,
+    date: string,
+    lineId: string,
+  ) => `PRJ#${projectId}#FY#${year}#DT#${date}#${lineId}`,
 
   // --- Analytical Extensions ---
 

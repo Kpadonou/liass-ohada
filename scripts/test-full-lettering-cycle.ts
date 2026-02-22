@@ -3,7 +3,7 @@ import { handler as getUnlettered } from "../lambda/domains/core-ledger/letterin
 import { handler as postLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
 import { handler as cancelLettering } from "../lambda/domains/core-ledger/lettering/cancel-lettering";
 
-const ORG_ID = "test-org-sycebnl";
+const ORG_ID = "org-test-dash";
 const YEAR = 2026;
 
 /** Utility to wait for LocalStack GSI indexing */
@@ -36,7 +36,7 @@ async function runFullLetteringTest() {
           {
             accountId: "41110000",
             thirdPartyId: "DONOR-001",
-            projectId: "PROJ-A",
+            projectId: "PRJ-A",
             debit: data.debit,
             credit: data.credit,
           },

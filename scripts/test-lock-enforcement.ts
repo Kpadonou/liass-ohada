@@ -1,7 +1,7 @@
 import { handler as lockPeriod } from "@/lambda/domains/core-ledger/fiscal-year/lock-period";
 import { handler as postEntry } from "@/lambda/domains/core-ledger/entries/post-entry";
 
-const ORG_ID = "test-org-sycebnl";
+const ORG_ID = "org-test-dash";
 const YEAR = 2026;
 const MONTH = 2; // Février
 
@@ -36,7 +36,7 @@ async function runLockEnforcementTest() {
         {
           accountId: "41110000",
           thirdPartyId: "DONOR-001",
-          projectId: "PROJ-A",
+          projectId: "PRJ-A",
           debit: 100,
           credit: 0,
         },
