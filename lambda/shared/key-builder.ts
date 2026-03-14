@@ -85,4 +85,12 @@ export const KeyFactory = {
   /** Useful if you need to query projects by Donor in the future */
   donorProjectPK: (orgId: string, donorId: string) =>
     `ORG#${orgId}#DONOR#${donorId}`,
+
+  /** SK for Budget Header (linked to a project and a year) */
+  budgetSK: (projectId: string, year: number | string) =>
+    `PRJ#${projectId}#BDG#${year}`,
+
+  /** SK for specific Budget Line (hierarchical under the budget) */
+  budgetLineSK: (projectId: string, year: number | string, lineCode: string) =>
+    `PRJ#${projectId}#BDG#${year}#L#${lineCode.toUpperCase()}`,
 };

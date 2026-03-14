@@ -147,4 +147,40 @@ aws --endpoint-url=$ENDPOINT dynamodb put-item \
         \"createdAt\": {\"S\": \"$NOW\"}
     }"
 
+# Compte de Charges (Fournitures)
+aws --endpoint-url=$ENDPOINT dynamodb put-item \
+    --table-name $TABLE_NAME \
+    --item "{
+        \"PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"SK\": {\"S\": \"ACC#60510000\"},
+        \"accountId\": {\"S\": \"60510000\"},
+        \"label\": {\"S\": \"Fournitures scolaires\"},
+        \"type\": {\"S\": \"EXPENSE\"},
+        \"entityType\": {\"S\": \"ACCOUNT\"},
+        \"orgId\": {\"S\": \"$ORG_ID\"},
+        \"createdAt\": {\"S\": \"$NOW\"}
+    }"
+
+echo "🏗️ Injecting Project EDU-002..."
+# Projet EDU-002
+aws --endpoint-url=$ENDPOINT dynamodb put-item \
+    --table-name $TABLE_NAME \
+    --item "{
+        \"PK\": {\"S\": \"ORG#$ORG_ID\"},
+        \"SK\": {\"S\": \"PRJ#EDU-002\"},
+        \"projectId\": {\"S\": \"EDU-002\"},
+        \"projectCode\": {\"S\": \"EDU-2026\"},
+        \"name\": {\"S\": \"Projet Éducation Pour Tous\"},
+        \"donorId\": {\"S\": \"WORLD-BANK\"},
+        \"managerId\": {\"S\": \"USR-001\"},           # <--- AJOUTÉ
+        \"startDate\": {\"S\": \"2026-01-01\"},       # <--- AJOUTÉ
+        \"entityType\": {\"S\": \"PROJECT\"},
+        \"status\": {\"S\": \"ACTIVE\"},
+        \"totalBudget\": {\"N\": \"20000000\"},
+        \"annualBudgets\": {\"M\": {\"2026\": {\"N\": \"8000000\"}}},
+        \"orgId\": {\"S\": \"$ORG_ID\"},
+        \"createdAt\": {\"S\": \"$NOW\"},
+        \"updatedAt\": {\"S\": \"$NOW\"}              # <--- AJOUTÉ
+    }"
+
 echo "✅ Environment Ready for $ORG_ID!"
