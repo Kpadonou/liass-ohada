@@ -1,67 +1,73 @@
-import { handler } from "../lambda/domains/projects/get-project-report";
+import { handler } from "../lambda/domains/projects/get-project-report"; // Ajuste le chemin si nécessaire
 import { APIGatewayProxyEvent } from "aws-lambda";
 
-async function runHybridTest() {
-  console.log("--- Test du Rapport Projet Hybride (Annuel vs Global) ---");
+async function runTerTest() {
+  const projectId = "EDU-002";
+  const orgId = "org-test-dash";
 
-  const orgId = "org-test-sycebnl";
-  const projectId = "PRJ-2026-WASH-001";
+  console.log(`\n📊 TEST DU TER HYBRIDE - Projet: ${projectId}`);
+  console.log("===============================================");
 
   const event = {
-    headers: { "Accept-Language": "fr" },
     pathParameters: { projectId },
-    queryStringParameters: { year: "2026" }, // On teste spécifiquement 2026
+    queryStringParameters: { year: "2026" },
+    headers: { "Accept-Language": "fr" },
     requestContext: {
-      authorizer: { claims: { orgId } },
+      authorizer: {
+        claims: { orgId: orgId },
+      },
     },
   } as unknown as APIGatewayProxyEvent;
 
   const result = await handler(event);
   const response = JSON.parse(result.body);
 
-  if (result.statusCode !== 200) {
-    console.error("❌ Erreur API :", response);
+  if (!response.success) {
+    console.error("❌ Erreur lors de la génération du rapport :");
+    console.error(response.message);
     return;
   }
 
-  const { data } = response;
+  const data = response.data;
 
-  console.log(`\n📊 PROJET : ${data.projectInfo.name}`);
+  // 1. En-tête du Rapport
+  console.log(`PROJET : ${data.projectInfo.name} (${data.projectInfo.code})`);
+  console.log(`BAILLEUR : ${data.projectInfo.donor}`);
   console.log(`-----------------------------------------------`);
 
-  // 💰 RÉINTÉGRATION DES CHIFFRES CLÉS (Global)
-  console.log(
-    `💰 RESSOURCES (Financements) : ${data.terSummary.totalRessources.toLocaleString()} XOF`,
-  );
-  console.log(
-    `💸 EMPLOIS (Dépenses)        : ${data.terSummary.totalEmplois.toLocaleString()} XOF`,
-  );
-  console.log(
-    `📊 POSITION NETTE            : ${data.terSummary.netPosition.toLocaleString()} XOF`,
-  );
-  console.log(`-----------------------------------------------`);
-
-  // 📅 VUE ANNUELLE (Budget Performance)
-  const annual = data.budgetPerformance.annual; // <-- Changement ici
-  console.log(`📅 EXERCICE ${annual.year} :`); // <-- On utilise 'year' et non 'fiscalYear'
-  console.log(`   Budget Annuel : ${annual.budget.toLocaleString()} XOF`);
-  console.log(`   Dépenses      : ${annual.spent.toLocaleString()} XOF`);
-  console.log(`   Taux Exéc.    : ${annual.executionRate.toFixed(2)}%`);
-
-  // 🌎 VUE GLOBALE
-  const global = data.budgetPerformance.global;
-  console.log(`\n🌎 STATUT GLOBAL (LTD) :`);
-  console.log(`   Budget Total  : ${global.totalBudget.toLocaleString()} XOF`);
-  console.log(`   Taux Exéc.    : ${global.executionRate.toFixed(2)}%`);
-
-  // 🔍 DÉTAILS PAR COMPTE
-  console.log(`\n🔍 DÉTAILS PAR COMPTE :`);
-  data.details.forEach((acc: any) => {
-    console.log(
-      `   - Compte ${acc.accountId}: D=${acc.debit.toLocaleString()} / C=${acc.credit.toLocaleString()} (Bal: ${acc.balance.toLocaleString()})`,
-    );
+  // 2. Résumé Financier (TER Summary)
+  console.log("\n💰 RÉSUMÉ DES FLUX (GLOBAL) :");
+  console.table({
+    "Total Ressources (Financements)": `${data.terSummary.totalRessources.toLocaleString()} XOF`,
+    "Total Emplois (Dépenses)": `${data.terSummary.totalEmplois.toLocaleString()} XOF`,
+    "Position Nette (Cash)": `${data.terSummary.netPosition.toLocaleString()} XOF`,
   });
-  console.log(`===============================================`);
+
+  // 3. Performance Budgétaire
+  console.log("\n📈 PERFORMANCE BUDGÉTAIRE :");
+  console.table({
+    "Annuel (2026)": {
+      Budget: data.budgetPerformance.annual.budget.toLocaleString(),
+      Dépensé: data.budgetPerformance.annual.spent.toLocaleString(),
+      Taux: `${data.budgetPerformance.annual.executionRate.toFixed(2)}%`,
+    },
+    "Global Projet": {
+      Budget: data.budgetPerformance.global.totalBudget.toLocaleString(),
+      Dépensé: data.budgetPerformance.global.totalSpent.toLocaleString(),
+      Taux: `${data.budgetPerformance.global.executionRate.toFixed(2)}%`,
+    },
+  });
+
+  // 4. Détails par Compte
+  console.log("\n🔍 DÉTAILS COMPTABLES PAR NATURE :");
+  console.table(
+    data.details.map((d: any) => ({
+      Compte: d.accountId,
+      Débit: d.debit.toLocaleString(),
+      Crédit: d.credit.toLocaleString(),
+      SoldeOHADA: d.formattedBalance,
+    })),
+  );
 }
 
-runHybridTest().catch(console.error);
+runTerTest().catch(console.error);

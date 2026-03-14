@@ -107,6 +107,23 @@ export const handler = async (
 
     const annualBudget = project.annualBudgets?.[reportYear] || 0;
 
+    const detailedLines = Array.from(globalAccountMap.values())
+      .map((acc) => {
+        const balance = acc.debit - acc.credit;
+        return {
+          accountId: acc.accountId,
+          debit: acc.debit,
+          credit: acc.credit,
+          balance: balance, // On garde le brut pour le dev
+          // Voici la clé pour l'utilisateur final :
+          formattedBalance:
+            balance === 0
+              ? "0"
+              : `${Math.abs(balance).toLocaleString()} ${balance > 0 ? "D" : "C"}`,
+        };
+      })
+      .sort((a, b) => a.accountId.localeCompare(b.accountId));
+
     // 4. Final Hybrid Report Structure
     const report = {
       projectInfo: {
@@ -140,9 +157,7 @@ export const handler = async (
         },
       },
       // Restored: "🔍 DÉTAILS PAR COMPTE"
-      details: Array.from(globalAccountMap.values()).sort((a, b) =>
-        a.accountId.localeCompare(b.accountId),
-      ),
+      details: detailedLines,
       metadata: {
         generatedAt: new Date().toISOString(),
       },
