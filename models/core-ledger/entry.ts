@@ -27,6 +27,7 @@ export const EntryLineInputSchema = z
       .string()
       .regex(/^\d{8}$/, "Account ID must be exactly 8 digits"),
     projectId: z.string().optional(),
+    budgetLineId: z.string().optional(),
     thirdPartyId: z.string().optional(),
     debit: MoneySchema,
     credit: MoneySchema,
@@ -102,6 +103,7 @@ export const EntryLineSchema = z.object({
   // Accounting Core Data
   accountId: z.string().regex(/^\d{8}$/),
   projectId: z.string().optional(),
+  budgetLineId: z.string().optional(),
   thirdPartyId: z.string().optional(),
   debit: MoneySchema,
   credit: MoneySchema,

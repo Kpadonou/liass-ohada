@@ -93,4 +93,11 @@ export const KeyFactory = {
   /** SK for specific Budget Line (hierarchical under the budget) */
   budgetLineSK: (projectId: string, year: number | string, lineCode: string) =>
     `PRJ#${projectId}#BDG#${year}#L#${lineCode.toUpperCase()}`,
+
+  /** SK for a Funding Source (linked to a project) */
+  fundingSourceSK: (projectId: string, donorId: string) =>
+    `PRJ#${projectId}#FS#${donorId.toUpperCase()}`,
+
+  projectYearPrefix: (projectId: string, year: number | string) =>
+    `PRJ#${projectId}#FY#${year}`,
 };

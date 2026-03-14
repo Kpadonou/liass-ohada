@@ -21,6 +21,7 @@ import {
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
 import { LockService } from "@/lambda/shared/services/lock-service";
+import { BudgetService } from "@/lambda/shared/services/budget-service";
 
 const formatAccount = (acc: string) => acc.padStart(8, "0");
 
@@ -184,6 +185,7 @@ export const handler = async (
         entryId,
         accountId: paddedAcc,
         projectId: line.projectId,
+        budgetLineId: line.budgetLineId,
         thirdPartyId: line.thirdPartyId,
         label: line.label || headerLabel,
         description: line.description,
@@ -229,6 +231,23 @@ export const handler = async (
       }
 
       const validatedLine = EntryLineSchema.parse(lineItem);
+
+      for (const line of lines) {
+        if (line.projectId && line.budgetLineId && line.debit > 0) {
+          const budgetStatus = await BudgetService.getAvailableBudget(
+            orgId,
+            line.projectId,
+            line.budgetLineId,
+            year,
+          );
+
+          if (budgetStatus && line.debit > budgetStatus.available) {
+            return toLambdaResponse(
+              badRequest(i18n.getMessage("ERROR_BUDGET_EXCEEDED")),
+            );
+          }
+        }
+      }
 
       transactItems.push({
         Put: {
