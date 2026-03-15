@@ -90,8 +90,14 @@ export const handler = async (
         }),
       }),
     );
+
     const fundingSources = (fundingResult.Items || []).map((item) =>
       unmarshall(item),
+    );
+    console.log("DEBUG - Funding Sources trouvées:", fundingSources.length);
+    console.log(
+      "DEBUG - SK utilisée pour FS:",
+      `${KeyFactory.projectPrefix()}${projectId.toUpperCase()}#FS#`,
     );
 
     // 4. Fetch Transactions via GSI4 (The "Actuals")

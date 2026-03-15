@@ -1,11 +1,11 @@
 import { handler } from "../lambda/domains/projects/get-project-report";
 import { APIGatewayProxyEvent } from "aws-lambda";
 
-async function runTerTest() {
-  const projectId = "EDU-002";
+async function runMultiDonorReportTest() {
+  const projectId = "EDU-002"; // Assure-toi que ce projet existe dans ton LocalStack
   const orgId = "org-test-dash";
 
-  console.log(`\n📊 TEST DU RAPPORT HYBRIDE (SYCEBNL) - Projet: ${projectId}`);
+  console.log(`\n🚀 MULTI-DONOR REPORT TEST - Project: ${projectId}`);
   console.log("===========================================================");
 
   const event = {
@@ -13,9 +13,7 @@ async function runTerTest() {
     queryStringParameters: { year: "2026" },
     headers: { "Accept-Language": "fr" },
     requestContext: {
-      authorizer: {
-        claims: { orgId: orgId },
-      },
+      authorizer: { claims: { orgId: orgId } },
     },
   } as unknown as APIGatewayProxyEvent;
 
@@ -23,62 +21,66 @@ async function runTerTest() {
   const response = JSON.parse(result.body);
 
   if (!response.success) {
-    console.error("❌ ÉCHEC DU HANDLER");
+    console.error("❌ HANDLER ERROR");
     console.dir(response, { depth: null });
     return;
   }
 
   const data = response.data;
 
-  // 1. En-tête du Rapport
+  // 1. Header Information
   console.log(
-    `\n🏢 PROJET  : ${data.projectInfo.name} (${data.projectInfo.code})`,
+    `\n🏢 PROJECT    : ${data.projectInfo.name} (${data.projectInfo.code})`,
   );
-  console.log(`🤝 BAILLEUR : ${data.projectInfo.donor}`);
+  console.log(`📅 REPORT YEAR: ${data.metadata.reportYear}`);
   console.log(
-    `📅 GÉNÉRÉ LE: ${new Date(data.metadata.generatedAt).toLocaleString()}`,
+    `👥 DONORS     : ${data.projectInfo.donorList.map((d: any) => d.label).join(", ")}`,
   );
   console.log(`-----------------------------------------------------------`);
 
-  // 2. Résumé Financier Global (Position de Trésorerie)
-  console.log("\n💰 RÉSUMÉ DES FLUX (GLOBAL) :");
+  // 2. Financial Summary
+  console.log("\n💰 FINANCIAL POSITION (Annual) :");
   console.table({
-    "Total Ressources (Financements)": `${data.financialPosition.totalRessources.toLocaleString()} XOF`,
-    "Total Emplois (Dépenses)": `${data.financialPosition.totalEmplois.toLocaleString()} XOF`,
-    "Position Nette (Cash)": `${data.financialPosition.netCash.toLocaleString()} XOF`,
+    "Total Resources": `${data.financialPosition.totalResources.toLocaleString()} XOF`,
+    "Total Expenses": `${data.financialPosition.totalExpenses.toLocaleString()} XOF`,
+    "Net Cash Position": `${data.financialPosition.netCash.toLocaleString()} XOF`,
   });
 
-  // 3. Analyse Analytique (Prévu vs Réalisé par Ligne Budgétaire)
-  // C'est ici que l'on voit si notre "pont" budgetLineId fonctionne
+  // 3. Multi-Donor Analytical Matrix
   if (data.budgetVsActual && data.budgetVsActual.length > 0) {
-    console.log("\n📈 ANALYSE BUDGÉTAIRE (PILOTAGE PAR ACTIVITÉ) :");
-    const budgetTable = data.budgetVsActual.map((b: any) => ({
-      Code: b.code,
-      Désignation: b.label,
-      "Alloué (Budget)": b.allocated.toLocaleString() + " XOF",
-      "Consommé (Réel)": b.spent.toLocaleString() + " XOF",
-      Solde: b.remaining.toLocaleString() + " XOF",
-      "% Exéc.": b.executionRate.toFixed(2) + "%",
-    }));
-    console.table(budgetTable);
-  } else {
-    console.log("\n⚠️ Aucune donnée budgétaire trouvée pour ce projet.");
+    console.log("\n📈 BUDGETARY ANALYSIS (Multi-Donor Pivot) :");
+
+    const matrixTable = data.budgetVsActual.map((b: any) => {
+      // We dynamically create columns for each donor found in the breakdown
+      const donorBreakdown: any = {};
+      data.projectInfo.donorList.forEach((donor: any) => {
+        donorBreakdown[donor.label] = (
+          b.donors[donor.id] || 0
+        ).toLocaleString();
+      });
+
+      return {
+        Code: b.code,
+        Label: b.label,
+        Budget: b.allocated.toLocaleString(),
+        ...donorBreakdown, // Dynamic donor columns
+        Unallocated: b.unallocated.toLocaleString(),
+        Total_Spent: b.spent.toLocaleString(),
+        "%_Exec": b.executionRate.toFixed(2) + "%",
+      };
+    });
+    console.table(matrixTable);
   }
 
-  // 4. Détails Comptables par Nature (Vue OHADA)
-  console.log("\n🔍 DÉTAILS COMPTABLES (VUE PAR NATURE) :");
-  const accountDetails = (data.accountDetails || data.details).map(
-    (d: any) => ({
-      Compte: d.accountId,
-      Débit: d.debit.toLocaleString(),
-      Crédit: d.credit.toLocaleString(),
-      "Solde OHADA": d.formattedBalance,
-    }),
-  );
-  console.table(accountDetails);
+  // 4. OHADA General Ledger View
+  console.log("\n🔍 GENERAL LEDGER VIEW (OHADA) :");
+  const accountTable = data.accountDetails.map((d: any) => ({
+    Account: d.accountId,
+    Debit: d.debit.toLocaleString(),
+    Credit: d.credit.toLocaleString(),
+    Balance: d.formattedBalance,
+  }));
+  console.table(accountTable);
 }
 
-runTerTest().catch((err) => {
-  console.error("💥 Erreur fatale lors de l'exécution du test :");
-  console.error(err);
-});
+runMultiDonorReportTest().catch(console.error);
