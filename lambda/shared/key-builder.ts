@@ -96,8 +96,16 @@ export const KeyFactory = {
 
   /** SK for a Funding Source (linked to a project) */
   fundingSourceSK: (projectId: string, donorId: string) =>
-    `PRJ#${projectId}#FS#${donorId.toUpperCase()}`,
+    `PRJ#${projectId.toLocaleUpperCase()}#FS#${donorId.toUpperCase()}`,
 
   projectYearPrefix: (projectId: string, year: number | string) =>
     `PRJ#${projectId}#FY#${year}`,
+
+  /** Prefix to query all budget lines for a specific project/year */
+  budgetLinesPrefix: (projectId: string, year: number | string) =>
+    `${KeyFactory.budgetSK(projectId, year)}#L#`,
+
+  /** Prefix to query all funding sources for a specific project */
+  fundingSourcesPrefix: (projectId: string) =>
+    `${KeyFactory.projectPrefix()}${projectId.toUpperCase()}#FS#`,
 };

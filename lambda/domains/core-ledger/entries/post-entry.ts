@@ -28,10 +28,10 @@ const formatAccount = (acc: string) => acc.padStart(8, "0");
 /**
  * Posts an accounting entry with SYCEBNL project tracking support.
  * Orchestrates a multi-item transaction to ensure data integrity across:
- * 1. General Ledger (GSI1)
- * 2. Auxiliary Ledger (GSI2)
- * 3. Lettering Sparse Index (GSI3)
- * 4. Project Analytical Ledger (GSI4 - SYCEBNL)
+ * 1. General Ledger (GSI1): Account-based indexing.
+ * 2. Auxiliary Ledger (GSI2): Third-party balances.
+ * 3. Lettering Index (GSI3): Entry reconciliation.
+ * 4. Project Analytical Ledger (GSI4): SYCEBNL project and donor reporting.
  */
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -186,6 +186,7 @@ export const handler = async (
         accountId: paddedAcc,
         projectId: line.projectId,
         budgetLineId: line.budgetLineId,
+        donorId: line.donorId,
         thirdPartyId: line.thirdPartyId,
         label: line.label || headerLabel,
         description: line.description,
@@ -232,19 +233,41 @@ export const handler = async (
 
       const validatedLine = EntryLineSchema.parse(lineItem);
 
+      // --- 3.5 Validation Budgétaire et Multi-Bailleur ---
       for (const line of lines) {
+        // On ne contrôle que les lignes de dépenses (débit > 0) liées à un projet
         if (line.projectId && line.budgetLineId && line.debit > 0) {
           const budgetStatus = await BudgetService.getAvailableBudget(
             orgId,
             line.projectId,
             line.budgetLineId,
             year,
+            line.donorId, // Extrait du schéma Zod mis à jour
           );
 
-          if (budgetStatus && line.debit > budgetStatus.available) {
-            return toLambdaResponse(
-              badRequest(i18n.getMessage("ERROR_BUDGET_EXCEEDED")),
-            );
+          if (budgetStatus) {
+            // Vérification 1 : La ligne budgétaire globale (ex: Matériel Informatique)
+            if (line.debit > budgetStatus.budgetLine.available) {
+              return toLambdaResponse(
+                badRequest({
+                  code: "ERROR_BUDGET_LINE_EXCEEDED",
+                  message: `${i18n.getMessage("ERROR_BUDGET_LINE_EXCEEDED").message} (Ligne: ${line.budgetLineId}, Disponible: ${budgetStatus.budgetLine.available.toLocaleString()} XOF)`,
+                }),
+              );
+            }
+
+            // Vérification 2 : Le plafond du bailleur (ex: UNICEF)
+            if (
+              budgetStatus.donor &&
+              line.debit > budgetStatus.donor.available
+            ) {
+              return toLambdaResponse(
+                badRequest({
+                  code: "ERROR_DONOR_BUDGET_EXCEEDED",
+                  message: `${i18n.getMessage("ERROR_DONOR_BUDGET_EXCEEDED").message} (Bailleur: ${line.donorId}, Disponible: ${budgetStatus.donor.available.toLocaleString()} XOF)`,
+                }),
+              );
+            }
           }
         }
       }

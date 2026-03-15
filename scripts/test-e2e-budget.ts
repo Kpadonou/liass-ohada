@@ -33,6 +33,35 @@ async function runE2ETest() {
       }),
     );
   }
+
+  // --- ÉTAPE 0.5 : Création des Sources de Financement (Bailleurs) ---
+  console.log("0.5. Initialisation des budgets bailleurs...");
+
+  const fundingSources = [
+    { id: "UNICEF", amount: 5000000, label: "Fonds UNICEF" },
+    { id: "WB", amount: 2000000, label: "Fonds Banque Mondiale" },
+  ];
+
+  for (const fs of fundingSources) {
+    await dynamoClient.send(
+      new PutItemCommand({
+        TableName: process.env.TABLE_NAME,
+        Item: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fundingSourceSK(projectId, fs.id),
+          entityType: "FUNDING_SOURCE",
+          projectId: projectId,
+          donorId: fs.id,
+          label: fs.label,
+          amount: fs.amount,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+      }),
+    );
+  }
+  console.log("✅ Bailleurs configurés : UNICEF (5M) et WB (2M)");
+
   // --- ÉTAPE 1 : Création d'une ligne budgétaire (Le Prévu) ---
   console.log("1. Injection d'une ligne budgétaire de 2,000,000 XOF...");
   await dynamoClient.send(

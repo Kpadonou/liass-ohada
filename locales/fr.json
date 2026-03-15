@@ -49,6 +49,8 @@
   "ERROR_PROJECT_NOT_FOUND": "Projet non trouvé.",
   "SUCCESS_PROJECT_REPORT_RETRIEVED": "Rapport analytique du projet récupéré avec succès.",
   "ERROR_BUDGET_EXCEEDED": "Dépassement budgétaire : la ligne budgétaire a un solde insuffisant.",
+  "ERROR_BUDGET_LINE_EXCEEDED": "Dépassement de la ligne budgétaire.",
+  "ERROR_DONOR_BUDGET_EXCEEDED": "Dépassement du budget du bailleur.",
   "ERROR_SOME_LINES_NOT_FOUND": "Certaines lignes demandées sont introuvables.",
   "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY": "Le lettrage nécessite que toutes les lignes appartiennent au même compte et au même tiers.",
   "ERROR_INCONSISTENT_PROJECTS": "Les lignes appartiennent à des projets différents ; le lettrage exige que toutes les lignes aient le même projet en mode SYCEBNL.",

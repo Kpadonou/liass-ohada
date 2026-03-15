@@ -49,6 +49,8 @@
   "ERROR_PROJECT_NOT_FOUND": "Project not found.",
   "SUCCESS_PROJECT_REPORT_RETRIEVED": "Project analytical report retrieved successfully.",
   "ERROR_BUDGET_EXCEEDED": "Budget exceeded for the requested budget line.",
+  "ERROR_BUDGET_LINE_EXCEEDED": "Budget line exceeded.",
+  "ERROR_DONOR_BUDGET_EXCEEDED": "Donor budget exceeded.",
   "ERROR_SOME_LINES_NOT_FOUND": "Some requested entry lines could not be found.",
   "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY": "Lettering requires all lines to belong to the same account and third party.",
   "ERROR_INCONSISTENT_PROJECTS": "Lines belong to different projects; lettering requires all lines to share the same project in SYCEBNL mode.",
