@@ -36,7 +36,7 @@ export const handler = async (
 
   try {
     const orgId =
-      event.requestContext.authorizer?.claims?.orgId || "org-test-dash";
+      event.requestContext?.authorizer?.claims?.orgId || "org-test-dash";
     const projectId = event.pathParameters?.projectId;
     const reportYear = event.queryStringParameters?.year || "2026";
 
@@ -64,7 +64,7 @@ export const handler = async (
     }
     const project = ProjectSchema.parse(unmarshall(projectResult.Item));
 
-    // 2. Fetch Budget Lines for the specific year (The "Plan")
+    // 2. Fetch Budget Lines (The "Plan")
     const budgetResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -79,7 +79,7 @@ export const handler = async (
       BudgetLineSchema.parse(unmarshall(item)),
     );
 
-    // 3. Fetch All Funding Sources (The "Donor Envelopes")
+    // 3. Fetch Funding Sources (The "Donor Envelopes/Promises")
     const fundingResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -90,18 +90,11 @@ export const handler = async (
         }),
       }),
     );
-
     const fundingSources = (fundingResult.Items || []).map((item) =>
       unmarshall(item),
     );
-    console.log("DEBUG - Funding Sources trouvées:", fundingSources.length);
-    console.log(
-      "DEBUG - SK utilisée pour FS:",
-      `${KeyFactory.projectPrefix()}${projectId.toUpperCase()}#FS#`,
-    );
 
-    // 4. Fetch Transactions via GSI4 (The "Actuals")
-    // NOTE: This query uses the Year Prefix to optimize performance
+    // 4. Fetch All Transactions via GSI4 (Actuals)
     const linesResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -120,18 +113,33 @@ export const handler = async (
     let annualResources = 0;
 
     const globalAccountMap = new Map<string, any>();
-    // Pivot Matrix: budgetLineId -> Map<donorId, totalAmount>
     const donorExecutionMatrix = new Map<string, Map<string, number>>();
+
+    // ✨ NOUVEAU : Suivi de la trésorerie par bailleur
+    // Map<donorId, { received: number, spent: number }>
+    const donorCashflowMap = new Map<
+      string,
+      { received: number; spent: number }
+    >();
 
     for (const line of allLines) {
       const debit = line.debit || 0;
       const credit = line.credit || 0;
+      const donorId = line.donorId || "UNALLOCATED";
 
-      // Track annual totals (since query is already year-prefixed)
       annualExpenses += debit;
       annualResources += credit;
 
-      // 5.1 General Ledger Aggregation (By OHADA Account)
+      // 5.1 Mise à jour du Cashflow par Bailleur (Encaissements vs Décaissements)
+      const cashflow = donorCashflowMap.get(donorId) || {
+        received: 0,
+        spent: 0,
+      };
+      cashflow.received += credit; // Argent reçu du bailleur (comptes de produits/classe 7)
+      cashflow.spent += debit; // Argent dépensé (comptes de charges/classe 6)
+      donorCashflowMap.set(donorId, cashflow);
+
+      // 5.2 General Ledger Aggregation (OHADA)
       const existingAcc = globalAccountMap.get(line.accountId) || {
         accountId: line.accountId,
         debit: 0,
@@ -141,25 +149,40 @@ export const handler = async (
       existingAcc.credit += credit;
       globalAccountMap.set(line.accountId, existingAcc);
 
-      // 5.2 Analytical Pivot Aggregation (By Budget Line & Donor)
-      // Robust check for year and budget link
+      // 5.3 Analytical Pivot (By Budget Line & Donor)
       if (line.budgetLineId && String(line.year) === String(reportYear)) {
         const lineMap =
           donorExecutionMatrix.get(line.budgetLineId) ||
           new Map<string, number>();
-        const donorId = line.donorId || "UNALLOCATED";
-
-        const currentDonorAmount = lineMap.get(donorId) || 0;
-        lineMap.set(donorId, currentDonorAmount + debit);
+        lineMap.set(donorId, (lineMap.get(donorId) || 0) + debit);
         donorExecutionMatrix.set(line.budgetLineId, lineMap);
       }
     }
 
-    // 6. Construct the Analytical Matrix Report
+    // 6. Construction du Suivi des Financements (CASH)
+    const fundingFollowUp = fundingSources.map((fs) => {
+      const cash = donorCashflowMap.get(fs.donorId) || {
+        received: 0,
+        spent: 0,
+      };
+      const received = cash.received;
+      const spent = cash.spent;
+
+      return {
+        donorId: fs.donorId,
+        label: fs.label,
+        promised: fs.amount,
+        received: received,
+        spent: spent,
+        availableCash: received - spent,
+        remainingToReceive: fs.amount - received,
+        disbursementRate: fs.amount > 0 ? (received / fs.amount) * 100 : 0,
+      };
+    });
+
+    // 7. Construct the Budget vs Actual Matrix
     const budgetVsActual = budgetLines.map((bl) => {
       const lineData = donorExecutionMatrix.get(bl.code);
-
-      // Build the breakdown object for this line { "DONOR_ID": Amount }
       const breakdown: Record<string, number> = {};
       let lineTotalSpent = 0;
 
@@ -169,7 +192,6 @@ export const handler = async (
         lineTotalSpent += amount;
       });
 
-      // Track expenses not linked to any specific funding source
       const unallocated = lineData?.get("UNALLOCATED") || 0;
       lineTotalSpent += unallocated;
 
@@ -178,14 +200,14 @@ export const handler = async (
         label: bl.label,
         allocated: bl.amount,
         donors: breakdown,
-        unallocated: unallocated,
+        unallocated,
         spent: lineTotalSpent,
         remaining: bl.amount - lineTotalSpent,
         executionRate: bl.amount > 0 ? (lineTotalSpent / bl.amount) * 100 : 0,
       };
     });
 
-    // 7. Format Detailed OHADA Accounts
+    // 8. Format OHADA Details
     const accountDetails = Array.from(globalAccountMap.values())
       .map((acc) => {
         const balance = acc.debit - acc.credit;
@@ -200,7 +222,6 @@ export const handler = async (
       })
       .sort((a, b) => a.accountId.localeCompare(b.accountId));
 
-    // 8. Final Response Assembly
     return toLambdaResponse(
       ok(
         {
@@ -208,7 +229,6 @@ export const handler = async (
             id: project.projectId,
             code: project.projectCode,
             name: project.name,
-            leadDonor: project.donorId,
             donorList: fundingSources.map((fs) => ({
               id: fs.donorId,
               label: fs.label,
@@ -216,10 +236,11 @@ export const handler = async (
             })),
           },
           financialPosition: {
-            totalResources: annualResources, // Total credits for the year
-            totalExpenses: annualExpenses, // Total debits for the year
+            totalResources: annualResources,
+            totalExpenses: annualExpenses,
             netCash: annualResources - annualExpenses,
           },
+          fundingFollowUp, // ✨ Nouvelle section ajoutée
           budgetVsActual,
           accountDetails,
           metadata: {
@@ -232,7 +253,7 @@ export const handler = async (
       ),
     );
   } catch (error) {
-    console.error("Project Report Generation Error:", error);
+    console.error("Project Report Error:", error);
     return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
 };

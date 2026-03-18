@@ -80,6 +80,20 @@ async function runMultiDonorReportTest() {
     Credit: d.credit.toLocaleString(),
     Balance: d.formattedBalance,
   }));
+
+  if (data.fundingFollowUp && data.fundingFollowUp.length > 0) {
+    console.log("\n🏦 FUNDING FOLLOW-UP (CASH POSITION PER DONOR) :");
+    const fundingTable = data.fundingFollowUp.map((f: any) => ({
+      Donor: f.label,
+      Promised: f.promised.toLocaleString() + " XOF",
+      Received: f.received.toLocaleString() + " XOF",
+      Spent: f.spent.toLocaleString() + " XOF",
+      "Available Cash": f.availableCash.toLocaleString() + " XOF",
+      Progress: f.disbursementRate.toFixed(2) + "%",
+    }));
+    console.table(fundingTable);
+  }
+
   console.table(accountTable);
 }
 

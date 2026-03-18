@@ -245,28 +245,43 @@ export const handler = async (
             line.donorId, // Extrait du schéma Zod mis à jour
           );
 
-          if (budgetStatus) {
-            // Vérification 1 : La ligne budgétaire globale (ex: Matériel Informatique)
-            if (line.debit > budgetStatus.budgetLine.available) {
-              return toLambdaResponse(
-                badRequest({
-                  code: "ERROR_BUDGET_LINE_EXCEEDED",
-                  message: `${i18n.getMessage("ERROR_BUDGET_LINE_EXCEEDED").message} (Ligne: ${line.budgetLineId}, Disponible: ${budgetStatus.budgetLine.available.toLocaleString()} XOF)`,
-                }),
-              );
-            }
+          // --- 3.5 Validation Budgétaire et Multi-Bailleur ---
+          if (line.projectId && line.debit > 0) {
+            const budgetStatus = await BudgetService.getAvailableBudget(
+              orgId,
+              line.projectId,
+              line.budgetLineId || "GENERIC",
+              year,
+              line.donorId,
+            );
 
-            // Vérification 2 : Le plafond du bailleur (ex: UNICEF)
-            if (
-              budgetStatus.donor &&
-              line.debit > budgetStatus.donor.available
-            ) {
-              return toLambdaResponse(
-                badRequest({
-                  code: "ERROR_DONOR_BUDGET_EXCEEDED",
-                  message: `${i18n.getMessage("ERROR_DONOR_BUDGET_EXCEEDED").message} (Bailleur: ${line.donorId}, Disponible: ${budgetStatus.donor.available.toLocaleString()} XOF)`,
-                }),
-              );
+            if (budgetStatus) {
+              // 1. Vérification de la Ligne Budgétaire (Le "Chapeau" budgétaire)
+              // Ici, ton type indique que c'est encore '.available'
+              if (
+                line.budgetLineId &&
+                line.debit > budgetStatus.budgetLine.available
+              ) {
+                return toLambdaResponse(
+                  badRequest({
+                    code: "ERROR_BUDGET_LINE_EXCEEDED",
+                    message: `Dépassement de ligne budgétaire ${line.budgetLineId}. (Disponible: ${budgetStatus.budgetLine.available.toLocaleString()} XOF)`,
+                  }),
+                );
+              }
+
+              // 2. Vérification du Cash Réel du Bailleur (La Trésorerie)
+              // Ici, ton type pour le donor utilise probablement 'cashAvailable'
+              if (line.donorId && budgetStatus.donor) {
+                if (line.debit > budgetStatus.donor.cashAvailable) {
+                  return toLambdaResponse(
+                    badRequest({
+                      code: "ERROR_DONOR_CASH_EXCEEDED",
+                      message: `Fonds insuffisants en banque pour le bailleur ${line.donorId}. (Disponible: ${budgetStatus.donor.cashAvailable.toLocaleString()} XOF)`,
+                    }),
+                  );
+                }
+              }
             }
           }
         }
