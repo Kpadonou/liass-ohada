@@ -1,21 +1,20 @@
-import * as cdk from "aws-cdk-lib";
-import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
-import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { Construct } from "constructs";
 import * as path from "path";
 import * as fs from "fs";
+import { DomainConstructFactory } from "./domain-constructs-factory";
 
 export interface DomainProps {
   api: apigw.HttpApi;
   authorizer?: apigw.IHttpRouteAuthorizer;
-  table: cdk.aws_dynamodb.ITable;
+  table: any;
 }
 
-export class ProjectEndpoints extends Construct {
+export class ProjectEndpoints extends DomainConstructFactory {
   constructor(scope: Construct, id: string, props: DomainProps) {
     super(scope, id);
 
+    // helper: resolve path to handler, prefer src/ layout then fallback to lambda/
     const resolveHandlerEntry = (domain: string, handlerPath: string) => {
       const srcPath = path.join(
         __dirname,
@@ -38,70 +37,56 @@ export class ProjectEndpoints extends Construct {
         domain,
         `${handlerPath}.ts`,
       );
-      if (fs.existsSync(srcPath)) return srcPath;
-      return legacyPath;
+      return fs.existsSync(srcPath) ? srcPath : legacyPath;
     };
 
-    const addProjectRoute = (
+    const map = (
       method: apigw.HttpMethod,
       routePath: string,
-      handlerFileName: string,
+      handlerPath: string,
     ) => {
-      const id = `Project-${handlerFileName}`;
-      const entry = resolveHandlerEntry("projects", handlerFileName);
-      const fn = new lambda.NodejsFunction(this, id, {
+      const entry = resolveHandlerEntry("projects", handlerPath);
+      this.addRoute(
+        props.api,
+        method,
+        routePath,
         entry,
-        runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
-        bundling: {
-          minify: true,
-          sourceMap: true,
-          externalModules: ["@aws-sdk/*"],
-        },
-        environment: {
-          TABLE_NAME: props.table.tableName,
-        },
-      });
-
-      // Grant DynamoDB access
-      props.table.grantReadWriteData(fn);
-
-      const opts: any = {
-        path: routePath,
-        methods: [method],
-        integration: new HttpLambdaIntegration(`${id}Integ`, fn),
-      };
-      if (props.authorizer) opts.authorizer = props.authorizer;
-      props.api.addRoutes(opts);
+        props.table,
+        props.authorizer,
+        "Project-",
+      );
     };
 
-    // --- MAPPING DES ENDPOINTS (Basé sur handlers existants) ---
-
+    // --- Project Domain Endpoints ---
     // Projects
-    addProjectRoute(apigw.HttpMethod.GET, "/projects", "get-projects");
-    addProjectRoute(apigw.HttpMethod.POST, "/projects", "create-project");
-    addProjectRoute(
-      apigw.HttpMethod.GET,
-      "/projects/{projectId}",
-      "get-projects",
-    );
+    map(apigw.HttpMethod.POST, "/projects", "create-project");
+    map(apigw.HttpMethod.GET, "/projects", "get-projects");
+    map(apigw.HttpMethod.GET, "/projects/{projectId}", "get-projects");
 
-    // Funding sources / donors
-    addProjectRoute(
-      apigw.HttpMethod.GET,
-      "/projects/{projectId}/funding-sources",
-      "get-donors",
-    );
-    addProjectRoute(
+    // Donors (at project level)
+    map(
       apigw.HttpMethod.POST,
       "/projects/{projectId}/funding-sources",
       "create-donor",
     );
+    map(
+      apigw.HttpMethod.GET,
+      "/projects/{projectId}/funding-sources",
+      "get-donors",
+    );
 
     // Reporting
-    addProjectRoute(
+    map(
       apigw.HttpMethod.GET,
-      "/reports/project/{projectId}",
+      "/projects/{projectId}/report",
       "get-project-report",
+    );
+
+    // Dashboard
+    map(
+      apigw.HttpMethod.GET,
+      "/projects/summary",
+      "list-projects-summary",
     );
   }
 }
