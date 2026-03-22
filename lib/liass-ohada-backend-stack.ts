@@ -11,6 +11,8 @@ export class LiassOhadaBackendStack extends cdk.Stack {
     const dataStack = new DataStack(this, "DataStack");
 
     // API Stack
-    const apiStack = new ApiStack(this, "ApiStack");
+    const apiStack = new ApiStack(this, "ApiStack", {
+      accountingTable: dataStack.accountingTable.table,
+    });
   }
 }
