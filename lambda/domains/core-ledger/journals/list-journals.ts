@@ -5,11 +5,7 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
-import {
-  badRequest,
-  ok,
-  toLambdaResponse,
-} from "@/models/shared/api-response";
+import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 
 /**
  * Lists all journals for the organization.
@@ -40,8 +36,6 @@ export const handler = async (
     );
   } catch (error) {
     console.error("Error listing journals:", error);
-    return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_INTERNAL")),
-    );
+    return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
 };

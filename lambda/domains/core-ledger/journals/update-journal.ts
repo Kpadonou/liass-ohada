@@ -6,11 +6,7 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
-import {
-  badRequest,
-  ok,
-  toLambdaResponse,
-} from "@/models/shared/api-response";
+import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 
 /**
  * Updates an existing journal.
@@ -63,7 +59,8 @@ export const handler = async (
           PK: { S: KeyFactory.orgKey(orgId) },
           SK: { S: `JNL#${journalCode}` },
         },
-        UpdateExpression: "SET journalName = :name, #type = :type, updatedAt = :updatedAt",
+        UpdateExpression:
+          "SET journalName = :name, #type = :type, updatedAt = :updatedAt",
         ExpressionAttributeNames: {
           "#type": "type",
         },
@@ -81,8 +78,6 @@ export const handler = async (
     );
   } catch (error) {
     console.error("Error updating journal:", error);
-    return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_INTERNAL")),
-    );
+    return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
 };

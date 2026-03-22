@@ -4,11 +4,7 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
-import {
-  badRequest,
-  ok,
-  toLambdaResponse,
-} from "@/models/shared/api-response";
+import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 
 /**
  * Deletes a journal by journalCode.
@@ -38,13 +34,9 @@ export const handler = async (
       }),
     );
 
-    return toLambdaResponse(
-      ok({}, i18n.getMessage("JOURNAL_DELETED")),
-    );
+    return toLambdaResponse(ok({}, i18n.getMessage("JOURNAL_DELETED")));
   } catch (error) {
     console.error("Error deleting journal:", error);
-    return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_INTERNAL")),
-    );
+    return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
 };

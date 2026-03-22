@@ -5,11 +5,7 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
-import {
-  ok,
-  notFound,
-  toLambdaResponse,
-} from "@/models/shared/api-response";
+import { ok, notFound, toLambdaResponse } from "@/models/shared/api-response";
 
 /**
  * Retrieves a specific journal by journalCode.
@@ -24,9 +20,7 @@ export const handler = async (
     const journalCode = event.pathParameters?.journalCode;
 
     if (!journalCode) {
-      return toLambdaResponse(
-        notFound(i18n.getMessage("ERROR_INVALID_INPUT")),
-      );
+      return toLambdaResponse(notFound(i18n.getMessage("ERROR_INVALID_INPUT")));
     }
 
     const result = await dynamoClient.send(
@@ -40,20 +34,14 @@ export const handler = async (
     );
 
     if (!result.Item) {
-      return toLambdaResponse(
-        notFound(i18n.getMessage("JOURNAL_NOT_FOUND")),
-      );
+      return toLambdaResponse(notFound(i18n.getMessage("JOURNAL_NOT_FOUND")));
     }
 
     const journal = unmarshall(result.Item);
 
-    return toLambdaResponse(
-      ok(journal, i18n.getMessage("JOURNAL_RETRIEVED")),
-    );
+    return toLambdaResponse(ok(journal, i18n.getMessage("JOURNAL_RETRIEVED")));
   } catch (error) {
     console.error("Error getting journal:", error);
-    return toLambdaResponse(
-      notFound(i18n.getMessage("ERROR_INTERNAL")),
-    );
+    return toLambdaResponse(notFound(i18n.getMessage("ERROR_INTERNAL")));
   }
 };

@@ -58,8 +58,6 @@ export const handler = async (
     );
   } catch (error) {
     console.error("Error creating journal:", error);
-    return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_INTERNAL")),
-    );
+    return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
   }
 };
