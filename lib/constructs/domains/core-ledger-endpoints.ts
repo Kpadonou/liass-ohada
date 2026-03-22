@@ -56,6 +56,7 @@ export class CoreLedgerEndpoints extends DomainConstructFactory {
         entry,
         props.table,
         props.authorizer,
+        "CoreLedger-",
       );
     };
 

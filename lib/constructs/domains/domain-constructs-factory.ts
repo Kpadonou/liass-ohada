@@ -19,8 +19,10 @@ export abstract class DomainConstructFactory extends Construct {
     handlerEntry: string,
     table: cdk.aws_dynamodb.ITable,
     authorizer?: apigw.IHttpRouteAuthorizer,
+    idPrefix?: string,
   ) {
-    const id = handlerEntry.split("/").pop()?.replace(".ts", "") || "Handler";
+    const handlerName = handlerEntry.split("/").pop()?.replace(".ts", "") || "Handler";
+    const id = idPrefix ? `${idPrefix}${handlerName}` : handlerName;
 
     const fn = new lambda.NodejsFunction(this, id, {
       entry: handlerEntry,
