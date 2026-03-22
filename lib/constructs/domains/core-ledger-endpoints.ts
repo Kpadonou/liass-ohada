@@ -5,6 +5,7 @@ import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations
 import { Construct } from "constructs";
 import * as path from "path";
 import * as fs from "fs";
+import { DomainConstructFactory } from "./domain-constructs-factory";
 
 export interface DomainProps {
   api: apigw.HttpApi;
@@ -12,7 +13,7 @@ export interface DomainProps {
   table: cdk.aws_dynamodb.ITable;
 }
 
-export class CoreLedgerEndpoints extends Construct {
+export class CoreLedgerEndpoints extends DomainConstructFactory {
   constructor(scope: Construct, id: string, props: DomainProps) {
     super(scope, id);
 
@@ -39,114 +40,91 @@ export class CoreLedgerEndpoints extends Construct {
         domain,
         `${handlerPath}.ts`,
       );
-      if (fs.existsSync(srcPath)) return srcPath;
-      return legacyPath;
+      return fs.existsSync(srcPath) ? srcPath : legacyPath;
     };
 
-    const addRoute = (
+    const map = (
       method: apigw.HttpMethod,
       routePath: string,
       handlerPath: string,
     ) => {
-      const id = `Core-${handlerPath.replace(/\//g, "-")}`;
       const entry = resolveHandlerEntry("core-ledger", handlerPath);
-      const fn = new lambda.NodejsFunction(this, id, {
+      this.addRoute(
+        props.api,
+        method,
+        routePath,
         entry,
-        runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
-        bundling: {
-          minify: true,
-          sourceMap: true,
-          externalModules: ["@aws-sdk/*"],
-        },
-        environment: { TABLE_NAME: props.table.tableName },
-      });
-
-      // grant table access
-      props.table.grantReadWriteData(fn);
-
-      const routeOptions: any = {
-        path: routePath,
-        methods: [method],
-        integration: new HttpLambdaIntegration(`${id}Integ`, fn),
-      };
-      if (props.authorizer) routeOptions.authorizer = props.authorizer;
-      props.api.addRoutes(routeOptions);
+        props.table,
+        props.authorizer,
+      );
     };
 
     // --- Core Ledger Endpoints ---
     // Accounts
-    addRoute(apigw.HttpMethod.POST, "/accounts", "accounts/create-account");
-    addRoute(
-      apigw.HttpMethod.GET,
-      "/accounts/{accountId}",
-      "accounts/get-account",
-    );
-    addRoute(
+    map(apigw.HttpMethod.POST, "/accounts", "accounts/create-account");
+    map(apigw.HttpMethod.GET, "/accounts/{accountId}", "accounts/get-account");
+    map(
       apigw.HttpMethod.GET,
       "/accounts/{accountId}/balance",
       "accounts/get-balance",
     );
-    addRoute(
+    map(
       apigw.HttpMethod.GET,
       "/accounts/{accountId}/entries",
       "accounts/get-entries",
     );
 
     // Entries
-    addRoute(apigw.HttpMethod.POST, "/entries", "entries/post-entry");
+    map(apigw.HttpMethod.POST, "/entries", "entries/post-entry");
 
     // Books
-    addRoute(
+    map(
       apigw.HttpMethod.GET,
       "/books/general-ledger",
       "books/get-general-ledger",
     );
-    addRoute(
+    map(
       apigw.HttpMethod.GET,
       "/books/trial-balance",
       "books/get-trial-balance",
     );
-    addRoute(
+    map(
       apigw.HttpMethod.GET,
       "/books/third-party-ledger",
       "books/get-third-party-ledger",
     );
-    addRoute(
+    map(
       apigw.HttpMethod.GET,
       "/books/matching-report",
       "books/get-matching-report",
     );
 
     // Fiscal Year
-    addRoute(
-      apigw.HttpMethod.GET,
-      "/fiscal-year/{year}",
-      "fiscal-year/get-details",
-    );
-    addRoute(
+    map(apigw.HttpMethod.GET, "/fiscal-year/{year}", "fiscal-year/get-details");
+    map(
       apigw.HttpMethod.POST,
       "/fiscal-year/{year}/close",
       "fiscal-year/close-year",
     );
-    addRoute(
+    map(
       apigw.HttpMethod.POST,
       "/fiscal-year/{year}/lock",
       "fiscal-year/lock-period",
     );
-    addRoute(
+    map(
       apigw.HttpMethod.POST,
       "/fiscal-year/{year}/unlock",
       "fiscal-year/unlock-period",
     );
 
     // Lettering
-    addRoute(apigw.HttpMethod.POST, "/lettering", "lettering/post-lettering");
-    addRoute(
+    map(apigw.HttpMethod.POST, "/lettering", "lettering/post-lettering");
+    map(
       apigw.HttpMethod.POST,
       "/lettering/cancel",
       "lettering/cancel-lettering",
     );
-    addRoute(
+    map(
       apigw.HttpMethod.GET,
       "/lettering/unlettered",
       "lettering/get-unlettered-lines",
