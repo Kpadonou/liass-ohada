@@ -129,5 +129,12 @@ export class CoreLedgerEndpoints extends DomainConstructFactory {
       "/lettering/unlettered",
       "lettering/get-unlettered-lines",
     );
+
+    // Journals
+    map(apigw.HttpMethod.POST, "/journals", "journals/create-journal");
+    map(apigw.HttpMethod.GET, "/journals", "journals/list-journals");
+    map(apigw.HttpMethod.GET, "/journals/{journalCode}", "journals/get-journal");
+    map(apigw.HttpMethod.PUT, "/journals/{journalCode}", "journals/update-journal");
+    map(apigw.HttpMethod.DELETE, "/journals/{journalCode}", "journals/delete-journal");
   }
 }
