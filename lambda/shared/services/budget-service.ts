@@ -1,8 +1,9 @@
 import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "../dynamo-client";
 import { config } from "../config";
+import { dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
+import { AppError } from "../middleware/handler-wrapper";
 
 export class BudgetService {
   /**
@@ -129,5 +130,46 @@ export class BudgetService {
         return hasBudget && hasDonorBudget && hasCash;
       },
     };
+  }
+
+  /**
+   * Vérifie les plafonds budgétaires et la disponibilité du cash bailleur.
+   * Jette une AppError si une limite est franchie.
+   */
+  static async enforceBudget(
+    orgId: string,
+    year: number,
+    line: any,
+  ): Promise<void> {
+    // 1. Récupération de l'état du budget via votre logique existante
+    const budgetStatus = await this.getAvailableBudget(
+      orgId,
+      line.projectId,
+      line.budgetLineId || "GENERIC",
+      year,
+      line.donorId,
+    );
+
+    if (!budgetStatus) return; // Pas de configuration budgétaire = pas de blocage
+
+    // 2. Vérification de la Ligne Budgétaire (Dépassement de dotation)
+    if (line.budgetLineId && line.debit > budgetStatus.budgetLine.available) {
+      throw new AppError(400, "ERROR_BUDGET_LINE_EXCEEDED", {
+        available: budgetStatus.budgetLine.available,
+        requested: line.debit,
+        lineId: line.budgetLineId,
+      });
+    }
+
+    // 3. Vérification du Cash Bailleur (Trésorerie réelle disponible)
+    if (line.donorId && budgetStatus.donor) {
+      if (line.debit > budgetStatus.donor.cashAvailable) {
+        throw new AppError(400, "ERROR_DONOR_CASH_EXCEEDED", {
+          available: budgetStatus.donor.cashAvailable,
+          requested: line.debit,
+          donorId: line.donorId,
+        });
+      }
+    }
   }
 }

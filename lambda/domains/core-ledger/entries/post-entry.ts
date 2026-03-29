@@ -1,324 +1,122 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import {
-  TransactWriteItemsCommand,
-  GetItemCommand,
-  BatchGetItemCommand,
-} from "@aws-sdk/client-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import {
-  EntrySchema,
-  EntryLineSchema,
-  CreateEntryRequestSchema,
-} from "@/models/core-ledger/entry";
-import { FiscalYearSchema } from "@/models/core-ledger/fiscal-year";
-import { KeyFactory } from "@/lambda/shared/key-builder";
-import { I18nResolver } from "@/lambda/shared/i18n";
-import {
-  badRequest,
-  created,
-  toLambdaResponse,
-} from "@/models/shared/api-response";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
-import { LockService } from "@/lambda/shared/services/lock-service";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import {
+  AppError,
+  createHandler,
+} from "@/lambda/shared/middleware/handler-wrapper";
 import { BudgetService } from "@/lambda/shared/services/budget-service";
+import { LedgerService } from "@/lambda/shared/services/ledger-service";
+import { LockService } from "@/lambda/shared/services/lock-service";
+import {
+  CreateEntryRequestSchema,
+  EntryLineSchema,
+  EntrySchema,
+} from "@/models/core-ledger/entry";
+import { TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 
 const formatAccount = (acc: string) => acc.padStart(8, "0");
 
-/**
- * Posts an accounting entry with SYCEBNL project tracking support.
- * Orchestrates a multi-item transaction to ensure data integrity across:
- * 1. General Ledger (GSI1): Account-based indexing.
- * 2. Auxiliary Ledger (GSI2): Third-party balances.
- * 3. Lettering Index (GSI3): Entry reconciliation.
- * 4. Project Analytical Ledger (GSI4): SYCEBNL project and donor reporting.
- */
-export const handler = async (
-  event: APIGatewayProxyEvent,
-): Promise<APIGatewayProxyResult> => {
-  const i18n = new I18nResolver(event.headers["Accept-Language"]);
-  try {
-    const body = JSON.parse(event.body || "{}");
-    const inputValidation = CreateEntryRequestSchema.safeParse(body);
-
-    if (!inputValidation.success) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_INVALID_INPUT")),
-      );
-    }
-
+export const handler = createHandler(
+  CreateEntryRequestSchema,
+  async (data, { orgId, i18n }) => {
     const {
-      orgId: inputOrgId,
       year,
-      entryType = "STANDARD",
-      journalCode = "MISC",
-      label: headerLabel,
-      lines = [],
       entryDate: inputDate,
+      lines = [],
+      label: headerLabel,
+      journalCode = "MISC",
+      entryType = "STANDARD",
       voucherNumber,
-    } = inputValidation.data;
+    } = data;
 
-    const orgId = event.requestContext?.authorizer?.claims?.orgId || inputOrgId;
     const entryDate = inputDate || new Date().toISOString().split("T")[0];
-
-    if (!orgId || year === undefined) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
-      );
-    }
-
-    // --- Entry ID Generation ---
     const timestamp = Date.now();
     const entryId =
-      inputValidation.data.entryId ||
+      data.entryId ||
       (entryType === "STANDARD"
         ? `E-${timestamp}`
         : `${entryType}-${year}-${timestamp}`);
+    const now = new Date().toISOString();
 
-    // 1. Fiscal Year & Period Validation
-    const fyResult = await dynamoClient.send(
-      new GetItemCommand({
-        TableName: config.TABLE_NAME,
-        Key: marshall({
-          PK: KeyFactory.orgKey(orgId),
-          SK: KeyFactory.fiscalYearSK(year),
-        }),
-      }),
-    );
+    // --- 1. VALIDATIONS D'ENVIRONNEMENT ---
+    await LedgerService.validateFiscalYear(orgId, year); //
 
-    if (!fyResult.Item) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND")),
-      );
+    if (await LockService.isPeriodLocked(orgId, entryDate)) {
+      throw new AppError(400, "ERROR_PERIOD_LOCKED"); //
     }
 
-    const fiscalYear = FiscalYearSchema.parse(unmarshall(fyResult.Item));
-    if (fiscalYear.status !== "OPEN") {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_FISCAL_YEAR_LOCKED")),
-      );
-    }
-
-    // 2. Monthly Lock Check
-    const isLocked = await LockService.isPeriodLocked(orgId, entryDate);
-    if (isLocked) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED")),
-      );
-    }
-
-    // 3. Accounts & Projects Verification
-    const uniqueAccountIds = [
+    // --- 2. VALIDATION DES COMPTES ET PROJETS ---
+    const accountIds = [
       ...new Set(lines.map((l) => formatAccount(l.accountId))),
     ];
-    // Collecter les projectId uniques (en filtrant les valeurs nulles/indéfinies)
-    const uniqueProjectIds = [
+    const projectIds = [
       ...new Set(
-        lines.map((l) => l.projectId).filter((id): id is string => !!id), // Type guard: élimine les undefined et assure le type string
+        lines.map((l) => l.projectId).filter((id): id is string => !!id),
       ),
     ];
 
-    const batchResults = await dynamoClient.send(
-      new BatchGetItemCommand({
-        RequestItems: {
-          [config.TABLE_NAME]: {
-            Keys: [
-              ...uniqueAccountIds.map((accId) =>
-                marshall({
-                  PK: KeyFactory.orgKey(orgId),
-                  SK: KeyFactory.accountSK(accId),
-                }),
-              ),
-              ...uniqueProjectIds.map((projId) =>
-                marshall({
-                  PK: KeyFactory.orgKey(orgId),
-                  SK: KeyFactory.projectSK(projId),
-                }),
-              ),
-            ],
-          },
-        },
-      }),
-    );
+    await LedgerService.validateEntities(orgId, accountIds, projectIds); //
 
-    const responses = batchResults.Responses?.[config.TABLE_NAME] || [];
-
-    // Extraire les IDs trouvés pour validation
-    const foundAccounts = new Set();
-    const foundProjects = new Set();
-
-    responses.forEach((item) => {
-      const data = unmarshall(item);
-      if (data.entityType === "ACCOUNT") foundAccounts.add(data.accountId);
-      if (data.entityType === "PROJECT") foundProjects.add(data.projectId);
-    });
-
-    // Validation des comptes
-    if (foundAccounts.size !== uniqueAccountIds.length) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_ACCOUNT_NOT_FOUND")),
-      );
-    }
-
-    // Validation des projets
-    if (foundProjects.size !== uniqueProjectIds.length) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_PROJECT_NOT_FOUND")),
-      );
-    }
-
-    // 4. Building Transaction Items
+    // --- 3. CONSTRUCTION DE LA TRANSACTION ---
     let totalDebit = 0;
     let totalCredit = 0;
     const transactItems: any[] = [];
-    const now = new Date().toISOString();
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       const paddedAcc = formatAccount(line.accountId);
       const lineId = `L${i + 1}-${timestamp}`;
 
-      const lineItem: any = {
+      // Validation Budgétaire SYCEBNL (Jette une AppError si échec)
+      if (line.projectId && line.debit > 0) {
+        await BudgetService.enforceBudget(orgId, year, line); //
+      }
+
+      const lineItem = buildLineItem(
         orgId,
         year,
-        lineId,
         entryId,
-        accountId: paddedAcc,
-        projectId: line.projectId,
-        budgetLineId: line.budgetLineId,
-        donorId: line.donorId,
-        thirdPartyId: line.thirdPartyId,
-        label: line.label || headerLabel,
-        description: line.description,
-        debit: Math.round(line.debit || 0),
-        credit: Math.round(line.credit || 0),
+        lineId,
         entryDate,
+        line,
+        paddedAcc,
         journalCode,
         voucherNumber,
-        entityType: "ENTRY_LINE",
-        PK: KeyFactory.partitionKey(orgId, year),
-        SK: KeyFactory.entryLineSK(lineId),
-        GSI1PK: KeyFactory.gsi1PK(orgId),
-        GSI1SK: KeyFactory.gsi1SK(paddedAcc, year, entryDate, lineId),
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      // GSI2 & GSI3: Third Party & Lettering
-      if (line.thirdPartyId) {
-        lineItem.GSI2PK = KeyFactory.gsi2PK(
-          orgId,
-          paddedAcc,
-          line.thirdPartyId,
-        );
-        lineItem.GSI2SK = KeyFactory.gsi2SK(entryDate, lineId);
-        lineItem.L_PK = KeyFactory.letteringPK(
-          orgId,
-          paddedAcc,
-          line.thirdPartyId,
-        );
-        lineItem.L_SK = KeyFactory.letteringSK(entryDate, entryId, lineId);
-      }
-
-      // GSI4: Project Analytical Index (SYCEBNL)
-      if (line.projectId) {
-        lineItem.GSI4PK = KeyFactory.gsi4PK(orgId);
-        lineItem.GSI4SK = KeyFactory.gsi4SK(
-          line.projectId,
-          year,
-          entryDate,
-          lineId,
-        );
-      }
-
-      const validatedLine = EntryLineSchema.parse(lineItem);
-
-      // --- 3.5 Validation Budgétaire et Multi-Bailleur ---
-      for (const line of lines) {
-        // On ne contrôle que les lignes de dépenses (débit > 0) liées à un projet
-        if (line.projectId && line.budgetLineId && line.debit > 0) {
-          const budgetStatus = await BudgetService.getAvailableBudget(
-            orgId,
-            line.projectId,
-            line.budgetLineId,
-            year,
-            line.donorId, // Extrait du schéma Zod mis à jour
-          );
-
-          // --- 3.5 Validation Budgétaire et Multi-Bailleur ---
-          if (line.projectId && line.debit > 0) {
-            const budgetStatus = await BudgetService.getAvailableBudget(
-              orgId,
-              line.projectId,
-              line.budgetLineId || "GENERIC",
-              year,
-              line.donorId,
-            );
-
-            if (budgetStatus) {
-              // 1. Vérification de la Ligne Budgétaire (Le "Chapeau" budgétaire)
-              // Ici, ton type indique que c'est encore '.available'
-              if (
-                line.budgetLineId &&
-                line.debit > budgetStatus.budgetLine.available
-              ) {
-                return toLambdaResponse(
-                  badRequest({
-                    code: "ERROR_BUDGET_LINE_EXCEEDED",
-                    message: `Dépassement de ligne budgétaire ${line.budgetLineId}. (Disponible: ${budgetStatus.budgetLine.available.toLocaleString()} XOF)`,
-                  }),
-                );
-              }
-
-              // 2. Vérification du Cash Réel du Bailleur (La Trésorerie)
-              // Ici, ton type pour le donor utilise probablement 'cashAvailable'
-              if (line.donorId && budgetStatus.donor) {
-                if (line.debit > budgetStatus.donor.cashAvailable) {
-                  return toLambdaResponse(
-                    badRequest({
-                      code: "ERROR_DONOR_CASH_EXCEEDED",
-                      message: `Fonds insuffisants en banque pour le bailleur ${line.donorId}. (Disponible: ${budgetStatus.donor.cashAvailable.toLocaleString()} XOF)`,
-                    }),
-                  );
-                }
-              }
-            }
-          }
-        }
-      }
+        now,
+      );
 
       transactItems.push({
         Put: {
           TableName: config.TABLE_NAME,
-          Item: marshall(validatedLine, {
+          Item: marshall(EntryLineSchema.parse(lineItem), {
             removeUndefinedValues: true,
           }),
         },
       });
 
-      totalDebit += lineItem.debit;
-      totalCredit += lineItem.credit;
+      totalDebit += Math.round(line.debit || 0);
+      totalCredit += Math.round(line.credit || 0);
     }
 
-    // 5. Balance Check
+    // --- 4. VÉRIFICATION ÉQUILIBRE ---
     if (totalDebit !== totalCredit) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_ENTRY_NOT_BALANCED")),
-      );
+      throw new AppError(400, "ERROR_ENTRY_NOT_BALANCED"); //
     }
 
-    // 6. Header Item
+    // --- 5. ENTÊTE ET EXÉCUTION ---
     const entryHeader = {
       orgId,
       year,
       entryId,
       entryType,
       entryDate,
-      label: headerLabel,
       journalCode,
       voucherNumber,
       totalDebit,
       totalCredit,
+      label: headerLabel,
       status: "POSTED",
       entityType: "ENTRY",
       PK: KeyFactory.partitionKey(orgId, year),
@@ -340,11 +138,64 @@ export const handler = async (
       new TransactWriteItemsCommand({ TransactItems: transactItems }),
     );
 
-    return toLambdaResponse(
-      created(entryHeader, i18n.getMessage("SUCCESS_ENTRY_POSTED")),
-    );
-  } catch (error) {
-    console.error("PostEntry Error:", error);
-    return toLambdaResponse(badRequest(i18n.getMessage("ERROR_INTERNAL")));
+    return {
+      message: i18n.getMessage("SUCCESS_ENTRY_POSTED"),
+      entryId,
+    };
+  },
+);
+
+/**
+ * Helper interne pour la construction des index complexes (GSI1, 2, 4)
+ */
+function buildLineItem(
+  orgId: string,
+  year: number,
+  entryId: string,
+  lineId: string,
+  entryDate: string,
+  line: any,
+  paddedAcc: string,
+  journalCode: string,
+  voucherNumber: string | undefined,
+  now: string,
+) {
+  const item: any = {
+    orgId,
+    year,
+    lineId,
+    entryId,
+    entryDate,
+    journalCode,
+    voucherNumber,
+    accountId: paddedAcc,
+    projectId: line.projectId,
+    budgetLineId: line.budgetLineId,
+    donorId: line.donorId,
+    thirdPartyId: line.thirdPartyId,
+    label: line.label,
+    debit: Math.round(line.debit || 0),
+    credit: Math.round(line.credit || 0),
+    entityType: "ENTRY_LINE",
+    PK: KeyFactory.partitionKey(orgId, year),
+    SK: KeyFactory.entryLineSK(lineId),
+    GSI1PK: KeyFactory.gsi1PK(orgId),
+    GSI1SK: KeyFactory.gsi1SK(paddedAcc, year, entryDate, lineId),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (line.thirdPartyId) {
+    item.GSI2PK = KeyFactory.gsi2PK(orgId, paddedAcc, line.thirdPartyId);
+    item.GSI2SK = KeyFactory.gsi2SK(entryDate, lineId);
+    item.L_PK = KeyFactory.letteringPK(orgId, paddedAcc, line.thirdPartyId);
+    item.L_SK = KeyFactory.letteringSK(entryDate, entryId, lineId);
   }
-};
+
+  if (line.projectId) {
+    item.GSI4PK = KeyFactory.gsi4PK(orgId);
+    item.GSI4SK = KeyFactory.gsi4SK(line.projectId, year, entryDate, lineId);
+  }
+
+  return item;
+}

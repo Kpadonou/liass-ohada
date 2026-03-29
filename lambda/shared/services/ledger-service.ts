@@ -1,19 +1,23 @@
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "../dynamo-client";
+import { FiscalYearSchema } from "@/models/core-ledger/fiscal-year";
+import {
+  BatchGetItemCommand,
+  GetItemCommand,
+  QueryCommand,
+} from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { config } from "../config";
+import { dynamoClient } from "../dynamo-client";
+import { KeyFactory } from "../key-builder";
+import { AppError } from "../middleware/handler-wrapper";
 
 /**
- * Options for account entries query
+ * Interface definitions for Ledger queries
  */
 export interface AccountEntriesOptions {
   limit?: number;
   cursor?: string;
 }
 
-/**
- * Account entry result
- */
 export interface AccountEntry {
   entryId: string;
   accountId: string;
@@ -25,12 +29,8 @@ export interface AccountEntry {
   journalCode?: string;
   thirdPartyId?: string;
   createdAt: string;
-  // Add other fields as needed
 }
 
-/**
- * Paginated account entries result
- */
 export interface AccountEntriesResult {
   entries: AccountEntry[];
   nextCursor?: string;
@@ -38,82 +38,140 @@ export interface AccountEntriesResult {
 }
 
 /**
- * Get account entries for a specific fiscal year
- * @param orgId Organization ID
- * @param fiscalYear Fiscal year (e.g., "2024")
- * @param accountId Account ID (e.g., "4111" - will be padded to 8 digits)
- * @param options Query options (limit, cursor for pagination)
- * @returns Paginated list of account entries sorted by date
+ * Service handling Core Ledger operations and validations.
  */
-export async function getAccountEntries(
-  orgId: string,
-  fiscalYear: string,
-  accountId: string,
-  options?: AccountEntriesOptions
-): Promise<AccountEntriesResult> {
-  // Pad account ID to 8 digits
-  const paddedAccountId = accountId.padStart(8, "0");
+export class LedgerService {
+  /**
+   * Validates that a fiscal year exists and its status is "OPEN".
+   * Throws AppError if validation fails.
+   */
+  static async validateFiscalYear(orgId: string, year: number): Promise<void> {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(year),
+        }),
+      }),
+    );
 
-  const { limit = 50, cursor } = options || {};
+    if (!result.Item) {
+      throw new AppError(404, "ERROR_FISCAL_YEAR_NOT_FOUND");
+    }
 
-  // Parse cursor for pagination
-  let exclusiveStartKey: any = undefined;
-  if (cursor) {
-    try {
-      exclusiveStartKey = JSON.parse(Buffer.from(cursor, "base64").toString());
-    } catch (error) {
-      throw new Error("Invalid cursor format");
+    const fiscalYear = FiscalYearSchema.parse(unmarshall(result.Item));
+    if (fiscalYear.status !== "OPEN") {
+      throw new AppError(400, "ERROR_FISCAL_YEAR_LOCKED");
     }
   }
 
-  // Query the GSI_ACCOUNT to get all entries for this account in the fiscal year
-  const queryResult = await dynamoClient.send(
-    new QueryCommand({
-      TableName: config.TABLE_NAME,
-      IndexName: "GSI_ACCOUNT",
-      KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
-      ExpressionAttributeValues: {
-        ":pk": { S: `ORG#${orgId}#FY#${fiscalYear}` },
-        ":gsi1sk": { S: `ACC#${paddedAccountId}` },
-      },
-      Limit: limit,
-      ExclusiveStartKey: exclusiveStartKey,
-      ScanIndexForward: true, // Sort by date ascending (date is in GSI1SK)
-    })
-  );
+  /**
+   * Validates the existence of multiple accounts and projects in a single batch.
+   * Throws AppError if any entity is missing.
+   */
+  static async validateEntities(
+    orgId: string,
+    accountIds: string[],
+    projectIds: string[],
+  ): Promise<void> {
+    if (accountIds.length === 0 && projectIds.length === 0) return;
 
-  const entries: AccountEntry[] = [];
+    const keys = [
+      ...accountIds.map((id) =>
+        marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(id),
+        }),
+      ),
+      ...projectIds.map((id) =>
+        marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.projectSK(id),
+        }),
+      ),
+    ];
 
-  // Process the results
-  if (queryResult.Items) {
-    for (const item of queryResult.Items) {
-      const unmarshalled = unmarshall(item);
-      entries.push({
-        entryId: unmarshalled.entryId,
-        accountId: unmarshalled.accountId,
-        debit: unmarshalled.debit || 0,
-        credit: unmarshalled.credit || 0,
-        description: unmarshalled.description,
-        entryDate: unmarshalled.entryDate,
-        voucherNumber: unmarshalled.voucherNumber,
-        journalCode: unmarshalled.journalCode,
-        thirdPartyId: unmarshalled.thirdPartyId,
-        createdAt: unmarshalled.createdAt,
-      });
+    const result = await dynamoClient.send(
+      new BatchGetItemCommand({
+        RequestItems: {
+          [config.TABLE_NAME]: { Keys: keys },
+        },
+      }),
+    );
+
+    const foundItems = result.Responses?.[config.TABLE_NAME] || [];
+    const expectedCount = accountIds.length + projectIds.length;
+
+    if (foundItems.length !== expectedCount) {
+      throw new AppError(400, "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND");
     }
   }
 
-  // Create next cursor if there are more results
-  let nextCursor: string | undefined;
-  if (queryResult.LastEvaluatedKey) {
-    nextCursor = Buffer.from(
-      JSON.stringify(queryResult.LastEvaluatedKey)
-    ).toString("base64");
-  }
+  /**
+   * Retrieves paginated entries for a specific account.
+   */
+  static async getAccountEntries(
+    orgId: string,
+    fiscalYear: string,
+    accountId: string,
+    options?: AccountEntriesOptions,
+  ): Promise<AccountEntriesResult> {
+    const paddedAccountId = accountId.padStart(8, "0");
+    const { limit = 50, cursor } = options || {};
 
-  return {
-    entries,
-    nextCursor,
-    hasMore: !!queryResult.LastEvaluatedKey,
-  };
+    let exclusiveStartKey: any = undefined;
+    if (cursor) {
+      try {
+        exclusiveStartKey = JSON.parse(
+          Buffer.from(cursor, "base64").toString(),
+        );
+      } catch {
+        throw new AppError(400, "ERROR_INVALID_CURSOR");
+      }
+    }
+
+    const queryResult = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        IndexName: "GSI1", // Ajusté pour correspondre à ton standard GSI1
+        KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
+        ExpressionAttributeValues: marshall({
+          ":pk": KeyFactory.gsi1PK(orgId),
+          ":sk": `ACC#${paddedAccountId}#FY#${fiscalYear}`,
+        }),
+        Limit: limit,
+        ExclusiveStartKey: exclusiveStartKey,
+        ScanIndexForward: true,
+      }),
+    );
+
+    const entries = (queryResult.Items || []).map((item) => {
+      const data = unmarshall(item);
+      return {
+        entryId: data.entryId,
+        accountId: data.accountId,
+        debit: data.debit || 0,
+        credit: data.credit || 0,
+        description: data.description,
+        entryDate: data.entryDate,
+        voucherNumber: data.voucherNumber,
+        journalCode: data.journalCode,
+        thirdPartyId: data.thirdPartyId,
+        createdAt: data.createdAt,
+      };
+    });
+
+    const nextCursor = queryResult.LastEvaluatedKey
+      ? Buffer.from(JSON.stringify(queryResult.LastEvaluatedKey)).toString(
+          "base64",
+        )
+      : undefined;
+
+    return {
+      entries,
+      nextCursor,
+      hasMore: !!nextCursor,
+    };
+  }
 }
