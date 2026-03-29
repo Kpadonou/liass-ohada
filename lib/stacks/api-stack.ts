@@ -1,55 +1,73 @@
+import * as cdk from "aws-cdk-lib";
 import { Stack, StackProps } from "aws-cdk-lib";
-import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 
-// Tes constructs existants
+// Import your custom constructs
 import { LiassOhadaApiGateway } from "../constructs/api/api-gateway";
+// import { LiassOhadaAuth } from "../constructs/auth/cognito-auth"; // Uncomment when ready
 
-// Nos nouveaux constructs de domaines
+// Import your Domain Constructs
 import { CoreLedgerEndpoints } from "../constructs/domains/core-ledger-endpoints";
 import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
 
 /**
- * On définit des Props pour recevoir la table de la DataStack
+ * Interface for ApiStack properties.
+ * It requires the accounting table from the DataStack to be passed in.
  */
 interface ApiStackProps extends StackProps {
+  /** The DynamoDB table provided by the DataStack */
   accountingTable: dynamodb.ITable;
 }
 
+/**
+ * ApiStack handles the infrastructure for the API Gateway and
+ * orchestrates the different functional domains (Ledger, Projects, etc.).
+ */
 export class ApiStack extends Stack {
   public readonly apiGateway: LiassOhadaApiGateway;
-  public readonly httpApi: apigw.HttpApi;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    // 1. Initialisation de l'Infrastructure de base
-    // On crée l'API Gateway (HTTP API v2)
-    this.apiGateway = new LiassOhadaApiGateway(this, "ApiGateway");
+    // 1. Base Infrastructure: Initialize API Gateway v2 (HTTP API)
+    this.apiGateway = new LiassOhadaApiGateway(this, "LiassOhada-ApiGateway");
 
-    // Auth construct is optional in this workspace; pass undefined authorizer to domain constructs
-    // this.auth = new LiassOhadaAuth(this, "Auth");
+    // 2. Authentication: Initialize Cognito/Authorizer (Optional for now)
+    // const auth = new LiassOhadaAuth(this, "LiassOhadaAuth");
+    const authorizer = undefined; // Set to auth.authorizer once Cognito is ready
 
     // -----------------------------------------------------------
-    // 2. Initialisation des Domaines (Injection de Dépendances)
+    // 3. Domain Modules Initialization (Dependency Injection)
     // -----------------------------------------------------------
 
-    // --- Domaine : Gestion de Projets (SYCEBNL) ---
+    /**
+     * CORE LEDGER MODULE
+     * Handles General Accounting, Accounts, Entries, and Books.
+     */
+    new CoreLedgerEndpoints(this, "CoreLedgerModule", {
+      api: this.apiGateway.httpApi,
+      table: props.accountingTable,
+      authorizer: authorizer,
+    });
+
+    /**
+     * PROJECT MODULE (SYCEBNL)
+     * Handles Projects, Donors, and specialized Reporting.
+     */
     new ProjectEndpoints(this, "ProjectModule", {
       api: this.apiGateway.httpApi,
-      authorizer: undefined as any,
       table: props.accountingTable,
+      authorizer: authorizer,
     });
 
-    // --- Domaine : Core Ledger (Comptabilité Générale) ---
-    new CoreLedgerEndpoints(this, "LedgerModule", {
-      api: this.apiGateway.httpApi,
-      authorizer: undefined as any,
-      table: props.accountingTable,
-    });
+    // FUTURE: Add more modules here (Payroll, Commercial, etc.)
+    // new PayrollEndpoints(this, "PayrollModule", { ... });
 
-    // À l'avenir, tu n'auras qu'à ajouter ici :
-    // new CommercialDomain(this, "CommercialModule", { ... });
+    // Output the API URL for easy access
+    new cdk.CfnOutput(this, "ApiUrl", {
+      value: this.apiGateway.httpApi.apiEndpoint,
+      description: "The URL of the Liass-OHADA API Gateway",
+    });
   }
 }
