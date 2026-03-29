@@ -83,10 +83,6 @@ export class ProjectEndpoints extends DomainConstructFactory {
     );
 
     // Dashboard
-    map(
-      apigw.HttpMethod.GET,
-      "/projects/summary",
-      "list-projects-summary",
-    );
+    map(apigw.HttpMethod.GET, "/projects/summary", "list-projects-summary");
   }
 }

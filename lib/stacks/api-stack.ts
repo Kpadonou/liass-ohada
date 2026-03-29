@@ -1,15 +1,14 @@
-import * as cdk from "aws-cdk-lib";
 import { Stack, StackProps } from "aws-cdk-lib";
-import { Construct } from "constructs";
-import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import { Construct } from "constructs";
 
 // Tes constructs existants
 import { LiassOhadaApiGateway } from "../constructs/api/api-gateway";
 
 // Nos nouveaux constructs de domaines
-import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
 import { CoreLedgerEndpoints } from "../constructs/domains/core-ledger-endpoints";
+import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
 
 /**
  * On définit des Props pour recevoir la table de la DataStack
