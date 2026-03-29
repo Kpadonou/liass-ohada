@@ -72,7 +72,7 @@ export const createHandler = <T>(
 
       if (error instanceof AppError) {
         return sendResponse(error.statusCode, {
-          message: i18n.getMessage(error.messageCode),
+          message: i18n.getMessage(error.messageCode, error.details),
           details: error.details,
         });
       }

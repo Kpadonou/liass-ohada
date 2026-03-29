@@ -49,7 +49,7 @@
   "ERROR_PROJECT_NOT_FOUND": "Projet non trouvé.",
   "SUCCESS_PROJECT_REPORT_RETRIEVED": "Rapport analytique du projet récupéré avec succès.",
   "ERROR_BUDGET_EXCEEDED": "Dépassement budgétaire : la ligne budgétaire a un solde insuffisant.",
-  "ERROR_BUDGET_LINE_EXCEEDED": "Dépassement de la ligne budgétaire.",
+  "ERROR_BUDGET_LINE_EXCEEDED": "Ligne budgétaire {budgetLineId} dépassée : disponible {available} XOF, requis {requested} XOF.",
   "ERROR_DONOR_BUDGET_EXCEEDED": "Dépassement du budget du bailleur.",
   "ERROR_SOME_LINES_NOT_FOUND": "Certaines lignes demandées sont introuvables.",
   "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY": "Le lettrage nécessite que toutes les lignes appartiennent au même compte et au même tiers.",
@@ -60,5 +60,6 @@
   "ERROR_MISSING_ORG_ID": "Identifiant de l'organisation manquant ou non autorisé.",
   "ERROR_DONOR_EXISTS": "Un donateur avec le même code existe déjà.",
   "SUCCESS_DONOR_CREATED": "Donateur créé avec succès.",
-  "ERROR_PROJECT_CODE_EXISTS": "Un projet avec ce code existe déjà."
+  "ERROR_PROJECT_CODE_EXISTS": "Un projet avec ce code existe déjà.",
+  "ERROR_DONOR_CASH_EXCEEDED": "Solde du bailleur {donorId} dépassé : disponible {available} XOF, demandé {requested} XOF."
 }
