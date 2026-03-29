@@ -1,10 +1,7 @@
 import * as cdk from "aws-cdk-lib";
-import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
-import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { Construct } from "constructs";
 import * as path from "path";
-import * as fs from "fs";
 import { DomainConstructFactory } from "./domain-constructs-factory";
 
 export interface DomainProps {
@@ -17,30 +14,18 @@ export class CoreLedgerEndpoints extends DomainConstructFactory {
   constructor(scope: Construct, id: string, props: DomainProps) {
     super(scope, id);
 
-    // helper: resolve path to handler, prefer src/ layout then fallback to lambda/
-    const resolveHandlerEntry = (domain: string, handlerPath: string) => {
-      const srcPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "..",
-        "src",
+    // Resolve project root from current directory
+    const projectRoot = path.resolve(__dirname, "..", "..", "..");
+
+    // helper: resolve path to handler using absolute path from project root
+    const resolveHandlerEntry = (domain: string, fullHandlerPath: string) => {
+      return path.join(
+        projectRoot,
         "lambda",
         "domains",
         domain,
-        `${handlerPath}.ts`,
+        `${fullHandlerPath}.ts`,
       );
-      const legacyPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "..",
-        "lambda",
-        "domains",
-        domain,
-        `${handlerPath}.ts`,
-      );
-      return fs.existsSync(srcPath) ? srcPath : legacyPath;
     };
 
     const map = (
