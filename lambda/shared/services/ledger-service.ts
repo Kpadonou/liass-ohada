@@ -208,8 +208,6 @@ export class LedgerService {
       }
     }
 
-    const gsi1SKPrefix = `ACC#${paddedAccountId}#FY#${fiscalYear}`;
-
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -217,7 +215,7 @@ export class LedgerService {
         KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.gsi1PK(orgId),
-          ":sk": gsi1SKPrefix,
+          ":sk": KeyFactory.gsi1SKPrefix(paddedAccountId, fiscalYear),
         }),
         Limit: limit,
         ExclusiveStartKey: exclusiveStartKey,

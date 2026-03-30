@@ -50,6 +50,9 @@ export const KeyFactory = {
     lineId: string,
   ) => `ACC#${accountId}#FY#${year}#DT#${date}#${lineId}`,
 
+  gsi1SKPrefix: (accountId: string, year: number | string) =>
+    `ACC#${accountId}#FY#${year}`,
+
   // --- GSI 2: Auxiliary Ledger (Third Party View) ---
 
   gsi2PK: (orgId: string, accountId: string, thirdPartyId: string) =>
