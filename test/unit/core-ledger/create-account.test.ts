@@ -10,15 +10,38 @@ const dynamoMock = mockClient(DynamoDBClient);
 
 const createEvent = (body = {}, orgId = "test-org") => {
   return {
-    body: JSON.stringify(body),
+    version: "2.0",
+    routeKey: "POST /accounts",
+    rawPath: "/accounts",
+    rawQueryString: "",
     headers: { "accept-language": "en" },
     requestContext: {
+      accountId: "123456789012",
+      apiId: "api-id",
+      domainName: "localhost",
+      domainPrefix: "localhost",
+      http: {
+        method: "POST",
+        path: "/accounts",
+        protocol: "HTTP/1.1",
+        sourceIp: "127.0.0.1",
+        userAgent: "jest",
+      },
+      requestId: "req-id",
+      routeKey: "POST /accounts",
+      stage: "test",
+      time: "01/Jan/1970:00:00:00 +0000",
+      timeEpoch: 0,
       authorizer: {
+        principalId: "user-123",
+        integrationLatency: 0,
         jwt: {
           claims: { orgId },
+          scopes: [],
         },
       },
     },
+    body: JSON.stringify(body),
     isBase64Encoded: false,
   };
 };
@@ -28,6 +51,13 @@ describe("create-account handler", () => {
     dynamoMock.reset();
     jest.clearAllMocks();
   });
+
+  const parseResponse = (response: any) => {
+    if (typeof response === "string") {
+      return JSON.parse(response);
+    }
+    return JSON.parse(response.body ?? "{}");
+  };
 
   test("creates account successfully", async () => {
     // account does not exist yet
@@ -48,11 +78,11 @@ describe("create-account handler", () => {
     };
 
     const response = await handler(createEvent(newAccount));
-    const body = JSON.parse(response.body);
+    const body = parseResponse(response);
 
-    expect(response.statusCode).toBe(200);
+    expect((response as any).statusCode).toBe(200);
     expect(body.message.code).toBe("SUCCESS_ACCOUNT_CREATED");
-    expect(body.data.account.accountId).toBe("41100000");
+    expect(body.account.accountId).toBe("41100000");
   });
 
   test("returns 400 when account already exists", async () => {
@@ -72,17 +102,17 @@ describe("create-account handler", () => {
     };
 
     const response = await handler(createEvent(newAccount));
-    const body = JSON.parse(response.body);
+    const body = parseResponse(response);
 
-    expect(response.statusCode).toBe(400);
+    expect((response as any).statusCode).toBe(400);
     expect(body.message.code).toBe("ERROR_ACCOUNT_ALREADY_EXISTS");
   });
 
   test("returns 400 for invalid input", async () => {
     const response = await handler(createEvent({ accountId: "411" }));
-    const body = JSON.parse(response.body);
+    const body = parseResponse(response);
 
-    expect(response.statusCode).toBe(400);
+    expect((response as any).statusCode).toBe(400);
     expect(body.message.code).toBe("ERROR_INVALID_INPUT");
   });
 });
