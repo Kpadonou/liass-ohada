@@ -1,4 +1,4 @@
-import { i18n, getLocale } from "@/locales";
+import { getLocale, i18n } from "@/locales";
 
 export class I18nResolver {
   private lang: string;
@@ -23,7 +23,11 @@ export class I18nResolver {
 
     const interpolate = (text: string): string =>
       text.replace(/\{(\w+)\}/g, (_match, key) => {
-        if (!(key in params) || params[key] === undefined || params[key] === null) {
+        if (
+          !(key in params) ||
+          params[key] === undefined ||
+          params[key] === null
+        ) {
           return `{${key}}`;
         }
 

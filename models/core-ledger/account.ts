@@ -30,10 +30,21 @@ export const AccountSchema = z
     },
     {
       message: "ERROR_ACCOUNT_NUMBER_CLASS_MISMATCH",
-    }
+    },
   );
 
 export type Account = z.infer<typeof AccountSchema>;
+
+export const CreateAccountRequestSchema = z.object({
+  accountId: z.string().min(1),
+  accountName: z.string(),
+  accountNature: AccountNature,
+  accountUsage: AccountUsage,
+  isThirdPartyAccount: z.boolean(),
+  classCode: z.number().int().min(1).max(8),
+  financialStatementCode: z.string(),
+  allowReconciliation: z.boolean(),
+});
 
 export const padAccountId = (accountId: string): string => {
   return accountId.padEnd(8, "0");

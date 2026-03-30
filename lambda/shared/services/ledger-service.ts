@@ -1,7 +1,9 @@
+import { Account, AccountSchema } from "@/models/core-ledger/account";
 import { FiscalYearSchema } from "@/models/core-ledger/fiscal-year";
 import {
   BatchGetItemCommand,
   GetItemCommand,
+  PutItemCommand,
   QueryCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -105,6 +107,59 @@ export class LedgerService {
 
     if (foundItems.length !== expectedCount) {
       throw new AppError(400, "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND");
+    }
+  }
+
+  /**
+   * Verifies whether an account exists in the chart of accounts.
+   */
+  static async accountExists(
+    orgId: string,
+    accountId: string,
+  ): Promise<boolean> {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(accountId),
+        }),
+      }),
+    );
+
+    return !!result.Item;
+  }
+
+  /**
+   * Throws when account exists.
+   */
+  static async assertAccountNotExists(
+    orgId: string,
+    accountId: string,
+  ): Promise<void> {
+    if (await LedgerService.accountExists(orgId, accountId)) {
+      throw new AppError(400, "ERROR_ACCOUNT_ALREADY_EXISTS");
+    }
+  }
+
+  /**
+   * Creates account item in DynamoDB with conditional write.
+   */
+  static async createAccount(account: Account): Promise<void> {
+    try {
+      await dynamoClient.send(
+        new PutItemCommand({
+          TableName: config.TABLE_NAME,
+          Item: marshall(AccountSchema.parse(account)),
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        }),
+      );
+    } catch (error: any) {
+      if (error?.name === "ConditionalCheckFailedException") {
+        throw new AppError(400, "ERROR_ACCOUNT_ALREADY_EXISTS");
+      }
+      throw error;
     }
   }
 
