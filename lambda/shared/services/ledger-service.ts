@@ -69,6 +69,28 @@ export class LedgerService {
   }
 
   /**
+   * Retrieves a fiscal year record by org and year.
+   * Throws AppError(404) when not found.
+   */
+  static async getFiscalYear(orgId: string, year: number) {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(year),
+        }),
+      }),
+    );
+
+    if (!result.Item) {
+      throw new AppError(404, "ERROR_FISCAL_YEAR_NOT_FOUND");
+    }
+
+    return FiscalYearSchema.parse(unmarshall(result.Item));
+  }
+
+  /**
    * Validates the existence of multiple accounts and projects in a single batch.
    * Throws AppError if any entity is missing.
    */
