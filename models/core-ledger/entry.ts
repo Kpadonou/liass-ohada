@@ -64,6 +64,19 @@ export const CreateEntryRequestSchema = z.object({
 
 export type CreateEntryRequest = z.infer<typeof CreateEntryRequestSchema>;
 
+/**
+ * Request schema for querying paginated ledger entries for an account.
+ * Note: accountId and fiscalYear are extracted from path parameters.
+ */
+export const GetEntriesRequestSchema = z.object({
+  accountId: z.string().min(1, "Account ID is required"),
+  fiscalYear: z.coerce.string().min(1, "Fiscal year is required"),
+  limit: z.coerce.number().int().min(1).max(1000).default(50).optional(),
+  cursor: z.string().optional(),
+});
+
+export type GetEntriesRequest = z.infer<typeof GetEntriesRequestSchema>;
+
 // --- Persistence Schemas (DynamoDB Items) ---
 
 /**

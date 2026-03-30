@@ -194,7 +194,7 @@ export class LedgerService {
     accountId: string,
     options?: AccountEntriesOptions,
   ): Promise<AccountEntriesResult> {
-    const paddedAccountId = accountId.padStart(8, "0");
+    const paddedAccountId = accountId.padEnd(8, "0");
     const { limit = 50, cursor } = options || {};
 
     let exclusiveStartKey: any = undefined;
@@ -208,14 +208,16 @@ export class LedgerService {
       }
     }
 
+    const gsi1SKPrefix = `ACC#${paddedAccountId}#FY#${fiscalYear}`;
+
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI1", // Ajusté pour correspondre à ton standard GSI1
+        IndexName: "GSI_ACCOUNT",
         KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.gsi1PK(orgId),
-          ":sk": `ACC#${paddedAccountId}#FY#${fiscalYear}`,
+          ":sk": gsi1SKPrefix,
         }),
         Limit: limit,
         ExclusiveStartKey: exclusiveStartKey,

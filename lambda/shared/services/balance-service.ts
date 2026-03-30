@@ -1,7 +1,7 @@
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "../dynamo-client";
 import { config } from "../config";
+import { dynamoClient } from "../dynamo-client";
 
 /**
  * Account balance result
@@ -24,10 +24,10 @@ export interface AccountBalance {
 export async function getAccountBalance(
   orgId: string,
   fiscalYear: string,
-  accountId: string
+  accountId: string,
 ): Promise<AccountBalance> {
   // Pad account ID to 8 digits
-  const paddedAccountId = accountId.padStart(8, "0");
+  const paddedAccountId = accountId.padEnd(8, "0");
 
   let totalDebit = 0;
   let totalCredit = 0;
@@ -46,7 +46,7 @@ export async function getAccountBalance(
           ":gsi1sk": { S: `ACC#${paddedAccountId}` },
         },
         ExclusiveStartKey: exclusiveStartKey,
-      })
+      }),
     );
 
     // Sum all debit and credit amounts from the entry lines
