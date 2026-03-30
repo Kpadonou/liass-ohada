@@ -16,22 +16,23 @@ export class LockService {
   /**
    * @async
    * @method isPeriodLocked
-   * @description Checks DynamoDB for a 'PERIOD_LOCK' item matching the date's year and month.
+   * @description Checks if a period is locked using robust string parsing to avoid TZ shifts.
    * @param {string} orgId - Organization ID.
-   * @param {string} date - Date string in ISO or YYYY-MM-DD format.
-   * @returns {Promise<boolean>} - Returns true if the status is explicitly 'LOCKED'.
+   * @param {string} date - Date string (YYYY-MM-DD or ISO).
+   * @returns {Promise<boolean>}
    */
   static async isPeriodLocked(orgId: string, date: string): Promise<boolean> {
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = (d.getMonth() + 1).toString().padStart(2, "0");
+    // On extrait l'année et le mois directement de la chaîne "YYYY-MM-DD..."
+    // Cela évite que '2026-04-01T00:00' ne devienne '2026-03-31' à cause d'un décalage UTC.
+    const yearPart = date.substring(0, 4);
+    const monthPart = date.substring(5, 7); // Récupère 'MM' de 'YYYY-MM-DD'
 
     const result = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
         Key: marshall({
-          PK: KeyFactory.partitionKey(orgId, year),
-          SK: KeyFactory.periodLockSK(month),
+          PK: KeyFactory.partitionKey(orgId, yearPart),
+          SK: KeyFactory.periodLockSK(monthPart),
         }),
       }),
     );
