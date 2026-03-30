@@ -164,6 +164,28 @@ export class LedgerService {
   }
 
   /**
+   * Retrieves an account by ID.
+   * Throws AppError(404) if not found.
+   */
+  static async getAccount(orgId: string, accountId: string): Promise<Account> {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(accountId),
+        }),
+      }),
+    );
+
+    if (!result.Item) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+
+    return AccountSchema.parse(unmarshall(result.Item));
+  }
+
+  /**
    * Retrieves paginated entries for a specific account.
    */
   static async getAccountEntries(

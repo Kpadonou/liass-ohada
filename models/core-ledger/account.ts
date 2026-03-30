@@ -46,6 +46,10 @@ export const CreateAccountRequestSchema = z.object({
   allowReconciliation: z.boolean(),
 });
 
+export const GetAccountRequestSchema = z.object({
+  accountId: z.string().min(1, "Account ID is required"),
+});
+
 export const padAccountId = (accountId: string): string => {
   return accountId.padEnd(8, "0");
 };
