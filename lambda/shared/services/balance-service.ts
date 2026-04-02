@@ -1,84 +1,153 @@
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { config } from "../config";
 import { dynamoClient } from "../dynamo-client";
+import { KeyFactory } from "../key-builder";
 
 /**
- * Account balance result
+ * Represent an aggregated balance for a specific account and fiscal year.
  */
 export interface AccountBalance {
   accountId: string;
   totalDebit: number;
   totalCredit: number;
-  balance: number; // debit - credit
+  balance: number;
   position: "DEBIT" | "CREDIT" | "ZERO";
+  updatedAt: string;
 }
 
 /**
- * Get account balance for a specific fiscal year
- * @param orgId Organization ID
- * @param fiscalYear Fiscal year (e.g., "2024")
- * @param accountId Account ID (e.g., "4111" - will be padded to 8 digits)
- * @returns Account balance information
+ * @class BalanceService
+ * @description Manages pre-aggregated account balances to ensure high performance
+ * and low RCU consumption when generating financial reports.
  */
-export async function getAccountBalance(
-  orgId: string,
-  fiscalYear: string,
-  accountId: string,
-): Promise<AccountBalance> {
-  // Pad account ID to 8 digits
-  const paddedAccountId = accountId.padEnd(8, "0");
+export class BalanceService {
+  /**
+   * @method buildBalanceUpdateAction
+   * @description prepares a TransactWriteItem to atomically update an account balance.
+   * This is returned to be bundled within a larger transaction (e.g., in post-entry).
+   */
+  static buildBalanceUpdateAction(
+    orgId: string,
+    year: string | number,
+    accountId: string,
+    debit: number,
+    credit: number,
+  ): any {
+    const paddedAccountId = accountId.padEnd(8, "0");
 
-  let totalDebit = 0;
-  let totalCredit = 0;
-  let exclusiveStartKey: any = undefined;
-
-  // Handle pagination to ensure all entries are fetched
-  do {
-    // Query the GSI_ACCOUNT to get all entries for this account in the fiscal year
-    const queryResult = await dynamoClient.send(
-      new QueryCommand({
+    return {
+      Update: {
         TableName: config.TABLE_NAME,
-        IndexName: "GSI_ACCOUNT",
-        KeyConditionExpression: "PK = :pk AND begins_with(GSI1SK, :gsi1sk)",
-        ExpressionAttributeValues: {
-          ":pk": { S: `ORG#${orgId}#FY#${fiscalYear}` },
-          ":gsi1sk": { S: `ACC#${paddedAccountId}` },
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, year),
+          SK: `BAL#${paddedAccountId}`,
+        }),
+        // Atomic increment for debit/credit and metadata update
+        UpdateExpression:
+          "ADD totalDebit :d, totalCredit :c SET updatedAt = :now, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year",
+        ExpressionAttributeNames: {
+          "#yr": "year",
         },
-        ExclusiveStartKey: exclusiveStartKey,
+        ExpressionAttributeValues: marshall({
+          ":d": debit,
+          ":c": credit,
+          ":now": new Date().toISOString(),
+          ":type": "ACCOUNT_BALANCE",
+          ":orgId": orgId,
+          ":accId": paddedAccountId,
+          ":year": year,
+        }),
+      },
+    };
+  }
+
+  /**
+   * @async
+   * @method getAccountBalance
+   * @description Retrieves the pre-calculated balance for a single account.
+   */
+  static async getAccountBalance(
+    orgId: string,
+    year: string | number,
+    accountId: string,
+  ): Promise<AccountBalance> {
+    const paddedAccountId = accountId.padEnd(8, "0");
+
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, year),
+          SK: `BAL#${paddedAccountId}`,
+        }),
       }),
     );
 
-    // Sum all debit and credit amounts from the entry lines
-    if (queryResult.Items) {
-      for (const item of queryResult.Items) {
-        const unmarshalled = unmarshall(item);
-        // Sum debit and credit as integers to avoid floating point issues
-        totalDebit += Math.round(unmarshalled.debit || 0);
-        totalCredit += Math.round(unmarshalled.credit || 0);
-      }
+    if (!result.Item) {
+      return {
+        accountId: paddedAccountId,
+        totalDebit: 0,
+        totalCredit: 0,
+        balance: 0,
+        position: "ZERO",
+        updatedAt: new Date().toISOString(),
+      };
     }
 
-    // Continue pagination if there are more results
-    exclusiveStartKey = queryResult.LastEvaluatedKey;
-  } while (exclusiveStartKey);
+    const data = unmarshall(result.Item);
+    const balance = (data.totalDebit || 0) - (data.totalCredit || 0);
 
-  const balance = totalDebit - totalCredit;
-  let position: "DEBIT" | "CREDIT" | "ZERO";
-
-  if (balance > 0) {
-    position = "DEBIT";
-  } else if (balance < 0) {
-    position = "CREDIT";
-  } else {
-    position = "ZERO";
+    return {
+      accountId: data.accountId,
+      totalDebit: data.totalDebit || 0,
+      totalCredit: data.totalCredit || 0,
+      balance,
+      position: balance > 0 ? "DEBIT" : balance < 0 ? "CREDIT" : "ZERO",
+      updatedAt: data.updatedAt,
+    };
   }
 
-  return {
-    accountId: paddedAccountId,
-    totalDebit,
-    totalCredit,
-    balance,
-    position,
-  };
+  /**
+   * @async
+   * @method getTrialBalance
+   * @description Efficiently retrieves all account balances for a fiscal year.
+   * Scans the main partition using the 'BAL#' prefix.
+   */
+  static async getTrialBalance(orgId: string, year: string | number) {
+    const balances: AccountBalance[] = [];
+    let exclusiveStartKey: any = undefined;
+
+    do {
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
+          ExpressionAttributeValues: marshall({
+            ":pk": KeyFactory.partitionKey(orgId, year),
+            ":skPrefix": "BAL#",
+          }),
+          ExclusiveStartKey: exclusiveStartKey,
+        }),
+      );
+
+      if (result.Items) {
+        for (const item of result.Items) {
+          const data = unmarshall(item);
+          const balance = (data.totalDebit || 0) - (data.totalCredit || 0);
+          balances.push({
+            accountId: data.accountId,
+            totalDebit: data.totalDebit || 0,
+            totalCredit: data.totalCredit || 0,
+            balance,
+            position: balance > 0 ? "DEBIT" : balance < 0 ? "CREDIT" : "ZERO",
+            updatedAt: data.updatedAt,
+          });
+        }
+      }
+      exclusiveStartKey = result.LastEvaluatedKey;
+    } while (exclusiveStartKey);
+
+    return balances;
+  }
 }

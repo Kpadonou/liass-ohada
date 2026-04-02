@@ -60,5 +60,6 @@
   "ERROR_MISSING_ORG_ID": "Organization identifier missing or unauthorized.",
   "ERROR_DONOR_EXISTS": "A donor with the same code already exists.",
   "SUCCESS_DONOR_CREATED": "Donor created successfully.",
-  "ERROR_PROJECT_CODE_EXISTS": "A project with this code already exists."
+  "ERROR_PROJECT_CODE_EXISTS": "A project with this code already exists.",
+  "ERROR_ENTRY_TOO_LARGE": "Entry is too large (maximum 49 lines)."
 }

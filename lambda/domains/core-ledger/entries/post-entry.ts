@@ -1,3 +1,13 @@
+/**
+ * @description Atomic handler for posting accounting entries.
+ * It ensures strict consistency between the Journal (Entry/Lines) and the
+ * Trial Balance (Account Balances) using DynamoDB TransactWriteItems.
+ * * Business Rules:
+ * - Validates fiscal year status and period locks.
+ * - Enforces budget constraints for project-related lines.
+ * - Ensures the entry is balanced (Total Debit = Total Credit).
+ * - Updates pre-aggregated account balances in real-time.
+ */
 import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
@@ -5,6 +15,7 @@ import {
   AppError,
   createHandler,
 } from "@/lambda/shared/middleware/handler-wrapper";
+import { BalanceService } from "@/lambda/shared/services/balance-service";
 import { BudgetService } from "@/lambda/shared/services/budget-service";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
 import { LockService } from "@/lambda/shared/services/lock-service";
@@ -16,7 +27,7 @@ import {
 import { TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 
-const formatAccount = (acc: string) => acc.padStart(8, "0");
+const formatAccount = (acc: string) => acc.padEnd(8, "0");
 
 export const handler = createHandler(
   CreateEntryRequestSchema,
@@ -31,23 +42,29 @@ export const handler = createHandler(
       voucherNumber,
     } = data;
 
-    const entryDate = inputDate || new Date().toISOString().split("T")[0];
-    const timestamp = Date.now();
-    const entryId =
-      data.entryId ||
-      (entryType === "STANDARD"
-        ? `E-${timestamp}`
-        : `${entryType}-${year}-${timestamp}`);
-    const now = new Date().toISOString();
-
-    // --- 1. VALIDATIONS D'ENVIRONNEMENT ---
-    await LedgerService.validateFiscalYear(orgId, year); //
-
-    if (await LockService.isPeriodLocked(orgId, entryDate)) {
-      throw new AppError(400, "ERROR_PERIOD_LOCKED"); //
+    // --- 1. PRE-VALIDATIONS ---
+    if (lines.length === 0) {
+      throw new AppError(400, "ERROR_EMPTY_ENTRY");
     }
 
-    // --- 2. VALIDATION DES COMPTES ET PROJETS ---
+    // DynamoDB transaction limit is 100 items.
+    // We use 1 for header + 2 per line (Line + Balance Update). Max lines = 49.
+    if (lines.length > 49) {
+      throw new AppError(400, "ERROR_ENTRY_TOO_LARGE");
+    }
+
+    const entryDate = inputDate || new Date().toISOString().split("T")[0];
+    const timestamp = Date.now();
+    const entryId = data.entryId || `E-${timestamp}`;
+    const now = new Date().toISOString();
+
+    // Verify Fiscal Year and Period Lock
+    await LedgerService.validateFiscalYear(orgId, year);
+    if (await LockService.isPeriodLocked(orgId, entryDate)) {
+      throw new AppError(400, "ERROR_PERIOD_LOCKED");
+    }
+
+    // --- 2. ENTITY VALIDATION (Accounts & Projects) ---
     const accountIds = [
       ...new Set(lines.map((l) => formatAccount(l.accountId))),
     ];
@@ -57,9 +74,9 @@ export const handler = createHandler(
       ),
     ];
 
-    await LedgerService.validateEntities(orgId, accountIds, projectIds); //
+    await LedgerService.validateEntities(orgId, accountIds, projectIds);
 
-    // --- 3. CONSTRUCTION DE LA TRANSACTION ---
+    // --- 3. TRANSACTION CONSTRUCTION ---
     let totalDebit = 0;
     let totalCredit = 0;
     const transactItems: any[] = [];
@@ -69,11 +86,12 @@ export const handler = createHandler(
       const paddedAcc = formatAccount(line.accountId);
       const lineId = `L${i + 1}-${timestamp}`;
 
-      // Validation Budgétaire SYCEBNL (Jette une AppError si échec)
+      // SYCEBNL Budget Enforcement
       if (line.projectId && line.debit > 0) {
-        await BudgetService.enforceBudget(orgId, year, line); //
+        await BudgetService.enforceBudget(orgId, year, line);
       }
 
+      // Action A: Create the Entry Line
       const lineItem = buildLineItem(
         orgId,
         year,
@@ -96,16 +114,27 @@ export const handler = createHandler(
         },
       });
 
+      // Action B: Update the Account Balance (Atomic Increment)
+      transactItems.push(
+        BalanceService.buildBalanceUpdateAction(
+          orgId,
+          year,
+          paddedAcc,
+          line.debit || 0,
+          line.credit || 0,
+        ),
+      );
+
       totalDebit += Math.round(line.debit || 0);
       totalCredit += Math.round(line.credit || 0);
     }
 
-    // --- 4. VÉRIFICATION ÉQUILIBRE ---
+    // --- 4. BALANCE CHECK ---
     if (totalDebit !== totalCredit) {
-      throw new AppError(400, "ERROR_ENTRY_NOT_BALANCED"); //
+      throw new AppError(400, "ERROR_ENTRY_NOT_BALANCED");
     }
 
-    // --- 5. ENTÊTE ET EXÉCUTION ---
+    // --- 5. HEADER & EXECUTION ---
     const entryHeader = {
       orgId,
       year,
@@ -146,7 +175,7 @@ export const handler = createHandler(
 );
 
 /**
- * Helper interne pour la construction des index complexes (GSI1, 2, 4)
+ * Helper to build EntryLine items with complex GSI mappings.
  */
 function buildLineItem(
   orgId: string,
