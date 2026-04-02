@@ -1,20 +1,20 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import {
-  TransactWriteItemsCommand,
-  GetItemCommand,
-  QueryCommand,
-} from "@aws-sdk/client-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { KeyFactory } from "@/lambda/shared/key-builder";
+import { config } from "@/lambda/shared/config";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { I18nResolver } from "@/lambda/shared/i18n";
+import { KeyFactory } from "@/lambda/shared/key-builder";
 import {
   badRequest,
   created,
-  toLambdaResponse,
   notFound,
+  toLambdaResponse,
 } from "@/models/shared/api-response";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
-import { config } from "@/lambda/shared/config";
+import {
+  GetItemCommand,
+  QueryCommand,
+  TransactWriteItemsCommand,
+} from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
 /**
  * Performs the year-end closing procedure.
@@ -68,7 +68,7 @@ export const handler = async (
       const output = await dynamoClient.send(
         new QueryCommand({
           TableName: config.TABLE_NAME,
-          IndexName: config.GSI_ACCOUNT,
+          IndexName: config.GSI1,
           KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
           ExpressionAttributeValues: marshall({
             ":pk": KeyFactory.gsi1PK(orgId),

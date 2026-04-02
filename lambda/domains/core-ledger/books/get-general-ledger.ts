@@ -27,7 +27,7 @@ interface GeneralLedgerResponse {
 /**
  * @description Slim handler for General Ledger by account.
  * - Retrieves the account's pre-calculated opening balance (RAN).
- * - Fetches all movements from the fiscal year using GSI_ACCOUNT.
+ * - Fetches all movements from the fiscal year using GSI1.
  * - Computes running balance starting from opening balance.
  * - Returns chronologically-sorted entries with metadata.
  */
@@ -56,11 +56,11 @@ export const handler = createHandler(
     const openingNet =
       accountBalance.openingDebit - accountBalance.openingCredit;
 
-    // 2. Query GSI_ACCOUNT for all transactions in chronological order
+    // 2. Query GSI1 for all transactions in chronological order
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: config.GSI_ACCOUNT,
+        IndexName: config.GSI1,
         KeyConditionExpression:
           "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: marshall({

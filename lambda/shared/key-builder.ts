@@ -60,7 +60,7 @@ export const KeyFactory = {
 
   gsi2SK: (date: string, lineId: string) => `DT#${date}#${lineId}`,
 
-  // --- GSI 3: Lettering Engine (GSI_LETTERING) ---
+  // --- GSI 3: Lettering Engine (GSI3) ---
 
   letteringPK: (orgId: string, accountId: string, thirdPartyId: string) =>
     `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`,

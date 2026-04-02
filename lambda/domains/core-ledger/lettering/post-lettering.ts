@@ -3,7 +3,7 @@
  * @function handler
  * @description Finalizes a lettering (matching) operation between multiple entry lines.
  * For SYCEBNL organizations, it enforces that all lines belong to the same project.
- * It moves lines from the 'UNLETTERED' state to 'LETTERED' in the GSI_LETTERING index.
+ * It moves lines from the 'UNLETTERED' state to 'LETTERED' in the GSI3 index.
  * * @param {APIGatewayProxyEvent} event - AWS Lambda event containing:
  * - body.orgId: Organization ID.
  * - body.year: Fiscal year.
@@ -14,20 +14,20 @@
  * - 400: Inconsistent projects, different accounts, or balance issues.
  */
 
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { config } from "@/lambda/shared/config";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { I18nResolver } from "@/lambda/shared/i18n";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { LockService } from "@/lambda/shared/services/lock-service";
+import { EntryLineSchema } from "@/models/core-ledger/entry";
+import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 import {
-  TransactWriteItemsCommand,
   BatchGetItemCommand,
   GetItemCommand,
+  TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
-import { config } from "@/lambda/shared/config";
-import { KeyFactory } from "@/lambda/shared/key-builder";
-import { I18nResolver } from "@/lambda/shared/i18n";
-import { EntryLineSchema } from "@/models/core-ledger/entry";
-import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
-import { LockService } from "@/lambda/shared/services/lock-service";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
 export const handler = async (
   event: APIGatewayProxyEvent,

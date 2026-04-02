@@ -35,19 +35,19 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
     --global-secondary-indexes \
         "[
             {
-                \"IndexName\": \"GSI_ACCOUNT\",
+                \"IndexName\": \"GSI1\",
                 \"KeySchema\": [{\"AttributeName\": \"GSI1PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI1SK\", \"KeyType\": \"RANGE\"}],
                 \"Projection\": {\"ProjectionType\": \"ALL\"},
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
             },
             {
-                \"IndexName\": \"GSI_THIRD_PARTY\",
+                \"IndexName\": \"GSI2\",
                 \"KeySchema\": [{\"AttributeName\": \"GSI2PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI2SK\", \"KeyType\": \"RANGE\"}],
                 \"Projection\": {\"ProjectionType\": \"ALL\"},
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
             },
             {
-                \"IndexName\": \"GSI_LETTERING\",
+                \"IndexName\": \"GSI3\",
                 \"KeySchema\": [{\"AttributeName\": \"L_PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"L_SK\", \"KeyType\": \"RANGE\"}],
                 \"Projection\": {\"ProjectionType\": \"ALL\"},
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}

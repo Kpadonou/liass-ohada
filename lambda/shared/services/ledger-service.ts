@@ -233,7 +233,7 @@ export class LedgerService {
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI_ACCOUNT",
+        IndexName: "GSI1",
         KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.gsi1PK(orgId),

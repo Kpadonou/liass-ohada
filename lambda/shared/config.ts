@@ -8,9 +8,9 @@ const ConfigSchema = z.object({
   REGION: z.string().default("us-east-1"),
   IS_LOCAL: z.boolean(),
   DYNAMODB_ENDPOINT: z.string().optional(),
-  GSI_ACCOUNT: z.string(),
-  GSI_THIRD_PARTY: z.string(),
-  GSI_LETTERING: z.string(),
+  GSI1: z.string(),
+  GSI2: z.string(),
+  GSI3: z.string(),
 });
 
 /**
@@ -35,7 +35,7 @@ function loadConfig(): Config {
   } else {
     throw new Error(
       "TABLE_NAME environment variable is required in production. " +
-        "Set TABLE_NAME=your-table-name or LOCALSTACK_URL for local development."
+        "Set TABLE_NAME=your-table-name or LOCALSTACK_URL for local development.",
     );
   }
 
@@ -44,16 +44,16 @@ function loadConfig(): Config {
     REGION: process.env.AWS_REGION || "us-east-1",
     IS_LOCAL: isLocal,
     DYNAMODB_ENDPOINT: process.env.LOCALSTACK_URL,
-    GSI_ACCOUNT: "GSI_ACCOUNT", // GSI1 for core-ledger queries
-    GSI_THIRD_PARTY: "GSI_THIRD_PARTY", // GSI2 for third party queries
-    GSI_LETTERING: "GSI_LETTERING", // GSI3 for lettering queries
+    GSI1: "GSI1", // GSI1 for core-ledger queries
+    GSI2: "GSI2", // GSI2 for third party queries
+    GSI3: "GSI3", // GSI3 for lettering queries
   };
 
   // Validate configuration
   const validation = ConfigSchema.safeParse(config);
   if (!validation.success) {
     throw new Error(
-      `Configuration validation failed: ${validation.error.message}`
+      `Configuration validation failed: ${validation.error.message}`,
     );
   }
 

@@ -1,16 +1,16 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { QueryCommand, GetItemCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { config } from "@/lambda/shared/config";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { I18nResolver } from "@/lambda/shared/i18n";
+import { KeyFactory } from "@/lambda/shared/key-builder";
 import {
-  ok,
   badRequest,
   notFound,
+  ok,
   toLambdaResponse,
 } from "@/models/shared/api-response";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
-import { config } from "@/lambda/shared/config";
-import { KeyFactory } from "@/lambda/shared/key-builder";
+import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
 // Interface strictly for the Income Statement (Profit & Loss)
 interface IncomeStatementResponse {
@@ -22,7 +22,7 @@ interface IncomeStatementResponse {
 }
 
 export const handler = async (
-  event: APIGatewayProxyEvent
+  event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
@@ -30,7 +30,7 @@ export const handler = async (
     const orgId =
       event.requestContext.authorizer?.claims?.orgId || "test-org-001";
     const year = parseInt(
-      event.queryStringParameters?.year || new Date().getFullYear().toString()
+      event.queryStringParameters?.year || new Date().getFullYear().toString(),
     );
 
     // 1. Validate fiscal year
@@ -41,12 +41,12 @@ export const handler = async (
           PK: { S: KeyFactory.orgKey(orgId) },
           SK: { S: `FY#${year}` },
         },
-      })
+      }),
     );
 
     if (!fyResult.Item) {
       return toLambdaResponse(
-        notFound(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND"))
+        notFound(i18n.getMessage("ERROR_FISCAL_YEAR_NOT_FOUND")),
       );
     }
 
@@ -63,14 +63,14 @@ export const handler = async (
         const queryResult = await dynamoClient.send(
           new QueryCommand({
             TableName: config.TABLE_NAME,
-            IndexName: "GSI_ACCOUNT",
+            IndexName: "GSI1",
             KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
             ExpressionAttributeValues: {
               ":pk": { S: KeyFactory.gsi1PK(orgId) },
               ":sk": { S: `ACC#${classPrefix}` }, // ACC#6 or ACC#7
             },
             ExclusiveStartKey: lastEvaluatedKey,
-          })
+          }),
         );
 
         for (const item of queryResult.Items || []) {
@@ -110,7 +110,7 @@ export const handler = async (
     };
 
     return toLambdaResponse(
-      ok(response, i18n.getMessage("SUCCESS_INCOME_STATEMENT_RETRIEVED"))
+      ok(response, i18n.getMessage("SUCCESS_INCOME_STATEMENT_RETRIEVED")),
     );
   } catch (error) {
     console.error("Error in get-income-statement:", error);

@@ -1,11 +1,11 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { unmarshall, marshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
-import { KeyFactory } from "@/lambda/shared/key-builder";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { I18nResolver } from "@/lambda/shared/i18n";
-import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
+import { QueryCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
 /**
  * Generates a matching (lettering) status report for a specific third party.
@@ -34,7 +34,7 @@ export const handler = async (
 
     const command = new QueryCommand({
       TableName: config.TABLE_NAME,
-      IndexName: config.GSI_LETTERING,
+      IndexName: config.GSI3,
       KeyConditionExpression: "L_PK = :lpk",
       ExpressionAttributeValues: marshall({
         ":lpk": letteringPk,

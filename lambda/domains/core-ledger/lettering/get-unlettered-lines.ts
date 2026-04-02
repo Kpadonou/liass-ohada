@@ -1,11 +1,11 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { config } from "@/lambda/shared/config";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { I18nResolver } from "@/lambda/shared/i18n";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
-import { config } from "@/lambda/shared/config";
-import { KeyFactory } from "@/lambda/shared/key-builder";
-import { I18nResolver } from "@/lambda/shared/i18n";
-import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
 /**
  * Interface representing a line being processed by the FIFO algorithm.
@@ -48,7 +48,7 @@ export const handler = async (
     // 1. Prepare Query for GSI3 (Lettering Index)
     const queryInput: any = {
       TableName: config.TABLE_NAME,
-      IndexName: config.GSI_LETTERING,
+      IndexName: config.GSI3,
       KeyConditionExpression: "L_PK = :lpk AND begins_with(L_SK, :lsk)",
       ExpressionAttributeValues: {
         ":lpk": { S: KeyFactory.letteringPK(orgId, accountId, thirdPartyId) },
