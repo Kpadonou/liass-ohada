@@ -65,7 +65,7 @@ export const handler = createHandler(
           "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
         ExpressionAttributeValues: marshall({
           ":gsi1pk": KeyFactory.gsi1PK(orgId),
-          ":gsi1sk": `ACC#${paddedAccountId}#FY#${data.fiscalYear}`,
+          ":gsi1sk": KeyFactory.gsi1SKPrefix(paddedAccountId, data.fiscalYear),
         }),
         ScanIndexForward: true,
       }),
