@@ -122,6 +122,7 @@ export const handler = createHandler(
           paddedAcc,
           line.debit || 0,
           line.credit || 0,
+          journalCode,
         ),
       );
 

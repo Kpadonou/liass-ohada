@@ -9,10 +9,10 @@ import { KeyFactory } from "../key-builder";
  */
 export interface AccountBalance {
   accountId: string;
-  totalDebit: number;
-  totalCredit: number;
-  balance: number;
-  position: "DEBIT" | "CREDIT" | "ZERO";
+  openingDebit: number;
+  openingCredit: number;
+  movementDebit: number;
+  movementCredit: number;
   updatedAt: string;
 }
 
@@ -93,23 +93,22 @@ export class BalanceService {
     if (!result.Item) {
       return {
         accountId: paddedAccountId,
-        totalDebit: 0,
-        totalCredit: 0,
-        balance: 0,
-        position: "ZERO",
+        openingDebit: 0,
+        openingCredit: 0,
+        movementDebit: 0,
+        movementCredit: 0,
         updatedAt: new Date().toISOString(),
-      };
+      } as AccountBalance;
     }
 
     const data = unmarshall(result.Item);
-    const balance = (data.totalDebit || 0) - (data.totalCredit || 0);
 
     return {
       accountId: data.accountId,
-      totalDebit: data.totalDebit || 0,
-      totalCredit: data.totalCredit || 0,
-      balance,
-      position: balance > 0 ? "DEBIT" : balance < 0 ? "CREDIT" : "ZERO",
+      openingDebit: data.openingDebit || 0,
+      openingCredit: data.openingCredit || 0,
+      movementDebit: data.movementDebit || 0,
+      movementCredit: data.movementCredit || 0,
       updatedAt: data.updatedAt,
     };
   }
@@ -140,13 +139,12 @@ export class BalanceService {
       if (result.Items) {
         for (const item of result.Items) {
           const data = unmarshall(item);
-          const balance = (data.totalDebit || 0) - (data.totalCredit || 0);
           balances.push({
             accountId: data.accountId,
-            totalDebit: data.totalDebit || 0,
-            totalCredit: data.totalCredit || 0,
-            balance,
-            position: balance > 0 ? "DEBIT" : balance < 0 ? "CREDIT" : "ZERO",
+            openingDebit: data.openingDebit || 0,
+            openingCredit: data.openingCredit || 0,
+            movementDebit: data.movementDebit || 0,
+            movementCredit: data.movementCredit || 0,
             updatedAt: data.updatedAt,
           });
         }
