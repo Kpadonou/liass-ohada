@@ -33,20 +33,26 @@ export class BalanceService {
     accountId: string,
     debit: number,
     credit: number,
+    journalCode: string,
   ): any {
-    const paddedAccountId = accountId.padEnd(8, "0");
+    const isOpening = journalCode === "RAN";
+
+    // On choisit dynamiquement les champs à incrémenter
+    const debitField = isOpening ? "openingDebit" : "movementDebit";
+    const creditField = isOpening ? "openingCredit" : "movementCredit";
 
     return {
       Update: {
         TableName: config.TABLE_NAME,
         Key: marshall({
           PK: KeyFactory.partitionKey(orgId, year),
-          SK: `BAL#${paddedAccountId}`,
+          SK: `BAL#${accountId.padEnd(8, "0")}`,
         }),
-        // Atomic increment for debit/credit and metadata update
-        UpdateExpression:
-          "ADD totalDebit :d, totalCredit :c SET updatedAt = :now, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year",
+        // Utilisation de variables pour les noms de champs
+        UpdateExpression: `ADD #d :d, #c :c SET updatedAt = :now, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year`,
         ExpressionAttributeNames: {
+          "#d": debitField,
+          "#c": creditField,
           "#yr": "year",
         },
         ExpressionAttributeValues: marshall({
@@ -55,7 +61,7 @@ export class BalanceService {
           ":now": new Date().toISOString(),
           ":type": "ACCOUNT_BALANCE",
           ":orgId": orgId,
-          ":accId": paddedAccountId,
+          ":accId": accountId.padEnd(8, "0"),
           ":year": year,
         }),
       },
