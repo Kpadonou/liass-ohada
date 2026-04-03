@@ -151,6 +151,9 @@ export const handler = createHandler(
       entityType: "ENTRY",
       PK: KeyFactory.partitionKey(orgId, year),
       SK: KeyFactory.entrySK(entryId),
+      // Attributs pour le GSI5 (Consultation du Journal)
+      GSI5PK: KeyFactory.gsi5JournalPK(orgId, year),
+      GSI5SK: KeyFactory.gsi5JournalSK(journalCode, entryDate, entryId),
       createdAt: now,
       updatedAt: now,
     };

@@ -111,4 +111,18 @@ export const KeyFactory = {
   /** Prefix to query all funding sources for a specific project */
   fundingSourcesPrefix: (projectId: string) =>
     `${KeyFactory.projectPrefix()}${projectId.toUpperCase()}#FS#`,
+
+  // --- GSI 5: Journal & Livre-Journal (Hierarchical Strategy) ---
+
+  /** * PK: Unique for the whole fiscal year.
+   * This allows "Global" queries (Livre-Journal).
+   */
+  gsi5JournalPK: (orgId: string, year: number | string) =>
+    `ORG#${orgId}#FY#${year}`,
+
+  /** * SK: Hierarchical structure [Journal -> Date -> Entry]
+   * Allows filtering by Journal using 'begins_with'.
+   */
+  gsi5JournalSK: (journalCode: string, date: string, entryId: string) =>
+    `JNL#${journalCode.toUpperCase()}#DT#${date}#E#${entryId}`,
 };
