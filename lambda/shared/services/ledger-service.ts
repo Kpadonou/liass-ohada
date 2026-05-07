@@ -72,7 +72,7 @@ export class LedgerService {
    * Retrieves a fiscal year record by org and year.
    * Throws AppError(404) when not found.
    */
-  static async getFiscalYear(orgId: string, year: number) {
+  static async getFiscalYear(orgId: string, year: string | number) {
     const result = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,

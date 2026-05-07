@@ -3,6 +3,7 @@ import {
   createHandler,
 } from "@/lambda/shared/middleware/handler-wrapper";
 import { BalanceService } from "@/lambda/shared/services/balance-service";
+import { ClosingService } from "@/lambda/shared/services/closing-service";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
 import { z } from "zod";
 
@@ -11,16 +12,18 @@ const CloseYearSchema = z.object({
 });
 
 export const handler = createHandler(CloseYearSchema, async (data, context) => {
-  // On utilise l'objet context complet
-  const { orgId, i18n, user } = context;
+  const { orgId, i18n } = context;
   const { year } = data;
+  const userId =
+    (context.event.requestContext.authorizer as any)?.jwt?.claims?.userId ||
+    (context.event.requestContext.authorizer as any)?.jwt?.claims?.sub;
+
+  if (!userId) {
+    throw new AppError(401, "UNAUTHORIZED");
+  }
 
   // 1. Check if the fiscal year is open
   const fiscalYear = await LedgerService.getFiscalYear(orgId, year);
-
-  if (!fiscalYear) {
-    throw new AppError(404, "ERROR_FISCAL_YEAR_NOT_FOUND");
-  }
 
   if (fiscalYear.status !== "OPEN") {
     throw new AppError(400, "ERROR_FISCAL_YEAR_LOCKED");
@@ -41,7 +44,7 @@ export const handler = createHandler(CloseYearSchema, async (data, context) => {
   // 4. Delegate the atomic transaction
   const result = await ClosingService.executeYearEnd(orgId, {
     year,
-    userId: user.id, // Correction de l'accès au userId
+    userId,
     balances: managementBalances,
   });
 
