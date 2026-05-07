@@ -1,5 +1,5 @@
 /**
- * @class LockService
+ * @class LockPeriodService
  * @description Centralizes the logic for accounting period locks.
  * It ensures that no write operations (creation, lettering, reversal)
  * occur within a month that has been officially closed/locked by the organization.
@@ -12,7 +12,7 @@ import { KeyFactory } from "../key-builder";
 import { AppError } from "../middleware/handler-wrapper";
 import { LedgerService } from "./ledger-service";
 
-export class LockService {
+export class LockPeriodService {
   /**
    * @async
    * @method isPeriodLocked

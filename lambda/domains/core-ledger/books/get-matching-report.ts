@@ -1,88 +1,38 @@
-import { config } from "@/lambda/shared/config";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
-import { I18nResolver } from "@/lambda/shared/i18n";
-import { KeyFactory } from "@/lambda/shared/key-builder";
-import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
+import { LetteringService } from "@/lambda/shared/services/lettering-service";
+import { z } from "zod";
 
 /**
- * Generates a matching (lettering) status report for a specific third party.
- * It provides a structured view of:
- * 1. Lettered Groups: Transactions already matched and balanced.
- * 2. Unlettered Lines: Outstanding items (unpaid invoices or unapplied payments).
- * This is the primary tool for accounts receivable/payable reconciliation.
+ * @description Validation schema for the Matching/Lettering report.
  */
-export const handler = async (
-  event: APIGatewayProxyEvent,
-): Promise<APIGatewayProxyResult> => {
-  const i18n = new I18nResolver(event.headers["Accept-Language"]);
+const GetMatchingReportSchema = z.object({
+  accountId: z.string().min(2),
+  thirdPartyId: z.string().min(1),
+});
 
-  try {
-    const { orgId, accountId, thirdPartyId } =
-      event.queryStringParameters || {};
+/**
+ * @description Slim handler to retrieve the Lettering report for a third-party account.
+ * It separates transactions into "Lettered Groups" and "Unlettered (Outstanding) Lines".
+ */
+export const handler = createHandler(
+  GetMatchingReportSchema,
+  async (data, { orgId, i18n }) => {
+    const { accountId, thirdPartyId } = data;
 
-    if (!orgId || !accountId || !thirdPartyId) {
-      return toLambdaResponse(
-        badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
-      );
-    }
+    // We delegate the heavy lifting to the LetteringService
+    const report = await LetteringService.getThirdPartyReport(
+      orgId,
+      accountId,
+      thirdPartyId,
+    );
 
-    // Target the specific lettering partition using KeyFactory
-    const letteringPk = KeyFactory.letteringPK(orgId, accountId, thirdPartyId);
-
-    const command = new QueryCommand({
-      TableName: config.TABLE_NAME,
-      IndexName: config.GSI3,
-      KeyConditionExpression: "L_PK = :lpk",
-      ExpressionAttributeValues: marshall({
-        ":lpk": letteringPk,
-      }),
-    });
-
-    const { Items = [] } = await dynamoClient.send(command);
-    const lines = Items.map((item) => unmarshall(item));
-
-    const report = {
-      summary: {
-        totalDebit: 0,
-        totalCredit: 0,
-        balance: 0,
+    return {
+      message: i18n.getMessage("SUCCESS_MATCHING_REPORT_RETRIEVED"),
+      data: {
+        accountId,
+        thirdPartyId,
+        ...report,
       },
-      letteredGroups: {} as Record<string, any[]>,
-      unletteredLines: [] as any[],
     };
-
-    lines.forEach((line) => {
-      const debit = Number(line.debit) || 0;
-      const credit = Number(line.credit) || 0;
-
-      report.summary.totalDebit += debit;
-      report.summary.totalCredit += credit;
-
-      // Grouping logic based on the presence of a letteringCode
-      if (line.letteringCode) {
-        if (!report.letteredGroups[line.letteringCode]) {
-          report.letteredGroups[line.letteringCode] = [];
-        }
-        report.letteredGroups[line.letteringCode].push(line);
-      } else {
-        report.unletteredLines.push(line);
-      }
-    });
-
-    // Net balance of the third party account
-    report.summary.balance =
-      report.summary.totalDebit - report.summary.totalCredit;
-
-    return toLambdaResponse(
-      ok(report, i18n.getMessage("SUCCESS_MATCHING_REPORT_RETRIEVED")),
-    );
-  } catch (error: any) {
-    console.error("MatchingReport Error:", error);
-    return toLambdaResponse(
-      badRequest(i18n.getMessage("ERROR_MATCHING_REPORT_TECHNICAL")),
-    );
-  }
-};
+  },
+);

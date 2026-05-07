@@ -18,7 +18,7 @@ import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { KeyFactory } from "@/lambda/shared/key-builder";
-import { LockService } from "@/lambda/shared/services/lock-service";
+import { LockPeriodService } from "@/lambda/shared/services/lock-period-service";
 import { EntryLineSchema } from "@/models/core-ledger/entry";
 import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 import {
@@ -89,7 +89,7 @@ export const handler = async (
     }
 
     // On vérifie si la période de l'écriture originale est verrouillée
-    if (await LockService.isPeriodLocked(orgId, lines[0].entryDate)) {
+    if (await LockPeriodService.isPeriodLocked(orgId, lines[0].entryDate)) {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED")),
       );
@@ -137,10 +137,10 @@ export const handler = async (
     // 6. Transactional Update
     const now = new Date().toISOString();
     const transactItems = lines.map((line) => {
-      // Transition L_SK from UNLETTERED#... to LETTERED#...
+      // Transition GSI3SK from UNLETTERED#... to LETTERED#...
       // We keep the original metadata (date#entryId#lineId) for audit
       const originalMetadata =
-        line.L_SK?.replace(/^UNLETTERED#/, "") ||
+        line.GSI3SK?.replace(/^UNLETTERED#/, "") ||
         `${line.entryDate}#${line.entryId}#${line.lineId}`;
       const newLSk = `LETTERED#${finalCode}#${originalMetadata}`;
 
@@ -150,9 +150,9 @@ export const handler = async (
           Key: marshall({ PK: line.PK, SK: line.SK }),
           // Safety: Only update if not already fully lettered
           ConditionExpression:
-            "attribute_exists(L_PK) AND letteringStatus <> :complete",
+            "attribute_exists(GSI3PK) AND letteringStatus <> :complete",
           UpdateExpression: `
-            SET L_SK = :newLSk, 
+            SET GSI3SK = :newLSk, 
                 letteringCode = :code, 
                 letteringStatus = :status, 
                 updatedAt = :now

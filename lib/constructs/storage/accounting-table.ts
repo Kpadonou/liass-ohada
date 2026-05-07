@@ -39,8 +39,8 @@ export class LiassOhadaAccountingTable extends Construct {
     // GSI3 - Lettering Sparse Index
     this.table.addGlobalSecondaryIndex({
       indexName: "GSI3",
-      partitionKey: { name: "L_PK", type: AttributeType.STRING },
-      sortKey: { name: "L_SK", type: AttributeType.STRING },
+      partitionKey: { name: "GSI3PK", type: AttributeType.STRING },
+      sortKey: { name: "GSI3SK", type: AttributeType.STRING },
       projectionType: ProjectionType.ALL,
     });
 

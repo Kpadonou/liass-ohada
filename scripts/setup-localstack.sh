@@ -25,8 +25,8 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
         AttributeName=GSI1SK,AttributeType=S \
         AttributeName=GSI2PK,AttributeType=S \
         AttributeName=GSI2SK,AttributeType=S \
-        AttributeName=L_PK,AttributeType=S \
-        AttributeName=L_SK,AttributeType=S \
+        AttributeName=GSI3PK,AttributeType=S \
+        AttributeName=GSI3SK,AttributeType=S \
         AttributeName=GSI4PK,AttributeType=S \
         AttributeName=GSI4SK,AttributeType=S \
     --key-schema \
@@ -48,7 +48,7 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
             },
             {
                 \"IndexName\": \"GSI3\",
-                \"KeySchema\": [{\"AttributeName\": \"L_PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"L_SK\", \"KeyType\": \"RANGE\"}],
+                \"KeySchema\": [{\"AttributeName\": \"GSI3PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI3SK\", \"KeyType\": \"RANGE\"}],
                 \"Projection\": {\"ProjectionType\": \"ALL\"},
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
             },

@@ -5,7 +5,7 @@
  * * Orchestrates the following:
  * 1. Fetches the current state of the lines from DynamoDB.
  * 2. Validates that the lines are actually lettered.
- * 3. Reconstructs the original 'UNLETTERED' Sort Key (L_SK) using KeyFactory.
+ * 3. Reconstructs the original 'UNLETTERED' Sort Key (GSI3SK) using KeyFactory.
  * 4. Atomically removes lettering metadata (code, status) and restores the GSI index state.
  * * @param {APIGatewayProxyEvent} event - AWS Lambda event containing:
  * - body.orgId: Organization ID.
@@ -14,19 +14,19 @@
  * - 200: Un-lettering successful, lines are back to 'UNLETTERED' status.
  * - 400: Lines not found, not lettered, or internal error.
  */
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { config } from "@/lambda/shared/config";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { I18nResolver } from "@/lambda/shared/i18n";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { LockPeriodService } from "@/lambda/shared/services/lock-period-service";
+import { EntryLineSchema } from "@/models/core-ledger/entry";
+import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
 import {
-  TransactWriteItemsCommand,
   BatchGetItemCommand,
+  TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
-import { config } from "@/lambda/shared/config";
-import { KeyFactory } from "@/lambda/shared/key-builder";
-import { I18nResolver } from "@/lambda/shared/i18n";
-import { EntryLineSchema } from "@/models/core-ledger/entry";
-import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
-import { LockService } from "@/lambda/shared/services/lock-service";
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -74,7 +74,7 @@ export const handler = async (
     }
 
     // Sécurité : On vérifie la date de la ligne qu'on tente de dé-lettrer
-    if (await LockService.isPeriodLocked(orgId, lines[0].entryDate)) {
+    if (await LockPeriodService.isPeriodLocked(orgId, lines[0].entryDate)) {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_PERIOD_LOCKED")),
       );
@@ -84,7 +84,7 @@ export const handler = async (
     const now = new Date().toISOString();
     const transactItems = lines.map((line) => {
       /**
-       * On reconstruit le L_SK original (UNLETTERED#...) via la KeyFactory.
+       * On reconstruit le GSI3SK original (UNLETTERED#...) via la KeyFactory.
        * Cela garantit que la ligne réapparaîtra immédiatement dans les suggestions.
        */
       const restoredLSk = KeyFactory.letteringSK(
@@ -100,7 +100,7 @@ export const handler = async (
           // Sécurité : On ne peut dé-lettrer que si un code de lettrage existe
           ConditionExpression: "attribute_exists(letteringCode)",
           UpdateExpression: `
-            SET L_SK = :restoredLSk, 
+            SET GSI3SK = :restoredLSk, 
                 updatedAt = :now 
             REMOVE letteringCode, letteringStatus
           `,

@@ -141,8 +141,8 @@ export const EntryLineSchema = z.object({
   GSI1SK: z.string(),
   GSI2PK: z.string().optional(),
   GSI2SK: z.string().optional(),
-  L_PK: z.string().optional(), // Pour GSI3
-  L_SK: z.string().optional(), // Pour GSI3
+  GSI3PK: z.string().optional(), // Pour GSI3
+  GSI3SK: z.string().optional(), // Pour GSI3
   GSI4PK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
   GSI4SK: z.string().optional(), // Pour GSI_PROJECT (SYCEBNL)
 

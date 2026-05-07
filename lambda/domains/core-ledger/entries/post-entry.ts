@@ -18,7 +18,7 @@ import {
 import { BalanceService } from "@/lambda/shared/services/balance-service";
 import { BudgetService } from "@/lambda/shared/services/budget-service";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
-import { LockService } from "@/lambda/shared/services/lock-service";
+import { LockPeriodService } from "@/lambda/shared/services/lock-period-service";
 import {
   CreateEntryRequestSchema,
   EntryLineSchema,
@@ -60,7 +60,7 @@ export const handler = createHandler(
 
     // Verify Fiscal Year and Period Lock
     await LedgerService.validateFiscalYear(orgId, year);
-    if (await LockService.isPeriodLocked(orgId, entryDate)) {
+    if (await LockPeriodService.isPeriodLocked(orgId, entryDate)) {
       throw new AppError(400, "ERROR_PERIOD_LOCKED");
     }
 
@@ -221,8 +221,8 @@ function buildLineItem(
   if (line.thirdPartyId) {
     item.GSI2PK = KeyFactory.gsi2PK(orgId, paddedAcc, line.thirdPartyId);
     item.GSI2SK = KeyFactory.gsi2SK(entryDate, lineId);
-    item.L_PK = KeyFactory.letteringPK(orgId, paddedAcc, line.thirdPartyId);
-    item.L_SK = KeyFactory.letteringSK(entryDate, entryId, lineId);
+    item.GSI3PK = KeyFactory.letteringPK(orgId, paddedAcc, line.thirdPartyId);
+    item.GSI3SK = KeyFactory.letteringSK(entryDate, entryId, lineId);
   }
 
   if (line.projectId) {

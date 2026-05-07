@@ -1,7 +1,7 @@
-import { handler } from "../lambda/domains/core-ledger/fiscal-year/close-year";
-import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
+import { handler } from "../lambda/domains/core-ledger/fiscal-year/close-fiscal-year";
+import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { KeyFactory } from "../lambda/shared/key-builder"; // On utilise ton vrai builder
 
 const TABLE = "liass-ohada-dev-accounting-table";
@@ -28,7 +28,7 @@ async function runTest() {
   };
 
   await dynamoClient.send(
-    new PutItemCommand({ TableName: TABLE, Item: marshall(fiscalYear) })
+    new PutItemCommand({ TableName: TABLE, Item: marshall(fiscalYear) }),
   );
 
   // 2. ENTRY_LINES (Utilisation rigoureuse de KeyFactory)
@@ -61,7 +61,7 @@ async function runTest() {
 
   for (const m of movements) {
     await dynamoClient.send(
-      new PutItemCommand({ TableName: TABLE, Item: marshall(m) })
+      new PutItemCommand({ TableName: TABLE, Item: marshall(m) }),
     );
   }
 

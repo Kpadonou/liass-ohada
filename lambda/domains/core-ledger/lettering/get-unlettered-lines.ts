@@ -49,7 +49,7 @@ export const handler = async (
     const queryInput: any = {
       TableName: config.TABLE_NAME,
       IndexName: config.GSI3,
-      KeyConditionExpression: "L_PK = :lpk AND begins_with(L_SK, :lsk)",
+      KeyConditionExpression: "GSI3PK = :lpk AND begins_with(GSI3SK, :lsk)",
       ExpressionAttributeValues: {
         ":lpk": { S: KeyFactory.letteringPK(orgId, accountId, thirdPartyId) },
         ":lsk": { S: "UNLETTERED#" },
