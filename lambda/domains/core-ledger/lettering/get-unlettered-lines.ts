@@ -2,7 +2,12 @@ import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { KeyFactory } from "@/lambda/shared/key-builder";
-import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
+import {
+  badRequest,
+  ok,
+  toLambdaResponse,
+  unauthorized,
+} from "@/models/shared/api-response";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
@@ -33,13 +38,15 @@ export const handler = async (
   const i18n = new I18nResolver(event.headers["Accept-Language"] || "en");
 
   try {
-    const orgId =
-      event.requestContext?.authorizer?.claims?.orgId ||
-      event.queryStringParameters?.orgId;
+    const orgId = event.requestContext?.authorizer?.claims?.orgId;
     const { accountId, thirdPartyId, projectId } =
       event.queryStringParameters || {};
 
-    if (!orgId || !accountId || !thirdPartyId) {
+    if (!orgId) {
+      return toLambdaResponse(unauthorized());
+    }
+
+    if (!accountId || !thirdPartyId) {
       return toLambdaResponse(
         badRequest(i18n.getMessage("ERROR_MISSING_PARAMETERS")),
       );

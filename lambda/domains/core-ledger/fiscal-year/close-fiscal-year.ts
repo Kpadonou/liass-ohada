@@ -12,15 +12,8 @@ const CloseYearSchema = z.object({
 });
 
 export const handler = createHandler(CloseYearSchema, async (data, context) => {
-  const { orgId, i18n } = context;
+  const { orgId, userId, i18n } = context;
   const { year } = data;
-  const userId =
-    (context.event.requestContext.authorizer as any)?.jwt?.claims?.userId ||
-    (context.event.requestContext.authorizer as any)?.jwt?.claims?.sub;
-
-  if (!userId) {
-    throw new AppError(401, "UNAUTHORIZED");
-  }
 
   // 1. Check if the fiscal year is open
   const fiscalYear = await LedgerService.getFiscalYear(orgId, year);

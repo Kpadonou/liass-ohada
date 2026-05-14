@@ -19,6 +19,7 @@ export class AppError extends Error {
 // Note: On utilise l'interface avec JWT Authorizer par défaut
 export interface HandlerContext {
   orgId: string;
+  userId: string;
   i18n: I18nResolver;
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
 }
@@ -45,17 +46,19 @@ export const createHandler = <T>(
       const body = event.body ? JSON.parse(event.body) : {};
       const validatedData = schema.parse(body);
 
-      // Extraction sécurisée de l'orgId depuis le JWT ou le body
-      // On utilise un cast 'as any' ici pour l'authorizer car la structure exacte
-      // dépend de la configuration Cognito, ou on lit directement dans les claims.
       const claims = event.requestContext?.authorizer?.jwt?.claims as any;
-      const orgId = claims?.orgId || body.orgId;
+      const orgId = claims?.orgId;
+      const userId = claims?.sub;
 
       if (!orgId) {
         throw new AppError(401, "ERROR_MISSING_ORG_ID");
       }
 
-      const result = await logic(validatedData, { orgId, i18n, event });
+      if (!userId) {
+        throw new AppError(401, "ERROR_MISSING_USER_ID");
+      }
+
+      const result = await logic(validatedData, { orgId, userId, i18n, event });
 
       return sendResponse(200, result);
     } catch (error: any) {

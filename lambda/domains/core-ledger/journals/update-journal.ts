@@ -6,7 +6,12 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { config } from "@/lambda/shared/config";
-import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
+import {
+  badRequest,
+  ok,
+  toLambdaResponse,
+  unauthorized,
+} from "@/models/shared/api-response";
 
 /**
  * Updates an existing journal.
@@ -18,7 +23,10 @@ export const handler = async (
 
   try {
     const body = JSON.parse(event.body || "{}");
-    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
+    if (!orgId) {
+      return toLambdaResponse(unauthorized());
+    }
     const journalCode = event.pathParameters?.journalCode;
 
     if (!journalCode) {

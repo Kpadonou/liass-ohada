@@ -7,6 +7,7 @@ import {
   notFound,
   ok,
   toLambdaResponse,
+  unauthorized,
 } from "@/models/shared/api-response";
 import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
@@ -27,8 +28,10 @@ export const handler = async (
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    const orgId =
-      event.requestContext.authorizer?.claims?.orgId || "test-org-001";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
+    if (!orgId) {
+      return toLambdaResponse(unauthorized());
+    }
     const year = parseInt(
       event.queryStringParameters?.year || new Date().getFullYear().toString(),
     );

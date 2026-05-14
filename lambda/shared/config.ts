@@ -11,6 +11,8 @@ const ConfigSchema = z.object({
   GSI1: z.string(),
   GSI2: z.string(),
   GSI3: z.string(),
+  GSI4: z.string(),
+  GSI5: z.string(),
 });
 
 /**
@@ -47,6 +49,8 @@ function loadConfig(): Config {
     GSI1: "GSI1", // GSI1 for core-ledger queries
     GSI2: "GSI2", // GSI2 for third party queries
     GSI3: "GSI3", // GSI3 for lettering queries
+    GSI4: "GSI4", // GSI4 for project queries (SYCEBNL)
+    GSI5: "GSI5", // GSI5 for journal/audit trail queries
   };
 
   // Validate configuration

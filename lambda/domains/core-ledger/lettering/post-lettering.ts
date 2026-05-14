@@ -5,7 +5,6 @@
  * For SYCEBNL organizations, it enforces that all lines belong to the same project.
  * It moves lines from the 'UNLETTERED' state to 'LETTERED' in the GSI3 index.
  * * @param {APIGatewayProxyEvent} event - AWS Lambda event containing:
- * - body.orgId: Organization ID.
  * - body.year: Fiscal year.
  * - body.lineKeys: Array of {PK, SK} of the lines to match.
  * - body.letteringCode: The character(s) used for matching (e.g., 'A', 'BC').
@@ -20,7 +19,12 @@ import { I18nResolver } from "@/lambda/shared/i18n";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { LockPeriodService } from "@/lambda/shared/services/lock-period-service";
 import { EntryLineSchema } from "@/models/core-ledger/entry";
-import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
+import {
+  badRequest,
+  ok,
+  toLambdaResponse,
+  unauthorized,
+} from "@/models/shared/api-response";
 import {
   BatchGetItemCommand,
   GetItemCommand,
@@ -36,12 +40,15 @@ export const handler = async (
 
   try {
     const body = JSON.parse(event.body || "{}");
-    const { orgId: inputOrgId, year, lineKeys, letteringCode } = body;
-    const orgId = event.requestContext?.authorizer?.claims?.orgId || inputOrgId;
+    const { year, lineKeys, letteringCode } = body;
+    const orgId = event.requestContext?.authorizer?.claims?.orgId;
+
+    if (!orgId) {
+      return toLambdaResponse(unauthorized());
+    }
 
     // 1. Basic Validation
     if (
-      !orgId ||
       !year ||
       !letteringCode ||
       !Array.isArray(lineKeys) ||

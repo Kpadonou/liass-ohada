@@ -63,5 +63,7 @@
   "ERROR_PROJECT_CODE_EXISTS": "Un projet avec ce code existe déjà.",
   "ERROR_DONOR_CASH_EXCEEDED": "Solde du bailleur {donorId} dépassé : disponible {available} XOF, demandé {requested} XOF.",
   "ERROR_ENTRY_TOO_LARGE": "L'écriture est trop volumineuse (maximum 49 lignes).",
+  "ERROR_ENTRY_ALREADY_EXISTS": "Une écriture avec cet identifiant existe déjà.",
+  "ERROR_MISSING_USER_ID": "Identifiant utilisateur manquant ou non autorisé.",
   "SUCCESS_JOURNAL_RETRIEVED": "Journal récupéré avec succès."
 }

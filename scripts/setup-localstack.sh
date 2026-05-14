@@ -29,6 +29,8 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
         AttributeName=GSI3SK,AttributeType=S \
         AttributeName=GSI4PK,AttributeType=S \
         AttributeName=GSI4SK,AttributeType=S \
+        AttributeName=GSI5PK,AttributeType=S \
+        AttributeName=GSI5SK,AttributeType=S \
     --key-schema \
         AttributeName=PK,KeyType=HASH \
         AttributeName=SK,KeyType=RANGE \
@@ -53,8 +55,14 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
             },
             {
-                \"IndexName\": \"GSI_PROJECT\",
+                \"IndexName\": \"GSI4\",
                 \"KeySchema\": [{\"AttributeName\": \"GSI4PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI4SK\", \"KeyType\": \"RANGE\"}],
+                \"Projection\": {\"ProjectionType\": \"ALL\"},
+                \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
+            },
+            {
+                \"IndexName\": \"GSI5\",
+                \"KeySchema\": [{\"AttributeName\": \"GSI5PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI5SK\", \"KeyType\": \"RANGE\"}],
                 \"Projection\": {\"ProjectionType\": \"ALL\"},
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
             }

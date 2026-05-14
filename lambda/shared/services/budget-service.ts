@@ -18,7 +18,7 @@ export class BudgetService {
     const result = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI_PROJECT",
+        IndexName: config.GSI4,
         KeyConditionExpression: "GSI4PK = :pk AND begins_with(GSI4SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.gsi4PK(orgId),

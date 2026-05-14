@@ -21,7 +21,7 @@ async function verifyReport() {
     const result = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI_PROJECT", // Ton index analytique
+        IndexName: "GSI4", // Ton index analytique
         KeyConditionExpression:
           "GSI4PK = :pk AND begins_with(GSI4SK, :skPrefix)",
         ExpressionAttributeValues: {

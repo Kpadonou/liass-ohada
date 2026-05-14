@@ -62,5 +62,7 @@
   "SUCCESS_DONOR_CREATED": "Donor created successfully.",
   "ERROR_PROJECT_CODE_EXISTS": "A project with this code already exists.",
   "ERROR_ENTRY_TOO_LARGE": "Entry is too large (maximum 49 lines).",
+  "ERROR_ENTRY_ALREADY_EXISTS": "An entry with this identifier already exists.",
+  "ERROR_MISSING_USER_ID": "User identifier missing or unauthorized.",
   "SUCCESS_JOURNAL_RETRIEVED": "Journal retrieved successfully."
 }

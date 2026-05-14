@@ -1,16 +1,25 @@
 import { Account, AccountSchema } from "@/models/core-ledger/account";
+import {
+  CreateEntryRequest,
+  EntryLineSchema,
+  EntrySchema,
+} from "@/models/core-ledger/entry";
 import { FiscalYearSchema } from "@/models/core-ledger/fiscal-year";
 import {
   BatchGetItemCommand,
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
+  TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { randomUUID } from "crypto";
 import { config } from "../config";
 import { dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
 import { AppError } from "../middleware/handler-wrapper";
+import { BalanceService } from "./balance-service";
+import { BudgetService } from "./budget-service";
 
 /**
  * Interface definitions for Ledger queries
@@ -39,10 +48,164 @@ export interface AccountEntriesResult {
   hasMore: boolean;
 }
 
+export interface PostEntryParams {
+  orgId: string;
+  userId: string;
+  data: CreateEntryRequest;
+}
+
 /**
  * Service handling Core Ledger operations and validations.
  */
 export class LedgerService {
+  /**
+   * Posts a balanced accounting entry and its lines in one atomic transaction.
+   */
+  static async postEntry({ orgId, userId, data }: PostEntryParams) {
+    const {
+      year,
+      entryDate: inputDate,
+      lines = [],
+      label: headerLabel,
+      journalCode = "MISC",
+      entryType = "STANDARD",
+      voucherNumber,
+    } = data;
+
+    if (lines.length === 0) {
+      throw new AppError(400, "ERROR_EMPTY_ENTRY");
+    }
+
+    // DynamoDB transaction limit is 100 items: 1 header + 2 actions per line.
+    if (lines.length > 49) {
+      throw new AppError(400, "ERROR_ENTRY_TOO_LARGE");
+    }
+
+    const entryDate = inputDate || new Date().toISOString().split("T")[0];
+    const entryId = data.entryId || `E-${randomUUID()}`;
+    const now = new Date().toISOString();
+
+    await LedgerService.validateFiscalYear(orgId, year);
+    if (await LedgerService.isPeriodLocked(orgId, entryDate)) {
+      throw new AppError(400, "ERROR_PERIOD_LOCKED");
+    }
+
+    const accountIds = [
+      ...new Set(lines.map((line) => LedgerService.formatAccount(line.accountId))),
+    ];
+    const projectIds = [
+      ...new Set(
+        lines
+          .map((line) => line.projectId)
+          .filter((projectId): projectId is string => !!projectId),
+      ),
+    ];
+
+    await LedgerService.validateEntities(orgId, accountIds, projectIds);
+
+    let totalDebit = 0;
+    let totalCredit = 0;
+    const transactItems: any[] = [];
+
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+      const paddedAccountId = LedgerService.formatAccount(line.accountId);
+      const lineId = `L-${index + 1}-${randomUUID()}`;
+
+      if (line.projectId && line.debit > 0) {
+        await BudgetService.enforceBudget(orgId, year, line);
+      }
+
+      const lineItem = LedgerService.buildEntryLineItem({
+        orgId,
+        year,
+        entryId,
+        lineId,
+        entryDate,
+        line,
+        paddedAccountId,
+        journalCode,
+        voucherNumber,
+        userId,
+        now,
+      });
+
+      transactItems.push({
+        Put: {
+          TableName: config.TABLE_NAME,
+          Item: marshall(EntryLineSchema.parse(lineItem), {
+            removeUndefinedValues: true,
+          }),
+          ConditionExpression: "attribute_not_exists(PK)",
+        },
+      });
+
+      transactItems.push(
+        BalanceService.buildBalanceUpdateAction(
+          orgId,
+          year,
+          paddedAccountId,
+          line.debit || 0,
+          line.credit || 0,
+          journalCode,
+          userId,
+        ),
+      );
+
+      totalDebit += Math.round(line.debit || 0);
+      totalCredit += Math.round(line.credit || 0);
+    }
+
+    if (totalDebit !== totalCredit) {
+      throw new AppError(400, "ERROR_ENTRY_NOT_BALANCED");
+    }
+
+    const entryHeader = {
+      orgId,
+      year,
+      entryId,
+      entryType,
+      entryDate,
+      journalCode,
+      voucherNumber,
+      totalDebit,
+      totalCredit,
+      label: headerLabel,
+      status: "POSTED",
+      entityType: "ENTRY",
+      PK: KeyFactory.partitionKey(orgId, year),
+      SK: KeyFactory.entrySK(entryId),
+      GSI5PK: KeyFactory.gsi5JournalPK(orgId, year),
+      GSI5SK: KeyFactory.gsi5JournalSK(journalCode, entryDate, entryId),
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    transactItems.unshift({
+      Put: {
+        TableName: config.TABLE_NAME,
+        Item: marshall(EntrySchema.parse(entryHeader), {
+          removeUndefinedValues: true,
+        }),
+        ConditionExpression: "attribute_not_exists(PK)",
+      },
+    });
+
+    try {
+      await dynamoClient.send(
+        new TransactWriteItemsCommand({ TransactItems: transactItems }),
+      );
+    } catch (error: any) {
+      if (error?.name === "TransactionCanceledException") {
+        throw new AppError(409, "ERROR_ENTRY_ALREADY_EXISTS", { entryId });
+      }
+      throw error;
+    }
+
+    return { entryId };
+  }
+
   /**
    * Validates that a fiscal year exists and its status is "OPEN".
    * Throws AppError if validation fails.
@@ -272,5 +435,110 @@ export class LedgerService {
       nextCursor,
       hasMore: !!nextCursor,
     };
+  }
+
+  private static formatAccount(accountId: string): string {
+    return accountId.padEnd(8, "0");
+  }
+
+  private static async isPeriodLocked(
+    orgId: string,
+    date: string,
+  ): Promise<boolean> {
+    const yearPart = date.substring(0, 4);
+    const monthPart = date.substring(5, 7);
+
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, yearPart),
+          SK: KeyFactory.periodLockSK(monthPart),
+        }),
+      }),
+    );
+
+    if (!result.Item) return false;
+
+    const lock = unmarshall(result.Item);
+    return lock.status === "LOCKED";
+  }
+
+  private static buildEntryLineItem(params: {
+    orgId: string;
+    year: number;
+    entryId: string;
+    lineId: string;
+    entryDate: string;
+    line: CreateEntryRequest["lines"][number];
+    paddedAccountId: string;
+    journalCode: string;
+    voucherNumber?: string;
+    userId: string;
+    now: string;
+  }) {
+    const {
+      orgId,
+      year,
+      entryId,
+      lineId,
+      entryDate,
+      line,
+      paddedAccountId,
+      journalCode,
+      voucherNumber,
+      userId,
+      now,
+    } = params;
+
+    const item: any = {
+      orgId,
+      year,
+      lineId,
+      entryId,
+      entryDate,
+      journalCode,
+      voucherNumber,
+      accountId: paddedAccountId,
+      projectId: line.projectId,
+      budgetLineId: line.budgetLineId,
+      donorId: line.donorId,
+      thirdPartyId: line.thirdPartyId,
+      label: line.label,
+      description: line.description,
+      debit: Math.round(line.debit || 0),
+      credit: Math.round(line.credit || 0),
+      entityType: "ENTRY_LINE",
+      PK: KeyFactory.partitionKey(orgId, year),
+      SK: KeyFactory.entryLineSK(lineId),
+      GSI1PK: KeyFactory.gsi1PK(orgId),
+      GSI1SK: KeyFactory.gsi1SK(paddedAccountId, year, entryDate, lineId),
+      createdBy: userId,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (line.thirdPartyId) {
+      item.GSI2PK = KeyFactory.gsi2PK(orgId, paddedAccountId, line.thirdPartyId);
+      item.GSI2SK = KeyFactory.gsi2SK(entryDate, lineId);
+      item.GSI3PK = KeyFactory.letteringPK(
+        orgId,
+        paddedAccountId,
+        line.thirdPartyId,
+      );
+      item.GSI3SK = KeyFactory.letteringSK(entryDate, entryId, lineId);
+    }
+
+    if (line.projectId) {
+      item.GSI4PK = KeyFactory.gsi4PK(orgId);
+      item.GSI4SK = KeyFactory.gsi4SK(
+        line.projectId,
+        year,
+        entryDate,
+        lineId,
+      );
+    }
+
+    return item;
   }
 }

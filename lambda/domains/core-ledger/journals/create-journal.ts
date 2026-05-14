@@ -10,6 +10,7 @@ import {
   badRequest,
   created,
   toLambdaResponse,
+  unauthorized,
 } from "@/models/shared/api-response";
 
 /**
@@ -22,7 +23,10 @@ export const handler = async (
 
   try {
     const body = JSON.parse(event.body || "{}");
-    const orgId = event.requestContext.authorizer?.claims?.orgId || "test-org";
+    const orgId = event.requestContext.authorizer?.claims?.orgId;
+    if (!orgId) {
+      return toLambdaResponse(unauthorized());
+    }
     const { year, journalCode, journalName, type } = body;
 
     const journalData = {

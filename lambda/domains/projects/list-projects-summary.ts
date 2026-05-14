@@ -6,7 +6,12 @@ import { config } from "@/lambda/shared/config";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { I18nResolver } from "@/lambda/shared/i18n";
 import { ProjectSchema } from "@/models/projects/project";
-import { toLambdaResponse, ok, badRequest } from "@/models/shared/api-response";
+import {
+  toLambdaResponse,
+  ok,
+  badRequest,
+  unauthorized,
+} from "@/models/shared/api-response";
 
 /**
  * @async
@@ -19,9 +24,10 @@ export const handler = async (
 ): Promise<APIGatewayProxyResult> => {
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
-  // CORRECTION : On s'assure de matcher l'ID utilisé dans le seeding
-  const orgId =
-    event.requestContext.authorizer?.claims?.orgId || "org-test-dash";
+  const orgId = event.requestContext.authorizer?.claims?.orgId;
+  if (!orgId) {
+    return toLambdaResponse(unauthorized());
+  }
 
   const currentYear = event.queryStringParameters?.year || "2026";
 
@@ -49,7 +55,7 @@ export const handler = async (
     const allProjectLinesResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI_PROJECT",
+        IndexName: config.GSI4,
         KeyConditionExpression: "GSI4PK = :pk",
         ExpressionAttributeValues: {
           ":pk": { S: KeyFactory.gsi4PK(orgId) },

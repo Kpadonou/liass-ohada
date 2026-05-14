@@ -34,6 +34,7 @@ export class BalanceService {
     debit: number,
     credit: number,
     journalCode: string,
+    userId: string,
   ): any {
     const isOpening = journalCode === "RAN";
 
@@ -49,7 +50,8 @@ export class BalanceService {
           SK: `BAL#${accountId.padEnd(8, "0")}`,
         }),
         // Utilisation de variables pour les noms de champs
-        UpdateExpression: `ADD #d :d, #c :c SET updatedAt = :now, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year`,
+        UpdateExpression:
+          "ADD #d :d, #c :c SET updatedAt = :now, createdAt = if_not_exists(createdAt, :now), createdBy = if_not_exists(createdBy, :userId), updatedBy = :userId, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year",
         ExpressionAttributeNames: {
           "#d": debitField,
           "#c": creditField,
@@ -63,6 +65,7 @@ export class BalanceService {
           ":orgId": orgId,
           ":accId": accountId.padEnd(8, "0"),
           ":year": year,
+          ":userId": userId,
         }),
       },
     };

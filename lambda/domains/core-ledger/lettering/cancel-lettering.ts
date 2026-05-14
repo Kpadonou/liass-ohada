@@ -8,7 +8,6 @@
  * 3. Reconstructs the original 'UNLETTERED' Sort Key (GSI3SK) using KeyFactory.
  * 4. Atomically removes lettering metadata (code, status) and restores the GSI index state.
  * * @param {APIGatewayProxyEvent} event - AWS Lambda event containing:
- * - body.orgId: Organization ID.
  * - body.lineKeys: Array of {PK, SK} of the lines to un-match.
  * * @returns {Promise<APIGatewayProxyResult>}
  * - 200: Un-lettering successful, lines are back to 'UNLETTERED' status.
@@ -20,7 +19,12 @@ import { I18nResolver } from "@/lambda/shared/i18n";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { LockPeriodService } from "@/lambda/shared/services/lock-period-service";
 import { EntryLineSchema } from "@/models/core-ledger/entry";
-import { badRequest, ok, toLambdaResponse } from "@/models/shared/api-response";
+import {
+  badRequest,
+  ok,
+  toLambdaResponse,
+  unauthorized,
+} from "@/models/shared/api-response";
 import {
   BatchGetItemCommand,
   TransactWriteItemsCommand,
@@ -35,12 +39,15 @@ export const handler = async (
 
   try {
     const body = JSON.parse(event.body || "{}");
-    const { orgId: inputOrgId, lineKeys } = body;
-    const orgId = event.requestContext?.authorizer?.claims?.orgId || inputOrgId;
+    const { lineKeys } = body;
+    const orgId = event.requestContext?.authorizer?.claims?.orgId;
+
+    if (!orgId) {
+      return toLambdaResponse(unauthorized());
+    }
 
     // 1. Validation de base
     if (
-      !orgId ||
       !lineKeys ||
       !Array.isArray(lineKeys) ||
       lineKeys.length === 0

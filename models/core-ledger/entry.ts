@@ -97,6 +97,8 @@ export const EntrySchema = z.object({
   entityType: z.literal("ENTRY"),
   PK: z.string(),
   SK: z.string(),
+  GSI5PK: z.string().optional(),
+  GSI5SK: z.string().optional(),
   createdBy: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),

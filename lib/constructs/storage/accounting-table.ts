@@ -20,10 +20,10 @@ export class LiassOhadaAccountingTable extends Construct {
       billingMode: BillingMode.PAY_PER_REQUEST,
     });
 
-    // GSI1 (gsi1)
+    // GSI1 - General Ledger (Account focus)
     this.table.addGlobalSecondaryIndex({
       indexName: "GSI1",
-      partitionKey: { name: "PK", type: AttributeType.STRING },
+      partitionKey: { name: "GSI1PK", type: AttributeType.STRING },
       sortKey: { name: "GSI1SK", type: AttributeType.STRING },
       projectionType: ProjectionType.ALL,
     });
@@ -46,9 +46,17 @@ export class LiassOhadaAccountingTable extends Construct {
 
     // GSI4 - Project Index (SYCEBNL)
     this.table.addGlobalSecondaryIndex({
-      indexName: "GSI_PROJECT",
+      indexName: "GSI4",
       partitionKey: { name: "GSI4PK", type: AttributeType.STRING },
       sortKey: { name: "GSI4SK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI5 - Journal/Audit Trail (Chronological)
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI5",
+      partitionKey: { name: "GSI5PK", type: AttributeType.STRING },
+      sortKey: { name: "GSI5SK", type: AttributeType.STRING },
       projectionType: ProjectionType.ALL,
     });
   }

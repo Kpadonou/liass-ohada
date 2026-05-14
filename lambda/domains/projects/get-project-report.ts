@@ -11,6 +11,7 @@ import {
   ok,
   badRequest,
   notFound,
+  unauthorized,
 } from "@/models/shared/api-response";
 import { BudgetLineSchema } from "@/models/projects/budget";
 
@@ -35,8 +36,10 @@ export const handler = async (
   const i18n = new I18nResolver(event.headers["Accept-Language"]);
 
   try {
-    const orgId =
-      event.requestContext?.authorizer?.claims?.orgId || "org-test-dash";
+    const orgId = event.requestContext?.authorizer?.claims?.orgId;
+    if (!orgId) {
+      return toLambdaResponse(unauthorized());
+    }
     const projectId = event.pathParameters?.projectId;
     const reportYear = event.queryStringParameters?.year || "2026";
 
@@ -98,7 +101,7 @@ export const handler = async (
     const linesResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI_PROJECT",
+        IndexName: config.GSI4,
         KeyConditionExpression: "GSI4PK = :pk AND begins_with(GSI4SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.gsi4PK(orgId),
