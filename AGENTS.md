@@ -1,63 +1,35 @@
-🤖 AGENT: Liass-OHADA Architect
+# Repository Guidelines
 
-1. Persona & Role
-   You are the Senior Lead Architect for Liass-OHADA, a production-grade SaaS ERP.
+## Canonical Project Specification
 
-- Expertise: AWS Serverless (CDK, Lambda, DynamoDB), TypeScript, and West-African Accounting Standards (SYSCOHADA General & SYCEBNL for NGOs).
-- Goal: Ensure every piece of code is scalable, multi-tenant, internationalized, and strictly follows the "Slim Architecture" pattern.
+Before making architectural, domain, infrastructure, or data-model changes, consult `SPEC.md` at the repository root. It is the canonical product and technical specification for the liass-ohada ERP, including OHADA/SYCEBNL scope, AWS Serverless strategy, multi-tenancy rules, DynamoDB key strategy, security requirements, i18n expectations, and AI generation rules. If `AGENTS.md` and `SPEC.md` appear to conflict, pause and resolve the discrepancy explicitly before implementing.
 
-2. Project Essence
+## Project Structure & Module Organization
 
-- Namespace: liass-ohada
-- Region: UEMOA (West Africa).
-- Architecture: Slim Architecture (Logic-less Handlers + Static Service Layer).
-- Data Model: Single Table Design with Fiscal Year Sharding.
-- Security: Strict Multi-tenancy isolation via ORG#{orgId} prefix.
+This is a TypeScript AWS CDK backend for an OHADA-compliant serverless ERP. CDK entry points live in `bin/`, stacks in `lib/stacks/`, and reusable constructs in `lib/constructs/`. Lambda business logic is organized by bounded context under `lambda/domains/`; shared utilities, middleware, services, i18n, and DynamoDB helpers are in `lambda/shared/`. Models and Zod schemas belong in `models/`. Translations are in `locales/en.json` and `locales/fr.json`. Tests are under `test/`; seed and verification scripts live in `scripts/`.
 
-3. Mandatory Technical Standards
-   A. The "Slim" Pattern
+## Build, Test, and Development Commands
 
-- Handlers: Must use createHandler from @/lambda/shared/middleware/handler-wrapper.
-- Validation: Every input must have a Zod Schema.
-- Logic: 100% of business logic and DynamoDB calls must be in @/lambda/shared/services/.
-- Identity: Extract orgId and userId only from the context provided by the middleware (JWT claims).
-  B. DynamoDB & Key Strategy
-  Always use @/lambda/shared/key-builder:KeyFactory.
-- Master Data: PK = ORG#{orgId} | SK = [TYPE]#[ID]
-- Transactional: PK = ORG#{orgId}#FY#{year} | SK = [TYPE]#[ID]
-- GSI Standard Names:
-  _ GSI1: General Ledger (Account focus)
-  _ GSI2: Subsidiary Ledger (Third-party focus)
-  _ GSI3: Lettering/Matching (Sparse)
-  _ GSI4: for project queries (SYCEBNL)
-  \_ GSI5: Journal/Audit Trail (Chronological)
+- `npm run build`: compiles TypeScript to `dist/`.
+- `npm run watch`: runs the TypeScript compiler in watch mode.
+- `npm test`: runs Jest tests through `ts-jest`.
+- `npm run clean`: removes `dist/`.
+- `npx cdk synth`: generates CloudFormation output.
+- `npx cdk diff`: compares local CDK output with the deployed stack.
+- `npx cdk deploy`: deploys to the configured AWS account.
 
-  C. Language & i18n
+## Coding Style & Naming Conventions
 
-- Technical Language: English (Code, variables, comments, documentation).
-- Accounting Language: French (Accounting terms, i18n message codes in fr.json).
-- Errors: Always throw new AppError(statusCode, "MESSAGE_CODE", details?).
+Use TypeScript with strict null checks and no implicit `any`. Follow existing two-space JSON formatting and idiomatic TypeScript formatting. Use `lowerCamelCase` for TypeScript properties and UPPERCASE DynamoDB keys such as `PK`, `SK`, `GSI1PK`, and `GSI1SK`. Every persisted item must include an uppercase `entityType`. Account IDs are normalized to 8-digit strings, for example `41100000`. Keep user-facing strings in `locales/`; handlers should reference translation keys.
 
-4. Domain Knowledge: OHADA & SYCEBNL
-   Core Accounting (Commercial)
+## Testing Guidelines
 
-- Accounts are 8-digit strings (padded with zeros).
-- Classes 1-5: Balance Sheet (Bilan).
-- Classes 6-7: Income Statement (Gestion).
-- Invariant: Total Debit MUST equal Total Credit.
-  SYCEBNL (NGO/Non-Profit)
-- Requires analytical tracking via projectId and donorId.
-- Anti-Deficit Rule: Check budget lines and cash availability before posting expenditure.
+Jest is configured in `jest.config.js` with `testEnvironment: node` and path alias `@/*`. Test files must match `**/test/**/*.test.ts` or `**/test/**/*.spec.ts`. Prefer focused unit tests such as `test/unit/core-ledger/create-account.test.ts`, and add workflow tests under `test/domains/` when behavior spans handlers or services. Run `npm test` before submitting changes; use `npm run build` to catch type and CDK compilation issues.
 
-5. Security & Integrity (Immutable Rules)
+## Commit & Pull Request Guidelines
 
-- Fiscal Control: Never allow write operations if FiscalYear.status !== "OPEN".
-- Audit: Every entity must have entityType, createdBy, and createdAt.
-- Atomicity: Use TransactWriteItems for entries/lines and balance updates.
+Recent commits use short imperative or completion-style summaries, often scoped to refactors or fixes, for example `Handled build errors` or `General Ledger refactor completed`. Keep commits focused and describe the affected domain when possible. Pull requests should include a short purpose statement, the main implementation changes, test results, and any deployment or data-migration notes. Link related issues and include API examples when endpoint behavior changes.
 
-6. How to Respond
+## Security & Configuration Tips
 
-- When I ask for a feature, first verify if the necessary Service method exists.
-- If it doesn't, propose the Service implementation followed by the Handler.
-- Always provide the Zod Schema.
-- Be concise. Avoid "fluff". Focus on type safety and performance.
+Never derive `orgId` or `userId` from client input; use authenticated claims. Do not hardcode AWS resource names in business logic. Use centralized config and environment variables such as `TABLE_NAME`. Monetary values must be integers in the smallest currency unit; avoid floating-point arithmetic in accounting code.
