@@ -12,6 +12,20 @@ export const KeyFactory = {
   partitionKey: (orgId: string, year: number | string) =>
     `ORG#${orgId}#FY#${year}`,
 
+  // --- Cabinet Management / Supervision ---
+
+  /** Management PK for an Accounting Firm supervising multiple organizations */
+  cabinetPK: (cabinetId: string) => `CABINET#${cabinetId}`,
+
+  /** SK for an organization dossier linked under a cabinet partition */
+  cabinetDossierSK: (orgId: string) => `DOSSIER#${orgId}`,
+
+  /** GSI PK to list all organization dossiers linked to a cabinet */
+  cabinetDossierGSI_PK: (cabinetId: string) => `CABINET#${cabinetId}`,
+
+  /** GSI SK for sorting organization dossiers linked to a cabinet */
+  cabinetDossierGSI_SK: (orgId: string) => `DOSSIER#${orgId}`,
+
   // --- SK (Sort Keys) ---
 
   /** SK for Fiscal Year metadata (used with orgKey) */
