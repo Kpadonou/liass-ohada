@@ -36,6 +36,11 @@ export type CreateFundingSourceInput = z.infer<
 >;
 
 export class ProjectService {
+  /**
+   * Creates a SYCEBNL project inside the caller's organization partition.
+   * Enforces that the donor exists in the same tenant and atomically writes the
+   * project plus a project-code lock to prevent duplicate business references.
+   */
   static async createProject(
     orgId: string,
     userId: string,
@@ -106,6 +111,10 @@ export class ProjectService {
     return projectItem;
   }
 
+  /**
+   * Lists tenant-scoped project master records only.
+   * Filters out colocated lock/helper records that share the PRJ# sort-key prefix.
+   */
   static async listProjects(orgId: string): Promise<Project[]> {
     const result = await dynamoClient.send(
       new QueryCommand({
@@ -124,6 +133,10 @@ export class ProjectService {
       .map((item) => ProjectSchema.parse(item));
   }
 
+  /**
+   * Retrieves a single project by technical id from the caller's organization.
+   * Throws an AppError when the project is absent, preventing cross-tenant fallback.
+   */
   static async getProject(orgId: string, projectId: string): Promise<Project> {
     const result = await dynamoClient.send(
       new GetItemCommand({
@@ -142,6 +155,11 @@ export class ProjectService {
     return ProjectSchema.parse(unmarshall(result.Item));
   }
 
+  /**
+   * Creates a project funding source after validating both the project and donor
+   * belong to the same tenant. The conditional write prevents duplicate donor
+   * envelopes for the same project.
+   */
   static async createFundingSource(
     orgId: string,
     userId: string,
@@ -192,6 +210,10 @@ export class ProjectService {
     return fundingSource;
   }
 
+  /**
+   * Lists funding-source envelopes attached to a tenant-scoped project.
+   * The project lookup is performed first so unknown projects fail consistently.
+   */
   static async listFundingSources(orgId: string, projectId: string) {
     await ProjectService.getProject(orgId, projectId);
 
@@ -211,6 +233,11 @@ export class ProjectService {
     );
   }
 
+  /**
+   * Builds the SYCEBNL project report from budget lines, funding envelopes, and
+   * GSI4 analytical entry lines. Keeps all reads tenant-scoped and reconciles
+   * OHADA account totals with donor/project cash follow-up.
+   */
   static async getProjectReport(
     orgId: string,
     projectId: string,
@@ -353,6 +380,11 @@ export class ProjectService {
     };
   }
 
+  /**
+   * Produces a dashboard summary across all tenant projects using GSI4 lines.
+   * The aggregation surfaces overspend and negative-cash alerts without scanning
+   * outside the organization project index partition.
+   */
   static async getProjectsSummary(orgId: string, currentYear: string) {
     const [projects, allLines] = await Promise.all([
       ProjectService.listProjects(orgId),

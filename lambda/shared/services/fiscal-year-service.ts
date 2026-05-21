@@ -10,6 +10,11 @@ import { LedgerService } from "./ledger-service";
 import { LockPeriodService } from "./lock-period-service";
 
 export class FiscalYearService {
+  /**
+   * Returns the tenant-scoped fiscal year state with its monthly period locks.
+   * Reads only the organization master fiscal-year item and the matching FY
+   * partition, preserving fiscal-year sharding.
+   */
   static async getDetails(orgId: string, year: string) {
     const fiscalYearResult = await dynamoClient.send(
       new GetItemCommand({
@@ -51,6 +56,11 @@ export class FiscalYearService {
     };
   }
 
+  /**
+   * Executes year-end closing only for an OPEN fiscal year with management
+   * account movements. Delegates the atomic closing entry and fiscal-year status
+   * update to ClosingService while preserving the calling user for audit fields.
+   */
   static async closeYear(orgId: string, userId: string, year: string) {
     const fiscalYear = await LedgerService.getFiscalYear(orgId, year);
 
@@ -75,6 +85,11 @@ export class FiscalYearService {
     });
   }
 
+  /**
+   * Locks or unlocks a fiscal period through LockPeriodService.
+   * The service validates the parent fiscal year and stamps user audit metadata
+   * so posting and lettering flows can enforce period immutability.
+   */
   static async updatePeriodLock(
     orgId: string,
     userId: string,

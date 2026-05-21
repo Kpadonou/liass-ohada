@@ -43,6 +43,11 @@ export type UpdateJournalInput = z.infer<typeof UpdateJournalInputSchema>;
 export type JournalEntriesRequest = z.infer<typeof JournalEntriesRequestSchema>;
 
 export class JournalService {
+  /**
+   * Creates a journal definition in the tenant master-data partition.
+   * The conditional put enforces journal-code uniqueness per organization/year
+   * and stamps the creating user for auditability.
+   */
   static async createJournal(
     orgId: string,
     userId: string,
@@ -85,6 +90,10 @@ export class JournalService {
     return item;
   }
 
+  /**
+   * Lists all journals configured for an organization.
+   * Uses the JNL# sort-key prefix so no journal data from another tenant can leak.
+   */
   static async listJournals(orgId: string): Promise<Journal[]> {
     const result = await dynamoClient.send(
       new QueryCommand({
@@ -102,6 +111,10 @@ export class JournalService {
     );
   }
 
+  /**
+   * Retrieves one tenant-scoped journal by business code.
+   * Throws JOURNAL_NOT_FOUND instead of falling back to default or test tenants.
+   */
   static async getJournal(
     orgId: string,
     journalCode: string,
@@ -123,6 +136,10 @@ export class JournalService {
     return JournalSchema.parse(unmarshall(result.Item));
   }
 
+  /**
+   * Updates mutable journal metadata only after confirming the journal exists.
+   * Preserves creation audit fields and records the updating user.
+   */
   static async updateJournal(
     orgId: string,
     userId: string,
@@ -157,6 +174,11 @@ export class JournalService {
     return result.Attributes ? unmarshall(result.Attributes) : undefined;
   }
 
+  /**
+   * Deletes an unused journal definition.
+   * Prevents deletion when posted entries exist in GSI5 for the journal, preserving
+   * chronological audit-trail integrity.
+   */
   static async deleteJournal(orgId: string, journalCode: string) {
     const journal = await JournalService.getJournal(orgId, journalCode);
     const hasEntries = await JournalService.hasPostedEntries(
@@ -183,6 +205,10 @@ export class JournalService {
     return {};
   }
 
+  /**
+   * Reads posted entry headers from the GSI5 chronological journal index.
+   * Supports full-year, journal-specific, and month-scoped views without scans.
+   */
   static async getJournalEntries(orgId: string, input: JournalEntriesRequest) {
     const { year, journalCode, month } = input;
     const pk = KeyFactory.gsi5JournalPK(orgId, year);
