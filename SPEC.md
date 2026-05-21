@@ -4,7 +4,7 @@
 
 **Project Name**: liass-ohada
 **Primary Goal**: Build a complete, AWS Cloud-Native Serverless ERP compliant with the OHADA accounting framework, supporting both SYSCOHADA General (Commercial) and SYCEBNL (Non-Profit/Associations/NGOs) standards.
-**Multi-tenancy**: Native support for Accounting Firms (Cabinets), SMEs (PMEs), and NGOs.
+**Multi-tenancy**: Native support for Accounting Firms (Cabinets), SMEs (PMEs), and NGOs. A Cabinet is a parent supervision tenant that can manage multiple organization dossiers, while each organization's accounting data remains isolated by `orgId`.
 
 **Naming Convention**: All AWS resources must follow the pattern: `liass-ohada-{stage}-{resource-name}`.
 
@@ -40,6 +40,10 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
   - `SK` depends on entity (e.g., `USER#{userId}`, `ACC#{accountCode}`).
 - **Transactional Data (Fiscal Sharding)**:
   - High-volume data (Entries, Lines) use `PK = ORG#{orgId}#FY#{year}` to prevent hot partitions and facilitate archiving.
+- **Cabinet Supervision (Management Context)**:
+  - Cabinet-to-organization linkage items use `PK = CABINET#{cabinetId}` and `SK = DOSSIER#{orgId}`.
+  - Cabinet listing indexes use `GSI PK = CABINET#{cabinetId}` and `GSI SK = DOSSIER#{orgId}` to query all organizations supervised by an Accounting Firm.
+  - This management context is additive and must not change the existing `ORG#{orgId}` accounting partitions.
 - **Global Secondary Indexes (GSI)**:
   - `GSI1PK = ORG#{orgId}`.
   - `GSI1SK` follows a searchable pattern (e.g., `TYPE#{entityType}#STATUS#{status}`).
