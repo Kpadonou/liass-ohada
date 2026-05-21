@@ -90,7 +90,7 @@ export class CoreLedgerEndpoints extends DomainConstructFactory {
     map(
       apigw.HttpMethod.POST,
       "/fiscal-year/{year}/close",
-      "fiscal-year/close-year",
+      "fiscal-year/close-fiscal-year",
     );
     map(
       apigw.HttpMethod.POST,

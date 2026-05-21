@@ -56,6 +56,7 @@ export class LockPeriodService {
    */
   static async updatePeriodLock(
     orgId: string,
+    userId: string,
     year: number,
     month: number,
     status: "LOCKED" | "OPEN",
@@ -66,6 +67,7 @@ export class LockPeriodService {
     }
 
     const normalizedMonth = month.toString().padStart(2, "0");
+    const now = new Date().toISOString();
     const lockItem = {
       PK: KeyFactory.partitionKey(orgId, year),
       SK: KeyFactory.periodLockSK(normalizedMonth),
@@ -74,7 +76,10 @@ export class LockPeriodService {
       month: normalizedMonth,
       status,
       entityType: "PERIOD_LOCK",
-      updatedAt: new Date().toISOString(),
+      createdBy: userId,
+      createdAt: now,
+      updatedBy: userId,
+      updatedAt: now,
     };
 
     await dynamoClient.send(

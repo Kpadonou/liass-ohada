@@ -1,6 +1,5 @@
 import {
   APIGatewayProxyEventV2WithJWTAuthorizer,
-  APIGatewayProxyResultV2,
 } from "aws-lambda";
 import { z } from "zod";
 import { I18nResolver } from "../i18n";
@@ -27,7 +26,7 @@ export interface HandlerContext {
 const sendResponse = (
   statusCode: number,
   body: any,
-): APIGatewayProxyResultV2 => ({
+) => ({
   statusCode,
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
@@ -38,13 +37,18 @@ export const createHandler = <T>(
   logic: (data: T, context: HandlerContext) => Promise<any>,
 ) => {
   return async (
-    event: APIGatewayProxyEventV2WithJWTAuthorizer,
-  ): Promise<APIGatewayProxyResultV2> => {
+      event: any,
+  ) => {
     const i18n = new I18nResolver(event.headers["accept-language"] || "fr");
 
     try {
       const body = event.body ? JSON.parse(event.body) : {};
-      const validatedData = schema.parse(body);
+      const requestData = {
+        ...body,
+        ...(event.queryStringParameters || {}),
+        ...(event.pathParameters || {}),
+      };
+      const validatedData = schema.parse(requestData);
 
       const claims = event.requestContext?.authorizer?.jwt?.claims as any;
       const orgId = claims?.orgId;

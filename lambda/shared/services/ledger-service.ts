@@ -48,6 +48,16 @@ export interface AccountEntriesResult {
   hasMore: boolean;
 }
 
+export interface LedgerEntry {
+  date: string;
+  label: string;
+  reference: string;
+  journal: string;
+  debit: number;
+  credit: number;
+  runningBalance: number;
+}
+
 export interface PostEntryParams {
   orgId: string;
   userId: string;
@@ -396,7 +406,7 @@ export class LedgerService {
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: "GSI1",
+        IndexName: config.GSI1,
         KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.gsi1PK(orgId),
@@ -434,6 +444,127 @@ export class LedgerService {
       entries,
       nextCursor,
       hasMore: !!nextCursor,
+    };
+  }
+
+  static async getGeneralLedger(
+    orgId: string,
+    fiscalYear: string,
+    accountId: string,
+  ) {
+    const paddedAccountId = LedgerService.formatAccount(accountId);
+    const accountBalance = await BalanceService.getAccountBalance(
+      orgId,
+      fiscalYear,
+      paddedAccountId,
+    );
+
+    const openingNet =
+      accountBalance.openingDebit - accountBalance.openingCredit;
+
+    const queryResult = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        IndexName: config.GSI1,
+        KeyConditionExpression:
+          "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
+        ExpressionAttributeValues: marshall({
+          ":gsi1pk": KeyFactory.gsi1PK(orgId),
+          ":gsi1sk": KeyFactory.gsi1SKPrefix(paddedAccountId, fiscalYear),
+        }),
+        ScanIndexForward: true,
+      }),
+    );
+
+    let runningBalance = openingNet;
+    const movements: LedgerEntry[] = [];
+
+    for (const item of queryResult.Items || []) {
+      const line = unmarshall(item);
+      if (line.journalCode === "RAN") continue;
+
+      const debit = Number(line.debit) || 0;
+      const credit = Number(line.credit) || 0;
+
+      runningBalance += debit - credit;
+      movements.push({
+        date: line.entryDate,
+        label: line.label || line.description || "-",
+        reference: line.entryId || "N/A",
+        journal: line.journalCode,
+        debit,
+        credit,
+        runningBalance,
+      });
+    }
+
+    return {
+      accountId: paddedAccountId,
+      openingBalance: {
+        date: "OPENING",
+        label: "Opening Balance (Report à Nouveau)",
+        reference: "RAN",
+        journal: "RAN",
+        debit: accountBalance.openingDebit,
+        credit: accountBalance.openingCredit,
+        runningBalance: openingNet,
+      },
+      movements,
+      finalBalance: runningBalance,
+    };
+  }
+
+  static async getIncomeStatement(orgId: string, year: number) {
+    await LedgerService.getFiscalYear(orgId, year);
+
+    const fetchClassTotals = async (classPrefix: string) => {
+      let lastEvaluatedKey: any = undefined;
+      let classDebit = 0;
+      let classCredit = 0;
+
+      do {
+        const queryResult = await dynamoClient.send(
+          new QueryCommand({
+            TableName: config.TABLE_NAME,
+            IndexName: config.GSI1,
+            KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
+            ExpressionAttributeValues: marshall({
+              ":pk": KeyFactory.gsi1PK(orgId),
+              ":sk": `ACC#${classPrefix}`,
+            }),
+            ExclusiveStartKey: lastEvaluatedKey,
+          }),
+        );
+
+        for (const item of queryResult.Items || []) {
+          const line = unmarshall(item);
+          if (Number(line.year) === year) {
+            classDebit += Number(line.debit) || 0;
+            classCredit += Number(line.credit) || 0;
+          }
+        }
+
+        lastEvaluatedKey = queryResult.LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+
+      return { classDebit, classCredit };
+    };
+
+    const [expensesData, revenueData] = await Promise.all([
+      fetchClassTotals("6"),
+      fetchClassTotals("7"),
+    ]);
+
+    const totalExpenses = expensesData.classDebit - expensesData.classCredit;
+    const totalRevenue = revenueData.classCredit - revenueData.classDebit;
+    const netResult = totalRevenue - totalExpenses;
+
+    return {
+      fiscalYear: year.toString(),
+      totalRevenue,
+      totalExpenses,
+      netResult,
+      performanceStatus: netResult >= 0 ? "PROFIT" : "LOSS",
     };
   }
 

@@ -6,7 +6,7 @@
  * - Once a period is LOCKED, post-entry and lettering services must reject entries for that period.
  */
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
-import { LockPeriodService } from "@/lambda/shared/services/lock-period-service";
+import { FiscalYearService } from "@/lambda/shared/services/fiscal-year-service";
 import { z } from "zod";
 
 const LockPeriodSchema = z.object({
@@ -17,9 +17,10 @@ const LockPeriodSchema = z.object({
 
 export const handler = createHandler(
   LockPeriodSchema,
-  async (data, { orgId, i18n }) => {
-    const lockItem = await LockPeriodService.updatePeriodLock(
+  async (data, { orgId, userId, i18n }) => {
+    const lockItem = await FiscalYearService.updatePeriodLock(
       orgId,
+      userId,
       data.year,
       data.month,
       data.status,

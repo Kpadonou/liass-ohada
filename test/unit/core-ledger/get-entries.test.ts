@@ -47,7 +47,7 @@ const createEvent = (
         principalId: "user-123",
         integrationLatency: 0,
         jwt: {
-          claims: { orgId },
+          claims: { orgId, sub: "user-123" },
           scopes: [],
         },
       },

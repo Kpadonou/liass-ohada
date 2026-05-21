@@ -12,6 +12,7 @@ export class ClosingService {
     const { year, userId, balances } = params;
     const entryId = `YEC-${year}`;
     const entryDate = `${year}-12-31`;
+    const now = new Date().toISOString();
     let netResult = 0;
 
     // Prepare lines to zero out accounts
@@ -59,9 +60,11 @@ export class ClosingService {
             totalCredit: totalAmount,
             status: "POSTED",
             description: `Clôture annuelle ${year}`,
-            userId,
-            createdAt: new Date().toISOString(),
+            createdBy: userId,
+            createdAt: now,
+            updatedAt: now,
           }),
+          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
         },
       },
       // 2. Lock Fiscal Year
@@ -72,11 +75,15 @@ export class ClosingService {
             PK: KeyFactory.orgKey(orgId),
             SK: KeyFactory.fiscalYearSK(year),
           }),
-          UpdateExpression: "SET #s = :c, closedAt = :now",
+          ConditionExpression: "#s = :open",
+          UpdateExpression:
+            "SET #s = :c, closedAt = :now, updatedAt = :now, updatedBy = :userId",
           ExpressionAttributeNames: { "#s": "status" },
           ExpressionAttributeValues: marshall({
+            ":open": "OPEN",
             ":c": "CLOSED",
-            ":now": new Date().toISOString(),
+            ":now": now,
+            ":userId": userId,
           }),
         },
       },
@@ -97,7 +104,11 @@ export class ClosingService {
             ...l,
             entryId,
             entryDate,
+            createdBy: userId,
+            createdAt: now,
+            updatedAt: now,
           }),
+          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
         },
       });
     });
