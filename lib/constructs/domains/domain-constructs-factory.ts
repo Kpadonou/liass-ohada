@@ -46,7 +46,12 @@ export abstract class DomainConstructFactory extends Construct {
   ) {
     const handlerName =
       handlerEntry.split("/").pop()?.replace(".ts", "") || "Handler";
-    const id = idPrefix ? `${idPrefix}${handlerName}` : handlerName;
+    const routeSuffix = `${method}-${routePath}`
+      .replace(/[^A-Za-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const id = idPrefix
+      ? `${idPrefix}${handlerName}-${routeSuffix}`
+      : `${handlerName}-${routeSuffix}`;
 
     const fn = new lambda.NodejsFunction(this, id, {
       entry: handlerEntry,

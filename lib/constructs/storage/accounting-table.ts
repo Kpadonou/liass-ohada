@@ -1,4 +1,3 @@
-import { config } from "@/lambda/shared/config";
 import {
   AttributeType,
   BillingMode,
@@ -7,14 +6,18 @@ import {
 } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 
+interface LiassOhadaAccountingTableProps {
+  tableName: string;
+}
+
 export class LiassOhadaAccountingTable extends Construct {
   public readonly table: Table;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: LiassOhadaAccountingTableProps) {
     super(scope, id);
 
     this.table = new Table(this, "LiassOhadaAccountingTable", {
-      tableName: config.TABLE_NAME,
+      tableName: props.tableName,
       partitionKey: { name: "PK", type: AttributeType.STRING },
       sortKey: { name: "SK", type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
