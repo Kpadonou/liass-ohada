@@ -22,9 +22,24 @@ Welcome to the liass-ohada backend project — an AWS Cloud-Native Serverless ER
 - `npm run build` compile typescript to js
 - `npm run watch` watch for changes and compile
 - `npm run test` perform the jest unit tests
-- `npx cdk deploy` deploy this stack to your default AWS account/region
-- `npx cdk diff` compare deployed stack with current state
-- `npx cdk synth` emits the synthesized CloudFormation template
+
+### AWS dev account
+
+The real AWS development account uses the `rem` AWS CLI profile and deploys to account `570197775998` in `eu-west-2`.
+
+- `npm run aws:login` refresh the AWS SSO session for the `rem` profile
+- `npm run aws:whoami` verify the active AWS identity before deploys
+- `npm run aws:bootstrap` bootstrap the CDK environment, if it has not already been bootstrapped
+- `npm run aws:synth` synthesize the CloudFormation template for the configured dev environment
+- `npm run aws:diff` compare the deployed stack with the current CDK app
+- `npm run aws:deploy` deploy the configured stack to the dev account
+- `npm run aws:deploy:all` deploy every stack in the CDK app to the dev account
+
+Do not export `AWS_PROFILE=localstack` globally in your shell. Use explicit profiles or the npm scripts above so real AWS and LocalStack commands cannot accidentally overlap.
+
+### LocalStack
+
+- `npm run localstack:setup` create and seed the local DynamoDB table against LocalStack
 
 ## Project Structure
 

@@ -9,7 +9,15 @@
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk"
+    "cdk": "cdk",
+    "aws:login": "aws sso login --profile rem",
+    "aws:whoami": "aws sts get-caller-identity --profile rem",
+    "aws:bootstrap": "env -u AWS_PROFILE npx cdk bootstrap aws://570197775998/eu-west-2 --profile rem --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess",
+    "aws:synth": "env -u AWS_PROFILE npx cdk synth --profile rem",
+    "aws:diff": "env -u AWS_PROFILE npx cdk diff --profile rem",
+    "aws:deploy": "env -u AWS_PROFILE npx cdk deploy --profile rem",
+    "aws:deploy:all": "env -u AWS_PROFILE npx cdk deploy --all --profile rem",
+    "localstack:setup": "AWS_PROFILE=localstack LOCALSTACK_URL=http://localhost:4566 bash scripts/setup-localstack.sh"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.2.0",
