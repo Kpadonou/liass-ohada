@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import { Stack, StackProps } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
+import { DeploymentStage } from "../config/deployment";
 
 // Import your custom constructs
 import { LiassOhadaApiGateway } from "../constructs/api/api-gateway";
@@ -18,6 +19,7 @@ import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
 interface ApiStackProps extends StackProps {
   /** The DynamoDB table provided by the DataStack */
   accountingTable: dynamodb.ITable;
+  stage: DeploymentStage;
 }
 
 /**
@@ -49,6 +51,7 @@ export class ApiStack extends Stack {
       api: this.apiGateway.httpApi,
       table: props.accountingTable,
       authorizer: authorizer,
+      stage: props.stage,
     });
 
     /**
@@ -59,6 +62,7 @@ export class ApiStack extends Stack {
       api: this.apiGateway.httpApi,
       table: props.accountingTable,
       authorizer: authorizer,
+      stage: props.stage,
     });
 
     // FUTURE: Add more modules here (Payroll, Commercial, etc.)

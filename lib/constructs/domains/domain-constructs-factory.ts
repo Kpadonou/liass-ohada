@@ -3,10 +3,26 @@ import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
+import * as path from "path";
+import { DeploymentStage } from "../../config/deployment";
 
 export interface DomainProps {
   api: apigw.HttpApi;
   authorizer?: apigw.IHttpRouteAuthorizer;
+  stage: DeploymentStage;
+  table: cdk.aws_dynamodb.ITable;
+}
+
+interface AddRouteOptions {
+  actionName?: string;
+  api: apigw.HttpApi;
+  authorizer?: apigw.IHttpRouteAuthorizer;
+  domainName: string;
+  handlerEntry: string;
+  idPrefix?: string;
+  method: apigw.HttpMethod;
+  routePath: string;
+  stage: DeploymentStage;
   table: cdk.aws_dynamodb.ITable;
 }
 
@@ -23,54 +39,69 @@ export interface DomainProps {
  * this.addRoute(api, HttpMethod.POST, "/accounts", entryPath, table, authorizer, "CoreLedger-");
  */
 export abstract class DomainConstructFactory extends Construct {
+  private static sanitizeNamePart(value: string): string {
+    return value
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+  }
+
+  private static buildFunctionName(
+    stage: DeploymentStage,
+    domainName: string,
+    actionName: string,
+  ): string {
+    const name = [
+      "liass-ohada",
+      stage,
+      DomainConstructFactory.sanitizeNamePart(domainName),
+      DomainConstructFactory.sanitizeNamePart(actionName),
+    ].join("-");
+
+    return name.slice(0, 64).replace(/-$/g, "");
+  }
+
   /**
    * Crée une fonction Lambda, lui accorde les droits sur DynamoDB et l'attache à une route API.
-   * * @protected
-   * @param {apigw.HttpApi} api - L'API Gateway cible.
-   * @param {apigw.HttpMethod} method - La méthode HTTP (GET, POST, etc.).
-   * @param {string} routePath - Le chemin de la ressource API (ex: "/accounts/{id}").
-   * @param {string} handlerEntry - Chemin absolu vers le fichier source .ts de la Lambda.
-   * @param {cdk.aws_dynamodb.ITable} table - La table DynamoDB à injecter en variable d'environnement.
-   * @param {apigw.IHttpRouteAuthorizer} [authorizer] - L'authorizer optionnel pour sécuriser la route.
-   * @param {string} [idPrefix=""] - Préfixe pour l'ID unique de la Lambda (ex: "Project-") afin d'éviter les collisions CDK.
+   *
+   * The construct ID remains route-specific to avoid CDK collisions, while
+   * functionName controls the readable physical name shown in AWS.
    * * @returns {void}
    */
-  protected addRoute(
-    api: apigw.HttpApi,
-    method: apigw.HttpMethod,
-    routePath: string,
-    handlerEntry: string,
-    table: cdk.aws_dynamodb.ITable,
-    authorizer?: apigw.IHttpRouteAuthorizer,
-    idPrefix?: string,
-  ) {
-    const handlerName =
-      handlerEntry.split("/").pop()?.replace(".ts", "") || "Handler";
-    const routeSuffix = `${method}-${routePath}`
+  protected addRoute(options: AddRouteOptions) {
+    const handlerName = path.basename(options.handlerEntry, ".ts");
+    const actionName = options.actionName ?? handlerName;
+    const routeSuffix = `${options.method}-${options.routePath}`
       .replace(/[^A-Za-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    const id = idPrefix
-      ? `${idPrefix}${handlerName}-${routeSuffix}`
+    const id = options.idPrefix
+      ? `${options.idPrefix}${handlerName}-${routeSuffix}`
       : `${handlerName}-${routeSuffix}`;
+    const functionName = DomainConstructFactory.buildFunctionName(
+      options.stage,
+      options.domainName,
+      actionName,
+    );
 
     const fn = new lambda.NodejsFunction(this, id, {
-      entry: handlerEntry,
+      entry: options.handlerEntry,
+      functionName,
       runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
-      environment: { TABLE_NAME: table.tableName },
+      environment: { TABLE_NAME: options.table.tableName },
     });
 
-    table.grantReadWriteData(fn);
+    options.table.grantReadWriteData(fn);
 
     const routeOptions: any = {
-      path: routePath,
-      methods: [method],
+      path: options.routePath,
+      methods: [options.method],
       integration: new HttpLambdaIntegration(`${id}Integ`, fn),
     };
 
-    if (authorizer) {
-      routeOptions.authorizer = authorizer;
+    if (options.authorizer) {
+      routeOptions.authorizer = options.authorizer;
     }
 
-    api.addRoutes(routeOptions);
+    options.api.addRoutes(routeOptions);
   }
 }

@@ -1,14 +1,7 @@
-import * as cdk from "aws-cdk-lib";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { Construct } from "constructs";
 import * as path from "path";
-import { DomainConstructFactory } from "./domain-constructs-factory";
-
-export interface DomainProps {
-  api: apigw.HttpApi;
-  authorizer?: apigw.IHttpRouteAuthorizer;
-  table: cdk.aws_dynamodb.ITable;
-}
+import { DomainConstructFactory, DomainProps } from "./domain-constructs-factory";
 
 export class CoreLedgerEndpoints extends DomainConstructFactory {
   constructor(scope: Construct, id: string, props: DomainProps) {
@@ -34,15 +27,17 @@ export class CoreLedgerEndpoints extends DomainConstructFactory {
       handlerPath: string,
     ) => {
       const entry = resolveHandlerEntry("core-ledger", handlerPath);
-      this.addRoute(
-        props.api,
+      this.addRoute({
+        api: props.api,
+        authorizer: props.authorizer,
+        domainName: "ledger",
+        handlerEntry: entry,
+        idPrefix: "CoreLedger-",
         method,
         routePath,
-        entry,
-        props.table,
-        props.authorizer,
-        "CoreLedger-",
-      );
+        stage: props.stage,
+        table: props.table,
+      });
     };
 
     // --- Core Ledger Endpoints ---
