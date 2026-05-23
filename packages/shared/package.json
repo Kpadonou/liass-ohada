@@ -1,0 +1,66 @@
+{
+  "name": "@liass-ohada/shared",
+  "version": "0.1.0",
+  "private": true,
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "backend": [
+        "dist/backend.d.ts"
+      ],
+      "core-ledger": [
+        "dist/core-ledger/index.d.ts"
+      ],
+      "projects": [
+        "dist/projects/index.d.ts"
+      ],
+      "shared": [
+        "dist/shared/index.d.ts"
+      ]
+    }
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./core-ledger": {
+      "types": "./dist/core-ledger/index.d.ts",
+      "import": "./dist/core-ledger/index.mjs",
+      "require": "./dist/core-ledger/index.js"
+    },
+    "./projects": {
+      "types": "./dist/projects/index.d.ts",
+      "import": "./dist/projects/index.mjs",
+      "require": "./dist/projects/index.js"
+    },
+    "./shared": {
+      "types": "./dist/shared/index.d.ts",
+      "import": "./dist/shared/index.mjs",
+      "require": "./dist/shared/index.js"
+    },
+    "./backend": {
+      "types": "./dist/backend.d.ts",
+      "import": "./dist/backend.mjs",
+      "require": "./dist/backend.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsup src/index.ts src/core-ledger/index.ts src/projects/index.ts src/shared/index.ts src/backend.ts --format cjs,esm --dts --sourcemap --clean"
+  },
+  "dependencies": {
+    "zod": "^4.3.4"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "~5.6.3"
+  }
+}

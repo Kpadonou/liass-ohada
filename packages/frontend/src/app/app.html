@@ -1,0 +1,105 @@
+<main class="min-h-dvh bg-slate-50 text-slate-950">
+  <mat-toolbar class="sticky top-0 z-10 border-b border-slate-200 bg-white/95">
+    <button
+      matIconButton
+      type="button"
+      aria-label="Toggle navigation"
+      (click)="uiStore.toggleSidebar()"
+    >
+      <mat-icon>menu</mat-icon>
+    </button>
+    <span class="ml-3 text-base font-semibold">Liass-OHADA</span>
+    <span class="flex-1"></span>
+    <button matButton="tonal" type="button">
+      <mat-icon>sync</mat-icon>
+      Dev API
+    </button>
+  </mat-toolbar>
+
+  <div class="grid min-h-[calc(100dvh-64px)] lg:grid-cols-[260px_1fr]">
+    @if (uiStore.sidebarOpen()) {
+      <aside class="border-r border-slate-200 bg-white p-4">
+        <nav class="grid gap-1">
+          @for (section of sections; track section) {
+            <button
+              matButton
+              type="button"
+              class="justify-start"
+              [class.bg-slate-100]="uiStore.selectedSection() === section"
+              (click)="selectSection(section)"
+            >
+              <mat-icon>
+                {{
+                  section === 'ledger'
+                    ? 'account_balance'
+                    : section === 'projects'
+                      ? 'folder_managed'
+                      : section === 'treasury'
+                        ? 'payments'
+                        : 'analytics'
+                }}
+              </mat-icon>
+              {{ sectionLabels[section] }}
+            </button>
+          }
+        </nav>
+      </aside>
+    }
+
+    <section class="px-5 py-6 sm:px-8">
+      <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p class="text-sm font-medium uppercase tracking-wide text-emerald-700">
+            Workspace
+          </p>
+          <h1 class="mt-1 text-2xl font-semibold text-slate-950">
+            {{ activeSectionLabel() }}
+          </h1>
+        </div>
+        <button matButton="filled" type="button">
+          <mat-icon>add</mat-icon>
+          New record
+        </button>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-3">
+        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm text-slate-500">Open fiscal year</p>
+          <p class="mt-2 text-2xl font-semibold">2026</p>
+          <p class="mt-2 text-sm text-emerald-700">SYSCOHADA_GENERAL</p>
+        </article>
+        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm text-slate-500">Draft entries</p>
+          <p class="mt-2 text-2xl font-semibold">0</p>
+          <p class="mt-2 text-sm text-slate-500">Ready for TanStack Query</p>
+        </article>
+        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <p class="text-sm text-slate-500">Project currency</p>
+          <p class="mt-2 text-2xl font-semibold">XOF</p>
+          <p class="mt-2 text-sm text-amber-700">Integer amounts only</p>
+        </article>
+      </div>
+
+      <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div class="grid grid-cols-[1.2fr_1fr_1fr_auto] gap-3 border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-500">
+          <span>Domain</span>
+          <span>Status</span>
+          <span>Standard</span>
+          <span></span>
+        </div>
+        @for (section of sections; track section) {
+          <div class="grid grid-cols-[1.2fr_1fr_1fr_auto] items-center gap-3 px-4 py-3 text-sm">
+            <span class="font-medium">{{ sectionLabels[section] }}</span>
+            <span>Initialized</span>
+            <span>{{ section === 'projects' ? 'SYCEBNL' : 'OHADA' }}</span>
+            <button matIconButton type="button" aria-label="Open">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+
+      <router-outlet />
+    </section>
+  </div>
+</main>

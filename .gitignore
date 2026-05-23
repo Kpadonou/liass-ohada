@@ -3,6 +3,9 @@
 *.d.ts
 node_modules
 dist/
+packages/*/dist/
+packages/*/cdk.out/
+packages/*/coverage/
 
 # CDK asset staging directory
 .cdk.staging

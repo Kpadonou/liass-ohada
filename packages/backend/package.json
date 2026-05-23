@@ -1,0 +1,46 @@
+{
+  "name": "@liass-ohada/backend",
+  "version": "0.1.0",
+  "private": true,
+  "bin": {
+    "liass-ohada-backend": "bin/liass-ohada-backend.js"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "test": "jest",
+    "cdk": "cdk",
+    "aws:login": "aws sso login --profile rem",
+    "aws:whoami": "aws sts get-caller-identity --profile rem",
+    "aws:bootstrap": "env -u AWS_PROFILE npx cdk bootstrap aws://570197775998/eu-west-2 --profile rem --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess",
+    "aws:synth": "env -u AWS_PROFILE npx cdk synth --profile rem",
+    "aws:diff": "env -u AWS_PROFILE npx cdk diff --profile rem",
+    "aws:deploy": "env -u AWS_PROFILE npx cdk deploy --profile rem",
+    "aws:deploy:all": "env -u AWS_PROFILE npx cdk deploy --all --profile rem",
+    "localstack:setup": "AWS_PROFILE=localstack LOCALSTACK_URL=http://localhost:4566 bash scripts/setup-localstack.sh"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^10.2.0",
+    "@types/aws-lambda": "^8.10.159",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^22.7.9",
+    "aws-cdk": "2.1031.1",
+    "aws-sdk-client-mock": "^4.1.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.4.6",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "~5.6.3"
+  },
+  "dependencies": {
+    "@liass-ohada/shared": "file:../shared",
+    "@aws-sdk/client-dynamodb": "^3.962.0",
+    "@aws-sdk/util-dynamodb": "^3.962.0",
+    "aws-cdk-lib": "2.215.0",
+    "axios": "^1.13.2",
+    "constructs": "^10.0.0",
+    "i18next": "^25.7.3",
+    "zod": "^4.3.4"
+  }
+}
