@@ -1,4 +1,5 @@
 import { handler } from "@/lambda/domains/core-ledger/accounts/get-entries";
+import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   DynamoDBClient,
   GetItemCommand,
@@ -8,6 +9,12 @@ import { marshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
+
+jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
+  TenantAccessService: {
+    assertUserCanAccessOrg: jest.fn(),
+  },
+}));
 
 const createEvent = (
   accountId = "411",
@@ -21,7 +28,7 @@ const createEvent = (
     routeKey: "GET /accounts/{accountId}/entries",
     rawPath: `/accounts/${accountId}/entries`,
     rawQueryString: `limit=${limit}${cursor ? `&cursor=${cursor}` : ""}`,
-    headers: { "accept-language": "en" },
+    headers: { "accept-language": "en", "x-org-id": orgId },
     queryStringParameters: {
       limit,
       ...(cursor && { cursor }),
@@ -47,7 +54,7 @@ const createEvent = (
         principalId: "user-123",
         integrationLatency: 0,
         jwt: {
-          claims: { orgId, sub: "user-123" },
+          claims: { sub: "user-123" },
           scopes: [],
         },
       },
@@ -73,6 +80,9 @@ describe("get-entries handler", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
   test("retrieves entries successfully with pagination", async () => {

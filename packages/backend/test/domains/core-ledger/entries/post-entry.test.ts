@@ -1,9 +1,16 @@
 import { handler } from "@/lambda/domains/core-ledger/entries/post-entry";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
+import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 
 jest.mock("@/lambda/shared/services/ledger-service", () => ({
   LedgerService: {
     postEntry: jest.fn(),
+  },
+}));
+
+jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
+  TenantAccessService: {
+    assertUserCanAccessOrg: jest.fn(),
   },
 }));
 
@@ -12,7 +19,7 @@ const createEvent = (claims: Record<string, string> = {}) => ({
   routeKey: "POST /entries",
   rawPath: "/entries",
   rawQueryString: "",
-  headers: { "accept-language": "en" },
+  headers: { "accept-language": "en", "x-org-id": "test-org" },
   requestContext: {
     accountId: "123456789012",
     apiId: "api-id",
@@ -53,6 +60,9 @@ const createEvent = (claims: Record<string, string> = {}) => ({
 describe("post-entry handler", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
   test("delegates posting to LedgerService with tenant context", async () => {
@@ -61,7 +71,7 @@ describe("post-entry handler", () => {
       .mockResolvedValue({ entryId: "E-test" });
 
     const response = await handler(
-      createEvent({ orgId: "test-org", sub: "user-123" }) as any,
+      createEvent({ sub: "user-123" }) as any,
     );
     const body = JSON.parse(response.body);
 
@@ -76,7 +86,7 @@ describe("post-entry handler", () => {
   });
 
   test("rejects requests without user identity", async () => {
-    const response = await handler(createEvent({ orgId: "test-org" }) as any);
+    const response = await handler(createEvent({}) as any);
     const body = JSON.parse(response.body);
 
     expect(response.statusCode).toBe(401);

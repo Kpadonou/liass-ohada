@@ -6,7 +6,7 @@ import { DeploymentStage } from "../config/deployment";
 
 // Import your custom constructs
 import { LiassOhadaApiGateway } from "../constructs/api/api-gateway";
-// import { LiassOhadaAuth } from "../constructs/auth/cognito-auth"; // Uncomment when ready
+import { LiassOhadaAuth } from "../constructs/auth/cognito-auth";
 
 // Import your Domain Constructs
 import { CoreLedgerEndpoints } from "../constructs/domains/core-ledger-endpoints";
@@ -28,16 +28,21 @@ interface ApiStackProps extends StackProps {
  */
 export class ApiStack extends Stack {
   public readonly apiGateway: LiassOhadaApiGateway;
+  public readonly auth: LiassOhadaAuth;
 
   constructor(scope: Construct, id: string, props: ApiStackProps) {
     super(scope, id, props);
 
-    // 1. Base Infrastructure: Initialize API Gateway v2 (HTTP API)
-    this.apiGateway = new LiassOhadaApiGateway(this, "LiassOhada-ApiGateway");
+    // 1. Authentication: Cognito user pool and default HTTP API authorizer
+    this.auth = new LiassOhadaAuth(this, "LiassOhadaAuth", {
+      stage: props.stage,
+    });
 
-    // 2. Authentication: Initialize Cognito/Authorizer (Optional for now)
-    // const auth = new LiassOhadaAuth(this, "LiassOhadaAuth");
-    const authorizer = undefined; // Set to auth.authorizer once Cognito is ready
+    // 2. Base Infrastructure: Initialize API Gateway v2 (HTTP API)
+    this.apiGateway = new LiassOhadaApiGateway(this, "LiassOhada-ApiGateway", {
+      defaultAuthorizer: this.auth.authorizer,
+      stage: props.stage,
+    });
 
     // -----------------------------------------------------------
     // 3. Domain Modules Initialization (Dependency Injection)
@@ -50,7 +55,6 @@ export class ApiStack extends Stack {
     new CoreLedgerEndpoints(this, "CoreLedgerModule", {
       api: this.apiGateway.httpApi,
       table: props.accountingTable,
-      authorizer: authorizer,
       stage: props.stage,
     });
 
@@ -61,7 +65,6 @@ export class ApiStack extends Stack {
     new ProjectEndpoints(this, "ProjectModule", {
       api: this.apiGateway.httpApi,
       table: props.accountingTable,
-      authorizer: authorizer,
       stage: props.stage,
     });
 
@@ -72,6 +75,21 @@ export class ApiStack extends Stack {
     new cdk.CfnOutput(this, "ApiUrl", {
       value: this.apiGateway.httpApi.apiEndpoint,
       description: "The URL of the Liass-OHADA API Gateway",
+    });
+
+    new cdk.CfnOutput(this, "UserPoolId", {
+      value: this.auth.userPool.userPoolId,
+      description: "The Cognito User Pool ID for Liass-OHADA users",
+    });
+
+    new cdk.CfnOutput(this, "UserPoolClientId", {
+      value: this.auth.userPoolClient.userPoolClientId,
+      description: "The Cognito User Pool Client ID for the Liass-OHADA frontend",
+    });
+
+    new cdk.CfnOutput(this, "CognitoRegion", {
+      value: cdk.Stack.of(this).region,
+      description: "The AWS region for the Liass-OHADA Cognito User Pool",
     });
   }
 }

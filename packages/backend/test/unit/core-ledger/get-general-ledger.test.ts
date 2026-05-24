@@ -1,4 +1,5 @@
 import { handler } from "@/lambda/domains/core-ledger/books/get-general-ledger";
+import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   DynamoDBClient,
   GetItemCommand,
@@ -7,6 +8,12 @@ import {
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
+
+jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
+  TenantAccessService: {
+    assertUserCanAccessOrg: jest.fn(),
+  },
+}));
 
 const createEvent = (
   fiscalYear = "2026",
@@ -17,7 +24,7 @@ const createEvent = (
   routeKey: "POST /books/general-ledger",
   rawPath: "/books/general-ledger",
   rawQueryString: "",
-  headers: { "accept-language": "en" },
+  headers: { "accept-language": "en", "x-org-id": orgId },
   requestContext: {
     accountId: "123456789012",
     apiId: "api-id",
@@ -39,7 +46,7 @@ const createEvent = (
       principalId: "user-123",
       integrationLatency: 0,
       jwt: {
-        claims: { orgId, sub: "user-123" },
+        claims: { sub: "user-123" },
         scopes: [],
       },
     },
@@ -59,6 +66,9 @@ describe("get-general-ledger handler", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
   test("returns general ledger with opening balance and movements", async () => {

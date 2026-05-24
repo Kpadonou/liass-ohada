@@ -1,24 +1,17 @@
-import {
-  APIGatewayProxyEventV2WithJWTAuthorizer,
-} from "aws-lambda";
+import { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { z } from "zod";
+import { AppError } from "../app-error";
 import { I18nResolver } from "../i18n";
+import { TenantAccessService } from "../services/tenant-access-service";
 
-export class AppError extends Error {
-  constructor(
-    public readonly statusCode: number,
-    public readonly messageCode: string,
-    public readonly details?: any,
-  ) {
-    super(messageCode);
-    this.name = "AppError";
-  }
-}
+export { AppError };
 
 // Note: On utilise l'interface avec JWT Authorizer par défaut
 export interface HandlerContext {
   orgId: string;
   userId: string;
+  role?: string;
+  cabinetId?: string;
   i18n: I18nResolver;
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
 }
@@ -31,6 +24,22 @@ const sendResponse = (
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
 });
+
+const getHeader = (
+  headers: Record<string, string | undefined> | undefined,
+  name: string,
+) => {
+  if (!headers) {
+    return undefined;
+  }
+
+  const target = name.toLowerCase();
+  const found = Object.entries(headers).find(
+    ([key]) => key.toLowerCase() === target,
+  );
+
+  return found?.[1];
+};
 
 export const createHandler = <T>(
   schema: z.ZodSchema<T>,
@@ -48,21 +57,38 @@ export const createHandler = <T>(
         ...(event.queryStringParameters || {}),
         ...(event.pathParameters || {}),
       };
-      const validatedData = schema.parse(requestData);
+      const {
+        orgId: _ignoredOrgId,
+        userId: _ignoredUserId,
+        ...tenantSafeRequestData
+      } = requestData;
+      const validatedData = schema.parse(tenantSafeRequestData);
 
       const claims = event.requestContext?.authorizer?.jwt?.claims as any;
-      const orgId = claims?.orgId;
       const userId = claims?.sub;
-
-      if (!orgId) {
-        throw new AppError(401, "ERROR_MISSING_ORG_ID");
-      }
+      const orgId = getHeader(event.headers, "x-org-id");
 
       if (!userId) {
         throw new AppError(401, "ERROR_MISSING_USER_ID");
       }
 
-      const result = await logic(validatedData, { orgId, userId, i18n, event });
+      if (!orgId) {
+        throw new AppError(400, "ERROR_MISSING_ORG_ID");
+      }
+
+      const access = await TenantAccessService.assertUserCanAccessOrg({
+        orgId,
+        userId,
+      });
+
+      const result = await logic(validatedData, {
+        orgId,
+        userId,
+        role: access.role,
+        cabinetId: access.cabinetId,
+        i18n,
+        event,
+      });
 
       return sendResponse(200, result);
     } catch (error: any) {

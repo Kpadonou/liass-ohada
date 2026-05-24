@@ -17,7 +17,7 @@ import { GetEntriesRequestSchema } from "@liass-ohada/shared/core-ledger";
  * @param {string} [data.cursor] - Base64-encoded cursor for pagination
  *
  * @param {Object} context - Handler context
- * @param {string} context.orgId - Organization ID from JWT claims
+ * @param {string} context.orgId - Active organization ID from verified request context
  * @param {Object} context.i18n - i18n resolver for localized messages
  *
  * @returns {Object} Paginated ledger entries

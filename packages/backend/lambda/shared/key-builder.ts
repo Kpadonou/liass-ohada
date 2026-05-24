@@ -20,6 +20,9 @@ export const KeyFactory = {
   /** SK for an organization dossier linked under a cabinet partition */
   cabinetDossierSK: (orgId: string) => `DOSSIER#${orgId}`,
 
+  /** SK for a user's effective access to an organization */
+  orgUserAccessSK: (userId: string) => `USER#${userId}`,
+
   /** GSI PK to list all organization dossiers linked to a cabinet */
   cabinetDossierGSI_PK: (cabinetId: string) => `CABINET#${cabinetId}`,
 

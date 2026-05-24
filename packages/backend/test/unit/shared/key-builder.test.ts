@@ -19,6 +19,7 @@ describe("KeyFactory", () => {
   test("builds cabinet supervision keys without mutating identifiers", () => {
     expect(KeyFactory.cabinetPK("cab-123")).toBe("CABINET#cab-123");
     expect(KeyFactory.cabinetDossierSK("org-456")).toBe("DOSSIER#org-456");
+    expect(KeyFactory.orgUserAccessSK("user-123")).toBe("USER#user-123");
     expect(KeyFactory.cabinetDossierGSI_PK("cab-Mixed-123")).toBe(
       "CABINET#cab-Mixed-123",
     );

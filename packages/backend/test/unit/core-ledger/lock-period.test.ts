@@ -1,4 +1,5 @@
 import { handler } from "@/lambda/domains/core-ledger/fiscal-year/lock-period";
+import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   DynamoDBClient,
   GetItemCommand,
@@ -8,12 +9,18 @@ import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
 
+jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
+  TenantAccessService: {
+    assertUserCanAccessOrg: jest.fn(),
+  },
+}));
+
 const createEvent = (body = {}, orgId = "test-org") => ({
   version: "2.0",
   routeKey: "POST /fiscal-year/{year}/lock",
   rawPath: "/fiscal-year/2026/lock",
   rawQueryString: "",
-  headers: { "accept-language": "en" },
+  headers: { "accept-language": "en", "x-org-id": orgId },
   requestContext: {
     accountId: "123456789012",
     apiId: "api-id",
@@ -35,7 +42,7 @@ const createEvent = (body = {}, orgId = "test-org") => ({
       principalId: "user-123",
       integrationLatency: 0,
       jwt: {
-        claims: { orgId, sub: "user-123" },
+        claims: { sub: "user-123" },
         scopes: [],
       },
     },
@@ -55,6 +62,9 @@ describe("lock-period handler", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
   test("locks a period successfully", async () => {

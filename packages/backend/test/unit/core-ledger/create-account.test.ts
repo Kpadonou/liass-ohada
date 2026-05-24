@@ -4,9 +4,16 @@ import {
   GetItemCommand,
   PutItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
+
+jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
+  TenantAccessService: {
+    assertUserCanAccessOrg: jest.fn(),
+  },
+}));
 
 const createEvent = (body = {}, orgId = "test-org") => {
   return {
@@ -14,7 +21,7 @@ const createEvent = (body = {}, orgId = "test-org") => {
     routeKey: "POST /accounts",
     rawPath: "/accounts",
     rawQueryString: "",
-    headers: { "accept-language": "en" },
+    headers: { "accept-language": "en", "x-org-id": orgId },
     requestContext: {
       accountId: "123456789012",
       apiId: "api-id",
@@ -36,7 +43,7 @@ const createEvent = (body = {}, orgId = "test-org") => {
         principalId: "user-123",
         integrationLatency: 0,
         jwt: {
-          claims: { orgId, sub: "user-123" },
+          claims: { sub: "user-123" },
           scopes: [],
         },
       },
@@ -50,6 +57,9 @@ describe("create-account handler", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
   const parseResponse = (response: any) => {

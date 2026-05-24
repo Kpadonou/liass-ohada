@@ -1,15 +1,22 @@
 import { handler } from "@/lambda/domains/core-ledger/books/get-trial-balance";
+import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
+
+jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
+  TenantAccessService: {
+    assertUserCanAccessOrg: jest.fn(),
+  },
+}));
 
 const createEvent = (year = "2026", orgId = "test-org") => ({
   version: "2.0",
   routeKey: "POST /books/trial-balance",
   rawPath: "/books/trial-balance",
   rawQueryString: "",
-  headers: { "accept-language": "en" },
+  headers: { "accept-language": "en", "x-org-id": orgId },
   requestContext: {
     accountId: "123456789012",
     apiId: "api-id",
@@ -31,7 +38,7 @@ const createEvent = (year = "2026", orgId = "test-org") => ({
       principalId: "user-123",
       integrationLatency: 0,
       jwt: {
-        claims: { orgId, sub: "user-123" },
+        claims: { sub: "user-123" },
         scopes: [],
       },
     },
@@ -51,6 +58,9 @@ describe("get-trial-balance handler", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
   test("returns correct 6-column trial balance and grand totals", async () => {

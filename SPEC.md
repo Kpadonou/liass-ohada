@@ -81,7 +81,7 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
 
 ### B. Security & Integrity
 
-- **Auth Context**: Extract `orgId` and `userId` from JWT claims (requestContext), never from body/params.
+- **Auth Context**: Extract `userId` from JWT claims (`requestContext.authorizer.jwt.claims.sub`) and active `orgId` from the `x-org-id` request header after DynamoDB access verification; never trust body/query/path tenant identifiers.
 - **Atomicity**: Use `TransactWriteItems` for multi-item updates (e.g., Entry + Lines).
 - **Validation**: Every service method must validate its input DTO using Zod.
 - **Frontend Contracts**: Frontend API clients must treat backend responses as `unknown` at the boundary and validate important payloads with `@liass-ohada/shared` schemas before components consume them.

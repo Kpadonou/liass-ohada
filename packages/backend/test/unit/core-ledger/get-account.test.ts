@@ -1,9 +1,16 @@
 import { handler } from "@/lambda/domains/core-ledger/accounts/get-account";
+import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
+
+jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
+  TenantAccessService: {
+    assertUserCanAccessOrg: jest.fn(),
+  },
+}));
 
 const createEvent = (accountId = "411", orgId = "test-org") => {
   return {
@@ -11,7 +18,7 @@ const createEvent = (accountId = "411", orgId = "test-org") => {
     routeKey: "GET /accounts/{accountId}",
     rawPath: `/accounts/${accountId}`,
     rawQueryString: "",
-    headers: { "accept-language": "en" },
+    headers: { "accept-language": "en", "x-org-id": orgId },
     requestContext: {
       accountId: "123456789012",
       apiId: "api-id",
@@ -33,7 +40,7 @@ const createEvent = (accountId = "411", orgId = "test-org") => {
         principalId: "user-123",
         integrationLatency: 0,
         jwt: {
-          claims: { orgId, sub: "user-123" },
+          claims: { sub: "user-123" },
           scopes: [],
         },
       },
@@ -54,6 +61,9 @@ describe("get-account handler", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
   test("retrieves account successfully", async () => {

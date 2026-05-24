@@ -58,6 +58,7 @@
   "ERROR_UNLETTERING_CONDITION_FAILED": "Un-lettering condition failed. Preconditions were not met; some lines may be missing or not lettered.",
   "ERROR_PERIOD_LOCKED": "The period for this operation is locked.",
   "ERROR_MISSING_ORG_ID": "Organization identifier missing or unauthorized.",
+  "ERROR_ORG_ACCESS_DENIED": "You do not have access to this organization.",
   "ERROR_DONOR_EXISTS": "A donor with the same code already exists.",
   "SUCCESS_DONOR_CREATED": "Donor created successfully.",
   "ERROR_PROJECT_CODE_EXISTS": "A project with this code already exists.",

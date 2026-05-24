@@ -1,14 +1,21 @@
 import { Construct } from "constructs";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
+import { DeploymentStage } from "../../config/deployment";
+
+interface LiassOhadaApiGatewayProps {
+  defaultAuthorizer: apigwv2.IHttpRouteAuthorizer;
+  stage: DeploymentStage;
+}
 
 export class LiassOhadaApiGateway extends Construct {
   public readonly httpApi: apigwv2.HttpApi;
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: LiassOhadaApiGatewayProps) {
     super(scope, id);
 
     this.httpApi = new apigwv2.HttpApi(this, "LiassOhadaHttpApi", {
-      apiName: "liass-ohada-http-api",
+      apiName: `liass-ohada-${props.stage}-http-api`,
+      defaultAuthorizer: props.defaultAuthorizer,
       corsPreflight: {
         allowOrigins: ["*"],
         allowMethods: [
@@ -24,6 +31,8 @@ export class LiassOhadaApiGateway extends Construct {
           "Authorization",
           "X-Api-Key",
           "Accept-Language",
+          "X-Org-Id",
+          "x-org-id",
         ],
       },
     });
