@@ -31,7 +31,6 @@ export class LiassOhadaApiGateway extends Construct {
           "Authorization",
           "X-Api-Key",
           "Accept-Language",
-          "X-Org-Id",
           "x-org-id",
         ],
       },

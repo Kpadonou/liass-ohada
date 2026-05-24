@@ -28,6 +28,10 @@ export const tenantGuard: CanActivateFn = async () => {
     return router.createUrlTree(['/login']);
   }
 
+  if (!authStore.hasActiveTenant()) {
+    await authStore.loadWorkspaces();
+  }
+
   return authStore.hasActiveTenant()
     ? true
     : router.createUrlTree(['/select-workspace']);
@@ -41,6 +45,10 @@ export const loginRedirectGuard: CanActivateFn = async () => {
 
   if (!authStore.isAuthenticated()) {
     return true;
+  }
+
+  if (!authStore.hasActiveTenant()) {
+    await authStore.loadWorkspaces();
   }
 
   return authStore.hasActiveTenant()

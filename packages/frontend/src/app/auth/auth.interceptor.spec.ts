@@ -10,6 +10,7 @@ import { authInterceptor } from './auth.interceptor';
 import { AuthStore } from './auth.store';
 
 vi.mock('aws-amplify/auth', () => ({
+  confirmSignIn: vi.fn(),
   fetchAuthSession: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
@@ -52,6 +53,24 @@ describe('authInterceptor', () => {
     expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
     expect(request.request.headers.get('x-org-id')).toBe('org-test');
     request.flush({ projects: [] });
+    await response;
+  });
+
+  it('adds only bearer token for workspace discovery calls', async () => {
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: { toString: () => 'jwt-token' }
+      }
+    } as never);
+
+    const http = TestBed.inject(HttpClient);
+    const response = firstValueFrom(http.get(`${environment.apiBaseUrl}/me/workspaces`));
+    await Promise.resolve();
+
+    const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/workspaces`);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.has('x-org-id')).toBe(false);
+    request.flush({ workspaces: [] });
     await response;
   });
 

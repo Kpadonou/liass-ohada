@@ -10,6 +10,7 @@ import { LiassOhadaAuth } from "../constructs/auth/cognito-auth";
 
 // Import your Domain Constructs
 import { CoreLedgerEndpoints } from "../constructs/domains/core-ledger-endpoints";
+import { IdentityEndpoints } from "../constructs/domains/identity-endpoints";
 import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
 
 /**
@@ -47,6 +48,16 @@ export class ApiStack extends Stack {
     // -----------------------------------------------------------
     // 3. Domain Modules Initialization (Dependency Injection)
     // -----------------------------------------------------------
+
+    /**
+     * IDENTITY MODULE
+     * Handles authenticated user context before tenant selection.
+     */
+    new IdentityEndpoints(this, "IdentityModule", {
+      api: this.apiGateway.httpApi,
+      table: props.accountingTable,
+      stage: props.stage,
+    });
 
     /**
      * CORE LEDGER MODULE

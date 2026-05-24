@@ -16,6 +16,12 @@ export interface HandlerContext {
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
 }
 
+export interface AuthenticatedHandlerContext {
+  userId: string;
+  i18n: I18nResolver;
+  event: APIGatewayProxyEventV2WithJWTAuthorizer;
+}
+
 const sendResponse = (
   statusCode: number,
   body: any,
@@ -93,6 +99,69 @@ export const createHandler = <T>(
       return sendResponse(200, result);
     } catch (error: any) {
       // Correction : Zod utilise .issues
+      if (error instanceof z.ZodError) {
+        return sendResponse(400, {
+          message: i18n.getMessage("ERROR_INVALID_INPUT"),
+          errors: error.issues.map((e) => ({
+            path: e.path.join("."),
+            message: e.message,
+          })),
+        });
+      }
+
+      if (error instanceof AppError) {
+        return sendResponse(error.statusCode, {
+          message: i18n.getMessage(error.messageCode, error.details),
+          details: error.details,
+        });
+      }
+
+      console.error("[CRITICAL_ERROR]:", error);
+      return sendResponse(500, {
+        message: i18n.getMessage("ERROR_INTERNAL_SERVER"),
+      });
+    }
+  };
+};
+
+export const createAuthenticatedHandler = <T>(
+  schema: z.ZodSchema<T>,
+  logic: (data: T, context: AuthenticatedHandlerContext) => Promise<any>,
+) => {
+  return async (
+      event: any,
+  ) => {
+    const i18n = new I18nResolver(getHeader(event.headers, "accept-language") || "fr");
+
+    try {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const requestData = {
+        ...body,
+        ...(event.queryStringParameters || {}),
+        ...(event.pathParameters || {}),
+      };
+      const {
+        orgId: _ignoredOrgId,
+        userId: _ignoredUserId,
+        ...authSafeRequestData
+      } = requestData;
+      const validatedData = schema.parse(authSafeRequestData);
+
+      const claims = event.requestContext?.authorizer?.jwt?.claims as any;
+      const userId = claims?.sub;
+
+      if (!userId) {
+        throw new AppError(401, "ERROR_MISSING_USER_ID");
+      }
+
+      const result = await logic(validatedData, {
+        userId,
+        i18n,
+        event,
+      });
+
+      return sendResponse(200, result);
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return sendResponse(400, {
           message: i18n.getMessage("ERROR_INVALID_INPUT"),

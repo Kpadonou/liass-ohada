@@ -31,6 +31,8 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
         AttributeName=GSI4SK,AttributeType=S \
         AttributeName=GSI5PK,AttributeType=S \
         AttributeName=GSI5SK,AttributeType=S \
+        AttributeName=GSI6PK,AttributeType=S \
+        AttributeName=GSI6SK,AttributeType=S \
     --key-schema \
         AttributeName=PK,KeyType=HASH \
         AttributeName=SK,KeyType=RANGE \
@@ -63,6 +65,12 @@ aws --endpoint-url=$ENDPOINT dynamodb create-table \
             {
                 \"IndexName\": \"GSI5\",
                 \"KeySchema\": [{\"AttributeName\": \"GSI5PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI5SK\", \"KeyType\": \"RANGE\"}],
+                \"Projection\": {\"ProjectionType\": \"ALL\"},
+                \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
+            },
+            {
+                \"IndexName\": \"GSI6\",
+                \"KeySchema\": [{\"AttributeName\": \"GSI6PK\", \"KeyType\": \"HASH\"}, {\"AttributeName\": \"GSI6SK\", \"KeyType\": \"RANGE\"}],
                 \"Projection\": {\"ProjectionType\": \"ALL\"},
                 \"ProvisionedThroughput\": {\"ReadCapacityUnits\": 5, \"WriteCapacityUnits\": 5}
             }

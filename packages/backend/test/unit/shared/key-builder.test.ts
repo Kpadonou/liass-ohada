@@ -26,5 +26,10 @@ describe("KeyFactory", () => {
     expect(KeyFactory.cabinetDossierGSI_SK("org-Mixed-456")).toBe(
       "DOSSIER#org-Mixed-456",
     );
+    expect(KeyFactory.userWorkspacesPK("user-123")).toBe("USER#user-123");
+    expect(KeyFactory.userWorkspaceSK("active", "org-456")).toBe(
+      "STATUS#ACTIVE#ORG#org-456",
+    );
+    expect(KeyFactory.activeUserWorkspacePrefix()).toBe("STATUS#ACTIVE#");
   });
 });

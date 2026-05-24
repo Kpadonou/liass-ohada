@@ -29,6 +29,16 @@ export const KeyFactory = {
   /** GSI SK for sorting organization dossiers linked to a cabinet */
   cabinetDossierGSI_SK: (orgId: string) => `DOSSIER#${orgId}`,
 
+  /** GSI PK to list all active organization access rows for a user */
+  userWorkspacesPK: (userId: string) => `USER#${userId}`,
+
+  /** GSI SK to filter user organization access rows by status */
+  userWorkspaceSK: (status: string, orgId: string) =>
+    `STATUS#${status.toUpperCase()}#ORG#${orgId}`,
+
+  /** Prefix to query active user organization access rows */
+  activeUserWorkspacePrefix: () => "STATUS#ACTIVE#",
+
   // --- SK (Sort Keys) ---
 
   /** SK for Fiscal Year metadata (used with orgKey) */

@@ -2,7 +2,10 @@ import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 import { z } from "zod";
-import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
+import {
+  createAuthenticatedHandler,
+  createHandler,
+} from "@/lambda/shared/middleware/handler-wrapper";
 
 const dynamoMock = mockClient(DynamoDBClient);
 
@@ -147,5 +150,32 @@ describe("handler-wrapper auth context", () => {
       {},
       expect.objectContaining({ orgId: "test-org" }),
     );
+  });
+
+  test("authenticated handler accepts Cognito subject without organization header", async () => {
+    const logic = jest.fn().mockResolvedValue({ ok: true });
+    const handler = createAuthenticatedHandler(z.object({}), logic);
+
+    const response = await handler(
+      createEvent({ headers: { "accept-language": "en" } }) as any,
+    );
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(logic).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({ userId: "user-123" }),
+    );
+  });
+
+  test("authenticated handler rejects requests without Cognito subject", async () => {
+    const handler = createAuthenticatedHandler(z.object({}), jest.fn());
+
+    const response = await handler(createEvent({ claims: {} }) as any);
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(401);
+    expect(body.message.code).toBe("ERROR_MISSING_USER_ID");
   });
 });

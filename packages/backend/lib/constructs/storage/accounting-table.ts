@@ -62,5 +62,13 @@ export class LiassOhadaAccountingTable extends Construct {
       sortKey: { name: "GSI5SK", type: AttributeType.STRING },
       projectionType: ProjectionType.ALL,
     });
+
+    // GSI6 - User Workspace Discovery (pre-tenant selection)
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI6",
+      partitionKey: { name: "GSI6PK", type: AttributeType.STRING },
+      sortKey: { name: "GSI6SK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
   }
 }

@@ -1,0 +1,12 @@
+{
+  "LiassOhadaBackendStackDataStack20BA4040": {
+    "ExportsOutputRefAccountingTableLiassOhadaAccountingTable227E774D00AE2031": "liass-ohada-dev-accounting-table",
+    "ExportsOutputFnGetAttAccountingTableLiassOhadaAccountingTable227E774DArnAC508755": "arn:aws:dynamodb:eu-west-2:570197775998:table/liass-ohada-dev-accounting-table"
+  },
+  "LiassOhadaBackendStackApiStack2823DE88": {
+    "UserPoolClientId": "6v7hu33a45j24g7bojjipukcs2",
+    "ApiUrl": "https://zxt5p28x8g.execute-api.eu-west-2.amazonaws.com",
+    "UserPoolId": "eu-west-2_UisYGIavQ",
+    "CognitoRegion": "eu-west-2"
+  }
+}

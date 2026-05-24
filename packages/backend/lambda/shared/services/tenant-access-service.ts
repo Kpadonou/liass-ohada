@@ -1,4 +1,4 @@
-import { GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { AppError } from "../app-error";
 import { config, dynamoClient } from "../dynamo-client";
@@ -13,6 +13,14 @@ export interface TenantAccess {
 interface AssertUserCanAccessOrgInput {
   orgId: string;
   userId: string;
+}
+
+export interface WorkspaceSummary {
+  orgId: string;
+  role?: string;
+  cabinetId?: string;
+  accessSource?: string;
+  displayName?: string;
 }
 
 export class TenantAccessService {
@@ -51,5 +59,39 @@ export class TenantAccessService {
       accessSource:
         typeof access.accessSource === "string" ? access.accessSource : undefined,
     };
+  }
+
+  static async getUserWorkspaces(userId: string): Promise<WorkspaceSummary[]> {
+    const response = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        IndexName: config.GSI6,
+        KeyConditionExpression: "GSI6PK = :pk AND begins_with(GSI6SK, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": { S: KeyFactory.userWorkspacesPK(userId) },
+          ":skPrefix": { S: KeyFactory.activeUserWorkspacePrefix() },
+        },
+      }),
+    );
+
+    return (response.Items || [])
+      .map((item) => unmarshall(item))
+      .filter(
+        (access) =>
+          access.entityType === "USER_ORG_ACCESS" &&
+          access.userId === userId &&
+          access.status === "ACTIVE" &&
+          typeof access.orgId === "string",
+      )
+      .map((access) => ({
+        orgId: access.orgId,
+        role: typeof access.role === "string" ? access.role : undefined,
+        cabinetId: typeof access.cabinetId === "string" ? access.cabinetId : undefined,
+        accessSource:
+          typeof access.accessSource === "string" ? access.accessSource : undefined,
+        displayName:
+          typeof access.displayName === "string" ? access.displayName : undefined,
+      }))
+      .sort((left, right) => left.orgId.localeCompare(right.orgId));
   }
 }

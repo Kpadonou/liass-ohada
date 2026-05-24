@@ -3,22 +3,30 @@ import { Router, UrlTree, provideRouter } from '@angular/router';
 import { getCurrentUser } from 'aws-amplify/auth';
 import { vi } from 'vitest';
 
+import { WorkspacesApi } from '../data/workspaces.api';
 import { authGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
 import { AuthStore } from './auth.store';
 
 vi.mock('aws-amplify/auth', () => ({
+  confirmSignIn: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
   signOut: vi.fn()
 }));
 
 describe('auth guards', () => {
+  let workspacesApi: { listWorkspaces: ReturnType<typeof vi.fn> };
+
   beforeEach(() => {
     TestBed.resetTestingModule();
+    workspacesApi = { listWorkspaces: vi.fn().mockResolvedValue([]) };
     localStorage.clear();
     vi.mocked(getCurrentUser).mockReset();
     TestBed.configureTestingModule({
-      providers: [provideRouter([])]
+      providers: [
+        provideRouter([]),
+        { provide: WorkspacesApi, useValue: workspacesApi }
+      ]
     });
   });
 
@@ -43,6 +51,41 @@ describe('auth guards', () => {
 
     const result = await TestBed.runInInjectionContext(() =>
       tenantGuard({} as never, {} as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/select-workspace');
+  });
+
+  it('auto-selects a single discovered workspace before dashboard access', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'user@example.com',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    workspacesApi.listWorkspaces.mockResolvedValue([{ orgId: 'org-test' }]);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, {} as never)
+    );
+
+    expect(result).toBe(true);
+    expect(TestBed.inject(AuthStore).activeOrgId()).toBe('org-test');
+  });
+
+  it('redirects signed-in users with multiple workspaces to workspace selection', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'user@example.com',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      { orgId: 'org-a' },
+      { orgId: 'org-b' }
+    ]);
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      loginRedirectGuard({} as never, {} as never)
     );
 
     expect(router.serializeUrl(result as UrlTree)).toBe('/select-workspace');

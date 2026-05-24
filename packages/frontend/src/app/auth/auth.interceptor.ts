@@ -7,6 +7,7 @@ import { environment } from '../../environments/environment';
 import { AuthStore } from './auth.store';
 
 const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
+const workspacesDiscoveryUrl = `${apiBaseUrl}/me/workspaces`;
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.url.startsWith(apiBaseUrl)) {
@@ -14,9 +15,10 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   }
 
   const authStore = inject(AuthStore);
+  const isWorkspaceDiscoveryRequest = request.url === workspacesDiscoveryUrl;
   const activeOrgId = authStore.activeOrgId();
 
-  if (!activeOrgId) {
+  if (!isWorkspaceDiscoveryRequest && !activeOrgId) {
     return throwError(
       () =>
         new HttpErrorResponse({
@@ -41,12 +43,16 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         });
       }
 
+      const setHeaders: Record<string, string> = isWorkspaceDiscoveryRequest
+        ? { Authorization: `Bearer ${token}` }
+        : {
+            Authorization: `Bearer ${token}`,
+            'x-org-id': activeOrgId as string
+          };
+
       return next(
         request.clone({
-          setHeaders: {
-            Authorization: `Bearer ${token}`,
-            'x-org-id': activeOrgId
-          }
+          setHeaders
         })
       );
     }),
