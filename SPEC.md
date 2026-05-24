@@ -15,14 +15,16 @@
 - Lambda functions must set an explicit `functionName` using the pattern `liass-ohada-{stage}-{domain}-{action}`, for example `liass-ohada-dev-ledger-post-entry` or `liass-ohada-dev-projects-create-project`.
 - **Mandatory**: Resource names must be generated from centralized CDK deployment configuration and environment variables. Business logic must not hard-code AWS resource names; Lambdas must receive resource names through environment variables such as `TABLE_NAME`.
 
-### ☁️ Technical Stack (AWS Serverless)
+### Technical Stack
 
-- **IaC**: AWS CDK (TypeScript).
-- **Architecture**: Slim Architecture (Logic-less Handlers + Static Service Layer + Domain-Driven Design).
+- **Repository**: npm workspaces monorepo with `packages/backend`, `packages/shared`, and `packages/frontend`.
+- **Backend IaC**: AWS CDK (TypeScript).
+- **Backend Architecture**: Slim Architecture (Logic-less Handlers + Static Service Layer + Domain-Driven Design).
 - **Database**: Amazon DynamoDB (Single Table Design with Fiscal Year Sharding).
 - **Auth**: Amazon Cognito (Multi-tenancy and RBAC).
-- **Validation**: Zod for strict schema enforcement.
+- **Validation and DTOs**: Zod schemas and TypeScript DTOs in `@liass-ohada/shared`; backend-only persistence schemas must not leak DynamoDB storage keys into frontend contracts.
 - **Storage**: Amazon S3 for documents and reports.
+- **Frontend**: Angular standalone application with Angular Signals, TanStack Query for server state, NgRx Signal Store for client/UI state, Angular Material 3, and Tailwind CSS.
 
 ---
 
@@ -30,7 +32,7 @@
 
 ### A. The KeyFactory Utility
 
-All Partition Keys (PK) and Sort Keys (SK) must be generated using the centralized **`KeyFactory`** located in `src/utils/key-builder.ts`.
+All Partition Keys (PK) and Sort Keys (SK) must be generated using the centralized **`KeyFactory`** located in `packages/backend/lambda/shared/key-builder.ts`.
 **DO NOT** manually concatenate strings for keys in repository logic. Always reference the factory methods to ensure consistency.
 
 ### B. Partitioning Overview
@@ -82,6 +84,8 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
 - **Auth Context**: Extract `orgId` and `userId` from JWT claims (requestContext), never from body/params.
 - **Atomicity**: Use `TransactWriteItems` for multi-item updates (e.g., Entry + Lines).
 - **Validation**: Every service method must validate its input DTO using Zod.
+- **Frontend Contracts**: Frontend API clients must treat backend responses as `unknown` at the boundary and validate important payloads with `@liass-ohada/shared` schemas before components consume them.
+- **Browser Configuration**: Angular environment files may contain public API base URLs only; never place secrets, credentials, tenant identifiers, or privileged configuration in frontend bundles.
 
 ### C. Internationalization (i18n)
 

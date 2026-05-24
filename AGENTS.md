@@ -6,25 +6,32 @@ Before making architectural, domain, infrastructure, or data-model changes, cons
 
 ## Project Structure & Module Organization
 
-This is a TypeScript AWS CDK backend for an OHADA-compliant serverless ERP. CDK entry points live in `bin/`, stacks in `lib/stacks/`, and reusable constructs in `lib/constructs/`. Lambda business logic is organized by bounded context under `lambda/domains/`; shared utilities, middleware, services, i18n, and DynamoDB helpers are in `lambda/shared/`. Models and Zod schemas belong in `models/`. Translations are in `locales/en.json` and `locales/fr.json`. Tests are under `test/`; seed and verification scripts live in `scripts/`.
+This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-level repository policy, `SPEC.md`, `.github/`, `package-lock.json`, and workspace orchestration stay at the repository root. Application packages live under `packages/*`.
+
+- `packages/backend`: TypeScript AWS CDK backend. CDK entry points live in `bin/`, stacks in `lib/stacks/`, reusable constructs in `lib/constructs/`, Lambda business logic in `lambda/domains/`, shared backend utilities in `lambda/shared/`, translations in `locales/`, tests in `test/`, and seed/verification scripts in `scripts/`.
+- `packages/shared`: frontend-safe Zod schemas and TypeScript DTO types exported as `@liass-ohada/shared`, with domain subpath exports such as `@liass-ohada/shared/core-ledger` and `@liass-ohada/shared/projects`. Persistence-only shapes that expose DynamoDB keys must stay backend-only or be clearly named persistence schemas.
+- `packages/frontend`: Angular standalone frontend using Angular Signals, TanStack Query for server state, NgRx Signal Store for client/UI state, Angular Material 3, and Tailwind CSS.
 
 ## Build, Test, and Development Commands
 
-- `npm run build`: compiles TypeScript to `dist/`.
-- `npm run watch`: runs the TypeScript compiler in watch mode.
-- `npm test`: runs Jest tests through `ts-jest`.
-- `npm run clean`: removes `dist/`.
-- `npx cdk synth`: generates CloudFormation output.
-- `npx cdk diff`: compares local CDK output with the deployed stack.
-- `npx cdk deploy`: deploys to the configured AWS account.
+- `npm run build`: builds shared, backend, and frontend workspaces in order.
+- `npm test`: runs backend Jest tests and frontend Vitest tests.
+- `npm run backend:synth`: synthesizes CDK from `packages/backend`.
+- `npm run backend:deploy`: deploys CDK from `packages/backend`.
+- `npm run frontend:start`: starts the Angular dev server from `packages/frontend`.
+- `npm run build -w @liass-ohada/shared`: builds shared schemas and declarations.
+- `npm run build -w @liass-ohada/backend`: compiles backend TypeScript.
+- `npm test -w @liass-ohada/backend`: runs backend Jest tests through `ts-jest`.
+- `npm exec --workspace @liass-ohada/frontend -- ng build --progress=false`: builds the Angular app.
+- `npm test -w @liass-ohada/frontend`: runs frontend Vitest tests.
 
 ## Coding Style & Naming Conventions
 
-Use TypeScript with strict null checks and no implicit `any`. Follow existing two-space JSON formatting and idiomatic TypeScript formatting. Use `lowerCamelCase` for TypeScript properties and UPPERCASE DynamoDB keys such as `PK`, `SK`, `GSI1PK`, and `GSI1SK`. Every persisted item must include an uppercase `entityType`. Account IDs are normalized to 8-digit strings, for example `41100000`. Keep user-facing strings in `locales/`; handlers should reference translation keys.
+Use TypeScript with strict null checks and no implicit `any`. Follow existing two-space JSON formatting and idiomatic TypeScript formatting. Use `lowerCamelCase` for TypeScript properties and UPPERCASE DynamoDB keys such as `PK`, `SK`, `GSI1PK`, and `GSI1SK`. Every persisted item must include an uppercase `entityType`. Account IDs are normalized to 8-digit strings, for example `41100000`. Keep backend user-facing strings in `packages/backend/locales/`; handlers should reference translation keys. Frontend API clients must validate important responses with schemas from `@liass-ohada/shared` before exposing data to components.
 
 ## Testing Guidelines
 
-Jest is configured in `jest.config.js` with `testEnvironment: node` and path alias `@/*`. Test files must match `**/test/**/*.test.ts` or `**/test/**/*.spec.ts`. Prefer focused unit tests such as `test/unit/core-ledger/create-account.test.ts`, and add workflow tests under `test/domains/` when behavior spans handlers or services. Run `npm test` before submitting changes; use `npm run build` to catch type and CDK compilation issues.
+Backend Jest is configured in `packages/backend/jest.config.js` with `testEnvironment: node` and path alias `@/*`. Backend test files must match `**/test/**/*.test.ts` or `**/test/**/*.spec.ts`. Prefer focused unit tests such as `packages/backend/test/unit/core-ledger/create-account.test.ts`, and add workflow tests under `packages/backend/test/domains/` when behavior spans handlers or services. Frontend tests live beside Angular source files and run with Vitest through the Angular builder. Run `npm test` before submitting changes; use `npm run build` to catch shared package, backend, CDK-adjacent, and frontend compilation issues.
 
 ## Commit & Pull Request Guidelines
 
@@ -32,4 +39,4 @@ Recent commits use short imperative or completion-style summaries, often scoped 
 
 ## Security & Configuration Tips
 
-Never derive `orgId` or `userId` from client input; use authenticated claims. Do not hardcode AWS resource names in business logic. Use centralized config and environment variables such as `TABLE_NAME`. Monetary values must be integers in the smallest currency unit; avoid floating-point arithmetic in accounting code.
+Never derive `orgId` or `userId` from client input; use authenticated claims. Do not hardcode AWS resource names in business logic. Use centralized config and environment variables such as `TABLE_NAME`. Monetary values must be integers in the smallest currency unit; avoid floating-point arithmetic in accounting code. Angular environment files are bundled into the browser and must contain only public configuration such as API base URLs, never secrets.
