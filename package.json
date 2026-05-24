@@ -7,7 +7,15 @@
   "overrides": {
     "@angular/build": {
       "esbuild": "0.27.7"
-    }
+    },
+    "aws-cdk-lib": {
+      "brace-expansion": "5.0.6"
+    },
+    "minimatch@10.2.5": {
+      "brace-expansion": "5.0.6"
+    },
+    "handlebars": "$handlebars",
+    "path-to-regexp": "$path-to-regexp"
   },
   "scripts": {
     "build": "npm run build -w @liass-ohada/shared && npm run build -w @liass-ohada/backend && npm exec --workspace @liass-ohada/frontend -- ng build --progress=false",
@@ -15,5 +23,9 @@
     "backend:synth": "npm run aws:synth -w @liass-ohada/backend",
     "backend:deploy": "npm run aws:deploy -w @liass-ohada/backend",
     "frontend:start": "npm run start -w @liass-ohada/frontend"
+  },
+  "devDependencies": {
+    "handlebars": "^4.7.9",
+    "path-to-regexp": "^8.4.2"
   }
 }
