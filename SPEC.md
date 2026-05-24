@@ -49,6 +49,11 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
   - Cabinet-to-organization linkage items use `PK = CABINET#{cabinetId}` and `SK = DOSSIER#{orgId}`.
   - Cabinet listing indexes use `GSI PK = CABINET#{cabinetId}` and `GSI SK = DOSSIER#{orgId}` to query all organizations supervised by an Accounting Firm.
   - This management context is additive and must not change the existing `ORG#{orgId}` accounting partitions.
+- **User Workspace Discovery (Pre-Tenant Selection)**:
+  - Effective user-to-organization access is materialized as `USER_ORG_ACCESS` rows under each organization: `PK = ORG#{orgId}`, `SK = USER#{userId}`.
+  - These rows must also project to the user discovery index: `GSI6PK = USER#{userId}` and `GSI6SK = STATUS#{status}#ORG#{orgId}`.
+  - `GET /me/workspaces` must use this index with a `Query` for active rows. It must never use `Scan`.
+  - Cabinet-to-PME permissions must be materialized into effective `USER_ORG_ACCESS` rows so workspace discovery and request authorization remain direct lookups/queries.
 - **Global Secondary Indexes (GSI)**:
   - `GSI1PK = ORG#{orgId}`.
   - `GSI1SK` follows a searchable pattern (e.g., `TYPE#{entityType}#STATUS#{status}`).
@@ -81,7 +86,7 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
 
 ### B. Security & Integrity
 
-- **Auth Context**: Extract `userId` from JWT claims (`requestContext.authorizer.jwt.claims.sub`) and active `orgId` from the `x-org-id` request header after DynamoDB access verification; never trust body/query/path tenant identifiers.
+- **Auth Context**: Extract `userId` from JWT claims (`requestContext.authorizer.jwt.claims.sub`) and active `orgId` from the `x-org-id` request header after DynamoDB access verification; never trust body/query/path tenant identifiers. The only route that may omit `x-org-id` is authenticated workspace discovery (`GET /me/workspaces`), because it runs before tenant selection and returns only the caller's active workspace summaries.
 - **Atomicity**: Use `TransactWriteItems` for multi-item updates (e.g., Entry + Lines).
 - **Validation**: Every service method must validate its input DTO using Zod.
 - **Frontend Contracts**: Frontend API clients must treat backend responses as `unknown` at the boundary and validate important payloads with `@liass-ohada/shared` schemas before components consume them.
