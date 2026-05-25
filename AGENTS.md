@@ -31,7 +31,7 @@ This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-l
 
 ## Coding Style & Naming Conventions
 
-Use TypeScript with strict null checks and no implicit `any`. Follow existing two-space JSON formatting and idiomatic TypeScript formatting. Use `lowerCamelCase` for TypeScript properties and UPPERCASE DynamoDB keys such as `PK`, `SK`, `GSI1PK`, and `GSI1SK`. Every persisted item must include an uppercase `entityType`. Account IDs are normalized to 8-digit strings, for example `41100000`. Keep backend user-facing strings in `packages/backend/locales/`; handlers should reference translation keys. Frontend API clients must live in the relevant domain `data-access/` folder and must validate important responses with schemas from `@liass-ohada/shared` before exposing data to components.
+Use TypeScript with strict null checks and no implicit `any`. Follow existing two-space JSON formatting and idiomatic TypeScript formatting. Use `lowerCamelCase` for TypeScript properties and UPPERCASE DynamoDB keys such as `PK`, `SK`, `GSI1PK`, and `GSI1SK`. Every persisted item must include an uppercase `entityType`. Account IDs are normalized to 8-digit strings, for example `41100000`. Keep backend user-facing strings in `packages/backend/locales/`; handlers should reference translation keys. Frontend component templates must use Transloco keys and pipes for user-facing copy instead of hardcoded strings, while TypeScript keys, variables, and comments remain English. Frontend API clients must live in the relevant domain `data-access/` folder and must validate important responses with schemas from `@liass-ohada/shared` before exposing data to components.
 
 ## Testing Guidelines
 

@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
+import { TranslocoModule } from '@ngneat/transloco';
 
 import { AuthStore } from '../../data-access/auth.store';
 
@@ -18,7 +19,8 @@ import { AuthStore } from '../../data-access/auth.store';
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    TranslocoModule
   ],
   templateUrl: './select-workspace.page.html'
 })
@@ -39,7 +41,7 @@ export class SelectWorkspacePage implements OnInit {
 
   protected readonly userLabel = (): string => {
     const user = this.authStore.user();
-    return user?.signInDetails?.loginId ?? user?.username ?? 'Signed-in user';
+    return user?.signInDetails?.loginId ?? user?.username ?? '';
   };
 
   protected readonly showManualEntry = (): boolean =>

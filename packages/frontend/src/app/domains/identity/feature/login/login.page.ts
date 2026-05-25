@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Router } from '@angular/router';
+import { TranslocoModule } from '@ngneat/transloco';
 
 import { AuthStore } from '../../data-access/auth.store';
 
@@ -17,7 +18,8 @@ import { AuthStore } from '../../data-access/auth.store';
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
-    ReactiveFormsModule
+    ReactiveFormsModule,
+    TranslocoModule
   ],
   templateUrl: './login.page.html'
 })

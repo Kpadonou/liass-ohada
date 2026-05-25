@@ -4,5 +4,64 @@
       "SAVE": "Save",
       "CANCEL": "Cancel"
     }
+  },
+  "IDENTITY": {
+    "LOGIN": {
+      "BRAND": "Liass-OHADA",
+      "TITLE": "Welcome back",
+      "SUBTITLE": "Sign in to continue managing your OHADA workspace.",
+      "DIVIDER": "-- OR --",
+      "NEW_PASSWORD_NOTICE": "Your temporary password was accepted. Create a new password to finish signing in.",
+      "FIELDS": {
+        "EMAIL": "Email",
+        "PASSWORD": "Password",
+        "NEW_PASSWORD": "New password",
+        "CONFIRM_NEW_PASSWORD": "Confirm new password"
+      },
+      "ACTIONS": {
+        "GOOGLE_SIGN_IN": "Sign in with Google",
+        "SIGN_IN": "Sign in",
+        "SET_NEW_PASSWORD": "Set new password",
+        "SHOW_PASSWORD": "Show password",
+        "HIDE_PASSWORD": "Hide password",
+        "SHOW_NEW_PASSWORD": "Show new password",
+        "HIDE_NEW_PASSWORD": "Hide new password",
+        "SHOW_CONFIRM_PASSWORD": "Show confirmation password",
+        "HIDE_CONFIRM_PASSWORD": "Hide confirmation password"
+      },
+      "VALIDATION": {
+        "EMAIL": "Enter a valid email.",
+        "PASSWORD": "Enter your password.",
+        "NEW_PASSWORD_REQUIRED": "Enter a new password.",
+        "NEW_PASSWORD_MIN_LENGTH": "Use at least 12 characters.",
+        "CONFIRM_NEW_PASSWORD": "Confirm your new password.",
+        "PASSWORDS_DO_NOT_MATCH": "Passwords do not match."
+      }
+    },
+    "WORKSPACE": {
+      "EYEBROW": "Workspace",
+      "TITLE": "Select your organization",
+      "SUBTITLE": "Choose the organization you want to work in. Access is verified by the backend before protected data is returned.",
+      "CARD_TITLE": "Continue to a tenant workspace",
+      "CARD_SUBTITLE": "Select an organization assigned to your account.",
+      "LOADING": "Loading workspaces...",
+      "SIGNED_IN_AS": "Signed in as",
+      "SIGNED_IN_USER": "Signed-in user",
+      "CURRENT_ORGANIZATION": "Current organization:",
+      "NO_ORGANIZATION_SELECTED": "No organization is selected yet.",
+      "FIELDS": {
+        "ORGANIZATION_ID": "Organization ID"
+      },
+      "HINTS": {
+        "ORGANIZATION_ID": "Example: org-demo-001"
+      },
+      "ACTIONS": {
+        "SIGN_OUT": "Sign out",
+        "CONTINUE": "Continue"
+      },
+      "VALIDATION": {
+        "ORGANIZATION_ID": "Enter an organization ID."
+      }
+    }
   }
 }

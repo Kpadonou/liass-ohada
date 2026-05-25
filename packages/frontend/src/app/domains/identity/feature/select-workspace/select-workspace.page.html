@@ -3,10 +3,14 @@
     <section class="mx-auto flex w-full max-w-5xl flex-col justify-center gap-8">
       <header class="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">Workspace</p>
-          <h1 class="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">Select your organization</h1>
+          <p class="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            {{ 'IDENTITY.WORKSPACE.EYEBROW' | transloco }}
+          </p>
+          <h1 class="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">
+            {{ 'IDENTITY.WORKSPACE.TITLE' | transloco }}
+          </h1>
           <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-            Choose the organization you want to work in. Access is verified by the backend before protected data is returned.
+            {{ 'IDENTITY.WORKSPACE.SUBTITLE' | transloco }}
           </p>
         </div>
 
@@ -18,7 +22,7 @@
           (click)="logout()"
         >
           <mat-icon>logout</mat-icon>
-          <span>Sign out</span>
+          <span>{{ 'IDENTITY.WORKSPACE.ACTIONS.SIGN_OUT' | transloco }}</span>
         </button>
       </header>
 
@@ -29,9 +33,11 @@
               <mat-icon>domain</mat-icon>
             </div>
             <div>
-              <h2 class="text-xl font-semibold text-slate-950">Continue to a tenant workspace</h2>
+              <h2 class="text-xl font-semibold text-slate-950">
+                {{ 'IDENTITY.WORKSPACE.CARD_TITLE' | transloco }}
+              </h2>
               <p class="mt-1 text-sm leading-6 text-slate-600">
-                Select an organization assigned to your account.
+                {{ 'IDENTITY.WORKSPACE.CARD_SUBTITLE' | transloco }}
               </p>
             </div>
           </div>
@@ -39,7 +45,7 @@
           @if (authStore.workspaceLoading()) {
             <div class="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
               <mat-spinner diameter="20"></mat-spinner>
-              <span>Loading workspaces...</span>
+              <span>{{ 'IDENTITY.WORKSPACE.LOADING' | transloco }}</span>
             </div>
           } @else if (authStore.workspaceError()) {
             <div class="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
@@ -81,7 +87,7 @@
           @if (showManualEntry()) {
             <form class="mt-6 grid gap-5" [formGroup]="form" (ngSubmit)="submit()">
               <mat-form-field appearance="outline">
-                <mat-label>Organization ID</mat-label>
+                <mat-label>{{ 'IDENTITY.WORKSPACE.FIELDS.ORGANIZATION_ID' | transloco }}</mat-label>
                 <input
                   matInput
                   autocomplete="organization"
@@ -89,9 +95,9 @@
                   [disabled]="authStore.loading()"
                 />
                 <mat-icon matPrefix>business</mat-icon>
-                <mat-hint>Example: org-demo-001</mat-hint>
+                <mat-hint>{{ 'IDENTITY.WORKSPACE.HINTS.ORGANIZATION_ID' | transloco }}</mat-hint>
                 @if (form.controls.orgId.touched && form.controls.orgId.invalid) {
-                  <mat-error>Enter an organization ID.</mat-error>
+                  <mat-error>{{ 'IDENTITY.WORKSPACE.VALIDATION.ORGANIZATION_ID' | transloco }}</mat-error>
                 }
               </mat-form-field>
 
@@ -106,22 +112,27 @@
                 } @else {
                   <mat-icon>domain_verification</mat-icon>
                 }
-                <span>Continue</span>
+                <span>{{ 'IDENTITY.WORKSPACE.ACTIONS.CONTINUE' | transloco }}</span>
               </button>
             </form>
           }
         </section>
 
         <aside class="rounded-lg border border-white/70 bg-white/75 p-6 shadow-lg shadow-slate-900/5 backdrop-blur">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Signed in as</p>
-          <p class="mt-3 break-words text-base font-semibold text-slate-950">{{ userLabel() }}</p>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+            {{ 'IDENTITY.WORKSPACE.SIGNED_IN_AS' | transloco }}
+          </p>
+          <p class="mt-3 break-words text-base font-semibold text-slate-950">
+            {{ userLabel() || ('IDENTITY.WORKSPACE.SIGNED_IN_USER' | transloco) }}
+          </p>
           @if (authStore.activeOrgId()) {
             <div class="mt-6 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-              Current organization: <span class="font-semibold">{{ authStore.activeOrgId() }}</span>
+              {{ 'IDENTITY.WORKSPACE.CURRENT_ORGANIZATION' | transloco }}
+              <span class="font-semibold">{{ authStore.activeOrgId() }}</span>
             </div>
           } @else {
             <div class="mt-6 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              No organization is selected yet.
+              {{ 'IDENTITY.WORKSPACE.NO_ORGANIZATION_SELECTED' | transloco }}
             </div>
           }
         </aside>

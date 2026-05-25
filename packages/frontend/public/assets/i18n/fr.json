@@ -4,5 +4,64 @@
       "SAVE": "Enregistrer",
       "CANCEL": "Annuler"
     }
+  },
+  "IDENTITY": {
+    "LOGIN": {
+      "BRAND": "Liass-OHADA",
+      "TITLE": "Bon retour",
+      "SUBTITLE": "Connectez-vous pour continuer à gérer votre espace de travail OHADA.",
+      "DIVIDER": "-- OU --",
+      "NEW_PASSWORD_NOTICE": "Votre mot de passe temporaire a été accepté. Créez un nouveau mot de passe pour finaliser la connexion.",
+      "FIELDS": {
+        "EMAIL": "Email",
+        "PASSWORD": "Mot de passe",
+        "NEW_PASSWORD": "Nouveau mot de passe",
+        "CONFIRM_NEW_PASSWORD": "Confirmer le nouveau mot de passe"
+      },
+      "ACTIONS": {
+        "GOOGLE_SIGN_IN": "Se connecter avec Google",
+        "SIGN_IN": "Se connecter",
+        "SET_NEW_PASSWORD": "Définir le nouveau mot de passe",
+        "SHOW_PASSWORD": "Afficher le mot de passe",
+        "HIDE_PASSWORD": "Masquer le mot de passe",
+        "SHOW_NEW_PASSWORD": "Afficher le nouveau mot de passe",
+        "HIDE_NEW_PASSWORD": "Masquer le nouveau mot de passe",
+        "SHOW_CONFIRM_PASSWORD": "Afficher la confirmation du mot de passe",
+        "HIDE_CONFIRM_PASSWORD": "Masquer la confirmation du mot de passe"
+      },
+      "VALIDATION": {
+        "EMAIL": "Saisissez une adresse email valide.",
+        "PASSWORD": "Saisissez votre mot de passe.",
+        "NEW_PASSWORD_REQUIRED": "Saisissez un nouveau mot de passe.",
+        "NEW_PASSWORD_MIN_LENGTH": "Utilisez au moins 12 caractères.",
+        "CONFIRM_NEW_PASSWORD": "Confirmez votre nouveau mot de passe.",
+        "PASSWORDS_DO_NOT_MATCH": "Les mots de passe ne correspondent pas."
+      }
+    },
+    "WORKSPACE": {
+      "EYEBROW": "Espace de travail",
+      "TITLE": "Sélectionnez votre organisation",
+      "SUBTITLE": "Choisissez l’organisation dans laquelle vous souhaitez travailler. L’accès est vérifié par le backend avant le retour des données protégées.",
+      "CARD_TITLE": "Continuer vers un espace de travail",
+      "CARD_SUBTITLE": "Sélectionnez une organisation associée à votre compte.",
+      "LOADING": "Chargement des espaces de travail...",
+      "SIGNED_IN_AS": "Connecté en tant que",
+      "SIGNED_IN_USER": "Utilisateur connecté",
+      "CURRENT_ORGANIZATION": "Organisation actuelle :",
+      "NO_ORGANIZATION_SELECTED": "Aucune organisation n’est sélectionnée pour le moment.",
+      "FIELDS": {
+        "ORGANIZATION_ID": "ID de l’organisation"
+      },
+      "HINTS": {
+        "ORGANIZATION_ID": "Exemple : org-demo-001"
+      },
+      "ACTIONS": {
+        "SIGN_OUT": "Se déconnecter",
+        "CONTINUE": "Continuer"
+      },
+      "VALIDATION": {
+        "ORGANIZATION_ID": "Saisissez un ID d’organisation."
+      }
+    }
   }
 }

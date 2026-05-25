@@ -101,6 +101,7 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
 
 - Resolution order: `Accept-Language` header -> User Preference -> Default (`fr`).
 - **No hard-coded strings**: Use error codes and translation keys.
+- Frontend component templates must use Transloco keys and pipes for user-facing text. Keep code identifiers, translation keys, variables, and internal comments in English.
 
 ---
 
