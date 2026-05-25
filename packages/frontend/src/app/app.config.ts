@@ -4,8 +4,8 @@ import { provideRouter } from '@angular/router';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { withDevtools } from '@tanstack/angular-query-experimental/devtools';
 
-import { routes } from './app.routes';
-import { authInterceptor } from './auth/auth.interceptor';
+import { authInterceptor } from './core/http/auth.interceptor';
+import { routes } from './core/routing/app.routes';
 
 export const appConfig: ApplicationConfig = {
   providers: [
