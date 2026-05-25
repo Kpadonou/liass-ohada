@@ -4,8 +4,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { Router } from '@angular/router';
 
-import { AuthStore } from '../../auth/auth.store';
-import { AppSection, UiStore } from '../../state/ui.store';
+import { AuthStore } from '../../../../auth/auth.store';
+import { AppSection, UiStore } from '../../../../state/ui.store';
 
 const sectionLabels: Record<AppSection, string> = {
   ledger: 'General ledger',

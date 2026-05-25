@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
 import { authGuard, loginRedirectGuard, tenantGuard } from './auth/auth.guards';
-import { DashboardPage } from './pages/dashboard/dashboard.page';
+import { DashboardPage } from './features/dashboard/pages/dashboard/dashboard.page';
 import { LoginPage } from './pages/login/login.page';
 import { SelectWorkspacePage } from './pages/select-workspace/select-workspace.page';
 
