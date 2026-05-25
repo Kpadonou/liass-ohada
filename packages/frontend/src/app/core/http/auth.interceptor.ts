@@ -1,5 +1,6 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { TranslocoService } from '@ngneat/transloco';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 
@@ -15,6 +16,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   }
 
   const authStore = inject(AuthStore);
+  const translocoService = inject(TranslocoService);
+  const activeLanguage = translocoService.getActiveLang() || 'fr';
   const isWorkspaceDiscoveryRequest = request.url === workspacesDiscoveryUrl;
   const activeOrgId = authStore.activeOrgId();
 
@@ -44,9 +47,13 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       }
 
       const setHeaders: Record<string, string> = isWorkspaceDiscoveryRequest
-        ? { Authorization: `Bearer ${token}` }
+        ? {
+            Authorization: `Bearer ${token}`,
+            'Accept-Language': activeLanguage
+          }
         : {
             Authorization: `Bearer ${token}`,
+            'Accept-Language': activeLanguage,
             'x-org-id': activeOrgId as string
           };
 

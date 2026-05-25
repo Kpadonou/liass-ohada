@@ -1,6 +1,7 @@
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { TranslocoService } from '@ngneat/transloco';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { firstValueFrom } from 'rxjs';
 import { vi } from 'vitest';
@@ -24,7 +25,13 @@ describe('authInterceptor', () => {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(withInterceptors([authInterceptor])),
-        provideHttpClientTesting()
+        provideHttpClientTesting(),
+        {
+          provide: TranslocoService,
+          useValue: {
+            getActiveLang: () => 'fr'
+          }
+        }
       ]
     });
     httpMock = TestBed.inject(HttpTestingController);
@@ -51,6 +58,7 @@ describe('authInterceptor', () => {
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/projects`);
     expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.get('Accept-Language')).toBe('fr');
     expect(request.request.headers.get('x-org-id')).toBe('org-test');
     request.flush({ projects: [] });
     await response;
@@ -69,6 +77,7 @@ describe('authInterceptor', () => {
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/workspaces`);
     expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.get('Accept-Language')).toBe('fr');
     expect(request.request.headers.has('x-org-id')).toBe(false);
     request.flush({ workspaces: [] });
     await response;
@@ -86,6 +95,7 @@ describe('authInterceptor', () => {
 
     const request = httpMock.expectOne('/assets/config.json');
     expect(request.request.headers.has('Authorization')).toBe(false);
+    expect(request.request.headers.has('Accept-Language')).toBe(false);
     expect(request.request.headers.has('x-org-id')).toBe(false);
     expect(fetchAuthSession).not.toHaveBeenCalled();
     request.flush({});

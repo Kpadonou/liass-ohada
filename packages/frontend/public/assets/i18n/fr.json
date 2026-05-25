@@ -1,0 +1,8 @@
+{
+  "COMMON": {
+    "ACTIONS": {
+      "SAVE": "Enregistrer",
+      "CANCEL": "Annuler"
+    }
+  }
+}
