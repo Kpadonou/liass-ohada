@@ -24,7 +24,11 @@
 - **Auth**: Amazon Cognito (Multi-tenancy and RBAC).
 - **Validation and DTOs**: Zod schemas and TypeScript DTOs in `@liass-ohada/shared`; backend-only persistence schemas must not leak DynamoDB storage keys into frontend contracts.
 - **Storage**: Amazon S3 for documents and reports.
-- **Frontend**: Angular standalone application with Angular Signals, TanStack Query for server state, NgRx Signal Store for client/UI state, Angular Material 3, and Tailwind CSS.
+- **Frontend**: Angular standalone application with Angular Signals, TanStack Query for server state, NgRx Signal Store for client/UI state, Angular Material 3, and Tailwind CSS. Frontend code under `packages/frontend/src/app` follows a DDD-aligned structure:
+  - `core/`: global application plumbing, including Amplify setup, HTTP interceptors, global routing, global guards, global state, and app-level feature surfaces such as the dashboard.
+  - `domains/`: backend-aligned business domains only. Active frontend domain directories must match backend domain directory names in `packages/backend/lambda/domains`; the current active frontend domains are `identity`, `core-ledger`, and `projects`.
+  - Domain folders must contain `feature/`, `ui/`, `data-access/`, and `utils/`. Routed smart pages live in `feature/`; domain-specific presentational components live in `ui/`; API clients, TanStack Query helpers, frontend-safe Zod schemas, and SignalStores live in `data-access/`; pure helpers, validators, and pipes live in `utils/`.
+  - `shared/ui/`: stateless reusable design-system components only. These components must not inject stores, domain services, API clients, or application state.
 
 ---
 
@@ -90,6 +94,7 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
 - **Atomicity**: Use `TransactWriteItems` for multi-item updates (e.g., Entry + Lines).
 - **Validation**: Every service method must validate its input DTO using Zod.
 - **Frontend Contracts**: Frontend API clients must treat backend responses as `unknown` at the boundary and validate important payloads with `@liass-ohada/shared` schemas before components consume them.
+- **Frontend Domain Alignment**: Frontend business-domain directories must mirror backend domain names. Do not create top-level frontend domains such as `ledger`, `journals`, or `dashboard` unless matching backend domains exist. Backend `core-ledger/journals` belongs under the frontend `core-ledger` domain; app-level dashboard UI belongs under `core/`.
 - **Browser Configuration**: Angular environment files may contain public API base URLs only; never place secrets, credentials, tenant identifiers, or privileged configuration in frontend bundles.
 
 ### C. Internationalization (i18n)
