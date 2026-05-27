@@ -1,0 +1,11 @@
+<button [class]="itemClass()" type="button" [disabled]="disabled()" (click)="selectItem()">
+  <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-white/70 text-current shadow-sm shadow-slate-900/[0.03] dark:bg-slate-950/40">
+    <mat-icon>{{ icon() }}</mat-icon>
+  </span>
+  <span class="min-w-0 flex-1 truncate">{{ label() }}</span>
+  @if (badge()) {
+    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+      {{ badge() }}
+    </span>
+  }
+</button>

@@ -1,0 +1,35 @@
+<div class="max-w-full overflow-x-auto">
+  <table class="w-full min-w-[680px] border-collapse text-left">
+    <thead class="border-y border-slate-100 dark:border-slate-800">
+      <tr>
+        @for (column of columns(); track column.key) {
+          <th [class]="headerClass(column)">{{ column.labelKey | transloco }}</th>
+        }
+      </tr>
+    </thead>
+
+    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+      @for (row of rows(); track row.id) {
+        <tr>
+          @for (column of columns(); track column.key) {
+            <td [class]="cellClass(row, column)">
+              @if (cell(row, column); as tableCell) {
+                @if (tableCell.tone) {
+                  <liass-status-chip [label]="tableCell.valueKey | transloco" [tone]="tableCell.tone" />
+                } @else {
+                  <span>{{ tableCell.valueKey | transloco }}</span>
+                }
+              }
+            </td>
+          }
+        </tr>
+      } @empty {
+        <tr>
+          <td class="py-8 text-center text-sm text-slate-500 dark:text-slate-400" [attr.colspan]="columns().length">
+            {{ emptyLabel() | transloco }}
+          </td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>

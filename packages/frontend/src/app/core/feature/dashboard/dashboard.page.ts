@@ -1,46 +1,157 @@
 import { Component, computed, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { Router } from '@angular/router';
+import { TranslocoModule } from '@ngneat/transloco';
 
-import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { UiStore, type AppSection } from '../../state/ui.store';
+import { LiassCardComponent } from '../../../shared/ui/card/card.component';
+import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
+import { LiassSectionContainerComponent } from '../../../shared/ui/section-container/section-container.component';
+import { LiassStatCardComponent } from '../../../shared/ui/stat-card/stat-card.component';
+import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
+import {
+  LiassTablePlaceholderComponent,
+  type LiassTableColumn,
+  type LiassTableRow
+} from '../../../shared/ui/table-placeholder/table-placeholder.component';
 
-const sectionLabels: Record<AppSection, string> = {
-  ledger: 'General ledger',
-  projects: 'SYCEBNL projects',
-  treasury: 'Treasury',
-  reports: 'Reports'
+const sectionTitleKeys: Record<AppSection, string> = {
+  ledger: 'DASHBOARD.SECTIONS.LEDGER.TITLE',
+  projects: 'DASHBOARD.SECTIONS.PROJECTS.TITLE',
+  treasury: 'DASHBOARD.SECTIONS.TREASURY.TITLE',
+  reports: 'DASHBOARD.SECTIONS.REPORTS.TITLE'
+};
+
+const sectionSummaryKeys: Record<AppSection, string> = {
+  ledger: 'DASHBOARD.SECTIONS.LEDGER.SUMMARY',
+  projects: 'DASHBOARD.SECTIONS.PROJECTS.SUMMARY',
+  treasury: 'DASHBOARD.SECTIONS.TREASURY.SUMMARY',
+  reports: 'DASHBOARD.SECTIONS.REPORTS.SUMMARY'
 };
 
 @Component({
   selector: 'liass-dashboard-page',
-  imports: [MatButtonModule, MatIconModule, MatToolbarModule],
+  imports: [
+    LiassCardComponent,
+    LiassPageHeaderComponent,
+    LiassSectionContainerComponent,
+    LiassStatCardComponent,
+    LiassStatusChipComponent,
+    LiassTablePlaceholderComponent,
+    MatIconModule,
+    TranslocoModule
+  ],
   templateUrl: './dashboard.page.html'
 })
 export class DashboardPage {
-  protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
-  private readonly router = inject(Router);
 
-  protected readonly sectionLabels = sectionLabels;
-  protected readonly sections: readonly AppSection[] = [
-    'ledger',
-    'projects',
-    'treasury',
-    'reports'
-  ];
-  protected readonly activeSectionLabel = computed(
-    () => sectionLabels[this.uiStore.selectedSection()]
+  protected readonly activeSectionSummaryKey = computed(
+    () => sectionSummaryKeys[this.uiStore.selectedSection()]
   );
+  protected readonly activeSectionTitleKey = computed(
+    () => sectionTitleKeys[this.uiStore.selectedSection()]
+  );
+
+  protected readonly activityColumns: readonly LiassTableColumn[] = [
+    {
+      key: 'item',
+      labelKey: 'DASHBOARD.ACTIVITY.COLUMNS.ITEM'
+    },
+    {
+      key: 'domain',
+      labelKey: 'DASHBOARD.ACTIVITY.COLUMNS.DOMAIN'
+    },
+    {
+      key: 'owner',
+      labelKey: 'DASHBOARD.ACTIVITY.COLUMNS.OWNER'
+    },
+    {
+      key: 'status',
+      labelKey: 'DASHBOARD.ACTIVITY.COLUMNS.STATUS'
+    }
+  ];
+
+  protected readonly activityRows: readonly LiassTableRow[] = [
+    {
+      id: 'opening-balance',
+      cells: {
+        domain: { valueKey: 'DASHBOARD.ACTIVITY.ROWS.OPENING.DOMAIN' },
+        item: { emphasis: true, valueKey: 'DASHBOARD.ACTIVITY.ROWS.OPENING.ITEM' },
+        owner: { valueKey: 'DASHBOARD.ACTIVITY.ROWS.OPENING.OWNER' },
+        status: { tone: 'success', valueKey: 'DASHBOARD.ACTIVITY.ROWS.OPENING.STATUS' }
+      }
+    },
+    {
+      id: 'project-funding',
+      cells: {
+        domain: { valueKey: 'DASHBOARD.ACTIVITY.ROWS.PROJECT.DOMAIN' },
+        item: { emphasis: true, valueKey: 'DASHBOARD.ACTIVITY.ROWS.PROJECT.ITEM' },
+        owner: { valueKey: 'DASHBOARD.ACTIVITY.ROWS.PROJECT.OWNER' },
+        status: { tone: 'info', valueKey: 'DASHBOARD.ACTIVITY.ROWS.PROJECT.STATUS' }
+      }
+    },
+    {
+      id: 'bank-close',
+      cells: {
+        domain: { valueKey: 'DASHBOARD.ACTIVITY.ROWS.BANK.DOMAIN' },
+        item: { emphasis: true, valueKey: 'DASHBOARD.ACTIVITY.ROWS.BANK.ITEM' },
+        owner: { valueKey: 'DASHBOARD.ACTIVITY.ROWS.BANK.OWNER' },
+        status: { tone: 'warning', valueKey: 'DASHBOARD.ACTIVITY.ROWS.BANK.STATUS' }
+      }
+    }
+  ];
+
+  protected readonly quickActions = [
+    {
+      descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.ENTRY.DESCRIPTION',
+      icon: 'post_add',
+      labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.ENTRY.LABEL',
+      section: 'ledger'
+    },
+    {
+      descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.PROJECT.DESCRIPTION',
+      icon: 'topic',
+      labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.PROJECT.LABEL',
+      section: 'projects'
+    },
+    {
+      descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.RECONCILIATION.DESCRIPTION',
+      icon: 'account_balance_wallet',
+      labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.RECONCILIATION.LABEL',
+      section: 'treasury'
+    },
+    {
+      descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.REPORT.DESCRIPTION',
+      icon: 'summarize',
+      labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.REPORT.LABEL',
+      section: 'reports'
+    }
+  ] satisfies readonly {
+    descriptionKey: string;
+    icon: string;
+    labelKey: string;
+    section: AppSection;
+  }[];
+
+  protected readonly suggestions = [
+    {
+      descriptionKey: 'DASHBOARD.AI_SUGGESTIONS.ITEMS.CLOSING.DESCRIPTION',
+      labelKey: 'DASHBOARD.AI_SUGGESTIONS.ITEMS.CLOSING.LABEL',
+      tone: 'success'
+    },
+    {
+      descriptionKey: 'DASHBOARD.AI_SUGGESTIONS.ITEMS.GRANT.DESCRIPTION',
+      labelKey: 'DASHBOARD.AI_SUGGESTIONS.ITEMS.GRANT.LABEL',
+      tone: 'info'
+    },
+    {
+      descriptionKey: 'DASHBOARD.AI_SUGGESTIONS.ITEMS.RISK.DESCRIPTION',
+      labelKey: 'DASHBOARD.AI_SUGGESTIONS.ITEMS.RISK.LABEL',
+      tone: 'warning'
+    }
+  ] as const;
 
   protected selectSection(section: AppSection): void {
     this.uiStore.selectSection(section);
-  }
-
-  protected async logout(): Promise<void> {
-    await this.authStore.logout();
-    await this.router.navigate(['/login']);
   }
 }

@@ -1,0 +1,8 @@
+@if (uiStore.sidebarOpen()) {
+  <button
+    class="fixed inset-0 z-40 bg-slate-950/45 lg:hidden"
+    type="button"
+    [attr.aria-label]="'SHELL.TOPBAR.CLOSE_NAVIGATION' | transloco"
+    (click)="uiStore.closeSidebar()"
+  ></button>
+}

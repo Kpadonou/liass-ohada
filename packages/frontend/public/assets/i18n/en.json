@@ -1,8 +1,176 @@
 {
   "COMMON": {
+    "APP": {
+      "BRAND": "Liass-OHADA"
+    },
     "ACTIONS": {
       "SAVE": "Save",
       "CANCEL": "Cancel"
+    }
+  },
+  "SHELL": {
+    "AI_PANEL": {
+      "EYEBROW": "AI-native",
+      "TEXT": "Contextual accounting prompts will stay scoped to the active organization and OHADA rules."
+    },
+    "BRAND_TAGLINE": "ERP cockpit",
+    "NAV": {
+      "LEDGER": "General ledger",
+      "PROJECTS": "Projects and funds",
+      "REPORTS": "OHADA reports",
+      "SECTION_LABEL": "Workspace",
+      "SYCEBNL_BADGE": "SYCEBNL",
+      "TREASURY": "Treasury"
+    },
+    "SECTIONS": {
+      "LEDGER": "General ledger",
+      "PROJECTS": "Projects and funds",
+      "REPORTS": "OHADA reports",
+      "TREASURY": "Treasury"
+    },
+    "TOPBAR": {
+      "CLOSE_NAVIGATION": "Close navigation",
+      "DARK_MODE": "Switch to dark mode",
+      "LIGHT_MODE": "Switch to light mode",
+      "NO_ORG": "No organization",
+      "SIGN_OUT": "Sign out",
+      "TOGGLE_NAVIGATION": "Toggle navigation",
+      "USER": "User",
+      "USER_MENU": "Open user menu",
+      "WORKSPACE": "Active workspace"
+    }
+  },
+  "DASHBOARD": {
+    "ACTIVITY": {
+      "COLUMNS": {
+        "DOMAIN": "Domain",
+        "ITEM": "Control",
+        "OWNER": "Owner",
+        "STATUS": "Status"
+      },
+      "DESCRIPTION": "A compact view of the mocked operational queue that will later be backed by domain APIs.",
+      "EMPTY": "No activity to display.",
+      "ROWS": {
+        "BANK": {
+          "DOMAIN": "Treasury",
+          "ITEM": "Bank reconciliation evidence",
+          "OWNER": "Treasury team",
+          "STATUS": "Review"
+        },
+        "OPENING": {
+          "DOMAIN": "Core ledger",
+          "ITEM": "Opening balances readiness",
+          "OWNER": "Accounting lead",
+          "STATUS": "Ready"
+        },
+        "PROJECT": {
+          "DOMAIN": "SYCEBNL projects",
+          "ITEM": "Restricted fund allocation",
+          "OWNER": "Project controller",
+          "STATUS": "Mapped"
+        }
+      },
+      "TITLE": "Recent activity"
+    },
+    "AI_SUGGESTIONS": {
+      "DESCRIPTION": "Mocked assistant prompts for accounting review and close support.",
+      "ITEMS": {
+        "CLOSING": {
+          "DESCRIPTION": "Prepare a month-end checklist for draft entries, approvals, and locked periods.",
+          "LABEL": "Close readiness"
+        },
+        "GRANT": {
+          "DESCRIPTION": "Check whether project expenses are aligned with restricted-fund categories.",
+          "LABEL": "Fund consistency"
+        },
+        "RISK": {
+          "DESCRIPTION": "Flag accounts that need supporting documents before OHADA reporting.",
+          "LABEL": "Evidence gaps"
+        }
+      },
+      "TITLE": "AI suggestions"
+    },
+    "COMPLIANCE": {
+      "CHIPS": {
+        "SYCEBNL": "SYCEBNL-ready",
+        "SYSCOHADA": "SYSCOHADA",
+        "XOF": "Integer XOF"
+      },
+      "DESCRIPTION": "This mock cockpit keeps the product direction centered on tenant isolation, OHADA accounting rigor, and AI-assisted accounting workflows.",
+      "TITLE": "Compliance-first workspace"
+    },
+    "FLOW": {
+      "DESCRIPTION": "A chart placeholder for future ledger, treasury, and project-flow metrics without adding chart dependencies.",
+      "POSTED_LABEL": "Posted",
+      "REVIEW_LABEL": "Needs review",
+      "STATUS": "Mock data",
+      "TITLE": "Accounting flow"
+    },
+    "HEADER": {
+      "ACTION": "New journal entry",
+      "EYEBROW": "ERP dashboard"
+    },
+    "KPIS": {
+      "COMPLIANCE": {
+        "LABEL": "Reporting standard",
+        "META": "Bilan, Compte de Résultat, TAFIRE-ready surface.",
+        "TREND": "Mapped"
+      },
+      "DRAFT_ENTRIES": {
+        "LABEL": "Draft entries",
+        "META": "Prepared for TanStack Query-backed workflows.",
+        "TREND": "Mock"
+      },
+      "FISCAL_YEAR": {
+        "LABEL": "Open fiscal year",
+        "META": "SYSCOHADA General workspace baseline.",
+        "TREND": "Active"
+      },
+      "PROJECTS": {
+        "LABEL": "Tracked projects",
+        "META": "SYCEBNL grant and fund accounting placeholders.",
+        "TREND": "NGO"
+      }
+    },
+    "QUICK_ACTIONS": {
+      "DESCRIPTION": "Shortcuts switch the mock workspace focus without introducing extra routes.",
+      "ITEMS": {
+        "ENTRY": {
+          "DESCRIPTION": "Focus the dashboard on journals and account controls.",
+          "LABEL": "Prepare entry"
+        },
+        "PROJECT": {
+          "DESCRIPTION": "Review project budgets, grants, and restricted funds.",
+          "LABEL": "Review project"
+        },
+        "RECONCILIATION": {
+          "DESCRIPTION": "Open the treasury-oriented workspace state.",
+          "LABEL": "Reconcile bank"
+        },
+        "REPORT": {
+          "DESCRIPTION": "Switch toward OHADA statutory reporting readiness.",
+          "LABEL": "Build report"
+        }
+      },
+      "TITLE": "Quick actions"
+    },
+    "SECTIONS": {
+      "LEDGER": {
+        "SUMMARY": "Monitor journal readiness, chart-of-accounts controls, and OHADA posting quality.",
+        "TITLE": "General ledger"
+      },
+      "PROJECTS": {
+        "SUMMARY": "Track SYCEBNL project funding, restricted resources, and grant accountability.",
+        "TITLE": "Projects and funds"
+      },
+      "REPORTS": {
+        "SUMMARY": "Prepare OHADA and SYCEBNL reporting surfaces without leaving the workspace.",
+        "TITLE": "OHADA reports"
+      },
+      "TREASURY": {
+        "SUMMARY": "Follow cash positions, bank reconciliation readiness, and payment controls.",
+        "TITLE": "Treasury"
+      }
     }
   },
   "IDENTITY": {

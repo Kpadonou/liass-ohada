@@ -1,106 +1,184 @@
-<main class="min-h-dvh bg-slate-50 text-slate-950">
-  <mat-toolbar class="sticky top-0 z-10 border-b border-slate-200 bg-white/95">
-    <button
-      matIconButton
-      type="button"
-      aria-label="Toggle navigation"
-      (click)="uiStore.toggleSidebar()"
+<div class="space-y-6">
+  <liass-page-header
+    [actionIcon]="'post_add'"
+    [actionLabel]="'DASHBOARD.HEADER.ACTION' | transloco"
+    [eyebrow]="'DASHBOARD.HEADER.EYEBROW' | transloco"
+    [subtitle]="activeSectionSummaryKey() | transloco"
+    [title]="activeSectionTitleKey() | transloco"
+    (actionTriggered)="selectSection('ledger')"
+  />
+
+  <liass-card variant="accent">
+    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
+          {{ 'DASHBOARD.COMPLIANCE.TITLE' | transloco }}
+        </p>
+        <p class="mt-1 max-w-4xl text-sm leading-6 text-emerald-800/80 dark:text-emerald-200/80">
+          {{ 'DASHBOARD.COMPLIANCE.DESCRIPTION' | transloco }}
+        </p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.SYSCOHADA' | transloco" tone="success" />
+        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.SYCEBNL' | transloco" tone="info" />
+        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.XOF' | transloco" tone="warning" />
+      </div>
+    </div>
+  </liass-card>
+
+  <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <liass-stat-card
+      icon="calendar_month"
+      [label]="'DASHBOARD.KPIS.FISCAL_YEAR.LABEL' | transloco"
+      [meta]="'DASHBOARD.KPIS.FISCAL_YEAR.META' | transloco"
+      tone="success"
+      [trendLabel]="'DASHBOARD.KPIS.FISCAL_YEAR.TREND' | transloco"
+      trendTone="success"
+      value="2026"
+    />
+    <liass-stat-card
+      icon="receipt_long"
+      [label]="'DASHBOARD.KPIS.DRAFT_ENTRIES.LABEL' | transloco"
+      [meta]="'DASHBOARD.KPIS.DRAFT_ENTRIES.META' | transloco"
+      tone="info"
+      [trendLabel]="'DASHBOARD.KPIS.DRAFT_ENTRIES.TREND' | transloco"
+      trendTone="neutral"
+      value="0"
+    />
+    <liass-stat-card
+      icon="folder_special"
+      [label]="'DASHBOARD.KPIS.PROJECTS.LABEL' | transloco"
+      [meta]="'DASHBOARD.KPIS.PROJECTS.META' | transloco"
+      tone="accent"
+      [trendLabel]="'DASHBOARD.KPIS.PROJECTS.TREND' | transloco"
+      trendTone="info"
+      value="3"
+    />
+    <liass-stat-card
+      icon="verified"
+      [label]="'DASHBOARD.KPIS.COMPLIANCE.LABEL' | transloco"
+      [meta]="'DASHBOARD.KPIS.COMPLIANCE.META' | transloco"
+      tone="warning"
+      [trendLabel]="'DASHBOARD.KPIS.COMPLIANCE.TREND' | transloco"
+      trendTone="warning"
+      value="OHADA"
+    />
+  </div>
+
+  <div class="grid grid-cols-12 gap-6">
+    <liass-section-container
+      class="col-span-12 xl:col-span-8"
+      [description]="'DASHBOARD.FLOW.DESCRIPTION' | transloco"
+      [title]="'DASHBOARD.FLOW.TITLE' | transloco"
     >
-      <mat-icon>menu</mat-icon>
-    </button>
-    <span class="ml-3 text-base font-semibold">Liass-OHADA</span>
-    <span class="ml-4 rounded border border-slate-200 px-2 py-1 text-xs font-medium">
-      {{ authStore.activeOrgId() }}
-    </span>
-    <span class="flex-1"></span>
-    <button matButton type="button" (click)="logout()">
-      <mat-icon>logout</mat-icon>
-      Sign out
-    </button>
-  </mat-toolbar>
-
-  <div class="grid min-h-[calc(100dvh-64px)] lg:grid-cols-[260px_1fr]">
-    @if (uiStore.sidebarOpen()) {
-      <aside class="border-r border-slate-200 bg-white p-4">
-        <nav class="grid gap-1">
-          @for (section of sections; track section) {
-            <button
-              matButton
-              type="button"
-              class="justify-start"
-              [class.bg-slate-100]="uiStore.selectedSection() === section"
-              (click)="selectSection(section)"
-            >
-              <mat-icon>
-                {{
-                  section === 'ledger'
-                    ? 'account_balance'
-                    : section === 'projects'
-                      ? 'folder_managed'
-                      : section === 'treasury'
-                        ? 'payments'
-                        : 'analytics'
-                }}
-              </mat-icon>
-              {{ sectionLabels[section] }}
-            </button>
-          }
-        </nav>
-      </aside>
-    }
-
-    <section class="px-5 py-6 sm:px-8">
-      <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p class="text-sm font-medium uppercase text-emerald-700">
-            Workspace
-          </p>
-          <h1 class="mt-1 text-2xl font-semibold text-slate-950">
-            {{ activeSectionLabel() }}
-          </h1>
-        </div>
-        <button matButton="filled" type="button">
-          <mat-icon>add</mat-icon>
-          New record
-        </button>
+      <div liassSectionActions>
+        <liass-status-chip [label]="'DASHBOARD.FLOW.STATUS' | transloco" tone="success" />
       </div>
 
-      <div class="grid gap-4 md:grid-cols-3">
-        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-sm text-slate-500">Open fiscal year</p>
-          <p class="mt-2 text-2xl font-semibold">2026</p>
-          <p class="mt-2 text-sm text-emerald-700">SYSCOHADA_GENERAL</p>
-        </article>
-        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-sm text-slate-500">Draft entries</p>
-          <p class="mt-2 text-2xl font-semibold">0</p>
-          <p class="mt-2 text-sm text-slate-500">Ready for TanStack Query</p>
-        </article>
-        <article class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p class="text-sm text-slate-500">Project currency</p>
-          <p class="mt-2 text-2xl font-semibold">XOF</p>
-          <p class="mt-2 text-sm text-amber-700">Integer amounts only</p>
-        </article>
-      </div>
-
-      <div class="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white">
-        <div class="grid grid-cols-[1.2fr_1fr_1fr_auto] gap-3 border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-500">
-          <span>Domain</span>
-          <span>Status</span>
-          <span>Standard</span>
-          <span></span>
-        </div>
-        @for (section of sections; track section) {
-          <div class="grid grid-cols-[1.2fr_1fr_1fr_auto] items-center gap-3 px-4 py-3 text-sm">
-            <span class="font-medium">{{ sectionLabels[section] }}</span>
-            <span>Initialized</span>
-            <span>{{ section === 'projects' ? 'SYCEBNL' : 'OHADA' }}</span>
-            <button matIconButton type="button" aria-label="Open">
-              <mat-icon>chevron_right</mat-icon>
-            </button>
+      <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
+        <div class="min-h-[260px] rounded-lg border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45">
+          <div class="flex h-[220px] items-end gap-2">
+            <span class="h-[36%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+            <span class="h-[52%] flex-1 rounded-t bg-sky-400 dark:bg-sky-500"></span>
+            <span class="h-[44%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+            <span class="h-[72%] flex-1 rounded-t bg-emerald-500"></span>
+            <span class="h-[60%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+            <span class="h-[86%] flex-1 rounded-t bg-indigo-500"></span>
+            <span class="h-[68%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+            <span class="h-[78%] flex-1 rounded-t bg-emerald-500"></span>
+            <span class="h-[64%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+            <span class="h-[90%] flex-1 rounded-t bg-amber-500"></span>
+            <span class="h-[70%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+            <span class="h-[82%] flex-1 rounded-t bg-sky-400 dark:bg-sky-500"></span>
           </div>
+        </div>
+
+        <div class="grid gap-3">
+          <div class="rounded-lg border border-slate-100 p-4 dark:border-slate-800">
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              {{ 'DASHBOARD.FLOW.POSTED_LABEL' | transloco }}
+            </p>
+            <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">82%</p>
+          </div>
+          <div class="rounded-lg border border-slate-100 p-4 dark:border-slate-800">
+            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+              {{ 'DASHBOARD.FLOW.REVIEW_LABEL' | transloco }}
+            </p>
+            <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">6</p>
+          </div>
+        </div>
+      </div>
+    </liass-section-container>
+
+    <liass-section-container
+      class="col-span-12 xl:col-span-4"
+      [description]="'DASHBOARD.AI_SUGGESTIONS.DESCRIPTION' | transloco"
+      [title]="'DASHBOARD.AI_SUGGESTIONS.TITLE' | transloco"
+    >
+      <div class="grid gap-3">
+        @for (suggestion of suggestions; track suggestion.labelKey) {
+          <button
+            class="group rounded-lg border border-slate-100 p-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/70 dark:border-slate-800 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/20"
+            type="button"
+          >
+            <div class="flex items-start gap-3">
+              <span class="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-emerald-100 group-hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-emerald-950 dark:group-hover:text-emerald-300">
+                <mat-icon>auto_awesome</mat-icon>
+              </span>
+              <span>
+                <span class="block text-sm font-semibold text-slate-950 dark:text-white">
+                  {{ suggestion.labelKey | transloco }}
+                </span>
+                <span class="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  {{ suggestion.descriptionKey | transloco }}
+                </span>
+              </span>
+            </div>
+          </button>
         }
       </div>
-    </section>
+    </liass-section-container>
   </div>
-</main>
+
+  <div class="grid grid-cols-12 gap-6">
+    <liass-section-container
+      class="col-span-12 xl:col-span-8"
+      [description]="'DASHBOARD.ACTIVITY.DESCRIPTION' | transloco"
+      [title]="'DASHBOARD.ACTIVITY.TITLE' | transloco"
+    >
+      <liass-table-placeholder
+        emptyLabel="DASHBOARD.ACTIVITY.EMPTY"
+        [columns]="activityColumns"
+        [rows]="activityRows"
+      />
+    </liass-section-container>
+
+    <liass-section-container
+      class="col-span-12 xl:col-span-4"
+      [description]="'DASHBOARD.QUICK_ACTIONS.DESCRIPTION' | transloco"
+      [title]="'DASHBOARD.QUICK_ACTIONS.TITLE' | transloco"
+    >
+      <div class="grid gap-3">
+        @for (action of quickActions; track action.labelKey) {
+          <button
+            class="flex items-center gap-3 rounded-lg border border-slate-100 p-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/70 dark:border-slate-800 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/20"
+            type="button"
+            (click)="selectSection(action.section)"
+          >
+            <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <mat-icon>{{ action.icon }}</mat-icon>
+            </span>
+            <span class="min-w-0">
+              <span class="block text-sm font-semibold text-slate-950 dark:text-white">
+                {{ action.labelKey | transloco }}
+              </span>
+              <span class="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-400">
+                {{ action.descriptionKey | transloco }}
+              </span>
+            </span>
+          </button>
+        }
+      </div>
+    </liass-section-container>
+  </div>
+</div>

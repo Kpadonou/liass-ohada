@@ -1,0 +1,80 @@
+<header
+  class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85"
+>
+  <div class="flex min-h-16 flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+    <button
+      class="inline-grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm shadow-slate-900/[0.03] transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white lg:hidden"
+      type="button"
+      [attr.aria-label]="'SHELL.TOPBAR.TOGGLE_NAVIGATION' | transloco"
+      (click)="uiStore.toggleSidebar()"
+    >
+      <mat-icon>{{ uiStore.sidebarOpen() ? 'close' : 'menu' }}</mat-icon>
+    </button>
+
+    <div class="min-w-0 flex-1">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+        {{ 'SHELL.TOPBAR.WORKSPACE' | transloco }}
+      </p>
+      <h2 class="truncate text-base font-semibold text-slate-950 dark:text-white">
+        {{ sectionTitleKey() | transloco }}
+      </h2>
+    </div>
+
+    <div class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex">
+      <mat-icon class="text-emerald-700 dark:text-emerald-300">domain</mat-icon>
+      <span class="max-w-[180px] truncate">{{ authStore.activeOrgId() || ('SHELL.TOPBAR.NO_ORG' | transloco) }}</span>
+    </div>
+
+    <button
+      class="inline-grid size-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 shadow-sm shadow-slate-900/[0.03] transition hover:bg-slate-50 hover:text-slate-950 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+      type="button"
+      [attr.aria-label]="uiStore.themeMode() === 'dark' ? ('SHELL.TOPBAR.LIGHT_MODE' | transloco) : ('SHELL.TOPBAR.DARK_MODE' | transloco)"
+      (click)="uiStore.toggleThemeMode()"
+    >
+      <mat-icon>{{ uiStore.themeMode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+    </button>
+
+    <liass-language-selector />
+
+    <div class="relative">
+      <button
+        class="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-900/[0.03] transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        type="button"
+        [attr.aria-label]="'SHELL.TOPBAR.USER_MENU' | transloco"
+        (click)="toggleUserMenu()"
+      >
+        <span class="grid size-7 place-items-center rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+          <mat-icon>person</mat-icon>
+        </span>
+        <span class="hidden max-w-[150px] truncate md:inline">
+          {{ userLabel() || ('SHELL.TOPBAR.USER' | transloco) }}
+        </span>
+        <mat-icon class="text-slate-400">{{ userMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+      </button>
+
+      @if (userMenuOpen) {
+        <div
+          class="absolute right-0 mt-2 w-[260px] rounded-lg border border-slate-200 bg-white p-3 shadow-xl shadow-slate-900/10 dark:border-slate-800 dark:bg-slate-900"
+        >
+          <div class="border-b border-slate-100 pb-3 dark:border-slate-800">
+            <p class="text-sm font-semibold text-slate-950 dark:text-white">
+              {{ userLabel() || ('SHELL.TOPBAR.USER' | transloco) }}
+            </p>
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {{ authStore.activeOrgId() || ('SHELL.TOPBAR.NO_ORG' | transloco) }}
+            </p>
+          </div>
+
+          <button
+            class="mt-3 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+            type="button"
+            (click)="logout()"
+          >
+            <mat-icon>logout</mat-icon>
+            <span>{{ 'SHELL.TOPBAR.SIGN_OUT' | transloco }}</span>
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+</header>

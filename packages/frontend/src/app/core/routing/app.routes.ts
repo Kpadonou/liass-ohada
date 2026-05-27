@@ -1,6 +1,5 @@
 import { Routes } from '@angular/router';
 
-import { DashboardPage } from '../feature/dashboard/dashboard.page';
 import { LoginPage } from '../../domains/identity/feature/login/login.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
 import { authGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
@@ -18,8 +17,18 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard',
-    component: DashboardPage,
-    canActivate: [authGuard, tenantGuard]
+    loadComponent: () =>
+      import('../../shared/layout/app-shell/app-shell.component').then(
+        (module) => module.AppShellComponent
+      ),
+    canActivate: [authGuard, tenantGuard],
+    children: [
+      {
+        path: '',
+        loadComponent: () =>
+          import('../feature/dashboard/dashboard.page').then((module) => module.DashboardPage)
+      }
+    ]
   },
   {
     path: '',

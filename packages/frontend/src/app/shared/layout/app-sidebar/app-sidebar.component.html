@@ -1,0 +1,46 @@
+<aside
+  [class]="sidebarClass()"
+>
+  <div class="flex h-20 items-center">
+    <a class="flex min-w-0 items-center gap-3 text-slate-950 no-underline dark:text-white" routerLink="/dashboard">
+      <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-emerald-700 text-white shadow-sm shadow-emerald-900/20">
+        <mat-icon>account_balance</mat-icon>
+      </span>
+      <span class="min-w-0">
+        <span class="block truncate text-base font-semibold">{{ 'COMMON.APP.BRAND' | transloco }}</span>
+        <span class="block truncate text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          {{ 'SHELL.BRAND_TAGLINE' | transloco }}
+        </span>
+      </span>
+    </a>
+  </div>
+
+  <div class="no-scrollbar flex-1 overflow-y-auto pb-4">
+    <p class="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+      {{ 'SHELL.NAV.SECTION_LABEL' | transloco }}
+    </p>
+
+    <nav class="grid gap-1.5">
+      @for (item of navItems; track item.section) {
+        <liass-sidebar-nav-item
+          [active]="uiStore.selectedSection() === item.section"
+          [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+          [icon]="item.icon"
+          [label]="item.labelKey | transloco"
+          (selected)="selectSection(item.section)"
+        />
+      }
+    </nav>
+  </div>
+
+  <div class="border-t border-slate-100 py-4 dark:border-slate-800">
+    <div class="rounded-lg bg-slate-50 p-4 dark:bg-slate-950/55">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-300">
+        {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
+      </p>
+      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+        {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
+      </p>
+    </div>
+  </div>
+</aside>

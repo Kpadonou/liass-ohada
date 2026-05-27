@@ -1,8 +1,176 @@
 {
   "COMMON": {
+    "APP": {
+      "BRAND": "Liass-OHADA"
+    },
     "ACTIONS": {
       "SAVE": "Enregistrer",
       "CANCEL": "Annuler"
+    }
+  },
+  "SHELL": {
+    "AI_PANEL": {
+      "EYEBROW": "IA native",
+      "TEXT": "Les suggestions comptables resteront limitées à l’organisation active et aux règles OHADA."
+    },
+    "BRAND_TAGLINE": "Poste ERP",
+    "NAV": {
+      "LEDGER": "Grand livre",
+      "PROJECTS": "Projets et fonds",
+      "REPORTS": "États OHADA",
+      "SECTION_LABEL": "Espace",
+      "SYCEBNL_BADGE": "SYCEBNL",
+      "TREASURY": "Trésorerie"
+    },
+    "SECTIONS": {
+      "LEDGER": "Grand livre",
+      "PROJECTS": "Projets et fonds",
+      "REPORTS": "États OHADA",
+      "TREASURY": "Trésorerie"
+    },
+    "TOPBAR": {
+      "CLOSE_NAVIGATION": "Fermer la navigation",
+      "DARK_MODE": "Activer le mode sombre",
+      "LIGHT_MODE": "Activer le mode clair",
+      "NO_ORG": "Aucune organisation",
+      "SIGN_OUT": "Se déconnecter",
+      "TOGGLE_NAVIGATION": "Basculer la navigation",
+      "USER": "Utilisateur",
+      "USER_MENU": "Ouvrir le menu utilisateur",
+      "WORKSPACE": "Espace actif"
+    }
+  },
+  "DASHBOARD": {
+    "ACTIVITY": {
+      "COLUMNS": {
+        "DOMAIN": "Domaine",
+        "ITEM": "Contrôle",
+        "OWNER": "Responsable",
+        "STATUS": "Statut"
+      },
+      "DESCRIPTION": "Une vue compacte de la file opérationnelle simulée, destinée à être reliée plus tard aux API de domaine.",
+      "EMPTY": "Aucune activité à afficher.",
+      "ROWS": {
+        "BANK": {
+          "DOMAIN": "Trésorerie",
+          "ITEM": "Justificatifs de rapprochement bancaire",
+          "OWNER": "Équipe trésorerie",
+          "STATUS": "À revoir"
+        },
+        "OPENING": {
+          "DOMAIN": "Comptabilité générale",
+          "ITEM": "Préparation des soldes d’ouverture",
+          "OWNER": "Responsable comptable",
+          "STATUS": "Prêt"
+        },
+        "PROJECT": {
+          "DOMAIN": "Projets SYCEBNL",
+          "ITEM": "Affectation des fonds dédiés",
+          "OWNER": "Contrôleur projet",
+          "STATUS": "Mappé"
+        }
+      },
+      "TITLE": "Activité récente"
+    },
+    "AI_SUGGESTIONS": {
+      "DESCRIPTION": "Suggestions simulées pour la revue comptable et l’assistance à la clôture.",
+      "ITEMS": {
+        "CLOSING": {
+          "DESCRIPTION": "Préparer une checklist de clôture mensuelle pour les écritures, validations et périodes verrouillées.",
+          "LABEL": "Préparation clôture"
+        },
+        "GRANT": {
+          "DESCRIPTION": "Vérifier l’alignement des dépenses projet avec les catégories de fonds dédiés.",
+          "LABEL": "Cohérence des fonds"
+        },
+        "RISK": {
+          "DESCRIPTION": "Signaler les comptes nécessitant des pièces justificatives avant le reporting OHADA.",
+          "LABEL": "Pièces manquantes"
+        }
+      },
+      "TITLE": "Suggestions IA"
+    },
+    "COMPLIANCE": {
+      "CHIPS": {
+        "SYCEBNL": "Compatible SYCEBNL",
+        "SYSCOHADA": "SYSCOHADA",
+        "XOF": "XOF entiers"
+      },
+      "DESCRIPTION": "Ce poste de pilotage simulé garde la direction produit centrée sur l’isolation des tenants, la rigueur comptable OHADA et les workflows comptables assistés par IA.",
+      "TITLE": "Espace orienté conformité"
+    },
+    "FLOW": {
+      "DESCRIPTION": "Un emplacement de graphique pour les futurs indicateurs de grand livre, trésorerie et projets, sans ajouter de dépendance de charting.",
+      "POSTED_LABEL": "Comptabilisé",
+      "REVIEW_LABEL": "À revoir",
+      "STATUS": "Données mock",
+      "TITLE": "Flux comptable"
+    },
+    "HEADER": {
+      "ACTION": "Nouvelle écriture",
+      "EYEBROW": "Tableau de bord ERP"
+    },
+    "KPIS": {
+      "COMPLIANCE": {
+        "LABEL": "Référentiel",
+        "META": "Surface prête pour Bilan, Compte de Résultat et TAFIRE.",
+        "TREND": "Mappé"
+      },
+      "DRAFT_ENTRIES": {
+        "LABEL": "Écritures brouillon",
+        "META": "Préparé pour des workflows basés sur TanStack Query.",
+        "TREND": "Mock"
+      },
+      "FISCAL_YEAR": {
+        "LABEL": "Exercice ouvert",
+        "META": "Base de travail SYSCOHADA Général.",
+        "TREND": "Actif"
+      },
+      "PROJECTS": {
+        "LABEL": "Projets suivis",
+        "META": "Espaces réservés pour subventions et comptabilité par fonds SYCEBNL.",
+        "TREND": "ONG"
+      }
+    },
+    "QUICK_ACTIONS": {
+      "DESCRIPTION": "Les raccourcis changent le focus simulé sans créer de routes supplémentaires.",
+      "ITEMS": {
+        "ENTRY": {
+          "DESCRIPTION": "Orienter le tableau de bord vers les journaux et contrôles de comptes.",
+          "LABEL": "Préparer écriture"
+        },
+        "PROJECT": {
+          "DESCRIPTION": "Revoir les budgets projet, subventions et fonds dédiés.",
+          "LABEL": "Revoir projet"
+        },
+        "RECONCILIATION": {
+          "DESCRIPTION": "Ouvrir l’état de travail orienté trésorerie.",
+          "LABEL": "Rapprocher banque"
+        },
+        "REPORT": {
+          "DESCRIPTION": "Basculer vers la préparation des états réglementaires OHADA.",
+          "LABEL": "Construire état"
+        }
+      },
+      "TITLE": "Actions rapides"
+    },
+    "SECTIONS": {
+      "LEDGER": {
+        "SUMMARY": "Surveiller la préparation des journaux, les contrôles du plan comptable et la qualité des écritures OHADA.",
+        "TITLE": "Grand livre"
+      },
+      "PROJECTS": {
+        "SUMMARY": "Suivre les financements SYCEBNL, les ressources dédiées et la redevabilité des subventions.",
+        "TITLE": "Projets et fonds"
+      },
+      "REPORTS": {
+        "SUMMARY": "Préparer les surfaces de reporting OHADA et SYCEBNL sans quitter l’espace de travail.",
+        "TITLE": "États OHADA"
+      },
+      "TREASURY": {
+        "SUMMARY": "Suivre la trésorerie, la préparation des rapprochements bancaires et les contrôles de paiement.",
+        "TITLE": "Trésorerie"
+      }
     }
   },
   "IDENTITY": {
