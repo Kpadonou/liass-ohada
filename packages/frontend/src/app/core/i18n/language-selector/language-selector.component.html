@@ -1,0 +1,28 @@
+<button
+  class="rounded-md border border-slate-200 bg-white/70 px-3 py-1 text-xs font-semibold uppercase text-slate-700 transition-all hover:bg-gray-100"
+  data-testid="language-trigger"
+  matButton
+  type="button"
+  [matMenuTriggerFor]="languageMenu"
+  [attr.aria-label]="'COMMON.LANGUAGE_SELECTOR.TRIGGER' | transloco"
+>
+  {{ activeLanguage().toUpperCase() }}
+</button>
+
+<mat-menu #languageMenu="matMenu" xPosition="before">
+  @for (language of languages; track language.code) {
+    <button
+      mat-menu-item
+      type="button"
+      [class.bg-slate-50]="isActiveLanguage(language.code)"
+      [attr.aria-current]="isActiveLanguage(language.code) ? 'true' : null"
+      (click)="switchLanguage(language.code)"
+    >
+      <mat-icon [class.opacity-0]="!isActiveLanguage(language.code)">check</mat-icon>
+      @if (isActiveLanguage(language.code)) {
+        <span class="sr-only">{{ 'COMMON.LANGUAGE_SELECTOR.CURRENT' | transloco }}</span>
+      }
+      <span>{{ language.labelKey | transloco }}</span>
+    </button>
+  }
+</mat-menu>
