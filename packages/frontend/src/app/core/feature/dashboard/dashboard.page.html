@@ -1,4 +1,4 @@
-<div class="space-y-6">
+<div class="space-y-5 md:space-y-6">
   <liass-page-header
     [actionIcon]="'post_add'"
     [actionLabel]="'DASHBOARD.HEADER.ACTION' | transloco"
@@ -8,7 +8,7 @@
     (actionTriggered)="selectSection('ledger')"
   />
 
-  <liass-card variant="accent">
+  <liass-card variant="accent" padding="md">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
         <p class="text-sm font-semibold text-emerald-900 dark:text-emerald-100">
@@ -19,9 +19,9 @@
         </p>
       </div>
       <div class="flex flex-wrap gap-2">
-        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.SYSCOHADA' | transloco" tone="success" />
-        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.SYCEBNL' | transloco" tone="info" />
-        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.XOF' | transloco" tone="warning" />
+        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.SYSCOHADA' | transloco" tone="success" size="sm" />
+        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.SYCEBNL' | transloco" tone="info" size="sm" />
+        <liass-status-chip [label]="'DASHBOARD.COMPLIANCE.CHIPS.XOF' | transloco" tone="warning" size="sm" />
       </div>
     </div>
   </liass-card>
@@ -65,47 +65,51 @@
     />
   </div>
 
-  <div class="grid grid-cols-12 gap-6">
+  <div class="grid grid-cols-12 gap-5 md:gap-6">
     <liass-section-container
       class="col-span-12 xl:col-span-8"
       [description]="'DASHBOARD.FLOW.DESCRIPTION' | transloco"
       [title]="'DASHBOARD.FLOW.TITLE' | transloco"
     >
-      <div liassSectionActions>
-        <liass-status-chip [label]="'DASHBOARD.FLOW.STATUS' | transloco" tone="success" />
+      <div liassSectionActions class="flex items-center">
+        <liass-status-chip [label]="'DASHBOARD.FLOW.STATUS' | transloco" tone="success" size="sm" />
       </div>
 
       <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-end">
-        <div class="min-h-[260px] rounded-lg border border-slate-100 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/45">
-          <div class="flex h-[220px] items-end gap-2">
-            <span class="h-[36%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
-            <span class="h-[52%] flex-1 rounded-t bg-sky-400 dark:bg-sky-500"></span>
-            <span class="h-[44%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
-            <span class="h-[72%] flex-1 rounded-t bg-emerald-500"></span>
-            <span class="h-[60%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
-            <span class="h-[86%] flex-1 rounded-t bg-indigo-500"></span>
-            <span class="h-[68%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
-            <span class="h-[78%] flex-1 rounded-t bg-emerald-500"></span>
-            <span class="h-[64%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
-            <span class="h-[90%] flex-1 rounded-t bg-amber-500"></span>
-            <span class="h-[70%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
-            <span class="h-[82%] flex-1 rounded-t bg-sky-400 dark:bg-sky-500"></span>
-          </div>
-        </div>
+        <liass-card variant="muted" padding="sm">
+          @if (chartLoading) {
+            <liass-skeleton variant="block" />
+          } @else {
+            <div class="flex h-[220px] items-end gap-2">
+              <span class="h-[36%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+              <span class="h-[52%] flex-1 rounded-t bg-sky-400 dark:bg-sky-500"></span>
+              <span class="h-[44%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+              <span class="h-[72%] flex-1 rounded-t bg-brand-500"></span>
+              <span class="h-[60%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+              <span class="h-[86%] flex-1 rounded-t bg-indigo-500"></span>
+              <span class="h-[68%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+              <span class="h-[78%] flex-1 rounded-t bg-brand-500"></span>
+              <span class="h-[64%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+              <span class="h-[90%] flex-1 rounded-t bg-amber-500"></span>
+              <span class="h-[70%] flex-1 rounded-t bg-slate-300 dark:bg-slate-700"></span>
+              <span class="h-[82%] flex-1 rounded-t bg-sky-400 dark:bg-sky-500"></span>
+            </div>
+          }
+        </liass-card>
 
         <div class="grid gap-3">
-          <div class="rounded-lg border border-slate-100 p-4 dark:border-slate-800">
+          <liass-card padding="sm">
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
               {{ 'DASHBOARD.FLOW.POSTED_LABEL' | transloco }}
             </p>
             <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">82%</p>
-          </div>
-          <div class="rounded-lg border border-slate-100 p-4 dark:border-slate-800">
+          </liass-card>
+          <liass-card padding="sm">
             <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
               {{ 'DASHBOARD.FLOW.REVIEW_LABEL' | transloco }}
             </p>
             <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">6</p>
-          </div>
+          </liass-card>
         </div>
       </div>
     </liass-section-container>
@@ -118,16 +122,19 @@
       <div class="grid gap-3">
         @for (suggestion of suggestions; track suggestion.labelKey) {
           <button
-            class="group rounded-lg border border-slate-100 p-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/70 dark:border-slate-800 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/20"
+            class="liass-focus-ring group rounded-app-card border border-slate-100 p-4 text-left transition hover:border-brand-100 hover:bg-brand-50/70 dark:border-slate-800 dark:hover:border-brand-900 dark:hover:bg-brand-900/20"
             type="button"
           >
             <div class="flex items-start gap-3">
-              <span class="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 group-hover:bg-emerald-100 group-hover:text-emerald-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-emerald-950 dark:group-hover:text-emerald-300">
+              <span class="mt-0.5 grid size-8 shrink-0 place-items-center rounded-app-control bg-slate-100 text-slate-600 group-hover:bg-brand-100 group-hover:text-brand-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-brand-900 dark:group-hover:text-brand-300">
                 <mat-icon>auto_awesome</mat-icon>
               </span>
               <span>
-                <span class="block text-sm font-semibold text-slate-950 dark:text-white">
-                  {{ suggestion.labelKey | transloco }}
+                <span class="flex flex-wrap items-center gap-2">
+                  <span class="block text-sm font-semibold text-slate-950 dark:text-white">
+                    {{ suggestion.labelKey | transloco }}
+                  </span>
+                  <liass-status-chip [label]="'DASHBOARD.AI_SUGGESTIONS.BADGE' | transloco" [tone]="suggestion.tone" size="sm" />
                 </span>
                 <span class="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-400">
                   {{ suggestion.descriptionKey | transloco }}
@@ -140,7 +147,7 @@
     </liass-section-container>
   </div>
 
-  <div class="grid grid-cols-12 gap-6">
+  <div class="grid grid-cols-12 gap-5 md:gap-6">
     <liass-section-container
       class="col-span-12 xl:col-span-8"
       [description]="'DASHBOARD.ACTIVITY.DESCRIPTION' | transloco"
@@ -150,6 +157,7 @@
         emptyLabel="DASHBOARD.ACTIVITY.EMPTY"
         [columns]="activityColumns"
         [rows]="activityRows"
+        [state]="activityState"
       />
     </liass-section-container>
 
@@ -161,11 +169,11 @@
       <div class="grid gap-3">
         @for (action of quickActions; track action.labelKey) {
           <button
-            class="flex items-center gap-3 rounded-lg border border-slate-100 p-4 text-left transition hover:border-emerald-200 hover:bg-emerald-50/70 dark:border-slate-800 dark:hover:border-emerald-900 dark:hover:bg-emerald-950/20"
+            class="liass-focus-ring flex items-center gap-3 rounded-app-card border border-slate-100 p-4 text-left transition hover:border-brand-100 hover:bg-brand-50/70 dark:border-slate-800 dark:hover:border-brand-900 dark:hover:bg-brand-900/20"
             type="button"
             (click)="selectSection(action.section)"
           >
-            <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            <span class="grid size-10 shrink-0 place-items-center rounded-app-control bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">
               <mat-icon>{{ action.icon }}</mat-icon>
             </span>
             <span class="min-w-0">

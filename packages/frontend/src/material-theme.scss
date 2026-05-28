@@ -10,10 +10,16 @@ html {
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: mat.$green-palette,
+        tertiary: mat.$cyan-palette,
       ),
-      typography: Roboto,
+      typography: (
+        plain-family: (Inter, ui-sans-serif, system-ui, sans-serif),
+        brand-family: (Inter, ui-sans-serif, system-ui, sans-serif),
+        regular-weight: 400,
+        medium-weight: 500,
+        bold-weight: 700,
+      ),
       density: 0,
     )
   );

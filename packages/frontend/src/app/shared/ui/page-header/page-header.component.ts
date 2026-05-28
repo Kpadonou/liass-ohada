@@ -1,9 +1,10 @@
 import { Component, input, output } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
+
+import { LiassButtonComponent } from '../button/button.component';
 
 @Component({
   selector: 'liass-page-header',
-  imports: [MatIconModule],
+  imports: [LiassButtonComponent],
   templateUrl: './page-header.component.html'
 })
 export class LiassPageHeaderComponent {

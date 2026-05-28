@@ -1,3 +1,33 @@
 <article [class]="cardClass()">
-  <ng-content />
+  @if (title() || description()) {
+    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div class="min-w-0">
+        @if (title()) {
+          <h2 class="text-app-card-title font-semibold text-app-text dark:text-white">{{ title() }}</h2>
+        }
+        @if (description()) {
+          <p class="mt-1 text-app-body text-app-muted dark:text-slate-400">{{ description() }}</p>
+        }
+      </div>
+      <ng-content select="[liassCardActions]" />
+    </div>
+  }
+
+  @if (state() === 'loading') {
+    <div class="space-y-4">
+      <liass-skeleton variant="text" [lines]="2" />
+      <liass-skeleton variant="block" />
+    </div>
+  } @else if (state() === 'empty') {
+    <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-center dark:border-slate-800">
+      @if (emptyTitle()) {
+        <p class="text-sm font-semibold text-slate-950 dark:text-white">{{ emptyTitle() }}</p>
+      }
+      @if (emptyDescription()) {
+        <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ emptyDescription() }}</p>
+      }
+    </div>
+  } @else {
+    <ng-content />
+  }
 </article>

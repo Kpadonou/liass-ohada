@@ -6,12 +6,14 @@ import { UiStore, type AppSection } from '../../state/ui.store';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { LiassSectionContainerComponent } from '../../../shared/ui/section-container/section-container.component';
+import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatCardComponent } from '../../../shared/ui/stat-card/stat-card.component';
-import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
+import { LiassStatusChipComponent, type LiassStatusTone } from '../../../shared/ui/status-chip/status-chip.component';
 import {
   LiassTablePlaceholderComponent,
   type LiassTableColumn,
-  type LiassTableRow
+  type LiassTableRow,
+  type LiassTableState
 } from '../../../shared/ui/table-placeholder/table-placeholder.component';
 
 const sectionTitleKeys: Record<AppSection, string> = {
@@ -34,6 +36,7 @@ const sectionSummaryKeys: Record<AppSection, string> = {
     LiassCardComponent,
     LiassPageHeaderComponent,
     LiassSectionContainerComponent,
+    LiassSkeletonComponent,
     LiassStatCardComponent,
     LiassStatusChipComponent,
     LiassTablePlaceholderComponent,
@@ -70,6 +73,8 @@ export class DashboardPage {
       labelKey: 'DASHBOARD.ACTIVITY.COLUMNS.STATUS'
     }
   ];
+  protected readonly activityState: LiassTableState = 'default';
+  protected readonly chartLoading = false;
 
   protected readonly activityRows: readonly LiassTableRow[] = [
     {
@@ -149,7 +154,11 @@ export class DashboardPage {
       labelKey: 'DASHBOARD.AI_SUGGESTIONS.ITEMS.RISK.LABEL',
       tone: 'warning'
     }
-  ] as const;
+  ] satisfies readonly {
+    descriptionKey: string;
+    labelKey: string;
+    tone: LiassStatusTone;
+  }[];
 
   protected selectSection(section: AppSection): void {
     this.uiStore.selectSection(section);

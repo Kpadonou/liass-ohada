@@ -1,35 +1,70 @@
-<div class="max-w-full overflow-x-auto">
-  <table class="w-full min-w-[680px] border-collapse text-left">
-    <thead class="border-y border-slate-100 dark:border-slate-800">
-      <tr>
-        @for (column of columns(); track column.key) {
-          <th [class]="headerClass(column)">{{ column.labelKey | transloco }}</th>
+@if (state() === 'loading') {
+  <div class="space-y-3">
+    @for (_ of skeletonRowItems(); track $index) {
+      <div class="grid gap-3 rounded-app-card border border-slate-100 p-4 dark:border-slate-800 sm:grid-cols-4">
+        @for (_cell of skeletonCells; track $index) {
+          <liass-skeleton variant="text" />
         }
-      </tr>
-    </thead>
-
-    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-      @for (row of rows(); track row.id) {
+      </div>
+    }
+  </div>
+} @else if (state() === 'empty' || rows().length === 0) {
+  <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+    <p class="text-sm text-app-muted dark:text-slate-400">{{ emptyLabel() | transloco }}</p>
+  </div>
+} @else {
+  <div class="hidden max-w-full overflow-x-auto md:block">
+    <table class="w-full min-w-[680px] border-collapse text-left">
+      <thead class="border-y border-slate-100 dark:border-slate-800">
         <tr>
           @for (column of columns(); track column.key) {
-            <td [class]="cellClass(row, column)">
-              @if (cell(row, column); as tableCell) {
-                @if (tableCell.tone) {
-                  <liass-status-chip [label]="tableCell.valueKey | transloco" [tone]="tableCell.tone" />
-                } @else {
-                  <span>{{ tableCell.valueKey | transloco }}</span>
-                }
-              }
-            </td>
+            <th [class]="headerClass(column)">{{ column.labelKey | transloco }}</th>
           }
         </tr>
-      } @empty {
-        <tr>
-          <td class="py-8 text-center text-sm text-slate-500 dark:text-slate-400" [attr.colspan]="columns().length">
-            {{ emptyLabel() | transloco }}
-          </td>
-        </tr>
-      }
-    </tbody>
-  </table>
-</div>
+      </thead>
+
+      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+        @for (row of visibleRows(); track row.id) {
+          <tr>
+            @for (column of columns(); track column.key) {
+              <td [class]="cellClass(row, column)">
+                @if (cell(row, column); as tableCell) {
+                  @if (tableCell.tone) {
+                    <liass-status-chip [label]="tableCell.valueKey | transloco" [tone]="tableCell.tone" size="sm" />
+                  } @else {
+                    <span>{{ tableCell.valueKey | transloco }}</span>
+                  }
+                }
+              </td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="grid gap-3 md:hidden">
+    @for (row of visibleRows(); track row.id) {
+      <article class="rounded-app-card border border-slate-100 p-4 dark:border-slate-800">
+        @for (column of columns(); track column.key) {
+          @if (cell(row, column); as tableCell) {
+            <div class="flex items-start justify-between gap-4 py-2 first:pt-0 last:pb-0">
+              <span class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ column.labelKey | transloco }}
+              </span>
+              <span class="max-w-[60%] text-right text-sm text-slate-700 dark:text-slate-300">
+                @if (tableCell.tone) {
+                  <liass-status-chip [label]="tableCell.valueKey | transloco" [tone]="tableCell.tone" size="sm" />
+                } @else {
+                  <span [class]="tableCell.emphasis ? 'font-semibold text-slate-950 dark:text-white' : ''">
+                    {{ tableCell.valueKey | transloco }}
+                  </span>
+                }
+              </span>
+            </div>
+          }
+        }
+      </article>
+    }
+  </div>
+}

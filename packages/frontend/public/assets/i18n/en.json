@@ -29,6 +29,7 @@
       "TREASURY": "Treasury"
     },
     "TOPBAR": {
+      "COMMAND_PLACEHOLDER": "Search workspace or ask AI...",
       "CLOSE_NAVIGATION": "Close navigation",
       "DARK_MODE": "Switch to dark mode",
       "LIGHT_MODE": "Switch to light mode",
@@ -73,6 +74,7 @@
       "TITLE": "Recent activity"
     },
     "AI_SUGGESTIONS": {
+      "BADGE": "AI",
       "DESCRIPTION": "Mocked assistant prompts for accounting review and close support.",
       "ITEMS": {
         "CLOSING": {

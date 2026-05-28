@@ -29,6 +29,7 @@
       "TREASURY": "Trésorerie"
     },
     "TOPBAR": {
+      "COMMAND_PLACEHOLDER": "Rechercher ou interroger l’IA...",
       "CLOSE_NAVIGATION": "Fermer la navigation",
       "DARK_MODE": "Activer le mode sombre",
       "LIGHT_MODE": "Activer le mode clair",
@@ -73,6 +74,7 @@
       "TITLE": "Activité récente"
     },
     "AI_SUGGESTIONS": {
+      "BADGE": "IA",
       "DESCRIPTION": "Suggestions simulées pour la revue comptable et l’assistance à la clôture.",
       "ITEMS": {
         "CLOSING": {

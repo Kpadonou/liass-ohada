@@ -6,6 +6,9 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { LanguageSelectorComponent } from '../../../core/i18n/language-selector/language-selector.component';
 import { UiStore, type AppSection } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
+import { LiassButtonComponent } from '../../ui/button/button.component';
+import { LiassCommandInputComponent } from '../../ui/command-input/command-input.component';
+import { LiassDropdownComponent } from '../../ui/dropdown/dropdown.component';
 
 const sectionTitleKeys: Record<AppSection, string> = {
   ledger: 'SHELL.SECTIONS.LEDGER',
@@ -16,7 +19,14 @@ const sectionTitleKeys: Record<AppSection, string> = {
 
 @Component({
   selector: 'liass-app-topbar',
-  imports: [LanguageSelectorComponent, MatIconModule, TranslocoModule],
+  imports: [
+    LanguageSelectorComponent,
+    LiassButtonComponent,
+    LiassCommandInputComponent,
+    LiassDropdownComponent,
+    MatIconModule,
+    TranslocoModule
+  ],
   templateUrl: './app-topbar.component.html'
 })
 export class AppTopbarComponent {
@@ -25,6 +35,7 @@ export class AppTopbarComponent {
   protected readonly sectionTitleKey = computed(() => sectionTitleKeys[this.uiStore.selectedSection()]);
   private readonly router = inject(Router);
 
+  protected commandValue = '';
   protected userMenuOpen = false;
 
   protected readonly userLabel = computed(() => {
@@ -40,5 +51,9 @@ export class AppTopbarComponent {
 
   protected toggleUserMenu(): void {
     this.userMenuOpen = !this.userMenuOpen;
+  }
+
+  protected updateCommandValue(value: string): void {
+    this.commandValue = value;
   }
 }

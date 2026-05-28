@@ -1,8 +1,10 @@
 import { Component, computed, input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
+import { LiassSkeletonComponent } from '../skeleton/skeleton.component';
 import { LiassStatusChipComponent, type LiassStatusTone } from '../status-chip/status-chip.component';
 
+export type LiassStatState = 'default' | 'loading';
 export type LiassStatTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info' | 'accent';
 
 const iconToneClasses: Record<LiassStatTone, string> = {
@@ -16,19 +18,20 @@ const iconToneClasses: Record<LiassStatTone, string> = {
 
 @Component({
   selector: 'liass-stat-card',
-  imports: [LiassStatusChipComponent, MatIconModule],
+  imports: [LiassSkeletonComponent, LiassStatusChipComponent, MatIconModule],
   templateUrl: './stat-card.component.html'
 })
 export class LiassStatCardComponent {
   readonly icon = input.required<string>();
   readonly label = input.required<string>();
   readonly meta = input.required<string>();
+  readonly state = input<LiassStatState>('default');
   readonly tone = input<LiassStatTone>('neutral');
   readonly trendLabel = input<string | null>(null);
   readonly trendTone = input<LiassStatusTone>('neutral');
   readonly value = input.required<string>();
 
   protected readonly iconClass = computed(
-    () => `grid size-11 shrink-0 place-items-center rounded-lg ${iconToneClasses[this.tone()]}`
+    () => `grid size-11 shrink-0 place-items-center rounded-app-control ${iconToneClasses[this.tone()]}`
   );
 }

@@ -48,7 +48,7 @@ export class AppSidebarComponent {
 
   protected sidebarClass(): string {
     const mobileState = this.uiStore.sidebarOpen() ? 'translate-x-0' : '-translate-x-full';
-    return `fixed left-0 top-0 z-50 flex h-dvh w-[280px] flex-col border-r border-slate-200 bg-white px-4 text-slate-950 shadow-xl shadow-slate-900/10 transition-transform duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900 dark:text-white lg:translate-x-0 lg:shadow-none ${mobileState}`;
+    return `fixed left-0 top-0 z-50 flex h-dvh w-[var(--spacing-shell-sidebar)] flex-col border-r border-slate-200 bg-white px-4 text-slate-950 shadow-app-popover transition-transform duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900 dark:text-white lg:translate-x-0 lg:shadow-none ${mobileState}`;
   }
 
   protected selectSection(section: AppSection): void {

@@ -1,0 +1,5 @@
+<span class="block space-y-2" aria-hidden="true">
+  @for (_ of skeletonLines(); track $index) {
+    <span [class]="classForLine($index)"></span>
+  }
+</span>

@@ -1,16 +1,32 @@
 <section
-  class="rounded-lg border border-slate-200 bg-white shadow-sm shadow-slate-900/[0.03] dark:border-slate-800 dark:bg-slate-900/80"
+  class="rounded-app-card border border-app-border bg-app-surface shadow-app-card dark:border-app-border-dark dark:bg-app-surface-dark/85"
 >
   <div class="flex flex-col gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800 sm:flex-row sm:items-start sm:justify-between">
     <div class="min-w-0">
-      <h2 class="text-base font-semibold text-slate-950 dark:text-white">{{ title() }}</h2>
+      <h2 class="text-app-card-title font-semibold text-app-text dark:text-white">{{ title() }}</h2>
       @if (description()) {
-        <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ description() }}</p>
+        <p class="mt-1 text-app-body text-app-muted dark:text-slate-400">{{ description() }}</p>
       }
     </div>
     <ng-content select="[liassSectionActions]" />
   </div>
-  <div class="p-5">
-    <ng-content />
+  <div [class]="bodyClass()">
+    @if (state() === 'loading') {
+      <div class="space-y-4">
+        <liass-skeleton variant="text" [lines]="2" />
+        <liass-skeleton variant="block" />
+      </div>
+    } @else if (state() === 'empty') {
+      <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-center dark:border-slate-800">
+        @if (emptyTitle()) {
+          <p class="text-sm font-semibold text-app-text dark:text-white">{{ emptyTitle() }}</p>
+        }
+        @if (emptyDescription()) {
+          <p class="mt-1 text-sm leading-6 text-app-muted dark:text-slate-400">{{ emptyDescription() }}</p>
+        }
+      </div>
+    } @else {
+      <ng-content />
+    }
   </div>
 </section>

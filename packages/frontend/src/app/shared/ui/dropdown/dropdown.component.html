@@ -1,0 +1,9 @@
+<div class="relative inline-block">
+  <ng-content select="[liassDropdownTrigger]" />
+
+  @if (open()) {
+    <div [class]="panelClass()" role="menu">
+      <ng-content />
+    </div>
+  }
+</div>
