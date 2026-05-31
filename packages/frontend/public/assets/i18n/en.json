@@ -176,21 +176,49 @@
     }
   },
   "IDENTITY": {
+    "AUTH_LAYOUT": {
+      "BACK_TO_DASHBOARD": "Back to dashboard",
+      "TAGLINE": "Your OHADA accounting ERP",
+      "DESCRIPTION": "Built for SYSCOHADA revised and SYCEBNL workflows. Accounting, treasury, reporting and AI assistance in one workspace.",
+      "PILLARS": {
+        "ACCOUNTING": "Accounting",
+        "TREASURY": "Treasury",
+        "AI": "AI assistance"
+      }
+    },
+    "AUTH_SOCIAL": {
+      "GOOGLE": "Continue with Google",
+      "LINKEDIN": "Continue with LinkedIn",
+      "LINKEDIN_UNAVAILABLE": "Continue with LinkedIn is not configured yet",
+      "DIVIDER": "Or"
+    },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
       "TITLE": "Welcome back",
       "SUBTITLE": "Sign in to continue managing your OHADA workspace.",
-      "DIVIDER": "-- OR --",
+      "NEW_PASSWORD_TITLE": "Create a new password",
+      "NEW_PASSWORD_SUBTITLE": "Finish securing your account before opening your workspace.",
+      "DIVIDER": "Or",
       "NEW_PASSWORD_NOTICE": "Your temporary password was accepted. Create a new password to finish signing in.",
+      "REMEMBER_ME": "Keep me logged in",
+      "FORGOT_PASSWORD": "Forgot password?",
+      "NO_ACCOUNT": "Don't have an account?",
       "FIELDS": {
         "EMAIL": "Email",
         "PASSWORD": "Password",
         "NEW_PASSWORD": "New password",
         "CONFIRM_NEW_PASSWORD": "Confirm new password"
       },
+      "PLACEHOLDERS": {
+        "EMAIL": "info@company.com",
+        "PASSWORD": "Enter your password",
+        "NEW_PASSWORD": "Enter a new password",
+        "CONFIRM_NEW_PASSWORD": "Confirm your new password"
+      },
       "ACTIONS": {
         "GOOGLE_SIGN_IN": "Sign in with Google",
         "SIGN_IN": "Sign in",
+        "SIGN_UP": "Sign up",
         "SET_NEW_PASSWORD": "Set new password",
         "SHOW_PASSWORD": "Show password",
         "HIDE_PASSWORD": "Hide password",
@@ -206,6 +234,29 @@
         "NEW_PASSWORD_MIN_LENGTH": "Use at least 12 characters.",
         "CONFIRM_NEW_PASSWORD": "Confirm your new password.",
         "PASSWORDS_DO_NOT_MATCH": "Passwords do not match."
+      }
+    },
+    "SIGNUP": {
+      "TITLE": "Create your account",
+      "SUBTITLE": "Self-registration is not enabled yet. This page previews the future onboarding experience.",
+      "DISABLED_NOTICE": "Account creation is currently managed by your organization administrator.",
+      "HAVE_ACCOUNT": "Already have an account?",
+      "TERMS": "By creating an account, you agree to the platform terms and privacy policy.",
+      "FIELDS": {
+        "FIRST_NAME": "First name",
+        "LAST_NAME": "Last name",
+        "EMAIL": "Email",
+        "PASSWORD": "Password"
+      },
+      "PLACEHOLDERS": {
+        "FIRST_NAME": "Enter your first name",
+        "LAST_NAME": "Enter your last name",
+        "EMAIL": "Enter your email",
+        "PASSWORD": "Create a password"
+      },
+      "ACTIONS": {
+        "SIGN_UP": "Sign up",
+        "SIGN_IN": "Sign in"
       }
     },
     "WORKSPACE": {

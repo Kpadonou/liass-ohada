@@ -1,24 +1,19 @@
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { AuthStore } from '../../data-access/auth.store';
+import { AuthLayoutComponent } from '../../ui/auth-layout/auth-layout.component';
 
 @Component({
   selector: 'liass-login-page',
   imports: [
-    MatButtonModule,
-    MatFormFieldModule,
+    AuthLayoutComponent,
     MatIconModule,
-    MatInputModule,
-    MatProgressSpinnerModule,
     ReactiveFormsModule,
+    RouterModule,
     TranslocoModule
   ],
   templateUrl: './login.page.html'
@@ -31,6 +26,8 @@ export class LoginPage {
   protected hidePassword = true;
   protected hideNewPassword = true;
   protected hideConfirmPassword = true;
+  // LinkedIn is shown only to preserve the TailAdmin-style social row; no provider is wired in this pass.
+  protected readonly linkedInSocialUnavailable = true;
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],

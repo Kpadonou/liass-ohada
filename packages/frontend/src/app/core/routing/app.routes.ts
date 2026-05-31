@@ -2,12 +2,18 @@ import { Routes } from '@angular/router';
 
 import { LoginPage } from '../../domains/identity/feature/login/login.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
+import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
 import { authGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
 
 export const routes: Routes = [
   {
     path: 'login',
     component: LoginPage,
+    canActivate: [loginRedirectGuard]
+  },
+  {
+    path: 'signup',
+    component: SignupPage,
     canActivate: [loginRedirectGuard]
   },
   {
