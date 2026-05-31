@@ -19,7 +19,7 @@
   @if (!authStore.requiresNewPassword()) {
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
       <button
-        class="liass-focus-ring inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-700 transition hover:bg-slate-200 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-65 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
+        class="liass-auth-social-button liass-focus-ring inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-700 transition hover:bg-slate-200 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-65 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
         type="button"
         [disabled]="authStore.loading()"
         (click)="loginWithGoogle()"
@@ -49,7 +49,7 @@
         <span>{{ 'IDENTITY.AUTH_SOCIAL.GOOGLE' | transloco }}</span>
       </button>
       <button
-        class="inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-500 transition dark:bg-white/5 dark:text-white/50"
+        class="liass-auth-social-button inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-500 transition dark:bg-white/5 dark:text-white/50"
         type="button"
         [disabled]="linkedInSocialUnavailable"
         [attr.aria-label]="'IDENTITY.AUTH_SOCIAL.LINKEDIN_UNAVAILABLE' | transloco"
@@ -84,7 +84,7 @@
         </label>
         <input
           id="login-email"
-          class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+          class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
           type="email"
           autocomplete="email"
           formControlName="email"
@@ -107,7 +107,7 @@
         <div class="relative">
           <input
             id="login-password"
-            class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+            class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
             [type]="hidePassword ? 'password' : 'text'"
             autocomplete="current-password"
             formControlName="password"
@@ -159,7 +159,7 @@
         <div class="relative">
           <input
             id="login-new-password"
-            class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+            class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
             [type]="hideNewPassword ? 'password' : 'text'"
             autocomplete="new-password"
             formControlName="newPassword"
@@ -197,7 +197,7 @@
         <div class="relative">
           <input
             id="login-confirm-password"
-            class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+            class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
             [type]="hideConfirmPassword ? 'password' : 'text'"
             autocomplete="new-password"
             formControlName="confirmNewPassword"
@@ -236,7 +236,7 @@
     }
 
     <button
-      class="liass-focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white shadow-app-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+      class="liass-auth-primary-button liass-focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white shadow-app-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
       type="submit"
       [disabled]="!canSubmit()"
     >
@@ -258,7 +258,7 @@
   @if (!authStore.requiresNewPassword()) {
     <p class="mt-5 text-center text-sm font-normal text-slate-700 dark:text-slate-400 sm:text-left">
       {{ 'IDENTITY.LOGIN.NO_ACCOUNT' | transloco }}
-      <a routerLink="/signup" class="liass-focus-ring rounded-app-sm text-brand-700 hover:text-brand-600 dark:text-brand-300">
+      <a routerLink="/signup" class="liass-auth-link liass-focus-ring rounded-app-sm text-brand-700 hover:text-brand-600 dark:text-brand-300">
         {{ 'IDENTITY.LOGIN.ACTIONS.SIGN_UP' | transloco }}
       </a>
     </p>

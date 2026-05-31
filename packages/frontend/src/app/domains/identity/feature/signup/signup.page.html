@@ -10,7 +10,7 @@
 
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
     <button
-      class="inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-500 transition dark:bg-white/5 dark:text-white/50"
+      class="liass-auth-social-button inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-500 transition dark:bg-white/5 dark:text-white/50"
       type="button"
       disabled
       aria-describedby="signup-disabled-note"
@@ -36,7 +36,7 @@
       <span>{{ 'IDENTITY.AUTH_SOCIAL.GOOGLE' | transloco }}</span>
     </button>
     <button
-      class="inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-500 transition dark:bg-white/5 dark:text-white/50"
+      class="liass-auth-social-button inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-500 transition dark:bg-white/5 dark:text-white/50"
       type="button"
       disabled
       aria-describedby="signup-disabled-note"
@@ -66,7 +66,7 @@
         </label>
         <input
           id="signup-first-name"
-          class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+          class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
           type="text"
           autocomplete="given-name"
           [placeholder]="'IDENTITY.SIGNUP.PLACEHOLDERS.FIRST_NAME' | transloco"
@@ -79,7 +79,7 @@
         </label>
         <input
           id="signup-last-name"
-          class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+          class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
           type="text"
           autocomplete="family-name"
           [placeholder]="'IDENTITY.SIGNUP.PLACEHOLDERS.LAST_NAME' | transloco"
@@ -94,7 +94,7 @@
       </label>
       <input
         id="signup-email"
-        class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+        class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
         type="email"
         autocomplete="email"
         [placeholder]="'IDENTITY.SIGNUP.PLACEHOLDERS.EMAIL' | transloco"
@@ -108,7 +108,7 @@
       </label>
       <input
         id="signup-password"
-        class="liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+        class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
         type="password"
         autocomplete="new-password"
         [placeholder]="'IDENTITY.SIGNUP.PLACEHOLDERS.PASSWORD' | transloco"
@@ -134,7 +134,7 @@
     </p>
 
     <button
-      class="flex h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-medium text-white opacity-60 shadow-app-xs"
+      class="liass-auth-primary-button flex h-11 w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-medium text-white opacity-60 shadow-app-xs"
       type="submit"
       disabled
     >
@@ -144,7 +144,7 @@
 
   <p class="mt-5 text-center text-sm font-normal text-slate-700 dark:text-slate-400 sm:text-left">
     {{ 'IDENTITY.SIGNUP.HAVE_ACCOUNT' | transloco }}
-    <a routerLink="/login" class="liass-focus-ring rounded-app-sm text-brand-700 hover:text-brand-600 dark:text-brand-300">
+    <a routerLink="/login" class="liass-auth-link liass-focus-ring rounded-app-sm text-brand-700 hover:text-brand-600 dark:text-brand-300">
       {{ 'IDENTITY.SIGNUP.ACTIONS.SIGN_IN' | transloco }}
     </a>
   </p>

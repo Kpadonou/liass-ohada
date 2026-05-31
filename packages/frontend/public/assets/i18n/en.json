@@ -190,15 +190,15 @@
       }
     },
     "AUTH_SOCIAL": {
-      "GOOGLE": "Google",
-      "LINKEDIN": "LinkedIn",
+      "GOOGLE": "Continue with Google",
+      "LINKEDIN": "Continue with LinkedIn",
       "LINKEDIN_UNAVAILABLE": "Continue with LinkedIn is not configured yet",
       "DIVIDER": "Or"
     },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
       "TITLE": "Welcome back",
-      "SUBTITLE": "Sign in with:",
+      "SUBTITLE": "Sign in to continue managing your OHADA workspace.",
       "NEW_PASSWORD_TITLE": "Create a new password",
       "NEW_PASSWORD_SUBTITLE": "Finish securing your account before opening your workspace.",
       "DIVIDER": "Or",

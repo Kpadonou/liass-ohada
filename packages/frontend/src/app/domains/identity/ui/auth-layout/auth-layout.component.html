@@ -1,5 +1,5 @@
-<main class="min-h-dvh bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
-  <div class="relative flex min-h-dvh flex-col bg-white dark:bg-slate-950 lg:flex-row">
+<main class="liass-auth-shell min-h-dvh text-slate-950 dark:text-white">
+  <div class="relative flex min-h-dvh flex-col lg:flex-row">
     <section class="flex min-h-dvh w-full flex-1 flex-col px-5 py-6 sm:px-8 lg:w-1/2 lg:px-10">
       <a
         routerLink="/"
@@ -10,15 +10,19 @@
       </a>
 
       <div class="flex flex-1 items-center justify-center py-8 sm:py-12">
-        <div class="w-full max-w-md">
+        <div class="liass-auth-form-panel w-full max-w-md">
           <ng-content />
         </div>
       </div>
     </section>
 
-    <aside class="hidden min-h-dvh w-full overflow-hidden bg-[var(--liass-auth-blue)] text-white lg:sticky lg:top-0 lg:grid lg:h-dvh lg:w-1/2 lg:self-start lg:place-items-center">
-      <div class="flex min-h-dvh w-full items-center justify-center px-12 py-16">
-        <div class="flex max-w-[36rem] -translate-y-[50px] flex-col items-center text-center">
+    <aside class="liass-auth-marketing-panel relative isolate hidden min-h-dvh w-full overflow-hidden text-white lg:sticky lg:top-0 lg:grid lg:h-dvh lg:w-1/2 lg:self-start lg:place-items-center">
+      <div class="liass-auth-panel-ambient pointer-events-none absolute inset-0" aria-hidden="true"></div>
+      <span class="liass-auth-orbit liass-auth-orbit-one pointer-events-none absolute" aria-hidden="true"></span>
+      <span class="liass-auth-orbit liass-auth-orbit-two pointer-events-none absolute" aria-hidden="true"></span>
+      <span class="liass-auth-sweep pointer-events-none absolute" aria-hidden="true"></span>
+      <div class="relative z-10 flex min-h-dvh w-full items-center justify-center px-12 py-16">
+        <div class="liass-auth-panel-content flex max-w-[36rem] -translate-y-[50px] flex-col items-center text-center">
           <img
             class="h-auto w-[24rem] max-w-full object-contain xl:w-[26rem]"
             src="/assets/brand/logos/liass-horizontal-light-on-blue.png"
