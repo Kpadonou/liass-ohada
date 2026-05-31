@@ -14,6 +14,7 @@
       "TEXT": "Les suggestions comptables resteront limitées à l’organisation active et aux règles OHADA."
     },
     "BRAND_TAGLINE": "Poste ERP",
+    "LOGO_ALT": "logo liass-ohada",
     "NAV": {
       "LEDGER": "Grand livre",
       "PROJECTS": "Projets et fonds",
@@ -178,6 +179,8 @@
   "IDENTITY": {
     "AUTH_LAYOUT": {
       "BACK_TO_DASHBOARD": "Retour au tableau de bord",
+      "LOGO_ALT": "logo liass-ohada",
+      "APPROVED_MESSAGE": "L’ERP de référence pour les entreprises et organisations de l’espace OHADA. 100% aligné aux normes SYSCOHADA révisé & SYCEBNL.",
       "TAGLINE": "Votre ERP comptable OHADA",
       "DESCRIPTION": "Conçu pour les workflows SYSCOHADA révisé et SYCEBNL. Comptabilité, trésorerie, reporting et assistance IA dans un seul espace.",
       "PILLARS": {
@@ -187,15 +190,15 @@
       }
     },
     "AUTH_SOCIAL": {
-      "GOOGLE": "Continuer avec Google",
-      "LINKEDIN": "Continuer avec LinkedIn",
+      "GOOGLE": "Google",
+      "LINKEDIN": "LinkedIn",
       "LINKEDIN_UNAVAILABLE": "Continuer avec LinkedIn n’est pas encore configuré",
       "DIVIDER": "Ou"
     },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
-      "TITLE": "Bon retour",
-      "SUBTITLE": "Connectez-vous pour continuer à gérer votre espace de travail OHADA.",
+      "TITLE": "Se connecter",
+      "SUBTITLE": "Connectez-vous avec :",
       "NEW_PASSWORD_TITLE": "Créez un nouveau mot de passe",
       "NEW_PASSWORD_SUBTITLE": "Finalisez la sécurisation de votre compte avant d’ouvrir votre espace.",
       "DIVIDER": "Ou",

@@ -1,0 +1,36 @@
+<span [class]="containerClass()">
+  @if (hasImageError()) {
+    <span class="truncate text-sm font-semibold text-brand-700 dark:text-brand-300">
+      {{ fallbackText() }}
+    </span>
+  } @else if (theme() === 'auto') {
+    <img
+      class="block h-full w-full object-contain dark:hidden"
+      [src]="darkSource()"
+      [alt]="alt()"
+      [width]="darkDimensions().width"
+      [height]="darkDimensions().height"
+      decoding="async"
+      (error)="handleImageError()"
+    />
+    <img
+      class="hidden h-full w-full object-contain dark:block"
+      [src]="lightSource()"
+      [alt]="alt()"
+      [width]="lightDimensions().width"
+      [height]="lightDimensions().height"
+      decoding="async"
+      (error)="handleImageError()"
+    />
+  } @else {
+    <img
+      class="block h-full w-full object-contain"
+      [src]="singleSource()"
+      [alt]="alt()"
+      [width]="singleDimensions().width"
+      [height]="singleDimensions().height"
+      decoding="async"
+      (error)="handleImageError()"
+    />
+  }
+</span>

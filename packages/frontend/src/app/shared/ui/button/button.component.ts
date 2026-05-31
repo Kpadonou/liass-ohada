@@ -42,7 +42,7 @@ const toneClasses: Record<LiassButtonVariant, Record<LiassButtonTone, string>> =
     warning: 'bg-warning-50 text-warning-600 hover:bg-amber-100 dark:bg-amber-950/35 dark:text-amber-300 dark:hover:bg-amber-950/55'
   },
   solid: {
-    brand: 'bg-brand-700 text-white shadow-app-xs shadow-emerald-900/10 hover:bg-brand-600',
+    brand: 'bg-brand-700 text-white shadow-app-xs shadow-brand-900/10 hover:bg-brand-600',
     danger: 'bg-danger-600 text-white shadow-app-xs hover:bg-rose-700',
     info: 'bg-info-600 text-white shadow-app-xs hover:bg-sky-700',
     neutral: 'bg-slate-900 text-white shadow-app-xs hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-950 dark:hover:bg-white',

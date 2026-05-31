@@ -1,8 +1,5 @@
 <liass-auth-layout>
   <div class="mb-5 sm:mb-8">
-    <p class="mb-3 text-xs font-semibold uppercase text-brand-700 dark:text-brand-300">
-      {{ 'COMMON.APP.BRAND' | transloco }}
-    </p>
     <h1 class="text-3xl font-semibold leading-tight text-slate-800 dark:text-white/90 sm:text-4xl">
       {{
         authStore.requiresNewPassword()
@@ -73,7 +70,7 @@
       </div>
     </div>
   } @else {
-    <div class="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-100">
+    <div class="mb-6 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm leading-6 text-brand-900 dark:border-brand-900/60 dark:bg-brand-900/20 dark:text-brand-100">
       {{ 'IDENTITY.LOGIN.NEW_PASSWORD_NOTICE' | transloco }}
     </div>
   }

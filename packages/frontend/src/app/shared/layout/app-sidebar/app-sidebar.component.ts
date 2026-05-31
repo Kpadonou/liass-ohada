@@ -1,9 +1,9 @@
 import { Component, inject } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
 import { RouterLink } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { UiStore, type AppSection } from '../../../core/state/ui.store';
+import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 import { LiassSidebarNavItemComponent } from '../../ui/sidebar-nav-item/sidebar-nav-item.component';
 
 interface ShellNavItem {
@@ -39,7 +39,7 @@ const navItems: readonly ShellNavItem[] = [
 
 @Component({
   selector: 'liass-app-sidebar',
-  imports: [LiassSidebarNavItemComponent, MatIconModule, RouterLink, TranslocoModule],
+  imports: [LiassLogoComponent, LiassSidebarNavItemComponent, RouterLink, TranslocoModule],
   templateUrl: './app-sidebar.component.html'
 })
 export class AppSidebarComponent {

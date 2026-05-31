@@ -14,6 +14,7 @@
       "TEXT": "Contextual accounting prompts will stay scoped to the active organization and OHADA rules."
     },
     "BRAND_TAGLINE": "ERP cockpit",
+    "LOGO_ALT": "liass-ohada logo",
     "NAV": {
       "LEDGER": "General ledger",
       "PROJECTS": "Projects and funds",
@@ -178,6 +179,8 @@
   "IDENTITY": {
     "AUTH_LAYOUT": {
       "BACK_TO_DASHBOARD": "Back to dashboard",
+      "LOGO_ALT": "liass-ohada logo",
+      "APPROVED_MESSAGE": "L’ERP de référence pour les entreprises et organisations de l’espace OHADA. 100% aligné aux normes SYSCOHADA révisé & SYCEBNL.",
       "TAGLINE": "Your OHADA accounting ERP",
       "DESCRIPTION": "Built for SYSCOHADA revised and SYCEBNL workflows. Accounting, treasury, reporting and AI assistance in one workspace.",
       "PILLARS": {
@@ -187,15 +190,15 @@
       }
     },
     "AUTH_SOCIAL": {
-      "GOOGLE": "Continue with Google",
-      "LINKEDIN": "Continue with LinkedIn",
+      "GOOGLE": "Google",
+      "LINKEDIN": "LinkedIn",
       "LINKEDIN_UNAVAILABLE": "Continue with LinkedIn is not configured yet",
       "DIVIDER": "Or"
     },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
       "TITLE": "Welcome back",
-      "SUBTITLE": "Sign in to continue managing your OHADA workspace.",
+      "SUBTITLE": "Sign in with:",
       "NEW_PASSWORD_TITLE": "Create a new password",
       "NEW_PASSWORD_SUBTITLE": "Finish securing your account before opening your workspace.",
       "DIVIDER": "Or",
