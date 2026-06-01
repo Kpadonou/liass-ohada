@@ -126,7 +126,7 @@ export const KeyFactory = {
 
   /** SK for a Funding Source (linked to a project) */
   fundingSourceSK: (projectId: string, donorId: string) =>
-    `PRJ#${projectId.toLocaleUpperCase()}#FS#${donorId.toUpperCase()}`,
+    `PRJ#${projectId.toUpperCase()}#FS#${donorId.toUpperCase()}`,
 
   projectYearPrefix: (projectId: string, year: number | string) =>
     `PRJ#${projectId}#FY#${year}`,
