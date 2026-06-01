@@ -6,6 +6,9 @@ dist/
 packages/*/dist/
 packages/*/cdk.out/
 packages/*/coverage/
+.env*
+!.env.example
+!packages/**/.env.example
 
 # CDK asset staging directory
 .cdk.staging

@@ -16,6 +16,16 @@ interface OAuthUrlConfig {
 const LINKEDIN_PROVIDER_NAME = "LinkedIn";
 const OAUTH_SCOPES = ["openid", "email", "profile"];
 
+interface CredentialConfig {
+  parameterId: string;
+  description: string;
+  contextKeys: string[];
+  environmentVariableName: string;
+  secretName: string;
+  secretJsonField: "clientId" | "clientSecret";
+  noEcho?: boolean;
+}
+
 function parseDelimitedConfig(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
     const items = value
@@ -35,6 +45,26 @@ function parseDelimitedConfig(value: unknown): string[] | undefined {
   return undefined;
 }
 
+function parseBooleanConfig(value: unknown): boolean | undefined {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+
+    if (["1", "true", "yes", "y"].includes(normalized)) {
+      return true;
+    }
+
+    if (["0", "false", "no", "n"].includes(normalized)) {
+      return false;
+    }
+  }
+
+  return undefined;
+}
+
 function getContextValue(scope: Construct, ...keys: string[]): unknown {
   for (const key of keys) {
     const value = scope.node.tryGetContext(key);
@@ -46,28 +76,71 @@ function getContextValue(scope: Construct, ...keys: string[]): unknown {
   return undefined;
 }
 
-function getConfiguredString(
+function shouldUseSecretsManager(scope: Construct, stage: DeploymentStage): boolean {
+  return (
+    parseBooleanConfig(
+      getContextValue(
+        scope,
+        `auth.${stage}.useSecretsManager`,
+        "authUseSecretsManager",
+        "useSocialLoginSecretsManager",
+      ),
+    ) ??
+    parseBooleanConfig(process.env[`SOCIAL_LOGIN_USE_SECRETS_MANAGER_${stage.toUpperCase()}`]) ??
+    parseBooleanConfig(process.env.SOCIAL_LOGIN_USE_SECRETS_MANAGER) ??
+    stage !== "dev"
+  );
+}
+
+function getSecretName(
   scope: Construct,
-  parameterId: string,
-  description: string,
-  contextKeys: string[],
-  environmentVariableName: string,
-  options?: { noEcho?: boolean },
+  stage: DeploymentStage,
+  provider: "google" | "linkedin",
 ): string {
-  const contextValue = getContextValue(scope, ...contextKeys);
+  const pascalProvider = provider === "google" ? "Google" : "LinkedIn";
+  const upperProvider = provider === "google" ? "GOOGLE" : "LINKEDIN";
+  const configuredName = getContextValue(
+    scope,
+    `auth.${stage}.${provider}OAuthSecretName`,
+    `${stage}${pascalProvider}OAuthSecretName`,
+    `${provider}OAuthSecretName`,
+  );
+
+  if (typeof configuredName === "string" && configuredName.trim().length > 0) {
+    return configuredName.trim();
+  }
+
+  const environmentName =
+    process.env[`${upperProvider}_OAUTH_SECRET_NAME_${stage.toUpperCase()}`]?.trim() ??
+    process.env[`${upperProvider}_OAUTH_SECRET_NAME`]?.trim();
+
+  return environmentName || `liass-ohada-${stage}-${provider}-oauth`;
+}
+
+function resolveCredential(scope: Construct, useSecretsManager: boolean, config: CredentialConfig): string {
+  // Resolution order for social login credentials:
+  // 1. explicit CDK context, 2. backend/CDK environment variables,
+  // 3. AWS Secrets Manager dynamic references, 4. NoEcho CloudFormation parameters.
+  const contextValue = getContextValue(scope, ...config.contextKeys);
   if (typeof contextValue === "string" && contextValue.trim().length > 0) {
     return contextValue.trim();
   }
 
-  const environmentValue = process.env[environmentVariableName]?.trim();
+  const environmentValue = process.env[config.environmentVariableName]?.trim();
   if (environmentValue) {
     return environmentValue;
   }
 
-  return new cdk.CfnParameter(scope, parameterId, {
+  if (useSecretsManager) {
+    return cdk.SecretValue.secretsManager(config.secretName, {
+      jsonField: config.secretJsonField,
+    }).unsafeUnwrap();
+  }
+
+  return new cdk.CfnParameter(scope, config.parameterId, {
     type: "String",
-    noEcho: options?.noEcho,
-    description,
+    noEcho: config.noEcho,
+    description: config.description,
   }).valueAsString;
 }
 
@@ -134,36 +207,47 @@ export class LiassOhadaAuth extends Construct {
 
     const resourcePrefix = `liass-ohada-${props.stage}`;
     const oauthUrlConfig = getOAuthUrlConfig(this, props.stage);
-    const googleClientId = getConfiguredString(
-      this,
-      "GoogleClientId",
-      "Google OAuth client ID for Cognito federation. May also be supplied as GOOGLE_CLIENT_ID or googleClientId CDK context.",
-      ["googleClientId", "GOOGLE_CLIENT_ID"],
-      "GOOGLE_CLIENT_ID",
-    );
-    const googleClientSecret = getConfiguredString(
-      this,
-      "GoogleClientSecret",
-      "Google OAuth client secret for Cognito federation. May also be supplied as GOOGLE_CLIENT_SECRET or googleClientSecret CDK context.",
-      ["googleClientSecret", "GOOGLE_CLIENT_SECRET"],
-      "GOOGLE_CLIENT_SECRET",
-      { noEcho: true },
-    );
-    const linkedInClientId = getConfiguredString(
-      this,
-      "LinkedInClientId",
-      "LinkedIn OAuth client ID for Cognito OIDC federation. May also be supplied as LINKEDIN_CLIENT_ID or linkedInClientId CDK context.",
-      ["linkedInClientId", "LINKEDIN_CLIENT_ID"],
-      "LINKEDIN_CLIENT_ID",
-    );
-    const linkedInClientSecret = getConfiguredString(
-      this,
-      "LinkedInClientSecret",
-      "LinkedIn OAuth client secret for Cognito OIDC federation. May also be supplied as LINKEDIN_CLIENT_SECRET or linkedInClientSecret CDK context.",
-      ["linkedInClientSecret", "LINKEDIN_CLIENT_SECRET"],
-      "LINKEDIN_CLIENT_SECRET",
-      { noEcho: true },
-    );
+    const useSecretsManager = shouldUseSecretsManager(this, props.stage);
+    const googleSecretName = getSecretName(this, props.stage, "google");
+    const linkedInSecretName = getSecretName(this, props.stage, "linkedin");
+    const googleClientId = resolveCredential(this, useSecretsManager, {
+      parameterId: "GoogleClientId",
+      description:
+        "Google OAuth client ID for Cognito federation. May also be supplied as GOOGLE_CLIENT_ID, googleClientId CDK context, or the clientId field in the stage Google OAuth Secrets Manager secret.",
+      contextKeys: ["googleClientId", "GOOGLE_CLIENT_ID"],
+      environmentVariableName: "GOOGLE_CLIENT_ID",
+      secretName: googleSecretName,
+      secretJsonField: "clientId",
+    });
+    const googleClientSecret = resolveCredential(this, useSecretsManager, {
+      parameterId: "GoogleClientSecret",
+      description:
+        "Google OAuth client secret for Cognito federation. May also be supplied as GOOGLE_CLIENT_SECRET, googleClientSecret CDK context, or the clientSecret field in the stage Google OAuth Secrets Manager secret.",
+      contextKeys: ["googleClientSecret", "GOOGLE_CLIENT_SECRET"],
+      environmentVariableName: "GOOGLE_CLIENT_SECRET",
+      secretName: googleSecretName,
+      secretJsonField: "clientSecret",
+      noEcho: true,
+    });
+    const linkedInClientId = resolveCredential(this, useSecretsManager, {
+      parameterId: "LinkedInClientId",
+      description:
+        "LinkedIn OAuth client ID for Cognito OIDC federation. May also be supplied as LINKEDIN_CLIENT_ID, linkedInClientId CDK context, or the clientId field in the stage LinkedIn OAuth Secrets Manager secret.",
+      contextKeys: ["linkedInClientId", "LINKEDIN_CLIENT_ID"],
+      environmentVariableName: "LINKEDIN_CLIENT_ID",
+      secretName: linkedInSecretName,
+      secretJsonField: "clientId",
+    });
+    const linkedInClientSecret = resolveCredential(this, useSecretsManager, {
+      parameterId: "LinkedInClientSecret",
+      description:
+        "LinkedIn OAuth client secret for Cognito OIDC federation. May also be supplied as LINKEDIN_CLIENT_SECRET, linkedInClientSecret CDK context, or the clientSecret field in the stage LinkedIn OAuth Secrets Manager secret.",
+      contextKeys: ["linkedInClientSecret", "LINKEDIN_CLIENT_SECRET"],
+      environmentVariableName: "LINKEDIN_CLIENT_SECRET",
+      secretName: linkedInSecretName,
+      secretJsonField: "clientSecret",
+      noEcho: true,
+    });
 
     this.userPool = new cognito.UserPool(this, "UserPool", {
       userPoolName: `${resourcePrefix}-users`,

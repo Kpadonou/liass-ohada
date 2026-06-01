@@ -37,18 +37,110 @@ The real AWS development account uses the `rem` AWS CLI profile and deploys to a
 
 Do not export `AWS_PROFILE=localstack` globally in your shell. Use explicit profiles or the npm scripts above so real AWS and LocalStack commands cannot accidentally overlap.
 
-### Cognito social login configuration
+### Social Login Credentials
 
 The CDK auth construct provisions a Cognito hosted UI domain and configures Google plus LinkedIn OIDC as federated sign-in providers. No provider secrets are stored in source code or frontend environment files.
 
-Provide provider credentials through CDK context, environment variables, or CloudFormation parameters:
+#### Credential resolution order
 
-- Google client ID: `googleClientId` context or `GOOGLE_CLIENT_ID`
-- Google client secret: `googleClientSecret` context or `GOOGLE_CLIENT_SECRET`
-- LinkedIn client ID: `linkedInClientId` context or `LINKEDIN_CLIENT_ID`
-- LinkedIn client secret: `linkedInClientSecret` context or `LINKEDIN_CLIENT_SECRET`
+The backend CDK app resolves social login credentials in this order:
 
-If a value is not supplied through context or environment, the stack exposes a CloudFormation parameter for it. The secret parameters are marked `NoEcho`.
+1. Explicit CDK context, for one-off overrides.
+2. Backend/CDK environment variables, including values loaded from `packages/backend/.env.local`.
+3. AWS Secrets Manager dynamic references.
+4. CloudFormation parameters, with secret parameters marked `NoEcho`.
+
+`dev` defaults to CloudFormation parameters when no context or environment value is present. `test` and `prod` default to AWS Secrets Manager dynamic references. To enable Secrets Manager for `dev`, set `SOCIAL_LOGIN_USE_SECRETS_MANAGER=true` or pass `-c useSocialLoginSecretsManager=true`.
+
+#### Local development
+
+Copy [`.env.example`](.env.example) to `packages/backend/.env.local` and fill in local provider credentials:
+
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+
+LINKEDIN_CLIENT_ID=...
+LINKEDIN_CLIENT_SECRET=...
+```
+
+The CDK entrypoint loads `packages/backend/.env.local` automatically for backend commands such as:
+
+```bash
+npm run backend:synth
+npm run backend:deploy
+```
+
+`.env.local` and other `.env*` files are ignored by git. Keep real credentials out of commits, shell history, frontend environment files, and issue trackers.
+
+#### CI/CD environment variables
+
+CI/CD systems can provide the same variables directly in the backend CDK execution environment:
+
+```bash
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+LINKEDIN_CLIENT_ID=...
+LINKEDIN_CLIENT_SECRET=...
+npm run backend:synth
+```
+
+CDK context is also supported for explicit non-secret overrides:
+
+```bash
+npm run backend:synth -- -c googleClientId=...
+```
+
+Avoid passing client secrets through command-line context in shared shells because command history and process listings may expose them.
+
+#### AWS Secrets Manager
+
+For production-ready deployments, store provider credentials in AWS Secrets Manager with stage-aware names that follow the project naming convention:
+
+```text
+liass-ohada-dev-google-oauth
+liass-ohada-test-google-oauth
+liass-ohada-prod-google-oauth
+
+liass-ohada-dev-linkedin-oauth
+liass-ohada-test-linkedin-oauth
+liass-ohada-prod-linkedin-oauth
+```
+
+Google secret JSON:
+
+```json
+{
+  "clientId": "...",
+  "clientSecret": "..."
+}
+```
+
+LinkedIn secret JSON:
+
+```json
+{
+  "clientId": "...",
+  "clientSecret": "..."
+}
+```
+
+You can override the default secret names with CDK context or environment variables:
+
+- Google: `googleOAuthSecretName`, `<stage>GoogleOAuthSecretName`, `GOOGLE_OAUTH_SECRET_NAME`, or `GOOGLE_OAUTH_SECRET_NAME_<STAGE>`
+- LinkedIn: `linkedinOAuthSecretName`, `<stage>LinkedInOAuthSecretName`, `LINKEDIN_OAUTH_SECRET_NAME`, or `LINKEDIN_OAUTH_SECRET_NAME_<STAGE>`
+
+Example AWS CLI creation command:
+
+```bash
+aws secretsmanager create-secret \
+  --name liass-ohada-prod-google-oauth \
+  --secret-string '{"clientId":"...","clientSecret":"..."}'
+```
+
+CloudFormation resolves these Secrets Manager dynamic references during deployment. The synthesized template contains references, not plaintext credential values.
+
+#### OAuth URLs
 
 Allowed OAuth redirect URLs are stage-aware. For `dev`, CDK defaults to:
 
