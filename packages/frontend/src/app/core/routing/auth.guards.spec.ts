@@ -11,6 +11,7 @@ vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
+  signInWithRedirect: vi.fn(),
   signOut: vi.fn()
 }));
 

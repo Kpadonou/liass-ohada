@@ -8,7 +8,15 @@ Amplify.configure({
       userPoolId: environment.cognito.userPoolId,
       userPoolClientId: environment.cognito.userPoolClientId,
       loginWith: {
-        email: true
+        email: true,
+        oauth: {
+          domain: environment.cognito.oauth.domain,
+          scopes: [...environment.cognito.oauth.scopes],
+          redirectSignIn: [...environment.cognito.oauth.redirectSignIn],
+          redirectSignOut: [...environment.cognito.oauth.redirectSignOut],
+          responseType: 'code',
+          providers: [...environment.cognito.oauth.providers]
+        }
       }
     }
   }

@@ -2,11 +2,12 @@ import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import type { WorkspaceSummary } from '@liass-ohada/shared';
 import type { AuthUser } from 'aws-amplify/auth';
-import { confirmSignIn, getCurrentUser, signIn, signOut } from 'aws-amplify/auth';
+import { confirmSignIn, getCurrentUser, signIn, signInWithRedirect, signOut } from 'aws-amplify/auth';
 
 import { WorkspacesApi } from './workspaces.api';
 
 const ACTIVE_ORG_STORAGE_KEY = 'liass-ohada.activeOrgId';
+const LINKEDIN_PROVIDER_NAME = 'LinkedIn';
 
 interface AuthState {
   user: AuthUser | null;
@@ -245,12 +246,25 @@ export const AuthStore = signalStore(
     async loginWithGoogle(): Promise<void> {
       patchState(store, { loading: true, error: null });
 
-      await Promise.resolve();
+      try {
+        await signInWithRedirect({ provider: 'Google' });
+      } catch (error) {
+        const message = messageFromError(error);
+        patchState(store, { loading: false, error: message });
+        throw error;
+      }
+    },
 
-      patchState(store, {
-        loading: false,
-        error: 'Google sign-in is not configured yet.'
-      });
+    async loginWithLinkedIn(): Promise<void> {
+      patchState(store, { loading: true, error: null });
+
+      try {
+        await signInWithRedirect({ provider: { custom: LINKEDIN_PROVIDER_NAME } });
+      } catch (error) {
+        const message = messageFromError(error);
+        patchState(store, { loading: false, error: message });
+        throw error;
+      }
     },
 
     setTenant(orgId: string): void {

@@ -26,8 +26,6 @@ export class LoginPage {
   protected hidePassword = true;
   protected hideNewPassword = true;
   protected hideConfirmPassword = true;
-  // LinkedIn is shown only to preserve the TailAdmin-style social row; no provider is wired in this pass.
-  protected readonly linkedInSocialUnavailable = true;
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -42,6 +40,14 @@ export class LoginPage {
     }
 
     await this.authStore.loginWithGoogle();
+  }
+
+  protected async loginWithLinkedIn(): Promise<void> {
+    if (this.authStore.loading()) {
+      return;
+    }
+
+    await this.authStore.loginWithLinkedIn();
   }
 
   protected async submit(): Promise<void> {

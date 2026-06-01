@@ -49,12 +49,16 @@
         <span>{{ 'IDENTITY.AUTH_SOCIAL.GOOGLE' | transloco }}</span>
       </button>
       <button
-        class="liass-auth-social-button inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-500 transition dark:bg-white/5 dark:text-white/50"
+        class="liass-auth-social-button liass-focus-ring inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-700 transition hover:bg-slate-200 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-65 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
         type="button"
-        [disabled]="linkedInSocialUnavailable"
-        [attr.aria-label]="'IDENTITY.AUTH_SOCIAL.LINKEDIN_UNAVAILABLE' | transloco"
+        [disabled]="authStore.loading()"
+        (click)="loginWithLinkedIn()"
       >
-        <span class="grid size-5 place-items-center rounded bg-[#0A66C2] text-xs font-bold text-white" aria-hidden="true">in</span>
+        @if (authStore.loading()) {
+          <span class="size-5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+        } @else {
+          <span class="grid size-5 place-items-center rounded bg-[#0A66C2] text-xs font-bold text-white" aria-hidden="true">in</span>
+        }
         <span>{{ 'IDENTITY.AUTH_SOCIAL.LINKEDIN' | transloco }}</span>
       </button>
     </div>

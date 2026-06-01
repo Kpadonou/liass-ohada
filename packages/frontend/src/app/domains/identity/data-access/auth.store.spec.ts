@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { confirmSignIn, getCurrentUser, signIn, signOut } from 'aws-amplify/auth';
+import { confirmSignIn, getCurrentUser, signIn, signInWithRedirect, signOut } from 'aws-amplify/auth';
 import { vi } from 'vitest';
 
 import { WorkspacesApi } from './workspaces.api';
@@ -9,6 +9,7 @@ vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
+  signInWithRedirect: vi.fn(),
   signOut: vi.fn()
 }));
 
@@ -25,6 +26,7 @@ describe('AuthStore', () => {
     vi.mocked(confirmSignIn).mockReset();
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(signIn).mockReset();
+    vi.mocked(signInWithRedirect).mockReset();
     vi.mocked(signOut).mockReset();
   });
 
@@ -139,5 +141,23 @@ describe('AuthStore', () => {
     expect(store.user()).toBeNull();
     expect(store.activeOrgId()).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeOrgId')).toBeNull();
+  });
+
+  it('starts Google hosted UI sign-in', async () => {
+    vi.mocked(signInWithRedirect).mockResolvedValue(undefined);
+    const store = TestBed.inject(AuthStore);
+
+    await store.loginWithGoogle();
+
+    expect(signInWithRedirect).toHaveBeenCalledWith({ provider: 'Google' });
+  });
+
+  it('starts LinkedIn hosted UI sign-in through the Cognito custom OIDC provider', async () => {
+    vi.mocked(signInWithRedirect).mockResolvedValue(undefined);
+    const store = TestBed.inject(AuthStore);
+
+    await store.loginWithLinkedIn();
+
+    expect(signInWithRedirect).toHaveBeenCalledWith({ provider: { custom: 'LinkedIn' } });
   });
 });

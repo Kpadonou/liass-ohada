@@ -195,6 +195,9 @@
       "LINKEDIN_UNAVAILABLE": "Continue with LinkedIn is not configured yet",
       "DIVIDER": "Or"
     },
+    "AUTH_CALLBACK": {
+      "COMPLETING": "Completing sign-in..."
+    },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
       "TITLE": "Welcome back",

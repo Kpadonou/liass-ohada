@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
 import { LoginPage } from '../../domains/identity/feature/login/login.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
 import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
@@ -15,6 +16,10 @@ export const routes: Routes = [
     path: 'signup',
     component: SignupPage,
     canActivate: [loginRedirectGuard]
+  },
+  {
+    path: 'auth/callback',
+    component: AuthCallbackPage
   },
   {
     path: 'select-workspace',

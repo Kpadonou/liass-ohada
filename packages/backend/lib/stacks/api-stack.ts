@@ -102,5 +102,30 @@ export class ApiStack extends Stack {
       value: cdk.Stack.of(this).region,
       description: "The AWS region for the Liass-OHADA Cognito User Pool",
     });
+
+    new cdk.CfnOutput(this, "CognitoDomainPrefix", {
+      value: this.auth.domainPrefix,
+      description: "The Cognito hosted UI domain prefix for Liass-OHADA authentication",
+    });
+
+    new cdk.CfnOutput(this, "CognitoDomainUrl", {
+      value: this.auth.domainUrl,
+      description: "The Cognito hosted UI domain URL for Liass-OHADA authentication",
+    });
+
+    new cdk.CfnOutput(this, "OAuthRedirectSignInUrls", {
+      value: cdk.Fn.join(",", this.auth.oauthCallbackUrls),
+      description: "Allowed OAuth redirect sign-in URLs for the frontend",
+    });
+
+    new cdk.CfnOutput(this, "OAuthRedirectSignOutUrls", {
+      value: cdk.Fn.join(",", this.auth.oauthLogoutUrls),
+      description: "Allowed OAuth redirect sign-out URLs for the frontend",
+    });
+
+    new cdk.CfnOutput(this, "EnabledSocialProviders", {
+      value: cdk.Fn.join(",", this.auth.enabledSocialProviders),
+      description: "Enabled Cognito social identity providers for Liass-OHADA",
+    });
   }
 }
