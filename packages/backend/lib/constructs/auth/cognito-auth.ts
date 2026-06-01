@@ -26,6 +26,8 @@ interface CredentialConfig {
   noEcho?: boolean;
 }
 
+type SocialProviderKey = "google" | "linkedin";
+
 function parseDelimitedConfig(value: unknown): string[] | undefined {
   if (Array.isArray(value)) {
     const items = value
@@ -92,10 +94,44 @@ function shouldUseSecretsManager(scope: Construct, stage: DeploymentStage): bool
   );
 }
 
+function hasDirectCredentialConfig(scope: Construct, config: Pick<CredentialConfig, "contextKeys" | "environmentVariableName">): boolean {
+  const contextValue = getContextValue(scope, ...config.contextKeys);
+  if (typeof contextValue === "string" && contextValue.trim().length > 0) {
+    return true;
+  }
+
+  return !!process.env[config.environmentVariableName]?.trim();
+}
+
+function isProviderEnabled(
+  scope: Construct,
+  stage: DeploymentStage,
+  provider: SocialProviderKey,
+  useSecretsManager: boolean,
+  credentialConfigs: Pick<CredentialConfig, "contextKeys" | "environmentVariableName">[],
+): boolean {
+  const pascalProvider = provider === "google" ? "Google" : "LinkedIn";
+  const upperProvider = provider === "google" ? "GOOGLE" : "LINKEDIN";
+  const configured = parseBooleanConfig(
+    getContextValue(
+      scope,
+      `auth.${stage}.${provider}OAuthEnabled`,
+      `${stage}${pascalProvider}OAuthEnabled`,
+      `${provider}OAuthEnabled`,
+    ),
+  ) ?? parseBooleanConfig(process.env[`${upperProvider}_OAUTH_ENABLED`]);
+
+  if (configured !== undefined) {
+    return configured;
+  }
+
+  return useSecretsManager || credentialConfigs.some((config) => hasDirectCredentialConfig(scope, config));
+}
+
 function getSecretName(
   scope: Construct,
   stage: DeploymentStage,
-  provider: "google" | "linkedin",
+  provider: SocialProviderKey,
 ): string {
   const pascalProvider = provider === "google" ? "Google" : "LinkedIn";
   const upperProvider = provider === "google" ? "GOOGLE" : "LINKEDIN";
@@ -208,46 +244,32 @@ export class LiassOhadaAuth extends Construct {
     const resourcePrefix = `liass-ohada-${props.stage}`;
     const oauthUrlConfig = getOAuthUrlConfig(this, props.stage);
     const useSecretsManager = shouldUseSecretsManager(this, props.stage);
-    const googleSecretName = getSecretName(this, props.stage, "google");
-    const linkedInSecretName = getSecretName(this, props.stage, "linkedin");
-    const googleClientId = resolveCredential(this, useSecretsManager, {
-      parameterId: "GoogleClientId",
-      description:
-        "Google OAuth client ID for Cognito federation. May also be supplied as GOOGLE_CLIENT_ID, googleClientId CDK context, or the clientId field in the stage Google OAuth Secrets Manager secret.",
+    const googleClientIdConfig = {
       contextKeys: ["googleClientId", "GOOGLE_CLIENT_ID"],
       environmentVariableName: "GOOGLE_CLIENT_ID",
-      secretName: googleSecretName,
-      secretJsonField: "clientId",
-    });
-    const googleClientSecret = resolveCredential(this, useSecretsManager, {
-      parameterId: "GoogleClientSecret",
-      description:
-        "Google OAuth client secret for Cognito federation. May also be supplied as GOOGLE_CLIENT_SECRET, googleClientSecret CDK context, or the clientSecret field in the stage Google OAuth Secrets Manager secret.",
+    };
+    const googleClientSecretConfig = {
       contextKeys: ["googleClientSecret", "GOOGLE_CLIENT_SECRET"],
       environmentVariableName: "GOOGLE_CLIENT_SECRET",
-      secretName: googleSecretName,
-      secretJsonField: "clientSecret",
-      noEcho: true,
-    });
-    const linkedInClientId = resolveCredential(this, useSecretsManager, {
-      parameterId: "LinkedInClientId",
-      description:
-        "LinkedIn OAuth client ID for Cognito OIDC federation. May also be supplied as LINKEDIN_CLIENT_ID, linkedInClientId CDK context, or the clientId field in the stage LinkedIn OAuth Secrets Manager secret.",
+    };
+    const linkedInClientIdConfig = {
       contextKeys: ["linkedInClientId", "LINKEDIN_CLIENT_ID"],
       environmentVariableName: "LINKEDIN_CLIENT_ID",
-      secretName: linkedInSecretName,
-      secretJsonField: "clientId",
-    });
-    const linkedInClientSecret = resolveCredential(this, useSecretsManager, {
-      parameterId: "LinkedInClientSecret",
-      description:
-        "LinkedIn OAuth client secret for Cognito OIDC federation. May also be supplied as LINKEDIN_CLIENT_SECRET, linkedInClientSecret CDK context, or the clientSecret field in the stage LinkedIn OAuth Secrets Manager secret.",
+    };
+    const linkedInClientSecretConfig = {
       contextKeys: ["linkedInClientSecret", "LINKEDIN_CLIENT_SECRET"],
       environmentVariableName: "LINKEDIN_CLIENT_SECRET",
-      secretName: linkedInSecretName,
-      secretJsonField: "clientSecret",
-      noEcho: true,
-    });
+    };
+    const googleEnabled = isProviderEnabled(this, props.stage, "google", useSecretsManager, [
+      googleClientIdConfig,
+      googleClientSecretConfig,
+    ]);
+    const linkedInEnabled = isProviderEnabled(this, props.stage, "linkedin", useSecretsManager, [
+      linkedInClientIdConfig,
+      linkedInClientSecretConfig,
+    ]);
+    const googleSecretName = getSecretName(this, props.stage, "google");
+    const linkedInSecretName = getSecretName(this, props.stage, "linkedin");
 
     this.userPool = new cognito.UserPool(this, "UserPool", {
       userPoolName: `${resourcePrefix}-users`,
@@ -277,10 +299,34 @@ export class LiassOhadaAuth extends Construct {
         props.stage === "prod" ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
-    const googleProvider = new cognito.UserPoolIdentityProviderGoogle(
-      this,
-      "GoogleIdentityProvider",
-      {
+    const identityProviderDependencies: cognito.IUserPoolIdentityProvider[] = [];
+    const supportedIdentityProviders = [
+      cognito.UserPoolClientIdentityProvider.COGNITO,
+    ];
+    this.enabledSocialProviders = [];
+
+    if (googleEnabled) {
+      const googleClientId = resolveCredential(this, useSecretsManager, {
+        parameterId: "GoogleClientId",
+        description:
+          "Google OAuth client ID for Cognito federation. May also be supplied as GOOGLE_CLIENT_ID, googleClientId CDK context, or the clientId field in the stage Google OAuth Secrets Manager secret.",
+        ...googleClientIdConfig,
+        secretName: googleSecretName,
+        secretJsonField: "clientId",
+      });
+      const googleClientSecret = resolveCredential(this, useSecretsManager, {
+        parameterId: "GoogleClientSecret",
+        description:
+          "Google OAuth client secret for Cognito federation. May also be supplied as GOOGLE_CLIENT_SECRET, googleClientSecret CDK context, or the clientSecret field in the stage Google OAuth Secrets Manager secret.",
+        ...googleClientSecretConfig,
+        secretName: googleSecretName,
+        secretJsonField: "clientSecret",
+        noEcho: true,
+      });
+      const googleProvider = new cognito.UserPoolIdentityProviderGoogle(
+        this,
+        "GoogleIdentityProvider",
+        {
         userPool: this.userPool,
         clientId: googleClientId,
         clientSecretValue: cdk.SecretValue.unsafePlainText(googleClientSecret),
@@ -292,12 +338,34 @@ export class LiassOhadaAuth extends Construct {
           profilePicture: cognito.ProviderAttribute.GOOGLE_PICTURE,
         },
       },
-    );
+      );
+      identityProviderDependencies.push(googleProvider);
+      supportedIdentityProviders.push(cognito.UserPoolClientIdentityProvider.GOOGLE);
+      this.enabledSocialProviders.push("Google");
+    }
 
-    const linkedInProvider = new cognito.UserPoolIdentityProviderOidc(
-      this,
-      "LinkedInIdentityProvider",
-      {
+    if (linkedInEnabled) {
+      const linkedInClientId = resolveCredential(this, useSecretsManager, {
+        parameterId: "LinkedInClientId",
+        description:
+          "LinkedIn OAuth client ID for Cognito OIDC federation. May also be supplied as LINKEDIN_CLIENT_ID, linkedInClientId CDK context, or the clientId field in the stage LinkedIn OAuth Secrets Manager secret.",
+        ...linkedInClientIdConfig,
+        secretName: linkedInSecretName,
+        secretJsonField: "clientId",
+      });
+      const linkedInClientSecret = resolveCredential(this, useSecretsManager, {
+        parameterId: "LinkedInClientSecret",
+        description:
+          "LinkedIn OAuth client secret for Cognito federation. May also be supplied as LINKEDIN_CLIENT_SECRET, linkedInClientSecret CDK context, or the clientSecret field in the stage LinkedIn OAuth Secrets Manager secret.",
+        ...linkedInClientSecretConfig,
+        secretName: linkedInSecretName,
+        secretJsonField: "clientSecret",
+        noEcho: true,
+      });
+      const linkedInProvider = new cognito.UserPoolIdentityProviderOidc(
+        this,
+        "LinkedInIdentityProvider",
+        {
         userPool: this.userPool,
         name: LINKEDIN_PROVIDER_NAME,
         clientId: linkedInClientId,
@@ -318,13 +386,16 @@ export class LiassOhadaAuth extends Construct {
           profilePicture: cognito.ProviderAttribute.other("picture"),
         },
       },
-    );
+      );
+      identityProviderDependencies.push(linkedInProvider);
+      supportedIdentityProviders.push(cognito.UserPoolClientIdentityProvider.custom(LINKEDIN_PROVIDER_NAME));
+      this.enabledSocialProviders.push(LINKEDIN_PROVIDER_NAME);
+    }
 
     this.domainPrefix = `${resourcePrefix}-auth`;
     this.domainUrl = `https://${this.domainPrefix}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
     this.oauthCallbackUrls = oauthUrlConfig.callbackUrls;
     this.oauthLogoutUrls = oauthUrlConfig.logoutUrls;
-    this.enabledSocialProviders = ["Google", LINKEDIN_PROVIDER_NAME];
 
     this.userPoolDomain = this.userPool.addDomain("UserPoolDomain", {
       cognitoDomain: {
@@ -336,11 +407,7 @@ export class LiassOhadaAuth extends Construct {
       userPool: this.userPool,
       userPoolClientName: `${resourcePrefix}-frontend-client`,
       generateSecret: false,
-      supportedIdentityProviders: [
-        cognito.UserPoolClientIdentityProvider.COGNITO,
-        cognito.UserPoolClientIdentityProvider.GOOGLE,
-        cognito.UserPoolClientIdentityProvider.custom(LINKEDIN_PROVIDER_NAME),
-      ],
+      supportedIdentityProviders,
       oAuth: {
         flows: {
           authorizationCodeGrant: true,
@@ -363,8 +430,9 @@ export class LiassOhadaAuth extends Construct {
       refreshTokenValidity: cdk.Duration.days(30),
       enableTokenRevocation: true,
     });
-    this.userPoolClient.node.addDependency(googleProvider);
-    this.userPoolClient.node.addDependency(linkedInProvider);
+    for (const provider of identityProviderDependencies) {
+      this.userPoolClient.node.addDependency(provider);
+    }
 
     this.authorizer = new HttpUserPoolAuthorizer(
       "LiassOhadaUserPoolAuthorizer",

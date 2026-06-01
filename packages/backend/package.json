@@ -16,7 +16,7 @@
     "aws:bootstrap": "env -u AWS_PROFILE npx cdk bootstrap aws://570197775998/eu-west-2 --profile rem --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess",
     "aws:synth": "env -u AWS_PROFILE npx cdk synth --profile rem",
     "aws:diff": "env -u AWS_PROFILE npx cdk diff --profile rem",
-    "aws:deploy": "env -u AWS_PROFILE npx cdk deploy --profile rem",
+    "aws:deploy": "env -u AWS_PROFILE npx cdk deploy --all --profile rem",
     "aws:deploy:all": "env -u AWS_PROFILE npx cdk deploy --all --profile rem",
     "backfill:user-workspaces": "ts-node -r tsconfig-paths/register scripts/backfill-user-workspace-index.ts",
     "localstack:setup": "AWS_PROFILE=localstack LOCALSTACK_URL=http://localhost:4566 bash scripts/setup-localstack.sh"
