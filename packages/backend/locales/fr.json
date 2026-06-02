@@ -67,6 +67,8 @@
   "ERROR_ENTRY_ALREADY_EXISTS": "Une écriture avec cet identifiant existe déjà.",
   "ERROR_MISSING_USER_ID": "Identifiant utilisateur manquant ou non autorisé.",
   "ERROR_INTERNAL_SERVER": "Erreur interne du serveur.",
+  "WORKSPACE_ALREADY_EXISTS": "Un espace initial existe déjà pour cet utilisateur.",
+  "ONBOARDING_CREATE_FAILED": "Impossible de créer l’espace initial.",
   "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND": "Compte ou projet non trouvé.",
   "ERROR_EMPTY_ENTRY": "L'écriture ne contient aucune ligne.",
   "ERROR_INVALID_CURSOR": "Curseur de pagination invalide.",

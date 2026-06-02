@@ -138,6 +138,38 @@ describe('AuthStore', () => {
     expect(localStorage.getItem('liass-ohada.activeOrgId')).toBe('org-test');
   });
 
+  it('stores a newly created workspace as the active tenant', () => {
+    const store = TestBed.inject(AuthStore);
+
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-created',
+        role: 'OWNER',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY',
+        status: 'ACTIVE',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED'
+      },
+      'org-created'
+    );
+
+    expect(store.activeOrgId()).toBe('org-created');
+    expect(store.workspacesLoaded()).toBe(true);
+    expect(store.workspaces()).toEqual([
+      {
+        orgId: 'org-created',
+        role: 'OWNER',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY',
+        status: 'ACTIVE',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED'
+      }
+    ]);
+    expect(store.workspaceDestination()).toBe('/dashboard');
+  });
+
   it('clears user and tenant state on logout', async () => {
     vi.mocked(signOut).mockResolvedValue(undefined);
     const store = TestBed.inject(AuthStore);

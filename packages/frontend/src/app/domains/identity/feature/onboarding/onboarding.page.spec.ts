@@ -4,6 +4,7 @@ import { TranslocoTestingModule } from '@ngneat/transloco';
 import { vi } from 'vitest';
 
 import { WorkspacesApi } from '../../data-access/workspaces.api';
+import { OnboardingApi } from '../../data-access/onboarding.api';
 import { OnboardingPage } from './onboarding.page';
 
 const translations = {
@@ -21,7 +22,6 @@ const translations = {
         TYPE_CARD_SUBTITLE: 'This shapes the initial profile.',
         DETAILS_CARD_TITLE: 'Set up the initial organization',
         DETAILS_CARD_SUBTITLE: 'Prepare the workspace.',
-        NO_BACKEND_READY: 'Organization provisioning is not available yet.',
         STEPS: {
           WORKSPACE_TYPE: 'Workspace type',
           ORGANIZATION_DETAILS: 'Organization details'
@@ -52,7 +52,11 @@ const translations = {
         ACTIONS: {
           BACK: 'Back',
           CONTINUE: 'Continue',
-          SUBMIT: 'Prepare workspace'
+          SUBMIT: 'Create workspace',
+          SUBMITTING: 'Creating workspace...'
+        },
+        ERRORS: {
+          CREATE_FAILED: 'Workspace creation could not finish.'
         },
         VALIDATION: {
           WORKSPACE_TYPE: 'Choose a workspace type.',
@@ -77,18 +81,20 @@ type OnboardingPageHarness = OnboardingPage & {
     };
   };
   selectWorkspaceType: (workspaceType: 'ACCOUNTING_FIRM' | 'COMPANY') => void;
-  submitOnboarding: () => void;
+  submitOnboarding: () => Promise<void>;
 };
 
 describe('OnboardingPage', () => {
   let fixture: ComponentFixture<OnboardingPage>;
   let page: OnboardingPageHarness;
   let router: Router;
+  let onboardingApi: { createInitialWorkspace: ReturnType<typeof vi.fn> };
   let workspacesApi: { listWorkspaces: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
+    onboardingApi = { createInitialWorkspace: vi.fn() };
     workspacesApi = { listWorkspaces: vi.fn().mockResolvedValue([]) };
 
     await TestBed.configureTestingModule({
@@ -105,6 +111,7 @@ describe('OnboardingPage', () => {
       ],
       providers: [
         provideRouter([]),
+        { provide: OnboardingApi, useValue: onboardingApi },
         { provide: WorkspacesApi, useValue: workspacesApi },
       ],
     }).compileComponents();
@@ -123,6 +130,7 @@ describe('OnboardingPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Create your Liass-OHADA workspace');
     expect(fixture.nativeElement.textContent).toContain('Create a Company');
     expect(fixture.nativeElement.textContent).toContain('Register as an Accounting Firm');
+    expect(fixture.nativeElement.querySelector('liass-auth-layout')).toBeNull();
   });
 
   it('requires a workspace type before showing organization details', async () => {
@@ -144,7 +152,7 @@ describe('OnboardingPage', () => {
     page.continueToDetails();
     page.form.controls.country.setValue('');
     page.form.controls.accountingFramework.setValue('');
-    page.submitOnboarding();
+    await page.submitOnboarding();
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Enter an organization name.');
@@ -152,17 +160,61 @@ describe('OnboardingPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Choose an accounting framework.');
   });
 
-  it('keeps valid submit at the backend provisioning boundary', async () => {
+  it('creates a workspace, selects the returned active tenant, and redirects to dashboard', async () => {
+    onboardingApi.createInitialWorkspace.mockResolvedValue({
+      organization: {
+        orgId: 'org-created',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        status: 'ACTIVE',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        cabinetId: 'cab-created'
+      },
+      workspace: {
+        orgId: 'org-created',
+        role: 'OWNER',
+        cabinetId: 'cab-created',
+        accessSource: 'DIRECT',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        status: 'ACTIVE',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED'
+      },
+      activeOrgId: 'org-created'
+    });
     fixture.detectChanges();
     await fixture.whenStable();
 
     page.selectWorkspaceType('ACCOUNTING_FIRM');
     page.continueToDetails();
     page.form.controls.organizationName.setValue('Cabinet Demo');
-    page.submitOnboarding();
+    await page.submitOnboarding();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('Organization provisioning is not available yet.');
+    expect(onboardingApi.createInitialWorkspace).toHaveBeenCalledWith({
+      workspaceType: 'ACCOUNTING_FIRM',
+      organizationName: 'Cabinet Demo',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED'
+    });
+    expect(localStorage.getItem('liass-ohada.activeOrgId')).toBe('org-created');
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
+  });
+
+  it('shows a translated error when workspace creation fails', async () => {
+    onboardingApi.createInitialWorkspace.mockRejectedValue(new Error('boom'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    page.form.controls.organizationName.setValue('Demo SARL');
+    await page.submitOnboarding();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Workspace creation could not finish.');
     expect(router.navigate).not.toHaveBeenCalled();
   });
 });

@@ -5,12 +5,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
+import type { CreateInitialWorkspaceRequest } from '@liass-ohada/shared/shared';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { AuthStore } from '../../data-access/auth.store';
-import { AuthLayoutComponent } from '../../ui/auth-layout/auth-layout.component';
+import { OnboardingApi } from '../../data-access/onboarding.api';
 
 type AccountingFramework = 'SYSCOHADA_REVISED' | 'SYCEBNL';
 type OnboardingStep = 'workspaceType' | 'organizationDetails';
@@ -24,7 +25,6 @@ interface SelectOption<T extends string> {
 @Component({
   selector: 'liass-onboarding-page',
   imports: [
-    AuthLayoutComponent,
     LiassButtonComponent,
     LiassCardComponent,
     MatFormFieldModule,
@@ -39,11 +39,13 @@ interface SelectOption<T extends string> {
 export class OnboardingPage implements OnInit {
   protected readonly authStore = inject(AuthStore);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly onboardingApi = inject(OnboardingApi);
   private readonly router = inject(Router);
 
   protected readonly currentStep = signal<OnboardingStep>('workspaceType');
-  protected readonly backendPendingMessageVisible = signal(false);
+  protected readonly createErrorVisible = signal(false);
   protected readonly selectedWorkspaceType = signal<WorkspaceType | null>(null);
+  protected readonly submitting = signal(false);
 
   protected readonly countryOptions: SelectOption<string>[] = [
     { value: 'BJ', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.BENIN' },
@@ -98,7 +100,7 @@ export class OnboardingPage implements OnInit {
     this.selectedWorkspaceType.set(workspaceType);
     this.form.controls.workspaceType.setValue(workspaceType);
     this.form.controls.workspaceType.markAsTouched();
-    this.backendPendingMessageVisible.set(false);
+    this.createErrorVisible.set(false);
   }
 
   protected continueToDetails(): void {
@@ -112,19 +114,37 @@ export class OnboardingPage implements OnInit {
   }
 
   protected backToWorkspaceType(): void {
-    this.backendPendingMessageVisible.set(false);
+    this.createErrorVisible.set(false);
     this.currentStep.set('workspaceType');
   }
 
-  protected submitOnboarding(): void {
+  protected async submitOnboarding(): Promise<void> {
     this.form.markAllAsTouched();
-    this.backendPendingMessageVisible.set(false);
+    this.createErrorVisible.set(false);
 
-    if (this.form.invalid) {
+    if (this.form.invalid || this.submitting()) {
       return;
     }
 
-    // TODO: bind to organization provisioning endpoint once backend Lambda is available.
-    this.backendPendingMessageVisible.set(true);
+    const rawValue = this.form.getRawValue();
+    const request: CreateInitialWorkspaceRequest = {
+      workspaceType: rawValue.workspaceType as WorkspaceType,
+      organizationName: rawValue.organizationName,
+      country: rawValue.country as CreateInitialWorkspaceRequest['country'],
+      accountingFramework:
+        rawValue.accountingFramework as CreateInitialWorkspaceRequest['accountingFramework']
+    };
+
+    this.submitting.set(true);
+
+    try {
+      const result = await this.onboardingApi.createInitialWorkspace(request);
+      this.authStore.setCreatedWorkspace(result.workspace, result.activeOrgId);
+      await this.router.navigate(['/dashboard'], { replaceUrl: true });
+    } catch {
+      this.createErrorVisible.set(true);
+    } finally {
+      this.submitting.set(false);
+    }
   }
 }

@@ -23,6 +23,9 @@ describe("TenantAccessService", () => {
           status: "ACTIVE",
           accessSource: "CABINET",
           displayName: "Beta Organization",
+          workspaceType: "COMPANY",
+          country: "BJ",
+          accountingFramework: "SYSCOHADA_REVISED",
           GSI6PK: "USER#user-123",
           GSI6SK: "STATUS#ACTIVE#ORG#org-b",
         }),
@@ -60,6 +63,10 @@ describe("TenantAccessService", () => {
         cabinetId: "cab-001",
         accessSource: "DIRECT",
         displayName: undefined,
+        workspaceType: undefined,
+        status: "ACTIVE",
+        country: undefined,
+        accountingFramework: undefined,
       },
       {
         orgId: "org-b",
@@ -67,6 +74,10 @@ describe("TenantAccessService", () => {
         cabinetId: undefined,
         accessSource: "CABINET",
         displayName: "Beta Organization",
+        workspaceType: "COMPANY",
+        status: "ACTIVE",
+        country: "BJ",
+        accountingFramework: "SYSCOHADA_REVISED",
       },
     ]);
   });
@@ -102,6 +113,10 @@ describe("TenantAccessService", () => {
         cabinetId: undefined,
         accessSource: undefined,
         displayName: undefined,
+        workspaceType: undefined,
+        status: "ACTIVE",
+        country: undefined,
+        accountingFramework: undefined,
       },
     ]);
   });

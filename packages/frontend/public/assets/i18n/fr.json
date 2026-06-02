@@ -212,7 +212,6 @@
       "TYPE_CARD_SUBTITLE": "Ce choix prépare le profil initial de l’organisation et les futurs workflows de supervision.",
       "DETAILS_CARD_TITLE": "Configurez l’organisation initiale",
       "DETAILS_CARD_SUBTITLE": "Ces informations préparent l’espace pour un provisionnement conforme OHADA.",
-      "NO_BACKEND_READY": "Le provisionnement d’organisation n’est pas encore disponible. Ce formulaire validé est prêt à être connecté lorsque la Lambda backend sera disponible.",
       "STEPS": {
         "WORKSPACE_TYPE": "Type d’espace",
         "ORGANIZATION_DETAILS": "Détails organisation"
@@ -259,7 +258,11 @@
       "ACTIONS": {
         "BACK": "Retour",
         "CONTINUE": "Continuer",
-        "SUBMIT": "Préparer l’espace"
+        "SUBMIT": "Créer l’espace",
+        "SUBMITTING": "Création de l’espace..."
+      },
+      "ERRORS": {
+        "CREATE_FAILED": "La création de l’espace n’a pas pu se terminer. Veuillez réessayer."
       },
       "VALIDATION": {
         "WORKSPACE_TYPE": "Choisissez un type d’espace.",

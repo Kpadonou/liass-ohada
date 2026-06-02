@@ -8,7 +8,7 @@ export class IdentityEndpoints extends DomainConstructFactory {
     super(scope, id);
 
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
-    const entry = path.join(
+    const getWorkspacesEntry = path.join(
       projectRoot,
       "lambda",
       "domains",
@@ -20,9 +20,30 @@ export class IdentityEndpoints extends DomainConstructFactory {
       api: props.api,
       authorizer: props.authorizer,
       domainName: "identity",
-      handlerEntry: entry,
+      handlerEntry: getWorkspacesEntry,
       idPrefix: "Identity-",
       method: apigw.HttpMethod.GET,
+      routePath: "/me/workspaces",
+      stage: props.stage,
+      table: props.table,
+    });
+
+    const createWorkspaceEntry = path.join(
+      projectRoot,
+      "lambda",
+      "domains",
+      "identity",
+      "create-workspace.ts",
+    );
+
+    this.addRoute({
+      actionName: "create-workspace",
+      api: props.api,
+      authorizer: props.authorizer,
+      domainName: "identity",
+      handlerEntry: createWorkspaceEntry,
+      idPrefix: "Identity-",
+      method: apigw.HttpMethod.POST,
       routePath: "/me/workspaces",
       stage: props.stage,
       table: props.table,

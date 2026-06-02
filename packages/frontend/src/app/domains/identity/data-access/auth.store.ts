@@ -292,6 +292,18 @@ export const AuthStore = signalStore(
     setTenant(orgId: string): void {
       const activeOrgId = applyTenantSelection(store, orgId);
       patchState(store, { activeOrgId, error: null, workspaceError: null });
+    },
+
+    setCreatedWorkspace(workspace: WorkspaceSummary, activeOrgId: string): void {
+      const selectedOrgId = applyTenantSelection(store, activeOrgId);
+      patchState(store, {
+        activeOrgId: selectedOrgId,
+        workspaces: [workspace],
+        workspaceLoading: false,
+        workspaceError: null,
+        workspacesLoaded: true,
+        error: null
+      });
     }
   }))
 );

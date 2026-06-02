@@ -66,6 +66,8 @@
   "ERROR_ENTRY_ALREADY_EXISTS": "An entry with this identifier already exists.",
   "ERROR_MISSING_USER_ID": "User identifier missing or unauthorized.",
   "ERROR_INTERNAL_SERVER": "Internal server error.",
+  "WORKSPACE_ALREADY_EXISTS": "An initial workspace already exists for this user.",
+  "ONBOARDING_CREATE_FAILED": "Unable to create the initial workspace.",
   "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND": "Account or project not found.",
   "ERROR_EMPTY_ENTRY": "Entry has no lines.",
   "ERROR_INVALID_CURSOR": "Invalid pagination cursor.",

@@ -18,7 +18,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authStore = inject(AuthStore);
   const translocoService = inject(TranslocoService);
   const activeLanguage = translocoService.getActiveLang() || 'fr';
-  const isWorkspaceDiscoveryRequest = request.url === workspacesDiscoveryUrl;
+  const isWorkspaceDiscoveryRequest =
+    request.url === workspacesDiscoveryUrl &&
+    (request.method === 'GET' || request.method === 'POST');
   const activeOrgId = authStore.activeOrgId();
 
   if (!isWorkspaceDiscoveryRequest && !activeOrgId) {

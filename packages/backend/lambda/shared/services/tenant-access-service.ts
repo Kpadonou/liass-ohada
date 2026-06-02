@@ -21,6 +21,10 @@ export interface WorkspaceSummary {
   cabinetId?: string;
   accessSource?: string;
   displayName?: string;
+  workspaceType?: string;
+  status?: string;
+  country?: string;
+  accountingFramework?: string;
 }
 
 export class TenantAccessService {
@@ -91,6 +95,14 @@ export class TenantAccessService {
           typeof access.accessSource === "string" ? access.accessSource : undefined,
         displayName:
           typeof access.displayName === "string" ? access.displayName : undefined,
+        workspaceType:
+          typeof access.workspaceType === "string" ? access.workspaceType : undefined,
+        status: typeof access.status === "string" ? access.status : undefined,
+        country: typeof access.country === "string" ? access.country : undefined,
+        accountingFramework:
+          typeof access.accountingFramework === "string"
+            ? access.accountingFramework
+            : undefined,
       }))
       .sort((left, right) => left.orgId.localeCompare(right.orgId));
   }

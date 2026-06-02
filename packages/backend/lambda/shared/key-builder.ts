@@ -20,6 +20,15 @@ export const KeyFactory = {
   /** SK for an organization dossier linked under a cabinet partition */
   cabinetDossierSK: (orgId: string) => `DOSSIER#${orgId}`,
 
+  /** SK for organization metadata under the organization partition */
+  organizationSK: () => "ORG#METADATA",
+
+  /** SK for cabinet metadata under the cabinet partition */
+  cabinetMetadataSK: () => "CABINET#METADATA",
+
+  /** Stable SK used to prevent duplicate initial workspace onboarding */
+  initialWorkspaceLockSK: () => "ONBOARDING#INITIAL_WORKSPACE",
+
   /** SK for a user's effective access to an organization */
   orgUserAccessSK: (userId: string) => `USER#${userId}`,
 

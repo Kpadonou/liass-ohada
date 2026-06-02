@@ -212,7 +212,6 @@
       "TYPE_CARD_SUBTITLE": "This shapes the initial organization profile and future supervision workflows.",
       "DETAILS_CARD_TITLE": "Set up the initial organization",
       "DETAILS_CARD_SUBTITLE": "These details prepare the workspace for OHADA-compliant provisioning.",
-      "NO_BACKEND_READY": "Organization provisioning is not available yet. This validated form is ready to be connected when the backend Lambda is available.",
       "STEPS": {
         "WORKSPACE_TYPE": "Workspace type",
         "ORGANIZATION_DETAILS": "Organization details"
@@ -259,7 +258,11 @@
       "ACTIONS": {
         "BACK": "Back",
         "CONTINUE": "Continue",
-        "SUBMIT": "Prepare workspace"
+        "SUBMIT": "Create workspace",
+        "SUBMITTING": "Creating workspace..."
+      },
+      "ERRORS": {
+        "CREATE_FAILED": "Workspace creation could not finish. Please retry."
       },
       "VALIDATION": {
         "WORKSPACE_TYPE": "Choose a workspace type.",
