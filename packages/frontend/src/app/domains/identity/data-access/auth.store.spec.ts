@@ -95,6 +95,12 @@ describe('AuthStore', () => {
     expect(store.workspaceDestination()).toBe('/dashboard');
   });
 
+  it('returns no workspace destination while discovery is pending', () => {
+    const store = TestBed.inject(AuthStore);
+
+    expect(store.workspaceDestination()).toBeNull();
+  });
+
   it('keeps multiple discovered workspaces for selection', async () => {
     workspacesApi.listWorkspaces.mockResolvedValue([
       { orgId: 'org-a', role: 'ACCOUNTANT' },
@@ -112,14 +118,15 @@ describe('AuthStore', () => {
     expect(store.workspaceDestination()).toBe('/select-workspace');
   });
 
-  it('sets a workspace error when no workspace is assigned', async () => {
+  it('routes users with no discovered workspaces to onboarding', async () => {
     workspacesApi.listWorkspaces.mockResolvedValue([]);
     const store = TestBed.inject(AuthStore);
 
     await store.loadWorkspaces(true);
 
-    expect(store.workspaceError()).toBe('No workspace assigned.');
+    expect(store.workspaceError()).toBeNull();
     expect(store.activeOrgId()).toBeNull();
+    expect(store.workspaceDestination()).toBe('/onboarding');
   });
 
   it('persists the selected active tenant', () => {

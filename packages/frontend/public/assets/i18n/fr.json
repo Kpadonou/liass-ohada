@@ -196,7 +196,77 @@
       "DIVIDER": "Ou"
     },
     "AUTH_CALLBACK": {
-      "COMPLETING": "Finalisation de la connexion..."
+      "COMPLETING": "Finalisation de la connexion...",
+      "ERROR_TITLE": "La connexion n’a pas pu se finaliser",
+      "RETRY": "Réessayer",
+      "ERRORS": {
+        "GENERIC": "La session a été détectée, mais la découverte des espaces de travail n’a pas pu aboutir. Veuillez réessayer.",
+        "TIMEOUT": "La connexion prend plus de temps que prévu. Veuillez réessayer."
+      }
+    },
+    "ONBOARDING": {
+      "EYEBROW": "Onboarding",
+      "TITLE": "Créez votre espace Liass-OHADA",
+      "SUBTITLE": "Commencez par le profil d’organisation adapté à votre configuration comptable OHADA.",
+      "TYPE_CARD_TITLE": "Choisissez votre type d’espace",
+      "TYPE_CARD_SUBTITLE": "Ce choix prépare le profil initial de l’organisation et les futurs workflows de supervision.",
+      "DETAILS_CARD_TITLE": "Configurez l’organisation initiale",
+      "DETAILS_CARD_SUBTITLE": "Ces informations préparent l’espace pour un provisionnement conforme OHADA.",
+      "NO_BACKEND_READY": "Le provisionnement d’organisation n’est pas encore disponible. Ce formulaire validé est prêt à être connecté lorsque la Lambda backend sera disponible.",
+      "STEPS": {
+        "WORKSPACE_TYPE": "Type d’espace",
+        "ORGANIZATION_DETAILS": "Détails organisation"
+      },
+      "CHOICES": {
+        "COMPANY": {
+          "TITLE": "Créer une entreprise",
+          "DESCRIPTION": "Pour les PME et les tenants d’entreprise standard."
+        },
+        "ACCOUNTING_FIRM": {
+          "TITLE": "S’inscrire comme cabinet comptable",
+          "DESCRIPTION": "Pour les équipes de Cabinet Comptable supervisant des dossiers clients."
+        }
+      },
+      "FIELDS": {
+        "COMPANY_NAME": "Nom de l’entreprise",
+        "ACCOUNTING_FIRM_NAME": "Nom du cabinet comptable",
+        "COUNTRY": "Pays",
+        "ACCOUNTING_FRAMEWORK": "Référentiel comptable"
+      },
+      "FRAMEWORKS": {
+        "SYSCOHADA_REVISED": "SYSCOHADA révisé",
+        "SYCEBNL": "SYCEBNL"
+      },
+      "COUNTRIES": {
+        "BENIN": "Bénin",
+        "TOGO": "Togo",
+        "COTE_D_IVOIRE": "Côte d’Ivoire",
+        "SENEGAL": "Sénégal",
+        "BURKINA_FASO": "Burkina Faso",
+        "MALI": "Mali",
+        "NIGER": "Niger",
+        "CAMEROON": "Cameroun",
+        "CONGO": "Congo",
+        "GABON": "Gabon",
+        "CHAD": "Tchad",
+        "CENTRAL_AFRICAN_REPUBLIC": "République centrafricaine",
+        "GUINEA": "Guinée",
+        "GUINEA_BISSAU": "Guinée-Bissau",
+        "EQUATORIAL_GUINEA": "Guinée équatoriale",
+        "DEMOCRATIC_REPUBLIC_OF_CONGO": "République démocratique du Congo",
+        "COMOROS": "Comores"
+      },
+      "ACTIONS": {
+        "BACK": "Retour",
+        "CONTINUE": "Continuer",
+        "SUBMIT": "Préparer l’espace"
+      },
+      "VALIDATION": {
+        "WORKSPACE_TYPE": "Choisissez un type d’espace.",
+        "ORGANIZATION_NAME": "Saisissez un nom d’organisation.",
+        "COUNTRY": "Choisissez un pays.",
+        "ACCOUNTING_FRAMEWORK": "Choisissez un référentiel comptable."
+      }
     },
     "LOGIN": {
       "BRAND": "Liass-OHADA",

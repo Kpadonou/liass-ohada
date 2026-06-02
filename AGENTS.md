@@ -23,6 +23,7 @@ This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-l
 - `npm run backend:synth`: synthesizes CDK from `packages/backend`.
 - `npm run backend:deploy`: deploys CDK from `packages/backend`.
 - `npm run frontend:start`: starts the Angular dev server from `packages/frontend`.
+- Local frontend dev servers must always use `http://localhost:4200`. If port `4200` is already in use, stop the existing process on that port and restart this repo's frontend on `4200`; do not switch to another port for OAuth testing because Cognito redirect URLs are configured for `localhost:4200`.
 - `npm run build -w @liass-ohada/shared`: builds shared schemas and declarations.
 - `npm run build -w @liass-ohada/backend`: compiles backend TypeScript.
 - `npm test -w @liass-ohada/backend`: runs backend Jest tests through `ts-jest`.

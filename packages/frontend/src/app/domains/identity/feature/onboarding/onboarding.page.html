@@ -1,0 +1,197 @@
+<liass-auth-layout>
+  <form class="space-y-6" [formGroup]="form" (ngSubmit)="submitOnboarding()">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+        {{ 'IDENTITY.ONBOARDING.EYEBROW' | transloco }}
+      </p>
+      <h1 class="mt-3 text-3xl font-semibold leading-tight text-slate-800 dark:text-white/90 sm:text-4xl">
+        {{ 'IDENTITY.ONBOARDING.TITLE' | transloco }}
+      </h1>
+      <p class="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+        {{ 'IDENTITY.ONBOARDING.SUBTITLE' | transloco }}
+      </p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-500 dark:bg-white/5 dark:text-slate-400">
+      <div
+        class="rounded-md px-3 py-2 text-center transition"
+        [class.bg-white]="currentStep() === 'workspaceType'"
+        [class.text-brand-700]="currentStep() === 'workspaceType'"
+        [class.shadow-app-xs]="currentStep() === 'workspaceType'"
+        [class.dark:bg-slate-950]="currentStep() === 'workspaceType'"
+        [class.dark:text-brand-300]="currentStep() === 'workspaceType'"
+      >
+        {{ 'IDENTITY.ONBOARDING.STEPS.WORKSPACE_TYPE' | transloco }}
+      </div>
+      <div
+        class="rounded-md px-3 py-2 text-center transition"
+        [class.bg-white]="currentStep() === 'organizationDetails'"
+        [class.text-brand-700]="currentStep() === 'organizationDetails'"
+        [class.shadow-app-xs]="currentStep() === 'organizationDetails'"
+        [class.dark:bg-slate-950]="currentStep() === 'organizationDetails'"
+        [class.dark:text-brand-300]="currentStep() === 'organizationDetails'"
+      >
+        {{ 'IDENTITY.ONBOARDING.STEPS.ORGANIZATION_DETAILS' | transloco }}
+      </div>
+    </div>
+
+    @if (currentStep() === 'workspaceType') {
+      <section class="space-y-4">
+        <liass-card
+          padding="md"
+          [title]="'IDENTITY.ONBOARDING.TYPE_CARD_TITLE' | transloco"
+          [description]="'IDENTITY.ONBOARDING.TYPE_CARD_SUBTITLE' | transloco"
+        >
+          <div class="grid gap-3">
+            <button
+              class="liass-focus-ring w-full rounded-lg border bg-white p-4 text-left shadow-app-xs transition hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950 dark:hover:bg-brand-950/30"
+              type="button"
+              [class.border-brand-500]="selectedWorkspaceType() === 'COMPANY'"
+              [class.border-slate-200]="selectedWorkspaceType() !== 'COMPANY'"
+              [class.dark:border-brand-500]="selectedWorkspaceType() === 'COMPANY'"
+              [class.dark:border-slate-800]="selectedWorkspaceType() !== 'COMPANY'"
+              [attr.aria-pressed]="selectedWorkspaceType() === 'COMPANY'"
+              (click)="selectWorkspaceType('COMPANY')"
+            >
+              <span class="flex items-start gap-3">
+                <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300">
+                  <mat-icon>domain</mat-icon>
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-base font-semibold text-slate-950 dark:text-white">
+                    {{ 'IDENTITY.ONBOARDING.CHOICES.COMPANY.TITLE' | transloco }}
+                  </span>
+                  <span class="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {{ 'IDENTITY.ONBOARDING.CHOICES.COMPANY.DESCRIPTION' | transloco }}
+                  </span>
+                </span>
+              </span>
+            </button>
+
+            <button
+              class="liass-focus-ring w-full rounded-lg border bg-white p-4 text-left shadow-app-xs transition hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950 dark:hover:bg-brand-950/30"
+              type="button"
+              [class.border-brand-500]="selectedWorkspaceType() === 'ACCOUNTING_FIRM'"
+              [class.border-slate-200]="selectedWorkspaceType() !== 'ACCOUNTING_FIRM'"
+              [class.dark:border-brand-500]="selectedWorkspaceType() === 'ACCOUNTING_FIRM'"
+              [class.dark:border-slate-800]="selectedWorkspaceType() !== 'ACCOUNTING_FIRM'"
+              [attr.aria-pressed]="selectedWorkspaceType() === 'ACCOUNTING_FIRM'"
+              (click)="selectWorkspaceType('ACCOUNTING_FIRM')"
+            >
+              <span class="flex items-start gap-3">
+                <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-sky-50 text-sky-700 dark:bg-sky-950/35 dark:text-sky-300">
+                  <mat-icon>groups</mat-icon>
+                </span>
+                <span class="min-w-0">
+                  <span class="block text-base font-semibold text-slate-950 dark:text-white">
+                    {{ 'IDENTITY.ONBOARDING.CHOICES.ACCOUNTING_FIRM.TITLE' | transloco }}
+                  </span>
+                  <span class="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {{ 'IDENTITY.ONBOARDING.CHOICES.ACCOUNTING_FIRM.DESCRIPTION' | transloco }}
+                  </span>
+                </span>
+              </span>
+            </button>
+          </div>
+
+          @if (form.controls.workspaceType.touched && form.controls.workspaceType.invalid) {
+            <p class="mt-3 text-sm text-danger-600 dark:text-rose-300">
+              {{ 'IDENTITY.ONBOARDING.VALIDATION.WORKSPACE_TYPE' | transloco }}
+            </p>
+          }
+        </liass-card>
+
+        <liass-button
+          class="block"
+          buttonType="button"
+          icon="arrow_forward"
+          size="lg"
+          tone="brand"
+          variant="solid"
+          [disabled]="form.controls.workspaceType.invalid"
+          (pressed)="continueToDetails()"
+        >
+          {{ 'IDENTITY.ONBOARDING.ACTIONS.CONTINUE' | transloco }}
+        </liass-button>
+      </section>
+    } @else {
+      <section class="space-y-5">
+        <liass-card
+          padding="md"
+          [title]="'IDENTITY.ONBOARDING.DETAILS_CARD_TITLE' | transloco"
+          [description]="'IDENTITY.ONBOARDING.DETAILS_CARD_SUBTITLE' | transloco"
+        >
+          <div class="grid gap-5">
+            <mat-form-field appearance="outline">
+              <mat-label>{{ organizationNameLabelKey() | transloco }}</mat-label>
+              <input
+                matInput
+                autocomplete="organization"
+                formControlName="organizationName"
+              />
+              <mat-icon matPrefix>business</mat-icon>
+              @if (form.controls.organizationName.touched && form.controls.organizationName.invalid) {
+                <mat-error>{{ 'IDENTITY.ONBOARDING.VALIDATION.ORGANIZATION_NAME' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'IDENTITY.ONBOARDING.FIELDS.COUNTRY' | transloco }}</mat-label>
+              <mat-select formControlName="country">
+                @for (country of countryOptions; track country.value) {
+                  <mat-option [value]="country.value">{{ country.labelKey | transloco }}</mat-option>
+                }
+              </mat-select>
+              <mat-icon matPrefix>public</mat-icon>
+              @if (form.controls.country.touched && form.controls.country.invalid) {
+                <mat-error>{{ 'IDENTITY.ONBOARDING.VALIDATION.COUNTRY' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'IDENTITY.ONBOARDING.FIELDS.ACCOUNTING_FRAMEWORK' | transloco }}</mat-label>
+              <mat-select formControlName="accountingFramework">
+                @for (framework of frameworkOptions; track framework.value) {
+                  <mat-option [value]="framework.value">{{ framework.labelKey | transloco }}</mat-option>
+                }
+              </mat-select>
+              <mat-icon matPrefix>account_balance</mat-icon>
+              @if (form.controls.accountingFramework.touched && form.controls.accountingFramework.invalid) {
+                <mat-error>{{ 'IDENTITY.ONBOARDING.VALIDATION.ACCOUNTING_FRAMEWORK' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+          </div>
+
+          @if (backendPendingMessageVisible()) {
+            <div class="mt-5 flex items-start gap-3 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm leading-6 text-brand-900 dark:border-brand-900/60 dark:bg-brand-900/20 dark:text-brand-100">
+              <mat-icon class="mt-0.5 text-brand-700 dark:text-brand-300">info</mat-icon>
+              <p>{{ 'IDENTITY.ONBOARDING.NO_BACKEND_READY' | transloco }}</p>
+            </div>
+          }
+        </liass-card>
+
+        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+          <liass-button
+            buttonType="button"
+            icon="arrow_back"
+            size="lg"
+            tone="neutral"
+            variant="ghost"
+            (pressed)="backToWorkspaceType()"
+          >
+            {{ 'IDENTITY.ONBOARDING.ACTIONS.BACK' | transloco }}
+          </liass-button>
+          <liass-button
+            buttonType="submit"
+            icon="rocket_launch"
+            size="lg"
+            tone="brand"
+            variant="solid"
+          >
+            {{ 'IDENTITY.ONBOARDING.ACTIONS.SUBMIT' | transloco }}
+          </liass-button>
+        </div>
+      </section>
+    }
+  </form>
+</liass-auth-layout>

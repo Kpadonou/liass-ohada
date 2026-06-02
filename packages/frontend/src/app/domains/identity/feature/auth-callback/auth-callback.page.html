@@ -1,6 +1,27 @@
 <main class="grid min-h-screen place-items-center bg-white px-6 text-slate-700 dark:bg-slate-950 dark:text-slate-200">
-  <div class="flex items-center gap-3" role="status" aria-live="polite">
-    <span class="size-5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
-    <span class="text-sm font-medium">{{ 'IDENTITY.AUTH_CALLBACK.COMPLETING' | transloco }}</span>
-  </div>
+  @if (loading()) {
+    <div class="flex items-center gap-3" role="status" aria-live="polite">
+      <span class="size-5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+      <span class="text-sm font-medium">{{ 'IDENTITY.AUTH_CALLBACK.COMPLETING' | transloco }}</span>
+    </div>
+  } @else {
+    <section class="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center shadow-app-card dark:border-slate-800 dark:bg-slate-900">
+      <div class="mx-auto grid size-11 place-items-center rounded-full bg-red-50 text-danger-600 dark:bg-rose-950/35 dark:text-rose-300">
+        !
+      </div>
+      <h1 class="mt-4 text-xl font-semibold text-slate-950 dark:text-white">
+        {{ 'IDENTITY.AUTH_CALLBACK.ERROR_TITLE' | transloco }}
+      </h1>
+      <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+        {{ (errorKey() || 'IDENTITY.AUTH_CALLBACK.ERRORS.GENERIC') | transloco }}
+      </p>
+      <button
+        class="liass-focus-ring mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-semibold text-white shadow-app-xs transition hover:bg-brand-600"
+        type="button"
+        (click)="retry()"
+      >
+        {{ 'IDENTITY.AUTH_CALLBACK.RETRY' | transloco }}
+      </button>
+    </section>
+  }
 </main>

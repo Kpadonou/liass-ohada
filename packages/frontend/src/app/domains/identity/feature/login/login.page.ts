@@ -116,6 +116,9 @@ export class LoginPage {
 
   private async routeAfterWorkspaceDiscovery(): Promise<void> {
     await this.authStore.loadWorkspaces(true);
-    await this.router.navigate([this.authStore.workspaceDestination()]);
+    const destination = this.authStore.workspaceDestination();
+    if (destination) {
+      await this.router.navigate([destination]);
+    }
   }
 }

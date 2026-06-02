@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
 import { LoginPage } from '../../domains/identity/feature/login/login.page';
+import { OnboardingPage } from '../../domains/identity/feature/onboarding/onboarding.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
 import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
 import { authGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
@@ -24,6 +25,11 @@ export const routes: Routes = [
   {
     path: 'select-workspace',
     component: SelectWorkspacePage,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'onboarding',
+    component: OnboardingPage,
     canActivate: [authGuard]
   },
   {

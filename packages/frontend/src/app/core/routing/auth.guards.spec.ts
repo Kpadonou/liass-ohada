@@ -42,7 +42,7 @@ describe('auth guards', () => {
     expect(router.serializeUrl(result as UrlTree)).toBe('/login');
   });
 
-  it('redirects authenticated users without a tenant to workspace selection', async () => {
+  it('redirects authenticated users with no workspaces to onboarding', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'user@example.com',
       userId: 'user-123',
@@ -54,7 +54,7 @@ describe('auth guards', () => {
       tenantGuard({} as never, {} as never)
     );
 
-    expect(router.serializeUrl(result as UrlTree)).toBe('/select-workspace');
+    expect(router.serializeUrl(result as UrlTree)).toBe('/onboarding');
   });
 
   it('auto-selects a single discovered workspace before dashboard access', async () => {
@@ -90,6 +90,34 @@ describe('auth guards', () => {
     );
 
     expect(router.serializeUrl(result as UrlTree)).toBe('/select-workspace');
+  });
+
+  it('does not redirect to workspace selection while discovery is pending', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'user@example.com',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    let resolveWorkspaces: (workspaces: { orgId: string }[]) => void = () => undefined;
+    workspacesApi.listWorkspaces.mockReturnValue(
+      new Promise((resolve) => {
+        resolveWorkspaces = resolve;
+      })
+    );
+    const router = TestBed.inject(Router);
+    const createUrlTreeSpy = vi.spyOn(router, 'createUrlTree');
+
+    const resultPromise = TestBed.runInInjectionContext(() =>
+      loginRedirectGuard({} as never, {} as never)
+    );
+    await Promise.resolve();
+
+    expect(createUrlTreeSpy).not.toHaveBeenCalledWith(['/select-workspace']);
+
+    resolveWorkspaces([]);
+    const result = await resultPromise;
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/onboarding');
   });
 
   it('allows authenticated users with a tenant into the dashboard', async () => {

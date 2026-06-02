@@ -9,6 +9,8 @@ import { WorkspacesApi } from './workspaces.api';
 const ACTIVE_ORG_STORAGE_KEY = 'liass-ohada.activeOrgId';
 const LINKEDIN_PROVIDER_NAME = 'LinkedIn';
 
+export type WorkspaceDestination = '/dashboard' | '/onboarding' | '/select-workspace';
+
 interface AuthState {
   user: AuthUser | null;
   activeOrgId: string | null;
@@ -201,7 +203,7 @@ export const AuthStore = signalStore(
         patchState(store, {
           workspaces,
           workspaceLoading: false,
-          workspaceError: workspaces.length === 0 ? 'No workspace assigned.' : null,
+          workspaceError: null,
           workspacesLoaded: true
         });
 
@@ -217,8 +219,28 @@ export const AuthStore = signalStore(
       }
     },
 
-    workspaceDestination(): '/dashboard' | '/select-workspace' {
-      return store.hasActiveTenant() ? '/dashboard' : '/select-workspace';
+    workspaceDestination(): WorkspaceDestination | null {
+      if (store.hasActiveTenant()) {
+        return '/dashboard';
+      }
+
+      if (store.workspaceLoading() || !store.workspacesLoaded()) {
+        return null;
+      }
+
+      const workspaces = store.workspaces();
+
+      if (workspaces.length === 0) {
+        return '/onboarding';
+      }
+
+      if (workspaces.length === 1) {
+        const activeOrgId = applyTenantSelection(store, workspaces[0].orgId);
+        patchState(store, { activeOrgId, error: null, workspaceError: null });
+        return '/dashboard';
+      }
+
+      return '/select-workspace';
     },
 
     async logout(): Promise<void> {

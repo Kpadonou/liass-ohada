@@ -84,38 +84,6 @@
             </div>
           }
 
-          @if (showManualEntry()) {
-            <form class="mt-6 grid gap-5" [formGroup]="form" (ngSubmit)="submit()">
-              <mat-form-field appearance="outline">
-                <mat-label>{{ 'IDENTITY.WORKSPACE.FIELDS.ORGANIZATION_ID' | transloco }}</mat-label>
-                <input
-                  matInput
-                  autocomplete="organization"
-                  formControlName="orgId"
-                  [disabled]="authStore.loading()"
-                />
-                <mat-icon matPrefix>business</mat-icon>
-                <mat-hint>{{ 'IDENTITY.WORKSPACE.HINTS.ORGANIZATION_ID' | transloco }}</mat-hint>
-                @if (form.controls.orgId.touched && form.controls.orgId.invalid) {
-                  <mat-error>{{ 'IDENTITY.WORKSPACE.VALIDATION.ORGANIZATION_ID' | transloco }}</mat-error>
-                }
-              </mat-form-field>
-
-              <button
-                class="h-12 justify-self-start px-6"
-                matButton="filled"
-                type="submit"
-                [disabled]="form.invalid || authStore.loading()"
-              >
-                @if (authStore.loading()) {
-                  <mat-spinner diameter="18"></mat-spinner>
-                } @else {
-                  <mat-icon>domain_verification</mat-icon>
-                }
-                <span>{{ 'IDENTITY.WORKSPACE.ACTIONS.CONTINUE' | transloco }}</span>
-              </button>
-            </form>
-          }
         </section>
 
         <aside class="rounded-lg border border-white/70 bg-white/75 p-6 shadow-lg shadow-slate-900/5 backdrop-blur">
