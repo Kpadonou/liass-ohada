@@ -2,14 +2,14 @@
 process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
 process.env.LOCALSTACK_URL = "http://localhost:4566";
 
-import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
 import {
+  DeleteItemCommand,
   PutItemCommand,
   ScanCommand,
-  DeleteItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
+import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { KeyFactory } from "../lambda/shared/key-builder";
 
@@ -48,7 +48,7 @@ async function setupMasterData() {
         startDate: "2026-01-01", // Requis par Zod
         endDate: "2026-12-31", // Requis par Zod
         status: "OPEN",
-        accountingStandard: "SYSCOHADA_GENERAL", // Requis par Zod
+        accountingFramework: "SYSCOHADA_REVISED", // Requis par Zod
         entityType: "FISCAL_YEAR",
         createdAt: now,
         updatedAt: now,

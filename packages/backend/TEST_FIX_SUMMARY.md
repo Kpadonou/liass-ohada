@@ -57,7 +57,7 @@ const createMockFiscalYear = (status: "OPEN" | "LOCKED" | "CLOSED") =>
     startDate: "2026-01-01",
     endDate: "2026-12-31",
     status,
-    accountingStandard: "SYSCOHADA_GENERAL",
+    accountingFramework: "SYSCOHADA_REVISED",
     entityType: "FISCAL_YEAR",
     createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z",

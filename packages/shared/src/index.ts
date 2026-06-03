@@ -6,47 +6,54 @@ export {
   padAccountId,
 } from "./core-ledger/account";
 export {
-  AccountingStandard,
+  AccountingFramework,
   CreateEntryRequestSchema,
   EntryLineInputSchema,
   EntryStatus,
   EntryType,
   GetEntriesRequestSchema,
 } from "./core-ledger/entry";
+export type {
+  CreateEntryRequest,
+  GetEntriesRequest,
+} from "./core-ledger/entry";
 export {
-  AccountingStandard as FiscalYearAccountingStandard,
+  AccountingFramework as FiscalYearAccountingFramework,
   FiscalYearStatus,
 } from "./core-ledger/fiscal-year";
 export { JournalType } from "./core-ledger/journal";
 export { BudgetLineSchema, BudgetSchema } from "./projects/budget";
+export type { Budget, BudgetLine } from "./projects/budget";
 export { DonorSchema } from "./projects/donor";
+export type { Donor } from "./projects/donor";
 export { FundingSourceSchema } from "./projects/funding-source";
+export type { FundingSource } from "./projects/funding-source";
 export { ProjectSchema, ProjectStatus } from "./projects/project";
+export type { Project } from "./projects/project";
+export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export {
+  CabinetSchema,
   CreateInitialWorkspaceRequestSchema,
   CreateInitialWorkspaceResponseSchema,
   InitialWorkspaceOrganizationSchema,
   OnboardingAccountingFrameworkSchema,
+  OrganizationSchema,
   WorkspaceCountrySchema,
-  WorkspaceSummarySchema,
-  WorkspaceStatusSchema,
-  WorkspaceTypeSchema,
   WorkspacesResponseSchema,
+  WorkspaceStatusSchema,
+  WorkspaceSummarySchema,
+  WorkspaceTypeSchema,
 } from "./shared/workspace";
-export type { CreateEntryRequest, GetEntriesRequest } from "./core-ledger/entry";
-export type { Budget, BudgetLine } from "./projects/budget";
-export type { Donor } from "./projects/donor";
-export type { FundingSource } from "./projects/funding-source";
-export type { Project } from "./projects/project";
-export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export type {
+  Cabinet,
   CreateInitialWorkspaceRequest,
   CreateInitialWorkspaceResponse,
   InitialWorkspaceOrganization,
   OnboardingAccountingFramework,
+  Organization,
   WorkspaceCountry,
-  WorkspaceSummary,
-  WorkspaceStatus,
-  WorkspaceType,
   WorkspacesResponse,
+  WorkspaceStatus,
+  WorkspaceSummary,
+  WorkspaceType,
 } from "./shared/workspace";

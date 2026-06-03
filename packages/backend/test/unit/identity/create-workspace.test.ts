@@ -52,12 +52,15 @@ describe("POST /me/workspaces", () => {
     jest.mocked(OnboardingService.createInitialWorkspace).mockResolvedValue({
       organization: {
         orgId: "org-created",
-        displayName: "Demo SARL",
-        workspaceType: "COMPANY",
-        status: "ACTIVE",
+        name: "Demo SARL",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",
+        workspaceType: "COMPANY",
+        status: "ACTIVE",
+        createdAt: "2026-06-03T00:00:00.000Z",
+        updatedAt: "2026-06-03T00:00:00.000Z",
       },
+      cabinet: null,
       workspace: {
         orgId: "org-created",
         role: "OWNER",
@@ -112,12 +115,15 @@ describe("POST /me/workspaces", () => {
     jest.mocked(OnboardingService.createInitialWorkspace).mockResolvedValue({
       organization: {
         orgId: "org-server",
-        displayName: "Demo SARL",
-        workspaceType: "COMPANY",
-        status: "ACTIVE",
+        name: "Demo SARL",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",
+        workspaceType: "COMPANY",
+        status: "ACTIVE",
+        createdAt: "2026-06-03T00:00:00.000Z",
+        updatedAt: "2026-06-03T00:00:00.000Z",
       },
+      cabinet: null,
       workspace: {
         orgId: "org-server",
         role: "OWNER",

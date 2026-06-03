@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // --- Enums & Constants ---
 
-export const AccountingStandard = z.enum(["SYSCOHADA_GENERAL", "SYCEBNL"]);
+export const AccountingFramework = z.enum(["SYSCOHADA_REVISED", "SYCEBNL"]);
 export const EntryStatus = z.enum(["DRAFT", "POSTED", "CANCELLED"]);
 export const EntryType = z.enum([
   "STANDARD",
@@ -51,7 +51,7 @@ export const EntryLineInputSchema = z
 export const CreateEntryRequestSchema = z.object({
   orgId: z.string().optional(),
   year: z.number().int(),
-  accountingStandard: AccountingStandard.default("SYSCOHADA_GENERAL"),
+  accountingFramework: AccountingFramework.default("SYSCOHADA_REVISED"),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   journalCode: z.string().min(1).max(10).default("MISC"),
   voucherNumber: z.string().optional(),

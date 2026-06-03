@@ -159,7 +159,7 @@ A. Organization (ORG)
 | sk                  | string  | DynamoDB Sort Key.                                                       |
 | entityType          | string  | ORGANIZATION (Used for querying/GSI).                                    |
 | name                | string  | Legal name (e.g., SARL LiassOhada).                                      |
-| accountingStandard  | ENUM    | SYSCOHADA_GENERAL or SYCEBNL. Determines the chart of accounts.          |
+| accountingFramework | ENUM    | SYSCOHADA_REVISED or SYCEBNL. Determines the chart of accounts.          |
 | legalForm           | string  | Legal form (e.g., "SARL", "Association Loi 1901", "Fondation").          |
 | taxId               | string  | Local Tax Identifier (e.g., IFU in Benin)..                              |
 | address             | object  | Legal address (to be defined as a Value Object).                         |
@@ -176,18 +176,18 @@ A. Organization (ORG)
 
 B. FiscalYear (FY)
 
-| Property           | Type   | Notes                                                                  |
-| :----------------- | :----- | :--------------------------------------------------------------------- |
-| orgId              | string | PK                                                                     |
-| year               | number | SK (Example: 2024.)                                                    |
-| fiscalYearId       | string | fiscalYear Id                                                          |
-| startDate          | string | YYYY-MM-DD format                                                      |
-| endDate            | string | YYYY-MM-DD format                                                      |
-| status             | ENUM   | "OPEN, CLOSED, ARCHIVED"                                               |
-| accountingStandard | ENUM   | Snapshot of the standard (SYSCOHADA_GENERAL or SYCEBNL) at year start. |
-| ranEntryId         | string | Link to RAN                                                            |
-| createdAt          | string | Audit                                                                  |
-| updatedAt          | string | Audit                                                                  |
+| Property            | Type   | Notes                                                                  |
+| :------------------ | :----- | :--------------------------------------------------------------------- |
+| orgId               | string | PK                                                                     |
+| year                | number | SK (Example: 2024.)                                                    |
+| fiscalYearId        | string | fiscalYear Id                                                          |
+| startDate           | string | YYYY-MM-DD format                                                      |
+| endDate             | string | YYYY-MM-DD format                                                      |
+| status              | ENUM   | "OPEN, CLOSED, ARCHIVED"                                               |
+| accountingFramework | ENUM   | Snapshot of the standard (SYSCOHADA_REVISED or SYCEBNL) at year start. |
+| ranEntryId          | string | Link to RAN                                                            |
+| createdAt           | string | Audit                                                                  |
+| updatedAt           | string | Audit                                                                  |
 
 C. Account (ACC)
 

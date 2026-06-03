@@ -6,7 +6,7 @@ export const FiscalYearStatus = z.enum([
   "CLOSED",
   "ARCHIVED",
 ]);
-export const AccountingStandard = z.enum(["SYSCOHADA_GENERAL", "SYCEBNL"]);
+export const AccountingFramework = z.enum(["SYSCOHADA_REVISED", "SYCEBNL"]);
 
 export const FiscalYearSchema = z.object({
   orgId: z.string(),
@@ -15,7 +15,7 @@ export const FiscalYearSchema = z.object({
   startDate: z.string(), // ISO Date
   endDate: z.string(), // ISO Date
   status: FiscalYearStatus,
-  accountingStandard: AccountingStandard,
+  accountingFramework: AccountingFramework,
   ranEntryId: z.string().optional(),
   entityType: z.literal("FISCAL_YEAR"),
   PK: z.string(),

@@ -29,21 +29,25 @@ export const WorkspaceCountrySchema = z.enum([
 
 export const WorkspaceStatusSchema = z.enum(["ACTIVE"]);
 
-export const WorkspaceSummarySchema = z.object({
-  orgId: z.string().min(1),
-  role: z.string().optional(),
-  cabinetId: z.string().optional(),
-  accessSource: z.string().optional(),
-  displayName: z.string().optional(),
-  workspaceType: WorkspaceTypeSchema.optional(),
-  status: WorkspaceStatusSchema.optional(),
-  country: WorkspaceCountrySchema.optional(),
-  accountingFramework: OnboardingAccountingFrameworkSchema.optional(),
-});
+export const WorkspaceSummarySchema = z
+  .object({
+    orgId: z.string().min(1),
+    role: z.string().optional(),
+    cabinetId: z.string().optional(),
+    accessSource: z.string().optional(),
+    displayName: z.string().optional(),
+    workspaceType: WorkspaceTypeSchema.optional(),
+    status: WorkspaceStatusSchema.optional(),
+    country: WorkspaceCountrySchema.optional(),
+    accountingFramework: OnboardingAccountingFrameworkSchema.optional(),
+  })
+  .strict();
 
-export const WorkspacesResponseSchema = z.object({
-  workspaces: WorkspaceSummarySchema.array(),
-});
+export const WorkspacesResponseSchema = z
+  .object({
+    workspaces: WorkspaceSummarySchema.array(),
+  })
+  .strict();
 
 export const CreateInitialWorkspaceRequestSchema = z
   .object({
@@ -54,7 +58,35 @@ export const CreateInitialWorkspaceRequestSchema = z
   })
   .strict();
 
-export const InitialWorkspaceOrganizationSchema = z.object({
+export const OrganizationSchema = z
+  .object({
+    orgId: z.string().min(1),
+    name: z.string().min(1),
+    country: WorkspaceCountrySchema,
+    accountingFramework: OnboardingAccountingFrameworkSchema,
+    workspaceType: WorkspaceTypeSchema,
+    status: WorkspaceStatusSchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+
+export const CabinetSchema = z
+  .object({
+    cabinetId: z.string().min(1),
+    orgId: z.string().min(1),
+    name: z.string().min(1),
+    country: WorkspaceCountrySchema,
+    status: WorkspaceStatusSchema,
+    ownerUserId: z.string().min(1),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+
+export const InitialWorkspaceOrganizationSchema = OrganizationSchema;
+
+export const LegacyInitialWorkspaceOrganizationSchema = z.object({
   orgId: z.string().min(1),
   displayName: z.string().min(1),
   workspaceType: WorkspaceTypeSchema,
@@ -64,11 +96,14 @@ export const InitialWorkspaceOrganizationSchema = z.object({
   cabinetId: z.string().min(1).optional(),
 });
 
-export const CreateInitialWorkspaceResponseSchema = z.object({
-  organization: InitialWorkspaceOrganizationSchema,
-  workspace: WorkspaceSummarySchema,
-  activeOrgId: z.string().min(1),
-});
+export const CreateInitialWorkspaceResponseSchema = z
+  .object({
+    organization: OrganizationSchema,
+    cabinet: CabinetSchema.nullable(),
+    workspace: WorkspaceSummarySchema,
+    activeOrgId: z.string().min(1),
+  })
+  .strict();
 
 export type WorkspaceType = z.infer<typeof WorkspaceTypeSchema>;
 export type OnboardingAccountingFramework = z.infer<
@@ -81,6 +116,8 @@ export type WorkspacesResponse = z.infer<typeof WorkspacesResponseSchema>;
 export type CreateInitialWorkspaceRequest = z.infer<
   typeof CreateInitialWorkspaceRequestSchema
 >;
+export type Organization = z.infer<typeof OrganizationSchema>;
+export type Cabinet = z.infer<typeof CabinetSchema>;
 export type InitialWorkspaceOrganization = z.infer<
   typeof InitialWorkspaceOrganizationSchema
 >;

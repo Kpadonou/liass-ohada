@@ -4,7 +4,6 @@ import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
-import { EntryLineSchema } from "@liass-ohada/shared/core-ledger";
 import {
   BatchGetItemCommand,
   GetItemCommand,
@@ -12,6 +11,7 @@ import {
   TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { EntryLineSchema } from "@liass-ohada/shared/core-ledger";
 import { LockPeriodService } from "./lock-period-service";
 
 interface FIFOCandidate {
@@ -237,7 +237,7 @@ export class LetteringService {
     }
 
     const organization = await LetteringService.getOrganization(orgId);
-    const isSYCEBNL = organization.accountingStandard === "SYCEBNL";
+    const isSYCEBNL = organization.accountingFramework === "SYCEBNL";
     const lines = await LetteringService.getLines(orgId, params.lineKeys);
 
     if (await LockPeriodService.isPeriodLocked(orgId, lines[0].entryDate)) {

@@ -1,23 +1,17 @@
 import {
   DynamoDBClient,
+  QueryCommand,
   ScanCommand,
   TransactionCanceledException,
   TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 import { randomUUID } from "crypto";
 import { OnboardingService } from "@/lambda/shared/services/onboarding-service";
-import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 
 jest.mock("crypto", () => ({
   randomUUID: jest.fn(),
-}));
-
-jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
-  TenantAccessService: {
-    getUserWorkspaces: jest.fn(),
-  },
 }));
 
 const dynamoMock = mockClient(DynamoDBClient);
@@ -45,7 +39,7 @@ describe("OnboardingService", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
-    jest.mocked(TenantAccessService.getUserWorkspaces).mockResolvedValue([]);
+    dynamoMock.on(QueryCommand).resolves({ Items: [] });
   });
 
   test("creates a company organization and user access in one transaction", async () => {
@@ -62,15 +56,16 @@ describe("OnboardingService", () => {
     });
     const transactionItems = unmarshalledTransactItems();
 
-    expect(response).toEqual({
+    expect(response).toMatchObject({
       organization: {
         orgId: GENERATED_ORG_ID,
-        displayName: "Demo SARL",
+        name: "Demo SARL",
         workspaceType: "COMPANY",
         status: "ACTIVE",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",
       },
+      cabinet: null,
       workspace: {
         orgId: GENERATED_ORG_ID,
         role: "OWNER",
@@ -83,6 +78,8 @@ describe("OnboardingService", () => {
       },
       activeOrgId: GENERATED_ORG_ID,
     });
+    expect(response.organization.createdAt).toEqual(expect.any(String));
+    expect(response.organization.updatedAt).toEqual(expect.any(String));
     expect(transactionItems).toHaveLength(3);
     expect(transactionItems.map(({ condition }) => condition)).toEqual([
       "attribute_not_exists(PK) AND attribute_not_exists(SK)",
@@ -98,6 +95,7 @@ describe("OnboardingService", () => {
       PK: `ORG#${GENERATED_ORG_ID}`,
       SK: "ORG#METADATA",
       orgId: GENERATED_ORG_ID,
+      name: "Demo SARL",
       ownerUserId: "user-123",
     });
     expect(transactionItems[1].item).toMatchObject({
@@ -105,6 +103,7 @@ describe("OnboardingService", () => {
       SK: "USER#user-123",
       userId: "user-123",
       role: "OWNER",
+      displayName: "Demo SARL",
       GSI6PK: "USER#user-123",
       GSI6SK: `STATUS#ACTIVE#ORG#${GENERATED_ORG_ID}`,
     });
@@ -133,7 +132,14 @@ describe("OnboardingService", () => {
     const transactionItems = unmarshalledTransactItems();
 
     expect(response.activeOrgId).toBe(GENERATED_ORG_ID);
-    expect(response.organization.cabinetId).toBe(GENERATED_CABINET_ID);
+    expect(response.cabinet).toMatchObject({
+      cabinetId: GENERATED_CABINET_ID,
+      orgId: GENERATED_ORG_ID,
+      name: "Cabinet Demo",
+      country: "BJ",
+      status: "ACTIVE",
+      ownerUserId: "user-123",
+    });
     expect(response.workspace.cabinetId).toBe(GENERATED_CABINET_ID);
     expect(transactionItems).toHaveLength(5);
     expect(transactionItems[3].item).toMatchObject({
@@ -142,6 +148,7 @@ describe("OnboardingService", () => {
       entityType: "CABINET",
       cabinetId: GENERATED_CABINET_ID,
       ownerUserId: "user-123",
+      name: "Cabinet Demo",
     });
     expect(transactionItems[4].item).toMatchObject({
       PK: `CABINET#${GENERATED_CABINET_ID}`,
@@ -155,9 +162,16 @@ describe("OnboardingService", () => {
   });
 
   test("rejects duplicate onboarding when active workspaces already exist", async () => {
-    jest.mocked(TenantAccessService.getUserWorkspaces).mockResolvedValue([
-      { orgId: "org-existing" },
-    ]);
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [
+        marshall({
+          entityType: "USER_ORG_ACCESS",
+          orgId: "org-existing",
+          userId: "user-123",
+          status: "ACTIVE",
+        }),
+      ],
+    });
 
     await expect(
       OnboardingService.createInitialWorkspace("user-123", {
@@ -194,6 +208,25 @@ describe("OnboardingService", () => {
     ).rejects.toMatchObject({
       statusCode: 409,
       messageCode: "WORKSPACE_ALREADY_EXISTS",
+    });
+  });
+
+  test("maps non-cancellation transaction failures to onboarding creation failure", async () => {
+    jest
+      .mocked(randomUUID)
+      .mockReturnValueOnce(ORG_UUID);
+    dynamoMock.on(TransactWriteItemsCommand).rejects(new Error("DynamoDB failed"));
+
+    await expect(
+      OnboardingService.createInitialWorkspace("user-123", {
+        workspaceType: "COMPANY",
+        organizationName: "Demo SARL",
+        country: "BJ",
+        accountingFramework: "SYSCOHADA_REVISED",
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 500,
+      messageCode: "ONBOARDING_CREATE_FAILED",
     });
   });
 });

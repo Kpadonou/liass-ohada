@@ -1,6 +1,6 @@
 export * from "./account";
 export {
-  AccountingStandard,
+  AccountingFramework,
   CreateEntryRequestSchema,
   EntryLineInputSchema,
   EntryLineSchema,
@@ -9,9 +9,14 @@ export {
   EntryType,
   GetEntriesRequestSchema,
 } from "./entry";
-export type { CreateEntryRequest, Entry, EntryLine, GetEntriesRequest } from "./entry";
+export type {
+  CreateEntryRequest,
+  Entry,
+  EntryLine,
+  GetEntriesRequest,
+} from "./entry";
 export {
-  AccountingStandard as FiscalYearAccountingStandard,
+  AccountingFramework as FiscalYearAccountingFramework,
   FiscalYearSchema,
   FiscalYearStatus,
 } from "./fiscal-year";
