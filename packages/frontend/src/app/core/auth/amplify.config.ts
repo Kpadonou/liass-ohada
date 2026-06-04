@@ -1,4 +1,5 @@
 import { Amplify } from 'aws-amplify';
+import 'aws-amplify/auth/enable-oauth-listener';
 
 import { environment } from '../../../environments/environment';
 

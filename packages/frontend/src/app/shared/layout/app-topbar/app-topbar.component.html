@@ -14,7 +14,7 @@
 
     <div class="min-w-0 flex-1">
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-        {{ 'SHELL.TOPBAR.WORKSPACE' | transloco }}
+        {{ 'SHELL.TOPBAR.CURRENT_MODULE' | transloco }}
       </p>
       <h2 class="truncate text-base font-semibold text-slate-950 dark:text-white">
         {{ sectionTitleKey() | transloco }}
@@ -29,10 +29,57 @@
       />
     </div>
 
-    <div class="hidden items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex">
-      <mat-icon class="text-brand-700 dark:text-brand-300">domain</mat-icon>
-      <span class="max-w-[180px] truncate">{{ authStore.activeOrgId() || ('SHELL.TOPBAR.NO_ORG' | transloco) }}</span>
+    <div
+      class="hidden min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex"
+      data-testid="active-workspace"
+    >
+      <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">{{ activeWorkspaceIcon() }}</mat-icon>
+      <span class="min-w-0">
+        <span class="block max-w-[220px] truncate font-semibold text-slate-900 dark:text-white">
+          {{
+            activeWorkspaceLabel()
+              || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+                ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
+                : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+          }}
+        </span>
+        @if (activeWorkspaceTypeLabelKey(); as workspaceTypeLabelKey) {
+          <span class="block truncate text-xs text-slate-500 dark:text-slate-400">
+            {{ workspaceTypeLabelKey | transloco }}
+          </span>
+        }
+      </span>
     </div>
+
+    @if (showActiveDossier()) {
+      <button
+        class="hidden min-w-0 items-center gap-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-left text-sm text-sky-900 transition hover:border-brand-300 hover:bg-brand-50 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100 dark:hover:border-brand-800 dark:hover:bg-brand-950/30 sm:flex"
+        type="button"
+        data-testid="active-dossier"
+        [attr.aria-label]="'SHELL.TOPBAR.DOSSIER' | transloco"
+        (click)="openDossierContext()"
+      >
+        <mat-icon class="shrink-0 text-sky-700 dark:text-sky-300">business_center</mat-icon>
+        <span class="min-w-0">
+          <span class="block text-xs font-semibold uppercase tracking-[0.12em] text-sky-600 dark:text-sky-300">
+            {{ 'SHELL.TOPBAR.DOSSIER' | transloco }}
+          </span>
+          <span class="block max-w-[220px] truncate font-semibold text-slate-950 dark:text-white">
+            {{
+              activeDossierLabel()
+                || ((authStore.dossierLoading()
+                  ? 'SHELL.TOPBAR.DOSSIER_LOADING'
+                  : 'SHELL.TOPBAR.NO_DOSSIER') | transloco)
+            }}
+          </span>
+          @if (!activeDossierLabel() && !authStore.dossierLoading()) {
+            <span class="block truncate text-xs text-sky-700 dark:text-sky-200">
+              {{ activeDossierRouteLabelKey() | transloco }}
+            </span>
+          }
+        </span>
+      </button>
+    }
 
     <liass-button
       size="icon"
@@ -50,11 +97,20 @@
         liassDropdownTrigger
         class="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-900/[0.03] transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         type="button"
+        data-testid="user-menu-trigger"
         [attr.aria-label]="'SHELL.TOPBAR.USER_MENU' | transloco"
         (click)="toggleUserMenu()"
       >
         <span class="grid size-7 place-items-center rounded-full bg-brand-100 text-brand-700 dark:bg-brand-900/45 dark:text-brand-300">
-          <mat-icon>person</mat-icon>
+          @if (authStore.currentUserPicture()) {
+            <img
+              class="size-7 rounded-full object-cover"
+              [src]="authStore.currentUserPicture()"
+              [alt]="userLabel() || ('SHELL.TOPBAR.USER' | transloco)"
+            />
+          } @else {
+            <mat-icon>person</mat-icon>
+          }
         </span>
         <span class="hidden max-w-[150px] truncate md:inline">
           {{ userLabel() || ('SHELL.TOPBAR.USER' | transloco) }}
@@ -67,8 +123,32 @@
           {{ userLabel() || ('SHELL.TOPBAR.USER' | transloco) }}
         </p>
         <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          {{ authStore.activeOrgId() || ('SHELL.TOPBAR.NO_ORG' | transloco) }}
+          {{ authStore.currentUserEmail() || ('SHELL.TOPBAR.USER' | transloco) }}
         </p>
+        <p class="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+          {{ 'SHELL.TOPBAR.WORKSPACE' | transloco }}
+        </p>
+        <p class="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">
+          {{
+            activeWorkspaceLabel()
+              || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+                ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
+                : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+          }}
+        </p>
+        @if (showActiveDossier()) {
+          <p class="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {{ 'SHELL.TOPBAR.DOSSIER' | transloco }}
+          </p>
+          <p class="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">
+            {{
+              activeDossierLabel()
+                || ((authStore.dossierLoading()
+                  ? 'SHELL.TOPBAR.DOSSIER_LOADING'
+                  : 'SHELL.TOPBAR.NO_DOSSIER') | transloco)
+            }}
+          </p>
+        }
       </div>
 
       <button

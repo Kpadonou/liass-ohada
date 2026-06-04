@@ -31,15 +31,27 @@
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Rechercher ou interroger l’IA...",
+      "CREATE_DOSSIER": "Créer un dossier",
       "CLOSE_NAVIGATION": "Fermer la navigation",
+      "CURRENT_MODULE": "Module courant",
       "DARK_MODE": "Activer le mode sombre",
+      "DOSSIER": "Dossier actif",
+      "DOSSIER_LOADING": "Chargement du dossier...",
       "LIGHT_MODE": "Activer le mode clair",
+      "NO_DOSSIER": "Aucun dossier client",
       "NO_ORG": "Aucune organisation",
+      "NO_WORKSPACE": "Espace de travail",
       "SIGN_OUT": "Se déconnecter",
+      "SELECT_DOSSIER": "Sélectionner un dossier",
       "TOGGLE_NAVIGATION": "Basculer la navigation",
       "USER": "Utilisateur",
       "USER_MENU": "Ouvrir le menu utilisateur",
-      "WORKSPACE": "Espace actif"
+      "WORKSPACE": "Espace actif",
+      "WORKSPACE_LOADING": "Chargement de l’espace..."
+    },
+    "WORKSPACE_TYPES": {
+      "ACCOUNTING_FIRM": "Cabinet comptable",
+      "COMPANY": "Entreprise"
     }
   },
   "DASHBOARD": {
@@ -262,13 +274,45 @@
         "SUBMITTING": "Création de l’espace..."
       },
       "ERRORS": {
-        "CREATE_FAILED": "La création de l’espace n’a pas pu se terminer. Veuillez réessayer."
+        "AUTH_REQUIRED": "Votre session n’autorise pas la création de l’espace. Reconnectez-vous, puis réessayez.",
+        "CREATE_FAILED": "La création de l’espace n’a pas pu se terminer. Veuillez réessayer.",
+        "DUPLICATE_WORKSPACE": "Un espace existe déjà pour ce compte. Actualisez la liste des espaces ou continuez vers votre tableau de bord.",
+        "MISSING_ROUTE": "Le service de création d’espace n’est pas disponible sur l’API configurée. Vérifiez le déploiement backend puis réessayez.",
+        "NETWORK": "L’espace n’a pas pu être créé car la connexion réseau a échoué. Vérifiez votre connexion puis réessayez.",
+        "SERVER": "Le service backend a rencontré une erreur pendant la création de l’espace. Veuillez réessayer après quelques instants.",
+        "VALIDATION": "L’espace a été créé, mais la réponse n’a pas pu être vérifiée. Réessayez ou actualisez la liste des espaces."
       },
       "VALIDATION": {
         "WORKSPACE_TYPE": "Choisissez un type d’espace.",
         "ORGANIZATION_NAME": "Saisissez un nom d’organisation.",
         "COUNTRY": "Choisissez un pays.",
         "ACCOUNTING_FRAMEWORK": "Choisissez un référentiel comptable."
+      }
+    },
+    "CABINET_DOSSIERS": {
+      "EYEBROW": "Dossiers clients",
+      "NEW_TITLE": "Créez le premier dossier client",
+      "NEW_SUBTITLE": "Ajoutez l’entreprise cliente que votre cabinet va gérer avant d’ouvrir les modules comptables.",
+      "SELECT_TITLE": "Sélectionnez un dossier client",
+      "SELECT_SUBTITLE": "Choisissez l’entreprise cliente dont vous voulez traiter la comptabilité.",
+      "LOADING": "Chargement des dossiers clients...",
+      "FIELDS": {
+        "COMPANY_NAME": "Nom de l’entreprise cliente"
+      },
+      "ACTIONS": {
+        "CREATE": "Créer le dossier",
+        "CREATING": "Création du dossier...",
+        "NEW": "Nouveau dossier"
+      },
+      "ERRORS": {
+        "CREATE_FAILED": "La création du dossier client n’a pas pu se terminer. Veuillez réessayer.",
+        "DUPLICATE": "Ce dossier client existe déjà.",
+        "NETWORK": "Le dossier client n’a pas pu être créé car la connexion réseau a échoué.",
+        "SERVICE_UNAVAILABLE": "La gestion des dossiers clients n’est pas encore disponible sur le backend configuré.",
+        "VALIDATION": "La réponse du dossier client n’a pas pu être vérifiée. Veuillez réessayer."
+      },
+      "VALIDATION": {
+        "COMPANY_NAME": "Saisissez le nom de l’entreprise cliente."
       }
     },
     "LOGIN": {

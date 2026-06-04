@@ -105,6 +105,39 @@ export const CreateInitialWorkspaceResponseSchema = z
   })
   .strict();
 
+export const CabinetDossierSummarySchema = z
+  .object({
+    orgId: z.string().min(1),
+    displayName: z.string().min(1),
+    country: WorkspaceCountrySchema,
+    accountingFramework: OnboardingAccountingFrameworkSchema,
+    status: WorkspaceStatusSchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+
+export const ListCabinetDossiersResponseSchema = z
+  .object({
+    dossiers: CabinetDossierSummarySchema.array(),
+  })
+  .strict();
+
+export const CreateCabinetDossierRequestSchema = z
+  .object({
+    companyName: z.string().trim().min(1).max(160),
+    country: WorkspaceCountrySchema,
+    accountingFramework: OnboardingAccountingFrameworkSchema,
+  })
+  .strict();
+
+export const CreateCabinetDossierResponseSchema = z
+  .object({
+    dossier: CabinetDossierSummarySchema,
+    activeDossierOrgId: z.string().min(1),
+  })
+  .strict();
+
 export type WorkspaceType = z.infer<typeof WorkspaceTypeSchema>;
 export type OnboardingAccountingFramework = z.infer<
   typeof OnboardingAccountingFrameworkSchema
@@ -123,4 +156,14 @@ export type InitialWorkspaceOrganization = z.infer<
 >;
 export type CreateInitialWorkspaceResponse = z.infer<
   typeof CreateInitialWorkspaceResponseSchema
+>;
+export type CabinetDossierSummary = z.infer<typeof CabinetDossierSummarySchema>;
+export type ListCabinetDossiersResponse = z.infer<
+  typeof ListCabinetDossiersResponseSchema
+>;
+export type CreateCabinetDossierRequest = z.infer<
+  typeof CreateCabinetDossierRequestSchema
+>;
+export type CreateCabinetDossierResponse = z.infer<
+  typeof CreateCabinetDossierResponseSchema
 >;

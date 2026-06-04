@@ -12,6 +12,7 @@ import { authInterceptor } from './auth.interceptor';
 
 vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
+  fetchUserAttributes: vi.fn(),
   fetchAuthSession: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
@@ -64,6 +65,86 @@ describe('authInterceptor', () => {
     await response;
   });
 
+  it('uses the active client dossier for tenant API calls in accounting-firm workspaces', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-cabinet',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-cabinet'
+    );
+    authStore.setCreatedDossier(
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client'
+    );
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: { toString: () => 'jwt-token' }
+      }
+    } as never);
+
+    const http = TestBed.inject(HttpClient);
+    const response = firstValueFrom(http.get(`${environment.apiBaseUrl}/accounts`));
+    await Promise.resolve();
+
+    const request = httpMock.expectOne(`${environment.apiBaseUrl}/accounts`);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.get('x-org-id')).toBe('org-client');
+    request.flush({ accounts: [] });
+    await response;
+  });
+
+  it('uses the cabinet workspace for cabinet dossier API calls', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-cabinet',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-cabinet'
+    );
+    authStore.setCreatedDossier(
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client'
+    );
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: { toString: () => 'jwt-token' }
+      }
+    } as never);
+
+    const http = TestBed.inject(HttpClient);
+    const response = firstValueFrom(http.get(`${environment.apiBaseUrl}/cabinet/dossiers`));
+    await Promise.resolve();
+
+    const request = httpMock.expectOne(`${environment.apiBaseUrl}/cabinet/dossiers`);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.get('x-org-id')).toBe('org-cabinet');
+    request.flush({ dossiers: [] });
+    await response;
+  });
+
   it('adds only bearer token for workspace discovery calls', async () => {
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
@@ -110,13 +191,25 @@ describe('authInterceptor', () => {
     request.flush({
       organization: {
         orgId: 'org-created',
+        name: 'Demo SARL',
+        workspaceType: 'COMPANY',
+        status: 'ACTIVE',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      cabinet: null,
+      workspace: {
+        orgId: 'org-created',
+        role: 'OWNER',
+        accessSource: 'DIRECT',
         displayName: 'Demo SARL',
         workspaceType: 'COMPANY',
         status: 'ACTIVE',
         country: 'BJ',
         accountingFramework: 'SYSCOHADA_REVISED'
       },
-      workspace: { orgId: 'org-created' },
       activeOrgId: 'org-created'
     });
     await response;

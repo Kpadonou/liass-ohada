@@ -48,5 +48,47 @@ export class IdentityEndpoints extends DomainConstructFactory {
       stage: props.stage,
       table: props.table,
     });
+
+    const listCabinetDossiersEntry = path.join(
+      projectRoot,
+      "lambda",
+      "domains",
+      "identity",
+      "list-cabinet-dossiers.ts",
+    );
+
+    this.addRoute({
+      actionName: "list-cabinet-dossiers",
+      api: props.api,
+      authorizer: props.authorizer,
+      domainName: "identity",
+      handlerEntry: listCabinetDossiersEntry,
+      idPrefix: "Identity-",
+      method: apigw.HttpMethod.GET,
+      routePath: "/cabinet/dossiers",
+      stage: props.stage,
+      table: props.table,
+    });
+
+    const createCabinetDossierEntry = path.join(
+      projectRoot,
+      "lambda",
+      "domains",
+      "identity",
+      "create-cabinet-dossier.ts",
+    );
+
+    this.addRoute({
+      actionName: "create-cabinet-dossier",
+      api: props.api,
+      authorizer: props.authorizer,
+      domainName: "identity",
+      handlerEntry: createCabinetDossierEntry,
+      idPrefix: "Identity-",
+      method: apigw.HttpMethod.POST,
+      routePath: "/cabinet/dossiers",
+      stage: props.stage,
+      table: props.table,
+    });
   }
 }

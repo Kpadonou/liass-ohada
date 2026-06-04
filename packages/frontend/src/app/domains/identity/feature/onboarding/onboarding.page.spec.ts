@@ -1,5 +1,7 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import type { CreateInitialWorkspaceResponse } from '@liass-ohada/shared/shared';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { vi } from 'vitest';
 
@@ -56,7 +58,10 @@ const translations = {
           SUBMITTING: 'Creating workspace...'
         },
         ERRORS: {
-          CREATE_FAILED: 'Workspace creation could not finish.'
+          CREATE_FAILED: 'Workspace creation could not finish.',
+          DUPLICATE_WORKSPACE: 'A workspace already exists for this account.',
+          NETWORK: 'The workspace could not be created because the network connection failed.',
+          VALIDATION: 'The workspace was created, but the response could not be verified.'
         },
         VALIDATION: {
           WORKSPACE_TYPE: 'Choose a workspace type.',
@@ -69,6 +74,72 @@ const translations = {
   }
 };
 
+const createdAt = '2026-06-03T00:00:00.000Z';
+
+function companyResponse(): CreateInitialWorkspaceResponse {
+  return {
+    organization: {
+      orgId: 'org-created',
+      name: 'Demo SARL',
+      workspaceType: 'COMPANY',
+      status: 'ACTIVE',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED',
+      createdAt,
+      updatedAt: createdAt
+    },
+    cabinet: null,
+    workspace: {
+      orgId: 'org-created',
+      role: 'OWNER',
+      accessSource: 'DIRECT',
+      displayName: 'Demo SARL',
+      workspaceType: 'COMPANY',
+      status: 'ACTIVE',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED'
+    },
+    activeOrgId: 'org-created'
+  };
+}
+
+function accountingFirmResponse(): CreateInitialWorkspaceResponse {
+  return {
+    organization: {
+      orgId: 'org-firm',
+      name: 'Cabinet Demo',
+      workspaceType: 'ACCOUNTING_FIRM',
+      status: 'ACTIVE',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED',
+      createdAt,
+      updatedAt: createdAt
+    },
+    cabinet: {
+      cabinetId: 'cab-created',
+      orgId: 'org-firm',
+      name: 'Cabinet Demo',
+      status: 'ACTIVE',
+      country: 'BJ',
+      ownerUserId: 'user-123',
+      createdAt,
+      updatedAt: createdAt
+    },
+    workspace: {
+      orgId: 'org-firm',
+      role: 'OWNER',
+      cabinetId: 'cab-created',
+      accessSource: 'DIRECT',
+      displayName: 'Cabinet Demo',
+      workspaceType: 'ACCOUNTING_FIRM',
+      status: 'ACTIVE',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED'
+    },
+    activeOrgId: 'org-firm'
+  };
+}
+
 type OnboardingPageHarness = OnboardingPage & {
   backToWorkspaceType: () => void;
   continueToDetails: () => void;
@@ -80,8 +151,10 @@ type OnboardingPageHarness = OnboardingPage & {
       workspaceType: { setValue: (value: string) => void };
     };
   };
+  onboardingErrorKey: () => string | null;
   selectWorkspaceType: (workspaceType: 'ACCOUNTING_FIRM' | 'COMPANY') => void;
   submitOnboarding: () => Promise<void>;
+  submitting: () => boolean;
 };
 
 describe('OnboardingPage', () => {
@@ -160,30 +233,59 @@ describe('OnboardingPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Choose an accounting framework.');
   });
 
-  it('creates a workspace, selects the returned active tenant, and redirects to dashboard', async () => {
-    onboardingApi.createInitialWorkspace.mockResolvedValue({
-      organization: {
-        orgId: 'org-created',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM',
-        status: 'ACTIVE',
-        country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED',
-        cabinetId: 'cab-created'
-      },
-      workspace: {
-        orgId: 'org-created',
-        role: 'OWNER',
-        cabinetId: 'cab-created',
-        accessSource: 'DIRECT',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM',
-        status: 'ACTIVE',
-        country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED'
-      },
-      activeOrgId: 'org-created'
+  it('creates a company workspace, selects the returned active tenant, and redirects to dashboard', async () => {
+    onboardingApi.createInitialWorkspace.mockResolvedValue(companyResponse());
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    page.form.controls.organizationName.setValue('Demo SARL');
+    await page.submitOnboarding();
+    fixture.detectChanges();
+
+    expect(onboardingApi.createInitialWorkspace).toHaveBeenCalledWith({
+      workspaceType: 'COMPANY',
+      organizationName: 'Demo SARL',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED'
     });
+    expect(Object.keys(onboardingApi.createInitialWorkspace.mock.calls[0][0]).sort()).toEqual([
+      'accountingFramework',
+      'country',
+      'organizationName',
+      'workspaceType'
+    ]);
+    expect(localStorage.getItem('liass-ohada.activeOrgId')).toBe('org-created');
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
+  });
+
+  it('submits through the visible create button', async () => {
+    onboardingApi.createInitialWorkspace.mockResolvedValue(companyResponse());
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    page.form.controls.organizationName.setValue('Demo SARL');
+    fixture.detectChanges();
+
+    const createButton = fixture.nativeElement.querySelector(
+      'button[type="submit"]'
+    ) as HTMLButtonElement;
+    createButton.click();
+    await fixture.whenStable();
+
+    expect(onboardingApi.createInitialWorkspace).toHaveBeenCalledWith({
+      workspaceType: 'COMPANY',
+      organizationName: 'Demo SARL',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED'
+    });
+  });
+
+  it('creates an accounting-firm workspace and stores the cabinet workspace summary', async () => {
+    onboardingApi.createInitialWorkspace.mockResolvedValue(accountingFirmResponse());
     fixture.detectChanges();
     await fixture.whenStable();
 
@@ -199,11 +301,66 @@ describe('OnboardingPage', () => {
       country: 'BJ',
       accountingFramework: 'SYSCOHADA_REVISED'
     });
-    expect(localStorage.getItem('liass-ohada.activeOrgId')).toBe('org-created');
+    expect(localStorage.getItem('liass-ohada.activeOrgId')).toBe('org-firm');
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
   });
 
-  it('shows a translated error when workspace creation fails', async () => {
+  it('shows a duplicate workspace error without redirecting', async () => {
+    onboardingApi.createInitialWorkspace.mockRejectedValue(
+      new HttpErrorResponse({
+        status: 409,
+        error: { message: { code: 'WORKSPACE_ALREADY_EXISTS' } }
+      })
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    page.form.controls.organizationName.setValue('Demo SARL');
+    await page.submitOnboarding();
+    fixture.detectChanges();
+
+    expect(page.onboardingErrorKey()).toBe('IDENTITY.ONBOARDING.ERRORS.DUPLICATE_WORKSPACE');
+    expect(fixture.nativeElement.textContent).toContain('A workspace already exists for this account.');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows a network error without redirecting', async () => {
+    onboardingApi.createInitialWorkspace.mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    page.form.controls.organizationName.setValue('Demo SARL');
+    await page.submitOnboarding();
+    fixture.detectChanges();
+
+    expect(page.onboardingErrorKey()).toBe('IDENTITY.ONBOARDING.ERRORS.NETWORK');
+    expect(fixture.nativeElement.textContent).toContain('network connection failed');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows a validation error when response schema validation fails', async () => {
+    onboardingApi.createInitialWorkspace.mockRejectedValue(
+      Object.assign(new Error('Invalid response'), { name: 'ZodError' })
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    page.form.controls.organizationName.setValue('Demo SARL');
+    await page.submitOnboarding();
+    fixture.detectChanges();
+
+    expect(page.onboardingErrorKey()).toBe('IDENTITY.ONBOARDING.ERRORS.VALIDATION');
+    expect(fixture.nativeElement.textContent).toContain('response could not be verified');
+    expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('shows a generic translated error when workspace creation fails', async () => {
     onboardingApi.createInitialWorkspace.mockRejectedValue(new Error('boom'));
     fixture.detectChanges();
     await fixture.whenStable();
@@ -214,7 +371,34 @@ describe('OnboardingPage', () => {
     await page.submitOnboarding();
     fixture.detectChanges();
 
+    expect(page.onboardingErrorKey()).toBe('IDENTITY.ONBOARDING.ERRORS.CREATE_FAILED');
     expect(fixture.nativeElement.textContent).toContain('Workspace creation could not finish.');
     expect(router.navigate).not.toHaveBeenCalled();
+  });
+
+  it('prevents duplicate submissions while a request is in flight', async () => {
+    let resolveRequest: (response: CreateInitialWorkspaceResponse) => void = () => undefined;
+    onboardingApi.createInitialWorkspace.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+      })
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    page.form.controls.organizationName.setValue('Demo SARL');
+    const firstSubmission = page.submitOnboarding();
+    await Promise.resolve();
+
+    expect(page.submitting()).toBe(true);
+    await page.submitOnboarding();
+    expect(onboardingApi.createInitialWorkspace).toHaveBeenCalledTimes(1);
+
+    resolveRequest(companyResponse());
+    await firstSubmission;
+
+    expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
   });
 });

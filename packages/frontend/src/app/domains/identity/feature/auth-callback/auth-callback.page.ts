@@ -42,12 +42,18 @@ export class AuthCallbackPage implements OnInit {
         CALLBACK_STEP_TIMEOUT_MS,
         'OAuth session hydration timed out.'
       );
+      this.clearCallbackUrl();
       this.debug('session detected');
 
       await this.withTimeout(
         this.authStore.hydrate(),
         CALLBACK_STEP_TIMEOUT_MS,
         'Authenticated session check timed out.'
+      );
+      await this.withTimeout(
+        this.authStore.refreshUserProfile(),
+        CALLBACK_STEP_TIMEOUT_MS,
+        'User profile refresh timed out.'
       );
 
       if (!this.authStore.isAuthenticated()) {
@@ -91,6 +97,14 @@ export class AuthCallbackPage implements OnInit {
   private showError(errorKey: CallbackErrorKey): void {
     this.loading.set(false);
     this.errorKey.set(errorKey);
+  }
+
+  private clearCallbackUrl(): void {
+    if (typeof window === 'undefined' || !window.location.search) {
+      return;
+    }
+
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 
   private async withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {

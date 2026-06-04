@@ -1,5 +1,4 @@
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
-import { OnboardingPage } from '../../domains/identity/feature/onboarding/onboarding.page';
 import { authGuard, tenantGuard } from './auth.guards';
 import { routes } from './app.routes';
 
@@ -11,10 +10,14 @@ describe('routes', () => {
     expect(callbackRoute?.canActivate).toBeUndefined();
   });
 
-  it('registers onboarding as an authenticated pre-tenant identity route', () => {
+  it('registers onboarding as an authenticated pre-tenant identity route', async () => {
     const onboardingRoute = routes.find((route) => route.path === 'onboarding');
+    const component = await onboardingRoute?.loadComponent?.();
+    const { OnboardingPage } = await import(
+      '../../domains/identity/feature/onboarding/onboarding.page'
+    );
 
-    expect(onboardingRoute?.component).toBe(OnboardingPage);
+    expect(component).toBe(OnboardingPage);
     expect(onboardingRoute?.canActivate).toEqual([authGuard]);
     expect(onboardingRoute?.canActivate).not.toContain(tenantGuard);
   });

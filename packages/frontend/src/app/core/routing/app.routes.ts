@@ -2,10 +2,9 @@ import { Routes } from '@angular/router';
 
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
 import { LoginPage } from '../../domains/identity/feature/login/login.page';
-import { OnboardingPage } from '../../domains/identity/feature/onboarding/onboarding.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
 import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
-import { authGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
+import { authGuard, cabinetDossierGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
 
 export const routes: Routes = [
   {
@@ -29,8 +28,27 @@ export const routes: Routes = [
   },
   {
     path: 'onboarding',
-    component: OnboardingPage,
+    loadComponent: () =>
+      import('../../domains/identity/feature/onboarding/onboarding.page').then(
+        (module) => module.OnboardingPage
+      ),
     canActivate: [authGuard]
+  },
+  {
+    path: 'cabinet/dossiers/new',
+    loadComponent: () =>
+      import('../../domains/identity/feature/cabinet-dossier-new/cabinet-dossier-new.page').then(
+        (module) => module.CabinetDossierNewPage
+      ),
+    canActivate: [cabinetDossierGuard]
+  },
+  {
+    path: 'cabinet/dossiers/select',
+    loadComponent: () =>
+      import(
+        '../../domains/identity/feature/cabinet-dossier-select/cabinet-dossier-select.page'
+      ).then((module) => module.CabinetDossierSelectPage),
+    canActivate: [cabinetDossierGuard]
   },
   {
     path: 'dashboard',

@@ -1,8 +1,10 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type {
-  CreateInitialWorkspaceRequest,
-  CreateInitialWorkspaceResponse
+import {
+  CreateInitialWorkspaceRequestSchema,
+  CreateInitialWorkspaceResponseSchema,
+  type CreateInitialWorkspaceRequest,
+  type CreateInitialWorkspaceResponse
 } from '@liass-ohada/shared/shared';
 import { firstValueFrom } from 'rxjs';
 
@@ -16,10 +18,6 @@ export class OnboardingApi {
   async createInitialWorkspace(
     payload: CreateInitialWorkspaceRequest
   ): Promise<CreateInitialWorkspaceResponse> {
-    const {
-      CreateInitialWorkspaceRequestSchema,
-      CreateInitialWorkspaceResponseSchema
-    } = await import('@liass-ohada/shared/shared');
     const request = CreateInitialWorkspaceRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.post<unknown>(`${this.apiBaseUrl}/me/workspaces`, request)

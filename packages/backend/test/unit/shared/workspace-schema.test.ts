@@ -1,7 +1,11 @@
 import {
+  CabinetDossierSummarySchema,
   CabinetSchema,
+  CreateCabinetDossierRequestSchema,
+  CreateCabinetDossierResponseSchema,
   CreateInitialWorkspaceRequestSchema,
   CreateInitialWorkspaceResponseSchema,
+  ListCabinetDossiersResponseSchema,
   OrganizationSchema,
   WorkspaceCountrySchema,
   WorkspaceTypeSchema,
@@ -173,5 +177,64 @@ describe("workspace shared schemas", () => {
   test("rejects invalid workspace type and country values", () => {
     expect(() => WorkspaceTypeSchema.parse("CABINET")).toThrow();
     expect(() => WorkspaceCountrySchema.parse("US")).toThrow();
+  });
+
+  test("accepts only the strict cabinet dossier request contract", () => {
+    const parsed = CreateCabinetDossierRequestSchema.parse({
+      companyName: "  Client SARL  ",
+      country: "BJ",
+      accountingFramework: "SYSCOHADA_REVISED",
+    });
+
+    expect(parsed.companyName).toBe("Client SARL");
+    expect(() =>
+      CreateCabinetDossierRequestSchema.parse({
+        companyName: "Client SARL",
+        country: "BJ",
+        accountingFramework: "SYSCOHADA_REVISED",
+        orgId: "attacker-org",
+      }),
+    ).toThrow();
+  });
+
+  test("rejects persistence keys in cabinet dossier DTOs", () => {
+    expect(() =>
+      CabinetDossierSummarySchema.parse({
+        orgId: "org-client",
+        displayName: "Client SARL",
+        country: "BJ",
+        accountingFramework: "SYSCOHADA_REVISED",
+        status: "ACTIVE",
+        createdAt: "2026-06-03T00:00:00.000Z",
+        updatedAt: "2026-06-03T00:00:00.000Z",
+        PK: "CABINET#cab-123",
+        GSI1PK: "CABINET#cab-123",
+        entityType: "CABINET_DOSSIER",
+      }),
+    ).toThrow();
+  });
+
+  test("accepts cabinet dossier list and creation responses", () => {
+    const dossier = {
+      orgId: "org-client",
+      displayName: "Client SARL",
+      country: "BJ",
+      accountingFramework: "SYSCOHADA_REVISED",
+      status: "ACTIVE",
+      createdAt: "2026-06-03T00:00:00.000Z",
+      updatedAt: "2026-06-03T00:00:00.000Z",
+    };
+
+    expect(ListCabinetDossiersResponseSchema.parse({ dossiers: [dossier] })).toEqual({
+      dossiers: [dossier],
+    });
+    expect(
+      CreateCabinetDossierResponseSchema.parse({
+        dossier,
+        activeDossierOrgId: "org-client",
+      }),
+    ).toMatchObject({
+      activeDossierOrgId: "org-client",
+    });
   });
 });

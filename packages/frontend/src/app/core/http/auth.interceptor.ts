@@ -9,6 +9,26 @@ import { environment } from '../../../environments/environment';
 
 const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 const workspacesDiscoveryUrl = `${apiBaseUrl}/me/workspaces`;
+const cabinetDossiersUrl = `${apiBaseUrl}/cabinet/dossiers`;
+
+function tenantOrgIdForRequest(authStore: InstanceType<typeof AuthStore>, url: string): string | null {
+  const activeOrgId = authStore.activeOrgId();
+  const urlWithoutQuery = url.split('?')[0];
+
+  if (!activeOrgId) {
+    return null;
+  }
+
+  if (urlWithoutQuery === cabinetDossiersUrl) {
+    return activeOrgId;
+  }
+
+  if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
+    return authStore.activeDossierOrgId() || activeOrgId;
+  }
+
+  return activeOrgId;
+}
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.url.startsWith(apiBaseUrl)) {
@@ -21,9 +41,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const isWorkspaceDiscoveryRequest =
     request.url === workspacesDiscoveryUrl &&
     (request.method === 'GET' || request.method === 'POST');
-  const activeOrgId = authStore.activeOrgId();
+  const tenantOrgId = tenantOrgIdForRequest(authStore, request.url);
 
-  if (!isWorkspaceDiscoveryRequest && !activeOrgId) {
+  if (!isWorkspaceDiscoveryRequest && !tenantOrgId) {
     return throwError(
       () =>
         new HttpErrorResponse({
@@ -56,7 +76,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         : {
             Authorization: `Bearer ${token}`,
             'Accept-Language': activeLanguage,
-            'x-org-id': activeOrgId as string
+            'x-org-id': tenantOrgId as string
           };
 
       return next(

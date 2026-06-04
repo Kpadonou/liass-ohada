@@ -1,12 +1,23 @@
 import { TestBed } from '@angular/core/testing';
-import { confirmSignIn, getCurrentUser, signIn, signInWithRedirect, signOut } from 'aws-amplify/auth';
+import {
+  confirmSignIn,
+  fetchAuthSession,
+  fetchUserAttributes,
+  getCurrentUser,
+  signIn,
+  signInWithRedirect,
+  signOut
+} from 'aws-amplify/auth';
 import { vi } from 'vitest';
 
 import { WorkspacesApi } from './workspaces.api';
+import { CabinetDossiersApi } from './cabinet-dossiers.api';
 import { AuthStore } from './auth.store';
 
 vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
+  fetchAuthSession: vi.fn(),
+  fetchUserAttributes: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
   signInWithRedirect: vi.fn(),
@@ -15,19 +26,28 @@ vi.mock('aws-amplify/auth', () => ({
 
 describe('AuthStore', () => {
   let workspacesApi: { listWorkspaces: ReturnType<typeof vi.fn> };
+  let cabinetDossiersApi: { listDossiers: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
     TestBed.resetTestingModule();
     workspacesApi = { listWorkspaces: vi.fn() };
+    cabinetDossiersApi = { listDossiers: vi.fn() };
     TestBed.configureTestingModule({
-      providers: [{ provide: WorkspacesApi, useValue: workspacesApi }]
+      providers: [
+        { provide: WorkspacesApi, useValue: workspacesApi },
+        { provide: CabinetDossiersApi, useValue: cabinetDossiersApi }
+      ]
     });
     localStorage.clear();
     vi.mocked(confirmSignIn).mockReset();
+    vi.mocked(fetchAuthSession).mockReset();
+    vi.mocked(fetchUserAttributes).mockReset();
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(signIn).mockReset();
     vi.mocked(signInWithRedirect).mockReset();
     vi.mocked(signOut).mockReset();
+    vi.mocked(fetchAuthSession).mockResolvedValue({} as never);
+    vi.mocked(fetchUserAttributes).mockResolvedValue({});
   });
 
   it('stores the current Cognito user after successful sign-in', async () => {
@@ -41,12 +61,18 @@ describe('AuthStore', () => {
       nextStep: { signInStep: 'DONE' }
     });
     vi.mocked(getCurrentUser).mockResolvedValue(user);
+    vi.mocked(fetchUserAttributes).mockResolvedValue({
+      email: 'user@example.com',
+      name: 'Chrys Kpadonou'
+    });
 
     const store = TestBed.inject(AuthStore);
     await store.login('user@example.com', 'password');
 
     expect(store.user()).toEqual(user);
     expect(store.isAuthenticated()).toBe(true);
+    expect(store.userDisplayName()).toBe('Chrys Kpadonou');
+    expect(store.userEmail()).toBe('user@example.com');
   });
 
   it('prompts for a new password when Cognito requires it', async () => {
@@ -73,13 +99,104 @@ describe('AuthStore', () => {
       nextStep: { signInStep: 'DONE' }
     });
     vi.mocked(getCurrentUser).mockResolvedValue(user);
+    vi.mocked(fetchUserAttributes).mockResolvedValue({
+      email: 'user@example.com',
+      given_name: 'Chrys',
+      family_name: 'Kpadonou'
+    });
 
     const store = TestBed.inject(AuthStore);
     await store.confirmNewPassword('New-password-123!');
 
     expect(confirmSignIn).toHaveBeenCalledWith({ challengeResponse: 'New-password-123!' });
     expect(store.user()).toEqual(user);
+    expect(store.userDisplayName()).toBe('Chrys Kpadonou');
     expect(store.requiresNewPassword()).toBe(false);
+  });
+
+  it('falls back to email instead of Cognito provider username for the user display label', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'Google_123456789',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    vi.mocked(fetchUserAttributes).mockResolvedValue({
+      email: 'chrys.kpadonou@example.com'
+    });
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+
+    expect(store.userDisplayName()).toBe('chrys.kpadonou@example.com');
+    expect(store.userDisplayName()).not.toBe('Google_123456789');
+  });
+
+  it('uses safe ID-token claims when user attributes are unavailable after OAuth', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'Google_123456789',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    vi.mocked(fetchUserAttributes).mockRejectedValue(new Error('attributes unavailable'));
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        idToken: {
+          payload: {
+            email: 'remi@example.com',
+            given_name: 'Remi',
+            family_name: 'KPADONOU',
+            picture: 'https://example.com/profile.png'
+          }
+        }
+      }
+    } as never);
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+
+    expect(store.userDisplayName()).toBe('Remi KPADONOU');
+    expect(store.userEmail()).toBe('remi@example.com');
+    expect(store.userPictureUrl()).toBe('https://example.com/profile.png');
+    expect(store.currentUserDisplayName()).toBe('Remi KPADONOU');
+    expect(store.currentUserEmail()).toBe('remi@example.com');
+    expect(store.currentUserPicture()).toBe('https://example.com/profile.png');
+  });
+
+  it('refreshes the user profile explicitly after an already-hydrated session', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'Google_123456789',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    vi.mocked(fetchUserAttributes).mockResolvedValueOnce({});
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+    expect(store.currentUserDisplayName()).toBeNull();
+
+    vi.mocked(fetchUserAttributes).mockResolvedValueOnce({
+      email: 'chrys.kpadonou@example.com',
+      name: 'Chrys Kpadonou'
+    });
+    await store.refreshUserProfile();
+
+    expect(store.currentUserDisplayName()).toBe('Chrys Kpadonou');
+    expect(store.currentUserEmail()).toBe('chrys.kpadonou@example.com');
+  });
+
+  it('returns null user display labels when no human-readable identity is available', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'Google_123456789',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    vi.mocked(fetchUserAttributes).mockResolvedValue({});
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+
+    expect(store.userDisplayName()).toBeNull();
+    expect(store.userEmail()).toBeNull();
   });
 
   it('auto-selects the only discovered workspace', async () => {
@@ -92,6 +209,7 @@ describe('AuthStore', () => {
 
     expect(workspaces).toEqual([{ orgId: 'org-test', role: 'ACCOUNTANT' }]);
     expect(store.activeOrgId()).toBe('org-test');
+    expect(store.activeWorkspace()).toEqual({ orgId: 'org-test', role: 'ACCOUNTANT' });
     expect(store.workspaceDestination()).toBe('/dashboard');
   });
 
@@ -155,6 +273,10 @@ describe('AuthStore', () => {
     );
 
     expect(store.activeOrgId()).toBe('org-created');
+    expect(store.activeWorkspaceDisplayName()).toBe('Demo SARL');
+    expect(store.activeWorkspaceType()).toBe('COMPANY');
+    expect(store.activeWorkspaceKind()).toBe('COMPANY');
+    expect(store.activeWorkspaceTypeLabelKey()).toBe('SHELL.WORKSPACE_TYPES.COMPANY');
     expect(store.workspacesLoaded()).toBe(true);
     expect(store.workspaces()).toEqual([
       {
@@ -170,6 +292,226 @@ describe('AuthStore', () => {
     expect(store.workspaceDestination()).toBe('/dashboard');
   });
 
+  it('resolves the active workspace display name after reload from the loaded workspace list', async () => {
+    localStorage.setItem('liass-ohada.activeOrgId', 'org-reloaded');
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-other',
+        displayName: 'Other Workspace',
+        workspaceType: 'COMPANY'
+      },
+      {
+        orgId: 'org-reloaded',
+        displayName: 'Reloaded SARL',
+        workspaceType: 'COMPANY'
+      }
+    ]);
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+    await store.loadWorkspaces();
+
+    expect(store.activeOrgId()).toBe('org-reloaded');
+    expect(store.activeWorkspaceDisplayName()).toBe('Reloaded SARL');
+    expect(store.activeWorkspaceType()).toBe('COMPANY');
+  });
+
+  it('falls back to nested organization and cabinet names when displayName is missing', () => {
+    const store = TestBed.inject(AuthStore);
+
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-nested-company',
+        organization: { name: 'Nested Company SARL' },
+        workspaceType: 'COMPANY'
+      },
+      'org-nested-company'
+    );
+    expect(store.activeWorkspaceDisplayName()).toBe('Nested Company SARL');
+
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-nested-firm',
+        cabinet: { name: 'Nested Cabinet Conseil' },
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-nested-firm'
+    );
+    expect(store.activeWorkspaceDisplayName()).toBe('Nested Cabinet Conseil');
+    expect(store.activeWorkspaceTypeLabelKey()).toBe('SHELL.WORKSPACE_TYPES.ACCOUNTING_FIRM');
+  });
+
+  it('derives the selected accounting-firm workspace display name and type', () => {
+    const store = TestBed.inject(AuthStore);
+
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        role: 'OWNER',
+        cabinetId: 'cabinet-001',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        status: 'ACTIVE',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED'
+      },
+      'org-firm'
+    );
+
+    expect(store.activeWorkspaceDisplayName()).toBe('Cabinet KPADONOU Conseil');
+    expect(store.activeWorkspaceType()).toBe('ACCOUNTING_FIRM');
+  });
+
+  it('loads and auto-selects the only accounting-firm client dossier', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-firm'
+    );
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+
+    await store.loadDossiers();
+
+    expect(store.activeDossierOrgId()).toBe('org-client');
+    expect(store.activeDossierDisplayName()).toBe('Client SARL');
+    expect(store.workspaceDestination()).toBe('/dashboard');
+    expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBe('org-client');
+  });
+
+  it('routes accounting-firm workspaces with no client dossiers to first dossier onboarding', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-firm'
+    );
+    cabinetDossiersApi.listDossiers.mockResolvedValue([]);
+
+    await store.loadDossiers();
+
+    expect(store.activeDossierOrgId()).toBeNull();
+    expect(store.workspaceDestination()).toBe('/cabinet/dossiers/new');
+  });
+
+  it('routes accounting-firm workspaces with multiple dossiers and no selection to dossier selection', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-firm'
+    );
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-client-a',
+        displayName: 'Client A',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      {
+        orgId: 'org-client-b',
+        displayName: 'Client B',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+
+    await store.loadDossiers();
+
+    expect(store.activeDossierOrgId()).toBeNull();
+    expect(store.workspaceDestination()).toBe('/cabinet/dossiers/select');
+  });
+
+  it('resolves persisted active dossier after reload from loaded dossiers', async () => {
+    localStorage.setItem('liass-ohada.activeOrgId', 'org-firm');
+    localStorage.setItem('liass-ohada.activeDossierOrgId', 'org-client');
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      }
+    ]);
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-client',
+        displayName: 'Reloaded Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+    await store.loadWorkspaces();
+    await store.loadDossiers();
+
+    expect(store.activeWorkspaceDisplayName()).toBe('Cabinet KPADONOU Conseil');
+    expect(store.activeDossierDisplayName()).toBe('Reloaded Client SARL');
+  });
+
+  it('stores a newly created dossier as the active dossier immediately', () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-firm'
+    );
+
+    store.setCreatedDossier(
+      {
+        orgId: 'org-client',
+        displayName: 'Created Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client'
+    );
+
+    expect(store.activeDossierOrgId()).toBe('org-client');
+    expect(store.activeDossierDisplayName()).toBe('Created Client SARL');
+    expect(store.workspaceDestination()).toBe('/dashboard');
+  });
+
   it('clears user and tenant state on logout', async () => {
     vi.mocked(signOut).mockResolvedValue(undefined);
     const store = TestBed.inject(AuthStore);
@@ -180,6 +522,7 @@ describe('AuthStore', () => {
     expect(store.user()).toBeNull();
     expect(store.activeOrgId()).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeOrgId')).toBeNull();
+    expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
   });
 
   it('starts Google hosted UI sign-in', async () => {

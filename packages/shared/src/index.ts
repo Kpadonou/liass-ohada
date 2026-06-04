@@ -32,10 +32,14 @@ export { ProjectSchema, ProjectStatus } from "./projects/project";
 export type { Project } from "./projects/project";
 export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export {
+  CabinetDossierSummarySchema,
   CabinetSchema,
+  CreateCabinetDossierRequestSchema,
+  CreateCabinetDossierResponseSchema,
   CreateInitialWorkspaceRequestSchema,
   CreateInitialWorkspaceResponseSchema,
   InitialWorkspaceOrganizationSchema,
+  ListCabinetDossiersResponseSchema,
   OnboardingAccountingFrameworkSchema,
   OrganizationSchema,
   WorkspaceCountrySchema,
@@ -46,9 +50,13 @@ export {
 } from "./shared/workspace";
 export type {
   Cabinet,
+  CabinetDossierSummary,
+  CreateCabinetDossierRequest,
+  CreateCabinetDossierResponse,
   CreateInitialWorkspaceRequest,
   CreateInitialWorkspaceResponse,
   InitialWorkspaceOrganization,
+  ListCabinetDossiersResponse,
   OnboardingAccountingFramework,
   Organization,
   WorkspaceCountry,

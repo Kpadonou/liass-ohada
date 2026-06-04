@@ -10,6 +10,10 @@ export interface TenantAccess {
   role?: string;
   cabinetId?: string;
   accessSource?: string;
+  displayName?: string;
+  workspaceType?: "COMPANY" | "ACCOUNTING_FIRM";
+  country?: string;
+  accountingFramework?: string;
 }
 
 interface AssertUserCanAccessOrgInput {
@@ -52,6 +56,18 @@ export class TenantAccessService {
       cabinetId: typeof access.cabinetId === "string" ? access.cabinetId : undefined,
       accessSource:
         typeof access.accessSource === "string" ? access.accessSource : undefined,
+      displayName:
+        typeof access.displayName === "string" ? access.displayName : undefined,
+      workspaceType:
+        access.workspaceType === "COMPANY" ||
+        access.workspaceType === "ACCOUNTING_FIRM"
+          ? access.workspaceType
+          : undefined,
+      country: typeof access.country === "string" ? access.country : undefined,
+      accountingFramework:
+        typeof access.accountingFramework === "string"
+          ? access.accountingFramework
+          : undefined,
     };
   }
 

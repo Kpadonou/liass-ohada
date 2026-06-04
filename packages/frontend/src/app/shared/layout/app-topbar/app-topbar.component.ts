@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -29,19 +29,54 @@ const sectionTitleKeys: Record<AppSection, string> = {
   ],
   templateUrl: './app-topbar.component.html'
 })
-export class AppTopbarComponent {
+export class AppTopbarComponent implements OnInit {
   protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
   protected readonly sectionTitleKey = computed(() => sectionTitleKeys[this.uiStore.selectedSection()]);
+  protected readonly activeWorkspaceTypeLabelKey = computed(() =>
+    this.authStore.activeWorkspaceTypeLabelKey()
+  );
+  protected readonly activeWorkspaceIcon = computed(() =>
+    this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? 'groups' : 'domain'
+  );
+  protected readonly activeWorkspaceLabel = computed(() => {
+    if (this.authStore.workspaceLoading() && this.authStore.hasActiveTenant()) {
+      return null;
+    }
+
+    return this.authStore.activeWorkspaceDisplayName();
+  });
+  protected readonly activeDossierLabel = computed(() => {
+    if (this.authStore.activeWorkspaceType() !== 'ACCOUNTING_FIRM') {
+      return null;
+    }
+
+    if (this.authStore.dossierLoading()) {
+      return null;
+    }
+
+    return this.authStore.activeDossierDisplayName();
+  });
+  protected readonly showActiveDossier = computed(
+    () => this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM'
+  );
+  protected readonly activeDossierRouteLabelKey = computed(() =>
+    this.authStore.dossiers().length > 1
+      ? 'SHELL.TOPBAR.SELECT_DOSSIER'
+      : 'SHELL.TOPBAR.CREATE_DOSSIER'
+  );
   private readonly router = inject(Router);
 
   protected commandValue = '';
   protected userMenuOpen = false;
 
-  protected readonly userLabel = computed(() => {
-    const user = this.authStore.user();
-    return user?.signInDetails?.loginId ?? user?.username ?? '';
-  });
+  protected readonly userLabel = computed(() => this.authStore.currentUserDisplayName());
+
+  async ngOnInit(): Promise<void> {
+    if (this.authStore.isAuthenticated() && !this.authStore.currentUserDisplayName()) {
+      await this.authStore.refreshUserProfile();
+    }
+  }
 
   protected async logout(): Promise<void> {
     this.userMenuOpen = false;
@@ -55,5 +90,17 @@ export class AppTopbarComponent {
 
   protected updateCommandValue(value: string): void {
     this.commandValue = value;
+  }
+
+  protected async openDossierContext(): Promise<void> {
+    if (this.authStore.activeWorkspaceType() !== 'ACCOUNTING_FIRM') {
+      return;
+    }
+
+    const route = this.authStore.hasActiveDossier() || this.authStore.dossiers().length > 1
+      ? '/cabinet/dossiers/select'
+      : '/cabinet/dossiers/new';
+
+    await this.router.navigate([route]);
   }
 }

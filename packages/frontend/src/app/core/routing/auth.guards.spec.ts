@@ -9,6 +9,7 @@ import { AuthStore } from '../../domains/identity/data-access/auth.store';
 
 vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
+  fetchUserAttributes: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
   signInWithRedirect: vi.fn(),
@@ -127,12 +128,44 @@ describe('auth guards', () => {
       signInDetails: undefined
     });
     TestBed.inject(AuthStore).setTenant('org-test');
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-test',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      }
+    ]);
 
     const result = await TestBed.runInInjectionContext(() =>
       tenantGuard({} as never, {} as never)
     );
 
     expect(result).toBe(true);
+  });
+
+  it('loads workspaces for authenticated dashboard access when only active tenant is persisted', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'user@example.com',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    localStorage.setItem('liass-ohada.activeOrgId', 'org-test');
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-test',
+        displayName: 'Reloaded Workspace SARL',
+        workspaceType: 'COMPANY'
+      }
+    ]);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, {} as never)
+    );
+    const authStore = TestBed.inject(AuthStore);
+
+    expect(result).toBe(true);
+    expect(workspacesApi.listWorkspaces).toHaveBeenCalled();
+    expect(authStore.activeWorkspaceDisplayName()).toBe('Reloaded Workspace SARL');
   });
 
   it('redirects signed-in users away from login', async () => {
@@ -142,6 +175,13 @@ describe('auth guards', () => {
       signInDetails: undefined
     });
     TestBed.inject(AuthStore).setTenant('org-test');
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-test',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      }
+    ]);
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>

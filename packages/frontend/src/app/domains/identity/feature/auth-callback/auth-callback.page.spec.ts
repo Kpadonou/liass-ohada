@@ -16,6 +16,7 @@ type AuthCallbackPageHarness = AuthCallbackPage & {
 vi.mock('aws-amplify/auth', () => ({
   confirmSignIn: vi.fn(),
   fetchAuthSession: vi.fn(),
+  fetchUserAttributes: vi.fn(),
   getCurrentUser: vi.fn(),
   signIn: vi.fn(),
   signInWithRedirect: vi.fn(),

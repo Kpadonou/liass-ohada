@@ -31,15 +31,27 @@
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Search workspace or ask AI...",
+      "CREATE_DOSSIER": "Create dossier",
       "CLOSE_NAVIGATION": "Close navigation",
+      "CURRENT_MODULE": "Current module",
       "DARK_MODE": "Switch to dark mode",
+      "DOSSIER": "Active dossier",
+      "DOSSIER_LOADING": "Loading dossier...",
       "LIGHT_MODE": "Switch to light mode",
+      "NO_DOSSIER": "No client dossier",
       "NO_ORG": "No organization",
+      "NO_WORKSPACE": "Workspace",
       "SIGN_OUT": "Sign out",
+      "SELECT_DOSSIER": "Select dossier",
       "TOGGLE_NAVIGATION": "Toggle navigation",
       "USER": "User",
       "USER_MENU": "Open user menu",
-      "WORKSPACE": "Active workspace"
+      "WORKSPACE": "Active workspace",
+      "WORKSPACE_LOADING": "Loading workspace..."
+    },
+    "WORKSPACE_TYPES": {
+      "ACCOUNTING_FIRM": "Accounting firm",
+      "COMPANY": "Company"
     }
   },
   "DASHBOARD": {
@@ -262,13 +274,45 @@
         "SUBMITTING": "Creating workspace..."
       },
       "ERRORS": {
-        "CREATE_FAILED": "Workspace creation could not finish. Please retry."
+        "AUTH_REQUIRED": "Your session could not authorize workspace creation. Sign in again, then retry.",
+        "CREATE_FAILED": "Workspace creation could not finish. Please retry.",
+        "DUPLICATE_WORKSPACE": "A workspace already exists for this account. Refresh your workspace list or continue to your dashboard.",
+        "MISSING_ROUTE": "The workspace creation service is not available on the configured API. Check the backend deployment, then retry.",
+        "NETWORK": "The workspace could not be created because the network connection failed. Check your connection and retry.",
+        "SERVER": "The backend service hit an error while creating the workspace. Please retry after a moment.",
+        "VALIDATION": "The workspace was created, but the response could not be verified. Please retry or refresh your workspace list."
       },
       "VALIDATION": {
         "WORKSPACE_TYPE": "Choose a workspace type.",
         "ORGANIZATION_NAME": "Enter an organization name.",
         "COUNTRY": "Choose a country.",
         "ACCOUNTING_FRAMEWORK": "Choose an accounting framework."
+      }
+    },
+    "CABINET_DOSSIERS": {
+      "EYEBROW": "Client dossiers",
+      "NEW_TITLE": "Create the first client dossier",
+      "NEW_SUBTITLE": "Add the client company your accounting firm will manage before opening the accounting modules.",
+      "SELECT_TITLE": "Select a client dossier",
+      "SELECT_SUBTITLE": "Choose the client company whose accounting data you want to work on.",
+      "LOADING": "Loading client dossiers...",
+      "FIELDS": {
+        "COMPANY_NAME": "Client company name"
+      },
+      "ACTIONS": {
+        "CREATE": "Create dossier",
+        "CREATING": "Creating dossier...",
+        "NEW": "New dossier"
+      },
+      "ERRORS": {
+        "CREATE_FAILED": "Client dossier creation could not finish. Please retry.",
+        "DUPLICATE": "This client dossier already exists.",
+        "NETWORK": "The client dossier could not be created because the network connection failed.",
+        "SERVICE_UNAVAILABLE": "Client dossier management is not available on the configured backend yet.",
+        "VALIDATION": "The client dossier response could not be verified. Please retry."
+      },
+      "VALIDATION": {
+        "COMPANY_NAME": "Enter the client company name."
       }
     },
     "LOGIN": {

@@ -28,8 +28,12 @@ export const tenantGuard: CanActivateFn = async () => {
     return router.createUrlTree(['/login']);
   }
 
-  if (!authStore.hasActiveTenant()) {
+  if (!authStore.hasActiveTenant() || !authStore.workspacesLoaded()) {
     await authStore.loadWorkspaces();
+  }
+
+  if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' && !authStore.dossiersLoaded()) {
+    await authStore.loadDossiers();
   }
 
   const destination = authStore.workspaceDestination();
@@ -39,6 +43,31 @@ export const tenantGuard: CanActivateFn = async () => {
   }
 
   return destination ? router.createUrlTree([destination]) : false;
+};
+
+export const cabinetDossierGuard: CanActivateFn = async () => {
+  const authStore = inject(AuthStore);
+  const router = inject(Router);
+
+  await ensureHydrated(authStore);
+
+  if (!authStore.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+
+  if (!authStore.hasActiveTenant() || !authStore.workspacesLoaded()) {
+    await authStore.loadWorkspaces();
+  }
+
+  if (authStore.activeWorkspaceType() !== 'ACCOUNTING_FIRM') {
+    return router.createUrlTree(['/dashboard']);
+  }
+
+  if (!authStore.dossiersLoaded()) {
+    await authStore.loadDossiers();
+  }
+
+  return true;
 };
 
 export const loginRedirectGuard: CanActivateFn = async () => {
@@ -51,8 +80,12 @@ export const loginRedirectGuard: CanActivateFn = async () => {
     return true;
   }
 
-  if (!authStore.hasActiveTenant()) {
+  if (!authStore.hasActiveTenant() || !authStore.workspacesLoaded()) {
     await authStore.loadWorkspaces();
+  }
+
+  if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' && !authStore.dossiersLoaded()) {
+    await authStore.loadDossiers();
   }
 
   const destination = authStore.workspaceDestination();

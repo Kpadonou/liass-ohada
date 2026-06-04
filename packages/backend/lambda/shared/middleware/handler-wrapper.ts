@@ -12,6 +12,7 @@ export interface HandlerContext {
   userId: string;
   role?: string;
   cabinetId?: string;
+  workspaceType?: "COMPANY" | "ACCOUNTING_FIRM";
   i18n: I18nResolver;
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
 }
@@ -92,6 +93,7 @@ export const createHandler = <T>(
         userId,
         role: access.role,
         cabinetId: access.cabinetId,
+        workspaceType: access.workspaceType,
         i18n,
         event,
       });

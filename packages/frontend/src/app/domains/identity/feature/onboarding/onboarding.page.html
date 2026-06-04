@@ -166,10 +166,10 @@
             </mat-form-field>
           </div>
 
-          @if (createErrorVisible()) {
+          @if (onboardingErrorKey(); as errorKey) {
             <div class="mt-5 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100">
               <mat-icon class="mt-0.5 text-rose-700 dark:text-rose-300">error_outline</mat-icon>
-              <p>{{ 'IDENTITY.ONBOARDING.ERRORS.CREATE_FAILED' | transloco }}</p>
+              <p>{{ errorKey | transloco }}</p>
             </div>
           }
         </liass-card>
@@ -186,21 +186,24 @@
           >
             {{ 'IDENTITY.ONBOARDING.ACTIONS.BACK' | transloco }}
           </liass-button>
-          <liass-button
-            buttonType="submit"
-            icon="rocket_launch"
-            size="lg"
-            tone="brand"
-            variant="solid"
-            [disabled]="form.invalid"
-            [loading]="submitting()"
+          <button
+            class="liass-focus-ring inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-app-control bg-brand-700 px-5 text-sm font-semibold text-white shadow-app-xs shadow-brand-900/10 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+            type="submit"
+            [disabled]="form.invalid || submitting()"
           >
-            {{
-              (submitting()
-                ? 'IDENTITY.ONBOARDING.ACTIONS.SUBMITTING'
-                : 'IDENTITY.ONBOARDING.ACTIONS.SUBMIT') | transloco
-            }}
-          </liass-button>
+            @if (submitting()) {
+              <span class="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+            } @else {
+              <mat-icon>rocket_launch</mat-icon>
+            }
+            <span class="truncate">
+              {{
+                (submitting()
+                  ? 'IDENTITY.ONBOARDING.ACTIONS.SUBMITTING'
+                  : 'IDENTITY.ONBOARDING.ACTIONS.SUBMIT') | transloco
+              }}
+            </span>
+          </button>
         </div>
       </section>
     }
