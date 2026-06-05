@@ -16,11 +16,34 @@ This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-l
   - Each domain uses `feature/` for routed smart pages, `ui/` for domain presentational components, `data-access/` for API clients, TanStack Query helpers, schemas, and SignalStores, and `utils/` for pure helpers, validators, and pipes.
   - `shared/ui/`: stateless reusable design-system components. Components in `shared/ui/` must not inject stores, domain services, API clients, or app-specific state.
 
-## OHADA / SYSCOHADA reference
+## Codex skills
+
+Use the repository Codex skills when a task matches their scope.
+
+### OHADA / SYSCOHADA reference
 
 For any task related to OHADA, SYSCOHADA, SYCEBNL, accounting, invoices, payments, stock, immobilisations, financial statements, legal company data, nonprofit entities, NGOs, donor-funded projects, associations, donations, projects, payroll, tax/social declarations, compliance, audit trail, or business rules, Codex must use the `ohada-legal-reference` skill.
 
 Codex must not invent OHADA rules, article numbers, accounting classes, or legal obligations. If the references are incomplete, it must say so clearly.
+
+### DynamoDB data modeling
+
+For any task related to DynamoDB persistence, single-table design, access patterns, repositories, PK/SK/GSI key design, item collections, Query vs Scan behavior, conditional writes, transactions, pagination, uniqueness, denormalization, migrations, or backend data modeling, Codex must use the `dynamodb-data-modeling` skill.
+
+Codex must identify access patterns before changing the data model. Codex must inspect and preserve the existing `KeyFactory` before generating or modifying DynamoDB persistence code. The existing `KeyFactory` is the source of truth for concrete PK, SK, GSI names, prefixes, helper methods, and key formats.
+
+The DynamoDB skill reference files provide design guidance and examples only. They must not override the current `KeyFactory`. If there is a conflict between the DynamoDB reference files and `KeyFactory`, `KeyFactory` takes precedence.
+
+Codex must not rename PK/SK/GSI formats or introduce new key formats unless the task explicitly asks for a key model refactor.
+
+### Combined OHADA and DynamoDB tasks
+
+When a task involves both business compliance and persistence modeling, Codex must use both skills:
+
+- `ohada-legal-reference` for OHADA/SYSCOHADA/SYCEBNL business meaning and compliance;
+- `dynamodb-data-modeling` for DynamoDB access patterns, single-table design, keys, indexes, transactions, and persistence boundaries.
+
+Example tasks requiring both skills include accounting entries, invoices, payments, lettrage, stock valuation, immobilisations, fiscal-year accounting data, audit trail, NGO/project accounting, and financial statements stored in DynamoDB.
 
 ## Build, Test, and Development Commands
 
