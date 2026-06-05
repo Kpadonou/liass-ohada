@@ -18,7 +18,7 @@ This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-l
 
 ## OHADA / SYSCOHADA reference
 
-For any task related to accounting, SYSCOHADA, SYCEBNL (NGOs, associations, donations, projects), OHADA compliance, invoices, payments, stock, immobilisations, payroll, tax/social declarations, financial statements, or legal company data, Codex must use the `ohada-legal-reference` skill.
+For any task related to OHADA, SYSCOHADA, SYCEBNL, accounting, invoices, payments, stock, immobilisations, financial statements, legal company data, nonprofit entities, NGOs, donor-funded projects, associations, donations, projects, payroll, tax/social declarations, compliance, audit trail, or business rules, Codex must use the `ohada-legal-reference` skill.
 
 Codex must not invent OHADA rules, article numbers, accounting classes, or legal obligations. If the references are incomplete, it must say so clearly.
 
