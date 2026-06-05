@@ -1,7 +1,7 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
-import { padAccountId } from "@liass-ohada/shared/core-ledger";
-import { GetEntriesRequestSchema } from "@liass-ohada/shared/core-ledger";
+import { padAccountId } from "@liass-ohada/shared/accounting";
+import { GetEntriesRequestSchema } from "@liass-ohada/shared/accounting";
 
 /**
  * Retrieves paginated ledger entries for a specific accounting account.

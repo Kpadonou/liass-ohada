@@ -60,7 +60,7 @@ root/
 │   │   ├── middleware/              # API Response & Error Handlers
 │   │   └── key-builder.ts           # DynamoDB Composite Key Utilities
 │   └── domains/                     # Business Logic by Bounded Context
-│       ├── core-ledger/             # Accounting domain (SYSCOHADA/SYCEBNL)
+│       ├── accounting/             # Accounting domain (SYSCOHADA/SYCEBNL)
 │       │   ├── accounts/            # Handlers for Chart of Accounts
 │       │   ├── entries/             # Handlers for Journal Entries
 │       │   └── projects/            # Handlers for SYCEBNL Project tracking
@@ -76,7 +76,7 @@ root/
 │       └── ...
 ├── models/                          # TypeScript Interfaces & Zod Schemas
 │   ├── shared/                      # API Response & Error Schemas
-│   ├── core-ledger/                 # Account.ts, Entry.ts, Project.ts
+│   ├── accounting/                 # Account.ts, Entry.ts, Project.ts
 │   └── ...
 ├── locales/                         # Internationalization (i18n) Resources
 │   ├── en.json                      # English translations (Error codes, labels)
@@ -121,9 +121,9 @@ root/
 - **No Scans:** Always use `Query`.
 - **Testing:** Mandatory unit tests (Jest, >80% coverage) and integration tests.
 
-## 4. DynamoDB Single Table Schema (Core Ledger Matrix)
+## 4. DynamoDB Single Table Schema (Accounting Matrix)
 
-This section defines the schema for the Core Ledger domain. Other domains will share the table or use separate structures as defined later.
+This section defines the schema for the Accounting domain. Other domains will share the table or use separate structures as defined later.
 A. Primary Keys (PK/SK) Definitions
 
 | Entity       | Abbr | PK (Partition Key)    | SK (Sort Key)            | Note                                                              |
@@ -146,7 +146,7 @@ The CDK Construct must define these exact indexes.
 | :--------- | :--------------------- | :---------------------------------- | :---------------------- |
 | GSI1       | ORG#{orgId}            | ACC#{accountId}#FY#{year}#DT#{date} | Ledger & Trial Balance. |
 
-## 5. Entity Models & Attributes (Core Ledger Reference)
+## 5. Entity Models & Attributes (Accounting Reference)
 
 Use lowerCamelCase in TypeScript interfaces.
 

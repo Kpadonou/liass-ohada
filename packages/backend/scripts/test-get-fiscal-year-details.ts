@@ -1,7 +1,7 @@
 process.env.TABLE_NAME = "liass-ohada-dev-accounting-table";
 process.env.LOCALSTACK_URL = "http://localhost:4566";
 
-import { handler as getDetails } from "../lambda/domains/core-ledger/fiscal-year/get-details";
+import { handler as getDetails } from "../lambda/domains/accounting/fiscal-year/get-details";
 
 async function testGetDetails() {
   console.log("🔍 TESTING GET FISCAL YEAR DETAILS");

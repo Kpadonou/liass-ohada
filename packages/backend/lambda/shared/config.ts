@@ -47,7 +47,7 @@ function loadConfig(): Config {
     REGION: process.env.AWS_REGION || "us-east-1",
     IS_LOCAL: isLocal,
     DYNAMODB_ENDPOINT: process.env.LOCALSTACK_URL,
-    GSI1: "GSI1", // GSI1 for core-ledger queries
+    GSI1: "GSI1", // GSI1 for accounting queries
     GSI2: "GSI2", // GSI2 for third party queries
     GSI3: "GSI3", // GSI3 for lettering queries
     GSI4: "GSI4", // GSI4 for project queries (SYCEBNL)

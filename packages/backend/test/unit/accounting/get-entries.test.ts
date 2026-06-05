@@ -1,4 +1,4 @@
-import { handler } from "@/lambda/domains/core-ledger/accounts/get-entries";
+import { handler } from "@/lambda/domains/accounting/accounts/get-entries";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   DynamoDBClient,

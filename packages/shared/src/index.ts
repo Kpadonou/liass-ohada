@@ -4,7 +4,7 @@ export {
   CreateAccountRequestSchema,
   GetAccountRequestSchema,
   padAccountId,
-} from "./core-ledger/account";
+} from "./accounting/account";
 export {
   AccountingFramework,
   CreateEntryRequestSchema,
@@ -12,16 +12,16 @@ export {
   EntryStatus,
   EntryType,
   GetEntriesRequestSchema,
-} from "./core-ledger/entry";
+} from "./accounting/entry";
 export type {
   CreateEntryRequest,
   GetEntriesRequest,
-} from "./core-ledger/entry";
+} from "./accounting/entry";
 export {
   AccountingFramework as FiscalYearAccountingFramework,
   FiscalYearStatus,
-} from "./core-ledger/fiscal-year";
-export { JournalType } from "./core-ledger/journal";
+} from "./accounting/fiscal-year";
+export { JournalType } from "./accounting/journal";
 export { BudgetLineSchema, BudgetSchema } from "./projects/budget";
 export type { Budget, BudgetLine } from "./projects/budget";
 export { DonorSchema } from "./projects/donor";

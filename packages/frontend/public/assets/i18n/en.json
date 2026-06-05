@@ -16,15 +16,31 @@
     "BRAND_TAGLINE": "ERP cockpit",
     "LOGO_ALT": "liass-ohada logo",
     "NAV": {
-      "LEDGER": "General ledger",
+      "ACCOUNTING": "Accounting",
+      "ADMINISTRATION": "Administration",
+      "CHART_OF_ACCOUNTS": "Chart of accounts",
+      "DASHBOARD": "Dashboard",
+      "ENTRIES": "Entries",
+      "GENERAL_LEDGER": "General ledger",
+      "JOURNALS": "Journals",
       "PROJECTS": "Projects and funds",
       "REPORTS": "OHADA reports",
       "SECTION_LABEL": "Workspace",
       "SYCEBNL_BADGE": "SYCEBNL",
-      "TREASURY": "Treasury"
+      "TREASURY": "Treasury",
+      "TRIAL_BALANCE": "Trial balance"
+    },
+    "PAGES": {
+      "ADMINISTRATION": "Administration",
+      "CHART_OF_ACCOUNTS": "Chart of accounts",
+      "DASHBOARD": "Dashboard",
+      "ENTRIES": "Entries",
+      "GENERAL_LEDGER": "General ledger",
+      "JOURNALS": "Journals",
+      "TRIAL_BALANCE": "Trial balance"
     },
     "SECTIONS": {
-      "LEDGER": "General ledger",
+      "ACCOUNTING": "Accounting",
       "PROJECTS": "Projects and funds",
       "REPORTS": "OHADA reports",
       "TREASURY": "Treasury"
@@ -72,7 +88,7 @@
           "STATUS": "Review"
         },
         "OPENING": {
-          "DOMAIN": "Core ledger",
+          "DOMAIN": "Accounting",
           "ITEM": "Opening balances readiness",
           "OWNER": "Accounting lead",
           "STATUS": "Ready"
@@ -123,7 +139,8 @@
     },
     "HEADER": {
       "ACTION": "New journal entry",
-      "EYEBROW": "ERP dashboard"
+      "EYEBROW": "ERP dashboard",
+      "TITLE": "Dashboard"
     },
     "KPIS": {
       "COMPLIANCE": {
@@ -170,9 +187,9 @@
       "TITLE": "Quick actions"
     },
     "SECTIONS": {
-      "LEDGER": {
+      "ACCOUNTING": {
         "SUMMARY": "Monitor journal readiness, chart-of-accounts controls, and OHADA posting quality.",
-        "TITLE": "General ledger"
+        "TITLE": "Accounting"
       },
       "PROJECTS": {
         "SUMMARY": "Track SYCEBNL project funding, restricted resources, and grant accountability.",
@@ -186,6 +203,38 @@
         "SUMMARY": "Follow cash positions, bank reconciliation readiness, and payment controls.",
         "TITLE": "Treasury"
       }
+    }
+  },
+  "ACCOUNTING": {
+    "PAGES": {
+      "CHART_OF_ACCOUNTS": {
+        "SUBTITLE": "A reserved route for chart-of-accounts controls.",
+        "TITLE": "Chart of accounts"
+      },
+      "ENTRIES": {
+        "SUBTITLE": "A reserved route for journal-entry workflows.",
+        "TITLE": "Entries"
+      },
+      "GENERAL_LEDGER": {
+        "SUBTITLE": "A reserved route for the general-ledger workspace.",
+        "TITLE": "General ledger"
+      },
+      "JOURNALS": {
+        "SUBTITLE": "A reserved route for journal management.",
+        "TITLE": "Journals"
+      },
+      "TRIAL_BALANCE": {
+        "SUBTITLE": "A reserved route for balance review.",
+        "TITLE": "Trial balance"
+      }
+    },
+    "PLACEHOLDER": {
+      "BODY": "This page establishes the accounting navigation target without changing backend behavior.",
+      "DEFAULT_SUBTITLE": "Accounting workspace",
+      "DEFAULT_TITLE": "Accounting",
+      "DESCRIPTION": "Accounting workflows will be connected here as their feature pages mature.",
+      "EYEBROW": "Accounting",
+      "TITLE": "Workspace placeholder"
     }
   },
   "IDENTITY": {

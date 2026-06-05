@@ -16,15 +16,31 @@
     "BRAND_TAGLINE": "Poste ERP",
     "LOGO_ALT": "logo liass-ohada",
     "NAV": {
-      "LEDGER": "Grand livre",
+      "ACCOUNTING": "Comptabilité",
+      "ADMINISTRATION": "Administration",
+      "CHART_OF_ACCOUNTS": "Plan comptable",
+      "DASHBOARD": "Tableau de bord",
+      "ENTRIES": "Écritures",
+      "GENERAL_LEDGER": "Grand livre",
+      "JOURNALS": "Journaux",
       "PROJECTS": "Projets et fonds",
       "REPORTS": "États OHADA",
       "SECTION_LABEL": "Espace",
       "SYCEBNL_BADGE": "SYCEBNL",
-      "TREASURY": "Trésorerie"
+      "TREASURY": "Trésorerie",
+      "TRIAL_BALANCE": "Balance"
+    },
+    "PAGES": {
+      "ADMINISTRATION": "Administration",
+      "CHART_OF_ACCOUNTS": "Plan comptable",
+      "DASHBOARD": "Tableau de bord",
+      "ENTRIES": "Écritures",
+      "GENERAL_LEDGER": "Grand livre",
+      "JOURNALS": "Journaux",
+      "TRIAL_BALANCE": "Balance"
     },
     "SECTIONS": {
-      "LEDGER": "Grand livre",
+      "ACCOUNTING": "Comptabilité",
       "PROJECTS": "Projets et fonds",
       "REPORTS": "États OHADA",
       "TREASURY": "Trésorerie"
@@ -123,7 +139,8 @@
     },
     "HEADER": {
       "ACTION": "Nouvelle écriture",
-      "EYEBROW": "Tableau de bord ERP"
+      "EYEBROW": "Tableau de bord ERP",
+      "TITLE": "Tableau de bord"
     },
     "KPIS": {
       "COMPLIANCE": {
@@ -170,9 +187,9 @@
       "TITLE": "Actions rapides"
     },
     "SECTIONS": {
-      "LEDGER": {
+      "ACCOUNTING": {
         "SUMMARY": "Surveiller la préparation des journaux, les contrôles du plan comptable et la qualité des écritures OHADA.",
-        "TITLE": "Grand livre"
+        "TITLE": "Comptabilité"
       },
       "PROJECTS": {
         "SUMMARY": "Suivre les financements SYCEBNL, les ressources dédiées et la redevabilité des subventions.",
@@ -186,6 +203,38 @@
         "SUMMARY": "Suivre la trésorerie, la préparation des rapprochements bancaires et les contrôles de paiement.",
         "TITLE": "Trésorerie"
       }
+    }
+  },
+  "ACCOUNTING": {
+    "PAGES": {
+      "CHART_OF_ACCOUNTS": {
+        "SUBTITLE": "Une route réservée aux contrôles du plan comptable.",
+        "TITLE": "Plan comptable"
+      },
+      "ENTRIES": {
+        "SUBTITLE": "Une route réservée aux workflows d’écritures.",
+        "TITLE": "Écritures"
+      },
+      "GENERAL_LEDGER": {
+        "SUBTITLE": "Une route réservée à l’espace grand livre.",
+        "TITLE": "Grand livre"
+      },
+      "JOURNALS": {
+        "SUBTITLE": "Une route réservée à la gestion des journaux.",
+        "TITLE": "Journaux"
+      },
+      "TRIAL_BALANCE": {
+        "SUBTITLE": "Une route réservée à la revue de la balance.",
+        "TITLE": "Balance"
+      }
+    },
+    "PLACEHOLDER": {
+      "BODY": "Cette page pose la cible de navigation comptable sans changer le comportement backend.",
+      "DEFAULT_SUBTITLE": "Espace comptable",
+      "DEFAULT_TITLE": "Comptabilité",
+      "DESCRIPTION": "Les workflows comptables seront connectés ici lorsque leurs pages fonctionnelles mûriront.",
+      "EYEBROW": "Comptabilité",
+      "TITLE": "Emplacement réservé"
     }
   },
   "IDENTITY": {

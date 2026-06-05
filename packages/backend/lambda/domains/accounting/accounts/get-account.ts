@@ -3,7 +3,7 @@ import { LedgerService } from "@/lambda/shared/services/ledger-service";
 import {
   GetAccountRequestSchema,
   padAccountId,
-} from "@liass-ohada/shared/core-ledger";
+} from "@liass-ohada/shared/accounting";
 
 /**
  * Retrieves the details of a specific accounting account.

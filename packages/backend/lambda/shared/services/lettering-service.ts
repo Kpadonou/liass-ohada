@@ -11,7 +11,7 @@ import {
   TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { EntryLineSchema } from "@liass-ohada/shared/core-ledger";
+import { EntryLineSchema } from "@liass-ohada/shared/accounting";
 import { LockPeriodService } from "./lock-period-service";
 
 interface FIFOCandidate {

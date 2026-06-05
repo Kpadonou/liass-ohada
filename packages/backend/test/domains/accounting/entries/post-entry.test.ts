@@ -1,4 +1,4 @@
-import { handler } from "@/lambda/domains/core-ledger/entries/post-entry";
+import { handler } from "@/lambda/domains/accounting/entries/post-entry";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 

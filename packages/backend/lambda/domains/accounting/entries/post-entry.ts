@@ -1,6 +1,6 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
-import { CreateEntryRequestSchema } from "@liass-ohada/shared/core-ledger";
+import { CreateEntryRequestSchema } from "@liass-ohada/shared/accounting";
 
 export const handler = createHandler(
   CreateEntryRequestSchema,

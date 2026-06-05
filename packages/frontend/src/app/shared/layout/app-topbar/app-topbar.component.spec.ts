@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
+import { UiStore } from '../../../core/state/ui.store';
 import { AppTopbarComponent } from './app-topbar.component';
 
 vi.mock('aws-amplify/auth', () => ({
@@ -23,10 +24,19 @@ const translations = {
   en: {
     SHELL: {
       SECTIONS: {
-        LEDGER: 'General ledger',
+        ACCOUNTING: 'Accounting',
         PROJECTS: 'Projects and funds',
         REPORTS: 'OHADA reports',
         TREASURY: 'Treasury'
+      },
+      PAGES: {
+        ADMINISTRATION: 'Administration',
+        CHART_OF_ACCOUNTS: 'Chart of accounts',
+        DASHBOARD: 'Dashboard',
+        ENTRIES: 'Entries',
+        GENERAL_LEDGER: 'General ledger',
+        JOURNALS: 'Journals',
+        TRIAL_BALANCE: 'Trial balance'
       },
       TOPBAR: {
         COMMAND_PLACEHOLDER: 'Search workspace or ask AI...',
@@ -56,6 +66,7 @@ const translations = {
 describe('AppTopbarComponent', () => {
   let fixture: ComponentFixture<AppTopbarComponent>;
   let authStore: InstanceType<typeof AuthStore>;
+  let uiStore: InstanceType<typeof UiStore>;
   let cabinetDossiersApi: { listDossiers: ReturnType<typeof vi.fn> };
   let workspacesApi: { listWorkspaces: ReturnType<typeof vi.fn> };
 
@@ -89,6 +100,7 @@ describe('AppTopbarComponent', () => {
     }).compileComponents();
 
     authStore = TestBed.inject(AuthStore);
+    uiStore = TestBed.inject(UiStore);
   });
 
   function renderText(): string {
@@ -127,6 +139,40 @@ describe('AppTopbarComponent', () => {
     expect(text).toContain('Company');
     expect(text).not.toContain('org-company-123');
     expect(text).not.toContain('Workspace');
+  });
+
+  it('displays the dashboard page title separately from the active workspace', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    const text = renderText();
+
+    expect(text).toContain('Current module');
+    expect(text).toContain('Dashboard');
+    expect(activeWorkspaceText()).toContain('Demo SARL');
+  });
+
+  it('displays the general-ledger page title separately from the active workspace', () => {
+    uiStore.setCurrentPage('accounting.generalLedger');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    const text = renderText();
+
+    expect(text).toContain('General ledger');
+    expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
   it('displays an accounting-firm workspace name and type label', () => {

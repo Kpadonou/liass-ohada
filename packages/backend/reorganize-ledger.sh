@@ -8,16 +8,16 @@
 # Sécurité : s'assurer que le script s'arrête en cas d'erreur
 set -e
 
-echo "🚀 Début de la réorganisation de core-ledger..."
+echo "🚀 Début de la réorganisation de accounting..."
 
 # Vérification de l'emplacement
-if [ ! -d "lambda/domains/core-ledger" ]; then
-    echo "❌ Erreur : Dossier 'lambda/domains/core-ledger' non trouvé."
+if [ ! -d "lambda/domains/accounting" ]; then
+    echo "❌ Erreur : Dossier 'lambda/domains/accounting' non trouvé."
     echo "Assurez-vous d'exécuter ce script à la racine du projet backend."
     exit 1
 fi
 
-cd lambda/domains/core-ledger/
+cd lambda/domains/accounting/
 
 # 1. Création de la nouvelle arborescence
 echo "📂 Création des nouveaux répertoires..."

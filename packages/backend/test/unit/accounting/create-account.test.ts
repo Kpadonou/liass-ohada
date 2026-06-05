@@ -1,4 +1,4 @@
-import { handler } from "@/lambda/domains/core-ledger/accounts/create-account";
+import { handler } from "@/lambda/domains/accounting/accounts/create-account";
 import {
   DynamoDBClient,
   GetItemCommand,

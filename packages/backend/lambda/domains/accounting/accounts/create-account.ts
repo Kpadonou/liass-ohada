@@ -5,7 +5,7 @@ import {
   AccountSchema,
   CreateAccountRequestSchema,
   padAccountId,
-} from "@liass-ohada/shared/core-ledger";
+} from "@liass-ohada/shared/accounting";
 
 /**
  * Slim handler: create account in chart of accounts.

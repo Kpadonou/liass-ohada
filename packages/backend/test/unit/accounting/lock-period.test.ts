@@ -1,4 +1,4 @@
-import { handler } from "@/lambda/domains/core-ledger/fiscal-year/lock-period";
+import { handler } from "@/lambda/domains/accounting/fiscal-year/lock-period";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   DynamoDBClient,

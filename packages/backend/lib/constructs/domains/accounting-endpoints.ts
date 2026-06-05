@@ -3,7 +3,7 @@ import { Construct } from "constructs";
 import * as path from "path";
 import { DomainConstructFactory, DomainProps } from "./domain-constructs-factory";
 
-export class CoreLedgerEndpoints extends DomainConstructFactory {
+export class AccountingEndpoints extends DomainConstructFactory {
   constructor(scope: Construct, id: string, props: DomainProps) {
     super(scope, id);
 
@@ -26,13 +26,13 @@ export class CoreLedgerEndpoints extends DomainConstructFactory {
       routePath: string,
       handlerPath: string,
     ) => {
-      const entry = resolveHandlerEntry("core-ledger", handlerPath);
+      const entry = resolveHandlerEntry("accounting", handlerPath);
       this.addRoute({
         api: props.api,
         authorizer: props.authorizer,
         domainName: "ledger",
         handlerEntry: entry,
-        idPrefix: "CoreLedger-",
+        idPrefix: "Accounting-",
         method,
         routePath,
         stage: props.stage,
@@ -40,7 +40,7 @@ export class CoreLedgerEndpoints extends DomainConstructFactory {
       });
     };
 
-    // --- Core Ledger Endpoints ---
+    // --- Accounting Endpoints ---
     // Accounts
     map(apigw.HttpMethod.POST, "/accounts", "accounts/create-account");
     map(apigw.HttpMethod.GET, "/accounts/{accountId}", "accounts/get-account");

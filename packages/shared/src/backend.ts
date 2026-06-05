@@ -1,3 +1,3 @@
-export * from "./core-ledger";
+export * from "./accounting";
 export * from "./projects";
 export * from "./shared";

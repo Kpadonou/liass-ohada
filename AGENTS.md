@@ -9,10 +9,10 @@ Before making architectural, domain, infrastructure, or data-model changes, cons
 This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-level repository policy, `SPEC.md`, `.github/`, `package-lock.json`, and workspace orchestration stay at the repository root. Application packages live under `packages/*`.
 
 - `packages/backend`: TypeScript AWS CDK backend. CDK entry points live in `bin/`, stacks in `lib/stacks/`, reusable constructs in `lib/constructs/`, Lambda business logic in `lambda/domains/`, shared backend utilities in `lambda/shared/`, translations in `locales/`, tests in `test/`, and seed/verification scripts in `scripts/`.
-- `packages/shared`: frontend-safe Zod schemas and TypeScript DTO types exported as `@liass-ohada/shared`, with domain subpath exports such as `@liass-ohada/shared/core-ledger` and `@liass-ohada/shared/projects`. Persistence-only shapes that expose DynamoDB keys must stay backend-only or be clearly named persistence schemas.
+- `packages/shared`: frontend-safe Zod schemas and TypeScript DTO types exported as `@liass-ohada/shared`, with domain subpath exports such as `@liass-ohada/shared/accounting` and `@liass-ohada/shared/projects`. Persistence-only shapes that expose DynamoDB keys must stay backend-only or be clearly named persistence schemas.
 - `packages/frontend`: Angular standalone frontend using Angular Signals, TanStack Query for server state, NgRx Signal Store for client/UI state, Angular Material 3, and Tailwind CSS. Frontend application code under `src/app/` follows a DDD-inspired structure:
   - `core/`: application-wide plumbing such as Amplify setup, HTTP interceptors, routing, global guards, global state, and app-level feature surfaces such as the dashboard.
-  - `domains/`: backend-aligned business domains only. Active frontend domains currently mirror backend domain directory names: `identity`, `core-ledger`, and `projects`. Do not create frontend domain names that do not exist in `packages/backend/lambda/domains`; place frontend-only app surfaces under `core/`.
+  - `domains/`: backend-aligned business domains only. Active frontend domains currently mirror backend domain directory names: `identity`, `accounting`, and `projects`. Do not create frontend domain names that do not exist in `packages/backend/lambda/domains`; place frontend-only app surfaces under `core/`.
   - Each domain uses `feature/` for routed smart pages, `ui/` for domain presentational components, `data-access/` for API clients, TanStack Query helpers, schemas, and SignalStores, and `utils/` for pure helpers, validators, and pipes.
   - `shared/ui/`: stateless reusable design-system components. Components in `shared/ui/` must not inject stores, domain services, API clients, or app-specific state.
 
@@ -36,7 +36,7 @@ Use TypeScript with strict null checks and no implicit `any`. Follow existing tw
 
 ## Testing Guidelines
 
-Backend Jest is configured in `packages/backend/jest.config.js` with `testEnvironment: node` and path alias `@/*`. Backend test files must match `**/test/**/*.test.ts` or `**/test/**/*.spec.ts`. Prefer focused unit tests such as `packages/backend/test/unit/core-ledger/create-account.test.ts`, and add workflow tests under `packages/backend/test/domains/` when behavior spans handlers or services. Frontend tests live beside Angular source files and run with Vitest through the Angular builder. Run `npm test` before submitting changes; use `npm run build` to catch shared package, backend, CDK-adjacent, and frontend compilation issues.
+Backend Jest is configured in `packages/backend/jest.config.js` with `testEnvironment: node` and path alias `@/*`. Backend test files must match `**/test/**/*.test.ts` or `**/test/**/*.spec.ts`. Prefer focused unit tests such as `packages/backend/test/unit/accounting/create-account.test.ts`, and add workflow tests under `packages/backend/test/domains/` when behavior spans handlers or services. Frontend tests live beside Angular source files and run with Vitest through the Angular builder. Run `npm test` before submitting changes; use `npm run build` to catch shared package, backend, CDK-adjacent, and frontend compilation issues.
 
 ## Commit & Pull Request Guidelines
 

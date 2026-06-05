@@ -1,4 +1,4 @@
-import { handler } from "../lambda/domains/core-ledger/lettering/post-lettering";
+import { handler } from "../lambda/domains/accounting/lettering/post-lettering";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";

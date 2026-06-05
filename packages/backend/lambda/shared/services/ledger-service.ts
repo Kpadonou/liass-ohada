@@ -1,10 +1,10 @@
-import { Account, AccountSchema } from "@liass-ohada/shared/core-ledger";
+import { Account, AccountSchema } from "@liass-ohada/shared/accounting";
 import {
   CreateEntryRequest,
   EntryLineSchema,
   EntrySchema,
-} from "@liass-ohada/shared/core-ledger";
-import { FiscalYearSchema } from "@liass-ohada/shared/core-ledger";
+} from "@liass-ohada/shared/accounting";
+import { FiscalYearSchema } from "@liass-ohada/shared/accounting";
 import {
   BatchGetItemCommand,
   GetItemCommand,
@@ -65,7 +65,7 @@ export interface PostEntryParams {
 }
 
 /**
- * Service handling Core Ledger operations and validations.
+ * Service handling Accounting operations and validations.
  */
 export class LedgerService {
   /**

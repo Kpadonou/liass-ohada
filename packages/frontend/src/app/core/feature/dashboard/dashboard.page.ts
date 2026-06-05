@@ -1,8 +1,7 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@ngneat/transloco';
 
-import { UiStore, type AppSection } from '../../state/ui.store';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { LiassSectionContainerComponent } from '../../../shared/ui/section-container/section-container.component';
@@ -16,15 +15,10 @@ import {
   type LiassTableState
 } from '../../../shared/ui/table-placeholder/table-placeholder.component';
 
-const sectionTitleKeys: Record<AppSection, string> = {
-  ledger: 'DASHBOARD.SECTIONS.LEDGER.TITLE',
-  projects: 'DASHBOARD.SECTIONS.PROJECTS.TITLE',
-  treasury: 'DASHBOARD.SECTIONS.TREASURY.TITLE',
-  reports: 'DASHBOARD.SECTIONS.REPORTS.TITLE'
-};
+type DashboardFocus = 'accounting' | 'projects' | 'treasury' | 'reports';
 
-const sectionSummaryKeys: Record<AppSection, string> = {
-  ledger: 'DASHBOARD.SECTIONS.LEDGER.SUMMARY',
+const sectionSummaryKeys: Record<DashboardFocus, string> = {
+  accounting: 'DASHBOARD.SECTIONS.ACCOUNTING.SUMMARY',
   projects: 'DASHBOARD.SECTIONS.PROJECTS.SUMMARY',
   treasury: 'DASHBOARD.SECTIONS.TREASURY.SUMMARY',
   reports: 'DASHBOARD.SECTIONS.REPORTS.SUMMARY'
@@ -46,15 +40,11 @@ const sectionSummaryKeys: Record<AppSection, string> = {
   templateUrl: './dashboard.page.html'
 })
 export class DashboardPage {
-  protected readonly uiStore = inject(UiStore);
+  private readonly dashboardFocus = signal<DashboardFocus>('accounting');
 
   protected readonly activeSectionSummaryKey = computed(
-    () => sectionSummaryKeys[this.uiStore.selectedSection()]
+    () => sectionSummaryKeys[this.dashboardFocus()]
   );
-  protected readonly activeSectionTitleKey = computed(
-    () => sectionTitleKeys[this.uiStore.selectedSection()]
-  );
-
   protected readonly activityColumns: readonly LiassTableColumn[] = [
     {
       key: 'item',
@@ -111,31 +101,31 @@ export class DashboardPage {
       descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.ENTRY.DESCRIPTION',
       icon: 'post_add',
       labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.ENTRY.LABEL',
-      section: 'ledger'
+      focus: 'accounting'
     },
     {
       descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.PROJECT.DESCRIPTION',
       icon: 'topic',
       labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.PROJECT.LABEL',
-      section: 'projects'
+      focus: 'projects'
     },
     {
       descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.RECONCILIATION.DESCRIPTION',
       icon: 'account_balance_wallet',
       labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.RECONCILIATION.LABEL',
-      section: 'treasury'
+      focus: 'treasury'
     },
     {
       descriptionKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.REPORT.DESCRIPTION',
       icon: 'summarize',
       labelKey: 'DASHBOARD.QUICK_ACTIONS.ITEMS.REPORT.LABEL',
-      section: 'reports'
+      focus: 'reports'
     }
   ] satisfies readonly {
     descriptionKey: string;
+    focus: DashboardFocus;
     icon: string;
     labelKey: string;
-    section: AppSection;
   }[];
 
   protected readonly suggestions = [
@@ -160,7 +150,7 @@ export class DashboardPage {
     tone: LiassStatusTone;
   }[];
 
-  protected selectSection(section: AppSection): void {
-    this.uiStore.selectSection(section);
+  protected setDashboardFocus(focus: DashboardFocus): void {
+    this.dashboardFocus.set(focus);
   }
 }

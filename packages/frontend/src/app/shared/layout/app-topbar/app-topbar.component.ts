@@ -4,17 +4,23 @@ import { Router } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LanguageSelectorComponent } from '../../../core/i18n/language-selector/language-selector.component';
-import { UiStore, type AppSection } from '../../../core/state/ui.store';
+import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { LiassButtonComponent } from '../../ui/button/button.component';
 import { LiassCommandInputComponent } from '../../ui/command-input/command-input.component';
 import { LiassDropdownComponent } from '../../ui/dropdown/dropdown.component';
 
-const sectionTitleKeys: Record<AppSection, string> = {
-  ledger: 'SHELL.SECTIONS.LEDGER',
+const pageTitleKeys: Record<AppPage, string> = {
+  'accounting.chartOfAccounts': 'SHELL.PAGES.CHART_OF_ACCOUNTS',
+  'accounting.entries': 'SHELL.PAGES.ENTRIES',
+  'accounting.generalLedger': 'SHELL.PAGES.GENERAL_LEDGER',
+  'accounting.journals': 'SHELL.PAGES.JOURNALS',
+  'accounting.trialBalance': 'SHELL.PAGES.TRIAL_BALANCE',
+  administration: 'SHELL.PAGES.ADMINISTRATION',
+  dashboard: 'SHELL.PAGES.DASHBOARD',
   projects: 'SHELL.SECTIONS.PROJECTS',
-  treasury: 'SHELL.SECTIONS.TREASURY',
-  reports: 'SHELL.SECTIONS.REPORTS'
+  reports: 'SHELL.SECTIONS.REPORTS',
+  treasury: 'SHELL.SECTIONS.TREASURY'
 };
 
 @Component({
@@ -32,7 +38,7 @@ const sectionTitleKeys: Record<AppSection, string> = {
 export class AppTopbarComponent implements OnInit {
   protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
-  protected readonly sectionTitleKey = computed(() => sectionTitleKeys[this.uiStore.selectedSection()]);
+  protected readonly pageTitleKey = computed(() => pageTitleKeys[this.uiStore.currentPage()]);
   protected readonly activeWorkspaceTypeLabelKey = computed(() =>
     this.authStore.activeWorkspaceTypeLabelKey()
   );

@@ -51,7 +51,7 @@ export const routes: Routes = [
     canActivate: [cabinetDossierGuard]
   },
   {
-    path: 'dashboard',
+    path: '',
     loadComponent: () =>
       import('../../shared/layout/app-shell/app-shell.component').then(
         (module) => module.AppShellComponent
@@ -60,8 +60,68 @@ export const routes: Routes = [
     children: [
       {
         path: '',
+        pathMatch: 'full',
+        redirectTo: 'dashboard'
+      },
+      {
+        path: 'dashboard',
         loadComponent: () =>
           import('../feature/dashboard/dashboard.page').then((module) => module.DashboardPage)
+      },
+      {
+        path: 'accounting/general-ledger',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/accounting-placeholder.page').then(
+            (module) => module.AccountingPlaceholderPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE'
+        }
+      },
+      {
+        path: 'accounting/journals',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/accounting-placeholder.page').then(
+            (module) => module.AccountingPlaceholderPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.JOURNALS.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.JOURNALS.TITLE'
+        }
+      },
+      {
+        path: 'accounting/entries',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/accounting-placeholder.page').then(
+            (module) => module.AccountingPlaceholderPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.ENTRIES.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.ENTRIES.TITLE'
+        }
+      },
+      {
+        path: 'accounting/trial-balance',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/accounting-placeholder.page').then(
+            (module) => module.AccountingPlaceholderPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.TITLE'
+        }
+      },
+      {
+        path: 'accounting/chart-of-accounts',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/accounting-placeholder.page').then(
+            (module) => module.AccountingPlaceholderPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE'
+        }
       }
     ]
   },

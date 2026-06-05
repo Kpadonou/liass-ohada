@@ -2,7 +2,7 @@
 
 ## Problem Identified
 
-The unit tests in `test/unit/core-ledger/post-entry.test.ts` were failing with 13 failures out of 15 tests. The error was:
+The unit tests in `test/unit/accounting/post-entry.test.ts` were failing with 13 failures out of 15 tests. The error was:
 
 ```
 ZodError: [
@@ -74,7 +74,7 @@ After the fix:
 
 ## Changed File
 
-- `test/unit/core-ledger/post-entry.test.ts` - Added `orgId: "test-org"` to the mock FiscalYear object
+- `test/unit/accounting/post-entry.test.ts` - Added `orgId: "test-org"` to the mock FiscalYear object
 
 ## Key Learning
 

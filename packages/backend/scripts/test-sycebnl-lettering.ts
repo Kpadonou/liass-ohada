@@ -3,9 +3,9 @@ process.env.LOCALSTACK_URL = "http://localhost:4566";
 
 import { PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as getUnlettered } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
-import { handler as postLettering } from "../lambda/domains/core-ledger/lettering/post-lettering";
+import { handler as postEntry } from "../lambda/domains/accounting/entries/post-entry";
+import { handler as getUnlettered } from "../lambda/domains/accounting/lettering/get-unlettered-lines";
+import { handler as postLettering } from "../lambda/domains/accounting/lettering/post-lettering";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { KeyFactory } from "../lambda/shared/key-builder";
 

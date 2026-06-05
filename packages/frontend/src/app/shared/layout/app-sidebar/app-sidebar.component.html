@@ -23,13 +23,43 @@
     </p>
 
     <nav class="grid gap-1.5">
-      @for (item of navItems; track item.section) {
+      @for (item of dashboardItems; track item.page) {
         <liass-sidebar-nav-item
-          [active]="uiStore.selectedSection() === item.section"
+          [active]="uiStore.currentPage() === item.page"
           [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+          [disabled]="item.disabled ?? false"
           [icon]="item.icon"
           [label]="item.labelKey | transloco"
-          (selected)="selectSection(item.section)"
+          (selected)="selectItem(item)"
+        />
+      }
+
+      <div class="pt-3">
+        <p class="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+          {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
+        </p>
+        <div class="grid gap-1.5">
+          @for (item of accountingItems; track item.page) {
+            <liass-sidebar-nav-item
+              [active]="uiStore.currentPage() === item.page"
+              [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+              [disabled]="item.disabled ?? false"
+              [icon]="item.icon"
+              [label]="item.labelKey | transloco"
+              (selected)="selectItem(item)"
+            />
+          }
+        </div>
+      </div>
+
+      @for (item of secondaryItems; track item.page) {
+        <liass-sidebar-nav-item
+          [active]="uiStore.currentPage() === item.page"
+          [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+          [disabled]="item.disabled ?? false"
+          [icon]="item.icon"
+          [label]="item.labelKey | transloco"
+          (selected)="selectItem(item)"
         />
       }
     </nav>

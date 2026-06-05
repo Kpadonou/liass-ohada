@@ -35,8 +35,8 @@ interface AddRouteOptions {
  * Elle centralise la logique de création de fonctions Lambda NodeJS, l'attribution des permissions
  * DynamoDB et l'enregistrement des routes sur l'API Gateway.
  * * @example
- * // Dans une sous-classe (ex: CoreLedgerEndpoints) :
- * this.addRoute(api, HttpMethod.POST, "/accounts", entryPath, table, authorizer, "CoreLedger-");
+ * // Dans une sous-classe (ex: AccountingEndpoints) :
+ * this.addRoute({ api, method: HttpMethod.POST, routePath: "/accounts", handlerEntry, table, stage });
  */
 export abstract class DomainConstructFactory extends Construct {
   private static sanitizeNamePart(value: string): string {

@@ -8,8 +8,8 @@ import {
   ScanCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { handler as postEntry } from "../lambda/domains/core-ledger/entries/post-entry";
-import { handler as getSuggestions } from "../lambda/domains/core-ledger/lettering/get-unlettered-lines";
+import { handler as postEntry } from "../lambda/domains/accounting/entries/post-entry";
+import { handler as getSuggestions } from "../lambda/domains/accounting/lettering/get-unlettered-lines";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { KeyFactory } from "../lambda/shared/key-builder";
 

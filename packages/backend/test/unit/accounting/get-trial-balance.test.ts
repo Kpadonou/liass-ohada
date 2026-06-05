@@ -1,4 +1,4 @@
-import { handler } from "@/lambda/domains/core-ledger/books/get-trial-balance";
+import { handler } from "@/lambda/domains/accounting/books/get-trial-balance";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";

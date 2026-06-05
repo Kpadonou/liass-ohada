@@ -1,6 +1,6 @@
 import { BatchWriteItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
-import { padAccountId } from "@liass-ohada/shared/core-ledger";
+import { padAccountId } from "@liass-ohada/shared/accounting";
 import { KeyFactory } from "../lambda/shared/key-builder";
 import { dynamoClient } from "../lambda/shared/dynamo-client";
 import { config } from "../lambda/shared/config";

@@ -9,7 +9,7 @@ import { LiassOhadaApiGateway } from "../constructs/api/api-gateway";
 import { LiassOhadaAuth } from "../constructs/auth/cognito-auth";
 
 // Import your Domain Constructs
-import { CoreLedgerEndpoints } from "../constructs/domains/core-ledger-endpoints";
+import { AccountingEndpoints } from "../constructs/domains/accounting-endpoints";
 import { IdentityEndpoints } from "../constructs/domains/identity-endpoints";
 import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
 
@@ -60,10 +60,10 @@ export class ApiStack extends Stack {
     });
 
     /**
-     * CORE LEDGER MODULE
+     * ACCOUNTING MODULE
      * Handles General Accounting, Accounts, Entries, and Books.
      */
-    new CoreLedgerEndpoints(this, "CoreLedgerModule", {
+    new AccountingEndpoints(this, "AccountingModule", {
       api: this.apiGateway.httpApi,
       table: props.accountingTable,
       stage: props.stage,

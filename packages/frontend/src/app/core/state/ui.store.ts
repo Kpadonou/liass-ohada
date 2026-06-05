@@ -1,10 +1,20 @@
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
-export type AppSection = 'ledger' | 'projects' | 'treasury' | 'reports';
+export type AppPage =
+  | 'dashboard'
+  | 'accounting.generalLedger'
+  | 'accounting.journals'
+  | 'accounting.entries'
+  | 'accounting.trialBalance'
+  | 'accounting.chartOfAccounts'
+  | 'projects'
+  | 'treasury'
+  | 'reports'
+  | 'administration';
 export type ThemeMode = 'light' | 'dark';
 
 interface UiState {
-  selectedSection: AppSection;
+  currentPage: AppPage;
   sidebarOpen: boolean;
   themeMode: ThemeMode;
 }
@@ -34,7 +44,7 @@ function applyThemeClass(themeMode: ThemeMode): void {
 }
 
 const initialState: UiState = {
-  selectedSection: 'ledger',
+  currentPage: 'dashboard',
   sidebarOpen: false,
   themeMode: readStoredThemeMode()
 };
@@ -49,8 +59,8 @@ export const UiStore = signalStore(
     closeSidebar(): void {
       patchState(store, { sidebarOpen: false });
     },
-    selectSection(selectedSection: AppSection): void {
-      patchState(store, { selectedSection });
+    setCurrentPage(currentPage: AppPage): void {
+      patchState(store, { currentPage });
     },
     setThemeMode(themeMode: ThemeMode): void {
       persistThemeMode(themeMode);

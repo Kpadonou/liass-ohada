@@ -1,4 +1,4 @@
-import { handler } from "@/lambda/domains/core-ledger/accounts/get-account";
+import { handler } from "@/lambda/domains/accounting/accounts/get-account";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";

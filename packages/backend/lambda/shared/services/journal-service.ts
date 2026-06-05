@@ -2,7 +2,7 @@ import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
-import { Journal, JournalSchema } from "@liass-ohada/shared/core-ledger";
+import { Journal, JournalSchema } from "@liass-ohada/shared/accounting";
 import {
   DeleteItemCommand,
   GetItemCommand,
