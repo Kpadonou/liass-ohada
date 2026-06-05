@@ -25,7 +25,7 @@ Welcome to the liass-ohada backend project — an AWS Cloud-Native Serverless ER
 
 ### AWS dev account
 
-The real AWS development account uses the `rem` AWS CLI profile and deploys to account `570197775998` in `eu-west-2`.
+The real AWS development account uses the `rem` AWS CLI profile and deploys to account `570197775998` in `eu-west-3`.
 
 - `npm run aws:login` refresh the AWS SSO session for the `rem` profile
 - `npm run aws:whoami` verify the active AWS identity before deploys

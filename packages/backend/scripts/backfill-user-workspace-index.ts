@@ -8,7 +8,7 @@ interface BackfillAccessRow {
 }
 
 const tableName = process.env.TABLE_NAME;
-const region = process.env.AWS_REGION || "eu-west-2";
+const region = process.env.AWS_REGION || "eu-west-3";
 const rowsJson = process.env.USER_WORKSPACE_BACKFILL;
 
 if (!tableName) {

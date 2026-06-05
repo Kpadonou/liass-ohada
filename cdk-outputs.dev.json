@@ -1,12 +1,17 @@
 {
   "LiassOhadaBackendStackDataStack20BA4040": {
     "ExportsOutputRefAccountingTableLiassOhadaAccountingTable227E774D00AE2031": "liass-ohada-dev-accounting-table",
-    "ExportsOutputFnGetAttAccountingTableLiassOhadaAccountingTable227E774DArnAC508755": "arn:aws:dynamodb:eu-west-2:570197775998:table/liass-ohada-dev-accounting-table"
+    "ExportsOutputFnGetAttAccountingTableLiassOhadaAccountingTable227E774DArnAC508755": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-accounting-table"
   },
   "LiassOhadaBackendStackApiStack2823DE88": {
-    "UserPoolClientId": "6v7hu33a45j24g7bojjipukcs2",
-    "ApiUrl": "https://zxt5p28x8g.execute-api.eu-west-2.amazonaws.com",
-    "UserPoolId": "eu-west-2_UisYGIavQ",
-    "CognitoRegion": "eu-west-2"
+    "OAuthRedirectSignInUrls": "http://localhost:4200/auth/callback",
+    "UserPoolClientId": "36qnnjljg4c4qomkiaan1u4cte",
+    "ApiUrl": "https://mk5jf2sco3.execute-api.eu-west-3.amazonaws.com",
+    "UserPoolId": "eu-west-3_UIXfYuL4D",
+    "EnabledSocialProviders": "Google",
+    "CognitoRegion": "eu-west-3",
+    "CognitoDomainPrefix": "liass-ohada-dev-auth",
+    "CognitoDomainUrl": "https://liass-ohada-dev-auth.auth.eu-west-3.amazoncognito.com",
+    "OAuthRedirectSignOutUrls": "http://localhost:4200/login"
   }
 }

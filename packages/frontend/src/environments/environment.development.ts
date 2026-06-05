@@ -1,12 +1,12 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'https://zxt5p28x8g.execute-api.eu-west-2.amazonaws.com',
+  apiBaseUrl: 'https://mk5jf2sco3.execute-api.eu-west-3.amazonaws.com',
   cognito: {
-    region: 'eu-west-2',
-    userPoolId: 'eu-west-2_UisYGIavQ',
-    userPoolClientId: '6v7hu33a45j24g7bojjipukcs2',
+    region: 'eu-west-3',
+    userPoolId: 'eu-west-3_UIXfYuL4D',
+    userPoolClientId: '36qnnjljg4c4qomkiaan1u4cte',
     oauth: {
-      domain: 'liass-ohada-dev-auth.auth.eu-west-2.amazoncognito.com',
+      domain: 'liass-ohada-dev-auth.auth.eu-west-3.amazoncognito.com',
       redirectSignIn: [
         'http://localhost:4200/auth/callback'
       ],
@@ -14,7 +14,7 @@ export const environment = {
         'http://localhost:4200/login'
       ],
       scopes: ['openid', 'email', 'profile'],
-      providers: ['Google', { custom: 'LinkedIn' }]
+      providers: ['Google']
     }
   }
 } as const;

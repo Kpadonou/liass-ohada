@@ -19,7 +19,7 @@
   "context": {
     "stage": "dev",
     "account": "570197775998",
-    "region": "eu-west-2",
+    "region": "eu-west-3",
     "@aws-cdk/aws-signer:signingProfileNamePassedToCfn": true,
     "@aws-cdk/aws-ecs-patterns:secGroupsDisablesImplicitOpenListener": true,
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
