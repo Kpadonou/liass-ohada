@@ -16,6 +16,12 @@ This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-l
   - Each domain uses `feature/` for routed smart pages, `ui/` for domain presentational components, `data-access/` for API clients, TanStack Query helpers, schemas, and SignalStores, and `utils/` for pure helpers, validators, and pipes.
   - `shared/ui/`: stateless reusable design-system components. Components in `shared/ui/` must not inject stores, domain services, API clients, or app-specific state.
 
+## OHADA / SYSCOHADA reference
+
+For any task related to accounting, SYSCOHADA, SYCEBNL (NGOs, associations, donations, projects), OHADA compliance, invoices, payments, stock, immobilisations, payroll, tax/social declarations, financial statements, or legal company data, Codex must use the `ohada-legal-reference` skill.
+
+Codex must not invent OHADA rules, article numbers, accounting classes, or legal obligations. If the references are incomplete, it must say so clearly.
+
 ## Build, Test, and Development Commands
 
 - `npm run build`: builds shared, backend, and frontend workspaces in order.
