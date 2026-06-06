@@ -18,6 +18,7 @@ import { CabinetDossiersApi } from './cabinet-dossiers.api';
 const ACTIVE_ORG_STORAGE_KEY = 'liass-ohada.activeOrgId';
 const ACTIVE_DOSSIER_STORAGE_KEY = 'liass-ohada.activeDossierOrgId';
 const LINKEDIN_PROVIDER_NAME = 'LinkedIn';
+const GOOGLE_SIGN_IN_PROMPT = 'SELECT_ACCOUNT';
 
 export type WorkspaceDestination =
   | '/dashboard'
@@ -597,7 +598,10 @@ export const AuthStore = signalStore(
       patchState(store, { loading: true, error: null });
 
       try {
-        await signInWithRedirect({ provider: 'Google' });
+        await signInWithRedirect({
+          provider: 'Google',
+          options: { prompt: GOOGLE_SIGN_IN_PROMPT }
+        });
       } catch (error) {
         const message = messageFromError(error);
         patchState(store, { loading: false, error: message });

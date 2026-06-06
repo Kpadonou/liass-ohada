@@ -525,13 +525,16 @@ describe('AuthStore', () => {
     expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
   });
 
-  it('starts Google hosted UI sign-in', async () => {
+  it('starts Google hosted UI sign-in with account selection', async () => {
     vi.mocked(signInWithRedirect).mockResolvedValue(undefined);
     const store = TestBed.inject(AuthStore);
 
     await store.loginWithGoogle();
 
-    expect(signInWithRedirect).toHaveBeenCalledWith({ provider: 'Google' });
+    expect(signInWithRedirect).toHaveBeenCalledWith({
+      provider: 'Google',
+      options: { prompt: 'SELECT_ACCOUNT' }
+    });
   });
 
   it('starts LinkedIn hosted UI sign-in through the Cognito custom OIDC provider', async () => {
