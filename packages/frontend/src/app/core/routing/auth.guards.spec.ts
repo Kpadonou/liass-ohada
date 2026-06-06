@@ -3,7 +3,13 @@ import { Router, UrlTree, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
 import { AuthStore, type WorkspaceDestination } from '../../domains/identity/data-access/auth.store';
-import { authGuard, cabinetDashboardGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
+import {
+  appRootRedirectGuard,
+  authGuard,
+  cabinetDashboardGuard,
+  loginRedirectGuard,
+  tenantGuard
+} from './auth.guards';
 
 type WorkspaceType = 'ACCOUNTING_FIRM' | 'COMPANY' | null;
 
@@ -78,6 +84,16 @@ describe('auth guards', () => {
 
     const result = await TestBed.runInInjectionContext(() =>
       authGuard({} as never, {} as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/login');
+  });
+
+  it('redirects unauthenticated app root access to login', async () => {
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      appRootRedirectGuard({} as never, { url: '/' } as never)
     );
 
     expect(router.serializeUrl(result as UrlTree)).toBe('/login');
@@ -176,6 +192,62 @@ describe('auth guards', () => {
     );
 
     expect(result).toBe(true);
+  });
+
+  it('redirects authenticated company users from the app root to the dashboard', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/dashboard';
+    state.workspaceType = 'COMPANY';
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, { url: '/' } as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/dashboard');
+  });
+
+  it('routes authenticated company app root access to the workspace destination', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/dashboard';
+    state.workspaceType = 'COMPANY';
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      appRootRedirectGuard({} as never, { url: '/' } as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/dashboard');
+  });
+
+  it('redirects authenticated accounting-firm users from the app root to the cabinet dashboard', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/cabinet/dashboard';
+    state.workspaceType = 'ACCOUNTING_FIRM';
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, { url: '/' } as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/cabinet/dashboard');
+  });
+
+  it('routes authenticated accounting-firm app root access to the cabinet dashboard', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/cabinet/dashboard';
+    state.workspaceType = 'ACCOUNTING_FIRM';
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      appRootRedirectGuard({} as never, { url: '/' } as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/cabinet/dashboard');
   });
 
   it('redirects accounting-firm dashboard access without an active dossier to cabinet dashboard', async () => {

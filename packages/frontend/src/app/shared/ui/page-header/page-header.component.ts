@@ -4,6 +4,9 @@ import { LiassButtonComponent } from '../button/button.component';
 
 @Component({
   selector: 'liass-page-header',
+  host: {
+    class: 'block'
+  },
   imports: [LiassButtonComponent],
   templateUrl: './page-header.component.html'
 })

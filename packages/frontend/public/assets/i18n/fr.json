@@ -396,6 +396,35 @@
       "SELECT_TITLE": "Sélectionnez un dossier client",
       "SELECT_SUBTITLE": "Choisissez l’entreprise cliente dont vous voulez traiter la comptabilité.",
       "LOADING": "Chargement des dossiers clients...",
+      "METRICS": {
+        "ACTIVE": "Dossiers actifs",
+        "TOTAL": "Total dossiers",
+        "VISIBLE": "Dossiers affichés"
+      },
+      "TABLE": {
+        "ACTIONS": "Action",
+        "COMPANY": "Entreprise cliente",
+        "COUNTRY": "Pays",
+        "DESCRIPTION": "Recherchez, filtrez et ouvrez le dossier client à traiter.",
+        "FRAMEWORK": "Référentiel",
+        "STATUS": "Statut",
+        "TITLE": "Liste des dossiers clients"
+      },
+      "FILTERS": {
+        "SEARCH_LABEL": "Rechercher",
+        "SEARCH_PLACEHOLDER": "Nom, pays ou référentiel",
+        "STATUS_ACTIVE": "Actifs",
+        "STATUS_ALL": "Tous les statuts",
+        "STATUS_LABEL": "Statut"
+      },
+      "RESULTS": {
+        "FILTERED": "Filtres actifs",
+        "SUMMARY": "{{ visible }} dossier(s) affiché(s) sur {{ total }}"
+      },
+      "NO_RESULTS": {
+        "TITLE": "Aucun dossier ne correspond aux filtres",
+        "SUBTITLE": "Modifiez la recherche ou réinitialisez les filtres pour retrouver vos dossiers clients."
+      },
       "FORM_TITLE": "Informations du dossier",
       "FORM_SUBTITLE": "Ces informations créent un dossier client rattaché au cabinet comptable actif.",
       "FIELDS": {
@@ -405,13 +434,16 @@
       },
       "ACTIONS": {
         "BACK": "Retour aux dossiers",
+        "CLEAR_FILTERS": "Réinitialiser",
         "CREATE": "Créer le dossier",
         "CREATING": "Création du dossier...",
-        "NEW": "Nouveau dossier"
+        "NEW": "Nouveau dossier",
+        "OPEN": "Ouvrir"
       },
       "ERRORS": {
         "CREATE_FAILED": "La création du dossier client n’a pas pu se terminer. Veuillez réessayer.",
         "DUPLICATE": "Ce dossier client existe déjà.",
+        "LOAD_FAILED": "Les dossiers clients n’ont pas pu être chargés. Veuillez réessayer.",
         "NETWORK": "Le dossier client n’a pas pu être créé car la connexion réseau a échoué.",
         "SERVICE_UNAVAILABLE": "La gestion des dossiers clients n’est pas encore disponible sur le backend configuré.",
         "VALIDATION": "La réponse du dossier client n’a pas pu être vérifiée. Veuillez réessayer."

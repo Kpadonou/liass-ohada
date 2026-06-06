@@ -7,6 +7,13 @@
 3. Compose with Tailwind utilities and existing tokens.
 4. Create local UI only when the reusable component library does not cover the workflow.
 
+## Shared Layout Primitives
+
+- Shared page-level primitives such as page headers, cards, stat cards, sections, and table containers must behave as stable block-level layout elements when used as standalone page sections.
+- Do not rely on the browser default display behavior of custom Angular elements; set an explicit block-level host class or equivalent host style for standalone layout primitives.
+- Verify vertical rhythm between page headers, primary actions, KPI cards, tables, and forms in the rendered app, not only by reading Tailwind classes.
+- When a page uses Tailwind `space-y-*`, flex, or grid around custom `liass-*` elements, confirm that the host element participates in layout as intended.
+
 ## Buttons
 
 - Primary action should be easy to find and predictably placed.
@@ -53,6 +60,8 @@
 - Show page identity, context, and primary action.
 - Avoid oversized marketing-style headers inside the ERP shell.
 - Include secondary actions only when they are immediately relevant.
+- Keep enough vertical separation between the primary action and the next page section on desktop and mobile.
+- Page header hosts must be block-level so the action area cannot visually collide with KPI cards, forms, or tables that follow.
 
 ## Command And Search Inputs
 

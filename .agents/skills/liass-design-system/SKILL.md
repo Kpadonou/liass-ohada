@@ -21,8 +21,9 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 6. Optimize ergonomics: remove unnecessary clicks, confirmations, duplicate steps, and fragmented workflows.
 7. Preserve accessibility, keyboard navigation, focus management, responsive behavior, and readable contrast.
 8. Inspect existing logo/assets/theme files before proposing color changes.
-9. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
-10. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
+9. Ensure shared layout/page primitives render with stable block-level host behavior when they are used as standalone page sections.
+10. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
+11. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
 
 ## Reference priority
 
@@ -103,8 +104,9 @@ Do not copy these products directly. Use them only as inspiration for hierarchy,
 4. Identify the user workflow, risk level, data density, and appropriate UI component pattern.
 5. Prefer existing components and tokens; add local code only when the existing system lacks the needed surface.
 6. Keep visible text in Transloco and use English for code, variables, comments, and keys.
-7. Verify responsive layout, keyboard/focus behavior, contrast, loading/empty/error states, and action placement.
-8. Add or update focused frontend tests when behavior, routing, state, or visible UI logic changes.
+7. Verify adjacent vertical spacing around page headers, primary actions, cards, tables, and forms in the rendered app, especially when using custom `liass-*` elements inside Tailwind `space-y-*`, flex, or grid containers.
+8. Verify responsive layout, keyboard/focus behavior, contrast, loading/empty/error states, and action placement.
+9. Add or update focused frontend tests when behavior, routing, state, or visible UI logic changes.
 
 ## Final response requirements
 

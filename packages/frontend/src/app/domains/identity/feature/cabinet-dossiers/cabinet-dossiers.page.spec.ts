@@ -27,22 +27,56 @@ const translations = {
       CABINET_DOSSIERS: {
         ACTIONS: {
           BACK: 'Back to dossiers',
+          CLEAR_FILTERS: 'Reset',
           CREATE: 'Create dossier',
           CREATING: 'Creating dossier...',
-          NEW: 'New dossier'
+          NEW: 'New dossier',
+          OPEN: 'Open'
         },
         EYEBROW: 'Client dossiers',
+        ERRORS: {
+          LOAD_FAILED: 'Client dossiers could not be loaded. Please retry.'
+        },
         FIELDS: {
           ACCOUNTING_FRAMEWORK: 'Accounting framework',
           COMPANY_NAME: 'Client company name',
           COUNTRY: 'Country'
         },
+        FILTERS: {
+          SEARCH_LABEL: 'Search',
+          SEARCH_PLACEHOLDER: 'Name, country, or framework',
+          STATUS_ACTIVE: 'Active',
+          STATUS_ALL: 'All statuses',
+          STATUS_LABEL: 'Status'
+        },
         FORM_SUBTITLE: 'These details create a client dossier.',
         FORM_TITLE: 'Dossier information',
         LIST_TITLE: 'Client dossiers',
         LIST_SUBTITLE: 'Choose the client company.',
+        METRICS: {
+          ACTIVE: 'Active dossiers',
+          TOTAL: 'Total dossiers',
+          VISIBLE: 'Visible dossiers'
+        },
         NEW_SUBTITLE: 'Add the client company your accounting firm will manage.',
         NEW_TITLE: 'New client dossier',
+        NO_RESULTS: {
+          TITLE: 'No dossier matches these filters',
+          SUBTITLE: 'Adjust the search or reset filters to find your client dossiers.'
+        },
+        RESULTS: {
+          FILTERED: 'Filters active',
+          SUMMARY: '{{ visible }} dossier(s) shown out of {{ total }}'
+        },
+        TABLE: {
+          ACTIONS: 'Action',
+          COMPANY: 'Client company',
+          COUNTRY: 'Country',
+          DESCRIPTION: 'Search, filter, and open the client dossier you need to work on.',
+          FRAMEWORK: 'Framework',
+          STATUS: 'Status',
+          TITLE: 'Client dossier list'
+        },
         VALIDATION: {
           COMPANY_NAME: 'Enter the client company name.'
         }
@@ -136,10 +170,87 @@ describe('CabinetDossiersPage', () => {
     await fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
     const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
-    buttons.find((button) => button.textContent?.includes('Client SARL'))?.click();
+    buttons.find((button) => button.textContent?.includes('Open'))?.click();
 
     expect(authStore.activeWorkspaceOrgId()).toBe('org-firm');
     expect(authStore.activeDossierOrgId()).toBe('org-client');
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
+  });
+
+  it('renders a table-oriented dossier list with human-readable dossier data', async () => {
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm'
+    );
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+
+    fixture = TestBed.createComponent(CabinetDossiersPage);
+    await fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Client dossier list');
+    expect(text).toContain('Client SARL');
+    expect(text).toContain('Benin');
+    expect(text).toContain('Revised SYSCOHADA');
+    expect(text).toContain('Active');
+    expect(text).not.toContain('org-client');
+  });
+
+  it('filters dossiers and shows a no-results state', async () => {
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm'
+    );
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-client-a',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      {
+        orgId: 'org-client-b',
+        displayName: 'Finance Conseil',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+
+    fixture = TestBed.createComponent(CabinetDossiersPage);
+    await fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+
+    const searchInput = fixture.nativeElement.querySelector('input[type="search"]') as HTMLInputElement;
+    searchInput.value = 'missing';
+    searchInput.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('No dossier matches these filters');
+    expect(fixture.nativeElement.textContent).toContain('Reset');
   });
 });

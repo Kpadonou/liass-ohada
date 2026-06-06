@@ -4,6 +4,7 @@ import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
+import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { AppBackdropComponent } from '../app-backdrop/app-backdrop.component';
 import { AppSidebarComponent } from '../app-sidebar/app-sidebar.component';
 import { AppTopbarComponent } from '../app-topbar/app-topbar.component';
@@ -64,12 +65,14 @@ function pageFromUrl(url: string): AppPage {
   templateUrl: './app-shell.component.html'
 })
 export class AppShellComponent {
+  private readonly authStore = inject(AuthStore);
   private readonly uiStore = inject(UiStore);
   private readonly router = inject(Router);
 
   constructor() {
     this.uiStore.applyTheme();
     this.syncCurrentPage(this.router.url);
+    void this.redirectRootShell();
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
@@ -82,5 +85,21 @@ export class AppShellComponent {
 
   private syncCurrentPage(url: string): void {
     this.uiStore.setCurrentPage(pageFromUrl(url));
+  }
+
+  private async redirectRootShell(): Promise<void> {
+    if (this.router.url !== '/') {
+      return;
+    }
+
+    if (!this.authStore.workspacesLoaded()) {
+      await this.authStore.loadWorkspaces();
+    }
+
+    const destination = this.authStore.workspaceDestination();
+
+    if (destination) {
+      await this.router.navigateByUrl(destination, { replaceUrl: true });
+    }
   }
 }

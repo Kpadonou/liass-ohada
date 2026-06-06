@@ -396,6 +396,35 @@
       "SELECT_TITLE": "Select a client dossier",
       "SELECT_SUBTITLE": "Choose the client company whose accounting data you want to work on.",
       "LOADING": "Loading client dossiers...",
+      "METRICS": {
+        "ACTIVE": "Active dossiers",
+        "TOTAL": "Total dossiers",
+        "VISIBLE": "Visible dossiers"
+      },
+      "TABLE": {
+        "ACTIONS": "Action",
+        "COMPANY": "Client company",
+        "COUNTRY": "Country",
+        "DESCRIPTION": "Search, filter, and open the client dossier you need to work on.",
+        "FRAMEWORK": "Framework",
+        "STATUS": "Status",
+        "TITLE": "Client dossier list"
+      },
+      "FILTERS": {
+        "SEARCH_LABEL": "Search",
+        "SEARCH_PLACEHOLDER": "Name, country, or framework",
+        "STATUS_ACTIVE": "Active",
+        "STATUS_ALL": "All statuses",
+        "STATUS_LABEL": "Status"
+      },
+      "RESULTS": {
+        "FILTERED": "Filters active",
+        "SUMMARY": "{{ visible }} dossier(s) shown out of {{ total }}"
+      },
+      "NO_RESULTS": {
+        "TITLE": "No dossier matches these filters",
+        "SUBTITLE": "Adjust the search or reset filters to find your client dossiers."
+      },
       "FORM_TITLE": "Dossier information",
       "FORM_SUBTITLE": "These details create a client dossier attached to the active accounting firm.",
       "FIELDS": {
@@ -405,13 +434,16 @@
       },
       "ACTIONS": {
         "BACK": "Back to dossiers",
+        "CLEAR_FILTERS": "Reset",
         "CREATE": "Create dossier",
         "CREATING": "Creating dossier...",
-        "NEW": "New dossier"
+        "NEW": "New dossier",
+        "OPEN": "Open"
       },
       "ERRORS": {
         "CREATE_FAILED": "Client dossier creation could not finish. Please retry.",
         "DUPLICATE": "This client dossier already exists.",
+        "LOAD_FAILED": "Client dossiers could not be loaded. Please retry.",
         "NETWORK": "The client dossier could not be created because the network connection failed.",
         "SERVICE_UNAVAILABLE": "Client dossier management is not available on the configured backend yet.",
         "VALIDATION": "The client dossier response could not be verified. Please retry."

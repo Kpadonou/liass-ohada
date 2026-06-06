@@ -5,6 +5,7 @@ import { LoginPage } from '../../domains/identity/feature/login/login.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
 import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
 import {
+  appRootRedirectGuard,
   authGuard,
   cabinetDashboardGuard,
   cabinetDossierGuard,
@@ -47,6 +48,15 @@ export const routes: Routes = [
         '../../domains/identity/feature/cabinet-dossier-select/cabinet-dossier-select.page'
       ).then((module) => module.CabinetDossierSelectPage),
     canActivate: [cabinetDossierGuard]
+  },
+  {
+    path: '',
+    pathMatch: 'full',
+    loadComponent: () =>
+      import('../../shared/layout/app-shell/app-shell.component').then(
+        (module) => module.AppShellComponent
+      ),
+    canActivate: [appRootRedirectGuard]
   },
   {
     path: '',

@@ -18,9 +18,33 @@ export const authGuard: CanActivateFn = async () => {
   return authStore.isAuthenticated() ? true : router.createUrlTree(['/login']);
 };
 
+export const appRootRedirectGuard: CanActivateFn = async () => {
+  const authStore = inject(AuthStore);
+  const router = inject(Router);
+
+  await ensureHydrated(authStore);
+
+  if (!authStore.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+
+  if (!authStore.hasActiveTenant() || !authStore.workspacesLoaded()) {
+    await authStore.loadWorkspaces();
+  }
+
+  const destination = authStore.workspaceDestination();
+
+  return destination ? router.createUrlTree([destination]) : false;
+};
+
 function isCabinetRoute(url: string | undefined): boolean {
   const path = url?.split('?')[0]?.split('#')[0] ?? '';
   return path.startsWith('/cabinet/');
+}
+
+function isRootRoute(url: string | undefined): boolean {
+  const path = url?.split('?')[0]?.split('#')[0] ?? '';
+  return path === '/';
 }
 
 export const tenantGuard: CanActivateFn = async (_route, state) => {
@@ -38,6 +62,10 @@ export const tenantGuard: CanActivateFn = async (_route, state) => {
   }
 
   const destination = authStore.workspaceDestination();
+
+  if (isRootRoute(state.url)) {
+    return destination ? router.createUrlTree([destination]) : false;
+  }
 
   if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
     if (isCabinetRoute(state.url)) {

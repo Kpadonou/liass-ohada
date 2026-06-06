@@ -1,39 +1,73 @@
 <div class="space-y-6">
-  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-    <div>
-      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-        {{ 'IDENTITY.CABINET_DOSSIERS.EYEBROW' | transloco }}
-      </p>
-      <h1 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">
-        {{ 'IDENTITY.CABINET_DOSSIERS.LIST_TITLE' | transloco }}
-      </h1>
-      <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-        {{ 'IDENTITY.CABINET_DOSSIERS.LIST_SUBTITLE' | transloco }}
-      </p>
-    </div>
+  <liass-page-header
+    [eyebrow]="'IDENTITY.CABINET_DOSSIERS.EYEBROW' | transloco"
+    [title]="'IDENTITY.CABINET_DOSSIERS.LIST_TITLE' | transloco"
+    [subtitle]="'IDENTITY.CABINET_DOSSIERS.LIST_SUBTITLE' | transloco"
+    [actionLabel]="'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_DOSSIER' | transloco"
+    actionIcon="add"
+    (actionTriggered)="createDossier()"
+  />
 
-    <liass-button tone="brand" variant="solid" icon="add" (pressed)="createDossier()">
-      {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_DOSSIER' | transloco }}
-    </liass-button>
-  </header>
+  <div class="grid gap-4 md:grid-cols-3">
+    <liass-card padding="sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+        {{ 'IDENTITY.CABINET_DOSSIERS.METRICS.TOTAL' | transloco }}
+      </p>
+      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ authStore.dossiers().length }}</p>
+    </liass-card>
 
-  <section class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <liass-card padding="sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+        {{ 'IDENTITY.CABINET_DOSSIERS.METRICS.ACTIVE' | transloco }}
+      </p>
+      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ activeDossiers() }}</p>
+    </liass-card>
+
+    <liass-card padding="sm" variant="accent">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
+        {{ 'IDENTITY.CABINET_DOSSIERS.METRICS.VISIBLE' | transloco }}
+      </p>
+      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ filteredDossiers().length }}</p>
+    </liass-card>
+  </div>
+
+  <liass-card
+    [title]="'IDENTITY.CABINET_DOSSIERS.TABLE.TITLE' | transloco"
+    [description]="'IDENTITY.CABINET_DOSSIERS.TABLE.DESCRIPTION' | transloco"
+  >
     @if (authStore.dossierLoading()) {
-      <div class="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
-        <mat-spinner diameter="20"></mat-spinner>
-        <span>{{ 'IDENTITY.CABINET_DASHBOARD.LOADING' | transloco }}</span>
+      <div class="space-y-3" aria-live="polite">
+        <div class="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>{{ 'IDENTITY.CABINET_DOSSIERS.LOADING' | transloco }}</span>
+        </div>
+        @for (_ of [0, 1, 2, 3]; track $index) {
+          <div class="grid gap-3 rounded-app-card border border-slate-100 p-4 dark:border-slate-800 md:grid-cols-[2fr_1fr_1fr_1fr_auto]">
+            <liass-skeleton variant="text" />
+            <liass-skeleton variant="text" />
+            <liass-skeleton variant="text" />
+            <liass-skeleton variant="text" />
+            <liass-skeleton variant="text" />
+          </div>
+        }
       </div>
     } @else if (authStore.dossierError()) {
-      <div class="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200">
+      <div
+        class="flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200"
+        role="alert"
+      >
         <mat-icon class="mt-0.5 text-red-600 dark:text-red-300">error</mat-icon>
-        <p>{{ authStore.dossierError() }}</p>
+        <p>{{ authStore.dossierError() ?? 'IDENTITY.CABINET_DOSSIERS.ERRORS.LOAD_FAILED' | transloco }}</p>
       </div>
     } @else if (authStore.dossiers().length === 0) {
-      <div class="rounded-md border border-slate-200 bg-slate-50 px-4 py-5 dark:border-slate-800 dark:bg-slate-950">
-        <p class="text-base font-semibold text-slate-950 dark:text-white">
+      <div class="rounded-app-card border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950">
+        <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300">
+          <mat-icon>folder_open</mat-icon>
+        </div>
+        <p class="mt-4 text-base font-semibold text-slate-950 dark:text-white">
           {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_TITLE' | transloco }}
         </p>
-        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+        <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-400">
           {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_SUBTITLE' | transloco }}
         </p>
         <div class="mt-5">
@@ -43,29 +77,139 @@
         </div>
       </div>
     } @else {
-      <div class="grid gap-3">
-        @for (dossier of authStore.dossiers(); track dossier.orgId) {
-          <button
-            class="w-full rounded-md border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-65 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-brand-800 dark:hover:bg-brand-950/25"
-            type="button"
-            [disabled]="authStore.dossierLoading()"
-            (click)="selectDossier(dossier)"
-          >
-            <div class="flex items-start justify-between gap-4">
-              <div class="min-w-0">
-                <p class="truncate text-base font-semibold text-slate-950 dark:text-white">{{ dossier.displayName }}</p>
-                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {{ countryLabelKey(dossier) | transloco }} · {{ frameworkLabelKey(dossier) | transloco }}
-                </p>
-                <span class="mt-3 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  {{ statusLabelKey(dossier) | transloco }}
-                </span>
-              </div>
-              <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">arrow_forward</mat-icon>
-            </div>
-          </button>
+      <div class="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px_auto] lg:items-start">
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>{{ 'IDENTITY.CABINET_DOSSIERS.FILTERS.SEARCH_LABEL' | transloco }}</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+            matInput
+            type="search"
+            [value]="searchQuery()"
+            [attr.placeholder]="'IDENTITY.CABINET_DOSSIERS.FILTERS.SEARCH_PLACEHOLDER' | transloco"
+            (input)="updateSearch($event)"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>{{ 'IDENTITY.CABINET_DOSSIERS.FILTERS.STATUS_LABEL' | transloco }}</mat-label>
+          <mat-select [value]="statusFilter()" (valueChange)="statusFilter.set($event)">
+            <mat-option value="ALL">{{ 'IDENTITY.CABINET_DOSSIERS.FILTERS.STATUS_ALL' | transloco }}</mat-option>
+            <mat-option value="ACTIVE">{{ 'IDENTITY.CABINET_DOSSIERS.FILTERS.STATUS_ACTIVE' | transloco }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        @if (hasFilters()) {
+          <liass-button tone="neutral" variant="outline" icon="close" (pressed)="clearFilters()">
+            {{ 'IDENTITY.CABINET_DOSSIERS.ACTIONS.CLEAR_FILTERS' | transloco }}
+          </liass-button>
         }
       </div>
+
+      <div class="mb-3 flex flex-col gap-2 text-sm text-slate-500 dark:text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          {{
+            'IDENTITY.CABINET_DOSSIERS.RESULTS.SUMMARY'
+              | transloco: { visible: filteredDossiers().length, total: authStore.dossiers().length }
+          }}
+        </span>
+        @if (hasFilters()) {
+          <span class="text-brand-700 dark:text-brand-300">
+            {{ 'IDENTITY.CABINET_DOSSIERS.RESULTS.FILTERED' | transloco }}
+          </span>
+        }
+      </div>
+
+      @if (filteredDossiers().length === 0) {
+        <div class="rounded-app-card border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950">
+          <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+            <mat-icon>manage_search</mat-icon>
+          </div>
+          <p class="mt-4 text-base font-semibold text-slate-950 dark:text-white">
+            {{ 'IDENTITY.CABINET_DOSSIERS.NO_RESULTS.TITLE' | transloco }}
+          </p>
+          <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {{ 'IDENTITY.CABINET_DOSSIERS.NO_RESULTS.SUBTITLE' | transloco }}
+          </p>
+          <div class="mt-5">
+            <liass-button tone="neutral" variant="outline" icon="close" (pressed)="clearFilters()">
+              {{ 'IDENTITY.CABINET_DOSSIERS.ACTIONS.CLEAR_FILTERS' | transloco }}
+            </liass-button>
+          </div>
+        </div>
+      } @else {
+        <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 lg:block">
+          <table class="w-full min-w-[760px] border-collapse text-left">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+              <tr>
+                <th class="px-4 py-3">{{ 'IDENTITY.CABINET_DOSSIERS.TABLE.COMPANY' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'IDENTITY.CABINET_DOSSIERS.TABLE.COUNTRY' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'IDENTITY.CABINET_DOSSIERS.TABLE.FRAMEWORK' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'IDENTITY.CABINET_DOSSIERS.TABLE.STATUS' | transloco }}</th>
+                <th class="px-4 py-3 text-right">{{ 'IDENTITY.CABINET_DOSSIERS.TABLE.ACTIONS' | transloco }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (dossier of filteredDossiers(); track dossier.orgId) {
+                <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                  <td class="px-4 py-4">
+                    <p class="font-semibold text-slate-950 dark:text-white">{{ dossier.displayName }}</p>
+                  </td>
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                    {{ countryLabelKey(dossier) | transloco }}
+                  </td>
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                    {{ frameworkLabelKey(dossier) | transloco }}
+                  </td>
+                  <td class="px-4 py-4">
+                    <liass-status-chip [label]="statusLabelKey(dossier) | transloco" tone="success" size="sm" />
+                  </td>
+                  <td class="px-4 py-4 text-right">
+                    <liass-button
+                      size="sm"
+                      tone="brand"
+                      variant="ghost"
+                      icon="arrow_forward"
+                      [disabled]="authStore.dossierLoading()"
+                      (pressed)="selectDossier(dossier)"
+                    >
+                      {{ 'IDENTITY.CABINET_DOSSIERS.ACTIONS.OPEN' | transloco }}
+                    </liass-button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid gap-3 lg:hidden">
+          @for (dossier of filteredDossiers(); track dossier.orgId) {
+            <article class="rounded-app-card border border-slate-200 bg-white p-4 shadow-app-card dark:border-slate-800 dark:bg-slate-900">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="truncate text-base font-semibold text-slate-950 dark:text-white">{{ dossier.displayName }}</p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {{ countryLabelKey(dossier) | transloco }} · {{ frameworkLabelKey(dossier) | transloco }}
+                  </p>
+                </div>
+                <liass-status-chip [label]="statusLabelKey(dossier) | transloco" tone="success" size="sm" />
+              </div>
+
+              <div class="mt-4 flex justify-end">
+                <liass-button
+                  size="sm"
+                  tone="brand"
+                  variant="outline"
+                  icon="arrow_forward"
+                  [disabled]="authStore.dossierLoading()"
+                  (pressed)="selectDossier(dossier)"
+                >
+                  {{ 'IDENTITY.CABINET_DOSSIERS.ACTIONS.OPEN' | transloco }}
+                </liass-button>
+              </div>
+            </article>
+          }
+        </div>
+      }
     }
-  </section>
+  </liass-card>
 </div>
