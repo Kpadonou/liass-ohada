@@ -10,14 +10,22 @@ import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { environment } from '../../../environments/environment';
 import { authInterceptor } from './auth.interceptor';
 
-vi.mock('aws-amplify/auth', () => ({
-  confirmSignIn: vi.fn(),
-  fetchUserAttributes: vi.fn(),
-  fetchAuthSession: vi.fn(),
-  getCurrentUser: vi.fn(),
-  signIn: vi.fn(),
-  signOut: vi.fn()
-}));
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 describe('authInterceptor', () => {
   let httpMock: HttpTestingController;
@@ -142,6 +150,63 @@ describe('authInterceptor', () => {
     expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
     expect(request.request.headers.get('x-org-id')).toBe('org-cabinet');
     request.flush({ dossiers: [] });
+    await response;
+  });
+
+  it('uses the cabinet workspace for cabinet dossier creation calls', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-cabinet',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-cabinet'
+    );
+    authStore.setCreatedDossier(
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client'
+    );
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: { toString: () => 'jwt-token' }
+      }
+    } as never);
+
+    const payload = {
+      companyName: 'New Client SARL',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED'
+    };
+    const http = TestBed.inject(HttpClient);
+    const response = firstValueFrom(http.post(`${environment.apiBaseUrl}/cabinet/dossiers`, payload));
+    await Promise.resolve();
+
+    const request = httpMock.expectOne(`${environment.apiBaseUrl}/cabinet/dossiers`);
+    expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.get('x-org-id')).toBe('org-cabinet');
+    expect(request.request.body).toEqual(payload);
+    request.flush({
+      dossier: {
+        orgId: 'org-new-client',
+        displayName: 'New Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      activeDossierOrgId: 'org-new-client'
+    });
     await response;
   });
 

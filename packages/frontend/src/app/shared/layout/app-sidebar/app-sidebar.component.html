@@ -2,7 +2,7 @@
   [class]="sidebarClass()"
 >
   <div class="flex h-20 items-center">
-    <a class="liass-focus-ring flex min-w-0 flex-col items-start gap-1.5 rounded-app-control text-slate-950 no-underline dark:text-white" routerLink="/dashboard">
+    <a class="liass-focus-ring flex min-w-0 flex-col items-start gap-1.5 rounded-app-control text-slate-950 no-underline dark:text-white" [routerLink]="homeRoute()">
       <liass-logo
         variant="horizontal"
         size="md"
@@ -23,44 +23,57 @@
     </p>
 
     <nav class="grid gap-1.5">
-      @for (item of dashboardItems; track item.page) {
-        <liass-sidebar-nav-item
-          [active]="uiStore.currentPage() === item.page"
-          [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
-          [disabled]="item.disabled ?? false"
-          [icon]="item.icon"
-          [label]="item.labelKey | transloco"
-          (selected)="selectItem(item)"
-        />
-      }
+      @if (cabinetMode()) {
+        @for (item of cabinetItems; track item.page) {
+          <liass-sidebar-nav-item
+            [active]="uiStore.currentPage() === item.page"
+            [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [disabled]="item.disabled ?? false"
+            [icon]="item.icon"
+            [label]="item.labelKey | transloco"
+            (selected)="selectItem(item)"
+          />
+        }
+      } @else {
+        @for (item of dashboardItems; track item.page) {
+          <liass-sidebar-nav-item
+            [active]="uiStore.currentPage() === item.page"
+            [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [disabled]="item.disabled ?? false"
+            [icon]="item.icon"
+            [label]="item.labelKey | transloco"
+            (selected)="selectItem(item)"
+          />
+        }
 
-      <div class="pt-3">
-        <p class="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-          {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
-        </p>
-        <div class="grid gap-1.5">
-          @for (item of accountingItems; track item.page) {
-            <liass-sidebar-nav-item
-              [active]="uiStore.currentPage() === item.page"
-              [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
-              [disabled]="item.disabled ?? false"
-              [icon]="item.icon"
-              [label]="item.labelKey | transloco"
-              (selected)="selectItem(item)"
-            />
-          }
+        <div class="pt-3">
+          <p class="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+            {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
+          </p>
+          <div class="grid gap-1.5">
+            @for (item of accountingItems; track item.page) {
+              <liass-sidebar-nav-item
+                [active]="uiStore.currentPage() === item.page"
+                [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+                [disabled]="item.disabled ?? false"
+                [icon]="item.icon"
+                [label]="item.labelKey | transloco"
+                (selected)="selectItem(item)"
+              />
+            }
+          </div>
         </div>
-      </div>
 
-      @for (item of secondaryItems; track item.page) {
-        <liass-sidebar-nav-item
-          [active]="uiStore.currentPage() === item.page"
-          [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
-          [disabled]="item.disabled ?? false"
-          [icon]="item.icon"
-          [label]="item.labelKey | transloco"
-          (selected)="selectItem(item)"
-        />
+        @for (item of secondaryItems; track item.page) {
+          <liass-sidebar-nav-item
+            [active]="uiStore.currentPage() === item.page"
+            [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [disabled]="item.disabled ?? false"
+            [icon]="item.icon"
+            [label]="item.labelKey | transloco"
+            (selected)="selectItem(item)"
+          />
+        }
       }
     </nav>
   </div>

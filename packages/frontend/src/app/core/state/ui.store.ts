@@ -2,6 +2,12 @@ import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 export type AppPage =
   | 'dashboard'
+  | 'cabinet.dashboard'
+  | 'cabinet.dossiers'
+  | 'cabinet.collaborators'
+  | 'cabinet.missions'
+  | 'cabinet.deadlines'
+  | 'cabinet.settings'
   | 'accounting.generalLedger'
   | 'accounting.journals'
   | 'accounting.entries'

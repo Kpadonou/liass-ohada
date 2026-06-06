@@ -746,6 +746,19 @@ export const AuthStore = signalStore(
         dossierError: null,
         dossiersLoaded: true
       });
+    },
+
+    upsertDossier(dossier: CabinetDossierSummary): void {
+      const existingDossiers = store.dossiers().filter(
+        (candidate) => candidate.orgId !== dossier.orgId
+      );
+
+      patchState(store, {
+        dossiers: [...existingDossiers, dossier],
+        dossierLoading: false,
+        dossierError: null,
+        dossiersLoaded: true
+      });
     }
   }))
 );

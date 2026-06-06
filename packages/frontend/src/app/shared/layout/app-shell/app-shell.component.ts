@@ -11,6 +11,14 @@ import { AppTopbarComponent } from '../app-topbar/app-topbar.component';
 function pageFromUrl(url: string): AppPage {
   const path = url.split('?')[0]?.split('#')[0] ?? '';
 
+  if (path.startsWith('/cabinet/dossiers')) {
+    return 'cabinet.dossiers';
+  }
+
+  if (path.startsWith('/cabinet/dashboard')) {
+    return 'cabinet.dashboard';
+  }
+
   if (path.startsWith('/accounting/journals')) {
     return 'accounting.journals';
   }

@@ -11,6 +11,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { ZodError } from 'zod';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
+import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { CabinetDossiersApi } from '../../data-access/cabinet-dossiers.api';
 import { AuthStore } from '../../data-access/auth.store';
 
@@ -30,6 +31,7 @@ interface SelectOption<T extends string> {
   selector: 'liass-cabinet-dossier-new-page',
   imports: [
     LiassButtonComponent,
+    LiassCardComponent,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -98,13 +100,17 @@ export class CabinetDossierNewPage {
 
     try {
       const result = await this.cabinetDossiersApi.createDossier(request);
-      this.authStore.setCreatedDossier(result.dossier, result.activeDossierOrgId);
-      await this.router.navigate(['/dashboard'], { replaceUrl: true });
+      this.authStore.upsertDossier(result.dossier);
+      await this.router.navigate(['/cabinet/dossiers'], { replaceUrl: true });
     } catch (error) {
       this.errorKey.set(errorKeyFromFailure(error));
     } finally {
       this.submitting.set(false);
     }
+  }
+
+  protected async cancel(): Promise<void> {
+    await this.router.navigate(['/cabinet/dossiers']);
   }
 }
 

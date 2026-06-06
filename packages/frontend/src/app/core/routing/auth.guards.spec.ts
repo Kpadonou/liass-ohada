@@ -1,43 +1,79 @@
 import { TestBed } from '@angular/core/testing';
 import { Router, UrlTree, provideRouter } from '@angular/router';
-import { getCurrentUser } from 'aws-amplify/auth';
 import { vi } from 'vitest';
 
-import { CabinetDossiersApi } from '../../domains/identity/data-access/cabinet-dossiers.api';
-import { WorkspacesApi } from '../../domains/identity/data-access/workspaces.api';
+import { AuthStore, type WorkspaceDestination } from '../../domains/identity/data-access/auth.store';
 import { authGuard, cabinetDashboardGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
-import { AuthStore } from '../../domains/identity/data-access/auth.store';
 
-vi.mock('aws-amplify/auth', () => ({
-  confirmSignIn: vi.fn(),
-  fetchUserAttributes: vi.fn(),
-  getCurrentUser: vi.fn(),
-  signIn: vi.fn(),
-  signInWithRedirect: vi.fn(),
-  signOut: vi.fn()
-}));
+type WorkspaceType = 'ACCOUNTING_FIRM' | 'COMPANY' | null;
+
+interface FakeAuthState {
+  activeDossierOrgId: string | null;
+  activeTenant: boolean;
+  authenticated: boolean;
+  destination: WorkspaceDestination | null;
+  dossiersLoaded: boolean;
+  hasActiveDossier: boolean;
+  hydrated: boolean;
+  loadWorkspacesEffect: (() => void) | null;
+  workspaceType: WorkspaceType;
+  workspacesLoaded: boolean;
+}
+
+function createFakeAuthStore(state: FakeAuthState): InstanceType<typeof AuthStore> {
+  return {
+    activeDossierOrgId: () => state.activeDossierOrgId,
+    activeWorkspaceType: () => state.workspaceType,
+    dossiersLoaded: () => state.dossiersLoaded,
+    hasActiveDossier: () => state.hasActiveDossier,
+    hasActiveTenant: () => state.activeTenant,
+    hydrate: vi.fn(async () => {
+      state.hydrated = true;
+    }),
+    hydrated: () => state.hydrated,
+    isAuthenticated: () => state.authenticated,
+    loadDossiers: vi.fn(async () => {
+      state.dossiersLoaded = true;
+      return [];
+    }),
+    loadWorkspaces: vi.fn(async () => {
+      state.loadWorkspacesEffect?.();
+      state.workspacesLoaded = true;
+      return [];
+    }),
+    workspaceDestination: () => state.destination,
+    workspacesLoaded: () => state.workspacesLoaded
+  } as unknown as InstanceType<typeof AuthStore>;
+}
 
 describe('auth guards', () => {
-  let workspacesApi: { listWorkspaces: ReturnType<typeof vi.fn> };
-  let cabinetDossiersApi: { listDossiers: ReturnType<typeof vi.fn> };
+  let state: FakeAuthState;
+  let authStore: InstanceType<typeof AuthStore>;
 
   beforeEach(() => {
     TestBed.resetTestingModule();
-    workspacesApi = { listWorkspaces: vi.fn().mockResolvedValue([]) };
-    cabinetDossiersApi = { listDossiers: vi.fn().mockResolvedValue([]) };
-    localStorage.clear();
-    vi.mocked(getCurrentUser).mockReset();
+    state = {
+      activeDossierOrgId: null,
+      activeTenant: false,
+      authenticated: false,
+      destination: '/onboarding',
+      dossiersLoaded: true,
+      hasActiveDossier: false,
+      hydrated: true,
+      loadWorkspacesEffect: null,
+      workspaceType: null,
+      workspacesLoaded: true
+    };
+    authStore = createFakeAuthStore(state);
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: WorkspacesApi, useValue: workspacesApi },
-        { provide: CabinetDossiersApi, useValue: cabinetDossiersApi }
+        { provide: AuthStore, useValue: authStore }
       ]
     });
   });
 
   it('redirects unauthenticated users to login', async () => {
-    vi.mocked(getCurrentUser).mockRejectedValue(new Error('Not authenticated'));
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>
@@ -48,11 +84,7 @@ describe('auth guards', () => {
   });
 
   it('redirects authenticated users with no workspaces to onboarding', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
+    state.authenticated = true;
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>
@@ -62,32 +94,26 @@ describe('auth guards', () => {
     expect(router.serializeUrl(result as UrlTree)).toBe('/onboarding');
   });
 
-  it('auto-selects a single discovered workspace before dashboard access', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    workspacesApi.listWorkspaces.mockResolvedValue([{ orgId: 'org-test' }]);
+  it('auto-selects a single discovered company workspace before dashboard access', async () => {
+    state.authenticated = true;
+    state.workspacesLoaded = false;
+    state.loadWorkspacesEffect = () => {
+      state.activeTenant = true;
+      state.destination = '/dashboard';
+      state.workspaceType = 'COMPANY';
+    };
 
     const result = await TestBed.runInInjectionContext(() =>
       tenantGuard({} as never, {} as never)
     );
 
     expect(result).toBe(true);
-    expect(TestBed.inject(AuthStore).activeOrgId()).toBe('org-test');
+    expect(authStore.loadWorkspaces).toHaveBeenCalled();
   });
 
   it('redirects signed-in users with multiple workspaces to workspace selection', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    workspacesApi.listWorkspaces.mockResolvedValue([
-      { orgId: 'org-a' },
-      { orgId: 'org-b' }
-    ]);
+    state.authenticated = true;
+    state.destination = '/select-workspace';
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>
@@ -98,26 +124,8 @@ describe('auth guards', () => {
   });
 
   it('redirects signed-in accounting-firm users away from login to the cabinet dashboard', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    workspacesApi.listWorkspaces.mockResolvedValue([
-      {
-        orgId: 'org-firm',
-        accessSource: 'DIRECT',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      },
-      {
-        orgId: 'org-client',
-        accessSource: 'CABINET',
-        cabinetId: 'cab-123',
-        displayName: 'Client SARL',
-        workspaceType: 'COMPANY'
-      }
-    ]);
+    state.authenticated = true;
+    state.destination = '/cabinet/dashboard';
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>
@@ -128,16 +136,18 @@ describe('auth guards', () => {
   });
 
   it('does not redirect to workspace selection while discovery is pending', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    let resolveWorkspaces: (workspaces: { orgId: string }[]) => void = () => undefined;
-    workspacesApi.listWorkspaces.mockReturnValue(
-      new Promise((resolve) => {
-        resolveWorkspaces = resolve;
-      })
+    state.authenticated = true;
+    state.destination = null;
+    state.workspacesLoaded = false;
+    let resolveWorkspaces: () => void = () => undefined;
+    vi.mocked(authStore.loadWorkspaces).mockImplementation(
+      () =>
+        new Promise<[]>(resolve => {
+          resolveWorkspaces = () => {
+            state.destination = '/onboarding';
+            resolve([]);
+          };
+        })
     );
     const router = TestBed.inject(Router);
     const createUrlTreeSpy = vi.spyOn(router, 'createUrlTree');
@@ -149,26 +159,17 @@ describe('auth guards', () => {
 
     expect(createUrlTreeSpy).not.toHaveBeenCalledWith(['/select-workspace']);
 
-    resolveWorkspaces([]);
+    resolveWorkspaces();
     const result = await resultPromise;
 
     expect(router.serializeUrl(result as UrlTree)).toBe('/onboarding');
   });
 
-  it('allows authenticated users with a tenant into the dashboard', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    TestBed.inject(AuthStore).setTenant('org-test');
-    workspacesApi.listWorkspaces.mockResolvedValue([
-      {
-        orgId: 'org-test',
-        displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
-      }
-    ]);
+  it('allows authenticated company users with a tenant into the dashboard', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/dashboard';
+    state.workspaceType = 'COMPANY';
 
     const result = await TestBed.runInInjectionContext(() =>
       tenantGuard({} as never, {} as never)
@@ -178,77 +179,61 @@ describe('auth guards', () => {
   });
 
   it('redirects accounting-firm dashboard access without an active dossier to cabinet dashboard', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    TestBed.inject(AuthStore).setCreatedWorkspace(
-      {
-        orgId: 'org-firm',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      },
-      'org-firm'
-    );
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/cabinet/dashboard';
+    state.workspaceType = 'ACCOUNTING_FIRM';
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>
-      tenantGuard({} as never, {} as never)
+      tenantGuard({} as never, { url: '/dashboard' } as never)
     );
 
     expect(router.serializeUrl(result as UrlTree)).toBe('/cabinet/dashboard');
   });
 
-  it('allows accounting-firm dashboard access after a dossier is selected', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    const authStore = TestBed.inject(AuthStore);
-    authStore.setCreatedWorkspace(
-      {
-        orgId: 'org-firm',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      },
-      'org-firm'
-    );
-    authStore.setCreatedDossier(
-      {
-        orgId: 'org-client',
-        displayName: 'Client SARL',
-        country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED',
-        status: 'ACTIVE',
-        createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      },
-      'org-client'
-    );
+  it('allows accounting-firm users into cabinet shell routes without an active dossier', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.workspaceType = 'ACCOUNTING_FIRM';
 
     const result = await TestBed.runInInjectionContext(() =>
-      tenantGuard({} as never, {} as never)
+      tenantGuard({} as never, { url: '/cabinet/dossiers' } as never)
+    );
+
+    expect(result).toBe(true);
+  });
+
+  it('allows accounting-firm users into new dossier creation without an active dossier', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.workspaceType = 'ACCOUNTING_FIRM';
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, { url: '/cabinet/dossiers/new' } as never)
+    );
+
+    expect(result).toBe(true);
+  });
+
+  it('allows accounting-firm dashboard access after a dossier is selected', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.activeDossierOrgId = 'org-client';
+    state.hasActiveDossier = true;
+    state.workspaceType = 'ACCOUNTING_FIRM';
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, { url: '/dashboard' } as never)
     );
 
     expect(result).toBe(true);
   });
 
   it('allows only accounting-firm workspaces into the cabinet dashboard', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    TestBed.inject(AuthStore).setCreatedWorkspace(
-      {
-        orgId: 'org-firm',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      },
-      'org-firm'
-    );
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.workspaceType = 'ACCOUNTING_FIRM';
 
     const result = await TestBed.runInInjectionContext(() =>
       cabinetDashboardGuard({} as never, {} as never)
@@ -258,19 +243,10 @@ describe('auth guards', () => {
   });
 
   it('redirects company workspaces away from the cabinet dashboard', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    TestBed.inject(AuthStore).setCreatedWorkspace(
-      {
-        orgId: 'org-company',
-        displayName: 'Company Demo',
-        workspaceType: 'COMPANY'
-      },
-      'org-company'
-    );
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/dashboard';
+    state.workspaceType = 'COMPANY';
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>
@@ -281,44 +257,24 @@ describe('auth guards', () => {
   });
 
   it('loads workspaces for authenticated dashboard access when only active tenant is persisted', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    localStorage.setItem('liass-ohada.activeOrgId', 'org-test');
-    workspacesApi.listWorkspaces.mockResolvedValue([
-      {
-        orgId: 'org-test',
-        displayName: 'Reloaded Workspace SARL',
-        workspaceType: 'COMPANY'
-      }
-    ]);
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.workspacesLoaded = false;
+    state.workspaceType = 'COMPANY';
+    state.destination = '/dashboard';
 
     const result = await TestBed.runInInjectionContext(() =>
       tenantGuard({} as never, {} as never)
     );
-    const authStore = TestBed.inject(AuthStore);
 
     expect(result).toBe(true);
-    expect(workspacesApi.listWorkspaces).toHaveBeenCalled();
-    expect(authStore.activeWorkspaceDisplayName()).toBe('Reloaded Workspace SARL');
+    expect(authStore.loadWorkspaces).toHaveBeenCalled();
   });
 
   it('redirects signed-in users away from login', async () => {
-    vi.mocked(getCurrentUser).mockResolvedValue({
-      username: 'user@example.com',
-      userId: 'user-123',
-      signInDetails: undefined
-    });
-    TestBed.inject(AuthStore).setTenant('org-test');
-    workspacesApi.listWorkspaces.mockResolvedValue([
-      {
-        orgId: 'org-test',
-        displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
-      }
-    ]);
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/dashboard';
     const router = TestBed.inject(Router);
 
     const result = await TestBed.runInInjectionContext(() =>

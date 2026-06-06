@@ -10,15 +10,22 @@ import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { UiStore } from '../../../core/state/ui.store';
 import { AppTopbarComponent } from './app-topbar.component';
 
-vi.mock('aws-amplify/auth', () => ({
-  confirmSignIn: vi.fn(),
-  fetchAuthSession: vi.fn(),
-  fetchUserAttributes: vi.fn(),
-  getCurrentUser: vi.fn(),
-  signIn: vi.fn(),
-  signInWithRedirect: vi.fn(),
-  signOut: vi.fn()
-}));
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 const translations = {
   en: {
@@ -31,7 +38,10 @@ const translations = {
       },
       PAGES: {
         ADMINISTRATION: 'Administration',
+        CABINET_DASHBOARD: 'Cabinet dashboard',
+        CABINET_DOSSIERS: 'Client dossiers',
         CHART_OF_ACCOUNTS: 'Chart of accounts',
+        CLIENT_DOSSIERS: 'Client dossiers',
         DASHBOARD: 'Dashboard',
         ENTRIES: 'Entries',
         GENERAL_LEDGER: 'General ledger',
@@ -45,9 +55,9 @@ const translations = {
         DARK_MODE: 'Switch to dark mode',
         DOSSIER: 'Active dossier',
         DOSSIER_LOADING: 'Loading dossier...',
-        NO_DOSSIER: 'No client dossier',
+        NO_DOSSIER: 'No dossier open',
         NO_WORKSPACE: 'Workspace',
-        SELECT_DOSSIER: 'Select dossier',
+        SELECT_DOSSIER: 'Select a dossier',
         SIGN_OUT: 'Sign out',
         TOGGLE_NAVIGATION: 'Toggle navigation',
         USER: 'User',
@@ -175,6 +185,24 @@ describe('AppTopbarComponent', () => {
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
+  it('displays the full client dossiers page title without truncation styling', () => {
+    uiStore.setCurrentPage('cabinet.dossiers');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm-123',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm-123'
+    );
+
+    renderText();
+    const heading = fixture.nativeElement.querySelector('h2') as HTMLHeadingElement;
+
+    expect(heading.textContent).toContain('Client dossiers');
+    expect(heading.className).not.toContain('truncate');
+  });
+
   it('displays an accounting-firm workspace name and type label', () => {
     authStore.setCreatedWorkspace(
       {
@@ -244,8 +272,8 @@ describe('AppTopbarComponent', () => {
     renderText();
     const dossierText = activeDossierText();
 
-    expect(dossierText).toContain('No client dossier');
-    expect(dossierText).toContain('Create dossier');
+    expect(dossierText).toContain('No dossier open');
+    expect(dossierText).toContain('Select a dossier');
   });
 
   it('updates the workspace label immediately after onboarding stores the created workspace', () => {

@@ -15,17 +15,54 @@ const translations = {
         EYEBROW: 'Accounting firm workspace',
         TITLE: 'Cabinet dashboard',
         SUBTITLE: 'Manage client dossiers.',
-        DOSSIERS_TITLE: 'Client dossiers',
-        DOSSIERS_SUBTITLE: 'Select a client dossier.',
+        FALLBACK_CABINET_NAME: 'Accounting firm',
+        WORKSPACE_TYPE: 'Workspace type',
+        CONNECTED_USER: 'Connected user',
+        CONTEXT_TITLE: 'Cabinet context',
+        CONTEXT_DESCRIPTION: 'Cabinet actions use the accounting-firm workspace.',
+        RECENT_DOSSIERS_TITLE: 'Recently opened dossiers',
+        RECENT_DOSSIERS_SUBTITLE: 'Open a client dossier.',
         LOADING: 'Loading client dossiers...',
         EMPTY_TITLE: 'No client dossier yet',
         EMPTY_SUBTITLE: 'Create the first client dossier.',
-        CABINET_CONTEXT: 'Cabinet context',
-        ACTIVE_WORKSPACE: 'Cabinet workspace:',
-        ACTIVE_DOSSIER: 'Selected client dossier:',
+        COLLABORATORS_TITLE: 'Collaborators',
+        COLLABORATORS_PLACEHOLDER: 'Collaborator placeholder.',
+        MISSIONS_TITLE: 'Missions',
+        MISSIONS_PLACEHOLDER: 'Mission placeholder.',
+        DEADLINES_TITLE: 'Deadlines',
+        DEADLINES_PLACEHOLDER: 'Deadline placeholder.',
+        METRICS: {
+          ACTIVE_DOSSIERS: 'Active dossiers',
+          COLLABORATORS: 'Collaborators',
+          PENDING_TASKS: 'Pending tasks',
+          TOTAL_DOSSIERS: 'Total dossiers',
+          UPCOMING_DEADLINES: 'Upcoming deadlines'
+        },
+        STATUS: {
+          ACTIVE: 'Active',
+          UNKNOWN: 'Unknown'
+        },
         ACTIONS: {
-          NEW_DOSSIER: 'New dossier'
+          CREATE_FIRST_DOSSIER: 'Create your first client dossier',
+          NEW_DOSSIER: 'New dossier',
+          VIEW_DOSSIERS: 'View dossiers'
         }
+      },
+      ONBOARDING: {
+        COUNTRIES: {
+          BENIN: 'Benin'
+        },
+        FRAMEWORKS: {
+          SYSCOHADA_REVISED: 'Revised SYSCOHADA'
+        }
+      }
+    },
+    SHELL: {
+      TOPBAR: {
+        USER: 'User'
+      },
+      WORKSPACE_TYPES: {
+        ACCOUNTING_FIRM: 'Accounting firm'
       }
     }
   }
@@ -91,7 +128,13 @@ describe('CabinetDashboardPage', () => {
 
     expect(cabinetDossiersApi.listDossiers).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('Cabinet Demo');
+    expect(fixture.nativeElement.textContent).toContain('Accounting firm');
+    expect(fixture.nativeElement.textContent).toContain('Total dossiers');
+    expect(fixture.nativeElement.textContent).toContain('Active dossiers');
     expect(fixture.nativeElement.textContent).toContain('Client SARL');
+    expect(fixture.nativeElement.textContent).toContain('Benin');
+    expect(fixture.nativeElement.textContent).toContain('Revised SYSCOHADA');
+    expect(fixture.nativeElement.textContent).not.toContain('org-firm');
   });
 
   it('selects a dossier before opening the standard dashboard', async () => {
@@ -119,7 +162,8 @@ describe('CabinetDashboardPage', () => {
     fixture = TestBed.createComponent(CabinetDashboardPage);
     await fixture.componentInstance.ngOnInit();
     fixture.detectChanges();
-    fixture.nativeElement.querySelectorAll('button')[1].click();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    buttons.find((button) => button.textContent?.includes('Client SARL'))?.click();
 
     expect(authStore.activeWorkspaceOrgId()).toBe('org-firm');
     expect(authStore.activeDossierOrgId()).toBe('org-client');

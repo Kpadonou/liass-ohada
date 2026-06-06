@@ -1,105 +1,164 @@
-<main class="min-h-dvh bg-slate-50 px-4 py-8 text-slate-950 sm:px-8">
-  <section class="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-6xl flex-col justify-center gap-6">
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-          {{ 'IDENTITY.CABINET_DASHBOARD.EYEBROW' | transloco }}
-        </p>
-        <h1 class="mt-3 text-3xl font-semibold text-slate-950">
-          {{ 'IDENTITY.CABINET_DASHBOARD.TITLE' | transloco }}
-        </h1>
-        <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-          {{ 'IDENTITY.CABINET_DASHBOARD.SUBTITLE' | transloco }}
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+        {{ 'IDENTITY.CABINET_DASHBOARD.EYEBROW' | transloco }}
+      </p>
+      <h1 class="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">
+        {{ authStore.activeWorkspaceDisplayName() || ('IDENTITY.CABINET_DASHBOARD.FALLBACK_CABINET_NAME' | transloco) }}
+      </h1>
+      <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-400">
+        {{ 'IDENTITY.CABINET_DASHBOARD.SUBTITLE' | transloco }}
+      </p>
+    </div>
+
+    <liass-button tone="brand" variant="solid" icon="add" (pressed)="createDossier()">
+      {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_DOSSIER' | transloco }}
+    </liass-button>
+  </header>
+
+  <section class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div class="rounded-lg border border-brand-100 bg-brand-50 p-5 dark:border-brand-900 dark:bg-brand-950/25">
+      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+            {{ 'IDENTITY.CABINET_DASHBOARD.WORKSPACE_TYPE' | transloco }}
+          </p>
+          <p class="mt-2 text-lg font-semibold text-slate-950 dark:text-white">
+            {{ 'SHELL.WORKSPACE_TYPES.ACCOUNTING_FIRM' | transloco }}
+          </p>
+        </div>
+        <div class="rounded-md border border-brand-200 bg-white px-4 py-3 text-sm text-slate-600 dark:border-brand-900 dark:bg-slate-950 dark:text-slate-300">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {{ 'IDENTITY.CABINET_DASHBOARD.CONNECTED_USER' | transloco }}
+          </p>
+          <p class="mt-1 font-semibold text-slate-950 dark:text-white">
+            {{ currentUserLabel() || ('SHELL.TOPBAR.USER' | transloco) }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-lg border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+        {{ 'IDENTITY.CABINET_DASHBOARD.CONTEXT_TITLE' | transloco }}
+      </p>
+      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+        {{ 'IDENTITY.CABINET_DASHBOARD.CONTEXT_DESCRIPTION' | transloco }}
+      </p>
+    </div>
+  </section>
+
+  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    @for (metric of metricCards(); track metric.labelKey) {
+      <div class="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-sm font-medium text-slate-500 dark:text-slate-400">
+            {{ metric.labelKey | transloco }}
+          </p>
+          <span class="grid size-9 place-items-center rounded-md bg-slate-100 text-brand-700 dark:bg-slate-800 dark:text-brand-300">
+            <mat-icon>{{ metric.icon }}</mat-icon>
+          </span>
+        </div>
+        <p class="mt-4 text-3xl font-semibold text-slate-950 dark:text-white">{{ metric.value }}</p>
+      </div>
+    }
+  </section>
+
+  <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-950 dark:text-white">
+            {{ 'IDENTITY.CABINET_DASHBOARD.RECENT_DOSSIERS_TITLE' | transloco }}
+          </h2>
+          <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {{ 'IDENTITY.CABINET_DASHBOARD.RECENT_DOSSIERS_SUBTITLE' | transloco }}
+          </p>
+        </div>
+        <liass-button tone="neutral" variant="outline" icon="folder_open" (pressed)="openDossiers()">
+          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DOSSIERS' | transloco }}
+        </liass-button>
+      </div>
+
+      @if (authStore.dossierLoading()) {
+        <div class="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>{{ 'IDENTITY.CABINET_DASHBOARD.LOADING' | transloco }}</span>
+        </div>
+      } @else if (authStore.dossierError()) {
+        <div class="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200">
+          <mat-icon class="mt-0.5 text-red-600 dark:text-red-300">error</mat-icon>
+          <p>{{ authStore.dossierError() }}</p>
+        </div>
+      } @else if (authStore.dossiers().length === 0) {
+        <div class="rounded-md border border-slate-200 bg-slate-50 px-4 py-5 dark:border-slate-800 dark:bg-slate-950">
+          <p class="text-base font-semibold text-slate-950 dark:text-white">
+            {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_TITLE' | transloco }}
+          </p>
+          <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_SUBTITLE' | transloco }}
+          </p>
+          <div class="mt-5">
+            <liass-button tone="brand" variant="solid" icon="add" (pressed)="createDossier()">
+              {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.CREATE_FIRST_DOSSIER' | transloco }}
+            </liass-button>
+          </div>
+        </div>
+      } @else {
+        <div class="grid gap-3">
+          @for (dossier of recentDossiers(); track dossier.orgId) {
+            <button
+              class="w-full rounded-md border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-65 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-brand-800 dark:hover:bg-brand-950/25"
+              type="button"
+              [disabled]="authStore.dossierLoading()"
+              (click)="selectDossier(dossier)"
+            >
+              <div class="flex items-start justify-between gap-4">
+                <div class="min-w-0">
+                  <p class="truncate text-base font-semibold text-slate-950 dark:text-white">{{ dossier.displayName }}</p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {{ countryLabelKey(dossier) | transloco }} · {{ frameworkLabelKey(dossier) | transloco }}
+                  </p>
+                  <span class="mt-3 inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    {{ statusLabelKey(dossier) | transloco }}
+                  </span>
+                </div>
+                <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">arrow_forward</mat-icon>
+              </div>
+            </button>
+          }
+        </div>
+      }
+    </div>
+
+    <aside class="grid gap-5">
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h2 class="text-lg font-semibold text-slate-950 dark:text-white">
+          {{ 'IDENTITY.CABINET_DASHBOARD.COLLABORATORS_TITLE' | transloco }}
+        </h2>
+        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          {{ 'IDENTITY.CABINET_DASHBOARD.COLLABORATORS_PLACEHOLDER' | transloco }}
         </p>
       </div>
 
-      <liass-button tone="brand" variant="solid" icon="add" (pressed)="createDossier()">
-        {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_DOSSIER' | transloco }}
-      </liass-button>
-    </header>
-
-    <div class="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
-      <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-xl shadow-slate-900/5 sm:p-8">
-        <div class="mb-7 flex items-start gap-4">
-          <div class="grid size-12 shrink-0 place-items-center rounded-full bg-brand-100 text-brand-700">
-            <mat-icon>groups</mat-icon>
-          </div>
-          <div>
-            <h2 class="text-xl font-semibold text-slate-950">
-              {{ 'IDENTITY.CABINET_DASHBOARD.DOSSIERS_TITLE' | transloco }}
-            </h2>
-            <p class="mt-1 text-sm leading-6 text-slate-600">
-              {{ 'IDENTITY.CABINET_DASHBOARD.DOSSIERS_SUBTITLE' | transloco }}
-            </p>
-          </div>
-        </div>
-
-        @if (authStore.dossierLoading()) {
-          <div class="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            <mat-spinner diameter="20"></mat-spinner>
-            <span>{{ 'IDENTITY.CABINET_DASHBOARD.LOADING' | transloco }}</span>
-          </div>
-        } @else if (authStore.dossierError()) {
-          <div class="flex items-start gap-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800">
-            <mat-icon class="mt-0.5 text-red-600">error</mat-icon>
-            <p>{{ authStore.dossierError() }}</p>
-          </div>
-        } @else if (authStore.dossiers().length === 0) {
-          <div class="rounded-md border border-slate-200 bg-slate-50 px-4 py-5">
-            <p class="text-base font-semibold text-slate-950">
-              {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_TITLE' | transloco }}
-            </p>
-            <p class="mt-2 text-sm leading-6 text-slate-600">
-              {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_SUBTITLE' | transloco }}
-            </p>
-            <div class="mt-5">
-              <liass-button tone="brand" variant="solid" icon="add" (pressed)="createDossier()">
-                {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_DOSSIER' | transloco }}
-              </liass-button>
-            </div>
-          </div>
-        } @else {
-          <div class="grid gap-3">
-            @for (dossier of authStore.dossiers(); track dossier.orgId) {
-              <button
-                class="w-full rounded-md border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-65"
-                type="button"
-                [disabled]="authStore.dossierLoading()"
-                (click)="selectDossier(dossier)"
-              >
-                <div class="flex items-start justify-between gap-4">
-                  <div>
-                    <p class="text-base font-semibold text-slate-950">{{ dossier.displayName }}</p>
-                    <p class="mt-1 text-sm text-slate-500">
-                      {{ dossier.country }} · {{ dossier.accountingFramework }}
-                    </p>
-                  </div>
-                  <mat-icon class="text-brand-700">arrow_forward</mat-icon>
-                </div>
-              </button>
-            }
-          </div>
-        }
-      </section>
-
-      <aside class="rounded-lg border border-slate-200 bg-white p-6 shadow-lg shadow-slate-900/5">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-          {{ 'IDENTITY.CABINET_DASHBOARD.CABINET_CONTEXT' | transloco }}
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h2 class="text-lg font-semibold text-slate-950 dark:text-white">
+          {{ 'IDENTITY.CABINET_DASHBOARD.MISSIONS_TITLE' | transloco }}
+        </h2>
+        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          {{ 'IDENTITY.CABINET_DASHBOARD.MISSIONS_PLACEHOLDER' | transloco }}
         </p>
-        <p class="mt-3 break-words text-base font-semibold text-slate-950">
-          {{ authStore.activeWorkspaceDisplayName() || authStore.activeWorkspaceOrgId() }}
+      </div>
+
+      <div class="rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h2 class="text-lg font-semibold text-slate-950 dark:text-white">
+          {{ 'IDENTITY.CABINET_DASHBOARD.DEADLINES_TITLE' | transloco }}
+        </h2>
+        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          {{ 'IDENTITY.CABINET_DASHBOARD.DEADLINES_PLACEHOLDER' | transloco }}
         </p>
-        <div class="mt-6 rounded-md border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIVE_WORKSPACE' | transloco }}
-          <span class="font-semibold">{{ authStore.activeWorkspaceOrgId() }}</span>
-        </div>
-        @if (authStore.activeDossierOrgId()) {
-          <div class="mt-3 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-            {{ 'IDENTITY.CABINET_DASHBOARD.ACTIVE_DOSSIER' | transloco }}
-            <span class="font-semibold">{{ authStore.activeDossierOrgId() }}</span>
-          </div>
-        }
-      </aside>
-    </div>
+      </div>
+    </aside>
   </section>
-</main>
+</div>

@@ -1,8 +1,9 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
+import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 import { LiassSidebarNavItemComponent } from '../../ui/sidebar-nav-item/sidebar-nav-item.component';
 
@@ -84,6 +85,44 @@ const topLevelItems: readonly ShellNavItem[] = [
 
 const dashboardItems: readonly ShellNavItem[] = topLevelItems.slice(0, 1);
 const secondaryItems: readonly ShellNavItem[] = topLevelItems.slice(1);
+const cabinetItems: readonly ShellNavItem[] = [
+  {
+    icon: 'dashboard',
+    labelKey: 'SHELL.NAV.CABINET_DASHBOARD',
+    page: 'cabinet.dashboard',
+    route: ['/cabinet/dashboard']
+  },
+  {
+    icon: 'folder_managed',
+    labelKey: 'SHELL.NAV.CLIENT_DOSSIERS',
+    page: 'cabinet.dossiers',
+    route: ['/cabinet/dossiers']
+  },
+  {
+    disabled: true,
+    icon: 'group',
+    labelKey: 'SHELL.NAV.COLLABORATORS',
+    page: 'cabinet.collaborators'
+  },
+  {
+    disabled: true,
+    icon: 'assignment',
+    labelKey: 'SHELL.NAV.MISSIONS',
+    page: 'cabinet.missions'
+  },
+  {
+    disabled: true,
+    icon: 'event_upcoming',
+    labelKey: 'SHELL.NAV.DEADLINES',
+    page: 'cabinet.deadlines'
+  },
+  {
+    disabled: true,
+    icon: 'settings',
+    labelKey: 'SHELL.NAV.CABINET_SETTINGS',
+    page: 'cabinet.settings'
+  }
+];
 
 @Component({
   selector: 'liass-app-sidebar',
@@ -92,10 +131,21 @@ const secondaryItems: readonly ShellNavItem[] = topLevelItems.slice(1);
 })
 export class AppSidebarComponent {
   protected readonly accountingItems = accountingItems;
+  protected readonly cabinetItems = cabinetItems;
   protected readonly dashboardItems = dashboardItems;
   protected readonly secondaryItems = secondaryItems;
+  protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
+  protected readonly cabinetMode = computed(
+    () =>
+      this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' &&
+      !this.authStore.activeDossierOrgId()
+  );
   private readonly router = inject(Router);
+
+  protected readonly homeRoute = computed(() =>
+    this.cabinetMode() ? '/cabinet/dashboard' : '/dashboard'
+  );
 
   protected sidebarClass(): string {
     const mobileState = this.uiStore.sidebarOpen() ? 'translate-x-0' : '-translate-x-full';

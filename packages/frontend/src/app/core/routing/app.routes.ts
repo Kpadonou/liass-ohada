@@ -41,22 +41,6 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
-    path: 'cabinet/dashboard',
-    loadComponent: () =>
-      import('../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page').then(
-        (module) => module.CabinetDashboardPage
-      ),
-    canActivate: [cabinetDashboardGuard]
-  },
-  {
-    path: 'cabinet/dossiers/new',
-    loadComponent: () =>
-      import('../../domains/identity/feature/cabinet-dossier-new/cabinet-dossier-new.page').then(
-        (module) => module.CabinetDossierNewPage
-      ),
-    canActivate: [cabinetDossierGuard]
-  },
-  {
     path: 'cabinet/dossiers/select',
     loadComponent: () =>
       import(
@@ -81,6 +65,30 @@ export const routes: Routes = [
         path: 'dashboard',
         loadComponent: () =>
           import('../feature/dashboard/dashboard.page').then((module) => module.DashboardPage)
+      },
+      {
+        path: 'cabinet/dashboard',
+        loadComponent: () =>
+          import('../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page').then(
+            (module) => module.CabinetDashboardPage
+          ),
+        canActivate: [cabinetDashboardGuard]
+      },
+      {
+        path: 'cabinet/dossiers',
+        loadComponent: () =>
+          import('../../domains/identity/feature/cabinet-dossiers/cabinet-dossiers.page').then(
+            (module) => module.CabinetDossiersPage
+          ),
+        canActivate: [cabinetDashboardGuard]
+      },
+      {
+        path: 'cabinet/dossiers/new',
+        loadComponent: () =>
+          import(
+            '../../domains/identity/feature/cabinet-dossier-new/cabinet-dossier-new.page'
+          ).then((module) => module.CabinetDossierNewPage),
+        canActivate: [cabinetDashboardGuard]
       },
       {
         path: 'accounting/general-ledger',

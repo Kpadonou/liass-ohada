@@ -18,7 +18,12 @@ export const authGuard: CanActivateFn = async () => {
   return authStore.isAuthenticated() ? true : router.createUrlTree(['/login']);
 };
 
-export const tenantGuard: CanActivateFn = async () => {
+function isCabinetRoute(url: string | undefined): boolean {
+  const path = url?.split('?')[0]?.split('#')[0] ?? '';
+  return path.startsWith('/cabinet/');
+}
+
+export const tenantGuard: CanActivateFn = async (_route, state) => {
   const authStore = inject(AuthStore);
   const router = inject(Router);
 
@@ -35,6 +40,10 @@ export const tenantGuard: CanActivateFn = async () => {
   const destination = authStore.workspaceDestination();
 
   if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
+    if (isCabinetRoute(state.url)) {
+      return true;
+    }
+
     if (authStore.activeDossierOrgId() && !authStore.dossiersLoaded()) {
       await authStore.loadDossiers();
     }

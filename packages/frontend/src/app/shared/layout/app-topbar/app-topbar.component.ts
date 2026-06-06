@@ -16,6 +16,12 @@ const pageTitleKeys: Record<AppPage, string> = {
   'accounting.generalLedger': 'SHELL.PAGES.GENERAL_LEDGER',
   'accounting.journals': 'SHELL.PAGES.JOURNALS',
   'accounting.trialBalance': 'SHELL.PAGES.TRIAL_BALANCE',
+  'cabinet.collaborators': 'SHELL.PAGES.CABINET_COLLABORATORS',
+  'cabinet.dashboard': 'SHELL.PAGES.CABINET_DASHBOARD',
+  'cabinet.deadlines': 'SHELL.PAGES.CABINET_DEADLINES',
+  'cabinet.dossiers': 'SHELL.PAGES.CLIENT_DOSSIERS',
+  'cabinet.missions': 'SHELL.PAGES.CABINET_MISSIONS',
+  'cabinet.settings': 'SHELL.PAGES.CABINET_SETTINGS',
   administration: 'SHELL.PAGES.ADMINISTRATION',
   dashboard: 'SHELL.PAGES.DASHBOARD',
   projects: 'SHELL.SECTIONS.PROJECTS',
@@ -66,11 +72,7 @@ export class AppTopbarComponent implements OnInit {
   protected readonly showActiveDossier = computed(
     () => this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM'
   );
-  protected readonly activeDossierRouteLabelKey = computed(() =>
-    this.authStore.dossiers().length > 1
-      ? 'SHELL.TOPBAR.SELECT_DOSSIER'
-      : 'SHELL.TOPBAR.CREATE_DOSSIER'
-  );
+  protected readonly activeDossierRouteLabelKey = computed(() => 'SHELL.TOPBAR.SELECT_DOSSIER');
   private readonly router = inject(Router);
 
   protected commandValue = '';

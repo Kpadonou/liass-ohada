@@ -33,14 +33,48 @@ describe('routes', () => {
   });
 
   it('registers cabinet dashboard as an accounting-firm route', async () => {
-    const cabinetDashboardRoute = routes.find((route) => route.path === 'cabinet/dashboard');
+    const shellRoute = routes.find((route) => route.path === '');
+    const cabinetDashboardRoute = shellRoute?.children?.find(
+      (route) => route.path === 'cabinet/dashboard'
+    );
     const component = await cabinetDashboardRoute?.loadComponent?.();
     const { CabinetDashboardPage } = await import(
       '../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page'
     );
 
+    expect(shellRoute?.canActivate).toEqual([authGuard, tenantGuard]);
     expect(component).toBe(CabinetDashboardPage);
     expect(cabinetDashboardRoute?.canActivate).toEqual([cabinetDashboardGuard]);
+  });
+
+  it('registers client dossiers as a distinct accounting-firm route', async () => {
+    const shellRoute = routes.find((route) => route.path === '');
+    const cabinetDossiersRoute = shellRoute?.children?.find(
+      (route) => route.path === 'cabinet/dossiers'
+    );
+    const component = await cabinetDossiersRoute?.loadComponent?.();
+    const { CabinetDossiersPage } = await import(
+      '../../domains/identity/feature/cabinet-dossiers/cabinet-dossiers.page'
+    );
+
+    expect(component).toBe(CabinetDossiersPage);
+    expect(cabinetDossiersRoute?.canActivate).toEqual([cabinetDashboardGuard]);
+  });
+
+  it('registers new client dossier creation inside the authenticated tenant shell', async () => {
+    const shellRoute = routes.find((route) => route.path === '');
+    const newDossierRoute = shellRoute?.children?.find(
+      (route) => route.path === 'cabinet/dossiers/new'
+    );
+    const component = await newDossierRoute?.loadComponent?.();
+    const { CabinetDossierNewPage } = await import(
+      '../../domains/identity/feature/cabinet-dossier-new/cabinet-dossier-new.page'
+    );
+
+    expect(shellRoute?.canActivate).toEqual([authGuard, tenantGuard]);
+    expect(component).toBe(CabinetDossierNewPage);
+    expect(newDossierRoute?.canActivate).toEqual([cabinetDashboardGuard]);
+    expect(routes.find((route) => route.path === 'cabinet/dossiers/new')).toBeUndefined();
   });
 
   it('registers the accounting general-ledger placeholder route', async () => {

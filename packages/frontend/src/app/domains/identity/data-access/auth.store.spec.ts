@@ -14,15 +14,22 @@ import { WorkspacesApi } from './workspaces.api';
 import { CabinetDossiersApi } from './cabinet-dossiers.api';
 import { AuthStore } from './auth.store';
 
-vi.mock('aws-amplify/auth', () => ({
-  confirmSignIn: vi.fn(),
-  fetchAuthSession: vi.fn(),
-  fetchUserAttributes: vi.fn(),
-  getCurrentUser: vi.fn(),
-  signIn: vi.fn(),
-  signInWithRedirect: vi.fn(),
-  signOut: vi.fn()
-}));
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 describe('AuthStore', () => {
   let workspacesApi: { listWorkspaces: ReturnType<typeof vi.fn> };
@@ -563,6 +570,35 @@ describe('AuthStore', () => {
     expect(store.activeDossierOrgId()).toBe('org-client');
     expect(store.activeDossierDisplayName()).toBe('Created Client SARL');
     expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
+  });
+
+  it('adds a newly created dossier to the list without opening it', () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-firm'
+    );
+
+    store.upsertDossier({
+      orgId: 'org-client',
+      displayName: 'Created Client SARL',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED',
+      status: 'ACTIVE',
+      createdAt: '2026-06-03T00:00:00.000Z',
+      updatedAt: '2026-06-03T00:00:00.000Z'
+    });
+
+    expect(store.activeWorkspaceOrgId()).toBe('org-firm');
+    expect(store.activeDossierOrgId()).toBeNull();
+    expect(store.activeDossierDisplayName()).toBeNull();
+    expect(store.dossiers().map((dossier) => dossier.orgId)).toEqual(['org-client']);
+    expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
   });
 
   it('clears user and tenant state on logout', async () => {
