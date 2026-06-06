@@ -1,0 +1,120 @@
+---
+name: liass-design-system
+description: Use this skill when designing, reviewing, or modifying Liass-OHADA frontend UI, Angular pages, layouts, dashboards, auth pages, dialogs, steppers, tables, drawers, forms, cards, navigation, shell experiences, design tokens, Angular Material 3 usage, Tailwind CSS styling, responsive behavior, premium SaaS visual polish, ERP UX, accounting-firm workflows, and subtle agentic AI surfaces.
+---
+
+# Liass Design System Skill
+
+## Purpose
+
+Guide Codex toward premium, coherent, ergonomic frontend UI for Liass-OHADA: an OHADA/SYSCOHADA accounting ERP/SaaS for companies, accounting firms, and nonprofit/project accounting workflows.
+
+Use this skill for UI design, UI review, frontend page implementation, shell/navigation work, Angular Material 3 choices, Tailwind styling, Transloco/i18n copy surfaces, and shared `liass-*` component usage.
+
+## Mandatory behavior
+
+1. Preserve Liass-OHADA architecture and frontend conventions.
+2. Reuse existing shared `liass-*` UI components before creating local UI patterns.
+3. Use Angular Material 3 components by default where they fit the workflow.
+4. Keep all visible strings behind Transloco/i18n keys.
+5. Avoid isolated inline styles, one-off CSS, and visual drift from existing tokens.
+6. Optimize ergonomics: remove unnecessary clicks, confirmations, duplicate steps, and fragmented workflows.
+7. Preserve accessibility, keyboard navigation, focus management, responsive behavior, and readable contrast.
+8. Inspect existing logo/assets/theme files before proposing color changes.
+9. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
+10. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
+
+## Reference priority
+
+Read only the references needed for the task, in this order:
+
+1. `references/liass-ui-principles.md`
+2. `references/liass-design-tokens.md`
+3. `references/liass-component-guidelines.md`
+4. `references/liass-interaction-patterns.md`
+5. `references/liass-page-templates.md`
+6. `assets/templates/`
+
+## Liass-OHADA frontend conventions
+
+- Angular standalone components are preferred.
+- Angular Material 3 supplies robust controls, dialogs, form fields, steppers, tables, menus, drawers, snackbars, and accessibility behavior.
+- Tailwind CSS handles layout, spacing, responsive behavior, and token-aligned utility styling.
+- Transloco owns visible text.
+- NgRx Signal Store owns client/UI state.
+- TanStack Query Angular owns server state when present in the local codebase pattern.
+- Shared `liass-*` components are the first choice for reusable UI primitives and product-specific style.
+- Frontend domains must follow repository architecture; do not create UI domains that conflict with `AGENTS.md` or `SPEC.md`.
+
+## Angular Material 3 default usage
+
+Use Angular Material 3 when it improves accessibility, interaction quality, or implementation consistency:
+
+- `mat-form-field`, inputs, selects, date controls, checkboxes, radio buttons, and toggles for forms.
+- `MatDialog` for focused temporary decisions.
+- `MatStepper` for guided multi-step flows.
+- `MatDrawer` or sidenav patterns for contextual panels.
+- Material table primitives or existing table wrappers for operational data.
+- `MatTabs` for peer sections inside the same object.
+- `MatSnackBar` only for short feedback.
+- Material icons or the existing icon convention for action affordances.
+
+## UX and ergonomics rules
+
+- Choose full pages for complex workflows.
+- Use dialogs for focused temporary decisions, not long accounting flows.
+- Use confirmation dialogs only for risky or irreversible actions.
+- Use steppers for guided setup and onboarding-style flows.
+- Use drawers for contextual details, filters, audit trails, AI suggestions, and help.
+- Use tables for operational ERP data.
+- Use tabs for peer sections of the same object.
+- Use snackbars/toasts only for brief feedback.
+- Place primary actions predictably; make secondary actions lower emphasis.
+- Separate or clearly style destructive actions.
+- Group card actions consistently in headers or footers.
+
+## Brand and color rules
+
+- Inspect existing logo/assets/theme files before changing color direction.
+- Deduce the primary color from the Liass-OHADA logo and current brand assets.
+- Choose secondary and tertiary colors in harmony with the primary.
+- Prefer a premium navy/blue financial-tech direction when consistent with assets.
+- Keep the palette restrained, modern, and suitable for accounting/finance.
+- Use status colors sparingly for success, warning, error, AI, and operational states.
+- Avoid noisy, multicolored, decorative UI.
+
+## Inspiration references
+
+Liass-OHADA may be inspired by:
+
+- Stripe Dashboard for financial SaaS clarity, cards, and premium data presentation.
+- Linear for calm hierarchy, spacing, dark mode, and minimalism.
+- Vercel for modern technical polish and subtle agentic AI feeling.
+- Retool for operational ERP workflows, tables, filters, and forms.
+- Odoo for ERP module structure and business workflows, not necessarily visual style.
+
+Do not copy these products directly. Use them only as inspiration for hierarchy, spacing, data readability, workflow design, density, and premium SaaS feel. Liass-OHADA must remain visually distinct.
+
+## Implementation workflow
+
+1. Read `AGENTS.md` and `SPEC.md` when the UI task touches architecture, domains, or business workflow.
+2. Inspect existing nearby UI, shared `liass-*` components, Tailwind config/theme CSS, Angular Material theme files, and logo/assets.
+3. Load the relevant design-system references from the priority list.
+4. Identify the user workflow, risk level, data density, and appropriate UI component pattern.
+5. Prefer existing components and tokens; add local code only when the existing system lacks the needed surface.
+6. Keep visible text in Transloco and use English for code, variables, comments, and keys.
+7. Verify responsive layout, keyboard/focus behavior, contrast, loading/empty/error states, and action placement.
+8. Add or update focused frontend tests when behavior, routing, state, or visible UI logic changes.
+
+## Final response requirements
+
+When this skill is used, summarize:
+
+- Design references consulted.
+- UI/UX changes made.
+- Angular Material 3 components used.
+- Shared `liass-*` components reused.
+- Files changed.
+- Tests added or updated, if any.
+- Responsive/accessibility considerations.
+- UX tradeoffs or uncertainties.
