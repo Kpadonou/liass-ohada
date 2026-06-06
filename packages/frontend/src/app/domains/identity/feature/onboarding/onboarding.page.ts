@@ -154,7 +154,9 @@ export class OnboardingPage implements OnInit {
         organization: result.organization
       };
       this.authStore.setCreatedWorkspace(createdWorkspace, result.activeOrgId);
-      await this.router.navigate(['/dashboard'], { replaceUrl: true });
+      await this.router.navigate([this.authStore.workspaceDestination() ?? '/dashboard'], {
+        replaceUrl: true
+      });
     } catch (error) {
       this.onboardingErrorKey.set(this.errorKeyFrom(error));
     } finally {

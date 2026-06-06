@@ -4,7 +4,13 @@ import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/a
 import { LoginPage } from '../../domains/identity/feature/login/login.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
 import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
-import { authGuard, cabinetDossierGuard, loginRedirectGuard, tenantGuard } from './auth.guards';
+import {
+  authGuard,
+  cabinetDashboardGuard,
+  cabinetDossierGuard,
+  loginRedirectGuard,
+  tenantGuard
+} from './auth.guards';
 
 export const routes: Routes = [
   {
@@ -33,6 +39,14 @@ export const routes: Routes = [
         (module) => module.OnboardingPage
       ),
     canActivate: [authGuard]
+  },
+  {
+    path: 'cabinet/dashboard',
+    loadComponent: () =>
+      import('../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page').then(
+        (module) => module.CabinetDashboardPage
+      ),
+    canActivate: [cabinetDashboardGuard]
   },
   {
     path: 'cabinet/dossiers/new',

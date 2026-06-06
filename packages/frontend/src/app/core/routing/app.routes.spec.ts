@@ -1,5 +1,5 @@
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
-import { authGuard, tenantGuard } from './auth.guards';
+import { authGuard, cabinetDashboardGuard, tenantGuard } from './auth.guards';
 import { routes } from './app.routes';
 
 describe('routes', () => {
@@ -30,6 +30,17 @@ describe('routes', () => {
 
     expect(shellRoute?.canActivate).toEqual([authGuard, tenantGuard]);
     expect(component).toBe(DashboardPage);
+  });
+
+  it('registers cabinet dashboard as an accounting-firm route', async () => {
+    const cabinetDashboardRoute = routes.find((route) => route.path === 'cabinet/dashboard');
+    const component = await cabinetDashboardRoute?.loadComponent?.();
+    const { CabinetDashboardPage } = await import(
+      '../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page'
+    );
+
+    expect(component).toBe(CabinetDashboardPage);
+    expect(cabinetDashboardRoute?.canActivate).toEqual([cabinetDashboardGuard]);
   });
 
   it('registers the accounting general-ledger placeholder route', async () => {

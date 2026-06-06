@@ -48,7 +48,9 @@ export class SelectWorkspacePage implements OnInit {
     }
 
     this.authStore.setTenant(workspace.orgId);
-    await this.router.navigate(['/dashboard']);
+    await this.router.navigate([
+      workspace.workspaceType === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard'
+    ]);
   }
 
   protected async logout(): Promise<void> {

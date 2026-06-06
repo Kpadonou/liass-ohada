@@ -338,6 +338,22 @@
         "ACCOUNTING_FRAMEWORK": "Choisissez un référentiel comptable."
       }
     },
+    "CABINET_DASHBOARD": {
+      "EYEBROW": "Espace cabinet comptable",
+      "TITLE": "Tableau de bord cabinet",
+      "SUBTITLE": "Gérez les dossiers clients rattachés à ce cabinet avant d’ouvrir un espace comptable client.",
+      "DOSSIERS_TITLE": "Dossiers clients",
+      "DOSSIERS_SUBTITLE": "Sélectionnez un dossier client pour traiter ses données comptables.",
+      "LOADING": "Chargement des dossiers clients...",
+      "EMPTY_TITLE": "Aucun dossier client",
+      "EMPTY_SUBTITLE": "Créez le premier dossier client pour démarrer la gestion comptable depuis ce cabinet.",
+      "CABINET_CONTEXT": "Contexte cabinet",
+      "ACTIVE_WORKSPACE": "Espace cabinet :",
+      "ACTIVE_DOSSIER": "Dossier client sélectionné :",
+      "ACTIONS": {
+        "NEW_DOSSIER": "Nouveau dossier"
+      }
+    },
     "CABINET_DOSSIERS": {
       "EYEBROW": "Dossiers clients",
       "NEW_TITLE": "Créez le premier dossier client",

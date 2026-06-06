@@ -12,22 +12,22 @@ const workspacesDiscoveryUrl = `${apiBaseUrl}/me/workspaces`;
 const cabinetDossiersUrl = `${apiBaseUrl}/cabinet/dossiers`;
 
 function tenantOrgIdForRequest(authStore: InstanceType<typeof AuthStore>, url: string): string | null {
-  const activeOrgId = authStore.activeOrgId();
+  const activeWorkspaceOrgId = authStore.activeWorkspaceOrgId();
   const urlWithoutQuery = url.split('?')[0];
 
-  if (!activeOrgId) {
+  if (!activeWorkspaceOrgId) {
     return null;
   }
 
   if (urlWithoutQuery === cabinetDossiersUrl) {
-    return activeOrgId;
+    return activeWorkspaceOrgId;
   }
 
   if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-    return authStore.activeDossierOrgId() || activeOrgId;
+    return authStore.activeDossierOrgId() || activeWorkspaceOrgId;
   }
 
-  return activeOrgId;
+  return activeWorkspaceOrgId;
 }
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {

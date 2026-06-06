@@ -284,7 +284,7 @@ describe('OnboardingPage', () => {
     });
   });
 
-  it('creates an accounting-firm workspace and stores the cabinet workspace summary', async () => {
+  it('creates an accounting-firm workspace and routes to the cabinet dashboard', async () => {
     onboardingApi.createInitialWorkspace.mockResolvedValue(accountingFirmResponse());
     fixture.detectChanges();
     await fixture.whenStable();
@@ -302,7 +302,7 @@ describe('OnboardingPage', () => {
       accountingFramework: 'SYSCOHADA_REVISED'
     });
     expect(localStorage.getItem('liass-ohada.activeOrgId')).toBe('org-firm');
-    expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
+    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dashboard'], { replaceUrl: true });
   });
 
   it('shows a duplicate workspace error without redirecting', async () => {

@@ -22,6 +22,7 @@ const GOOGLE_SIGN_IN_PROMPT = 'SELECT_ACCOUNT';
 
 export type WorkspaceDestination =
   | '/dashboard'
+  | '/cabinet/dashboard'
   | '/onboarding'
   | '/select-workspace'
   | '/cabinet/dossiers/new'
@@ -222,6 +223,10 @@ function dossierDisplayName(dossier: ActiveDossierSummary | null): string | null
   return cleanDisplayValue(dossier?.displayName);
 }
 
+function directWorkspaces(workspaces: ActiveWorkspaceSummary[]): ActiveWorkspaceSummary[] {
+  return workspaces.filter((workspace) => workspace.accessSource !== 'CABINET');
+}
+
 function applyTenantSelection(
   store: {
     activeOrgId: () => string | null;
@@ -240,6 +245,8 @@ export const AuthStore = signalStore(
     isAuthenticated: computed(() => !!user()),
     hasActiveTenant: computed(() => !!activeOrgId()),
     hasDiscoveredWorkspaces: computed(() => workspaces().length > 0),
+    activeWorkspaceOrgId: computed(() => activeOrgId()),
+    directWorkspaces: computed(() => directWorkspaces(workspaces())),
     canAccessDashboard: computed(() => !!user() && !!activeOrgId()),
     activeWorkspace: computed(() => {
       const orgId = activeOrgId();
@@ -475,17 +482,25 @@ export const AuthStore = signalStore(
 
       try {
         const workspaces = await workspacesApi.listWorkspaces();
+        const directWorkspaceList = directWorkspaces(workspaces);
         const currentTenant = store.activeOrgId();
-        const currentTenantIsValid = !!currentTenant && workspaces.some(
+        const currentTenantIsValid = !!currentTenant && directWorkspaceList.some(
           (workspace) => workspace.orgId === currentTenant
         );
 
-        if (workspaces.length === 1) {
-          const activeOrgId = applyTenantSelection(store, workspaces[0].orgId);
-          persistDossier(null);
+        if (directWorkspaceList.length === 1) {
+          const directWorkspace = directWorkspaceList[0];
+          const activeOrgId = applyTenantSelection(store, directWorkspace.orgId);
+          const shouldClearDossier =
+            currentTenant !== directWorkspace.orgId || directWorkspace.workspaceType === 'COMPANY';
+
+          if (shouldClearDossier) {
+            persistDossier(null);
+          }
+
           patchState(store, {
             activeOrgId,
-            activeDossierOrgId: null,
+            activeDossierOrgId: shouldClearDossier ? null : store.activeDossierOrgId(),
             workspaces,
             workspaceLoading: false,
             workspaceError: null,
@@ -522,19 +537,7 @@ export const AuthStore = signalStore(
     workspaceDestination(): WorkspaceDestination | null {
       if (store.hasActiveTenant()) {
         if (store.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-          if (store.dossierLoading() || !store.dossiersLoaded()) {
-            return null;
-          }
-
-          if (store.dossiers().length === 0) {
-            return '/cabinet/dossiers/new';
-          }
-
-          if (store.hasActiveDossier()) {
-            return '/dashboard';
-          }
-
-          return '/cabinet/dossiers/select';
+          return '/cabinet/dashboard';
         }
 
         return '/dashboard';
@@ -545,23 +548,36 @@ export const AuthStore = signalStore(
       }
 
       const workspaces = store.workspaces();
+      const directWorkspaceList = directWorkspaces(workspaces);
 
-      if (workspaces.length === 0) {
+      if (directWorkspaceList.length === 0) {
         return '/onboarding';
       }
 
-      if (workspaces.length === 1) {
-        const activeOrgId = applyTenantSelection(store, workspaces[0].orgId);
-        persistDossier(null);
+      if (directWorkspaceList.length === 1) {
+        const directWorkspace = directWorkspaceList[0];
+        const previousActiveOrgId = store.activeOrgId();
+        const activeOrgId = applyTenantSelection(store, directWorkspace.orgId);
+        const shouldClearDossier =
+          previousActiveOrgId !== directWorkspace.orgId || directWorkspace.workspaceType === 'COMPANY';
+
+        if (shouldClearDossier) {
+          persistDossier(null);
+        }
+
         patchState(store, {
           activeOrgId,
-          activeDossierOrgId: null,
+          activeDossierOrgId: shouldClearDossier ? null : store.activeDossierOrgId(),
           error: null,
           workspaceError: null
         });
-        return '/dashboard';
+
+        return directWorkspace.workspaceType === 'ACCOUNTING_FIRM'
+          ? '/cabinet/dashboard'
+          : '/dashboard';
       }
 
+      // TODO: Multi-direct-company workspaces are outside the MVP; keep this as a fallback.
       return '/select-workspace';
     },
 
@@ -679,12 +695,7 @@ export const AuthStore = signalStore(
         const currentDossierIsValid =
           !!currentDossierOrgId &&
           dossiers.some((dossier) => dossier.orgId === currentDossierOrgId);
-        const selectedDossierOrgId =
-          currentDossierIsValid
-            ? currentDossierOrgId
-            : dossiers.length === 1
-              ? dossiers[0].orgId
-              : null;
+        const selectedDossierOrgId = currentDossierIsValid ? currentDossierOrgId : null;
 
         persistDossier(selectedDossierOrgId);
         patchState(store, {

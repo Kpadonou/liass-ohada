@@ -338,6 +338,22 @@
         "ACCOUNTING_FRAMEWORK": "Choose an accounting framework."
       }
     },
+    "CABINET_DASHBOARD": {
+      "EYEBROW": "Accounting firm workspace",
+      "TITLE": "Cabinet dashboard",
+      "SUBTITLE": "Manage the client dossiers attached to this accounting firm before opening a client accounting workspace.",
+      "DOSSIERS_TITLE": "Client dossiers",
+      "DOSSIERS_SUBTITLE": "Select a client dossier to work on its accounting data.",
+      "LOADING": "Loading client dossiers...",
+      "EMPTY_TITLE": "No client dossier yet",
+      "EMPTY_SUBTITLE": "Create the first client dossier to start managing client accounting from this cabinet.",
+      "CABINET_CONTEXT": "Cabinet context",
+      "ACTIVE_WORKSPACE": "Cabinet workspace:",
+      "ACTIVE_DOSSIER": "Selected client dossier:",
+      "ACTIONS": {
+        "NEW_DOSSIER": "New dossier"
+      }
+    },
     "CABINET_DOSSIERS": {
       "EYEBROW": "Client dossiers",
       "NEW_TITLE": "Create the first client dossier",

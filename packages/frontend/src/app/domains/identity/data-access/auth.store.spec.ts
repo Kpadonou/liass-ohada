@@ -201,16 +201,69 @@ describe('AuthStore', () => {
 
   it('auto-selects the only discovered workspace', async () => {
     workspacesApi.listWorkspaces.mockResolvedValue([
-      { orgId: 'org-test', role: 'ACCOUNTANT' }
+      { orgId: 'org-test', role: 'ACCOUNTANT', workspaceType: 'COMPANY' }
     ]);
     const store = TestBed.inject(AuthStore);
 
     const workspaces = await store.loadWorkspaces(true);
 
-    expect(workspaces).toEqual([{ orgId: 'org-test', role: 'ACCOUNTANT' }]);
+    expect(workspaces).toEqual([{ orgId: 'org-test', role: 'ACCOUNTANT', workspaceType: 'COMPANY' }]);
     expect(store.activeOrgId()).toBe('org-test');
-    expect(store.activeWorkspace()).toEqual({ orgId: 'org-test', role: 'ACCOUNTANT' });
+    expect(store.activeWorkspaceOrgId()).toBe('org-test');
+    expect(store.activeWorkspace()).toEqual({
+      orgId: 'org-test',
+      role: 'ACCOUNTANT',
+      workspaceType: 'COMPANY'
+    });
     expect(store.workspaceDestination()).toBe('/dashboard');
+  });
+
+  it('routes a single direct accounting-firm workspace to the cabinet dashboard', async () => {
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-firm',
+        role: 'OWNER',
+        accessSource: 'DIRECT',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM'
+      }
+    ]);
+    const store = TestBed.inject(AuthStore);
+
+    await store.loadWorkspaces(true);
+
+    expect(store.activeWorkspaceOrgId()).toBe('org-firm');
+    expect(store.activeWorkspaceType()).toBe('ACCOUNTING_FIRM');
+    expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
+  });
+
+  it('does not treat cabinet-sourced client rows as direct selectable workspaces', async () => {
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-firm',
+        accessSource: 'DIRECT',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      {
+        orgId: 'org-client',
+        accessSource: 'CABINET',
+        cabinetId: 'cab-123',
+        displayName: 'Client SARL',
+        workspaceType: 'COMPANY'
+      }
+    ]);
+    const store = TestBed.inject(AuthStore);
+
+    await store.loadWorkspaces(true);
+
+    expect(store.workspaces().map((workspace) => workspace.orgId)).toEqual([
+      'org-firm',
+      'org-client'
+    ]);
+    expect(store.directWorkspaces().map((workspace) => workspace.orgId)).toEqual(['org-firm']);
+    expect(store.activeWorkspaceOrgId()).toBe('org-firm');
+    expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
   });
 
   it('returns no workspace destination while discovery is pending', () => {
@@ -219,7 +272,7 @@ describe('AuthStore', () => {
     expect(store.workspaceDestination()).toBeNull();
   });
 
-  it('keeps multiple discovered workspaces for selection', async () => {
+  it('keeps multiple direct discovered workspaces for fallback selection', async () => {
     workspacesApi.listWorkspaces.mockResolvedValue([
       { orgId: 'org-a', role: 'ACCOUNTANT' },
       { orgId: 'org-b', role: 'MANAGER' }
@@ -362,7 +415,7 @@ describe('AuthStore', () => {
     expect(store.activeWorkspaceType()).toBe('ACCOUNTING_FIRM');
   });
 
-  it('loads and auto-selects the only accounting-firm client dossier', async () => {
+  it('loads but does not auto-select the only accounting-firm client dossier', async () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(
       {
@@ -387,13 +440,13 @@ describe('AuthStore', () => {
 
     await store.loadDossiers();
 
-    expect(store.activeDossierOrgId()).toBe('org-client');
-    expect(store.activeDossierDisplayName()).toBe('Client SARL');
-    expect(store.workspaceDestination()).toBe('/dashboard');
-    expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBe('org-client');
+    expect(store.activeDossierOrgId()).toBeNull();
+    expect(store.activeDossierDisplayName()).toBeNull();
+    expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
+    expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
   });
 
-  it('routes accounting-firm workspaces with no client dossiers to first dossier onboarding', async () => {
+  it('routes accounting-firm workspaces with no client dossiers to the cabinet dashboard', async () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(
       {
@@ -409,10 +462,10 @@ describe('AuthStore', () => {
     await store.loadDossiers();
 
     expect(store.activeDossierOrgId()).toBeNull();
-    expect(store.workspaceDestination()).toBe('/cabinet/dossiers/new');
+    expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
   });
 
-  it('routes accounting-firm workspaces with multiple dossiers and no selection to dossier selection', async () => {
+  it('routes accounting-firm workspaces with multiple dossiers and no selection to the cabinet dashboard', async () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(
       {
@@ -447,7 +500,7 @@ describe('AuthStore', () => {
     await store.loadDossiers();
 
     expect(store.activeDossierOrgId()).toBeNull();
-    expect(store.workspaceDestination()).toBe('/cabinet/dossiers/select');
+    expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
   });
 
   it('resolves persisted active dossier after reload from loaded dossiers', async () => {
@@ -509,7 +562,7 @@ describe('AuthStore', () => {
 
     expect(store.activeDossierOrgId()).toBe('org-client');
     expect(store.activeDossierDisplayName()).toBe('Created Client SARL');
-    expect(store.workspaceDestination()).toBe('/dashboard');
+    expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
   });
 
   it('clears user and tenant state on logout', async () => {

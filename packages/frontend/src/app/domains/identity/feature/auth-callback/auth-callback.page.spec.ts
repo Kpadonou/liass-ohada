@@ -99,6 +99,35 @@ describe('AuthCallbackPage', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
   });
 
+  it('redirects authenticated accounting-firm users to the cabinet dashboard', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue({
+      username: 'user@example.com',
+      userId: 'user-123',
+      signInDetails: undefined
+    });
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-firm',
+        accessSource: 'DIRECT',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      {
+        orgId: 'org-client',
+        accessSource: 'CABINET',
+        cabinetId: 'cab-123',
+        displayName: 'Client SARL',
+        workspaceType: 'COMPANY'
+      }
+    ]);
+
+    fixture = TestBed.createComponent(AuthCallbackPage);
+    await fixture.componentInstance.ngOnInit();
+
+    expect(workspacesApi.listWorkspaces).toHaveBeenCalled();
+    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dashboard'], { replaceUrl: true });
+  });
+
   it('redirects authenticated users with no workspaces to onboarding', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'user@example.com',

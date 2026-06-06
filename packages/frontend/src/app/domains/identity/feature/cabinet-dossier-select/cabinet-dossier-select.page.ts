@@ -21,11 +21,6 @@ export class CabinetDossierSelectPage implements OnInit {
     if (!this.authStore.dossiersLoaded()) {
       await this.authStore.loadDossiers();
     }
-
-    const destination = this.authStore.workspaceDestination();
-    if (destination && destination !== '/cabinet/dossiers/select') {
-      await this.router.navigate([destination], { replaceUrl: true });
-    }
   }
 
   protected async selectDossier(dossier: CabinetDossierSummary): Promise<void> {
