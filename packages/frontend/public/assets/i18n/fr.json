@@ -357,8 +357,12 @@
       "FALLBACK_CABINET_NAME": "Cabinet comptable",
       "WORKSPACE_TYPE": "Type d’espace",
       "CONNECTED_USER": "Utilisateur connecté",
+      "OPEN_DOSSIER_LABEL": "Dossier ouvert",
       "CONTEXT_TITLE": "Contexte cabinet",
       "CONTEXT_DESCRIPTION": "Les actions cabinet utilisent l’espace du cabinet comptable. Les modules comptables client s’ouvrent uniquement après sélection d’un dossier.",
+      "CONTEXT_HINT": "Le cabinet reste le contexte de pilotage. Les modules comptables s’ouvrent dossier par dossier.",
+      "CONTEXT_ITEM_CABINET": "Pilotage du cabinet et des dossiers clients",
+      "CONTEXT_ITEM_DOSSIERS": "Ouverture explicite d’un dossier avant les modules comptables",
       "RECENT_DOSSIERS_TITLE": "Derniers dossiers ouverts",
       "RECENT_DOSSIERS_SUBTITLE": "Ouvrez un dossier client pour travailler sur son tableau de bord comptable.",
       "LOADING": "Chargement des dossiers clients...",
@@ -377,6 +381,19 @@
         "TOTAL_DOSSIERS": "Total dossiers clients",
         "UPCOMING_DEADLINES": "Échéances à venir"
       },
+      "METRICS_META": {
+        "ACTIVE_DOSSIERS": "Dossiers disponibles pour les modules comptables.",
+        "COLLABORATORS": "Vue équipe cabinet à connecter.",
+        "PENDING_TASKS": "Tâches cabinet à connecter.",
+        "TOTAL_DOSSIERS": "Portefeuille client rattaché au cabinet.",
+        "UPCOMING_DEADLINES": "Échéances cabinet à connecter."
+      },
+      "PLACEHOLDERS": {
+        "NO_DEADLINE": "Aucune échéance connectée",
+        "NO_MISSION": "Aucune mission connectée",
+        "PRIMARY_CONTACT": "Responsable cabinet",
+        "ROADMAP": "À venir"
+      },
       "STATUS": {
         "ACTIVE": "Actif",
         "UNKNOWN": "Inconnu"
@@ -385,6 +402,9 @@
         "CREATE_FIRST_DOSSIER": "Créer votre premier dossier client",
         "NEW_DOSSIER": "Nouveau dossier",
         "VIEW_DOSSIERS": "Voir les dossiers"
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "Les dossiers clients n’ont pas pu être chargés. Veuillez réessayer."
       }
     },
     "CABINET_DOSSIERS": {

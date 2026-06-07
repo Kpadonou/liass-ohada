@@ -20,6 +20,9 @@ const variantClasses: Record<LiassCardVariant, string> = {
 
 @Component({
   selector: 'liass-card',
+  host: {
+    class: 'block'
+  },
   imports: [LiassSkeletonComponent],
   templateUrl: './card.component.html'
 })

@@ -7,6 +7,9 @@ export type LiassSectionState = 'default' | 'loading' | 'empty';
 
 @Component({
   selector: 'liass-section-container',
+  host: {
+    class: 'block'
+  },
   imports: [LiassSkeletonComponent],
   templateUrl: './section-container.component.html'
 })

@@ -18,6 +18,9 @@ const iconToneClasses: Record<LiassStatTone, string> = {
 
 @Component({
   selector: 'liass-stat-card',
+  host: {
+    class: 'block'
+  },
   imports: [LiassSkeletonComponent, LiassStatusChipComponent, MatIconModule],
   templateUrl: './stat-card.component.html'
 })

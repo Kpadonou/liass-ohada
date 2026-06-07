@@ -25,6 +25,9 @@ export interface LiassTableRow {
 
 @Component({
   selector: 'liass-table-placeholder',
+  host: {
+    class: 'block'
+  },
   imports: [LiassSkeletonComponent, LiassStatusChipComponent, TranslocoModule],
   templateUrl: './table-placeholder.component.html'
 })

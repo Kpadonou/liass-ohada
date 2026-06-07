@@ -1,10 +1,13 @@
 import * as cdk from "aws-cdk-lib";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import { Runtime } from "aws-cdk-lib/aws-lambda";
 import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
 import * as path from "path";
 import { DeploymentStage } from "../../config/deployment";
+
+const DOMAIN_LAMBDA_RUNTIME = Runtime.NODEJS_24_X;
 
 export interface DomainProps {
   api: apigw.HttpApi;
@@ -86,7 +89,7 @@ export abstract class DomainConstructFactory extends Construct {
     const fn = new lambda.NodejsFunction(this, id, {
       entry: options.handlerEntry,
       functionName,
-      runtime: cdk.aws_lambda.Runtime.NODEJS_20_X,
+      runtime: DOMAIN_LAMBDA_RUNTIME,
       environment: { TABLE_NAME: options.table.tableName },
     });
 

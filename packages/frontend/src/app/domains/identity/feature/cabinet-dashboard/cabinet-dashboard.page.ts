@@ -6,47 +6,84 @@ import type { CabinetDossierSummary } from '@liass-ohada/shared';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
+import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
+import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
+import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
+import { LiassStatCardComponent, type LiassStatTone } from '../../../../shared/ui/stat-card/stat-card.component';
+import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AuthStore } from '../../data-access/auth.store';
+
+interface CabinetMetricCard {
+  icon: string;
+  labelKey: string;
+  metaKey: string;
+  tone: LiassStatTone;
+  value: string;
+}
 
 @Component({
   selector: 'liass-cabinet-dashboard-page',
-  imports: [LiassButtonComponent, MatIconModule, MatProgressSpinnerModule, TranslocoModule],
+  imports: [
+    LiassButtonComponent,
+    LiassCardComponent,
+    LiassPageHeaderComponent,
+    LiassSkeletonComponent,
+    LiassStatCardComponent,
+    LiassStatusChipComponent,
+    MatIconModule,
+    MatProgressSpinnerModule,
+    TranslocoModule
+  ],
   templateUrl: './cabinet-dashboard.page.html'
 })
 export class CabinetDashboardPage implements OnInit {
   protected readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
-  protected readonly recentDossiers = computed(() => this.authStore.dossiers().slice(0, 3));
+  protected readonly recentDossiers = computed(() =>
+    [...this.authStore.dossiers()]
+      .sort((first, second) => Date.parse(second.updatedAt) - Date.parse(first.updatedAt))
+      .slice(0, 4)
+  );
   protected readonly activeDossierCount = computed(
     () => this.authStore.dossiers().filter((dossier) => dossier.status === 'ACTIVE').length
   );
   protected readonly currentUserLabel = computed(
     () => this.authStore.currentUserDisplayName() ?? this.authStore.currentUserEmail()
   );
-  protected readonly metricCards = computed(() => [
+  protected readonly metricCards = computed<CabinetMetricCard[]>(() => [
     {
       icon: 'folder_managed',
       labelKey: 'IDENTITY.CABINET_DASHBOARD.METRICS.TOTAL_DOSSIERS',
+      metaKey: 'IDENTITY.CABINET_DASHBOARD.METRICS_META.TOTAL_DOSSIERS',
+      tone: 'accent',
       value: `${this.authStore.dossiers().length}`
     },
     {
       icon: 'verified',
       labelKey: 'IDENTITY.CABINET_DASHBOARD.METRICS.ACTIVE_DOSSIERS',
+      metaKey: 'IDENTITY.CABINET_DASHBOARD.METRICS_META.ACTIVE_DOSSIERS',
+      tone: 'success',
       value: `${this.activeDossierCount()}`
     },
     {
       icon: 'event_upcoming',
       labelKey: 'IDENTITY.CABINET_DASHBOARD.METRICS.UPCOMING_DEADLINES',
+      metaKey: 'IDENTITY.CABINET_DASHBOARD.METRICS_META.UPCOMING_DEADLINES',
+      tone: 'warning',
       value: '0'
     },
     {
       icon: 'task_alt',
       labelKey: 'IDENTITY.CABINET_DASHBOARD.METRICS.PENDING_TASKS',
+      metaKey: 'IDENTITY.CABINET_DASHBOARD.METRICS_META.PENDING_TASKS',
+      tone: 'info',
       value: '0'
     },
     {
       icon: 'group',
       labelKey: 'IDENTITY.CABINET_DASHBOARD.METRICS.COLLABORATORS',
+      metaKey: 'IDENTITY.CABINET_DASHBOARD.METRICS_META.COLLABORATORS',
+      tone: 'neutral',
       value: '1'
     }
   ]);

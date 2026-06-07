@@ -18,8 +18,12 @@ const translations = {
         FALLBACK_CABINET_NAME: 'Accounting firm',
         WORKSPACE_TYPE: 'Workspace type',
         CONNECTED_USER: 'Connected user',
+        OPEN_DOSSIER_LABEL: 'Open dossier',
         CONTEXT_TITLE: 'Cabinet context',
         CONTEXT_DESCRIPTION: 'Cabinet actions use the accounting-firm workspace.',
+        CONTEXT_HINT: 'The cabinet remains the management context.',
+        CONTEXT_ITEM_CABINET: 'Manage the accounting firm and client dossiers',
+        CONTEXT_ITEM_DOSSIERS: 'Open a dossier explicitly before accounting modules',
         RECENT_DOSSIERS_TITLE: 'Recently opened dossiers',
         RECENT_DOSSIERS_SUBTITLE: 'Open a client dossier.',
         LOADING: 'Loading client dossiers...',
@@ -38,6 +42,19 @@ const translations = {
           TOTAL_DOSSIERS: 'Total dossiers',
           UPCOMING_DEADLINES: 'Upcoming deadlines'
         },
+        METRICS_META: {
+          ACTIVE_DOSSIERS: 'Dossiers available for accounting modules.',
+          COLLABORATORS: 'Cabinet staffing view to connect.',
+          PENDING_TASKS: 'Cabinet tasks to connect.',
+          TOTAL_DOSSIERS: 'Client portfolio attached to the firm.',
+          UPCOMING_DEADLINES: 'Cabinet deadlines to connect.'
+        },
+        PLACEHOLDERS: {
+          NO_DEADLINE: 'No deadline connected',
+          NO_MISSION: 'No mission connected',
+          PRIMARY_CONTACT: 'Cabinet lead',
+          ROADMAP: 'Coming soon'
+        },
         STATUS: {
           ACTIVE: 'Active',
           UNKNOWN: 'Unknown'
@@ -46,6 +63,9 @@ const translations = {
           CREATE_FIRST_DOSSIER: 'Create your first client dossier',
           NEW_DOSSIER: 'New dossier',
           VIEW_DOSSIERS: 'View dossiers'
+        },
+        ERRORS: {
+          LOAD_FAILED: 'Client dossiers could not be loaded. Please retry.'
         }
       },
       ONBOARDING: {
@@ -59,6 +79,7 @@ const translations = {
     },
     SHELL: {
       TOPBAR: {
+        NO_DOSSIER: 'No dossier open',
         USER: 'User'
       },
       WORKSPACE_TYPES: {
@@ -129,8 +150,12 @@ describe('CabinetDashboardPage', () => {
     expect(cabinetDossiersApi.listDossiers).toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('Cabinet Demo');
     expect(fixture.nativeElement.textContent).toContain('Accounting firm');
+    expect(fixture.nativeElement.textContent).toContain('Open dossier');
+    expect(fixture.nativeElement.textContent).toContain('No dossier open');
     expect(fixture.nativeElement.textContent).toContain('Total dossiers');
     expect(fixture.nativeElement.textContent).toContain('Active dossiers');
+    expect(fixture.nativeElement.textContent).toContain('Client portfolio attached to the firm.');
+    expect(fixture.nativeElement.textContent).toContain('Cabinet lead');
     expect(fixture.nativeElement.textContent).toContain('Client SARL');
     expect(fixture.nativeElement.textContent).toContain('Benin');
     expect(fixture.nativeElement.textContent).toContain('Revised SYSCOHADA');

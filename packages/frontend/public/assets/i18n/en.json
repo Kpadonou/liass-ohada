@@ -357,8 +357,12 @@
       "FALLBACK_CABINET_NAME": "Accounting firm",
       "WORKSPACE_TYPE": "Workspace type",
       "CONNECTED_USER": "Connected user",
+      "OPEN_DOSSIER_LABEL": "Open dossier",
       "CONTEXT_TITLE": "Cabinet context",
       "CONTEXT_DESCRIPTION": "Cabinet actions use the accounting-firm workspace. Client accounting modules open only after selecting a dossier.",
+      "CONTEXT_HINT": "The cabinet remains the management context. Accounting modules open dossier by dossier.",
+      "CONTEXT_ITEM_CABINET": "Manage the accounting firm and client dossiers",
+      "CONTEXT_ITEM_DOSSIERS": "Open a dossier explicitly before accounting modules",
       "RECENT_DOSSIERS_TITLE": "Recently opened dossiers",
       "RECENT_DOSSIERS_SUBTITLE": "Open a client dossier to work on its accounting dashboard.",
       "LOADING": "Loading client dossiers...",
@@ -377,6 +381,19 @@
         "TOTAL_DOSSIERS": "Total dossiers",
         "UPCOMING_DEADLINES": "Upcoming deadlines"
       },
+      "METRICS_META": {
+        "ACTIVE_DOSSIERS": "Dossiers available for accounting modules.",
+        "COLLABORATORS": "Cabinet staffing view to connect.",
+        "PENDING_TASKS": "Cabinet tasks to connect.",
+        "TOTAL_DOSSIERS": "Client portfolio attached to the firm.",
+        "UPCOMING_DEADLINES": "Cabinet deadlines to connect."
+      },
+      "PLACEHOLDERS": {
+        "NO_DEADLINE": "No deadline connected",
+        "NO_MISSION": "No mission connected",
+        "PRIMARY_CONTACT": "Cabinet lead",
+        "ROADMAP": "Coming soon"
+      },
       "STATUS": {
         "ACTIVE": "Active",
         "UNKNOWN": "Unknown"
@@ -385,6 +402,9 @@
         "CREATE_FIRST_DOSSIER": "Create your first client dossier",
         "NEW_DOSSIER": "New dossier",
         "VIEW_DOSSIERS": "View dossiers"
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "Client dossiers could not be loaded. Please retry."
       }
     },
     "CABINET_DOSSIERS": {
