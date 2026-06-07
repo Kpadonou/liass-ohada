@@ -1,0 +1,91 @@
+<header class="px-6 pt-6">
+  <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+    {{ 'ACCOUNTING.CHART.CREATE.EYEBROW' | transloco }}
+  </p>
+  <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+    {{ 'ACCOUNTING.CHART.CREATE.TITLE' | transloco }}
+  </h2>
+  <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+    {{ 'ACCOUNTING.CHART.CREATE.SUBTITLE' | transloco }}
+  </p>
+</header>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="px-6 pb-0 pt-5">
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.CHART.FIELDS.ACCOUNT_ID' | transloco }}</mat-label>
+        <mat-icon matPrefix>tag</mat-icon>
+        <input matInput formControlName="accountId" inputmode="numeric" />
+        @if (form.controls.accountId.touched && form.controls.accountId.invalid) {
+          <mat-error>{{ 'ACCOUNTING.CHART.VALIDATION.ACCOUNT_ID' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.CHART.FIELDS.CLASS' | transloco }}</mat-label>
+        <mat-icon matPrefix>format_list_numbered</mat-icon>
+        <mat-select formControlName="classCode">
+          @for (classCode of classCodes; track classCode) {
+            <mat-option [value]="classCode">{{ 'ACCOUNTING.CHART.CLASSES.' + classCode | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>{{ 'ACCOUNTING.CHART.FIELDS.ACCOUNT_NAME' | transloco }}</mat-label>
+        <mat-icon matPrefix>label</mat-icon>
+        <input matInput formControlName="accountName" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.CHART.FIELDS.NATURE' | transloco }}</mat-label>
+        <mat-select formControlName="accountNature">
+          <mat-option value="BALANCE">{{ 'ACCOUNTING.CHART.NATURE.BALANCE' | transloco }}</mat-option>
+          <mat-option value="INCOME">{{ 'ACCOUNTING.CHART.NATURE.INCOME' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.CHART.FIELDS.USAGE' | transloco }}</mat-label>
+        <mat-select formControlName="accountUsage">
+          <mat-option value="BOTH">{{ 'ACCOUNTING.CHART.USAGE.BOTH' | transloco }}</mat-option>
+          <mat-option value="DEBIT_ONLY">{{ 'ACCOUNTING.CHART.USAGE.DEBIT_ONLY' | transloco }}</mat-option>
+          <mat-option value="CREDIT_ONLY">{{ 'ACCOUNTING.CHART.USAGE.CREDIT_ONLY' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.CHART.FIELDS.STATEMENT_CODE' | transloco }}</mat-label>
+        <input matInput formControlName="financialStatementCode" />
+      </mat-form-field>
+    </div>
+
+    <div class="mt-2 grid gap-2 text-sm text-slate-600 dark:text-slate-400">
+      <label class="inline-flex items-center gap-2">
+        <input formControlName="isThirdPartyAccount" type="checkbox" />
+        <span>{{ 'ACCOUNTING.CHART.FIELDS.THIRD_PARTY' | transloco }}</span>
+      </label>
+      <label class="inline-flex items-center gap-2">
+        <input formControlName="allowReconciliation" type="checkbox" />
+        <span>{{ 'ACCOUNTING.CHART.FIELDS.RECONCILIATION' | transloco }}</span>
+      </label>
+    </div>
+
+    @if (errorKey(); as key) {
+      <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+        <mat-icon class="mt-0.5">error</mat-icon>
+        <p>{{ key | transloco }}</p>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+    </liass-button>
+    <liass-button buttonType="submit" tone="brand" variant="solid" icon="add" [disabled]="form.invalid || submitting()" [loading]="submitting()">
+      {{ 'COMMON.ACTIONS.SAVE' | transloco }}
+    </liass-button>
+  </mat-dialog-actions>
+</form>

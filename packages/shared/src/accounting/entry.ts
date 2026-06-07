@@ -77,6 +77,100 @@ export const GetEntriesRequestSchema = z.object({
 
 export type GetEntriesRequest = z.infer<typeof GetEntriesRequestSchema>;
 
+export const ListEntriesRequestSchema = z
+  .object({
+    year: z.string().regex(/^\d{4}$/),
+    journalCode: z.string().min(1).max(10).optional(),
+    month: z
+      .string()
+      .regex(/^\d{2}$/)
+      .optional(),
+    limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
+    cursor: z.string().optional(),
+  })
+  .refine((data) => !data.month || !!data.journalCode, {
+    message: "journalCode is required when month is provided",
+    path: ["journalCode"],
+  });
+
+export type ListEntriesRequest = z.infer<typeof ListEntriesRequestSchema>;
+
+export const EntrySummaryDtoSchema = z.object({
+  entryId: z.string(),
+  year: z.number().int().optional(),
+  entryDate: z.string(),
+  journalCode: z.string(),
+  voucherNumber: z.string().optional(),
+  label: z.string().optional(),
+  totalDebit: MoneySchema,
+  totalCredit: MoneySchema,
+  status: EntryStatus,
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type EntrySummaryDto = z.infer<typeof EntrySummaryDtoSchema>;
+
+export const ListEntriesResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({
+    entries: z.array(EntrySummaryDtoSchema),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean(),
+  }),
+});
+
+export const PostEntryResponseSchema = z.object({
+  message: z.unknown().optional(),
+  entryId: z.string(),
+});
+
+export const LedgerMovementDtoSchema = z.object({
+  date: z.string(),
+  label: z.string(),
+  reference: z.string(),
+  journal: z.string(),
+  debit: z.number().int().nonnegative(),
+  credit: z.number().int().nonnegative(),
+  runningBalance: z.number().int(),
+});
+
+export const GeneralLedgerDtoSchema = z.object({
+  accountId: z.string(),
+  openingBalance: LedgerMovementDtoSchema,
+  movements: z.array(LedgerMovementDtoSchema),
+  finalBalance: z.number().int(),
+});
+
+export type GeneralLedgerDto = z.infer<typeof GeneralLedgerDtoSchema>;
+
+export const GeneralLedgerResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: GeneralLedgerDtoSchema,
+});
+
+export const TrialBalanceRowDtoSchema = z.object({
+  accountId: z.string(),
+  openingDebit: z.number().int().nonnegative(),
+  openingCredit: z.number().int().nonnegative(),
+  movementDebit: z.number().int().nonnegative(),
+  movementCredit: z.number().int().nonnegative(),
+  finalDebit: z.number().int().nonnegative(),
+  finalCredit: z.number().int().nonnegative(),
+});
+
+export const TrialBalanceDtoSchema = z.object({
+  rows: z.array(TrialBalanceRowDtoSchema),
+  totals: TrialBalanceRowDtoSchema.omit({ accountId: true }),
+});
+
+export type TrialBalanceDto = z.infer<typeof TrialBalanceDtoSchema>;
+
+export const TrialBalanceResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: TrialBalanceDtoSchema,
+});
+
 // --- Persistence Schemas (DynamoDB Items) ---
 
 /**

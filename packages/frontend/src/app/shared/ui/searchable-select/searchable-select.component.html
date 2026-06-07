@@ -19,7 +19,7 @@
   }
   <mat-autocomplete #selectAutocomplete="matAutocomplete" (optionSelected)="selectOption($event)">
     @for (option of filteredOptions(); track option.value) {
-      <mat-option [value]="option.value">{{ option.labelKey | transloco }}</mat-option>
+      <mat-option [value]="option.value">{{ optionLabel(option) }}</mat-option>
     } @empty {
       <mat-option disabled>{{ emptyResultLabelKey() | transloco }}</mat-option>
     }

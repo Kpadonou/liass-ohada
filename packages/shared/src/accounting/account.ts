@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const AccountNature = z.enum(["BALANCE", "INCOME"]);
 export const AccountUsage = z.enum(["DEBIT_ONLY", "CREDIT_ONLY", "BOTH"]);
+export const AccountClassCode = z.number().int().min(1).max(8);
 
 export const AccountSchema = z
   .object({
@@ -13,7 +14,7 @@ export const AccountSchema = z
     accountNature: AccountNature,
     accountUsage: AccountUsage,
     isThirdPartyAccount: z.boolean(),
-    classCode: z.number().int().min(1).max(8),
+    classCode: AccountClassCode,
     financialStatementCode: z.string(),
     allowReconciliation: z.boolean(),
     entityType: z.literal("ACCOUNT"),
@@ -35,15 +36,54 @@ export const AccountSchema = z
 
 export type Account = z.infer<typeof AccountSchema>;
 
+export const AccountDtoSchema = z.object({
+  orgId: z.string().optional(),
+  accountId: z.string().regex(/^\d{8}$/),
+  accountName: z.string(),
+  accountNature: AccountNature,
+  accountUsage: AccountUsage,
+  isThirdPartyAccount: z.boolean(),
+  classCode: AccountClassCode,
+  financialStatementCode: z.string(),
+  allowReconciliation: z.boolean(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
+});
+
+export type AccountDto = z.infer<typeof AccountDtoSchema>;
+
 export const CreateAccountRequestSchema = z.object({
   accountId: z.string().min(1),
   accountName: z.string(),
   accountNature: AccountNature,
   accountUsage: AccountUsage,
   isThirdPartyAccount: z.boolean(),
-  classCode: z.number().int().min(1).max(8),
+  classCode: AccountClassCode,
   financialStatementCode: z.string(),
   allowReconciliation: z.boolean(),
+});
+
+export type CreateAccountRequest = z.infer<typeof CreateAccountRequestSchema>;
+
+export const AccountResponseSchema = z.object({
+  message: z.unknown().optional(),
+  account: AccountDtoSchema,
+});
+
+export const ListAccountsRequestSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(100).optional(),
+  cursor: z.string().optional(),
+});
+
+export type ListAccountsRequest = z.infer<typeof ListAccountsRequestSchema>;
+
+export const ListAccountsResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({
+    accounts: z.array(AccountDtoSchema),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean(),
+  }),
 });
 
 export const GetAccountRequestSchema = z.object({

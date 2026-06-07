@@ -8,7 +8,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 
 export interface LiassSearchableSelectOption {
-  labelKey: string;
+  label?: string;
+  labelKey?: string;
   value: string;
 }
 
@@ -99,7 +100,7 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
   }
 
   protected optionLabel(option: LiassSearchableSelectOption): string {
-    return this.transloco.translate(option.labelKey);
+    return option.label ?? this.transloco.translate(option.labelKey ?? option.value);
   }
 
   private syncInputToSelectedValue(): void {

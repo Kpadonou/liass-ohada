@@ -1,0 +1,185 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.ENTRIES.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.ENTRIES.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.ENTRIES.SUBTITLE' | transloco"
+  />
+
+  <div class="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+    <liass-card [title]="'ACCOUNTING.ENTRIES.LIST.TITLE' | transloco" [description]="'ACCOUNTING.ENTRIES.LIST.DESCRIPTION' | transloco">
+      <div class="mb-5 grid gap-3 lg:grid-cols-[120px_180px_140px]">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.ENTRIES.FILTERS.YEAR' | transloco }}</mat-label>
+          <input matInput [value]="selectedYear()" inputmode="numeric" (input)="updateSelectedYear($event)" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.ENTRIES.FILTERS.JOURNAL' | transloco }}</mat-label>
+          <mat-select [value]="selectedJournalCode()" (valueChange)="updateSelectedJournal($event)">
+            <mat-option [value]="null">{{ 'ACCOUNTING.ENTRIES.FILTERS.ALL_JOURNALS' | transloco }}</mat-option>
+            @for (journal of journals(); track journal.journalCode) {
+              <mat-option [value]="journal.journalCode">{{ journal.journalCode }} - {{ journal.journalName }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.ENTRIES.FILTERS.MONTH' | transloco }}</mat-label>
+          <mat-select [value]="selectedMonth()" [disabled]="!selectedJournalCode()" (valueChange)="updateSelectedMonth($event)">
+            <mat-option [value]="null">{{ 'ACCOUNTING.ENTRIES.FILTERS.ALL_MONTHS' | transloco }}</mat-option>
+            @for (month of ['01','02','03','04','05','06','07','08','09','10','11','12']; track month) {
+              <mat-option [value]="month">{{ month }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      @if (entriesQuery.isPending()) {
+        <div class="space-y-3">
+          @for (_ of [0, 1, 2]; track $index) {
+            <liass-skeleton variant="block" />
+          }
+        </div>
+      } @else if (entriesQuery.isError()) {
+        <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+          {{ 'ACCOUNTING.ERRORS.LOAD_FAILED' | transloco }}
+        </div>
+      } @else if (entries().length === 0) {
+        <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+          <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.ENTRIES.EMPTY' | transloco }}</p>
+        </div>
+      } @else {
+        <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 md:block">
+          <table class="w-full min-w-[860px] border-collapse text-left">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+              <tr>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.TABLE.DATE' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.TABLE.JOURNAL' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.TABLE.LABEL' | transloco }}</th>
+                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.TABLE.DEBIT' | transloco }}</th>
+                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.TABLE.CREDIT' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.TABLE.STATUS' | transloco }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (entry of entries(); track entry.entryId) {
+                <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ entry.entryDate }}</td>
+                  <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ entry.journalCode }}</td>
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ entry.label || entry.entryId }}</td>
+                  <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ entry.totalDebit }}</td>
+                  <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ entry.totalCredit }}</td>
+                  <td class="px-4 py-4"><liass-status-chip [label]="'ACCOUNTING.ENTRIES.STATUS.' + entry.status | transloco" tone="success" size="sm" /></td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid gap-3 md:hidden">
+          @for (entry of entries(); track entry.entryId) {
+            <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p class="font-semibold text-slate-950 dark:text-white">{{ entry.journalCode }} - {{ entry.label || entry.entryId }}</p>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ entry.entryDate }} · {{ entry.totalDebit }} / {{ entry.totalCredit }}</p>
+            </article>
+          }
+        </div>
+      }
+    </liass-card>
+
+    <liass-card [title]="'ACCOUNTING.ENTRIES.POST.TITLE' | transloco" [description]="'ACCOUNTING.ENTRIES.POST.DESCRIPTION' | transloco">
+      <form class="space-y-4" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-1">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.YEAR' | transloco }}</mat-label>
+            <input matInput formControlName="year" inputmode="numeric" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.DATE' | transloco }}</mat-label>
+            <input matInput formControlName="entryDate" type="date" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.JOURNAL' | transloco }}</mat-label>
+            <mat-select formControlName="journalCode">
+              <mat-option value="MISC">{{ 'ACCOUNTING.JOURNALS.TYPES.MISC' | transloco }}</mat-option>
+              @for (journal of journals(); track journal.journalCode) {
+                <mat-option [value]="journal.journalCode">{{ journal.journalCode }} - {{ journal.journalName }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.VOUCHER' | transloco }}</mat-label>
+            <input matInput formControlName="voucherNumber" />
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="md:col-span-2 xl:col-span-1">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.LABEL' | transloco }}</mat-label>
+            <input matInput formControlName="label" />
+          </mat-form-field>
+        </div>
+
+        <div formArrayName="lines" class="space-y-3">
+          @for (line of lineGroups(); track $index) {
+            <div class="rounded-app-card border border-slate-200 p-3 dark:border-slate-800" [formGroupName]="$index">
+              <div class="grid gap-3">
+                <liass-searchable-select
+                  formControlName="accountId"
+                  icon="account_balance"
+                  [labelKey]="'ACCOUNTING.ENTRIES.FIELDS.ACCOUNT'"
+                  [options]="accountOptions()"
+                  [loading]="accountsQuery.isPending()"
+                />
+                <div class="grid grid-cols-2 gap-3">
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.DEBIT' | transloco }}</mat-label>
+                    <input matInput formControlName="debit" inputmode="numeric" type="number" />
+                  </mat-form-field>
+                  <mat-form-field appearance="outline">
+                    <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.CREDIT' | transloco }}</mat-label>
+                    <input matInput formControlName="credit" inputmode="numeric" type="number" />
+                  </mat-form-field>
+                </div>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.LINE_LABEL' | transloco }}</mat-label>
+                  <input matInput formControlName="label" />
+                </mat-form-field>
+                <div class="flex justify-end">
+                  <liass-button size="sm" tone="danger" variant="ghost" icon="delete" [disabled]="lines.length <= 2" (pressed)="removeLine($index)">
+                    {{ 'ACCOUNTING.ENTRIES.ACTIONS.REMOVE_LINE' | transloco }}
+                  </liass-button>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 rounded-app-card bg-slate-50 p-4 text-sm dark:bg-slate-950">
+          <div class="flex flex-wrap gap-4 text-slate-600 dark:text-slate-400">
+            <span>{{ 'ACCOUNTING.ENTRIES.TOTALS.DEBIT' | transloco }}: <strong>{{ totalDebit() }}</strong></span>
+            <span>{{ 'ACCOUNTING.ENTRIES.TOTALS.CREDIT' | transloco }}: <strong>{{ totalCredit() }}</strong></span>
+          </div>
+          <liass-status-chip [label]="(isBalanced() ? 'ACCOUNTING.ENTRIES.TOTALS.BALANCED' : 'ACCOUNTING.ENTRIES.TOTALS.UNBALANCED') | transloco" [tone]="isBalanced() ? 'success' : 'warning'" size="sm" />
+        </div>
+
+        @if (errorKey(); as key) {
+          <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+            {{ key | transloco }}
+          </div>
+        }
+        @if (successEntryId(); as entryId) {
+          <div class="rounded-app-card border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-200" role="status">
+            {{ 'ACCOUNTING.ENTRIES.SUCCESS' | transloco: { entryId } }}
+          </div>
+        }
+
+        <div class="flex flex-wrap justify-between gap-3">
+          <liass-button tone="neutral" variant="outline" icon="add" (pressed)="addLine()">
+            {{ 'ACCOUNTING.ENTRIES.ACTIONS.ADD_LINE' | transloco }}
+          </liass-button>
+          <liass-button buttonType="submit" tone="brand" variant="solid" icon="post_add" [disabled]="form.invalid || !isBalanced() || submitting()" [loading]="submitting()">
+            {{ 'ACCOUNTING.ENTRIES.ACTIONS.POST' | transloco }}
+          </liass-button>
+        </div>
+      </form>
+    </liass-card>
+  </div>
+</div>

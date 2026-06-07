@@ -254,13 +254,229 @@
         "TITLE": "Trial balance"
       }
     },
-    "PLACEHOLDER": {
-      "BODY": "This page establishes the accounting navigation target without changing backend behavior.",
-      "DEFAULT_SUBTITLE": "Accounting workspace",
-      "DEFAULT_TITLE": "Accounting",
-      "DESCRIPTION": "Accounting workflows will be connected here as their feature pages mature.",
-      "EYEBROW": "Accounting",
-      "TITLE": "Workspace placeholder"
+    "ERRORS": {
+      "CREATE_ACCOUNT_FAILED": "The account could not be created.",
+      "CREATE_JOURNAL_FAILED": "The journal could not be created.",
+      "LOAD_FAILED": "Accounting data could not be loaded.",
+      "POST_ENTRY_FAILED": "The entry could not be posted."
+    },
+    "CHART": {
+      "ACTIONS": {
+        "NEW_ACCOUNT": "New account"
+      },
+      "CLASSES": {
+        "1": "Class 1 - Long-term resources",
+        "2": "Class 2 - Fixed assets",
+        "3": "Class 3 - Inventory",
+        "4": "Class 4 - Third parties",
+        "5": "Class 5 - Treasury",
+        "6": "Class 6 - Expenses",
+        "7": "Class 7 - Revenue",
+        "8": "Class 8 - Commitments"
+      },
+      "CREATE": {
+        "EYEBROW": "SYSCOHADA chart",
+        "SUBTITLE": "Add an organization-specific account without exposing storage keys.",
+        "TITLE": "Create account"
+      },
+      "EMPTY": "No accounts match the filters.",
+      "EYEBROW": "Chart of accounts",
+      "FIELDS": {
+        "ACCOUNT_ID": "Account number",
+        "ACCOUNT_NAME": "Account label",
+        "CLASS": "Class",
+        "NATURE": "Nature",
+        "RECONCILIATION": "Allow reconciliation",
+        "STATEMENT_CODE": "Financial statement code",
+        "THIRD_PARTY": "Third-party account",
+        "USAGE": "Allowed direction"
+      },
+      "FILTERS": {
+        "ALL_CLASSES": "All classes",
+        "CLASS": "Class",
+        "SEARCH": "Search"
+      },
+      "FLAGS": {
+        "RECONCILIATION": "Reconcilable",
+        "THIRD_PARTY": "Third party"
+      },
+      "METRICS": {
+        "THIRD_PARTY": "Third-party accounts",
+        "TOTAL": "Accounts",
+        "VISIBLE": "Visible"
+      },
+      "NATURE": {
+        "BALANCE": "Balance sheet",
+        "INCOME": "Income"
+      },
+      "SUBTITLE": "Review and enrich the tenant-scoped chart of accounts.",
+      "TABLE": {
+        "CLASS": "Class",
+        "CODE": "Account",
+        "DESCRIPTION": "Accounts available in the active organization.",
+        "FLAGS": "Controls",
+        "NAME": "Label",
+        "NATURE": "Nature",
+        "TITLE": "Accounts"
+      },
+      "TITLE": "Chart of accounts",
+      "USAGE": {
+        "BOTH": "Debit and credit",
+        "CREDIT_ONLY": "Credit only",
+        "DEBIT_ONLY": "Debit only"
+      },
+      "VALIDATION": {
+        "ACCOUNT_ID": "Enter 1 to 8 digits."
+      }
+    },
+    "JOURNALS": {
+      "ACTIONS": {
+        "NEW_JOURNAL": "New journal",
+        "VIEW_ENTRIES": "View entries"
+      },
+      "CREATE": {
+        "EYEBROW": "Journal book",
+        "SUBTITLE": "Create a journal used to classify entries for a fiscal year.",
+        "TITLE": "Create journal"
+      },
+      "EMPTY": "No journals match the filters.",
+      "EYEBROW": "Journals",
+      "FIELDS": {
+        "CODE": "Code",
+        "NAME": "Label",
+        "TYPE": "Type",
+        "YEAR": "Fiscal year"
+      },
+      "FILTERS": {
+        "ALL_TYPES": "All types",
+        "SEARCH": "Search",
+        "TYPE": "Type"
+      },
+      "SUBTITLE": "Manage accounting journals and their related entries.",
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CODE": "Code",
+        "DESCRIPTION": "Journals available in the active organization.",
+        "NAME": "Label",
+        "TITLE": "Journals",
+        "TYPE": "Type",
+        "YEAR": "Fiscal year"
+      },
+      "TITLE": "Journals",
+      "TYPES": {
+        "BANK": "Bank",
+        "MISC": "Miscellaneous",
+        "PURCHASE": "Purchases",
+        "SALE": "Sales"
+      }
+    },
+    "ENTRIES": {
+      "ACTIONS": {
+        "ADD_LINE": "Add line",
+        "POST": "Post",
+        "REMOVE_LINE": "Remove"
+      },
+      "EMPTY": "No posted entries for these filters.",
+      "EYEBROW": "Journal entry",
+      "FIELDS": {
+        "ACCOUNT": "Account",
+        "CREDIT": "Credit",
+        "DATE": "Date",
+        "DEBIT": "Debit",
+        "JOURNAL": "Journal",
+        "LABEL": "Label",
+        "LINE_LABEL": "Line label",
+        "VOUCHER": "Voucher",
+        "YEAR": "Fiscal year"
+      },
+      "FILTERS": {
+        "ALL_JOURNALS": "All journals",
+        "ALL_MONTHS": "All months",
+        "JOURNAL": "Journal",
+        "MONTH": "Month",
+        "YEAR": "Fiscal year"
+      },
+      "LIST": {
+        "DESCRIPTION": "Paginated view of posted entries for the fiscal year.",
+        "TITLE": "Posted entries"
+      },
+      "POST": {
+        "DESCRIPTION": "Entries are blocked when debit and credit totals do not balance.",
+        "TITLE": "New entry"
+      },
+      "STATUS": {
+        "CANCELLED": "Cancelled",
+        "DRAFT": "Draft",
+        "POSTED": "Posted"
+      },
+      "SUBTITLE": "Post balanced entries and review the journal book.",
+      "SUCCESS": "Entry {entryId} posted.",
+      "TABLE": {
+        "CREDIT": "Credit",
+        "DATE": "Date",
+        "DEBIT": "Debit",
+        "JOURNAL": "Journal",
+        "LABEL": "Label",
+        "STATUS": "Status"
+      },
+      "TITLE": "Entries",
+      "TOTALS": {
+        "BALANCED": "Balanced",
+        "CREDIT": "Total credit",
+        "DEBIT": "Total debit",
+        "UNBALANCED": "Unbalanced"
+      },
+      "VALIDATION": {
+        "UNBALANCED": "Total debit must equal total credit."
+      }
+    },
+    "GENERAL_LEDGER": {
+      "EYEBROW": "General ledger",
+      "FILTERS": {
+        "ACCOUNT": "Account",
+        "DESCRIPTION": "Choose an account and fiscal year to read movements.",
+        "TITLE": "Scope",
+        "YEAR": "Fiscal year"
+      },
+      "METRICS": {
+        "FINAL": "Final balance",
+        "MOVEMENTS": "Movements",
+        "OPENING": "Opening balance"
+      },
+      "SUBTITLE": "Track movements by account with running balance.",
+      "TABLE": {
+        "BALANCE": "Balance",
+        "CREDIT": "Credit",
+        "DATE": "Date",
+        "DEBIT": "Debit",
+        "DESCRIPTION": "Movements from the general-ledger index.",
+        "JOURNAL": "Journal",
+        "LABEL": "Label",
+        "TITLE": "Movements"
+      },
+      "TITLE": "General ledger"
+    },
+    "TRIAL_BALANCE": {
+      "EYEBROW": "Trial balance",
+      "FILTERS": {
+        "DESCRIPTION": "Select the fiscal year to review.",
+        "TITLE": "Scope",
+        "YEAR": "Fiscal year"
+      },
+      "SUBTITLE": "Review opening balances, movements, and final balances.",
+      "TABLE": {
+        "ACCOUNT": "Account",
+        "DESCRIPTION": "Six-column trial balance based on aggregated balances.",
+        "FINAL_CREDIT": "Final credit",
+        "FINAL_DEBIT": "Final debit",
+        "MOVEMENT_CREDIT": "Movement credit",
+        "MOVEMENT_DEBIT": "Movement debit",
+        "OPENING_CREDIT": "Opening credit",
+        "OPENING_DEBIT": "Opening debit",
+        "TITLE": "Trial balance",
+        "TOTALS": "Totals"
+      },
+      "TITLE": "Trial balance"
     }
   },
   "IDENTITY": {

@@ -254,13 +254,229 @@
         "TITLE": "Balance"
       }
     },
-    "PLACEHOLDER": {
-      "BODY": "Cette page pose la cible de navigation comptable sans changer le comportement backend.",
-      "DEFAULT_SUBTITLE": "Espace comptable",
-      "DEFAULT_TITLE": "Comptabilité",
-      "DESCRIPTION": "Les workflows comptables seront connectés ici lorsque leurs pages fonctionnelles mûriront.",
-      "EYEBROW": "Comptabilité",
-      "TITLE": "Emplacement réservé"
+    "ERRORS": {
+      "CREATE_ACCOUNT_FAILED": "Le compte n’a pas pu être créé.",
+      "CREATE_JOURNAL_FAILED": "Le journal n’a pas pu être créé.",
+      "LOAD_FAILED": "Les données comptables n’ont pas pu être chargées.",
+      "POST_ENTRY_FAILED": "L’écriture n’a pas pu être comptabilisée."
+    },
+    "CHART": {
+      "ACTIONS": {
+        "NEW_ACCOUNT": "Nouveau compte"
+      },
+      "CLASSES": {
+        "1": "Classe 1 - Ressources durables",
+        "2": "Classe 2 - Immobilisations",
+        "3": "Classe 3 - Stocks",
+        "4": "Classe 4 - Tiers",
+        "5": "Classe 5 - Trésorerie",
+        "6": "Classe 6 - Charges",
+        "7": "Classe 7 - Produits",
+        "8": "Classe 8 - Engagements"
+      },
+      "CREATE": {
+        "EYEBROW": "Plan SYSCOHADA",
+        "SUBTITLE": "Ajoutez un compte propre à l’organisation sans exposer les clés de stockage.",
+        "TITLE": "Créer un compte"
+      },
+      "EMPTY": "Aucun compte ne correspond aux filtres.",
+      "EYEBROW": "Plan comptable",
+      "FIELDS": {
+        "ACCOUNT_ID": "Numéro de compte",
+        "ACCOUNT_NAME": "Libellé du compte",
+        "CLASS": "Classe",
+        "NATURE": "Nature",
+        "RECONCILIATION": "Autoriser le lettrage",
+        "STATEMENT_CODE": "Code état financier",
+        "THIRD_PARTY": "Compte auxiliaire de tiers",
+        "USAGE": "Sens autorisé"
+      },
+      "FILTERS": {
+        "ALL_CLASSES": "Toutes les classes",
+        "CLASS": "Classe",
+        "SEARCH": "Rechercher"
+      },
+      "FLAGS": {
+        "RECONCILIATION": "Lettrable",
+        "THIRD_PARTY": "Tiers"
+      },
+      "METRICS": {
+        "THIRD_PARTY": "Comptes tiers",
+        "TOTAL": "Comptes",
+        "VISIBLE": "Visibles"
+      },
+      "NATURE": {
+        "BALANCE": "Bilan",
+        "INCOME": "Gestion"
+      },
+      "SUBTITLE": "Consultez et enrichissez le plan de comptes tenant-scopé.",
+      "TABLE": {
+        "CLASS": "Classe",
+        "CODE": "Compte",
+        "DESCRIPTION": "Liste des comptes de l’organisation active.",
+        "FLAGS": "Contrôles",
+        "NAME": "Libellé",
+        "NATURE": "Nature",
+        "TITLE": "Comptes"
+      },
+      "TITLE": "Plan comptable",
+      "USAGE": {
+        "BOTH": "Débit et crédit",
+        "CREDIT_ONLY": "Crédit seul",
+        "DEBIT_ONLY": "Débit seul"
+      },
+      "VALIDATION": {
+        "ACCOUNT_ID": "Saisissez 1 à 8 chiffres."
+      }
+    },
+    "JOURNALS": {
+      "ACTIONS": {
+        "NEW_JOURNAL": "Nouveau journal",
+        "VIEW_ENTRIES": "Voir écritures"
+      },
+      "CREATE": {
+        "EYEBROW": "Livre-journal",
+        "SUBTITLE": "Créez un journal utilisé pour classer les écritures de l’exercice.",
+        "TITLE": "Créer un journal"
+      },
+      "EMPTY": "Aucun journal ne correspond aux filtres.",
+      "EYEBROW": "Journaux",
+      "FIELDS": {
+        "CODE": "Code",
+        "NAME": "Libellé",
+        "TYPE": "Type",
+        "YEAR": "Exercice"
+      },
+      "FILTERS": {
+        "ALL_TYPES": "Tous les types",
+        "SEARCH": "Rechercher",
+        "TYPE": "Type"
+      },
+      "SUBTITLE": "Pilotez les journaux comptables et leurs écritures associées.",
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CODE": "Code",
+        "DESCRIPTION": "Journaux disponibles pour l’organisation active.",
+        "NAME": "Libellé",
+        "TITLE": "Journaux",
+        "TYPE": "Type",
+        "YEAR": "Exercice"
+      },
+      "TITLE": "Journaux",
+      "TYPES": {
+        "BANK": "Banque",
+        "MISC": "Opérations diverses",
+        "PURCHASE": "Achats",
+        "SALE": "Ventes"
+      }
+    },
+    "ENTRIES": {
+      "ACTIONS": {
+        "ADD_LINE": "Ajouter une ligne",
+        "POST": "Comptabiliser",
+        "REMOVE_LINE": "Retirer"
+      },
+      "EMPTY": "Aucune écriture comptabilisée pour ces filtres.",
+      "EYEBROW": "Saisie comptable",
+      "FIELDS": {
+        "ACCOUNT": "Compte",
+        "CREDIT": "Crédit",
+        "DATE": "Date",
+        "DEBIT": "Débit",
+        "JOURNAL": "Journal",
+        "LABEL": "Libellé",
+        "LINE_LABEL": "Libellé ligne",
+        "VOUCHER": "Pièce",
+        "YEAR": "Exercice"
+      },
+      "FILTERS": {
+        "ALL_JOURNALS": "Tous les journaux",
+        "ALL_MONTHS": "Tous les mois",
+        "JOURNAL": "Journal",
+        "MONTH": "Mois",
+        "YEAR": "Exercice"
+      },
+      "LIST": {
+        "DESCRIPTION": "Vue paginée des écritures postées dans l’exercice.",
+        "TITLE": "Écritures comptabilisées"
+      },
+      "POST": {
+        "DESCRIPTION": "Les écritures sont refusées si les débits et crédits ne sont pas équilibrés.",
+        "TITLE": "Nouvelle écriture"
+      },
+      "STATUS": {
+        "CANCELLED": "Annulée",
+        "DRAFT": "Brouillon",
+        "POSTED": "Comptabilisée"
+      },
+      "SUBTITLE": "Saisissez des écritures équilibrées et consultez le livre-journal.",
+      "SUCCESS": "Écriture {entryId} comptabilisée.",
+      "TABLE": {
+        "CREDIT": "Crédit",
+        "DATE": "Date",
+        "DEBIT": "Débit",
+        "JOURNAL": "Journal",
+        "LABEL": "Libellé",
+        "STATUS": "Statut"
+      },
+      "TITLE": "Écritures",
+      "TOTALS": {
+        "BALANCED": "Équilibrée",
+        "CREDIT": "Total crédit",
+        "DEBIT": "Total débit",
+        "UNBALANCED": "Non équilibrée"
+      },
+      "VALIDATION": {
+        "UNBALANCED": "Le total débit doit être égal au total crédit."
+      }
+    },
+    "GENERAL_LEDGER": {
+      "EYEBROW": "Grand livre",
+      "FILTERS": {
+        "ACCOUNT": "Compte",
+        "DESCRIPTION": "Choisissez un compte et un exercice pour lire les mouvements.",
+        "TITLE": "Périmètre",
+        "YEAR": "Exercice"
+      },
+      "METRICS": {
+        "FINAL": "Solde final",
+        "MOVEMENTS": "Mouvements",
+        "OPENING": "Solde d’ouverture"
+      },
+      "SUBTITLE": "Suivez les mouvements par compte avec solde progressif.",
+      "TABLE": {
+        "BALANCE": "Solde",
+        "CREDIT": "Crédit",
+        "DATE": "Date",
+        "DEBIT": "Débit",
+        "DESCRIPTION": "Mouvements issus de l’index grand livre.",
+        "JOURNAL": "Journal",
+        "LABEL": "Libellé",
+        "TITLE": "Mouvements"
+      },
+      "TITLE": "Grand livre"
+    },
+    "TRIAL_BALANCE": {
+      "EYEBROW": "Balance",
+      "FILTERS": {
+        "DESCRIPTION": "Sélectionnez l’exercice à contrôler.",
+        "TITLE": "Périmètre",
+        "YEAR": "Exercice"
+      },
+      "SUBTITLE": "Contrôlez les soldes d’ouverture, mouvements et soldes finaux.",
+      "TABLE": {
+        "ACCOUNT": "Compte",
+        "DESCRIPTION": "Balance à six colonnes basée sur les soldes agrégés.",
+        "FINAL_CREDIT": "Solde crédit",
+        "FINAL_DEBIT": "Solde débit",
+        "MOVEMENT_CREDIT": "Mouv. crédit",
+        "MOVEMENT_DEBIT": "Mouv. débit",
+        "OPENING_CREDIT": "Ouv. crédit",
+        "OPENING_DEBIT": "Ouv. débit",
+        "TITLE": "Balance",
+        "TOTALS": "Totaux"
+      },
+      "TITLE": "Balance"
     }
   },
   "IDENTITY": {

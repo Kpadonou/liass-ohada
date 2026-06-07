@@ -1,6 +1,8 @@
-import { Account, AccountSchema } from "@liass-ohada/shared/accounting";
+import { Account, AccountDto, AccountDtoSchema, AccountSchema } from "@liass-ohada/shared/accounting";
 import {
   CreateEntryRequest,
+  EntrySummaryDto,
+  EntrySummaryDtoSchema,
   EntryLineSchema,
   EntrySchema,
 } from "@liass-ohada/shared/accounting";
@@ -27,6 +29,31 @@ import { BudgetService } from "./budget-service";
 export interface AccountEntriesOptions {
   limit?: number;
   cursor?: string;
+}
+
+export interface ListAccountsOptions {
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ListAccountsResult {
+  accounts: AccountDto[];
+  nextCursor?: string;
+  hasMore: boolean;
+}
+
+export interface ListEntriesOptions {
+  year: string;
+  journalCode?: string;
+  month?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface ListEntriesResult {
+  entries: EntrySummaryDto[];
+  nextCursor?: string;
+  hasMore: boolean;
 }
 
 export interface AccountEntry {
@@ -358,6 +385,56 @@ export class LedgerService {
     }
   }
 
+  static toAccountDto(account: Account): AccountDto {
+    return AccountDtoSchema.parse({
+      orgId: account.orgId,
+      accountId: account.accountId,
+      accountName: account.accountName,
+      accountNature: account.accountNature,
+      accountUsage: account.accountUsage,
+      isThirdPartyAccount: account.isThirdPartyAccount,
+      classCode: account.classCode,
+      financialStatementCode: account.financialStatementCode,
+      allowReconciliation: account.allowReconciliation,
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
+    });
+  }
+
+  static async listAccounts(
+    orgId: string,
+    options?: ListAccountsOptions,
+  ): Promise<ListAccountsResult> {
+    const { limit = 100, cursor } = options || {};
+    const exclusiveStartKey = LedgerService.decodeCursor(cursor);
+
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: marshall({
+          ":pk": KeyFactory.orgKey(orgId),
+          ":sk": KeyFactory.accountPrefix(),
+        }),
+        Limit: limit,
+        ExclusiveStartKey: exclusiveStartKey,
+        ScanIndexForward: true,
+      }),
+    );
+
+    const accounts = (result.Items || [])
+      .map((item) => AccountSchema.parse(unmarshall(item)))
+      .map((account) => LedgerService.toAccountDto(account));
+
+    const nextCursor = LedgerService.encodeCursor(result.LastEvaluatedKey);
+
+    return {
+      accounts,
+      nextCursor,
+      hasMore: !!nextCursor,
+    };
+  }
+
   /**
    * Retrieves an account by ID.
    * Throws AppError(404) if not found.
@@ -378,6 +455,65 @@ export class LedgerService {
     }
 
     return AccountSchema.parse(unmarshall(result.Item));
+  }
+
+  static async listEntries(
+    orgId: string,
+    options: ListEntriesOptions,
+  ): Promise<ListEntriesResult> {
+    const { year, journalCode, month, limit = 50, cursor } = options;
+    const exclusiveStartKey = LedgerService.decodeCursor(cursor);
+    let keyConditionExpression = "GSI5PK = :pk";
+    const expressionAttributeValues: Record<string, string> = {
+      ":pk": KeyFactory.gsi5JournalPK(orgId, year),
+    };
+
+    if (journalCode) {
+      let prefix = `JNL#${journalCode.toUpperCase()}`;
+      if (month) {
+        prefix += `#DT#${year}-${month}`;
+      }
+
+      keyConditionExpression += " AND begins_with(GSI5SK, :sk)";
+      expressionAttributeValues[":sk"] = prefix;
+    }
+
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        IndexName: config.GSI5,
+        KeyConditionExpression: keyConditionExpression,
+        ExpressionAttributeValues: marshall(expressionAttributeValues),
+        Limit: limit,
+        ExclusiveStartKey: exclusiveStartKey,
+        ScanIndexForward: true,
+      }),
+    );
+
+    const entries = (result.Items || []).map((item) => {
+      const data = unmarshall(item);
+      return EntrySummaryDtoSchema.parse({
+        entryId: data.entryId,
+        year: data.year,
+        entryDate: data.entryDate,
+        journalCode: data.journalCode,
+        voucherNumber: data.voucherNumber,
+        label: data.label,
+        totalDebit: data.totalDebit || 0,
+        totalCredit: data.totalCredit || 0,
+        status: data.status,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+      });
+    });
+
+    const nextCursor = LedgerService.encodeCursor(result.LastEvaluatedKey);
+
+    return {
+      entries,
+      nextCursor,
+      hasMore: !!nextCursor,
+    };
   }
 
   /**
@@ -593,6 +729,22 @@ export class LedgerService {
 
     const lock = unmarshall(result.Item);
     return lock.status === "LOCKED";
+  }
+
+  private static decodeCursor(cursor?: string): Record<string, any> | undefined {
+    if (!cursor) {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(Buffer.from(cursor, "base64").toString());
+    } catch {
+      throw new AppError(400, "ERROR_INVALID_CURSOR");
+    }
+  }
+
+  private static encodeCursor(key?: Record<string, any>): string | undefined {
+    return key ? Buffer.from(JSON.stringify(key)).toString("base64") : undefined;
   }
 
   private static buildEntryLineItem(params: {

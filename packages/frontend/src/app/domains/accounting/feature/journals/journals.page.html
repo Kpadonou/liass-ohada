@@ -1,0 +1,90 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.JOURNALS.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.JOURNALS.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.JOURNALS.SUBTITLE' | transloco"
+    [actionLabel]="'ACCOUNTING.JOURNALS.ACTIONS.NEW_JOURNAL' | transloco"
+    actionIcon="add"
+    (actionTriggered)="openCreateJournal()"
+  />
+
+  <liass-card [title]="'ACCOUNTING.JOURNALS.TABLE.TITLE' | transloco" [description]="'ACCOUNTING.JOURNALS.TABLE.DESCRIPTION' | transloco">
+    <div class="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.JOURNALS.FILTERS.SEARCH' | transloco }}</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput type="search" [value]="searchQuery()" (input)="updateSearch($event)" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.JOURNALS.FILTERS.TYPE' | transloco }}</mat-label>
+        <mat-select [value]="typeFilter()" (valueChange)="typeFilter.set($event)">
+          <mat-option value="ALL">{{ 'ACCOUNTING.JOURNALS.FILTERS.ALL_TYPES' | transloco }}</mat-option>
+          <mat-option value="PURCHASE">{{ 'ACCOUNTING.JOURNALS.TYPES.PURCHASE' | transloco }}</mat-option>
+          <mat-option value="SALE">{{ 'ACCOUNTING.JOURNALS.TYPES.SALE' | transloco }}</mat-option>
+          <mat-option value="BANK">{{ 'ACCOUNTING.JOURNALS.TYPES.BANK' | transloco }}</mat-option>
+          <mat-option value="MISC">{{ 'ACCOUNTING.JOURNALS.TYPES.MISC' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (journalsQuery.isPending()) {
+      <div class="space-y-3">
+        @for (_ of [0, 1, 2]; track $index) {
+          <liass-skeleton variant="block" />
+        }
+      </div>
+    } @else if (journalsQuery.isError()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ 'ACCOUNTING.ERRORS.LOAD_FAILED' | transloco }}
+      </div>
+    } @else if (filteredJournals().length === 0) {
+      <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.JOURNALS.EMPTY' | transloco }}</p>
+      </div>
+    } @else {
+      <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 md:block">
+        <table class="w-full min-w-[760px] border-collapse text-left">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.CODE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.NAME' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.TYPE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.YEAR' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.JOURNALS.TABLE.ACTIONS' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (journal of filteredJournals(); track journal.journalCode) {
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ journal.journalCode }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ journal.journalName }}</td>
+                <td class="px-4 py-4"><liass-status-chip [label]="'ACCOUNTING.JOURNALS.TYPES.' + journal.type | transloco" tone="info" size="sm" /></td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ journal.year }}</td>
+                <td class="px-4 py-4 text-right">
+                  <liass-button size="sm" tone="brand" variant="ghost" icon="receipt_long" (pressed)="viewEntries(journal)">
+                    {{ 'ACCOUNTING.JOURNALS.ACTIONS.VIEW_ENTRIES' | transloco }}
+                  </liass-button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid gap-3 md:hidden">
+        @for (journal of filteredJournals(); track journal.journalCode) {
+          <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-semibold text-slate-950 dark:text-white">{{ journal.journalCode }} - {{ journal.journalName }}</p>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ journal.year }}</p>
+              </div>
+              <liass-status-chip [label]="'ACCOUNTING.JOURNALS.TYPES.' + journal.type | transloco" tone="info" size="sm" />
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </liass-card>
+</div>

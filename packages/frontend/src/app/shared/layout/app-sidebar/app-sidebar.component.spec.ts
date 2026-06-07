@@ -1,12 +1,30 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
+import { vi } from 'vitest';
 
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
 import { UiStore } from '../../../core/state/ui.store';
 import { AppSidebarComponent } from './app-sidebar.component';
+
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 const translations = {
   fr: {

@@ -1,0 +1,103 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.CHART.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.CHART.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.CHART.SUBTITLE' | transloco"
+    [actionLabel]="'ACCOUNTING.CHART.ACTIONS.NEW_ACCOUNT' | transloco"
+    actionIcon="add"
+    (actionTriggered)="openCreateAccount()"
+  />
+
+  <div class="grid gap-4 md:grid-cols-3">
+    <liass-card padding="sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.CHART.METRICS.TOTAL' | transloco }}</p>
+      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ accounts().length }}</p>
+    </liass-card>
+    <liass-card padding="sm">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.CHART.METRICS.THIRD_PARTY' | transloco }}</p>
+      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ thirdPartyAccountsCount() }}</p>
+    </liass-card>
+    <liass-card padding="sm" variant="accent">
+      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">{{ 'ACCOUNTING.CHART.METRICS.VISIBLE' | transloco }}</p>
+      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ filteredAccounts().length }}</p>
+    </liass-card>
+  </div>
+
+  <liass-card [title]="'ACCOUNTING.CHART.TABLE.TITLE' | transloco" [description]="'ACCOUNTING.CHART.TABLE.DESCRIPTION' | transloco">
+    <div class="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.CHART.FILTERS.SEARCH' | transloco }}</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput type="search" [value]="searchQuery()" (input)="updateSearch($event)" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.CHART.FILTERS.CLASS' | transloco }}</mat-label>
+        <mat-select [value]="classFilter()" (valueChange)="classFilter.set($event)">
+          <mat-option value="ALL">{{ 'ACCOUNTING.CHART.FILTERS.ALL_CLASSES' | transloco }}</mat-option>
+          @for (classCode of classCodes; track classCode) {
+            <mat-option [value]="classCode">{{ 'ACCOUNTING.CHART.CLASSES.' + classCode | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (accountsQuery.isPending()) {
+      <div class="space-y-3">
+        @for (_ of [0, 1, 2, 3]; track $index) {
+          <liass-skeleton variant="block" />
+        }
+      </div>
+    } @else if (accountsQuery.isError()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ 'ACCOUNTING.ERRORS.LOAD_FAILED' | transloco }}
+      </div>
+    } @else if (filteredAccounts().length === 0) {
+      <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.CHART.EMPTY' | transloco }}</p>
+      </div>
+    } @else {
+      <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 md:block">
+        <table class="w-full min-w-[860px] border-collapse text-left">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.CHART.TABLE.CODE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.CHART.TABLE.NAME' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.CHART.TABLE.CLASS' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.CHART.TABLE.NATURE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.CHART.TABLE.FLAGS' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (account of filteredAccounts(); track account.accountId) {
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ account.accountId }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ account.accountName }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ 'ACCOUNTING.CHART.CLASSES.' + account.classCode | transloco }}</td>
+                <td class="px-4 py-4"><liass-status-chip [label]="'ACCOUNTING.CHART.NATURE.' + account.accountNature | transloco" tone="info" size="sm" /></td>
+                <td class="px-4 py-4">
+                  <div class="flex flex-wrap gap-2">
+                    @if (account.isThirdPartyAccount) {
+                      <liass-status-chip [label]="'ACCOUNTING.CHART.FLAGS.THIRD_PARTY' | transloco" tone="warning" size="sm" />
+                    }
+                    @if (account.allowReconciliation) {
+                      <liass-status-chip [label]="'ACCOUNTING.CHART.FLAGS.RECONCILIATION' | transloco" tone="success" size="sm" />
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid gap-3 md:hidden">
+        @for (account of filteredAccounts(); track account.accountId) {
+          <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <p class="font-semibold text-slate-950 dark:text-white">{{ account.accountId }} - {{ account.accountName }}</p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.CHART.CLASSES.' + account.classCode | transloco }}</p>
+          </article>
+        }
+      </div>
+    }
+  </liass-card>
+</div>

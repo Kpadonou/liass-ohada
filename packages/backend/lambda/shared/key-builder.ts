@@ -57,6 +57,8 @@ export const KeyFactory = {
   periodLockSK: (month: string | number) =>
     `LOCK#PERIOD#${month.toString().padStart(2, "0")}`,
 
+  accountPrefix: () => "ACC#",
+
   accountSK: (accountId: string) => `ACC#${accountId}`,
 
   entrySK: (entryId: string) => `E#${entryId}`,

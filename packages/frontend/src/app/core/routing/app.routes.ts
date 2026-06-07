@@ -103,8 +103,8 @@ export const routes: Routes = [
       {
         path: 'accounting/general-ledger',
         loadComponent: () =>
-          import('../../domains/accounting/feature/accounting-placeholder.page').then(
-            (module) => module.AccountingPlaceholderPage
+          import('../../domains/accounting/feature/general-ledger/general-ledger.page').then(
+            (module) => module.GeneralLedgerPage
           ),
         data: {
           subtitleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.SUBTITLE',
@@ -114,8 +114,8 @@ export const routes: Routes = [
       {
         path: 'accounting/journals',
         loadComponent: () =>
-          import('../../domains/accounting/feature/accounting-placeholder.page').then(
-            (module) => module.AccountingPlaceholderPage
+          import('../../domains/accounting/feature/journals/journals.page').then(
+            (module) => module.JournalsPage
           ),
         data: {
           subtitleKey: 'ACCOUNTING.PAGES.JOURNALS.SUBTITLE',
@@ -125,8 +125,8 @@ export const routes: Routes = [
       {
         path: 'accounting/entries',
         loadComponent: () =>
-          import('../../domains/accounting/feature/accounting-placeholder.page').then(
-            (module) => module.AccountingPlaceholderPage
+          import('../../domains/accounting/feature/entries/entries.page').then(
+            (module) => module.EntriesPage
           ),
         data: {
           subtitleKey: 'ACCOUNTING.PAGES.ENTRIES.SUBTITLE',
@@ -136,8 +136,8 @@ export const routes: Routes = [
       {
         path: 'accounting/trial-balance',
         loadComponent: () =>
-          import('../../domains/accounting/feature/accounting-placeholder.page').then(
-            (module) => module.AccountingPlaceholderPage
+          import('../../domains/accounting/feature/trial-balance/trial-balance.page').then(
+            (module) => module.TrialBalancePage
           ),
         data: {
           subtitleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.SUBTITLE',
@@ -147,8 +147,8 @@ export const routes: Routes = [
       {
         path: 'accounting/chart-of-accounts',
         loadComponent: () =>
-          import('../../domains/accounting/feature/accounting-placeholder.page').then(
-            (module) => module.AccountingPlaceholderPage
+          import('../../domains/accounting/feature/chart-of-accounts/chart-of-accounts.page').then(
+            (module) => module.ChartOfAccountsPage
           ),
         data: {
           subtitleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.SUBTITLE',

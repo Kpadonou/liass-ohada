@@ -35,11 +35,7 @@ export const handler = createHandler(
 
     return {
       message: i18n.getMessage("SUCCESS_ACCOUNT_CREATED"),
-      account: {
-        accountId: validAccount.accountId,
-        accountName: validAccount.accountName,
-        orgId: validAccount.orgId,
-      },
+      account: LedgerService.toAccountDto(validAccount),
     };
   },
 );

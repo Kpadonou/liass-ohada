@@ -1,0 +1,68 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.TRIAL_BALANCE.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.TRIAL_BALANCE.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.TRIAL_BALANCE.SUBTITLE' | transloco"
+  />
+
+  <liass-card [title]="'ACCOUNTING.TRIAL_BALANCE.FILTERS.TITLE' | transloco" [description]="'ACCOUNTING.TRIAL_BALANCE.FILTERS.DESCRIPTION' | transloco">
+    <mat-form-field appearance="outline" class="w-full max-w-40">
+      <mat-label>{{ 'ACCOUNTING.TRIAL_BALANCE.FILTERS.YEAR' | transloco }}</mat-label>
+      <input matInput [value]="selectedYear()" inputmode="numeric" (input)="updateYear($event)" />
+    </mat-form-field>
+  </liass-card>
+
+  <liass-card [title]="'ACCOUNTING.TRIAL_BALANCE.TABLE.TITLE' | transloco" [description]="'ACCOUNTING.TRIAL_BALANCE.TABLE.DESCRIPTION' | transloco">
+    @if (trialBalanceQuery.isPending()) {
+      <div class="space-y-3">
+        @for (_ of [0, 1, 2, 3]; track $index) {
+          <liass-skeleton variant="block" />
+        }
+      </div>
+    } @else if (trialBalanceQuery.isError()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ 'ACCOUNTING.ERRORS.LOAD_FAILED' | transloco }}
+      </div>
+    } @else if (trialBalance(); as report) {
+      <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+        <table class="w-full min-w-[980px] border-collapse text-left">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.ACCOUNT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.OPENING_DEBIT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.OPENING_CREDIT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.MOVEMENT_DEBIT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.MOVEMENT_CREDIT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.FINAL_DEBIT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.FINAL_CREDIT' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (row of report.rows; track row.accountId) {
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ row.accountId }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ row.openingDebit }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ row.openingCredit }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ row.movementDebit }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ row.movementCredit }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ row.finalDebit }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ row.finalCredit }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot class="border-t border-slate-200 bg-slate-50 font-semibold dark:border-slate-800 dark:bg-slate-950">
+            <tr>
+              <td class="px-4 py-4">{{ 'ACCOUNTING.TRIAL_BALANCE.TABLE.TOTALS' | transloco }}</td>
+              <td class="px-4 py-4 text-right">{{ report.totals.openingDebit }}</td>
+              <td class="px-4 py-4 text-right">{{ report.totals.openingCredit }}</td>
+              <td class="px-4 py-4 text-right">{{ report.totals.movementDebit }}</td>
+              <td class="px-4 py-4 text-right">{{ report.totals.movementCredit }}</td>
+              <td class="px-4 py-4 text-right">{{ report.totals.finalDebit }}</td>
+              <td class="px-4 py-4 text-right">{{ report.totals.finalCredit }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    }
+  </liass-card>
+</div>

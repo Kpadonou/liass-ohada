@@ -1,0 +1,61 @@
+<header class="px-6 pt-6">
+  <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+    {{ 'ACCOUNTING.JOURNALS.CREATE.EYEBROW' | transloco }}
+  </p>
+  <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+    {{ 'ACCOUNTING.JOURNALS.CREATE.TITLE' | transloco }}
+  </h2>
+  <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+    {{ 'ACCOUNTING.JOURNALS.CREATE.SUBTITLE' | transloco }}
+  </p>
+</header>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="px-6 pb-0 pt-5">
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.JOURNALS.FIELDS.CODE' | transloco }}</mat-label>
+        <mat-icon matPrefix>short_text</mat-icon>
+        <input matInput formControlName="journalCode" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.JOURNALS.FIELDS.YEAR' | transloco }}</mat-label>
+        <mat-icon matPrefix>calendar_month</mat-icon>
+        <input matInput formControlName="year" inputmode="numeric" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>{{ 'ACCOUNTING.JOURNALS.FIELDS.NAME' | transloco }}</mat-label>
+        <mat-icon matPrefix>menu_book</mat-icon>
+        <input matInput formControlName="journalName" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>{{ 'ACCOUNTING.JOURNALS.FIELDS.TYPE' | transloco }}</mat-label>
+        <mat-select formControlName="type">
+          <mat-option value="PURCHASE">{{ 'ACCOUNTING.JOURNALS.TYPES.PURCHASE' | transloco }}</mat-option>
+          <mat-option value="SALE">{{ 'ACCOUNTING.JOURNALS.TYPES.SALE' | transloco }}</mat-option>
+          <mat-option value="BANK">{{ 'ACCOUNTING.JOURNALS.TYPES.BANK' | transloco }}</mat-option>
+          <mat-option value="MISC">{{ 'ACCOUNTING.JOURNALS.TYPES.MISC' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    @if (errorKey(); as key) {
+      <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+        <mat-icon class="mt-0.5">error</mat-icon>
+        <p>{{ key | transloco }}</p>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+    </liass-button>
+    <liass-button buttonType="submit" tone="brand" variant="solid" icon="add" [disabled]="form.invalid || submitting()" [loading]="submitting()">
+      {{ 'COMMON.ACTIONS.SAVE' | transloco }}
+    </liass-button>
+  </mat-dialog-actions>
+</form>

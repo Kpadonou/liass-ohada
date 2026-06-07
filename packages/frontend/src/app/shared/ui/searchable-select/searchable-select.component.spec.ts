@@ -91,6 +91,17 @@ describe('LiassSearchableSelectComponent', () => {
     expect(input.value).toBe('Benin');
   });
 
+  it('supports direct labels for dynamic domain options', () => {
+    host.options.splice(0, host.options.length, {
+      value: '41100000',
+      label: '41100000 - Clients'
+    });
+    host.control.setValue('41100000');
+    fixture.detectChanges();
+
+    expect(inputElement().value).toBe('41100000 - Clients');
+  });
+
   it('filters options case-insensitively and accent-insensitively', async () => {
     const input = inputElement();
     input.focus();

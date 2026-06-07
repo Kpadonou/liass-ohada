@@ -90,17 +90,17 @@ describe('routes', () => {
     expect(routes.find((route) => route.path === 'cabinet/dossiers/new')).toBeUndefined();
   });
 
-  it('registers the accounting general-ledger placeholder route', async () => {
+  it('registers the accounting general-ledger route', async () => {
     const shell = shellRoute();
     const generalLedgerRoute = shell?.children?.find(
       (route) => route.path === 'accounting/general-ledger'
     );
     const component = await generalLedgerRoute?.loadComponent?.();
-    const { AccountingPlaceholderPage } = await import(
-      '../../domains/accounting/feature/accounting-placeholder.page'
+    const { GeneralLedgerPage } = await import(
+      '../../domains/accounting/feature/general-ledger/general-ledger.page'
     );
 
-    expect(component).toBe(AccountingPlaceholderPage);
+    expect(component).toBe(GeneralLedgerPage);
     expect(generalLedgerRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE');
   });
 });

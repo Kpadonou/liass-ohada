@@ -1,0 +1,89 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.GENERAL_LEDGER.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.GENERAL_LEDGER.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.GENERAL_LEDGER.SUBTITLE' | transloco"
+  />
+
+  <liass-card [title]="'ACCOUNTING.GENERAL_LEDGER.FILTERS.TITLE' | transloco" [description]="'ACCOUNTING.GENERAL_LEDGER.FILTERS.DESCRIPTION' | transloco">
+    <div class="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)]">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.GENERAL_LEDGER.FILTERS.YEAR' | transloco }}</mat-label>
+        <input matInput [value]="selectedYear()" inputmode="numeric" (input)="updateYear($event)" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.GENERAL_LEDGER.FILTERS.ACCOUNT' | transloco }}</mat-label>
+        <mat-select [value]="selectedAccountId()" (valueChange)="selectedAccountId.set($event)">
+          @for (account of accounts(); track account.accountId) {
+            <mat-option [value]="account.accountId">{{ account.accountId }} - {{ account.accountName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </liass-card>
+
+  <liass-card [title]="'ACCOUNTING.GENERAL_LEDGER.TABLE.TITLE' | transloco" [description]="'ACCOUNTING.GENERAL_LEDGER.TABLE.DESCRIPTION' | transloco">
+    @if (ledgerQuery.isPending()) {
+      <div class="space-y-3">
+        @for (_ of [0, 1, 2]; track $index) {
+          <liass-skeleton variant="block" />
+        }
+      </div>
+    } @else if (ledgerQuery.isError()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ 'ACCOUNTING.ERRORS.LOAD_FAILED' | transloco }}
+      </div>
+    } @else if (ledger(); as report) {
+      <div class="mb-4 grid gap-4 md:grid-cols-3">
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.GENERAL_LEDGER.METRICS.OPENING' | transloco }}</p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ report.openingBalance.runningBalance }}</p>
+        </div>
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.GENERAL_LEDGER.METRICS.MOVEMENTS' | transloco }}</p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ report.movements.length }}</p>
+        </div>
+        <div class="rounded-app-card bg-brand-50 p-4 dark:bg-brand-950/25">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">{{ 'ACCOUNTING.GENERAL_LEDGER.METRICS.FINAL' | transloco }}</p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ report.finalBalance }}</p>
+        </div>
+      </div>
+
+      <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 md:block">
+        <table class="w-full min-w-[820px] border-collapse text-left">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.GENERAL_LEDGER.TABLE.DATE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.GENERAL_LEDGER.TABLE.JOURNAL' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.GENERAL_LEDGER.TABLE.LABEL' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.GENERAL_LEDGER.TABLE.DEBIT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.GENERAL_LEDGER.TABLE.CREDIT' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.GENERAL_LEDGER.TABLE.BALANCE' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            <tr class="bg-brand-50/60 dark:bg-brand-950/20">
+              <td class="px-4 py-4 text-sm">{{ report.openingBalance.date }}</td>
+              <td class="px-4 py-4 text-sm">{{ report.openingBalance.journal }}</td>
+              <td class="px-4 py-4 text-sm">{{ report.openingBalance.label }}</td>
+              <td class="px-4 py-4 text-right text-sm">{{ report.openingBalance.debit }}</td>
+              <td class="px-4 py-4 text-right text-sm">{{ report.openingBalance.credit }}</td>
+              <td class="px-4 py-4 text-right text-sm font-semibold">{{ report.openingBalance.runningBalance }}</td>
+            </tr>
+            @for (movement of report.movements; track movement.reference + movement.date) {
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ movement.date }}</td>
+                <td class="px-4 py-4 text-sm font-semibold text-slate-950 dark:text-white">{{ movement.journal }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ movement.label }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ movement.debit }}</td>
+                <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ movement.credit }}</td>
+                <td class="px-4 py-4 text-right text-sm font-semibold text-slate-950 dark:text-white">{{ movement.runningBalance }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </liass-card>
+</div>

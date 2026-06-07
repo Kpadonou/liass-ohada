@@ -43,6 +43,7 @@ export class AccountingEndpoints extends DomainConstructFactory {
     // --- Accounting Endpoints ---
     // Accounts
     map(apigw.HttpMethod.POST, "/accounts", "accounts/create-account");
+    map(apigw.HttpMethod.GET, "/accounts", "accounts/list-accounts");
     map(apigw.HttpMethod.GET, "/accounts/{accountId}", "accounts/get-account");
     map(
       apigw.HttpMethod.GET,
@@ -57,6 +58,7 @@ export class AccountingEndpoints extends DomainConstructFactory {
 
     // Entries
     map(apigw.HttpMethod.POST, "/entries", "entries/post-entry");
+    map(apigw.HttpMethod.GET, "/entries", "entries/list-entries");
 
     // Books
     map(
@@ -118,6 +120,11 @@ export class AccountingEndpoints extends DomainConstructFactory {
       apigw.HttpMethod.GET,
       "/journals/{journalCode}",
       "journals/get-journal",
+    );
+    map(
+      apigw.HttpMethod.GET,
+      "/journals/{journalCode}/entries",
+      "journals/get-journal-entries",
     );
     map(
       apigw.HttpMethod.PUT,
