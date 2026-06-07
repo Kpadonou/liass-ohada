@@ -5,6 +5,7 @@ import { TranslocoTestingModule } from '@ngneat/transloco';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
+import { UiStore } from '../../../core/state/ui.store';
 import { AppSidebarComponent } from './app-sidebar.component';
 
 const translations = {
@@ -155,5 +156,39 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Balance');
     expect(text).toContain('Plan comptable');
     expect(text).not.toContain('Paramètres du cabinet');
+  });
+
+  it('shows cabinet navigation on cabinet routes even when a dossier remains selected', () => {
+    const authStore = TestBed.inject(AuthStore);
+    TestBed.inject(UiStore).setCurrentPage('cabinet.dossiers');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm'
+    );
+    authStore.setCreatedDossier(
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client'
+    );
+
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Tableau de bord cabinet');
+    expect(text).toContain('Dossiers clients');
+    expect(text).not.toContain('Grand livre');
+    expect(authStore.activeDossierOrgId()).toBe('org-client');
   });
 });

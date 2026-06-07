@@ -33,6 +33,8 @@ export class CabinetDossierSelectPage implements OnInit {
   }
 
   protected async createDossier(): Promise<void> {
-    await this.router.navigate(['/cabinet/dossiers/new']);
+    await this.router.navigate(['/cabinet/dossiers'], {
+      queryParams: { createDossier: '1' }
+    });
   }
 }

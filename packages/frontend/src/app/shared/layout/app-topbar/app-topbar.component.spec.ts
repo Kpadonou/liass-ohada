@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { fetchAuthSession, fetchUserAttributes, getCurrentUser } from 'aws-amplify/auth';
 import { vi } from 'vitest';
@@ -49,6 +49,9 @@ const translations = {
         TRIAL_BALANCE: 'Trial balance'
       },
       TOPBAR: {
+        CABINET_DASHBOARD: 'Cabinet dashboard',
+        CABINET_MENU_LABEL: 'Open cabinet menu',
+        CLIENT_DOSSIERS: 'Client dossiers',
         COMMAND_PLACEHOLDER: 'Search workspace or ask AI...',
         CREATE_DOSSIER: 'Create dossier',
         CURRENT_MODULE: 'Current module',
@@ -57,6 +60,7 @@ const translations = {
         DOSSIER_LOADING: 'Loading dossier...',
         NO_DOSSIER: 'No dossier open',
         NO_WORKSPACE: 'Workspace',
+        NEW_CLIENT_DOSSIER: 'New client dossier',
         SELECT_DOSSIER: 'Select a dossier',
         SIGN_OUT: 'Sign out',
         TOGGLE_NAVIGATION: 'Toggle navigation',
@@ -78,6 +82,7 @@ describe('AppTopbarComponent', () => {
   let authStore: InstanceType<typeof AuthStore>;
   let uiStore: InstanceType<typeof UiStore>;
   let cabinetDossiersApi: { listDossiers: ReturnType<typeof vi.fn> };
+  let router: Router;
   let workspacesApi: { listWorkspaces: ReturnType<typeof vi.fn> };
 
   beforeEach(async () => {
@@ -111,6 +116,8 @@ describe('AppTopbarComponent', () => {
 
     authStore = TestBed.inject(AuthStore);
     uiStore = TestBed.inject(UiStore);
+    router = TestBed.inject(Router);
+    vi.spyOn(router, 'navigate').mockResolvedValue(true);
   });
 
   function renderText(): string {
@@ -221,6 +228,90 @@ describe('AppTopbarComponent', () => {
     expect(text).toContain('Accounting firm');
     expect(text).not.toContain('org-firm-123');
     expect(text).not.toContain('Workspace');
+  });
+
+  it('opens a compact cabinet context menu for accounting-firm workspaces', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm-123',
+        cabinetId: 'cabinet-001',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm-123'
+    );
+
+    renderText();
+    const trigger = fixture.nativeElement.querySelector(
+      '[data-testid="active-workspace"]'
+    ) as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+    const text = fixture.nativeElement.textContent;
+
+    expect(trigger.getAttribute('aria-label')).toBe('Open cabinet menu');
+    expect(text).toContain('Cabinet dashboard');
+    expect(text).toContain('Client dossiers');
+    expect(text).toContain('New client dossier');
+    expect(text).not.toContain('org-firm-123');
+  });
+
+  it('routes cabinet menu items without replacing workspace or dossier context', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm-123',
+        cabinetId: 'cabinet-001',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm-123'
+    );
+    authStore.setCreatedDossier(
+      {
+        orgId: 'org-client-123',
+        displayName: 'Client ABC SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client-123'
+    );
+
+    renderText();
+    const trigger = fixture.nativeElement.querySelector(
+      '[data-testid="active-workspace"]'
+    ) as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+    (fixture.nativeElement.querySelector(
+      '[data-testid="cabinet-new-dossier-menu-item"]'
+    ) as HTMLButtonElement).click();
+
+    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dossiers'], {
+      queryParams: { createDossier: '1' }
+    });
+    expect(authStore.activeWorkspaceOrgId()).toBe('org-firm-123');
+    expect(authStore.activeDossierOrgId()).toBe('org-client-123');
+  });
+
+  it('does not render the cabinet context menu for company workspaces', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    renderText();
+
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="cabinet-new-dossier-menu-item"]')
+    ).toBeNull();
+    expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
   it('displays the selected client dossier separately from the accounting-firm workspace', () => {

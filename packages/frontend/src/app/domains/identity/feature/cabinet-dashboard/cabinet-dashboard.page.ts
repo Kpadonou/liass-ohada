@@ -95,7 +95,9 @@ export class CabinetDashboardPage implements OnInit {
   }
 
   protected async createDossier(): Promise<void> {
-    await this.router.navigate(['/cabinet/dossiers/new']);
+    await this.router.navigate(['/cabinet/dossiers'], {
+      queryParams: { createDossier: '1' }
+    });
   }
 
   protected async selectDossier(dossier: CabinetDossierSummary): Promise<void> {

@@ -1,0 +1,76 @@
+<header class="px-6 pt-6">
+  <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+    {{ 'IDENTITY.CABINET_DOSSIERS.EYEBROW' | transloco }}
+  </p>
+  <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+    {{ 'IDENTITY.CABINET_DOSSIERS.DIALOG.TITLE' | transloco }}
+  </h2>
+  <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+    {{ 'IDENTITY.CABINET_DOSSIERS.DIALOG.SUBTITLE' | transloco }}
+  </p>
+</header>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="px-6 pb-0 pt-5">
+    <div class="grid gap-4">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'IDENTITY.CABINET_DOSSIERS.FIELDS.COMPANY_NAME' | transloco }}</mat-label>
+      <mat-icon matPrefix>domain</mat-icon>
+      <input matInput formControlName="companyName" autocomplete="organization" />
+      @if (form.controls.companyName.touched && form.controls.companyName.invalid) {
+        <mat-error>{{ 'IDENTITY.CABINET_DOSSIERS.VALIDATION.COMPANY_NAME' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'IDENTITY.CABINET_DOSSIERS.FIELDS.COUNTRY' | transloco }}</mat-label>
+      <mat-icon matPrefix>public</mat-icon>
+      <mat-select formControlName="country">
+        @for (country of countryOptions; track country.value) {
+          <mat-option [value]="country.value">{{ country.labelKey | transloco }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'IDENTITY.CABINET_DOSSIERS.FIELDS.ACCOUNTING_FRAMEWORK' | transloco }}</mat-label>
+      <mat-icon matPrefix>account_balance</mat-icon>
+      <mat-select formControlName="accountingFramework">
+        @for (framework of frameworkOptions; track framework.value) {
+          <mat-option [value]="framework.value">{{ framework.labelKey | transloco }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+    </div>
+
+    @if (errorKey(); as key) {
+      <div
+        class="mt-1 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200"
+        role="alert"
+      >
+        <mat-icon class="mt-0.5 text-red-600 dark:text-red-300">error</mat-icon>
+        <p>{{ key | transloco }}</p>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ 'IDENTITY.CABINET_DOSSIERS.ACTIONS.CANCEL' | transloco }}
+    </liass-button>
+    <liass-button
+      buttonType="submit"
+      tone="brand"
+      variant="solid"
+      [disabled]="form.invalid || submitting()"
+      [loading]="submitting()"
+      icon="add_business"
+    >
+      {{
+        submitting()
+          ? ('IDENTITY.CABINET_DOSSIERS.ACTIONS.CREATING' | transloco)
+          : ('IDENTITY.CABINET_DOSSIERS.ACTIONS.CREATE' | transloco)
+      }}
+    </liass-button>
+  </mat-dialog-actions>
+</form>

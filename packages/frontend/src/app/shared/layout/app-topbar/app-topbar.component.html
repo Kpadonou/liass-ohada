@@ -29,27 +29,109 @@
       />
     </div>
 
-    <div
-      class="hidden min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex"
-      data-testid="active-workspace"
-    >
-      <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">{{ activeWorkspaceIcon() }}</mat-icon>
-      <span class="min-w-0">
-        <span class="block max-w-[220px] truncate font-semibold text-slate-900 dark:text-white">
-          {{
-            activeWorkspaceLabel()
-              || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
-                ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
-                : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
-          }}
-        </span>
-        @if (activeWorkspaceTypeLabelKey(); as workspaceTypeLabelKey) {
-          <span class="block truncate text-xs text-slate-500 dark:text-slate-400">
-            {{ workspaceTypeLabelKey | transloco }}
+    @if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
+      <liass-dropdown [open]="cabinetMenuOpen" width="md" align="end" (closed)="cabinetMenuOpen = false">
+        <button
+          liassDropdownTrigger
+          class="hidden min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-900 dark:hover:bg-brand-950/30 sm:flex"
+          type="button"
+          data-testid="active-workspace"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="cabinetMenuOpen"
+          [attr.aria-label]="'SHELL.TOPBAR.CABINET_MENU_LABEL' | transloco"
+          (click)="toggleCabinetMenu()"
+        >
+          <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">{{ activeWorkspaceIcon() }}</mat-icon>
+          <span class="min-w-0">
+            <span class="block max-w-[220px] truncate font-semibold text-slate-900 dark:text-white">
+              {{
+                activeWorkspaceLabel()
+                  || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+                    ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
+                    : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+              }}
+            </span>
+            @if (activeWorkspaceTypeLabelKey(); as workspaceTypeLabelKey) {
+              <span class="block truncate text-xs text-slate-500 dark:text-slate-400">
+                {{ workspaceTypeLabelKey | transloco }}
+              </span>
+            }
           </span>
-        }
-      </span>
-    </div>
+          <mat-icon class="text-slate-400">{{ cabinetMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+
+        <div class="border-b border-slate-100 px-2 pb-3 dark:border-slate-800">
+          <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">
+            {{
+              activeWorkspaceLabel()
+                || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+                  ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
+                  : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+            }}
+          </p>
+          @if (activeWorkspaceTypeLabelKey(); as workspaceTypeLabelKey) {
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {{ workspaceTypeLabelKey | transloco }}
+            </p>
+          }
+        </div>
+
+        <div class="pt-2">
+          <button
+            class="flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+            type="button"
+            role="menuitem"
+            data-testid="cabinet-dashboard-menu-item"
+            (click)="navigateToCabinetDashboard()"
+          >
+            <mat-icon>dashboard</mat-icon>
+            <span>{{ 'SHELL.TOPBAR.CABINET_DASHBOARD' | transloco }}</span>
+          </button>
+          <button
+            class="mt-1 flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+            type="button"
+            role="menuitem"
+            data-testid="cabinet-dossiers-menu-item"
+            (click)="navigateToCabinetDossiers()"
+          >
+            <mat-icon>folder_managed</mat-icon>
+            <span>{{ 'SHELL.TOPBAR.CLIENT_DOSSIERS' | transloco }}</span>
+          </button>
+          <button
+            class="mt-1 flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-200"
+            type="button"
+            role="menuitem"
+            data-testid="cabinet-new-dossier-menu-item"
+            (click)="createCabinetDossier()"
+          >
+            <mat-icon>add_business</mat-icon>
+            <span>{{ 'SHELL.TOPBAR.NEW_CLIENT_DOSSIER' | transloco }}</span>
+          </button>
+        </div>
+      </liass-dropdown>
+    } @else {
+      <div
+        class="hidden min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex"
+        data-testid="active-workspace"
+      >
+        <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">{{ activeWorkspaceIcon() }}</mat-icon>
+        <span class="min-w-0">
+          <span class="block max-w-[220px] truncate font-semibold text-slate-900 dark:text-white">
+            {{
+              activeWorkspaceLabel()
+                || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+                  ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
+                  : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+            }}
+          </span>
+          @if (activeWorkspaceTypeLabelKey(); as workspaceTypeLabelKey) {
+            <span class="block truncate text-xs text-slate-500 dark:text-slate-400">
+              {{ workspaceTypeLabelKey | transloco }}
+            </span>
+          }
+        </span>
+      </div>
+    }
 
     @if (showActiveDossier()) {
       <button

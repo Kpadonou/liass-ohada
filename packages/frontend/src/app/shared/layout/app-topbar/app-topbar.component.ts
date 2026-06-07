@@ -76,6 +76,7 @@ export class AppTopbarComponent implements OnInit {
   private readonly router = inject(Router);
 
   protected commandValue = '';
+  protected cabinetMenuOpen = false;
   protected userMenuOpen = false;
 
   protected readonly userLabel = computed(() => this.authStore.currentUserDisplayName());
@@ -96,6 +97,14 @@ export class AppTopbarComponent implements OnInit {
     this.userMenuOpen = !this.userMenuOpen;
   }
 
+  protected toggleCabinetMenu(): void {
+    if (this.authStore.activeWorkspaceType() !== 'ACCOUNTING_FIRM') {
+      return;
+    }
+
+    this.cabinetMenuOpen = !this.cabinetMenuOpen;
+  }
+
   protected updateCommandValue(value: string): void {
     this.commandValue = value;
   }
@@ -105,10 +114,23 @@ export class AppTopbarComponent implements OnInit {
       return;
     }
 
-    const route = this.authStore.hasActiveDossier() || this.authStore.dossiers().length > 1
-      ? '/cabinet/dossiers/select'
-      : '/cabinet/dossiers/new';
+    await this.router.navigate(['/cabinet/dossiers']);
+  }
 
-    await this.router.navigate([route]);
+  protected async navigateToCabinetDashboard(): Promise<void> {
+    this.cabinetMenuOpen = false;
+    await this.router.navigate(['/cabinet/dashboard']);
+  }
+
+  protected async navigateToCabinetDossiers(): Promise<void> {
+    this.cabinetMenuOpen = false;
+    await this.router.navigate(['/cabinet/dossiers']);
+  }
+
+  protected async createCabinetDossier(): Promise<void> {
+    this.cabinetMenuOpen = false;
+    await this.router.navigate(['/cabinet/dossiers'], {
+      queryParams: { createDossier: '1' }
+    });
   }
 }

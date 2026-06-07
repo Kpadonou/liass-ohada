@@ -1,12 +1,15 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import type { CabinetDossierSummary } from '@liass-ohada/shared';
 import { TranslocoModule } from '@ngneat/transloco';
+import { take } from 'rxjs';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
@@ -14,6 +17,7 @@ import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AuthStore } from '../../data-access/auth.store';
+import { CreateCabinetDossierDialogComponent } from './create-cabinet-dossier-dialog.component';
 
 type DossierStatusFilter = 'ALL' | 'ACTIVE';
 
@@ -25,6 +29,7 @@ type DossierStatusFilter = 'ALL' | 'ACTIVE';
     LiassPageHeaderComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -36,6 +41,9 @@ type DossierStatusFilter = 'ALL' | 'ACTIVE';
 })
 export class CabinetDossiersPage implements OnInit {
   protected readonly authStore = inject(AuthStore);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly searchQuery = signal('');
   protected readonly statusFilter = signal<DossierStatusFilter>('ALL');
@@ -59,15 +67,22 @@ export class CabinetDossiersPage implements OnInit {
   protected readonly hasFilters = computed(
     () => this.searchQuery().trim().length > 0 || this.statusFilter() !== 'ALL'
   );
+  private createDialogOpen = false;
 
   async ngOnInit(): Promise<void> {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      if (params.get('createDossier') === '1') {
+        this.openCreateDossierDialog({ clearDeepLink: true });
+      }
+    });
+
     if (!this.authStore.dossiersLoaded()) {
       await this.authStore.loadDossiers();
     }
   }
 
-  protected async createDossier(): Promise<void> {
-    await this.router.navigate(['/cabinet/dossiers/new']);
+  protected createDossier(): void {
+    this.openCreateDossierDialog();
   }
 
   protected async selectDossier(dossier: CabinetDossierSummary): Promise<void> {
@@ -98,6 +113,37 @@ export class CabinetDossiersPage implements OnInit {
 
   protected statusLabelKey(dossier: CabinetDossierSummary): string {
     return `IDENTITY.CABINET_DASHBOARD.STATUS.${dossier.status ?? 'UNKNOWN'}`;
+  }
+
+  private openCreateDossierDialog(options: { clearDeepLink?: boolean } = {}): void {
+    if (this.createDialogOpen) {
+      return;
+    }
+
+    this.createDialogOpen = true;
+    const dialogRef = this.dialog.open(CreateCabinetDossierDialogComponent, {
+      autoFocus: 'first-tabbable',
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'liass-dialog-panel',
+      restoreFocus: true,
+      width: '560px'
+    });
+
+    dialogRef
+      .afterClosed()
+      .pipe(take(1), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.createDialogOpen = false;
+
+        if (options.clearDeepLink) {
+          void this.router.navigate([], {
+            queryParams: { createDossier: null },
+            queryParamsHandling: 'merge',
+            relativeTo: this.route,
+            replaceUrl: true
+          });
+        }
+      });
   }
 }
 

@@ -6,6 +6,12 @@
     "ACTIONS": {
       "SAVE": "Save",
       "CANCEL": "Cancel"
+    },
+    "LANGUAGE_SELECTOR": {
+      "CURRENT": "Current language",
+      "ENGLISH": "English",
+      "FRENCH": "French",
+      "TRIGGER": "Change language"
     }
   },
   "SHELL": {
@@ -59,6 +65,9 @@
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Search workspace or ask AI...",
+      "CABINET_DASHBOARD": "Cabinet dashboard",
+      "CABINET_MENU_LABEL": "Open cabinet menu",
+      "CLIENT_DOSSIERS": "Client dossiers",
       "CREATE_DOSSIER": "Create dossier",
       "CLOSE_NAVIGATION": "Close navigation",
       "CURRENT_MODULE": "Current module",
@@ -69,6 +78,7 @@
       "NO_DOSSIER": "No dossier open",
       "NO_ORG": "No organization",
       "NO_WORKSPACE": "Workspace",
+      "NEW_CLIENT_DOSSIER": "New client dossier",
       "SIGN_OUT": "Sign out",
       "SELECT_DOSSIER": "Select a dossier",
       "TOGGLE_NAVIGATION": "Toggle navigation",
@@ -447,6 +457,11 @@
       },
       "FORM_TITLE": "Dossier information",
       "FORM_SUBTITLE": "These details create a client dossier attached to the active accounting firm.",
+      "DIALOG": {
+        "REDIRECTING": "Opening the creation form...",
+        "SUBTITLE": "Create a client dossier attached to the active accounting firm. You can open it from the list afterward.",
+        "TITLE": "New client dossier"
+      },
       "FIELDS": {
         "ACCOUNTING_FRAMEWORK": "Accounting framework",
         "COMPANY_NAME": "Client company name",
@@ -454,6 +469,7 @@
       },
       "ACTIONS": {
         "BACK": "Back to dossiers",
+        "CANCEL": "Cancel",
         "CLEAR_FILTERS": "Reset",
         "CREATE": "Create dossier",
         "CREATING": "Creating dossier...",

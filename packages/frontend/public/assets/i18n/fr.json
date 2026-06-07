@@ -6,6 +6,12 @@
     "ACTIONS": {
       "SAVE": "Enregistrer",
       "CANCEL": "Annuler"
+    },
+    "LANGUAGE_SELECTOR": {
+      "CURRENT": "Langue actuelle",
+      "ENGLISH": "Anglais",
+      "FRENCH": "Français",
+      "TRIGGER": "Changer de langue"
     }
   },
   "SHELL": {
@@ -59,6 +65,9 @@
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Rechercher ou interroger l’IA...",
+      "CABINET_DASHBOARD": "Tableau de bord cabinet",
+      "CABINET_MENU_LABEL": "Ouvrir le menu du cabinet",
+      "CLIENT_DOSSIERS": "Dossiers clients",
       "CREATE_DOSSIER": "Créer un dossier",
       "CLOSE_NAVIGATION": "Fermer la navigation",
       "CURRENT_MODULE": "Module courant",
@@ -69,6 +78,7 @@
       "NO_DOSSIER": "Aucun dossier ouvert",
       "NO_ORG": "Aucune organisation",
       "NO_WORKSPACE": "Espace de travail",
+      "NEW_CLIENT_DOSSIER": "Nouveau dossier client",
       "SIGN_OUT": "Se déconnecter",
       "SELECT_DOSSIER": "Sélectionner un dossier",
       "TOGGLE_NAVIGATION": "Basculer la navigation",
@@ -447,6 +457,11 @@
       },
       "FORM_TITLE": "Informations du dossier",
       "FORM_SUBTITLE": "Ces informations créent un dossier client rattaché au cabinet comptable actif.",
+      "DIALOG": {
+        "REDIRECTING": "Ouverture du formulaire de création...",
+        "SUBTITLE": "Créez un dossier client rattaché au cabinet actif. Vous pourrez l’ouvrir ensuite depuis la liste.",
+        "TITLE": "Nouveau dossier client"
+      },
       "FIELDS": {
         "ACCOUNTING_FRAMEWORK": "Référentiel comptable",
         "COMPANY_NAME": "Nom de l’entreprise cliente",
@@ -454,6 +469,7 @@
       },
       "ACTIONS": {
         "BACK": "Retour aux dossiers",
+        "CANCEL": "Annuler",
         "CLEAR_FILTERS": "Réinitialiser",
         "CREATE": "Créer le dossier",
         "CREATING": "Création du dossier...",

@@ -194,4 +194,25 @@ describe('CabinetDashboardPage', () => {
     expect(authStore.activeDossierOrgId()).toBe('org-client');
     expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
   });
+
+  it('routes new dossier creation to the dialog deep link on the dossiers page', async () => {
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm'
+    );
+
+    fixture = TestBed.createComponent(CabinetDashboardPage);
+    await fixture.componentInstance.ngOnInit();
+    fixture.detectChanges();
+    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
+    buttons.find((button) => button.textContent?.includes('New dossier'))?.click();
+
+    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dossiers'], {
+      queryParams: { createDossier: '1' }
+    });
+  });
 });

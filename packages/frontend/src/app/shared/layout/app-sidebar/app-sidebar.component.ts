@@ -139,7 +139,7 @@ export class AppSidebarComponent {
   protected readonly cabinetMode = computed(
     () =>
       this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' &&
-      !this.authStore.activeDossierOrgId()
+      (!this.authStore.activeDossierOrgId() || this.uiStore.currentPage().startsWith('cabinet.'))
   );
   private readonly router = inject(Router);
 
