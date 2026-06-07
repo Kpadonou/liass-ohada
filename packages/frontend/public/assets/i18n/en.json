@@ -12,6 +12,10 @@
       "ENGLISH": "English",
       "FRENCH": "French",
       "TRIGGER": "Change language"
+    },
+    "SELECT": {
+      "NO_RESULTS": "No results",
+      "SEARCH_PLACEHOLDER": "Search..."
     }
   },
   "SHELL": {

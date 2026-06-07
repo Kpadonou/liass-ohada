@@ -11,6 +11,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { ZodError } from 'zod';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
+import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable-select/searchable-select.component';
 import { AuthStore } from '../../data-access/auth.store';
 import { CabinetDossiersApi } from '../../data-access/cabinet-dossiers.api';
 
@@ -30,6 +31,7 @@ interface SelectOption<T extends string> {
   selector: 'liass-create-cabinet-dossier-dialog',
   imports: [
     LiassButtonComponent,
+    LiassSearchableSelectComponent,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,

@@ -12,6 +12,12 @@ import { CabinetDossiersPage } from './cabinet-dossiers.page';
 
 const translations = {
   en: {
+    COMMON: {
+      SELECT: {
+        NO_RESULTS: 'No results',
+        SEARCH_PLACEHOLDER: 'Search...'
+      }
+    },
     IDENTITY: {
       CABINET_DASHBOARD: {
         LOADING: 'Loading client dossiers...',
@@ -195,6 +201,11 @@ describe('CabinetDossiersPage', () => {
     expect(document.body.textContent).toContain(
       'Create a client dossier attached to the active accounting firm.'
     );
+    expect(document.body.querySelector('liass-searchable-select input')).toBeTruthy();
+    expect(document.body.querySelector('mat-select[formControlName="country"]')).toBeNull();
+    expect(
+      document.body.querySelector('mat-select[formControlName="accountingFramework"]')
+    ).toBeTruthy();
     expect(router.navigate).not.toHaveBeenCalledWith(['/cabinet/dossiers/new']);
   });
 

@@ -11,6 +11,12 @@ import { OnboardingPage } from './onboarding.page';
 
 const translations = {
   en: {
+    COMMON: {
+      SELECT: {
+        NO_RESULTS: 'No results',
+        SEARCH_PLACEHOLDER: 'Search...'
+      }
+    },
     IDENTITY: {
       AUTH_LAYOUT: {
         APPROVED_MESSAGE: 'Approved for OHADA workflows',
@@ -231,6 +237,21 @@ describe('OnboardingPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Enter an organization name.');
     expect(fixture.nativeElement.textContent).toContain('Choose a country.');
     expect(fixture.nativeElement.textContent).toContain('Choose an accounting framework.');
+  });
+
+  it('uses a searchable country select while keeping accounting framework as a standard select', async () => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    page.selectWorkspaceType('COMPANY');
+    page.continueToDetails();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('liass-searchable-select')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('mat-select[formControlName="country"]')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('mat-select[formControlName="accountingFramework"]')
+    ).toBeTruthy();
   });
 
   it('creates a company workspace, selects the returned active tenant, and redirects to dashboard', async () => {

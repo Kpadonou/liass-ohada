@@ -41,6 +41,18 @@
 - Use helper text for domain-specific requirements.
 - Do not use `/me/workspaces` or tenant-creation flows for unrelated cabinet/client workflows.
 
+## Selects And Autocomplete
+
+- If a `mat-select` field has more than 10 options, or is likely to grow beyond 10 options, provide a search/filter capability.
+- Use searchable selects for countries, accounts or chart-of-accounts entries, clients, suppliers, projects, journals, collaborators, client dossiers, and other dynamic reference lists.
+- Keep standard `mat-select` for small stable enum choices such as yes/no, short status lists, two-option accounting framework selects, or two-option workspace type selects.
+- Prefer a reusable shared UI component or utility pattern instead of duplicating search logic in pages.
+- Search should appear inside the select flow or use an approved Material autocomplete/select pattern.
+- Filtering should be case-insensitive and accent-insensitive when practical.
+- Search placeholders and no-results states must use Transloco keys.
+- Selected values must remain visible, readable, and keyboard-accessible.
+- Loading and disabled states must be handled when options come from an API.
+
 ## Tables
 
 - Use tables for operational ERP data.

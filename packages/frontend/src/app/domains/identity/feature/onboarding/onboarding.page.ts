@@ -11,6 +11,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
+import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable-select/searchable-select.component';
 import { AuthStore, type ActiveWorkspaceSummary } from '../../data-access/auth.store';
 import { OnboardingApi } from '../../data-access/onboarding.api';
 
@@ -36,6 +37,7 @@ interface SelectOption<T extends string> {
   imports: [
     LiassButtonComponent,
     LiassCardComponent,
+    LiassSearchableSelectComponent,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,

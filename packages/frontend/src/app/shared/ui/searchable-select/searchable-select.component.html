@@ -1,0 +1,32 @@
+<mat-form-field appearance="outline" class="w-full">
+  <mat-label>{{ labelKey() | transloco }}</mat-label>
+  @if (icon(); as iconName) {
+    <mat-icon matPrefix>{{ iconName }}</mat-icon>
+  }
+  <input
+    matInput
+    type="text"
+    autocomplete="off"
+    [disabled]="disabled() || loading()"
+    [matAutocomplete]="selectAutocomplete"
+    [placeholder]="searchPlaceholderKey() | transloco"
+    [value]="inputValue()"
+    (blur)="handleBlur()"
+    (input)="handleInput($event)"
+  />
+  @if (loading()) {
+    <mat-spinner matSuffix diameter="18" />
+  }
+  <mat-autocomplete #selectAutocomplete="matAutocomplete" (optionSelected)="selectOption($event)">
+    @for (option of filteredOptions(); track option.value) {
+      <mat-option [value]="option.value">{{ option.labelKey | transloco }}</mat-option>
+    } @empty {
+      <mat-option disabled>{{ emptyResultLabelKey() | transloco }}</mat-option>
+    }
+  </mat-autocomplete>
+</mat-form-field>
+@if (showError() && errorKey(); as validationKey) {
+  <p class="-mt-4 text-xs text-red-600 dark:text-red-300">
+    {{ validationKey | transloco }}
+  </p>
+}

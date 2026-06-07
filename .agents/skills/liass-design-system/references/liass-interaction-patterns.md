@@ -4,7 +4,46 @@
 
 Use dialogs for focused temporary decisions. Good examples: picking a short option, editing a small field group, confirming a scoped action, or showing a compact preview.
 
+For table/list management pages, simple create and edit actions should open an Angular Material Dialog by default instead of navigating to a separate full page. Examples include:
+
+- Nouveau dossier client.
+- Nouveau compte.
+- Nouveau client.
+- Nouveau fournisseur.
+- Modifier fournisseur.
+- Modifier journal.
+- Modifier compte.
+
+Use dialog-based create/edit workflows when the action is launched from a table or list, the form is short, the task is simple CRUD creation or editing, or the user is doing quick item configuration.
+
+On successful creation or update:
+
+- Close the dialog.
+- Refresh or upsert the list/table data.
+- Show the newly created or updated row in the list.
+- Keep the user on the list/table page unless the workflow explicitly requires navigation.
+
+On failure:
+
+- Keep the dialog open.
+- Preserve the user's form input.
+- Show a translated error message inside the dialog unless the error is global.
+
+Dialog form UX rules:
+
+- Use Angular Material Dialog.
+- Use Angular Reactive Forms when form state is needed.
+- Reuse shared `liass-*` primitives where appropriate.
+- Place cancel or secondary actions with visually lower emphasis.
+- Make the primary submit action clearly visible.
+- Disable submit while submitting and prevent duplicate submits.
+- Keep validation inline.
+- Keep title, subtitle, labels, validation messages, errors, and actions behind Transloco keys.
+- Make dialogs responsive and usable on mobile.
+
 Avoid dialogs for long complex accounting workflows. Prefer full pages or steppers when the user must review many fields, navigate between sections, or preserve draft work.
+
+Use a full page instead for complex multi-step workflows, long forms, onboarding, document-heavy processes, review/validation screens, or workflows requiring deep navigation or contextual guidance.
 
 Do not close on backdrop click for destructive or irreversible actions.
 

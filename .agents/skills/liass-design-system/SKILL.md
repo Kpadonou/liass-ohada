@@ -22,8 +22,10 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 7. Preserve accessibility, keyboard navigation, focus management, responsive behavior, and readable contrast.
 8. Inspect existing logo/assets/theme files before proposing color changes.
 9. Ensure shared layout/page primitives render with stable block-level host behavior when they are used as standalone page sections.
-10. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
-11. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
+10. For table/list management pages, make simple create and edit actions dialog-based by default so the user stays in context.
+11. For `mat-select` fields with more than 10 options, or likely to grow beyond 10 options, provide search/filter capability by default.
+12. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
+13. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
 
 ## Reference priority
 
@@ -52,6 +54,7 @@ Read only the references needed for the task, in this order:
 Use Angular Material 3 when it improves accessibility, interaction quality, or implementation consistency:
 
 - `mat-form-field`, inputs, selects, date controls, checkboxes, radio buttons, and toggles for forms.
+- Searchable select or autocomplete-backed select patterns for `mat-select` choices with more than 10 options or dynamic reference data.
 - `MatDialog` for focused temporary decisions.
 - `MatStepper` for guided multi-step flows.
 - `MatDrawer` or sidenav patterns for contextual panels.
@@ -64,6 +67,9 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 
 - Choose full pages for complex workflows.
 - Use dialogs for focused temporary decisions, not long accounting flows.
+- On table/list management pages, use dialogs by default for simple create/edit actions such as new client dossier, new account, new customer, new supplier, edit supplier, edit journal, or edit account.
+- After a successful create/edit dialog submit, close the dialog, refresh or upsert the list data, show the new or updated row, and keep the user on the list unless the workflow explicitly requires navigation.
+- On create/edit dialog failure, keep the dialog open, preserve form input, and show a translated error inside the dialog unless the failure is global.
 - Use confirmation dialogs only for risky or irreversible actions.
 - Use steppers for guided setup and onboarding-style flows.
 - Use drawers for contextual details, filters, audit trails, AI suggestions, and help.
