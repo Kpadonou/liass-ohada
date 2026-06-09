@@ -2,11 +2,25 @@ import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
-import { BudgetLineSchema } from "@liass-ohada/shared/projects";
+import {
+  BudgetLineDto,
+  BudgetLineDtoSchema,
+  BudgetLineSchema,
+  CreateBudgetLineRequestSchema,
+  CreateDonorRequestSchema,
+  DonorDto,
+  DonorDtoSchema,
+  DonorSchema,
+  FundingSourceDto,
+  FundingSourceDtoSchema,
+  ProjectDto,
+  ProjectDtoSchema,
+} from "@liass-ohada/shared/projects";
 import { FundingSourceSchema } from "@liass-ohada/shared/projects";
 import { Project, ProjectSchema } from "@liass-ohada/shared/projects";
 import {
   GetItemCommand,
+  PutItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
@@ -30,12 +44,98 @@ export const CreateFundingSourceInputSchema = z.object({
   currency: z.string().length(3).default("XOF"),
 });
 
+export const CreateDonorInputSchema = CreateDonorRequestSchema;
+export const CreateBudgetLineInputSchema = CreateBudgetLineRequestSchema;
+
 export type CreateProjectInput = z.infer<typeof CreateProjectInputSchema>;
+export type CreateDonorInput = z.infer<typeof CreateDonorInputSchema>;
 export type CreateFundingSourceInput = z.infer<
   typeof CreateFundingSourceInputSchema
 >;
+export type CreateBudgetLineInput = z.infer<
+  typeof CreateBudgetLineInputSchema
+>;
 
 export class ProjectService {
+  static toProjectDto(project: unknown): ProjectDto {
+    return ProjectDtoSchema.parse(project);
+  }
+
+  static toDonorDto(donor: unknown): DonorDto {
+    return DonorDtoSchema.parse(donor);
+  }
+
+  static toFundingSourceDto(source: unknown): FundingSourceDto {
+    return FundingSourceDtoSchema.parse(source);
+  }
+
+  static toBudgetLineDto(line: unknown): BudgetLineDto {
+    return BudgetLineDtoSchema.parse(line);
+  }
+
+  static async createDonor(
+    orgId: string,
+    userId: string,
+    input: CreateDonorInput,
+  ): Promise<DonorDto> {
+    const now = new Date().toISOString();
+    const donorId = input.code.trim().toUpperCase();
+
+    const donor = DonorSchema.parse({
+      ...input,
+      orgId,
+      donorId,
+      code: donorId,
+      entityType: "DONOR",
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const donorItem = {
+      PK: KeyFactory.orgKey(orgId),
+      SK: KeyFactory.thirdPartySK("DONOR", donorId),
+      ...donor,
+      createdBy: userId,
+      updatedBy: userId,
+    };
+
+    try {
+      await dynamoClient.send(
+        new PutItemCommand({
+          TableName: config.TABLE_NAME,
+          Item: marshall(donorItem, { removeUndefinedValues: true }),
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        }),
+      );
+    } catch (error: any) {
+      if (error?.name === "ConditionalCheckFailedException") {
+        throw new AppError(400, "ERROR_DONOR_EXISTS");
+      }
+      throw error;
+    }
+
+    return ProjectService.toDonorDto(donorItem);
+  }
+
+  static async listDonors(orgId: string): Promise<DonorDto[]> {
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: marshall({
+          ":pk": KeyFactory.orgKey(orgId),
+          ":sk": KeyFactory.thirdPartyPrefix("DONOR"),
+        }),
+      }),
+    );
+
+    return (result.Items || [])
+      .map((item) => unmarshall(item))
+      .filter((item) => item.entityType === "DONOR")
+      .map((item) => ProjectService.toDonorDto(item));
+  }
+
   /**
    * Creates a SYCEBNL project inside the caller's organization partition.
    * Enforces that the donor exists in the same tenant and atomically writes the
@@ -108,14 +208,14 @@ export class ProjectService {
       throw error;
     }
 
-    return projectItem;
+    return ProjectService.toProjectDto(projectItem);
   }
 
   /**
    * Lists tenant-scoped project master records only.
    * Filters out colocated lock/helper records that share the PRJ# sort-key prefix.
    */
-  static async listProjects(orgId: string): Promise<Project[]> {
+  static async listProjects(orgId: string): Promise<ProjectDto[]> {
     const result = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -130,14 +230,14 @@ export class ProjectService {
     return (result.Items || [])
       .map((item) => unmarshall(item))
       .filter((item) => item.entityType === "PROJECT")
-      .map((item) => ProjectSchema.parse(item));
+      .map((item) => ProjectService.toProjectDto(item));
   }
 
   /**
    * Retrieves a single project by technical id from the caller's organization.
    * Throws an AppError when the project is absent, preventing cross-tenant fallback.
    */
-  static async getProject(orgId: string, projectId: string): Promise<Project> {
+  static async getProject(orgId: string, projectId: string): Promise<ProjectDto> {
     const result = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
@@ -152,7 +252,7 @@ export class ProjectService {
       throw new AppError(404, "ERROR_PROJECT_NOT_FOUND");
     }
 
-    return ProjectSchema.parse(unmarshall(result.Item));
+    return ProjectService.toProjectDto(unmarshall(result.Item));
   }
 
   /**
@@ -207,14 +307,17 @@ export class ProjectService {
       throw error;
     }
 
-    return fundingSource;
+    return ProjectService.toFundingSourceDto(fundingSource);
   }
 
   /**
    * Lists funding-source envelopes attached to a tenant-scoped project.
    * The project lookup is performed first so unknown projects fail consistently.
    */
-  static async listFundingSources(orgId: string, projectId: string) {
+  static async listFundingSources(
+    orgId: string,
+    projectId: string,
+  ): Promise<FundingSourceDto[]> {
     await ProjectService.getProject(orgId, projectId);
 
     const result = await dynamoClient.send(
@@ -229,7 +332,84 @@ export class ProjectService {
     );
 
     return (result.Items || []).map((item) =>
-      FundingSourceSchema.passthrough().parse(unmarshall(item)),
+      ProjectService.toFundingSourceDto(
+        FundingSourceSchema.passthrough().parse(unmarshall(item)),
+      ),
+    );
+  }
+
+  static async createBudgetLine(
+    orgId: string,
+    userId: string,
+    projectId: string,
+    input: CreateBudgetLineInput,
+  ): Promise<BudgetLineDto> {
+    const now = new Date().toISOString();
+    await ProjectService.getProject(orgId, projectId);
+
+    const budgetLine = BudgetLineSchema.parse({
+      ...input,
+      projectId,
+      code: input.code.trim().toUpperCase(),
+      amount: input.amount,
+      entityType: "BUDGET_LINE",
+    });
+
+    const budgetLineItem = {
+      PK: KeyFactory.orgKey(orgId),
+      SK: KeyFactory.budgetLineSK(
+        projectId,
+        budgetLine.fiscalYear,
+        budgetLine.code,
+      ),
+      ...budgetLine,
+      createdBy: userId,
+      createdAt: now,
+      updatedBy: userId,
+      updatedAt: now,
+    };
+
+    try {
+      await dynamoClient.send(
+        new PutItemCommand({
+          TableName: config.TABLE_NAME,
+          Item: marshall(budgetLineItem, { removeUndefinedValues: true }),
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        }),
+      );
+    } catch (error: any) {
+      if (error?.name === "ConditionalCheckFailedException") {
+        throw new AppError(400, "ERROR_BUDGET_LINE_EXISTS");
+      }
+      throw error;
+    }
+
+    return ProjectService.toBudgetLineDto(budgetLineItem);
+  }
+
+  static async listBudgetLines(
+    orgId: string,
+    projectId: string,
+    year: string,
+  ): Promise<BudgetLineDto[]> {
+    await ProjectService.getProject(orgId, projectId);
+
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: marshall({
+          ":pk": KeyFactory.orgKey(orgId),
+          ":sk": KeyFactory.budgetLinesPrefix(projectId, year),
+        }),
+      }),
+    );
+
+    return (result.Items || []).map((item) =>
+      ProjectService.toBudgetLineDto(
+        BudgetLineSchema.passthrough().parse(unmarshall(item)),
+      ),
     );
   }
 
@@ -454,27 +634,6 @@ export class ProjectService {
     if (!result.Item) {
       throw new AppError(400, "ERROR_DONOR_NOT_FOUND");
     }
-  }
-
-  private static async listBudgetLines(
-    orgId: string,
-    projectId: string,
-    year: string,
-  ) {
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-        ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.orgKey(orgId),
-          ":sk": KeyFactory.budgetLinesPrefix(projectId, year),
-        }),
-      }),
-    );
-
-    return (result.Items || []).map((item) =>
-      BudgetLineSchema.passthrough().parse(unmarshall(item)),
-    );
   }
 
   private static async listProjectLines(

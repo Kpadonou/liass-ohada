@@ -1,0 +1,239 @@
+<div class="space-y-6">
+  @if (projectQuery.isPending()) {
+    <div class="space-y-4">
+      <liass-skeleton variant="block" />
+      <liass-skeleton variant="block" />
+    </div>
+  } @else if (projectQuery.isError() || !project()) {
+    <liass-card>
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ 'PROJECTS.ERRORS.LOAD_FAILED' | transloco }}
+      </div>
+      <div class="mt-4">
+        <liass-button tone="neutral" variant="outline" icon="arrow_back" (pressed)="backToProjects()">
+          {{ 'PROJECTS.ACTIONS.BACK' | transloco }}
+        </liass-button>
+      </div>
+    </liass-card>
+  } @else {
+    <liass-page-header
+      [eyebrow]="'PROJECTS.DETAIL.EYEBROW' | transloco"
+      [title]="project()!.projectCode + ' - ' + project()!.name"
+      [subtitle]="'PROJECTS.DETAIL.SUBTITLE' | transloco:{ donor: donorName(project()!.donorId) }"
+      [actionLabel]="'PROJECTS.ACTIONS.BACK' | transloco"
+      actionIcon="arrow_back"
+      (actionTriggered)="backToProjects()"
+    />
+
+    <div class="grid gap-4 lg:grid-cols-4">
+      <liass-stat-card
+        icon="account_balance_wallet"
+        [label]="'PROJECTS.DETAIL.STATS.BUDGET.LABEL' | transloco"
+        [value]="formatAmount(project()!.totalBudget, project()!.currency)"
+        [meta]="'PROJECTS.DETAIL.STATS.BUDGET.META' | transloco"
+        tone="info"
+      />
+      <liass-stat-card
+        icon="payments"
+        [label]="'PROJECTS.DETAIL.STATS.FUNDING.LABEL' | transloco"
+        [value]="formatAmount(fundingTotal(), project()!.currency)"
+        [meta]="'PROJECTS.DETAIL.STATS.FUNDING.META' | transloco"
+        tone="success"
+        [state]="fundingSourcesQuery.isPending() ? 'loading' : 'default'"
+      />
+      <liass-stat-card
+        icon="format_list_bulleted"
+        [label]="'PROJECTS.DETAIL.STATS.BUDGET_LINES.LABEL' | transloco"
+        [value]="budgetLines().length.toString()"
+        [meta]="formatAmount(budgetTotal(), project()!.currency)"
+        tone="accent"
+        [state]="budgetLinesQuery.isPending() ? 'loading' : 'default'"
+      />
+      <liass-stat-card
+        icon="insights"
+        [label]="'PROJECTS.DETAIL.STATS.NET_CASH.LABEL' | transloco"
+        [value]="formatAmount(report()?.financialPosition?.netCash ?? 0, project()!.currency)"
+        [meta]="'PROJECTS.DETAIL.STATS.NET_CASH.META' | transloco:{ year: selectedYear() }"
+        tone="neutral"
+        [state]="reportQuery.isPending() ? 'loading' : 'default'"
+      />
+    </div>
+
+    <liass-card>
+      <div class="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div class="flex flex-wrap items-center gap-3">
+          <liass-status-chip [label]="'PROJECTS.STATUS.' + project()!.status | transloco" [tone]="statusTone(project()!.status)" />
+          <span class="text-sm text-slate-500 dark:text-slate-400">{{ project()!.startDate }} - {{ project()!.endDate || ('PROJECTS.DETAIL.NO_END_DATE' | transloco) }}</span>
+        </div>
+
+        <mat-form-field appearance="outline" class="w-full lg:w-40">
+          <mat-label>{{ 'PROJECTS.FILTERS.YEAR' | transloco }}</mat-label>
+          <input matInput inputmode="numeric" maxlength="4" [value]="selectedYear()" (input)="updateYear($event)" />
+        </mat-form-field>
+      </div>
+
+      <mat-tab-group>
+        <mat-tab [label]="'PROJECTS.DETAIL.TABS.OVERVIEW' | transloco">
+          <div class="grid gap-4 py-5 lg:grid-cols-2">
+            <section class="rounded-app-card border border-slate-200 p-5 dark:border-slate-800">
+              <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'PROJECTS.DETAIL.OVERVIEW.IDENTITY' | transloco }}</h3>
+              <dl class="mt-4 grid gap-3 text-sm">
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-500 dark:text-slate-400">{{ 'PROJECTS.FIELDS.DONOR' | transloco }}</dt>
+                  <dd class="font-medium text-slate-900 dark:text-slate-100">{{ donorName(project()!.donorId) }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-500 dark:text-slate-400">{{ 'PROJECTS.FIELDS.MANAGER' | transloco }}</dt>
+                  <dd class="font-medium text-slate-900 dark:text-slate-100">{{ project()!.managerId }}</dd>
+                </div>
+                <div class="flex justify-between gap-4">
+                  <dt class="text-slate-500 dark:text-slate-400">{{ 'PROJECTS.FIELDS.CONTRACT' | transloco }}</dt>
+                  <dd class="font-medium text-slate-900 dark:text-slate-100">{{ project()!.contractRef || '-' }}</dd>
+                </div>
+              </dl>
+            </section>
+
+            <section class="rounded-app-card border border-slate-200 p-5 dark:border-slate-800">
+              <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'PROJECTS.DETAIL.OVERVIEW.DESCRIPTION' | transloco }}</h3>
+              <p class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-400">{{ project()!.description || ('PROJECTS.DETAIL.OVERVIEW.NO_DESCRIPTION' | transloco) }}</p>
+            </section>
+          </div>
+        </mat-tab>
+
+        <mat-tab [label]="'PROJECTS.DETAIL.TABS.FUNDING' | transloco">
+          <div class="py-5">
+            <div class="mb-4 flex justify-end">
+              <liass-button tone="brand" variant="solid" icon="add" (pressed)="openCreateFundingSource()">
+                {{ 'PROJECTS.FUNDING.CREATE.SUBMIT' | transloco }}
+              </liass-button>
+            </div>
+
+            @if (fundingSourcesQuery.isPending()) {
+              <liass-skeleton variant="block" />
+            } @else if (fundingSources().length === 0) {
+              <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                {{ 'PROJECTS.FUNDING.EMPTY' | transloco }}
+              </div>
+            } @else {
+              <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+                <table class="w-full min-w-[720px] border-collapse text-left">
+                  <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                    <tr>
+                      <th class="px-4 py-3">{{ 'PROJECTS.FUNDING.TABLE.DONOR' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'PROJECTS.FUNDING.TABLE.LABEL' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'PROJECTS.FUNDING.TABLE.AMOUNT' | transloco }}</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @for (source of fundingSources(); track source.donorId) {
+                      <tr>
+                        <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ donorName(source.donorId) }}</td>
+                        <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ source.label }}</td>
+                        <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(source.amount, source.currency) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </mat-tab>
+
+        <mat-tab [label]="'PROJECTS.DETAIL.TABS.BUDGET' | transloco">
+          <div class="py-5">
+            <div class="mb-4 flex justify-end">
+              <liass-button tone="brand" variant="solid" icon="add" (pressed)="openCreateBudgetLine()">
+                {{ 'PROJECTS.BUDGET.CREATE.SUBMIT' | transloco }}
+              </liass-button>
+            </div>
+
+            @if (budgetLinesQuery.isPending()) {
+              <liass-skeleton variant="block" />
+            } @else if (budgetLines().length === 0) {
+              <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                {{ 'PROJECTS.BUDGET.EMPTY' | transloco }}
+              </div>
+            } @else {
+              <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+                <table class="w-full min-w-[820px] border-collapse text-left">
+                  <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                    <tr>
+                      <th class="px-4 py-3">{{ 'PROJECTS.BUDGET.TABLE.CODE' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'PROJECTS.BUDGET.TABLE.LABEL' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'PROJECTS.BUDGET.TABLE.CATEGORY' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'PROJECTS.BUDGET.TABLE.AMOUNT' | transloco }}</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @for (line of budgetLines(); track line.code) {
+                      <tr>
+                        <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ line.code }}</td>
+                        <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.label }}</td>
+                        <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ 'PROJECTS.BUDGET.CATEGORIES.' + line.category | transloco }}</td>
+                        <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(line.amount, project()!.currency) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </mat-tab>
+
+        <mat-tab [label]="'PROJECTS.DETAIL.TABS.REPORT' | transloco">
+          <div class="space-y-5 py-5">
+            @if (reportQuery.isPending()) {
+              <liass-skeleton variant="block" />
+            } @else if (reportQuery.isError() || !report()) {
+              <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+                {{ 'PROJECTS.ERRORS.REPORT_FAILED' | transloco }}
+              </div>
+            } @else {
+              <div class="grid gap-4 lg:grid-cols-3">
+                <section class="rounded-app-card border border-slate-200 p-5 dark:border-slate-800">
+                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'PROJECTS.REPORT.TOTAL_RESOURCES' | transloco }}</p>
+                  <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ formatAmount(report()!.financialPosition.totalResources, project()!.currency) }}</p>
+                </section>
+                <section class="rounded-app-card border border-slate-200 p-5 dark:border-slate-800">
+                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'PROJECTS.REPORT.TOTAL_EXPENSES' | transloco }}</p>
+                  <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ formatAmount(report()!.financialPosition.totalExpenses, project()!.currency) }}</p>
+                </section>
+                <section class="rounded-app-card border border-slate-200 p-5 dark:border-slate-800">
+                  <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'PROJECTS.REPORT.NET_CASH' | transloco }}</p>
+                  <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ formatAmount(report()!.financialPosition.netCash, project()!.currency) }}</p>
+                </section>
+              </div>
+
+              <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+                <table class="w-full min-w-[900px] border-collapse text-left">
+                  <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                    <tr>
+                      <th class="px-4 py-3">{{ 'PROJECTS.REPORT.BUDGET_CODE' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'PROJECTS.REPORT.BUDGET_LABEL' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'PROJECTS.REPORT.ALLOCATED' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'PROJECTS.REPORT.SPENT' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'PROJECTS.REPORT.REMAINING' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'PROJECTS.REPORT.EXECUTION' | transloco }}</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @for (line of report()!.budgetVsActual; track line.code) {
+                      <tr>
+                        <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ line.code }}</td>
+                        <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.label }}</td>
+                        <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ formatAmount(line.allocated, project()!.currency) }}</td>
+                        <td class="px-4 py-4 text-right text-sm text-slate-600 dark:text-slate-400">{{ formatAmount(line.spent, project()!.currency) }}</td>
+                        <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(line.remaining, project()!.currency) }}</td>
+                        <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatRate(line.executionRate) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </div>
+        </mat-tab>
+      </mat-tab-group>
+    </liass-card>
+  }
+</div>

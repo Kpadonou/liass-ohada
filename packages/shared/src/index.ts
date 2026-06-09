@@ -52,14 +52,59 @@ export {
   ListJournalsResponseSchema,
 } from "./accounting/journal";
 export type { CreateJournalRequest, JournalDto } from "./accounting/journal";
-export { BudgetLineSchema, BudgetSchema } from "./projects/budget";
-export type { Budget, BudgetLine } from "./projects/budget";
-export { DonorSchema } from "./projects/donor";
-export type { Donor } from "./projects/donor";
-export { FundingSourceSchema } from "./projects/funding-source";
-export type { FundingSource } from "./projects/funding-source";
-export { ProjectSchema, ProjectStatus } from "./projects/project";
-export type { Project } from "./projects/project";
+export {
+  BudgetLineDtoSchema,
+  BudgetLineResponseSchema,
+  BudgetLineSchema,
+  BudgetSchema,
+  CreateBudgetLineRequestSchema,
+  ListBudgetLinesResponseSchema,
+} from "./projects/budget";
+export type {
+  Budget,
+  BudgetLine,
+  BudgetLineDto,
+  CreateBudgetLineRequest,
+} from "./projects/budget";
+export {
+  CreateDonorRequestSchema,
+  DonorDtoSchema,
+  DonorResponseSchema,
+  DonorSchema,
+  ListDonorsResponseSchema,
+} from "./projects/donor";
+export type { CreateDonorRequest, Donor, DonorDto } from "./projects/donor";
+export {
+  CreateFundingSourceRequestSchema,
+  FundingSourceDtoSchema,
+  FundingSourceResponseSchema,
+  FundingSourceSchema,
+  ListFundingSourcesResponseSchema,
+} from "./projects/funding-source";
+export type {
+  CreateFundingSourceRequest,
+  FundingSource,
+  FundingSourceDto,
+} from "./projects/funding-source";
+export {
+  CreateProjectRequestSchema,
+  ListProjectsResponseSchema,
+  ProjectDtoSchema,
+  ProjectReportDtoSchema,
+  ProjectReportResponseSchema,
+  ProjectResponseSchema,
+  ProjectSchema,
+  ProjectStatus,
+  ProjectSummaryDtoSchema,
+  ProjectsSummaryResponseSchema,
+} from "./projects/project";
+export type {
+  CreateProjectRequest,
+  Project,
+  ProjectDto,
+  ProjectReportDto,
+  ProjectSummaryDto,
+} from "./projects/project";
 export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export {
   CabinetDossierSummarySchema,

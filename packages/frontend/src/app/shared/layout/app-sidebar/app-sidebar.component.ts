@@ -58,10 +58,10 @@ const topLevelItems: readonly ShellNavItem[] = [
   },
   {
     badgeKey: 'SHELL.NAV.SYCEBNL_BADGE',
-    disabled: true,
     icon: 'folder_managed',
     labelKey: 'SHELL.NAV.PROJECTS',
-    page: 'projects'
+    page: 'projects',
+    route: ['/projects']
   },
   {
     disabled: true,

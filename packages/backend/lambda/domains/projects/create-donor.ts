@@ -1,27 +1,17 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import {
-  CreateFundingSourceInputSchema,
+  CreateDonorInputSchema,
   ProjectService,
 } from "@/lambda/shared/services/project-service";
-import { z } from "zod";
-
-const CreateProjectFundingSourceSchema = CreateFundingSourceInputSchema.extend({
-  projectId: z.string().min(1),
-});
 
 export const handler = createHandler(
-  CreateProjectFundingSourceSchema,
+  CreateDonorInputSchema,
   async (data, { orgId, userId, i18n }) => {
-    const fundingSource = await ProjectService.createFundingSource(
-      orgId,
-      userId,
-      data.projectId,
-      data,
-    );
+    const donor = await ProjectService.createDonor(orgId, userId, data);
 
     return {
-      message: i18n.getMessage("SUCCESS_FUNDING_SOURCE_CREATED"),
-      data: fundingSource,
+      message: i18n.getMessage("SUCCESS_DONOR_CREATED"),
+      data: donor,
     };
   },
 );

@@ -231,6 +231,201 @@
       }
     }
   },
+  "PROJECTS": {
+    "ACTIONS": {
+      "BACK": "Back to projects",
+      "NEW_DONOR": "New donor",
+      "NEW_PROJECT": "New project",
+      "OPEN": "Open"
+    },
+    "BUDGET": {
+      "CATEGORIES": {
+        "ACTIVITY": "Activity",
+        "EQUIPMENT": "Equipment",
+        "FUNCTIONING": "Functioning",
+        "PERSONNEL": "Personnel"
+      },
+      "CREATE": {
+        "SUBMIT": "Add budget line",
+        "TITLE": "Add budget line"
+      },
+      "EMPTY": "No budget line for this fiscal year.",
+      "FIELDS": {
+        "AMOUNT": "Amount",
+        "CATEGORY": "Category",
+        "CODE": "Code",
+        "LABEL": "Label",
+        "YEAR": "Fiscal year"
+      },
+      "TABLE": {
+        "AMOUNT": "Amount",
+        "CATEGORY": "Category",
+        "CODE": "Code",
+        "LABEL": "Label"
+      }
+    },
+    "CREATE": {
+      "SUBMIT": "Create project",
+      "TITLE": "Create SYCEBNL project"
+    },
+    "DETAIL": {
+      "EYEBROW": "SYCEBNL project",
+      "NO_END_DATE": "No end date",
+      "OVERVIEW": {
+        "DESCRIPTION": "Description",
+        "IDENTITY": "Project identity",
+        "NO_DESCRIPTION": "No description provided."
+      },
+      "ROUTE_SUBTITLE": "Funding, budget, and analytical report.",
+      "ROUTE_TITLE": "Project detail",
+      "STATS": {
+        "BUDGET": {
+          "LABEL": "Global budget",
+          "META": "Contract envelope"
+        },
+        "BUDGET_LINES": {
+          "LABEL": "Budget lines"
+        },
+        "FUNDING": {
+          "LABEL": "Funding",
+          "META": "Registered promises"
+        },
+        "NET_CASH": {
+          "LABEL": "Net cash",
+          "META": "Fiscal year {{year}}"
+        }
+      },
+      "SUBTITLE": "Main donor: {{donor}}",
+      "TABS": {
+        "BUDGET": "Budget",
+        "FUNDING": "Funding",
+        "OVERVIEW": "Overview",
+        "REPORT": "Report"
+      }
+    },
+    "DONORS": {
+      "CREATE": {
+        "SUBMIT": "Create donor",
+        "TITLE": "Create donor"
+      },
+      "FIELDS": {
+        "ACCOUNT": "Linked account",
+        "ADDRESS": "Address",
+        "CODE": "Code",
+        "CURRENCY": "Currency",
+        "EMAIL": "Email",
+        "NAME": "Name",
+        "PHONE": "Phone",
+        "TYPE": "Type"
+      },
+      "TYPES": {
+        "GOVERNMENT": "Government",
+        "INDIVIDUAL": "Individual",
+        "OTHER": "Other",
+        "PRIVATE": "Private",
+        "PUBLIC": "Public"
+      }
+    },
+    "EMPTY": "No project matches the current filters.",
+    "ERRORS": {
+      "CREATE_BUDGET_LINE_FAILED": "The budget line could not be created.",
+      "CREATE_DONOR_FAILED": "The donor could not be created.",
+      "CREATE_FUNDING_SOURCE_FAILED": "The funding source could not be created.",
+      "CREATE_PROJECT_FAILED": "The project could not be created.",
+      "LOAD_FAILED": "Projects could not be loaded.",
+      "REPORT_FAILED": "The analytical report could not be loaded."
+    },
+    "FIELDS": {
+      "ANNUAL_BUDGET": "{{year}} budget",
+      "CODE": "Project code",
+      "CONTRACT": "Contract reference",
+      "CURRENCY": "Currency",
+      "DESCRIPTION": "Description",
+      "DONOR": "Donor",
+      "END_DATE": "End date",
+      "MANAGER": "Manager",
+      "NAME": "Name",
+      "START_DATE": "Start date",
+      "STATUS": "Status",
+      "TOTAL_BUDGET": "Total budget"
+    },
+    "FILTERS": {
+      "ALL_DONORS": "All donors",
+      "ALL_STATUSES": "All statuses",
+      "DONOR": "Donor",
+      "SEARCH": "Search",
+      "STATUS": "Status",
+      "YEAR": "Fiscal year"
+    },
+    "FUNDING": {
+      "CREATE": {
+        "SUBMIT": "Add funding",
+        "TITLE": "Add funding source"
+      },
+      "EMPTY": "No funding source has been registered.",
+      "FIELDS": {
+        "AMOUNT": "Amount",
+        "CURRENCY": "Currency",
+        "DONOR": "Donor",
+        "LABEL": "Label"
+      },
+      "TABLE": {
+        "AMOUNT": "Amount",
+        "DONOR": "Donor",
+        "LABEL": "Label"
+      }
+    },
+    "PAGE": {
+      "EYEBROW": "SYCEBNL workspace",
+      "SUBTITLE": "Track donors, budgets, funding envelopes, and analytical project reports.",
+      "TITLE": "Projects and funds"
+    },
+    "REPORT": {
+      "ALLOCATED": "Allocated",
+      "BUDGET_CODE": "Budget code",
+      "BUDGET_LABEL": "Label",
+      "EXECUTION": "Execution",
+      "NET_CASH": "Net cash",
+      "REMAINING": "Remaining",
+      "SPENT": "Spent",
+      "TOTAL_EXPENSES": "Expenses",
+      "TOTAL_RESOURCES": "Resources"
+    },
+    "STATS": {
+      "ACTIVE": {
+        "LABEL": "Active",
+        "META": "Projects in progress"
+      },
+      "ALERTS": {
+        "LABEL": "Alerts",
+        "META": "Overspend or negative cash"
+      },
+      "BUDGET": {
+        "LABEL": "Total budget",
+        "META": "Sum of project envelopes"
+      },
+      "TRACKED": {
+        "LABEL": "Tracked projects",
+        "META": "Active project registry"
+      }
+    },
+    "STATUS": {
+      "ACTIVE": "Active",
+      "CANCELLED": "Cancelled",
+      "COMPLETED": "Completed",
+      "ON_HOLD": "On hold"
+    },
+    "TABLE": {
+      "ACTIONS": "Actions",
+      "BUDGET": "Budget",
+      "CODE": "Code",
+      "DESCRIPTION": "Registry of SYCEBNL projects and restricted funds.",
+      "DONOR": "Donor",
+      "NAME": "Name",
+      "STATUS": "Status",
+      "TITLE": "Project registry"
+    }
+  },
   "ACCOUNTING": {
     "PAGES": {
       "CHART_OF_ACCOUNTS": {

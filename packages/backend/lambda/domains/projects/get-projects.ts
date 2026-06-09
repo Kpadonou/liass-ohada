@@ -13,15 +13,16 @@ export const handler = createHandler(
       const project = await ProjectService.getProject(orgId, data.projectId);
       return {
         message: i18n.getMessage("SUCCESS_PROJECT_RETRIEVED"),
-        project,
+        data: project,
       };
     }
 
     const projects = await ProjectService.listProjects(orgId);
     return {
       message: i18n.getMessage("SUCCESS_PROJECTS_LISTED"),
-      count: projects.length,
-      projects,
+      data: {
+        projects,
+      },
     };
   },
 );

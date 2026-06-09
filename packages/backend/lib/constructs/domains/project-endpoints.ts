@@ -43,6 +43,10 @@ export class ProjectEndpoints extends DomainConstructFactory {
     };
 
     // --- Project Domain Endpoints ---
+    // Donor registry
+    map(apigw.HttpMethod.POST, "/donors", "create-donor");
+    map(apigw.HttpMethod.GET, "/donors", "get-donors", "list-donors");
+
     // Projects
     map(apigw.HttpMethod.POST, "/projects", "create-project");
     map(apigw.HttpMethod.GET, "/projects", "get-projects", "list-projects");
@@ -53,16 +57,28 @@ export class ProjectEndpoints extends DomainConstructFactory {
       "get-project",
     );
 
-    // Donors (at project level)
+    // Funding sources (project-level donor envelopes)
     map(
       apigw.HttpMethod.POST,
       "/projects/{projectId}/funding-sources",
-      "create-donor",
+      "create-funding-source",
     );
     map(
       apigw.HttpMethod.GET,
       "/projects/{projectId}/funding-sources",
-      "get-donors",
+      "list-funding-sources",
+    );
+
+    // Budget lines
+    map(
+      apigw.HttpMethod.POST,
+      "/projects/{projectId}/budget-lines",
+      "create-budget-line",
+    );
+    map(
+      apigw.HttpMethod.GET,
+      "/projects/{projectId}/budget-lines",
+      "list-budget-lines",
     );
 
     // Reporting

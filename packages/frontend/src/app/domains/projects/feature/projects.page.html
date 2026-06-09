@@ -1,0 +1,148 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'PROJECTS.PAGE.EYEBROW' | transloco"
+    [title]="'PROJECTS.PAGE.TITLE' | transloco"
+    [subtitle]="'PROJECTS.PAGE.SUBTITLE' | transloco"
+    [actionLabel]="'PROJECTS.ACTIONS.NEW_PROJECT' | transloco"
+    actionIcon="add"
+    (actionTriggered)="openCreateProject()"
+  />
+
+  <div class="grid gap-4 lg:grid-cols-4">
+    <liass-stat-card
+      icon="folder_managed"
+      [label]="'PROJECTS.STATS.TRACKED.LABEL' | transloco"
+      [value]="projects().length.toString()"
+      [meta]="'PROJECTS.STATS.TRACKED.META' | transloco"
+      tone="accent"
+      [state]="projectsQuery.isPending() ? 'loading' : 'default'"
+    />
+    <liass-stat-card
+      icon="task_alt"
+      [label]="'PROJECTS.STATS.ACTIVE.LABEL' | transloco"
+      [value]="activeProjectsCount().toString()"
+      [meta]="'PROJECTS.STATS.ACTIVE.META' | transloco"
+      tone="success"
+      [state]="projectsQuery.isPending() ? 'loading' : 'default'"
+    />
+    <liass-stat-card
+      icon="account_balance_wallet"
+      [label]="'PROJECTS.STATS.BUDGET.LABEL' | transloco"
+      [value]="formatAmount(totalBudget())"
+      [meta]="'PROJECTS.STATS.BUDGET.META' | transloco"
+      tone="info"
+      [state]="projectsQuery.isPending() ? 'loading' : 'default'"
+    />
+    <liass-stat-card
+      icon="warning"
+      [label]="'PROJECTS.STATS.ALERTS.LABEL' | transloco"
+      [value]="alertsCount().toString()"
+      [meta]="'PROJECTS.STATS.ALERTS.META' | transloco"
+      [tone]="alertsCount() > 0 ? 'warning' : 'neutral'"
+      [state]="summaryQuery.isPending() ? 'loading' : 'default'"
+    />
+  </div>
+
+  <liass-card [title]="'PROJECTS.TABLE.TITLE' | transloco" [description]="'PROJECTS.TABLE.DESCRIPTION' | transloco">
+    <div class="mb-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FILTERS.SEARCH' | transloco }}</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input matInput type="search" [value]="searchQuery()" (input)="updateSearch($event)" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FILTERS.STATUS' | transloco }}</mat-label>
+        <mat-select [value]="statusFilter()" (valueChange)="statusFilter.set($event)">
+          <mat-option value="ALL">{{ 'PROJECTS.FILTERS.ALL_STATUSES' | transloco }}</mat-option>
+          @for (status of ['ACTIVE', 'COMPLETED', 'ON_HOLD', 'CANCELLED']; track status) {
+            <mat-option [value]="status">{{ 'PROJECTS.STATUS.' + status | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FILTERS.DONOR' | transloco }}</mat-label>
+        <mat-select [value]="donorFilter()" (valueChange)="donorFilter.set($event)">
+          <mat-option value="ALL">{{ 'PROJECTS.FILTERS.ALL_DONORS' | transloco }}</mat-option>
+          @for (donor of donors(); track donor.donorId) {
+            <mat-option [value]="donor.donorId">{{ donor.code }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <liass-button tone="neutral" variant="outline" icon="person_add" (pressed)="openCreateDonor()">
+        {{ 'PROJECTS.ACTIONS.NEW_DONOR' | transloco }}
+      </liass-button>
+    </div>
+
+    @if (projectsQuery.isPending()) {
+      <div class="space-y-3">
+        @for (_ of [0, 1, 2]; track $index) {
+          <liass-skeleton variant="block" />
+        }
+      </div>
+    } @else if (projectsQuery.isError()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ 'PROJECTS.ERRORS.LOAD_FAILED' | transloco }}
+      </div>
+    } @else if (filteredProjects().length === 0) {
+      <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+        <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'PROJECTS.EMPTY' | transloco }}</p>
+      </div>
+    } @else {
+      <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 md:block">
+        <table class="w-full min-w-[980px] border-collapse text-left">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'PROJECTS.TABLE.CODE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'PROJECTS.TABLE.NAME' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'PROJECTS.TABLE.DONOR' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'PROJECTS.TABLE.BUDGET' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'PROJECTS.TABLE.STATUS' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'PROJECTS.TABLE.ACTIONS' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (project of filteredProjects(); track project.projectId) {
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ project.projectCode }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ project.name }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ donorName(project.donorId) }}</td>
+                <td class="px-4 py-4 text-right text-sm font-semibold text-slate-800 dark:text-slate-200">{{ formatAmount(project.totalBudget, project.currency) }}</td>
+                <td class="px-4 py-4">
+                  <liass-status-chip [label]="'PROJECTS.STATUS.' + project.status | transloco" [tone]="statusTone(project.status)" size="sm" />
+                </td>
+                <td class="px-4 py-4 text-right">
+                  <liass-button size="sm" tone="brand" variant="ghost" icon="open_in_new" (pressed)="openProject(project)">
+                    {{ 'PROJECTS.ACTIONS.OPEN' | transloco }}
+                  </liass-button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid gap-3 md:hidden">
+        @for (project of filteredProjects(); track project.projectId) {
+          <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-semibold text-slate-950 dark:text-white">{{ project.projectCode }} - {{ project.name }}</p>
+                <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ donorName(project.donorId) }}</p>
+              </div>
+              <liass-status-chip [label]="'PROJECTS.STATUS.' + project.status | transloco" [tone]="statusTone(project.status)" size="sm" />
+            </div>
+            <div class="mt-4 flex items-center justify-between gap-3">
+              <p class="text-sm font-semibold text-slate-800 dark:text-slate-200">{{ formatAmount(project.totalBudget, project.currency) }}</p>
+              <liass-button size="sm" tone="brand" variant="ghost" icon="open_in_new" (pressed)="openProject(project)">
+                {{ 'PROJECTS.ACTIONS.OPEN' | transloco }}
+              </liass-button>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </liass-card>
+</div>

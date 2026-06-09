@@ -25,3 +25,37 @@ export const DonorSchema = z.object({
 });
 
 export type Donor = z.infer<typeof DonorSchema>;
+
+export const DonorDtoSchema = DonorSchema.omit({
+  entityType: true,
+});
+
+export type DonorDto = z.infer<typeof DonorDtoSchema>;
+
+export const CreateDonorRequestSchema = z.object({
+  code: z.string().min(2).max(10),
+  name: z.string().min(3),
+  type: z.enum(["PUBLIC", "PRIVATE", "GOVERNMENT", "INDIVIDUAL", "OTHER"]),
+  currency: z.string().length(3).default("XOF"),
+  email: z.string().email().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  associatedAccountId: z
+    .string()
+    .regex(/^\d{8}$/)
+    .optional(),
+});
+
+export type CreateDonorRequest = z.infer<typeof CreateDonorRequestSchema>;
+
+export const DonorResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: DonorDtoSchema,
+});
+
+export const ListDonorsResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({
+    donors: z.array(DonorDtoSchema),
+  }),
+});

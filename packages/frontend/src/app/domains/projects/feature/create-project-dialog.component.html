@@ -1,0 +1,97 @@
+<h2 mat-dialog-title>{{ 'PROJECTS.CREATE.TITLE' | transloco }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="space-y-4">
+    @if (errorKey()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ errorKey()! | transloco }}
+      </div>
+    }
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.CODE' | transloco }}</mat-label>
+        <mat-icon matPrefix>folder_managed</mat-icon>
+        <input matInput formControlName="projectCode" autocomplete="off" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.STATUS' | transloco }}</mat-label>
+        <mat-select formControlName="status">
+          @for (status of ['ACTIVE', 'COMPLETED', 'ON_HOLD', 'CANCELLED']; track status) {
+            <mat-option [value]="status">{{ 'PROJECTS.STATUS.' + status | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'PROJECTS.FIELDS.NAME' | transloco }}</mat-label>
+      <input matInput formControlName="name" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'PROJECTS.FIELDS.DONOR' | transloco }}</mat-label>
+      <mat-select formControlName="donorId" [disabled]="donorsQuery.isPending()">
+        @for (donor of donorsQuery.data() ?? []; track donor.donorId) {
+          <mat-option [value]="donor.donorId">{{ donorLabel(donor) }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.MANAGER' | transloco }}</mat-label>
+        <input matInput formControlName="managerId" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.CONTRACT' | transloco }}</mat-label>
+        <input matInput formControlName="contractRef" />
+      </mat-form-field>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.START_DATE' | transloco }}</mat-label>
+        <input matInput type="date" formControlName="startDate" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.END_DATE' | transloco }}</mat-label>
+        <input matInput type="date" formControlName="endDate" />
+      </mat-form-field>
+    </div>
+
+    <div class="grid gap-4 md:grid-cols-3">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.TOTAL_BUDGET' | transloco }}</mat-label>
+        <input matInput type="number" min="0" formControlName="totalBudget" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.ANNUAL_BUDGET' | transloco:{ year: currentYear } }}</mat-label>
+        <input matInput type="number" min="0" formControlName="annualBudget" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.FIELDS.CURRENCY' | transloco }}</mat-label>
+        <input matInput maxlength="3" formControlName="currency" />
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'PROJECTS.FIELDS.DESCRIPTION' | transloco }}</mat-label>
+      <textarea matInput rows="2" formControlName="description"></textarea>
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+    </liass-button>
+    <liass-button buttonType="submit" tone="brand" variant="solid" icon="add" [disabled]="form.invalid || submitting()" [loading]="submitting()">
+      {{ 'PROJECTS.CREATE.SUBMIT' | transloco }}
+    </liass-button>
+  </mat-dialog-actions>
+</form>

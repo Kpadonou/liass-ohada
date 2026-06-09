@@ -1,0 +1,51 @@
+<h2 mat-dialog-title>{{ 'PROJECTS.BUDGET.CREATE.TITLE' | transloco }}</h2>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="space-y-4">
+    @if (errorKey()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ errorKey()! | transloco }}
+      </div>
+    }
+
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.BUDGET.FIELDS.YEAR' | transloco }}</mat-label>
+        <input matInput formControlName="fiscalYear" inputmode="numeric" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'PROJECTS.BUDGET.FIELDS.CATEGORY' | transloco }}</mat-label>
+        <mat-select formControlName="category">
+          @for (category of ['PERSONNEL', 'EQUIPMENT', 'FUNCTIONING', 'ACTIVITY']; track category) {
+            <mat-option [value]="category">{{ 'PROJECTS.BUDGET.CATEGORIES.' + category | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'PROJECTS.BUDGET.FIELDS.CODE' | transloco }}</mat-label>
+      <input matInput formControlName="code" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'PROJECTS.BUDGET.FIELDS.LABEL' | transloco }}</mat-label>
+      <input matInput formControlName="label" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'PROJECTS.BUDGET.FIELDS.AMOUNT' | transloco }}</mat-label>
+      <input matInput type="number" min="0" formControlName="amount" />
+    </mat-form-field>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+    </liass-button>
+    <liass-button buttonType="submit" tone="brand" variant="solid" icon="add" [disabled]="form.invalid || submitting()" [loading]="submitting()">
+      {{ 'PROJECTS.BUDGET.CREATE.SUBMIT' | transloco }}
+    </liass-button>
+  </mat-dialog-actions>
+</form>

@@ -231,6 +231,201 @@
       }
     }
   },
+  "PROJECTS": {
+    "ACTIONS": {
+      "BACK": "Retour aux projets",
+      "NEW_DONOR": "Nouveau bailleur",
+      "NEW_PROJECT": "Nouveau projet",
+      "OPEN": "Consulter"
+    },
+    "BUDGET": {
+      "CATEGORIES": {
+        "ACTIVITY": "Activité",
+        "EQUIPMENT": "Équipement",
+        "FUNCTIONING": "Fonctionnement",
+        "PERSONNEL": "Personnel"
+      },
+      "CREATE": {
+        "SUBMIT": "Ajouter une ligne",
+        "TITLE": "Ajouter une ligne budgétaire"
+      },
+      "EMPTY": "Aucune ligne budgétaire pour cet exercice.",
+      "FIELDS": {
+        "AMOUNT": "Montant",
+        "CATEGORY": "Catégorie",
+        "CODE": "Code",
+        "LABEL": "Libellé",
+        "YEAR": "Exercice"
+      },
+      "TABLE": {
+        "AMOUNT": "Montant",
+        "CATEGORY": "Catégorie",
+        "CODE": "Code",
+        "LABEL": "Libellé"
+      }
+    },
+    "CREATE": {
+      "SUBMIT": "Créer le projet",
+      "TITLE": "Créer un projet SYCEBNL"
+    },
+    "DETAIL": {
+      "EYEBROW": "Projet SYCEBNL",
+      "NO_END_DATE": "Sans date de fin",
+      "OVERVIEW": {
+        "DESCRIPTION": "Description",
+        "IDENTITY": "Identité du projet",
+        "NO_DESCRIPTION": "Aucune description renseignée."
+      },
+      "ROUTE_SUBTITLE": "Financements, budget et rapport analytique.",
+      "ROUTE_TITLE": "Détail projet",
+      "STATS": {
+        "BUDGET": {
+          "LABEL": "Budget global",
+          "META": "Enveloppe contractuelle"
+        },
+        "BUDGET_LINES": {
+          "LABEL": "Lignes budgétaires"
+        },
+        "FUNDING": {
+          "LABEL": "Financements",
+          "META": "Promesses enregistrées"
+        },
+        "NET_CASH": {
+          "LABEL": "Trésorerie nette",
+          "META": "Exercice {{year}}"
+        }
+      },
+      "SUBTITLE": "Bailleur principal: {{donor}}",
+      "TABS": {
+        "BUDGET": "Budget",
+        "FUNDING": "Financements",
+        "OVERVIEW": "Aperçu",
+        "REPORT": "Rapport"
+      }
+    },
+    "DONORS": {
+      "CREATE": {
+        "SUBMIT": "Créer le bailleur",
+        "TITLE": "Créer un bailleur"
+      },
+      "FIELDS": {
+        "ACCOUNT": "Compte associé",
+        "ADDRESS": "Adresse",
+        "CODE": "Code",
+        "CURRENCY": "Devise",
+        "EMAIL": "Email",
+        "NAME": "Nom",
+        "PHONE": "Téléphone",
+        "TYPE": "Type"
+      },
+      "TYPES": {
+        "GOVERNMENT": "Gouvernement",
+        "INDIVIDUAL": "Individuel",
+        "OTHER": "Autre",
+        "PRIVATE": "Privé",
+        "PUBLIC": "Public"
+      }
+    },
+    "EMPTY": "Aucun projet ne correspond aux critères.",
+    "ERRORS": {
+      "CREATE_BUDGET_LINE_FAILED": "La ligne budgétaire n’a pas pu être créée.",
+      "CREATE_DONOR_FAILED": "Le bailleur n’a pas pu être créé.",
+      "CREATE_FUNDING_SOURCE_FAILED": "La source de financement n’a pas pu être créée.",
+      "CREATE_PROJECT_FAILED": "Le projet n’a pas pu être créé.",
+      "LOAD_FAILED": "Les projets n’ont pas pu être chargés.",
+      "REPORT_FAILED": "Le rapport analytique n’a pas pu être chargé."
+    },
+    "FIELDS": {
+      "ANNUAL_BUDGET": "Budget {{year}}",
+      "CODE": "Code projet",
+      "CONTRACT": "Référence contrat",
+      "CURRENCY": "Devise",
+      "DESCRIPTION": "Description",
+      "DONOR": "Bailleur",
+      "END_DATE": "Date de fin",
+      "MANAGER": "Responsable",
+      "NAME": "Nom",
+      "START_DATE": "Date de début",
+      "STATUS": "Statut",
+      "TOTAL_BUDGET": "Budget total"
+    },
+    "FILTERS": {
+      "ALL_DONORS": "Tous les bailleurs",
+      "ALL_STATUSES": "Tous les statuts",
+      "DONOR": "Bailleur",
+      "SEARCH": "Rechercher",
+      "STATUS": "Statut",
+      "YEAR": "Exercice"
+    },
+    "FUNDING": {
+      "CREATE": {
+        "SUBMIT": "Ajouter un financement",
+        "TITLE": "Ajouter une source de financement"
+      },
+      "EMPTY": "Aucune source de financement enregistrée.",
+      "FIELDS": {
+        "AMOUNT": "Montant",
+        "CURRENCY": "Devise",
+        "DONOR": "Bailleur",
+        "LABEL": "Libellé"
+      },
+      "TABLE": {
+        "AMOUNT": "Montant",
+        "DONOR": "Bailleur",
+        "LABEL": "Libellé"
+      }
+    },
+    "PAGE": {
+      "EYEBROW": "Workspace SYCEBNL",
+      "SUBTITLE": "Suivez les bailleurs, budgets, financements et rapports analytiques des projets.",
+      "TITLE": "Projets et fonds"
+    },
+    "REPORT": {
+      "ALLOCATED": "Alloué",
+      "BUDGET_CODE": "Code budget",
+      "BUDGET_LABEL": "Libellé",
+      "EXECUTION": "Exécution",
+      "NET_CASH": "Trésorerie nette",
+      "REMAINING": "Restant",
+      "SPENT": "Réalisé",
+      "TOTAL_EXPENSES": "Emplois",
+      "TOTAL_RESOURCES": "Ressources"
+    },
+    "STATS": {
+      "ACTIVE": {
+        "LABEL": "Actifs",
+        "META": "Projets en cours"
+      },
+      "ALERTS": {
+        "LABEL": "Alertes",
+        "META": "Dépassements ou trésorerie négative"
+      },
+      "BUDGET": {
+        "LABEL": "Budget total",
+        "META": "Somme des enveloppes projet"
+      },
+      "TRACKED": {
+        "LABEL": "Projets suivis",
+        "META": "Registre projet actif"
+      }
+    },
+    "STATUS": {
+      "ACTIVE": "Actif",
+      "CANCELLED": "Annulé",
+      "COMPLETED": "Terminé",
+      "ON_HOLD": "Suspendu"
+    },
+    "TABLE": {
+      "ACTIONS": "Actions",
+      "BUDGET": "Budget",
+      "CODE": "Code",
+      "DESCRIPTION": "Registre des projets SYCEBNL et fonds dédiés.",
+      "DONOR": "Bailleur",
+      "NAME": "Nom",
+      "STATUS": "Statut",
+      "TITLE": "Registre projets"
+    }
+  },
   "ACCOUNTING": {
     "PAGES": {
       "CHART_OF_ACCOUNTS": {

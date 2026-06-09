@@ -77,6 +77,28 @@ export const routes: Routes = [
           import('../feature/dashboard/dashboard.page').then((module) => module.DashboardPage)
       },
       {
+        path: 'projects',
+        loadComponent: () =>
+          import('../../domains/projects/feature/projects.page').then(
+            (module) => module.ProjectsPage
+          ),
+        data: {
+          subtitleKey: 'PROJECTS.PAGE.SUBTITLE',
+          titleKey: 'PROJECTS.PAGE.TITLE'
+        }
+      },
+      {
+        path: 'projects/:projectId',
+        loadComponent: () =>
+          import('../../domains/projects/feature/project-detail.page').then(
+            (module) => module.ProjectDetailPage
+          ),
+        data: {
+          subtitleKey: 'PROJECTS.DETAIL.ROUTE_SUBTITLE',
+          titleKey: 'PROJECTS.DETAIL.ROUTE_TITLE'
+        }
+      },
+      {
         path: 'cabinet/dashboard',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page').then(
