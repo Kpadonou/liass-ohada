@@ -12,7 +12,7 @@
 - Example: `liass-ohada-dev-accounting-table`.
 - Stage resolution for CDK deployments must be deterministic: CDK context (`-c stage=...`) takes precedence over `STAGE`, and defaults to `dev`.
 - DynamoDB tables must set an explicit `tableName`, for example `liass-ohada-dev-accounting-table`.
-- Lambda functions must set an explicit `functionName` using the pattern `liass-ohada-{stage}-{domain}-{action}`, for example `liass-ohada-dev-ledger-post-entry` or `liass-ohada-dev-projects-create-project`.
+- Lambda functions must set an explicit `functionName` using the pattern `liass-ohada-{stage}-{domain}-{action}`, for example `liass-ohada-dev-accounting-post-entry` or `liass-ohada-dev-projects-create-project`.
 - **Mandatory**: Resource names must be generated from centralized CDK deployment configuration and environment variables. Business logic must not hard-code AWS resource names; Lambdas must receive resource names through environment variables such as `TABLE_NAME`.
 
 ### Technical Stack

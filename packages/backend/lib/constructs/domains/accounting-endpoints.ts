@@ -30,7 +30,7 @@ export class AccountingEndpoints extends DomainConstructFactory {
       this.addRoute({
         api: props.api,
         authorizer: props.authorizer,
-        domainName: "ledger",
+        domainName: "accounting",
         handlerEntry: entry,
         idPrefix: "Accounting-",
         method,
