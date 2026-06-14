@@ -99,6 +99,17 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'treasury',
+        loadComponent: () =>
+          import('../../domains/treasury/feature/treasury.page').then(
+            (module) => module.TreasuryPage
+          ),
+        data: {
+          subtitleKey: 'TREASURY.PAGE.SUBTITLE',
+          titleKey: 'TREASURY.PAGE.TITLE'
+        }
+      },
+      {
         path: 'cabinet/dashboard',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page').then(

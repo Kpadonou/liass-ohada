@@ -77,6 +77,34 @@ export const KeyFactory = {
   thirdPartySK: (type: string, thirdPartyId: string) =>
     `TP#${type.toUpperCase()}#${thirdPartyId}`,
 
+  treasuryAccountPrefix: () => "TRS#ACC#",
+
+  treasuryAccountSK: (treasuryAccountId: string) =>
+    `TRS#ACC#${treasuryAccountId}`,
+
+  bankStatementLinePrefix: (
+    treasuryAccountId: string,
+    year: number | string,
+  ) => `TRS#${treasuryAccountId}#FY#${year}#STMT#`,
+
+  bankStatementLineSK: (
+    treasuryAccountId: string,
+    year: number | string,
+    date: string,
+    statementLineId: string,
+  ) => `TRS#${treasuryAccountId}#FY#${year}#STMT#${date}#${statementLineId}`,
+
+  reconciliationMatchPrefix: (
+    treasuryAccountId: string,
+    year: number | string,
+  ) => `TRS#${treasuryAccountId}#FY#${year}#RCN#`,
+
+  reconciliationMatchSK: (
+    treasuryAccountId: string,
+    year: number | string,
+    matchId: string,
+  ) => `TRS#${treasuryAccountId}#FY#${year}#RCN#${matchId}`,
+
   // --- GSI 1: General Ledger (Account View) ---
 
   gsi1PK: (orgId: string) => `ORG#${orgId}`,

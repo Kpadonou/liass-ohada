@@ -1,0 +1,20 @@
+import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
+import { TreasuryService } from "@/lambda/shared/services/treasury-service";
+import { CancelReconciliationRequestSchema } from "@liass-ohada/shared/treasury";
+
+export const handler = createHandler(
+  CancelReconciliationRequestSchema,
+  async (data, { orgId, i18n }) => {
+    const match = await TreasuryService.cancelReconciliation(
+      orgId,
+      data.treasuryAccountId,
+      data.year,
+      data.matchId,
+    );
+
+    return {
+      message: i18n.getMessage("SUCCESS_RECONCILIATION_CANCELLED"),
+      data: match,
+    };
+  },
+);

@@ -105,6 +105,7 @@ export type {
   ProjectReportDto,
   ProjectSummaryDto,
 } from "./projects/project";
+export * from "./treasury";
 export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export {
   CabinetDossierSummarySchema,

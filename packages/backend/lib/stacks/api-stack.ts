@@ -12,6 +12,7 @@ import { LiassOhadaAuth } from "../constructs/auth/cognito-auth";
 import { AccountingEndpoints } from "../constructs/domains/accounting-endpoints";
 import { IdentityEndpoints } from "../constructs/domains/identity-endpoints";
 import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
+import { TreasuryEndpoints } from "../constructs/domains/treasury-endpoints";
 
 /**
  * Interface for ApiStack properties.
@@ -74,6 +75,16 @@ export class ApiStack extends Stack {
      * Handles Projects, Donors, and specialized Reporting.
      */
     new ProjectEndpoints(this, "ProjectModule", {
+      api: this.apiGateway.httpApi,
+      table: props.accountingTable,
+      stage: props.stage,
+    });
+
+    /**
+     * TREASURY MODULE
+     * Handles treasury accounts, cash movements, bank statements, and reconciliation.
+     */
+    new TreasuryEndpoints(this, "TreasuryModule", {
       api: this.apiGateway.httpApi,
       table: props.accountingTable,
       stage: props.stage,

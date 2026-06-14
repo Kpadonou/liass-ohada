@@ -64,10 +64,10 @@ const topLevelItems: readonly ShellNavItem[] = [
     route: ['/projects']
   },
   {
-    disabled: true,
     icon: 'payments',
     labelKey: 'SHELL.NAV.TREASURY',
-    page: 'treasury'
+    page: 'treasury',
+    route: ['/treasury']
   },
   {
     disabled: true,

@@ -231,6 +231,150 @@
       }
     }
   },
+  "TREASURY": {
+    "ACCOUNTS": {
+      "CREATE": {
+        "SUBMIT": "Créer le compte",
+        "TITLE": "Créer un compte de trésorerie"
+      },
+      "EMPTY": "Aucun compte de trésorerie n’est configuré.",
+      "FIELDS": {
+        "ACCOUNT_ID": "Compte SYSCOHADA classe 5",
+        "BANK_ACCOUNT_NUMBER": "Numéro de compte bancaire",
+        "BANK_NAME": "Banque",
+        "CURRENCY": "Devise",
+        "LABEL": "Libellé",
+        "OPENING_BALANCE": "Solde d’ouverture",
+        "TYPE": "Type"
+      },
+      "TABLE": {
+        "ACCOUNT": "Compte",
+        "BANK": "Banque",
+        "OPENING": "Ouverture",
+        "TYPE": "Type"
+      },
+      "TYPES": {
+        "BANK": "Banque",
+        "CASH": "Caisse",
+        "MOBILE_MONEY": "Monnaie électronique"
+      }
+    },
+    "ACTIONS": {
+      "NEW_ACCOUNT": "Nouveau compte",
+      "NEW_TRANSACTION": "Nouvelle opération"
+    },
+    "ERRORS": {
+      "CANCEL_RECONCILE_FAILED": "Le rapprochement n’a pas pu être annulé.",
+      "CREATE_ACCOUNT_FAILED": "Le compte de trésorerie n’a pas pu être créé.",
+      "IMPORT_FAILED": "Le relevé n’a pas pu être importé.",
+      "LOAD_FAILED": "Les données de trésorerie n’ont pas pu être chargées.",
+      "POST_TRANSACTION_FAILED": "L’opération de trésorerie n’a pas pu être comptabilisée.",
+      "RECONCILE_FAILED": "Le rapprochement n’a pas pu être créé."
+    },
+    "FILTERS": {
+      "ACCOUNT": "Compte de trésorerie",
+      "YEAR": "Exercice"
+    },
+    "IMPORT": {
+      "ACTION": "Importer le relevé",
+      "ERRORS": "{{count}} ligne(s) invalide(s)",
+      "RESULT": "{{imported}} importée(s), {{skipped}} doublon(s)",
+      "TEXTAREA": "CSV relevé: date, référence, libellé, montant, devise"
+    },
+    "MOVEMENTS": {
+      "EMPTY": "Aucun mouvement comptable sur ce compte.",
+      "TABLE": {
+        "BALANCE": "Solde",
+        "DATE": "Date",
+        "INFLOW": "Entrées",
+        "LABEL": "Libellé",
+        "OUTFLOW": "Sorties",
+        "REFERENCE": "Référence",
+        "STATUS": "Rapprochement"
+      }
+    },
+    "PAGE": {
+      "EYEBROW": "Workspace trésorerie",
+      "SUBTITLE": "Suivez les comptes classe 5, mouvements, relevés et rapprochements bancaires.",
+      "TITLE": "Trésorerie"
+    },
+    "RECONCILIATION": {
+      "CANCEL": "Annuler",
+      "MATCH": "Rapprocher",
+      "MOVEMENTS": "Mouvements non rapprochés",
+      "NO_MOVEMENTS": "Aucun mouvement non rapproché.",
+      "NO_STATEMENT_LINES": "Aucune ligne de relevé non rapprochée.",
+      "STATEMENT_LINES": "Lignes de relevé non rapprochées",
+      "STATUS": {
+        "MATCHED": "Rapproché",
+        "UNMATCHED": "Non rapproché"
+      }
+    },
+    "STATEMENT": {
+      "EMPTY": "Aucune ligne de relevé importée.",
+      "STATUS": {
+        "IGNORED": "Ignorée",
+        "MATCHED": "Rapprochée",
+        "UNMATCHED": "Non rapprochée"
+      },
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "AMOUNT": "Montant",
+        "DATE": "Date",
+        "LABEL": "Libellé",
+        "STATUS": "Statut"
+      }
+    },
+    "STATS": {
+      "ACCOUNTS": {
+        "LABEL": "Comptes",
+        "META": "Banque, caisse et monnaie électronique"
+      },
+      "INFLOWS": {
+        "LABEL": "Entrées",
+        "META": "Flux débiteurs classe 5"
+      },
+      "OUTFLOWS": {
+        "LABEL": "Sorties",
+        "META": "Flux créditeurs classe 5"
+      },
+      "UNRECONCILED": {
+        "LABEL": "À rapprocher",
+        "META": "Lignes de relevé ouvertes"
+      }
+    },
+    "TABS": {
+      "ACCOUNTS": "Comptes",
+      "MOVEMENTS": "Mouvements",
+      "RECONCILIATION": "Rapprochement",
+      "STATEMENT": "Relevé"
+    },
+    "TRANSACTIONS": {
+      "CREATE": {
+        "SUBMIT": "Comptabiliser",
+        "TITLE": "Comptabiliser une opération de trésorerie"
+      },
+      "DIRECTIONS": {
+        "INFLOW": "Encaissement",
+        "OUTFLOW": "Décaissement"
+      },
+      "FIELDS": {
+        "AMOUNT": "Montant",
+        "COUNTERPARTY": "Compte contrepartie",
+        "DATE": "Date",
+        "DIRECTION": "Sens",
+        "JOURNAL": "Journal",
+        "LABEL": "Libellé",
+        "TREASURY_ACCOUNT": "Compte de trésorerie",
+        "VOUCHER": "Pièce",
+        "YEAR": "Exercice"
+      },
+      "JOURNALS": {
+        "BANK": "Banque",
+        "MISC": "Opérations diverses"
+      }
+    }
+  },
   "PROJECTS": {
     "ACTIONS": {
       "BACK": "Retour aux projets",

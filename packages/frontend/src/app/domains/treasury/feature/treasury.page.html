@@ -1,0 +1,265 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'TREASURY.PAGE.EYEBROW' | transloco"
+    [title]="'TREASURY.PAGE.TITLE' | transloco"
+    [subtitle]="'TREASURY.PAGE.SUBTITLE' | transloco"
+    [actionLabel]="'TREASURY.ACTIONS.NEW_ACCOUNT' | transloco"
+    actionIcon="add"
+    (actionTriggered)="openCreateAccount()"
+  />
+
+  <div class="grid gap-4 lg:grid-cols-4">
+    <liass-stat-card
+      icon="account_balance"
+      [label]="'TREASURY.STATS.ACCOUNTS.LABEL' | transloco"
+      [value]="(summaryQuery.data()?.accountsCount ?? 0).toString()"
+      [meta]="'TREASURY.STATS.ACCOUNTS.META' | transloco"
+      tone="accent"
+      [state]="summaryQuery.isPending() ? 'loading' : 'default'"
+    />
+    <liass-stat-card
+      icon="south_west"
+      [label]="'TREASURY.STATS.INFLOWS.LABEL' | transloco"
+      [value]="formatAmount(summaryQuery.data()?.totalInflows ?? 0)"
+      [meta]="'TREASURY.STATS.INFLOWS.META' | transloco"
+      tone="success"
+      [state]="summaryQuery.isPending() ? 'loading' : 'default'"
+    />
+    <liass-stat-card
+      icon="north_east"
+      [label]="'TREASURY.STATS.OUTFLOWS.LABEL' | transloco"
+      [value]="formatAmount(summaryQuery.data()?.totalOutflows ?? 0)"
+      [meta]="'TREASURY.STATS.OUTFLOWS.META' | transloco"
+      tone="warning"
+      [state]="summaryQuery.isPending() ? 'loading' : 'default'"
+    />
+    <liass-stat-card
+      icon="rule"
+      [label]="'TREASURY.STATS.UNRECONCILED.LABEL' | transloco"
+      [value]="(summaryQuery.data()?.unreconciledStatementLines ?? 0).toString()"
+      [meta]="'TREASURY.STATS.UNRECONCILED.META' | transloco"
+      tone="info"
+      [state]="summaryQuery.isPending() ? 'loading' : 'default'"
+    />
+  </div>
+
+  <liass-card>
+    <div class="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'TREASURY.FILTERS.ACCOUNT' | transloco }}</mat-label>
+        <mat-select [value]="selectedAccountId()" (valueChange)="selectedAccountId.set($event)">
+          @for (account of accounts(); track account.treasuryAccountId) {
+            <mat-option [value]="account.treasuryAccountId">{{ accountLabel(account) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'TREASURY.FILTERS.YEAR' | transloco }}</mat-label>
+        <input matInput inputmode="numeric" maxlength="4" [value]="selectedYear()" (input)="updateYear($event)" />
+      </mat-form-field>
+
+      <liass-button tone="brand" variant="solid" icon="post_add" [disabled]="accounts().length === 0" (pressed)="openCreateTransaction()">
+        {{ 'TREASURY.ACTIONS.NEW_TRANSACTION' | transloco }}
+      </liass-button>
+    </div>
+
+    @if (actionErrorKey()) {
+      <div class="mb-4 rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ actionErrorKey()! | transloco }}
+      </div>
+    }
+
+    <mat-tab-group>
+      <mat-tab [label]="'TREASURY.TABS.ACCOUNTS' | transloco">
+        <div class="py-5">
+          @if (accountsQuery.isPending()) {
+            <liass-skeleton variant="block" />
+          } @else if (accountsQuery.isError()) {
+            <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+              {{ 'TREASURY.ERRORS.LOAD_FAILED' | transloco }}
+            </div>
+          } @else if (accounts().length === 0) {
+            <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              {{ 'TREASURY.ACCOUNTS.EMPTY' | transloco }}
+            </div>
+          } @else {
+            <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+              <table class="w-full min-w-[840px] border-collapse text-left">
+                <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                  <tr>
+                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.ACCOUNT' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.TYPE' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.BANK' | transloco }}</th>
+                    <th class="px-4 py-3 text-right">{{ 'TREASURY.ACCOUNTS.TABLE.OPENING' | transloco }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (account of accounts(); track account.treasuryAccountId) {
+                    <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                      <td class="px-4 py-4">
+                        <p class="font-semibold text-slate-950 dark:text-white">{{ account.accountId }}</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ account.label }}</p>
+                      </td>
+                      <td class="px-4 py-4">
+                        <liass-status-chip [label]="'TREASURY.ACCOUNTS.TYPES.' + account.type | transloco" tone="info" size="sm" />
+                      </td>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ account.bankName || '-' }}</td>
+                      <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(account.openingBalance, account.currency) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'TREASURY.TABS.MOVEMENTS' | transloco">
+        <div class="py-5">
+          @if (movementsQuery.isPending()) {
+            <liass-skeleton variant="block" />
+          } @else if (movements().length === 0) {
+            <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              {{ 'TREASURY.MOVEMENTS.EMPTY' | transloco }}
+            </div>
+          } @else {
+            <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+              <table class="w-full min-w-[960px] border-collapse text-left">
+                <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                  <tr>
+                    <th class="px-4 py-3">{{ 'TREASURY.MOVEMENTS.TABLE.DATE' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.MOVEMENTS.TABLE.LABEL' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.MOVEMENTS.TABLE.REFERENCE' | transloco }}</th>
+                    <th class="px-4 py-3 text-right">{{ 'TREASURY.MOVEMENTS.TABLE.INFLOW' | transloco }}</th>
+                    <th class="px-4 py-3 text-right">{{ 'TREASURY.MOVEMENTS.TABLE.OUTFLOW' | transloco }}</th>
+                    <th class="px-4 py-3 text-right">{{ 'TREASURY.MOVEMENTS.TABLE.BALANCE' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.MOVEMENTS.TABLE.STATUS' | transloco }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (movement of movements(); track movement.lineId) {
+                    <tr>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ movement.date }}</td>
+                      <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ movement.label }}</td>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ movement.reference }}</td>
+                      <td class="px-4 py-4 text-right text-sm text-emerald-700 dark:text-emerald-300">{{ movement.debit ? formatAmount(movement.debit, selectedAccount()?.currency ?? 'XOF') : '-' }}</td>
+                      <td class="px-4 py-4 text-right text-sm text-rose-700 dark:text-rose-300">{{ movement.credit ? formatAmount(movement.credit, selectedAccount()?.currency ?? 'XOF') : '-' }}</td>
+                      <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(movement.runningBalance, selectedAccount()?.currency ?? 'XOF') }}</td>
+                      <td class="px-4 py-4">
+                        <liass-status-chip [label]="'TREASURY.RECONCILIATION.STATUS.' + movement.reconciliationStatus | transloco" [tone]="movement.reconciliationStatus === 'MATCHED' ? 'success' : 'warning'" size="sm" />
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          }
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'TREASURY.TABS.STATEMENT' | transloco">
+        <div class="grid gap-5 py-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+          <section class="space-y-3">
+            <mat-form-field appearance="outline" class="w-full">
+              <mat-label>{{ 'TREASURY.IMPORT.TEXTAREA' | transloco }}</mat-label>
+              <textarea matInput rows="9" [value]="importText()" (input)="updateImportText($event)" placeholder="2026-01-15,VIR-001,Encaissement client,150000,XOF"></textarea>
+            </mat-form-field>
+            <div class="flex flex-wrap items-center gap-3">
+              <liass-button tone="brand" variant="solid" icon="upload" [disabled]="parsedImport().lines.length === 0 || parsedImport().errors.length > 0 || !selectedAccountId()" (pressed)="importStatement()">
+                {{ 'TREASURY.IMPORT.ACTION' | transloco }}
+              </liass-button>
+              @if (importResult()) {
+                <span class="text-sm text-slate-500 dark:text-slate-400">{{ 'TREASURY.IMPORT.RESULT' | transloco: importResult()! }}</span>
+              }
+            </div>
+            @if (parsedImport().errors.length > 0) {
+              <div class="rounded-app-card border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200">
+                {{ 'TREASURY.IMPORT.ERRORS' | transloco:{ count: parsedImport().errors.length } }}
+              </div>
+            }
+          </section>
+
+          <section>
+            @if (statementLinesQuery.isPending()) {
+              <liass-skeleton variant="block" />
+            } @else if (statementLines().length === 0) {
+              <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                {{ 'TREASURY.STATEMENT.EMPTY' | transloco }}
+              </div>
+            } @else {
+              <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+                <table class="w-full min-w-[760px] border-collapse text-left">
+                  <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                    <tr>
+                      <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DATE' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.LABEL' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.AMOUNT' | transloco }}</th>
+                      <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATUS' | transloco }}</th>
+                      <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.ACTIONS' | transloco }}</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                    @for (line of statementLines(); track line.statementLineId) {
+                      <tr>
+                        <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.date }}</td>
+                        <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ line.label }}</td>
+                        <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(line.amount, line.currency) }}</td>
+                        <td class="px-4 py-4"><liass-status-chip [label]="'TREASURY.STATEMENT.STATUS.' + line.status | transloco" [tone]="statusTone(line.status)" size="sm" /></td>
+                        <td class="px-4 py-4 text-right">
+                          @if (line.status === 'MATCHED') {
+                            <liass-button size="sm" tone="neutral" variant="ghost" icon="undo" (pressed)="cancelMatch(line)">
+                              {{ 'TREASURY.RECONCILIATION.CANCEL' | transloco }}
+                            </liass-button>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'TREASURY.TABS.RECONCILIATION' | transloco">
+        <div class="grid gap-5 py-5 xl:grid-cols-2">
+          <section class="space-y-3">
+            <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.RECONCILIATION.STATEMENT_LINES' | transloco }}</h3>
+            <div class="grid gap-2">
+              @for (line of unmatchedStatementLines(); track line.statementLineId) {
+                <button type="button" class="liass-focus-ring rounded-app-card border p-3 text-left text-sm transition hover:border-brand-300 dark:border-slate-800" [class.border-brand-500]="selectedStatementLineId() === line.statementLineId" (click)="selectStatementLine(line)">
+                  <span class="font-semibold text-slate-950 dark:text-white">{{ line.date }} - {{ formatAmount(line.amount, line.currency) }}</span>
+                  <span class="mt-1 block text-slate-500 dark:text-slate-400">{{ line.label }}</span>
+                </button>
+              } @empty {
+                <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.NO_STATEMENT_LINES' | transloco }}</div>
+              }
+            </div>
+          </section>
+
+          <section class="space-y-3">
+            <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.RECONCILIATION.MOVEMENTS' | transloco }}</h3>
+            <div class="grid gap-2">
+              @for (movement of unmatchedMovements(); track movement.lineId) {
+                <button type="button" class="liass-focus-ring rounded-app-card border p-3 text-left text-sm transition hover:border-brand-300 dark:border-slate-800" [class.border-brand-500]="selectedMovementLineId() === movement.lineId" (click)="selectMovement(movement)">
+                  <span class="font-semibold text-slate-950 dark:text-white">{{ movementLabel(movement) }}</span>
+                  <span class="mt-1 block text-slate-500 dark:text-slate-400">{{ formatAmount(movement.amount, selectedAccount()?.currency ?? 'XOF') }} · {{ movement.reference }}</span>
+                </button>
+              } @empty {
+                <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.NO_MOVEMENTS' | transloco }}</div>
+              }
+            </div>
+          </section>
+        </div>
+
+        <div class="flex justify-end">
+          <liass-button tone="brand" variant="solid" icon="link" [disabled]="!selectedStatementLineId() || !selectedMovementLineId()" (pressed)="reconcileSelected()">
+            {{ 'TREASURY.RECONCILIATION.MATCH' | transloco }}
+          </liass-button>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </liass-card>
+</div>

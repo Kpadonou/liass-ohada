@@ -231,6 +231,150 @@
       }
     }
   },
+  "TREASURY": {
+    "ACCOUNTS": {
+      "CREATE": {
+        "SUBMIT": "Create account",
+        "TITLE": "Create treasury account"
+      },
+      "EMPTY": "No treasury account has been configured.",
+      "FIELDS": {
+        "ACCOUNT_ID": "SYSCOHADA class 5 account",
+        "BANK_ACCOUNT_NUMBER": "Bank account number",
+        "BANK_NAME": "Bank",
+        "CURRENCY": "Currency",
+        "LABEL": "Label",
+        "OPENING_BALANCE": "Opening balance",
+        "TYPE": "Type"
+      },
+      "TABLE": {
+        "ACCOUNT": "Account",
+        "BANK": "Bank",
+        "OPENING": "Opening",
+        "TYPE": "Type"
+      },
+      "TYPES": {
+        "BANK": "Bank",
+        "CASH": "Cash",
+        "MOBILE_MONEY": "Mobile money"
+      }
+    },
+    "ACTIONS": {
+      "NEW_ACCOUNT": "New account",
+      "NEW_TRANSACTION": "New transaction"
+    },
+    "ERRORS": {
+      "CANCEL_RECONCILE_FAILED": "The reconciliation could not be cancelled.",
+      "CREATE_ACCOUNT_FAILED": "The treasury account could not be created.",
+      "IMPORT_FAILED": "The statement could not be imported.",
+      "LOAD_FAILED": "Treasury data could not be loaded.",
+      "POST_TRANSACTION_FAILED": "The treasury transaction could not be posted.",
+      "RECONCILE_FAILED": "The reconciliation could not be created."
+    },
+    "FILTERS": {
+      "ACCOUNT": "Treasury account",
+      "YEAR": "Fiscal year"
+    },
+    "IMPORT": {
+      "ACTION": "Import statement",
+      "ERRORS": "{{count}} invalid row(s)",
+      "RESULT": "{{imported}} imported, {{skipped}} duplicate(s)",
+      "TEXTAREA": "Statement CSV: date, reference, label, amount, currency"
+    },
+    "MOVEMENTS": {
+      "EMPTY": "No accounting movement on this account.",
+      "TABLE": {
+        "BALANCE": "Balance",
+        "DATE": "Date",
+        "INFLOW": "Inflows",
+        "LABEL": "Label",
+        "OUTFLOW": "Outflows",
+        "REFERENCE": "Reference",
+        "STATUS": "Reconciliation"
+      }
+    },
+    "PAGE": {
+      "EYEBROW": "Treasury workspace",
+      "SUBTITLE": "Track class 5 accounts, movements, statements, and bank reconciliation.",
+      "TITLE": "Treasury"
+    },
+    "RECONCILIATION": {
+      "CANCEL": "Cancel",
+      "MATCH": "Reconcile",
+      "MOVEMENTS": "Unmatched movements",
+      "NO_MOVEMENTS": "No unmatched movement.",
+      "NO_STATEMENT_LINES": "No unmatched statement line.",
+      "STATEMENT_LINES": "Unmatched statement lines",
+      "STATUS": {
+        "MATCHED": "Matched",
+        "UNMATCHED": "Unmatched"
+      }
+    },
+    "STATEMENT": {
+      "EMPTY": "No statement line imported.",
+      "STATUS": {
+        "IGNORED": "Ignored",
+        "MATCHED": "Matched",
+        "UNMATCHED": "Unmatched"
+      },
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "AMOUNT": "Amount",
+        "DATE": "Date",
+        "LABEL": "Label",
+        "STATUS": "Status"
+      }
+    },
+    "STATS": {
+      "ACCOUNTS": {
+        "LABEL": "Accounts",
+        "META": "Bank, cash, and mobile money"
+      },
+      "INFLOWS": {
+        "LABEL": "Inflows",
+        "META": "Class 5 debit flows"
+      },
+      "OUTFLOWS": {
+        "LABEL": "Outflows",
+        "META": "Class 5 credit flows"
+      },
+      "UNRECONCILED": {
+        "LABEL": "To reconcile",
+        "META": "Open statement lines"
+      }
+    },
+    "TABS": {
+      "ACCOUNTS": "Accounts",
+      "MOVEMENTS": "Movements",
+      "RECONCILIATION": "Reconciliation",
+      "STATEMENT": "Statement"
+    },
+    "TRANSACTIONS": {
+      "CREATE": {
+        "SUBMIT": "Post transaction",
+        "TITLE": "Post treasury transaction"
+      },
+      "DIRECTIONS": {
+        "INFLOW": "Inflow",
+        "OUTFLOW": "Outflow"
+      },
+      "FIELDS": {
+        "AMOUNT": "Amount",
+        "COUNTERPARTY": "Counterparty account",
+        "DATE": "Date",
+        "DIRECTION": "Direction",
+        "JOURNAL": "Journal",
+        "LABEL": "Label",
+        "TREASURY_ACCOUNT": "Treasury account",
+        "VOUCHER": "Voucher",
+        "YEAR": "Fiscal year"
+      },
+      "JOURNALS": {
+        "BANK": "Bank",
+        "MISC": "Miscellaneous"
+      }
+    }
+  },
   "PROJECTS": {
     "ACTIONS": {
       "BACK": "Back to projects",
