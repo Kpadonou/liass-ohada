@@ -1,8 +1,11 @@
 import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
+import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
 import { TransactWriteItemsCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
+import { EntryLineSchema, EntrySchema } from "@liass-ohada/shared/accounting";
+import { BalanceService } from "./balance-service";
 
 export class ClosingService {
   static async executeYearEnd(
@@ -12,6 +15,7 @@ export class ClosingService {
     const { year, userId, balances } = params;
     const entryId = `YEC-${year}`;
     const entryDate = `${year}-12-31`;
+    const journalCode = "CLOSING";
     const now = new Date().toISOString();
     let netResult = 0;
 
@@ -38,36 +42,48 @@ export class ClosingService {
 
     transactionLines.push({
       accountId: resultAccount,
-      debit: isProfit ? Math.abs(netResult) : 0,
-      credit: isProfit ? 0 : Math.abs(netResult),
+      debit: isProfit ? 0 : Math.abs(netResult),
+      credit: isProfit ? Math.abs(netResult) : 0,
     });
 
     const totalAmount = transactionLines.reduce((sum, l) => sum + l.debit, 0);
+    const totalWriteCount = 2 + transactionLines.length * 2;
+    if (totalWriteCount > 100) {
+      throw new AppError(400, "ERROR_YEAR_END_TOO_LARGE");
+    }
 
     const transactItems: any[] = [
-      // 1. Entry Header (With GSI5 for Journal)
       {
         Put: {
           TableName: config.TABLE_NAME,
-          Item: marshall({
-            PK: KeyFactory.partitionKey(orgId, year),
-            SK: KeyFactory.entrySK(entryId),
-            entityType: "ENTRY",
-            journalCode: "OD",
-            GSI5PK: KeyFactory.gsi5JournalPK(orgId, year),
-            GSI5SK: KeyFactory.gsi5JournalSK("OD", entryDate, entryId),
-            totalDebit: totalAmount,
-            totalCredit: totalAmount,
-            status: "POSTED",
-            description: `Clôture annuelle ${year}`,
-            createdBy: userId,
-            createdAt: now,
-            updatedAt: now,
-          }),
-          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+          Item: marshall(
+            EntrySchema.parse({
+              orgId,
+              year: Number(year),
+              entryId,
+              entryType: "CLOSING",
+              entryDate,
+              journalCode,
+              totalDebit: totalAmount,
+              totalCredit: totalAmount,
+              status: "POSTED",
+              label: `Cloture annuelle ${year}`,
+              PK: KeyFactory.partitionKey(orgId, year),
+              SK: KeyFactory.entrySK(entryId),
+              GSI5PK: KeyFactory.gsi5JournalPK(orgId, year),
+              GSI5SK: KeyFactory.gsi5JournalSK(journalCode, entryDate, entryId),
+              entityType: "ENTRY",
+              createdBy: userId,
+              createdAt: now,
+              updatedBy: userId,
+              updatedAt: now,
+            }),
+            { removeUndefinedValues: true },
+          ),
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
         },
       },
-      // 2. Lock Fiscal Year
       {
         Update: {
           TableName: config.TABLE_NAME,
@@ -89,33 +105,62 @@ export class ClosingService {
       },
     ];
 
-    // 3. Add Entry Lines (With GSI1 for General Ledger)
     transactionLines.forEach((l, idx) => {
       const lineId = `${entryId}-L${idx}`;
       transactItems.push({
         Put: {
           TableName: config.TABLE_NAME,
-          Item: marshall({
-            PK: KeyFactory.partitionKey(orgId, year),
-            SK: KeyFactory.entryLineSK(lineId),
-            GSI1PK: KeyFactory.gsi1PK(orgId),
-            GSI1SK: KeyFactory.gsi1SK(l.accountId, year, entryDate, lineId),
-            entityType: "ENTRY_LINE",
-            ...l,
-            entryId,
-            entryDate,
-            createdBy: userId,
-            createdAt: now,
-            updatedAt: now,
-          }),
-          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+          Item: marshall(
+            EntryLineSchema.parse({
+              orgId,
+              year: Number(year),
+              lineId,
+              entryId,
+              entryDate,
+              journalCode,
+              accountId: l.accountId,
+              debit: l.debit,
+              credit: l.credit,
+              label: `Cloture annuelle ${year}`,
+              entityType: "ENTRY_LINE",
+              PK: KeyFactory.partitionKey(orgId, year),
+              SK: KeyFactory.entryLineSK(lineId),
+              GSI1PK: KeyFactory.gsi1PK(orgId),
+              GSI1SK: KeyFactory.gsi1SK(l.accountId, year, entryDate, lineId),
+              createdBy: userId,
+              createdAt: now,
+              updatedBy: userId,
+              updatedAt: now,
+            }),
+            { removeUndefinedValues: true },
+          ),
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
         },
       });
+      transactItems.push(
+        BalanceService.buildBalanceUpdateAction(
+          orgId,
+          year,
+          l.accountId,
+          l.debit,
+          l.credit,
+          journalCode,
+          userId,
+        ),
+      );
     });
 
-    await dynamoClient.send(
-      new TransactWriteItemsCommand({ TransactItems: transactItems }),
-    );
+    try {
+      await dynamoClient.send(
+        new TransactWriteItemsCommand({ TransactItems: transactItems }),
+      );
+    } catch (error: any) {
+      if (error?.name === "TransactionCanceledException") {
+        throw new AppError(409, "ERROR_FISCAL_YEAR_CLOSE_CONFLICT");
+      }
+      throw error;
+    }
 
     return { entryId, netResult: Math.abs(netResult), isProfit };
   }

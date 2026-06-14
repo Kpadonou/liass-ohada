@@ -2,7 +2,12 @@ import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
-import { Journal, JournalSchema } from "@liass-ohada/shared/accounting";
+import {
+  Journal,
+  JournalDto,
+  JournalDtoSchema,
+  JournalSchema,
+} from "@liass-ohada/shared/accounting";
 import {
   DeleteItemCommand,
   GetItemCommand,
@@ -43,6 +48,18 @@ export type UpdateJournalInput = z.infer<typeof UpdateJournalInputSchema>;
 export type JournalEntriesRequest = z.infer<typeof JournalEntriesRequestSchema>;
 
 export class JournalService {
+  static toDto(journal: Journal | Record<string, any>): JournalDto {
+    return JournalDtoSchema.parse({
+      orgId: journal.orgId,
+      year: journal.year,
+      journalCode: journal.journalCode,
+      journalName: journal.journalName,
+      type: journal.type,
+      createdAt: journal.createdAt,
+      updatedAt: journal.updatedAt,
+    });
+  }
+
   /**
    * Creates a journal definition in the tenant master-data partition.
    * The conditional put enforces journal-code uniqueness per organization/year
@@ -87,14 +104,14 @@ export class JournalService {
       throw error;
     }
 
-    return item;
+    return JournalService.toDto(item);
   }
 
   /**
    * Lists all journals configured for an organization.
    * Uses the JNL# sort-key prefix so no journal data from another tenant can leak.
    */
-  static async listJournals(orgId: string): Promise<Journal[]> {
+  static async listJournals(orgId: string): Promise<JournalDto[]> {
     const result = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -107,7 +124,7 @@ export class JournalService {
     );
 
     return (result.Items || []).map((item) =>
-      JournalSchema.parse(unmarshall(item)),
+      JournalService.toDto(JournalSchema.parse(unmarshall(item))),
     );
   }
 
@@ -171,7 +188,9 @@ export class JournalService {
       }),
     );
 
-    return result.Attributes ? unmarshall(result.Attributes) : undefined;
+    return result.Attributes
+      ? JournalService.toDto(unmarshall(result.Attributes))
+      : undefined;
   }
 
   /**

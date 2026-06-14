@@ -11,7 +11,10 @@ import {
   TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { EntryLineSchema } from "@liass-ohada/shared/accounting";
+import {
+  AccountEntryDtoSchema,
+  EntryLineSchema,
+} from "@liass-ohada/shared/accounting";
 import { LockPeriodService } from "./lock-period-service";
 
 interface FIFOCandidate {
@@ -25,9 +28,10 @@ interface FIFOCandidate {
   remainingAmount: number;
 }
 
-export interface LineKey {
-  PK: string;
-  SK: string;
+export interface LineRef {
+  year: number;
+  entryId: string;
+  lineId: string;
 }
 
 export class LetteringService {
@@ -40,18 +44,25 @@ export class LetteringService {
     accountId: string,
     thirdPartyId: string,
   ) {
+    const normalizedAccountId = accountId.padEnd(8, "0");
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
         IndexName: config.GSI3,
         KeyConditionExpression: "GSI3PK = :pk",
         ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.letteringPK(orgId, accountId, thirdPartyId),
+          ":pk": KeyFactory.letteringPK(
+            orgId,
+            normalizedAccountId,
+            thirdPartyId,
+          ),
         }),
       }),
     );
 
-    const items = (queryResult.Items || []).map((i) => unmarshall(i));
+    const items = (queryResult.Items || []).map((i) =>
+      LetteringService.toPublicLine(unmarshall(i)),
+    );
 
     const letteredGroups: Record<string, any[]> = {};
     const unletteredLines: any[] = [];
@@ -91,12 +102,17 @@ export class LetteringService {
     thirdPartyId: string,
     projectId?: string,
   ) {
+    const normalizedAccountId = accountId.padEnd(8, "0");
     const queryInput: any = {
       TableName: config.TABLE_NAME,
       IndexName: config.GSI3,
       KeyConditionExpression: "GSI3PK = :lpk AND begins_with(GSI3SK, :lsk)",
       ExpressionAttributeValues: marshall({
-        ":lpk": KeyFactory.letteringPK(orgId, accountId, thirdPartyId),
+        ":lpk": KeyFactory.letteringPK(
+          orgId,
+          normalizedAccountId,
+          thirdPartyId,
+        ),
         ":lsk": "UNLETTERED#",
         ...(projectId ? { ":pid": projectId } : {}),
       }),
@@ -108,7 +124,7 @@ export class LetteringService {
 
     const result = await dynamoClient.send(new QueryCommand(queryInput));
     const unletteredLines = (result.Items || []).map((item) =>
-      unmarshall(item),
+      LetteringService.toPublicLine(unmarshall(item)),
     );
 
     if (unletteredLines.length === 0) {
@@ -230,15 +246,21 @@ export class LetteringService {
   static async postLettering(
     orgId: string,
     userId: string,
-    params: { year: number; lineKeys: LineKey[]; letteringCode: string },
+    params: {
+      accountId: string;
+      thirdPartyId: string;
+      lines: LineRef[];
+      letteringCode: string;
+    },
   ) {
-    if (params.lineKeys.length < 2) {
+    if (params.lines.length < 2) {
       throw new AppError(400, "ERROR_LETTERING_INSUFFICIENT_DATA");
     }
 
     const organization = await LetteringService.getOrganization(orgId);
     const isSYCEBNL = organization.accountingFramework === "SYCEBNL";
-    const lines = await LetteringService.getLines(orgId, params.lineKeys);
+    const lines = await LetteringService.getLinesByRefs(orgId, params.lines);
+    const normalizedAccountId = params.accountId.padEnd(8, "0");
 
     if (await LockPeriodService.isPeriodLocked(orgId, lines[0].entryDate)) {
       throw new AppError(400, "ERROR_PERIOD_LOCKED");
@@ -247,7 +269,9 @@ export class LetteringService {
     const firstLine = lines[0];
     for (const line of lines) {
       if (
+        line.accountId !== normalizedAccountId ||
         line.accountId !== firstLine.accountId ||
+        line.thirdPartyId !== params.thirdPartyId ||
         line.thirdPartyId !== firstLine.thirdPartyId
       ) {
         throw new AppError(400, "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY");
@@ -319,12 +343,27 @@ export class LetteringService {
   static async cancelLettering(
     orgId: string,
     userId: string,
-    lineKeys: LineKey[],
+    params: {
+      accountId: string;
+      thirdPartyId: string;
+      lines: LineRef[];
+    },
   ) {
-    const lines = await LetteringService.getLines(orgId, lineKeys);
+    const lines = await LetteringService.getLinesByRefs(orgId, params.lines);
+    const normalizedAccountId = params.accountId.padEnd(8, "0");
 
     if (await LockPeriodService.isPeriodLocked(orgId, lines[0].entryDate)) {
       throw new AppError(400, "ERROR_PERIOD_LOCKED");
+    }
+
+    if (
+      !lines.every(
+        (line) =>
+          line.accountId === normalizedAccountId &&
+          line.thirdPartyId === params.thirdPartyId,
+      )
+    ) {
+      throw new AppError(400, "ERROR_INCONSISTENT_ACCOUNT_OR_THIRD_PARTY");
     }
 
     const now = new Date().toISOString();
@@ -368,7 +407,7 @@ export class LetteringService {
         TableName: config.TABLE_NAME,
         Key: marshall({
           PK: KeyFactory.orgKey(orgId),
-          SK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.organizationSK(),
         }),
       }),
     );
@@ -376,8 +415,8 @@ export class LetteringService {
     return result.Item ? unmarshall(result.Item) : {};
   }
 
-  private static async getLines(orgId: string, lineKeys: LineKey[]) {
-    if (!Array.isArray(lineKeys) || lineKeys.length === 0) {
+  private static async getLinesByRefs(orgId: string, lineRefs: LineRef[]) {
+    if (!Array.isArray(lineRefs) || lineRefs.length === 0) {
       throw new AppError(400, "ERROR_MISSING_PARAMETERS");
     }
 
@@ -385,7 +424,12 @@ export class LetteringService {
       new BatchGetItemCommand({
         RequestItems: {
           [config.TABLE_NAME]: {
-            Keys: lineKeys.map((key) => marshall({ PK: key.PK, SK: key.SK })),
+            Keys: lineRefs.map((ref) =>
+              marshall({
+                PK: KeyFactory.partitionKey(orgId, ref.year),
+                SK: KeyFactory.entryLineSK(ref.lineId),
+              }),
+            ),
           },
         },
       }),
@@ -395,7 +439,7 @@ export class LetteringService {
       EntryLineSchema.parse(unmarshall(item)),
     );
 
-    if (lines.length !== lineKeys.length) {
+    if (lines.length !== lineRefs.length) {
       throw new AppError(400, "ERROR_SOME_LINES_NOT_FOUND");
     }
 
@@ -403,6 +447,37 @@ export class LetteringService {
       throw new AppError(403, "UNAUTHORIZED");
     }
 
+    const requested = new Set(
+      lineRefs.map((ref) => `${ref.year}#${ref.entryId}#${ref.lineId}`),
+    );
+    if (
+      !lines.every((line) =>
+        requested.has(`${line.year}#${line.entryId}#${line.lineId}`),
+      )
+    ) {
+      throw new AppError(400, "ERROR_SOME_LINES_NOT_FOUND");
+    }
+
     return lines;
+  }
+
+  private static toPublicLine(line: Record<string, any>) {
+    return AccountEntryDtoSchema.parse({
+      entryId: line.entryId,
+      lineId: line.lineId,
+      accountId: line.accountId,
+      debit: Number(line.debit) || 0,
+      credit: Number(line.credit) || 0,
+      description: line.description,
+      label: line.label,
+      entryDate: line.entryDate,
+      voucherNumber: line.voucherNumber,
+      journalCode: line.journalCode,
+      thirdPartyId: line.thirdPartyId,
+      projectId: line.projectId,
+      letteringCode: line.letteringCode,
+      letteringStatus: line.letteringStatus,
+      createdAt: line.createdAt,
+    });
   }
 }

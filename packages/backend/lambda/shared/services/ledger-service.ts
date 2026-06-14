@@ -6,7 +6,7 @@ import {
   EntryLineSchema,
   EntrySchema,
 } from "@liass-ohada/shared/accounting";
-import { FiscalYearSchema } from "@liass-ohada/shared/accounting";
+import { FiscalYear, FiscalYearSchema } from "@liass-ohada/shared/accounting";
 import {
   BatchGetItemCommand,
   GetItemCommand,
@@ -22,6 +22,7 @@ import { KeyFactory } from "../key-builder";
 import { AppError } from "../middleware/handler-wrapper";
 import { BalanceService } from "./balance-service";
 import { BudgetService } from "./budget-service";
+import { JournalService } from "./journal-service";
 
 /**
  * Interface definitions for Ledger queries
@@ -91,6 +92,8 @@ export interface PostEntryParams {
   data: CreateEntryRequest;
 }
 
+const SYSTEM_JOURNAL_CODES = new Set(["RAN", "OD", "CLOSING"]);
+
 /**
  * Service handling Accounting operations and validations.
  */
@@ -108,6 +111,7 @@ export class LedgerService {
       entryType = "STANDARD",
       voucherNumber,
     } = data;
+    const normalizedJournalCode = journalCode.toUpperCase();
 
     if (lines.length === 0) {
       throw new AppError(400, "ERROR_EMPTY_ENTRY");
@@ -122,7 +126,17 @@ export class LedgerService {
     const entryId = data.entryId || `E-${randomUUID()}`;
     const now = new Date().toISOString();
 
-    await LedgerService.validateFiscalYear(orgId, year);
+    const fiscalYear = await LedgerService.validateFiscalYear(orgId, year);
+    LedgerService.assertEntryDateInFiscalYear(entryDate, fiscalYear);
+    LedgerService.validateOpeningEntryRules({
+      entryType,
+      entryDate,
+      fiscalYear,
+      journalCode: normalizedJournalCode,
+      lines,
+    });
+    await LedgerService.validateJournalForPosting(orgId, normalizedJournalCode);
+
     if (await LedgerService.isPeriodLocked(orgId, entryDate)) {
       throw new AppError(400, "ERROR_PERIOD_LOCKED");
     }
@@ -161,7 +175,7 @@ export class LedgerService {
         entryDate,
         line,
         paddedAccountId,
-        journalCode,
+        journalCode: normalizedJournalCode,
         voucherNumber,
         userId,
         now,
@@ -173,7 +187,8 @@ export class LedgerService {
           Item: marshall(EntryLineSchema.parse(lineItem), {
             removeUndefinedValues: true,
           }),
-          ConditionExpression: "attribute_not_exists(PK)",
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
         },
       });
 
@@ -184,7 +199,7 @@ export class LedgerService {
           paddedAccountId,
           line.debit || 0,
           line.credit || 0,
-          journalCode,
+          normalizedJournalCode,
           userId,
         ),
       );
@@ -203,7 +218,7 @@ export class LedgerService {
       entryId,
       entryType,
       entryDate,
-      journalCode,
+      journalCode: normalizedJournalCode,
       voucherNumber,
       totalDebit,
       totalCredit,
@@ -213,9 +228,14 @@ export class LedgerService {
       PK: KeyFactory.partitionKey(orgId, year),
       SK: KeyFactory.entrySK(entryId),
       GSI5PK: KeyFactory.gsi5JournalPK(orgId, year),
-      GSI5SK: KeyFactory.gsi5JournalSK(journalCode, entryDate, entryId),
+      GSI5SK: KeyFactory.gsi5JournalSK(
+        normalizedJournalCode,
+        entryDate,
+        entryId,
+      ),
       createdBy: userId,
       createdAt: now,
+      updatedBy: userId,
       updatedAt: now,
     };
 
@@ -225,7 +245,7 @@ export class LedgerService {
         Item: marshall(EntrySchema.parse(entryHeader), {
           removeUndefinedValues: true,
         }),
-        ConditionExpression: "attribute_not_exists(PK)",
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
       },
     });
 
@@ -247,7 +267,10 @@ export class LedgerService {
    * Validates that a fiscal year exists and its status is "OPEN".
    * Throws AppError if validation fails.
    */
-  static async validateFiscalYear(orgId: string, year: number): Promise<void> {
+  static async validateFiscalYear(
+    orgId: string,
+    year: number,
+  ): Promise<FiscalYear> {
     const result = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
@@ -265,6 +288,64 @@ export class LedgerService {
     const fiscalYear = FiscalYearSchema.parse(unmarshall(result.Item));
     if (fiscalYear.status !== "OPEN") {
       throw new AppError(400, "ERROR_FISCAL_YEAR_LOCKED");
+    }
+
+    return fiscalYear;
+  }
+
+  static assertEntryDateInFiscalYear(
+    entryDate: string,
+    fiscalYear: FiscalYear,
+  ): void {
+    if (
+      entryDate < fiscalYear.startDate ||
+      entryDate > fiscalYear.endDate ||
+      !entryDate.startsWith(`${fiscalYear.year}-`)
+    ) {
+      throw new AppError(400, "ERROR_ENTRY_DATE_OUTSIDE_FISCAL_YEAR");
+    }
+  }
+
+  static async validateJournalForPosting(
+    orgId: string,
+    journalCode: string,
+  ): Promise<void> {
+    if (SYSTEM_JOURNAL_CODES.has(journalCode)) {
+      return;
+    }
+
+    await JournalService.getJournal(orgId, journalCode);
+  }
+
+  static validateOpeningEntryRules(params: {
+    entryType: string;
+    entryDate: string;
+    fiscalYear: FiscalYear;
+    journalCode: string;
+    lines: CreateEntryRequest["lines"];
+  }): void {
+    const isOpening =
+      params.entryType === "OPENING" || params.journalCode === "RAN";
+
+    if (!isOpening) {
+      return;
+    }
+
+    if (params.journalCode !== "RAN") {
+      throw new AppError(400, "ERROR_OPENING_ENTRY_JOURNAL_REQUIRED");
+    }
+
+    if (params.entryDate !== params.fiscalYear.startDate) {
+      throw new AppError(400, "ERROR_OPENING_ENTRY_DATE_MISMATCH");
+    }
+
+    const hasNonBalanceSheetAccount = params.lines.some((line) => {
+      const normalizedAccount = LedgerService.formatAccount(line.accountId);
+      return !/^[1-5]/.test(normalizedAccount);
+    });
+
+    if (hasNonBalanceSheetAccount) {
+      throw new AppError(400, "ERROR_OPENING_ENTRY_INVALID_ACCOUNT_CLASS");
     }
   }
 
@@ -328,6 +409,32 @@ export class LedgerService {
     const expectedCount = accountIds.length + projectIds.length;
 
     if (foundItems.length !== expectedCount) {
+      throw new AppError(400, "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND");
+    }
+
+    const foundBusinessIds = new Set(
+      foundItems.map((item) => {
+        const data = unmarshall(item);
+        const sk = data.SK || item.SK?.S;
+        if (typeof sk === "string" && sk.startsWith("ACC#")) {
+          return sk.slice("ACC#".length);
+        }
+        if (typeof sk === "string" && sk.startsWith("PRJ#")) {
+          return sk.slice("PRJ#".length);
+        }
+        return (
+          data.accountId ||
+          data.projectId ||
+          item.accountId?.S ||
+          item.projectId?.S
+        );
+      }),
+    );
+
+    if (
+      !accountIds.every((id) => foundBusinessIds.has(id)) ||
+      !projectIds.every((id) => foundBusinessIds.has(id))
+    ) {
       throw new AppError(400, "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND");
     }
   }
@@ -562,10 +669,15 @@ export class LedgerService {
         debit: data.debit || 0,
         credit: data.credit || 0,
         description: data.description,
+        label: data.label,
         entryDate: data.entryDate,
+        lineId: data.lineId,
         voucherNumber: data.voucherNumber,
         journalCode: data.journalCode,
         thirdPartyId: data.thirdPartyId,
+        projectId: data.projectId,
+        letteringCode: data.letteringCode,
+        letteringStatus: data.letteringStatus,
         createdAt: data.createdAt,
       };
     });
@@ -653,46 +765,25 @@ export class LedgerService {
   static async getIncomeStatement(orgId: string, year: number) {
     await LedgerService.getFiscalYear(orgId, year);
 
-    const fetchClassTotals = async (classPrefix: string) => {
-      let lastEvaluatedKey: any = undefined;
-      let classDebit = 0;
-      let classCredit = 0;
+    const balances = await BalanceService.getTrialBalance(orgId, year);
+    let totalExpenses = 0;
+    let totalRevenue = 0;
 
-      do {
-        const queryResult = await dynamoClient.send(
-          new QueryCommand({
-            TableName: config.TABLE_NAME,
-            IndexName: config.GSI1,
-            KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-            ExpressionAttributeValues: marshall({
-              ":pk": KeyFactory.gsi1PK(orgId),
-              ":sk": `ACC#${classPrefix}`,
-            }),
-            ExclusiveStartKey: lastEvaluatedKey,
-          }),
-        );
+    for (const balance of balances) {
+      const netBalance =
+        balance.openingDebit +
+        balance.movementDebit -
+        (balance.openingCredit + balance.movementCredit);
 
-        for (const item of queryResult.Items || []) {
-          const line = unmarshall(item);
-          if (Number(line.year) === year) {
-            classDebit += Number(line.debit) || 0;
-            classCredit += Number(line.credit) || 0;
-          }
-        }
+      if (balance.accountId.startsWith("6")) {
+        totalExpenses += netBalance;
+      }
 
-        lastEvaluatedKey = queryResult.LastEvaluatedKey;
-      } while (lastEvaluatedKey);
+      if (balance.accountId.startsWith("7")) {
+        totalRevenue += -netBalance;
+      }
+    }
 
-      return { classDebit, classCredit };
-    };
-
-    const [expensesData, revenueData] = await Promise.all([
-      fetchClassTotals("6"),
-      fetchClassTotals("7"),
-    ]);
-
-    const totalExpenses = expensesData.classDebit - expensesData.classCredit;
-    const totalRevenue = revenueData.classCredit - revenueData.classDebit;
     const netResult = totalRevenue - totalExpenses;
 
     return {
@@ -701,6 +792,7 @@ export class LedgerService {
       totalExpenses,
       netResult,
       performanceStatus: netResult >= 0 ? "PROFIT" : "LOSS",
+      statementBasis: "BACKEND_V1_CLASS_6_7_AGGREGATE",
     };
   }
 
@@ -798,6 +890,7 @@ export class LedgerService {
       GSI1SK: KeyFactory.gsi1SK(paddedAccountId, year, entryDate, lineId),
       createdBy: userId,
       createdAt: now,
+      updatedBy: userId,
       updatedAt: now,
     };
 

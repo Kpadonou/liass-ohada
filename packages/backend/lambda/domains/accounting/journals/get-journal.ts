@@ -13,7 +13,7 @@ export const handler = createHandler(
 
     return {
       message: i18n.getMessage("SUCCESS_JOURNAL_RETRIEVED"),
-      data: journal,
+      data: JournalService.toDto(journal),
     };
   },
 );

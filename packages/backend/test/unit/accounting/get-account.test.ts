@@ -93,6 +93,8 @@ describe("get-account handler", () => {
     expect(body.message.code).toBe("SUCCESS_ACCOUNT_RETRIEVED");
     expect(body.account.accountId).toBe("41100000");
     expect(body.account.accountName).toBe("Clients");
+    expect(body.account.PK).toBeUndefined();
+    expect(body.account.SK).toBeUndefined();
   });
 
   test("returns 404 when account does not exist", async () => {

@@ -10,7 +10,7 @@ const UnlockPeriodSchema = z.object({
 export const handler = createHandler(
   UnlockPeriodSchema,
   async (data, { orgId, userId, i18n }) => {
-    const lockItem = await FiscalYearService.updatePeriodLock(
+    const lock = await FiscalYearService.updatePeriodLock(
       orgId,
       userId,
       data.year,
@@ -20,7 +20,7 @@ export const handler = createHandler(
 
     return {
       message: i18n.getMessage("SUCCESS_PERIOD_UNLOCKED"),
-      lockItem,
+      data: lock,
     };
   },
 );

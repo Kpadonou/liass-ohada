@@ -94,11 +94,13 @@ describe("lock-period handler", () => {
 
     expect((response as any).statusCode).toBe(200);
     expect(body.message.code).toBe("SUCCESS_PERIOD_LOCKED");
-    expect(body.lockItem).toMatchObject({
+    expect(body.data).toMatchObject({
       status: "LOCKED",
       year: 2026,
       month: "03",
     });
+    expect(body.data.PK).toBeUndefined();
+    expect(body.data.SK).toBeUndefined();
   });
 
   test("rejects lock when fiscal year is closed", async () => {

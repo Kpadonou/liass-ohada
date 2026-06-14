@@ -19,10 +19,11 @@ export class ThirdPartyService {
     },
   ) {
     const { accountId, thirdPartyId, startDate, endDate } = params;
+    const normalizedAccountId = accountId.padEnd(8, "0");
 
     let keyCondition = "GSI2PK = :pk";
     const expressionValues: any = {
-      ":pk": KeyFactory.gsi2PK(orgId, accountId, thirdPartyId),
+      ":pk": KeyFactory.gsi2PK(orgId, normalizedAccountId, thirdPartyId),
     };
 
     if (startDate && endDate) {
@@ -52,6 +53,7 @@ export class ThirdPartyService {
         // The famous lettering code for reconciliation
         letteringCode: line.letteringCode || null,
         entryId: line.entryId,
+        lineId: line.lineId,
       };
     });
 
@@ -65,7 +67,7 @@ export class ThirdPartyService {
     );
 
     return {
-      accountId,
+      accountId: normalizedAccountId,
       thirdPartyId,
       period: { startDate, endDate },
       summary: {

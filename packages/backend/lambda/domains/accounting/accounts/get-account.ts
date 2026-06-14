@@ -19,7 +19,7 @@ export const handler = createHandler(
 
     return {
       message: i18n.getMessage("SUCCESS_ACCOUNT_RETRIEVED"),
-      account,
+      account: LedgerService.toAccountDto(account),
     };
   },
 );

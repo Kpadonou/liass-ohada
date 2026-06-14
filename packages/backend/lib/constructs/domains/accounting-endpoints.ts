@@ -82,7 +82,15 @@ export class AccountingEndpoints extends DomainConstructFactory {
       "books/get-matching-report",
     );
 
+    // Reports
+    map(
+      apigw.HttpMethod.GET,
+      "/reports/income-statement",
+      "reports/get-income-statement",
+    );
+
     // Fiscal Year
+    map(apigw.HttpMethod.POST, "/fiscal-year", "fiscal-year/create-fiscal-year");
     map(apigw.HttpMethod.GET, "/fiscal-year/{year}", "fiscal-year/get-details");
     map(
       apigw.HttpMethod.POST,

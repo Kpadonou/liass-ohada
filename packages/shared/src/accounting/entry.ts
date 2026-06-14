@@ -125,6 +125,35 @@ export const PostEntryResponseSchema = z.object({
   entryId: z.string(),
 });
 
+export const AccountEntryDtoSchema = z.object({
+  entryId: z.string(),
+  lineId: z.string(),
+  accountId: z.string().regex(/^\d{8}$/),
+  debit: z.number().int().nonnegative(),
+  credit: z.number().int().nonnegative(),
+  description: z.string().optional(),
+  label: z.string().optional(),
+  entryDate: z.string(),
+  voucherNumber: z.string().optional(),
+  journalCode: z.string().optional(),
+  thirdPartyId: z.string().optional(),
+  projectId: z.string().optional(),
+  letteringCode: z.string().optional(),
+  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
+  createdAt: z.string(),
+});
+
+export type AccountEntryDto = z.infer<typeof AccountEntryDtoSchema>;
+
+export const AccountEntriesResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({
+    entries: z.array(AccountEntryDtoSchema),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean(),
+  }),
+});
+
 export const LedgerMovementDtoSchema = z.object({
   date: z.string(),
   label: z.string(),
@@ -171,7 +200,92 @@ export const TrialBalanceResponseSchema = z.object({
   data: TrialBalanceDtoSchema,
 });
 
+export const IncomeStatementDtoSchema = z.object({
+  fiscalYear: z.string(),
+  totalRevenue: z.number().int(),
+  totalExpenses: z.number().int(),
+  netResult: z.number().int(),
+  performanceStatus: z.enum(["PROFIT", "LOSS"]),
+  statementBasis: z.literal("BACKEND_V1_CLASS_6_7_AGGREGATE"),
+});
+
+export type IncomeStatementDto = z.infer<typeof IncomeStatementDtoSchema>;
+
+export const IncomeStatementResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: IncomeStatementDtoSchema,
+});
+
+export const ThirdPartyLedgerLineDtoSchema = z.object({
+  date: z.string(),
+  label: z.string().optional(),
+  reference: z.string().optional(),
+  debit: z.number().int().nonnegative(),
+  credit: z.number().int().nonnegative(),
+  letteringCode: z.string().nullable(),
+  entryId: z.string(),
+  lineId: z.string().optional(),
+});
+
+export const ThirdPartyLedgerDtoSchema = z.object({
+  accountId: z.string(),
+  thirdPartyId: z.string(),
+  period: z.object({
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+  }),
+  summary: z.object({
+    totalDebit: z.number().int().nonnegative(),
+    totalCredit: z.number().int().nonnegative(),
+    balance: z.number().int(),
+  }),
+  count: z.number().int().nonnegative(),
+  lines: z.array(ThirdPartyLedgerLineDtoSchema),
+});
+
+export type ThirdPartyLedgerDto = z.infer<typeof ThirdPartyLedgerDtoSchema>;
+
+export const ThirdPartyLedgerResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: ThirdPartyLedgerDtoSchema,
+});
+
+export const LetteringLineRefSchema = z.object({
+  year: z.coerce.number().int().gte(1900),
+  entryId: z.string().min(1),
+  lineId: z.string().min(1),
+});
+
+export const PostLetteringRequestSchema = z.object({
+  accountId: z.string().regex(/^\d{2,8}$/),
+  thirdPartyId: z.string().min(1),
+  letteringCode: z.string().min(1),
+  lines: z.array(LetteringLineRefSchema).min(2),
+});
+
+export const CancelLetteringRequestSchema = z.object({
+  accountId: z.string().regex(/^\d{2,8}$/),
+  thirdPartyId: z.string().min(1),
+  lines: z.array(LetteringLineRefSchema).min(1),
+});
+
+export const LetteringResultDtoSchema = z.object({
+  letteringCode: z.string().optional(),
+  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
+  remainingBalance: z.number().int().nonnegative().optional(),
+  linesProcessed: z.number().int().nonnegative().optional(),
+});
+
+export const LetteringResponseSchema = z.object({
+  message: z.unknown().optional(),
+}).and(LetteringResultDtoSchema);
+
+export type PostLetteringRequest = z.infer<typeof PostLetteringRequestSchema>;
+export type CancelLetteringRequest = z.infer<typeof CancelLetteringRequestSchema>;
+export type LetteringResultDto = z.infer<typeof LetteringResultDtoSchema>;
+
 // --- Persistence Schemas (DynamoDB Items) ---
+// Backend-only persistence schemas. Public DTOs above must not expose PK/SK/GSI*.
 
 /**
  * Entry Header Item (PK: ORG#{orgId}#FY#{year}, SK: E#{entryId})
@@ -195,6 +309,7 @@ export const EntrySchema = z.object({
   GSI5SK: z.string().optional(),
   createdBy: z.string().optional(),
   createdAt: z.string(),
+  updatedBy: z.string().optional(),
   updatedAt: z.string(),
 });
 
@@ -226,6 +341,7 @@ export const EntryLineSchema = z.object({
 
   // Metadata
   letteringCode: z.string().optional(),
+  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
   entityType: z.literal("ENTRY_LINE"),
 
   // Database Keys (DynamoDB + KeyFactory)
@@ -244,6 +360,7 @@ export const EntryLineSchema = z.object({
 
   createdBy: z.string().optional(),
   createdAt: z.string(),
+  updatedBy: z.string().optional(),
   updatedAt: z.string(),
 });
 

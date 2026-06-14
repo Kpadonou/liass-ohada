@@ -7,18 +7,12 @@
  */
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { FiscalYearService } from "@/lambda/shared/services/fiscal-year-service";
-import { z } from "zod";
-
-const LockPeriodSchema = z.object({
-  year: z.number().int().gte(1900),
-  month: z.number().int().gte(1).lte(12),
-  status: z.enum(["LOCKED", "OPEN"]),
-});
+import { UpdatePeriodLockRequestSchema } from "@liass-ohada/shared/accounting";
 
 export const handler = createHandler(
-  LockPeriodSchema,
+  UpdatePeriodLockRequestSchema,
   async (data, { orgId, userId, i18n }) => {
-    const lockItem = await FiscalYearService.updatePeriodLock(
+    const lock = await FiscalYearService.updatePeriodLock(
       orgId,
       userId,
       data.year,
@@ -33,7 +27,7 @@ export const handler = createHandler(
 
     return {
       message: successMessage,
-      lockItem,
+      data: lock,
     };
   },
 );
