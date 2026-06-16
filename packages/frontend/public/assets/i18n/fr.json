@@ -5,7 +5,8 @@
     },
     "ACTIONS": {
       "SAVE": "Enregistrer",
-      "CANCEL": "Annuler"
+      "CANCEL": "Annuler",
+      "CLOSE": "Fermer"
     },
     "LANGUAGE_SELECTOR": {
       "CURRENT": "Langue actuelle",
@@ -614,6 +615,7 @@
     "ERRORS": {
       "CREATE_ACCOUNT_FAILED": "Le compte n’a pas pu être créé.",
       "CREATE_JOURNAL_FAILED": "Le journal n’a pas pu être créé.",
+      "DISABLE_ACCOUNT_FAILED": "Le compte n’a pas pu être désactivé.",
       "LOAD_FAILED": "Les données comptables n’ont pas pu être chargées.",
       "POST_ENTRY_FAILED": "L’écriture n’a pas pu être comptabilisée.",
       "UPDATE_ACCOUNT_FAILED": "Le compte n’a pas pu être mis à jour."
@@ -644,13 +646,15 @@
     "ACCOUNTS": {
       "ACTIONS": {
         "CLEAR_FILTERS": "Réinitialiser",
+        "DISABLE_ACCOUNT": "Désactiver",
         "EDIT_ACCOUNT": "Modifier",
         "DISABLE_TODO": "La désactivation sera disponible dans la tranche CRUD comptes.",
         "EDIT_TODO": "L’édition sera disponible dans la tranche CRUD comptes.",
         "LOAD_MORE": "Charger plus",
         "NEW_ACCOUNT": "Nouveau compte",
         "NEW_ACCOUNT_TODO": "La création sera disponible dans la tranche CRUD comptes.",
-        "RETRY": "Réessayer"
+        "RETRY": "Réessayer",
+        "VIEW_DETAILS": "Voir détails"
       },
       "CLASSES": {
         "1": "Classe 1 - Ressources durables",
@@ -669,6 +673,15 @@
         "EDIT_EYEBROW": "Compte SYSCOHADA",
         "EDIT_SUBTITLE": "Mettez à jour les propriétés du compte sans quitter le plan comptable.",
         "EDIT_TITLE": "Modifier un compte"
+      },
+      "DETAIL": {
+        "CONTROLS": "Contrôles",
+        "EYEBROW": "Détail du compte"
+      },
+      "DISABLE": {
+        "DESCRIPTION": "Désactiver {{ accountId }} - {{ accountName }} empêche son usage futur sans supprimer le compte ni modifier les écritures existantes.",
+        "EYEBROW": "Désactivation",
+        "TITLE": "Désactiver ce compte ?"
       },
       "EMPTY": {
         "DESCRIPTION": "Aucun compte n’est disponible pour l’organisation active.",
@@ -706,6 +719,7 @@
         "STANDARD": "Standard",
         "THIRD_PARTY": "Tiers"
       },
+      "LOADING": "Chargement du plan comptable...",
       "METRICS": {
         "THIRD_PARTY": "Comptes tiers",
         "TOTAL": "Comptes chargés",
@@ -714,6 +728,10 @@
       "NATURE": {
         "BALANCE": "Bilan",
         "INCOME": "Gestion"
+      },
+      "STATUS": {
+        "ACTIVE": "Actif",
+        "INACTIVE": "Inactif"
       },
       "SUBTITLE": "Consultez les comptes SYSCOHADA de l’organisation, filtrez par classe, nature et comptes auxiliaires.",
       "TABLE": {
@@ -724,6 +742,7 @@
         "FLAGS": "Contrôles",
         "NAME": "Libellé",
         "NATURE": "Nature",
+        "STATUS": "Statut",
         "TITLE": "Comptes",
         "USAGE": "Sens"
       },

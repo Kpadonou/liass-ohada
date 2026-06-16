@@ -27,6 +27,7 @@ import {
   ThirdPartyLedgerResponseSchema,
   TrialBalanceResponseSchema,
   UnletteredLinesResponseSchema,
+  UpdateAccountRequestSchema,
   type AccountDto,
   type CancelLetteringRequest,
   type CloseFiscalYearResultDto,
@@ -87,12 +88,6 @@ export interface UnletteredLinesParams {
   thirdPartyId: string;
   projectId?: string;
 }
-
-const UpdateAccountRequestSchema = CreateAccountRequestSchema.omit({
-  accountId: true
-}).partial().refine((payload) => Object.keys(payload).length > 0, {
-  message: 'At least one account field is required'
-});
 
 @Injectable({ providedIn: 'root' })
 export class AccountingApi {

@@ -4,6 +4,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSidenavModule } from '@angular/material/sidenav';
 import { type AccountDto } from '@liass-ohada/shared/accounting';
 import { TranslocoModule } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
@@ -17,6 +18,7 @@ import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/stat
 import { AccountingApi, type PaginatedResult } from '../../data-access/accounting.api';
 import { AccountingQueries } from '../../data-access/accounting-queries';
 import { AccountDialogComponent } from './account-dialog.component';
+import { DisableAccountDialogComponent } from './disable-account-dialog.component';
 
 type ClassFilter = 'ALL' | number;
 type NatureFilter = 'ALL' | AccountDto['accountNature'];
@@ -40,6 +42,7 @@ const ACCOUNT_PAGE_SIZE = 200;
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    MatSidenavModule,
     TranslocoModule
   ],
   templateUrl: './accounts.page.html'
@@ -58,6 +61,7 @@ export class AccountsPage {
   protected readonly localAccountUpserts = signal<AccountDto[]>([]);
   protected readonly loadMoreError = signal(false);
   protected readonly loadingMore = signal(false);
+  protected readonly selectedAccount = signal<AccountDto | null>(null);
 
   protected readonly accountsQuery = injectQuery(() =>
     this.accountingQueries.listAccounts({ limit: ACCOUNT_PAGE_SIZE })
@@ -172,6 +176,10 @@ export class AccountsPage {
   }
 
   protected openEditAccount(account: AccountDto): void {
+    if (!this.isAccountActive(account)) {
+      return;
+    }
+
     const dialogRef = this.dialog.open(AccountDialogComponent, {
       autoFocus: 'first-tabbable',
       data: { account, mode: 'edit' },
@@ -188,11 +196,58 @@ export class AccountsPage {
     });
   }
 
+  protected openAccountDetails(account: AccountDto): void {
+    this.selectedAccount.set(account);
+  }
+
+  protected closeAccountDetails(): void {
+    this.selectedAccount.set(null);
+  }
+
+  protected openDisableAccount(account: AccountDto): void {
+    if (!this.isAccountActive(account)) {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(DisableAccountDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: { account },
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'liass-dialog-panel',
+      restoreFocus: true,
+      width: '520px'
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe((disabledAccount: AccountDto | null | undefined) => {
+      if (disabledAccount) {
+        this.upsertAccount(disabledAccount);
+      }
+    });
+  }
+
+  protected isAccountActive(account: AccountDto): boolean {
+    return account.isActive !== false;
+  }
+
+  protected accountStatusTone(account: AccountDto): 'success' | 'neutral' {
+    return this.isAccountActive(account) ? 'success' : 'neutral';
+  }
+
+  protected accountStatusKey(account: AccountDto): string {
+    return this.isAccountActive(account)
+      ? 'ACCOUNTING.ACCOUNTS.STATUS.ACTIVE'
+      : 'ACCOUNTING.ACCOUNTS.STATUS.INACTIVE';
+  }
+
   private upsertAccount(account: AccountDto): void {
     this.loadMoreError.set(false);
     this.localAccountUpserts.update((accounts) =>
       mergeAccounts(accounts, [account])
     );
+
+    if (this.selectedAccount()?.accountId === account.accountId) {
+      this.selectedAccount.set(account);
+    }
   }
 }
 

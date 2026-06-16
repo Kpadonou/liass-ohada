@@ -40,6 +40,7 @@ describe('AccountingApi', () => {
             classCode: 4,
             financialStatementCode: 'BS',
             allowReconciliation: true,
+            isActive: true,
             PK: 'ORG#test'
           }
         ],
@@ -57,7 +58,8 @@ describe('AccountingApi', () => {
           isThirdPartyAccount: true,
           classCode: 4,
           financialStatementCode: 'BS',
-          allowReconciliation: true
+          allowReconciliation: true,
+          isActive: true
         }
       ],
       hasMore: false
@@ -128,10 +130,11 @@ describe('AccountingApi', () => {
     const disableRequest = httpMock.expectOne(`${apiBaseUrl}/accounts/41100000`);
 
     expect(disableRequest.request.method).toBe('DELETE');
-    disableRequest.flush({ account: accountResponseFixture() });
+    disableRequest.flush({ account: accountResponseFixture({ isActive: false }) });
 
     await expect(disablePromise).resolves.toMatchObject({
-      accountId: '41100000'
+      accountId: '41100000',
+      isActive: false
     });
   });
 
@@ -529,6 +532,7 @@ function accountResponseFixture(
     classCode: number;
     financialStatementCode: string;
     allowReconciliation: boolean;
+    isActive: boolean;
   }> = {}
 ) {
   return {
@@ -540,6 +544,7 @@ function accountResponseFixture(
     classCode: 4,
     financialStatementCode: 'BS',
     allowReconciliation: true,
+    isActive: true,
     PK: 'ORG#test',
     SK: 'ACC#41100000',
     ...overrides

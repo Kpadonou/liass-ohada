@@ -119,6 +119,8 @@ Use tables for operational ERP data. Support:
 
 Prioritize readability, density, sticky context where helpful, and numeric alignment.
 
+When table/list data comes from a remote API, the loading state must be explicit and accessible. Prefer skeleton rows/cards for data-heavy pages because they preserve the table/list footprint; use a centered spinner or loader with a short translated message when skeletons are not practical. Do not show an empty state or a blank data region until loading has finished. Keep loading, empty, no-results, and error states separate.
+
 ## Filters
 
 - Place common filters close to the data.

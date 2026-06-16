@@ -17,6 +17,7 @@ export const AccountSchema = z
     classCode: AccountClassCode,
     financialStatementCode: z.string(),
     allowReconciliation: z.boolean(),
+    isActive: z.boolean().default(true),
     entityType: z.literal("ACCOUNT"),
     PK: z.string(),
     SK: z.string(),
@@ -46,6 +47,7 @@ export const AccountDtoSchema = z.object({
   classCode: AccountClassCode,
   financialStatementCode: z.string(),
   allowReconciliation: z.boolean(),
+  isActive: z.boolean().default(true),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 });
@@ -64,6 +66,16 @@ export const CreateAccountRequestSchema = z.object({
 });
 
 export type CreateAccountRequest = z.infer<typeof CreateAccountRequestSchema>;
+
+export const UpdateAccountRequestSchema = CreateAccountRequestSchema.omit({
+  accountId: true,
+})
+  .partial()
+  .refine((payload) => Object.keys(payload).length > 0, {
+    message: "At least one account field is required",
+  });
+
+export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
 
 export const AccountResponseSchema = z.object({
   message: z.unknown().optional(),

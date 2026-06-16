@@ -24,8 +24,9 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 9. Ensure shared layout/page primitives render with stable block-level host behavior when they are used as standalone page sections.
 10. For table/list management pages, make simple create and edit actions dialog-based by default so the user stays in context.
 11. For `mat-select` fields with more than 10 options, or likely to grow beyond 10 options, provide search/filter capability by default.
-12. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
-13. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
+12. For pages that load remote data, especially data-heavy tables and lists, always show an explicit loading state; users must never see a blank table/list area while data is loading.
+13. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
+14. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
 
 ## Reference priority
 
@@ -66,6 +67,15 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 ## UX and ergonomics rules
 
 - Choose full pages for complex workflows.
+- A user must never see a blank table/list area while remote data is loading.
+- Data-heavy pages must show either skeleton rows/cards or a centered loader/spinner with a short translated loading message.
+- Prefer skeleton loaders for table/list pages because they preserve layout and reduce visual jump.
+- Use spinner/loader feedback for short blocking operations or when skeletons are not practical.
+- Loading states must be visually clear, accessible, and consistent with the Liass-OHADA premium UI.
+- Loading text must use Transloco; no hardcoded visible loading strings.
+- Empty states must be shown only after loading has completed and no data exists.
+- Error states must remain separate from loading and empty states.
+- Examples requiring explicit loading feedback include Plan comptable loading accounts, Journaux loading journals, Dossiers clients loading dossiers, Grand livre loading ledger lines, and Balance loading balances.
 - Use dialogs for focused temporary decisions, not long accounting flows.
 - On table/list management pages, use dialogs by default for simple create/edit actions such as new client dossier, new account, new customer, new supplier, edit supplier, edit journal, or edit account.
 - After a successful create/edit dialog submit, close the dialog, refresh or upsert the list data, show the new or updated row, and keep the user on the list unless the workflow explicitly requires navigation.

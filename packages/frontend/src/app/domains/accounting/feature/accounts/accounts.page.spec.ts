@@ -15,13 +15,15 @@ const translations = {
       ACCOUNTS: {
         ACTIONS: {
           CLEAR_FILTERS: 'Reset',
+          DISABLE_ACCOUNT: 'Disable',
           EDIT_ACCOUNT: 'Edit',
           DISABLE_TODO: 'Disable later',
           EDIT_TODO: 'Edit later',
           LOAD_MORE: 'Load more',
           NEW_ACCOUNT: 'New account',
           NEW_ACCOUNT_TODO: 'Create later',
-          RETRY: 'Retry'
+          RETRY: 'Retry',
+          VIEW_DETAILS: 'View details'
         },
         CLASSES: {
           '1': 'Class 1 - Long-term resources',
@@ -40,6 +42,15 @@ const translations = {
           EDIT_EYEBROW: 'SYSCOHADA account',
           EDIT_SUBTITLE: 'Update account.',
           EDIT_TITLE: 'Edit account'
+        },
+        DETAIL: {
+          CONTROLS: 'Controls',
+          EYEBROW: 'Account detail'
+        },
+        DISABLE: {
+          DESCRIPTION: 'Disabling {{ accountId }} - {{ accountName }} prevents future use.',
+          EYEBROW: 'Disable',
+          TITLE: 'Disable this account?'
         },
         EMPTY: {
           DESCRIPTION: 'No account is available.',
@@ -77,6 +88,7 @@ const translations = {
           STANDARD: 'Standard',
           THIRD_PARTY: 'Third party'
         },
+        LOADING: 'Loading chart of accounts...',
         METRICS: {
           THIRD_PARTY: 'Third-party accounts',
           TOTAL: 'Loaded accounts',
@@ -85,6 +97,10 @@ const translations = {
         NATURE: {
           BALANCE: 'Balance sheet',
           INCOME: 'Income'
+        },
+        STATUS: {
+          ACTIVE: 'Active',
+          INACTIVE: 'Inactive'
         },
         SUBTITLE: 'Review accounts.',
         TABLE: {
@@ -95,6 +111,7 @@ const translations = {
           FLAGS: 'Controls',
           NAME: 'Label',
           NATURE: 'Nature',
+          STATUS: 'Status',
           TITLE: 'Accounts',
           USAGE: 'Direction'
         },
@@ -113,6 +130,7 @@ const translations = {
       },
       ERRORS: {
         CREATE_ACCOUNT_FAILED: 'The account could not be created.',
+        DISABLE_ACCOUNT_FAILED: 'The account could not be disabled.',
         LOAD_FAILED: 'Accounting data could not be loaded.',
         UPDATE_ACCOUNT_FAILED: 'The account could not be updated.'
       }
@@ -121,6 +139,7 @@ const translations = {
   COMMON: {
     ACTIONS: {
       CANCEL: 'Cancel',
+      CLOSE: 'Close',
       SAVE: 'Save'
     }
   }
@@ -172,6 +191,23 @@ describe('AccountsPage', () => {
     httpMock.verify();
   });
 
+  it('shows translated loading feedback while accounts are loading', () => {
+    const text = fixture.nativeElement.textContent;
+    const loadingState = fixture.nativeElement.querySelector('[role="status"]');
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/accounts`);
+
+    expect(text).toContain('Loading chart of accounts...');
+    expect(text).not.toContain('No account loaded');
+    expect(loadingState?.getAttribute('aria-busy')).toBe('true');
+
+    request.flush({
+      data: {
+        accounts: [],
+        hasMore: false
+      }
+    });
+  });
+
   it('loads and renders the chart of accounts with CRUD actions', async () => {
     flushAccounts(httpMock, apiBaseUrl, [
       accountFixture({ accountId: '41100000', accountName: 'Clients', classCode: 4 }),
@@ -186,14 +222,13 @@ describe('AccountsPage', () => {
     await settle(fixture);
 
     const text = fixture.nativeElement.textContent;
-    const disabledActions = fixture.nativeElement.querySelectorAll('button:disabled');
 
     expect(text).toContain('Chart of accounts');
     expect(text).toContain('Clients');
     expect(text).toContain('Ventes de marchandises');
     expect(text).toContain('Class 4 - Third parties');
     expect(text).toContain('Class 7 - Revenue');
-    expect(disabledActions.length).toBeGreaterThanOrEqual(1);
+    expect(text).toContain('Active');
     expect(text).toContain('New account');
   });
 
@@ -383,6 +418,80 @@ describe('AccountsPage', () => {
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
     expect(document.body.textContent).toContain('The account could not be updated.');
   });
+
+  it('opens account details in a drawer', async () => {
+    flushAccounts(httpMock, apiBaseUrl, [accountFixture()]);
+    await settle(fixture);
+
+    const component = fixture.componentInstance as unknown as {
+      openAccountDetails: (account: ReturnType<typeof accountFixture>) => void;
+    };
+    component.openAccountDetails(accountFixture());
+    fixture.detectChanges();
+    await settle(fixture);
+
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Account detail');
+    expect(text).toContain('41100000');
+    expect(text).toContain('Clients');
+    expect(text).toContain('Controls');
+  });
+
+  it('disables an account through confirmation and keeps existing rows visible', async () => {
+    flushAccounts(httpMock, apiBaseUrl, [accountFixture()]);
+    await settle(fixture);
+
+    const component = fixture.componentInstance as unknown as {
+      openDisableAccount: (account: ReturnType<typeof accountFixture>) => void;
+    };
+    component.openDisableAccount(accountFixture());
+    fixture.detectChanges();
+
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+    const dialogInstance = dialogRef.componentInstance as unknown as {
+      confirm: () => Promise<void>;
+    };
+    const confirmPromise = dialogInstance.confirm();
+    const disableRequest = httpMock.expectOne(`${apiBaseUrl}/accounts/41100000`);
+
+    expect(disableRequest.request.method).toBe('DELETE');
+    disableRequest.flush({
+      account: accountFixture({ isActive: false })
+    });
+    await confirmPromise;
+    await waitForDialogClose();
+    await settle(fixture);
+
+    expect(TestBed.inject(MatDialog).openDialogs.length).toBe(0);
+    expect(fixture.nativeElement.textContent).toContain('Clients');
+    expect(fixture.nativeElement.textContent).toContain('Inactive');
+  });
+
+  it('keeps the disable confirmation open on failure', async () => {
+    flushAccounts(httpMock, apiBaseUrl, [accountFixture()]);
+    await settle(fixture);
+
+    const component = fixture.componentInstance as unknown as {
+      openDisableAccount: (account: ReturnType<typeof accountFixture>) => void;
+    };
+    component.openDisableAccount(accountFixture());
+    fixture.detectChanges();
+
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+    const dialogInstance = dialogRef.componentInstance as unknown as {
+      confirm: () => Promise<void>;
+    };
+    const confirmPromise = dialogInstance.confirm();
+    const disableRequest = httpMock.expectOne(`${apiBaseUrl}/accounts/41100000`);
+
+    disableRequest.flush({ message: 'Nope' }, { status: 500, statusText: 'Server Error' });
+    await confirmPromise;
+    await settle(fixture);
+
+    expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
+    expect(document.body.textContent).toContain('The account could not be disabled.');
+  });
 });
 
 function flushAccounts(
@@ -413,6 +522,7 @@ function accountFixture(
     financialStatementCode: string;
     isThirdPartyAccount: boolean;
     allowReconciliation: boolean;
+    isActive: boolean;
   }> = {}
 ) {
   return {
@@ -424,6 +534,7 @@ function accountFixture(
     financialStatementCode: 'BS',
     isThirdPartyAccount: true,
     allowReconciliation: true,
+    isActive: true,
     ...overrides
   };
 }

@@ -1,3 +1,114 @@
+<mat-drawer-container class="min-h-[calc(100vh-9rem)] bg-transparent" hasBackdrop="true">
+  <mat-drawer
+    #accountDrawer
+    class="w-full max-w-[420px] border-l border-slate-200 bg-white p-0 dark:border-slate-800 dark:bg-slate-950"
+    mode="over"
+    position="end"
+    [opened]="!!selectedAccount()"
+    (closedStart)="closeAccountDetails()"
+  >
+    @if (selectedAccount(); as account) {
+      <aside class="flex h-full flex-col">
+        <header class="border-b border-slate-200 p-6 dark:border-slate-800">
+          <div class="flex items-start justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+                {{ 'ACCOUNTING.ACCOUNTS.DETAIL.EYEBROW' | transloco }}
+              </p>
+              <h2 class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ account.accountId }}</h2>
+              <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">{{ account.accountName }}</p>
+            </div>
+            <liass-button
+              size="icon"
+              tone="neutral"
+              variant="ghost"
+              icon="close"
+              [ariaLabel]="'COMMON.ACTIONS.CLOSE' | transloco"
+              (pressed)="closeAccountDetails()"
+            />
+          </div>
+          <div class="mt-4 flex flex-wrap gap-2">
+            <liass-status-chip [label]="accountStatusKey(account) | transloco" [tone]="accountStatusTone(account)" size="sm" />
+            <liass-status-chip
+              [label]="'ACCOUNTING.ACCOUNTS.NATURE.' + account.accountNature | transloco"
+              tone="info"
+              size="sm"
+            />
+          </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-6">
+          <dl class="grid gap-4">
+            <div class="rounded-app-card border border-slate-200 p-4 dark:border-slate-800">
+              <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.ACCOUNTS.FIELDS.CLASS' | transloco }}
+              </dt>
+              <dd class="mt-2 text-sm font-medium text-slate-950 dark:text-white">
+                {{ 'ACCOUNTING.ACCOUNTS.CLASSES.' + account.classCode | transloco }}
+              </dd>
+            </div>
+            <div class="rounded-app-card border border-slate-200 p-4 dark:border-slate-800">
+              <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.ACCOUNTS.FIELDS.USAGE' | transloco }}
+              </dt>
+              <dd class="mt-2 text-sm font-medium text-slate-950 dark:text-white">
+                {{ 'ACCOUNTING.ACCOUNTS.USAGE.' + account.accountUsage | transloco }}
+              </dd>
+            </div>
+            <div class="rounded-app-card border border-slate-200 p-4 dark:border-slate-800">
+              <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.ACCOUNTS.FIELDS.STATEMENT_CODE' | transloco }}
+              </dt>
+              <dd class="mt-2 break-words text-sm font-medium text-slate-950 dark:text-white">
+                {{ account.financialStatementCode }}
+              </dd>
+            </div>
+            <div class="rounded-app-card border border-slate-200 p-4 dark:border-slate-800">
+              <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.ACCOUNTS.DETAIL.CONTROLS' | transloco }}
+              </dt>
+              <dd class="mt-3 flex flex-wrap gap-2">
+                @if (account.isThirdPartyAccount) {
+                  <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.THIRD_PARTY' | transloco" tone="warning" size="sm" />
+                }
+                @if (account.allowReconciliation) {
+                  <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.RECONCILIATION' | transloco" tone="success" size="sm" />
+                }
+                @if (!account.isThirdPartyAccount && !account.allowReconciliation) {
+                  <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.STANDARD' | transloco" tone="neutral" size="sm" />
+                }
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <footer class="border-t border-slate-200 p-6 dark:border-slate-800">
+          <div class="grid gap-3 sm:grid-cols-2">
+            <liass-button
+              tone="neutral"
+              variant="outline"
+              icon="edit"
+              [disabled]="!isAccountActive(account)"
+              (pressed)="openEditAccount(account)"
+            >
+              {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco }}
+            </liass-button>
+            <liass-button
+              tone="danger"
+              variant="outline"
+              icon="block"
+              [disabled]="!isAccountActive(account)"
+              (pressed)="openDisableAccount(account)"
+            >
+              {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}
+            </liass-button>
+          </div>
+        </footer>
+      </aside>
+    }
+  </mat-drawer>
+
+  <mat-drawer-content>
 <div class="space-y-6">
   <liass-page-header
     [eyebrow]="'ACCOUNTING.ACCOUNTS.EYEBROW' | transloco"
@@ -94,10 +205,15 @@
     </div>
 
     @if (accountsQuery.isPending()) {
-      <div class="space-y-3" aria-busy="true">
-        @for (_ of [0, 1, 2, 3, 4]; track $index) {
-          <liass-skeleton variant="block" />
-        }
+      <div class="space-y-4" aria-busy="true" role="status">
+        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+          {{ 'ACCOUNTING.ACCOUNTS.LOADING' | transloco }}
+        </p>
+        <div class="space-y-3">
+          @for (_ of [0, 1, 2, 3, 4]; track $index) {
+            <liass-skeleton variant="block" />
+          }
+        </div>
       </div>
     } @else if (accountsQuery.isError()) {
       <div
@@ -131,7 +247,7 @@
       </div>
     } @else {
       <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 lg:block">
-        <table class="w-full min-w-[980px] border-collapse text-left">
+        <table class="w-full min-w-[1060px] border-collapse text-left">
           <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
             <tr>
               <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.CODE' | transloco }}</th>
@@ -139,13 +255,14 @@
               <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.CLASS' | transloco }}</th>
               <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.NATURE' | transloco }}</th>
               <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.USAGE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.STATUS' | transloco }}</th>
               <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.FLAGS' | transloco }}</th>
               <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ACCOUNTS.TABLE.ACTIONS' | transloco }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
             @for (account of filteredAccounts(); track account.accountId) {
-              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20" [class.opacity-70]="!isAccountActive(account)">
                 <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ account.accountId }}</td>
                 <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ account.accountName }}</td>
                 <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
@@ -160,6 +277,9 @@
                 </td>
                 <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
                   {{ 'ACCOUNTING.ACCOUNTS.USAGE.' + account.accountUsage | transloco }}
+                </td>
+                <td class="px-4 py-4">
+                  <liass-status-chip [label]="accountStatusKey(account) | transloco" [tone]="accountStatusTone(account)" size="sm" />
                 </td>
                 <td class="px-4 py-4">
                   <div class="flex flex-wrap gap-2">
@@ -180,7 +300,16 @@
                       size="icon"
                       tone="neutral"
                       variant="ghost"
+                      icon="visibility"
+                      [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco"
+                      (pressed)="openAccountDetails(account)"
+                    />
+                    <liass-button
+                      size="icon"
+                      tone="neutral"
+                      variant="ghost"
                       icon="edit"
+                      [disabled]="!isAccountActive(account)"
                       [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco"
                       (pressed)="openEditAccount(account)"
                     />
@@ -189,8 +318,9 @@
                       tone="danger"
                       variant="ghost"
                       icon="block"
-                      [disabled]="true"
-                      [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_TODO' | transloco"
+                      [disabled]="!isAccountActive(account)"
+                      [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco"
+                      (pressed)="openDisableAccount(account)"
                     />
                   </div>
                 </td>
@@ -202,17 +332,20 @@
 
       <div class="grid gap-3 lg:hidden">
         @for (account of filteredAccounts(); track account.accountId) {
-          <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" [class.opacity-70]="!isAccountActive(account)">
             <div class="flex items-start justify-between gap-3">
               <div class="min-w-0">
                 <p class="font-semibold text-slate-950 dark:text-white">{{ account.accountId }}</p>
                 <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ account.accountName }}</p>
               </div>
-              <liass-status-chip
-                [label]="'ACCOUNTING.ACCOUNTS.NATURE.' + account.accountNature | transloco"
-                tone="info"
-                size="sm"
-              />
+              <div class="flex flex-col items-end gap-2">
+                <liass-status-chip [label]="accountStatusKey(account) | transloco" [tone]="accountStatusTone(account)" size="sm" />
+                <liass-status-chip
+                  [label]="'ACCOUNTING.ACCOUNTS.NATURE.' + account.accountNature | transloco"
+                  tone="info"
+                  size="sm"
+                />
+              </div>
             </div>
             <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">
               {{ 'ACCOUNTING.ACCOUNTS.CLASSES.' + account.classCode | transloco }}
@@ -230,11 +363,33 @@
                 size="sm"
                 tone="neutral"
                 variant="outline"
+                icon="visibility"
+                [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco"
+                (pressed)="openAccountDetails(account)"
+              >
+                {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco }}
+              </liass-button>
+              <liass-button
+                size="sm"
+                tone="neutral"
+                variant="outline"
                 icon="edit"
+                [disabled]="!isAccountActive(account)"
                 [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco"
                 (pressed)="openEditAccount(account)"
               >
                 {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco }}
+              </liass-button>
+              <liass-button
+                size="sm"
+                tone="danger"
+                variant="outline"
+                icon="block"
+                [disabled]="!isAccountActive(account)"
+                [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco"
+                (pressed)="openDisableAccount(account)"
+              >
+                {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}
               </liass-button>
             </div>
           </article>
@@ -262,3 +417,5 @@
     }
   </liass-card>
 </div>
+  </mat-drawer-content>
+</mat-drawer-container>

@@ -2,6 +2,8 @@
   "ERROR_INVALID_PASSWORD": "Invalid password provided.",
   "ERROR_ACCOUNT_NOT_FOUND": "Account not found.",
   "SUCCESS_ACCOUNT_CREATED": "Account created successfully.",
+  "SUCCESS_ACCOUNT_UPDATED": "Account updated successfully.",
+  "SUCCESS_ACCOUNT_DISABLED": "Account disabled successfully.",
   "SUCCESS_ACCOUNTS_RETRIEVED": "Accounts retrieved successfully.",
   "SUCCESS_ENTRIES_RETRIEVED": "Entries retrieved successfully.",
   "SUCCESS_LEDGER_RETRIEVED": "Account ledger retrieved successfully.",

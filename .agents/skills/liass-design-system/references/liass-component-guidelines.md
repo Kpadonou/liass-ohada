@@ -92,6 +92,10 @@
 - Match the approximate shape of the content.
 - Use skeletons for page/card/table loading.
 - Do not use spinners as the only loading feedback for large data regions.
+- For remote table/list data, always pair skeletons or loaders with a short translated loading message.
+- A table/list area must never be blank while loading; empty state appears only after loading completes and no data exists.
+- Keep loading, empty, no-results, and error states visually distinct.
+- Examples: Plan comptable loading accounts, Journaux loading journals, Dossiers clients loading dossiers, Grand livre loading ledger lines, and Balance loading balances.
 
 ## Empty States
 

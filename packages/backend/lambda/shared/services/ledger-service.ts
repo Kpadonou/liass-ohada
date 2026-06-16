@@ -13,6 +13,7 @@ import {
   PutItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
+  UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { randomUUID } from "crypto";
@@ -503,9 +504,68 @@ export class LedgerService {
       classCode: account.classCode,
       financialStatementCode: account.financialStatementCode,
       allowReconciliation: account.allowReconciliation,
+      isActive: account.isActive,
       createdAt: account.createdAt,
       updatedAt: account.updatedAt,
     });
+  }
+
+  static async updateAccount(
+    orgId: string,
+    accountId: string,
+    updates: Partial<Omit<AccountDto, "orgId" | "accountId" | "createdAt" | "updatedAt">>,
+  ): Promise<Account> {
+    const updatedAt = new Date().toISOString();
+    const setExpressions: string[] = ["updatedAt = :updatedAt"];
+    const expressionAttributeValues: Record<string, unknown> = {
+      ":updatedAt": updatedAt,
+    };
+
+    for (const [field, value] of Object.entries(updates)) {
+      if (typeof value === "undefined") {
+        continue;
+      }
+
+      setExpressions.push(`#${field} = :${field}`);
+      expressionAttributeValues[`:${field}`] = value;
+    }
+
+    try {
+      const expressionAttributeNames = Object.fromEntries(
+        setExpressions
+          .map((expression) => expression.match(/^#([A-Za-z0-9_]+) = /)?.[1])
+          .filter((field): field is string => !!field)
+          .map((field) => [`#${field}`, field]),
+      );
+
+      const result = await dynamoClient.send(
+        new UpdateItemCommand({
+          TableName: config.TABLE_NAME,
+          Key: marshall({
+            PK: KeyFactory.orgKey(orgId),
+            SK: KeyFactory.accountSK(accountId),
+          }),
+          ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+          UpdateExpression: `SET ${setExpressions.join(", ")}`,
+          ...(Object.keys(expressionAttributeNames).length > 0
+            ? { ExpressionAttributeNames: expressionAttributeNames }
+            : {}),
+          ExpressionAttributeValues: marshall(expressionAttributeValues),
+          ReturnValues: "ALL_NEW",
+        }),
+      );
+
+      return AccountSchema.parse(unmarshall(result.Attributes ?? {}));
+    } catch (error: any) {
+      if (error?.name === "ConditionalCheckFailedException") {
+        throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+      }
+      throw error;
+    }
+  }
+
+  static async disableAccount(orgId: string, accountId: string): Promise<Account> {
+    return LedgerService.updateAccount(orgId, accountId, { isActive: false });
   }
 
   static async listAccounts(

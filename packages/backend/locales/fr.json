@@ -2,6 +2,8 @@
   "ERROR_INVALID_PASSWORD": "Mot de passe invalide fourni.",
   "ERROR_ACCOUNT_NOT_FOUND": "Compte non trouvé.",
   "SUCCESS_ACCOUNT_CREATED": "Compte créé avec succès.",
+  "SUCCESS_ACCOUNT_UPDATED": "Compte mis à jour avec succès.",
+  "SUCCESS_ACCOUNT_DISABLED": "Compte désactivé avec succès.",
   "SUCCESS_ACCOUNTS_RETRIEVED": "Comptes récupérés avec succès.",
   "SUCCESS_ENTRIES_RETRIEVED": "Écritures récupérées avec succès.",
   "SUCCESS_LEDGER_RETRIEVED": "Grand livre du compte récupéré avec succès.",

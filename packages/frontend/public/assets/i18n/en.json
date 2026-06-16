@@ -5,7 +5,8 @@
     },
     "ACTIONS": {
       "SAVE": "Save",
-      "CANCEL": "Cancel"
+      "CANCEL": "Cancel",
+      "CLOSE": "Close"
     },
     "LANGUAGE_SELECTOR": {
       "CURRENT": "Current language",
@@ -614,6 +615,7 @@
     "ERRORS": {
       "CREATE_ACCOUNT_FAILED": "The account could not be created.",
       "CREATE_JOURNAL_FAILED": "The journal could not be created.",
+      "DISABLE_ACCOUNT_FAILED": "The account could not be disabled.",
       "LOAD_FAILED": "Accounting data could not be loaded.",
       "POST_ENTRY_FAILED": "The entry could not be posted.",
       "UPDATE_ACCOUNT_FAILED": "The account could not be updated."
@@ -644,13 +646,15 @@
     "ACCOUNTS": {
       "ACTIONS": {
         "CLEAR_FILTERS": "Reset",
+        "DISABLE_ACCOUNT": "Disable",
         "EDIT_ACCOUNT": "Edit",
         "DISABLE_TODO": "Disable will be available in the account CRUD slice.",
         "EDIT_TODO": "Editing will be available in the account CRUD slice.",
         "LOAD_MORE": "Load more",
         "NEW_ACCOUNT": "New account",
         "NEW_ACCOUNT_TODO": "Creation will be available in the account CRUD slice.",
-        "RETRY": "Retry"
+        "RETRY": "Retry",
+        "VIEW_DETAILS": "View details"
       },
       "CLASSES": {
         "1": "Class 1 - Long-term resources",
@@ -669,6 +673,15 @@
         "EDIT_EYEBROW": "SYSCOHADA account",
         "EDIT_SUBTITLE": "Update account properties without leaving the chart of accounts.",
         "EDIT_TITLE": "Edit account"
+      },
+      "DETAIL": {
+        "CONTROLS": "Controls",
+        "EYEBROW": "Account detail"
+      },
+      "DISABLE": {
+        "DESCRIPTION": "Disabling {{ accountId }} - {{ accountName }} prevents future use without deleting the account or changing existing entries.",
+        "EYEBROW": "Disable",
+        "TITLE": "Disable this account?"
       },
       "EMPTY": {
         "DESCRIPTION": "No account is available for the active organization.",
@@ -706,6 +719,7 @@
         "STANDARD": "Standard",
         "THIRD_PARTY": "Third party"
       },
+      "LOADING": "Loading chart of accounts...",
       "METRICS": {
         "THIRD_PARTY": "Third-party accounts",
         "TOTAL": "Loaded accounts",
@@ -714,6 +728,10 @@
       "NATURE": {
         "BALANCE": "Balance sheet",
         "INCOME": "Income"
+      },
+      "STATUS": {
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive"
       },
       "SUBTITLE": "Review the organization's SYSCOHADA accounts and filter by class, nature, and auxiliary accounts.",
       "TABLE": {
@@ -724,6 +742,7 @@
         "FLAGS": "Controls",
         "NAME": "Label",
         "NATURE": "Nature",
+        "STATUS": "Status",
         "TITLE": "Accounts",
         "USAGE": "Direction"
       },
