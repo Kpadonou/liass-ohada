@@ -127,6 +127,7 @@ export const PostEntryResponseSchema = z.object({
 
 export const AccountEntryDtoSchema = z.object({
   entryId: z.string(),
+  year: z.number().int().optional(),
   lineId: z.string(),
   accountId: z.string().regex(/^\d{8}$/),
   debit: z.number().int().nonnegative(),
@@ -249,6 +250,57 @@ export const ThirdPartyLedgerResponseSchema = z.object({
   message: z.unknown().optional(),
   data: ThirdPartyLedgerDtoSchema,
 });
+
+export const MatchingReportDtoSchema = z.object({
+  accountId: z.string(),
+  thirdPartyId: z.string(),
+  summary: z.object({
+    totalDebit: z.number().int().nonnegative(),
+    totalCredit: z.number().int().nonnegative(),
+    balance: z.number().int(),
+  }),
+  letteredGroups: z.record(z.string(), z.array(AccountEntryDtoSchema)),
+  unletteredLines: z.array(AccountEntryDtoSchema),
+});
+
+export type MatchingReportDto = z.infer<typeof MatchingReportDtoSchema>;
+
+export const MatchingReportResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: MatchingReportDtoSchema,
+});
+
+export const LetteringSuggestionLineDtoSchema = z.object({
+  lineId: z.string(),
+  entryId: z.string(),
+  date: z.string(),
+  label: z.string().optional(),
+  amount: z.number().int().nonnegative(),
+  type: z.enum(["DEBIT", "CREDIT"]).optional(),
+  projectId: z.string().optional(),
+});
+
+export const LetteringSuggestionDtoSchema = z.object({
+  type: z.enum(["PERFECT_MATCH", "FIFO_SUGGESTION"]),
+  amount: z.number().int().nonnegative(),
+  lines: z.array(LetteringSuggestionLineDtoSchema).min(2),
+});
+
+export const UnletteredLinesDtoSchema = z.object({
+  totalUnlettered: z.number().int().nonnegative(),
+  suggestionsFound: z.number().int().nonnegative(),
+  unletteredLines: z.array(AccountEntryDtoSchema),
+  suggestions: z.array(LetteringSuggestionDtoSchema),
+});
+
+export type LetteringSuggestionDto = z.infer<
+  typeof LetteringSuggestionDtoSchema
+>;
+export type UnletteredLinesDto = z.infer<typeof UnletteredLinesDtoSchema>;
+
+export const UnletteredLinesResponseSchema = z.object({
+  message: z.unknown().optional(),
+}).and(UnletteredLinesDtoSchema);
 
 export const LetteringLineRefSchema = z.object({
   year: z.coerce.number().int().gte(1900),

@@ -1,0 +1,108 @@
+<header class="px-6 pt-6">
+  <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+    {{ eyebrowKey | transloco }}
+  </p>
+  <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+    {{ titleKey | transloco }}
+  </h2>
+  <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+    {{ subtitleKey | transloco }}
+  </p>
+</header>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="px-6 pb-0 pt-5">
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FIELDS.ACCOUNT_ID' | transloco }}</mat-label>
+        <mat-icon matPrefix>tag</mat-icon>
+        <input matInput formControlName="accountId" inputmode="numeric" />
+        @if (form.controls.accountId.touched && form.controls.accountId.invalid) {
+          <mat-error>{{ 'ACCOUNTING.ACCOUNTS.VALIDATION.ACCOUNT_ID' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FIELDS.CLASS' | transloco }}</mat-label>
+        <mat-icon matPrefix>format_list_numbered</mat-icon>
+        <mat-select formControlName="classCode">
+          @for (classCode of classCodes; track classCode) {
+            <mat-option [value]="classCode">
+              {{ 'ACCOUNTING.ACCOUNTS.CLASSES.' + classCode | transloco }}
+            </mat-option>
+          }
+        </mat-select>
+        @if (form.controls.classCode.touched && form.controls.classCode.invalid) {
+          <mat-error>{{ 'ACCOUNTING.ACCOUNTS.VALIDATION.CLASS' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FIELDS.ACCOUNT_NAME' | transloco }}</mat-label>
+        <mat-icon matPrefix>label</mat-icon>
+        <input matInput formControlName="accountName" />
+        @if (form.controls.accountName.touched && form.controls.accountName.invalid) {
+          <mat-error>{{ 'ACCOUNTING.ACCOUNTS.VALIDATION.ACCOUNT_NAME' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FIELDS.NATURE' | transloco }}</mat-label>
+        <mat-select formControlName="accountNature">
+          <mat-option value="BALANCE">{{ 'ACCOUNTING.ACCOUNTS.NATURE.BALANCE' | transloco }}</mat-option>
+          <mat-option value="INCOME">{{ 'ACCOUNTING.ACCOUNTS.NATURE.INCOME' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FIELDS.USAGE' | transloco }}</mat-label>
+        <mat-select formControlName="accountUsage">
+          <mat-option value="BOTH">{{ 'ACCOUNTING.ACCOUNTS.USAGE.BOTH' | transloco }}</mat-option>
+          <mat-option value="DEBIT_ONLY">{{ 'ACCOUNTING.ACCOUNTS.USAGE.DEBIT_ONLY' | transloco }}</mat-option>
+          <mat-option value="CREDIT_ONLY">{{ 'ACCOUNTING.ACCOUNTS.USAGE.CREDIT_ONLY' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FIELDS.STATEMENT_CODE' | transloco }}</mat-label>
+        <mat-icon matPrefix>account_balance</mat-icon>
+        <input matInput formControlName="financialStatementCode" />
+        @if (form.controls.financialStatementCode.touched && form.controls.financialStatementCode.invalid) {
+          <mat-error>{{ 'ACCOUNTING.ACCOUNTS.VALIDATION.STATEMENT_CODE' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <div class="mt-2 grid gap-3 text-sm text-slate-700 dark:text-slate-300">
+      <mat-checkbox formControlName="isThirdPartyAccount">
+        {{ 'ACCOUNTING.ACCOUNTS.FIELDS.THIRD_PARTY' | transloco }}
+      </mat-checkbox>
+      <mat-checkbox formControlName="allowReconciliation">
+        {{ 'ACCOUNTING.ACCOUNTS.FIELDS.RECONCILIATION' | transloco }}
+      </mat-checkbox>
+    </div>
+
+    @if (errorKey(); as key) {
+      <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+        <mat-icon class="mt-0.5">error</mat-icon>
+        <p>{{ key | transloco }}</p>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+    </liass-button>
+    <liass-button
+      buttonType="submit"
+      tone="brand"
+      variant="solid"
+      [icon]="isEditMode ? 'save' : 'add'"
+      [disabled]="form.invalid || submitting()"
+      [loading]="submitting()"
+    >
+      {{ 'COMMON.ACTIONS.SAVE' | transloco }}
+    </liass-button>
+  </mat-dialog-actions>
+</form>

@@ -6,7 +6,10 @@ export const FiscalYearStatus = z.enum([
   "CLOSED",
   "ARCHIVED",
 ]);
+export type FiscalYearStatus = z.infer<typeof FiscalYearStatus>;
+
 export const AccountingFramework = z.enum(["SYSCOHADA_REVISED", "SYCEBNL"]);
+export type AccountingFramework = z.infer<typeof AccountingFramework>;
 
 export const FiscalYearSchema = z.object({
   orgId: z.string(),
@@ -134,6 +137,10 @@ export const CloseFiscalYearResultDtoSchema = z.object({
   netResult: z.number().int().nonnegative(),
   isProfit: z.boolean(),
 });
+
+export type CloseFiscalYearResultDto = z.infer<
+  typeof CloseFiscalYearResultDtoSchema
+>;
 
 export const CloseFiscalYearResponseSchema = z.object({
   message: z.unknown().optional(),

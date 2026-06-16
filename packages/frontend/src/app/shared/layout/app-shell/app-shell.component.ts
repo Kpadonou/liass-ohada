@@ -24,15 +24,27 @@ function pageFromUrl(url: string): AppPage {
     return 'accounting.journals';
   }
 
+  if (path === '/accounting' || path === '/accounting/') {
+    return 'accounting.overview';
+  }
+
   if (path.startsWith('/accounting/entries')) {
     return 'accounting.entries';
+  }
+
+  if (path.startsWith('/accounting/fiscal-year')) {
+    return 'accounting.fiscalYear';
+  }
+
+  if (path.startsWith('/accounting/lettering')) {
+    return 'accounting.lettering';
   }
 
   if (path.startsWith('/accounting/trial-balance')) {
     return 'accounting.trialBalance';
   }
 
-  if (path.startsWith('/accounting/chart-of-accounts')) {
+  if (path.startsWith('/accounting/accounts') || path.startsWith('/accounting/chart-of-accounts')) {
     return 'accounting.chartOfAccounts';
   }
 

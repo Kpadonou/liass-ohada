@@ -20,6 +20,7 @@ interface AddRouteOptions {
   actionName?: string;
   api: apigw.HttpApi;
   authorizer?: apigw.IHttpRouteAuthorizer;
+  constructIdOverride?: string;
   domainName: string;
   handlerEntry: string;
   idPrefix?: string;
@@ -77,9 +78,10 @@ export abstract class DomainConstructFactory extends Construct {
     const routeSuffix = `${options.method}-${options.routePath}`
       .replace(/[^A-Za-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
-    const id = options.idPrefix
+    const generatedId = options.idPrefix
       ? `${options.idPrefix}${handlerName}-${routeSuffix}`
       : `${handlerName}-${routeSuffix}`;
+    const id = options.constructIdOverride ?? generatedId;
     const functionName = DomainConstructFactory.buildFunctionName(
       options.stage,
       options.domainName,

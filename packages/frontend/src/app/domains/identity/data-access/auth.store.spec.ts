@@ -121,30 +121,36 @@ describe('AuthStore', () => {
     expect(store.requiresNewPassword()).toBe(false);
   });
 
-  it('falls back to email instead of Cognito provider username for the user display label', async () => {
+  it('falls back to ID-token email instead of Cognito provider username for the user display label', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
       signInDetails: undefined
     });
-    vi.mocked(fetchUserAttributes).mockResolvedValue({
-      email: 'chrys.kpadonou@example.com'
-    });
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        idToken: {
+          payload: {
+            email: 'chrys.kpadonou@example.com'
+          }
+        }
+      }
+    } as never);
     const store = TestBed.inject(AuthStore);
 
     await store.hydrate();
 
+    expect(fetchUserAttributes).not.toHaveBeenCalled();
     expect(store.userDisplayName()).toBe('chrys.kpadonou@example.com');
     expect(store.userDisplayName()).not.toBe('Google_123456789');
   });
 
-  it('uses safe ID-token claims when user attributes are unavailable after OAuth', async () => {
+  it('uses safe ID-token claims without fetching user attributes after OAuth', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
       signInDetails: undefined
     });
-    vi.mocked(fetchUserAttributes).mockRejectedValue(new Error('attributes unavailable'));
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
         idToken: {
@@ -161,6 +167,7 @@ describe('AuthStore', () => {
 
     await store.hydrate();
 
+    expect(fetchUserAttributes).not.toHaveBeenCalled();
     expect(store.userDisplayName()).toBe('Remi KPADONOU');
     expect(store.userEmail()).toBe('remi@example.com');
     expect(store.userPictureUrl()).toBe('https://example.com/profile.png');
@@ -169,24 +176,32 @@ describe('AuthStore', () => {
     expect(store.currentUserPicture()).toBe('https://example.com/profile.png');
   });
 
-  it('refreshes the user profile explicitly after an already-hydrated session', async () => {
+  it('refreshes the user profile from safe ID-token claims after an already-hydrated session', async () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
       signInDetails: undefined
     });
-    vi.mocked(fetchUserAttributes).mockResolvedValueOnce({});
+    vi.mocked(fetchAuthSession)
+      .mockResolvedValueOnce({} as never)
+      .mockResolvedValueOnce({
+        tokens: {
+          idToken: {
+            payload: {
+              email: 'chrys.kpadonou@example.com',
+              name: 'Chrys Kpadonou'
+            }
+          }
+        }
+      } as never);
     const store = TestBed.inject(AuthStore);
 
     await store.hydrate();
     expect(store.currentUserDisplayName()).toBeNull();
 
-    vi.mocked(fetchUserAttributes).mockResolvedValueOnce({
-      email: 'chrys.kpadonou@example.com',
-      name: 'Chrys Kpadonou'
-    });
     await store.refreshUserProfile();
 
+    expect(fetchUserAttributes).not.toHaveBeenCalled();
     expect(store.currentUserDisplayName()).toBe('Chrys Kpadonou');
     expect(store.currentUserEmail()).toBe('chrys.kpadonou@example.com');
   });

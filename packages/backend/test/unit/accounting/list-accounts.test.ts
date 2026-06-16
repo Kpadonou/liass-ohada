@@ -87,6 +87,9 @@ describe("list-accounts handler", () => {
     });
     expect(body.data.accounts[0].PK).toBeUndefined();
     expect(body.data.accounts[0].SK).toBeUndefined();
+    expect(body.data.accounts[0].GSI1PK).toBeUndefined();
+    expect(body.data.accounts[0].GSI1SK).toBeUndefined();
+    expect(body.data.accounts[0].entityType).toBeUndefined();
     expect(body.data.hasMore).toBe(false);
   });
 

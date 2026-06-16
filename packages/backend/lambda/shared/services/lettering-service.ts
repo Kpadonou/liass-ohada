@@ -464,6 +464,7 @@ export class LetteringService {
   private static toPublicLine(line: Record<string, any>) {
     return AccountEntryDtoSchema.parse({
       entryId: line.entryId,
+      year: line.year,
       lineId: line.lineId,
       accountId: line.accountId,
       debit: Number(line.debit) || 0,

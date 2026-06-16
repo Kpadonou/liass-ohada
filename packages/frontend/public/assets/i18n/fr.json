@@ -27,6 +27,7 @@
     "LOGO_ALT": "logo liass-ohada",
     "NAV": {
       "ACCOUNTING": "Comptabilité",
+      "ACCOUNTING_OVERVIEW": "Vue d’ensemble",
       "ADMINISTRATION": "Administration",
       "CABINET_DASHBOARD": "Tableau de bord cabinet",
       "CABINET_SETTINGS": "Paramètres du cabinet",
@@ -36,8 +37,10 @@
       "DASHBOARD": "Tableau de bord",
       "DEADLINES": "Échéances",
       "ENTRIES": "Écritures",
+      "FISCAL_YEAR": "Exercice",
       "GENERAL_LEDGER": "Grand livre",
       "JOURNALS": "Journaux",
+      "LETTERING": "Lettrage",
       "MISSIONS": "Missions",
       "PROJECTS": "Projets et fonds",
       "REPORTS": "États OHADA",
@@ -47,6 +50,7 @@
       "TRIAL_BALANCE": "Balance"
     },
     "PAGES": {
+      "ACCOUNTING_OVERVIEW": "Comptabilité",
       "ADMINISTRATION": "Administration",
       "CABINET_COLLABORATORS": "Collaborateurs",
       "CABINET_DASHBOARD": "Tableau de bord cabinet",
@@ -57,8 +61,10 @@
       "CLIENT_DOSSIERS": "Dossiers clients",
       "DASHBOARD": "Tableau de bord",
       "ENTRIES": "Écritures",
+      "FISCAL_YEAR": "Exercice",
       "GENERAL_LEDGER": "Grand livre",
       "JOURNALS": "Journaux",
+      "LETTERING": "Lettrage",
       "TRIAL_BALANCE": "Balance"
     },
     "SECTIONS": {
@@ -572,6 +578,10 @@
   },
   "ACCOUNTING": {
     "PAGES": {
+      "OVERVIEW": {
+        "SUBTITLE": "Point d’entrée du lot 1 comptable.",
+        "TITLE": "Comptabilité"
+      },
       "CHART_OF_ACCOUNTS": {
         "SUBTITLE": "Une route réservée aux contrôles du plan comptable.",
         "TITLE": "Plan comptable"
@@ -580,6 +590,10 @@
         "SUBTITLE": "Une route réservée aux workflows d’écritures.",
         "TITLE": "Écritures"
       },
+      "FISCAL_YEAR": {
+        "SUBTITLE": "Ouvrez, verrouillez et clôturez les périodes comptables.",
+        "TITLE": "Exercice"
+      },
       "GENERAL_LEDGER": {
         "SUBTITLE": "Une route réservée à l’espace grand livre.",
         "TITLE": "Grand livre"
@@ -587,6 +601,10 @@
       "JOURNALS": {
         "SUBTITLE": "Une route réservée à la gestion des journaux.",
         "TITLE": "Journaux"
+      },
+      "LETTERING": {
+        "SUBTITLE": "Suivez les comptes auxiliaires et rapprochez les lignes de tiers.",
+        "TITLE": "Lettrage"
       },
       "TRIAL_BALANCE": {
         "SUBTITLE": "Une route réservée à la revue de la balance.",
@@ -597,7 +615,130 @@
       "CREATE_ACCOUNT_FAILED": "Le compte n’a pas pu être créé.",
       "CREATE_JOURNAL_FAILED": "Le journal n’a pas pu être créé.",
       "LOAD_FAILED": "Les données comptables n’ont pas pu être chargées.",
-      "POST_ENTRY_FAILED": "L’écriture n’a pas pu être comptabilisée."
+      "POST_ENTRY_FAILED": "L’écriture n’a pas pu être comptabilisée.",
+      "UPDATE_ACCOUNT_FAILED": "Le compte n’a pas pu être mis à jour."
+    },
+    "OVERVIEW": {
+      "CARDS": {
+        "CHART": {
+          "DESCRIPTION": "Consultez le plan comptable de l’organisation avant d’activer les workflows de saisie.",
+          "STATUS": "Socle",
+          "TITLE": "Plan comptable"
+        },
+        "JOURNALS": {
+          "DESCRIPTION": "Ouvrez le registre des journaux pour préparer le classement des écritures comptables.",
+          "STATUS": "Socle",
+          "TITLE": "Journaux"
+        },
+        "LABEL": "Points d’entrée comptables",
+        "OPEN": "Ouvrir"
+      },
+      "EYEBROW": "Comptabilité générale",
+      "LOT": {
+        "DESCRIPTION": "Ce point d’entrée reste volontairement limité aux surfaces de démarrage du lot 1. La création et l’édition des comptes ou journaux restent dans leurs pages dédiées.",
+        "TITLE": "Lot 1"
+      },
+      "SUBTITLE": "Démarrez par les référentiels comptables qui structurent les écritures, les journaux et les contrôles OHADA.",
+      "TITLE": "Comptabilité"
+    },
+    "ACCOUNTS": {
+      "ACTIONS": {
+        "CLEAR_FILTERS": "Réinitialiser",
+        "EDIT_ACCOUNT": "Modifier",
+        "DISABLE_TODO": "La désactivation sera disponible dans la tranche CRUD comptes.",
+        "EDIT_TODO": "L’édition sera disponible dans la tranche CRUD comptes.",
+        "LOAD_MORE": "Charger plus",
+        "NEW_ACCOUNT": "Nouveau compte",
+        "NEW_ACCOUNT_TODO": "La création sera disponible dans la tranche CRUD comptes.",
+        "RETRY": "Réessayer"
+      },
+      "CLASSES": {
+        "1": "Classe 1 - Ressources durables",
+        "2": "Classe 2 - Immobilisations",
+        "3": "Classe 3 - Stocks",
+        "4": "Classe 4 - Tiers",
+        "5": "Classe 5 - Trésorerie",
+        "6": "Classe 6 - Charges",
+        "7": "Classe 7 - Produits",
+        "8": "Classe 8 - Engagements"
+      },
+      "DIALOG": {
+        "CREATE_EYEBROW": "Plan SYSCOHADA",
+        "CREATE_SUBTITLE": "Ajoutez un compte propre à l’organisation active sans exposer les clés de stockage.",
+        "CREATE_TITLE": "Créer un compte",
+        "EDIT_EYEBROW": "Compte SYSCOHADA",
+        "EDIT_SUBTITLE": "Mettez à jour les propriétés du compte sans quitter le plan comptable.",
+        "EDIT_TITLE": "Modifier un compte"
+      },
+      "EMPTY": {
+        "DESCRIPTION": "Aucun compte n’est disponible pour l’organisation active.",
+        "NO_RESULTS_DESCRIPTION": "Modifiez la recherche ou les filtres pour élargir la liste.",
+        "NO_RESULTS_TITLE": "Aucun compte ne correspond aux filtres.",
+        "TITLE": "Aucun compte chargé"
+      },
+      "ERRORS": {
+        "LOAD_MORE_FAILED": "La page suivante n’a pas pu être chargée."
+      },
+      "EYEBROW": "Plan comptable",
+      "FILTERS": {
+        "ALL_CLASSES": "Toutes les classes",
+        "ALL_NATURES": "Toutes les natures",
+        "ALL_THIRD_PARTY": "Tous les comptes",
+        "CLASS": "Classe",
+        "NATURE": "Nature",
+        "NON_THIRD_PARTY": "Comptes généraux",
+        "SEARCH": "Rechercher",
+        "THIRD_PARTY": "Tiers",
+        "THIRD_PARTY_ONLY": "Comptes tiers"
+      },
+      "FIELDS": {
+        "ACCOUNT_ID": "Numéro de compte",
+        "ACCOUNT_NAME": "Libellé du compte",
+        "CLASS": "Classe",
+        "NATURE": "Nature",
+        "RECONCILIATION": "Autoriser le lettrage",
+        "STATEMENT_CODE": "Code état financier",
+        "THIRD_PARTY": "Compte auxiliaire de tiers",
+        "USAGE": "Sens autorisé"
+      },
+      "FLAGS": {
+        "RECONCILIATION": "Lettrable",
+        "STANDARD": "Standard",
+        "THIRD_PARTY": "Tiers"
+      },
+      "METRICS": {
+        "THIRD_PARTY": "Comptes tiers",
+        "TOTAL": "Comptes chargés",
+        "VISIBLE": "Visibles"
+      },
+      "NATURE": {
+        "BALANCE": "Bilan",
+        "INCOME": "Gestion"
+      },
+      "SUBTITLE": "Consultez les comptes SYSCOHADA de l’organisation, filtrez par classe, nature et comptes auxiliaires.",
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CLASS": "Classe",
+        "CODE": "Compte",
+        "DESCRIPTION": "Liste consultable du plan comptable de l’organisation active.",
+        "FLAGS": "Contrôles",
+        "NAME": "Libellé",
+        "NATURE": "Nature",
+        "TITLE": "Comptes",
+        "USAGE": "Sens"
+      },
+      "TITLE": "Plan comptable",
+      "USAGE": {
+        "BOTH": "Débit et crédit",
+        "CREDIT_ONLY": "Crédit seul",
+        "DEBIT_ONLY": "Débit seul"
+      },
+      "VALIDATION": {
+        "ACCOUNT_ID": "Saisissez 1 à 8 chiffres.",
+        "ACCOUNT_NAME": "Saisissez un libellé de compte.",
+        "CLASS": "Sélectionnez une classe entre 1 et 8.",
+        "STATEMENT_CODE": "Saisissez un code d’état financier."
+      }
     },
     "CHART": {
       "ACTIONS": {
@@ -769,6 +910,91 @@
         "UNBALANCED": "Le total débit doit être égal au total crédit."
       }
     },
+    "FISCAL_YEAR": {
+      "ACTIONS": {
+        "CLOSE": "Clôturer l’exercice",
+        "CREATE": "Créer",
+        "LOAD": "Charger",
+        "LOCK": "Verrouiller",
+        "UNLOCK": "Déverrouiller"
+      },
+      "CLOSE": {
+        "DESCRIPTION": "Générez l’écriture de résultat de fin d’exercice et marquez l’exercice comme clôturé.",
+        "ENTRY_ID": "Écriture de clôture",
+        "HELP": "Clôturez seulement après revue des journaux, de la balance et des périodes ouvertes. Le backend reste la source de vérité des contrôles de clôture.",
+        "LOSS": "Perte",
+        "NET_RESULT": "Résultat net",
+        "PROFIT": "Bénéfice",
+        "RESULT_TITLE": "Résultat de clôture",
+        "RESULT_TYPE": "Type de résultat",
+        "TITLE": "Clôture annuelle"
+      },
+      "CLOSE_DIALOG": {
+        "CANCEL": "Annuler",
+        "CONFIRM": "Clôturer",
+        "DESCRIPTION": "Cette action demande au backend de créer l’écriture de clôture et de clôturer l’exercice sélectionné.",
+        "TITLE": "Confirmer la clôture",
+        "WARNING": "C’est une action comptable significative. Revoyez la balance avant de continuer."
+      },
+      "EMPTY": "Aucun exercice trouvé pour cette année. Créez-le pour commencer à verrouiller les périodes.",
+      "ERRORS": {
+        "CLOSE_FAILED": "L’exercice n’a pas pu être clôturé.",
+        "CREATE_FAILED": "L’exercice n’a pas pu être créé.",
+        "PERIOD_UPDATE_FAILED": "Le statut de la période n’a pas pu être modifié."
+      },
+      "EYEBROW": "Période comptable",
+      "FIELDS": {
+        "FRAMEWORK": "Référentiel comptable",
+        "YEAR": "Exercice"
+      },
+      "MESSAGES": {
+        "CLOSED": "Exercice clôturé.",
+        "CREATED": "Exercice créé.",
+        "LOCKED": "Période verrouillée.",
+        "UNLOCKED": "Période rouverte."
+      },
+      "MONTHS": {
+        "01": "Janvier",
+        "02": "Février",
+        "03": "Mars",
+        "04": "Avril",
+        "05": "Mai",
+        "06": "Juin",
+        "07": "Juillet",
+        "08": "Août",
+        "09": "Septembre",
+        "10": "Octobre",
+        "11": "Novembre",
+        "12": "Décembre"
+      },
+      "PERIOD_STATUS": {
+        "LOCKED": "Verrouillée",
+        "OPEN": "Ouverte"
+      },
+      "PERIODS": {
+        "DESCRIPTION": "Pilotez les périodes mensuelles utilisées par la saisie et le lettrage.",
+        "MONTH_PREFIX": "Mois",
+        "TITLE": "Verrous de période"
+      },
+      "SELECTOR": {
+        "DESCRIPTION": "Choisissez un exercice, puis créez-le s’il n’existe pas encore.",
+        "TITLE": "Périmètre"
+      },
+      "STATUS": {
+        "ARCHIVED": "Archivé",
+        "CLOSED": "Clôturé",
+        "LOCKED": "Verrouillé",
+        "OPEN": "Ouvert"
+      },
+      "SUBTITLE": "Pilotez le statut de l’exercice et les verrous mensuels avant les écritures, le lettrage et la clôture.",
+      "SUMMARY": {
+        "DESCRIPTION": "Statut backend courant de l’exercice sélectionné.",
+        "LOCKED_PERIODS": "Verrouillées",
+        "OPEN_PERIODS": "Ouvertes",
+        "TITLE": "Statut de l’exercice"
+      },
+      "TITLE": "Exercice"
+    },
     "GENERAL_LEDGER": {
       "EYEBROW": "Grand livre",
       "FILTERS": {
@@ -794,6 +1020,90 @@
         "TITLE": "Mouvements"
       },
       "TITLE": "Grand livre"
+    },
+    "LETTERING": {
+      "ACTIONS": {
+        "CANCEL": "Annuler le lettrage",
+        "CANCEL_GROUP": "Délettrer",
+        "LOAD": "Charger",
+        "POST": "Lettrer",
+        "SELECT": "Sélectionner"
+      },
+      "EMPTY_SCOPE": "Sélectionnez un compte et un tiers pour charger le lettrage.",
+      "ERRORS": {
+        "CANCEL_FAILED": "Le lettrage n’a pas pu être annulé.",
+        "CANCEL_SELECTION_REQUIRED": "Sélectionnez au moins une ligne lettrée à annuler.",
+        "MISSING_YEAR": "Certaines lignes ne portent pas l’exercice requis par le backend.",
+        "POST_FAILED": "Le lettrage n’a pas pu être enregistré.",
+        "SELECTION_REQUIRED": "Sélectionnez au moins deux lignes non lettrées."
+      },
+      "EYEBROW": "Comptes auxiliaires",
+      "FIELDS": {
+        "ACCOUNT": "Compte de tiers",
+        "LETTERING_CODE": "Code de lettrage",
+        "PROJECT": "Projet",
+        "THIRD_PARTY": "Tiers"
+      },
+      "FILTERS": {
+        "DESCRIPTION": "Choisissez un compte lettrable, un tiers et éventuellement un projet.",
+        "TITLE": "Périmètre auxiliaire"
+      },
+      "LINE_TYPES": {
+        "CREDIT": "Crédit",
+        "DEBIT": "Débit"
+      },
+      "MESSAGES": {
+        "CANCELLED": "Lettrage annulé.",
+        "POSTED": "Lettrage enregistré."
+      },
+      "REPORT": {
+        "DESCRIPTION": "Groupes déjà lettrés et solde restant pour le tiers.",
+        "EMPTY": "Aucun groupe lettré pour ce périmètre.",
+        "GROUP_LINES": "{{count}} ligne(s)",
+        "TITLE": "Rapport de lettrage"
+      },
+      "RESULT": {
+        "LINES": "{{count}} ligne(s) traitée(s)",
+        "TITLE": "Résultat"
+      },
+      "STATUS": {
+        "UNLETTERED": "Non lettrée"
+      },
+      "SUBTITLE": "Rapprochez les écritures de tiers sans exposer les clés techniques DynamoDB.",
+      "SUGGESTIONS": {
+        "AMOUNT": "Montant",
+        "TYPES": {
+          "FIFO_SUGGESTION": "Suggestion FIFO",
+          "PERFECT_MATCH": "Correspondance parfaite"
+        }
+      },
+      "SUMMARY": {
+        "BALANCE": "Solde",
+        "CREDIT": "Crédit",
+        "DEBIT": "Débit",
+        "DESCRIPTION": "Synthèse du grand livre auxiliaire pour le tiers sélectionné.",
+        "LINES": "{{count}} ligne(s)",
+        "TITLE": "Grand livre auxiliaire"
+      },
+      "TABLE": {
+        "AMOUNT": "Montant",
+        "DATE": "Date",
+        "ENTRY": "Écriture",
+        "LABEL": "Libellé",
+        "SELECT": "Choix",
+        "SELECT_LINE": "Sélectionner la ligne",
+        "STATUS": "Lettrage",
+        "TYPE": "Sens"
+      },
+      "TITLE": "Lettrage",
+      "UNLETTERED": {
+        "DESCRIPTION": "Sélectionnez des lignes à rapprocher ou appliquez une suggestion.",
+        "EMPTY": "Aucune ligne non lettrée pour ce périmètre.",
+        "SELECTED": "Sélectionnées",
+        "SUGGESTIONS": "Suggestions",
+        "TITLE": "Lignes non lettrées",
+        "TOTAL": "Non lettrées"
+      }
     },
     "TRIAL_BALANCE": {
       "EYEBROW": "Balance",

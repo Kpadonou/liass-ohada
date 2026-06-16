@@ -27,6 +27,7 @@
     "LOGO_ALT": "liass-ohada logo",
     "NAV": {
       "ACCOUNTING": "Accounting",
+      "ACCOUNTING_OVERVIEW": "Overview",
       "ADMINISTRATION": "Administration",
       "CABINET_DASHBOARD": "Cabinet dashboard",
       "CABINET_SETTINGS": "Cabinet settings",
@@ -36,8 +37,10 @@
       "DASHBOARD": "Dashboard",
       "DEADLINES": "Deadlines",
       "ENTRIES": "Entries",
+      "FISCAL_YEAR": "Fiscal year",
       "GENERAL_LEDGER": "General ledger",
       "JOURNALS": "Journals",
+      "LETTERING": "Lettering",
       "MISSIONS": "Missions",
       "PROJECTS": "Projects and funds",
       "REPORTS": "OHADA reports",
@@ -47,6 +50,7 @@
       "TRIAL_BALANCE": "Trial balance"
     },
     "PAGES": {
+      "ACCOUNTING_OVERVIEW": "Accounting",
       "ADMINISTRATION": "Administration",
       "CABINET_COLLABORATORS": "Collaborators",
       "CABINET_DASHBOARD": "Cabinet dashboard",
@@ -57,8 +61,10 @@
       "CLIENT_DOSSIERS": "Client dossiers",
       "DASHBOARD": "Dashboard",
       "ENTRIES": "Entries",
+      "FISCAL_YEAR": "Fiscal year",
       "GENERAL_LEDGER": "General ledger",
       "JOURNALS": "Journals",
+      "LETTERING": "Lettering",
       "TRIAL_BALANCE": "Trial balance"
     },
     "SECTIONS": {
@@ -572,6 +578,10 @@
   },
   "ACCOUNTING": {
     "PAGES": {
+      "OVERVIEW": {
+        "SUBTITLE": "Accounting lot 1 entry point.",
+        "TITLE": "Accounting"
+      },
       "CHART_OF_ACCOUNTS": {
         "SUBTITLE": "A reserved route for chart-of-accounts controls.",
         "TITLE": "Chart of accounts"
@@ -580,6 +590,10 @@
         "SUBTITLE": "A reserved route for journal-entry workflows.",
         "TITLE": "Entries"
       },
+      "FISCAL_YEAR": {
+        "SUBTITLE": "Open, lock, and close accounting periods.",
+        "TITLE": "Fiscal year"
+      },
       "GENERAL_LEDGER": {
         "SUBTITLE": "A reserved route for the general-ledger workspace.",
         "TITLE": "General ledger"
@@ -587,6 +601,10 @@
       "JOURNALS": {
         "SUBTITLE": "A reserved route for journal management.",
         "TITLE": "Journals"
+      },
+      "LETTERING": {
+        "SUBTITLE": "Track auxiliary accounts and match third-party lines.",
+        "TITLE": "Lettering"
       },
       "TRIAL_BALANCE": {
         "SUBTITLE": "A reserved route for balance review.",
@@ -597,7 +615,130 @@
       "CREATE_ACCOUNT_FAILED": "The account could not be created.",
       "CREATE_JOURNAL_FAILED": "The journal could not be created.",
       "LOAD_FAILED": "Accounting data could not be loaded.",
-      "POST_ENTRY_FAILED": "The entry could not be posted."
+      "POST_ENTRY_FAILED": "The entry could not be posted.",
+      "UPDATE_ACCOUNT_FAILED": "The account could not be updated."
+    },
+    "OVERVIEW": {
+      "CARDS": {
+        "CHART": {
+          "DESCRIPTION": "Review the organization chart of accounts before enabling posting workflows.",
+          "STATUS": "Foundation",
+          "TITLE": "Chart of accounts"
+        },
+        "JOURNALS": {
+          "DESCRIPTION": "Open the journal register to prepare accounting-entry classification.",
+          "STATUS": "Foundation",
+          "TITLE": "Journals"
+        },
+        "LABEL": "Accounting entry points",
+        "OPEN": "Open"
+      },
+      "EYEBROW": "General accounting",
+      "LOT": {
+        "DESCRIPTION": "This entry point deliberately stays limited to the lot 1 starting surfaces. Account and journal creation or editing remains in their dedicated pages.",
+        "TITLE": "Lot 1"
+      },
+      "SUBTITLE": "Start with the accounting references that structure entries, journals, and OHADA controls.",
+      "TITLE": "Accounting"
+    },
+    "ACCOUNTS": {
+      "ACTIONS": {
+        "CLEAR_FILTERS": "Reset",
+        "EDIT_ACCOUNT": "Edit",
+        "DISABLE_TODO": "Disable will be available in the account CRUD slice.",
+        "EDIT_TODO": "Editing will be available in the account CRUD slice.",
+        "LOAD_MORE": "Load more",
+        "NEW_ACCOUNT": "New account",
+        "NEW_ACCOUNT_TODO": "Creation will be available in the account CRUD slice.",
+        "RETRY": "Retry"
+      },
+      "CLASSES": {
+        "1": "Class 1 - Long-term resources",
+        "2": "Class 2 - Fixed assets",
+        "3": "Class 3 - Inventory",
+        "4": "Class 4 - Third parties",
+        "5": "Class 5 - Treasury",
+        "6": "Class 6 - Expenses",
+        "7": "Class 7 - Revenue",
+        "8": "Class 8 - Commitments"
+      },
+      "DIALOG": {
+        "CREATE_EYEBROW": "SYSCOHADA chart",
+        "CREATE_SUBTITLE": "Add an organization-specific account without exposing storage keys.",
+        "CREATE_TITLE": "Create account",
+        "EDIT_EYEBROW": "SYSCOHADA account",
+        "EDIT_SUBTITLE": "Update account properties without leaving the chart of accounts.",
+        "EDIT_TITLE": "Edit account"
+      },
+      "EMPTY": {
+        "DESCRIPTION": "No account is available for the active organization.",
+        "NO_RESULTS_DESCRIPTION": "Adjust the search or filters to broaden the list.",
+        "NO_RESULTS_TITLE": "No account matches the filters.",
+        "TITLE": "No account loaded"
+      },
+      "ERRORS": {
+        "LOAD_MORE_FAILED": "The next page could not be loaded."
+      },
+      "EYEBROW": "Chart of accounts",
+      "FILTERS": {
+        "ALL_CLASSES": "All classes",
+        "ALL_NATURES": "All natures",
+        "ALL_THIRD_PARTY": "All accounts",
+        "CLASS": "Class",
+        "NATURE": "Nature",
+        "NON_THIRD_PARTY": "General accounts",
+        "SEARCH": "Search",
+        "THIRD_PARTY": "Third party",
+        "THIRD_PARTY_ONLY": "Third-party accounts"
+      },
+      "FIELDS": {
+        "ACCOUNT_ID": "Account number",
+        "ACCOUNT_NAME": "Account label",
+        "CLASS": "Class",
+        "NATURE": "Nature",
+        "RECONCILIATION": "Allow reconciliation",
+        "STATEMENT_CODE": "Financial statement code",
+        "THIRD_PARTY": "Third-party account",
+        "USAGE": "Allowed direction"
+      },
+      "FLAGS": {
+        "RECONCILIATION": "Reconcilable",
+        "STANDARD": "Standard",
+        "THIRD_PARTY": "Third party"
+      },
+      "METRICS": {
+        "THIRD_PARTY": "Third-party accounts",
+        "TOTAL": "Loaded accounts",
+        "VISIBLE": "Visible"
+      },
+      "NATURE": {
+        "BALANCE": "Balance sheet",
+        "INCOME": "Income"
+      },
+      "SUBTITLE": "Review the organization's SYSCOHADA accounts and filter by class, nature, and auxiliary accounts.",
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CLASS": "Class",
+        "CODE": "Account",
+        "DESCRIPTION": "Browsable chart of accounts for the active organization.",
+        "FLAGS": "Controls",
+        "NAME": "Label",
+        "NATURE": "Nature",
+        "TITLE": "Accounts",
+        "USAGE": "Direction"
+      },
+      "TITLE": "Chart of accounts",
+      "USAGE": {
+        "BOTH": "Debit and credit",
+        "CREDIT_ONLY": "Credit only",
+        "DEBIT_ONLY": "Debit only"
+      },
+      "VALIDATION": {
+        "ACCOUNT_ID": "Enter 1 to 8 digits.",
+        "ACCOUNT_NAME": "Enter an account label.",
+        "CLASS": "Select a class between 1 and 8.",
+        "STATEMENT_CODE": "Enter a financial statement code."
+      }
     },
     "CHART": {
       "ACTIONS": {
@@ -769,6 +910,91 @@
         "UNBALANCED": "Total debit must equal total credit."
       }
     },
+    "FISCAL_YEAR": {
+      "ACTIONS": {
+        "CLOSE": "Close fiscal year",
+        "CREATE": "Create",
+        "LOAD": "Load",
+        "LOCK": "Lock",
+        "UNLOCK": "Unlock"
+      },
+      "CLOSE": {
+        "DESCRIPTION": "Generate the year-end result entry and mark the fiscal year as closed.",
+        "ENTRY_ID": "Closing entry",
+        "HELP": "Close only after reviewing journals, trial balance, and open periods. The backend remains the source of truth for closing controls.",
+        "LOSS": "Loss",
+        "NET_RESULT": "Net result",
+        "PROFIT": "Profit",
+        "RESULT_TITLE": "Closing result",
+        "RESULT_TYPE": "Result type",
+        "TITLE": "Year-end close"
+      },
+      "CLOSE_DIALOG": {
+        "CANCEL": "Cancel",
+        "CONFIRM": "Close year",
+        "DESCRIPTION": "This action asks the backend to create the closing entry and close the selected fiscal year.",
+        "TITLE": "Confirm fiscal year close",
+        "WARNING": "This is a legally meaningful accounting action. Review the trial balance before continuing."
+      },
+      "EMPTY": "No fiscal year found for this year. Create it to start locking periods.",
+      "ERRORS": {
+        "CLOSE_FAILED": "The fiscal year could not be closed.",
+        "CREATE_FAILED": "The fiscal year could not be created.",
+        "PERIOD_UPDATE_FAILED": "The period status could not be updated."
+      },
+      "EYEBROW": "Accounting period",
+      "FIELDS": {
+        "FRAMEWORK": "Accounting framework",
+        "YEAR": "Fiscal year"
+      },
+      "MESSAGES": {
+        "CLOSED": "Fiscal year closed.",
+        "CREATED": "Fiscal year created.",
+        "LOCKED": "Period locked.",
+        "UNLOCKED": "Period reopened."
+      },
+      "MONTHS": {
+        "01": "January",
+        "02": "February",
+        "03": "March",
+        "04": "April",
+        "05": "May",
+        "06": "June",
+        "07": "July",
+        "08": "August",
+        "09": "September",
+        "10": "October",
+        "11": "November",
+        "12": "December"
+      },
+      "PERIOD_STATUS": {
+        "LOCKED": "Locked",
+        "OPEN": "Open"
+      },
+      "PERIODS": {
+        "DESCRIPTION": "Control the monthly periods used by entry posting and lettering.",
+        "MONTH_PREFIX": "Month",
+        "TITLE": "Period locks"
+      },
+      "SELECTOR": {
+        "DESCRIPTION": "Choose a fiscal year, then create it if it does not exist yet.",
+        "TITLE": "Scope"
+      },
+      "STATUS": {
+        "ARCHIVED": "Archived",
+        "CLOSED": "Closed",
+        "LOCKED": "Locked",
+        "OPEN": "Open"
+      },
+      "SUBTITLE": "Manage fiscal-year status and monthly locks before entries, lettering, and close.",
+      "SUMMARY": {
+        "DESCRIPTION": "Current backend status for the selected fiscal year.",
+        "LOCKED_PERIODS": "Locked",
+        "OPEN_PERIODS": "Open",
+        "TITLE": "Fiscal year status"
+      },
+      "TITLE": "Fiscal year"
+    },
     "GENERAL_LEDGER": {
       "EYEBROW": "General ledger",
       "FILTERS": {
@@ -794,6 +1020,90 @@
         "TITLE": "Movements"
       },
       "TITLE": "General ledger"
+    },
+    "LETTERING": {
+      "ACTIONS": {
+        "CANCEL": "Cancel lettering",
+        "CANCEL_GROUP": "Unletter",
+        "LOAD": "Load",
+        "POST": "Letter",
+        "SELECT": "Select"
+      },
+      "EMPTY_SCOPE": "Select an account and third party to load lettering.",
+      "ERRORS": {
+        "CANCEL_FAILED": "Lettering could not be cancelled.",
+        "CANCEL_SELECTION_REQUIRED": "Select at least one lettered line to cancel.",
+        "MISSING_YEAR": "Some lines do not carry the fiscal year required by the backend.",
+        "POST_FAILED": "Lettering could not be saved.",
+        "SELECTION_REQUIRED": "Select at least two unlettered lines."
+      },
+      "EYEBROW": "Auxiliary accounts",
+      "FIELDS": {
+        "ACCOUNT": "Third-party account",
+        "LETTERING_CODE": "Lettering code",
+        "PROJECT": "Project",
+        "THIRD_PARTY": "Third party"
+      },
+      "FILTERS": {
+        "DESCRIPTION": "Choose a reconcilable account, a third party, and optionally a project.",
+        "TITLE": "Auxiliary scope"
+      },
+      "LINE_TYPES": {
+        "CREDIT": "Credit",
+        "DEBIT": "Debit"
+      },
+      "MESSAGES": {
+        "CANCELLED": "Lettering cancelled.",
+        "POSTED": "Lettering saved."
+      },
+      "REPORT": {
+        "DESCRIPTION": "Already lettered groups and remaining balance for the third party.",
+        "EMPTY": "No lettered group for this scope.",
+        "GROUP_LINES": "{{count}} line(s)",
+        "TITLE": "Lettering report"
+      },
+      "RESULT": {
+        "LINES": "{{count}} processed line(s)",
+        "TITLE": "Result"
+      },
+      "STATUS": {
+        "UNLETTERED": "Unlettered"
+      },
+      "SUBTITLE": "Match third-party entries without exposing DynamoDB technical keys.",
+      "SUGGESTIONS": {
+        "AMOUNT": "Amount",
+        "TYPES": {
+          "FIFO_SUGGESTION": "FIFO suggestion",
+          "PERFECT_MATCH": "Perfect match"
+        }
+      },
+      "SUMMARY": {
+        "BALANCE": "Balance",
+        "CREDIT": "Credit",
+        "DEBIT": "Debit",
+        "DESCRIPTION": "Third-party ledger summary for the selected scope.",
+        "LINES": "{{count}} line(s)",
+        "TITLE": "Auxiliary ledger"
+      },
+      "TABLE": {
+        "AMOUNT": "Amount",
+        "DATE": "Date",
+        "ENTRY": "Entry",
+        "LABEL": "Label",
+        "SELECT": "Select",
+        "SELECT_LINE": "Select line",
+        "STATUS": "Lettering",
+        "TYPE": "Direction"
+      },
+      "TITLE": "Lettering",
+      "UNLETTERED": {
+        "DESCRIPTION": "Select lines to match or apply a suggestion.",
+        "EMPTY": "No unlettered line for this scope.",
+        "SELECTED": "Selected",
+        "SUGGESTIONS": "Suggestions",
+        "TITLE": "Unlettered lines",
+        "TOTAL": "Unlettered"
+      }
     },
     "TRIAL_BALANCE": {
       "EYEBROW": "Trial balance",

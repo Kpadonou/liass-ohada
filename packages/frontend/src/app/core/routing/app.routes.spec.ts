@@ -103,4 +103,60 @@ describe('routes', () => {
     expect(component).toBe(GeneralLedgerPage);
     expect(generalLedgerRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE');
   });
+
+  it('registers the accounting overview route', async () => {
+    const shell = shellRoute();
+    const accountingRoute = shell?.children?.find((route) => route.path === 'accounting');
+    const component = await accountingRoute?.loadComponent?.();
+    const { AccountingOverviewPage } = await import(
+      '../../domains/accounting/feature/accounting-overview/accounting-overview.page'
+    );
+
+    expect(component).toBe(AccountingOverviewPage);
+    expect(accountingRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.OVERVIEW.TITLE');
+  });
+
+  it('registers the accounting accounts route and keeps the historical chart route as an alias', async () => {
+    const shell = shellRoute();
+    const accountsRoute = shell?.children?.find((route) => route.path === 'accounting/accounts');
+    const legacyChartRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/chart-of-accounts'
+    );
+    const component = await accountsRoute?.loadComponent?.();
+    const { AccountsPage } = await import(
+      '../../domains/accounting/feature/accounts/accounts.page'
+    );
+
+    expect(component).toBe(AccountsPage);
+    expect(accountsRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE');
+    expect(legacyChartRoute?.redirectTo).toBe('/accounting/accounts');
+  });
+
+  it('registers the accounting fiscal-year route', async () => {
+    const shell = shellRoute();
+    const fiscalYearRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/fiscal-year'
+    );
+    const component = await fiscalYearRoute?.loadComponent?.();
+    const { FiscalYearPage } = await import(
+      '../../domains/accounting/feature/fiscal-year/fiscal-year.page'
+    );
+
+    expect(component).toBe(FiscalYearPage);
+    expect(fiscalYearRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.FISCAL_YEAR.TITLE');
+  });
+
+  it('registers the accounting lettering route', async () => {
+    const shell = shellRoute();
+    const letteringRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/lettering'
+    );
+    const component = await letteringRoute?.loadComponent?.();
+    const { LetteringPage } = await import(
+      '../../domains/accounting/feature/lettering/lettering.page'
+    );
+
+    expect(component).toBe(LetteringPage);
+    expect(letteringRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.LETTERING.TITLE');
+  });
 });

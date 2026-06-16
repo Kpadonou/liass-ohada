@@ -134,6 +134,28 @@ export const routes: Routes = [
         canActivate: [cabinetDashboardGuard]
       },
       {
+        path: 'accounting',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/accounting-overview/accounting-overview.page').then(
+            (module) => module.AccountingOverviewPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.OVERVIEW.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.OVERVIEW.TITLE'
+        }
+      },
+      {
+        path: 'accounting/fiscal-year',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/fiscal-year/fiscal-year.page').then(
+            (module) => module.FiscalYearPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.TITLE'
+        }
+      },
+      {
         path: 'accounting/general-ledger',
         loadComponent: () =>
           import('../../domains/accounting/feature/general-ledger/general-ledger.page').then(
@@ -167,6 +189,17 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'accounting/lettering',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/lettering/lettering.page').then(
+            (module) => module.LetteringPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.LETTERING.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.LETTERING.TITLE'
+        }
+      },
+      {
         path: 'accounting/trial-balance',
         loadComponent: () =>
           import('../../domains/accounting/feature/trial-balance/trial-balance.page').then(
@@ -178,15 +211,20 @@ export const routes: Routes = [
         }
       },
       {
-        path: 'accounting/chart-of-accounts',
+        path: 'accounting/accounts',
         loadComponent: () =>
-          import('../../domains/accounting/feature/chart-of-accounts/chart-of-accounts.page').then(
-            (module) => module.ChartOfAccountsPage
+          import('../../domains/accounting/feature/accounts/accounts.page').then(
+            (module) => module.AccountsPage
           ),
         data: {
           subtitleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.SUBTITLE',
           titleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE'
         }
+      },
+      {
+        path: 'accounting/chart-of-accounts',
+        redirectTo: '/accounting/accounts',
+        pathMatch: 'full'
       }
     ]
   },

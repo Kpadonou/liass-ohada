@@ -11,10 +11,13 @@ import { LiassCommandInputComponent } from '../../ui/command-input/command-input
 import { LiassDropdownComponent } from '../../ui/dropdown/dropdown.component';
 
 const pageTitleKeys: Record<AppPage, string> = {
+  'accounting.overview': 'SHELL.PAGES.ACCOUNTING_OVERVIEW',
   'accounting.chartOfAccounts': 'SHELL.PAGES.CHART_OF_ACCOUNTS',
   'accounting.entries': 'SHELL.PAGES.ENTRIES',
+  'accounting.fiscalYear': 'SHELL.PAGES.FISCAL_YEAR',
   'accounting.generalLedger': 'SHELL.PAGES.GENERAL_LEDGER',
   'accounting.journals': 'SHELL.PAGES.JOURNALS',
+  'accounting.lettering': 'SHELL.PAGES.LETTERING',
   'accounting.trialBalance': 'SHELL.PAGES.TRIAL_BALANCE',
   'cabinet.collaborators': 'SHELL.PAGES.CABINET_COLLABORATORS',
   'cabinet.dashboard': 'SHELL.PAGES.CABINET_DASHBOARD',

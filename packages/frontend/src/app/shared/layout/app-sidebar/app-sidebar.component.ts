@@ -18,6 +18,18 @@ interface ShellNavItem {
 
 const accountingItems: readonly ShellNavItem[] = [
   {
+    icon: 'space_dashboard',
+    labelKey: 'SHELL.NAV.ACCOUNTING_OVERVIEW',
+    page: 'accounting.overview',
+    route: ['/accounting']
+  },
+  {
+    icon: 'event_available',
+    labelKey: 'SHELL.NAV.FISCAL_YEAR',
+    page: 'accounting.fiscalYear',
+    route: ['/accounting/fiscal-year']
+  },
+  {
     icon: 'account_balance',
     labelKey: 'SHELL.NAV.GENERAL_LEDGER',
     page: 'accounting.generalLedger',
@@ -36,6 +48,12 @@ const accountingItems: readonly ShellNavItem[] = [
     route: ['/accounting/entries']
   },
   {
+    icon: 'rule',
+    labelKey: 'SHELL.NAV.LETTERING',
+    page: 'accounting.lettering',
+    route: ['/accounting/lettering']
+  },
+  {
     icon: 'balance',
     labelKey: 'SHELL.NAV.TRIAL_BALANCE',
     page: 'accounting.trialBalance',
@@ -45,7 +63,7 @@ const accountingItems: readonly ShellNavItem[] = [
     icon: 'format_list_numbered',
     labelKey: 'SHELL.NAV.CHART_OF_ACCOUNTS',
     page: 'accounting.chartOfAccounts',
-    route: ['/accounting/chart-of-accounts']
+    route: ['/accounting/accounts']
   }
 ];
 

@@ -26,12 +26,14 @@ export class ProjectEndpoints extends DomainConstructFactory {
       routePath: string,
       handlerPath: string,
       actionName?: string,
+      constructIdOverride?: string,
     ) => {
       const entry = resolveHandlerEntry("projects", handlerPath);
       this.addRoute({
         actionName,
         api: props.api,
         authorizer: props.authorizer,
+        constructIdOverride,
         domainName: "projects",
         handlerEntry: entry,
         idPrefix: "Project-",
@@ -44,7 +46,15 @@ export class ProjectEndpoints extends DomainConstructFactory {
 
     // --- Project Domain Endpoints ---
     // Donor registry
-    map(apigw.HttpMethod.POST, "/donors", "create-donor");
+    map(
+      apigw.HttpMethod.POST,
+      "/donors",
+      "create-donor",
+      undefined,
+      // Preserve the deployed logical ID from the previous Projects CDK drift,
+      // where this Lambda was accidentally attached to the funding-sources route.
+      "Project-create-donor-POST-projects-projectId-funding-sources",
+    );
     map(apigw.HttpMethod.GET, "/donors", "get-donors", "list-donors");
 
     // Projects

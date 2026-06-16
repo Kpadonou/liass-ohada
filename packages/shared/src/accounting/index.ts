@@ -22,14 +22,20 @@ export {
   LetteringLineRefSchema,
   LetteringResponseSchema,
   LetteringResultDtoSchema,
+  LetteringSuggestionDtoSchema,
+  LetteringSuggestionLineDtoSchema,
   PostEntryResponseSchema,
   PostLetteringRequestSchema,
+  MatchingReportDtoSchema,
+  MatchingReportResponseSchema,
   ThirdPartyLedgerDtoSchema,
   ThirdPartyLedgerLineDtoSchema,
   ThirdPartyLedgerResponseSchema,
   TrialBalanceDtoSchema,
   TrialBalanceResponseSchema,
   TrialBalanceRowDtoSchema,
+  UnletteredLinesDtoSchema,
+  UnletteredLinesResponseSchema,
 } from "./entry";
 export type {
   AccountEntryDto,
@@ -42,10 +48,13 @@ export type {
   GetEntriesRequest,
   IncomeStatementDto,
   LetteringResultDto,
+  LetteringSuggestionDto,
   ListEntriesRequest,
+  MatchingReportDto,
   PostLetteringRequest,
   ThirdPartyLedgerDto,
   TrialBalanceDto,
+  UnletteredLinesDto,
 } from "./entry";
 export {
   AccountingFramework as FiscalYearAccountingFramework,
@@ -66,6 +75,7 @@ export {
   UpdatePeriodLockRequestSchema,
 } from "./fiscal-year";
 export type {
+  CloseFiscalYearResultDto,
   CloseFiscalYearRequest,
   CreateFiscalYearRequest,
   FiscalYear,

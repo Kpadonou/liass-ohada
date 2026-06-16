@@ -128,7 +128,7 @@ function isMissingDossierEndpoint(error: unknown): boolean {
   );
 }
 
-async function loadCurrentUserProfile(): Promise<{
+async function loadCurrentUserProfile(options: { allowUserAttributeFetch?: boolean } = {}): Promise<{
   attributes: Record<string, string | undefined>;
   user: AuthUser;
 }> {
@@ -142,6 +142,14 @@ async function loadCurrentUserProfile(): Promise<{
     tokenAttributes = profileAttributesFromClaims(payload);
   } catch {
     tokenAttributes = {};
+  }
+
+  if (hasReadableProfileAttributes(tokenAttributes)) {
+    return { user, attributes: tokenAttributes };
+  }
+
+  if (!options.allowUserAttributeFetch) {
+    return { user, attributes: tokenAttributes };
   }
 
   try {
@@ -174,6 +182,15 @@ function profileAttributesFromClaims(
 
     return attributes;
   }, {});
+}
+
+function hasReadableProfileAttributes(attributes: Record<string, string | undefined>): boolean {
+  return Boolean(
+    cleanDisplayValue(attributes['name']) ||
+      cleanDisplayValue(attributes['email']) ||
+      cleanDisplayValue(attributes['given_name']) ||
+      cleanDisplayValue(attributes['family_name'])
+  );
 }
 
 function cleanDisplayValue(value: string | undefined): string | null {
@@ -416,7 +433,9 @@ export const AuthStore = signalStore(
           throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
         }
 
-        const { user, attributes } = await loadCurrentUserProfile();
+        const { user, attributes } = await loadCurrentUserProfile({
+          allowUserAttributeFetch: true
+        });
         patchState(store, {
           user,
           userAttributes: attributes,
@@ -451,7 +470,9 @@ export const AuthStore = signalStore(
           throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
         }
 
-        const { user, attributes } = await loadCurrentUserProfile();
+        const { user, attributes } = await loadCurrentUserProfile({
+          allowUserAttributeFetch: true
+        });
         patchState(store, {
           user,
           userAttributes: attributes,

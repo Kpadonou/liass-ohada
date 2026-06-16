@@ -37,6 +37,7 @@ const translations = {
       LOGO_ALT: 'logo liass-ohada',
       NAV: {
         ACCOUNTING: 'Comptabilité',
+        ACCOUNTING_OVERVIEW: 'Vue d’ensemble',
         ADMINISTRATION: 'Administration',
         CABINET_DASHBOARD: 'Tableau de bord cabinet',
         CABINET_SETTINGS: 'Paramètres du cabinet',
@@ -46,8 +47,10 @@ const translations = {
         DASHBOARD: 'Tableau de bord',
         DEADLINES: 'Échéances',
         ENTRIES: 'Écritures',
+        FISCAL_YEAR: 'Exercice',
         GENERAL_LEDGER: 'Grand livre',
         JOURNALS: 'Journaux',
+        LETTERING: 'Lettrage',
         MISSIONS: 'Missions',
         PROJECTS: 'Projets et fonds',
         REPORTS: 'États OHADA',
@@ -102,9 +105,12 @@ describe('AppSidebarComponent', () => {
 
     expect(text).toContain('Tableau de bord');
     expect(text).toContain('Comptabilité');
+    expect(text).toContain('Vue d’ensemble');
+    expect(text).toContain('Exercice');
     expect(text).toContain('Grand livre');
     expect(text).toContain('Journaux');
     expect(text).toContain('Écritures');
+    expect(text).toContain('Lettrage');
     expect(text).toContain('Balance');
     expect(text).toContain('Plan comptable');
     expect(text).toContain('Projets et fonds');
@@ -133,8 +139,11 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Échéances');
     expect(text).toContain('Paramètres du cabinet');
     expect(text).not.toContain('Grand livre');
+    expect(text).not.toContain('Vue d’ensemble');
+    expect(text).not.toContain('Exercice');
     expect(text).not.toContain('Journaux');
     expect(text).not.toContain('Écritures');
+    expect(text).not.toContain('Lettrage');
     expect(text).not.toContain('Balance');
     expect(text).not.toContain('Plan comptable');
     expect(text).not.toContain('Trésorerie');
@@ -168,9 +177,12 @@ describe('AppSidebarComponent', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
 
+    expect(text).toContain('Vue d’ensemble');
     expect(text).toContain('Grand livre');
+    expect(text).toContain('Exercice');
     expect(text).toContain('Journaux');
     expect(text).toContain('Écritures');
+    expect(text).toContain('Lettrage');
     expect(text).toContain('Balance');
     expect(text).toContain('Plan comptable');
     expect(text).not.toContain('Paramètres du cabinet');
@@ -207,6 +219,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Tableau de bord cabinet');
     expect(text).toContain('Dossiers clients');
     expect(text).not.toContain('Grand livre');
+    expect(text).not.toContain('Lettrage');
     expect(authStore.activeDossierOrgId()).toBe('org-client');
   });
 });

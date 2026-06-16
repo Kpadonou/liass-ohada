@@ -37,6 +37,7 @@ const translations = {
         TREASURY: 'Treasury'
       },
       PAGES: {
+        ACCOUNTING_OVERVIEW: 'Accounting',
         ADMINISTRATION: 'Administration',
         CABINET_DASHBOARD: 'Cabinet dashboard',
         CABINET_DOSSIERS: 'Client dossiers',
@@ -44,8 +45,10 @@ const translations = {
         CLIENT_DOSSIERS: 'Client dossiers',
         DASHBOARD: 'Dashboard',
         ENTRIES: 'Entries',
+        FISCAL_YEAR: 'Fiscal year',
         GENERAL_LEDGER: 'General ledger',
         JOURNALS: 'Journals',
+        LETTERING: 'Lettering',
         TRIAL_BALANCE: 'Trial balance'
       },
       TOPBAR: {
@@ -189,6 +192,57 @@ describe('AppTopbarComponent', () => {
     const text = renderText();
 
     expect(text).toContain('General ledger');
+    expect(activeWorkspaceText()).toContain('Demo SARL');
+  });
+
+  it('displays the accounting overview page title separately from the active workspace', () => {
+    uiStore.setCurrentPage('accounting.overview');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    const text = renderText();
+
+    expect(text).toContain('Accounting');
+    expect(activeWorkspaceText()).toContain('Demo SARL');
+  });
+
+  it('displays the fiscal-year page title separately from the active workspace', () => {
+    uiStore.setCurrentPage('accounting.fiscalYear');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    const text = renderText();
+
+    expect(text).toContain('Fiscal year');
+    expect(activeWorkspaceText()).toContain('Demo SARL');
+  });
+
+  it('displays the lettering page title separately from the active workspace', () => {
+    uiStore.setCurrentPage('accounting.lettering');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    const text = renderText();
+
+    expect(text).toContain('Lettering');
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
@@ -420,10 +474,16 @@ describe('AppTopbarComponent', () => {
       userId: 'user-123',
       signInDetails: undefined
     });
-    vi.mocked(fetchUserAttributes).mockResolvedValue({
-      email: 'chrys.kpadonou@example.com',
-      name: 'Chrys Kpadonou'
-    });
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        idToken: {
+          payload: {
+            email: 'chrys.kpadonou@example.com',
+            name: 'Chrys Kpadonou'
+          }
+        }
+      }
+    } as never);
     await authStore.hydrate();
 
     renderText();
@@ -437,6 +497,7 @@ describe('AppTopbarComponent', () => {
     expect(text).toContain('Chrys Kpadonou');
     expect(text).toContain('chrys.kpadonou@example.com');
     expect(text).not.toContain('Google_123456789');
+    expect(fetchUserAttributes).not.toHaveBeenCalled();
     expect(userMenuTriggerText()).not.toContain('User');
   });
 
