@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { queryOptions } from '@tanstack/angular-query-experimental';
 
+import { AuthStore } from '../../identity/data-access/auth.store';
 import {
   AccountingApi,
   type ListAccountsParams,
@@ -10,76 +11,131 @@ import {
   type UnletteredLinesParams
 } from './accounting.api';
 
+const ACCOUNTING_MASTER_DATA_STALE_TIME = 10 * 60_000;
+const ACCOUNTING_TRANSACTIONAL_STALE_TIME = 30_000;
+const ACCOUNTING_LIVE_MATCHING_STALE_TIME = 15_000;
+const NO_TENANT_SCOPE = 'no-active-tenant';
+
+type TenantScope = string;
+
+function normalizeListAccountsParams(options: ListAccountsParams = { limit: 200 }) {
+  return {
+    cursor: options.cursor ?? null,
+    limit: options.limit ?? 200
+  };
+}
+
 export const accountingQueryKeys = {
-  account: (accountId: string) => ['accounting', 'accounts', accountId] as const,
-  accounts: ['accounting', 'accounts'] as const,
-  entries: (params: ListEntriesParams) => ['accounting', 'entries', params] as const,
-  fiscalYear: (year: string) => ['accounting', 'fiscal-year', year] as const,
+  account: (tenantScope: TenantScope, accountId: string) =>
+    ['accounting', tenantScope, 'accounts', accountId] as const,
+  accounts: (tenantScope: TenantScope, options: ListAccountsParams = { limit: 200 }) =>
+    ['accounting', tenantScope, 'accounts', normalizeListAccountsParams(options)] as const,
+  accountsRoot: (tenantScope: TenantScope) => ['accounting', tenantScope, 'accounts'] as const,
+  entries: (tenantScope: TenantScope, params: ListEntriesParams) =>
+    ['accounting', tenantScope, 'entries', params] as const,
+  fiscalYear: (tenantScope: TenantScope, year: string) =>
+    ['accounting', tenantScope, 'fiscal-year', year] as const,
   generalLedger: (params: { fiscalYear: string; accountId: string }) =>
     ['accounting', 'general-ledger', params] as const,
-  incomeStatement: (year: string) => ['accounting', 'income-statement', year] as const,
-  journals: ['accounting', 'journals'] as const,
-  matchingReport: (params: MatchingReportParams) =>
-    ['accounting', 'matching-report', params] as const,
-  thirdPartyLedger: (params: ThirdPartyLedgerParams) =>
-    ['accounting', 'third-party-ledger', params] as const,
-  trialBalance: (year: string) => ['accounting', 'trial-balance', year] as const,
-  unletteredLines: (params: UnletteredLinesParams) =>
-    ['accounting', 'unlettered-lines', params] as const
+  incomeStatement: (tenantScope: TenantScope, year: string) =>
+    ['accounting', tenantScope, 'income-statement', year] as const,
+  journal: (tenantScope: TenantScope, journalCode: string) =>
+    ['accounting', tenantScope, 'journals', journalCode] as const,
+  journals: (tenantScope: TenantScope) => ['accounting', tenantScope, 'journals'] as const,
+  matchingReport: (tenantScope: TenantScope, params: MatchingReportParams) =>
+    ['accounting', tenantScope, 'matching-report', params] as const,
+  thirdPartyLedger: (tenantScope: TenantScope, params: ThirdPartyLedgerParams) =>
+    ['accounting', tenantScope, 'third-party-ledger', params] as const,
+  trialBalance: (tenantScope: TenantScope, year: string) =>
+    ['accounting', tenantScope, 'trial-balance', year] as const,
+  unletteredLines: (tenantScope: TenantScope, params: UnletteredLinesParams) =>
+    ['accounting', tenantScope, 'unlettered-lines', params] as const
 };
 
 @Injectable({ providedIn: 'root' })
 export class AccountingQueries {
   private readonly accountingApi = inject(AccountingApi);
+  private readonly authStore = inject(AuthStore);
+
+  tenantScope(): TenantScope {
+    if (this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
+      return this.authStore.activeDossierOrgId() || this.authStore.activeWorkspaceOrgId() || NO_TENANT_SCOPE;
+    }
+
+    return this.authStore.activeWorkspaceOrgId() || NO_TENANT_SCOPE;
+  }
+
+  accountsQueryKey(options: ListAccountsParams = { limit: 200 }) {
+    return accountingQueryKeys.accounts(this.tenantScope(), options);
+  }
+
+  accountsRootQueryKey() {
+    return accountingQueryKeys.accountsRoot(this.tenantScope());
+  }
+
+  journalsQueryKey() {
+    return accountingQueryKeys.journals(this.tenantScope());
+  }
 
   listAccounts(options: ListAccountsParams = { limit: 200 }) {
     return queryOptions({
-      queryKey: accountingQueryKeys.accounts,
+      queryKey: this.accountsQueryKey(options),
       queryFn: () => this.accountingApi.listAccounts(options),
-      staleTime: 60_000
+      staleTime: ACCOUNTING_MASTER_DATA_STALE_TIME
     });
   }
 
   account(accountId: string) {
     return queryOptions({
-      queryKey: accountingQueryKeys.account(accountId),
+      queryKey: accountingQueryKeys.account(this.tenantScope(), accountId),
       queryFn: () => this.accountingApi.getAccount(accountId),
       enabled: /^\d{1,8}$/.test(accountId),
-      staleTime: 60_000
+      staleTime: ACCOUNTING_MASTER_DATA_STALE_TIME
     });
   }
 
   listJournals() {
     return queryOptions({
-      queryKey: accountingQueryKeys.journals,
+      queryKey: this.journalsQueryKey(),
       queryFn: () => this.accountingApi.listJournals(),
-      staleTime: 60_000
+      staleTime: ACCOUNTING_MASTER_DATA_STALE_TIME
+    });
+  }
+
+  journal(journalCode: string) {
+    const code = journalCode.trim();
+
+    return queryOptions({
+      queryKey: accountingQueryKeys.journal(this.tenantScope(), code),
+      queryFn: () => this.accountingApi.getJournal(code),
+      enabled: code.length > 0 && code.length <= 10,
+      staleTime: ACCOUNTING_MASTER_DATA_STALE_TIME
     });
   }
 
   listEntries(params: ListEntriesParams) {
     return queryOptions({
-      queryKey: accountingQueryKeys.entries(params),
+      queryKey: accountingQueryKeys.entries(this.tenantScope(), params),
       queryFn: () => this.accountingApi.listEntries(params),
-      staleTime: 30_000
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
   generalLedger(params: { fiscalYear: string; accountId: string }) {
     return queryOptions({
-      queryKey: accountingQueryKeys.generalLedger(params),
+      queryKey: ['accounting', this.tenantScope(), ...accountingQueryKeys.generalLedger(params).slice(1)] as const,
       queryFn: () => this.accountingApi.getGeneralLedger(params),
       enabled: /^\d{4}$/.test(params.fiscalYear) && /^\d{2,8}$/.test(params.accountId),
-      staleTime: 30_000
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
   trialBalance(year: string) {
     return queryOptions({
-      queryKey: accountingQueryKeys.trialBalance(year),
+      queryKey: accountingQueryKeys.trialBalance(this.tenantScope(), year),
       queryFn: () => this.accountingApi.getTrialBalance(year),
       enabled: /^\d{4}$/.test(year),
-      staleTime: 30_000
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
@@ -87,10 +143,10 @@ export class AccountingQueries {
     const yearValue = String(year);
 
     return queryOptions({
-      queryKey: accountingQueryKeys.fiscalYear(yearValue),
+      queryKey: accountingQueryKeys.fiscalYear(this.tenantScope(), yearValue),
       queryFn: () => this.accountingApi.getFiscalYearDetails(yearValue),
       enabled: /^\d{4}$/.test(yearValue),
-      staleTime: 30_000
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
@@ -98,37 +154,37 @@ export class AccountingQueries {
     const yearValue = String(year);
 
     return queryOptions({
-      queryKey: accountingQueryKeys.incomeStatement(yearValue),
+      queryKey: accountingQueryKeys.incomeStatement(this.tenantScope(), yearValue),
       queryFn: () => this.accountingApi.getIncomeStatement(yearValue),
       enabled: /^\d{4}$/.test(yearValue),
-      staleTime: 30_000
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
   thirdPartyLedger(params: ThirdPartyLedgerParams) {
     return queryOptions({
-      queryKey: accountingQueryKeys.thirdPartyLedger(params),
+      queryKey: accountingQueryKeys.thirdPartyLedger(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getThirdPartyLedger(params),
       enabled: /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
-      staleTime: 30_000
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
   matchingReport(params: MatchingReportParams) {
     return queryOptions({
-      queryKey: accountingQueryKeys.matchingReport(params),
+      queryKey: accountingQueryKeys.matchingReport(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getMatchingReport(params),
       enabled: /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
-      staleTime: 30_000
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
   unletteredLines(params: UnletteredLinesParams) {
     return queryOptions({
-      queryKey: accountingQueryKeys.unletteredLines(params),
+      queryKey: accountingQueryKeys.unletteredLines(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getUnletteredLines(params),
       enabled: /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
-      staleTime: 15_000
+      staleTime: ACCOUNTING_LIVE_MATCHING_STALE_TIME
     });
   }
 }

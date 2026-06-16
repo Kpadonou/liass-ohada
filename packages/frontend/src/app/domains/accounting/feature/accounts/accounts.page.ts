@@ -7,7 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { type AccountDto } from '@liass-ohada/shared/accounting';
 import { TranslocoModule } from '@ngneat/transloco';
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { take } from 'rxjs';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -51,6 +51,7 @@ export class AccountsPage {
   private readonly accountingApi = inject(AccountingApi);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly dialog = inject(MatDialog);
+  private readonly queryClient = inject(QueryClient);
 
   protected readonly classCodes = [1, 2, 3, 4, 5, 6, 7, 8] as const;
   protected readonly searchQuery = signal('');
@@ -244,10 +245,28 @@ export class AccountsPage {
     this.localAccountUpserts.update((accounts) =>
       mergeAccounts(accounts, [account])
     );
+    this.upsertAccountCache(account);
 
     if (this.selectedAccount()?.accountId === account.accountId) {
       this.selectedAccount.set(account);
     }
+  }
+
+  private upsertAccountCache(account: AccountDto): void {
+    this.queryClient.setQueriesData<PaginatedResult<AccountDto>>(
+      { queryKey: this.accountingQueries.accountsRootQueryKey() },
+      (page) =>
+        page
+          ? {
+              ...page,
+              items: mergeAccounts(page.items, [account])
+            }
+          : page
+    );
+    this.queryClient.setQueryData(
+      this.accountingQueries.account(account.accountId).queryKey,
+      account
+    );
   }
 }
 

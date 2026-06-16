@@ -616,9 +616,11 @@
       "CREATE_ACCOUNT_FAILED": "The account could not be created.",
       "CREATE_JOURNAL_FAILED": "The journal could not be created.",
       "DISABLE_ACCOUNT_FAILED": "The account could not be disabled.",
+      "DISABLE_JOURNAL_FAILED": "The journal could not be disabled.",
       "LOAD_FAILED": "Accounting data could not be loaded.",
       "POST_ENTRY_FAILED": "The entry could not be posted.",
-      "UPDATE_ACCOUNT_FAILED": "The account could not be updated."
+      "UPDATE_ACCOUNT_FAILED": "The account could not be updated.",
+      "UPDATE_JOURNAL_FAILED": "The journal could not be updated."
     },
     "OVERVIEW": {
       "CARDS": {
@@ -830,7 +832,12 @@
     },
     "JOURNALS": {
       "ACTIONS": {
+        "CLEAR_FILTERS": "Reset",
+        "DISABLE_JOURNAL": "Disable",
+        "EDIT_JOURNAL": "Edit",
         "NEW_JOURNAL": "New journal",
+        "RETRY": "Retry",
+        "VIEW_DETAILS": "View details",
         "VIEW_ENTRIES": "View entries"
       },
       "CREATE": {
@@ -838,7 +845,27 @@
         "SUBTITLE": "Create a journal used to classify entries for a fiscal year.",
         "TITLE": "Create journal"
       },
-      "EMPTY": "No journals match the filters.",
+      "DETAIL": {
+        "EYEBROW": "Journal detail",
+        "PROTECTION": "Protection",
+        "SYSTEM_DESCRIPTION": "This system journal is reserved for automated accounting processing and cannot be edited or disabled from the interface."
+      },
+      "DISABLE": {
+        "DESCRIPTION": "Disabling {{ journalCode }} - {{ journalName }} prevents future use if the backend confirms no entry blocks it.",
+        "EYEBROW": "Disable",
+        "TITLE": "Disable this journal?"
+      },
+      "EDIT": {
+        "EYEBROW": "Journal book",
+        "SUBTITLE": "Update the journal label and type without changing its code.",
+        "TITLE": "Edit journal"
+      },
+      "EMPTY": {
+        "DESCRIPTION": "No journal is configured for the active organization.",
+        "NO_RESULTS_DESCRIPTION": "Adjust the search or filters to broaden the list.",
+        "NO_RESULTS_TITLE": "No journal matches the filters.",
+        "TITLE": "No journal loaded"
+      },
       "EYEBROW": "Journals",
       "FIELDS": {
         "CODE": "Code",
@@ -847,9 +874,21 @@
         "YEAR": "Fiscal year"
       },
       "FILTERS": {
+        "ALL_SYSTEM": "All journals",
         "ALL_TYPES": "All types",
         "SEARCH": "Search",
+        "STANDARD_ONLY": "Standard journals",
+        "SYSTEM": "Origin",
+        "SYSTEM_ONLY": "System journals",
         "TYPE": "Type"
+      },
+      "LOADING": "Loading journals...",
+      "STATUS": {
+        "ACTIVE": "Active"
+      },
+      "SYSTEM": {
+        "STANDARD": "Standard",
+        "SYSTEM": "System"
       },
       "SUBTITLE": "Manage accounting journals and their related entries.",
       "TABLE": {
@@ -857,6 +896,8 @@
         "CODE": "Code",
         "DESCRIPTION": "Journals available in the active organization.",
         "NAME": "Label",
+        "STATUS": "Status",
+        "SYSTEM": "Origin",
         "TITLE": "Journals",
         "TYPE": "Type",
         "YEAR": "Fiscal year"
@@ -867,6 +908,12 @@
         "MISC": "Miscellaneous",
         "PURCHASE": "Purchases",
         "SALE": "Sales"
+      },
+      "VALIDATION": {
+        "CODE": "Enter a journal code between 1 and 10 characters.",
+        "NAME": "Enter a journal label.",
+        "TYPE": "Select a journal type.",
+        "YEAR": "Enter a valid fiscal year between 2000 and 2100."
       }
     },
     "ENTRIES": {

@@ -1,0 +1,41 @@
+<header class="px-6 pt-6">
+  <div class="flex items-start gap-3">
+    <span class="inline-flex size-10 items-center justify-center rounded-app-control bg-danger-50 text-danger-600 dark:bg-rose-950/35 dark:text-rose-300">
+      <mat-icon>block</mat-icon>
+    </span>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-danger-600 dark:text-rose-300">
+        {{ 'ACCOUNTING.JOURNALS.DISABLE.EYEBROW' | transloco }}
+      </p>
+      <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+        {{ 'ACCOUNTING.JOURNALS.DISABLE.TITLE' | transloco }}
+      </h2>
+    </div>
+  </div>
+</header>
+
+<mat-dialog-content class="px-6 pb-0 pt-5">
+  <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
+    {{ 'ACCOUNTING.JOURNALS.DISABLE.DESCRIPTION' | transloco: { journalCode: journal.journalCode, journalName: journal.journalName } }}
+  </p>
+  <div class="mt-4 rounded-app-card border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+    <p class="text-sm font-semibold text-slate-950 dark:text-white">{{ journal.journalCode }}</p>
+    <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ journal.journalName }}</p>
+  </div>
+
+  @if (errorKey(); as key) {
+    <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+      <mat-icon class="mt-0.5">error</mat-icon>
+      <p>{{ key | transloco }}</p>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+  <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+    {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+  </liass-button>
+  <liass-button tone="danger" variant="solid" icon="block" [loading]="submitting()" (pressed)="confirm()">
+    {{ 'ACCOUNTING.JOURNALS.ACTIONS.DISABLE_JOURNAL' | transloco }}
+  </liass-button>
+</mat-dialog-actions>

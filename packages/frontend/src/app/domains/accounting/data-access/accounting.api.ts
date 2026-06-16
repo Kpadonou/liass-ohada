@@ -62,6 +62,22 @@ export interface PaginatedResult<T> {
 
 export type ListAccountsParams = z.input<typeof ListAccountsRequestSchema>;
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
+export type UpdateJournalRequest = z.infer<typeof UpdateJournalRequestSchema>;
+
+const GetJournalRequestSchema = z.object({
+  journalCode: z.string().min(1).max(10)
+});
+
+const UpdateJournalRequestSchema = z.object({
+  year: z.number().int().optional(),
+  journalName: z.string().min(1),
+  type: CreateJournalRequestSchema.shape.type
+});
+
+const DisableJournalResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({}).optional()
+});
 
 export interface ListEntriesParams {
   year: string;
@@ -160,18 +176,38 @@ export class AccountingApi {
     return ListJournalsResponseSchema.parse(response).data;
   }
 
+  async getJournal(journalCode: string): Promise<JournalDto> {
+    const response = await firstValueFrom(
+      this.http.get<unknown>(this.journalUrl(journalCode))
+    );
+
+    return parseJournalResponse(response);
+  }
+
   async createJournal(payload: CreateJournalRequest): Promise<JournalDto> {
     const request = CreateJournalRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.post<unknown>(`${this.apiBaseUrl}/journals`, request)
     );
-    const parsed = JournalResponseSchema.parse(response);
 
-    if (!parsed.data && !parsed.journal) {
-      throw new Error('Invalid journal response');
-    }
+    return parseJournalResponse(response);
+  }
 
-    return (parsed.data ?? parsed.journal)!;
+  async updateJournal(journalCode: string, payload: UpdateJournalRequest): Promise<JournalDto> {
+    const request = UpdateJournalRequestSchema.parse(payload);
+    const response = await firstValueFrom(
+      this.http.put<unknown>(this.journalUrl(journalCode), request)
+    );
+
+    return parseJournalResponse(response);
+  }
+
+  async disableJournal(journalCode: string): Promise<void> {
+    const response = await firstValueFrom(
+      this.http.delete<unknown>(this.journalUrl(journalCode))
+    );
+
+    DisableJournalResponseSchema.parse(response);
   }
 
   async listEntries(paramsInput: ListEntriesParams): Promise<PaginatedResult<EntrySummaryDto>> {
@@ -367,4 +403,21 @@ export class AccountingApi {
 
     return `${this.apiBaseUrl}/accounts/${encodeURIComponent(request.accountId)}`;
   }
+
+  private journalUrl(journalCode: string): string {
+    const request = GetJournalRequestSchema.parse({ journalCode });
+
+    return `${this.apiBaseUrl}/journals/${encodeURIComponent(request.journalCode)}`;
+  }
+}
+
+function parseJournalResponse(response: unknown): JournalDto {
+  const parsed = JournalResponseSchema.parse(response);
+  const journal = parsed.data ?? parsed.journal;
+
+  if (!journal) {
+    throw new Error('Invalid journal response');
+  }
+
+  return journal;
 }

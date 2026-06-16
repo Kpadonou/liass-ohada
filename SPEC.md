@@ -103,6 +103,17 @@ Refer to `key-builder.ts` for the definitive implementation logic. The general s
 - **No hard-coded strings**: Use error codes and translation keys.
 - Frontend component templates must use Transloco keys and pipes for user-facing text. Keep code identifiers, translation keys, variables, and internal comments in English.
 
+### D. Frontend Resource Optimization
+
+- Remote server state must be fetched through TanStack Query where applicable, using shared domain `data-access` query helpers instead of ad hoc component API calls.
+- Query keys must be stable, domain-specific, and include the active tenant/workspace or dossier context for tenant-scoped data.
+- Avoid duplicate backend calls for the same data. Reuse existing query helpers and cached query keys across pages and nested components.
+- Use suitable `staleTime` values: longer for stable reference/master data such as chart-of-accounts accounts and journals, shorter and filter-specific for transactional data such as entries, ledgers, balances, and reports.
+- Mutations must update or invalidate only the affected query caches. Components must not imperatively refetch data after mutations unless there is a clear user refresh action or the query invalidation is insufficient.
+- Do not fetch data in multiple nested components when a parent or shared query can provide it.
+- Do not use NgRx Signal Store as a replacement for TanStack Query server-state caching. Signal Store remains for UI/client state such as active workspace/dossier, filters, and local interaction state.
+- Do not call the backend for data already available in a fresh cache unless the user explicitly refreshes or a mutation invalidated that cache.
+
 ---
 
 ## 5. Generation Rules for AI

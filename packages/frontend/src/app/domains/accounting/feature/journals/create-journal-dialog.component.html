@@ -1,12 +1,12 @@
 <header class="px-6 pt-6">
   <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
-    {{ 'ACCOUNTING.JOURNALS.CREATE.EYEBROW' | transloco }}
+    {{ eyebrowKey | transloco }}
   </p>
   <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
-    {{ 'ACCOUNTING.JOURNALS.CREATE.TITLE' | transloco }}
+    {{ titleKey | transloco }}
   </h2>
   <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-    {{ 'ACCOUNTING.JOURNALS.CREATE.SUBTITLE' | transloco }}
+    {{ subtitleKey | transloco }}
   </p>
 </header>
 
@@ -17,18 +17,27 @@
         <mat-label>{{ 'ACCOUNTING.JOURNALS.FIELDS.CODE' | transloco }}</mat-label>
         <mat-icon matPrefix>short_text</mat-icon>
         <input matInput formControlName="journalCode" />
+        @if (form.controls.journalCode.touched && form.controls.journalCode.invalid) {
+          <mat-error>{{ 'ACCOUNTING.JOURNALS.VALIDATION.CODE' | transloco }}</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>{{ 'ACCOUNTING.JOURNALS.FIELDS.YEAR' | transloco }}</mat-label>
         <mat-icon matPrefix>calendar_month</mat-icon>
         <input matInput formControlName="year" inputmode="numeric" />
+        @if (form.controls.year.touched && form.controls.year.invalid) {
+          <mat-error>{{ 'ACCOUNTING.JOURNALS.VALIDATION.YEAR' | transloco }}</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="md:col-span-2">
         <mat-label>{{ 'ACCOUNTING.JOURNALS.FIELDS.NAME' | transloco }}</mat-label>
         <mat-icon matPrefix>menu_book</mat-icon>
         <input matInput formControlName="journalName" />
+        @if (form.controls.journalName.touched && form.controls.journalName.invalid) {
+          <mat-error>{{ 'ACCOUNTING.JOURNALS.VALIDATION.NAME' | transloco }}</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="md:col-span-2">
@@ -39,6 +48,9 @@
           <mat-option value="BANK">{{ 'ACCOUNTING.JOURNALS.TYPES.BANK' | transloco }}</mat-option>
           <mat-option value="MISC">{{ 'ACCOUNTING.JOURNALS.TYPES.MISC' | transloco }}</mat-option>
         </mat-select>
+        @if (form.controls.type.touched && form.controls.type.invalid) {
+          <mat-error>{{ 'ACCOUNTING.JOURNALS.VALIDATION.TYPE' | transloco }}</mat-error>
+        }
       </mat-form-field>
     </div>
 
@@ -54,7 +66,14 @@
     <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
       {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
     </liass-button>
-    <liass-button buttonType="submit" tone="brand" variant="solid" icon="add" [disabled]="form.invalid || submitting()" [loading]="submitting()">
+    <liass-button
+      buttonType="submit"
+      tone="brand"
+      variant="solid"
+      [icon]="isEditMode ? 'save' : 'add'"
+      [disabled]="form.invalid || submitting()"
+      [loading]="submitting()"
+    >
       {{ 'COMMON.ACTIONS.SAVE' | transloco }}
     </liass-button>
   </mat-dialog-actions>

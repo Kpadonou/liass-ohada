@@ -138,6 +138,101 @@ describe('AccountingApi', () => {
     });
   });
 
+  it('lists, gets, creates, updates, and disables journals with typed validation', async () => {
+    const listPromise = api.listJournals();
+    const listRequest = httpMock.expectOne(`${apiBaseUrl}/journals`);
+
+    expect(listRequest.request.method).toBe('GET');
+    listRequest.flush({
+      data: [
+        journalResponseFixture({
+          journalCode: 'VE',
+          journalName: 'Ventes',
+          type: 'SALE',
+          PK: 'ORG#test'
+        })
+      ]
+    });
+
+    await expect(listPromise).resolves.toEqual([
+      {
+        journalCode: 'VE',
+        journalName: 'Ventes',
+        type: 'SALE',
+        year: 2026
+      }
+    ]);
+
+    const getPromise = api.getJournal('VE');
+    const getRequest = httpMock.expectOne(`${apiBaseUrl}/journals/VE`);
+
+    expect(getRequest.request.method).toBe('GET');
+    getRequest.flush({ data: journalResponseFixture({ journalCode: 'VE' }) });
+
+    await expect(getPromise).resolves.toMatchObject({
+      journalCode: 'VE'
+    });
+
+    const createPayload = {
+      year: 2026,
+      journalCode: 'AC',
+      journalName: 'Achats',
+      type: 'PURCHASE' as const
+    };
+    const createPromise = api.createJournal(createPayload);
+    const createRequest = httpMock.expectOne(`${apiBaseUrl}/journals`);
+
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual(createPayload);
+    createRequest.flush({
+      data: journalResponseFixture({
+        journalCode: 'AC',
+        journalName: 'Achats',
+        type: 'PURCHASE'
+      })
+    });
+
+    await expect(createPromise).resolves.toMatchObject({
+      journalCode: 'AC',
+      journalName: 'Achats',
+      type: 'PURCHASE'
+    });
+
+    const updatePromise = api.updateJournal('AC', {
+      year: 2026,
+      journalName: 'Achats fournisseurs',
+      type: 'PURCHASE'
+    });
+    const updateRequest = httpMock.expectOne(`${apiBaseUrl}/journals/AC`);
+
+    expect(updateRequest.request.method).toBe('PUT');
+    expect(updateRequest.request.body).toEqual({
+      year: 2026,
+      journalName: 'Achats fournisseurs',
+      type: 'PURCHASE'
+    });
+    updateRequest.flush({
+      data: journalResponseFixture({
+        journalCode: 'AC',
+        journalName: 'Achats fournisseurs',
+        type: 'PURCHASE'
+      })
+    });
+
+    await expect(updatePromise).resolves.toMatchObject({
+      journalCode: 'AC',
+      journalName: 'Achats fournisseurs'
+    });
+
+    const disablePromise = api.disableJournal('AC');
+    const disableRequest = httpMock.expectOne(`${apiBaseUrl}/journals/AC`);
+
+    expect(disableRequest.request.method).toBe('DELETE');
+    disableRequest.flush({ data: {} });
+
+    await expect(disablePromise).resolves.toBeUndefined();
+  });
+
   it('rejects invalid account payloads and invalid account responses', async () => {
     await expect(
       api.createAccount({
@@ -166,6 +261,40 @@ describe('AccountingApi', () => {
     });
 
     await expect(getPromise).rejects.toThrow();
+  });
+
+  it('rejects invalid journal payloads and invalid journal responses', async () => {
+    await expect(
+      api.createJournal({
+        year: 2026,
+        journalCode: '',
+        journalName: 'Ventes',
+        type: 'SALE'
+      })
+    ).rejects.toThrow();
+    httpMock.expectNone(`${apiBaseUrl}/journals`);
+
+    await expect(
+      api.updateJournal('VE', {
+        journalName: '',
+        type: 'SALE'
+      })
+    ).rejects.toThrow();
+    httpMock.expectNone(`${apiBaseUrl}/journals/VE`);
+
+    const getPromise = api.getJournal('VE');
+    const getRequest = httpMock.expectOne(`${apiBaseUrl}/journals/VE`);
+
+    getRequest.flush({ data: { journalCode: 'VE' } });
+
+    await expect(getPromise).rejects.toThrow();
+
+    const disablePromise = api.disableJournal('VE');
+    const disableRequest = httpMock.expectOne(`${apiBaseUrl}/journals/VE`);
+
+    disableRequest.flush({ data: null });
+
+    await expect(disablePromise).rejects.toThrow();
   });
 
   it('rejects invalid entry list responses', async () => {
@@ -547,6 +676,25 @@ function accountResponseFixture(
     isActive: true,
     PK: 'ORG#test',
     SK: 'ACC#41100000',
+    ...overrides
+  };
+}
+
+function journalResponseFixture(
+  overrides: Partial<{
+    journalCode: string;
+    journalName: string;
+    type: 'PURCHASE' | 'SALE' | 'BANK' | 'MISC';
+    year: number;
+    PK: string;
+    SK: string;
+  }> = {}
+) {
+  return {
+    year: 2026,
+    journalCode: 'OD',
+    journalName: 'Operations diverses',
+    type: 'MISC',
     ...overrides
   };
 }

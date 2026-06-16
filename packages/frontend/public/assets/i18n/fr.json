@@ -616,9 +616,11 @@
       "CREATE_ACCOUNT_FAILED": "Le compte n’a pas pu être créé.",
       "CREATE_JOURNAL_FAILED": "Le journal n’a pas pu être créé.",
       "DISABLE_ACCOUNT_FAILED": "Le compte n’a pas pu être désactivé.",
+      "DISABLE_JOURNAL_FAILED": "Le journal n’a pas pu être désactivé.",
       "LOAD_FAILED": "Les données comptables n’ont pas pu être chargées.",
       "POST_ENTRY_FAILED": "L’écriture n’a pas pu être comptabilisée.",
-      "UPDATE_ACCOUNT_FAILED": "Le compte n’a pas pu être mis à jour."
+      "UPDATE_ACCOUNT_FAILED": "Le compte n’a pas pu être mis à jour.",
+      "UPDATE_JOURNAL_FAILED": "Le journal n’a pas pu être mis à jour."
     },
     "OVERVIEW": {
       "CARDS": {
@@ -830,7 +832,12 @@
     },
     "JOURNALS": {
       "ACTIONS": {
+        "CLEAR_FILTERS": "Réinitialiser",
+        "DISABLE_JOURNAL": "Désactiver",
+        "EDIT_JOURNAL": "Modifier",
         "NEW_JOURNAL": "Nouveau journal",
+        "RETRY": "Réessayer",
+        "VIEW_DETAILS": "Voir détail",
         "VIEW_ENTRIES": "Voir écritures"
       },
       "CREATE": {
@@ -838,7 +845,27 @@
         "SUBTITLE": "Créez un journal utilisé pour classer les écritures de l’exercice.",
         "TITLE": "Créer un journal"
       },
-      "EMPTY": "Aucun journal ne correspond aux filtres.",
+      "DETAIL": {
+        "EYEBROW": "Détail journal",
+        "PROTECTION": "Protection",
+        "SYSTEM_DESCRIPTION": "Ce journal système est réservé aux traitements comptables automatisés et ne peut pas être modifié ou désactivé depuis l’interface."
+      },
+      "DISABLE": {
+        "DESCRIPTION": "Désactiver {{ journalCode }} - {{ journalName }} empêche son utilisation future si le backend confirme qu’aucune écriture ne le bloque.",
+        "EYEBROW": "Désactivation",
+        "TITLE": "Désactiver ce journal ?"
+      },
+      "EDIT": {
+        "EYEBROW": "Livre-journal",
+        "SUBTITLE": "Mettez à jour le libellé et le type du journal sans modifier son code.",
+        "TITLE": "Modifier un journal"
+      },
+      "EMPTY": {
+        "DESCRIPTION": "Aucun journal n’est configuré pour l’organisation active.",
+        "NO_RESULTS_DESCRIPTION": "Modifiez la recherche ou les filtres pour élargir la liste.",
+        "NO_RESULTS_TITLE": "Aucun journal ne correspond aux filtres.",
+        "TITLE": "Aucun journal chargé"
+      },
       "EYEBROW": "Journaux",
       "FIELDS": {
         "CODE": "Code",
@@ -847,9 +874,21 @@
         "YEAR": "Exercice"
       },
       "FILTERS": {
+        "ALL_SYSTEM": "Tous les journaux",
         "ALL_TYPES": "Tous les types",
         "SEARCH": "Rechercher",
+        "STANDARD_ONLY": "Journaux standards",
+        "SYSTEM": "Origine",
+        "SYSTEM_ONLY": "Journaux système",
         "TYPE": "Type"
+      },
+      "LOADING": "Chargement des journaux...",
+      "STATUS": {
+        "ACTIVE": "Actif"
+      },
+      "SYSTEM": {
+        "STANDARD": "Standard",
+        "SYSTEM": "Système"
       },
       "SUBTITLE": "Pilotez les journaux comptables et leurs écritures associées.",
       "TABLE": {
@@ -857,6 +896,8 @@
         "CODE": "Code",
         "DESCRIPTION": "Journaux disponibles pour l’organisation active.",
         "NAME": "Libellé",
+        "STATUS": "Statut",
+        "SYSTEM": "Origine",
         "TITLE": "Journaux",
         "TYPE": "Type",
         "YEAR": "Exercice"
@@ -867,6 +908,12 @@
         "MISC": "Opérations diverses",
         "PURCHASE": "Achats",
         "SALE": "Ventes"
+      },
+      "VALIDATION": {
+        "CODE": "Saisissez un code journal de 1 à 10 caractères.",
+        "NAME": "Saisissez un libellé de journal.",
+        "TYPE": "Sélectionnez un type de journal.",
+        "YEAR": "Saisissez un exercice valide entre 2000 et 2100."
       }
     },
     "ENTRIES": {
