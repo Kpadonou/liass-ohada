@@ -106,7 +106,8 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 - Separate or clearly style destructive actions.
 - Group card actions consistently in headers or footers.
 - For tables with more than two row actions, keep the actions column narrow and use a small icon button menu, preferably vertical dots, backed by Angular Material Menu or the existing menu pattern.
-- Table action menu items must include an icon and a translated label. Destructive menu items must be visually marked when supported and must still open confirmation dialogs; a menu click must not directly perform risky actions.
+- Table action menu items must include an icon and a translated label. Color menu items by semantic intent with restrained contrast: neutral for consultation/detail, brand for important navigation or primary business follow-up, info for edit/configuration, warning for risky-but-reversible cautions, and danger for destructive or disabling actions.
+- Destructive menu items must be visually marked with danger styling and must still open confirmation dialogs; a menu click must not directly perform risky actions.
 - Keep important page-level primary actions such as “Nouveau compte”, “Nouveau journal”, or “Nouvel exercice” as visible toolbar/header buttons, not hidden inside row menus.
 - Tables with several columns should expose a preferences/settings action in the table toolbar. Users should be able to show/hide optional columns, while required identity columns and the actions column remain visible and non-toggleable.
 - Persist table preferences locally when possible, scoped by a stable table id such as `accounting.accounts`, `accounting.journals`, or `accounting.fiscalYears`. Do not add backend persistence for table preferences unless explicitly requested.

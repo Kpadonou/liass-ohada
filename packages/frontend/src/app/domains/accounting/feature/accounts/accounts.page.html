@@ -335,13 +335,20 @@
                     <mat-icon>more_vert</mat-icon>
                   </button>
                   <mat-menu #accountActionsMenu="matMenu" xPosition="before">
-                    <button mat-menu-item type="button" data-testid="account-view-action" (click)="openAccountDetails(account)">
+                    <button
+                      mat-menu-item
+                      type="button"
+                      class="liass-menu-action liass-menu-action-neutral"
+                      data-testid="account-view-action"
+                      (click)="openAccountDetails(account)"
+                    >
                       <mat-icon>visibility</mat-icon>
                       <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco }}</span>
                     </button>
                     <button
                       mat-menu-item
                       type="button"
+                      class="liass-menu-action liass-menu-action-info"
                       data-testid="account-edit-action"
                       [disabled]="!isAccountActive(account)"
                       (click)="openEditAccount(account)"
@@ -352,12 +359,12 @@
                     <button
                       mat-menu-item
                       type="button"
-                      class="text-danger-600 dark:text-rose-300"
+                      class="liass-menu-action liass-menu-action-danger"
                       data-testid="account-disable-action"
                       [disabled]="!isAccountActive(account)"
                       (click)="openDisableAccount(account)"
                     >
-                      <mat-icon class="text-danger-600 dark:text-rose-300">block</mat-icon>
+                      <mat-icon>block</mat-icon>
                       <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}</span>
                     </button>
                   </mat-menu>

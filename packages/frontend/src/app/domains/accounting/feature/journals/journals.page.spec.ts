@@ -120,10 +120,13 @@ const translations = {
       },
       TABLE: {
         ACTION_MENU: 'Open row actions',
+        HIDDEN_COLUMN: 'Hidden',
+        LOCKED_COLUMN: 'Locked',
         PREFERENCES_EYEBROW: 'Table',
         PREFERENCES_TITLE: 'Preferences',
         REQUIRED_COLUMN: 'Required',
         RESET_PREFERENCES: 'Reset',
+        VISIBLE_COLUMN: 'Visible',
         VISIBLE_COLUMNS: 'Visible columns',
         VISIBLE_COLUMNS_DESCRIPTION: 'Choose the columns shown in this table.'
       }
@@ -230,6 +233,10 @@ describe('JournalsPage', () => {
     expect(menu.querySelector('[data-testid="journal-view-action"] mat-icon')?.textContent?.trim()).toBe('visibility');
     expect(menu.querySelector('[data-testid="journal-edit-action"] mat-icon')?.textContent?.trim()).toBe('edit');
     expect(menu.querySelector('[data-testid="journal-disable-action"] mat-icon')?.textContent?.trim()).toBe('block');
+    expect(menu.querySelector('[data-testid="journal-entries-action"]')?.classList).toContain('liass-menu-action-brand');
+    expect(menu.querySelector('[data-testid="journal-view-action"]')?.classList).toContain('liass-menu-action-neutral');
+    expect(menu.querySelector('[data-testid="journal-edit-action"]')?.classList).toContain('liass-menu-action-info');
+    expect(menu.querySelector('[data-testid="journal-disable-action"]')?.classList).toContain('liass-menu-action-danger');
   });
 
   it('keeps destructive row actions behind the confirmation dialog', async () => {

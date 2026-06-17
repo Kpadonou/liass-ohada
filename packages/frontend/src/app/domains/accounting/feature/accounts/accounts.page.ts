@@ -178,7 +178,7 @@ export class AccountsPage {
       maxWidth: 'calc(100vw - 32px)',
       panelClass: 'liass-dialog-panel',
       restoreFocus: true,
-      width: '520px'
+      width: '560px'
     });
 
     dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {

@@ -10,10 +10,13 @@
     },
     "TABLE": {
       "ACTION_MENU": "Open row actions",
+      "HIDDEN_COLUMN": "Hidden",
+      "LOCKED_COLUMN": "Locked",
       "PREFERENCES_EYEBROW": "Table",
       "PREFERENCES_TITLE": "Preferences",
       "REQUIRED_COLUMN": "Required",
       "RESET_PREFERENCES": "Reset",
+      "VISIBLE_COLUMN": "Visible",
       "VISIBLE_COLUMNS": "Visible columns",
       "VISIBLE_COLUMNS_DESCRIPTION": "Choose the columns shown in this table."
     },

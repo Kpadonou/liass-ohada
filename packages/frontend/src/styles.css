@@ -122,6 +122,76 @@ mat-icon {
   box-shadow: var(--shadow-app-popover);
 }
 
+.mat-mdc-menu-item.liass-menu-action {
+  --liass-menu-action-color: var(--color-app-text);
+  --liass-menu-action-hover-bg: var(--color-app-surface-muted);
+  --mat-menu-item-icon-color: var(--liass-menu-action-color);
+  --mat-menu-item-label-text-color: var(--liass-menu-action-color);
+  --mat-menu-item-hover-state-layer-color: var(--liass-menu-action-hover-bg);
+  --mat-menu-item-focus-state-layer-color: var(--liass-menu-action-hover-bg);
+  color: var(--liass-menu-action-color) !important;
+}
+
+.mat-mdc-menu-item.liass-menu-action .mat-icon,
+.mat-mdc-menu-item.liass-menu-action .mat-mdc-menu-item-text {
+  color: var(--liass-menu-action-color) !important;
+}
+
+.mat-mdc-menu-item.liass-menu-action:hover,
+.mat-mdc-menu-item.liass-menu-action:focus-visible {
+  background-color: var(--liass-menu-action-hover-bg) !important;
+}
+
+.mat-mdc-menu-item.liass-menu-action-neutral {
+  --liass-menu-action-color: #475569;
+  --liass-menu-action-hover-bg: #f8fafc;
+}
+
+.mat-mdc-menu-item.liass-menu-action-brand {
+  --liass-menu-action-color: var(--color-brand-700);
+  --liass-menu-action-hover-bg: var(--color-brand-50);
+}
+
+.mat-mdc-menu-item.liass-menu-action-info {
+  --liass-menu-action-color: var(--color-info-600);
+  --liass-menu-action-hover-bg: var(--color-info-50);
+}
+
+.mat-mdc-menu-item.liass-menu-action-warning {
+  --liass-menu-action-color: var(--color-warning-600);
+  --liass-menu-action-hover-bg: var(--color-warning-50);
+}
+
+.mat-mdc-menu-item.liass-menu-action-danger {
+  --liass-menu-action-color: var(--color-danger-600);
+  --liass-menu-action-hover-bg: var(--color-danger-50);
+}
+
+.dark .mat-mdc-menu-item.liass-menu-action-neutral {
+  --liass-menu-action-color: #cbd5e1;
+  --liass-menu-action-hover-bg: #1e293b;
+}
+
+.dark .mat-mdc-menu-item.liass-menu-action-brand {
+  --liass-menu-action-color: var(--color-brand-300);
+  --liass-menu-action-hover-bg: rgb(8 43 85 / 0.48);
+}
+
+.dark .mat-mdc-menu-item.liass-menu-action-info {
+  --liass-menu-action-color: #7dd3fc;
+  --liass-menu-action-hover-bg: rgb(12 74 110 / 0.42);
+}
+
+.dark .mat-mdc-menu-item.liass-menu-action-warning {
+  --liass-menu-action-color: #fbbf24;
+  --liass-menu-action-hover-bg: rgb(120 53 15 / 0.42);
+}
+
+.dark .mat-mdc-menu-item.liass-menu-action-danger {
+  --liass-menu-action-color: #fda4af;
+  --liass-menu-action-hover-bg: rgb(136 19 55 / 0.42);
+}
+
 .mat-mdc-progress-spinner {
   --mdc-circular-progress-active-indicator-color: var(--color-brand-600);
 }

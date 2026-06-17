@@ -249,17 +249,30 @@
                     <mat-icon>more_vert</mat-icon>
                   </button>
                   <mat-menu #journalActionsMenu="matMenu" xPosition="before">
-                    <button mat-menu-item type="button" data-testid="journal-entries-action" (click)="viewEntries(journal)">
+                    <button
+                      mat-menu-item
+                      type="button"
+                      class="liass-menu-action liass-menu-action-brand"
+                      data-testid="journal-entries-action"
+                      (click)="viewEntries(journal)"
+                    >
                       <mat-icon>receipt_long</mat-icon>
                       <span>{{ 'ACCOUNTING.JOURNALS.ACTIONS.VIEW_ENTRIES' | transloco }}</span>
                     </button>
-                    <button mat-menu-item type="button" data-testid="journal-view-action" (click)="openJournalDetails(journal)">
+                    <button
+                      mat-menu-item
+                      type="button"
+                      class="liass-menu-action liass-menu-action-neutral"
+                      data-testid="journal-view-action"
+                      (click)="openJournalDetails(journal)"
+                    >
                       <mat-icon>visibility</mat-icon>
                       <span>{{ 'ACCOUNTING.JOURNALS.ACTIONS.VIEW_DETAILS' | transloco }}</span>
                     </button>
                     <button
                       mat-menu-item
                       type="button"
+                      class="liass-menu-action liass-menu-action-info"
                       data-testid="journal-edit-action"
                       [disabled]="!canEditJournal(journal)"
                       (click)="openEditJournal(journal)"
@@ -270,12 +283,12 @@
                     <button
                       mat-menu-item
                       type="button"
-                      class="text-danger-600 dark:text-rose-300"
+                      class="liass-menu-action liass-menu-action-danger"
                       data-testid="journal-disable-action"
                       [disabled]="!canDisableJournal(journal)"
                       (click)="openDisableJournal(journal)"
                     >
-                      <mat-icon class="text-danger-600 dark:text-rose-300">block</mat-icon>
+                      <mat-icon>block</mat-icon>
                       <span>{{ 'ACCOUNTING.JOURNALS.ACTIONS.DISABLE_JOURNAL' | transloco }}</span>
                     </button>
                   </mat-menu>
