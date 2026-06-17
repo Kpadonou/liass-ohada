@@ -94,6 +94,7 @@ describe('AccountingApi', () => {
     expect(createRequest.request.method).toBe('POST');
     expect(createRequest.request.body).toEqual(createPayload);
     createRequest.flush({
+      message: 'Compte créé avec succès.',
       account: accountResponseFixture({
         accountId: '41100000',
         accountName: 'Clients auxiliaires'
@@ -101,8 +102,11 @@ describe('AccountingApi', () => {
     });
 
     await expect(createPromise).resolves.toMatchObject({
-      accountId: '41100000',
-      accountName: 'Clients auxiliaires'
+      data: {
+        accountId: '41100000',
+        accountName: 'Clients auxiliaires'
+      },
+      message: 'Compte créé avec succès.'
     });
 
     const updatePromise = api.updateAccount('41100000', {
@@ -117,24 +121,34 @@ describe('AccountingApi', () => {
       allowReconciliation: true
     });
     updateRequest.flush({
+      message: 'Compte mis à jour avec succès.',
       account: accountResponseFixture({
         accountName: 'Clients et comptes rattachés'
       })
     });
 
     await expect(updatePromise).resolves.toMatchObject({
-      accountName: 'Clients et comptes rattachés'
+      data: {
+        accountName: 'Clients et comptes rattachés'
+      },
+      message: 'Compte mis à jour avec succès.'
     });
 
     const disablePromise = api.disableAccount('41100000');
     const disableRequest = httpMock.expectOne(`${apiBaseUrl}/accounts/41100000`);
 
     expect(disableRequest.request.method).toBe('DELETE');
-    disableRequest.flush({ account: accountResponseFixture({ isActive: false }) });
+    disableRequest.flush({
+      message: 'Compte désactivé avec succès.',
+      account: accountResponseFixture({ isActive: false })
+    });
 
     await expect(disablePromise).resolves.toMatchObject({
-      accountId: '41100000',
-      isActive: false
+      data: {
+        accountId: '41100000',
+        isActive: false
+      },
+      message: 'Compte désactivé avec succès.'
     });
   });
 
@@ -185,6 +199,7 @@ describe('AccountingApi', () => {
     expect(createRequest.request.method).toBe('POST');
     expect(createRequest.request.body).toEqual(createPayload);
     createRequest.flush({
+      message: 'Journal créé avec succès.',
       data: journalResponseFixture({
         journalCode: 'AC',
         journalName: 'Achats',
@@ -193,9 +208,12 @@ describe('AccountingApi', () => {
     });
 
     await expect(createPromise).resolves.toMatchObject({
-      journalCode: 'AC',
-      journalName: 'Achats',
-      type: 'PURCHASE'
+      data: {
+        journalCode: 'AC',
+        journalName: 'Achats',
+        type: 'PURCHASE'
+      },
+      message: 'Journal créé avec succès.'
     });
 
     const updatePromise = api.updateJournal('AC', {
@@ -212,6 +230,7 @@ describe('AccountingApi', () => {
       type: 'PURCHASE'
     });
     updateRequest.flush({
+      message: 'Journal mis à jour avec succès.',
       data: journalResponseFixture({
         journalCode: 'AC',
         journalName: 'Achats fournisseurs',
@@ -220,17 +239,23 @@ describe('AccountingApi', () => {
     });
 
     await expect(updatePromise).resolves.toMatchObject({
-      journalCode: 'AC',
-      journalName: 'Achats fournisseurs'
+      data: {
+        journalCode: 'AC',
+        journalName: 'Achats fournisseurs'
+      },
+      message: 'Journal mis à jour avec succès.'
     });
 
     const disablePromise = api.disableJournal('AC');
     const disableRequest = httpMock.expectOne(`${apiBaseUrl}/journals/AC`);
 
     expect(disableRequest.request.method).toBe('DELETE');
-    disableRequest.flush({ data: {} });
+    disableRequest.flush({ message: 'Journal désactivé avec succès.', data: {} });
 
-    await expect(disablePromise).resolves.toBeUndefined();
+    await expect(disablePromise).resolves.toEqual({
+      data: undefined,
+      message: 'Journal désactivé avec succès.'
+    });
   });
 
   it('rejects invalid account payloads and invalid account responses', async () => {
@@ -338,6 +363,7 @@ describe('AccountingApi', () => {
       year: 2026
     });
     request.flush({
+      message: 'Exercice créé avec succès.',
       data: {
         orgId: 'org-test',
         year: 2026,
@@ -352,13 +378,16 @@ describe('AccountingApi', () => {
     });
 
     await expect(promise).resolves.toEqual({
-      orgId: 'org-test',
-      year: 2026,
-      fiscalYearId: 'FY#2026',
-      startDate: '2026-01-01',
-      endDate: '2026-12-31',
-      status: 'OPEN',
-      accountingFramework: 'SYSCOHADA_REVISED'
+      data: {
+        orgId: 'org-test',
+        year: 2026,
+        fiscalYearId: 'FY#2026',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        status: 'OPEN',
+        accountingFramework: 'SYSCOHADA_REVISED'
+      },
+      message: 'Exercice créé avec succès.'
     });
   });
 
@@ -401,6 +430,7 @@ describe('AccountingApi', () => {
     expect(lockRequest.request.method).toBe('POST');
     expect(lockRequest.request.body).toEqual({ year: 2026, month: 2, status: 'LOCKED' });
     lockRequest.flush({
+      message: 'Période verrouillée.',
       data: {
         year: 2026,
         month: '02',
@@ -408,7 +438,10 @@ describe('AccountingApi', () => {
       }
     });
 
-    await expect(lockPromise).resolves.toMatchObject({ month: '02', status: 'LOCKED' });
+    await expect(lockPromise).resolves.toMatchObject({
+      data: { month: '02', status: 'LOCKED' },
+      message: 'Période verrouillée.'
+    });
 
     const unlockPromise = api.unlockPeriod(2026, 2);
     const unlockRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/2026/unlock`);
@@ -416,6 +449,7 @@ describe('AccountingApi', () => {
     expect(unlockRequest.request.method).toBe('POST');
     expect(unlockRequest.request.body).toEqual({ year: 2026, month: 2 });
     unlockRequest.flush({
+      message: 'Période déverrouillée.',
       data: {
         year: 2026,
         month: '02',
@@ -423,7 +457,10 @@ describe('AccountingApi', () => {
       }
     });
 
-    await expect(unlockPromise).resolves.toMatchObject({ month: '02', status: 'OPEN' });
+    await expect(unlockPromise).resolves.toMatchObject({
+      data: { month: '02', status: 'OPEN' },
+      message: 'Période déverrouillée.'
+    });
   });
 
   it('closes fiscal years and loads income statement aggregates', async () => {

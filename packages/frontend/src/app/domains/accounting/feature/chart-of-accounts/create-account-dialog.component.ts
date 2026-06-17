@@ -58,12 +58,12 @@ export class CreateAccountDialogComponent {
 
     try {
       const raw = this.form.getRawValue();
-      const account = await this.accountingApi.createAccount({
+      const result = await this.accountingApi.createAccount({
         ...raw,
         classCode: Number(raw.classCode)
       });
 
-      this.dialogRef.close(account);
+      this.dialogRef.close(result.data);
     } catch {
       this.errorKey.set('ACCOUNTING.ERRORS.CREATE_ACCOUNT_FAILED');
     } finally {

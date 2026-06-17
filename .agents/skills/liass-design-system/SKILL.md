@@ -25,8 +25,12 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 10. For table/list management pages, make simple create and edit actions dialog-based by default so the user stays in context.
 11. For `mat-select` fields with more than 10 options, or likely to grow beyond 10 options, provide search/filter capability by default.
 12. For pages that load remote data, especially data-heavy tables and lists, always show an explicit loading state; users must never see a blank table/list area while data is loading.
-13. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
-14. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
+13. Use snackbars only for short, transient, action-related feedback; keep validation, blocking errors, empty states, confirmations, and long business guidance contextual.
+14. Prefer backend-provided user-facing messages over generic frontend messages, including nested payloads such as `{ message: { code, message } }`; use translated frontend fallbacks only when backend message extraction returns no safe message.
+15. Never expose technical details such as PK/SK/GSI keys, stack traces, raw AWS errors, or internal exception names in notifications or visible UI.
+16. User-facing copy must describe business state and user action, not implementation layers; avoid terms such as backend, API, DynamoDB, Lambda, PK, SK, GSI, deployment, route, or technical keys unless the surface is explicitly for administrators/developers.
+17. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
+18. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
 
 ## Reference priority
 
@@ -86,6 +90,16 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 - Use tables for operational ERP data.
 - Use tabs for peer sections of the same object.
 - Use snackbars/toasts only for brief feedback.
+- Use `NotificationService`/`MatSnackBar` for short action feedback such as entity created, entity updated, entity disabled, fiscal year created, period locked/unlocked, active context changed, settings saved, no changes detected, or action rejected by the backend when the page can remain usable.
+- For success feedback, display the backend response message when available; fall back to a Transloco key only when the backend did not provide a suitable user-facing message.
+- For error feedback, display the normalized safe backend error message when available; fall back to a Transloco key only when absent or technical.
+- Notification message extraction must support backend shapes such as `message`, `message.message`, `error.message`, `error.error.message`, `error.error.message.message`, and `error.error.errors[0].message`.
+- Visible text should say what happened and what the user can do next. Do not mention backend/API/service architecture, persistence keys, route names, deployment state, or internal validation machinery in normal user flows; translate those into business wording such as “l’accès est vérifié”, “les contrôles de l’exercice restent appliqués”, or “le service est temporairement indisponible”.
+- Semantic snackbars must use strong semantic backgrounds with readable on-colors: `error-notification-overlay` uses the error/red surface, `success-notification-overlay` uses the success surface, `warning-notification-overlay` uses the warning surface, and `info-notification-overlay` uses the info/tertiary surface. Do not let Angular Material fall back to the default dark snackbar for semantic feedback.
+- Keep form validation inline in the form, including required fields, invalid formats, accounting imbalances, dates outside fiscal year, and missing account/journal/third-party context.
+- Keep page empty states and blocking errors in page context, including no fiscal year configured, select a fiscal year, no accounts found, no journals found, no client dossiers found, no access, module cannot load, and required context missing.
+- Keep confirmation content in dialogs for risky actions such as disabling accounts, locking/unlocking periods, or closing preparation; do not replace confirmations with snackbars.
+- Keep long OHADA/compliance explanations visible in the page, drawer, or dialog. A snackbar can be added only as secondary completion/failure feedback.
 - Place primary actions predictably; make secondary actions lower emphasis.
 - Separate or clearly style destructive actions.
 - Group card actions consistently in headers or footers.

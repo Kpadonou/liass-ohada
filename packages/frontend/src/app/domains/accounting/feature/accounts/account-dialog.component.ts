@@ -10,8 +10,10 @@ import {
   type AccountDto,
   type CreateAccountRequest
 } from '@liass-ohada/shared/accounting';
-import { TranslocoModule } from '@ngneat/transloco';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AccountingApi } from '../../data-access/accounting.api';
 
@@ -42,6 +44,8 @@ export class AccountDialogComponent {
     MatDialogRef
   );
   private readonly formBuilder = inject(FormBuilder);
+  private readonly notification = inject(NotificationService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly classCodes = [1, 2, 3, 4, 5, 6, 7, 8] as const;
   protected readonly errorKey = signal<string | null>(null);
@@ -101,20 +105,26 @@ export class AccountDialogComponent {
         financialStatementCode: raw.financialStatementCode.trim(),
         allowReconciliation: raw.allowReconciliation
       };
-      const account = this.isEditMode
+      const result = this.isEditMode
         ? await this.accountingApi.updateAccount(this.data.account!.accountId, payload)
         : await this.accountingApi.createAccount({
             ...payload,
             accountId: raw.accountId.trim()
           });
+      const fallbackKey = this.isEditMode
+        ? 'ACCOUNTING.NOTIFICATIONS.ACCOUNT_UPDATED'
+        : 'ACCOUNTING.NOTIFICATIONS.ACCOUNT_CREATED';
 
-      this.dialogRef.close(account);
-    } catch {
-      this.errorKey.set(
+      this.notification.success(result.message ?? this.transloco.translate(fallbackKey));
+      this.dialogRef.close(result.data);
+    } catch (error) {
+      const fallbackKey =
         this.isEditMode
           ? 'ACCOUNTING.ERRORS.UPDATE_ACCOUNT_FAILED'
-          : 'ACCOUNTING.ERRORS.CREATE_ACCOUNT_FAILED'
-      );
+          : 'ACCOUNTING.ERRORS.CREATE_ACCOUNT_FAILED';
+
+      this.errorKey.set(fallbackKey);
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate(fallbackKey));
     } finally {
       this.submitting.set(false);
     }

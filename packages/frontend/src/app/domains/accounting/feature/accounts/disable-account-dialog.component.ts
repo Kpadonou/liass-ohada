@@ -2,8 +2,10 @@ import { Component, inject, signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { type AccountDto } from '@liass-ohada/shared/accounting';
-import { TranslocoModule } from '@ngneat/transloco';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AccountingApi } from '../../data-access/accounting.api';
 
@@ -22,6 +24,8 @@ export class DisableAccountDialogComponent {
   private readonly dialogRef = inject<MatDialogRef<DisableAccountDialogComponent, AccountDto | null>>(
     MatDialogRef
   );
+  private readonly notification = inject(NotificationService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly account = this.data.account;
   protected readonly errorKey = signal<string | null>(null);
@@ -36,10 +40,17 @@ export class DisableAccountDialogComponent {
     this.errorKey.set(null);
 
     try {
-      const account = await this.accountingApi.disableAccount(this.account.accountId);
-      this.dialogRef.close(account);
-    } catch {
-      this.errorKey.set('ACCOUNTING.ERRORS.DISABLE_ACCOUNT_FAILED');
+      const result = await this.accountingApi.disableAccount(this.account.accountId);
+
+      this.notification.success(
+        result.message ?? this.transloco.translate('ACCOUNTING.NOTIFICATIONS.ACCOUNT_DISABLED')
+      );
+      this.dialogRef.close(result.data);
+    } catch (error) {
+      const fallbackKey = 'ACCOUNTING.ERRORS.DISABLE_ACCOUNT_FAILED';
+
+      this.errorKey.set(fallbackKey);
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate(fallbackKey));
     } finally {
       this.submitting.set(false);
     }

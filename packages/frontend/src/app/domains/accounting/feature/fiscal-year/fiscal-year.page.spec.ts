@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
@@ -34,6 +35,11 @@ vi.mock('aws-amplify/auth', () => {
 const translations = {
   en: {
     ACCOUNTING: {
+      NOTIFICATIONS: {
+        FISCAL_YEAR_CREATED: 'Fiscal year created successfully.',
+        PERIOD_LOCKED: 'Period locked.',
+        PERIOD_UNLOCKED: 'Period unlocked.'
+      },
       FISCAL_YEAR: {
         ACTIONS: {
           CLOSE_PREPARATION: 'Preparation coming',
@@ -55,6 +61,10 @@ const translations = {
           TITLE: 'New fiscal year'
         },
         EMPTY: 'No fiscal year found.',
+        ERRORS: {
+          CREATE_FAILED: 'The fiscal year could not be created.',
+          PERIOD_UPDATE_FAILED: 'The period could not be updated.'
+        },
         NOT_FOUND: 'No fiscal year found for this year.',
         EYEBROW: 'Accounting period',
         FIELDS: {
@@ -132,12 +142,14 @@ const translations = {
 describe('FiscalYearPage', () => {
   let fixture: ComponentFixture<FiscalYearPage>;
   let httpMock: HttpTestingController;
+  let snackBarOpen: ReturnType<typeof vi.fn>;
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
   const currentYear = new Date().getFullYear();
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
+    snackBarOpen = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [
@@ -155,6 +167,7 @@ describe('FiscalYearPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: MatSnackBar, useValue: { open: snackBarOpen } },
         provideTanStackQuery(new QueryClient({
           defaultOptions: {
             queries: {
@@ -283,6 +296,7 @@ describe('FiscalYearPage', () => {
       year: currentYear + 1
     });
     createRequest.flush({
+      message: 'Backend says fiscal year created.',
       data: {
         accountingFramework: 'SYSCOHADA_REVISED',
         endDate: `${currentYear + 1}-12-31`,
@@ -299,6 +313,54 @@ describe('FiscalYearPage', () => {
 
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(0);
     expect(fixture.nativeElement.textContent).toContain(`${currentYear + 1}-01-01`);
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Backend says fiscal year created.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
+  });
+
+  it('shows backend fiscal-year create errors before generic fallbacks', async () => {
+    const component = fixture.componentInstance as unknown as {
+      openCreateFiscalYear: () => void;
+    };
+    component.openCreateFiscalYear();
+    fixture.detectChanges();
+
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+    const dialogInstance = dialogRef.componentInstance as unknown as {
+      form: {
+        setValue: (value: Record<string, unknown>) => void;
+      };
+      submit: () => Promise<void>;
+    };
+    dialogInstance.form.setValue({
+      year: currentYear
+    });
+
+    const submitPromise = dialogInstance.submit();
+    const createRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year`);
+
+    createRequest.flush(
+      {
+        message: {
+          code: 'ERROR_FISCAL_YEAR_ALREADY_EXISTS',
+          message: "L'exercice existe déjà."
+        }
+      },
+      { status: 409, statusText: 'Conflict' }
+    );
+    await submitPromise;
+    await settle(fixture);
+
+    expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
+    expect(document.body.textContent).toContain("L'exercice existe déjà.");
+    expect(document.body.textContent).not.toContain('The fiscal year could not be created.');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      "L'exercice existe déjà.",
+      undefined,
+      expect.objectContaining({ panelClass: 'error-notification-overlay' })
+    );
   });
 
   it('locks and unlocks periods through confirmation dialogs', async () => {
@@ -328,6 +390,7 @@ describe('FiscalYearPage', () => {
       status: 'LOCKED'
     });
     lockRequest.flush({
+      message: 'Backend says period locked.',
       data: {
         year: currentYear,
         month: '02',
@@ -342,6 +405,11 @@ describe('FiscalYearPage', () => {
     await settle(fixture);
 
     expect(fixture.nativeElement.textContent).toContain('2');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Backend says period locked.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
 
     component.togglePeriod('01');
     fixture.detectChanges();
@@ -361,6 +429,7 @@ describe('FiscalYearPage', () => {
       month: 1
     });
     unlockRequest.flush({
+      message: 'Backend says period unlocked.',
       data: {
         year: currentYear,
         month: '01',
@@ -372,6 +441,11 @@ describe('FiscalYearPage', () => {
     await settle(fixture);
 
     expect(fixture.nativeElement.textContent).toContain('1');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Backend says period unlocked.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
   });
 
   it('keeps final closing disabled as a preparation-only workflow', async () => {

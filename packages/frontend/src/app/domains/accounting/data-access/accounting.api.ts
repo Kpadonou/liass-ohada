@@ -52,6 +52,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
 
+import { type ApiMutationResult, userMessageFromResponse } from '../../../core/notifications/notification-message';
 import { environment } from '../../../../environments/environment';
 
 export interface PaginatedResult<T> {
@@ -142,30 +143,33 @@ export class AccountingApi {
     return AccountResponseSchema.parse(response).account;
   }
 
-  async createAccount(payload: CreateAccountRequest): Promise<AccountDto> {
+  async createAccount(payload: CreateAccountRequest): Promise<ApiMutationResult<AccountDto>> {
     const request = CreateAccountRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.post<unknown>(`${this.apiBaseUrl}/accounts`, request)
     );
+    const parsed = AccountResponseSchema.parse(response);
 
-    return AccountResponseSchema.parse(response).account;
+    return { data: parsed.account, message: userMessageFromResponse(response) };
   }
 
-  async updateAccount(accountId: string, payload: UpdateAccountRequest): Promise<AccountDto> {
+  async updateAccount(accountId: string, payload: UpdateAccountRequest): Promise<ApiMutationResult<AccountDto>> {
     const request = UpdateAccountRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.put<unknown>(this.accountUrl(accountId), request)
     );
+    const parsed = AccountResponseSchema.parse(response);
 
-    return AccountResponseSchema.parse(response).account;
+    return { data: parsed.account, message: userMessageFromResponse(response) };
   }
 
-  async disableAccount(accountId: string): Promise<AccountDto> {
+  async disableAccount(accountId: string): Promise<ApiMutationResult<AccountDto>> {
     const response = await firstValueFrom(
       this.http.delete<unknown>(this.accountUrl(accountId))
     );
+    const parsed = AccountResponseSchema.parse(response);
 
-    return AccountResponseSchema.parse(response).account;
+    return { data: parsed.account, message: userMessageFromResponse(response) };
   }
 
   async listJournals(): Promise<JournalDto[]> {
@@ -184,30 +188,32 @@ export class AccountingApi {
     return parseJournalResponse(response);
   }
 
-  async createJournal(payload: CreateJournalRequest): Promise<JournalDto> {
+  async createJournal(payload: CreateJournalRequest): Promise<ApiMutationResult<JournalDto>> {
     const request = CreateJournalRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.post<unknown>(`${this.apiBaseUrl}/journals`, request)
     );
 
-    return parseJournalResponse(response);
+    return parseJournalMutationResponse(response);
   }
 
-  async updateJournal(journalCode: string, payload: UpdateJournalRequest): Promise<JournalDto> {
+  async updateJournal(journalCode: string, payload: UpdateJournalRequest): Promise<ApiMutationResult<JournalDto>> {
     const request = UpdateJournalRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.put<unknown>(this.journalUrl(journalCode), request)
     );
 
-    return parseJournalResponse(response);
+    return parseJournalMutationResponse(response);
   }
 
-  async disableJournal(journalCode: string): Promise<void> {
+  async disableJournal(journalCode: string): Promise<ApiMutationResult<void>> {
     const response = await firstValueFrom(
       this.http.delete<unknown>(this.journalUrl(journalCode))
     );
 
     DisableJournalResponseSchema.parse(response);
+
+    return { data: undefined, message: userMessageFromResponse(response) };
   }
 
   async listEntries(paramsInput: ListEntriesParams): Promise<PaginatedResult<EntrySummaryDto>> {
@@ -271,13 +277,14 @@ export class AccountingApi {
     return TrialBalanceResponseSchema.parse(response).data;
   }
 
-  async createFiscalYear(payload: CreateFiscalYearRequest): Promise<FiscalYearDto> {
+  async createFiscalYear(payload: CreateFiscalYearRequest): Promise<ApiMutationResult<FiscalYearDto>> {
     const request = CreateFiscalYearRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.post<unknown>(`${this.apiBaseUrl}/fiscal-year`, request)
     );
+    const parsed = FiscalYearResponseSchema.parse(response);
 
-    return FiscalYearResponseSchema.parse(response).data;
+    return { data: parsed.data, message: userMessageFromResponse(response) };
   }
 
   async getFiscalYearDetails(year: string | number): Promise<FiscalYearDetailsDto> {
@@ -288,7 +295,7 @@ export class AccountingApi {
     return FiscalYearDetailsResponseSchema.parse(response).data;
   }
 
-  async lockPeriod(year: number, month: number): Promise<PeriodLockDto> {
+  async lockPeriod(year: number, month: number): Promise<ApiMutationResult<PeriodLockDto>> {
     const request = { year, month, status: 'LOCKED' as const };
     const response = await firstValueFrom(
       this.http.post<unknown>(
@@ -296,19 +303,21 @@ export class AccountingApi {
         request
       )
     );
+    const parsed = PeriodLockResponseSchema.parse(response);
 
-    return PeriodLockResponseSchema.parse(response).data;
+    return { data: parsed.data, message: userMessageFromResponse(response) };
   }
 
-  async unlockPeriod(year: number, month: number): Promise<PeriodLockDto> {
+  async unlockPeriod(year: number, month: number): Promise<ApiMutationResult<PeriodLockDto>> {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/fiscal-year/${year}/unlock`,
         { year, month }
       )
     );
+    const parsed = PeriodLockResponseSchema.parse(response);
 
-    return PeriodLockResponseSchema.parse(response).data;
+    return { data: parsed.data, message: userMessageFromResponse(response) };
   }
 
   async closeFiscalYear(year: string | number): Promise<CloseFiscalYearResultDto> {
@@ -420,4 +429,11 @@ function parseJournalResponse(response: unknown): JournalDto {
   }
 
   return journal;
+}
+
+function parseJournalMutationResponse(response: unknown): ApiMutationResult<JournalDto> {
+  return {
+    data: parseJournalResponse(response),
+    message: userMessageFromResponse(response)
+  };
 }

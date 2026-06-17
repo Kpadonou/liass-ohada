@@ -6,8 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { type CreateJournalRequest, type JournalDto } from '@liass-ohada/shared/accounting';
-import { TranslocoModule } from '@ngneat/transloco';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AccountingApi } from '../../data-access/accounting.api';
 
@@ -37,6 +39,8 @@ export class CreateJournalDialogComponent {
     MatDialogRef
   );
   private readonly formBuilder = inject(FormBuilder);
+  private readonly notification = inject(NotificationService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly submitting = signal(false);
   protected readonly errorKey = signal<string | null>(null);
@@ -83,21 +87,27 @@ export class CreateJournalDialogComponent {
         journalName: raw.journalName.trim(),
         type: raw.type as CreateJournalRequest['type']
       };
-      const journal = this.isEditMode
+      const result = this.isEditMode
         ? await this.accountingApi.updateJournal(this.data.journal!.journalCode, {
             year: payload.year,
             journalName: payload.journalName,
             type: payload.type
           })
         : await this.accountingApi.createJournal(payload);
+      const fallbackKey = this.isEditMode
+        ? 'ACCOUNTING.NOTIFICATIONS.JOURNAL_UPDATED'
+        : 'ACCOUNTING.NOTIFICATIONS.JOURNAL_CREATED';
 
-      this.dialogRef.close(journal);
-    } catch {
-      this.errorKey.set(
+      this.notification.success(result.message ?? this.transloco.translate(fallbackKey));
+      this.dialogRef.close(result.data);
+    } catch (error) {
+      const fallbackKey =
         this.isEditMode
           ? 'ACCOUNTING.ERRORS.UPDATE_JOURNAL_FAILED'
-          : 'ACCOUNTING.ERRORS.CREATE_JOURNAL_FAILED'
-      );
+          : 'ACCOUNTING.ERRORS.CREATE_JOURNAL_FAILED';
+
+      this.errorKey.set(fallbackKey);
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate(fallbackKey));
     } finally {
       this.submitting.set(false);
     }

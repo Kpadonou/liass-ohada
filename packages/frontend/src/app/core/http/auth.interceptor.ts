@@ -50,7 +50,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           status: 401,
           statusText: 'Missing active organization',
           url: request.url,
-          error: { message: 'Select a workspace before calling the API.' }
+          error: { message: 'Select a workspace before continuing.' }
         })
     );
   }
@@ -64,7 +64,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           status: 401,
           statusText: 'Missing auth token',
           url: request.url,
-          error: { message: 'Sign in before calling the API.' }
+          error: { message: 'Sign in before continuing.' }
         });
       }
 

@@ -17,6 +17,11 @@
     "SELECT": {
       "NO_RESULTS": "No results",
       "SEARCH_PLACEHOLDER": "Search..."
+    },
+    "NOTIFICATIONS": {
+      "LOAD_ERROR": "Loading failed.",
+      "SAVE_ERROR": "Save failed.",
+      "SAVE_SUCCESS": "Changes saved."
     }
   },
   "SHELL": {
@@ -114,7 +119,7 @@
         "OWNER": "Owner",
         "STATUS": "Status"
       },
-      "DESCRIPTION": "A compact view of the mocked operational queue that will later be backed by domain APIs.",
+      "DESCRIPTION": "A compact view of the operational queue, ready to connect with business workflows.",
       "EMPTY": "No activity to display.",
       "ROWS": {
         "BANK": {
@@ -163,14 +168,14 @@
         "SYSCOHADA": "SYSCOHADA",
         "XOF": "Integer XOF"
       },
-      "DESCRIPTION": "This mock cockpit keeps the product direction centered on tenant isolation, OHADA accounting rigor, and AI-assisted accounting workflows.",
+      "DESCRIPTION": "This cockpit keeps the product direction centered on organization isolation, OHADA accounting rigor, and AI-assisted accounting workflows.",
       "TITLE": "Compliance-first workspace"
     },
     "FLOW": {
-      "DESCRIPTION": "A chart placeholder for future ledger, treasury, and project-flow metrics without adding chart dependencies.",
+      "DESCRIPTION": "A preview of future ledger, treasury, and project-flow metrics.",
       "POSTED_LABEL": "Posted",
       "REVIEW_LABEL": "Needs review",
-      "STATUS": "Mock data",
+      "STATUS": "Preview",
       "TITLE": "Accounting flow"
     },
     "HEADER": {
@@ -201,7 +206,7 @@
       }
     },
     "QUICK_ACTIONS": {
-      "DESCRIPTION": "Shortcuts switch the mock workspace focus without introducing extra routes.",
+      "DESCRIPTION": "Shortcuts switch the working scope without opening another screen.",
       "ITEMS": {
         "ENTRY": {
           "DESCRIPTION": "Focus the dashboard on journals and account controls.",
@@ -587,11 +592,11 @@
         "TITLE": "Accounting"
       },
       "CHART_OF_ACCOUNTS": {
-        "SUBTITLE": "A reserved route for chart-of-accounts controls.",
+        "SUBTITLE": "A reserved workspace for chart-of-accounts controls.",
         "TITLE": "Chart of accounts"
       },
       "ENTRIES": {
-        "SUBTITLE": "A reserved route for journal-entry workflows.",
+        "SUBTITLE": "A reserved workspace for journal-entry workflows.",
         "TITLE": "Entries"
       },
       "FISCAL_YEAR": {
@@ -599,11 +604,11 @@
         "TITLE": "Fiscal years"
       },
       "GENERAL_LEDGER": {
-        "SUBTITLE": "A reserved route for the general-ledger workspace.",
+        "SUBTITLE": "A reserved workspace for the general ledger.",
         "TITLE": "General ledger"
       },
       "JOURNALS": {
-        "SUBTITLE": "A reserved route for journal management.",
+        "SUBTITLE": "A reserved workspace for journal management.",
         "TITLE": "Journals"
       },
       "LETTERING": {
@@ -611,7 +616,7 @@
         "TITLE": "Lettering"
       },
       "TRIAL_BALANCE": {
-        "SUBTITLE": "A reserved route for balance review.",
+        "SUBTITLE": "A reserved workspace for balance review.",
         "TITLE": "Trial balance"
       }
     },
@@ -624,6 +629,18 @@
       "POST_ENTRY_FAILED": "The entry could not be posted.",
       "UPDATE_ACCOUNT_FAILED": "The account could not be updated.",
       "UPDATE_JOURNAL_FAILED": "The journal could not be updated."
+    },
+    "NOTIFICATIONS": {
+      "ACCOUNT_CREATED": "Account created successfully.",
+      "ACCOUNT_DISABLED": "Account disabled successfully.",
+      "ACCOUNT_UPDATED": "Account updated successfully.",
+      "ACTIVE_FISCAL_YEAR_CHANGED": "Active fiscal year updated.",
+      "FISCAL_YEAR_CREATED": "Fiscal year created successfully.",
+      "JOURNAL_CREATED": "Journal created successfully.",
+      "JOURNAL_DISABLED": "Journal disabled successfully.",
+      "JOURNAL_UPDATED": "Journal updated successfully.",
+      "PERIOD_LOCKED": "Period locked.",
+      "PERIOD_UNLOCKED": "Period unlocked."
     },
     "OVERVIEW": {
       "CARDS": {
@@ -854,7 +871,7 @@
         "SYSTEM_DESCRIPTION": "This system journal is reserved for automated accounting processing and cannot be edited or disabled from the interface."
       },
       "DISABLE": {
-        "DESCRIPTION": "Disabling {{ journalCode }} - {{ journalName }} prevents future use if the backend confirms no entry blocks it.",
+        "DESCRIPTION": "Disabling {{ journalCode }} - {{ journalName }} prevents future use if no entry blocks it.",
         "EYEBROW": "Disable",
         "TITLE": "Disable this journal?"
       },
@@ -1058,9 +1075,9 @@
       },
       "PERIOD_CONFIRM": {
         "EYEBROW": "Period lock",
-        "LOCK_DESCRIPTION": "Confirm locking this period. Future entries in this period will be rejected by the backend.",
+        "LOCK_DESCRIPTION": "Confirm locking this period. Future entries in this period will be rejected.",
         "LOCK_TITLE": "Lock this period?",
-        "UNLOCK_DESCRIPTION": "Confirm reopening this period. The backend remains the source of truth for fiscal-year controls.",
+        "UNLOCK_DESCRIPTION": "Confirm reopening this period. Fiscal-year controls remain enforced.",
         "UNLOCK_TITLE": "Unlock this period?"
       },
       "SELECTOR": {
@@ -1076,7 +1093,7 @@
       },
       "SUBTITLE": "Manage fiscal-year status and monthly locks before entries and lettering.",
       "SUMMARY": {
-        "DESCRIPTION": "Current backend status for the selected fiscal year.",
+        "DESCRIPTION": "Current status for the selected fiscal year.",
         "LOCKED_PERIODS": "Locked",
         "OPEN_PERIODS": "Open",
         "TITLE": "Fiscal year status"
@@ -1121,7 +1138,7 @@
       "ERRORS": {
         "CANCEL_FAILED": "Lettering could not be cancelled.",
         "CANCEL_SELECTION_REQUIRED": "Select at least one lettered line to cancel.",
-        "MISSING_YEAR": "Some lines do not carry the fiscal year required by the backend.",
+        "MISSING_YEAR": "Some lines do not carry the required fiscal year.",
         "POST_FAILED": "Lettering could not be saved.",
         "SELECTION_REQUIRED": "Select at least two unlettered lines."
       },
@@ -1157,7 +1174,7 @@
       "STATUS": {
         "UNLETTERED": "Unlettered"
       },
-      "SUBTITLE": "Match third-party entries without exposing DynamoDB technical keys.",
+      "SUBTITLE": "Match third-party entries using business references.",
       "SUGGESTIONS": {
         "AMOUNT": "Amount",
         "TYPES": {
@@ -1305,9 +1322,9 @@
         "AUTH_REQUIRED": "Your session could not authorize workspace creation. Sign in again, then retry.",
         "CREATE_FAILED": "Workspace creation could not finish. Please retry.",
         "DUPLICATE_WORKSPACE": "A workspace already exists for this account. Refresh your workspace list or continue to your dashboard.",
-        "MISSING_ROUTE": "The workspace creation service is not available on the configured API. Check the backend deployment, then retry.",
+        "MISSING_ROUTE": "The workspace creation service is not available right now. Check the configuration, then retry.",
         "NETWORK": "The workspace could not be created because the network connection failed. Check your connection and retry.",
-        "SERVER": "The backend service hit an error while creating the workspace. Please retry after a moment.",
+        "SERVER": "The service hit an error while creating the workspace. Please retry after a moment.",
         "VALIDATION": "The workspace was created, but the response could not be verified. Please retry or refresh your workspace list."
       },
       "VALIDATION": {
@@ -1438,7 +1455,7 @@
         "DUPLICATE": "This client dossier already exists.",
         "LOAD_FAILED": "Client dossiers could not be loaded. Please retry.",
         "NETWORK": "The client dossier could not be created because the network connection failed.",
-        "SERVICE_UNAVAILABLE": "Client dossier management is not available on the configured backend yet.",
+        "SERVICE_UNAVAILABLE": "Client dossier management is not available for this workspace yet.",
         "VALIDATION": "The client dossier response could not be verified. Please retry."
       },
       "VALIDATION": {
@@ -1515,7 +1532,7 @@
     "WORKSPACE": {
       "EYEBROW": "Workspace",
       "TITLE": "Select your organization",
-      "SUBTITLE": "Choose the organization you want to work in. Access is verified by the backend before protected data is returned.",
+      "SUBTITLE": "Choose the organization you want to work in. Access is verified before protected data is shown.",
       "CARD_TITLE": "Continue to a tenant workspace",
       "CARD_SUBTITLE": "Select an organization assigned to your account.",
       "LOADING": "Loading workspaces...",

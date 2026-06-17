@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { vi } from 'vitest';
 
 import { environment } from '../../../../../environments/environment';
 import { AccountsPage } from './accounts.page';
@@ -133,6 +135,11 @@ const translations = {
         DISABLE_ACCOUNT_FAILED: 'The account could not be disabled.',
         LOAD_FAILED: 'Accounting data could not be loaded.',
         UPDATE_ACCOUNT_FAILED: 'The account could not be updated.'
+      },
+      NOTIFICATIONS: {
+        ACCOUNT_CREATED: 'Account created successfully.',
+        ACCOUNT_DISABLED: 'Account disabled successfully.',
+        ACCOUNT_UPDATED: 'Account updated successfully.'
       }
     }
   },
@@ -148,10 +155,12 @@ const translations = {
 describe('AccountsPage', () => {
   let fixture: ComponentFixture<AccountsPage>;
   let httpMock: HttpTestingController;
+  let snackBarOpen: ReturnType<typeof vi.fn>;
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
+    snackBarOpen = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [
@@ -168,6 +177,7 @@ describe('AccountsPage', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: MatSnackBar, useValue: { open: snackBarOpen } },
         provideRouter([]),
         provideTanStackQuery(
           new QueryClient({
@@ -381,6 +391,11 @@ describe('AccountsPage', () => {
 
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(0);
     expect(fixture.nativeElement.textContent).toContain('Clients auxiliaires');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Account created successfully.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
   });
 
   it('keeps the edit dialog open on failure and prevents duplicate submit', async () => {
@@ -417,6 +432,11 @@ describe('AccountsPage', () => {
 
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
     expect(document.body.textContent).toContain('The account could not be updated.');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Nope',
+      undefined,
+      expect.objectContaining({ panelClass: 'error-notification-overlay' })
+    );
   });
 
   it('opens account details in a drawer', async () => {
@@ -457,6 +477,7 @@ describe('AccountsPage', () => {
 
     expect(disableRequest.request.method).toBe('DELETE');
     disableRequest.flush({
+      message: 'Backend says account disabled.',
       account: accountFixture({ isActive: false })
     });
     await confirmPromise;
@@ -466,6 +487,11 @@ describe('AccountsPage', () => {
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(0);
     expect(fixture.nativeElement.textContent).toContain('Clients');
     expect(fixture.nativeElement.textContent).toContain('Inactive');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Backend says account disabled.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
   });
 
   it('keeps the disable confirmation open on failure', async () => {

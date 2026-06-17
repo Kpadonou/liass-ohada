@@ -74,6 +74,15 @@ body {
   font-family: var(--font-sans);
 }
 
+:root {
+  --liass-success: #047857;
+  --liass-on-success: #ffffff;
+  --liass-warning: #b45309;
+  --liass-on-warning: #ffffff;
+  --liass-notification-default: var(--color-brand-700);
+  --liass-on-notification-default: #ffffff;
+}
+
 .dark body {
   background: var(--color-app-bg-dark);
 }
@@ -115,6 +124,90 @@ mat-icon {
 
 .mat-mdc-progress-spinner {
   --mdc-circular-progress-active-indicator-color: var(--color-brand-600);
+}
+
+.mat-mdc-snack-bar-container.default-notification-overlay {
+  --liass-notification-bg: var(--liass-notification-default);
+  --liass-notification-fg: var(--liass-on-notification-default);
+}
+
+.mat-mdc-snack-bar-container.info-notification-overlay {
+  --liass-notification-bg: var(--mat-sys-tertiary, #0284c7);
+  --liass-notification-fg: var(--mat-sys-on-tertiary, #ffffff);
+}
+
+.mat-mdc-snack-bar-container.success-notification-overlay {
+  --liass-notification-bg: var(--liass-success);
+  --liass-notification-fg: var(--liass-on-success);
+}
+
+.mat-mdc-snack-bar-container.warning-notification-overlay {
+  --liass-notification-bg: var(--liass-warning);
+  --liass-notification-fg: var(--liass-on-warning);
+}
+
+.mat-mdc-snack-bar-container.error-notification-overlay {
+  --liass-notification-bg: var(--mat-sys-error, #b3261e);
+  --liass-notification-fg: var(--mat-sys-on-error, #ffffff);
+}
+
+.mat-mdc-snack-bar-container.default-notification-overlay,
+.mat-mdc-snack-bar-container.info-notification-overlay,
+.mat-mdc-snack-bar-container.success-notification-overlay,
+.mat-mdc-snack-bar-container.warning-notification-overlay,
+.mat-mdc-snack-bar-container.error-notification-overlay {
+  --mdc-snackbar-container-color: var(--liass-notification-bg);
+  --mdc-snackbar-supporting-text-color: var(--liass-notification-fg);
+  --mat-snack-bar-button-color: var(--liass-notification-fg);
+  --mat-snack-bar-container-color: var(--liass-notification-bg);
+  --mat-snack-bar-supporting-text-color: var(--liass-notification-fg);
+  background-color: var(--liass-notification-bg);
+  border: 1px solid color-mix(in srgb, var(--liass-notification-fg) 28%, transparent);
+  color: var(--liass-notification-fg);
+  box-shadow: var(--shadow-app-popover);
+}
+
+.mat-mdc-snack-bar-container.default-notification-overlay .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.info-notification-overlay .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.success-notification-overlay .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.warning-notification-overlay .mdc-snackbar__surface,
+.mat-mdc-snack-bar-container.error-notification-overlay .mdc-snackbar__surface {
+  background-color: var(--liass-notification-bg);
+  color: var(--liass-notification-fg);
+}
+
+.mat-mdc-snack-bar-container.default-notification-overlay .mat-mdc-snack-bar-label,
+.mat-mdc-snack-bar-container.info-notification-overlay .mat-mdc-snack-bar-label,
+.mat-mdc-snack-bar-container.success-notification-overlay .mat-mdc-snack-bar-label,
+.mat-mdc-snack-bar-container.warning-notification-overlay .mat-mdc-snack-bar-label,
+.mat-mdc-snack-bar-container.error-notification-overlay .mat-mdc-snack-bar-label {
+  color: var(--liass-notification-fg);
+  font-weight: 600;
+}
+
+.dark .mat-mdc-snack-bar-container.default-notification-overlay {
+  --liass-notification-bg: var(--color-brand-600);
+  --liass-notification-fg: #ffffff;
+}
+
+.dark .mat-mdc-snack-bar-container.info-notification-overlay {
+  --liass-notification-bg: var(--mat-sys-tertiary, #0891b2);
+  --liass-notification-fg: var(--mat-sys-on-tertiary, #ffffff);
+}
+
+.dark .mat-mdc-snack-bar-container.success-notification-overlay {
+  --liass-notification-bg: #059669;
+  --liass-notification-fg: #ffffff;
+}
+
+.dark .mat-mdc-snack-bar-container.warning-notification-overlay {
+  --liass-notification-bg: #d97706;
+  --liass-notification-fg: #ffffff;
+}
+
+.dark .mat-mdc-snack-bar-container.error-notification-overlay {
+  --liass-notification-bg: var(--mat-sys-error, #dc2626);
+  --liass-notification-fg: var(--mat-sys-on-error, #ffffff);
 }
 
 @utility no-scrollbar {

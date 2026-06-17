@@ -17,6 +17,11 @@
     "SELECT": {
       "NO_RESULTS": "Aucun résultat",
       "SEARCH_PLACEHOLDER": "Rechercher..."
+    },
+    "NOTIFICATIONS": {
+      "LOAD_ERROR": "Le chargement a échoué.",
+      "SAVE_ERROR": "L’enregistrement a échoué.",
+      "SAVE_SUCCESS": "Modifications enregistrées."
     }
   },
   "SHELL": {
@@ -114,7 +119,7 @@
         "OWNER": "Responsable",
         "STATUS": "Statut"
       },
-      "DESCRIPTION": "Une vue compacte de la file opérationnelle simulée, destinée à être reliée plus tard aux API de domaine.",
+      "DESCRIPTION": "Une vue compacte de la file opérationnelle, destinée à être reliée aux workflows métier.",
       "EMPTY": "Aucune activité à afficher.",
       "ROWS": {
         "BANK": {
@@ -163,14 +168,14 @@
         "SYSCOHADA": "SYSCOHADA",
         "XOF": "XOF entiers"
       },
-      "DESCRIPTION": "Ce poste de pilotage simulé garde la direction produit centrée sur l’isolation des tenants, la rigueur comptable OHADA et les workflows comptables assistés par IA.",
+      "DESCRIPTION": "Ce poste de pilotage met l’accent sur l’isolation des organisations, la rigueur comptable OHADA et les workflows comptables assistés par IA.",
       "TITLE": "Espace orienté conformité"
     },
     "FLOW": {
-      "DESCRIPTION": "Un emplacement de graphique pour les futurs indicateurs de grand livre, trésorerie et projets, sans ajouter de dépendance de charting.",
+      "DESCRIPTION": "Un aperçu des futurs indicateurs de grand livre, trésorerie et projets.",
       "POSTED_LABEL": "Comptabilisé",
       "REVIEW_LABEL": "À revoir",
-      "STATUS": "Données mock",
+      "STATUS": "Aperçu",
       "TITLE": "Flux comptable"
     },
     "HEADER": {
@@ -201,7 +206,7 @@
       }
     },
     "QUICK_ACTIONS": {
-      "DESCRIPTION": "Les raccourcis changent le focus simulé sans créer de routes supplémentaires.",
+      "DESCRIPTION": "Les raccourcis changent le périmètre de travail sans ouvrir d’écran supplémentaire.",
       "ITEMS": {
         "ENTRY": {
           "DESCRIPTION": "Orienter le tableau de bord vers les journaux et contrôles de comptes.",
@@ -587,11 +592,11 @@
         "TITLE": "Comptabilité"
       },
       "CHART_OF_ACCOUNTS": {
-        "SUBTITLE": "Une route réservée aux contrôles du plan comptable.",
+        "SUBTITLE": "Un espace réservé aux contrôles du plan comptable.",
         "TITLE": "Plan comptable"
       },
       "ENTRIES": {
-        "SUBTITLE": "Une route réservée aux workflows d’écritures.",
+        "SUBTITLE": "Un espace réservé aux workflows d’écritures.",
         "TITLE": "Écritures"
       },
       "FISCAL_YEAR": {
@@ -599,11 +604,11 @@
         "TITLE": "Exercices"
       },
       "GENERAL_LEDGER": {
-        "SUBTITLE": "Une route réservée à l’espace grand livre.",
+        "SUBTITLE": "Un espace réservé au grand livre.",
         "TITLE": "Grand livre"
       },
       "JOURNALS": {
-        "SUBTITLE": "Une route réservée à la gestion des journaux.",
+        "SUBTITLE": "Un espace réservé à la gestion des journaux.",
         "TITLE": "Journaux"
       },
       "LETTERING": {
@@ -611,7 +616,7 @@
         "TITLE": "Lettrage"
       },
       "TRIAL_BALANCE": {
-        "SUBTITLE": "Une route réservée à la revue de la balance.",
+        "SUBTITLE": "Un espace réservé à la revue de la balance.",
         "TITLE": "Balance"
       }
     },
@@ -624,6 +629,18 @@
       "POST_ENTRY_FAILED": "L’écriture n’a pas pu être comptabilisée.",
       "UPDATE_ACCOUNT_FAILED": "Le compte n’a pas pu être mis à jour.",
       "UPDATE_JOURNAL_FAILED": "Le journal n’a pas pu être mis à jour."
+    },
+    "NOTIFICATIONS": {
+      "ACCOUNT_CREATED": "Compte créé avec succès.",
+      "ACCOUNT_DISABLED": "Compte désactivé avec succès.",
+      "ACCOUNT_UPDATED": "Compte mis à jour avec succès.",
+      "ACTIVE_FISCAL_YEAR_CHANGED": "Exercice actif mis à jour.",
+      "FISCAL_YEAR_CREATED": "Exercice fiscal créé avec succès.",
+      "JOURNAL_CREATED": "Journal créé avec succès.",
+      "JOURNAL_DISABLED": "Journal désactivé avec succès.",
+      "JOURNAL_UPDATED": "Journal mis à jour avec succès.",
+      "PERIOD_LOCKED": "Période verrouillée.",
+      "PERIOD_UNLOCKED": "Période déverrouillée."
     },
     "OVERVIEW": {
       "CARDS": {
@@ -854,7 +871,7 @@
         "SYSTEM_DESCRIPTION": "Ce journal système est réservé aux traitements comptables automatisés et ne peut pas être modifié ou désactivé depuis l’interface."
       },
       "DISABLE": {
-        "DESCRIPTION": "Désactiver {{ journalCode }} - {{ journalName }} empêche son utilisation future si le backend confirme qu’aucune écriture ne le bloque.",
+        "DESCRIPTION": "Désactiver {{ journalCode }} - {{ journalName }} empêche son utilisation future si aucune écriture ne le bloque.",
         "EYEBROW": "Désactivation",
         "TITLE": "Désactiver ce journal ?"
       },
@@ -1058,9 +1075,9 @@
       },
       "PERIOD_CONFIRM": {
         "EYEBROW": "Verrou de période",
-        "LOCK_DESCRIPTION": "Confirmez le verrouillage de cette période. Les écritures futures sur cette période seront refusées par le backend.",
+        "LOCK_DESCRIPTION": "Confirmez le verrouillage de cette période. Les écritures futures sur cette période seront refusées.",
         "LOCK_TITLE": "Verrouiller la période ?",
-        "UNLOCK_DESCRIPTION": "Confirmez la réouverture de cette période. Le backend reste source de vérité pour les contrôles de l’exercice.",
+        "UNLOCK_DESCRIPTION": "Confirmez la réouverture de cette période. Les contrôles de l’exercice restent appliqués.",
         "UNLOCK_TITLE": "Déverrouiller la période ?"
       },
       "SELECTOR": {
@@ -1076,7 +1093,7 @@
       },
       "SUBTITLE": "Pilotez le statut de l’exercice et les verrous mensuels avant les écritures et le lettrage.",
       "SUMMARY": {
-        "DESCRIPTION": "Statut backend courant de l’exercice sélectionné.",
+        "DESCRIPTION": "Statut courant de l’exercice sélectionné.",
         "LOCKED_PERIODS": "Verrouillées",
         "OPEN_PERIODS": "Ouvertes",
         "TITLE": "Statut de l’exercice"
@@ -1121,7 +1138,7 @@
       "ERRORS": {
         "CANCEL_FAILED": "Le lettrage n’a pas pu être annulé.",
         "CANCEL_SELECTION_REQUIRED": "Sélectionnez au moins une ligne lettrée à annuler.",
-        "MISSING_YEAR": "Certaines lignes ne portent pas l’exercice requis par le backend.",
+        "MISSING_YEAR": "Certaines lignes ne portent pas l’exercice requis.",
         "POST_FAILED": "Le lettrage n’a pas pu être enregistré.",
         "SELECTION_REQUIRED": "Sélectionnez au moins deux lignes non lettrées."
       },
@@ -1157,7 +1174,7 @@
       "STATUS": {
         "UNLETTERED": "Non lettrée"
       },
-      "SUBTITLE": "Rapprochez les écritures de tiers sans exposer les clés techniques DynamoDB.",
+      "SUBTITLE": "Rapprochez les écritures de tiers à partir des références métier.",
       "SUGGESTIONS": {
         "AMOUNT": "Montant",
         "TYPES": {
@@ -1305,9 +1322,9 @@
         "AUTH_REQUIRED": "Votre session n’autorise pas la création de l’espace. Reconnectez-vous, puis réessayez.",
         "CREATE_FAILED": "La création de l’espace n’a pas pu se terminer. Veuillez réessayer.",
         "DUPLICATE_WORKSPACE": "Un espace existe déjà pour ce compte. Actualisez la liste des espaces ou continuez vers votre tableau de bord.",
-        "MISSING_ROUTE": "Le service de création d’espace n’est pas disponible sur l’API configurée. Vérifiez le déploiement backend puis réessayez.",
+        "MISSING_ROUTE": "Le service de création d’espace n’est pas disponible pour le moment. Réessayez après vérification de la configuration.",
         "NETWORK": "L’espace n’a pas pu être créé car la connexion réseau a échoué. Vérifiez votre connexion puis réessayez.",
-        "SERVER": "Le service backend a rencontré une erreur pendant la création de l’espace. Veuillez réessayer après quelques instants.",
+        "SERVER": "Le service a rencontré une erreur pendant la création de l’espace. Veuillez réessayer après quelques instants.",
         "VALIDATION": "L’espace a été créé, mais la réponse n’a pas pu être vérifiée. Réessayez ou actualisez la liste des espaces."
       },
       "VALIDATION": {
@@ -1438,7 +1455,7 @@
         "DUPLICATE": "Ce dossier client existe déjà.",
         "LOAD_FAILED": "Les dossiers clients n’ont pas pu être chargés. Veuillez réessayer.",
         "NETWORK": "Le dossier client n’a pas pu être créé car la connexion réseau a échoué.",
-        "SERVICE_UNAVAILABLE": "La gestion des dossiers clients n’est pas encore disponible sur le backend configuré.",
+        "SERVICE_UNAVAILABLE": "La gestion des dossiers clients n’est pas encore disponible pour cet espace.",
         "VALIDATION": "La réponse du dossier client n’a pas pu être vérifiée. Veuillez réessayer."
       },
       "VALIDATION": {
@@ -1515,7 +1532,7 @@
     "WORKSPACE": {
       "EYEBROW": "Espace de travail",
       "TITLE": "Sélectionnez votre organisation",
-      "SUBTITLE": "Choisissez l’organisation dans laquelle vous souhaitez travailler. L’accès est vérifié par le backend avant le retour des données protégées.",
+      "SUBTITLE": "Choisissez l’organisation dans laquelle vous souhaitez travailler. L’accès est vérifié avant l’affichage des données protégées.",
       "CARD_TITLE": "Continuer vers un espace de travail",
       "CARD_SUBTITLE": "Sélectionnez une organisation associée à votre compte.",
       "LOADING": "Chargement des espaces de travail...",

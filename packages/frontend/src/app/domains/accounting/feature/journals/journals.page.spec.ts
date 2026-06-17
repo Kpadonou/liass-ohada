@@ -2,9 +2,11 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { vi } from 'vitest';
 
 import { environment } from '../../../../../environments/environment';
 import { JournalsPage } from './journals.page';
@@ -17,6 +19,11 @@ const translations = {
         DISABLE_JOURNAL_FAILED: 'The journal could not be disabled.',
         LOAD_FAILED: 'Accounting data could not be loaded.',
         UPDATE_JOURNAL_FAILED: 'The journal could not be updated.'
+      },
+      NOTIFICATIONS: {
+        JOURNAL_CREATED: 'Journal created successfully.',
+        JOURNAL_DISABLED: 'Journal disabled successfully.',
+        JOURNAL_UPDATED: 'Journal updated successfully.'
       },
       JOURNALS: {
         ACTIONS: {
@@ -118,10 +125,12 @@ const translations = {
 describe('JournalsPage', () => {
   let fixture: ComponentFixture<JournalsPage>;
   let httpMock: HttpTestingController;
+  let snackBarOpen: ReturnType<typeof vi.fn>;
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
+    snackBarOpen = vi.fn();
 
     await TestBed.configureTestingModule({
       imports: [
@@ -138,6 +147,7 @@ describe('JournalsPage', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
+        { provide: MatSnackBar, useValue: { open: snackBarOpen } },
         provideRouter([]),
         provideTanStackQuery(
           new QueryClient({
@@ -294,6 +304,11 @@ describe('JournalsPage', () => {
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(0);
     expect(fixture.nativeElement.textContent).toContain('VE');
     expect(fixture.nativeElement.textContent).toContain('Ventes');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Journal created successfully.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
   });
 
   it('edits a standard journal while keeping protected identifiers read-only', async () => {
@@ -333,6 +348,7 @@ describe('JournalsPage', () => {
       year: 2026
     });
     updateRequest.flush({
+      message: 'Backend says journal updated.',
       data: journalFixture({ journalCode: 'VE', journalName: 'Ventes export', type: 'SALE' })
     });
     await submitPromise;
@@ -341,6 +357,11 @@ describe('JournalsPage', () => {
 
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(0);
     expect(fixture.nativeElement.textContent).toContain('Ventes export');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Backend says journal updated.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
   });
 
   it('keeps the edit dialog open on failure and prevents duplicate submit', async () => {
@@ -378,6 +399,11 @@ describe('JournalsPage', () => {
 
     expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
     expect(document.body.textContent).toContain('The journal could not be updated.');
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Nope',
+      undefined,
+      expect.objectContaining({ panelClass: 'error-notification-overlay' })
+    );
   });
 
   it('does not open edit dialogs for protected system journals', async () => {
@@ -440,7 +466,7 @@ describe('JournalsPage', () => {
     const disableRequest = httpMock.expectOne(`${apiBaseUrl}/journals/VE`);
 
     expect(disableRequest.request.method).toBe('DELETE');
-    disableRequest.flush({ data: {} });
+    disableRequest.flush({ message: 'Backend says journal disabled.', data: {} });
     await confirmPromise;
     await waitForDialogClose();
     await settle(fixture);
@@ -449,6 +475,11 @@ describe('JournalsPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Achats');
     expect(fixture.nativeElement.textContent).not.toContain('Ventes');
     httpMock.expectNone(`${apiBaseUrl}/journals`);
+    expect(snackBarOpen).toHaveBeenCalledWith(
+      'Backend says journal disabled.',
+      undefined,
+      expect.objectContaining({ panelClass: 'success-notification-overlay' })
+    );
   });
 
   it('keeps the disable confirmation open on failure and prevents duplicate submit', async () => {

@@ -8,10 +8,12 @@ import {
   type FiscalYearDto,
   type FiscalYearDetailsDto
 } from '@liass-ohada/shared/accounting';
-import { TranslocoModule } from '@ngneat/transloco';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 import { take } from 'rxjs';
 
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -69,7 +71,12 @@ interface PeriodConfirmationDialogData {
           </mat-form-field>
         </div>
 
-        @if (errorKey(); as key) {
+        @if (errorMessage(); as message) {
+          <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+            <mat-icon class="mt-0.5">error</mat-icon>
+            <p>{{ message }}</p>
+          </div>
+        } @else if (errorKey(); as key) {
           <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
             <mat-icon class="mt-0.5">error</mat-icon>
             <p>{{ key | transloco }}</p>
@@ -102,8 +109,11 @@ export class CreateFiscalYearDialogComponent {
     MatDialogRef
   );
   private readonly formBuilder = inject(FormBuilder);
+  private readonly notification = inject(NotificationService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly errorKey = signal<string | null>(null);
+  protected readonly errorMessage = signal<string | null>(null);
   protected readonly submitting = signal(false);
 
   protected readonly form = this.formBuilder.nonNullable.group({
@@ -118,15 +128,25 @@ export class CreateFiscalYearDialogComponent {
 
     this.submitting.set(true);
     this.errorKey.set(null);
+    this.errorMessage.set(null);
 
     try {
       const raw = this.form.getRawValue();
-      const fiscalYear = await this.accountingApi.createFiscalYear({
+      const result = await this.accountingApi.createFiscalYear({
         year: Number(raw.year)
       });
-      this.dialogRef.close(fiscalYear);
-    } catch {
-      this.errorKey.set('ACCOUNTING.FISCAL_YEAR.ERRORS.CREATE_FAILED');
+
+      this.notification.success(
+        result.message ?? this.transloco.translate('ACCOUNTING.NOTIFICATIONS.FISCAL_YEAR_CREATED')
+      );
+      this.dialogRef.close(result.data);
+    } catch (error) {
+      const fallbackKey = 'ACCOUNTING.FISCAL_YEAR.ERRORS.CREATE_FAILED';
+      const userMessage = safeMessageFromError(error);
+
+      this.errorKey.set(userMessage ? null : fallbackKey);
+      this.errorMessage.set(userMessage);
+      this.notification.error(userMessage ?? this.transloco.translate(fallbackKey));
     } finally {
       this.submitting.set(false);
     }
@@ -230,13 +250,14 @@ export class FiscalYearPage {
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly dialog = inject(MatDialog);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly notification = inject(NotificationService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly currentYear = new Date().getFullYear();
   protected readonly requestedYear = signal<number | null>(null);
   protected readonly pendingPeriod = signal<string | null>(null);
   protected readonly errorKey = signal<string | null>(null);
-  protected readonly successKey = signal<string | null>(null);
-  // TODO(accounting): replace the single-year selector with a list when the backend exposes fiscal-year listing.
+  // TODO(accounting): replace the single-year selector with a list when fiscal-year listing is available.
 
   protected readonly periods: FiscalPeriod[] = Array.from({ length: 12 }, (_, index) => {
     const month = String(index + 1).padStart(2, '0');
@@ -308,7 +329,6 @@ export class FiscalYearPage {
     }
 
     this.errorKey.set(null);
-    this.successKey.set(null);
     this.requestedYear.set(Number(this.form.controls.year.value));
   }
 
@@ -327,7 +347,6 @@ export class FiscalYearPage {
     dialogRef.afterClosed().pipe(take(1)).subscribe((fiscalYear: FiscalYearDto | null | undefined) => {
       if (fiscalYear) {
         this.errorKey.set(null);
-        this.successKey.set('ACCOUNTING.FISCAL_YEAR.MESSAGES.CREATED');
         this.fiscalYearContext.selectFiscalYear(fiscalYear);
         this.form.controls.year.setValue(fiscalYear.year);
         this.requestedYear.set(fiscalYear.year);
@@ -381,22 +400,24 @@ export class FiscalYearPage {
 
     this.pendingPeriod.set(month);
     this.errorKey.set(null);
-    this.successKey.set(null);
 
     try {
       const monthNumber = Number(month);
+      const wasLocked = this.periodStatus(month) === 'LOCKED';
+      const result = wasLocked
+        ? await this.accountingApi.unlockPeriod(details.year, monthNumber)
+        : await this.accountingApi.lockPeriod(details.year, monthNumber);
+      const fallbackKey = wasLocked
+        ? 'ACCOUNTING.NOTIFICATIONS.PERIOD_UNLOCKED'
+        : 'ACCOUNTING.NOTIFICATIONS.PERIOD_LOCKED';
 
-      if (this.periodStatus(month) === 'LOCKED') {
-        await this.accountingApi.unlockPeriod(details.year, monthNumber);
-        this.successKey.set('ACCOUNTING.FISCAL_YEAR.MESSAGES.UNLOCKED');
-      } else {
-        await this.accountingApi.lockPeriod(details.year, monthNumber);
-        this.successKey.set('ACCOUNTING.FISCAL_YEAR.MESSAGES.LOCKED');
-      }
-
+      this.notification.success(result.message ?? this.transloco.translate(fallbackKey));
       void this.fiscalYearQuery.refetch();
-    } catch {
-      this.errorKey.set('ACCOUNTING.FISCAL_YEAR.ERRORS.PERIOD_UPDATE_FAILED');
+    } catch (error) {
+      const fallbackKey = 'ACCOUNTING.FISCAL_YEAR.ERRORS.PERIOD_UPDATE_FAILED';
+
+      this.errorKey.set(fallbackKey);
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate(fallbackKey));
     } finally {
       this.pendingPeriod.set(null);
     }
