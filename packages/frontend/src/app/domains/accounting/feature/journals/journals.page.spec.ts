@@ -117,6 +117,15 @@ const translations = {
         CANCEL: 'Cancel',
         CLOSE: 'Close',
         SAVE: 'Save'
+      },
+      TABLE: {
+        ACTION_MENU: 'Open row actions',
+        PREFERENCES_EYEBROW: 'Table',
+        PREFERENCES_TITLE: 'Preferences',
+        REQUIRED_COLUMN: 'Required',
+        RESET_PREFERENCES: 'Reset',
+        VISIBLE_COLUMNS: 'Visible columns',
+        VISIBLE_COLUMNS_DESCRIPTION: 'Choose the columns shown in this table.'
       }
     }
   }
@@ -162,12 +171,14 @@ describe('JournalsPage', () => {
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
+    localStorage.clear();
     fixture = TestBed.createComponent(JournalsPage);
     fixture.detectChanges();
   });
 
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    localStorage.clear();
     httpMock.verify();
   });
 
@@ -199,6 +210,70 @@ describe('JournalsPage', () => {
     expect(text).toContain('Active');
     expect(text).toContain('System');
     expect(text).toContain('Standard');
+  });
+
+  it('uses a compact row action menu with icons and translated labels', async () => {
+    flushJournals(httpMock, apiBaseUrl, [journalFixture({ journalCode: 'VE', journalName: 'Ventes', type: 'SALE' })]);
+    await settle(fixture);
+
+    const actionTrigger = fixture.nativeElement.querySelector('[data-testid="journal-row-actions"]') as HTMLButtonElement;
+    actionTrigger.click();
+    await settle(fixture);
+
+    const menu = document.body;
+
+    expect(menu.textContent).toContain('View entries');
+    expect(menu.textContent).toContain('View details');
+    expect(menu.textContent).toContain('Edit');
+    expect(menu.textContent).toContain('Disable');
+    expect(menu.querySelector('[data-testid="journal-entries-action"] mat-icon')?.textContent?.trim()).toBe('receipt_long');
+    expect(menu.querySelector('[data-testid="journal-view-action"] mat-icon')?.textContent?.trim()).toBe('visibility');
+    expect(menu.querySelector('[data-testid="journal-edit-action"] mat-icon')?.textContent?.trim()).toBe('edit');
+    expect(menu.querySelector('[data-testid="journal-disable-action"] mat-icon')?.textContent?.trim()).toBe('block');
+  });
+
+  it('keeps destructive row actions behind the confirmation dialog', async () => {
+    flushJournals(httpMock, apiBaseUrl, [journalFixture({ journalCode: 'VE', journalName: 'Ventes', type: 'SALE' })]);
+    await settle(fixture);
+
+    (fixture.nativeElement.querySelector('[data-testid="journal-row-actions"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    (document.body.querySelector('[data-testid="journal-disable-action"]') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
+    expect(document.body.textContent).toContain('Disable this journal?');
+    httpMock.expectNone(`${apiBaseUrl}/journals/VE`);
+  });
+
+  it('opens table preferences and persists hidden optional columns', async () => {
+    flushJournals(httpMock, apiBaseUrl, [journalFixture({ journalCode: 'VE', journalName: 'Ventes', type: 'SALE' })]);
+    await settle(fixture);
+
+    const component = fixture.componentInstance as unknown as {
+      openTablePreferences: () => void;
+    };
+    component.openTablePreferences();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+
+    expect(document.body.textContent).toContain('Preferences');
+    expect(document.body.textContent).toContain('Visible columns');
+    dialogRef.close({ visibleColumnIds: ['code', 'name', 'year', 'status', 'system', 'actions'] });
+    await waitForDialogClose();
+    await settle(fixture);
+
+    const tableText = (fixture.nativeElement.querySelector('table') as HTMLTableElement).textContent ?? '';
+    const storedPreferences = JSON.parse(localStorage.getItem('liass.table-preferences.accounting.journals') ?? '{}') as {
+      visibleColumnIds?: string[];
+    };
+
+    expect(tableText).toContain('Code');
+    expect(tableText).toContain('Label');
+    expect(tableText).not.toContain('Type');
+    expect(storedPreferences.visibleColumnIds).not.toContain('type');
   });
 
   it('filters journals by search, type, and system origin without another backend call', async () => {

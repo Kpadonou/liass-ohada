@@ -1,8 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { Router } from '@angular/router';
@@ -16,14 +18,31 @@ import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
+import { LiassTablePreferencesDialogComponent } from '../../../../shared/ui/table-preferences/table-preferences-dialog.component';
+import { type LiassTableColumnPreference } from '../../../../shared/ui/table-preferences/table-preferences.model';
+import {
+  loadTablePreferences,
+  saveTablePreferences
+} from '../../../../shared/ui/table-preferences/table-preferences.storage';
 import { AccountingQueries } from '../../data-access/accounting-queries';
 import { CreateJournalDialogComponent } from './create-journal-dialog.component';
 import { DisableJournalDialogComponent } from './disable-journal-dialog.component';
 
 type JournalTypeFilter = 'ALL' | JournalDto['type'];
 type SystemFilter = 'ALL' | 'SYSTEM' | 'STANDARD';
+type JournalTableColumnId = 'code' | 'name' | 'type' | 'year' | 'status' | 'system' | 'actions';
 
 const SYSTEM_JOURNAL_CODES = new Set(['RAN', 'OD', 'CLOSING']);
+const ACCOUNTING_JOURNALS_TABLE_ID = 'accounting.journals';
+const JOURNAL_TABLE_COLUMNS: LiassTableColumnPreference[] = [
+  { id: 'code', labelKey: 'ACCOUNTING.JOURNALS.TABLE.CODE', required: true },
+  { id: 'name', labelKey: 'ACCOUNTING.JOURNALS.TABLE.NAME', required: true },
+  { id: 'type', labelKey: 'ACCOUNTING.JOURNALS.TABLE.TYPE' },
+  { id: 'year', labelKey: 'ACCOUNTING.JOURNALS.TABLE.YEAR' },
+  { id: 'status', labelKey: 'ACCOUNTING.JOURNALS.TABLE.STATUS' },
+  { id: 'system', labelKey: 'ACCOUNTING.JOURNALS.TABLE.SYSTEM' },
+  { id: 'actions', labelKey: 'ACCOUNTING.JOURNALS.TABLE.ACTIONS', required: true }
+];
 
 @Component({
   selector: 'liass-journals-page',
@@ -33,10 +52,12 @@ const SYSTEM_JOURNAL_CODES = new Set(['RAN', 'OD', 'CLOSING']);
     LiassPageHeaderComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
+    MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatSelectModule,
     MatSidenavModule,
     TranslocoModule
@@ -55,6 +76,9 @@ export class JournalsPage {
   protected readonly localJournalUpserts = signal<JournalDto[]>([]);
   protected readonly removedJournalCodes = signal(new Set<string>());
   protected readonly selectedJournal = signal<JournalDto | null>(null);
+  protected readonly visibleColumnIds = signal(
+    loadTablePreferences(ACCOUNTING_JOURNALS_TABLE_ID, JOURNAL_TABLE_COLUMNS)
+  );
   protected readonly journalsQuery = injectQuery(() => this.accountingQueries.listJournals());
   protected readonly journals = computed(() => {
     const removedJournalCodes = this.removedJournalCodes();
@@ -90,6 +114,39 @@ export class JournalsPage {
     this.searchQuery.set('');
     this.typeFilter.set('ALL');
     this.systemFilter.set('ALL');
+  }
+
+  protected isColumnVisible(columnId: JournalTableColumnId): boolean {
+    return this.visibleColumnIds().includes(columnId);
+  }
+
+  protected openTablePreferences(): void {
+    const dialogRef = this.dialog.open(LiassTablePreferencesDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: {
+        columns: JOURNAL_TABLE_COLUMNS,
+        tableId: ACCOUNTING_JOURNALS_TABLE_ID,
+        visibleColumnIds: this.visibleColumnIds()
+      },
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'liass-dialog-panel',
+      restoreFocus: true,
+      width: '520px'
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
+      if (!result) {
+        return;
+      }
+
+      this.visibleColumnIds.set(
+        saveTablePreferences(
+          ACCOUNTING_JOURNALS_TABLE_ID,
+          JOURNAL_TABLE_COLUMNS,
+          result.visibleColumnIds
+        )
+      );
+    });
   }
 
   protected async retryInitialLoad(): Promise<void> {

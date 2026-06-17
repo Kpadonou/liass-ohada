@@ -104,6 +104,18 @@
   />
 
   <liass-card [title]="'ACCOUNTING.JOURNALS.TABLE.TITLE' | transloco" [description]="'ACCOUNTING.JOURNALS.TABLE.DESCRIPTION' | transloco">
+    <div liassCardActions class="flex flex-wrap items-center gap-2">
+      <liass-button
+        size="icon"
+        tone="neutral"
+        variant="outline"
+        icon="settings"
+        data-testid="journals-table-preferences"
+        [ariaLabel]="'COMMON.TABLE.PREFERENCES_TITLE' | transloco"
+        (pressed)="openTablePreferences()"
+      />
+    </div>
+
     <div class="mb-5 grid gap-3 xl:grid-cols-[minmax(220px,1fr)_200px_200px_auto]">
       <mat-form-field appearance="outline">
         <mat-label>{{ 'ACCOUNTING.JOURNALS.FILTERS.SEARCH' | transloco }}</mat-label>
@@ -184,16 +196,24 @@
       </div>
     } @else {
       <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 md:block">
-        <table class="w-full min-w-[980px] border-collapse text-left">
+        <table class="w-full min-w-[860px] border-collapse text-left">
           <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
             <tr>
               <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.CODE' | transloco }}</th>
               <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.NAME' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.TYPE' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.YEAR' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.STATUS' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.SYSTEM' | transloco }}</th>
-              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.JOURNALS.TABLE.ACTIONS' | transloco }}</th>
+              @if (isColumnVisible('type')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.TYPE' | transloco }}</th>
+              }
+              @if (isColumnVisible('year')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.YEAR' | transloco }}</th>
+              }
+              @if (isColumnVisible('status')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.STATUS' | transloco }}</th>
+              }
+              @if (isColumnVisible('system')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.JOURNALS.TABLE.SYSTEM' | transloco }}</th>
+              }
+              <th class="w-14 px-3 py-3 text-right">{{ 'ACCOUNTING.JOURNALS.TABLE.ACTIONS' | transloco }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -201,52 +221,64 @@
               <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
                 <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ journal.journalCode }}</td>
                 <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ journal.journalName }}</td>
-                <td class="px-4 py-4"><liass-status-chip [label]="'ACCOUNTING.JOURNALS.TYPES.' + journal.type | transloco" tone="info" size="sm" /></td>
-                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ journal.year }}</td>
-                <td class="px-4 py-4">
-                  <liass-status-chip [label]="journalStatusKey() | transloco" tone="success" size="sm" />
-                </td>
-                <td class="px-4 py-4">
-                  <liass-status-chip [label]="journalSystemKey(journal) | transloco" [tone]="journalSystemTone(journal)" size="sm" />
-                </td>
-                <td class="px-4 py-4">
-                  <div class="flex justify-end gap-2">
-                    <liass-button
-                      size="icon"
-                      tone="neutral"
-                      variant="ghost"
-                      icon="visibility"
-                      [ariaLabel]="'ACCOUNTING.JOURNALS.ACTIONS.VIEW_DETAILS' | transloco"
-                      (pressed)="openJournalDetails(journal)"
-                    />
-                    <liass-button
-                      size="icon"
-                      tone="neutral"
-                      variant="ghost"
-                      icon="edit"
+                @if (isColumnVisible('type')) {
+                  <td class="px-4 py-4"><liass-status-chip [label]="'ACCOUNTING.JOURNALS.TYPES.' + journal.type | transloco" tone="info" size="sm" /></td>
+                }
+                @if (isColumnVisible('year')) {
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ journal.year }}</td>
+                }
+                @if (isColumnVisible('status')) {
+                  <td class="px-4 py-4">
+                    <liass-status-chip [label]="journalStatusKey() | transloco" tone="success" size="sm" />
+                  </td>
+                }
+                @if (isColumnVisible('system')) {
+                  <td class="px-4 py-4">
+                    <liass-status-chip [label]="journalSystemKey(journal) | transloco" [tone]="journalSystemTone(journal)" size="sm" />
+                  </td>
+                }
+                <td class="px-3 py-4 text-right">
+                  <button
+                    class="liass-focus-ring inline-flex size-9 items-center justify-center rounded-app-control text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                    matIconButton
+                    type="button"
+                    data-testid="journal-row-actions"
+                    [matMenuTriggerFor]="journalActionsMenu"
+                    [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #journalActionsMenu="matMenu" xPosition="before">
+                    <button mat-menu-item type="button" data-testid="journal-entries-action" (click)="viewEntries(journal)">
+                      <mat-icon>receipt_long</mat-icon>
+                      <span>{{ 'ACCOUNTING.JOURNALS.ACTIONS.VIEW_ENTRIES' | transloco }}</span>
+                    </button>
+                    <button mat-menu-item type="button" data-testid="journal-view-action" (click)="openJournalDetails(journal)">
+                      <mat-icon>visibility</mat-icon>
+                      <span>{{ 'ACCOUNTING.JOURNALS.ACTIONS.VIEW_DETAILS' | transloco }}</span>
+                    </button>
+                    <button
+                      mat-menu-item
+                      type="button"
+                      data-testid="journal-edit-action"
                       [disabled]="!canEditJournal(journal)"
-                      [ariaLabel]="'ACCOUNTING.JOURNALS.ACTIONS.EDIT_JOURNAL' | transloco"
-                      (pressed)="openEditJournal(journal)"
-                    />
-                    <liass-button
-                      size="icon"
-                      tone="danger"
-                      variant="ghost"
-                      icon="block"
-                      [disabled]="!canDisableJournal(journal)"
-                      [ariaLabel]="'ACCOUNTING.JOURNALS.ACTIONS.DISABLE_JOURNAL' | transloco"
-                      (pressed)="openDisableJournal(journal)"
-                    />
-                    <liass-button
-                      size="sm"
-                      tone="brand"
-                      variant="ghost"
-                      icon="receipt_long"
-                      (pressed)="viewEntries(journal)"
+                      (click)="openEditJournal(journal)"
                     >
-                      {{ 'ACCOUNTING.JOURNALS.ACTIONS.VIEW_ENTRIES' | transloco }}
-                    </liass-button>
-                  </div>
+                      <mat-icon>edit</mat-icon>
+                      <span>{{ 'ACCOUNTING.JOURNALS.ACTIONS.EDIT_JOURNAL' | transloco }}</span>
+                    </button>
+                    <button
+                      mat-menu-item
+                      type="button"
+                      class="text-danger-600 dark:text-rose-300"
+                      data-testid="journal-disable-action"
+                      [disabled]="!canDisableJournal(journal)"
+                      (click)="openDisableJournal(journal)"
+                    >
+                      <mat-icon class="text-danger-600 dark:text-rose-300">block</mat-icon>
+                      <span>{{ 'ACCOUNTING.JOURNALS.ACTIONS.DISABLE_JOURNAL' | transloco }}</span>
+                    </button>
+                  </mat-menu>
                 </td>
               </tr>
             }

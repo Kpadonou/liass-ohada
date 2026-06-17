@@ -1,8 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { type AccountDto } from '@liass-ohada/shared/accounting';
@@ -15,6 +17,12 @@ import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
+import { LiassTablePreferencesDialogComponent } from '../../../../shared/ui/table-preferences/table-preferences-dialog.component';
+import { type LiassTableColumnPreference } from '../../../../shared/ui/table-preferences/table-preferences.model';
+import {
+  loadTablePreferences,
+  saveTablePreferences
+} from '../../../../shared/ui/table-preferences/table-preferences.storage';
 import { AccountingApi, type PaginatedResult } from '../../data-access/accounting.api';
 import { AccountingQueries } from '../../data-access/accounting-queries';
 import { AccountDialogComponent } from './account-dialog.component';
@@ -23,8 +31,28 @@ import { DisableAccountDialogComponent } from './disable-account-dialog.componen
 type ClassFilter = 'ALL' | number;
 type NatureFilter = 'ALL' | AccountDto['accountNature'];
 type ThirdPartyFilter = 'ALL' | 'YES' | 'NO';
+type AccountTableColumnId =
+  | 'code'
+  | 'name'
+  | 'class'
+  | 'nature'
+  | 'usage'
+  | 'status'
+  | 'flags'
+  | 'actions';
 
 const ACCOUNT_PAGE_SIZE = 200;
+const ACCOUNTING_ACCOUNTS_TABLE_ID = 'accounting.accounts';
+const ACCOUNT_TABLE_COLUMNS: LiassTableColumnPreference[] = [
+  { id: 'code', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.CODE', required: true },
+  { id: 'name', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.NAME', required: true },
+  { id: 'class', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.CLASS' },
+  { id: 'nature', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.NATURE' },
+  { id: 'usage', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.USAGE' },
+  { id: 'status', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.STATUS' },
+  { id: 'flags', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.FLAGS' },
+  { id: 'actions', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.ACTIONS', required: true }
+];
 
 @Component({
   selector: 'liass-accounts-page',
@@ -37,10 +65,12 @@ const ACCOUNT_PAGE_SIZE = 200;
     LiassPageHeaderComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
+    MatButtonModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatSelectModule,
     MatSidenavModule,
     TranslocoModule
@@ -63,6 +93,9 @@ export class AccountsPage {
   protected readonly loadMoreError = signal(false);
   protected readonly loadingMore = signal(false);
   protected readonly selectedAccount = signal<AccountDto | null>(null);
+  protected readonly visibleColumnIds = signal(
+    loadTablePreferences(ACCOUNTING_ACCOUNTS_TABLE_ID, ACCOUNT_TABLE_COLUMNS)
+  );
 
   protected readonly accountsQuery = injectQuery(() =>
     this.accountingQueries.listAccounts({ limit: ACCOUNT_PAGE_SIZE })
@@ -128,6 +161,39 @@ export class AccountsPage {
     this.classFilter.set('ALL');
     this.natureFilter.set('ALL');
     this.thirdPartyFilter.set('ALL');
+  }
+
+  protected isColumnVisible(columnId: AccountTableColumnId): boolean {
+    return this.visibleColumnIds().includes(columnId);
+  }
+
+  protected openTablePreferences(): void {
+    const dialogRef = this.dialog.open(LiassTablePreferencesDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: {
+        columns: ACCOUNT_TABLE_COLUMNS,
+        tableId: ACCOUNTING_ACCOUNTS_TABLE_ID,
+        visibleColumnIds: this.visibleColumnIds()
+      },
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'liass-dialog-panel',
+      restoreFocus: true,
+      width: '520px'
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
+      if (!result) {
+        return;
+      }
+
+      this.visibleColumnIds.set(
+        saveTablePreferences(
+          ACCOUNTING_ACCOUNTS_TABLE_ID,
+          ACCOUNT_TABLE_COLUMNS,
+          result.visibleColumnIds
+        )
+      );
+    });
   }
 
   protected async retryInitialLoad(): Promise<void> {

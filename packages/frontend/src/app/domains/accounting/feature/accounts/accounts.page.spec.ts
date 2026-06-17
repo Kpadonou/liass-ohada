@@ -141,13 +141,22 @@ const translations = {
         ACCOUNT_DISABLED: 'Account disabled successfully.',
         ACCOUNT_UPDATED: 'Account updated successfully.'
       }
-    }
-  },
-  COMMON: {
-    ACTIONS: {
-      CANCEL: 'Cancel',
-      CLOSE: 'Close',
-      SAVE: 'Save'
+    },
+    COMMON: {
+      ACTIONS: {
+        CANCEL: 'Cancel',
+        CLOSE: 'Close',
+        SAVE: 'Save'
+      },
+      TABLE: {
+        ACTION_MENU: 'Open row actions',
+        PREFERENCES_EYEBROW: 'Table',
+        PREFERENCES_TITLE: 'Preferences',
+        REQUIRED_COLUMN: 'Required',
+        RESET_PREFERENCES: 'Reset',
+        VISIBLE_COLUMNS: 'Visible columns',
+        VISIBLE_COLUMNS_DESCRIPTION: 'Choose the columns shown in this table.'
+      }
     }
   }
 };
@@ -192,12 +201,14 @@ describe('AccountsPage', () => {
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
+    localStorage.clear();
     fixture = TestBed.createComponent(AccountsPage);
     fixture.detectChanges();
   });
 
   afterEach(() => {
     TestBed.inject(MatDialog).closeAll();
+    localStorage.clear();
     httpMock.verify();
   });
 
@@ -240,6 +251,68 @@ describe('AccountsPage', () => {
     expect(text).toContain('Class 7 - Revenue');
     expect(text).toContain('Active');
     expect(text).toContain('New account');
+  });
+
+  it('uses a compact row action menu with icons and translated labels', async () => {
+    flushAccounts(httpMock, apiBaseUrl, [accountFixture()]);
+    await settle(fixture);
+
+    const actionTrigger = fixture.nativeElement.querySelector('[data-testid="account-row-actions"]') as HTMLButtonElement;
+    actionTrigger.click();
+    await settle(fixture);
+
+    const menu = document.body;
+
+    expect(menu.textContent).toContain('View details');
+    expect(menu.textContent).toContain('Edit');
+    expect(menu.textContent).toContain('Disable');
+    expect(menu.querySelector('[data-testid="account-view-action"] mat-icon')?.textContent?.trim()).toBe('visibility');
+    expect(menu.querySelector('[data-testid="account-edit-action"] mat-icon')?.textContent?.trim()).toBe('edit');
+    expect(menu.querySelector('[data-testid="account-disable-action"] mat-icon')?.textContent?.trim()).toBe('block');
+  });
+
+  it('keeps destructive row actions behind the confirmation dialog', async () => {
+    flushAccounts(httpMock, apiBaseUrl, [accountFixture()]);
+    await settle(fixture);
+
+    (fixture.nativeElement.querySelector('[data-testid="account-row-actions"]') as HTMLButtonElement).click();
+    await settle(fixture);
+    (document.body.querySelector('[data-testid="account-disable-action"]') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(TestBed.inject(MatDialog).openDialogs.length).toBe(1);
+    expect(document.body.textContent).toContain('Disable this account?');
+    httpMock.expectNone(`${apiBaseUrl}/accounts/41100000`);
+  });
+
+  it('opens table preferences and persists hidden optional columns', async () => {
+    flushAccounts(httpMock, apiBaseUrl, [accountFixture()]);
+    await settle(fixture);
+
+    const component = fixture.componentInstance as unknown as {
+      openTablePreferences: () => void;
+    };
+    component.openTablePreferences();
+    fixture.detectChanges();
+    await settle(fixture);
+
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+
+    expect(document.body.textContent).toContain('Preferences');
+    expect(document.body.textContent).toContain('Visible columns');
+    dialogRef.close({ visibleColumnIds: ['code', 'name', 'nature', 'usage', 'status', 'flags', 'actions'] });
+    await waitForDialogClose();
+    await settle(fixture);
+
+    const tableText = (fixture.nativeElement.querySelector('table') as HTMLTableElement).textContent ?? '';
+    const storedPreferences = JSON.parse(localStorage.getItem('liass.table-preferences.accounting.accounts') ?? '{}') as {
+      visibleColumnIds?: string[];
+    };
+
+    expect(tableText).toContain('Account');
+    expect(tableText).toContain('Label');
+    expect(tableText).not.toContain('Class');
+    expect(storedPreferences.visibleColumnIds).not.toContain('class');
   });
 
   it('filters accounts by search and class without calling the backend again', async () => {

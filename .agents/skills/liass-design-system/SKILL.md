@@ -29,8 +29,10 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 14. Prefer backend-provided user-facing messages over generic frontend messages, including nested payloads such as `{ message: { code, message } }`; use translated frontend fallbacks only when backend message extraction returns no safe message.
 15. Never expose technical details such as PK/SK/GSI keys, stack traces, raw AWS errors, or internal exception names in notifications or visible UI.
 16. User-facing copy must describe business state and user action, not implementation layers; avoid terms such as backend, API, DynamoDB, Lambda, PK, SK, GSI, deployment, route, or technical keys unless the surface is explicitly for administrators/developers.
-17. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
-18. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
+17. For tables with more than two row actions, use a compact icon-button action menu instead of a wide inline actions column.
+18. Tables with many columns should provide local table preferences for optional visible columns; mandatory identity/action columns must remain visible.
+19. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
+20. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
 
 ## Reference priority
 
@@ -103,6 +105,12 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 - Place primary actions predictably; make secondary actions lower emphasis.
 - Separate or clearly style destructive actions.
 - Group card actions consistently in headers or footers.
+- For tables with more than two row actions, keep the actions column narrow and use a small icon button menu, preferably vertical dots, backed by Angular Material Menu or the existing menu pattern.
+- Table action menu items must include an icon and a translated label. Destructive menu items must be visually marked when supported and must still open confirmation dialogs; a menu click must not directly perform risky actions.
+- Keep important page-level primary actions such as “Nouveau compte”, “Nouveau journal”, or “Nouvel exercice” as visible toolbar/header buttons, not hidden inside row menus.
+- Tables with several columns should expose a preferences/settings action in the table toolbar. Users should be able to show/hide optional columns, while required identity columns and the actions column remain visible and non-toggleable.
+- Persist table preferences locally when possible, scoped by a stable table id such as `accounting.accounts`, `accounting.journals`, or `accounting.fiscalYears`. Do not add backend persistence for table preferences unless explicitly requested.
+- The future Accounting lot 3 entries table must use compact row action menus and table preferences from the start because entries will have many columns and row actions.
 
 ## Brand and color rules
 

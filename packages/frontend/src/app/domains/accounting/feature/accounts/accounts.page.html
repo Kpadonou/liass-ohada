@@ -143,9 +143,18 @@
   >
     <div liassCardActions class="flex flex-wrap items-center gap-2">
       <liass-button
+        size="icon"
+        tone="neutral"
+        variant="outline"
+        icon="settings"
+        data-testid="accounts-table-preferences"
+        [ariaLabel]="'COMMON.TABLE.PREFERENCES_TITLE' | transloco"
+        (pressed)="openTablePreferences()"
+      />
+      <liass-button
         size="sm"
         tone="brand"
-        variant="soft"
+        variant="solid"
         icon="add"
         [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.NEW_ACCOUNT' | transloco"
         (pressed)="openCreateAccount()"
@@ -247,17 +256,27 @@
       </div>
     } @else {
       <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 lg:block">
-        <table class="w-full min-w-[1060px] border-collapse text-left">
+        <table class="w-full min-w-[940px] border-collapse text-left">
           <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
             <tr>
               <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.CODE' | transloco }}</th>
               <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.NAME' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.CLASS' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.NATURE' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.USAGE' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.STATUS' | transloco }}</th>
-              <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.FLAGS' | transloco }}</th>
-              <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ACCOUNTS.TABLE.ACTIONS' | transloco }}</th>
+              @if (isColumnVisible('class')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.CLASS' | transloco }}</th>
+              }
+              @if (isColumnVisible('nature')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.NATURE' | transloco }}</th>
+              }
+              @if (isColumnVisible('usage')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.USAGE' | transloco }}</th>
+              }
+              @if (isColumnVisible('status')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.STATUS' | transloco }}</th>
+              }
+              @if (isColumnVisible('flags')) {
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ACCOUNTS.TABLE.FLAGS' | transloco }}</th>
+              }
+              <th class="w-14 px-3 py-3 text-right">{{ 'ACCOUNTING.ACCOUNTS.TABLE.ACTIONS' | transloco }}</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
@@ -265,64 +284,83 @@
               <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20" [class.opacity-70]="!isAccountActive(account)">
                 <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ account.accountId }}</td>
                 <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ account.accountName }}</td>
-                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                  {{ 'ACCOUNTING.ACCOUNTS.CLASSES.' + account.classCode | transloco }}
-                </td>
-                <td class="px-4 py-4">
-                  <liass-status-chip
-                    [label]="'ACCOUNTING.ACCOUNTS.NATURE.' + account.accountNature | transloco"
-                    tone="info"
-                    size="sm"
-                  />
-                </td>
-                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
-                  {{ 'ACCOUNTING.ACCOUNTS.USAGE.' + account.accountUsage | transloco }}
-                </td>
-                <td class="px-4 py-4">
-                  <liass-status-chip [label]="accountStatusKey(account) | transloco" [tone]="accountStatusTone(account)" size="sm" />
-                </td>
-                <td class="px-4 py-4">
-                  <div class="flex flex-wrap gap-2">
-                    @if (account.isThirdPartyAccount) {
-                      <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.THIRD_PARTY' | transloco" tone="warning" size="sm" />
-                    }
-                    @if (account.allowReconciliation) {
-                      <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.RECONCILIATION' | transloco" tone="success" size="sm" />
-                    }
-                    @if (!account.isThirdPartyAccount && !account.allowReconciliation) {
-                      <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.STANDARD' | transloco" tone="neutral" size="sm" />
-                    }
-                  </div>
-                </td>
-                <td class="px-4 py-4">
-                  <div class="flex justify-end gap-2">
-                    <liass-button
-                      size="icon"
-                      tone="neutral"
-                      variant="ghost"
-                      icon="visibility"
-                      [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco"
-                      (pressed)="openAccountDetails(account)"
+                @if (isColumnVisible('class')) {
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                    {{ 'ACCOUNTING.ACCOUNTS.CLASSES.' + account.classCode | transloco }}
+                  </td>
+                }
+                @if (isColumnVisible('nature')) {
+                  <td class="px-4 py-4">
+                    <liass-status-chip
+                      [label]="'ACCOUNTING.ACCOUNTS.NATURE.' + account.accountNature | transloco"
+                      tone="info"
+                      size="sm"
                     />
-                    <liass-button
-                      size="icon"
-                      tone="neutral"
-                      variant="ghost"
-                      icon="edit"
+                  </td>
+                }
+                @if (isColumnVisible('usage')) {
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                    {{ 'ACCOUNTING.ACCOUNTS.USAGE.' + account.accountUsage | transloco }}
+                  </td>
+                }
+                @if (isColumnVisible('status')) {
+                  <td class="px-4 py-4">
+                    <liass-status-chip [label]="accountStatusKey(account) | transloco" [tone]="accountStatusTone(account)" size="sm" />
+                  </td>
+                }
+                @if (isColumnVisible('flags')) {
+                  <td class="px-4 py-4">
+                    <div class="flex flex-wrap gap-2">
+                      @if (account.isThirdPartyAccount) {
+                        <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.THIRD_PARTY' | transloco" tone="warning" size="sm" />
+                      }
+                      @if (account.allowReconciliation) {
+                        <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.RECONCILIATION' | transloco" tone="success" size="sm" />
+                      }
+                      @if (!account.isThirdPartyAccount && !account.allowReconciliation) {
+                        <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.STANDARD' | transloco" tone="neutral" size="sm" />
+                      }
+                    </div>
+                  </td>
+                }
+                <td class="px-3 py-4 text-right">
+                  <button
+                    class="liass-focus-ring inline-flex size-9 items-center justify-center rounded-app-control text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                    matIconButton
+                    type="button"
+                    data-testid="account-row-actions"
+                    [matMenuTriggerFor]="accountActionsMenu"
+                    [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #accountActionsMenu="matMenu" xPosition="before">
+                    <button mat-menu-item type="button" data-testid="account-view-action" (click)="openAccountDetails(account)">
+                      <mat-icon>visibility</mat-icon>
+                      <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco }}</span>
+                    </button>
+                    <button
+                      mat-menu-item
+                      type="button"
+                      data-testid="account-edit-action"
                       [disabled]="!isAccountActive(account)"
-                      [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco"
-                      (pressed)="openEditAccount(account)"
-                    />
-                    <liass-button
-                      size="icon"
-                      tone="danger"
-                      variant="ghost"
-                      icon="block"
+                      (click)="openEditAccount(account)"
+                    >
+                      <mat-icon>edit</mat-icon>
+                      <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco }}</span>
+                    </button>
+                    <button
+                      mat-menu-item
+                      type="button"
+                      class="text-danger-600 dark:text-rose-300"
+                      data-testid="account-disable-action"
                       [disabled]="!isAccountActive(account)"
-                      [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco"
-                      (pressed)="openDisableAccount(account)"
-                    />
-                  </div>
+                      (click)="openDisableAccount(account)"
+                    >
+                      <mat-icon class="text-danger-600 dark:text-rose-300">block</mat-icon>
+                      <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}</span>
+                    </button>
+                  </mat-menu>
                 </td>
               </tr>
             }

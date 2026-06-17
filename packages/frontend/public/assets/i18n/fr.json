@@ -8,6 +8,15 @@
       "CANCEL": "Annuler",
       "CLOSE": "Fermer"
     },
+    "TABLE": {
+      "ACTION_MENU": "Ouvrir les actions de la ligne",
+      "PREFERENCES_EYEBROW": "Tableau",
+      "PREFERENCES_TITLE": "Préférences",
+      "REQUIRED_COLUMN": "Obligatoire",
+      "RESET_PREFERENCES": "Réinitialiser",
+      "VISIBLE_COLUMNS": "Colonnes visibles",
+      "VISIBLE_COLUMNS_DESCRIPTION": "Choisissez les colonnes à afficher pour ce tableau."
+    },
     "LANGUAGE_SELECTOR": {
       "CURRENT": "Langue actuelle",
       "ENGLISH": "Anglais",

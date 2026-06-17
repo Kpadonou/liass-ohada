@@ -8,6 +8,15 @@
       "CANCEL": "Cancel",
       "CLOSE": "Close"
     },
+    "TABLE": {
+      "ACTION_MENU": "Open row actions",
+      "PREFERENCES_EYEBROW": "Table",
+      "PREFERENCES_TITLE": "Preferences",
+      "REQUIRED_COLUMN": "Required",
+      "RESET_PREFERENCES": "Reset",
+      "VISIBLE_COLUMNS": "Visible columns",
+      "VISIBLE_COLUMNS_DESCRIPTION": "Choose the columns shown in this table."
+    },
     "LANGUAGE_SELECTOR": {
       "CURRENT": "Current language",
       "ENGLISH": "English",
