@@ -113,39 +113,40 @@ export class AccountingQueries {
     });
   }
 
-  listEntries(params: ListEntriesParams) {
+  listEntries(params: ListEntriesParams, enabled = true) {
     return queryOptions({
       queryKey: accountingQueryKeys.entries(this.tenantScope(), params),
       queryFn: () => this.accountingApi.listEntries(params),
+      enabled,
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
-  generalLedger(params: { fiscalYear: string; accountId: string }) {
+  generalLedger(params: { fiscalYear: string; accountId: string }, enabled = true) {
     return queryOptions({
       queryKey: ['accounting', this.tenantScope(), ...accountingQueryKeys.generalLedger(params).slice(1)] as const,
       queryFn: () => this.accountingApi.getGeneralLedger(params),
-      enabled: /^\d{4}$/.test(params.fiscalYear) && /^\d{2,8}$/.test(params.accountId),
+      enabled: enabled && /^\d{4}$/.test(params.fiscalYear) && /^\d{2,8}$/.test(params.accountId),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
-  trialBalance(year: string) {
+  trialBalance(year: string, enabled = true) {
     return queryOptions({
       queryKey: accountingQueryKeys.trialBalance(this.tenantScope(), year),
       queryFn: () => this.accountingApi.getTrialBalance(year),
-      enabled: /^\d{4}$/.test(year),
+      enabled: enabled && /^\d{4}$/.test(year),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
-  fiscalYearDetails(year: string | number) {
+  fiscalYearDetails(year: string | number, enabled = true) {
     const yearValue = String(year);
 
     return queryOptions({
       queryKey: accountingQueryKeys.fiscalYear(this.tenantScope(), yearValue),
       queryFn: () => this.accountingApi.getFiscalYearDetails(yearValue),
-      enabled: /^\d{4}$/.test(yearValue),
+      enabled: enabled && /^\d{4}$/.test(yearValue),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
@@ -161,29 +162,29 @@ export class AccountingQueries {
     });
   }
 
-  thirdPartyLedger(params: ThirdPartyLedgerParams) {
+  thirdPartyLedger(params: ThirdPartyLedgerParams, enabled = true) {
     return queryOptions({
       queryKey: accountingQueryKeys.thirdPartyLedger(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getThirdPartyLedger(params),
-      enabled: /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
+      enabled: enabled && /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
-  matchingReport(params: MatchingReportParams) {
+  matchingReport(params: MatchingReportParams, enabled = true) {
     return queryOptions({
       queryKey: accountingQueryKeys.matchingReport(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getMatchingReport(params),
-      enabled: /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
+      enabled: enabled && /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
-  unletteredLines(params: UnletteredLinesParams) {
+  unletteredLines(params: UnletteredLinesParams, enabled = true) {
     return queryOptions({
       queryKey: accountingQueryKeys.unletteredLines(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getUnletteredLines(params),
-      enabled: /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
+      enabled: enabled && /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
       staleTime: ACCOUNTING_LIVE_MATCHING_STALE_TIME
     });
   }

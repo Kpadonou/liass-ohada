@@ -47,7 +47,7 @@ const translations = {
         DASHBOARD: 'Tableau de bord',
         DEADLINES: 'Échéances',
         ENTRIES: 'Écritures',
-        FISCAL_YEAR: 'Exercice',
+        FISCAL_YEAR: 'Exercices',
         GENERAL_LEDGER: 'Grand livre',
         JOURNALS: 'Journaux',
         LETTERING: 'Lettrage',
@@ -106,7 +106,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Tableau de bord');
     expect(text).toContain('Comptabilité');
     expect(text).toContain('Vue d’ensemble');
-    expect(text).toContain('Exercice');
+    expect(text).toContain('Exercices');
     expect(text).toContain('Grand livre');
     expect(text).toContain('Journaux');
     expect(text).toContain('Écritures');
@@ -140,7 +140,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Paramètres du cabinet');
     expect(text).not.toContain('Grand livre');
     expect(text).not.toContain('Vue d’ensemble');
-    expect(text).not.toContain('Exercice');
+    expect(text).not.toContain('Exercices');
     expect(text).not.toContain('Journaux');
     expect(text).not.toContain('Écritures');
     expect(text).not.toContain('Lettrage');
@@ -179,7 +179,7 @@ describe('AppSidebarComponent', () => {
 
     expect(text).toContain('Vue d’ensemble');
     expect(text).toContain('Grand livre');
-    expect(text).toContain('Exercice');
+    expect(text).toContain('Exercices');
     expect(text).toContain('Journaux');
     expect(text).toContain('Écritures');
     expect(text).toContain('Lettrage');

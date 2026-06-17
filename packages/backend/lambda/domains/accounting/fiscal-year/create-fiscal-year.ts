@@ -4,11 +4,12 @@ import { CreateFiscalYearRequestSchema } from "@liass-ohada/shared/accounting";
 
 export const handler = createHandler(
   CreateFiscalYearRequestSchema,
-  async (data, { orgId, userId, i18n }) => {
+  async (data, { orgId, userId, accountingFramework, i18n }) => {
     const fiscalYear = await FiscalYearService.createFiscalYear(
       orgId,
       userId,
       data,
+      accountingFramework,
     );
 
     return {

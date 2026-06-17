@@ -43,14 +43,17 @@ describe("fiscal year lifecycle", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({
+        role: "ACCOUNTANT",
+        accountingFramework: "SYSCOHADA_REVISED",
+      });
   });
 
   test("creates an open fiscal year without leaking persistence keys", async () => {
     dynamoMock.on(PutItemCommand).resolves({});
 
     const response = await createFiscalYearHandler(
-      createEvent({ year: 2026, accountingFramework: "SYSCOHADA_REVISED" }) as any,
+      createEvent({ year: 2026 }) as any,
     );
     const body = parseResponse(response);
     const putInput = dynamoMock.commandCalls(PutItemCommand)[0].args[0].input;
@@ -59,14 +62,48 @@ describe("fiscal year lifecycle", () => {
     expect(response.statusCode).toBe(200);
     expect(item.PK).toBe("ORG#test-org");
     expect(item.SK).toBe("FY#2026");
+    expect(item.accountingFramework).toBe("SYSCOHADA_REVISED");
     expect(body.data).toMatchObject({
       year: 2026,
       status: "OPEN",
       startDate: "2026-01-01",
       endDate: "2026-12-31",
+      accountingFramework: "SYSCOHADA_REVISED",
     });
     expect(body.data.PK).toBeUndefined();
     expect(body.data.SK).toBeUndefined();
+  });
+
+  test("derives fiscal year accounting framework from tenant context", async () => {
+    jest
+      .mocked(TenantAccessService.assertUserCanAccessOrg)
+      .mockResolvedValue({
+        role: "ACCOUNTANT",
+        accountingFramework: "SYCEBNL",
+      });
+    dynamoMock.on(PutItemCommand).resolves({});
+
+    const response = await createFiscalYearHandler(
+      createEvent({ year: 2027 }) as any,
+    );
+    const putInput = dynamoMock.commandCalls(PutItemCommand)[0].args[0].input;
+    const item = unmarshall(putInput.Item ?? {});
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(200);
+    expect(item.accountingFramework).toBe("SYCEBNL");
+    expect(body.data.accountingFramework).toBe("SYCEBNL");
+  });
+
+  test("rejects client attempts to override fiscal year accounting framework", async () => {
+    const response = await createFiscalYearHandler(
+      createEvent({ year: 2028, accountingFramework: "SYCEBNL" }) as any,
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.errors?.[0]?.path).toBe("");
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
   });
 
   test("year-end closing writes header, lines, balance updates and fiscal-year transition atomically", async () => {

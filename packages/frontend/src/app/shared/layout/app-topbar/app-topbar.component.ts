@@ -5,6 +5,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 
 import { LanguageSelectorComponent } from '../../../core/i18n/language-selector/language-selector.component';
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
+import { AccountingFiscalYearContextService } from '../../../domains/accounting/data-access/accounting-fiscal-year-context.service';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { LiassButtonComponent } from '../../ui/button/button.component';
 import { LiassCommandInputComponent } from '../../ui/command-input/command-input.component';
@@ -45,6 +46,7 @@ const pageTitleKeys: Record<AppPage, string> = {
   templateUrl: './app-topbar.component.html'
 })
 export class AppTopbarComponent implements OnInit {
+  protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
   protected readonly pageTitleKey = computed(() => pageTitleKeys[this.uiStore.currentPage()]);
@@ -76,10 +78,14 @@ export class AppTopbarComponent implements OnInit {
     () => this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM'
   );
   protected readonly activeDossierRouteLabelKey = computed(() => 'SHELL.TOPBAR.SELECT_DOSSIER');
+  protected readonly showFiscalYearSelector = computed(() =>
+    this.uiStore.currentPage().startsWith('accounting.')
+  );
   private readonly router = inject(Router);
 
   protected commandValue = '';
   protected cabinetMenuOpen = false;
+  protected fiscalYearMenuOpen = false;
   protected userMenuOpen = false;
 
   protected readonly userLabel = computed(() => this.authStore.currentUserDisplayName());
@@ -108,6 +114,14 @@ export class AppTopbarComponent implements OnInit {
     this.cabinetMenuOpen = !this.cabinetMenuOpen;
   }
 
+  protected toggleFiscalYearMenu(): void {
+    if (!this.showFiscalYearSelector()) {
+      return;
+    }
+
+    this.fiscalYearMenuOpen = !this.fiscalYearMenuOpen;
+  }
+
   protected updateCommandValue(value: string): void {
     this.commandValue = value;
   }
@@ -118,6 +132,21 @@ export class AppTopbarComponent implements OnInit {
     }
 
     await this.router.navigate(['/cabinet/dossiers']);
+  }
+
+  protected selectFiscalYear(year: number): void {
+    const fiscalYear = this.fiscalYearContext.fiscalYears().find((candidate) => candidate.year === year);
+
+    if (fiscalYear) {
+      this.fiscalYearContext.selectFiscalYear(fiscalYear);
+    }
+
+    this.fiscalYearMenuOpen = false;
+  }
+
+  protected async navigateToFiscalYears(): Promise<void> {
+    this.fiscalYearMenuOpen = false;
+    await this.router.navigate(['/accounting/fiscal-years']);
   }
 
   protected async navigateToCabinetDashboard(): Promise<void> {

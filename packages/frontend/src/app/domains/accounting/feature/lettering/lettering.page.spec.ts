@@ -7,6 +7,8 @@ import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-exper
 import { vi } from 'vitest';
 
 import { environment } from '../../../../../environments/environment';
+import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../identity/data-access/workspaces.api';
 import { LetteringPage } from './lettering.page';
@@ -160,6 +162,22 @@ describe('LetteringPage', () => {
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-company-1',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-1'
+    );
+    TestBed.inject(AccountingFiscalYearContextService).selectFiscalYear({
+      accountingFramework: 'SYSCOHADA_REVISED',
+      endDate: '2026-12-31',
+      fiscalYearId: 'FY#2026',
+      startDate: '2026-01-01',
+      status: 'OPEN',
+      year: 2026
+    });
     fixture = TestBed.createComponent(LetteringPage);
     fixture.detectChanges();
   });

@@ -5,6 +5,9 @@
     [subtitle]="'ACCOUNTING.LETTERING.SUBTITLE' | transloco"
   />
 
+  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+    <liass-fiscal-year-required />
+  } @else {
   <div class="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
     <div class="space-y-6">
       <liass-card
@@ -353,4 +356,5 @@
       </liass-card>
     </div>
   </div>
+  }
 </div>

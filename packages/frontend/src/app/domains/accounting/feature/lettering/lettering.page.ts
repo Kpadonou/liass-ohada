@@ -21,7 +21,9 @@ import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AccountingApi } from '../../data-access/accounting.api';
+import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
 interface LetteringScope {
   accountId: string;
@@ -36,6 +38,7 @@ type LetteringAction = 'post' | 'cancel' | null;
   imports: [
     LiassButtonComponent,
     LiassCardComponent,
+    FiscalYearRequiredComponent,
     LiassPageHeaderComponent,
     LiassSearchableSelectComponent,
     LiassSkeletonComponent,
@@ -50,6 +53,7 @@ type LetteringAction = 'post' | 'cancel' | null;
 })
 export class LetteringPage {
   private readonly accountingApi = inject(AccountingApi);
+  protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly formBuilder = inject(FormBuilder);
 
@@ -83,20 +87,20 @@ export class LetteringPage {
     this.accountingQueries.thirdPartyLedger({
       accountId: this.scope().accountId,
       thirdPartyId: this.scope().thirdPartyId
-    })
+    }, this.fiscalYearContext.hasActiveFiscalYear())
   );
   protected readonly matchingReportQuery = injectQuery(() =>
     this.accountingQueries.matchingReport({
       accountId: this.scope().accountId,
       thirdPartyId: this.scope().thirdPartyId
-    })
+    }, this.fiscalYearContext.hasActiveFiscalYear())
   );
   protected readonly unletteredLinesQuery = injectQuery(() =>
     this.accountingQueries.unletteredLines({
       accountId: this.scope().accountId,
       thirdPartyId: this.scope().thirdPartyId,
       projectId: this.scope().projectId
-    })
+    }, this.fiscalYearContext.hasActiveFiscalYear())
   );
 
   protected readonly thirdPartyLedger = computed(() => this.thirdPartyLedgerQuery.data() ?? null);
@@ -127,6 +131,7 @@ export class LetteringPage {
   protected readonly canPostLettering = computed(
     () =>
       this.selectedLineRefs().length >= 2 &&
+      this.fiscalYearContext.hasActiveFiscalYear() &&
       !this.hasIncompleteSelection() &&
       this.form.controls.letteringCode.valid &&
       !this.pendingAction()
@@ -134,6 +139,7 @@ export class LetteringPage {
   protected readonly canCancelLettering = computed(
     () =>
       this.selectedLineRefs().length >= 1 &&
+      this.fiscalYearContext.hasActiveFiscalYear() &&
       !this.hasIncompleteSelection() &&
       !this.pendingAction()
   );

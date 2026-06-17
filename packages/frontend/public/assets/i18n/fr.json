@@ -38,7 +38,7 @@
       "DASHBOARD": "Tableau de bord",
       "DEADLINES": "Échéances",
       "ENTRIES": "Écritures",
-      "FISCAL_YEAR": "Exercice",
+      "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
@@ -62,7 +62,7 @@
       "CLIENT_DOSSIERS": "Dossiers clients",
       "DASHBOARD": "Tableau de bord",
       "ENTRIES": "Écritures",
-      "FISCAL_YEAR": "Exercice",
+      "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
@@ -85,6 +85,8 @@
       "DARK_MODE": "Activer le mode sombre",
       "DOSSIER": "Dossier actif",
       "DOSSIER_LOADING": "Chargement du dossier...",
+      "ACTIVE_FISCAL_YEAR": "Exercice actif",
+      "FISCAL_YEAR_SELECTOR_LABEL": "Sélectionner l’exercice actif",
       "LIGHT_MODE": "Activer le mode clair",
       "NO_DOSSIER": "Aucun dossier ouvert",
       "NO_ORG": "Aucune organisation",
@@ -92,6 +94,7 @@
       "NEW_CLIENT_DOSSIER": "Nouveau dossier client",
       "SIGN_OUT": "Se déconnecter",
       "SELECT_DOSSIER": "Sélectionner un dossier",
+      "SELECT_FISCAL_YEAR": "Aucun exercice",
       "TOGGLE_NAVIGATION": "Basculer la navigation",
       "USER": "Utilisateur",
       "USER_MENU": "Ouvrir le menu utilisateur",
@@ -592,8 +595,8 @@
         "TITLE": "Écritures"
       },
       "FISCAL_YEAR": {
-        "SUBTITLE": "Ouvrez, verrouillez et clôturez les périodes comptables.",
-        "TITLE": "Exercice"
+        "SUBTITLE": "Sélectionnez les exercices et pilotez les verrous de période.",
+        "TITLE": "Exercices"
       },
       "GENERAL_LEDGER": {
         "SUBTITLE": "Une route réservée à l’espace grand livre.",
@@ -976,33 +979,43 @@
         "UNBALANCED": "Le total débit doit être égal au total crédit."
       }
     },
+    "FISCAL_YEAR_CONTEXT": {
+      "CHOOSE_ACTION": "Choisir un exercice",
+      "CREATE_ACTION": "Créer un exercice",
+      "EMPTY_DESCRIPTION": "Cette fonctionnalité dépend d’un exercice actif pour charger les données comptables de période.",
+      "EMPTY_TITLE": "Sélectionnez un exercice fiscal",
+      "GO_TO_FISCAL_YEARS": "Gérer les exercices",
+      "NO_FISCAL_YEAR": "Aucun exercice connu pour ce dossier."
+    },
     "FISCAL_YEAR": {
       "ACTIONS": {
         "CLOSE": "Clôturer l’exercice",
-        "CREATE": "Créer",
+        "CLOSE_PREPARATION": "Préparation à venir",
+        "CREATE": "Nouvel exercice",
+        "CREATE_SUBMIT": "Créer l’exercice",
         "LOAD": "Charger",
         "LOCK": "Verrouiller",
+        "NEW": "Nouvel exercice",
         "UNLOCK": "Déverrouiller"
       },
       "CLOSE": {
-        "DESCRIPTION": "Générez l’écriture de résultat de fin d’exercice et marquez l’exercice comme clôturé.",
+        "DESCRIPTION": "Préparez la future clôture annuelle sans exécuter la clôture comptable.",
         "ENTRY_ID": "Écriture de clôture",
-        "HELP": "Clôturez seulement après revue des journaux, de la balance et des périodes ouvertes. Le backend reste la source de vérité des contrôles de clôture.",
+        "HELP": "La clôture finale sera activée après validation complète des contrôles, des écritures de résultat et des états annuels.",
         "LOSS": "Perte",
         "NET_RESULT": "Résultat net",
         "PROFIT": "Bénéfice",
         "RESULT_TITLE": "Résultat de clôture",
         "RESULT_TYPE": "Type de résultat",
-        "TITLE": "Clôture annuelle"
+        "TITLE": "Préparation clôture"
       },
-      "CLOSE_DIALOG": {
-        "CANCEL": "Annuler",
-        "CONFIRM": "Clôturer",
-        "DESCRIPTION": "Cette action demande au backend de créer l’écriture de clôture et de clôturer l’exercice sélectionné.",
-        "TITLE": "Confirmer la clôture",
-        "WARNING": "C’est une action comptable significative. Revoyez la balance avant de continuer."
+      "CREATE_DIALOG": {
+        "DESCRIPTION": "Créez l’exercice fiscal pour activer les verrous de période associés.",
+        "EYEBROW": "Exercice fiscal",
+        "TITLE": "Nouvel exercice"
       },
       "EMPTY": "Aucun exercice trouvé pour cette année. Créez-le pour commencer à verrouiller les périodes.",
+      "NOT_FOUND": "Aucun exercice fiscal trouvé pour cette année.",
       "ERRORS": {
         "CLOSE_FAILED": "L’exercice n’a pas pu être clôturé.",
         "CREATE_FAILED": "L’exercice n’a pas pu être créé.",
@@ -1040,11 +1053,20 @@
       "PERIODS": {
         "DESCRIPTION": "Pilotez les périodes mensuelles utilisées par la saisie et le lettrage.",
         "MONTH_PREFIX": "Mois",
+        "NO_SELECTION": "Chargez ou créez un exercice fiscal pour afficher les verrous de période.",
         "TITLE": "Verrous de période"
       },
+      "PERIOD_CONFIRM": {
+        "EYEBROW": "Verrou de période",
+        "LOCK_DESCRIPTION": "Confirmez le verrouillage de cette période. Les écritures futures sur cette période seront refusées par le backend.",
+        "LOCK_TITLE": "Verrouiller la période ?",
+        "UNLOCK_DESCRIPTION": "Confirmez la réouverture de cette période. Le backend reste source de vérité pour les contrôles de l’exercice.",
+        "UNLOCK_TITLE": "Déverrouiller la période ?"
+      },
       "SELECTOR": {
-        "DESCRIPTION": "Choisissez un exercice, puis créez-le s’il n’existe pas encore.",
-        "TITLE": "Périmètre"
+        "DESCRIPTION": "Saisissez l’année de l’exercice à charger ou à créer.",
+        "IDLE": "Aucun exercice n’est chargé pour le moment. Utilisez Charger pour vérifier l’existence de l’exercice.",
+        "TITLE": "Rechercher ou créer un exercice"
       },
       "STATUS": {
         "ARCHIVED": "Archivé",
@@ -1052,14 +1074,14 @@
         "LOCKED": "Verrouillé",
         "OPEN": "Ouvert"
       },
-      "SUBTITLE": "Pilotez le statut de l’exercice et les verrous mensuels avant les écritures, le lettrage et la clôture.",
+      "SUBTITLE": "Pilotez le statut de l’exercice et les verrous mensuels avant les écritures et le lettrage.",
       "SUMMARY": {
         "DESCRIPTION": "Statut backend courant de l’exercice sélectionné.",
         "LOCKED_PERIODS": "Verrouillées",
         "OPEN_PERIODS": "Ouvertes",
         "TITLE": "Statut de l’exercice"
       },
-      "TITLE": "Exercice"
+      "TITLE": "Exercices fiscaux"
     },
     "GENERAL_LEDGER": {
       "EYEBROW": "Grand livre",

@@ -47,7 +47,6 @@ export type FiscalYearDto = z.infer<typeof FiscalYearDtoSchema>;
 export const CreateFiscalYearRequestSchema = z
   .object({
     year: z.coerce.number().int().gte(1900).lte(2100),
-    accountingFramework: AccountingFramework.default("SYSCOHADA_REVISED"),
     startDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -57,6 +56,7 @@ export const CreateFiscalYearRequestSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional(),
   })
+  .strict()
   .refine(
     (data) => !data.startDate || data.startDate.startsWith(`${data.year}-`),
     {

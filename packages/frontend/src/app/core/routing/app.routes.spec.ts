@@ -135,6 +135,9 @@ describe('routes', () => {
   it('registers the accounting fiscal-year route', async () => {
     const shell = shellRoute();
     const fiscalYearRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/fiscal-years'
+    );
+    const legacyFiscalYearRoute = shell?.children?.find(
       (route) => route.path === 'accounting/fiscal-year'
     );
     const component = await fiscalYearRoute?.loadComponent?.();
@@ -144,6 +147,7 @@ describe('routes', () => {
 
     expect(component).toBe(FiscalYearPage);
     expect(fiscalYearRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.FISCAL_YEAR.TITLE');
+    expect(legacyFiscalYearRoute?.redirectTo).toBe('accounting/fiscal-years');
   });
 
   it('registers the accounting lettering route', async () => {

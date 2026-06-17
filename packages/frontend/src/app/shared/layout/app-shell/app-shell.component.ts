@@ -32,7 +32,7 @@ function pageFromUrl(url: string): AppPage {
     return 'accounting.entries';
   }
 
-  if (path.startsWith('/accounting/fiscal-year')) {
+  if (path.startsWith('/accounting/fiscal-years') || path.startsWith('/accounting/fiscal-year')) {
     return 'accounting.fiscalYear';
   }
 

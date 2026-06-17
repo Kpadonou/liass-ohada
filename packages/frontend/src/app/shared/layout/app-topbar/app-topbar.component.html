@@ -163,6 +163,84 @@
       </button>
     }
 
+    @if (showFiscalYearSelector()) {
+      <liass-dropdown [open]="fiscalYearMenuOpen" width="md" align="end" (closed)="fiscalYearMenuOpen = false">
+        <button
+          liassDropdownTrigger
+          class="hidden min-w-0 items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-sm text-emerald-900 transition hover:border-brand-300 hover:bg-brand-50 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100 dark:hover:border-brand-800 dark:hover:bg-brand-950/30 sm:flex"
+          type="button"
+          data-testid="active-fiscal-year"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="fiscalYearMenuOpen"
+          [attr.aria-label]="'SHELL.TOPBAR.FISCAL_YEAR_SELECTOR_LABEL' | transloco"
+          (click)="toggleFiscalYearMenu()"
+        >
+          <mat-icon class="shrink-0 text-emerald-700 dark:text-emerald-300">event_available</mat-icon>
+          <span class="min-w-0">
+            <span class="block text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600 dark:text-emerald-300">
+              {{ 'SHELL.TOPBAR.ACTIVE_FISCAL_YEAR' | transloco }}
+            </span>
+            <span class="block max-w-[160px] truncate font-semibold text-slate-950 dark:text-white">
+              {{
+                fiscalYearContext.activeFiscalYear()?.year
+                  || ('SHELL.TOPBAR.SELECT_FISCAL_YEAR' | transloco)
+              }}
+            </span>
+          </span>
+          <mat-icon class="text-emerald-500">{{ fiscalYearMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+
+        <div class="border-b border-slate-100 px-2 pb-3 dark:border-slate-800">
+          <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+            {{ 'SHELL.TOPBAR.ACTIVE_FISCAL_YEAR' | transloco }}
+          </p>
+          <p class="mt-1 text-sm font-semibold text-slate-950 dark:text-white">
+            {{
+              fiscalYearContext.activeFiscalYear()?.year
+                || ('SHELL.TOPBAR.SELECT_FISCAL_YEAR' | transloco)
+            }}
+          </p>
+          @if (fiscalYearContext.activeFiscalYear(); as fiscalYear) {
+            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {{ 'ACCOUNTING.FISCAL_YEAR.STATUS.' + fiscalYear.status | transloco }}
+            </p>
+          }
+        </div>
+
+        <div class="pt-2">
+          @if (fiscalYearContext.fiscalYears().length > 0) {
+            @for (fiscalYear of fiscalYearContext.fiscalYears(); track fiscalYear.year) {
+              <button
+                class="flex w-full items-center justify-between gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                type="button"
+                role="menuitem"
+                (click)="selectFiscalYear(fiscalYear.year)"
+              >
+                <span>{{ fiscalYear.year }}</span>
+                <span class="text-xs font-medium text-slate-400">
+                  {{ 'ACCOUNTING.FISCAL_YEAR.STATUS.' + fiscalYear.status | transloco }}
+                </span>
+              </button>
+            }
+          } @else {
+            <p class="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+              {{ 'ACCOUNTING.FISCAL_YEAR_CONTEXT.NO_FISCAL_YEAR' | transloco }}
+            </p>
+          }
+
+          <button
+            class="mt-1 flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-200"
+            type="button"
+            role="menuitem"
+            (click)="navigateToFiscalYears()"
+          >
+            <mat-icon>event_note</mat-icon>
+            <span>{{ 'ACCOUNTING.FISCAL_YEAR_CONTEXT.GO_TO_FISCAL_YEARS' | transloco }}</span>
+          </button>
+        </div>
+      </liass-dropdown>
+    }
+
     <liass-button
       size="icon"
       variant="outline"

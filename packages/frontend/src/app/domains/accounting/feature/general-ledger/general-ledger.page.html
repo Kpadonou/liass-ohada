@@ -5,6 +5,9 @@
     [subtitle]="'ACCOUNTING.GENERAL_LEDGER.SUBTITLE' | transloco"
   />
 
+  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+    <liass-fiscal-year-required />
+  } @else {
   <liass-card [title]="'ACCOUNTING.GENERAL_LEDGER.FILTERS.TITLE' | transloco" [description]="'ACCOUNTING.GENERAL_LEDGER.FILTERS.DESCRIPTION' | transloco">
     <div class="grid gap-3 md:grid-cols-[140px_minmax(0,1fr)]">
       <mat-form-field appearance="outline">
@@ -86,4 +89,5 @@
       </div>
     }
   </liass-card>
+  }
 </div>

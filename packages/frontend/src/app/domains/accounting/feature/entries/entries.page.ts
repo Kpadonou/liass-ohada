@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   FormArray,
@@ -23,7 +23,9 @@ import { LiassSearchableSelectComponent, type LiassSearchableSelectOption } from
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AccountingApi } from '../../data-access/accounting.api';
+import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
 type EntryLineForm = FormGroup;
 
@@ -32,6 +34,7 @@ type EntryLineForm = FormGroup;
   imports: [
     LiassButtonComponent,
     LiassCardComponent,
+    FiscalYearRequiredComponent,
     LiassPageHeaderComponent,
     LiassSearchableSelectComponent,
     LiassSkeletonComponent,
@@ -47,12 +50,13 @@ type EntryLineForm = FormGroup;
 })
 export class EntriesPage {
   private readonly accountingApi = inject(AccountingApi);
+  protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly formBuilder = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
 
   protected readonly currentYear = `${new Date().getFullYear()}`;
-  protected readonly selectedYear = signal(this.currentYear);
+  protected readonly selectedYear = signal(`${this.fiscalYearContext.activeYear() ?? this.currentYear}`);
   protected readonly selectedJournalCode = signal<string | null>(null);
   protected readonly selectedMonth = signal<string | null>(null);
   protected readonly submitting = signal(false);
@@ -67,7 +71,7 @@ export class EntriesPage {
       journalCode: this.selectedJournalCode() || undefined,
       month: this.selectedJournalCode() ? this.selectedMonth() || undefined : undefined,
       limit: 100
-    })
+    }, this.fiscalYearContext.hasActiveFiscalYear())
   );
 
   protected readonly accounts = computed(() => this.accountsQuery.data()?.items ?? []);
@@ -91,8 +95,17 @@ export class EntriesPage {
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.selectedYear.set(params.get('year') ?? this.currentYear);
+      this.selectedYear.set(params.get('year') ?? `${this.fiscalYearContext.activeYear() ?? this.currentYear}`);
       this.selectedJournalCode.set(params.get('journalCode'));
+    });
+
+    effect(() => {
+      const activeYear = this.fiscalYearContext.activeYear();
+
+      if (activeYear) {
+        this.selectedYear.set(`${activeYear}`);
+        this.form.controls.year.setValue(activeYear);
+      }
     });
   }
 
@@ -142,7 +155,7 @@ export class EntriesPage {
   }
 
   protected async submit(): Promise<void> {
-    if (this.form.invalid || !this.isBalanced() || this.submitting()) {
+    if (!this.fiscalYearContext.hasActiveFiscalYear() || this.form.invalid || !this.isBalanced() || this.submitting()) {
       this.form.markAllAsTouched();
       this.errorKey.set(this.isBalanced() ? 'ACCOUNTING.ERRORS.POST_ENTRY_FAILED' : 'ACCOUNTING.ENTRIES.VALIDATION.UNBALANCED');
       return;

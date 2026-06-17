@@ -146,6 +146,11 @@ export const routes: Routes = [
       },
       {
         path: 'accounting/fiscal-year',
+        pathMatch: 'full',
+        redirectTo: 'accounting/fiscal-years'
+      },
+      {
+        path: 'accounting/fiscal-years',
         loadComponent: () =>
           import('../../domains/accounting/feature/fiscal-year/fiscal-year.page').then(
             (module) => module.FiscalYearPage

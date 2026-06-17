@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
+import { AccountingFiscalYearContextService } from '../../../domains/accounting/data-access/accounting-fiscal-year-context.service';
 import { UiStore } from '../../../core/state/ui.store';
 import { AppTopbarComponent } from './app-topbar.component';
 
@@ -45,7 +46,7 @@ const translations = {
         CLIENT_DOSSIERS: 'Client dossiers',
         DASHBOARD: 'Dashboard',
         ENTRIES: 'Entries',
-        FISCAL_YEAR: 'Fiscal year',
+        FISCAL_YEAR: 'Fiscal years',
         GENERAL_LEDGER: 'General ledger',
         JOURNALS: 'Journals',
         LETTERING: 'Lettering',
@@ -61,10 +62,13 @@ const translations = {
         DARK_MODE: 'Switch to dark mode',
         DOSSIER: 'Active dossier',
         DOSSIER_LOADING: 'Loading dossier...',
+        ACTIVE_FISCAL_YEAR: 'Active fiscal year',
+        FISCAL_YEAR_SELECTOR_LABEL: 'Select active fiscal year',
         NO_DOSSIER: 'No dossier open',
         NO_WORKSPACE: 'Workspace',
         NEW_CLIENT_DOSSIER: 'New client dossier',
         SELECT_DOSSIER: 'Select a dossier',
+        SELECT_FISCAL_YEAR: 'Select fiscal year',
         SIGN_OUT: 'Sign out',
         TOGGLE_NAVIGATION: 'Toggle navigation',
         USER: 'User',
@@ -76,6 +80,20 @@ const translations = {
         ACCOUNTING_FIRM: 'Accounting firm',
         COMPANY: 'Company'
       }
+    },
+    ACCOUNTING: {
+      FISCAL_YEAR: {
+        STATUS: {
+          OPEN: 'Open',
+          LOCKED: 'Locked',
+          CLOSED: 'Closed',
+          DRAFT: 'Draft'
+        }
+      },
+      FISCAL_YEAR_CONTEXT: {
+        GO_TO_FISCAL_YEARS: 'Manage fiscal years',
+        NO_FISCAL_YEAR: 'No fiscal year known for this dossier.'
+      }
     }
   }
 };
@@ -83,6 +101,7 @@ const translations = {
 describe('AppTopbarComponent', () => {
   let fixture: ComponentFixture<AppTopbarComponent>;
   let authStore: InstanceType<typeof AuthStore>;
+  let fiscalYearContext: AccountingFiscalYearContextService;
   let uiStore: InstanceType<typeof UiStore>;
   let cabinetDossiersApi: { listDossiers: ReturnType<typeof vi.fn> };
   let router: Router;
@@ -90,6 +109,7 @@ describe('AppTopbarComponent', () => {
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
+    localStorage.clear();
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(fetchAuthSession).mockReset();
     vi.mocked(fetchUserAttributes).mockReset();
@@ -118,6 +138,7 @@ describe('AppTopbarComponent', () => {
     }).compileComponents();
 
     authStore = TestBed.inject(AuthStore);
+    fiscalYearContext = TestBed.inject(AccountingFiscalYearContextService);
     uiStore = TestBed.inject(UiStore);
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -212,6 +233,95 @@ describe('AppTopbarComponent', () => {
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
+  it('renders the active fiscal year selector on accounting pages', () => {
+    uiStore.setCurrentPage('accounting.entries');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+    fiscalYearContext.selectFiscalYear({
+      accountingFramework: 'SYSCOHADA_REVISED',
+      endDate: '2026-12-31',
+      fiscalYearId: 'FY#2026',
+      startDate: '2026-01-01',
+      status: 'OPEN',
+      year: 2026
+    });
+
+    renderText();
+    const selector = fixture.nativeElement.querySelector(
+      '[data-testid="active-fiscal-year"]'
+    ) as HTMLButtonElement;
+
+    expect(selector).not.toBeNull();
+    expect(selector.textContent).toContain('Active fiscal year');
+    expect(selector.textContent).toContain('2026');
+    expect(selector.getAttribute('aria-label')).toBe('Select active fiscal year');
+  });
+
+  it('does not render the active fiscal year selector outside accounting pages', () => {
+    uiStore.setCurrentPage('dashboard');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    renderText();
+
+    expect(fixture.nativeElement.querySelector('[data-testid="active-fiscal-year"]')).toBeNull();
+  });
+
+  it('chooses an existing fiscal year from the accounting selector', () => {
+    uiStore.setCurrentPage('accounting.entries');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+    fiscalYearContext.rememberFiscalYear({
+      accountingFramework: 'SYSCOHADA_REVISED',
+      endDate: '2026-12-31',
+      fiscalYearId: 'FY#2026',
+      startDate: '2026-01-01',
+      status: 'OPEN',
+      year: 2026
+    });
+    fiscalYearContext.rememberFiscalYear({
+      accountingFramework: 'SYSCOHADA_REVISED',
+      endDate: '2025-12-31',
+      fiscalYearId: 'FY#2025',
+      startDate: '2025-01-01',
+      status: 'CLOSED',
+      year: 2025
+    });
+
+    renderText();
+    const selector = fixture.nativeElement.querySelector(
+      '[data-testid="active-fiscal-year"]'
+    ) as HTMLButtonElement;
+    selector.click();
+    fixture.detectChanges();
+    const fiscalYearButtons = Array.from(
+      fixture.nativeElement.querySelectorAll('button[role="menuitem"]')
+    ) as HTMLButtonElement[];
+
+    fiscalYearButtons.find((button) => button.textContent?.includes('2025'))?.click();
+    fixture.detectChanges();
+
+    expect(fiscalYearContext.activeYear()).toBe(2025);
+  });
+
   it('displays the fiscal-year page title separately from the active workspace', () => {
     uiStore.setCurrentPage('accounting.fiscalYear');
     authStore.setCreatedWorkspace(
@@ -225,7 +335,7 @@ describe('AppTopbarComponent', () => {
 
     const text = renderText();
 
-    expect(text).toContain('Fiscal year');
+    expect(text).toContain('Fiscal years');
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 

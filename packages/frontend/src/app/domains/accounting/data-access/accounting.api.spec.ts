@@ -329,15 +329,13 @@ describe('AccountingApi', () => {
 
   it('creates fiscal years and maps frontend-safe responses', async () => {
     const promise = api.createFiscalYear({
-      year: 2026,
-      accountingFramework: 'SYSCOHADA_REVISED'
+      year: 2026
     });
     const request = httpMock.expectOne(`${apiBaseUrl}/fiscal-year`);
 
     expect(request.request.method).toBe('POST');
     expect(request.request.body).toEqual({
-      year: 2026,
-      accountingFramework: 'SYSCOHADA_REVISED'
+      year: 2026
     });
     request.flush({
       data: {
@@ -362,6 +360,17 @@ describe('AccountingApi', () => {
       status: 'OPEN',
       accountingFramework: 'SYSCOHADA_REVISED'
     });
+  });
+
+  it('rejects client-provided fiscal year accounting framework before posting', async () => {
+    await expect(
+      api.createFiscalYear({
+        year: 2026,
+        accountingFramework: 'SYCEBNL'
+      } as never)
+    ).rejects.toThrow();
+
+    httpMock.expectNone(`${apiBaseUrl}/fiscal-year`);
   });
 
   it('loads fiscal year details and updates period locks through backend routes', async () => {

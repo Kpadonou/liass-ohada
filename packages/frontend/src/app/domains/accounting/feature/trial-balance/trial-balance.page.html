@@ -5,6 +5,9 @@
     [subtitle]="'ACCOUNTING.TRIAL_BALANCE.SUBTITLE' | transloco"
   />
 
+  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+    <liass-fiscal-year-required />
+  } @else {
   <liass-card [title]="'ACCOUNTING.TRIAL_BALANCE.FILTERS.TITLE' | transloco" [description]="'ACCOUNTING.TRIAL_BALANCE.FILTERS.DESCRIPTION' | transloco">
     <mat-form-field appearance="outline" class="w-full max-w-40">
       <mat-label>{{ 'ACCOUNTING.TRIAL_BALANCE.FILTERS.YEAR' | transloco }}</mat-label>
@@ -65,4 +68,5 @@
       </div>
     }
   </liass-card>
+  }
 </div>

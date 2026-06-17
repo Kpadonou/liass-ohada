@@ -9,6 +9,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
+  AccountingFramework,
   CreateFiscalYearRequest,
   FiscalYear,
   FiscalYearDetailsDtoSchema,
@@ -42,7 +43,11 @@ export class FiscalYearService {
     orgId: string,
     userId: string,
     input: CreateFiscalYearRequest,
+    organizationAccountingFramework: string | undefined,
   ) {
+    const accountingFramework = AccountingFramework.parse(
+      organizationAccountingFramework,
+    );
     const now = new Date().toISOString();
     const fiscalYear = FiscalYearSchema.parse({
       orgId,
@@ -51,7 +56,7 @@ export class FiscalYearService {
       startDate: input.startDate ?? `${input.year}-01-01`,
       endDate: input.endDate ?? `${input.year}-12-31`,
       status: "OPEN",
-      accountingFramework: input.accountingFramework,
+      accountingFramework,
       entityType: "FISCAL_YEAR",
       PK: KeyFactory.orgKey(orgId),
       SK: KeyFactory.fiscalYearSK(input.year),

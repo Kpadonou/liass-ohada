@@ -27,7 +27,7 @@ const accountingItems: readonly ShellNavItem[] = [
     icon: 'event_available',
     labelKey: 'SHELL.NAV.FISCAL_YEAR',
     page: 'accounting.fiscalYear',
-    route: ['/accounting/fiscal-year']
+    route: ['/accounting/fiscal-years']
   },
   {
     icon: 'account_balance',

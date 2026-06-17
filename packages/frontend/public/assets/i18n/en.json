@@ -38,7 +38,7 @@
       "DASHBOARD": "Dashboard",
       "DEADLINES": "Deadlines",
       "ENTRIES": "Entries",
-      "FISCAL_YEAR": "Fiscal year",
+      "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
@@ -62,7 +62,7 @@
       "CLIENT_DOSSIERS": "Client dossiers",
       "DASHBOARD": "Dashboard",
       "ENTRIES": "Entries",
-      "FISCAL_YEAR": "Fiscal year",
+      "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
@@ -85,6 +85,8 @@
       "DARK_MODE": "Switch to dark mode",
       "DOSSIER": "Active dossier",
       "DOSSIER_LOADING": "Loading dossier...",
+      "ACTIVE_FISCAL_YEAR": "Active fiscal year",
+      "FISCAL_YEAR_SELECTOR_LABEL": "Select active fiscal year",
       "LIGHT_MODE": "Switch to light mode",
       "NO_DOSSIER": "No dossier open",
       "NO_ORG": "No organization",
@@ -92,6 +94,7 @@
       "NEW_CLIENT_DOSSIER": "New client dossier",
       "SIGN_OUT": "Sign out",
       "SELECT_DOSSIER": "Select a dossier",
+      "SELECT_FISCAL_YEAR": "Select fiscal year",
       "TOGGLE_NAVIGATION": "Toggle navigation",
       "USER": "User",
       "USER_MENU": "Open user menu",
@@ -592,8 +595,8 @@
         "TITLE": "Entries"
       },
       "FISCAL_YEAR": {
-        "SUBTITLE": "Open, lock, and close accounting periods.",
-        "TITLE": "Fiscal year"
+        "SUBTITLE": "Select fiscal years and manage period locks.",
+        "TITLE": "Fiscal years"
       },
       "GENERAL_LEDGER": {
         "SUBTITLE": "A reserved route for the general-ledger workspace.",
@@ -976,33 +979,43 @@
         "UNBALANCED": "Total debit must equal total credit."
       }
     },
+    "FISCAL_YEAR_CONTEXT": {
+      "CHOOSE_ACTION": "Choose fiscal year",
+      "CREATE_ACTION": "Create fiscal year",
+      "EMPTY_DESCRIPTION": "This feature needs an active fiscal year to load period accounting data.",
+      "EMPTY_TITLE": "Select a fiscal year",
+      "GO_TO_FISCAL_YEARS": "Manage fiscal years",
+      "NO_FISCAL_YEAR": "No fiscal year known for this dossier."
+    },
     "FISCAL_YEAR": {
       "ACTIONS": {
         "CLOSE": "Close fiscal year",
-        "CREATE": "Create",
+        "CLOSE_PREPARATION": "Preparation coming",
+        "CREATE": "New fiscal year",
+        "CREATE_SUBMIT": "Create fiscal year",
         "LOAD": "Load",
         "LOCK": "Lock",
+        "NEW": "New fiscal year",
         "UNLOCK": "Unlock"
       },
       "CLOSE": {
-        "DESCRIPTION": "Generate the year-end result entry and mark the fiscal year as closed.",
+        "DESCRIPTION": "Prepare the future year-end close without executing accounting close.",
         "ENTRY_ID": "Closing entry",
-        "HELP": "Close only after reviewing journals, trial balance, and open periods. The backend remains the source of truth for closing controls.",
+        "HELP": "Final close will be enabled after the controls, result entries, and annual statements are fully validated.",
         "LOSS": "Loss",
         "NET_RESULT": "Net result",
         "PROFIT": "Profit",
         "RESULT_TITLE": "Closing result",
         "RESULT_TYPE": "Result type",
-        "TITLE": "Year-end close"
+        "TITLE": "Close preparation"
       },
-      "CLOSE_DIALOG": {
-        "CANCEL": "Cancel",
-        "CONFIRM": "Close year",
-        "DESCRIPTION": "This action asks the backend to create the closing entry and close the selected fiscal year.",
-        "TITLE": "Confirm fiscal year close",
-        "WARNING": "This is a legally meaningful accounting action. Review the trial balance before continuing."
+      "CREATE_DIALOG": {
+        "DESCRIPTION": "Create the fiscal year to enable its related period locks.",
+        "EYEBROW": "Fiscal year",
+        "TITLE": "New fiscal year"
       },
       "EMPTY": "No fiscal year found for this year. Create it to start locking periods.",
+      "NOT_FOUND": "No fiscal year found for this year.",
       "ERRORS": {
         "CLOSE_FAILED": "The fiscal year could not be closed.",
         "CREATE_FAILED": "The fiscal year could not be created.",
@@ -1040,11 +1053,20 @@
       "PERIODS": {
         "DESCRIPTION": "Control the monthly periods used by entry posting and lettering.",
         "MONTH_PREFIX": "Month",
+        "NO_SELECTION": "Load or create a fiscal year to display period locks.",
         "TITLE": "Period locks"
       },
+      "PERIOD_CONFIRM": {
+        "EYEBROW": "Period lock",
+        "LOCK_DESCRIPTION": "Confirm locking this period. Future entries in this period will be rejected by the backend.",
+        "LOCK_TITLE": "Lock this period?",
+        "UNLOCK_DESCRIPTION": "Confirm reopening this period. The backend remains the source of truth for fiscal-year controls.",
+        "UNLOCK_TITLE": "Unlock this period?"
+      },
       "SELECTOR": {
-        "DESCRIPTION": "Choose a fiscal year, then create it if it does not exist yet.",
-        "TITLE": "Scope"
+        "DESCRIPTION": "Enter the fiscal year to load or create.",
+        "IDLE": "No fiscal year is loaded yet. Use Load to check whether the fiscal year exists.",
+        "TITLE": "Find or create a fiscal year"
       },
       "STATUS": {
         "ARCHIVED": "Archived",
@@ -1052,14 +1074,14 @@
         "LOCKED": "Locked",
         "OPEN": "Open"
       },
-      "SUBTITLE": "Manage fiscal-year status and monthly locks before entries, lettering, and close.",
+      "SUBTITLE": "Manage fiscal-year status and monthly locks before entries and lettering.",
       "SUMMARY": {
         "DESCRIPTION": "Current backend status for the selected fiscal year.",
         "LOCKED_PERIODS": "Locked",
         "OPEN_PERIODS": "Open",
         "TITLE": "Fiscal year status"
       },
-      "TITLE": "Fiscal year"
+      "TITLE": "Fiscal years"
     },
     "GENERAL_LEDGER": {
       "EYEBROW": "General ledger",
