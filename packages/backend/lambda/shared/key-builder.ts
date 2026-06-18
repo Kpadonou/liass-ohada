@@ -61,6 +61,11 @@ export const KeyFactory = {
 
   accountSK: (accountId: string) => `ACC#${accountId}`,
 
+  accountBalancePrefix: () => "BAL#",
+
+  accountBalanceSK: (accountId: string) =>
+    `${KeyFactory.accountBalancePrefix()}${accountId.padEnd(8, "0")}`,
+
   entrySK: (entryId: string) => `E#${entryId}`,
 
   entryLineSK: (lineId: string) => `L#${lineId}`,

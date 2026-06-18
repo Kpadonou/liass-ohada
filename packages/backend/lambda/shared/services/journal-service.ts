@@ -4,6 +4,10 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
 import {
   Journal,
+  JournalBookLineDto,
+  JournalBookLineDtoSchema,
+  JournalBookQuery,
+  JournalBookQuerySchema,
   JournalDto,
   JournalDtoSchema,
   JournalSchema,
@@ -34,18 +38,8 @@ export const UpdateJournalInputSchema = z.object({
   type: JournalSchema.shape.type,
 });
 
-export const JournalEntriesRequestSchema = z.object({
-  year: z.string().regex(/^\d{4}$/),
-  journalCode: z.string().optional(),
-  month: z
-    .string()
-    .regex(/^\d{2}$/)
-    .optional(),
-});
-
 export type CreateJournalInput = z.infer<typeof CreateJournalInputSchema>;
 export type UpdateJournalInput = z.infer<typeof UpdateJournalInputSchema>;
-export type JournalEntriesRequest = z.infer<typeof JournalEntriesRequestSchema>;
 
 export class JournalService {
   static toDto(journal: Journal | Record<string, any>): JournalDto {
@@ -225,50 +219,77 @@ export class JournalService {
   }
 
   /**
-   * Reads posted entry headers from the GSI5 chronological journal index.
-   * Supports full-year, journal-specific, and month-scoped views without scans.
+   * Reads posted entry headers for one journal from GSI5.
+   * GSI5 is journal-first, so a journal code is mandatory for stable chronology.
    */
-  static async getJournalEntries(orgId: string, input: JournalEntriesRequest) {
-    const { year, journalCode, month } = input;
+  static async getJournalEntries(orgId: string, input: JournalBookQuery) {
+    const parsedInput = JournalBookQuerySchema.parse(input);
+    const {
+      year,
+      journalCode,
+      month,
+      limit = 50,
+      cursor,
+    } = parsedInput;
     const pk = KeyFactory.gsi5JournalPK(orgId, year);
+    const skPrefix = month
+      ? `JNL#${journalCode.toUpperCase()}#DT#${year}-${month}`
+      : `JNL#${journalCode.toUpperCase()}`;
+    let exclusiveStartKey = JournalService.decodeCursor(cursor);
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    const entries: JournalBookLineDto[] = [];
 
-    let skFilter = "";
-    if (journalCode) {
-      skFilter = `JNL#${journalCode.toUpperCase()}`;
-      if (month) {
-        skFilter += `#DT#${year}-${month}`;
+    do {
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          IndexName: config.GSI5,
+          KeyConditionExpression:
+            "#pk = :pk AND begins_with(#sk, :skPrefix)",
+          FilterExpression: "#status = :posted",
+          ExpressionAttributeNames: {
+            "#pk": "GSI5PK",
+            "#sk": "GSI5SK",
+            "#status": "status",
+          },
+          ExpressionAttributeValues: marshall({
+            ":pk": pk,
+            ":skPrefix": skPrefix,
+            ":posted": "POSTED",
+          }),
+          Limit: Math.max(limit - entries.length, 1),
+          ExclusiveStartKey: exclusiveStartKey,
+          ScanIndexForward: true,
+        }),
+      );
+
+      for (const item of result.Items || []) {
+        const entry = unmarshall(item);
+        entries.push(
+          JournalBookLineDtoSchema.parse({
+            entryId: entry.entryId,
+            date: entry.entryDate,
+            journalCode: entry.journalCode,
+            reference: entry.voucherNumber,
+            label: entry.label,
+            totalDebit: entry.totalDebit || 0,
+            totalCredit: entry.totalCredit || 0,
+            status: entry.status,
+          }),
+        );
       }
-    }
 
-    const queryParams: any = {
-      TableName: config.TABLE_NAME,
-      IndexName: config.GSI5,
-      KeyConditionExpression: "#pk = :pk",
-      ExpressionAttributeNames: { "#pk": "GSI5PK" },
-      ExpressionAttributeValues: marshall({ ":pk": pk }),
-      ScanIndexForward: true,
+      lastEvaluatedKey = result.LastEvaluatedKey;
+      exclusiveStartKey = lastEvaluatedKey;
+    } while (entries.length < limit && lastEvaluatedKey);
+
+    const nextCursor = JournalService.encodeCursor(lastEvaluatedKey);
+
+    return {
+      entries,
+      nextCursor,
+      hasMore: !!nextCursor,
     };
-
-    if (skFilter) {
-      queryParams.KeyConditionExpression += " AND begins_with(#sk, :sk)";
-      queryParams.ExpressionAttributeNames["#sk"] = "GSI5SK";
-      queryParams.ExpressionAttributeValues[":sk"] = skFilter;
-    }
-
-    const result = await dynamoClient.send(new QueryCommand(queryParams));
-
-    return (result.Items || []).map((item) => {
-      const entry = unmarshall(item);
-      return {
-        entryId: entry.entryId,
-        date: entry.entryDate,
-        label: entry.label,
-        journal: entry.journalCode,
-        reference: entry.voucherNumber,
-        amount: entry.totalDebit,
-        status: entry.status,
-      };
-    });
   }
 
   private static async hasPostedEntries(
@@ -276,19 +297,62 @@ export class JournalService {
     year: number | string,
     journalCode: string,
   ) {
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        IndexName: config.GSI5,
-        KeyConditionExpression: "GSI5PK = :pk AND begins_with(GSI5SK, :sk)",
-        ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.gsi5JournalPK(orgId, year),
-          ":sk": `JNL#${journalCode.toUpperCase()}`,
-        }),
-        Limit: 1,
-      }),
-    );
+    let exclusiveStartKey: Record<string, any> | undefined;
 
-    return (result.Items || []).length > 0;
+    do {
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          IndexName: config.GSI5,
+          KeyConditionExpression:
+            "GSI5PK = :pk AND begins_with(GSI5SK, :sk)",
+          FilterExpression: "#status = :posted",
+          ExpressionAttributeNames: {
+            "#status": "status",
+          },
+          ExpressionAttributeValues: marshall({
+            ":pk": KeyFactory.gsi5JournalPK(orgId, year),
+            ":sk": `JNL#${journalCode.toUpperCase()}`,
+            ":posted": "POSTED",
+          }),
+          Limit: 25,
+          ExclusiveStartKey: exclusiveStartKey,
+        }),
+      );
+
+      if ((result.Items || []).length > 0) {
+        return true;
+      }
+
+      exclusiveStartKey = result.LastEvaluatedKey;
+    } while (exclusiveStartKey);
+
+    return false;
+  }
+
+  private static decodeCursor(
+    cursor?: string,
+  ): Record<string, any> | undefined {
+    if (!cursor) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(Buffer.from(cursor, "base64").toString());
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("Invalid cursor");
+      }
+      return parsed;
+    } catch {
+      throw new AppError(400, "ERROR_INVALID_CURSOR");
+    }
+  }
+
+  private static encodeCursor(
+    key?: Record<string, any>,
+  ): string | undefined {
+    return key
+      ? Buffer.from(JSON.stringify(key)).toString("base64")
+      : undefined;
   }
 }

@@ -1,6 +1,10 @@
 import { handler } from "@/lambda/domains/accounting/books/get-trial-balance";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  ScanCommand,
+} from "@aws-sdk/client-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
@@ -13,9 +17,10 @@ jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
 
 const createEvent = (year = "2026", orgId = "test-org") => ({
   version: "2.0",
-  routeKey: "POST /books/trial-balance",
+  routeKey: "GET /books/trial-balance",
   rawPath: "/books/trial-balance",
   rawQueryString: "",
+  queryStringParameters: { year },
   headers: { "accept-language": "en", "x-org-id": orgId },
   requestContext: {
     accountId: "123456789012",
@@ -23,14 +28,14 @@ const createEvent = (year = "2026", orgId = "test-org") => ({
     domainName: "localhost",
     domainPrefix: "localhost",
     http: {
-      method: "POST",
+      method: "GET",
       path: "/books/trial-balance",
       protocol: "HTTP/1.1",
       sourceIp: "127.0.0.1",
       userAgent: "jest",
     },
     requestId: "req-id",
-    routeKey: "POST /books/trial-balance",
+    routeKey: "GET /books/trial-balance",
     stage: "test",
     time: "01/Jan/1970:00:00:00 +0000",
     timeEpoch: 0,
@@ -43,7 +48,6 @@ const createEvent = (year = "2026", orgId = "test-org") => ({
       },
     },
   },
-  body: JSON.stringify({ year }),
   isBase64Encoded: false,
 });
 
@@ -114,10 +118,60 @@ describe("get-trial-balance handler", () => {
       finalDebit: 100,
       finalCredit: 30,
     });
+    expect(body.data.rows[0].PK).toBeUndefined();
+
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+    expect(queryInput.IndexName).toBeUndefined();
+    expect(queryInput.KeyConditionExpression).toContain(
+      "begins_with(SK, :skPrefix)",
+    );
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("follows aggregate query pagination until all BAL items are loaded", async () => {
+    const lastEvaluatedKey = {
+      PK: { S: "ORG#test-org#FY#2026" },
+      SK: { S: "BAL#41100000" },
+    };
+
+    dynamoMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Items: [
+          {
+            accountId: { S: "41100000" },
+            openingDebit: { N: "100" },
+            openingCredit: { N: "0" },
+            movementDebit: { N: "0" },
+            movementCredit: { N: "0" },
+          },
+        ],
+        LastEvaluatedKey: lastEvaluatedKey,
+      })
+      .resolvesOnce({
+        Items: [
+          {
+            accountId: { S: "51200000" },
+            openingDebit: { N: "0" },
+            openingCredit: { N: "100" },
+            movementDebit: { N: "0" },
+            movementCredit: { N: "0" },
+          },
+        ],
+      });
+
+    const body = parseResponse(await handler(createEvent()));
+
+    expect(body.data.rows).toHaveLength(2);
+    expect(dynamoMock.commandCalls(QueryCommand)).toHaveLength(2);
+    expect(
+      dynamoMock.commandCalls(QueryCommand)[1].args[0].input.ExclusiveStartKey,
+    ).toEqual(lastEvaluatedKey);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 
   test("returns 400 for invalid year input", async () => {
-    const response = await handler(createEvent(""));
+    const response = await handler(createEvent("26"));
     const body = parseResponse(response);
 
     expect((response as any).statusCode).toBe(400);

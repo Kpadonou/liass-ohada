@@ -144,6 +144,8 @@ export class AccountingEndpoints extends DomainConstructFactory {
       "/journals/{journalCode}",
       "journals/get-journal",
     );
+    // Canonical Lot 4 livre-journal route. GSI5 is journal-first, so the
+    // journal code remains mandatory until a date-first read model is added.
     map(
       apigw.HttpMethod.GET,
       "/journals/{journalCode}/entries",

@@ -11,6 +11,10 @@ import {
   EntryLineDtoSchema,
   EntrySummaryDto,
   EntrySummaryDtoSchema,
+  GeneralLedgerDto,
+  GeneralLedgerDtoSchema,
+  GeneralLedgerLineDtoSchema,
+  GeneralLedgerQuery,
   EntryLineSchema,
   EntrySchema,
   UpdateEntryDraftRequest,
@@ -85,16 +89,6 @@ export interface AccountEntriesResult {
   entries: AccountEntry[];
   nextCursor?: string;
   hasMore: boolean;
-}
-
-export interface LedgerEntry {
-  date: string;
-  label: string;
-  reference: string;
-  journal: string;
-  debit: number;
-  credit: number;
-  runningBalance: number;
 }
 
 export interface PostEntryParams {
@@ -1224,9 +1218,9 @@ export class LedgerService {
 
   static async getGeneralLedger(
     orgId: string,
-    fiscalYear: string,
-    accountId: string,
-  ) {
+    input: GeneralLedgerQuery,
+  ): Promise<GeneralLedgerDto> {
+    const { fiscalYear, accountId, limit = 50, cursor } = input;
     const paddedAccountId = LedgerService.formatAccount(accountId);
     const accountBalance = await BalanceService.getAccountBalance(
       orgId,
@@ -1236,58 +1230,89 @@ export class LedgerService {
 
     const openingNet =
       accountBalance.openingDebit - accountBalance.openingCredit;
+    const continuation = LedgerService.decodeGeneralLedgerCursor(cursor);
+    let exclusiveStartKey = continuation?.key;
+    let runningBalance = continuation?.runningBalance ?? openingNet;
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    const movements: GeneralLedgerDto["movements"] = [];
 
-    const queryResult = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        IndexName: config.GSI1,
-        KeyConditionExpression:
-          "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
-        ExpressionAttributeValues: marshall({
-          ":gsi1pk": KeyFactory.gsi1PK(orgId),
-          ":gsi1sk": KeyFactory.gsi1SKPrefix(paddedAccountId, fiscalYear),
+    do {
+      const queryResult = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          IndexName: config.GSI1,
+          KeyConditionExpression:
+            "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
+          ExpressionAttributeValues: marshall({
+            ":gsi1pk": KeyFactory.gsi1PK(orgId),
+            ":gsi1sk": KeyFactory.gsi1SKPrefix(
+              paddedAccountId,
+              fiscalYear,
+            ),
+          }),
+          Limit: Math.max(limit - movements.length, 1),
+          ExclusiveStartKey: exclusiveStartKey,
+          ScanIndexForward: true,
         }),
-        ConsistentRead: true,
-        ScanIndexForward: true,
-      }),
-    );
+      );
 
-    let runningBalance = openingNet;
-    const movements: LedgerEntry[] = [];
+      for (const item of queryResult.Items || []) {
+        const line = unmarshall(item);
+        if (line.journalCode === "RAN") {
+          continue;
+        }
 
-    for (const item of queryResult.Items || []) {
-      const line = unmarshall(item);
-      if (line.journalCode === "RAN") continue;
+        const debit = Number(line.debit) || 0;
+        const credit = Number(line.credit) || 0;
+        runningBalance += debit - credit;
+        movements.push(
+          GeneralLedgerLineDtoSchema.parse({
+            date: line.entryDate,
+            label: line.label || line.description || "-",
+            reference: line.voucherNumber || line.entryId,
+            journalCode: line.journalCode,
+            journal: line.journalCode,
+            entryId: line.entryId,
+            lineId: line.lineId,
+            debit,
+            credit,
+            runningBalance,
+          }),
+        );
+      }
 
-      const debit = Number(line.debit) || 0;
-      const credit = Number(line.credit) || 0;
+      lastEvaluatedKey = queryResult.LastEvaluatedKey;
+      exclusiveStartKey = lastEvaluatedKey;
+    } while (movements.length < limit && lastEvaluatedKey);
 
-      runningBalance += debit - credit;
-      movements.push({
-        date: line.entryDate,
-        label: line.label || line.description || "-",
-        reference: line.entryId || "N/A",
-        journal: line.journalCode,
-        debit,
-        credit,
-        runningBalance,
-      });
-    }
+    const nextCursor = lastEvaluatedKey
+      ? LedgerService.encodeGeneralLedgerCursor({
+          key: lastEvaluatedKey,
+          runningBalance,
+        })
+      : undefined;
+    const finalBalance =
+      accountBalance.openingDebit +
+      accountBalance.movementDebit -
+      (accountBalance.openingCredit + accountBalance.movementCredit);
 
-    return {
+    return GeneralLedgerDtoSchema.parse({
       accountId: paddedAccountId,
       openingBalance: {
         date: "OPENING",
         label: "Opening Balance (Report à Nouveau)",
         reference: "RAN",
+        journalCode: "RAN",
         journal: "RAN",
         debit: accountBalance.openingDebit,
         credit: accountBalance.openingCredit,
         runningBalance: openingNet,
       },
       movements,
-      finalBalance: runningBalance,
-    };
+      finalBalance,
+      nextCursor,
+      hasMore: !!nextCursor,
+    });
   }
 
   static async getIncomeStatement(orgId: string, year: number) {
@@ -1496,6 +1521,44 @@ export class LedgerService {
 
   private static encodeCursor(key?: Record<string, any>): string | undefined {
     return key ? Buffer.from(JSON.stringify(key)).toString("base64") : undefined;
+  }
+
+  private static decodeGeneralLedgerCursor(cursor?: string):
+    | {
+        key: Record<string, any>;
+        runningBalance: number;
+      }
+    | undefined {
+    if (!cursor) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(Buffer.from(cursor, "base64").toString());
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        !parsed.key ||
+        typeof parsed.key !== "object" ||
+        !Number.isInteger(parsed.runningBalance)
+      ) {
+        throw new Error("Invalid cursor");
+      }
+
+      return {
+        key: parsed.key,
+        runningBalance: parsed.runningBalance,
+      };
+    } catch {
+      throw new AppError(400, "ERROR_INVALID_CURSOR");
+    }
+  }
+
+  private static encodeGeneralLedgerCursor(cursor: {
+    key: Record<string, any>;
+    runningBalance: number;
+  }): string {
+    return Buffer.from(JSON.stringify(cursor)).toString("base64");
   }
 
   private static buildEntryLineItem(params: {

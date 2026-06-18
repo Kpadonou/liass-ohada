@@ -3,15 +3,13 @@
  */
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { BalanceService } from "@/lambda/shared/services/balance-service";
-import { z } from "zod";
-
-const GetAccountBalanceSchema = z.object({
-  fiscalYear: z.string().regex(/^\d{4}$/),
-  accountId: z.string().min(2),
-});
+import {
+  AccountBalanceQuerySchema,
+  AccountBalanceResponseSchema,
+} from "@liass-ohada/shared/accounting";
 
 export const handler = createHandler(
-  GetAccountBalanceSchema,
+  AccountBalanceQuerySchema,
   async (data, { orgId, i18n }) => {
     const { fiscalYear, accountId } = data;
 
@@ -22,9 +20,9 @@ export const handler = createHandler(
       accountId,
     );
 
-    return {
+    return AccountBalanceResponseSchema.parse({
       message: i18n.getMessage("SUCCESS_BALANCE_RETRIEVED"),
-      data: balance,
-    };
+      data: BalanceService.toDto(balance),
+    });
   },
 );

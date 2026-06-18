@@ -1,16 +1,10 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { BalanceService } from "@/lambda/shared/services/balance-service";
-import { z } from "zod";
-
-interface TrialBalanceRow {
-  accountId: string;
-  openingDebit: number;
-  openingCredit: number;
-  movementDebit: number;
-  movementCredit: number;
-  finalDebit: number;
-  finalCredit: number;
-}
+import {
+  TrialBalanceLineDto,
+  TrialBalanceQuerySchema,
+  TrialBalanceResponseSchema,
+} from "@liass-ohada/shared/accounting";
 
 /**
  * @description Slim handler for 6-column Trial Balance (Balance à 6 colonnes).
@@ -22,16 +16,12 @@ interface TrialBalanceRow {
  *
  * Grand totals are computed for the full list.
  */
-const TrialBalanceRequestSchema = z.object({
-  year: z.string().nonempty(),
-});
-
 export const handler = createHandler(
-  TrialBalanceRequestSchema,
+  TrialBalanceQuerySchema,
   async (data, { orgId, i18n }) => {
     const balances = await BalanceService.getTrialBalance(orgId, data.year);
 
-    const rows: TrialBalanceRow[] = balances
+    const rows: TrialBalanceLineDto[] = balances
       .map((item) => {
         const openingDebit = item.openingDebit;
         const openingCredit = item.openingCredit;
@@ -75,12 +65,12 @@ export const handler = createHandler(
       },
     );
 
-    return {
+    return TrialBalanceResponseSchema.parse({
       message: i18n.getMessage("SUCCESS_TRIAL_BALANCE_RETRIEVED"),
       data: {
         rows,
         totals: grandTotals,
       },
-    };
+    });
   },
 );

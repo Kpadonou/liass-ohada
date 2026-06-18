@@ -253,21 +253,42 @@ export const AccountEntriesResponseSchema = z.object({
   }),
 });
 
-export const LedgerMovementDtoSchema = z.object({
+export const GeneralLedgerQuerySchema = z.object({
+  fiscalYear: z.string().regex(/^\d{4}$/),
+  accountId: z.string().regex(/^\d{2,8}$/),
+  limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
+  cursor: z.string().optional(),
+});
+
+export type GeneralLedgerQuery = z.infer<typeof GeneralLedgerQuerySchema>;
+
+export const GeneralLedgerLineDtoSchema = z.object({
   date: z.string(),
   label: z.string(),
-  reference: z.string(),
-  journal: z.string(),
+  reference: z.string().optional(),
+  journalCode: z.string(),
+  journal: z.string().optional(),
+  entryId: z.string().optional(),
+  lineId: z.string().optional(),
   debit: z.number().int().nonnegative(),
   credit: z.number().int().nonnegative(),
   runningBalance: z.number().int(),
 });
 
+export type GeneralLedgerLineDto = z.infer<
+  typeof GeneralLedgerLineDtoSchema
+>;
+
+// Compatibility alias for the existing frontend while Lot 4 moves to journalCode.
+export const LedgerMovementDtoSchema = GeneralLedgerLineDtoSchema;
+
 export const GeneralLedgerDtoSchema = z.object({
-  accountId: z.string(),
-  openingBalance: LedgerMovementDtoSchema,
-  movements: z.array(LedgerMovementDtoSchema),
+  accountId: z.string().regex(/^\d{8}$/),
+  openingBalance: GeneralLedgerLineDtoSchema,
+  movements: z.array(GeneralLedgerLineDtoSchema),
   finalBalance: z.number().int(),
+  nextCursor: z.string().optional(),
+  hasMore: z.boolean(),
 });
 
 export type GeneralLedgerDto = z.infer<typeof GeneralLedgerDtoSchema>;
@@ -277,8 +298,18 @@ export const GeneralLedgerResponseSchema = z.object({
   data: GeneralLedgerDtoSchema,
 });
 
-export const TrialBalanceRowDtoSchema = z.object({
-  accountId: z.string(),
+export type GeneralLedgerResponse = z.infer<
+  typeof GeneralLedgerResponseSchema
+>;
+
+export const TrialBalanceQuerySchema = z.object({
+  year: z.string().regex(/^\d{4}$/),
+});
+
+export type TrialBalanceQuery = z.infer<typeof TrialBalanceQuerySchema>;
+
+export const TrialBalanceLineDtoSchema = z.object({
+  accountId: z.string().regex(/^\d{8}$/),
   openingDebit: z.number().int().nonnegative(),
   openingCredit: z.number().int().nonnegative(),
   movementDebit: z.number().int().nonnegative(),
@@ -287,9 +318,16 @@ export const TrialBalanceRowDtoSchema = z.object({
   finalCredit: z.number().int().nonnegative(),
 });
 
+export type TrialBalanceLineDto = z.infer<
+  typeof TrialBalanceLineDtoSchema
+>;
+
+// Compatibility alias for callers using the previous row terminology.
+export const TrialBalanceRowDtoSchema = TrialBalanceLineDtoSchema;
+
 export const TrialBalanceDtoSchema = z.object({
-  rows: z.array(TrialBalanceRowDtoSchema),
-  totals: TrialBalanceRowDtoSchema.omit({ accountId: true }),
+  rows: z.array(TrialBalanceLineDtoSchema),
+  totals: TrialBalanceLineDtoSchema.omit({ accountId: true }),
 });
 
 export type TrialBalanceDto = z.infer<typeof TrialBalanceDtoSchema>;
@@ -298,6 +336,74 @@ export const TrialBalanceResponseSchema = z.object({
   message: z.unknown().optional(),
   data: TrialBalanceDtoSchema,
 });
+
+export type TrialBalanceResponse = z.infer<
+  typeof TrialBalanceResponseSchema
+>;
+
+export const AccountBalanceQuerySchema = z.object({
+  fiscalYear: z.string().regex(/^\d{4}$/),
+  accountId: z.string().regex(/^\d{2,8}$/),
+});
+
+export type AccountBalanceQuery = z.infer<typeof AccountBalanceQuerySchema>;
+
+export const AccountBalanceDtoSchema = z.object({
+  accountId: z.string().regex(/^\d{8}$/),
+  openingDebit: z.number().int().nonnegative(),
+  openingCredit: z.number().int().nonnegative(),
+  movementDebit: z.number().int().nonnegative(),
+  movementCredit: z.number().int().nonnegative(),
+  finalDebit: z.number().int().nonnegative(),
+  finalCredit: z.number().int().nonnegative(),
+  updatedAt: z.string().optional(),
+});
+
+export type AccountBalanceDto = z.infer<typeof AccountBalanceDtoSchema>;
+
+export const AccountBalanceResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: AccountBalanceDtoSchema,
+});
+
+export const JournalBookQuerySchema = z.object({
+  year: z.string().regex(/^\d{4}$/),
+  journalCode: z.string().min(1).max(10),
+  month: z.string().regex(/^(0[1-9]|1[0-2])$/).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
+  cursor: z.string().optional(),
+});
+
+export type JournalBookQuery = z.infer<typeof JournalBookQuerySchema>;
+
+export const JournalBookLineDtoSchema = z.object({
+  entryId: z.string(),
+  date: z.string(),
+  journalCode: z.string(),
+  reference: z.string().optional(),
+  label: z.string().optional(),
+  totalDebit: z.number().int().nonnegative(),
+  totalCredit: z.number().int().nonnegative(),
+  status: z.literal("POSTED"),
+});
+
+export type JournalBookLineDto = z.infer<typeof JournalBookLineDtoSchema>;
+
+export const JournalBookResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({
+    meta: z.object({
+      year: z.string().regex(/^\d{4}$/),
+      journalCode: z.string(),
+      month: z.string().regex(/^(0[1-9]|1[0-2])$/).optional(),
+    }),
+    entries: z.array(JournalBookLineDtoSchema),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean(),
+  }),
+});
+
+export type JournalBookResponse = z.infer<typeof JournalBookResponseSchema>;
 
 export const IncomeStatementDtoSchema = z.object({
   fiscalYear: z.string(),

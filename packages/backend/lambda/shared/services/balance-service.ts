@@ -1,5 +1,9 @@
 import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import {
+  AccountBalanceDto,
+  AccountBalanceDtoSchema,
+} from "@liass-ohada/shared/accounting";
 import { config } from "../config";
 import { dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
@@ -13,7 +17,7 @@ export interface AccountBalance {
   openingCredit: number;
   movementDebit: number;
   movementCredit: number;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 /**
@@ -47,7 +51,7 @@ export class BalanceService {
         TableName: config.TABLE_NAME,
         Key: marshall({
           PK: KeyFactory.partitionKey(orgId, year),
-          SK: `BAL#${accountId.padEnd(8, "0")}`,
+          SK: KeyFactory.accountBalanceSK(accountId),
         }),
         // Utilisation de variables pour les noms de champs
         UpdateExpression:
@@ -88,7 +92,7 @@ export class BalanceService {
         TableName: config.TABLE_NAME,
         Key: marshall({
           PK: KeyFactory.partitionKey(orgId, year),
-          SK: `BAL#${paddedAccountId}`,
+          SK: KeyFactory.accountBalanceSK(paddedAccountId),
         }),
       }),
     );
@@ -100,7 +104,7 @@ export class BalanceService {
         openingCredit: 0,
         movementDebit: 0,
         movementCredit: 0,
-        updatedAt: new Date().toISOString(),
+        updatedAt: undefined,
       } as AccountBalance;
     }
 
@@ -120,7 +124,7 @@ export class BalanceService {
    * @async
    * @method getTrialBalance
    * @description Efficiently retrieves all account balances for a fiscal year.
-   * Scans the main partition using the 'BAL#' prefix.
+   * Queries the fiscal-year partition using the BAL# sort-key prefix.
    */
   static async getTrialBalance(orgId: string, year: string | number) {
     const balances: AccountBalance[] = [];
@@ -133,7 +137,7 @@ export class BalanceService {
           KeyConditionExpression: "PK = :pk AND begins_with(SK, :skPrefix)",
           ExpressionAttributeValues: marshall({
             ":pk": KeyFactory.partitionKey(orgId, year),
-            ":skPrefix": "BAL#",
+            ":skPrefix": KeyFactory.accountBalancePrefix(),
           }),
           ExclusiveStartKey: exclusiveStartKey,
         }),
@@ -156,5 +160,18 @@ export class BalanceService {
     } while (exclusiveStartKey);
 
     return balances;
+  }
+
+  static toDto(balance: AccountBalance): AccountBalanceDto {
+    const finalNet =
+      balance.openingDebit +
+      balance.movementDebit -
+      (balance.openingCredit + balance.movementCredit);
+
+    return AccountBalanceDtoSchema.parse({
+      ...balance,
+      finalDebit: finalNet > 0 ? finalNet : 0,
+      finalCredit: finalNet < 0 ? Math.abs(finalNet) : 0,
+    });
   }
 }

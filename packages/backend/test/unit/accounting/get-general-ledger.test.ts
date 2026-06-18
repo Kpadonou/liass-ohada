@@ -4,6 +4,7 @@ import {
   DynamoDBClient,
   GetItemCommand,
   QueryCommand,
+  ScanCommand,
 } from "@aws-sdk/client-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
@@ -19,11 +20,18 @@ const createEvent = (
   fiscalYear = "2026",
   accountId = "411",
   orgId = "test-org",
+  options?: { limit?: number; cursor?: string },
 ) => ({
   version: "2.0",
-  routeKey: "POST /books/general-ledger",
+  routeKey: "GET /books/general-ledger",
   rawPath: "/books/general-ledger",
   rawQueryString: "",
+  queryStringParameters: {
+    fiscalYear,
+    accountId,
+    ...(options?.limit ? { limit: options.limit.toString() } : {}),
+    ...(options?.cursor ? { cursor: options.cursor } : {}),
+  },
   headers: { "accept-language": "en", "x-org-id": orgId },
   requestContext: {
     accountId: "123456789012",
@@ -31,14 +39,14 @@ const createEvent = (
     domainName: "localhost",
     domainPrefix: "localhost",
     http: {
-      method: "POST",
+      method: "GET",
       path: "/books/general-ledger",
       protocol: "HTTP/1.1",
       sourceIp: "127.0.0.1",
       userAgent: "jest",
     },
     requestId: "req-id",
-    routeKey: "POST /books/general-ledger",
+    routeKey: "GET /books/general-ledger",
     stage: "test",
     time: "01/Jan/1970:00:00:00 +0000",
     timeEpoch: 0,
@@ -51,7 +59,6 @@ const createEvent = (
       },
     },
   },
-  body: JSON.stringify({ fiscalYear, accountId }),
   isBase64Encoded: false,
 });
 
@@ -80,8 +87,8 @@ describe("get-general-ledger handler", () => {
         accountId: { S: "41100000" },
         openingDebit: { N: "1000" },
         openingCredit: { N: "200" },
-        movementDebit: { N: "500" },
-        movementCredit: { N: "100" },
+        movementDebit: { N: "150" },
+        movementCredit: { N: "0" },
         updatedAt: { S: "2026-01-01T00:00:00Z" },
       },
     });
@@ -126,6 +133,7 @@ describe("get-general-ledger handler", () => {
     // Verify opening balance
     expect(body.data.openingBalance.date).toBe("OPENING");
     expect(body.data.openingBalance.journal).toBe("RAN");
+    expect(body.data.openingBalance.journalCode).toBe("RAN");
     expect(body.data.openingBalance.debit).toBe(1000);
     expect(body.data.openingBalance.credit).toBe(200);
     expect(body.data.openingBalance.runningBalance).toBe(800); // 1000 - 200
@@ -133,6 +141,8 @@ describe("get-general-ledger handler", () => {
     // Verify movements
     expect(body.data.movements).toHaveLength(2);
     expect(body.data.movements[0].date).toBe("2026-01-15");
+    expect(body.data.movements[0].journalCode).toBe("SALES");
+    expect(body.data.movements[0].lineId).toBeUndefined();
     expect(body.data.movements[0].debit).toBe(100);
     expect(body.data.movements[0].runningBalance).toBe(900); // 800 + 100
 
@@ -142,6 +152,85 @@ describe("get-general-ledger handler", () => {
 
     // Verify final balance
     expect(body.data.finalBalance).toBe(950);
+    expect(body.data.hasMore).toBe(false);
+    expect(body.data.PK).toBeUndefined();
+
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+    expect(queryInput.IndexName).toBe("GSI1");
+    expect(queryInput.ConsistentRead).toBeUndefined();
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("paginates movements and carries the running balance forward", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: {
+        accountId: { S: "41100000" },
+        openingDebit: { N: "1000" },
+        openingCredit: { N: "0" },
+        movementDebit: { N: "150" },
+        movementCredit: { N: "0" },
+        updatedAt: { S: "2026-01-01T00:00:00Z" },
+      },
+    });
+
+    const lastEvaluatedKey = {
+      GSI1PK: { S: "ORG#test-org" },
+      GSI1SK: {
+        S: "ACC#41100000#FY#2026#DT#2026-01-15#L1",
+      },
+      PK: { S: "ORG#test-org#FY#2026" },
+      SK: { S: "L#L1" },
+    };
+
+    dynamoMock
+      .on(QueryCommand)
+      .resolvesOnce({
+        Items: [
+          {
+            entryId: { S: "E-001" },
+            lineId: { S: "L1" },
+            entryDate: { S: "2026-01-15" },
+            journalCode: { S: "VE" },
+            debit: { N: "100" },
+            credit: { N: "0" },
+          },
+        ],
+        LastEvaluatedKey: lastEvaluatedKey,
+      })
+      .resolvesOnce({
+        Items: [
+          {
+            entryId: { S: "E-002" },
+            lineId: { S: "L2" },
+            entryDate: { S: "2026-01-20" },
+            journalCode: { S: "VE" },
+            debit: { N: "50" },
+            credit: { N: "0" },
+          },
+        ],
+      });
+
+    const firstResponse = parseResponse(
+      await handler(createEvent("2026", "411", "test-org", { limit: 1 })),
+    );
+    expect(firstResponse.data.movements[0].runningBalance).toBe(1100);
+    expect(firstResponse.data.hasMore).toBe(true);
+
+    const secondResponse = parseResponse(
+      await handler(
+        createEvent("2026", "411", "test-org", {
+          limit: 1,
+          cursor: firstResponse.data.nextCursor,
+        }),
+      ),
+    );
+    expect(secondResponse.data.movements[0].runningBalance).toBe(1150);
+    expect(secondResponse.data.hasMore).toBe(false);
+
+    const secondQueryInput =
+      dynamoMock.commandCalls(QueryCommand)[1].args[0].input;
+    expect(secondQueryInput.ExclusiveStartKey).toEqual(lastEvaluatedKey);
+    expect(secondQueryInput.ConsistentRead).toBeUndefined();
   });
 
   test("returns 400 for invalid fiscal year format", async () => {
