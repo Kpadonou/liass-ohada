@@ -27,6 +27,7 @@ const translations = {
           ACTIONS: {
             ADD_LINE: 'Add line',
             PUBLISH: 'Post entry',
+            REMOVE_LINE: 'Remove line',
             SAVE_DRAFT: 'Save draft'
           },
           ACTIVE_FISCAL_YEAR: 'Active fiscal year',
@@ -39,13 +40,14 @@ const translations = {
             TITLE: 'General information'
           },
           LINES: {
+            ACTIONS: 'Actions',
             ACCOUNT: 'Account',
             CREDIT: 'Credit',
             DEBIT: 'Debit',
-            DESCRIPTION: 'Detailed line entry will be enabled later.',
-            EMPTY_DESCRIPTION: 'The line editor will be added later.',
-            EMPTY_TITLE: 'No lines entered',
+            DESCRIPTION: 'Compose the entry line by line.',
             LABEL: 'Label',
+            MONEY_HINT: 'Amounts are entered as integers.',
+            THIRD_PARTY: 'Third party',
             TITLE: 'Entry lines'
           },
           LOAD_DRAFT_ERROR: 'The draft could not be loaded.',
@@ -57,7 +59,11 @@ const translations = {
             DIFFERENCE: 'Difference'
           },
           VALIDATION: {
+            ACCOUNT_REQUIRED: 'Select a valid account.',
+            AMOUNT_REQUIRED: 'Enter an amount.',
             DATE_REQUIRED: 'Select an entry date.',
+            DEBIT_CREDIT_EXCLUSIVE: 'A line cannot contain both debit and credit.',
+            ENTRY_UNBALANCED: 'The entry must be balanced.',
             JOURNAL_REQUIRED: 'Select a journal.',
             LABEL_REQUIRED: 'Enter a label.'
           }
@@ -158,7 +164,7 @@ describe('EntryFormPage', () => {
     fixture = TestBed.createComponent(EntryFormPage);
     fixture.detectChanges();
 
-    flushJournals();
+    flushReferenceData();
     await settle();
 
     const text = fixture.nativeElement.textContent;
@@ -190,7 +196,7 @@ describe('EntryFormPage', () => {
     fixture = TestBed.createComponent(EntryFormPage);
     fixture.detectChanges();
 
-    flushJournals();
+    flushReferenceData();
     await settle();
 
     const dateInput = fixture.nativeElement.querySelector('input[type="date"]') as HTMLInputElement;
@@ -199,38 +205,146 @@ describe('EntryFormPage', () => {
     expect(dateInput.max).toBe('2026-12-31');
   });
 
-  it('keeps line editing, draft save, and posting disabled in the skeleton', async () => {
+  it('adds and removes draft lines while keeping at least two lines', async () => {
     selectFiscalYear();
     fixture = TestBed.createComponent(EntryFormPage);
     fixture.detectChanges();
 
-    flushJournals();
+    flushReferenceData();
     await settle();
 
-    const buttons = [...fixture.nativeElement.querySelectorAll('button')] as HTMLButtonElement[];
-    const addLine = buttons.find((button) => button.textContent?.includes('Add line'));
-    const saveDraft = buttons.find((button) => button.textContent?.includes('Save draft'));
-    const publish = buttons.find((button) => button.textContent?.includes('Post entry'));
+    const component = fixture.componentInstance as unknown as {
+      lines: { length: number };
+    };
+    const addLine = fixture.nativeElement.querySelector(
+      '[data-testid="add-entry-line"] button'
+    ) as HTMLButtonElement;
 
-    expect(addLine?.disabled).toBe(true);
-    expect(saveDraft?.disabled).toBe(true);
-    expect(publish?.disabled).toBe(true);
+    expect(component.lines.length).toBe(2);
+    addLine.click();
+    await settle();
+    expect(component.lines.length).toBe(3);
+
+    const removeButtons = fixture.nativeElement.querySelectorAll(
+      '[data-testid="remove-entry-line"] button'
+    ) as NodeListOf<HTMLButtonElement>;
+    removeButtons[2].click();
+    await settle();
+
+    expect(component.lines.length).toBe(2);
   });
 
-  it('does not display persistence keys', async () => {
+  it('uses the searchable account selector for every line', async () => {
     selectFiscalYear();
     fixture = TestBed.createComponent(EntryFormPage);
     fixture.detectChanges();
 
-    flushJournals();
+    flushReferenceData();
     await settle();
 
-    const text = fixture.nativeElement.textContent;
+    const selectors = fixture.nativeElement.querySelectorAll(
+      'liass-searchable-select[formcontrolname="accountId"]'
+    );
 
-    expect(text).not.toContain('PK');
-    expect(text).not.toContain('SK');
-    expect(text).not.toContain('GSI');
-    expect(text).not.toContain('entityType');
+    expect(selectors.length).toBe(2);
+  });
+
+  it('rejects debit and credit on the same line', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+
+    flushReferenceData();
+    await settle();
+
+    const component = fixture.componentInstance as any;
+    component.lines.at(0).patchValue({
+      accountId: '41100000',
+      debit: 1000,
+      credit: 500
+    });
+    await settle();
+
+    expect(component.lines.at(0).hasError('bothDebitAndCredit')).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(
+      'A line cannot contain both debit and credit.'
+    );
+  });
+
+  it('updates totals and difference live and keeps publish disabled while unbalanced', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+
+    flushReferenceData();
+    await settle();
+
+    const component = fixture.componentInstance as any;
+    component.lines.at(0).patchValue({
+      accountId: '41100000',
+      debit: 125000,
+      credit: 0
+    });
+    component.lines.at(1).patchValue({
+      accountId: '70100000',
+      debit: 0,
+      credit: 100000
+    });
+    await settle();
+
+    expect(component.totalDebit()).toBe(125000);
+    expect(component.totalCredit()).toBe(100000);
+    expect(component.difference()).toBe(25000);
+    expect(fixture.nativeElement.querySelector('[data-testid="entry-difference"]').textContent)
+      .toContain('25');
+    expect(fixture.nativeElement.textContent).toContain('The entry must be balanced.');
+    expect(
+      (fixture.nativeElement.querySelector('[data-testid="publish-entry"] button') as HTMLButtonElement)
+        .disabled
+    ).toBe(true);
+  });
+
+  it('builds a business-only draft model without persistence keys', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+
+    flushReferenceData();
+    await settle();
+
+    const component = fixture.componentInstance as any;
+    component.form.patchValue({
+      entryDate: '2026-02-15',
+      journalCode: 'VE',
+      voucherNumber: 'FAC-001',
+      label: 'Customer sale'
+    });
+    component.lines.at(0).patchValue({
+      accountId: '41100000',
+      thirdPartyId: 'CLIENT-001',
+      debit: 1000,
+      credit: 0
+    });
+    component.lines.at(1).patchValue({
+      accountId: '70100000',
+      debit: 0,
+      credit: 1000
+    });
+
+    const model = component.draftModel();
+    const serialized = JSON.stringify(model);
+
+    expect(model.year).toBe(2026);
+    expect(model.lines[0]).toMatchObject({
+      accountId: '41100000',
+      thirdPartyId: 'CLIENT-001',
+      debit: 1000,
+      credit: 0
+    });
+    expect(serialized).not.toContain('PK');
+    expect(serialized).not.toContain('SK');
+    expect(serialized).not.toContain('GSI');
+    expect(serialized).not.toContain('entityType');
   });
 
   function selectFiscalYear(): void {
@@ -244,7 +358,34 @@ describe('EntryFormPage', () => {
     });
   }
 
-  function flushJournals(): void {
+  function flushReferenceData(): void {
+    httpMock.expectOne((request) => request.url === `${apiBaseUrl}/accounts`).flush({
+      data: {
+        accounts: [
+          {
+            accountId: '41100000',
+            accountName: 'Customers',
+            accountNature: 'BALANCE',
+            accountUsage: 'BOTH',
+            isThirdPartyAccount: true,
+            classCode: 4,
+            financialStatementCode: 'BS',
+            allowReconciliation: true
+          },
+          {
+            accountId: '70100000',
+            accountName: 'Sales',
+            accountNature: 'INCOME',
+            accountUsage: 'CREDIT_ONLY',
+            isThirdPartyAccount: false,
+            classCode: 7,
+            financialStatementCode: 'IS',
+            allowReconciliation: false
+          }
+        ],
+        hasMore: false
+      }
+    });
     httpMock.expectOne(`${apiBaseUrl}/journals`).flush({
       data: [
         {

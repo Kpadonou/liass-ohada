@@ -993,6 +993,7 @@
         "ACTIONS": {
           "ADD_LINE": "Add line",
           "PUBLISH": "Post entry",
+          "REMOVE_LINE": "Remove line",
           "SAVE_DRAFT": "Save draft"
         },
         "ACTIVE_FISCAL_YEAR": "Active fiscal year",
@@ -1005,13 +1006,14 @@
           "TITLE": "General information"
         },
         "LINES": {
+          "ACTIONS": "Actions",
           "ACCOUNT": "Account",
           "CREDIT": "Credit",
           "DEBIT": "Debit",
-          "DESCRIPTION": "Detailed line entry will be enabled in the next step.",
-          "EMPTY_DESCRIPTION": "The line editor will be added without changing this page structure.",
-          "EMPTY_TITLE": "No lines entered",
+          "DESCRIPTION": "Compose the entry line by line using integer amounts in the smallest monetary unit.",
           "LABEL": "Label",
+          "MONEY_HINT": "Amounts are entered as integers, using the organization’s smallest monetary unit.",
+          "THIRD_PARTY": "Third party",
           "TITLE": "Entry lines"
         },
         "LOAD_DRAFT_ERROR": "The draft could not be loaded.",
@@ -1023,7 +1025,11 @@
           "DIFFERENCE": "Difference"
         },
         "VALIDATION": {
+          "ACCOUNT_REQUIRED": "Select a valid account.",
+          "AMOUNT_REQUIRED": "Enter an amount on either the debit or credit side.",
           "DATE_REQUIRED": "Select an entry date.",
+          "DEBIT_CREDIT_EXCLUSIVE": "A line cannot contain both a debit and a credit amount.",
+          "ENTRY_UNBALANCED": "The entry must contain at least two lines with equal debit and credit totals.",
           "JOURNAL_REQUIRED": "Select a journal.",
           "LABEL_REQUIRED": "Enter a label of at least 3 characters."
         }

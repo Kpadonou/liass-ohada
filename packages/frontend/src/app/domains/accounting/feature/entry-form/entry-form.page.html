@@ -129,37 +129,117 @@
             tone="neutral"
             variant="outline"
             icon="add"
-            [disabled]="true"
+            data-testid="add-entry-line"
+            (pressed)="addLine()"
           >
             {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.ADD_LINE' | transloco }}
           </liass-button>
         </div>
 
-        <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
-          <table class="w-full min-w-[720px] border-collapse text-left">
+        <div
+          formArrayName="lines"
+          class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800"
+        >
+          <table class="w-full min-w-[1180px] border-collapse text-left">
             <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
               <tr>
-                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.ACCOUNT' | transloco }}</th>
-                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.LABEL' | transloco }}</th>
-                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.DEBIT' | transloco }}</th>
-                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.CREDIT' | transloco }}</th>
+                <th class="w-[300px] px-3 py-3">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.ACCOUNT' | transloco }}</th>
+                <th class="w-[250px] px-3 py-3">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.LABEL' | transloco }}</th>
+                <th class="w-[190px] px-3 py-3">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.THIRD_PARTY' | transloco }}</th>
+                <th class="w-[160px] px-3 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.DEBIT' | transloco }}</th>
+                <th class="w-[160px] px-3 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.CREDIT' | transloco }}</th>
+                <th class="w-16 px-3 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.ACTIONS' | transloco }}</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td colspan="4" class="px-6 py-12 text-center">
-                  <mat-icon class="text-slate-400">table_rows</mat-icon>
-                  <p class="mt-3 text-sm font-semibold text-slate-950 dark:text-white">
-                    {{ 'ACCOUNTING.ENTRIES.FORM.LINES.EMPTY_TITLE' | transloco }}
-                  </p>
-                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {{ 'ACCOUNTING.ENTRIES.FORM.LINES.EMPTY_DESCRIPTION' | transloco }}
-                  </p>
-                </td>
-              </tr>
+            <tbody class="divide-y divide-slate-100 align-top dark:divide-slate-800">
+              @for (line of lines.controls; track line; let index = $index) {
+                <tr [formGroupName]="index" data-testid="entry-line-row">
+                  <td class="px-3 pb-1 pt-3">
+                    <liass-searchable-select
+                      formControlName="accountId"
+                      icon="account_balance"
+                      [labelKey]="'ACCOUNTING.ENTRIES.FORM.LINES.ACCOUNT'"
+                      [options]="accountOptions()"
+                      [loading]="accountsQuery.isPending()"
+                      [showError]="line.controls.accountId.touched && line.controls.accountId.invalid"
+                      [errorKey]="'ACCOUNTING.ENTRIES.FORM.VALIDATION.ACCOUNT_REQUIRED'"
+                    />
+                  </td>
+                  <td class="px-3 pb-1 pt-3">
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ 'ACCOUNTING.ENTRIES.FORM.LINES.LABEL' | transloco }}</mat-label>
+                      <input matInput formControlName="label" />
+                    </mat-form-field>
+                  </td>
+                  <td class="px-3 pb-1 pt-3">
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ 'ACCOUNTING.ENTRIES.FORM.LINES.THIRD_PARTY' | transloco }}</mat-label>
+                      <input matInput formControlName="thirdPartyId" autocomplete="off" />
+                    </mat-form-field>
+                  </td>
+                  <td class="px-3 pb-1 pt-3">
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ 'ACCOUNTING.ENTRIES.FORM.LINES.DEBIT' | transloco }}</mat-label>
+                      <input
+                        matInput
+                        formControlName="debit"
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputmode="numeric"
+                        class="text-right"
+                      />
+                    </mat-form-field>
+                  </td>
+                  <td class="px-3 pb-1 pt-3">
+                    <mat-form-field appearance="outline" class="w-full">
+                      <mat-label>{{ 'ACCOUNTING.ENTRIES.FORM.LINES.CREDIT' | transloco }}</mat-label>
+                      <input
+                        matInput
+                        formControlName="credit"
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputmode="numeric"
+                        class="text-right"
+                      />
+                    </mat-form-field>
+                  </td>
+                  <td class="px-3 pb-1 pt-4 text-right">
+                    <liass-button
+                      size="icon"
+                      tone="danger"
+                      variant="ghost"
+                      icon="delete"
+                      data-testid="remove-entry-line"
+                      [ariaLabel]="'ACCOUNTING.ENTRIES.FORM.ACTIONS.REMOVE_LINE' | transloco"
+                      [disabled]="lines.length <= 2"
+                      (pressed)="removeLine(index)"
+                    />
+                  </td>
+                </tr>
+                @if (lineHasAmountConflict(line) || lineHasNoAmount(line)) {
+                  <tr>
+                    <td colspan="6" class="px-3 pb-3">
+                      <p class="flex items-center gap-2 text-xs font-medium text-red-600 dark:text-red-300" role="alert">
+                        <mat-icon class="text-base">error_outline</mat-icon>
+                        {{
+                          (lineHasAmountConflict(line)
+                            ? 'ACCOUNTING.ENTRIES.FORM.VALIDATION.DEBIT_CREDIT_EXCLUSIVE'
+                            : 'ACCOUNTING.ENTRIES.FORM.VALIDATION.AMOUNT_REQUIRED'
+                          ) | transloco
+                        }}
+                      </p>
+                    </td>
+                  </tr>
+                }
+              }
             </tbody>
           </table>
         </div>
+        <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          {{ 'ACCOUNTING.ENTRIES.FORM.LINES.MONEY_HINT' | transloco }}
+        </p>
       </liass-card>
 
       <section
@@ -170,21 +250,38 @@
           <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             {{ 'ACCOUNTING.ENTRIES.TOTALS.DEBIT' | transloco }}
           </p>
-          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ totalDebit }}</p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white" data-testid="entry-total-debit">
+            {{ formatAmount(totalDebit()) }}
+          </p>
         </div>
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             {{ 'ACCOUNTING.ENTRIES.TOTALS.CREDIT' | transloco }}
           </p>
-          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ totalCredit }}</p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white" data-testid="entry-total-credit">
+            {{ formatAmount(totalCredit()) }}
+          </p>
         </div>
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
             {{ 'ACCOUNTING.ENTRIES.FORM.TOTALS.DIFFERENCE' | transloco }}
           </p>
-          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ difference }}</p>
+          <p
+            class="mt-2 text-xl font-semibold"
+            data-testid="entry-difference"
+            [class.text-emerald-700]="isBalanced()"
+            [class.text-amber-700]="!isBalanced()"
+          >
+            {{ formatAmount(difference()) }}
+          </p>
         </div>
       </section>
+      @if (!isBalanced()) {
+        <p class="-mt-3 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300" role="status">
+          <mat-icon>balance</mat-icon>
+          {{ 'ACCOUNTING.ENTRIES.FORM.VALIDATION.ENTRY_UNBALANCED' | transloco }}
+        </p>
+      }
 
       <footer class="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
         <liass-button tone="neutral" variant="outline" icon="arrow_back" (pressed)="goBack()">
@@ -194,7 +291,13 @@
           <liass-button tone="neutral" variant="outline" icon="save" [disabled]="true">
             {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.SAVE_DRAFT' | transloco }}
           </liass-button>
-          <liass-button tone="brand" variant="solid" icon="publish" [disabled]="true">
+          <liass-button
+            tone="brand"
+            variant="solid"
+            icon="publish"
+            data-testid="publish-entry"
+            [disabled]="!isBalanced() || !publishAvailable"
+          >
             {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.PUBLISH' | transloco }}
           </liass-button>
         </div>

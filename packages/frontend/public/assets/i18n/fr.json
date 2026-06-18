@@ -993,6 +993,7 @@
         "ACTIONS": {
           "ADD_LINE": "Ajouter une ligne",
           "PUBLISH": "Comptabiliser",
+          "REMOVE_LINE": "Retirer la ligne",
           "SAVE_DRAFT": "Enregistrer le brouillon"
         },
         "ACTIVE_FISCAL_YEAR": "Exercice actif",
@@ -1005,13 +1006,14 @@
           "TITLE": "Informations générales"
         },
         "LINES": {
+          "ACTIONS": "Actions",
           "ACCOUNT": "Compte",
           "CREDIT": "Crédit",
           "DEBIT": "Débit",
-          "DESCRIPTION": "La saisie détaillée des lignes sera activée dans la prochaine étape.",
-          "EMPTY_DESCRIPTION": "L’éditeur de lignes sera ajouté sans modifier cette structure de page.",
-          "EMPTY_TITLE": "Aucune ligne saisie",
+          "DESCRIPTION": "Composez l’écriture ligne par ligne avec des montants entiers dans la plus petite unité monétaire.",
           "LABEL": "Libellé",
+          "MONEY_HINT": "Les montants sont saisis en nombres entiers, conformément à l’unité monétaire minimale utilisée par l’organisation.",
+          "THIRD_PARTY": "Tiers",
           "TITLE": "Lignes d’écriture"
         },
         "LOAD_DRAFT_ERROR": "Le brouillon n’a pas pu être chargé.",
@@ -1023,7 +1025,11 @@
           "DIFFERENCE": "Différence"
         },
         "VALIDATION": {
+          "ACCOUNT_REQUIRED": "Sélectionnez un compte valide.",
+          "AMOUNT_REQUIRED": "Saisissez un montant au débit ou au crédit.",
           "DATE_REQUIRED": "Sélectionnez une date d’écriture.",
+          "DEBIT_CREDIT_EXCLUSIVE": "Une ligne ne peut pas porter simultanément un débit et un crédit.",
+          "ENTRY_UNBALANCED": "L’écriture doit comporter au moins deux lignes et présenter des totaux débit et crédit égaux.",
           "JOURNAL_REQUIRED": "Sélectionnez un journal.",
           "LABEL_REQUIRED": "Saisissez un libellé d’au moins 3 caractères."
         }
