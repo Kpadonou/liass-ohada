@@ -11,10 +11,6 @@ import {
 import { TranslocoModule } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
-import {
-  LiassSearchableSelectComponent,
-  type LiassSearchableSelectOption
-} from '../../../../shared/ui/searchable-select/searchable-select.component';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -23,6 +19,7 @@ import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/stat
 import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AccountSearchSelectComponent } from '../../ui/account-search-select/account-search-select.component';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
 interface LetteringScope {
@@ -38,9 +35,9 @@ type LetteringAction = 'post' | 'cancel' | null;
   imports: [
     LiassButtonComponent,
     LiassCardComponent,
+    AccountSearchSelectComponent,
     FiscalYearRequiredComponent,
     LiassPageHeaderComponent,
-    LiassSearchableSelectComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
     MatCheckboxModule,
@@ -73,15 +70,6 @@ export class LetteringPage {
     projectId: [''],
     letteringCode: ['LET001', [Validators.required]]
   });
-
-  protected readonly accountsQuery = injectQuery(() => this.accountingQueries.listAccounts());
-  protected readonly accounts = computed(() => this.accountsQuery.data()?.items ?? []);
-  protected readonly accountOptions = computed<LiassSearchableSelectOption[]>(() =>
-    this.accounts().map((account) => ({
-      label: `${account.accountId} - ${account.accountName}`,
-      value: account.accountId
-    }))
-  );
 
   protected readonly thirdPartyLedgerQuery = injectQuery(() =>
     this.accountingQueries.thirdPartyLedger({

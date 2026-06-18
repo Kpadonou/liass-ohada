@@ -8,11 +8,17 @@ export const handler = createHandler(
     const result = await LedgerService.listAccounts(orgId, {
       limit: data.limit,
       cursor: data.cursor,
+      search: data.search,
+      classCode: data.class,
+      activeOnly: data.activeOnly,
     });
 
     return {
       message: i18n.getMessage("SUCCESS_ACCOUNTS_RETRIEVED"),
-      data: result,
+      data: {
+        ...result,
+        items: result.accounts,
+      },
     };
   },
 );

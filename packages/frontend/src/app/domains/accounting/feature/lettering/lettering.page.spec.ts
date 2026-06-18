@@ -33,6 +33,17 @@ vi.mock('aws-amplify/auth', () => {
 const translations = {
   en: {
     ACCOUNTING: {
+      ACCOUNTS: {
+        SELECT: {
+          LABEL: 'Account',
+          LOADING: 'Searching accounts...',
+          LOAD_MORE: 'Load more accounts',
+          MIN_CHARACTERS: 'Enter at least 2 characters.',
+          NO_RESULTS: 'No accounts found',
+          SEARCH_PLACEHOLDER: 'Search by account number',
+          TYPE_TO_SEARCH: 'Type to search'
+        }
+      },
       ERRORS: {
         LOAD_FAILED: 'Accounting data could not be loaded.'
       },
@@ -341,23 +352,7 @@ function setScope(
 }
 
 function flushAccounts(httpMock: HttpTestingController, apiBaseUrl: string): void {
-  httpMock.expectOne(`${apiBaseUrl}/accounts?limit=200`).flush({
-    data: {
-      accounts: [
-        {
-          accountId: '41100000',
-          accountName: 'Clients',
-          class: '4',
-          normalBalance: 'DEBIT',
-          statementCode: 'BS',
-          isActive: true,
-          allowsReconciliation: true
-        }
-      ],
-      nextCursor: undefined,
-      hasMore: false
-    }
-  });
+  httpMock.expectNone((request) => request.url === `${apiBaseUrl}/accounts`);
 }
 
 async function flushScopeReads(

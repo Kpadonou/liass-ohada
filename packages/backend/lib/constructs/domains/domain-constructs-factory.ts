@@ -92,6 +92,11 @@ export abstract class DomainConstructFactory extends Construct {
       entry: options.handlerEntry,
       functionName,
       runtime: DOMAIN_LAMBDA_RUNTIME,
+      bundling: {
+        // Node.js 24 does not guarantee that transitive AWS SDK v3/Smithy modules
+        // are available in the managed runtime. Keep domain Lambdas self-contained.
+        bundleAwsSDK: true,
+      },
       environment: { TABLE_NAME: options.table.tableName },
     });
 

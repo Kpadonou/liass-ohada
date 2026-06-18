@@ -15,12 +15,9 @@
         [description]="'ACCOUNTING.LETTERING.FILTERS.DESCRIPTION' | transloco"
       >
         <form class="space-y-4" [formGroup]="form" (ngSubmit)="applyFilters()">
-          <liass-searchable-select
+          <liass-account-search-select
             formControlName="accountId"
-            icon="account_balance"
             [labelKey]="'ACCOUNTING.LETTERING.FIELDS.ACCOUNT'"
-            [options]="accountOptions()"
-            [loading]="accountsQuery.isPending()"
           />
 
           <mat-form-field appearance="outline" class="w-full">

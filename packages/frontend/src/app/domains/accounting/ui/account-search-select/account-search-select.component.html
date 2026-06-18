@@ -1,0 +1,61 @@
+<mat-form-field appearance="outline" class="w-full">
+  <mat-label>{{ labelKey() | transloco }}</mat-label>
+  <mat-icon matPrefix>account_balance</mat-icon>
+  <input
+    matInput
+    type="text"
+    inputmode="numeric"
+    autocomplete="off"
+    [disabled]="disabled()"
+    [matAutocomplete]="accountAutocomplete"
+    [placeholder]="'ACCOUNTING.ACCOUNTS.SELECT.SEARCH_PLACEHOLDER' | transloco"
+    [value]="searchText()"
+    (blur)="handleBlur()"
+    (input)="handleInput($event)"
+  />
+  @if (loading()) {
+    <mat-spinner matSuffix diameter="18" />
+  }
+  <mat-autocomplete
+    #accountAutocomplete="matAutocomplete"
+    (optionSelected)="selectOption($event)"
+  >
+    @if (loading()) {
+      <mat-option disabled>
+        {{ 'ACCOUNTING.ACCOUNTS.SELECT.LOADING' | transloco }}
+      </mat-option>
+    } @else {
+      @for (account of visibleAccounts(); track account.accountId) {
+        <mat-option [value]="account.accountId">{{ accountLabel(account) }}</mat-option>
+      } @empty {
+        @if (helperKey(); as helper) {
+          <mat-option disabled>{{ helper | transloco }}</mat-option>
+        } @else if (searchError()) {
+          <mat-option disabled>{{ 'COMMON.NOTIFICATIONS.LOAD_ERROR' | transloco }}</mat-option>
+        } @else if (hasSearched()) {
+          <mat-option disabled>
+            {{ 'ACCOUNTING.ACCOUNTS.SELECT.NO_RESULTS' | transloco }}
+          </mat-option>
+        }
+      }
+
+      @if (hasMore()) {
+        <mat-option [value]="loadMoreValue()">
+          @if (loadingMore()) {
+            {{ 'ACCOUNTING.ACCOUNTS.SELECT.LOADING' | transloco }}
+          } @else {
+            {{ 'ACCOUNTING.ACCOUNTS.SELECT.LOAD_MORE' | transloco }}
+          }
+        </mat-option>
+      }
+    }
+  </mat-autocomplete>
+  @if (helperKey(); as helper) {
+    <mat-hint>{{ helper | transloco }}</mat-hint>
+  }
+</mat-form-field>
+@if (showError() && errorKey(); as validationKey) {
+  <p class="-mt-4 text-xs text-red-600 dark:text-red-300">
+    {{ validationKey | transloco }}
+  </p>
+}

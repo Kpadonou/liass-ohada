@@ -6,7 +6,8 @@
     "ACTIONS": {
       "SAVE": "Save",
       "CANCEL": "Cancel",
-      "CLOSE": "Close"
+      "CLOSE": "Close",
+      "RETRY": "Try again"
     },
     "TABLE": {
       "ACTION_MENU": "Open row actions",
@@ -678,6 +679,16 @@
       "TITLE": "Accounting"
     },
     "ACCOUNTS": {
+      "SELECT": {
+        "LABEL": "Account",
+        "LOADING": "Searching accounts...",
+        "LOAD_MORE": "Load more accounts",
+        "MIN_CHARACTERS": "Enter at least 2 characters to search an account label.",
+        "NO_RESULTS": "No accounts found",
+        "SEARCH_PLACEHOLDER": "Search by account number",
+        "SELECTED_NOT_FOUND": "The selected account could not be found.",
+        "TYPE_TO_SEARCH": "Enter one or more digits to search for an account."
+      },
       "ACTIONS": {
         "CLEAR_FILTERS": "Reset",
         "DISABLE_ACCOUNT": "Disable",
@@ -1185,13 +1196,30 @@
       "TITLE": "Fiscal years"
     },
     "GENERAL_LEDGER": {
+      "ACTIONS": {
+        "LOAD_MORE": "Load more"
+      },
+      "EMPTY": {
+        "DESCRIPTION": "No posted movement is available for this account in the active fiscal year.",
+        "SELECT_ACCOUNT_DESCRIPTION": "Search by account number or label to review its movements.",
+        "SELECT_ACCOUNT_TITLE": "Select an account",
+        "TITLE": "No movements for this account"
+      },
+      "ERRORS": {
+        "ACCOUNTS_LOAD_FAILED": "The chart of accounts could not be loaded.",
+        "LOAD_FAILED": "The general ledger could not be loaded.",
+        "LOAD_MORE_FAILED": "The next movements could not be loaded."
+      },
       "EYEBROW": "General ledger",
       "FILTERS": {
         "ACCOUNT": "Account",
-        "DESCRIPTION": "Choose an account and fiscal year to read movements.",
+        "ACCOUNT_SEARCH": "Search by number or label",
+        "DESCRIPTION": "Review an account’s movements in the active fiscal year.",
+        "NO_ACCOUNT_RESULTS": "No account matches this search.",
         "TITLE": "Scope",
         "YEAR": "Fiscal year"
       },
+      "LOADING": "Loading general-ledger movements...",
       "METRICS": {
         "FINAL": "Final balance",
         "MOVEMENTS": "Movements",
@@ -1206,6 +1234,7 @@
         "DESCRIPTION": "Movements from the general-ledger index.",
         "JOURNAL": "Journal",
         "LABEL": "Label",
+        "REFERENCE": "Voucher / reference",
         "TITLE": "Movements"
       },
       "TITLE": "General ledger"

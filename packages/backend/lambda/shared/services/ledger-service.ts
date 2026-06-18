@@ -49,6 +49,9 @@ export interface AccountEntriesOptions {
 export interface ListAccountsOptions {
   limit?: number;
   cursor?: string;
+  search?: string;
+  classCode?: number;
+  activeOnly?: boolean;
 }
 
 export interface ListAccountsResult {
@@ -1021,8 +1024,29 @@ export class LedgerService {
     orgId: string,
     options?: ListAccountsOptions,
   ): Promise<ListAccountsResult> {
-    const { limit = 100, cursor } = options || {};
+    const {
+      limit = 100,
+      cursor,
+      search,
+      classCode,
+      activeOnly = false,
+    } = options || {};
+    const normalizedSearch = search?.trim();
+
+    if (
+      normalizedSearch &&
+      classCode &&
+      normalizedSearch.charAt(0) !== String(classCode)
+    ) {
+      return {
+        accounts: [],
+        hasMore: false,
+      };
+    }
+
     const exclusiveStartKey = LedgerService.decodeCursor(cursor);
+    const accountPrefix =
+      normalizedSearch ?? (classCode ? String(classCode) : "");
 
     const result = await dynamoClient.send(
       new QueryCommand({
@@ -1030,8 +1054,18 @@ export class LedgerService {
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.orgKey(orgId),
-          ":sk": KeyFactory.accountPrefix(),
+          ":sk": `${KeyFactory.accountPrefix()}${accountPrefix}`,
+          ...(activeOnly ? { ":active": true } : {}),
         }),
+        ...(activeOnly
+          ? {
+              ExpressionAttributeNames: {
+                "#isActive": "isActive",
+              },
+              FilterExpression:
+                "attribute_not_exists(#isActive) OR #isActive = :active",
+            }
+          : {}),
         Limit: limit,
         ExclusiveStartKey: exclusiveStartKey,
         ScanIndexForward: true,

@@ -155,12 +155,9 @@
               @for (line of lines.controls; track line; let index = $index) {
                 <tr [formGroupName]="index" data-testid="entry-line-row">
                   <td class="px-3 pb-1 pt-3">
-                    <liass-searchable-select
+                    <liass-account-search-select
                       formControlName="accountId"
-                      icon="account_balance"
                       [labelKey]="'ACCOUNTING.ENTRIES.FORM.LINES.ACCOUNT'"
-                      [options]="accountOptions()"
-                      [loading]="accountsQuery.isPending()"
                       [showError]="line.controls.accountId.touched && line.controls.accountId.invalid"
                       [errorKey]="'ACCOUNTING.ENTRIES.FORM.VALIDATION.ACCOUNT_REQUIRED'"
                     />

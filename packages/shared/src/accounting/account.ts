@@ -85,17 +85,36 @@ export const AccountResponseSchema = z.object({
 export const ListAccountsRequestSchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(100).optional(),
   cursor: z.string().optional(),
+  search: z.string().trim().regex(/^\d{1,8}$/).optional(),
+  class: z.coerce.number().int().min(1).max(8).optional(),
+  activeOnly: z
+    .preprocess(
+      (value) => {
+        if (value === "true") return true;
+        if (value === "false") return false;
+        return value;
+      },
+      z.boolean(),
+    )
+    .optional(),
 });
 
 export type ListAccountsRequest = z.infer<typeof ListAccountsRequestSchema>;
 
 export const ListAccountsResponseSchema = z.object({
   message: z.unknown().optional(),
-  data: z.object({
-    accounts: z.array(AccountDtoSchema),
-    nextCursor: z.string().optional(),
-    hasMore: z.boolean(),
-  }),
+  data: z
+    .object({
+      items: z.array(AccountDtoSchema).optional(),
+      accounts: z.array(AccountDtoSchema).optional(),
+      nextCursor: z.string().optional(),
+      hasMore: z.boolean().optional(),
+    })
+    .transform((data) => ({
+      ...data,
+      hasMore: data.hasMore ?? !!data.nextCursor,
+      items: data.items ?? data.accounts ?? [],
+    })),
 });
 
 export const GetAccountRequestSchema = z.object({

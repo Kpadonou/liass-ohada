@@ -175,6 +175,42 @@ https://liass-ohada-{stage}-auth.auth.{region}.amazoncognito.com/oauth2/idprespo
 
 - `npm run localstack:setup` create and seed the local DynamoDB table against LocalStack
 
+### Grand Livre / Balance / Livre-journal development seed
+
+The accounting seed is dev/test-only, idempotent, Query-based, and posts entries
+through `LedgerService.postEntry`. It refuses production stages and table names.
+
+LocalStack:
+
+```bash
+ORG_ID=org-0ca75a05-c547-4c26-8929-387f4fff94ce \
+FISCAL_YEAR=2026 \
+LOCALSTACK_URL=http://localhost:4566 \
+AWS_PROFILE=localstack \
+npm run seed:accounting-test-data -w @liass-ohada/backend
+```
+
+Deployed development table:
+
+```bash
+ORG_ID=org-0ca75a05-c547-4c26-8929-387f4fff94ce \
+FISCAL_YEAR=2026 \
+STAGE=dev \
+TABLE_NAME=liass-ohada-dev-accounting-table \
+AWS_REGION=eu-west-2 \
+AWS_PROFILE=rem \
+npm run seed:accounting-test-data -w @liass-ohada/backend
+```
+
+For a non-local stage other than `dev`, add `SEED_CONFIRM_WRITE=yes`. Production
+stages and production-like table names are always rejected. The command prints
+the stage, table, organization, and fiscal year before the first write.
+
+Missing fiscal-year, journal, and official SYSCOHADA account prerequisites are
+created by default. Set `CREATE_PREREQUISITES=false` to make the command fail
+instead. The script prints created/skipped entries, account mappings, journals,
+and read-back verification for entries, grand livre, balance, and journal books.
+
 ## Project Structure
 
 See [.github/copilot-instructions.md](.github/copilot-instructions.md) for detailed architecture, domain models, and DynamoDB schema design.

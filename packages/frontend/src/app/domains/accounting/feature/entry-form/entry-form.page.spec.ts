@@ -261,7 +261,7 @@ describe('EntryFormPage', () => {
     await settle();
 
     const selectors = fixture.nativeElement.querySelectorAll(
-      'liass-searchable-select[formcontrolname="accountId"]'
+      'liass-account-search-select[formcontrolname="accountId"]'
     );
 
     expect(selectors.length).toBe(2);
@@ -527,33 +527,6 @@ describe('EntryFormPage', () => {
   }
 
   function flushReferenceData(): void {
-    httpMock.expectOne((request) => request.url === `${apiBaseUrl}/accounts`).flush({
-      data: {
-        accounts: [
-          {
-            accountId: '41100000',
-            accountName: 'Customers',
-            accountNature: 'BALANCE',
-            accountUsage: 'BOTH',
-            isThirdPartyAccount: true,
-            classCode: 4,
-            financialStatementCode: 'BS',
-            allowReconciliation: true
-          },
-          {
-            accountId: '70100000',
-            accountName: 'Sales',
-            accountNature: 'INCOME',
-            accountUsage: 'CREDIT_ONLY',
-            isThirdPartyAccount: false,
-            classCode: 7,
-            financialStatementCode: 'IS',
-            allowReconciliation: false
-          }
-        ],
-        hasMore: false
-      }
-    });
     httpMock.expectOne(`${apiBaseUrl}/journals`).flush({
       data: [
         {

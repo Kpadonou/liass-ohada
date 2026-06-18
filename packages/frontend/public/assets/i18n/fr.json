@@ -6,7 +6,8 @@
     "ACTIONS": {
       "SAVE": "Enregistrer",
       "CANCEL": "Annuler",
-      "CLOSE": "Fermer"
+      "CLOSE": "Fermer",
+      "RETRY": "Réessayer"
     },
     "TABLE": {
       "ACTION_MENU": "Ouvrir les actions de la ligne",
@@ -678,6 +679,16 @@
       "TITLE": "Comptabilité"
     },
     "ACCOUNTS": {
+      "SELECT": {
+        "LABEL": "Compte",
+        "LOADING": "Recherche des comptes...",
+        "LOAD_MORE": "Charger plus de comptes",
+        "MIN_CHARACTERS": "Saisissez au moins 2 caractères pour rechercher un compte par libellé.",
+        "NO_RESULTS": "Aucun compte trouvé",
+        "SEARCH_PLACEHOLDER": "Rechercher par numéro de compte",
+        "SELECTED_NOT_FOUND": "Le compte sélectionné est introuvable.",
+        "TYPE_TO_SEARCH": "Saisissez un ou plusieurs chiffres pour rechercher un compte."
+      },
       "ACTIONS": {
         "CLEAR_FILTERS": "Réinitialiser",
         "DISABLE_ACCOUNT": "Désactiver",
@@ -1185,13 +1196,30 @@
       "TITLE": "Exercices fiscaux"
     },
     "GENERAL_LEDGER": {
+      "ACTIONS": {
+        "LOAD_MORE": "Charger la suite"
+      },
+      "EMPTY": {
+        "DESCRIPTION": "Aucun mouvement comptabilisé n’est disponible pour ce compte sur l’exercice actif.",
+        "SELECT_ACCOUNT_DESCRIPTION": "Recherchez un compte par son numéro ou son libellé pour consulter ses mouvements.",
+        "SELECT_ACCOUNT_TITLE": "Sélectionnez un compte",
+        "TITLE": "Aucun mouvement pour ce compte"
+      },
+      "ERRORS": {
+        "ACCOUNTS_LOAD_FAILED": "Le plan comptable n’a pas pu être chargé.",
+        "LOAD_FAILED": "Le grand livre n’a pas pu être chargé.",
+        "LOAD_MORE_FAILED": "La suite des mouvements n’a pas pu être chargée."
+      },
       "EYEBROW": "Grand livre",
       "FILTERS": {
         "ACCOUNT": "Compte",
-        "DESCRIPTION": "Choisissez un compte et un exercice pour lire les mouvements.",
+        "ACCOUNT_SEARCH": "Rechercher par numéro ou libellé",
+        "DESCRIPTION": "Consultez les mouvements d’un compte dans l’exercice actif.",
+        "NO_ACCOUNT_RESULTS": "Aucun compte ne correspond à cette recherche.",
         "TITLE": "Périmètre",
         "YEAR": "Exercice"
       },
+      "LOADING": "Chargement des mouvements du grand livre…",
       "METRICS": {
         "FINAL": "Solde final",
         "MOVEMENTS": "Mouvements",
@@ -1206,6 +1234,7 @@
         "DESCRIPTION": "Mouvements issus de l’index grand livre.",
         "JOURNAL": "Journal",
         "LABEL": "Libellé",
+        "REFERENCE": "Pièce / référence",
         "TITLE": "Mouvements"
       },
       "TITLE": "Grand livre"

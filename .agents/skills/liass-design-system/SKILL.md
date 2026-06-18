@@ -24,6 +24,7 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 9. Ensure shared layout/page primitives render with stable block-level host behavior when they are used as standalone page sections.
 10. For table/list management pages, make simple create and edit actions dialog-based by default so the user stays in context.
 11. For `mat-select` fields with more than 10 options, or likely to grow beyond 10 options, provide search/filter capability by default.
+11a. For large server-backed reference data such as accounting accounts, do not treat a fixed first page as the complete option list. Use a reusable remote-search selector with debounce, explicit loading/no-results states, cursor pagination when available, and selected-value hydration.
 12. For pages that load remote data, especially data-heavy tables and lists, always show an explicit loading state; users must never see a blank table/list area while data is loading.
 13. Use snackbars only for short, transient, action-related feedback; keep validation, blocking errors, empty states, confirmations, and long business guidance contextual.
 14. Prefer backend-provided user-facing messages over generic frontend messages, including nested payloads such as `{ message: { code, message } }`; use translated frontend fallbacks only when backend message extraction returns no safe message.
@@ -62,6 +63,7 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 
 - `mat-form-field`, inputs, selects, date controls, checkboxes, radio buttons, and toggles for forms.
 - Searchable select or autocomplete-backed select patterns for `mat-select` choices with more than 10 options or dynamic reference data.
+- Server-backed Material autocomplete patterns for large account/reference datasets. Keep the selected business identifier visible even when it is outside the current result page, and submit only that identifier rather than the full option object.
 - `MatDialog` for focused temporary decisions.
 - `MatStepper` for guided multi-step flows.
 - `MatDrawer` or sidenav patterns for contextual panels.
@@ -80,6 +82,8 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 - Loading states must be visually clear, accessible, and consistent with the Liass-OHADA premium UI.
 - Loading text must use Transloco; no hardcoded visible loading strings.
 - Empty states must be shown only after loading has completed and no data exists.
+- Remote account selectors must search by an indexed business prefix, debounce requests by roughly 250–300 ms, allow one-character numeric account-class searches when efficient, and never simulate label search with an unbounded database scan.
+- Remote selectors must preserve selected values across result-page changes and expose a translated load-more action when the endpoint returns a cursor.
 - Error states must remain separate from loading and empty states.
 - Examples requiring explicit loading feedback include Plan comptable loading accounts, Journaux loading journals, Dossiers clients loading dossiers, Grand livre loading ledger lines, and Balance loading balances.
 - Use dialogs for focused temporary decisions, not long accounting flows.

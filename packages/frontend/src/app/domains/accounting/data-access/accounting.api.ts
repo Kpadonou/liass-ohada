@@ -148,13 +148,25 @@ export class AccountingApi {
       params = params.set('cursor', request.cursor);
     }
 
+    if (request.search) {
+      params = params.set('search', request.search);
+    }
+
+    if (request.class) {
+      params = params.set('class', request.class);
+    }
+
+    if (request.activeOnly !== undefined) {
+      params = params.set('activeOnly', request.activeOnly);
+    }
+
     const response = await firstValueFrom(
       this.http.get<unknown>(`${this.apiBaseUrl}/accounts`, { params })
     );
     const parsed = ListAccountsResponseSchema.parse(response);
 
     return {
-      items: parsed.data.accounts,
+      items: parsed.data.items,
       nextCursor: parsed.data.nextCursor,
       hasMore: parsed.data.hasMore
     };

@@ -24,7 +24,10 @@ type TenantScope = string;
 function normalizeListAccountsParams(options: ListAccountsParams = { limit: 200 }) {
   return {
     cursor: options.cursor ?? null,
-    limit: options.limit ?? 200
+    limit: options.limit ?? 200,
+    ...(options.search ? { search: options.search.trim() } : {}),
+    ...(options.class ? { class: options.class } : {}),
+    ...(options.activeOnly !== undefined ? { activeOnly: options.activeOnly } : {})
   };
 }
 

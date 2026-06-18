@@ -1,6 +1,10 @@
 import { handler } from "@/lambda/domains/accounting/accounts/list-accounts";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
-import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBClient,
+  QueryCommand,
+  ScanCommand,
+} from "@aws-sdk/client-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
@@ -72,6 +76,7 @@ describe("list-accounts handler", () => {
     );
     expect(queryInput.Limit).toBe(25);
     expect(body.data.accounts).toHaveLength(1);
+    expect(body.data.items).toEqual(body.data.accounts);
     expect(body.data.accounts[0]).toEqual({
       orgId: "test-org",
       accountId: "41100000",
@@ -91,6 +96,11 @@ describe("list-accounts handler", () => {
     expect(body.data.accounts[0].GSI1PK).toBeUndefined();
     expect(body.data.accounts[0].GSI1SK).toBeUndefined();
     expect(body.data.accounts[0].entityType).toBeUndefined();
+    expect(body.data.items[0].PK).toBeUndefined();
+    expect(body.data.items[0].SK).toBeUndefined();
+    expect(body.data.items[0].GSI1PK).toBeUndefined();
+    expect(body.data.items[0].GSI1SK).toBeUndefined();
+    expect(body.data.items[0].entityType).toBeUndefined();
     expect(body.data.hasMore).toBe(false);
   });
 
@@ -109,5 +119,59 @@ describe("list-accounts handler", () => {
     expect(response.statusCode).toBe(200);
     expect(body.data.hasMore).toBe(true);
     expect(typeof body.data.nextCursor).toBe("string");
+  });
+
+  test("searches account codes by sort-key prefix without scanning", async () => {
+    dynamoMock.on(QueryCommand).resolves({ Items: [] });
+
+    const response = await handler(
+      createEvent({
+        search: "411",
+        limit: "20",
+        activeOnly: "true",
+      }),
+    );
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+
+    expect(response.statusCode).toBe(200);
+    expect(queryInput.ExpressionAttributeValues).toEqual(
+      expect.objectContaining({
+        ":sk": { S: "ACC#411" },
+        ":active": { BOOL: true },
+      }),
+    );
+    expect(queryInput.FilterExpression).toBe(
+      "attribute_not_exists(#isActive) OR #isActive = :active",
+    );
+    expect(queryInput.Limit).toBe(20);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("supports class-prefix queries and rejects mismatched search scopes cheaply", async () => {
+    dynamoMock.on(QueryCommand).resolves({ Items: [] });
+
+    const classResponse = await handler(createEvent({ class: "5", limit: "20" }));
+    const classQuery = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+
+    expect(classResponse.statusCode).toBe(200);
+    expect(classQuery.ExpressionAttributeValues).toEqual(
+      expect.objectContaining({
+        ":sk": { S: "ACC#5" },
+      }),
+    );
+
+    dynamoMock.resetHistory();
+    const mismatchResponse = await handler(
+      createEvent({ class: "4", search: "521", limit: "20" }),
+    );
+
+    expect(mismatchResponse.statusCode).toBe(200);
+    expect(parseResponse(mismatchResponse).data).toEqual({
+      accounts: [],
+      hasMore: false,
+      items: [],
+    });
+    expect(dynamoMock.commandCalls(QueryCommand)).toHaveLength(0);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 });

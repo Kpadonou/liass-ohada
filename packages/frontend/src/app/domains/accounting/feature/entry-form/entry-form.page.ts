@@ -33,6 +33,7 @@ import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/stat
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AccountSearchSelectComponent } from '../../ui/account-search-select/account-search-select.component';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
 type EntryLineForm = FormGroup<{
@@ -51,6 +52,7 @@ type EntryLineForm = FormGroup<{
   },
   imports: [
     FiscalYearRequiredComponent,
+    AccountSearchSelectComponent,
     LiassButtonComponent,
     LiassCardComponent,
     LiassSearchableSelectComponent,
@@ -100,10 +102,6 @@ export class EntryFormPage {
     initialValue: this.form.getRawValue()
   });
 
-  protected readonly accountsQuery = injectQuery(() => ({
-    ...this.accountingQueries.listAccounts({ limit: 200 }),
-    enabled: this.fiscalYearContext.hasActiveFiscalYear()
-  }));
   protected readonly journalsQuery = injectQuery(() => ({
     ...this.accountingQueries.listJournals(),
     enabled: this.fiscalYearContext.hasActiveFiscalYear()
@@ -125,12 +123,6 @@ export class EntryFormPage {
     this.journals().map((journal) => ({
       label: `${journal.journalCode} - ${journal.journalName}`,
       value: journal.journalCode
-    }))
-  );
-  protected readonly accountOptions = computed<LiassSearchableSelectOption[]>(() =>
-    (this.accountsQuery.data()?.items ?? []).map((account) => ({
-      label: `${account.accountId} - ${account.accountName}`,
-      value: account.accountId
     }))
   );
   protected readonly useSearchableJournalSelect = computed(() => this.journals().length > 10);

@@ -66,6 +66,61 @@ describe('AccountingApi', () => {
     });
   });
 
+  it('sends server-backed account search and pagination parameters', async () => {
+    const promise = api.listAccounts({
+      activeOnly: true,
+      class: 4,
+      cursor: 'next-page',
+      limit: 20,
+      search: '411'
+    });
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/accounts`);
+
+    expect(request.request.params.get('activeOnly')).toBe('true');
+    expect(request.request.params.get('class')).toBe('4');
+    expect(request.request.params.get('cursor')).toBe('next-page');
+    expect(request.request.params.get('limit')).toBe('20');
+    expect(request.request.params.get('search')).toBe('411');
+
+    request.flush({
+      data: {
+        accounts: [],
+        hasMore: false
+      }
+    });
+
+    await expect(promise).resolves.toEqual({
+      items: [],
+      hasMore: false
+    });
+  });
+
+  it('accepts the legacy account-list response when pagination flags are omitted', async () => {
+    const promise = api.listAccounts({ limit: 20, search: '22' });
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/accounts`);
+
+    request.flush({
+      data: {
+        accounts: [
+          accountResponseFixture({
+            accountId: '22000000',
+            accountName: 'Terrains'
+          })
+        ]
+      }
+    });
+
+    await expect(promise).resolves.toMatchObject({
+      items: [
+        {
+          accountId: '22000000',
+          accountName: 'Terrains'
+        }
+      ],
+      hasMore: false
+    });
+  });
+
   it('gets, creates, updates, and disables accounts with shared DTO validation', async () => {
     const getPromise = api.getAccount('41100000');
     const getRequest = httpMock.expectOne(`${apiBaseUrl}/accounts/41100000`);

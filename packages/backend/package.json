@@ -20,6 +20,7 @@
     "aws:deploy:all": "env -u AWS_PROFILE npx cdk deploy --all --profile rem",
     "backfill:user-workspaces": "ts-node -r tsconfig-paths/register scripts/backfill-user-workspace-index.ts",
     "import:syscohada-accounts": "ts-node -r tsconfig-paths/register scripts/import-syscohada-accounts.ts",
+    "seed:accounting-test-data": "ts-node -r tsconfig-paths/register scripts/seed-accounting-test-data.ts",
     "localstack:setup": "AWS_PROFILE=localstack LOCALSTACK_URL=http://localhost:4566 bash scripts/setup-localstack.sh"
   },
   "devDependencies": {
