@@ -1,10 +1,11 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { environment } from '../../../../../environments/environment';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AuthStore } from '../../../identity/data-access/auth.store';
@@ -35,6 +36,10 @@ const translations = {
           DRAFT_REQUIRED: 'Only draft entries can be edited.',
           EDIT_SUBTITLE: 'Prepare the draft.',
           EDIT_TITLE: 'Edit entry',
+          ERRORS: {
+            CREATE_FAILED: 'The draft could not be saved.',
+            UPDATE_FAILED: 'The draft changes could not be saved.'
+          },
           GENERAL: {
             DESCRIPTION: 'Enter the identifying information.',
             TITLE: 'General information'
@@ -54,6 +59,10 @@ const translations = {
           LOADING_DRAFT: 'Loading draft...',
           NEW_SUBTITLE: 'Prepare the general information.',
           NEW_TITLE: 'New entry',
+          NOTIFICATIONS: {
+            CREATED: 'Entry draft saved.',
+            UPDATED: 'Entry draft updated.'
+          },
           TOTALS: {
             ACCESSIBLE_LABEL: 'Entry totals',
             DIFFERENCE: 'Difference'
@@ -100,10 +109,22 @@ const translations = {
 describe('EntryFormPage', () => {
   let fixture: ComponentFixture<EntryFormPage>;
   let httpMock: HttpTestingController;
+  const activatedRouteStub = {
+    snapshot: {
+      paramMap: convertToParamMap({})
+    }
+  };
+  const notification = {
+    error: vi.fn(),
+    success: vi.fn()
+  };
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
     localStorage.clear();
+    activatedRouteStub.snapshot.paramMap = convertToParamMap({});
+    notification.error.mockReset();
+    notification.success.mockReset();
 
     await TestBed.configureTestingModule({
       imports: [
@@ -123,12 +144,9 @@ describe('EntryFormPage', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: {
-            snapshot: {
-              paramMap: convertToParamMap({})
-            }
-          }
+          useValue: activatedRouteStub
         },
+        { provide: NotificationService, useValue: notification },
         provideTanStackQuery(
           new QueryClient({
             defaultOptions: {
@@ -347,6 +365,156 @@ describe('EntryFormPage', () => {
     expect(serialized).not.toContain('entityType');
   });
 
+  it('creates a draft with business identifiers, uses the backend message, and opens edit mode', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+    fillValidDraft();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const savePromise = (fixture.componentInstance as any).saveDraft();
+    await settleDynamicImport();
+    const request = httpMock.expectOne(`${apiBaseUrl}/entries/drafts`);
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      year: 2026,
+      entryDate: '2026-02-15',
+      journalCode: 'VE',
+      voucherNumber: 'FAC-001',
+      entryType: 'STANDARD',
+      label: 'Customer sale',
+      lines: [
+        {
+          accountId: '41100000',
+          thirdPartyId: 'CLIENT-001',
+          debit: 1000,
+          credit: 0
+        },
+        {
+          accountId: '70100000',
+          debit: 0,
+          credit: 1000
+        }
+      ]
+    });
+    expect(JSON.stringify(request.request.body)).not.toMatch(/PK|SK|GSI|entityType|orgId/);
+    request.flush({
+      message: { code: 'SUCCESS_ENTRY_DRAFT_CREATED', message: 'Draft saved by service.' },
+      data: entryDetailFixture()
+    });
+    await savePromise;
+
+    expect(notification.success).toHaveBeenCalledWith('Draft saved by service.');
+    expect(navigate).toHaveBeenCalledWith(
+      ['/accounting/entries', 'ENTRY-001', 'edit'],
+      { replaceUrl: true }
+    );
+  });
+
+  it('uses the translated create fallback only when the response has no message', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+    fillValidDraft();
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    const savePromise = (fixture.componentInstance as any).saveDraft();
+    await settleDynamicImport();
+    httpMock.expectOne(`${apiBaseUrl}/entries/drafts`).flush({
+      data: entryDetailFixture()
+    });
+    await savePromise;
+
+    expect(notification.success).toHaveBeenCalledWith('Entry draft saved.');
+  });
+
+  it('updates an existing draft and keeps the user on the edit form', async () => {
+    activatedRouteStub.snapshot.paramMap = convertToParamMap({ entryId: 'ENTRY-001' });
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settleDynamicImport();
+    httpMock.expectOne((request) => request.url === `${apiBaseUrl}/entries/ENTRY-001`).flush({
+      data: entryDetailFixture()
+    });
+    await settle();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    const savePromise = (fixture.componentInstance as any).saveDraft();
+    await settleDynamicImport();
+    const request = httpMock.expectOne(`${apiBaseUrl}/entries/ENTRY-001/draft`);
+
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body.year).toBe(2026);
+    expect(request.request.body.lines).toHaveLength(2);
+    expect(request.request.body).not.toHaveProperty('entryId');
+    request.flush({
+      message: 'Draft updated by service.',
+      data: entryDetailFixture({ label: 'Updated draft' })
+    });
+    await savePromise;
+
+    expect(notification.success).toHaveBeenCalledWith('Draft updated by service.');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('keeps form values and uses the backend error message when draft creation fails', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+    fillValidDraft();
+
+    const savePromise = (fixture.componentInstance as any).saveDraft();
+    await settleDynamicImport();
+    httpMock.expectOne(`${apiBaseUrl}/entries/drafts`).flush(
+      {
+        message: {
+          code: 'ERROR_ENTRY_DRAFT_REJECTED',
+          message: 'This draft cannot be saved for the selected period.'
+        }
+      },
+      { status: 400, statusText: 'Bad Request' }
+    );
+    await savePromise;
+
+    expect(notification.error).toHaveBeenCalledWith(
+      'This draft cannot be saved for the selected period.'
+    );
+    expect((fixture.componentInstance as any).form.controls.label.value).toBe('Customer sale');
+    expect((fixture.componentInstance as any).lines.at(0).controls.accountId.value).toBe(
+      '41100000'
+    );
+  });
+
+  it('uses the translated error fallback when no safe backend message exists', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+    fillValidDraft();
+
+    const savePromise = (fixture.componentInstance as any).saveDraft();
+    await settleDynamicImport();
+    httpMock.expectOne(`${apiBaseUrl}/entries/drafts`).flush(
+      { message: 'ConditionalCheckFailedException from DynamoDB' },
+      { status: 500, statusText: 'Server Error' }
+    );
+    await savePromise;
+
+    expect(notification.error).toHaveBeenCalledWith('The draft could not be saved.');
+  });
+
   function selectFiscalYear(): void {
     TestBed.inject(AccountingFiscalYearContextService).selectFiscalYear({
       accountingFramework: 'SYSCOHADA_REVISED',
@@ -398,10 +566,68 @@ describe('EntryFormPage', () => {
     });
   }
 
+  function fillValidDraft(): void {
+    const component = fixture.componentInstance as any;
+
+    component.form.patchValue({
+      entryDate: '2026-02-15',
+      journalCode: 'VE',
+      voucherNumber: 'FAC-001',
+      label: 'Customer sale'
+    });
+    component.lines.at(0).patchValue({
+      accountId: '41100000',
+      thirdPartyId: 'CLIENT-001',
+      debit: 1000,
+      credit: 0
+    });
+    component.lines.at(1).patchValue({
+      accountId: '70100000',
+      debit: 0,
+      credit: 1000
+    });
+    fixture.detectChanges();
+  }
+
   async function settle(): Promise<void> {
     await fixture.whenStable();
     fixture.detectChanges();
     await new Promise((resolve) => setTimeout(resolve, 25));
     fixture.detectChanges();
   }
+
+  async function settleDynamicImport(): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 });
+
+function entryDetailFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    entryId: 'ENTRY-001',
+    year: 2026,
+    entryDate: '2026-02-15',
+    journalCode: 'VE',
+    voucherNumber: 'FAC-001',
+    entryType: 'STANDARD',
+    label: 'Customer sale',
+    totalDebit: 1000,
+    totalCredit: 1000,
+    status: 'DRAFT',
+    lines: [
+      {
+        lineId: 'LINE-001',
+        accountId: '41100000',
+        debit: 1000,
+        credit: 0,
+        thirdPartyId: 'CLIENT-001'
+      },
+      {
+        lineId: 'LINE-002',
+        accountId: '70100000',
+        debit: 0,
+        credit: 1000
+      }
+    ],
+    ...overrides
+  };
+}

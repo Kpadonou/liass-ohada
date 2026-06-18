@@ -1001,6 +1001,10 @@
         "DRAFT_REQUIRED": "Only draft entries can be edited.",
         "EDIT_SUBTITLE": "Prepare the draft general information before entering its detailed lines.",
         "EDIT_TITLE": "Edit entry",
+        "ERRORS": {
+          "CREATE_FAILED": "The draft could not be saved.",
+          "UPDATE_FAILED": "The draft changes could not be saved."
+        },
         "GENERAL": {
           "DESCRIPTION": "Enter the identifying information for the accounting document.",
           "TITLE": "General information"
@@ -1020,6 +1024,10 @@
         "LOADING_DRAFT": "Loading draft...",
         "NEW_SUBTITLE": "Prepare the general information before composing the entry lines.",
         "NEW_TITLE": "New entry",
+        "NOTIFICATIONS": {
+          "CREATED": "Entry draft saved.",
+          "UPDATED": "Entry draft updated."
+        },
         "TOTALS": {
           "ACCESSIBLE_LABEL": "Entry totals",
           "DIFFERENCE": "Difference"

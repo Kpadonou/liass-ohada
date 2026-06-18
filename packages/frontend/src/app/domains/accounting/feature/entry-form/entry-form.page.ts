@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
@@ -16,9 +16,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router } from '@angular/router';
-import { TranslocoModule } from '@ngneat/transloco';
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { type CreateEntryDraftRequest } from '@liass-ohada/shared/accounting';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
+import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import {
@@ -28,6 +31,7 @@ import {
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
+import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingQueries } from '../../data-access/accounting-queries';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
@@ -62,11 +66,15 @@ type EntryLineForm = FormGroup<{
   templateUrl: './entry-form.page.html'
 })
 export class EntryFormPage {
+  private readonly accountingApi = inject(AccountingApi);
   private readonly accountingQueries = inject(AccountingQueries);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly notification = inject(NotificationService);
+  private readonly queryClient = inject(QueryClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly entryId = this.route.snapshot.paramMap.get('entryId');
   protected readonly isEditMode = !!this.entryId;
@@ -143,6 +151,7 @@ export class EntryFormPage {
       this.lines.valid
   );
   protected readonly publishAvailable = false;
+  protected readonly submittingDraft = signal(false);
 
   constructor() {
     effect(() => {
@@ -222,25 +231,88 @@ export class EntryFormPage {
     }).format(amount);
   }
 
-  protected draftModel() {
+  protected draftModel(): CreateEntryDraftRequest {
     const raw = this.form.getRawValue();
+    const activeYear = this.fiscalYearContext.activeYear();
+
+    if (!activeYear) {
+      throw new Error('Active fiscal year is required to build a draft payload.');
+    }
 
     return {
-      year: this.fiscalYearContext.activeYear(),
+      year: activeYear,
       entryDate: raw.entryDate,
       journalCode: raw.journalCode,
-      voucherNumber: raw.voucherNumber || undefined,
+      ...(raw.voucherNumber ? { voucherNumber: raw.voucherNumber } : {}),
       entryType: 'STANDARD' as const,
       label: raw.label,
       lines: raw.lines.map((line) => ({
-        lineId: line.lineId || undefined,
+        ...(line.lineId ? { lineId: line.lineId } : {}),
         accountId: line.accountId,
-        thirdPartyId: line.thirdPartyId || undefined,
-        label: line.label || undefined,
+        ...(line.thirdPartyId ? { thirdPartyId: line.thirdPartyId } : {}),
+        ...(line.label ? { label: line.label } : {}),
         debit: Number(line.debit),
         credit: Number(line.credit)
       }))
     };
+  }
+
+  protected async saveDraft(): Promise<void> {
+    if (
+      !this.fiscalYearContext.hasActiveFiscalYear() ||
+      this.form.invalid ||
+      this.submittingDraft()
+    ) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.submittingDraft.set(true);
+
+    try {
+      const payload = this.draftModel();
+      const result =
+        this.isEditMode && this.entryId
+          ? await this.accountingApi.updateEntryDraft(this.entryId, payload)
+          : await this.accountingApi.createEntryDraft(payload);
+      const fallbackKey =
+        this.isEditMode
+          ? 'ACCOUNTING.ENTRIES.FORM.NOTIFICATIONS.UPDATED'
+          : 'ACCOUNTING.ENTRIES.FORM.NOTIFICATIONS.CREATED';
+
+      this.notification.success(result.message ?? this.transloco.translate(fallbackKey));
+      this.form.markAsPristine();
+      await this.queryClient.invalidateQueries({
+        predicate: (query) => {
+          const key = query.queryKey;
+
+          return (
+            key[0] === 'accounting' &&
+            key[1] === this.accountingQueries.tenantScope() &&
+            key[2] === 'entries' &&
+            typeof key[3] === 'object'
+          );
+        }
+      });
+
+      if (!this.isEditMode) {
+        await this.router.navigate(
+          ['/accounting/entries', result.data.entryId, 'edit'],
+          { replaceUrl: true }
+        );
+      }
+    } catch (error) {
+      const fallbackKey =
+        this.isEditMode
+          ? 'ACCOUNTING.ENTRIES.FORM.ERRORS.UPDATE_FAILED'
+          : 'ACCOUNTING.ENTRIES.FORM.ERRORS.CREATE_FAILED';
+
+      this.notification.error(
+        safeMessageFromError(error) ?? this.transloco.translate(fallbackKey)
+      );
+    } finally {
+      this.submittingDraft.set(false);
+    }
   }
 
   protected async goBack(): Promise<void> {

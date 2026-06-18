@@ -1001,6 +1001,10 @@
         "DRAFT_REQUIRED": "Seules les écritures au statut brouillon peuvent être modifiées.",
         "EDIT_SUBTITLE": "Préparez les informations générales du brouillon avant la saisie détaillée des lignes.",
         "EDIT_TITLE": "Modifier l’écriture",
+        "ERRORS": {
+          "CREATE_FAILED": "Le brouillon n’a pas pu être enregistré.",
+          "UPDATE_FAILED": "Les modifications du brouillon n’ont pas pu être enregistrées."
+        },
         "GENERAL": {
           "DESCRIPTION": "Renseignez les informations d’identification de la pièce comptable.",
           "TITLE": "Informations générales"
@@ -1020,6 +1024,10 @@
         "LOADING_DRAFT": "Chargement du brouillon...",
         "NEW_SUBTITLE": "Préparez les informations générales avant de composer les lignes de l’écriture.",
         "NEW_TITLE": "Nouvelle écriture",
+        "NOTIFICATIONS": {
+          "CREATED": "Brouillon d’écriture enregistré.",
+          "UPDATED": "Brouillon d’écriture mis à jour."
+        },
         "TOTALS": {
           "ACCESSIBLE_LABEL": "Totaux de l’écriture",
           "DIFFERENCE": "Différence"

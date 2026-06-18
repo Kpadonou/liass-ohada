@@ -288,7 +288,15 @@
           {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
         </liass-button>
         <div class="flex flex-col gap-3 sm:flex-row">
-          <liass-button tone="neutral" variant="outline" icon="save" [disabled]="true">
+          <liass-button
+            tone="neutral"
+            variant="outline"
+            icon="save"
+            data-testid="save-entry-draft"
+            [disabled]="form.invalid || submittingDraft()"
+            [loading]="submittingDraft()"
+            (pressed)="saveDraft()"
+          >
             {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.SAVE_DRAFT' | transloco }}
           </liass-button>
           <liass-button
