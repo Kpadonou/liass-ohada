@@ -135,6 +135,7 @@ export const routes: Routes = [
       },
       {
         path: 'accounting',
+        pathMatch: 'full',
         loadComponent: () =>
           import('../../domains/accounting/feature/accounting-overview/accounting-overview.page').then(
             (module) => module.AccountingOverviewPage
@@ -147,7 +148,7 @@ export const routes: Routes = [
       {
         path: 'accounting/fiscal-year',
         pathMatch: 'full',
-        redirectTo: 'accounting/fiscal-years'
+        redirectTo: '/accounting/fiscal-years'
       },
       {
         path: 'accounting/fiscal-years',

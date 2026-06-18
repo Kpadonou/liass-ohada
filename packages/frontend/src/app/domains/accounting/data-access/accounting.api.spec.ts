@@ -487,6 +487,231 @@ describe('AccountingApi', () => {
     await expect(promise).rejects.toThrow();
   });
 
+  it('loads a paginated frontend-safe general ledger and preserves its backend message', async () => {
+    const promise = api.getGeneralLedger({
+      fiscalYear: '2026',
+      accountId: '41100000',
+      limit: 25,
+      cursor: 'cursor-2'
+    });
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`
+    );
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('fiscalYear')).toBe('2026');
+    expect(request.request.params.get('accountId')).toBe('41100000');
+    expect(request.request.params.get('limit')).toBe('25');
+    expect(request.request.params.get('cursor')).toBe('cursor-2');
+    request.flush({
+      message: {
+        code: 'SUCCESS_LEDGER_RETRIEVED',
+        message: 'Grand livre récupéré.'
+      },
+      data: {
+        PK: 'ORG#technical',
+        accountId: '41100000',
+        openingBalance: {
+          GSI1PK: 'ORG#technical',
+          date: 'OPENING',
+          label: 'Report à nouveau',
+          reference: 'RAN',
+          journalCode: 'RAN',
+          debit: 1000,
+          credit: 0,
+          runningBalance: 1000
+        },
+        movements: [
+          {
+            SK: 'L#technical',
+            date: '2026-01-15',
+            label: 'Facture client',
+            reference: 'FV-001',
+            journalCode: 'VE',
+            entryId: 'E-001',
+            lineId: 'L-001',
+            debit: 500,
+            credit: 0,
+            runningBalance: 1500
+          }
+        ],
+        finalBalance: 1500,
+        nextCursor: 'cursor-3',
+        hasMore: true
+      }
+    });
+
+    await expect(promise).resolves.toEqual({
+      accountId: '41100000',
+      openingBalance: {
+        date: 'OPENING',
+        label: 'Report à nouveau',
+        reference: 'RAN',
+        journalCode: 'RAN',
+        debit: 1000,
+        credit: 0,
+        runningBalance: 1000
+      },
+      movements: [
+        {
+          date: '2026-01-15',
+          label: 'Facture client',
+          reference: 'FV-001',
+          journalCode: 'VE',
+          entryId: 'E-001',
+          lineId: 'L-001',
+          debit: 500,
+          credit: 0,
+          runningBalance: 1500
+        }
+      ],
+      finalBalance: 1500,
+      nextCursor: 'cursor-3',
+      hasMore: true,
+      message: 'Grand livre récupéré.'
+    });
+  });
+
+  it('validates the six-column trial balance and preserves the response message', async () => {
+    const promise = api.getTrialBalance('2026');
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`
+    );
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('year')).toBe('2026');
+    request.flush({
+      message: 'Balance récupérée.',
+      data: {
+        rows: [
+          {
+            PK: 'ORG#technical',
+            accountId: '41100000',
+            openingDebit: 1000,
+            openingCredit: 0,
+            movementDebit: 500,
+            movementCredit: 200,
+            finalDebit: 1300,
+            finalCredit: 0
+          }
+        ],
+        totals: {
+          openingDebit: 1000,
+          openingCredit: 0,
+          movementDebit: 500,
+          movementCredit: 200,
+          finalDebit: 1300,
+          finalCredit: 0
+        }
+      }
+    });
+
+    await expect(promise).resolves.toEqual({
+      rows: [
+        {
+          accountId: '41100000',
+          openingDebit: 1000,
+          openingCredit: 0,
+          movementDebit: 500,
+          movementCredit: 200,
+          finalDebit: 1300,
+          finalCredit: 0
+        }
+      ],
+      totals: {
+        openingDebit: 1000,
+        openingCredit: 0,
+        movementDebit: 500,
+        movementCredit: 200,
+        finalDebit: 1300,
+        finalCredit: 0
+      },
+      message: 'Balance récupérée.'
+    });
+  });
+
+  it('loads only a journal-specific paginated journal book', async () => {
+    const promise = api.getJournalBook({
+      year: '2026',
+      journalCode: 'VE',
+      month: '01',
+      limit: 20,
+      cursor: 'cursor-2'
+    });
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/journals/VE/entries`
+    );
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('year')).toBe('2026');
+    expect(request.request.params.get('month')).toBe('01');
+    expect(request.request.params.get('limit')).toBe('20');
+    expect(request.request.params.get('cursor')).toBe('cursor-2');
+    request.flush({
+      message: {
+        code: 'SUCCESS_JOURNAL_RETRIEVED',
+        message: 'Livre-journal récupéré.'
+      },
+      data: {
+        meta: {
+          year: '2026',
+          journalCode: 'VE',
+          month: '01'
+        },
+        entries: [
+          {
+            GSI5PK: 'ORG#technical',
+            entityType: 'ENTRY',
+            entryId: 'E-001',
+            date: '2026-01-15',
+            journalCode: 'VE',
+            reference: 'FV-001',
+            label: 'Vente',
+            totalDebit: 125000,
+            totalCredit: 125000,
+            status: 'POSTED'
+          }
+        ],
+        nextCursor: 'cursor-3',
+        hasMore: true
+      }
+    });
+
+    await expect(promise).resolves.toEqual({
+      items: [
+        {
+          entryId: 'E-001',
+          date: '2026-01-15',
+          journalCode: 'VE',
+          reference: 'FV-001',
+          label: 'Vente',
+          totalDebit: 125000,
+          totalCredit: 125000,
+          status: 'POSTED'
+        }
+      ],
+      meta: {
+        year: '2026',
+        journalCode: 'VE',
+        month: '01'
+      },
+      nextCursor: 'cursor-3',
+      hasMore: true,
+      message: 'Livre-journal récupéré.'
+    });
+  });
+
+  it('rejects a global journal-book request before making an HTTP call', async () => {
+    await expect(
+      api.getJournalBook({
+        year: '2026',
+        journalCode: ''
+      })
+    ).rejects.toThrow();
+
+    httpMock.expectNone((candidate) => candidate.url.includes('/journals/'));
+  });
+
   it('creates fiscal years and maps frontend-safe responses', async () => {
     const promise = api.createFiscalYear({
       year: 2026

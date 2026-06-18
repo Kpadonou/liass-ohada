@@ -10,7 +10,10 @@ describe('AccountingQueries', () => {
   let accountingApi: {
     getAccount: ReturnType<typeof vi.fn>;
     getEntryDetail: ReturnType<typeof vi.fn>;
+    getGeneralLedger: ReturnType<typeof vi.fn>;
     getJournal: ReturnType<typeof vi.fn>;
+    getJournalBook: ReturnType<typeof vi.fn>;
+    getTrialBalance: ReturnType<typeof vi.fn>;
     listEntries: ReturnType<typeof vi.fn>;
     listAccounts: ReturnType<typeof vi.fn>;
     listJournals: ReturnType<typeof vi.fn>;
@@ -29,7 +32,10 @@ describe('AccountingQueries', () => {
     accountingApi = {
       getAccount: vi.fn(),
       getEntryDetail: vi.fn(),
+      getGeneralLedger: vi.fn(),
       getJournal: vi.fn(),
+      getJournalBook: vi.fn(),
+      getTrialBalance: vi.fn(),
       listEntries: vi.fn(),
       listAccounts: vi.fn(),
       listJournals: vi.fn()
@@ -199,5 +205,111 @@ describe('AccountingQueries', () => {
     await (options.queryFn as () => Promise<unknown>)();
 
     expect(accountingApi.getEntryDetail).toHaveBeenCalledWith('E-123', '2026');
+  });
+
+  it('keeps paginated general ledger keys scoped by tenant, fiscal year, account, and cursor', async () => {
+    accountingApi.getGeneralLedger.mockResolvedValue({
+      accountId: '41100000',
+      movements: [],
+      hasMore: false
+    });
+
+    const options = queries.generalLedgerForActiveFiscalYear({
+      accountId: '41100000',
+      cursor: 'cursor-2',
+      limit: 25
+    });
+
+    expect(options.queryKey).toEqual([
+      'accounting',
+      'org-test',
+      'general-ledger',
+      {
+        accountId: '41100000',
+        cursor: 'cursor-2',
+        fiscalYear: '2026',
+        limit: 25
+      }
+    ]);
+    expect(options.enabled).toBe(true);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.getGeneralLedger).toHaveBeenCalledWith({
+      accountId: '41100000',
+      cursor: 'cursor-2',
+      fiscalYear: '2026',
+      limit: 25
+    });
+  });
+
+  it('uses the active fiscal year for the six-column trial balance', async () => {
+    accountingApi.getTrialBalance.mockResolvedValue({ rows: [], totals: {} });
+
+    const options = queries.trialBalanceForActiveFiscalYear();
+
+    expect(options.queryKey).toEqual([
+      'accounting',
+      'org-test',
+      'trial-balance',
+      '2026'
+    ]);
+    expect(options.enabled).toBe(true);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.getTrialBalance).toHaveBeenCalledWith('2026');
+  });
+
+  it('requires one journal for journal-book queries and never creates a global key', async () => {
+    accountingApi.getJournalBook.mockResolvedValue({
+      items: [],
+      meta: { year: '2026', journalCode: 'VE' },
+      hasMore: false
+    });
+
+    const options = queries.journalBookForActiveFiscalYear({
+      journalCode: ' ve ',
+      month: '01',
+      cursor: 'cursor-2',
+      limit: 20
+    });
+
+    expect(options.queryKey).toEqual([
+      'accounting',
+      'org-test',
+      'journal-book',
+      {
+        cursor: 'cursor-2',
+        journalCode: 'VE',
+        limit: 20,
+        month: '01',
+        year: '2026'
+      }
+    ]);
+    expect(options.enabled).toBe(true);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.getJournalBook).toHaveBeenCalledWith({
+      journalCode: 'VE',
+      month: '01',
+      cursor: 'cursor-2',
+      limit: 20,
+      year: '2026'
+    });
+    expect(queries.journalBookForActiveFiscalYear({ journalCode: '' }).enabled).toBe(false);
+  });
+
+  it('disables Lot 4 active-year queries when no fiscal year is selected', () => {
+    fiscalYearContext.activeYear.mockReturnValue(null);
+
+    expect(
+      queries.generalLedgerForActiveFiscalYear({ accountId: '41100000' }).enabled
+    ).toBe(false);
+    expect(queries.trialBalanceForActiveFiscalYear().enabled).toBe(false);
+    expect(
+      queries.journalBookForActiveFiscalYear({ journalCode: 'VE' }).enabled
+    ).toBe(false);
   });
 });

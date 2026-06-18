@@ -114,6 +114,7 @@ describe('routes', () => {
 
     expect(component).toBe(AccountingOverviewPage);
     expect(accountingRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.OVERVIEW.TITLE');
+    expect(accountingRoute?.pathMatch).toBe('full');
   });
 
   it('registers the accounting accounts route and keeps the historical chart route as an alias', async () => {
@@ -147,7 +148,28 @@ describe('routes', () => {
 
     expect(component).toBe(FiscalYearPage);
     expect(fiscalYearRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.FISCAL_YEAR.TITLE');
-    expect(legacyFiscalYearRoute?.redirectTo).toBe('accounting/fiscal-years');
+    expect(legacyFiscalYearRoute?.redirectTo).toBe('/accounting/fiscal-years');
+  });
+
+  it('keeps accounting sub-routes distinct from the overview route', () => {
+    const shell = shellRoute();
+    const accountingRoute = shell?.children?.find((route) => route.path === 'accounting');
+    const accountingSubRoutes = shell?.children?.filter(
+      (route) => route.path?.startsWith('accounting/') && !route.redirectTo
+    );
+
+    expect(accountingRoute?.pathMatch).toBe('full');
+    expect(accountingSubRoutes?.map((route) => route.path)).toEqual(
+      expect.arrayContaining([
+        'accounting/accounts',
+        'accounting/entries',
+        'accounting/fiscal-years',
+        'accounting/general-ledger',
+        'accounting/journals',
+        'accounting/lettering',
+        'accounting/trial-balance'
+      ])
+    );
   });
 
   it('registers the accounting lettering route', async () => {

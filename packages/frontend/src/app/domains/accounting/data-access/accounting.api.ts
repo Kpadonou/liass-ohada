@@ -11,10 +11,13 @@ import {
   CreateJournalRequestSchema,
   FiscalYearDetailsResponseSchema,
   FiscalYearResponseSchema,
+  GeneralLedgerQuerySchema,
   GeneralLedgerResponseSchema,
   GetAccountRequestSchema,
   IncomeStatementResponseSchema,
   JournalResponseSchema,
+  JournalBookQuerySchema,
+  JournalBookResponseSchema,
   ListAccountsRequestSchema,
   ListAccountsResponseSchema,
   ListEntriesResponseSchema,
@@ -25,6 +28,7 @@ import {
   PostEntryResponseSchema,
   PostLetteringRequestSchema,
   ThirdPartyLedgerResponseSchema,
+  TrialBalanceQuerySchema,
   TrialBalanceResponseSchema,
   UnletteredLinesResponseSchema,
   UpdateAccountRequestSchema,
@@ -41,8 +45,11 @@ import {
   type FiscalYearDetailsDto,
   type FiscalYearDto,
   type GeneralLedgerDto,
+  type GeneralLedgerQuery,
   type IncomeStatementDto,
   type JournalDto,
+  type JournalBookLineDto,
+  type JournalBookQuery,
   type LetteringResultDto,
   type MatchingReportDto,
   type PeriodLockDto,
@@ -63,9 +70,13 @@ export interface PaginatedResult<T> {
   items: T[];
   nextCursor?: string;
   hasMore: boolean;
+  message?: string | null;
 }
 
+export type ApiQueryResult<T> = T & { message?: string | null };
 export type ListAccountsParams = z.input<typeof ListAccountsRequestSchema>;
+export type GeneralLedgerParams = z.input<typeof GeneralLedgerQuerySchema>;
+export type JournalBookParams = z.input<typeof JournalBookQuerySchema>;
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
 export type UpdateEntryDraftPayload = Omit<UpdateEntryDraftRequest, 'entryId'>;
 export type UpdateJournalRequest = z.infer<typeof UpdateJournalRequestSchema>;
@@ -110,6 +121,14 @@ export interface UnletteredLinesParams {
   accountId: string;
   thirdPartyId: string;
   projectId?: string;
+}
+
+export interface JournalBookResult extends PaginatedResult<JournalBookLineDto> {
+  meta: {
+    year: string;
+    journalCode: string;
+    month?: string;
+  };
 }
 
 @Injectable({ providedIn: 'root' })
@@ -330,25 +349,80 @@ export class AccountingApi {
     return { data: parsed.entryId, message: userMessageFromResponse(response) };
   }
 
-  async getGeneralLedger(paramsInput: { fiscalYear: string; accountId: string }): Promise<GeneralLedgerDto> {
-    const params = new HttpParams()
-      .set('fiscalYear', paramsInput.fiscalYear)
-      .set('accountId', paramsInput.accountId);
+  async getGeneralLedger(paramsInput: GeneralLedgerParams): Promise<ApiQueryResult<GeneralLedgerDto>> {
+    const request: GeneralLedgerQuery = GeneralLedgerQuerySchema.parse(paramsInput);
+    let params = new HttpParams()
+      .set('fiscalYear', request.fiscalYear)
+      .set('accountId', request.accountId);
+
+    if (request.limit) {
+      params = params.set('limit', request.limit);
+    }
+
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+
     const response = await firstValueFrom(
       this.http.get<unknown>(`${this.apiBaseUrl}/books/general-ledger`, { params })
     );
+    const parsed = GeneralLedgerResponseSchema.parse(response);
 
-    return GeneralLedgerResponseSchema.parse(response).data;
+    return {
+      ...parsed.data,
+      message: userMessageFromResponse(response)
+    };
   }
 
-  async getTrialBalance(year: string): Promise<TrialBalanceDto> {
+  async getTrialBalance(year: string): Promise<ApiQueryResult<TrialBalanceDto>> {
+    const request = TrialBalanceQuerySchema.parse({ year });
     const response = await firstValueFrom(
       this.http.get<unknown>(`${this.apiBaseUrl}/books/trial-balance`, {
-        params: new HttpParams().set('year', year)
+        params: new HttpParams().set('year', request.year)
       })
     );
+    const parsed = TrialBalanceResponseSchema.parse(response);
 
-    return TrialBalanceResponseSchema.parse(response).data;
+    return {
+      ...parsed.data,
+      message: userMessageFromResponse(response)
+    };
+  }
+
+  async getJournalBook(paramsInput: JournalBookParams): Promise<JournalBookResult> {
+    const request: JournalBookQuery = JournalBookQuerySchema.parse({
+      ...paramsInput,
+      journalCode: paramsInput.journalCode.trim().toUpperCase()
+    });
+    let params = new HttpParams().set('year', request.year);
+
+    if (request.month) {
+      params = params.set('month', request.month);
+    }
+
+    if (request.limit) {
+      params = params.set('limit', request.limit);
+    }
+
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+
+    const response = await firstValueFrom(
+      this.http.get<unknown>(
+        `${this.journalUrl(request.journalCode)}/entries`,
+        { params }
+      )
+    );
+    const parsed = JournalBookResponseSchema.parse(response);
+
+    return {
+      items: parsed.data.entries,
+      meta: parsed.data.meta,
+      nextCursor: parsed.data.nextCursor,
+      hasMore: parsed.data.hasMore,
+      message: userMessageFromResponse(response)
+    };
   }
 
   async createFiscalYear(payload: CreateFiscalYearRequest): Promise<ApiMutationResult<FiscalYearDto>> {

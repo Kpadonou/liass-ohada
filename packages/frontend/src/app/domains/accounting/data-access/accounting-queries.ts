@@ -4,6 +4,8 @@ import { queryOptions } from '@tanstack/angular-query-experimental';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import {
   AccountingApi,
+  type GeneralLedgerParams,
+  type JournalBookParams,
   type ListAccountsParams,
   type ListEntriesParams,
   type MatchingReportParams,
@@ -37,6 +39,25 @@ function normalizeListEntriesParams(options: ListEntriesParams) {
   };
 }
 
+function normalizeGeneralLedgerParams(params: GeneralLedgerParams) {
+  return {
+    accountId: params.accountId,
+    cursor: params.cursor ?? null,
+    fiscalYear: params.fiscalYear,
+    limit: params.limit ?? 50
+  };
+}
+
+function normalizeJournalBookParams(params: JournalBookParams) {
+  return {
+    cursor: params.cursor ?? null,
+    journalCode: params.journalCode.trim().toUpperCase(),
+    limit: params.limit ?? 50,
+    month: params.month ?? null,
+    year: params.year
+  };
+}
+
 export const accountingQueryKeys = {
   account: (tenantScope: TenantScope, accountId: string) =>
     ['accounting', tenantScope, 'accounts', accountId] as const,
@@ -49,13 +70,15 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'entries', year, entryId] as const,
   fiscalYear: (tenantScope: TenantScope, year: string) =>
     ['accounting', tenantScope, 'fiscal-year', year] as const,
-  generalLedger: (params: { fiscalYear: string; accountId: string }) =>
-    ['accounting', 'general-ledger', params] as const,
+  generalLedger: (tenantScope: TenantScope, params: GeneralLedgerParams) =>
+    ['accounting', tenantScope, 'general-ledger', normalizeGeneralLedgerParams(params)] as const,
   incomeStatement: (tenantScope: TenantScope, year: string) =>
     ['accounting', tenantScope, 'income-statement', year] as const,
   journal: (tenantScope: TenantScope, journalCode: string) =>
     ['accounting', tenantScope, 'journals', journalCode] as const,
   journals: (tenantScope: TenantScope) => ['accounting', tenantScope, 'journals'] as const,
+  journalBook: (tenantScope: TenantScope, params: JournalBookParams) =>
+    ['accounting', tenantScope, 'journal-book', normalizeJournalBookParams(params)] as const,
   matchingReport: (tenantScope: TenantScope, params: MatchingReportParams) =>
     ['accounting', tenantScope, 'matching-report', params] as const,
   thirdPartyLedger: (tenantScope: TenantScope, params: ThirdPartyLedgerParams) =>
@@ -165,13 +188,28 @@ export class AccountingQueries {
     });
   }
 
-  generalLedger(params: { fiscalYear: string; accountId: string }, enabled = true) {
+  generalLedger(params: GeneralLedgerParams, enabled = true) {
     return queryOptions({
-      queryKey: ['accounting', this.tenantScope(), ...accountingQueryKeys.generalLedger(params).slice(1)] as const,
+      queryKey: accountingQueryKeys.generalLedger(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getGeneralLedger(params),
       enabled: enabled && /^\d{4}$/.test(params.fiscalYear) && /^\d{2,8}$/.test(params.accountId),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
+  }
+
+  generalLedgerForActiveFiscalYear(
+    params: Omit<GeneralLedgerParams, 'fiscalYear'>,
+    enabled = true
+  ) {
+    const activeYear = this.fiscalYearContext.activeYear();
+
+    return this.generalLedger(
+      {
+        ...params,
+        fiscalYear: activeYear ? String(activeYear) : ''
+      },
+      enabled && !!activeYear
+    );
   }
 
   trialBalance(year: string, enabled = true) {
@@ -181,6 +219,49 @@ export class AccountingQueries {
       enabled: enabled && /^\d{4}$/.test(year),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
+  }
+
+  trialBalanceForActiveFiscalYear(enabled = true) {
+    const activeYear = this.fiscalYearContext.activeYear();
+
+    return this.trialBalance(
+      activeYear ? String(activeYear) : '',
+      enabled && !!activeYear
+    );
+  }
+
+  journalBook(params: JournalBookParams, enabled = true) {
+    const normalizedJournalCode = params.journalCode.trim().toUpperCase();
+    const normalizedParams = {
+      ...params,
+      journalCode: normalizedJournalCode
+    };
+
+    return queryOptions({
+      queryKey: accountingQueryKeys.journalBook(this.tenantScope(), normalizedParams),
+      queryFn: () => this.accountingApi.getJournalBook(normalizedParams),
+      enabled:
+        enabled &&
+        /^\d{4}$/.test(params.year) &&
+        normalizedJournalCode.length > 0 &&
+        normalizedJournalCode.length <= 10,
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
+    });
+  }
+
+  journalBookForActiveFiscalYear(
+    params: Omit<JournalBookParams, 'year'>,
+    enabled = true
+  ) {
+    const activeYear = this.fiscalYearContext.activeYear();
+
+    return this.journalBook(
+      {
+        ...params,
+        year: activeYear ? String(activeYear) : ''
+      },
+      enabled && !!activeYear
+    );
   }
 
   fiscalYearDetails(year: string | number, enabled = true) {
