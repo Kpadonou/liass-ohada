@@ -10,6 +10,7 @@ import {
   type ThirdPartyLedgerParams,
   type UnletteredLinesParams
 } from './accounting.api';
+import { AccountingFiscalYearContextService } from './accounting-fiscal-year-context.service';
 
 const ACCOUNTING_MASTER_DATA_STALE_TIME = 10 * 60_000;
 const ACCOUNTING_TRANSACTIONAL_STALE_TIME = 30_000;
@@ -25,6 +26,17 @@ function normalizeListAccountsParams(options: ListAccountsParams = { limit: 200 
   };
 }
 
+function normalizeListEntriesParams(options: ListEntriesParams) {
+  return {
+    cursor: options.cursor ?? null,
+    journalCode: options.journalCode ?? null,
+    limit: options.limit ?? 100,
+    month: options.month ?? null,
+    status: options.status ?? null,
+    year: options.year
+  };
+}
+
 export const accountingQueryKeys = {
   account: (tenantScope: TenantScope, accountId: string) =>
     ['accounting', tenantScope, 'accounts', accountId] as const,
@@ -32,7 +44,9 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'accounts', normalizeListAccountsParams(options)] as const,
   accountsRoot: (tenantScope: TenantScope) => ['accounting', tenantScope, 'accounts'] as const,
   entries: (tenantScope: TenantScope, params: ListEntriesParams) =>
-    ['accounting', tenantScope, 'entries', params] as const,
+    ['accounting', tenantScope, 'entries', normalizeListEntriesParams(params)] as const,
+  entryDetail: (tenantScope: TenantScope, year: string, entryId: string) =>
+    ['accounting', tenantScope, 'entries', year, entryId] as const,
   fiscalYear: (tenantScope: TenantScope, year: string) =>
     ['accounting', tenantScope, 'fiscal-year', year] as const,
   generalLedger: (params: { fiscalYear: string; accountId: string }) =>
@@ -55,6 +69,7 @@ export const accountingQueryKeys = {
 @Injectable({ providedIn: 'root' })
 export class AccountingQueries {
   private readonly accountingApi = inject(AccountingApi);
+  private readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly authStore = inject(AuthStore);
 
   tenantScope(): TenantScope {
@@ -117,7 +132,35 @@ export class AccountingQueries {
     return queryOptions({
       queryKey: accountingQueryKeys.entries(this.tenantScope(), params),
       queryFn: () => this.accountingApi.listEntries(params),
-      enabled,
+      enabled: enabled && /^\d{4}$/.test(params.year),
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
+    });
+  }
+
+  listEntriesForActiveFiscalYear(
+    params: Omit<ListEntriesParams, 'year'> = {},
+    enabled = true
+  ) {
+    const activeYear = this.fiscalYearContext.activeYear();
+    const year = activeYear ? String(activeYear) : '';
+
+    return this.listEntries(
+      {
+        ...params,
+        year
+      },
+      enabled && !!activeYear
+    );
+  }
+
+  entryDetail(entryId: string, year = this.fiscalYearContext.activeYear(), enabled = true) {
+    const yearValue = year ? String(year) : '';
+    const entryIdValue = entryId.trim();
+
+    return queryOptions({
+      queryKey: accountingQueryKeys.entryDetail(this.tenantScope(), yearValue, entryIdValue),
+      queryFn: () => this.accountingApi.getEntryDetail(entryIdValue, yearValue),
+      enabled: enabled && /^\d{4}$/.test(yearValue) && entryIdValue.length > 0,
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }

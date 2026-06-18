@@ -951,10 +951,22 @@
     "ENTRIES": {
       "ACTIONS": {
         "ADD_LINE": "Ajouter une ligne",
+        "CLEAR_FILTERS": "Réinitialiser",
+        "LOAD_MORE": "Charger plus",
+        "NEW_ENTRY": "Nouvelle écriture",
+        "NEW_ENTRY_NOTICE": "La saisie complète des écritures sera ouverte dans un parcours dédié. La liste reste disponible pour préparer le contrôle des écritures de l’exercice.",
         "POST": "Comptabiliser",
-        "REMOVE_LINE": "Retirer"
+        "REMOVE_LINE": "Retirer",
+        "RETRY": "Réessayer",
+        "VIEW_DETAILS": "Voir détail",
+        "VIEW_DETAILS_NOTICE": "Le détail d’écriture sera disponible dans la prochaine étape du lot Écritures."
       },
-      "EMPTY": "Aucune écriture comptabilisée pour ces filtres.",
+      "EMPTY": {
+        "DESCRIPTION": "Aucune écriture n’est disponible pour l’exercice et les filtres sélectionnés.",
+        "NO_RESULTS_DESCRIPTION": "Modifiez la recherche ou les filtres pour retrouver les écritures attendues.",
+        "NO_RESULTS_TITLE": "Aucune écriture ne correspond aux filtres",
+        "TITLE": "Aucune écriture chargée"
+      },
       "EYEBROW": "Saisie comptable",
       "FIELDS": {
         "ACCOUNT": "Compte",
@@ -970,14 +982,58 @@
       "FILTERS": {
         "ALL_JOURNALS": "Tous les journaux",
         "ALL_MONTHS": "Tous les mois",
+        "ALL_STATUSES": "Tous les statuts",
         "JOURNAL": "Journal",
         "MONTH": "Mois",
+        "SEARCH": "Rechercher",
+        "STATUS": "Statut",
         "YEAR": "Exercice"
       },
-      "LIST": {
-        "DESCRIPTION": "Vue paginée des écritures postées dans l’exercice.",
-        "TITLE": "Écritures comptabilisées"
+      "FORM": {
+        "ACTIONS": {
+          "ADD_LINE": "Ajouter une ligne",
+          "PUBLISH": "Comptabiliser",
+          "SAVE_DRAFT": "Enregistrer le brouillon"
+        },
+        "ACTIVE_FISCAL_YEAR": "Exercice actif",
+        "BACK_TO_LIST": "Retour aux écritures",
+        "DRAFT_REQUIRED": "Seules les écritures au statut brouillon peuvent être modifiées.",
+        "EDIT_SUBTITLE": "Préparez les informations générales du brouillon avant la saisie détaillée des lignes.",
+        "EDIT_TITLE": "Modifier l’écriture",
+        "GENERAL": {
+          "DESCRIPTION": "Renseignez les informations d’identification de la pièce comptable.",
+          "TITLE": "Informations générales"
+        },
+        "LINES": {
+          "ACCOUNT": "Compte",
+          "CREDIT": "Crédit",
+          "DEBIT": "Débit",
+          "DESCRIPTION": "La saisie détaillée des lignes sera activée dans la prochaine étape.",
+          "EMPTY_DESCRIPTION": "L’éditeur de lignes sera ajouté sans modifier cette structure de page.",
+          "EMPTY_TITLE": "Aucune ligne saisie",
+          "LABEL": "Libellé",
+          "TITLE": "Lignes d’écriture"
+        },
+        "LOAD_DRAFT_ERROR": "Le brouillon n’a pas pu être chargé.",
+        "LOADING_DRAFT": "Chargement du brouillon...",
+        "NEW_SUBTITLE": "Préparez les informations générales avant de composer les lignes de l’écriture.",
+        "NEW_TITLE": "Nouvelle écriture",
+        "TOTALS": {
+          "ACCESSIBLE_LABEL": "Totaux de l’écriture",
+          "DIFFERENCE": "Différence"
+        },
+        "VALIDATION": {
+          "DATE_REQUIRED": "Sélectionnez une date d’écriture.",
+          "JOURNAL_REQUIRED": "Sélectionnez un journal.",
+          "LABEL_REQUIRED": "Saisissez un libellé d’au moins 3 caractères."
+        }
       },
+      "LIST": {
+        "DESCRIPTION": "Vue de contrôle des brouillons et écritures comptabilisées de l’exercice actif.",
+        "TITLE": "Liste des écritures"
+      },
+      "LOADING": "Chargement des écritures...",
+      "LOAD_MORE_ERROR": "Les écritures suivantes n’ont pas pu être chargées.",
       "POST": {
         "DESCRIPTION": "Les écritures sont refusées si les débits et crédits ne sont pas équilibrés.",
         "TITLE": "Nouvelle écriture"
@@ -990,11 +1046,13 @@
       "SUBTITLE": "Saisissez des écritures équilibrées et consultez le livre-journal.",
       "SUCCESS": "Écriture {entryId} comptabilisée.",
       "TABLE": {
+        "ACTIONS": "Actions",
         "CREDIT": "Crédit",
         "DATE": "Date",
         "DEBIT": "Débit",
         "JOURNAL": "Journal",
         "LABEL": "Libellé",
+        "REFERENCE": "Pièce",
         "STATUS": "Statut"
       },
       "TITLE": "Écritures",

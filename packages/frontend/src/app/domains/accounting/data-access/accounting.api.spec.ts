@@ -334,7 +334,6 @@ describe('AccountingApi', () => {
   it('posts validated entries and returns the entry id', async () => {
     const promise = api.postEntry({
       year: 2026,
-      accountingFramework: 'SYSCOHADA_REVISED',
       entryDate: '2026-01-15',
       journalCode: 'MISC',
       entryType: 'STANDARD',
@@ -347,9 +346,145 @@ describe('AccountingApi', () => {
     const request = httpMock.expectOne(`${apiBaseUrl}/entries`);
 
     expect(request.request.method).toBe('POST');
+    expect(request.request.body).not.toHaveProperty('accountingFramework');
+    expect(request.request.body).not.toHaveProperty('orgId');
     request.flush({ entryId: 'E-123' });
 
     await expect(promise).resolves.toBe('E-123');
+  });
+
+  it('loads entry detail with validated frontend-safe DTOs', async () => {
+    const promise = api.getEntryDetail('E-123', 2026);
+    await settleDynamicImport();
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/entries/E-123`);
+
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('year')).toBe('2026');
+    request.flush({
+      message: 'Entry retrieved.',
+      data: entryDetailFixture()
+    });
+
+    await expect(promise).resolves.toMatchObject({
+      entryId: 'E-123',
+      lines: [
+        {
+          lineId: 'E-123#L1',
+          accountId: '41100000',
+          accountName: 'Clients'
+        }
+      ]
+    });
+  });
+
+  it('creates, updates, deletes, and posts entry drafts with backend messages', async () => {
+    const createPromise = api.createEntryDraft({
+      year: 2026,
+      entryDate: '2026-01-15',
+      journalCode: 'OD',
+      entryType: 'STANDARD',
+      label: 'Draft sale',
+      lines: [
+        {
+          accountId: '41100000',
+          debit: 1000,
+          credit: 0,
+          PK: 'ORG#technical',
+          entityType: 'ENTRY_LINE'
+        } as any
+      ],
+      PK: 'ORG#technical',
+      GSI1PK: 'GSI#technical',
+      orgId: 'org-from-client',
+      accountingFramework: 'SYCEBNL'
+    } as any);
+    await settleDynamicImport();
+    const createRequest = httpMock.expectOne(`${apiBaseUrl}/entries/drafts`);
+
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual({
+      year: 2026,
+      entryDate: '2026-01-15',
+      journalCode: 'OD',
+      entryType: 'STANDARD',
+      label: 'Draft sale',
+      lines: [{ accountId: '41100000', debit: 1000, credit: 0 }]
+    });
+    createRequest.flush({
+      message: { code: 'SUCCESS_ENTRY_DRAFT_CREATED', message: 'Brouillon créé.' },
+      data: entryDetailFixture({ status: 'DRAFT' })
+    });
+
+    await expect(createPromise).resolves.toMatchObject({
+      data: { entryId: 'E-123', status: 'DRAFT' },
+      message: 'Brouillon créé.'
+    });
+
+    const updatePromise = api.updateEntryDraft('E-123', {
+      year: 2026,
+      entryDate: '2026-01-16',
+      journalCode: 'OD',
+      entryType: 'STANDARD',
+      label: 'Updated draft',
+      lines: [{ accountId: '41100000', debit: 2000, credit: 0 }]
+    });
+    await settleDynamicImport();
+    const updateRequest = httpMock.expectOne(`${apiBaseUrl}/entries/E-123/draft`);
+
+    expect(updateRequest.request.method).toBe('PUT');
+    expect(updateRequest.request.body).not.toHaveProperty('entryId');
+    expect(updateRequest.request.body).not.toHaveProperty('PK');
+    updateRequest.flush({
+      message: 'Draft updated.',
+      data: entryDetailFixture({ entryDate: '2026-01-16', totalDebit: 2000 })
+    });
+
+    await expect(updatePromise).resolves.toMatchObject({
+      data: { entryDate: '2026-01-16' },
+      message: 'Draft updated.'
+    });
+
+    const deletePromise = api.deleteEntryDraft('E-123', 2026);
+    await settleDynamicImport();
+    const deleteRequest = httpMock.expectOne(`${apiBaseUrl}/entries/E-123/draft`);
+
+    expect(deleteRequest.request.method).toBe('DELETE');
+    expect(deleteRequest.request.body).toEqual({ year: 2026 });
+    deleteRequest.flush({
+      message: 'Draft deleted.',
+      entryId: 'E-123'
+    });
+
+    await expect(deletePromise).resolves.toEqual({
+      data: 'E-123',
+      message: 'Draft deleted.'
+    });
+
+    const postPromise = api.postEntryDraft('E-123', 2026);
+    await settleDynamicImport();
+    const postRequest = httpMock.expectOne(`${apiBaseUrl}/entries/E-123/post`);
+
+    expect(postRequest.request.method).toBe('POST');
+    expect(postRequest.request.body).toEqual({ year: 2026 });
+    postRequest.flush({
+      message: { code: 'SUCCESS_ENTRY_POSTED', message: 'Écriture comptabilisée.' },
+      entryId: 'E-123'
+    });
+
+    await expect(postPromise).resolves.toEqual({
+      data: 'E-123',
+      message: 'Écriture comptabilisée.'
+    });
+  });
+
+  it('rejects invalid entry detail responses', async () => {
+    const promise = api.getEntryDetail('E-123', 2026);
+    await settleDynamicImport();
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/entries/E-123`);
+
+    request.flush({ data: { entryId: 'E-123', lines: [] } });
+
+    await expect(promise).rejects.toThrow();
   });
 
   it('creates fiscal years and maps frontend-safe responses', async () => {
@@ -743,4 +878,51 @@ function journalResponseFixture(
     type: 'MISC',
     ...overrides
   };
+}
+
+function entryDetailFixture(
+  overrides: Partial<{
+    entryId: string;
+    year: number;
+    entryDate: string;
+    journalCode: string;
+    entryType: 'STANDARD' | 'OPENING' | 'CLOSING' | 'ADJUSTMENT';
+    label: string;
+    totalDebit: number;
+    totalCredit: number;
+    status: 'DRAFT' | 'POSTED' | 'CANCELLED';
+  }> = {}
+) {
+  return {
+    entryId: 'E-123',
+    year: 2026,
+    entryDate: '2026-01-15',
+    journalCode: 'OD',
+    entryType: 'STANDARD',
+    label: 'Draft sale',
+    totalDebit: 1000,
+    totalCredit: 1000,
+    status: 'DRAFT',
+    PK: 'ORG#technical',
+    SK: 'E#E-123',
+    entityType: 'ENTRY',
+    lines: [
+      {
+        lineId: 'E-123#L1',
+        accountId: '41100000',
+        accountName: 'Clients',
+        debit: 1000,
+        credit: 0,
+        PK: 'ORG#technical',
+        SK: 'L#E-123#L1',
+        GSI1PK: 'ORG#technical',
+        entityType: 'ENTRY_LINE'
+      }
+    ],
+    ...overrides
+  };
+}
+
+async function settleDynamicImport(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
 }

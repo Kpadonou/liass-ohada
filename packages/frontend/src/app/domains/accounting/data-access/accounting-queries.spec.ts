@@ -3,14 +3,20 @@ import { vi } from 'vitest';
 
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { AccountingApi } from './accounting.api';
+import { AccountingFiscalYearContextService } from './accounting-fiscal-year-context.service';
 import { AccountingQueries, accountingQueryKeys } from './accounting-queries';
 
 describe('AccountingQueries', () => {
   let accountingApi: {
     getAccount: ReturnType<typeof vi.fn>;
+    getEntryDetail: ReturnType<typeof vi.fn>;
     getJournal: ReturnType<typeof vi.fn>;
+    listEntries: ReturnType<typeof vi.fn>;
     listAccounts: ReturnType<typeof vi.fn>;
     listJournals: ReturnType<typeof vi.fn>;
+  };
+  let fiscalYearContext: {
+    activeYear: ReturnType<typeof vi.fn>;
   };
   let authStore: {
     activeDossierOrgId: ReturnType<typeof vi.fn>;
@@ -22,9 +28,14 @@ describe('AccountingQueries', () => {
   beforeEach(() => {
     accountingApi = {
       getAccount: vi.fn(),
+      getEntryDetail: vi.fn(),
       getJournal: vi.fn(),
+      listEntries: vi.fn(),
       listAccounts: vi.fn(),
       listJournals: vi.fn()
+    };
+    fiscalYearContext = {
+      activeYear: vi.fn().mockReturnValue(2026)
     };
     authStore = {
       activeDossierOrgId: vi.fn().mockReturnValue(null),
@@ -36,6 +47,7 @@ describe('AccountingQueries', () => {
       providers: [
         AccountingQueries,
         { provide: AccountingApi, useValue: accountingApi },
+        { provide: AccountingFiscalYearContextService, useValue: fiscalYearContext },
         { provide: AuthStore, useValue: authStore }
       ]
     });
@@ -126,5 +138,66 @@ describe('AccountingQueries', () => {
       'accounts',
       { cursor: null, limit: 200 }
     ]);
+  });
+
+  it('keeps entry list query keys scoped by tenant and active fiscal year', async () => {
+    accountingApi.listEntries.mockResolvedValue({ items: [], hasMore: false });
+
+    const options = queries.listEntriesForActiveFiscalYear({
+      journalCode: 'OD',
+      status: 'DRAFT',
+      limit: 50
+    });
+
+    expect(options.queryKey).toEqual([
+      'accounting',
+      'org-test',
+      'entries',
+      {
+        cursor: null,
+        journalCode: 'OD',
+        limit: 50,
+        month: null,
+        status: 'DRAFT',
+        year: '2026'
+      }
+    ]);
+    expect(options.enabled).toBe(true);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.listEntries).toHaveBeenCalledWith({
+      journalCode: 'OD',
+      status: 'DRAFT',
+      limit: 50,
+      year: '2026'
+    });
+  });
+
+  it('disables active fiscal year entries and detail queries when no fiscal year is selected', () => {
+    fiscalYearContext.activeYear.mockReturnValue(null);
+
+    expect(queries.listEntriesForActiveFiscalYear().enabled).toBe(false);
+    expect(queries.entryDetail('E-123').enabled).toBe(false);
+  });
+
+  it('keeps entry detail query keys scoped by tenant and fiscal year', async () => {
+    accountingApi.getEntryDetail.mockResolvedValue({ entryId: 'E-123' });
+
+    const options = queries.entryDetail('E-123');
+
+    expect(accountingQueryKeys.entryDetail('org-test', '2026', 'E-123')).toEqual([
+      'accounting',
+      'org-test',
+      'entries',
+      '2026',
+      'E-123'
+    ]);
+    expect(options.queryKey).toEqual(['accounting', 'org-test', 'entries', '2026', 'E-123']);
+    expect(options.enabled).toBe(true);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.getEntryDetail).toHaveBeenCalledWith('E-123', '2026');
   });
 });

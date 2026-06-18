@@ -1,33 +1,48 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import {
-  FormArray,
-  FormBuilder,
-  ReactiveFormsModule,
-  Validators,
-  type FormGroup
-} from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
-import { ActivatedRoute } from '@angular/router';
-import { type CreateEntryRequest } from '@liass-ohada/shared/accounting';
+import { ActivatedRoute, Router } from '@angular/router';
+import { type EntrySummaryDto } from '@liass-ohada/shared/accounting';
 import { TranslocoModule } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
+import { take } from 'rxjs';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
-import { LiassSearchableSelectComponent, type LiassSearchableSelectOption } from '../../../../shared/ui/searchable-select/searchable-select.component';
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
+import { LiassTablePreferencesDialogComponent } from '../../../../shared/ui/table-preferences/table-preferences-dialog.component';
+import { type LiassTableColumnPreference } from '../../../../shared/ui/table-preferences/table-preferences.model';
+import {
+  loadTablePreferences,
+  saveTablePreferences
+} from '../../../../shared/ui/table-preferences/table-preferences.storage';
 import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
-type EntryLineForm = FormGroup;
+type EntryStatusFilter = 'ALL' | EntrySummaryDto['status'];
+type EntryTableColumnId = 'date' | 'journal' | 'reference' | 'label' | 'debit' | 'credit' | 'status' | 'actions';
+
+const ACCOUNTING_ENTRIES_TABLE_ID = 'accounting.entries';
+const ENTRY_TABLE_COLUMNS: LiassTableColumnPreference[] = [
+  { id: 'date', labelKey: 'ACCOUNTING.ENTRIES.TABLE.DATE', required: true },
+  { id: 'journal', labelKey: 'ACCOUNTING.ENTRIES.TABLE.JOURNAL', required: true },
+  { id: 'reference', labelKey: 'ACCOUNTING.ENTRIES.TABLE.REFERENCE' },
+  { id: 'label', labelKey: 'ACCOUNTING.ENTRIES.TABLE.LABEL', required: true },
+  { id: 'debit', labelKey: 'ACCOUNTING.ENTRIES.TABLE.DEBIT' },
+  { id: 'credit', labelKey: 'ACCOUNTING.ENTRIES.TABLE.CREDIT' },
+  { id: 'status', labelKey: 'ACCOUNTING.ENTRIES.TABLE.STATUS' },
+  { id: 'actions', labelKey: 'ACCOUNTING.ENTRIES.TABLE.ACTIONS', required: true }
+];
 
 @Component({
   selector: 'liass-entries-page',
@@ -36,115 +51,120 @@ type EntryLineForm = FormGroup;
     LiassCardComponent,
     FiscalYearRequiredComponent,
     LiassPageHeaderComponent,
-    LiassSearchableSelectComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
+    MatButtonModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatSelectModule,
-    ReactiveFormsModule,
     TranslocoModule
   ],
   templateUrl: './entries.page.html'
 })
 export class EntriesPage {
   private readonly accountingApi = inject(AccountingApi);
+  private readonly dialog = inject(MatDialog);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly accountingQueries = inject(AccountingQueries);
-  private readonly formBuilder = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly currentYear = `${new Date().getFullYear()}`;
   protected readonly selectedYear = signal(`${this.fiscalYearContext.activeYear() ?? this.currentYear}`);
   protected readonly selectedJournalCode = signal<string | null>(null);
   protected readonly selectedMonth = signal<string | null>(null);
-  protected readonly submitting = signal(false);
-  protected readonly errorKey = signal<string | null>(null);
-  protected readonly successEntryId = signal<string | null>(null);
+  protected readonly selectedStatus = signal<EntryStatusFilter>('ALL');
+  protected readonly searchQuery = signal('');
+  protected readonly extraEntries = signal<EntrySummaryDto[]>([]);
+  protected readonly paginationState = signal<{ nextCursor?: string; hasMore?: boolean }>({});
+  protected readonly loadingMore = signal(false);
+  protected readonly loadMoreError = signal(false);
+  protected readonly visibleColumnIds = signal(
+    loadTablePreferences(ACCOUNTING_ENTRIES_TABLE_ID, ENTRY_TABLE_COLUMNS)
+  );
 
-  protected readonly accountsQuery = injectQuery(() => this.accountingQueries.listAccounts());
   protected readonly journalsQuery = injectQuery(() => this.accountingQueries.listJournals());
   protected readonly entriesQuery = injectQuery(() =>
     this.accountingQueries.listEntries({
       year: this.selectedYear(),
       journalCode: this.selectedJournalCode() || undefined,
       month: this.selectedJournalCode() ? this.selectedMonth() || undefined : undefined,
+      status: this.selectedStatusParam(),
       limit: 100
     }, this.fiscalYearContext.hasActiveFiscalYear())
   );
 
-  protected readonly accounts = computed(() => this.accountsQuery.data()?.items ?? []);
-  protected readonly accountOptions = computed<LiassSearchableSelectOption[]>(() =>
-    this.accounts().map((account) => ({
-      value: account.accountId,
-      label: `${account.accountId} - ${account.accountName}`
-    }))
-  );
   protected readonly journals = computed(() => this.journalsQuery.data() ?? []);
-  protected readonly entries = computed(() => this.entriesQuery.data()?.items ?? []);
+  protected readonly entries = computed(() => [
+    ...(this.entriesQuery.data()?.items ?? []),
+    ...this.extraEntries()
+  ]);
+  protected readonly hasLoadedEntries = computed(() => this.entries().length > 0);
+  protected readonly filteredEntries = computed(() => {
+    const query = normalizeSearch(this.searchQuery());
 
-  protected readonly form = this.formBuilder.nonNullable.group({
-    year: [new Date().getFullYear(), [Validators.required, Validators.min(2000), Validators.max(2100)]],
-    entryDate: [new Date().toISOString().slice(0, 10), [Validators.required, Validators.pattern(/^\d{4}-\d{2}-\d{2}$/)]],
-    journalCode: ['MISC', [Validators.required]],
-    voucherNumber: [''],
-    label: ['', [Validators.required, Validators.minLength(3)]],
-    lines: this.formBuilder.array([this.createLine(), this.createLine()])
+    if (!query) {
+      return this.entries();
+    }
+
+    return this.entries().filter((entry) =>
+      normalizeSearch([
+        entry.entryDate,
+        entry.entryId,
+        entry.journalCode,
+        entry.voucherNumber,
+        entry.label,
+        entry.status
+      ].filter(Boolean).join(' ')).includes(query)
+    );
+  });
+  protected readonly hasMoreEntries = computed(() => {
+    const paginationState = this.paginationState();
+
+    return paginationState.hasMore ?? this.entriesQuery.data()?.hasMore ?? false;
+  });
+  protected readonly nextCursor = computed(() => {
+    const paginationState = this.paginationState();
+
+    return paginationState.nextCursor ?? this.entriesQuery.data()?.nextCursor;
   });
 
   constructor() {
     this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      this.selectedYear.set(params.get('year') ?? `${this.fiscalYearContext.activeYear() ?? this.currentYear}`);
+      this.selectedYear.set(`${this.fiscalYearContext.activeYear() ?? params.get('year') ?? this.currentYear}`);
       this.selectedJournalCode.set(params.get('journalCode'));
+      this.resetListPagination();
     });
 
     effect(() => {
       const activeYear = this.fiscalYearContext.activeYear();
 
       if (activeYear) {
-        this.selectedYear.set(`${activeYear}`);
-        this.form.controls.year.setValue(activeYear);
+        const nextYear = `${activeYear}`;
+        const yearChanged = this.selectedYear() !== nextYear;
+
+        if (yearChanged) {
+          this.selectedYear.set(nextYear);
+        }
+
+        if (yearChanged) {
+          this.resetListPagination();
+        }
       }
     });
   }
 
-  protected get lines(): FormArray<EntryLineForm> {
-    return this.form.controls.lines as FormArray<EntryLineForm>;
-  }
-
-  protected lineGroups(): EntryLineForm[] {
-    return this.lines.controls;
-  }
-
-  protected addLine(): void {
-    this.lines.push(this.createLine());
-  }
-
-  protected removeLine(index: number): void {
-    if (this.lines.length > 2) {
-      this.lines.removeAt(index);
-    }
-  }
-
-  protected totalDebit(): number {
-    return this.lines.controls.reduce((sum, line) => sum + Number(line.get('debit')?.value || 0), 0);
-  }
-
-  protected totalCredit(): number {
-    return this.lines.controls.reduce((sum, line) => sum + Number(line.get('credit')?.value || 0), 0);
-  }
-
-  protected isBalanced(): boolean {
-    return this.totalDebit() > 0 && this.totalDebit() === this.totalCredit();
-  }
-
   protected updateSelectedYear(event: Event): void {
     this.selectedYear.set((event.target as HTMLInputElement).value);
+    this.resetListPagination();
   }
 
   protected updateSelectedMonth(value: string): void {
     this.selectedMonth.set(value || null);
+    this.resetListPagination();
   }
 
   protected updateSelectedJournal(value: string): void {
@@ -152,63 +172,138 @@ export class EntriesPage {
     if (!value) {
       this.selectedMonth.set(null);
     }
+    this.resetListPagination();
   }
 
-  protected async submit(): Promise<void> {
-    if (!this.fiscalYearContext.hasActiveFiscalYear() || this.form.invalid || !this.isBalanced() || this.submitting()) {
-      this.form.markAllAsTouched();
-      this.errorKey.set(this.isBalanced() ? 'ACCOUNTING.ERRORS.POST_ENTRY_FAILED' : 'ACCOUNTING.ENTRIES.VALIDATION.UNBALANCED');
+  protected updateSelectedStatus(value: EntryStatusFilter): void {
+    this.selectedStatus.set(value);
+    this.resetListPagination();
+  }
+
+  protected updateSearch(event: Event): void {
+    this.searchQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  protected clearFilters(): void {
+    this.searchQuery.set('');
+    this.selectedJournalCode.set(null);
+    this.selectedMonth.set(null);
+    this.selectedStatus.set('ALL');
+    this.selectedYear.set(`${this.fiscalYearContext.activeYear() ?? this.currentYear}`);
+    this.resetListPagination();
+  }
+
+  protected isColumnVisible(columnId: EntryTableColumnId): boolean {
+    return this.visibleColumnIds().includes(columnId);
+  }
+
+  protected openTablePreferences(): void {
+    const dialogRef = this.dialog.open(LiassTablePreferencesDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: {
+        columns: ENTRY_TABLE_COLUMNS,
+        tableId: ACCOUNTING_ENTRIES_TABLE_ID,
+        visibleColumnIds: this.visibleColumnIds()
+      },
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'liass-dialog-panel',
+      restoreFocus: true,
+      width: '560px'
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe((result) => {
+      if (!result) {
+        return;
+      }
+
+      this.visibleColumnIds.set(
+        saveTablePreferences(
+          ACCOUNTING_ENTRIES_TABLE_ID,
+          ENTRY_TABLE_COLUMNS,
+          result.visibleColumnIds
+        )
+      );
+    });
+  }
+
+  protected async retryInitialLoad(): Promise<void> {
+    this.resetListPagination();
+    await this.entriesQuery.refetch();
+  }
+
+  protected async loadMoreEntries(): Promise<void> {
+    const cursor = this.nextCursor();
+
+    if (!cursor || this.loadingMore()) {
       return;
     }
 
-    this.submitting.set(true);
-    this.errorKey.set(null);
-    this.successEntryId.set(null);
+    this.loadingMore.set(true);
+    this.loadMoreError.set(false);
 
     try {
-      const raw = this.form.getRawValue();
-      const payload: CreateEntryRequest = {
-        year: Number(raw.year),
-        accountingFramework: 'SYSCOHADA_REVISED',
-        entryDate: raw.entryDate,
-        journalCode: raw.journalCode,
-        voucherNumber: raw.voucherNumber || undefined,
-        entryType: 'STANDARD',
-        label: raw.label,
-        lines: raw.lines.map((line: any) => ({
-          accountId: line.accountId,
-          debit: Number(line.debit || 0),
-          credit: Number(line.credit || 0),
-          label: line.label || undefined
-        }))
-      };
-      const entryId = await this.accountingApi.postEntry(payload);
+      const result = await this.accountingApi.listEntries({
+        year: this.selectedYear(),
+        journalCode: this.selectedJournalCode() || undefined,
+        month: this.selectedJournalCode() ? this.selectedMonth() || undefined : undefined,
+        status: this.selectedStatusParam(),
+        limit: 100,
+        cursor
+      });
 
-      this.successEntryId.set(entryId);
-      this.form.controls.label.reset('');
-      this.form.controls.voucherNumber.reset('');
-      this.lines.clear();
-      this.lines.push(this.createLine());
-      this.lines.push(this.createLine());
-      void this.entriesQuery.refetch();
+      this.extraEntries.update((entries) => [...entries, ...result.items]);
+      this.paginationState.set({
+        hasMore: result.hasMore,
+        nextCursor: result.nextCursor
+      });
     } catch {
-      this.errorKey.set('ACCOUNTING.ERRORS.POST_ENTRY_FAILED');
+      this.loadMoreError.set(true);
     } finally {
-      this.submitting.set(false);
+      this.loadingMore.set(false);
     }
   }
 
-  protected accountLabel(accountId: string): string {
-    const account = this.accounts().find((candidate) => candidate.accountId === accountId);
-    return account ? `${account.accountId} - ${account.accountName}` : accountId;
+  protected async openNewEntryPage(): Promise<void> {
+    await this.router.navigate(['/accounting/entries/new']);
   }
 
-  private createLine(): EntryLineForm {
-    return this.formBuilder.nonNullable.group({
-      accountId: ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
-      debit: [0, [Validators.required, Validators.min(0)]],
-      credit: [0, [Validators.required, Validators.min(0)]],
-      label: ['']
-    }) as EntryLineForm;
+  protected viewEntryFoundationNotice(): void {
+    // Entry detail is intentionally deferred to the next entries slice.
   }
+
+  protected formatAmount(amount: number): string {
+    return new Intl.NumberFormat('fr-FR').format(amount);
+  }
+
+  protected entryStatusTone(status: EntrySummaryDto['status']): 'danger' | 'success' | 'warning' {
+    if (status === 'POSTED') {
+      return 'success';
+    }
+
+    if (status === 'DRAFT') {
+      return 'warning';
+    }
+
+    return 'danger';
+  }
+
+  private resetListPagination(): void {
+    this.extraEntries.set([]);
+    this.paginationState.set({});
+    this.loadMoreError.set(false);
+  }
+
+  private selectedStatusParam(): EntrySummaryDto['status'] | undefined {
+    const status = this.selectedStatus();
+
+    return status === 'ALL' ? undefined : status;
+  }
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }

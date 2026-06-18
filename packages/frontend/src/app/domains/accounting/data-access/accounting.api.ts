@@ -32,9 +32,11 @@ import {
   type CancelLetteringRequest,
   type CloseFiscalYearResultDto,
   type CreateAccountRequest,
+  type CreateEntryDraftRequest,
   type CreateEntryRequest,
   type CreateFiscalYearRequest,
   type CreateJournalRequest,
+  type EntryDetailDto,
   type EntrySummaryDto,
   type FiscalYearDetailsDto,
   type FiscalYearDto,
@@ -44,10 +46,12 @@ import {
   type LetteringResultDto,
   type MatchingReportDto,
   type PeriodLockDto,
+  type PostEntryDraftRequest,
   type PostLetteringRequest,
   type ThirdPartyLedgerDto,
   type UnletteredLinesDto,
-  type TrialBalanceDto
+  type TrialBalanceDto,
+  type UpdateEntryDraftRequest
 } from '@liass-ohada/shared/accounting';
 import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
@@ -63,6 +67,7 @@ export interface PaginatedResult<T> {
 
 export type ListAccountsParams = z.input<typeof ListAccountsRequestSchema>;
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
+export type UpdateEntryDraftPayload = Omit<UpdateEntryDraftRequest, 'entryId'>;
 export type UpdateJournalRequest = z.infer<typeof UpdateJournalRequestSchema>;
 
 const GetJournalRequestSchema = z.object({
@@ -83,6 +88,7 @@ const DisableJournalResponseSchema = z.object({
 export interface ListEntriesParams {
   year: string;
   journalCode?: string;
+  status?: EntrySummaryDto['status'];
   month?: string;
   limit?: number;
   cursor?: string;
@@ -223,6 +229,10 @@ export class AccountingApi {
       params = params.set('journalCode', paramsInput.journalCode);
     }
 
+    if (paramsInput.status) {
+      params = params.set('status', paramsInput.status);
+    }
+
     if (paramsInput.month) {
       params = params.set('month', paramsInput.month);
     }
@@ -254,6 +264,70 @@ export class AccountingApi {
     );
 
     return PostEntryResponseSchema.parse(response).entryId;
+  }
+
+  async getEntryDetail(entryId: string, year: string | number): Promise<EntryDetailDto> {
+    const { EntryDetailResponseSchema } = await import('@liass-ohada/shared/accounting');
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/entries/${entryId}`, {
+        params: new HttpParams().set('year', String(year))
+      })
+    );
+
+    return EntryDetailResponseSchema.parse(response).data;
+  }
+
+  async createEntryDraft(payload: CreateEntryDraftRequest): Promise<ApiMutationResult<EntryDetailDto>> {
+    const { CreateEntryDraftRequestSchema, EntryDraftResponseSchema } = await import('@liass-ohada/shared/accounting');
+    const request = CreateEntryDraftRequestSchema.parse(payload);
+    const response = await firstValueFrom(
+      this.http.post<unknown>(`${this.apiBaseUrl}/entries/drafts`, request)
+    );
+    const parsed = EntryDraftResponseSchema.parse(response);
+
+    return { data: parsed.data, message: userMessageFromResponse(response) };
+  }
+
+  async updateEntryDraft(
+    entryId: string,
+    payload: UpdateEntryDraftPayload
+  ): Promise<ApiMutationResult<EntryDetailDto>> {
+    const { EntryDraftResponseSchema, UpdateEntryDraftRequestSchema } = await import('@liass-ohada/shared/accounting');
+    const request = UpdateEntryDraftRequestSchema.parse({ ...payload, entryId });
+    const { entryId: _entryId, ...body } = request;
+    const response = await firstValueFrom(
+      this.http.put<unknown>(`${this.apiBaseUrl}/entries/${entryId}/draft`, body)
+    );
+    const parsed = EntryDraftResponseSchema.parse(response);
+
+    return { data: parsed.data, message: userMessageFromResponse(response) };
+  }
+
+  async deleteEntryDraft(entryId: string, year: string | number): Promise<ApiMutationResult<string>> {
+    const { DeleteEntryDraftResponseSchema, PostEntryDraftRequestSchema } = await import('@liass-ohada/shared/accounting');
+    const request = PostEntryDraftRequestSchema.parse({ entryId, year });
+    const response = await firstValueFrom(
+      this.http.delete<unknown>(`${this.apiBaseUrl}/entries/${request.entryId}/draft`, {
+        body: { year: request.year }
+      })
+    );
+    const parsed = DeleteEntryDraftResponseSchema.parse(response);
+
+    return { data: parsed.entryId, message: userMessageFromResponse(response) };
+  }
+
+  async postEntryDraft(entryId: string, year: string | number): Promise<ApiMutationResult<string>> {
+    const { PostEntryDraftRequestSchema } = await import('@liass-ohada/shared/accounting');
+    const request: PostEntryDraftRequest = PostEntryDraftRequestSchema.parse({ entryId, year });
+    const response = await firstValueFrom(
+      this.http.post<unknown>(
+        `${this.apiBaseUrl}/entries/${request.entryId}/post`,
+        { year: request.year }
+      )
+    );
+    const parsed = PostEntryResponseSchema.parse(response);
+
+    return { data: parsed.entryId, message: userMessageFromResponse(response) };
   }
 
   async getGeneralLedger(paramsInput: { fiscalYear: string; accountId: string }): Promise<GeneralLedgerDto> {

@@ -45,13 +45,26 @@ export const EntryLineInputSchema = z
     },
   );
 
+export const EntryDraftLineInputSchema = z.object({
+  lineId: z.string().optional(),
+  accountId: z
+    .string()
+    .regex(/^\d{8}$/, "Account ID must be exactly 8 digits"),
+  projectId: z.string().optional(),
+  budgetLineId: z.string().optional(),
+  thirdPartyId: z.string().optional(),
+  donorId: z.string().optional(),
+  debit: MoneySchema,
+  credit: MoneySchema,
+  description: z.string().optional(),
+  label: z.string().optional(),
+});
+
 /**
  * Validation for the global entry creation request.
  */
 export const CreateEntryRequestSchema = z.object({
-  orgId: z.string().optional(),
   year: z.number().int(),
-  accountingFramework: AccountingFramework.default("SYSCOHADA_REVISED"),
   entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   journalCode: z.string().min(1).max(10).default("MISC"),
   voucherNumber: z.string().optional(),
@@ -63,6 +76,39 @@ export const CreateEntryRequestSchema = z.object({
 });
 
 export type CreateEntryRequest = z.infer<typeof CreateEntryRequestSchema>;
+
+export const CreateEntryDraftRequestSchema = z.object({
+  year: z.number().int(),
+  entryDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  journalCode: z.string().min(1).max(10).default("MISC"),
+  voucherNumber: z.string().optional(),
+  entryType: EntryType.default("STANDARD"),
+  label: z.string().max(255).optional(),
+  currency: z.string().optional(),
+  lines: z.array(EntryDraftLineInputSchema).max(49).default([]),
+});
+
+export const UpdateEntryDraftRequestSchema = CreateEntryDraftRequestSchema.extend({
+  entryId: z.string().min(1),
+});
+
+export const DeleteEntryDraftRequestSchema = z.object({
+  entryId: z.string().min(1),
+  year: z.coerce.number().int(),
+});
+
+export const PostEntryDraftRequestSchema = DeleteEntryDraftRequestSchema;
+
+export const GetEntryDetailRequestSchema = z.object({
+  entryId: z.string().min(1),
+  year: z.coerce.number().int(),
+});
+
+export type CreateEntryDraftRequest = z.infer<typeof CreateEntryDraftRequestSchema>;
+export type UpdateEntryDraftRequest = z.infer<typeof UpdateEntryDraftRequestSchema>;
+export type DeleteEntryDraftRequest = z.infer<typeof DeleteEntryDraftRequestSchema>;
+export type PostEntryDraftRequest = z.infer<typeof PostEntryDraftRequestSchema>;
+export type GetEntryDetailRequest = z.infer<typeof GetEntryDetailRequestSchema>;
 
 /**
  * Request schema for querying paginated ledger entries for an account.
@@ -81,6 +127,7 @@ export const ListEntriesRequestSchema = z
   .object({
     year: z.string().regex(/^\d{4}$/),
     journalCode: z.string().min(1).max(10).optional(),
+    status: EntryStatus.optional(),
     month: z
       .string()
       .regex(/^\d{2}$/)
@@ -111,6 +158,45 @@ export const EntrySummaryDtoSchema = z.object({
 
 export type EntrySummaryDto = z.infer<typeof EntrySummaryDtoSchema>;
 
+export const EntryLineDtoSchema = z.object({
+  lineId: z.string(),
+  accountId: z.string().regex(/^\d{8}$/),
+  accountName: z.string().optional(),
+  debit: z.number().int().nonnegative(),
+  credit: z.number().int().nonnegative(),
+  description: z.string().optional(),
+  label: z.string().optional(),
+  thirdPartyId: z.string().optional(),
+  projectId: z.string().optional(),
+  budgetLineId: z.string().optional(),
+  donorId: z.string().optional(),
+  letteringCode: z.string().optional(),
+  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
+});
+
+export const EntryDetailDtoSchema = z.object({
+  entryId: z.string(),
+  year: z.number().int(),
+  entryDate: z.string(),
+  journalCode: z.string(),
+  voucherNumber: z.string().optional(),
+  entryType: EntryType,
+  label: z.string().optional(),
+  totalDebit: z.number().int().nonnegative(),
+  totalCredit: z.number().int().nonnegative(),
+  status: EntryStatus,
+  lines: z.array(EntryLineDtoSchema),
+  createdBy: z.string().optional(),
+  createdAt: z.string().optional(),
+  updatedBy: z.string().optional(),
+  updatedAt: z.string().optional(),
+  postedBy: z.string().optional(),
+  postedAt: z.string().optional(),
+});
+
+export type EntryLineDto = z.infer<typeof EntryLineDtoSchema>;
+export type EntryDetailDto = z.infer<typeof EntryDetailDtoSchema>;
+
 export const ListEntriesResponseSchema = z.object({
   message: z.unknown().optional(),
   data: z.object({
@@ -121,6 +207,18 @@ export const ListEntriesResponseSchema = z.object({
 });
 
 export const PostEntryResponseSchema = z.object({
+  message: z.unknown().optional(),
+  entryId: z.string(),
+});
+
+export const EntryDetailResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: EntryDetailDtoSchema,
+});
+
+export const EntryDraftResponseSchema = EntryDetailResponseSchema;
+
+export const DeleteEntryDraftResponseSchema = z.object({
   message: z.unknown().optional(),
   entryId: z.string(),
 });
@@ -350,10 +448,13 @@ export const EntrySchema = z.object({
   voucherNumber: z.string().optional(),
   journalCode: z.string(),
   entryDate: z.string(),
-  label: z.string(),
+  label: z.string().optional(),
   totalDebit: MoneySchema,
   totalCredit: MoneySchema,
   status: EntryStatus,
+  lineIds: z.array(z.string()).optional(),
+  postedBy: z.string().optional(),
+  postedAt: z.string().optional(),
   entityType: z.literal("ENTRY"),
   PK: z.string(),
   SK: z.string(),
@@ -400,9 +501,9 @@ export const EntryLineSchema = z.object({
   PK: z.string(),
   SK: z.string(),
 
-  // Index Keys (GSI 1, 2, 3, 4)
-  GSI1PK: z.string(),
-  GSI1SK: z.string(),
+  // Index Keys (GSI 1, 2, 3, 4). Draft lines intentionally have no ledger indexes.
+  GSI1PK: z.string().optional(),
+  GSI1SK: z.string().optional(),
   GSI2PK: z.string().optional(),
   GSI2SK: z.string().optional(),
   GSI3PK: z.string().optional(), // Pour GSI3

@@ -65,6 +65,15 @@ export class AccountingEndpoints extends DomainConstructFactory {
     // Entries
     map(apigw.HttpMethod.POST, "/entries", "entries/post-entry");
     map(apigw.HttpMethod.GET, "/entries", "entries/list-entries");
+    map(apigw.HttpMethod.POST, "/entries/drafts", "entries/create-draft");
+    map(apigw.HttpMethod.GET, "/entries/{entryId}", "entries/get-entry");
+    map(apigw.HttpMethod.PUT, "/entries/{entryId}/draft", "entries/update-draft");
+    map(
+      apigw.HttpMethod.DELETE,
+      "/entries/{entryId}/draft",
+      "entries/delete-draft",
+    );
+    map(apigw.HttpMethod.POST, "/entries/{entryId}/post", "entries/post-draft");
 
     // Books
     map(

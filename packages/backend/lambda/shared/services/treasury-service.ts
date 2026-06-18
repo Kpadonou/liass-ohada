@@ -236,7 +236,6 @@ export class TreasuryService {
       userId,
       data: {
         year: input.year,
-        accountingFramework: input.projectId ? "SYCEBNL" : "SYSCOHADA_REVISED",
         entryDate: input.entryDate,
         journalCode: input.journalCode.toUpperCase(),
         voucherNumber: input.voucherNumber,

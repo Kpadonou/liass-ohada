@@ -68,7 +68,6 @@ const openingAccountItems = [
 
 const validEntry = {
   year: 2026,
-  accountingFramework: "SYSCOHADA_REVISED" as const,
   entryDate: "2026-03-15",
   journalCode: "SALES",
   entryType: "STANDARD" as const,

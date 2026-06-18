@@ -8,6 +8,7 @@ export const handler = createHandler(
     const result = await LedgerService.listEntries(orgId, {
       year: data.year,
       journalCode: data.journalCode,
+      status: data.status,
       month: data.month,
       limit: data.limit,
       cursor: data.cursor,

@@ -1,0 +1,204 @@
+<div class="space-y-6">
+  <header class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+    <div class="min-w-0">
+      <button
+        type="button"
+        class="liass-focus-ring inline-flex items-center gap-2 rounded-app-control text-sm font-semibold text-brand-700 transition hover:text-brand-600 dark:text-brand-300"
+        (click)="goBack()"
+      >
+        <mat-icon>arrow_back</mat-icon>
+        <span>{{ 'ACCOUNTING.ENTRIES.FORM.BACK_TO_LIST' | transloco }}</span>
+      </button>
+      <p class="mt-5 text-app-eyebrow font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
+        {{ 'ACCOUNTING.ENTRIES.EYEBROW' | transloco }}
+      </p>
+      <h1 class="mt-2 text-2xl font-semibold leading-tight text-app-text dark:text-white md:text-app-page-title">
+        {{ pageTitleKey | transloco }}
+      </h1>
+      <p class="mt-2 max-w-3xl text-app-body text-slate-600 dark:text-slate-400">
+        {{ pageSubtitleKey | transloco }}
+      </p>
+    </div>
+
+    @if (activeFiscalYear(); as fiscalYear) {
+      <div class="flex shrink-0 items-center gap-3 rounded-app-card border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-900 dark:bg-emerald-950/25">
+        <mat-icon class="text-emerald-700 dark:text-emerald-300">event_available</mat-icon>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700 dark:text-emerald-300">
+            {{ 'ACCOUNTING.ENTRIES.FORM.ACTIVE_FISCAL_YEAR' | transloco }}
+          </p>
+          <div class="mt-1 flex items-center gap-2">
+            <span class="font-semibold text-slate-950 dark:text-white">{{ fiscalYear.year }}</span>
+            <liass-status-chip
+              size="sm"
+              tone="success"
+              [label]="'ACCOUNTING.FISCAL_YEAR.STATUS.' + fiscalYear.status | transloco"
+            />
+          </div>
+        </div>
+      </div>
+    }
+  </header>
+
+  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+    <liass-fiscal-year-required />
+  } @else if (isEditMode && entryQuery.isPending()) {
+    <div class="space-y-4" aria-busy="true" role="status">
+      <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+        {{ 'ACCOUNTING.ENTRIES.FORM.LOADING_DRAFT' | transloco }}
+      </p>
+      <liass-skeleton variant="block" />
+      <liass-skeleton variant="block" />
+    </div>
+  } @else if (isEditMode && entryQuery.isError()) {
+    <div class="rounded-app-card border border-red-200 bg-red-50 p-5 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+      {{ 'ACCOUNTING.ENTRIES.FORM.LOAD_DRAFT_ERROR' | transloco }}
+    </div>
+  } @else if (isEditMode && entryQuery.data()?.status !== 'DRAFT') {
+    <div class="rounded-app-card border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200" role="alert">
+      {{ 'ACCOUNTING.ENTRIES.FORM.DRAFT_REQUIRED' | transloco }}
+    </div>
+  } @else {
+    <form [formGroup]="form" class="space-y-6">
+      <liass-card
+        [title]="'ACCOUNTING.ENTRIES.FORM.GENERAL.TITLE' | transloco"
+        [description]="'ACCOUNTING.ENTRIES.FORM.GENERAL.DESCRIPTION' | transloco"
+      >
+        <div class="grid gap-4 md:grid-cols-2">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.DATE' | transloco }}</mat-label>
+            <input
+              matInput
+              type="date"
+              formControlName="entryDate"
+              [min]="minEntryDate()"
+              [max]="maxEntryDate()"
+            />
+            @if (form.controls.entryDate.hasError('required')) {
+              <mat-error>{{ 'ACCOUNTING.ENTRIES.FORM.VALIDATION.DATE_REQUIRED' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+
+          @if (useSearchableJournalSelect()) {
+            <liass-searchable-select
+              formControlName="journalCode"
+              icon="menu_book"
+              [labelKey]="'ACCOUNTING.ENTRIES.FIELDS.JOURNAL'"
+              [options]="journalOptions()"
+              [loading]="journalsQuery.isPending()"
+              [showError]="form.controls.journalCode.touched && form.controls.journalCode.invalid"
+              [errorKey]="'ACCOUNTING.ENTRIES.FORM.VALIDATION.JOURNAL_REQUIRED'"
+            />
+          } @else {
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.JOURNAL' | transloco }}</mat-label>
+              <mat-select formControlName="journalCode">
+                @for (journal of journals(); track journal.journalCode) {
+                  <mat-option [value]="journal.journalCode">
+                    {{ journal.journalCode }} - {{ journal.journalName }}
+                  </mat-option>
+                }
+              </mat-select>
+              @if (form.controls.journalCode.hasError('required')) {
+                <mat-error>{{ 'ACCOUNTING.ENTRIES.FORM.VALIDATION.JOURNAL_REQUIRED' | transloco }}</mat-error>
+              }
+            </mat-form-field>
+          }
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.VOUCHER' | transloco }}</mat-label>
+            <input matInput formControlName="voucherNumber" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'ACCOUNTING.ENTRIES.FIELDS.LABEL' | transloco }}</mat-label>
+            <textarea matInput formControlName="label" rows="3"></textarea>
+            @if (form.controls.label.hasError('required') || form.controls.label.hasError('minlength')) {
+              <mat-error>{{ 'ACCOUNTING.ENTRIES.FORM.VALIDATION.LABEL_REQUIRED' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+      </liass-card>
+
+      <liass-card
+        [title]="'ACCOUNTING.ENTRIES.FORM.LINES.TITLE' | transloco"
+        [description]="'ACCOUNTING.ENTRIES.FORM.LINES.DESCRIPTION' | transloco"
+      >
+        <div liassCardActions>
+          <liass-button
+            tone="neutral"
+            variant="outline"
+            icon="add"
+            [disabled]="true"
+          >
+            {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.ADD_LINE' | transloco }}
+          </liass-button>
+        </div>
+
+        <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+          <table class="w-full min-w-[720px] border-collapse text-left">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+              <tr>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.ACCOUNT' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.LABEL' | transloco }}</th>
+                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.DEBIT' | transloco }}</th>
+                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.FORM.LINES.CREDIT' | transloco }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td colspan="4" class="px-6 py-12 text-center">
+                  <mat-icon class="text-slate-400">table_rows</mat-icon>
+                  <p class="mt-3 text-sm font-semibold text-slate-950 dark:text-white">
+                    {{ 'ACCOUNTING.ENTRIES.FORM.LINES.EMPTY_TITLE' | transloco }}
+                  </p>
+                  <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {{ 'ACCOUNTING.ENTRIES.FORM.LINES.EMPTY_DESCRIPTION' | transloco }}
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </liass-card>
+
+      <section
+        class="grid gap-4 rounded-app-card border border-slate-200 bg-white p-5 shadow-app-card dark:border-slate-800 dark:bg-slate-900 sm:grid-cols-3"
+        [attr.aria-label]="'ACCOUNTING.ENTRIES.FORM.TOTALS.ACCESSIBLE_LABEL' | transloco"
+      >
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.TOTALS.DEBIT' | transloco }}
+          </p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ totalDebit }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.TOTALS.CREDIT' | transloco }}
+          </p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ totalCredit }}</p>
+        </div>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.FORM.TOTALS.DIFFERENCE' | transloco }}
+          </p>
+          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">{{ difference }}</p>
+        </div>
+      </section>
+
+      <footer class="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <liass-button tone="neutral" variant="outline" icon="arrow_back" (pressed)="goBack()">
+          {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+        </liass-button>
+        <div class="flex flex-col gap-3 sm:flex-row">
+          <liass-button tone="neutral" variant="outline" icon="save" [disabled]="true">
+            {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.SAVE_DRAFT' | transloco }}
+          </liass-button>
+          <liass-button tone="brand" variant="solid" icon="publish" [disabled]="true">
+            {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.PUBLISH' | transloco }}
+          </liass-button>
+        </div>
+      </footer>
+    </form>
+  }
+</div>

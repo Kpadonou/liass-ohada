@@ -951,10 +951,22 @@
     "ENTRIES": {
       "ACTIONS": {
         "ADD_LINE": "Add line",
+        "CLEAR_FILTERS": "Reset",
+        "LOAD_MORE": "Load more",
+        "NEW_ENTRY": "New entry",
+        "NEW_ENTRY_NOTICE": "Full entry input will open in a dedicated workflow. The list remains available to prepare fiscal-year entry review.",
         "POST": "Post",
-        "REMOVE_LINE": "Remove"
+        "REMOVE_LINE": "Remove",
+        "RETRY": "Try again",
+        "VIEW_DETAILS": "View details",
+        "VIEW_DETAILS_NOTICE": "Entry details will be available in the next Entries lot step."
       },
-      "EMPTY": "No posted entries for these filters.",
+      "EMPTY": {
+        "DESCRIPTION": "No entries are available for the selected fiscal year and filters.",
+        "NO_RESULTS_DESCRIPTION": "Adjust the search or filters to find the expected entries.",
+        "NO_RESULTS_TITLE": "No entries match the filters",
+        "TITLE": "No entries loaded"
+      },
       "EYEBROW": "Journal entry",
       "FIELDS": {
         "ACCOUNT": "Account",
@@ -970,14 +982,58 @@
       "FILTERS": {
         "ALL_JOURNALS": "All journals",
         "ALL_MONTHS": "All months",
+        "ALL_STATUSES": "All statuses",
         "JOURNAL": "Journal",
         "MONTH": "Month",
+        "SEARCH": "Search",
+        "STATUS": "Status",
         "YEAR": "Fiscal year"
       },
-      "LIST": {
-        "DESCRIPTION": "Paginated view of posted entries for the fiscal year.",
-        "TITLE": "Posted entries"
+      "FORM": {
+        "ACTIONS": {
+          "ADD_LINE": "Add line",
+          "PUBLISH": "Post entry",
+          "SAVE_DRAFT": "Save draft"
+        },
+        "ACTIVE_FISCAL_YEAR": "Active fiscal year",
+        "BACK_TO_LIST": "Back to entries",
+        "DRAFT_REQUIRED": "Only draft entries can be edited.",
+        "EDIT_SUBTITLE": "Prepare the draft general information before entering its detailed lines.",
+        "EDIT_TITLE": "Edit entry",
+        "GENERAL": {
+          "DESCRIPTION": "Enter the identifying information for the accounting document.",
+          "TITLE": "General information"
+        },
+        "LINES": {
+          "ACCOUNT": "Account",
+          "CREDIT": "Credit",
+          "DEBIT": "Debit",
+          "DESCRIPTION": "Detailed line entry will be enabled in the next step.",
+          "EMPTY_DESCRIPTION": "The line editor will be added without changing this page structure.",
+          "EMPTY_TITLE": "No lines entered",
+          "LABEL": "Label",
+          "TITLE": "Entry lines"
+        },
+        "LOAD_DRAFT_ERROR": "The draft could not be loaded.",
+        "LOADING_DRAFT": "Loading draft...",
+        "NEW_SUBTITLE": "Prepare the general information before composing the entry lines.",
+        "NEW_TITLE": "New entry",
+        "TOTALS": {
+          "ACCESSIBLE_LABEL": "Entry totals",
+          "DIFFERENCE": "Difference"
+        },
+        "VALIDATION": {
+          "DATE_REQUIRED": "Select an entry date.",
+          "JOURNAL_REQUIRED": "Select a journal.",
+          "LABEL_REQUIRED": "Enter a label of at least 3 characters."
+        }
       },
+      "LIST": {
+        "DESCRIPTION": "Review view for drafts and posted entries in the active fiscal year.",
+        "TITLE": "Entries list"
+      },
+      "LOADING": "Loading entries...",
+      "LOAD_MORE_ERROR": "The next entries could not be loaded.",
       "POST": {
         "DESCRIPTION": "Entries are blocked when debit and credit totals do not balance.",
         "TITLE": "New entry"
@@ -990,11 +1046,13 @@
       "SUBTITLE": "Post balanced entries and review the journal book.",
       "SUCCESS": "Entry {entryId} posted.",
       "TABLE": {
+        "ACTIONS": "Actions",
         "CREDIT": "Credit",
         "DATE": "Date",
         "DEBIT": "Debit",
         "JOURNAL": "Journal",
         "LABEL": "Label",
+        "REFERENCE": "Voucher",
         "STATUS": "Status"
       },
       "TITLE": "Entries",

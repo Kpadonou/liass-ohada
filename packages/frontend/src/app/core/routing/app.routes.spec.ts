@@ -163,4 +163,24 @@ describe('routes', () => {
     expect(component).toBe(LetteringPage);
     expect(letteringRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.LETTERING.TITLE');
   });
+
+  it('registers dedicated accounting entry create and draft edit routes', async () => {
+    const shell = shellRoute();
+    const newEntryRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/entries/new'
+    );
+    const editEntryRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/entries/:entryId/edit'
+    );
+    const newComponent = await newEntryRoute?.loadComponent?.();
+    const editComponent = await editEntryRoute?.loadComponent?.();
+    const { EntryFormPage } = await import(
+      '../../domains/accounting/feature/entry-form/entry-form.page'
+    );
+
+    expect(newComponent).toBe(EntryFormPage);
+    expect(editComponent).toBe(EntryFormPage);
+    expect(newEntryRoute?.data?.['titleKey']).toBe('ACCOUNTING.ENTRIES.FORM.NEW_TITLE');
+    expect(editEntryRoute?.data?.['titleKey']).toBe('ACCOUNTING.ENTRIES.FORM.EDIT_TITLE');
+  });
 });

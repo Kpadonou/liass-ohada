@@ -1,10 +1,19 @@
 import { Account, AccountDto, AccountDtoSchema, AccountSchema } from "@liass-ohada/shared/accounting";
 import {
+  CreateEntryDraftRequest,
   CreateEntryRequest,
+  CreateEntryRequestSchema,
+  Entry,
+  EntryDetailDto,
+  EntryDetailDtoSchema,
+  EntryLine,
+  EntryLineDto,
+  EntryLineDtoSchema,
   EntrySummaryDto,
   EntrySummaryDtoSchema,
   EntryLineSchema,
   EntrySchema,
+  UpdateEntryDraftRequest,
 } from "@liass-ohada/shared/accounting";
 import { FiscalYear, FiscalYearSchema } from "@liass-ohada/shared/accounting";
 import {
@@ -47,6 +56,7 @@ export interface ListAccountsResult {
 export interface ListEntriesOptions {
   year: string;
   journalCode?: string;
+  status?: string;
   month?: string;
   limit?: number;
   cursor?: string;
@@ -91,6 +101,18 @@ export interface PostEntryParams {
   orgId: string;
   userId: string;
   data: CreateEntryRequest;
+}
+
+export interface DraftEntryParams {
+  orgId: string;
+  userId: string;
+  data: CreateEntryDraftRequest;
+}
+
+export interface UpdateDraftEntryParams {
+  orgId: string;
+  userId: string;
+  data: UpdateEntryDraftRequest;
 }
 
 const SYSTEM_JOURNAL_CODES = new Set(["RAN", "OD", "CLOSING"]);
@@ -158,11 +180,13 @@ export class LedgerService {
     let totalDebit = 0;
     let totalCredit = 0;
     const transactItems: any[] = [];
+    const lineIds: string[] = [];
 
     for (let index = 0; index < lines.length; index++) {
       const line = lines[index];
       const paddedAccountId = LedgerService.formatAccount(line.accountId);
-      const lineId = `L-${index + 1}-${randomUUID()}`;
+      const lineId = `${entryId}#L${index + 1}-${randomUUID()}`;
+      lineIds.push(lineId);
 
       if (line.projectId && line.debit > 0) {
         await BudgetService.enforceBudget(orgId, year, line);
@@ -225,6 +249,7 @@ export class LedgerService {
       totalCredit,
       label: headerLabel,
       status: "POSTED",
+      lineIds,
       entityType: "ENTRY",
       PK: KeyFactory.partitionKey(orgId, year),
       SK: KeyFactory.entrySK(entryId),
@@ -238,6 +263,8 @@ export class LedgerService {
       createdAt: now,
       updatedBy: userId,
       updatedAt: now,
+      postedBy: userId,
+      postedAt: now,
     };
 
     transactItems.unshift({
@@ -262,6 +289,425 @@ export class LedgerService {
     }
 
     return { entryId };
+  }
+
+  static async createDraftEntry({ orgId, userId, data }: DraftEntryParams): Promise<EntryDetailDto> {
+    const now = new Date().toISOString();
+    const entryId = `E-${randomUUID()}`;
+    const normalizedJournalCode = (data.journalCode || "MISC").toUpperCase();
+
+    const fiscalYear = await LedgerService.validateFiscalYear(orgId, data.year);
+    LedgerService.assertEntryDateInFiscalYear(data.entryDate, fiscalYear);
+
+    const lineIds: string[] = [];
+    const transactItems: any[] = [];
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    for (let index = 0; index < data.lines.length; index++) {
+      const line = data.lines[index];
+      const lineId = `${entryId}#L${index + 1}-${randomUUID()}`;
+      lineIds.push(lineId);
+      totalDebit += Math.round(line.debit || 0);
+      totalCredit += Math.round(line.credit || 0);
+
+      const lineItem = LedgerService.buildDraftEntryLineItem({
+        orgId,
+        year: data.year,
+        entryId,
+        lineId,
+        entryDate: data.entryDate,
+        line,
+        paddedAccountId: LedgerService.formatAccount(line.accountId),
+        journalCode: normalizedJournalCode,
+        voucherNumber: data.voucherNumber,
+        userId,
+        now,
+      });
+
+      transactItems.push({
+        Put: {
+          TableName: config.TABLE_NAME,
+          Item: marshall(EntryLineSchema.parse(lineItem), {
+            removeUndefinedValues: true,
+          }),
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        },
+      });
+    }
+
+    const entryHeader = EntrySchema.parse({
+      orgId,
+      year: data.year,
+      entryId,
+      entryType: data.entryType || "STANDARD",
+      entryDate: data.entryDate,
+      journalCode: normalizedJournalCode,
+      voucherNumber: data.voucherNumber,
+      totalDebit,
+      totalCredit,
+      label: data.label,
+      status: "DRAFT",
+      lineIds,
+      entityType: "ENTRY",
+      PK: KeyFactory.partitionKey(orgId, data.year),
+      SK: KeyFactory.entrySK(entryId),
+      GSI5PK: KeyFactory.gsi5JournalPK(orgId, data.year),
+      GSI5SK: KeyFactory.gsi5JournalSK(
+        normalizedJournalCode,
+        data.entryDate,
+        entryId,
+      ),
+      createdBy: userId,
+      createdAt: now,
+      updatedBy: userId,
+      updatedAt: now,
+    });
+
+    transactItems.unshift({
+      Put: {
+        TableName: config.TABLE_NAME,
+        Item: marshall(entryHeader, { removeUndefinedValues: true }),
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      },
+    });
+
+    await dynamoClient.send(
+      new TransactWriteItemsCommand({ TransactItems: transactItems }),
+    );
+
+    return LedgerService.toEntryDetailDto(entryHeader, await LedgerService.queryEntryLines(orgId, data.year, entryId));
+  }
+
+  static async updateDraftEntry({ orgId, userId, data }: UpdateDraftEntryParams): Promise<EntryDetailDto> {
+    const existing = await LedgerService.getEntryHeader(orgId, data.year, data.entryId);
+
+    if (existing.status !== "DRAFT") {
+      throw new AppError(400, "ERROR_ENTRY_DRAFT_NOT_EDITABLE");
+    }
+
+    const fiscalYear = await LedgerService.validateFiscalYear(orgId, data.year);
+    LedgerService.assertEntryDateInFiscalYear(data.entryDate, fiscalYear);
+
+    const now = new Date().toISOString();
+    const normalizedJournalCode = (data.journalCode || "MISC").toUpperCase();
+    const existingLines = await LedgerService.queryEntryLines(orgId, data.year, data.entryId);
+    const lineIds: string[] = [];
+    const transactItems: any[] = [];
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    for (const line of existingLines) {
+      transactItems.push({
+        Delete: {
+          TableName: config.TABLE_NAME,
+          Key: marshall({
+            PK: KeyFactory.partitionKey(orgId, data.year),
+            SK: KeyFactory.entryLineSK(line.lineId),
+          }),
+          ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+        },
+      });
+    }
+
+    for (let index = 0; index < data.lines.length; index++) {
+      const line = data.lines[index];
+      const lineId = `${data.entryId}#L${index + 1}-${randomUUID()}`;
+      lineIds.push(lineId);
+      totalDebit += Math.round(line.debit || 0);
+      totalCredit += Math.round(line.credit || 0);
+
+      const lineItem = LedgerService.buildDraftEntryLineItem({
+        orgId,
+        year: data.year,
+        entryId: data.entryId,
+        lineId,
+        entryDate: data.entryDate,
+        line,
+        paddedAccountId: LedgerService.formatAccount(line.accountId),
+        journalCode: normalizedJournalCode,
+        voucherNumber: data.voucherNumber,
+        userId,
+        now,
+      });
+
+      transactItems.push({
+        Put: {
+          TableName: config.TABLE_NAME,
+          Item: marshall(EntryLineSchema.parse(lineItem), {
+            removeUndefinedValues: true,
+          }),
+          ConditionExpression:
+            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+        },
+      });
+    }
+
+    const updateExpressions = [
+      "entryDate = :entryDate",
+      "journalCode = :journalCode",
+      "entryType = :entryType",
+      "totalDebit = :totalDebit",
+      "totalCredit = :totalCredit",
+      "lineIds = :lineIds",
+      "GSI5SK = :gsi5sk",
+      "updatedBy = :updatedBy",
+      "updatedAt = :updatedAt",
+    ];
+    const removeExpressions: string[] = [];
+    const expressionAttributeNames: Record<string, string> = {
+      "#status": "status",
+    };
+    const expressionAttributeValues: Record<string, unknown> = {
+      ":draft": "DRAFT",
+      ":entryDate": data.entryDate,
+      ":journalCode": normalizedJournalCode,
+      ":entryType": data.entryType || "STANDARD",
+      ":totalDebit": totalDebit,
+      ":totalCredit": totalCredit,
+      ":lineIds": lineIds,
+      ":gsi5sk": KeyFactory.gsi5JournalSK(
+        normalizedJournalCode,
+        data.entryDate,
+        data.entryId,
+      ),
+      ":updatedBy": userId,
+      ":updatedAt": now,
+    };
+
+    if (data.voucherNumber) {
+      updateExpressions.push("voucherNumber = :voucherNumber");
+      expressionAttributeValues[":voucherNumber"] = data.voucherNumber;
+    } else {
+      removeExpressions.push("voucherNumber");
+    }
+
+    if (data.label) {
+      updateExpressions.push("#label = :label");
+      expressionAttributeNames["#label"] = "label";
+      expressionAttributeValues[":label"] = data.label;
+    } else {
+      expressionAttributeNames["#label"] = "label";
+      removeExpressions.push("#label");
+    }
+
+    transactItems.unshift({
+      Update: {
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, data.year),
+          SK: KeyFactory.entrySK(data.entryId),
+        }),
+        ConditionExpression: "#status = :draft",
+        UpdateExpression: [
+          `SET ${updateExpressions.join(", ")}`,
+          removeExpressions.length ? `REMOVE ${removeExpressions.join(", ")}` : "",
+        ].filter(Boolean).join(" "),
+        ExpressionAttributeNames: expressionAttributeNames,
+        ExpressionAttributeValues: marshall(expressionAttributeValues),
+      },
+    });
+
+    await dynamoClient.send(
+      new TransactWriteItemsCommand({ TransactItems: transactItems }),
+    );
+
+    return LedgerService.getEntryDetail(orgId, data.year, data.entryId);
+  }
+
+  static async deleteDraftEntry(orgId: string, year: number, entryId: string): Promise<{ entryId: string }> {
+    const existing = await LedgerService.getEntryHeader(orgId, year, entryId);
+
+    if (existing.status !== "DRAFT") {
+      throw new AppError(400, "ERROR_ENTRY_DRAFT_NOT_EDITABLE");
+    }
+
+    const lines = await LedgerService.queryEntryLines(orgId, year, entryId);
+    const transactItems: any[] = [
+      {
+        Delete: {
+          TableName: config.TABLE_NAME,
+          Key: marshall({
+            PK: KeyFactory.partitionKey(orgId, year),
+            SK: KeyFactory.entrySK(entryId),
+          }),
+          ConditionExpression: "#status = :draft",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: marshall({ ":draft": "DRAFT" }),
+        },
+      },
+    ];
+
+    for (const line of lines) {
+      transactItems.push({
+        Delete: {
+          TableName: config.TABLE_NAME,
+          Key: marshall({
+            PK: KeyFactory.partitionKey(orgId, year),
+            SK: KeyFactory.entryLineSK(line.lineId),
+          }),
+        },
+      });
+    }
+
+    await dynamoClient.send(
+      new TransactWriteItemsCommand({ TransactItems: transactItems }),
+    );
+
+    return { entryId };
+  }
+
+  static async postDraftEntry(orgId: string, userId: string, year: number, entryId: string): Promise<{ entryId: string }> {
+    const draft = await LedgerService.getEntryHeader(orgId, year, entryId);
+
+    if (draft.status !== "DRAFT") {
+      throw new AppError(400, "ERROR_ENTRY_DRAFT_NOT_EDITABLE");
+    }
+
+    const draftLines = await LedgerService.queryEntryLines(orgId, year, entryId);
+    const data = CreateEntryRequestSchema.parse({
+      year: draft.year,
+      entryDate: draft.entryDate,
+      journalCode: draft.journalCode,
+      voucherNumber: draft.voucherNumber,
+      entryId: draft.entryId,
+      entryType: draft.entryType,
+      label: draft.label || draft.entryId,
+      lines: draftLines.map((line) => ({
+        accountId: line.accountId,
+        projectId: line.projectId,
+        budgetLineId: line.budgetLineId,
+        thirdPartyId: line.thirdPartyId,
+        donorId: line.donorId,
+        debit: line.debit,
+        credit: line.credit,
+        description: line.description,
+        label: line.label,
+      })),
+    });
+
+    const fiscalYear = await LedgerService.validateFiscalYear(orgId, data.year);
+    LedgerService.assertEntryDateInFiscalYear(data.entryDate, fiscalYear);
+    LedgerService.validateOpeningEntryRules({
+      entryType: data.entryType,
+      entryDate: data.entryDate,
+      fiscalYear,
+      journalCode: data.journalCode.toUpperCase(),
+      lines: data.lines,
+    });
+    await LedgerService.validateJournalForPosting(orgId, data.journalCode);
+
+    if (await LedgerService.isPeriodLocked(orgId, data.entryDate)) {
+      throw new AppError(400, "ERROR_PERIOD_LOCKED");
+    }
+
+    const accountIds = [
+      ...new Set(data.lines.map((line) => LedgerService.formatAccount(line.accountId))),
+    ];
+    const projectIds = [
+      ...new Set(
+        data.lines
+          .map((line) => line.projectId)
+          .filter((projectId): projectId is string => !!projectId),
+      ),
+    ];
+
+    await LedgerService.validateEntities(orgId, accountIds, projectIds);
+
+    const totalDebit = data.lines.reduce((sum, line) => sum + Math.round(line.debit || 0), 0);
+    const totalCredit = data.lines.reduce((sum, line) => sum + Math.round(line.credit || 0), 0);
+
+    if (totalDebit !== totalCredit) {
+      throw new AppError(400, "ERROR_ENTRY_NOT_BALANCED");
+    }
+
+    const now = new Date().toISOString();
+    const normalizedJournalCode = data.journalCode.toUpperCase();
+    const transactItems: any[] = [
+      {
+        Update: {
+          TableName: config.TABLE_NAME,
+          Key: marshall({
+            PK: KeyFactory.partitionKey(orgId, year),
+            SK: KeyFactory.entrySK(entryId),
+          }),
+          ConditionExpression: "#status = :draft",
+          UpdateExpression:
+            "SET #status = :posted, totalDebit = :totalDebit, totalCredit = :totalCredit, updatedBy = :updatedBy, updatedAt = :updatedAt, postedBy = :postedBy, postedAt = :postedAt",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: marshall({
+            ":draft": "DRAFT",
+            ":posted": "POSTED",
+            ":totalDebit": totalDebit,
+            ":totalCredit": totalCredit,
+            ":updatedBy": userId,
+            ":updatedAt": now,
+            ":postedBy": userId,
+            ":postedAt": now,
+          }),
+        },
+      },
+    ];
+
+    for (let index = 0; index < data.lines.length; index++) {
+      const line = data.lines[index];
+      const draftLine = draftLines[index];
+      const paddedAccountId = LedgerService.formatAccount(line.accountId);
+
+      if (line.projectId && line.debit > 0) {
+        await BudgetService.enforceBudget(orgId, year, line);
+      }
+
+      const lineItem = LedgerService.buildEntryLineItem({
+        orgId,
+        year,
+        entryId,
+        lineId: draftLine.lineId,
+        entryDate: data.entryDate,
+        line,
+        paddedAccountId,
+        journalCode: normalizedJournalCode,
+        voucherNumber: data.voucherNumber,
+        userId,
+        now,
+      });
+
+      transactItems.push({
+        Put: {
+          TableName: config.TABLE_NAME,
+          Item: marshall(EntryLineSchema.parse(lineItem), {
+            removeUndefinedValues: true,
+          }),
+          ConditionExpression: "attribute_exists(PK) AND attribute_exists(SK)",
+        },
+      });
+
+      transactItems.push(
+        BalanceService.buildBalanceUpdateAction(
+          orgId,
+          year,
+          paddedAccountId,
+          line.debit || 0,
+          line.credit || 0,
+          normalizedJournalCode,
+          userId,
+        ),
+      );
+    }
+
+    await dynamoClient.send(
+      new TransactWriteItemsCommand({ TransactItems: transactItems }),
+    );
+
+    return { entryId };
+  }
+
+  static async getEntryDetail(orgId: string, year: number, entryId: string): Promise<EntryDetailDto> {
+    const entry = await LedgerService.getEntryHeader(orgId, year, entryId);
+    const lines = await LedgerService.queryEntryLines(orgId, year, entryId);
+
+    return LedgerService.toEntryDetailDto(entry, lines);
   }
 
   /**
@@ -431,6 +877,15 @@ export class LedgerService {
         );
       }),
     );
+
+    const hasInactiveAccount = foundItems.some((item) => {
+      const data = unmarshall(item);
+      return data.entityType === "ACCOUNT" && data.isActive === false;
+    });
+
+    if (hasInactiveAccount) {
+      throw new AppError(400, "ERROR_ACCOUNT_INACTIVE");
+    }
 
     if (
       !accountIds.every((id) => foundBusinessIds.has(id)) ||
@@ -628,12 +1083,14 @@ export class LedgerService {
     orgId: string,
     options: ListEntriesOptions,
   ): Promise<ListEntriesResult> {
-    const { year, journalCode, month, limit = 50, cursor } = options;
+    const { year, journalCode, status, month, limit = 50, cursor } = options;
     const exclusiveStartKey = LedgerService.decodeCursor(cursor);
     let keyConditionExpression = "GSI5PK = :pk";
     const expressionAttributeValues: Record<string, string> = {
       ":pk": KeyFactory.gsi5JournalPK(orgId, year),
     };
+    const expressionAttributeNames: Record<string, string> = {};
+    let filterExpression: string | undefined;
 
     if (journalCode) {
       let prefix = `JNL#${journalCode.toUpperCase()}`;
@@ -645,11 +1102,21 @@ export class LedgerService {
       expressionAttributeValues[":sk"] = prefix;
     }
 
+    if (status) {
+      expressionAttributeNames["#status"] = "status";
+      expressionAttributeValues[":status"] = status;
+      filterExpression = "#status = :status";
+    }
+
     const result = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
         IndexName: config.GSI5,
         KeyConditionExpression: keyConditionExpression,
+        ...(filterExpression ? { FilterExpression: filterExpression } : {}),
+        ...(Object.keys(expressionAttributeNames).length > 0
+          ? { ExpressionAttributeNames: expressionAttributeNames }
+          : {}),
         ExpressionAttributeValues: marshall(expressionAttributeValues),
         Limit: limit,
         ExclusiveStartKey: exclusiveStartKey,
@@ -780,6 +1247,7 @@ export class LedgerService {
           ":gsi1pk": KeyFactory.gsi1PK(orgId),
           ":gsi1sk": KeyFactory.gsi1SKPrefix(paddedAccountId, fiscalYear),
         }),
+        ConsistentRead: true,
         ScanIndexForward: true,
       }),
     );
@@ -854,6 +1322,137 @@ export class LedgerService {
       performanceStatus: netResult >= 0 ? "PROFIT" : "LOSS",
       statementBasis: "BACKEND_V1_CLASS_6_7_AGGREGATE",
     };
+  }
+
+  private static async getEntryHeader(
+    orgId: string,
+    year: number,
+    entryId: string,
+  ): Promise<Entry> {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, year),
+          SK: KeyFactory.entrySK(entryId),
+        }),
+      }),
+    );
+
+    if (!result.Item) {
+      throw new AppError(404, "ERROR_ENTRY_NOT_FOUND");
+    }
+
+    return EntrySchema.parse(unmarshall(result.Item));
+  }
+
+  private static async queryEntryLines(
+    orgId: string,
+    year: number,
+    entryId: string,
+  ): Promise<EntryLine[]> {
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: marshall({
+          ":pk": KeyFactory.partitionKey(orgId, year),
+          ":sk": KeyFactory.entryLineSK(`${entryId}#`),
+        }),
+        ScanIndexForward: true,
+      }),
+    );
+
+    return (result.Items || [])
+      .map((item) => EntryLineSchema.parse(unmarshall(item)))
+      .sort((left, right) => left.lineId.localeCompare(right.lineId));
+  }
+
+  private static async toEntryDetailDto(
+    entry: Entry,
+    lines: EntryLine[],
+  ): Promise<EntryDetailDto> {
+    const accountNames = await LedgerService.getAccountNames(
+      entry.orgId,
+      lines.map((line) => line.accountId),
+    );
+
+    return EntryDetailDtoSchema.parse({
+      entryId: entry.entryId,
+      year: entry.year,
+      entryDate: entry.entryDate,
+      journalCode: entry.journalCode,
+      voucherNumber: entry.voucherNumber,
+      entryType: entry.entryType,
+      label: entry.label,
+      totalDebit: entry.totalDebit,
+      totalCredit: entry.totalCredit,
+      status: entry.status,
+      createdBy: entry.createdBy,
+      createdAt: entry.createdAt,
+      updatedBy: entry.updatedBy,
+      updatedAt: entry.updatedAt,
+      postedBy: entry.postedBy,
+      postedAt: entry.postedAt,
+      lines: lines.map((line) => LedgerService.toEntryLineDto(line, accountNames)),
+    });
+  }
+
+  private static toEntryLineDto(
+    line: EntryLine,
+    accountNames: Map<string, string>,
+  ): EntryLineDto {
+    return EntryLineDtoSchema.parse({
+      lineId: line.lineId,
+      accountId: line.accountId,
+      accountName: accountNames.get(line.accountId),
+      debit: line.debit,
+      credit: line.credit,
+      description: line.description,
+      label: line.label,
+      thirdPartyId: line.thirdPartyId,
+      projectId: line.projectId,
+      budgetLineId: line.budgetLineId,
+      donorId: line.donorId,
+      letteringCode: line.letteringCode,
+      letteringStatus: line.letteringStatus,
+    });
+  }
+
+  private static async getAccountNames(
+    orgId: string,
+    accountIds: string[],
+  ): Promise<Map<string, string>> {
+    const uniqueAccountIds = [...new Set(accountIds)].filter(Boolean);
+
+    if (uniqueAccountIds.length === 0) {
+      return new Map();
+    }
+
+    const result = await dynamoClient.send(
+      new BatchGetItemCommand({
+        RequestItems: {
+          [config.TABLE_NAME]: {
+            Keys: uniqueAccountIds.map((accountId) =>
+              marshall({
+                PK: KeyFactory.orgKey(orgId),
+                SK: KeyFactory.accountSK(accountId),
+              }),
+            ),
+          },
+        },
+      }),
+    );
+
+    const names = new Map<string, string>();
+    for (const item of result.Responses?.[config.TABLE_NAME] || []) {
+      const account = unmarshall(item);
+      if (account.accountId && account.accountName) {
+        names.set(account.accountId, account.accountName);
+      }
+    }
+
+    return names;
   }
 
   private static formatAccount(accountId: string): string {
@@ -976,5 +1575,59 @@ export class LedgerService {
     }
 
     return item;
+  }
+
+  private static buildDraftEntryLineItem(params: {
+    orgId: string;
+    year: number;
+    entryId: string;
+    lineId: string;
+    entryDate: string;
+    line: CreateEntryDraftRequest["lines"][number];
+    paddedAccountId: string;
+    journalCode: string;
+    voucherNumber?: string;
+    userId: string;
+    now: string;
+  }) {
+    const {
+      orgId,
+      year,
+      entryId,
+      lineId,
+      entryDate,
+      line,
+      paddedAccountId,
+      journalCode,
+      voucherNumber,
+      userId,
+      now,
+    } = params;
+
+    return {
+      orgId,
+      year,
+      lineId,
+      entryId,
+      entryDate,
+      journalCode,
+      voucherNumber,
+      accountId: paddedAccountId,
+      projectId: line.projectId,
+      budgetLineId: line.budgetLineId,
+      donorId: line.donorId,
+      thirdPartyId: line.thirdPartyId,
+      label: line.label,
+      description: line.description,
+      debit: Math.round(line.debit || 0),
+      credit: Math.round(line.credit || 0),
+      entityType: "ENTRY_LINE",
+      PK: KeyFactory.partitionKey(orgId, year),
+      SK: KeyFactory.entryLineSK(lineId),
+      createdBy: userId,
+      createdAt: now,
+      updatedBy: userId,
+      updatedAt: now,
+    };
   }
 }

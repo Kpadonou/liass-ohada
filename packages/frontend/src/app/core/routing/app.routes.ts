@@ -183,6 +183,28 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'accounting/entries/new',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/entry-form/entry-form.page').then(
+            (module) => module.EntryFormPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_SUBTITLE',
+          titleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_TITLE'
+        }
+      },
+      {
+        path: 'accounting/entries/:entryId/edit',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/entry-form/entry-form.page').then(
+            (module) => module.EntryFormPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_SUBTITLE',
+          titleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_TITLE'
+        }
+      },
+      {
         path: 'accounting/entries',
         loadComponent: () =>
           import('../../domains/accounting/feature/entries/entries.page').then(
