@@ -11,6 +11,7 @@
     [placeholder]="'ACCOUNTING.ACCOUNTS.SELECT.SEARCH_PLACEHOLDER' | transloco"
     [value]="searchText()"
     (blur)="handleBlur()"
+    (focus)="handleFocus()"
     (input)="handleInput($event)"
   />
   @if (loading()) {
@@ -32,7 +33,7 @@
           <mat-option disabled>{{ helper | transloco }}</mat-option>
         } @else if (searchError()) {
           <mat-option disabled>{{ 'COMMON.NOTIFICATIONS.LOAD_ERROR' | transloco }}</mat-option>
-        } @else if (hasSearched()) {
+        } @else if (showNoResults()) {
           <mat-option disabled>
             {{ 'ACCOUNTING.ACCOUNTS.SELECT.NO_RESULTS' | transloco }}
           </mat-option>

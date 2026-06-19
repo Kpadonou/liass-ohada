@@ -14,13 +14,10 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
         accountId: "41100000",
         openingBalance: {
           GSI1PK: "ORG#technical",
-          date: "OPENING",
           label: "Report à nouveau",
-          reference: "RAN",
-          journalCode: "RAN",
           debit: 100,
           credit: 0,
-          runningBalance: 100,
+          balance: 100,
         },
         movements: [
           {
@@ -44,6 +41,51 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
     expect(response.data).not.toHaveProperty("PK");
     expect(response.data.openingBalance).not.toHaveProperty("GSI1PK");
     expect(response.data.movements[0]).not.toHaveProperty("SK");
+    expect(response.data.openingBalance).not.toHaveProperty("journalCode");
+  });
+
+  test("general ledger normalizes legacy pagination and opening balance fields", () => {
+    const baseData = {
+      accountId: "41100000",
+      openingBalance: {
+        debit: 0,
+        credit: 0,
+        runningBalance: 0,
+      },
+      movements: [],
+      finalBalance: 0,
+    };
+
+    const parsed = GeneralLedgerResponseSchema.parse({ data: baseData });
+
+    expect(parsed.data.openingBalance).toEqual({
+      debit: 0,
+      credit: 0,
+      balance: 0,
+    });
+    expect(parsed.data.hasMore).toBe(false);
+  });
+
+  test("general ledger movements still require a journal code", () => {
+    expect(() =>
+      GeneralLedgerResponseSchema.parse({
+        data: {
+          accountId: "41100000",
+          openingBalance: { debit: 0, credit: 0, balance: 0 },
+          movements: [
+            {
+              date: "2026-01-15",
+              label: "Vente",
+              debit: 100,
+              credit: 0,
+              runningBalance: 100,
+            },
+          ],
+          finalBalance: 100,
+          hasMore: false,
+        },
+      }),
+    ).toThrow();
   });
 
   test("balance schemas expose six business columns only", () => {

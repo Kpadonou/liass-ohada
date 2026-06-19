@@ -131,12 +131,11 @@ describe("get-general-ledger handler", () => {
     expect(body.data.accountId).toBe("41100000");
 
     // Verify opening balance
-    expect(body.data.openingBalance.date).toBe("OPENING");
-    expect(body.data.openingBalance.journal).toBe("RAN");
-    expect(body.data.openingBalance.journalCode).toBe("RAN");
     expect(body.data.openingBalance.debit).toBe(1000);
     expect(body.data.openingBalance.credit).toBe(200);
-    expect(body.data.openingBalance.runningBalance).toBe(800); // 1000 - 200
+    expect(body.data.openingBalance.balance).toBe(800); // 1000 - 200
+    expect(body.data.openingBalance.journalCode).toBeUndefined();
+    expect(body.data.openingBalance.reference).toBeUndefined();
 
     // Verify movements
     expect(body.data.movements).toHaveLength(2);
@@ -273,6 +272,24 @@ describe("get-general-ledger handler", () => {
     expect((response as any).statusCode).toBe(200);
     expect(body.data.movements).toHaveLength(0);
     expect(body.data.finalBalance).toBe(400); // 500 - 100
+    expect(body.data.hasMore).toBe(false);
+  });
+
+  test("returns a zero opening balance and explicit hasMore when no aggregate exists", async () => {
+    dynamoMock.on(GetItemCommand).resolves({ Item: undefined });
+    dynamoMock.on(QueryCommand).resolves({ Items: [] });
+
+    const response = await handler(createEvent());
+    const body = parseResponse(response);
+
+    expect((response as any).statusCode).toBe(200);
+    expect(body.data.openingBalance).toEqual({
+      debit: 0,
+      credit: 0,
+      balance: 0,
+    });
+    expect(body.data.movements).toEqual([]);
+    expect(body.data.hasMore).toBe(false);
   });
 
   test("pads account ID to 8 digits", async () => {

@@ -1333,14 +1333,9 @@ export class LedgerService {
     return GeneralLedgerDtoSchema.parse({
       accountId: paddedAccountId,
       openingBalance: {
-        date: "OPENING",
-        label: "Opening Balance (Report à Nouveau)",
-        reference: "RAN",
-        journalCode: "RAN",
-        journal: "RAN",
         debit: accountBalance.openingDebit,
         credit: accountBalance.openingCredit,
-        runningBalance: openingNet,
+        balance: openingNet,
       },
       movements,
       finalBalance,

@@ -93,6 +93,18 @@ describe('AccountSearchSelectComponent', () => {
     expect(accountingApi.listAccounts).not.toHaveBeenCalledWith({ limit: 200 });
   });
 
+  it('shows the search guidance only while the empty field is focused', () => {
+    expect(fixture.nativeElement.textContent).not.toContain('Type to search');
+
+    inputElement().dispatchEvent(new Event('focus'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Type to search');
+
+    inputElement().dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Type to search');
+  });
+
   it('shows loading and no-result states', async () => {
     vi.useFakeTimers();
     let resolveSearch!: (value: { items: []; hasMore: false }) => void;
@@ -158,6 +170,33 @@ describe('AccountSearchSelectComponent', () => {
 
     component.selectOption({ option: { value: '41120000' } });
     expect(fixture.componentInstance.control.value).toBe('41120000');
+  });
+
+  it('does not search or show a no-result message when a selected account is focused again', async () => {
+    vi.useFakeTimers();
+    accountingApi.listAccounts.mockResolvedValue({
+      items: [accountFixture('52000000', 'Banks')],
+      hasMore: false
+    });
+
+    typeSearch('52');
+    await vi.advanceTimersByTimeAsync(275);
+    fixture.detectChanges();
+
+    const component = fixture.debugElement.query(
+      By.directive(AccountSearchSelectComponent)
+    ).componentInstance as any;
+    component.selectOption({ option: { value: '52000000' } });
+    fixture.detectChanges();
+    accountingApi.listAccounts.mockClear();
+
+    inputElement().dispatchEvent(new Event('focus'));
+    inputElement().dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(275);
+
+    expect(accountingApi.listAccounts).not.toHaveBeenCalled();
+    expect(document.body.textContent).not.toContain('No accounts found');
   });
 
   it('does not display unrelated first-page accounts when a legacy backend ignores search', async () => {

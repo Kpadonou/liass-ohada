@@ -31,6 +31,10 @@ export function safeMessageFromError(error: unknown): string | null {
 }
 
 function firstSafeMessage(value: unknown): string | null {
+  if (isZodValidationError(value)) {
+    return null;
+  }
+
   const candidate = firstMessage(value);
 
   if (!candidate || isTechnicalMessage(candidate)) {
@@ -38,6 +42,14 @@ function firstSafeMessage(value: unknown): string | null {
   }
 
   return candidate;
+}
+
+function isZodValidationError(value: unknown): boolean {
+  return (
+    value instanceof Error &&
+    (value.name === 'ZodError' ||
+      Array.isArray((value as Error & { issues?: unknown }).issues))
+  );
 }
 
 function firstMessage(value: unknown): string | null {

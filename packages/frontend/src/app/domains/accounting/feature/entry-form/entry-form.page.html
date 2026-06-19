@@ -185,6 +185,7 @@
                         step="1"
                         inputmode="numeric"
                         class="text-right"
+                        (input)="handleAmountInput(line, 'debit', $event)"
                       />
                     </mat-form-field>
                   </td>
@@ -199,6 +200,7 @@
                         step="1"
                         inputmode="numeric"
                         class="text-right"
+                        (input)="handleAmountInput(line, 'credit', $event)"
                       />
                     </mat-form-field>
                   </td>

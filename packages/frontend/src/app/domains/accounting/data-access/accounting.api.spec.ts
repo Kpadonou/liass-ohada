@@ -568,13 +568,10 @@ describe('AccountingApi', () => {
         accountId: '41100000',
         openingBalance: {
           GSI1PK: 'ORG#technical',
-          date: 'OPENING',
           label: 'Report à nouveau',
-          reference: 'RAN',
-          journalCode: 'RAN',
           debit: 1000,
           credit: 0,
-          runningBalance: 1000
+          balance: 1000
         },
         movements: [
           {
@@ -599,13 +596,10 @@ describe('AccountingApi', () => {
     await expect(promise).resolves.toEqual({
       accountId: '41100000',
       openingBalance: {
-        date: 'OPENING',
         label: 'Report à nouveau',
-        reference: 'RAN',
-        journalCode: 'RAN',
         debit: 1000,
         credit: 0,
-        runningBalance: 1000
+        balance: 1000
       },
       movements: [
         {
@@ -624,6 +618,54 @@ describe('AccountingApi', () => {
       nextCursor: 'cursor-3',
       hasMore: true,
       message: 'Grand livre récupéré.'
+    });
+  });
+
+  it('normalizes the deployed legacy general-ledger response', async () => {
+    const promise = api.getGeneralLedger({
+      fiscalYear: '2026',
+      accountId: '52000000',
+      limit: 50
+    });
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`
+    );
+
+    request.flush({
+      message: {
+        code: 'SUCCESS_LEDGER_RETRIEVED',
+        message: 'Grand livre du compte récupéré avec succès.'
+      },
+      data: {
+        accountId: '52000000',
+        openingBalance: {
+          date: 'OPENING',
+          label: 'Opening Balance (Report à Nouveau)',
+          reference: 'RAN',
+          journalCode: 'RAN',
+          journal: 'RAN',
+          debit: 0,
+          credit: 0,
+          runningBalance: 0
+        },
+        movements: [],
+        finalBalance: 0
+      }
+    });
+
+    await expect(promise).resolves.toEqual({
+      accountId: '52000000',
+      openingBalance: {
+        date: 'OPENING',
+        label: 'Opening Balance (Report à Nouveau)',
+        debit: 0,
+        credit: 0,
+        balance: 0
+      },
+      movements: [],
+      finalBalance: 0,
+      hasMore: false,
+      message: 'Grand livre du compte récupéré avec succès.'
     });
   });
 

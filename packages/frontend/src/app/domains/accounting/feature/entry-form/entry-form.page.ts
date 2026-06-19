@@ -217,6 +217,26 @@ export class EntryFormPage {
     return line.hasError('amountRequired');
   }
 
+  protected handleAmountInput(
+    line: EntryLineForm,
+    side: 'credit' | 'debit',
+    event: Event
+  ): void {
+    const amount = Number((event.target as HTMLInputElement).value || 0);
+
+    if (amount <= 0) {
+      return;
+    }
+
+    const oppositeSide = side === 'debit' ? 'credit' : 'debit';
+    const oppositeControl = line.controls[oppositeSide];
+
+    if (oppositeControl.value !== 0) {
+      oppositeControl.setValue(0);
+      oppositeControl.markAsDirty();
+    }
+  }
+
   protected formatAmount(amount: number): string {
     return new Intl.NumberFormat('fr-FR', {
       maximumFractionDigits: 0

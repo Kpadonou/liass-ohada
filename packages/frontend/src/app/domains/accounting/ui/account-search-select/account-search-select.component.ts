@@ -66,6 +66,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
   protected readonly loadingMore = signal(false);
   protected readonly hasSearched = signal(false);
   protected readonly searchError = signal(false);
+  protected readonly focused = signal(false);
 
   protected readonly visibleAccounts = computed(() => {
     const query = normalizeSearch(this.searchText());
@@ -85,18 +86,27 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
   });
 
   protected readonly helperKey = computed(() => {
+    if (!this.focused()) {
+      return null;
+    }
+
     const query = this.searchText().trim();
 
     if (!query) {
       return 'ACCOUNTING.ACCOUNTS.SELECT.TYPE_TO_SEARCH';
     }
 
-    if (!/^\d+$/.test(query) && query.length < 2) {
-      return 'ACCOUNTING.ACCOUNTS.SELECT.MIN_CHARACTERS';
-    }
-
     return null;
   });
+
+  protected readonly showNoResults = computed(
+    () =>
+      this.focused() &&
+      /^\d{1,8}$/.test(this.searchText().trim()) &&
+      this.hasSearched() &&
+      !this.loading() &&
+      !this.searchError()
+  );
 
   private onChange: (value: string | null) => void = () => undefined;
   private onTouched: () => void = () => undefined;
@@ -151,7 +161,11 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
 
     const query = value.trim();
     if (!/^\d{1,8}$/.test(query)) {
-      this.hasSearched.set(query.length >= 2);
+      this.requestSequence.update((sequence) => sequence + 1);
+      this.loading.set(false);
+      this.hasSearched.set(false);
+      this.nextCursor.set(null);
+      this.hasMore.set(false);
       return;
     }
 
@@ -160,7 +174,12 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     }, ACCOUNT_SEARCH_DEBOUNCE_MS);
   }
 
+  protected handleFocus(): void {
+    this.focused.set(true);
+  }
+
   protected handleBlur(): void {
+    this.focused.set(false);
     this.onTouched();
     window.setTimeout(() => this.syncInputToSelectedValue(), 100);
   }
@@ -179,6 +198,10 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     this.selectedValue.set(value);
     this.onChange(value);
     this.searchText.set(selectedAccount ? this.accountLabel(selectedAccount) : value);
+    this.hasSearched.set(false);
+    this.searchError.set(false);
+    this.nextCursor.set(null);
+    this.hasMore.set(false);
   }
 
   protected accountLabel(account: AccountDto): string {

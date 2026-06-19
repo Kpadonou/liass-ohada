@@ -80,7 +80,7 @@
               {{ 'ACCOUNTING.GENERAL_LEDGER.METRICS.OPENING' | transloco }}
             </p>
             <p class="mt-2 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
-              {{ formatAmount(report.openingBalance.runningBalance) }}
+              {{ formatAmount(report.openingBalance.balance) }}
             </p>
           </div>
           <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
@@ -126,15 +126,15 @@
               </thead>
               <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                 <tr class="bg-brand-50/60 dark:bg-brand-950/20">
-                  <td class="px-4 py-4 text-sm">{{ report.openingBalance.date }}</td>
-                  <td class="px-4 py-4 text-sm font-semibold">{{ report.openingBalance.journalCode }}</td>
+                  <td class="px-4 py-4 text-sm">{{ report.openingBalance.date || '—' }}</td>
+                  <td class="px-4 py-4 text-sm font-semibold">—</td>
                   @if (isColumnVisible('reference')) {
-                    <td class="px-4 py-4 text-sm">{{ report.openingBalance.reference || '—' }}</td>
+                    <td class="px-4 py-4 text-sm">—</td>
                   }
-                  <td class="px-4 py-4 text-sm">{{ report.openingBalance.label }}</td>
+                  <td class="px-4 py-4 text-sm">{{ report.openingBalance.label || ('ACCOUNTING.GENERAL_LEDGER.METRICS.OPENING' | transloco) }}</td>
                   <td class="px-4 py-4 text-right text-sm tabular-nums">{{ formatAmount(report.openingBalance.debit) }}</td>
                   <td class="px-4 py-4 text-right text-sm tabular-nums">{{ formatAmount(report.openingBalance.credit) }}</td>
-                  <td class="px-4 py-4 text-right text-sm font-semibold tabular-nums">{{ formatAmount(report.openingBalance.runningBalance) }}</td>
+                  <td class="px-4 py-4 text-right text-sm font-semibold tabular-nums">{{ formatAmount(report.openingBalance.balance) }}</td>
                 </tr>
                 @for (movement of movements(); track movement.lineId || movement.entryId || movement.reference + movement.date) {
                   <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">

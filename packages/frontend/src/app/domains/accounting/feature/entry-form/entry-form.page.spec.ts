@@ -267,7 +267,7 @@ describe('EntryFormPage', () => {
     expect(selectors.length).toBe(2);
   });
 
-  it('rejects debit and credit on the same line', async () => {
+  it('keeps debit and credit mutually exclusive while entering a line amount', async () => {
     selectFiscalYear();
     fixture = TestBed.createComponent(EntryFormPage);
     fixture.detectChanges();
@@ -278,15 +278,33 @@ describe('EntryFormPage', () => {
     const component = fixture.componentInstance as any;
     component.lines.at(0).patchValue({
       accountId: '41100000',
-      debit: 1000,
       credit: 500
     });
+    fixture.detectChanges();
+
+    const firstRow = fixture.nativeElement.querySelector(
+      '[data-testid="entry-line-row"]'
+    ) as HTMLTableRowElement;
+    const debitInput = firstRow.querySelector(
+      'input[formcontrolname="debit"]'
+    ) as HTMLInputElement;
+    debitInput.value = '1000';
+    debitInput.dispatchEvent(new Event('input', { bubbles: true }));
     await settle();
 
-    expect(component.lines.at(0).hasError('bothDebitAndCredit')).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain(
-      'A line cannot contain both debit and credit.'
-    );
+    expect(component.lines.at(0).controls.debit.value).toBe(1000);
+    expect(component.lines.at(0).controls.credit.value).toBe(0);
+    expect(component.lines.at(0).hasError('bothDebitAndCredit')).toBe(false);
+
+    const creditInput = firstRow.querySelector(
+      'input[formcontrolname="credit"]'
+    ) as HTMLInputElement;
+    creditInput.value = '750';
+    creditInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+
+    expect(component.lines.at(0).controls.debit.value).toBe(0);
+    expect(component.lines.at(0).controls.credit.value).toBe(750);
   });
 
   it('updates totals and difference live and keeps publish disabled while unbalanced', async () => {

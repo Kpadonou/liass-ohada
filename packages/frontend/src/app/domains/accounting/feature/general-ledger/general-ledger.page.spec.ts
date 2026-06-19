@@ -268,6 +268,33 @@ describe('GeneralLedgerPage', () => {
     expect(fixture.nativeElement.textContent).not.toContain('No movements for this account');
   });
 
+  it('shows a translated fallback instead of raw Zod validation details', async () => {
+    selectFiscalYear();
+    createPage();
+    flushAccounts();
+    await settle();
+    selectAccount('41100000');
+    httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`).flush({
+      data: {
+        accountId: '41100000',
+        openingBalance: {
+          label: 'Opening balance',
+          debit: 0,
+          credit: 0
+        },
+        movements: [],
+        finalBalance: 0
+      }
+    });
+    await settle();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('The general ledger could not be loaded.');
+    expect(text).not.toContain('expected');
+    expect(text).not.toContain('invalid_type');
+    expect(text).not.toContain('hasMore');
+  });
+
   it('does not display persistence keys returned by the server', async () => {
     selectFiscalYear();
     createPage();
@@ -404,11 +431,9 @@ function ledgerResponse(overrides: Record<string, unknown> = {}) {
       openingBalance: {
         date: '2026-01-01',
         label: 'Opening balance',
-        reference: 'RAN',
-        journalCode: 'RAN',
         debit: 25000,
         credit: 0,
-        runningBalance: 25000
+        balance: 25000
       },
       movements: [movementFixture()],
       finalBalance: 150000,

@@ -279,17 +279,48 @@ export type GeneralLedgerLineDto = z.infer<
   typeof GeneralLedgerLineDtoSchema
 >;
 
+export const GeneralLedgerOpeningBalanceDtoSchema = z
+  .object({
+    date: z.string().optional(),
+    label: z.string().optional(),
+    debit: z.number().int().nonnegative(),
+    credit: z.number().int().nonnegative(),
+    balance: z.number().int().optional(),
+    runningBalance: z.number().int().optional(),
+  })
+  .refine(
+    (openingBalance) =>
+      openingBalance.balance !== undefined ||
+      openingBalance.runningBalance !== undefined,
+    {
+      message: "Opening balance amount is required",
+    },
+  )
+  .transform(({ runningBalance, ...openingBalance }) => ({
+    ...openingBalance,
+    balance: openingBalance.balance ?? runningBalance!,
+  }));
+
+export type GeneralLedgerOpeningBalanceDto = z.infer<
+  typeof GeneralLedgerOpeningBalanceDtoSchema
+>;
+
 // Compatibility alias for the existing frontend while Lot 4 moves to journalCode.
 export const LedgerMovementDtoSchema = GeneralLedgerLineDtoSchema;
 
-export const GeneralLedgerDtoSchema = z.object({
-  accountId: z.string().regex(/^\d{8}$/),
-  openingBalance: GeneralLedgerLineDtoSchema,
-  movements: z.array(GeneralLedgerLineDtoSchema),
-  finalBalance: z.number().int(),
-  nextCursor: z.string().optional(),
-  hasMore: z.boolean(),
-});
+export const GeneralLedgerDtoSchema = z
+  .object({
+    accountId: z.string().regex(/^\d{8}$/),
+    openingBalance: GeneralLedgerOpeningBalanceDtoSchema,
+    movements: z.array(GeneralLedgerLineDtoSchema),
+    finalBalance: z.number().int(),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean().optional(),
+  })
+  .transform((ledger) => ({
+    ...ledger,
+    hasMore: ledger.hasMore ?? !!ledger.nextCursor,
+  }));
 
 export type GeneralLedgerDto = z.infer<typeof GeneralLedgerDtoSchema>;
 

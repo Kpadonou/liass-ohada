@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { safeMessageFromError, userMessageFromResponse } from './notification-message';
 
@@ -63,5 +64,14 @@ describe('notification message helpers', () => {
         message: 'ConditionalCheckFailedException on PK ORG#1 and GSI1PK'
       })
     ).toBeNull();
+  });
+
+  it('returns null for Zod validation errors so raw contract details stay hidden', () => {
+    const result = z.object({ hasMore: z.boolean() }).safeParse({});
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(safeMessageFromError(result.error)).toBeNull();
+    }
   });
 });

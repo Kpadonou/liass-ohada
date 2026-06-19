@@ -22,7 +22,7 @@
     "test": "npm test -w @liass-ohada/backend && npm test -w @liass-ohada/frontend",
     "backend:synth": "npm run aws:synth -w @liass-ohada/backend",
     "backend:deploy": "npm run aws:deploy -w @liass-ohada/backend",
-    "frontend:start": "npm run start -w @liass-ohada/frontend"
+    "frontend:start": "npm run build -w @liass-ohada/shared && npm run start -w @liass-ohada/frontend"
   },
   "devDependencies": {
     "handlebars": "^4.7.9",
