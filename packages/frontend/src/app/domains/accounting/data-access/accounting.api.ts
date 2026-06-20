@@ -56,6 +56,7 @@ import {
   type PostEntryDraftRequest,
   type PostLetteringRequest,
   type ThirdPartyLedgerDto,
+  type TrialBalanceQuery,
   type UnletteredLinesDto,
   type TrialBalanceDto,
   type UpdateEntryDraftRequest
@@ -76,6 +77,7 @@ export interface PaginatedResult<T> {
 export type ApiQueryResult<T> = T & { message?: string | null };
 export type ListAccountsParams = z.input<typeof ListAccountsRequestSchema>;
 export type GeneralLedgerParams = z.input<typeof GeneralLedgerQuerySchema>;
+export type TrialBalanceParams = z.input<typeof TrialBalanceQuerySchema>;
 export type JournalBookParams = z.input<typeof JournalBookQuerySchema>;
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
 export type UpdateEntryDraftPayload = Omit<UpdateEntryDraftRequest, 'entryId'>;
@@ -94,6 +96,24 @@ const UpdateJournalRequestSchema = z.object({
 const DisableJournalResponseSchema = z.object({
   message: z.unknown().optional(),
   data: z.object({}).optional()
+});
+
+const LegacyTrialBalanceAmountSchema = z.number().int().nonnegative();
+const LegacyTrialBalanceRowSchema = z.object({
+  accountId: z.string().regex(/^\d{8}$/),
+  openingDebit: LegacyTrialBalanceAmountSchema,
+  openingCredit: LegacyTrialBalanceAmountSchema,
+  movementDebit: LegacyTrialBalanceAmountSchema,
+  movementCredit: LegacyTrialBalanceAmountSchema,
+  finalDebit: LegacyTrialBalanceAmountSchema,
+  finalCredit: LegacyTrialBalanceAmountSchema
+});
+const LegacyTrialBalanceResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({
+    rows: z.array(LegacyTrialBalanceRowSchema),
+    totals: LegacyTrialBalanceRowSchema.omit({ accountId: true })
+  })
 });
 
 export interface ListEntriesParams {
@@ -154,6 +174,10 @@ export class AccountingApi {
 
     if (request.class) {
       params = params.set('class', request.class);
+    }
+
+    if (request.active !== undefined) {
+      params = params.set('active', request.active);
     }
 
     if (request.activeOnly !== undefined) {
@@ -375,6 +399,14 @@ export class AccountingApi {
       params = params.set('cursor', request.cursor);
     }
 
+    if (request.startDate) {
+      params = params.set('startDate', request.startDate);
+    }
+
+    if (request.endDate) {
+      params = params.set('endDate', request.endDate);
+    }
+
     const response = await firstValueFrom(
       this.http.get<unknown>(`${this.apiBaseUrl}/books/general-ledger`, { params })
     );
@@ -386,14 +418,36 @@ export class AccountingApi {
     };
   }
 
-  async getTrialBalance(year: string): Promise<ApiQueryResult<TrialBalanceDto>> {
-    const request = TrialBalanceQuerySchema.parse({ year });
+  async getTrialBalance(paramsInput: TrialBalanceParams): Promise<ApiQueryResult<TrialBalanceDto>> {
+    const request: TrialBalanceQuery = TrialBalanceQuerySchema.parse(paramsInput);
+    let params = new HttpParams()
+      .set('year', request.year)
+      .set('startDate', request.startDate)
+      .set('endDate', request.endDate)
+      .set('hideZeroMovement', request.hideZeroMovement);
+
+    if (request.accountPrefix) {
+      params = params.set('accountPrefix', request.accountPrefix);
+    }
+
+    if (request.accountFrom) {
+      params = params.set('accountFrom', request.accountFrom);
+    }
+
+    if (request.accountTo) {
+      params = params.set('accountTo', request.accountTo);
+    }
+
+    if (request.accountClass) {
+      params = params.set('accountClass', request.accountClass);
+    }
+
     const response = await firstValueFrom(
       this.http.get<unknown>(`${this.apiBaseUrl}/books/trial-balance`, {
-        params: new HttpParams().set('year', request.year)
+        params
       })
     );
-    const parsed = TrialBalanceResponseSchema.parse(response);
+    const parsed = parseTrialBalanceResponse(response, request);
 
     return {
       ...parsed.data,
@@ -578,6 +632,95 @@ export class AccountingApi {
 
     return `${this.apiBaseUrl}/journals/${encodeURIComponent(request.journalCode)}`;
   }
+}
+
+function parseTrialBalanceResponse(
+  response: unknown,
+  request: TrialBalanceQuery
+) {
+  const canonical = TrialBalanceResponseSchema.safeParse(response);
+
+  if (canonical.success) {
+    return canonical.data;
+  }
+
+  // Rolling-deployment compatibility for the previous annual-only endpoint.
+  // Never accept this shape for a partial period or account filters because
+  // the legacy backend ignores those parameters and would return a false scope.
+  if (!isLegacyAnnualRequest(request)) {
+    throw canonical.error;
+  }
+
+  const legacy = LegacyTrialBalanceResponseSchema.parse(response);
+  const rows = legacy.data.rows
+    .map((row) => {
+      const openingNet = row.openingDebit - row.openingCredit;
+      const closingNet =
+        openingNet + row.movementDebit - row.movementCredit;
+
+      return {
+        accountCode: row.accountId,
+        accountLabel: row.accountId,
+        openingDebit: Math.max(openingNet, 0),
+        openingCredit: Math.max(-openingNet, 0),
+        movementDebit: row.movementDebit,
+        movementCredit: row.movementCredit,
+        closingDebit: Math.max(closingNet, 0),
+        closingCredit: Math.max(-closingNet, 0)
+      };
+    })
+    .sort((left, right) => left.accountCode.localeCompare(right.accountCode));
+  const totals = rows.reduce(
+    (result, row) => ({
+      openingDebit: result.openingDebit + row.openingDebit,
+      openingCredit: result.openingCredit + row.openingCredit,
+      movementDebit: result.movementDebit + row.movementDebit,
+      movementCredit: result.movementCredit + row.movementCredit,
+      closingDebit: result.closingDebit + row.closingDebit,
+      closingCredit: result.closingCredit + row.closingCredit
+    }),
+    {
+      openingDebit: 0,
+      openingCredit: 0,
+      movementDebit: 0,
+      movementCredit: 0,
+      closingDebit: 0,
+      closingCredit: 0
+    }
+  );
+  const movementDifference = totals.movementDebit - totals.movementCredit;
+  const closingDifference = totals.closingDebit - totals.closingCredit;
+
+  return TrialBalanceResponseSchema.parse({
+    message: legacy.message,
+    data: {
+      rows,
+      totals: {
+        ...totals,
+        isMovementBalanced: movementDifference === 0,
+        isClosingBalanced: closingDifference === 0,
+        movementDifference,
+        closingDifference
+      },
+      period: {
+        fiscalYear: request.year,
+        startDate: request.startDate,
+        endDate: request.endDate
+      }
+    }
+  });
+}
+
+function isLegacyAnnualRequest(request: TrialBalanceQuery): boolean {
+  return (
+    request.startDate === `${request.year}-01-01` &&
+    request.endDate === `${request.year}-12-31` &&
+    !request.accountPrefix &&
+    !request.accountFrom &&
+    !request.accountTo &&
+    !request.accountClass &&
+    !request.hideZeroMovement
+  );
 }
 
 function parseJournalResponse(response: unknown): JournalDto {

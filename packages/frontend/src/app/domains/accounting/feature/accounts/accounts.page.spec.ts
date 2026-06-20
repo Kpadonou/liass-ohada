@@ -67,11 +67,14 @@ const translations = {
         FILTERS: {
           ALL_CLASSES: 'All classes',
           ALL_NATURES: 'All natures',
+          ALL_STATUSES: 'All statuses',
           ALL_THIRD_PARTY: 'All accounts',
           CLASS: 'Class',
           NATURE: 'Nature',
           NON_THIRD_PARTY: 'General accounts',
-          SEARCH: 'Search',
+          SEARCH: 'Search by account number',
+          SEARCH_PLACEHOLDER: 'E.g. 4, 411 or 521',
+          STATUS: 'Status',
           THIRD_PARTY: 'Third party',
           THIRD_PARTY_ONLY: 'Third-party accounts'
         },
@@ -95,6 +98,9 @@ const translations = {
           THIRD_PARTY: 'Third-party accounts',
           TOTAL: 'Loaded accounts',
           VISIBLE: 'Visible'
+        },
+        PAGINATION: {
+          DISPLAYED: 'Accounts displayed'
         },
         NATURE: {
           BALANCE: 'Balance sheet',
@@ -220,6 +226,7 @@ describe('AccountsPage', () => {
     const loadingState = fixture.nativeElement.querySelector('[role="status"]');
     const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/accounts`);
 
+    expect(request.request.params.get('limit')).toBe('100');
     expect(text).toContain('Loading chart of accounts...');
     expect(text).not.toContain('No account loaded');
     expect(loadingState?.getAttribute('aria-busy')).toBe('true');
@@ -306,7 +313,7 @@ describe('AccountsPage', () => {
 
     expect(document.body.textContent).toContain('Preferences');
     expect(document.body.textContent).toContain('Visible columns');
-    dialogRef.close({ visibleColumnIds: ['code', 'name', 'nature', 'usage', 'status', 'flags', 'actions'] });
+    dialogRef.close({ visibleColumnIds: ['nature'] });
     await waitForDialogClose();
     await settle(fixture);
 
@@ -317,11 +324,15 @@ describe('AccountsPage', () => {
 
     expect(tableText).toContain('Account');
     expect(tableText).toContain('Label');
+    expect(tableText).toContain('Actions');
     expect(tableText).not.toContain('Class');
     expect(storedPreferences.visibleColumnIds).not.toContain('class');
+    expect(storedPreferences.visibleColumnIds).toEqual(
+      expect.arrayContaining(['code', 'name', 'actions'])
+    );
   });
 
-  it('filters accounts by search and class without calling the backend again', async () => {
+  it('searches account-code prefixes on the server and does not promise label search', async () => {
     flushAccounts(httpMock, apiBaseUrl, [
       accountFixture({ accountId: '41100000', accountName: 'Clients', classCode: 4 }),
       accountFixture({
@@ -334,18 +345,38 @@ describe('AccountsPage', () => {
     await settle(fixture);
 
     const component = fixture.componentInstance as unknown as {
-      classFilter: { set: (value: number | 'ALL') => void };
       searchQuery: { set: (value: string) => void };
+      resetPagination: () => void;
     };
-    component.classFilter.set(5);
-    component.searchQuery.set('banque');
+    component.searchQuery.set('521');
+    component.resetPagination();
     fixture.detectChanges();
 
-    const text = fixture.nativeElement.textContent;
+    const request = httpMock.expectOne(
+      (candidate) =>
+        candidate.url === `${apiBaseUrl}/accounts` &&
+        candidate.params.get('search') === '521' &&
+        candidate.params.get('limit') === '100'
+    );
+    request.flush({
+      data: {
+        accounts: [
+          accountFixture({
+            accountId: '52100000',
+            accountName: 'Banques locales',
+            classCode: 5,
+            isThirdPartyAccount: false
+          })
+        ],
+        hasMore: false
+      }
+    });
+    await settle(fixture);
 
-    expect(text).toContain('Banques locales');
-    expect(text).not.toContain('Clients');
-    httpMock.expectNone((request) => request.url === `${apiBaseUrl}/accounts`);
+    expect(fixture.nativeElement.textContent).toContain('Banques locales');
+    expect(fixture.nativeElement.textContent).not.toContain('Clients');
+    expect(fixture.nativeElement.textContent).toContain('Search by account number');
+    expect(fixture.nativeElement.textContent).not.toContain('Search by label');
   });
 
   it('renders empty and no-results states', async () => {
@@ -362,8 +393,19 @@ describe('AccountsPage', () => {
     const component = fixture.componentInstance as unknown as {
       searchQuery: { set: (value: string) => void };
     };
-    component.searchQuery.set('missing');
+    component.searchQuery.set('999');
     fixture.detectChanges();
+    httpMock.expectOne(
+      (candidate) =>
+        candidate.url === `${apiBaseUrl}/accounts` &&
+        candidate.params.get('search') === '999'
+    ).flush({
+      data: {
+        accounts: [],
+        hasMore: false
+      }
+    });
+    await settle(fixture);
 
     expect(fixture.nativeElement.textContent).toContain('No account matches the filters.');
   });
@@ -391,7 +433,7 @@ describe('AccountsPage', () => {
       (candidate) =>
         candidate.url === `${apiBaseUrl}/accounts` &&
         candidate.params.get('cursor') === 'NEXT' &&
-        candidate.params.get('limit') === '200'
+        candidate.params.get('limit') === '100'
     );
 
     request.flush({
@@ -413,6 +455,54 @@ describe('AccountsPage', () => {
 
     expect(fixture.nativeElement.textContent).toContain('Clients');
     expect(fixture.nativeElement.textContent).toContain('Ventes de marchandises');
+  });
+
+  it('preserves server-backed class and status filters when loading more', async () => {
+    flushAccounts(httpMock, apiBaseUrl, [accountFixture()], {
+      hasMore: false
+    });
+    await settle(fixture);
+
+    const component = fixture.componentInstance as unknown as {
+      updateClassFilter: (value: number) => void;
+      updateStatusFilter: (value: 'INACTIVE') => void;
+      loadMoreAccounts: () => Promise<void>;
+    };
+    component.updateClassFilter(4);
+    component.updateStatusFilter('INACTIVE');
+    fixture.detectChanges();
+
+    const filteredRequest = httpMock.expectOne(
+      (candidate) =>
+        candidate.url === `${apiBaseUrl}/accounts` &&
+        candidate.params.get('class') === '4' &&
+        candidate.params.get('active') === 'false'
+    );
+    filteredRequest.flush({
+      data: {
+        accounts: [accountFixture({ isActive: false })],
+        hasMore: true,
+        nextCursor: 'FILTERED-NEXT'
+      }
+    });
+    await settle(fixture);
+
+    const loadMorePromise = component.loadMoreAccounts();
+    const nextRequest = httpMock.expectOne(
+      (candidate) =>
+        candidate.url === `${apiBaseUrl}/accounts` &&
+        candidate.params.get('cursor') === 'FILTERED-NEXT' &&
+        candidate.params.get('class') === '4' &&
+        candidate.params.get('active') === 'false' &&
+        candidate.params.get('limit') === '100'
+    );
+    nextRequest.flush({
+      data: {
+        accounts: [],
+        hasMore: false
+      }
+    });
+    await loadMorePromise;
   });
 
   it('creates an account from the dialog and refreshes the list without navigation', async () => {

@@ -68,6 +68,7 @@ describe('AccountingApi', () => {
 
   it('sends server-backed account search and pagination parameters', async () => {
     const promise = api.listAccounts({
+      active: false,
       activeOnly: true,
       class: 4,
       cursor: 'next-page',
@@ -76,6 +77,7 @@ describe('AccountingApi', () => {
     });
     const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/accounts`);
 
+    expect(request.request.params.get('active')).toBe('false');
     expect(request.request.params.get('activeOnly')).toBe('true');
     expect(request.request.params.get('class')).toBe('4');
     expect(request.request.params.get('cursor')).toBe('next-page');
@@ -670,26 +672,37 @@ describe('AccountingApi', () => {
   });
 
   it('validates the six-column trial balance and preserves the response message', async () => {
-    const promise = api.getTrialBalance('2026');
+    const promise = api.getTrialBalance({
+      year: '2026',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      accountPrefix: '411',
+      hideZeroMovement: true
+    });
     const request = httpMock.expectOne(
       (candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`
     );
 
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('year')).toBe('2026');
+    expect(request.request.params.get('startDate')).toBe('2026-01-01');
+    expect(request.request.params.get('endDate')).toBe('2026-12-31');
+    expect(request.request.params.get('accountPrefix')).toBe('411');
+    expect(request.request.params.get('hideZeroMovement')).toBe('true');
     request.flush({
       message: 'Balance récupérée.',
       data: {
         rows: [
           {
             PK: 'ORG#technical',
-            accountId: '41100000',
+            accountCode: '41100000',
+            accountLabel: 'Clients',
             openingDebit: 1000,
             openingCredit: 0,
             movementDebit: 500,
             movementCredit: 200,
-            finalDebit: 1300,
-            finalCredit: 0
+            closingDebit: 1300,
+            closingCredit: 0
           }
         ],
         totals: {
@@ -697,8 +710,17 @@ describe('AccountingApi', () => {
           openingCredit: 0,
           movementDebit: 500,
           movementCredit: 200,
-          finalDebit: 1300,
-          finalCredit: 0
+          closingDebit: 1300,
+          closingCredit: 0,
+          isMovementBalanced: false,
+          isClosingBalanced: false,
+          movementDifference: 300,
+          closingDifference: 1300
+        },
+        period: {
+          fiscalYear: '2026',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31'
         }
       }
     });
@@ -706,13 +728,14 @@ describe('AccountingApi', () => {
     await expect(promise).resolves.toEqual({
       rows: [
         {
-          accountId: '41100000',
+          accountCode: '41100000',
+          accountLabel: 'Clients',
           openingDebit: 1000,
           openingCredit: 0,
           movementDebit: 500,
           movementCredit: 200,
-          finalDebit: 1300,
-          finalCredit: 0
+          closingDebit: 1300,
+          closingCredit: 0
         }
       ],
       totals: {
@@ -720,11 +743,135 @@ describe('AccountingApi', () => {
         openingCredit: 0,
         movementDebit: 500,
         movementCredit: 200,
-        finalDebit: 1300,
-        finalCredit: 0
+        closingDebit: 1300,
+        closingCredit: 0,
+        isMovementBalanced: false,
+        isClosingBalanced: false,
+        movementDifference: 300,
+        closingDifference: 1300
+      },
+      period: {
+        fiscalYear: '2026',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31'
       },
       message: 'Balance récupérée.'
     });
+  });
+
+  it('normalizes the deployed annual trial-balance response during rolling deployment', async () => {
+    const promise = api.getTrialBalance({
+      year: '2026',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31'
+    });
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`
+    );
+
+    request.flush({
+      message: 'Balance récupérée.',
+      data: {
+        rows: [
+          {
+            accountId: '40110000',
+            openingDebit: 0,
+            openingCredit: 0,
+            movementDebit: 150000,
+            movementCredit: 150000,
+            finalDebit: 0,
+            finalCredit: 0
+          },
+          {
+            accountId: '70110000',
+            openingDebit: 0,
+            openingCredit: 0,
+            movementDebit: 0,
+            movementCredit: 150000,
+            finalDebit: 0,
+            finalCredit: 150000
+          }
+        ],
+        totals: {
+          openingDebit: 0,
+          openingCredit: 0,
+          movementDebit: 150000,
+          movementCredit: 300000,
+          finalDebit: 0,
+          finalCredit: 150000
+        }
+      }
+    });
+
+    await expect(promise).resolves.toEqual({
+      rows: [
+        {
+          accountCode: '40110000',
+          accountLabel: '40110000',
+          openingDebit: 0,
+          openingCredit: 0,
+          movementDebit: 150000,
+          movementCredit: 150000,
+          closingDebit: 0,
+          closingCredit: 0
+        },
+        {
+          accountCode: '70110000',
+          accountLabel: '70110000',
+          openingDebit: 0,
+          openingCredit: 0,
+          movementDebit: 0,
+          movementCredit: 150000,
+          closingDebit: 0,
+          closingCredit: 150000
+        }
+      ],
+      totals: {
+        openingDebit: 0,
+        openingCredit: 0,
+        movementDebit: 150000,
+        movementCredit: 300000,
+        closingDebit: 0,
+        closingCredit: 150000,
+        isMovementBalanced: false,
+        isClosingBalanced: false,
+        movementDifference: -150000,
+        closingDifference: -150000
+      },
+      period: {
+        fiscalYear: '2026',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31'
+      },
+      message: 'Balance récupérée.'
+    });
+  });
+
+  it('rejects a legacy response for a partial period instead of returning false annual data', async () => {
+    const promise = api.getTrialBalance({
+      year: '2026',
+      startDate: '2026-02-01',
+      endDate: '2026-02-28'
+    });
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`
+    );
+
+    request.flush({
+      data: {
+        rows: [],
+        totals: {
+          openingDebit: 0,
+          openingCredit: 0,
+          movementDebit: 0,
+          movementCredit: 0,
+          finalDebit: 0,
+          finalCredit: 0
+        }
+      }
+    });
+
+    await expect(promise).rejects.toMatchObject({ name: 'ZodError' });
   });
 
   it('loads only a journal-specific paginated journal book', async () => {

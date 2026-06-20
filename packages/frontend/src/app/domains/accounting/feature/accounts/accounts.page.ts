@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -29,8 +29,7 @@ import { AccountDialogComponent } from './account-dialog.component';
 import { DisableAccountDialogComponent } from './disable-account-dialog.component';
 
 type ClassFilter = 'ALL' | number;
-type NatureFilter = 'ALL' | AccountDto['accountNature'];
-type ThirdPartyFilter = 'ALL' | 'YES' | 'NO';
+type StatusFilter = 'ALL' | 'ACTIVE' | 'INACTIVE';
 type AccountTableColumnId =
   | 'code'
   | 'name'
@@ -41,7 +40,8 @@ type AccountTableColumnId =
   | 'flags'
   | 'actions';
 
-const ACCOUNT_PAGE_SIZE = 200;
+const ACCOUNT_PAGE_SIZE = 100;
+const ACCOUNT_SEARCH_DEBOUNCE_MS = 300;
 const ACCOUNTING_ACCOUNTS_TABLE_ID = 'accounting.accounts';
 const ACCOUNT_TABLE_COLUMNS: LiassTableColumnPreference[] = [
   { id: 'code', labelKey: 'ACCOUNTING.ACCOUNTS.TABLE.CODE', required: true },
@@ -77,17 +77,17 @@ const ACCOUNT_TABLE_COLUMNS: LiassTableColumnPreference[] = [
   ],
   templateUrl: './accounts.page.html'
 })
-export class AccountsPage {
+export class AccountsPage implements OnDestroy {
   private readonly accountingApi = inject(AccountingApi);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly dialog = inject(MatDialog);
   private readonly queryClient = inject(QueryClient);
 
   protected readonly classCodes = [1, 2, 3, 4, 5, 6, 7, 8] as const;
+  protected readonly searchInput = signal('');
   protected readonly searchQuery = signal('');
   protected readonly classFilter = signal<ClassFilter>('ALL');
-  protected readonly natureFilter = signal<NatureFilter>('ALL');
-  protected readonly thirdPartyFilter = signal<ThirdPartyFilter>('ALL');
+  protected readonly statusFilter = signal<StatusFilter>('ALL');
   protected readonly extraPages = signal<PaginatedResult<AccountDto>[]>([]);
   protected readonly localAccountUpserts = signal<AccountDto[]>([]);
   protected readonly loadMoreError = signal(false);
@@ -96,9 +96,10 @@ export class AccountsPage {
   protected readonly visibleColumnIds = signal(
     loadTablePreferences(ACCOUNTING_ACCOUNTS_TABLE_ID, ACCOUNT_TABLE_COLUMNS)
   );
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected readonly accountsQuery = injectQuery(() =>
-    this.accountingQueries.listAccounts({ limit: ACCOUNT_PAGE_SIZE })
+    this.accountingQueries.listAccounts(this.listRequest())
   );
 
   protected readonly allAccounts = computed(() => [
@@ -111,32 +112,29 @@ export class AccountsPage {
     )
   ]);
 
-  protected readonly thirdPartyAccountsCount = computed(
-    () => this.allAccounts().filter((account) => account.isThirdPartyAccount).length
-  );
-
   protected readonly filteredAccounts = computed(() => {
-    const query = normalizeSearch(this.searchQuery());
+    const query = this.searchQuery();
     const classFilter = this.classFilter();
-    const natureFilter = this.natureFilter();
-    const thirdPartyFilter = this.thirdPartyFilter();
+    const statusFilter = this.statusFilter();
 
     return this.allAccounts().filter((account) => {
       const matchesClass = classFilter === 'ALL' || account.classCode === classFilter;
-      const matchesNature = natureFilter === 'ALL' || account.accountNature === natureFilter;
-      const matchesThirdParty =
-        thirdPartyFilter === 'ALL' ||
-        (thirdPartyFilter === 'YES' && account.isThirdPartyAccount) ||
-        (thirdPartyFilter === 'NO' && !account.isThirdPartyAccount);
-      const searchable = normalizeSearch(
-        `${account.accountId} ${account.accountName} ${account.financialStatementCode}`
-      );
+      const matchesStatus =
+        statusFilter === 'ALL' ||
+        (statusFilter === 'ACTIVE' && account.isActive !== false) ||
+        (statusFilter === 'INACTIVE' && account.isActive === false);
 
-      return matchesClass && matchesNature && matchesThirdParty && (!query || searchable.includes(query));
+      return matchesClass && matchesStatus && (!query || account.accountId.startsWith(query));
     });
   });
 
   protected readonly hasLoadedAccounts = computed(() => this.allAccounts().length > 0);
+  protected readonly hasActiveFilters = computed(
+    () =>
+      !!this.searchQuery() ||
+      this.classFilter() !== 'ALL' ||
+      this.statusFilter() !== 'ALL'
+  );
 
   protected readonly nextCursor = computed(() => {
     const extraPages = this.extraPages();
@@ -153,14 +151,49 @@ export class AccountsPage {
   });
 
   protected updateSearch(event: Event): void {
-    this.searchQuery.set((event.target as HTMLInputElement).value);
+    const input = event.target as HTMLInputElement;
+    const value = input.value.replace(/\D/g, '').slice(0, 8);
+
+    input.value = value;
+    this.searchInput.set(value);
+
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+
+    this.searchTimer = setTimeout(() => {
+      this.searchQuery.set(value);
+      this.resetPagination();
+    }, ACCOUNT_SEARCH_DEBOUNCE_MS);
+  }
+
+  protected updateClassFilter(value: ClassFilter): void {
+    this.classFilter.set(value);
+    this.resetPagination();
+  }
+
+  protected updateStatusFilter(value: StatusFilter): void {
+    this.statusFilter.set(value);
+    this.resetPagination();
   }
 
   protected clearFilters(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+      this.searchTimer = null;
+    }
+
+    this.searchInput.set('');
     this.searchQuery.set('');
     this.classFilter.set('ALL');
-    this.natureFilter.set('ALL');
-    this.thirdPartyFilter.set('ALL');
+    this.statusFilter.set('ALL');
+    this.resetPagination();
+  }
+
+  ngOnDestroy(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
   }
 
   protected isColumnVisible(columnId: AccountTableColumnId): boolean {
@@ -214,8 +247,8 @@ export class AccountsPage {
 
     try {
       const page = await this.accountingApi.listAccounts({
+        ...this.listRequest(),
         cursor,
-        limit: ACCOUNT_PAGE_SIZE
       });
       this.extraPages.update((pages) => [...pages, page]);
     } catch {
@@ -318,6 +351,21 @@ export class AccountsPage {
     }
   }
 
+  private listRequest() {
+    return {
+      limit: ACCOUNT_PAGE_SIZE,
+      ...(this.searchQuery() ? { search: this.searchQuery() } : {}),
+      ...(this.classFilter() !== 'ALL' ? { class: this.classFilter() } : {}),
+      ...(this.statusFilter() === 'ACTIVE' ? { active: true } : {}),
+      ...(this.statusFilter() === 'INACTIVE' ? { active: false } : {})
+    };
+  }
+
+  private resetPagination(): void {
+    this.extraPages.set([]);
+    this.loadMoreError.set(false);
+  }
+
   private upsertAccountCache(account: AccountDto): void {
     this.queryClient.setQueriesData<PaginatedResult<AccountDto>>(
       { queryKey: this.accountingQueries.accountsRootQueryKey() },
@@ -350,12 +398,4 @@ function mergeAccounts(baseAccounts: AccountDto[], upserts: AccountDto[]): Accou
   return [...accountsById.values()].sort((left, right) =>
     left.accountId.localeCompare(right.accountId)
   );
-}
-
-function normalizeSearch(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim();
 }

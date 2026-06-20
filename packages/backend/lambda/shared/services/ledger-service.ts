@@ -51,6 +51,7 @@ export interface ListAccountsOptions {
   cursor?: string;
   search?: string;
   classCode?: number;
+  active?: boolean;
   activeOnly?: boolean;
 }
 
@@ -223,6 +224,7 @@ export class LedgerService {
           line.credit || 0,
           normalizedJournalCode,
           userId,
+          entryDate,
         ),
       );
 
@@ -689,6 +691,7 @@ export class LedgerService {
           line.credit || 0,
           normalizedJournalCode,
           userId,
+          data.entryDate,
         ),
       );
     }
@@ -1029,6 +1032,7 @@ export class LedgerService {
       cursor,
       search,
       classCode,
+      active,
       activeOnly = false,
     } = options || {};
     const normalizedSearch = search?.trim();
@@ -1047,6 +1051,7 @@ export class LedgerService {
     const exclusiveStartKey = LedgerService.decodeCursor(cursor);
     const accountPrefix =
       normalizedSearch ?? (classCode ? String(classCode) : "");
+    const activeFilter = active ?? (activeOnly ? true : undefined);
 
     const result = await dynamoClient.send(
       new QueryCommand({
@@ -1055,15 +1060,16 @@ export class LedgerService {
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.orgKey(orgId),
           ":sk": `${KeyFactory.accountPrefix()}${accountPrefix}`,
-          ...(activeOnly ? { ":active": true } : {}),
+          ...(activeFilter !== undefined ? { ":active": activeFilter } : {}),
         }),
-        ...(activeOnly
+        ...(activeFilter !== undefined
           ? {
               ExpressionAttributeNames: {
                 "#isActive": "isActive",
               },
-              FilterExpression:
-                "attribute_not_exists(#isActive) OR #isActive = :active",
+              FilterExpression: activeFilter
+                ? "attribute_not_exists(#isActive) OR #isActive = :active"
+                : "#isActive = :active",
             }
           : {}),
         Limit: limit,
@@ -1255,6 +1261,22 @@ export class LedgerService {
     input: GeneralLedgerQuery,
   ): Promise<GeneralLedgerDto> {
     const { fiscalYear, accountId, limit = 50, cursor } = input;
+    const hasPeriodFilter = !!input.startDate || !!input.endDate;
+    const fiscalYearRecord = hasPeriodFilter
+      ? await LedgerService.getFiscalYear(orgId, fiscalYear)
+      : null;
+    const startDate =
+      input.startDate ?? fiscalYearRecord?.startDate ?? `${fiscalYear}-01-01`;
+    const endDate =
+      input.endDate ?? fiscalYearRecord?.endDate ?? `${fiscalYear}-12-31`;
+
+    if (
+      fiscalYearRecord &&
+      (startDate < fiscalYearRecord.startDate || endDate > fiscalYearRecord.endDate)
+    ) {
+      throw new AppError(400, "ERROR_TRIAL_BALANCE_DATE_OUTSIDE_FISCAL_YEAR");
+    }
+
     const paddedAccountId = LedgerService.formatAccount(accountId);
     const accountBalance = await BalanceService.getAccountBalance(
       orgId,
@@ -1262,8 +1284,31 @@ export class LedgerService {
       paddedAccountId,
     );
 
-    const openingNet =
-      accountBalance.openingDebit - accountBalance.openingCredit;
+    const isFullFiscalYear =
+      !hasPeriodFilter ||
+      (startDate === fiscalYearRecord?.startDate &&
+        endDate === fiscalYearRecord?.endDate);
+    if (!isFullFiscalYear) {
+      BalanceService.assertPeriodDetailComplete(accountBalance);
+    }
+
+    let openingNet = accountBalance.openingDebit - accountBalance.openingCredit;
+    let selectedMovementNet = 0;
+    if (isFullFiscalYear) {
+      selectedMovementNet =
+        accountBalance.movementDebit - accountBalance.movementCredit;
+    } else {
+      for (const [date, movement] of Object.entries(
+        accountBalance.dailyMovements,
+      )) {
+        if (date < startDate) {
+          openingNet += movement.debit - movement.credit;
+        } else if (date <= endDate) {
+          selectedMovementNet += movement.debit - movement.credit;
+        }
+      }
+    }
+
     const continuation = LedgerService.decodeGeneralLedgerCursor(cursor);
     let exclusiveStartKey = continuation?.key;
     let runningBalance = continuation?.runningBalance ?? openingNet;
@@ -1276,13 +1321,17 @@ export class LedgerService {
           TableName: config.TABLE_NAME,
           IndexName: config.GSI1,
           KeyConditionExpression:
-            "GSI1PK = :gsi1pk AND begins_with(GSI1SK, :gsi1sk)",
+            "GSI1PK = :gsi1pk AND GSI1SK BETWEEN :from AND :to",
           ExpressionAttributeValues: marshall({
             ":gsi1pk": KeyFactory.gsi1PK(orgId),
-            ":gsi1sk": KeyFactory.gsi1SKPrefix(
+            ":from": `${KeyFactory.gsi1SKPrefix(
               paddedAccountId,
               fiscalYear,
-            ),
+            )}#DT#${startDate}#`,
+            ":to": `${KeyFactory.gsi1SKPrefix(
+              paddedAccountId,
+              fiscalYear,
+            )}#DT#${endDate}#\uffff`,
           }),
           Limit: Math.max(limit - movements.length, 1),
           ExclusiveStartKey: exclusiveStartKey,
@@ -1325,10 +1374,7 @@ export class LedgerService {
           runningBalance,
         })
       : undefined;
-    const finalBalance =
-      accountBalance.openingDebit +
-      accountBalance.movementDebit -
-      (accountBalance.openingCredit + accountBalance.movementCredit);
+    const finalBalance = openingNet + selectedMovementNet;
 
     return GeneralLedgerDtoSchema.parse({
       accountId: paddedAccountId,

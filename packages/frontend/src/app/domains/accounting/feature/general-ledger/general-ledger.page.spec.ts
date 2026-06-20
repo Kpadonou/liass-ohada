@@ -2,9 +2,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { of } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
@@ -107,11 +108,13 @@ const translations = {
 describe('GeneralLedgerPage', () => {
   let fixture: ComponentFixture<GeneralLedgerPage>;
   let httpMock: HttpTestingController;
+  let queryParams: Record<string, string>;
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
+    queryParams = {};
 
     await TestBed.configureTestingModule({
       imports: [
@@ -129,6 +132,12 @@ describe('GeneralLedgerPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useFactory: () => ({
+            queryParamMap: of(convertToParamMap(queryParams))
+          })
+        },
         provideTanStackQuery(
           new QueryClient({
             defaultOptions: {
@@ -205,6 +214,37 @@ describe('GeneralLedgerPage', () => {
     expect(text).toContain('Facture client');
     expect(text).toContain('125\u202f000');
     expect(text).toContain('150\u202f000');
+  });
+
+  it('preselects account and fiscal year from query params and loads the ledger automatically', async () => {
+    queryParams = {
+      account: '41100000',
+      year: '2025',
+      startDate: '2025-02-01',
+      endDate: '2025-03-31'
+    };
+    createPage();
+
+    const request = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`
+    );
+    expect(request.request.params.get('fiscalYear')).toBe('2025');
+    expect(request.request.params.get('accountId')).toBe('41100000');
+    expect(request.request.params.get('startDate')).toBe('2025-02-01');
+    expect(request.request.params.get('endDate')).toBe('2025-03-31');
+    request.flush(ledgerResponse());
+    await settle();
+
+    const accountInput = fixture.nativeElement.querySelector(
+      '[data-testid="general-ledger-account-select"] input'
+    ) as HTMLInputElement;
+    const yearInput = fixture.nativeElement.querySelector(
+      'input[readonly]'
+    ) as HTMLInputElement;
+
+    expect(accountInput.value).toBe('41100000');
+    expect(yearInput.value).toBe('2025');
+    expect(fixture.nativeElement.textContent).toContain('Facture client');
   });
 
   it('loads only the next backend page with the returned cursor', async () => {

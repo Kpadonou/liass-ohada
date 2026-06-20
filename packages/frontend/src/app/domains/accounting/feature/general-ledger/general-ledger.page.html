@@ -5,7 +5,7 @@
     [subtitle]="'ACCOUNTING.GENERAL_LEDGER.SUBTITLE' | transloco"
   />
 
-  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+  @if (!selectedFiscalYear()) {
     <liass-fiscal-year-required />
   } @else {
     <liass-card
@@ -16,7 +16,17 @@
         <mat-form-field appearance="outline">
           <mat-label>{{ 'ACCOUNTING.GENERAL_LEDGER.FILTERS.YEAR' | transloco }}</mat-label>
           <mat-icon matPrefix>event</mat-icon>
-          <input matInput readonly [value]="fiscalYearContext.activeYear()" />
+          <input matInput readonly [value]="selectedFiscalYear()" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.GENERAL_LEDGER.FILTERS.START_DATE' | transloco }}</mat-label>
+          <input matInput readonly type="date" [value]="selectedStartDate()" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.GENERAL_LEDGER.FILTERS.END_DATE' | transloco }}</mat-label>
+          <input matInput readonly type="date" [value]="selectedEndDate()" />
         </mat-form-field>
 
         <liass-account-search-select

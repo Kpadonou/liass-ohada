@@ -1,7 +1,12 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef
+} from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -9,10 +14,12 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router } from '@angular/router';
 import { type EntrySummaryDto } from '@liass-ohada/shared/accounting';
-import { TranslocoModule } from '@ngneat/transloco';
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
+import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { take } from 'rxjs';
 
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -44,6 +51,90 @@ const ENTRY_TABLE_COLUMNS: LiassTableColumnPreference[] = [
   { id: 'actions', labelKey: 'ACCOUNTING.ENTRIES.TABLE.ACTIONS', required: true }
 ];
 
+interface EntryActionConfirmationDialogData {
+  action: 'DELETE' | 'POST';
+  entryLabel: string;
+}
+
+@Component({
+  selector: 'liass-entry-action-confirmation-dialog',
+  imports: [LiassButtonComponent, MatDialogModule, MatIconModule, TranslocoModule],
+  template: `
+    <header class="px-6 pt-6">
+      <div class="flex items-start gap-3">
+        <span
+          class="inline-flex size-10 items-center justify-center rounded-app-control"
+          [class]="data.action === 'DELETE'
+            ? 'bg-danger-50 text-danger-600 dark:bg-rose-950/35 dark:text-rose-300'
+            : 'bg-warning-50 text-warning-600 dark:bg-amber-950/35 dark:text-amber-300'"
+        >
+          <mat-icon>{{ data.action === 'DELETE' ? 'delete_outline' : 'task_alt' }}</mat-icon>
+        </span>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.CONFIRMATIONS.EYEBROW' | transloco }}
+          </p>
+          <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+            {{
+              (data.action === 'DELETE'
+                ? 'ACCOUNTING.ENTRIES.CONFIRMATIONS.DELETE_TITLE'
+                : 'ACCOUNTING.ENTRIES.CONFIRMATIONS.POST_TITLE'
+              ) | transloco
+            }}
+          </h2>
+        </div>
+      </div>
+    </header>
+
+    <mat-dialog-content class="px-6 pb-0 pt-5">
+      <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {{
+          (data.action === 'DELETE'
+            ? 'ACCOUNTING.ENTRIES.CONFIRMATIONS.DELETE_MESSAGE'
+            : 'ACCOUNTING.ENTRIES.CONFIRMATIONS.POST_MESSAGE'
+          ) | transloco
+        }}
+      </p>
+      <p class="mt-3 rounded-app-card border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
+        {{ data.entryLabel }}
+      </p>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+      <liass-button variant="outline" tone="neutral" (pressed)="cancel()">
+        {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+      </liass-button>
+      <liass-button
+        variant="solid"
+        [tone]="data.action === 'DELETE' ? 'danger' : 'warning'"
+        [icon]="data.action === 'DELETE' ? 'delete_outline' : 'task_alt'"
+        (pressed)="confirm()"
+      >
+        {{
+          (data.action === 'DELETE'
+            ? 'ACCOUNTING.ENTRIES.ACTIONS.DELETE_DRAFT'
+            : 'ACCOUNTING.ENTRIES.ACTIONS.POST'
+          ) | transloco
+        }}
+      </liass-button>
+    </mat-dialog-actions>
+  `
+})
+export class EntryActionConfirmationDialogComponent {
+  protected readonly data = inject<EntryActionConfirmationDialogData>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject<
+    MatDialogRef<EntryActionConfirmationDialogComponent, boolean>
+  >(MatDialogRef);
+
+  protected cancel(): void {
+    this.dialogRef.close(false);
+  }
+
+  protected confirm(): void {
+    this.dialogRef.close(true);
+  }
+}
+
 @Component({
   selector: 'liass-entries-page',
   imports: [
@@ -69,8 +160,11 @@ export class EntriesPage {
   private readonly dialog = inject(MatDialog);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly accountingQueries = inject(AccountingQueries);
+  private readonly notification = inject(NotificationService);
+  private readonly queryClient = inject(QueryClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly currentYear = `${new Date().getFullYear()}`;
   protected readonly selectedYear = signal(`${this.fiscalYearContext.activeYear() ?? this.currentYear}`);
@@ -82,6 +176,7 @@ export class EntriesPage {
   protected readonly paginationState = signal<{ nextCursor?: string; hasMore?: boolean }>({});
   protected readonly loadingMore = signal(false);
   protected readonly loadMoreError = signal(false);
+  protected readonly pendingEntryAction = signal<string | null>(null);
   protected readonly visibleColumnIds = signal(
     loadTablePreferences(ACCOUNTING_ENTRIES_TABLE_ID, ENTRY_TABLE_COLUMNS)
   );
@@ -267,8 +362,32 @@ export class EntriesPage {
     await this.router.navigate(['/accounting/entries/new']);
   }
 
-  protected viewEntryFoundationNotice(): void {
-    // Entry detail is intentionally deferred to the next entries slice.
+  protected async viewEntry(entryId: string): Promise<void> {
+    await this.router.navigate(['/accounting/entries', entryId]);
+  }
+
+  protected async editEntry(entry: EntrySummaryDto): Promise<void> {
+    if (entry.status !== 'DRAFT') {
+      return;
+    }
+
+    await this.router.navigate(['/accounting/entries', entry.entryId, 'edit']);
+  }
+
+  protected confirmPostEntry(entry: EntrySummaryDto): void {
+    if (entry.status !== 'DRAFT' || this.pendingEntryAction()) {
+      return;
+    }
+
+    this.openEntryConfirmation('POST', entry);
+  }
+
+  protected confirmDeleteDraft(entry: EntrySummaryDto): void {
+    if (entry.status !== 'DRAFT' || this.pendingEntryAction()) {
+      return;
+    }
+
+    this.openEntryConfirmation('DELETE', entry);
   }
 
   protected formatAmount(amount: number): string {
@@ -291,6 +410,87 @@ export class EntriesPage {
     this.extraEntries.set([]);
     this.paginationState.set({});
     this.loadMoreError.set(false);
+  }
+
+  private openEntryConfirmation(
+    action: EntryActionConfirmationDialogData['action'],
+    entry: EntrySummaryDto
+  ): void {
+    this.dialog
+      .open(EntryActionConfirmationDialogComponent, {
+        autoFocus: 'first-tabbable',
+        data: {
+          action,
+          entryLabel: entry.label || entry.voucherNumber || entry.entryId
+        },
+        disableClose: true,
+        maxWidth: 'calc(100vw - 32px)',
+        panelClass: 'liass-dialog-panel',
+        restoreFocus: true,
+        width: '540px'
+      })
+      .afterClosed()
+      .pipe(take(1))
+      .subscribe((confirmed) => {
+        if (confirmed) {
+          void this.applyEntryAction(action, entry);
+        }
+      });
+  }
+
+  private async applyEntryAction(
+    action: EntryActionConfirmationDialogData['action'],
+    entry: EntrySummaryDto
+  ): Promise<void> {
+    const activeYear = this.fiscalYearContext.activeYear();
+
+    if (entry.status !== 'DRAFT' || !activeYear || this.pendingEntryAction()) {
+      if (!activeYear) {
+        this.notification.error(
+          this.transloco.translate('ACCOUNTING.ENTRIES.NOTIFICATIONS.FISCAL_YEAR_REQUIRED')
+        );
+      }
+      return;
+    }
+
+    this.pendingEntryAction.set(`${action}:${entry.entryId}`);
+
+    try {
+      const result = action === 'POST'
+        ? await this.accountingApi.postEntryDraft(entry.entryId, activeYear)
+        : await this.accountingApi.deleteEntryDraft(entry.entryId, activeYear);
+      const fallbackKey = action === 'POST'
+        ? 'ACCOUNTING.ENTRIES.NOTIFICATIONS.POSTED'
+        : 'ACCOUNTING.ENTRIES.NOTIFICATIONS.DRAFT_DELETED';
+
+      this.notification.success(result.message ?? this.transloco.translate(fallbackKey));
+
+      if (action === 'POST') {
+        this.extraEntries.update((entries) =>
+          entries.map((item) =>
+            item.entryId === entry.entryId ? { ...item, status: 'POSTED' } : item
+          )
+        );
+      } else {
+        this.extraEntries.update((entries) =>
+          entries.filter((item) => item.entryId !== entry.entryId)
+        );
+      }
+
+      await this.queryClient.invalidateQueries({
+        queryKey: this.accountingQueries.entriesRootQueryKey()
+      });
+    } catch (error) {
+      const fallbackKey = action === 'POST'
+        ? 'ACCOUNTING.ENTRIES.NOTIFICATIONS.POST_FAILED'
+        : 'ACCOUNTING.ENTRIES.NOTIFICATIONS.DELETE_FAILED';
+
+      this.notification.error(
+        safeMessageFromError(error) ?? this.transloco.translate(fallbackKey)
+      );
+    } finally {
+      this.pendingEntryAction.set(null);
+    }
   }
 
   private selectedStatusParam(): EntrySummaryDto['status'] | undefined {

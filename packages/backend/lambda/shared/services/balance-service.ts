@@ -1,4 +1,8 @@
-import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import {
+  BatchGetItemCommand,
+  GetItemCommand,
+  QueryCommand,
+} from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   AccountBalanceDto,
@@ -7,6 +11,7 @@ import {
 import { config } from "../config";
 import { dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
+import { AppError } from "../middleware/handler-wrapper";
 
 /**
  * Represent an aggregated balance for a specific account and fiscal year.
@@ -17,6 +22,7 @@ export interface AccountBalance {
   openingCredit: number;
   movementDebit: number;
   movementCredit: number;
+  dailyMovements: Record<string, { debit: number; credit: number }>;
   updatedAt?: string;
 }
 
@@ -39,12 +45,19 @@ export class BalanceService {
     credit: number,
     journalCode: string,
     userId: string,
+    entryDate: string,
   ): any {
     const isOpening = journalCode === "RAN";
 
     // On choisit dynamiquement les champs à incrémenter
     const debitField = isOpening ? "openingDebit" : "movementDebit";
     const creditField = isOpening ? "openingCredit" : "movementCredit";
+
+    const dailyDebitField = `dailyDebit_${entryDate.replaceAll("-", "_")}`;
+    const dailyCreditField = `dailyCredit_${entryDate.replaceAll("-", "_")}`;
+    const updateExpression = isOpening
+      ? "ADD #d :d, #c :c SET updatedAt = :now, createdAt = if_not_exists(createdAt, :now), createdBy = if_not_exists(createdBy, :userId), updatedBy = :userId, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year"
+      : "ADD #d :d, #c :c, #dailyDebit :d, #dailyCredit :c SET updatedAt = :now, createdAt = if_not_exists(createdAt, :now), createdBy = if_not_exists(createdBy, :userId), updatedBy = :userId, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year";
 
     return {
       Update: {
@@ -54,12 +67,17 @@ export class BalanceService {
           SK: KeyFactory.accountBalanceSK(accountId),
         }),
         // Utilisation de variables pour les noms de champs
-        UpdateExpression:
-          "ADD #d :d, #c :c SET updatedAt = :now, createdAt = if_not_exists(createdAt, :now), createdBy = if_not_exists(createdBy, :userId), updatedBy = :userId, entityType = :type, orgId = :orgId, accountId = :accId, #yr = :year",
+        UpdateExpression: updateExpression,
         ExpressionAttributeNames: {
           "#d": debitField,
           "#c": creditField,
           "#yr": "year",
+          ...(!isOpening
+            ? {
+                "#dailyDebit": dailyDebitField,
+                "#dailyCredit": dailyCreditField,
+              }
+            : {}),
         },
         ExpressionAttributeValues: marshall({
           ":d": debit,
@@ -104,6 +122,7 @@ export class BalanceService {
         openingCredit: 0,
         movementDebit: 0,
         movementCredit: 0,
+        dailyMovements: {},
         updatedAt: undefined,
       } as AccountBalance;
     }
@@ -116,6 +135,7 @@ export class BalanceService {
       openingCredit: data.openingCredit || 0,
       movementDebit: data.movementDebit || 0,
       movementCredit: data.movementCredit || 0,
+      dailyMovements: BalanceService.readDailyMovements(data),
       updatedAt: data.updatedAt,
     };
   }
@@ -152,6 +172,7 @@ export class BalanceService {
             openingCredit: data.openingCredit || 0,
             movementDebit: data.movementDebit || 0,
             movementCredit: data.movementCredit || 0,
+            dailyMovements: BalanceService.readDailyMovements(data),
             updatedAt: data.updatedAt,
           });
         }
@@ -160,6 +181,63 @@ export class BalanceService {
     } while (exclusiveStartKey);
 
     return balances;
+  }
+
+  static async getAccountLabels(
+    orgId: string,
+    accountIds: string[],
+  ): Promise<Map<string, string>> {
+    const labels = new Map<string, string>();
+
+    for (let offset = 0; offset < accountIds.length; offset += 100) {
+      let keys = accountIds.slice(offset, offset + 100).map((accountId) =>
+        marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(accountId),
+        }),
+      );
+
+      do {
+        const result = await dynamoClient.send(
+          new BatchGetItemCommand({
+            RequestItems: {
+              [config.TABLE_NAME]: {
+                Keys: keys,
+                ProjectionExpression: "accountId, accountName",
+              },
+            },
+          }),
+        );
+
+        for (const item of result.Responses?.[config.TABLE_NAME] || []) {
+          const account = unmarshall(item);
+          if (account.accountId && account.accountName) {
+            labels.set(account.accountId, account.accountName);
+          }
+        }
+
+        keys = result.UnprocessedKeys?.[config.TABLE_NAME]?.Keys || [];
+      } while (keys.length > 0);
+    }
+
+    return labels;
+  }
+
+  static assertPeriodDetailComplete(balance: AccountBalance): void {
+    const dailyTotals = Object.values(balance.dailyMovements).reduce(
+      (totals, movement) => ({
+        debit: totals.debit + movement.debit,
+        credit: totals.credit + movement.credit,
+      }),
+      { debit: 0, credit: 0 },
+    );
+
+    if (
+      dailyTotals.debit !== balance.movementDebit ||
+      dailyTotals.credit !== balance.movementCredit
+    ) {
+      throw new AppError(409, "ERROR_TRIAL_BALANCE_PERIOD_AGGREGATES_INCOMPLETE");
+    }
   }
 
   static toDto(balance: AccountBalance): AccountBalanceDto {
@@ -173,5 +251,25 @@ export class BalanceService {
       finalDebit: finalNet > 0 ? finalNet : 0,
       finalCredit: finalNet < 0 ? Math.abs(finalNet) : 0,
     });
+  }
+
+  private static readDailyMovements(
+    data: Record<string, unknown>,
+  ): Record<string, { debit: number; credit: number }> {
+    const movements: Record<string, { debit: number; credit: number }> = {};
+
+    for (const [attribute, value] of Object.entries(data)) {
+      const match = attribute.match(/^daily(Debit|Credit)_(\d{4})_(\d{2})_(\d{2})$/);
+      if (!match) {
+        continue;
+      }
+
+      const date = `${match[2]}-${match[3]}-${match[4]}`;
+      const movement = movements[date] ?? { debit: 0, credit: 0 };
+      movement[match[1] === "Debit" ? "debit" : "credit"] = Number(value) || 0;
+      movements[date] = movement;
+    }
+
+    return movements;
   }
 }

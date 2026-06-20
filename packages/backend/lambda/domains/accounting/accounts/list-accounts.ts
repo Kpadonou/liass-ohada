@@ -10,6 +10,7 @@ export const handler = createHandler(
       cursor: data.cursor,
       search: data.search,
       classCode: data.class,
+      active: data.active,
       activeOnly: data.activeOnly,
     });
 

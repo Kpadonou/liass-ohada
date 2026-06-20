@@ -174,4 +174,33 @@ describe("list-accounts handler", () => {
     expect(dynamoMock.commandCalls(QueryCommand)).toHaveLength(0);
     expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
+
+  test("filters inactive accounts while preserving Query pagination", async () => {
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [],
+      LastEvaluatedKey: {
+        PK: { S: "ORG#test-org" },
+        SK: { S: "ACC#49999999" },
+      },
+    });
+
+    const response = await handler(
+      createEvent({ class: "4", active: "false", limit: "100" }),
+    );
+    const body = parseResponse(response);
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+
+    expect(response.statusCode).toBe(200);
+    expect(queryInput.ExpressionAttributeValues).toEqual(
+      expect.objectContaining({
+        ":sk": { S: "ACC#4" },
+        ":active": { BOOL: false },
+      }),
+    );
+    expect(queryInput.FilterExpression).toBe("#isActive = :active");
+    expect(queryInput.Limit).toBe(100);
+    expect(body.data.hasMore).toBe(true);
+    expect(body.data.nextCursor).toEqual(expect.any(String));
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
 });

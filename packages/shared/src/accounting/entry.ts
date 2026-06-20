@@ -256,8 +256,34 @@ export const AccountEntriesResponseSchema = z.object({
 export const GeneralLedgerQuerySchema = z.object({
   fiscalYear: z.string().regex(/^\d{4}$/),
   accountId: z.string().regex(/^\d{2,8}$/),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
   cursor: z.string().optional(),
+}).superRefine((query, context) => {
+  if (query.startDate && !query.startDate.startsWith(`${query.fiscalYear}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must belong to the fiscal year",
+      path: ["startDate"],
+    });
+  }
+
+  if (query.endDate && !query.endDate.startsWith(`${query.fiscalYear}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "End date must belong to the fiscal year",
+      path: ["endDate"],
+    });
+  }
+
+  if (query.startDate && query.endDate && query.startDate > query.endDate) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must not be after end date",
+      path: ["endDate"],
+    });
+  }
 });
 
 export type GeneralLedgerQuery = z.infer<typeof GeneralLedgerQuerySchema>;
@@ -333,20 +359,79 @@ export type GeneralLedgerResponse = z.infer<
   typeof GeneralLedgerResponseSchema
 >;
 
-export const TrialBalanceQuerySchema = z.object({
-  year: z.string().regex(/^\d{4}$/),
-});
+export const TrialBalanceQuerySchema = z
+  .object({
+    year: z.string().regex(/^\d{4}$/),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    accountPrefix: z.string().trim().regex(/^\d{1,8}$/).optional(),
+    accountFrom: z.string().trim().regex(/^\d{1,8}$/).optional(),
+    accountTo: z.string().trim().regex(/^\d{1,8}$/).optional(),
+    accountClass: z.coerce.number().int().min(1).max(8).optional(),
+    hideZeroMovement: z
+      .preprocess(
+        (value) => {
+          if (value === "true") return true;
+          if (value === "false") return false;
+          return value;
+        },
+        z.boolean(),
+      )
+      .default(false),
+  })
+  .superRefine((query, context) => {
+    if (!query.startDate.startsWith(`${query.year}-`)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Start date must belong to the fiscal year",
+        path: ["startDate"],
+      });
+    }
+
+    if (!query.endDate.startsWith(`${query.year}-`)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "End date must belong to the fiscal year",
+        path: ["endDate"],
+      });
+    }
+
+    if (query.startDate > query.endDate) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Start date must not be after end date",
+        path: ["endDate"],
+      });
+    }
+
+    if (
+      query.accountFrom &&
+      query.accountTo &&
+      query.accountFrom.padEnd(8, "0") > query.accountTo.padEnd(8, "9")
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Account range start must not be after its end",
+        path: ["accountTo"],
+      });
+    }
+  });
 
 export type TrialBalanceQuery = z.infer<typeof TrialBalanceQuerySchema>;
 
 export const TrialBalanceLineDtoSchema = z.object({
-  accountId: z.string().regex(/^\d{8}$/),
+  accountCode: z.string().regex(/^\d{8}$/),
+  accountLabel: z.string().trim().min(1),
   openingDebit: z.number().int().nonnegative(),
   openingCredit: z.number().int().nonnegative(),
   movementDebit: z.number().int().nonnegative(),
   movementCredit: z.number().int().nonnegative(),
-  finalDebit: z.number().int().nonnegative(),
-  finalCredit: z.number().int().nonnegative(),
+  closingDebit: z.number().int().nonnegative(),
+  closingCredit: z.number().int().nonnegative(),
+}).refine((row) => row.openingDebit === 0 || row.openingCredit === 0, {
+  message: "Opening balance must be represented on one side only",
+}).refine((row) => row.closingDebit === 0 || row.closingCredit === 0, {
+  message: "Closing balance must be represented on one side only",
 });
 
 export type TrialBalanceLineDto = z.infer<
@@ -358,7 +443,23 @@ export const TrialBalanceRowDtoSchema = TrialBalanceLineDtoSchema;
 
 export const TrialBalanceDtoSchema = z.object({
   rows: z.array(TrialBalanceLineDtoSchema),
-  totals: TrialBalanceLineDtoSchema.omit({ accountId: true }),
+  totals: z.object({
+    openingDebit: z.number().int().nonnegative(),
+    openingCredit: z.number().int().nonnegative(),
+    movementDebit: z.number().int().nonnegative(),
+    movementCredit: z.number().int().nonnegative(),
+    closingDebit: z.number().int().nonnegative(),
+    closingCredit: z.number().int().nonnegative(),
+    isMovementBalanced: z.boolean(),
+    isClosingBalanced: z.boolean(),
+    movementDifference: z.number().int(),
+    closingDifference: z.number().int(),
+  }),
+  period: z.object({
+    fiscalYear: z.string().regex(/^\d{4}$/),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  }),
 });
 
 export type TrialBalanceDto = z.infer<typeof TrialBalanceDtoSchema>;

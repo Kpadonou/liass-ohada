@@ -10,6 +10,7 @@ import {
   type ListEntriesParams,
   type MatchingReportParams,
   type ThirdPartyLedgerParams,
+  type TrialBalanceParams,
   type UnletteredLinesParams
 } from './accounting.api';
 import { AccountingFiscalYearContextService } from './accounting-fiscal-year-context.service';
@@ -21,12 +22,13 @@ const NO_TENANT_SCOPE = 'no-active-tenant';
 
 type TenantScope = string;
 
-function normalizeListAccountsParams(options: ListAccountsParams = { limit: 200 }) {
+function normalizeListAccountsParams(options: ListAccountsParams = { limit: 100 }) {
   return {
     cursor: options.cursor ?? null,
     limit: options.limit ?? 200,
     ...(options.search ? { search: options.search.trim() } : {}),
     ...(options.class ? { class: options.class } : {}),
+    ...(options.active !== undefined ? { active: options.active } : {}),
     ...(options.activeOnly !== undefined ? { activeOnly: options.activeOnly } : {})
   };
 }
@@ -46,8 +48,23 @@ function normalizeGeneralLedgerParams(params: GeneralLedgerParams) {
   return {
     accountId: params.accountId,
     cursor: params.cursor ?? null,
+    endDate: params.endDate ?? null,
     fiscalYear: params.fiscalYear,
-    limit: params.limit ?? 50
+    limit: params.limit ?? 50,
+    startDate: params.startDate ?? null
+  };
+}
+
+function normalizeTrialBalanceParams(params: TrialBalanceParams) {
+  return {
+    accountClass: params.accountClass ?? null,
+    accountFrom: params.accountFrom?.trim() || null,
+    accountPrefix: params.accountPrefix?.trim() || null,
+    accountTo: params.accountTo?.trim() || null,
+    endDate: params.endDate,
+    hideZeroMovement: params.hideZeroMovement ?? false,
+    startDate: params.startDate,
+    year: params.year
   };
 }
 
@@ -64,7 +81,7 @@ function normalizeJournalBookParams(params: JournalBookParams) {
 export const accountingQueryKeys = {
   account: (tenantScope: TenantScope, accountId: string) =>
     ['accounting', tenantScope, 'accounts', accountId] as const,
-  accounts: (tenantScope: TenantScope, options: ListAccountsParams = { limit: 200 }) =>
+  accounts: (tenantScope: TenantScope, options: ListAccountsParams = { limit: 100 }) =>
     ['accounting', tenantScope, 'accounts', normalizeListAccountsParams(options)] as const,
   accountsRoot: (tenantScope: TenantScope) => ['accounting', tenantScope, 'accounts'] as const,
   entries: (tenantScope: TenantScope, params: ListEntriesParams) =>
@@ -86,8 +103,8 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'matching-report', params] as const,
   thirdPartyLedger: (tenantScope: TenantScope, params: ThirdPartyLedgerParams) =>
     ['accounting', tenantScope, 'third-party-ledger', params] as const,
-  trialBalance: (tenantScope: TenantScope, year: string) =>
-    ['accounting', tenantScope, 'trial-balance', year] as const,
+  trialBalance: (tenantScope: TenantScope, params: TrialBalanceParams) =>
+    ['accounting', tenantScope, 'trial-balance', normalizeTrialBalanceParams(params)] as const,
   unletteredLines: (tenantScope: TenantScope, params: UnletteredLinesParams) =>
     ['accounting', tenantScope, 'unlettered-lines', params] as const
 };
@@ -106,7 +123,7 @@ export class AccountingQueries {
     return this.authStore.activeWorkspaceOrgId() || NO_TENANT_SCOPE;
   }
 
-  accountsQueryKey(options: ListAccountsParams = { limit: 200 }) {
+  accountsQueryKey(options: ListAccountsParams = { limit: 100 }) {
     return accountingQueryKeys.accounts(this.tenantScope(), options);
   }
 
@@ -114,11 +131,15 @@ export class AccountingQueries {
     return accountingQueryKeys.accountsRoot(this.tenantScope());
   }
 
+  entriesRootQueryKey() {
+    return ['accounting', this.tenantScope(), 'entries'] as const;
+  }
+
   journalsQueryKey() {
     return accountingQueryKeys.journals(this.tenantScope());
   }
 
-  listAccounts(options: ListAccountsParams = { limit: 200 }) {
+  listAccounts(options: ListAccountsParams = { limit: 100 }) {
     return queryOptions({
       queryKey: this.accountsQueryKey(options),
       queryFn: () => this.accountingApi.listAccounts(options),
@@ -215,21 +236,31 @@ export class AccountingQueries {
     );
   }
 
-  trialBalance(year: string, enabled = true) {
+  trialBalance(params: TrialBalanceParams, enabled = true) {
     return queryOptions({
-      queryKey: accountingQueryKeys.trialBalance(this.tenantScope(), year),
-      queryFn: () => this.accountingApi.getTrialBalance(year),
-      enabled: enabled && /^\d{4}$/.test(year),
+      queryKey: accountingQueryKeys.trialBalance(this.tenantScope(), params),
+      queryFn: () => this.accountingApi.getTrialBalance(params),
+      enabled:
+        enabled &&
+        /^\d{4}$/.test(params.year) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(params.startDate) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(params.endDate),
+      refetchOnWindowFocus: false,
+      retry: false,
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 
   trialBalanceForActiveFiscalYear(enabled = true) {
-    const activeYear = this.fiscalYearContext.activeYear();
+    const fiscalYear = this.fiscalYearContext.activeFiscalYear();
 
     return this.trialBalance(
-      activeYear ? String(activeYear) : '',
-      enabled && !!activeYear
+      {
+        year: fiscalYear ? String(fiscalYear.year) : '',
+        startDate: fiscalYear?.startDate ?? '',
+        endDate: fiscalYear?.endDate ?? ''
+      },
+      enabled && !!fiscalYear
     );
   }
 

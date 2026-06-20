@@ -1,0 +1,267 @@
+<div class="space-y-6">
+  <div>
+    <liass-button
+      size="sm"
+      tone="neutral"
+      variant="ghost"
+      icon="arrow_back"
+      data-testid="entry-detail-back"
+      (pressed)="goBack()"
+    >
+      {{ 'ACCOUNTING.ENTRIES.DETAIL.BACK_TO_LIST' | transloco }}
+    </liass-button>
+  </div>
+
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.ENTRIES.DETAIL.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.ENTRIES.DETAIL.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.ENTRIES.DETAIL.SUBTITLE' | transloco"
+  />
+
+  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+    <liass-fiscal-year-required />
+  } @else if (entryQuery.isPending()) {
+    <div class="space-y-4" aria-busy="true" role="status">
+      <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+        {{ 'ACCOUNTING.ENTRIES.DETAIL.LOADING' | transloco }}
+      </p>
+      <liass-skeleton variant="block" />
+      <liass-skeleton variant="block" />
+      <liass-skeleton variant="block" />
+    </div>
+  } @else if (entryQuery.isError()) {
+    <div
+      class="rounded-app-card border p-6"
+      [class.border-amber-200]="isNotFound()"
+      [class.bg-amber-50]="isNotFound()"
+      [class.border-red-200]="!isNotFound()"
+      [class.bg-red-50]="!isNotFound()"
+      role="alert"
+    >
+      <p class="font-semibold text-slate-950">
+        {{
+          (isNotFound()
+            ? 'ACCOUNTING.ENTRIES.DETAIL.NOT_FOUND.TITLE'
+            : 'ACCOUNTING.ENTRIES.DETAIL.ERROR.TITLE'
+          ) | transloco
+        }}
+      </p>
+      <p class="mt-1 text-sm leading-6 text-slate-600">
+        {{
+          loadErrorMessage() ||
+            ((isNotFound()
+              ? 'ACCOUNTING.ENTRIES.DETAIL.NOT_FOUND.DESCRIPTION'
+              : 'ACCOUNTING.ENTRIES.DETAIL.ERROR.DESCRIPTION'
+            ) | transloco)
+        }}
+      </p>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <liass-button size="sm" tone="neutral" variant="outline" icon="arrow_back" (pressed)="goBack()">
+          {{ 'ACCOUNTING.ENTRIES.DETAIL.BACK_TO_LIST' | transloco }}
+        </liass-button>
+        @if (!isNotFound()) {
+          <liass-button size="sm" tone="danger" variant="outline" icon="refresh" (pressed)="retry()">
+            {{ 'COMMON.ACTIONS.RETRY' | transloco }}
+          </liass-button>
+        }
+      </div>
+    </div>
+  } @else if (entry(); as detail) {
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex items-center gap-3">
+        <liass-status-chip
+          [label]="'ACCOUNTING.ENTRIES.STATUS.' + detail.status | transloco"
+          [tone]="statusTone(detail.status)"
+        />
+        <span class="text-sm text-slate-500 dark:text-slate-400">
+          {{ detail.voucherNumber || detail.entryId }}
+        </span>
+      </div>
+      @if (detail.status === 'DRAFT') {
+        <liass-button
+          tone="info"
+          variant="outline"
+          icon="edit"
+          data-testid="entry-detail-edit"
+          (pressed)="editEntry()"
+        >
+          {{ 'ACCOUNTING.ENTRIES.DETAIL.ACTIONS.EDIT' | transloco }}
+        </liass-button>
+      }
+    </div>
+
+    <liass-card
+      [title]="'ACCOUNTING.ENTRIES.DETAIL.METADATA.TITLE' | transloco"
+      [description]="'ACCOUNTING.ENTRIES.DETAIL.METADATA.DESCRIPTION' | transloco"
+    >
+      <dl class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
+          <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.METADATA.YEAR' | transloco }}
+          </dt>
+          <dd class="mt-2 font-semibold text-slate-950 dark:text-white">{{ detail.year }}</dd>
+        </div>
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
+          <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.METADATA.DATE' | transloco }}
+          </dt>
+          <dd class="mt-2 font-semibold text-slate-950 dark:text-white">{{ detail.entryDate }}</dd>
+        </div>
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
+          <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.METADATA.JOURNAL' | transloco }}
+          </dt>
+          <dd class="mt-2 font-semibold text-slate-950 dark:text-white">{{ detail.journalCode }}</dd>
+        </div>
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
+          <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.METADATA.REFERENCE' | transloco }}
+          </dt>
+          <dd class="mt-2 font-semibold text-slate-950 dark:text-white">{{ detail.voucherNumber || '—' }}</dd>
+        </div>
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950 sm:col-span-2 xl:col-span-3">
+          <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.METADATA.LABEL' | transloco }}
+          </dt>
+          <dd class="mt-2 font-semibold text-slate-950 dark:text-white">{{ detail.label || '—' }}</dd>
+        </div>
+        <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
+          <dt class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.METADATA.TYPE' | transloco }}
+          </dt>
+          <dd class="mt-2 font-semibold text-slate-950 dark:text-white">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.TYPES.' + detail.entryType | transloco }}
+          </dd>
+        </div>
+      </dl>
+    </liass-card>
+
+    <div class="grid gap-4 sm:grid-cols-2">
+      <div class="rounded-app-card border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          {{ 'ACCOUNTING.ENTRIES.DETAIL.TOTALS.DEBIT' | transloco }}
+        </p>
+        <p class="mt-2 text-2xl font-semibold tabular-nums text-slate-950 dark:text-white">
+          {{ formatAmount(detail.totalDebit) }}
+        </p>
+      </div>
+      <div class="rounded-app-card border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+        <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+          {{ 'ACCOUNTING.ENTRIES.DETAIL.TOTALS.CREDIT' | transloco }}
+        </p>
+        <p class="mt-2 text-2xl font-semibold tabular-nums text-slate-950 dark:text-white">
+          {{ formatAmount(detail.totalCredit) }}
+        </p>
+      </div>
+    </div>
+
+    <liass-card
+      [title]="'ACCOUNTING.ENTRIES.DETAIL.LINES.TITLE' | transloco"
+      [description]="'ACCOUNTING.ENTRIES.DETAIL.LINES.DESCRIPTION' | transloco"
+    >
+      @if (detail.lines.length === 0) {
+        <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+          <p class="text-sm font-semibold text-slate-950 dark:text-white">
+            {{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.EMPTY' | transloco }}
+          </p>
+        </div>
+      } @else {
+        <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 md:block">
+          <table class="w-full min-w-[900px] border-collapse text-left">
+            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+              <tr>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.ACCOUNT' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.LABEL' | transloco }}</th>
+                <th class="px-4 py-3">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.THIRD_PARTY' | transloco }}</th>
+                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.DEBIT' | transloco }}</th>
+                <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.CREDIT' | transloco }}</th>
+                <th class="w-14 px-3 py-3 text-right">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.ACTIONS' | transloco }}</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+              @for (line of detail.lines; track line.lineId) {
+                <tr class="bg-white dark:bg-slate-900">
+                  <td class="px-4 py-4">
+                    <p class="font-semibold text-slate-950 dark:text-white">{{ line.accountId }}</p>
+                    @if (line.accountName) {
+                      <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ line.accountName }}</p>
+                    }
+                  </td>
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                    {{ line.label || line.description || '—' }}
+                  </td>
+                  <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-300">
+                    {{ line.thirdPartyId || '—' }}
+                  </td>
+                  <td class="px-4 py-4 text-right text-sm tabular-nums text-slate-700 dark:text-slate-300">
+                    {{ formatAmount(line.debit) }}
+                  </td>
+                  <td class="px-4 py-4 text-right text-sm tabular-nums text-slate-700 dark:text-slate-300">
+                    {{ formatAmount(line.credit) }}
+                  </td>
+                  <td class="px-3 py-4 text-right">
+                    <liass-button
+                      size="icon"
+                      tone="brand"
+                      variant="ghost"
+                      icon="menu_book"
+                      data-testid="entry-line-general-ledger"
+                      [ariaLabel]="'ACCOUNTING.ENTRIES.DETAIL.ACTIONS.VIEW_GENERAL_LEDGER' | transloco"
+                      [matTooltip]="'ACCOUNTING.ENTRIES.DETAIL.ACTIONS.VIEW_GENERAL_LEDGER' | transloco"
+                      [disabled]="!line.accountId || !detail.year"
+                      (pressed)="viewGeneralLedger(line, detail.year)"
+                    />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid gap-3 md:hidden">
+          @for (line of detail.lines; track line.lineId) {
+            <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <p class="font-semibold text-slate-950 dark:text-white">
+                {{ line.accountId }}
+                @if (line.accountName) {
+                  <span> · {{ line.accountName }}</span>
+                }
+              </p>
+              <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                {{ line.label || line.description || '—' }}
+              </p>
+              @if (line.thirdPartyId) {
+                <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  {{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.THIRD_PARTY' | transloco }} · {{ line.thirdPartyId }}
+                </p>
+              }
+              <dl class="mt-3 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <dt class="text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.DEBIT' | transloco }}</dt>
+                  <dd class="font-semibold tabular-nums text-slate-950 dark:text-white">{{ formatAmount(line.debit) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.ENTRIES.DETAIL.LINES.CREDIT' | transloco }}</dt>
+                  <dd class="font-semibold tabular-nums text-slate-950 dark:text-white">{{ formatAmount(line.credit) }}</dd>
+                </div>
+              </dl>
+              <div class="mt-4 flex justify-end">
+                <liass-button
+                  size="sm"
+                  tone="brand"
+                  variant="ghost"
+                  icon="menu_book"
+                  data-testid="entry-line-general-ledger-mobile"
+                  [disabled]="!line.accountId || !detail.year"
+                  (pressed)="viewGeneralLedger(line, detail.year)"
+                >
+                  {{ 'ACCOUNTING.ENTRIES.DETAIL.ACTIONS.VIEW_GENERAL_LEDGER' | transloco }}
+                </liass-button>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </liass-card>
+  }
+</div>

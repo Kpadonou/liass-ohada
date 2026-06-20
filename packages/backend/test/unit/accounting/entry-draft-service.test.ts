@@ -264,6 +264,15 @@ describe("LedgerService entry drafts", () => {
     expect(transaction.TransactItems?.[0].Update?.UpdateExpression).toContain("#status = :posted");
     expect(transaction.TransactItems?.filter((item) => item.Put)).toHaveLength(2);
     expect(transaction.TransactItems?.filter((item) => item.Update)).toHaveLength(3);
+    const balanceUpdates = transaction.TransactItems
+      ?.filter((item) => item.Update)
+      .slice(1)
+      .map((item) => item.Update);
+    expect(balanceUpdates).toHaveLength(2);
+    expect(balanceUpdates?.[0]?.ExpressionAttributeNames).toMatchObject({
+      "#dailyDebit": "dailyDebit_2026_01_15",
+      "#dailyCredit": "dailyCredit_2026_01_15",
+    });
     expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 

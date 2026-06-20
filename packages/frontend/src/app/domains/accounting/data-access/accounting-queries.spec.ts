@@ -19,6 +19,7 @@ describe('AccountingQueries', () => {
     listJournals: ReturnType<typeof vi.fn>;
   };
   let fiscalYearContext: {
+    activeFiscalYear: ReturnType<typeof vi.fn>;
     activeYear: ReturnType<typeof vi.fn>;
   };
   let authStore: {
@@ -41,6 +42,11 @@ describe('AccountingQueries', () => {
       listJournals: vi.fn()
     };
     fiscalYearContext = {
+      activeFiscalYear: vi.fn().mockReturnValue({
+        year: 2026,
+        startDate: '2026-01-01',
+        endDate: '2026-12-31'
+      }),
       activeYear: vi.fn().mockReturnValue(2026)
     };
     authStore = {
@@ -142,7 +148,7 @@ describe('AccountingQueries', () => {
       'accounting',
       'org-client',
       'accounts',
-      { cursor: null, limit: 200 }
+      { cursor: null, limit: 100 }
     ]);
   });
 
@@ -227,8 +233,10 @@ describe('AccountingQueries', () => {
       {
         accountId: '41100000',
         cursor: 'cursor-2',
+        endDate: null,
         fiscalYear: '2026',
-        limit: 25
+        limit: 25,
+        startDate: null
       }
     ]);
     expect(options.enabled).toBe(true);
@@ -252,13 +260,28 @@ describe('AccountingQueries', () => {
       'accounting',
       'org-test',
       'trial-balance',
-      '2026'
+      {
+        accountClass: null,
+        accountFrom: null,
+        accountPrefix: null,
+        accountTo: null,
+        endDate: '2026-12-31',
+        hideZeroMovement: false,
+        startDate: '2026-01-01',
+        year: '2026'
+      }
     ]);
     expect(options.enabled).toBe(true);
+    expect(options.retry).toBe(false);
+    expect(options.refetchOnWindowFocus).toBe(false);
 
     await (options.queryFn as () => Promise<unknown>)();
 
-    expect(accountingApi.getTrialBalance).toHaveBeenCalledWith('2026');
+    expect(accountingApi.getTrialBalance).toHaveBeenCalledWith({
+      year: '2026',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31'
+    });
   });
 
   it('requires one journal for journal-book queries and never creates a global key', async () => {
@@ -307,6 +330,7 @@ describe('AccountingQueries', () => {
     expect(
       queries.generalLedgerForActiveFiscalYear({ accountId: '41100000' }).enabled
     ).toBe(false);
+    fiscalYearContext.activeFiscalYear.mockReturnValue(null);
     expect(queries.trialBalanceForActiveFiscalYear().enabled).toBe(false);
     expect(
       queries.journalBookForActiveFiscalYear({ journalCode: 'VE' }).enabled

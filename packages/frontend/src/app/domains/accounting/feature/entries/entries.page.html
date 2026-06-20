@@ -175,11 +175,45 @@
                         type="button"
                         class="liass-menu-action liass-menu-action-neutral"
                         data-testid="entry-view-action"
-                        (click)="viewEntryFoundationNotice()"
+                        (click)="viewEntry(entry.entryId)"
                       >
                         <mat-icon>visibility</mat-icon>
                         <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.VIEW_DETAILS' | transloco }}</span>
                       </button>
+                      @if (entry.status === 'DRAFT') {
+                        <button
+                          mat-menu-item
+                          type="button"
+                          class="liass-menu-action liass-menu-action-info"
+                          data-testid="entry-edit-action"
+                          (click)="editEntry(entry)"
+                        >
+                          <mat-icon>edit</mat-icon>
+                          <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.EDIT' | transloco }}</span>
+                        </button>
+                        <button
+                          mat-menu-item
+                          type="button"
+                          class="liass-menu-action liass-menu-action-warning"
+                          data-testid="entry-post-action"
+                          [disabled]="!!pendingEntryAction()"
+                          (click)="confirmPostEntry(entry)"
+                        >
+                          <mat-icon>task_alt</mat-icon>
+                          <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.POST' | transloco }}</span>
+                        </button>
+                        <button
+                          mat-menu-item
+                          type="button"
+                          class="liass-menu-action liass-menu-action-danger"
+                          data-testid="entry-delete-action"
+                          [disabled]="!!pendingEntryAction()"
+                          (click)="confirmDeleteDraft(entry)"
+                        >
+                          <mat-icon>delete_outline</mat-icon>
+                          <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.DELETE_DRAFT' | transloco }}</span>
+                        </button>
+                      }
                     </mat-menu>
                   </td>
                 </tr>
@@ -203,9 +237,35 @@
                 <span>{{ 'ACCOUNTING.ENTRIES.TABLE.CREDIT' | transloco }}: <strong>{{ formatAmount(entry.totalCredit) }}</strong></span>
               </div>
               <div class="mt-4 flex justify-end">
-                <liass-button size="sm" tone="neutral" variant="outline" icon="visibility" (pressed)="viewEntryFoundationNotice()">
-                  {{ 'ACCOUNTING.ENTRIES.ACTIONS.VIEW_DETAILS' | transloco }}
-                </liass-button>
+                <button
+                  class="liass-focus-ring inline-flex size-9 items-center justify-center rounded-app-control text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                  matIconButton
+                  type="button"
+                  [matMenuTriggerFor]="mobileEntryActionsMenu"
+                  [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
+                >
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #mobileEntryActionsMenu="matMenu" xPosition="before">
+                  <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-neutral" (click)="viewEntry(entry.entryId)">
+                    <mat-icon>visibility</mat-icon>
+                    <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.VIEW_DETAILS' | transloco }}</span>
+                  </button>
+                  @if (entry.status === 'DRAFT') {
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" (click)="editEntry(entry)">
+                      <mat-icon>edit</mat-icon>
+                      <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.EDIT' | transloco }}</span>
+                    </button>
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-warning" [disabled]="!!pendingEntryAction()" (click)="confirmPostEntry(entry)">
+                      <mat-icon>task_alt</mat-icon>
+                      <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.POST' | transloco }}</span>
+                    </button>
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-danger" [disabled]="!!pendingEntryAction()" (click)="confirmDeleteDraft(entry)">
+                      <mat-icon>delete_outline</mat-icon>
+                      <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.DELETE_DRAFT' | transloco }}</span>
+                    </button>
+                  }
+                </mat-menu>
               </div>
             </article>
           }

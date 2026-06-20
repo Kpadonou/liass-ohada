@@ -147,6 +147,7 @@ export class ClosingService {
           l.credit,
           journalCode,
           userId,
+          entryDate,
         ),
       );
     });

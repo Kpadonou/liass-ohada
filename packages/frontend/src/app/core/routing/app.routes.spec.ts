@@ -205,4 +205,18 @@ describe('routes', () => {
     expect(newEntryRoute?.data?.['titleKey']).toBe('ACCOUNTING.ENTRIES.FORM.NEW_TITLE');
     expect(editEntryRoute?.data?.['titleKey']).toBe('ACCOUNTING.ENTRIES.FORM.EDIT_TITLE');
   });
+
+  it('registers the dedicated accounting entry detail route', async () => {
+    const shell = shellRoute();
+    const detailEntryRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/entries/:entryId'
+    );
+    const component = await detailEntryRoute?.loadComponent?.();
+    const { EntryDetailPage } = await import(
+      '../../domains/accounting/feature/entry-detail/entry-detail.page'
+    );
+
+    expect(component).toBe(EntryDetailPage);
+    expect(detailEntryRoute?.data?.['titleKey']).toBe('ACCOUNTING.ENTRIES.DETAIL.TITLE');
+  });
 });

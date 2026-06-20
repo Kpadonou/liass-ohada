@@ -683,7 +683,7 @@
         "LABEL": "Compte",
         "LOADING": "Recherche des comptes...",
         "LOAD_MORE": "Charger plus de comptes",
-        "MIN_CHARACTERS": "Saisissez au moins 2 caractères pour rechercher un compte par libellé.",
+        "MIN_CHARACTERS": "Saisissez un ou plusieurs chiffres pour rechercher un compte.",
         "NO_RESULTS": "Aucun compte trouvé",
         "SEARCH_PLACEHOLDER": "Rechercher par numéro de compte",
         "SELECTED_NOT_FOUND": "Le compte sélectionné est introuvable.",
@@ -741,11 +741,14 @@
       "FILTERS": {
         "ALL_CLASSES": "Toutes les classes",
         "ALL_NATURES": "Toutes les natures",
+        "ALL_STATUSES": "Tous les statuts",
         "ALL_THIRD_PARTY": "Tous les comptes",
         "CLASS": "Classe",
         "NATURE": "Nature",
         "NON_THIRD_PARTY": "Comptes généraux",
-        "SEARCH": "Rechercher",
+        "SEARCH": "Rechercher par numéro de compte",
+        "SEARCH_PLACEHOLDER": "Ex. 4, 411 ou 521",
+        "STATUS": "Statut",
         "THIRD_PARTY": "Tiers",
         "THIRD_PARTY_ONLY": "Comptes tiers"
       },
@@ -770,6 +773,9 @@
         "TOTAL": "Comptes chargés",
         "VISIBLE": "Visibles"
       },
+      "PAGINATION": {
+        "DISPLAYED": "Comptes affichés"
+      },
       "NATURE": {
         "BALANCE": "Bilan",
         "INCOME": "Gestion"
@@ -778,12 +784,12 @@
         "ACTIVE": "Actif",
         "INACTIVE": "Inactif"
       },
-      "SUBTITLE": "Consultez les comptes SYSCOHADA de l’organisation, filtrez par classe, nature et comptes auxiliaires.",
+      "SUBTITLE": "Gérez le plan SYSCOHADA par pages, avec recherche par préfixe de numéro de compte.",
       "TABLE": {
         "ACTIONS": "Actions",
         "CLASS": "Classe",
         "CODE": "Compte",
-        "DESCRIPTION": "Liste consultable du plan comptable de l’organisation active.",
+        "DESCRIPTION": "Table de gestion paginée. Les champs de saisie utilisent un sélecteur distant séparé et ne chargent jamais tout le plan.",
         "FLAGS": "Contrôles",
         "NAME": "Libellé",
         "NATURE": "Nature",
@@ -963,14 +969,78 @@
       "ACTIONS": {
         "ADD_LINE": "Ajouter une ligne",
         "CLEAR_FILTERS": "Réinitialiser",
+        "DELETE_DRAFT": "Supprimer le brouillon",
+        "EDIT": "Modifier",
         "LOAD_MORE": "Charger plus",
         "NEW_ENTRY": "Nouvelle écriture",
         "NEW_ENTRY_NOTICE": "La saisie complète des écritures sera ouverte dans un parcours dédié. La liste reste disponible pour préparer le contrôle des écritures de l’exercice.",
         "POST": "Comptabiliser",
         "REMOVE_LINE": "Retirer",
         "RETRY": "Réessayer",
+        "VIEW_GENERAL_LEDGER": "Voir grand livre",
         "VIEW_DETAILS": "Voir détail",
         "VIEW_DETAILS_NOTICE": "Le détail d’écriture sera disponible dans la prochaine étape du lot Écritures."
+      },
+      "CONFIRMATIONS": {
+        "DELETE_MESSAGE": "Seul ce brouillon, qui n’a aucun impact comptable, sera supprimé.",
+        "DELETE_TITLE": "Supprimer ce brouillon ?",
+        "EYEBROW": "Confirmation",
+        "POST_MESSAGE": "Une écriture comptabilisée ne pourra plus être modifiée directement.",
+        "POST_TITLE": "Comptabiliser cette écriture ?"
+      },
+      "DETAIL": {
+        "ACTIONS": {
+          "EDIT": "Modifier",
+          "VIEW_GENERAL_LEDGER": "Voir grand livre"
+        },
+        "BACK_TO_LIST": "Retour aux écritures",
+        "ERROR": {
+          "DESCRIPTION": "Réessayez ou revenez à la liste des écritures.",
+          "TITLE": "Le détail n’a pas pu être chargé"
+        },
+        "EYEBROW": "Écriture comptable",
+        "LINES": {
+          "ACTIONS": "Actions",
+          "ACCOUNT": "Compte",
+          "CREDIT": "Crédit",
+          "DEBIT": "Débit",
+          "DESCRIPTION": "Comptes mouvementés et montants au débit ou au crédit.",
+          "EMPTY": "Aucune ligne n’est disponible pour cette écriture.",
+          "LABEL": "Libellé",
+          "THIRD_PARTY": "Tiers",
+          "TITLE": "Lignes d’écriture"
+        },
+        "NOTIFICATIONS": {
+          "GENERAL_LEDGER_ACCOUNT_REQUIRED": "Le compte de cette ligne est nécessaire pour consulter le grand livre.",
+          "GENERAL_LEDGER_YEAR_REQUIRED": "L’exercice de l’écriture est nécessaire pour consulter le grand livre."
+        },
+        "LOADING": "Chargement du détail de l’écriture...",
+        "METADATA": {
+          "DATE": "Date",
+          "DESCRIPTION": "Identification de la pièce comptable et contexte de comptabilisation.",
+          "JOURNAL": "Journal",
+          "LABEL": "Libellé",
+          "REFERENCE": "Pièce",
+          "TITLE": "Informations de l’écriture",
+          "TYPE": "Type",
+          "YEAR": "Exercice"
+        },
+        "NOT_FOUND": {
+          "DESCRIPTION": "Cette écriture n’existe pas ou n’est plus disponible dans l’exercice actif.",
+          "TITLE": "Écriture introuvable"
+        },
+        "SUBTITLE": "Consultez les informations, les totaux et les lignes de l’écriture.",
+        "TITLE": "Détail de l’écriture",
+        "TOTALS": {
+          "CREDIT": "Total crédit",
+          "DEBIT": "Total débit"
+        },
+        "TYPES": {
+          "ADJUSTMENT": "Ajustement",
+          "CLOSING": "Clôture",
+          "OPENING": "Ouverture",
+          "STANDARD": "Standard"
+        }
       },
       "EMPTY": {
         "DESCRIPTION": "Aucune écriture n’est disponible pour l’exercice et les filtres sélectionnés.",
@@ -1059,6 +1129,13 @@
       },
       "LOADING": "Chargement des écritures...",
       "LOAD_MORE_ERROR": "Les écritures suivantes n’ont pas pu être chargées.",
+      "NOTIFICATIONS": {
+        "DELETE_FAILED": "Le brouillon n’a pas pu être supprimé.",
+        "DRAFT_DELETED": "Le brouillon a été supprimé.",
+        "FISCAL_YEAR_REQUIRED": "Sélectionnez un exercice actif avant de continuer.",
+        "POST_FAILED": "L’écriture n’a pas pu être comptabilisée.",
+        "POSTED": "L’écriture a été comptabilisée."
+      },
       "POST": {
         "DESCRIPTION": "Les écritures sont refusées si les débits et crédits ne sont pas équilibrés.",
         "TITLE": "Nouvelle écriture"
@@ -1215,7 +1292,9 @@
         "ACCOUNT": "Compte",
         "ACCOUNT_SEARCH": "Rechercher par numéro ou libellé",
         "DESCRIPTION": "Consultez les mouvements d’un compte dans l’exercice actif.",
+        "END_DATE": "Date de fin",
         "NO_ACCOUNT_RESULTS": "Aucun compte ne correspond à cette recherche.",
+        "START_DATE": "Date de début",
         "TITLE": "Périmètre",
         "YEAR": "Exercice"
       },
@@ -1324,26 +1403,82 @@
       }
     },
     "TRIAL_BALANCE": {
+      "ACTIONS": {
+        "EXPORT_EXCEL": "Exporter Excel",
+        "EXPORT_PDF": "Exporter PDF",
+        "OPEN_LEDGER": "Ouvrir le grand livre du compte {{ account }}",
+        "RESET": "Réinitialiser"
+      },
+      "CONTROL": {
+        "BALANCED": "Balance équilibrée",
+        "BALANCED_TOOLTIP": "Les mouvements et les soldes finaux sont équilibrés.",
+        "DIFFERENCES": "Écart mouvements : {{ movement }} · Écart soldes : {{ closing }}",
+        "UNBALANCED": "Balance déséquilibrée",
+        "UNBALANCED_WITH_DIFFERENCES": "Balance déséquilibrée — mouvements : {{ movement }}, soldes : {{ closing }}"
+      },
+      "CURRENCY": "Montants en FCFA",
+      "EMPTY": {
+        "DESCRIPTION": "Conservez ou modifiez les filtres pour examiner une autre période.",
+        "TITLE": "Aucun compte mouvementé sur la période sélectionnée."
+      },
+      "ERROR": {
+        "DESCRIPTION": "La balance n’a pas pu être chargée. Réessayez.",
+        "TITLE": "Balance indisponible"
+      },
       "EYEBROW": "Balance",
+      "EXPORT": {
+        "FAILED": "L’export de la balance a échoué.",
+        "FILTERS": "Filtres appliqués",
+        "FRAMEWORK": "Référentiel comptable",
+        "GENERATED_AT": "Généré le",
+        "ORGANIZATION_FALLBACK": "Dossier comptable",
+        "PERIOD": "Période",
+        "SUCCESS_EXCEL": "La balance Excel a été générée.",
+        "SUCCESS_PDF": "La balance PDF a été générée.",
+        "TITLE": "Balance générale des comptes"
+      },
       "FILTERS": {
-        "DESCRIPTION": "Sélectionnez l’exercice à contrôler.",
+        "ACCOUNT_FROM": "Compte de début",
+        "ACCOUNT_PREFIX": "Préfixe de compte",
+        "ACCOUNT_PREFIX_PLACEHOLDER": "Rechercher par numéro de compte",
+        "ACCOUNT_RANGE": "Plage de comptes",
+        "ACCOUNT_TO": "Compte de fin",
+        "ALL_CLASSES": "Toutes les classes",
+        "CLASS": "Classe",
+        "CLASS_OPTION": "Classe {{ accountClass }}",
+        "DESCRIPTION": "Définissez la période et le périmètre des comptes.",
+        "END_DATE": "Date de fin",
+        "HIDE_ZERO": "Masquer les comptes sans mouvement",
+        "START_DATE": "Date de début",
         "TITLE": "Périmètre",
         "YEAR": "Exercice"
       },
+      "LOADING": "Chargement de la balance…",
       "SUBTITLE": "Contrôlez les soldes d’ouverture, mouvements et soldes finaux.",
       "TABLE": {
         "ACCOUNT": "Compte",
-        "DESCRIPTION": "Balance à six colonnes basée sur les soldes agrégés.",
-        "FINAL_CREDIT": "Solde crédit",
-        "FINAL_DEBIT": "Solde débit",
+        "CLOSING": "Solde final",
+        "CLOSING_CREDIT": "Solde créditeur",
+        "CLOSING_DEBIT": "Solde débiteur",
+        "CREDIT": "Crédit",
+        "DEBIT": "Débit",
+        "LABEL": "Intitulé",
         "MOVEMENT_CREDIT": "Mouv. crédit",
         "MOVEMENT_DEBIT": "Mouv. débit",
+        "MOVEMENTS": "Mouvements",
+        "OPENING": "Ouverture",
         "OPENING_CREDIT": "Ouv. crédit",
         "OPENING_DEBIT": "Ouv. débit",
-        "TITLE": "Balance",
+        "TITLE": "Balance générale des comptes",
         "TOTALS": "Totaux"
       },
-      "TITLE": "Balance"
+      "TITLE": "Balance",
+      "VALIDATION": {
+        "ACCOUNT_RANGE": "Le compte de début doit précéder le compte de fin.",
+        "DATE_ORDER": "La date de début doit précéder ou être égale à la date de fin.",
+        "OUTSIDE_FISCAL_YEAR": "Les dates doivent appartenir à l’exercice sélectionné.",
+        "PERIOD_REQUIRED": "Sélectionnez un exercice et une période valides."
+      }
     }
   },
   "IDENTITY": {

@@ -7,6 +7,7 @@ import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { environment } from '../../../../../environments/environment';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AuthStore } from '../../../identity/data-access/auth.store';
@@ -21,14 +22,24 @@ const translations = {
         ACTIONS: {
           ADD_LINE: 'Add line',
           CLEAR_FILTERS: 'Reset',
+          DELETE_DRAFT: 'Delete draft',
+          EDIT: 'Edit',
           LOAD_MORE: 'Load more',
           NEW_ENTRY: 'New entry',
           NEW_ENTRY_NOTICE: 'Full entry input will open in a dedicated workflow.',
           POST: 'Post',
           REMOVE_LINE: 'Remove',
           RETRY: 'Try again',
+          VIEW_GENERAL_LEDGER: 'View general ledger',
           VIEW_DETAILS: 'View details',
           VIEW_DETAILS_NOTICE: 'Entry details will be available in the next step.'
+        },
+        CONFIRMATIONS: {
+          DELETE_MESSAGE: 'Only this draft, which has no accounting impact, will be deleted.',
+          DELETE_TITLE: 'Delete this draft?',
+          EYEBROW: 'Confirmation',
+          POST_MESSAGE: 'A posted entry can no longer be edited directly.',
+          POST_TITLE: 'Post this entry?'
         },
         EMPTY: {
           DESCRIPTION: 'No entries are available.',
@@ -64,6 +75,13 @@ const translations = {
         },
         LOADING: 'Loading entries...',
         LOAD_MORE_ERROR: 'The next entries could not be loaded.',
+        NOTIFICATIONS: {
+          DELETE_FAILED: 'The draft could not be deleted.',
+          DRAFT_DELETED: 'The draft was deleted.',
+          FISCAL_YEAR_REQUIRED: 'Select an active fiscal year before continuing.',
+          POST_FAILED: 'The entry could not be posted.',
+          POSTED: 'The entry was posted.'
+        },
         POST: {
           DESCRIPTION: 'Entries must balance.',
           TITLE: 'New entry'
@@ -137,11 +155,19 @@ const translations = {
 describe('EntriesPage', () => {
   let fixture: ComponentFixture<EntriesPage>;
   let httpMock: HttpTestingController;
+  let notification: {
+    error: ReturnType<typeof vi.fn>;
+    success: ReturnType<typeof vi.fn>;
+  };
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
+    notification = {
+      error: vi.fn(),
+      success: vi.fn()
+    };
 
     await TestBed.configureTestingModule({
       imports: [
@@ -174,6 +200,7 @@ describe('EntriesPage', () => {
             }
           })
         ),
+        { provide: NotificationService, useValue: notification },
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
         { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } }
       ]
@@ -369,6 +396,201 @@ describe('EntriesPage', () => {
     expect(document.body.textContent).toContain('View details');
     expect(document.body.querySelector('[data-testid="entry-view-action"] mat-icon')?.textContent?.trim()).toBe('visibility');
     expect(document.body.querySelector('[data-testid="entry-view-action"]')?.classList).toContain('liass-menu-action-neutral');
+    expect(document.body.querySelector('[data-testid="entry-edit-action"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="entry-post-action"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="entry-delete-action"]')).toBeNull();
+  });
+
+  it('shows edit, post, and delete actions only for draft entries', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntriesPage);
+    fixture.detectChanges();
+
+    flushInitialQueries(httpMock, apiBaseUrl, [entryFixture({ status: 'DRAFT' })]);
+    await settle(fixture);
+
+    const actionTrigger = fixture.nativeElement.querySelector(
+      '[data-testid="entry-row-actions"]'
+    ) as HTMLButtonElement;
+    actionTrigger.click();
+    await settle(fixture);
+
+    expect(document.body.querySelector('[data-testid="entry-view-action"]')).toBeTruthy();
+    expect(document.body.querySelector('[data-testid="entry-edit-action"]')).toBeTruthy();
+    expect(document.body.querySelector('[data-testid="entry-post-action"]')).toBeTruthy();
+    expect(document.body.querySelector('[data-testid="entry-delete-action"]')).toBeTruthy();
+    expect(document.body.textContent).toContain('Edit');
+    expect(document.body.textContent).toContain('Post');
+    expect(document.body.textContent).toContain('Delete draft');
+  });
+
+  it('keeps cancelled entries read-only when no safe linked-entry id is exposed', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntriesPage);
+    fixture.detectChanges();
+
+    flushInitialQueries(httpMock, apiBaseUrl, [entryFixture({ status: 'CANCELLED' })]);
+    await settle(fixture);
+
+    (fixture.nativeElement.querySelector(
+      '[data-testid="entry-row-actions"]'
+    ) as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(document.body.querySelector('[data-testid="entry-view-action"]')).toBeTruthy();
+    expect(document.body.querySelector('[data-testid="entry-edit-action"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="entry-post-action"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="entry-delete-action"]')).toBeNull();
+  });
+
+  it('opens the selected entry detail from the row action menu', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntriesPage);
+    fixture.detectChanges();
+
+    flushInitialQueries(httpMock, apiBaseUrl, [entryFixture({ entryId: 'ENTRY-DETAIL-1' })]);
+    await settle(fixture);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    const actionTrigger = fixture.nativeElement.querySelector(
+      '[data-testid="entry-row-actions"]'
+    ) as HTMLButtonElement;
+    actionTrigger.click();
+    await settle(fixture);
+
+    const detailAction = document.body.querySelector(
+      '[data-testid="entry-view-action"]'
+    ) as HTMLButtonElement;
+    detailAction.click();
+    await settle(fixture);
+
+    expect(navigate).toHaveBeenCalledWith(['/accounting/entries', 'ENTRY-DETAIL-1']);
+  });
+
+  it('navigates draft entries to the supported edit route', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntriesPage);
+    fixture.detectChanges();
+
+    flushInitialQueries(httpMock, apiBaseUrl, [
+      entryFixture({ entryId: 'ENTRY-DRAFT-EDIT', status: 'DRAFT' })
+    ]);
+    await settle(fixture);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+    (fixture.nativeElement.querySelector(
+      '[data-testid="entry-row-actions"]'
+    ) as HTMLButtonElement).click();
+    await settle(fixture);
+    (document.body.querySelector('[data-testid="entry-edit-action"]') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(navigate).toHaveBeenCalledWith([
+      '/accounting/entries',
+      'ENTRY-DRAFT-EDIT',
+      'edit'
+    ]);
+  });
+
+  it('posts a draft after confirmation, uses the backend message, and refreshes entries', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntriesPage);
+    fixture.detectChanges();
+
+    flushInitialQueries(httpMock, apiBaseUrl, [
+      entryFixture({ entryId: 'ENTRY-DRAFT-POST', status: 'DRAFT' })
+    ]);
+    await settle(fixture);
+
+    (fixture.nativeElement.querySelector(
+      '[data-testid="entry-row-actions"]'
+    ) as HTMLButtonElement).click();
+    await settle(fixture);
+    (document.body.querySelector('[data-testid="entry-post-action"]') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(document.body.textContent).toContain('Post this entry?');
+    expect(document.body.textContent).toContain(
+      'A posted entry can no longer be edited directly.'
+    );
+
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+    dialogRef.close(true);
+    await waitForDialogClose();
+
+    const postRequest = httpMock.expectOne(`${apiBaseUrl}/entries/ENTRY-DRAFT-POST/post`);
+    expect(postRequest.request.method).toBe('POST');
+    expect(postRequest.request.body).toEqual({ year: 2026 });
+    expect(postRequest.request.body).not.toHaveProperty('PK');
+    expect(postRequest.request.body).not.toHaveProperty('SK');
+    expect(postRequest.request.body).not.toHaveProperty('entityType');
+    postRequest.flush({
+      message: { code: 'SUCCESS_ENTRY_POSTED', message: 'Entry posted by accounting.' },
+      entryId: 'ENTRY-DRAFT-POST'
+    });
+    await waitForDialogClose();
+
+    const refreshRequest = httpMock.expectOne(
+      (request) => request.url === `${apiBaseUrl}/entries`
+    );
+    refreshRequest.flush({
+      data: {
+        entries: [entryFixture({ entryId: 'ENTRY-DRAFT-POST', status: 'POSTED' })],
+        hasMore: false
+      }
+    });
+    await settle(fixture);
+
+    expect(notification.success).toHaveBeenCalledWith('Entry posted by accounting.');
+    expect(fixture.nativeElement.textContent).toContain('Posted');
+  });
+
+  it('deletes a draft after confirmation and refreshes entries', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntriesPage);
+    fixture.detectChanges();
+
+    flushInitialQueries(httpMock, apiBaseUrl, [
+      entryFixture({ entryId: 'ENTRY-DRAFT-DELETE', status: 'DRAFT' })
+    ]);
+    await settle(fixture);
+
+    (fixture.nativeElement.querySelector(
+      '[data-testid="entry-row-actions"]'
+    ) as HTMLButtonElement).click();
+    await settle(fixture);
+    (document.body.querySelector('[data-testid="entry-delete-action"]') as HTMLButtonElement).click();
+    await settle(fixture);
+
+    expect(document.body.textContent).toContain('Delete this draft?');
+    expect(document.body.textContent).toContain('has no accounting impact');
+
+    const dialogRef = TestBed.inject(MatDialog).openDialogs[0];
+    dialogRef.close(true);
+    await waitForDialogClose();
+
+    const deleteRequest = httpMock.expectOne(`${apiBaseUrl}/entries/ENTRY-DRAFT-DELETE/draft`);
+    expect(deleteRequest.request.method).toBe('DELETE');
+    expect(deleteRequest.request.body).toEqual({ year: 2026 });
+    deleteRequest.flush({
+      message: 'Draft deleted by accounting.',
+      entryId: 'ENTRY-DRAFT-DELETE'
+    });
+    await waitForDialogClose();
+
+    const refreshRequest = httpMock.expectOne(
+      (request) => request.url === `${apiBaseUrl}/entries`
+    );
+    refreshRequest.flush({
+      data: {
+        entries: [],
+        hasMore: false
+      }
+    });
+    await settle(fixture);
+
+    expect(notification.success).toHaveBeenCalledWith('Draft deleted by accounting.');
+    expect(fixture.nativeElement.textContent).not.toContain('ENTRY-DRAFT-DELETE');
   });
 
   it('opens the dedicated new entry page from the primary action', async () => {
@@ -463,5 +685,5 @@ async function settle(fixture: ComponentFixture<EntriesPage>): Promise<void> {
 }
 
 async function waitForDialogClose(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 300));
 }

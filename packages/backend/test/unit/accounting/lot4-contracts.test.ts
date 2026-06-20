@@ -3,6 +3,7 @@ import {
   GeneralLedgerResponseSchema,
   JournalBookQuerySchema,
   JournalBookResponseSchema,
+  TrialBalanceQuerySchema,
   TrialBalanceResponseSchema,
 } from "@liass-ohada/shared/accounting";
 
@@ -108,13 +109,14 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
         rows: [
           {
             GSI1PK: "ORG#technical",
-            accountId: "41100000",
+            accountCode: "41100000",
+            accountLabel: "Clients",
             openingDebit: 100,
             openingCredit: 0,
             movementDebit: 50,
             movementCredit: 25,
-            finalDebit: 125,
-            finalCredit: 0,
+            closingDebit: 125,
+            closingCredit: 0,
           },
         ],
         totals: {
@@ -122,8 +124,17 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
           openingCredit: 0,
           movementDebit: 50,
           movementCredit: 25,
-          finalDebit: 125,
-          finalCredit: 0,
+          closingDebit: 125,
+          closingCredit: 0,
+          isMovementBalanced: false,
+          isClosingBalanced: false,
+          movementDifference: 25,
+          closingDifference: 125,
+        },
+        period: {
+          fiscalYear: "2026",
+          startDate: "2026-01-01",
+          endDate: "2026-12-31",
         },
       },
     });
@@ -132,6 +143,51 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
     expect(accountBalance.data).not.toHaveProperty("SK");
     expect(accountBalance.data).not.toHaveProperty("entityType");
     expect(trialBalance.data.rows[0]).not.toHaveProperty("GSI1PK");
+  });
+
+  test("trial balance contracts reject missing labels, negative amounts, and invalid periods", () => {
+    expect(() =>
+      TrialBalanceQuerySchema.parse({
+        year: "2026",
+        startDate: "2026-03-01",
+        endDate: "2026-02-01",
+      }),
+    ).toThrow();
+
+    expect(() =>
+      TrialBalanceResponseSchema.parse({
+        data: {
+          rows: [
+            {
+              accountCode: "41100000",
+              openingDebit: -1,
+              openingCredit: 0,
+              movementDebit: 0,
+              movementCredit: 0,
+              closingDebit: 0,
+              closingCredit: 0,
+            },
+          ],
+          totals: {
+            openingDebit: 0,
+            openingCredit: 0,
+            movementDebit: 0,
+            movementCredit: 0,
+            closingDebit: 0,
+            closingCredit: 0,
+            isMovementBalanced: true,
+            isClosingBalanced: true,
+            movementDifference: 0,
+            closingDifference: 0,
+          },
+          period: {
+            fiscalYear: "2026",
+            startDate: "2026-01-01",
+            endDate: "2026-12-31",
+          },
+        },
+      }),
+    ).toThrow();
   });
 
   test("journal book requires a journal and strips technical attributes", () => {

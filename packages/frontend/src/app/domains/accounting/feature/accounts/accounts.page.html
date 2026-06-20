@@ -116,22 +116,10 @@
     [subtitle]="'ACCOUNTING.ACCOUNTS.SUBTITLE' | transloco"
   />
 
-  <div class="grid gap-4 md:grid-cols-3">
-    <liass-card padding="sm">
-      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-        {{ 'ACCOUNTING.ACCOUNTS.METRICS.TOTAL' | transloco }}
-      </p>
-      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ allAccounts().length }}</p>
-    </liass-card>
-    <liass-card padding="sm">
-      <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-        {{ 'ACCOUNTING.ACCOUNTS.METRICS.THIRD_PARTY' | transloco }}
-      </p>
-      <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ thirdPartyAccountsCount() }}</p>
-    </liass-card>
+  <div class="grid max-w-sm gap-4">
     <liass-card padding="sm" variant="accent">
       <p class="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
-        {{ 'ACCOUNTING.ACCOUNTS.METRICS.VISIBLE' | transloco }}
+        {{ 'ACCOUNTING.ACCOUNTS.PAGINATION.DISPLAYED' | transloco }}
       </p>
       <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">{{ filteredAccounts().length }}</p>
     </liass-card>
@@ -163,14 +151,17 @@
       </liass-button>
     </div>
 
-    <div class="mb-5 grid gap-3 xl:grid-cols-[minmax(220px,1fr)_180px_180px_180px_auto]">
+    <div class="mb-5 grid gap-3 xl:grid-cols-[minmax(260px,1fr)_200px_200px_auto]">
       <mat-form-field appearance="outline">
         <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FILTERS.SEARCH' | transloco }}</mat-label>
         <mat-icon matPrefix>search</mat-icon>
         <input
           matInput
           type="search"
-          [value]="searchQuery()"
+          inputmode="numeric"
+          autocomplete="off"
+          [value]="searchInput()"
+          [placeholder]="'ACCOUNTING.ACCOUNTS.FILTERS.SEARCH_PLACEHOLDER' | transloco"
           [attr.aria-label]="'ACCOUNTING.ACCOUNTS.FILTERS.SEARCH' | transloco"
           (input)="updateSearch($event)"
         />
@@ -178,7 +169,7 @@
 
       <mat-form-field appearance="outline">
         <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FILTERS.CLASS' | transloco }}</mat-label>
-        <mat-select [value]="classFilter()" (valueChange)="classFilter.set($event)">
+        <mat-select [value]="classFilter()" (valueChange)="updateClassFilter($event)">
           <mat-option value="ALL">{{ 'ACCOUNTING.ACCOUNTS.FILTERS.ALL_CLASSES' | transloco }}</mat-option>
           @for (classCode of classCodes; track classCode) {
             <mat-option [value]="classCode">
@@ -189,20 +180,11 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FILTERS.NATURE' | transloco }}</mat-label>
-        <mat-select [value]="natureFilter()" (valueChange)="natureFilter.set($event)">
-          <mat-option value="ALL">{{ 'ACCOUNTING.ACCOUNTS.FILTERS.ALL_NATURES' | transloco }}</mat-option>
-          <mat-option value="BALANCE">{{ 'ACCOUNTING.ACCOUNTS.NATURE.BALANCE' | transloco }}</mat-option>
-          <mat-option value="INCOME">{{ 'ACCOUNTING.ACCOUNTS.NATURE.INCOME' | transloco }}</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FILTERS.THIRD_PARTY' | transloco }}</mat-label>
-        <mat-select [value]="thirdPartyFilter()" (valueChange)="thirdPartyFilter.set($event)">
-          <mat-option value="ALL">{{ 'ACCOUNTING.ACCOUNTS.FILTERS.ALL_THIRD_PARTY' | transloco }}</mat-option>
-          <mat-option value="YES">{{ 'ACCOUNTING.ACCOUNTS.FILTERS.THIRD_PARTY_ONLY' | transloco }}</mat-option>
-          <mat-option value="NO">{{ 'ACCOUNTING.ACCOUNTS.FILTERS.NON_THIRD_PARTY' | transloco }}</mat-option>
+        <mat-label>{{ 'ACCOUNTING.ACCOUNTS.FILTERS.STATUS' | transloco }}</mat-label>
+        <mat-select [value]="statusFilter()" (valueChange)="updateStatusFilter($event)">
+          <mat-option value="ALL">{{ 'ACCOUNTING.ACCOUNTS.FILTERS.ALL_STATUSES' | transloco }}</mat-option>
+          <mat-option value="ACTIVE">{{ 'ACCOUNTING.ACCOUNTS.STATUS.ACTIVE' | transloco }}</mat-option>
+          <mat-option value="INACTIVE">{{ 'ACCOUNTING.ACCOUNTS.STATUS.INACTIVE' | transloco }}</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -236,7 +218,7 @@
           </liass-button>
         </div>
       </div>
-    } @else if (!hasLoadedAccounts()) {
+    } @else if (!hasLoadedAccounts() && !hasActiveFilters()) {
       <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
         <p class="text-sm font-semibold text-slate-950 dark:text-white">
           {{ 'ACCOUNTING.ACCOUNTS.EMPTY.TITLE' | transloco }}
@@ -403,62 +385,54 @@
                 <liass-status-chip [label]="'ACCOUNTING.ACCOUNTS.FLAGS.RECONCILIATION' | transloco" tone="success" size="sm" />
               }
             </div>
-            <div class="mt-4 flex justify-end gap-2">
-              <liass-button
-                size="sm"
-                tone="neutral"
-                variant="outline"
-                icon="visibility"
-                [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco"
-                (pressed)="openAccountDetails(account)"
+            <div class="mt-4 flex justify-end">
+              <button
+                class="liass-focus-ring inline-flex size-9 items-center justify-center rounded-app-control text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                matIconButton
+                type="button"
+                [matMenuTriggerFor]="mobileAccountActionsMenu"
+                [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
               >
-                {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco }}
-              </liass-button>
-              <liass-button
-                size="sm"
-                tone="neutral"
-                variant="outline"
-                icon="edit"
-                [disabled]="!isAccountActive(account)"
-                [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco"
-                (pressed)="openEditAccount(account)"
-              >
-                {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco }}
-              </liass-button>
-              <liass-button
-                size="sm"
-                tone="danger"
-                variant="outline"
-                icon="block"
-                [disabled]="!isAccountActive(account)"
-                [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco"
-                (pressed)="openDisableAccount(account)"
-              >
-                {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}
-              </liass-button>
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #mobileAccountActionsMenu="matMenu" xPosition="before">
+                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-neutral" (click)="openAccountDetails(account)">
+                  <mat-icon>visibility</mat-icon>
+                  <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco }}</span>
+                </button>
+                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" [disabled]="!isAccountActive(account)" (click)="openEditAccount(account)">
+                  <mat-icon>edit</mat-icon>
+                  <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco }}</span>
+                </button>
+                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-danger" [disabled]="!isAccountActive(account)" (click)="openDisableAccount(account)">
+                  <mat-icon>block</mat-icon>
+                  <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}</span>
+                </button>
+              </mat-menu>
             </div>
           </article>
         }
       </div>
 
-      @if (hasMoreAccounts()) {
-        <div class="mt-5 flex flex-col items-center gap-2">
-          <liass-button
-            tone="neutral"
-            variant="outline"
-            icon="expand_more"
-            [loading]="loadingMore()"
-            (pressed)="loadMoreAccounts()"
-          >
-            {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.LOAD_MORE' | transloco }}
-          </liass-button>
-          @if (loadMoreError()) {
-            <p class="text-sm text-danger-600 dark:text-rose-300" role="alert">
-              {{ 'ACCOUNTING.ACCOUNTS.ERRORS.LOAD_MORE_FAILED' | transloco }}
-            </p>
-          }
-        </div>
-      }
+    }
+
+    @if (hasMoreAccounts()) {
+      <div class="mt-5 flex flex-col items-center gap-2">
+        <liass-button
+          tone="neutral"
+          variant="outline"
+          icon="expand_more"
+          [loading]="loadingMore()"
+          (pressed)="loadMoreAccounts()"
+        >
+          {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.LOAD_MORE' | transloco }}
+        </liass-button>
+        @if (loadMoreError()) {
+          <p class="text-sm text-danger-600 dark:text-rose-300" role="alert">
+            {{ 'ACCOUNTING.ACCOUNTS.ERRORS.LOAD_MORE_FAILED' | transloco }}
+          </p>
+        }
+      </div>
     }
   </liass-card>
 </div>

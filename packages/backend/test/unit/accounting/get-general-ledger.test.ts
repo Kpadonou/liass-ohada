@@ -6,6 +6,7 @@ import {
   QueryCommand,
   ScanCommand,
 } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
@@ -20,7 +21,12 @@ const createEvent = (
   fiscalYear = "2026",
   accountId = "411",
   orgId = "test-org",
-  options?: { limit?: number; cursor?: string },
+  options?: {
+    limit?: number;
+    cursor?: string;
+    startDate?: string;
+    endDate?: string;
+  },
 ) => ({
   version: "2.0",
   routeKey: "GET /books/general-ledger",
@@ -31,6 +37,8 @@ const createEvent = (
     accountId,
     ...(options?.limit ? { limit: options.limit.toString() } : {}),
     ...(options?.cursor ? { cursor: options.cursor } : {}),
+    ...(options?.startDate ? { startDate: options.startDate } : {}),
+    ...(options?.endDate ? { endDate: options.endDate } : {}),
   },
   headers: { "accept-language": "en", "x-org-id": orgId },
   requestContext: {
@@ -273,6 +281,77 @@ describe("get-general-ledger handler", () => {
     expect(body.data.movements).toHaveLength(0);
     expect(body.data.finalBalance).toBe(400); // 500 - 100
     expect(body.data.hasMore).toBe(false);
+  });
+
+  test("preserves a selected period and derives its opening balance from daily aggregates", async () => {
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({
+        Item: marshall({
+          orgId: "test-org",
+          year: 2026,
+          fiscalYearId: "FY-2026",
+          startDate: "2026-01-01",
+          endDate: "2026-12-31",
+          status: "OPEN",
+          accountingFramework: "SYSCOHADA_REVISED",
+          entityType: "FISCAL_YEAR",
+          PK: "ORG#test-org",
+          SK: "FY#2026",
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        }),
+      })
+      .resolvesOnce({
+        Item: marshall({
+          accountId: "41100000",
+          openingDebit: 100,
+          openingCredit: 0,
+          movementDebit: 80,
+          movementCredit: 30,
+          dailyDebit_2026_01_10: 50,
+          dailyCredit_2026_02_01: 10,
+          dailyDebit_2026_02_28: 30,
+          dailyCredit_2026_03_01: 20,
+        }),
+      });
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [
+        marshall({
+          entryId: "E-001",
+          lineId: "L1",
+          entryDate: "2026-02-01",
+          journalCode: "VE",
+          debit: 0,
+          credit: 10,
+        }),
+        marshall({
+          entryId: "E-002",
+          lineId: "L2",
+          entryDate: "2026-02-28",
+          journalCode: "VE",
+          debit: 30,
+          credit: 0,
+        }),
+      ],
+    });
+
+    const response = await handler(
+      createEvent("2026", "411", "test-org", {
+        startDate: "2026-02-01",
+        endDate: "2026-02-28",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.data.openingBalance.balance).toBe(150);
+    expect(body.data.movements[0].runningBalance).toBe(140);
+    expect(body.data.movements[1].runningBalance).toBe(170);
+    expect(body.data.finalBalance).toBe(170);
+    const query = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+    expect(query.KeyConditionExpression).toContain("BETWEEN");
+    expect(query.ConsistentRead).toBeUndefined();
   });
 
   test("returns a zero opening balance and explicit hasMore when no aggregate exists", async () => {

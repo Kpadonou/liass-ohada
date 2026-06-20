@@ -129,5 +129,8 @@
   "JOURNAL_UPDATED": "Journal updated successfully.",
   "JOURNAL_DELETED": "Journal deleted successfully.",
   "JOURNAL_NOT_FOUND": "Journal not found.",
-  "SUCCESS_JOURNAL_RETRIEVED": "Journal retrieved successfully."
+  "SUCCESS_JOURNAL_RETRIEVED": "Journal retrieved successfully.",
+  "ERROR_TRIAL_BALANCE_DATE_OUTSIDE_FISCAL_YEAR": "Trial balance dates must belong to the selected fiscal year.",
+  "ERROR_TRIAL_BALANCE_PERIOD_AGGREGATES_INCOMPLETE": "Daily aggregates for this fiscal year must be rebuilt before an intermediate period can be reviewed.",
+  "TRIAL_BALANCE_ACCOUNT_LABEL_UNAVAILABLE": "Account {accountId}"
 }

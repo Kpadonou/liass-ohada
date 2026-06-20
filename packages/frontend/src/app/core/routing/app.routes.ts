@@ -206,6 +206,17 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'accounting/entries/:entryId',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/entry-detail/entry-detail.page').then(
+            (module) => module.EntryDetailPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.ENTRIES.DETAIL.SUBTITLE',
+          titleKey: 'ACCOUNTING.ENTRIES.DETAIL.TITLE'
+        }
+      },
+      {
         path: 'accounting/entries',
         loadComponent: () =>
           import('../../domains/accounting/feature/entries/entries.page').then(

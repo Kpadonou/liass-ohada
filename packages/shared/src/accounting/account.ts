@@ -87,6 +87,16 @@ export const ListAccountsRequestSchema = z.object({
   cursor: z.string().optional(),
   search: z.string().trim().regex(/^\d{1,8}$/).optional(),
   class: z.coerce.number().int().min(1).max(8).optional(),
+  active: z
+    .preprocess(
+      (value) => {
+        if (value === "true") return true;
+        if (value === "false") return false;
+        return value;
+      },
+      z.boolean(),
+    )
+    .optional(),
   activeOnly: z
     .preprocess(
       (value) => {

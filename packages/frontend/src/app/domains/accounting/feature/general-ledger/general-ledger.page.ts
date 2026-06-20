@@ -1,9 +1,11 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { ActivatedRoute } from '@angular/router';
 import { type GeneralLedgerLineDto } from '@liass-ohada/shared/accounting';
 import { TranslocoModule } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
@@ -69,9 +71,32 @@ export class GeneralLedgerPage {
   private readonly accountingApi = inject(AccountingApi);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly dialog = inject(MatDialog);
+  private readonly route = inject(ActivatedRoute);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
 
   protected readonly selectedAccountId = signal<string | null>(null);
+  private readonly routeFiscalYear = signal<string | null>(null);
+  private readonly routeStartDate = signal<string | null>(null);
+  private readonly routeEndDate = signal<string | null>(null);
+  protected readonly selectedFiscalYear = computed(
+    () =>
+      this.routeFiscalYear() ??
+      (this.fiscalYearContext.activeYear()
+        ? String(this.fiscalYearContext.activeYear())
+        : '')
+  );
+  protected readonly selectedStartDate = computed(
+    () =>
+      this.routeStartDate() ??
+      this.fiscalYearContext.activeFiscalYear()?.startDate ??
+      ''
+  );
+  protected readonly selectedEndDate = computed(
+    () =>
+      this.routeEndDate() ??
+      this.fiscalYearContext.activeFiscalYear()?.endDate ??
+      ''
+  );
   protected readonly extraMovements = signal<GeneralLedgerLineDto[]>([]);
   protected readonly paginationState = signal<{
     finalBalance?: number;
@@ -85,12 +110,15 @@ export class GeneralLedgerPage {
   );
 
   protected readonly ledgerQuery = injectQuery(() =>
-    this.accountingQueries.generalLedgerForActiveFiscalYear(
+    this.accountingQueries.generalLedger(
       {
         accountId: this.selectedAccountId() ?? '',
-        limit: GENERAL_LEDGER_PAGE_SIZE
+        endDate: this.selectedEndDate() || undefined,
+        fiscalYear: this.selectedFiscalYear(),
+        limit: GENERAL_LEDGER_PAGE_SIZE,
+        startDate: this.selectedStartDate() || undefined
       },
-      !!this.selectedAccountId()
+      !!this.selectedAccountId() && /^\d{4}$/.test(this.selectedFiscalYear())
     )
   );
 
@@ -115,8 +143,27 @@ export class GeneralLedgerPage {
   );
 
   constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const accountId = params.get('account');
+      const year = params.get('year');
+      const startDate = params.get('startDate');
+      const endDate = params.get('endDate');
+
+      this.selectedAccountId.set(
+        accountId && /^\d{8}$/.test(accountId) ? accountId : null
+      );
+      this.routeFiscalYear.set(year && /^\d{4}$/.test(year) ? year : null);
+      this.routeStartDate.set(
+        startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate) ? startDate : null
+      );
+      this.routeEndDate.set(
+        endDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? endDate : null
+      );
+      this.resetPagination();
+    });
+
     effect(() => {
-      this.fiscalYearContext.activeYear();
+      this.selectedFiscalYear();
       this.resetPagination();
     });
   }
@@ -166,7 +213,7 @@ export class GeneralLedgerPage {
 
   protected async loadMore(): Promise<void> {
     const accountId = this.selectedAccountId();
-    const fiscalYear = this.fiscalYearContext.activeYear();
+    const fiscalYear = this.selectedFiscalYear();
     const cursor = this.nextCursor();
 
     if (!accountId || !fiscalYear || !cursor || this.loadingMore()) {
@@ -180,8 +227,10 @@ export class GeneralLedgerPage {
       const result = await this.accountingApi.getGeneralLedger({
         accountId,
         cursor,
-        fiscalYear: String(fiscalYear),
-        limit: GENERAL_LEDGER_PAGE_SIZE
+        endDate: this.selectedEndDate() || undefined,
+        fiscalYear,
+        limit: GENERAL_LEDGER_PAGE_SIZE,
+        startDate: this.selectedStartDate() || undefined
       });
 
       this.extraMovements.update((movements) => [...movements, ...result.movements]);
