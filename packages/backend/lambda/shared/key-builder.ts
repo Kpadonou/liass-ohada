@@ -196,4 +196,12 @@ export const KeyFactory = {
    */
   gsi5JournalSK: (journalCode: string, date: string, entryId: string) =>
     `JNL#${journalCode.toUpperCase()}#DT#${date}#E#${entryId}`,
+
+  // --- GSI 7: Global Livre-journal chronology ---
+
+  journalBookPK: (orgId: string, year: number | string) =>
+    KeyFactory.partitionKey(orgId, year),
+
+  journalBookSK: (date: string, entryId: string) =>
+    `DT#${date}#E#${entryId}`,
 };

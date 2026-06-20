@@ -500,14 +500,100 @@ export const AccountBalanceResponseSchema = z.object({
 
 export const JournalBookQuerySchema = z.object({
   year: z.string().regex(/^\d{4}$/),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  journalCode: z.string().trim().min(1).max(10).optional(),
+  entryNumber: z.string().trim().min(1).max(100).optional(),
+  reference: z.string().trim().min(1).max(100).optional(),
+  accountPrefix: z.string().trim().regex(/^\d{1,8}$/).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
+  cursor: z.string().optional(),
+}).superRefine((query, context) => {
+  if (!query.startDate.startsWith(`${query.year}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must belong to the fiscal year",
+      path: ["startDate"],
+    });
+  }
+  if (!query.endDate.startsWith(`${query.year}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "End date must belong to the fiscal year",
+      path: ["endDate"],
+    });
+  }
+  if (query.startDate > query.endDate) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must not be after end date",
+      path: ["endDate"],
+    });
+  }
+});
+
+export type JournalBookQuery = z.infer<typeof JournalBookQuerySchema>;
+
+export const JournalSpecificBookQuerySchema = z.object({
+  year: z.string().regex(/^\d{4}$/),
   journalCode: z.string().min(1).max(10),
   month: z.string().regex(/^(0[1-9]|1[0-2])$/).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
   cursor: z.string().optional(),
 });
 
-export type JournalBookQuery = z.infer<typeof JournalBookQuerySchema>;
+export type JournalSpecificBookQuery = z.infer<
+  typeof JournalSpecificBookQuerySchema
+>;
 
+export const JournalBookEntryLineDtoSchema = z.object({
+  lineId: z.string().min(1),
+  accountCode: z.string().regex(/^\d{8}$/),
+  accountLabel: z.string().min(1),
+  lineLabel: z.string().optional(),
+  thirdPartyCode: z.string().optional(),
+  thirdPartyName: z.string().optional(),
+  debit: z.number().int().nonnegative(),
+  credit: z.number().int().nonnegative(),
+}).refine(
+  (line) =>
+    (line.debit > 0 && line.credit === 0) ||
+    (line.credit > 0 && line.debit === 0),
+  { message: "A line must have debit or credit, not both" },
+);
+
+export type JournalBookEntryLineDto = z.infer<typeof JournalBookEntryLineDtoSchema>;
+
+export const JournalBookEntryDtoSchema = z.object({
+  entryId: z.string().min(1),
+  entryNumber: z.string().min(1),
+  accountingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  journalCode: z.string().min(1),
+  journalLabel: z.string().min(1),
+  reference: z.string().optional(),
+  entryLabel: z.string().min(1),
+  status: z.literal("POSTED"),
+  totalDebit: z.number().int().nonnegative(),
+  totalCredit: z.number().int().nonnegative(),
+  isBalanced: z.boolean(),
+  lines: z.array(JournalBookEntryLineDtoSchema).min(1),
+});
+
+export type JournalBookEntryDto = z.infer<typeof JournalBookEntryDtoSchema>;
+
+export const JournalBookTotalsDtoSchema = z.object({
+  totalDebit: z.number().int().nonnegative(),
+  totalCredit: z.number().int().nonnegative(),
+  difference: z.number().int(),
+  isBalanced: z.boolean(),
+  entryCount: z.number().int().nonnegative(),
+  lineCount: z.number().int().nonnegative(),
+});
+
+export type JournalBookTotalsDto = z.infer<typeof JournalBookTotalsDtoSchema>;
+
+// Legacy journal-specific summary contract retained for the existing
+// /journals/{journalCode}/entries endpoint.
 export const JournalBookLineDtoSchema = z.object({
   entryId: z.string(),
   date: z.string(),
@@ -526,10 +612,16 @@ export const JournalBookResponseSchema = z.object({
   data: z.object({
     meta: z.object({
       year: z.string().regex(/^\d{4}$/),
-      journalCode: z.string(),
-      month: z.string().regex(/^(0[1-9]|1[0-2])$/).optional(),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      journalCode: z.string().optional(),
     }),
-    entries: z.array(JournalBookLineDtoSchema),
+    entries: z.array(JournalBookEntryDtoSchema),
+    totals: JournalBookTotalsDtoSchema,
+    integrityWarnings: z.array(z.object({
+      entryNumber: z.string(),
+      difference: z.number().int(),
+    })),
     nextCursor: z.string().optional(),
     hasMore: z.boolean(),
   }),
@@ -698,6 +790,8 @@ export const EntrySchema = z.object({
   SK: z.string(),
   GSI5PK: z.string().optional(),
   GSI5SK: z.string().optional(),
+  GSI7PK: z.string().optional(),
+  GSI7SK: z.string().optional(),
   createdBy: z.string().optional(),
   createdAt: z.string(),
   updatedBy: z.string().optional(),

@@ -70,5 +70,13 @@ export class LiassOhadaAccountingTable extends Construct {
       sortKey: { name: "GSI6SK", type: AttributeType.STRING },
       projectionType: ProjectionType.ALL,
     });
+
+    // GSI7 - Sparse, date-first chronological Livre-journal (POSTED headers only)
+    this.table.addGlobalSecondaryIndex({
+      indexName: "GSI7",
+      partitionKey: { name: "GSI7PK", type: AttributeType.STRING },
+      sortKey: { name: "GSI7SK", type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
   }
 }

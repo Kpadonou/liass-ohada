@@ -167,6 +167,14 @@ describe('TrialBalancePage', () => {
     expect(text).toContain('150\u202f000');
     expect(text).toContain('Trial balance is balanced');
     expect(text).toContain('Amounts in FCFA');
+
+    const headerRows = fixture.nativeElement.querySelectorAll('thead tr');
+    expect(headerRows).toHaveLength(2);
+    expect(headerRows[0].textContent).toContain('Account');
+    expect(headerRows[0].textContent).toContain('Label');
+    expect(headerRows[0].textContent).toContain('Opening');
+    expect(headerRows[0].textContent).toContain('Movements');
+    expect(headerRows[0].textContent).toContain('Closing');
   });
 
   it('validates an inverted period inline and does not issue a query', async () => {

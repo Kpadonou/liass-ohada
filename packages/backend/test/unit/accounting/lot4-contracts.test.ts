@@ -190,10 +190,12 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
     ).toThrow();
   });
 
-  test("journal book requires a journal and strips technical attributes", () => {
+  test("journal book validates its period and strips technical attributes", () => {
     expect(() =>
       JournalBookQuerySchema.parse({
         year: "2026",
+        startDate: "2026-03-01",
+        endDate: "2026-02-01",
       }),
     ).toThrow();
 
@@ -201,7 +203,8 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
       data: {
         meta: {
           year: "2026",
-          journalCode: "VE",
+          startDate: "2026-01-01",
+          endDate: "2026-12-31",
         },
         entries: [
           {
@@ -209,13 +212,33 @@ describe("frontend-safe Accounting Lot 4 contracts", () => {
             GSI5PK: "ORG#technical",
             entityType: "ENTRY",
             entryId: "E-001",
-            date: "2026-01-15",
+            entryNumber: "E-001",
+            accountingDate: "2026-01-15",
             journalCode: "VE",
+            journalLabel: "Ventes",
+            entryLabel: "Vente",
             totalDebit: 100,
             totalCredit: 100,
             status: "POSTED",
+            isBalanced: true,
+            lines: [{
+              lineId: "L-001",
+              accountCode: "41100000",
+              accountLabel: "Clients",
+              debit: 100,
+              credit: 0,
+            }],
           },
         ],
+        totals: {
+          totalDebit: 100,
+          totalCredit: 100,
+          difference: 0,
+          isBalanced: true,
+          entryCount: 1,
+          lineCount: 1,
+        },
+        integrityWarnings: [],
         hasMore: false,
       },
     });

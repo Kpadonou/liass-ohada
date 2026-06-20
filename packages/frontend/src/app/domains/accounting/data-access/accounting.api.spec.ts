@@ -802,12 +802,40 @@ describe('AccountingApi', () => {
         }
       }
     });
+    await Promise.resolve();
+
+    const accountsRequest = httpMock.expectOne(
+      (candidate) =>
+        candidate.url === `${apiBaseUrl}/accounts` &&
+        candidate.params.get('limit') === '200'
+    );
+    accountsRequest.flush({
+      data: {
+        accounts: [
+          accountResponseFixture({
+            accountId: '40110000',
+            accountName: 'Fournisseurs'
+          }),
+          accountResponseFixture({
+            accountId: '70110000',
+            accountName: 'Ventes de marchandises',
+            accountNature: 'INCOME',
+            accountUsage: 'CREDIT_ONLY',
+            isThirdPartyAccount: false,
+            classCode: 7,
+            financialStatementCode: 'IS',
+            allowReconciliation: false
+          })
+        ],
+        hasMore: false
+      }
+    });
 
     await expect(promise).resolves.toEqual({
       rows: [
         {
           accountCode: '40110000',
-          accountLabel: '40110000',
+          accountLabel: 'Fournisseurs',
           openingDebit: 0,
           openingCredit: 0,
           movementDebit: 150000,
@@ -817,7 +845,7 @@ describe('AccountingApi', () => {
         },
         {
           accountCode: '70110000',
-          accountLabel: '70110000',
+          accountLabel: 'Ventes de marchandises',
           openingDebit: 0,
           openingCredit: 0,
           movementDebit: 0,
@@ -874,21 +902,24 @@ describe('AccountingApi', () => {
     await expect(promise).rejects.toMatchObject({ name: 'ZodError' });
   });
 
-  it('loads only a journal-specific paginated journal book', async () => {
+  it('loads the global paginated journal book', async () => {
     const promise = api.getJournalBook({
       year: '2026',
+      startDate: '2026-01-01',
+      endDate: '2026-01-31',
       journalCode: 'VE',
-      month: '01',
       limit: 20,
       cursor: 'cursor-2'
     });
     const request = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/journals/VE/entries`
+      (candidate) => candidate.url === `${apiBaseUrl}/books/journal-book`
     );
 
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('year')).toBe('2026');
-    expect(request.request.params.get('month')).toBe('01');
+    expect(request.request.params.get('startDate')).toBe('2026-01-01');
+    expect(request.request.params.get('endDate')).toBe('2026-01-31');
+    expect(request.request.params.get('journalCode')).toBe('VE');
     expect(request.request.params.get('limit')).toBe('20');
     expect(request.request.params.get('cursor')).toBe('cursor-2');
     request.flush({
@@ -899,23 +930,43 @@ describe('AccountingApi', () => {
       data: {
         meta: {
           year: '2026',
+          startDate: '2026-01-01',
+          endDate: '2026-01-31',
           journalCode: 'VE',
-          month: '01'
         },
         entries: [
           {
             GSI5PK: 'ORG#technical',
             entityType: 'ENTRY',
             entryId: 'E-001',
-            date: '2026-01-15',
+            entryNumber: 'E-001',
+            accountingDate: '2026-01-15',
             journalCode: 'VE',
+            journalLabel: 'Ventes',
             reference: 'FV-001',
-            label: 'Vente',
+            entryLabel: 'Vente',
             totalDebit: 125000,
             totalCredit: 125000,
-            status: 'POSTED'
+            status: 'POSTED',
+            isBalanced: true,
+            lines: [{
+              lineId: 'L-001',
+              accountCode: '41100000',
+              accountLabel: 'Clients',
+              debit: 125000,
+              credit: 0
+            }]
           }
         ],
+        totals: {
+          totalDebit: 125000,
+          totalCredit: 125000,
+          difference: 0,
+          isBalanced: true,
+          entryCount: 1,
+          lineCount: 1
+        },
+        integrityWarnings: [],
         nextCursor: 'cursor-3',
         hasMore: true
       }
@@ -925,35 +976,56 @@ describe('AccountingApi', () => {
       items: [
         {
           entryId: 'E-001',
-          date: '2026-01-15',
+          entryNumber: 'E-001',
+          accountingDate: '2026-01-15',
           journalCode: 'VE',
+          journalLabel: 'Ventes',
           reference: 'FV-001',
-          label: 'Vente',
+          entryLabel: 'Vente',
           totalDebit: 125000,
           totalCredit: 125000,
-          status: 'POSTED'
+          status: 'POSTED',
+          isBalanced: true,
+          lines: [{
+            lineId: 'L-001',
+            accountCode: '41100000',
+            accountLabel: 'Clients',
+            debit: 125000,
+            credit: 0
+          }]
         }
       ],
       meta: {
         year: '2026',
+        startDate: '2026-01-01',
+        endDate: '2026-01-31',
         journalCode: 'VE',
-        month: '01'
       },
+      totals: {
+        totalDebit: 125000,
+        totalCredit: 125000,
+        difference: 0,
+        isBalanced: true,
+        entryCount: 1,
+        lineCount: 1
+      },
+      integrityWarnings: [],
       nextCursor: 'cursor-3',
       hasMore: true,
       message: 'Livre-journal récupéré.'
     });
   });
 
-  it('rejects a global journal-book request before making an HTTP call', async () => {
+  it('rejects an invalid journal-book period before making an HTTP call', async () => {
     await expect(
       api.getJournalBook({
         year: '2026',
-        journalCode: ''
+        startDate: '2026-02-01',
+        endDate: '2026-01-01'
       })
     ).rejects.toThrow();
 
-    httpMock.expectNone((candidate) => candidate.url.includes('/journals/'));
+    httpMock.expectNone((candidate) => candidate.url.includes('/books/journal-book'));
   });
 
   it('creates fiscal years and maps frontend-safe responses', async () => {

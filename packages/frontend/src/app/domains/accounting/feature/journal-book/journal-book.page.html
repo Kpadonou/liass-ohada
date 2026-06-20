@@ -1,0 +1,114 @@
+<div class="space-y-5">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.JOURNAL_BOOK.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.JOURNAL_BOOK.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.JOURNAL_BOOK.SUBTITLE' | transloco"
+  />
+
+  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+    <liass-fiscal-year-required />
+  } @else {
+    <section class="rounded-app-card border border-slate-200 bg-white p-4 shadow-app-xs dark:border-slate-800 dark:bg-slate-900" [formGroup]="form">
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-sm font-semibold">{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.TITLE' | transloco }}</h2>
+        <div class="flex flex-wrap gap-2">
+          <liass-button icon="restart_alt" size="sm" variant="ghost" (pressed)="resetFilters()">
+            {{ 'ACCOUNTING.JOURNAL_BOOK.ACTIONS.RESET' | transloco }}
+          </liass-button>
+          <liass-button icon="table_view" size="sm" tone="success" [disabled]="exportsDisabled()" [loading]="exporting()" (pressed)="exportExcel()">
+            {{ 'ACCOUNTING.JOURNAL_BOOK.ACTIONS.EXPORT_EXCEL' | transloco }}
+          </liass-button>
+          <liass-button icon="picture_as_pdf" size="sm" tone="danger" [disabled]="exportsDisabled()" [loading]="exporting()" (pressed)="exportPdf()">
+            {{ 'ACCOUNTING.JOURNAL_BOOK.ACTIONS.EXPORT_PDF' | transloco }}
+          </liass-button>
+        </div>
+      </div>
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <mat-form-field appearance="outline"><mat-label>{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.YEAR' | transloco }}</mat-label>
+          <mat-select formControlName="year" (selectionChange)="yearChanged($event.value)">
+            @for (year of fiscalYearContext.fiscalYears(); track year.year) { <mat-option [value]="year.year.toString()">{{ year.year }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.START_DATE' | transloco }}</mat-label><input matInput type="date" formControlName="startDate" /></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.END_DATE' | transloco }}</mat-label><input matInput type="date" formControlName="endDate" /></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.JOURNAL' | transloco }}</mat-label>
+          <mat-select formControlName="journalCode"><mat-option value="">{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.ALL_JOURNALS' | transloco }}</mat-option>
+            @for (journal of journals(); track journal.journalCode) { <mat-option [value]="journal.journalCode">{{ journal.journalCode }} — {{ journal.journalName }}</mat-option> }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.ENTRY_NUMBER' | transloco }}</mat-label><input matInput formControlName="entryNumber" /></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.REFERENCE' | transloco }}</mat-label><input matInput formControlName="reference" /></mat-form-field>
+        <mat-form-field appearance="outline"><mat-label>{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.ACCOUNT_PREFIX' | transloco }}</mat-label><input matInput inputmode="numeric" formControlName="accountPrefix" /></mat-form-field>
+      </div>
+      @if (validationKey()) { <p class="text-sm text-red-700" role="alert">{{ validationKey()! | transloco }}</p> }
+    </section>
+
+    @if (query.isPending() && filtersValid()) {
+      <div class="space-y-3" role="status">@for (_ of [1,2,3,4,5]; track $index) { <liass-skeleton variant="block" /> }<span class="sr-only">{{ 'ACCOUNTING.JOURNAL_BOOK.LOADING' | transloco }}</span></div>
+    } @else if (query.isError()) {
+      <section class="rounded-app-card border border-red-200 bg-red-50 p-5 text-red-900" role="alert">
+        <h2 class="font-semibold">{{ 'ACCOUNTING.JOURNAL_BOOK.ERROR.TITLE' | transloco }}</h2>
+        <p class="mt-1 text-sm">{{ errorMessage() || ('ACCOUNTING.JOURNAL_BOOK.ERROR.DESCRIPTION' | transloco) }}</p>
+        <liass-button class="mt-3" icon="refresh" size="sm" tone="danger" (pressed)="retry()">{{ 'COMMON.ACTIONS.RETRY' | transloco }}</liass-button>
+      </section>
+    } @else if (result(); as journalBook) {
+      <section class="flex flex-wrap items-center justify-between gap-3">
+        <div class="text-sm text-slate-600 dark:text-slate-300">
+          {{ 'ACCOUNTING.JOURNAL_BOOK.RESULTS' | transloco: { entries: journalBook.totals.entryCount, lines: journalBook.totals.lineCount } }}
+          · {{ 'ACCOUNTING.JOURNAL_BOOK.CURRENCY' | transloco }}
+        </div>
+        <liass-status-chip
+          [tone]="journalBook.totals.isBalanced ? 'success' : 'warning'"
+          [label]="(journalBook.totals.isBalanced ? 'ACCOUNTING.JOURNAL_BOOK.STATUS.BALANCED' : 'ACCOUNTING.JOURNAL_BOOK.STATUS.UNBALANCED') | transloco"
+        />
+      </section>
+      @for (warning of journalBook.integrityWarnings; track warning.entryNumber) {
+        <div class="rounded-app-control border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="status">
+          <mat-icon class="align-middle">warning_amber</mat-icon>
+          {{ 'ACCOUNTING.JOURNAL_BOOK.INTEGRITY_WARNING' | transloco: { entry: warning.entryNumber, difference: formatAmount(warning.difference) } }}
+        </div>
+      }
+      @if (journalBook.items.length === 0) {
+        <div class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+          <p class="font-semibold">{{ 'ACCOUNTING.JOURNAL_BOOK.EMPTY' | transloco }}</p>
+        </div>
+      } @else {
+        <div class="max-h-[68vh] overflow-auto rounded-app-card border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <table class="w-full min-w-[1480px] border-separate border-spacing-0 text-left text-sm">
+            <thead class="sticky top-0 z-10 bg-slate-100 text-xs font-semibold uppercase tracking-[0.06em] text-slate-600 dark:bg-slate-950 dark:text-slate-300">
+              <tr>@for (column of ['DATE','JOURNAL','ENTRY_NUMBER','REFERENCE','ACCOUNT','ACCOUNT_LABEL','LABEL','THIRD_PARTY','DEBIT','CREDIT','ACTIONS']; track column) {
+                <th class="border-b border-slate-300 px-3 py-2.5" [class.text-right]="column === 'DEBIT' || column === 'CREDIT'">{{ 'ACCOUNTING.JOURNAL_BOOK.TABLE.' + column | transloco }}</th>
+              }</tr>
+            </thead>
+            <tbody>
+              @for (entry of journalBook.items; track entry.entryId) {
+                @for (line of entry.lines; track line.lineId; let first = $first) {
+                  <tr class="border-b border-slate-100" [class.bg-brand-50]="first">
+                    <td class="px-3 py-2">{{ first ? entry.accountingDate : '' }}</td>
+                    <td class="px-3 py-2">{{ first ? entry.journalCode : '' }}</td>
+                    <td class="px-3 py-2 font-medium">{{ first ? entry.entryNumber : '' }}</td>
+                    <td class="px-3 py-2">{{ first ? (entry.reference || '—') : '' }}</td>
+                    <td class="px-3 py-2 font-medium">{{ line.accountCode }}</td>
+                    <td class="px-3 py-2">{{ line.accountLabel }}</td>
+                    <td class="px-3 py-2">{{ line.lineLabel || entry.entryLabel }}</td>
+                    <td class="px-3 py-2">{{ line.thirdPartyName || line.thirdPartyCode || '—' }}</td>
+                    <td class="px-3 py-2 text-right tabular-nums">{{ formatAmount(line.debit) }}</td>
+                    <td class="px-3 py-2 text-right tabular-nums">{{ formatAmount(line.credit) }}</td>
+                    <td class="px-3 py-2">@if (first) { <button type="button" class="liass-focus-ring rounded text-brand-700 hover:underline" (click)="viewDetail(entry.entryId)">{{ 'ACCOUNTING.JOURNAL_BOOK.ACTIONS.VIEW_DETAIL' | transloco }}</button> }</td>
+                  </tr>
+                }
+              }
+            </tbody>
+            <tfoot class="sticky bottom-0 bg-brand-50 font-semibold">
+              <tr><td class="px-3 py-3" colspan="8">{{ 'ACCOUNTING.JOURNAL_BOOK.TABLE.TOTALS' | transloco }}</td><td class="px-3 py-3 text-right tabular-nums">{{ formatAmount(journalBook.totals.totalDebit) }}</td><td class="px-3 py-3 text-right tabular-nums">{{ formatAmount(journalBook.totals.totalCredit) }}</td><td class="px-3 py-3">{{ 'ACCOUNTING.JOURNAL_BOOK.DIFFERENCE' | transloco: { amount: formatAmount(journalBook.totals.difference) } }}</td></tr>
+            </tfoot>
+          </table>
+        </div>
+        <div class="flex justify-end gap-2">
+          <liass-button size="sm" variant="outline" [disabled]="cursorHistory().length === 0" (pressed)="previousPage()">{{ 'ACCOUNTING.JOURNAL_BOOK.ACTIONS.PREVIOUS' | transloco }}</liass-button>
+          <liass-button size="sm" variant="outline" [disabled]="!journalBook.hasMore" (pressed)="nextPage()">{{ 'ACCOUNTING.JOURNAL_BOOK.ACTIONS.NEXT' | transloco }}</liass-button>
+        </div>
+      }
+    }
+  }
+</div>

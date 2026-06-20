@@ -58,6 +58,7 @@
       "ENTRIES": "Entries",
       "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
+      "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
       "MISSIONS": "Missions",
@@ -82,6 +83,7 @@
       "ENTRIES": "Entries",
       "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
+      "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
       "TRIAL_BALANCE": "Trial balance"
@@ -620,6 +622,10 @@
         "SUBTITLE": "A reserved workspace for the general ledger.",
         "TITLE": "General ledger"
       },
+      "JOURNAL_BOOK": {
+        "SUBTITLE": "Review posted entries in chronological order.",
+        "TITLE": "Journal book"
+      },
       "JOURNALS": {
         "SUBTITLE": "A reserved workspace for journal management.",
         "TITLE": "Journals"
@@ -654,6 +660,71 @@
       "JOURNAL_UPDATED": "Journal updated successfully.",
       "PERIOD_LOCKED": "Period locked.",
       "PERIOD_UNLOCKED": "Period unlocked."
+    },
+    "JOURNAL_BOOK": {
+      "EYEBROW": "Accounting books",
+      "TITLE": "Journal book",
+      "SUBTITLE": "Review posted entries in chronological order.",
+      "CURRENCY": "Amounts in FCFA",
+      "RESULTS": "{{entries}} entries · {{lines}} lines",
+      "DIFFERENCE": "Difference: {{amount}}",
+      "INTEGRITY_WARNING": "Entry {{entry}} has a difference of {{difference}} FCFA.",
+      "LOADING": "Loading journal book…",
+      "EMPTY": "No posted entry exists for the selected period.",
+      "FILTERS": {
+        "TITLE": "Filters",
+        "YEAR": "Fiscal year",
+        "START_DATE": "Start date",
+        "END_DATE": "End date",
+        "JOURNAL": "Accounting journal",
+        "ALL_JOURNALS": "All journals",
+        "ENTRY_NUMBER": "Entry number",
+        "REFERENCE": "Reference or document",
+        "ACCOUNT_PREFIX": "Account prefix"
+      },
+      "ACTIONS": {
+        "RESET": "Reset",
+        "EXPORT_EXCEL": "Export Excel",
+        "EXPORT_PDF": "Export PDF",
+        "VIEW_DETAIL": "View details",
+        "PREVIOUS": "Previous",
+        "NEXT": "Next"
+      },
+      "TABLE": {
+        "DATE": "Date",
+        "JOURNAL": "Journal",
+        "ENTRY_NUMBER": "Entry no.",
+        "REFERENCE": "Reference",
+        "ACCOUNT": "Account",
+        "ACCOUNT_LABEL": "Account label",
+        "LABEL": "Label",
+        "THIRD_PARTY": "Third party",
+        "DEBIT": "Debit",
+        "CREDIT": "Credit",
+        "ACTIONS": "Actions",
+        "TOTALS": "Totals"
+      },
+      "STATUS": {
+        "BALANCED": "Journal book balanced",
+        "UNBALANCED": "Journal book unbalanced"
+      },
+      "VALIDATION": {
+        "REQUIRED": "Select a valid fiscal year and period.",
+        "DATE_ORDER": "The start date must be before the end date.",
+        "OUTSIDE_YEAR": "Dates must belong to the selected fiscal year.",
+        "ACCOUNT_PREFIX": "The account prefix must contain 1 to 8 digits."
+      },
+      "ERROR": {
+        "TITLE": "The journal book could not be loaded.",
+        "DESCRIPTION": "Please try again shortly."
+      },
+      "EXPORT": {
+        "FRAMEWORK": "Accounting framework",
+        "PERIOD": "Period",
+        "SUCCESS_EXCEL": "The Excel file was generated.",
+        "SUCCESS_PDF": "The PDF file was generated.",
+        "FAILED": "The export could not be generated."
+      }
     },
     "OVERVIEW": {
       "CARDS": {

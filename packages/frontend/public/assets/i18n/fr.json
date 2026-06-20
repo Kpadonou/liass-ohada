@@ -58,6 +58,7 @@
       "ENTRIES": "Écritures",
       "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
+      "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
       "MISSIONS": "Missions",
@@ -82,6 +83,7 @@
       "ENTRIES": "Écritures",
       "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
+      "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
       "TRIAL_BALANCE": "Balance"
@@ -620,6 +622,10 @@
         "SUBTITLE": "Un espace réservé au grand livre.",
         "TITLE": "Grand livre"
       },
+      "JOURNAL_BOOK": {
+        "SUBTITLE": "Consultez chronologiquement les écritures comptabilisées.",
+        "TITLE": "Livre-journal"
+      },
       "JOURNALS": {
         "SUBTITLE": "Un espace réservé à la gestion des journaux.",
         "TITLE": "Journaux"
@@ -654,6 +660,71 @@
       "JOURNAL_UPDATED": "Journal mis à jour avec succès.",
       "PERIOD_LOCKED": "Période verrouillée.",
       "PERIOD_UNLOCKED": "Période déverrouillée."
+    },
+    "JOURNAL_BOOK": {
+      "EYEBROW": "Livres comptables",
+      "TITLE": "Livre-journal",
+      "SUBTITLE": "Consultez chronologiquement les écritures comptabilisées.",
+      "CURRENCY": "Montants en FCFA",
+      "RESULTS": "{{entries}} écritures · {{lines}} lignes",
+      "DIFFERENCE": "Écart : {{amount}}",
+      "INTEGRITY_WARNING": "L’écriture {{entry}} présente un écart de {{difference}} FCFA.",
+      "LOADING": "Chargement du Livre-journal…",
+      "EMPTY": "Aucune écriture comptabilisée sur la période sélectionnée.",
+      "FILTERS": {
+        "TITLE": "Filtres",
+        "YEAR": "Exercice",
+        "START_DATE": "Date de début",
+        "END_DATE": "Date de fin",
+        "JOURNAL": "Journal comptable",
+        "ALL_JOURNALS": "Tous les journaux",
+        "ENTRY_NUMBER": "N° écriture",
+        "REFERENCE": "Référence ou pièce",
+        "ACCOUNT_PREFIX": "Préfixe du compte"
+      },
+      "ACTIONS": {
+        "RESET": "Réinitialiser",
+        "EXPORT_EXCEL": "Export Excel",
+        "EXPORT_PDF": "Export PDF",
+        "VIEW_DETAIL": "Voir détail",
+        "PREVIOUS": "Précédent",
+        "NEXT": "Suivant"
+      },
+      "TABLE": {
+        "DATE": "Date",
+        "JOURNAL": "Journal",
+        "ENTRY_NUMBER": "N° écriture",
+        "REFERENCE": "Référence",
+        "ACCOUNT": "Compte",
+        "ACCOUNT_LABEL": "Intitulé du compte",
+        "LABEL": "Libellé",
+        "THIRD_PARTY": "Tiers",
+        "DEBIT": "Débit",
+        "CREDIT": "Crédit",
+        "ACTIONS": "Actions",
+        "TOTALS": "Totaux"
+      },
+      "STATUS": {
+        "BALANCED": "Livre-journal équilibré",
+        "UNBALANCED": "Livre-journal déséquilibré"
+      },
+      "VALIDATION": {
+        "REQUIRED": "Sélectionnez un exercice et une période valides.",
+        "DATE_ORDER": "La date de début doit précéder la date de fin.",
+        "OUTSIDE_YEAR": "Les dates doivent appartenir à l’exercice sélectionné.",
+        "ACCOUNT_PREFIX": "Le préfixe du compte doit contenir de 1 à 8 chiffres."
+      },
+      "ERROR": {
+        "TITLE": "Le Livre-journal n’a pas pu être chargé.",
+        "DESCRIPTION": "Réessayez dans quelques instants."
+      },
+      "EXPORT": {
+        "FRAMEWORK": "Référentiel comptable",
+        "PERIOD": "Période",
+        "SUCCESS_EXCEL": "Le fichier Excel a été généré.",
+        "SUCCESS_PDF": "Le fichier PDF a été généré.",
+        "FAILED": "L’export n’a pas pu être généré."
+      }
     },
     "OVERVIEW": {
       "CARDS": {

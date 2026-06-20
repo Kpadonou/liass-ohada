@@ -173,6 +173,17 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'accounting/journal-book',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/journal-book/journal-book.page').then(
+            (module) => module.JournalBookPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.JOURNAL_BOOK.SUBTITLE',
+          titleKey: 'ACCOUNTING.JOURNAL_BOOK.TITLE'
+        }
+      },
+      {
         path: 'accounting/journals',
         loadComponent: () =>
           import('../../domains/accounting/feature/journals/journals.page').then(

@@ -53,23 +53,31 @@ the same accounting transaction. Draft entries have neither balance aggregate
 updates nor general-ledger index attributes, so they cannot affect the balance
 or drill-down.
 
-## AP-ACC-JB-001 - Paginated journal book for one journal
+## AP-ACC-JB-001 - Global chronological journal book
 
-- Canonical route: `GET /journals/{journalCode}/entries`
-- Operation: `Query`
-- Index: `GSI5`
-- Partition key: `GSI5PK = ORG#{orgId}#FY#{year}`
-- Sort-key condition:
-  `begins_with(GSI5SK, JNL#{journalCode}#DT#{datePrefix})`
-- Sort order: date and entry identifier within the selected journal
-- Filter: posted entry headers only
-- Pagination: `Limit`, `ExclusiveStartKey`, opaque cursor
-- Unsupported alternative: no `Scan`
+- Canonical route: `GET /books/journal-book`
+- Primary operation: `Query`
+- Sparse index: `GSI7`, populated on POSTED entry headers only
+- Partition key: `GSI7PK = ORG#{orgId}#FY#{year}`
+- Sort key: `GSI7SK = DT#{accountingDate}#E#{entryId}`
+- Range condition: inclusive `BETWEEN` selected start/end dates
+- Sort order: accounting date, stable entry identifier
+- Pagination: entry-level opaque offset cursor over the deterministic filtered result
+- Unsupported alternatives: no `Scan`, no GSI consistent read
 
-`journalCode` is mandatory. GSI5 is journal-first, so it cannot produce a
-global chronological inter-journal book. Supporting that future access pattern
-requires an additive date-first index or materialized read model plus a
-backfill; it must not be simulated with scans or client-side aggregation.
+Posting writes add GSI7 attributes in the same transaction that creates or
+posts the entry. Drafts have no GSI7 attributes.
+
+For entries posted before GSI7 deployment, the repository performs a bounded
+server-side compatibility merge using one GSI5 `Query` per configured/system
+journal and the selected date range. Results are deduplicated by entry ID and
+sorted with the same chronology. This avoids an unbounded client load and keeps
+the report complete while an optional offline backfill is pending.
+
+Account-prefix, entry-number, and reference filters are applied after entry
+headers and complete line groups are hydrated. Pagination never splits an
+entry. Global totals are calculated before page slicing, so they represent the
+complete filtered Livre-journal.
 
 ## Contract boundary
 

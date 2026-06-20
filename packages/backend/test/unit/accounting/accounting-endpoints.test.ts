@@ -15,7 +15,7 @@ describe("AccountingEndpoints", () => {
     expect(source).not.toContain('domainName: "ledger"');
   });
 
-  test("keeps the journal-specific route canonical for the journal book", () => {
+  test("exposes the global journal-book route without removing journal entries", () => {
     const source = readFileSync(
       path.join(
         __dirname,
@@ -25,6 +25,6 @@ describe("AccountingEndpoints", () => {
     );
 
     expect(source).toContain('"/journals/{journalCode}/entries"');
-    expect(source).not.toContain('"/books/journal-book"');
+    expect(source).toContain('"/books/journal-book"');
   });
 });

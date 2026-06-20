@@ -88,6 +88,11 @@ export class AccountingEndpoints extends DomainConstructFactory {
     );
     map(
       apigw.HttpMethod.GET,
+      "/books/journal-book",
+      "books/get-journal-book",
+    );
+    map(
+      apigw.HttpMethod.GET,
       "/books/third-party-ledger",
       "books/get-third-party-ledger",
     );

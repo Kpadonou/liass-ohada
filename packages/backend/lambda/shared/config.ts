@@ -14,6 +14,7 @@ const ConfigSchema = z.object({
   GSI4: z.string(),
   GSI5: z.string(),
   GSI6: z.string(),
+  GSI7: z.string(),
 });
 
 /**
@@ -53,6 +54,7 @@ function loadConfig(): Config {
     GSI4: "GSI4", // GSI4 for project queries (SYCEBNL)
     GSI5: "GSI5", // GSI5 for journal/audit trail queries
     GSI6: "GSI6", // GSI6 for authenticated user workspace discovery
+    GSI7: "GSI7", // GSI7 for the global chronological journal book
   };
 
   // Validate configuration

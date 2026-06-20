@@ -70,10 +70,14 @@ function normalizeTrialBalanceParams(params: TrialBalanceParams) {
 
 function normalizeJournalBookParams(params: JournalBookParams) {
   return {
+    accountPrefix: params.accountPrefix?.trim() || null,
     cursor: params.cursor ?? null,
-    journalCode: params.journalCode.trim().toUpperCase(),
+    endDate: params.endDate,
+    entryNumber: params.entryNumber?.trim() || null,
+    journalCode: params.journalCode?.trim().toUpperCase() || null,
     limit: params.limit ?? 50,
-    month: params.month ?? null,
+    reference: params.reference?.trim() || null,
+    startDate: params.startDate,
     year: params.year
   };
 }
@@ -265,10 +269,11 @@ export class AccountingQueries {
   }
 
   journalBook(params: JournalBookParams, enabled = true) {
-    const normalizedJournalCode = params.journalCode.trim().toUpperCase();
     const normalizedParams = {
       ...params,
-      journalCode: normalizedJournalCode
+      ...(params.journalCode
+        ? { journalCode: params.journalCode.trim().toUpperCase() }
+        : {})
     };
 
     return queryOptions({
@@ -277,8 +282,8 @@ export class AccountingQueries {
       enabled:
         enabled &&
         /^\d{4}$/.test(params.year) &&
-        normalizedJournalCode.length > 0 &&
-        normalizedJournalCode.length <= 10,
+        /^\d{4}-\d{2}-\d{2}$/.test(params.startDate) &&
+        /^\d{4}-\d{2}-\d{2}$/.test(params.endDate),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }

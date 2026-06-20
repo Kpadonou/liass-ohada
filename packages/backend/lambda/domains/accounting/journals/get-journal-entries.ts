@@ -1,16 +1,15 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { JournalService } from "@/lambda/shared/services/journal-service";
 import {
-  JournalBookQuerySchema,
-  JournalBookResponseSchema,
+  JournalSpecificBookQuerySchema,
 } from "@liass-ohada/shared/accounting";
 
 export const handler = createHandler(
-  JournalBookQuerySchema,
+  JournalSpecificBookQuerySchema,
   async (data, { orgId, i18n }) => {
     const result = await JournalService.getJournalEntries(orgId, data);
 
-    return JournalBookResponseSchema.parse({
+    return {
       message: i18n.getMessage("SUCCESS_JOURNAL_RETRIEVED"),
       data: {
         meta: {
@@ -20,6 +19,6 @@ export const handler = createHandler(
         },
         ...result,
       },
-    });
+    };
   },
 );

@@ -36,6 +36,12 @@ const accountingItems: readonly ShellNavItem[] = [
     route: ['/accounting/general-ledger']
   },
   {
+    icon: 'history_edu',
+    labelKey: 'SHELL.NAV.JOURNAL_BOOK',
+    page: 'accounting.journalBook',
+    route: ['/accounting/journal-book']
+  },
+  {
     icon: 'menu_book',
     labelKey: 'SHELL.NAV.JOURNALS',
     page: 'accounting.journals',

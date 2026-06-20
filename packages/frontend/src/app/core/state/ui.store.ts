@@ -11,6 +11,7 @@ export type AppPage =
   | 'accounting.overview'
   | 'accounting.fiscalYear'
   | 'accounting.generalLedger'
+  | 'accounting.journalBook'
   | 'accounting.journals'
   | 'accounting.entries'
   | 'accounting.lettering'

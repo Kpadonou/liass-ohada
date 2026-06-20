@@ -284,16 +284,19 @@ describe('AccountingQueries', () => {
     });
   });
 
-  it('requires one journal for journal-book queries and never creates a global key', async () => {
+  it('creates a tenant-scoped global journal-book key with all filters', async () => {
     accountingApi.getJournalBook.mockResolvedValue({
       items: [],
-      meta: { year: '2026', journalCode: 'VE' },
+      meta: { year: '2026', startDate: '2026-01-01', endDate: '2026-12-31' },
+      totals: { totalDebit: 0, totalCredit: 0, difference: 0, isBalanced: true, entryCount: 0, lineCount: 0 },
+      integrityWarnings: [],
       hasMore: false
     });
 
     const options = queries.journalBookForActiveFiscalYear({
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
       journalCode: ' ve ',
-      month: '01',
       cursor: 'cursor-2',
       limit: 20
     });
@@ -304,9 +307,13 @@ describe('AccountingQueries', () => {
       'journal-book',
       {
         cursor: 'cursor-2',
+        endDate: '2026-12-31',
+        entryNumber: null,
         journalCode: 'VE',
         limit: 20,
-        month: '01',
+        reference: null,
+        accountPrefix: null,
+        startDate: '2026-01-01',
         year: '2026'
       }
     ]);
@@ -316,12 +323,12 @@ describe('AccountingQueries', () => {
 
     expect(accountingApi.getJournalBook).toHaveBeenCalledWith({
       journalCode: 'VE',
-      month: '01',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
       cursor: 'cursor-2',
       limit: 20,
       year: '2026'
     });
-    expect(queries.journalBookForActiveFiscalYear({ journalCode: '' }).enabled).toBe(false);
   });
 
   it('disables Lot 4 active-year queries when no fiscal year is selected', () => {
@@ -333,7 +340,10 @@ describe('AccountingQueries', () => {
     fiscalYearContext.activeFiscalYear.mockReturnValue(null);
     expect(queries.trialBalanceForActiveFiscalYear().enabled).toBe(false);
     expect(
-      queries.journalBookForActiveFiscalYear({ journalCode: 'VE' }).enabled
+      queries.journalBookForActiveFiscalYear({
+        startDate: '2026-01-01',
+        endDate: '2026-12-31'
+      }).enabled
     ).toBe(false);
   });
 });

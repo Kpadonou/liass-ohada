@@ -48,8 +48,9 @@ import {
   type GeneralLedgerQuery,
   type IncomeStatementDto,
   type JournalDto,
-  type JournalBookLineDto,
+  type JournalBookEntryDto,
   type JournalBookQuery,
+  type JournalBookTotalsDto,
   type LetteringResultDto,
   type MatchingReportDto,
   type PeriodLockDto,
@@ -143,12 +144,15 @@ export interface UnletteredLinesParams {
   projectId?: string;
 }
 
-export interface JournalBookResult extends PaginatedResult<JournalBookLineDto> {
+export interface JournalBookResult extends PaginatedResult<JournalBookEntryDto> {
   meta: {
     year: string;
-    journalCode: string;
-    month?: string;
+    startDate: string;
+    endDate: string;
+    journalCode?: string;
   };
+  totals: JournalBookTotalsDto;
+  integrityWarnings: Array<{ entryNumber: string; difference: number }>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -447,7 +451,11 @@ export class AccountingApi {
         params
       })
     );
-    const parsed = parseTrialBalanceResponse(response, request);
+    const parsed = await parseTrialBalanceResponse(
+      response,
+      request,
+      () => this.loadAllAccountLabels()
+    );
 
     return {
       ...parsed.data,
@@ -456,14 +464,16 @@ export class AccountingApi {
   }
 
   async getJournalBook(paramsInput: JournalBookParams): Promise<JournalBookResult> {
-    const request: JournalBookQuery = JournalBookQuerySchema.parse({
-      ...paramsInput,
-      journalCode: paramsInput.journalCode.trim().toUpperCase()
-    });
-    let params = new HttpParams().set('year', request.year);
+    const request: JournalBookQuery = JournalBookQuerySchema.parse(paramsInput);
+    let params = new HttpParams()
+      .set('year', request.year)
+      .set('startDate', request.startDate)
+      .set('endDate', request.endDate);
 
-    if (request.month) {
-      params = params.set('month', request.month);
+    for (const key of ['journalCode', 'entryNumber', 'reference', 'accountPrefix'] as const) {
+      if (request[key]) {
+        params = params.set(key, request[key]);
+      }
     }
 
     if (request.limit) {
@@ -475,20 +485,39 @@ export class AccountingApi {
     }
 
     const response = await firstValueFrom(
-      this.http.get<unknown>(
-        `${this.journalUrl(request.journalCode)}/entries`,
-        { params }
-      )
+      this.http.get<unknown>(`${this.apiBaseUrl}/books/journal-book`, { params })
     );
     const parsed = JournalBookResponseSchema.parse(response);
 
     return {
       items: parsed.data.entries,
       meta: parsed.data.meta,
+      totals: parsed.data.totals,
+      integrityWarnings: parsed.data.integrityWarnings,
       nextCursor: parsed.data.nextCursor,
       hasMore: parsed.data.hasMore,
       message: userMessageFromResponse(response)
     };
+  }
+
+  async getCompleteJournalBook(
+    paramsInput: Omit<JournalBookParams, 'cursor' | 'limit'>
+  ): Promise<JournalBookResult> {
+    const items: JournalBookEntryDto[] = [];
+    let cursor: string | undefined;
+    let page: JournalBookResult;
+
+    do {
+      page = await this.getJournalBook({
+        ...paramsInput,
+        limit: 200,
+        ...(cursor ? { cursor } : {})
+      });
+      items.push(...page.items);
+      cursor = page.hasMore ? page.nextCursor : undefined;
+    } while (cursor);
+
+    return { ...page!, items, nextCursor: undefined, hasMore: false };
   }
 
   async createFiscalYear(payload: CreateFiscalYearRequest): Promise<ApiMutationResult<FiscalYearDto>> {
@@ -632,11 +661,39 @@ export class AccountingApi {
 
     return `${this.apiBaseUrl}/journals/${encodeURIComponent(request.journalCode)}`;
   }
+
+  private async loadAllAccountLabels(): Promise<Map<string, string>> {
+    const labels = new Map<string, string>();
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+
+    do {
+      const page = await this.listAccounts({
+        limit: 200,
+        ...(cursor ? { cursor } : {})
+      });
+
+      for (const account of page.items) {
+        labels.set(account.accountId, account.accountName);
+      }
+
+      cursor = page.hasMore ? page.nextCursor : undefined;
+      if (cursor) {
+        if (seenCursors.has(cursor)) {
+          throw new Error('Invalid account pagination cursor cycle');
+        }
+        seenCursors.add(cursor);
+      }
+    } while (cursor);
+
+    return labels;
+  }
 }
 
-function parseTrialBalanceResponse(
+async function parseTrialBalanceResponse(
   response: unknown,
-  request: TrialBalanceQuery
+  request: TrialBalanceQuery,
+  loadAccountLabels: () => Promise<Map<string, string>>
 ) {
   const canonical = TrialBalanceResponseSchema.safeParse(response);
 
@@ -652,6 +709,7 @@ function parseTrialBalanceResponse(
   }
 
   const legacy = LegacyTrialBalanceResponseSchema.parse(response);
+  const accountLabels = await loadAccountLabels();
   const rows = legacy.data.rows
     .map((row) => {
       const openingNet = row.openingDebit - row.openingCredit;
@@ -660,7 +718,7 @@ function parseTrialBalanceResponse(
 
       return {
         accountCode: row.accountId,
-        accountLabel: row.accountId,
+        accountLabel: accountLabels.get(row.accountId) ?? '—',
         openingDebit: Math.max(openingNet, 0),
         openingCredit: Math.max(-openingNet, 0),
         movementDebit: row.movementDebit,

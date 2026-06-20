@@ -6,8 +6,8 @@ import {
   Journal,
   JournalBookLineDto,
   JournalBookLineDtoSchema,
-  JournalBookQuery,
-  JournalBookQuerySchema,
+  JournalSpecificBookQuery,
+  JournalSpecificBookQuerySchema,
   JournalDto,
   JournalDtoSchema,
   JournalSchema,
@@ -222,8 +222,8 @@ export class JournalService {
    * Reads posted entry headers for one journal from GSI5.
    * GSI5 is journal-first, so a journal code is mandatory for stable chronology.
    */
-  static async getJournalEntries(orgId: string, input: JournalBookQuery) {
-    const parsedInput = JournalBookQuerySchema.parse(input);
+  static async getJournalEntries(orgId: string, input: JournalSpecificBookQuery) {
+    const parsedInput = JournalSpecificBookQuerySchema.parse(input);
     const {
       year,
       journalCode,
