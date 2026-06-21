@@ -133,5 +133,18 @@
   "SUCCESS_JOURNAL_RETRIEVED": "Journal récupéré avec succès.",
   "ERROR_TRIAL_BALANCE_DATE_OUTSIDE_FISCAL_YEAR": "Les dates de la balance doivent appartenir à l’exercice sélectionné.",
   "ERROR_TRIAL_BALANCE_PERIOD_AGGREGATES_INCOMPLETE": "Les agrégats journaliers de cet exercice doivent être reconstruits avant de consulter une période intermédiaire.",
-  "TRIAL_BALANCE_ACCOUNT_LABEL_UNAVAILABLE": "Compte {accountId}"
+  "TRIAL_BALANCE_ACCOUNT_LABEL_UNAVAILABLE": "Compte {accountId}",
+  "THIRD_PARTY_REQUIRED": "Un tiers est requis pour ce compte.",
+  "THIRD_PARTY_NOT_FOUND": "Tiers introuvable.",
+  "THIRD_PARTY_INACTIVE": "Ce tiers est inactif.",
+  "THIRD_PARTY_TYPE_MISMATCH": "Le type de tiers n'est pas compatible avec ce compte.",
+  "THIRD_PARTY_NOT_ALLOWED": "Aucun tiers ne peut être associé à ce compte.",
+  "ACCOUNT_AUXILIARY_CONFIGURATION_INVALID": "La configuration auxiliaire du compte est incohérente.",
+  "THIRD_PARTY_CODE_ALREADY_EXISTS": "Un tiers avec ce code existe déjà.",
+  "SUCCESS_THIRD_PARTY_CREATED": "Tiers créé avec succès.",
+  "SUCCESS_THIRD_PARTY_RETRIEVED": "Tiers récupéré avec succès.",
+  "SUCCESS_THIRD_PARTIES_RETRIEVED": "Tiers récupérés avec succès.",
+  "SUCCESS_THIRD_PARTY_UPDATED": "Tiers mis à jour avec succès.",
+  "SUCCESS_THIRD_PARTY_ACTIVATED": "Tiers activé avec succès.",
+  "SUCCESS_THIRD_PARTY_DEACTIVATED": "Tiers désactivé avec succès."
 }

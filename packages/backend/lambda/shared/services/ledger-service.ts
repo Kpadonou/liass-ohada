@@ -37,6 +37,14 @@ import { AppError } from "../middleware/handler-wrapper";
 import { BalanceService } from "./balance-service";
 import { BudgetService } from "./budget-service";
 import { JournalService } from "./journal-service";
+import {
+  AuxiliaryAccountingService,
+  ValidatedPostingLine,
+} from "./auxiliary-accounting-service";
+import {
+  defaultAuxiliaryMetadata,
+  resolveAuxiliaryMetadata,
+} from "../account-auxiliary";
 
 /**
  * Interface definitions for Ledger queries
@@ -174,16 +182,19 @@ export class LedgerService {
     ];
 
     await LedgerService.validateEntities(orgId, accountIds, projectIds);
+    const validatedLines =
+      await AuxiliaryAccountingService.validateAndEnrichLines(orgId, lines);
 
     let totalDebit = 0;
     let totalCredit = 0;
     const transactItems: any[] = [];
     const lineIds: string[] = [];
 
-    for (let index = 0; index < lines.length; index++) {
-      const line = lines[index];
+    for (let index = 0; index < validatedLines.length; index++) {
+      const line = validatedLines[index];
       const paddedAccountId = LedgerService.formatAccount(line.accountId);
       const lineId = `${entryId}#L${index + 1}-${randomUUID()}`;
+      const postingOrdinal = index + 1;
       lineIds.push(lineId);
 
       if (line.projectId && line.debit > 0) {
@@ -197,6 +208,7 @@ export class LedgerService {
         lineId,
         entryDate,
         line,
+        postingOrdinal,
         paddedAccountId,
         journalCode: normalizedJournalCode,
         voucherNumber,
@@ -284,6 +296,22 @@ export class LedgerService {
       );
     } catch (error: any) {
       if (error?.name === "TransactionCanceledException") {
+        if (data.entryId) {
+          const existing = await LedgerService.getEntryHeader(
+            orgId,
+            year,
+            entryId,
+          ).catch(() => undefined);
+          if (
+            existing?.status === "POSTED" &&
+            existing.entryDate === entryDate &&
+            existing.journalCode === normalizedJournalCode &&
+            existing.totalDebit === totalDebit &&
+            existing.totalCredit === totalCredit
+          ) {
+            return { entryId };
+          }
+        }
         throw new AppError(409, "ERROR_ENTRY_ALREADY_EXISTS", { entryId });
       }
       throw error;
@@ -319,6 +347,7 @@ export class LedgerService {
         lineId,
         entryDate: data.entryDate,
         line,
+        postingOrdinal: index + 1,
         paddedAccountId: LedgerService.formatAccount(line.accountId),
         journalCode: normalizedJournalCode,
         voucherNumber: data.voucherNumber,
@@ -426,6 +455,7 @@ export class LedgerService {
         lineId,
         entryDate: data.entryDate,
         line,
+        postingOrdinal: index + 1,
         paddedAccountId: LedgerService.formatAccount(line.accountId),
         journalCode: normalizedJournalCode,
         voucherNumber: data.voucherNumber,
@@ -562,6 +592,10 @@ export class LedgerService {
   static async postDraftEntry(orgId: string, userId: string, year: number, entryId: string): Promise<{ entryId: string }> {
     const draft = await LedgerService.getEntryHeader(orgId, year, entryId);
 
+    if (draft.status === "POSTED") {
+      return { entryId };
+    }
+
     if (draft.status !== "DRAFT") {
       throw new AppError(400, "ERROR_ENTRY_DRAFT_NOT_EDITABLE");
     }
@@ -580,6 +614,7 @@ export class LedgerService {
         projectId: line.projectId,
         budgetLineId: line.budgetLineId,
         thirdPartyId: line.thirdPartyId,
+        thirdPartyType: line.thirdPartyType,
         donorId: line.donorId,
         debit: line.debit,
         credit: line.credit,
@@ -615,6 +650,11 @@ export class LedgerService {
     ];
 
     await LedgerService.validateEntities(orgId, accountIds, projectIds);
+    const validatedLines =
+      await AuxiliaryAccountingService.validateAndEnrichLines(
+        orgId,
+        data.lines,
+      );
 
     const totalDebit = data.lines.reduce((sum, line) => sum + Math.round(line.debit || 0), 0);
     const totalCredit = data.lines.reduce((sum, line) => sum + Math.round(line.credit || 0), 0);
@@ -653,10 +693,11 @@ export class LedgerService {
       },
     ];
 
-    for (let index = 0; index < data.lines.length; index++) {
-      const line = data.lines[index];
+    for (let index = 0; index < validatedLines.length; index++) {
+      const line = validatedLines[index];
       const draftLine = draftLines[index];
       const paddedAccountId = LedgerService.formatAccount(line.accountId);
+      const postingOrdinal = draftLine.postingOrdinal ?? index + 1;
 
       if (line.projectId && line.debit > 0) {
         await BudgetService.enforceBudget(orgId, year, line);
@@ -669,6 +710,7 @@ export class LedgerService {
         lineId: draftLine.lineId,
         entryDate: data.entryDate,
         line,
+        postingOrdinal,
         paddedAccountId,
         journalCode: normalizedJournalCode,
         voucherNumber: data.voucherNumber,
@@ -953,6 +995,7 @@ export class LedgerService {
   }
 
   static toAccountDto(account: Account): AccountDto {
+    const auxiliaryMetadata = resolveAuxiliaryMetadata(account);
     return AccountDtoSchema.parse({
       orgId: account.orgId,
       accountId: account.accountId,
@@ -960,6 +1003,7 @@ export class LedgerService {
       accountNature: account.accountNature,
       accountUsage: account.accountUsage,
       isThirdPartyAccount: account.isThirdPartyAccount,
+      ...auxiliaryMetadata,
       classCode: account.classCode,
       financialStatementCode: account.financialStatementCode,
       allowReconciliation: account.allowReconciliation,
@@ -974,13 +1018,36 @@ export class LedgerService {
     accountId: string,
     updates: Partial<Omit<AccountDto, "orgId" | "accountId" | "createdAt" | "updatedAt">>,
   ): Promise<Account> {
+    const updatesWithAuxiliaryMetadata = { ...updates };
+    const touchesAuxiliaryConfiguration =
+      updates.isThirdPartyAccount !== undefined ||
+      updates.requiresThirdParty !== undefined ||
+      updates.auxiliaryType !== undefined;
+    if (touchesAuxiliaryConfiguration) {
+      const current = await LedgerService.getAccount(orgId, accountId);
+      const explicitPair =
+        updates.requiresThirdParty !== undefined ||
+        updates.auxiliaryType !== undefined;
+      const metadata = explicitPair
+        ? resolveAuxiliaryMetadata({ ...current, ...updates })
+        : defaultAuxiliaryMetadata(
+            accountId,
+            updates.isThirdPartyAccount ?? current.isThirdPartyAccount,
+          );
+      updatesWithAuxiliaryMetadata.isThirdPartyAccount =
+        metadata.auxiliaryType !== "NONE";
+      updatesWithAuxiliaryMetadata.requiresThirdParty =
+        metadata.requiresThirdParty;
+      updatesWithAuxiliaryMetadata.auxiliaryType = metadata.auxiliaryType;
+    }
+
     const updatedAt = new Date().toISOString();
     const setExpressions: string[] = ["updatedAt = :updatedAt"];
     const expressionAttributeValues: Record<string, unknown> = {
       ":updatedAt": updatedAt,
     };
 
-    for (const [field, value] of Object.entries(updates)) {
+    for (const [field, value] of Object.entries(updatesWithAuxiliaryMetadata)) {
       if (typeof value === "undefined") {
         continue;
       }
@@ -1240,6 +1307,9 @@ export class LedgerService {
         voucherNumber: data.voucherNumber,
         journalCode: data.journalCode,
         thirdPartyId: data.thirdPartyId,
+        thirdPartyType: data.thirdPartyType,
+        thirdPartyCode: data.thirdPartyCode,
+        thirdPartyName: data.thirdPartyName,
         projectId: data.projectId,
         letteringCode: data.letteringCode,
         letteringStatus: data.letteringStatus,
@@ -1469,7 +1539,12 @@ export class LedgerService {
 
     return (result.Items || [])
       .map((item) => EntryLineSchema.parse(unmarshall(item)))
-      .sort((left, right) => left.lineId.localeCompare(right.lineId));
+      .sort(
+        (left, right) =>
+          (left.postingOrdinal ?? Number.MAX_SAFE_INTEGER) -
+            (right.postingOrdinal ?? Number.MAX_SAFE_INTEGER) ||
+          left.lineId.localeCompare(right.lineId),
+      );
   }
 
   private static async toEntryDetailDto(
@@ -1515,6 +1590,9 @@ export class LedgerService {
       description: line.description,
       label: line.label,
       thirdPartyId: line.thirdPartyId,
+      thirdPartyType: line.thirdPartyType,
+      thirdPartyCode: line.thirdPartyCode,
+      thirdPartyName: line.thirdPartyName,
       projectId: line.projectId,
       budgetLineId: line.budgetLineId,
       donorId: line.donorId,
@@ -1646,7 +1724,8 @@ export class LedgerService {
     entryId: string;
     lineId: string;
     entryDate: string;
-    line: CreateEntryRequest["lines"][number];
+    line: ValidatedPostingLine;
+    postingOrdinal: number;
     paddedAccountId: string;
     journalCode: string;
     voucherNumber?: string;
@@ -1660,6 +1739,7 @@ export class LedgerService {
       lineId,
       entryDate,
       line,
+      postingOrdinal,
       paddedAccountId,
       journalCode,
       voucherNumber,
@@ -1676,10 +1756,16 @@ export class LedgerService {
       journalCode,
       voucherNumber,
       accountId: paddedAccountId,
+      accountCode: line.accountCode,
+      accountLabel: line.accountLabel,
+      postingOrdinal,
       projectId: line.projectId,
       budgetLineId: line.budgetLineId,
       donorId: line.donorId,
       thirdPartyId: line.thirdPartyId,
+      thirdPartyType: line.thirdPartyType,
+      thirdPartyCode: line.thirdPartyCode,
+      thirdPartyName: line.thirdPartyName,
       label: line.label,
       description: line.description,
       debit: Math.round(line.debit || 0),
@@ -1695,7 +1781,8 @@ export class LedgerService {
       updatedAt: now,
     };
 
-    if (line.thirdPartyId) {
+    if (line.thirdPartyId && line.thirdPartyType) {
+      // GSI2 is immutable auxiliary history; GSI3 is only the unlettered queue.
       item.GSI2PK = KeyFactory.gsi2PK(orgId, paddedAccountId, line.thirdPartyId);
       item.GSI2SK = KeyFactory.gsi2SK(entryDate, lineId);
       item.GSI3PK = KeyFactory.letteringPK(
@@ -1703,7 +1790,11 @@ export class LedgerService {
         paddedAccountId,
         line.thirdPartyId,
       );
-      item.GSI3SK = KeyFactory.letteringSK(entryDate, entryId, lineId);
+      item.GSI3SK = KeyFactory.letteringSK(
+        entryDate,
+        entryId,
+        postingOrdinal.toString().padStart(4, "0"),
+      );
     }
 
     if (line.projectId) {
@@ -1726,6 +1817,7 @@ export class LedgerService {
     lineId: string;
     entryDate: string;
     line: CreateEntryDraftRequest["lines"][number];
+    postingOrdinal: number;
     paddedAccountId: string;
     journalCode: string;
     voucherNumber?: string;
@@ -1739,6 +1831,7 @@ export class LedgerService {
       lineId,
       entryDate,
       line,
+      postingOrdinal,
       paddedAccountId,
       journalCode,
       voucherNumber,
@@ -1755,10 +1848,12 @@ export class LedgerService {
       journalCode,
       voucherNumber,
       accountId: paddedAccountId,
+      postingOrdinal,
       projectId: line.projectId,
       budgetLineId: line.budgetLineId,
       donorId: line.donorId,
       thirdPartyId: line.thirdPartyId,
+      thirdPartyType: line.thirdPartyType,
       label: line.label,
       description: line.description,
       debit: Math.round(line.debit || 0),

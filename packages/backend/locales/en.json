@@ -132,5 +132,18 @@
   "SUCCESS_JOURNAL_RETRIEVED": "Journal retrieved successfully.",
   "ERROR_TRIAL_BALANCE_DATE_OUTSIDE_FISCAL_YEAR": "Trial balance dates must belong to the selected fiscal year.",
   "ERROR_TRIAL_BALANCE_PERIOD_AGGREGATES_INCOMPLETE": "Daily aggregates for this fiscal year must be rebuilt before an intermediate period can be reviewed.",
-  "TRIAL_BALANCE_ACCOUNT_LABEL_UNAVAILABLE": "Account {accountId}"
+  "TRIAL_BALANCE_ACCOUNT_LABEL_UNAVAILABLE": "Account {accountId}",
+  "THIRD_PARTY_REQUIRED": "A third party is required for this account.",
+  "THIRD_PARTY_NOT_FOUND": "Third party not found.",
+  "THIRD_PARTY_INACTIVE": "This third party is inactive.",
+  "THIRD_PARTY_TYPE_MISMATCH": "The third-party type is not compatible with this account.",
+  "THIRD_PARTY_NOT_ALLOWED": "A third party is not allowed for this account.",
+  "ACCOUNT_AUXILIARY_CONFIGURATION_INVALID": "The account auxiliary configuration is inconsistent.",
+  "THIRD_PARTY_CODE_ALREADY_EXISTS": "A third party with this code already exists.",
+  "SUCCESS_THIRD_PARTY_CREATED": "Third party created successfully.",
+  "SUCCESS_THIRD_PARTY_RETRIEVED": "Third party retrieved successfully.",
+  "SUCCESS_THIRD_PARTIES_RETRIEVED": "Third parties retrieved successfully.",
+  "SUCCESS_THIRD_PARTY_UPDATED": "Third party updated successfully.",
+  "SUCCESS_THIRD_PARTY_ACTIVATED": "Third party activated successfully.",
+  "SUCCESS_THIRD_PARTY_DEACTIVATED": "Third party deactivated successfully."
 }

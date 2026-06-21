@@ -6,6 +6,7 @@ import {
   CreateAccountRequestSchema,
   padAccountId,
 } from "@liass-ohada/shared/accounting";
+import { defaultAuxiliaryMetadata } from "@/lambda/shared/account-auxiliary";
 
 /**
  * Slim handler: create account in chart of accounts.
@@ -18,8 +19,17 @@ export const handler = createHandler(
     await LedgerService.assertAccountNotExists(orgId, accountId);
 
     const now = new Date().toISOString();
+    const auxiliaryMetadata =
+      data.requiresThirdParty !== undefined && data.auxiliaryType !== undefined
+        ? {
+            requiresThirdParty: data.requiresThirdParty,
+            auxiliaryType: data.auxiliaryType,
+          }
+        : defaultAuxiliaryMetadata(accountId, data.isThirdPartyAccount);
     const account = {
       ...data,
+      ...auxiliaryMetadata,
+      isThirdPartyAccount: auxiliaryMetadata.auxiliaryType !== "NONE",
       orgId,
       accountId,
       entityType: "ACCOUNT",

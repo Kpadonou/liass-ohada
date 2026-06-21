@@ -6,6 +6,7 @@ import {
   padAccountId,
   type Account,
 } from "@liass-ohada/shared/accounting";
+import { defaultAuxiliaryMetadata } from "../account-auxiliary";
 
 export interface SyscohadaReferenceAccount {
   accountNumber: string;
@@ -143,6 +144,10 @@ export class SyscohadaAccountImportService {
       referenceAccount.classCode <= 5 ? "BALANCE" : "INCOME";
     const accountUsage: Account["accountUsage"] = "BOTH";
     const isThirdPartyAccount = referenceAccount.classCode === 4;
+    const auxiliaryMetadata = defaultAuxiliaryMetadata(
+      accountId,
+      isThirdPartyAccount,
+    );
 
     return AccountSchema.parse({
       orgId,
@@ -151,6 +156,7 @@ export class SyscohadaAccountImportService {
       accountNature,
       accountUsage,
       isThirdPartyAccount,
+      ...auxiliaryMetadata,
       classCode: referenceAccount.classCode,
       financialStatementCode: `SYSCOHADA_CLASS_${referenceAccount.classCode}`,
       allowReconciliation: isThirdPartyAccount,

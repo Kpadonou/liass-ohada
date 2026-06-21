@@ -84,6 +84,8 @@ describe("list-accounts handler", () => {
       accountNature: "BALANCE",
       accountUsage: "BOTH",
       isThirdPartyAccount: true,
+      requiresThirdParty: true,
+      auxiliaryType: "CUSTOMER",
       classCode: 4,
       financialStatementCode: "BS",
       allowReconciliation: true,

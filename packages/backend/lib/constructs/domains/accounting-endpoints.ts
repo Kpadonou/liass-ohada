@@ -62,6 +62,38 @@ export class AccountingEndpoints extends DomainConstructFactory {
       "accounts/get-entries",
     );
 
+    // Third parties
+    map(
+      apigw.HttpMethod.POST,
+      "/third-parties",
+      "third-parties/create-third-party",
+    );
+    map(
+      apigw.HttpMethod.GET,
+      "/third-parties",
+      "third-parties/list-third-parties",
+    );
+    map(
+      apigw.HttpMethod.GET,
+      "/third-parties/{thirdPartyId}",
+      "third-parties/get-third-party",
+    );
+    map(
+      apigw.HttpMethod.PUT,
+      "/third-parties/{thirdPartyId}",
+      "third-parties/update-third-party",
+    );
+    map(
+      apigw.HttpMethod.POST,
+      "/third-parties/{thirdPartyId}/activate",
+      "third-parties/activate-third-party",
+    );
+    map(
+      apigw.HttpMethod.POST,
+      "/third-parties/{thirdPartyId}/deactivate",
+      "third-parties/deactivate-third-party",
+    );
+
     // Entries
     map(apigw.HttpMethod.POST, "/entries", "entries/post-entry");
     map(apigw.HttpMethod.GET, "/entries", "entries/list-entries");

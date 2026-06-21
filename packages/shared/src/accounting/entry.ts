@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ThirdPartyType } from "./third-party";
 
 // --- Enums & Constants ---
 
@@ -29,6 +30,7 @@ export const EntryLineInputSchema = z
     projectId: z.string().optional(),
     budgetLineId: z.string().optional(),
     thirdPartyId: z.string().optional(),
+    thirdPartyType: ThirdPartyType.optional(),
     donorId: z.string().optional(),
     debit: MoneySchema,
     credit: MoneySchema,
@@ -53,6 +55,7 @@ export const EntryDraftLineInputSchema = z.object({
   projectId: z.string().optional(),
   budgetLineId: z.string().optional(),
   thirdPartyId: z.string().optional(),
+  thirdPartyType: ThirdPartyType.optional(),
   donorId: z.string().optional(),
   debit: MoneySchema,
   credit: MoneySchema,
@@ -167,6 +170,9 @@ export const EntryLineDtoSchema = z.object({
   description: z.string().optional(),
   label: z.string().optional(),
   thirdPartyId: z.string().optional(),
+  thirdPartyType: ThirdPartyType.optional(),
+  thirdPartyCode: z.string().optional(),
+  thirdPartyName: z.string().optional(),
   projectId: z.string().optional(),
   budgetLineId: z.string().optional(),
   donorId: z.string().optional(),
@@ -236,6 +242,9 @@ export const AccountEntryDtoSchema = z.object({
   voucherNumber: z.string().optional(),
   journalCode: z.string().optional(),
   thirdPartyId: z.string().optional(),
+  thirdPartyType: ThirdPartyType.optional(),
+  thirdPartyCode: z.string().optional(),
+  thirdPartyName: z.string().optional(),
   projectId: z.string().optional(),
   letteringCode: z.string().optional(),
   letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
@@ -812,9 +821,15 @@ export const EntryLineSchema = z.object({
 
   // Accounting Core Data
   accountId: z.string().regex(/^\d{8}$/),
+  accountCode: z.string().regex(/^\d{8}$/).optional(),
+  accountLabel: z.string().optional(),
+  postingOrdinal: z.number().int().positive().optional(),
   projectId: z.string().optional(),
   budgetLineId: z.string().optional(),
   thirdPartyId: z.string().optional(),
+  thirdPartyType: ThirdPartyType.optional(),
+  thirdPartyCode: z.string().optional(),
+  thirdPartyName: z.string().optional(),
   donorId: z.string().optional(),
   debit: MoneySchema,
   credit: MoneySchema,

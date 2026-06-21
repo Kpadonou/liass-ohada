@@ -3,6 +3,45 @@ import { z } from "zod";
 export const AccountNature = z.enum(["BALANCE", "INCOME"]);
 export const AccountUsage = z.enum(["DEBIT_ONLY", "CREDIT_ONLY", "BOTH"]);
 export const AccountClassCode = z.number().int().min(1).max(8);
+export const AuxiliaryType = z.enum([
+  "CUSTOMER",
+  "SUPPLIER",
+  "THIRD_PARTY",
+  "NONE",
+]);
+
+export type AuxiliaryTypeValue = z.infer<typeof AuxiliaryType>;
+
+const AccountAuxiliaryFields = {
+  requiresThirdParty: z.boolean().optional(),
+  auxiliaryType: AuxiliaryType.optional(),
+};
+
+export function isValidAccountAuxiliaryConfiguration(data: {
+  isThirdPartyAccount: boolean;
+  requiresThirdParty?: boolean;
+  auxiliaryType?: AuxiliaryTypeValue;
+}): boolean {
+  if (
+    data.requiresThirdParty === undefined &&
+    data.auxiliaryType === undefined
+  ) {
+    return true;
+  }
+
+  if (
+    data.requiresThirdParty === undefined ||
+    data.auxiliaryType === undefined
+  ) {
+    return false;
+  }
+
+  const isAuxiliary = data.auxiliaryType !== "NONE";
+  return (
+    data.requiresThirdParty === isAuxiliary &&
+    data.isThirdPartyAccount === isAuxiliary
+  );
+}
 
 export const AccountSchema = z
   .object({
@@ -14,6 +53,7 @@ export const AccountSchema = z
     accountNature: AccountNature,
     accountUsage: AccountUsage,
     isThirdPartyAccount: z.boolean(),
+    ...AccountAuxiliaryFields,
     classCode: AccountClassCode,
     financialStatementCode: z.string(),
     allowReconciliation: z.boolean(),
@@ -33,7 +73,10 @@ export const AccountSchema = z
     {
       message: "ERROR_ACCOUNT_NUMBER_CLASS_MISMATCH",
     },
-  );
+  )
+  .refine(isValidAccountAuxiliaryConfiguration, {
+    message: "ACCOUNT_AUXILIARY_CONFIGURATION_INVALID",
+  });
 
 export type Account = z.infer<typeof AccountSchema>;
 
@@ -44,6 +87,8 @@ export const AccountDtoSchema = z.object({
   accountNature: AccountNature,
   accountUsage: AccountUsage,
   isThirdPartyAccount: z.boolean(),
+  requiresThirdParty: z.boolean().optional(),
+  auxiliaryType: AuxiliaryType.optional(),
   classCode: AccountClassCode,
   financialStatementCode: z.string(),
   allowReconciliation: z.boolean(),
@@ -60,16 +105,27 @@ export const CreateAccountRequestSchema = z.object({
   accountNature: AccountNature,
   accountUsage: AccountUsage,
   isThirdPartyAccount: z.boolean(),
+  ...AccountAuxiliaryFields,
   classCode: AccountClassCode,
   financialStatementCode: z.string(),
   allowReconciliation: z.boolean(),
+}).refine(isValidAccountAuxiliaryConfiguration, {
+  message: "ACCOUNT_AUXILIARY_CONFIGURATION_INVALID",
 });
 
 export type CreateAccountRequest = z.infer<typeof CreateAccountRequestSchema>;
 
-export const UpdateAccountRequestSchema = CreateAccountRequestSchema.omit({
-  accountId: true,
-})
+export const UpdateAccountRequestSchema = z
+  .object({
+    accountName: z.string(),
+    accountNature: AccountNature,
+    accountUsage: AccountUsage,
+    isThirdPartyAccount: z.boolean(),
+    ...AccountAuxiliaryFields,
+    classCode: AccountClassCode,
+    financialStatementCode: z.string(),
+    allowReconciliation: z.boolean(),
+  })
   .partial()
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "At least one account field is required",

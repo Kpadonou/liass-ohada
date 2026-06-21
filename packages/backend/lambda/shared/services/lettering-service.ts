@@ -36,8 +36,9 @@ export interface LineRef {
 
 export class LetteringService {
   /**
-   * Retrieves all lines for a specific third-party and groups them by lettering status.
-   * This uses the GSI3 which acts as a Sparse Index.
+   * Retrieves permanent auxiliary history from GSI2 and groups it by lettering
+   * status. GSI3 is only the operational queue of lines still eligible for
+   * lettering and must not be used as the accounting history.
    */
   static async getThirdPartyReport(
     orgId: string,
@@ -48,15 +49,16 @@ export class LetteringService {
     const queryResult = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        IndexName: config.GSI3,
-        KeyConditionExpression: "GSI3PK = :pk",
+        IndexName: config.GSI2,
+        KeyConditionExpression: "GSI2PK = :pk",
         ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.letteringPK(
+          ":pk": KeyFactory.gsi2PK(
             orgId,
             normalizedAccountId,
             thirdPartyId,
           ),
         }),
+        ScanIndexForward: true,
       }),
     );
 
@@ -108,12 +110,12 @@ export class LetteringService {
       IndexName: config.GSI3,
       KeyConditionExpression: "GSI3PK = :lpk AND begins_with(GSI3SK, :lsk)",
       ExpressionAttributeValues: marshall({
-        ":lpk": KeyFactory.letteringPK(
+        ":lpk": KeyFactory.unletteredPK(
           orgId,
           normalizedAccountId,
           thirdPartyId,
         ),
-        ":lsk": "UNLETTERED#",
+        ":lsk": KeyFactory.unletteredSKPrefix(),
         ...(projectId ? { ":pid": projectId } : {}),
       }),
     };
@@ -297,27 +299,23 @@ export class LetteringService {
     const now = new Date().toISOString();
 
     const transactItems = lines.map((line) => {
-      const originalMetadata =
-        line.GSI3SK?.replace(/^UNLETTERED#/, "") ||
-        `${line.entryDate}#${line.entryId}#${line.lineId}`;
-      const newLSk = `LETTERED#${finalCode}#${originalMetadata}`;
-
+      const commonValues = {
+        ":complete": "COMPLETE",
+        ":code": finalCode,
+        ":status": letteringStatus,
+        ":now": now,
+        ":userId": userId,
+      };
       return {
         Update: {
           TableName: config.TABLE_NAME,
           Key: marshall({ PK: line.PK, SK: line.SK }),
           ConditionExpression:
             "attribute_exists(PK) AND attribute_exists(SK) AND attribute_exists(GSI3PK) AND (attribute_not_exists(letteringStatus) OR letteringStatus <> :complete)",
-          UpdateExpression:
-            "SET GSI3SK = :newLSk, letteringCode = :code, letteringStatus = :status, updatedAt = :now, updatedBy = :userId",
-          ExpressionAttributeValues: marshall({
-            ":complete": "COMPLETE",
-            ":newLSk": newLSk,
-            ":code": finalCode,
-            ":status": letteringStatus,
-            ":now": now,
-            ":userId": userId,
-          }),
+          UpdateExpression: isComplete
+            ? "SET letteringCode = :code, letteringStatus = :status, updatedAt = :now, updatedBy = :userId REMOVE GSI3PK, GSI3SK"
+            : "SET letteringCode = :code, letteringStatus = :status, updatedAt = :now, updatedBy = :userId",
+          ExpressionAttributeValues: marshall(commonValues),
         },
       };
     });
@@ -374,12 +372,19 @@ export class LetteringService {
         ConditionExpression:
           "attribute_exists(PK) AND attribute_exists(SK) AND attribute_exists(letteringCode)",
         UpdateExpression:
-          "SET GSI3SK = :restoredLSk, updatedAt = :now, updatedBy = :userId REMOVE letteringCode, letteringStatus",
+          "SET GSI3PK = :restoredLPk, GSI3SK = :restoredLSk, updatedAt = :now, updatedBy = :userId REMOVE letteringCode, letteringStatus",
         ExpressionAttributeValues: marshall({
+          ":restoredLPk": KeyFactory.unletteredPK(
+            orgId,
+            line.accountId,
+            line.thirdPartyId!,
+          ),
           ":restoredLSk": KeyFactory.letteringSK(
             line.entryDate,
             line.entryId,
-            line.lineId,
+            (line.postingOrdinal ?? line.lineId)
+              .toString()
+              .padStart(4, "0"),
           ),
           ":now": now,
           ":userId": userId,
@@ -475,6 +480,9 @@ export class LetteringService {
       voucherNumber: line.voucherNumber,
       journalCode: line.journalCode,
       thirdPartyId: line.thirdPartyId,
+      thirdPartyType: line.thirdPartyType,
+      thirdPartyCode: line.thirdPartyCode,
+      thirdPartyName: line.thirdPartyName,
       projectId: line.projectId,
       letteringCode: line.letteringCode,
       letteringStatus: line.letteringStatus,

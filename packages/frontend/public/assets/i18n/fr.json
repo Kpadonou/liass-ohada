@@ -680,7 +680,7 @@
         "ALL_JOURNALS": "Tous les journaux",
         "ENTRY_NUMBER": "N° écriture",
         "REFERENCE": "Référence ou pièce",
-        "ACCOUNT_PREFIX": "Préfixe du compte"
+        "ACCOUNT_PREFIX": "Numéro du compte"
       },
       "ACTIONS": {
         "RESET": "Réinitialiser",
@@ -712,7 +712,7 @@
         "REQUIRED": "Sélectionnez un exercice et une période valides.",
         "DATE_ORDER": "La date de début doit précéder la date de fin.",
         "OUTSIDE_YEAR": "Les dates doivent appartenir à l’exercice sélectionné.",
-        "ACCOUNT_PREFIX": "Le préfixe du compte doit contenir de 1 à 8 chiffres."
+        "ACCOUNT_PREFIX": "Le numéro du compte doit contenir de 1 à 8 chiffres."
       },
       "ERROR": {
         "TITLE": "Le Livre-journal n’a pas pu être chargé.",

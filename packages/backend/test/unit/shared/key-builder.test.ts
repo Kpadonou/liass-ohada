@@ -14,6 +14,19 @@ describe("KeyFactory", () => {
     expect(KeyFactory.gsi2SK("2026-05-21", "line-1")).toBe(
       "DT#2026-05-21#line-1",
     );
+    expect(KeyFactory.thirdPartySK("customer", "tp-1")).toBe(
+      "TP#CUSTOMER#tp-1",
+    );
+    expect(KeyFactory.letteringPK("org-456", "41100000", "tp-1")).toBe(
+      "ORG#org-456#ACC#41100000#TP#tp-1",
+    );
+    expect(
+      KeyFactory.letteringSK("2026-05-21", "entry-1", "0001"),
+    ).toBe("UNLETTERED#2026-05-21#entry-1#0001");
+    expect(KeyFactory.unletteredPK("org-456", "41100000", "tp-1")).toBe(
+      "ORG#org-456#ACC#41100000#TP#tp-1",
+    );
+    expect(KeyFactory.unletteredSKPrefix()).toBe("UNLETTERED#");
   });
 
   test("builds cabinet supervision keys without mutating identifiers", () => {

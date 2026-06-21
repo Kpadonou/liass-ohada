@@ -82,6 +82,9 @@ export const KeyFactory = {
   thirdPartySK: (type: string, thirdPartyId: string) =>
     `TP#${type.toUpperCase()}#${thirdPartyId}`,
 
+  /** Transactional uniqueness lock for a third-party code within an organization. */
+  thirdPartyCodeSK: (code: string) => `TPCODE#${code.trim().toUpperCase()}`,
+
   treasuryAccountPrefix: () => "TRS#ACC#",
 
   treasuryAccountSK: (treasuryAccountId: string) =>
@@ -141,6 +144,8 @@ export const KeyFactory = {
 
   unletteredPK: (orgId: string, accountId: string, thirdPartyId: string) =>
     `ORG#${orgId}#ACC#${accountId}#TP#${thirdPartyId}`,
+
+  unletteredSKPrefix: () => "UNLETTERED#",
 
   // --- GSI 4: Project Ledger (SYCEBNL Analytical View) ---
 
