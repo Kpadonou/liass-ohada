@@ -5,15 +5,32 @@
 @theme {
   --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  --color-app-bg: #f8fafc;
-  --color-app-bg-dark: #020617;
-  --color-app-surface: #ffffff;
-  --color-app-surface-muted: #f8fafc;
-  --color-app-surface-dark: #0f172a;
-  --color-app-border: #e2e8f0;
-  --color-app-border-dark: #1e293b;
-  --color-app-text: #020617;
-  --color-app-muted: #64748b;
+  --color-app-bg: var(--liass-page-bg);
+  --color-app-bg-dark: var(--liass-page-bg);
+  --color-app-surface: var(--liass-surface);
+  --color-app-surface-muted: var(--liass-surface-subtle);
+  --color-app-surface-dark: var(--liass-surface);
+  --color-app-border: var(--liass-border);
+  --color-app-border-dark: var(--liass-border);
+  --color-app-text: var(--liass-text-primary);
+  --color-app-muted: var(--liass-text-muted);
+  --color-app-surface-elevated: var(--liass-surface-elevated);
+  --color-app-surface-hover: var(--liass-surface-hover);
+  --color-app-surface-selected: var(--liass-surface-selected);
+  --color-app-text-secondary: var(--liass-text-secondary);
+  --color-app-text-disabled: var(--liass-text-disabled);
+  --color-app-border-strong: var(--liass-border-strong);
+  --color-app-input: var(--liass-input-bg);
+  --color-app-input-text: var(--liass-input-text);
+  --color-app-input-label: var(--liass-input-label);
+  --color-app-input-placeholder: var(--liass-input-placeholder);
+  --color-app-table-header: var(--liass-table-header-bg);
+  --color-app-table-header-text: var(--liass-table-header-text);
+  --color-app-table-row: var(--liass-table-row-bg);
+  --color-app-table-row-alt: var(--liass-table-row-alt-bg);
+  --color-app-table-row-hover: var(--liass-table-row-hover-bg);
+  --color-app-table-row-selected: var(--liass-table-row-selected-bg);
+  --color-app-overlay: var(--liass-overlay-bg);
   --color-brand-50: #eef6ff;
   --color-brand-100: #d8eaff;
   --color-brand-300: #86b8f5;
@@ -75,6 +92,34 @@ body {
 }
 
 :root {
+  color-scheme: light;
+  --liass-page-bg: #f8fafc;
+  --liass-surface: #ffffff;
+  --liass-surface-elevated: #ffffff;
+  --liass-surface-subtle: #f1f5f9;
+  --liass-surface-hover: #eaf2fb;
+  --liass-surface-selected: #dbeafe;
+  --liass-text-primary: #0f172a;
+  --liass-text-secondary: #334155;
+  --liass-text-muted: #64748b;
+  --liass-text-disabled: #94a3b8;
+  --liass-border: #cbd5e1;
+  --liass-border-strong: #94a3b8;
+  --liass-input-bg: #ffffff;
+  --liass-input-text: #0f172a;
+  --liass-input-label: #475569;
+  --liass-input-placeholder: #64748b;
+  --liass-input-border: #94a3b8;
+  --liass-input-hover: #64748b;
+  --liass-input-focus: #155a9a;
+  --liass-table-header-bg: #e2e8f0;
+  --liass-table-header-text: #334155;
+  --liass-table-row-bg: #ffffff;
+  --liass-table-row-alt-bg: #f8fafc;
+  --liass-table-row-hover-bg: #eef6ff;
+  --liass-table-row-selected-bg: #dbeafe;
+  --liass-overlay-bg: #ffffff;
+  --liass-focus-ring: #155a9a;
   --liass-success: #047857;
   --liass-on-success: #ffffff;
   --liass-warning: #b45309;
@@ -83,8 +128,39 @@ body {
   --liass-on-notification-default: #ffffff;
 }
 
+.dark {
+  color-scheme: dark;
+  --liass-page-bg: #020617;
+  --liass-surface: #0f172a;
+  --liass-surface-elevated: #172033;
+  --liass-surface-subtle: #111c30;
+  --liass-surface-hover: #1e293b;
+  --liass-surface-selected: #102f50;
+  --liass-text-primary: #f8fafc;
+  --liass-text-secondary: #cbd5e1;
+  --liass-text-muted: #94a3b8;
+  --liass-text-disabled: #64748b;
+  --liass-border: #334155;
+  --liass-border-strong: #64748b;
+  --liass-input-bg: #111c30;
+  --liass-input-text: #f8fafc;
+  --liass-input-label: #cbd5e1;
+  --liass-input-placeholder: #94a3b8;
+  --liass-input-border: #64748b;
+  --liass-input-hover: #94a3b8;
+  --liass-input-focus: #86b8f5;
+  --liass-table-header-bg: #172033;
+  --liass-table-header-text: #e2e8f0;
+  --liass-table-row-bg: #0f172a;
+  --liass-table-row-alt-bg: #111c30;
+  --liass-table-row-hover-bg: #172b46;
+  --liass-table-row-selected-bg: #12385d;
+  --liass-overlay-bg: #172033;
+  --liass-focus-ring: #86b8f5;
+}
+
 .dark body {
-  background: var(--color-app-bg-dark);
+  background: var(--liass-page-bg);
 }
 
 button:not(:disabled),
@@ -101,11 +177,59 @@ mat-icon {
 
 .mat-mdc-form-field {
   --mdc-outlined-text-field-container-shape: var(--radius-app-control);
-  --mdc-outlined-text-field-focus-outline-color: var(--color-brand-600);
-  --mdc-outlined-text-field-hover-outline-color: #94a3b8;
-  --mdc-outlined-text-field-outline-color: var(--color-app-border);
-  --mdc-outlined-text-field-label-text-color: var(--color-app-muted);
-  --mdc-outlined-text-field-input-text-color: var(--color-app-text);
+  --mdc-outlined-text-field-container-color: var(--liass-input-bg);
+  --mdc-outlined-text-field-disabled-container-color: var(--liass-surface-subtle);
+  --mdc-outlined-text-field-focus-outline-color: var(--liass-input-focus);
+  --mdc-outlined-text-field-hover-outline-color: var(--liass-input-hover);
+  --mdc-outlined-text-field-outline-color: var(--liass-input-border);
+  --mdc-outlined-text-field-disabled-outline-color: var(--liass-border);
+  --mdc-outlined-text-field-label-text-color: var(--liass-input-label);
+  --mdc-outlined-text-field-focus-label-text-color: var(--liass-input-focus);
+  --mdc-outlined-text-field-hover-label-text-color: var(--liass-text-secondary);
+  --mdc-outlined-text-field-disabled-label-text-color: var(--liass-text-disabled);
+  --mdc-outlined-text-field-input-text-color: var(--liass-input-text);
+  --mdc-outlined-text-field-disabled-input-text-color: var(--liass-text-disabled);
+  --mdc-outlined-text-field-caret-color: var(--liass-input-focus);
+  --mat-form-field-leading-icon-color: var(--liass-text-muted);
+  --mat-form-field-trailing-icon-color: var(--liass-text-muted);
+  --mat-form-field-disabled-leading-icon-color: var(--liass-text-disabled);
+  --mat-form-field-disabled-trailing-icon-color: var(--liass-text-disabled);
+  --mat-form-field-error-text-color: var(--mat-sys-error);
+  color: var(--liass-input-text);
+}
+
+.mat-mdc-form-field input,
+.mat-mdc-form-field textarea,
+.mat-mdc-select-value,
+.mat-mdc-select-arrow,
+.mat-datepicker-toggle,
+.mat-mdc-form-field .mat-icon {
+  color: var(--liass-input-text);
+}
+
+.mat-mdc-form-field input::placeholder,
+.mat-mdc-form-field textarea::placeholder {
+  color: var(--liass-input-placeholder);
+  opacity: 1;
+}
+
+.mat-mdc-form-field input:disabled,
+.mat-mdc-form-field textarea:disabled,
+.mat-mdc-select-disabled .mat-mdc-select-value {
+  color: var(--liass-text-disabled);
+  -webkit-text-fill-color: var(--liass-text-disabled);
+}
+
+input[type='date'] {
+  color-scheme: inherit;
+}
+
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  box-shadow: 0 0 0 1000px var(--liass-input-bg) inset;
+  -webkit-text-fill-color: var(--liass-input-text);
+  caret-color: var(--liass-input-text);
 }
 
 .mat-mdc-button-base {
@@ -118,8 +242,89 @@ mat-icon {
 
 .mat-mdc-menu-panel {
   --mat-menu-container-shape: var(--radius-app-panel);
-  --mat-menu-container-color: var(--color-app-surface);
+  --mat-menu-container-color: var(--liass-overlay-bg);
+  --mat-menu-item-label-text-color: var(--liass-text-primary);
+  --mat-menu-item-icon-color: var(--liass-text-secondary);
   box-shadow: var(--shadow-app-popover);
+}
+
+.mat-mdc-dialog-container,
+.mat-mdc-select-panel,
+.mat-mdc-autocomplete-panel,
+.mat-datepicker-content,
+.mat-mdc-tab-body-content,
+.mat-stepper-horizontal,
+.mat-stepper-vertical {
+  --mat-dialog-container-color: var(--liass-overlay-bg);
+  --mat-select-panel-background-color: var(--liass-overlay-bg);
+  --mat-autocomplete-background-color: var(--liass-overlay-bg);
+  background-color: var(--liass-overlay-bg);
+  color: var(--liass-text-primary);
+}
+
+.mat-mdc-option {
+  --mat-option-label-text-color: var(--liass-text-primary);
+  --mat-option-hover-state-layer-color: var(--liass-surface-hover);
+  --mat-option-focus-state-layer-color: var(--liass-surface-hover);
+  --mat-option-selected-state-label-text-color: var(--liass-text-primary);
+  color: var(--liass-text-primary);
+}
+
+.mat-mdc-tooltip {
+  --mdc-plain-tooltip-container-color: var(--liass-surface-elevated);
+  --mdc-plain-tooltip-supporting-text-color: var(--liass-text-primary);
+}
+
+.mat-mdc-checkbox,
+.mat-mdc-radio-button,
+.mat-mdc-slide-toggle {
+  color: var(--liass-text-primary);
+}
+
+.cdk-overlay-backdrop {
+  background: color-mix(in srgb, var(--liass-page-bg) 72%, transparent);
+}
+
+.cdk-overlay-pane {
+  color: var(--liass-text-primary);
+}
+
+.liass-data-table {
+  background: var(--liass-table-row-bg);
+  color: var(--liass-text-primary);
+}
+
+.liass-data-table thead {
+  background: var(--liass-table-header-bg);
+  color: var(--liass-table-header-text);
+}
+
+.liass-data-table tbody tr {
+  background: var(--liass-table-row-bg);
+  color: var(--liass-text-primary);
+}
+
+.liass-data-table tbody tr:nth-child(even) {
+  background: var(--liass-table-row-alt-bg);
+}
+
+.liass-data-table tbody tr:hover {
+  background: var(--liass-table-row-hover-bg);
+}
+
+.liass-data-table tbody tr.liass-table-group-start,
+.liass-data-table tbody tr[aria-selected='true'] {
+  background: var(--liass-table-row-selected-bg);
+}
+
+.liass-data-table th,
+.liass-data-table td {
+  border-color: var(--liass-border);
+}
+
+.liass-data-table tfoot {
+  background: var(--liass-surface-selected);
+  color: var(--liass-text-primary);
 }
 
 .mat-mdc-menu-item.liass-menu-action {
@@ -290,7 +495,10 @@ mat-icon {
 }
 
 @utility liass-focus-ring {
-  @apply focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-600/15;
+  @apply focus:outline-none;
+  &:focus-visible {
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--liass-focus-ring) 38%, transparent);
+  }
 }
 
 .liass-auth-shell {

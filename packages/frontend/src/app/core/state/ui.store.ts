@@ -1,3 +1,5 @@
+import { OverlayContainer } from '@angular/cdk/overlay';
+import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 export type AppPage =
@@ -45,12 +47,15 @@ function persistThemeMode(themeMode: ThemeMode): void {
   }
 }
 
-function applyThemeClass(themeMode: ThemeMode): void {
+function applyThemeClass(themeMode: ThemeMode, overlayElement?: HTMLElement): void {
   if (typeof document === 'undefined') {
     return;
   }
 
-  document.documentElement.classList.toggle('dark', themeMode === 'dark');
+  const dark = themeMode === 'dark';
+  document.documentElement.classList.toggle('dark', dark);
+  document.documentElement.style.colorScheme = themeMode;
+  overlayElement?.classList.toggle('dark', dark);
 }
 
 const initialState: UiState = {
@@ -62,29 +67,33 @@ const initialState: UiState = {
 export const UiStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withMethods((store) => ({
-    applyTheme(): void {
-      applyThemeClass(store.themeMode());
-    },
-    closeSidebar(): void {
-      patchState(store, { sidebarOpen: false });
-    },
-    setCurrentPage(currentPage: AppPage): void {
-      patchState(store, { currentPage });
-    },
-    setThemeMode(themeMode: ThemeMode): void {
-      persistThemeMode(themeMode);
-      applyThemeClass(themeMode);
-      patchState(store, { themeMode });
-    },
-    toggleThemeMode(): void {
-      const themeMode: ThemeMode = store.themeMode() === 'dark' ? 'light' : 'dark';
-      persistThemeMode(themeMode);
-      applyThemeClass(themeMode);
-      patchState(store, { themeMode });
-    },
-    toggleSidebar(): void {
-      patchState(store, ({ sidebarOpen }) => ({ sidebarOpen: !sidebarOpen }));
-    }
-  }))
+  withMethods((store) => {
+    const overlayElement = inject(OverlayContainer).getContainerElement();
+
+    return {
+      applyTheme(): void {
+        applyThemeClass(store.themeMode(), overlayElement);
+      },
+      closeSidebar(): void {
+        patchState(store, { sidebarOpen: false });
+      },
+      setCurrentPage(currentPage: AppPage): void {
+        patchState(store, { currentPage });
+      },
+      setThemeMode(themeMode: ThemeMode): void {
+        persistThemeMode(themeMode);
+        applyThemeClass(themeMode, overlayElement);
+        patchState(store, { themeMode });
+      },
+      toggleThemeMode(): void {
+        const themeMode: ThemeMode = store.themeMode() === 'dark' ? 'light' : 'dark';
+        persistThemeMode(themeMode);
+        applyThemeClass(themeMode, overlayElement);
+        patchState(store, { themeMode });
+      },
+      toggleSidebar(): void {
+        patchState(store, ({ sidebarOpen }) => ({ sidebarOpen: !sidebarOpen }));
+      }
+    };
+  })
 );

@@ -1,5 +1,5 @@
 <header
-  class="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/85"
+  class="sticky top-0 z-30 border-b border-app-border bg-app-surface/90 text-app-text backdrop-blur-xl"
 >
   <div class="flex min-h-[var(--spacing-app-header)] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
     <liass-button
@@ -16,7 +16,7 @@
       <p class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
         {{ 'SHELL.TOPBAR.CURRENT_MODULE' | transloco }}
       </p>
-      <h2 class="text-base font-semibold leading-tight text-slate-950 dark:text-white">
+      <h2 class="text-base font-semibold leading-tight text-app-text">
         {{ pageTitleKey() | transloco }}
       </h2>
     </div>
@@ -33,7 +33,7 @@
       <liass-dropdown [open]="cabinetMenuOpen" width="md" align="end" (closed)="cabinetMenuOpen = false">
         <button
           liassDropdownTrigger
-          class="hidden min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-brand-900 dark:hover:bg-brand-950/30 sm:flex"
+          class="hidden min-w-0 items-center gap-3 rounded-lg border border-app-border bg-app-surface-muted px-3 py-2 text-left text-sm text-app-text-secondary transition hover:border-brand-300 hover:bg-app-surface-hover sm:flex"
           type="button"
           data-testid="active-workspace"
           aria-haspopup="menu"
@@ -43,7 +43,7 @@
         >
           <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">{{ activeWorkspaceIcon() }}</mat-icon>
           <span class="min-w-0">
-            <span class="block max-w-[220px] truncate font-semibold text-slate-900 dark:text-white">
+            <span class="block max-w-[220px] truncate font-semibold text-app-text">
               {{
                 activeWorkspaceLabel()
                   || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
@@ -111,12 +111,12 @@
       </liass-dropdown>
     } @else {
       <div
-        class="hidden min-w-0 items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 sm:flex"
+        class="hidden min-w-0 items-center gap-3 rounded-lg border border-app-border bg-app-surface-muted px-3 py-2 text-sm text-app-text-secondary sm:flex"
         data-testid="active-workspace"
       >
         <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300">{{ activeWorkspaceIcon() }}</mat-icon>
         <span class="min-w-0">
-          <span class="block max-w-[220px] truncate font-semibold text-slate-900 dark:text-white">
+          <span class="block max-w-[220px] truncate font-semibold text-app-text">
             {{
               activeWorkspaceLabel()
                 || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
@@ -255,7 +255,7 @@
     <liass-dropdown [open]="userMenuOpen" width="md" align="end" (closed)="userMenuOpen = false">
       <button
         liassDropdownTrigger
-        class="flex h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 text-sm font-semibold text-slate-700 shadow-sm shadow-slate-900/[0.03] transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        class="flex h-10 items-center gap-2 rounded-lg border border-app-border bg-app-surface px-2.5 text-sm font-semibold text-app-text-secondary shadow-sm shadow-slate-900/[0.03] transition hover:bg-app-surface-hover"
         type="button"
         data-testid="user-menu-trigger"
         [attr.aria-label]="'SHELL.TOPBAR.USER_MENU' | transloco"

@@ -1,5 +1,5 @@
 <button
-  class="rounded-md border border-slate-200 bg-white/70 px-3 py-1 text-xs font-semibold uppercase text-slate-700 transition-all hover:bg-gray-100"
+  class="rounded-md border border-app-border bg-app-surface/70 px-3 py-1 text-xs font-semibold uppercase text-app-text-secondary transition-all hover:bg-app-surface-hover"
   data-testid="language-trigger"
   matButton
   type="button"
@@ -14,7 +14,7 @@
     <button
       mat-menu-item
       type="button"
-      [class.bg-slate-50]="isActiveLanguage(language.code)"
+      [class.!bg-app-surface-selected]="isActiveLanguage(language.code)"
       [attr.aria-current]="isActiveLanguage(language.code) ? 'true' : null"
       (click)="switchLanguage(language.code)"
     >

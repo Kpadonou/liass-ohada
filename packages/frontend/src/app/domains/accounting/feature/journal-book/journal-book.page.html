@@ -8,7 +8,7 @@
   @if (!fiscalYearContext.hasActiveFiscalYear()) {
     <liass-fiscal-year-required />
   } @else {
-    <section class="rounded-app-card border border-slate-200 bg-white p-4 shadow-app-xs dark:border-slate-800 dark:bg-slate-900" [formGroup]="form">
+    <section class="rounded-app-card border border-app-border bg-app-surface p-4 shadow-app-xs" [formGroup]="form">
       <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-sm font-semibold">{{ 'ACCOUNTING.JOURNAL_BOOK.FILTERS.TITLE' | transloco }}</h2>
         <div class="flex flex-wrap gap-2">
@@ -69,13 +69,13 @@
         </div>
       }
       @if (journalBook.items.length === 0) {
-        <div class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
+        <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-10 text-center">
           <p class="font-semibold">{{ 'ACCOUNTING.JOURNAL_BOOK.EMPTY' | transloco }}</p>
         </div>
       } @else {
-        <div class="max-h-[68vh] overflow-auto rounded-app-card border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-          <table class="w-full min-w-[1480px] border-separate border-spacing-0 text-left text-sm">
-            <thead class="sticky top-0 z-10 bg-slate-100 text-xs font-semibold uppercase tracking-[0.06em] text-slate-600 dark:bg-slate-950 dark:text-slate-300">
+        <div class="max-h-[68vh] overflow-auto rounded-app-card border border-app-border bg-app-table-row">
+          <table class="liass-data-table w-full min-w-[1480px] border-separate border-spacing-0 text-left text-sm">
+            <thead class="sticky top-0 z-10 text-xs font-semibold uppercase tracking-[0.06em]">
               <tr>@for (column of ['DATE','JOURNAL','ENTRY_NUMBER','REFERENCE','ACCOUNT','ACCOUNT_LABEL','LABEL','THIRD_PARTY','DEBIT','CREDIT','ACTIONS']; track column) {
                 <th class="border-b border-slate-300 px-3 py-2.5" [class.text-right]="column === 'DEBIT' || column === 'CREDIT'">{{ 'ACCOUNTING.JOURNAL_BOOK.TABLE.' + column | transloco }}</th>
               }</tr>
@@ -83,7 +83,7 @@
             <tbody>
               @for (entry of journalBook.items; track entry.entryId) {
                 @for (line of entry.lines; track line.lineId; let first = $first) {
-                  <tr class="border-b border-slate-100" [class.bg-brand-50]="first">
+                  <tr class="border-b" [class.liass-table-group-start]="first">
                     <td class="px-3 py-2">{{ first ? entry.accountingDate : '' }}</td>
                     <td class="px-3 py-2">{{ first ? entry.journalCode : '' }}</td>
                     <td class="px-3 py-2 font-medium">{{ first ? entry.entryNumber : '' }}</td>
@@ -99,7 +99,7 @@
                 }
               }
             </tbody>
-            <tfoot class="sticky bottom-0 bg-brand-50 font-semibold">
+            <tfoot class="sticky bottom-0 font-semibold">
               <tr><td class="px-3 py-3" colspan="8">{{ 'ACCOUNTING.JOURNAL_BOOK.TABLE.TOTALS' | transloco }}</td><td class="px-3 py-3 text-right tabular-nums">{{ formatAmount(journalBook.totals.totalDebit) }}</td><td class="px-3 py-3 text-right tabular-nums">{{ formatAmount(journalBook.totals.totalCredit) }}</td><td class="px-3 py-3">{{ 'ACCOUNTING.JOURNAL_BOOK.DIFFERENCE' | transloco: { amount: formatAmount(journalBook.totals.difference) } }}</td></tr>
             </tfoot>
           </table>

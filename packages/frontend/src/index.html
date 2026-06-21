@@ -13,6 +13,14 @@
       rel="stylesheet"
     />
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <script>
+      try {
+        if (localStorage.getItem('liass-ohada.themeMode') === 'dark') {
+          document.documentElement.classList.add('dark');
+          document.documentElement.style.colorScheme = 'dark';
+        }
+      } catch {}
+    </script>
   </head>
   <body>
     <liass-root></liass-root>

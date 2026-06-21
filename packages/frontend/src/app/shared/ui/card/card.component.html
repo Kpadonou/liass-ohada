@@ -3,10 +3,10 @@
     <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
         @if (title()) {
-          <h2 class="text-app-card-title font-semibold text-app-text dark:text-white">{{ title() }}</h2>
+          <h2 class="text-app-card-title font-semibold text-app-text">{{ title() }}</h2>
         }
         @if (description()) {
-          <p class="mt-1 text-app-body text-app-muted dark:text-slate-400">{{ description() }}</p>
+          <p class="mt-1 text-app-body text-app-muted">{{ description() }}</p>
         }
       </div>
       <ng-content select="[liassCardActions]" />
@@ -19,12 +19,12 @@
       <liass-skeleton variant="block" />
     </div>
   } @else if (state() === 'empty') {
-    <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-center dark:border-slate-800">
+    <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-6 text-center">
       @if (emptyTitle()) {
-        <p class="text-sm font-semibold text-slate-950 dark:text-white">{{ emptyTitle() }}</p>
+        <p class="text-sm font-semibold text-app-text">{{ emptyTitle() }}</p>
       }
       @if (emptyDescription()) {
-        <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{{ emptyDescription() }}</p>
+        <p class="mt-1 text-sm leading-6 text-app-muted">{{ emptyDescription() }}</p>
       }
     </div>
   } @else {

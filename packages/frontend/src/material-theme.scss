@@ -12,6 +12,27 @@ html {
       color: (
         primary: mat.$azure-palette,
         tertiary: mat.$cyan-palette,
+        theme-type: light,
+      ),
+      typography: (
+        plain-family: (Inter, ui-sans-serif, system-ui, sans-serif),
+        brand-family: (Inter, ui-sans-serif, system-ui, sans-serif),
+        regular-weight: 400,
+        medium-weight: 500,
+        bold-weight: 700,
+      ),
+      density: 0,
+    )
+  );
+}
+
+html.dark {
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$cyan-palette,
+        theme-type: dark,
       ),
       typography: (
         plain-family: (Inter, ui-sans-serif, system-ui, sans-serif),
@@ -26,11 +47,6 @@ html {
 }
 
 body {
-  // Default the application to a light color theme. This can be changed to
-  // `dark` to enable the dark color theme, or to `light dark` to defer to the
-  // user's system settings.
-  color-scheme: light;
-
   // Set a default background, font and text colors for the application using
   // Angular Material's system-level CSS variables. Learn more about these
   // variables at https://material.angular.dev/guide/system-variables

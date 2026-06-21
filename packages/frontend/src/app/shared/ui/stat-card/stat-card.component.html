@@ -1,5 +1,5 @@
 <article
-  class="flex min-h-[178px] flex-col rounded-app-card border border-app-border bg-app-surface p-5 shadow-app-card dark:border-app-border-dark dark:bg-app-surface-dark/85"
+  class="flex min-h-[178px] flex-col rounded-app-card border border-app-border bg-app-surface p-5 shadow-app-card"
 >
   <div class="flex items-start justify-between gap-4">
     @if (state() === 'loading') {
@@ -27,9 +27,9 @@
         <liass-skeleton variant="text" [lines]="2" />
       </div>
     } @else {
-      <p class="text-sm font-medium text-app-muted dark:text-slate-400">{{ label() }}</p>
-      <p class="mt-2 break-words text-app-kpi font-semibold text-app-text dark:text-white">{{ value() }}</p>
-      <p class="mt-2 text-sm leading-6 text-app-muted dark:text-slate-400">{{ meta() }}</p>
+      <p class="text-sm font-medium text-app-muted">{{ label() }}</p>
+      <p class="mt-2 break-words text-app-kpi font-semibold text-app-text">{{ value() }}</p>
+      <p class="mt-2 text-sm leading-6 text-app-muted">{{ meta() }}</p>
     }
   </div>
 </article>

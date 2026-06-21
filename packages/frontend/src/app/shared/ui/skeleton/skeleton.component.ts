@@ -24,6 +24,6 @@ export class LiassSkeletonComponent {
     const animation = this.animated() ? 'animate-pulse' : '';
     const isLastTextLine = this.variant() === 'text' && this.lines() > 1 && index === this.lines() - 1;
     const width = this.variant() === 'text' ? (isLastTextLine ? 'w-3/4' : 'w-full') : '';
-    return `${variantClasses[this.variant()]} ${width} bg-slate-200 dark:bg-slate-800 ${animation}`;
+    return `${variantClasses[this.variant()]} ${width} bg-app-surface-hover ${animation}`;
   }
 }

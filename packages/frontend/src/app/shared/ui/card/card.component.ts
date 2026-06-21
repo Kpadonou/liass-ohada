@@ -13,8 +13,8 @@ const paddingClasses: Record<LiassCardPadding, string> = {
 };
 
 const variantClasses: Record<LiassCardVariant, string> = {
-  default: 'border-app-border bg-app-surface dark:border-app-border-dark dark:bg-app-surface-dark/85',
-  muted: 'border-app-border bg-app-surface-muted dark:border-app-border-dark dark:bg-slate-900/55',
+  default: 'border-app-border bg-app-surface',
+  muted: 'border-app-border bg-app-surface-muted',
   accent: 'border-brand-100 bg-brand-50/70 dark:border-brand-900/70 dark:bg-brand-900/20'
 };
 

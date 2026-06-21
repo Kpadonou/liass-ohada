@@ -29,7 +29,7 @@ export class LiassDropdownComponent {
 
   protected readonly panelClass = computed(
     () =>
-      `absolute ${alignClasses[this.align()]} z-50 mt-2 ${widthClasses[this.width()]} rounded-app-panel border border-slate-200 bg-white p-2 shadow-app-popover dark:border-slate-800 dark:bg-slate-900`
+      `absolute ${alignClasses[this.align()]} z-50 mt-2 ${widthClasses[this.width()]} rounded-app-panel border border-app-border bg-app-overlay p-2 text-app-text shadow-app-popover`
   );
 
   @HostListener('document:click', ['$event'])
