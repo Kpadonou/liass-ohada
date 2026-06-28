@@ -1401,6 +1401,7 @@
       "ERRORS": {
         "CANCEL_FAILED": "Le lettrage n’a pas pu être annulé.",
         "CANCEL_SELECTION_REQUIRED": "Sélectionnez au moins une ligne lettrée à annuler.",
+        "DATE_RANGE": "La date de début doit être antérieure ou égale à la date de fin.",
         "MISSING_YEAR": "Certaines lignes ne portent pas l’exercice requis.",
         "POST_FAILED": "Le lettrage n’a pas pu être enregistré.",
         "SELECTION_REQUIRED": "Sélectionnez au moins deux lignes non lettrées."
@@ -1408,9 +1409,13 @@
       "EYEBROW": "Comptes auxiliaires",
       "FIELDS": {
         "ACCOUNT": "Compte de tiers",
+        "DATE_FROM": "Date de début",
+        "DATE_TO": "Date de fin",
+        "FISCAL_YEAR": "Exercice",
         "LETTERING_CODE": "Code de lettrage",
         "PROJECT": "Projet",
-        "THIRD_PARTY": "Tiers"
+        "THIRD_PARTY": "Tiers",
+        "THIRD_PARTY_TYPE": "Type de tiers"
       },
       "FILTERS": {
         "DESCRIPTION": "Choisissez un compte lettrable, un tiers et éventuellement un projet.",
@@ -1420,9 +1425,31 @@
         "CREDIT": "Crédit",
         "DEBIT": "Débit"
       },
+      "LOADING": "Chargement des lignes à lettrer…",
+      "CONFIRM": {
+        "CANCEL_MESSAGE": "Les lignes concernées retrouveront leur solde restant et réapparaîtront dans la file de lettrage si nécessaire.",
+        "CANCEL_TITLE": "Annuler ce lettrage ?",
+        "CANCEL_WARNING": "Cette annulation ne modifie pas l’écriture comptable ; elle restaure uniquement le suivi de lettrage.",
+        "CREATE_MESSAGE": "Le lettrage sera enregistré comme trace d’audit et seules les métadonnées de lettrage seront mises à jour.",
+        "CREATE_TITLE": "Confirmer le lettrage ?"
+      },
+      "LATEST_MATCH": {
+        "DESCRIPTION": "Dernière opération de lettrage créée depuis cette page.",
+        "TITLE": "Dernier lettrage"
+      },
+      "MATCH_STATUS": {
+        "ACTIVE": "Actif",
+        "CANCELLED": "Annulé"
+      },
       "MESSAGES": {
         "CANCELLED": "Lettrage annulé.",
         "POSTED": "Lettrage enregistré."
+      },
+      "METRICS": {
+        "DIFFERENCE": "Écart",
+        "SELECTED_CREDIT": "Crédit sélectionné",
+        "SELECTED_DEBIT": "Débit sélectionné",
+        "SELECTED_LINES": "Lignes sélectionnées"
       },
       "REPORT": {
         "DESCRIPTION": "Groupes déjà lettrés et solde restant pour le tiers.",
@@ -1435,8 +1462,11 @@
         "TITLE": "Résultat"
       },
       "STATUS": {
+        "LETTERED": "Lettrée",
+        "PARTIAL": "Partielle",
         "UNLETTERED": "Non lettrée"
       },
+      "SELECTION_HELP": "Sélectionnez des lignes au débit et au crédit du même tiers, puis ajustez le montant si un lettrage partiel est nécessaire.",
       "SUBTITLE": "Rapprochez les écritures de tiers à partir des références métier.",
       "SUGGESTIONS": {
         "AMOUNT": "Montant",
@@ -1454,19 +1484,30 @@
         "TITLE": "Grand livre auxiliaire"
       },
       "TABLE": {
+        "ALLOCATION": "Allocation",
         "AMOUNT": "Montant",
+        "CREDIT": "Crédit",
         "DATE": "Date",
+        "DEBIT": "Débit",
         "ENTRY": "Écriture",
+        "JOURNAL": "Journal",
         "LABEL": "Libellé",
+        "REFERENCE": "Référence",
+        "REMAINING": "Restant",
         "SELECT": "Choix",
         "SELECT_LINE": "Sélectionner la ligne",
         "STATUS": "Lettrage",
         "TYPE": "Sens"
       },
+      "THIRD_PARTY_TYPES": {
+        "CUSTOMER": "Client",
+        "SUPPLIER": "Fournisseur"
+      },
       "TITLE": "Lettrage",
       "UNLETTERED": {
         "DESCRIPTION": "Sélectionnez des lignes à rapprocher ou appliquez une suggestion.",
         "EMPTY": "Aucune ligne non lettrée pour ce périmètre.",
+        "EMPTY_TITLE": "Aucune ligne à lettrer",
         "SELECTED": "Sélectionnées",
         "SUGGESTIONS": "Suggestions",
         "TITLE": "Lignes non lettrées",

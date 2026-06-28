@@ -147,6 +147,13 @@ export const KeyFactory = {
 
   unletteredSKPrefix: () => "UNLETTERED#",
 
+  // --- Accounting Lettering Match Audit Records ---
+
+  letteringMatchPrefix: () => "LTR#",
+
+  letteringMatchSK: (letteringId: string) =>
+    `${KeyFactory.letteringMatchPrefix()}${letteringId}`,
+
   // --- GSI 4: Project Ledger (SYCEBNL Analytical View) ---
 
   /** PK for Project Index: Global Organization partition (Dashboard) */

@@ -1,34 +1,19 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
-import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
+import { type LetteringMatchDto, type UnletteredLineDto } from '@liass-ohada/shared/accounting';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { environment } from '../../../../../environments/environment';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
-import { AuthStore } from '../../../identity/data-access/auth.store';
-import { CabinetDossiersApi } from '../../../identity/data-access/cabinet-dossiers.api';
-import { WorkspacesApi } from '../../../identity/data-access/workspaces.api';
 import { LetteringPage } from './lettering.page';
-
-vi.mock('aws-amplify/auth', () => {
-  const globalScope = globalThis as unknown as {
-    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
-  };
-  globalScope.__liassAmplifyAuthMock ??= {
-    confirmSignIn: vi.fn(),
-    fetchAuthSession: vi.fn(),
-    fetchUserAttributes: vi.fn(),
-    getCurrentUser: vi.fn(),
-    signIn: vi.fn(),
-    signInWithRedirect: vi.fn(),
-    signOut: vi.fn()
-  };
-
-  return globalScope.__liassAmplifyAuthMock;
-});
 
 const translations = {
   en: {
@@ -49,90 +34,105 @@ const translations = {
       },
       LETTERING: {
         ACTIONS: {
-          CANCEL: 'Cancel lettering',
-          CANCEL_GROUP: 'Unletter',
+          CANCEL_GROUP: 'Cancel lettering',
           LOAD: 'Load',
-          POST: 'Letter',
-          SELECT: 'Select'
+          POST: 'Letter'
+        },
+        CONFIRM: {
+          CANCEL_MESSAGE: 'This restores the selected lines to the lettering queue.',
+          CANCEL_TITLE: 'Cancel lettering?',
+          CANCEL_WARNING: 'The accounting entry remains unchanged.',
+          CREATE_MESSAGE: 'Create a balanced lettering match for these lines.',
+          CREATE_TITLE: 'Confirm lettering'
         },
         EMPTY_SCOPE: 'Select an account and third party to load lettering.',
         ERRORS: {
-          CANCEL_FAILED: 'Lettering could not be cancelled.',
-          CANCEL_SELECTION_REQUIRED: 'Select at least one lettered line to cancel.',
-          MISSING_YEAR: 'Missing year.',
+          DATE_RANGE: 'The start date must be before the end date.',
           POST_FAILED: 'Lettering could not be saved.',
-          SELECTION_REQUIRED: 'Select at least two unlettered lines.'
+          SELECTION_REQUIRED: 'Select balanced debit and credit lines.'
         },
         EYEBROW: 'Auxiliary accounts',
         FIELDS: {
           ACCOUNT: 'Third-party account',
-          LETTERING_CODE: 'Lettering code',
-          PROJECT: 'Project',
-          THIRD_PARTY: 'Third party'
+          DATE_FROM: 'From',
+          DATE_TO: 'To',
+          FISCAL_YEAR: 'Fiscal year',
+          THIRD_PARTY: 'Third party',
+          THIRD_PARTY_TYPE: 'Third-party type'
         },
         FILTERS: {
-          DESCRIPTION: 'Choose a scope.',
-          TITLE: 'Auxiliary scope'
+          DESCRIPTION: 'Choose an auxiliary account and a business partner.',
+          TITLE: 'Lettering filters'
+        },
+        LATEST_MATCH: {
+          DESCRIPTION: 'Last operation created from this page.',
+          TITLE: 'Latest match'
         },
         LINE_TYPES: {
           CREDIT: 'Credit',
           DEBIT: 'Debit'
         },
+        LOADING: 'Loading lettering candidates...',
+        MATCH_STATUS: {
+          ACTIVE: 'Active',
+          CANCELLED: 'Cancelled'
+        },
         MESSAGES: {
           CANCELLED: 'Lettering cancelled.',
           POSTED: 'Lettering saved.'
         },
+        METRICS: {
+          DIFFERENCE: 'Difference',
+          SELECTED_CREDIT: 'Selected credit',
+          SELECTED_DEBIT: 'Selected debit',
+          SELECTED_LINES: 'Selected lines'
+        },
         REPORT: {
-          DESCRIPTION: 'Already lettered groups.',
-          EMPTY: 'No lettered group.',
-          GROUP_LINES: '{{count}} line(s)',
-          TITLE: 'Lettering report'
+          GROUP_LINES: '{{count}} line(s)'
         },
-        RESULT: {
-          LINES: '{{count}} processed line(s)',
-          TITLE: 'Result'
-        },
+        SELECTION_HELP: 'Select debit and credit lines with equal totals.',
         STATUS: {
+          LETTERED: 'Lettered',
+          PARTIAL: 'Partial',
           UNLETTERED: 'Unlettered'
         },
-        SUBTITLE: 'Match third-party entries.',
-        SUGGESTIONS: {
-          AMOUNT: 'Amount',
-          TYPES: {
-            FIFO_SUGGESTION: 'FIFO suggestion',
-            PERFECT_MATCH: 'Perfect match'
-          }
-        },
+        SUBTITLE: 'Match posted auxiliary debit and credit lines.',
         SUMMARY: {
-          BALANCE: 'Balance',
-          CREDIT: 'Credit',
-          DEBIT: 'Debit',
-          DESCRIPTION: 'Third-party ledger summary.',
-          LINES: '{{count}} line(s)',
-          TITLE: 'Auxiliary ledger'
+          DESCRIPTION: 'Current lettering scope.',
+          TITLE: 'Scope summary'
         },
         TABLE: {
-          AMOUNT: 'Amount',
+          ALLOCATION: 'Allocation',
+          CREDIT: 'Credit',
           DATE: 'Date',
+          DEBIT: 'Debit',
           ENTRY: 'Entry',
+          JOURNAL: 'Journal',
           LABEL: 'Label',
+          REFERENCE: 'Reference',
+          REMAINING: 'Remaining',
           SELECT: 'Select',
           SELECT_LINE: 'Select line',
-          STATUS: 'Lettering',
-          TYPE: 'Direction'
+          STATUS: 'Status'
+        },
+        THIRD_PARTY_TYPES: {
+          CUSTOMER: 'Customer',
+          SUPPLIER: 'Supplier'
         },
         TITLE: 'Lettering',
         UNLETTERED: {
-          DESCRIPTION: 'Select lines.',
-          EMPTY: 'No unlettered line.',
-          SELECTED: 'Selected',
-          SUGGESTIONS: 'Suggestions',
-          TITLE: 'Unlettered lines',
-          TOTAL: 'Unlettered'
+          DESCRIPTION: 'Only unlettered or partially lettered posted lines are shown.',
+          EMPTY: 'There is no remaining amount to letter for this scope.',
+          EMPTY_TITLE: 'No candidate line',
+          TITLE: 'Candidate lines',
+          TOTAL: 'Candidate lines'
         }
       }
     },
     COMMON: {
+      ACTIONS: {
+        CANCEL: 'Cancel'
+      },
       SELECT: {
         NO_RESULTS: 'No results',
         SEARCH_PLACEHOLDER: 'Search...'
@@ -141,14 +141,58 @@ const translations = {
   }
 };
 
+interface TestableLetteringPage {
+  applyFilters: () => void;
+  canCreateMatch: () => boolean;
+  candidates: () => UnletteredLineDto[];
+  confirmCancelLatestMatch: () => Promise<void>;
+  confirmCreateMatch: () => Promise<void>;
+  form: {
+    controls: {
+      accountId: { setValue: (value: string) => void };
+      dateFrom: { setValue: (value: string) => void };
+      dateTo: { setValue: (value: string) => void };
+      thirdPartyId: { setValue: (value: string) => void };
+      thirdPartyType: { setValue: (value: 'CUSTOMER' | 'SUPPLIER') => void };
+    };
+  };
+  selectedCreditTotal: () => number;
+  selectedDebitTotal: () => number;
+  selectedDifference: () => number;
+  toggleLine: (line: UnletteredLineDto, checked: boolean) => void;
+}
+
 describe('LetteringPage', () => {
   let fixture: ComponentFixture<LetteringPage>;
   let httpMock: HttpTestingController;
+  let dialogOpen: ReturnType<typeof vi.fn>;
+  let notifications: {
+    error: ReturnType<typeof vi.fn>;
+    success: ReturnType<typeof vi.fn>;
+  };
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
+    dialogOpen = vi.fn(() => ({ afterClosed: () => of(true) }));
+    notifications = {
+      error: vi.fn(),
+      success: vi.fn()
+    };
+    const fiscalYear = {
+      accountingFramework: 'SYSCOHADA_REVISED' as const,
+      endDate: '2026-12-31',
+      fiscalYearId: 'FY#2026',
+      startDate: '2026-01-01',
+      status: 'OPEN' as const,
+      year: 2026
+    };
+    const fiscalYearContext = {
+      activeFiscalYear: signal(fiscalYear),
+      activeYear: signal(2026),
+      hasActiveFiscalYear: signal(true)
+    };
 
     await TestBed.configureTestingModule({
       imports: [
@@ -166,30 +210,29 @@ describe('LetteringPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
-        provideTanStackQuery(new QueryClient()),
-        { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
-        { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } }
+        provideTanStackQuery(
+          new QueryClient({
+            defaultOptions: {
+              queries: {
+                retry: false
+              }
+            }
+          })
+        ),
+        { provide: MatDialog, useValue: { open: dialogOpen } },
+        { provide: NotificationService, useValue: notifications },
+        { provide: AccountingFiscalYearContextService, useValue: fiscalYearContext }
       ]
     }).compileComponents();
 
     httpMock = TestBed.inject(HttpTestingController);
-    TestBed.inject(AuthStore).setCreatedWorkspace(
-      {
-        orgId: 'org-company-1',
-        displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
-      },
-      'org-company-1'
-    );
-    TestBed.inject(AccountingFiscalYearContextService).selectFiscalYear({
-      accountingFramework: 'SYSCOHADA_REVISED',
-      endDate: '2026-12-31',
-      fiscalYearId: 'FY#2026',
-      startDate: '2026-01-01',
-      status: 'OPEN',
-      year: 2026
-    });
     fixture = TestBed.createComponent(LetteringPage);
+    const componentInternals = fixture.componentInstance as unknown as {
+      dialog: { open: typeof dialogOpen };
+      notifications: typeof notifications;
+    };
+    componentInternals.dialog = { open: dialogOpen };
+    componentInternals.notifications = notifications;
     fixture.detectChanges();
   });
 
@@ -197,269 +240,261 @@ describe('LetteringPage', () => {
     httpMock.verify();
   });
 
-  it('loads accounts and renders the lettering filters', async () => {
-    flushAccounts(httpMock, apiBaseUrl);
+  it('renders the filters and initial empty scope without loading candidates', async () => {
     await settle(fixture);
 
     const text = fixture.nativeElement.textContent;
 
     expect(text).toContain('Lettering');
     expect(text).toContain('Third-party account');
+    expect(text).toContain('Third-party type');
     expect(text).toContain('Third party');
-    expect(text).toContain('Project');
+    expect(text).toContain('Select an account and third party to load lettering.');
+    httpMock.expectNone((request) => request.url === `${apiBaseUrl}/lettering/candidates`);
   });
 
-  it('calls auxiliary ledger, matching report, and unlettered routes with the selected scope', async () => {
-    flushAccounts(httpMock, apiBaseUrl);
-    await settle(fixture);
-    setScope(fixture, { projectId: 'PRJ-1' });
-
-    await flushScopeReads(httpMock, apiBaseUrl, { projectId: 'PRJ-1' });
+  it('loads GSI3-backed candidates for the selected account, third party, type, and year', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, [
+      candidateLine({ PK: 'ORG#demo', GSI3PK: 'UNLETTERED#org#411#TP-001', entityType: 'ENTRY_LINE' })
+    ]);
     await settle(fixture);
 
     const text = fixture.nativeElement.textContent;
 
-    expect(text).toContain('Auxiliary ledger');
-    expect(text).toContain('Unlettered lines');
-    expect(text).toContain('Perfect match');
-    expect(text).toContain('LET001');
+    expect(text).toContain('Candidate lines');
     expect(text).toContain('Customer invoice');
+    expect(text).toContain('Remaining');
+    expect(text).not.toContain('ORG#demo');
+    expect(text).not.toContain('GSI3PK');
+    expect(text).not.toContain('ENTRY_LINE');
   });
 
-  it('prevents posting when fewer than two lines are selected', async () => {
-    flushAccounts(httpMock, apiBaseUrl);
-    await settle(fixture);
+  it('computes selected debit and credit totals and enables lettering only when balanced', async () => {
     setScope(fixture);
-    await flushScopeReads(httpMock, apiBaseUrl);
+    await flushCandidates(httpMock, apiBaseUrl, [
+      candidateLine({ debit: 100_000, credit: 0, lineId: 'L-DEBIT', label: 'Customer invoice' }),
+      candidateLine({
+        accountingDate: '2026-01-12',
+        debit: 0,
+        credit: 80_000,
+        entryId: 'E-CREDIT',
+        lineId: 'L-CREDIT',
+        label: 'Partial payment',
+        originalAmount: 80_000,
+        remainingAmount: 80_000
+      })
+    ]);
     await settle(fixture);
 
-    const component = fixture.componentInstance as unknown as {
-      postLettering: () => Promise<void>;
-    };
-    await component.postLettering();
+    const component = testable(fixture);
+    const [debitLine, creditLine] = component.candidates();
+
+    component.toggleLine(debitLine, true);
     fixture.detectChanges();
 
-    httpMock.expectNone(`${apiBaseUrl}/lettering`);
-    expect(fixture.nativeElement.textContent).toContain('Select at least two unlettered lines.');
+    expect(component.selectedDebitTotal()).toBe(100_000);
+    expect(component.selectedCreditTotal()).toBe(0);
+    expect(component.canCreateMatch()).toBe(false);
+    expect(letterButton(fixture).disabled).toBe(true);
+
+    component.toggleLine(creditLine, true);
+    debitLine.remainingAmount = 80_000;
+    component.toggleLine(debitLine, false);
+    component.toggleLine(debitLine, true);
+    fixture.detectChanges();
+
+    expect(component.selectedDebitTotal()).toBe(80_000);
+    expect(component.selectedCreditTotal()).toBe(80_000);
+    expect(component.selectedDifference()).toBe(0);
+    expect(component.canCreateMatch()).toBe(true);
+    expect(letterButton(fixture).disabled).toBe(false);
   });
 
-  it('posts lettering with business line references and refreshes the scope', async () => {
-    flushAccounts(httpMock, apiBaseUrl);
-    await settle(fixture);
+  it('confirms a balanced lettering match, prioritizes the backend message, and refreshes candidates', async () => {
     setScope(fixture);
-    await flushScopeReads(httpMock, apiBaseUrl);
+    await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
     await settle(fixture);
 
-    const component = fixture.componentInstance as unknown as {
-      postLettering: () => Promise<void>;
-      selectSuggestion: (suggestion: unknown) => void;
-      suggestions: () => unknown[];
-    };
-    component.selectSuggestion(component.suggestions()[0]);
+    const component = testable(fixture);
+    component.candidates().forEach((line) => component.toggleLine(line, true));
     fixture.detectChanges();
 
-    const action = component.postLettering();
-    const postRequest = httpMock.expectOne(`${apiBaseUrl}/lettering`);
+    const action = component.confirmCreateMatch();
+    const postRequest = await expectOneEventually(httpMock, (request) => {
+      return request.url === `${apiBaseUrl}/lettering/matches`;
+    });
 
+    expect(dialogOpen).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'CREATE',
+          creditTotal: 100_000,
+          debitTotal: 100_000,
+          lineCount: 2
+        })
+      })
+    );
     expect(postRequest.request.method).toBe('POST');
     expect(postRequest.request.body).toEqual({
       accountId: '41100000',
+      allocations: [
+        { amount: 100_000, entryId: 'E-DEBIT', lineId: 'L-DEBIT' },
+        { amount: 100_000, entryId: 'E-CREDIT', lineId: 'L-CREDIT' }
+      ],
+      fiscalYear: 2026,
       thirdPartyId: 'TP-001',
-      letteringCode: 'LET001',
-      lines: [
-        { year: 2026, entryId: 'E-001', lineId: 'L-001' },
-        { year: 2026, entryId: 'E-002', lineId: 'L-002' }
-      ]
+      thirdPartyType: 'CUSTOMER'
     });
     postRequest.flush({
-      letteringCode: 'LET001',
-      letteringStatus: 'COMPLETE',
-      linesProcessed: 2,
-      remainingBalance: 0
+      data: letteringMatchFixture(),
+      message: { message: 'Lettrage enregistré côté serveur.' }
     });
-    await flushScopeReads(httpMock, apiBaseUrl);
+    await flushCandidates(httpMock, apiBaseUrl, []);
     await action;
     await settle(fixture);
 
-    expect(fixture.nativeElement.textContent).toContain('Lettering saved.');
+    expect(notifications.success).toHaveBeenCalledWith('Lettrage enregistré côté serveur.');
+    expect(fixture.nativeElement.textContent).toContain('No candidate line');
   });
 
-  it('cancels lettering with selected line references and refreshes the scope', async () => {
-    flushAccounts(httpMock, apiBaseUrl);
-    await settle(fixture);
+  it('falls back to safe copy instead of displaying technical backend errors', async () => {
     setScope(fixture);
-    await flushScopeReads(httpMock, apiBaseUrl);
+    await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
     await settle(fixture);
 
-    const component = fixture.componentInstance as unknown as {
-      cancelSelectedLettering: () => Promise<void>;
-      toggleLine: (line: unknown, checked: boolean) => void;
-      unletteredLines: () => unknown[];
-    };
-    component.toggleLine(component.unletteredLines()[0], true);
+    const component = testable(fixture);
+    component.candidates().forEach((line) => component.toggleLine(line, true));
     fixture.detectChanges();
 
-    const action = component.cancelSelectedLettering();
-    const cancelRequest = httpMock.expectOne(`${apiBaseUrl}/lettering/cancel`);
+    const action = component.confirmCreateMatch();
+    const postRequest = await expectOneEventually(httpMock, (request) => {
+      return request.url === `${apiBaseUrl}/lettering/matches`;
+    });
 
-    expect(cancelRequest.request.method).toBe('POST');
-    expect(cancelRequest.request.body).toEqual({
-      accountId: '41100000',
-      thirdPartyId: 'TP-001',
-      lines: [{ year: 2026, entryId: 'E-001', lineId: 'L-001' }]
-    });
-    cancelRequest.flush({
-      letteringCode: 'LET001',
-      letteringStatus: 'PARTIAL',
-      linesProcessed: 1,
-      remainingBalance: 10000
-    });
-    await flushScopeReads(httpMock, apiBaseUrl);
+    postRequest.flush(
+      { message: 'GSI3PK ConditionalCheckFailedException DynamoDB stack trace' },
+      { status: 409, statusText: 'Conflict' }
+    );
     await action;
     await settle(fixture);
 
-    expect(fixture.nativeElement.textContent).toContain('Lettering cancelled.');
+    expect(notifications.error).toHaveBeenCalledWith('Lettering could not be saved.');
+    expect(JSON.stringify(notifications.error.mock.calls)).not.toContain('GSI3PK');
+  });
+
+  it('can cancel the latest active match and refresh the queue', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
+    await settle(fixture);
+
+    const component = testable(fixture);
+    component.candidates().forEach((line) => component.toggleLine(line, true));
+    fixture.detectChanges();
+
+    const createAction = component.confirmCreateMatch();
+    const postRequest = await expectOneEventually(httpMock, (request) => {
+      return request.url === `${apiBaseUrl}/lettering/matches`;
+    });
+    postRequest.flush({
+      data: letteringMatchFixture(),
+      message: 'Lettering saved.'
+    });
+    await flushCandidates(httpMock, apiBaseUrl, []);
+    await createAction;
+    await settle(fixture);
+
+    const cancelAction = component.confirmCancelLatestMatch();
+    const cancelRequest = await expectOneEventually(httpMock, (request) => {
+      return request.url === `${apiBaseUrl}/lettering/matches/LM-001/cancel`;
+    });
+
+    expect(cancelRequest.request.method).toBe('POST');
+    expect(cancelRequest.request.body).toEqual({ fiscalYear: 2026 });
+    cancelRequest.flush({
+      data: letteringMatchFixture({ status: 'CANCELLED' }),
+      message: 'Lettering cancelled by backend.'
+    });
+    await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
+    await cancelAction;
+    await settle(fixture);
+
+    expect(notifications.success).toHaveBeenLastCalledWith('Lettering cancelled by backend.');
+    expect(fixture.nativeElement.textContent).toContain('Customer invoice');
+  });
+
+  it('keeps the candidate table readable with dark-mode classes available', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
+    await settle(fixture);
+
+    expect(fixture.nativeElement.innerHTML).toContain('dark:');
+    expect(fixture.nativeElement.textContent).toContain('Selected debit');
+    expect(fixture.nativeElement.textContent).toContain('Selected credit');
   });
 });
 
 async function settle(fixture: ComponentFixture<LetteringPage>): Promise<void> {
-  for (let index = 0; index < 5; index += 1) {
+  for (let index = 0; index < 8; index += 1) {
     await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
   }
 }
 
+function testable(fixture: ComponentFixture<LetteringPage>): TestableLetteringPage {
+  return fixture.componentInstance as unknown as TestableLetteringPage;
+}
+
 function setScope(
   fixture: ComponentFixture<LetteringPage>,
-  options: { projectId?: string } = {}
+  options: {
+    accountId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    thirdPartyId?: string;
+    thirdPartyType?: 'CUSTOMER' | 'SUPPLIER';
+  } = {}
 ): void {
-  const component = fixture.componentInstance as unknown as {
-    applyFilters: () => void;
-    form: {
-      controls: {
-        accountId: { setValue: (value: string) => void };
-        thirdPartyId: { setValue: (value: string) => void };
-        projectId: { setValue: (value: string) => void };
-      };
-    };
-  };
+  const component = testable(fixture);
 
-  component.form.controls.accountId.setValue('41100000');
-  component.form.controls.thirdPartyId.setValue('TP-001');
-  component.form.controls.projectId.setValue(options.projectId ?? '');
+  component.form.controls.accountId.setValue(options.accountId ?? '41100000');
+  component.form.controls.thirdPartyId.setValue(options.thirdPartyId ?? 'TP-001');
+  component.form.controls.thirdPartyType.setValue(options.thirdPartyType ?? 'CUSTOMER');
+  component.form.controls.dateFrom.setValue(options.dateFrom ?? '');
+  component.form.controls.dateTo.setValue(options.dateTo ?? '');
   component.applyFilters();
   fixture.detectChanges();
 }
 
-function flushAccounts(httpMock: HttpTestingController, apiBaseUrl: string): void {
-  httpMock.expectNone((request) => request.url === `${apiBaseUrl}/accounts`);
-}
-
-async function flushScopeReads(
+async function flushCandidates(
   httpMock: HttpTestingController,
   apiBaseUrl: string,
-  options: { projectId?: string } = {}
+  lines: UnletteredLineDto[]
 ): Promise<void> {
-  const ledgerRequest = await expectOneEventually(httpMock, (request) => {
+  const request = await expectOneEventually(httpMock, (candidate) => {
     return (
-      request.url === `${apiBaseUrl}/books/third-party-ledger` &&
-      request.params.get('accountId') === '41100000' &&
-      request.params.get('thirdPartyId') === 'TP-001'
+      candidate.url === `${apiBaseUrl}/lettering/candidates` &&
+      candidate.params.get('fiscalYear') === '2026' &&
+      candidate.params.get('accountId') === '41100000' &&
+      candidate.params.get('thirdPartyId') === 'TP-001' &&
+      candidate.params.get('thirdPartyType') === 'CUSTOMER' &&
+      candidate.params.get('limit') === '100'
     );
-  });
-  expect(ledgerRequest.request.method).toBe('GET');
-  ledgerRequest.flush({
-    data: {
-      accountId: '41100000',
-      thirdPartyId: 'TP-001',
-      period: {},
-      summary: {
-        totalDebit: 100000,
-        totalCredit: 80000,
-        balance: 20000
-      },
-      count: 2,
-      lines: [
-        {
-          date: '2026-01-05',
-          label: 'Customer invoice',
-          reference: 'E-001',
-          debit: 100000,
-          credit: 0,
-          letteringCode: null,
-          entryId: 'E-001',
-          lineId: 'L-001'
-        }
-      ]
-    }
   });
 
-  const matchingRequest = await expectOneEventually(httpMock, (request) => {
-    return (
-      request.url === `${apiBaseUrl}/books/matching-report` &&
-      request.params.get('accountId') === '41100000' &&
-      request.params.get('thirdPartyId') === 'TP-001'
-    );
-  });
-  expect(matchingRequest.request.method).toBe('GET');
-  matchingRequest.flush({
+  expect(request.request.method).toBe('GET');
+  request.flush({
     data: {
+      accountCode: '41100000',
       accountId: '41100000',
+      hasMore: false,
+      lines,
       thirdPartyId: 'TP-001',
-      summary: {
-        totalDebit: 100000,
-        totalCredit: 80000,
-        balance: 20000
-      },
-      letteredGroups: {
-        LET001: [accountLine('E-003', 'L-003', 50000, 0, 'LET001')]
-      },
-      unletteredLines: [accountLine('E-001', 'L-001', 100000, 0)]
-    }
-  });
-
-  const unletteredRequest = await expectOneEventually(httpMock, (request) => {
-    return (
-      request.url === `${apiBaseUrl}/lettering/unlettered` &&
-      request.params.get('accountId') === '41100000' &&
-      request.params.get('thirdPartyId') === 'TP-001' &&
-      request.params.get('projectId') === (options.projectId ?? null)
-    );
-  });
-  expect(unletteredRequest.request.method).toBe('GET');
-  unletteredRequest.flush({
-    totalUnlettered: 2,
-    suggestionsFound: 1,
-    unletteredLines: [
-      accountLine('E-001', 'L-001', 100000, 0),
-      accountLine('E-002', 'L-002', 0, 100000)
-    ],
-    suggestions: [
-      {
-        type: 'PERFECT_MATCH',
-        amount: 100000,
-        lines: [
-          {
-            year: 2026,
-            entryId: 'E-001',
-            lineId: 'L-001',
-            date: '2026-01-05',
-            label: 'Customer invoice',
-            amount: 100000,
-            type: 'DEBIT'
-          },
-          {
-            year: 2026,
-            entryId: 'E-002',
-            lineId: 'L-002',
-            date: '2026-01-12',
-            label: 'Payment',
-            amount: 100000,
-            type: 'CREDIT'
-          }
-        ]
-      }
-    ]
+      thirdPartyName: 'Client Demo',
+      thirdPartyType: 'CUSTOMER'
+    },
+    message: 'Candidates loaded'
   });
 }
 
@@ -469,7 +504,7 @@ async function expectOneEventually(
 ) {
   let lastError: unknown;
 
-  for (let index = 0; index < 20; index += 1) {
+  for (let index = 0; index < 30; index += 1) {
     try {
       return httpMock.expectOne(predicate);
     } catch (error) {
@@ -481,28 +516,107 @@ async function expectOneEventually(
   throw lastError;
 }
 
-function accountLine(
-  entryId: string,
-  lineId: string,
-  debit: number,
-  credit: number,
-  letteringCode?: string
-) {
+function letterButton(fixture: ComponentFixture<LetteringPage>): HTMLButtonElement {
+  const buttons = Array.from(
+    fixture.nativeElement.querySelectorAll('button')
+  ) as HTMLButtonElement[];
+  const button = buttons.find((candidate) => candidate.textContent?.includes('Letter'));
+
+  if (!button) {
+    throw new Error('Letter action button not found');
+  }
+
+  return button;
+}
+
+function balancedCandidateLines(): UnletteredLineDto[] {
+  return [
+    candidateLine({ debit: 100_000, credit: 0, entryId: 'E-DEBIT', lineId: 'L-DEBIT' }),
+    candidateLine({
+      accountingDate: '2026-01-12',
+      debit: 0,
+      credit: 100_000,
+      entryId: 'E-CREDIT',
+      lineId: 'L-CREDIT',
+      label: 'Customer payment'
+    })
+  ];
+}
+
+function candidateLine(
+  overrides: Partial<UnletteredLineDto> & Record<string, unknown> = {}
+): UnletteredLineDto {
   return {
-    year: 2026,
-    entryId,
-    lineId,
+    accountCode: '41100000',
     accountId: '41100000',
-    debit,
-    credit,
-    description: 'Line description',
-    label: entryId === 'E-001' ? 'Customer invoice' : 'Payment',
-    entryDate: entryId === 'E-001' ? '2026-01-05' : '2026-01-12',
-    voucherNumber: entryId,
+    accountLabel: 'Clients',
+    accountingDate: '2026-01-05',
+    credit: 0,
+    debit: 100_000,
+    entryId: 'E-DEBIT',
+    entryNumber: 'VE-0001',
+    fiscalYear: 2026,
     journalCode: 'VE',
+    label: 'Customer invoice',
+    letteredAmount: 0,
+    letteringStatus: 'UNLETTERED',
+    lineId: 'L-DEBIT',
+    originalAmount: 100_000,
+    reference: 'FAC-001',
+    remainingAmount: 100_000,
+    stableLineIndex: 1,
+    thirdPartyCode: 'C001',
     thirdPartyId: 'TP-001',
-    letteringCode,
-    letteringStatus: letteringCode ? 'COMPLETE' : undefined,
-    createdAt: '2026-01-05T00:00:00.000Z'
+    thirdPartyName: 'Client Demo',
+    thirdPartyType: 'CUSTOMER',
+    ...overrides
+  };
+}
+
+function letteringMatchFixture(overrides: Partial<LetteringMatchDto> = {}): LetteringMatchDto {
+  return {
+    ...letteringMatchFixtureShape(),
+    ...overrides
+  };
+}
+
+function letteringMatchFixtureShape(): LetteringMatchDto {
+  return {
+    accountCode: '41100000',
+    accountId: '41100000',
+    allocations: [
+      {
+        accountingDate: '2026-01-05',
+        allocatedAmount: 100_000,
+        credit: 0,
+        debit: 100_000,
+        entryId: 'E-DEBIT',
+        entryNumber: 'VE-0001',
+        journalCode: 'VE',
+        label: 'Customer invoice',
+        lineId: 'L-DEBIT',
+        reference: 'FAC-001'
+      },
+      {
+        accountingDate: '2026-01-12',
+        allocatedAmount: 100_000,
+        credit: 100_000,
+        debit: 0,
+        entryId: 'E-CREDIT',
+        entryNumber: 'BQ-0001',
+        journalCode: 'BQ',
+        label: 'Customer payment',
+        lineId: 'L-CREDIT'
+      }
+    ],
+    createdAt: '2026-02-01T10:00:00.000Z',
+    createdBy: 'user-1',
+    fiscalYear: 2026,
+    letteringId: 'LM-001',
+    status: 'ACTIVE' as const,
+    thirdPartyId: 'TP-001',
+    thirdPartyType: 'CUSTOMER' as const,
+    totalCredit: 100_000,
+    totalDebit: 100_000
   };
 }

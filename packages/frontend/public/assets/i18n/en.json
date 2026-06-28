@@ -1401,6 +1401,7 @@
       "ERRORS": {
         "CANCEL_FAILED": "Lettering could not be cancelled.",
         "CANCEL_SELECTION_REQUIRED": "Select at least one lettered line to cancel.",
+        "DATE_RANGE": "The start date must be on or before the end date.",
         "MISSING_YEAR": "Some lines do not carry the required fiscal year.",
         "POST_FAILED": "Lettering could not be saved.",
         "SELECTION_REQUIRED": "Select at least two unlettered lines."
@@ -1408,9 +1409,13 @@
       "EYEBROW": "Auxiliary accounts",
       "FIELDS": {
         "ACCOUNT": "Third-party account",
+        "DATE_FROM": "Start date",
+        "DATE_TO": "End date",
+        "FISCAL_YEAR": "Fiscal year",
         "LETTERING_CODE": "Lettering code",
         "PROJECT": "Project",
-        "THIRD_PARTY": "Third party"
+        "THIRD_PARTY": "Third party",
+        "THIRD_PARTY_TYPE": "Third-party type"
       },
       "FILTERS": {
         "DESCRIPTION": "Choose a reconcilable account, a third party, and optionally a project.",
@@ -1420,9 +1425,31 @@
         "CREDIT": "Credit",
         "DEBIT": "Debit"
       },
+      "LOADING": "Loading lines to letter...",
+      "CONFIRM": {
+        "CANCEL_MESSAGE": "The affected lines will recover their remaining amount and return to the lettering queue when needed.",
+        "CANCEL_TITLE": "Cancel this lettering match?",
+        "CANCEL_WARNING": "This cancellation does not change the accounting entry; it only restores lettering tracking.",
+        "CREATE_MESSAGE": "The match will be saved as an audit record and only lettering metadata will be updated.",
+        "CREATE_TITLE": "Confirm lettering?"
+      },
+      "LATEST_MATCH": {
+        "DESCRIPTION": "Latest lettering operation created from this page.",
+        "TITLE": "Latest match"
+      },
+      "MATCH_STATUS": {
+        "ACTIVE": "Active",
+        "CANCELLED": "Cancelled"
+      },
       "MESSAGES": {
         "CANCELLED": "Lettering cancelled.",
         "POSTED": "Lettering saved."
+      },
+      "METRICS": {
+        "DIFFERENCE": "Difference",
+        "SELECTED_CREDIT": "Selected credit",
+        "SELECTED_DEBIT": "Selected debit",
+        "SELECTED_LINES": "Selected lines"
       },
       "REPORT": {
         "DESCRIPTION": "Already lettered groups and remaining balance for the third party.",
@@ -1435,8 +1462,11 @@
         "TITLE": "Result"
       },
       "STATUS": {
+        "LETTERED": "Lettered",
+        "PARTIAL": "Partial",
         "UNLETTERED": "Unlettered"
       },
+      "SELECTION_HELP": "Select debit and credit lines for the same third party, then adjust the amount if a partial match is needed.",
       "SUBTITLE": "Match third-party entries using business references.",
       "SUGGESTIONS": {
         "AMOUNT": "Amount",
@@ -1454,19 +1484,30 @@
         "TITLE": "Auxiliary ledger"
       },
       "TABLE": {
+        "ALLOCATION": "Allocation",
         "AMOUNT": "Amount",
+        "CREDIT": "Credit",
         "DATE": "Date",
+        "DEBIT": "Debit",
         "ENTRY": "Entry",
+        "JOURNAL": "Journal",
         "LABEL": "Label",
+        "REFERENCE": "Reference",
+        "REMAINING": "Remaining",
         "SELECT": "Select",
         "SELECT_LINE": "Select line",
         "STATUS": "Lettering",
         "TYPE": "Direction"
       },
+      "THIRD_PARTY_TYPES": {
+        "CUSTOMER": "Customer",
+        "SUPPLIER": "Supplier"
+      },
       "TITLE": "Lettering",
       "UNLETTERED": {
         "DESCRIPTION": "Select lines to match or apply a suggestion.",
         "EMPTY": "No unlettered line for this scope.",
+        "EMPTY_TITLE": "No line to letter",
         "SELECTED": "Selected",
         "SUGGESTIONS": "Suggestions",
         "TITLE": "Unlettered lines",

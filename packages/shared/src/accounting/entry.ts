@@ -11,6 +11,12 @@ export const EntryType = z.enum([
   "CLOSING",
   "ADJUSTMENT",
 ]);
+export const LineLetteringStatus = z.enum([
+  "UNLETTERED",
+  "PARTIAL",
+  "LETTERED",
+  "COMPLETE",
+]);
 
 /** * Amounts are stored as integers (cents/smallest unit)
  */
@@ -177,7 +183,7 @@ export const EntryLineDtoSchema = z.object({
   budgetLineId: z.string().optional(),
   donorId: z.string().optional(),
   letteringCode: z.string().optional(),
-  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
+  letteringStatus: LineLetteringStatus.optional(),
 });
 
 export const EntryDetailDtoSchema = z.object({
@@ -247,7 +253,7 @@ export const AccountEntryDtoSchema = z.object({
   thirdPartyName: z.string().optional(),
   projectId: z.string().optional(),
   letteringCode: z.string().optional(),
-  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
+  letteringStatus: LineLetteringStatus.optional(),
   createdAt: z.string(),
 });
 
@@ -739,6 +745,173 @@ export const UnletteredLinesResponseSchema = z.object({
   message: z.unknown().optional(),
 }).and(UnletteredLinesDtoSchema);
 
+export const LetteringStatus = z.enum(["UNLETTERED", "PARTIAL", "LETTERED"]);
+export type LetteringStatusValue = z.infer<typeof LetteringStatus>;
+
+const LetteringLineAmountSchema = z.number().int().nonnegative();
+const PositiveLetteringAmountSchema = z.number().int().positive();
+
+export const UnletteredLineDtoSchema = z
+  .object({
+    entryId: z.string().min(1),
+    lineId: z.string().min(1),
+    stableLineIndex: z.number().int().positive().optional(),
+    fiscalYear: z.number().int(),
+    accountingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    journalCode: z.string().min(1),
+    entryNumber: z.string().min(1),
+    reference: z.string().optional(),
+    accountId: z.string().regex(/^\d{8}$/),
+    accountCode: z.string().regex(/^\d{8}$/).optional(),
+    accountLabel: z.string().optional(),
+    thirdPartyId: z.string().min(1),
+    thirdPartyType: ThirdPartyType,
+    thirdPartyCode: z.string().optional(),
+    thirdPartyName: z.string().optional(),
+    label: z.string().optional(),
+    debit: LetteringLineAmountSchema,
+    credit: LetteringLineAmountSchema,
+    originalAmount: PositiveLetteringAmountSchema,
+    letteredAmount: LetteringLineAmountSchema,
+    remainingAmount: PositiveLetteringAmountSchema,
+    letteringStatus: LetteringStatus,
+    letteringMatchIds: z.array(z.string().min(1)).max(50).optional(),
+  })
+  .refine((line) => !(line.debit > 0 && line.credit > 0), {
+    message: "A line cannot have both debit and credit amounts",
+    path: ["debit"],
+  })
+  .refine((line) => line.letteredAmount + line.remainingAmount <= line.originalAmount, {
+    message: "Lettered and remaining amounts cannot exceed the original amount",
+    path: ["remainingAmount"],
+  });
+
+export type UnletteredLineDto = z.infer<typeof UnletteredLineDtoSchema>;
+
+export const LetteringCandidatesQuerySchema = z.object({
+  fiscalYear: z.coerce.number().int().gte(1900),
+  accountId: z.string().regex(/^\d{2,8}$/),
+  thirdPartyId: z.string().min(1),
+  thirdPartyType: ThirdPartyType,
+  dateFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dateTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
+}).superRefine((query, context) => {
+  if (query.dateFrom && query.dateTo && query.dateFrom > query.dateTo) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "dateFrom must not be after dateTo",
+      path: ["dateTo"],
+    });
+  }
+});
+
+export type LetteringCandidatesQuery = z.infer<
+  typeof LetteringCandidatesQuerySchema
+>;
+
+export const LetteringCandidatesDtoSchema = z.object({
+  accountId: z.string().regex(/^\d{8}$/),
+  accountCode: z.string().regex(/^\d{8}$/).optional(),
+  thirdPartyId: z.string().min(1),
+  thirdPartyType: ThirdPartyType,
+  thirdPartyName: z.string().optional(),
+  lines: z.array(UnletteredLineDtoSchema),
+  nextCursor: z.string().optional(),
+  hasMore: z.boolean(),
+});
+
+export type LetteringCandidatesDto = z.infer<
+  typeof LetteringCandidatesDtoSchema
+>;
+
+export const LetteringCandidatesResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: LetteringCandidatesDtoSchema,
+});
+
+export const LetteringAllocationRequestSchema = z.object({
+  entryId: z.string().min(1),
+  lineId: z.string().min(1),
+  amount: PositiveLetteringAmountSchema,
+});
+
+export const CreateLetteringMatchRequestSchema = z.object({
+  accountId: z.string().regex(/^\d{2,8}$/),
+  thirdPartyId: z.string().min(1),
+  thirdPartyType: ThirdPartyType,
+  fiscalYear: z.coerce.number().int().gte(1900),
+  allocations: z.array(LetteringAllocationRequestSchema).min(2).max(49),
+  note: z.string().trim().max(500).optional(),
+});
+
+export type CreateLetteringMatchRequest = z.infer<
+  typeof CreateLetteringMatchRequestSchema
+>;
+
+export const LetteringMatchAllocationDtoSchema = z.object({
+  entryId: z.string().min(1),
+  lineId: z.string().min(1),
+  accountingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  journalCode: z.string().min(1),
+  entryNumber: z.string().optional(),
+  reference: z.string().optional(),
+  label: z.string().optional(),
+  debit: LetteringLineAmountSchema,
+  credit: LetteringLineAmountSchema,
+  allocatedAmount: PositiveLetteringAmountSchema,
+}).refine((line) => !(line.debit > 0 && line.credit > 0), {
+  message: "A line cannot have both debit and credit amounts",
+  path: ["debit"],
+});
+
+export type LetteringMatchAllocationDto = z.infer<
+  typeof LetteringMatchAllocationDtoSchema
+>;
+
+export const LetteringMatchDtoSchema = z.object({
+  letteringId: z.string().min(1),
+  fiscalYear: z.number().int(),
+  accountId: z.string().regex(/^\d{8}$/),
+  accountCode: z.string().regex(/^\d{8}$/).optional(),
+  thirdPartyId: z.string().min(1),
+  thirdPartyType: ThirdPartyType,
+  status: z.enum(["ACTIVE", "CANCELLED"]),
+  totalDebit: LetteringLineAmountSchema,
+  totalCredit: LetteringLineAmountSchema,
+  createdAt: z.string(),
+  createdBy: z.string().optional(),
+  cancelledAt: z.string().optional(),
+  cancelledBy: z.string().optional(),
+  cancellationReason: z.string().optional(),
+  note: z.string().optional(),
+  allocations: z.array(LetteringMatchAllocationDtoSchema).min(1),
+});
+
+export type LetteringMatchDto = z.infer<typeof LetteringMatchDtoSchema>;
+
+export const LetteringMatchResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: LetteringMatchDtoSchema,
+});
+
+export const GetLetteringMatchRequestSchema = z.object({
+  fiscalYear: z.coerce.number().int().gte(1900),
+  letteringId: z.string().min(1),
+});
+
+export const CancelLetteringMatchRequestSchema = GetLetteringMatchRequestSchema.extend({
+  cancellationReason: z.string().trim().max(500).optional(),
+});
+
+export type GetLetteringMatchRequest = z.infer<
+  typeof GetLetteringMatchRequestSchema
+>;
+export type CancelLetteringMatchRequest = z.infer<
+  typeof CancelLetteringMatchRequestSchema
+>;
+
 export const LetteringLineRefSchema = z.object({
   year: z.coerce.number().int().gte(1900),
   entryId: z.string().min(1),
@@ -760,7 +933,7 @@ export const CancelLetteringRequestSchema = z.object({
 
 export const LetteringResultDtoSchema = z.object({
   letteringCode: z.string().optional(),
-  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
+  letteringStatus: LineLetteringStatus.optional(),
   remainingBalance: z.number().int().nonnegative().optional(),
   linesProcessed: z.number().int().nonnegative().optional(),
 });
@@ -841,7 +1014,10 @@ export const EntryLineSchema = z.object({
 
   // Metadata
   letteringCode: z.string().optional(),
-  letteringStatus: z.enum(["PARTIAL", "COMPLETE"]).optional(),
+  letteringStatus: LineLetteringStatus.optional(),
+  letteredAmount: z.number().int().nonnegative().optional(),
+  remainingAmount: z.number().int().nonnegative().optional(),
+  letteringMatchIds: z.array(z.string().min(1)).max(50).optional(),
   entityType: z.literal("ENTRY_LINE"),
 
   // Database Keys (DynamoDB + KeyFactory)

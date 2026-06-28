@@ -2,6 +2,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import {
   AccountResponseSchema,
+  CancelLetteringMatchRequestSchema,
   CancelLetteringRequestSchema,
   CloseFiscalYearRequestSchema,
   CloseFiscalYearResponseSchema,
@@ -9,15 +10,20 @@ import {
   CreateEntryRequestSchema,
   CreateFiscalYearRequestSchema,
   CreateJournalRequestSchema,
+  CreateLetteringMatchRequestSchema,
   FiscalYearDetailsResponseSchema,
   FiscalYearResponseSchema,
   GeneralLedgerQuerySchema,
   GeneralLedgerResponseSchema,
   GetAccountRequestSchema,
+  GetLetteringMatchRequestSchema,
   IncomeStatementResponseSchema,
   JournalResponseSchema,
   JournalBookQuerySchema,
   JournalBookResponseSchema,
+  LetteringCandidatesQuerySchema,
+  LetteringCandidatesResponseSchema,
+  LetteringMatchResponseSchema,
   ListAccountsRequestSchema,
   ListAccountsResponseSchema,
   ListEntriesResponseSchema,
@@ -33,6 +39,7 @@ import {
   UnletteredLinesResponseSchema,
   UpdateAccountRequestSchema,
   type AccountDto,
+  type CancelLetteringMatchRequest,
   type CancelLetteringRequest,
   type CloseFiscalYearResultDto,
   type CreateAccountRequest,
@@ -40,6 +47,7 @@ import {
   type CreateEntryRequest,
   type CreateFiscalYearRequest,
   type CreateJournalRequest,
+  type CreateLetteringMatchRequest,
   type EntryDetailDto,
   type EntrySummaryDto,
   type FiscalYearDetailsDto,
@@ -51,6 +59,9 @@ import {
   type JournalBookEntryDto,
   type JournalBookQuery,
   type JournalBookTotalsDto,
+  type LetteringCandidatesDto,
+  type LetteringCandidatesQuery,
+  type LetteringMatchDto,
   type LetteringResultDto,
   type MatchingReportDto,
   type PeriodLockDto,
@@ -80,6 +91,7 @@ export type ListAccountsParams = z.input<typeof ListAccountsRequestSchema>;
 export type GeneralLedgerParams = z.input<typeof GeneralLedgerQuerySchema>;
 export type TrialBalanceParams = z.input<typeof TrialBalanceQuerySchema>;
 export type JournalBookParams = z.input<typeof JournalBookQuerySchema>;
+export type LetteringCandidatesParams = z.input<typeof LetteringCandidatesQuerySchema>;
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
 export type UpdateEntryDraftPayload = Omit<UpdateEntryDraftRequest, 'entryId'>;
 export type UpdateJournalRequest = z.infer<typeof UpdateJournalRequestSchema>;
@@ -630,6 +642,73 @@ export class AccountingApi {
     );
 
     return UnletteredLinesResponseSchema.parse(response);
+  }
+
+  async getLetteringCandidates(paramsInput: LetteringCandidatesParams): Promise<LetteringCandidatesDto> {
+    const request = LetteringCandidatesQuerySchema.parse(paramsInput);
+    let params = new HttpParams()
+      .set('fiscalYear', String(request.fiscalYear))
+      .set('accountId', request.accountId)
+      .set('thirdPartyId', request.thirdPartyId)
+      .set('thirdPartyType', request.thirdPartyType)
+      .set('limit', String(request.limit ?? 50));
+
+    if (request.dateFrom) {
+      params = params.set('dateFrom', request.dateFrom);
+    }
+
+    if (request.dateTo) {
+      params = params.set('dateTo', request.dateTo);
+    }
+
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/lettering/candidates`, { params })
+    );
+
+    return LetteringCandidatesResponseSchema.parse(response).data;
+  }
+
+  async createLetteringMatch(payload: CreateLetteringMatchRequest): Promise<ApiMutationResult<LetteringMatchDto>> {
+    const request = CreateLetteringMatchRequestSchema.parse(payload);
+    const response = await firstValueFrom(
+      this.http.post<unknown>(`${this.apiBaseUrl}/lettering/matches`, request)
+    );
+    const parsed = LetteringMatchResponseSchema.parse(response);
+
+    return { data: parsed.data, message: userMessageFromResponse(response) };
+  }
+
+  async getLetteringMatch(fiscalYear: string | number, letteringId: string): Promise<LetteringMatchDto> {
+    const request = GetLetteringMatchRequestSchema.parse({ fiscalYear, letteringId });
+    const params = new HttpParams().set('fiscalYear', String(request.fiscalYear));
+    const response = await firstValueFrom(
+      this.http.get<unknown>(
+        `${this.apiBaseUrl}/lettering/matches/${encodeURIComponent(request.letteringId)}`,
+        { params }
+      )
+    );
+
+    return LetteringMatchResponseSchema.parse(response).data;
+  }
+
+  async cancelLetteringMatch(payload: CancelLetteringMatchRequest): Promise<ApiMutationResult<LetteringMatchDto>> {
+    const request = CancelLetteringMatchRequestSchema.parse(payload);
+    const response = await firstValueFrom(
+      this.http.post<unknown>(
+        `${this.apiBaseUrl}/lettering/matches/${encodeURIComponent(request.letteringId)}/cancel`,
+        {
+          fiscalYear: request.fiscalYear,
+          ...(request.cancellationReason ? { cancellationReason: request.cancellationReason } : {})
+        }
+      )
+    );
+    const parsed = LetteringMatchResponseSchema.parse(response);
+
+    return { data: parsed.data, message: userMessageFromResponse(response) };
   }
 
   async postLettering(payload: PostLetteringRequest): Promise<LetteringResultDto> {

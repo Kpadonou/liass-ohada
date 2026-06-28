@@ -161,6 +161,26 @@ export class AccountingEndpoints extends DomainConstructFactory {
     );
 
     // Lettering
+    map(
+      apigw.HttpMethod.GET,
+      "/lettering/candidates",
+      "lettering/get-candidates",
+    );
+    map(
+      apigw.HttpMethod.POST,
+      "/lettering/matches",
+      "lettering/create-match",
+    );
+    map(
+      apigw.HttpMethod.GET,
+      "/lettering/matches/{letteringId}",
+      "lettering/get-match",
+    );
+    map(
+      apigw.HttpMethod.POST,
+      "/lettering/matches/{letteringId}/cancel",
+      "lettering/cancel-match",
+    );
     map(apigw.HttpMethod.POST, "/lettering", "lettering/post-lettering");
     map(
       apigw.HttpMethod.POST,

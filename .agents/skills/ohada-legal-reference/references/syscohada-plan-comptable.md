@@ -963,7 +963,7 @@ COMPTES DE CHARGES DES ACTIVITES ORDINAIRES
 6089 Rabais, Remises et Ristournes obtenus (non ventilés)
 6089 Jlabais.Ren1ises et Ristournes obtenus (non ventilés
 61 TRANSPORTS
-611 TRANSPORTS SUR ACHATS()
+611 TRANSPORTS SUR ACHATS (1)
 612 TRANSPORTS SUR VENTES
 613 TRANSPORTS POUR LE COMPTE DE TIERS
 614 TRANSPORTS DU PERSONNEL
@@ -1212,7 +1212,7 @@ CLASSE 7
 COMPTTES DES PRODUITS DES ACTIVITES ORDINAIRES
 70 VENTES
 701 VENTES DE MARCHANDISES
-7011 dans la Région ()
+7011 dans la Région (1)
 7012 hors Région (1)
 7013 aux entités du groupe dans la Région
 7014 aux entités du groupe hors Région

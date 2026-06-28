@@ -1346,6 +1346,137 @@ describe('AccountingApi', () => {
     await expect(cancelPromise).resolves.toMatchObject({ linesProcessed: 1 });
   });
 
+  it('loads manual lettering candidates and match records with frontend-safe DTOs', async () => {
+    const candidatesPromise = api.getLetteringCandidates({
+      accountId: '41100000',
+      cursor: 'next-cursor',
+      dateFrom: '2026-01-01',
+      dateTo: '2026-12-31',
+      fiscalYear: 2026,
+      limit: 25,
+      thirdPartyId: 'CUST-1',
+      thirdPartyType: 'CUSTOMER'
+    });
+    const candidatesRequest = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/lettering/candidates`
+    );
+
+    expect(candidatesRequest.request.method).toBe('GET');
+    expect(candidatesRequest.request.params.get('fiscalYear')).toBe('2026');
+    expect(candidatesRequest.request.params.get('accountId')).toBe('41100000');
+    expect(candidatesRequest.request.params.get('thirdPartyId')).toBe('CUST-1');
+    expect(candidatesRequest.request.params.get('thirdPartyType')).toBe('CUSTOMER');
+    expect(candidatesRequest.request.params.get('dateFrom')).toBe('2026-01-01');
+    expect(candidatesRequest.request.params.get('dateTo')).toBe('2026-12-31');
+    expect(candidatesRequest.request.params.get('cursor')).toBe('next-cursor');
+    expect(candidatesRequest.request.params.get('limit')).toBe('25');
+    candidatesRequest.flush({
+      data: {
+        accountCode: '41100000',
+        accountId: '41100000',
+        hasMore: true,
+        lines: [
+          {
+            ...unletteredCandidateFixture(),
+            GSI3PK: 'UNLETTERED#org#41100000#CUST-1',
+            PK: 'ORG#demo',
+            entityType: 'ENTRY_LINE'
+          }
+        ],
+        nextCursor: 'cursor-2',
+        thirdPartyId: 'CUST-1',
+        thirdPartyName: 'Client Demo',
+        thirdPartyType: 'CUSTOMER'
+      }
+    });
+
+    const candidates = await candidatesPromise;
+
+    expect(candidates).toMatchObject({
+      accountId: '41100000',
+      hasMore: true,
+      nextCursor: 'cursor-2',
+      thirdPartyId: 'CUST-1'
+    });
+    expect(candidates.lines[0]).not.toHaveProperty('PK');
+    expect(candidates.lines[0]).not.toHaveProperty('GSI3PK');
+    expect(candidates.lines[0]).not.toHaveProperty('entityType');
+
+    const createPayload = {
+      accountId: '41100000',
+      allocations: [
+        { amount: 1000, entryId: 'E-1', lineId: 'L-1' },
+        { amount: 1000, entryId: 'E-2', lineId: 'L-2' }
+      ],
+      fiscalYear: 2026,
+      thirdPartyId: 'CUST-1',
+      thirdPartyType: 'CUSTOMER' as const
+    };
+    const createPromise = api.createLetteringMatch(createPayload);
+    const createRequest = httpMock.expectOne(`${apiBaseUrl}/lettering/matches`);
+
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual(createPayload);
+    createRequest.flush({
+      data: letteringMatchFixture(),
+      message: { message: 'Lettrage enregistré.' }
+    });
+
+    await expect(createPromise).resolves.toMatchObject({
+      data: {
+        letteringId: 'LM-001',
+        status: 'ACTIVE'
+      },
+      message: 'Lettrage enregistré.'
+    });
+
+    const detailPromise = api.getLetteringMatch(2026, 'LM-001');
+    const detailRequest = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/lettering/matches/LM-001`
+    );
+
+    expect(detailRequest.request.method).toBe('GET');
+    expect(detailRequest.request.params.get('fiscalYear')).toBe('2026');
+    detailRequest.flush({
+      data: letteringMatchFixture({
+        PK: 'ORG#demo',
+        SK: 'LTR#LM-001',
+        entityType: 'LETTERING_MATCH'
+      })
+    });
+
+    const detail = await detailPromise;
+
+    expect(detail.letteringId).toBe('LM-001');
+    expect(detail).not.toHaveProperty('PK');
+    expect(detail).not.toHaveProperty('entityType');
+
+    const cancelPromise = api.cancelLetteringMatch({
+      cancellationReason: 'Manual correction',
+      fiscalYear: 2026,
+      letteringId: 'LM-001'
+    });
+    const cancelRequest = httpMock.expectOne(`${apiBaseUrl}/lettering/matches/LM-001/cancel`);
+
+    expect(cancelRequest.request.method).toBe('POST');
+    expect(cancelRequest.request.body).toEqual({
+      cancellationReason: 'Manual correction',
+      fiscalYear: 2026
+    });
+    cancelRequest.flush({
+      data: letteringMatchFixture({ status: 'CANCELLED' }),
+      message: 'Lettrage annulé.'
+    });
+
+    await expect(cancelPromise).resolves.toMatchObject({
+      data: {
+        letteringId: 'LM-001',
+        status: 'CANCELLED'
+      },
+      message: 'Lettrage annulé.'
+    });
+  });
+
   it('rejects invalid matching and unlettered responses', async () => {
     const reportPromise = api.getMatchingReport({
       accountId: '41100000',
@@ -1461,6 +1592,83 @@ function entryDetailFixture(
       }
     ],
     ...overrides
+  };
+}
+
+function unletteredCandidateFixture() {
+  return {
+    accountCode: '41100000',
+    accountId: '41100000',
+    accountLabel: 'Clients',
+    accountingDate: '2026-01-15',
+    credit: 0,
+    debit: 1000,
+    entryId: 'E-1',
+    entryNumber: 'VE-0001',
+    fiscalYear: 2026,
+    journalCode: 'VE',
+    label: 'Invoice',
+    letteredAmount: 0,
+    letteringStatus: 'UNLETTERED',
+    lineId: 'L-1',
+    originalAmount: 1000,
+    reference: 'FAC-001',
+    remainingAmount: 1000,
+    stableLineIndex: 1,
+    thirdPartyCode: 'C001',
+    thirdPartyId: 'CUST-1',
+    thirdPartyName: 'Client Demo',
+    thirdPartyType: 'CUSTOMER'
+  };
+}
+
+function letteringMatchFixture(
+  overrides: Partial<ReturnType<typeof letteringMatchFixtureShape>> & Record<string, unknown> = {}
+) {
+  return {
+    ...letteringMatchFixtureShape(),
+    ...overrides
+  };
+}
+
+function letteringMatchFixtureShape() {
+  return {
+    accountCode: '41100000',
+    accountId: '41100000',
+    allocations: [
+      {
+        accountingDate: '2026-01-15',
+        allocatedAmount: 1000,
+        credit: 0,
+        debit: 1000,
+        entryId: 'E-1',
+        entryNumber: 'VE-0001',
+        journalCode: 'VE',
+        label: 'Invoice',
+        lineId: 'L-1',
+        reference: 'FAC-001'
+      },
+      {
+        accountingDate: '2026-01-20',
+        allocatedAmount: 1000,
+        credit: 1000,
+        debit: 0,
+        entryId: 'E-2',
+        entryNumber: 'BQ-0001',
+        journalCode: 'BQ',
+        label: 'Payment',
+        lineId: 'L-2'
+      }
+    ],
+    createdAt: '2026-02-01T10:00:00.000Z',
+    createdBy: 'user-1',
+    fiscalYear: 2026,
+    letteringId: 'LM-001',
+    status: 'ACTIVE',
+    thirdPartyId: 'CUST-1',
+    thirdPartyType: 'CUSTOMER',
+    totalCredit: 1000,
+    totalDebit: 1000
   };
 }
 

@@ -6,6 +6,7 @@ import {
   AccountingApi,
   type GeneralLedgerParams,
   type JournalBookParams,
+  type LetteringCandidatesParams,
   type ListAccountsParams,
   type ListEntriesParams,
   type MatchingReportParams,
@@ -82,6 +83,19 @@ function normalizeJournalBookParams(params: JournalBookParams) {
   };
 }
 
+function normalizeLetteringCandidatesParams(params: LetteringCandidatesParams) {
+  return {
+    accountId: params.accountId,
+    cursor: params.cursor ?? null,
+    dateFrom: params.dateFrom ?? null,
+    dateTo: params.dateTo ?? null,
+    fiscalYear: Number(params.fiscalYear),
+    limit: params.limit ?? 50,
+    thirdPartyId: params.thirdPartyId,
+    thirdPartyType: params.thirdPartyType
+  };
+}
+
 export const accountingQueryKeys = {
   account: (tenantScope: TenantScope, accountId: string) =>
     ['accounting', tenantScope, 'accounts', accountId] as const,
@@ -103,6 +117,10 @@ export const accountingQueryKeys = {
   journals: (tenantScope: TenantScope) => ['accounting', tenantScope, 'journals'] as const,
   journalBook: (tenantScope: TenantScope, params: JournalBookParams) =>
     ['accounting', tenantScope, 'journal-book', normalizeJournalBookParams(params)] as const,
+  letteringCandidates: (tenantScope: TenantScope, params: LetteringCandidatesParams) =>
+    ['accounting', tenantScope, 'lettering-candidates', normalizeLetteringCandidatesParams(params)] as const,
+  letteringMatch: (tenantScope: TenantScope, fiscalYear: string | number, letteringId: string) =>
+    ['accounting', tenantScope, 'lettering-match', String(fiscalYear), letteringId] as const,
   matchingReport: (tenantScope: TenantScope, params: MatchingReportParams) =>
     ['accounting', tenantScope, 'matching-report', params] as const,
   thirdPartyLedger: (tenantScope: TenantScope, params: ThirdPartyLedgerParams) =>
@@ -349,6 +367,29 @@ export class AccountingQueries {
       queryFn: () => this.accountingApi.getUnletteredLines(params),
       enabled: enabled && /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
       staleTime: ACCOUNTING_LIVE_MATCHING_STALE_TIME
+    });
+  }
+
+  letteringCandidates(params: LetteringCandidatesParams, enabled = true) {
+    return queryOptions({
+      queryKey: accountingQueryKeys.letteringCandidates(this.tenantScope(), params),
+      queryFn: () => this.accountingApi.getLetteringCandidates(params),
+      enabled:
+        enabled &&
+        /^\d{4}$/.test(String(params.fiscalYear)) &&
+        /^\d{2,8}$/.test(params.accountId) &&
+        !!params.thirdPartyId &&
+        (params.thirdPartyType === 'CUSTOMER' || params.thirdPartyType === 'SUPPLIER'),
+      staleTime: ACCOUNTING_LIVE_MATCHING_STALE_TIME
+    });
+  }
+
+  letteringMatch(fiscalYear: string | number, letteringId: string, enabled = true) {
+    return queryOptions({
+      queryKey: accountingQueryKeys.letteringMatch(this.tenantScope(), fiscalYear, letteringId),
+      queryFn: () => this.accountingApi.getLetteringMatch(fiscalYear, letteringId),
+      enabled: enabled && /^\d{4}$/.test(String(fiscalYear)) && letteringId.trim().length > 0,
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }
 }

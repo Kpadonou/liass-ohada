@@ -1,16 +1,22 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import {
-  type AccountEntryDto,
-  type LetteringResultDto,
-  type LetteringSuggestionDto
+  type LetteringMatchDto,
+  type ThirdPartyTypeValue,
+  type UnletteredLineDto
 } from '@liass-ohada/shared/accounting';
-import { TranslocoModule } from '@ngneat/transloco';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
+import { firstValueFrom } from 'rxjs';
 
+import { NotificationService } from '../../../../core/notifications/notification.service';
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page-header.component';
@@ -25,10 +31,85 @@ import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fisca
 interface LetteringScope {
   accountId: string;
   thirdPartyId: string;
-  projectId?: string;
+  thirdPartyType: ThirdPartyTypeValue;
+  dateFrom?: string;
+  dateTo?: string;
 }
 
-type LetteringAction = 'post' | 'cancel' | null;
+interface LetteringConfirmationDialogData {
+  action: 'CREATE' | 'CANCEL';
+  debitTotal?: number;
+  creditTotal?: number;
+  lineCount?: number;
+  letteringId?: string;
+}
+
+@Component({
+  selector: 'liass-lettering-confirmation-dialog',
+  imports: [LiassButtonComponent, MatDialogModule, MatIconModule, TranslocoModule],
+  template: `
+    <div class="space-y-5 p-6">
+      <div class="flex items-start gap-3">
+        <div class="rounded-full bg-brand-50 p-2 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300">
+          <mat-icon>{{ data.action === 'CREATE' ? 'done_all' : 'link_off' }}</mat-icon>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-app-text">
+            {{ (data.action === 'CREATE' ? 'ACCOUNTING.LETTERING.CONFIRM.CREATE_TITLE' : 'ACCOUNTING.LETTERING.CONFIRM.CANCEL_TITLE') | transloco }}
+          </h2>
+          <p class="mt-1 text-sm leading-6 text-app-muted">
+            {{ (data.action === 'CREATE' ? 'ACCOUNTING.LETTERING.CONFIRM.CREATE_MESSAGE' : 'ACCOUNTING.LETTERING.CONFIRM.CANCEL_MESSAGE') | transloco }}
+          </p>
+        </div>
+      </div>
+
+      @if (data.action === 'CREATE') {
+        <dl class="grid gap-3 rounded-app-card bg-app-surface-muted p-4 text-sm sm:grid-cols-3">
+          <div>
+            <dt class="text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_LINES' | transloco }}</dt>
+            <dd class="mt-1 font-semibold text-app-text">{{ data.lineCount }}</dd>
+          </div>
+          <div>
+            <dt class="text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_DEBIT' | transloco }}</dt>
+            <dd class="mt-1 font-semibold text-app-text">{{ data.debitTotal }}</dd>
+          </div>
+          <div>
+            <dt class="text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_CREDIT' | transloco }}</dt>
+            <dd class="mt-1 font-semibold text-app-text">{{ data.creditTotal }}</dd>
+          </div>
+        </dl>
+      } @else {
+        <p class="rounded-app-card bg-warning-50 p-4 text-sm text-warning-700 dark:bg-amber-950/25 dark:text-amber-200">
+          {{ 'ACCOUNTING.LETTERING.CONFIRM.CANCEL_WARNING' | transloco }}
+        </p>
+      }
+
+      <div class="flex justify-end gap-3">
+        <liass-button variant="ghost" tone="neutral" (pressed)="close(false)">
+          {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+        </liass-button>
+        <liass-button
+          variant="solid"
+          [tone]="data.action === 'CREATE' ? 'brand' : 'warning'"
+          [icon]="data.action === 'CREATE' ? 'done_all' : 'link_off'"
+          (pressed)="close(true)"
+        >
+          {{ (data.action === 'CREATE' ? 'ACCOUNTING.LETTERING.ACTIONS.POST' : 'ACCOUNTING.LETTERING.ACTIONS.CANCEL_GROUP') | transloco }}
+        </liass-button>
+      </div>
+    </div>
+  `
+})
+export class LetteringConfirmationDialogComponent {
+  protected readonly data = inject<LetteringConfirmationDialogData>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject<MatDialogRef<LetteringConfirmationDialogComponent, boolean>>(
+    MatDialogRef
+  );
+
+  protected close(confirmed: boolean): void {
+    this.dialogRef.close(confirmed);
+  }
+}
 
 @Component({
   selector: 'liass-lettering-page',
@@ -41,8 +122,10 @@ type LetteringAction = 'post' | 'cancel' | null;
     LiassSkeletonComponent,
     LiassStatusChipComponent,
     MatCheckboxModule,
+    MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     ReactiveFormsModule,
     TranslocoModule
   ],
@@ -52,251 +135,274 @@ export class LetteringPage {
   private readonly accountingApi = inject(AccountingApi);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly accountingQueries = inject(AccountingQueries);
+  private readonly dialog = inject(MatDialog);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly notifications = inject(NotificationService);
+  private readonly transloco = inject(TranslocoService);
 
   protected readonly selectedLineKeys = signal(new Set<string>());
-  protected readonly pendingAction = signal<LetteringAction>(null);
-  protected readonly errorKey = signal<string | null>(null);
-  protected readonly successKey = signal<string | null>(null);
-  protected readonly result = signal<LetteringResultDto | null>(null);
+  protected readonly allocations = signal<Record<string, number>>({});
+  protected readonly pendingAction = signal<'create' | 'cancel' | null>(null);
+  protected readonly latestMatch = signal<LetteringMatchDto | null>(null);
+  protected readonly pageErrorKey = signal<string | null>(null);
+
   protected readonly scope = signal<LetteringScope>({
     accountId: '41100000',
-    thirdPartyId: ''
+    thirdPartyId: '',
+    thirdPartyType: 'CUSTOMER'
   });
 
   protected readonly form = this.formBuilder.nonNullable.group({
     accountId: ['41100000', [Validators.required, Validators.pattern(/^\d{2,8}$/)]],
     thirdPartyId: ['', [Validators.required]],
-    projectId: [''],
-    letteringCode: ['LET001', [Validators.required]]
+    thirdPartyType: ['CUSTOMER' as ThirdPartyTypeValue, [Validators.required]],
+    dateFrom: [''],
+    dateTo: ['']
   });
 
-  protected readonly thirdPartyLedgerQuery = injectQuery(() =>
-    this.accountingQueries.thirdPartyLedger({
-      accountId: this.scope().accountId,
-      thirdPartyId: this.scope().thirdPartyId
-    }, this.fiscalYearContext.hasActiveFiscalYear())
-  );
-  protected readonly matchingReportQuery = injectQuery(() =>
-    this.accountingQueries.matchingReport({
-      accountId: this.scope().accountId,
-      thirdPartyId: this.scope().thirdPartyId
-    }, this.fiscalYearContext.hasActiveFiscalYear())
-  );
-  protected readonly unletteredLinesQuery = injectQuery(() =>
-    this.accountingQueries.unletteredLines({
-      accountId: this.scope().accountId,
-      thirdPartyId: this.scope().thirdPartyId,
-      projectId: this.scope().projectId
-    }, this.fiscalYearContext.hasActiveFiscalYear())
+  protected readonly activeFiscalYear = computed(() => this.fiscalYearContext.activeFiscalYear());
+  protected readonly activeYear = computed(() => this.fiscalYearContext.activeYear());
+  protected readonly hasScope = computed(
+    () => !!this.scope().thirdPartyId && !!this.activeYear()
   );
 
-  protected readonly thirdPartyLedger = computed(() => this.thirdPartyLedgerQuery.data() ?? null);
-  protected readonly matchingReport = computed(() => this.matchingReportQuery.data() ?? null);
-  protected readonly unletteredLines = computed(
-    () => this.unletteredLinesQuery.data()?.unletteredLines ?? []
+  protected readonly candidatesQuery = injectQuery(() =>
+    this.accountingQueries.letteringCandidates(
+      {
+        fiscalYear: this.activeYear() ?? 0,
+        accountId: this.scope().accountId,
+        thirdPartyId: this.scope().thirdPartyId,
+        thirdPartyType: this.scope().thirdPartyType,
+        dateFrom: this.scope().dateFrom,
+        dateTo: this.scope().dateTo,
+        limit: 100
+      },
+      this.hasScope()
+    )
   );
-  protected readonly suggestions = computed(
-    () => this.unletteredLinesQuery.data()?.suggestions ?? []
-  );
+
+  protected readonly candidates = computed(() => this.candidatesQuery.data()?.lines ?? []);
   protected readonly selectedLines = computed(() => {
     const selectedKeys = this.selectedLineKeys();
 
-    return this.unletteredLines().filter((line) => selectedKeys.has(this.lineKey(line)));
+    return this.candidates().filter((line) => selectedKeys.has(this.lineKey(line)));
   });
-  protected readonly selectedLineRefs = computed(() =>
-    this.selectedLines()
-      .filter((line) => typeof line.year === 'number')
-      .map((line) => ({
-        year: line.year as number,
-        entryId: line.entryId,
-        lineId: line.lineId
-      }))
+  protected readonly selectedDebitTotal = computed(() =>
+    this.selectedLines().reduce(
+      (total, line) => total + (line.debit > 0 ? this.allocationAmount(line) : 0),
+      0
+    )
   );
-  protected readonly hasIncompleteSelection = computed(
-    () => this.selectedLineRefs().length !== this.selectedLines().length
+  protected readonly selectedCreditTotal = computed(() =>
+    this.selectedLines().reduce(
+      (total, line) => total + (line.credit > 0 ? this.allocationAmount(line) : 0),
+      0
+    )
   );
-  protected readonly canPostLettering = computed(
+  protected readonly selectedDifference = computed(
+    () => this.selectedDebitTotal() - this.selectedCreditTotal()
+  );
+  protected readonly canCreateMatch = computed(
     () =>
-      this.selectedLineRefs().length >= 2 &&
-      this.fiscalYearContext.hasActiveFiscalYear() &&
-      !this.hasIncompleteSelection() &&
-      this.form.controls.letteringCode.valid &&
-      !this.pendingAction()
-  );
-  protected readonly canCancelLettering = computed(
-    () =>
-      this.selectedLineRefs().length >= 1 &&
-      this.fiscalYearContext.hasActiveFiscalYear() &&
-      !this.hasIncompleteSelection() &&
+      this.selectedLines().length >= 2 &&
+      this.selectedDebitTotal() > 0 &&
+      this.selectedDebitTotal() === this.selectedCreditTotal() &&
       !this.pendingAction()
   );
 
   protected applyFilters(): void {
-    if (this.form.controls.accountId.invalid || this.form.controls.thirdPartyId.invalid) {
-      this.form.controls.accountId.markAsTouched();
-      this.form.controls.thirdPartyId.markAsTouched();
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
       return;
     }
 
     const raw = this.form.getRawValue();
+    if (raw.dateFrom && raw.dateTo && raw.dateFrom > raw.dateTo) {
+      this.pageErrorKey.set('ACCOUNTING.LETTERING.ERRORS.DATE_RANGE');
+      return;
+    }
 
     this.scope.set({
       accountId: raw.accountId,
       thirdPartyId: raw.thirdPartyId.trim(),
-      projectId: raw.projectId.trim() || undefined
+      thirdPartyType: raw.thirdPartyType,
+      dateFrom: raw.dateFrom || undefined,
+      dateTo: raw.dateTo || undefined
     });
+    this.pageErrorKey.set(null);
     this.clearSelection();
-    this.errorKey.set(null);
-    this.successKey.set(null);
-    this.result.set(null);
   }
 
-  protected toggleLine(line: AccountEntryDto, checked: boolean): void {
-    const nextKeys = new Set(this.selectedLineKeys());
+  protected toggleLine(line: UnletteredLineDto, checked: boolean): void {
     const key = this.lineKey(line);
+    const nextKeys = new Set(this.selectedLineKeys());
+    const nextAllocations = { ...this.allocations() };
 
     if (checked) {
       nextKeys.add(key);
+      nextAllocations[key] = nextAllocations[key] ?? line.remainingAmount;
     } else {
       nextKeys.delete(key);
+      delete nextAllocations[key];
     }
 
     this.selectedLineKeys.set(nextKeys);
+    this.allocations.set(nextAllocations);
   }
 
-  protected isSelected(line: AccountEntryDto): boolean {
+  protected isSelected(line: UnletteredLineDto): boolean {
     return this.selectedLineKeys().has(this.lineKey(line));
   }
 
-  protected selectSuggestion(suggestion: LetteringSuggestionDto): void {
-    const nextKeys = new Set<string>();
+  protected updateAllocation(line: UnletteredLineDto, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const amount = Math.max(0, Math.min(Number(input.value) || 0, line.remainingAmount));
+    const key = this.lineKey(line);
 
-    for (const suggestionLine of suggestion.lines) {
-      const matchingLine = this.unletteredLines().find(
-        (line) =>
-          line.entryId === suggestionLine.entryId &&
-          line.lineId === suggestionLine.lineId
-      );
+    this.allocations.update((current) => ({
+      ...current,
+      [key]: amount
+    }));
+  }
 
-      if (matchingLine) {
-        nextKeys.add(this.lineKey(matchingLine));
-      }
-    }
-
-    this.selectedLineKeys.set(nextKeys);
+  protected allocationAmount(line: UnletteredLineDto): number {
+    return this.allocations()[this.lineKey(line)] ?? line.remainingAmount;
   }
 
   protected clearSelection(): void {
     this.selectedLineKeys.set(new Set());
+    this.allocations.set({});
   }
 
-  protected async postLettering(): Promise<void> {
-    if (!this.canPostLettering()) {
-      this.errorKey.set('ACCOUNTING.LETTERING.ERRORS.SELECTION_REQUIRED');
+  protected async confirmCreateMatch(): Promise<void> {
+    if (!this.canCreateMatch() || !this.activeYear()) {
+      this.pageErrorKey.set('ACCOUNTING.LETTERING.ERRORS.SELECTION_REQUIRED');
       return;
     }
 
-    this.pendingAction.set('post');
-    this.errorKey.set(null);
-    this.successKey.set(null);
-    this.result.set(null);
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open(LetteringConfirmationDialogComponent, {
+          width: 'min(560px, 96vw)',
+          disableClose: true,
+          data: {
+            action: 'CREATE',
+            debitTotal: this.selectedDebitTotal(),
+            creditTotal: this.selectedCreditTotal(),
+            lineCount: this.selectedLines().length
+          } satisfies LetteringConfirmationDialogData
+        })
+        .afterClosed()
+    );
 
-    try {
-      const result = await this.accountingApi.postLettering({
-        accountId: this.scope().accountId,
-        thirdPartyId: this.scope().thirdPartyId,
-        letteringCode: this.form.controls.letteringCode.value.trim(),
-        lines: this.selectedLineRefs()
-      });
-      this.result.set(result);
-      this.successKey.set('ACCOUNTING.LETTERING.MESSAGES.POSTED');
-      this.clearSelection();
-      await this.refetchScope();
-    } catch {
-      this.errorKey.set('ACCOUNTING.LETTERING.ERRORS.POST_FAILED');
-    } finally {
-      this.pendingAction.set(null);
+    if (!confirmed) {
+      return;
     }
+
+    await this.createMatch();
   }
 
-  protected async cancelSelectedLettering(): Promise<void> {
-    await this.cancelLines(this.selectedLineRefs());
+  protected async confirmCancelLatestMatch(): Promise<void> {
+    const match = this.latestMatch();
+    if (!match || this.pendingAction()) {
+      return;
+    }
+
+    const confirmed = await firstValueFrom(
+      this.dialog
+        .open(LetteringConfirmationDialogComponent, {
+          width: 'min(560px, 96vw)',
+          disableClose: true,
+          data: {
+            action: 'CANCEL',
+            letteringId: match.letteringId
+          } satisfies LetteringConfirmationDialogData
+        })
+        .afterClosed()
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    await this.cancelMatch(match);
   }
 
-  protected async cancelGroup(lines: AccountEntryDto[]): Promise<void> {
-    const refs = lines
-      .filter((line) => typeof line.year === 'number')
-      .map((line) => ({
-        year: line.year as number,
-        entryId: line.entryId,
-        lineId: line.lineId
-      }));
-
-    await this.cancelLines(refs);
-  }
-
-  protected lineKey(line: AccountEntryDto): string {
-    return `${line.year ?? 'unknown'}:${line.entryId}:${line.lineId}`;
+  protected lineKey(line: UnletteredLineDto): string {
+    return `${line.fiscalYear}:${line.entryId}:${line.lineId}`;
   }
 
   protected formatAmount(value: number): string {
     return new Intl.NumberFormat('fr-FR').format(value);
   }
 
-  protected lineAmount(line: AccountEntryDto): number {
-    return line.debit > 0 ? line.debit : line.credit;
+  protected lineDirectionKey(line: UnletteredLineDto): string {
+    return line.debit > 0
+      ? 'ACCOUNTING.LETTERING.LINE_TYPES.DEBIT'
+      : 'ACCOUNTING.LETTERING.LINE_TYPES.CREDIT';
   }
 
-  protected lineTypeKey(line: AccountEntryDto): string {
-    return line.debit > 0 ? 'ACCOUNTING.LETTERING.LINE_TYPES.DEBIT' : 'ACCOUNTING.LETTERING.LINE_TYPES.CREDIT';
+  protected statusTone(line: UnletteredLineDto): 'warning' | 'info' {
+    return line.letteringStatus === 'PARTIAL' ? 'info' : 'warning';
   }
 
-  protected suggestionTypeKey(suggestion: LetteringSuggestionDto): string {
-    return `ACCOUNTING.LETTERING.SUGGESTIONS.TYPES.${suggestion.type}`;
-  }
-
-  protected letteredGroups(): Array<{ code: string; lines: AccountEntryDto[] }> {
-    const groups = this.matchingReport()?.letteredGroups ?? {};
-
-    return Object.entries(groups).map(([code, lines]) => ({ code, lines }));
-  }
-
-  private async cancelLines(
-    lines: Array<{ year: number; entryId: string; lineId: string }>
-  ): Promise<void> {
-    if (lines.length < 1 || this.pendingAction()) {
-      this.errorKey.set('ACCOUNTING.LETTERING.ERRORS.CANCEL_SELECTION_REQUIRED');
+  private async createMatch(): Promise<void> {
+    const fiscalYear = this.activeYear();
+    if (!fiscalYear) {
       return;
     }
 
-    this.pendingAction.set('cancel');
-    this.errorKey.set(null);
-    this.successKey.set(null);
-    this.result.set(null);
+    this.pendingAction.set('create');
+    this.pageErrorKey.set(null);
 
     try {
-      const result = await this.accountingApi.cancelLettering({
+      const result = await this.accountingApi.createLetteringMatch({
+        fiscalYear,
         accountId: this.scope().accountId,
         thirdPartyId: this.scope().thirdPartyId,
-        lines
+        thirdPartyType: this.scope().thirdPartyType,
+        allocations: this.selectedLines().map((line) => ({
+          entryId: line.entryId,
+          lineId: line.lineId,
+          amount: this.allocationAmount(line)
+        }))
       });
-      this.result.set(result);
-      this.successKey.set('ACCOUNTING.LETTERING.MESSAGES.CANCELLED');
+      this.latestMatch.set(result.data);
       this.clearSelection();
-      await this.refetchScope();
-    } catch {
-      this.errorKey.set('ACCOUNTING.LETTERING.ERRORS.CANCEL_FAILED');
+      this.notifications.success(
+        result.message || this.transloco.translate('ACCOUNTING.LETTERING.MESSAGES.POSTED')
+      );
+      await this.candidatesQuery.refetch();
+    } catch (error) {
+      this.notifications.error(
+        safeMessageFromError(error) ||
+          this.transloco.translate('ACCOUNTING.LETTERING.ERRORS.POST_FAILED')
+      );
     } finally {
       this.pendingAction.set(null);
     }
   }
 
-  private async refetchScope(): Promise<void> {
-    await Promise.all([
-      this.thirdPartyLedgerQuery.refetch(),
-      this.matchingReportQuery.refetch(),
-      this.unletteredLinesQuery.refetch()
-    ]);
+  private async cancelMatch(match: LetteringMatchDto): Promise<void> {
+    this.pendingAction.set('cancel');
+
+    try {
+      const result = await this.accountingApi.cancelLetteringMatch({
+        fiscalYear: match.fiscalYear,
+        letteringId: match.letteringId
+      });
+      this.latestMatch.set(result.data);
+      this.notifications.success(
+        result.message || this.transloco.translate('ACCOUNTING.LETTERING.MESSAGES.CANCELLED')
+      );
+      await this.candidatesQuery.refetch();
+    } catch (error) {
+      this.notifications.error(
+        safeMessageFromError(error) ||
+          this.transloco.translate('ACCOUNTING.LETTERING.ERRORS.CANCEL_FAILED')
+      );
+    } finally {
+      this.pendingAction.set(null);
+    }
   }
 }
