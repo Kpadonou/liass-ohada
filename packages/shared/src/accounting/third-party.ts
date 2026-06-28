@@ -34,6 +34,7 @@ export const UpdateThirdPartyRequestSchema = CreateThirdPartyRequestSchema.omit(
   type: true,
 })
   .partial()
+  .strict()
   .refine((payload) => Object.keys(payload).length > 0, {
     message: "At least one third-party field is required",
   });
@@ -46,6 +47,7 @@ export const GetThirdPartyRequestSchema = z.object({
 export const ListThirdPartiesRequestSchema = z.object({
   type: ThirdPartyType,
   status: ThirdPartyStatus.optional(),
+  codePrefix: z.string().trim().min(1).max(50).optional(),
   limit: z.coerce.number().int().min(1).max(200).default(100).optional(),
   cursor: z.string().optional(),
 });

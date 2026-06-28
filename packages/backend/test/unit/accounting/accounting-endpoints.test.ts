@@ -27,4 +27,25 @@ describe("AccountingEndpoints", () => {
     expect(source).toContain('"/journals/{journalCode}/entries"');
     expect(source).toContain('"/books/journal-book"');
   });
+
+  test("exposes third-party management routes", () => {
+    const source = readFileSync(
+      path.join(
+        __dirname,
+        "../../../lib/constructs/domains/accounting-endpoints.ts",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain('apigw.HttpMethod.GET,\n      "/third-parties"');
+    expect(source).toContain('apigw.HttpMethod.POST,\n      "/third-parties"');
+    expect(source).toContain(
+      'apigw.HttpMethod.GET,\n      "/third-parties/{thirdPartyId}"',
+    );
+    expect(source).toContain(
+      'apigw.HttpMethod.PATCH,\n      "/third-parties/{thirdPartyId}"',
+    );
+    expect(source).toContain('"/third-parties/{thirdPartyId}/activate"');
+    expect(source).toContain('"/third-parties/{thirdPartyId}/deactivate"');
+  });
 });

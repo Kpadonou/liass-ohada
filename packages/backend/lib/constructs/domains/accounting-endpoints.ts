@@ -84,6 +84,11 @@ export class AccountingEndpoints extends DomainConstructFactory {
       "third-parties/update-third-party",
     );
     map(
+      apigw.HttpMethod.PATCH,
+      "/third-parties/{thirdPartyId}",
+      "third-parties/update-third-party",
+    );
+    map(
       apigw.HttpMethod.POST,
       "/third-parties/{thirdPartyId}/activate",
       "third-parties/activate-third-party",

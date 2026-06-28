@@ -3,6 +3,7 @@ import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/app-error";
 import {
+  BatchGetItemCommand,
   GetItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
@@ -11,11 +12,13 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   CreateThirdPartyRequest,
+  CreateThirdPartyRequestSchema,
   ThirdPartyDto,
   ThirdPartyDtoSchema,
   ThirdPartyStatusValue,
   ThirdPartyTypeValue,
   UpdateThirdPartyRequest,
+  UpdateThirdPartyRequestSchema,
 } from "@liass-ohada/shared/accounting";
 import { randomUUID } from "crypto";
 
@@ -24,6 +27,15 @@ interface ThirdPartyItem extends ThirdPartyDto {
   entityType: "THIRD_PARTY";
   PK: string;
   SK: string;
+}
+
+interface ThirdPartyCodeLockItem {
+  PK: string;
+  SK: string;
+  entityType: "THIRD_PARTY_CODE_UNIQUE";
+  thirdPartyId: string;
+  thirdPartyType: ThirdPartyTypeValue;
+  createdAt: string;
 }
 
 /**
@@ -35,17 +47,18 @@ export class ThirdPartyService {
     orgId: string,
     input: CreateThirdPartyRequest,
   ): Promise<ThirdPartyDto> {
+    const validatedInput = CreateThirdPartyRequestSchema.parse(input);
     const now = new Date().toISOString();
     const thirdPartyId = `TP-${randomUUID()}`;
     const item: ThirdPartyItem = {
-      ...input,
-      code: ThirdPartyService.normalizeCode(input.code),
+      ...validatedInput,
+      code: ThirdPartyService.normalizeCode(validatedInput.code),
       thirdPartyId,
       status: "ACTIVE",
       orgId,
       entityType: "THIRD_PARTY",
       PK: KeyFactory.orgKey(orgId),
-      SK: KeyFactory.thirdPartySK(input.type, thirdPartyId),
+      SK: KeyFactory.thirdPartySK(validatedInput.type, thirdPartyId),
       createdAt: now,
       updatedAt: now,
     };
@@ -105,6 +118,7 @@ export class ThirdPartyService {
     options: {
       type: ThirdPartyTypeValue;
       status?: ThirdPartyStatusValue;
+      codePrefix?: string;
       limit?: number;
       cursor?: string;
     },
@@ -113,6 +127,10 @@ export class ThirdPartyService {
     nextCursor?: string;
     hasMore: boolean;
   }> {
+    if (options.codePrefix) {
+      return ThirdPartyService.listByCodePrefix(orgId, options);
+    }
+
     const exclusiveStartKey = ThirdPartyService.decodeCursor(options.cursor);
     if (exclusiveStartKey) {
       let cursorKey: Record<string, unknown>;
@@ -159,13 +177,140 @@ export class ThirdPartyService {
     return { items, nextCursor, hasMore: !!nextCursor };
   }
 
+  private static async listByCodePrefix(
+    orgId: string,
+    options: {
+      type: ThirdPartyTypeValue;
+      status?: ThirdPartyStatusValue;
+      codePrefix?: string;
+      limit?: number;
+      cursor?: string;
+    },
+  ): Promise<{
+    items: ThirdPartyDto[];
+    nextCursor?: string;
+    hasMore: boolean;
+  }> {
+    const normalizedCodePrefix = ThirdPartyService.normalizeCode(
+      options.codePrefix ?? "",
+    );
+    if (!normalizedCodePrefix) {
+      throw new AppError(400, "ERROR_INVALID_INPUT");
+    }
+
+    const lockPrefix = KeyFactory.thirdPartyCodeSK(normalizedCodePrefix);
+    const exclusiveStartKey = ThirdPartyService.decodeCursor(options.cursor);
+    if (exclusiveStartKey) {
+      let cursorKey: Record<string, unknown>;
+      try {
+        cursorKey = unmarshall(exclusiveStartKey as any);
+      } catch {
+        throw new AppError(400, "ERROR_INVALID_CURSOR");
+      }
+      if (
+        cursorKey.PK !== KeyFactory.orgKey(orgId) ||
+        typeof cursorKey.SK !== "string" ||
+        !cursorKey.SK.startsWith(lockPrefix)
+      ) {
+        throw new AppError(400, "ERROR_INVALID_CURSOR");
+      }
+    }
+
+    const lockResult = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+        ExpressionAttributeValues: marshall({
+          ":pk": KeyFactory.orgKey(orgId),
+          ":prefix": lockPrefix,
+        }),
+        Limit: options.limit ?? 100,
+        ExclusiveStartKey: exclusiveStartKey,
+        ScanIndexForward: true,
+      }),
+    );
+    const locks = (lockResult.Items ?? [])
+      .map((item) => unmarshall(item) as ThirdPartyCodeLockItem)
+      .filter(
+        (item) =>
+          item.entityType === "THIRD_PARTY_CODE_UNIQUE" &&
+          item.thirdPartyType === options.type,
+      );
+
+    const masterItems = await ThirdPartyService.batchGetThirdPartyItems(
+      orgId,
+      locks,
+    );
+    const items = masterItems
+      .filter((item) => !options.status || item.status === options.status)
+      .map((item) => ThirdPartyService.toDto(item));
+    const nextCursor = lockResult.LastEvaluatedKey
+      ? Buffer.from(JSON.stringify(lockResult.LastEvaluatedKey)).toString(
+          "base64",
+        )
+      : undefined;
+
+    return { items, nextCursor, hasMore: !!nextCursor };
+  }
+
+  private static async batchGetThirdPartyItems(
+    orgId: string,
+    locks: ThirdPartyCodeLockItem[],
+  ): Promise<ThirdPartyItem[]> {
+    if (locks.length === 0) {
+      return [];
+    }
+
+    const keys = locks.map((lock) => ({
+      PK: KeyFactory.orgKey(orgId),
+      SK: KeyFactory.thirdPartySK(lock.thirdPartyType, lock.thirdPartyId),
+    }));
+    const itemsByKey = new Map<string, ThirdPartyItem>();
+
+    for (let index = 0; index < keys.length; index += 100) {
+      const chunk = keys.slice(index, index + 100);
+      const result = await dynamoClient.send(
+        new BatchGetItemCommand({
+          RequestItems: {
+            [config.TABLE_NAME]: {
+              Keys: chunk.map((key) => marshall(key)),
+            },
+          },
+        }),
+      );
+
+      for (const rawItem of result.Responses?.[config.TABLE_NAME] ?? []) {
+        const item = unmarshall(rawItem) as ThirdPartyItem;
+        if (
+          item.orgId === orgId &&
+          item.entityType === "THIRD_PARTY" &&
+          item.PK === KeyFactory.orgKey(orgId) &&
+          item.SK === KeyFactory.thirdPartySK(item.type, item.thirdPartyId)
+        ) {
+          itemsByKey.set(`${item.type}:${item.thirdPartyId}`, item);
+        }
+      }
+    }
+
+    return locks
+      .map((lock) =>
+        itemsByKey.get(`${lock.thirdPartyType}:${lock.thirdPartyId}`),
+      )
+      .filter((item): item is ThirdPartyItem => !!item);
+  }
+
   static async update(
     orgId: string,
     type: ThirdPartyTypeValue,
     thirdPartyId: string,
     updates: UpdateThirdPartyRequest,
   ): Promise<ThirdPartyDto> {
-    return ThirdPartyService.updateFields(orgId, type, thirdPartyId, updates);
+    return ThirdPartyService.updateFields(
+      orgId,
+      type,
+      thirdPartyId,
+      UpdateThirdPartyRequestSchema.parse(updates),
+    );
   }
 
   static async activate(
