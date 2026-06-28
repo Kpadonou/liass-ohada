@@ -56,7 +56,6 @@ const translations = {
         CABINET_DASHBOARD: 'Cabinet dashboard',
         CABINET_MENU_LABEL: 'Open cabinet menu',
         CLIENT_DOSSIERS: 'Client dossiers',
-        COMMAND_PLACEHOLDER: 'Search workspace or ask AI...',
         CREATE_DOSSIER: 'Create dossier',
         CURRENT_MODULE: 'Current module',
         DARK_MODE: 'Switch to dark mode',

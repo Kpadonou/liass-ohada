@@ -1,0 +1,326 @@
+import {
+  Component,
+  computed,
+  effect,
+  forwardRef,
+  inject,
+  input,
+  OnDestroy,
+  output,
+  signal
+} from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent
+} from '@angular/material/autocomplete';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { type ThirdPartyDto, type ThirdPartyTypeValue } from '@liass-ohada/shared/accounting';
+import { TranslocoModule } from '@ngneat/transloco';
+
+import { AccountingApi } from '../../data-access/accounting.api';
+
+const THIRD_PARTY_PAGE_SIZE = 50;
+const THIRD_PARTY_SEARCH_DEBOUNCE_MS = 200;
+const LOAD_MORE_VALUE = '__LOAD_MORE_THIRD_PARTIES__';
+
+@Component({
+  selector: 'liass-third-party-search-select',
+  host: {
+    class: 'block'
+  },
+  imports: [
+    MatAutocompleteModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    TranslocoModule
+  ],
+  providers: [
+    {
+      multi: true,
+      provide: NG_VALUE_ACCESSOR,
+      useExisting: forwardRef(() => ThirdPartySearchSelectComponent)
+    }
+  ],
+  templateUrl: './third-party-search-select.component.html'
+})
+export class ThirdPartySearchSelectComponent implements ControlValueAccessor, OnDestroy {
+  readonly type = input<ThirdPartyTypeValue>('CUSTOMER');
+  readonly labelKey = input('ACCOUNTING.LETTERING.FIELDS.THIRD_PARTY');
+  readonly placeholderKey = input('ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.PLACEHOLDER');
+  readonly showError = input(false);
+  readonly errorKey = input<string | null>(null);
+  readonly partySelected = output<ThirdPartyDto | null>();
+
+  private readonly accountingApi = inject(AccountingApi);
+  private readonly selectedValue = signal<string | null>(null);
+  private readonly thirdParties = signal<ThirdPartyDto[]>([]);
+  private readonly nextCursor = signal<string | null>(null);
+  private readonly requestSequence = signal(0);
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private currentType: ThirdPartyTypeValue = 'CUSTOMER';
+  private isPropagatingInput = false;
+  private onChange: (value: string | null) => void = () => undefined;
+  private onTouched: () => void = () => undefined;
+
+  protected readonly searchText = signal('');
+  protected readonly disabled = signal(false);
+  protected readonly focused = signal(false);
+  protected readonly loading = signal(false);
+  protected readonly loadingMore = signal(false);
+  protected readonly hasLoaded = signal(false);
+  protected readonly searchError = signal(false);
+  protected readonly hasMore = signal(false);
+
+  protected readonly visibleThirdParties = computed(() => {
+    const query = normalizeSearch(this.searchText());
+    const items = this.thirdParties().filter((party) => party.type === this.type());
+
+    if (!query) {
+      return items;
+    }
+
+    return items.filter((party) =>
+      normalizeSearch(`${party.code} ${party.displayName}`).includes(query)
+    );
+  });
+
+  protected readonly helperKey = computed(() => {
+    if (!this.focused() || this.searchText().trim()) {
+      return null;
+    }
+
+    return 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.TYPE_TO_SEARCH';
+  });
+
+  protected readonly showNoResults = computed(
+    () =>
+      this.focused() &&
+      this.hasLoaded() &&
+      !this.loading() &&
+      !this.searchError() &&
+      this.visibleThirdParties().length === 0
+  );
+
+  private readonly typeSync = effect(() => {
+    const type = this.type();
+    if (type === this.currentType) {
+      return;
+    }
+
+    this.currentType = type;
+    this.selectedValue.set(null);
+    this.searchText.set('');
+    this.thirdParties.set([]);
+    this.nextCursor.set(null);
+    this.hasMore.set(false);
+    this.hasLoaded.set(false);
+    this.searchError.set(false);
+    this.onChange(null);
+    this.partySelected.emit(null);
+    if (this.focused()) {
+      void this.loadFirstPage(type);
+    }
+  });
+
+  ngOnDestroy(): void {
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+    this.typeSync.destroy();
+  }
+
+  writeValue(value: string | null): void {
+    const normalizedValue = value || null;
+    this.selectedValue.set(normalizedValue);
+
+    if (!normalizedValue) {
+      if (!this.isPropagatingInput) {
+        this.searchText.set('');
+      }
+      return;
+    }
+
+    const selected = this.selectedThirdParty();
+    this.searchText.set(selected ? this.thirdPartyLabel(selected) : normalizedValue);
+  }
+
+  registerOnChange(fn: (value: string | null) => void): void {
+    this.onChange = fn;
+  }
+
+  registerOnTouched(fn: () => void): void {
+    this.onTouched = fn;
+  }
+
+  setDisabledState(isDisabled: boolean): void {
+    this.disabled.set(isDisabled);
+  }
+
+  protected handleFocus(): void {
+    this.focused.set(true);
+    if (!this.hasLoaded() && !this.loading()) {
+      void this.loadFirstPage(this.type());
+    }
+  }
+
+  protected handleBlur(): void {
+    this.focused.set(false);
+    this.onTouched();
+    window.setTimeout(() => this.syncInputToSelectedValue(), 100);
+  }
+
+  protected handleInput(event: Event): void {
+    this.searchText.set((event.target as HTMLInputElement).value);
+    this.searchError.set(false);
+    this.selectedValue.set(null);
+    this.propagateNullFromInput();
+    this.partySelected.emit(null);
+
+    if (this.searchTimer) {
+      clearTimeout(this.searchTimer);
+    }
+
+    if (!this.hasLoaded() && !this.loading()) {
+      this.searchTimer = setTimeout(() => {
+        void this.loadFirstPage(this.type());
+      }, THIRD_PARTY_SEARCH_DEBOUNCE_MS);
+    }
+  }
+
+  protected selectOption(event: MatAutocompleteSelectedEvent): void {
+    const value = `${event.option.value}`;
+
+    if (value === LOAD_MORE_VALUE) {
+      void this.loadMore();
+      return;
+    }
+
+    const selected = this.thirdParties().find((party) => party.thirdPartyId === value);
+    this.selectedValue.set(value);
+    this.onChange(value);
+    this.partySelected.emit(selected ?? null);
+    this.searchText.set(selected ? this.thirdPartyLabel(selected) : value);
+    this.searchError.set(false);
+  }
+
+  protected thirdPartyLabel(party: ThirdPartyDto): string {
+    return `${party.code} — ${party.displayName}`;
+  }
+
+  protected loadMoreValue(): string {
+    return LOAD_MORE_VALUE;
+  }
+
+  private async loadFirstPage(type: ThirdPartyTypeValue): Promise<void> {
+    const requestId = this.requestSequence() + 1;
+    this.requestSequence.set(requestId);
+    this.loading.set(true);
+    this.hasLoaded.set(true);
+
+    try {
+      const result = await this.accountingApi.listThirdParties({
+        type,
+        status: 'ACTIVE',
+        limit: THIRD_PARTY_PAGE_SIZE
+      });
+      if (requestId !== this.requestSequence()) {
+        return;
+      }
+      this.thirdParties.set(mergeThirdParties(this.selectedThirdPartyArray(), result.items));
+      this.nextCursor.set(result.nextCursor ?? null);
+      this.hasMore.set(result.hasMore && !!result.nextCursor);
+    } catch {
+      if (requestId === this.requestSequence()) {
+        this.searchError.set(true);
+        this.thirdParties.set(this.selectedThirdPartyArray());
+        this.nextCursor.set(null);
+        this.hasMore.set(false);
+      }
+    } finally {
+      if (requestId === this.requestSequence()) {
+        this.loading.set(false);
+      }
+    }
+  }
+
+  private async loadMore(): Promise<void> {
+    const cursor = this.nextCursor();
+    if (!cursor || this.loadingMore()) {
+      return;
+    }
+
+    this.loadingMore.set(true);
+    try {
+      const result = await this.accountingApi.listThirdParties({
+        type: this.type(),
+        status: 'ACTIVE',
+        cursor,
+        limit: THIRD_PARTY_PAGE_SIZE
+      });
+      this.thirdParties.update((items) => mergeThirdParties(items, result.items));
+      this.nextCursor.set(result.nextCursor ?? null);
+      this.hasMore.set(result.hasMore && !!result.nextCursor);
+    } catch {
+      this.searchError.set(true);
+    } finally {
+      this.loadingMore.set(false);
+    }
+  }
+
+  private selectedThirdParty(): ThirdPartyDto | null {
+    const value = this.selectedValue();
+    return this.thirdParties().find((party) => party.thirdPartyId === value) ?? null;
+  }
+
+  private selectedThirdPartyArray(): ThirdPartyDto[] {
+    const selected = this.selectedThirdParty();
+    return selected ? [selected] : [];
+  }
+
+  private syncInputToSelectedValue(): void {
+    const value = this.selectedValue();
+
+    if (!value) {
+      this.searchText.set('');
+      return;
+    }
+
+    const selected = this.selectedThirdParty();
+    this.searchText.set(selected ? this.thirdPartyLabel(selected) : value);
+  }
+
+  private propagateNullFromInput(): void {
+    this.isPropagatingInput = true;
+    this.onChange(null);
+    queueMicrotask(() => {
+      this.isPropagatingInput = false;
+    });
+  }
+}
+
+function mergeThirdParties(
+  first: readonly ThirdPartyDto[],
+  second: readonly ThirdPartyDto[]
+): ThirdPartyDto[] {
+  const parties = new Map<string, ThirdPartyDto>();
+
+  for (const party of [...first, ...second]) {
+    parties.set(`${party.type}:${party.thirdPartyId}`, party);
+  }
+
+  return [...parties.values()].sort((left, right) => left.code.localeCompare(right.code));
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}

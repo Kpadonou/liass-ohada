@@ -94,6 +94,10 @@
       "REPORTS": "OHADA reports",
       "TREASURY": "Treasury"
     },
+    "SIDEBAR": {
+      "COLLAPSE": "Collapse sidebar",
+      "EXPAND": "Expand sidebar"
+    },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Search workspace or ask AI...",
       "CABINET_DASHBOARD": "Cabinet dashboard",
@@ -1397,14 +1401,23 @@
         "POST": "Letter",
         "SELECT": "Select"
       },
-      "EMPTY_SCOPE": "Select an account and third party to load lettering.",
+      "CONTEXT": {
+        "DOSSIER": "Active dossier"
+      },
+      "EMPTY_SCOPE": "Select an auxiliary account and a third party to load lines.",
+      "EMPTY_SCOPE_TITLE": "Define the scope",
       "ERRORS": {
+        "ALLOCATION_INVALID": "Correct allocation amounts before confirming.",
+        "ALLOCATION_POSITIVE": "Enter a positive amount.",
+        "ALLOCATION_TOO_HIGH": "Maximum: {{remaining}}.",
+        "AMOUNT_RANGE": "The minimum amount must be less than or equal to the maximum amount.",
         "CANCEL_FAILED": "Lettering could not be cancelled.",
         "CANCEL_SELECTION_REQUIRED": "Select at least one lettered line to cancel.",
         "DATE_RANGE": "The start date must be on or before the end date.",
         "MISSING_YEAR": "Some lines do not carry the required fiscal year.",
         "POST_FAILED": "Lettering could not be saved.",
-        "SELECTION_REQUIRED": "Select at least two unlettered lines."
+        "SELECTION_REQUIRED": "Select at least one debit line and one credit line with balanced amounts.",
+        "THIRD_PARTY_REQUIRED": "Select a third party."
       },
       "EYEBROW": "Auxiliary accounts",
       "FIELDS": {
@@ -1413,13 +1426,17 @@
         "DATE_TO": "End date",
         "FISCAL_YEAR": "Fiscal year",
         "LETTERING_CODE": "Lettering code",
+        "MAX_REMAINING": "Maximum remaining",
+        "MIN_REMAINING": "Minimum remaining",
         "PROJECT": "Project",
+        "REFERENCE": "Reference or label",
         "THIRD_PARTY": "Third party",
         "THIRD_PARTY_TYPE": "Third-party type"
       },
       "FILTERS": {
-        "DESCRIPTION": "Choose a reconcilable account, a third party, and optionally a project.",
-        "TITLE": "Auxiliary scope"
+        "ADVANCED": "Advanced filters",
+        "DESCRIPTION": "Choose the third-party type, auxiliary account, and business partner to match.",
+        "TITLE": "Lettering scope"
       },
       "LINE_TYPES": {
         "CREDIT": "Credit",
@@ -1434,7 +1451,9 @@
         "CREATE_TITLE": "Confirm lettering?"
       },
       "LATEST_MATCH": {
+        "CREATED_AT": "Created at",
         "DESCRIPTION": "Latest lettering operation created from this page.",
+        "TOTAL": "Lettered total",
         "TITLE": "Latest match"
       },
       "MATCH_STATUS": {
@@ -1466,22 +1485,30 @@
         "PARTIAL": "Partial",
         "UNLETTERED": "Unlettered"
       },
-      "SELECTION_HELP": "Select debit and credit lines for the same third party, then adjust the amount if a partial match is needed.",
-      "SUBTITLE": "Match third-party entries using business references.",
+      "SELECTION_HELP": "Select at least one debit line and one credit line, then adjust the amount if a partial match is needed.",
+      "SUBTITLE": "Match customer and supplier movements by auxiliary account.",
       "SUGGESTIONS": {
         "AMOUNT": "Amount",
+        "DESCRIPTION": "These suggestions are calculated from the loaded lines.",
+        "EXACT": "{{amount}} balanced",
+        "PARTIAL": "{{amount}} partial",
+        "PARTIAL_BADGE": "Partial",
+        "TITLE": "Matching suggestions",
         "TYPES": {
           "FIFO_SUGGESTION": "FIFO suggestion",
           "PERFECT_MATCH": "Perfect match"
         }
       },
       "SUMMARY": {
+        "BALANCED": "Balanced",
         "BALANCE": "Balance",
         "CREDIT": "Credit",
         "DEBIT": "Debit",
-        "DESCRIPTION": "Third-party ledger summary for the selected scope.",
+        "DESCRIPTION": "Track selected totals and the difference to letter.",
+        "DIFFERENCE": "Difference to letter",
         "LINES": "{{count}} line(s)",
-        "TITLE": "Auxiliary ledger"
+        "STATUS": "Status",
+        "TITLE": "Lettering summary"
       },
       "TABLE": {
         "ALLOCATION": "Allocation",
@@ -1501,7 +1528,16 @@
       },
       "THIRD_PARTY_TYPES": {
         "CUSTOMER": "Customer",
+        "CUSTOMER_PLURAL": "Customers",
+        "SUPPLIER_PLURAL": "Suppliers",
         "SUPPLIER": "Supplier"
+      },
+      "THIRD_PARTY_SELECT": {
+        "LOAD_MORE": "Load more third parties",
+        "LOADING": "Loading third parties...",
+        "NO_RESULTS": "No third party found",
+        "PLACEHOLDER": "Search by third-party code or name",
+        "TYPE_TO_SEARCH": "Type a third-party code or name"
       },
       "TITLE": "Lettering",
       "UNLETTERED": {

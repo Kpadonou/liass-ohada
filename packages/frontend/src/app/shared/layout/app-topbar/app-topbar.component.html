@@ -21,14 +21,6 @@
       </h2>
     </div>
 
-    <div class="hidden w-full max-w-[360px] md:block">
-      <liass-command-input
-        [placeholder]="'SHELL.TOPBAR.COMMAND_PLACEHOLDER' | transloco"
-        [value]="commandValue"
-        (valueChange)="updateCommandValue($event)"
-      />
-    </div>
-
     @if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
       <liass-dropdown [open]="cabinetMenuOpen" width="md" align="end" (closed)="cabinetMenuOpen = false">
         <button

@@ -40,4 +40,16 @@ describe('UiStore theme behavior', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
     expect(overlayContainer.getContainerElement().classList.contains('dark')).toBe(false);
   });
+
+  it('persists the desktop sidebar collapsed preference', () => {
+    store.setSidebarCollapsed(true);
+
+    expect(store.sidebarCollapsed()).toBe(true);
+    expect(localStorage.getItem('liass-ohada.sidebarCollapsed')).toBe('true');
+
+    store.toggleSidebarCollapsed();
+
+    expect(store.sidebarCollapsed()).toBe(false);
+    expect(localStorage.getItem('liass-ohada.sidebarCollapsed')).toBe('false');
+  });
 });

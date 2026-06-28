@@ -33,10 +33,11 @@ const translations = {
 
 @Component({
   imports: [AccountSearchSelectComponent, ReactiveFormsModule],
-  template: `<liass-account-search-select [formControl]="control" />`
+  template: `<liass-account-search-select [formControl]="control" [auxiliaryType]="auxiliaryType" />`
 })
 class AccountSearchSelectHostComponent {
   control = new FormControl<string | null>(null);
+  auxiliaryType: 'CUSTOMER' | 'SUPPLIER' | null = null;
 }
 
 describe('AccountSearchSelectComponent', () => {
@@ -216,6 +217,35 @@ describe('AccountSearchSelectComponent', () => {
     expect(component.visibleAccounts()).toEqual([]);
   });
 
+  it('keeps legacy SYSCOHADA customer accounts selectable when auxiliary metadata is missing', async () => {
+    vi.useFakeTimers();
+    fixture.componentInstance.auxiliaryType = 'CUSTOMER';
+    accountingApi.listAccounts.mockResolvedValue({
+      items: [
+        accountFixture('41110000', 'Clients', {
+          auxiliaryType: undefined,
+          requiresThirdParty: undefined
+        }),
+        accountFixture('40110000', 'Fournisseurs', {
+          auxiliaryType: undefined,
+          requiresThirdParty: undefined
+        })
+      ],
+      hasMore: false
+    });
+
+    typeSearch('411');
+    await vi.advanceTimersByTimeAsync(275);
+    fixture.detectChanges();
+
+    const component = fixture.debugElement.query(
+      By.directive(AccountSearchSelectComponent)
+    ).componentInstance as any;
+    expect(component.visibleAccounts().map((account: { accountId: string }) => account.accountId)).toEqual([
+      '41110000'
+    ]);
+  });
+
   function typeSearch(value: string): void {
     const input = inputElement();
     input.focus();
@@ -235,7 +265,14 @@ describe('AccountSearchSelectComponent', () => {
   }
 });
 
-function accountFixture(accountId: string, accountName: string) {
+function accountFixture(
+  accountId: string,
+  accountName: string,
+  overrides: Partial<{
+    auxiliaryType: 'CUSTOMER' | 'SUPPLIER' | 'THIRD_PARTY' | 'NONE';
+    requiresThirdParty: boolean;
+  }> = {}
+) {
   return {
     accountId,
     accountName,
@@ -245,6 +282,7 @@ function accountFixture(accountId: string, accountName: string) {
     classCode: Number(accountId[0]) as 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8,
     financialStatementCode: 'BS',
     allowReconciliation: accountId.startsWith('4'),
-    isActive: true
+    isActive: true,
+    ...overrides
   };
 }

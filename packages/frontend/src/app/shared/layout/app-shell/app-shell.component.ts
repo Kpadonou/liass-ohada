@@ -78,7 +78,7 @@ function pageFromUrl(url: string): AppPage {
 })
 export class AppShellComponent {
   private readonly authStore = inject(AuthStore);
-  private readonly uiStore = inject(UiStore);
+  protected readonly uiStore = inject(UiStore);
   private readonly router = inject(Router);
 
   constructor() {
@@ -97,6 +97,14 @@ export class AppShellComponent {
 
   private syncCurrentPage(url: string): void {
     this.uiStore.setCurrentPage(pageFromUrl(url));
+  }
+
+  protected contentClass(): string {
+    const sidebarPadding = this.uiStore.sidebarCollapsed()
+      ? 'lg:pl-[var(--spacing-shell-sidebar-collapsed)]'
+      : 'lg:pl-[var(--spacing-shell-sidebar)]';
+
+    return `min-h-dvh transition-[padding] duration-300 ease-in-out ${sidebarPadding}`;
   }
 
   private async redirectRootShell(): Promise<void> {

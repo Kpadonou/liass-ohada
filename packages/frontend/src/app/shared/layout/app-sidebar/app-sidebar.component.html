@@ -1,26 +1,68 @@
 <aside
   [class]="sidebarClass()"
 >
-  <div class="flex h-20 items-center">
-    <a class="liass-focus-ring flex min-w-0 flex-col items-start gap-1.5 rounded-app-control text-app-text no-underline" [routerLink]="homeRoute()">
-      <liass-logo
-        variant="horizontal"
-        size="md"
-        theme="auto"
-        [alt]="'SHELL.LOGO_ALT' | transloco"
-      />
-      <span class="min-w-0 pl-1">
-        <span class="block truncate text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-          {{ 'SHELL.BRAND_TAGLINE' | transloco }}
+  <div [class]="sidebarExpanded() ? 'flex h-20 items-center justify-between gap-3' : 'flex h-20 items-center justify-between gap-3 lg:justify-center'">
+    <a
+      [class]="sidebarExpanded() ? 'liass-focus-ring flex min-w-0 flex-col items-start gap-1.5 rounded-app-control text-app-text no-underline' : 'liass-focus-ring flex min-w-0 flex-col items-start gap-1.5 rounded-app-control text-app-text no-underline lg:items-center'"
+      [routerLink]="homeRoute()"
+      [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
+    >
+      @if (sidebarExpanded()) {
+        <liass-logo
+          variant="horizontal"
+          size="md"
+          theme="auto"
+          [alt]="'SHELL.LOGO_ALT' | transloco"
+        />
+        <span class="min-w-0 pl-1">
+          <span class="block truncate text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            {{ 'SHELL.BRAND_TAGLINE' | transloco }}
+          </span>
         </span>
-      </span>
+      } @else {
+        <liass-logo
+          class="lg:hidden"
+          variant="horizontal"
+          size="md"
+          theme="auto"
+          [alt]="'SHELL.LOGO_ALT' | transloco"
+        />
+        <liass-logo
+          class="hidden lg:inline-flex"
+          variant="icon"
+          size="md"
+          theme="auto"
+          [alt]="'SHELL.LOGO_ALT' | transloco"
+        />
+        <span class="min-w-0 pl-1 lg:hidden">
+          <span class="block truncate text-xs font-medium uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
+            {{ 'SHELL.BRAND_TAGLINE' | transloco }}
+          </span>
+        </span>
+      }
     </a>
+
+    <liass-button
+      class="hidden lg:inline-flex"
+      size="icon"
+      variant="ghost"
+      tone="neutral"
+      [ariaLabel]="(sidebarExpanded() ? 'SHELL.SIDEBAR.COLLAPSE' : 'SHELL.SIDEBAR.EXPAND') | transloco"
+      [icon]="sidebarExpanded() ? 'left_panel_close' : 'left_panel_open'"
+      (pressed)="toggleSidebarCollapsed()"
+    />
   </div>
 
   <div class="no-scrollbar flex-1 overflow-y-auto pb-4">
-    <p class="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-      {{ 'SHELL.NAV.SECTION_LABEL' | transloco }}
-    </p>
+    @if (sidebarExpanded()) {
+      <p class="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+        {{ 'SHELL.NAV.SECTION_LABEL' | transloco }}
+      </p>
+    } @else {
+      <p class="mb-3 px-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 lg:hidden">
+        {{ 'SHELL.NAV.SECTION_LABEL' | transloco }}
+      </p>
+    }
 
     <nav class="grid gap-1.5">
       @if (cabinetMode()) {
@@ -28,6 +70,7 @@
           <liass-sidebar-nav-item
             [active]="uiStore.currentPage() === item.page"
             [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [compact]="!sidebarExpanded()"
             [disabled]="item.disabled ?? false"
             [icon]="item.icon"
             [label]="item.labelKey | transloco"
@@ -39,6 +82,7 @@
           <liass-sidebar-nav-item
             [active]="uiStore.currentPage() === item.page"
             [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [compact]="!sidebarExpanded()"
             [disabled]="item.disabled ?? false"
             [icon]="item.icon"
             [label]="item.labelKey | transloco"
@@ -47,14 +91,22 @@
         }
 
         <div class="pt-3">
-          <p class="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
-            {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
-          </p>
+          @if (sidebarExpanded()) {
+            <p class="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+              {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
+            </p>
+          } @else {
+            <p class="mb-1 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 lg:hidden">
+              {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
+            </p>
+            <div class="mx-auto mb-1 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block" aria-hidden="true"></div>
+          }
           <div class="grid gap-1.5">
             @for (item of accountingItems; track item.page) {
               <liass-sidebar-nav-item
                 [active]="uiStore.currentPage() === item.page"
                 [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+                [compact]="!sidebarExpanded()"
                 [disabled]="item.disabled ?? false"
                 [icon]="item.icon"
                 [label]="item.labelKey | transloco"
@@ -68,6 +120,7 @@
           <liass-sidebar-nav-item
             [active]="uiStore.currentPage() === item.page"
             [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [compact]="!sidebarExpanded()"
             [disabled]="item.disabled ?? false"
             [icon]="item.icon"
             [label]="item.labelKey | transloco"
@@ -78,14 +131,27 @@
     </nav>
   </div>
 
-  <div class="border-t border-slate-100 py-4 dark:border-slate-800">
-    <div class="rounded-lg bg-brand-50/80 p-4 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
-      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
-        {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
-      </p>
-      <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-        {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
-      </p>
+  @if (sidebarExpanded()) {
+    <div class="border-t border-slate-100 py-4 dark:border-slate-800" data-testid="sidebar-ai-panel">
+      <div class="rounded-lg bg-brand-50/80 p-4 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+          {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
+        </p>
+        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
+        </p>
+      </div>
     </div>
-  </div>
+  } @else {
+    <div class="border-t border-slate-100 py-4 dark:border-slate-800 lg:hidden" data-testid="sidebar-ai-panel">
+      <div class="rounded-lg bg-brand-50/80 p-4 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
+        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+          {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
+        </p>
+        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+          {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
+        </p>
+      </div>
+    </div>
+  }
 </aside>

@@ -4,6 +4,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
+import { LiassButtonComponent } from '../../ui/button/button.component';
 import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 import { LiassSidebarNavItemComponent } from '../../ui/sidebar-nav-item/sidebar-nav-item.component';
 
@@ -150,7 +151,13 @@ const cabinetItems: readonly ShellNavItem[] = [
 
 @Component({
   selector: 'liass-app-sidebar',
-  imports: [LiassLogoComponent, LiassSidebarNavItemComponent, RouterLink, TranslocoModule],
+  imports: [
+    LiassButtonComponent,
+    LiassLogoComponent,
+    LiassSidebarNavItemComponent,
+    RouterLink,
+    TranslocoModule
+  ],
   templateUrl: './app-sidebar.component.html'
 })
 export class AppSidebarComponent {
@@ -171,9 +178,19 @@ export class AppSidebarComponent {
     this.cabinetMode() ? '/cabinet/dashboard' : '/dashboard'
   );
 
+  protected readonly sidebarExpanded = computed(() => !this.uiStore.sidebarCollapsed());
+
   protected sidebarClass(): string {
     const mobileState = this.uiStore.sidebarOpen() ? 'translate-x-0' : '-translate-x-full';
-    return `fixed left-0 top-0 z-50 flex h-dvh w-[var(--spacing-shell-sidebar)] flex-col border-r border-slate-200 bg-white px-4 text-slate-950 shadow-app-popover transition-transform duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900 dark:text-white lg:translate-x-0 lg:shadow-none ${mobileState}`;
+    const desktopWidth = this.uiStore.sidebarCollapsed()
+      ? 'lg:w-[var(--spacing-shell-sidebar-collapsed)] lg:px-3'
+      : 'lg:w-[var(--spacing-shell-sidebar)] lg:px-4';
+
+    return `fixed left-0 top-0 z-50 flex h-dvh w-[var(--spacing-shell-sidebar)] flex-col border-r border-slate-200 bg-white px-4 text-slate-950 shadow-app-popover transition-[transform,width,padding] duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900 dark:text-white lg:translate-x-0 lg:shadow-none ${desktopWidth} ${mobileState}`;
+  }
+
+  protected toggleSidebarCollapsed(): void {
+    this.uiStore.toggleSidebarCollapsed();
   }
 
   protected async selectItem(item: ShellNavItem): Promise<void> {

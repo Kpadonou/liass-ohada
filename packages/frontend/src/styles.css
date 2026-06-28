@@ -62,6 +62,7 @@
   --spacing-app-gutter-lg: 1.5rem;
   --spacing-app-section: 1.5rem;
   --spacing-shell-sidebar: 17.5rem;
+  --spacing-shell-sidebar-collapsed: 5rem;
   --spacing-app-header: 4rem;
   --spacing-app-container: 96rem;
 
@@ -207,9 +208,48 @@ mat-icon {
   color: var(--liass-input-text);
 }
 
+.mat-mdc-form-field .mat-mdc-text-field-wrapper {
+  overflow: visible;
+}
+
+.mat-mdc-form-field .mat-mdc-form-field-flex {
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mat-mdc-form-field .mat-mdc-form-field-icon-prefix,
+.mat-mdc-form-field .mat-mdc-form-field-text-prefix,
+.mat-mdc-form-field .mat-mdc-form-field-icon-suffix,
+.mat-mdc-form-field .mat-mdc-form-field-text-suffix {
+  align-items: center;
+  color: var(--liass-text-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.mat-mdc-form-field .mat-mdc-form-field-icon-prefix,
+.mat-mdc-form-field .mat-mdc-form-field-text-prefix {
+  margin-inline-end: 0.25rem;
+}
+
+.mat-mdc-form-field .mat-mdc-form-field-icon-prefix > .mat-icon,
+.mat-mdc-form-field .mat-mdc-form-field-text-prefix > .mat-icon,
+.mat-mdc-form-field .mat-mdc-form-field-icon-suffix > .mat-icon,
+.mat-mdc-form-field .mat-mdc-form-field-text-suffix > .mat-icon {
+  flex: 0 0 auto;
+}
+
 .mat-mdc-form-field input::placeholder,
 .mat-mdc-form-field textarea::placeholder {
   color: var(--liass-input-placeholder);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.mat-mdc-form-field.mat-focused input::placeholder,
+.mat-mdc-form-field.mat-focused textarea::placeholder {
   opacity: 1;
 }
 

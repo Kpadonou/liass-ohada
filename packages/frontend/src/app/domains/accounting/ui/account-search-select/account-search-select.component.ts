@@ -5,6 +5,7 @@ import {
   inject,
   input,
   OnDestroy,
+  output,
   signal
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
@@ -51,6 +52,8 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
   readonly errorKey = input<string | null>(null);
   readonly labelKey = input('ACCOUNTING.ACCOUNTS.SELECT.LABEL');
   readonly showError = input(false);
+  readonly auxiliaryType = input<'CUSTOMER' | 'SUPPLIER' | null>(null);
+  readonly accountSelected = output<AccountDto | null>();
 
   private readonly accountingApi = inject(AccountingApi);
   private readonly selectedValue = signal<string | null>(null);
@@ -60,6 +63,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
   protected readonly hasMore = signal(false);
   private readonly requestSequence = signal(0);
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private isPropagatingInput = false;
 
   protected readonly disabled = signal(false);
   protected readonly loading = signal(false);
@@ -70,7 +74,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
 
   protected readonly visibleAccounts = computed(() => {
     const query = normalizeSearch(this.searchText());
-    const accounts = this.accounts();
+    const accounts = this.accounts().filter((account) => this.matchesAuxiliaryType(account));
 
     if (!query) {
       return accounts;
@@ -122,7 +126,9 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     this.selectedValue.set(normalizedValue);
 
     if (!normalizedValue) {
-      this.searchText.set('');
+      if (!this.isPropagatingInput) {
+        this.searchText.set('');
+      }
       return;
     }
 
@@ -154,6 +160,9 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     const value = (event.target as HTMLInputElement).value;
     this.searchText.set(value);
     this.searchError.set(false);
+    this.selectedValue.set(null);
+    this.propagateNullFromInput();
+    this.accountSelected.emit(null);
 
     if (this.searchTimer) {
       clearTimeout(this.searchTimer);
@@ -197,6 +206,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     );
     this.selectedValue.set(value);
     this.onChange(value);
+    this.accountSelected.emit(selectedAccount ?? null);
     this.searchText.set(selectedAccount ? this.accountLabel(selectedAccount) : value);
     this.hasSearched.set(false);
     this.searchError.set(false);
@@ -296,6 +306,40 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
 
     const selectedAccount = this.selectedAccount();
     this.searchText.set(selectedAccount ? this.accountLabel(selectedAccount) : value);
+  }
+
+  private matchesAuxiliaryType(account: AccountDto): boolean {
+    const auxiliaryType = this.auxiliaryType();
+
+    if (!auxiliaryType) {
+      return true;
+    }
+
+    if (account.requiresThirdParty === true && account.auxiliaryType === auxiliaryType) {
+      return true;
+    }
+
+    if (account.requiresThirdParty === true || account.auxiliaryType === auxiliaryType) {
+      return account.requiresThirdParty === true && account.auxiliaryType === auxiliaryType;
+    }
+
+    if (auxiliaryType === 'CUSTOMER') {
+      return account.accountId.startsWith('411');
+    }
+
+    if (auxiliaryType === 'SUPPLIER') {
+      return account.accountId.startsWith('401');
+    }
+
+    return false;
+  }
+
+  private propagateNullFromInput(): void {
+    this.isPropagatingInput = true;
+    this.onChange(null);
+    queueMicrotask(() => {
+      this.isPropagatingInput = false;
+    });
   }
 }
 

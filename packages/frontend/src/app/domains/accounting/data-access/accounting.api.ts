@@ -24,6 +24,8 @@ import {
   LetteringCandidatesQuerySchema,
   LetteringCandidatesResponseSchema,
   LetteringMatchResponseSchema,
+  ListThirdPartiesRequestSchema,
+  ListThirdPartiesResponseSchema,
   ListAccountsRequestSchema,
   ListAccountsResponseSchema,
   ListEntriesResponseSchema,
@@ -68,6 +70,7 @@ import {
   type PostEntryDraftRequest,
   type PostLetteringRequest,
   type ThirdPartyLedgerDto,
+  type ThirdPartyDto,
   type TrialBalanceQuery,
   type UnletteredLinesDto,
   type TrialBalanceDto,
@@ -88,6 +91,7 @@ export interface PaginatedResult<T> {
 
 export type ApiQueryResult<T> = T & { message?: string | null };
 export type ListAccountsParams = z.input<typeof ListAccountsRequestSchema>;
+export type ListThirdPartiesParams = z.input<typeof ListThirdPartiesRequestSchema>;
 export type GeneralLedgerParams = z.input<typeof GeneralLedgerQuerySchema>;
 export type TrialBalanceParams = z.input<typeof TrialBalanceQuerySchema>;
 export type JournalBookParams = z.input<typeof JournalBookQuerySchema>;
@@ -209,6 +213,35 @@ export class AccountingApi {
       items: parsed.data.items,
       nextCursor: parsed.data.nextCursor,
       hasMore: parsed.data.hasMore
+    };
+  }
+
+  async listThirdParties(options: ListThirdPartiesParams): Promise<PaginatedResult<ThirdPartyDto>> {
+    const request = ListThirdPartiesRequestSchema.parse(options);
+    let params = new HttpParams().set('type', request.type);
+
+    if (request.status) {
+      params = params.set('status', request.status);
+    }
+
+    if (request.limit) {
+      params = params.set('limit', request.limit);
+    }
+
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/third-parties`, { params })
+    );
+    const parsed = ListThirdPartiesResponseSchema.parse(response);
+
+    return {
+      items: parsed.data.items,
+      nextCursor: parsed.data.nextCursor,
+      hasMore: parsed.data.hasMore,
+      message: userMessageFromResponse(response)
     };
   }
 

@@ -1,0 +1,64 @@
+<mat-form-field appearance="outline" class="w-full">
+  <mat-label>{{ labelKey() | transloco }}</mat-label>
+  <mat-icon matIconPrefix>groups</mat-icon>
+  <input
+    matInput
+    type="text"
+    autocomplete="off"
+    [disabled]="disabled()"
+    [matAutocomplete]="thirdPartyAutocomplete"
+    [placeholder]="placeholderKey() | transloco"
+    [value]="searchText()"
+    (blur)="handleBlur()"
+    (focus)="handleFocus()"
+    (input)="handleInput($event)"
+  />
+  @if (loading()) {
+    <mat-spinner matSuffix diameter="18" />
+  }
+  <mat-autocomplete
+    #thirdPartyAutocomplete="matAutocomplete"
+    (optionSelected)="selectOption($event)"
+  >
+    @if (loading()) {
+      <mat-option disabled>
+        {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.LOADING' | transloco }}
+      </mat-option>
+    } @else {
+      @for (party of visibleThirdParties(); track party.type + ':' + party.thirdPartyId) {
+        <mat-option [value]="party.thirdPartyId">
+          <span class="font-semibold">{{ party.code }}</span>
+          <span class="text-app-muted"> — {{ party.displayName }}</span>
+        </mat-option>
+      } @empty {
+        @if (helperKey(); as helper) {
+          <mat-option disabled>{{ helper | transloco }}</mat-option>
+        } @else if (searchError()) {
+          <mat-option disabled>{{ 'COMMON.NOTIFICATIONS.LOAD_ERROR' | transloco }}</mat-option>
+        } @else if (showNoResults()) {
+          <mat-option disabled>
+            {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.NO_RESULTS' | transloco }}
+          </mat-option>
+        }
+      }
+
+      @if (hasMore()) {
+        <mat-option [value]="loadMoreValue()">
+          @if (loadingMore()) {
+            {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.LOADING' | transloco }}
+          } @else {
+            {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.LOAD_MORE' | transloco }}
+          }
+        </mat-option>
+      }
+    }
+  </mat-autocomplete>
+  @if (helperKey(); as helper) {
+    <mat-hint>{{ helper | transloco }}</mat-hint>
+  }
+</mat-form-field>
+@if (showError() && errorKey(); as validationKey) {
+  <p class="-mt-4 text-xs text-red-600 dark:text-red-300">
+    {{ validationKey | transloco }}
+  </p>
+}

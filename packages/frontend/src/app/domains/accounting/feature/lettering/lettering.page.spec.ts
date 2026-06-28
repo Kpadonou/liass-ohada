@@ -6,7 +6,12 @@ import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { QueryClient, provideTanStackQuery } from '@tanstack/angular-query-experimental';
-import { type LetteringMatchDto, type UnletteredLineDto } from '@liass-ohada/shared/accounting';
+import {
+  type AccountDto,
+  type LetteringMatchDto,
+  type ThirdPartyDto,
+  type UnletteredLineDto
+} from '@liass-ohada/shared/accounting';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -38,6 +43,9 @@ const translations = {
           LOAD: 'Load',
           POST: 'Letter'
         },
+        CONTEXT: {
+          DOSSIER: 'Active dossier'
+        },
         CONFIRM: {
           CANCEL_MESSAGE: 'This restores the selected lines to the lettering queue.',
           CANCEL_TITLE: 'Cancel lettering?',
@@ -45,11 +53,17 @@ const translations = {
           CREATE_MESSAGE: 'Create a balanced lettering match for these lines.',
           CREATE_TITLE: 'Confirm lettering'
         },
-        EMPTY_SCOPE: 'Select an account and third party to load lettering.',
+        EMPTY_SCOPE: 'Select an auxiliary account and a third party to load lines.',
+        EMPTY_SCOPE_TITLE: 'Define the scope',
         ERRORS: {
+          ALLOCATION_INVALID: 'Correct allocation amounts before confirming.',
+          ALLOCATION_POSITIVE: 'Enter a positive amount.',
+          ALLOCATION_TOO_HIGH: 'Maximum: {{remaining}}.',
+          AMOUNT_RANGE: 'The minimum amount must be less than or equal to the maximum amount.',
           DATE_RANGE: 'The start date must be before the end date.',
           POST_FAILED: 'Lettering could not be saved.',
-          SELECTION_REQUIRED: 'Select balanced debit and credit lines.'
+          SELECTION_REQUIRED: 'Select balanced debit and credit lines.',
+          THIRD_PARTY_REQUIRED: 'Select a third party.'
         },
         EYEBROW: 'Auxiliary accounts',
         FIELDS: {
@@ -57,15 +71,21 @@ const translations = {
           DATE_FROM: 'From',
           DATE_TO: 'To',
           FISCAL_YEAR: 'Fiscal year',
+          MAX_REMAINING: 'Maximum remaining',
+          MIN_REMAINING: 'Minimum remaining',
+          REFERENCE: 'Reference or label',
           THIRD_PARTY: 'Third party',
           THIRD_PARTY_TYPE: 'Third-party type'
         },
         FILTERS: {
+          ADVANCED: 'Advanced filters',
           DESCRIPTION: 'Choose an auxiliary account and a business partner.',
           TITLE: 'Lettering filters'
         },
         LATEST_MATCH: {
+          CREATED_AT: 'Created at',
           DESCRIPTION: 'Last operation created from this page.',
+          TOTAL: 'Lettered total',
           TITLE: 'Latest match'
         },
         LINE_TYPES: {
@@ -97,8 +117,18 @@ const translations = {
           UNLETTERED: 'Unlettered'
         },
         SUBTITLE: 'Match posted auxiliary debit and credit lines.',
+        SUGGESTIONS: {
+          DESCRIPTION: 'Suggestions from loaded lines.',
+          EXACT: '{{amount}} balanced',
+          PARTIAL: '{{amount}} partial',
+          PARTIAL_BADGE: 'Partial',
+          TITLE: 'Matching suggestions'
+        },
         SUMMARY: {
+          BALANCED: 'Balanced',
+          DIFFERENCE: 'Difference to letter',
           DESCRIPTION: 'Current lettering scope.',
+          STATUS: 'Status',
           TITLE: 'Scope summary'
         },
         TABLE: {
@@ -117,7 +147,16 @@ const translations = {
         },
         THIRD_PARTY_TYPES: {
           CUSTOMER: 'Customer',
+          CUSTOMER_PLURAL: 'Customers',
+          SUPPLIER_PLURAL: 'Suppliers',
           SUPPLIER: 'Supplier'
+        },
+        THIRD_PARTY_SELECT: {
+          LOAD_MORE: 'Load more third parties',
+          LOADING: 'Loading third parties...',
+          NO_RESULTS: 'No third party found',
+          PLACEHOLDER: 'Search by third-party code or name',
+          TYPE_TO_SEARCH: 'Type a third-party code or name'
         },
         TITLE: 'Lettering',
         UNLETTERED: {
@@ -142,11 +181,20 @@ const translations = {
 };
 
 interface TestableLetteringPage {
+  allocationAmount: (line: UnletteredLineDto) => number;
+  applySuggestion: (suggestion: {
+    amount: number;
+    debitLine: UnletteredLineDto;
+    creditLine: UnletteredLineDto;
+  }) => void;
   applyFilters: () => void;
+  canLoadScope: () => boolean;
   canCreateMatch: () => boolean;
   candidates: () => UnletteredLineDto[];
   confirmCancelLatestMatch: () => Promise<void>;
   confirmCreateMatch: () => Promise<void>;
+  handleAccountSelected: (account: AccountDto | null) => void;
+  handleThirdPartySelected: (thirdParty: ThirdPartyDto | null) => void;
   form: {
     controls: {
       accountId: { setValue: (value: string) => void };
@@ -156,10 +204,17 @@ interface TestableLetteringPage {
       thirdPartyType: { setValue: (value: 'CUSTOMER' | 'SUPPLIER') => void };
     };
   };
+  filteredCandidates: () => UnletteredLineDto[];
   selectedCreditTotal: () => number;
   selectedDebitTotal: () => number;
   selectedDifference: () => number;
+  suggestions: () => Array<{
+    amount: number;
+    debitLine: UnletteredLineDto;
+    creditLine: UnletteredLineDto;
+  }>;
   toggleLine: (line: UnletteredLineDto, checked: boolean) => void;
+  updateAllocation: (line: UnletteredLineDto, event: Event) => void;
 }
 
 describe('LetteringPage', () => {
@@ -249,8 +304,34 @@ describe('LetteringPage', () => {
     expect(text).toContain('Third-party account');
     expect(text).toContain('Third-party type');
     expect(text).toContain('Third party');
-    expect(text).toContain('Select an account and third party to load lettering.');
+    expect(text).toContain('Customers');
+    expect(text).toContain('Suppliers');
+    expect(text).toContain('Select an auxiliary account and a third party to load lines.');
+    expect(text).not.toContain('Project');
     httpMock.expectNone((request) => request.url === `${apiBaseUrl}/lettering/candidates`);
+  });
+
+  it('keeps loading disabled until fiscal year, type, account, and third party are valid', async () => {
+    await settle(fixture);
+
+    const component = testable(fixture);
+
+    expect(component.canLoadScope()).toBe(false);
+    expect(loadButton(fixture).disabled).toBe(true);
+
+    component.form.controls.accountId.setValue('41100000');
+    component.form.controls.thirdPartyId.setValue('TP-001');
+    fixture.detectChanges();
+
+    expect(component.canLoadScope()).toBe(false);
+
+    component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
+    component.handleThirdPartySelected(thirdPartyDtoFixture('TP-001', 'C001', 'Client Demo', 'CUSTOMER'));
+    fixture.detectChanges();
+
+    expect(component.canLoadScope()).toBe(true);
+    expect(loadButton(fixture).disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('Test scenarios');
   });
 
   it('loads GSI3-backed candidates for the selected account, third party, type, and year', async () => {
@@ -264,6 +345,8 @@ describe('LetteringPage', () => {
 
     expect(text).toContain('Candidate lines');
     expect(text).toContain('Customer invoice');
+    expect(text).toContain('41100000 — Clients');
+    expect(text).toContain('C001 — Client Demo');
     expect(text).toContain('Remaining');
     expect(text).not.toContain('ORG#demo');
     expect(text).not.toContain('GSI3PK');
@@ -309,6 +392,70 @@ describe('LetteringPage', () => {
     expect(component.selectedDifference()).toBe(0);
     expect(component.canCreateMatch()).toBe(true);
     expect(letterButton(fixture).disabled).toBe(false);
+  });
+
+  it('uses exact amount suggestions to select balanced debit and credit rows', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
+    await settle(fixture);
+
+    const component = testable(fixture);
+    const suggestion = component.suggestions()[0];
+
+    component.applySuggestion(suggestion);
+    fixture.detectChanges();
+
+    expect(component.selectedDebitTotal()).toBe(100_000);
+    expect(component.selectedCreditTotal()).toBe(100_000);
+    expect(component.selectedDifference()).toBe(0);
+    expect(component.canCreateMatch()).toBe(true);
+  });
+
+  it('uses partial suggestions to allocate the smaller credit amount', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, [
+      candidateLine({ debit: 150_000, credit: 0, entryId: 'E-DEBIT', lineId: 'L-DEBIT', remainingAmount: 150_000, originalAmount: 150_000 }),
+      candidateLine({
+        accountingDate: '2026-01-12',
+        debit: 0,
+        credit: 50_000,
+        entryId: 'E-CREDIT',
+        lineId: 'L-CREDIT',
+        label: 'Partial payment',
+        originalAmount: 50_000,
+        remainingAmount: 50_000
+      })
+    ]);
+    await settle(fixture);
+
+    const component = testable(fixture);
+    const suggestion = component.suggestions()[0];
+
+    component.applySuggestion(suggestion);
+    fixture.detectChanges();
+
+    expect(component.allocationAmount(suggestion.debitLine)).toBe(50_000);
+    expect(component.allocationAmount(suggestion.creditLine)).toBe(50_000);
+    expect(component.selectedDebitTotal()).toBe(50_000);
+    expect(component.selectedCreditTotal()).toBe(50_000);
+    expect(component.canCreateMatch()).toBe(true);
+  });
+
+  it('rejects an allocation greater than the remaining amount', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
+    await settle(fixture);
+
+    const component = testable(fixture);
+    const [debitLine, creditLine] = component.candidates();
+    component.toggleLine(debitLine, true);
+    component.toggleLine(creditLine, true);
+    component.updateAllocation?.(debitLine, { target: { value: '120000' } } as unknown as Event);
+    fixture.detectChanges();
+
+    expect(component.selectedDebitTotal()).toBe(120_000);
+    expect(component.canCreateMatch()).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Maximum: 100');
   });
 
   it('confirms a balanced lettering match, prioritizes the backend message, and refreshes candidates', async () => {
@@ -461,6 +608,20 @@ function setScope(
   component.form.controls.accountId.setValue(options.accountId ?? '41100000');
   component.form.controls.thirdPartyId.setValue(options.thirdPartyId ?? 'TP-001');
   component.form.controls.thirdPartyType.setValue(options.thirdPartyType ?? 'CUSTOMER');
+  component.handleAccountSelected(
+    accountDtoFixture(
+      options.accountId ?? '41100000',
+      options.thirdPartyType === 'SUPPLIER' ? 'Fournisseurs' : 'Clients'
+    )
+  );
+  component.handleThirdPartySelected(
+    thirdPartyDtoFixture(
+      options.thirdPartyId ?? 'TP-001',
+      options.thirdPartyType === 'SUPPLIER' ? 'F001' : 'C001',
+      options.thirdPartyType === 'SUPPLIER' ? 'Fournisseur Demo' : 'Client Demo',
+      options.thirdPartyType ?? 'CUSTOMER'
+    )
+  );
   component.form.controls.dateFrom.setValue(options.dateFrom ?? '');
   component.form.controls.dateTo.setValue(options.dateTo ?? '');
   component.applyFilters();
@@ -470,15 +631,23 @@ function setScope(
 async function flushCandidates(
   httpMock: HttpTestingController,
   apiBaseUrl: string,
-  lines: UnletteredLineDto[]
+  lines: UnletteredLineDto[],
+  params: {
+    accountId?: string;
+    thirdPartyId?: string;
+    thirdPartyType?: 'CUSTOMER' | 'SUPPLIER';
+  } = {}
 ): Promise<void> {
+  const accountId = params.accountId ?? '41100000';
+  const thirdPartyId = params.thirdPartyId ?? 'TP-001';
+  const thirdPartyType = params.thirdPartyType ?? 'CUSTOMER';
   const request = await expectOneEventually(httpMock, (candidate) => {
     return (
       candidate.url === `${apiBaseUrl}/lettering/candidates` &&
       candidate.params.get('fiscalYear') === '2026' &&
-      candidate.params.get('accountId') === '41100000' &&
-      candidate.params.get('thirdPartyId') === 'TP-001' &&
-      candidate.params.get('thirdPartyType') === 'CUSTOMER' &&
+      candidate.params.get('accountId') === accountId &&
+      candidate.params.get('thirdPartyId') === thirdPartyId &&
+      candidate.params.get('thirdPartyType') === thirdPartyType &&
       candidate.params.get('limit') === '100'
     );
   });
@@ -487,12 +656,12 @@ async function flushCandidates(
   request.flush({
     data: {
       accountCode: '41100000',
-      accountId: '41100000',
+      accountId,
       hasMore: false,
       lines,
-      thirdPartyId: 'TP-001',
-      thirdPartyName: 'Client Demo',
-      thirdPartyType: 'CUSTOMER'
+      thirdPartyId,
+      thirdPartyName: thirdPartyType === 'CUSTOMER' ? 'Client Demo' : 'Fournisseur Beta',
+      thirdPartyType
     },
     message: 'Candidates loaded'
   });
@@ -524,6 +693,19 @@ function letterButton(fixture: ComponentFixture<LetteringPage>): HTMLButtonEleme
 
   if (!button) {
     throw new Error('Letter action button not found');
+  }
+
+  return button;
+}
+
+function loadButton(fixture: ComponentFixture<LetteringPage>): HTMLButtonElement {
+  const buttons = Array.from(
+    fixture.nativeElement.querySelectorAll('button')
+  ) as HTMLButtonElement[];
+  const button = buttons.find((candidate) => candidate.textContent?.includes('Load'));
+
+  if (!button) {
+    throw new Error('Load action button not found');
   }
 
   return button;
@@ -570,6 +752,41 @@ function candidateLine(
     thirdPartyName: 'Client Demo',
     thirdPartyType: 'CUSTOMER',
     ...overrides
+  };
+}
+
+function accountDtoFixture(accountId: string, accountName: string): AccountDto {
+  const auxiliaryType = accountId.startsWith('401') ? 'SUPPLIER' : 'CUSTOMER';
+
+  return {
+    accountId,
+    accountName,
+    accountNature: 'BALANCE',
+    accountUsage: 'BOTH',
+    allowReconciliation: true,
+    auxiliaryType,
+    classCode: 4,
+    financialStatementCode: 'BS',
+    isActive: true,
+    isThirdPartyAccount: true,
+    requiresThirdParty: true
+  };
+}
+
+function thirdPartyDtoFixture(
+  thirdPartyId: string,
+  code: string,
+  displayName: string,
+  type: 'CUSTOMER' | 'SUPPLIER'
+): ThirdPartyDto {
+  return {
+    code,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    displayName,
+    status: 'ACTIVE',
+    thirdPartyId,
+    type,
+    updatedAt: '2026-01-01T00:00:00.000Z'
   };
 }
 

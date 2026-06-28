@@ -35,6 +35,10 @@ const translations = {
       },
       BRAND_TAGLINE: 'Poste ERP',
       LOGO_ALT: 'logo liass-ohada',
+      SIDEBAR: {
+        COLLAPSE: 'Réduire la barre latérale',
+        EXPAND: 'Déployer la barre latérale'
+      },
       NAV: {
         ACCOUNTING: 'Comptabilité',
         ACCOUNTING_OVERVIEW: 'Vue d’ensemble',
@@ -117,6 +121,40 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Trésorerie');
     expect(text).toContain('États OHADA');
     expect(text).toContain('Administration');
+  });
+
+  it('collapses the desktop sidebar into an accessible icon rail', () => {
+    const uiStore = TestBed.inject(UiStore);
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-company',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company'
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const collapseButton = fixture.nativeElement.querySelector(
+      'button[aria-label="Réduire la barre latérale"]'
+    ) as HTMLButtonElement | null;
+    collapseButton?.click();
+    fixture.detectChanges();
+
+    const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
+    const dashboardButton = fixture.nativeElement.querySelector(
+      'liass-sidebar-nav-item button[aria-label="Tableau de bord"]'
+    ) as HTMLButtonElement | null;
+    const aiPanel = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-ai-panel"]'
+    ) as HTMLElement | null;
+
+    expect(uiStore.sidebarCollapsed()).toBe(true);
+    expect(localStorage.getItem('liass-ohada.sidebarCollapsed')).toBe('true');
+    expect(sidebar.className).toContain('lg:w-[var(--spacing-shell-sidebar-collapsed)]');
+    expect(dashboardButton).not.toBeNull();
+    expect(aiPanel?.className).toContain('lg:hidden');
   });
 
   it('shows cabinet navigation and hides standard accounting navigation without an active dossier', () => {

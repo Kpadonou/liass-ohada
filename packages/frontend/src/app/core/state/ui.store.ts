@@ -27,11 +27,27 @@ export type ThemeMode = 'light' | 'dark';
 
 interface UiState {
   currentPage: AppPage;
+  sidebarCollapsed: boolean;
   sidebarOpen: boolean;
   themeMode: ThemeMode;
 }
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'liass-ohada.sidebarCollapsed';
 const THEME_STORAGE_KEY = 'liass-ohada.themeMode';
+
+function readStoredSidebarCollapsed(): boolean {
+  if (typeof localStorage === 'undefined') {
+    return false;
+  }
+
+  return localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === 'true';
+}
+
+function persistSidebarCollapsed(sidebarCollapsed: boolean): void {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(sidebarCollapsed));
+  }
+}
 
 function readStoredThemeMode(): ThemeMode {
   if (typeof localStorage === 'undefined') {
@@ -60,6 +76,7 @@ function applyThemeClass(themeMode: ThemeMode, overlayElement?: HTMLElement): vo
 
 const initialState: UiState = {
   currentPage: 'dashboard',
+  sidebarCollapsed: readStoredSidebarCollapsed(),
   sidebarOpen: false,
   themeMode: readStoredThemeMode()
 };
@@ -80,6 +97,10 @@ export const UiStore = signalStore(
       setCurrentPage(currentPage: AppPage): void {
         patchState(store, { currentPage });
       },
+      setSidebarCollapsed(sidebarCollapsed: boolean): void {
+        persistSidebarCollapsed(sidebarCollapsed);
+        patchState(store, { sidebarCollapsed });
+      },
       setThemeMode(themeMode: ThemeMode): void {
         persistThemeMode(themeMode);
         applyThemeClass(themeMode, overlayElement);
@@ -93,6 +114,11 @@ export const UiStore = signalStore(
       },
       toggleSidebar(): void {
         patchState(store, ({ sidebarOpen }) => ({ sidebarOpen: !sidebarOpen }));
+      },
+      toggleSidebarCollapsed(): void {
+        const sidebarCollapsed = !store.sidebarCollapsed();
+        persistSidebarCollapsed(sidebarCollapsed);
+        patchState(store, { sidebarCollapsed });
       }
     };
   })

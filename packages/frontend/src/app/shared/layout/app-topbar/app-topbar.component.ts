@@ -8,7 +8,6 @@ import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AccountingFiscalYearContextService } from '../../../domains/accounting/data-access/accounting-fiscal-year-context.service';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { LiassButtonComponent } from '../../ui/button/button.component';
-import { LiassCommandInputComponent } from '../../ui/command-input/command-input.component';
 import { LiassDropdownComponent } from '../../ui/dropdown/dropdown.component';
 
 const pageTitleKeys: Record<AppPage, string> = {
@@ -39,7 +38,6 @@ const pageTitleKeys: Record<AppPage, string> = {
   imports: [
     LanguageSelectorComponent,
     LiassButtonComponent,
-    LiassCommandInputComponent,
     LiassDropdownComponent,
     MatIconModule,
     TranslocoModule
@@ -84,7 +82,6 @@ export class AppTopbarComponent implements OnInit {
   );
   private readonly router = inject(Router);
 
-  protected commandValue = '';
   protected cabinetMenuOpen = false;
   protected fiscalYearMenuOpen = false;
   protected userMenuOpen = false;
@@ -121,10 +118,6 @@ export class AppTopbarComponent implements OnInit {
     }
 
     this.fiscalYearMenuOpen = !this.fiscalYearMenuOpen;
-  }
-
-  protected updateCommandValue(value: string): void {
-    this.commandValue = value;
   }
 
   protected async openDossierContext(): Promise<void> {

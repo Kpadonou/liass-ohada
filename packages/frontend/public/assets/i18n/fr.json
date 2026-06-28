@@ -94,6 +94,10 @@
       "REPORTS": "États OHADA",
       "TREASURY": "Trésorerie"
     },
+    "SIDEBAR": {
+      "COLLAPSE": "Réduire la barre latérale",
+      "EXPAND": "Déployer la barre latérale"
+    },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Rechercher ou interroger l’IA...",
       "CABINET_DASHBOARD": "Tableau de bord cabinet",
@@ -1397,14 +1401,23 @@
         "POST": "Lettrer",
         "SELECT": "Sélectionner"
       },
-      "EMPTY_SCOPE": "Sélectionnez un compte et un tiers pour charger le lettrage.",
+      "CONTEXT": {
+        "DOSSIER": "Dossier actif"
+      },
+      "EMPTY_SCOPE": "Sélectionnez un compte auxiliaire et un tiers pour charger les lignes.",
+      "EMPTY_SCOPE_TITLE": "Périmètre à définir",
       "ERRORS": {
+        "ALLOCATION_INVALID": "Corrigez les montants à lettrer avant de confirmer.",
+        "ALLOCATION_POSITIVE": "Saisissez un montant positif.",
+        "ALLOCATION_TOO_HIGH": "Maximum : {{remaining}}.",
+        "AMOUNT_RANGE": "Le montant minimum doit être inférieur ou égal au montant maximum.",
         "CANCEL_FAILED": "Le lettrage n’a pas pu être annulé.",
         "CANCEL_SELECTION_REQUIRED": "Sélectionnez au moins une ligne lettrée à annuler.",
         "DATE_RANGE": "La date de début doit être antérieure ou égale à la date de fin.",
         "MISSING_YEAR": "Certaines lignes ne portent pas l’exercice requis.",
         "POST_FAILED": "Le lettrage n’a pas pu être enregistré.",
-        "SELECTION_REQUIRED": "Sélectionnez au moins deux lignes non lettrées."
+        "SELECTION_REQUIRED": "Sélectionnez au moins une ligne au débit et une ligne au crédit avec des montants équilibrés.",
+        "THIRD_PARTY_REQUIRED": "Sélectionnez un tiers."
       },
       "EYEBROW": "Comptes auxiliaires",
       "FIELDS": {
@@ -1413,13 +1426,17 @@
         "DATE_TO": "Date de fin",
         "FISCAL_YEAR": "Exercice",
         "LETTERING_CODE": "Code de lettrage",
+        "MAX_REMAINING": "Restant maximum",
+        "MIN_REMAINING": "Restant minimum",
         "PROJECT": "Projet",
+        "REFERENCE": "Référence ou libellé",
         "THIRD_PARTY": "Tiers",
         "THIRD_PARTY_TYPE": "Type de tiers"
       },
       "FILTERS": {
-        "DESCRIPTION": "Choisissez un compte lettrable, un tiers et éventuellement un projet.",
-        "TITLE": "Périmètre auxiliaire"
+        "ADVANCED": "Filtres avancés",
+        "DESCRIPTION": "Choisissez le type de tiers, le compte auxiliaire et le tiers à rapprocher.",
+        "TITLE": "Périmètre de lettrage"
       },
       "LINE_TYPES": {
         "CREDIT": "Crédit",
@@ -1434,7 +1451,9 @@
         "CREATE_TITLE": "Confirmer le lettrage ?"
       },
       "LATEST_MATCH": {
+        "CREATED_AT": "Créé le",
         "DESCRIPTION": "Dernière opération de lettrage créée depuis cette page.",
+        "TOTAL": "Total lettré",
         "TITLE": "Dernier lettrage"
       },
       "MATCH_STATUS": {
@@ -1466,22 +1485,30 @@
         "PARTIAL": "Partielle",
         "UNLETTERED": "Non lettrée"
       },
-      "SELECTION_HELP": "Sélectionnez des lignes au débit et au crédit du même tiers, puis ajustez le montant si un lettrage partiel est nécessaire.",
-      "SUBTITLE": "Rapprochez les écritures de tiers à partir des références métier.",
+      "SELECTION_HELP": "Sélectionnez au moins une ligne au débit et une ligne au crédit, puis ajustez le montant si un lettrage partiel est nécessaire.",
+      "SUBTITLE": "Rapprochez les mouvements clients et fournisseurs par compte auxiliaire.",
       "SUGGESTIONS": {
         "AMOUNT": "Montant",
+        "DESCRIPTION": "Ces propositions sont calculées à partir des lignes chargées.",
+        "EXACT": "{{amount}} équilibré",
+        "PARTIAL": "{{amount}} partiel",
+        "PARTIAL_BADGE": "Partiel",
+        "TITLE": "Suggestions de rapprochement",
         "TYPES": {
           "FIFO_SUGGESTION": "Suggestion FIFO",
           "PERFECT_MATCH": "Correspondance parfaite"
         }
       },
       "SUMMARY": {
+        "BALANCED": "Équilibré",
         "BALANCE": "Solde",
         "CREDIT": "Crédit",
         "DEBIT": "Débit",
-        "DESCRIPTION": "Synthèse du grand livre auxiliaire pour le tiers sélectionné.",
+        "DESCRIPTION": "Suivez les totaux sélectionnés et l’écart à lettrer.",
+        "DIFFERENCE": "Écart à lettrer",
         "LINES": "{{count}} ligne(s)",
-        "TITLE": "Grand livre auxiliaire"
+        "STATUS": "Statut",
+        "TITLE": "Synthèse du lettrage"
       },
       "TABLE": {
         "ALLOCATION": "Allocation",
@@ -1501,7 +1528,16 @@
       },
       "THIRD_PARTY_TYPES": {
         "CUSTOMER": "Client",
+        "CUSTOMER_PLURAL": "Clients",
+        "SUPPLIER_PLURAL": "Fournisseurs",
         "SUPPLIER": "Fournisseur"
+      },
+      "THIRD_PARTY_SELECT": {
+        "LOAD_MORE": "Charger plus de tiers",
+        "LOADING": "Chargement des tiers…",
+        "NO_RESULTS": "Aucun tiers trouvé",
+        "PLACEHOLDER": "Rechercher par code ou nom tiers",
+        "TYPE_TO_SEARCH": "Saisissez un code ou un nom tiers"
       },
       "TITLE": "Lettrage",
       "UNLETTERED": {
