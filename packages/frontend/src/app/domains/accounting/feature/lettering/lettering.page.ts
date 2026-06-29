@@ -294,21 +294,13 @@ export class LetteringPage {
       return `${selectedAccount.accountId} — ${selectedAccount.accountName}`;
     }
 
-    const firstLine = this.candidates()[0];
-    if (firstLine?.accountCode && firstLine.accountLabel) {
-      return `${firstLine.accountCode} — ${firstLine.accountLabel}`;
-    }
-
     return null;
   });
   protected readonly thirdPartyContextLabel = computed<string | null>(() => {
     const scope = this.scope();
-    const firstLine = this.candidates()[0];
-    const code = scope.thirdPartyCode || firstLine?.thirdPartyCode;
+    const code = scope.thirdPartyCode || this.selectedThirdParty()?.code;
     const name =
       scope.thirdPartyName ||
-      this.candidatesQuery.data()?.thirdPartyName ||
-      firstLine?.thirdPartyName ||
       this.selectedThirdParty()?.displayName;
 
     if (code && name) {
@@ -519,6 +511,20 @@ export class LetteringPage {
 
   protected formatAmount(value: number): string {
     return new Intl.NumberFormat('fr-FR').format(Math.abs(value));
+  }
+
+  protected lineDisplayReference(line: UnletteredLineDto): string {
+    return line.reference || line.entryNumber || '—';
+  }
+
+  protected lineDisplayDirectionKey(line: UnletteredLineDto): string {
+    return line.debit > 0
+      ? 'ACCOUNTING.LETTERING.LINE_TYPES.DEBIT'
+      : 'ACCOUNTING.LETTERING.LINE_TYPES.CREDIT';
+  }
+
+  protected lineDisplayAmount(line: UnletteredLineDto): number {
+    return this.allocationAmount(line);
   }
 
   protected signedDifference(): string {

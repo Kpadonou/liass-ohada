@@ -32,13 +32,14 @@
       }
     </div>
 
-    <div class="grid gap-6 2xl:grid-cols-[380px_minmax(0,1fr)_340px] xl:grid-cols-[360px_minmax(0,1fr)]">
-      <aside class="space-y-6">
+    <div class="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)_300px] 2xl:grid-cols-[340px_minmax(0,1fr)_320px]">
+      <aside class="space-y-5">
         <liass-card
           [title]="'ACCOUNTING.LETTERING.FILTERS.TITLE' | transloco"
           [description]="'ACCOUNTING.LETTERING.FILTERS.DESCRIPTION' | transloco"
+          padding="sm"
         >
-          <form class="space-y-5" [formGroup]="form" (ngSubmit)="applyFilters()">
+          <form class="space-y-4" [formGroup]="form" (ngSubmit)="applyFilters()">
             <div>
               <p class="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-app-muted">
                 {{ 'ACCOUNTING.LETTERING.FIELDS.THIRD_PARTY_TYPE' | transloco }}
@@ -130,56 +131,65 @@
         </liass-card>
       </aside>
 
-      <main class="space-y-6">
+      <main class="min-w-0 space-y-5">
         <liass-card
           [title]="'ACCOUNTING.LETTERING.UNLETTERED.TITLE' | transloco"
           [description]="'ACCOUNTING.LETTERING.UNLETTERED.DESCRIPTION' | transloco"
+          padding="sm"
         >
           @if (!hasAppliedScope()) {
-            <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-8 text-center">
+            <div class="min-h-[360px] rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-8 text-center">
               <mat-icon class="mx-auto mb-3 text-app-muted">rule</mat-icon>
               <p class="font-semibold text-app-text">{{ 'ACCOUNTING.LETTERING.EMPTY_SCOPE_TITLE' | transloco }}</p>
               <p class="mt-1 text-sm text-app-muted">{{ 'ACCOUNTING.LETTERING.EMPTY_SCOPE' | transloco }}</p>
             </div>
           } @else if (candidatesQuery.isPending()) {
-            <div class="space-y-3" role="status">
+            <div class="min-h-[360px] space-y-3" role="status">
               <p class="text-sm text-app-muted">{{ 'ACCOUNTING.LETTERING.LOADING' | transloco }}</p>
               @for (_ of [0, 1, 2, 3, 4]; track $index) {
                 <liass-skeleton variant="block" />
               }
             </div>
           } @else if (candidatesQuery.isError()) {
-            <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
-              {{ 'ACCOUNTING.ERRORS.LOAD_FAILED' | transloco }}
+            <div class="min-h-[360px] rounded-app-card border border-red-200 bg-red-50 p-5 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+              <p class="font-semibold">{{ 'ACCOUNTING.LETTERING.ERRORS.LOAD_FAILED' | transloco }}</p>
+              <liass-button
+                class="mt-4"
+                tone="danger"
+                variant="outline"
+                icon="refresh"
+                (pressed)="candidatesQuery.refetch()"
+              >
+                {{ 'ACCOUNTING.LETTERING.ACTIONS.RETRY' | transloco }}
+              </liass-button>
             </div>
           } @else if (filteredCandidates().length === 0) {
-            <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-8 text-center">
+            <div class="min-h-[360px] rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-8 text-center">
               <p class="font-semibold text-app-text">{{ 'ACCOUNTING.LETTERING.UNLETTERED.EMPTY_TITLE' | transloco }}</p>
               <p class="mt-1 text-sm text-app-muted">{{ 'ACCOUNTING.LETTERING.UNLETTERED.EMPTY' | transloco }}</p>
             </div>
           } @else {
             @if (suggestions().length > 0) {
-              <div class="mb-4 rounded-app-card border border-brand-100 bg-brand-50/60 p-4 dark:border-brand-900/70 dark:bg-brand-950/20">
-                <div class="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <p class="text-sm font-semibold text-app-text">{{ 'ACCOUNTING.LETTERING.SUGGESTIONS.TITLE' | transloco }}</p>
-                    <p class="text-xs text-app-muted">{{ 'ACCOUNTING.LETTERING.SUGGESTIONS.DESCRIPTION' | transloco }}</p>
-                  </div>
+              <div class="mb-3 flex flex-col gap-2 rounded-app-control border border-brand-100 bg-brand-50/60 px-3 py-2 dark:border-brand-900/70 dark:bg-brand-950/20 sm:flex-row sm:items-center">
+                <div class="flex shrink-0 items-center gap-2 text-sm font-semibold text-app-text">
                   <mat-icon class="text-brand-600 dark:text-brand-300">auto_awesome</mat-icon>
+                  <span>{{ 'ACCOUNTING.LETTERING.SUGGESTIONS.TITLE' | transloco }}</span>
                 </div>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex min-w-0 flex-wrap gap-1.5">
                   @for (suggestion of suggestions(); track suggestion.id) {
                     <button
                       type="button"
-                      class="inline-flex items-center gap-2 rounded-full border border-app-border bg-app-surface px-3 py-1.5 text-sm font-semibold text-app-text shadow-app-xs transition hover:border-brand-300 hover:bg-app-surface-hover focus:outline-none focus:ring-2 focus:ring-brand-300"
+                      class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold shadow-app-xs transition focus:outline-none focus:ring-2 focus:ring-brand-300 dark:bg-slate-900/70"
+                      [class.border-success-600]="suggestion.tone === 'success'"
+                      [class.bg-success-50]="suggestion.tone === 'success'"
+                      [class.text-success-600]="suggestion.tone === 'success'"
+                      [class.border-info-600]="suggestion.tone === 'info'"
+                      [class.bg-app-surface]="suggestion.tone === 'info'"
+                      [class.text-app-text]="suggestion.tone === 'info'"
+                      [class.hover:bg-app-surface-hover]="suggestion.tone === 'info'"
                       (click)="applySuggestion(suggestion)"
                     >
                       <span>{{ suggestion.labelKey | transloco: { amount: formatAmount(suggestion.amount) } }}</span>
-                      <liass-status-chip
-                        [label]="suggestion.tone === 'success' ? ('ACCOUNTING.LETTERING.SUMMARY.BALANCED' | transloco) : ('ACCOUNTING.LETTERING.SUGGESTIONS.PARTIAL_BADGE' | transloco)"
-                        [tone]="suggestion.tone"
-                        size="sm"
-                      />
                     </button>
                   }
                 </div>
@@ -187,20 +197,29 @@
             }
 
             <div class="overflow-x-auto rounded-app-card border border-app-border">
-              <table class="liass-data-table w-full min-w-[1240px] border-collapse text-left">
+              <table class="liass-data-table w-full min-w-[1040px] table-fixed border-collapse text-left">
+                <colgroup>
+                  <col class="w-12" />
+                  <col class="w-24" />
+                  <col class="w-20" />
+                  <col class="w-40" />
+                  <col />
+                  <col class="w-28" />
+                  <col class="w-28" />
+                  <col class="w-28" />
+                  <col class="w-36" />
+                </colgroup>
                 <thead class="bg-app-table-header text-xs font-semibold uppercase tracking-[0.12em] text-app-table-header-text">
                   <tr>
-                    <th class="w-12 px-4 py-3">{{ 'ACCOUNTING.LETTERING.TABLE.SELECT' | transloco }}</th>
-                    <th class="px-4 py-3">{{ 'ACCOUNTING.LETTERING.TABLE.DATE' | transloco }}</th>
-                    <th class="px-4 py-3">{{ 'ACCOUNTING.LETTERING.TABLE.JOURNAL' | transloco }}</th>
-                    <th class="px-4 py-3">{{ 'ACCOUNTING.LETTERING.TABLE.ENTRY' | transloco }}</th>
-                    <th class="px-4 py-3">{{ 'ACCOUNTING.LETTERING.TABLE.REFERENCE' | transloco }}</th>
-                    <th class="px-4 py-3">{{ 'ACCOUNTING.LETTERING.TABLE.LABEL' | transloco }}</th>
-                    <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.DEBIT' | transloco }}</th>
-                    <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.CREDIT' | transloco }}</th>
-                    <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.REMAINING' | transloco }}</th>
-                    <th class="px-4 py-3 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.ALLOCATION' | transloco }}</th>
-                    <th class="px-4 py-3">{{ 'ACCOUNTING.LETTERING.TABLE.STATUS' | transloco }}</th>
+                    <th class="px-3 py-2">{{ 'ACCOUNTING.LETTERING.TABLE.SELECT' | transloco }}</th>
+                    <th class="px-3 py-2">{{ 'ACCOUNTING.LETTERING.TABLE.DATE' | transloco }}</th>
+                    <th class="px-3 py-2">{{ 'ACCOUNTING.LETTERING.TABLE.JOURNAL' | transloco }}</th>
+                    <th class="px-3 py-2">{{ 'ACCOUNTING.LETTERING.TABLE.REFERENCE' | transloco }}</th>
+                    <th class="px-3 py-2">{{ 'ACCOUNTING.LETTERING.TABLE.LABEL' | transloco }}</th>
+                    <th class="px-3 py-2 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.DEBIT' | transloco }}</th>
+                    <th class="px-3 py-2 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.CREDIT' | transloco }}</th>
+                    <th class="px-3 py-2 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.REMAINING' | transloco }}</th>
+                    <th class="px-3 py-2 text-right">{{ 'ACCOUNTING.LETTERING.TABLE.ALLOCATION' | transloco }}</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-app-border">
@@ -208,32 +227,39 @@
                     <tr
                       class="bg-app-table-row transition hover:bg-app-table-row-hover"
                       [class.!bg-app-table-row-selected]="isSelected(line)"
+                      [attr.aria-selected]="isSelected(line)"
                     >
-                      <td class="px-4 py-3 align-top">
+                      <td class="px-3 py-2 align-top">
                         <mat-checkbox
                           [checked]="isSelected(line)"
                           [aria-label]="'ACCOUNTING.LETTERING.TABLE.SELECT_LINE' | transloco"
                           (change)="toggleLine(line, $event.checked)"
                         />
                       </td>
-                      <td class="px-4 py-4 align-top text-sm text-app-muted">{{ line.accountingDate }}</td>
-                      <td class="px-4 py-4 align-top text-sm font-semibold text-app-text">{{ line.journalCode }}</td>
-                      <td class="px-4 py-4 align-top text-sm text-app-text">{{ line.entryNumber }}</td>
-                      <td class="px-4 py-4 align-top text-sm text-app-muted">{{ line.reference || '—' }}</td>
-                      <td class="max-w-[260px] px-4 py-4 align-top text-sm text-app-muted">
-                        <span class="line-clamp-2">{{ line.label || '—' }}</span>
+                      <td class="px-3 py-3 align-top text-sm text-app-muted">{{ line.accountingDate }}</td>
+                      <td class="px-3 py-3 align-top text-sm font-semibold text-app-text">{{ line.journalCode }}</td>
+                      <td class="px-3 py-3 align-top text-sm">
+                        <div class="min-w-0" [title]="line.entryNumber">
+                          <p class="truncate font-semibold text-app-text">{{ lineDisplayReference(line) }}</p>
+                          @if (line.entryNumber) {
+                            <p class="truncate text-xs text-app-muted">{{ line.entryNumber }}</p>
+                          }
+                        </div>
                       </td>
-                      <td class="px-4 py-4 align-top text-right text-sm font-semibold tabular-nums text-app-text">
+                      <td class="px-3 py-3 align-top text-sm text-app-muted">
+                        <span class="block truncate" [title]="line.label || ''">{{ line.label || '—' }}</span>
+                      </td>
+                      <td class="px-3 py-3 align-top text-right text-sm font-semibold tabular-nums text-app-text">
                         {{ line.debit ? formatAmount(line.debit) : '—' }}
                       </td>
-                      <td class="px-4 py-4 align-top text-right text-sm font-semibold tabular-nums text-app-text">
+                      <td class="px-3 py-3 align-top text-right text-sm font-semibold tabular-nums text-app-text">
                         {{ line.credit ? formatAmount(line.credit) : '—' }}
                       </td>
-                      <td class="px-4 py-4 align-top text-right text-sm font-semibold tabular-nums text-app-text">
+                      <td class="px-3 py-3 align-top text-right text-sm font-semibold tabular-nums text-app-text">
                         {{ formatAmount(line.remainingAmount) }}
                       </td>
-                      <td class="px-4 py-3 align-top text-right">
-                        <mat-form-field appearance="outline" class="w-36 text-right">
+                      <td class="px-3 py-2 align-top text-right">
+                        <mat-form-field appearance="outline" class="w-32 text-right">
                           <mat-label>{{ 'ACCOUNTING.LETTERING.TABLE.ALLOCATION' | transloco }}</mat-label>
                           <input
                             matInput
@@ -251,13 +277,6 @@
                           </p>
                         }
                       </td>
-                      <td class="px-4 py-4 align-top">
-                        <liass-status-chip
-                          [label]="('ACCOUNTING.LETTERING.STATUS.' + line.letteringStatus) | transloco"
-                          [tone]="statusTone(line)"
-                          size="sm"
-                        />
-                      </td>
                     </tr>
                   }
                 </tbody>
@@ -267,48 +286,62 @@
         </liass-card>
       </main>
 
-      <aside class="space-y-6 xl:col-span-2 2xl:col-span-1">
+      <aside class="space-y-5 xl:sticky xl:top-24 xl:self-start">
         <liass-card
           [title]="'ACCOUNTING.LETTERING.SUMMARY.TITLE' | transloco"
-          [description]="'ACCOUNTING.LETTERING.SUMMARY.DESCRIPTION' | transloco"
           variant="accent"
+          padding="sm"
         >
-          <div class="space-y-4">
-            <div class="flex items-center justify-between gap-3">
-              <span class="text-sm text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_LINES' | transloco }}</span>
-              <span class="text-lg font-semibold text-app-text">{{ selectedLines().length }}</span>
-            </div>
-            <div class="grid gap-3 sm:grid-cols-3 2xl:grid-cols-1">
-              <div class="rounded-app-card bg-app-surface p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">
-                  {{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_DEBIT' | transloco }}
-                </p>
-                <p class="mt-2 text-2xl font-semibold tabular-nums text-app-text">{{ formatAmount(selectedDebitTotal()) }}</p>
+          <div class="space-y-4 text-sm">
+            <dl class="space-y-2">
+              <div class="flex items-center justify-between gap-3">
+                <dt class="text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_LINES' | transloco }}</dt>
+                <dd class="font-semibold tabular-nums text-app-text">{{ selectedLines().length }}</dd>
               </div>
-              <div class="rounded-app-card bg-app-surface p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">
-                  {{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_CREDIT' | transloco }}
-                </p>
-                <p class="mt-2 text-2xl font-semibold tabular-nums text-app-text">{{ formatAmount(selectedCreditTotal()) }}</p>
+              <div class="flex items-center justify-between gap-3">
+                <dt class="text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_DEBIT' | transloco }}</dt>
+                <dd class="font-semibold tabular-nums text-app-text">{{ formatAmount(selectedDebitTotal()) }}</dd>
               </div>
-              <div class="rounded-app-card bg-app-surface p-4">
-                <p class="text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">
-                  {{ 'ACCOUNTING.LETTERING.METRICS.DIFFERENCE' | transloco }}
-                </p>
-                <p class="mt-2 text-2xl font-semibold tabular-nums" [class.text-success-600]="canCreateMatch()" [class.text-warning-600]="!canCreateMatch()">
+              <div class="flex items-center justify-between gap-3">
+                <dt class="text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.SELECTED_CREDIT' | transloco }}</dt>
+                <dd class="font-semibold tabular-nums text-app-text">{{ formatAmount(selectedCreditTotal()) }}</dd>
+              </div>
+              <div class="flex items-center justify-between gap-3 border-t border-app-border pt-2">
+                <dt class="text-app-muted">{{ 'ACCOUNTING.LETTERING.METRICS.DIFFERENCE' | transloco }}</dt>
+                <dd class="font-semibold tabular-nums" [class.text-success-600]="canCreateMatch()" [class.text-warning-600]="!canCreateMatch()">
                   {{ signedDifference() }}
-                </p>
+                </dd>
               </div>
-            </div>
+            </dl>
 
-            <div class="flex items-center justify-between rounded-app-card border border-app-border bg-app-surface px-4 py-3">
-              <span class="text-sm font-medium text-app-muted">{{ 'ACCOUNTING.LETTERING.SUMMARY.STATUS' | transloco }}</span>
+            <div class="flex items-center justify-between border-t border-app-border pt-3">
+              <span class="font-medium text-app-muted">{{ 'ACCOUNTING.LETTERING.SUMMARY.STATUS' | transloco }}</span>
               <liass-status-chip
                 [label]="balanceStatusKey() | transloco"
                 [tone]="balanceStatusTone()"
                 size="sm"
               />
             </div>
+
+            @if (selectedLines().length > 0) {
+              <div class="border-t border-app-border pt-3">
+                <p class="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-app-muted">
+                  {{ 'ACCOUNTING.LETTERING.SELECTED_PREVIEW.TITLE' | transloco }}
+                </p>
+                <div class="max-h-40 space-y-1 overflow-y-auto pr-1">
+                  @for (line of selectedLines(); track lineKey(line)) {
+                    <div class="flex items-center justify-between gap-3 rounded-app-sm px-1.5 py-1 text-xs text-app-text">
+                      <span class="min-w-0 truncate font-semibold" [title]="lineDisplayReference(line)">
+                        {{ lineDisplayReference(line) }}
+                      </span>
+                      <span class="shrink-0 text-app-muted">
+                        {{ lineDisplayDirectionKey(line) | transloco }} {{ formatAmount(lineDisplayAmount(line)) }}
+                      </span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
 
             @if (hasInvalidAllocations()) {
               <p class="rounded-app-control bg-danger-50 px-3 py-2 text-sm text-danger-600 dark:bg-rose-950/35 dark:text-rose-300">

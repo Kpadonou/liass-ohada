@@ -1504,6 +1504,7 @@
         "CANCEL_GROUP": "Unletter",
         "LOAD": "Load",
         "POST": "Letter",
+        "RETRY": "Retry",
         "SELECT": "Select"
       },
       "CONTEXT": {
@@ -1519,6 +1520,7 @@
         "CANCEL_FAILED": "Lettering could not be cancelled.",
         "CANCEL_SELECTION_REQUIRED": "Select at least one lettered line to cancel.",
         "DATE_RANGE": "The start date must be on or before the end date.",
+        "LOAD_FAILED": "Lettering lines could not be loaded. Try again.",
         "MISSING_YEAR": "Some lines do not carry the required fiscal year.",
         "POST_FAILED": "Lettering could not be saved.",
         "SELECTION_REQUIRED": "Select at least one debit line and one credit line with balanced amounts.",
@@ -1540,8 +1542,8 @@
       },
       "FILTERS": {
         "ADVANCED": "Advanced filters",
-        "DESCRIPTION": "Choose the third-party type, auxiliary account, and business partner to match.",
-        "TITLE": "Lettering scope"
+        "DESCRIPTION": "Auxiliary account, third party, and work filters.",
+        "TITLE": "Scope"
       },
       "LINE_TYPES": {
         "CREDIT": "Credit",
@@ -1584,6 +1586,9 @@
       "RESULT": {
         "LINES": "{{count}} processed line(s)",
         "TITLE": "Result"
+      },
+      "SELECTED_PREVIEW": {
+        "TITLE": "Selection"
       },
       "STATUS": {
         "LETTERED": "Lettered",
@@ -1647,7 +1652,7 @@
       "TITLE": "Lettering",
       "UNLETTERED": {
         "DESCRIPTION": "Select lines to match or apply a suggestion.",
-        "EMPTY": "No unlettered line for this scope.",
+        "EMPTY": "No unlettered line for this third party.",
         "EMPTY_TITLE": "No line to letter",
         "SELECTED": "Selected",
         "SUGGESTIONS": "Suggestions",

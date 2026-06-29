@@ -41,7 +41,8 @@ const translations = {
         ACTIONS: {
           CANCEL_GROUP: 'Cancel lettering',
           LOAD: 'Load',
-          POST: 'Letter'
+          POST: 'Letter',
+          RETRY: 'Retry'
         },
         CONTEXT: {
           DOSSIER: 'Active dossier'
@@ -61,6 +62,7 @@ const translations = {
           ALLOCATION_TOO_HIGH: 'Maximum: {{remaining}}.',
           AMOUNT_RANGE: 'The minimum amount must be less than or equal to the maximum amount.',
           DATE_RANGE: 'The start date must be before the end date.',
+          LOAD_FAILED: 'Lettering lines could not be loaded. Try again.',
           POST_FAILED: 'Lettering could not be saved.',
           SELECTION_REQUIRED: 'Select balanced debit and credit lines.',
           THIRD_PARTY_REQUIRED: 'Select a third party.'
@@ -79,8 +81,8 @@ const translations = {
         },
         FILTERS: {
           ADVANCED: 'Advanced filters',
-          DESCRIPTION: 'Choose an auxiliary account and a business partner.',
-          TITLE: 'Lettering filters'
+          DESCRIPTION: 'Auxiliary account, third party, and work filters.',
+          TITLE: 'Scope'
         },
         LATEST_MATCH: {
           CREATED_AT: 'Created at',
@@ -110,6 +112,9 @@ const translations = {
         REPORT: {
           GROUP_LINES: '{{count}} line(s)'
         },
+        SELECTED_PREVIEW: {
+          TITLE: 'Selection'
+        },
         SELECTION_HELP: 'Select debit and credit lines with equal totals.',
         STATUS: {
           LETTERED: 'Lettered',
@@ -127,9 +132,8 @@ const translations = {
         SUMMARY: {
           BALANCED: 'Balanced',
           DIFFERENCE: 'Difference to letter',
-          DESCRIPTION: 'Current lettering scope.',
           STATUS: 'Status',
-          TITLE: 'Scope summary'
+          TITLE: 'Lettering summary'
         },
         TABLE: {
           ALLOCATION: 'Allocation',
@@ -160,11 +164,11 @@ const translations = {
         },
         TITLE: 'Lettering',
         UNLETTERED: {
-          DESCRIPTION: 'Only unlettered or partially lettered posted lines are shown.',
-          EMPTY: 'There is no remaining amount to letter for this scope.',
-          EMPTY_TITLE: 'No candidate line',
-          TITLE: 'Candidate lines',
-          TOTAL: 'Candidate lines'
+          DESCRIPTION: 'Select lines to match or apply a suggestion.',
+          EMPTY: 'No unlettered line for this third party.',
+          EMPTY_TITLE: 'No line to letter',
+          TITLE: 'Unlettered lines',
+          TOTAL: 'Unlettered lines'
         }
       }
     },
@@ -301,6 +305,9 @@ describe('LetteringPage', () => {
     const text = fixture.nativeElement.textContent;
 
     expect(text).toContain('Lettering');
+    expect(text).toContain('Scope');
+    expect(text).toContain('Unlettered lines');
+    expect(text).toContain('Lettering summary');
     expect(text).toContain('Third-party account');
     expect(text).toContain('Third-party type');
     expect(text).toContain('Third party');
@@ -309,6 +316,26 @@ describe('LetteringPage', () => {
     expect(text).toContain('Select an auxiliary account and a third party to load lines.');
     expect(text).not.toContain('Project');
     httpMock.expectNone((request) => request.url === `${apiBaseUrl}/lettering/candidates`);
+  });
+
+  it('hides account and third-party context badges until values are selected', async () => {
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Active dossier');
+    expect(fixture.nativeElement.textContent).toContain('Fiscal year 2026');
+    expect(fixture.nativeElement.textContent).toContain('Customer');
+    expect(fixture.nativeElement.textContent).not.toContain('41100000 — Clients');
+    expect(fixture.nativeElement.textContent).not.toContain('C001 — Client Demo');
+
+    const component = testable(fixture);
+    component.form.controls.accountId.setValue('41100000');
+    component.form.controls.thirdPartyId.setValue('TP-001');
+    component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
+    component.handleThirdPartySelected(thirdPartyDtoFixture('TP-001', 'C001', 'Client Demo', 'CUSTOMER'));
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('41100000 — Clients');
+    expect(fixture.nativeElement.textContent).toContain('C001 — Client Demo');
   });
 
   it('keeps loading disabled until fiscal year, type, account, and third party are valid', async () => {
@@ -343,7 +370,7 @@ describe('LetteringPage', () => {
 
     const text = fixture.nativeElement.textContent;
 
-    expect(text).toContain('Candidate lines');
+    expect(text).toContain('Unlettered lines');
     expect(text).toContain('Customer invoice');
     expect(text).toContain('41100000 — Clients');
     expect(text).toContain('C001 — Client Demo');
@@ -351,6 +378,37 @@ describe('LetteringPage', () => {
     expect(text).not.toContain('ORG#demo');
     expect(text).not.toContain('GSI3PK');
     expect(text).not.toContain('ENTRY_LINE');
+  });
+
+  it('renders a dense accounting table without a dominant entry-number column', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, [
+      candidateLine({
+        entryNumber: 'VE-2026-VERY-LONG-ENTRY-NUMBER-0000001',
+        label: 'Very long customer invoice label that should remain scannable in the table'
+      })
+    ]);
+    await settle(fixture);
+
+    const headers = (
+      Array.from(fixture.nativeElement.querySelectorAll('thead th')) as HTMLElement[]
+    ).map((header) => header.textContent?.trim());
+
+    expect(headers).toEqual([
+      'Select',
+      'Date',
+      'Journal',
+      'Reference',
+      'Label',
+      'Debit',
+      'Credit',
+      'Remaining',
+      'Allocation'
+    ]);
+    expect(headers).not.toContain('Entry');
+    expect(fixture.nativeElement.textContent).toContain('VE-2026-VERY-LONG-ENTRY-NUMBER-0000001');
+    expect(normalizedText(fixture)).toContain('100 000');
+    expect(testable(fixture).allocationAmount(testable(fixture).candidates()[0])).toBe(100_000);
   });
 
   it('computes selected debit and credit totals and enables lettering only when balanced', async () => {
@@ -402,13 +460,34 @@ describe('LetteringPage', () => {
     const component = testable(fixture);
     const suggestion = component.suggestions()[0];
 
-    component.applySuggestion(suggestion);
+    const suggestionButton = (
+      Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
+    ).find((button) => normalizeSpaces(button.textContent ?? '').includes('100 000 balanced'));
+
+    expect(suggestionButton).toBeTruthy();
+    suggestionButton?.click();
     fixture.detectChanges();
 
     expect(component.selectedDebitTotal()).toBe(100_000);
     expect(component.selectedCreditTotal()).toBe(100_000);
     expect(component.selectedDifference()).toBe(0);
     expect(component.canCreateMatch()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Selection');
+    expect(fixture.nativeElement.textContent).toContain('FAC-001');
+    expect(normalizedText(fixture)).toContain('Debit 100 000');
+    expect(normalizedText(fixture)).toContain('Credit 100 000');
+    expect(suggestion.amount).toBe(100_000);
+  });
+
+  it('hides the suggestions bar when loaded candidates cannot suggest a match', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, [
+      candidateLine({ debit: 100_000, credit: 0, lineId: 'L-DEBIT' })
+    ]);
+    await settle(fixture);
+
+    expect(testable(fixture).suggestions()).toHaveLength(0);
+    expect(fixture.nativeElement.textContent).not.toContain('Matching suggestions');
   });
 
   it('uses partial suggestions to allocate the smaller credit amount', async () => {
@@ -458,6 +537,49 @@ describe('LetteringPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Maximum: 100');
   });
 
+  it('updates the synthesis status and selected-line preview from the current selection', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, [
+      candidateLine({ debit: 100_000, credit: 0, lineId: 'L-DEBIT', reference: 'FAC-CUST-001' }),
+      candidateLine({
+        accountingDate: '2026-01-12',
+        credit: 60_000,
+        debit: 0,
+        entryId: 'E-CREDIT',
+        lineId: 'L-CREDIT',
+        originalAmount: 60_000,
+        reference: 'PAY-CUST-001',
+        remainingAmount: 60_000
+      })
+    ]);
+    await settle(fixture);
+
+    const component = testable(fixture);
+    const [debitLine, creditLine] = component.candidates();
+    component.toggleLine(debitLine, true);
+    component.toggleLine(creditLine, true);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Selected lines');
+    expect(fixture.nativeElement.textContent).toContain('2');
+    expect(fixture.nativeElement.textContent).toContain('Selected debit');
+    expect(normalizedText(fixture)).toContain('100 000');
+    expect(fixture.nativeElement.textContent).toContain('Selected credit');
+    expect(normalizedText(fixture)).toContain('60 000');
+    expect(normalizedText(fixture)).toContain('+40 000');
+    expect(fixture.nativeElement.textContent).toContain('Difference to letter');
+    expect(letterButton(fixture).disabled).toBe(true);
+
+    component.updateAllocation(debitLine, { target: { value: '60000' } } as unknown as Event);
+    fixture.detectChanges();
+
+    expect(component.canCreateMatch()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Balanced');
+    expect(fixture.nativeElement.textContent).toContain('FAC-CUST-001');
+    expect(fixture.nativeElement.textContent).toContain('PAY-CUST-001');
+    expect(letterButton(fixture).disabled).toBe(false);
+  });
+
   it('confirms a balanced lettering match, prioritizes the backend message, and refreshes candidates', async () => {
     setScope(fixture);
     await flushCandidates(httpMock, apiBaseUrl, balancedCandidateLines());
@@ -503,7 +625,34 @@ describe('LetteringPage', () => {
     await settle(fixture);
 
     expect(notifications.success).toHaveBeenCalledWith('Lettrage enregistré côté serveur.');
-    expect(fixture.nativeElement.textContent).toContain('No candidate line');
+    expect(fixture.nativeElement.textContent).toContain('No line to letter');
+  });
+
+  it('renders the no-candidates state after a valid load returns no lines', async () => {
+    setScope(fixture);
+    await flushCandidates(httpMock, apiBaseUrl, []);
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('No unlettered line for this third party.');
+  });
+
+  it('renders a clean error state without raw technical details', async () => {
+    setScope(fixture);
+    const request = await expectOneEventually(httpMock, (candidate) => {
+      return candidate.url === `${apiBaseUrl}/lettering/candidates`;
+    });
+    request.flush(
+      { message: 'ZodError GSI3PK ConditionalCheckFailedException DynamoDB stack trace' },
+      { status: 500, statusText: 'Server Error' }
+    );
+    await settle(fixture);
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Lettering lines could not be loaded. Try again.');
+    expect(text).toContain('Retry');
+    expect(text).not.toContain('ZodError');
+    expect(text).not.toContain('GSI3PK');
+    expect(text).not.toContain('DynamoDB');
   });
 
   it('falls back to safe copy instead of displaying technical backend errors', async () => {
@@ -579,6 +728,8 @@ describe('LetteringPage', () => {
     expect(fixture.nativeElement.innerHTML).toContain('dark:');
     expect(fixture.nativeElement.textContent).toContain('Selected debit');
     expect(fixture.nativeElement.textContent).toContain('Selected credit');
+    expect(fixture.nativeElement.innerHTML).toContain('xl:grid-cols-[320px_minmax(0,1fr)_300px]');
+    expect(fixture.nativeElement.innerHTML).toContain('xl:sticky');
   });
 });
 
@@ -709,6 +860,14 @@ function loadButton(fixture: ComponentFixture<LetteringPage>): HTMLButtonElement
   }
 
   return button;
+}
+
+function normalizedText(fixture: ComponentFixture<LetteringPage>): string {
+  return normalizeSpaces(fixture.nativeElement.textContent ?? '');
+}
+
+function normalizeSpaces(value: string): string {
+  return value.replace(/\s+/g, ' ');
 }
 
 function balancedCandidateLines(): UnletteredLineDto[] {

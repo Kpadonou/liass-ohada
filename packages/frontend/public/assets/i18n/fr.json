@@ -1504,6 +1504,7 @@
         "CANCEL_GROUP": "Délettrer",
         "LOAD": "Charger",
         "POST": "Lettrer",
+        "RETRY": "Réessayer",
         "SELECT": "Sélectionner"
       },
       "CONTEXT": {
@@ -1519,6 +1520,7 @@
         "CANCEL_FAILED": "Le lettrage n’a pas pu être annulé.",
         "CANCEL_SELECTION_REQUIRED": "Sélectionnez au moins une ligne lettrée à annuler.",
         "DATE_RANGE": "La date de début doit être antérieure ou égale à la date de fin.",
+        "LOAD_FAILED": "Les lignes de lettrage n’ont pas pu être chargées. Réessayez.",
         "MISSING_YEAR": "Certaines lignes ne portent pas l’exercice requis.",
         "POST_FAILED": "Le lettrage n’a pas pu être enregistré.",
         "SELECTION_REQUIRED": "Sélectionnez au moins une ligne au débit et une ligne au crédit avec des montants équilibrés.",
@@ -1540,8 +1542,8 @@
       },
       "FILTERS": {
         "ADVANCED": "Filtres avancés",
-        "DESCRIPTION": "Choisissez le type de tiers, le compte auxiliaire et le tiers à rapprocher.",
-        "TITLE": "Périmètre de lettrage"
+        "DESCRIPTION": "Compte auxiliaire, tiers et filtres de travail.",
+        "TITLE": "Périmètre"
       },
       "LINE_TYPES": {
         "CREDIT": "Crédit",
@@ -1584,6 +1586,9 @@
       "RESULT": {
         "LINES": "{{count}} ligne(s) traitée(s)",
         "TITLE": "Résultat"
+      },
+      "SELECTED_PREVIEW": {
+        "TITLE": "Sélection"
       },
       "STATUS": {
         "LETTERED": "Lettrée",
@@ -1647,7 +1652,7 @@
       "TITLE": "Lettrage",
       "UNLETTERED": {
         "DESCRIPTION": "Sélectionnez des lignes à rapprocher ou appliquez une suggestion.",
-        "EMPTY": "Aucune ligne non lettrée pour ce périmètre.",
+        "EMPTY": "Aucune ligne non lettrée pour ce tiers.",
         "EMPTY_TITLE": "Aucune ligne à lettrer",
         "SELECTED": "Sélectionnées",
         "SUGGESTIONS": "Suggestions",
