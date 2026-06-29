@@ -9,7 +9,6 @@ import { MatSelectModule } from '@angular/material/select';
 import {
   type AccountDto,
   type LetteringMatchDto,
-  type ThirdPartyDto,
   type ThirdPartyTypeValue,
   type UnletteredLineDto
 } from '@liass-ohada/shared/accounting';
@@ -29,7 +28,10 @@ import { AccountingFiscalYearContextService } from '../../data-access/accounting
 import { AccountingQueries } from '../../data-access/accounting-queries';
 import { AccountSearchSelectComponent } from '../../ui/account-search-select/account-search-select.component';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
-import { ThirdPartySearchSelectComponent } from '../../ui/third-party-search-select/third-party-search-select.component';
+import {
+  ThirdPartySelectComponent,
+  type ThirdPartySelectedValue
+} from '../../ui/third-party-search-select/third-party-search-select.component';
 
 interface LetteringScope {
   accountId: string;
@@ -155,7 +157,7 @@ export class LetteringConfirmationDialogComponent {
     MatInputModule,
     MatSelectModule,
     ReactiveFormsModule,
-    ThirdPartySearchSelectComponent,
+    ThirdPartySelectComponent,
     TranslocoModule
   ],
   templateUrl: './lettering.page.html'
@@ -176,7 +178,7 @@ export class LetteringPage {
   protected readonly latestMatch = signal<LetteringMatchDto | null>(null);
   protected readonly pageErrorKey = signal<string | null>(null);
   protected readonly selectedAccount = signal<AccountDto | null>(null);
-  protected readonly selectedThirdParty = signal<ThirdPartyDto | null>(null);
+  protected readonly selectedThirdParty = signal<ThirdPartySelectedValue | null>(null);
   protected readonly hasAppliedScope = signal(false);
   protected readonly advancedFiltersOpen = signal(false);
 
@@ -297,10 +299,10 @@ export class LetteringPage {
   });
   protected readonly thirdPartyContextLabel = computed<string | null>(() => {
     const scope = this.scope();
-    const code = scope.thirdPartyCode || this.selectedThirdParty()?.code;
+    const code = scope.thirdPartyCode || this.selectedThirdParty()?.thirdPartyCode;
     const name =
       scope.thirdPartyName ||
-      this.selectedThirdParty()?.displayName;
+      this.selectedThirdParty()?.thirdPartyName;
 
     if (code && name) {
       return `${code} — ${name}`;
@@ -361,8 +363,8 @@ export class LetteringPage {
       accountId: raw.accountId,
       thirdPartyId: raw.thirdPartyId.trim(),
       thirdPartyType: raw.thirdPartyType,
-      thirdPartyCode: selectedThirdParty?.code,
-      thirdPartyName: selectedThirdParty?.displayName,
+      thirdPartyCode: selectedThirdParty?.thirdPartyCode,
+      thirdPartyName: selectedThirdParty?.thirdPartyName,
       dateFrom: raw.dateFrom || undefined,
       dateTo: raw.dateTo || undefined,
       reference: raw.reference.trim() || undefined,
@@ -382,7 +384,7 @@ export class LetteringPage {
     this.selectedAccount.set(account);
   }
 
-  protected handleThirdPartySelected(thirdParty: ThirdPartyDto | null): void {
+  protected handleThirdPartySelected(thirdParty: ThirdPartySelectedValue | null): void {
     this.selectedThirdParty.set(thirdParty);
   }
 

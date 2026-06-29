@@ -9,7 +9,14 @@ import {
   output,
   signal
 } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  AbstractControl,
+  ControlValueAccessor,
+  NG_VALIDATORS,
+  NG_VALUE_ACCESSOR,
+  ValidationErrors,
+  Validator
+} from '@angular/forms';
 import {
   MatAutocompleteModule,
   MatAutocompleteSelectedEvent
@@ -18,17 +25,29 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { type ThirdPartyDto, type ThirdPartyTypeValue } from '@liass-ohada/shared/accounting';
+import {
+  type ThirdPartyDto,
+  type ThirdPartyStatusValue,
+  type ThirdPartyTypeValue
+} from '@liass-ohada/shared/accounting';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { AccountingApi } from '../../data-access/accounting.api';
 
-const THIRD_PARTY_PAGE_SIZE = 50;
-const THIRD_PARTY_SEARCH_DEBOUNCE_MS = 200;
 const LOAD_MORE_VALUE = '__LOAD_MORE_THIRD_PARTIES__';
+const DEFAULT_THIRD_PARTY_LIMIT = 200;
+
+export interface ThirdPartySelectedValue {
+  thirdPartyId: string;
+  thirdPartyType: ThirdPartyTypeValue;
+  thirdPartyCode: string;
+  thirdPartyName: string;
+}
+
+type ThirdPartyStatusFilter = ThirdPartyStatusValue | 'ALL';
 
 @Component({
-  selector: 'liass-third-party-search-select',
+  selector: 'liass-third-party-select',
   host: {
     class: 'block'
   },
@@ -44,32 +63,45 @@ const LOAD_MORE_VALUE = '__LOAD_MORE_THIRD_PARTIES__';
     {
       multi: true,
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => ThirdPartySearchSelectComponent)
+      useExisting: forwardRef(() => ThirdPartySelectComponent)
+    },
+    {
+      multi: true,
+      provide: NG_VALIDATORS,
+      useExisting: forwardRef(() => ThirdPartySelectComponent)
     }
   ],
   templateUrl: './third-party-search-select.component.html'
 })
-export class ThirdPartySearchSelectComponent implements ControlValueAccessor, OnDestroy {
+export class ThirdPartySelectComponent implements ControlValueAccessor, Validator, OnDestroy {
   readonly type = input<ThirdPartyTypeValue>('CUSTOMER');
-  readonly labelKey = input('ACCOUNTING.LETTERING.FIELDS.THIRD_PARTY');
-  readonly placeholderKey = input('ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.PLACEHOLDER');
+  readonly label = input<string | null>(null);
+  readonly placeholder = input<string | null>(null);
+  readonly required = input(false);
+  readonly disabledInput = input(false, { alias: 'disabled' });
+  readonly showSelectedPreview = input(false);
+  readonly status = input<ThirdPartyStatusFilter>('ACTIVE');
+  readonly limit = input(DEFAULT_THIRD_PARTY_LIMIT);
   readonly showError = input(false);
   readonly errorKey = input<string | null>(null);
-  readonly partySelected = output<ThirdPartyDto | null>();
+  readonly thirdPartySelected = output<ThirdPartySelectedValue | null>();
 
   private readonly accountingApi = inject(AccountingApi);
   private readonly selectedValue = signal<string | null>(null);
   private readonly thirdParties = signal<ThirdPartyDto[]>([]);
   private readonly nextCursor = signal<string | null>(null);
   private readonly requestSequence = signal(0);
-  private searchTimer: ReturnType<typeof setTimeout> | null = null;
   private currentType: ThirdPartyTypeValue = 'CUSTOMER';
+  private currentStatus: ThirdPartyStatusFilter = 'ACTIVE';
+  private currentLimit = DEFAULT_THIRD_PARTY_LIMIT;
+  private hasInitialized = false;
   private isPropagatingInput = false;
   private onChange: (value: string | null) => void = () => undefined;
   private onTouched: () => void = () => undefined;
+  private onValidatorChange: () => void = () => undefined;
 
   protected readonly searchText = signal('');
-  protected readonly disabled = signal(false);
+  protected readonly cvaDisabled = signal(false);
   protected readonly focused = signal(false);
   protected readonly loading = signal(false);
   protected readonly loadingMore = signal(false);
@@ -77,6 +109,11 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
   protected readonly searchError = signal(false);
   protected readonly hasMore = signal(false);
 
+  protected readonly isDisabled = computed(() => this.disabledInput() || this.cvaDisabled());
+  protected readonly selectedThirdPartyOption = computed(() => {
+    const value = this.selectedValue();
+    return this.thirdParties().find((party) => party.thirdPartyId === value) ?? null;
+  });
   protected readonly visibleThirdParties = computed(() => {
     const query = normalizeSearch(this.searchText());
     const items = this.thirdParties().filter((party) => party.type === this.type());
@@ -95,7 +132,7 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
       return null;
     }
 
-    return 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.TYPE_TO_SEARCH';
+    return 'ACCOUNTING.THIRD_PARTIES.SELECT.TYPE_TO_SEARCH';
   });
 
   protected readonly showNoResults = computed(
@@ -109,29 +146,25 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
 
   private readonly typeSync = effect(() => {
     const type = this.type();
-    if (type === this.currentType) {
+    const status = this.status();
+    const limit = this.normalizedLimit();
+    if (this.hasInitialized && type === this.currentType && status === this.currentStatus && limit === this.currentLimit) {
       return;
     }
 
+    const shouldClearSelection = this.hasInitialized;
     this.currentType = type;
-    this.selectedValue.set(null);
-    this.searchText.set('');
-    this.thirdParties.set([]);
-    this.nextCursor.set(null);
-    this.hasMore.set(false);
-    this.hasLoaded.set(false);
-    this.searchError.set(false);
-    this.onChange(null);
-    this.partySelected.emit(null);
-    if (this.focused()) {
-      void this.loadFirstPage(type);
+    this.currentStatus = status;
+    this.currentLimit = limit;
+    this.hasInitialized = true;
+    if (shouldClearSelection) {
+      this.clearSelectedValue(true);
+      this.searchText.set('');
     }
+    this.reloadOptions();
   });
 
   ngOnDestroy(): void {
-    if (this.searchTimer) {
-      clearTimeout(this.searchTimer);
-    }
     this.typeSync.destroy();
   }
 
@@ -147,7 +180,7 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
     }
 
     const selected = this.selectedThirdParty();
-    this.searchText.set(selected ? this.thirdPartyLabel(selected) : normalizedValue);
+    this.searchText.set(selected ? this.thirdPartyLabel(selected) : '');
   }
 
   registerOnChange(fn: (value: string | null) => void): void {
@@ -158,14 +191,22 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
     this.onTouched = fn;
   }
 
+  registerOnValidatorChange(fn: () => void): void {
+    this.onValidatorChange = fn;
+  }
+
+  validate(_: AbstractControl): ValidationErrors | null {
+    return this.required() && !this.selectedValue() ? { required: true } : null;
+  }
+
   setDisabledState(isDisabled: boolean): void {
-    this.disabled.set(isDisabled);
+    this.cvaDisabled.set(isDisabled);
   }
 
   protected handleFocus(): void {
     this.focused.set(true);
     if (!this.hasLoaded() && !this.loading()) {
-      void this.loadFirstPage(this.type());
+      this.reloadOptions();
     }
   }
 
@@ -178,18 +219,10 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
   protected handleInput(event: Event): void {
     this.searchText.set((event.target as HTMLInputElement).value);
     this.searchError.set(false);
-    this.selectedValue.set(null);
-    this.propagateNullFromInput();
-    this.partySelected.emit(null);
-
-    if (this.searchTimer) {
-      clearTimeout(this.searchTimer);
-    }
+    this.clearSelectedValue(true);
 
     if (!this.hasLoaded() && !this.loading()) {
-      this.searchTimer = setTimeout(() => {
-        void this.loadFirstPage(this.type());
-      }, THIRD_PARTY_SEARCH_DEBOUNCE_MS);
+      this.reloadOptions();
     }
   }
 
@@ -204,9 +237,10 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
     const selected = this.thirdParties().find((party) => party.thirdPartyId === value);
     this.selectedValue.set(value);
     this.onChange(value);
-    this.partySelected.emit(selected ?? null);
-    this.searchText.set(selected ? this.thirdPartyLabel(selected) : value);
+    this.thirdPartySelected.emit(selected ? toSelectedValue(selected) : null);
+    this.searchText.set(selected ? this.thirdPartyLabel(selected) : '');
     this.searchError.set(false);
+    this.onValidatorChange();
   }
 
   protected thirdPartyLabel(party: ThirdPartyDto): string {
@@ -215,6 +249,19 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
 
   protected loadMoreValue(): string {
     return LOAD_MORE_VALUE;
+  }
+
+  protected statusKey(party: ThirdPartyDto): string {
+    return `ACCOUNTING.THIRD_PARTIES.STATUS.${party.status}`;
+  }
+
+  private reloadOptions(): void {
+    this.thirdParties.set([]);
+    this.nextCursor.set(null);
+    this.hasMore.set(false);
+    this.hasLoaded.set(false);
+    this.searchError.set(false);
+    void this.loadFirstPage(this.type());
   }
 
   private async loadFirstPage(type: ThirdPartyTypeValue): Promise<void> {
@@ -226,13 +273,18 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
     try {
       const result = await this.accountingApi.listThirdParties({
         type,
-        status: 'ACTIVE',
-        limit: THIRD_PARTY_PAGE_SIZE
+        ...(this.status() === 'ALL' ? {} : { status: this.status() as ThirdPartyStatusValue }),
+        limit: this.normalizedLimit()
       });
       if (requestId !== this.requestSequence()) {
         return;
       }
-      this.thirdParties.set(mergeThirdParties(this.selectedThirdPartyArray(), result.items));
+      const items = mergeThirdParties(this.selectedThirdPartyArray(), result.items);
+      this.thirdParties.set(items);
+      const selected = items.find((party) => party.thirdPartyId === this.selectedValue());
+      if (selected) {
+        this.searchText.set(this.thirdPartyLabel(selected));
+      }
       this.nextCursor.set(result.nextCursor ?? null);
       this.hasMore.set(result.hasMore && !!result.nextCursor);
     } catch {
@@ -259,9 +311,9 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
     try {
       const result = await this.accountingApi.listThirdParties({
         type: this.type(),
-        status: 'ACTIVE',
+        ...(this.status() === 'ALL' ? {} : { status: this.status() as ThirdPartyStatusValue }),
         cursor,
-        limit: THIRD_PARTY_PAGE_SIZE
+        limit: this.normalizedLimit()
       });
       this.thirdParties.update((items) => mergeThirdParties(items, result.items));
       this.nextCursor.set(result.nextCursor ?? null);
@@ -274,8 +326,7 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
   }
 
   private selectedThirdParty(): ThirdPartyDto | null {
-    const value = this.selectedValue();
-    return this.thirdParties().find((party) => party.thirdPartyId === value) ?? null;
+    return this.selectedThirdPartyOption();
   }
 
   private selectedThirdPartyArray(): ThirdPartyDto[] {
@@ -292,7 +343,7 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
     }
 
     const selected = this.selectedThirdParty();
-    this.searchText.set(selected ? this.thirdPartyLabel(selected) : value);
+    this.searchText.set(selected ? this.thirdPartyLabel(selected) : '');
   }
 
   private propagateNullFromInput(): void {
@@ -301,6 +352,24 @@ export class ThirdPartySearchSelectComponent implements ControlValueAccessor, On
     queueMicrotask(() => {
       this.isPropagatingInput = false;
     });
+  }
+
+  private clearSelectedValue(emitChange: boolean): void {
+    if (!this.selectedValue() && !this.searchText()) {
+      return;
+    }
+
+    this.selectedValue.set(null);
+    if (emitChange) {
+      this.propagateNullFromInput();
+      this.thirdPartySelected.emit(null);
+      this.onValidatorChange();
+    }
+  }
+
+  private normalizedLimit(): number {
+    const limit = Math.floor(Number(this.limit()));
+    return Number.isFinite(limit) && limit > 0 ? Math.min(limit, 500) : DEFAULT_THIRD_PARTY_LIMIT;
   }
 }
 
@@ -323,4 +392,13 @@ function normalizeSearch(value: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .trim();
+}
+
+function toSelectedValue(party: ThirdPartyDto): ThirdPartySelectedValue {
+  return {
+    thirdPartyId: party.thirdPartyId,
+    thirdPartyType: party.type,
+    thirdPartyCode: party.code,
+    thirdPartyName: party.displayName
+  };
 }

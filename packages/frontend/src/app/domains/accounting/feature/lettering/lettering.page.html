@@ -59,13 +59,16 @@
             (accountSelected)="handleAccountSelected($event)"
           />
 
-          <liass-third-party-search-select
+          <liass-third-party-select
             class="block min-w-0"
             formControlName="thirdPartyId"
             [type]="form.controls.thirdPartyType.value"
+            [required]="true"
+            [label]="'ACCOUNTING.LETTERING.FIELDS.THIRD_PARTY' | transloco"
+            [placeholder]="'ACCOUNTING.THIRD_PARTIES.SELECT.PLACEHOLDER' | transloco"
             [showError]="form.controls.thirdPartyId.invalid && form.controls.thirdPartyId.touched"
             [errorKey]="'ACCOUNTING.LETTERING.ERRORS.THIRD_PARTY_REQUIRED'"
-            (partySelected)="handleThirdPartySelected($event)"
+            (thirdPartySelected)="handleThirdPartySelected($event)"
           />
 
           <liass-button

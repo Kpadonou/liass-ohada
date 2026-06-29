@@ -732,6 +732,15 @@
         "NO_CHANGES": "Aucune modification à enregistrer.",
         "UPDATED": "Tiers mis à jour avec succès."
       },
+      "SELECT": {
+        "EMPTY": "Aucun tiers trouvé",
+        "ERROR": "Les tiers n’ont pas pu être chargés.",
+        "LABEL": "Tiers",
+        "LOAD_MORE": "Charger plus de tiers",
+        "LOADING": "Chargement des tiers…",
+        "PLACEHOLDER": "Rechercher par code ou nom",
+        "TYPE_TO_SEARCH": "Saisissez un code ou un nom de tiers"
+      },
       "STATUS": {
         "ACTIVE": "Actif",
         "INACTIVE": "Inactif"

@@ -732,6 +732,15 @@
         "NO_CHANGES": "No changes to save.",
         "UPDATED": "Third party updated successfully."
       },
+      "SELECT": {
+        "EMPTY": "No third party found",
+        "ERROR": "Third parties could not be loaded.",
+        "LABEL": "Third party",
+        "LOAD_MORE": "Load more third parties",
+        "LOADING": "Loading third parties...",
+        "PLACEHOLDER": "Search by code or name",
+        "TYPE_TO_SEARCH": "Enter a third-party code or name"
+      },
       "STATUS": {
         "ACTIVE": "Active",
         "INACTIVE": "Inactive"

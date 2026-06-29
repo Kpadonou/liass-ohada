@@ -1,13 +1,14 @@
 <mat-form-field appearance="outline" class="w-full">
-  <mat-label>{{ labelKey() | transloco }}</mat-label>
+  <mat-label>{{ label() || ('ACCOUNTING.THIRD_PARTIES.SELECT.LABEL' | transloco) }}</mat-label>
   <mat-icon matIconPrefix>groups</mat-icon>
   <input
     matInput
     type="text"
     autocomplete="off"
-    [disabled]="disabled()"
+    [disabled]="isDisabled()"
     [matAutocomplete]="thirdPartyAutocomplete"
-    [placeholder]="placeholderKey() | transloco"
+    [placeholder]="placeholder() || ('ACCOUNTING.THIRD_PARTIES.SELECT.PLACEHOLDER' | transloco)"
+    [required]="required()"
     [value]="searchText()"
     (blur)="handleBlur()"
     (focus)="handleFocus()"
@@ -22,22 +23,37 @@
   >
     @if (loading()) {
       <mat-option disabled>
-        {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.LOADING' | transloco }}
+        <span class="inline-flex items-center gap-2 text-app-muted">
+          <mat-spinner diameter="16" />
+          <span>{{ 'ACCOUNTING.THIRD_PARTIES.SELECT.LOADING' | transloco }}</span>
+        </span>
       </mat-option>
     } @else {
       @for (party of visibleThirdParties(); track party.type + ':' + party.thirdPartyId) {
         <mat-option [value]="party.thirdPartyId">
-          <span class="font-semibold">{{ party.code }}</span>
-          <span class="text-app-muted"> — {{ party.displayName }}</span>
+          <span class="flex min-w-0 items-center gap-2">
+            <mat-icon class="shrink-0 text-base text-app-muted">groups</mat-icon>
+            <span class="inline-flex shrink-0 items-center rounded-full border border-app-border bg-app-surface-muted px-2 py-0.5 text-xs font-semibold text-app-text">
+              {{ party.code }}
+            </span>
+            <span class="min-w-0 truncate text-app-text">{{ party.displayName }}</span>
+            @if (party.status === 'ACTIVE') {
+              <span class="ml-auto rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-semibold text-success-600 dark:bg-emerald-950/35 dark:text-emerald-200">
+                {{ statusKey(party) | transloco }}
+              </span>
+            }
+          </span>
         </mat-option>
       } @empty {
         @if (helperKey(); as helper) {
           <mat-option disabled>{{ helper | transloco }}</mat-option>
         } @else if (searchError()) {
-          <mat-option disabled>{{ 'COMMON.NOTIFICATIONS.LOAD_ERROR' | transloco }}</mat-option>
+          <mat-option disabled>
+            {{ 'ACCOUNTING.THIRD_PARTIES.SELECT.ERROR' | transloco }}
+          </mat-option>
         } @else if (showNoResults()) {
           <mat-option disabled>
-            {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.NO_RESULTS' | transloco }}
+            {{ 'ACCOUNTING.THIRD_PARTIES.SELECT.EMPTY' | transloco }}
           </mat-option>
         }
       }
@@ -45,9 +61,9 @@
       @if (hasMore()) {
         <mat-option [value]="loadMoreValue()">
           @if (loadingMore()) {
-            {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.LOADING' | transloco }}
+            {{ 'ACCOUNTING.THIRD_PARTIES.SELECT.LOADING' | transloco }}
           } @else {
-            {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_SELECT.LOAD_MORE' | transloco }}
+            {{ 'ACCOUNTING.THIRD_PARTIES.SELECT.LOAD_MORE' | transloco }}
           }
         </mat-option>
       }
@@ -61,4 +77,21 @@
   <p class="-mt-4 text-xs text-red-600 dark:text-red-300">
     {{ validationKey | transloco }}
   </p>
+}
+@if (showSelectedPreview() && selectedThirdPartyOption(); as selectedThirdParty) {
+  <div
+    data-testid="third-party-selected-preview"
+    class="-mt-3 flex min-w-0 items-center gap-2 rounded-app-control border border-app-border bg-app-surface-muted px-3 py-2 text-sm text-app-text"
+  >
+    <mat-icon class="shrink-0 text-base text-app-muted">badge</mat-icon>
+    <span class="inline-flex shrink-0 rounded-full border border-app-border bg-app-surface px-2 py-0.5 text-xs font-semibold">
+      {{ selectedThirdParty.code }}
+    </span>
+    <span class="min-w-0 truncate font-medium">{{ selectedThirdParty.displayName }}</span>
+    @if (selectedThirdParty.status === 'ACTIVE') {
+      <span class="ml-auto shrink-0 rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-semibold text-success-600 dark:bg-emerald-950/35 dark:text-emerald-200">
+        {{ statusKey(selectedThirdParty) | transloco }}
+      </span>
+    }
+  </div>
 }

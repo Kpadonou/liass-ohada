@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
@@ -18,6 +19,10 @@ import { vi } from 'vitest';
 import { NotificationService } from '../../../../core/notifications/notification.service';
 import { environment } from '../../../../../environments/environment';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
+import {
+  ThirdPartySelectComponent,
+  type ThirdPartySelectedValue
+} from '../../ui/third-party-search-select/third-party-search-select.component';
 import { LetteringPage } from './lettering.page';
 
 const translations = {
@@ -36,6 +41,21 @@ const translations = {
       },
       ERRORS: {
         LOAD_FAILED: 'Accounting data could not be loaded.'
+      },
+      THIRD_PARTIES: {
+        SELECT: {
+          EMPTY: 'No third party found',
+          ERROR: 'Third parties could not be loaded.',
+          LABEL: 'Third party',
+          LOAD_MORE: 'Load more third parties',
+          LOADING: 'Loading third parties...',
+          PLACEHOLDER: 'Search by code or name',
+          TYPE_TO_SEARCH: 'Enter a third-party code or name'
+        },
+        STATUS: {
+          ACTIVE: 'Active',
+          INACTIVE: 'Inactive'
+        }
       },
       LETTERING: {
         ACTIONS: {
@@ -198,13 +218,13 @@ interface TestableLetteringPage {
   confirmCancelLatestMatch: () => Promise<void>;
   confirmCreateMatch: () => Promise<void>;
   handleAccountSelected: (account: AccountDto | null) => void;
-  handleThirdPartySelected: (thirdParty: ThirdPartyDto | null) => void;
+  handleThirdPartySelected: (thirdParty: ThirdPartySelectedValue | null) => void;
   form: {
     controls: {
       accountId: { setValue: (value: string) => void };
       dateFrom: { setValue: (value: string) => void };
       dateTo: { setValue: (value: string) => void };
-      thirdPartyId: { setValue: (value: string) => void };
+      thirdPartyId: { setValue: (value: string) => void; value: string };
       thirdPartyType: { setValue: (value: 'CUSTOMER' | 'SUPPLIER') => void };
     };
   };
@@ -293,6 +313,7 @@ describe('LetteringPage', () => {
     componentInternals.dialog = { open: dialogOpen };
     componentInternals.notifications = notifications;
     fixture.detectChanges();
+    flushThirdPartyList(httpMock, apiBaseUrl, 'CUSTOMER');
   });
 
   afterEach(() => {
@@ -344,6 +365,99 @@ describe('LetteringPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Reference or label');
   });
 
+  it('uses the reusable third-party selector on the lettering page', async () => {
+    await settle(fixture);
+
+    expect(fixture.debugElement.query(By.directive(ThirdPartySelectComponent))).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('liass-third-party-select')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('liass-third-party-search-select')).toBeFalsy();
+  });
+
+  it('selecting Client Alpha stores the thirdPartyId internally and displays code plus name', async () => {
+    await settle(fixture);
+
+    const component = testable(fixture);
+    component.form.controls.accountId.setValue('41100000');
+    component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
+    thirdPartySelector(fixture).selectOption({ option: { value: 'tp-cust-alpha' } });
+    fixture.detectChanges();
+
+    expect(component.form.controls.thirdPartyId.value).toBe('tp-cust-alpha');
+    expect(component.canLoadScope()).toBe(true);
+    expect(thirdPartyInput(fixture).value).toBe('CUST-ALPHA — Client Alpha');
+    expect(fixture.nativeElement.querySelector('[data-testid="third-party-selected-preview"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
+  });
+
+  it('switching to suppliers clears the customer selection and selecting Fournisseur Beta works', async () => {
+    await settle(fixture);
+
+    const component = testable(fixture);
+    component.form.controls.accountId.setValue('41100000');
+    component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
+    thirdPartySelector(fixture).selectOption({ option: { value: 'tp-cust-alpha' } });
+    fixture.detectChanges();
+
+    component.form.controls.thirdPartyType.setValue('SUPPLIER');
+    fixture.detectChanges();
+    flushThirdPartyList(httpMock, apiBaseUrl, 'SUPPLIER');
+    await settle(fixture);
+
+    expect(component.form.controls.thirdPartyId.value).toBeFalsy();
+    expect(component.canLoadScope()).toBe(false);
+    expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA — Client Alpha');
+
+    component.form.controls.accountId.setValue('40100000');
+    component.handleAccountSelected(accountDtoFixture('40100000', 'Fournisseurs'));
+    thirdPartySelector(fixture).selectOption({ option: { value: 'tp-sup-beta' } });
+    fixture.detectChanges();
+
+    expect(component.form.controls.thirdPartyId.value).toBe('tp-sup-beta');
+    expect(component.canLoadScope()).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('SUP-BETA');
+    expect(fixture.nativeElement.textContent).toContain('Fournisseur Beta');
+    expect(fixture.nativeElement.textContent).not.toContain('tp-sup-beta');
+  });
+
+  it('keeps Load disabled until account and reusable third-party selections are present', async () => {
+    await settle(fixture);
+
+    const component = testable(fixture);
+    expect(loadButton(fixture).disabled).toBe(true);
+
+    component.form.controls.accountId.setValue('41100000');
+    component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
+    fixture.detectChanges();
+    expect(loadButton(fixture).disabled).toBe(true);
+
+    thirdPartySelector(fixture).selectOption({ option: { value: 'tp-cust-alpha' } });
+    fixture.detectChanges();
+    expect(loadButton(fixture).disabled).toBe(false);
+  });
+
+  it('loads lettering candidates after selecting the reusable third-party selector value', async () => {
+    await settle(fixture);
+
+    const component = testable(fixture);
+    component.form.controls.accountId.setValue('41100000');
+    component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
+    thirdPartySelector(fixture).selectOption({ option: { value: 'tp-cust-alpha' } });
+    fixture.detectChanges();
+
+    component.applyFilters();
+    fixture.detectChanges();
+    await flushCandidates(
+      httpMock,
+      apiBaseUrl,
+      [candidateLine({ thirdPartyId: 'tp-cust-alpha', thirdPartyCode: 'CUST-ALPHA', thirdPartyName: 'Client Alpha' })],
+      { thirdPartyId: 'tp-cust-alpha', thirdPartyType: 'CUSTOMER' }
+    );
+    await settle(fixture);
+
+    expect(fixture.nativeElement.textContent).toContain('Customer invoice');
+    expect(fixture.nativeElement.textContent).toContain('CUST-ALPHA — Client Alpha');
+  });
+
   it('hides account and third-party context badges until values are selected', async () => {
     await settle(fixture);
 
@@ -357,7 +471,7 @@ describe('LetteringPage', () => {
     component.form.controls.accountId.setValue('41100000');
     component.form.controls.thirdPartyId.setValue('TP-001');
     component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
-    component.handleThirdPartySelected(thirdPartyDtoFixture('TP-001', 'C001', 'Client Demo', 'CUSTOMER'));
+    component.handleThirdPartySelected(thirdPartySelectedValueFixture('TP-001', 'C001', 'Client Demo', 'CUSTOMER'));
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('41100000 — Clients');
@@ -379,7 +493,7 @@ describe('LetteringPage', () => {
     expect(component.canLoadScope()).toBe(false);
 
     component.handleAccountSelected(accountDtoFixture('41100000', 'Clients'));
-    component.handleThirdPartySelected(thirdPartyDtoFixture('TP-001', 'C001', 'Client Demo', 'CUSTOMER'));
+    component.handleThirdPartySelected(thirdPartySelectedValueFixture('TP-001', 'C001', 'Client Demo', 'CUSTOMER'));
     fixture.detectChanges();
 
     expect(component.canLoadScope()).toBe(true);
@@ -770,6 +884,14 @@ function testable(fixture: ComponentFixture<LetteringPage>): TestableLetteringPa
   return fixture.componentInstance as unknown as TestableLetteringPage;
 }
 
+function thirdPartySelector(fixture: ComponentFixture<LetteringPage>): any {
+  return fixture.debugElement.query(By.directive(ThirdPartySelectComponent)).componentInstance;
+}
+
+function thirdPartyInput(fixture: ComponentFixture<LetteringPage>): HTMLInputElement {
+  return fixture.nativeElement.querySelector('liass-third-party-select input') as HTMLInputElement;
+}
+
 function setScope(
   fixture: ComponentFixture<LetteringPage>,
   options: {
@@ -792,7 +914,7 @@ function setScope(
     )
   );
   component.handleThirdPartySelected(
-    thirdPartyDtoFixture(
+    thirdPartySelectedValueFixture(
       options.thirdPartyId ?? 'TP-001',
       options.thirdPartyType === 'SUPPLIER' ? 'F001' : 'C001',
       options.thirdPartyType === 'SUPPLIER' ? 'Fournisseur Demo' : 'Client Demo',
@@ -841,6 +963,33 @@ async function flushCandidates(
       thirdPartyType
     },
     message: 'Candidates loaded'
+  });
+}
+
+function flushThirdPartyList(
+  httpMock: HttpTestingController,
+  apiBaseUrl: string,
+  type: 'CUSTOMER' | 'SUPPLIER'
+): void {
+  const request = httpMock.expectOne((candidate) => {
+    return (
+      candidate.url === `${apiBaseUrl}/third-parties` &&
+      candidate.params.get('type') === type &&
+      candidate.params.get('status') === 'ACTIVE' &&
+      candidate.params.get('limit') === '200'
+    );
+  });
+
+  expect(request.request.method).toBe('GET');
+  request.flush({
+    data: {
+      hasMore: false,
+      items:
+        type === 'CUSTOMER'
+          ? [thirdPartyDtoFixture('tp-cust-alpha', 'CUST-ALPHA', 'Client Alpha', 'CUSTOMER')]
+          : [thirdPartyDtoFixture('tp-sup-beta', 'SUP-BETA', 'Fournisseur Beta', 'SUPPLIER')]
+    },
+    message: 'Third parties loaded'
   });
 }
 
@@ -972,6 +1121,20 @@ function thirdPartyDtoFixture(
     thirdPartyId,
     type,
     updatedAt: '2026-01-01T00:00:00.000Z'
+  };
+}
+
+function thirdPartySelectedValueFixture(
+  thirdPartyId: string,
+  code: string,
+  displayName: string,
+  type: 'CUSTOMER' | 'SUPPLIER'
+): ThirdPartySelectedValue {
+  return {
+    thirdPartyCode: code,
+    thirdPartyId,
+    thirdPartyName: displayName,
+    thirdPartyType: type
   };
 }
 
