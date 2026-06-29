@@ -32,105 +32,105 @@
       }
     </div>
 
-    <div class="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)_300px] 2xl:grid-cols-[340px_minmax(0,1fr)_320px]">
-      <aside class="space-y-5">
-        <liass-card
-          [title]="'ACCOUNTING.LETTERING.FILTERS.TITLE' | transloco"
-          [description]="'ACCOUNTING.LETTERING.FILTERS.DESCRIPTION' | transloco"
-          padding="sm"
-        >
-          <form class="space-y-4" [formGroup]="form" (ngSubmit)="applyFilters()">
-            <div>
-              <p class="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-app-muted">
-                {{ 'ACCOUNTING.LETTERING.FIELDS.THIRD_PARTY_TYPE' | transloco }}
-              </p>
-              <mat-button-toggle-group
-                class="w-full overflow-hidden rounded-app-control border border-app-border bg-app-surface-muted"
-                formControlName="thirdPartyType"
-                [attr.aria-label]="'ACCOUNTING.LETTERING.FIELDS.THIRD_PARTY_TYPE' | transloco"
-              >
-                <mat-button-toggle class="flex-1" value="CUSTOMER">
-                  {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_TYPES.CUSTOMER_PLURAL' | transloco }}
-                </mat-button-toggle>
-                <mat-button-toggle class="flex-1" value="SUPPLIER">
-                  {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_TYPES.SUPPLIER_PLURAL' | transloco }}
-                </mat-button-toggle>
-              </mat-button-toggle-group>
+    <liass-card
+      [title]="'ACCOUNTING.LETTERING.FILTERS.TITLE' | transloco"
+      [description]="'ACCOUNTING.LETTERING.FILTERS.DESCRIPTION' | transloco"
+      padding="sm"
+    >
+      <form class="space-y-3" [formGroup]="form" (ngSubmit)="applyFilters()">
+        <div class="grid items-start gap-3 lg:grid-cols-[180px_minmax(240px,300px)_minmax(320px,1fr)_auto_auto]">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.THIRD_PARTY_TYPE' | transloco }}</mat-label>
+            <mat-select formControlName="thirdPartyType">
+              <mat-option value="CUSTOMER">
+                {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_TYPES.CUSTOMER_PLURAL' | transloco }}
+              </mat-option>
+              <mat-option value="SUPPLIER">
+                {{ 'ACCOUNTING.LETTERING.THIRD_PARTY_TYPES.SUPPLIER_PLURAL' | transloco }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <liass-account-search-select
+            class="block min-w-0"
+            formControlName="accountId"
+            [auxiliaryType]="form.controls.thirdPartyType.value"
+            [labelKey]="'ACCOUNTING.LETTERING.FIELDS.ACCOUNT'"
+            (accountSelected)="handleAccountSelected($event)"
+          />
+
+          <liass-third-party-search-select
+            class="block min-w-0"
+            formControlName="thirdPartyId"
+            [type]="form.controls.thirdPartyType.value"
+            [showError]="form.controls.thirdPartyId.invalid && form.controls.thirdPartyId.touched"
+            [errorKey]="'ACCOUNTING.LETTERING.ERRORS.THIRD_PARTY_REQUIRED'"
+            (partySelected)="handleThirdPartySelected($event)"
+          />
+
+          <liass-button
+            class="w-full lg:w-auto"
+            buttonType="button"
+            tone="neutral"
+            variant="outline"
+            icon="tune"
+            (pressed)="toggleAdvancedFilters()"
+          >
+            {{ 'ACCOUNTING.LETTERING.FILTERS.ADVANCED' | transloco }}
+          </liass-button>
+
+          <liass-button
+            class="w-full lg:w-auto lg:justify-self-end"
+            buttonType="submit"
+            tone="brand"
+            variant="solid"
+            icon="search"
+            [disabled]="!canLoadScope()"
+          >
+            {{ 'ACCOUNTING.LETTERING.ACTIONS.LOAD' | transloco }}
+          </liass-button>
+        </div>
+
+        @if (advancedFiltersOpen()) {
+          <div class="rounded-app-card border border-app-border bg-app-surface-muted p-3">
+            <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-[180px_180px_minmax(260px,1fr)_180px_180px]">
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.DATE_FROM' | transloco }}</mat-label>
+                <input matInput type="date" formControlName="dateFrom" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.DATE_TO' | transloco }}</mat-label>
+                <input matInput type="date" formControlName="dateTo" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.REFERENCE' | transloco }}</mat-label>
+                <input matInput formControlName="reference" autocomplete="off" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.MIN_REMAINING' | transloco }}</mat-label>
+                <input matInput type="number" min="0" formControlName="minRemaining" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="w-full">
+                <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.MAX_REMAINING' | transloco }}</mat-label>
+                <input matInput type="number" min="0" formControlName="maxRemaining" />
+              </mat-form-field>
             </div>
+          </div>
+        }
 
-            <liass-account-search-select
-              formControlName="accountId"
-              [auxiliaryType]="form.controls.thirdPartyType.value"
-              [labelKey]="'ACCOUNTING.LETTERING.FIELDS.ACCOUNT'"
-              (accountSelected)="handleAccountSelected($event)"
-            />
+        @if (pageErrorKey(); as key) {
+          <p class="rounded-app-control bg-warning-50 px-3 py-2 text-sm text-warning-700 dark:bg-amber-950/25 dark:text-amber-200">
+            {{ key | transloco }}
+          </p>
+        }
+      </form>
+    </liass-card>
 
-            <liass-third-party-search-select
-              formControlName="thirdPartyId"
-              [type]="form.controls.thirdPartyType.value"
-              [showError]="form.controls.thirdPartyId.invalid && form.controls.thirdPartyId.touched"
-              [errorKey]="'ACCOUNTING.LETTERING.ERRORS.THIRD_PARTY_REQUIRED'"
-              (partySelected)="handleThirdPartySelected($event)"
-            />
-
-            <mat-expansion-panel class="!rounded-app-card !border !border-app-border !bg-app-surface !shadow-none">
-              <mat-expansion-panel-header>
-                <mat-panel-title class="text-sm font-semibold text-app-text">
-                  {{ 'ACCOUNTING.LETTERING.FILTERS.ADVANCED' | transloco }}
-                </mat-panel-title>
-              </mat-expansion-panel-header>
-
-              <div class="space-y-3 pt-2">
-                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.DATE_FROM' | transloco }}</mat-label>
-                    <input matInput type="date" formControlName="dateFrom" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.DATE_TO' | transloco }}</mat-label>
-                    <input matInput type="date" formControlName="dateTo" />
-                  </mat-form-field>
-                </div>
-
-                <mat-form-field appearance="outline" class="w-full">
-                  <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.REFERENCE' | transloco }}</mat-label>
-                  <input matInput formControlName="reference" autocomplete="off" />
-                </mat-form-field>
-
-                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.MIN_REMAINING' | transloco }}</mat-label>
-                    <input matInput type="number" min="0" formControlName="minRemaining" />
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline" class="w-full">
-                    <mat-label>{{ 'ACCOUNTING.LETTERING.FIELDS.MAX_REMAINING' | transloco }}</mat-label>
-                    <input matInput type="number" min="0" formControlName="maxRemaining" />
-                  </mat-form-field>
-                </div>
-              </div>
-            </mat-expansion-panel>
-
-            @if (pageErrorKey(); as key) {
-              <p class="rounded-app-control bg-warning-50 px-3 py-2 text-sm text-warning-700 dark:bg-amber-950/25 dark:text-amber-200">
-                {{ key | transloco }}
-              </p>
-            }
-
-            <liass-button
-              buttonType="submit"
-              tone="brand"
-              variant="solid"
-              icon="search"
-              [disabled]="!canLoadScope()"
-            >
-              {{ 'ACCOUNTING.LETTERING.ACTIONS.LOAD' | transloco }}
-            </liass-button>
-          </form>
-        </liass-card>
-      </aside>
-
+    <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_300px] 2xl:grid-cols-[minmax(0,1fr)_320px]">
       <main class="min-w-0 space-y-5">
         <liass-card
           [title]="'ACCOUNTING.LETTERING.UNLETTERED.TITLE' | transloco"

@@ -1,12 +1,11 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
-import { MatExpansionModule } from '@angular/material/expansion';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import {
   type AccountDto,
   type LetteringMatchDto,
@@ -149,13 +148,12 @@ export class LetteringConfirmationDialogComponent {
     LiassPageHeaderComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
-    MatButtonToggleModule,
     MatCheckboxModule,
     MatDialogModule,
-    MatExpansionModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
+    MatSelectModule,
     ReactiveFormsModule,
     ThirdPartySearchSelectComponent,
     TranslocoModule
@@ -180,6 +178,7 @@ export class LetteringPage {
   protected readonly selectedAccount = signal<AccountDto | null>(null);
   protected readonly selectedThirdParty = signal<ThirdPartyDto | null>(null);
   protected readonly hasAppliedScope = signal(false);
+  protected readonly advancedFiltersOpen = signal(false);
 
   protected readonly scope = signal<LetteringScope>({
     accountId: '',
@@ -373,6 +372,10 @@ export class LetteringPage {
     this.hasAppliedScope.set(true);
     this.pageErrorKey.set(null);
     this.clearSelection();
+  }
+
+  protected toggleAdvancedFilters(): void {
+    this.advancedFiltersOpen.update((isOpen) => !isOpen);
   }
 
   protected handleAccountSelected(account: AccountDto | null): void {

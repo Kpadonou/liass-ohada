@@ -312,10 +312,36 @@ describe('LetteringPage', () => {
     expect(text).toContain('Third-party type');
     expect(text).toContain('Third party');
     expect(text).toContain('Customers');
-    expect(text).toContain('Suppliers');
+    expect(text).toContain('Advanced filters');
     expect(text).toContain('Select an auxiliary account and a third party to load lines.');
     expect(text).not.toContain('Project');
+    expect(text).not.toContain('From');
     httpMock.expectNone((request) => request.url === `${apiBaseUrl}/lettering/candidates`);
+  });
+
+  it('keeps the perimeter in a horizontal filter bar with advanced filters collapsed by default', async () => {
+    await settle(fixture);
+
+    expect(fixture.nativeElement.innerHTML).toContain(
+      'lg:grid-cols-[180px_minmax(240px,300px)_minmax(320px,1fr)_auto_auto]'
+    );
+    expect(fixture.nativeElement.innerHTML).toContain('xl:grid-cols-[minmax(0,1fr)_300px]');
+    expect(fixture.nativeElement.innerHTML).not.toContain(
+      'xl:grid-cols-[320px_minmax(0,1fr)_300px]'
+    );
+    expect(fixture.nativeElement.querySelector('mat-select')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).not.toContain('From');
+
+    const advancedButton = (
+      Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[]
+    ).find((button) => button.textContent?.includes('Advanced filters'));
+
+    advancedButton?.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('From');
+    expect(fixture.nativeElement.textContent).toContain('To');
+    expect(fixture.nativeElement.textContent).toContain('Reference or label');
   });
 
   it('hides account and third-party context badges until values are selected', async () => {
@@ -728,7 +754,7 @@ describe('LetteringPage', () => {
     expect(fixture.nativeElement.innerHTML).toContain('dark:');
     expect(fixture.nativeElement.textContent).toContain('Selected debit');
     expect(fixture.nativeElement.textContent).toContain('Selected credit');
-    expect(fixture.nativeElement.innerHTML).toContain('xl:grid-cols-[320px_minmax(0,1fr)_300px]');
+    expect(fixture.nativeElement.innerHTML).toContain('xl:grid-cols-[minmax(0,1fr)_300px]');
     expect(fixture.nativeElement.innerHTML).toContain('xl:sticky');
   });
 });
