@@ -66,6 +66,7 @@
       "REPORTS": "États OHADA",
       "SECTION_LABEL": "Espace",
       "SYCEBNL_BADGE": "SYCEBNL",
+      "THIRD_PARTIES": "Tiers",
       "TREASURY": "Trésorerie",
       "TRIAL_BALANCE": "Balance"
     },
@@ -86,6 +87,7 @@
       "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
+      "THIRD_PARTIES": "Tiers",
       "TRIAL_BALANCE": "Balance"
     },
     "SECTIONS": {
@@ -634,6 +636,10 @@
         "SUBTITLE": "Un espace réservé à la gestion des journaux.",
         "TITLE": "Journaux"
       },
+      "THIRD_PARTIES": {
+        "SUBTITLE": "Gérez les clients et fournisseurs utilisés dans la comptabilité auxiliaire.",
+        "TITLE": "Tiers"
+      },
       "LETTERING": {
         "SUBTITLE": "Suivez les comptes auxiliaires et rapprochez les lignes de tiers.",
         "TITLE": "Lettrage"
@@ -664,6 +670,105 @@
       "JOURNAL_UPDATED": "Journal mis à jour avec succès.",
       "PERIOD_LOCKED": "Période verrouillée.",
       "PERIOD_UNLOCKED": "Période déverrouillée."
+    },
+    "THIRD_PARTIES": {
+      "ACTIONS": {
+        "ACTIVATE": "Activer",
+        "CLEAR_FILTERS": "Réinitialiser",
+        "DEACTIVATE": "Désactiver",
+        "EDIT": "Modifier",
+        "LOAD_MORE": "Charger plus de tiers",
+        "NEW_CUSTOMER": "Nouveau client",
+        "NEW_SUPPLIER": "Nouveau fournisseur",
+        "RETRY": "Réessayer"
+      },
+      "DIALOG": {
+        "CREATE_CUSTOMER_TITLE": "Nouveau client",
+        "CREATE_SUPPLIER_TITLE": "Nouveau fournisseur",
+        "EDIT_TITLE": "Modifier un tiers",
+        "EYEBROW": "Comptabilité auxiliaire",
+        "SUBTITLE": "Renseignez les informations visibles dans les journaux auxiliaires."
+      },
+      "EMPTY": {
+        "DESCRIPTION": "Aucun tiers n’est encore disponible pour la sélection actuelle.",
+        "NO_RESULTS_DESCRIPTION": "Modifiez le filtre, la recherche ou chargez plus de résultats si disponibles.",
+        "NO_RESULTS_TITLE": "Aucun tiers ne correspond aux filtres.",
+        "TITLE": "Aucun tiers chargé"
+      },
+      "ERRORS": {
+        "ACTIVATE_FAILED": "Le tiers n’a pas pu être activé.",
+        "CREATE_FAILED": "Le tiers n’a pas pu être créé.",
+        "DEACTIVATE_FAILED": "Le tiers n’a pas pu être désactivé.",
+        "LOAD_FAILED": "Les tiers n’ont pas pu être chargés. Vérifiez le dossier actif ou réessayez.",
+        "LOAD_MORE_FAILED": "Les résultats supplémentaires n’ont pas pu être chargés.",
+        "UPDATE_FAILED": "Le tiers n’a pas pu être mis à jour."
+      },
+      "EYEBROW": "Référentiel auxiliaire",
+      "FIELDS": {
+        "ADDRESS": "Adresse",
+        "CODE": "Code",
+        "COUNTRY": "Pays",
+        "DISPLAY_NAME": "Nom",
+        "EMAIL": "Email",
+        "PHONE": "Téléphone",
+        "TAX_IDENTIFIER": "Identifiant fiscal",
+        "TYPE": "Type"
+      },
+      "FILTERS": {
+        "ACTIVE": "Actifs",
+        "ALL": "Tous",
+        "INACTIVE": "Inactifs",
+        "LOCAL_SEARCH_HINT": "La recherche porte sur les tiers chargés.",
+        "SEARCH": "Recherche",
+        "SEARCH_PLACEHOLDER": "Rechercher par nom ou code tiers",
+        "STATUS": "Statut",
+        "TYPE": "Type de tiers"
+      },
+      "LOADING": "Chargement des tiers…",
+      "NOTIFICATIONS": {
+        "ACTIVATED": "Tiers activé avec succès.",
+        "CREATED": "Tiers créé avec succès.",
+        "DEACTIVATED": "Tiers désactivé avec succès.",
+        "UPDATED": "Tiers mis à jour avec succès."
+      },
+      "STATUS": {
+        "ACTIVE": "Actif",
+        "INACTIVE": "Inactif"
+      },
+      "STATUS_DIALOG": {
+        "ACTIVATE_DESCRIPTION": "Ce tiers pourra à nouveau être sélectionné pour les prochaines opérations.",
+        "ACTIVATE_TITLE": "Activer ce tiers ?",
+        "DEACTIVATE_DESCRIPTION": "Les écritures comptables existantes restent inchangées. Ce tiers ne sera plus proposé pour les prochaines opérations tant qu’il reste inactif.",
+        "DEACTIVATE_TITLE": "Désactiver ce tiers ?",
+        "EYEBROW": "Statut du tiers"
+      },
+      "SUBTITLE": "Gérez les clients et fournisseurs utilisés dans la comptabilité auxiliaire.",
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CODE": "Code",
+        "COUNTRY": "Pays",
+        "DESCRIPTION": "Clients et fournisseurs disponibles pour les comptes auxiliaires.",
+        "EMAIL": "Email",
+        "NAME": "Nom",
+        "PHONE": "Téléphone",
+        "STATUS": "Statut",
+        "TITLE": "Liste des tiers",
+        "TYPE": "Type"
+      },
+      "TABS": {
+        "CUSTOMERS": "Clients",
+        "SUPPLIERS": "Fournisseurs"
+      },
+      "TITLE": "Tiers",
+      "TYPES": {
+        "CUSTOMER": "Client",
+        "SUPPLIER": "Fournisseur"
+      },
+      "VALIDATION": {
+        "CODE": "Saisissez un code tiers.",
+        "DISPLAY_NAME": "Saisissez un nom.",
+        "EMAIL": "Saisissez une adresse email valide."
+      }
     },
     "JOURNAL_BOOK": {
       "EYEBROW": "Livres comptables",

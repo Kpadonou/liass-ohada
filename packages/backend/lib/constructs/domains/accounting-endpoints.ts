@@ -25,9 +25,11 @@ export class AccountingEndpoints extends DomainConstructFactory {
       method: apigw.HttpMethod,
       routePath: string,
       handlerPath: string,
+      actionName?: string,
     ) => {
       const entry = resolveHandlerEntry("accounting", handlerPath);
       this.addRoute({
+        actionName,
         api: props.api,
         authorizer: props.authorizer,
         domainName: "accounting",
@@ -82,6 +84,7 @@ export class AccountingEndpoints extends DomainConstructFactory {
       apigw.HttpMethod.PUT,
       "/third-parties/{thirdPartyId}",
       "third-parties/update-third-party",
+      "update-third-party-put",
     );
     map(
       apigw.HttpMethod.PATCH,

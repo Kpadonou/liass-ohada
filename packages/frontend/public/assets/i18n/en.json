@@ -66,6 +66,7 @@
       "REPORTS": "OHADA reports",
       "SECTION_LABEL": "Workspace",
       "SYCEBNL_BADGE": "SYCEBNL",
+      "THIRD_PARTIES": "Third parties",
       "TREASURY": "Treasury",
       "TRIAL_BALANCE": "Trial balance"
     },
@@ -86,6 +87,7 @@
       "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
+      "THIRD_PARTIES": "Third parties",
       "TRIAL_BALANCE": "Trial balance"
     },
     "SECTIONS": {
@@ -634,6 +636,10 @@
         "SUBTITLE": "A reserved workspace for journal management.",
         "TITLE": "Journals"
       },
+      "THIRD_PARTIES": {
+        "SUBTITLE": "Manage customers and suppliers used in auxiliary accounting.",
+        "TITLE": "Third parties"
+      },
       "LETTERING": {
         "SUBTITLE": "Track auxiliary accounts and match third-party lines.",
         "TITLE": "Lettering"
@@ -664,6 +670,105 @@
       "JOURNAL_UPDATED": "Journal updated successfully.",
       "PERIOD_LOCKED": "Period locked.",
       "PERIOD_UNLOCKED": "Period unlocked."
+    },
+    "THIRD_PARTIES": {
+      "ACTIONS": {
+        "ACTIVATE": "Activate",
+        "CLEAR_FILTERS": "Reset",
+        "DEACTIVATE": "Deactivate",
+        "EDIT": "Edit",
+        "LOAD_MORE": "Load more third parties",
+        "NEW_CUSTOMER": "New customer",
+        "NEW_SUPPLIER": "New supplier",
+        "RETRY": "Retry"
+      },
+      "DIALOG": {
+        "CREATE_CUSTOMER_TITLE": "New customer",
+        "CREATE_SUPPLIER_TITLE": "New supplier",
+        "EDIT_TITLE": "Edit third party",
+        "EYEBROW": "Auxiliary accounting",
+        "SUBTITLE": "Enter the information shown in auxiliary journals."
+      },
+      "EMPTY": {
+        "DESCRIPTION": "No third party is available yet for the current selection.",
+        "NO_RESULTS_DESCRIPTION": "Adjust the filter, search, or load more results when available.",
+        "NO_RESULTS_TITLE": "No third party matches the filters.",
+        "TITLE": "No third party loaded"
+      },
+      "ERRORS": {
+        "ACTIVATE_FAILED": "The third party could not be activated.",
+        "CREATE_FAILED": "The third party could not be created.",
+        "DEACTIVATE_FAILED": "The third party could not be deactivated.",
+        "LOAD_FAILED": "Third parties could not be loaded. Check the active dossier or retry.",
+        "LOAD_MORE_FAILED": "Additional results could not be loaded.",
+        "UPDATE_FAILED": "The third party could not be updated."
+      },
+      "EYEBROW": "Auxiliary reference",
+      "FIELDS": {
+        "ADDRESS": "Address",
+        "CODE": "Code",
+        "COUNTRY": "Country",
+        "DISPLAY_NAME": "Name",
+        "EMAIL": "Email",
+        "PHONE": "Phone",
+        "TAX_IDENTIFIER": "Tax identifier",
+        "TYPE": "Type"
+      },
+      "FILTERS": {
+        "ACTIVE": "Active",
+        "ALL": "All",
+        "INACTIVE": "Inactive",
+        "LOCAL_SEARCH_HINT": "Search applies to loaded third parties.",
+        "SEARCH": "Search",
+        "SEARCH_PLACEHOLDER": "Search by third-party name or code",
+        "STATUS": "Status",
+        "TYPE": "Third-party type"
+      },
+      "LOADING": "Loading third parties...",
+      "NOTIFICATIONS": {
+        "ACTIVATED": "Third party activated successfully.",
+        "CREATED": "Third party created successfully.",
+        "DEACTIVATED": "Third party deactivated successfully.",
+        "UPDATED": "Third party updated successfully."
+      },
+      "STATUS": {
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive"
+      },
+      "STATUS_DIALOG": {
+        "ACTIVATE_DESCRIPTION": "This third party can be selected again for future operations.",
+        "ACTIVATE_TITLE": "Activate this third party?",
+        "DEACTIVATE_DESCRIPTION": "Existing accounting entries remain unchanged. This third party will no longer be proposed for future operations while inactive.",
+        "DEACTIVATE_TITLE": "Deactivate this third party?",
+        "EYEBROW": "Third-party status"
+      },
+      "SUBTITLE": "Manage customers and suppliers used in auxiliary accounting.",
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CODE": "Code",
+        "COUNTRY": "Country",
+        "DESCRIPTION": "Customers and suppliers available for auxiliary accounts.",
+        "EMAIL": "Email",
+        "NAME": "Name",
+        "PHONE": "Phone",
+        "STATUS": "Status",
+        "TITLE": "Third-party list",
+        "TYPE": "Type"
+      },
+      "TABS": {
+        "CUSTOMERS": "Customers",
+        "SUPPLIERS": "Suppliers"
+      },
+      "TITLE": "Third parties",
+      "TYPES": {
+        "CUSTOMER": "Customer",
+        "SUPPLIER": "Supplier"
+      },
+      "VALIDATION": {
+        "CODE": "Enter a third-party code.",
+        "DISPLAY_NAME": "Enter a name.",
+        "EMAIL": "Enter a valid email address."
+      }
     },
     "JOURNAL_BOOK": {
       "EYEBROW": "Accounting books",

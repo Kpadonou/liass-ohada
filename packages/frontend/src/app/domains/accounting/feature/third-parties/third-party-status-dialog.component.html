@@ -1,0 +1,49 @@
+<header class="px-6 pt-6">
+  <div class="flex items-start gap-3">
+    <span class="inline-flex size-10 items-center justify-center rounded-app-control bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+      <mat-icon>{{ isDeactivate ? 'block' : 'check_circle' }}</mat-icon>
+    </span>
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+        {{ 'ACCOUNTING.THIRD_PARTIES.STATUS_DIALOG.EYEBROW' | transloco }}
+      </p>
+      <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+        {{ titleKey() | transloco }}
+      </h2>
+    </div>
+  </div>
+</header>
+
+<mat-dialog-content class="px-6 pb-0 pt-5">
+  <p class="text-sm leading-6 text-slate-600 dark:text-slate-400">
+    {{ descriptionKey() | transloco }}
+  </p>
+  <div class="mt-4 rounded-app-card border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950">
+    <p class="text-sm font-semibold text-slate-950 dark:text-white">{{ thirdParty.code }} — {{ thirdParty.displayName }}</p>
+    <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+      {{ 'ACCOUNTING.THIRD_PARTIES.TYPES.' + thirdParty.type | transloco }}
+    </p>
+  </div>
+
+  @if (errorMessage(); as message) {
+    <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+      <mat-icon class="mt-0.5">error</mat-icon>
+      <p>{{ message }}</p>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+  <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+    {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+  </liass-button>
+  <liass-button
+    [tone]="isDeactivate ? 'danger' : 'brand'"
+    variant="solid"
+    [icon]="isDeactivate ? 'block' : 'check_circle'"
+    [loading]="submitting()"
+    (pressed)="confirm()"
+  >
+    {{ (isDeactivate ? 'ACCOUNTING.THIRD_PARTIES.ACTIONS.DEACTIVATE' : 'ACCOUNTING.THIRD_PARTIES.ACTIONS.ACTIVATE') | transloco }}
+  </liass-button>
+</mat-dialog-actions>

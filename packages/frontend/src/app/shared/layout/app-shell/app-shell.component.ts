@@ -24,6 +24,10 @@ function pageFromUrl(url: string): AppPage {
     return 'accounting.journals';
   }
 
+  if (path.startsWith('/accounting/third-parties')) {
+    return 'accounting.thirdParties';
+  }
+
   if (path === '/accounting' || path === '/accounting/') {
     return 'accounting.overview';
   }

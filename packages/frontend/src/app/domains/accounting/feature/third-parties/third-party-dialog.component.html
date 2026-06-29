@@ -1,0 +1,97 @@
+<header class="px-6 pt-6">
+  <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
+    {{ 'ACCOUNTING.THIRD_PARTIES.DIALOG.EYEBROW' | transloco }}
+  </p>
+  <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+    {{ titleKey() | transloco }}
+  </h2>
+  <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+    {{ 'ACCOUNTING.THIRD_PARTIES.DIALOG.SUBTITLE' | transloco }}
+  </p>
+</header>
+
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="px-6 pb-0 pt-5">
+    <div class="grid gap-4 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.TYPE' | transloco }}</mat-label>
+        <mat-icon matPrefix>category</mat-icon>
+        <input matInput formControlName="type" readonly />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.CODE' | transloco }}</mat-label>
+        <mat-icon matPrefix>tag</mat-icon>
+        <input matInput formControlName="code" autocomplete="off" />
+        @if (form.controls.code.touched && form.controls.code.invalid) {
+          <mat-error>{{ 'ACCOUNTING.THIRD_PARTIES.VALIDATION.CODE' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.DISPLAY_NAME' | transloco }}</mat-label>
+        <mat-icon matPrefix>badge</mat-icon>
+        <input matInput formControlName="displayName" autocomplete="organization" />
+        @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+          <mat-error>{{ 'ACCOUNTING.THIRD_PARTIES.VALIDATION.DISPLAY_NAME' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.EMAIL' | transloco }}</mat-label>
+        <mat-icon matPrefix>mail</mat-icon>
+        <input matInput formControlName="email" type="email" autocomplete="email" />
+        @if (form.controls.email.touched && form.controls.email.invalid) {
+          <mat-error>{{ 'ACCOUNTING.THIRD_PARTIES.VALIDATION.EMAIL' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.PHONE' | transloco }}</mat-label>
+        <mat-icon matPrefix>call</mat-icon>
+        <input matInput formControlName="phone" autocomplete="tel" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.ADDRESS' | transloco }}</mat-label>
+        <mat-icon matPrefix>location_on</mat-icon>
+        <textarea matInput formControlName="address" rows="2"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.COUNTRY' | transloco }}</mat-label>
+        <mat-icon matPrefix>public</mat-icon>
+        <input matInput formControlName="country" autocomplete="country-name" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FIELDS.TAX_IDENTIFIER' | transloco }}</mat-label>
+        <mat-icon matPrefix>receipt</mat-icon>
+        <input matInput formControlName="taxIdentifier" />
+      </mat-form-field>
+    </div>
+
+    @if (errorMessage(); as message) {
+      <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+        <mat-icon class="mt-0.5">error</mat-icon>
+        <p>{{ message }}</p>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+    </liass-button>
+    <liass-button
+      buttonType="submit"
+      tone="brand"
+      variant="solid"
+      [icon]="isEditMode ? 'save' : 'add'"
+      [disabled]="form.invalid || submitting()"
+      [loading]="submitting()"
+    >
+      {{ 'COMMON.ACTIONS.SAVE' | transloco }}
+    </liass-button>
+  </mat-dialog-actions>
+</form>

@@ -195,6 +195,17 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'accounting/third-parties',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/third-parties/third-parties.page').then(
+            (module) => module.ThirdPartiesPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.TITLE'
+        }
+      },
+      {
         path: 'accounting/entries/new',
         loadComponent: () =>
           import('../../domains/accounting/feature/entry-form/entry-form.page').then(

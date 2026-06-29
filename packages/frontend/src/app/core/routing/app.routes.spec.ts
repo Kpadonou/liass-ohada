@@ -133,6 +133,20 @@ describe('routes', () => {
     expect(legacyChartRoute?.redirectTo).toBe('/accounting/accounts');
   });
 
+  it('registers the accounting third-party management route', async () => {
+    const shell = shellRoute();
+    const thirdPartiesRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/third-parties'
+    );
+    const component = await thirdPartiesRoute?.loadComponent?.();
+    const { ThirdPartiesPage } = await import(
+      '../../domains/accounting/feature/third-parties/third-parties.page'
+    );
+
+    expect(component).toBe(ThirdPartiesPage);
+    expect(thirdPartiesRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.THIRD_PARTIES.TITLE');
+  });
+
   it('registers the accounting fiscal-year route', async () => {
     const shell = shellRoute();
     const fiscalYearRoute = shell?.children?.find(
@@ -167,6 +181,7 @@ describe('routes', () => {
         'accounting/general-ledger',
         'accounting/journals',
         'accounting/lettering',
+        'accounting/third-parties',
         'accounting/trial-balance'
       ])
     );

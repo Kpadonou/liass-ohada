@@ -9,6 +9,7 @@ import {
   type LetteringCandidatesParams,
   type ListAccountsParams,
   type ListEntriesParams,
+  type ListThirdPartiesParams,
   type MatchingReportParams,
   type ThirdPartyLedgerParams,
   type TrialBalanceParams,
@@ -31,6 +32,16 @@ function normalizeListAccountsParams(options: ListAccountsParams = { limit: 100 
     ...(options.class ? { class: options.class } : {}),
     ...(options.active !== undefined ? { active: options.active } : {}),
     ...(options.activeOnly !== undefined ? { activeOnly: options.activeOnly } : {})
+  };
+}
+
+function normalizeListThirdPartiesParams(options: ListThirdPartiesParams) {
+  return {
+    codePrefix: options.codePrefix?.trim() || null,
+    cursor: options.cursor ?? null,
+    limit: options.limit ?? 200,
+    status: options.status ?? null,
+    type: options.type
   };
 }
 
@@ -125,6 +136,9 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'matching-report', params] as const,
   thirdPartyLedger: (tenantScope: TenantScope, params: ThirdPartyLedgerParams) =>
     ['accounting', tenantScope, 'third-party-ledger', params] as const,
+  thirdParties: (tenantScope: TenantScope, params: ListThirdPartiesParams) =>
+    ['accounting', tenantScope, 'third-parties', normalizeListThirdPartiesParams(params)] as const,
+  thirdPartiesRoot: (tenantScope: TenantScope) => ['accounting', tenantScope, 'third-parties'] as const,
   trialBalance: (tenantScope: TenantScope, params: TrialBalanceParams) =>
     ['accounting', tenantScope, 'trial-balance', normalizeTrialBalanceParams(params)] as const,
   unletteredLines: (tenantScope: TenantScope, params: UnletteredLinesParams) =>
@@ -161,6 +175,10 @@ export class AccountingQueries {
     return accountingQueryKeys.journals(this.tenantScope());
   }
 
+  thirdPartiesRootQueryKey() {
+    return accountingQueryKeys.thirdPartiesRoot(this.tenantScope());
+  }
+
   listAccounts(options: ListAccountsParams = { limit: 100 }) {
     return queryOptions({
       queryKey: this.accountsQueryKey(options),
@@ -182,6 +200,14 @@ export class AccountingQueries {
     return queryOptions({
       queryKey: this.journalsQueryKey(),
       queryFn: () => this.accountingApi.listJournals(),
+      staleTime: ACCOUNTING_MASTER_DATA_STALE_TIME
+    });
+  }
+
+  listThirdParties(options: ListThirdPartiesParams) {
+    return queryOptions({
+      queryKey: accountingQueryKeys.thirdParties(this.tenantScope(), options),
+      queryFn: () => this.accountingApi.listThirdParties(options),
       staleTime: ACCOUNTING_MASTER_DATA_STALE_TIME
     });
   }

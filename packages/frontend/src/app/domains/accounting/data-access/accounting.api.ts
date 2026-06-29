@@ -11,6 +11,7 @@ import {
   CreateFiscalYearRequestSchema,
   CreateJournalRequestSchema,
   CreateLetteringMatchRequestSchema,
+  CreateThirdPartyRequestSchema,
   FiscalYearDetailsResponseSchema,
   FiscalYearResponseSchema,
   GeneralLedgerQuerySchema,
@@ -35,11 +36,14 @@ import {
   PeriodLockResponseSchema,
   PostEntryResponseSchema,
   PostLetteringRequestSchema,
+  ThirdPartyResponseSchema,
+  ThirdPartyDtoSchema,
   ThirdPartyLedgerResponseSchema,
   TrialBalanceQuerySchema,
   TrialBalanceResponseSchema,
   UnletteredLinesResponseSchema,
   UpdateAccountRequestSchema,
+  UpdateThirdPartyRequestSchema,
   type AccountDto,
   type CancelLetteringMatchRequest,
   type CancelLetteringRequest,
@@ -50,6 +54,7 @@ import {
   type CreateFiscalYearRequest,
   type CreateJournalRequest,
   type CreateLetteringMatchRequest,
+  type CreateThirdPartyRequest,
   type EntryDetailDto,
   type EntrySummaryDto,
   type FiscalYearDetailsDto,
@@ -71,10 +76,12 @@ import {
   type PostLetteringRequest,
   type ThirdPartyLedgerDto,
   type ThirdPartyDto,
+  type ThirdPartyTypeValue,
   type TrialBalanceQuery,
   type UnletteredLinesDto,
   type TrialBalanceDto,
-  type UpdateEntryDraftRequest
+  type UpdateEntryDraftRequest,
+  type UpdateThirdPartyRequest
 } from '@liass-ohada/shared/accounting';
 import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
@@ -99,6 +106,7 @@ export type LetteringCandidatesParams = z.input<typeof LetteringCandidatesQueryS
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
 export type UpdateEntryDraftPayload = Omit<UpdateEntryDraftRequest, 'entryId'>;
 export type UpdateJournalRequest = z.infer<typeof UpdateJournalRequestSchema>;
+export type UpdateThirdPartyPayload = z.infer<typeof UpdateThirdPartyRequestSchema>;
 
 const GetJournalRequestSchema = z.object({
   journalCode: z.string().min(1).max(10)
@@ -232,10 +240,14 @@ export class AccountingApi {
       params = params.set('cursor', request.cursor);
     }
 
+    if (request.codePrefix) {
+      params = params.set('codePrefix', request.codePrefix);
+    }
+
     const response = await firstValueFrom(
       this.http.get<unknown>(`${this.apiBaseUrl}/third-parties`, { params })
     );
-    const parsed = ListThirdPartiesResponseSchema.parse(response);
+    const parsed = ListThirdPartiesResponseSchema.parse(normalizeThirdPartyListResponse(response));
 
     return {
       items: parsed.data.items,
@@ -243,6 +255,46 @@ export class AccountingApi {
       hasMore: parsed.data.hasMore,
       message: userMessageFromResponse(response)
     };
+  }
+
+  async createThirdParty(payload: CreateThirdPartyRequest): Promise<ApiMutationResult<ThirdPartyDto>> {
+    const request = CreateThirdPartyRequestSchema.parse(payload);
+    const response = await firstValueFrom(
+      this.http.post<unknown>(`${this.apiBaseUrl}/third-parties`, request)
+    );
+    const parsed = ThirdPartyResponseSchema.parse(normalizeThirdPartyMutationResponse(response));
+
+    return { data: parsed.thirdParty, message: userMessageFromResponse(response) };
+  }
+
+  async updateThirdParty(
+    thirdPartyId: string,
+    type: ThirdPartyTypeValue,
+    payload: UpdateThirdPartyRequest
+  ): Promise<ApiMutationResult<ThirdPartyDto>> {
+    const request = UpdateThirdPartyRequestSchema.parse(payload);
+    const response = await firstValueFrom(
+      this.http.patch<unknown>(this.thirdPartyUrl(thirdPartyId), request, {
+        params: this.thirdPartyTypeParams(type)
+      })
+    );
+    const parsed = ThirdPartyResponseSchema.parse(normalizeThirdPartyMutationResponse(response));
+
+    return { data: parsed.thirdParty, message: userMessageFromResponse(response) };
+  }
+
+  async activateThirdParty(
+    thirdPartyId: string,
+    type: ThirdPartyTypeValue
+  ): Promise<ApiMutationResult<ThirdPartyDto>> {
+    return this.changeThirdPartyStatus(thirdPartyId, type, 'activate');
+  }
+
+  async deactivateThirdParty(
+    thirdPartyId: string,
+    type: ThirdPartyTypeValue
+  ): Promise<ApiMutationResult<ThirdPartyDto>> {
+    return this.changeThirdPartyStatus(thirdPartyId, type, 'deactivate');
   }
 
   async getAccount(accountId: string): Promise<AccountDto> {
@@ -774,6 +826,34 @@ export class AccountingApi {
     return `${this.apiBaseUrl}/journals/${encodeURIComponent(request.journalCode)}`;
   }
 
+  private thirdPartyUrl(
+    thirdPartyId: string,
+    action?: 'activate' | 'deactivate'
+  ): string {
+    const actionPath = action ? `/${action}` : '';
+
+    return `${this.apiBaseUrl}/third-parties/${encodeURIComponent(thirdPartyId)}${actionPath}`;
+  }
+
+  private thirdPartyTypeParams(type: ThirdPartyTypeValue): HttpParams {
+    return new HttpParams().set('type', type);
+  }
+
+  private async changeThirdPartyStatus(
+    thirdPartyId: string,
+    type: ThirdPartyTypeValue,
+    action: 'activate' | 'deactivate'
+  ): Promise<ApiMutationResult<ThirdPartyDto>> {
+    const response = await firstValueFrom(
+      this.http.post<unknown>(this.thirdPartyUrl(thirdPartyId, action), {}, {
+        params: this.thirdPartyTypeParams(type)
+      })
+    );
+    const parsed = ThirdPartyResponseSchema.parse(normalizeThirdPartyMutationResponse(response));
+
+    return { data: parsed.thirdParty, message: userMessageFromResponse(response) };
+  }
+
   private async loadAllAccountLabels(): Promise<Map<string, string>> {
     const labels = new Map<string, string>();
     const seenCursors = new Set<string>();
@@ -800,6 +880,62 @@ export class AccountingApi {
 
     return labels;
   }
+}
+
+function normalizeThirdPartyListResponse(response: unknown): unknown {
+  if (!isRecord(response) || !isRecord(response['data'])) {
+    return response;
+  }
+
+  const data = response['data'];
+
+  return {
+    ...response,
+    data: {
+      ...data,
+      items: Array.isArray(data['items'])
+        ? data['items'].map(normalizeThirdPartyDtoBoundary)
+        : data['items'],
+      nextCursor: normalizeOptionalString(data['nextCursor'])
+    }
+  };
+}
+
+function normalizeThirdPartyMutationResponse(response: unknown): unknown {
+  if (!isRecord(response)) {
+    return response;
+  }
+
+  return {
+    ...response,
+    thirdParty: normalizeThirdPartyDtoBoundary(response['thirdParty'])
+  };
+}
+
+function normalizeThirdPartyDtoBoundary(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value;
+  }
+
+  const candidate = { ...value };
+
+  for (const field of ['email', 'phone', 'address', 'country', 'taxIdentifier'] as const) {
+    const fieldValue = candidate[field];
+
+    if (fieldValue === null || fieldValue === '') {
+      delete candidate[field];
+    }
+  }
+
+  return ThirdPartyDtoSchema.parse(candidate);
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 async function parseTrialBalanceResponse(

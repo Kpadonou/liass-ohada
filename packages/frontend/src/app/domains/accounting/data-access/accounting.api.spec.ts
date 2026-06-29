@@ -209,6 +209,129 @@ describe('AccountingApi', () => {
     });
   });
 
+  it('lists, creates, updates, activates, and deactivates third parties safely', async () => {
+    const listPromise = api.listThirdParties({
+      codePrefix: 'cust',
+      cursor: 'next-page',
+      limit: 200,
+      status: 'ACTIVE',
+      type: 'CUSTOMER'
+    });
+    const listRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/third-parties`);
+
+    expect(listRequest.request.method).toBe('GET');
+    expect(listRequest.request.params.get('type')).toBe('CUSTOMER');
+    expect(listRequest.request.params.get('status')).toBe('ACTIVE');
+    expect(listRequest.request.params.get('limit')).toBe('200');
+    expect(listRequest.request.params.get('cursor')).toBe('next-page');
+    expect(listRequest.request.params.get('codePrefix')).toBe('cust');
+    listRequest.flush({
+      data: {
+        items: [
+          thirdPartyFixture({
+            PK: 'ORG#technical',
+            SK: 'TP#CUSTOMER#tp-cust-alpha',
+            entityType: 'THIRD_PARTY'
+          })
+        ],
+        hasMore: false
+      }
+    });
+
+    await expect(listPromise).resolves.toEqual({
+      items: [
+        {
+          thirdPartyId: 'tp-cust-alpha',
+          code: 'CUST-ALPHA',
+          displayName: 'Client Alpha',
+          type: 'CUSTOMER',
+          status: 'ACTIVE',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z'
+        }
+      ],
+      hasMore: false,
+      message: null
+    });
+
+    const createPromise = api.createThirdParty({
+      code: 'CUST-ALPHA',
+      displayName: 'Client Alpha',
+      type: 'CUSTOMER'
+    });
+    const createRequest = httpMock.expectOne(`${apiBaseUrl}/third-parties`);
+
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toEqual({
+      code: 'CUST-ALPHA',
+      displayName: 'Client Alpha',
+      type: 'CUSTOMER'
+    });
+    createRequest.flush({
+      message: 'Tiers créé avec succès.',
+      thirdParty: thirdPartyFixture()
+    });
+
+    await expect(createPromise).resolves.toMatchObject({
+      data: { code: 'CUST-ALPHA', displayName: 'Client Alpha' },
+      message: 'Tiers créé avec succès.'
+    });
+
+    const updatePromise = api.updateThirdParty('tp-cust-alpha', 'CUSTOMER', {
+      displayName: 'Client Alpha SARL',
+      email: 'client@example.com'
+    });
+    const updateRequest = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha`
+    );
+
+    expect(updateRequest.request.method).toBe('PATCH');
+    expect(updateRequest.request.params.get('type')).toBe('CUSTOMER');
+    expect(updateRequest.request.body).toEqual({
+      displayName: 'Client Alpha SARL',
+      email: 'client@example.com'
+    });
+    expect(updateRequest.request.body).not.toHaveProperty('code');
+    expect(updateRequest.request.body).not.toHaveProperty('type');
+    updateRequest.flush({
+      thirdParty: thirdPartyFixture({ displayName: 'Client Alpha SARL' })
+    });
+
+    await expect(updatePromise).resolves.toMatchObject({
+      data: { displayName: 'Client Alpha SARL' }
+    });
+
+    const deactivatePromise = api.deactivateThirdParty('tp-cust-alpha', 'CUSTOMER');
+    const deactivateRequest = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/deactivate`
+    );
+
+    expect(deactivateRequest.request.method).toBe('POST');
+    expect(deactivateRequest.request.params.get('type')).toBe('CUSTOMER');
+    deactivateRequest.flush({
+      thirdParty: thirdPartyFixture({ status: 'INACTIVE' })
+    });
+
+    await expect(deactivatePromise).resolves.toMatchObject({
+      data: { status: 'INACTIVE' }
+    });
+
+    const activatePromise = api.activateThirdParty('tp-cust-alpha', 'CUSTOMER');
+    const activateRequest = httpMock.expectOne(
+      (candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/activate`
+    );
+
+    expect(activateRequest.request.method).toBe('POST');
+    expect(activateRequest.request.params.get('type')).toBe('CUSTOMER');
+    activateRequest.flush({
+      thirdParty: thirdPartyFixture({ status: 'ACTIVE' })
+    });
+
+    await expect(activatePromise).resolves.toMatchObject({
+      data: { status: 'ACTIVE' }
+    });
+  });
+
   it('lists, gets, creates, updates, and disables journals with typed validation', async () => {
     const listPromise = api.listJournals();
     const listRequest = httpMock.expectOne(`${apiBaseUrl}/journals`);
@@ -1548,6 +1671,35 @@ function journalResponseFixture(
     journalCode: 'OD',
     journalName: 'Operations diverses',
     type: 'MISC',
+    ...overrides
+  };
+}
+
+function thirdPartyFixture(
+  overrides: Partial<{
+    thirdPartyId: string;
+    code: string;
+    displayName: string;
+    type: 'CUSTOMER' | 'SUPPLIER';
+    status: 'ACTIVE' | 'INACTIVE';
+    email: string;
+    phone: string;
+    country: string;
+    createdAt: string;
+    updatedAt: string;
+    PK: string;
+    SK: string;
+    entityType: string;
+  }> = {}
+) {
+  return {
+    thirdPartyId: 'tp-cust-alpha',
+    code: 'CUST-ALPHA',
+    displayName: 'Client Alpha',
+    type: 'CUSTOMER' as const,
+    status: 'ACTIVE' as const,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides
   };
 }

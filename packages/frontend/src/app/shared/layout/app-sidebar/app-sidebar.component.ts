@@ -49,6 +49,12 @@ const accountingItems: readonly ShellNavItem[] = [
     route: ['/accounting/journals']
   },
   {
+    icon: 'groups',
+    labelKey: 'SHELL.NAV.THIRD_PARTIES',
+    page: 'accounting.thirdParties',
+    route: ['/accounting/third-parties']
+  },
+  {
     icon: 'receipt_long',
     labelKey: 'SHELL.NAV.ENTRIES',
     page: 'accounting.entries',

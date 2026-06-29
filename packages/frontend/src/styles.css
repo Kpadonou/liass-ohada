@@ -302,6 +302,27 @@ select:-webkit-autofill {
   color: var(--liass-text-primary);
 }
 
+.liass-dialog-panel {
+  --mdc-dialog-container-shape: 2rem;
+  --mat-dialog-container-shape: 2rem;
+  --mat-dialog-container-color: var(--liass-overlay-bg);
+  --mat-dialog-container-elevation-shadow: 0 28px 72px rgb(15 23 42 / 0.24);
+}
+
+.liass-dialog-panel .mat-mdc-dialog-container,
+.liass-dialog-panel .mdc-dialog__container,
+.liass-dialog-panel .mdc-dialog__surface {
+  border-radius: 2rem;
+}
+
+.liass-dialog-panel .mdc-dialog__surface {
+  background-color: var(--liass-overlay-bg);
+  border: 1px solid color-mix(in srgb, var(--liass-border) 70%, transparent);
+  box-shadow: var(--mat-dialog-container-elevation-shadow);
+  color: var(--liass-text-primary);
+  overflow: hidden;
+}
+
 .mat-mdc-option {
   --mat-option-label-text-color: var(--liass-text-primary);
   --mat-option-hover-state-layer-color: var(--liass-surface-hover);
@@ -323,6 +344,16 @@ select:-webkit-autofill {
 
 .cdk-overlay-backdrop {
   background: color-mix(in srgb, var(--liass-page-bg) 72%, transparent);
+}
+
+.cdk-overlay-dark-backdrop {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgb(15 23 42 / 0.42);
+}
+
+.dark .cdk-overlay-dark-backdrop {
+  background: rgb(2 6 23 / 0.68);
 }
 
 .cdk-overlay-pane {

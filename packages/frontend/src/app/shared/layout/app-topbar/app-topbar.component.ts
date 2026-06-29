@@ -19,6 +19,7 @@ const pageTitleKeys: Record<AppPage, string> = {
   'accounting.journalBook': 'SHELL.PAGES.JOURNAL_BOOK',
   'accounting.journals': 'SHELL.PAGES.JOURNALS',
   'accounting.lettering': 'SHELL.PAGES.LETTERING',
+  'accounting.thirdParties': 'SHELL.PAGES.THIRD_PARTIES',
   'accounting.trialBalance': 'SHELL.PAGES.TRIAL_BALANCE',
   'cabinet.collaborators': 'SHELL.PAGES.CABINET_COLLABORATORS',
   'cabinet.dashboard': 'SHELL.PAGES.CABINET_DASHBOARD',

@@ -60,6 +60,7 @@ const translations = {
         REPORTS: 'États OHADA',
         SECTION_LABEL: 'Espace',
         SYCEBNL_BADGE: 'SYCEBNL',
+        THIRD_PARTIES: 'Tiers',
         TREASURY: 'Trésorerie',
         TRIAL_BALANCE: 'Balance'
       }
@@ -113,6 +114,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Exercices');
     expect(text).toContain('Grand livre');
     expect(text).toContain('Journaux');
+    expect(text).toContain('Tiers');
     expect(text).toContain('Écritures');
     expect(text).toContain('Lettrage');
     expect(text).toContain('Balance');
@@ -180,6 +182,7 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('Vue d’ensemble');
     expect(text).not.toContain('Exercices');
     expect(text).not.toContain('Journaux');
+    expect(text).not.toContain('Tiers');
     expect(text).not.toContain('Écritures');
     expect(text).not.toContain('Lettrage');
     expect(text).not.toContain('Balance');
@@ -219,6 +222,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Grand livre');
     expect(text).toContain('Exercices');
     expect(text).toContain('Journaux');
+    expect(text).toContain('Tiers');
     expect(text).toContain('Écritures');
     expect(text).toContain('Lettrage');
     expect(text).toContain('Balance');
@@ -257,6 +261,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Tableau de bord cabinet');
     expect(text).toContain('Dossiers clients');
     expect(text).not.toContain('Grand livre');
+    expect(text).not.toContain('Tiers');
     expect(text).not.toContain('Lettrage');
     expect(authStore.activeDossierOrgId()).toBe('org-client');
   });

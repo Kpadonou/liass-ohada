@@ -15,6 +15,7 @@ export type AppPage =
   | 'accounting.generalLedger'
   | 'accounting.journalBook'
   | 'accounting.journals'
+  | 'accounting.thirdParties'
   | 'accounting.entries'
   | 'accounting.lettering'
   | 'accounting.trialBalance'

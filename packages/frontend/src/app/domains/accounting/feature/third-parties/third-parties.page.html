@@ -1,0 +1,281 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.THIRD_PARTIES.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.THIRD_PARTIES.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.THIRD_PARTIES.SUBTITLE' | transloco"
+  />
+
+  <liass-card
+    [title]="'ACCOUNTING.THIRD_PARTIES.TABLE.TITLE' | transloco"
+    [description]="'ACCOUNTING.THIRD_PARTIES.TABLE.DESCRIPTION' | transloco"
+  >
+    <div liassCardActions class="flex flex-wrap items-center gap-2">
+      <liass-button
+        size="sm"
+        tone="brand"
+        variant="solid"
+        icon="add"
+        data-testid="third-party-create-action"
+        [ariaLabel]="createButtonKey() | transloco"
+        (pressed)="openCreateThirdParty()"
+      >
+        {{ createButtonKey() | transloco }}
+      </liass-button>
+    </div>
+
+    <div class="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-[220px_220px_minmax(280px,1fr)_auto]">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.TYPE' | transloco }}</mat-label>
+        <mat-select
+          data-testid="third-party-type-filter"
+          [value]="activeType()"
+          [attr.aria-label]="'ACCOUNTING.THIRD_PARTIES.FILTERS.TYPE' | transloco"
+          (valueChange)="updateType($event)"
+        >
+          <mat-select-trigger>
+            <span data-testid="third-party-type-trigger">{{ selectedTypeLabelKey() | transloco }}</span>
+          </mat-select-trigger>
+          <mat-option value="CUSTOMER">{{ 'ACCOUNTING.THIRD_PARTIES.TYPES.CUSTOMER' | transloco }}</mat-option>
+          <mat-option value="SUPPLIER">{{ 'ACCOUNTING.THIRD_PARTIES.TYPES.SUPPLIER' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.STATUS' | transloco }}</mat-label>
+        <mat-select [value]="statusFilter()" (valueChange)="updateStatusFilter($event)" data-testid="third-party-status-filter">
+          <mat-select-trigger>
+            <span data-testid="third-party-status-trigger">{{ selectedStatusLabelKey() | transloco }}</span>
+          </mat-select-trigger>
+          <mat-option value="ACTIVE">{{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.ACTIVE' | transloco }}</mat-option>
+          <mat-option value="INACTIVE">{{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.INACTIVE' | transloco }}</mat-option>
+          <mat-option value="ALL">{{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.ALL' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2 xl:col-span-1">
+        <mat-label>{{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.SEARCH' | transloco }}</mat-label>
+        <mat-icon matPrefix>search</mat-icon>
+        <input
+          matInput
+          type="search"
+          autocomplete="off"
+          data-testid="third-party-search"
+          [value]="searchQuery()"
+          [placeholder]="'ACCOUNTING.THIRD_PARTIES.FILTERS.SEARCH_PLACEHOLDER' | transloco"
+          [attr.aria-label]="'ACCOUNTING.THIRD_PARTIES.FILTERS.SEARCH' | transloco"
+          (input)="updateSearch($event)"
+        />
+        @if (showSearchScopeHint()) {
+          <mat-hint>{{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.LOCAL_SEARCH_HINT' | transloco }}</mat-hint>
+        }
+      </mat-form-field>
+
+      <div class="flex items-start md:col-span-2 xl:col-span-1">
+        <liass-button size="md" tone="neutral" variant="outline" icon="filter_alt_off" (pressed)="clearFilters()">
+          {{ 'ACCOUNTING.THIRD_PARTIES.ACTIONS.CLEAR_FILTERS' | transloco }}
+        </liass-button>
+      </div>
+    </div>
+
+    <div class="sr-only">
+      <span data-testid="third-party-selected-type">{{ selectedTypeLabelKey() | transloco }}</span>
+      <span data-testid="third-party-selected-status">{{ selectedStatusLabelKey() | transloco }}</span>
+    </div>
+
+    @if (thirdPartiesQuery.isPending()) {
+      <div class="space-y-4" aria-busy="true" role="status">
+        <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+          {{ 'ACCOUNTING.THIRD_PARTIES.LOADING' | transloco }}
+        </p>
+        <div class="space-y-3">
+          @for (_ of [0, 1, 2, 3, 4]; track $index) {
+            <liass-skeleton variant="block" />
+          }
+        </div>
+      </div>
+    } @else if (thirdPartiesQuery.isError()) {
+      <div
+        class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200"
+        role="alert"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <span>{{ 'ACCOUNTING.THIRD_PARTIES.ERRORS.LOAD_FAILED' | transloco }}</span>
+          <liass-button size="sm" tone="danger" variant="outline" icon="refresh" (pressed)="retryInitialLoad()">
+            {{ 'ACCOUNTING.THIRD_PARTIES.ACTIONS.RETRY' | transloco }}
+          </liass-button>
+        </div>
+      </div>
+    } @else if (!hasLoadedThirdParties()) {
+      <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+        <p class="text-sm font-semibold text-slate-950 dark:text-white">
+          {{ 'ACCOUNTING.THIRD_PARTIES.EMPTY.TITLE' | transloco }}
+        </p>
+        <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          {{ 'ACCOUNTING.THIRD_PARTIES.EMPTY.DESCRIPTION' | transloco }}
+        </p>
+        <p class="mt-1 text-xs font-medium uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+          {{ selectedTypeLabelKey() | transloco }} · {{ selectedStatusLabelKey() | transloco }}
+        </p>
+      </div>
+    } @else if (filteredThirdParties().length === 0) {
+      <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+        <p class="text-sm font-semibold text-slate-950 dark:text-white">
+          {{ 'ACCOUNTING.THIRD_PARTIES.EMPTY.NO_RESULTS_TITLE' | transloco }}
+        </p>
+        <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          {{ 'ACCOUNTING.THIRD_PARTIES.EMPTY.NO_RESULTS_DESCRIPTION' | transloco }}
+        </p>
+      </div>
+    } @else {
+      @if (showSearchScopeHint()) {
+        <p class="mb-3 rounded-app-card border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
+          {{ 'ACCOUNTING.THIRD_PARTIES.FILTERS.LOCAL_SEARCH_HINT' | transloco }}
+        </p>
+      }
+
+      <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 lg:block">
+        <table class="liass-data-table w-full min-w-[980px] border-collapse text-left">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.CODE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.NAME' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.TYPE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.STATUS' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.EMAIL' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.PHONE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.COUNTRY' | transloco }}</th>
+              <th class="w-14 px-3 py-3 text-right">{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.ACTIONS' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (thirdParty of filteredThirdParties(); track thirdParty.type + ':' + thirdParty.thirdPartyId) {
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20" [class.opacity-70]="thirdParty.status === 'INACTIVE'">
+                <td class="px-4 py-4 font-semibold text-slate-950 dark:text-white">{{ thirdParty.code }}</td>
+                <td class="px-4 py-4">
+                  <p class="text-sm font-medium text-slate-950 dark:text-white">{{ thirdParty.displayName }}</p>
+                  <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">{{ thirdPartyLabel(thirdParty) }}</p>
+                </td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">
+                  {{ typeKey(thirdParty) | transloco }}
+                </td>
+                <td class="px-4 py-4">
+                  <liass-status-chip [label]="statusKey(thirdParty) | transloco" [tone]="statusTone(thirdParty)" size="sm" />
+                </td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ thirdParty.email || '—' }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ thirdParty.phone || '—' }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ thirdParty.country || '—' }}</td>
+                <td class="px-3 py-4 text-right">
+                  <button
+                    class="liass-focus-ring inline-flex size-9 items-center justify-center rounded-app-control text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                    matIconButton
+                    type="button"
+                    data-testid="third-party-row-actions"
+                    [matMenuTriggerFor]="thirdPartyActionsMenu"
+                    [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
+                  >
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #thirdPartyActionsMenu="matMenu" xPosition="before">
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" data-testid="third-party-edit-action" (click)="openEditThirdParty(thirdParty)">
+                      <mat-icon>edit</mat-icon>
+                      <span>{{ 'ACCOUNTING.THIRD_PARTIES.ACTIONS.EDIT' | transloco }}</span>
+                    </button>
+                    <button
+                      mat-menu-item
+                      type="button"
+                      class="liass-menu-action"
+                      data-testid="third-party-status-action"
+                      [class.liass-menu-action-danger]="thirdParty.status === 'ACTIVE'"
+                      [class.liass-menu-action-brand]="thirdParty.status === 'INACTIVE'"
+                      (click)="openStatusDialog(thirdParty)"
+                    >
+                      <mat-icon>{{ thirdParty.status === 'ACTIVE' ? 'block' : 'check_circle' }}</mat-icon>
+                      <span>
+                        {{ (thirdParty.status === 'ACTIVE' ? 'ACCOUNTING.THIRD_PARTIES.ACTIONS.DEACTIVATE' : 'ACCOUNTING.THIRD_PARTIES.ACTIONS.ACTIVATE') | transloco }}
+                      </span>
+                    </button>
+                  </mat-menu>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="grid gap-3 lg:hidden">
+        @for (thirdParty of filteredThirdParties(); track thirdParty.type + ':' + thirdParty.thirdPartyId) {
+          <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" [class.opacity-70]="thirdParty.status === 'INACTIVE'">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <p class="font-semibold text-slate-950 dark:text-white">{{ thirdPartyLabel(thirdParty) }}</p>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  {{ typeKey(thirdParty) | transloco }}
+                </p>
+              </div>
+              <liass-status-chip [label]="statusKey(thirdParty) | transloco" [tone]="statusTone(thirdParty)" size="sm" />
+            </div>
+            <dl class="mt-4 grid gap-2 text-sm text-slate-600 dark:text-slate-400">
+              <div class="flex justify-between gap-4">
+                <dt>{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.EMAIL' | transloco }}</dt>
+                <dd class="text-right">{{ thirdParty.email || '—' }}</dd>
+              </div>
+              <div class="flex justify-between gap-4">
+                <dt>{{ 'ACCOUNTING.THIRD_PARTIES.TABLE.PHONE' | transloco }}</dt>
+                <dd class="text-right">{{ thirdParty.phone || '—' }}</dd>
+              </div>
+            </dl>
+            <div class="mt-4 flex justify-end">
+              <button
+                class="liass-focus-ring inline-flex size-9 items-center justify-center rounded-app-control text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                matIconButton
+                type="button"
+                [matMenuTriggerFor]="mobileThirdPartyActionsMenu"
+                [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
+              >
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #mobileThirdPartyActionsMenu="matMenu" xPosition="before">
+                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" (click)="openEditThirdParty(thirdParty)">
+                  <mat-icon>edit</mat-icon>
+                  <span>{{ 'ACCOUNTING.THIRD_PARTIES.ACTIONS.EDIT' | transloco }}</span>
+                </button>
+                <button
+                  mat-menu-item
+                  type="button"
+                  class="liass-menu-action"
+                  [class.liass-menu-action-danger]="thirdParty.status === 'ACTIVE'"
+                  [class.liass-menu-action-brand]="thirdParty.status === 'INACTIVE'"
+                  (click)="openStatusDialog(thirdParty)"
+                >
+                  <mat-icon>{{ thirdParty.status === 'ACTIVE' ? 'block' : 'check_circle' }}</mat-icon>
+                  <span>
+                    {{ (thirdParty.status === 'ACTIVE' ? 'ACCOUNTING.THIRD_PARTIES.ACTIONS.DEACTIVATE' : 'ACCOUNTING.THIRD_PARTIES.ACTIONS.ACTIVATE') | transloco }}
+                  </span>
+                </button>
+              </mat-menu>
+            </div>
+          </article>
+        }
+      </div>
+    }
+
+    @if (hasMoreThirdParties()) {
+      <div class="mt-5 flex flex-col items-center gap-2">
+        <liass-button
+          tone="neutral"
+          variant="outline"
+          icon="expand_more"
+          [loading]="loadingMore()"
+          (pressed)="loadMoreThirdParties()"
+        >
+          {{ 'ACCOUNTING.THIRD_PARTIES.ACTIONS.LOAD_MORE' | transloco }}
+        </liass-button>
+        @if (loadMoreError()) {
+          <p class="text-sm text-danger-600 dark:text-rose-300" role="alert">
+            {{ 'ACCOUNTING.THIRD_PARTIES.ERRORS.LOAD_MORE_FAILED' | transloco }}
+          </p>
+        }
+      </div>
+    }
+  </liass-card>
+</div>
