@@ -729,6 +729,7 @@
         "ACTIVATED": "Third party activated successfully.",
         "CREATED": "Third party created successfully.",
         "DEACTIVATED": "Third party deactivated successfully.",
+        "NO_CHANGES": "No changes to save.",
         "UPDATED": "Third party updated successfully."
       },
       "STATUS": {

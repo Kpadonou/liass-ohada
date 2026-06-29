@@ -281,9 +281,7 @@ describe('AccountingApi', () => {
       displayName: 'Client Alpha SARL',
       email: 'client@example.com'
     });
-    const updateRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha`
-    );
+    const updateRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha`);
 
     expect(updateRequest.request.method).toBe('PATCH');
     expect(updateRequest.request.params.get('type')).toBe('CUSTOMER');
@@ -291,8 +289,9 @@ describe('AccountingApi', () => {
       displayName: 'Client Alpha SARL',
       email: 'client@example.com'
     });
-    expect(updateRequest.request.body).not.toHaveProperty('code');
-    expect(updateRequest.request.body).not.toHaveProperty('type');
+    for (const forbiddenField of ['code', 'type', 'thirdPartyId', 'status', 'PK', 'SK', 'GSI1PK', 'GSI1SK', 'entityType']) {
+      expect(updateRequest.request.body).not.toHaveProperty(forbiddenField);
+    }
     updateRequest.flush({
       thirdParty: thirdPartyFixture({ displayName: 'Client Alpha SARL' })
     });
@@ -302,9 +301,7 @@ describe('AccountingApi', () => {
     });
 
     const deactivatePromise = api.deactivateThirdParty('tp-cust-alpha', 'CUSTOMER');
-    const deactivateRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/deactivate`
-    );
+    const deactivateRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/deactivate`);
 
     expect(deactivateRequest.request.method).toBe('POST');
     expect(deactivateRequest.request.params.get('type')).toBe('CUSTOMER');
@@ -317,9 +314,7 @@ describe('AccountingApi', () => {
     });
 
     const activatePromise = api.activateThirdParty('tp-cust-alpha', 'CUSTOMER');
-    const activateRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/activate`
-    );
+    const activateRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/activate`);
 
     expect(activateRequest.request.method).toBe('POST');
     expect(activateRequest.request.params.get('type')).toBe('CUSTOMER');
@@ -674,9 +669,7 @@ describe('AccountingApi', () => {
       limit: 25,
       cursor: 'cursor-2'
     });
-    const request = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`
-    );
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`);
 
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('fiscalYear')).toBe('2026');
@@ -752,9 +745,7 @@ describe('AccountingApi', () => {
       accountId: '52000000',
       limit: 50
     });
-    const request = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`
-    );
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/general-ledger`);
 
     request.flush({
       message: {
@@ -802,9 +793,7 @@ describe('AccountingApi', () => {
       accountPrefix: '411',
       hideZeroMovement: true
     });
-    const request = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`
-    );
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`);
 
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('year')).toBe('2026');
@@ -888,9 +877,7 @@ describe('AccountingApi', () => {
       startDate: '2026-01-01',
       endDate: '2026-12-31'
     });
-    const request = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`
-    );
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`);
 
     request.flush({
       message: 'Balance récupérée.',
@@ -927,11 +914,7 @@ describe('AccountingApi', () => {
     });
     await Promise.resolve();
 
-    const accountsRequest = httpMock.expectOne(
-      (candidate) =>
-        candidate.url === `${apiBaseUrl}/accounts` &&
-        candidate.params.get('limit') === '200'
-    );
+    const accountsRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/accounts` && candidate.params.get('limit') === '200');
     accountsRequest.flush({
       data: {
         accounts: [
@@ -1004,9 +987,7 @@ describe('AccountingApi', () => {
       startDate: '2026-02-01',
       endDate: '2026-02-28'
     });
-    const request = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`
-    );
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/trial-balance`);
 
     request.flush({
       data: {
@@ -1034,9 +1015,7 @@ describe('AccountingApi', () => {
       limit: 20,
       cursor: 'cursor-2'
     });
-    const request = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/journal-book`
-    );
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/journal-book`);
 
     expect(request.request.method).toBe('GET');
     expect(request.request.params.get('year')).toBe('2026');
@@ -1055,7 +1034,7 @@ describe('AccountingApi', () => {
           year: '2026',
           startDate: '2026-01-01',
           endDate: '2026-01-31',
-          journalCode: 'VE',
+          journalCode: 'VE'
         },
         entries: [
           {
@@ -1072,13 +1051,15 @@ describe('AccountingApi', () => {
             totalCredit: 125000,
             status: 'POSTED',
             isBalanced: true,
-            lines: [{
-              lineId: 'L-001',
-              accountCode: '41100000',
-              accountLabel: 'Clients',
-              debit: 125000,
-              credit: 0
-            }]
+            lines: [
+              {
+                lineId: 'L-001',
+                accountCode: '41100000',
+                accountLabel: 'Clients',
+                debit: 125000,
+                credit: 0
+              }
+            ]
           }
         ],
         totals: {
@@ -1109,20 +1090,22 @@ describe('AccountingApi', () => {
           totalCredit: 125000,
           status: 'POSTED',
           isBalanced: true,
-          lines: [{
-            lineId: 'L-001',
-            accountCode: '41100000',
-            accountLabel: 'Clients',
-            debit: 125000,
-            credit: 0
-          }]
+          lines: [
+            {
+              lineId: 'L-001',
+              accountCode: '41100000',
+              accountLabel: 'Clients',
+              debit: 125000,
+              credit: 0
+            }
+          ]
         }
       ],
       meta: {
         year: '2026',
         startDate: '2026-01-01',
         endDate: '2026-01-31',
-        journalCode: 'VE',
+        journalCode: 'VE'
       },
       totals: {
         totalDebit: 125000,
@@ -1283,9 +1266,7 @@ describe('AccountingApi', () => {
     });
 
     const statementPromise = api.getIncomeStatement(2026);
-    const statementRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/reports/income-statement`
-    );
+    const statementRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/reports/income-statement`);
 
     expect(statementRequest.request.params.get('year')).toBe('2026');
     statementRequest.flush({
@@ -1312,9 +1293,7 @@ describe('AccountingApi', () => {
       startDate: '2026-01-01',
       endDate: '2026-12-31'
     });
-    const ledgerRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/third-party-ledger`
-    );
+    const ledgerRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/third-party-ledger`);
 
     expect(ledgerRequest.request.params.get('accountId')).toBe('41100000');
     expect(ledgerRequest.request.params.get('thirdPartyId')).toBe('CUST-1');
@@ -1345,9 +1324,7 @@ describe('AccountingApi', () => {
       accountId: '41100000',
       thirdPartyId: 'CUST-1'
     });
-    const reportRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/matching-report`
-    );
+    const reportRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/matching-report`);
 
     reportRequest.flush({
       data: {
@@ -1377,9 +1354,7 @@ describe('AccountingApi', () => {
       accountId: '41100000',
       thirdPartyId: 'CUST-1'
     });
-    const unletteredRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/lettering/unlettered`
-    );
+    const unletteredRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/lettering/unlettered`);
 
     unletteredRequest.flush({
       totalUnlettered: 2,
@@ -1480,9 +1455,7 @@ describe('AccountingApi', () => {
       thirdPartyId: 'CUST-1',
       thirdPartyType: 'CUSTOMER'
     });
-    const candidatesRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/lettering/candidates`
-    );
+    const candidatesRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/lettering/candidates`);
 
     expect(candidatesRequest.request.method).toBe('GET');
     expect(candidatesRequest.request.params.get('fiscalYear')).toBe('2026');
@@ -1554,9 +1527,7 @@ describe('AccountingApi', () => {
     });
 
     const detailPromise = api.getLetteringMatch(2026, 'LM-001');
-    const detailRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/lettering/matches/LM-001`
-    );
+    const detailRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/lettering/matches/LM-001`);
 
     expect(detailRequest.request.method).toBe('GET');
     expect(detailRequest.request.params.get('fiscalYear')).toBe('2026');
@@ -1605,9 +1576,7 @@ describe('AccountingApi', () => {
       accountId: '41100000',
       thirdPartyId: 'CUST-1'
     });
-    const reportRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/books/matching-report`
-    );
+    const reportRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/matching-report`);
 
     reportRequest.flush({ data: { accountId: '41100000' } });
 
@@ -1617,9 +1586,7 @@ describe('AccountingApi', () => {
       accountId: '41100000',
       thirdPartyId: 'CUST-1'
     });
-    const unletteredRequest = httpMock.expectOne(
-      (candidate) => candidate.url === `${apiBaseUrl}/lettering/unlettered`
-    );
+    const unletteredRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/lettering/unlettered`);
 
     unletteredRequest.flush({ unletteredLines: [] });
 
@@ -1774,9 +1741,7 @@ function unletteredCandidateFixture() {
   };
 }
 
-function letteringMatchFixture(
-  overrides: Partial<ReturnType<typeof letteringMatchFixtureShape>> & Record<string, unknown> = {}
-) {
+function letteringMatchFixture(overrides: Partial<ReturnType<typeof letteringMatchFixtureShape>> & Record<string, unknown> = {}) {
   return {
     ...letteringMatchFixtureShape(),
     ...overrides

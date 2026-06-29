@@ -729,6 +729,7 @@
         "ACTIVATED": "Tiers activé avec succès.",
         "CREATED": "Tiers créé avec succès.",
         "DEACTIVATED": "Tiers désactivé avec succès.",
+        "NO_CHANGES": "Aucune modification à enregistrer.",
         "UPDATED": "Tiers mis à jour avec succès."
       },
       "STATUS": {

@@ -72,6 +72,7 @@ const translations = {
           ACTIVATED: 'Third party activated.',
           CREATED: 'Third party created.',
           DEACTIVATED: 'Third party deactivated.',
+          NO_CHANGES: 'No changes to save.',
           UPDATED: 'Third party updated.'
         },
         STATUS: {
@@ -238,7 +239,9 @@ describe('ThirdPartiesPage', () => {
   });
 
   it('uses Material selects for type and status with clear default labels', async () => {
-    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     expect(elementText('[data-testid="third-party-type-trigger"]')).toContain('Customer');
@@ -250,17 +253,23 @@ describe('ThirdPartiesPage', () => {
   });
 
   it('reset restores customer type, active status, and empty search', async () => {
-    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { updateType(type: 'SUPPLIER'): void }).updateType('SUPPLIER');
     fixture.detectChanges();
-    expectThirdPartyListRequest('SUPPLIER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('SUPPLIER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { updateStatusFilter(status: 'INACTIVE'): void }).updateStatusFilter('INACTIVE');
     fixture.detectChanges();
-    expectThirdPartyListRequest('SUPPLIER', 'INACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('SUPPLIER', 'INACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     setSearchValue('beta');
@@ -276,7 +285,9 @@ describe('ThirdPartiesPage', () => {
   });
 
   it('selecting suppliers refetches with type=SUPPLIER and updates the create action label', async () => {
-    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { updateType(type: 'SUPPLIER'): void }).updateType('SUPPLIER');
@@ -304,12 +315,16 @@ describe('ThirdPartiesPage', () => {
   });
 
   it('sends inactive status and omits the status query param for all statuses', async () => {
-    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { updateStatusFilter(status: 'INACTIVE'): void }).updateStatusFilter('INACTIVE');
     fixture.detectChanges();
-    expectThirdPartyListRequest('CUSTOMER', 'INACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'INACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
     expect(elementText('[data-testid="third-party-selected-status"]')).toContain('Inactive');
     expect(elementText('[data-testid="third-party-status-trigger"]')).toContain('Inactive');
@@ -320,7 +335,11 @@ describe('ThirdPartiesPage', () => {
       data: {
         items: [
           thirdPartyFixture(),
-          thirdPartyFixture({ code: 'CUST-INACTIVE', thirdPartyId: 'tp-inactive', status: 'INACTIVE' })
+          thirdPartyFixture({
+            code: 'CUST-INACTIVE',
+            thirdPartyId: 'tp-inactive',
+            status: 'INACTIVE'
+          })
         ],
         hasMore: false
       }
@@ -338,7 +357,11 @@ describe('ThirdPartiesPage', () => {
       data: {
         items: [
           thirdPartyFixture(),
-          thirdPartyFixture({ code: 'CUST-GAMMA', displayName: 'Client Gamma', thirdPartyId: 'tp-gamma' })
+          thirdPartyFixture({
+            code: 'CUST-GAMMA',
+            displayName: 'Client Gamma',
+            thirdPartyId: 'tp-gamma'
+          })
         ],
         hasMore: true,
         nextCursor: 'cursor-2'
@@ -363,7 +386,9 @@ describe('ThirdPartiesPage', () => {
   });
 
   it('searches supplier rows locally by display name and supplier code', async () => {
-    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { updateType(type: 'SUPPLIER'): void }).updateType('SUPPLIER');
@@ -404,7 +429,9 @@ describe('ThirdPartiesPage', () => {
   });
 
   it('creates customers and suppliers with the selected type', async () => {
-    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { openCreateThirdParty(): void }).openCreateThirdParty();
@@ -422,13 +449,21 @@ describe('ThirdPartiesPage', () => {
       displayName: 'Client New',
       type: 'CUSTOMER'
     });
-    createCustomer.flush({ thirdParty: thirdPartyFixture({ code: 'CUST-NEW', displayName: 'Client New', thirdPartyId: 'tp-new' }) });
+    createCustomer.flush({
+      thirdParty: thirdPartyFixture({
+        code: 'CUST-NEW',
+        displayName: 'Client New',
+        thirdPartyId: 'tp-new'
+      })
+    });
     await createCustomerSubmit;
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { updateType(type: 'SUPPLIER'): void }).updateType('SUPPLIER');
     fixture.detectChanges();
-    expectThirdPartyListRequest('SUPPLIER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('SUPPLIER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { openCreateThirdParty(): void }).openCreateThirdParty();
@@ -446,13 +481,20 @@ describe('ThirdPartiesPage', () => {
       type: 'SUPPLIER'
     });
     createSupplier.flush({
-      thirdParty: thirdPartyFixture({ code: 'SUP-NEW', displayName: 'Supplier New', thirdPartyId: 'tp-sup-new', type: 'SUPPLIER' })
+      thirdParty: thirdPartyFixture({
+        code: 'SUP-NEW',
+        displayName: 'Supplier New',
+        thirdPartyId: 'tp-sup-new',
+        type: 'SUPPLIER'
+      })
     });
     await createSupplierSubmit;
   });
 
   it('keeps create validation inline and shows duplicate code errors cleanly', async () => {
-    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({ data: { items: [], hasMore: false } });
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [], hasMore: false }
+    });
     await settle(fixture);
 
     (fixture.componentInstance as unknown as { openCreateThirdParty(): void }).openCreateThirdParty();
@@ -468,10 +510,7 @@ describe('ThirdPartiesPage', () => {
     const duplicateSubmit = dialog.submit();
 
     const createRequest = httpMock.expectOne(`${apiBaseUrl}/third-parties`);
-    createRequest.flush(
-      { message: { message: 'A third party with this code already exists.' } },
-      { status: 409, statusText: 'Conflict' }
-    );
+    createRequest.flush({ message: { message: 'A third party with this code already exists.' } }, { status: 409, statusText: 'Conflict' });
     await duplicateSubmit;
     await settle(fixture);
 
@@ -480,13 +519,17 @@ describe('ThirdPartiesPage', () => {
     expect(dialog.errorMessage()).not.toContain('PK');
   });
 
-  it('edits mutable fields without sending code or type', async () => {
+  it('edits only changed mutable fields through the patch endpoint', async () => {
     expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
       data: { items: [thirdPartyFixture()], hasMore: false }
     });
     await settle(fixture);
 
-    (fixture.componentInstance as unknown as { openEditThirdParty(thirdParty: ReturnType<typeof thirdPartyFixture>): void }).openEditThirdParty(thirdPartyFixture());
+    (
+      fixture.componentInstance as unknown as {
+        openEditThirdParty(thirdParty: ReturnType<typeof thirdPartyFixture>): void;
+      }
+    ).openEditThirdParty(thirdPartyFixture());
     fixture.detectChanges();
 
     const dialog = TestBed.inject(MatDialog).openDialogs.at(-1)?.componentInstance as any;
@@ -497,19 +540,41 @@ describe('ThirdPartiesPage', () => {
     dialog.form.controls.email.setValue('client@example.com');
     const updateSubmit = dialog.submit();
 
-    const updateRequest = httpMock.expectOne(
-      (request) => request.url === `${apiBaseUrl}/third-parties/tp-cust-alpha`
-    );
+    const updateRequest = httpMock.expectOne((request) => request.url === `${apiBaseUrl}/third-parties/tp-cust-alpha`);
     expect(updateRequest.request.method).toBe('PATCH');
     expect(updateRequest.request.params.get('type')).toBe('CUSTOMER');
-    expect(updateRequest.request.body).toMatchObject({
+    expect(updateRequest.request.body).toEqual({
       displayName: 'Client Alpha SARL',
       email: 'client@example.com'
     });
-    expect(updateRequest.request.body).not.toHaveProperty('code');
-    expect(updateRequest.request.body).not.toHaveProperty('type');
+    for (const forbiddenField of ['code', 'type', 'thirdPartyId', 'status', 'PK', 'SK', 'GSI1PK', 'GSI1SK', 'entityType']) {
+      expect(updateRequest.request.body).not.toHaveProperty(forbiddenField);
+    }
     updateRequest.flush({ thirdParty: thirdPartyFixture({ displayName: 'Client Alpha SARL' }) });
     await updateSubmit;
+  });
+
+  it('does not call update when no editable third-party field changed', async () => {
+    expectThirdPartyListRequest('CUSTOMER', 'ACTIVE').flush({
+      data: { items: [thirdPartyFixture()], hasMore: false }
+    });
+    await settle(fixture);
+
+    (
+      fixture.componentInstance as unknown as {
+        openEditThirdParty(thirdParty: ReturnType<typeof thirdPartyFixture>): void;
+      }
+    ).openEditThirdParty(thirdPartyFixture());
+    fixture.detectChanges();
+
+    const dialog = TestBed.inject(MatDialog).openDialogs.at(-1)?.componentInstance as any;
+
+    await dialog.submit();
+    await settle(fixture);
+
+    httpMock.expectNone((request) => request.method === 'PATCH' && request.url.includes('/third-parties/'));
+    expect(dialog.errorMessage()).toBeNull();
+    expect(snackBarOpen).toHaveBeenCalledWith('No changes to save.', undefined, expect.objectContaining({ panelClass: 'info-notification-overlay' }));
   });
 
   it('requires confirmation for deactivate and activate status endpoints', async () => {
@@ -518,31 +583,33 @@ describe('ThirdPartiesPage', () => {
     });
     await settle(fixture);
 
-    (fixture.componentInstance as unknown as { openStatusDialog(thirdParty: ReturnType<typeof thirdPartyFixture>): void }).openStatusDialog(thirdPartyFixture());
+    (
+      fixture.componentInstance as unknown as {
+        openStatusDialog(thirdParty: ReturnType<typeof thirdPartyFixture>): void;
+      }
+    ).openStatusDialog(thirdPartyFixture());
     fixture.detectChanges();
     httpMock.expectNone((request) => request.url.includes('/deactivate'));
 
     let dialog = TestBed.inject(MatDialog).openDialogs.at(-1)?.componentInstance as any;
     const deactivateConfirm = dialog.confirm();
 
-    const deactivate = httpMock.expectOne(
-      (request) => request.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/deactivate`
-    );
+    const deactivate = httpMock.expectOne((request) => request.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/deactivate`);
     expect(deactivate.request.params.get('type')).toBe('CUSTOMER');
     deactivate.flush({ thirdParty: thirdPartyFixture({ status: 'INACTIVE' }) });
     await deactivateConfirm;
     await settle(fixture);
 
-    (fixture.componentInstance as unknown as { openStatusDialog(thirdParty: ReturnType<typeof thirdPartyFixture>): void }).openStatusDialog(
-      thirdPartyFixture({ status: 'INACTIVE' })
-    );
+    (
+      fixture.componentInstance as unknown as {
+        openStatusDialog(thirdParty: ReturnType<typeof thirdPartyFixture>): void;
+      }
+    ).openStatusDialog(thirdPartyFixture({ status: 'INACTIVE' }));
     fixture.detectChanges();
     dialog = TestBed.inject(MatDialog).openDialogs.at(-1)?.componentInstance as any;
     const activateConfirm = dialog.confirm();
 
-    const activate = httpMock.expectOne(
-      (request) => request.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/activate`
-    );
+    const activate = httpMock.expectOne((request) => request.url === `${apiBaseUrl}/third-parties/tp-cust-alpha/activate`);
     expect(activate.request.params.get('type')).toBe('CUSTOMER');
     activate.flush({ thirdParty: thirdPartyFixture({ status: 'ACTIVE' }) });
     await activateConfirm;
@@ -574,11 +641,7 @@ describe('ThirdPartiesPage', () => {
   }
 
   function expectNoThirdPartySearchRequest(): void {
-    httpMock.expectNone(
-      (request) =>
-        request.url === `${apiBaseUrl}/third-parties` &&
-        (request.params.has('search') || request.params.has('name') || request.params.has('displayName'))
-    );
+    httpMock.expectNone((request) => request.url === `${apiBaseUrl}/third-parties` && (request.params.has('search') || request.params.has('name') || request.params.has('displayName')));
   }
 
   function setSearchValue(value: string): void {

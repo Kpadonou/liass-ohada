@@ -48,4 +48,16 @@ describe("AccountingEndpoints", () => {
     expect(source).toContain('"/third-parties/{thirdPartyId}/activate"');
     expect(source).toContain('"/third-parties/{thirdPartyId}/deactivate"');
   });
+
+  test("allows PATCH in API Gateway CORS preflight", () => {
+    const source = readFileSync(
+      path.join(
+        __dirname,
+        "../../../lib/constructs/api/api-gateway.ts",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain("apigwv2.CorsHttpMethod.PATCH");
+  });
 });

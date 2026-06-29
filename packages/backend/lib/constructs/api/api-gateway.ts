@@ -23,6 +23,7 @@ export class LiassOhadaApiGateway extends Construct {
           apigwv2.CorsHttpMethod.POST,
           apigwv2.CorsHttpMethod.OPTIONS,
           apigwv2.CorsHttpMethod.PUT,
+          apigwv2.CorsHttpMethod.PATCH,
           apigwv2.CorsHttpMethod.DELETE,
         ],
         allowHeaders: [
