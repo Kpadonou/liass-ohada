@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { ThirdPartyType } from "./third-party";
+import { AccountDtoSchema } from "./account";
+import { ThirdPartyDtoSchema, ThirdPartyType } from "./third-party";
 
 // --- Enums & Constants ---
 
@@ -660,32 +661,94 @@ export const IncomeStatementResponseSchema = z.object({
   data: IncomeStatementDtoSchema,
 });
 
+export const ThirdPartyLedgerQuerySchema = z.object({
+  fiscalYear: z.string().regex(/^\d{4}$/),
+  accountId: z.string().regex(/^\d{2,8}$/),
+  thirdPartyId: z.string().min(1),
+  thirdPartyType: ThirdPartyType,
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(50).optional(),
+  cursor: z.string().optional(),
+}).superRefine((query, context) => {
+  if (query.startDate && !query.startDate.startsWith(`${query.fiscalYear}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must belong to the fiscal year",
+      path: ["startDate"],
+    });
+  }
+
+  if (query.endDate && !query.endDate.startsWith(`${query.fiscalYear}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "End date must belong to the fiscal year",
+      path: ["endDate"],
+    });
+  }
+
+  if (query.startDate && query.endDate && query.startDate > query.endDate) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must not be after end date",
+      path: ["endDate"],
+    });
+  }
+});
+
+export type ThirdPartyLedgerQuery = z.infer<typeof ThirdPartyLedgerQuerySchema>;
+
 export const ThirdPartyLedgerLineDtoSchema = z.object({
-  date: z.string(),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   label: z.string().optional(),
   reference: z.string().optional(),
+  journalCode: z.string().min(1),
+  journal: z.string().optional(),
   debit: z.number().int().nonnegative(),
   credit: z.number().int().nonnegative(),
-  letteringCode: z.string().nullable(),
+  runningBalance: z.number().int(),
+  letteringCode: z.string().nullable().optional(),
+  letteringStatus: LineLetteringStatus.optional(),
+  letteredAmount: z.number().int().nonnegative().optional(),
+  remainingAmount: z.number().int().nonnegative().optional(),
   entryId: z.string(),
   lineId: z.string().optional(),
 });
 
-export const ThirdPartyLedgerDtoSchema = z.object({
-  accountId: z.string(),
-  thirdPartyId: z.string(),
-  period: z.object({
-    startDate: z.string().optional(),
-    endDate: z.string().optional(),
-  }),
-  summary: z.object({
-    totalDebit: z.number().int().nonnegative(),
-    totalCredit: z.number().int().nonnegative(),
-    balance: z.number().int(),
-  }),
-  count: z.number().int().nonnegative(),
-  lines: z.array(ThirdPartyLedgerLineDtoSchema),
-});
+export const ThirdPartyLedgerDtoSchema = z
+  .object({
+    accountId: z.string().regex(/^\d{8}$/),
+    thirdPartyId: z.string().min(1),
+    thirdPartyType: ThirdPartyType,
+    account: AccountDtoSchema,
+    thirdParty: ThirdPartyDtoSchema,
+    period: z.object({
+      fiscalYear: z.string().regex(/^\d{4}$/),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+    openingBalance: GeneralLedgerOpeningBalanceDtoSchema,
+    movements: z.array(ThirdPartyLedgerLineDtoSchema).optional(),
+    lines: z.array(ThirdPartyLedgerLineDtoSchema).optional(),
+    summary: z.object({
+      totalDebit: z.number().int().nonnegative(),
+      totalCredit: z.number().int().nonnegative(),
+      balance: z.number().int(),
+    }),
+    count: z.number().int().nonnegative(),
+    finalBalance: z.number().int(),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean().optional(),
+  })
+  .transform((ledger) => {
+    const movements = ledger.movements ?? ledger.lines ?? [];
+    return {
+      ...ledger,
+      movements,
+      lines: ledger.lines ?? movements,
+      hasMore: ledger.hasMore ?? !!ledger.nextCursor,
+    };
+  });
 
 export type ThirdPartyLedgerDto = z.infer<typeof ThirdPartyLedgerDtoSchema>;
 

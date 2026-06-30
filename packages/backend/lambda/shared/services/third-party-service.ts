@@ -2,6 +2,7 @@ import { config } from "@/lambda/shared/config";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/app-error";
+import { resolveAuxiliaryMetadata } from "@/lambda/shared/account-auxiliary";
 import {
   BatchGetItemCommand,
   GetItemCommand,
@@ -11,8 +12,14 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
+  Account,
+  AccountDtoSchema,
   CreateThirdPartyRequest,
   CreateThirdPartyRequestSchema,
+  FiscalYearSchema,
+  ThirdPartyLedgerDto,
+  ThirdPartyLedgerDtoSchema,
+  ThirdPartyLedgerQuery,
   ThirdPartyDto,
   ThirdPartyDtoSchema,
   ThirdPartyStatusValue,
@@ -363,72 +370,152 @@ export class ThirdPartyService {
 
   static async getLedger(
     orgId: string,
-    params: {
-      accountId: string;
-      thirdPartyId: string;
-      startDate?: string;
-      endDate?: string;
-    },
-  ) {
-    const { accountId, thirdPartyId, startDate, endDate } = params;
-    const normalizedAccountId = accountId.padEnd(8, "0");
+    params: ThirdPartyLedgerQuery,
+  ): Promise<ThirdPartyLedgerDto> {
+    const normalizedAccountId = params.accountId.padEnd(8, "0");
+    const fiscalYear = await ThirdPartyService.getFiscalYear(
+      orgId,
+      params.fiscalYear,
+    );
+    const startDate = params.startDate ?? fiscalYear.startDate;
+    const endDate = params.endDate ?? fiscalYear.endDate;
 
-    let keyCondition = "GSI2PK = :pk";
-    const expressionValues: any = {
-      ":pk": KeyFactory.gsi2PK(orgId, normalizedAccountId, thirdPartyId),
-    };
-
-    if (startDate && endDate) {
-      keyCondition += " AND GSI2SK BETWEEN :start AND :end";
-      expressionValues[":start"] = KeyFactory.gsi2SK(startDate, "");
-      expressionValues[":end"] = KeyFactory.gsi2SK(endDate, "\uffff");
+    if (startDate < fiscalYear.startDate || endDate > fiscalYear.endDate) {
+      throw new AppError(400, "ERROR_TRIAL_BALANCE_DATE_OUTSIDE_FISCAL_YEAR");
     }
 
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        IndexName: config.GSI2,
-        KeyConditionExpression: keyCondition,
-        ExpressionAttributeValues: marshall(expressionValues),
-        ScanIndexForward: true, // Chronological order
-      }),
+    const { account, thirdParty } =
+      await ThirdPartyService.validateAuxiliaryLedgerScope(orgId, {
+        accountId: normalizedAccountId,
+        thirdPartyId: params.thirdPartyId,
+        thirdPartyType: params.thirdPartyType,
+      });
+    const gsi2pk = KeyFactory.gsi2PK(
+      orgId,
+      normalizedAccountId,
+      thirdParty.thirdPartyId,
     );
-
-    const lines = (result.Items || []).map((item) => {
-      const line = unmarshall(item);
-      return {
-        date: line.entryDate,
-        label: line.label,
-        reference: line.voucherNumber,
-        debit: Number(line.debit) || 0,
-        credit: Number(line.credit) || 0,
-        // The famous lettering code for reconciliation
-        letteringCode: line.letteringCode || null,
-        entryId: line.entryId,
-        lineId: line.lineId,
-      };
+    const rangeStart = KeyFactory.gsi2SK(startDate, "");
+    const rangeEnd = KeyFactory.gsi2SK(endDate, "\uffff");
+    const continuation = ThirdPartyService.decodeLedgerCursor(
+      params.cursor,
+      gsi2pk,
+      rangeStart,
+      rangeEnd,
+    );
+    const openingBalance =
+      await ThirdPartyService.getAuxiliaryOpeningBalance({
+        orgId,
+        gsi2pk,
+        accountId: account.accountId,
+        thirdPartyId: thirdParty.thirdPartyId,
+        fiscalYearStartDate: fiscalYear.startDate,
+        startDate,
+      });
+    const movementTotals = await ThirdPartyService.getAuxiliaryMovementTotals({
+      orgId,
+      gsi2pk,
+      accountId: account.accountId,
+      thirdPartyId: thirdParty.thirdPartyId,
+      rangeStart,
+      rangeEnd,
     });
+    let exclusiveStartKey = continuation?.key;
+    let runningBalance = continuation?.runningBalance ?? openingBalance.balance;
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    const movements: ThirdPartyLedgerDto["movements"] = [];
+    const limit = params.limit ?? 50;
 
-    const summary = lines.reduce(
-      (acc, line) => {
-        acc.totalDebit += line.debit;
-        acc.totalCredit += line.credit;
-        return acc;
+    do {
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          IndexName: config.GSI2,
+          KeyConditionExpression: "GSI2PK = :pk AND GSI2SK BETWEEN :start AND :end",
+          ExpressionAttributeValues: marshall({
+            ":pk": gsi2pk,
+            ":start": rangeStart,
+            ":end": rangeEnd,
+          }),
+          Limit: Math.max(limit - movements.length, 1),
+          ExclusiveStartKey: exclusiveStartKey,
+          ScanIndexForward: true,
+        }),
+      );
+
+      for (const item of result.Items ?? []) {
+        const line = unmarshall(item);
+        if (
+          !ThirdPartyService.isAuxiliaryLedgerLine(line, {
+            orgId,
+            accountId: account.accountId,
+            thirdPartyId: thirdParty.thirdPartyId,
+            gsi2pk,
+          }) ||
+          line.journalCode === "RAN"
+        ) {
+          continue;
+        }
+
+        const debit = Number(line.debit) || 0;
+        const credit = Number(line.credit) || 0;
+        runningBalance += debit - credit;
+        movements.push({
+          date: line.entryDate,
+          label: line.label || line.description,
+          reference: line.voucherNumber || line.entryId,
+          journalCode: line.journalCode,
+          journal: line.journalCode,
+          debit,
+          credit,
+          runningBalance,
+          letteringCode: line.letteringCode ?? null,
+          letteringStatus: line.letteringStatus,
+          letteredAmount: line.letteredAmount,
+          remainingAmount: line.remainingAmount,
+          entryId: line.entryId,
+          lineId: line.lineId,
+        });
+      }
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+      exclusiveStartKey = lastEvaluatedKey;
+    } while (movements.length < limit && lastEvaluatedKey);
+
+    const nextCursor = lastEvaluatedKey
+      ? ThirdPartyService.encodeLedgerCursor({
+          key: lastEvaluatedKey,
+          runningBalance,
+        })
+      : undefined;
+
+    return ThirdPartyLedgerDtoSchema.parse({
+      accountId: account.accountId,
+      thirdPartyId: thirdParty.thirdPartyId,
+      thirdPartyType: thirdParty.type,
+      account: ThirdPartyService.toAccountDto(account),
+      thirdParty: ThirdPartyService.toDto(thirdParty),
+      period: {
+        fiscalYear: String(fiscalYear.year),
+        startDate,
+        endDate,
       },
-      { totalDebit: 0, totalCredit: 0 },
-    );
-
-    return {
-      accountId: normalizedAccountId,
-      thirdPartyId,
-      period: { startDate, endDate },
+      openingBalance,
+      movements,
+      lines: movements,
       summary: {
-        ...summary,
-        balance: summary.totalDebit - summary.totalCredit,
+        totalDebit: movementTotals.totalDebit,
+        totalCredit: movementTotals.totalCredit,
+        balance: movementTotals.totalDebit - movementTotals.totalCredit,
       },
-      count: lines.length,
-      lines,
-    };
+      count: movementTotals.count,
+      finalBalance:
+        openingBalance.balance +
+        movementTotals.totalDebit -
+        movementTotals.totalCredit,
+      nextCursor,
+      hasMore: !!nextCursor,
+    });
   }
 
   private static async updateFields(
@@ -498,6 +585,275 @@ export class ThirdPartyService {
       createdAt: item.createdAt,
       updatedAt: item.updatedAt,
     });
+  }
+
+  private static toAccountDto(account: Account) {
+    const metadata = resolveAuxiliaryMetadata(account);
+    return AccountDtoSchema.parse({
+      orgId: account.orgId,
+      accountId: account.accountId,
+      accountName: account.accountName,
+      accountNature: account.accountNature,
+      accountUsage: account.accountUsage,
+      isThirdPartyAccount: account.isThirdPartyAccount,
+      ...metadata,
+      classCode: account.classCode,
+      financialStatementCode: account.financialStatementCode,
+      allowReconciliation: account.allowReconciliation,
+      isActive: account.isActive,
+      createdAt: account.createdAt,
+      updatedAt: account.updatedAt,
+    });
+  }
+
+  private static async getFiscalYear(orgId: string, year: string | number) {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.fiscalYearSK(year),
+        }),
+      }),
+    );
+
+    if (!result.Item) {
+      throw new AppError(404, "ERROR_FISCAL_YEAR_NOT_FOUND");
+    }
+
+    return FiscalYearSchema.parse(unmarshall(result.Item));
+  }
+
+  private static async validateAuxiliaryLedgerScope(
+    orgId: string,
+    params: {
+      accountId: string;
+      thirdPartyId: string;
+      thirdPartyType: ThirdPartyTypeValue;
+    },
+  ): Promise<{ account: Account; thirdParty: ThirdPartyItem }> {
+    const accountResult = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(params.accountId),
+        }),
+      }),
+    );
+
+    if (!accountResult.Item) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+
+    const account = unmarshall(accountResult.Item) as Account;
+    if (
+      account.orgId !== orgId ||
+      account.entityType !== "ACCOUNT" ||
+      account.accountId !== params.accountId
+    ) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+
+    if (account.isActive === false) {
+      throw new AppError(400, "ERROR_ACCOUNT_INACTIVE");
+    }
+
+    const metadata = resolveAuxiliaryMetadata(account);
+    if (!metadata.requiresThirdParty || metadata.auxiliaryType === "NONE") {
+      throw new AppError(400, "THIRD_PARTY_NOT_ALLOWED");
+    }
+
+    if (
+      metadata.auxiliaryType !== "THIRD_PARTY" &&
+      metadata.auxiliaryType !== params.thirdPartyType
+    ) {
+      throw new AppError(400, "THIRD_PARTY_TYPE_MISMATCH");
+    }
+
+    const thirdParty = await ThirdPartyService.getItem(
+      orgId,
+      params.thirdPartyType,
+      params.thirdPartyId,
+    );
+
+    if (thirdParty.status !== "ACTIVE") {
+      throw new AppError(400, "THIRD_PARTY_INACTIVE");
+    }
+
+    return { account, thirdParty };
+  }
+
+  private static async getAuxiliaryOpeningBalance(params: {
+    orgId: string;
+    gsi2pk: string;
+    accountId: string;
+    thirdPartyId: string;
+    fiscalYearStartDate: string;
+    startDate: string;
+  }) {
+    const rangeStart = KeyFactory.gsi2SK(params.fiscalYearStartDate, "");
+    const rangeEnd = KeyFactory.gsi2SK(params.startDate, "\uffff");
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    let debit = 0;
+    let credit = 0;
+
+    do {
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          IndexName: config.GSI2,
+          KeyConditionExpression: "GSI2PK = :pk AND GSI2SK BETWEEN :start AND :end",
+          ExpressionAttributeValues: marshall({
+            ":pk": params.gsi2pk,
+            ":start": rangeStart,
+            ":end": rangeEnd,
+          }),
+          ExclusiveStartKey: lastEvaluatedKey,
+          ScanIndexForward: true,
+        }),
+      );
+
+      for (const item of result.Items ?? []) {
+        const line = unmarshall(item);
+        if (
+          ThirdPartyService.isAuxiliaryLedgerLine(line, params) &&
+          (line.entryDate < params.startDate || line.journalCode === "RAN")
+        ) {
+          debit += Number(line.debit) || 0;
+          credit += Number(line.credit) || 0;
+        }
+      }
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return { debit, credit, balance: debit - credit };
+  }
+
+  private static async getAuxiliaryMovementTotals(params: {
+    orgId: string;
+    gsi2pk: string;
+    accountId: string;
+    thirdPartyId: string;
+    rangeStart: string;
+    rangeEnd: string;
+  }): Promise<{ totalDebit: number; totalCredit: number; count: number }> {
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    let totalDebit = 0;
+    let totalCredit = 0;
+    let count = 0;
+
+    do {
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          IndexName: config.GSI2,
+          KeyConditionExpression: "GSI2PK = :pk AND GSI2SK BETWEEN :start AND :end",
+          ExpressionAttributeValues: marshall({
+            ":pk": params.gsi2pk,
+            ":start": params.rangeStart,
+            ":end": params.rangeEnd,
+          }),
+          ExclusiveStartKey: lastEvaluatedKey,
+          ScanIndexForward: true,
+        }),
+      );
+
+      for (const item of result.Items ?? []) {
+        const line = unmarshall(item);
+        if (
+          ThirdPartyService.isAuxiliaryLedgerLine(line, params) &&
+          line.journalCode !== "RAN"
+        ) {
+          totalDebit += Number(line.debit) || 0;
+          totalCredit += Number(line.credit) || 0;
+          count += 1;
+        }
+      }
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    return { totalDebit, totalCredit, count };
+  }
+
+  private static isAuxiliaryLedgerLine(
+    line: Record<string, any>,
+    params: {
+      orgId: string;
+      accountId: string;
+      thirdPartyId: string;
+      gsi2pk: string;
+    },
+  ): boolean {
+    return (
+      line.orgId === params.orgId &&
+      line.entityType === "ENTRY_LINE" &&
+      line.accountId === params.accountId &&
+      line.thirdPartyId === params.thirdPartyId &&
+      line.GSI2PK === params.gsi2pk
+    );
+  }
+
+  private static decodeLedgerCursor(
+    cursor: string | undefined,
+    expectedGsi2pk: string,
+    rangeStart: string,
+    rangeEnd: string,
+  ):
+    | {
+        key: Record<string, any>;
+        runningBalance: number;
+      }
+    | undefined {
+    if (!cursor) {
+      return undefined;
+    }
+
+    try {
+      const parsed = JSON.parse(Buffer.from(cursor, "base64").toString());
+      const gsi2pk = ThirdPartyService.readAttributeString(parsed.key?.GSI2PK);
+      const gsi2sk = ThirdPartyService.readAttributeString(parsed.key?.GSI2SK);
+      if (
+        !parsed ||
+        typeof parsed !== "object" ||
+        !parsed.key ||
+        typeof parsed.key !== "object" ||
+        typeof parsed.runningBalance !== "number" ||
+        !Number.isInteger(parsed.runningBalance) ||
+        gsi2pk !== expectedGsi2pk ||
+        !gsi2sk ||
+        gsi2sk < rangeStart ||
+        gsi2sk > rangeEnd
+      ) {
+        throw new Error("Invalid cursor");
+      }
+
+      return {
+        key: parsed.key,
+        runningBalance: parsed.runningBalance,
+      };
+    } catch {
+      throw new AppError(400, "ERROR_INVALID_CURSOR");
+    }
+  }
+
+  private static encodeLedgerCursor(cursor: {
+    key: Record<string, any>;
+    runningBalance: number;
+  }): string {
+    return Buffer.from(JSON.stringify(cursor)).toString("base64");
+  }
+
+  private static readAttributeString(attribute: any): string | undefined {
+    if (typeof attribute === "string") {
+      return attribute;
+    }
+    if (attribute && typeof attribute.S === "string") {
+      return attribute.S;
+    }
+    return undefined;
   }
 
   private static normalizeCode(code: string): string {
