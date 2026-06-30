@@ -53,6 +53,7 @@ const translations = {
         ENTRIES: 'Écritures',
         FISCAL_YEAR: 'Exercices',
         GENERAL_LEDGER: 'Grand livre',
+        AUXILIARY_LEDGER: 'Grand livre auxiliaire',
         JOURNALS: 'Journaux',
         LETTERING: 'Lettrage',
         MISSIONS: 'Missions',
@@ -113,6 +114,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Vue d’ensemble');
     expect(text).toContain('Exercices');
     expect(text).toContain('Grand livre');
+    expect(text).toContain('Grand livre auxiliaire');
     expect(text).toContain('Journaux');
     expect(text).toContain('Tiers');
     expect(text).toContain('Écritures');

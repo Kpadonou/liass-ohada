@@ -104,6 +104,22 @@ describe('routes', () => {
     expect(generalLedgerRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE');
   });
 
+  it('registers the accounting auxiliary-ledger route', async () => {
+    const shell = shellRoute();
+    const auxiliaryLedgerRoute = shell?.children?.find(
+      (route) => route.path === 'accounting/auxiliary-ledger'
+    );
+    const component = await auxiliaryLedgerRoute?.loadComponent?.();
+    const { AuxiliaryLedgerPage } = await import(
+      '../../domains/accounting/feature/auxiliary-ledger/auxiliary-ledger.page'
+    );
+
+    expect(component).toBe(AuxiliaryLedgerPage);
+    expect(auxiliaryLedgerRoute?.data?.['titleKey']).toBe(
+      'ACCOUNTING.PAGES.AUXILIARY_LEDGER.TITLE'
+    );
+  });
+
   it('registers the accounting overview route', async () => {
     const shell = shellRoute();
     const accountingRoute = shell?.children?.find((route) => route.path === 'accounting');

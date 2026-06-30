@@ -41,6 +41,7 @@ const translations = {
       [type]="type()"
       [required]="required"
       [showSelectedPreview]="showSelectedPreview"
+      [showCodeInLabel]="showCodeInLabel"
       [status]="status"
       [limit]="limit"
       (thirdPartySelected)="selected = $event"
@@ -52,6 +53,7 @@ class ThirdPartySelectHostComponent {
   type = signal<'CUSTOMER' | 'SUPPLIER'>('CUSTOMER');
   required = false;
   showSelectedPreview = false;
+  showCodeInLabel = false;
   status: 'ACTIVE' | 'INACTIVE' | 'ALL' = 'ACTIVE';
   limit = 200;
   selected: ThirdPartySelectedValue | null = null;
@@ -112,7 +114,7 @@ describe('ThirdPartySelectComponent', () => {
     });
   });
 
-  it('displays options as displayName only and never displays internal identifiers', async () => {
+  it('displays options as displayName only and never displays internal identifiers by default', async () => {
     fixture.detectChanges();
     await settle(fixture);
 
@@ -120,6 +122,14 @@ describe('ThirdPartySelectComponent', () => {
     expect(component.thirdPartyLabel(customerAlpha())).toBe('Client Alpha');
     expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA');
     expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
+  });
+
+  it('can display the business code with the selected third-party label', async () => {
+    fixture.componentInstance.showCodeInLabel = true;
+    fixture.detectChanges();
+    await settle(fixture);
+
+    expect(selectorComponent().thirdPartyLabel(customerAlpha())).toBe('CUST-ALPHA — Client Alpha');
   });
 
   it('filters loaded items locally by displayName', async () => {

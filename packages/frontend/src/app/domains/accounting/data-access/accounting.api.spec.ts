@@ -1288,33 +1288,64 @@ describe('AccountingApi', () => {
 
   it('loads third-party ledger, matching report, and unlettered suggestions', async () => {
     const ledgerPromise = api.getThirdPartyLedger({
+      fiscalYear: '2026',
       accountId: '41100000',
       thirdPartyId: 'CUST-1',
+      thirdPartyType: 'CUSTOMER',
       startDate: '2026-01-01',
-      endDate: '2026-12-31'
+      endDate: '2026-12-31',
+      limit: 50,
+      cursor: 'cursor-1'
     });
     const ledgerRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/third-party-ledger`);
 
+    expect(ledgerRequest.request.params.get('fiscalYear')).toBe('2026');
     expect(ledgerRequest.request.params.get('accountId')).toBe('41100000');
     expect(ledgerRequest.request.params.get('thirdPartyId')).toBe('CUST-1');
+    expect(ledgerRequest.request.params.get('thirdPartyType')).toBe('CUSTOMER');
+    expect(ledgerRequest.request.params.get('startDate')).toBe('2026-01-01');
+    expect(ledgerRequest.request.params.get('endDate')).toBe('2026-12-31');
+    expect(ledgerRequest.request.params.get('limit')).toBe('50');
+    expect(ledgerRequest.request.params.get('cursor')).toBe('cursor-1');
     ledgerRequest.flush({
       data: {
         accountId: '41100000',
         thirdPartyId: 'CUST-1',
-        period: { startDate: '2026-01-01', endDate: '2026-12-31' },
-        summary: { totalDebit: 1000, totalCredit: 300, balance: 700 },
-        count: 1,
-        lines: [
+        thirdPartyType: 'CUSTOMER',
+        account: accountResponseFixture({ accountId: '41100000', accountName: 'Clients' }),
+        thirdParty: thirdPartyFixture({
+          thirdPartyId: 'CUST-1',
+          code: 'CUST-1',
+          displayName: 'Client One',
+          type: 'CUSTOMER'
+        }),
+        period: { fiscalYear: '2026', startDate: '2026-01-01', endDate: '2026-12-31' },
+        openingBalance: {
+          date: '2026-01-01',
+          label: 'Opening balance',
+          debit: 0,
+          credit: 0,
+          balance: 0
+        },
+        movements: [
           {
             date: '2026-01-15',
             label: 'Invoice',
+            reference: 'FAC-CUST-001',
+            journalCode: 'VE',
             debit: 1000,
             credit: 0,
+            runningBalance: 1000,
             letteringCode: null,
+            letteringStatus: 'UNLETTERED',
             entryId: 'E-1',
             lineId: 'L-1'
           }
-        ]
+        ],
+        summary: { totalDebit: 1000, totalCredit: 300, balance: 700 },
+        count: 1,
+        finalBalance: 700,
+        hasMore: false
       }
     });
 

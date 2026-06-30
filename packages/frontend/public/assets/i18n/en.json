@@ -58,6 +58,7 @@
       "ENTRIES": "Entries",
       "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
+      "AUXILIARY_LEDGER": "Auxiliary ledger",
       "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
@@ -84,6 +85,7 @@
       "ENTRIES": "Entries",
       "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
+      "AUXILIARY_LEDGER": "Auxiliary ledger",
       "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
@@ -627,6 +629,10 @@
       "GENERAL_LEDGER": {
         "SUBTITLE": "A reserved workspace for the general ledger.",
         "TITLE": "General ledger"
+      },
+      "AUXILIARY_LEDGER": {
+        "SUBTITLE": "Review posted movements by auxiliary account and third party.",
+        "TITLE": "Auxiliary ledger"
       },
       "JOURNAL_BOOK": {
         "SUBTITLE": "Review posted entries in chronological order.",
@@ -1509,6 +1515,72 @@
         "TITLE": "Movements"
       },
       "TITLE": "General ledger"
+    },
+    "AUXILIARY_LEDGER": {
+      "ACTIONS": {
+        "LOAD": "Load",
+        "LOAD_MORE": "Load more"
+      },
+      "BALANCE": {
+        "CREDIT": "Credit balance {{amount}}",
+        "DEBIT": "Debit balance {{amount}}",
+        "ZERO": "Balance 0"
+      },
+      "EMPTY": {
+        "INITIAL_DESCRIPTION": "Select an auxiliary account and a third party to review the auxiliary ledger.",
+        "INITIAL_TITLE": "Define the scope",
+        "NO_RESULTS_DESCRIPTION": "No auxiliary movement for this third party over the period.",
+        "NO_RESULTS_TITLE": "No movements"
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "The auxiliary ledger could not be loaded.",
+        "LOAD_MORE_FAILED": "The next movements could not be loaded."
+      },
+      "EYEBROW": "Auxiliary accounting",
+      "FILTERS": {
+        "ACCOUNT": "Auxiliary account",
+        "DESCRIPTION": "Choose the third-party type, auxiliary account, and period to review.",
+        "END_DATE": "End date",
+        "START_DATE": "Start date",
+        "THIRD_PARTY": "Third party",
+        "THIRD_PARTY_PLACEHOLDER": "Search by code or name",
+        "TITLE": "Scope",
+        "TYPE": "Type"
+      },
+      "LETTERING_STATUS": {
+        "COMPLETE": "Lettered",
+        "LETTERED": "Lettered",
+        "PARTIAL": "Partial",
+        "UNLETTERED": "Unlettered"
+      },
+      "LOADING": "Loading auxiliary ledger...",
+      "SUBTITLE": "Review posted movements for one auxiliary account and one third party.",
+      "SUMMARY": {
+        "ACCOUNT": "Account",
+        "FINAL": "Final balance",
+        "OPENING": "Opening balance",
+        "PERIOD": "Period",
+        "THIRD_PARTY": "Third party",
+        "TOTAL_CREDIT": "Total credit",
+        "TOTAL_DEBIT": "Total debit"
+      },
+      "TABLE": {
+        "CREDIT": "Credit",
+        "DATE": "Date",
+        "DEBIT": "Debit",
+        "DESCRIPTION": "Posted auxiliary movements for the selected third party.",
+        "JOURNAL": "Journal",
+        "LABEL": "Label",
+        "LETTERING": "Lettering",
+        "REFERENCE": "Reference",
+        "RUNNING_BALANCE": "Running balance",
+        "TITLE": "Movements"
+      },
+      "TITLE": "Auxiliary ledger",
+      "TYPES": {
+        "CUSTOMER": "Customer",
+        "SUPPLIER": "Supplier"
+      }
     },
     "LETTERING": {
       "ACTIONS": {

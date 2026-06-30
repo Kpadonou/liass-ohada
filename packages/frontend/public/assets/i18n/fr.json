@@ -58,6 +58,7 @@
       "ENTRIES": "Écritures",
       "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
+      "AUXILIARY_LEDGER": "Grand livre auxiliaire",
       "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
@@ -84,6 +85,7 @@
       "ENTRIES": "Écritures",
       "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
+      "AUXILIARY_LEDGER": "Grand livre auxiliaire",
       "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
@@ -627,6 +629,10 @@
       "GENERAL_LEDGER": {
         "SUBTITLE": "Un espace réservé au grand livre.",
         "TITLE": "Grand livre"
+      },
+      "AUXILIARY_LEDGER": {
+        "SUBTITLE": "Consultez les mouvements comptabilisés par compte auxiliaire et par tiers.",
+        "TITLE": "Grand livre auxiliaire"
       },
       "JOURNAL_BOOK": {
         "SUBTITLE": "Consultez chronologiquement les écritures comptabilisées.",
@@ -1509,6 +1515,72 @@
         "TITLE": "Mouvements"
       },
       "TITLE": "Grand livre"
+    },
+    "AUXILIARY_LEDGER": {
+      "ACTIONS": {
+        "LOAD": "Charger",
+        "LOAD_MORE": "Charger plus"
+      },
+      "BALANCE": {
+        "CREDIT": "Solde créditeur {{amount}}",
+        "DEBIT": "Solde débiteur {{amount}}",
+        "ZERO": "Solde 0"
+      },
+      "EMPTY": {
+        "INITIAL_DESCRIPTION": "Sélectionnez un compte auxiliaire et un tiers pour consulter le grand livre auxiliaire.",
+        "INITIAL_TITLE": "Périmètre à définir",
+        "NO_RESULTS_DESCRIPTION": "Aucun mouvement auxiliaire pour ce tiers sur la période.",
+        "NO_RESULTS_TITLE": "Aucun mouvement"
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "Le grand livre auxiliaire n’a pas pu être chargé.",
+        "LOAD_MORE_FAILED": "La suite des mouvements n’a pas pu être chargée."
+      },
+      "EYEBROW": "Comptabilité auxiliaire",
+      "FILTERS": {
+        "ACCOUNT": "Compte auxiliaire",
+        "DESCRIPTION": "Choisissez le type de tiers, le compte auxiliaire et la période à consulter.",
+        "END_DATE": "Date fin",
+        "START_DATE": "Date début",
+        "THIRD_PARTY": "Tiers",
+        "THIRD_PARTY_PLACEHOLDER": "Rechercher par code ou nom",
+        "TITLE": "Périmètre",
+        "TYPE": "Type"
+      },
+      "LETTERING_STATUS": {
+        "COMPLETE": "Lettré",
+        "LETTERED": "Lettré",
+        "PARTIAL": "Partiel",
+        "UNLETTERED": "Non lettré"
+      },
+      "LOADING": "Chargement du grand livre auxiliaire…",
+      "SUBTITLE": "Consultez les mouvements comptabilisés d’un compte auxiliaire pour un tiers.",
+      "SUMMARY": {
+        "ACCOUNT": "Compte",
+        "FINAL": "Solde final",
+        "OPENING": "Solde d’ouverture",
+        "PERIOD": "Période",
+        "THIRD_PARTY": "Tiers",
+        "TOTAL_CREDIT": "Total crédit",
+        "TOTAL_DEBIT": "Total débit"
+      },
+      "TABLE": {
+        "CREDIT": "Crédit",
+        "DATE": "Date",
+        "DEBIT": "Débit",
+        "DESCRIPTION": "Mouvements auxiliaires comptabilisés pour le tiers sélectionné.",
+        "JOURNAL": "Journal",
+        "LABEL": "Libellé",
+        "LETTERING": "Lettrage",
+        "REFERENCE": "Référence",
+        "RUNNING_BALANCE": "Solde progressif",
+        "TITLE": "Mouvements"
+      },
+      "TITLE": "Grand livre auxiliaire",
+      "TYPES": {
+        "CUSTOMER": "Client",
+        "SUPPLIER": "Fournisseur"
+      }
     },
     "LETTERING": {
       "ACTIONS": {

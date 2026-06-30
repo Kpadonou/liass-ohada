@@ -84,6 +84,7 @@ export class ThirdPartySelectComponent implements ControlValueAccessor, Validato
   readonly limit = input(DEFAULT_THIRD_PARTY_LIMIT);
   readonly showError = input(false);
   readonly errorKey = input<string | null>(null);
+  readonly showCodeInLabel = input(false);
   readonly thirdPartySelected = output<ThirdPartySelectedValue | null>();
 
   private readonly accountingApi = inject(AccountingApi);
@@ -244,7 +245,7 @@ export class ThirdPartySelectComponent implements ControlValueAccessor, Validato
   }
 
   protected thirdPartyLabel(party: ThirdPartyDto): string {
-    return party.displayName;
+    return this.showCodeInLabel() ? `${party.code} — ${party.displayName}` : party.displayName;
   }
 
   protected loadMoreValue(): string {

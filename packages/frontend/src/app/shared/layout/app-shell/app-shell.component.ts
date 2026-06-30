@@ -56,6 +56,10 @@ function pageFromUrl(url: string): AppPage {
     return 'accounting.generalLedger';
   }
 
+  if (path.startsWith('/accounting/auxiliary-ledger')) {
+    return 'accounting.auxiliaryLedger';
+  }
+
   if (path.startsWith('/projects')) {
     return 'projects';
   }

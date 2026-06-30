@@ -173,6 +173,17 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'accounting/auxiliary-ledger',
+        loadComponent: () =>
+          import('../../domains/accounting/feature/auxiliary-ledger/auxiliary-ledger.page').then(
+            (module) => module.AuxiliaryLedgerPage
+          ),
+        data: {
+          subtitleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.SUBTITLE',
+          titleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.TITLE'
+        }
+      },
+      {
         path: 'accounting/journal-book',
         loadComponent: () =>
           import('../../domains/accounting/feature/journal-book/journal-book.page').then(

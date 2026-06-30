@@ -151,10 +151,14 @@ export interface ListEntriesParams {
 }
 
 export interface ThirdPartyLedgerParams {
+  fiscalYear: string;
   accountId: string;
   thirdPartyId: string;
+  thirdPartyType: ThirdPartyTypeValue;
   startDate?: string;
   endDate?: string;
+  limit?: number;
+  cursor?: string;
 }
 
 export interface MatchingReportParams {
@@ -684,8 +688,10 @@ export class AccountingApi {
 
   async getThirdPartyLedger(paramsInput: ThirdPartyLedgerParams): Promise<ThirdPartyLedgerDto> {
     let params = new HttpParams()
+      .set('fiscalYear', paramsInput.fiscalYear)
       .set('accountId', paramsInput.accountId)
-      .set('thirdPartyId', paramsInput.thirdPartyId);
+      .set('thirdPartyId', paramsInput.thirdPartyId)
+      .set('thirdPartyType', paramsInput.thirdPartyType);
 
     if (paramsInput.startDate) {
       params = params.set('startDate', paramsInput.startDate);
@@ -693,6 +699,14 @@ export class AccountingApi {
 
     if (paramsInput.endDate) {
       params = params.set('endDate', paramsInput.endDate);
+    }
+
+    if (paramsInput.limit) {
+      params = params.set('limit', paramsInput.limit);
+    }
+
+    if (paramsInput.cursor) {
+      params = params.set('cursor', paramsInput.cursor);
     }
 
     const response = await firstValueFrom(

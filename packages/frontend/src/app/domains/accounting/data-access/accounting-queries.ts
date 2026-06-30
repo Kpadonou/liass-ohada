@@ -107,6 +107,19 @@ function normalizeLetteringCandidatesParams(params: LetteringCandidatesParams) {
   };
 }
 
+function normalizeThirdPartyLedgerParams(params: ThirdPartyLedgerParams) {
+  return {
+    accountId: params.accountId,
+    cursor: params.cursor ?? null,
+    endDate: params.endDate ?? null,
+    fiscalYear: params.fiscalYear,
+    limit: params.limit ?? 50,
+    startDate: params.startDate ?? null,
+    thirdPartyId: params.thirdPartyId,
+    thirdPartyType: params.thirdPartyType
+  };
+}
+
 export const accountingQueryKeys = {
   account: (tenantScope: TenantScope, accountId: string) =>
     ['accounting', tenantScope, 'accounts', accountId] as const,
@@ -135,7 +148,7 @@ export const accountingQueryKeys = {
   matchingReport: (tenantScope: TenantScope, params: MatchingReportParams) =>
     ['accounting', tenantScope, 'matching-report', params] as const,
   thirdPartyLedger: (tenantScope: TenantScope, params: ThirdPartyLedgerParams) =>
-    ['accounting', tenantScope, 'third-party-ledger', params] as const,
+    ['accounting', tenantScope, 'third-party-ledger', normalizeThirdPartyLedgerParams(params)] as const,
   thirdParties: (tenantScope: TenantScope, params: ListThirdPartiesParams) =>
     ['accounting', tenantScope, 'third-parties', normalizeListThirdPartiesParams(params)] as const,
   thirdPartiesRoot: (tenantScope: TenantScope) => ['accounting', tenantScope, 'third-parties'] as const,
@@ -373,7 +386,12 @@ export class AccountingQueries {
     return queryOptions({
       queryKey: accountingQueryKeys.thirdPartyLedger(this.tenantScope(), params),
       queryFn: () => this.accountingApi.getThirdPartyLedger(params),
-      enabled: enabled && /^\d{2,8}$/.test(params.accountId) && !!params.thirdPartyId,
+      enabled:
+        enabled &&
+        /^\d{4}$/.test(params.fiscalYear) &&
+        /^\d{2,8}$/.test(params.accountId) &&
+        !!params.thirdPartyId &&
+        (params.thirdPartyType === 'CUSTOMER' || params.thirdPartyType === 'SUPPLIER'),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }

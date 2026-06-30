@@ -11,6 +11,7 @@ describe('AccountingQueries', () => {
     getAccount: ReturnType<typeof vi.fn>;
     getEntryDetail: ReturnType<typeof vi.fn>;
     getGeneralLedger: ReturnType<typeof vi.fn>;
+    getThirdPartyLedger: ReturnType<typeof vi.fn>;
     getJournal: ReturnType<typeof vi.fn>;
     getJournalBook: ReturnType<typeof vi.fn>;
     getTrialBalance: ReturnType<typeof vi.fn>;
@@ -34,6 +35,7 @@ describe('AccountingQueries', () => {
       getAccount: vi.fn(),
       getEntryDetail: vi.fn(),
       getGeneralLedger: vi.fn(),
+      getThirdPartyLedger: vi.fn(),
       getJournal: vi.fn(),
       getJournalBook: vi.fn(),
       getTrialBalance: vi.fn(),
@@ -249,6 +251,49 @@ describe('AccountingQueries', () => {
       fiscalYear: '2026',
       limit: 25
     });
+  });
+
+  it('keeps auxiliary-ledger keys scoped by tenant, fiscal year, account, third party, type, and cursor', async () => {
+    accountingApi.getThirdPartyLedger.mockResolvedValue({
+      accountId: '41110000',
+      thirdPartyId: 'tp-cust-alpha',
+      thirdPartyType: 'CUSTOMER',
+      movements: [],
+      hasMore: false
+    });
+
+    const params = {
+      fiscalYear: '2026',
+      accountId: '41110000',
+      thirdPartyId: 'tp-cust-alpha',
+      thirdPartyType: 'CUSTOMER' as const,
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      limit: 25,
+      cursor: 'cursor-2'
+    };
+    const options = queries.thirdPartyLedger(params);
+
+    expect(options.queryKey).toEqual([
+      'accounting',
+      'org-test',
+      'third-party-ledger',
+      {
+        accountId: '41110000',
+        cursor: 'cursor-2',
+        endDate: '2026-12-31',
+        fiscalYear: '2026',
+        limit: 25,
+        startDate: '2026-01-01',
+        thirdPartyId: 'tp-cust-alpha',
+        thirdPartyType: 'CUSTOMER'
+      }
+    ]);
+    expect(options.enabled).toBe(true);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.getThirdPartyLedger).toHaveBeenCalledWith(params);
   });
 
   it('uses the active fiscal year for the six-column trial balance', async () => {
