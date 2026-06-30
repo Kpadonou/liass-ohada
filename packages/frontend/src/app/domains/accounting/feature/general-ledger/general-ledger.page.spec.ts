@@ -6,6 +6,7 @@ import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/route
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
+import { vi } from 'vitest';
 
 import { environment } from '../../../../../environments/environment';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
@@ -13,6 +14,23 @@ import { AuthStore } from '../../../identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../identity/data-access/workspaces.api';
 import { GeneralLedgerPage } from './general-ledger.page';
+
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 const translations = {
   en: {

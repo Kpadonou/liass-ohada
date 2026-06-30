@@ -6,6 +6,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import { type AccountDto } from '@liass-ohada/shared/accounting';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { vi } from 'vitest';
 
 import { NotificationService } from '../../../../core/notifications/notification.service';
 import { environment } from '../../../../../environments/environment';
@@ -15,6 +16,23 @@ import { CabinetDossiersApi } from '../../../identity/data-access/cabinet-dossie
 import { WorkspacesApi } from '../../../identity/data-access/workspaces.api';
 import { ThirdPartySelectComponent } from '../../ui/third-party-search-select/third-party-search-select.component';
 import { EntryFormPage } from './entry-form.page';
+
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 const translations = {
   en: {
@@ -105,8 +123,8 @@ const translations = {
           LABEL: 'Third party',
           LOAD_MORE: 'Load more third parties',
           LOADING: 'Loading third parties...',
-          PLACEHOLDER: 'Search by code or name',
-          TYPE_TO_SEARCH: 'Enter a third-party code or name'
+          PLACEHOLDER: 'Search for a third party',
+          TYPE_TO_SEARCH: 'Enter a third-party name'
         },
         STATUS: {
           ACTIVE: 'Active',

@@ -21,8 +21,8 @@ const translations = {
           LABEL: 'Third party',
           LOAD_MORE: 'Load more third parties',
           LOADING: 'Loading third parties...',
-          PLACEHOLDER: 'Search by code or name',
-          TYPE_TO_SEARCH: 'Enter a third-party code or name'
+          PLACEHOLDER: 'Search for a third party',
+          TYPE_TO_SEARCH: 'Enter a third-party name'
         },
         STATUS: {
           ACTIVE: 'Active',
@@ -40,8 +40,6 @@ const translations = {
       [formControl]="control"
       [type]="type()"
       [required]="required"
-      [showSelectedPreview]="showSelectedPreview"
-      [showCodeInLabel]="showCodeInLabel"
       [status]="status"
       [limit]="limit"
       (thirdPartySelected)="selected = $event"
@@ -52,8 +50,6 @@ class ThirdPartySelectHostComponent {
   control = new FormControl<string | null>(null);
   type = signal<'CUSTOMER' | 'SUPPLIER'>('CUSTOMER');
   required = false;
-  showSelectedPreview = false;
-  showCodeInLabel = false;
   status: 'ACTIVE' | 'INACTIVE' | 'ALL' = 'ACTIVE';
   limit = 200;
   selected: ThirdPartySelectedValue | null = null;
@@ -124,14 +120,6 @@ describe('ThirdPartySelectComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
   });
 
-  it('can display the business code with the selected third-party label', async () => {
-    fixture.componentInstance.showCodeInLabel = true;
-    fixture.detectChanges();
-    await settle(fixture);
-
-    expect(selectorComponent().thirdPartyLabel(customerAlpha())).toBe('CUST-ALPHA — Client Alpha');
-  });
-
   it('filters loaded items locally by displayName', async () => {
     fixture.detectChanges();
     await settle(fixture);
@@ -143,7 +131,7 @@ describe('ThirdPartySelectComponent', () => {
     expect(visible.map((party: { code: string }) => party.code)).toEqual(['CUST-ALPHA']);
   });
 
-  it('filters loaded items locally by code', async () => {
+  it('does not filter loaded items by code', async () => {
     fixture.detectChanges();
     await settle(fixture);
 
@@ -151,9 +139,7 @@ describe('ThirdPartySelectComponent', () => {
     fixture.detectChanges();
 
     const visible = selectorComponent().visibleThirdParties();
-    expect(visible.map((party: { displayName: string }) => party.displayName)).toEqual([
-      'Client Alpha'
-    ]);
+    expect(visible.map((party: { displayName: string }) => party.displayName)).toEqual([]);
   });
 
   it('emits the selected third party payload while the form stores the thirdPartyId', async () => {
@@ -187,21 +173,6 @@ describe('ThirdPartySelectComponent', () => {
     expect(selectedPreview()).toBeNull();
     expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA');
     expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
-  });
-
-  it('renders the selected preview only when showSelectedPreview is true', async () => {
-    fixture.componentInstance.showSelectedPreview = true;
-    fixture.detectChanges();
-    await settle(fixture);
-
-    selectorComponent().selectOption({ option: { value: 'tp-cust-alpha' } });
-    fixture.detectChanges();
-
-    const preview = selectedPreview();
-    expect(preview).toBeTruthy();
-    expect(preview?.textContent).toContain('Client Alpha');
-    expect(preview?.textContent).not.toContain('CUST-ALPHA');
-    expect(preview?.textContent).not.toContain('tp-cust-alpha');
   });
 
   it('clears the selection when type changes and reloads the new type', async () => {

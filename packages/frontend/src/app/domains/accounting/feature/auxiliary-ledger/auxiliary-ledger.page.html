@@ -13,11 +13,11 @@
       [description]="'ACCOUNTING.AUXILIARY_LEDGER.FILTERS.DESCRIPTION' | transloco"
     >
       <form
-        class="grid gap-3 xl:grid-cols-[180px_minmax(260px,1.2fr)_minmax(260px,1.2fr)_160px_160px_auto]"
+        class="flex flex-wrap items-start gap-3"
         [formGroup]="form"
         (ngSubmit)="loadLedger()"
       >
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="min-w-0 flex-[0_1_165px]">
           <mat-label>{{ 'ACCOUNTING.AUXILIARY_LEDGER.FILTERS.TYPE' | transloco }}</mat-label>
           <mat-icon matPrefix>category</mat-icon>
           <mat-select formControlName="thirdPartyType" data-testid="auxiliary-ledger-type-select">
@@ -27,6 +27,7 @@
         </mat-form-field>
 
         <liass-account-search-select
+          class="min-w-0 flex-[1_1_280px] xl:flex-[0_1_310px]"
           data-testid="auxiliary-ledger-account-select"
           formControlName="accountId"
           [auxiliaryType]="selectedType()"
@@ -35,40 +36,50 @@
         />
 
         <liass-third-party-select
+          class="min-w-0 flex-[1_1_280px]"
           data-testid="auxiliary-ledger-third-party-select"
           formControlName="thirdPartyId"
           [type]="selectedType()"
           [required]="true"
-          [showSelectedPreview]="true"
-          [showCodeInLabel]="true"
           [label]="'ACCOUNTING.AUXILIARY_LEDGER.FILTERS.THIRD_PARTY' | transloco"
           [placeholder]="'ACCOUNTING.AUXILIARY_LEDGER.FILTERS.THIRD_PARTY_PLACEHOLDER' | transloco"
           (thirdPartySelected)="updateSelectedThirdPartyDto($event)"
         />
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="min-w-0 flex-[0_1_165px]">
           <mat-label>{{ 'ACCOUNTING.AUXILIARY_LEDGER.FILTERS.START_DATE' | transloco }}</mat-label>
           <input
             matInput
+            class="min-w-0"
             type="date"
             formControlName="startDate"
             [placeholder]="activeFiscalYear()?.startDate ?? ''"
           />
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
+        <mat-form-field appearance="outline" class="min-w-0 flex-[0_1_165px]">
           <mat-label>{{ 'ACCOUNTING.AUXILIARY_LEDGER.FILTERS.END_DATE' | transloco }}</mat-label>
           <input
             matInput
+            class="min-w-0"
             type="date"
             formControlName="endDate"
             [placeholder]="activeFiscalYear()?.endDate ?? ''"
           />
         </mat-form-field>
 
-        <div class="flex items-start xl:pt-1.5">
+        <div class="flex min-w-fit flex-[0_0_auto] items-start gap-2 pt-1.5">
           <liass-button
-            class="w-full xl:w-auto"
+            class="shrink-0"
+            buttonType="button"
+            icon="tune"
+            tone="neutral"
+            variant="outline"
+          >
+            {{ 'ACCOUNTING.AUXILIARY_LEDGER.ACTIONS.ADVANCED_FILTERS' | transloco }}
+          </liass-button>
+          <liass-button
+            class="shrink-0"
             buttonType="submit"
             icon="search"
             [disabled]="!canLoad()"
@@ -92,26 +103,6 @@
           <p class="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
             {{ 'ACCOUNTING.AUXILIARY_LEDGER.EMPTY.INITIAL_DESCRIPTION' | transloco }}
           </p>
-        </div>
-      } @else if (ledgerQuery.isPending()) {
-        <div class="space-y-4" aria-busy="true" role="status">
-          <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
-            {{ 'ACCOUNTING.AUXILIARY_LEDGER.LOADING' | transloco }}
-          </p>
-          <div class="space-y-3">
-            @for (_ of [0, 1, 2, 3, 4]; track $index) {
-              <liass-skeleton variant="block" />
-            }
-          </div>
-        </div>
-      } @else if (ledgerQuery.isError()) {
-        <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>{{ ledgerErrorMessage() || ('ACCOUNTING.AUXILIARY_LEDGER.ERRORS.LOAD_FAILED' | transloco) }}</span>
-            <liass-button size="sm" tone="danger" variant="outline" icon="refresh" (pressed)="retryInitialLoad()">
-              {{ 'COMMON.ACTIONS.RETRY' | transloco }}
-            </liass-button>
-          </div>
         </div>
       } @else if (ledger(); as report) {
         <div class="mb-5 grid gap-3 lg:grid-cols-6">
@@ -232,6 +223,26 @@
             </div>
           }
         }
+      } @else if (showInitialLoading()) {
+        <div class="space-y-4" aria-busy="true" role="status">
+          <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+            {{ 'ACCOUNTING.AUXILIARY_LEDGER.LOADING' | transloco }}
+          </p>
+          <div class="space-y-3">
+            @for (_ of [0, 1, 2, 3, 4]; track $index) {
+              <liass-skeleton variant="block" />
+            }
+          </div>
+        </div>
+      } @else if (ledgerQuery.isError()) {
+        <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>{{ ledgerErrorMessage() || ('ACCOUNTING.AUXILIARY_LEDGER.ERRORS.LOAD_FAILED' | transloco) }}</span>
+            <liass-button size="sm" tone="danger" variant="outline" icon="refresh" (pressed)="retryInitialLoad()">
+              {{ 'COMMON.ACTIONS.RETRY' | transloco }}
+            </liass-button>
+          </div>
+        </div>
       }
     </liass-card>
   }

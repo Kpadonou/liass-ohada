@@ -49,8 +49,8 @@ const translations = {
           LABEL: 'Third party',
           LOAD_MORE: 'Load more third parties',
           LOADING: 'Loading third parties...',
-          PLACEHOLDER: 'Search by code or name',
-          TYPE_TO_SEARCH: 'Enter a third-party code or name'
+          PLACEHOLDER: 'Search for a third party',
+          TYPE_TO_SEARCH: 'Enter a third-party name'
         },
         STATUS: {
           ACTIVE: 'Active',
@@ -179,8 +179,8 @@ const translations = {
           LOAD_MORE: 'Load more third parties',
           LOADING: 'Loading third parties...',
           NO_RESULTS: 'No third party found',
-          PLACEHOLDER: 'Search by third-party code or name',
-          TYPE_TO_SEARCH: 'Type a third-party code or name'
+          PLACEHOLDER: 'Search for a third party',
+          TYPE_TO_SEARCH: 'Enter a third-party name'
         },
         TITLE: 'Lettering',
         UNLETTERED: {

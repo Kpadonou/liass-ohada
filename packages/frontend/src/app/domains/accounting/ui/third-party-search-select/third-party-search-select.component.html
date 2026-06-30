@@ -31,14 +31,10 @@
     } @else {
       @for (party of visibleThirdParties(); track party.type + ':' + party.thirdPartyId) {
         <mat-option [value]="party.thirdPartyId">
-          <span class="flex min-w-0 items-center gap-2">
+          <span class="flex min-w-0 items-center gap-3">
             <mat-icon class="shrink-0 text-base text-app-muted">groups</mat-icon>
-            <span class="min-w-0 truncate text-app-text">{{ party.displayName }}</span>
-            @if (party.status === 'ACTIVE') {
-              <span class="ml-auto rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-semibold text-success-600 dark:bg-emerald-950/35 dark:text-emerald-200">
-                {{ statusKey(party) | transloco }}
-              </span>
-            }
+            <span class="min-w-0 flex-1 truncate text-app-text">{{ party.displayName }}</span>
+            <span class="shrink-0 text-xs text-app-muted">{{ party.code }}</span>
           </span>
         </mat-option>
       } @empty {
@@ -74,18 +70,4 @@
   <p class="-mt-4 text-xs text-red-600 dark:text-red-300">
     {{ validationKey | transloco }}
   </p>
-}
-@if (showSelectedPreview() && selectedThirdPartyOption(); as selectedThirdParty) {
-  <div
-    data-testid="third-party-selected-preview"
-    class="-mt-3 flex min-w-0 items-center gap-2 rounded-app-control border border-app-border bg-app-surface-muted px-3 py-2 text-sm text-app-text"
-  >
-    <mat-icon class="shrink-0 text-base text-app-muted">badge</mat-icon>
-    <span class="min-w-0 truncate font-medium">{{ selectedThirdParty.displayName }}</span>
-    @if (selectedThirdParty.status === 'ACTIVE') {
-      <span class="ml-auto shrink-0 rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-semibold text-success-600 dark:bg-emerald-950/35 dark:text-emerald-200">
-        {{ statusKey(selectedThirdParty) | transloco }}
-      </span>
-    }
-  </div>
 }

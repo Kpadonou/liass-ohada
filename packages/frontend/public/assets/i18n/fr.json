@@ -744,8 +744,8 @@
         "LABEL": "Tiers",
         "LOAD_MORE": "Charger plus de tiers",
         "LOADING": "Chargement des tiers…",
-        "PLACEHOLDER": "Rechercher par code ou nom",
-        "TYPE_TO_SEARCH": "Saisissez un code ou un nom de tiers"
+        "PLACEHOLDER": "Rechercher un tiers",
+        "TYPE_TO_SEARCH": "Saisissez un nom de tiers"
       },
       "STATUS": {
         "ACTIVE": "Actif",
@@ -1518,6 +1518,7 @@
     },
     "AUXILIARY_LEDGER": {
       "ACTIONS": {
+        "ADVANCED_FILTERS": "Filtres avancés",
         "LOAD": "Charger",
         "LOAD_MORE": "Charger plus"
       },
@@ -1543,7 +1544,7 @@
         "END_DATE": "Date fin",
         "START_DATE": "Date début",
         "THIRD_PARTY": "Tiers",
-        "THIRD_PARTY_PLACEHOLDER": "Rechercher par code ou nom",
+        "THIRD_PARTY_PLACEHOLDER": "Rechercher un tiers",
         "TITLE": "Périmètre",
         "TYPE": "Type"
       },
@@ -1730,8 +1731,8 @@
         "LOAD_MORE": "Charger plus de tiers",
         "LOADING": "Chargement des tiers…",
         "NO_RESULTS": "Aucun tiers trouvé",
-        "PLACEHOLDER": "Rechercher par code ou nom tiers",
-        "TYPE_TO_SEARCH": "Saisissez un code ou un nom tiers"
+        "PLACEHOLDER": "Rechercher un tiers",
+        "TYPE_TO_SEARCH": "Saisissez un nom de tiers"
       },
       "TITLE": "Lettrage",
       "UNLETTERED": {

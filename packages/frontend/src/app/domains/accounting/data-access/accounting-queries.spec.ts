@@ -6,6 +6,23 @@ import { AccountingApi } from './accounting.api';
 import { AccountingFiscalYearContextService } from './accounting-fiscal-year-context.service';
 import { AccountingQueries, accountingQueryKeys } from './accounting-queries';
 
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
+
 describe('AccountingQueries', () => {
   let accountingApi: {
     getAccount: ReturnType<typeof vi.fn>;

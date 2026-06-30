@@ -46,6 +46,7 @@ const translations = {
       },
       AUXILIARY_LEDGER: {
         ACTIONS: {
+          ADVANCED_FILTERS: 'Advanced filters',
           LOAD: 'Load',
           LOAD_MORE: 'Load more'
         },
@@ -71,7 +72,7 @@ const translations = {
           END_DATE: 'End date',
           START_DATE: 'Start date',
           THIRD_PARTY: 'Third party',
-          THIRD_PARTY_PLACEHOLDER: 'Search by code or name',
+          THIRD_PARTY_PLACEHOLDER: 'Search for a third party',
           TITLE: 'Scope',
           TYPE: 'Type'
         },
@@ -123,8 +124,8 @@ const translations = {
           LABEL: 'Third party',
           LOAD_MORE: 'Load more third parties',
           LOADING: 'Loading third parties...',
-          PLACEHOLDER: 'Search by code or name',
-          TYPE_TO_SEARCH: 'Enter a third-party code or name'
+          PLACEHOLDER: 'Search for a third party',
+          TYPE_TO_SEARCH: 'Enter a third-party name'
         },
         STATUS: {
           ACTIVE: 'Active',
@@ -210,6 +211,8 @@ describe('AuxiliaryLedgerPage', () => {
       'Select an auxiliary account and a third party to review the auxiliary ledger.'
     );
     expect(fixture.nativeElement.querySelector('liass-third-party-select')).toBeTruthy();
+    expect(fixture.nativeElement.querySelectorAll('input[type="date"]').length).toBe(2);
+    expect(fixture.nativeElement.textContent).toContain('Advanced filters');
     expect(loadButton().disabled).toBe(true);
   });
 
@@ -238,10 +241,14 @@ describe('AuxiliaryLedgerPage', () => {
     expect(text).toContain('CUST-ALPHA — Client Alpha');
     expect(text).toContain('FAC-CUST-001');
     expect(text).toContain('PAY-CUST-001');
-    expect(text).toContain('Debit balance 190\u202f000');
+    expect(text).toContain('FAC-CUST-002');
+    expect(text).toContain('PAY-CUST-002');
+    expect(text).toContain('Opening balance');
+    expect(text).toContain('Debit balance 100\u202f000');
     expect(text).toContain('100\u202f000');
     expect(text).toContain('Lettered');
     expect(text).toContain('Partial');
+    expect(fixture.nativeElement.querySelector('liass-skeleton')).toBeNull();
     expect(text).not.toContain('tp-cust-alpha');
     expect(text).not.toContain('PK');
     expect(text).not.toContain('GSI');
@@ -368,7 +375,7 @@ describe('AuxiliaryLedgerPage', () => {
   function applyScope(
     type: 'CUSTOMER' | 'SUPPLIER',
     accountId: string,
-    thirdParty: ReturnType<typeof customerAlpha> | ReturnType<typeof supplierBeta>
+      thirdParty: ReturnType<typeof customerAlpha> | ReturnType<typeof supplierBeta>
   ): void {
     const component = fixture.componentInstance as unknown as {
       form: {
@@ -529,8 +536,8 @@ function customerLedgerResponse(overrides: Record<string, unknown> = {}) {
         date: '2026-01-01',
         label: 'Opening balance',
         debit: 0,
-        credit: 80000,
-        balance: -80000
+        credit: 0,
+        balance: 0
       },
       movements: [
         customerMovement(),
@@ -551,16 +558,28 @@ function customerLedgerResponse(overrides: Record<string, unknown> = {}) {
           entryId: 'E-CUST-004',
           lineId: 'L-CUST-004',
           reference: 'FAC-CUST-002',
-          debit: 190000,
+          debit: 150000,
           credit: 0,
-          runningBalance: 190000,
+          runningBalance: 150000,
+          letteringCode: null,
+          letteringStatus: 'UNLETTERED'
+        }),
+        customerMovement({
+          date: '2026-02-15',
+          entryId: 'E-CUST-005',
+          label: 'Règlement client partiel',
+          lineId: 'L-CUST-005',
+          reference: 'PAY-CUST-002',
+          debit: 0,
+          credit: 50000,
+          runningBalance: 100000,
           letteringCode: null,
           letteringStatus: 'UNLETTERED'
         })
       ],
-      summary: { totalDebit: 290000, totalCredit: 100000, balance: 190000 },
-      count: 3,
-      finalBalance: 190000,
+      summary: { totalDebit: 250000, totalCredit: 150000, balance: 100000 },
+      count: 4,
+      finalBalance: 100000,
       hasMore: false,
       PK: 'ORG#org-company-1',
       GSI2PK: 'TECHNICAL',

@@ -79,12 +79,10 @@ export class ThirdPartySelectComponent implements ControlValueAccessor, Validato
   readonly placeholder = input<string | null>(null);
   readonly required = input(false);
   readonly disabledInput = input(false, { alias: 'disabled' });
-  readonly showSelectedPreview = input(false);
   readonly status = input<ThirdPartyStatusFilter>('ACTIVE');
   readonly limit = input(DEFAULT_THIRD_PARTY_LIMIT);
   readonly showError = input(false);
   readonly errorKey = input<string | null>(null);
-  readonly showCodeInLabel = input(false);
   readonly thirdPartySelected = output<ThirdPartySelectedValue | null>();
 
   private readonly accountingApi = inject(AccountingApi);
@@ -123,9 +121,7 @@ export class ThirdPartySelectComponent implements ControlValueAccessor, Validato
       return items;
     }
 
-    return items.filter((party) =>
-      normalizeSearch(`${party.code} ${party.displayName}`).includes(query)
-    );
+    return items.filter((party) => normalizeSearch(party.displayName).includes(query));
   });
 
   protected readonly helperKey = computed(() => {
@@ -245,15 +241,11 @@ export class ThirdPartySelectComponent implements ControlValueAccessor, Validato
   }
 
   protected thirdPartyLabel(party: ThirdPartyDto): string {
-    return this.showCodeInLabel() ? `${party.code} — ${party.displayName}` : party.displayName;
+    return party.displayName;
   }
 
   protected loadMoreValue(): string {
     return LOAD_MORE_VALUE;
-  }
-
-  protected statusKey(party: ThirdPartyDto): string {
-    return `ACCOUNTING.THIRD_PARTIES.STATUS.${party.status}`;
   }
 
   private reloadOptions(): void {

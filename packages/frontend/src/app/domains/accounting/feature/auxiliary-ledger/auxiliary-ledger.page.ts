@@ -127,6 +127,9 @@ export class AuxiliaryLedgerPage {
       ...this.extraMovements()
     ])
   );
+  protected readonly showInitialLoading = computed(
+    () => this.hasAppliedScope() && !this.ledger() && this.ledgerQuery.isPending()
+  );
   protected readonly hasMore = computed(() => {
     const pagination = this.paginationState();
     return pagination.hasMore ?? this.ledger()?.hasMore ?? false;

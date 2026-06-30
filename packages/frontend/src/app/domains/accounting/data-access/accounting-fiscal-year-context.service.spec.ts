@@ -1,8 +1,26 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { AccountingFiscalYearContextService } from './accounting-fiscal-year-context.service';
+
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 describe('AccountingFiscalYearContextService', () => {
   let activeWorkspaceType = signal<'COMPANY' | 'ACCOUNTING_FIRM' | null>('COMPANY');

@@ -6,6 +6,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { vi } from 'vitest';
 
 import { NotificationService } from '../../../../core/notifications/notification.service';
 import { environment } from '../../../../../environments/environment';
@@ -14,6 +15,23 @@ import { AuthStore } from '../../../identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../identity/data-access/workspaces.api';
 import { EntryDetailPage } from './entry-detail.page';
+
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 const translations = {
   en: {
