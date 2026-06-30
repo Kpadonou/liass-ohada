@@ -1,6 +1,24 @@
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
 import { appRootRedirectGuard, authGuard, cabinetDashboardGuard, tenantGuard } from './auth.guards';
 import { routes } from './app.routes';
+import { vi } from 'vitest';
+
+vi.mock('aws-amplify/auth', () => {
+  const globalScope = globalThis as unknown as {
+    __liassAmplifyAuthMock?: Record<string, ReturnType<typeof vi.fn>>;
+  };
+  globalScope.__liassAmplifyAuthMock ??= {
+    confirmSignIn: vi.fn(),
+    fetchAuthSession: vi.fn(),
+    fetchUserAttributes: vi.fn(),
+    getCurrentUser: vi.fn(),
+    signIn: vi.fn(),
+    signInWithRedirect: vi.fn(),
+    signOut: vi.fn()
+  };
+
+  return globalScope.__liassAmplifyAuthMock;
+});
 
 function shellRoute() {
   return routes.find((route) => route.path === '' && route.children);

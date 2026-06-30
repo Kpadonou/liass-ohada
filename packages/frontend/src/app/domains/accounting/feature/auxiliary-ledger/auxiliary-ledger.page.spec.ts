@@ -102,6 +102,7 @@ const translations = {
           LABEL: 'Label',
           LETTERING: 'Lettering',
           REFERENCE: 'Reference',
+          ROWS: 'movements',
           RUNNING_BALANCE: 'Running balance',
           TITLE: 'Movements'
         },
@@ -213,6 +214,8 @@ describe('AuxiliaryLedgerPage', () => {
     expect(fixture.nativeElement.querySelector('liass-third-party-select')).toBeTruthy();
     expect(fixture.nativeElement.querySelectorAll('input[type="date"]').length).toBe(2);
     expect(fixture.nativeElement.textContent).toContain('Advanced filters');
+    expect(fixture.nativeElement.textContent).toContain('Customer');
+    expect(loadButton().className).toContain('bg-brand-700');
     expect(loadButton().disabled).toBe(true);
   });
 
@@ -245,9 +248,11 @@ describe('AuxiliaryLedgerPage', () => {
     expect(text).toContain('PAY-CUST-002');
     expect(text).toContain('Opening balance');
     expect(text).toContain('Debit balance 100\u202f000');
+    expect(text).toContain('4 movements');
     expect(text).toContain('100\u202f000');
     expect(text).toContain('Lettered');
     expect(text).toContain('Partial');
+    expect(fixture.nativeElement.querySelector('[data-testid="auxiliary-ledger-movements-table"]')).not.toBeNull();
     expect(fixture.nativeElement.querySelector('liass-skeleton')).toBeNull();
     expect(text).not.toContain('tp-cust-alpha');
     expect(text).not.toContain('PK');

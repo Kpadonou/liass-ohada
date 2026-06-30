@@ -1574,6 +1574,7 @@
         "LABEL": "Label",
         "LETTERING": "Lettering",
         "REFERENCE": "Reference",
+        "ROWS": "movements",
         "RUNNING_BALANCE": "Running balance",
         "TITLE": "Movements"
       },

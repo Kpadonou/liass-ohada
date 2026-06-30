@@ -89,6 +89,9 @@ export class AuxiliaryLedgerPage {
   protected readonly activeFiscalYear = computed(() => this.fiscalYearContext.activeFiscalYear());
   protected readonly activeYear = computed(() => this.fiscalYearContext.activeYear());
   protected readonly selectedType = signal<ThirdPartyTypeValue>('CUSTOMER');
+  protected readonly selectedTypeLabelKey = computed(
+    () => `ACCOUNTING.AUXILIARY_LEDGER.TYPES.${this.selectedType()}`
+  );
   protected readonly canLoad = computed(
     () => {
       this.formRevision();
@@ -300,6 +303,32 @@ export class AuxiliaryLedgerPage {
     }
 
     return `${thirdParty.thirdPartyCode} — ${thirdParty.thirdPartyName}`;
+  }
+
+  protected accountLabel(report: ThirdPartyLedgerDto): string {
+    return `${report.accountId} — ${report.account?.accountName ?? report.accountId}`;
+  }
+
+  protected thirdPartyLabel(report: ThirdPartyLedgerDto): string {
+    const code = report.thirdParty?.code;
+    const name = report.thirdParty?.displayName ?? report.thirdPartyId;
+    return code ? `${code} — ${name}` : name;
+  }
+
+  protected periodLabel(report: ThirdPartyLedgerDto): string {
+    return `${report.period?.startDate ?? ''} — ${report.period?.endDate ?? ''}`;
+  }
+
+  protected openingBalance(report: ThirdPartyLedgerDto): number {
+    return report.openingBalance?.balance ?? 0;
+  }
+
+  protected totalDebit(report: ThirdPartyLedgerDto): number {
+    return report.summary?.totalDebit ?? 0;
+  }
+
+  protected totalCredit(report: ThirdPartyLedgerDto): number {
+    return report.summary?.totalCredit ?? 0;
   }
 
   private resetPagination(): void {

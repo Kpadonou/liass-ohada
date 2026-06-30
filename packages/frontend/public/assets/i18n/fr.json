@@ -1574,6 +1574,7 @@
         "LABEL": "Libellé",
         "LETTERING": "Lettrage",
         "REFERENCE": "Référence",
+        "ROWS": "mouvements",
         "RUNNING_BALANCE": "Solde progressif",
         "TITLE": "Mouvements"
       },

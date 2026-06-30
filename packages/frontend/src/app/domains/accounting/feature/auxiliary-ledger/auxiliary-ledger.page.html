@@ -21,6 +21,9 @@
           <mat-label>{{ 'ACCOUNTING.AUXILIARY_LEDGER.FILTERS.TYPE' | transloco }}</mat-label>
           <mat-icon matPrefix>category</mat-icon>
           <mat-select formControlName="thirdPartyType" data-testid="auxiliary-ledger-type-select">
+            <mat-select-trigger>
+              {{ selectedTypeLabelKey() | transloco }}
+            </mat-select-trigger>
             <mat-option value="CUSTOMER">{{ 'ACCOUNTING.AUXILIARY_LEDGER.TYPES.CUSTOMER' | transloco }}</mat-option>
             <mat-option value="SUPPLIER">{{ 'ACCOUNTING.AUXILIARY_LEDGER.TYPES.SUPPLIER' | transloco }}</mat-option>
           </mat-select>
@@ -82,8 +85,10 @@
             class="shrink-0"
             buttonType="submit"
             icon="search"
+            tone="brand"
+            variant="solid"
             [disabled]="!canLoad()"
-            [loading]="ledgerQuery.isPending() && hasAppliedScope()"
+            [loading]="showInitialLoading()"
           >
             {{ 'ACCOUNTING.AUXILIARY_LEDGER.ACTIONS.LOAD' | transloco }}
           </liass-button>
@@ -105,58 +110,62 @@
           </p>
         </div>
       } @else if (ledger(); as report) {
-        <div class="mb-5 grid gap-3 lg:grid-cols-6">
-          <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950 lg:col-span-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.ACCOUNT' | transloco }}
-            </p>
-            <p class="mt-2 truncate text-base font-semibold text-slate-950 dark:text-white">
-              {{ report.account.accountId }} — {{ report.account.accountName }}
-            </p>
+        <div class="mb-4 rounded-app-card border border-slate-200 bg-slate-50/80 p-3 dark:border-slate-800 dark:bg-slate-950/60">
+          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="min-w-0">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.ACCOUNT' | transloco }}
+              </p>
+              <p class="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-white">
+                {{ accountLabel(report) }}
+              </p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.THIRD_PARTY' | transloco }}
+              </p>
+              <p class="mt-1 truncate text-sm font-semibold text-slate-950 dark:text-white">
+                {{ thirdPartyLabel(report) }}
+              </p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.PERIOD' | transloco }}
+              </p>
+              <p class="mt-1 text-sm font-semibold tabular-nums text-slate-950 dark:text-white">
+                {{ periodLabel(report) }}
+              </p>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.FINAL' | transloco }}
+              </p>
+              <p class="mt-1 text-sm font-semibold tabular-nums text-brand-700 dark:text-brand-300">
+                {{ balanceLabel(finalBalance()) | transloco: { amount: formatAmount(finalBalance()) } }}
+              </p>
+            </div>
           </div>
-          <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950 lg:col-span-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.THIRD_PARTY' | transloco }}
-            </p>
-            <p class="mt-2 truncate text-base font-semibold text-slate-950 dark:text-white">
-              {{ report.thirdParty.code }} — {{ report.thirdParty.displayName }}
-            </p>
-          </div>
-          <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950 lg:col-span-2">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.PERIOD' | transloco }}
-            </p>
-            <p class="mt-2 text-base font-semibold tabular-nums text-slate-950 dark:text-white">
-              {{ report.period.startDate }} — {{ report.period.endDate }}
-            </p>
-          </div>
-          <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.OPENING' | transloco }}
-            </p>
-            <p class="mt-2 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
-              {{ balanceLabel(report.openingBalance.balance) | transloco: { amount: formatAmount(report.openingBalance.balance) } }}
-            </p>
-          </div>
-          <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.TOTAL_DEBIT' | transloco }}
-            </p>
-            <p class="mt-2 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">{{ formatAmount(report.summary.totalDebit) }}</p>
-          </div>
-          <div class="rounded-app-card bg-slate-50 p-4 dark:bg-slate-950">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.TOTAL_CREDIT' | transloco }}
-            </p>
-            <p class="mt-2 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">{{ formatAmount(report.summary.totalCredit) }}</p>
-          </div>
-          <div class="rounded-app-card bg-brand-50 p-4 dark:bg-brand-950/25 lg:col-span-3">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
-              {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.FINAL' | transloco }}
-            </p>
-            <p class="mt-2 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
-              {{ balanceLabel(finalBalance()) | transloco: { amount: formatAmount(finalBalance()) } }}
-            </p>
+          <div class="mt-3 grid gap-2 sm:grid-cols-3">
+            <div class="rounded-app-control bg-white px-3 py-2 dark:bg-slate-900">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.OPENING' | transloco }}
+              </p>
+              <p class="mt-1 text-sm font-semibold tabular-nums text-slate-950 dark:text-white">
+                {{ balanceLabel(openingBalance(report)) | transloco: { amount: formatAmount(openingBalance(report)) } }}
+              </p>
+            </div>
+            <div class="rounded-app-control bg-white px-3 py-2 dark:bg-slate-900">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.TOTAL_DEBIT' | transloco }}
+              </p>
+              <p class="mt-1 text-sm font-semibold tabular-nums text-slate-950 dark:text-white">{{ formatAmount(totalDebit(report)) }}</p>
+            </div>
+            <div class="rounded-app-control bg-white px-3 py-2 dark:bg-slate-900">
+              <p class="text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_LEDGER.SUMMARY.TOTAL_CREDIT' | transloco }}
+              </p>
+              <p class="mt-1 text-sm font-semibold tabular-nums text-slate-950 dark:text-white">{{ formatAmount(totalCredit(report)) }}</p>
+            </div>
           </div>
         </div>
 
@@ -170,8 +179,16 @@
             </p>
           </div>
         } @else {
+          <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+              {{ movements().length }} {{ 'ACCOUNTING.AUXILIARY_LEDGER.TABLE.ROWS' | transloco }}
+            </p>
+          </div>
           <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
-            <table class="liass-data-table w-full min-w-[1040px] border-collapse text-left">
+            <table
+              data-testid="auxiliary-ledger-movements-table"
+              class="liass-data-table w-full min-w-[1040px] border-collapse text-left"
+            >
               <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
                 <tr>
                   <th class="px-4 py-3">{{ 'ACCOUNTING.AUXILIARY_LEDGER.TABLE.DATE' | transloco }}</th>
