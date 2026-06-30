@@ -59,6 +59,7 @@
   "ERROR_SUGGESTIONS_TECHNICAL": "Error generating suggestions.",
   "INFO_NO_LINES_TO_MATCH": "No lines to match.",
   "SUCCESS_THIRD_PARTY_LEDGER_RETRIEVED": "Third party ledger retrieved successfully.",
+  "SUCCESS_THIRD_PARTY_BALANCE_RETRIEVED": "Third party balance retrieved successfully.",
   "SUCCESS_SUGGESTIONS_RETRIEVED": "Suggestions retrieved successfully.",
   "SUCCESS_UNLETTERING_COMPLETED": "Un-lettering completed successfully.",
   "ERROR_UNLETTERING_FAILED": "Un-lettering failed due to technical error.",

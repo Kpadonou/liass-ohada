@@ -20,6 +20,11 @@ import {
   ThirdPartyLedgerDto,
   ThirdPartyLedgerDtoSchema,
   ThirdPartyLedgerQuery,
+  ThirdPartyBalanceDto,
+  ThirdPartyBalanceDtoSchema,
+  ThirdPartyBalanceLineDto,
+  ThirdPartyBalanceLineDtoSchema,
+  ThirdPartyBalanceQuery,
   ThirdPartyDto,
   ThirdPartyDtoSchema,
   ThirdPartyStatusValue,
@@ -518,6 +523,90 @@ export class ThirdPartyService {
     });
   }
 
+  static async getBalance(
+    orgId: string,
+    params: ThirdPartyBalanceQuery,
+  ): Promise<ThirdPartyBalanceDto> {
+    const normalizedAccountId = params.accountId.padEnd(8, "0");
+    const fiscalYear = await ThirdPartyService.getFiscalYear(
+      orgId,
+      params.fiscalYear,
+    );
+    const startDate = params.startDate ?? fiscalYear.startDate;
+    const endDate = params.endDate ?? fiscalYear.endDate;
+
+    if (startDate < fiscalYear.startDate || endDate > fiscalYear.endDate) {
+      throw new AppError(400, "ERROR_TRIAL_BALANCE_DATE_OUTSIDE_FISCAL_YEAR");
+    }
+
+    const account = await ThirdPartyService.validateAuxiliaryBalanceScope(
+      orgId,
+      {
+        accountId: normalizedAccountId,
+        thirdPartyType: params.thirdPartyType,
+      },
+    );
+    const thirdParties = await ThirdPartyService.list(orgId, {
+      type: params.thirdPartyType,
+      status: params.status,
+      limit: params.limit,
+      cursor: params.cursor,
+    });
+    const rows: ThirdPartyBalanceLineDto[] = [];
+
+    for (const thirdParty of thirdParties.items) {
+      rows.push(
+        await ThirdPartyService.getThirdPartyBalanceRow({
+          orgId,
+          account,
+          thirdParty,
+          fiscalYearStartDate: fiscalYear.startDate,
+          startDate,
+          endDate,
+        }),
+      );
+    }
+
+    const summary = rows.reduce(
+      (result, row) => ({
+        totalOpeningDebit: result.totalOpeningDebit + row.openingDebit,
+        totalOpeningCredit: result.totalOpeningCredit + row.openingCredit,
+        totalMovementDebit: result.totalMovementDebit + row.movementDebit,
+        totalMovementCredit: result.totalMovementCredit + row.movementCredit,
+        totalClosingDebit: result.totalClosingDebit + row.closingDebit,
+        totalClosingCredit: result.totalClosingCredit + row.closingCredit,
+        thirdPartyCount: result.thirdPartyCount + 1,
+        balance: result.balance + row.balance,
+      }),
+      {
+        totalOpeningDebit: 0,
+        totalOpeningCredit: 0,
+        totalMovementDebit: 0,
+        totalMovementCredit: 0,
+        totalClosingDebit: 0,
+        totalClosingCredit: 0,
+        thirdPartyCount: 0,
+        balance: 0,
+      },
+    );
+
+    return ThirdPartyBalanceDtoSchema.parse({
+      accountId: account.accountId,
+      thirdPartyType: params.thirdPartyType,
+      account: ThirdPartyService.toAccountDto(account),
+      period: {
+        fiscalYear: String(fiscalYear.year),
+        startDate,
+        endDate,
+      },
+      rows,
+      summary,
+      count: rows.length,
+      nextCursor: thirdParties.nextCursor,
+      hasMore: thirdParties.hasMore,
+    });
+  }
+
   private static async updateFields(
     orgId: string,
     type: ThirdPartyTypeValue,
@@ -684,6 +773,174 @@ export class ThirdPartyService {
     return { account, thirdParty };
   }
 
+  private static async validateAuxiliaryBalanceScope(
+    orgId: string,
+    params: {
+      accountId: string;
+      thirdPartyType: ThirdPartyTypeValue;
+    },
+  ): Promise<Account> {
+    const accountResult = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(params.accountId),
+        }),
+      }),
+    );
+
+    if (!accountResult.Item) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+
+    const account = unmarshall(accountResult.Item) as Account;
+    if (
+      account.orgId !== orgId ||
+      account.entityType !== "ACCOUNT" ||
+      account.accountId !== params.accountId
+    ) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+
+    if (account.isActive === false) {
+      throw new AppError(400, "ERROR_ACCOUNT_INACTIVE");
+    }
+
+    const metadata = resolveAuxiliaryMetadata(account);
+    if (!metadata.requiresThirdParty || metadata.auxiliaryType === "NONE") {
+      throw new AppError(400, "THIRD_PARTY_NOT_ALLOWED");
+    }
+
+    if (
+      metadata.auxiliaryType !== "THIRD_PARTY" &&
+      metadata.auxiliaryType !== params.thirdPartyType
+    ) {
+      throw new AppError(400, "THIRD_PARTY_TYPE_MISMATCH");
+    }
+
+    return account;
+  }
+
+  private static async getThirdPartyBalanceRow(params: {
+    orgId: string;
+    account: Account;
+    thirdParty: ThirdPartyDto;
+    fiscalYearStartDate: string;
+    startDate: string;
+    endDate: string;
+  }): Promise<ThirdPartyBalanceLineDto> {
+    const gsi2pk = KeyFactory.gsi2PK(
+      params.orgId,
+      params.account.accountId,
+      params.thirdParty.thirdPartyId,
+    );
+    const rangeStart = KeyFactory.gsi2SK(params.fiscalYearStartDate, "");
+    const rangeEnd = KeyFactory.gsi2SK(params.endDate, "\uffff");
+    let lastEvaluatedKey: Record<string, any> | undefined;
+    let openingDebit = 0;
+    let openingCredit = 0;
+    let movementDebit = 0;
+    let movementCredit = 0;
+    let unletteredAmount = 0;
+    let remainingAmount = 0;
+    const letteringStatusSummary = {
+      unlettered: 0,
+      partial: 0,
+      lettered: 0,
+      remainingAmount: 0,
+    };
+
+    do {
+      const result = await dynamoClient.send(
+        new QueryCommand({
+          TableName: config.TABLE_NAME,
+          IndexName: config.GSI2,
+          KeyConditionExpression: "GSI2PK = :pk AND GSI2SK BETWEEN :start AND :end",
+          ExpressionAttributeValues: marshall({
+            ":pk": gsi2pk,
+            ":start": rangeStart,
+            ":end": rangeEnd,
+          }),
+          ExclusiveStartKey: lastEvaluatedKey,
+          ScanIndexForward: true,
+        }),
+      );
+
+      for (const item of result.Items ?? []) {
+        const line = unmarshall(item);
+        if (
+          !ThirdPartyService.isAuxiliaryLedgerLine(line, {
+            orgId: params.orgId,
+            accountId: params.account.accountId,
+            thirdPartyId: params.thirdParty.thirdPartyId,
+            thirdPartyType: params.thirdParty.type,
+            gsi2pk,
+          })
+        ) {
+          continue;
+        }
+
+        const debit = Number(line.debit) || 0;
+        const credit = Number(line.credit) || 0;
+        if (line.entryDate < params.startDate || line.journalCode === "RAN") {
+          openingDebit += debit;
+          openingCredit += credit;
+        } else {
+          movementDebit += debit;
+          movementCredit += credit;
+        }
+
+        const lineRemaining = ThirdPartyService.getLineRemainingAmount(
+          line,
+          debit,
+          credit,
+        );
+        if (line.letteringStatus === "UNLETTERED") {
+          letteringStatusSummary.unlettered += 1;
+          unletteredAmount += lineRemaining;
+        } else if (line.letteringStatus === "PARTIAL") {
+          letteringStatusSummary.partial += 1;
+        } else if (
+          line.letteringStatus === "LETTERED" ||
+          line.letteringStatus === "COMPLETE"
+        ) {
+          letteringStatusSummary.lettered += 1;
+        }
+        remainingAmount += lineRemaining;
+      }
+
+      lastEvaluatedKey = result.LastEvaluatedKey;
+    } while (lastEvaluatedKey);
+
+    letteringStatusSummary.remainingAmount = remainingAmount;
+    const openingNet = openingDebit - openingCredit;
+    const movementNet = movementDebit - movementCredit;
+    const closingNet = openingNet + movementNet;
+    const openingSide = ThirdPartyService.toDebitCreditSide(openingNet);
+    const closingSide = ThirdPartyService.toDebitCreditSide(closingNet);
+
+    return ThirdPartyBalanceLineDtoSchema.parse({
+      thirdPartyId: params.thirdParty.thirdPartyId,
+      thirdPartyType: params.thirdParty.type,
+      thirdPartyCode: params.thirdParty.code,
+      thirdPartyName: params.thirdParty.displayName,
+      accountId: params.account.accountId,
+      accountCode: params.account.accountId,
+      accountLabel: params.account.accountName,
+      openingDebit: openingSide.debit,
+      openingCredit: openingSide.credit,
+      movementDebit,
+      movementCredit,
+      closingDebit: closingSide.debit,
+      closingCredit: closingSide.credit,
+      balance: closingNet,
+      unletteredAmount,
+      remainingAmount,
+      letteringStatusSummary,
+    });
+  }
+
   private static async getAuxiliaryOpeningBalance(params: {
     orgId: string;
     gsi2pk: string;
@@ -784,16 +1041,53 @@ export class ThirdPartyService {
       orgId: string;
       accountId: string;
       thirdPartyId: string;
+      thirdPartyType?: ThirdPartyTypeValue;
       gsi2pk: string;
     },
   ): boolean {
     return (
       line.orgId === params.orgId &&
       line.entityType === "ENTRY_LINE" &&
+      (line.status === undefined || line.status === "POSTED") &&
       line.accountId === params.accountId &&
       line.thirdPartyId === params.thirdPartyId &&
+      (params.thirdPartyType === undefined ||
+        line.thirdPartyType === undefined ||
+        line.thirdPartyType === params.thirdPartyType) &&
       line.GSI2PK === params.gsi2pk
     );
+  }
+
+  private static toDebitCreditSide(netAmount: number): {
+    debit: number;
+    credit: number;
+  } {
+    return {
+      debit: Math.max(netAmount, 0),
+      credit: Math.max(-netAmount, 0),
+    };
+  }
+
+  private static getLineRemainingAmount(
+    line: Record<string, any>,
+    debit: number,
+    credit: number,
+  ): number {
+    const status = line.letteringStatus;
+    if (status === "LETTERED" || status === "COMPLETE") {
+      return 0;
+    }
+
+    const remainingAmount = Number(line.remainingAmount);
+    if (Number.isInteger(remainingAmount) && remainingAmount > 0) {
+      return remainingAmount;
+    }
+
+    if (status === "UNLETTERED") {
+      return Math.abs(debit - credit);
+    }
+
+    return 0;
   }
 
   private static decodeLedgerCursor(

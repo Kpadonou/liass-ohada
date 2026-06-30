@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { AccountDtoSchema } from "./account";
-import { ThirdPartyDtoSchema, ThirdPartyType } from "./third-party";
+import {
+  ThirdPartyDtoSchema,
+  ThirdPartyStatus,
+  ThirdPartyType,
+} from "./third-party";
 
 // --- Enums & Constants ---
 
@@ -755,6 +759,112 @@ export type ThirdPartyLedgerDto = z.infer<typeof ThirdPartyLedgerDtoSchema>;
 export const ThirdPartyLedgerResponseSchema = z.object({
   message: z.unknown().optional(),
   data: ThirdPartyLedgerDtoSchema,
+});
+
+export const ThirdPartyBalanceQuerySchema = z.object({
+  fiscalYear: z.string().regex(/^\d{4}$/),
+  accountId: z.string().regex(/^\d{2,8}$/),
+  thirdPartyType: ThirdPartyType,
+  status: ThirdPartyStatus.optional(),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(100).optional(),
+  cursor: z.string().optional(),
+}).superRefine((query, context) => {
+  if (query.startDate && !query.startDate.startsWith(`${query.fiscalYear}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must belong to the fiscal year",
+      path: ["startDate"],
+    });
+  }
+
+  if (query.endDate && !query.endDate.startsWith(`${query.fiscalYear}-`)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "End date must belong to the fiscal year",
+      path: ["endDate"],
+    });
+  }
+
+  if (query.startDate && query.endDate && query.startDate > query.endDate) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Start date must not be after end date",
+      path: ["endDate"],
+    });
+  }
+});
+
+export type ThirdPartyBalanceQuery = z.infer<
+  typeof ThirdPartyBalanceQuerySchema
+>;
+
+export const ThirdPartyBalanceLineDtoSchema = z.object({
+  thirdPartyId: z.string().min(1),
+  thirdPartyType: ThirdPartyType,
+  thirdPartyCode: z.string().min(1),
+  thirdPartyName: z.string().min(1),
+  accountId: z.string().regex(/^\d{8}$/),
+  accountCode: z.string().regex(/^\d{8}$/),
+  accountLabel: z.string().min(1),
+  openingDebit: z.number().int().nonnegative(),
+  openingCredit: z.number().int().nonnegative(),
+  movementDebit: z.number().int().nonnegative(),
+  movementCredit: z.number().int().nonnegative(),
+  closingDebit: z.number().int().nonnegative(),
+  closingCredit: z.number().int().nonnegative(),
+  balance: z.number().int(),
+  unletteredAmount: z.number().int().nonnegative().optional(),
+  remainingAmount: z.number().int().nonnegative().optional(),
+  letteringStatusSummary: z
+    .object({
+      unlettered: z.number().int().nonnegative(),
+      partial: z.number().int().nonnegative(),
+      lettered: z.number().int().nonnegative(),
+      remainingAmount: z.number().int().nonnegative(),
+    })
+    .optional(),
+});
+
+export const ThirdPartyBalanceDtoSchema = z
+  .object({
+    accountId: z.string().regex(/^\d{8}$/),
+    thirdPartyType: ThirdPartyType,
+    account: AccountDtoSchema,
+    period: z.object({
+      fiscalYear: z.string().regex(/^\d{4}$/),
+      startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    }),
+    rows: z.array(ThirdPartyBalanceLineDtoSchema),
+    summary: z.object({
+      totalOpeningDebit: z.number().int().nonnegative(),
+      totalOpeningCredit: z.number().int().nonnegative(),
+      totalMovementDebit: z.number().int().nonnegative(),
+      totalMovementCredit: z.number().int().nonnegative(),
+      totalClosingDebit: z.number().int().nonnegative(),
+      totalClosingCredit: z.number().int().nonnegative(),
+      thirdPartyCount: z.number().int().nonnegative(),
+      balance: z.number().int(),
+    }),
+    count: z.number().int().nonnegative(),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean().optional(),
+  })
+  .transform((balance) => ({
+    ...balance,
+    hasMore: balance.hasMore ?? !!balance.nextCursor,
+  }));
+
+export type ThirdPartyBalanceLineDto = z.infer<
+  typeof ThirdPartyBalanceLineDtoSchema
+>;
+export type ThirdPartyBalanceDto = z.infer<typeof ThirdPartyBalanceDtoSchema>;
+
+export const ThirdPartyBalanceResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: ThirdPartyBalanceDtoSchema,
 });
 
 export const MatchingReportDtoSchema = z.object({

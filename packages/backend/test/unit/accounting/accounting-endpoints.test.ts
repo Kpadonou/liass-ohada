@@ -49,6 +49,19 @@ describe("AccountingEndpoints", () => {
     expect(source).toContain('"/third-parties/{thirdPartyId}/deactivate"');
   });
 
+  test("exposes the auxiliary balance book route", () => {
+    const source = readFileSync(
+      path.join(
+        __dirname,
+        "../../../lib/constructs/domains/accounting-endpoints.ts",
+      ),
+      "utf8",
+    );
+
+    expect(source).toContain('"/books/third-party-balance"');
+    expect(source).toContain('"books/get-third-party-balance"');
+  });
+
   test("allows PATCH in API Gateway CORS preflight", () => {
     const source = readFileSync(
       path.join(
