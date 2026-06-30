@@ -1310,7 +1310,9 @@
           "DEBIT_CREDIT_EXCLUSIVE": "Une ligne ne peut pas porter simultanément un débit et un crédit.",
           "ENTRY_UNBALANCED": "L’écriture doit comporter au moins deux lignes et présenter des totaux débit et crédit égaux.",
           "JOURNAL_REQUIRED": "Sélectionnez un journal.",
-          "LABEL_REQUIRED": "Saisissez un libellé d’au moins 3 caractères."
+          "LABEL_REQUIRED": "Saisissez un libellé d’au moins 3 caractères.",
+          "THIRD_PARTY_REQUIRED": "Sélectionnez un tiers pour ce compte auxiliaire.",
+          "THIRD_PARTY_TYPE_UNSUPPORTED": "Ce compte auxiliaire nécessite un tiers, mais son type doit être précisé avant la sélection."
         }
       },
       "LIST": {

@@ -1,7 +1,9 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
+import { type AccountDto } from '@liass-ohada/shared/accounting';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 
@@ -11,6 +13,7 @@ import { AccountingFiscalYearContextService } from '../../data-access/accounting
 import { AuthStore } from '../../../identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../identity/data-access/workspaces.api';
+import { ThirdPartySelectComponent } from '../../ui/third-party-search-select/third-party-search-select.component';
 import { EntryFormPage } from './entry-form.page';
 
 const translations = {
@@ -74,7 +77,9 @@ const translations = {
             DEBIT_CREDIT_EXCLUSIVE: 'A line cannot contain both debit and credit.',
             ENTRY_UNBALANCED: 'The entry must be balanced.',
             JOURNAL_REQUIRED: 'Select a journal.',
-            LABEL_REQUIRED: 'Enter a label.'
+            LABEL_REQUIRED: 'Enter a label.',
+            THIRD_PARTY_REQUIRED: 'Select a third party for this auxiliary account.',
+            THIRD_PARTY_TYPE_UNSUPPORTED: 'This auxiliary account requires a third party type.'
           }
         },
         TOTALS: {
@@ -92,6 +97,21 @@ const translations = {
         CREATE_ACTION: 'Create fiscal year',
         EMPTY_DESCRIPTION: 'This feature needs an active fiscal year.',
         EMPTY_TITLE: 'Select a fiscal year'
+      },
+      THIRD_PARTIES: {
+        SELECT: {
+          EMPTY: 'No third party found',
+          ERROR: 'Third parties could not be loaded.',
+          LABEL: 'Third party',
+          LOAD_MORE: 'Load more third parties',
+          LOADING: 'Loading third parties...',
+          PLACEHOLDER: 'Search by code or name',
+          TYPE_TO_SEARCH: 'Enter a third-party code or name'
+        },
+        STATUS: {
+          ACTIVE: 'Active',
+          INACTIVE: 'Inactive'
+        }
       }
     },
     COMMON: {
@@ -267,6 +287,116 @@ describe('EntryFormPage', () => {
     expect(selectors.length).toBe(2);
   });
 
+  it('does not show a third-party selector when no account is selected', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+
+    flushReferenceData();
+    await settle();
+
+    expect(fixture.nativeElement.querySelector('liass-third-party-select')).toBeNull();
+  });
+
+  it('shows a CUSTOMER third-party selector for a customer auxiliary account', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
+    await settle();
+
+    const selector = thirdPartySelectorAt(0);
+    expect(selector).toBeTruthy();
+    expect(selector.type()).toBe('CUSTOMER');
+    expect(fixture.nativeElement.textContent).toContain(
+      'Select a third party for this auxiliary account.'
+    );
+  });
+
+  it('shows a SUPPLIER third-party selector for a supplier auxiliary account', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+
+    setLineAccount(0, accountDtoFixture('40110000', 'Fournisseurs', 'SUPPLIER'));
+    await flushThirdPartyList('SUPPLIER');
+    await settle();
+
+    const selector = thirdPartySelectorAt(0);
+    expect(selector).toBeTruthy();
+    expect(selector.type()).toBe('SUPPLIER');
+  });
+
+  it('hides and clears the third-party selector for a non-auxiliary account', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
+    await settle();
+    selectLineThirdParty(0, 'tp-cust-alpha');
+    expect(firstLine().controls.thirdPartyId.value).toBe('tp-cust-alpha');
+
+    setLineAccount(0, accountDtoFixture('52110000', 'Banque'));
+    await settle();
+
+    expect(thirdPartySelectorAt(0)).toBeNull();
+    expect(firstLine().controls.thirdPartyId.value).toBe('');
+    expect(firstLine().controls.thirdPartyType.value).toBe('');
+  });
+
+  it('clears a selected customer when switching to a supplier auxiliary account', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
+    await settle();
+    selectLineThirdParty(0, 'tp-cust-alpha');
+
+    setLineAccount(0, accountDtoFixture('40110000', 'Fournisseurs', 'SUPPLIER'));
+    await flushThirdPartyList('SUPPLIER');
+    await settle();
+
+    expect(firstLine().controls.thirdPartyId.value).toBe('');
+    expect(firstLine().controls.thirdPartyType.value).toBe('');
+    selectLineThirdParty(0, 'tp-sup-beta');
+    expect(firstLine().controls.thirdPartyId.value).toBe('tp-sup-beta');
+    expect(firstLine().controls.thirdPartyType.value).toBe('SUPPLIER');
+  });
+
+  it('clears a selected third party when switching from auxiliary to non-auxiliary', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
+    await settle();
+    selectLineThirdParty(0, 'tp-cust-alpha');
+
+    setLineAccount(0, accountDtoFixture('70110000', 'Ventes'));
+    await settle();
+
+    expect(firstLine().controls.thirdPartyId.value).toBe('');
+    expect(firstLine().controls.thirdPartyType.value).toBe('');
+    expect(thirdPartySelectorAt(0)).toBeNull();
+  });
+
   it('keeps debit and credit mutually exclusive while entering a line amount', async () => {
     selectFiscalYear();
     fixture = TestBed.createComponent(EntryFormPage);
@@ -355,14 +485,16 @@ describe('EntryFormPage', () => {
       voucherNumber: 'FAC-001',
       label: 'Customer sale'
     });
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
+    await settle();
+    selectLineThirdParty(0, 'tp-cust-alpha');
     component.lines.at(0).patchValue({
-      accountId: '41100000',
-      thirdPartyId: 'CLIENT-001',
       debit: 1000,
       credit: 0
     });
+    setLineAccount(1, accountDtoFixture('70110000', 'Ventes'));
     component.lines.at(1).patchValue({
-      accountId: '70100000',
       debit: 0,
       credit: 1000
     });
@@ -372,15 +504,101 @@ describe('EntryFormPage', () => {
 
     expect(model.year).toBe(2026);
     expect(model.lines[0]).toMatchObject({
-      accountId: '41100000',
-      thirdPartyId: 'CLIENT-001',
+      accountId: '41110000',
+      thirdPartyId: 'tp-cust-alpha',
+      thirdPartyType: 'CUSTOMER',
       debit: 1000,
       credit: 0
+    });
+    expect(model.lines[1]).toEqual({
+      accountId: '70110000',
+      debit: 0,
+      credit: 1000
     });
     expect(serialized).not.toContain('PK');
     expect(serialized).not.toContain('SK');
     expect(serialized).not.toContain('GSI');
     expect(serialized).not.toContain('entityType');
+  });
+
+  it('submits supplier auxiliary lines with thirdPartyId and thirdPartyType SUPPLIER', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+
+    flushReferenceData();
+    await settle();
+    const component = fixture.componentInstance as any;
+
+    setLineAccount(0, accountDtoFixture('40110000', 'Fournisseurs', 'SUPPLIER'));
+    await flushThirdPartyList('SUPPLIER');
+    await settle();
+    selectLineThirdParty(0, 'tp-sup-beta');
+    component.lines.at(0).patchValue({ debit: 1000, credit: 0 });
+    setLineAccount(1, accountDtoFixture('60110000', 'Achats'));
+    component.lines.at(1).patchValue({ debit: 0, credit: 1000 });
+
+    expect(component.draftModel().lines[0]).toMatchObject({
+      accountId: '40110000',
+      thirdPartyId: 'tp-sup-beta',
+      thirdPartyType: 'SUPPLIER'
+    });
+  });
+
+  it('blocks submission with an inline error until a required third party is selected', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+
+    flushReferenceData();
+    await settle();
+    const component = fixture.componentInstance as any;
+
+    component.form.patchValue({
+      entryDate: '2026-02-15',
+      journalCode: 'VE',
+      label: 'Customer sale'
+    });
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
+    setLineAccount(1, accountDtoFixture('70110000', 'Ventes'));
+    component.lines.at(0).patchValue({ debit: 1000, credit: 0 });
+    component.lines.at(1).patchValue({ debit: 0, credit: 1000 });
+    await settle();
+
+    expect(component.form.invalid).toBe(true);
+    expect(saveDraftButton().disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain(
+      'Select a third party for this auxiliary account.'
+    );
+
+    selectLineThirdParty(0, 'tp-cust-alpha');
+    await settle();
+
+    expect(component.form.valid).toBe(true);
+    expect(saveDraftButton().disabled).toBe(false);
+  });
+
+  it('uses the reusable third-party selector without displaying internal ids', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+
+    flushReferenceData();
+    await settle();
+
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
+    await settle();
+    selectLineThirdParty(0, 'tp-cust-alpha');
+    await settle();
+
+    expect(thirdPartySelectorAt(0)).toBeTruthy();
+    expect(thirdPartyInputAt(0).value).toBe('Client Alpha');
+    expect(thirdPartyInputAt(0).value).not.toContain('CUST-ALPHA');
+    expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA');
+    expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
+    expect(fixture.nativeElement.innerHTML).toContain('dark:');
   });
 
   it('creates a draft with business identifiers, uses the backend message, and opens edit mode', async () => {
@@ -389,7 +607,7 @@ describe('EntryFormPage', () => {
     fixture.detectChanges();
     flushReferenceData();
     await settle();
-    fillValidDraft();
+    await fillValidDraft();
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
 
@@ -407,13 +625,14 @@ describe('EntryFormPage', () => {
       label: 'Customer sale',
       lines: [
         {
-          accountId: '41100000',
-          thirdPartyId: 'CLIENT-001',
+          accountId: '41110000',
+          thirdPartyId: 'tp-cust-alpha',
+          thirdPartyType: 'CUSTOMER',
           debit: 1000,
           credit: 0
         },
         {
-          accountId: '70100000',
+          accountId: '70110000',
           debit: 0,
           credit: 1000
         }
@@ -439,7 +658,7 @@ describe('EntryFormPage', () => {
     fixture.detectChanges();
     flushReferenceData();
     await settle();
-    fillValidDraft();
+    await fillValidDraft();
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
 
     const savePromise = (fixture.componentInstance as any).saveDraft();
@@ -462,6 +681,9 @@ describe('EntryFormPage', () => {
     httpMock.expectOne((request) => request.url === `${apiBaseUrl}/entries/ENTRY-001`).flush({
       data: entryDetailFixture()
     });
+    await flushAccountDetail(accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushAccountDetail(accountDtoFixture('70110000', 'Ventes'));
+    await flushThirdPartyList('CUSTOMER');
     await settle();
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
@@ -490,7 +712,7 @@ describe('EntryFormPage', () => {
     fixture.detectChanges();
     flushReferenceData();
     await settle();
-    fillValidDraft();
+    await fillValidDraft();
 
     const savePromise = (fixture.componentInstance as any).saveDraft();
     await settleDynamicImport();
@@ -510,7 +732,7 @@ describe('EntryFormPage', () => {
     );
     expect((fixture.componentInstance as any).form.controls.label.value).toBe('Customer sale');
     expect((fixture.componentInstance as any).lines.at(0).controls.accountId.value).toBe(
-      '41100000'
+      '41110000'
     );
   });
 
@@ -520,7 +742,7 @@ describe('EntryFormPage', () => {
     fixture.detectChanges();
     flushReferenceData();
     await settle();
-    fillValidDraft();
+    await fillValidDraft();
 
     const savePromise = (fixture.componentInstance as any).saveDraft();
     await settleDynamicImport();
@@ -557,7 +779,7 @@ describe('EntryFormPage', () => {
     });
   }
 
-  function fillValidDraft(): void {
+  async function fillValidDraft(): Promise<void> {
     const component = fixture.componentInstance as any;
 
     component.form.patchValue({
@@ -566,18 +788,101 @@ describe('EntryFormPage', () => {
       voucherNumber: 'FAC-001',
       label: 'Customer sale'
     });
+    setLineAccount(0, accountDtoFixture('41110000', 'Clients', 'CUSTOMER'));
+    await flushThirdPartyList('CUSTOMER');
     component.lines.at(0).patchValue({
-      accountId: '41100000',
-      thirdPartyId: 'CLIENT-001',
+      thirdPartyId: 'tp-cust-alpha',
+      thirdPartyType: 'CUSTOMER',
       debit: 1000,
       credit: 0
     });
+    setLineAccount(1, accountDtoFixture('70110000', 'Ventes'));
     component.lines.at(1).patchValue({
-      accountId: '70100000',
       debit: 0,
       credit: 1000
     });
     fixture.detectChanges();
+  }
+
+  function firstLine(): any {
+    return (fixture.componentInstance as any).lines.at(0);
+  }
+
+  function setLineAccount(index: number, account: AccountDto): void {
+    const component = fixture.componentInstance as any;
+    const line = component.lines.at(index);
+    line.controls.accountId.setValue(account.accountId);
+    component.handleLineAccountSelected(line, account);
+    fixture.detectChanges();
+  }
+
+  function thirdPartySelectorAt(index: number): any | null {
+    const row = fixture.debugElement.queryAll(By.css('[data-testid="entry-line-row"]'))[index];
+    return row?.query(By.directive(ThirdPartySelectComponent))?.componentInstance ?? null;
+  }
+
+  function thirdPartyInputAt(index: number): HTMLInputElement {
+    const row = fixture.nativeElement.querySelectorAll('[data-testid="entry-line-row"]')[
+      index
+    ] as HTMLElement;
+    return row.querySelector('liass-third-party-select input') as HTMLInputElement;
+  }
+
+  function selectLineThirdParty(index: number, thirdPartyId: string): void {
+    const selector = thirdPartySelectorAt(index);
+    if (!selector) {
+      throw new Error(`Third-party selector at line ${index} was not rendered.`);
+    }
+    selector.selectOption({ option: { value: thirdPartyId } });
+    fixture.detectChanges();
+  }
+
+  function saveDraftButton(): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('[data-testid="save-entry-draft"] button');
+  }
+
+  async function flushThirdPartyList(type: 'CUSTOMER' | 'SUPPLIER'): Promise<void> {
+    const request = await expectOneEventually((candidate) => {
+      return (
+        candidate.url === `${apiBaseUrl}/third-parties` &&
+        candidate.params.get('type') === type &&
+        candidate.params.get('status') === 'ACTIVE' &&
+        candidate.params.get('limit') === '200'
+      );
+    });
+
+    request.flush({
+      data: {
+        hasMore: false,
+        items:
+          type === 'CUSTOMER'
+            ? [thirdPartyDtoFixture('tp-cust-alpha', 'CUST-ALPHA', 'Client Alpha', 'CUSTOMER')]
+            : [thirdPartyDtoFixture('tp-sup-beta', 'SUP-BETA', 'Fournisseur Beta', 'SUPPLIER')]
+      }
+    });
+  }
+
+  async function flushAccountDetail(account: AccountDto): Promise<void> {
+    const request = await expectOneEventually(`${apiBaseUrl}/accounts/${account.accountId}`);
+    request.flush({ account });
+  }
+
+  async function expectOneEventually(
+    match: Parameters<HttpTestingController['expectOne']>[0]
+  ) {
+    let lastError: unknown;
+
+    for (let index = 0; index < 30; index += 1) {
+      try {
+        return httpMock.expectOne(match);
+      } catch (error) {
+        lastError = error;
+        await settleDynamicImport();
+        fixture.detectChanges();
+      }
+    }
+
+    throw lastError;
   }
 
   async function settle(): Promise<void> {
@@ -607,18 +912,56 @@ function entryDetailFixture(overrides: Record<string, unknown> = {}) {
     lines: [
       {
         lineId: 'LINE-001',
-        accountId: '41100000',
+        accountId: '41110000',
         debit: 1000,
         credit: 0,
-        thirdPartyId: 'CLIENT-001'
+        thirdPartyId: 'tp-cust-alpha',
+        thirdPartyType: 'CUSTOMER'
       },
       {
         lineId: 'LINE-002',
-        accountId: '70100000',
+        accountId: '70110000',
         debit: 0,
         credit: 1000
       }
     ],
     ...overrides
+  };
+}
+
+function accountDtoFixture(
+  accountId: string,
+  accountName: string,
+  auxiliaryType?: 'CUSTOMER' | 'SUPPLIER' | 'THIRD_PARTY'
+): AccountDto {
+  return {
+    accountId,
+    accountName,
+    accountNature: accountId.startsWith('7') || accountId.startsWith('6') ? 'INCOME' : 'BALANCE',
+    accountUsage: 'BOTH',
+    allowReconciliation: true,
+    auxiliaryType: auxiliaryType ?? 'NONE',
+    classCode: Number(accountId.charAt(0)),
+    financialStatementCode: 'BS',
+    isActive: true,
+    isThirdPartyAccount: !!auxiliaryType,
+    requiresThirdParty: !!auxiliaryType
+  };
+}
+
+function thirdPartyDtoFixture(
+  thirdPartyId: string,
+  code: string,
+  displayName: string,
+  type: 'CUSTOMER' | 'SUPPLIER'
+) {
+  return {
+    code,
+    createdAt: '2026-01-01T00:00:00.000Z',
+    displayName,
+    status: 'ACTIVE' as const,
+    thirdPartyId,
+    type,
+    updatedAt: '2026-01-01T00:00:00.000Z'
   };
 }

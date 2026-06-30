@@ -299,16 +299,11 @@ export class LetteringPage {
   });
   protected readonly thirdPartyContextLabel = computed<string | null>(() => {
     const scope = this.scope();
-    const code = scope.thirdPartyCode || this.selectedThirdParty()?.thirdPartyCode;
     const name =
       scope.thirdPartyName ||
       this.selectedThirdParty()?.thirdPartyName;
 
-    if (code && name) {
-      return `${code} — ${name}`;
-    }
-
-    return null;
+    return name || null;
   });
   protected readonly suggestions = computed(() => buildSuggestions(this.filteredCandidates()));
 

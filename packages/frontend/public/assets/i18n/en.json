@@ -1310,7 +1310,9 @@
           "DEBIT_CREDIT_EXCLUSIVE": "A line cannot contain both a debit and a credit amount.",
           "ENTRY_UNBALANCED": "The entry must contain at least two lines with equal debit and credit totals.",
           "JOURNAL_REQUIRED": "Select a journal.",
-          "LABEL_REQUIRED": "Enter a label of at least 3 characters."
+          "LABEL_REQUIRED": "Enter a label of at least 3 characters.",
+          "THIRD_PARTY_REQUIRED": "Select a third party for this auxiliary account.",
+          "THIRD_PARTY_TYPE_UNSUPPORTED": "This auxiliary account requires a third party, but its type must be specified before selection."
         }
       },
       "LIST": {

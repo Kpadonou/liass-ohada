@@ -373,7 +373,7 @@ describe('LetteringPage', () => {
     expect(fixture.nativeElement.querySelector('liass-third-party-search-select')).toBeFalsy();
   });
 
-  it('selecting Client Alpha stores the thirdPartyId internally and displays code plus name', async () => {
+  it('selecting Client Alpha stores the thirdPartyId internally and displays the name only', async () => {
     await settle(fixture);
 
     const component = testable(fixture);
@@ -384,8 +384,10 @@ describe('LetteringPage', () => {
 
     expect(component.form.controls.thirdPartyId.value).toBe('tp-cust-alpha');
     expect(component.canLoadScope()).toBe(true);
-    expect(thirdPartyInput(fixture).value).toBe('CUST-ALPHA — Client Alpha');
+    expect(thirdPartyInput(fixture).value).toBe('Client Alpha');
+    expect(thirdPartyInput(fixture).value).not.toContain('CUST-ALPHA');
     expect(fixture.nativeElement.querySelector('[data-testid="third-party-selected-preview"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA');
     expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
   });
 
@@ -405,7 +407,7 @@ describe('LetteringPage', () => {
 
     expect(component.form.controls.thirdPartyId.value).toBeFalsy();
     expect(component.canLoadScope()).toBe(false);
-    expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA — Client Alpha');
+    expect(fixture.nativeElement.textContent).not.toContain('Client Alpha');
 
     component.form.controls.accountId.setValue('40100000');
     component.handleAccountSelected(accountDtoFixture('40100000', 'Fournisseurs'));
@@ -414,7 +416,7 @@ describe('LetteringPage', () => {
 
     expect(component.form.controls.thirdPartyId.value).toBe('tp-sup-beta');
     expect(component.canLoadScope()).toBe(true);
-    expect(fixture.nativeElement.textContent).toContain('SUP-BETA');
+    expect(fixture.nativeElement.textContent).not.toContain('SUP-BETA');
     expect(fixture.nativeElement.textContent).toContain('Fournisseur Beta');
     expect(fixture.nativeElement.textContent).not.toContain('tp-sup-beta');
   });
@@ -455,7 +457,8 @@ describe('LetteringPage', () => {
     await settle(fixture);
 
     expect(fixture.nativeElement.textContent).toContain('Customer invoice');
-    expect(fixture.nativeElement.textContent).toContain('CUST-ALPHA — Client Alpha');
+    expect(fixture.nativeElement.textContent).toContain('Client Alpha');
+    expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA — Client Alpha');
   });
 
   it('hides account and third-party context badges until values are selected', async () => {
@@ -465,7 +468,7 @@ describe('LetteringPage', () => {
     expect(fixture.nativeElement.textContent).toContain('Fiscal year 2026');
     expect(fixture.nativeElement.textContent).toContain('Customer');
     expect(fixture.nativeElement.textContent).not.toContain('41100000 — Clients');
-    expect(fixture.nativeElement.textContent).not.toContain('C001 — Client Demo');
+    expect(fixture.nativeElement.textContent).not.toContain('Client Demo');
 
     const component = testable(fixture);
     component.form.controls.accountId.setValue('41100000');
@@ -475,7 +478,8 @@ describe('LetteringPage', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('41100000 — Clients');
-    expect(fixture.nativeElement.textContent).toContain('C001 — Client Demo');
+    expect(fixture.nativeElement.textContent).toContain('Client Demo');
+    expect(fixture.nativeElement.textContent).not.toContain('C001 — Client Demo');
   });
 
   it('keeps loading disabled until fiscal year, type, account, and third party are valid', async () => {
@@ -513,7 +517,8 @@ describe('LetteringPage', () => {
     expect(text).toContain('Unlettered lines');
     expect(text).toContain('Customer invoice');
     expect(text).toContain('41100000 — Clients');
-    expect(text).toContain('C001 — Client Demo');
+    expect(text).toContain('Client Demo');
+    expect(text).not.toContain('C001 — Client Demo');
     expect(text).toContain('Remaining');
     expect(text).not.toContain('ORG#demo');
     expect(text).not.toContain('GSI3PK');

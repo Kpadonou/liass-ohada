@@ -112,12 +112,13 @@ describe('ThirdPartySelectComponent', () => {
     });
   });
 
-  it('displays options as CODE — displayName and never displays the thirdPartyId', async () => {
+  it('displays options as displayName only and never displays internal identifiers', async () => {
     fixture.detectChanges();
     await settle(fixture);
 
     const component = selectorComponent();
-    expect(component.thirdPartyLabel(customerAlpha())).toBe('CUST-ALPHA — Client Alpha');
+    expect(component.thirdPartyLabel(customerAlpha())).toBe('Client Alpha');
+    expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA');
     expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
   });
 
@@ -159,7 +160,8 @@ describe('ThirdPartySelectComponent', () => {
       thirdPartyCode: 'CUST-ALPHA',
       thirdPartyName: 'Client Alpha'
     });
-    expect(inputElement().value).toBe('CUST-ALPHA — Client Alpha');
+    expect(inputElement().value).toBe('Client Alpha');
+    expect(inputElement().value).not.toContain('CUST-ALPHA');
     expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
   });
 
@@ -170,8 +172,10 @@ describe('ThirdPartySelectComponent', () => {
     selectorComponent().selectOption({ option: { value: 'tp-cust-alpha' } });
     fixture.detectChanges();
 
-    expect(inputElement().value).toBe('CUST-ALPHA — Client Alpha');
+    expect(inputElement().value).toBe('Client Alpha');
+    expect(inputElement().value).not.toContain('CUST-ALPHA');
     expect(selectedPreview()).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('CUST-ALPHA');
     expect(fixture.nativeElement.textContent).not.toContain('tp-cust-alpha');
   });
 
@@ -185,8 +189,8 @@ describe('ThirdPartySelectComponent', () => {
 
     const preview = selectedPreview();
     expect(preview).toBeTruthy();
-    expect(preview?.textContent).toContain('CUST-ALPHA');
     expect(preview?.textContent).toContain('Client Alpha');
+    expect(preview?.textContent).not.toContain('CUST-ALPHA');
     expect(preview?.textContent).not.toContain('tp-cust-alpha');
   });
 

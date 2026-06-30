@@ -244,7 +244,7 @@ export class ThirdPartySelectComponent implements ControlValueAccessor, Validato
   }
 
   protected thirdPartyLabel(party: ThirdPartyDto): string {
-    return `${party.code} — ${party.displayName}`;
+    return party.displayName;
   }
 
   protected loadMoreValue(): string {

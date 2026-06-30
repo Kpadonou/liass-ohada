@@ -160,6 +160,7 @@
                       [labelKey]="'ACCOUNTING.ENTRIES.FORM.LINES.ACCOUNT'"
                       [showError]="line.controls.accountId.touched && line.controls.accountId.invalid"
                       [errorKey]="'ACCOUNTING.ENTRIES.FORM.VALIDATION.ACCOUNT_REQUIRED'"
+                      (accountSelected)="handleLineAccountSelected(line, $event)"
                     />
                   </td>
                   <td class="px-3 pb-1 pt-3">
@@ -169,10 +170,24 @@
                     </mat-form-field>
                   </td>
                   <td class="px-3 pb-1 pt-3">
-                    <mat-form-field appearance="outline" class="w-full">
-                      <mat-label>{{ 'ACCOUNTING.ENTRIES.FORM.LINES.THIRD_PARTY' | transloco }}</mat-label>
-                      <input matInput formControlName="thirdPartyId" autocomplete="off" />
-                    </mat-form-field>
+                    @if (lineThirdPartySelectorType(line); as thirdPartyType) {
+                      <liass-third-party-select
+                        formControlName="thirdPartyId"
+                        [type]="thirdPartyType"
+                        [required]="true"
+                        [label]="'ACCOUNTING.ENTRIES.FORM.LINES.THIRD_PARTY' | transloco"
+                        [placeholder]="'ACCOUNTING.THIRD_PARTIES.SELECT.PLACEHOLDER' | transloco"
+                        [showError]="line.controls.thirdPartyId.touched && line.controls.thirdPartyId.invalid"
+                        [errorKey]="'ACCOUNTING.ENTRIES.FORM.VALIDATION.THIRD_PARTY_REQUIRED'"
+                        (thirdPartySelected)="handleLineThirdPartySelected(line, $event)"
+                      />
+                    } @else if (lineThirdPartyUnsupported(line)) {
+                      <p class="rounded-app-control border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200">
+                        {{ 'ACCOUNTING.ENTRIES.FORM.VALIDATION.THIRD_PARTY_TYPE_UNSUPPORTED' | transloco }}
+                      </p>
+                    } @else {
+                      <span class="block px-2 py-4 text-sm text-slate-400 dark:text-slate-500">—</span>
+                    }
                   </td>
                   <td class="px-3 pb-1 pt-3">
                     <mat-form-field appearance="outline" class="w-full">

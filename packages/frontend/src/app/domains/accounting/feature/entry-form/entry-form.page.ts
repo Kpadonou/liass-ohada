@@ -16,7 +16,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { ActivatedRoute, Router } from '@angular/router';
-import { type CreateEntryDraftRequest } from '@liass-ohada/shared/accounting';
+import {
+  type AccountDto,
+  type CreateEntryDraftRequest,
+  type ThirdPartyTypeValue
+} from '@liass-ohada/shared/accounting';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 
@@ -35,6 +39,10 @@ import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingQueries } from '../../data-access/accounting-queries';
 import { AccountSearchSelectComponent } from '../../ui/account-search-select/account-search-select.component';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
+import {
+  ThirdPartySelectComponent,
+  type ThirdPartySelectedValue
+} from '../../ui/third-party-search-select/third-party-search-select.component';
 
 type EntryLineForm = FormGroup<{
   accountId: FormControl<string>;
@@ -43,6 +51,7 @@ type EntryLineForm = FormGroup<{
   label: FormControl<string>;
   lineId: FormControl<string>;
   thirdPartyId: FormControl<string>;
+  thirdPartyType: FormControl<ThirdPartyTypeValue | ''>;
 }>;
 
 @Component({
@@ -63,6 +72,7 @@ type EntryLineForm = FormGroup<{
     MatInputModule,
     MatSelectModule,
     ReactiveFormsModule,
+    ThirdPartySelectComponent,
     TranslocoModule
   ],
   templateUrl: './entry-form.page.html'
@@ -144,6 +154,8 @@ export class EntryFormPage {
   );
   protected readonly publishAvailable = false;
   protected readonly submittingDraft = signal(false);
+  private readonly selectedLineAccounts = signal<ReadonlyMap<EntryLineForm, AccountDto>>(new Map());
+  private readonly accountHydrationCache = new Map<string, Promise<AccountDto>>();
 
   constructor() {
     effect(() => {
@@ -181,9 +193,12 @@ export class EntryFormPage {
             debit: line.debit,
             label: line.label ?? line.description ?? '',
             lineId: line.lineId,
-            thirdPartyId: line.thirdPartyId ?? ''
+            thirdPartyId: line.thirdPartyId ?? '',
+            thirdPartyType: line.thirdPartyType ?? ''
           })
         );
+        const createdLine = this.lines.at(this.lines.length - 1);
+        void this.hydrateLineAccount(createdLine);
       }
 
       while (this.lines.length < 2) {
@@ -205,7 +220,13 @@ export class EntryFormPage {
       return;
     }
 
+    const line = this.lines.at(index);
     this.lines.removeAt(index);
+    this.selectedLineAccounts.update((accounts) => {
+      const next = new Map(accounts);
+      next.delete(line);
+      return next;
+    });
     this.lines.markAsDirty();
   }
 
@@ -243,6 +264,38 @@ export class EntryFormPage {
     }).format(amount);
   }
 
+  protected handleLineAccountSelected(line: EntryLineForm, account: AccountDto | null): void {
+    this.applyLineAccount(line, account, { markRequiredAsTouched: true });
+  }
+
+  protected handleLineThirdPartySelected(
+    line: EntryLineForm,
+    thirdParty: ThirdPartySelectedValue | null
+  ): void {
+    if (!thirdParty) {
+      line.controls.thirdPartyType.setValue('', { emitEvent: false });
+      return;
+    }
+
+    line.controls.thirdPartyType.setValue(thirdParty.thirdPartyType, { emitEvent: false });
+    line.controls.thirdPartyId.setValue(thirdParty.thirdPartyId);
+    line.controls.thirdPartyId.markAsDirty();
+  }
+
+  protected lineRequiresThirdParty(line: EntryLineForm): boolean {
+    const account = this.selectedLineAccounts().get(line);
+    return accountRequiresThirdParty(account);
+  }
+
+  protected lineThirdPartySelectorType(line: EntryLineForm): ThirdPartyTypeValue | null {
+    return concreteThirdPartyType(this.selectedLineAccounts().get(line));
+  }
+
+  protected lineThirdPartyUnsupported(line: EntryLineForm): boolean {
+    const account = this.selectedLineAccounts().get(line);
+    return accountRequiresThirdParty(account) && !concreteThirdPartyType(account);
+  }
+
   protected draftModel(): CreateEntryDraftRequest {
     const raw = this.form.getRawValue();
     const activeYear = this.fiscalYearContext.activeYear();
@@ -258,14 +311,23 @@ export class EntryFormPage {
       ...(raw.voucherNumber ? { voucherNumber: raw.voucherNumber } : {}),
       entryType: 'STANDARD' as const,
       label: raw.label,
-      lines: raw.lines.map((line) => ({
-        ...(line.lineId ? { lineId: line.lineId } : {}),
-        accountId: line.accountId,
-        ...(line.thirdPartyId ? { thirdPartyId: line.thirdPartyId } : {}),
-        ...(line.label ? { label: line.label } : {}),
-        debit: Number(line.debit),
-        credit: Number(line.credit)
-      }))
+      lines: raw.lines.map((line, index) => {
+        const lineForm = this.lines.at(index);
+        const thirdPartyType = this.lineThirdPartySelectorType(lineForm);
+        const includeThirdParty =
+          this.lineRequiresThirdParty(lineForm) && thirdPartyType && line.thirdPartyId;
+
+        return {
+          ...(line.lineId ? { lineId: line.lineId } : {}),
+          accountId: line.accountId,
+          ...(includeThirdParty
+            ? { thirdPartyId: line.thirdPartyId, thirdPartyType }
+            : {}),
+          ...(line.label ? { label: line.label } : {}),
+          debit: Number(line.debit),
+          credit: Number(line.credit)
+        };
+      })
     };
   }
 
@@ -354,6 +416,7 @@ export class EntryFormPage {
       label: string;
       lineId: string;
       thirdPartyId: string;
+      thirdPartyType: ThirdPartyTypeValue | '';
     }> = {}
   ): EntryLineForm {
     return this.formBuilder.nonNullable.group(
@@ -365,6 +428,7 @@ export class EntryFormPage {
         ],
         label: [value.label ?? '', [Validators.maxLength(255)]],
         thirdPartyId: [value.thirdPartyId ?? ''],
+        thirdPartyType: [value.thirdPartyType ?? ''],
         debit: [
           value.debit ?? 0,
           [Validators.required, Validators.min(0), Validators.pattern(/^\d+$/)]
@@ -378,12 +442,103 @@ export class EntryFormPage {
     ) as EntryLineForm;
   }
 
+  private async hydrateLineAccount(line: EntryLineForm): Promise<void> {
+    const accountId = line.controls.accountId.value;
+
+    if (!accountId) {
+      return;
+    }
+
+    try {
+      const account = await this.getAccountMetadata(accountId);
+      if (line.controls.accountId.value === account.accountId) {
+        this.applyLineAccount(line, account, { markRequiredAsTouched: false });
+      }
+    } catch {
+      this.applyLineAccount(line, null, { markRequiredAsTouched: false });
+    }
+  }
+
+  private getAccountMetadata(accountId: string): Promise<AccountDto> {
+    const cached = this.accountHydrationCache.get(accountId);
+
+    if (cached) {
+      return cached;
+    }
+
+    const request = this.accountingApi.getAccount(accountId);
+    this.accountHydrationCache.set(accountId, request);
+    return request;
+  }
+
+  private applyLineAccount(
+    line: EntryLineForm,
+    account: AccountDto | null,
+    options: { markRequiredAsTouched: boolean }
+  ): void {
+    const previousType = line.controls.thirdPartyType.value;
+    const nextType = concreteThirdPartyType(account);
+    const requiresThirdParty = accountRequiresThirdParty(account);
+
+    this.selectedLineAccounts.update((accounts) => {
+      const next = new Map(accounts);
+      if (account) {
+        next.set(line, account);
+      } else {
+        next.delete(line);
+      }
+      return next;
+    });
+
+    if (!requiresThirdParty || !nextType || (previousType && previousType !== nextType)) {
+      this.clearLineThirdParty(line);
+    } else if (!previousType && line.controls.thirdPartyId.value) {
+      line.controls.thirdPartyType.setValue(nextType, { emitEvent: false });
+    }
+
+    if (requiresThirdParty) {
+      line.controls.thirdPartyId.setValidators([Validators.required]);
+      if (options.markRequiredAsTouched && !line.controls.thirdPartyId.value) {
+        line.controls.thirdPartyId.markAsTouched();
+      }
+    } else {
+      line.controls.thirdPartyId.clearValidators();
+    }
+
+    line.controls.thirdPartyId.updateValueAndValidity();
+    line.updateValueAndValidity();
+  }
+
+  private clearLineThirdParty(line: EntryLineForm): void {
+    if (line.controls.thirdPartyId.value) {
+      line.controls.thirdPartyId.setValue('');
+    }
+    if (line.controls.thirdPartyType.value) {
+      line.controls.thirdPartyType.setValue('', { emitEvent: false });
+    }
+  }
+
   private sumLineAmounts(
     lines: readonly Partial<{ credit: number; debit: number }>[],
     side: 'credit' | 'debit'
   ): number {
     return lines.reduce((total, line) => total + Number(line[side] || 0), 0);
   }
+}
+
+function accountRequiresThirdParty(account: AccountDto | null | undefined): boolean {
+  return (
+    account?.requiresThirdParty === true &&
+    (account.auxiliaryType === 'CUSTOMER' ||
+      account.auxiliaryType === 'SUPPLIER' ||
+      account.auxiliaryType === 'THIRD_PARTY')
+  );
+}
+
+function concreteThirdPartyType(account: AccountDto | null | undefined): ThirdPartyTypeValue | null {
+  return account?.auxiliaryType === 'CUSTOMER' || account?.auxiliaryType === 'SUPPLIER'
+    ? account.auxiliaryType
+    : null;
 }
 
 function entryLineAmountValidator(): ValidatorFn {
