@@ -2,6 +2,7 @@ import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/a
 import { appRootRedirectGuard, authGuard, cabinetDashboardGuard, tenantGuard } from './auth.guards';
 import { routes } from './app.routes';
 import { vi } from 'vitest';
+import type { Route } from '@angular/router';
 
 vi.mock('aws-amplify/auth', () => {
   const globalScope = globalThis as unknown as {
@@ -22,6 +23,14 @@ vi.mock('aws-amplify/auth', () => {
 
 function shellRoute() {
   return routes.find((route) => route.path === '' && route.children);
+}
+
+function accountingRoute(): Route | undefined {
+  return shellRoute()?.children?.find((route) => route.path === 'accounting');
+}
+
+function accountingChild(path: string): Route | undefined {
+  return accountingRoute()?.children?.find((route) => route.path === path);
 }
 
 describe('routes', () => {
@@ -109,10 +118,7 @@ describe('routes', () => {
   });
 
   it('registers the accounting general-ledger route', async () => {
-    const shell = shellRoute();
-    const generalLedgerRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/general-ledger'
-    );
+    const generalLedgerRoute = accountingChild('general-ledger');
     const component = await generalLedgerRoute?.loadComponent?.();
     const { GeneralLedgerPage } = await import(
       '../../domains/accounting/feature/general-ledger/general-ledger.page'
@@ -123,10 +129,7 @@ describe('routes', () => {
   });
 
   it('registers the accounting auxiliary-ledger route', async () => {
-    const shell = shellRoute();
-    const auxiliaryLedgerRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/auxiliary-ledger'
-    );
+    const auxiliaryLedgerRoute = accountingChild('auxiliary-ledger');
     const component = await auxiliaryLedgerRoute?.loadComponent?.();
     const { AuxiliaryLedgerPage } = await import(
       '../../domains/accounting/feature/auxiliary-ledger/auxiliary-ledger.page'
@@ -138,25 +141,34 @@ describe('routes', () => {
     );
   });
 
+  it('registers the accounting auxiliary-balance route', async () => {
+    const auxiliaryBalanceRoute = accountingChild('auxiliary-balance');
+    const component = await auxiliaryBalanceRoute?.loadComponent?.();
+    const { AuxiliaryBalancePage } = await import(
+      '../../domains/accounting/feature/auxiliary-balance/auxiliary-balance.page'
+    );
+
+    expect(component).toBe(AuxiliaryBalancePage);
+    expect(auxiliaryBalanceRoute?.data?.['titleKey']).toBe(
+      'ACCOUNTING.PAGES.AUXILIARY_BALANCE.TITLE'
+    );
+  });
+
   it('registers the accounting overview route', async () => {
-    const shell = shellRoute();
-    const accountingRoute = shell?.children?.find((route) => route.path === 'accounting');
-    const component = await accountingRoute?.loadComponent?.();
+    const overviewRoute = accountingChild('');
+    const component = await overviewRoute?.loadComponent?.();
     const { AccountingOverviewPage } = await import(
       '../../domains/accounting/feature/accounting-overview/accounting-overview.page'
     );
 
     expect(component).toBe(AccountingOverviewPage);
-    expect(accountingRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.OVERVIEW.TITLE');
-    expect(accountingRoute?.pathMatch).toBe('full');
+    expect(overviewRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.OVERVIEW.TITLE');
+    expect(overviewRoute?.pathMatch).toBe('full');
   });
 
   it('registers the accounting accounts route and keeps the historical chart route as an alias', async () => {
-    const shell = shellRoute();
-    const accountsRoute = shell?.children?.find((route) => route.path === 'accounting/accounts');
-    const legacyChartRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/chart-of-accounts'
-    );
+    const accountsRoute = accountingChild('accounts');
+    const legacyChartRoute = accountingChild('chart-of-accounts');
     const component = await accountsRoute?.loadComponent?.();
     const { AccountsPage } = await import(
       '../../domains/accounting/feature/accounts/accounts.page'
@@ -164,14 +176,11 @@ describe('routes', () => {
 
     expect(component).toBe(AccountsPage);
     expect(accountsRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE');
-    expect(legacyChartRoute?.redirectTo).toBe('/accounting/accounts');
+    expect(legacyChartRoute?.redirectTo).toBe('accounts');
   });
 
   it('registers the accounting third-party management route', async () => {
-    const shell = shellRoute();
-    const thirdPartiesRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/third-parties'
-    );
+    const thirdPartiesRoute = accountingChild('third-parties');
     const component = await thirdPartiesRoute?.loadComponent?.();
     const { ThirdPartiesPage } = await import(
       '../../domains/accounting/feature/third-parties/third-parties.page'
@@ -182,13 +191,8 @@ describe('routes', () => {
   });
 
   it('registers the accounting fiscal-year route', async () => {
-    const shell = shellRoute();
-    const fiscalYearRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/fiscal-years'
-    );
-    const legacyFiscalYearRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/fiscal-year'
-    );
+    const fiscalYearRoute = accountingChild('fiscal-years');
+    const legacyFiscalYearRoute = accountingChild('fiscal-year');
     const component = await fiscalYearRoute?.loadComponent?.();
     const { FiscalYearPage } = await import(
       '../../domains/accounting/feature/fiscal-year/fiscal-year.page'
@@ -196,36 +200,40 @@ describe('routes', () => {
 
     expect(component).toBe(FiscalYearPage);
     expect(fiscalYearRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.FISCAL_YEAR.TITLE');
-    expect(legacyFiscalYearRoute?.redirectTo).toBe('/accounting/fiscal-years');
+    expect(legacyFiscalYearRoute?.redirectTo).toBe('fiscal-years');
   });
 
-  it('keeps accounting sub-routes distinct from the overview route', () => {
-    const shell = shellRoute();
-    const accountingRoute = shell?.children?.find((route) => route.path === 'accounting');
-    const accountingSubRoutes = shell?.children?.filter(
-      (route) => route.path?.startsWith('accounting/') && !route.redirectTo
-    );
+  it('keeps accounting routes under a stable nested /accounting route tree', () => {
+    const route = accountingRoute();
+    const accountingChildRoutes = route?.children?.filter((childRoute) => !childRoute.redirectTo);
 
-    expect(accountingRoute?.pathMatch).toBe('full');
-    expect(accountingSubRoutes?.map((route) => route.path)).toEqual(
+    expect(route?.path).toBe('accounting');
+    expect(route?.pathMatch).toBeUndefined();
+    expect(route?.loadComponent).toBeUndefined();
+    expect(accountingChildRoutes?.map((childRoute) => childRoute.path)).toEqual(
       expect.arrayContaining([
-        'accounting/accounts',
-        'accounting/entries',
-        'accounting/fiscal-years',
-        'accounting/general-ledger',
-        'accounting/journals',
-        'accounting/lettering',
-        'accounting/third-parties',
-        'accounting/trial-balance'
+        '',
+        'accounts',
+        'entries',
+        'entries/new',
+        'entries/:entryId',
+        'entries/:entryId/edit',
+        'fiscal-years',
+        'general-ledger',
+        'auxiliary-ledger',
+        'auxiliary-balance',
+        'journal-book',
+        'journals',
+        'lettering',
+        'third-parties',
+        'trial-balance'
       ])
     );
+    expect(route?.children?.some((childRoute) => childRoute.path?.startsWith('accounting/'))).toBe(false);
   });
 
   it('registers the accounting lettering route', async () => {
-    const shell = shellRoute();
-    const letteringRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/lettering'
-    );
+    const letteringRoute = accountingChild('lettering');
     const component = await letteringRoute?.loadComponent?.();
     const { LetteringPage } = await import(
       '../../domains/accounting/feature/lettering/lettering.page'
@@ -236,13 +244,8 @@ describe('routes', () => {
   });
 
   it('registers dedicated accounting entry create and draft edit routes', async () => {
-    const shell = shellRoute();
-    const newEntryRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/entries/new'
-    );
-    const editEntryRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/entries/:entryId/edit'
-    );
+    const newEntryRoute = accountingChild('entries/new');
+    const editEntryRoute = accountingChild('entries/:entryId/edit');
     const newComponent = await newEntryRoute?.loadComponent?.();
     const editComponent = await editEntryRoute?.loadComponent?.();
     const { EntryFormPage } = await import(
@@ -256,10 +259,7 @@ describe('routes', () => {
   });
 
   it('registers the dedicated accounting entry detail route', async () => {
-    const shell = shellRoute();
-    const detailEntryRoute = shell?.children?.find(
-      (route) => route.path === 'accounting/entries/:entryId'
-    );
+    const detailEntryRoute = accountingChild('entries/:entryId');
     const component = await detailEntryRoute?.loadComponent?.();
     const { EntryDetailPage } = await import(
       '../../domains/accounting/feature/entry-detail/entry-detail.page'

@@ -135,168 +135,184 @@ export const routes: Routes = [
       },
       {
         path: 'accounting',
-        pathMatch: 'full',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/accounting-overview/accounting-overview.page').then(
-            (module) => module.AccountingOverviewPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.OVERVIEW.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.OVERVIEW.TITLE'
-        }
-      },
-      {
-        path: 'accounting/fiscal-year',
-        pathMatch: 'full',
-        redirectTo: '/accounting/fiscal-years'
-      },
-      {
-        path: 'accounting/fiscal-years',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/fiscal-year/fiscal-year.page').then(
-            (module) => module.FiscalYearPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.TITLE'
-        }
-      },
-      {
-        path: 'accounting/general-ledger',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/general-ledger/general-ledger.page').then(
-            (module) => module.GeneralLedgerPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE'
-        }
-      },
-      {
-        path: 'accounting/auxiliary-ledger',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/auxiliary-ledger/auxiliary-ledger.page').then(
-            (module) => module.AuxiliaryLedgerPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.TITLE'
-        }
-      },
-      {
-        path: 'accounting/journal-book',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/journal-book/journal-book.page').then(
-            (module) => module.JournalBookPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.JOURNAL_BOOK.SUBTITLE',
-          titleKey: 'ACCOUNTING.JOURNAL_BOOK.TITLE'
-        }
-      },
-      {
-        path: 'accounting/journals',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/journals/journals.page').then(
-            (module) => module.JournalsPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.JOURNALS.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.JOURNALS.TITLE'
-        }
-      },
-      {
-        path: 'accounting/third-parties',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/third-parties/third-parties.page').then(
-            (module) => module.ThirdPartiesPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.TITLE'
-        }
-      },
-      {
-        path: 'accounting/entries/new',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/entry-form/entry-form.page').then(
-            (module) => module.EntryFormPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_SUBTITLE',
-          titleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_TITLE'
-        }
-      },
-      {
-        path: 'accounting/entries/:entryId/edit',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/entry-form/entry-form.page').then(
-            (module) => module.EntryFormPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_SUBTITLE',
-          titleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_TITLE'
-        }
-      },
-      {
-        path: 'accounting/entries/:entryId',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/entry-detail/entry-detail.page').then(
-            (module) => module.EntryDetailPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.ENTRIES.DETAIL.SUBTITLE',
-          titleKey: 'ACCOUNTING.ENTRIES.DETAIL.TITLE'
-        }
-      },
-      {
-        path: 'accounting/entries',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/entries/entries.page').then(
-            (module) => module.EntriesPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.ENTRIES.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.ENTRIES.TITLE'
-        }
-      },
-      {
-        path: 'accounting/lettering',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/lettering/lettering.page').then(
-            (module) => module.LetteringPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.LETTERING.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.LETTERING.TITLE'
-        }
-      },
-      {
-        path: 'accounting/trial-balance',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/trial-balance/trial-balance.page').then(
-            (module) => module.TrialBalancePage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.TITLE'
-        }
-      },
-      {
-        path: 'accounting/accounts',
-        loadComponent: () =>
-          import('../../domains/accounting/feature/accounts/accounts.page').then(
-            (module) => module.AccountsPage
-          ),
-        data: {
-          subtitleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.SUBTITLE',
-          titleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE'
-        }
-      },
-      {
-        path: 'accounting/chart-of-accounts',
-        redirectTo: '/accounting/accounts',
-        pathMatch: 'full'
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/accounting-overview/accounting-overview.page').then(
+                (module) => module.AccountingOverviewPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.OVERVIEW.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.OVERVIEW.TITLE'
+            }
+          },
+          {
+            path: 'fiscal-year',
+            pathMatch: 'full',
+            redirectTo: 'fiscal-years'
+          },
+          {
+            path: 'fiscal-years',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/fiscal-year/fiscal-year.page').then(
+                (module) => module.FiscalYearPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.TITLE'
+            }
+          },
+          {
+            path: 'general-ledger',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/general-ledger/general-ledger.page').then(
+                (module) => module.GeneralLedgerPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE'
+            }
+          },
+          {
+            path: 'auxiliary-ledger',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/auxiliary-ledger/auxiliary-ledger.page').then(
+                (module) => module.AuxiliaryLedgerPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.TITLE'
+            }
+          },
+          {
+            path: 'auxiliary-balance',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/auxiliary-balance/auxiliary-balance.page').then(
+                (module) => module.AuxiliaryBalancePage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.AUXILIARY_BALANCE.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.AUXILIARY_BALANCE.TITLE'
+            }
+          },
+          {
+            path: 'journal-book',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/journal-book/journal-book.page').then(
+                (module) => module.JournalBookPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.JOURNAL_BOOK.SUBTITLE',
+              titleKey: 'ACCOUNTING.JOURNAL_BOOK.TITLE'
+            }
+          },
+          {
+            path: 'journals',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/journals/journals.page').then(
+                (module) => module.JournalsPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.JOURNALS.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.JOURNALS.TITLE'
+            }
+          },
+          {
+            path: 'third-parties',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/third-parties/third-parties.page').then(
+                (module) => module.ThirdPartiesPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.TITLE'
+            }
+          },
+          {
+            path: 'entries/new',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/entry-form/entry-form.page').then(
+                (module) => module.EntryFormPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_SUBTITLE',
+              titleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_TITLE'
+            }
+          },
+          {
+            path: 'entries/:entryId/edit',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/entry-form/entry-form.page').then(
+                (module) => module.EntryFormPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_SUBTITLE',
+              titleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_TITLE'
+            }
+          },
+          {
+            path: 'entries/:entryId',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/entry-detail/entry-detail.page').then(
+                (module) => module.EntryDetailPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.ENTRIES.DETAIL.SUBTITLE',
+              titleKey: 'ACCOUNTING.ENTRIES.DETAIL.TITLE'
+            }
+          },
+          {
+            path: 'entries',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/entries/entries.page').then(
+                (module) => module.EntriesPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.ENTRIES.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.ENTRIES.TITLE'
+            }
+          },
+          {
+            path: 'lettering',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/lettering/lettering.page').then(
+                (module) => module.LetteringPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.LETTERING.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.LETTERING.TITLE'
+            }
+          },
+          {
+            path: 'trial-balance',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/trial-balance/trial-balance.page').then(
+                (module) => module.TrialBalancePage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.TITLE'
+            }
+          },
+          {
+            path: 'accounts',
+            loadComponent: () =>
+              import('../../domains/accounting/feature/accounts/accounts.page').then(
+                (module) => module.AccountsPage
+              ),
+            data: {
+              subtitleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.SUBTITLE',
+              titleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE'
+            }
+          },
+          {
+            path: 'chart-of-accounts',
+            redirectTo: 'accounts',
+            pathMatch: 'full'
+          }
+        ]
       }
     ]
   },

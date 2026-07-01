@@ -59,6 +59,7 @@
       "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
       "AUXILIARY_LEDGER": "Grand livre auxiliaire",
+      "AUXILIARY_BALANCE": "Balance auxiliaire",
       "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
@@ -86,6 +87,7 @@
       "FISCAL_YEAR": "Exercices",
       "GENERAL_LEDGER": "Grand livre",
       "AUXILIARY_LEDGER": "Grand livre auxiliaire",
+      "AUXILIARY_BALANCE": "Balance auxiliaire",
       "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
@@ -633,6 +635,10 @@
       "AUXILIARY_LEDGER": {
         "SUBTITLE": "Consultez les mouvements comptabilisés par compte auxiliaire et par tiers.",
         "TITLE": "Grand livre auxiliaire"
+      },
+      "AUXILIARY_BALANCE": {
+        "SUBTITLE": "Contrôlez les soldes clients et fournisseurs par tiers.",
+        "TITLE": "Balance auxiliaire"
       },
       "JOURNAL_BOOK": {
         "SUBTITLE": "Consultez chronologiquement les écritures comptabilisées.",
@@ -1582,6 +1588,72 @@
       "TYPES": {
         "CUSTOMER": "Client",
         "SUPPLIER": "Fournisseur"
+      }
+    },
+    "AUXILIARY_BALANCE": {
+      "ACTIONS": {
+        "LOAD": "Charger",
+        "LOAD_MORE": "Charger plus",
+        "ROW_MENU": "Ouvrir les actions de {{ thirdParty }}",
+        "VIEW_AUXILIARY_LEDGER": "Voir grand livre auxiliaire"
+      },
+      "CURRENCY": "Montants en FCFA",
+      "EMPTY": {
+        "INITIAL_DESCRIPTION": "Sélectionnez un compte auxiliaire pour consulter la balance auxiliaire.",
+        "INITIAL_TITLE": "Périmètre à définir",
+        "NO_DATA_DESCRIPTION": "Aucun tiers avec mouvement sur la période sélectionnée.",
+        "NO_DATA_TITLE": "Aucun mouvement"
+      },
+      "ERROR": {
+        "DESCRIPTION": "La balance auxiliaire n’a pas pu être chargée.",
+        "LOAD_MORE_FAILED": "La suite de la balance auxiliaire n’a pas pu être chargée.",
+        "TITLE": "Balance auxiliaire indisponible"
+      },
+      "EYEBROW": "Comptabilité auxiliaire",
+      "FILTERS": {
+        "ACCOUNT": "Compte auxiliaire",
+        "DESCRIPTION": "Type de tiers, compte auxiliaire, statut et période à consulter.",
+        "END_DATE": "Date fin",
+        "START_DATE": "Date début",
+        "STATUS": "Statut tiers",
+        "TITLE": "Périmètre",
+        "TYPE": "Type"
+      },
+      "LOADING": "Chargement de la balance auxiliaire…",
+      "STATUS": {
+        "ACTIVE": "Actifs",
+        "ALL": "Tous",
+        "INACTIVE": "Inactifs"
+      },
+      "SUBTITLE": "Contrôlez les soldes clients et fournisseurs par tiers.",
+      "SUMMARY": {
+        "CLOSING_CREDIT": "Total solde crédit",
+        "CLOSING_DEBIT": "Total solde débit",
+        "MOVEMENT_CREDIT": "Total mouvements crédit",
+        "MOVEMENT_DEBIT": "Total mouvements débit",
+        "THIRD_PARTY_COUNT": "Nombre de tiers"
+      },
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CLOSING_CREDIT": "Solde crédit",
+        "CLOSING_DEBIT": "Solde débit",
+        "MOVEMENT_CREDIT": "Mouv. crédit",
+        "MOVEMENT_DEBIT": "Mouv. débit",
+        "OPENING_CREDIT": "Ouverture crédit",
+        "OPENING_DEBIT": "Ouverture débit",
+        "REMAINING": "Non lettré / Restant",
+        "THIRD_PARTY": "Tiers",
+        "TITLE": "Balance par tiers",
+        "TOTALS": "Total"
+      },
+      "TITLE": "Balance auxiliaire",
+      "TYPES": {
+        "CUSTOMER": "Client",
+        "SUPPLIER": "Fournisseur"
+      },
+      "TYPES_PLURAL": {
+        "CUSTOMER": "Clients",
+        "SUPPLIER": "Fournisseurs"
       }
     },
     "LETTERING": {

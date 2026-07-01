@@ -54,6 +54,7 @@ const translations = {
         FISCAL_YEAR: 'Exercices',
         GENERAL_LEDGER: 'Grand livre',
         AUXILIARY_LEDGER: 'Grand livre auxiliaire',
+        AUXILIARY_BALANCE: 'Balance auxiliaire',
         JOURNALS: 'Journaux',
         LETTERING: 'Lettrage',
         MISSIONS: 'Missions',
@@ -115,6 +116,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Exercices');
     expect(text).toContain('Grand livre');
     expect(text).toContain('Grand livre auxiliaire');
+    expect(text).toContain('Balance auxiliaire');
     expect(text).toContain('Journaux');
     expect(text).toContain('Tiers');
     expect(text).toContain('Écritures');
@@ -181,6 +183,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Échéances');
     expect(text).toContain('Paramètres du cabinet');
     expect(text).not.toContain('Grand livre');
+    expect(text).not.toContain('Balance auxiliaire');
     expect(text).not.toContain('Vue d’ensemble');
     expect(text).not.toContain('Exercices');
     expect(text).not.toContain('Journaux');
@@ -222,6 +225,7 @@ describe('AppSidebarComponent', () => {
 
     expect(text).toContain('Vue d’ensemble');
     expect(text).toContain('Grand livre');
+    expect(text).toContain('Balance auxiliaire');
     expect(text).toContain('Exercices');
     expect(text).toContain('Journaux');
     expect(text).toContain('Tiers');
@@ -263,6 +267,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Tableau de bord cabinet');
     expect(text).toContain('Dossiers clients');
     expect(text).not.toContain('Grand livre');
+    expect(text).not.toContain('Balance auxiliaire');
     expect(text).not.toContain('Tiers');
     expect(text).not.toContain('Lettrage');
     expect(authStore.activeDossierOrgId()).toBe('org-client');

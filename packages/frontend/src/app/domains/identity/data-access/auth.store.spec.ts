@@ -557,6 +557,63 @@ describe('AuthStore', () => {
     expect(store.activeDossierDisplayName()).toBe('Reloaded Client SARL');
   });
 
+  it('keeps a persisted active dossier usable when the dossier list is temporarily unavailable', async () => {
+    localStorage.setItem('liass-ohada.activeOrgId', 'org-firm');
+    localStorage.setItem('liass-ohada.activeDossierOrgId', 'org-client');
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      }
+    ]);
+    cabinetDossiersApi.listDossiers.mockRejectedValue(new Error('Service unavailable'));
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+    await store.loadWorkspaces();
+    await store.loadDossiers();
+
+    expect(store.activeWorkspaceType()).toBe('ACCOUNTING_FIRM');
+    expect(store.activeDossierOrgId()).toBe('org-client');
+    expect(store.hasActiveDossier()).toBe(true);
+    expect(store.dossierError()).toBe('Service unavailable');
+  });
+
+  it('clears a persisted active dossier after a successful refresh proves it is not available', async () => {
+    localStorage.setItem('liass-ohada.activeOrgId', 'org-firm');
+    localStorage.setItem('liass-ohada.activeDossierOrgId', 'org-stale-client');
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      }
+    ]);
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-current-client',
+        displayName: 'Current Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+    const store = TestBed.inject(AuthStore);
+
+    await store.hydrate();
+    await store.loadWorkspaces();
+    await store.loadDossiers();
+
+    expect(store.activeDossierOrgId()).toBeNull();
+    expect(store.hasActiveDossier()).toBe(false);
+    expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
+  });
+
   it('stores a newly created dossier as the active dossier immediately', () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(

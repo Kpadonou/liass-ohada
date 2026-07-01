@@ -39,6 +39,8 @@ import {
   ThirdPartyResponseSchema,
   ThirdPartyDtoSchema,
   ThirdPartyLedgerResponseSchema,
+  ThirdPartyBalanceQuerySchema,
+  ThirdPartyBalanceResponseSchema,
   TrialBalanceQuerySchema,
   TrialBalanceResponseSchema,
   UnletteredLinesResponseSchema,
@@ -75,6 +77,8 @@ import {
   type PostEntryDraftRequest,
   type PostLetteringRequest,
   type ThirdPartyLedgerDto,
+  type ThirdPartyBalanceDto,
+  type ThirdPartyBalanceQuery,
   type ThirdPartyDto,
   type ThirdPartyTypeValue,
   type TrialBalanceQuery,
@@ -160,6 +164,8 @@ export interface ThirdPartyLedgerParams {
   limit?: number;
   cursor?: string;
 }
+
+export type ThirdPartyBalanceParams = z.input<typeof ThirdPartyBalanceQuerySchema>;
 
 export interface MatchingReportParams {
   accountId: string;
@@ -714,6 +720,44 @@ export class AccountingApi {
     );
 
     return ThirdPartyLedgerResponseSchema.parse(response).data;
+  }
+
+  async getThirdPartyBalance(paramsInput: ThirdPartyBalanceParams): Promise<ApiQueryResult<ThirdPartyBalanceDto>> {
+    const request: ThirdPartyBalanceQuery = ThirdPartyBalanceQuerySchema.parse(paramsInput);
+    let params = new HttpParams()
+      .set('fiscalYear', request.fiscalYear)
+      .set('accountId', request.accountId)
+      .set('thirdPartyType', request.thirdPartyType);
+
+    if (request.status) {
+      params = params.set('status', request.status);
+    }
+
+    if (request.startDate) {
+      params = params.set('startDate', request.startDate);
+    }
+
+    if (request.endDate) {
+      params = params.set('endDate', request.endDate);
+    }
+
+    if (request.limit) {
+      params = params.set('limit', request.limit);
+    }
+
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/books/third-party-balance`, { params })
+    );
+    const parsed = ThirdPartyBalanceResponseSchema.parse(response);
+
+    return {
+      ...parsed.data,
+      message: userMessageFromResponse(response)
+    };
   }
 
   async getMatchingReport(paramsInput: MatchingReportParams): Promise<MatchingReportDto> {

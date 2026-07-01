@@ -70,6 +70,25 @@ function createFakeAuthStore(state: FakeAuthState): InstanceType<typeof AuthStor
 }
 
 describe('auth guards', () => {
+  const accountingUrls = [
+    '/accounting',
+    '/accounting/accounts',
+    '/accounting/chart-of-accounts',
+    '/accounting/entries',
+    '/accounting/entries/new',
+    '/accounting/entries/entry-1',
+    '/accounting/entries/entry-1/edit',
+    '/accounting/fiscal-year',
+    '/accounting/fiscal-years',
+    '/accounting/general-ledger',
+    '/accounting/auxiliary-ledger',
+    '/accounting/auxiliary-balance',
+    '/accounting/journal-book',
+    '/accounting/journals',
+    '/accounting/lettering',
+    '/accounting/third-parties',
+    '/accounting/trial-balance'
+  ];
   let state: FakeAuthState;
   let authStore: InstanceType<typeof AuthStore>;
 
@@ -211,6 +230,21 @@ describe('auth guards', () => {
     expect(result).toBe(true);
   });
 
+  it('allows authenticated company users into accounting routes', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.destination = '/dashboard';
+    state.workspaceType = 'COMPANY';
+
+    for (const url of accountingUrls) {
+      const result = await TestBed.runInInjectionContext(() =>
+        tenantGuard({} as never, { url } as never)
+      );
+
+      expect(result).toBe(true);
+    }
+  });
+
   it('redirects authenticated company users from the app root to the dashboard', async () => {
     state.authenticated = true;
     state.activeTenant = true;
@@ -317,6 +351,43 @@ describe('auth guards', () => {
     );
 
     expect(result).toBe(true);
+  });
+
+  it('allows accounting-firm users with an active dossier into accounting routes', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.activeDossierOrgId = 'org-client';
+    state.hasActiveDossier = true;
+    state.workspaceType = 'ACCOUNTING_FIRM';
+
+    for (const url of accountingUrls) {
+      const result = await TestBed.runInInjectionContext(() =>
+        tenantGuard({} as never, { url } as never)
+      );
+
+      expect(result).toBe(true);
+    }
+  });
+
+  it('loads persisted dossier context before allowing accounting-firm accounting routes', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.activeDossierOrgId = 'org-client';
+    state.dossiersLoaded = false;
+    state.hasActiveDossier = false;
+    state.workspaceType = 'ACCOUNTING_FIRM';
+    vi.mocked(authStore.loadDossiers).mockImplementation(async () => {
+      state.dossiersLoaded = true;
+      state.hasActiveDossier = true;
+      return [];
+    });
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, { url: '/accounting/general-ledger' } as never)
+    );
+
+    expect(result).toBe(true);
+    expect(authStore.loadDossiers).toHaveBeenCalled();
   });
 
   it('allows only accounting-firm workspaces into the cabinet dashboard', async () => {

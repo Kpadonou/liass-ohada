@@ -258,7 +258,18 @@ function applyTenantSelection(
 export const AuthStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withComputed(({ user, userAttributes, activeOrgId, workspaces, activeDossierOrgId, dossiers }) => ({
+  withComputed((
+    {
+      user,
+      userAttributes,
+      activeOrgId,
+      workspaces,
+      activeDossierOrgId,
+      dossiers,
+      dossiersLoaded,
+      dossierError
+    }
+  ) => ({
     isAuthenticated: computed(() => !!user()),
     hasActiveTenant: computed(() => !!activeOrgId()),
     hasDiscoveredWorkspaces: computed(() => workspaces().length > 0),
@@ -368,7 +379,12 @@ export const AuthStore = signalStore(
 
       const dossierOrgId = activeDossierOrgId();
 
-      return !!dossierOrgId && dossiers().some((dossier) => dossier.orgId === dossierOrgId);
+      return (
+        !!dossierOrgId &&
+        (!dossiersLoaded() ||
+          !!dossierError() ||
+          dossiers().some((dossier) => dossier.orgId === dossierOrgId))
+      );
     })
   })),
   withMethods((

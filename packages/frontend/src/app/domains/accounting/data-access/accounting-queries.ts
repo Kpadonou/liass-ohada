@@ -11,6 +11,7 @@ import {
   type ListEntriesParams,
   type ListThirdPartiesParams,
   type MatchingReportParams,
+  type ThirdPartyBalanceParams,
   type ThirdPartyLedgerParams,
   type TrialBalanceParams,
   type UnletteredLinesParams
@@ -120,6 +121,19 @@ function normalizeThirdPartyLedgerParams(params: ThirdPartyLedgerParams) {
   };
 }
 
+function normalizeThirdPartyBalanceParams(params: ThirdPartyBalanceParams) {
+  return {
+    accountId: params.accountId,
+    cursor: params.cursor ?? null,
+    endDate: params.endDate ?? null,
+    fiscalYear: params.fiscalYear,
+    limit: params.limit ?? 100,
+    startDate: params.startDate ?? null,
+    status: params.status ?? null,
+    thirdPartyType: params.thirdPartyType
+  };
+}
+
 export const accountingQueryKeys = {
   account: (tenantScope: TenantScope, accountId: string) =>
     ['accounting', tenantScope, 'accounts', accountId] as const,
@@ -149,6 +163,8 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'matching-report', params] as const,
   thirdPartyLedger: (tenantScope: TenantScope, params: ThirdPartyLedgerParams) =>
     ['accounting', tenantScope, 'third-party-ledger', normalizeThirdPartyLedgerParams(params)] as const,
+  thirdPartyBalance: (tenantScope: TenantScope, params: ThirdPartyBalanceParams) =>
+    ['accounting', tenantScope, 'third-party-balance', normalizeThirdPartyBalanceParams(params)] as const,
   thirdParties: (tenantScope: TenantScope, params: ListThirdPartiesParams) =>
     ['accounting', tenantScope, 'third-parties', normalizeListThirdPartiesParams(params)] as const,
   thirdPartiesRoot: (tenantScope: TenantScope) => ['accounting', tenantScope, 'third-parties'] as const,
@@ -392,6 +408,21 @@ export class AccountingQueries {
         /^\d{2,8}$/.test(params.accountId) &&
         !!params.thirdPartyId &&
         (params.thirdPartyType === 'CUSTOMER' || params.thirdPartyType === 'SUPPLIER'),
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
+    });
+  }
+
+  thirdPartyBalance(params: ThirdPartyBalanceParams, enabled = true) {
+    return queryOptions({
+      queryKey: accountingQueryKeys.thirdPartyBalance(this.tenantScope(), params),
+      queryFn: () => this.accountingApi.getThirdPartyBalance(params),
+      enabled:
+        enabled &&
+        /^\d{4}$/.test(params.fiscalYear) &&
+        /^\d{2,8}$/.test(params.accountId) &&
+        (params.thirdPartyType === 'CUSTOMER' || params.thirdPartyType === 'SUPPLIER') &&
+        (!params.startDate || /^\d{4}-\d{2}-\d{2}$/.test(params.startDate)) &&
+        (!params.endDate || /^\d{4}-\d{2}-\d{2}$/.test(params.endDate)),
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }

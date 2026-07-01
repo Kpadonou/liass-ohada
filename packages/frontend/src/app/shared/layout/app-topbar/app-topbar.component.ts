@@ -17,6 +17,7 @@ const pageTitleKeys: Record<AppPage, string> = {
   'accounting.fiscalYear': 'SHELL.PAGES.FISCAL_YEAR',
   'accounting.generalLedger': 'SHELL.PAGES.GENERAL_LEDGER',
   'accounting.auxiliaryLedger': 'SHELL.PAGES.AUXILIARY_LEDGER',
+  'accounting.auxiliaryBalance': 'SHELL.PAGES.AUXILIARY_BALANCE',
   'accounting.journalBook': 'SHELL.PAGES.JOURNAL_BOOK',
   'accounting.journals': 'SHELL.PAGES.JOURNALS',
   'accounting.lettering': 'SHELL.PAGES.LETTERING',

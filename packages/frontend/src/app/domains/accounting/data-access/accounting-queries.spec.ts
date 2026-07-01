@@ -28,6 +28,7 @@ describe('AccountingQueries', () => {
     getAccount: ReturnType<typeof vi.fn>;
     getEntryDetail: ReturnType<typeof vi.fn>;
     getGeneralLedger: ReturnType<typeof vi.fn>;
+    getThirdPartyBalance: ReturnType<typeof vi.fn>;
     getThirdPartyLedger: ReturnType<typeof vi.fn>;
     getJournal: ReturnType<typeof vi.fn>;
     getJournalBook: ReturnType<typeof vi.fn>;
@@ -52,6 +53,7 @@ describe('AccountingQueries', () => {
       getAccount: vi.fn(),
       getEntryDetail: vi.fn(),
       getGeneralLedger: vi.fn(),
+      getThirdPartyBalance: vi.fn(),
       getThirdPartyLedger: vi.fn(),
       getJournal: vi.fn(),
       getJournalBook: vi.fn(),
@@ -311,6 +313,50 @@ describe('AccountingQueries', () => {
     await (options.queryFn as () => Promise<unknown>)();
 
     expect(accountingApi.getThirdPartyLedger).toHaveBeenCalledWith(params);
+  });
+
+  it('keeps auxiliary-balance keys scoped by tenant, fiscal year, account, type, status, dates, cursor, and limit', async () => {
+    accountingApi.getThirdPartyBalance.mockResolvedValue({
+      accountId: '41110000',
+      thirdPartyType: 'CUSTOMER',
+      rows: [],
+      summary: { thirdPartyCount: 0 },
+      count: 0,
+      hasMore: false
+    });
+
+    const params = {
+      fiscalYear: '2026',
+      accountId: '41110000',
+      thirdPartyType: 'CUSTOMER' as const,
+      status: 'ACTIVE' as const,
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      limit: 100,
+      cursor: 'cursor-2'
+    };
+    const options = queries.thirdPartyBalance(params);
+
+    expect(options.queryKey).toEqual([
+      'accounting',
+      'org-test',
+      'third-party-balance',
+      {
+        accountId: '41110000',
+        cursor: 'cursor-2',
+        endDate: '2026-12-31',
+        fiscalYear: '2026',
+        limit: 100,
+        startDate: '2026-01-01',
+        status: 'ACTIVE',
+        thirdPartyType: 'CUSTOMER'
+      }
+    ]);
+    expect(options.enabled).toBe(true);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.getThirdPartyBalance).toHaveBeenCalledWith(params);
   });
 
   it('uses the active fiscal year for the six-column trial balance', async () => {

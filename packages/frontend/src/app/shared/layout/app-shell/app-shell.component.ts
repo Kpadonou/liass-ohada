@@ -60,6 +60,10 @@ function pageFromUrl(url: string): AppPage {
     return 'accounting.auxiliaryLedger';
   }
 
+  if (path.startsWith('/accounting/auxiliary-balance')) {
+    return 'accounting.auxiliaryBalance';
+  }
+
   if (path.startsWith('/projects')) {
     return 'projects';
   }

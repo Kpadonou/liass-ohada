@@ -59,6 +59,7 @@
       "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
       "AUXILIARY_LEDGER": "Auxiliary ledger",
+      "AUXILIARY_BALANCE": "Auxiliary balance",
       "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
@@ -86,6 +87,7 @@
       "FISCAL_YEAR": "Fiscal years",
       "GENERAL_LEDGER": "General ledger",
       "AUXILIARY_LEDGER": "Auxiliary ledger",
+      "AUXILIARY_BALANCE": "Auxiliary balance",
       "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
@@ -633,6 +635,10 @@
       "AUXILIARY_LEDGER": {
         "SUBTITLE": "Review posted movements by auxiliary account and third party.",
         "TITLE": "Auxiliary ledger"
+      },
+      "AUXILIARY_BALANCE": {
+        "SUBTITLE": "Check customer and supplier balances by third party.",
+        "TITLE": "Auxiliary balance"
       },
       "JOURNAL_BOOK": {
         "SUBTITLE": "Review posted entries in chronological order.",
@@ -1582,6 +1588,72 @@
       "TYPES": {
         "CUSTOMER": "Customer",
         "SUPPLIER": "Supplier"
+      }
+    },
+    "AUXILIARY_BALANCE": {
+      "ACTIONS": {
+        "LOAD": "Load",
+        "LOAD_MORE": "Load more",
+        "ROW_MENU": "Open actions for {{ thirdParty }}",
+        "VIEW_AUXILIARY_LEDGER": "View auxiliary ledger"
+      },
+      "CURRENCY": "Amounts in FCFA",
+      "EMPTY": {
+        "INITIAL_DESCRIPTION": "Select an auxiliary account to review the auxiliary balance.",
+        "INITIAL_TITLE": "Scope required",
+        "NO_DATA_DESCRIPTION": "No third party with movement over the selected period.",
+        "NO_DATA_TITLE": "No movement"
+      },
+      "ERROR": {
+        "DESCRIPTION": "The auxiliary balance could not be loaded.",
+        "LOAD_MORE_FAILED": "The next auxiliary balance rows could not be loaded.",
+        "TITLE": "Auxiliary balance unavailable"
+      },
+      "EYEBROW": "Auxiliary accounting",
+      "FILTERS": {
+        "ACCOUNT": "Auxiliary account",
+        "DESCRIPTION": "Third-party type, auxiliary account, status and period to review.",
+        "END_DATE": "End date",
+        "START_DATE": "Start date",
+        "STATUS": "Third-party status",
+        "TITLE": "Scope",
+        "TYPE": "Type"
+      },
+      "LOADING": "Loading auxiliary balance...",
+      "STATUS": {
+        "ACTIVE": "Active",
+        "ALL": "All",
+        "INACTIVE": "Inactive"
+      },
+      "SUBTITLE": "Check customer and supplier balances by third party.",
+      "SUMMARY": {
+        "CLOSING_CREDIT": "Total credit balance",
+        "CLOSING_DEBIT": "Total debit balance",
+        "MOVEMENT_CREDIT": "Total credit movements",
+        "MOVEMENT_DEBIT": "Total debit movements",
+        "THIRD_PARTY_COUNT": "Third parties"
+      },
+      "TABLE": {
+        "ACTIONS": "Actions",
+        "CLOSING_CREDIT": "Credit balance",
+        "CLOSING_DEBIT": "Debit balance",
+        "MOVEMENT_CREDIT": "Credit mov.",
+        "MOVEMENT_DEBIT": "Debit mov.",
+        "OPENING_CREDIT": "Opening credit",
+        "OPENING_DEBIT": "Opening debit",
+        "REMAINING": "Unlettered / Remaining",
+        "THIRD_PARTY": "Third party",
+        "TITLE": "Balance by third party",
+        "TOTALS": "Total"
+      },
+      "TITLE": "Auxiliary balance",
+      "TYPES": {
+        "CUSTOMER": "Customer",
+        "SUPPLIER": "Supplier"
+      },
+      "TYPES_PLURAL": {
+        "CUSTOMER": "Customers",
+        "SUPPLIER": "Suppliers"
       }
     },
     "LETTERING": {

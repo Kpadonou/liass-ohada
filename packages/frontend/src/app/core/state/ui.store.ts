@@ -14,6 +14,7 @@ export type AppPage =
   | 'accounting.fiscalYear'
   | 'accounting.generalLedger'
   | 'accounting.auxiliaryLedger'
+  | 'accounting.auxiliaryBalance'
   | 'accounting.journalBook'
   | 'accounting.journals'
   | 'accounting.thirdParties'

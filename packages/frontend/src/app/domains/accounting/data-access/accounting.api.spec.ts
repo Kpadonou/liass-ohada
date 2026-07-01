@@ -1351,6 +1351,46 @@ describe('AccountingApi', () => {
 
     await expect(ledgerPromise).resolves.toMatchObject({ thirdPartyId: 'CUST-1', count: 1 });
 
+    const balancePromise = api.getThirdPartyBalance({
+      fiscalYear: '2026',
+      accountId: '41110000',
+      thirdPartyType: 'CUSTOMER',
+      status: 'ACTIVE',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      limit: 100,
+      cursor: 'cursor-2'
+    });
+    const balanceRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/books/third-party-balance`);
+
+    expect(balanceRequest.request.params.get('fiscalYear')).toBe('2026');
+    expect(balanceRequest.request.params.get('accountId')).toBe('41110000');
+    expect(balanceRequest.request.params.get('thirdPartyType')).toBe('CUSTOMER');
+    expect(balanceRequest.request.params.get('status')).toBe('ACTIVE');
+    expect(balanceRequest.request.params.get('startDate')).toBe('2026-01-01');
+    expect(balanceRequest.request.params.get('endDate')).toBe('2026-12-31');
+    expect(balanceRequest.request.params.get('limit')).toBe('100');
+    expect(balanceRequest.request.params.get('cursor')).toBe('cursor-2');
+    balanceRequest.flush({
+      data: thirdPartyBalanceFixture({
+        nextCursor: 'cursor-3',
+        hasMore: true
+      })
+    });
+
+    await expect(balancePromise).resolves.toMatchObject({
+      accountId: '41110000',
+      thirdPartyType: 'CUSTOMER',
+      rows: [
+        expect.objectContaining({
+          thirdPartyName: 'Client Alpha',
+          closingDebit: 100000
+        })
+      ],
+      nextCursor: 'cursor-3',
+      hasMore: true
+    });
+
     const reportPromise = api.getMatchingReport({
       accountId: '41100000',
       thirdPartyId: 'CUST-1'
@@ -1769,6 +1809,57 @@ function unletteredCandidateFixture() {
     thirdPartyId: 'CUST-1',
     thirdPartyName: 'Client Demo',
     thirdPartyType: 'CUSTOMER'
+  };
+}
+
+function thirdPartyBalanceFixture(
+  overrides: Partial<{
+    accountId: string;
+    thirdPartyType: 'CUSTOMER' | 'SUPPLIER';
+    rows: Array<Record<string, unknown>>;
+    nextCursor: string;
+    hasMore: boolean;
+  }> = {}
+) {
+  return {
+    accountId: '41110000',
+    thirdPartyType: 'CUSTOMER' as const,
+    account: accountResponseFixture({ accountId: '41110000', accountName: 'Clients' }),
+    period: { fiscalYear: '2026', startDate: '2026-01-01', endDate: '2026-12-31' },
+    rows: [
+      {
+        thirdPartyId: 'tp-cust-alpha',
+        thirdPartyType: 'CUSTOMER',
+        thirdPartyCode: 'CUST-ALPHA',
+        thirdPartyName: 'Client Alpha',
+        accountId: '41110000',
+        accountCode: '41110000',
+        accountLabel: 'Clients',
+        openingDebit: 10000,
+        openingCredit: 0,
+        movementDebit: 120000,
+        movementCredit: 30000,
+        closingDebit: 100000,
+        closingCredit: 0,
+        balance: 100000,
+        remainingAmount: 40000,
+        PK: 'ORG#technical',
+        entityType: 'THIRD_PARTY_BALANCE'
+      }
+    ],
+    summary: {
+      totalOpeningDebit: 10000,
+      totalOpeningCredit: 0,
+      totalMovementDebit: 120000,
+      totalMovementCredit: 30000,
+      totalClosingDebit: 100000,
+      totalClosingCredit: 0,
+      thirdPartyCount: 1,
+      balance: 100000
+    },
+    count: 1,
+    hasMore: false,
+    ...overrides
   };
 }
 

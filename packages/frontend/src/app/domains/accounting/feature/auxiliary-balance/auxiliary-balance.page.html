@@ -1,0 +1,317 @@
+<div class="space-y-5">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.AUXILIARY_BALANCE.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.AUXILIARY_BALANCE.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.AUXILIARY_BALANCE.SUBTITLE' | transloco"
+  />
+
+  @if (!activeFiscalYear()) {
+    <liass-fiscal-year-required />
+  } @else {
+    <section
+      class="rounded-app-card border border-slate-200 bg-white p-4 shadow-app-xs dark:border-slate-800 dark:bg-slate-900"
+      [formGroup]="form"
+      aria-labelledby="auxiliary-balance-filters-title"
+    >
+      <div class="mb-3">
+        <h2 id="auxiliary-balance-filters-title" class="text-sm font-semibold text-slate-950 dark:text-white">
+          {{ 'ACCOUNTING.AUXILIARY_BALANCE.FILTERS.TITLE' | transloco }}
+        </h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400">
+          {{ 'ACCOUNTING.AUXILIARY_BALANCE.FILTERS.DESCRIPTION' | transloco }}
+        </p>
+      </div>
+
+      <form class="flex flex-wrap items-start gap-3" (ngSubmit)="loadBalance()">
+        <mat-form-field appearance="outline" class="min-w-0 flex-[0_1_165px]">
+          <mat-label>{{ 'ACCOUNTING.AUXILIARY_BALANCE.FILTERS.TYPE' | transloco }}</mat-label>
+          <mat-icon matPrefix>category</mat-icon>
+          <mat-select formControlName="thirdPartyType" data-testid="auxiliary-balance-type-select">
+            <mat-select-trigger>
+              {{ selectedTypeLabelKey() | transloco }}
+            </mat-select-trigger>
+            <mat-option value="CUSTOMER">{{ 'ACCOUNTING.AUXILIARY_BALANCE.TYPES.CUSTOMER' | transloco }}</mat-option>
+            <mat-option value="SUPPLIER">{{ 'ACCOUNTING.AUXILIARY_BALANCE.TYPES.SUPPLIER' | transloco }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <liass-account-search-select
+          class="min-w-0 flex-[1_1_280px] xl:flex-[0_1_330px]"
+          data-testid="auxiliary-balance-account-select"
+          formControlName="accountId"
+          [auxiliaryType]="selectedType()"
+          [labelKey]="'ACCOUNTING.AUXILIARY_BALANCE.FILTERS.ACCOUNT'"
+          (accountSelected)="updateSelectedAccountDto($event)"
+        />
+
+        <mat-form-field appearance="outline" class="min-w-0 flex-[0_1_165px]">
+          <mat-label>{{ 'ACCOUNTING.AUXILIARY_BALANCE.FILTERS.STATUS' | transloco }}</mat-label>
+          <mat-icon matPrefix>verified_user</mat-icon>
+          <mat-select formControlName="status" data-testid="auxiliary-balance-status-select">
+            <mat-select-trigger>
+              {{ selectedStatusLabelKey() | transloco }}
+            </mat-select-trigger>
+            <mat-option value="ACTIVE">{{ 'ACCOUNTING.AUXILIARY_BALANCE.STATUS.ACTIVE' | transloco }}</mat-option>
+            <mat-option value="INACTIVE">{{ 'ACCOUNTING.AUXILIARY_BALANCE.STATUS.INACTIVE' | transloco }}</mat-option>
+            <mat-option value="ALL">{{ 'ACCOUNTING.AUXILIARY_BALANCE.STATUS.ALL' | transloco }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="min-w-0 flex-[0_1_165px]">
+          <mat-label>{{ 'ACCOUNTING.AUXILIARY_BALANCE.FILTERS.START_DATE' | transloco }}</mat-label>
+          <input matInput class="min-w-0" type="date" formControlName="startDate" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="min-w-0 flex-[0_1_165px]">
+          <mat-label>{{ 'ACCOUNTING.AUXILIARY_BALANCE.FILTERS.END_DATE' | transloco }}</mat-label>
+          <input matInput class="min-w-0" type="date" formControlName="endDate" />
+        </mat-form-field>
+
+        <div class="flex min-w-fit flex-[0_0_auto] items-start pt-1.5">
+          <liass-button
+            class="shrink-0"
+            buttonType="submit"
+            icon="search"
+            tone="brand"
+            variant="solid"
+            [disabled]="!canLoad()"
+            [loading]="showInitialLoading()"
+          >
+            {{ 'ACCOUNTING.AUXILIARY_BALANCE.ACTIONS.LOAD' | transloco }}
+          </liass-button>
+        </div>
+      </form>
+    </section>
+
+    <section class="space-y-3" aria-labelledby="auxiliary-balance-table-title">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="auxiliary-balance-table-title" class="text-base font-semibold text-slate-950 dark:text-white">
+            {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.TITLE' | transloco }}
+          </h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.AUXILIARY_BALANCE.CURRENCY' | transloco }}
+          </p>
+        </div>
+
+        @if (report(); as balance) {
+          <div class="flex flex-wrap items-center gap-2 rounded-app-control border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900">
+            <span class="font-semibold text-slate-950 dark:text-white">{{ accountLabel(balance) }}</span>
+            <span class="text-slate-400">/</span>
+            <span class="text-slate-600 dark:text-slate-300">{{ typeLabelKey(balance) | transloco }}</span>
+            <span class="hidden text-slate-400 sm:inline">/</span>
+            <span class="hidden tabular-nums text-slate-500 dark:text-slate-400 sm:inline">{{ periodLabel(balance) }}</span>
+          </div>
+        }
+      </div>
+
+      @if (!hasAppliedScope()) {
+        <div class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+          <mat-icon class="!size-10 !text-4xl text-slate-400">supervisor_account</mat-icon>
+          <p class="mt-3 font-semibold text-slate-900 dark:text-white">
+            {{ 'ACCOUNTING.AUXILIARY_BALANCE.EMPTY.INITIAL_TITLE' | transloco }}
+          </p>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.AUXILIARY_BALANCE.EMPTY.INITIAL_DESCRIPTION' | transloco }}
+          </p>
+        </div>
+      } @else if (showInitialLoading()) {
+        <div
+          class="space-y-3 rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+          role="status"
+          [attr.aria-label]="'ACCOUNTING.AUXILIARY_BALANCE.LOADING' | transloco"
+        >
+          <p class="text-sm font-medium text-slate-600 dark:text-slate-300">
+            {{ 'ACCOUNTING.AUXILIARY_BALANCE.LOADING' | transloco }}
+          </p>
+          @for (_ of [0, 1, 2, 3, 4, 5]; track $index) {
+            <liass-skeleton variant="block" />
+          }
+        </div>
+      } @else if (balanceQuery.isError()) {
+        <div
+          class="rounded-app-card border border-red-200 bg-red-50 p-5 text-red-900 dark:border-red-900 dark:bg-red-950/25 dark:text-red-100"
+          role="alert"
+        >
+          <div class="flex items-start gap-3">
+            <mat-icon>error_outline</mat-icon>
+            <div class="flex-1">
+              <h3 class="font-semibold">{{ 'ACCOUNTING.AUXILIARY_BALANCE.ERROR.TITLE' | transloco }}</h3>
+              <p class="mt-1 text-sm">
+                {{ errorMessage() || ('ACCOUNTING.AUXILIARY_BALANCE.ERROR.DESCRIPTION' | transloco) }}
+              </p>
+              <liass-button class="mt-3" icon="refresh" size="sm" tone="danger" (pressed)="retryInitialLoad()">
+                {{ 'COMMON.ACTIONS.RETRY' | transloco }}
+              </liass-button>
+            </div>
+          </div>
+        </div>
+      } @else if (report(); as balance) {
+        @if (rows().length === 0) {
+          <div class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+            <mat-icon class="!size-10 !text-4xl text-slate-400">balance</mat-icon>
+            <p class="mt-3 font-semibold text-slate-900 dark:text-white">
+              {{ 'ACCOUNTING.AUXILIARY_BALANCE.EMPTY.NO_DATA_TITLE' | transloco }}
+            </p>
+            <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+              {{ 'ACCOUNTING.AUXILIARY_BALANCE.EMPTY.NO_DATA_DESCRIPTION' | transloco }}
+            </p>
+          </div>
+        } @else {
+          <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <liass-card padding="sm" variant="muted">
+              <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_BALANCE.SUMMARY.THIRD_PARTY_COUNT' | transloco }}
+              </p>
+              <p class="mt-1 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
+                {{ balance.summary.thirdPartyCount }}
+              </p>
+            </liass-card>
+            <liass-card padding="sm" variant="muted">
+              <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_BALANCE.SUMMARY.MOVEMENT_DEBIT' | transloco }}
+              </p>
+              <p class="mt-1 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
+                {{ formatAmount(balance.summary.totalMovementDebit, true) }}
+              </p>
+            </liass-card>
+            <liass-card padding="sm" variant="muted">
+              <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_BALANCE.SUMMARY.MOVEMENT_CREDIT' | transloco }}
+              </p>
+              <p class="mt-1 text-xl font-semibold tabular-nums text-slate-950 dark:text-white">
+                {{ formatAmount(balance.summary.totalMovementCredit, true) }}
+              </p>
+            </liass-card>
+            <liass-card padding="sm" variant="muted">
+              <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_BALANCE.SUMMARY.CLOSING_DEBIT' | transloco }}
+              </p>
+              <p class="mt-1 text-xl font-semibold tabular-nums text-brand-700 dark:text-brand-300">
+                {{ formatAmount(balance.summary.totalClosingDebit, true) }}
+              </p>
+            </liass-card>
+            <liass-card padding="sm" variant="muted">
+              <p class="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.AUXILIARY_BALANCE.SUMMARY.CLOSING_CREDIT' | transloco }}
+              </p>
+              <p class="mt-1 text-xl font-semibold tabular-nums text-brand-700 dark:text-brand-300">
+                {{ formatAmount(balance.summary.totalClosingCredit, true) }}
+              </p>
+            </liass-card>
+          </div>
+
+          <div class="max-h-[68vh] overflow-auto rounded-app-card border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <table
+              data-testid="auxiliary-balance-table"
+              class="liass-data-table w-full min-w-[1320px] table-fixed border-separate border-spacing-0 text-left"
+            >
+              <colgroup>
+                <col class="w-72" />
+                @for (_ of [0, 1, 2, 3, 4, 5, 6]; track $index) {
+                  <col class="w-36" />
+                }
+                <col class="w-44" />
+                <col class="w-20" />
+              </colgroup>
+              <thead class="sticky top-0 z-10 bg-slate-50 text-xs font-semibold uppercase tracking-[0.08em] text-slate-500 shadow-sm dark:bg-slate-950 dark:text-slate-400">
+                <tr>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 align-middle dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.THIRD_PARTY' | transloco }}
+                  </th>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 text-right dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.OPENING_DEBIT' | transloco }}
+                  </th>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 text-right dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.OPENING_CREDIT' | transloco }}
+                  </th>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 text-right dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.MOVEMENT_DEBIT' | transloco }}
+                  </th>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 text-right dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.MOVEMENT_CREDIT' | transloco }}
+                  </th>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 text-right dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.CLOSING_DEBIT' | transloco }}
+                  </th>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 text-right dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.CLOSING_CREDIT' | transloco }}
+                  </th>
+                  <th class="border-b border-r border-slate-300 px-3 py-2.5 text-right dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.REMAINING' | transloco }}
+                  </th>
+                  <th class="border-b border-slate-300 px-3 py-2.5 text-center dark:border-slate-700">
+                    {{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.ACTIONS' | transloco }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                @for (row of rows(); track row.thirdPartyId) {
+                  <tr class="transition hover:bg-brand-50/55 dark:hover:bg-brand-950/20">
+                    <td class="border-r border-slate-100 px-3 py-2.5 dark:border-slate-800">
+                      <div class="min-w-0">
+                        <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">{{ row.thirdPartyName }}</p>
+                        <p class="truncate text-xs text-slate-500 dark:text-slate-400">{{ row.thirdPartyCode }}</p>
+                      </div>
+                    </td>
+                    <td class="border-r border-slate-100 px-3 py-2.5 text-right text-sm tabular-nums dark:border-slate-800">{{ formatAmount(row.openingDebit) }}</td>
+                    <td class="border-r border-slate-100 px-3 py-2.5 text-right text-sm tabular-nums dark:border-slate-800">{{ formatAmount(row.openingCredit) }}</td>
+                    <td class="border-r border-slate-100 px-3 py-2.5 text-right text-sm tabular-nums dark:border-slate-800">{{ formatAmount(row.movementDebit) }}</td>
+                    <td class="border-r border-slate-100 px-3 py-2.5 text-right text-sm tabular-nums dark:border-slate-800">{{ formatAmount(row.movementCredit) }}</td>
+                    <td class="border-r border-slate-100 px-3 py-2.5 text-right text-sm font-semibold tabular-nums dark:border-slate-800">{{ formatAmount(row.closingDebit) }}</td>
+                    <td class="border-r border-slate-100 px-3 py-2.5 text-right text-sm font-semibold tabular-nums dark:border-slate-800">{{ formatAmount(row.closingCredit) }}</td>
+                    <td class="border-r border-slate-100 px-3 py-2.5 text-right text-sm tabular-nums dark:border-slate-800">
+                      {{ remainingAmount(row) === null ? '-' : formatAmount(remainingAmount(row) ?? 0, true) }}
+                    </td>
+                    <td class="px-2 py-2 text-center">
+                      <button
+                        type="button"
+                        class="liass-focus-ring inline-flex size-9 items-center justify-center rounded-app-control text-slate-500 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+                        [attr.aria-label]="'ACCOUNTING.AUXILIARY_BALANCE.ACTIONS.ROW_MENU' | transloco: { thirdParty: row.thirdPartyName }"
+                        [matMenuTriggerFor]="rowActions"
+                      >
+                        <mat-icon>more_vert</mat-icon>
+                      </button>
+                      <mat-menu #rowActions="matMenu">
+                        <button mat-menu-item type="button" (click)="viewAuxiliaryLedger(row)">
+                          <mat-icon>account_tree</mat-icon>
+                          <span>{{ 'ACCOUNTING.AUXILIARY_BALANCE.ACTIONS.VIEW_AUXILIARY_LEDGER' | transloco }}</span>
+                        </button>
+                      </mat-menu>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+              <tfoot class="sticky bottom-0 border-t-2 bg-brand-50 font-semibold text-slate-950 shadow-[0_-2px_8px_rgba(15,23,42,0.08)] dark:bg-brand-950/25 dark:text-white">
+                <tr>
+                  <td class="border-r border-brand-100 px-3 py-3 dark:border-brand-900">{{ 'ACCOUNTING.AUXILIARY_BALANCE.TABLE.TOTALS' | transloco }}</td>
+                  <td class="border-r border-brand-100 px-3 py-3 text-right tabular-nums dark:border-brand-900">{{ formatAmount(balance.summary.totalOpeningDebit, true) }}</td>
+                  <td class="border-r border-brand-100 px-3 py-3 text-right tabular-nums dark:border-brand-900">{{ formatAmount(balance.summary.totalOpeningCredit, true) }}</td>
+                  <td class="border-r border-brand-100 px-3 py-3 text-right tabular-nums dark:border-brand-900">{{ formatAmount(balance.summary.totalMovementDebit, true) }}</td>
+                  <td class="border-r border-brand-100 px-3 py-3 text-right tabular-nums dark:border-brand-900">{{ formatAmount(balance.summary.totalMovementCredit, true) }}</td>
+                  <td class="border-r border-brand-100 px-3 py-3 text-right tabular-nums dark:border-brand-900">{{ formatAmount(balance.summary.totalClosingDebit, true) }}</td>
+                  <td class="border-r border-brand-100 px-3 py-3 text-right tabular-nums dark:border-brand-900">{{ formatAmount(balance.summary.totalClosingCredit, true) }}</td>
+                  <td class="border-r border-brand-100 px-3 py-3 text-right tabular-nums dark:border-brand-900">-</td>
+                  <td class="px-3 py-3 text-center text-xs text-slate-500 dark:text-slate-400">{{ rows().length }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          @if (hasMore()) {
+            <div class="mt-5 flex flex-col items-center gap-3">
+              @if (loadMoreError()) {
+                <p class="text-sm text-red-700 dark:text-red-300" role="alert">
+                  {{ 'ACCOUNTING.AUXILIARY_BALANCE.ERROR.LOAD_MORE_FAILED' | transloco }}
+                </p>
+              }
+              <liass-button tone="neutral" variant="outline" icon="expand_more" [loading]="loadingMore()" (pressed)="loadMore()">
+                {{ 'ACCOUNTING.AUXILIARY_BALANCE.ACTIONS.LOAD_MORE' | transloco }}
+              </liass-button>
+            </div>
+          }
+        }
+      }
+    </section>
+  }
+</div>

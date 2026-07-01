@@ -43,6 +43,12 @@ const accountingItems: readonly ShellNavItem[] = [
     route: ['/accounting/auxiliary-ledger']
   },
   {
+    icon: 'diversity_3',
+    labelKey: 'SHELL.NAV.AUXILIARY_BALANCE',
+    page: 'accounting.auxiliaryBalance',
+    route: ['/accounting/auxiliary-balance']
+  },
+  {
     icon: 'history_edu',
     labelKey: 'SHELL.NAV.JOURNAL_BOOK',
     page: 'accounting.journalBook',
