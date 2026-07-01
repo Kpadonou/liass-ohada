@@ -138,9 +138,16 @@ export type {
 } from "./entry";
 export {
   AccountingFramework as FiscalYearAccountingFramework,
+  ClosePeriodRequestSchema,
+  ClosePeriodResponseSchema,
   CloseFiscalYearRequestSchema,
   CloseFiscalYearResponseSchema,
   CloseFiscalYearResultDtoSchema,
+  ClosingCheckResponseDtoSchema,
+  ClosingCheckSummaryDtoSchema,
+  ClosingChecksResponseSchema,
+  ClosingIssueDtoSchema,
+  ClosingIssueScopeSchema,
   CreateFiscalYearRequestSchema,
   FiscalYearDetailsDtoSchema,
   FiscalYearDetailsResponseSchema,
@@ -155,8 +162,11 @@ export {
   UpdatePeriodLockRequestSchema,
 } from "./fiscal-year";
 export type {
+  ClosePeriodRequest,
   CloseFiscalYearResultDto,
   CloseFiscalYearRequest,
+  ClosingCheckResponseDto,
+  ClosingIssueDto,
   CreateFiscalYearRequest,
   FiscalYear,
   FiscalYearDetailsDto,

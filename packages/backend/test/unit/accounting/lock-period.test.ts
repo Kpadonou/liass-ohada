@@ -1,10 +1,12 @@
 import { handler } from "@/lambda/domains/accounting/fiscal-year/lock-period";
+import { handler as closePeriodHandler } from "@/lambda/domains/accounting/fiscal-year/close-period";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   DynamoDBClient,
   GetItemCommand,
-  PutItemCommand,
+  UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
@@ -85,7 +87,21 @@ describe("lock-period handler", () => {
       },
     });
 
-    dynamoMock.on(PutItemCommand).resolves({});
+    dynamoMock.on(UpdateItemCommand).resolves({
+      Attributes: {
+        PK: { S: "ORG#test-org#FY#2026" },
+        SK: { S: "LOCK#PERIOD#03" },
+        orgId: { S: "test-org" },
+        year: { N: "2026" },
+        month: { S: "03" },
+        status: { S: "LOCKED" },
+        entityType: { S: "PERIOD_LOCK" },
+        createdBy: { S: "user-123" },
+        createdAt: { S: "2026-01-01T00:00:00.000Z" },
+        updatedBy: { S: "user-123" },
+        updatedAt: { S: "2026-01-01T00:00:00.000Z" },
+      },
+    });
 
     const response = await handler(
       createEvent({ year: 2026, month: 3, status: "LOCKED" }),
@@ -101,6 +117,67 @@ describe("lock-period handler", () => {
     });
     expect(body.data.PK).toBeUndefined();
     expect(body.data.SK).toBeUndefined();
+  });
+
+  test("closes a period idempotently with tenant-scoped keys", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: {
+        PK: { S: "ORG#tenant-b" },
+        SK: { S: "FY#2026" },
+        orgId: { S: "tenant-b" },
+        year: { N: "2026" },
+        fiscalYearId: { S: "FY2026" },
+        startDate: { S: "2026-01-01" },
+        endDate: { S: "2026-12-31" },
+        status: { S: "OPEN" },
+        accountingFramework: { S: "SYSCOHADA_REVISED" },
+        entityType: { S: "FISCAL_YEAR" },
+        createdAt: { S: "2026-01-01T00:00:00.000Z" },
+        updatedAt: { S: "2026-01-01T00:00:00.000Z" },
+      },
+    });
+    dynamoMock.on(UpdateItemCommand).resolves({
+      Attributes: {
+        PK: { S: "ORG#tenant-b#FY#2026" },
+        SK: { S: "LOCK#PERIOD#04" },
+        orgId: { S: "tenant-b" },
+        year: { N: "2026" },
+        month: { S: "04" },
+        status: { S: "LOCKED" },
+        entityType: { S: "PERIOD_LOCK" },
+        createdBy: { S: "user-123" },
+        createdAt: { S: "2026-01-01T00:00:00.000Z" },
+        updatedBy: { S: "user-123" },
+        updatedAt: { S: "2026-01-02T00:00:00.000Z" },
+      },
+    });
+
+    const response = await closePeriodHandler(
+      {
+        ...createEvent({}, "tenant-b"),
+        routeKey: "POST /fiscal-year/{year}/periods/{month}/close",
+        rawPath: "/fiscal-year/2026/periods/4/close",
+        pathParameters: { year: "2026", month: "4" },
+        body: undefined,
+      } as any,
+    );
+    const body = parseResponse(response);
+    const updateInput =
+      dynamoMock.commandCalls(UpdateItemCommand)[0].args[0].input;
+    const key = unmarshall(updateInput.Key ?? {});
+
+    expect((response as any).statusCode).toBe(200);
+    expect(key).toEqual({
+      PK: "ORG#tenant-b#FY#2026",
+      SK: "LOCK#PERIOD#04",
+    });
+    expect(updateInput.UpdateExpression).toContain("if_not_exists(createdAt");
+    expect(body.data).toMatchObject({
+      year: 2026,
+      month: "04",
+      status: "LOCKED",
+    });
+    expect(body.data.PK).toBeUndefined();
   });
 
   test("rejects lock when fiscal year is closed", async () => {

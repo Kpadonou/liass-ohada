@@ -18,9 +18,7 @@ import {
   FiscalYearSchema,
   PeriodLockDtoSchema,
 } from "@liass-ohada/shared/accounting";
-import { BalanceService } from "./balance-service";
 import { ClosingService } from "./closing-service";
-import { LedgerService } from "./ledger-service";
 import { LockPeriodService } from "./lock-period-service";
 
 export class FiscalYearService {
@@ -139,33 +137,39 @@ export class FiscalYearService {
     });
   }
 
-  /**
-   * Executes year-end closing only for an OPEN fiscal year with management
-   * account movements. Delegates the atomic closing entry and fiscal-year status
-   * update to ClosingService while preserving the calling user for audit fields.
-   */
-  static async closeYear(orgId: string, userId: string, year: string) {
-    const fiscalYear = await LedgerService.getFiscalYear(orgId, year);
+  static async getClosingChecks(orgId: string, year: string) {
+    return ClosingService.runClosingChecks(orgId, year);
+  }
 
-    if (fiscalYear.status !== "OPEN") {
-      throw new AppError(400, "ERROR_FISCAL_YEAR_LOCKED");
-    }
+  static async closeYear(
+    orgId: string,
+    userId: string,
+    year: string,
+    confirmWarnings = false,
+  ) {
+    return ClosingService.closeFiscalYear({
+      orgId,
+      userId,
+      year,
+      confirmWarnings,
+    });
+  }
 
-    const allBalances = await BalanceService.getTrialBalance(orgId, year);
-    const managementBalances = allBalances.filter(
-      (balance) =>
-        balance.accountId.startsWith("6") || balance.accountId.startsWith("7"),
+  static async closePeriod(
+    orgId: string,
+    userId: string,
+    year: number,
+    month: number,
+  ) {
+    const lock = await LockPeriodService.updatePeriodLock(
+      orgId,
+      userId,
+      year,
+      month,
+      "LOCKED",
     );
 
-    if (managementBalances.length === 0) {
-      throw new AppError(400, "ERROR_NO_MOVEMENTS_FOUND");
-    }
-
-    return ClosingService.executeYearEnd(orgId, {
-      year,
-      userId,
-      balances: managementBalances,
-    });
+    return PeriodLockDtoSchema.parse(lock);
   }
 
   /**

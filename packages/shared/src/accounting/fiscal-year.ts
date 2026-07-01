@@ -126,16 +126,86 @@ export const PeriodLockResponseSchema = z.object({
 
 export const CloseFiscalYearRequestSchema = z.object({
   year: z.coerce.string().regex(/^\d{4}$/),
+  confirmWarnings: z
+    .preprocess(
+      (value) => {
+        if (value === "true") return true;
+        if (value === "false") return false;
+        return value;
+      },
+      z.boolean(),
+    )
+    .default(false),
 });
 
 export type CloseFiscalYearRequest = z.infer<
   typeof CloseFiscalYearRequestSchema
 >;
 
+export const ClosePeriodRequestSchema = z.object({
+  year: z.coerce.number().int().gte(1900).lte(2100),
+  month: z.coerce.number().int().gte(1).lte(12),
+});
+
+export type ClosePeriodRequest = z.infer<typeof ClosePeriodRequestSchema>;
+
+export const ClosePeriodResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: PeriodLockDtoSchema,
+});
+
+export const ClosingIssueScopeSchema = z.enum([
+  "FISCAL_YEAR",
+  "ENTRY",
+  "ENTRY_LINE",
+  "TRIAL_BALANCE",
+  "JOURNAL",
+  "ACCOUNT",
+  "AUXILIARY",
+]);
+
+export const ClosingIssueDtoSchema = z.object({
+  code: z.string().min(1),
+  scope: ClosingIssueScopeSchema,
+  message: z.string().min(1).optional(),
+  entryId: z.string().optional(),
+  lineId: z.string().optional(),
+  accountId: z.string().regex(/^\d{8}$/).optional(),
+  journalCode: z.string().optional(),
+  thirdPartyId: z.string().optional(),
+});
+
+export type ClosingIssueDto = z.infer<typeof ClosingIssueDtoSchema>;
+
+export const ClosingCheckSummaryDtoSchema = z.object({
+  fiscalYear: FiscalYearDtoSchema,
+  draftEntriesCount: z.number().int().nonnegative(),
+  postedEntriesCount: z.number().int().nonnegative(),
+  unbalancedEntriesCount: z.number().int().nonnegative(),
+  trialBalanceDebit: z.number().int().nonnegative(),
+  trialBalanceCredit: z.number().int().nonnegative(),
+  unletteredAuxiliaryLinesCount: z.number().int().nonnegative().optional(),
+});
+
+export const ClosingCheckResponseDtoSchema = z.object({
+  canClose: z.boolean(),
+  errors: z.array(ClosingIssueDtoSchema),
+  warnings: z.array(ClosingIssueDtoSchema),
+  summary: ClosingCheckSummaryDtoSchema,
+});
+
+export type ClosingCheckResponseDto = z.infer<
+  typeof ClosingCheckResponseDtoSchema
+>;
+
+export const ClosingChecksResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: ClosingCheckResponseDtoSchema,
+});
+
 export const CloseFiscalYearResultDtoSchema = z.object({
-  entryId: z.string(),
-  netResult: z.number().int().nonnegative(),
-  isProfit: z.boolean(),
+  fiscalYear: FiscalYearDtoSchema,
+  checks: ClosingCheckResponseDtoSchema,
 });
 
 export type CloseFiscalYearResultDto = z.infer<

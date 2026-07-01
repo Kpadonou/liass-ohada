@@ -1,19 +1,23 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { FiscalYearService } from "@/lambda/shared/services/fiscal-year-service";
-import { z } from "zod";
-
-const CloseYearSchema = z.object({
-  year: z.coerce.string().regex(/^\d{4}$/),
-});
+import {
+  CloseFiscalYearRequestSchema,
+  CloseFiscalYearResponseSchema,
+} from "@liass-ohada/shared/accounting";
 
 export const handler = createHandler(
-  CloseYearSchema,
+  CloseFiscalYearRequestSchema,
   async (data, { orgId, userId, i18n }) => {
-    const result = await FiscalYearService.closeYear(orgId, userId, data.year);
+    const result = await FiscalYearService.closeYear(
+      orgId,
+      userId,
+      data.year,
+      data.confirmWarnings,
+    );
 
-    return {
+    return CloseFiscalYearResponseSchema.parse({
       message: i18n.getMessage("SUCCESS_YEAR_END_CLOSED"),
       data: result,
-    };
+    });
   },
 );

@@ -4,7 +4,7 @@
  * It ensures that no write operations (creation, lettering, reversal)
  * occur within a month that has been officially closed/locked by the organization.
  */
-import { GetItemCommand, PutItemCommand } from "@aws-sdk/client-dynamodb";
+import { GetItemCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { config } from "../config";
 import { dynamoClient } from "../dynamo-client";
@@ -68,35 +68,33 @@ export class LockPeriodService {
 
     const normalizedMonth = month.toString().padStart(2, "0");
     const now = new Date().toISOString();
-    const lockItem = {
-      PK: KeyFactory.partitionKey(orgId, year),
-      SK: KeyFactory.periodLockSK(normalizedMonth),
-      orgId,
-      year,
-      month: normalizedMonth,
-      status,
-      entityType: "PERIOD_LOCK",
-      createdBy: userId,
-      createdAt: now,
-      updatedBy: userId,
-      updatedAt: now,
-    };
-
-    await dynamoClient.send(
-      new PutItemCommand({
+    const result = await dynamoClient.send(
+      new UpdateItemCommand({
         TableName: config.TABLE_NAME,
-        Item: marshall(lockItem),
-        ConditionExpression:
-          "attribute_not_exists(PK) OR #status <> :newStatus",
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, year),
+          SK: KeyFactory.periodLockSK(normalizedMonth),
+        }),
+        UpdateExpression:
+          "SET orgId = :orgId, #yr = :year, #month = :month, #status = :status, entityType = :entityType, createdBy = if_not_exists(createdBy, :userId), createdAt = if_not_exists(createdAt, :now), updatedBy = :userId, updatedAt = :now",
         ExpressionAttributeNames: {
+          "#yr": "year",
+          "#month": "month",
           "#status": "status",
         },
         ExpressionAttributeValues: marshall({
-          ":newStatus": status,
+          ":orgId": orgId,
+          ":year": year,
+          ":month": normalizedMonth,
+          ":status": status,
+          ":entityType": "PERIOD_LOCK",
+          ":userId": userId,
+          ":now": now,
         }),
+        ReturnValues: "ALL_NEW",
       }),
     );
 
-    return lockItem;
+    return unmarshall(result.Attributes ?? {});
   }
 }

@@ -3,6 +3,7 @@ import {
   BatchGetItemCommand,
   DynamoDBClient,
   GetItemCommand,
+  QueryCommand,
   TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
@@ -159,6 +160,125 @@ describe("LedgerService accounting integrity", () => {
     ).rejects.toMatchObject({ messageCode: "JOURNAL_NOT_FOUND" });
 
     expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
+  test("rejects posting into a locked period", async () => {
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({ Item: fiscalYearItem })
+      .resolvesOnce({ Item: journalItem })
+      .resolvesOnce({
+        Item: marshall({
+          PK: "ORG#test-org#FY#2026",
+          SK: "LOCK#PERIOD#03",
+          orgId: "test-org",
+          year: 2026,
+          month: "03",
+          status: "LOCKED",
+          entityType: "PERIOD_LOCK",
+          createdAt: "2026-01-01T00:00:00Z",
+          updatedAt: "2026-01-01T00:00:00Z",
+        }),
+      });
+
+    await expect(
+      LedgerService.postEntry({
+        orgId: "test-org",
+        userId: "user-123",
+        data: validEntry,
+      }),
+    ).rejects.toMatchObject({ messageCode: "ERROR_PERIOD_LOCKED" });
+
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
+  test("rejects posting into a closed fiscal year", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({
+      Item: marshall({
+        ...unmarshall(fiscalYearItem),
+        status: "CLOSED",
+      }),
+    });
+
+    await expect(
+      LedgerService.postEntry({
+        orgId: "test-org",
+        userId: "user-123",
+        data: validEntry,
+      }),
+    ).rejects.toMatchObject({ messageCode: "ERROR_FISCAL_YEAR_LOCKED" });
+
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
+  test("keeps existing posted entries readable after close", async () => {
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({
+        Item: marshall({
+          orgId: "test-org",
+          year: 2026,
+          entryId: "E-1",
+          entryType: "STANDARD",
+          entryDate: "2026-03-15",
+          journalCode: "SALES",
+          totalDebit: 1000,
+          totalCredit: 1000,
+          status: "POSTED",
+          entityType: "ENTRY",
+          PK: "ORG#test-org#FY#2026",
+          SK: "E#E-1",
+          createdAt: "2026-03-15T00:00:00Z",
+          updatedAt: "2026-03-15T00:00:00Z",
+        }),
+      });
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [
+        marshall({
+          orgId: "test-org",
+          year: 2026,
+          entryId: "E-1",
+          lineId: "E-1#L1",
+          accountId: "41100000",
+          debit: 1000,
+          credit: 0,
+          entryDate: "2026-03-15",
+          journalCode: "SALES",
+          entityType: "ENTRY_LINE",
+          PK: "ORG#test-org#FY#2026",
+          SK: "L#E-1#L1",
+          createdAt: "2026-03-15T00:00:00Z",
+          updatedAt: "2026-03-15T00:00:00Z",
+        }),
+        marshall({
+          orgId: "test-org",
+          year: 2026,
+          entryId: "E-1",
+          lineId: "E-1#L2",
+          accountId: "70100000",
+          debit: 0,
+          credit: 1000,
+          entryDate: "2026-03-15",
+          journalCode: "SALES",
+          entityType: "ENTRY_LINE",
+          PK: "ORG#test-org#FY#2026",
+          SK: "L#E-1#L2",
+          createdAt: "2026-03-15T00:00:00Z",
+          updatedAt: "2026-03-15T00:00:00Z",
+        }),
+      ],
+    });
+    dynamoMock.on(BatchGetItemCommand).resolves({ Responses: {} });
+
+    const detail = await LedgerService.getEntryDetail("test-org", 2026, "E-1");
+
+    expect(detail).toMatchObject({
+      entryId: "E-1",
+      status: "POSTED",
+      totalDebit: 1000,
+      totalCredit: 1000,
+    });
+    expect(detail.lines).toHaveLength(2);
   });
 
   test("allows RAN opening entries for balance-sheet accounts without a configured journal", async () => {

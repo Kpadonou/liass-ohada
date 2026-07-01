@@ -158,9 +158,19 @@ export class AccountingEndpoints extends DomainConstructFactory {
     map(apigw.HttpMethod.POST, "/fiscal-year", "fiscal-year/create-fiscal-year");
     map(apigw.HttpMethod.GET, "/fiscal-year/{year}", "fiscal-year/get-details");
     map(
+      apigw.HttpMethod.GET,
+      "/fiscal-year/{year}/closing-checks",
+      "fiscal-year/get-closing-checks",
+    );
+    map(
       apigw.HttpMethod.POST,
       "/fiscal-year/{year}/close",
       "fiscal-year/close-fiscal-year",
+    );
+    map(
+      apigw.HttpMethod.POST,
+      "/fiscal-year/{year}/periods/{month}/close",
+      "fiscal-year/close-period",
     );
     map(
       apigw.HttpMethod.POST,

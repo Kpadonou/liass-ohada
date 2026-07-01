@@ -81,7 +81,24 @@ export type {
 } from "./accounting/entry";
 export {
   AccountingFramework as FiscalYearAccountingFramework,
+  CloseFiscalYearRequestSchema,
+  CloseFiscalYearResponseSchema,
+  CloseFiscalYearResultDtoSchema,
+  ClosePeriodRequestSchema,
+  ClosePeriodResponseSchema,
+  ClosingCheckResponseDtoSchema,
+  ClosingCheckSummaryDtoSchema,
+  ClosingChecksResponseSchema,
+  ClosingIssueDtoSchema,
+  ClosingIssueScopeSchema,
   FiscalYearStatus,
+} from "./accounting/fiscal-year";
+export type {
+  CloseFiscalYearRequest,
+  CloseFiscalYearResultDto,
+  ClosePeriodRequest,
+  ClosingCheckResponseDto,
+  ClosingIssueDto,
 } from "./accounting/fiscal-year";
 export {
   CreateJournalRequestSchema,
