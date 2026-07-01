@@ -5,6 +5,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { ActivatedRoute } from '@angular/router';
 import {
   type AccountDto,
   type ThirdPartyLedgerDto,
@@ -63,11 +64,13 @@ export class AuxiliaryLedgerPage {
   private readonly accountingApi = inject(AccountingApi);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
 
   protected readonly selectedAccount = signal<AccountDto | null>(null);
   protected readonly selectedThirdParty = signal<ThirdPartySelectedValue | null>(null);
   protected readonly appliedScope = signal<AuxiliaryLedgerScope | null>(null);
+  private readonly routeFiscalYear = signal<string | null>(null);
   protected readonly extraMovements = signal<AuxiliaryLedgerMovement[]>([]);
   protected readonly paginationState = signal<{
     finalBalance?: number;
@@ -88,6 +91,13 @@ export class AuxiliaryLedgerPage {
 
   protected readonly activeFiscalYear = computed(() => this.fiscalYearContext.activeFiscalYear());
   protected readonly activeYear = computed(() => this.fiscalYearContext.activeYear());
+  protected readonly selectedFiscalYear = computed(
+    () =>
+      this.routeFiscalYear() ??
+      (this.activeYear()
+        ? String(this.activeYear())
+        : '')
+  );
   protected readonly selectedType = signal<ThirdPartyTypeValue>('CUSTOMER');
   protected readonly selectedTypeLabelKey = computed(
     () => `ACCOUNTING.AUXILIARY_LEDGER.TYPES.${this.selectedType()}`
@@ -107,11 +117,11 @@ export class AuxiliaryLedgerPage {
 
   protected readonly ledgerQuery = injectQuery(() => {
     const scope = this.appliedScope();
-    const year = this.activeYear();
+    const fiscalYear = this.selectedFiscalYear();
 
     return this.accountingQueries.thirdPartyLedger(
       {
-        fiscalYear: year ? String(year) : '',
+        fiscalYear,
         accountId: scope?.accountId ?? '',
         thirdPartyId: scope?.thirdPartyId ?? '',
         thirdPartyType: scope?.thirdPartyType ?? this.selectedType(),
@@ -119,7 +129,7 @@ export class AuxiliaryLedgerPage {
         endDate: scope?.endDate,
         limit: AUXILIARY_LEDGER_PAGE_SIZE
       },
-      !!scope && !!year
+      !!scope && /^\d{4}$/.test(fiscalYear)
     );
   });
 
@@ -149,6 +159,59 @@ export class AuxiliaryLedgerPage {
   );
 
   constructor() {
+    this.route.queryParamMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+      const accountId = params.get('accountId') ?? params.get('account');
+      const thirdPartyId = params.get('thirdPartyId');
+      const thirdPartyType = params.get('thirdPartyType');
+      const year = params.get('year');
+      const startDate = params.get('startDate');
+      const endDate = params.get('endDate');
+
+      this.routeFiscalYear.set(year && /^\d{4}$/.test(year) ? year : null);
+
+      if (
+        !accountId ||
+        !/^\d{2,8}$/.test(accountId) ||
+        !thirdPartyId ||
+        !isThirdPartyType(thirdPartyType)
+      ) {
+        return;
+      }
+
+      const activeFiscalYear = this.activeFiscalYear();
+      const normalizedStartDate =
+        startDate && /^\d{4}-\d{2}-\d{2}$/.test(startDate)
+          ? startDate
+          : activeFiscalYear?.startDate ?? '';
+      const normalizedEndDate =
+        endDate && /^\d{4}-\d{2}-\d{2}$/.test(endDate)
+          ? endDate
+          : activeFiscalYear?.endDate ?? '';
+
+      this.selectedType.set(thirdPartyType);
+      this.selectedAccount.set(null);
+      this.selectedThirdParty.set(null);
+      this.form.patchValue(
+        {
+          accountId,
+          thirdPartyId,
+          thirdPartyType,
+          startDate: normalizedStartDate,
+          endDate: normalizedEndDate
+        },
+        { emitEvent: false }
+      );
+      this.formRevision.update((revision) => revision + 1);
+      this.appliedScope.set({
+        accountId,
+        thirdPartyId,
+        thirdPartyType,
+        startDate: normalizedStartDate,
+        endDate: normalizedEndDate
+      });
+      this.resetPagination();
+    });
+
     this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
       this.formRevision.update((revision) => revision + 1);
       this.appliedScope.set(null);
@@ -228,10 +291,10 @@ export class AuxiliaryLedgerPage {
 
   protected async loadMore(): Promise<void> {
     const scope = this.appliedScope();
-    const year = this.activeYear();
+    const fiscalYear = this.selectedFiscalYear();
     const cursor = this.nextCursor();
 
-    if (!scope || !year || !cursor || this.loadingMore()) {
+    if (!scope || !/^\d{4}$/.test(fiscalYear) || !cursor || this.loadingMore()) {
       return;
     }
 
@@ -241,7 +304,7 @@ export class AuxiliaryLedgerPage {
     try {
       const result = await this.accountingApi.getThirdPartyLedger({
         ...scope,
-        fiscalYear: String(year),
+        fiscalYear,
         cursor,
         limit: AUXILIARY_LEDGER_PAGE_SIZE
       });
@@ -349,4 +412,8 @@ function dedupeMovements(movements: AuxiliaryLedgerMovement[]): AuxiliaryLedgerM
   }
 
   return [...byKey.values()];
+}
+
+function isThirdPartyType(value: string | null): value is ThirdPartyTypeValue {
+  return value === 'CUSTOMER' || value === 'SUPPLIER';
 }

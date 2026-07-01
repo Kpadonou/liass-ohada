@@ -14,7 +14,7 @@ interface ShellNavItem {
   icon: string;
   labelKey: string;
   page: AppPage;
-  route?: readonly string[];
+  route?: string;
 }
 
 const accountingItems: readonly ShellNavItem[] = [
@@ -22,73 +22,73 @@ const accountingItems: readonly ShellNavItem[] = [
     icon: 'space_dashboard',
     labelKey: 'SHELL.NAV.ACCOUNTING_OVERVIEW',
     page: 'accounting.overview',
-    route: ['/accounting']
+    route: '/accounting'
   },
   {
     icon: 'event_available',
     labelKey: 'SHELL.NAV.FISCAL_YEAR',
     page: 'accounting.fiscalYear',
-    route: ['/accounting/fiscal-years']
+    route: '/accounting/fiscal-years'
   },
   {
     icon: 'account_balance',
     labelKey: 'SHELL.NAV.GENERAL_LEDGER',
     page: 'accounting.generalLedger',
-    route: ['/accounting/general-ledger']
+    route: '/accounting/general-ledger'
   },
   {
     icon: 'account_tree',
     labelKey: 'SHELL.NAV.AUXILIARY_LEDGER',
     page: 'accounting.auxiliaryLedger',
-    route: ['/accounting/auxiliary-ledger']
+    route: '/accounting/auxiliary-ledger'
   },
   {
     icon: 'diversity_3',
     labelKey: 'SHELL.NAV.AUXILIARY_BALANCE',
     page: 'accounting.auxiliaryBalance',
-    route: ['/accounting/auxiliary-balance']
+    route: '/accounting/auxiliary-balance'
   },
   {
     icon: 'history_edu',
     labelKey: 'SHELL.NAV.JOURNAL_BOOK',
     page: 'accounting.journalBook',
-    route: ['/accounting/journal-book']
+    route: '/accounting/journal-book'
   },
   {
     icon: 'menu_book',
     labelKey: 'SHELL.NAV.JOURNALS',
     page: 'accounting.journals',
-    route: ['/accounting/journals']
+    route: '/accounting/journals'
   },
   {
     icon: 'groups',
     labelKey: 'SHELL.NAV.THIRD_PARTIES',
     page: 'accounting.thirdParties',
-    route: ['/accounting/third-parties']
+    route: '/accounting/third-parties'
   },
   {
     icon: 'receipt_long',
     labelKey: 'SHELL.NAV.ENTRIES',
     page: 'accounting.entries',
-    route: ['/accounting/entries']
+    route: '/accounting/entries'
   },
   {
     icon: 'rule',
     labelKey: 'SHELL.NAV.LETTERING',
     page: 'accounting.lettering',
-    route: ['/accounting/lettering']
+    route: '/accounting/lettering'
   },
   {
     icon: 'balance',
     labelKey: 'SHELL.NAV.TRIAL_BALANCE',
     page: 'accounting.trialBalance',
-    route: ['/accounting/trial-balance']
+    route: '/accounting/trial-balance'
   },
   {
     icon: 'format_list_numbered',
     labelKey: 'SHELL.NAV.CHART_OF_ACCOUNTS',
     page: 'accounting.chartOfAccounts',
-    route: ['/accounting/accounts']
+    route: '/accounting/accounts'
   }
 ];
 
@@ -97,20 +97,20 @@ const topLevelItems: readonly ShellNavItem[] = [
     icon: 'dashboard',
     labelKey: 'SHELL.NAV.DASHBOARD',
     page: 'dashboard',
-    route: ['/dashboard']
+    route: '/dashboard'
   },
   {
     badgeKey: 'SHELL.NAV.SYCEBNL_BADGE',
     icon: 'folder_managed',
     labelKey: 'SHELL.NAV.PROJECTS',
     page: 'projects',
-    route: ['/projects']
+    route: '/projects'
   },
   {
     icon: 'payments',
     labelKey: 'SHELL.NAV.TREASURY',
     page: 'treasury',
-    route: ['/treasury']
+    route: '/treasury'
   },
   {
     disabled: true,
@@ -133,13 +133,13 @@ const cabinetItems: readonly ShellNavItem[] = [
     icon: 'dashboard',
     labelKey: 'SHELL.NAV.CABINET_DASHBOARD',
     page: 'cabinet.dashboard',
-    route: ['/cabinet/dashboard']
+    route: '/cabinet/dashboard'
   },
   {
     icon: 'folder_managed',
     labelKey: 'SHELL.NAV.CLIENT_DOSSIERS',
     page: 'cabinet.dossiers',
-    route: ['/cabinet/dossiers']
+    route: '/cabinet/dossiers'
   },
   {
     disabled: true,
@@ -220,7 +220,7 @@ export class AppSidebarComponent {
     this.uiStore.closeSidebar();
 
     if (item.route) {
-      await this.router.navigate(item.route);
+      await this.router.navigateByUrl(item.route);
     }
   }
 }

@@ -19,6 +19,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   type AccountDto,
   type CreateEntryDraftRequest,
+  type EntryDetailDto,
   type ThirdPartyTypeValue
 } from '@liass-ohada/shared/accounting';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
@@ -152,8 +153,20 @@ export class EntryFormPage {
       this.totalDebit() === this.totalCredit() &&
       this.lines.valid
   );
-  protected readonly publishAvailable = false;
+  protected readonly formValid = computed(() => {
+    this.formValue();
+    return this.form.valid;
+  });
+  protected readonly publishAvailable = computed(
+    () =>
+      this.fiscalYearContext.hasActiveFiscalYear() &&
+      this.formValid() &&
+      this.isBalanced() &&
+      !this.submittingDraft() &&
+      !this.submittingPost()
+  );
   protected readonly submittingDraft = signal(false);
+  protected readonly submittingPost = signal(false);
   private readonly selectedLineAccounts = signal<ReadonlyMap<EntryLineForm, AccountDto>>(new Map());
   private readonly accountHydrationCache = new Map<string, Promise<AccountDto>>();
 
@@ -344,11 +357,7 @@ export class EntryFormPage {
     this.submittingDraft.set(true);
 
     try {
-      const payload = this.draftModel();
-      const result =
-        this.isEditMode && this.entryId
-          ? await this.accountingApi.updateEntryDraft(this.entryId, payload)
-          : await this.accountingApi.createEntryDraft(payload);
+      const result = await this.persistDraft();
       const fallbackKey =
         this.isEditMode
           ? 'ACCOUNTING.ENTRIES.FORM.NOTIFICATIONS.UPDATED'
@@ -356,18 +365,7 @@ export class EntryFormPage {
 
       this.notification.success(result.message ?? this.transloco.translate(fallbackKey));
       this.form.markAsPristine();
-      await this.queryClient.invalidateQueries({
-        predicate: (query) => {
-          const key = query.queryKey;
-
-          return (
-            key[0] === 'accounting' &&
-            key[1] === this.accountingQueries.tenantScope() &&
-            key[2] === 'entries' &&
-            typeof key[3] === 'object'
-          );
-        }
-      });
+      await this.invalidateEntryLists();
 
       if (!this.isEditMode) {
         await this.router.navigate(
@@ -389,8 +387,69 @@ export class EntryFormPage {
     }
   }
 
+  protected async publishEntry(): Promise<void> {
+    const activeYear = this.fiscalYearContext.activeYear();
+
+    if (!this.publishAvailable() || !activeYear) {
+      this.form.markAllAsTouched();
+      if (!activeYear) {
+        this.notification.error(
+          this.transloco.translate('ACCOUNTING.ENTRIES.NOTIFICATIONS.FISCAL_YEAR_REQUIRED')
+        );
+      }
+      return;
+    }
+
+    this.submittingPost.set(true);
+
+    try {
+      const draft = await this.persistDraft();
+      const result = await this.accountingApi.postEntryDraft(
+        draft.data.entryId,
+        activeYear
+      );
+
+      this.notification.success(
+        result.message ?? this.transloco.translate('ACCOUNTING.ENTRIES.NOTIFICATIONS.POSTED')
+      );
+      this.form.markAsPristine();
+      await this.invalidateEntryLists();
+      await this.router.navigate(['/accounting/entries']);
+    } catch (error) {
+      this.notification.error(
+        safeMessageFromError(error) ??
+          this.transloco.translate('ACCOUNTING.ENTRIES.NOTIFICATIONS.POST_FAILED')
+      );
+    } finally {
+      this.submittingPost.set(false);
+    }
+  }
+
   protected async goBack(): Promise<void> {
     await this.router.navigate(['/accounting/entries']);
+  }
+
+  private async persistDraft(): Promise<{ data: EntryDetailDto; message?: string | null }> {
+    const payload = this.draftModel();
+
+    return this.isEditMode && this.entryId
+      ? this.accountingApi.updateEntryDraft(this.entryId, payload)
+      : this.accountingApi.createEntryDraft(payload);
+  }
+
+  private async invalidateEntryLists(): Promise<void> {
+    await this.queryClient.invalidateQueries({
+      predicate: (query) => {
+        const key = query.queryKey;
+
+        return (
+          key[0] === 'accounting' &&
+          key[1] === this.accountingQueries.tenantScope() &&
+          key[2] === 'entries' &&
+          typeof key[3] === 'object'
+        );
+      }
+    });
   }
 
   private initialEntryDate(): string {

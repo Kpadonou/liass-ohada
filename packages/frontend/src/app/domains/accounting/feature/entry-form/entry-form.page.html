@@ -318,7 +318,9 @@
             variant="solid"
             icon="publish"
             data-testid="publish-entry"
-            [disabled]="!isBalanced() || !publishAvailable"
+            [disabled]="!publishAvailable()"
+            [loading]="submittingPost()"
+            (pressed)="publishEntry()"
           >
             {{ 'ACCOUNTING.ENTRIES.FORM.ACTIONS.PUBLISH' | transloco }}
           </liass-button>

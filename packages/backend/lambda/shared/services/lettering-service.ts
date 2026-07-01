@@ -418,61 +418,72 @@ export class LetteringService {
       throw new AppError(400, "ERROR_LETTERING_UNBALANCED");
     }
 
-    const letteringId = LetteringService.buildDeterministicLetteringId({
+    const baseLetteringId = LetteringService.buildDeterministicLetteringId({
       orgId,
       scope,
       allocations: normalizedAllocations,
       note: input.note,
     });
     const accountCode = lines[0]?.accountCode ?? scope.accountId;
-    const now = new Date().toISOString();
-    const matchItem: LetteringMatchItem = {
-      orgId,
-      letteringId,
-      fiscalYear: scope.fiscalYear,
-      accountId: scope.accountId,
-      accountCode,
-      thirdPartyId: scope.thirdPartyId,
-      thirdPartyType: scope.thirdPartyType,
-      status: "ACTIVE",
-      totalDebit,
-      totalCredit,
-      note: input.note,
-      createdAt: now,
-      createdBy: userId,
-      updatedAt: now,
-      updatedBy: userId,
-      allocations: allocationDtos,
-      entityType: "LETTERING_MATCH",
-      PK: KeyFactory.partitionKey(orgId, scope.fiscalYear),
-      SK: KeyFactory.letteringMatchSK(letteringId),
+    const buildTransaction = (
+      letteringId: string,
+      timestamp: string,
+    ): { matchItem: LetteringMatchItem; transactItems: any[] } => {
+      const matchItem: LetteringMatchItem = {
+        orgId,
+        letteringId,
+        fiscalYear: scope.fiscalYear,
+        accountId: scope.accountId,
+        accountCode,
+        thirdPartyId: scope.thirdPartyId,
+        thirdPartyType: scope.thirdPartyType,
+        status: "ACTIVE",
+        totalDebit,
+        totalCredit,
+        note: input.note,
+        createdAt: timestamp,
+        createdBy: userId,
+        updatedAt: timestamp,
+        updatedBy: userId,
+        allocations: allocationDtos,
+        entityType: "LETTERING_MATCH",
+        PK: KeyFactory.partitionKey(orgId, scope.fiscalYear),
+        SK: KeyFactory.letteringMatchSK(letteringId),
+      };
+
+      const transactItems: any[] = [
+        {
+          Put: {
+            TableName: config.TABLE_NAME,
+            Item: marshall(matchItem, { removeUndefinedValues: true }),
+            ConditionExpression:
+              "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+          },
+        },
+      ];
+
+      for (const allocation of normalizedAllocations) {
+        const line = linesByKey.get(`${allocation.entryId}#${allocation.lineId}`)!;
+        transactItems.push(
+          LetteringService.buildApplyAllocationUpdate({
+            orgId,
+            userId,
+            now: timestamp,
+            scope,
+            line,
+            allocationAmount: allocation.amount,
+            letteringId,
+          }),
+        );
+      }
+
+      return { matchItem, transactItems };
     };
 
-    const transactItems: any[] = [
-      {
-        Put: {
-          TableName: config.TABLE_NAME,
-          Item: marshall(matchItem, { removeUndefinedValues: true }),
-          ConditionExpression:
-            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-        },
-      },
-    ];
-
-    for (const allocation of normalizedAllocations) {
-      const line = linesByKey.get(`${allocation.entryId}#${allocation.lineId}`)!;
-      transactItems.push(
-        LetteringService.buildApplyAllocationUpdate({
-          orgId,
-          userId,
-          now,
-          scope,
-          line,
-          allocationAmount: allocation.amount,
-          letteringId,
-        }),
-      );
-    }
+    let { matchItem, transactItems } = buildTransaction(
+      baseLetteringId,
+      new Date().toISOString(),
+    );
 
     try {
       await dynamoClient.send(
@@ -483,10 +494,33 @@ export class LetteringService {
         const existing = await LetteringService.getMatchItem(
           orgId,
           scope.fiscalYear,
-          letteringId,
+          baseLetteringId,
         ).catch(() => undefined);
         if (existing?.status === "ACTIVE") {
           return LetteringService.toMatchDto(existing);
+        }
+        if (existing?.status === "CANCELLED") {
+          const retryNow = new Date().toISOString();
+          const retry = buildTransaction(
+            LetteringService.buildReletteringId(
+              baseLetteringId,
+              retryNow,
+            ),
+            retryNow,
+          );
+          try {
+            await dynamoClient.send(
+              new TransactWriteItemsCommand({
+                TransactItems: retry.transactItems,
+              }),
+            );
+            return LetteringService.toMatchDto(retry.matchItem);
+          } catch (retryError: any) {
+            if (retryError?.name === "TransactionCanceledException") {
+              throw new AppError(409, "ERROR_LETTERING_CONFLICT");
+            }
+            throw retryError;
+          }
         }
         throw new AppError(409, "ERROR_LETTERING_CONFLICT");
       }
@@ -1284,6 +1318,19 @@ export class LetteringService {
       .toUpperCase();
 
     return `LM-${digest}`;
+  }
+
+  private static buildReletteringId(
+    baseLetteringId: string,
+    timestamp: string,
+  ): string {
+    const suffix = createHash("sha256")
+      .update(`${baseLetteringId}::${timestamp}`)
+      .digest("hex")
+      .slice(0, 8)
+      .toUpperCase();
+
+    return `${baseLetteringId}-R${suffix}`;
   }
 
   private static toMatchDto(item: LetteringMatchItem): LetteringMatchDto {

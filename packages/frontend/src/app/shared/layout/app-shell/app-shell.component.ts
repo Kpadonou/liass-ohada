@@ -9,7 +9,7 @@ import { AppBackdropComponent } from '../app-backdrop/app-backdrop.component';
 import { AppSidebarComponent } from '../app-sidebar/app-sidebar.component';
 import { AppTopbarComponent } from '../app-topbar/app-topbar.component';
 
-function pageFromUrl(url: string): AppPage {
+export function pageFromUrl(url: string): AppPage {
   const path = url.split('?')[0]?.split('#')[0] ?? '';
 
   if (path.startsWith('/cabinet/dossiers')) {

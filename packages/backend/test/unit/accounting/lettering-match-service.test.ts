@@ -223,6 +223,132 @@ describe("LetteringService manual match foundations", () => {
     expect(lineUpdate?.UpdateExpression).not.toContain("thirdPartyId");
   });
 
+  test("create match can re-letter the same lines after a previous match was cancelled", async () => {
+    const allocations = [
+      { entryId: "E-1", lineId: "L-1", amount: 1000 },
+      { entryId: "E-2", lineId: "L-2", amount: 1000 },
+    ];
+    const baseLetteringId = (LetteringService as any).buildDeterministicLetteringId({
+      orgId: "org-a",
+      scope: {
+        accountId: "41100000",
+        thirdPartyId: "TP-1",
+        thirdPartyType: "CUSTOMER",
+        fiscalYear: 2026,
+      },
+      allocations,
+      note: undefined,
+    });
+    const cancelledMatch = marshall({
+      orgId: "org-a",
+      letteringId: baseLetteringId,
+      fiscalYear: 2026,
+      accountId: "41100000",
+      accountCode: "41100000",
+      thirdPartyId: "TP-1",
+      thirdPartyType: "CUSTOMER",
+      status: "CANCELLED",
+      totalDebit: 1000,
+      totalCredit: 1000,
+      createdAt: "2026-03-21T10:00:00.000Z",
+      createdBy: "user-1",
+      cancelledAt: "2026-03-21T10:10:00.000Z",
+      cancelledBy: "user-2",
+      allocations: [
+        {
+          entryId: "E-1",
+          lineId: "L-1",
+          accountingDate: "2026-03-15",
+          journalCode: "SALES",
+          debit: 1000,
+          credit: 0,
+          allocatedAmount: 1000,
+        },
+        {
+          entryId: "E-2",
+          lineId: "L-2",
+          accountingDate: "2026-03-20",
+          journalCode: "BANK",
+          debit: 0,
+          credit: 1000,
+          allocatedAmount: 1000,
+        },
+      ],
+      entityType: "LETTERING_MATCH",
+      PK: KeyFactory.partitionKey("org-a", 2026),
+      SK: KeyFactory.letteringMatchSK(baseLetteringId),
+    });
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({ Item: fiscalYear })
+      .resolvesOnce({ Item: account })
+      .resolvesOnce({ Item: thirdParty })
+      .resolvesOnce({ Item: cancelledMatch });
+    dynamoMock.on(BatchGetItemCommand).resolves({
+      Responses: {
+        [tableName]: [
+          line({
+            letteringStatus: "UNLETTERED",
+            letteredAmount: 0,
+            remainingAmount: 1000,
+            letteringMatchIds: [],
+          }),
+          line({
+            entryId: "E-2",
+            lineId: "L-2",
+            SK: KeyFactory.entryLineSK("L-2"),
+            debit: 0,
+            credit: 1000,
+            entryDate: "2026-03-20",
+            journalCode: "BANK",
+            voucherNumber: "PAY-1",
+            label: "Règlement client",
+            GSI2SK: KeyFactory.gsi2SK("2026-03-20", "L-2"),
+            GSI3SK: KeyFactory.letteringSK("2026-03-20", "E-2", "0001"),
+            letteringStatus: "UNLETTERED",
+            letteredAmount: 0,
+            remainingAmount: 1000,
+            letteringMatchIds: [],
+          }),
+        ],
+      },
+    });
+    dynamoMock
+      .on(TransactWriteItemsCommand)
+      .rejectsOnce(
+        Object.assign(new Error("cancelled match id exists"), {
+          name: "TransactionCanceledException",
+        }),
+      )
+      .resolvesOnce({});
+
+    const result = await LetteringService.createManualMatch("org-a", "user-3", {
+      fiscalYear: 2026,
+      accountId: "41100000",
+      thirdPartyId: "TP-1",
+      thirdPartyType: "CUSTOMER",
+      allocations,
+    });
+    const retryTransaction =
+      dynamoMock.commandCalls(TransactWriteItemsCommand)[1].args[0].input;
+    const retryMatch = unmarshall(
+      retryTransaction.TransactItems?.[0].Put?.Item ?? {},
+    );
+    const retryLineValues = unmarshall(
+      retryTransaction.TransactItems?.[1].Update?.ExpressionAttributeValues ?? {},
+    );
+
+    expect(result.status).toBe("ACTIVE");
+    expect(result.letteringId).toMatch(new RegExp(`^${baseLetteringId}-R`));
+    expect(result.letteringId).not.toBe(baseLetteringId);
+    expect(retryMatch).toMatchObject({
+      letteringId: result.letteringId,
+      status: "ACTIVE",
+      entityType: "LETTERING_MATCH",
+    });
+    expect(retryLineValues[":matchIds"]).toEqual([result.letteringId]);
+  });
+
   test("create match keeps partially lettered lines in GSI3", async () => {
     mockScopeReads();
     dynamoMock.on(BatchGetItemCommand).resolves({

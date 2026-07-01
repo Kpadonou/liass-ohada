@@ -1,9 +1,10 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
+import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../../../../environments/environment';
@@ -149,11 +150,13 @@ const translations = {
 describe('AuxiliaryLedgerPage', () => {
   let fixture: ComponentFixture<AuxiliaryLedgerPage>;
   let httpMock: HttpTestingController;
+  let queryParams: Record<string, string>;
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
+    queryParams = {};
 
     await TestBed.configureTestingModule({
       imports: [
@@ -171,6 +174,12 @@ describe('AuxiliaryLedgerPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useFactory: () => ({
+            queryParamMap: of(convertToParamMap(queryParams))
+          })
+        },
         provideTanStackQuery(
           new QueryClient({
             defaultOptions: {
@@ -258,6 +267,50 @@ describe('AuxiliaryLedgerPage', () => {
     expect(text).not.toContain('PK');
     expect(text).not.toContain('GSI');
     expect(text).not.toContain('entityType');
+  });
+
+  it('preselects scope from balance query params and loads movements automatically', async () => {
+    queryParams = {
+      accountId: '41110000',
+      account: '41110000',
+      thirdPartyId: 'tp-cust-alpha',
+      thirdPartyType: 'CUSTOMER',
+      year: '2026',
+      startDate: '2026-01-18',
+      endDate: '2026-12-31'
+    };
+    selectFiscalYear();
+    createPage();
+
+    const request = expectLedgerRequest();
+    expect(request.request.params.get('fiscalYear')).toBe('2026');
+    expect(request.request.params.get('accountId')).toBe('41110000');
+    expect(request.request.params.get('thirdPartyId')).toBe('tp-cust-alpha');
+    expect(request.request.params.get('thirdPartyType')).toBe('CUSTOMER');
+    expect(request.request.params.get('startDate')).toBe('2026-01-18');
+    expect(request.request.params.get('endDate')).toBe('2026-12-31');
+    request.flush(
+      customerLedgerResponse({
+        period: { fiscalYear: '2026', startDate: '2026-01-18', endDate: '2026-12-31' }
+      })
+    );
+    flushThirdParties();
+    await settle();
+
+    const accountInput = fixture.nativeElement.querySelector(
+      '[data-testid="auxiliary-ledger-account-select"] input'
+    ) as HTMLInputElement;
+    const thirdPartyInput = fixture.nativeElement.querySelector(
+      '[data-testid="auxiliary-ledger-third-party-select"] input'
+    ) as HTMLInputElement;
+    const dateInputs = fixture.nativeElement.querySelectorAll('input[type="date"]');
+
+    expect(accountInput.value).toBe('41110000');
+    expect(thirdPartyInput.value).toBe('Client Alpha');
+    expect((dateInputs[0] as HTMLInputElement).value).toBe('2026-01-18');
+    expect((dateInputs[1] as HTMLInputElement).value).toBe('2026-12-31');
+    expect(fixture.nativeElement.textContent).toContain('FAC-CUST-001');
+    expect(fixture.nativeElement.querySelector('[data-testid="auxiliary-ledger-movements-table"]')).not.toBeNull();
   });
 
   it('maps supplier scope to SUPPLIER and presents credit balances clearly', async () => {

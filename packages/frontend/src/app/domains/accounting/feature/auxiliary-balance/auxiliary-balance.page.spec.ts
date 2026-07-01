@@ -253,6 +253,25 @@ describe('AuxiliaryBalancePage', () => {
     expect(text).not.toContain('entityType');
   });
 
+  it('loads the third-party balance when the Load button is clicked', async () => {
+    createPage();
+    await settle();
+
+    applyScope({ accountId: '41110000', thirdPartyType: 'CUSTOMER', status: 'ACTIVE' });
+    loadButton().click();
+    fixture.detectChanges();
+
+    const request = expectBalanceRequest();
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('fiscalYear')).toBe('2026');
+    expect(request.request.params.get('accountId')).toBe('41110000');
+    expect(request.request.params.get('thirdPartyType')).toBe('CUSTOMER');
+    request.flush({ data: customerBalanceResponse() });
+    await settle();
+
+    expect(fixture.nativeElement.textContent).toContain('Client Alpha');
+  });
+
   it('maps supplier scope to SUPPLIER and shows credit balances under the credit side', async () => {
     createPage();
     await settle();

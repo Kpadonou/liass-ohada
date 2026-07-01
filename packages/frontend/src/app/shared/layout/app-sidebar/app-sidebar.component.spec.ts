@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { vi } from 'vitest';
 
@@ -234,6 +234,33 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Balance');
     expect(text).toContain('Plan comptable');
     expect(text).not.toContain('Paramètres du cabinet');
+  });
+
+  it('marks a target page active immediately while routing to the requested URL', () => {
+    const authStore = TestBed.inject(AuthStore);
+    const uiStore = TestBed.inject(UiStore);
+    const router = TestBed.inject(Router);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company'
+    );
+    uiStore.setCurrentPage('accounting.overview');
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const auxiliaryBalanceButton = fixture.nativeElement.querySelector(
+      'liass-sidebar-nav-item button[aria-label="Balance auxiliaire"]'
+    ) as HTMLButtonElement;
+    auxiliaryBalanceButton.click();
+    fixture.detectChanges();
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/accounting/auxiliary-balance');
+    expect(uiStore.currentPage()).toBe('accounting.auxiliaryBalance');
   });
 
   it('shows cabinet navigation on cabinet routes even when a dossier remains selected', () => {

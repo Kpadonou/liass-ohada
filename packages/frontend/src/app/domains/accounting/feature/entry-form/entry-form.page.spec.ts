@@ -103,6 +103,10 @@ const translations = {
         TOTALS: {
           CREDIT: 'Total credit',
           DEBIT: 'Total debit'
+        },
+        NOTIFICATIONS: {
+          POST_FAILED: 'The entry could not be posted.',
+          POSTED: 'The entry was posted.'
         }
       },
       FISCAL_YEAR: {
@@ -689,6 +693,47 @@ describe('EntryFormPage', () => {
     expect(notification.success).toHaveBeenCalledWith('Entry draft saved.');
   });
 
+  it('posts a balanced new entry by saving it as a draft first', async () => {
+    selectFiscalYear();
+    fixture = TestBed.createComponent(EntryFormPage);
+    fixture.detectChanges();
+    flushReferenceData();
+    await settle();
+    await fillValidDraft();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
+
+    expect(publishButton().disabled).toBe(false);
+
+    const publishPromise = (fixture.componentInstance as any).publishEntry();
+    await settleDynamicImport();
+    const createRequest = httpMock.expectOne(`${apiBaseUrl}/entries/drafts`);
+
+    expect(createRequest.request.method).toBe('POST');
+    expect(createRequest.request.body).toMatchObject({
+      year: 2026,
+      entryDate: '2026-02-15',
+      journalCode: 'VE',
+      label: 'Customer sale'
+    });
+    createRequest.flush({
+      data: entryDetailFixture({ entryId: 'ENTRY-POST' })
+    });
+    await settleDynamicImport();
+    const postRequest = httpMock.expectOne(`${apiBaseUrl}/entries/ENTRY-POST/post`);
+
+    expect(postRequest.request.method).toBe('POST');
+    expect(postRequest.request.body).toEqual({ year: 2026 });
+    postRequest.flush({
+      message: { code: 'SUCCESS_ENTRY_POSTED', message: 'Entry posted by accounting.' },
+      entryId: 'ENTRY-POST'
+    });
+    await publishPromise;
+
+    expect(notification.success).toHaveBeenCalledWith('Entry posted by accounting.');
+    expect(navigate).toHaveBeenCalledWith(['/accounting/entries']);
+  });
+
   it('updates an existing draft and keeps the user on the edit form', async () => {
     activatedRouteStub.snapshot.paramMap = convertToParamMap({ entryId: 'ENTRY-001' });
     selectFiscalYear();
@@ -857,6 +902,10 @@ describe('EntryFormPage', () => {
 
   function saveDraftButton(): HTMLButtonElement {
     return fixture.nativeElement.querySelector('[data-testid="save-entry-draft"] button');
+  }
+
+  function publishButton(): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('[data-testid="publish-entry"] button');
   }
 
   async function flushThirdPartyList(type: 'CUSTOMER' | 'SUPPLIER'): Promise<void> {
