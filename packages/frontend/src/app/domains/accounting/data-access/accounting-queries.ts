@@ -144,6 +144,8 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'entries', normalizeListEntriesParams(params)] as const,
   entryDetail: (tenantScope: TenantScope, year: string, entryId: string) =>
     ['accounting', tenantScope, 'entries', year, entryId] as const,
+  closingChecks: (tenantScope: TenantScope, year: string) =>
+    ['accounting', tenantScope, 'closing-checks', year] as const,
   fiscalYear: (tenantScope: TenantScope, year: string) =>
     ['accounting', tenantScope, 'fiscal-year', year] as const,
   generalLedger: (tenantScope: TenantScope, params: GeneralLedgerParams) =>
@@ -383,6 +385,18 @@ export class AccountingQueries {
       queryKey: accountingQueryKeys.fiscalYear(this.tenantScope(), yearValue),
       queryFn: () => this.accountingApi.getFiscalYearDetails(yearValue),
       enabled: enabled && /^\d{4}$/.test(yearValue),
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
+    });
+  }
+
+  closingChecks(year: string | number, enabled = true) {
+    const yearValue = String(year);
+
+    return queryOptions({
+      queryKey: accountingQueryKeys.closingChecks(this.tenantScope(), yearValue),
+      queryFn: () => this.accountingApi.getClosingChecks(yearValue),
+      enabled: enabled && /^\d{4}$/.test(yearValue),
+      retry: false,
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }

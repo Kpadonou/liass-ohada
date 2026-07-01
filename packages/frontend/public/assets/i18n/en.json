@@ -1447,6 +1447,7 @@
         "DESCRIPTION": "Control the monthly periods used by entry posting and lettering.",
         "MONTH_PREFIX": "Month",
         "NO_SELECTION": "Load or create a fiscal year to display period locks.",
+        "READ_ONLY_CLOSED": "Closed",
         "TITLE": "Period locks"
       },
       "PERIOD_CONFIRM": {
@@ -1475,6 +1476,88 @@
         "TITLE": "Fiscal year status"
       },
       "TITLE": "Fiscal years"
+    },
+    "CLOSING": {
+      "ACTIONS": {
+        "CLOSE_YEAR": "Close fiscal year"
+      },
+      "CHECKS": {
+        "ERRORS_TITLE": "Corrections required",
+        "TITLE": "Closing checks",
+        "WARNINGS_TITLE": "Warnings to review"
+      },
+      "CONFIRMATION": {
+        "ACKNOWLEDGE_WARNINGS": "I have reviewed the warnings and confirm closing.",
+        "COPY": "Closing will lock the fiscal year. Posted entries will remain readable, but no new posting will be possible in this fiscal year.",
+        "DIALOG_TITLE": "Confirm fiscal-year close",
+        "EYEBROW": "Confirmation",
+        "TITLE": "Confirmation",
+        "WARNINGS_REQUIRED": "Warnings are present: they must be acknowledged in the confirmation."
+      },
+      "DESCRIPTION": "Review checks, periods, and confirmation before locking the fiscal year.",
+      "ERRORS": {
+        "CLOSE_FAILED": "The fiscal year could not be closed."
+      },
+      "ISSUES": {
+        "ACCOUNT_AUXILIARY_CONFIGURATION_INVALID": "An account auxiliary configuration must be corrected.",
+        "ACCOUNT_INACTIVE": "An account used by posted entries is inactive.",
+        "ACCOUNT_NOT_FOUND": "An account used by posted entries could not be found.",
+        "AUXILIARY_THIRD_PARTY_REQUIRED": "A posted auxiliary line must include the third party and its type.",
+        "AUXILIARY_THIRD_PARTY_TYPE_MISMATCH": "The third-party type does not match the auxiliary account.",
+        "DRAFT_ENTRIES_REMAIN": "Draft entries remain in the fiscal year.",
+        "ENTRY_NOT_BALANCED": "An entry in the fiscal year is not balanced.",
+        "FISCAL_YEAR_NOT_OPEN": "The fiscal year must be open before it can be closed.",
+        "GENERIC": "A closing check must be reviewed.",
+        "JOURNAL_NOT_FOUND": "A journal used by a posted entry could not be found.",
+        "META": {
+          "ACCOUNT": "Account {{accountId}}",
+          "ENTRY": "Entry {{entryId}}",
+          "JOURNAL": "Journal {{journalCode}}",
+          "LINE": "Line {{lineId}}",
+          "THIRD_PARTY": "Third party {{thirdPartyId}}"
+        },
+        "TRIAL_BALANCE_NOT_BALANCED": "The trial balance is not balanced.",
+        "UNLETTERED_AUXILIARY_LINES_REMAIN": "Customer or supplier lines remain unlettered.",
+        "UNPOSTED_ENTRY_INCLUDED_IN_BOOKS": "An unposted entry appears in the books."
+      },
+      "NOTIFICATIONS": {
+        "YEAR_CLOSED": "Fiscal year closed successfully."
+      },
+      "PERIODS": {
+        "CLOSED_COUNT": "{{count}} closed",
+        "DESCRIPTION": "The monthly cards above remain the reference for closing an open period.",
+        "OPEN_COUNT": "{{count}} open",
+        "TITLE": "Periods"
+      },
+      "RESULT": {
+        "IDLE": "The closing result will appear here after confirmation.",
+        "SUCCESS": "Fiscal year {{year}} is closed. Entries remain available in read-only mode.",
+        "TITLE": "Result"
+      },
+      "STATES": {
+        "ALREADY_CLOSED": "This fiscal year is closed.",
+        "CHECKS_UNAVAILABLE": "Closing checks could not be loaded.",
+        "CLOSED": "This fiscal year is closed.",
+        "LOADING": "Loading closing checks...",
+        "NO_SELECTION": "No fiscal year selected."
+      },
+      "STATUS": {
+        "BLOCKED": "Corrections required",
+        "CLOSED": "Fiscal year closed",
+        "READY": "Ready to close",
+        "UNAVAILABLE": "Checks unavailable",
+        "WARNINGS": "Warnings to review"
+      },
+      "SUMMARY": {
+        "DRAFT_ENTRIES": "Drafts",
+        "FISCAL_YEAR": "Fiscal year",
+        "POSTED_ENTRIES": "Posted entries",
+        "TRIAL_BALANCE_CREDIT": "Total credit",
+        "TRIAL_BALANCE_DEBIT": "Total debit",
+        "UNBALANCED_ENTRIES": "Unbalanced entries",
+        "UNLETTERED_LINES": "Unlettered lines"
+      },
+      "TITLE": "Closing assistant"
     },
     "GENERAL_LEDGER": {
       "ACTIONS": {

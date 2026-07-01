@@ -4,8 +4,11 @@ import {
   AccountResponseSchema,
   CancelLetteringMatchRequestSchema,
   CancelLetteringRequestSchema,
+  ClosePeriodRequestSchema,
+  ClosePeriodResponseSchema,
   CloseFiscalYearRequestSchema,
   CloseFiscalYearResponseSchema,
+  ClosingChecksResponseSchema,
   CreateAccountRequestSchema,
   CreateEntryRequestSchema,
   CreateFiscalYearRequestSchema,
@@ -50,6 +53,7 @@ import {
   type CancelLetteringMatchRequest,
   type CancelLetteringRequest,
   type CloseFiscalYearResultDto,
+  type ClosingCheckResponseDto,
   type CreateAccountRequest,
   type CreateEntryDraftRequest,
   type CreateEntryRequest,
@@ -670,16 +674,48 @@ export class AccountingApi {
     return { data: parsed.data, message: userMessageFromResponse(response) };
   }
 
-  async closeFiscalYear(year: string | number): Promise<CloseFiscalYearResultDto> {
-    const request = CloseFiscalYearRequestSchema.parse({ year: String(year) });
+  async closePeriod(year: number, month: number): Promise<ApiMutationResult<PeriodLockDto>> {
+    const request = ClosePeriodRequestSchema.parse({ year, month });
+    const response = await firstValueFrom(
+      this.http.post<unknown>(
+        `${this.apiBaseUrl}/fiscal-year/${request.year}/periods/${request.month}/close`,
+        request
+      )
+    );
+    const parsed = ClosePeriodResponseSchema.parse(response);
+
+    return { data: parsed.data, message: userMessageFromResponse(response) };
+  }
+
+  async getClosingChecks(year: string | number): Promise<ApiQueryResult<ClosingCheckResponseDto>> {
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/fiscal-year/${year}/closing-checks`)
+    );
+    const parsed = ClosingChecksResponseSchema.parse(response);
+
+    return {
+      ...parsed.data,
+      message: userMessageFromResponse(response)
+    };
+  }
+
+  async closeFiscalYear(
+    year: string | number,
+    confirmWarnings = false
+  ): Promise<ApiMutationResult<CloseFiscalYearResultDto>> {
+    const request = CloseFiscalYearRequestSchema.parse({
+      confirmWarnings,
+      year: String(year)
+    });
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/fiscal-year/${request.year}/close`,
         request
       )
     );
+    const parsed = CloseFiscalYearResponseSchema.parse(response);
 
-    return CloseFiscalYearResponseSchema.parse(response).data;
+    return { data: parsed.data, message: userMessageFromResponse(response) };
   }
 
   async getIncomeStatement(year: string | number): Promise<IncomeStatementDto> {

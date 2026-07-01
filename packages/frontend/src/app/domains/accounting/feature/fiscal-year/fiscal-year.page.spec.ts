@@ -93,6 +93,7 @@ const translations = {
           DESCRIPTION: 'Control monthly periods.',
           MONTH_PREFIX: 'Month',
           NO_SELECTION: 'Load or create a fiscal year to display period locks.',
+          READ_ONLY_CLOSED: 'Closed',
           TITLE: 'Period locks'
         },
         PERIOD_CONFIRM: {
@@ -121,6 +122,88 @@ const translations = {
           TITLE: 'Fiscal year status'
         },
         TITLE: 'Fiscal years'
+      },
+      CLOSING: {
+        ACTIONS: {
+          CLOSE_YEAR: 'Close fiscal year'
+        },
+        CHECKS: {
+          ERRORS_TITLE: 'Corrections required',
+          TITLE: 'Closing checks',
+          WARNINGS_TITLE: 'Warnings to review'
+        },
+        CONFIRMATION: {
+          ACKNOWLEDGE_WARNINGS: 'I have reviewed the warnings and confirm closing.',
+          COPY: 'Closing will lock the fiscal year. Posted entries will remain readable, but no new posting will be possible in this fiscal year.',
+          DIALOG_TITLE: 'Confirm fiscal-year close',
+          EYEBROW: 'Confirmation',
+          TITLE: 'Confirmation',
+          WARNINGS_REQUIRED: 'Warnings must be acknowledged.'
+        },
+        DESCRIPTION: 'Review checks before close.',
+        ERRORS: {
+          CLOSE_FAILED: 'The fiscal year could not be closed.'
+        },
+        ISSUES: {
+          ACCOUNT_AUXILIARY_CONFIGURATION_INVALID: 'Auxiliary configuration must be corrected.',
+          ACCOUNT_INACTIVE: 'An account is inactive.',
+          ACCOUNT_NOT_FOUND: 'An account could not be found.',
+          AUXILIARY_THIRD_PARTY_REQUIRED: 'A third party is required.',
+          AUXILIARY_THIRD_PARTY_TYPE_MISMATCH: 'Third-party type mismatch.',
+          DRAFT_ENTRIES_REMAIN: 'Draft entries remain.',
+          ENTRY_NOT_BALANCED: 'An entry is not balanced.',
+          FISCAL_YEAR_NOT_OPEN: 'The fiscal year must be open.',
+          GENERIC: 'A closing check must be reviewed.',
+          JOURNAL_NOT_FOUND: 'A journal could not be found.',
+          META: {
+            ACCOUNT: 'Account {{accountId}}',
+            ENTRY: 'Entry {{entryId}}',
+            JOURNAL: 'Journal {{journalCode}}',
+            LINE: 'Line {{lineId}}',
+            THIRD_PARTY: 'Third party {{thirdPartyId}}'
+          },
+          TRIAL_BALANCE_NOT_BALANCED: 'The trial balance is not balanced.',
+          UNLETTERED_AUXILIARY_LINES_REMAIN: 'Customer or supplier lines remain unlettered.',
+          UNPOSTED_ENTRY_INCLUDED_IN_BOOKS: 'An unposted entry appears in the books.'
+        },
+        NOTIFICATIONS: {
+          YEAR_CLOSED: 'Fiscal year closed successfully.'
+        },
+        PERIODS: {
+          CLOSED_COUNT: '{{count}} closed',
+          DESCRIPTION: 'Monthly cards remain the reference.',
+          OPEN_COUNT: '{{count}} open',
+          TITLE: 'Periods'
+        },
+        RESULT: {
+          IDLE: 'The closing result will appear here after confirmation.',
+          SUCCESS: 'Fiscal year {{year}} is closed.',
+          TITLE: 'Result'
+        },
+        STATES: {
+          ALREADY_CLOSED: 'This fiscal year is closed.',
+          CHECKS_UNAVAILABLE: 'Closing checks could not be loaded.',
+          CLOSED: 'This fiscal year is closed.',
+          LOADING: 'Loading closing checks...',
+          NO_SELECTION: 'No fiscal year selected.'
+        },
+        STATUS: {
+          BLOCKED: 'Corrections required',
+          CLOSED: 'Fiscal year closed',
+          READY: 'Ready to close',
+          UNAVAILABLE: 'Checks unavailable',
+          WARNINGS: 'Warnings to review'
+        },
+        SUMMARY: {
+          DRAFT_ENTRIES: 'Drafts',
+          FISCAL_YEAR: 'Fiscal year',
+          POSTED_ENTRIES: 'Posted entries',
+          TRIAL_BALANCE_CREDIT: 'Total credit',
+          TRIAL_BALANCE_DEBIT: 'Total debit',
+          UNBALANCED_ENTRIES: 'Unbalanced entries',
+          UNLETTERED_LINES: 'Unlettered lines'
+        },
+        TITLE: 'Closing assistant'
       }
     },
     COMMON: {
@@ -211,7 +294,7 @@ describe('FiscalYearPage', () => {
     expect(text).toContain('Fiscal years');
     expect(text).toContain('January');
     expect(text).toContain('December');
-    expect(text.match(/Month/g)?.length).toBe(12);
+    expect(text.match(/Month\s+\d{2}/g)?.length).toBe(12);
     expect(text).toContain('Locked');
     expect(text).toContain('Open');
   });
@@ -226,7 +309,7 @@ describe('FiscalYearPage', () => {
     expect(yearInput.value).toBe(`${currentYear}`);
     expect(text).toContain('No fiscal year is loaded yet.');
     expect(text).toContain('Load or create a fiscal year to display period locks.');
-    expect(text).not.toContain('Month');
+    expect(text).not.toContain('Month 01');
     httpMock.expectNone(`${apiBaseUrl}/fiscal-year/${currentYear}`);
   });
 
@@ -258,13 +341,17 @@ describe('FiscalYearPage', () => {
       { message: 'Not found' },
       { status: 404, statusText: 'Not Found' }
     );
+    httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear + 3}/closing-checks`).flush(
+      { message: 'Not found' },
+      { status: 404, statusText: 'Not Found' }
+    );
     await settle(fixture);
 
     const text = fixture.nativeElement.textContent;
 
     expect(TestBed.inject(AccountingFiscalYearContextService).activeYear()).toBeNull();
     expect(text).toContain('No fiscal year found for this year.');
-    expect(text).not.toContain('Month');
+    expect(text).not.toContain('Month 01');
   });
 
   it('creates a fiscal year from a dialog and selects it after success', async () => {
@@ -363,31 +450,136 @@ describe('FiscalYearPage', () => {
     );
   });
 
-  it('locks and unlocks periods through confirmation dialogs', async () => {
+  it('replaces the preparation placeholder with a functional closing assistant', async () => {
+    loadCurrentYear(fixture);
+    flushFiscalYearDetails(httpMock, apiBaseUrl, currentYear, {}, 'OPEN', cleanClosingChecks(currentYear));
+    await settle(fixture);
+
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Closing assistant');
+    expect(text).toContain('Closing checks');
+    expect(text).toContain('Ready to close');
+    expect(text).toContain('Result');
+    expect(text).not.toContain('Close preparation');
+    expect(text).not.toContain('Preparation coming');
+    expect(text).not.toContain('ACCOUNTING.CLOSING');
+  });
+
+  it('shows the closing-check loading state while checks are loading', async () => {
+    loadCurrentYear(fixture);
+
+    httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear}`).flush({
+      data: {
+        year: currentYear,
+        fiscalYearId: `FY#${currentYear}`,
+        startDate: `${currentYear}-01-01`,
+        endDate: `${currentYear}-12-31`,
+        status: 'OPEN',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        periodLocks: {}
+      }
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Loading closing checks...');
+
+    flushClosingChecks(httpMock, apiBaseUrl, currentYear);
+    await settle(fixture);
+  });
+
+  it('renders blocking errors, warnings, summary metrics, and hides technical response fields', async () => {
+    loadCurrentYear(fixture);
+    flushFiscalYearDetails(
+      httpMock,
+      apiBaseUrl,
+      currentYear,
+      {},
+      'OPEN',
+      {
+        ...cleanClosingChecks(currentYear),
+        canClose: false,
+        errors: [
+          {
+            code: 'DRAFT_ENTRIES_REMAIN',
+            scope: 'ENTRY',
+            message: 'Two draft entries remain.',
+            entryId: 'ENTRY-1',
+            PK: 'ORG#hidden'
+          }
+        ],
+        warnings: [
+          {
+            code: 'UNLETTERED_AUXILIARY_LINES_REMAIN',
+            scope: 'AUXILIARY',
+            message: 'Supplier lines remain unlettered.',
+            accountId: '40100000',
+            entityType: 'TECHNICAL'
+          }
+        ],
+        summary: {
+          ...cleanClosingChecks(currentYear).summary,
+          draftEntriesCount: 2,
+          postedEntriesCount: 8,
+          unbalancedEntriesCount: 1,
+          trialBalanceDebit: 320000,
+          trialBalanceCredit: 319000,
+          unletteredAuxiliaryLinesCount: 3
+        }
+      }
+    );
+    await settle(fixture);
+
+    const text = fixture.nativeElement.textContent;
+
+    expect(text).toContain('Corrections required');
+    expect(text).toContain('Two draft entries remain.');
+    expect(text).toContain('Supplier lines remain unlettered.');
+    expect(text).toContain('Drafts');
+    expect(text).toContain('Posted entries');
+    expect(text).toContain('320,000');
+    expect(text).toContain('319,000');
+    expect(text).toContain('Unlettered lines');
+    expect(text).not.toContain('PK');
+    expect(text).not.toContain('SK');
+    expect(text).not.toContain('GSI');
+    expect(text).not.toContain('entityType');
+    expect(text).not.toContain('Zod');
+  });
+
+  it('locks open periods through confirmation and leaves closed periods read-only', async () => {
     loadCurrentYear(fixture);
     flushFiscalYearDetails(httpMock, apiBaseUrl, currentYear, { '01': 'LOCKED' });
     await settle(fixture);
 
+    expect(fixture.nativeElement.textContent).toContain('Closed');
+
     const component = fixture.componentInstance as unknown as {
       togglePeriod: (month: string) => void;
     };
+    component.togglePeriod('01');
+    fixture.detectChanges();
+
+    expect(TestBed.inject(MatDialog).openDialogs.length).toBe(0);
+    httpMock.expectNone(`${apiBaseUrl}/fiscal-year/${currentYear}/periods/1/close`);
+
     component.togglePeriod('02');
     fixture.detectChanges();
 
     expect(document.body.textContent).toContain('Lock this period?');
-    httpMock.expectNone(`${apiBaseUrl}/fiscal-year/${currentYear}/lock`);
+    httpMock.expectNone(`${apiBaseUrl}/fiscal-year/${currentYear}/periods/2/close`);
 
     const lockDialog = TestBed.inject(MatDialog).openDialogs[0].componentInstance as unknown as {
       confirm: () => void;
     };
     lockDialog.confirm();
     await waitForDialogClose();
-    const lockRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear}/lock`);
+    const lockRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear}/periods/2/close`);
 
     expect(lockRequest.request.body).toEqual({
       year: currentYear,
-      month: 2,
-      status: 'LOCKED'
+      month: 2
     });
     lockRequest.flush({
       message: 'Backend says period locked.',
@@ -398,10 +590,22 @@ describe('FiscalYearPage', () => {
       }
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    flushFiscalYearDetails(httpMock, apiBaseUrl, currentYear, {
-      '01': 'LOCKED',
-      '02': 'LOCKED'
+    httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear}`).flush({
+      data: {
+        year: currentYear,
+        fiscalYearId: `FY#${currentYear}`,
+        startDate: `${currentYear}-01-01`,
+        endDate: `${currentYear}-12-31`,
+        status: 'OPEN',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        periodLocks: {
+          '01': 'LOCKED',
+          '02': 'LOCKED'
+        }
+      }
     });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushClosingChecks(httpMock, apiBaseUrl, currentYear);
     await settle(fixture);
 
     expect(fixture.nativeElement.textContent).toContain('2');
@@ -410,59 +614,134 @@ describe('FiscalYearPage', () => {
       undefined,
       expect.objectContaining({ panelClass: 'success-notification-overlay' })
     );
+  });
 
-    component.togglePeriod('01');
+  it('keeps fiscal-year close disabled with blocking errors', async () => {
+    loadCurrentYear(fixture);
+    flushFiscalYearDetails(
+      httpMock,
+      apiBaseUrl,
+      currentYear,
+      {},
+      'OPEN',
+      {
+        ...cleanClosingChecks(currentYear),
+        canClose: false,
+        errors: [
+          {
+            code: 'TRIAL_BALANCE_NOT_BALANCED',
+            scope: 'TRIAL_BALANCE',
+            message: 'Trial balance is not balanced.'
+          }
+        ]
+      }
+    );
+    await settle(fixture);
+
+    const closeButton = findButton(fixture, 'Close fiscal year');
+
+    expect(closeButton?.disabled).toBe(true);
+    httpMock.expectNone(`${apiBaseUrl}/fiscal-year/${currentYear}/close`);
+  });
+
+  it('requires warning acknowledgment before closing and renders a success state', async () => {
+    loadCurrentYear(fixture);
+    flushFiscalYearDetails(
+      httpMock,
+      apiBaseUrl,
+      currentYear,
+      {},
+      'OPEN',
+      {
+        ...cleanClosingChecks(currentYear),
+        warnings: [
+          {
+            code: 'UNLETTERED_AUXILIARY_LINES_REMAIN',
+            scope: 'AUXILIARY',
+            message: 'Customer lines remain unlettered.'
+          }
+        ],
+        summary: {
+          ...cleanClosingChecks(currentYear).summary,
+          unletteredAuxiliaryLinesCount: 5
+        }
+      }
+    );
+    await settle(fixture);
+
+    const closeButton = findButton(fixture, 'Close fiscal year');
+
+    expect(closeButton?.disabled).toBe(false);
+    closeButton?.click();
     fixture.detectChanges();
 
-    expect(document.body.textContent).toContain('Unlock this period?');
-    httpMock.expectNone(`${apiBaseUrl}/fiscal-year/${currentYear}/unlock`);
+    expect(document.body.textContent).toContain('Confirm fiscal-year close');
+    expect(document.body.textContent).toContain('Warnings must be acknowledged.');
 
-    const unlockDialog = TestBed.inject(MatDialog).openDialogs[0].componentInstance as unknown as {
-      confirm: () => void;
-    };
-    unlockDialog.confirm();
+    const overlay = document.body.querySelector('.cdk-overlay-container') as HTMLElement;
+    const dialogButtonBeforeAcknowledge = Array.from<HTMLButtonElement>(overlay.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Close fiscal year')
+    );
+    expect(dialogButtonBeforeAcknowledge?.disabled).toBe(true);
+
+    const checkbox = overlay.querySelector('mat-checkbox input') as HTMLInputElement;
+    checkbox.click();
+    fixture.detectChanges();
+
+    const dialogButton = Array.from<HTMLButtonElement>(overlay.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Close fiscal year')
+    );
+    expect(dialogButton?.disabled).toBe(false);
+    dialogButton?.click();
     await waitForDialogClose();
-    const unlockRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear}/unlock`);
 
-    expect(unlockRequest.request.body).toEqual({
-      year: currentYear,
-      month: 1
+    const closeRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear}/close`);
+
+    expect(closeRequest.request.method).toBe('POST');
+    expect(closeRequest.request.body).toEqual({
+      year: String(currentYear),
+      confirmWarnings: true
     });
-    unlockRequest.flush({
-      message: 'Backend says period unlocked.',
+    closeRequest.flush({
+      message: 'Backend says fiscal year closed.',
       data: {
-        year: currentYear,
-        month: '01',
-        status: 'OPEN'
+        fiscalYear: {
+          year: currentYear,
+          fiscalYearId: `FY#${currentYear}`,
+          startDate: `${currentYear}-01-01`,
+          endDate: `${currentYear}-12-31`,
+          status: 'CLOSED',
+          accountingFramework: 'SYSCOHADA_REVISED'
+        },
+        checks: {
+          ...cleanClosingChecks(currentYear, 'CLOSED'),
+          canClose: true
+        }
       }
     });
     await new Promise((resolve) => setTimeout(resolve, 0));
-    flushFiscalYearDetails(httpMock, apiBaseUrl, currentYear, { '02': 'LOCKED' });
+    httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${currentYear}`).flush({
+      data: {
+        year: currentYear,
+        fiscalYearId: `FY#${currentYear}`,
+        startDate: `${currentYear}-01-01`,
+        endDate: `${currentYear}-12-31`,
+        status: 'CLOSED',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        periodLocks: {}
+      }
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    flushClosingChecks(httpMock, apiBaseUrl, currentYear, cleanClosingChecks(currentYear, 'CLOSED'));
     await settle(fixture);
 
-    expect(fixture.nativeElement.textContent).toContain('1');
+    expect(fixture.nativeElement.textContent).toContain(`Fiscal year ${currentYear} is closed.`);
+    expect(fixture.nativeElement.textContent).toContain('This fiscal year is closed.');
     expect(snackBarOpen).toHaveBeenCalledWith(
-      'Backend says period unlocked.',
+      'Backend says fiscal year closed.',
       undefined,
       expect.objectContaining({ panelClass: 'success-notification-overlay' })
     );
-  });
-
-  it('keeps final closing disabled as a preparation-only workflow', async () => {
-    loadCurrentYear(fixture);
-    flushFiscalYearDetails(httpMock, apiBaseUrl, currentYear, {});
-    await settle(fixture);
-
-    const text = fixture.nativeElement.textContent;
-    const disabledButtons = Array.from(
-      fixture.nativeElement.querySelectorAll('button[disabled]')
-    ) as HTMLButtonElement[];
-
-    expect(text).toContain('Close preparation');
-    expect(text).toContain('Preparation coming');
-    expect(disabledButtons.some((button) => button.textContent?.includes('Preparation coming'))).toBe(true);
-    httpMock.expectNone(`${apiBaseUrl}/fiscal-year/${currentYear}/close`);
-    expect(text).not.toContain('ACCOUNTING.FISCAL_YEAR');
   });
 });
 
@@ -484,6 +763,12 @@ function loadCurrentYear(fixture: ComponentFixture<FiscalYearPage>): void {
   fixture.detectChanges();
 }
 
+function findButton(fixture: ComponentFixture<FiscalYearPage>, label: string): HTMLButtonElement | undefined {
+  return Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find((button) =>
+    button.textContent?.includes(label)
+  );
+}
+
 async function waitForDialogClose(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 250));
 }
@@ -493,7 +778,8 @@ function flushFiscalYearDetails(
   apiBaseUrl: string,
   year: number,
   periodLocks: Record<string, 'LOCKED' | 'OPEN'>,
-  status: 'OPEN' | 'LOCKED' | 'CLOSED' | 'ARCHIVED' = 'OPEN'
+  status: 'OPEN' | 'LOCKED' | 'CLOSED' | 'ARCHIVED' = 'OPEN',
+  closingChecks: ClosingChecksFixture = cleanClosingChecks(year, status)
 ): void {
   httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${year}`).flush({
     data: {
@@ -505,5 +791,72 @@ function flushFiscalYearDetails(
       accountingFramework: 'SYSCOHADA_REVISED',
       periodLocks
     }
+  });
+  flushClosingChecks(httpMock, apiBaseUrl, year, closingChecks);
+}
+
+interface ClosingChecksFixture {
+  canClose: boolean;
+  errors: Array<Record<string, unknown>>;
+  warnings: Array<Record<string, unknown>>;
+  summary: {
+    fiscalYear: {
+      year: number;
+      fiscalYearId: string;
+      startDate: string;
+      endDate: string;
+      status: 'OPEN' | 'LOCKED' | 'CLOSED' | 'ARCHIVED';
+      accountingFramework: 'SYSCOHADA_REVISED' | 'SYCEBNL';
+      PK?: string;
+      SK?: string;
+      entityType?: string;
+    };
+    draftEntriesCount: number;
+    postedEntriesCount: number;
+    unbalancedEntriesCount: number;
+    trialBalanceDebit: number;
+    trialBalanceCredit: number;
+    unletteredAuxiliaryLinesCount?: number;
+  };
+}
+
+function cleanClosingChecks(
+  year: number,
+  status: 'OPEN' | 'LOCKED' | 'CLOSED' | 'ARCHIVED' = 'OPEN'
+): ClosingChecksFixture {
+  return {
+    canClose: status !== 'CLOSED',
+    errors: [],
+    warnings: [],
+    summary: {
+      fiscalYear: {
+        year,
+        fiscalYearId: `FY#${year}`,
+        startDate: `${year}-01-01`,
+        endDate: `${year}-12-31`,
+        status,
+        accountingFramework: 'SYSCOHADA_REVISED',
+        PK: 'ORG#technical',
+        SK: `FY#${year}`,
+        entityType: 'FISCAL_YEAR'
+      },
+      draftEntriesCount: 0,
+      postedEntriesCount: 4,
+      unbalancedEntriesCount: 0,
+      trialBalanceDebit: 250000,
+      trialBalanceCredit: 250000,
+      unletteredAuxiliaryLinesCount: 0
+    }
+  };
+}
+
+function flushClosingChecks(
+  httpMock: HttpTestingController,
+  apiBaseUrl: string,
+  year: number,
+  checks = cleanClosingChecks(year)
+): void {
+  httpMock.expectOne(`${apiBaseUrl}/fiscal-year/${year}/closing-checks`).flush({
+    data: checks
   });
 }

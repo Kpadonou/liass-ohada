@@ -1245,24 +1245,179 @@ describe('AccountingApi', () => {
     });
   });
 
-  it('closes fiscal years and loads income statement aggregates', async () => {
-    const closePromise = api.closeFiscalYear(2026);
+  it('loads closing checks, closes periods, closes fiscal years, and loads income statement aggregates', async () => {
+    const checksPromise = api.getClosingChecks(2026);
+    const checksRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/2026/closing-checks`);
+
+    expect(checksRequest.request.method).toBe('GET');
+    checksRequest.flush({
+      message: 'Contrôles récupérés.',
+      data: {
+        canClose: true,
+        errors: [],
+        warnings: [
+          {
+            code: 'UNLETTERED_AUXILIARY_LINES_REMAIN',
+            scope: 'AUXILIARY',
+            message: 'Des lignes auxiliaires restent non lettrées.',
+            accountId: '40100000',
+            PK: 'ORG#hidden',
+            entityType: 'TECHNICAL'
+          }
+        ],
+        summary: {
+          fiscalYear: {
+            year: 2026,
+            fiscalYearId: 'FY#2026',
+            startDate: '2026-01-01',
+            endDate: '2026-12-31',
+            status: 'OPEN',
+            accountingFramework: 'SYSCOHADA_REVISED',
+            PK: 'ORG#hidden',
+            SK: 'FY#2026',
+            entityType: 'FISCAL_YEAR'
+          },
+          draftEntriesCount: 0,
+          postedEntriesCount: 6,
+          unbalancedEntriesCount: 0,
+          trialBalanceDebit: 150000,
+          trialBalanceCredit: 150000,
+          unletteredAuxiliaryLinesCount: 2
+        }
+      }
+    });
+
+    await expect(checksPromise).resolves.toEqual({
+      canClose: true,
+      errors: [],
+      warnings: [
+        {
+          code: 'UNLETTERED_AUXILIARY_LINES_REMAIN',
+          scope: 'AUXILIARY',
+          message: 'Des lignes auxiliaires restent non lettrées.',
+          accountId: '40100000'
+        }
+      ],
+      summary: {
+        fiscalYear: {
+          year: 2026,
+          fiscalYearId: 'FY#2026',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          status: 'OPEN',
+          accountingFramework: 'SYSCOHADA_REVISED'
+        },
+        draftEntriesCount: 0,
+        postedEntriesCount: 6,
+        unbalancedEntriesCount: 0,
+        trialBalanceDebit: 150000,
+        trialBalanceCredit: 150000,
+        unletteredAuxiliaryLinesCount: 2
+      },
+      message: 'Contrôles récupérés.'
+    });
+
+    const periodPromise = api.closePeriod(2026, 2);
+    const periodRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/2026/periods/2/close`);
+
+    expect(periodRequest.request.method).toBe('POST');
+    expect(periodRequest.request.body).toEqual({
+      year: 2026,
+      month: 2
+    });
+    periodRequest.flush({
+      message: 'Période clôturée.',
+      data: {
+        year: 2026,
+        month: '02',
+        status: 'LOCKED',
+        PK: 'ORG#hidden',
+        entityType: 'PERIOD_LOCK'
+      }
+    });
+
+    await expect(periodPromise).resolves.toEqual({
+      data: {
+        year: 2026,
+        month: '02',
+        status: 'LOCKED'
+      },
+      message: 'Période clôturée.'
+    });
+
+    const closePromise = api.closeFiscalYear(2026, true);
     const closeRequest = httpMock.expectOne(`${apiBaseUrl}/fiscal-year/2026/close`);
 
     expect(closeRequest.request.method).toBe('POST');
-    expect(closeRequest.request.body).toEqual({ year: '2026' });
+    expect(closeRequest.request.body).toEqual({ year: '2026', confirmWarnings: true });
     closeRequest.flush({
+      message: 'Exercice clôturé.',
       data: {
-        entryId: 'E-CLOSE',
-        netResult: 120000,
-        isProfit: true
+        fiscalYear: {
+          year: 2026,
+          fiscalYearId: 'FY#2026',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          status: 'CLOSED',
+          accountingFramework: 'SYSCOHADA_REVISED',
+          SK: 'FY#2026'
+        },
+        checks: {
+          canClose: true,
+          errors: [],
+          warnings: [],
+          summary: {
+            fiscalYear: {
+              year: 2026,
+              fiscalYearId: 'FY#2026',
+              startDate: '2026-01-01',
+              endDate: '2026-12-31',
+              status: 'CLOSED',
+              accountingFramework: 'SYSCOHADA_REVISED',
+              GSI1PK: 'TECHNICAL'
+            },
+            draftEntriesCount: 0,
+            postedEntriesCount: 6,
+            unbalancedEntriesCount: 0,
+            trialBalanceDebit: 150000,
+            trialBalanceCredit: 150000
+          }
+        }
       }
     });
 
     await expect(closePromise).resolves.toEqual({
-      entryId: 'E-CLOSE',
-      netResult: 120000,
-      isProfit: true
+      data: {
+        fiscalYear: {
+          year: 2026,
+          fiscalYearId: 'FY#2026',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          status: 'CLOSED',
+          accountingFramework: 'SYSCOHADA_REVISED'
+        },
+        checks: {
+          canClose: true,
+          errors: [],
+          warnings: [],
+          summary: {
+            fiscalYear: {
+              year: 2026,
+              fiscalYearId: 'FY#2026',
+              startDate: '2026-01-01',
+              endDate: '2026-12-31',
+              status: 'CLOSED',
+              accountingFramework: 'SYSCOHADA_REVISED'
+            },
+            draftEntriesCount: 0,
+            postedEntriesCount: 6,
+            unbalancedEntriesCount: 0,
+            trialBalanceDebit: 150000,
+            trialBalanceCredit: 150000
+          }
+        }
+      },
+      message: 'Exercice clôturé.'
     });
 
     const statementPromise = api.getIncomeStatement(2026);

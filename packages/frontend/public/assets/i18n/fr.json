@@ -1447,6 +1447,7 @@
         "DESCRIPTION": "Pilotez les périodes mensuelles utilisées par la saisie et le lettrage.",
         "MONTH_PREFIX": "Mois",
         "NO_SELECTION": "Chargez ou créez un exercice fiscal pour afficher les verrous de période.",
+        "READ_ONLY_CLOSED": "Clôturée",
         "TITLE": "Verrous de période"
       },
       "PERIOD_CONFIRM": {
@@ -1475,6 +1476,88 @@
         "TITLE": "Statut de l’exercice"
       },
       "TITLE": "Exercices fiscaux"
+    },
+    "CLOSING": {
+      "ACTIONS": {
+        "CLOSE_YEAR": "Clôturer l’exercice"
+      },
+      "CHECKS": {
+        "ERRORS_TITLE": "Corrections requises",
+        "TITLE": "Contrôles de clôture",
+        "WARNINGS_TITLE": "Avertissements à examiner"
+      },
+      "CONFIRMATION": {
+        "ACKNOWLEDGE_WARNINGS": "J’ai examiné les avertissements et je confirme la clôture.",
+        "COPY": "La clôture verrouillera l’exercice. Les écritures comptabilisées resteront consultables, mais aucune nouvelle publication ne sera possible sur cet exercice.",
+        "DIALOG_TITLE": "Confirmer la clôture de l’exercice",
+        "EYEBROW": "Confirmation",
+        "TITLE": "Confirmation",
+        "WARNINGS_REQUIRED": "Des avertissements sont présents : ils devront être reconnus dans la confirmation."
+      },
+      "DESCRIPTION": "Revoyez les contrôles, les périodes et la confirmation avant de verrouiller l’exercice.",
+      "ERRORS": {
+        "CLOSE_FAILED": "L’exercice n’a pas pu être clôturé."
+      },
+      "ISSUES": {
+        "ACCOUNT_AUXILIARY_CONFIGURATION_INVALID": "La configuration auxiliaire d’un compte doit être corrigée.",
+        "ACCOUNT_INACTIVE": "Un compte utilisé par les écritures comptabilisées est inactif.",
+        "ACCOUNT_NOT_FOUND": "Un compte utilisé par les écritures comptabilisées est introuvable.",
+        "AUXILIARY_THIRD_PARTY_REQUIRED": "Une ligne auxiliaire comptabilisée doit renseigner le tiers et son type.",
+        "AUXILIARY_THIRD_PARTY_TYPE_MISMATCH": "Le type de tiers ne correspond pas au compte auxiliaire.",
+        "DRAFT_ENTRIES_REMAIN": "Des écritures brouillon restent à traiter sur l’exercice.",
+        "ENTRY_NOT_BALANCED": "Une écriture de l’exercice n’est pas équilibrée.",
+        "FISCAL_YEAR_NOT_OPEN": "L’exercice doit être ouvert pour être clôturé.",
+        "GENERIC": "Un contrôle de clôture doit être examiné.",
+        "JOURNAL_NOT_FOUND": "Un journal utilisé par une écriture comptabilisée est introuvable.",
+        "META": {
+          "ACCOUNT": "Compte {{accountId}}",
+          "ENTRY": "Écriture {{entryId}}",
+          "JOURNAL": "Journal {{journalCode}}",
+          "LINE": "Ligne {{lineId}}",
+          "THIRD_PARTY": "Tiers {{thirdPartyId}}"
+        },
+        "TRIAL_BALANCE_NOT_BALANCED": "La balance de vérification n’est pas équilibrée.",
+        "UNLETTERED_AUXILIARY_LINES_REMAIN": "Des lignes clients ou fournisseurs restent non lettrées.",
+        "UNPOSTED_ENTRY_INCLUDED_IN_BOOKS": "Une écriture non comptabilisée apparaît dans les livres."
+      },
+      "NOTIFICATIONS": {
+        "YEAR_CLOSED": "Exercice clôturé avec succès."
+      },
+      "PERIODS": {
+        "CLOSED_COUNT": "{{count}} clôturées",
+        "DESCRIPTION": "Les cartes mensuelles ci-dessus restent la référence pour fermer une période ouverte.",
+        "OPEN_COUNT": "{{count}} ouvertes",
+        "TITLE": "Périodes"
+      },
+      "RESULT": {
+        "IDLE": "Le résultat de clôture apparaîtra ici après confirmation.",
+        "SUCCESS": "L’exercice {{year}} est clôturé. Les écritures restent consultables en lecture.",
+        "TITLE": "Résultat"
+      },
+      "STATES": {
+        "ALREADY_CLOSED": "Cet exercice est clôturé.",
+        "CHECKS_UNAVAILABLE": "Les contrôles de clôture n’ont pas pu être chargés.",
+        "CLOSED": "Cet exercice est clôturé.",
+        "LOADING": "Chargement des contrôles de clôture…",
+        "NO_SELECTION": "Aucun exercice sélectionné."
+      },
+      "STATUS": {
+        "BLOCKED": "Corrections requises",
+        "CLOSED": "Exercice clôturé",
+        "READY": "Prêt pour clôture",
+        "UNAVAILABLE": "Contrôles indisponibles",
+        "WARNINGS": "Avertissements à examiner"
+      },
+      "SUMMARY": {
+        "DRAFT_ENTRIES": "Brouillons",
+        "FISCAL_YEAR": "Exercice",
+        "POSTED_ENTRIES": "Écritures comptabilisées",
+        "TRIAL_BALANCE_CREDIT": "Total crédit",
+        "TRIAL_BALANCE_DEBIT": "Total débit",
+        "UNBALANCED_ENTRIES": "Écritures déséquilibrées",
+        "UNLETTERED_LINES": "Lignes non lettrées"
+      },
+      "TITLE": "Assistant de clôture"
     },
     "GENERAL_LEDGER": {
       "ACTIONS": {

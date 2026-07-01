@@ -1,12 +1,14 @@
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import {
   type FiscalYearDto,
-  type FiscalYearDetailsDto
+  type FiscalYearDetailsDto,
+  type ClosingIssueDto
 } from '@liass-ohada/shared/accounting';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
@@ -33,8 +35,12 @@ interface CreateFiscalYearDialogData {
 }
 
 interface PeriodConfirmationDialogData {
-  action: 'LOCK' | 'UNLOCK';
   monthLabelKey: string;
+}
+
+interface FiscalYearCloseConfirmationDialogData {
+  fiscalYear: FiscalYearDetailsDto;
+  hasWarnings: boolean;
 }
 
 @Component({
@@ -166,19 +172,14 @@ export class CreateFiscalYearDialogComponent {
     <header class="px-6 pt-6">
       <div class="flex items-start gap-3">
         <span class="inline-flex size-10 items-center justify-center rounded-app-control bg-amber-50 text-amber-700 dark:bg-amber-950/35 dark:text-amber-200">
-          <mat-icon>{{ data.action === 'LOCK' ? 'lock' : 'lock_open' }}</mat-icon>
+          <mat-icon>lock</mat-icon>
         </span>
         <div>
           <p class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 dark:text-amber-200">
             {{ 'ACCOUNTING.FISCAL_YEAR.PERIOD_CONFIRM.EYEBROW' | transloco }}
           </p>
           <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
-            {{
-              (data.action === 'LOCK'
-                ? 'ACCOUNTING.FISCAL_YEAR.PERIOD_CONFIRM.LOCK_TITLE'
-                : 'ACCOUNTING.FISCAL_YEAR.PERIOD_CONFIRM.UNLOCK_TITLE'
-              ) | transloco
-            }}
+            {{ 'ACCOUNTING.FISCAL_YEAR.PERIOD_CONFIRM.LOCK_TITLE' | transloco }}
           </h2>
         </div>
       </div>
@@ -186,12 +187,7 @@ export class CreateFiscalYearDialogComponent {
 
     <mat-dialog-content class="px-6 pb-0 pt-5">
       <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">
-        {{
-          (data.action === 'LOCK'
-            ? 'ACCOUNTING.FISCAL_YEAR.PERIOD_CONFIRM.LOCK_DESCRIPTION'
-            : 'ACCOUNTING.FISCAL_YEAR.PERIOD_CONFIRM.UNLOCK_DESCRIPTION'
-          ) | transloco
-        }}
+        {{ 'ACCOUNTING.FISCAL_YEAR.PERIOD_CONFIRM.LOCK_DESCRIPTION' | transloco }}
       </p>
       <p class="mt-3 rounded-app-card border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
         {{ data.monthLabelKey | transloco }}
@@ -202,13 +198,8 @@ export class CreateFiscalYearDialogComponent {
       <liass-button variant="outline" tone="neutral" (pressed)="cancel()">
         {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
       </liass-button>
-      <liass-button variant="solid" tone="warning" [icon]="data.action === 'LOCK' ? 'lock' : 'lock_open'" (pressed)="confirm()">
-        {{
-          (data.action === 'LOCK'
-            ? 'ACCOUNTING.FISCAL_YEAR.ACTIONS.LOCK'
-            : 'ACCOUNTING.FISCAL_YEAR.ACTIONS.UNLOCK'
-          ) | transloco
-        }}
+      <liass-button variant="solid" tone="warning" icon="lock" (pressed)="confirm()">
+        {{ 'ACCOUNTING.FISCAL_YEAR.ACTIONS.LOCK' | transloco }}
       </liass-button>
     </mat-dialog-actions>
   `
@@ -229,6 +220,87 @@ export class PeriodConfirmationDialogComponent {
 }
 
 @Component({
+  selector: 'liass-fiscal-year-close-confirmation-dialog',
+  imports: [
+    LiassButtonComponent,
+    MatCheckboxModule,
+    MatDialogModule,
+    MatIconModule,
+    TranslocoModule
+  ],
+  template: `
+    <header class="px-6 pt-6">
+      <div class="flex items-start gap-3">
+        <span class="inline-flex size-10 items-center justify-center rounded-app-control bg-danger-50 text-danger-600 dark:bg-rose-950/35 dark:text-rose-300">
+          <mat-icon>lock</mat-icon>
+        </span>
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-danger-600 dark:text-rose-300">
+            {{ 'ACCOUNTING.CLOSING.CONFIRMATION.EYEBROW' | transloco }}
+          </p>
+          <h2 mat-dialog-title class="m-0 mt-2 p-0 text-2xl font-semibold text-slate-950 dark:text-white">
+            {{ 'ACCOUNTING.CLOSING.CONFIRMATION.DIALOG_TITLE' | transloco }}
+          </h2>
+        </div>
+      </div>
+    </header>
+
+    <mat-dialog-content class="px-6 pb-0 pt-5">
+      <p class="text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {{ 'ACCOUNTING.CLOSING.CONFIRMATION.COPY' | transloco }}
+      </p>
+      <p class="mt-3 rounded-app-card border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
+        {{ 'ACCOUNTING.CLOSING.SUMMARY.FISCAL_YEAR' | transloco }} {{ data.fiscalYear.year }}
+      </p>
+
+      @if (data.hasWarnings) {
+        <mat-checkbox
+          class="mt-4 block text-sm text-slate-700 dark:text-slate-200"
+          [checked]="warningsAcknowledged()"
+          (change)="warningsAcknowledged.set($event.checked)"
+        >
+          {{ 'ACCOUNTING.CLOSING.CONFIRMATION.ACKNOWLEDGE_WARNINGS' | transloco }}
+        </mat-checkbox>
+      }
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end" class="gap-3 px-6 pb-6 pt-5">
+      <liass-button variant="outline" tone="neutral" (pressed)="cancel()">
+        {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+      </liass-button>
+      <liass-button
+        variant="solid"
+        tone="danger"
+        icon="lock"
+        [disabled]="data.hasWarnings && !warningsAcknowledged()"
+        (pressed)="confirm()"
+      >
+        {{ 'ACCOUNTING.CLOSING.ACTIONS.CLOSE_YEAR' | transloco }}
+      </liass-button>
+    </mat-dialog-actions>
+  `
+})
+export class FiscalYearCloseConfirmationDialogComponent {
+  protected readonly data = inject<FiscalYearCloseConfirmationDialogData>(MAT_DIALOG_DATA);
+  private readonly dialogRef = inject<MatDialogRef<FiscalYearCloseConfirmationDialogComponent, boolean>>(
+    MatDialogRef
+  );
+  protected readonly warningsAcknowledged = signal(false);
+
+  protected cancel(): void {
+    this.dialogRef.close(false);
+  }
+
+  protected confirm(): void {
+    if (this.data.hasWarnings && !this.warningsAcknowledged()) {
+      return;
+    }
+
+    this.dialogRef.close(true);
+  }
+}
+
+@Component({
   selector: 'liass-fiscal-year-page',
   imports: [
     LiassButtonComponent,
@@ -236,8 +308,10 @@ export class PeriodConfirmationDialogComponent {
     LiassPageHeaderComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
+    MatCheckboxModule,
     MatDialogModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     ReactiveFormsModule,
     TranslocoModule
@@ -254,6 +328,9 @@ export class FiscalYearPage {
   private readonly transloco = inject(TranslocoService);
 
   protected readonly currentYear = new Date().getFullYear();
+  protected readonly closeErrorMessage = signal<string | null>(null);
+  protected readonly closeResult = signal<FiscalYearDto | null>(null);
+  protected readonly closingFiscalYear = signal(false);
   protected readonly requestedYear = signal<number | null>(null);
   protected readonly pendingPeriod = signal<string | null>(null);
   protected readonly errorKey = signal<string | null>(null);
@@ -281,12 +358,57 @@ export class FiscalYearPage {
       this.requestedYear() !== null
     )
   );
+  protected readonly closingChecksQuery = injectQuery(() =>
+    this.accountingQueries.closingChecks(
+      this.requestedYear() ?? '',
+      this.requestedYear() !== null
+    )
+  );
 
   protected readonly details = computed(() => this.fiscalYearQuery.data() ?? null);
+  protected readonly closingChecks = computed(() => this.closingChecksQuery.data() ?? null);
   protected readonly lockedPeriodsCount = computed(() =>
     this.periods.filter((period) => this.periodStatus(period.month) === 'LOCKED').length
   );
   protected readonly openPeriodsCount = computed(() => 12 - this.lockedPeriodsCount());
+  protected readonly readinessTone = computed<LiassStatusTone>(() => {
+    const details = this.details();
+    const checks = this.closingChecks();
+
+    if (details?.status === 'CLOSED') {
+      return 'neutral';
+    }
+
+    if (!checks) {
+      return 'neutral';
+    }
+
+    if (!checks.canClose) {
+      return 'danger';
+    }
+
+    return checks.warnings.length > 0 ? 'warning' : 'success';
+  });
+  protected readonly readinessLabelKey = computed(() => {
+    const details = this.details();
+    const checks = this.closingChecks();
+
+    if (details?.status === 'CLOSED') {
+      return 'ACCOUNTING.CLOSING.STATUS.CLOSED';
+    }
+
+    if (!checks) {
+      return 'ACCOUNTING.CLOSING.STATUS.UNAVAILABLE';
+    }
+
+    if (!checks.canClose) {
+      return 'ACCOUNTING.CLOSING.STATUS.BLOCKED';
+    }
+
+    return checks.warnings.length > 0
+      ? 'ACCOUNTING.CLOSING.STATUS.WARNINGS'
+      : 'ACCOUNTING.CLOSING.STATUS.READY';
+  });
 
   constructor() {
     effect(() => {
@@ -295,6 +417,14 @@ export class FiscalYearPage {
       if (details) {
         untracked(() => this.fiscalYearContext.selectFiscalYear(details));
       }
+    });
+
+    effect(() => {
+      this.requestedYear();
+      untracked(() => {
+        this.closeErrorMessage.set(null);
+        this.closeResult.set(null);
+      });
     });
   }
 
@@ -363,13 +493,14 @@ export class FiscalYearPage {
     }
 
     const period = this.periods.find((candidate) => candidate.month === month);
-    const action = this.periodStatus(month) === 'LOCKED' ? 'UNLOCK' : 'LOCK';
+    if (this.periodStatus(month) === 'LOCKED') {
+      return;
+    }
 
     this.dialog
       .open(PeriodConfirmationDialogComponent, {
         autoFocus: 'first-tabbable',
         data: {
-          action,
           monthLabelKey: period?.labelKey ?? `ACCOUNTING.FISCAL_YEAR.MONTHS.${month}`
         },
         maxWidth: 'calc(100vw - 32px)',
@@ -386,9 +517,95 @@ export class FiscalYearPage {
       });
   }
 
-  protected closingPreparationDisabled(): boolean {
-    // TODO(accounting): enable final close only after OHADA annual close controls and statements are modeled end-to-end.
-    return true;
+  protected canCloseFiscalYear(): boolean {
+    const details = this.details();
+    const checks = this.closingChecks();
+
+    return !!details && details.status !== 'CLOSED' && !!checks?.canClose && !this.closingFiscalYear();
+  }
+
+  protected issueText(issue: ClosingIssueDto): string {
+    return issue.message?.trim() || this.transloco.translate(this.issueLabelKey(issue.code));
+  }
+
+  protected issueMeta(issue: ClosingIssueDto): string {
+    const parts = [
+      issue.entryId ? this.transloco.translate('ACCOUNTING.CLOSING.ISSUES.META.ENTRY', { entryId: issue.entryId }) : null,
+      issue.lineId ? this.transloco.translate('ACCOUNTING.CLOSING.ISSUES.META.LINE', { lineId: issue.lineId }) : null,
+      issue.accountId
+        ? this.transloco.translate('ACCOUNTING.CLOSING.ISSUES.META.ACCOUNT', { accountId: issue.accountId })
+        : null,
+      issue.journalCode
+        ? this.transloco.translate('ACCOUNTING.CLOSING.ISSUES.META.JOURNAL', { journalCode: issue.journalCode })
+        : null,
+      issue.thirdPartyId
+        ? this.transloco.translate('ACCOUNTING.CLOSING.ISSUES.META.THIRD_PARTY', { thirdPartyId: issue.thirdPartyId })
+        : null
+    ].filter((part): part is string => !!part);
+
+    return parts.join(' · ');
+  }
+
+  protected formatAmount(value: number): string {
+    const locale = this.transloco.getActiveLang() === 'en' ? 'en-US' : 'fr-FR';
+
+    return new Intl.NumberFormat(locale).format(value);
+  }
+
+  protected async confirmCloseFiscalYear(): Promise<void> {
+    const details = this.details();
+    const checks = this.closingChecks();
+
+    if (!details || !checks?.canClose || this.closingFiscalYear() || details.status === 'CLOSED') {
+      return;
+    }
+
+    const confirmed = await new Promise<boolean>((resolve) => {
+      this.dialog
+        .open(FiscalYearCloseConfirmationDialogComponent, {
+          autoFocus: 'first-tabbable',
+          data: {
+            fiscalYear: details,
+            hasWarnings: checks.warnings.length > 0
+          },
+          disableClose: true,
+          maxWidth: 'calc(100vw - 32px)',
+          panelClass: 'liass-dialog-panel',
+          restoreFocus: true,
+          width: '560px'
+        })
+        .afterClosed()
+        .pipe(take(1))
+        .subscribe((result) => resolve(result === true));
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.closingFiscalYear.set(true);
+    this.closeErrorMessage.set(null);
+    this.closeResult.set(null);
+
+    try {
+      const result = await this.accountingApi.closeFiscalYear(details.year, checks.warnings.length > 0);
+
+      this.closeResult.set(result.data.fiscalYear);
+      this.fiscalYearContext.selectFiscalYear(result.data.fiscalYear);
+      this.notification.success(
+        result.message ?? this.transloco.translate('ACCOUNTING.CLOSING.NOTIFICATIONS.YEAR_CLOSED')
+      );
+      await this.fiscalYearQuery.refetch();
+      await this.closingChecksQuery.refetch();
+    } catch (error) {
+      const fallback = this.transloco.translate('ACCOUNTING.CLOSING.ERRORS.CLOSE_FAILED');
+      const message = safeMessageFromError(error) ?? fallback;
+
+      this.closeErrorMessage.set(message);
+      this.notification.error(message);
+    } finally {
+      this.closingFiscalYear.set(false);
+    }
   }
 
   private async applyPeriodUpdate(month: string): Promise<void> {
@@ -403,16 +620,12 @@ export class FiscalYearPage {
 
     try {
       const monthNumber = Number(month);
-      const wasLocked = this.periodStatus(month) === 'LOCKED';
-      const result = wasLocked
-        ? await this.accountingApi.unlockPeriod(details.year, monthNumber)
-        : await this.accountingApi.lockPeriod(details.year, monthNumber);
-      const fallbackKey = wasLocked
-        ? 'ACCOUNTING.NOTIFICATIONS.PERIOD_UNLOCKED'
-        : 'ACCOUNTING.NOTIFICATIONS.PERIOD_LOCKED';
+      const result = await this.accountingApi.closePeriod(details.year, monthNumber);
+      const fallbackKey = 'ACCOUNTING.NOTIFICATIONS.PERIOD_LOCKED';
 
       this.notification.success(result.message ?? this.transloco.translate(fallbackKey));
-      void this.fiscalYearQuery.refetch();
+      await this.fiscalYearQuery.refetch();
+      await this.closingChecksQuery.refetch();
     } catch (error) {
       const fallbackKey = 'ACCOUNTING.FISCAL_YEAR.ERRORS.PERIOD_UPDATE_FAILED';
 
@@ -421,5 +634,24 @@ export class FiscalYearPage {
     } finally {
       this.pendingPeriod.set(null);
     }
+  }
+
+  private issueLabelKey(code: string): string {
+    const labels: Record<string, string> = {
+      ACCOUNT_AUXILIARY_CONFIGURATION_INVALID: 'ACCOUNTING.CLOSING.ISSUES.ACCOUNT_AUXILIARY_CONFIGURATION_INVALID',
+      ACCOUNT_INACTIVE: 'ACCOUNTING.CLOSING.ISSUES.ACCOUNT_INACTIVE',
+      ACCOUNT_NOT_FOUND: 'ACCOUNTING.CLOSING.ISSUES.ACCOUNT_NOT_FOUND',
+      AUXILIARY_THIRD_PARTY_REQUIRED: 'ACCOUNTING.CLOSING.ISSUES.AUXILIARY_THIRD_PARTY_REQUIRED',
+      AUXILIARY_THIRD_PARTY_TYPE_MISMATCH: 'ACCOUNTING.CLOSING.ISSUES.AUXILIARY_THIRD_PARTY_TYPE_MISMATCH',
+      DRAFT_ENTRIES_REMAIN: 'ACCOUNTING.CLOSING.ISSUES.DRAFT_ENTRIES_REMAIN',
+      ENTRY_NOT_BALANCED: 'ACCOUNTING.CLOSING.ISSUES.ENTRY_NOT_BALANCED',
+      FISCAL_YEAR_NOT_OPEN: 'ACCOUNTING.CLOSING.ISSUES.FISCAL_YEAR_NOT_OPEN',
+      JOURNAL_NOT_FOUND: 'ACCOUNTING.CLOSING.ISSUES.JOURNAL_NOT_FOUND',
+      TRIAL_BALANCE_NOT_BALANCED: 'ACCOUNTING.CLOSING.ISSUES.TRIAL_BALANCE_NOT_BALANCED',
+      UNLETTERED_AUXILIARY_LINES_REMAIN: 'ACCOUNTING.CLOSING.ISSUES.UNLETTERED_AUXILIARY_LINES_REMAIN',
+      UNPOSTED_ENTRY_INCLUDED_IN_BOOKS: 'ACCOUNTING.CLOSING.ISSUES.UNPOSTED_ENTRY_INCLUDED_IN_BOOKS'
+    };
+
+    return labels[code] ?? 'ACCOUNTING.CLOSING.ISSUES.GENERIC';
   }
 }
