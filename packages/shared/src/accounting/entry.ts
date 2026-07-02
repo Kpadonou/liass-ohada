@@ -665,6 +665,122 @@ export const IncomeStatementResponseSchema = z.object({
   data: IncomeStatementDtoSchema,
 });
 
+const BooleanQuerySchema = z
+  .preprocess(
+    (value) => {
+      if (value === "true") return true;
+      if (value === "false") return false;
+      return value;
+    },
+    z.boolean(),
+  )
+  .default(true);
+
+export const SimplifiedReportQuerySchema = z
+  .object({
+    fiscalYear: z.string().regex(/^\d{4}$/),
+    startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+    includeAuxiliary: BooleanQuerySchema,
+    includeClosingChecks: BooleanQuerySchema,
+  })
+  .superRefine((query, context) => {
+    if (query.startDate && !query.startDate.startsWith(`${query.fiscalYear}-`)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Start date must belong to the fiscal year",
+        path: ["startDate"],
+      });
+    }
+
+    if (query.endDate && !query.endDate.startsWith(`${query.fiscalYear}-`)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "End date must belong to the fiscal year",
+        path: ["endDate"],
+      });
+    }
+
+    if (query.startDate && query.endDate && query.startDate > query.endDate) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Start date must not be after end date",
+        path: ["endDate"],
+      });
+    }
+  });
+
+export type SimplifiedReportQuery = z.infer<typeof SimplifiedReportQuerySchema>;
+
+export const SimplifiedReportPeriodDtoSchema = z.object({
+  fiscalYear: z.string().regex(/^\d{4}$/),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  generatedAt: z.string(),
+});
+
+export const SimplifiedReportTrialBalanceDtoSchema = z.object({
+  totalDebit: z.number().int().nonnegative(),
+  totalCredit: z.number().int().nonnegative(),
+  isBalanced: z.boolean(),
+  accountCount: z.number().int().nonnegative().optional(),
+  movementCount: z.number().int().nonnegative().optional(),
+});
+
+export const SimplifiedReportIncomeAccountDtoSchema = z.object({
+  accountId: z.string().regex(/^\d{8}$/),
+  totalDebit: z.number().int().nonnegative(),
+  totalCredit: z.number().int().nonnegative(),
+  netAmount: z.number().int(),
+});
+
+export const SimplifiedReportIncomeDtoSchema = z.object({
+  totalRevenue: z.number().int(),
+  totalExpense: z.number().int(),
+  netResult: z.number().int(),
+  revenueAccounts: z.array(SimplifiedReportIncomeAccountDtoSchema).optional(),
+  expenseAccounts: z.array(SimplifiedReportIncomeAccountDtoSchema).optional(),
+});
+
+export const SimplifiedReportAuxiliaryExposureDtoSchema = z.object({
+  accountIds: z.array(z.string().regex(/^\d{8}$/)),
+  totalDebit: z.number().int().nonnegative(),
+  totalCredit: z.number().int().nonnegative(),
+  totalBalanceDebit: z.number().int().nonnegative(),
+  totalBalanceCredit: z.number().int().nonnegative(),
+  unletteredAmount: z.number().int().nonnegative().optional(),
+  thirdPartyCount: z.number().int().nonnegative().optional(),
+});
+
+export const SimplifiedReportAuxiliaryDtoSchema = z.object({
+  customers: SimplifiedReportAuxiliaryExposureDtoSchema.optional(),
+  suppliers: SimplifiedReportAuxiliaryExposureDtoSchema.optional(),
+});
+
+export const SimplifiedReportClosingReadinessDtoSchema = z.object({
+  canClose: z.boolean(),
+  errorsCount: z.number().int().nonnegative(),
+  warningsCount: z.number().int().nonnegative(),
+  draftEntriesCount: z.number().int().nonnegative().optional(),
+  unbalancedEntriesCount: z.number().int().nonnegative().optional(),
+  unletteredAuxiliaryLinesCount: z.number().int().nonnegative().optional(),
+});
+
+export const SimplifiedReportDtoSchema = z.object({
+  period: SimplifiedReportPeriodDtoSchema,
+  trialBalance: SimplifiedReportTrialBalanceDtoSchema,
+  income: SimplifiedReportIncomeDtoSchema,
+  auxiliary: SimplifiedReportAuxiliaryDtoSchema.optional(),
+  closingReadiness: SimplifiedReportClosingReadinessDtoSchema.optional(),
+});
+
+export type SimplifiedReportDto = z.infer<typeof SimplifiedReportDtoSchema>;
+
+export const SimplifiedReportResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: SimplifiedReportDtoSchema,
+});
+
 export const ThirdPartyLedgerQuerySchema = z.object({
   fiscalYear: z.string().regex(/^\d{4}$/),
   accountId: z.string().regex(/^\d{2,8}$/),
