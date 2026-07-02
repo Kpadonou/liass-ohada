@@ -154,16 +154,25 @@ describe('routes', () => {
     );
   });
 
-  it('registers the accounting overview route', async () => {
+  it('registers the accounting overview route with the simplified reporting content', async () => {
     const overviewRoute = accountingChild('');
     const component = await overviewRoute?.loadComponent?.();
-    const { AccountingOverviewPage } = await import(
-      '../../domains/accounting/feature/accounting-overview/accounting-overview.page'
+    const { SimplifiedReportingPage } = await import(
+      '../../domains/accounting/feature/simplified-reporting/simplified-reporting.page'
     );
 
-    expect(component).toBe(AccountingOverviewPage);
+    expect(component).toBe(SimplifiedReportingPage);
     expect(overviewRoute?.data?.['titleKey']).toBe('ACCOUNTING.PAGES.OVERVIEW.TITLE');
+    expect(overviewRoute?.data?.['subtitleKey']).toBe('ACCOUNTING.PAGES.OVERVIEW.SUBTITLE');
     expect(overviewRoute?.pathMatch).toBe('full');
+  });
+
+  it('keeps the old simplified reporting URL as an alias to the accounting overview', () => {
+    const simplifiedReportingRoute = accountingChild('reports/simplified');
+
+    expect(simplifiedReportingRoute?.redirectTo).toBe('/accounting');
+    expect(simplifiedReportingRoute?.pathMatch).toBe('full');
+    expect(simplifiedReportingRoute?.loadComponent).toBeUndefined();
   });
 
   it('registers the accounting accounts route and keeps the historical chart route as an alias', async () => {
@@ -229,6 +238,7 @@ describe('routes', () => {
         'trial-balance'
       ])
     );
+    expect(accountingChild('reports/simplified')?.redirectTo).toBe('/accounting');
     expect(route?.children?.some((childRoute) => childRoute.path?.startsWith('accounting/'))).toBe(false);
   });
 

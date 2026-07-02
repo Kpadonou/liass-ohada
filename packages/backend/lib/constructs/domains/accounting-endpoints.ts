@@ -1,3 +1,4 @@
+import * as cdk from "aws-cdk-lib";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { Construct } from "constructs";
 import * as path from "path";
@@ -26,6 +27,7 @@ export class AccountingEndpoints extends DomainConstructFactory {
       routePath: string,
       handlerPath: string,
       actionName?: string,
+      runtimeOptions?: { memorySize?: number; timeout?: cdk.Duration },
     ) => {
       const entry = resolveHandlerEntry("accounting", handlerPath);
       this.addRoute({
@@ -35,10 +37,13 @@ export class AccountingEndpoints extends DomainConstructFactory {
         domainName: "accounting",
         handlerEntry: entry,
         idPrefix: "Accounting-",
+        lambdaRole: props.lambdaRole,
+        memorySize: runtimeOptions?.memorySize,
         method,
         routePath,
         stage: props.stage,
         table: props.table,
+        timeout: runtimeOptions?.timeout,
       });
     };
 
@@ -157,6 +162,8 @@ export class AccountingEndpoints extends DomainConstructFactory {
       apigw.HttpMethod.GET,
       "/reports/simplified",
       "reports/get-simplified-report",
+      undefined,
+      { memorySize: 512, timeout: cdk.Duration.seconds(15) },
     );
 
     // Fiscal Year

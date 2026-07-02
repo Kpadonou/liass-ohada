@@ -73,7 +73,7 @@
       "TRIAL_BALANCE": "Trial balance"
     },
     "PAGES": {
-      "ACCOUNTING_OVERVIEW": "Accounting",
+      "ACCOUNTING_OVERVIEW": "Overview",
       "ADMINISTRATION": "Administration",
       "CABINET_COLLABORATORS": "Collaborators",
       "CABINET_DASHBOARD": "Cabinet dashboard",
@@ -613,8 +613,8 @@
   "ACCOUNTING": {
     "PAGES": {
       "OVERVIEW": {
-        "SUBTITLE": "Accounting lot 1 entry point.",
-        "TITLE": "Accounting"
+        "SUBTITLE": "Track the key accounting indicators for the active fiscal year.",
+        "TITLE": "Overview"
       },
       "CHART_OF_ACCOUNTS": {
         "SUBTITLE": "A reserved workspace for chart-of-accounts controls.",
@@ -659,6 +659,10 @@
       "TRIAL_BALANCE": {
         "SUBTITLE": "A reserved workspace for balance review.",
         "TITLE": "Trial balance"
+      },
+      "SIMPLIFIED_REPORTING": {
+        "SUBTITLE": "Track the key accounting indicators for the active fiscal year.",
+        "TITLE": "Overview"
       }
     },
     "ERRORS": {
@@ -682,6 +686,87 @@
       "JOURNAL_UPDATED": "Journal updated successfully.",
       "PERIOD_LOCKED": "Period locked.",
       "PERIOD_UNLOCKED": "Period unlocked."
+    },
+    "SIMPLIFIED_REPORTING": {
+      "ACTIONS": {
+        "CHOOSE_FISCAL_YEAR": "Choose fiscal year",
+        "OPEN_CLOSING_ASSISTANT": "View closing assistant",
+        "REFRESH": "Refresh"
+      },
+      "AUXILIARY": {
+        "BALANCE_CREDIT": "Credit balance",
+        "BALANCE_DEBIT": "Debit balance",
+        "CUSTOMERS": "Customers",
+        "SUPPLIERS": "Suppliers",
+        "THIRD_PARTIES": "Third parties",
+        "TITLE": "Auxiliary summary",
+        "UNLETTERED": "Unlettered / remaining amount"
+      },
+      "CLOSING": {
+        "DESCRIPTION": "Summary of available controls for closing preparation.",
+        "DRAFT_ENTRIES": "Drafts",
+        "ERRORS": "Errors",
+        "NEEDS_REVIEW": "Needs review",
+        "READY": "Ready to close",
+        "TITLE": "Closing preparation",
+        "UNBALANCED_ENTRIES": "Unbalanced entries",
+        "UNLETTERED_LINES": "Unlettered lines",
+        "WARNINGS": "Warnings"
+      },
+      "ERROR": {
+        "DESCRIPTION": "The overview could not be loaded.",
+        "TITLE": "Overview unavailable"
+      },
+      "EYEBROW": "Operational reporting",
+      "FILTERS": {
+        "DESCRIPTION": "Adjust the period and sections included in the summary.",
+        "END_DATE": "End date",
+        "FISCAL_YEAR": "Fiscal year",
+        "INCLUDE_AUXILIARY": "Include auxiliary",
+        "INCLUDE_CLOSING": "Include closing",
+        "START_DATE": "Start date",
+        "TITLE": "Filters"
+      },
+      "INCOME": {
+        "BENEFIT": "Profit",
+        "DESCRIPTION": "Revenue / expense summary from posted entries.",
+        "EXPENSE": "Expenses",
+        "EXPENSE_ACCOUNTS": "Expense accounts",
+        "LOSS": "Loss",
+        "NET_RESULT": "Net result",
+        "REVENUE": "Revenue",
+        "REVENUE_ACCOUNTS": "Revenue accounts",
+        "TITLE": "Simplified result"
+      },
+      "INFO_NOTE": "This view is an operational summary. It does not replace official OHADA financial statements.",
+      "PERIOD": {
+        "GENERATED_AT": "Generated on",
+        "TITLE": "Period"
+      },
+      "STATES": {
+        "LOADING": "Loading overview...",
+        "NO_ACTIVE_FISCAL_YEAR": "No active fiscal year selected.",
+        "NO_ACTIVE_FISCAL_YEAR_DESCRIPTION": "Select a fiscal year before viewing the operational summary.",
+        "NO_DATA": "No reporting data is available for the selected period."
+      },
+      "SUBTITLE": "Track the key accounting indicators for the active fiscal year.",
+      "TITLE": "Overview",
+      "TRIAL_BALANCE": {
+        "ACCOUNTS": "Accounts",
+        "BALANCED": "Balanced",
+        "DIFFERENCE": "Difference",
+        "MOVEMENTS": "Movements",
+        "STATUS": "Status",
+        "TITLE": "Trial balance summary",
+        "TOTAL_CREDIT": "Total credit",
+        "TOTAL_DEBIT": "Total debit",
+        "UNBALANCED": "Unbalanced"
+      },
+      "VALIDATION": {
+        "DATE_RANGE": "Start date must be on or before end date.",
+        "OUTSIDE_FISCAL_YEAR": "The period must stay within the selected fiscal year.",
+        "PERIOD_REQUIRED": "Select a fiscal year, start date, and end date."
+      }
     },
     "THIRD_PARTIES": {
       "ACTIONS": {

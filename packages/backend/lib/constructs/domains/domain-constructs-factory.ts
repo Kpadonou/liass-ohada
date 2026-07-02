@@ -1,6 +1,7 @@
 import * as cdk from "aws-cdk-lib";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
 import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
@@ -12,6 +13,7 @@ const DOMAIN_LAMBDA_RUNTIME = Runtime.NODEJS_24_X;
 export interface DomainProps {
   api: apigw.HttpApi;
   authorizer?: apigw.IHttpRouteAuthorizer;
+  lambdaRole?: iam.IRole;
   stage: DeploymentStage;
   table: cdk.aws_dynamodb.ITable;
 }
@@ -24,10 +26,13 @@ interface AddRouteOptions {
   domainName: string;
   handlerEntry: string;
   idPrefix?: string;
+  lambdaRole?: iam.IRole;
+  memorySize?: number;
   method: apigw.HttpMethod;
   routePath: string;
   stage: DeploymentStage;
   table: cdk.aws_dynamodb.ITable;
+  timeout?: cdk.Duration;
 }
 
 /**
@@ -91,7 +96,10 @@ export abstract class DomainConstructFactory extends Construct {
     const fn = new lambda.NodejsFunction(this, id, {
       entry: options.handlerEntry,
       functionName,
+      role: options.lambdaRole,
       runtime: DOMAIN_LAMBDA_RUNTIME,
+      memorySize: options.memorySize,
+      timeout: options.timeout,
       bundling: {
         // Node.js 24 does not guarantee that transitive AWS SDK v3/Smithy modules
         // are available in the managed runtime. Keep domain Lambdas self-contained.
@@ -100,7 +108,9 @@ export abstract class DomainConstructFactory extends Construct {
       environment: { TABLE_NAME: options.table.tableName },
     });
 
-    options.table.grantReadWriteData(fn);
+    if (!options.lambdaRole) {
+      options.table.grantReadWriteData(fn);
+    }
 
     const routeOptions: any = {
       path: options.routePath,

@@ -140,8 +140,8 @@ export const routes: Routes = [
             path: '',
             pathMatch: 'full',
             loadComponent: () =>
-              import('../../domains/accounting/feature/accounting-overview/accounting-overview.page').then(
-                (module) => module.AccountingOverviewPage
+              import('../../domains/accounting/feature/simplified-reporting/simplified-reporting.page').then(
+                (module) => module.SimplifiedReportingPage
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.OVERVIEW.SUBTITLE',
@@ -295,6 +295,11 @@ export const routes: Routes = [
               subtitleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.SUBTITLE',
               titleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.TITLE'
             }
+          },
+          {
+            path: 'reports/simplified',
+            pathMatch: 'full',
+            redirectTo: '/accounting'
           },
           {
             path: 'accounts',

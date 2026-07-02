@@ -26,6 +26,10 @@ describe('pageFromUrl', () => {
       'accounting.auxiliaryBalance'
     );
     expect(pageFromUrl('/accounting/auxiliary-ledger')).toBe('accounting.auxiliaryLedger');
+    expect(pageFromUrl('/accounting/reports/simplified')).toBe('accounting.overview');
+    expect(pageFromUrl('/accounting/reports/simplified?fiscalYear=2026')).toBe(
+      'accounting.overview'
+    );
     expect(pageFromUrl('/accounting')).toBe('accounting.overview');
   });
 });

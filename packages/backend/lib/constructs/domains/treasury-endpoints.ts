@@ -24,6 +24,7 @@ export class TreasuryEndpoints extends DomainConstructFactory {
         domainName: "treasury",
         handlerEntry: resolveHandlerEntry(handlerPath),
         idPrefix: "Treasury-",
+        lambdaRole: props.lambdaRole,
         method,
         routePath,
         stage: props.stage,

@@ -11,6 +11,7 @@ import {
   type ListEntriesParams,
   type ListThirdPartiesParams,
   type MatchingReportParams,
+  type SimplifiedReportParams,
   type ThirdPartyBalanceParams,
   type ThirdPartyLedgerParams,
   type TrialBalanceParams,
@@ -134,6 +135,16 @@ function normalizeThirdPartyBalanceParams(params: ThirdPartyBalanceParams) {
   };
 }
 
+function normalizeSimplifiedReportParams(params: SimplifiedReportParams) {
+  return {
+    endDate: params.endDate ?? null,
+    fiscalYear: params.fiscalYear,
+    includeAuxiliary: params.includeAuxiliary ?? true,
+    includeClosingChecks: params.includeClosingChecks ?? true,
+    startDate: params.startDate ?? null
+  };
+}
+
 export const accountingQueryKeys = {
   account: (tenantScope: TenantScope, accountId: string) =>
     ['accounting', tenantScope, 'accounts', accountId] as const,
@@ -152,6 +163,8 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'general-ledger', normalizeGeneralLedgerParams(params)] as const,
   incomeStatement: (tenantScope: TenantScope, year: string) =>
     ['accounting', tenantScope, 'income-statement', year] as const,
+  simplifiedReport: (tenantScope: TenantScope, params: SimplifiedReportParams) =>
+    ['accounting', tenantScope, 'simplified-report', normalizeSimplifiedReportParams(params)] as const,
   journal: (tenantScope: TenantScope, journalCode: string) =>
     ['accounting', tenantScope, 'journals', journalCode] as const,
   journals: (tenantScope: TenantScope) => ['accounting', tenantScope, 'journals'] as const,
@@ -408,6 +421,20 @@ export class AccountingQueries {
       queryKey: accountingQueryKeys.incomeStatement(this.tenantScope(), yearValue),
       queryFn: () => this.accountingApi.getIncomeStatement(yearValue),
       enabled: /^\d{4}$/.test(yearValue),
+      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
+    });
+  }
+
+  simplifiedReport(params: SimplifiedReportParams, enabled = true) {
+    return queryOptions({
+      queryKey: accountingQueryKeys.simplifiedReport(this.tenantScope(), params),
+      queryFn: () => this.accountingApi.getSimplifiedReport(params),
+      enabled:
+        enabled &&
+        /^\d{4}$/.test(params.fiscalYear) &&
+        (!params.startDate || /^\d{4}-\d{2}-\d{2}$/.test(params.startDate)) &&
+        (!params.endDate || /^\d{4}-\d{2}-\d{2}$/.test(params.endDate)),
+      retry: false,
       staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
     });
   }

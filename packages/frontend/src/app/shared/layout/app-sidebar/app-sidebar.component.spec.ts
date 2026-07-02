@@ -122,6 +122,7 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Écritures');
     expect(text).toContain('Lettrage');
     expect(text).toContain('Balance');
+    expect(text).not.toContain('Reporting simplifié');
     expect(text).toContain('Plan comptable');
     expect(text).toContain('Projets et fonds');
     expect(text).toContain('Trésorerie');
@@ -191,6 +192,7 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('Écritures');
     expect(text).not.toContain('Lettrage');
     expect(text).not.toContain('Balance');
+    expect(text).not.toContain('Reporting simplifié');
     expect(text).not.toContain('Plan comptable');
     expect(text).not.toContain('Trésorerie');
     expect(text).not.toContain('États OHADA');
@@ -232,8 +234,42 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Écritures');
     expect(text).toContain('Lettrage');
     expect(text).toContain('Balance');
+    expect(text).not.toContain('Reporting simplifié');
     expect(text).toContain('Plan comptable');
     expect(text).not.toContain('Paramètres du cabinet');
+  });
+
+  it('routes the single overview sidebar item to /accounting without a duplicate active item', () => {
+    const authStore = TestBed.inject(AuthStore);
+    const uiStore = TestBed.inject(UiStore);
+    const router = TestBed.inject(Router);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company'
+    );
+    uiStore.setCurrentPage('accounting.overview');
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const overviewButton = fixture.nativeElement.querySelector(
+      'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]'
+    ) as HTMLButtonElement;
+    overviewButton.click();
+    fixture.detectChanges();
+    const activeButtons = Array.from(
+      fixture.nativeElement.querySelectorAll('liass-sidebar-nav-item button')
+    ).filter((button) => (button as HTMLButtonElement).className.includes('bg-brand-50'));
+
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/accounting');
+    expect(uiStore.currentPage()).toBe('accounting.overview');
+    expect(activeButtons).toHaveLength(1);
+    expect((activeButtons[0] as HTMLButtonElement).getAttribute('aria-label')).toBe('Vue d’ensemble');
+    expect(fixture.nativeElement.textContent).not.toContain('Reporting simplifié');
   });
 
   it('marks a target page active immediately while routing to the requested URL', () => {

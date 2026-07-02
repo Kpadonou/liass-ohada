@@ -1441,6 +1441,126 @@ describe('AccountingApi', () => {
     });
   });
 
+  it('loads simplified reporting with validated query parameters and frontend-safe response data', async () => {
+    const reportPromise = api.getSimplifiedReport({
+      fiscalYear: '2026',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+      includeAuxiliary: true,
+      includeClosingChecks: false
+    });
+    const reportRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
+
+    expect(reportRequest.request.method).toBe('GET');
+    expect(reportRequest.request.params.get('fiscalYear')).toBe('2026');
+    expect(reportRequest.request.params.get('startDate')).toBe('2026-01-01');
+    expect(reportRequest.request.params.get('endDate')).toBe('2026-12-31');
+    expect(reportRequest.request.params.get('includeAuxiliary')).toBe('true');
+    expect(reportRequest.request.params.get('includeClosingChecks')).toBe('false');
+    reportRequest.flush({
+      data: {
+        period: {
+          fiscalYear: '2026',
+          startDate: '2026-01-01',
+          endDate: '2026-12-31',
+          generatedAt: '2026-07-02T10:00:00.000Z',
+          PK: 'ORG#technical'
+        },
+        trialBalance: {
+          totalDebit: 150000,
+          totalCredit: 150000,
+          isBalanced: true,
+          accountCount: 4,
+          movementCount: 8,
+          entityType: 'TECHNICAL'
+        },
+        income: {
+          totalRevenue: 100000,
+          totalExpense: 40000,
+          netResult: 60000,
+          revenueAccounts: [
+            {
+              accountId: '70100000',
+              totalDebit: 0,
+              totalCredit: 100000,
+              netAmount: 100000,
+              SK: 'ACCOUNT#70100000'
+            }
+          ],
+          expenseAccounts: [
+            {
+              accountId: '60100000',
+              totalDebit: 40000,
+              totalCredit: 0,
+              netAmount: 40000
+            }
+          ]
+        },
+        auxiliary: {
+          customers: {
+            accountIds: ['41100000'],
+            totalDebit: 120000,
+            totalCredit: 50000,
+            totalBalanceDebit: 70000,
+            totalBalanceCredit: 0,
+            unletteredAmount: 25000,
+            thirdPartyCount: 2
+          }
+        }
+      },
+      message: 'Reporting prêt.'
+    });
+
+    await expect(reportPromise).resolves.toEqual({
+      period: {
+        fiscalYear: '2026',
+        startDate: '2026-01-01',
+        endDate: '2026-12-31',
+        generatedAt: '2026-07-02T10:00:00.000Z'
+      },
+      trialBalance: {
+        totalDebit: 150000,
+        totalCredit: 150000,
+        isBalanced: true,
+        accountCount: 4,
+        movementCount: 8
+      },
+      income: {
+        totalRevenue: 100000,
+        totalExpense: 40000,
+        netResult: 60000,
+        revenueAccounts: [
+          {
+            accountId: '70100000',
+            totalDebit: 0,
+            totalCredit: 100000,
+            netAmount: 100000
+          }
+        ],
+        expenseAccounts: [
+          {
+            accountId: '60100000',
+            totalDebit: 40000,
+            totalCredit: 0,
+            netAmount: 40000
+          }
+        ]
+      },
+      auxiliary: {
+        customers: {
+          accountIds: ['41100000'],
+          totalDebit: 120000,
+          totalCredit: 50000,
+          totalBalanceDebit: 70000,
+          totalBalanceCredit: 0,
+          unletteredAmount: 25000,
+          thirdPartyCount: 2
+        }
+      },
+      message: 'Reporting prêt.'
+    });
+  });
+
   it('loads third-party ledger, matching report, and unlettered suggestions', async () => {
     const ledgerPromise = api.getThirdPartyLedger({
       fiscalYear: '2026',

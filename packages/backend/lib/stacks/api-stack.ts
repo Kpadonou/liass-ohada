@@ -1,4 +1,5 @@
 import * as cdk from "aws-cdk-lib";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Stack, StackProps } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
@@ -46,6 +47,16 @@ export class ApiStack extends Stack {
       stage: props.stage,
     });
 
+    const apiLambdaRole = new iam.Role(this, "ApiLambdaExecutionRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "service-role/AWSLambdaBasicExecutionRole",
+        ),
+      ],
+    });
+    props.accountingTable.grantReadWriteData(apiLambdaRole);
+
     // -----------------------------------------------------------
     // 3. Domain Modules Initialization (Dependency Injection)
     // -----------------------------------------------------------
@@ -56,6 +67,7 @@ export class ApiStack extends Stack {
      */
     new IdentityEndpoints(this, "IdentityModule", {
       api: this.apiGateway.httpApi,
+      lambdaRole: apiLambdaRole,
       table: props.accountingTable,
       stage: props.stage,
     });
@@ -66,6 +78,7 @@ export class ApiStack extends Stack {
      */
     new AccountingEndpoints(this, "AccountingModule", {
       api: this.apiGateway.httpApi,
+      lambdaRole: apiLambdaRole,
       table: props.accountingTable,
       stage: props.stage,
     });
@@ -76,6 +89,7 @@ export class ApiStack extends Stack {
      */
     new ProjectEndpoints(this, "ProjectModule", {
       api: this.apiGateway.httpApi,
+      lambdaRole: apiLambdaRole,
       table: props.accountingTable,
       stage: props.stage,
     });
@@ -86,6 +100,7 @@ export class ApiStack extends Stack {
      */
     new TreasuryEndpoints(this, "TreasuryModule", {
       api: this.apiGateway.httpApi,
+      lambdaRole: apiLambdaRole,
       table: props.accountingTable,
       stage: props.stage,
     });

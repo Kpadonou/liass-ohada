@@ -28,7 +28,11 @@ export function pageFromUrl(url: string): AppPage {
     return 'accounting.thirdParties';
   }
 
-  if (path === '/accounting' || path === '/accounting/') {
+  if (
+    path === '/accounting' ||
+    path === '/accounting/' ||
+    path.startsWith('/accounting/reports/simplified')
+  ) {
     return 'accounting.overview';
   }
 

@@ -39,6 +39,8 @@ import {
   PeriodLockResponseSchema,
   PostEntryResponseSchema,
   PostLetteringRequestSchema,
+  SimplifiedReportQuerySchema,
+  SimplifiedReportResponseSchema,
   ThirdPartyResponseSchema,
   ThirdPartyDtoSchema,
   ThirdPartyLedgerResponseSchema,
@@ -80,6 +82,7 @@ import {
   type PeriodLockDto,
   type PostEntryDraftRequest,
   type PostLetteringRequest,
+  type SimplifiedReportDto,
   type ThirdPartyLedgerDto,
   type ThirdPartyBalanceDto,
   type ThirdPartyBalanceQuery,
@@ -111,6 +114,13 @@ export type GeneralLedgerParams = z.input<typeof GeneralLedgerQuerySchema>;
 export type TrialBalanceParams = z.input<typeof TrialBalanceQuerySchema>;
 export type JournalBookParams = z.input<typeof JournalBookQuerySchema>;
 export type LetteringCandidatesParams = z.input<typeof LetteringCandidatesQuerySchema>;
+export interface SimplifiedReportParams {
+  fiscalYear: string;
+  startDate?: string;
+  endDate?: string;
+  includeAuxiliary?: boolean;
+  includeClosingChecks?: boolean;
+}
 export type UpdateAccountRequest = z.infer<typeof UpdateAccountRequestSchema>;
 export type UpdateEntryDraftPayload = Omit<UpdateEntryDraftRequest, 'entryId'>;
 export type UpdateJournalRequest = z.infer<typeof UpdateJournalRequestSchema>;
@@ -726,6 +736,34 @@ export class AccountingApi {
     );
 
     return IncomeStatementResponseSchema.parse(response).data;
+  }
+
+  async getSimplifiedReport(
+    paramsInput: SimplifiedReportParams
+  ): Promise<ApiQueryResult<SimplifiedReportDto>> {
+    const request = SimplifiedReportQuerySchema.parse(paramsInput);
+    let params = new HttpParams()
+      .set('fiscalYear', request.fiscalYear)
+      .set('includeAuxiliary', request.includeAuxiliary)
+      .set('includeClosingChecks', request.includeClosingChecks);
+
+    if (request.startDate) {
+      params = params.set('startDate', request.startDate);
+    }
+
+    if (request.endDate) {
+      params = params.set('endDate', request.endDate);
+    }
+
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/reports/simplified`, { params })
+    );
+    const parsed = SimplifiedReportResponseSchema.parse(response);
+
+    return {
+      ...parsed.data,
+      message: userMessageFromResponse(response)
+    };
   }
 
   async getThirdPartyLedger(paramsInput: ThirdPartyLedgerParams): Promise<ThirdPartyLedgerDto> {

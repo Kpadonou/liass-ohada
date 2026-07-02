@@ -1,0 +1,404 @@
+<div class="space-y-5">
+  <liass-page-header
+    [eyebrow]="'ACCOUNTING.SIMPLIFIED_REPORTING.EYEBROW' | transloco"
+    [title]="'ACCOUNTING.SIMPLIFIED_REPORTING.TITLE' | transloco"
+    [subtitle]="'ACCOUNTING.SIMPLIFIED_REPORTING.SUBTITLE' | transloco"
+  />
+
+  <div class="rounded-app-card border border-sky-200 bg-sky-50/70 p-4 text-sm leading-6 text-sky-900 dark:border-sky-900 dark:bg-sky-950/25 dark:text-sky-100">
+    <div class="flex items-start gap-3">
+      <mat-icon class="mt-0.5 text-sky-700 dark:text-sky-300">info</mat-icon>
+      <p>{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INFO_NOTE' | transloco }}</p>
+    </div>
+  </div>
+
+  @if (!fiscalYearContext.hasActiveFiscalYear()) {
+    <div
+      class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60"
+      role="status"
+    >
+      <span class="mx-auto inline-flex size-12 items-center justify-center rounded-app-control bg-white text-brand-700 shadow-app-xs dark:bg-slate-950 dark:text-brand-300">
+        <mat-icon>event_available</mat-icon>
+      </span>
+      <p class="mt-4 text-base font-semibold text-slate-950 dark:text-white">
+        {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NO_ACTIVE_FISCAL_YEAR' | transloco }}
+      </p>
+      <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+        {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NO_ACTIVE_FISCAL_YEAR_DESCRIPTION' | transloco }}
+      </p>
+      <a
+        class="liass-focus-ring mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-app-control bg-brand-700 px-4 text-sm font-semibold text-white shadow-app-xs hover:bg-brand-600"
+        routerLink="/accounting/fiscal-years"
+      >
+        <mat-icon>event_note</mat-icon>
+        {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.CHOOSE_FISCAL_YEAR' | transloco }}
+      </a>
+    </div>
+  } @else {
+    <section
+      class="rounded-app-card border border-slate-200 bg-white p-4 shadow-app-xs dark:border-slate-800 dark:bg-slate-900"
+      [formGroup]="filterForm"
+      aria-labelledby="simplified-reporting-filters-title"
+    >
+      <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 id="simplified-reporting-filters-title" class="text-sm font-semibold text-slate-950 dark:text-white">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.FILTERS.TITLE' | transloco }}
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.FILTERS.DESCRIPTION' | transloco }}
+          </p>
+        </div>
+        <liass-button
+          icon="refresh"
+          tone="brand"
+          size="sm"
+          [disabled]="!!filterError()"
+          [loading]="reportQuery.isFetching()"
+          [ariaLabel]="'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.REFRESH' | transloco"
+          (pressed)="applyFilters()"
+        >
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.REFRESH' | transloco }}
+        </liass-button>
+      </div>
+
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.FILTERS.FISCAL_YEAR' | transloco }}</mat-label>
+          <mat-select
+            formControlName="fiscalYear"
+            (selectionChange)="fiscalYearChanged($event.value)"
+          >
+            @for (fiscalYear of fiscalYearContext.fiscalYears(); track fiscalYear.year) {
+              <mat-option [value]="fiscalYear.year.toString()">{{ fiscalYear.year }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.FILTERS.START_DATE' | transloco }}</mat-label>
+          <input matInput type="date" formControlName="startDate" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.FILTERS.END_DATE' | transloco }}</mat-label>
+          <input matInput type="date" formControlName="endDate" />
+        </mat-form-field>
+
+        <div class="flex min-h-14 items-center">
+          <mat-slide-toggle formControlName="includeAuxiliary">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.FILTERS.INCLUDE_AUXILIARY' | transloco }}
+          </mat-slide-toggle>
+        </div>
+
+        <div class="flex min-h-14 items-center">
+          <mat-slide-toggle formControlName="includeClosingChecks">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.FILTERS.INCLUDE_CLOSING' | transloco }}
+          </mat-slide-toggle>
+        </div>
+      </div>
+
+      @if (filterError(); as validationKey) {
+        <p class="mt-1 flex items-center gap-2 text-sm text-danger-600 dark:text-rose-300" role="alert">
+          <mat-icon class="!size-5 !text-xl">error_outline</mat-icon>
+          {{ validationKey | transloco }}
+        </p>
+      }
+    </section>
+
+    @if (reportQuery.isPending() && filtersValid()) {
+      <section
+        class="space-y-3 rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+        role="status"
+        [attr.aria-label]="'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.LOADING' | transloco"
+      >
+        <div class="grid gap-3 md:grid-cols-3">
+          @for (_ of [0, 1, 2, 3, 4, 5]; track $index) {
+            <liass-skeleton variant="block" />
+          }
+        </div>
+        <liass-skeleton variant="block" />
+        <span class="sr-only">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.LOADING' | transloco }}</span>
+      </section>
+    } @else if (reportQuery.isError()) {
+      <section
+        class="rounded-app-card border border-red-200 bg-red-50 p-5 text-red-900 dark:border-red-900 dark:bg-red-950/25 dark:text-red-100"
+        role="alert"
+      >
+        <div class="flex items-start gap-3">
+          <mat-icon>error_outline</mat-icon>
+          <div class="flex-1">
+            <h2 class="font-semibold">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ERROR.TITLE' | transloco }}</h2>
+            <p class="mt-1 text-sm">
+              {{ errorMessage() || ('ACCOUNTING.SIMPLIFIED_REPORTING.ERROR.DESCRIPTION' | transloco) }}
+            </p>
+            <liass-button class="mt-3" icon="refresh" size="sm" tone="danger" (pressed)="retry()">
+              {{ 'COMMON.ACTIONS.RETRY' | transloco }}
+            </liass-button>
+          </div>
+        </div>
+      </section>
+    } @else if (noData()) {
+      <section class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+        <mat-icon class="!size-10 !text-4xl text-slate-400">query_stats</mat-icon>
+        <p class="mt-3 font-semibold text-slate-900 dark:text-white">
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NO_DATA' | transloco }}
+        </p>
+      </section>
+    } @else if (report(); as currentReport) {
+      <section class="grid gap-3 lg:grid-cols-4" aria-labelledby="simplified-reporting-period-title">
+        <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p id="simplified-reporting-period-title" class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.PERIOD.TITLE' | transloco }}
+          </p>
+          <p class="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">
+            {{ currentReport.period.fiscalYear }}
+          </p>
+          <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            {{ formatDate(currentReport.period.startDate) }} - {{ formatDate(currentReport.period.endDate) }}
+          </p>
+          <p class="mt-3 text-xs text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.PERIOD.GENERATED_AT' | transloco }}
+            {{ formatDate(currentReport.period.generatedAt) }}
+          </p>
+        </div>
+
+        <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.TRIAL_BALANCE.STATUS' | transloco }}
+          </p>
+          <div class="mt-3 flex items-center gap-2">
+            <mat-icon [class]="currentReport.trialBalance.isBalanced ? 'text-success-600' : 'text-danger-600'">
+              {{ currentReport.trialBalance.isBalanced ? 'check_circle' : 'error_outline' }}
+            </mat-icon>
+            <liass-status-chip
+              [label]="trialBalanceStatusKey(currentReport.trialBalance.isBalanced) | transloco"
+              [tone]="trialBalanceStatusTone(currentReport.trialBalance.isBalanced)"
+            />
+          </div>
+          <p class="mt-3 text-sm text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.TRIAL_BALANCE.DIFFERENCE' | transloco }}
+          </p>
+          <p class="text-xl font-semibold text-slate-950 dark:text-white">{{ formatAmount(trialBalanceDifference()) }}</p>
+        </div>
+
+        <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.NET_RESULT' | transloco }}
+          </p>
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <p class="text-2xl font-semibold text-slate-950 dark:text-white">
+              {{ formatAmount(currentReport.income.netResult) }}
+            </p>
+            <liass-status-chip
+              size="sm"
+              [label]="resultLabelKey(currentReport.income.netResult) | transloco"
+              [tone]="resultTone(currentReport.income.netResult)"
+            />
+          </div>
+        </div>
+
+        @if (currentReport.closingReadiness; as readiness) {
+          <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+            <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">
+              {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.TITLE' | transloco }}
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+              <liass-status-chip
+                [label]="closingReadinessStatusKey(readiness.canClose) | transloco"
+                [tone]="closingReadinessTone(readiness.canClose)"
+              />
+            </div>
+            <a
+              class="liass-focus-ring mt-3 inline-flex items-center gap-1.5 rounded-app-control text-sm font-semibold text-brand-700 hover:underline dark:text-brand-300"
+              routerLink="/accounting/fiscal-years"
+            >
+              <mat-icon class="!size-5 !text-xl">event_available</mat-icon>
+              {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.OPEN_CLOSING_ASSISTANT' | transloco }}
+            </a>
+          </div>
+        }
+      </section>
+
+      <section class="grid gap-3 md:grid-cols-2 xl:grid-cols-3" aria-labelledby="simplified-reporting-trial-balance-title">
+        <h2 id="simplified-reporting-trial-balance-title" class="sr-only">
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.TRIAL_BALANCE.TITLE' | transloco }}
+        </h2>
+        <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.TRIAL_BALANCE.TOTAL_DEBIT' | transloco }}</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-950 dark:text-white">{{ formatAmount(currentReport.trialBalance.totalDebit) }}</p>
+        </div>
+        <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.TRIAL_BALANCE.TOTAL_CREDIT' | transloco }}</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-950 dark:text-white">{{ formatAmount(currentReport.trialBalance.totalCredit) }}</p>
+        </div>
+        <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.TRIAL_BALANCE.ACCOUNTS' | transloco }}</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-950 dark:text-white">{{ currentReport.trialBalance.accountCount ?? 0 }}</p>
+        </div>
+        <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+          <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.TRIAL_BALANCE.MOVEMENTS' | transloco }}</p>
+          <p class="mt-1 text-2xl font-semibold text-slate-950 dark:text-white">{{ currentReport.trialBalance.movementCount ?? 0 }}</p>
+        </div>
+      </section>
+
+      <section class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" aria-labelledby="simplified-reporting-income-title">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 id="simplified-reporting-income-title" class="text-base font-semibold text-slate-950 dark:text-white">
+              {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.TITLE' | transloco }}
+            </h2>
+            <p class="text-sm text-slate-500 dark:text-slate-400">
+              {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.DESCRIPTION' | transloco }}
+            </p>
+          </div>
+        </div>
+
+        <div class="mt-4 grid gap-3 md:grid-cols-3">
+          <div class="rounded-app-control bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.REVENUE' | transloco }}</p>
+            <p class="mt-1 text-xl font-semibold text-success-700 dark:text-success-300">{{ formatAmount(currentReport.income.totalRevenue) }}</p>
+          </div>
+          <div class="rounded-app-control bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.EXPENSE' | transloco }}</p>
+            <p class="mt-1 text-xl font-semibold text-warning-700 dark:text-warning-300">{{ formatAmount(currentReport.income.totalExpense) }}</p>
+          </div>
+          <div class="rounded-app-control bg-slate-50 p-4 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+            <p class="text-sm text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.NET_RESULT' | transloco }}</p>
+            <p class="mt-1 text-xl font-semibold text-slate-950 dark:text-white">{{ formatAmount(currentReport.income.netResult) }}</p>
+          </div>
+        </div>
+
+        @if (hasAccountRows(currentReport.income.revenueAccounts) || hasAccountRows(currentReport.income.expenseAccounts)) {
+          <div class="mt-4 grid gap-4 lg:grid-cols-2">
+            @if (hasAccountRows(currentReport.income.revenueAccounts)) {
+              <div>
+                <h3 class="text-sm font-semibold text-slate-950 dark:text-white">
+                  {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.REVENUE_ACCOUNTS' | transloco }}
+                </h3>
+                <div class="mt-2 overflow-hidden rounded-app-control border border-slate-200 dark:border-slate-800">
+                  @for (account of currentReport.income.revenueAccounts; track account.accountId) {
+                    <div class="grid grid-cols-[1fr_auto] gap-3 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0 dark:border-slate-800">
+                      <span class="font-semibold text-slate-900 dark:text-white">{{ account.accountId }}</span>
+                      <span class="text-right text-slate-700 dark:text-slate-300">{{ formatAmount(account.netAmount) }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+            @if (hasAccountRows(currentReport.income.expenseAccounts)) {
+              <div>
+                <h3 class="text-sm font-semibold text-slate-950 dark:text-white">
+                  {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.INCOME.EXPENSE_ACCOUNTS' | transloco }}
+                </h3>
+                <div class="mt-2 overflow-hidden rounded-app-control border border-slate-200 dark:border-slate-800">
+                  @for (account of currentReport.income.expenseAccounts; track account.accountId) {
+                    <div class="grid grid-cols-[1fr_auto] gap-3 border-b border-slate-100 px-3 py-2 text-sm last:border-b-0 dark:border-slate-800">
+                      <span class="font-semibold text-slate-900 dark:text-white">{{ account.accountId }}</span>
+                      <span class="text-right text-slate-700 dark:text-slate-300">{{ formatAmount(account.netAmount) }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </section>
+
+      @if (currentReport.auxiliary; as auxiliary) {
+        <section class="grid gap-3 lg:grid-cols-2" aria-labelledby="simplified-reporting-auxiliary-title">
+          <h2 id="simplified-reporting-auxiliary-title" class="sr-only">
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.TITLE' | transloco }}
+          </h2>
+          @if (auxiliary.customers; as customers) {
+            <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <h3 class="text-base font-semibold text-slate-950 dark:text-white">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.CUSTOMERS' | transloco }}</h3>
+              <dl class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.BALANCE_DEBIT' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ formatAmount(customers.totalBalanceDebit) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.BALANCE_CREDIT' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ formatAmount(customers.totalBalanceCredit) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.UNLETTERED' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ formatAmount(customers.unletteredAmount ?? 0) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.THIRD_PARTIES' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ customers.thirdPartyCount ?? 0 }}</dd>
+                </div>
+              </dl>
+            </div>
+          }
+          @if (auxiliary.suppliers; as suppliers) {
+            <div class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+              <h3 class="text-base font-semibold text-slate-950 dark:text-white">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.SUPPLIERS' | transloco }}</h3>
+              <dl class="mt-4 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.BALANCE_DEBIT' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ formatAmount(suppliers.totalBalanceDebit) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.BALANCE_CREDIT' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ formatAmount(suppliers.totalBalanceCredit) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.UNLETTERED' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ formatAmount(suppliers.unletteredAmount ?? 0) }}</dd>
+                </div>
+                <div>
+                  <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.AUXILIARY.THIRD_PARTIES' | transloco }}</dt>
+                  <dd class="text-lg font-semibold text-slate-950 dark:text-white">{{ suppliers.thirdPartyCount ?? 0 }}</dd>
+                </div>
+              </dl>
+            </div>
+          }
+        </section>
+      }
+
+      @if (currentReport.closingReadiness; as readiness) {
+        <section class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900" aria-labelledby="simplified-reporting-closing-title">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 id="simplified-reporting-closing-title" class="text-base font-semibold text-slate-950 dark:text-white">
+                {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.TITLE' | transloco }}
+              </h2>
+              <p class="text-sm text-slate-500 dark:text-slate-400">
+                {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.DESCRIPTION' | transloco }}
+              </p>
+            </div>
+            <liass-status-chip
+              [label]="closingReadinessStatusKey(readiness.canClose) | transloco"
+              [tone]="closingReadinessTone(readiness.canClose)"
+            />
+          </div>
+          <dl class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div class="rounded-app-control bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+              <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.ERRORS' | transloco }}</dt>
+              <dd class="text-xl font-semibold text-danger-600 dark:text-rose-300">{{ readiness.errorsCount }}</dd>
+            </div>
+            <div class="rounded-app-control bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+              <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.WARNINGS' | transloco }}</dt>
+              <dd class="text-xl font-semibold text-warning-600 dark:text-amber-300">{{ readiness.warningsCount }}</dd>
+            </div>
+            <div class="rounded-app-control bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+              <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.DRAFT_ENTRIES' | transloco }}</dt>
+              <dd class="text-xl font-semibold text-slate-950 dark:text-white">{{ readiness.draftEntriesCount ?? 0 }}</dd>
+            </div>
+            <div class="rounded-app-control bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+              <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.UNBALANCED_ENTRIES' | transloco }}</dt>
+              <dd class="text-xl font-semibold text-slate-950 dark:text-white">{{ readiness.unbalancedEntriesCount ?? 0 }}</dd>
+            </div>
+            <div class="rounded-app-control bg-slate-50 p-3 ring-1 ring-slate-200 dark:bg-slate-950/40 dark:ring-slate-800">
+              <dt class="text-xs text-slate-500 dark:text-slate-400">{{ 'ACCOUNTING.SIMPLIFIED_REPORTING.CLOSING.UNLETTERED_LINES' | transloco }}</dt>
+              <dd class="text-xl font-semibold text-slate-950 dark:text-white">{{ readiness.unletteredAuxiliaryLinesCount ?? 0 }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+    }
+  }
+</div>

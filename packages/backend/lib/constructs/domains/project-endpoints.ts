@@ -37,6 +37,7 @@ export class ProjectEndpoints extends DomainConstructFactory {
         domainName: "projects",
         handlerEntry: entry,
         idPrefix: "Project-",
+        lambdaRole: props.lambdaRole,
         method,
         routePath,
         stage: props.stage,

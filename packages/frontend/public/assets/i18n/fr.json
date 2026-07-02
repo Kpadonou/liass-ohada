@@ -73,7 +73,7 @@
       "TRIAL_BALANCE": "Balance"
     },
     "PAGES": {
-      "ACCOUNTING_OVERVIEW": "Comptabilité",
+      "ACCOUNTING_OVERVIEW": "Vue d’ensemble",
       "ADMINISTRATION": "Administration",
       "CABINET_COLLABORATORS": "Collaborateurs",
       "CABINET_DASHBOARD": "Tableau de bord cabinet",
@@ -613,8 +613,8 @@
   "ACCOUNTING": {
     "PAGES": {
       "OVERVIEW": {
-        "SUBTITLE": "Point d’entrée du lot 1 comptable.",
-        "TITLE": "Comptabilité"
+        "SUBTITLE": "Suivez les principaux indicateurs comptables de l’exercice actif.",
+        "TITLE": "Vue d’ensemble"
       },
       "CHART_OF_ACCOUNTS": {
         "SUBTITLE": "Un espace réservé aux contrôles du plan comptable.",
@@ -659,6 +659,10 @@
       "TRIAL_BALANCE": {
         "SUBTITLE": "Un espace réservé à la revue de la balance.",
         "TITLE": "Balance"
+      },
+      "SIMPLIFIED_REPORTING": {
+        "SUBTITLE": "Suivez les principaux indicateurs comptables de l’exercice actif.",
+        "TITLE": "Vue d’ensemble"
       }
     },
     "ERRORS": {
@@ -682,6 +686,87 @@
       "JOURNAL_UPDATED": "Journal mis à jour avec succès.",
       "PERIOD_LOCKED": "Période verrouillée.",
       "PERIOD_UNLOCKED": "Période déverrouillée."
+    },
+    "SIMPLIFIED_REPORTING": {
+      "ACTIONS": {
+        "CHOOSE_FISCAL_YEAR": "Choisir un exercice",
+        "OPEN_CLOSING_ASSISTANT": "Voir l’assistant de clôture",
+        "REFRESH": "Actualiser"
+      },
+      "AUXILIARY": {
+        "BALANCE_CREDIT": "Solde crédit",
+        "BALANCE_DEBIT": "Solde débit",
+        "CUSTOMERS": "Clients",
+        "SUPPLIERS": "Fournisseurs",
+        "THIRD_PARTIES": "Tiers",
+        "TITLE": "Synthèse auxiliaire",
+        "UNLETTERED": "Montant non lettré / restant"
+      },
+      "CLOSING": {
+        "DESCRIPTION": "Synthèse des contrôles disponibles pour préparer la clôture.",
+        "DRAFT_ENTRIES": "Brouillons",
+        "ERRORS": "Erreurs",
+        "NEEDS_REVIEW": "À revoir",
+        "READY": "Clôture possible",
+        "TITLE": "Préparation clôture",
+        "UNBALANCED_ENTRIES": "Écritures déséquilibrées",
+        "UNLETTERED_LINES": "Lignes non lettrées",
+        "WARNINGS": "Avertissements"
+      },
+      "ERROR": {
+        "DESCRIPTION": "La vue d’ensemble n’a pas pu être chargée.",
+        "TITLE": "Vue d’ensemble indisponible"
+      },
+      "EYEBROW": "Reporting opérationnel",
+      "FILTERS": {
+        "DESCRIPTION": "Ajustez la période et les volets inclus dans la synthèse.",
+        "END_DATE": "Date fin",
+        "FISCAL_YEAR": "Exercice",
+        "INCLUDE_AUXILIARY": "Inclure l’auxiliaire",
+        "INCLUDE_CLOSING": "Inclure la clôture",
+        "START_DATE": "Date début",
+        "TITLE": "Filtres"
+      },
+      "INCOME": {
+        "BENEFIT": "Bénéfice",
+        "DESCRIPTION": "Synthèse produits / charges issue des écritures comptabilisées.",
+        "EXPENSE": "Charges",
+        "EXPENSE_ACCOUNTS": "Comptes de charges",
+        "LOSS": "Perte",
+        "NET_RESULT": "Résultat net",
+        "REVENUE": "Produits",
+        "REVENUE_ACCOUNTS": "Comptes de produits",
+        "TITLE": "Résultat simplifié"
+      },
+      "INFO_NOTE": "Cette vue est une synthèse opérationnelle. Elle ne remplace pas les états financiers OHADA officiels.",
+      "PERIOD": {
+        "GENERATED_AT": "Généré le",
+        "TITLE": "Période"
+      },
+      "STATES": {
+        "LOADING": "Chargement de la vue d’ensemble…",
+        "NO_ACTIVE_FISCAL_YEAR": "Aucun exercice actif sélectionné.",
+        "NO_ACTIVE_FISCAL_YEAR_DESCRIPTION": "Sélectionnez un exercice avant de consulter la synthèse opérationnelle.",
+        "NO_DATA": "Aucune donnée de reporting disponible pour la période sélectionnée."
+      },
+      "SUBTITLE": "Suivez les principaux indicateurs comptables de l’exercice actif.",
+      "TITLE": "Vue d’ensemble",
+      "TRIAL_BALANCE": {
+        "ACCOUNTS": "Comptes",
+        "BALANCED": "Équilibrée",
+        "DIFFERENCE": "Écart",
+        "MOVEMENTS": "Mouvements",
+        "STATUS": "Statut",
+        "TITLE": "Balance synthétique",
+        "TOTAL_CREDIT": "Total crédit",
+        "TOTAL_DEBIT": "Total débit",
+        "UNBALANCED": "Déséquilibrée"
+      },
+      "VALIDATION": {
+        "DATE_RANGE": "La date de début doit être antérieure ou égale à la date de fin.",
+        "OUTSIDE_FISCAL_YEAR": "La période doit rester comprise dans l’exercice sélectionné.",
+        "PERIOD_REQUIRED": "Sélectionnez un exercice, une date de début et une date de fin."
+      }
     },
     "THIRD_PARTIES": {
       "ACTIONS": {
