@@ -11,7 +11,7 @@ import {
   type ListEntriesParams,
   type ListThirdPartiesParams,
   type MatchingReportParams,
-  type SimplifiedReportParams,
+  type SummaryReportParams,
   type ThirdPartyBalanceParams,
   type ThirdPartyLedgerParams,
   type TrialBalanceParams,
@@ -135,12 +135,12 @@ function normalizeThirdPartyBalanceParams(params: ThirdPartyBalanceParams) {
   };
 }
 
-function normalizeSimplifiedReportParams(params: SimplifiedReportParams) {
+function normalizeSummaryReportParams(params: SummaryReportParams) {
   return {
     endDate: params.endDate ?? null,
     fiscalYear: params.fiscalYear,
-    includeAuxiliary: params.includeAuxiliary ?? true,
-    includeClosingChecks: params.includeClosingChecks ?? true,
+    includeAuxiliary: params.includeAuxiliary ?? false,
+    includeClosingChecks: params.includeClosingChecks ?? false,
     startDate: params.startDate ?? null
   };
 }
@@ -163,8 +163,8 @@ export const accountingQueryKeys = {
     ['accounting', tenantScope, 'general-ledger', normalizeGeneralLedgerParams(params)] as const,
   incomeStatement: (tenantScope: TenantScope, year: string) =>
     ['accounting', tenantScope, 'income-statement', year] as const,
-  simplifiedReport: (tenantScope: TenantScope, params: SimplifiedReportParams) =>
-    ['accounting', tenantScope, 'simplified-report', normalizeSimplifiedReportParams(params)] as const,
+  summaryReport: (tenantScope: TenantScope, params: SummaryReportParams) =>
+    ['accounting', tenantScope, 'summary-report', normalizeSummaryReportParams(params)] as const,
   journal: (tenantScope: TenantScope, journalCode: string) =>
     ['accounting', tenantScope, 'journals', journalCode] as const,
   journals: (tenantScope: TenantScope) => ['accounting', tenantScope, 'journals'] as const,
@@ -425,17 +425,19 @@ export class AccountingQueries {
     });
   }
 
-  simplifiedReport(params: SimplifiedReportParams, enabled = true) {
+  summaryReport(params: SummaryReportParams, enabled = false) {
     return queryOptions({
-      queryKey: accountingQueryKeys.simplifiedReport(this.tenantScope(), params),
-      queryFn: () => this.accountingApi.getSimplifiedReport(params),
+      queryKey: accountingQueryKeys.summaryReport(this.tenantScope(), params),
+      queryFn: () => this.accountingApi.getSummaryReport(params),
       enabled:
         enabled &&
         /^\d{4}$/.test(params.fiscalYear) &&
         (!params.startDate || /^\d{4}-\d{2}-\d{2}$/.test(params.startDate)) &&
         (!params.endDate || /^\d{4}-\d{2}-\d{2}$/.test(params.endDate)),
+      placeholderData: (previousData) => previousData,
+      refetchOnWindowFocus: false,
       retry: false,
-      staleTime: ACCOUNTING_TRANSACTIONAL_STALE_TIME
+      staleTime: 5 * 60_000
     });
   }
 

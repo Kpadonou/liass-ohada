@@ -1,11 +1,13 @@
 import {
   SimplifiedReportQuerySchema,
   SimplifiedReportResponseSchema,
+  SummaryReportQuerySchema,
+  SummaryReportResponseSchema,
 } from "@liass-ohada/shared/accounting";
 
 describe("Lot 6.3 simplified reporting shared contracts", () => {
   test("request schema validates fiscal year, optional dates, and boolean flags", () => {
-    const query = SimplifiedReportQuerySchema.parse({
+    const query = SummaryReportQuerySchema.parse({
       fiscalYear: "2026",
       startDate: "2026-01-01",
       endDate: "2026-12-31",
@@ -24,14 +26,14 @@ describe("Lot 6.3 simplified reporting shared contracts", () => {
 
   test("request schema rejects inverted or outside fiscal-year dates", () => {
     expect(() =>
-      SimplifiedReportQuerySchema.parse({
+      SummaryReportQuerySchema.parse({
         fiscalYear: "2026",
         startDate: "2025-12-31",
       }),
     ).toThrow();
 
     expect(() =>
-      SimplifiedReportQuerySchema.parse({
+      SummaryReportQuerySchema.parse({
         fiscalYear: "2026",
         startDate: "2026-03-01",
         endDate: "2026-02-01",
@@ -40,7 +42,7 @@ describe("Lot 6.3 simplified reporting shared contracts", () => {
   });
 
   test("response schema validates all sections and strips technical fields", () => {
-    const response = SimplifiedReportResponseSchema.parse({
+    const response = SummaryReportResponseSchema.parse({
       message: "ok",
       data: {
         PK: "ORG#technical",
@@ -120,5 +122,10 @@ describe("Lot 6.3 simplified reporting shared contracts", () => {
     );
     expect(response.data.auxiliary?.customers).not.toHaveProperty("entityType");
     expect(response.data.closingReadiness).not.toHaveProperty("GSI2SK");
+  });
+
+  test("deprecated simplified contract exports stay equivalent to summary contracts", () => {
+    expect(SimplifiedReportQuerySchema).toBe(SummaryReportQuerySchema);
+    expect(SimplifiedReportResponseSchema).toBe(SummaryReportResponseSchema);
   });
 });

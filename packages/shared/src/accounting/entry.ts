@@ -711,6 +711,8 @@ export const SimplifiedReportQuerySchema = z
   });
 
 export type SimplifiedReportQuery = z.infer<typeof SimplifiedReportQuerySchema>;
+export const SummaryReportQuerySchema = SimplifiedReportQuerySchema;
+export type SummaryReportQuery = SimplifiedReportQuery;
 
 export const SimplifiedReportPeriodDtoSchema = z.object({
   fiscalYear: z.string().regex(/^\d{4}$/),
@@ -718,6 +720,7 @@ export const SimplifiedReportPeriodDtoSchema = z.object({
   endDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   generatedAt: z.string(),
 });
+export const SummaryReportPeriodDtoSchema = SimplifiedReportPeriodDtoSchema;
 
 export const SimplifiedReportTrialBalanceDtoSchema = z.object({
   totalDebit: z.number().int().nonnegative(),
@@ -726,6 +729,8 @@ export const SimplifiedReportTrialBalanceDtoSchema = z.object({
   accountCount: z.number().int().nonnegative().optional(),
   movementCount: z.number().int().nonnegative().optional(),
 });
+export const SummaryReportTrialBalanceDtoSchema =
+  SimplifiedReportTrialBalanceDtoSchema;
 
 export const SimplifiedReportIncomeAccountDtoSchema = z.object({
   accountId: z.string().regex(/^\d{8}$/),
@@ -733,6 +738,8 @@ export const SimplifiedReportIncomeAccountDtoSchema = z.object({
   totalCredit: z.number().int().nonnegative(),
   netAmount: z.number().int(),
 });
+export const SummaryReportIncomeAccountDtoSchema =
+  SimplifiedReportIncomeAccountDtoSchema;
 
 export const SimplifiedReportIncomeDtoSchema = z.object({
   totalRevenue: z.number().int(),
@@ -741,6 +748,7 @@ export const SimplifiedReportIncomeDtoSchema = z.object({
   revenueAccounts: z.array(SimplifiedReportIncomeAccountDtoSchema).optional(),
   expenseAccounts: z.array(SimplifiedReportIncomeAccountDtoSchema).optional(),
 });
+export const SummaryReportIncomeDtoSchema = SimplifiedReportIncomeDtoSchema;
 
 export const SimplifiedReportAuxiliaryExposureDtoSchema = z.object({
   accountIds: z.array(z.string().regex(/^\d{8}$/)),
@@ -751,11 +759,14 @@ export const SimplifiedReportAuxiliaryExposureDtoSchema = z.object({
   unletteredAmount: z.number().int().nonnegative().optional(),
   thirdPartyCount: z.number().int().nonnegative().optional(),
 });
+export const SummaryReportAuxiliaryExposureDtoSchema =
+  SimplifiedReportAuxiliaryExposureDtoSchema;
 
 export const SimplifiedReportAuxiliaryDtoSchema = z.object({
   customers: SimplifiedReportAuxiliaryExposureDtoSchema.optional(),
   suppliers: SimplifiedReportAuxiliaryExposureDtoSchema.optional(),
 });
+export const SummaryReportAuxiliaryDtoSchema = SimplifiedReportAuxiliaryDtoSchema;
 
 export const SimplifiedReportClosingReadinessDtoSchema = z.object({
   canClose: z.boolean(),
@@ -765,6 +776,8 @@ export const SimplifiedReportClosingReadinessDtoSchema = z.object({
   unbalancedEntriesCount: z.number().int().nonnegative().optional(),
   unletteredAuxiliaryLinesCount: z.number().int().nonnegative().optional(),
 });
+export const SummaryReportClosingReadinessDtoSchema =
+  SimplifiedReportClosingReadinessDtoSchema;
 
 export const SimplifiedReportDtoSchema = z.object({
   period: SimplifiedReportPeriodDtoSchema,
@@ -773,13 +786,16 @@ export const SimplifiedReportDtoSchema = z.object({
   auxiliary: SimplifiedReportAuxiliaryDtoSchema.optional(),
   closingReadiness: SimplifiedReportClosingReadinessDtoSchema.optional(),
 });
+export const SummaryReportDtoSchema = SimplifiedReportDtoSchema;
 
 export type SimplifiedReportDto = z.infer<typeof SimplifiedReportDtoSchema>;
+export type SummaryReportDto = SimplifiedReportDto;
 
 export const SimplifiedReportResponseSchema = z.object({
   message: z.unknown().optional(),
   data: SimplifiedReportDtoSchema,
 });
+export const SummaryReportResponseSchema = SimplifiedReportResponseSchema;
 
 export const ThirdPartyLedgerQuerySchema = z.object({
   fiscalYear: z.string().regex(/^\d{4}$/),

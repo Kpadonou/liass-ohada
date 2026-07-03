@@ -36,8 +36,13 @@ const translations = {
       SIMPLIFIED_REPORTING: {
         ACTIONS: {
           CHOOSE_FISCAL_YEAR: 'Choisir un exercice',
+          CREATE_ENTRY: 'Créer une écriture',
+          GENERATE: 'Générer la vue d’ensemble',
           OPEN_CLOSING_ASSISTANT: 'Voir l’assistant de clôture',
-          REFRESH: 'Actualiser'
+          REFRESH: 'Actualiser',
+          VIEW_CHART_OF_ACCOUNTS: 'Voir le plan comptable',
+          VIEW_ENTRIES: 'Voir les écritures',
+          VIEW_JOURNALS: 'Voir les journaux'
         },
         AUXILIARY: {
           BALANCE_CREDIT: 'Solde crédit',
@@ -91,9 +96,15 @@ const translations = {
         },
         STATES: {
           LOADING: 'Chargement de la vue d’ensemble…',
+          NOT_GENERATED_DESCRIPTION:
+            'Aucune synthèse n’a encore été générée pour cet exercice. Lancez la génération lorsque vous souhaitez consulter les indicateurs comptables.',
+          NOT_GENERATED_TITLE: 'Générez la vue d’ensemble de l’exercice',
           NO_ACTIVE_FISCAL_YEAR: 'Aucun exercice actif sélectionné.',
           NO_ACTIVE_FISCAL_YEAR_DESCRIPTION: 'Sélectionnez un exercice.',
-          NO_DATA: 'Aucune donnée de reporting disponible pour la période sélectionnée.'
+          NO_DATA: 'Aucune donnée de reporting disponible pour la période sélectionnée.',
+          NO_DATA_DESCRIPTION:
+            'La vue d’ensemble s’enrichira dès que des écritures seront publiées. Vous pouvez commencer par saisir une écriture, vérifier les journaux ou consulter le plan comptable.',
+          NO_DATA_TITLE: 'Aucune écriture comptabilisée sur cet exercice'
         },
         SUBTITLE: 'Suivez les principaux indicateurs comptables de l’exercice actif.',
         TITLE: 'Vue d’ensemble',
@@ -190,31 +201,55 @@ describe('SimplifiedReportingPage', () => {
     expect(text).not.toContain('Journaux');
     expect(text).not.toContain('Reporting simplifié');
     expect(text).not.toContain('États OHADA');
+    httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/summary`);
     httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
   });
 
-  it('shows a stable loading state after the selected fiscal year triggers closing-ready reporting', async () => {
+  it('renders the initial not-generated state without calling the summary endpoint', async () => {
     selectFiscalYear();
     createPage();
+    await settle();
+
+    const text = pageText();
+    expect(text).toContain('Générez la vue d’ensemble de l’exercice');
+    expect(text).toContain(
+      'Aucune synthèse n’a encore été générée pour cet exercice. Lancez la génération lorsque vous souhaitez consulter les indicateurs comptables.'
+    );
+    expect(text).toContain('Générer la vue d’ensemble');
+    expect(text).toContain('Inclure l’auxiliaire');
+    expect(text).toContain('Inclure la clôture');
+    httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/summary`);
+    httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
+  });
+
+  it('shows a stable loading state after the user generates the overview', async () => {
+    selectFiscalYear();
+    createPage();
+    generateButton().click();
+    const request = expectReportRequest();
     fixture.detectChanges();
 
     expect(pageText()).toContain('Chargement de la vue d’ensemble');
     expect(fixture.nativeElement.querySelector('liass-skeleton')).not.toBeNull();
-    expectReportRequest().flush(reportResponse());
+    request.flush(reportResponse());
     await settle();
   });
 
-  it('calls GET /reports/simplified with active fiscal-year defaults and renders all report sections safely', async () => {
+  it('calls GET /reports/summary with active fiscal-year defaults and renders all report sections safely', async () => {
     selectFiscalYear();
     createPage();
+    generateButton().click();
 
     const request = expectReportRequest();
     expect(request.request.params.get('fiscalYear')).toBe('2026');
     expect(request.request.params.get('startDate')).toBe('2026-01-01');
     expect(request.request.params.get('endDate')).toBe('2026-12-31');
-    expect(request.request.params.get('includeAuxiliary')).toBe('true');
-    expect(request.request.params.get('includeClosingChecks')).toBe('true');
-    request.flush(reportResponse());
+    expect(request.request.params.get('includeAuxiliary')).toBe('false');
+    expect(request.request.params.get('includeClosingChecks')).toBe('false');
+    request.flush(reportResponse({
+      auxiliary: undefined,
+      closingReadiness: undefined
+    }));
     await settle();
 
     const text = pageText();
@@ -233,14 +268,10 @@ describe('SimplifiedReportingPage', () => {
     expect(text).toContain('Bénéfice');
     expect(text).toContain('70100000');
     expect(text).toContain('60100000');
-    expect(text).toContain('Clients');
-    expect(text).toContain('Fournisseurs');
-    expect(text).toContain('Solde débit');
-    expect(text).toContain('Montant non lettré / restant');
-    expect(text).toContain('Préparation clôture');
-    expect(text).toContain('À revoir');
-    expect(text).toContain('Voir l’assistant de clôture');
-    expect(fixture.nativeElement.querySelector('a[href="/accounting/fiscal-years"]')).not.toBeNull();
+    expect(text).not.toContain('Clients');
+    expect(text).not.toContain('Fournisseurs');
+    expect(text).not.toContain('Préparation clôture');
+    expect(text).not.toContain('Voir l’assistant de clôture');
     expect(text).not.toContain('Plan comptable');
     expect(text).not.toContain('Journaux');
     expect(text).not.toContain('Reporting simplifié');
@@ -249,11 +280,13 @@ describe('SimplifiedReportingPage', () => {
     expect(text).not.toContain('SK');
     expect(text).not.toContain('GSI');
     expect(text).not.toContain('entityType');
+    httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
   });
 
   it('passes date range and inclusion toggles when filters are refreshed', async () => {
     selectFiscalYear();
     createPage();
+    generateButton().click();
     expectReportRequest().flush(reportResponse());
     await settle();
 
@@ -261,19 +294,19 @@ describe('SimplifiedReportingPage', () => {
     component.filterForm.patchValue({
       startDate: '2026-03-01',
       endDate: '2026-06-30',
-      includeAuxiliary: false,
-      includeClosingChecks: false
+      includeAuxiliary: true,
+      includeClosingChecks: true
     });
     fixture.detectChanges();
-    refreshButton().click();
+    generateButton().click();
     fixture.detectChanges();
 
     const request = expectReportRequest();
     expect(request.request.params.get('fiscalYear')).toBe('2026');
     expect(request.request.params.get('startDate')).toBe('2026-03-01');
     expect(request.request.params.get('endDate')).toBe('2026-06-30');
-    expect(request.request.params.get('includeAuxiliary')).toBe('false');
-    expect(request.request.params.get('includeClosingChecks')).toBe('false');
+    expect(request.request.params.get('includeAuxiliary')).toBe('true');
+    expect(request.request.params.get('includeClosingChecks')).toBe('true');
     request.flush(reportResponse());
     await settle();
   });
@@ -281,6 +314,7 @@ describe('SimplifiedReportingPage', () => {
   it('shows validation and avoids a new request for an invalid date range', async () => {
     selectFiscalYear();
     createPage();
+    generateButton().click();
     expectReportRequest().flush(reportResponse());
     await settle();
 
@@ -290,16 +324,21 @@ describe('SimplifiedReportingPage', () => {
       endDate: '2026-01-01'
     });
     fixture.detectChanges();
-    refreshButton().click();
+    generateButton().click();
     await settle();
 
     expect(pageText()).toContain('La date de début doit être antérieure ou égale à la date de fin.');
+    httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/summary`);
     httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
   });
 
   it('renders unbalanced and loss states without turning warnings into blocking copy', async () => {
     selectFiscalYear();
     createPage();
+    const component = fixture.componentInstance as any;
+    component.filterForm.patchValue({ includeClosingChecks: true });
+    fixture.detectChanges();
+    generateButton().click();
     expectReportRequest().flush(reportResponse({
       trialBalance: {
         totalDebit: 150000,
@@ -335,6 +374,7 @@ describe('SimplifiedReportingPage', () => {
   it('renders no-data and clean backend error states', async () => {
     selectFiscalYear();
     createPage();
+    generateButton().click();
     expectReportRequest().flush(reportResponse({
       trialBalance: {
         totalDebit: 0,
@@ -353,18 +393,26 @@ describe('SimplifiedReportingPage', () => {
     }));
     await settle();
 
-    expect(pageText()).toContain('Aucune donnée de reporting disponible pour la période sélectionnée.');
+    let text = pageText();
+    expect(text).toContain('Aucune écriture comptabilisée sur cet exercice');
+    expect(text).toContain(
+      'La vue d’ensemble s’enrichira dès que des écritures seront publiées. Vous pouvez commencer par saisir une écriture, vérifier les journaux ou consulter le plan comptable.'
+    );
+    expect(text).toContain('Créer une écriture');
+    expect(text).toContain('Voir les écritures');
+    expect(text).toContain('Voir les journaux');
+    expect(text).toContain('Voir le plan comptable');
 
-    refreshButton().click();
+    generateButton().click();
     const request = expectReportRequest();
     request.flush(
-      { message: 'Le reporting simplifié n’a pas pu être chargé.' },
+      { message: 'La vue d’ensemble n’a pas pu être chargée.' },
       { status: 500, statusText: 'Server Error' }
     );
     await settle();
 
-    const text = pageText();
-    expect(text).toContain('Le reporting simplifié n’a pas pu être chargé.');
+    text = pageText();
+    expect(text).toContain('La vue d’ensemble n’a pas pu être chargée.');
     expect(text).not.toContain('HttpErrorResponse');
     expect(text).not.toContain('Zod');
     expect(text).not.toContain('PK');
@@ -379,11 +427,11 @@ describe('SimplifiedReportingPage', () => {
   }
 
   function expectReportRequest() {
-    return httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
+    return httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/reports/summary`);
   }
 
-  function refreshButton(): HTMLButtonElement {
-    return fixture.nativeElement.querySelector('button[aria-label="Actualiser"]') as HTMLButtonElement;
+  function generateButton(): HTMLButtonElement {
+    return fixture.nativeElement.querySelector('button[aria-label="Générer la vue d’ensemble"]') as HTMLButtonElement;
   }
 
   function pageText(): string {

@@ -2,9 +2,9 @@ import { QueryCommand } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import {
   AccountDto,
-  SimplifiedReportDto,
-  SimplifiedReportDtoSchema,
-  SimplifiedReportQuery,
+  SummaryReportDto,
+  SummaryReportDtoSchema,
+  SummaryReportQuery,
 } from "@liass-ohada/shared/accounting";
 import { config } from "../config";
 import { dynamoClient } from "../dynamo-client";
@@ -33,10 +33,10 @@ interface AuxiliaryTotals {
 }
 
 export class SimplifiedReportingService {
-  static async getSimplifiedReport(
+  static async getSummaryReport(
     orgId: string,
-    query: SimplifiedReportQuery,
-  ): Promise<SimplifiedReportDto> {
+    query: SummaryReportQuery,
+  ): Promise<SummaryReportDto> {
     const fiscalYear = await LedgerService.getFiscalYear(orgId, query.fiscalYear);
     const startDate = query.startDate ?? fiscalYear.startDate;
     const endDate = query.endDate ?? fiscalYear.endDate;
@@ -90,7 +90,7 @@ export class SimplifiedReportingService {
       isFullFiscalYear,
     );
 
-    return SimplifiedReportDtoSchema.parse({
+    return SummaryReportDtoSchema.parse({
       period: {
         fiscalYear: query.fiscalYear,
         startDate,
@@ -113,6 +113,13 @@ export class SimplifiedReportingService {
           }
         : undefined,
     });
+  }
+
+  static async getSimplifiedReport(
+    orgId: string,
+    query: SummaryReportQuery,
+  ): Promise<SummaryReportDto> {
+    return SimplifiedReportingService.getSummaryReport(orgId, query);
   }
 
   private static buildTrialBalanceSummary(

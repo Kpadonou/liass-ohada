@@ -1441,17 +1441,18 @@ describe('AccountingApi', () => {
     });
   });
 
-  it('loads simplified reporting with validated query parameters and frontend-safe response data', async () => {
-    const reportPromise = api.getSimplifiedReport({
+  it('loads summary reporting with validated query parameters and frontend-safe response data', async () => {
+    const reportPromise = api.getSummaryReport({
       fiscalYear: '2026',
       startDate: '2026-01-01',
       endDate: '2026-12-31',
       includeAuxiliary: true,
       includeClosingChecks: false
     });
-    const reportRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
+    const reportRequest = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/reports/summary`);
 
     expect(reportRequest.request.method).toBe('GET');
+    httpMock.expectNone((candidate) => candidate.url === `${apiBaseUrl}/reports/simplified`);
     expect(reportRequest.request.params.get('fiscalYear')).toBe('2026');
     expect(reportRequest.request.params.get('startDate')).toBe('2026-01-01');
     expect(reportRequest.request.params.get('endDate')).toBe('2026-12-31');

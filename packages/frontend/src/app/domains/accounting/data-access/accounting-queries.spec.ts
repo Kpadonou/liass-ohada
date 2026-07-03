@@ -32,6 +32,7 @@ describe('AccountingQueries', () => {
     getThirdPartyLedger: ReturnType<typeof vi.fn>;
     getJournal: ReturnType<typeof vi.fn>;
     getJournalBook: ReturnType<typeof vi.fn>;
+    getSummaryReport: ReturnType<typeof vi.fn>;
     getTrialBalance: ReturnType<typeof vi.fn>;
     listEntries: ReturnType<typeof vi.fn>;
     listAccounts: ReturnType<typeof vi.fn>;
@@ -57,6 +58,7 @@ describe('AccountingQueries', () => {
       getThirdPartyLedger: vi.fn(),
       getJournal: vi.fn(),
       getJournalBook: vi.fn(),
+      getSummaryReport: vi.fn(),
       getTrialBalance: vi.fn(),
       listEntries: vi.fn(),
       listAccounts: vi.fn(),
@@ -390,6 +392,44 @@ describe('AccountingQueries', () => {
       startDate: '2026-01-01',
       endDate: '2026-12-31'
     });
+  });
+
+  it('creates a manual tenant-scoped summary report query key with every expensive filter', async () => {
+    accountingApi.getSummaryReport.mockResolvedValue({
+      period: { fiscalYear: '2026', startDate: '2026-03-01', endDate: '2026-06-30' },
+      trialBalance: { totalDebit: 0, totalCredit: 0, isBalanced: true },
+      income: { totalRevenue: 0, totalExpense: 0, netResult: 0 }
+    });
+
+    const params = {
+      fiscalYear: '2026',
+      startDate: '2026-03-01',
+      endDate: '2026-06-30',
+      includeAuxiliary: true,
+      includeClosingChecks: false
+    };
+    const options = queries.summaryReport(params);
+
+    expect(options.queryKey).toEqual([
+      'accounting',
+      'org-test',
+      'summary-report',
+      {
+        endDate: '2026-06-30',
+        fiscalYear: '2026',
+        includeAuxiliary: true,
+        includeClosingChecks: false,
+        startDate: '2026-03-01'
+      }
+    ]);
+    expect(options.enabled).toBe(false);
+    expect(options.refetchOnWindowFocus).toBe(false);
+    expect(options.retry).toBe(false);
+    expect(options.staleTime).toBe(5 * 60_000);
+
+    await (options.queryFn as () => Promise<unknown>)();
+
+    expect(accountingApi.getSummaryReport).toHaveBeenCalledWith(params);
   });
 
   it('creates a tenant-scoped global journal-book key with all filters', async () => {

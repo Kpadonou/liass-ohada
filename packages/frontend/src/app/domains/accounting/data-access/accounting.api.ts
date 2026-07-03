@@ -39,8 +39,8 @@ import {
   PeriodLockResponseSchema,
   PostEntryResponseSchema,
   PostLetteringRequestSchema,
-  SimplifiedReportQuerySchema,
-  SimplifiedReportResponseSchema,
+  SummaryReportQuerySchema,
+  SummaryReportResponseSchema,
   ThirdPartyResponseSchema,
   ThirdPartyDtoSchema,
   ThirdPartyLedgerResponseSchema,
@@ -82,7 +82,7 @@ import {
   type PeriodLockDto,
   type PostEntryDraftRequest,
   type PostLetteringRequest,
-  type SimplifiedReportDto,
+  type SummaryReportDto,
   type ThirdPartyLedgerDto,
   type ThirdPartyBalanceDto,
   type ThirdPartyBalanceQuery,
@@ -114,7 +114,7 @@ export type GeneralLedgerParams = z.input<typeof GeneralLedgerQuerySchema>;
 export type TrialBalanceParams = z.input<typeof TrialBalanceQuerySchema>;
 export type JournalBookParams = z.input<typeof JournalBookQuerySchema>;
 export type LetteringCandidatesParams = z.input<typeof LetteringCandidatesQuerySchema>;
-export interface SimplifiedReportParams {
+export interface SummaryReportParams {
   fiscalYear: string;
   startDate?: string;
   endDate?: string;
@@ -738,10 +738,10 @@ export class AccountingApi {
     return IncomeStatementResponseSchema.parse(response).data;
   }
 
-  async getSimplifiedReport(
-    paramsInput: SimplifiedReportParams
-  ): Promise<ApiQueryResult<SimplifiedReportDto>> {
-    const request = SimplifiedReportQuerySchema.parse(paramsInput);
+  async getSummaryReport(
+    paramsInput: SummaryReportParams
+  ): Promise<ApiQueryResult<SummaryReportDto>> {
+    const request = SummaryReportQuerySchema.parse(paramsInput);
     let params = new HttpParams()
       .set('fiscalYear', request.fiscalYear)
       .set('includeAuxiliary', request.includeAuxiliary)
@@ -756,9 +756,9 @@ export class AccountingApi {
     }
 
     const response = await firstValueFrom(
-      this.http.get<unknown>(`${this.apiBaseUrl}/reports/simplified`, { params })
+      this.http.get<unknown>(`${this.apiBaseUrl}/reports/summary`, { params })
     );
-    const parsed = SimplifiedReportResponseSchema.parse(response);
+    const parsed = SummaryReportResponseSchema.parse(response);
 
     return {
       ...parsed.data,

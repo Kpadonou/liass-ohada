@@ -7,7 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { RouterLink } from '@angular/router';
-import { type FiscalYearDto, type SimplifiedReportDto } from '@liass-ohada/shared/accounting';
+import { type FiscalYearDto, type SummaryReportDto } from '@liass-ohada/shared/accounting';
 import { TranslocoModule } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
@@ -21,10 +21,10 @@ import {
 } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
-import { type SimplifiedReportParams } from '../../data-access/accounting.api';
+import { type SummaryReportParams } from '../../data-access/accounting.api';
 
-type SimplifiedReportFilters = SimplifiedReportParams;
-type IncomeAccountRows = NonNullable<SimplifiedReportDto['income']['revenueAccounts']>;
+type SummaryReportFilters = SummaryReportParams;
+type IncomeAccountRows = NonNullable<SummaryReportDto['income']['revenueAccounts']>;
 
 @Component({
   selector: 'liass-simplified-reporting-page',
@@ -51,14 +51,16 @@ export class SimplifiedReportingPage {
 
   private readonly initialFilters = this.defaultFilters();
   private readonly formRevision = signal(0);
-  protected readonly appliedFilters = signal<SimplifiedReportFilters | null>(this.initialFilters);
+  protected readonly generatedFilters = signal<SummaryReportFilters | null>(null);
+  protected readonly hasGeneratedReport = signal(false);
+  protected readonly isGenerating = signal(false);
 
   protected readonly filterForm = this.formBuilder.nonNullable.group({
     fiscalYear: [this.initialFilters?.fiscalYear ?? '', [Validators.required, Validators.pattern(/^\d{4}$/)]],
     startDate: [this.initialFilters?.startDate ?? ''],
     endDate: [this.initialFilters?.endDate ?? ''],
-    includeAuxiliary: [this.initialFilters?.includeAuxiliary ?? true],
-    includeClosingChecks: [this.initialFilters?.includeClosingChecks ?? true]
+    includeAuxiliary: [this.initialFilters?.includeAuxiliary ?? false],
+    includeClosingChecks: [this.initialFilters?.includeClosingChecks ?? false]
   });
 
   protected readonly selectedFiscalYear = computed(() =>
@@ -98,18 +100,17 @@ export class SimplifiedReportingPage {
   protected readonly filtersValid = computed(
     () =>
       !this.filterError() &&
-      !!this.appliedFilters() &&
       !!this.fiscalYearContext.tenantScope()
   );
 
   protected readonly reportQuery = injectQuery(() =>
-    this.accountingQueries.simplifiedReport(
-      this.appliedFilters() ?? {
+    this.accountingQueries.summaryReport(
+      this.generatedFilters() ?? {
         fiscalYear: '',
-        includeAuxiliary: true,
-        includeClosingChecks: true
+        includeAuxiliary: false,
+        includeClosingChecks: false
       },
-      this.filtersValid()
+      false
     )
   );
 
@@ -134,13 +135,14 @@ export class SimplifiedReportingPage {
       const fiscalYear = this.fiscalYearContext.activeFiscalYear();
 
       if (!fiscalYear) {
-        this.appliedFilters.set(null);
+        this.generatedFilters.set(null);
+        this.hasGeneratedReport.set(false);
         this.filterForm.reset({
           fiscalYear: '',
           startDate: '',
           endDate: '',
-          includeAuxiliary: true,
-          includeClosingChecks: true
+          includeAuxiliary: false,
+          includeClosingChecks: false
         });
         return;
       }
@@ -151,7 +153,8 @@ export class SimplifiedReportingPage {
       }
 
       this.filterForm.reset(defaults);
-      this.appliedFilters.set(defaults);
+      this.generatedFilters.set(null);
+      this.hasGeneratedReport.set(false);
     });
   }
 
@@ -173,15 +176,12 @@ export class SimplifiedReportingPage {
       return;
     }
 
-    const nextFilters = this.normalizedFormFilters();
-    const currentFilters = this.appliedFilters();
-
-    if (JSON.stringify(nextFilters) === JSON.stringify(currentFilters)) {
-      void this.reportQuery.refetch();
-      return;
-    }
-
-    this.appliedFilters.set(nextFilters);
+    this.generatedFilters.set(this.normalizedFormFilters());
+    this.hasGeneratedReport.set(true);
+    this.isGenerating.set(true);
+    void this.reportQuery.refetch().finally(() => {
+      this.isGenerating.set(false);
+    });
   }
 
   protected retry(): void {
@@ -248,22 +248,22 @@ export class SimplifiedReportingPage {
     return Array.isArray(rows) && rows.length > 0;
   }
 
-  private defaultFilters(): SimplifiedReportFilters | null {
+  private defaultFilters(): SummaryReportFilters | null {
     const fiscalYear = this.fiscalYearContext.activeFiscalYear();
     return fiscalYear ? this.filtersForFiscalYear(fiscalYear) : null;
   }
 
-  private filtersForFiscalYear(fiscalYear: FiscalYearDto): SimplifiedReportFilters {
+  private filtersForFiscalYear(fiscalYear: FiscalYearDto): SummaryReportFilters {
     return {
       fiscalYear: String(fiscalYear.year),
       startDate: fiscalYear.startDate,
       endDate: fiscalYear.endDate,
-      includeAuxiliary: true,
-      includeClosingChecks: true
+      includeAuxiliary: false,
+      includeClosingChecks: false
     };
   }
 
-  private normalizedFormFilters(): SimplifiedReportFilters {
+  private normalizedFormFilters(): SummaryReportFilters {
     const raw = this.filterForm.getRawValue();
 
     return {
@@ -275,7 +275,7 @@ export class SimplifiedReportingPage {
     };
   }
 
-  private isReportEmpty(report: SimplifiedReportDto): boolean {
+  private isReportEmpty(report: SummaryReportDto): boolean {
     const trialBalance = report.trialBalance;
     const income = report.income;
     const auxiliary = report.auxiliary;

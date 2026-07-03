@@ -54,11 +54,11 @@
           tone="brand"
           size="sm"
           [disabled]="!!filterError()"
-          [loading]="reportQuery.isFetching()"
-          [ariaLabel]="'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.REFRESH' | transloco"
+          [loading]="isGenerating() || reportQuery.isFetching()"
+          [ariaLabel]="'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.GENERATE' | transloco"
           (pressed)="applyFilters()"
         >
-          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.REFRESH' | transloco }}
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.GENERATE' | transloco }}
         </liass-button>
       </div>
 
@@ -106,7 +106,7 @@
       }
     </section>
 
-    @if (reportQuery.isPending() && filtersValid()) {
+    @if ((isGenerating() || reportQuery.isFetching()) && hasGeneratedReport() && !report()) {
       <section
         class="space-y-3 rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
         role="status"
@@ -138,12 +138,55 @@
           </div>
         </div>
       </section>
-    } @else if (noData()) {
-      <section class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+    } @else if (!hasGeneratedReport()) {
+      <section class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60" role="status">
         <mat-icon class="!size-10 !text-4xl text-slate-400">query_stats</mat-icon>
         <p class="mt-3 font-semibold text-slate-900 dark:text-white">
-          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NO_DATA' | transloco }}
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NOT_GENERATED_TITLE' | transloco }}
         </p>
+        <p class="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NOT_GENERATED_DESCRIPTION' | transloco }}
+        </p>
+      </section>
+    } @else if (noData()) {
+      <section class="rounded-app-card border border-dashed border-slate-300 bg-slate-50 p-8 text-center dark:border-slate-700 dark:bg-slate-900/60">
+        <mat-icon class="!size-10 !text-4xl text-slate-400">edit_note</mat-icon>
+        <p class="mt-3 font-semibold text-slate-900 dark:text-white">
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NO_DATA_TITLE' | transloco }}
+        </p>
+        <p class="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+          {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NO_DATA_DESCRIPTION' | transloco }}
+        </p>
+        <div class="mt-5 flex flex-wrap justify-center gap-2">
+          <a
+            class="liass-focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-app-control bg-brand-700 px-4 text-sm font-semibold text-white shadow-app-xs hover:bg-brand-600"
+            routerLink="/accounting/entries/new"
+          >
+            <mat-icon>add_circle</mat-icon>
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.CREATE_ENTRY' | transloco }}
+          </a>
+          <a
+            class="liass-focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-app-control border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-app-xs hover:border-brand-200 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            routerLink="/accounting/entries"
+          >
+            <mat-icon>receipt_long</mat-icon>
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.VIEW_ENTRIES' | transloco }}
+          </a>
+          <a
+            class="liass-focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-app-control border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-app-xs hover:border-brand-200 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            routerLink="/accounting/journals"
+          >
+            <mat-icon>menu_book</mat-icon>
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.VIEW_JOURNALS' | transloco }}
+          </a>
+          <a
+            class="liass-focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-app-control border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-app-xs hover:border-brand-200 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+            routerLink="/accounting/accounts"
+          >
+            <mat-icon>format_list_numbered</mat-icon>
+            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.VIEW_CHART_OF_ACCOUNTS' | transloco }}
+          </a>
+        </div>
       </section>
     } @else if (report(); as currentReport) {
       <section class="grid gap-3 lg:grid-cols-4" aria-labelledby="simplified-reporting-period-title">

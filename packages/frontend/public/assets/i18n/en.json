@@ -690,8 +690,13 @@
     "SIMPLIFIED_REPORTING": {
       "ACTIONS": {
         "CHOOSE_FISCAL_YEAR": "Choose fiscal year",
+        "CREATE_ENTRY": "Create entry",
+        "GENERATE": "Generate overview",
         "OPEN_CLOSING_ASSISTANT": "View closing assistant",
-        "REFRESH": "Refresh"
+        "REFRESH": "Refresh",
+        "VIEW_CHART_OF_ACCOUNTS": "View chart of accounts",
+        "VIEW_ENTRIES": "View entries",
+        "VIEW_JOURNALS": "View journals"
       },
       "AUXILIARY": {
         "BALANCE_CREDIT": "Credit balance",
@@ -745,9 +750,13 @@
       },
       "STATES": {
         "LOADING": "Loading overview...",
+        "NOT_GENERATED_DESCRIPTION": "No summary has been generated for this fiscal year yet. Generate it when you want to review the accounting indicators.",
+        "NOT_GENERATED_TITLE": "Generate the fiscal-year overview",
         "NO_ACTIVE_FISCAL_YEAR": "No active fiscal year selected.",
         "NO_ACTIVE_FISCAL_YEAR_DESCRIPTION": "Select a fiscal year before viewing the operational summary.",
-        "NO_DATA": "No reporting data is available for the selected period."
+        "NO_DATA": "No reporting data is available for the selected period.",
+        "NO_DATA_DESCRIPTION": "The overview will fill in as soon as entries are posted. You can start by entering an entry, checking journals, or reviewing the chart of accounts.",
+        "NO_DATA_TITLE": "No posted entries for this fiscal year"
       },
       "SUBTITLE": "Track the key accounting indicators for the active fiscal year.",
       "TITLE": "Overview",

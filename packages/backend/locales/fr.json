@@ -35,6 +35,7 @@
   "SUCCESS_TRIAL_BALANCE_RETRIEVED": "Balance de vérification récupérée avec succès.",
   "SUCCESS_INCOME_STATEMENT_RETRIEVED": "Le compte de résultat a été généré avec succès.",
   "SUCCESS_SIMPLIFIED_REPORT_RETRIEVED": "Rapport comptable simplifié récupéré avec succès.",
+  "SUCCESS_SUMMARY_REPORT_RETRIEVED": "Synthèse de la vue d’ensemble récupérée avec succès.",
   "SUCCESS_YEAR_END_CLOSED": "Clôture de fin d'année terminée avec succès.",
   "SUCCESS_CLOSING_CHECKS_RETRIEVED": "Contrôles de clôture de l'exercice récupérés avec succès.",
   "ERROR_LETTERING_INSUFFICIENT_LINES": "Sélectionnez au moins deux lignes.",

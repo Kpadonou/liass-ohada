@@ -62,7 +62,7 @@ describe("AccountingEndpoints", () => {
     expect(source).toContain('"books/get-third-party-balance"');
   });
 
-  test("exposes the simplified operational report route", () => {
+  test("exposes the summary operational report route and a deprecated simplified alias", () => {
     const source = readFileSync(
       path.join(
         __dirname,
@@ -71,8 +71,10 @@ describe("AccountingEndpoints", () => {
       "utf8",
     );
 
+    expect(source).toContain('"/reports/summary"');
+    expect(source).toContain('"reports/get-summary"');
     expect(source).toContain('"/reports/simplified"');
-    expect(source).toContain('"reports/get-simplified-report"');
+    expect(source).toContain("Deprecated compatibility alias");
   });
 
   test("allows PATCH in API Gateway CORS preflight", () => {

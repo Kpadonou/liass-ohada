@@ -160,9 +160,17 @@ export class AccountingEndpoints extends DomainConstructFactory {
     );
     map(
       apigw.HttpMethod.GET,
-      "/reports/simplified",
-      "reports/get-simplified-report",
+      "/reports/summary",
+      "reports/get-summary",
       undefined,
+      { memorySize: 512, timeout: cdk.Duration.seconds(15) },
+    );
+    // Deprecated compatibility alias for clients still calling the old route.
+    map(
+      apigw.HttpMethod.GET,
+      "/reports/simplified",
+      "reports/get-summary",
+      "get-summary-deprecated-simplified",
       { memorySize: 512, timeout: cdk.Duration.seconds(15) },
     );
 

@@ -690,8 +690,13 @@
     "SIMPLIFIED_REPORTING": {
       "ACTIONS": {
         "CHOOSE_FISCAL_YEAR": "Choisir un exercice",
+        "CREATE_ENTRY": "Créer une écriture",
+        "GENERATE": "Générer la vue d’ensemble",
         "OPEN_CLOSING_ASSISTANT": "Voir l’assistant de clôture",
-        "REFRESH": "Actualiser"
+        "REFRESH": "Actualiser",
+        "VIEW_CHART_OF_ACCOUNTS": "Voir le plan comptable",
+        "VIEW_ENTRIES": "Voir les écritures",
+        "VIEW_JOURNALS": "Voir les journaux"
       },
       "AUXILIARY": {
         "BALANCE_CREDIT": "Solde crédit",
@@ -745,9 +750,13 @@
       },
       "STATES": {
         "LOADING": "Chargement de la vue d’ensemble…",
+        "NOT_GENERATED_DESCRIPTION": "Aucune synthèse n’a encore été générée pour cet exercice. Lancez la génération lorsque vous souhaitez consulter les indicateurs comptables.",
+        "NOT_GENERATED_TITLE": "Générez la vue d’ensemble de l’exercice",
         "NO_ACTIVE_FISCAL_YEAR": "Aucun exercice actif sélectionné.",
         "NO_ACTIVE_FISCAL_YEAR_DESCRIPTION": "Sélectionnez un exercice avant de consulter la synthèse opérationnelle.",
-        "NO_DATA": "Aucune donnée de reporting disponible pour la période sélectionnée."
+        "NO_DATA": "Aucune donnée de reporting disponible pour la période sélectionnée.",
+        "NO_DATA_DESCRIPTION": "La vue d’ensemble s’enrichira dès que des écritures seront publiées. Vous pouvez commencer par saisir une écriture, vérifier les journaux ou consulter le plan comptable.",
+        "NO_DATA_TITLE": "Aucune écriture comptabilisée sur cet exercice"
       },
       "SUBTITLE": "Suivez les principaux indicateurs comptables de l’exercice actif.",
       "TITLE": "Vue d’ensemble",

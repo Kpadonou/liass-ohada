@@ -35,6 +35,7 @@
   "SUCCESS_TRIAL_BALANCE_RETRIEVED": "Trial balance retrieved successfully.",
   "SUCCESS_INCOME_STATEMENT_RETRIEVED": "Income statement successfully generated.",
   "SUCCESS_SIMPLIFIED_REPORT_RETRIEVED": "Simplified accounting report retrieved successfully.",
+  "SUCCESS_SUMMARY_REPORT_RETRIEVED": "Accounting overview summary retrieved successfully.",
   "SUCCESS_YEAR_END_CLOSED": "Year-end closing completed successfully.",
   "SUCCESS_CLOSING_CHECKS_RETRIEVED": "Fiscal year closing checks retrieved successfully.",
   "ERROR_LETTERING_INSUFFICIENT_LINES": "Select at least two lines.",

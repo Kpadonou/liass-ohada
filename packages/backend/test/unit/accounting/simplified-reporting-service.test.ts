@@ -1,4 +1,4 @@
-import { handler } from "@/lambda/domains/accounting/reports/get-simplified-report";
+import { handler } from "@/lambda/domains/accounting/reports/get-summary";
 import { ClosingService } from "@/lambda/shared/services/closing-service";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
 import { SimplifiedReportingService } from "@/lambda/shared/services/simplified-reporting-service";
@@ -58,10 +58,11 @@ const balance = (
 const createEvent = (
   queryStringParameters: Record<string, string> = {},
   orgId = "org-a",
+  path = "/reports/summary",
 ) => ({
   version: "2.0",
-  routeKey: "GET /reports/simplified",
-  rawPath: "/reports/simplified",
+  routeKey: `GET ${path}`,
+  rawPath: path,
   rawQueryString: "",
   queryStringParameters: {
     fiscalYear: "2026",
@@ -71,7 +72,7 @@ const createEvent = (
   },
   headers: { "accept-language": "en", "x-org-id": orgId },
   requestContext: {
-    http: { method: "GET", path: "/reports/simplified" },
+    http: { method: "GET", path },
     authorizer: { jwt: { claims: { sub: "user-123" }, scopes: [] } },
   },
   isBase64Encoded: false,
@@ -139,7 +140,7 @@ describe("Lot 6.3 simplified reporting", () => {
       .mockResolvedValue({ role: "ACCOUNTANT" });
   });
 
-  test("returns a safe operational report from posted aggregates only", async () => {
+  test("returns a safe operational report from GET /reports/summary posted aggregates only", async () => {
     setupCoreDynamoMocks();
 
     const response = await handler(createEvent() as any);
@@ -147,7 +148,7 @@ describe("Lot 6.3 simplified reporting", () => {
 
     expect(response.statusCode).toBe(200);
     expect(body.message.message).toBe(
-      "Simplified accounting report retrieved successfully.",
+      "Accounting overview summary retrieved successfully.",
     );
     expect(body.data.trialBalance).toEqual({
       totalDebit: 100000,
@@ -186,6 +187,20 @@ describe("Lot 6.3 simplified reporting", () => {
     for (const call of dynamoMock.commandCalls(QueryCommand)) {
       expect(call.args[0].input.ConsistentRead).toBeUndefined();
     }
+  });
+
+  test("keeps GET /reports/simplified as a deprecated compatibility alias", async () => {
+    setupCoreDynamoMocks();
+
+    const response = await handler(
+      createEvent({}, "org-a", "/reports/simplified") as any,
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.data.period.fiscalYear).toBe("2026");
+    expect(body.data.trialBalance.isBalanced).toBe(true);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 
   test("respects selected date ranges for trial balance and income totals", async () => {
@@ -314,7 +329,7 @@ describe("Lot 6.3 simplified reporting", () => {
       },
     });
 
-    const report = await SimplifiedReportingService.getSimplifiedReport(
+    const report = await SimplifiedReportingService.getSummaryReport(
       "org-a",
       {
         fiscalYear: "2026",
