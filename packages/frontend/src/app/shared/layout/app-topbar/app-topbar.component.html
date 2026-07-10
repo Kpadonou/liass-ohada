@@ -44,7 +44,7 @@
       <liass-dropdown [open]="cabinetMenuOpen" width="md" align="start" (closed)="cabinetMenuOpen = false">
         <button
           liassDropdownTrigger
-          class="liass-focus-ring hidden h-12 min-w-0 max-w-[260px] shrink-0 items-center gap-3 rounded-app-panel border border-orange-400/85 bg-slate-950/55 px-3 text-left text-sm text-white shadow-[0_8px_24px_rgb(2_6_23/0.22)] transition hover:bg-slate-900/70 sm:flex"
+          class="liass-focus-ring hidden h-12 min-w-0 max-w-[250px] shrink-0 items-center gap-2 rounded-app-control px-2 text-left text-sm font-semibold text-white/95 transition hover:bg-white/[0.06] sm:flex"
           type="button"
           data-testid="active-workspace"
           aria-haspopup="menu"
@@ -52,18 +52,18 @@
           [attr.aria-label]="'SHELL.TOPBAR.WORKSPACE_MENU_LABEL' | transloco"
           (click)="toggleCabinetMenu()"
         >
-          <span class="grid size-8 shrink-0 place-items-center rounded-app-control bg-orange-400/12 text-orange-300">
+          <span class="inline-flex shrink-0 text-orange-300">
             <mat-icon>{{ activeWorkspaceIcon() }}</mat-icon>
           </span>
-          <span class="min-w-0 truncate font-semibold">
+          <span class="min-w-0 truncate">
             {{
               activeWorkspaceLabel()
                 || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
                   ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
                   : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
-            }}
+              }}
           </span>
-          <mat-icon class="text-orange-200">{{ cabinetMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          <mat-icon class="shrink-0 text-white/70">{{ cabinetMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
         </button>
 
         <div class="border-b border-slate-100 px-2 pb-3 dark:border-slate-800">
@@ -112,13 +112,13 @@
       </liass-dropdown>
     } @else {
       <div
-        class="hidden h-12 min-w-0 max-w-[260px] shrink-0 items-center gap-3 rounded-app-panel border border-orange-400/85 bg-slate-950/55 px-3 text-sm text-white shadow-[0_8px_24px_rgb(2_6_23/0.22)] sm:flex"
+        class="hidden h-12 min-w-0 max-w-[250px] shrink-0 items-center gap-2 rounded-app-control px-2 text-sm font-semibold text-white/95 sm:flex"
         data-testid="active-workspace"
       >
-        <span class="grid size-8 shrink-0 place-items-center rounded-app-control bg-orange-400/12 text-orange-300">
+        <span class="inline-flex shrink-0 text-orange-300">
           <mat-icon>{{ activeWorkspaceIcon() }}</mat-icon>
         </span>
-        <span class="min-w-0 truncate font-semibold">
+        <span class="min-w-0 truncate">
           {{
             activeWorkspaceLabel()
               || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
@@ -126,6 +126,7 @@
                 : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
           }}
         </span>
+        <mat-icon class="shrink-0 text-white/55" aria-hidden="true">expand_more</mat-icon>
       </div>
     }
 

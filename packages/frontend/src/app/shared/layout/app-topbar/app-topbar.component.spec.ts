@@ -164,6 +164,10 @@ describe('AppTopbarComponent', () => {
     return fixture.nativeElement.querySelector('[data-testid="active-workspace"]').textContent;
   }
 
+  function activeWorkspaceElement(): HTMLElement {
+    return fixture.nativeElement.querySelector('[data-testid="active-workspace"]');
+  }
+
   function activeDossierText(): string {
     return fixture.nativeElement.querySelector('[data-testid="active-dossier"]').textContent;
   }
@@ -195,7 +199,7 @@ describe('AppTopbarComponent', () => {
     expect(text).not.toContain('Workspace');
   });
 
-  it('renders the workspace identity pill to the left of the command search', () => {
+  it('renders the inline workspace identity to the left of the command search', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-company-123',
@@ -206,7 +210,7 @@ describe('AppTopbarComponent', () => {
     );
 
     renderText();
-    const workspace = fixture.nativeElement.querySelector('[data-testid="active-workspace"]');
+    const workspace = activeWorkspaceElement();
     const commandSearch = fixture.nativeElement.querySelector('[data-testid="command-search"]');
 
     expect(workspace).not.toBeNull();
@@ -215,6 +219,28 @@ describe('AppTopbarComponent', () => {
     expect(commandSearchText()).toContain('Search workspace or ask AI...');
     expect(commandSearchText()).toContain('⌘ K');
     expect(activeWorkspaceText()).toContain('Demo SARL');
+  });
+
+  it('renders the direct company identity without the old card styling', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-company-123',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY'
+      },
+      'org-company-123'
+    );
+
+    renderText();
+    const identity = activeWorkspaceElement();
+
+    expect(identity.textContent).toContain('Demo SARL');
+    expect(identity.textContent).toContain('expand_more');
+    expect(identity.className).not.toContain('border-orange');
+    expect(identity.className).not.toContain('bg-slate-950');
+    expect(identity.className).not.toContain('shadow-[');
+    expect(identity.className).not.toContain('rounded-app-panel');
+    expect(identity.querySelector('span')?.className).not.toContain('bg-orange');
   });
 
   it('does not render old module or mode wording in the global header', () => {
@@ -407,7 +433,7 @@ describe('AppTopbarComponent', () => {
     expect(text).not.toContain('Workspace');
   });
 
-  it('shows one cabinet identity pill and no standalone header quick-create button', () => {
+  it('shows one cabinet inline identity and no standalone header quick-create button', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-firm-123',
@@ -419,14 +445,41 @@ describe('AppTopbarComponent', () => {
     );
 
     renderText();
-    const workspacePills = fixture.nativeElement.querySelectorAll('[data-testid="active-workspace"]');
+    const workspaceIdentities = fixture.nativeElement.querySelectorAll('[data-testid="active-workspace"]');
     const headerButtons = Array.from(
       fixture.nativeElement.querySelectorAll('header > div > button')
     ) as HTMLButtonElement[];
 
-    expect(workspacePills).toHaveLength(1);
+    expect(workspaceIdentities).toHaveLength(1);
     expect(fixture.nativeElement.textContent).not.toContain('Mode Cabinet');
     expect(headerButtons.some((button) => button.textContent?.trim() === '+')).toBe(false);
+  });
+
+  it('renders the cabinet identity as a lightweight accessible dropdown trigger', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm-123',
+        cabinetId: 'cabinet-001',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm-123'
+    );
+
+    renderText();
+    const trigger = activeWorkspaceElement() as HTMLButtonElement;
+
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger.textContent).toContain('Cabinet KPADONOU Conseil');
+    expect(trigger.textContent).toContain('expand_more');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    expect(trigger.className).toContain('liass-focus-ring');
+    expect(trigger.className).not.toContain('border-orange');
+    expect(trigger.className).not.toContain('bg-slate-950');
+    expect(trigger.className).not.toContain('shadow-[');
+    expect(trigger.className).not.toContain('rounded-app-panel');
+    expect(trigger.querySelector('span')?.className).not.toContain('bg-orange');
   });
 
   it('opens a compact cabinet context menu for accounting-firm workspaces', () => {
