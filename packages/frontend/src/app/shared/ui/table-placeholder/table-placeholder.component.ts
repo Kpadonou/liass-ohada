@@ -49,7 +49,7 @@ export class LiassTablePlaceholderComponent {
   }
 
   protected cellClass(row: LiassTableRow, column: LiassTableColumn): string {
-    const base = 'px-4 py-3 text-sm text-slate-600 first:pl-0 last:pr-0 dark:text-slate-400 md:first:pl-0 md:last:pr-0';
+    const base = 'px-3 py-2 text-sm text-slate-600 first:pl-0 last:pr-0 dark:text-slate-400 md:first:pl-0 md:last:pr-0';
     const align = column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
     const emphasis = this.cell(row, column)?.emphasis ? 'font-semibold text-slate-950 dark:text-white' : '';
     return `${base} ${align} ${emphasis}`;
@@ -57,7 +57,7 @@ export class LiassTablePlaceholderComponent {
 
   protected headerClass(column: LiassTableColumn): string {
     const align = column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left';
-    return `px-4 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 first:pl-0 last:pr-0 dark:text-slate-400 md:first:pl-0 md:last:pr-0 ${align}`;
+    return `px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 first:pl-0 last:pr-0 dark:text-slate-400 md:first:pl-0 md:last:pr-0 ${align}`;
   }
 
   protected visibleRows(): readonly LiassTableRow[] {

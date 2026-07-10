@@ -21,7 +21,7 @@ html {
         medium-weight: 500,
         bold-weight: 700,
       ),
-      density: 0,
+      density: -1,
     )
   );
 }
@@ -41,7 +41,7 @@ html.dark {
         medium-weight: 500,
         bold-weight: 700,
       ),
-      density: 0,
+      density: -1,
     )
   );
 }

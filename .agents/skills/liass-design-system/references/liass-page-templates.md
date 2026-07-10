@@ -11,6 +11,7 @@ Use this shell standard for authenticated Liass-OHADA pages.
 - Cabinet context shows the cabinet name inline and shows Dossier actif plus Exercice actif on the right. Direct company context shows the company name inline and only Exercice actif on the right.
 - The sidebar sits below the global header, supports expanded labels and collapsed icon-only navigation, preserves active states, and stores collapsed state locally. Avoid decorative vertical labels such as "POSTE ERP", "ESPACE", or combined variants.
 - Page headers are local context bars: breadcrumb/context, page title, subtitle when available, and local page actions on the right. Do not use a large "MODULE COURANT" block.
+- Authenticated pages use compact premium density through shared shell, page-header, card, form, table, and button primitives. The target feel is close to the old 90% browser-zoom comfort at real 100% zoom, without CSS/browser zoom or transform scaling.
 - Keep the shell readable in light and dark mode with restrained navy, subtle orange identity accents, soft blue dossier context, soft green fiscal-year context, and low-noise borders/shadows.
 
 ## Premium Auth Page

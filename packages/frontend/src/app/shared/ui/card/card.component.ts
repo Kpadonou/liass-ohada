@@ -7,9 +7,9 @@ export type LiassCardState = 'default' | 'loading' | 'empty';
 export type LiassCardVariant = 'default' | 'muted' | 'accent';
 
 const paddingClasses: Record<LiassCardPadding, string> = {
-  sm: 'p-4',
-  md: 'p-5 md:p-6',
-  lg: 'p-6 md:p-7'
+  sm: 'p-3',
+  md: 'p-3.5 md:p-4',
+  lg: 'p-4 md:p-5'
 };
 
 const variantClasses: Record<LiassCardVariant, string> = {

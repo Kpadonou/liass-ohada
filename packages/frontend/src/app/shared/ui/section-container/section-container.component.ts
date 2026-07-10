@@ -22,6 +22,6 @@ export class LiassSectionContainerComponent {
   readonly title = input.required<string>();
 
   protected bodyClass(): string {
-    return this.density() === 'compact' ? 'p-4' : 'p-5 md:p-6';
+    return this.density() === 'compact' ? 'p-3' : 'p-3.5 md:p-4';
   }
 }

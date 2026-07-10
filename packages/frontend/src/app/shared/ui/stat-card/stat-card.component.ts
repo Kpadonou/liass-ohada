@@ -35,6 +35,6 @@ export class LiassStatCardComponent {
   readonly value = input.required<string>();
 
   protected readonly iconClass = computed(
-    () => `grid size-11 shrink-0 place-items-center rounded-app-control ${iconToneClasses[this.tone()]}`
+    () => `grid size-9 shrink-0 place-items-center rounded-app-control ${iconToneClasses[this.tone()]}`
   );
 }

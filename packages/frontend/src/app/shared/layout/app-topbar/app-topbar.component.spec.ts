@@ -241,6 +241,9 @@ describe('AppTopbarComponent', () => {
     expect(identity.className).not.toContain('shadow-[');
     expect(identity.className).not.toContain('rounded-app-panel');
     expect(identity.querySelector('span')?.className).not.toContain('bg-orange');
+    expect(identity.querySelector('span')?.className).not.toContain('text-orange');
+    expect(identity.querySelector('span')?.className).toContain('text-white/90');
+    expect(identity.querySelector('mat-icon')?.textContent?.trim()).toBe('corporate_fare');
   });
 
   it('does not render old module or mode wording in the global header', () => {
@@ -480,6 +483,9 @@ describe('AppTopbarComponent', () => {
     expect(trigger.className).not.toContain('shadow-[');
     expect(trigger.className).not.toContain('rounded-app-panel');
     expect(trigger.querySelector('span')?.className).not.toContain('bg-orange');
+    expect(trigger.querySelector('span')?.className).not.toContain('text-orange');
+    expect(trigger.querySelector('span')?.className).toContain('text-white/90');
+    expect(trigger.querySelector('mat-icon')?.textContent?.trim()).toBe('corporate_fare');
   });
 
   it('opens a compact cabinet context menu for accounting-firm workspaces', () => {

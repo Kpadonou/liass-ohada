@@ -28,9 +28,7 @@ export class AppTopbarComponent implements OnInit {
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
-  protected readonly activeWorkspaceIcon = computed(() =>
-    this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? 'corporate_fare' : 'storefront'
-  );
+  protected readonly activeWorkspaceIcon = computed(() => 'corporate_fare');
   protected readonly activeWorkspaceLabel = computed(() => {
     if (this.authStore.workspaceLoading() && this.authStore.hasActiveTenant()) {
       return null;

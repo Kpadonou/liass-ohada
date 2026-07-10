@@ -25,10 +25,10 @@ export class LiassSidebarNavItemComponent {
       ? 'cursor-not-allowed text-slate-400 opacity-80 dark:text-slate-500'
       : '';
     const layout = this.compact()
-      ? 'gap-3 px-3 text-left lg:justify-center lg:px-0 lg:text-center'
-      : 'gap-3 px-3 text-left';
+      ? 'gap-2.5 px-2.5 text-left lg:justify-center lg:px-0 lg:text-center'
+      : 'gap-2.5 px-2.5 text-left';
 
-    return `liass-focus-ring group relative flex h-11 w-full items-center rounded-app-control text-sm font-semibold transition ${layout} ${state} ${disabled}`;
+    return `liass-focus-ring group relative flex h-9 w-full items-center rounded-app-control text-sm font-semibold transition ${layout} ${state} ${disabled}`;
   });
 
   protected selectItem(): void {

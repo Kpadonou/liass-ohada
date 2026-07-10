@@ -82,6 +82,22 @@ Do not create a noisy or multicolored UI. Status color should clarify meaning, n
 - Keep action rows predictable.
 - Avoid cramped accounting data and over-spacious operational tables.
 
+## Compact Premium Density
+
+Authenticated ERP screens should feel close to a refined 90% browser-zoom composition while still using normal CSS layout. Never apply global `zoom`, page-level `transform: scale(...)`, or browser-zoom workarounds.
+
+Implement density through shared tokens and primitives:
+
+- Shell sizing: `--spacing-app-header`, `--spacing-shell-sidebar`, `--spacing-shell-sidebar-collapsed`, app gutters, and section spacing define the authenticated page rhythm.
+- Topbar: keep the navy premium bar compact, with a readable logo, sidebar toggle, inline workspace identity, centered command search, compact dossier/exercice cards, and aligned utility controls.
+- Sidebar: use compact navigation rows, consistent icon boxes, subtle active states, readable labels, and tooltips when collapsed.
+- Page headers: use the shared `liass-page-header` for breadcrumb, title, subtitle, and page actions. Avoid custom oversized module blocks.
+- Cards and panels: use `liass-card`, `liass-section-container`, and shared stat/table primitives so padding, headings, empty states, and shadows stay consistent.
+- Forms: inherit Angular Material compact density and shared input styling; do not override individual fields unless a real layout bug requires it.
+- Tables: use `.liass-data-table` and table preference primitives so row density, headers, hover states, and dark-mode colors remain consistent.
+
+Future pages must use the shared shell, page header, card, form, table, and button primitives instead of inventing page-local spacing systems. Page-specific spacing overrides are reserved for genuine layout bugs or domain-specific information architecture that cannot be represented by shared primitives.
+
 ## Dark Mode
 
 - Preserve contrast and hierarchy in dark mode.

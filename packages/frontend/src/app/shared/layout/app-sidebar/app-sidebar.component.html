@@ -1,6 +1,6 @@
 <aside [class]="sidebarClass()">
-  <div class="no-scrollbar flex-1 overflow-y-auto py-5">
-    <nav class="grid gap-2" [attr.aria-label]="'SHELL.SIDEBAR.NAVIGATION_LABEL' | transloco">
+  <div class="no-scrollbar flex-1 overflow-y-auto py-3">
+    <nav class="grid gap-1" [attr.aria-label]="'SHELL.SIDEBAR.NAVIGATION_LABEL' | transloco">
       @if (cabinetMode()) {
         @for (item of cabinetItems; track item.page) {
           <liass-sidebar-nav-item
@@ -26,7 +26,7 @@
           />
         }
 
-        <div class="pt-4">
+        <div class="pt-2.5">
           @if (sidebarExpanded()) {
             <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
               {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
@@ -37,7 +37,7 @@
               {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
             </p>
           }
-          <div class="grid gap-2">
+          <div class="grid gap-1">
             @for (item of accountingItems; track item.page) {
               <liass-sidebar-nav-item
                 [active]="uiStore.currentPage() === item.page"
@@ -52,7 +52,7 @@
           </div>
         </div>
 
-        <div class="grid gap-2 pt-4">
+        <div class="grid gap-1 pt-2.5">
           @for (item of secondaryItems; track item.page) {
             <liass-sidebar-nav-item
               [active]="uiStore.currentPage() === item.page"
@@ -70,8 +70,8 @@
   </div>
 
   @if (sidebarExpanded()) {
-    <div class="border-t border-slate-100 py-4 dark:border-slate-800" data-testid="sidebar-ai-panel">
-      <div class="rounded-app-panel bg-brand-50/80 p-4 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
+    <div class="border-t border-slate-100 py-3 dark:border-slate-800" data-testid="sidebar-ai-panel">
+      <div class="rounded-app-panel bg-brand-50/80 p-3 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
           {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
         </p>
@@ -81,8 +81,8 @@
       </div>
     </div>
   } @else {
-    <div class="border-t border-slate-100 py-4 dark:border-slate-800 lg:hidden" data-testid="sidebar-ai-panel">
-      <div class="rounded-app-panel bg-brand-50/80 p-4 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
+    <div class="border-t border-slate-100 py-3 dark:border-slate-800 lg:hidden" data-testid="sidebar-ai-panel">
+      <div class="rounded-app-panel bg-brand-50/80 p-3 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
         <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
           {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
         </p>

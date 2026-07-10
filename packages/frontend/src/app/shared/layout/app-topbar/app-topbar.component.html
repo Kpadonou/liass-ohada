@@ -1,8 +1,8 @@
 <header
   class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#021f46] text-white shadow-[0_16px_40px_rgb(2_6_23/0.18)]"
 >
-  <div class="flex min-h-[var(--spacing-app-header)] items-center gap-3 px-4 py-3 sm:px-5 lg:px-6">
-    <div class="flex shrink-0 items-center gap-3">
+  <div class="flex min-h-[var(--spacing-app-header)] items-center gap-2 px-3 py-1.5 sm:px-3.5 lg:px-4">
+    <div class="flex shrink-0 items-center gap-2">
       <a
         class="liass-focus-ring hidden rounded-app-control lg:inline-flex"
         routerLink="/dashboard"
@@ -10,7 +10,7 @@
       >
         <liass-logo
           variant="horizontal"
-          size="md"
+          size="sm"
           theme="light"
           [alt]="'SHELL.LOGO_ALT' | transloco"
         />
@@ -29,7 +29,7 @@
       </a>
 
       <button
-        class="liass-focus-ring grid size-11 shrink-0 place-items-center rounded-app-panel border border-white/15 bg-white/[0.06] text-white transition hover:border-white/25 hover:bg-white/[0.1]"
+        class="liass-focus-ring grid size-9 shrink-0 place-items-center rounded-app-panel border border-white/15 bg-white/[0.06] text-white transition hover:border-white/25 hover:bg-white/[0.1]"
         type="button"
         data-testid="sidebar-toggle"
         [attr.aria-label]="sidebarToggleLabelKey() | transloco"
@@ -44,7 +44,7 @@
       <liass-dropdown [open]="cabinetMenuOpen" width="md" align="start" (closed)="cabinetMenuOpen = false">
         <button
           liassDropdownTrigger
-          class="liass-focus-ring hidden h-12 min-w-0 max-w-[250px] shrink-0 items-center gap-2 rounded-app-control px-2 text-left text-sm font-semibold text-white/95 transition hover:bg-white/[0.06] sm:flex"
+          class="liass-focus-ring hidden h-9 min-w-0 max-w-[210px] shrink-0 items-center gap-1.5 rounded-app-control px-1.5 text-left text-sm font-semibold text-white/95 transition hover:bg-white/[0.06] sm:flex"
           type="button"
           data-testid="active-workspace"
           aria-haspopup="menu"
@@ -52,7 +52,7 @@
           [attr.aria-label]="'SHELL.TOPBAR.WORKSPACE_MENU_LABEL' | transloco"
           (click)="toggleCabinetMenu()"
         >
-          <span class="inline-flex shrink-0 text-orange-300">
+          <span class="inline-flex shrink-0 text-white/90">
             <mat-icon>{{ activeWorkspaceIcon() }}</mat-icon>
           </span>
           <span class="min-w-0 truncate">
@@ -112,10 +112,10 @@
       </liass-dropdown>
     } @else {
       <div
-        class="hidden h-12 min-w-0 max-w-[250px] shrink-0 items-center gap-2 rounded-app-control px-2 text-sm font-semibold text-white/95 sm:flex"
+        class="hidden h-9 min-w-0 max-w-[210px] shrink-0 items-center gap-1.5 rounded-app-control px-1.5 text-sm font-semibold text-white/95 sm:flex"
         data-testid="active-workspace"
       >
-        <span class="inline-flex shrink-0 text-orange-300">
+        <span class="inline-flex shrink-0 text-white/90">
           <mat-icon>{{ activeWorkspaceIcon() }}</mat-icon>
         </span>
         <span class="min-w-0 truncate">
@@ -131,7 +131,7 @@
     }
 
     <div
-      class="hidden h-12 min-w-[260px] flex-1 items-center gap-3 rounded-full bg-white px-4 text-slate-500 shadow-[0_8px_28px_rgb(2_6_23/0.2)] ring-1 ring-white/70 md:flex xl:max-w-[560px]"
+      class="hidden h-10 min-w-[220px] flex-1 items-center gap-2 rounded-full bg-white px-3 text-slate-500 shadow-[0_8px_28px_rgb(2_6_23/0.2)] ring-1 ring-white/70 md:flex xl:max-w-[500px]"
       role="search"
       data-testid="command-search"
     >
@@ -147,13 +147,13 @@
     <div class="ml-auto flex min-w-0 items-center justify-end gap-2">
       @if (showActiveDossier()) {
         <button
-          class="hidden h-12 min-w-0 items-center gap-3 rounded-app-panel border border-sky-500/20 bg-sky-500/18 px-3 text-left text-sm text-sky-50 transition hover:bg-sky-500/25 xl:flex"
+          class="hidden h-10 min-w-0 items-center gap-2 rounded-app-panel border border-sky-500/20 bg-sky-500/18 px-2 text-left text-sm text-sky-50 transition hover:bg-sky-500/25 xl:flex"
           type="button"
           data-testid="active-dossier"
           [attr.aria-label]="'SHELL.TOPBAR.DOSSIER' | transloco"
           (click)="openDossierContext()"
         >
-          <span class="grid size-8 shrink-0 place-items-center rounded-app-control bg-sky-300/14 text-sky-200">
+          <span class="grid size-6 shrink-0 place-items-center rounded-app-control bg-sky-300/14 text-sky-200">
             <mat-icon>business_center</mat-icon>
           </span>
           <span class="min-w-0">
@@ -177,7 +177,7 @@
         <liass-dropdown [open]="fiscalYearMenuOpen" width="md" align="end" (closed)="fiscalYearMenuOpen = false">
           <button
             liassDropdownTrigger
-            class="hidden h-12 min-w-0 items-center gap-3 rounded-app-panel border border-emerald-500/20 bg-emerald-500/18 px-3 text-left text-sm text-emerald-50 transition hover:bg-emerald-500/25 sm:flex"
+            class="hidden h-10 min-w-0 items-center gap-2 rounded-app-panel border border-emerald-500/20 bg-emerald-500/18 px-2 text-left text-sm text-emerald-50 transition hover:bg-emerald-500/25 sm:flex"
             type="button"
             data-testid="active-fiscal-year"
             aria-haspopup="menu"
@@ -185,7 +185,7 @@
             [attr.aria-label]="'SHELL.TOPBAR.FISCAL_YEAR_SELECTOR_LABEL' | transloco"
             (click)="toggleFiscalYearMenu()"
           >
-            <span class="grid size-8 shrink-0 place-items-center rounded-app-control bg-emerald-300/14 text-emerald-200">
+            <span class="grid size-6 shrink-0 place-items-center rounded-app-control bg-emerald-300/14 text-emerald-200">
               <mat-icon>event_available</mat-icon>
             </span>
             <span class="min-w-0">
@@ -254,7 +254,7 @@
       }
 
       <button
-        class="liass-focus-ring grid size-10 shrink-0 place-items-center rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1]"
+        class="liass-focus-ring grid size-8 shrink-0 place-items-center rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1]"
         type="button"
         [attr.aria-label]="uiStore.themeMode() === 'dark' ? ('SHELL.TOPBAR.LIGHT_MODE' | transloco) : ('SHELL.TOPBAR.DARK_MODE' | transloco)"
         [matTooltip]="uiStore.themeMode() === 'dark' ? ('SHELL.TOPBAR.LIGHT_MODE' | transloco) : ('SHELL.TOPBAR.DARK_MODE' | transloco)"
@@ -266,7 +266,7 @@
       <liass-language-selector />
 
       <button
-        class="liass-focus-ring hidden size-10 shrink-0 place-items-center rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1] sm:grid"
+        class="liass-focus-ring hidden size-8 shrink-0 place-items-center rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1] sm:grid"
         type="button"
         [attr.aria-label]="'SHELL.TOPBAR.HELP' | transloco"
         [matTooltip]="'SHELL.TOPBAR.HELP' | transloco"
@@ -277,16 +277,16 @@
       <liass-dropdown [open]="userMenuOpen" width="md" align="end" (closed)="userMenuOpen = false">
         <button
           liassDropdownTrigger
-          class="liass-focus-ring flex h-10 items-center gap-2 rounded-app-control border border-white/15 bg-white/[0.06] px-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.1]"
+          class="liass-focus-ring flex h-8 items-center gap-1.5 rounded-app-control border border-white/15 bg-white/[0.06] px-2 text-sm font-semibold text-white transition hover:bg-white/[0.1]"
           type="button"
           data-testid="user-menu-trigger"
           [attr.aria-label]="'SHELL.TOPBAR.USER_MENU' | transloco"
           (click)="toggleUserMenu()"
         >
-          <span class="grid size-7 place-items-center rounded-full bg-pink-500 text-white">
+          <span class="grid size-5 place-items-center rounded-full bg-pink-500 text-white">
             @if (authStore.currentUserPicture()) {
               <img
-                class="size-7 rounded-full object-cover"
+                class="size-5 rounded-full object-cover"
                 [src]="authStore.currentUserPicture()"
                 [alt]="userLabel() || ('SHELL.TOPBAR.USER' | transloco)"
               />

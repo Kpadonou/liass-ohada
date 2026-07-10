@@ -58,12 +58,12 @@
   --shadow-app-popover: 0 18px 42px rgb(15 23 42 / 0.16);
   --shadow-app-focus: 0 0 0 4px rgb(21 90 154 / 0.16);
 
-  --spacing-app-gutter: 1rem;
-  --spacing-app-gutter-lg: 1.5rem;
-  --spacing-app-section: 1.5rem;
-  --spacing-shell-sidebar: 17.5rem;
-  --spacing-shell-sidebar-collapsed: 5rem;
-  --spacing-app-header: 5rem;
+  --spacing-app-gutter: 0.75rem;
+  --spacing-app-gutter-lg: 1rem;
+  --spacing-app-section: 1rem;
+  --spacing-shell-sidebar: 15rem;
+  --spacing-shell-sidebar-collapsed: 4rem;
+  --spacing-app-header: 4rem;
   --spacing-app-container: 96rem;
 
   --breakpoint-xs: 30rem;
@@ -73,12 +73,12 @@
   --text-app-eyebrow--line-height: 1rem;
   --text-app-body: 0.875rem;
   --text-app-body--line-height: 1.5rem;
-  --text-app-card-title: 1rem;
-  --text-app-card-title--line-height: 1.5rem;
-  --text-app-page-title: 1.875rem;
-  --text-app-page-title--line-height: 2.25rem;
-  --text-app-kpi: 1.875rem;
-  --text-app-kpi--line-height: 2.25rem;
+  --text-app-card-title: 0.875rem;
+  --text-app-card-title--line-height: 1.25rem;
+  --text-app-page-title: 1.375rem;
+  --text-app-page-title--line-height: 1.75rem;
+  --text-app-kpi: 1.5rem;
+  --text-app-kpi--line-height: 1.875rem;
 }
 
 html,
@@ -393,6 +393,14 @@ select:-webkit-autofill {
   border-color: var(--liass-border);
 }
 
+.liass-data-table th {
+  padding-block: 0.5rem;
+}
+
+.liass-data-table td {
+  padding-block: 0.5625rem;
+}
+
 .liass-data-table tfoot {
   background: var(--liass-surface-selected);
   color: var(--liass-text-primary);
@@ -411,6 +419,10 @@ select:-webkit-autofill {
 .mat-mdc-menu-item.liass-menu-action .mat-icon,
 .mat-mdc-menu-item.liass-menu-action .mat-mdc-menu-item-text {
   color: var(--liass-menu-action-color) !important;
+}
+
+.mat-mdc-menu-item {
+  min-height: 2.5rem;
 }
 
 .mat-mdc-menu-item.liass-menu-action:hover,

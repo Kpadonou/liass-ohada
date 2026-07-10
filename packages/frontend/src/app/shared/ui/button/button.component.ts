@@ -10,10 +10,10 @@ const baseClass =
   'liass-focus-ring inline-flex shrink-0 items-center justify-center font-semibold transition disabled:cursor-not-allowed disabled:opacity-60';
 
 const sizeClasses: Record<LiassButtonSize, string> = {
-  icon: 'size-10 rounded-app-control p-0',
-  lg: 'h-12 gap-2 rounded-app-control px-5 text-sm',
-  md: 'h-10 gap-2 rounded-app-control px-4 text-sm',
-  sm: 'h-9 gap-1.5 rounded-app-control px-3 text-xs'
+  icon: 'size-8 rounded-app-control p-0',
+  lg: 'h-10 gap-2 rounded-app-control px-3.5 text-sm',
+  md: 'h-8 gap-1.5 rounded-app-control px-3 text-sm',
+  sm: 'h-7 gap-1.5 rounded-app-control px-2 text-xs'
 };
 
 const toneClasses: Record<LiassButtonVariant, Record<LiassButtonTone, string>> = {

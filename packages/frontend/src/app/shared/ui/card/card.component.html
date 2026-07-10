@@ -1,6 +1,6 @@
 <article [class]="cardClass()">
   @if (title() || description()) {
-    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
       <div class="min-w-0">
         @if (title()) {
           <h2 class="text-app-card-title font-semibold text-app-text">{{ title() }}</h2>
@@ -14,12 +14,12 @@
   }
 
   @if (state() === 'loading') {
-    <div class="space-y-4">
+    <div class="space-y-3">
       <liass-skeleton variant="text" [lines]="2" />
       <liass-skeleton variant="block" />
     </div>
   } @else if (state() === 'empty') {
-    <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-6 text-center">
+    <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-4 text-center">
       @if (emptyTitle()) {
         <p class="text-sm font-semibold text-app-text">{{ emptyTitle() }}</p>
       }

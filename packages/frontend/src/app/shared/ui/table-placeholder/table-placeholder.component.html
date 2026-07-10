@@ -1,7 +1,7 @@
 @if (state() === 'loading') {
-  <div class="space-y-3">
+  <div class="space-y-2">
     @for (_ of skeletonRowItems(); track $index) {
-      <div class="grid gap-3 rounded-app-card border border-slate-100 p-4 dark:border-slate-800 sm:grid-cols-4">
+      <div class="grid gap-2 rounded-app-card border border-slate-100 p-3 dark:border-slate-800 sm:grid-cols-4">
         @for (_cell of skeletonCells; track $index) {
           <liass-skeleton variant="text" />
         }
@@ -9,7 +9,7 @@
     }
   </div>
 } @else if (state() === 'empty' || rows().length === 0) {
-  <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center dark:border-slate-800">
+  <div class="rounded-app-card border border-dashed border-slate-200 p-5 text-center dark:border-slate-800">
     <p class="text-sm text-app-muted dark:text-slate-400">{{ emptyLabel() | transloco }}</p>
   </div>
 } @else {
@@ -43,9 +43,9 @@
     </table>
   </div>
 
-  <div class="grid gap-3 md:hidden">
+  <div class="grid gap-2 md:hidden">
     @for (row of visibleRows(); track row.id) {
-      <article class="rounded-app-card border border-slate-100 p-4 dark:border-slate-800">
+      <article class="rounded-app-card border border-slate-100 p-3 dark:border-slate-800">
         @for (column of columns(); track column.key) {
           @if (cell(row, column); as tableCell) {
             <div class="flex items-start justify-between gap-4 py-2 first:pt-0 last:pb-0">
