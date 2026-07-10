@@ -1,48 +1,25 @@
 import { Component, OnInit, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { Router } from '@angular/router';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { Router, RouterLink } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LanguageSelectorComponent } from '../../../core/i18n/language-selector/language-selector.component';
-import { UiStore, type AppPage } from '../../../core/state/ui.store';
+import { UiStore } from '../../../core/state/ui.store';
 import { AccountingFiscalYearContextService } from '../../../domains/accounting/data-access/accounting-fiscal-year-context.service';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
-import { LiassButtonComponent } from '../../ui/button/button.component';
 import { LiassDropdownComponent } from '../../ui/dropdown/dropdown.component';
-
-const pageTitleKeys: Record<AppPage, string> = {
-  'accounting.overview': 'SHELL.PAGES.ACCOUNTING_OVERVIEW',
-  'accounting.chartOfAccounts': 'SHELL.PAGES.CHART_OF_ACCOUNTS',
-  'accounting.entries': 'SHELL.PAGES.ENTRIES',
-  'accounting.fiscalYear': 'SHELL.PAGES.FISCAL_YEAR',
-  'accounting.generalLedger': 'SHELL.PAGES.GENERAL_LEDGER',
-  'accounting.auxiliaryLedger': 'SHELL.PAGES.AUXILIARY_LEDGER',
-  'accounting.auxiliaryBalance': 'SHELL.PAGES.AUXILIARY_BALANCE',
-  'accounting.journalBook': 'SHELL.PAGES.JOURNAL_BOOK',
-  'accounting.journals': 'SHELL.PAGES.JOURNALS',
-  'accounting.lettering': 'SHELL.PAGES.LETTERING',
-  'accounting.thirdParties': 'SHELL.PAGES.THIRD_PARTIES',
-  'accounting.trialBalance': 'SHELL.PAGES.TRIAL_BALANCE',
-  'cabinet.collaborators': 'SHELL.PAGES.CABINET_COLLABORATORS',
-  'cabinet.dashboard': 'SHELL.PAGES.CABINET_DASHBOARD',
-  'cabinet.deadlines': 'SHELL.PAGES.CABINET_DEADLINES',
-  'cabinet.dossiers': 'SHELL.PAGES.CLIENT_DOSSIERS',
-  'cabinet.missions': 'SHELL.PAGES.CABINET_MISSIONS',
-  'cabinet.settings': 'SHELL.PAGES.CABINET_SETTINGS',
-  administration: 'SHELL.PAGES.ADMINISTRATION',
-  dashboard: 'SHELL.PAGES.DASHBOARD',
-  projects: 'SHELL.SECTIONS.PROJECTS',
-  reports: 'SHELL.SECTIONS.REPORTS',
-  treasury: 'SHELL.SECTIONS.TREASURY'
-};
+import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 
 @Component({
   selector: 'liass-app-topbar',
   imports: [
     LanguageSelectorComponent,
-    LiassButtonComponent,
     LiassDropdownComponent,
+    LiassLogoComponent,
     MatIconModule,
+    MatTooltipModule,
+    RouterLink,
     TranslocoModule
   ],
   templateUrl: './app-topbar.component.html'
@@ -51,12 +28,8 @@ export class AppTopbarComponent implements OnInit {
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
-  protected readonly pageTitleKey = computed(() => pageTitleKeys[this.uiStore.currentPage()]);
-  protected readonly activeWorkspaceTypeLabelKey = computed(() =>
-    this.authStore.activeWorkspaceTypeLabelKey()
-  );
   protected readonly activeWorkspaceIcon = computed(() =>
-    this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? 'groups' : 'domain'
+    this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? 'corporate_fare' : 'storefront'
   );
   protected readonly activeWorkspaceLabel = computed(() => {
     if (this.authStore.workspaceLoading() && this.authStore.hasActiveTenant()) {
@@ -79,9 +52,18 @@ export class AppTopbarComponent implements OnInit {
   protected readonly showActiveDossier = computed(
     () => this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM'
   );
-  protected readonly activeDossierRouteLabelKey = computed(() => 'SHELL.TOPBAR.SELECT_DOSSIER');
   protected readonly showFiscalYearSelector = computed(() =>
     this.uiStore.currentPage().startsWith('accounting.')
+  );
+  protected readonly sidebarToggleLabelKey = computed(() =>
+    this.uiStore.sidebarCollapsed() ? 'SHELL.SIDEBAR.EXPAND' : 'SHELL.SIDEBAR.COLLAPSE'
+  );
+  protected readonly sidebarToggleIcon = computed(() =>
+    this.uiStore.sidebarOpen()
+      ? 'close'
+      : this.uiStore.sidebarCollapsed()
+        ? 'menu_open'
+        : 'menu'
   );
   private readonly router = inject(Router);
 
@@ -105,6 +87,15 @@ export class AppTopbarComponent implements OnInit {
 
   protected toggleUserMenu(): void {
     this.userMenuOpen = !this.userMenuOpen;
+  }
+
+  protected toggleShellNavigation(): void {
+    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
+      this.uiStore.toggleSidebarCollapsed();
+      return;
+    }
+
+    this.uiStore.toggleSidebar();
   }
 
   protected toggleCabinetMenu(): void {

@@ -1,9 +1,14 @@
-<header class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+<header class="border-b border-app-border/75 pb-6">
+  <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
   <div class="min-w-0">
-    <p class="text-app-eyebrow font-semibold uppercase tracking-[0.18em] text-brand-700 dark:text-brand-300">
-      {{ eyebrow() }}
-    </p>
-    <h1 class="mt-2 text-2xl font-semibold leading-tight text-app-text md:text-app-page-title">
+    <nav class="flex min-w-0 items-center gap-2 text-sm font-medium text-app-text-secondary" aria-label="Breadcrumb">
+      <mat-icon class="text-base text-brand-700 dark:text-brand-300" aria-hidden="true">home</mat-icon>
+      <mat-icon class="text-base text-slate-400" aria-hidden="true">chevron_right</mat-icon>
+      <span class="min-w-0 truncate">{{ eyebrow() }}</span>
+      <mat-icon class="text-base text-slate-300 dark:text-slate-600" aria-hidden="true">chevron_right</mat-icon>
+      <span class="min-w-0 truncate font-semibold text-brand-700 dark:text-brand-300">{{ title() }}</span>
+    </nav>
+    <h1 class="mt-3 text-2xl font-semibold leading-tight text-app-text md:text-app-page-title">
       {{ title() }}
     </h1>
     <p class="mt-2 max-w-3xl text-app-body text-app-text-secondary">
@@ -12,14 +17,17 @@
   </div>
 
   @if (actionLabel()) {
-    <liass-button
-      size="lg"
-      tone="brand"
-      variant="solid"
-      [icon]="actionIcon()"
-      (pressed)="emitAction()"
-    >
-      {{ actionLabel() }}
-    </liass-button>
+    <div class="flex shrink-0 items-center justify-start md:justify-end" data-testid="page-actions">
+      <liass-button
+        size="lg"
+        tone="brand"
+        variant="solid"
+        [icon]="actionIcon()"
+        (pressed)="emitAction()"
+      >
+        {{ actionLabel() }}
+      </liass-button>
+    </div>
   }
+  </div>
 </header>

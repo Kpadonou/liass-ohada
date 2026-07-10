@@ -1,9 +1,9 @@
 <div class="min-h-dvh bg-app-bg text-app-text">
+  <liass-app-topbar />
   <liass-app-sidebar />
   <liass-app-backdrop />
 
   <div [class]="contentClass()">
-    <liass-app-topbar />
     <main class="mx-auto w-full max-w-[var(--spacing-app-container)] px-4 py-5 sm:px-6 lg:px-8">
       <router-outlet />
     </main>

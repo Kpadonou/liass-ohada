@@ -7,7 +7,7 @@
   matTooltipPosition="right"
   (click)="selectItem()"
 >
-  <span class="grid size-8 shrink-0 place-items-center rounded-app-control bg-app-surface/70 text-current shadow-app-xs">
+  <span class="grid size-8 shrink-0 place-items-center rounded-app-control bg-white/80 text-current shadow-app-xs ring-1 ring-slate-200/70 transition group-hover:ring-slate-300 dark:bg-slate-900/80 dark:ring-slate-800 dark:group-hover:ring-slate-700">
     <mat-icon>{{ icon() }}</mat-icon>
   </span>
   <span [class]="compact() ? 'min-w-0 flex-1 truncate lg:sr-only' : 'min-w-0 flex-1 truncate'">{{ label() }}</span>

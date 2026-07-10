@@ -102,10 +102,12 @@
     },
     "SIDEBAR": {
       "COLLAPSE": "Collapse sidebar",
-      "EXPAND": "Expand sidebar"
+      "EXPAND": "Expand sidebar",
+      "NAVIGATION_LABEL": "Primary navigation"
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Search workspace or ask AI...",
+      "COMMAND_SHORTCUT": "⌘ K",
       "CABINET_DASHBOARD": "Cabinet dashboard",
       "CABINET_MENU_LABEL": "Open cabinet menu",
       "CLIENT_DOSSIERS": "Client dossiers",
@@ -117,11 +119,13 @@
       "DOSSIER_LOADING": "Loading dossier...",
       "ACTIVE_FISCAL_YEAR": "Active fiscal year",
       "FISCAL_YEAR_SELECTOR_LABEL": "Select active fiscal year",
+      "HELP": "Help",
       "LIGHT_MODE": "Switch to light mode",
       "NO_DOSSIER": "No dossier open",
       "NO_ORG": "No organization",
       "NO_WORKSPACE": "Workspace",
       "NEW_CLIENT_DOSSIER": "New client dossier",
+      "PAGE_ACTIONS": "Page actions",
       "SIGN_OUT": "Sign out",
       "SELECT_DOSSIER": "Select a dossier",
       "SELECT_FISCAL_YEAR": "Select fiscal year",
@@ -129,6 +133,7 @@
       "USER": "User",
       "USER_MENU": "Open user menu",
       "WORKSPACE": "Active workspace",
+      "WORKSPACE_MENU_LABEL": "Open active workspace menu",
       "WORKSPACE_LOADING": "Loading workspace..."
     },
     "WORKSPACE_TYPES": {

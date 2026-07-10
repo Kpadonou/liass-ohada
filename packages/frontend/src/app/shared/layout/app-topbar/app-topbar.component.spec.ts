@@ -52,10 +52,16 @@ const translations = {
         LETTERING: 'Lettering',
         TRIAL_BALANCE: 'Trial balance'
       },
+      SIDEBAR: {
+        COLLAPSE: 'Collapse sidebar',
+        EXPAND: 'Expand sidebar'
+      },
       TOPBAR: {
         CABINET_DASHBOARD: 'Cabinet dashboard',
         CABINET_MENU_LABEL: 'Open cabinet menu',
         CLIENT_DOSSIERS: 'Client dossiers',
+        COMMAND_PLACEHOLDER: 'Search workspace or ask AI...',
+        COMMAND_SHORTCUT: '⌘ K',
         CREATE_DOSSIER: 'Create dossier',
         CURRENT_MODULE: 'Current module',
         DARK_MODE: 'Switch to dark mode',
@@ -63,9 +69,12 @@ const translations = {
         DOSSIER_LOADING: 'Loading dossier...',
         ACTIVE_FISCAL_YEAR: 'Active fiscal year',
         FISCAL_YEAR_SELECTOR_LABEL: 'Select active fiscal year',
+        HELP: 'Help',
+        LIGHT_MODE: 'Switch to light mode',
         NO_DOSSIER: 'No dossier open',
         NO_WORKSPACE: 'Workspace',
         NEW_CLIENT_DOSSIER: 'New client dossier',
+        PAGE_ACTIONS: 'Page actions',
         SELECT_DOSSIER: 'Select a dossier',
         SELECT_FISCAL_YEAR: 'Select fiscal year',
         SIGN_OUT: 'Sign out',
@@ -73,6 +82,7 @@ const translations = {
         USER: 'User',
         USER_MENU: 'Open user menu',
         WORKSPACE: 'Active workspace',
+        WORKSPACE_MENU_LABEL: 'Open active workspace menu',
         WORKSPACE_LOADING: 'Loading workspace...'
       },
       WORKSPACE_TYPES: {
@@ -162,6 +172,10 @@ describe('AppTopbarComponent', () => {
     return fixture.nativeElement.querySelector('[data-testid="user-menu-trigger"]').textContent;
   }
 
+  function commandSearchText(): string {
+    return fixture.nativeElement.querySelector('[data-testid="command-search"]').textContent;
+  }
+
   it('displays a company workspace name instead of the raw organization id', () => {
     authStore.setCreatedWorkspace(
       {
@@ -176,12 +190,12 @@ describe('AppTopbarComponent', () => {
     const text = activeWorkspaceText();
 
     expect(text).toContain('Demo SARL');
-    expect(text).toContain('Company');
+    expect(text).not.toContain('Company');
     expect(text).not.toContain('org-company-123');
     expect(text).not.toContain('Workspace');
   });
 
-  it('displays the dashboard page title separately from the active workspace', () => {
+  it('renders the workspace identity pill to the left of the command search', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-company-123',
@@ -191,15 +205,19 @@ describe('AppTopbarComponent', () => {
       'org-company-123'
     );
 
-    const text = renderText();
+    renderText();
+    const workspace = fixture.nativeElement.querySelector('[data-testid="active-workspace"]');
+    const commandSearch = fixture.nativeElement.querySelector('[data-testid="command-search"]');
 
-    expect(text).toContain('Current module');
-    expect(text).toContain('Dashboard');
+    expect(workspace).not.toBeNull();
+    expect(commandSearch).not.toBeNull();
+    expect(workspace.compareDocumentPosition(commandSearch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(commandSearchText()).toContain('Search workspace or ask AI...');
+    expect(commandSearchText()).toContain('⌘ K');
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
-  it('displays the general-ledger page title separately from the active workspace', () => {
-    uiStore.setCurrentPage('accounting.generalLedger');
+  it('does not render old module or mode wording in the global header', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-company-123',
@@ -211,12 +229,14 @@ describe('AppTopbarComponent', () => {
 
     const text = renderText();
 
-    expect(text).toContain('General ledger');
-    expect(activeWorkspaceText()).toContain('Demo SARL');
+    expect(text).not.toContain('Current module');
+    expect(text).not.toContain('Mode Cabinet');
+    expect(text).not.toContain('Mode Entreprise');
+    expect(text).not.toContain('Dashboard');
+    expect(text).not.toContain('General ledger');
   });
 
-  it('displays the accounting overview page title separately from the active workspace', () => {
-    uiStore.setCurrentPage('accounting.overview');
+  it('renders a visible sidebar toggle in the header', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-company-123',
@@ -226,10 +246,13 @@ describe('AppTopbarComponent', () => {
       'org-company-123'
     );
 
-    const text = renderText();
+    renderText();
+    const toggle = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-toggle"]'
+    ) as HTMLButtonElement | null;
 
-    expect(text).toContain('Accounting');
-    expect(activeWorkspaceText()).toContain('Demo SARL');
+    expect(toggle).not.toBeNull();
+    expect(toggle?.getAttribute('aria-label')).toBe('Collapse sidebar');
   });
 
   it('renders the active fiscal year selector on accounting pages', () => {
@@ -321,7 +344,7 @@ describe('AppTopbarComponent', () => {
     expect(fiscalYearContext.activeYear()).toBe(2025);
   });
 
-  it('displays the fiscal-year page title separately from the active workspace', () => {
+  it('shows only the fiscal year context card for direct company accounting pages', () => {
     uiStore.setCurrentPage('accounting.fiscalYear');
     authStore.setCreatedWorkspace(
       {
@@ -331,31 +354,23 @@ describe('AppTopbarComponent', () => {
       },
       'org-company-123'
     );
+    fiscalYearContext.selectFiscalYear({
+      accountingFramework: 'SYSCOHADA_REVISED',
+      endDate: '2026-12-31',
+      fiscalYearId: 'FY#2026',
+      startDate: '2026-01-01',
+      status: 'OPEN',
+      year: 2026
+    });
 
-    const text = renderText();
+    renderText();
 
-    expect(text).toContain('Fiscal years');
     expect(activeWorkspaceText()).toContain('Demo SARL');
+    expect(fixture.nativeElement.querySelector('[data-testid="active-fiscal-year"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="active-dossier"]')).toBeNull();
   });
 
-  it('displays the lettering page title separately from the active workspace', () => {
-    uiStore.setCurrentPage('accounting.lettering');
-    authStore.setCreatedWorkspace(
-      {
-        orgId: 'org-company-123',
-        displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
-      },
-      'org-company-123'
-    );
-
-    const text = renderText();
-
-    expect(text).toContain('Lettering');
-    expect(activeWorkspaceText()).toContain('Demo SARL');
-  });
-
-  it('displays the full client dossiers page title without truncation styling', () => {
+  it('keeps cabinet route header global instead of rendering a module title', () => {
     uiStore.setCurrentPage('cabinet.dossiers');
     authStore.setCreatedWorkspace(
       {
@@ -367,13 +382,12 @@ describe('AppTopbarComponent', () => {
     );
 
     renderText();
-    const heading = fixture.nativeElement.querySelector('h2') as HTMLHeadingElement;
 
-    expect(heading.textContent).toContain('Client dossiers');
-    expect(heading.className).not.toContain('truncate');
+    expect(activeWorkspaceText()).toContain('Cabinet KPADONOU Conseil');
+    expect(fixture.nativeElement.textContent).not.toContain('Current module');
   });
 
-  it('displays an accounting-firm workspace name and type label', () => {
+  it('displays an accounting-firm workspace name without a mode/type label', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-firm-123',
@@ -388,9 +402,31 @@ describe('AppTopbarComponent', () => {
     const text = activeWorkspaceText();
 
     expect(text).toContain('Cabinet KPADONOU Conseil');
-    expect(text).toContain('Accounting firm');
+    expect(text).not.toContain('Accounting firm');
     expect(text).not.toContain('org-firm-123');
     expect(text).not.toContain('Workspace');
+  });
+
+  it('shows one cabinet identity pill and no standalone header quick-create button', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm-123',
+        cabinetId: 'cabinet-001',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm-123'
+    );
+
+    renderText();
+    const workspacePills = fixture.nativeElement.querySelectorAll('[data-testid="active-workspace"]');
+    const headerButtons = Array.from(
+      fixture.nativeElement.querySelectorAll('header > div > button')
+    ) as HTMLButtonElement[];
+
+    expect(workspacePills).toHaveLength(1);
+    expect(fixture.nativeElement.textContent).not.toContain('Mode Cabinet');
+    expect(headerButtons.some((button) => button.textContent?.trim() === '+')).toBe(false);
   });
 
   it('opens a compact cabinet context menu for accounting-firm workspaces', () => {
@@ -412,7 +448,7 @@ describe('AppTopbarComponent', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
 
-    expect(trigger.getAttribute('aria-label')).toBe('Open cabinet menu');
+    expect(trigger.getAttribute('aria-label')).toBe('Open active workspace menu');
     expect(text).toContain('Cabinet dashboard');
     expect(text).toContain('Client dossiers');
     expect(text).toContain('New client dossier');
@@ -505,7 +541,7 @@ describe('AppTopbarComponent', () => {
     const dossierText = activeDossierText();
 
     expect(workspaceText).toContain('Cabinet KPADONOU Conseil');
-    expect(workspaceText).toContain('Accounting firm');
+    expect(workspaceText).not.toContain('Accounting firm');
     expect(workspaceText).not.toContain('Client ABC SARL');
     expect(dossierText).toContain('Active dossier');
     expect(dossierText).toContain('Client ABC SARL');
@@ -527,7 +563,7 @@ describe('AppTopbarComponent', () => {
     const dossierText = activeDossierText();
 
     expect(dossierText).toContain('No dossier open');
-    expect(dossierText).toContain('Select a dossier');
+    expect(dossierText).not.toContain('Select a dossier');
   });
 
   it('updates the workspace label immediately after onboarding stores the created workspace', () => {

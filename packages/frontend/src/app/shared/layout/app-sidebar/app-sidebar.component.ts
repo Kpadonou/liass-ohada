@@ -1,11 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
-import { LiassButtonComponent } from '../../ui/button/button.component';
-import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 import { LiassSidebarNavItemComponent } from '../../ui/sidebar-nav-item/sidebar-nav-item.component';
 
 interface ShellNavItem {
@@ -169,13 +167,7 @@ const cabinetItems: readonly ShellNavItem[] = [
 
 @Component({
   selector: 'liass-app-sidebar',
-  imports: [
-    LiassButtonComponent,
-    LiassLogoComponent,
-    LiassSidebarNavItemComponent,
-    RouterLink,
-    TranslocoModule
-  ],
+  imports: [LiassSidebarNavItemComponent, TranslocoModule],
   templateUrl: './app-sidebar.component.html'
 })
 export class AppSidebarComponent {
@@ -192,23 +184,15 @@ export class AppSidebarComponent {
   );
   private readonly router = inject(Router);
 
-  protected readonly homeRoute = computed(() =>
-    this.cabinetMode() ? '/cabinet/dashboard' : '/dashboard'
-  );
-
   protected readonly sidebarExpanded = computed(() => !this.uiStore.sidebarCollapsed());
 
   protected sidebarClass(): string {
     const mobileState = this.uiStore.sidebarOpen() ? 'translate-x-0' : '-translate-x-full';
     const desktopWidth = this.uiStore.sidebarCollapsed()
       ? 'lg:w-[var(--spacing-shell-sidebar-collapsed)] lg:px-3'
-      : 'lg:w-[var(--spacing-shell-sidebar)] lg:px-4';
+      : 'lg:w-[var(--spacing-shell-sidebar)] lg:px-3';
 
-    return `fixed left-0 top-0 z-50 flex h-dvh w-[var(--spacing-shell-sidebar)] flex-col border-r border-slate-200 bg-white px-4 text-slate-950 shadow-app-popover transition-[transform,width,padding] duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-900 dark:text-white lg:translate-x-0 lg:shadow-none ${desktopWidth} ${mobileState}`;
-  }
-
-  protected toggleSidebarCollapsed(): void {
-    this.uiStore.toggleSidebarCollapsed();
+    return `fixed left-0 top-[var(--spacing-app-header)] z-50 flex h-[calc(100dvh-var(--spacing-app-header))] w-[var(--spacing-shell-sidebar)] flex-col border-r border-slate-200/80 bg-white/96 px-3 text-slate-950 shadow-app-popover backdrop-blur-xl transition-[transform,width,padding] duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-950/96 dark:text-white lg:translate-x-0 lg:shadow-none ${desktopWidth} ${mobileState}`;
   }
 
   protected async selectItem(item: ShellNavItem): Promise<void> {

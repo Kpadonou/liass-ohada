@@ -2,6 +2,17 @@
 
 These templates are conceptual and adaptable. Do not copy third-party layouts or visual identity.
 
+## Authenticated ERP Shell
+
+Use this shell standard for authenticated Liass-OHADA pages.
+
+- The global header is a premium navy horizontal bar with the Liass-OHADA logo, a visible sidebar toggle, one main workspace identity pill, a global search/AI command bar, compact context cards, and utility controls.
+- The main workspace identity pill sits to the left of search and shows only the current cabinet or company name. Do not display "Mode Cabinet", "Mode Entreprise", or a duplicated cabinet card elsewhere in the header.
+- Cabinet context shows the cabinet name in the identity pill and shows Dossier actif plus Exercice actif on the right. Direct company context shows the company name in the identity pill and only Exercice actif on the right.
+- The sidebar sits below the global header, supports expanded labels and collapsed icon-only navigation, preserves active states, and stores collapsed state locally. Avoid decorative vertical labels such as "POSTE ERP", "ESPACE", or combined variants.
+- Page headers are local context bars: breadcrumb/context, page title, subtitle when available, and local page actions on the right. Do not use a large "MODULE COURANT" block.
+- Keep the shell readable in light and dark mode with restrained navy, subtle orange identity accents, soft blue dossier context, soft green fiscal-year context, and low-noise borders/shadows.
+
 ## Premium Auth Page
 
 Use for login, signup, onboarding entry, and auth callback recovery.

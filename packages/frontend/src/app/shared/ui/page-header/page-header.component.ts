@@ -1,4 +1,5 @@
 import { Component, input, output } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
 
 import { LiassButtonComponent } from '../button/button.component';
 
@@ -7,7 +8,7 @@ import { LiassButtonComponent } from '../button/button.component';
   host: {
     class: 'block'
   },
-  imports: [LiassButtonComponent],
+  imports: [LiassButtonComponent, MatIconModule],
   templateUrl: './page-header.component.html'
 })
 export class LiassPageHeaderComponent {

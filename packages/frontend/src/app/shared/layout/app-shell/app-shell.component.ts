@@ -120,7 +120,7 @@ export class AppShellComponent {
       ? 'lg:pl-[var(--spacing-shell-sidebar-collapsed)]'
       : 'lg:pl-[var(--spacing-shell-sidebar)]';
 
-    return `min-h-dvh transition-[padding] duration-300 ease-in-out ${sidebarPadding}`;
+    return `min-h-dvh pt-[var(--spacing-app-header)] transition-[padding] duration-300 ease-in-out ${sidebarPadding}`;
   }
 
   private async redirectRootShell(): Promise<void> {

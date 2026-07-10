@@ -102,10 +102,12 @@
     },
     "SIDEBAR": {
       "COLLAPSE": "Réduire la barre latérale",
-      "EXPAND": "Déployer la barre latérale"
+      "EXPAND": "Déployer la barre latérale",
+      "NAVIGATION_LABEL": "Navigation principale"
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Rechercher ou interroger l’IA...",
+      "COMMAND_SHORTCUT": "⌘ K",
       "CABINET_DASHBOARD": "Tableau de bord cabinet",
       "CABINET_MENU_LABEL": "Ouvrir le menu du cabinet",
       "CLIENT_DOSSIERS": "Dossiers clients",
@@ -117,11 +119,13 @@
       "DOSSIER_LOADING": "Chargement du dossier...",
       "ACTIVE_FISCAL_YEAR": "Exercice actif",
       "FISCAL_YEAR_SELECTOR_LABEL": "Sélectionner l’exercice actif",
+      "HELP": "Aide",
       "LIGHT_MODE": "Activer le mode clair",
       "NO_DOSSIER": "Aucun dossier ouvert",
       "NO_ORG": "Aucune organisation",
       "NO_WORKSPACE": "Espace de travail",
       "NEW_CLIENT_DOSSIER": "Nouveau dossier client",
+      "PAGE_ACTIONS": "Actions de la page",
       "SIGN_OUT": "Se déconnecter",
       "SELECT_DOSSIER": "Sélectionner un dossier",
       "SELECT_FISCAL_YEAR": "Aucun exercice",
@@ -129,6 +133,7 @@
       "USER": "Utilisateur",
       "USER_MENU": "Ouvrir le menu utilisateur",
       "WORKSPACE": "Espace actif",
+      "WORKSPACE_MENU_LABEL": "Ouvrir le menu de l’espace actif",
       "WORKSPACE_LOADING": "Chargement de l’espace..."
     },
     "WORKSPACE_TYPES": {

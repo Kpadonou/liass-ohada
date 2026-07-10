@@ -19,9 +19,11 @@ export class LiassSidebarNavItemComponent {
 
   protected readonly itemClass = computed(() => {
     const state = this.active()
-      ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100 dark:bg-brand-900/25 dark:text-brand-300 dark:ring-brand-900/70'
-      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-400 dark:hover:bg-slate-800/70 dark:hover:text-white';
-    const disabled = this.disabled() ? 'cursor-not-allowed opacity-55' : '';
+      ? 'bg-brand-50 text-brand-700 ring-1 ring-inset ring-brand-100 shadow-app-xs dark:bg-brand-900/28 dark:text-brand-200 dark:ring-brand-900/70'
+      : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800/70 dark:hover:text-white';
+    const disabled = this.disabled()
+      ? 'cursor-not-allowed text-slate-400 opacity-80 dark:text-slate-500'
+      : '';
     const layout = this.compact()
       ? 'gap-3 px-3 text-left lg:justify-center lg:px-0 lg:text-center'
       : 'gap-3 px-3 text-left';

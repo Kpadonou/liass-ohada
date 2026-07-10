@@ -37,7 +37,8 @@ const translations = {
       LOGO_ALT: 'logo liass-ohada',
       SIDEBAR: {
         COLLAPSE: 'Réduire la barre latérale',
-        EXPAND: 'Déployer la barre latérale'
+        EXPAND: 'Déployer la barre latérale',
+        NAVIGATION_LABEL: 'Navigation principale'
       },
       NAV: {
         ACCOUNTING: 'Comptabilité',
@@ -128,6 +129,9 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Trésorerie');
     expect(text).toContain('États OHADA');
     expect(text).toContain('Administration');
+    expect(text).not.toContain('POSTE ERP');
+    expect(text).not.toContain('Poste ERP');
+    expect(text).not.toContain('ESPACE');
   });
 
   it('collapses the desktop sidebar into an accessible icon rail', () => {
@@ -143,16 +147,14 @@ describe('AppSidebarComponent', () => {
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
 
-    const collapseButton = fixture.nativeElement.querySelector(
-      'button[aria-label="Réduire la barre latérale"]'
-    ) as HTMLButtonElement | null;
-    collapseButton?.click();
+    uiStore.setSidebarCollapsed(true);
     fixture.detectChanges();
 
     const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
     const dashboardButton = fixture.nativeElement.querySelector(
       'liass-sidebar-nav-item button[aria-label="Tableau de bord"]'
     ) as HTMLButtonElement | null;
+    const dashboardLabel = dashboardButton?.querySelector('span:nth-child(2)') as HTMLElement | null;
     const aiPanel = fixture.nativeElement.querySelector(
       '[data-testid="sidebar-ai-panel"]'
     ) as HTMLElement | null;
@@ -161,6 +163,7 @@ describe('AppSidebarComponent', () => {
     expect(localStorage.getItem('liass-ohada.sidebarCollapsed')).toBe('true');
     expect(sidebar.className).toContain('lg:w-[var(--spacing-shell-sidebar-collapsed)]');
     expect(dashboardButton).not.toBeNull();
+    expect(dashboardLabel?.className).toContain('lg:sr-only');
     expect(aiPanel?.className).toContain('lg:hidden');
   });
 
