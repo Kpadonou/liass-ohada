@@ -130,20 +130,6 @@
       </div>
     }
 
-    <div
-      class="hidden h-10 min-w-[220px] flex-1 items-center gap-2 rounded-full bg-white px-3 text-slate-500 shadow-[0_8px_28px_rgb(2_6_23/0.2)] ring-1 ring-white/70 md:flex xl:max-w-[500px]"
-      role="search"
-      data-testid="command-search"
-    >
-      <mat-icon class="text-brand-700">auto_awesome</mat-icon>
-      <span class="min-w-0 flex-1 truncate text-sm font-medium">
-        {{ 'SHELL.TOPBAR.COMMAND_PLACEHOLDER' | transloco }}
-      </span>
-      <kbd class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-semibold text-slate-500">
-        {{ 'SHELL.TOPBAR.COMMAND_SHORTCUT' | transloco }}
-      </kbd>
-    </div>
-
     <div class="ml-auto flex min-w-0 items-center justify-end gap-2">
       @if (showActiveDossier()) {
         <button

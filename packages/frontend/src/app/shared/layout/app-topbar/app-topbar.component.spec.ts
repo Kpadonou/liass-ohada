@@ -176,10 +176,6 @@ describe('AppTopbarComponent', () => {
     return fixture.nativeElement.querySelector('[data-testid="user-menu-trigger"]').textContent;
   }
 
-  function commandSearchText(): string {
-    return fixture.nativeElement.querySelector('[data-testid="command-search"]').textContent;
-  }
-
   it('displays a company workspace name instead of the raw organization id', () => {
     authStore.setCreatedWorkspace(
       {
@@ -199,7 +195,7 @@ describe('AppTopbarComponent', () => {
     expect(text).not.toContain('Workspace');
   });
 
-  it('renders the inline workspace identity to the left of the command search', () => {
+  it('renders the inline workspace identity while the command search is hidden', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-company-123',
@@ -214,10 +210,7 @@ describe('AppTopbarComponent', () => {
     const commandSearch = fixture.nativeElement.querySelector('[data-testid="command-search"]');
 
     expect(workspace).not.toBeNull();
-    expect(commandSearch).not.toBeNull();
-    expect(workspace.compareDocumentPosition(commandSearch) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(commandSearchText()).toContain('Search workspace or ask AI...');
-    expect(commandSearchText()).toContain('⌘ K');
+    expect(commandSearch).toBeNull();
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
