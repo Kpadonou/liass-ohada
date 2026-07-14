@@ -28,17 +28,45 @@ import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
 
+export interface TreasuryAccountsResult {
+  accounts: TreasuryAccountDto[];
+  nextCursor?: string;
+  hasMore: boolean;
+  count: number;
+}
+
+export interface ListTreasuryAccountsParams {
+  limit?: number;
+  cursor?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TreasuryApi {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
-  async listAccounts(): Promise<TreasuryAccountDto[]> {
-    const response = await firstValueFrom(
-      this.http.get<unknown>(`${this.apiBaseUrl}/treasury/accounts`)
-    );
+  async listAccounts(options: ListTreasuryAccountsParams = {}): Promise<TreasuryAccountsResult> {
+    let params = new HttpParams();
 
-    return ListTreasuryAccountsResponseSchema.parse(response).data.accounts;
+    if (options.limit) {
+      params = params.set('limit', options.limit);
+    }
+
+    if (options.cursor) {
+      params = params.set('cursor', options.cursor);
+    }
+
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/treasury/accounts`, { params })
+    );
+    const parsed = ListTreasuryAccountsResponseSchema.parse(response).data;
+
+    return {
+      accounts: parsed.accounts,
+      nextCursor: parsed.nextCursor,
+      hasMore: Boolean(parsed.hasMore && parsed.nextCursor),
+      count: parsed.count ?? parsed.accounts.length
+    };
   }
 
   async createAccount(payload: CreateTreasuryAccountRequest): Promise<TreasuryAccountDto> {

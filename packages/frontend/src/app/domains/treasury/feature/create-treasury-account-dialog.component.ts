@@ -5,15 +5,19 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { type AccountDto } from '@liass-ohada/shared/accounting';
 import { type CreateTreasuryAccountRequest, type TreasuryAccountDto } from '@liass-ohada/shared/treasury';
 import { TranslocoModule } from '@ngneat/transloco';
 
+import { safeMessageFromError } from '../../../core/notifications/notification-message';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
+import { AccountSearchSelectComponent } from '../../accounting/ui/account-search-select/account-search-select.component';
 import { TreasuryApi } from '../data-access/treasury.api';
 
 @Component({
   selector: 'liass-create-treasury-account-dialog',
   imports: [
+    AccountSearchSelectComponent,
     LiassButtonComponent,
     MatDialogModule,
     MatFormFieldModule,
@@ -34,6 +38,7 @@ export class CreateTreasuryAccountDialogComponent {
 
   protected readonly submitting = signal(false);
   protected readonly errorKey = signal<string | null>(null);
+  protected readonly errorMessage = signal<string | null>(null);
 
   protected readonly form = this.formBuilder.nonNullable.group({
     accountId: ['', [Validators.required, Validators.pattern(/^5\d{7}$/)]],
@@ -45,6 +50,14 @@ export class CreateTreasuryAccountDialogComponent {
     openingBalance: [0, [Validators.required]]
   });
 
+  protected handleAccountSelected(account: AccountDto | null): void {
+    const labelControl = this.form.controls.label;
+
+    if (account && !labelControl.value.trim()) {
+      labelControl.setValue(account.accountName);
+    }
+  }
+
   protected async submit(): Promise<void> {
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
@@ -54,6 +67,7 @@ export class CreateTreasuryAccountDialogComponent {
     const raw = this.form.getRawValue();
     this.submitting.set(true);
     this.errorKey.set(null);
+    this.errorMessage.set(null);
 
     try {
       const account = await this.treasuryApi.createAccount({
@@ -66,7 +80,8 @@ export class CreateTreasuryAccountDialogComponent {
         openingBalance: Number(raw.openingBalance)
       });
       this.dialogRef.close(account);
-    } catch {
+    } catch (error) {
+      this.errorMessage.set(safeMessageFromError(error));
       this.errorKey.set('TREASURY.ERRORS.CREATE_ACCOUNT_FAILED');
     } finally {
       this.submitting.set(false);

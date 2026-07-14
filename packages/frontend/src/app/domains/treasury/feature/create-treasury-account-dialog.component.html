@@ -4,16 +4,23 @@
   <mat-dialog-content class="space-y-4">
     @if (errorKey()) {
       <div class="rounded-app-card border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
-        {{ errorKey()! | transloco }}
+        @if (errorMessage(); as message) {
+          {{ message }}
+        } @else {
+          {{ errorKey()! | transloco }}
+        }
       </div>
     }
 
     <div class="grid gap-4 md:grid-cols-2">
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'TREASURY.ACCOUNTS.FIELDS.ACCOUNT_ID' | transloco }}</mat-label>
-        <mat-icon matPrefix>account_balance</mat-icon>
-        <input matInput formControlName="accountId" inputmode="numeric" />
-      </mat-form-field>
+      <liass-account-search-select
+        formControlName="accountId"
+        [accountClass]="5"
+        [labelKey]="'TREASURY.ACCOUNTS.FIELDS.ACCOUNT_ID'"
+        [showError]="form.controls.accountId.touched && form.controls.accountId.invalid"
+        [errorKey]="'TREASURY.ACCOUNTS.CREATE.ACCOUNT_REQUIRED'"
+        (accountSelected)="handleAccountSelected($event)"
+      />
 
       <mat-form-field appearance="outline">
         <mat-label>{{ 'TREASURY.ACCOUNTS.FIELDS.TYPE' | transloco }}</mat-label>

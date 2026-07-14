@@ -11,7 +11,7 @@ import {
   type TreasuryMovementDto
 } from '@liass-ohada/shared/treasury';
 import { TranslocoModule } from '@ngneat/transloco';
-import { injectQuery } from '@tanstack/angular-query-experimental';
+import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { take } from 'rxjs';
 
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
@@ -47,6 +47,7 @@ import { CreateTreasuryTransactionDialogComponent } from './create-treasury-tran
 })
 export class TreasuryPage {
   private readonly dialog = inject(MatDialog);
+  private readonly queryClient = inject(QueryClient);
   private readonly treasuryApi = inject(TreasuryApi);
   private readonly treasuryQueries = inject(TreasuryQueries);
 
@@ -57,6 +58,10 @@ export class TreasuryPage {
   protected readonly selectedMovementLineId = signal<string | null>(null);
   protected readonly importResult = signal<{ imported: number; skipped: number } | null>(null);
   protected readonly actionErrorKey = signal<string | null>(null);
+  protected readonly accountExtraPages = signal<TreasuryAccountDto[][]>([]);
+  protected readonly localAccountUpserts = signal<TreasuryAccountDto[]>([]);
+  protected readonly loadingMoreAccounts = signal(false);
+  protected readonly loadMoreAccountsFailed = signal(false);
 
   protected readonly accountsQuery = injectQuery(() => this.treasuryQueries.listAccounts());
   protected readonly summaryQuery = injectQuery(() => this.treasuryQueries.getSummary(this.selectedYear()));
@@ -67,7 +72,27 @@ export class TreasuryPage {
     this.treasuryQueries.listStatementLines(this.selectedAccountId(), this.selectedYear())
   );
 
-  protected readonly accounts = computed(() => this.accountsQuery.data() ?? []);
+  protected readonly accountsPage = computed(() => this.accountsQuery.data());
+  protected readonly accounts = computed(() =>
+    mergeTreasuryAccounts(
+      [
+        ...(this.accountsPage()?.accounts ?? []),
+        ...this.accountExtraPages().flat()
+      ],
+      this.localAccountUpserts()
+    )
+  );
+  protected readonly treasuryAccountsCount = computed(
+    () => this.summaryQuery.data()?.accountsCount ?? this.accountsPage()?.count ?? this.accounts().length
+  );
+  protected readonly nextAccountsCursor = signal<string | null>(null);
+  protected readonly hasMoreAccounts = computed(
+    () =>
+      Boolean(
+        this.nextAccountsCursor() ||
+          (this.accountExtraPages().length === 0 && this.accountsPage()?.nextCursor)
+      )
+  );
   protected readonly movements = computed(() => this.movementsQuery.data() ?? []);
   protected readonly statementLines = computed(() => this.statementLinesQuery.data() ?? []);
   protected readonly unmatchedMovements = computed(() =>
@@ -85,6 +110,14 @@ export class TreasuryPage {
     effect(() => {
       const accounts = this.accounts();
       if (!this.selectedAccountId() && accounts.length > 0) {
+        this.selectedAccountId.set(accounts[0].treasuryAccountId);
+      } else if (accounts.length === 0 && this.selectedAccountId()) {
+        this.selectedAccountId.set('');
+      } else if (
+        this.selectedAccountId() &&
+        accounts.length > 0 &&
+        !accounts.some((account) => account.treasuryAccountId === this.selectedAccountId())
+      ) {
         this.selectedAccountId.set(accounts[0].treasuryAccountId);
       }
     });
@@ -114,6 +147,10 @@ export class TreasuryPage {
     return `${account.accountId} - ${account.label}`;
   }
 
+  protected accountStatusTone(account: TreasuryAccountDto): LiassStatusTone {
+    return account.active ? 'success' : 'neutral';
+  }
+
   protected statusTone(status: BankStatementLineDto['status']): LiassStatusTone {
     return status === 'MATCHED' ? 'success' : status === 'IGNORED' ? 'neutral' : 'warning';
   }
@@ -133,11 +170,39 @@ export class TreasuryPage {
 
     dialogRef.afterClosed().pipe(take(1)).subscribe((account: TreasuryAccountDto | null | undefined) => {
       if (account) {
+        this.localAccountUpserts.update((accounts) => mergeTreasuryAccounts(accounts, [account]));
         this.selectedAccountId.set(account.treasuryAccountId);
-        void this.accountsQuery.refetch();
-        void this.summaryQuery.refetch();
+        void this.queryClient.invalidateQueries({
+          queryKey: this.treasuryQueries.accountsRootQueryKey()
+        });
+        void this.queryClient.invalidateQueries({
+          queryKey: this.treasuryQueries.summaryRootQueryKey()
+        });
       }
     });
+  }
+
+  protected async loadMoreAccounts(): Promise<void> {
+    const cursor =
+      this.nextAccountsCursor() ||
+      (this.accountExtraPages().length === 0 ? this.accountsPage()?.nextCursor : null);
+
+    if (!cursor || this.loadingMoreAccounts()) {
+      return;
+    }
+
+    this.loadingMoreAccounts.set(true);
+    this.loadMoreAccountsFailed.set(false);
+
+    try {
+      const page = await this.treasuryApi.listAccounts({ cursor, limit: 100 });
+      this.accountExtraPages.update((pages) => [...pages, page.accounts]);
+      this.nextAccountsCursor.set(page.nextCursor ?? null);
+    } catch {
+      this.loadMoreAccountsFailed.set(true);
+    } finally {
+      this.loadingMoreAccounts.set(false);
+    }
   }
 
   protected openCreateTransaction(): void {
@@ -246,4 +311,23 @@ export class TreasuryPage {
       this.actionErrorKey.set('TREASURY.ERRORS.CANCEL_RECONCILE_FAILED');
     }
   }
+}
+
+function mergeTreasuryAccounts(
+  baseAccounts: readonly TreasuryAccountDto[],
+  upserts: readonly TreasuryAccountDto[]
+): TreasuryAccountDto[] {
+  const accountsById = new Map<string, TreasuryAccountDto>();
+
+  for (const account of baseAccounts) {
+    accountsById.set(account.treasuryAccountId, account);
+  }
+
+  for (const account of upserts) {
+    accountsById.set(account.treasuryAccountId, account);
+  }
+
+  return [...accountsById.values()].sort((left, right) =>
+    left.accountId.localeCompare(right.accountId)
+  );
 }

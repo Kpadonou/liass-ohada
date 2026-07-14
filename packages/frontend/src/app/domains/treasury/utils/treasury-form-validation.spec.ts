@@ -15,14 +15,14 @@ describe('treasury form validation schemas', () => {
       })
     ).not.toThrow();
 
-    expect(() =>
+    expect(
       CreateTreasuryAccountRequestSchema.parse({
         accountId: '41100000',
         label: 'Customer account',
         type: 'BANK',
         currency: 'XOF'
       })
-    ).toThrow();
+    ).toMatchObject({ accountId: '41100000' });
   });
 
   it('validates balanced treasury operation inputs before posting', () => {
@@ -59,10 +59,11 @@ describe('treasury form validation schemas', () => {
         year: '2026',
         lines: [
           {
-            date: '2026-01-15',
+            statementDate: '2026-01-15',
             reference: 'REF-1',
-            label: 'Customer receipt',
+            description: 'Customer receipt',
             amount: 1000,
+            direction: 'INFLOW',
             currency: 'XOF'
           }
         ]

@@ -12,7 +12,7 @@
     <liass-stat-card
       icon="account_balance"
       [label]="'TREASURY.STATS.ACCOUNTS.LABEL' | transloco"
-      [value]="(summaryQuery.data()?.accountsCount ?? 0).toString()"
+      [value]="treasuryAccountsCount().toString()"
       [meta]="'TREASURY.STATS.ACCOUNTS.META' | transloco"
       tone="accent"
       [state]="summaryQuery.isPending() ? 'loading' : 'default'"
@@ -47,9 +47,11 @@
     <div class="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
       <mat-form-field appearance="outline">
         <mat-label>{{ 'TREASURY.FILTERS.ACCOUNT' | transloco }}</mat-label>
-        <mat-select [value]="selectedAccountId()" (valueChange)="selectedAccountId.set($event)">
+        <mat-select [value]="selectedAccountId()" [disabled]="accounts().length === 0" (valueChange)="selectedAccountId.set($event)">
           @for (account of accounts(); track account.treasuryAccountId) {
             <mat-option [value]="account.treasuryAccountId">{{ accountLabel(account) }}</mat-option>
+          } @empty {
+            <mat-option disabled>{{ 'TREASURY.ACCOUNTS.SELECT_EMPTY' | transloco }}</mat-option>
           }
         </mat-select>
       </mat-form-field>
@@ -70,6 +72,15 @@
       </div>
     }
 
+    @if (!accountsQuery.isPending() && !accountsQuery.isError() && accounts().length === 0) {
+      <div class="mb-4 flex flex-col gap-3 rounded-app-card border border-dashed border-brand-200 bg-brand-50/60 p-4 text-sm text-brand-900 dark:border-brand-900 dark:bg-brand-950/20 dark:text-brand-100 md:flex-row md:items-center md:justify-between">
+        <span>{{ 'TREASURY.ACCOUNTS.EMPTY_GUIDANCE' | transloco }}</span>
+        <liass-button tone="brand" variant="outline" icon="add" (pressed)="openCreateAccount()">
+          {{ 'TREASURY.ACTIONS.NEW_ACCOUNT' | transloco }}
+        </liass-button>
+      </div>
+    }
+
     <mat-tab-group>
       <mat-tab [label]="'TREASURY.TABS.ACCOUNTS' | transloco">
         <div class="py-5">
@@ -81,36 +92,56 @@
             </div>
           } @else if (accounts().length === 0) {
             <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-              {{ 'TREASURY.ACCOUNTS.EMPTY' | transloco }}
+              <p class="font-medium text-slate-700 dark:text-slate-200">{{ 'TREASURY.ACCOUNTS.EMPTY_TITLE' | transloco }}</p>
+              <p class="mt-1">{{ 'TREASURY.ACCOUNTS.EMPTY' | transloco }}</p>
             </div>
           } @else {
             <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
-              <table class="liass-data-table w-full min-w-[840px] border-collapse text-left">
+              <table class="liass-data-table w-full min-w-[960px] border-collapse text-left">
                 <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
                   <tr>
-                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.ACCOUNT' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.LABEL' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.LINKED_ACCOUNT' | transloco }}</th>
                     <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.TYPE' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.STATUS' | transloco }}</th>
                     <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.BANK' | transloco }}</th>
-                    <th class="px-4 py-3 text-right">{{ 'TREASURY.ACCOUNTS.TABLE.OPENING' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.ACCOUNTS.TABLE.UPDATED_AT' | transloco }}</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
                   @for (account of accounts(); track account.treasuryAccountId) {
                     <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
                       <td class="px-4 py-4">
-                        <p class="font-semibold text-slate-950 dark:text-white">{{ account.accountId }}</p>
-                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ account.label }}</p>
+                        <p class="font-semibold text-slate-950 dark:text-white">{{ account.label }}</p>
+                        <p class="text-sm text-slate-500 dark:text-slate-400">{{ account.currency }}</p>
+                      </td>
+                      <td class="px-4 py-4">
+                        <p class="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">{{ account.accountId }}</p>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">{{ 'TREASURY.ACCOUNTS.CLASS5_HINT' | transloco }}</p>
                       </td>
                       <td class="px-4 py-4">
                         <liass-status-chip [label]="'TREASURY.ACCOUNTS.TYPES.' + account.type | transloco" tone="info" size="sm" />
                       </td>
-                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ account.bankName || '-' }}</td>
-                      <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(account.openingBalance, account.currency) }}</td>
+                      <td class="px-4 py-4">
+                        <liass-status-chip [label]="(account.active ? 'TREASURY.ACCOUNTS.STATUS.ACTIVE' : 'TREASURY.ACCOUNTS.STATUS.INACTIVE') | transloco" [tone]="accountStatusTone(account)" size="sm" />
+                      </td>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ account.bankName || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ account.updatedAt || account.createdAt }}</td>
                     </tr>
                   }
                 </tbody>
               </table>
             </div>
+            @if (hasMoreAccounts() || loadMoreAccountsFailed()) {
+              <div class="mt-4 flex items-center justify-end gap-3">
+                @if (loadMoreAccountsFailed()) {
+                  <span class="text-sm text-red-700 dark:text-red-300">{{ 'TREASURY.ERRORS.LOAD_MORE_ACCOUNTS_FAILED' | transloco }}</span>
+                }
+                <liass-button tone="neutral" variant="outline" icon="expand_more" [disabled]="!hasMoreAccounts() || loadingMoreAccounts()" [loading]="loadingMoreAccounts()" (pressed)="loadMoreAccounts()">
+                  {{ 'TREASURY.ACCOUNTS.LOAD_MORE' | transloco }}
+                </liass-button>
+              </div>
+            }
           }
         </div>
       </mat-tab>
@@ -163,7 +194,7 @@
           <section class="space-y-3">
             <mat-form-field appearance="outline" class="w-full">
               <mat-label>{{ 'TREASURY.IMPORT.TEXTAREA' | transloco }}</mat-label>
-              <textarea matInput rows="9" [value]="importText()" (input)="updateImportText($event)" placeholder="2026-01-15,VIR-001,Encaissement client,150000,XOF"></textarea>
+              <textarea matInput rows="9" [value]="importText()" (input)="updateImportText($event)" [placeholder]="'TREASURY.IMPORT.PLACEHOLDER' | transloco"></textarea>
             </mat-form-field>
             <div class="flex flex-wrap items-center gap-3">
               <liass-button tone="brand" variant="solid" icon="upload" [disabled]="parsedImport().lines.length === 0 || parsedImport().errors.length > 0 || !selectedAccountId()" (pressed)="importStatement()">

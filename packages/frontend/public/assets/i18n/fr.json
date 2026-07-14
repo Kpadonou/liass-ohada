@@ -3,6 +3,7 @@
     "APP": {
       "BRAND": "Liass-OHADA"
     },
+    "EMPTY_VALUE": "—",
     "ACTIONS": {
       "SAVE": "Enregistrer",
       "CANCEL": "Annuler",
@@ -279,10 +280,13 @@
   "TREASURY": {
     "ACCOUNTS": {
       "CREATE": {
+        "ACCOUNT_REQUIRED": "Sélectionnez un compte SYSCOHADA classe 5 actif.",
         "SUBMIT": "Créer le compte",
         "TITLE": "Créer un compte de trésorerie"
       },
       "EMPTY": "Aucun compte de trésorerie n’est configuré.",
+      "EMPTY_GUIDANCE": "Créez un compte de trésorerie avant de saisir des mouvements, importer des relevés ou rapprocher des lignes bancaires.",
+      "EMPTY_TITLE": "Aucun compte de trésorerie",
       "FIELDS": {
         "ACCOUNT_ID": "Compte SYSCOHADA classe 5",
         "BANK_ACCOUNT_NUMBER": "Numéro de compte bancaire",
@@ -292,10 +296,21 @@
         "OPENING_BALANCE": "Solde d’ouverture",
         "TYPE": "Type"
       },
+      "CLASS5_HINT": "Compte classe 5 rattaché",
+      "LOAD_MORE": "Charger plus de comptes",
+      "SELECT_EMPTY": "Aucun compte de trésorerie disponible",
+      "STATUS": {
+        "ACTIVE": "Actif",
+        "INACTIVE": "Inactif"
+      },
       "TABLE": {
         "ACCOUNT": "Compte",
         "BANK": "Banque",
+        "LABEL": "Compte de trésorerie",
+        "LINKED_ACCOUNT": "Compte rattaché",
         "OPENING": "Ouverture",
+        "STATUS": "Statut",
+        "UPDATED_AT": "Mise à jour",
         "TYPE": "Type"
       },
       "TYPES": {
@@ -313,6 +328,7 @@
       "CREATE_ACCOUNT_FAILED": "Le compte de trésorerie n’a pas pu être créé.",
       "IMPORT_FAILED": "Le relevé n’a pas pu être importé.",
       "LOAD_FAILED": "Les données de trésorerie n’ont pas pu être chargées.",
+      "LOAD_MORE_ACCOUNTS_FAILED": "Les comptes de trésorerie supplémentaires n’ont pas pu être chargés.",
       "POST_TRANSACTION_FAILED": "L’opération de trésorerie n’a pas pu être comptabilisée.",
       "RECONCILE_FAILED": "Le rapprochement n’a pas pu être créé."
     },
@@ -323,6 +339,7 @@
     "IMPORT": {
       "ACTION": "Importer le relevé",
       "ERRORS": "{{count}} ligne(s) invalide(s)",
+      "PLACEHOLDER": "Collez ici les lignes structurées du relevé.",
       "RESULT": "{{imported}} importée(s), {{skipped}} doublon(s)",
       "TEXTAREA": "CSV relevé: date, référence, libellé, montant, devise"
     },

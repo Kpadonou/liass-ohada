@@ -15,14 +15,15 @@ export function parseBankStatementCsv(value: string): ParsedStatementCsv {
 
   rows.forEach((row, index) => {
     const columns = row.split(',').map((column) => column.trim());
-    const [date, reference, label, amount, currency] = columns;
+    const [statementDate, reference, description, amount, direction, currency] = columns;
     const normalizedCurrency = currency?.trim() ? currency.trim().toUpperCase() : 'XOF';
 
     const parsed = ImportBankStatementLineSchema.safeParse({
-      date,
+      statementDate,
       reference: reference || undefined,
-      label,
+      description,
       amount: Number(amount),
+      direction,
       currency: normalizedCurrency
     });
 

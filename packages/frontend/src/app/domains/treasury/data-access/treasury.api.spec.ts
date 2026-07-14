@@ -29,6 +29,8 @@ describe('TreasuryApi', () => {
 
     request.flush({
       data: {
+        count: 1,
+        hasMore: false,
         accounts: [
           {
             orgId: 'test-org',
@@ -48,20 +50,25 @@ describe('TreasuryApi', () => {
       }
     });
 
-    await expect(promise).resolves.toEqual([
-      {
-        orgId: 'test-org',
-        treasuryAccountId: '52100000',
-        accountId: '52100000',
-        label: 'Main bank',
-        type: 'BANK',
-        currency: 'XOF',
-        openingBalance: 0,
-        active: true,
-        createdAt: '2026-01-01T00:00:00Z',
-        updatedAt: '2026-01-01T00:00:00Z'
-      }
-    ]);
+    await expect(promise).resolves.toEqual({
+      accounts: [
+        {
+          orgId: 'test-org',
+          treasuryAccountId: '52100000',
+          accountId: '52100000',
+          label: 'Main bank',
+          type: 'BANK',
+          currency: 'XOF',
+          openingBalance: 0,
+          active: true,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z'
+        }
+      ],
+      count: 1,
+      hasMore: false,
+      nextCursor: undefined
+    });
   });
 
   it('rejects invalid movement responses', async () => {
@@ -101,10 +108,11 @@ describe('TreasuryApi', () => {
       year: '2026',
       lines: [
         {
-          date: '2026-01-15',
+          statementDate: '2026-01-15',
           reference: 'REF-1',
-          label: 'Bank credit',
+          description: 'Bank credit',
           amount: 1000,
+          direction: 'INFLOW',
           currency: 'XOF'
         }
       ]
@@ -118,10 +126,11 @@ describe('TreasuryApi', () => {
       year: '2026',
       lines: [
         {
-          date: '2026-01-15',
+          statementDate: '2026-01-15',
           reference: 'REF-1',
-          label: 'Bank credit',
+          description: 'Bank credit',
           amount: 1000,
+          direction: 'INFLOW',
           currency: 'XOF'
         }
       ]
@@ -136,10 +145,13 @@ describe('TreasuryApi', () => {
             treasuryAccountId: '52100000',
             statementLineId: 'stmt-1',
             year: '2026',
+            statementDate: '2026-01-15',
             date: '2026-01-15',
             reference: 'REF-1',
+            description: 'Bank credit',
             label: 'Bank credit',
             amount: 1000,
+            direction: 'INFLOW',
             currency: 'XOF',
             status: 'UNMATCHED',
             importedAt: '2026-01-15T00:00:00Z'

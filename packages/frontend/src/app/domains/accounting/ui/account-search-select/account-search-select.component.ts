@@ -53,6 +53,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
   readonly labelKey = input('ACCOUNTING.ACCOUNTS.SELECT.LABEL');
   readonly showError = input(false);
   readonly auxiliaryType = input<'CUSTOMER' | 'SUPPLIER' | null>(null);
+  readonly accountClass = input<number | null>(null);
   readonly accountSelected = output<AccountDto | null>();
 
   private readonly accountingApi = inject(AccountingApi);
@@ -231,6 +232,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     try {
       const result = await this.accountingApi.listAccounts({
         activeOnly: true,
+        ...(this.accountClass() ? { class: this.accountClass()! } : {}),
         limit: ACCOUNT_SEARCH_PAGE_SIZE,
         search
       });
@@ -272,6 +274,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     try {
       const result = await this.accountingApi.listAccounts({
         activeOnly: true,
+        ...(this.accountClass() ? { class: this.accountClass()! } : {}),
         cursor,
         limit: ACCOUNT_SEARCH_PAGE_SIZE,
         search

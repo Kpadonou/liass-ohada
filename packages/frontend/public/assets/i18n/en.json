@@ -3,6 +3,7 @@
     "APP": {
       "BRAND": "Liass-OHADA"
     },
+    "EMPTY_VALUE": "—",
     "ACTIONS": {
       "SAVE": "Save",
       "CANCEL": "Cancel",
@@ -279,10 +280,13 @@
   "TREASURY": {
     "ACCOUNTS": {
       "CREATE": {
+        "ACCOUNT_REQUIRED": "Select an active SYSCOHADA class 5 account.",
         "SUBMIT": "Create account",
         "TITLE": "Create treasury account"
       },
       "EMPTY": "No treasury account has been configured.",
+      "EMPTY_GUIDANCE": "Create a treasury account before posting movements, importing statements, or reconciling bank lines.",
+      "EMPTY_TITLE": "No treasury account yet",
       "FIELDS": {
         "ACCOUNT_ID": "SYSCOHADA class 5 account",
         "BANK_ACCOUNT_NUMBER": "Bank account number",
@@ -292,10 +296,21 @@
         "OPENING_BALANCE": "Opening balance",
         "TYPE": "Type"
       },
+      "CLASS5_HINT": "Linked class 5 account",
+      "LOAD_MORE": "Load more accounts",
+      "SELECT_EMPTY": "No treasury account available",
+      "STATUS": {
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive"
+      },
       "TABLE": {
         "ACCOUNT": "Account",
         "BANK": "Bank",
+        "LABEL": "Treasury account",
+        "LINKED_ACCOUNT": "Linked account",
         "OPENING": "Opening",
+        "STATUS": "Status",
+        "UPDATED_AT": "Updated",
         "TYPE": "Type"
       },
       "TYPES": {
@@ -313,6 +328,7 @@
       "CREATE_ACCOUNT_FAILED": "The treasury account could not be created.",
       "IMPORT_FAILED": "The statement could not be imported.",
       "LOAD_FAILED": "Treasury data could not be loaded.",
+      "LOAD_MORE_ACCOUNTS_FAILED": "More treasury accounts could not be loaded.",
       "POST_TRANSACTION_FAILED": "The treasury transaction could not be posted.",
       "RECONCILE_FAILED": "The reconciliation could not be created."
     },
@@ -323,6 +339,7 @@
     "IMPORT": {
       "ACTION": "Import statement",
       "ERRORS": "{{count}} invalid row(s)",
+      "PLACEHOLDER": "Paste structured statement rows here.",
       "RESULT": "{{imported}} imported, {{skipped}} duplicate(s)",
       "TEXTAREA": "Statement CSV: date, reference, label, amount, currency"
     },
