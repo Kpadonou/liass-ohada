@@ -190,14 +190,22 @@ export const ReconciliationMatchSchema = z.object({
   orgId: z.string(),
   treasuryAccountId: z.string(),
   matchId: z.string(),
-  year: z.string(),
+  year: YearSchema,
   statementLineId: z.string(),
-  entryId: z.string(),
-  lineId: z.string(),
-  amount: MoneySchema,
+  statementDate: DateSchema,
+  movementLineId: z.string(),
+  entryId: z.string().optional(),
+  lineId: z.string().optional(),
+  amount: PositiveMoneySchema,
+  direction: BankStatementLineDirection,
   status: ReconciliationStatus.default("ACTIVE"),
   matchedAt: z.string(),
+  matchedBy: z.string(),
   cancelledAt: z.string().optional(),
+  cancelledBy: z.string().optional(),
+  cancelReason: z.string().optional(),
+  statementReference: z.string().optional(),
+  statementDescription: z.string().optional(),
   entityType: z.literal("RECONCILIATION_MATCH"),
 });
 
@@ -212,13 +220,20 @@ export type ReconciliationMatchDto = z.infer<
   typeof ReconciliationMatchDtoSchema
 >;
 
-export const CreateReconciliationRequestSchema = z.object({
-  treasuryAccountId: z.string().min(1),
-  year: YearSchema,
-  statementLineId: z.string().min(1),
-  entryId: z.string().min(1),
-  lineId: z.string().min(1),
-});
+export const CreateReconciliationRequestSchema = z
+  .object({
+    treasuryAccountId: z.string().min(1),
+    year: YearSchema,
+    statementLineId: z.string().min(1),
+    statementDate: DateSchema,
+    movementLineId: z.string().min(1).optional(),
+    entryId: z.string().min(1).optional(),
+    lineId: z.string().min(1).optional(),
+  })
+  .refine((data) => data.movementLineId || data.lineId, {
+    message: "INVALID_RECONCILIATION_REQUEST",
+    path: ["movementLineId"],
+  });
 
 export type CreateReconciliationRequest = z.infer<
   typeof CreateReconciliationRequestSchema
@@ -228,10 +243,23 @@ export const CancelReconciliationRequestSchema = z.object({
   matchId: z.string().min(1),
   treasuryAccountId: z.string().min(1),
   year: YearSchema,
+  cancelReason: z.string().min(1).max(255).optional(),
 });
 
 export type CancelReconciliationRequest = z.infer<
   typeof CancelReconciliationRequestSchema
+>;
+
+export const ListReconciliationMatchesRequestSchema = z.object({
+  treasuryAccountId: z.string().min(1),
+  year: YearSchema,
+  status: ReconciliationStatus.optional(),
+  limit: z.coerce.number().int().min(1).max(200).default(100).optional(),
+  cursor: z.string().optional(),
+});
+
+export type ListReconciliationMatchesRequest = z.infer<
+  typeof ListReconciliationMatchesRequestSchema
 >;
 
 export const TreasurySummaryDtoSchema = z.object({
@@ -304,6 +332,22 @@ export const ImportBankStatementResponseSchema = z.object({
 export const ReconciliationMatchResponseSchema = z.object({
   message: z.unknown().optional(),
   data: ReconciliationMatchDtoSchema,
+});
+
+export const CreateReconciliationResponseSchema =
+  ReconciliationMatchResponseSchema;
+
+export const CancelReconciliationResponseSchema =
+  ReconciliationMatchResponseSchema;
+
+export const ListReconciliationMatchesResponseSchema = z.object({
+  message: z.unknown().optional(),
+  data: z.object({
+    matches: z.array(ReconciliationMatchDtoSchema),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean().default(false).optional(),
+    count: z.number().int().nonnegative().optional(),
+  }),
 });
 
 export const TreasurySummaryResponseSchema = z.object({

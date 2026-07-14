@@ -12,6 +12,7 @@ import {
   CreateTreasuryTransactionRequest,
   ImportBankStatementLine,
   ListBankStatementLinesRequest,
+  ListReconciliationMatchesRequest,
   ListTreasuryAccountsRequest,
   ReconciliationMatchDto,
   ReconciliationMatchDtoSchema,
@@ -455,33 +456,46 @@ export class TreasuryService {
     userId: string,
     input: CreateReconciliationRequest,
   ): Promise<ReconciliationMatchDto> {
-    const account = await TreasuryService.getAccount(
+    const movementLineId = input.movementLineId ?? input.lineId;
+    if (!movementLineId) {
+      throw new AppError(400, "ERROR_INVALID_RECONCILIATION_REQUEST");
+    }
+
+    const account = await TreasuryService.assertReconciliationTreasuryAccount(
       orgId,
       input.treasuryAccountId,
     );
-    const statementLine = await TreasuryService.getStatementLine(
-      orgId,
-      input.treasuryAccountId,
-      input.year,
-      input.statementLineId,
-    );
+    const statementLine =
+      await TreasuryService.getStatementLineByDateUnchecked(
+        orgId,
+        input.treasuryAccountId,
+        input.year,
+        input.statementDate,
+        input.statementLineId,
+      );
     const entryLine = await TreasuryService.getEntryLine(
       orgId,
       input.year,
-      input.lineId,
+      movementLineId,
     );
 
+    if (
+      statementLine.treasuryAccountId !== input.treasuryAccountId ||
+      statementLine.year !== input.year ||
+      statementLine.statementDate !== input.statementDate
+    ) {
+      throw new AppError(404, "ERROR_BANK_STATEMENT_LINE_NOT_FOUND");
+    }
+    if (statementLine.status !== "UNMATCHED") {
+      throw new AppError(400, "ERROR_BANK_STATEMENT_LINE_ALREADY_RECONCILED");
+    }
+
+    TreasuryService.assertEligibleMovementLine(entryLine, orgId, input.year);
     if (entryLine.accountId !== account.accountId) {
       throw new AppError(400, "ERROR_RECONCILIATION_ACCOUNT_MISMATCH");
     }
 
-    const movementAmount =
-      Number(entryLine.debit || 0) > 0
-        ? Number(entryLine.debit || 0)
-        : Number(entryLine.credit || 0);
-    if (Math.abs(statementLine.amount) !== movementAmount) {
-      throw new AppError(400, "ERROR_RECONCILIATION_AMOUNT_MISMATCH");
-    }
+    TreasuryService.assertDirectionAwareAmountMatch(statementLine, entryLine);
 
     const now = new Date().toISOString();
     const matchId = `RCN-${randomUUID()}`;
@@ -491,85 +505,100 @@ export class TreasuryService {
       matchId,
       year: input.year,
       statementLineId: input.statementLineId,
-      entryId: input.entryId,
-      lineId: input.lineId,
+      statementDate: input.statementDate,
+      movementLineId,
+      entryId: input.entryId ?? entryLine.entryId,
+      lineId: movementLineId,
       amount: statementLine.amount,
+      direction: statementLine.direction,
       status: "ACTIVE",
       matchedAt: now,
+      matchedBy: userId,
+      statementReference: statementLine.reference,
+      statementDescription: statementLine.description,
       entityType: "RECONCILIATION_MATCH",
     });
 
-    await dynamoClient.send(
-      new TransactWriteItemsCommand({
-        TransactItems: [
-          {
-            Put: {
-              TableName: config.TABLE_NAME,
-              Item: marshall(
-                {
+    try {
+      await dynamoClient.send(
+        new TransactWriteItemsCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: config.TABLE_NAME,
+                Item: marshall(
+                  {
+                    PK: KeyFactory.partitionKey(orgId, input.year),
+                    SK: KeyFactory.reconciliationMatchSK(
+                      input.treasuryAccountId,
+                      input.year,
+                      matchId,
+                    ),
+                    ...match,
+                    createdBy: userId,
+                  },
+                  { removeUndefinedValues: true },
+                ),
+                ConditionExpression:
+                  "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+              },
+            },
+            {
+              Update: {
+                TableName: config.TABLE_NAME,
+                Key: marshall({
                   PK: KeyFactory.partitionKey(orgId, input.year),
-                  SK: KeyFactory.reconciliationMatchSK(
+                  SK: KeyFactory.bankStatementLineSK(
                     input.treasuryAccountId,
                     input.year,
-                    matchId,
+                    input.statementDate,
+                    input.statementLineId,
                   ),
-                  ...match,
-                  createdBy: userId,
+                }),
+                UpdateExpression:
+                  "SET #status = :matched, matchedEntryId = :entryId, matchedLineId = :lineId, reconciliationMatchId = :matchId",
+                ConditionExpression: "#status = :unmatched",
+                ExpressionAttributeNames: {
+                  "#status": "status",
                 },
-                { removeUndefinedValues: true },
-              ),
-              ConditionExpression:
-                "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-            },
-          },
-          {
-            Update: {
-              TableName: config.TABLE_NAME,
-              Key: marshall({
-                PK: KeyFactory.partitionKey(orgId, input.year),
-                SK: KeyFactory.bankStatementLineSK(
-                  input.treasuryAccountId,
-                  input.year,
-                  statementLine.date,
-                  input.statementLineId,
-                ),
-              }),
-              UpdateExpression:
-                "SET #status = :matched, matchedEntryId = :entryId, matchedLineId = :lineId, reconciliationMatchId = :matchId",
-              ConditionExpression: "#status = :unmatched",
-              ExpressionAttributeNames: {
-                "#status": "status",
+                ExpressionAttributeValues: marshall({
+                  ":matched": "MATCHED",
+                  ":unmatched": "UNMATCHED",
+                  ":entryId": input.entryId ?? entryLine.entryId,
+                  ":lineId": movementLineId,
+                  ":matchId": matchId,
+                }),
               },
-              ExpressionAttributeValues: marshall({
-                ":matched": "MATCHED",
-                ":unmatched": "UNMATCHED",
-                ":entryId": input.entryId,
-                ":lineId": input.lineId,
-                ":matchId": matchId,
-              }),
             },
-          },
-          {
-            Update: {
-              TableName: config.TABLE_NAME,
-              Key: marshall({
-                PK: KeyFactory.partitionKey(orgId, input.year),
-                SK: KeyFactory.entryLineSK(input.lineId),
-              }),
-              UpdateExpression:
-                "SET reconciliationStatus = :matched, statementLineId = :statementLineId, reconciledAt = :now, reconciliationMatchId = :matchId",
-              ConditionExpression: "attribute_exists(PK)",
-              ExpressionAttributeValues: marshall({
-                ":matched": "MATCHED",
-                ":statementLineId": input.statementLineId,
-                ":now": now,
-                ":matchId": matchId,
-              }),
+            {
+              Update: {
+                TableName: config.TABLE_NAME,
+                Key: marshall({
+                  PK: KeyFactory.partitionKey(orgId, input.year),
+                  SK: KeyFactory.entryLineSK(movementLineId),
+                }),
+                UpdateExpression:
+                  "SET reconciliationStatus = :matched, statementLineId = :statementLineId, statementDate = :statementDate, reconciledAt = :now, reconciliationMatchId = :matchId",
+                ConditionExpression:
+                  "attribute_exists(PK) AND attribute_exists(SK) AND attribute_not_exists(reconciliationMatchId)",
+                ExpressionAttributeValues: marshall({
+                  ":matched": "MATCHED",
+                  ":statementLineId": input.statementLineId,
+                  ":statementDate": input.statementDate,
+                  ":now": now,
+                  ":matchId": matchId,
+                }),
+              },
             },
-          },
-        ],
-      }),
-    );
+          ],
+        }),
+      );
+    } catch (error: any) {
+      if (error?.name === "ConditionalCheckFailedException") {
+        throw new AppError(400, "ERROR_ACCOUNTING_MOVEMENT_ALREADY_RECONCILED");
+      }
+      throw error;
+    }
 
     return ReconciliationMatchDtoSchema.parse(match);
   }
@@ -579,6 +608,8 @@ export class TreasuryService {
     treasuryAccountId: string,
     year: string,
     matchId: string,
+    cancelledBy?: string,
+    cancelReason?: string,
   ): Promise<ReconciliationMatchDto> {
     const matchResult = await dynamoClient.send(
       new GetItemCommand({
@@ -597,86 +628,156 @@ export class TreasuryService {
     const existing = ReconciliationMatchSchema.parse(
       unmarshall(matchResult.Item),
     );
-    const statementLine = await TreasuryService.getStatementLine(
-      orgId,
-      treasuryAccountId,
-      year,
-      existing.statementLineId,
-    );
-    const cancelledAt = new Date().toISOString();
+    if (existing.status === "CANCELLED") {
+      throw new AppError(400, "ERROR_RECONCILIATION_MATCH_ALREADY_CANCELLED");
+    }
 
-    await dynamoClient.send(
-      new TransactWriteItemsCommand({
-        TransactItems: [
-          {
-            Update: {
-              TableName: config.TABLE_NAME,
-              Key: marshall({
-                PK: KeyFactory.partitionKey(orgId, year),
-                SK: KeyFactory.reconciliationMatchSK(
-                  treasuryAccountId,
-                  year,
-                  matchId,
-                ),
-              }),
-              UpdateExpression:
-                "SET #status = :cancelled, cancelledAt = :cancelledAt",
-              ConditionExpression: "#status = :active",
-              ExpressionAttributeNames: {
-                "#status": "status",
+    const cancelledAt = new Date().toISOString();
+    const movementLineId = existing.movementLineId ?? existing.lineId;
+    const cancelSetExpressions = [
+      "#status = :cancelled",
+      "cancelledAt = :cancelledAt",
+    ];
+    const cancelExpressionValues: Record<string, string> = {
+      ":cancelled": "CANCELLED",
+      ":active": "ACTIVE",
+      ":cancelledAt": cancelledAt,
+    };
+    if (cancelledBy) {
+      cancelSetExpressions.push("cancelledBy = :cancelledBy");
+      cancelExpressionValues[":cancelledBy"] = cancelledBy;
+    }
+    if (cancelReason) {
+      cancelSetExpressions.push("cancelReason = :cancelReason");
+      cancelExpressionValues[":cancelReason"] = cancelReason;
+    }
+
+    try {
+      await dynamoClient.send(
+        new TransactWriteItemsCommand({
+          TransactItems: [
+            {
+              Update: {
+                TableName: config.TABLE_NAME,
+                Key: marshall({
+                  PK: KeyFactory.partitionKey(orgId, year),
+                  SK: KeyFactory.reconciliationMatchSK(
+                    treasuryAccountId,
+                    year,
+                    matchId,
+                  ),
+                }),
+                UpdateExpression: `SET ${cancelSetExpressions.join(", ")}`,
+                ConditionExpression: "#status = :active",
+                ExpressionAttributeNames: {
+                  "#status": "status",
+                },
+                ExpressionAttributeValues: marshall(cancelExpressionValues),
               },
-              ExpressionAttributeValues: marshall({
-                ":cancelled": "CANCELLED",
-                ":active": "ACTIVE",
-                ":cancelledAt": cancelledAt,
-              }),
             },
-          },
-          {
-            Update: {
-              TableName: config.TABLE_NAME,
-              Key: marshall({
-                PK: KeyFactory.partitionKey(orgId, year),
-                SK: KeyFactory.bankStatementLineSK(
-                  treasuryAccountId,
-                  year,
-                  statementLine.date,
-                  existing.statementLineId,
-                ),
-              }),
-              UpdateExpression:
-                "SET #status = :unmatched REMOVE matchedEntryId, matchedLineId, reconciliationMatchId",
-              ExpressionAttributeNames: {
-                "#status": "status",
+            {
+              Update: {
+                TableName: config.TABLE_NAME,
+                Key: marshall({
+                  PK: KeyFactory.partitionKey(orgId, year),
+                  SK: KeyFactory.bankStatementLineSK(
+                    treasuryAccountId,
+                    year,
+                    existing.statementDate,
+                    existing.statementLineId,
+                  ),
+                }),
+                UpdateExpression:
+                  "SET #status = :unmatched REMOVE matchedEntryId, matchedLineId, reconciliationMatchId",
+                ExpressionAttributeNames: {
+                  "#status": "status",
+                },
+                ExpressionAttributeValues: marshall({
+                  ":unmatched": "UNMATCHED",
+                }),
               },
-              ExpressionAttributeValues: marshall({
-                ":unmatched": "UNMATCHED",
-              }),
             },
-          },
-          {
-            Update: {
-              TableName: config.TABLE_NAME,
-              Key: marshall({
-                PK: KeyFactory.partitionKey(orgId, year),
-                SK: KeyFactory.entryLineSK(existing.lineId),
-              }),
-              UpdateExpression:
-                "SET reconciliationStatus = :unmatched REMOVE statementLineId, reconciledAt, reconciliationMatchId",
-              ExpressionAttributeValues: marshall({
-                ":unmatched": "UNMATCHED",
-              }),
+            {
+              Update: {
+                TableName: config.TABLE_NAME,
+                Key: marshall({
+                  PK: KeyFactory.partitionKey(orgId, year),
+                  SK: KeyFactory.entryLineSK(movementLineId),
+                }),
+                UpdateExpression:
+                  "SET reconciliationStatus = :unmatched REMOVE statementLineId, statementDate, reconciledAt, reconciliationMatchId",
+                ExpressionAttributeValues: marshall({
+                  ":unmatched": "UNMATCHED",
+                }),
+              },
             },
-          },
-        ],
-      }),
-    );
+          ],
+        }),
+      );
+    } catch (error: any) {
+      if (error?.name === "ConditionalCheckFailedException") {
+        throw new AppError(400, "ERROR_RECONCILIATION_MATCH_ALREADY_CANCELLED");
+      }
+      throw error;
+    }
 
     return ReconciliationMatchDtoSchema.parse({
       ...existing,
       status: "CANCELLED",
       cancelledAt,
+      cancelledBy,
+      cancelReason,
     });
+  }
+
+  static async listReconciliationMatches(
+    orgId: string,
+    options: ListReconciliationMatchesRequest,
+  ): Promise<{
+    matches: ReconciliationMatchDto[];
+    nextCursor?: string;
+    hasMore: boolean;
+    count: number;
+  }> {
+    await TreasuryService.assertActiveTreasuryAccount(
+      orgId,
+      options.treasuryAccountId,
+    );
+
+    const exclusiveStartKey = TreasuryService.decodeReconciliationCursor(
+      orgId,
+      options.treasuryAccountId,
+      options.year,
+      options.cursor,
+    );
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        ExpressionAttributeValues: marshall({
+          ":pk": KeyFactory.partitionKey(orgId, options.year),
+          ":sk": KeyFactory.reconciliationMatchPrefix(
+            options.treasuryAccountId,
+            options.year,
+          ),
+        }),
+        ExclusiveStartKey: exclusiveStartKey,
+        Limit: options.limit ?? 100,
+      }),
+    );
+
+    const matches = (result.Items || [])
+      .map((item) => unmarshall(item))
+      .filter((item) => item.entityType === "RECONCILIATION_MATCH")
+      .filter((item) => !options.status || item.status === options.status)
+      .map((item) => ReconciliationMatchDtoSchema.parse(item));
+
+    return {
+      matches,
+      nextCursor: TreasuryService.encodeCursor(result.LastEvaluatedKey),
+      hasMore: Boolean(result.LastEvaluatedKey),
+      count: matches.length,
+    };
   }
 
   static async getSummary(
@@ -809,6 +910,89 @@ export class TreasuryService {
     return account;
   }
 
+  private static async assertReconciliationTreasuryAccount(
+    orgId: string,
+    treasuryAccountId: string,
+  ): Promise<TreasuryAccountDto> {
+    const account = await TreasuryService.assertActiveTreasuryAccount(
+      orgId,
+      treasuryAccountId,
+    );
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.accountSK(account.accountId),
+        }),
+      }),
+    );
+
+    if (!result.Item) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+
+    const ledgerAccount = AccountSchema.parse(unmarshall(result.Item));
+    if (ledgerAccount.orgId !== orgId) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+    if (!ledgerAccount.isActive) {
+      throw new AppError(400, "ERROR_ACCOUNT_NOT_ACTIVE");
+    }
+    if (!ledgerAccount.allowReconciliation) {
+      throw new AppError(
+        400,
+        "ERROR_TREASURY_ACCOUNT_RECONCILIATION_DISABLED",
+      );
+    }
+
+    return account;
+  }
+
+  private static assertEligibleMovementLine(
+    entryLine: Record<string, any>,
+    orgId: string,
+    year: string,
+  ) {
+    if (
+      entryLine.orgId !== orgId ||
+      (entryLine.year && String(entryLine.year) !== year) ||
+      (entryLine.fiscalYear && String(entryLine.fiscalYear) !== year) ||
+      (entryLine.PK && entryLine.PK !== KeyFactory.partitionKey(orgId, year))
+    ) {
+      throw new AppError(404, "ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
+    }
+    if (entryLine.status === "DRAFT" || entryLine.entryStatus === "DRAFT") {
+      throw new AppError(404, "ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
+    }
+    if (
+      entryLine.reconciliationStatus === "MATCHED" ||
+      entryLine.reconciliationMatchId ||
+      entryLine.statementLineId
+    ) {
+      throw new AppError(400, "ERROR_ACCOUNTING_MOVEMENT_ALREADY_RECONCILED");
+    }
+  }
+
+  private static assertDirectionAwareAmountMatch(
+    statementLine: BankStatementLineDto,
+    entryLine: Record<string, any>,
+  ) {
+    const debit = Number(entryLine.debit || 0);
+    const credit = Number(entryLine.credit || 0);
+    const expectedAmount =
+      statementLine.direction === "INFLOW" ? debit : credit;
+    const oppositeAmount =
+      statementLine.direction === "INFLOW" ? credit : debit;
+
+    if (expectedAmount !== statementLine.amount) {
+      if (oppositeAmount === statementLine.amount) {
+        throw new AppError(400, "ERROR_RECONCILIATION_DIRECTION_MISMATCH");
+      }
+      throw new AppError(400, "ERROR_RECONCILIATION_AMOUNT_MISMATCH");
+    }
+  }
+
   private static encodeCursor(
     cursor?: Record<string, any>,
   ): string | undefined {
@@ -869,6 +1053,34 @@ export class TreasuryService {
     }
   }
 
+  private static decodeReconciliationCursor(
+    orgId: string,
+    treasuryAccountId: string,
+    year: string,
+    cursor?: string,
+  ): Record<string, any> | undefined {
+    if (!cursor) {
+      return undefined;
+    }
+
+    try {
+      const decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
+      const key = unmarshall(decoded);
+      if (
+        key.PK !== KeyFactory.partitionKey(orgId, year) ||
+        typeof key.SK !== "string" ||
+        !key.SK.startsWith(
+          KeyFactory.reconciliationMatchPrefix(treasuryAccountId, year),
+        )
+      ) {
+        throw new Error("Invalid reconciliation cursor scope");
+      }
+      return decoded;
+    } catch {
+      throw new AppError(400, "ERROR_INVALID_TREASURY_CURSOR");
+    }
+  }
+
   private static buildStatementLineId(
     treasuryAccountId: string,
     year: string,
@@ -900,6 +1112,22 @@ export class TreasuryService {
   ): Promise<BankStatementLineDto> {
     await TreasuryService.assertActiveTreasuryAccount(orgId, treasuryAccountId);
 
+    return TreasuryService.getStatementLineByDateUnchecked(
+      orgId,
+      treasuryAccountId,
+      year,
+      statementDate,
+      statementLineId,
+    );
+  }
+
+  private static async getStatementLineByDateUnchecked(
+    orgId: string,
+    treasuryAccountId: string,
+    year: string,
+    statementDate: string,
+    statementLineId: string,
+  ): Promise<BankStatementLineDto> {
     const result = await dynamoClient.send(
       new GetItemCommand({
         TableName: config.TABLE_NAME,
@@ -916,38 +1144,10 @@ export class TreasuryService {
     );
 
     if (!result.Item) {
-      throw new AppError(404, "ERROR_STATEMENT_LINE_NOT_FOUND");
+      throw new AppError(404, "ERROR_BANK_STATEMENT_LINE_NOT_FOUND");
     }
 
     return BankStatementLineDtoSchema.parse(unmarshall(result.Item));
-  }
-
-  private static async getStatementLine(
-    orgId: string,
-    treasuryAccountId: string,
-    year: string,
-    statementLineId: string,
-  ): Promise<BankStatementLineDto> {
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
-        ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.partitionKey(orgId, year),
-          ":sk": KeyFactory.bankStatementLinePrefix(treasuryAccountId, year),
-        }),
-      }),
-    );
-
-    const found = (result.Items || [])
-      .map((item) => unmarshall(item))
-      .find((item) => item.statementLineId === statementLineId);
-
-    if (!found) {
-      throw new AppError(404, "ERROR_STATEMENT_LINE_NOT_FOUND");
-    }
-
-    return BankStatementLineDtoSchema.parse(found);
   }
 
   private static async getEntryLine(
@@ -966,7 +1166,7 @@ export class TreasuryService {
     );
 
     if (!result.Item) {
-      throw new AppError(404, "ERROR_ENTRY_LINE_NOT_FOUND");
+      throw new AppError(404, "ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
     }
 
     return unmarshall(result.Item);

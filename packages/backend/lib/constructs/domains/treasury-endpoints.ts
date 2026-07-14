@@ -51,6 +51,7 @@ export class TreasuryEndpoints extends DomainConstructFactory {
       "import-statement-lines",
     );
     map(apigw.HttpMethod.POST, "/treasury/reconciliations", "reconcile");
+    map(apigw.HttpMethod.GET, "/treasury/reconciliations", "list-reconciliations");
     map(
       apigw.HttpMethod.POST,
       "/treasury/reconciliations/{matchId}/cancel",

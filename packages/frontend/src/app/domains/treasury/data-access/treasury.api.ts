@@ -14,6 +14,7 @@ import {
   TreasurySummaryResponseSchema,
   TreasuryTransactionResponseSchema,
   type BankStatementLineDto,
+  type CancelReconciliationRequest,
   type CreateReconciliationRequest,
   type CreateTreasuryAccountRequest,
   type CreateTreasuryTransactionRequest,
@@ -112,7 +113,7 @@ export class TreasuryApi {
     return ReconciliationMatchResponseSchema.parse(response).data;
   }
 
-  async cancelReconciliation(payload: CreateReconciliationRequest & { matchId: string }): Promise<ReconciliationMatchDto> {
+  async cancelReconciliation(payload: CancelReconciliationRequest): Promise<ReconciliationMatchDto> {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/treasury/reconciliations/${encodeURIComponent(payload.matchId)}/cancel`,

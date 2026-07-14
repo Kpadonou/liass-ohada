@@ -4,12 +4,14 @@ import { CancelReconciliationRequestSchema } from "@liass-ohada/shared/treasury"
 
 export const handler = createHandler(
   CancelReconciliationRequestSchema,
-  async (data, { orgId, i18n }) => {
+  async (data, { orgId, userId, i18n }) => {
     const match = await TreasuryService.cancelReconciliation(
       orgId,
       data.treasuryAccountId,
       data.year,
       data.matchId,
+      userId,
+      data.cancelReason,
     );
 
     return {

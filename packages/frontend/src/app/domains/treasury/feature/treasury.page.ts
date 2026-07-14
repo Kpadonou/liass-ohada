@@ -193,8 +193,17 @@ export class TreasuryPage {
   protected async reconcileSelected(): Promise<void> {
     const statementLineId = this.selectedStatementLineId();
     const lineId = this.selectedMovementLineId();
+    const statementLine = this.statementLines().find(
+      (item) => item.statementLineId === statementLineId,
+    );
     const movement = this.movements().find((item) => item.lineId === lineId);
-    if (!statementLineId || !lineId || !movement || !this.selectedAccountId()) {
+    if (
+      !statementLineId ||
+      !lineId ||
+      !statementLine ||
+      !movement ||
+      !this.selectedAccountId()
+    ) {
       return;
     }
 
@@ -204,8 +213,9 @@ export class TreasuryPage {
         treasuryAccountId: this.selectedAccountId(),
         year: this.selectedYear(),
         statementLineId,
+        statementDate: statementLine.statementDate,
         entryId: movement.entryId,
-        lineId
+        movementLineId: lineId
       });
       this.selectedStatementLineId.set(null);
       this.selectedMovementLineId.set(null);
@@ -227,9 +237,6 @@ export class TreasuryPage {
       await this.treasuryApi.cancelReconciliation({
         treasuryAccountId: this.selectedAccountId(),
         year: this.selectedYear(),
-        statementLineId: line.statementLineId,
-        entryId: line.matchedEntryId,
-        lineId: line.matchedLineId,
         matchId: line.reconciliationMatchId
       });
       void this.statementLinesQuery.refetch();

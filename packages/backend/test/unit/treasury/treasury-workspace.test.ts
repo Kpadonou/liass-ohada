@@ -3,6 +3,7 @@ import { handler as createAccountHandler } from "@/lambda/domains/treasury/creat
 import { handler as importStatementLinesHandler } from "@/lambda/domains/treasury/import-statement-lines";
 import { handler as listAccountsHandler } from "@/lambda/domains/treasury/list-accounts";
 import { handler as listMovementsHandler } from "@/lambda/domains/treasury/list-movements";
+import { handler as listReconciliationsHandler } from "@/lambda/domains/treasury/list-reconciliations";
 import { handler as listStatementLinesHandler } from "@/lambda/domains/treasury/list-statement-lines";
 import { handler as postTransactionHandler } from "@/lambda/domains/treasury/post-transaction";
 import { handler as reconcileHandler } from "@/lambda/domains/treasury/reconcile";
@@ -149,6 +150,17 @@ const matchedOutflowStatementLineItem = {
   status: { S: "MATCHED" },
 };
 
+const outflowStatementLineItem = {
+  ...matchedOutflowStatementLineItem,
+  status: { S: "UNMATCHED" },
+};
+
+const otherTreasuryStatementLineItem = {
+  ...statementLineItem,
+  SK: { S: "TRS#53100000#FY#2026#STMT#2026-01-15#stmt-1" },
+  treasuryAccountId: { S: "53100000" },
+};
+
 const entryLineItem = {
   PK: { S: "ORG#test-org#FY#2026" },
   SK: { S: "L#line-1" },
@@ -165,6 +177,60 @@ const entryLineItem = {
   GSI1PK: { S: "ACCOUNT#test-org" },
   GSI1SK: { S: "ACC#52100000#FY#2026#2026-01-15#line-1" },
   entityType: { S: "ENTRY_LINE" },
+};
+
+const creditEntryLineItem = {
+  ...entryLineItem,
+  SK: { S: "L#line-2" },
+  lineId: { S: "line-2" },
+  debit: { N: "0" },
+  credit: { N: "1000" },
+};
+
+const outflowCreditEntryLineItem = {
+  ...entryLineItem,
+  SK: { S: "L#line-3" },
+  lineId: { S: "line-3" },
+  entryId: { S: "entry-2" },
+  entryDate: { S: "2026-01-16" },
+  label: { S: "Bank fee" },
+  voucherNumber: { S: "REF-2" },
+  debit: { N: "0" },
+  credit: { N: "250" },
+};
+
+const debitOutflowMismatchEntryLineItem = {
+  ...outflowCreditEntryLineItem,
+  debit: { N: "250" },
+  credit: { N: "0" },
+};
+
+const amountMismatchEntryLineItem = {
+  ...entryLineItem,
+  debit: { N: "999" },
+};
+
+const otherAccountEntryLineItem = {
+  ...entryLineItem,
+  accountId: { S: "53100000" },
+};
+
+const otherOrgEntryLineItem = {
+  ...entryLineItem,
+  PK: { S: "ORG#other-org#FY#2026" },
+  orgId: { S: "other-org" },
+};
+
+const otherYearEntryLineItem = {
+  ...entryLineItem,
+  PK: { S: "ORG#test-org#FY#2025" },
+  year: { S: "2025" },
+};
+
+const reconciledEntryLineItem = {
+  ...entryLineItem,
+  reconciliationStatus: { S: "MATCHED" },
+  reconciliationMatchId: { S: "RCN-existing" },
 };
 
 describe("treasury workspace handlers", () => {
@@ -779,26 +845,36 @@ describe("treasury workspace handlers", () => {
     expect(line.direction).toBe("INFLOW");
   });
 
-  test("POST /treasury/reconciliations creates the match and updates both sides transactionally", async () => {
+  const setupReconciliationMocks = (
+    statementItem = statementLineItem,
+    movementItem = entryLineItem,
+  ) => {
     dynamoMock
       .on(GetItemCommand)
       .resolvesOnce({ Item: treasuryAccountItem })
-      .resolvesOnce({ Item: entryLineItem });
-    dynamoMock.on(QueryCommand).resolvesOnce({ Items: [statementLineItem] });
+      .resolvesOnce({ Item: ledgerAccountItem })
+      .resolvesOnce({ Item: statementItem })
+      .resolvesOnce({ Item: movementItem });
     dynamoMock.on(TransactWriteItemsCommand).resolves({});
+  };
+
+  test("POST /treasury/reconciliations matches INFLOW with a same-amount debit movement transactionally", async () => {
+    setupReconciliationMocks();
 
     const response = await reconcileHandler(
       createEvent("POST /treasury/reconciliations", {
         treasuryAccountId: "52100000",
         year: "2026",
         statementLineId: "stmt-1",
-        entryId: "entry-1",
-        lineId: "line-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
       }),
     );
     const body = parseResponse(response);
 
     expect(response.statusCode).toBe(200);
+    expect(dynamoMock.commandCalls(QueryCommand)).toHaveLength(0);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
     const transaction =
       dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input;
     expect(transaction.TransactItems).toHaveLength(3);
@@ -814,10 +890,201 @@ describe("treasury workspace handlers", () => {
     expect(body.data).toMatchObject({
       treasuryAccountId: "52100000",
       statementLineId: "stmt-1",
-      lineId: "line-1",
+      statementDate: "2026-01-15",
+      movementLineId: "line-1",
+      direction: "INFLOW",
       status: "ACTIVE",
     });
     expect(body.data.PK).toBeUndefined();
+  });
+
+  test("POST /treasury/reconciliations matches OUTFLOW with a same-amount credit movement", async () => {
+    setupReconciliationMocks(outflowStatementLineItem, outflowCreditEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-2",
+        statementDate: "2026-01-16",
+        movementLineId: "line-3",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.data).toMatchObject({
+      statementLineId: "stmt-2",
+      movementLineId: "line-3",
+      amount: 250,
+      direction: "OUTFLOW",
+    });
+  });
+
+  test("POST /treasury/reconciliations rejects INFLOW matched to a credit movement", async () => {
+    setupReconciliationMocks(statementLineItem, creditEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-2",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message.code).toBe("ERROR_RECONCILIATION_DIRECTION_MISMATCH");
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/reconciliations rejects OUTFLOW matched to a debit movement", async () => {
+    setupReconciliationMocks(
+      outflowStatementLineItem,
+      debitOutflowMismatchEntryLineItem,
+    );
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-2",
+        statementDate: "2026-01-16",
+        movementLineId: "line-3",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message.code).toBe("ERROR_RECONCILIATION_DIRECTION_MISMATCH");
+  });
+
+  test("POST /treasury/reconciliations rejects amount mismatches", async () => {
+    setupReconciliationMocks(statementLineItem, amountMismatchEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message.code).toBe("ERROR_RECONCILIATION_AMOUNT_MISMATCH");
+  });
+
+  test("POST /treasury/reconciliations rejects movement lines on another account", async () => {
+    setupReconciliationMocks(statementLineItem, otherAccountEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message.code).toBe("ERROR_RECONCILIATION_ACCOUNT_MISMATCH");
+  });
+
+  test("POST /treasury/reconciliations rejects movement lines from another org", async () => {
+    setupReconciliationMocks(statementLineItem, otherOrgEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(404);
+    expect(body.message.code).toBe("ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
+  });
+
+  test("POST /treasury/reconciliations rejects movement lines from another fiscal year", async () => {
+    setupReconciliationMocks(statementLineItem, otherYearEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(404);
+    expect(body.message.code).toBe("ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
+  });
+
+  test("POST /treasury/reconciliations rejects statement lines from another treasury account", async () => {
+    setupReconciliationMocks(otherTreasuryStatementLineItem, entryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(404);
+    expect(body.message.code).toBe("ERROR_BANK_STATEMENT_LINE_NOT_FOUND");
+  });
+
+  test("POST /treasury/reconciliations rejects already matched statement lines", async () => {
+    setupReconciliationMocks(matchedOutflowStatementLineItem, outflowCreditEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-2",
+        statementDate: "2026-01-16",
+        movementLineId: "line-3",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message.code).toBe("ERROR_BANK_STATEMENT_LINE_ALREADY_RECONCILED");
+  });
+
+  test("POST /treasury/reconciliations rejects already reconciled movement lines", async () => {
+    setupReconciliationMocks(statementLineItem, reconciledEntryLineItem);
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message.code).toBe("ERROR_ACCOUNTING_MOVEMENT_ALREADY_RECONCILED");
   });
 
   test("POST /treasury/reconciliations/{matchId}/cancel restores unmatched statuses transactionally", async () => {
@@ -830,15 +1097,18 @@ describe("treasury workspace handlers", () => {
         matchId: { S: "RCN-1" },
         year: { S: "2026" },
         statementLineId: { S: "stmt-1" },
+        statementDate: { S: "2026-01-15" },
+        movementLineId: { S: "line-1" },
         entryId: { S: "entry-1" },
         lineId: { S: "line-1" },
         amount: { N: "1000" },
+        direction: { S: "INFLOW" },
         status: { S: "ACTIVE" },
         matchedAt: { S: "2026-01-15T00:00:00Z" },
+        matchedBy: { S: "user-123" },
         entityType: { S: "RECONCILIATION_MATCH" },
       },
     });
-    dynamoMock.on(QueryCommand).resolvesOnce({ Items: [statementLineItem] });
     dynamoMock.on(TransactWriteItemsCommand).resolves({});
 
     const response = await cancelReconciliationHandler(
@@ -858,6 +1128,10 @@ describe("treasury workspace handlers", () => {
 
     expect(response.statusCode).toBe(200);
     expect(transaction.TransactItems).toHaveLength(3);
+    expect(transaction.TransactItems?.[1].Update?.Key).toEqual({
+      PK: { S: "ORG#test-org#FY#2026" },
+      SK: { S: "TRS#52100000#FY#2026#STMT#2026-01-15#stmt-1" },
+    });
     expect(transaction.TransactItems?.[1].Update?.UpdateExpression).toContain(
       "SET #status = :unmatched REMOVE",
     );
@@ -866,5 +1140,103 @@ describe("treasury workspace handlers", () => {
     );
     expect(body.data.status).toBe("CANCELLED");
     expect(body.data.entityType).toBeUndefined();
+  });
+
+  test("POST /treasury/reconciliations/{matchId}/cancel rejects already cancelled matches", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({
+      Item: {
+        PK: { S: "ORG#test-org#FY#2026" },
+        SK: { S: "TRS#52100000#FY#2026#RCN#RCN-1" },
+        orgId: { S: "test-org" },
+        treasuryAccountId: { S: "52100000" },
+        matchId: { S: "RCN-1" },
+        year: { S: "2026" },
+        statementLineId: { S: "stmt-1" },
+        statementDate: { S: "2026-01-15" },
+        movementLineId: { S: "line-1" },
+        amount: { N: "1000" },
+        direction: { S: "INFLOW" },
+        status: { S: "CANCELLED" },
+        matchedAt: { S: "2026-01-15T00:00:00Z" },
+        matchedBy: { S: "user-123" },
+        cancelledAt: { S: "2026-01-16T00:00:00Z" },
+        entityType: { S: "RECONCILIATION_MATCH" },
+      },
+    });
+
+    const response = await cancelReconciliationHandler(
+      createEvent(
+        "POST /treasury/reconciliations/{matchId}/cancel",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          matchId: "RCN-1",
+        },
+        { matchId: "RCN-1" },
+      ),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message.code).toBe("ERROR_RECONCILIATION_MATCH_ALREADY_CANCELLED");
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
+  test("GET /treasury/reconciliations lists current org/year/account matches with pagination", async () => {
+    const lastEvaluatedKey = {
+      PK: { S: "ORG#test-org#FY#2026" },
+      SK: { S: "TRS#52100000#FY#2026#RCN#RCN-1" },
+    };
+    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: treasuryAccountItem });
+    dynamoMock.on(QueryCommand).resolvesOnce({
+      Items: [
+        {
+          ...lastEvaluatedKey,
+          orgId: { S: "test-org" },
+          treasuryAccountId: { S: "52100000" },
+          matchId: { S: "RCN-1" },
+          year: { S: "2026" },
+          statementLineId: { S: "stmt-1" },
+          statementDate: { S: "2026-01-15" },
+          movementLineId: { S: "line-1" },
+          amount: { N: "1000" },
+          direction: { S: "INFLOW" },
+          status: { S: "ACTIVE" },
+          matchedAt: { S: "2026-01-15T00:00:00Z" },
+          matchedBy: { S: "user-123" },
+          entityType: { S: "RECONCILIATION_MATCH" },
+        },
+      ],
+      LastEvaluatedKey: lastEvaluatedKey,
+    });
+
+    const response = await listReconciliationsHandler(
+      createEvent(
+        "GET /treasury/reconciliations",
+        {},
+        undefined,
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          limit: "1",
+        },
+      ),
+    );
+    const body = parseResponse(response);
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+
+    expect(response.statusCode).toBe(200);
+    expect(queryInput.KeyConditionExpression).toBe(
+      "PK = :pk AND begins_with(SK, :sk)",
+    );
+    expect(queryInput.ExpressionAttributeValues).toMatchObject({
+      ":pk": { S: "ORG#test-org#FY#2026" },
+      ":sk": { S: "TRS#52100000#FY#2026#RCN#" },
+    });
+    expect(body.data.matches).toHaveLength(1);
+    expect(body.data.nextCursor).toBeDefined();
+    expect(body.data.hasMore).toBe(true);
+    expect(body.data.count).toBe(1);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 });
