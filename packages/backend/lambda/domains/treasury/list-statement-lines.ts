@@ -1,27 +1,24 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { TreasuryService } from "@/lambda/shared/services/treasury-service";
-import { z } from "zod";
-
-const currentYear = () => String(new Date().getFullYear());
-
-const ListStatementLinesSchema = z.object({
-  treasuryAccountId: z.string().min(1),
-  year: z.coerce.string().regex(/^\d{4}$/).default(currentYear),
-});
+import { ListBankStatementLinesRequestSchema } from "@liass-ohada/shared/treasury";
 
 export const handler = createHandler(
-  ListStatementLinesSchema,
+  ListBankStatementLinesRequestSchema,
   async (data, { orgId, i18n }) => {
-    const statementLines = await TreasuryService.listStatementLines(
+    const result = await TreasuryService.listStatementLines(
       orgId,
       data.treasuryAccountId,
       data.year,
+      data,
     );
 
     return {
       message: i18n.getMessage("SUCCESS_BANK_STATEMENT_LINES_RETRIEVED"),
       data: {
-        statementLines,
+        statementLines: result.statementLines,
+        nextCursor: result.nextCursor,
+        hasMore: result.hasMore,
+        count: result.count,
       },
     };
   },

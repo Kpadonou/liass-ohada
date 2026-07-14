@@ -95,6 +95,26 @@ export const KeyFactory = {
     year: number | string,
   ) => `TRS#${treasuryAccountId}#FY#${year}#STMT#`,
 
+  bankStatementLineDatePrefix: (
+    treasuryAccountId: string,
+    year: number | string,
+    date: string,
+  ) => `${KeyFactory.bankStatementLinePrefix(treasuryAccountId, year)}${date}#`,
+
+  bankStatementLineRangeStart: (
+    treasuryAccountId: string,
+    year: number | string,
+    startDate?: string,
+  ) =>
+    `${KeyFactory.bankStatementLinePrefix(treasuryAccountId, year)}${startDate ?? "0000-00-00"}`,
+
+  bankStatementLineRangeEnd: (
+    treasuryAccountId: string,
+    year: number | string,
+    endDate?: string,
+  ) =>
+    `${KeyFactory.bankStatementLinePrefix(treasuryAccountId, year)}${endDate ?? "9999-99-99"}#~`,
+
   bankStatementLineSK: (
     treasuryAccountId: string,
     year: number | string,

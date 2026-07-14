@@ -3,10 +3,12 @@ import { handler as createAccountHandler } from "@/lambda/domains/treasury/creat
 import { handler as importStatementLinesHandler } from "@/lambda/domains/treasury/import-statement-lines";
 import { handler as listAccountsHandler } from "@/lambda/domains/treasury/list-accounts";
 import { handler as listMovementsHandler } from "@/lambda/domains/treasury/list-movements";
+import { handler as listStatementLinesHandler } from "@/lambda/domains/treasury/list-statement-lines";
 import { handler as postTransactionHandler } from "@/lambda/domains/treasury/post-transaction";
 import { handler as reconcileHandler } from "@/lambda/domains/treasury/reconcile";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
+import { TreasuryService } from "@/lambda/shared/services/treasury-service";
 import {
   DynamoDBClient,
   GetItemCommand,
@@ -118,14 +120,33 @@ const statementLineItem = {
   treasuryAccountId: { S: "52100000" },
   statementLineId: { S: "stmt-1" },
   year: { S: "2026" },
+  statementDate: { S: "2026-01-15" },
   date: { S: "2026-01-15" },
   reference: { S: "REF-1" },
+  externalId: { S: "EXT-1" },
+  description: { S: "Bank credit" },
   label: { S: "Bank credit" },
   amount: { N: "1000" },
+  direction: { S: "INFLOW" },
   currency: { S: "XOF" },
   status: { S: "UNMATCHED" },
   importedAt: { S: "2026-01-15T00:00:00Z" },
   entityType: { S: "BANK_STATEMENT_LINE" },
+};
+
+const matchedOutflowStatementLineItem = {
+  ...statementLineItem,
+  SK: { S: "TRS#52100000#FY#2026#STMT#2026-01-16#stmt-2" },
+  statementLineId: { S: "stmt-2" },
+  statementDate: { S: "2026-01-16" },
+  date: { S: "2026-01-16" },
+  reference: { S: "REF-2" },
+  externalId: { S: "EXT-2" },
+  description: { S: "Bank fee" },
+  label: { S: "Bank fee" },
+  amount: { N: "250" },
+  direction: { S: "OUTFLOW" },
+  status: { S: "MATCHED" },
 };
 
 const entryLineItem = {
@@ -442,10 +463,12 @@ describe("treasury workspace handlers", () => {
           year: "2026",
           lines: [
             {
-              date: "2026-01-15",
+              statementDate: "2026-01-15",
               reference: "REF-1",
-              label: "Bank credit",
+              externalId: "EXT-1",
+              description: "Bank credit",
               amount: 1000,
+              direction: "INFLOW",
               currency: "XOF",
             },
           ],
@@ -464,7 +487,296 @@ describe("treasury workspace handlers", () => {
       /^TRS#52100000#FY#2026#STMT#2026-01-15#[a-f0-9]{24}$/,
     );
     expect(body.data.imported).toBe(1);
+    expect(body.data.skipped).toBe(0);
+    expect(body.data.rejected).toBe(0);
+    expect(body.data.statementLines[0]).toMatchObject({
+      treasuryAccountId: "52100000",
+      year: "2026",
+      statementDate: "2026-01-15",
+      date: "2026-01-15",
+      description: "Bank credit",
+      label: "Bank credit",
+      amount: 1000,
+      direction: "INFLOW",
+      status: "UNMATCHED",
+    });
     expect(body.data.statementLines[0].PK).toBeUndefined();
+  });
+
+  test("POST /treasury/accounts/{id}/statement-lines/import rejects non-positive amounts", async () => {
+    const response = await importStatementLinesHandler(
+      createEvent(
+        "POST /treasury/accounts/{treasuryAccountId}/statement-lines/import",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          lines: [
+            {
+              statementDate: "2026-01-15",
+              description: "Invalid amount",
+              amount: -1000,
+              direction: "INFLOW",
+              currency: "XOF",
+            },
+          ],
+        },
+        { treasuryAccountId: "52100000" },
+      ),
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts/{id}/statement-lines/import requires a valid direction", async () => {
+    const response = await importStatementLinesHandler(
+      createEvent(
+        "POST /treasury/accounts/{treasuryAccountId}/statement-lines/import",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          lines: [
+            {
+              statementDate: "2026-01-15",
+              description: "Missing direction",
+              amount: 1000,
+              currency: "XOF",
+            },
+          ],
+        },
+        { treasuryAccountId: "52100000" },
+      ),
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts/{id}/statement-lines/import rejects invalid dates", async () => {
+    const response = await importStatementLinesHandler(
+      createEvent(
+        "POST /treasury/accounts/{treasuryAccountId}/statement-lines/import",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          lines: [
+            {
+              statementDate: "15/01/2026",
+              description: "Invalid date",
+              amount: 1000,
+              direction: "INFLOW",
+              currency: "XOF",
+            },
+          ],
+        },
+        { treasuryAccountId: "52100000" },
+      ),
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts/{id}/statement-lines/import rejects missing treasury accounts", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({});
+
+    const response = await importStatementLinesHandler(
+      createEvent(
+        "POST /treasury/accounts/{treasuryAccountId}/statement-lines/import",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          lines: [
+            {
+              statementDate: "2026-01-15",
+              description: "Bank credit",
+              amount: 1000,
+              direction: "INFLOW",
+              currency: "XOF",
+            },
+          ],
+        },
+        { treasuryAccountId: "52100000" },
+      ),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(404);
+    expect(body.message).toMatchObject({
+      code: "ERROR_TREASURY_ACCOUNT_NOT_FOUND",
+    });
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts/{id}/statement-lines/import rejects inactive treasury accounts", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({
+      Item: {
+        ...treasuryAccountItem,
+        active: { BOOL: false },
+      },
+    });
+
+    const response = await importStatementLinesHandler(
+      createEvent(
+        "POST /treasury/accounts/{treasuryAccountId}/statement-lines/import",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          lines: [
+            {
+              statementDate: "2026-01-15",
+              description: "Bank credit",
+              amount: 1000,
+              direction: "INFLOW",
+              currency: "XOF",
+            },
+          ],
+        },
+        { treasuryAccountId: "52100000" },
+      ),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message).toMatchObject({
+      code: "ERROR_TREASURY_ACCOUNT_INACTIVE",
+    });
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts/{id}/statement-lines/import skips duplicate fingerprints", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: treasuryAccountItem });
+    dynamoMock.on(PutItemCommand).rejects({
+      name: "ConditionalCheckFailedException",
+    });
+
+    const response = await importStatementLinesHandler(
+      createEvent(
+        "POST /treasury/accounts/{treasuryAccountId}/statement-lines/import",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          lines: [
+            {
+              statementDate: "2026-01-15",
+              reference: "REF-1",
+              externalId: "EXT-1",
+              description: "Bank credit",
+              amount: 1000,
+              direction: "INFLOW",
+              currency: "XOF",
+            },
+          ],
+        },
+        { treasuryAccountId: "52100000" },
+      ),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(200);
+    expect(body.data.imported).toBe(0);
+    expect(body.data.skipped).toBe(1);
+    expect(body.data.statementLines).toEqual([]);
+  });
+
+  test("GET /treasury/accounts/{id}/statement-lines lists current org account and filters safely", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: treasuryAccountItem });
+    dynamoMock.on(QueryCommand).resolvesOnce({
+      Items: [statementLineItem, matchedOutflowStatementLineItem],
+    });
+
+    const response = await listStatementLinesHandler(
+      createEvent(
+        "GET /treasury/accounts/{treasuryAccountId}/statement-lines",
+        {},
+        { treasuryAccountId: "52100000" },
+        {
+          year: "2026",
+          status: "UNMATCHED",
+          direction: "INFLOW",
+          startDate: "2026-01-01",
+          endDate: "2026-01-31",
+        },
+      ),
+    );
+    const body = parseResponse(response);
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+
+    expect(response.statusCode).toBe(200);
+    expect(queryInput.KeyConditionExpression).toBe(
+      "PK = :pk AND SK BETWEEN :startSk AND :endSk",
+    );
+    expect(queryInput.ExpressionAttributeValues?.[":pk"]).toEqual({
+      S: "ORG#test-org#FY#2026",
+    });
+    expect(queryInput.ExpressionAttributeValues?.[":startSk"]).toEqual({
+      S: "TRS#52100000#FY#2026#STMT#2026-01-01",
+    });
+    expect(queryInput.ExpressionAttributeValues?.[":endSk"]).toEqual({
+      S: "TRS#52100000#FY#2026#STMT#2026-01-31#~",
+    });
+    expect(body.data.statementLines).toHaveLength(1);
+    expect(body.data.statementLines[0]).toMatchObject({
+      treasuryAccountId: "52100000",
+      year: "2026",
+      statementDate: "2026-01-15",
+      direction: "INFLOW",
+      status: "UNMATCHED",
+    });
+    expect(body.data.count).toBe(1);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("GET /treasury/accounts/{id}/statement-lines supports pagination", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: treasuryAccountItem });
+    dynamoMock.on(QueryCommand).resolvesOnce({
+      Items: [statementLineItem],
+      LastEvaluatedKey: {
+        PK: { S: "ORG#test-org#FY#2026" },
+        SK: { S: "TRS#52100000#FY#2026#STMT#2026-01-15#stmt-1" },
+      },
+    });
+
+    const response = await listStatementLinesHandler(
+      createEvent(
+        "GET /treasury/accounts/{treasuryAccountId}/statement-lines",
+        {},
+        { treasuryAccountId: "52100000" },
+        { year: "2026", limit: "1" },
+      ),
+    );
+    const body = parseResponse(response);
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+
+    expect(response.statusCode).toBe(200);
+    expect(queryInput.Limit).toBe(1);
+    expect(body.data.statementLines).toHaveLength(1);
+    expect(body.data.hasMore).toBe(true);
+    expect(body.data.nextCursor).toEqual(expect.any(String));
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("TreasuryService.getStatementLineByDate reads an exact statement-line key", async () => {
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({ Item: treasuryAccountItem })
+      .resolvesOnce({ Item: statementLineItem });
+
+    const line = await TreasuryService.getStatementLineByDate(
+      "test-org",
+      "52100000",
+      "2026",
+      "2026-01-15",
+      "stmt-1",
+    );
+    const exactLookup = dynamoMock.commandCalls(GetItemCommand)[1].args[0].input;
+
+    expect(exactLookup.Key).toEqual({
+      PK: { S: "ORG#test-org#FY#2026" },
+      SK: { S: "TRS#52100000#FY#2026#STMT#2026-01-15#stmt-1" },
+    });
+    expect(line.statementLineId).toBe("stmt-1");
+    expect(line.direction).toBe("INFLOW");
   });
 
   test("POST /treasury/reconciliations creates the match and updates both sides transactionally", async () => {

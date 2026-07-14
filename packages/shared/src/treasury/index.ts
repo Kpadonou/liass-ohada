@@ -2,11 +2,13 @@ import { z } from "zod";
 
 const MoneySchema = z.number().int();
 const NonNegativeMoneySchema = z.number().int().nonnegative();
+const PositiveMoneySchema = z.number().int().positive();
 const DateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const YearSchema = z.string().regex(/^\d{4}$/);
 
 export const TreasuryAccountType = z.enum(["BANK", "CASH", "MOBILE_MONEY"]);
 export const TreasuryTransactionDirection = z.enum(["INFLOW", "OUTFLOW"]);
+export const BankStatementLineDirection = TreasuryTransactionDirection;
 export const BankStatementLineStatus = z.enum([
   "UNMATCHED",
   "MATCHED",
@@ -106,16 +108,22 @@ export const BankStatementLineSchema = z.object({
   orgId: z.string(),
   treasuryAccountId: z.string(),
   statementLineId: z.string(),
-  year: z.string(),
+  year: YearSchema,
+  statementDate: DateSchema,
   date: DateSchema,
+  valueDate: DateSchema.optional(),
   reference: z.string().optional(),
+  externalId: z.string().optional(),
+  description: z.string().min(1),
   label: z.string().min(1),
-  amount: MoneySchema,
+  amount: PositiveMoneySchema,
+  direction: BankStatementLineDirection,
   currency: z.string().length(3).default("XOF"),
   status: BankStatementLineStatus.default("UNMATCHED"),
   matchedEntryId: z.string().optional(),
   matchedLineId: z.string().optional(),
   reconciliationMatchId: z.string().optional(),
+  rawData: z.record(z.string(), z.unknown()).optional(),
   importedAt: z.string(),
   entityType: z.literal("BANK_STATEMENT_LINE"),
 });
@@ -130,15 +138,43 @@ export const BankStatementLineDtoSchema = BankStatementLineSchema.omit({
 export type BankStatementLineDto = z.infer<typeof BankStatementLineDtoSchema>;
 
 export const ImportBankStatementLineSchema = z.object({
-  date: DateSchema,
+  statementDate: DateSchema,
+  valueDate: DateSchema.optional(),
   reference: z.string().optional(),
-  label: z.string().min(1),
-  amount: MoneySchema,
+  externalId: z.string().optional(),
+  description: z.string().min(1),
+  amount: PositiveMoneySchema,
+  direction: BankStatementLineDirection,
   currency: z.string().length(3).default("XOF"),
+  rawData: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type ImportBankStatementLine = z.infer<
   typeof ImportBankStatementLineSchema
+>;
+
+export const ListBankStatementLinesRequestSchema = z
+  .object({
+    treasuryAccountId: z.string().min(1),
+    year: YearSchema,
+    limit: z.coerce.number().int().min(1).max(200).default(100).optional(),
+    cursor: z.string().optional(),
+    status: BankStatementLineStatus.optional(),
+    direction: BankStatementLineDirection.optional(),
+    startDate: DateSchema.optional(),
+    endDate: DateSchema.optional(),
+  })
+  .refine(
+    (data) =>
+      !data.startDate || !data.endDate || data.startDate <= data.endDate,
+    {
+      message: "INVALID_BANK_STATEMENT_LINE_DATE_RANGE",
+      path: ["endDate"],
+    },
+  );
+
+export type ListBankStatementLinesRequest = z.infer<
+  typeof ListBankStatementLinesRequestSchema
 >;
 
 export const ImportBankStatementRequestSchema = z.object({
@@ -243,6 +279,9 @@ export const ListBankStatementLinesResponseSchema = z.object({
   message: z.unknown().optional(),
   data: z.object({
     statementLines: z.array(BankStatementLineDtoSchema),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean().default(false).optional(),
+    count: z.number().int().nonnegative().optional(),
   }),
 });
 
@@ -251,6 +290,7 @@ export const ImportBankStatementResponseSchema = z.object({
   data: z.object({
     imported: z.number().int().nonnegative(),
     skipped: z.number().int().nonnegative(),
+    rejected: z.number().int().nonnegative().optional(),
     errors: z.array(
       z.object({
         index: z.number().int().nonnegative(),

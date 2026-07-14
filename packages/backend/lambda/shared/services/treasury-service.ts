@@ -11,6 +11,7 @@ import {
   CreateTreasuryAccountRequest,
   CreateTreasuryTransactionRequest,
   ImportBankStatementLine,
+  ListBankStatementLinesRequest,
   ListTreasuryAccountsRequest,
   ReconciliationMatchDto,
   ReconciliationMatchDtoSchema,
@@ -277,23 +278,80 @@ export class TreasuryService {
     orgId: string,
     treasuryAccountId: string,
     year: string,
-  ): Promise<BankStatementLineDto[]> {
-    await TreasuryService.getAccount(orgId, treasuryAccountId);
+    options: Omit<
+      ListBankStatementLinesRequest,
+      "treasuryAccountId" | "year"
+    > = {},
+  ): Promise<{
+    statementLines: BankStatementLineDto[];
+    nextCursor?: string;
+    hasMore: boolean;
+    count: number;
+  }> {
+    await TreasuryService.assertActiveTreasuryAccount(orgId, treasuryAccountId);
+
+    const exclusiveStartKey = TreasuryService.decodeStatementLineCursor(
+      orgId,
+      treasuryAccountId,
+      year,
+      options.cursor,
+    );
+    const hasDateRange = !!options.startDate || !!options.endDate;
 
     const result = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
-        KeyConditionExpression: "PK = :pk AND begins_with(SK, :sk)",
+        KeyConditionExpression: hasDateRange
+          ? "PK = :pk AND SK BETWEEN :startSk AND :endSk"
+          : "PK = :pk AND begins_with(SK, :sk)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.partitionKey(orgId, year),
-          ":sk": KeyFactory.bankStatementLinePrefix(treasuryAccountId, year),
+          ...(hasDateRange
+            ? {
+                ":startSk": KeyFactory.bankStatementLineRangeStart(
+                  treasuryAccountId,
+                  year,
+                  options.startDate,
+                ),
+                ":endSk": KeyFactory.bankStatementLineRangeEnd(
+                  treasuryAccountId,
+                  year,
+                  options.endDate,
+                ),
+              }
+            : {
+                ":sk": KeyFactory.bankStatementLinePrefix(
+                  treasuryAccountId,
+                  year,
+                ),
+              }),
         }),
+        ExclusiveStartKey: exclusiveStartKey,
+        Limit: options.limit ?? 100,
+        ScanIndexForward: true,
       }),
     );
 
-    return (result.Items || []).map((item) =>
-      BankStatementLineDtoSchema.parse(unmarshall(item)),
-    );
+    const statementLines = (result.Items || [])
+      .map((item) => BankStatementLineDtoSchema.parse(unmarshall(item)))
+      // The Query is already scoped to one org, fiscal year, and treasury account.
+      // Status and direction are post-query MVP filters until a dedicated access
+      // pattern justifies a sparse index.
+      .filter(
+        (line) => !options.status || line.status === options.status,
+      )
+      .filter(
+        (line) => !options.direction || line.direction === options.direction,
+      );
+
+    const nextCursor = TreasuryService.encodeCursor(result.LastEvaluatedKey);
+
+    return {
+      statementLines,
+      nextCursor,
+      hasMore: !!nextCursor,
+      count: statementLines.length,
+    };
   }
 
   static async importStatementLines(params: {
@@ -304,11 +362,15 @@ export class TreasuryService {
   }): Promise<{
     imported: number;
     skipped: number;
+    rejected: number;
     errors: { index: number; message: string }[];
     statementLines: BankStatementLineDto[];
   }> {
     const { orgId, treasuryAccountId, year, lines } = params;
-    const account = await TreasuryService.getAccount(orgId, treasuryAccountId);
+    const account = await TreasuryService.assertActiveTreasuryAccount(
+      orgId,
+      treasuryAccountId,
+    );
     const importedLines: BankStatementLineDto[] = [];
     const errors: { index: number; message: string }[] = [];
     let imported = 0;
@@ -319,6 +381,7 @@ export class TreasuryService {
       try {
         const statementLineId = TreasuryService.buildStatementLineId(
           treasuryAccountId,
+          year,
           line,
         );
         const importedAt = new Date().toISOString();
@@ -327,12 +390,18 @@ export class TreasuryService {
           treasuryAccountId,
           statementLineId,
           year,
-          date: line.date,
+          statementDate: line.statementDate,
+          date: line.statementDate,
+          valueDate: line.valueDate,
           reference: line.reference,
-          label: line.label,
+          externalId: line.externalId,
+          description: line.description,
+          label: line.description,
           amount: line.amount,
+          direction: line.direction,
           currency: line.currency || account.currency,
           status: "UNMATCHED",
+          rawData: line.rawData,
           importedAt,
           entityType: "BANK_STATEMENT_LINE",
         });
@@ -346,7 +415,7 @@ export class TreasuryService {
                 SK: KeyFactory.bankStatementLineSK(
                   treasuryAccountId,
                   year,
-                  line.date,
+                  line.statementDate,
                   statementLineId,
                 ),
                 ...item,
@@ -366,7 +435,7 @@ export class TreasuryService {
         } else {
           errors.push({
             index,
-            message: error?.message || "Invalid statement line",
+            message: error?.message || "INVALID_BANK_STATEMENT_LINE",
           });
         }
       }
@@ -375,6 +444,7 @@ export class TreasuryService {
     return {
       imported,
       skipped,
+      rejected: errors.length,
       errors,
       statementLines: importedLines,
     };
@@ -622,7 +692,7 @@ export class TreasuryService {
     for (const account of accounts) {
       const [movements, statementLines] = await Promise.all([
         TreasuryService.listMovements(orgId, account.treasuryAccountId, year),
-        TreasuryService.listStatementLines(
+        TreasuryService.listAllStatementLines(
           orgId,
           account.treasuryAccountId,
           year,
@@ -672,6 +742,28 @@ export class TreasuryService {
     return accounts;
   }
 
+  private static async listAllStatementLines(
+    orgId: string,
+    treasuryAccountId: string,
+    year: string,
+  ): Promise<BankStatementLineDto[]> {
+    const statementLines: BankStatementLineDto[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const page = await TreasuryService.listStatementLines(
+        orgId,
+        treasuryAccountId,
+        year,
+        { limit: 200, cursor },
+      );
+      statementLines.push(...page.statementLines);
+      cursor = page.nextCursor;
+    } while (cursor);
+
+    return statementLines;
+  }
+
   private static async assertTreasuryLedgerAccount(
     orgId: string,
     accountId: string,
@@ -706,6 +798,17 @@ export class TreasuryService {
     }
   }
 
+  private static async assertActiveTreasuryAccount(
+    orgId: string,
+    treasuryAccountId: string,
+  ): Promise<TreasuryAccountDto> {
+    const account = await TreasuryService.getAccount(orgId, treasuryAccountId);
+    if (!account.active) {
+      throw new AppError(400, "ERROR_TREASURY_ACCOUNT_INACTIVE");
+    }
+    return account;
+  }
+
   private static encodeCursor(
     cursor?: Record<string, any>,
   ): string | undefined {
@@ -738,22 +841,85 @@ export class TreasuryService {
     }
   }
 
+  private static decodeStatementLineCursor(
+    orgId: string,
+    treasuryAccountId: string,
+    year: string,
+    cursor?: string,
+  ): Record<string, any> | undefined {
+    if (!cursor) {
+      return undefined;
+    }
+
+    try {
+      const decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
+      const key = unmarshall(decoded);
+      if (
+        key.PK !== KeyFactory.partitionKey(orgId, year) ||
+        typeof key.SK !== "string" ||
+        !key.SK.startsWith(
+          KeyFactory.bankStatementLinePrefix(treasuryAccountId, year),
+        )
+      ) {
+        throw new Error("Invalid bank statement cursor scope");
+      }
+      return decoded;
+    } catch {
+      throw new AppError(400, "ERROR_INVALID_TREASURY_CURSOR");
+    }
+  }
+
   private static buildStatementLineId(
     treasuryAccountId: string,
+    year: string,
     line: ImportBankStatementLine,
   ) {
     return createHash("sha256")
       .update(
         [
           treasuryAccountId,
-          line.date,
+          year,
+          line.statementDate,
+          line.externalId || "",
+          line.direction,
           line.amount,
           line.reference || "",
-          line.label,
+          line.description,
         ].join("|"),
       )
       .digest("hex")
       .slice(0, 24);
+  }
+
+  static async getStatementLineByDate(
+    orgId: string,
+    treasuryAccountId: string,
+    year: string,
+    statementDate: string,
+    statementLineId: string,
+  ): Promise<BankStatementLineDto> {
+    await TreasuryService.assertActiveTreasuryAccount(orgId, treasuryAccountId);
+
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.partitionKey(orgId, year),
+          SK: KeyFactory.bankStatementLineSK(
+            treasuryAccountId,
+            year,
+            statementDate,
+            statementLineId,
+          ),
+        }),
+      }),
+    );
+
+    if (!result.Item) {
+      throw new AppError(404, "ERROR_STATEMENT_LINE_NOT_FOUND");
+    }
+
+    return BankStatementLineDtoSchema.parse(unmarshall(result.Item));
   }
 
   private static async getStatementLine(
