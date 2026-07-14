@@ -70,9 +70,29 @@ const ledgerAccountItem = {
   classCode: { N: "5" },
   financialStatementCode: { S: "BS" },
   allowReconciliation: { BOOL: true },
+  isActive: { BOOL: true },
   entityType: { S: "ACCOUNT" },
   createdAt: { S: "2026-01-01T00:00:00Z" },
   updatedAt: { S: "2026-01-01T00:00:00Z" },
+};
+
+const nonTreasuryLedgerAccountItem = {
+  ...ledgerAccountItem,
+  SK: { S: "ACC#41100000" },
+  accountId: { S: "41100000" },
+  accountName: { S: "Customer" },
+  classCode: { N: "4" },
+};
+
+const inactiveLedgerAccountItem = {
+  ...ledgerAccountItem,
+  isActive: { BOOL: false },
+};
+
+const otherOrgLedgerAccountItem = {
+  ...ledgerAccountItem,
+  PK: { S: "ORG#other-org" },
+  orgId: { S: "other-org" },
 };
 
 const treasuryAccountItem = {
@@ -166,7 +186,121 @@ describe("treasury workspace handlers", () => {
     expect(body.data.entityType).toBeUndefined();
   });
 
-  test("GET /treasury/accounts queries the treasury prefix without Scan", async () => {
+  test("POST /treasury/accounts rejects non-class-5 linked accounts", async () => {
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({ Item: nonTreasuryLedgerAccountItem });
+
+    const response = await createAccountHandler(
+      createEvent("POST /treasury/accounts", {
+        accountId: "41100000",
+        label: "Customer account",
+        type: "BANK",
+        currency: "XOF",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message).toMatchObject({
+      code: "ERROR_ACCOUNT_NOT_TREASURY_CLASS",
+      message:
+        "A treasury account must be linked to an active SYSCOHADA class 5 account.",
+    });
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts rejects inactive linked accounts", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({
+      Item: inactiveLedgerAccountItem,
+    });
+
+    const response = await createAccountHandler(
+      createEvent("POST /treasury/accounts", {
+        accountId: "52100000",
+        label: "Inactive bank",
+        type: "BANK",
+        currency: "XOF",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message).toMatchObject({
+      code: "ERROR_ACCOUNT_NOT_ACTIVE",
+      message: "The linked accounting account is inactive.",
+    });
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts rejects linked accounts from another org", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({
+      Item: otherOrgLedgerAccountItem,
+    });
+
+    const response = await createAccountHandler(
+      createEvent("POST /treasury/accounts", {
+        accountId: "52100000",
+        label: "Other org bank",
+        type: "BANK",
+        currency: "XOF",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(404);
+    expect(body.message).toMatchObject({
+      code: "ERROR_ACCOUNT_NOT_FOUND",
+      message: "Account not found.",
+    });
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts rejects missing linked accounts", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({});
+
+    const response = await createAccountHandler(
+      createEvent("POST /treasury/accounts", {
+        accountId: "52100000",
+        label: "Missing bank",
+        type: "BANK",
+        currency: "XOF",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(404);
+    expect(body.message).toMatchObject({
+      code: "ERROR_ACCOUNT_NOT_FOUND",
+      message: "Account not found.",
+    });
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/accounts prevents duplicates for the same linked account", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: ledgerAccountItem });
+    dynamoMock.on(PutItemCommand).rejects({
+      name: "ConditionalCheckFailedException",
+    });
+
+    const response = await createAccountHandler(
+      createEvent("POST /treasury/accounts", {
+        accountId: "52100000",
+        label: "Main bank",
+        type: "BANK",
+        currency: "XOF",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(400);
+    expect(body.message).toMatchObject({
+      code: "ERROR_TREASURY_ACCOUNT_ALREADY_EXISTS",
+      message: "This treasury account already exists.",
+    });
+  });
+
+  test("GET /treasury/accounts queries the current org treasury prefix without Scan", async () => {
     dynamoMock.on(QueryCommand).resolves({ Items: [treasuryAccountItem] });
 
     const response = await listAccountsHandler(
@@ -179,11 +313,40 @@ describe("treasury workspace handlers", () => {
     expect(queryInput.KeyConditionExpression).toBe(
       "PK = :pk AND begins_with(SK, :sk)",
     );
+    expect(queryInput.ExpressionAttributeValues?.[":pk"]).toEqual({
+      S: "ORG#test-org",
+    });
     expect(queryInput.ExpressionAttributeValues?.[":sk"]).toEqual({
       S: "TRS#ACC#",
     });
     expect(body.data.accounts[0].treasuryAccountId).toBe("52100000");
+    expect(body.data.count).toBe(1);
+    expect(body.data.hasMore).toBe(false);
     expect(body.data.accounts[0].PK).toBeUndefined();
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("GET /treasury/accounts supports cursor pagination", async () => {
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [treasuryAccountItem],
+      LastEvaluatedKey: {
+        PK: { S: "ORG#test-org" },
+        SK: { S: "TRS#ACC#52100000" },
+      },
+    });
+
+    const response = await listAccountsHandler(
+      createEvent("GET /treasury/accounts", {}, undefined, { limit: "1" }),
+    );
+    const body = parseResponse(response);
+    const queryInput = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
+
+    expect(response.statusCode).toBe(200);
+    expect(queryInput.Limit).toBe(1);
+    expect(body.data.accounts).toHaveLength(1);
+    expect(body.data.count).toBe(1);
+    expect(body.data.hasMore).toBe(true);
+    expect(body.data.nextCursor).toEqual(expect.any(String));
     expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 

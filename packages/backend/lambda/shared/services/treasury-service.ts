@@ -11,6 +11,7 @@ import {
   CreateTreasuryAccountRequest,
   CreateTreasuryTransactionRequest,
   ImportBankStatementLine,
+  ListTreasuryAccountsRequest,
   ReconciliationMatchDto,
   ReconciliationMatchDtoSchema,
   ReconciliationMatchSchema,
@@ -72,7 +73,7 @@ export class TreasuryService {
       );
     } catch (error: any) {
       if (error?.name === "ConditionalCheckFailedException") {
-        throw new AppError(400, "ERROR_TREASURY_ACCOUNT_EXISTS");
+        throw new AppError(400, "ERROR_TREASURY_ACCOUNT_ALREADY_EXISTS");
       }
       throw error;
     }
@@ -80,7 +81,19 @@ export class TreasuryService {
     return TreasuryAccountDtoSchema.parse(item);
   }
 
-  static async listAccounts(orgId: string): Promise<TreasuryAccountDto[]> {
+  static async listAccounts(
+    orgId: string,
+    options: ListTreasuryAccountsRequest = {},
+  ): Promise<{
+    accounts: TreasuryAccountDto[];
+    nextCursor?: string;
+    hasMore: boolean;
+    count: number;
+  }> {
+    const exclusiveStartKey = TreasuryService.decodeTreasuryAccountCursor(
+      orgId,
+      options.cursor,
+    );
     const result = await dynamoClient.send(
       new QueryCommand({
         TableName: config.TABLE_NAME,
@@ -89,13 +102,24 @@ export class TreasuryService {
           ":pk": KeyFactory.orgKey(orgId),
           ":sk": KeyFactory.treasuryAccountPrefix(),
         }),
+        ExclusiveStartKey: exclusiveStartKey,
+        Limit: options.limit ?? 100,
       }),
     );
 
-    return (result.Items || [])
+    const accounts = (result.Items || [])
       .map((item) => unmarshall(item))
       .filter((item) => item.entityType === "TREASURY_ACCOUNT")
       .map((item) => TreasuryAccountDtoSchema.parse(item));
+
+    const nextCursor = TreasuryService.encodeCursor(result.LastEvaluatedKey);
+
+    return {
+      accounts,
+      nextCursor,
+      hasMore: !!nextCursor,
+      count: accounts.length,
+    };
   }
 
   static async getAccount(
@@ -589,7 +613,7 @@ export class TreasuryService {
     orgId: string,
     year: string,
   ): Promise<TreasurySummaryDto> {
-    const accounts = await TreasuryService.listAccounts(orgId);
+    const accounts = await TreasuryService.listAllAccounts(orgId);
     let totalInflows = 0;
     let totalOutflows = 0;
     let unreconciledStatementLines = 0;
@@ -630,12 +654,30 @@ export class TreasuryService {
     };
   }
 
+  private static async listAllAccounts(
+    orgId: string,
+  ): Promise<TreasuryAccountDto[]> {
+    const accounts: TreasuryAccountDto[] = [];
+    let cursor: string | undefined;
+
+    do {
+      const page = await TreasuryService.listAccounts(orgId, {
+        limit: 200,
+        cursor,
+      });
+      accounts.push(...page.accounts);
+      cursor = page.nextCursor;
+    } while (cursor);
+
+    return accounts;
+  }
+
   private static async assertTreasuryLedgerAccount(
     orgId: string,
     accountId: string,
   ) {
     if (!accountId.startsWith("5")) {
-      throw new AppError(400, "ERROR_TREASURY_ACCOUNT_CLASS_INVALID");
+      throw new AppError(400, "ERROR_ACCOUNT_NOT_TREASURY_CLASS");
     }
 
     const result = await dynamoClient.send(
@@ -653,8 +695,46 @@ export class TreasuryService {
     }
 
     const account = AccountSchema.parse(unmarshall(result.Item));
+    if (account.orgId !== orgId) {
+      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
+    }
+    if (!account.isActive) {
+      throw new AppError(400, "ERROR_ACCOUNT_NOT_ACTIVE");
+    }
     if (account.classCode !== 5) {
-      throw new AppError(400, "ERROR_TREASURY_ACCOUNT_CLASS_INVALID");
+      throw new AppError(400, "ERROR_ACCOUNT_NOT_TREASURY_CLASS");
+    }
+  }
+
+  private static encodeCursor(
+    cursor?: Record<string, any>,
+  ): string | undefined {
+    return cursor
+      ? Buffer.from(JSON.stringify(cursor)).toString("base64")
+      : undefined;
+  }
+
+  private static decodeTreasuryAccountCursor(
+    orgId: string,
+    cursor?: string,
+  ): Record<string, any> | undefined {
+    if (!cursor) {
+      return undefined;
+    }
+
+    try {
+      const decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
+      const key = unmarshall(decoded);
+      if (
+        key.PK !== KeyFactory.orgKey(orgId) ||
+        typeof key.SK !== "string" ||
+        !key.SK.startsWith(KeyFactory.treasuryAccountPrefix())
+      ) {
+        throw new Error("Invalid treasury account cursor scope");
+      }
+      return decoded;
+    } catch {
+      throw new AppError(400, "ERROR_INVALID_CURSOR");
     }
   }
 

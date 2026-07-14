@@ -39,7 +39,7 @@ export const TreasuryAccountDtoSchema = TreasuryAccountSchema.omit({
 export type TreasuryAccountDto = z.infer<typeof TreasuryAccountDtoSchema>;
 
 export const CreateTreasuryAccountRequestSchema = z.object({
-  accountId: z.string().regex(/^5\d{7}$/),
+  accountId: z.string().regex(/^\d{8}$/),
   label: z.string().min(1),
   type: TreasuryAccountType,
   currency: z.string().length(3).default("XOF"),
@@ -50,6 +50,15 @@ export const CreateTreasuryAccountRequestSchema = z.object({
 
 export type CreateTreasuryAccountRequest = z.infer<
   typeof CreateTreasuryAccountRequestSchema
+>;
+
+export const ListTreasuryAccountsRequestSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(100).optional(),
+  cursor: z.string().optional(),
+});
+
+export type ListTreasuryAccountsRequest = z.infer<
+  typeof ListTreasuryAccountsRequestSchema
 >;
 
 export const TreasuryMovementDtoSchema = z.object({
@@ -210,6 +219,9 @@ export const ListTreasuryAccountsResponseSchema = z.object({
   message: z.unknown().optional(),
   data: z.object({
     accounts: z.array(TreasuryAccountDtoSchema),
+    nextCursor: z.string().optional(),
+    hasMore: z.boolean().default(false).optional(),
+    count: z.number().int().nonnegative().optional(),
   }),
 });
 
