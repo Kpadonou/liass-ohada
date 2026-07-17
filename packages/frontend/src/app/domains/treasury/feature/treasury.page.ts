@@ -22,9 +22,12 @@ import { LiassStatCardComponent } from '../../../shared/ui/stat-card/stat-card.c
 import { LiassStatusChipComponent, type LiassStatusTone } from '../../../shared/ui/status-chip/status-chip.component';
 import { TreasuryApi } from '../data-access/treasury.api';
 import { TreasuryQueries } from '../data-access/treasury-queries';
-import { parseBankStatementCsv } from '../utils/bank-statement-csv';
 import { CreateTreasuryAccountDialogComponent } from './create-treasury-account-dialog.component';
 import { CreateTreasuryTransactionDialogComponent } from './create-treasury-transaction-dialog.component';
+import { ImportBankStatementDialogComponent } from './import-bank-statement-dialog.component';
+
+type StatementStatusFilter = 'ALL' | BankStatementLineDto['status'];
+type StatementDirectionFilter = 'ALL' | BankStatementLineDto['direction'];
 
 @Component({
   selector: 'liass-treasury-page',
@@ -53,15 +56,33 @@ export class TreasuryPage {
 
   protected readonly selectedYear = signal(String(new Date().getFullYear()));
   protected readonly selectedAccountId = signal('');
-  protected readonly importText = signal('');
+  protected readonly activeTabIndex = signal(0);
   protected readonly selectedStatementLineId = signal<string | null>(null);
   protected readonly selectedMovementLineId = signal<string | null>(null);
-  protected readonly importResult = signal<{ imported: number; skipped: number } | null>(null);
   protected readonly actionErrorKey = signal<string | null>(null);
   protected readonly accountExtraPages = signal<TreasuryAccountDto[][]>([]);
   protected readonly localAccountUpserts = signal<TreasuryAccountDto[]>([]);
   protected readonly loadingMoreAccounts = signal(false);
   protected readonly loadMoreAccountsFailed = signal(false);
+  protected readonly statementStatusFilter = signal<StatementStatusFilter>('ALL');
+  protected readonly statementDirectionFilter = signal<StatementDirectionFilter>('ALL');
+  protected readonly statementStartDate = signal('');
+  protected readonly statementEndDate = signal('');
+  protected readonly statementExtraPages = signal<BankStatementLineDto[][]>([]);
+  protected readonly nextStatementCursor = signal<string | null>(null);
+  protected readonly loadingMoreStatementLines = signal(false);
+  protected readonly loadMoreStatementLinesFailed = signal(false);
+
+  private readonly statementLineRequest = computed(() => ({
+    year: this.selectedYear(),
+    limit: 100,
+    ...(this.statementStatusFilter() !== 'ALL' ? { status: this.statementStatusFilter() as BankStatementLineDto['status'] } : {}),
+    ...(this.statementDirectionFilter() !== 'ALL'
+      ? { direction: this.statementDirectionFilter() as BankStatementLineDto['direction'] }
+      : {}),
+    ...(this.statementStartDate() ? { startDate: this.statementStartDate() } : {}),
+    ...(this.statementEndDate() ? { endDate: this.statementEndDate() } : {})
+  }));
 
   protected readonly accountsQuery = injectQuery(() => this.treasuryQueries.listAccounts());
   protected readonly summaryQuery = injectQuery(() => this.treasuryQueries.getSummary(this.selectedYear()));
@@ -69,7 +90,7 @@ export class TreasuryPage {
     this.treasuryQueries.listMovements(this.selectedAccountId(), this.selectedYear())
   );
   protected readonly statementLinesQuery = injectQuery(() =>
-    this.treasuryQueries.listStatementLines(this.selectedAccountId(), this.selectedYear())
+    this.treasuryQueries.listStatementLines(this.selectedAccountId(), this.statementLineRequest())
   );
 
   protected readonly accountsPage = computed(() => this.accountsQuery.data());
@@ -94,7 +115,23 @@ export class TreasuryPage {
       )
   );
   protected readonly movements = computed(() => this.movementsQuery.data() ?? []);
-  protected readonly statementLines = computed(() => this.statementLinesQuery.data() ?? []);
+  protected readonly statementLinesPage = computed(() => this.statementLinesQuery.data());
+  protected readonly statementLines = computed(() =>
+    mergeStatementLines([
+      ...(this.statementLinesPage()?.statementLines ?? []),
+      ...this.statementExtraPages().flat()
+    ])
+  );
+  protected readonly statementLinesCount = computed(
+    () => this.statementLinesPage()?.count ?? this.statementLines().length
+  );
+  protected readonly hasMoreStatementLines = computed(
+    () =>
+      Boolean(
+        this.nextStatementCursor() ||
+          (this.statementExtraPages().length === 0 && this.statementLinesPage()?.nextCursor)
+      )
+  );
   protected readonly unmatchedMovements = computed(() =>
     this.movements().filter((movement) => movement.reconciliationStatus !== 'MATCHED')
   );
@@ -104,7 +141,6 @@ export class TreasuryPage {
   protected readonly selectedAccount = computed(() =>
     this.accounts().find((account) => account.treasuryAccountId === this.selectedAccountId())
   );
-  protected readonly parsedImport = computed(() => parseBankStatementCsv(this.importText()));
 
   constructor() {
     effect(() => {
@@ -121,6 +157,16 @@ export class TreasuryPage {
         this.selectedAccountId.set(accounts[0].treasuryAccountId);
       }
     });
+
+    effect(() => {
+      this.selectedAccountId();
+      this.selectedYear();
+      this.statementStatusFilter();
+      this.statementDirectionFilter();
+      this.statementStartDate();
+      this.statementEndDate();
+      this.resetStatementPagination();
+    });
   }
 
   protected updateYear(event: Event): void {
@@ -128,11 +174,6 @@ export class TreasuryPage {
     if (/^\d{4}$/.test(value)) {
       this.selectedYear.set(value);
     }
-  }
-
-  protected updateImportText(event: Event): void {
-    this.importText.set((event.target as HTMLTextAreaElement).value);
-    this.importResult.set(null);
   }
 
   protected formatAmount(amount: number, currency = 'XOF'): string {
@@ -155,8 +196,38 @@ export class TreasuryPage {
     return status === 'MATCHED' ? 'success' : status === 'IGNORED' ? 'neutral' : 'warning';
   }
 
+  protected directionTone(direction: BankStatementLineDto['direction']): LiassStatusTone {
+    return direction === 'INFLOW' ? 'success' : 'warning';
+  }
+
   protected movementLabel(movement: TreasuryMovementDto): string {
     return `${movement.date} - ${movement.label}`;
+  }
+
+  protected selectTreasuryAccount(treasuryAccountId: string): void {
+    this.selectedAccountId.set(treasuryAccountId);
+  }
+
+  protected updateStatementStatusFilter(value: StatementStatusFilter): void {
+    this.statementStatusFilter.set(value);
+  }
+
+  protected updateStatementDirectionFilter(value: StatementDirectionFilter): void {
+    this.statementDirectionFilter.set(value);
+  }
+
+  protected updateStatementStartDate(event: Event): void {
+    this.statementStartDate.set((event.target as HTMLInputElement).value);
+  }
+
+  protected updateStatementEndDate(event: Event): void {
+    this.statementEndDate.set((event.target as HTMLInputElement).value);
+  }
+
+  private resetStatementPagination(): void {
+    this.statementExtraPages.set([]);
+    this.nextStatementCursor.set(null);
+    this.loadMoreStatementLinesFailed.set(false);
   }
 
   protected openCreateAccount(): void {
@@ -205,6 +276,32 @@ export class TreasuryPage {
     }
   }
 
+  protected async loadMoreStatementLines(): Promise<void> {
+    const cursor =
+      this.nextStatementCursor() ||
+      (this.statementExtraPages().length === 0 ? this.statementLinesPage()?.nextCursor : null);
+
+    if (!cursor || !this.selectedAccountId() || this.loadingMoreStatementLines()) {
+      return;
+    }
+
+    this.loadingMoreStatementLines.set(true);
+    this.loadMoreStatementLinesFailed.set(false);
+
+    try {
+      const page = await this.treasuryApi.listStatementLines(this.selectedAccountId(), {
+        ...this.statementLineRequest(),
+        cursor
+      });
+      this.statementExtraPages.update((pages) => [...pages, page.statementLines]);
+      this.nextStatementCursor.set(page.nextCursor ?? null);
+    } catch {
+      this.loadMoreStatementLinesFailed.set(true);
+    } finally {
+      this.loadingMoreStatementLines.set(false);
+    }
+  }
+
   protected openCreateTransaction(): void {
     const dialogRef = this.dialog.open(CreateTreasuryTransactionDialogComponent, {
       autoFocus: 'first-tabbable',
@@ -227,24 +324,24 @@ export class TreasuryPage {
     });
   }
 
-  protected async importStatement(): Promise<void> {
-    const parsed = this.parsedImport();
-    if (!this.selectedAccountId() || parsed.lines.length === 0 || parsed.errors.length > 0) {
+  protected openImportStatementDialog(): void {
+    const account = this.selectedAccount();
+    if (!account) {
       return;
     }
 
-    this.actionErrorKey.set(null);
-    try {
-      const result = await this.treasuryApi.importStatementLines(this.selectedAccountId(), {
+    this.dialog.open(ImportBankStatementDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: {
+        treasuryAccountId: account.treasuryAccountId,
         year: this.selectedYear(),
-        lines: parsed.lines
-      });
-      this.importResult.set({ imported: result.imported, skipped: result.skipped });
-      void this.statementLinesQuery.refetch();
-      void this.summaryQuery.refetch();
-    } catch {
-      this.actionErrorKey.set('TREASURY.ERRORS.IMPORT_FAILED');
-    }
+        currency: account.currency
+      },
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'liass-dialog-panel',
+      restoreFocus: true,
+      width: '1100px'
+    });
   }
 
   protected selectStatementLine(line: BankStatementLineDto): void {
@@ -311,6 +408,18 @@ export class TreasuryPage {
       this.actionErrorKey.set('TREASURY.ERRORS.CANCEL_RECONCILE_FAILED');
     }
   }
+}
+
+function mergeStatementLines(lines: readonly BankStatementLineDto[]): BankStatementLineDto[] {
+  const linesById = new Map<string, BankStatementLineDto>();
+
+  for (const line of lines) {
+    linesById.set(line.statementLineId, line);
+  }
+
+  return [...linesById.values()].sort((left, right) =>
+    `${left.statementDate}#${left.statementLineId}`.localeCompare(`${right.statementDate}#${right.statementLineId}`)
+  );
 }
 
 function mergeTreasuryAccounts(

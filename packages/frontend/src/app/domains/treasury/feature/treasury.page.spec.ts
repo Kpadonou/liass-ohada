@@ -9,6 +9,7 @@ import { vi } from 'vitest';
 
 import { environment } from '../../../../environments/environment';
 import { AuthStore } from '../../identity/data-access/auth.store';
+import { ImportBankStatementDialogComponent } from './import-bank-statement-dialog.component';
 import { TreasuryPage } from './treasury.page';
 
 const translations = {
@@ -60,10 +61,7 @@ const translations = {
       FILTERS: { ACCOUNT: 'Treasury account', YEAR: 'Fiscal year' },
       IMPORT: {
         ACTION: 'Import statement',
-        ERRORS: '{{count}} invalid rows',
-        PLACEHOLDER: 'Paste structured statement rows here.',
-        RESULT: '{{imported}} imported, {{skipped}} duplicates',
-        TEXTAREA: 'Statement CSV'
+        RESULT: '{{imported}} imported, {{skipped}} duplicates, {{rejected}} rejected'
       },
       MOVEMENTS: {
         EMPTY: 'No movement.',
@@ -93,13 +91,35 @@ const translations = {
       },
       STATEMENT: {
         EMPTY: 'No statement line.',
+        EMPTY_TITLE: 'No statement line',
+        COUNT: '{{count}} lines loaded',
+        DIRECTION: { INFLOW: 'Inflow', OUTFLOW: 'Outflow' },
+        DIRECTION_FILTER: { ALL: 'All directions', INFLOW: 'Inflows', OUTFLOW: 'Outflows' },
+        FILTERS: {
+          DIRECTION: 'Direction',
+          END_DATE: 'End date',
+          START_DATE: 'Start date',
+          STATUS: 'Status'
+        },
+        LOAD_FAILED: 'Statement lines could not be loaded.',
+        LOAD_MORE: 'Load more lines',
+        LOAD_MORE_FAILED: 'More statement lines could not be loaded.',
+        NO_ACCOUNT: 'Select an account.',
+        NO_ACCOUNT_TITLE: 'No account selected',
         STATUS: { IGNORED: 'Ignored', MATCHED: 'Matched', UNMATCHED: 'Unmatched' },
+        STATUS_FILTER: { ALL: 'All statuses', IGNORED: 'Ignored', MATCHED: 'Matched', UNMATCHED: 'Unmatched' },
         TABLE: {
           ACTIONS: 'Actions',
           AMOUNT: 'Amount',
+          CURRENCY: 'Currency',
           DATE: 'Date',
+          DESCRIPTION: 'Description',
+          DIRECTION: 'Direction',
           LABEL: 'Label',
-          STATUS: 'Status'
+          REFERENCE: 'Reference',
+          STATEMENT_DATE: 'Statement date',
+          STATUS: 'Status',
+          VALUE_DATE: 'Value date'
         }
       },
       STATS: {
@@ -205,6 +225,81 @@ describe('TreasuryPage accounts tab', () => {
     expect(text).toContain('Active');
   });
 
+  it('displays statement lines returned by the API', async () => {
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    flushSelectedAccountRequests('52100000', [statementLineFixture()]);
+    await settle();
+
+    const lines = (fixture.componentInstance as unknown as { statementLines: () => ReturnType<typeof statementLineFixture>[] })
+      .statementLines();
+
+    expect(lines).toEqual([
+      expect.objectContaining({
+        description: 'Customer receipt',
+        direction: 'INFLOW',
+        reference: 'REF-1',
+        status: 'UNMATCHED'
+      })
+    ]);
+  });
+
+  it('sends statement filters as query params', async () => {
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    flushSelectedAccountRequests('52100000');
+    await settle();
+
+    (fixture.componentInstance as unknown as {
+      updateStatementStatusFilter: (value: string) => void;
+      updateStatementDirectionFilter: (value: string) => void;
+      updateStatementStartDate: (event: Event) => void;
+      updateStatementEndDate: (event: Event) => void;
+    }).updateStatementStatusFilter('UNMATCHED');
+    (fixture.componentInstance as unknown as { updateStatementDirectionFilter: (value: string) => void })
+      .updateStatementDirectionFilter('INFLOW');
+    (fixture.componentInstance as unknown as { updateStatementStartDate: (event: Event) => void })
+      .updateStatementStartDate({ target: { value: '2026-01-01' } } as unknown as Event);
+    (fixture.componentInstance as unknown as { updateStatementEndDate: (event: Event) => void })
+      .updateStatementEndDate({ target: { value: '2026-01-31' } } as unknown as Event);
+    fixture.detectChanges();
+
+    const request = httpMock.expectOne((candidate) =>
+      candidate.url === `${apiBaseUrl}/treasury/accounts/52100000/statement-lines` &&
+      candidate.params.get('status') === 'UNMATCHED'
+    );
+    expect(request.request.params.get('direction')).toBe('INFLOW');
+    expect(request.request.params.get('startDate')).toBe('2026-01-01');
+    expect(request.request.params.get('endDate')).toBe('2026-01-31');
+    request.flush({ data: { statementLines: [], count: 0, hasMore: false } });
+    await settle();
+  });
+
+  it('opens the bank statement import dialog for the selected account', async () => {
+    dialogOpen.mockReturnValue({ afterClosed: () => of(null) });
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    flushSelectedAccountRequests('52100000');
+    await settle();
+
+    (fixture.componentInstance as unknown as { openImportStatementDialog: () => void }).openImportStatementDialog();
+    fixture.detectChanges();
+
+    expect(dialogOpen).toHaveBeenCalledWith(
+      ImportBankStatementDialogComponent,
+      expect.objectContaining({
+        data: {
+          currency: 'XOF',
+          treasuryAccountId: '52100000',
+          year: '2026'
+        }
+      })
+    );
+  });
+
   it('opens create dialog and invalidates treasury accounts and summary after creation', async () => {
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
     dialogOpen.mockReturnValue({
@@ -265,7 +360,10 @@ describe('TreasuryPage accounts tab', () => {
     flushSelectedAccountRequests('52100000');
   }
 
-  function flushSelectedAccountRequests(treasuryAccountId: string) {
+  function flushSelectedAccountRequests(
+    treasuryAccountId: string,
+    statementLines: ReturnType<typeof statementLineFixture>[] = []
+  ) {
     const movementRequests = httpMock.match(
       (candidate) => candidate.url === `${apiBaseUrl}/treasury/accounts/${treasuryAccountId}/movements`
     );
@@ -276,7 +374,7 @@ describe('TreasuryPage accounts tab', () => {
     expect(movementRequests.length).toBe(1);
     expect(statementRequests.length).toBe(1);
     movementRequests[0].flush({ data: { movements: [] } });
-    statementRequests[0].flush({ data: { statementLines: [] } });
+    statementRequests[0].flush({ data: { statementLines, count: statementLines.length, hasMore: false } });
   }
 
   async function settle() {
@@ -285,12 +383,32 @@ describe('TreasuryPage accounts tab', () => {
     await new Promise((resolve) => setTimeout(resolve));
     fixture.detectChanges();
   }
+
 });
 
 function accountFixture(overrides: Partial<ReturnType<typeof accountFixtureBase>> = {}) {
   return {
     ...accountFixtureBase(),
     ...overrides
+  };
+}
+
+function statementLineFixture() {
+  return {
+    treasuryAccountId: '52100000',
+    statementLineId: 'stmt-1',
+    year: '2026',
+    statementDate: '2026-01-15',
+    date: '2026-01-15',
+    valueDate: '2026-01-16',
+    reference: 'REF-1',
+    description: 'Customer receipt',
+    label: 'Customer receipt',
+    amount: 150000,
+    direction: 'INFLOW' as const,
+    currency: 'XOF',
+    status: 'UNMATCHED' as const,
+    importedAt: '2026-01-15T00:00:00Z'
   };
 }
 

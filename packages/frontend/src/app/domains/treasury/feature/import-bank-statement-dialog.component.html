@@ -1,0 +1,130 @@
+<h2 mat-dialog-title>{{ 'TREASURY.IMPORT.DIALOG.TITLE' | transloco }}</h2>
+
+<mat-dialog-content class="space-y-5">
+  @if (errorKey()) {
+    <div class="rounded-app-card border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+      @if (errorMessage(); as message) {
+        {{ message }}
+      } @else {
+        {{ errorKey()! | transloco }}
+      }
+    </div>
+  }
+
+  <section class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+    <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.IMPORT.FILE.TITLE' | transloco }}</p>
+        <p class="mt-1 text-sm text-slate-500 dark:text-slate-400">{{ 'TREASURY.IMPORT.FILE.HELP' | transloco }}</p>
+      </div>
+
+      <input #fileInput class="hidden" type="file" accept=".xlsx,.csv,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="handleFileSelected($event)" />
+      <liass-button tone="brand" variant="solid" icon="upload_file" [disabled]="parsing() || submitting()" [loading]="parsing()" (pressed)="fileInput.click()">
+        {{ 'TREASURY.IMPORT.FILE.CHOOSE' | transloco }}
+      </liass-button>
+    </div>
+  </section>
+
+  @if (parsing()) {
+    <div class="flex items-center gap-3 rounded-app-card border border-slate-200 p-4 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
+      <mat-spinner diameter="20" />
+      <span>{{ 'TREASURY.IMPORT.FILE.PARSING' | transloco }}</span>
+    </div>
+  }
+
+  @if (preview(); as preview) {
+    <section class="space-y-4">
+      <div class="grid gap-3 md:grid-cols-5">
+        <div class="rounded-app-card border border-slate-200 p-3 dark:border-slate-800">
+          <p class="text-xs font-semibold uppercase text-slate-500">{{ 'TREASURY.IMPORT.PREVIEW.TOTAL_ROWS' | transloco }}</p>
+          <p class="mt-1 text-lg font-semibold text-slate-950 dark:text-white">{{ preview.totals.totalRows }}</p>
+        </div>
+        <div class="rounded-app-card border border-slate-200 p-3 dark:border-slate-800">
+          <p class="text-xs font-semibold uppercase text-slate-500">{{ 'TREASURY.IMPORT.PREVIEW.VALID_ROWS' | transloco }}</p>
+          <p class="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-300">{{ preview.totals.validRows }}</p>
+        </div>
+        <div class="rounded-app-card border border-slate-200 p-3 dark:border-slate-800">
+          <p class="text-xs font-semibold uppercase text-slate-500">{{ 'TREASURY.IMPORT.PREVIEW.REJECTED_ROWS' | transloco }}</p>
+          <p class="mt-1 text-lg font-semibold text-rose-700 dark:text-rose-300">{{ preview.totals.rejectedRows }}</p>
+        </div>
+        <div class="rounded-app-card border border-slate-200 p-3 dark:border-slate-800">
+          <p class="text-xs font-semibold uppercase text-slate-500">{{ 'TREASURY.IMPORT.PREVIEW.INFLOWS' | transloco }}</p>
+          <p class="mt-1 text-lg font-semibold text-emerald-700 dark:text-emerald-300">{{ formatAmount(preview.totals.totalInflow) }}</p>
+        </div>
+        <div class="rounded-app-card border border-slate-200 p-3 dark:border-slate-800">
+          <p class="text-xs font-semibold uppercase text-slate-500">{{ 'TREASURY.IMPORT.PREVIEW.OUTFLOWS' | transloco }}</p>
+          <p class="mt-1 text-lg font-semibold text-amber-700 dark:text-amber-300">{{ formatAmount(preview.totals.totalOutflow) }}</p>
+        </div>
+      </div>
+
+      @if (preview.invalidRows.length > 0) {
+        <div class="rounded-app-card border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200">
+          {{ 'TREASURY.IMPORT.PREVIEW.BLOCKED' | transloco }}
+        </div>
+      }
+
+      @if (result(); as result) {
+        <div class="rounded-app-card border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-200">
+          {{ 'TREASURY.IMPORT.RESULT' | transloco:{ imported: result.imported, skipped: result.skipped, rejected: result.rejected ?? 0 } }}
+        </div>
+      }
+
+      <div class="max-h-[420px] overflow-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+        <table class="liass-data-table w-full min-w-[980px] border-collapse text-left">
+          <thead class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'TREASURY.IMPORT.PREVIEW.TABLE.ROW' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATEMENT_DATE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.REFERENCE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DESCRIPTION' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DIRECTION' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.AMOUNT' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'TREASURY.IMPORT.PREVIEW.TABLE.STATUS' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (row of allRows(); track row.rowNumber) {
+              <tr>
+                <td class="px-4 py-3 text-sm text-slate-500">{{ row.rowNumber }}</td>
+                <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ row.line?.statementDate || row.rawData['statementDate'] || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ row.line?.reference || row.rawData['reference'] || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ row.line?.description || row.rawData['description'] || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                <td class="px-4 py-3">
+                  @if (row.line?.direction; as direction) {
+                    <liass-status-chip [label]="'TREASURY.STATEMENT.DIRECTION.' + direction | transloco" [tone]="directionTone(direction)" size="sm" />
+                  } @else {
+                    <span class="text-sm text-slate-500">{{ row.rawData['direction'] || ('COMMON.EMPTY_VALUE' | transloco) }}</span>
+                  }
+                </td>
+                <td class="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  @if (row.line) {
+                    {{ formatAmount(row.line.amount) }}
+                  } @else {
+                    {{ row.rawData['amount'] ?? ('COMMON.EMPTY_VALUE' | transloco) }}
+                  }
+                </td>
+                <td class="px-4 py-3">
+                  <div class="flex flex-col gap-1">
+                    <liass-status-chip [label]="rowStatus(row) | transloco" [tone]="rowTone(row)" size="sm" />
+                    @for (error of row.errors; track error) {
+                      <span class="text-xs text-rose-700 dark:text-rose-300">{{ error | transloco }}</span>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="close()">
+    {{ result() ? ('COMMON.ACTIONS.CLOSE' | transloco) : ('COMMON.ACTIONS.CANCEL' | transloco) }}
+  </liass-button>
+  <liass-button tone="brand" variant="solid" icon="task_alt" [disabled]="!canImport()" [loading]="submitting()" (pressed)="confirmImport()">
+    {{ 'TREASURY.IMPORT.CONFIRM' | transloco }}
+  </liass-button>
+</mat-dialog-actions>

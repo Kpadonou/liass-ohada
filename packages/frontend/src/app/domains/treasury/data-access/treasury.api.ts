@@ -6,6 +6,7 @@ import {
   CreateTreasuryTransactionRequestSchema,
   ImportBankStatementRequestSchema,
   ImportBankStatementResponseSchema,
+  ListBankStatementLinesRequestSchema,
   ListBankStatementLinesResponseSchema,
   ListTreasuryAccountsResponseSchema,
   ListTreasuryMovementsResponseSchema,
@@ -19,6 +20,7 @@ import {
   type CreateTreasuryAccountRequest,
   type CreateTreasuryTransactionRequest,
   type ImportBankStatementRequest,
+  type ListBankStatementLinesRequest,
   type ReconciliationMatchDto,
   type TreasuryAccountDto,
   type TreasuryMovementDto,
@@ -38,6 +40,23 @@ export interface TreasuryAccountsResult {
 export interface ListTreasuryAccountsParams {
   limit?: number;
   cursor?: string;
+}
+
+export type ListStatementLinesParams = Omit<ListBankStatementLinesRequest, 'treasuryAccountId'>;
+
+export interface BankStatementLinesResult {
+  statementLines: BankStatementLineDto[];
+  nextCursor?: string;
+  hasMore: boolean;
+  count: number;
+}
+
+export interface ImportStatementLinesResult {
+  imported: number;
+  skipped: number;
+  rejected?: number;
+  errors: { index: number; message: string }[];
+  statementLines: BankStatementLineDto[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -100,27 +119,58 @@ export class TreasuryApi {
 
   async listStatementLines(
     treasuryAccountId: string,
-    year: string
-  ): Promise<BankStatementLineDto[]> {
+    options: ListStatementLinesParams
+  ): Promise<BankStatementLinesResult> {
+    const request = ListBankStatementLinesRequestSchema.parse({
+      ...options,
+      treasuryAccountId
+    });
+    let params = new HttpParams().set('year', request.year);
+
+    if (request.limit) {
+      params = params.set('limit', request.limit);
+    }
+
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+
+    if (request.status) {
+      params = params.set('status', request.status);
+    }
+
+    if (request.direction) {
+      params = params.set('direction', request.direction);
+    }
+
+    if (request.startDate) {
+      params = params.set('startDate', request.startDate);
+    }
+
+    if (request.endDate) {
+      params = params.set('endDate', request.endDate);
+    }
+
     const response = await firstValueFrom(
       this.http.get<unknown>(
         `${this.apiBaseUrl}/treasury/accounts/${encodeURIComponent(treasuryAccountId)}/statement-lines`,
-        { params: new HttpParams().set('year', year) }
+        { params }
       )
     );
+    const parsed = ListBankStatementLinesResponseSchema.parse(response).data;
 
-    return ListBankStatementLinesResponseSchema.parse(response).data.statementLines;
+    return {
+      statementLines: parsed.statementLines,
+      nextCursor: parsed.nextCursor,
+      hasMore: Boolean(parsed.hasMore && parsed.nextCursor),
+      count: parsed.count ?? parsed.statementLines.length
+    };
   }
 
   async importStatementLines(
     treasuryAccountId: string,
     payload: ImportBankStatementRequest
-  ): Promise<{
-    imported: number;
-    skipped: number;
-    errors: { index: number; message: string }[];
-    statementLines: BankStatementLineDto[];
-  }> {
+  ): Promise<ImportStatementLinesResult> {
     const request = ImportBankStatementRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.post<unknown>(
@@ -129,7 +179,15 @@ export class TreasuryApi {
       )
     );
 
-    return ImportBankStatementResponseSchema.parse(response).data;
+    const parsed = ImportBankStatementResponseSchema.parse(response).data;
+
+    return {
+      imported: parsed.imported,
+      skipped: parsed.skipped,
+      rejected: parsed.rejected,
+      errors: parsed.errors,
+      statementLines: parsed.statementLines
+    };
   }
 
   async reconcile(payload: CreateReconciliationRequest): Promise<ReconciliationMatchDto> {

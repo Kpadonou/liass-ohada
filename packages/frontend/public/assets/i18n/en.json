@@ -338,10 +338,44 @@
     },
     "IMPORT": {
       "ACTION": "Import statement",
-      "ERRORS": "{{count}} invalid row(s)",
-      "PLACEHOLDER": "Paste structured statement rows here.",
-      "RESULT": "{{imported}} imported, {{skipped}} duplicate(s)",
-      "TEXTAREA": "Statement CSV: date, reference, label, amount, currency"
+      "CONFIRM": "Confirm import",
+      "DIALOG": {
+        "TITLE": "Import bank statement"
+      },
+      "ERRORS": {
+        "PARSE_FAILED": "The file could not be read.",
+        "SUBMIT_FAILED": "The statement could not be imported."
+      },
+      "FILE": {
+        "CHOOSE": "Choose file",
+        "HELP": "Accepted formats: Excel .xlsx with headers, or comma/semicolon CSV.",
+        "PARSING": "Reading file...",
+        "TITLE": "Statement file"
+      },
+      "PREVIEW": {
+        "BLOCKED": "Fix invalid rows in the file and upload it again before confirming the import.",
+        "INFLOWS": "Inflows",
+        "OUTFLOWS": "Outflows",
+        "REJECTED_ROWS": "Rejected",
+        "STATUS_INVALID": "Invalid",
+        "STATUS_VALID": "Valid",
+        "TABLE": {
+          "ROW": "Row",
+          "STATUS": "Check"
+        },
+        "TOTAL_ROWS": "Total rows",
+        "VALID_ROWS": "Valid"
+      },
+      "RESULT": "{{imported}} imported, {{skipped}} duplicate(s), {{rejected}} rejected",
+      "VALIDATION": {
+        "INVALID_AMOUNT": "Amount is invalid or not positive.",
+        "INVALID_DATE": "Date is invalid or ambiguous.",
+        "INVALID_DIRECTION": "Direction is invalid.",
+        "INVALID_ROW": "Row is invalid.",
+        "MISSING_HEADER": "Required headers are missing.",
+        "MISSING_REQUIRED_FIELDS": "Required fields are missing.",
+        "UNSUPPORTED_FILE": "File format is not supported."
+      }
     },
     "MOVEMENTS": {
       "EMPTY": "No accounting movement on this account.",
@@ -373,8 +407,36 @@
       }
     },
     "STATEMENT": {
+      "COUNT": "{{count}} line(s) loaded",
+      "DIRECTION": {
+        "INFLOW": "Inflow",
+        "OUTFLOW": "Outflow"
+      },
+      "DIRECTION_FILTER": {
+        "ALL": "All directions",
+        "INFLOW": "Inflows",
+        "OUTFLOW": "Outflows"
+      },
       "EMPTY": "No statement line imported.",
+      "EMPTY_TITLE": "No statement line",
+      "FILTERS": {
+        "DIRECTION": "Direction",
+        "END_DATE": "End date",
+        "START_DATE": "Start date",
+        "STATUS": "Status"
+      },
+      "LOAD_FAILED": "Statement lines could not be loaded.",
+      "LOAD_MORE": "Load more lines",
+      "LOAD_MORE_FAILED": "More statement lines could not be loaded.",
+      "NO_ACCOUNT": "Select or create a treasury account before viewing and importing statements.",
+      "NO_ACCOUNT_TITLE": "No account selected",
       "STATUS": {
+        "IGNORED": "Ignored",
+        "MATCHED": "Matched",
+        "UNMATCHED": "Unmatched"
+      },
+      "STATUS_FILTER": {
+        "ALL": "All statuses",
         "IGNORED": "Ignored",
         "MATCHED": "Matched",
         "UNMATCHED": "Unmatched"
@@ -382,9 +444,15 @@
       "TABLE": {
         "ACTIONS": "Actions",
         "AMOUNT": "Amount",
+        "CURRENCY": "Currency",
         "DATE": "Date",
+        "DESCRIPTION": "Description",
+        "DIRECTION": "Direction",
         "LABEL": "Label",
-        "STATUS": "Status"
+        "REFERENCE": "Reference",
+        "STATEMENT_DATE": "Statement date",
+        "STATUS": "Status",
+        "VALUE_DATE": "Value date"
       }
     },
     "STATS": {

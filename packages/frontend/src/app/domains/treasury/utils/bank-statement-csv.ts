@@ -1,4 +1,6 @@
-import { ImportBankStatementLineSchema, type ImportBankStatementLine } from '@liass-ohada/shared/treasury';
+import { type ImportBankStatementLine } from '@liass-ohada/shared/treasury';
+
+import { parseBankStatementCsvText } from './bank-statement-import';
 
 export interface ParsedStatementCsv {
   errors: { index: number; message: string }[];
@@ -6,33 +8,12 @@ export interface ParsedStatementCsv {
 }
 
 export function parseBankStatementCsv(value: string): ParsedStatementCsv {
-  const rows = value
-    .split(/\r?\n/)
-    .map((row) => row.trim())
-    .filter(Boolean);
-  const lines: ImportBankStatementLine[] = [];
-  const errors: { index: number; message: string }[] = [];
+  const preview = parseBankStatementCsvText(value);
 
-  rows.forEach((row, index) => {
-    const columns = row.split(',').map((column) => column.trim());
-    const [statementDate, reference, description, amount, direction, currency] = columns;
-    const normalizedCurrency = currency?.trim() ? currency.trim().toUpperCase() : 'XOF';
-
-    const parsed = ImportBankStatementLineSchema.safeParse({
-      statementDate,
-      reference: reference || undefined,
-      description,
-      amount: Number(amount),
-      direction,
-      currency: normalizedCurrency
-    });
-
-    if (parsed.success) {
-      lines.push(parsed.data);
-    } else {
-      errors.push({ index, message: parsed.error.issues[0]?.message ?? 'Invalid row' });
-    }
-  });
-
-  return { errors, lines };
+  return {
+    errors: preview.invalidRows.flatMap((row) =>
+      row.errors.map((message) => ({ index: row.rowNumber - 1, message }))
+    ),
+    lines: preview.validRows.flatMap((row) => (row.line ? [row.line] : []))
+  };
 }

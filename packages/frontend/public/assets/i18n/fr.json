@@ -338,10 +338,44 @@
     },
     "IMPORT": {
       "ACTION": "Importer le relevé",
-      "ERRORS": "{{count}} ligne(s) invalide(s)",
-      "PLACEHOLDER": "Collez ici les lignes structurées du relevé.",
-      "RESULT": "{{imported}} importée(s), {{skipped}} doublon(s)",
-      "TEXTAREA": "CSV relevé: date, référence, libellé, montant, devise"
+      "CONFIRM": "Confirmer l’import",
+      "DIALOG": {
+        "TITLE": "Importer un relevé bancaire"
+      },
+      "ERRORS": {
+        "PARSE_FAILED": "Le fichier n’a pas pu être lu.",
+        "SUBMIT_FAILED": "Le relevé n’a pas pu être importé."
+      },
+      "FILE": {
+        "CHOOSE": "Choisir un fichier",
+        "HELP": "Formats acceptés : Excel .xlsx avec en-têtes, ou CSV séparé par virgule ou point-virgule.",
+        "PARSING": "Lecture du fichier…",
+        "TITLE": "Fichier de relevé"
+      },
+      "PREVIEW": {
+        "BLOCKED": "Corrigez les lignes invalides dans le fichier puis rechargez-le avant de confirmer l’import.",
+        "INFLOWS": "Entrées",
+        "OUTFLOWS": "Sorties",
+        "REJECTED_ROWS": "Rejetées",
+        "STATUS_INVALID": "Invalide",
+        "STATUS_VALID": "Valide",
+        "TABLE": {
+          "ROW": "Ligne",
+          "STATUS": "Contrôle"
+        },
+        "TOTAL_ROWS": "Total lignes",
+        "VALID_ROWS": "Valides"
+      },
+      "RESULT": "{{imported}} importée(s), {{skipped}} doublon(s), {{rejected}} rejetée(s)",
+      "VALIDATION": {
+        "INVALID_AMOUNT": "Montant invalide ou non positif.",
+        "INVALID_DATE": "Date invalide ou ambiguë.",
+        "INVALID_DIRECTION": "Sens invalide.",
+        "INVALID_ROW": "Ligne invalide.",
+        "MISSING_HEADER": "En-têtes requis manquants.",
+        "MISSING_REQUIRED_FIELDS": "Champs obligatoires manquants.",
+        "UNSUPPORTED_FILE": "Format de fichier non pris en charge."
+      }
     },
     "MOVEMENTS": {
       "EMPTY": "Aucun mouvement comptable sur ce compte.",
@@ -373,18 +407,52 @@
       }
     },
     "STATEMENT": {
+      "COUNT": "{{count}} ligne(s) chargée(s)",
+      "DIRECTION": {
+        "INFLOW": "Entrée",
+        "OUTFLOW": "Sortie"
+      },
+      "DIRECTION_FILTER": {
+        "ALL": "Tous les sens",
+        "INFLOW": "Entrées",
+        "OUTFLOW": "Sorties"
+      },
       "EMPTY": "Aucune ligne de relevé importée.",
+      "EMPTY_TITLE": "Aucune ligne de relevé",
+      "FILTERS": {
+        "DIRECTION": "Sens",
+        "END_DATE": "Date fin",
+        "START_DATE": "Date début",
+        "STATUS": "Statut"
+      },
+      "LOAD_FAILED": "Les lignes de relevé n’ont pas pu être chargées.",
+      "LOAD_MORE": "Charger plus de lignes",
+      "LOAD_MORE_FAILED": "Les lignes supplémentaires n’ont pas pu être chargées.",
+      "NO_ACCOUNT": "Sélectionnez ou créez un compte de trésorerie pour consulter et importer un relevé.",
+      "NO_ACCOUNT_TITLE": "Aucun compte sélectionné",
       "STATUS": {
         "IGNORED": "Ignorée",
         "MATCHED": "Rapprochée",
         "UNMATCHED": "Non rapprochée"
       },
+      "STATUS_FILTER": {
+        "ALL": "Tous les statuts",
+        "IGNORED": "Ignorées",
+        "MATCHED": "Rapprochées",
+        "UNMATCHED": "Non rapprochées"
+      },
       "TABLE": {
         "ACTIONS": "Actions",
         "AMOUNT": "Montant",
+        "CURRENCY": "Devise",
         "DATE": "Date",
+        "DESCRIPTION": "Description",
+        "DIRECTION": "Sens",
         "LABEL": "Libellé",
-        "STATUS": "Statut"
+        "REFERENCE": "Référence",
+        "STATEMENT_DATE": "Date relevé",
+        "STATUS": "Statut",
+        "VALUE_DATE": "Date valeur"
       }
     },
     "STATS": {

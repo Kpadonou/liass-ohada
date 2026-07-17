@@ -47,7 +47,7 @@
     <div class="mb-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px_auto]">
       <mat-form-field appearance="outline">
         <mat-label>{{ 'TREASURY.FILTERS.ACCOUNT' | transloco }}</mat-label>
-        <mat-select [value]="selectedAccountId()" [disabled]="accounts().length === 0" (valueChange)="selectedAccountId.set($event)">
+        <mat-select [value]="selectedAccountId()" [disabled]="accounts().length === 0" (valueChange)="selectTreasuryAccount($event)">
           @for (account of accounts(); track account.treasuryAccountId) {
             <mat-option [value]="account.treasuryAccountId">{{ accountLabel(account) }}</mat-option>
           } @empty {
@@ -81,7 +81,7 @@
       </div>
     }
 
-    <mat-tab-group>
+    <mat-tab-group [selectedIndex]="activeTabIndex()" (selectedIndexChange)="activeTabIndex.set($event)">
       <mat-tab [label]="'TREASURY.TABS.ACCOUNTS' | transloco">
         <div class="py-5">
           @if (accountsQuery.isPending()) {
@@ -190,67 +190,117 @@
       </mat-tab>
 
       <mat-tab [label]="'TREASURY.TABS.STATEMENT' | transloco">
-        <div class="grid gap-5 py-5 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-          <section class="space-y-3">
-            <mat-form-field appearance="outline" class="w-full">
-              <mat-label>{{ 'TREASURY.IMPORT.TEXTAREA' | transloco }}</mat-label>
-              <textarea matInput rows="9" [value]="importText()" (input)="updateImportText($event)" [placeholder]="'TREASURY.IMPORT.PLACEHOLDER' | transloco"></textarea>
-            </mat-form-field>
-            <div class="flex flex-wrap items-center gap-3">
-              <liass-button tone="brand" variant="solid" icon="upload" [disabled]="parsedImport().lines.length === 0 || parsedImport().errors.length > 0 || !selectedAccountId()" (pressed)="importStatement()">
+        <div class="space-y-5 py-5">
+          <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+            <div class="grid gap-3 md:grid-cols-4">
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'TREASURY.STATEMENT.FILTERS.STATUS' | transloco }}</mat-label>
+                <mat-select [value]="statementStatusFilter()" (valueChange)="updateStatementStatusFilter($event)">
+                  @for (status of ['ALL', 'UNMATCHED', 'MATCHED', 'IGNORED']; track status) {
+                    <mat-option [value]="status">{{ 'TREASURY.STATEMENT.STATUS_FILTER.' + status | transloco }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'TREASURY.STATEMENT.FILTERS.DIRECTION' | transloco }}</mat-label>
+                <mat-select [value]="statementDirectionFilter()" (valueChange)="updateStatementDirectionFilter($event)">
+                  @for (direction of ['ALL', 'INFLOW', 'OUTFLOW']; track direction) {
+                    <mat-option [value]="direction">{{ 'TREASURY.STATEMENT.DIRECTION_FILTER.' + direction | transloco }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'TREASURY.STATEMENT.FILTERS.START_DATE' | transloco }}</mat-label>
+                <input matInput type="date" [value]="statementStartDate()" (input)="updateStatementStartDate($event)" />
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>{{ 'TREASURY.STATEMENT.FILTERS.END_DATE' | transloco }}</mat-label>
+                <input matInput type="date" [value]="statementEndDate()" (input)="updateStatementEndDate($event)" />
+              </mat-form-field>
+            </div>
+
+            <div class="flex items-start justify-end">
+              <liass-button tone="brand" variant="solid" icon="upload_file" [disabled]="!selectedAccountId()" (pressed)="openImportStatementDialog()">
                 {{ 'TREASURY.IMPORT.ACTION' | transloco }}
               </liass-button>
-              @if (importResult()) {
-                <span class="text-sm text-slate-500 dark:text-slate-400">{{ 'TREASURY.IMPORT.RESULT' | transloco: importResult()! }}</span>
+            </div>
+          </div>
+
+          @if (!selectedAccountId()) {
+            <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <p class="font-medium text-slate-700 dark:text-slate-200">{{ 'TREASURY.STATEMENT.NO_ACCOUNT_TITLE' | transloco }}</p>
+              <p class="mt-1">{{ 'TREASURY.STATEMENT.NO_ACCOUNT' | transloco }}</p>
+            </div>
+          } @else if (statementLinesQuery.isPending()) {
+            <liass-skeleton variant="block" />
+          } @else if (statementLinesQuery.isError()) {
+            <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+              {{ 'TREASURY.STATEMENT.LOAD_FAILED' | transloco }}
+            </div>
+          } @else if (statementLines().length === 0) {
+            <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <p class="font-medium text-slate-700 dark:text-slate-200">{{ 'TREASURY.STATEMENT.EMPTY_TITLE' | transloco }}</p>
+              <p class="mt-1">{{ 'TREASURY.STATEMENT.EMPTY' | transloco }}</p>
+            </div>
+          } @else {
+            <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+              <table class="liass-data-table w-full min-w-[1120px] border-collapse text-left">
+                <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                  <tr>
+                    <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATEMENT_DATE' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.VALUE_DATE' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.REFERENCE' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DESCRIPTION' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DIRECTION' | transloco }}</th>
+                    <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.AMOUNT' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.CURRENCY' | transloco }}</th>
+                    <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATUS' | transloco }}</th>
+                    <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.ACTIONS' | transloco }}</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                  @for (line of statementLines(); track line.statementLineId) {
+                    <tr>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.statementDate }}</td>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.valueDate || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.reference || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                      <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ line.description }}</td>
+                      <td class="px-4 py-4">
+                        <liass-status-chip [label]="'TREASURY.STATEMENT.DIRECTION.' + line.direction | transloco" [tone]="directionTone(line.direction)" size="sm" />
+                      </td>
+                      <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(line.amount, line.currency) }}</td>
+                      <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.currency }}</td>
+                      <td class="px-4 py-4"><liass-status-chip [label]="'TREASURY.STATEMENT.STATUS.' + line.status | transloco" [tone]="statusTone(line.status)" size="sm" /></td>
+                      <td class="px-4 py-4 text-right">
+                        @if (line.status === 'MATCHED') {
+                          <liass-button size="sm" tone="neutral" variant="ghost" icon="undo" (pressed)="cancelMatch(line)">
+                            {{ 'TREASURY.RECONCILIATION.CANCEL' | transloco }}
+                          </liass-button>
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex flex-col gap-3 text-sm text-slate-500 dark:text-slate-400 md:flex-row md:items-center md:justify-between">
+              <span>{{ 'TREASURY.STATEMENT.COUNT' | transloco:{ count: statementLinesCount() } }}</span>
+              @if (hasMoreStatementLines() || loadMoreStatementLinesFailed()) {
+                <div class="flex items-center justify-end gap-3">
+                  @if (loadMoreStatementLinesFailed()) {
+                    <span class="text-sm text-red-700 dark:text-red-300">{{ 'TREASURY.STATEMENT.LOAD_MORE_FAILED' | transloco }}</span>
+                  }
+                  <liass-button tone="neutral" variant="outline" icon="expand_more" [disabled]="!hasMoreStatementLines() || loadingMoreStatementLines()" [loading]="loadingMoreStatementLines()" (pressed)="loadMoreStatementLines()">
+                    {{ 'TREASURY.STATEMENT.LOAD_MORE' | transloco }}
+                  </liass-button>
+                </div>
               }
             </div>
-            @if (parsedImport().errors.length > 0) {
-              <div class="rounded-app-card border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200">
-                {{ 'TREASURY.IMPORT.ERRORS' | transloco:{ count: parsedImport().errors.length } }}
-              </div>
-            }
-          </section>
-
-          <section>
-            @if (statementLinesQuery.isPending()) {
-              <liass-skeleton variant="block" />
-            } @else if (statementLines().length === 0) {
-              <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                {{ 'TREASURY.STATEMENT.EMPTY' | transloco }}
-              </div>
-            } @else {
-              <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
-                <table class="liass-data-table w-full min-w-[760px] border-collapse text-left">
-                  <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-                    <tr>
-                      <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DATE' | transloco }}</th>
-                      <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.LABEL' | transloco }}</th>
-                      <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.AMOUNT' | transloco }}</th>
-                      <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATUS' | transloco }}</th>
-                      <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.ACTIONS' | transloco }}</th>
-                    </tr>
-                  </thead>
-                  <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
-                    @for (line of statementLines(); track line.statementLineId) {
-                      <tr>
-                        <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.date }}</td>
-                        <td class="px-4 py-4 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ line.label }}</td>
-                        <td class="px-4 py-4 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(line.amount, line.currency) }}</td>
-                        <td class="px-4 py-4"><liass-status-chip [label]="'TREASURY.STATEMENT.STATUS.' + line.status | transloco" [tone]="statusTone(line.status)" size="sm" /></td>
-                        <td class="px-4 py-4 text-right">
-                          @if (line.status === 'MATCHED') {
-                            <liass-button size="sm" tone="neutral" variant="ghost" icon="undo" (pressed)="cancelMatch(line)">
-                              {{ 'TREASURY.RECONCILIATION.CANCEL' | transloco }}
-                            </liass-button>
-                          }
-                        </td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            }
-          </section>
+          }
         </div>
       </mat-tab>
 
@@ -261,8 +311,8 @@
             <div class="grid gap-2">
               @for (line of unmatchedStatementLines(); track line.statementLineId) {
                 <button type="button" class="liass-focus-ring rounded-app-card border p-3 text-left text-sm transition hover:border-brand-300 dark:border-slate-800" [class.border-brand-500]="selectedStatementLineId() === line.statementLineId" (click)="selectStatementLine(line)">
-                  <span class="font-semibold text-slate-950 dark:text-white">{{ line.date }} - {{ formatAmount(line.amount, line.currency) }}</span>
-                  <span class="mt-1 block text-slate-500 dark:text-slate-400">{{ line.label }}</span>
+                  <span class="font-semibold text-slate-950 dark:text-white">{{ line.statementDate }} - {{ formatAmount(line.amount, line.currency) }}</span>
+                  <span class="mt-1 block text-slate-500 dark:text-slate-400">{{ line.description }}</span>
                 </button>
               } @empty {
                 <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.NO_STATEMENT_LINES' | transloco }}</div>

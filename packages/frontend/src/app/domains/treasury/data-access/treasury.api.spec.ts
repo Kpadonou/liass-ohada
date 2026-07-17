@@ -166,4 +166,58 @@ describe('TreasuryApi', () => {
       errors: []
     });
   });
+
+  it('lists statement lines with filters and pagination metadata', async () => {
+    const promise = api.listStatementLines('52100000', {
+      year: '2026',
+      limit: 25,
+      cursor: 'cursor-1',
+      status: 'UNMATCHED',
+      direction: 'INFLOW',
+      startDate: '2026-01-01',
+      endDate: '2026-01-31'
+    });
+    const request = httpMock.expectOne((candidate) =>
+      candidate.url === `${apiBaseUrl}/treasury/accounts/52100000/statement-lines`
+    );
+
+    expect(request.request.params.get('year')).toBe('2026');
+    expect(request.request.params.get('limit')).toBe('25');
+    expect(request.request.params.get('cursor')).toBe('cursor-1');
+    expect(request.request.params.get('status')).toBe('UNMATCHED');
+    expect(request.request.params.get('direction')).toBe('INFLOW');
+    expect(request.request.params.get('startDate')).toBe('2026-01-01');
+    expect(request.request.params.get('endDate')).toBe('2026-01-31');
+    request.flush({
+      data: {
+        statementLines: [
+          {
+            treasuryAccountId: '52100000',
+            statementLineId: 'stmt-1',
+            year: '2026',
+            statementDate: '2026-01-15',
+            date: '2026-01-15',
+            reference: 'REF-1',
+            description: 'Customer receipt',
+            label: 'Customer receipt',
+            amount: 1000,
+            direction: 'INFLOW',
+            currency: 'XOF',
+            status: 'UNMATCHED',
+            importedAt: '2026-01-15T00:00:00Z'
+          }
+        ],
+        nextCursor: 'cursor-2',
+        hasMore: true,
+        count: 10
+      }
+    });
+
+    await expect(promise).resolves.toMatchObject({
+      count: 10,
+      hasMore: true,
+      nextCursor: 'cursor-2',
+      statementLines: [expect.objectContaining({ statementLineId: 'stmt-1' })]
+    });
+  });
 });
