@@ -395,12 +395,75 @@
       "TITLE": "Treasury"
     },
     "RECONCILIATION": {
-      "CANCEL": "Cancel",
+      "CANCEL": "Cancel reconciliation",
+      "CANCEL_DIALOG": {
+        "DESCRIPTION": "Cancelling will reopen the statement line and accounting movement for a new reconciliation.",
+        "REASON": "Cancellation reason",
+        "TITLE": "Cancel reconciliation"
+      },
+      "ELIGIBILITY": {
+        "ACCOUNT_MISMATCH": "Incompatible account",
+        "ALREADY_RECONCILED": "Already reconciled",
+        "AMOUNT_MISMATCH": "Amount mismatch",
+        "DIRECTION_MISMATCH": "Direction mismatch",
+        "ELIGIBLE": "Ready to reconcile",
+        "MISSING_SELECTION": "Incomplete selection"
+      },
+      "EMPTY": {
+        "NO_ACCOUNT": "Select or create a treasury account before reconciling bank lines.",
+        "NO_ACCOUNT_TITLE": "No account selected",
+        "NO_YEAR": "Select a valid fiscal year before reconciling lines."
+      },
+      "ERRORS": {
+        "LOAD_HISTORY_FAILED": "Reconciliation history could not be loaded.",
+        "LOAD_MORE_HISTORY_FAILED": "More reconciliations could not be loaded.",
+        "LOAD_MOVEMENTS_FAILED": "Accounting movements could not be loaded.",
+        "LOAD_STATEMENT_LINES_FAILED": "Unmatched statement lines could not be loaded."
+      },
+      "FILTERS": {
+        "DIRECTION": "Direction",
+        "END_DATE": "End date",
+        "HISTORY_STATUS": "History",
+        "START_DATE": "Start date"
+      },
+      "HISTORY": {
+        "COUNT": "{{count}} reconciliation(s)",
+        "EMPTY": "No reconciliation recorded for this selection.",
+        "LOAD_MORE": "Load more reconciliations",
+        "TABLE": {
+          "MATCHED_AT": "Matched on"
+        },
+        "TITLE": "Reconciliation history"
+      },
+      "HISTORY_STATUS": {
+        "ACTIVE": "Active",
+        "ALL": "All",
+        "CANCELLED": "Cancelled"
+      },
       "MATCH": "Reconcile",
+      "MOVEMENT_COUNT": "{{count}} movement(s)",
       "MOVEMENTS": "Unmatched movements",
       "NO_MOVEMENTS": "No unmatched movement.",
       "NO_STATEMENT_LINES": "No unmatched statement line.",
+      "NOTIFICATIONS": {
+        "CANCELLED": "Reconciliation cancelled.",
+        "MATCHED": "Reconciliation created."
+      },
+      "REFRESH": "Refresh",
+      "SUGGESTION": "Suggestion",
+      "SUMMARY": {
+        "DATE_DIFF": "{{count}} day(s) apart",
+        "MOVEMENT": "Accounting movement",
+        "NO_MOVEMENT": "No movement selected",
+        "NO_STATEMENT": "No statement line selected",
+        "SAME_DATE": "Same date",
+        "STATEMENT": "Statement line"
+      },
       "STATEMENT_LINES": "Unmatched statement lines",
+      "TABLE": {
+        "ELIGIBILITY": "Eligibility"
+      },
+      "UNMATCHED_COUNT": "{{count}} line(s)",
       "STATUS": {
         "MATCHED": "Matched",
         "UNMATCHED": "Unmatched"

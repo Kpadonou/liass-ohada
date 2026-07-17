@@ -220,4 +220,98 @@ describe('TreasuryApi', () => {
       statementLines: [expect.objectContaining({ statementLineId: 'stmt-1' })]
     });
   });
+
+  it('creates reconciliations with statement date and movement line id', async () => {
+    const promise = api.reconcile({
+      treasuryAccountId: '52100000',
+      year: '2026',
+      statementLineId: 'stmt-1',
+      statementDate: '2026-01-15',
+      movementLineId: 'line-1'
+    });
+    const request = httpMock.expectOne(`${apiBaseUrl}/treasury/reconciliations`);
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      treasuryAccountId: '52100000',
+      year: '2026',
+      statementLineId: 'stmt-1',
+      statementDate: '2026-01-15',
+      movementLineId: 'line-1'
+    });
+    request.flush({ data: reconciliationFixture() });
+
+    await expect(promise).resolves.toMatchObject({ matchId: 'match-1' });
+  });
+
+  it('lists reconciliation matches with filters and pagination metadata', async () => {
+    const promise = api.listReconciliationMatches({
+      treasuryAccountId: '52100000',
+      year: '2026',
+      status: 'ACTIVE',
+      limit: 25,
+      cursor: 'cursor-1'
+    });
+    const request = httpMock.expectOne((candidate) => candidate.url === `${apiBaseUrl}/treasury/reconciliations`);
+
+    expect(request.request.params.get('treasuryAccountId')).toBe('52100000');
+    expect(request.request.params.get('year')).toBe('2026');
+    expect(request.request.params.get('status')).toBe('ACTIVE');
+    expect(request.request.params.get('limit')).toBe('25');
+    expect(request.request.params.get('cursor')).toBe('cursor-1');
+    request.flush({
+      data: {
+        matches: [reconciliationFixture()],
+        nextCursor: 'cursor-2',
+        hasMore: true,
+        count: 3
+      }
+    });
+
+    await expect(promise).resolves.toMatchObject({
+      count: 3,
+      hasMore: true,
+      nextCursor: 'cursor-2',
+      matches: [expect.objectContaining({ matchId: 'match-1' })]
+    });
+  });
+
+  it('cancels reconciliation matches with an optional reason', async () => {
+    const promise = api.cancelReconciliation({
+      treasuryAccountId: '52100000',
+      year: '2026',
+      matchId: 'match-1',
+      cancelReason: 'Imported twice'
+    });
+    const request = httpMock.expectOne(`${apiBaseUrl}/treasury/reconciliations/match-1/cancel`);
+
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      treasuryAccountId: '52100000',
+      year: '2026',
+      matchId: 'match-1',
+      cancelReason: 'Imported twice'
+    });
+    request.flush({ data: { ...reconciliationFixture(), status: 'CANCELLED' } });
+
+    await expect(promise).resolves.toMatchObject({ matchId: 'match-1', status: 'CANCELLED' });
+  });
 });
+
+function reconciliationFixture() {
+  return {
+    treasuryAccountId: '52100000',
+    matchId: 'match-1',
+    year: '2026',
+    statementLineId: 'stmt-1',
+    statementDate: '2026-01-15',
+    movementLineId: 'line-1',
+    amount: 1000,
+    direction: 'INFLOW',
+    status: 'ACTIVE',
+    matchedAt: '2026-01-16T00:00:00Z',
+    matchedBy: 'user-1',
+    statementReference: 'REF-1',
+    statementDescription: 'Customer receipt'
+  };
+}

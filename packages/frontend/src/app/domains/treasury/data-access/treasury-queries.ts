@@ -2,11 +2,17 @@ import { Injectable, inject } from '@angular/core';
 import { queryOptions } from '@tanstack/angular-query-experimental';
 
 import { AuthStore } from '../../identity/data-access/auth.store';
-import { type ListStatementLinesParams, type ListTreasuryAccountsParams, TreasuryApi } from './treasury.api';
+import {
+  type ListReconciliationMatchesParams,
+  type ListStatementLinesParams,
+  type ListTreasuryAccountsParams,
+  TreasuryApi
+} from './treasury.api';
 
 const NO_TENANT_SCOPE = 'no-active-tenant';
 const TREASURY_ACCOUNT_PAGE_SIZE = 100;
 const STATEMENT_LINE_PAGE_SIZE = 100;
+const RECONCILIATION_PAGE_SIZE = 100;
 
 export const treasuryQueryKeys = {
   accounts: (tenantScope: string, options: ListTreasuryAccountsParams = { limit: TREASURY_ACCOUNT_PAGE_SIZE }) =>
@@ -14,10 +20,19 @@ export const treasuryQueryKeys = {
   accountsRoot: (tenantScope: string) => ['treasury', tenantScope, 'accounts'] as const,
   movements: (tenantScope: string, treasuryAccountId: string, year: string) =>
     ['treasury', tenantScope, 'movements', treasuryAccountId, year] as const,
+  movementsRoot: (tenantScope: string, treasuryAccountId: string) =>
+    ['treasury', tenantScope, 'movements', treasuryAccountId] as const,
   statementLines: (tenantScope: string, treasuryAccountId: string, options: ListStatementLinesParams) =>
     ['treasury', tenantScope, 'statement-lines', treasuryAccountId, normalizeStatementLineParams(options)] as const,
   statementLinesRoot: (tenantScope: string, treasuryAccountId: string) =>
     ['treasury', tenantScope, 'statement-lines', treasuryAccountId] as const,
+  reconciliations: (
+    tenantScope: string,
+    treasuryAccountId: string,
+    options: ListReconciliationMatchesParams
+  ) => ['treasury', tenantScope, 'reconciliations', treasuryAccountId, normalizeReconciliationParams(options)] as const,
+  reconciliationsRoot: (tenantScope: string, treasuryAccountId: string) =>
+    ['treasury', tenantScope, 'reconciliations', treasuryAccountId] as const,
   summary: (tenantScope: string, year: string) =>
     ['treasury', tenantScope, 'summary', year] as const,
   summaryRoot: (tenantScope: string) => ['treasury', tenantScope, 'summary'] as const
@@ -46,6 +61,14 @@ export class TreasuryQueries {
 
   statementLinesRootQueryKey(treasuryAccountId: string) {
     return treasuryQueryKeys.statementLinesRoot(this.tenantScope(), treasuryAccountId);
+  }
+
+  movementsRootQueryKey(treasuryAccountId: string) {
+    return treasuryQueryKeys.movementsRoot(this.tenantScope(), treasuryAccountId);
+  }
+
+  reconciliationsRootQueryKey(treasuryAccountId: string) {
+    return treasuryQueryKeys.reconciliationsRoot(this.tenantScope(), treasuryAccountId);
   }
 
   listAccounts(options: ListTreasuryAccountsParams = { limit: TREASURY_ACCOUNT_PAGE_SIZE }) {
@@ -77,6 +100,22 @@ export class TreasuryQueries {
     });
   }
 
+  listReconciliationMatches(
+    treasuryAccountId: string,
+    options: ListReconciliationMatchesParams = { year: '', limit: RECONCILIATION_PAGE_SIZE }
+  ) {
+    return queryOptions({
+      queryKey: treasuryQueryKeys.reconciliations(this.tenantScope(), treasuryAccountId, options),
+      queryFn: () =>
+        this.treasuryApi.listReconciliationMatches({
+          ...options,
+          treasuryAccountId
+        }),
+      enabled: treasuryAccountId.length > 0 && /^\d{4}$/.test(options.year),
+      staleTime: 30_000
+    });
+  }
+
   getSummary(year: string) {
     return queryOptions({
       queryKey: treasuryQueryKeys.summary(this.tenantScope(), year),
@@ -103,5 +142,14 @@ function normalizeStatementLineParams(options: ListStatementLinesParams) {
     ...(options.direction ? { direction: options.direction } : {}),
     ...(options.startDate ? { startDate: options.startDate } : {}),
     ...(options.endDate ? { endDate: options.endDate } : {})
+  };
+}
+
+function normalizeReconciliationParams(options: ListReconciliationMatchesParams) {
+  return {
+    year: options.year,
+    limit: options.limit ?? RECONCILIATION_PAGE_SIZE,
+    ...(options.status ? { status: options.status } : {}),
+    ...(options.cursor ? { cursor: options.cursor } : {})
   };
 }

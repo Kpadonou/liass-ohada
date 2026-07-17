@@ -8,6 +8,8 @@ import {
   ImportBankStatementResponseSchema,
   ListBankStatementLinesRequestSchema,
   ListBankStatementLinesResponseSchema,
+  ListReconciliationMatchesRequestSchema,
+  ListReconciliationMatchesResponseSchema,
   ListTreasuryAccountsResponseSchema,
   ListTreasuryMovementsResponseSchema,
   ReconciliationMatchResponseSchema,
@@ -21,6 +23,7 @@ import {
   type CreateTreasuryTransactionRequest,
   type ImportBankStatementRequest,
   type ListBankStatementLinesRequest,
+  type ListReconciliationMatchesRequest,
   type ReconciliationMatchDto,
   type TreasuryAccountDto,
   type TreasuryMovementDto,
@@ -43,6 +46,7 @@ export interface ListTreasuryAccountsParams {
 }
 
 export type ListStatementLinesParams = Omit<ListBankStatementLinesRequest, 'treasuryAccountId'>;
+export type ListReconciliationMatchesParams = Omit<ListReconciliationMatchesRequest, 'treasuryAccountId'>;
 
 export interface BankStatementLinesResult {
   statementLines: BankStatementLineDto[];
@@ -57,6 +61,13 @@ export interface ImportStatementLinesResult {
   rejected?: number;
   errors: { index: number; message: string }[];
   statementLines: BankStatementLineDto[];
+}
+
+export interface ReconciliationMatchesResult {
+  matches: ReconciliationMatchDto[];
+  nextCursor?: string;
+  hasMore: boolean;
+  count: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -199,6 +210,39 @@ export class TreasuryApi {
     return ReconciliationMatchResponseSchema.parse(response).data;
   }
 
+  async listReconciliationMatches(
+    options: ListReconciliationMatchesRequest
+  ): Promise<ReconciliationMatchesResult> {
+    const request = ListReconciliationMatchesRequestSchema.parse(options);
+    let params = new HttpParams()
+      .set('treasuryAccountId', request.treasuryAccountId)
+      .set('year', request.year);
+
+    if (request.status) {
+      params = params.set('status', request.status);
+    }
+
+    if (request.limit) {
+      params = params.set('limit', request.limit);
+    }
+
+    if (request.cursor) {
+      params = params.set('cursor', request.cursor);
+    }
+
+    const response = await firstValueFrom(
+      this.http.get<unknown>(`${this.apiBaseUrl}/treasury/reconciliations`, { params })
+    );
+    const parsed = ListReconciliationMatchesResponseSchema.parse(response).data;
+
+    return {
+      matches: parsed.matches,
+      nextCursor: parsed.nextCursor,
+      hasMore: Boolean(parsed.hasMore && parsed.nextCursor),
+      count: parsed.count ?? parsed.matches.length
+    };
+  }
+
   async cancelReconciliation(payload: CancelReconciliationRequest): Promise<ReconciliationMatchDto> {
     const response = await firstValueFrom(
       this.http.post<unknown>(
@@ -206,7 +250,8 @@ export class TreasuryApi {
         {
           treasuryAccountId: payload.treasuryAccountId,
           year: payload.year,
-          matchId: payload.matchId
+          matchId: payload.matchId,
+          cancelReason: payload.cancelReason
         }
       )
     );

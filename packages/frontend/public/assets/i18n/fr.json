@@ -395,12 +395,75 @@
       "TITLE": "Trésorerie"
     },
     "RECONCILIATION": {
-      "CANCEL": "Annuler",
+      "CANCEL": "Annuler le rapprochement",
+      "CANCEL_DIALOG": {
+        "DESCRIPTION": "L’annulation rouvrira la ligne de relevé et le mouvement comptable pour un nouveau rapprochement.",
+        "REASON": "Motif d’annulation",
+        "TITLE": "Annuler le rapprochement"
+      },
+      "ELIGIBILITY": {
+        "ACCOUNT_MISMATCH": "Compte incompatible",
+        "ALREADY_RECONCILED": "Déjà rapproché",
+        "AMOUNT_MISMATCH": "Montant différent",
+        "DIRECTION_MISMATCH": "Sens incompatible",
+        "ELIGIBLE": "Rapprochement possible",
+        "MISSING_SELECTION": "Sélection incomplète"
+      },
+      "EMPTY": {
+        "NO_ACCOUNT": "Sélectionnez ou créez un compte de trésorerie avant de rapprocher les lignes bancaires.",
+        "NO_ACCOUNT_TITLE": "Aucun compte sélectionné",
+        "NO_YEAR": "Sélectionnez un exercice valide avant de rapprocher les lignes."
+      },
+      "ERRORS": {
+        "LOAD_HISTORY_FAILED": "L’historique des rapprochements n’a pas pu être chargé.",
+        "LOAD_MORE_HISTORY_FAILED": "Les rapprochements supplémentaires n’ont pas pu être chargés.",
+        "LOAD_MOVEMENTS_FAILED": "Les mouvements comptables n’ont pas pu être chargés.",
+        "LOAD_STATEMENT_LINES_FAILED": "Les lignes de relevé non rapprochées n’ont pas pu être chargées."
+      },
+      "FILTERS": {
+        "DIRECTION": "Sens",
+        "END_DATE": "Date fin",
+        "HISTORY_STATUS": "Historique",
+        "START_DATE": "Date début"
+      },
+      "HISTORY": {
+        "COUNT": "{{count}} rapprochement(s)",
+        "EMPTY": "Aucun rapprochement enregistré pour cette sélection.",
+        "LOAD_MORE": "Charger plus de rapprochements",
+        "TABLE": {
+          "MATCHED_AT": "Rapproché le"
+        },
+        "TITLE": "Historique des rapprochements"
+      },
+      "HISTORY_STATUS": {
+        "ACTIVE": "Actif",
+        "ALL": "Tous",
+        "CANCELLED": "Annulé"
+      },
       "MATCH": "Rapprocher",
+      "MOVEMENT_COUNT": "{{count}} mouvement(s)",
       "MOVEMENTS": "Mouvements non rapprochés",
       "NO_MOVEMENTS": "Aucun mouvement non rapproché.",
       "NO_STATEMENT_LINES": "Aucune ligne de relevé non rapprochée.",
+      "NOTIFICATIONS": {
+        "CANCELLED": "Rapprochement annulé.",
+        "MATCHED": "Rapprochement créé."
+      },
+      "REFRESH": "Actualiser",
+      "SUGGESTION": "Suggestion",
+      "SUMMARY": {
+        "DATE_DIFF": "{{count}} jour(s) d’écart",
+        "MOVEMENT": "Mouvement comptable",
+        "NO_MOVEMENT": "Aucun mouvement sélectionné",
+        "NO_STATEMENT": "Aucune ligne sélectionnée",
+        "SAME_DATE": "Même date",
+        "STATEMENT": "Ligne de relevé"
+      },
       "STATEMENT_LINES": "Lignes de relevé non rapprochées",
+      "TABLE": {
+        "ELIGIBILITY": "Éligibilité"
+      },
+      "UNMATCHED_COUNT": "{{count}} ligne(s)",
       "STATUS": {
         "MATCHED": "Rapproché",
         "UNMATCHED": "Non rapproché"

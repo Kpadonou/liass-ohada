@@ -7,13 +7,16 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import {
   type BankStatementLineDto,
+  type ReconciliationMatchDto,
   type TreasuryAccountDto,
   type TreasuryMovementDto
 } from '@liass-ohada/shared/treasury';
-import { TranslocoModule } from '@ngneat/transloco';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { take } from 'rxjs';
 
+import { safeMessageFromError } from '../../../core/notifications/notification-message';
+import { NotificationService } from '../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
@@ -22,12 +25,20 @@ import { LiassStatCardComponent } from '../../../shared/ui/stat-card/stat-card.c
 import { LiassStatusChipComponent, type LiassStatusTone } from '../../../shared/ui/status-chip/status-chip.component';
 import { TreasuryApi } from '../data-access/treasury.api';
 import { TreasuryQueries } from '../data-access/treasury-queries';
+import { CancelReconciliationDialogComponent } from './cancel-reconciliation-dialog.component';
 import { CreateTreasuryAccountDialogComponent } from './create-treasury-account-dialog.component';
 import { CreateTreasuryTransactionDialogComponent } from './create-treasury-transaction-dialog.component';
 import { ImportBankStatementDialogComponent } from './import-bank-statement-dialog.component';
 
 type StatementStatusFilter = 'ALL' | BankStatementLineDto['status'];
 type StatementDirectionFilter = 'ALL' | BankStatementLineDto['direction'];
+type ReconciliationDirectionFilter = 'ALL' | BankStatementLineDto['direction'];
+type ReconciliationHistoryStatusFilter = 'ALL' | ReconciliationMatchDto['status'];
+
+interface MatchEligibility {
+  eligible: boolean;
+  reasonKey: string;
+}
 
 @Component({
   selector: 'liass-treasury-page',
@@ -50,7 +61,9 @@ type StatementDirectionFilter = 'ALL' | BankStatementLineDto['direction'];
 })
 export class TreasuryPage {
   private readonly dialog = inject(MatDialog);
+  private readonly notification = inject(NotificationService);
   private readonly queryClient = inject(QueryClient);
+  private readonly transloco = inject(TranslocoService);
   private readonly treasuryApi = inject(TreasuryApi);
   private readonly treasuryQueries = inject(TreasuryQueries);
 
@@ -72,6 +85,15 @@ export class TreasuryPage {
   protected readonly nextStatementCursor = signal<string | null>(null);
   protected readonly loadingMoreStatementLines = signal(false);
   protected readonly loadMoreStatementLinesFailed = signal(false);
+  protected readonly reconciliationDirectionFilter = signal<ReconciliationDirectionFilter>('ALL');
+  protected readonly reconciliationStartDate = signal('');
+  protected readonly reconciliationEndDate = signal('');
+  protected readonly reconciliationHistoryStatusFilter = signal<ReconciliationHistoryStatusFilter>('ALL');
+  protected readonly reconciliationHistoryExtraPages = signal<ReconciliationMatchDto[][]>([]);
+  protected readonly nextReconciliationHistoryCursor = signal<string | null>(null);
+  protected readonly loadingMoreReconciliationHistory = signal(false);
+  protected readonly loadMoreReconciliationHistoryFailed = signal(false);
+  protected readonly reconciliationBusy = signal(false);
 
   private readonly statementLineRequest = computed(() => ({
     year: this.selectedYear(),
@@ -83,6 +105,23 @@ export class TreasuryPage {
     ...(this.statementStartDate() ? { startDate: this.statementStartDate() } : {}),
     ...(this.statementEndDate() ? { endDate: this.statementEndDate() } : {})
   }));
+  private readonly reconciliationStatementLineRequest = computed(() => ({
+    year: this.selectedYear(),
+    limit: 100,
+    status: 'UNMATCHED' as const,
+    ...(this.reconciliationDirectionFilter() !== 'ALL'
+      ? { direction: this.reconciliationDirectionFilter() as BankStatementLineDto['direction'] }
+      : {}),
+    ...(this.reconciliationStartDate() ? { startDate: this.reconciliationStartDate() } : {}),
+    ...(this.reconciliationEndDate() ? { endDate: this.reconciliationEndDate() } : {})
+  }));
+  private readonly reconciliationHistoryRequest = computed(() => ({
+    year: this.selectedYear(),
+    limit: 100,
+    ...(this.reconciliationHistoryStatusFilter() !== 'ALL'
+      ? { status: this.reconciliationHistoryStatusFilter() as ReconciliationMatchDto['status'] }
+      : {})
+  }));
 
   protected readonly accountsQuery = injectQuery(() => this.treasuryQueries.listAccounts());
   protected readonly summaryQuery = injectQuery(() => this.treasuryQueries.getSummary(this.selectedYear()));
@@ -91,6 +130,12 @@ export class TreasuryPage {
   );
   protected readonly statementLinesQuery = injectQuery(() =>
     this.treasuryQueries.listStatementLines(this.selectedAccountId(), this.statementLineRequest())
+  );
+  protected readonly reconciliationStatementLinesQuery = injectQuery(() =>
+    this.treasuryQueries.listStatementLines(this.selectedAccountId(), this.reconciliationStatementLineRequest())
+  );
+  protected readonly reconciliationHistoryQuery = injectQuery(() =>
+    this.treasuryQueries.listReconciliationMatches(this.selectedAccountId(), this.reconciliationHistoryRequest())
   );
 
   protected readonly accountsPage = computed(() => this.accountsQuery.data());
@@ -136,7 +181,40 @@ export class TreasuryPage {
     this.movements().filter((movement) => movement.reconciliationStatus !== 'MATCHED')
   );
   protected readonly unmatchedStatementLines = computed(() =>
-    this.statementLines().filter((line) => line.status === 'UNMATCHED')
+    this.reconciliationStatementLinesQuery.data()?.statementLines ?? []
+  );
+  protected readonly selectedStatementLine = computed(() =>
+    this.unmatchedStatementLines().find((line) => line.statementLineId === this.selectedStatementLineId()) ?? null
+  );
+  protected readonly selectedMovement = computed(() =>
+    this.movements().find((movement) => movement.lineId === this.selectedMovementLineId()) ?? null
+  );
+  protected readonly selectedMatchEligibility = computed(() =>
+    this.matchEligibility(this.selectedStatementLine(), this.selectedMovement())
+  );
+  protected readonly suggestedMovements = computed(() =>
+    this.movements()
+      .map((movement) => ({ movement, score: this.matchSuggestionScore(movement) }))
+      .filter(({ score }) => score > 0)
+      .sort((left, right) => right.score - left.score)
+      .map(({ movement }) => movement.lineId)
+  );
+  protected readonly reconciliationHistoryPage = computed(() => this.reconciliationHistoryQuery.data());
+  protected readonly reconciliationHistory = computed(() =>
+    mergeReconciliationMatches([
+      ...(this.reconciliationHistoryPage()?.matches ?? []),
+      ...this.reconciliationHistoryExtraPages().flat()
+    ])
+  );
+  protected readonly reconciliationHistoryCount = computed(
+    () => this.reconciliationHistoryPage()?.count ?? this.reconciliationHistory().length
+  );
+  protected readonly hasMoreReconciliationHistory = computed(
+    () =>
+      Boolean(
+        this.nextReconciliationHistoryCursor() ||
+          (this.reconciliationHistoryExtraPages().length === 0 && this.reconciliationHistoryPage()?.nextCursor)
+      )
   );
   protected readonly selectedAccount = computed(() =>
     this.accounts().find((account) => account.treasuryAccountId === this.selectedAccountId())
@@ -166,6 +244,23 @@ export class TreasuryPage {
       this.statementStartDate();
       this.statementEndDate();
       this.resetStatementPagination();
+    });
+
+    effect(() => {
+      this.selectedAccountId();
+      this.selectedYear();
+      this.reconciliationDirectionFilter();
+      this.reconciliationStartDate();
+      this.reconciliationEndDate();
+      this.selectedStatementLineId.set(null);
+      this.selectedMovementLineId.set(null);
+    });
+
+    effect(() => {
+      this.selectedAccountId();
+      this.selectedYear();
+      this.reconciliationHistoryStatusFilter();
+      this.resetReconciliationHistoryPagination();
     });
   }
 
@@ -224,10 +319,32 @@ export class TreasuryPage {
     this.statementEndDate.set((event.target as HTMLInputElement).value);
   }
 
+  protected updateReconciliationDirectionFilter(value: ReconciliationDirectionFilter): void {
+    this.reconciliationDirectionFilter.set(value);
+  }
+
+  protected updateReconciliationStartDate(event: Event): void {
+    this.reconciliationStartDate.set((event.target as HTMLInputElement).value);
+  }
+
+  protected updateReconciliationEndDate(event: Event): void {
+    this.reconciliationEndDate.set((event.target as HTMLInputElement).value);
+  }
+
+  protected updateReconciliationHistoryStatusFilter(value: ReconciliationHistoryStatusFilter): void {
+    this.reconciliationHistoryStatusFilter.set(value);
+  }
+
   private resetStatementPagination(): void {
     this.statementExtraPages.set([]);
     this.nextStatementCursor.set(null);
     this.loadMoreStatementLinesFailed.set(false);
+  }
+
+  private resetReconciliationHistoryPagination(): void {
+    this.reconciliationHistoryExtraPages.set([]);
+    this.nextReconciliationHistoryCursor.set(null);
+    this.loadMoreReconciliationHistoryFailed.set(false);
   }
 
   protected openCreateAccount(): void {
@@ -302,6 +419,33 @@ export class TreasuryPage {
     }
   }
 
+  protected async loadMoreReconciliationHistory(): Promise<void> {
+    const cursor =
+      this.nextReconciliationHistoryCursor() ||
+      (this.reconciliationHistoryExtraPages().length === 0 ? this.reconciliationHistoryPage()?.nextCursor : null);
+
+    if (!cursor || !this.selectedAccountId() || this.loadingMoreReconciliationHistory()) {
+      return;
+    }
+
+    this.loadingMoreReconciliationHistory.set(true);
+    this.loadMoreReconciliationHistoryFailed.set(false);
+
+    try {
+      const page = await this.treasuryApi.listReconciliationMatches({
+        ...this.reconciliationHistoryRequest(),
+        treasuryAccountId: this.selectedAccountId(),
+        cursor
+      });
+      this.reconciliationHistoryExtraPages.update((pages) => [...pages, page.matches]);
+      this.nextReconciliationHistoryCursor.set(page.nextCursor ?? null);
+    } catch {
+      this.loadMoreReconciliationHistoryFailed.set(true);
+    } finally {
+      this.loadingMoreReconciliationHistory.set(false);
+    }
+  }
+
   protected openCreateTransaction(): void {
     const dialogRef = this.dialog.open(CreateTreasuryTransactionDialogComponent, {
       autoFocus: 'first-tabbable',
@@ -346,6 +490,9 @@ export class TreasuryPage {
 
   protected selectStatementLine(line: BankStatementLineDto): void {
     this.selectedStatementLineId.set(line.statementLineId);
+    if (this.selectedMovement() && !this.matchEligibility(line, this.selectedMovement()).eligible) {
+      this.selectedMovementLineId.set(null);
+    }
   }
 
   protected selectMovement(movement: TreasuryMovementDto): void {
@@ -353,47 +500,87 @@ export class TreasuryPage {
   }
 
   protected async reconcileSelected(): Promise<void> {
-    const statementLineId = this.selectedStatementLineId();
-    const lineId = this.selectedMovementLineId();
-    const statementLine = this.statementLines().find(
-      (item) => item.statementLineId === statementLineId,
-    );
-    const movement = this.movements().find((item) => item.lineId === lineId);
-    if (
-      !statementLineId ||
-      !lineId ||
-      !statementLine ||
-      !movement ||
-      !this.selectedAccountId()
-    ) {
+    const statementLine = this.selectedStatementLine();
+    const movement = this.selectedMovement();
+    const eligibility = this.selectedMatchEligibility();
+
+    if (!statementLine || !movement || !this.selectedAccountId() || !eligibility.eligible || this.reconciliationBusy()) {
       return;
     }
 
+    this.reconciliationBusy.set(true);
     this.actionErrorKey.set(null);
     try {
       await this.treasuryApi.reconcile({
         treasuryAccountId: this.selectedAccountId(),
         year: this.selectedYear(),
-        statementLineId,
+        statementLineId: statementLine.statementLineId,
         statementDate: statementLine.statementDate,
-        entryId: movement.entryId,
-        movementLineId: lineId
+        movementLineId: movement.lineId
       });
       this.selectedStatementLineId.set(null);
       this.selectedMovementLineId.set(null);
-      void this.statementLinesQuery.refetch();
-      void this.movementsQuery.refetch();
-      void this.summaryQuery.refetch();
-    } catch {
+      this.notification.success(this.transloco.translate('TREASURY.RECONCILIATION.NOTIFICATIONS.MATCHED'));
+      void this.invalidateReconciliationData();
+    } catch (error) {
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate('TREASURY.ERRORS.RECONCILE_FAILED'));
       this.actionErrorKey.set('TREASURY.ERRORS.RECONCILE_FAILED');
+    } finally {
+      this.reconciliationBusy.set(false);
+    }
+  }
+
+  protected openCancelReconciliation(match: ReconciliationMatchDto): void {
+    if (match.status !== 'ACTIVE') {
+      return;
+    }
+
+    const dialogRef = this.dialog.open(CancelReconciliationDialogComponent, {
+      autoFocus: 'first-tabbable',
+      data: { matchId: match.matchId },
+      maxWidth: 'calc(100vw - 32px)',
+      panelClass: 'liass-dialog-panel',
+      restoreFocus: true,
+      width: '520px'
+    });
+
+    dialogRef.afterClosed().pipe(take(1)).subscribe((reason: string | null | undefined) => {
+      if (reason !== undefined) {
+        void this.cancelReconciliationMatch(match, reason ?? undefined);
+      }
+    });
+  }
+
+  protected async cancelReconciliationMatch(match: ReconciliationMatchDto, cancelReason?: string): Promise<void> {
+    if (match.status !== 'ACTIVE' || this.reconciliationBusy()) {
+      return;
+    }
+
+    this.reconciliationBusy.set(true);
+    this.actionErrorKey.set(null);
+    try {
+      await this.treasuryApi.cancelReconciliation({
+        treasuryAccountId: this.selectedAccountId(),
+        year: this.selectedYear(),
+        matchId: match.matchId,
+        cancelReason
+      });
+      this.notification.success(this.transloco.translate('TREASURY.RECONCILIATION.NOTIFICATIONS.CANCELLED'));
+      void this.invalidateReconciliationData();
+    } catch (error) {
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate('TREASURY.ERRORS.CANCEL_RECONCILE_FAILED'));
+      this.actionErrorKey.set('TREASURY.ERRORS.CANCEL_RECONCILE_FAILED');
+    } finally {
+      this.reconciliationBusy.set(false);
     }
   }
 
   protected async cancelMatch(line: BankStatementLineDto): Promise<void> {
-    if (!line.reconciliationMatchId || !line.matchedEntryId || !line.matchedLineId) {
+    if (!line.reconciliationMatchId || this.reconciliationBusy()) {
       return;
     }
 
+    this.reconciliationBusy.set(true);
     this.actionErrorKey.set(null);
     try {
       await this.treasuryApi.cancelReconciliation({
@@ -401,12 +588,107 @@ export class TreasuryPage {
         year: this.selectedYear(),
         matchId: line.reconciliationMatchId
       });
-      void this.statementLinesQuery.refetch();
-      void this.movementsQuery.refetch();
-      void this.summaryQuery.refetch();
-    } catch {
+      this.notification.success(this.transloco.translate('TREASURY.RECONCILIATION.NOTIFICATIONS.CANCELLED'));
+      void this.invalidateReconciliationData();
+    } catch (error) {
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate('TREASURY.ERRORS.CANCEL_RECONCILE_FAILED'));
       this.actionErrorKey.set('TREASURY.ERRORS.CANCEL_RECONCILE_FAILED');
+    } finally {
+      this.reconciliationBusy.set(false);
     }
+  }
+
+  protected matchEligibility(
+    statementLine: BankStatementLineDto | null,
+    movement: TreasuryMovementDto | null
+  ): MatchEligibility {
+    if (!statementLine || !movement) {
+      return { eligible: false, reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.MISSING_SELECTION' };
+    }
+
+    if (movement.reconciliationStatus === 'MATCHED') {
+      return { eligible: false, reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.ALREADY_RECONCILED' };
+    }
+
+    if (this.selectedAccount()?.accountId && movement.accountId !== this.selectedAccount()?.accountId) {
+      return { eligible: false, reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.ACCOUNT_MISMATCH' };
+    }
+
+    if (statementLine.amount !== movement.amount) {
+      return { eligible: false, reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.AMOUNT_MISMATCH' };
+    }
+
+    if (statementLine.direction === 'INFLOW' && movement.debit !== statementLine.amount) {
+      return { eligible: false, reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.DIRECTION_MISMATCH' };
+    }
+
+    if (statementLine.direction === 'OUTFLOW' && movement.credit !== statementLine.amount) {
+      return { eligible: false, reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.DIRECTION_MISMATCH' };
+    }
+
+    return { eligible: true, reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.ELIGIBLE' };
+  }
+
+  protected movementEligibilityTone(movement: TreasuryMovementDto): LiassStatusTone {
+    return this.matchEligibility(this.selectedStatementLine(), movement).eligible ? 'success' : 'neutral';
+  }
+
+  protected isMovementSuggested(movement: TreasuryMovementDto): boolean {
+    return this.suggestedMovements().includes(movement.lineId);
+  }
+
+  protected matchSuggestionScore(movement: TreasuryMovementDto): number {
+    const statementLine = this.selectedStatementLine();
+    if (!statementLine || !this.matchEligibility(statementLine, movement).eligible) {
+      return 0;
+    }
+
+    let score = 10;
+    const dateDiff = Math.abs(daysBetween(statementLine.statementDate, movement.date));
+    if (dateDiff === 0) {
+      score += 6;
+    } else if (dateDiff <= 3) {
+      score += 4;
+    } else if (dateDiff <= 7) {
+      score += 2;
+    }
+
+    if (hasReferenceSimilarity(statementLine.reference, movement.reference)) {
+      score += 4;
+    }
+
+    if (hasReferenceSimilarity(statementLine.description, movement.label)) {
+      score += 2;
+    }
+
+    return score;
+  }
+
+  protected dateDifferenceLabel(): string {
+    const statementLine = this.selectedStatementLine();
+    const movement = this.selectedMovement();
+    if (!statementLine || !movement) {
+      return 'COMMON.EMPTY_VALUE';
+    }
+
+    const difference = Math.abs(daysBetween(statementLine.statementDate, movement.date));
+    return difference === 0
+      ? this.transloco.translate('TREASURY.RECONCILIATION.SUMMARY.SAME_DATE')
+      : this.transloco.translate('TREASURY.RECONCILIATION.SUMMARY.DATE_DIFF', { count: difference });
+  }
+
+  protected async invalidateReconciliationData(): Promise<void> {
+    const accountId = this.selectedAccountId();
+    if (!accountId) {
+      return;
+    }
+
+    await Promise.all([
+      this.queryClient.invalidateQueries({ queryKey: this.treasuryQueries.statementLinesRootQueryKey(accountId) }),
+      this.queryClient.invalidateQueries({ queryKey: this.treasuryQueries.movementsRootQueryKey(accountId) }),
+      this.queryClient.invalidateQueries({ queryKey: this.treasuryQueries.reconciliationsRootQueryKey(accountId) }),
+      this.queryClient.invalidateQueries({ queryKey: this.treasuryQueries.summaryRootQueryKey() })
+    ]);
   }
 }
 
@@ -420,6 +702,48 @@ function mergeStatementLines(lines: readonly BankStatementLineDto[]): BankStatem
   return [...linesById.values()].sort((left, right) =>
     `${left.statementDate}#${left.statementLineId}`.localeCompare(`${right.statementDate}#${right.statementLineId}`)
   );
+}
+
+function mergeReconciliationMatches(matches: readonly ReconciliationMatchDto[]): ReconciliationMatchDto[] {
+  const matchesById = new Map<string, ReconciliationMatchDto>();
+
+  for (const match of matches) {
+    matchesById.set(match.matchId, match);
+  }
+
+  return [...matchesById.values()].sort((left, right) =>
+    `${right.matchedAt}#${right.matchId}`.localeCompare(`${left.matchedAt}#${left.matchId}`)
+  );
+}
+
+function daysBetween(left: string, right: string): number {
+  const leftDate = Date.parse(`${left}T00:00:00.000Z`);
+  const rightDate = Date.parse(`${right}T00:00:00.000Z`);
+
+  if (Number.isNaN(leftDate) || Number.isNaN(rightDate)) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
+  return Math.round((rightDate - leftDate) / 86_400_000);
+}
+
+function hasReferenceSimilarity(left: string | undefined, right: string | undefined): boolean {
+  const normalizedLeft = normalizeMatchText(left);
+  const normalizedRight = normalizeMatchText(right);
+
+  if (!normalizedLeft || !normalizedRight) {
+    return false;
+  }
+
+  return normalizedLeft.includes(normalizedRight) || normalizedRight.includes(normalizedLeft);
+}
+
+function normalizeMatchText(value: string | undefined): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
 }
 
 function mergeTreasuryAccounts(

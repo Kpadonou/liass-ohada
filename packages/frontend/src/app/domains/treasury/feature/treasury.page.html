@@ -305,40 +305,244 @@
       </mat-tab>
 
       <mat-tab [label]="'TREASURY.TABS.RECONCILIATION' | transloco">
-        <div class="grid gap-5 py-5 xl:grid-cols-2">
-          <section class="space-y-3">
-            <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.RECONCILIATION.STATEMENT_LINES' | transloco }}</h3>
-            <div class="grid gap-2">
-              @for (line of unmatchedStatementLines(); track line.statementLineId) {
-                <button type="button" class="liass-focus-ring rounded-app-card border p-3 text-left text-sm transition hover:border-brand-300 dark:border-slate-800" [class.border-brand-500]="selectedStatementLineId() === line.statementLineId" (click)="selectStatementLine(line)">
-                  <span class="font-semibold text-slate-950 dark:text-white">{{ line.statementDate }} - {{ formatAmount(line.amount, line.currency) }}</span>
-                  <span class="mt-1 block text-slate-500 dark:text-slate-400">{{ line.description }}</span>
-                </button>
-              } @empty {
-                <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.NO_STATEMENT_LINES' | transloco }}</div>
-              }
+        <div class="space-y-5 py-5">
+          @if (!selectedAccountId()) {
+            <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              <p class="font-medium text-slate-700 dark:text-slate-200">{{ 'TREASURY.RECONCILIATION.EMPTY.NO_ACCOUNT_TITLE' | transloco }}</p>
+              <p class="mt-1">{{ 'TREASURY.RECONCILIATION.EMPTY.NO_ACCOUNT' | transloco }}</p>
             </div>
-          </section>
-
-          <section class="space-y-3">
-            <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.RECONCILIATION.MOVEMENTS' | transloco }}</h3>
-            <div class="grid gap-2">
-              @for (movement of unmatchedMovements(); track movement.lineId) {
-                <button type="button" class="liass-focus-ring rounded-app-card border p-3 text-left text-sm transition hover:border-brand-300 dark:border-slate-800" [class.border-brand-500]="selectedMovementLineId() === movement.lineId" (click)="selectMovement(movement)">
-                  <span class="font-semibold text-slate-950 dark:text-white">{{ movementLabel(movement) }}</span>
-                  <span class="mt-1 block text-slate-500 dark:text-slate-400">{{ formatAmount(movement.amount, selectedAccount()?.currency ?? 'XOF') }} · {{ movement.reference }}</span>
-                </button>
-              } @empty {
-                <div class="rounded-app-card border border-dashed border-slate-200 p-6 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.NO_MOVEMENTS' | transloco }}</div>
-              }
+          } @else if (selectedYear().length !== 4) {
+            <div class="rounded-app-card border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+              {{ 'TREASURY.RECONCILIATION.EMPTY.NO_YEAR' | transloco }}
             </div>
-          </section>
-        </div>
+          } @else {
+            <div class="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto]">
+              <div class="grid gap-3 md:grid-cols-4">
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'TREASURY.RECONCILIATION.FILTERS.DIRECTION' | transloco }}</mat-label>
+                  <mat-select [value]="reconciliationDirectionFilter()" (valueChange)="updateReconciliationDirectionFilter($event)">
+                    @for (direction of ['ALL', 'INFLOW', 'OUTFLOW']; track direction) {
+                      <mat-option [value]="direction">{{ 'TREASURY.STATEMENT.DIRECTION_FILTER.' + direction | transloco }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
 
-        <div class="flex justify-end">
-          <liass-button tone="brand" variant="solid" icon="link" [disabled]="!selectedStatementLineId() || !selectedMovementLineId()" (pressed)="reconcileSelected()">
-            {{ 'TREASURY.RECONCILIATION.MATCH' | transloco }}
-          </liass-button>
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'TREASURY.RECONCILIATION.FILTERS.START_DATE' | transloco }}</mat-label>
+                  <input matInput type="date" [value]="reconciliationStartDate()" (input)="updateReconciliationStartDate($event)" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'TREASURY.RECONCILIATION.FILTERS.END_DATE' | transloco }}</mat-label>
+                  <input matInput type="date" [value]="reconciliationEndDate()" (input)="updateReconciliationEndDate($event)" />
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>{{ 'TREASURY.RECONCILIATION.FILTERS.HISTORY_STATUS' | transloco }}</mat-label>
+                  <mat-select [value]="reconciliationHistoryStatusFilter()" (valueChange)="updateReconciliationHistoryStatusFilter($event)">
+                    @for (status of ['ALL', 'ACTIVE', 'CANCELLED']; track status) {
+                      <mat-option [value]="status">{{ 'TREASURY.RECONCILIATION.HISTORY_STATUS.' + status | transloco }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+
+              <div class="flex items-start justify-end">
+                <liass-button tone="neutral" variant="outline" icon="refresh" (pressed)="invalidateReconciliationData()">
+                  {{ 'TREASURY.RECONCILIATION.REFRESH' | transloco }}
+                </liass-button>
+              </div>
+            </div>
+
+            <div class="grid gap-5 xl:grid-cols-2">
+              <section class="space-y-3 rounded-app-card border border-slate-200 p-4 dark:border-slate-800">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.RECONCILIATION.STATEMENT_LINES' | transloco }}</h3>
+                  <liass-status-chip [label]="'TREASURY.RECONCILIATION.UNMATCHED_COUNT' | transloco:{ count: unmatchedStatementLines().length }" tone="warning" size="sm" />
+                </div>
+
+                @if (reconciliationStatementLinesQuery.isPending()) {
+                  <liass-skeleton variant="block" />
+                } @else if (reconciliationStatementLinesQuery.isError()) {
+                  <div class="rounded-app-card border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+                    {{ 'TREASURY.RECONCILIATION.ERRORS.LOAD_STATEMENT_LINES_FAILED' | transloco }}
+                  </div>
+                } @else {
+                  <div class="max-h-[420px] overflow-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+                    <table class="liass-data-table w-full min-w-[760px] border-collapse text-left">
+                      <thead class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                        <tr>
+                          <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATEMENT_DATE' | transloco }}</th>
+                          <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.REFERENCE' | transloco }}</th>
+                          <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DESCRIPTION' | transloco }}</th>
+                          <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DIRECTION' | transloco }}</th>
+                          <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.AMOUNT' | transloco }}</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        @for (line of unmatchedStatementLines(); track line.statementLineId) {
+                          <tr role="button" class="cursor-pointer bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20" [class.bg-brand-50]="selectedStatementLineId() === line.statementLineId" (click)="selectStatementLine(line)">
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ line.statementDate }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ line.reference || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ line.description }}</td>
+                            <td class="px-4 py-3"><liass-status-chip [label]="'TREASURY.STATEMENT.DIRECTION.' + line.direction | transloco" [tone]="directionTone(line.direction)" size="sm" /></td>
+                            <td class="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(line.amount, line.currency) }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="5" class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.NO_STATEMENT_LINES' | transloco }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </section>
+
+              <section class="space-y-3 rounded-app-card border border-slate-200 p-4 dark:border-slate-800">
+                <div class="flex items-center justify-between gap-3">
+                  <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.RECONCILIATION.MOVEMENTS' | transloco }}</h3>
+                  <liass-status-chip [label]="'TREASURY.RECONCILIATION.MOVEMENT_COUNT' | transloco:{ count: unmatchedMovements().length }" tone="info" size="sm" />
+                </div>
+
+                @if (movementsQuery.isPending()) {
+                  <liass-skeleton variant="block" />
+                } @else if (movementsQuery.isError()) {
+                  <div class="rounded-app-card border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+                    {{ 'TREASURY.RECONCILIATION.ERRORS.LOAD_MOVEMENTS_FAILED' | transloco }}
+                  </div>
+                } @else {
+                  <div class="max-h-[420px] overflow-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+                    <table class="liass-data-table w-full min-w-[900px] border-collapse text-left">
+                      <thead class="sticky top-0 bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                        <tr>
+                          <th class="px-4 py-3">{{ 'TREASURY.MOVEMENTS.TABLE.DATE' | transloco }}</th>
+                          <th class="px-4 py-3">{{ 'TREASURY.MOVEMENTS.TABLE.REFERENCE' | transloco }}</th>
+                          <th class="px-4 py-3">{{ 'TREASURY.MOVEMENTS.TABLE.LABEL' | transloco }}</th>
+                          <th class="px-4 py-3 text-right">{{ 'TREASURY.MOVEMENTS.TABLE.INFLOW' | transloco }}</th>
+                          <th class="px-4 py-3 text-right">{{ 'TREASURY.MOVEMENTS.TABLE.OUTFLOW' | transloco }}</th>
+                          <th class="px-4 py-3">{{ 'TREASURY.RECONCILIATION.TABLE.ELIGIBILITY' | transloco }}</th>
+                        </tr>
+                      </thead>
+                      <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                        @for (movement of unmatchedMovements(); track movement.lineId) {
+                          <tr role="button" class="cursor-pointer bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20" [class.bg-brand-50]="selectedMovementLineId() === movement.lineId" [class.ring-1]="isMovementSuggested(movement)" [class.ring-emerald-200]="isMovementSuggested(movement)" (click)="selectMovement(movement)">
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ movement.date }}</td>
+                            <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ movement.reference || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ movement.label }}</td>
+                            <td class="px-4 py-3 text-right text-sm text-emerald-700 dark:text-emerald-300">{{ movement.debit ? formatAmount(movement.debit, selectedAccount()?.currency ?? 'XOF') : '-' }}</td>
+                            <td class="px-4 py-3 text-right text-sm text-rose-700 dark:text-rose-300">{{ movement.credit ? formatAmount(movement.credit, selectedAccount()?.currency ?? 'XOF') : '-' }}</td>
+                            <td class="px-4 py-3">
+                              <div class="flex flex-wrap items-center gap-2">
+                                <liass-status-chip [label]="matchEligibility(selectedStatementLine(), movement).reasonKey | transloco" [tone]="movementEligibilityTone(movement)" size="sm" />
+                                @if (isMovementSuggested(movement)) {
+                                  <liass-status-chip [label]="'TREASURY.RECONCILIATION.SUGGESTION' | transloco" tone="success" size="sm" />
+                                }
+                              </div>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="6" class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.NO_MOVEMENTS' | transloco }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                }
+              </section>
+            </div>
+
+            <section class="rounded-app-card border border-slate-200 p-4 dark:border-slate-800">
+              <div class="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-center">
+                <div>
+                  <p class="text-xs font-semibold uppercase text-slate-500">{{ 'TREASURY.RECONCILIATION.SUMMARY.STATEMENT' | transloco }}</p>
+                  <p class="mt-1 text-sm font-semibold text-slate-950 dark:text-white">{{ selectedStatementLine()?.description || ('TREASURY.RECONCILIATION.SUMMARY.NO_STATEMENT' | transloco) }}</p>
+                  @if (selectedStatementLine()) {
+                    <p class="text-sm text-slate-500">{{ selectedStatementLine()!.statementDate }} · {{ formatAmount(selectedStatementLine()!.amount, selectedStatementLine()!.currency) }}</p>
+                  }
+                </div>
+                <div>
+                  <p class="text-xs font-semibold uppercase text-slate-500">{{ 'TREASURY.RECONCILIATION.SUMMARY.MOVEMENT' | transloco }}</p>
+                  <p class="mt-1 text-sm font-semibold text-slate-950 dark:text-white">{{ selectedMovement()?.label || ('TREASURY.RECONCILIATION.SUMMARY.NO_MOVEMENT' | transloco) }}</p>
+                  @if (selectedMovement()) {
+                    <p class="text-sm text-slate-500">{{ selectedMovement()!.date }} · {{ dateDifferenceLabel() }}</p>
+                  }
+                </div>
+                <div class="flex flex-col gap-2 lg:items-end">
+                  <liass-status-chip [label]="selectedMatchEligibility().reasonKey | transloco" [tone]="selectedMatchEligibility().eligible ? 'success' : 'warning'" size="sm" />
+                  <liass-button tone="brand" variant="solid" icon="link" [disabled]="!selectedMatchEligibility().eligible || reconciliationBusy()" [loading]="reconciliationBusy()" (pressed)="reconcileSelected()">
+                    {{ 'TREASURY.RECONCILIATION.MATCH' | transloco }}
+                  </liass-button>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-3">
+              <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <h3 class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'TREASURY.RECONCILIATION.HISTORY.TITLE' | transloco }}</h3>
+                <span class="text-sm text-slate-500 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.HISTORY.COUNT' | transloco:{ count: reconciliationHistoryCount() } }}</span>
+              </div>
+
+              @if (reconciliationHistoryQuery.isPending()) {
+                <liass-skeleton variant="block" />
+              } @else if (reconciliationHistoryQuery.isError()) {
+                <div class="rounded-app-card border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+                  {{ 'TREASURY.RECONCILIATION.ERRORS.LOAD_HISTORY_FAILED' | transloco }}
+                </div>
+              } @else {
+                <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+                  <table class="liass-data-table w-full min-w-[1040px] border-collapse text-left">
+                    <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                      <tr>
+                        <th class="px-4 py-3">{{ 'TREASURY.RECONCILIATION.HISTORY.TABLE.MATCHED_AT' | transloco }}</th>
+                        <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATEMENT_DATE' | transloco }}</th>
+                        <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DESCRIPTION' | transloco }}</th>
+                        <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.DIRECTION' | transloco }}</th>
+                        <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.AMOUNT' | transloco }}</th>
+                        <th class="px-4 py-3">{{ 'TREASURY.STATEMENT.TABLE.STATUS' | transloco }}</th>
+                        <th class="px-4 py-3 text-right">{{ 'TREASURY.STATEMENT.TABLE.ACTIONS' | transloco }}</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                      @for (match of reconciliationHistory(); track match.matchId) {
+                        <tr>
+                          <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ match.matchedAt }}</td>
+                          <td class="px-4 py-3 text-sm text-slate-600 dark:text-slate-400">{{ match.statementDate }}</td>
+                          <td class="px-4 py-3 text-sm font-semibold text-slate-900 dark:text-slate-100">{{ match.statementDescription || match.statementReference || match.statementLineId }}</td>
+                          <td class="px-4 py-3"><liass-status-chip [label]="'TREASURY.STATEMENT.DIRECTION.' + match.direction | transloco" [tone]="directionTone(match.direction)" size="sm" /></td>
+                          <td class="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(match.amount, selectedAccount()?.currency ?? 'XOF') }}</td>
+                          <td class="px-4 py-3"><liass-status-chip [label]="'TREASURY.RECONCILIATION.HISTORY_STATUS.' + match.status | transloco" [tone]="match.status === 'ACTIVE' ? 'success' : 'neutral'" size="sm" /></td>
+                          <td class="px-4 py-3 text-right">
+                            @if (match.status === 'ACTIVE') {
+                              <liass-button size="sm" tone="warning" variant="ghost" icon="undo" [disabled]="reconciliationBusy()" (pressed)="openCancelReconciliation(match)">
+                                {{ 'TREASURY.RECONCILIATION.CANCEL' | transloco }}
+                              </liass-button>
+                            }
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{{ 'TREASURY.RECONCILIATION.HISTORY.EMPTY' | transloco }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              }
+
+              @if (hasMoreReconciliationHistory() || loadMoreReconciliationHistoryFailed()) {
+                <div class="flex items-center justify-end gap-3">
+                  @if (loadMoreReconciliationHistoryFailed()) {
+                    <span class="text-sm text-red-700 dark:text-red-300">{{ 'TREASURY.RECONCILIATION.ERRORS.LOAD_MORE_HISTORY_FAILED' | transloco }}</span>
+                  }
+                  <liass-button tone="neutral" variant="outline" icon="expand_more" [disabled]="!hasMoreReconciliationHistory() || loadingMoreReconciliationHistory()" [loading]="loadingMoreReconciliationHistory()" (pressed)="loadMoreReconciliationHistory()">
+                    {{ 'TREASURY.RECONCILIATION.HISTORY.LOAD_MORE' | transloco }}
+                  </liass-button>
+                </div>
+              }
+            </section>
+          }
         </div>
       </mat-tab>
     </mat-tab-group>

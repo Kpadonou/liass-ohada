@@ -1,0 +1,21 @@
+<h2 mat-dialog-title>{{ 'TREASURY.RECONCILIATION.CANCEL_DIALOG.TITLE' | transloco }}</h2>
+
+<mat-dialog-content class="space-y-4">
+  <p class="text-sm text-slate-600 dark:text-slate-300">
+    {{ 'TREASURY.RECONCILIATION.CANCEL_DIALOG.DESCRIPTION' | transloco }}
+  </p>
+
+  <mat-form-field appearance="outline" class="w-full">
+    <mat-label>{{ 'TREASURY.RECONCILIATION.CANCEL_DIALOG.REASON' | transloco }}</mat-label>
+    <textarea matInput rows="3" [value]="reason()" (input)="reason.set($any($event.target).value)"></textarea>
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <liass-button tone="neutral" variant="outline" (pressed)="close()">
+    {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
+  </liass-button>
+  <liass-button tone="warning" variant="solid" icon="undo" (pressed)="confirm()">
+    {{ 'TREASURY.RECONCILIATION.CANCEL' | transloco }}
+  </liass-button>
+</mat-dialog-actions>

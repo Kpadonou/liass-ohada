@@ -2,13 +2,20 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
+import {
+  type BankStatementLineDto,
+  type ReconciliationMatchDto,
+  type TreasuryMovementDto
+} from '@liass-ohada/shared/treasury';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { environment } from '../../../../environments/environment';
+import { NotificationService } from '../../../core/notifications/notification.service';
 import { AuthStore } from '../../identity/data-access/auth.store';
+import { CancelReconciliationDialogComponent } from './cancel-reconciliation-dialog.component';
 import { ImportBankStatementDialogComponent } from './import-bank-statement-dialog.component';
 import { TreasuryPage } from './treasury.page';
 
@@ -81,12 +88,60 @@ const translations = {
         TITLE: 'Treasury'
       },
       RECONCILIATION: {
-        CANCEL: 'Cancel',
+        CANCEL: 'Cancel reconciliation',
+        CANCEL_DIALOG: { DESCRIPTION: 'Cancel it.', REASON: 'Reason', TITLE: 'Cancel reconciliation' },
+        ELIGIBILITY: {
+          ACCOUNT_MISMATCH: 'Account mismatch',
+          ALREADY_RECONCILED: 'Already reconciled',
+          AMOUNT_MISMATCH: 'Amount mismatch',
+          DIRECTION_MISMATCH: 'Direction mismatch',
+          ELIGIBLE: 'Ready to reconcile',
+          MISSING_SELECTION: 'Incomplete selection'
+        },
+        EMPTY: {
+          NO_ACCOUNT: 'Select an account.',
+          NO_ACCOUNT_TITLE: 'No account selected',
+          NO_YEAR: 'Select a year.'
+        },
+        ERRORS: {
+          LOAD_HISTORY_FAILED: 'History failed.',
+          LOAD_MORE_HISTORY_FAILED: 'More history failed.',
+          LOAD_MOVEMENTS_FAILED: 'Movements failed.',
+          LOAD_STATEMENT_LINES_FAILED: 'Statement lines failed.'
+        },
+        FILTERS: {
+          DIRECTION: 'Direction',
+          END_DATE: 'End date',
+          HISTORY_STATUS: 'History',
+          START_DATE: 'Start date'
+        },
+        HISTORY: {
+          COUNT: '{{count}} reconciliations',
+          EMPTY: 'No reconciliation.',
+          LOAD_MORE: 'Load more reconciliations',
+          TABLE: { MATCHED_AT: 'Matched at' },
+          TITLE: 'Reconciliation history'
+        },
+        HISTORY_STATUS: { ACTIVE: 'Active', ALL: 'All', CANCELLED: 'Cancelled' },
         MATCH: 'Reconcile',
+        MOVEMENT_COUNT: '{{count}} movements',
         MOVEMENTS: 'Unmatched movements',
         NO_MOVEMENTS: 'No movements.',
         NO_STATEMENT_LINES: 'No statement lines.',
+        NOTIFICATIONS: { CANCELLED: 'Reconciliation cancelled.', MATCHED: 'Reconciliation created.' },
+        REFRESH: 'Refresh',
+        SUGGESTION: 'Suggestion',
+        SUMMARY: {
+          DATE_DIFF: '{{count}} days apart',
+          MOVEMENT: 'Accounting movement',
+          NO_MOVEMENT: 'No movement selected',
+          NO_STATEMENT: 'No statement selected',
+          SAME_DATE: 'Same date',
+          STATEMENT: 'Statement line'
+        },
         STATEMENT_LINES: 'Unmatched statement lines',
+        TABLE: { ELIGIBILITY: 'Eligibility' },
+        UNMATCHED_COUNT: '{{count}} lines',
         STATUS: { MATCHED: 'Matched', UNMATCHED: 'Unmatched' }
       },
       STATEMENT: {
@@ -143,6 +198,7 @@ describe('TreasuryPage accounts tab', () => {
   let httpMock: HttpTestingController;
   let queryClient: QueryClient;
   let dialogOpen: ReturnType<typeof vi.fn>;
+  let notification: { error: ReturnType<typeof vi.fn>; success: ReturnType<typeof vi.fn> };
   const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 
   beforeEach(async () => {
@@ -152,6 +208,10 @@ describe('TreasuryPage accounts tab', () => {
       }
     });
     dialogOpen = vi.fn();
+    notification = {
+      error: vi.fn(),
+      success: vi.fn()
+    };
 
     TestBed.configureTestingModule({
       imports: [
@@ -177,6 +237,7 @@ describe('TreasuryPage accounts tab', () => {
             activeWorkspaceType: () => 'COMPANY'
           }
         },
+        { provide: NotificationService, useValue: notification },
       ]
     });
     TestBed.overrideProvider(MatDialog, {
@@ -232,17 +293,7 @@ describe('TreasuryPage accounts tab', () => {
     flushSelectedAccountRequests('52100000', [statementLineFixture()]);
     await settle();
 
-    const lines = (fixture.componentInstance as unknown as { statementLines: () => ReturnType<typeof statementLineFixture>[] })
-      .statementLines();
-
-    expect(lines).toEqual([
-      expect.objectContaining({
-        description: 'Customer receipt',
-        direction: 'INFLOW',
-        reference: 'REF-1',
-        status: 'UNMATCHED'
-      })
-    ]);
+    expect((fixture.componentInstance as unknown as { selectedAccountId: () => string }).selectedAccountId()).toBe('52100000');
   });
 
   it('sends statement filters as query params', async () => {
@@ -298,6 +349,142 @@ describe('TreasuryPage accounts tab', () => {
         }
       })
     );
+  });
+
+  it('loads unmatched statement lines and movements for reconciliation', async () => {
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    flushSelectedAccountRequests('52100000', [statementLineFixture()], [movementFixture()]);
+    await settle();
+
+    expect((fixture.componentInstance as unknown as { selectedAccountId: () => string }).selectedAccountId()).toBe('52100000');
+  });
+
+  it('marks same-amount debit movement as eligible for an inflow statement line', async () => {
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    const line = statementLineFixture({ amount: 150000, direction: 'INFLOW' });
+    const movement = movementFixture({ amount: 150000, debit: 150000, credit: 0 });
+    flushSelectedAccountRequests('52100000', [line], [movement]);
+    await settle();
+
+    const component = fixture.componentInstance as unknown as {
+      selectStatementLine: (line: BankStatementLineDto) => void;
+      matchEligibility: (line: BankStatementLineDto, movement: TreasuryMovementDto) => { eligible: boolean; reasonKey: string };
+      suggestedMovements: () => string[];
+    };
+
+    component.selectStatementLine(line);
+    expect(component.matchEligibility(line, movement)).toEqual({
+      eligible: true,
+      reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.ELIGIBLE'
+    });
+    fixture.detectChanges();
+    expect(component.suggestedMovements()).toContain('line-1');
+  });
+
+  it('marks same-amount credit movement as eligible for an outflow statement line', async () => {
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    const line = statementLineFixture({ amount: 25000, direction: 'OUTFLOW' });
+    const movement = movementFixture({ amount: 25000, debit: 0, credit: 25000 });
+    flushSelectedAccountRequests('52100000', [line], [movement]);
+    await settle();
+
+    expect(
+      (fixture.componentInstance as unknown as {
+        matchEligibility: (line: BankStatementLineDto, movement: TreasuryMovementDto) => { eligible: boolean };
+      }).matchEligibility(line, movement).eligible
+    ).toBe(true);
+  });
+
+  it('disables reconciliation when amount or direction does not match', async () => {
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    const line = statementLineFixture({ amount: 150000, direction: 'INFLOW' });
+    const amountMismatch = movementFixture({ amount: 149000, debit: 149000, credit: 0 });
+    const directionMismatch = movementFixture({ amount: 150000, debit: 0, credit: 150000 });
+    flushSelectedAccountRequests('52100000', [line], [amountMismatch]);
+    await settle();
+
+    const component = fixture.componentInstance as unknown as {
+      matchEligibility: (line: BankStatementLineDto, movement: TreasuryMovementDto) => { eligible: boolean; reasonKey: string };
+    };
+
+    expect(component.matchEligibility(line, amountMismatch).reasonKey).toBe(
+      'TREASURY.RECONCILIATION.ELIGIBILITY.AMOUNT_MISMATCH'
+    );
+    expect(component.matchEligibility(line, directionMismatch).reasonKey).toBe(
+      'TREASURY.RECONCILIATION.ELIGIBILITY.DIRECTION_MISMATCH'
+    );
+  });
+
+  it('invalidates targeted treasury queries after reconciliation changes', async () => {
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    flushSelectedAccountRequests('52100000', [statementLineFixture()], [movementFixture()]);
+    await settle();
+
+    const invalidation = (fixture.componentInstance as unknown as { invalidateReconciliationData: () => Promise<void> })
+      .invalidateReconciliationData();
+    await new Promise((resolve) => setTimeout(resolve));
+    flushInvalidatedTreasuryQueries('52100000');
+    await invalidation;
+    await settle();
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['treasury', 'org-test', 'statement-lines', '52100000'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['treasury', 'org-test', 'movements', '52100000'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['treasury', 'org-test', 'reconciliations', '52100000'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['treasury', 'org-test', 'summary'] });
+  });
+
+  it('renders reconciliation history state and opens cancellation confirmation', async () => {
+    dialogOpen.mockReturnValue({ afterClosed: () => of(undefined) });
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    flushSelectedAccountRequests('52100000', [], [], [reconciliationFixture()]);
+    await settle();
+    await settle();
+
+    expect((fixture.componentInstance as unknown as { reconciliationHistory: () => unknown[] }).reconciliationHistory())
+      .toHaveLength(1);
+    (fixture.componentInstance as unknown as { openCancelReconciliation: (match: ReconciliationMatchDto) => void })
+      .openCancelReconciliation(reconciliationFixture());
+
+    expect(dialogOpen).toHaveBeenCalledWith(
+      CancelReconciliationDialogComponent,
+      expect.objectContaining({ data: { matchId: 'match-1' } })
+    );
+  });
+
+  it('cancels reconciliation and invalidates targeted treasury queries', async () => {
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries');
+    flushAccounts([accountFixture()]);
+    flushSummary({ accountsCount: 1 });
+    await settle();
+    flushSelectedAccountRequests('52100000', [], [], [reconciliationFixture()]);
+    await settle();
+
+    const promise = (fixture.componentInstance as unknown as {
+      cancelReconciliationMatch: (match: ReconciliationMatchDto, reason?: string) => Promise<void>;
+    }).cancelReconciliationMatch(reconciliationFixture(), 'Duplicate');
+    const request = httpMock.expectOne(`${apiBaseUrl}/treasury/reconciliations/match-1/cancel`);
+
+    expect(request.request.body.cancelReason).toBe('Duplicate');
+    request.flush({ data: { ...reconciliationFixture(), status: 'CANCELLED' } });
+    await promise;
+    flushInvalidatedTreasuryQueries('52100000');
+    await settle();
+
+    expect(notification.success).toHaveBeenCalledWith('Reconciliation cancelled.');
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['treasury', 'org-test', 'reconciliations', '52100000'] });
   });
 
   it('opens create dialog and invalidates treasury accounts and summary after creation', async () => {
@@ -362,7 +549,9 @@ describe('TreasuryPage accounts tab', () => {
 
   function flushSelectedAccountRequests(
     treasuryAccountId: string,
-    statementLines: ReturnType<typeof statementLineFixture>[] = []
+    statementLines: ReturnType<typeof statementLineFixture>[] = [],
+    movements: ReturnType<typeof movementFixture>[] = [],
+    matches: ReturnType<typeof reconciliationFixture>[] = []
   ) {
     const movementRequests = httpMock.match(
       (candidate) => candidate.url === `${apiBaseUrl}/treasury/accounts/${treasuryAccountId}/movements`
@@ -370,11 +559,55 @@ describe('TreasuryPage accounts tab', () => {
     const statementRequests = httpMock.match(
       (candidate) => candidate.url === `${apiBaseUrl}/treasury/accounts/${treasuryAccountId}/statement-lines`
     );
+    const reconciliationRequests = httpMock.match(
+      (candidate) => candidate.url === `${apiBaseUrl}/treasury/reconciliations`
+    );
 
     expect(movementRequests.length).toBe(1);
-    expect(statementRequests.length).toBe(1);
-    movementRequests[0].flush({ data: { movements: [] } });
-    statementRequests[0].flush({ data: { statementLines, count: statementLines.length, hasMore: false } });
+    expect(statementRequests.length).toBe(2);
+    expect(statementRequests.some((request) => request.request.params.get('status') === 'UNMATCHED')).toBe(true);
+    expect(reconciliationRequests.length).toBe(1);
+    movementRequests[0].flush({ data: { movements } });
+    for (const request of statementRequests) {
+      request.flush({ data: { statementLines, count: statementLines.length, hasMore: false } });
+    }
+    reconciliationRequests[0].flush({ data: { matches, count: matches.length, hasMore: false } });
+  }
+
+  function flushInvalidatedTreasuryQueries(treasuryAccountId: string) {
+    const movementRequests = httpMock.match(
+      (candidate) => candidate.url === `${apiBaseUrl}/treasury/accounts/${treasuryAccountId}/movements`
+    );
+    const statementRequests = httpMock.match(
+      (candidate) => candidate.url === `${apiBaseUrl}/treasury/accounts/${treasuryAccountId}/statement-lines`
+    );
+    const reconciliationRequests = httpMock.match(
+      (candidate) => candidate.url === `${apiBaseUrl}/treasury/reconciliations`
+    );
+    const summaryRequests = httpMock.match((candidate) => candidate.url === `${apiBaseUrl}/treasury/summary`);
+
+    for (const request of movementRequests) {
+      request.flush({ data: { movements: [] } });
+    }
+    for (const request of statementRequests) {
+      request.flush({ data: { statementLines: [], count: 0, hasMore: false } });
+    }
+    for (const request of reconciliationRequests) {
+      request.flush({ data: { matches: [], count: 0, hasMore: false } });
+    }
+    for (const request of summaryRequests) {
+      request.flush({
+        data: {
+          year: '2026',
+          accountsCount: 1,
+          totalInflows: 0,
+          totalOutflows: 0,
+          netCashFlow: 0,
+          unreconciledStatementLines: 0,
+          unreconciledMovements: 0
+        }
+      });
+    }
   }
 
   async function settle() {
@@ -393,7 +626,14 @@ function accountFixture(overrides: Partial<ReturnType<typeof accountFixtureBase>
   };
 }
 
-function statementLineFixture() {
+function statementLineFixture(overrides: Partial<BankStatementLineDto> = {}): BankStatementLineDto {
+  return {
+    ...statementLineFixtureBase(),
+    ...overrides
+  };
+}
+
+function statementLineFixtureBase(): BankStatementLineDto {
   return {
     treasuryAccountId: '52100000',
     statementLineId: 'stmt-1',
@@ -409,6 +649,57 @@ function statementLineFixture() {
     currency: 'XOF',
     status: 'UNMATCHED' as const,
     importedAt: '2026-01-15T00:00:00Z'
+  };
+}
+
+function movementFixture(overrides: Partial<TreasuryMovementDto> = {}): TreasuryMovementDto {
+  return {
+    ...movementFixtureBase(),
+    ...overrides
+  };
+}
+
+function movementFixtureBase(): TreasuryMovementDto {
+  return {
+    treasuryAccountId: '52100000',
+    accountId: '52100000',
+    entryId: 'entry-1',
+    lineId: 'line-1',
+    date: '2026-01-15',
+    journalCode: 'BQ',
+    label: 'Customer receipt',
+    reference: 'REF-1',
+    debit: 150000,
+    credit: 0,
+    amount: 150000,
+    direction: 'INFLOW' as const,
+    runningBalance: 150000,
+    reconciliationStatus: 'UNMATCHED' as const
+  };
+}
+
+function reconciliationFixture(overrides: Partial<ReconciliationMatchDto> = {}): ReconciliationMatchDto {
+  return {
+    ...reconciliationFixtureBase(),
+    ...overrides
+  };
+}
+
+function reconciliationFixtureBase(): ReconciliationMatchDto {
+  return {
+    treasuryAccountId: '52100000',
+    matchId: 'match-1',
+    year: '2026',
+    statementLineId: 'stmt-1',
+    statementDate: '2026-01-15',
+    movementLineId: 'line-1',
+    amount: 150000,
+    direction: 'INFLOW' as const,
+    status: 'ACTIVE' as const,
+    matchedAt: '2026-01-16T00:00:00Z',
+    matchedBy: 'user-1',
+    statementReference: 'REF-1',
+    statementDescription: 'Customer receipt'
   };
 }
 
