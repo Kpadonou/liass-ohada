@@ -553,7 +553,7 @@
       },
       "FIELDS": {
         "AMOUNT": "Amount",
-        "COUNTERPARTY": "Counterparty account",
+        "COUNTERPARTY": "Counterparty account to post",
         "DATE": "Date",
         "DIRECTION": "Direction",
         "JOURNAL": "Journal",
@@ -565,6 +565,10 @@
       "JOURNALS": {
         "BANK": "Bank",
         "MISC": "Miscellaneous"
+      },
+      "VALIDATION": {
+        "COUNTERPARTY_REQUIRED": "Select an active counterparty account.",
+        "COUNTERPARTY_SELF": "The counterparty account must be different from the treasury account."
       }
     }
   },

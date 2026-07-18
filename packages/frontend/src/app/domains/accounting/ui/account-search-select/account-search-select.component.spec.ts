@@ -33,11 +33,18 @@ const translations = {
 
 @Component({
   imports: [AccountSearchSelectComponent, ReactiveFormsModule],
-  template: `<liass-account-search-select [formControl]="control" [auxiliaryType]="auxiliaryType" />`
+  template: `
+    <liass-account-search-select
+      [formControl]="control"
+      [auxiliaryType]="auxiliaryType"
+      [excludedAccountIds]="excludedAccountIds"
+    />
+  `
 })
 class AccountSearchSelectHostComponent {
   control = new FormControl<string | null>(null);
   auxiliaryType: 'CUSTOMER' | 'SUPPLIER' | null = null;
+  excludedAccountIds: readonly string[] = [];
 }
 
 describe('AccountSearchSelectComponent', () => {
@@ -244,6 +251,27 @@ describe('AccountSearchSelectComponent', () => {
     expect(component.visibleAccounts().map((account: { accountId: string }) => account.accountId)).toEqual([
       '41110000'
     ]);
+  });
+
+  it('hides excluded accounts from the selectable results', async () => {
+    vi.useFakeTimers();
+    fixture.componentInstance.excludedAccountIds = ['52100000'];
+    accountingApi.listAccounts.mockResolvedValue({
+      items: [
+        accountFixture('52100000', 'Main bank'),
+        accountFixture('41110000', 'Clients')
+      ],
+      hasMore: false
+    });
+
+    typeSearch('5');
+    await vi.advanceTimersByTimeAsync(275);
+    fixture.detectChanges();
+
+    const component = fixture.debugElement.query(
+      By.directive(AccountSearchSelectComponent)
+    ).componentInstance as any;
+    expect(component.visibleAccounts().map((account: { accountId: string }) => account.accountId)).toEqual([]);
   });
 
   function typeSearch(value: string): void {

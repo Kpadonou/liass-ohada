@@ -10,7 +10,7 @@
 
     <mat-form-field appearance="outline" class="w-full">
       <mat-label>{{ 'TREASURY.TRANSACTIONS.FIELDS.TREASURY_ACCOUNT' | transloco }}</mat-label>
-      <mat-select formControlName="treasuryAccountId">
+      <mat-select formControlName="treasuryAccountId" (selectionChange)="handleTreasuryAccountChange($event.value)">
         @for (account of accounts; track account.treasuryAccountId) {
           <mat-option [value]="account.treasuryAccountId">{{ accountLabel(account) }}</mat-option>
         }
@@ -51,10 +51,16 @@
         <input matInput type="number" min="1" formControlName="amount" />
       </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>{{ 'TREASURY.TRANSACTIONS.FIELDS.COUNTERPARTY' | transloco }}</mat-label>
-        <input matInput inputmode="numeric" formControlName="counterpartyAccountId" />
-      </mat-form-field>
+      <div>
+        <liass-account-search-select
+          formControlName="counterpartyAccountId"
+          [labelKey]="'TREASURY.TRANSACTIONS.FIELDS.COUNTERPARTY'"
+          [excludedAccountIds]="excludedCounterpartyAccountIds()"
+          [showError]="form.controls.counterpartyAccountId.touched && form.controls.counterpartyAccountId.invalid"
+          [errorKey]="counterpartyErrorKey()"
+          (accountSelected)="handleCounterpartySelected($event)"
+        />
+      </div>
     </div>
 
     <mat-form-field appearance="outline" class="w-full">

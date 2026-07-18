@@ -377,6 +377,7 @@ describe('TreasuryPage accounts tab', () => {
     };
 
     component.selectStatementLine(line);
+    await settle();
     expect(component.matchEligibility(line, movement)).toEqual({
       eligible: true,
       reasonKey: 'TREASURY.RECONCILIATION.ELIGIBILITY.ELIGIBLE'

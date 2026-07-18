@@ -1,14 +1,16 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { type AccountDto } from '@liass-ohada/shared/accounting';
 import { type TreasuryAccountDto } from '@liass-ohada/shared/treasury';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
+import { AccountSearchSelectComponent } from '../../accounting/ui/account-search-select/account-search-select.component';
 import { TreasuryApi } from '../data-access/treasury.api';
 
 interface CreateTreasuryTransactionDialogData {
@@ -20,6 +22,7 @@ interface CreateTreasuryTransactionDialogData {
 @Component({
   selector: 'liass-create-treasury-transaction-dialog',
   imports: [
+    AccountSearchSelectComponent,
     LiassButtonComponent,
     MatDialogModule,
     MatFormFieldModule,
@@ -40,6 +43,7 @@ export class CreateTreasuryTransactionDialogComponent {
   private readonly treasuryApi = inject(TreasuryApi);
 
   protected readonly accounts = this.data.accounts;
+  protected readonly selectedTreasuryAccountId = signal(this.data.selectedAccountId);
   protected readonly submitting = signal(false);
   protected readonly errorKey = signal<string | null>(null);
 
@@ -55,11 +59,42 @@ export class CreateTreasuryTransactionDialogComponent {
     voucherNumber: ['']
   });
 
+  protected readonly selectedTreasuryAccount = computed(
+    () =>
+      this.accounts.find(
+        (account) => account.treasuryAccountId === this.selectedTreasuryAccountId()
+      ) ?? null
+  );
+
+  protected readonly excludedCounterpartyAccountIds = computed(() => {
+    const accountId = this.selectedTreasuryAccount()?.accountId;
+    return accountId ? [accountId] : [];
+  });
+
   protected accountLabel(account: TreasuryAccountDto): string {
     return `${account.accountId} - ${account.label}`;
   }
 
+  protected handleTreasuryAccountChange(treasuryAccountId: string): void {
+    this.selectedTreasuryAccountId.set(treasuryAccountId);
+    this.validateCounterpartyAgainstTreasuryAccount();
+  }
+
+  protected handleCounterpartySelected(_account: AccountDto | null): void {
+    this.validateCounterpartyAgainstTreasuryAccount();
+  }
+
+  protected counterpartyErrorKey(): string {
+    if (this.form.controls.counterpartyAccountId.hasError('treasuryAccount')) {
+      return 'TREASURY.TRANSACTIONS.VALIDATION.COUNTERPARTY_SELF';
+    }
+
+    return 'TREASURY.TRANSACTIONS.VALIDATION.COUNTERPARTY_REQUIRED';
+  }
+
   protected async submit(): Promise<void> {
+    this.validateCounterpartyAgainstTreasuryAccount();
+
     if (this.form.invalid || this.submitting()) {
       this.form.markAllAsTouched();
       return;
@@ -93,5 +128,24 @@ export class CreateTreasuryTransactionDialogComponent {
     if (!this.submitting()) {
       this.dialogRef.close(null);
     }
+  }
+
+  private validateCounterpartyAgainstTreasuryAccount(): void {
+    const counterpartyControl = this.form.controls.counterpartyAccountId;
+    const treasuryAccountId = this.selectedTreasuryAccount()?.accountId;
+    const counterpartyAccountId = counterpartyControl.value;
+    const errors = { ...(counterpartyControl.errors ?? {}) };
+
+    if (treasuryAccountId && counterpartyAccountId === treasuryAccountId) {
+      counterpartyControl.setErrors({ ...errors, treasuryAccount: true });
+      return;
+    }
+
+    if (!errors['treasuryAccount']) {
+      return;
+    }
+
+    delete errors['treasuryAccount'];
+    counterpartyControl.setErrors(Object.keys(errors).length ? errors : null);
   }
 }

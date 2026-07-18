@@ -54,6 +54,7 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
   readonly showError = input(false);
   readonly auxiliaryType = input<'CUSTOMER' | 'SUPPLIER' | null>(null);
   readonly accountClass = input<number | null>(null);
+  readonly excludedAccountIds = input<readonly string[]>([]);
   readonly accountSelected = output<AccountDto | null>();
 
   private readonly accountingApi = inject(AccountingApi);
@@ -75,7 +76,9 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
 
   protected readonly visibleAccounts = computed(() => {
     const query = normalizeSearch(this.searchText());
-    const accounts = this.accounts().filter((account) => this.matchesAuxiliaryType(account));
+    const accounts = this.accounts().filter(
+      (account) => this.matchesAuxiliaryType(account) && !this.isAccountExcluded(account.accountId)
+    );
 
     if (!query) {
       return accounts;
@@ -205,6 +208,10 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     const selectedAccount = this.accounts().find(
       (account) => account.accountId === value
     );
+    if (this.isAccountExcluded(value)) {
+      return;
+    }
+
     this.selectedValue.set(value);
     this.onChange(value);
     this.accountSelected.emit(selectedAccount ?? null);
@@ -335,6 +342,10 @@ export class AccountSearchSelectComponent implements ControlValueAccessor, OnDes
     }
 
     return false;
+  }
+
+  private isAccountExcluded(accountId: string): boolean {
+    return this.excludedAccountIds().includes(accountId);
   }
 
   private propagateNullFromInput(): void {

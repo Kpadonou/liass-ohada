@@ -565,6 +565,10 @@
       "JOURNALS": {
         "BANK": "Banque",
         "MISC": "Opérations diverses"
+      },
+      "VALIDATION": {
+        "COUNTERPARTY_REQUIRED": "Sélectionnez un compte de contrepartie actif.",
+        "COUNTERPARTY_SELF": "Le compte de contrepartie doit être différent du compte de trésorerie."
       }
     }
   },
