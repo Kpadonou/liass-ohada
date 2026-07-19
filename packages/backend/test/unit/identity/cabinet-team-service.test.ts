@@ -44,6 +44,18 @@ function memberItem(
   });
 }
 
+function cabinetItem(ownerUserId = "admin-1") {
+  return marshall({
+    PK: "CABINET#cab-1",
+    SK: "CABINET#METADATA",
+    entityType: "CABINET",
+    cabinetId: "cab-1",
+    orgId: "org-cabinet",
+    ownerUserId,
+    status: "ACTIVE",
+  });
+}
+
 describe("CabinetTeamService", () => {
   beforeEach(() => {
     dynamoMock.reset();
@@ -57,6 +69,9 @@ describe("CabinetTeamService", () => {
         memberItem("admin-1", "CABINET_ADMIN"),
         memberItem("member-1", "COLLABORATOR"),
       ],
+    });
+    dynamoMock.on(BatchGetItemCommand).resolves({
+      Responses: { "liass-ohada-test-accounting-table": [] },
     });
 
     const response = await CabinetTeamService.listMembers(context, {
@@ -93,13 +108,13 @@ describe("CabinetTeamService", () => {
     expect(dynamoMock.commandCalls(QueryCommand)).toHaveLength(0);
   });
 
-  test("prevents demoting the last active Cabinet administrator", async () => {
-    dynamoMock.on(GetItemCommand).resolves({
-      Item: memberItem("admin-1", "CABINET_ADMIN"),
-    });
-    dynamoMock.on(QueryCommand).resolves({
-      Items: [memberItem("admin-1", "CABINET_ADMIN")],
-    });
+  test("prevents demoting the Cabinet owner", async () => {
+    dynamoMock.on(GetItemCommand).resolves({ Item: memberItem("admin-1", "CABINET_ADMIN") });
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "CABINET#cab-1" }, SK: { S: "CABINET#METADATA" } },
+      })
+      .resolves({ Item: cabinetItem() });
 
     await expect(
       CabinetTeamService.updateMemberRole(context, "admin-1", {
@@ -107,9 +122,62 @@ describe("CabinetTeamService", () => {
       }),
     ).rejects.toMatchObject({
       statusCode: 409,
-      messageCode: "CABINET_LAST_ADMIN_REQUIRED",
+      messageCode: "CABINET_OWNER_ROLE_IMMUTABLE",
     });
     expect(dynamoMock.commandCalls(UpdateItemCommand)).toHaveLength(0);
+  });
+
+  test("prevents suspending or revoking the Cabinet owner", async () => {
+    dynamoMock.on(GetItemCommand).resolves({ Item: memberItem("admin-1", "CABINET_ADMIN") });
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "CABINET#cab-1" }, SK: { S: "CABINET#METADATA" } },
+      })
+      .resolves({ Item: cabinetItem() });
+
+    await expect(
+      CabinetTeamService.updateMemberStatus(context, "admin-1", {
+        status: "REVOKED",
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      messageCode: "CABINET_OWNER_STATUS_IMMUTABLE",
+    });
+    expect(dynamoMock.commandCalls(UpdateItemCommand)).toHaveLength(0);
+  });
+
+  test("fails safely when legacy Cabinet ownership is not configured", async () => {
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "ORG#org-cabinet" }, SK: { S: "USER#admin-1" } },
+      })
+      .resolves({ Item: memberItem("admin-1", "CABINET_ADMIN") });
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "ORG#org-cabinet" }, SK: { S: "USER#member-1" } },
+      })
+      .resolves({ Item: memberItem("member-1", "COLLABORATOR") });
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "CABINET#cab-1" }, SK: { S: "CABINET#METADATA" } },
+      })
+      .resolves({
+        Item: marshall({
+          entityType: "CABINET",
+          cabinetId: "cab-1",
+          orgId: "org-cabinet",
+          status: "ACTIVE",
+        }),
+      });
+
+    await expect(
+      CabinetTeamService.updateMemberStatus(context, "member-1", {
+        status: "SUSPENDED",
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      messageCode: "CABINET_OWNER_NOT_CONFIGURED",
+    });
   });
 
   test("suspends a member and moves workspace discovery out of ACTIVE", async () => {
@@ -129,6 +197,11 @@ describe("CabinetTeamService", () => {
         },
       })
       .resolves({ Item: memberItem("member-1", "COLLABORATOR") });
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "CABINET#cab-1" }, SK: { S: "CABINET#METADATA" } },
+      })
+      .resolves({ Item: cabinetItem() });
     dynamoMock.on(UpdateItemCommand).resolves({
       Attributes: memberItem("member-1", "COLLABORATOR", "SUSPENDED"),
     });

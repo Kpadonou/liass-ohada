@@ -25,6 +25,9 @@ if (!manifestJson) {
 }
 
 const manifest = JSON.parse(manifestJson) as CabinetAdminRepairEntry[];
+if (!Array.isArray(manifest) || manifest.length === 0) {
+  throw new Error("CABINET_ADMIN_REPAIR_MANIFEST must contain at least one explicit entry.");
+}
 const client = new DynamoDBClient({ region });
 
 async function getItem(PK: string, SK: string) {
@@ -68,9 +71,21 @@ async function run(): Promise<void> {
       );
       continue;
     }
-    if (access.cabinetRole) {
+    if (access.status !== "ACTIVE") {
+      console.warn(
+        `Skipped ${entry.cabinetOrgId}; owner access is ${String(access.status)} and will not be reactivated automatically.`,
+      );
+      continue;
+    }
+    if (access.cabinetRole === "CABINET_ADMIN") {
       console.info(
-        `Skipped ${entry.cabinetOrgId}; role is already ${access.cabinetRole}.`,
+        `Skipped ${entry.cabinetOrgId}; owner is already CABINET_ADMIN.`,
+      );
+      continue;
+    }
+    if (access.cabinetRole) {
+      console.warn(
+        `Skipped ${entry.cabinetOrgId}; owner has conflicting role ${String(access.cabinetRole)}.`,
       );
       continue;
     }

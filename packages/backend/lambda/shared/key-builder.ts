@@ -56,6 +56,13 @@ export const KeyFactory = {
     `INVITE_TOKEN#${tokenHash.toLowerCase()}`,
   invitationTokenSK: () => "LOOKUP",
 
+  /** Application user projection and normalized-email direct lookup. */
+  userProfilePK: (userId: string) => `USER#${userId}`,
+  userProfileSK: () => "PROFILE",
+  userEmailLookupPK: (normalizedEmail: string) =>
+    `USER_EMAIL#${normalizedEmail.trim().toLowerCase()}`,
+  userEmailLookupSK: () => "LOOKUP",
+
   /** Cabinet member-to-client-dossier assignment adjacency keys. */
   cabinetMemberAssignmentsPrefix: (userId: string) =>
     `ASSIGNMENT#USER#${userId}#DOSSIER#`,

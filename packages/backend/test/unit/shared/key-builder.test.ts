@@ -75,6 +75,12 @@ describe("KeyFactory", () => {
       "INVITE_TOKEN#abcdef",
     );
     expect(KeyFactory.invitationTokenSK()).toBe("LOOKUP");
+    expect(KeyFactory.userProfilePK("user-123")).toBe("USER#user-123");
+    expect(KeyFactory.userProfileSK()).toBe("PROFILE");
+    expect(KeyFactory.userEmailLookupPK("  Ada@Example.COM ")).toBe(
+      "USER_EMAIL#ada@example.com",
+    );
+    expect(KeyFactory.userEmailLookupSK()).toBe("LOOKUP");
     expect(KeyFactory.cabinetMemberAssignmentsPrefix("user-1")).toBe(
       "ASSIGNMENT#USER#user-1#DOSSIER#",
     );

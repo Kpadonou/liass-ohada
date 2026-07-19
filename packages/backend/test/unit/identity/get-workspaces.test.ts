@@ -1,4 +1,5 @@
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
+import { UserProfileService } from "@/lambda/shared/services/user-profile-service";
 import { handler } from "@/lambda/domains/identity/get-workspaces";
 
 jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
@@ -6,8 +7,15 @@ jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
     getUserWorkspaces: jest.fn(),
   },
 }));
+jest.mock("@/lambda/shared/services/user-profile-service", () => ({
+  UserProfileService: { ensureSynchronized: jest.fn().mockResolvedValue({}) },
+}));
 
-const createEvent = (claims = { sub: "user-123" }) => ({
+const createEvent = (claims = {
+  sub: "user-123",
+  email: "owner@example.com",
+  email_verified: "true",
+}) => ({
   version: "2.0",
   routeKey: "GET /me/workspaces",
   rawPath: "/me/workspaces",
@@ -52,6 +60,9 @@ describe("GET /me/workspaces", () => {
 
     expect(response.statusCode).toBe(200);
     expect(TenantAccessService.getUserWorkspaces).toHaveBeenCalledWith("user-123");
+    expect(UserProfileService.ensureSynchronized).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: "user-123", email: "owner@example.com" }),
+    );
     expect(body).toEqual({
       workspaces: [
         {

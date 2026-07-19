@@ -63,6 +63,7 @@ export abstract class DomainConstructFactory extends Construct {
     const name = [
       "liass-ohada",
       stage,
+      "api",
       DomainConstructFactory.sanitizeNamePart(domainName),
       DomainConstructFactory.sanitizeNamePart(actionName),
     ].join("-");

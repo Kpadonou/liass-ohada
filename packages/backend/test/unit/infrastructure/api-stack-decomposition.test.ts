@@ -1,0 +1,91 @@
+import * as cdk from "aws-cdk-lib";
+import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
+import * as cognito from "aws-cdk-lib/aws-cognito";
+import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import { Construct } from "constructs";
+import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
+import {
+  AccountingApiStack,
+  IdentityApiStack,
+  ProjectApiStack,
+  TreasuryApiStack,
+} from "../../../lib/stacks/api-domain-stacks";
+
+jest.mock("aws-cdk-lib/aws-lambda-nodejs", () => {
+  const lambda = jest.requireActual<typeof import("aws-cdk-lib/aws-lambda")>(
+    "aws-cdk-lib/aws-lambda",
+  );
+  return {
+    NodejsFunction: class extends lambda.Function {
+      constructor(
+        scope: Construct,
+        id: string,
+        props: import("aws-cdk-lib/aws-lambda").FunctionProps,
+      ) {
+        super(scope, id, {
+          ...props,
+          code: lambda.Code.fromInline("exports.handler = async () => ({});"),
+          handler: "index.handler",
+        });
+      }
+    },
+  };
+});
+
+describe("API stack decomposition", () => {
+  const app = new cdk.App({
+    context: {
+      authUseSecretsManager: true,
+    },
+  });
+  const root = new LiassOhadaBackendStack(app, "TestBackend", {
+    stage: "dev",
+    env: { account: "123456789012", region: "eu-west-3" },
+  });
+  const constructs = root.node.findAll();
+
+  test("keeps one shared stateful table, User Pool, and HTTP API", () => {
+    expect(constructs.filter((item) => item instanceof dynamodb.CfnTable)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof cognito.CfnUserPool)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof apigwv2.CfnApi)).toHaveLength(1);
+  });
+
+  test("creates one nested API stack per current domain", () => {
+    expect(constructs.filter((item) => item instanceof IdentityApiStack)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof AccountingApiStack)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof ProjectApiStack)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof TreasuryApiStack)).toHaveLength(1);
+  });
+
+  test("preserves expected identity and business routes on the shared API", () => {
+    const routeKeys = constructs
+      .filter((item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute)
+      .map((route) => route.routeKey);
+    expect(routeKeys).toEqual(
+      expect.arrayContaining([
+        "GET /me/workspaces",
+        "GET /cabinet/team/members",
+        "POST /me/cabinet-invitations/accept",
+        "GET /accounts",
+        "GET /projects",
+        "GET /treasury/summary",
+      ]),
+    );
+  });
+
+  test("does not add a physical index", () => {
+    const table = constructs.find(
+      (item): item is dynamodb.CfnTable => item instanceof dynamodb.CfnTable,
+    );
+    expect(table?.globalSecondaryIndexes).toHaveLength(7);
+  });
+
+  test("uses distinct stable names for replacement Lambdas in nested stacks", () => {
+    const functions = constructs.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    expect(functions.length).toBeGreaterThan(0);
+    expect(functions.every((fn) => String(fn.functionName).startsWith("liass-ohada-dev-api-"))).toBe(true);
+  });
+});

@@ -17,11 +17,15 @@ import {
   CabinetTeamRepository,
 } from "../repositories/cabinet-team-repository";
 import {
+  UserProfileRecord,
+  UserProfileRepository,
+} from "../repositories/user-profile-repository";
+import {
   CabinetAuthorizationService,
   CabinetRequestContext,
 } from "./cabinet-authorization-service";
 
-function memberDto(member: CabinetMemberRecord) {
+function memberDto(member: CabinetMemberRecord, profile?: UserProfileRecord) {
   if (!member.cabinetRole) {
     throw new AppError(409, "CABINET_MEMBER_ROLE_REQUIRED");
   }
@@ -29,8 +33,8 @@ function memberDto(member: CabinetMemberRecord) {
     userId: member.userId,
     cabinetRole: member.cabinetRole,
     status: member.status,
-    displayName: member.displayName,
-    email: member.email,
+    displayName: profile?.displayName ?? member.displayName,
+    email: profile?.email ?? member.email,
     joinedAt: member.joinedAt,
     invitedBy: member.invitedBy,
     createdAt: member.createdAt,
@@ -39,8 +43,8 @@ function memberDto(member: CabinetMemberRecord) {
   });
 }
 
-function memberSummaryDto(member: CabinetMemberRecord) {
-  const value = memberDto(member);
+function memberSummaryDto(member: CabinetMemberRecord, profile?: UserProfileRecord) {
+  const value = memberDto(member, profile);
   return {
     userId: value.userId,
     cabinetRole: value.cabinetRole,
@@ -105,8 +109,13 @@ export class CabinetTeamService {
       role: request.role,
       status: supervisor ? "ACTIVE" : request.status,
     });
+    const profiles = await UserProfileRepository.batchGet(
+      page.items.map((member) => member.userId),
+    );
     return ListCabinetMembersResponseSchema.parse({
-      members: page.items.map(memberSummaryDto),
+      members: page.items.map((member) =>
+        memberSummaryDto(member, profiles.get(member.userId)),
+      ),
       nextCursor: page.nextCursor,
     });
   }
@@ -124,7 +133,8 @@ export class CabinetTeamService {
       targetUserId,
     );
     if (!member) throw new AppError(404, "CABINET_MEMBER_NOT_FOUND");
-    return GetCabinetMemberResponseSchema.parse({ member: memberDto(member) });
+    const profile = await UserProfileRepository.get(targetUserId);
+    return GetCabinetMemberResponseSchema.parse({ member: memberDto(member, profile) });
   }
 
   static async updateMemberRole(
@@ -146,6 +156,14 @@ export class CabinetTeamService {
     }
     if (member.cabinetRole === request.role) {
       throw new AppError(409, "CABINET_MEMBER_ROLE_UNCHANGED");
+    }
+    if (request.role !== "CABINET_ADMIN") {
+      await CabinetAuthorizationService.assertOwnerMutationAllowed({
+        cabinetId: authorized.cabinetId,
+        cabinetOrgId: authorized.cabinetOrgId,
+        targetUserId,
+        mutation: "ROLE",
+      });
     }
     if (member.cabinetRole === "CABINET_ADMIN") {
       await CabinetAuthorizationService.assertNotLastActiveAdmin(
@@ -195,6 +213,12 @@ export class CabinetTeamService {
       throw new AppError(409, "CABINET_MEMBER_STATUS_TRANSITION_INVALID");
     }
     if (request.status !== "ACTIVE") {
+      await CabinetAuthorizationService.assertOwnerMutationAllowed({
+        cabinetId: authorized.cabinetId,
+        cabinetOrgId: authorized.cabinetOrgId,
+        targetUserId,
+        mutation: "STATUS",
+      });
       await CabinetAuthorizationService.assertNotLastActiveAdmin(
         authorized.cabinetOrgId,
         member,
@@ -322,8 +346,13 @@ export class CabinetTeamService {
       authorized.cabinetOrgId,
       assignments.map((assignment) => assignment.userId),
     );
+    const profiles = await UserProfileRepository.batchGet(
+      members.map((member) => member.userId),
+    );
     return ListCabinetDossierMembersResponseSchema.parse({
-      members: members.map(memberSummaryDto),
+      members: members.map((member) =>
+        memberSummaryDto(member, profiles.get(member.userId)),
+      ),
     });
   }
 }

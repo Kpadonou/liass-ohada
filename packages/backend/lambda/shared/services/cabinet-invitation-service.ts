@@ -13,6 +13,7 @@ import {
 } from "@liass-ohada/shared";
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { AppError } from "../app-error";
+import { UserProfileRepository } from "../repositories/user-profile-repository";
 import {
   CabinetInvitationRecord,
   CabinetTeamRepository,
@@ -21,6 +22,7 @@ import {
   CabinetAuthorizationService,
   CabinetRequestContext,
 } from "./cabinet-authorization-service";
+import { UserProfileService } from "./user-profile-service";
 import { CabinetTeamConfig } from "./cabinet-team-config";
 import { assertAssignableDossiers } from "./cabinet-team-service";
 
@@ -165,18 +167,16 @@ export class CabinetInvitationService {
       authorized.cabinetId,
       request.initialDossierOrgIds,
     );
-    const members = await CabinetTeamRepository.listAllMembers(
-      authorized.cabinetOrgId,
-    );
-    if (
-      members.some(
-        (member) =>
-          member.status === "ACTIVE" &&
-          member.email &&
-          normalizeEmail(member.email) === normalizedEmail,
-      )
-    ) {
-      throw new AppError(409, "CABINET_MEMBER_ALREADY_ACTIVE");
+    const existingUser =
+      await UserProfileRepository.resolveByEmail(normalizedEmail);
+    if (existingUser) {
+      const member = await CabinetTeamRepository.getMember(
+        authorized.cabinetOrgId,
+        existingUser.userId,
+      );
+      if (member?.status === "ACTIVE") {
+        throw new AppError(409, "CABINET_MEMBER_ALREADY_ACTIVE");
+      }
     }
     await resolvePendingLock(
       authorized.cabinetOrgId,
@@ -397,11 +397,19 @@ export class CabinetInvitationService {
                 typeof value === "string" && value.trim().length > 0,
             )
             .join(" ") || undefined;
+    const profile = await UserProfileService.ensureSynchronized({
+      userId: identity.userId,
+      email: identity.email,
+      emailVerified: identity.emailVerified,
+      displayName: identity.displayName,
+      givenName: identity.givenName,
+      familyName: identity.familyName,
+    });
     try {
       await CabinetTeamRepository.acceptInvitation({
         invitation,
         userId: identity.userId,
-        displayName,
+        displayName: profile.displayName ?? displayName,
         email,
         organization,
         now: now.toISOString(),
@@ -417,7 +425,7 @@ export class CabinetInvitationService {
         userId: identity.userId,
         cabinetRole: invitation.role,
         status: "ACTIVE",
-        displayName,
+        displayName: profile.displayName ?? displayName,
         email,
         joinedAt: now.toISOString(),
         invitedBy: invitation.invitedBy,

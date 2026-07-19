@@ -100,6 +100,13 @@ export interface OrganizationRecord {
   accountingFramework?: string;
 }
 
+export interface CabinetMetadataRecord {
+  cabinetId: string;
+  orgId: string;
+  ownerUserId?: string;
+  status: string;
+}
+
 interface Page<T> {
   items: T[];
   nextCursor?: string;
@@ -895,6 +902,38 @@ export class CabinetTeamRepository {
         typeof value.accountingFramework === "string"
           ? value.accountingFramework
           : undefined,
+    };
+  }
+
+  static async getCabinetMetadata(
+    cabinetId: string,
+  ): Promise<CabinetMetadataRecord | undefined> {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: {
+          PK: { S: KeyFactory.cabinetPK(cabinetId) },
+          SK: { S: KeyFactory.cabinetMetadataSK() },
+        },
+        ConsistentRead: true,
+      }),
+    );
+    if (!result.Item) return undefined;
+    const value = unmarshall(result.Item);
+    if (
+      value.entityType !== "CABINET" ||
+      typeof value.cabinetId !== "string" ||
+      typeof value.orgId !== "string" ||
+      typeof value.status !== "string"
+    ) {
+      return undefined;
+    }
+    return {
+      cabinetId: value.cabinetId,
+      orgId: value.orgId,
+      ownerUserId:
+        typeof value.ownerUserId === "string" ? value.ownerUserId : undefined,
+      status: value.status,
     };
   }
 

@@ -43,7 +43,6 @@ const translations = {
         FIELDS: {
           AMOUNT: 'Amount',
           COUNTERPARTY: 'Counterparty account to post',
-          COUNTERPARTY_HELP: 'Example helper.',
           DATE: 'Date',
           DIRECTION: 'Direction',
           JOURNAL: 'Journal',
@@ -137,7 +136,8 @@ describe('CreateTreasuryTransactionDialogComponent', () => {
 
     expect(selector.labelKey()).toBe('TREASURY.TRANSACTIONS.FIELDS.COUNTERPARTY');
     expect(selector.excludedAccountIds()).toEqual(['52100000']);
-    expect(fixture.nativeElement.textContent).toContain('Example helper.');
+    expect(fixture.nativeElement.textContent).toContain('Counterparty account to post');
+    expect(fixture.nativeElement.textContent).not.toContain('Example helper.');
   });
 
   it('searches only active accounting accounts through the selector', async () => {

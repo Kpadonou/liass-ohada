@@ -10,10 +10,12 @@ import { LiassOhadaApiGateway } from "../constructs/api/api-gateway";
 import { LiassOhadaAuth } from "../constructs/auth/cognito-auth";
 
 // Import your Domain Constructs
-import { AccountingEndpoints } from "../constructs/domains/accounting-endpoints";
-import { IdentityEndpoints } from "../constructs/domains/identity-endpoints";
-import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
-import { TreasuryEndpoints } from "../constructs/domains/treasury-endpoints";
+import {
+  AccountingApiStack,
+  IdentityApiStack,
+  ProjectApiStack,
+  TreasuryApiStack,
+} from "./api-domain-stacks";
 
 /**
  * Interface for ApiStack properties.
@@ -65,7 +67,7 @@ export class ApiStack extends Stack {
      * IDENTITY MODULE
      * Handles authenticated user context before tenant selection.
      */
-    new IdentityEndpoints(this, "IdentityModule", {
+    new IdentityApiStack(this, "IdentityApi", {
       api: this.apiGateway.httpApi,
       lambdaRole: apiLambdaRole,
       table: props.accountingTable,
@@ -76,7 +78,7 @@ export class ApiStack extends Stack {
      * ACCOUNTING MODULE
      * Handles General Accounting, Accounts, Entries, and Books.
      */
-    new AccountingEndpoints(this, "AccountingModule", {
+    new AccountingApiStack(this, "AccountingApi", {
       api: this.apiGateway.httpApi,
       lambdaRole: apiLambdaRole,
       table: props.accountingTable,
@@ -87,7 +89,7 @@ export class ApiStack extends Stack {
      * PROJECT MODULE (SYCEBNL)
      * Handles Projects, Donors, and specialized Reporting.
      */
-    new ProjectEndpoints(this, "ProjectModule", {
+    new ProjectApiStack(this, "ProjectApi", {
       api: this.apiGateway.httpApi,
       lambdaRole: apiLambdaRole,
       table: props.accountingTable,
@@ -98,7 +100,7 @@ export class ApiStack extends Stack {
      * TREASURY MODULE
      * Handles treasury accounts, cash movements, bank statements, and reconciliation.
      */
-    new TreasuryEndpoints(this, "TreasuryModule", {
+    new TreasuryApiStack(this, "TreasuryApi", {
       api: this.apiGateway.httpApi,
       lambdaRole: apiLambdaRole,
       table: props.accountingTable,

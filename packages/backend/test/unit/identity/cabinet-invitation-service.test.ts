@@ -243,8 +243,9 @@ describe("CabinetInvitationService", () => {
       givenName: "Ada",
       familyName: "Mensah",
     });
-    const transaction =
-      dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input;
+    const transactions = dynamoMock.commandCalls(TransactWriteItemsCommand);
+    const profileTransaction = transactions[0].args[0].input;
+    const transaction = transactions[1].args[0].input;
     const access = unmarshall(
       transaction.TransactItems?.[0].Put?.Item ?? {},
     );
@@ -255,6 +256,11 @@ describe("CabinetInvitationService", () => {
       status: "ACTIVE",
       email: "member@example.com",
     });
+    expect(
+      (profileTransaction.TransactItems ?? []).map((item) =>
+        unmarshall(item.Put?.Item ?? {}).entityType,
+      ),
+    ).toEqual(["USER_PROFILE", "USER_EMAIL_LOOKUP"]);
     expect(access).toMatchObject({
       entityType: "USER_ORG_ACCESS",
       orgId: "org-cabinet",

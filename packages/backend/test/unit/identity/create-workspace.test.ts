@@ -1,10 +1,14 @@
 import { OnboardingService } from "@/lambda/shared/services/onboarding-service";
+import { UserProfileService } from "@/lambda/shared/services/user-profile-service";
 import { handler } from "@/lambda/domains/identity/create-workspace";
 
 jest.mock("@/lambda/shared/services/onboarding-service", () => ({
   OnboardingService: {
     createInitialWorkspace: jest.fn(),
   },
+}));
+jest.mock("@/lambda/shared/services/user-profile-service", () => ({
+  UserProfileService: { ensureSynchronized: jest.fn().mockResolvedValue({}) },
 }));
 
 const createEvent = ({
@@ -14,7 +18,11 @@ const createEvent = ({
     country: "BJ",
     accountingFramework: "SYSCOHADA_REVISED",
   },
-  claims = { sub: "user-123" },
+  claims = {
+    sub: "user-123",
+    email: "owner@example.com",
+    email_verified: "true",
+  },
 }: {
   body?: Record<string, unknown>;
   claims?: Record<string, string>;
@@ -86,6 +94,13 @@ describe("POST /me/workspaces", () => {
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",
       },
+    );
+    expect(UserProfileService.ensureSynchronized).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "user-123",
+        email: "owner@example.com",
+        emailVerified: "true",
+      }),
     );
     expect(body.activeOrgId).toBe("org-created");
   });

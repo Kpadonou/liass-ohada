@@ -20,6 +20,44 @@ export interface AuthorizedCabinetContext {
 }
 
 export class CabinetAuthorizationService {
+  static async assertOwnerMutationAllowed(input: {
+    cabinetId: string;
+    cabinetOrgId: string;
+    targetUserId: string;
+    mutation: "ROLE" | "STATUS";
+  }): Promise<void> {
+    const cabinet = await CabinetTeamRepository.getCabinetMetadata(
+      input.cabinetId,
+    );
+    if (
+      !cabinet ||
+      cabinet.orgId !== input.cabinetOrgId ||
+      !cabinet.ownerUserId
+    ) {
+      throw new AppError(409, "CABINET_OWNER_NOT_CONFIGURED");
+    }
+    if (cabinet.ownerUserId === input.targetUserId) {
+      throw new AppError(
+        409,
+        input.mutation === "ROLE"
+          ? "CABINET_OWNER_ROLE_IMMUTABLE"
+          : "CABINET_OWNER_STATUS_IMMUTABLE",
+      );
+    }
+    const owner = await CabinetTeamRepository.getMember(
+      input.cabinetOrgId,
+      cabinet.ownerUserId,
+    );
+    if (
+      !owner ||
+      owner.status !== "ACTIVE" ||
+      owner.cabinetRole !== "CABINET_ADMIN" ||
+      owner.cabinetId !== input.cabinetId
+    ) {
+      throw new AppError(409, "CABINET_OWNER_NOT_CONFIGURED");
+    }
+  }
+
   static async requireActiveMembership(
     context: CabinetRequestContext,
   ): Promise<AuthorizedCabinetContext> {
