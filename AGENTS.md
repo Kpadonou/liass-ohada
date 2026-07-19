@@ -16,6 +16,16 @@ This is an npm workspaces monorepo for an OHADA-compliant serverless ERP. Root-l
   - Each domain uses `feature/` for routed smart pages, `ui/` for domain presentational components, `data-access/` for API clients, TanStack Query helpers, schemas, and SignalStores, and `utils/` for pure helpers, validators, and pipes.
   - `shared/ui/`: stateless reusable design-system components. Components in `shared/ui/` must not inject stores, domain services, API clients, or app-specific state.
 
+## Mandatory CDK Nested-Stack Architecture
+
+Before adding or changing backend AWS resources, inspect `packages/backend/lib/stacks/api-domain-stacks.ts` and follow `packages/backend/docs/cdk-nested-stack-architecture.md`, the authoritative placement guide.
+
+- Domain endpoints, Lambdas, integrations, permissions, and Log Groups **MUST** be placed in the correct existing domain nested stack; they **MUST NOT** be added directly to the API core unless genuinely shared or foundational.
+- A new nested stack **REQUIRES** a coherent new business domain and justified expected growth. Do not create stacks per endpoint, feature, or implementation lot.
+- The shared API, DynamoDB table, Cognito resources, and authorizer **MUST NOT** be duplicated. Stateful resources **MUST NOT** move without an explicit migration plan and an inspected `cdk diff`.
+- CDK changes **REQUIRE** shared/backend builds, relevant tests, `cdk synth`, the existing resource-count npm script, `cdk diff` when credentials are available, and counts for every affected template. No application template may exceed 350 CloudFormation resources.
+- The final report **MUST** name the owning stack, list resources added or replaced, give before/after counts, identify any stateful-resource impact, and report synth, resource-count, diff, and deployment status. A TypeScript build alone does not establish deployment safety.
+
 ## Codex skills
 
 Use the repository Codex skills when a task matches their scope.

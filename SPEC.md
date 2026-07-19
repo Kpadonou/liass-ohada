@@ -30,6 +30,15 @@
   - Domain folders must contain `feature/`, `ui/`, `data-access/`, and `utils/`. Routed smart pages live in `feature/`; domain-specific presentational components live in `ui/`; API clients, TanStack Query helpers, frontend-safe Zod schemas, and SignalStores live in `data-access/`; pure helpers, validators, and pipes live in `utils/`.
   - `shared/ui/`: stateless reusable design-system components only. These components must not inject stores, domain services, API clients, or application state.
 
+### Mandatory CDK Stack Boundaries
+
+The authoritative CDK resource-placement and validation rules are defined in [`packages/backend/docs/cdk-nested-stack-architecture.md`](packages/backend/docs/cdk-nested-stack-architecture.md).
+
+- The API core **MUST** own only shared, foundational, or genuinely cross-domain infrastructure. New domain endpoints and their stateless resources **MUST** belong to the appropriate Accounting, Identity/Cabinet, Projects, or Treasury nested stack by default.
+- Future business domains **MUST NOT** be placed in the API core. A new nested stack **REQUIRES** a coherent durable domain boundary and justified resource growth; the application **MUST NOT** be split per endpoint or small feature.
+- Existing stateful resources, including the shared DynamoDB table and Cognito resources, **MUST** retain their ownership unless an explicit reviewed migration plan requires otherwise. Nested stacks consume typed references and **MUST NOT** duplicate the shared API, table, User Pool, or authorizer.
+- Every synthesized application template **MUST** remain at or below 350 CloudFormation resources. CDK resource changes **REQUIRE** synthesis, the repository resource-count guard, and `cdk diff` when credentials are available.
+
 ---
 
 ## 2. Partitioning & Key Strategy (CRITICAL)

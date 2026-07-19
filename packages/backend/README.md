@@ -23,6 +23,20 @@ Welcome to the liass-ohada backend project — an AWS Cloud-Native Serverless ER
 - `npm run watch` watch for changes and compile
 - `npm run test` perform the jest unit tests
 
+## CDK nested-stack architecture
+
+Domain-specific stateless resources belong to the existing Accounting, Identity/Cabinet, Projects, or Treasury nested stack; the API core is reserved for shared and foundational infrastructure. Before changing CDK resources, read [`docs/cdk-nested-stack-architecture.md`](docs/cdk-nested-stack-architecture.md) and inspect `lib/stacks/api-domain-stacks.ts`.
+
+No synthesized application template may exceed 350 CloudFormation resources. After a CDK resource change, synthesis and resource counting are mandatory, and `cdk diff` is required when credentials are available. Use the scripts currently declared in this package rather than bypassing them:
+
+```bash
+npm run aws:synth
+npm run cdk:resource-count
+npm run aws:diff
+```
+
+Do not duplicate or move the shared API, DynamoDB table, Cognito resources, or authorizer as ordinary feature work.
+
 ### AWS dev account
 
 The real AWS development account uses the `rem` AWS CLI profile and deploys to account `570197775998` in `eu-west-3`.
@@ -213,4 +227,4 @@ and read-back verification for entries, grand livre, balance, and journal books.
 
 ## Project Structure
 
-See [.github/copilot-instructions.md](.github/copilot-instructions.md) for detailed architecture, domain models, and DynamoDB schema design.
+See [`../../SPEC.md`](../../SPEC.md) for the canonical project specification, [`docs/cdk-nested-stack-architecture.md`](docs/cdk-nested-stack-architecture.md) for CDK resource ownership, and [`../../.github/copilot-instructions.md`](../../.github/copilot-instructions.md) for additional domain and DynamoDB context.

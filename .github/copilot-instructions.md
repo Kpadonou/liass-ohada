@@ -19,6 +19,17 @@
 - Input Validation: Zod for strict schema enforcement.
 - Architecture Pattern: Domain-Driven Design (DDD) with a focus on Multi-Standard accounting logic.
 
+### Mandatory CDK Nested-Stack Placement
+
+Before generating backend infrastructure, inspect `packages/backend/lib/stacks/api-domain-stacks.ts` and follow `packages/backend/docs/cdk-nested-stack-architecture.md`.
+
+- Domain endpoints and their Lambdas, integrations, permissions, and Log Groups **MUST** be added to the correct existing nested stack, never to the API core by default.
+- The API core is reserved for shared or foundational infrastructure. Convenience does not make a resource shared.
+- The shared API, DynamoDB table, Cognito resources, authorizer, and current shared dependencies **MUST** be reused through typed construct properties and **MUST NOT** be duplicated.
+- Stateful resources **MUST NOT** move without an explicit migration plan and an inspected `cdk diff`.
+- A new nested stack **REQUIRES** a coherent new business domain and justified growth; do not split by endpoint, feature, or lot.
+- Every application template **MUST** remain at or below 350 resources. CDK work **REQUIRES** synthesis, the existing resource-count npm script, `cdk diff` when credentials are available, and a final report naming the affected stack and template counts. A TypeScript build alone is insufficient.
+
 ### 📚 Functional Domains (Scope)
 
 1.  **Core Accounting**: General Ledger, Journalizing, Multi-Standard Chart of Accounts (SYSCOHADA & SYCEBNL).
