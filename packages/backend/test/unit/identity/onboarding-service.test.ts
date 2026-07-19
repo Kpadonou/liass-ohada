@@ -107,6 +107,7 @@ describe("OnboardingService", () => {
       GSI6PK: "USER#user-123",
       GSI6SK: `STATUS#ACTIVE#ORG#${GENERATED_ORG_ID}`,
     });
+    expect(transactionItems[1].item.cabinetRole).toBeUndefined();
     expect(transactionItems[2].item).toMatchObject({
       PK: "USER#user-123",
       SK: "ONBOARDING#INITIAL_WORKSPACE",
@@ -141,6 +142,7 @@ describe("OnboardingService", () => {
       ownerUserId: "user-123",
     });
     expect(response.workspace.cabinetId).toBe(GENERATED_CABINET_ID);
+    expect(response.workspace.cabinetRole).toBe("CABINET_ADMIN");
     expect(transactionItems).toHaveLength(5);
     expect(transactionItems[3].item).toMatchObject({
       PK: `CABINET#${GENERATED_CABINET_ID}`,
@@ -158,6 +160,10 @@ describe("OnboardingService", () => {
       orgId: GENERATED_ORG_ID,
       GSI1PK: `CABINET#${GENERATED_CABINET_ID}`,
       GSI1SK: `DOSSIER#${GENERATED_ORG_ID}`,
+    });
+    expect(transactionItems[1].item).toMatchObject({
+      cabinetRole: "CABINET_ADMIN",
+      status: "ACTIVE",
     });
   });
 

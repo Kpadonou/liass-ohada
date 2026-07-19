@@ -29,6 +29,87 @@ export class IdentityEndpoints extends DomainConstructFactory {
       table: props.table,
     });
 
+    const cabinetTeamRoutes = [
+      ["list-cabinet-members", apigw.HttpMethod.GET, "/cabinet/team/members"],
+      [
+        "get-cabinet-member",
+        apigw.HttpMethod.GET,
+        "/cabinet/team/members/{memberUserId}",
+      ],
+      [
+        "update-cabinet-member-role",
+        apigw.HttpMethod.PATCH,
+        "/cabinet/team/members/{memberUserId}/role",
+      ],
+      [
+        "update-cabinet-member-status",
+        apigw.HttpMethod.PATCH,
+        "/cabinet/team/members/{memberUserId}/status",
+      ],
+      [
+        "list-cabinet-member-assignments",
+        apigw.HttpMethod.GET,
+        "/cabinet/team/members/{memberUserId}/assignments",
+      ],
+      [
+        "replace-cabinet-member-assignments",
+        apigw.HttpMethod.PUT,
+        "/cabinet/team/members/{memberUserId}/assignments",
+      ],
+      [
+        "create-cabinet-invitation",
+        apigw.HttpMethod.POST,
+        "/cabinet/team/invitations",
+      ],
+      [
+        "list-cabinet-invitations",
+        apigw.HttpMethod.GET,
+        "/cabinet/team/invitations",
+      ],
+      [
+        "cancel-cabinet-invitation",
+        apigw.HttpMethod.POST,
+        "/cabinet/team/invitations/{invitationId}/cancel",
+      ],
+      [
+        "resend-cabinet-invitation",
+        apigw.HttpMethod.POST,
+        "/cabinet/team/invitations/{invitationId}/resend",
+      ],
+      [
+        "list-cabinet-dossier-members",
+        apigw.HttpMethod.GET,
+        "/cabinet/dossiers/{dossierOrgId}/members",
+      ],
+      [
+        "accept-cabinet-invitation",
+        apigw.HttpMethod.POST,
+        "/me/cabinet-invitations/accept",
+      ],
+    ] as const;
+
+    for (const [handlerName, method, routePath] of cabinetTeamRoutes) {
+      this.addRoute({
+        actionName: handlerName,
+        api: props.api,
+        authorizer: props.authorizer,
+        domainName: "identity",
+        handlerEntry: path.join(
+          projectRoot,
+          "lambda",
+          "domains",
+          "identity",
+          `${handlerName}.ts`,
+        ),
+        idPrefix: "Identity-",
+        lambdaRole: props.lambdaRole,
+        method,
+        routePath,
+        stage: props.stage,
+        table: props.table,
+      });
+    }
+
     const createWorkspaceEntry = path.join(
       projectRoot,
       "lambda",

@@ -312,6 +312,34 @@ describe('authInterceptor', () => {
     await response;
   });
 
+  it('uses the ID token and no tenant header for invitation acceptance', async () => {
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: { toString: () => 'access-token' },
+        idToken: { toString: () => 'id-token-with-verified-email' }
+      }
+    } as never);
+
+    const http = TestBed.inject(HttpClient);
+    const response = firstValueFrom(
+      http.post(`${environment.apiBaseUrl}/me/cabinet-invitations/accept`, {
+        token: 'invitation-token'
+      })
+    );
+    await Promise.resolve();
+
+    const request = httpMock.expectOne(
+      `${environment.apiBaseUrl}/me/cabinet-invitations/accept`
+    );
+    expect(request.request.headers.get('Authorization')).toBe(
+      'Bearer id-token-with-verified-email'
+    );
+    expect(request.request.headers.get('Accept-Language')).toBe('fr');
+    expect(request.request.headers.has('x-org-id')).toBe(false);
+    request.flush({ member: {}, assignments: [] });
+    await response;
+  });
+
   it('does not add auth headers for non-backend requests', () => {
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {

@@ -10,6 +10,7 @@ import { TENANT_REQUEST_SCOPE } from './tenant-request-context';
 
 const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 const workspacesDiscoveryUrl = `${apiBaseUrl}/me/workspaces`;
+const cabinetInvitationAcceptanceUrl = `${apiBaseUrl}/me/cabinet-invitations/accept`;
 function tenantOrgIdForRequest(
   authStore: InstanceType<typeof AuthStore>,
   request: Parameters<HttpInterceptorFn>[0]
@@ -27,12 +28,15 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authStore = inject(AuthStore);
   const translocoService = inject(TranslocoService);
   const activeLanguage = translocoService.getActiveLang() || 'fr';
-  const isWorkspaceDiscoveryRequest =
-    request.url === workspacesDiscoveryUrl &&
-    (request.method === 'GET' || request.method === 'POST');
+  const isCabinetInvitationAcceptanceRequest =
+    request.url === cabinetInvitationAcceptanceUrl && request.method === 'POST';
+  const isPreTenantRequest =
+    (request.url === workspacesDiscoveryUrl &&
+      (request.method === 'GET' || request.method === 'POST')) ||
+    isCabinetInvitationAcceptanceRequest;
   const tenantOrgId = tenantOrgIdForRequest(authStore, request);
 
-  if (!isWorkspaceDiscoveryRequest && !tenantOrgId) {
+  if (!isPreTenantRequest && !tenantOrgId) {
     return throwError(
       () =>
         new HttpErrorResponse({
@@ -46,7 +50,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   return from(fetchAuthSession()).pipe(
     switchMap((session) => {
-      const token = session.tokens?.accessToken?.toString();
+      const token = isCabinetInvitationAcceptanceRequest
+        ? session.tokens?.idToken?.toString()
+        : session.tokens?.accessToken?.toString();
 
       if (!token) {
         throw new HttpErrorResponse({
@@ -57,7 +63,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         });
       }
 
-      const setHeaders: Record<string, string> = isWorkspaceDiscoveryRequest
+      const setHeaders: Record<string, string> = isPreTenantRequest
         ? {
             Authorization: `Bearer ${token}`,
             'Accept-Language': activeLanguage

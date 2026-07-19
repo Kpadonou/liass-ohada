@@ -32,6 +32,43 @@ export const KeyFactory = {
   /** SK for a user's effective access to an organization */
   orgUserAccessSK: (userId: string) => `USER#${userId}`,
 
+  /** Prefix for all effective user access rows under an organization */
+  orgUserAccessPrefix: () => "USER#",
+
+  /** Cabinet invitation records and normalized-email uniqueness locks */
+  cabinetInvitationPrefix: () => "INV#",
+  cabinetInvitationSK: (invitationId: string) => `INV#${invitationId}`,
+  cabinetInvitationEmailLockSK: (normalizedEmail: string) =>
+    `INVLOCK#EMAIL#${normalizedEmail.trim().toLowerCase()}`,
+  cabinetInvitationsGSI_PK: (cabinetOrgId: string) =>
+    `CABINET#${cabinetOrgId}#INVITATIONS`,
+  cabinetInvitationsGSI_SK: (
+    status: string,
+    createdAt: string,
+    invitationId: string,
+  ) =>
+    `STATUS#${status.toUpperCase()}#CREATED#${createdAt}#INV#${invitationId}`,
+  cabinetInvitationStatusPrefix: (status: string) =>
+    `STATUS#${status.toUpperCase()}#`,
+
+  /** Hashed invitation-token lookup; raw invitation tokens are never keys. */
+  invitationTokenPK: (tokenHash: string) =>
+    `INVITE_TOKEN#${tokenHash.toLowerCase()}`,
+  invitationTokenSK: () => "LOOKUP",
+
+  /** Cabinet member-to-client-dossier assignment adjacency keys. */
+  cabinetMemberAssignmentsPrefix: (userId: string) =>
+    `ASSIGNMENT#USER#${userId}#DOSSIER#`,
+  cabinetMemberDossierAssignmentSK: (
+    userId: string,
+    dossierOrgId: string,
+  ) => `ASSIGNMENT#USER#${userId}#DOSSIER#${dossierOrgId}`,
+  cabinetDossierAssignmentsGSI_PK: (
+    cabinetOrgId: string,
+    dossierOrgId: string,
+  ) => `CABINET#${cabinetOrgId}#DOSSIER#${dossierOrgId}#ASSIGNMENTS`,
+  cabinetDossierAssignmentsGSI_SK: (userId: string) => `USER#${userId}`,
+
   /** GSI PK to list all organization dossiers linked to a cabinet */
   cabinetDossierGSI_PK: (cabinetId: string) => `CABINET#${cabinetId}`,
 

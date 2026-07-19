@@ -41,6 +41,7 @@ export const UserOrgAccessItemSchema = z
     orgId: z.string().min(1),
     userId: z.string().min(1),
     role: OwnerRoleSchema,
+    cabinetRole: z.literal("CABINET_ADMIN").optional(),
     status: z.literal("ACTIVE"),
     accessSource: AccessSourceSchema,
     cabinetId: z.string().min(1).optional(),
@@ -143,6 +144,10 @@ export class OnboardingRepository {
         WorkspaceSummarySchema.safeParse({
           orgId: access.orgId,
           role: typeof access.role === "string" ? access.role : undefined,
+          cabinetRole:
+            typeof access.cabinetRole === "string"
+              ? access.cabinetRole
+              : undefined,
           cabinetId:
             typeof access.cabinetId === "string" ? access.cabinetId : undefined,
           accessSource:
@@ -189,6 +194,7 @@ export class OnboardingRepository {
       orgId: organization.orgId,
       userId,
       role: "OWNER",
+      cabinetRole: workspace.cabinetRole,
       status: "ACTIVE",
       accessSource: "DIRECT",
       cabinetId: workspace.cabinetId,

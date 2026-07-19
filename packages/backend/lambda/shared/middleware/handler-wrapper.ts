@@ -1,5 +1,6 @@
 import { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { z } from "zod";
+import type { CabinetRole } from "@liass-ohada/shared";
 import { AppError } from "../app-error";
 import { I18nResolver } from "../i18n";
 import { TenantAccessService } from "../services/tenant-access-service";
@@ -11,6 +12,7 @@ export interface HandlerContext {
   orgId: string;
   userId: string;
   role?: string;
+  cabinetRole?: CabinetRole;
   cabinetId?: string;
   workspaceType?: "COMPANY" | "ACCOUNTING_FIRM";
   accountingFramework?: string;
@@ -103,6 +105,7 @@ const createTenantHandler = <T>(
         orgId,
         userId,
         role: access.role,
+        cabinetRole: access.cabinetRole,
         cabinetId: access.cabinetId,
         workspaceType: access.workspaceType,
         accountingFramework: access.accountingFramework,

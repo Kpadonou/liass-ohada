@@ -163,6 +163,7 @@ export type {
 } from "./projects/project";
 export * from "./treasury";
 export type { ApiMessage, ApiResponse } from "./shared/api-response";
+export * from "./shared/cabinet-team";
 export {
   CabinetDossierSummarySchema,
   CabinetSchema,

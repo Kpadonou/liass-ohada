@@ -33,6 +33,9 @@ export const WorkspaceSummarySchema = z
   .object({
     orgId: z.string().min(1),
     role: z.string().optional(),
+    cabinetRole: z
+      .enum(["CABINET_ADMIN", "SUPERVISOR", "COLLABORATOR", "READER"])
+      .optional(),
     cabinetId: z.string().optional(),
     accessSource: z.string().optional(),
     displayName: z.string().optional(),

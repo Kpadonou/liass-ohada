@@ -48,4 +48,47 @@ describe("KeyFactory", () => {
     );
     expect(KeyFactory.activeUserWorkspacePrefix()).toBe("STATUS#ACTIVE#");
   });
+
+  test("builds Cabinet team keys with canonical normalization", () => {
+    expect(KeyFactory.orgUserAccessPrefix()).toBe("USER#");
+    expect(KeyFactory.cabinetInvitationPrefix()).toBe("INV#");
+    expect(KeyFactory.cabinetInvitationSK("inv-1")).toBe("INV#inv-1");
+    expect(
+      KeyFactory.cabinetInvitationEmailLockSK("  Member@Example.COM "),
+    ).toBe("INVLOCK#EMAIL#member@example.com");
+    expect(KeyFactory.cabinetInvitationsGSI_PK("org-cabinet")).toBe(
+      "CABINET#org-cabinet#INVITATIONS",
+    );
+    expect(
+      KeyFactory.cabinetInvitationsGSI_SK(
+        "pending",
+        "2026-07-19T12:00:00.000Z",
+        "inv-1",
+      ),
+    ).toBe(
+      "STATUS#PENDING#CREATED#2026-07-19T12:00:00.000Z#INV#inv-1",
+    );
+    expect(KeyFactory.cabinetInvitationStatusPrefix("accepted")).toBe(
+      "STATUS#ACCEPTED#",
+    );
+    expect(KeyFactory.invitationTokenPK("ABCDEF")).toBe(
+      "INVITE_TOKEN#abcdef",
+    );
+    expect(KeyFactory.invitationTokenSK()).toBe("LOOKUP");
+    expect(KeyFactory.cabinetMemberAssignmentsPrefix("user-1")).toBe(
+      "ASSIGNMENT#USER#user-1#DOSSIER#",
+    );
+    expect(
+      KeyFactory.cabinetMemberDossierAssignmentSK("user-1", "org-client"),
+    ).toBe("ASSIGNMENT#USER#user-1#DOSSIER#org-client");
+    expect(
+      KeyFactory.cabinetDossierAssignmentsGSI_PK(
+        "org-cabinet",
+        "org-client",
+      ),
+    ).toBe("CABINET#org-cabinet#DOSSIER#org-client#ASSIGNMENTS");
+    expect(KeyFactory.cabinetDossierAssignmentsGSI_SK("user-1")).toBe(
+      "USER#user-1",
+    );
+  });
 });

@@ -61,6 +61,10 @@ export class OnboardingService {
     const workspace: WorkspaceSummary = {
       orgId,
       role: OWNER_ROLE,
+      cabinetRole:
+        request.workspaceType === "ACCOUNTING_FIRM"
+          ? "CABINET_ADMIN"
+          : undefined,
       cabinetId,
       accessSource: ACCESS_SOURCE,
       displayName: organizationName,
