@@ -206,6 +206,7 @@ describe('CabinetDashboardPage', () => {
     fixture.detectChanges();
     const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
     buttons.find((button) => button.textContent?.includes('Client SARL'))?.click();
+    await fixture.whenStable();
 
     expect(authStore.activeWorkspaceOrgId()).toBe('org-firm');
     expect(authStore.activeDossierOrgId()).toBe('org-client');

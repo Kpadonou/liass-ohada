@@ -1,8 +1,8 @@
-import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
+import { createCabinetHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { CabinetDossierService } from "@/lambda/shared/services/cabinet-dossier-service";
 import { CreateCabinetDossierRequestSchema } from "@liass-ohada/shared";
 
-export const handler = createHandler(
+export const handler = createCabinetHandler(
   CreateCabinetDossierRequestSchema,
   async (data, context) =>
     CabinetDossierService.createClientDossier(

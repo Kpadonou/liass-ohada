@@ -117,7 +117,9 @@ export class AppTopbarComponent implements OnInit {
       return;
     }
 
-    await this.router.navigate(['/cabinet/dossiers']);
+    await this.router.navigate([
+      this.authStore.isCabinetContext() ? '/cabinet/dossiers' : '/cabinet/dossiers/select'
+    ]);
   }
 
   protected selectFiscalYear(year: number): void {
@@ -137,6 +139,7 @@ export class AppTopbarComponent implements OnInit {
 
   protected async navigateToCabinetDashboard(): Promise<void> {
     this.cabinetMenuOpen = false;
+    this.authStore.enterCabinetContext();
     await this.router.navigate(['/cabinet/dashboard']);
   }
 

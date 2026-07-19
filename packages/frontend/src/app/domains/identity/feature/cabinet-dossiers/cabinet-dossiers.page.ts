@@ -47,6 +47,7 @@ export class CabinetDossiersPage implements OnInit {
   private readonly router = inject(Router);
   protected readonly searchQuery = signal('');
   protected readonly statusFilter = signal<DossierStatusFilter>('ALL');
+  protected readonly showContextRecovery = signal(false);
   protected readonly activeDossiers = computed(
     () => this.authStore.dossiers().filter((dossier) => dossier.status === 'ACTIVE').length
   );
@@ -71,6 +72,7 @@ export class CabinetDossiersPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.showContextRecovery.set(params.get('contextRecovery') === '1');
       if (params.get('createDossier') === '1') {
         this.openCreateDossierDialog({ clearDeepLink: true });
       }
@@ -86,12 +88,14 @@ export class CabinetDossiersPage implements OnInit {
   }
 
   protected async selectDossier(dossier: CabinetDossierSummary): Promise<void> {
-    if (this.authStore.dossierLoading()) {
+    if (this.authStore.dossierLoading() || this.authStore.dossierOpening()) {
       return;
     }
 
-    this.authStore.setActiveDossier(dossier.orgId);
-    await this.router.navigate(['/dashboard'], { replaceUrl: true });
+    const opened = await this.authStore.openDossier(dossier.orgId);
+    if (opened) {
+      await this.router.navigate(['/dashboard'], { replaceUrl: true });
+    }
   }
 
   protected updateSearch(event: Event): void {

@@ -63,7 +63,7 @@ describe("get-account handler", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
 
   test("retrieves account successfully", async () => {

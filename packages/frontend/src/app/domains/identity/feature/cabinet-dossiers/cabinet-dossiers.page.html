@@ -8,6 +8,16 @@
     (actionTriggered)="createDossier()"
   />
 
+  @if (showContextRecovery()) {
+    <div
+      class="flex items-start gap-3 rounded-app-card border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100"
+      role="status"
+    >
+      <mat-icon class="mt-0.5" aria-hidden="true">info</mat-icon>
+      <p>{{ 'IDENTITY.CABINET_DOSSIERS.ERRORS.RESTORE_FAILED' | transloco }}</p>
+    </div>
+  }
+
   <div class="grid gap-4 md:grid-cols-3">
     <liass-card padding="sm">
       <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">

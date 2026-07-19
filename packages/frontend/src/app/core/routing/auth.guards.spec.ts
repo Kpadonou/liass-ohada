@@ -48,6 +48,10 @@ function createFakeAuthStore(state: FakeAuthState): InstanceType<typeof AuthStor
     activeDossierOrgId: () => state.activeDossierOrgId,
     activeWorkspaceType: () => state.workspaceType,
     dossiersLoaded: () => state.dossiersLoaded,
+    enterCabinetContext: vi.fn(() => {
+      state.activeDossierOrgId = null;
+      state.hasActiveDossier = false;
+    }),
     hasActiveDossier: () => state.hasActiveDossier,
     hasActiveTenant: () => state.activeTenant,
     hydrate: vi.fn(async () => {
@@ -388,6 +392,25 @@ describe('auth guards', () => {
 
     expect(result).toBe(true);
     expect(authStore.loadDossiers).toHaveBeenCalled();
+  });
+
+  it('returns invalid persisted dossier context to the dossier list with recovery state', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.activeDossierOrgId = 'org-stale-client';
+    state.dossiersLoaded = false;
+    state.hasActiveDossier = false;
+    state.workspaceType = 'ACCOUNTING_FIRM';
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      tenantGuard({} as never, { url: '/accounting/general-ledger' } as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe(
+      '/cabinet/dossiers?contextRecovery=1'
+    );
+    expect(authStore.enterCabinetContext).toHaveBeenCalled();
   });
 
   it('allows only accounting-firm workspaces into the cabinet dashboard', async () => {

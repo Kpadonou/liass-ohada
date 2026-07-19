@@ -246,6 +246,7 @@ describe("fiscal year lifecycle", () => {
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({
         role: "ACCOUNTANT",
+        workspaceType: "COMPANY",
         accountingFramework: "SYSCOHADA_REVISED",
       });
   });
@@ -280,6 +281,7 @@ describe("fiscal year lifecycle", () => {
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({
         role: "ACCOUNTANT",
+        workspaceType: "COMPANY",
         accountingFramework: "SYCEBNL",
       });
     dynamoMock.on(PutItemCommand).resolves({});

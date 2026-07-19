@@ -69,14 +69,25 @@ export const tenantGuard: CanActivateFn = async (_route, state) => {
 
   if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
     if (isCabinetRoute(state.url)) {
+      authStore.enterCabinetContext();
       return true;
     }
 
-    if (authStore.activeDossierOrgId() && !authStore.dossiersLoaded()) {
+    const persistedDossierOrgId = authStore.activeDossierOrgId();
+    if (!authStore.dossiersLoaded()) {
       await authStore.loadDossiers();
     }
 
-    return authStore.hasActiveDossier() ? true : router.createUrlTree(['/cabinet/dashboard']);
+    if (authStore.hasActiveDossier()) {
+      return true;
+    }
+
+    authStore.enterCabinetContext();
+    return persistedDossierOrgId
+      ? router.createUrlTree(['/cabinet/dossiers'], {
+          queryParams: { contextRecovery: '1' }
+        })
+      : router.createUrlTree(['/cabinet/dashboard']);
   }
 
   if (destination === '/dashboard') {
@@ -101,6 +112,7 @@ export const cabinetDashboardGuard: CanActivateFn = async () => {
   }
 
   if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
+    authStore.enterCabinetContext();
     return true;
   }
 

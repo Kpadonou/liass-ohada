@@ -20,11 +20,7 @@ export class AccountingFiscalYearContextService {
   private lastScope: string | null = null;
 
   readonly tenantScope = computed(() => {
-    if (this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-      return this.authStore.activeDossierOrgId() || null;
-    }
-
-    return this.authStore.activeWorkspaceOrgId();
+    return this.authStore.effectiveAccountingOrgId();
   });
   readonly activeFiscalYear = computed(() => {
     const activeYear = this.state().activeYear;

@@ -41,7 +41,7 @@ describe("list-accounts handler", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
 
   test("queries tenant accounts and returns frontend-safe DTOs", async () => {

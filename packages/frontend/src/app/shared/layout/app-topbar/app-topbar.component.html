@@ -143,17 +143,18 @@
             <mat-icon>business_center</mat-icon>
           </span>
           <span class="min-w-0">
-            <span class="block text-xs font-semibold text-sky-200">
-              {{ 'SHELL.TOPBAR.DOSSIER' | transloco }}
-            </span>
-            <span class="block max-w-[150px] truncate font-semibold text-white">
-              {{
-                activeDossierLabel()
-                  || ((authStore.dossierLoading()
-                    ? 'SHELL.TOPBAR.DOSSIER_LOADING'
-                    : 'SHELL.TOPBAR.NO_DOSSIER') | transloco)
-              }}
-            </span>
+            @if (authStore.isDossierContext()) {
+              <span class="block text-xs font-semibold text-sky-200">
+                {{ 'SHELL.TOPBAR.DOSSIER' | transloco }}
+              </span>
+              <span class="block max-w-[150px] truncate font-semibold text-white">
+                {{ activeDossierLabel() }}
+              </span>
+            } @else {
+              <span class="block max-w-[150px] truncate font-semibold text-white">
+                {{ 'SHELL.TOPBAR.OPEN_DOSSIER' | transloco }}
+              </span>
+            }
           </span>
           <mat-icon class="text-sky-200">expand_more</mat-icon>
         </button>

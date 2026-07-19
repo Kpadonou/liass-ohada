@@ -44,11 +44,7 @@ export class TreasuryQueries {
   private readonly authStore = inject(AuthStore);
 
   tenantScope(): string {
-    if (this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-      return this.authStore.activeDossierOrgId() || this.authStore.activeWorkspaceOrgId() || NO_TENANT_SCOPE;
-    }
-
-    return this.authStore.activeWorkspaceOrgId() || NO_TENANT_SCOPE;
+    return this.authStore.effectiveAccountingOrgId() || NO_TENANT_SCOPE;
   }
 
   accountsRootQueryKey() {

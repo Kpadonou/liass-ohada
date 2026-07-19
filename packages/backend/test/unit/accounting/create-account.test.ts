@@ -59,7 +59,7 @@ describe("create-account handler", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
 
   const parseResponse = (response: any) => {

@@ -62,7 +62,7 @@ describe("post-entry handler", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
 
   test("delegates posting to LedgerService with tenant context", async () => {

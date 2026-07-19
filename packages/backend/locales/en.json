@@ -104,6 +104,7 @@
   "WORKSPACE_ALREADY_EXISTS": "An initial workspace already exists for this user.",
   "ONBOARDING_CREATE_FAILED": "Unable to create the initial workspace.",
   "ERROR_CABINET_WORKSPACE_REQUIRED": "An active accounting firm workspace is required.",
+  "ERROR_ACCOUNTING_DOSSIER_REQUIRED": "An active company or client dossier is required for this operation.",
   "CABINET_DOSSIER_ALREADY_EXISTS": "This client dossier already exists.",
   "CABINET_DOSSIER_CREATE_FAILED": "Unable to create the client dossier.",
   "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND": "Account or project not found.",

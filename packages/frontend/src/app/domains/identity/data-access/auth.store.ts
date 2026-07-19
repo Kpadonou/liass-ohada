@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import type { CabinetDossierSummary, WorkspaceSummary } from '@liass-ohada/shared';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import type { AuthUser } from 'aws-amplify/auth';
 import {
   confirmSignIn,
@@ -46,6 +47,7 @@ interface AuthState {
   workspaceError: string | null;
   workspacesLoaded: boolean;
   activeDossierOrgId: string | null;
+  dossierOpeningOrgId: string | null;
   dossiers: CabinetDossierSummary[];
   dossierLoading: boolean;
   dossierError: string | null;
@@ -65,6 +67,7 @@ const initialState: AuthState = {
   workspaceError: null,
   workspacesLoaded: false,
   activeDossierOrgId: readStoredDossier(),
+  dossierOpeningOrgId: null,
   dossiers: [],
   dossierLoading: false,
   dossierError: null,
@@ -255,6 +258,20 @@ function applyTenantSelection(
   return activeOrgId;
 }
 
+function clearTenantQueries(queryClient: QueryClient | null, orgId?: string | null): void {
+  if (!queryClient) {
+    return;
+  }
+
+  const tenantRoots = ['accounting', 'treasury', 'projects'] as const;
+
+  for (const root of tenantRoots) {
+    const filters = orgId ? { queryKey: [root, orgId] } : { queryKey: [root] };
+    void queryClient.cancelQueries(filters);
+    queryClient.removeQueries(filters);
+  }
+}
+
 export const AuthStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
@@ -267,7 +284,8 @@ export const AuthStore = signalStore(
       activeDossierOrgId,
       dossiers,
       dossiersLoaded,
-      dossierError
+      dossierError,
+      dossierOpeningOrgId
     }
   ) => ({
     isAuthenticated: computed(() => !!user()),
@@ -301,6 +319,64 @@ export const AuthStore = signalStore(
           null)
         : null
     ),
+    workspaceType: computed(() =>
+      activeOrgId()
+        ? (workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ?? null)
+        : null
+    ),
+    accessSource: computed(() => {
+      const workspace = activeOrgId()
+        ? workspaces().find((candidate) => candidate.orgId === activeOrgId())
+        : null;
+
+      return workspace?.workspaceType === 'ACCOUNTING_FIRM'
+        ? 'CABINET'
+        : (workspace?.accessSource ?? null);
+    }),
+    isDirectCompanyContext: computed(() =>
+      workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType === 'COMPANY'
+    ),
+    isCabinetContext: computed(() =>
+      workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ===
+        'ACCOUNTING_FIRM' && !activeDossierOrgId()
+    ),
+    isDossierContext: computed(() => {
+      const workspaceType = workspaces().find(
+        (workspace) => workspace.orgId === activeOrgId()
+      )?.workspaceType;
+
+      if (workspaceType === 'COMPANY') {
+        return true;
+      }
+
+      const dossierOrgId = activeDossierOrgId();
+      return (
+        workspaceType === 'ACCOUNTING_FIRM' &&
+        !!dossierOrgId &&
+        dossiersLoaded() &&
+        !dossierError() &&
+        dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
+      );
+    }),
+    effectiveAccountingOrgId: computed(() => {
+      const workspaceType = workspaces().find(
+        (workspace) => workspace.orgId === activeOrgId()
+      )?.workspaceType;
+
+      if (workspaceType === 'COMPANY') {
+        return activeOrgId();
+      }
+
+      const dossierOrgId = activeDossierOrgId();
+      return workspaceType === 'ACCOUNTING_FIRM' &&
+        dossierOrgId &&
+        dossiersLoaded() &&
+        !dossierError() &&
+        dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
+        ? dossierOrgId
+        : null;
+    }),
+    dossierOpening: computed(() => !!dossierOpeningOrgId()),
     activeWorkspaceTypeLabelKey: computed(() => {
       const workspaceType = activeOrgId()
         ? workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType
@@ -329,7 +405,7 @@ export const AuthStore = signalStore(
         : null;
 
       if (workspace?.workspaceType === 'COMPANY') {
-        return workspace;
+        return null;
       }
 
       if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
@@ -349,7 +425,7 @@ export const AuthStore = signalStore(
         : null;
 
       if (workspace?.workspaceType === 'COMPANY') {
-        return workspaceDisplayName(workspace);
+        return null;
       }
 
       if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
@@ -381,16 +457,17 @@ export const AuthStore = signalStore(
 
       return (
         !!dossierOrgId &&
-        (!dossiersLoaded() ||
-          !!dossierError() ||
-          dossiers().some((dossier) => dossier.orgId === dossierOrgId))
+        dossiersLoaded() &&
+        !dossierError() &&
+        dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
       );
     })
   })),
   withMethods((
     store,
     workspacesApi = inject(WorkspacesApi),
-    cabinetDossiersApi = inject(CabinetDossiersApi)
+    cabinetDossiersApi = inject(CabinetDossiersApi),
+    queryClient = inject(QueryClient, { optional: true })
   ) => ({
     async hydrate(): Promise<void> {
       patchState(store, {
@@ -624,6 +701,7 @@ export const AuthStore = signalStore(
       try {
         await signOut();
       } finally {
+        clearTenantQueries(queryClient);
         persistTenant(null);
         persistDossier(null);
         patchState(store, {
@@ -639,6 +717,7 @@ export const AuthStore = signalStore(
           workspaceError: null,
           workspacesLoaded: false,
           activeDossierOrgId: null,
+          dossierOpeningOrgId: null,
           dossiers: [],
           dossierLoading: false,
           dossierError: null,
@@ -675,11 +754,18 @@ export const AuthStore = signalStore(
     },
 
     setTenant(orgId: string): void {
+      const previousWorkspaceOrgId = store.activeOrgId();
+      const previousDossierOrgId = store.activeDossierOrgId();
       const activeOrgId = applyTenantSelection(store, orgId);
       persistDossier(null);
+      clearTenantQueries(queryClient, previousDossierOrgId);
+      if (previousWorkspaceOrgId !== activeOrgId) {
+        clearTenantQueries(queryClient, previousWorkspaceOrgId);
+      }
       patchState(store, {
         activeOrgId,
         activeDossierOrgId: null,
+        dossierOpeningOrgId: null,
         dossiers: [],
         dossierLoading: false,
         dossierError: null,
@@ -695,6 +781,7 @@ export const AuthStore = signalStore(
       patchState(store, {
         activeOrgId: selectedOrgId,
         activeDossierOrgId: null,
+        dossierOpeningOrgId: null,
         workspaces: [workspace],
         workspaceLoading: false,
         workspaceError: null,
@@ -712,6 +799,7 @@ export const AuthStore = signalStore(
         persistDossier(null);
         patchState(store, {
           activeDossierOrgId: null,
+          dossierOpeningOrgId: null,
           dossiers: [],
           dossierLoading: false,
           dossierError: null,
@@ -745,11 +833,12 @@ export const AuthStore = signalStore(
 
         return dossiers;
       } catch (error) {
-        const message = messageFromError(error);
         const dossierError = isMissingDossierEndpoint(error)
           ? 'IDENTITY.CABINET_DOSSIERS.ERRORS.SERVICE_UNAVAILABLE'
-          : message;
+          : 'IDENTITY.CABINET_DOSSIERS.ERRORS.LOAD_FAILED';
+        persistDossier(null);
         patchState(store, {
+          activeDossierOrgId: null,
           dossierLoading: false,
           dossierError,
           dossiersLoaded: true
@@ -758,15 +847,53 @@ export const AuthStore = signalStore(
       }
     },
 
-    setActiveDossier(orgId: string): void {
+    setActiveDossier(orgId: string): boolean {
       const activeDossierOrgId = orgId.trim();
 
-      if (!activeDossierOrgId) {
-        return;
+      const dossier = store.dossiers().find(
+        (candidate) => candidate.orgId === activeDossierOrgId && candidate.status === 'ACTIVE'
+      );
+      if (store.activeWorkspaceType() !== 'ACCOUNTING_FIRM' || !dossier) {
+        persistDossier(null);
+        patchState(store, {
+          activeDossierOrgId: null,
+          dossierError: 'IDENTITY.CABINET_DOSSIERS.ERRORS.OPEN_FAILED'
+        });
+        return false;
       }
 
+      clearTenantQueries(queryClient, store.activeDossierOrgId());
       persistDossier(activeDossierOrgId);
       patchState(store, { activeDossierOrgId, dossierError: null });
+      return true;
+    },
+
+    async openDossier(orgId: string): Promise<boolean> {
+      const dossierOrgId = orgId.trim();
+      if (!dossierOrgId || store.dossierOpeningOrgId()) {
+        return false;
+      }
+
+      patchState(store, { dossierOpeningOrgId: dossierOrgId, dossierError: null });
+      try {
+        if (!store.dossiersLoaded()) {
+          await this.loadDossiers();
+        }
+        return this.setActiveDossier(dossierOrgId);
+      } finally {
+        patchState(store, { dossierOpeningOrgId: null });
+      }
+    },
+
+    enterCabinetContext(): void {
+      const previousDossierOrgId = store.activeDossierOrgId();
+      persistDossier(null);
+      clearTenantQueries(queryClient, previousDossierOrgId);
+      patchState(store, {
+        activeDossierOrgId: null,
+        dossierOpeningOrgId: null,
+        dossierError: null
+      });
     },
 
     setCreatedDossier(dossier: CabinetDossierSummary, activeDossierOrgId: string): void {
@@ -778,6 +905,7 @@ export const AuthStore = signalStore(
       persistDossier(selectedDossierOrgId);
       patchState(store, {
         activeDossierOrgId: selectedDossierOrgId,
+        dossierOpeningOrgId: null,
         dossiers: [...existingDossiers, dossier],
         dossierLoading: false,
         dossierError: null,

@@ -137,7 +137,7 @@ describe("Lot 6.3 simplified reporting", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
 
   test("returns a safe operational report from GET /reports/summary posted aggregates only", async () => {

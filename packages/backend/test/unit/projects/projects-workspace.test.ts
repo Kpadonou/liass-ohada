@@ -74,7 +74,7 @@ describe("projects workspace handlers", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
 
   test("GET /donors queries donor third-party records and returns frontend-safe DTOs", async () => {

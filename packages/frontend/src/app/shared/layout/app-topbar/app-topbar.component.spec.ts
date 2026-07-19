@@ -72,6 +72,7 @@ const translations = {
         HELP: 'Help',
         LIGHT_MODE: 'Switch to light mode',
         NO_DOSSIER: 'No dossier open',
+        OPEN_DOSSIER: 'Open a dossier',
         NO_WORKSPACE: 'Workspace',
         NEW_CLIENT_DOSSIER: 'New client dossier',
         PAGE_ACTIONS: 'Page actions',
@@ -614,7 +615,7 @@ describe('AppTopbarComponent', () => {
     renderText();
     const dossierText = activeDossierText();
 
-    expect(dossierText).toContain('No dossier open');
+    expect(dossierText).toContain('Open a dossier');
     expect(dossierText).not.toContain('Select a dossier');
   });
 

@@ -105,6 +105,7 @@
   "WORKSPACE_ALREADY_EXISTS": "Un espace initial existe déjà pour cet utilisateur.",
   "ONBOARDING_CREATE_FAILED": "Impossible de créer l’espace initial.",
   "ERROR_CABINET_WORKSPACE_REQUIRED": "Un espace cabinet comptable actif est requis.",
+  "ERROR_ACCOUNTING_DOSSIER_REQUIRED": "Une entreprise ou un dossier client actif est requis pour cette opération.",
   "CABINET_DOSSIER_ALREADY_EXISTS": "Ce dossier client existe déjà.",
   "CABINET_DOSSIER_CREATE_FAILED": "Impossible de créer le dossier client.",
   "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND": "Compte ou projet non trouvé.",

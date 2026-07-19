@@ -69,6 +69,7 @@ describe("handler-wrapper auth context", () => {
         status: "ACTIVE",
         cabinetId: "cab-001",
         accessSource: "DIRECT",
+        workspaceType: "COMPANY",
       }),
     });
 
@@ -135,6 +136,7 @@ describe("handler-wrapper auth context", () => {
         role: "ACCOUNTANT",
         status: "ACTIVE",
         accessSource: "DIRECT",
+        workspaceType: "COMPANY",
       }),
     });
 
@@ -150,6 +152,35 @@ describe("handler-wrapper auth context", () => {
       {},
       expect.objectContaining({ orgId: "test-org" }),
     );
+  });
+
+  test("rejects an accounting-firm organization for accounting handlers", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: marshall({
+        PK: "ORG#cabinet-org",
+        SK: "USER#user-123",
+        entityType: "USER_ORG_ACCESS",
+        orgId: "cabinet-org",
+        userId: "user-123",
+        role: "OWNER",
+        status: "ACTIVE",
+        accessSource: "DIRECT",
+        workspaceType: "ACCOUNTING_FIRM",
+      }),
+    });
+    const logic = jest.fn();
+    const handler = createHandler(z.object({}), logic);
+
+    const response = await handler(
+      createEvent({
+        headers: { "accept-language": "en", "x-org-id": "cabinet-org" },
+      }) as any,
+    );
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(403);
+    expect(body.message.code).toBe("ERROR_ACCOUNTING_DOSSIER_REQUIRED");
+    expect(logic).not.toHaveBeenCalled();
   });
 
   test("authenticated handler accepts Cognito subject without organization header", async () => {

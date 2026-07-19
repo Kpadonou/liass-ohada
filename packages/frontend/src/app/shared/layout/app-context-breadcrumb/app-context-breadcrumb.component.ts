@@ -1,0 +1,52 @@
+import { Component, computed, inject } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { TranslocoModule } from '@ngneat/transloco';
+
+import { UiStore, type AppPage } from '../../../core/state/ui.store';
+import { AuthStore } from '../../../domains/identity/data-access/auth.store';
+
+const pageLabelKeys: Record<AppPage, string> = {
+  administration: 'SHELL.PAGES.ADMINISTRATION',
+  'accounting.auxiliaryBalance': 'SHELL.PAGES.AUXILIARY_BALANCE',
+  'accounting.auxiliaryLedger': 'SHELL.PAGES.AUXILIARY_LEDGER',
+  'accounting.chartOfAccounts': 'SHELL.PAGES.CHART_OF_ACCOUNTS',
+  'accounting.entries': 'SHELL.PAGES.ENTRIES',
+  'accounting.fiscalYear': 'SHELL.PAGES.FISCAL_YEAR',
+  'accounting.generalLedger': 'SHELL.PAGES.GENERAL_LEDGER',
+  'accounting.journalBook': 'SHELL.PAGES.JOURNAL_BOOK',
+  'accounting.journals': 'SHELL.PAGES.JOURNALS',
+  'accounting.lettering': 'SHELL.PAGES.LETTERING',
+  'accounting.overview': 'SHELL.PAGES.ACCOUNTING_OVERVIEW',
+  'accounting.thirdParties': 'SHELL.PAGES.THIRD_PARTIES',
+  'accounting.trialBalance': 'SHELL.PAGES.TRIAL_BALANCE',
+  'cabinet.collaborators': 'SHELL.PAGES.CABINET_COLLABORATORS',
+  'cabinet.dashboard': 'SHELL.PAGES.CABINET_DASHBOARD',
+  'cabinet.deadlines': 'SHELL.PAGES.CABINET_DEADLINES',
+  'cabinet.dossiers': 'SHELL.PAGES.CLIENT_DOSSIERS',
+  'cabinet.missions': 'SHELL.PAGES.CABINET_MISSIONS',
+  'cabinet.settings': 'SHELL.PAGES.CABINET_SETTINGS',
+  dashboard: 'SHELL.PAGES.DASHBOARD',
+  projects: 'SHELL.NAV.PROJECTS',
+  reports: 'SHELL.NAV.REPORTS',
+  treasury: 'SHELL.NAV.TREASURY'
+};
+
+@Component({
+  selector: 'liass-app-context-breadcrumb',
+  imports: [MatIconModule, TranslocoModule],
+  templateUrl: './app-context-breadcrumb.component.html'
+})
+export class AppContextBreadcrumbComponent {
+  private readonly authStore = inject(AuthStore);
+  private readonly uiStore = inject(UiStore);
+
+  protected readonly contextNames = computed(() => {
+    const workspaceName = this.authStore.activeWorkspaceDisplayName();
+    const dossierName = this.authStore.activeDossierDisplayName();
+
+    return [workspaceName, this.authStore.isDossierContext() ? dossierName : null].filter(
+      (value): value is string => !!value
+    );
+  });
+  protected readonly pageLabelKey = computed(() => pageLabelKeys[this.uiStore.currentPage()]);
+}

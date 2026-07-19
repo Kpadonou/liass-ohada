@@ -1,4 +1,4 @@
-import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@ngneat/transloco';
@@ -9,6 +9,7 @@ import { vi } from 'vitest';
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { environment } from '../../../environments/environment';
 import { authInterceptor } from './auth.interceptor';
+import { TENANT_REQUEST_SCOPE } from './tenant-request-context';
 
 vi.mock('aws-amplify/auth', () => {
   const globalScope = globalThis as unknown as {
@@ -54,7 +55,10 @@ describe('authInterceptor', () => {
 
   it('adds bearer token and active organization headers for backend API calls', async () => {
     const authStore = TestBed.inject(AuthStore);
-    authStore.setTenant('org-test');
+    authStore.setCreatedWorkspace(
+      { orgId: 'org-test', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-test'
+    );
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
         accessToken: { toString: () => 'jwt-token' }
@@ -113,6 +117,26 @@ describe('authInterceptor', () => {
     await response;
   });
 
+  it('blocks accounting requests when an accounting firm has no open dossier', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-cabinet',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-cabinet'
+    );
+
+    const http = TestBed.inject(HttpClient);
+    await expect(
+      firstValueFrom(http.get(`${environment.apiBaseUrl}/accounts`))
+    ).rejects.toMatchObject({ status: 401, statusText: 'Missing active organization' });
+    httpMock.expectNone(`${environment.apiBaseUrl}/accounts`);
+    expect(fetchAuthSession).not.toHaveBeenCalled();
+  });
+
   it('uses the cabinet workspace for cabinet dossier API calls', async () => {
     const authStore = TestBed.inject(AuthStore);
     authStore.setCreatedWorkspace(
@@ -143,7 +167,11 @@ describe('authInterceptor', () => {
     } as never);
 
     const http = TestBed.inject(HttpClient);
-    const response = firstValueFrom(http.get(`${environment.apiBaseUrl}/cabinet/dossiers`));
+    const response = firstValueFrom(
+      http.get(`${environment.apiBaseUrl}/cabinet/dossiers`, {
+        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET')
+      })
+    );
     await Promise.resolve();
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/cabinet/dossiers`);
@@ -188,7 +216,11 @@ describe('authInterceptor', () => {
       accountingFramework: 'SYSCOHADA_REVISED'
     };
     const http = TestBed.inject(HttpClient);
-    const response = firstValueFrom(http.post(`${environment.apiBaseUrl}/cabinet/dossiers`, payload));
+    const response = firstValueFrom(
+      http.post(`${environment.apiBaseUrl}/cabinet/dossiers`, payload, {
+        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET')
+      })
+    );
     await Promise.resolve();
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/cabinet/dossiers`);

@@ -105,8 +105,10 @@ export class CabinetDashboardPage implements OnInit {
       return;
     }
 
-    this.authStore.setActiveDossier(dossier.orgId);
-    await this.router.navigate(['/dashboard'], { replaceUrl: true });
+    const opened = await this.authStore.openDossier(dossier.orgId);
+    if (opened) {
+      await this.router.navigate(['/dashboard'], { replaceUrl: true });
+    }
   }
 
   protected async openDossiers(): Promise<void> {

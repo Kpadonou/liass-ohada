@@ -1,4 +1,4 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import type {
   CabinetDossierSummary,
@@ -8,6 +8,7 @@ import type {
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
+import { TENANT_REQUEST_SCOPE } from '../../../core/http/tenant-request-context';
 
 @Injectable({ providedIn: 'root' })
 export class CabinetDossiersApi {
@@ -16,7 +17,9 @@ export class CabinetDossiersApi {
 
   async listDossiers(): Promise<CabinetDossierSummary[]> {
     const response = await firstValueFrom(
-      this.http.get<unknown>(`${this.apiBaseUrl}/cabinet/dossiers`)
+      this.http.get<unknown>(`${this.apiBaseUrl}/cabinet/dossiers`, {
+        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET')
+      })
     );
     const { ListCabinetDossiersResponseSchema } = await import('@liass-ohada/shared/shared');
 
@@ -30,7 +33,9 @@ export class CabinetDossiersApi {
       await import('@liass-ohada/shared/shared');
     const request = CreateCabinetDossierRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/cabinet/dossiers`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/cabinet/dossiers`, request, {
+        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET')
+      })
     );
 
     return CreateCabinetDossierResponseSchema.parse(response);

@@ -239,7 +239,7 @@ describe("treasury workspace handlers", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
 
   test("POST /treasury/accounts validates class 5 account and returns a public DTO", async () => {

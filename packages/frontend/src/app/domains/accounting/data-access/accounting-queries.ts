@@ -196,11 +196,7 @@ export class AccountingQueries {
   private readonly authStore = inject(AuthStore);
 
   tenantScope(): TenantScope {
-    if (this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-      return this.authStore.activeDossierOrgId() || this.authStore.activeWorkspaceOrgId() || NO_TENANT_SCOPE;
-    }
-
-    return this.authStore.activeWorkspaceOrgId() || NO_TENANT_SCOPE;
+    return this.authStore.effectiveAccountingOrgId() || NO_TENANT_SCOPE;
   }
 
   accountsQueryKey(options: ListAccountsParams = { limit: 100 }) {

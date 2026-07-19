@@ -39,6 +39,7 @@
     }
   },
   "SHELL": {
+    "BREADCRUMB_LABEL": "Active context breadcrumb",
     "AI_PANEL": {
       "EYEBROW": "AI-native",
       "TEXT": "Contextual accounting prompts will stay scoped to the active organization and OHADA rules."
@@ -53,7 +54,7 @@
       "CABINET_SETTINGS": "Cabinet settings",
       "CHART_OF_ACCOUNTS": "Chart of accounts",
       "CLIENT_DOSSIERS": "Client dossiers",
-      "COLLABORATORS": "Collaborators",
+      "COLLABORATORS": "Team",
       "DASHBOARD": "Dashboard",
       "DEADLINES": "Deadlines",
       "ENTRIES": "Entries",
@@ -64,7 +65,7 @@
       "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
-      "MISSIONS": "Missions",
+      "MISSIONS": "Accounting work",
       "PROJECTS": "Projects and funds",
       "REPORTS": "OHADA reports",
       "SECTION_LABEL": "Workspace",
@@ -76,10 +77,10 @@
     "PAGES": {
       "ACCOUNTING_OVERVIEW": "Overview",
       "ADMINISTRATION": "Administration",
-      "CABINET_COLLABORATORS": "Collaborators",
+      "CABINET_COLLABORATORS": "Team",
       "CABINET_DASHBOARD": "Cabinet dashboard",
       "CABINET_DEADLINES": "Deadlines",
-      "CABINET_MISSIONS": "Missions",
+      "CABINET_MISSIONS": "Accounting work",
       "CABINET_SETTINGS": "Cabinet settings",
       "CHART_OF_ACCOUNTS": "Chart of accounts",
       "CLIENT_DOSSIERS": "Client dossiers",
@@ -123,6 +124,7 @@
       "HELP": "Help",
       "LIGHT_MODE": "Switch to light mode",
       "NO_DOSSIER": "No dossier open",
+      "OPEN_DOSSIER": "Open a dossier",
       "NO_ORG": "No organization",
       "NO_WORKSPACE": "Workspace",
       "NEW_CLIENT_DOSSIER": "New client dossier",
@@ -2469,6 +2471,8 @@
         "DUPLICATE": "This client dossier already exists.",
         "LOAD_FAILED": "Client dossiers could not be loaded. Please retry.",
         "NETWORK": "The client dossier could not be created because the network connection failed.",
+        "OPEN_FAILED": "This dossier could not be opened. Select another client dossier or check your access.",
+        "RESTORE_FAILED": "This dossier is no longer accessible. Select another client dossier.",
         "SERVICE_UNAVAILABLE": "Client dossier management is not available for this workspace yet.",
         "VALIDATION": "The client dossier response could not be verified. Please retry."
       },

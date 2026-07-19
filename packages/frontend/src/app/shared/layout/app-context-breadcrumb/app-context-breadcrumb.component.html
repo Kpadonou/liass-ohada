@@ -1,0 +1,14 @@
+<nav
+  class="mb-3 flex min-w-0 items-center gap-1.5 overflow-hidden text-xs font-medium text-app-text-secondary"
+  [attr.aria-label]="'SHELL.BREADCRUMB_LABEL' | transloco"
+>
+  <mat-icon class="shrink-0 text-base text-brand-700 dark:text-brand-300" aria-hidden="true">home</mat-icon>
+  @for (contextName of contextNames(); track contextName) {
+    <mat-icon class="shrink-0 text-base text-slate-400" aria-hidden="true">chevron_right</mat-icon>
+    <span class="min-w-0 truncate">{{ contextName }}</span>
+  }
+  <mat-icon class="shrink-0 text-base text-slate-400" aria-hidden="true">chevron_right</mat-icon>
+  <span class="min-w-0 truncate font-semibold text-brand-700 dark:text-brand-300" aria-current="page">
+    {{ pageLabelKey() | transloco }}
+  </span>
+</nav>

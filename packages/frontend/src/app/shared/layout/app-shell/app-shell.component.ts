@@ -6,6 +6,7 @@ import { filter } from 'rxjs';
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { AppBackdropComponent } from '../app-backdrop/app-backdrop.component';
+import { AppContextBreadcrumbComponent } from '../app-context-breadcrumb/app-context-breadcrumb.component';
 import { AppSidebarComponent } from '../app-sidebar/app-sidebar.component';
 import { AppTopbarComponent } from '../app-topbar/app-topbar.component';
 
@@ -89,7 +90,13 @@ export function pageFromUrl(url: string): AppPage {
 
 @Component({
   selector: 'liass-app-shell',
-  imports: [AppBackdropComponent, AppSidebarComponent, AppTopbarComponent, RouterOutlet],
+  imports: [
+    AppBackdropComponent,
+    AppContextBreadcrumbComponent,
+    AppSidebarComponent,
+    AppTopbarComponent,
+    RouterOutlet
+  ],
   templateUrl: './app-shell.component.html'
 })
 export class AppShellComponent {

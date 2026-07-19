@@ -49,9 +49,10 @@ const getHeader = (
   return found?.[1];
 };
 
-export const createHandler = <T>(
+const createTenantHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
+  requiredWorkspaceType: "COMPANY" | "ACCOUNTING_FIRM",
 ) => {
   return async (
       event: any,
@@ -88,6 +89,15 @@ export const createHandler = <T>(
         orgId,
         userId,
       });
+
+      if (access.workspaceType !== requiredWorkspaceType) {
+        throw new AppError(
+          403,
+          requiredWorkspaceType === "ACCOUNTING_FIRM"
+            ? "ERROR_CABINET_WORKSPACE_REQUIRED"
+            : "ERROR_ACCOUNTING_DOSSIER_REQUIRED",
+        );
+      }
 
       const result = await logic(validatedData, {
         orgId,
@@ -127,6 +137,16 @@ export const createHandler = <T>(
     }
   };
 };
+
+export const createHandler = <T>(
+  schema: z.ZodSchema<T>,
+  logic: (data: T, context: HandlerContext) => Promise<any>,
+) => createTenantHandler(schema, logic, "COMPANY");
+
+export const createCabinetHandler = <T>(
+  schema: z.ZodSchema<T>,
+  logic: (data: T, context: HandlerContext) => Promise<any>,
+) => createTenantHandler(schema, logic, "ACCOUNTING_FIRM");
 
 export const createAuthenticatedHandler = <T>(
   schema: z.ZodSchema<T>,

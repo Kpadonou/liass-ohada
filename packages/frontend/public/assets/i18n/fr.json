@@ -39,6 +39,7 @@
     }
   },
   "SHELL": {
+    "BREADCRUMB_LABEL": "Fil d’Ariane du contexte actif",
     "AI_PANEL": {
       "EYEBROW": "IA native",
       "TEXT": "Les suggestions comptables resteront limitées à l’organisation active et aux règles OHADA."
@@ -53,7 +54,7 @@
       "CABINET_SETTINGS": "Paramètres du cabinet",
       "CHART_OF_ACCOUNTS": "Plan comptable",
       "CLIENT_DOSSIERS": "Dossiers clients",
-      "COLLABORATORS": "Collaborateurs",
+      "COLLABORATORS": "Équipe",
       "DASHBOARD": "Tableau de bord",
       "DEADLINES": "Échéances",
       "ENTRIES": "Écritures",
@@ -64,7 +65,7 @@
       "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
-      "MISSIONS": "Missions",
+      "MISSIONS": "Travaux comptables",
       "PROJECTS": "Projets et fonds",
       "REPORTS": "États OHADA",
       "SECTION_LABEL": "Espace",
@@ -76,10 +77,10 @@
     "PAGES": {
       "ACCOUNTING_OVERVIEW": "Vue d’ensemble",
       "ADMINISTRATION": "Administration",
-      "CABINET_COLLABORATORS": "Collaborateurs",
+      "CABINET_COLLABORATORS": "Équipe",
       "CABINET_DASHBOARD": "Tableau de bord cabinet",
       "CABINET_DEADLINES": "Échéances",
-      "CABINET_MISSIONS": "Missions",
+      "CABINET_MISSIONS": "Travaux comptables",
       "CABINET_SETTINGS": "Paramètres du cabinet",
       "CHART_OF_ACCOUNTS": "Plan comptable",
       "CLIENT_DOSSIERS": "Dossiers clients",
@@ -123,6 +124,7 @@
       "HELP": "Aide",
       "LIGHT_MODE": "Activer le mode clair",
       "NO_DOSSIER": "Aucun dossier ouvert",
+      "OPEN_DOSSIER": "Ouvrir un dossier",
       "NO_ORG": "Aucune organisation",
       "NO_WORKSPACE": "Espace de travail",
       "NEW_CLIENT_DOSSIER": "Nouveau dossier client",
@@ -2469,6 +2471,8 @@
         "DUPLICATE": "Ce dossier client existe déjà.",
         "LOAD_FAILED": "Les dossiers clients n’ont pas pu être chargés. Veuillez réessayer.",
         "NETWORK": "Le dossier client n’a pas pu être créé car la connexion réseau a échoué.",
+        "OPEN_FAILED": "Impossible d’ouvrir ce dossier. Sélectionnez un autre dossier client ou vérifiez vos autorisations.",
+        "RESTORE_FAILED": "Ce dossier n’est plus accessible. Sélectionnez un autre dossier client.",
         "SERVICE_UNAVAILABLE": "La gestion des dossiers clients n’est pas encore disponible pour cet espace.",
         "VALIDATION": "La réponse du dossier client n’a pas pu être vérifiée. Veuillez réessayer."
       },

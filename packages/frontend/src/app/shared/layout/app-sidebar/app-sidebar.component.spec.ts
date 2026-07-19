@@ -302,7 +302,7 @@ describe('AppSidebarComponent', () => {
     expect(uiStore.currentPage()).toBe('accounting.auxiliaryBalance');
   });
 
-  it('shows cabinet navigation on cabinet routes even when a dossier remains selected', () => {
+  it('shows cabinet navigation after entering a cabinet route clears the selected dossier', () => {
     const authStore = TestBed.inject(AuthStore);
     TestBed.inject(UiStore).setCurrentPage('cabinet.dossiers');
     authStore.setCreatedWorkspace(
@@ -325,6 +325,7 @@ describe('AppSidebarComponent', () => {
       },
       'org-client'
     );
+    authStore.enterCabinetContext();
 
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -336,6 +337,6 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('Balance auxiliaire');
     expect(text).not.toContain('Tiers');
     expect(text).not.toContain('Lettrage');
-    expect(authStore.activeDossierOrgId()).toBe('org-client');
+    expect(authStore.activeDossierOrgId()).toBeNull();
   });
 });

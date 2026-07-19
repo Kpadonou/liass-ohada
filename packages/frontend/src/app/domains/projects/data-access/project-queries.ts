@@ -1,15 +1,23 @@
 import { Injectable, inject } from '@angular/core';
 import { queryOptions } from '@tanstack/angular-query-experimental';
 
+import { AuthStore } from '../../identity/data-access/auth.store';
 import { ProjectsApi } from './projects.api';
+
+const NO_TENANT_SCOPE = 'no-active-tenant';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectQueries {
   private readonly projectsApi = inject(ProjectsApi);
+  private readonly authStore = inject(AuthStore);
+
+  tenantScope(): string {
+    return this.authStore.effectiveAccountingOrgId() || NO_TENANT_SCOPE;
+  }
 
   listProjects() {
     return queryOptions({
-      queryKey: ['projects'] as const,
+      queryKey: ['projects', this.tenantScope(), 'list'] as const,
       queryFn: () => this.projectsApi.listProjects(),
       staleTime: 60_000
     });
@@ -17,7 +25,7 @@ export class ProjectQueries {
 
   getProject(projectId: string) {
     return queryOptions({
-      queryKey: ['projects', 'detail', projectId] as const,
+      queryKey: ['projects', this.tenantScope(), 'detail', projectId] as const,
       queryFn: () => this.projectsApi.getProject(projectId),
       enabled: projectId.length > 0,
       staleTime: 30_000
@@ -26,7 +34,7 @@ export class ProjectQueries {
 
   listDonors() {
     return queryOptions({
-      queryKey: ['projects', 'donors'] as const,
+      queryKey: ['projects', this.tenantScope(), 'donors'] as const,
       queryFn: () => this.projectsApi.listDonors(),
       staleTime: 60_000
     });
@@ -34,7 +42,7 @@ export class ProjectQueries {
 
   listFundingSources(projectId: string) {
     return queryOptions({
-      queryKey: ['projects', 'funding-sources', projectId] as const,
+      queryKey: ['projects', this.tenantScope(), 'funding-sources', projectId] as const,
       queryFn: () => this.projectsApi.listFundingSources(projectId),
       enabled: projectId.length > 0,
       staleTime: 30_000
@@ -43,7 +51,7 @@ export class ProjectQueries {
 
   listBudgetLines(projectId: string, year: string) {
     return queryOptions({
-      queryKey: ['projects', 'budget-lines', projectId, year] as const,
+      queryKey: ['projects', this.tenantScope(), 'budget-lines', projectId, year] as const,
       queryFn: () => this.projectsApi.listBudgetLines(projectId, year),
       enabled: projectId.length > 0 && /^\d{4}$/.test(year),
       staleTime: 30_000
@@ -52,7 +60,7 @@ export class ProjectQueries {
 
   getProjectReport(projectId: string, year: string) {
     return queryOptions({
-      queryKey: ['projects', 'report', projectId, year] as const,
+      queryKey: ['projects', this.tenantScope(), 'report', projectId, year] as const,
       queryFn: () => this.projectsApi.getProjectReport(projectId, year),
       enabled: projectId.length > 0 && /^\d{4}$/.test(year),
       staleTime: 30_000
@@ -61,7 +69,7 @@ export class ProjectQueries {
 
   getProjectsSummary(year: string) {
     return queryOptions({
-      queryKey: ['projects', 'summary', year] as const,
+      queryKey: ['projects', this.tenantScope(), 'summary', year] as const,
       queryFn: () => this.projectsApi.getProjectsSummary(year),
       enabled: /^\d{4}$/.test(year),
       staleTime: 30_000

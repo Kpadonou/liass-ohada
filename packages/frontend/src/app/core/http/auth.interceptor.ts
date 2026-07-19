@@ -6,28 +6,17 @@ import { catchError, from, switchMap, throwError } from 'rxjs';
 
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { environment } from '../../../environments/environment';
+import { TENANT_REQUEST_SCOPE } from './tenant-request-context';
 
 const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 const workspacesDiscoveryUrl = `${apiBaseUrl}/me/workspaces`;
-const cabinetDossiersUrl = `${apiBaseUrl}/cabinet/dossiers`;
-
-function tenantOrgIdForRequest(authStore: InstanceType<typeof AuthStore>, url: string): string | null {
-  const activeWorkspaceOrgId = authStore.activeWorkspaceOrgId();
-  const urlWithoutQuery = url.split('?')[0];
-
-  if (!activeWorkspaceOrgId) {
-    return null;
-  }
-
-  if (urlWithoutQuery === cabinetDossiersUrl) {
-    return activeWorkspaceOrgId;
-  }
-
-  if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-    return authStore.activeDossierOrgId() || activeWorkspaceOrgId;
-  }
-
-  return activeWorkspaceOrgId;
+function tenantOrgIdForRequest(
+  authStore: InstanceType<typeof AuthStore>,
+  request: Parameters<HttpInterceptorFn>[0]
+): string | null {
+  return request.context.get(TENANT_REQUEST_SCOPE) === 'CABINET'
+    ? authStore.activeWorkspaceOrgId()
+    : authStore.effectiveAccountingOrgId();
 }
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
@@ -41,7 +30,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const isWorkspaceDiscoveryRequest =
     request.url === workspacesDiscoveryUrl &&
     (request.method === 'GET' || request.method === 'POST');
-  const tenantOrgId = tenantOrgIdForRequest(authStore, request.url);
+  const tenantOrgId = tenantOrgIdForRequest(authStore, request);
 
   if (!isWorkspaceDiscoveryRequest && !tenantOrgId) {
     return throwError(

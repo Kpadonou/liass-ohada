@@ -24,12 +24,14 @@ export class CabinetDossierSelectPage implements OnInit {
   }
 
   protected async selectDossier(dossier: CabinetDossierSummary): Promise<void> {
-    if (this.authStore.dossierLoading()) {
+    if (this.authStore.dossierLoading() || this.authStore.dossierOpening()) {
       return;
     }
 
-    this.authStore.setActiveDossier(dossier.orgId);
-    await this.router.navigate(['/dashboard'], { replaceUrl: true });
+    const opened = await this.authStore.openDossier(dossier.orgId);
+    if (opened) {
+      await this.router.navigate(['/dashboard'], { replaceUrl: true });
+    }
   }
 
   protected async createDossier(): Promise<void> {

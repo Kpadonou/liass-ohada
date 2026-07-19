@@ -1,4 +1,4 @@
-import { signal } from '@angular/core';
+import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
@@ -41,7 +41,12 @@ describe('AccountingFiscalYearContextService', () => {
           useValue: {
             activeDossierOrgId,
             activeWorkspaceOrgId,
-            activeWorkspaceType
+            activeWorkspaceType,
+            effectiveAccountingOrgId: computed(() =>
+              activeWorkspaceType() === 'ACCOUNTING_FIRM'
+                ? activeDossierOrgId()
+                : activeWorkspaceOrgId()
+            )
           }
         }
       ]

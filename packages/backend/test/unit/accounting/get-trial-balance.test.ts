@@ -63,7 +63,7 @@ describe("get-trial-balance handler", () => {
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
-      .mockResolvedValue({ role: "ACCOUNTANT" });
+      .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
     dynamoMock.on(GetItemCommand).resolves({ Item: fiscalYearItem });
     dynamoMock.on(BatchGetItemCommand).resolves({
       Responses: {
