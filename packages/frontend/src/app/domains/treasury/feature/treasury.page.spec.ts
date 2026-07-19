@@ -346,7 +346,9 @@ describe('TreasuryPage accounts tab', () => {
           currency: 'XOF',
           treasuryAccountId: '52100000',
           year: '2026'
-        }
+        },
+        maxWidth: '95vw',
+        width: '760px'
       })
     );
   });

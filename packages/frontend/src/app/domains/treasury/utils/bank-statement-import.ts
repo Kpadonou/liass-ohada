@@ -64,6 +64,7 @@ const FIELD_ALIASES = new Map<string, CanonicalField>([
   ['currency', 'currency'],
   ['devise', 'currency'],
   ['externalid', 'externalId'],
+  ['identifiantexterne', 'externalId'],
   ['idexterne', 'externalId']
 ]);
 

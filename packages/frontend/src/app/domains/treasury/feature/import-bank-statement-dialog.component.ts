@@ -15,6 +15,7 @@ import {
   type BankStatementImportPreview,
   type BankStatementImportRow
 } from '../utils/bank-statement-import';
+import { downloadBankStatementTemplate } from '../utils/bank-statement-template';
 
 export interface ImportBankStatementDialogData {
   treasuryAccountId: string;
@@ -49,6 +50,7 @@ export class ImportBankStatementDialogComponent {
   protected readonly result = signal<ImportStatementLinesResult | null>(null);
   protected readonly errorKey = signal<string | null>(null);
   protected readonly errorMessage = signal<string | null>(null);
+  protected readonly selectedFileName = signal<string | null>(null);
 
   protected readonly canImport = computed(() => {
     const preview = this.preview();
@@ -63,6 +65,22 @@ export class ImportBankStatementDialogComponent {
 
   protected readonly allRows = computed(() => this.preview()?.rows.slice(0, 100) ?? []);
 
+  protected isStepActive(index: number): boolean {
+    if (index === 0) {
+      return true;
+    }
+
+    if (index === 1) {
+      return Boolean(this.preview());
+    }
+
+    return Boolean(this.result());
+  }
+
+  protected async downloadTemplate(): Promise<void> {
+    await downloadBankStatementTemplate();
+  }
+
   protected async handleFileSelected(event: Event): Promise<void> {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
@@ -74,6 +92,7 @@ export class ImportBankStatementDialogComponent {
     this.result.set(null);
     this.errorKey.set(null);
     this.errorMessage.set(null);
+    this.selectedFileName.set(file.name);
     this.parsing.set(true);
 
     try {

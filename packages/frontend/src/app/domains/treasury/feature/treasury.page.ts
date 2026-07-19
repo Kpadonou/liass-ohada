@@ -481,10 +481,10 @@ export class TreasuryPage {
         year: this.selectedYear(),
         currency: account.currency
       },
-      maxWidth: 'calc(100vw - 32px)',
+      maxWidth: '95vw',
       panelClass: 'liass-dialog-panel',
       restoreFocus: true,
-      width: '1100px'
+      width: '760px'
     });
   }
 

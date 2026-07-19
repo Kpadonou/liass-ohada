@@ -340,6 +340,7 @@
       "ACTION": "Importer le relevé",
       "CONFIRM": "Confirmer l’import",
       "DIALOG": {
+        "SUBTITLE": "Chargez un fichier Excel ou CSV, vérifiez l’aperçu, puis confirmez l’import.",
         "TITLE": "Importer un relevé bancaire"
       },
       "ERRORS": {
@@ -348,12 +349,16 @@
       },
       "FILE": {
         "CHOOSE": "Choisir un fichier",
+        "COLUMNS": "Le modèle Excel contient les colonnes attendues et des exemples de lignes à compléter.",
         "HELP": "Formats acceptés : Excel .xlsx avec en-têtes, ou CSV séparé par virgule ou point-virgule.",
         "PARSING": "Lecture du fichier…",
-        "TITLE": "Fichier de relevé"
+        "SUPPORTED_FORMATS": "Excel .xlsx ou CSV",
+        "TITLE": "Fichier à importer",
+        "UPLOAD_TITLE": "Choisissez un fichier Excel ou CSV"
       },
       "PREVIEW": {
         "BLOCKED": "Corrigez les lignes invalides dans le fichier puis rechargez-le avant de confirmer l’import.",
+        "INVALID_HINT": "Certaines lignes contiennent des erreurs. Corrigez le fichier puis réessayez.",
         "INFLOWS": "Entrées",
         "OUTFLOWS": "Sorties",
         "REJECTED_ROWS": "Rejetées",
@@ -367,6 +372,17 @@
         "VALID_ROWS": "Valides"
       },
       "RESULT": "{{imported}} importée(s), {{skipped}} doublon(s), {{rejected}} rejetée(s)",
+      "STEPS": {
+        "CONFIRMATION": "Confirmation",
+        "FILE": "Fichier",
+        "LABEL": "Étapes de l’import",
+        "PREVIEW": "Aperçu"
+      },
+      "TEMPLATE": {
+        "DOWNLOAD": "Télécharger le modèle",
+        "HELP": "Téléchargez le modèle Excel prêt à remplir.",
+        "QUESTION": "Vous ne savez pas quel format utiliser ?"
+      },
       "VALIDATION": {
         "INVALID_AMOUNT": "Montant invalide ou non positif.",
         "INVALID_DATE": "Date invalide ou ambiguë.",

@@ -340,6 +340,7 @@
       "ACTION": "Import statement",
       "CONFIRM": "Confirm import",
       "DIALOG": {
+        "SUBTITLE": "Upload an Excel or CSV file, review the preview, then confirm the import.",
         "TITLE": "Import bank statement"
       },
       "ERRORS": {
@@ -348,12 +349,16 @@
       },
       "FILE": {
         "CHOOSE": "Choose file",
+        "COLUMNS": "The Excel template includes the required columns and sample rows to help you complete it correctly.",
         "HELP": "Accepted formats: Excel .xlsx with headers, or comma/semicolon CSV.",
         "PARSING": "Reading file...",
-        "TITLE": "Statement file"
+        "SUPPORTED_FORMATS": "Excel .xlsx or CSV",
+        "TITLE": "File to import",
+        "UPLOAD_TITLE": "Choose an Excel or CSV file"
       },
       "PREVIEW": {
         "BLOCKED": "Fix invalid rows in the file and upload it again before confirming the import.",
+        "INVALID_HINT": "Some rows contain errors. Fix the file and try again.",
         "INFLOWS": "Inflows",
         "OUTFLOWS": "Outflows",
         "REJECTED_ROWS": "Rejected",
@@ -367,6 +372,17 @@
         "VALID_ROWS": "Valid"
       },
       "RESULT": "{{imported}} imported, {{skipped}} duplicate(s), {{rejected}} rejected",
+      "STEPS": {
+        "CONFIRMATION": "Confirmation",
+        "FILE": "File",
+        "LABEL": "Import steps",
+        "PREVIEW": "Preview"
+      },
+      "TEMPLATE": {
+        "DOWNLOAD": "Download template",
+        "HELP": "Download the ready-to-fill Excel template.",
+        "QUESTION": "Not sure which format to use?"
+      },
       "VALIDATION": {
         "INVALID_AMOUNT": "Amount is invalid or not positive.",
         "INVALID_DATE": "Date is invalid or ambiguous.",

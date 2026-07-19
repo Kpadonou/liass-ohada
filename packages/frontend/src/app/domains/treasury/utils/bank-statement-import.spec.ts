@@ -3,6 +3,40 @@ import { Workbook } from 'exceljs';
 import { parseBankStatementCsvText, parseBankStatementFile } from './bank-statement-import';
 
 describe('bank statement import parser', () => {
+  it('maps the official French template headers to canonical backend fields', () => {
+    const preview = parseBankStatementCsvText(
+      [
+        'Date opération*;Date valeur;Référence;Libellé*;Montant*;Sens*;Devise;Identifiant externe',
+        '2026-01-15;2026-01-15;VIR-001;Encaissement client;150000;Entrée;XOF;BANK-2026-001',
+        '2026-01-16;2026-01-16;FRAIS-001;Frais bancaires;2500;Sortie;XOF;BANK-2026-002'
+      ].join('\n')
+    );
+
+    expect(preview.invalidRows).toHaveLength(0);
+    expect(preview.validRows.map((row) => row.line)).toEqual([
+      expect.objectContaining({
+        statementDate: '2026-01-15',
+        valueDate: '2026-01-15',
+        reference: 'VIR-001',
+        description: 'Encaissement client',
+        amount: 150000,
+        direction: 'INFLOW',
+        currency: 'XOF',
+        externalId: 'BANK-2026-001'
+      }),
+      expect.objectContaining({
+        statementDate: '2026-01-16',
+        valueDate: '2026-01-16',
+        reference: 'FRAIS-001',
+        description: 'Frais bancaires',
+        amount: 2500,
+        direction: 'OUTFLOW',
+        currency: 'XOF',
+        externalId: 'BANK-2026-002'
+      })
+    ]);
+  });
+
   it('parses semicolon CSV with French aliases and quoted fields', () => {
     const preview = parseBankStatementCsvText(
       [

@@ -43,6 +43,7 @@ const translations = {
         FIELDS: {
           AMOUNT: 'Amount',
           COUNTERPARTY: 'Counterparty account to post',
+          COUNTERPARTY_HELP: 'Example helper.',
           DATE: 'Date',
           DIRECTION: 'Direction',
           JOURNAL: 'Journal',
