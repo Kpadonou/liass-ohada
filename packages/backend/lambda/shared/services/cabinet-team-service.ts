@@ -1,6 +1,7 @@
 import { ConditionalCheckFailedException } from "@aws-sdk/client-dynamodb";
 import {
   CabinetMemberSchema,
+  CabinetDossierAssignmentMutationResponseSchema,
   GetCabinetMemberResponseSchema,
   ListCabinetDossierMembersResponseSchema,
   ListCabinetMemberAssignmentsResponseSchema,
@@ -92,6 +93,149 @@ async function assertAssignableDossiers(
 }
 
 export class CabinetTeamService {
+  private static async authorizeDossierAssignmentMutation(input: {
+    context: CabinetRequestContext;
+    dossierOrgId: string;
+    targetUserId: string;
+  }) {
+    const authorized = await CabinetAuthorizationService.requireActiveMembership(
+      input.context,
+    );
+    if (
+      authorized.caller.cabinetRole !== "CABINET_ADMIN" &&
+      authorized.caller.cabinetRole !== "SUPERVISOR"
+    ) {
+      throw new AppError(403, "CABINET_MEMBER_ROLE_FORBIDDEN");
+    }
+    await assertAssignableDossiers(authorized.cabinetId, [input.dossierOrgId]);
+    const target = await CabinetTeamRepository.getMember(
+      authorized.cabinetOrgId,
+      input.targetUserId,
+    );
+    if (!target) throw new AppError(404, "CABINET_MEMBER_NOT_FOUND");
+    if (target.status !== "ACTIVE") {
+      throw new AppError(403, "CABINET_MEMBER_NOT_ACTIVE");
+    }
+    if (!target.cabinetRole) {
+      throw new AppError(403, "CABINET_MEMBER_ROLE_REQUIRED");
+    }
+    if (target.cabinetRole === "CABINET_ADMIN") {
+      throw new AppError(403, "CABINET_SUPERVISOR_TARGET_ROLE_FORBIDDEN");
+    }
+
+    if (authorized.caller.cabinetRole === "SUPERVISOR") {
+      if (authorized.caller.userId === input.targetUserId) {
+        throw new AppError(403, "CABINET_SUPERVISOR_TARGET_ROLE_FORBIDDEN");
+      }
+      const supervisorAssignment = await CabinetTeamRepository.getAssignment({
+        cabinetOrgId: authorized.cabinetOrgId,
+        dossierOrgId: input.dossierOrgId,
+        userId: authorized.caller.userId,
+      });
+      if (!supervisorAssignment) {
+        throw new AppError(403, "CABINET_SUPERVISOR_ASSIGNMENT_REQUIRED");
+      }
+      if (
+        target.cabinetRole !== "COLLABORATOR" &&
+        target.cabinetRole !== "READER"
+      ) {
+        throw new AppError(403, "CABINET_SUPERVISOR_TARGET_ROLE_FORBIDDEN");
+      }
+    }
+
+    const cabinet = await CabinetTeamRepository.getCabinetMetadata(
+      authorized.cabinetId,
+    );
+    if (cabinet?.ownerUserId === input.targetUserId) {
+      throw new AppError(403, "CABINET_SUPERVISOR_TARGET_ROLE_FORBIDDEN");
+    }
+    return authorized;
+  }
+
+  static async addDossierAssignment(
+    context: CabinetRequestContext,
+    dossierOrgId: string,
+    targetUserId: string,
+  ) {
+    const authorized = await this.authorizeDossierAssignmentMutation({
+      context,
+      dossierOrgId,
+      targetUserId,
+    });
+    const assignment: CabinetDossierAssignmentRecord = {
+      assignedAt: new Date().toISOString(),
+      assignedBy: authorized.caller.userId,
+      cabinetOrgId: authorized.cabinetOrgId,
+      dossierOrgId,
+      userId: targetUserId,
+    };
+    try {
+      await CabinetTeamRepository.addAssignment(assignment);
+    } catch (error) {
+      if (error instanceof ConditionalCheckFailedException) {
+        throw new AppError(409, "CABINET_DOSSIER_ASSIGNMENT_EXISTS");
+      }
+      throw error;
+    }
+    console.info("[CABINET_ASSIGNMENT_AUDIT]", {
+      action: "CABINET_DOSSIER_ASSIGNMENT_ADDED",
+      actorUserId: authorized.caller.userId,
+      cabinetOrgId: authorized.cabinetOrgId,
+      dossierOrgId,
+      result: "SUCCESS",
+      targetUserId,
+      timestamp: assignment.assignedAt,
+    });
+    return CabinetDossierAssignmentMutationResponseSchema.parse({
+      assignment: assignmentDto(assignment),
+    });
+  }
+
+  static async removeDossierAssignment(
+    context: CabinetRequestContext,
+    dossierOrgId: string,
+    targetUserId: string,
+  ) {
+    const authorized = await this.authorizeDossierAssignmentMutation({
+      context,
+      dossierOrgId,
+      targetUserId,
+    });
+    const existingAssignment = await CabinetTeamRepository.getAssignment({
+      cabinetOrgId: authorized.cabinetOrgId,
+      dossierOrgId,
+      userId: targetUserId,
+    });
+    if (!existingAssignment) {
+      throw new AppError(404, "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND");
+    }
+    try {
+      await CabinetTeamRepository.removeAssignment({
+        cabinetOrgId: authorized.cabinetOrgId,
+        dossierOrgId,
+        userId: targetUserId,
+      });
+    } catch (error) {
+      if (error instanceof ConditionalCheckFailedException) {
+        throw new AppError(404, "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND");
+      }
+      throw error;
+    }
+    const removedAt = new Date().toISOString();
+    console.info("[CABINET_ASSIGNMENT_AUDIT]", {
+      action: "CABINET_DOSSIER_ASSIGNMENT_REMOVED",
+      actorUserId: authorized.caller.userId,
+      cabinetOrgId: authorized.cabinetOrgId,
+      dossierOrgId,
+      result: "SUCCESS",
+      targetUserId,
+      timestamp: removedAt,
+    });
+    return CabinetDossierAssignmentMutationResponseSchema.parse({
+      assignment: assignmentDto(existingAssignment),
+    });
+  }
+
   static async listMembers(
     context: CabinetRequestContext,
     request: ListCabinetMembersRequest,

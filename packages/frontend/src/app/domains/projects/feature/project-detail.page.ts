@@ -21,6 +21,7 @@ import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.com
 import { LiassStatCardComponent } from '../../../shared/ui/stat-card/stat-card.component';
 import { LiassStatusChipComponent, type LiassStatusTone } from '../../../shared/ui/status-chip/status-chip.component';
 import { ProjectQueries } from '../data-access/project-queries';
+import { AuthStore } from '../../identity/data-access/auth.store';
 import { CreateBudgetLineDialogComponent } from './create-budget-line-dialog.component';
 import { CreateFundingSourceDialogComponent } from './create-funding-source-dialog.component';
 
@@ -43,6 +44,8 @@ import { CreateFundingSourceDialogComponent } from './create-funding-source-dial
   templateUrl: './project-detail.page.html'
 })
 export class ProjectDetailPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly dialog = inject(MatDialog);
   private readonly projectQueries = inject(ProjectQueries);
   private readonly route = inject(ActivatedRoute);

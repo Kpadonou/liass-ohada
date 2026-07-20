@@ -18,6 +18,7 @@ import {
 } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
 @Component({
@@ -38,6 +39,8 @@ import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fisca
   templateUrl: './entry-detail.page.html'
 })
 export class EntryDetailPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingQueries = inject(AccountingQueries);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly notification = inject(NotificationService);

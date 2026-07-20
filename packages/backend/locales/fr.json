@@ -212,6 +212,16 @@
   "CABINET_DOSSIER_NOT_FOUND": "Dossier client introuvable.",
   "CABINET_DOSSIER_INACTIVE": "Ce dossier client est inactif.",
   "CABINET_DOSSIER_NOT_OWNED": "Ce dossier client n’appartient pas au cabinet actif.",
+  "CABINET_DOSSIER_ASSIGNMENT_REQUIRED": "Vous n’êtes plus affecté à ce dossier.",
+  "CABINET_DOSSIER_ACCESS_FORBIDDEN": "Ce dossier n’est plus accessible.",
+  "CABINET_DOSSIER_READ_ONLY": "Cette action nécessite un accès en modification ; votre accès au dossier est en lecture seule.",
+  "CABINET_DOSSIER_ACCESS_REVOKED": "Votre accès à ce dossier a été révoqué.",
+  "CABINET_SUPERVISOR_ASSIGNMENT_REQUIRED": "Vous ne pouvez gérer les affectations que pour les dossiers que vous supervisez.",
+  "CABINET_SUPERVISOR_TARGET_ROLE_FORBIDDEN": "Un superviseur ne peut gérer que les affectations des collaborateurs et lecteurs.",
+  "ACCOUNTING_ACCESS_CONTEXT_INVALID": "Le contexte comptable sélectionné n’est pas valide.",
+  "ACCOUNTING_PERMISSION_NOT_CONFIGURED": "La configuration des accès comptables est indisponible.",
+  "CABINET_DOSSIER_ASSIGNMENT_EXISTS": "Ce membre est déjà affecté au dossier client.",
+  "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND": "Ce membre n’est pas affecté au dossier client.",
   "CABINET_ASSIGNMENT_NOT_FOUND": "Affectation au dossier client introuvable.",
   "CABINET_ASSIGNMENT_FORBIDDEN": "Votre rôle au sein du cabinet ne permet pas de gérer les affectations."
 }

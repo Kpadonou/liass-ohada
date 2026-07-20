@@ -25,6 +25,7 @@ import {
   saveTablePreferences
 } from '../../../../shared/ui/table-preferences/table-preferences.storage';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { CreateJournalDialogComponent } from './create-journal-dialog.component';
 import { DisableJournalDialogComponent } from './disable-journal-dialog.component';
 
@@ -65,6 +66,8 @@ const JOURNAL_TABLE_COLUMNS: LiassTableColumnPreference[] = [
   templateUrl: './journals.page.html'
 })
 export class JournalsPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly dialog = inject(MatDialog);
   private readonly queryClient = inject(QueryClient);

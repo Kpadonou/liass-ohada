@@ -1,5 +1,7 @@
 import {
+  BatchGetItemCommand,
   DynamoDBClient,
+  GetItemCommand,
   QueryCommand,
   ScanCommand,
   TransactionCanceledException,
@@ -47,6 +49,18 @@ describe("CabinetDossierService", () => {
   });
 
   test("lists client dossiers through cabinet dossier GSI and excludes the cabinet self-link", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: marshall({
+        entityType: "USER_ORG_ACCESS",
+        orgId: "org-cabinet",
+        userId: "user-123",
+        cabinetId: "cab-123",
+        cabinetRole: "CABINET_ADMIN",
+        workspaceType: "ACCOUNTING_FIRM",
+        status: "ACTIVE",
+        updatedAt: "2026-06-03T00:00:00.000Z",
+      }),
+    });
     dynamoMock.on(QueryCommand).resolves({
       Items: [
         marshall({
@@ -87,6 +101,7 @@ describe("CabinetDossierService", () => {
         status: "ACTIVE",
         createdAt: "2026-06-03T00:00:00.000Z",
         updatedAt: "2026-06-03T00:00:00.000Z",
+        accessMode: "READ_WRITE",
       },
     ]);
     expect(dynamoMock.commandCalls(QueryCommand)[0].args[0].input).toMatchObject({
@@ -112,6 +127,87 @@ describe("CabinetDossierService", () => {
       messageCode: "ERROR_CABINET_WORKSPACE_REQUIRED",
     });
     expect(dynamoMock.commandCalls(QueryCommand)).toHaveLength(0);
+  });
+
+  test("lists only exact assigned dossiers for a Reader with read-only access", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: marshall({
+        entityType: "USER_ORG_ACCESS",
+        orgId: "org-cabinet",
+        userId: "user-123",
+        cabinetId: "cab-123",
+        cabinetRole: "READER",
+        workspaceType: "ACCOUNTING_FIRM",
+        status: "ACTIVE",
+        updatedAt: "2026-06-03T00:00:00.000Z",
+      }),
+    });
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [
+        marshall({
+          PK: "CABINET#org-cabinet",
+          SK: "ASSIGNMENT#USER#user-123#DOSSIER#org-client",
+          entityType: "CABINET_DOSSIER_ASSIGNMENT",
+          cabinetOrgId: "org-cabinet",
+          userId: "user-123",
+          dossierOrgId: "org-client",
+          assignedBy: "admin-1",
+          assignedAt: "2026-06-03T00:00:00.000Z",
+        }),
+      ],
+    });
+    dynamoMock.on(BatchGetItemCommand).resolves({
+      Responses: {
+        "liass-ohada-test-accounting-table": [
+          marshall({
+            PK: "CABINET#cab-123",
+            SK: "DOSSIER#org-client",
+            entityType: "CABINET_DOSSIER",
+            cabinetId: "cab-123",
+            orgId: "org-client",
+            relationship: "CLIENT",
+            status: "ACTIVE",
+          }),
+          marshall({
+            PK: "ORG#org-client",
+            SK: "ORG#METADATA",
+            entityType: "ORGANIZATION",
+            orgId: "org-client",
+            name: "Client SARL",
+            country: "BJ",
+            accountingFramework: "SYSCOHADA_REVISED",
+            workspaceType: "COMPANY",
+            status: "ACTIVE",
+            createdAt: "2026-06-03T00:00:00.000Z",
+            updatedAt: "2026-06-03T00:00:00.000Z",
+          }),
+        ],
+      },
+    });
+
+    await expect(
+      CabinetDossierService.listClientDossiers(accountingFirmContext),
+    ).resolves.toEqual({
+      dossiers: [
+        expect.objectContaining({
+          accessMode: "READ_ONLY",
+          displayName: "Client SARL",
+          orgId: "org-client",
+        }),
+      ],
+    });
+    expect(dynamoMock.commandCalls(QueryCommand)[0].args[0].input).toMatchObject({
+      KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+    });
+    expect(
+      dynamoMock.commandCalls(QueryCommand)[0].args[0].input.IndexName,
+    ).toBeUndefined();
+    expect(
+      dynamoMock.commandCalls(BatchGetItemCommand)[0].args[0].input.RequestItems?.[
+        "liass-ohada-test-accounting-table"
+      ],
+    ).toMatchObject({ ConsistentRead: true });
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 
   test("creates client organization, cabinet link, and materialized access in one transaction", async () => {

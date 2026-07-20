@@ -99,6 +99,7 @@ import { z } from 'zod';
 
 import { type ApiMutationResult, userMessageFromResponse } from '../../../core/notifications/notification-message';
 import { environment } from '../../../../environments/environment';
+import { accountingWriteContext } from '../../../core/http/tenant-request-context';
 
 export interface PaginatedResult<T> {
   items: T[];
@@ -284,7 +285,9 @@ export class AccountingApi {
   async createThirdParty(payload: CreateThirdPartyRequest): Promise<ApiMutationResult<ThirdPartyDto>> {
     const request = CreateThirdPartyRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/third-parties`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/third-parties`, request, {
+        context: accountingWriteContext()
+      })
     );
     const parsed = ThirdPartyResponseSchema.parse(normalizeThirdPartyMutationResponse(response));
 
@@ -299,6 +302,7 @@ export class AccountingApi {
     const request = UpdateThirdPartyRequestSchema.parse(payload);
     const response = await firstValueFrom(
       this.http.patch<unknown>(this.thirdPartyUrl(thirdPartyId), request, {
+        context: accountingWriteContext(),
         params: this.thirdPartyTypeParams(type)
       })
     );
@@ -332,7 +336,9 @@ export class AccountingApi {
   async createAccount(payload: CreateAccountRequest): Promise<ApiMutationResult<AccountDto>> {
     const request = CreateAccountRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/accounts`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/accounts`, request, {
+        context: accountingWriteContext()
+      })
     );
     const parsed = AccountResponseSchema.parse(response);
 
@@ -342,7 +348,9 @@ export class AccountingApi {
   async updateAccount(accountId: string, payload: UpdateAccountRequest): Promise<ApiMutationResult<AccountDto>> {
     const request = UpdateAccountRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.put<unknown>(this.accountUrl(accountId), request)
+      this.http.put<unknown>(this.accountUrl(accountId), request, {
+        context: accountingWriteContext()
+      })
     );
     const parsed = AccountResponseSchema.parse(response);
 
@@ -351,7 +359,9 @@ export class AccountingApi {
 
   async disableAccount(accountId: string): Promise<ApiMutationResult<AccountDto>> {
     const response = await firstValueFrom(
-      this.http.delete<unknown>(this.accountUrl(accountId))
+      this.http.delete<unknown>(this.accountUrl(accountId), {
+        context: accountingWriteContext()
+      })
     );
     const parsed = AccountResponseSchema.parse(response);
 
@@ -377,7 +387,9 @@ export class AccountingApi {
   async createJournal(payload: CreateJournalRequest): Promise<ApiMutationResult<JournalDto>> {
     const request = CreateJournalRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/journals`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/journals`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return parseJournalMutationResponse(response);
@@ -386,7 +398,9 @@ export class AccountingApi {
   async updateJournal(journalCode: string, payload: UpdateJournalRequest): Promise<ApiMutationResult<JournalDto>> {
     const request = UpdateJournalRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.put<unknown>(this.journalUrl(journalCode), request)
+      this.http.put<unknown>(this.journalUrl(journalCode), request, {
+        context: accountingWriteContext()
+      })
     );
 
     return parseJournalMutationResponse(response);
@@ -394,7 +408,9 @@ export class AccountingApi {
 
   async disableJournal(journalCode: string): Promise<ApiMutationResult<void>> {
     const response = await firstValueFrom(
-      this.http.delete<unknown>(this.journalUrl(journalCode))
+      this.http.delete<unknown>(this.journalUrl(journalCode), {
+        context: accountingWriteContext()
+      })
     );
 
     DisableJournalResponseSchema.parse(response);
@@ -440,7 +456,9 @@ export class AccountingApi {
   async postEntry(payload: CreateEntryRequest): Promise<string> {
     const request = CreateEntryRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/entries`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/entries`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return PostEntryResponseSchema.parse(response).entryId;
@@ -461,7 +479,9 @@ export class AccountingApi {
     const { CreateEntryDraftRequestSchema, EntryDraftResponseSchema } = await import('@liass-ohada/shared/accounting');
     const request = CreateEntryDraftRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/entries/drafts`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/entries/drafts`, request, {
+        context: accountingWriteContext()
+      })
     );
     const parsed = EntryDraftResponseSchema.parse(response);
 
@@ -476,7 +496,9 @@ export class AccountingApi {
     const request = UpdateEntryDraftRequestSchema.parse({ ...payload, entryId });
     const { entryId: _entryId, ...body } = request;
     const response = await firstValueFrom(
-      this.http.put<unknown>(`${this.apiBaseUrl}/entries/${entryId}/draft`, body)
+      this.http.put<unknown>(`${this.apiBaseUrl}/entries/${entryId}/draft`, body, {
+        context: accountingWriteContext()
+      })
     );
     const parsed = EntryDraftResponseSchema.parse(response);
 
@@ -488,7 +510,8 @@ export class AccountingApi {
     const request = PostEntryDraftRequestSchema.parse({ entryId, year });
     const response = await firstValueFrom(
       this.http.delete<unknown>(`${this.apiBaseUrl}/entries/${request.entryId}/draft`, {
-        body: { year: request.year }
+        body: { year: request.year },
+        context: accountingWriteContext()
       })
     );
     const parsed = DeleteEntryDraftResponseSchema.parse(response);
@@ -502,7 +525,8 @@ export class AccountingApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/entries/${request.entryId}/post`,
-        { year: request.year }
+        { year: request.year },
+        { context: accountingWriteContext() }
       )
     );
     const parsed = PostEntryResponseSchema.parse(response);
@@ -644,7 +668,9 @@ export class AccountingApi {
   async createFiscalYear(payload: CreateFiscalYearRequest): Promise<ApiMutationResult<FiscalYearDto>> {
     const request = CreateFiscalYearRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/fiscal-year`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/fiscal-year`, request, {
+        context: accountingWriteContext()
+      })
     );
     const parsed = FiscalYearResponseSchema.parse(response);
 
@@ -664,7 +690,8 @@ export class AccountingApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/fiscal-year/${year}/lock`,
-        request
+        request,
+        { context: accountingWriteContext() }
       )
     );
     const parsed = PeriodLockResponseSchema.parse(response);
@@ -676,7 +703,8 @@ export class AccountingApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/fiscal-year/${year}/unlock`,
-        { year, month }
+        { year, month },
+        { context: accountingWriteContext() }
       )
     );
     const parsed = PeriodLockResponseSchema.parse(response);
@@ -689,7 +717,8 @@ export class AccountingApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/fiscal-year/${request.year}/periods/${request.month}/close`,
-        request
+        request,
+        { context: accountingWriteContext() }
       )
     );
     const parsed = ClosePeriodResponseSchema.parse(response);
@@ -720,7 +749,8 @@ export class AccountingApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/fiscal-year/${request.year}/close`,
-        request
+        request,
+        { context: accountingWriteContext() }
       )
     );
     const parsed = CloseFiscalYearResponseSchema.parse(response);
@@ -892,7 +922,9 @@ export class AccountingApi {
   async createLetteringMatch(payload: CreateLetteringMatchRequest): Promise<ApiMutationResult<LetteringMatchDto>> {
     const request = CreateLetteringMatchRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/lettering/matches`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/lettering/matches`, request, {
+        context: accountingWriteContext()
+      })
     );
     const parsed = LetteringMatchResponseSchema.parse(response);
 
@@ -920,7 +952,8 @@ export class AccountingApi {
         {
           fiscalYear: request.fiscalYear,
           ...(request.cancellationReason ? { cancellationReason: request.cancellationReason } : {})
-        }
+        },
+        { context: accountingWriteContext() }
       )
     );
     const parsed = LetteringMatchResponseSchema.parse(response);
@@ -931,7 +964,9 @@ export class AccountingApi {
   async postLettering(payload: PostLetteringRequest): Promise<LetteringResultDto> {
     const request = PostLetteringRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/lettering`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/lettering`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return LetteringResponseSchema.parse(response);
@@ -940,7 +975,9 @@ export class AccountingApi {
   async cancelLettering(payload: CancelLetteringRequest): Promise<LetteringResultDto> {
     const request = CancelLetteringRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/lettering/cancel`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/lettering/cancel`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return LetteringResponseSchema.parse(response);
@@ -978,6 +1015,7 @@ export class AccountingApi {
   ): Promise<ApiMutationResult<ThirdPartyDto>> {
     const response = await firstValueFrom(
       this.http.post<unknown>(this.thirdPartyUrl(thirdPartyId, action), {}, {
+        context: accountingWriteContext(),
         params: this.thirdPartyTypeParams(type)
       })
     );

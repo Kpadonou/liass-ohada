@@ -186,6 +186,14 @@ export const ListCabinetDossierMembersResponseSchema = z
   .object({ members: CabinetMemberSummarySchema.array() })
   .strict();
 
+export const CabinetDossierAssignmentMutationResponseSchema = z
+  .object({ assignment: CabinetDossierAssignmentSchema })
+  .strict();
+
+export type CabinetDossierAssignmentMutationResponse = z.infer<
+  typeof CabinetDossierAssignmentMutationResponseSchema
+>;
+
 export type CabinetRole = z.infer<typeof CabinetRoleSchema>;
 export type OrganizationAccessStatus = z.infer<
   typeof OrganizationAccessStatusSchema

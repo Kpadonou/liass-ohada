@@ -92,6 +92,9 @@ const translations = {
       }
     },
     ACCOUNTING: {
+      ACCESS: {
+        READ_ONLY: 'Read-only access'
+      },
       FISCAL_YEAR: {
         STATUS: {
           OPEN: 'Open',
@@ -599,6 +602,33 @@ describe('AppTopbarComponent', () => {
     expect(dossierText).toContain('Active dossier');
     expect(dossierText).toContain('Client ABC SARL');
     expect(dossierText).not.toContain('org-client-123');
+  });
+
+  it('displays the centralized read-only indicator for a Reader dossier', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm-123',
+        cabinetId: 'cabinet-001',
+        displayName: 'Cabinet KPADONOU Conseil',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm-123'
+    );
+    authStore.setCreatedDossier(
+      {
+        orgId: 'org-client-123',
+        displayName: 'Client ABC SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        accessMode: 'READ_ONLY',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client-123'
+    );
+
+    expect(renderText()).toContain('Read-only access');
   });
 
   it('displays a separate no-dossier action for accounting-firm workspaces without a selected client', () => {

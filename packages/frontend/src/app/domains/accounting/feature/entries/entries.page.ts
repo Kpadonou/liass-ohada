@@ -34,6 +34,7 @@ import {
 import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 
 type EntryStatusFilter = 'ALL' | EntrySummaryDto['status'];
@@ -156,6 +157,8 @@ export class EntryActionConfirmationDialogComponent {
   templateUrl: './entries.page.html'
 })
 export class EntriesPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingApi = inject(AccountingApi);
   private readonly dialog = inject(MatDialog);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);

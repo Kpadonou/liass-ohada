@@ -136,10 +136,7 @@ export class CabinetDossierRepository {
           item.status === "ACTIVE",
       )
       .map(dossierSummaryFromItem)
-      .filter((result): result is { success: true; data: CabinetDossierSummary } =>
-        Boolean(result.success),
-      )
-      .map((result) => result.data)
+      .flatMap((result) => (result.success ? [result.data] : []))
       .sort((left, right) => left.displayName.localeCompare(right.displayName));
   }
 

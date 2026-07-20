@@ -148,6 +148,21 @@ export const cabinetDossierGuard: CanActivateFn = async () => {
   return true;
 };
 
+export const accountingWriteGuard: CanActivateFn = async () => {
+  const authStore = inject(AuthStore);
+  const router = inject(Router);
+  await ensureHydrated(authStore);
+  if (!authStore.workspacesLoaded()) {
+    await authStore.loadWorkspaces();
+  }
+  if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' && !authStore.dossiersLoaded()) {
+    await authStore.loadDossiers(true);
+  }
+  return authStore.canWriteAccounting()
+    ? true
+    : router.createUrlTree(['/accounting/entries']);
+};
+
 export const loginRedirectGuard: CanActivateFn = async () => {
   const authStore = inject(AuthStore);
   const router = inject(Router);

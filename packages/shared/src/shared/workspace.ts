@@ -29,6 +29,8 @@ export const WorkspaceCountrySchema = z.enum([
 
 export const WorkspaceStatusSchema = z.enum(["ACTIVE"]);
 
+export const AccountingAccessModeSchema = z.enum(["READ_WRITE", "READ_ONLY"]);
+
 export const WorkspaceSummarySchema = z
   .object({
     orgId: z.string().min(1),
@@ -115,6 +117,7 @@ export const CabinetDossierSummarySchema = z
     country: WorkspaceCountrySchema,
     accountingFramework: OnboardingAccountingFrameworkSchema,
     status: WorkspaceStatusSchema,
+    accessMode: AccountingAccessModeSchema.default("READ_WRITE"),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
   })
@@ -123,6 +126,14 @@ export const CabinetDossierSummarySchema = z
 export const ListCabinetDossiersResponseSchema = z
   .object({
     dossiers: CabinetDossierSummarySchema.array(),
+    nextCursor: z.string().min(1).optional(),
+  })
+  .strict();
+
+export const ListCabinetDossiersRequestSchema = z
+  .object({
+    limit: z.coerce.number().int().min(1).max(100).default(50).optional(),
+    cursor: z.string().min(1).optional(),
   })
   .strict();
 
@@ -147,6 +158,7 @@ export type OnboardingAccountingFramework = z.infer<
 >;
 export type WorkspaceCountry = z.infer<typeof WorkspaceCountrySchema>;
 export type WorkspaceStatus = z.infer<typeof WorkspaceStatusSchema>;
+export type AccountingAccessMode = z.infer<typeof AccountingAccessModeSchema>;
 export type WorkspaceSummary = z.infer<typeof WorkspaceSummarySchema>;
 export type WorkspacesResponse = z.infer<typeof WorkspacesResponseSchema>;
 export type CreateInitialWorkspaceRequest = z.infer<
@@ -160,9 +172,14 @@ export type InitialWorkspaceOrganization = z.infer<
 export type CreateInitialWorkspaceResponse = z.infer<
   typeof CreateInitialWorkspaceResponseSchema
 >;
-export type CabinetDossierSummary = z.infer<typeof CabinetDossierSummarySchema>;
+// Input compatibility keeps pre-C3.2 callers valid; schema parsing always
+// materializes READ_WRITE when an older payload omits accessMode.
+export type CabinetDossierSummary = z.input<typeof CabinetDossierSummarySchema>;
 export type ListCabinetDossiersResponse = z.infer<
   typeof ListCabinetDossiersResponseSchema
+>;
+export type ListCabinetDossiersRequest = z.infer<
+  typeof ListCabinetDossiersRequestSchema
 >;
 export type CreateCabinetDossierRequest = z.infer<
   typeof CreateCabinetDossierRequestSchema

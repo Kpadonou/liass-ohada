@@ -1,6 +1,10 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import type { CabinetDossierSummary, WorkspaceSummary } from '@liass-ohada/shared';
+import type {
+  AccountingAccessMode,
+  CabinetDossierSummary,
+  WorkspaceSummary
+} from '@liass-ohada/shared';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import type { AuthUser } from 'aws-amplify/auth';
 import {
@@ -461,6 +465,47 @@ export const AuthStore = signalStore(
         !dossierError() &&
         dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
       );
+    }),
+    activeAccountingAccessMode: computed((): AccountingAccessMode | null => {
+      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+      if (workspace?.workspaceType === 'COMPANY') {
+        return 'READ_WRITE';
+      }
+      if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
+        return null;
+      }
+      const dossier = dossiers().find(
+        (candidate) => candidate.orgId === activeDossierOrgId() && candidate.status === 'ACTIVE'
+      );
+      return dossier?.accessMode ?? null;
+    }),
+    canReadAccounting: computed(() => {
+      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+      if (workspace?.workspaceType === 'COMPANY') return true;
+      const dossier = dossiers().find(
+        (candidate) => candidate.orgId === activeDossierOrgId() && candidate.status === 'ACTIVE'
+      );
+      return dossier?.accessMode === 'READ_WRITE' || dossier?.accessMode === 'READ_ONLY';
+    }),
+    canWriteAccounting: computed(() => {
+      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+      if (workspace?.workspaceType === 'COMPANY') return true;
+      return dossiers().some(
+        (candidate) =>
+          candidate.orgId === activeDossierOrgId() &&
+          candidate.status === 'ACTIVE' &&
+          candidate.accessMode === 'READ_WRITE'
+      );
+    }),
+    isAccountingReadOnly: computed(() => {
+      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+      if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') return false;
+      return dossiers().some(
+        (candidate) =>
+          candidate.orgId === activeDossierOrgId() &&
+          candidate.status === 'ACTIVE' &&
+          candidate.accessMode === 'READ_ONLY'
+      );
     })
   })),
   withMethods((
@@ -822,6 +867,10 @@ export const AuthStore = signalStore(
           dossiers.some((dossier) => dossier.orgId === currentDossierOrgId);
         const selectedDossierOrgId = currentDossierIsValid ? currentDossierOrgId : null;
 
+        if (currentDossierOrgId && !selectedDossierOrgId) {
+          clearTenantQueries(queryClient, currentDossierOrgId);
+        }
+
         persistDossier(selectedDossierOrgId);
         patchState(store, {
           activeDossierOrgId: selectedDossierOrgId,
@@ -876,9 +925,7 @@ export const AuthStore = signalStore(
 
       patchState(store, { dossierOpeningOrgId: dossierOrgId, dossierError: null });
       try {
-        if (!store.dossiersLoaded()) {
-          await this.loadDossiers();
-        }
+        await this.loadDossiers(true);
         return this.setActiveDossier(dossierOrgId);
       } finally {
         patchState(store, { dossierOpeningOrgId: null });
@@ -893,6 +940,34 @@ export const AuthStore = signalStore(
         activeDossierOrgId: null,
         dossierOpeningOrgId: null,
         dossierError: null
+      });
+    },
+
+    handleAccountingAuthorizationFailure(code: string | null): void {
+      if (code === 'CABINET_DOSSIER_READ_ONLY') {
+        void this.loadDossiers(true);
+        return;
+      }
+      const accessRevokedCodes = new Set([
+        'CABINET_DOSSIER_ASSIGNMENT_REQUIRED',
+        'CABINET_DOSSIER_ACCESS_FORBIDDEN',
+        'CABINET_DOSSIER_ACCESS_REVOKED',
+        'CABINET_DOSSIER_NOT_OWNED',
+        'CABINET_DOSSIER_INACTIVE',
+        'CABINET_MEMBER_NOT_ACTIVE',
+        'ACCOUNTING_ACCESS_CONTEXT_INVALID',
+        'ERROR_ORG_ACCESS_DENIED'
+      ]);
+      if (!code || !accessRevokedCodes.has(code)) {
+        return;
+      }
+      const previousDossierOrgId = store.activeDossierOrgId();
+      persistDossier(null);
+      clearTenantQueries(queryClient, previousDossierOrgId);
+      patchState(store, {
+        activeDossierOrgId: null,
+        dossierError: 'IDENTITY.CABINET_DOSSIERS.ERRORS.ACCESS_REVOKED',
+        dossiersLoaded: false
       });
     },
 

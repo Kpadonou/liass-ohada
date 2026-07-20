@@ -26,6 +26,7 @@ import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/stat
 import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { AccountSearchSelectComponent } from '../../ui/account-search-select/account-search-select.component';
 import { FiscalYearRequiredComponent } from '../../ui/fiscal-year-required/fiscal-year-required.component';
 import {
@@ -163,6 +164,8 @@ export class LetteringConfirmationDialogComponent {
   templateUrl: './lettering.page.html'
 })
 export class LetteringPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingApi = inject(AccountingApi);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly accountingQueries = inject(AccountingQueries);

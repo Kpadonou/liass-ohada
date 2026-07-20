@@ -3,7 +3,7 @@
     [eyebrow]="'TREASURY.PAGE.EYEBROW' | transloco"
     [title]="'TREASURY.PAGE.TITLE' | transloco"
     [subtitle]="'TREASURY.PAGE.SUBTITLE' | transloco"
-    [actionLabel]="'TREASURY.ACTIONS.NEW_ACCOUNT' | transloco"
+    [actionLabel]="canWriteAccounting() ? ('TREASURY.ACTIONS.NEW_ACCOUNT' | transloco) : null"
     actionIcon="add"
     (actionTriggered)="openCreateAccount()"
   />
@@ -61,9 +61,11 @@
         <input matInput inputmode="numeric" maxlength="4" [value]="selectedYear()" (input)="updateYear($event)" />
       </mat-form-field>
 
-      <liass-button tone="brand" variant="solid" icon="post_add" [disabled]="accounts().length === 0" (pressed)="openCreateTransaction()">
-        {{ 'TREASURY.ACTIONS.NEW_TRANSACTION' | transloco }}
-      </liass-button>
+      @if (canWriteAccounting()) {
+        <liass-button tone="brand" variant="solid" icon="post_add" [disabled]="accounts().length === 0" (pressed)="openCreateTransaction()">
+          {{ 'TREASURY.ACTIONS.NEW_TRANSACTION' | transloco }}
+        </liass-button>
+      }
     </div>
 
     @if (actionErrorKey()) {
@@ -75,9 +77,11 @@
     @if (!accountsQuery.isPending() && !accountsQuery.isError() && accounts().length === 0) {
       <div class="mb-4 flex flex-col gap-3 rounded-app-card border border-dashed border-brand-200 bg-brand-50/60 p-4 text-sm text-brand-900 dark:border-brand-900 dark:bg-brand-950/20 dark:text-brand-100 md:flex-row md:items-center md:justify-between">
         <span>{{ 'TREASURY.ACCOUNTS.EMPTY_GUIDANCE' | transloco }}</span>
-        <liass-button tone="brand" variant="outline" icon="add" (pressed)="openCreateAccount()">
-          {{ 'TREASURY.ACTIONS.NEW_ACCOUNT' | transloco }}
-        </liass-button>
+        @if (canWriteAccounting()) {
+          <liass-button tone="brand" variant="outline" icon="add" (pressed)="openCreateAccount()">
+            {{ 'TREASURY.ACTIONS.NEW_ACCOUNT' | transloco }}
+          </liass-button>
+        }
       </div>
     }
 
@@ -222,11 +226,13 @@
               </mat-form-field>
             </div>
 
-            <div class="flex items-start justify-end">
-              <liass-button tone="brand" variant="solid" icon="upload_file" [disabled]="!selectedAccountId()" (pressed)="openImportStatementDialog()">
-                {{ 'TREASURY.IMPORT.ACTION' | transloco }}
-              </liass-button>
-            </div>
+            @if (canWriteAccounting()) {
+              <div class="flex items-start justify-end">
+                <liass-button tone="brand" variant="solid" icon="upload_file" [disabled]="!selectedAccountId()" (pressed)="openImportStatementDialog()">
+                  {{ 'TREASURY.IMPORT.ACTION' | transloco }}
+                </liass-button>
+              </div>
+            }
           </div>
 
           @if (!selectedAccountId()) {
@@ -275,7 +281,7 @@
                       <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ line.currency }}</td>
                       <td class="px-4 py-4"><liass-status-chip [label]="'TREASURY.STATEMENT.STATUS.' + line.status | transloco" [tone]="statusTone(line.status)" size="sm" /></td>
                       <td class="px-4 py-4 text-right">
-                        @if (line.status === 'MATCHED') {
+                        @if (canWriteAccounting() && line.status === 'MATCHED') {
                           <liass-button size="sm" tone="neutral" variant="ghost" icon="undo" (pressed)="cancelMatch(line)">
                             {{ 'TREASURY.RECONCILIATION.CANCEL' | transloco }}
                           </liass-button>
@@ -471,9 +477,11 @@
                 </div>
                 <div class="flex flex-col gap-2 lg:items-end">
                   <liass-status-chip [label]="selectedMatchEligibility().reasonKey | transloco" [tone]="selectedMatchEligibility().eligible ? 'success' : 'warning'" size="sm" />
-                  <liass-button tone="brand" variant="solid" icon="link" [disabled]="!selectedMatchEligibility().eligible || reconciliationBusy()" [loading]="reconciliationBusy()" (pressed)="reconcileSelected()">
-                    {{ 'TREASURY.RECONCILIATION.MATCH' | transloco }}
-                  </liass-button>
+                  @if (canWriteAccounting()) {
+                    <liass-button tone="brand" variant="solid" icon="link" [disabled]="!selectedMatchEligibility().eligible || reconciliationBusy()" [loading]="reconciliationBusy()" (pressed)="reconcileSelected()">
+                      {{ 'TREASURY.RECONCILIATION.MATCH' | transloco }}
+                    </liass-button>
+                  }
                 </div>
               </div>
             </section>
@@ -514,7 +522,7 @@
                           <td class="px-4 py-3 text-right text-sm font-semibold text-slate-900 dark:text-slate-100">{{ formatAmount(match.amount, selectedAccount()?.currency ?? 'XOF') }}</td>
                           <td class="px-4 py-3"><liass-status-chip [label]="'TREASURY.RECONCILIATION.HISTORY_STATUS.' + match.status | transloco" [tone]="match.status === 'ACTIVE' ? 'success' : 'neutral'" size="sm" /></td>
                           <td class="px-4 py-3 text-right">
-                            @if (match.status === 'ACTIVE') {
+                            @if (canWriteAccounting() && match.status === 'ACTIVE') {
                               <liass-button size="sm" tone="warning" variant="ghost" icon="undo" [disabled]="reconciliationBusy()" (pressed)="openCancelReconciliation(match)">
                                 {{ 'TREASURY.RECONCILIATION.CANCEL' | transloco }}
                               </liass-button>

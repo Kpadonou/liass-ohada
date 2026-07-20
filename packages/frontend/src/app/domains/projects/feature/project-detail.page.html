@@ -103,7 +103,7 @@
         <mat-tab [label]="'PROJECTS.DETAIL.TABS.FUNDING' | transloco">
           <div class="py-5">
             <div class="mb-4 flex justify-end">
-              <liass-button tone="brand" variant="solid" icon="add" (pressed)="openCreateFundingSource()">
+              <liass-button tone="brand" variant="solid" icon="add" [disabled]="!canWriteAccounting()" (pressed)="openCreateFundingSource()">
                 {{ 'PROJECTS.FUNDING.CREATE.SUBMIT' | transloco }}
               </liass-button>
             </div>
@@ -142,7 +142,7 @@
         <mat-tab [label]="'PROJECTS.DETAIL.TABS.BUDGET' | transloco">
           <div class="py-5">
             <div class="mb-4 flex justify-end">
-              <liass-button tone="brand" variant="solid" icon="add" (pressed)="openCreateBudgetLine()">
+              <liass-button tone="brand" variant="solid" icon="add" [disabled]="!canWriteAccounting()" (pressed)="openCreateBudgetLine()">
                 {{ 'PROJECTS.BUDGET.CREATE.SUBMIT' | transloco }}
               </liass-button>
             </div>

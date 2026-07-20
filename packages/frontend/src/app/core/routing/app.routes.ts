@@ -5,6 +5,7 @@ import { LoginPage } from '../../domains/identity/feature/login/login.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
 import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
 import {
+  accountingWriteGuard,
   appRootRedirectGuard,
   authGuard,
   cabinetDashboardGuard,
@@ -236,6 +237,7 @@ export const routes: Routes = [
               import('../../domains/accounting/feature/entry-form/entry-form.page').then(
                 (module) => module.EntryFormPage
               ),
+            canActivate: [accountingWriteGuard],
             data: {
               subtitleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_SUBTITLE',
               titleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_TITLE'
@@ -247,6 +249,7 @@ export const routes: Routes = [
               import('../../domains/accounting/feature/entry-form/entry-form.page').then(
                 (module) => module.EntryFormPage
               ),
+            canActivate: [accountingWriteGuard],
             data: {
               subtitleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_SUBTITLE',
               titleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_TITLE'

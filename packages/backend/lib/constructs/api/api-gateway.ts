@@ -33,6 +33,7 @@ export class LiassOhadaApiGateway extends Construct {
           "x-api-key",
           "accept-language",
           "x-org-id",
+          "x-workspace-org-id",
         ],
       },
     });

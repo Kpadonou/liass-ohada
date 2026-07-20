@@ -33,6 +33,7 @@ import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
 
 import { environment } from '../../../../environments/environment';
+import { accountingWriteContext } from '../../../core/http/tenant-request-context';
 
 @Injectable({ providedIn: 'root' })
 export class ProjectsApi {
@@ -60,7 +61,9 @@ export class ProjectsApi {
   async createProject(payload: CreateProjectRequest): Promise<ProjectDto> {
     const request = CreateProjectRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/projects`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/projects`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return ProjectResponseSchema.parse(response).data;
@@ -77,7 +80,9 @@ export class ProjectsApi {
   async createDonor(payload: CreateDonorRequest): Promise<DonorDto> {
     const request = CreateDonorRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/donors`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/donors`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return DonorResponseSchema.parse(response).data;
@@ -102,7 +107,8 @@ export class ProjectsApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/projects/${encodeURIComponent(projectId)}/funding-sources`,
-        request
+        request,
+        { context: accountingWriteContext() }
       )
     );
 
@@ -128,7 +134,8 @@ export class ProjectsApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/projects/${encodeURIComponent(projectId)}/budget-lines`,
-        request
+        request,
+        { context: accountingWriteContext() }
       )
     );
 

@@ -72,7 +72,7 @@
               tone="neutral"
               variant="outline"
               icon="edit"
-              [disabled]="!canEditJournal(journal)"
+              [disabled]="!canWriteAccounting() || !canEditJournal(journal)"
               (pressed)="openEditJournal(journal)"
             >
               {{ 'ACCOUNTING.JOURNALS.ACTIONS.EDIT_JOURNAL' | transloco }}
@@ -81,7 +81,7 @@
               tone="danger"
               variant="outline"
               icon="block"
-              [disabled]="!canDisableJournal(journal)"
+              [disabled]="!canWriteAccounting() || !canDisableJournal(journal)"
               (pressed)="openDisableJournal(journal)"
             >
               {{ 'ACCOUNTING.JOURNALS.ACTIONS.DISABLE_JOURNAL' | transloco }}
@@ -98,7 +98,7 @@
     [eyebrow]="'ACCOUNTING.JOURNALS.EYEBROW' | transloco"
     [title]="'ACCOUNTING.JOURNALS.TITLE' | transloco"
     [subtitle]="'ACCOUNTING.JOURNALS.SUBTITLE' | transloco"
-    [actionLabel]="'ACCOUNTING.JOURNALS.ACTIONS.NEW_JOURNAL' | transloco"
+    [actionLabel]="canWriteAccounting() ? ('ACCOUNTING.JOURNALS.ACTIONS.NEW_JOURNAL' | transloco) : null"
     actionIcon="add"
     (actionTriggered)="openCreateJournal()"
   />
@@ -274,7 +274,7 @@
                       type="button"
                       class="liass-menu-action liass-menu-action-info"
                       data-testid="journal-edit-action"
-                      [disabled]="!canEditJournal(journal)"
+                      [disabled]="!canWriteAccounting() || !canEditJournal(journal)"
                       (click)="openEditJournal(journal)"
                     >
                       <mat-icon>edit</mat-icon>
@@ -285,7 +285,7 @@
                       type="button"
                       class="liass-menu-action liass-menu-action-danger"
                       data-testid="journal-disable-action"
-                      [disabled]="!canDisableJournal(journal)"
+                      [disabled]="!canWriteAccounting() || !canDisableJournal(journal)"
                       (click)="openDisableJournal(journal)"
                     >
                       <mat-icon>block</mat-icon>
@@ -331,7 +331,7 @@
                 tone="neutral"
                 variant="outline"
                 icon="edit"
-                [disabled]="!canEditJournal(journal)"
+                [disabled]="!canWriteAccounting() || !canEditJournal(journal)"
                 [ariaLabel]="'ACCOUNTING.JOURNALS.ACTIONS.EDIT_JOURNAL' | transloco"
                 (pressed)="openEditJournal(journal)"
               >
@@ -342,7 +342,7 @@
                 tone="danger"
                 variant="outline"
                 icon="block"
-                [disabled]="!canDisableJournal(journal)"
+                [disabled]="!canWriteAccounting() || !canDisableJournal(journal)"
                 [ariaLabel]="'ACCOUNTING.JOURNALS.ACTIONS.DISABLE_JOURNAL' | transloco"
                 (pressed)="openDisableJournal(journal)"
               >

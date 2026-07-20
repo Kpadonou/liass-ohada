@@ -22,6 +22,7 @@ import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AccountingApi, type PaginatedResult } from '../../data-access/accounting.api';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { ThirdPartyDialogComponent } from './third-party-dialog.component';
 import { ThirdPartyStatusDialogComponent } from './third-party-status-dialog.component';
 
@@ -52,6 +53,8 @@ const THIRD_PARTY_PAGE_SIZE = 200;
   templateUrl: './third-parties.page.html'
 })
 export class ThirdPartiesPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingApi = inject(AccountingApi);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly dialog = inject(MatDialog);

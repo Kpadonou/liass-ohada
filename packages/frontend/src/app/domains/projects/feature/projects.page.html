@@ -3,7 +3,7 @@
     [eyebrow]="'PROJECTS.PAGE.EYEBROW' | transloco"
     [title]="'PROJECTS.PAGE.TITLE' | transloco"
     [subtitle]="'PROJECTS.PAGE.SUBTITLE' | transloco"
-    [actionLabel]="'PROJECTS.ACTIONS.NEW_PROJECT' | transloco"
+    [actionLabel]="canWriteAccounting() ? ('PROJECTS.ACTIONS.NEW_PROJECT' | transloco) : null"
     actionIcon="add"
     (actionTriggered)="openCreateProject()"
   />
@@ -71,9 +71,11 @@
         </mat-select>
       </mat-form-field>
 
-      <liass-button tone="neutral" variant="outline" icon="person_add" (pressed)="openCreateDonor()">
-        {{ 'PROJECTS.ACTIONS.NEW_DONOR' | transloco }}
-      </liass-button>
+      @if (canWriteAccounting()) {
+        <liass-button tone="neutral" variant="outline" icon="person_add" (pressed)="openCreateDonor()">
+          {{ 'PROJECTS.ACTIONS.NEW_DONOR' | transloco }}
+        </liass-button>
+      }
     </div>
 
     @if (projectsQuery.isPending()) {

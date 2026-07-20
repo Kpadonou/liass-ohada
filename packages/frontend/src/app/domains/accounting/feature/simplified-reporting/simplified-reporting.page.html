@@ -158,13 +158,15 @@
           {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.STATES.NO_DATA_DESCRIPTION' | transloco }}
         </p>
         <div class="mt-5 flex flex-wrap justify-center gap-2">
-          <a
-            class="liass-focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-app-control bg-brand-700 px-4 text-sm font-semibold text-white shadow-app-xs hover:bg-brand-600"
-            routerLink="/accounting/entries/new"
-          >
-            <mat-icon>add_circle</mat-icon>
-            {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.CREATE_ENTRY' | transloco }}
-          </a>
+          @if (canWriteAccounting()) {
+            <a
+              class="liass-focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-app-control bg-brand-700 px-4 text-sm font-semibold text-white shadow-app-xs hover:bg-brand-600"
+              routerLink="/accounting/entries/new"
+            >
+              <mat-icon>add_circle</mat-icon>
+              {{ 'ACCOUNTING.SIMPLIFIED_REPORTING.ACTIONS.CREATE_ENTRY' | transloco }}
+            </a>
+          }
           <a
             class="liass-focus-ring inline-flex h-10 items-center justify-center gap-2 rounded-app-control border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-app-xs hover:border-brand-200 hover:text-brand-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
             routerLink="/accounting/entries"

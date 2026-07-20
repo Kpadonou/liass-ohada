@@ -25,6 +25,7 @@
               tone="brand"
               variant="solid"
               icon="add"
+              [disabled]="!canWriteAccounting()"
               (pressed)="openCreateFiscalYear()"
             >
               {{ 'ACCOUNTING.FISCAL_YEAR.ACTIONS.NEW' | transloco }}
@@ -133,7 +134,7 @@
                       tone="warning"
                       variant="outline"
                       icon="lock"
-                      [disabled]="fiscalYear.status === 'CLOSED' || !!pendingPeriod()"
+                      [disabled]="!canWriteAccounting() || fiscalYear.status === 'CLOSED' || !!pendingPeriod()"
                       [loading]="pendingPeriod() === period.month"
                       (pressed)="togglePeriod(period.month)"
                     >
@@ -321,7 +322,7 @@
                   tone="danger"
                   variant="solid"
                   icon="lock"
-                  [disabled]="!canCloseFiscalYear()"
+                  [disabled]="!canWriteAccounting() || !canCloseFiscalYear()"
                   [loading]="closingFiscalYear()"
                   (pressed)="confirmCloseFiscalYear()"
                 >

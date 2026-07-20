@@ -82,6 +82,6 @@ describe("cabinet dossier handlers", () => {
       userId: "user-123",
       cabinetId: "cab-123",
       workspaceType: "ACCOUNTING_FIRM",
-    });
+    }, { limit: 50 });
   });
 });

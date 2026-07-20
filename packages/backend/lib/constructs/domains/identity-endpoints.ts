@@ -82,6 +82,16 @@ export class IdentityEndpoints extends DomainConstructFactory {
         "/cabinet/dossiers/{dossierOrgId}/members",
       ],
       [
+        "add-cabinet-dossier-member",
+        apigw.HttpMethod.POST,
+        "/cabinet/dossiers/{dossierOrgId}/members/{memberUserId}",
+      ],
+      [
+        "remove-cabinet-dossier-member",
+        apigw.HttpMethod.DELETE,
+        "/cabinet/dossiers/{dossierOrgId}/members/{memberUserId}",
+      ],
+      [
         "accept-cabinet-invitation",
         apigw.HttpMethod.POST,
         "/me/cabinet-invitations/accept",
@@ -105,6 +115,9 @@ export class IdentityEndpoints extends DomainConstructFactory {
         lambdaRole: props.lambdaRole,
         method,
         routePath,
+        routeInDomainStack:
+          handlerName === "add-cabinet-dossier-member" ||
+          handlerName === "remove-cabinet-dossier-member",
         stage: props.stage,
         table: props.table,
       });

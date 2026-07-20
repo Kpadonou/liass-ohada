@@ -17,6 +17,7 @@ import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.com
 import { LiassStatCardComponent } from '../../../shared/ui/stat-card/stat-card.component';
 import { LiassStatusChipComponent, type LiassStatusTone } from '../../../shared/ui/status-chip/status-chip.component';
 import { ProjectQueries } from '../data-access/project-queries';
+import { AuthStore } from '../../identity/data-access/auth.store';
 import { CreateDonorDialogComponent } from './create-donor-dialog.component';
 import { CreateProjectDialogComponent } from './create-project-dialog.component';
 
@@ -41,6 +42,8 @@ type ProjectStatusFilter = 'ALL' | ProjectDto['status'];
   templateUrl: './projects.page.html'
 })
 export class ProjectsPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly dialog = inject(MatDialog);
   private readonly projectQueries = inject(ProjectQueries);
   private readonly router = inject(Router);

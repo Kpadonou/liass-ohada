@@ -21,6 +21,7 @@ import {
 } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { type SummaryReportParams } from '../../data-access/accounting.api';
 
 type SummaryReportFilters = SummaryReportParams;
@@ -45,6 +46,8 @@ type IncomeAccountRows = NonNullable<SummaryReportDto['income']['revenueAccounts
   templateUrl: './simplified-reporting.page.html'
 })
 export class SimplifiedReportingPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly formBuilder = inject(FormBuilder);
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);

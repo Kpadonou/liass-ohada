@@ -32,6 +32,7 @@ import {
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
+import { accountingWriteContext } from '../../../core/http/tenant-request-context';
 
 export interface TreasuryAccountsResult {
   accounts: TreasuryAccountDto[];
@@ -102,7 +103,9 @@ export class TreasuryApi {
   async createAccount(payload: CreateTreasuryAccountRequest): Promise<TreasuryAccountDto> {
     const request = CreateTreasuryAccountRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/treasury/accounts`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/treasury/accounts`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return TreasuryAccountResponseSchema.parse(response).data;
@@ -122,7 +125,9 @@ export class TreasuryApi {
   async postTransaction(payload: CreateTreasuryTransactionRequest): Promise<string> {
     const request = CreateTreasuryTransactionRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/treasury/transactions`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/treasury/transactions`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return TreasuryTransactionResponseSchema.parse(response).data.entryId;
@@ -186,7 +191,8 @@ export class TreasuryApi {
     const response = await firstValueFrom(
       this.http.post<unknown>(
         `${this.apiBaseUrl}/treasury/accounts/${encodeURIComponent(treasuryAccountId)}/statement-lines/import`,
-        request
+        request,
+        { context: accountingWriteContext() }
       )
     );
 
@@ -204,7 +210,9 @@ export class TreasuryApi {
   async reconcile(payload: CreateReconciliationRequest): Promise<ReconciliationMatchDto> {
     const request = CreateReconciliationRequestSchema.parse(payload);
     const response = await firstValueFrom(
-      this.http.post<unknown>(`${this.apiBaseUrl}/treasury/reconciliations`, request)
+      this.http.post<unknown>(`${this.apiBaseUrl}/treasury/reconciliations`, request, {
+        context: accountingWriteContext()
+      })
     );
 
     return ReconciliationMatchResponseSchema.parse(response).data;
@@ -252,7 +260,8 @@ export class TreasuryApi {
           year: payload.year,
           matchId: payload.matchId,
           cancelReason: payload.cancelReason
-        }
+        },
+        { context: accountingWriteContext() }
       )
     );
 

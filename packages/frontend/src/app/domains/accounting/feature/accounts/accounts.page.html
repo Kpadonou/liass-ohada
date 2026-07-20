@@ -88,7 +88,7 @@
               tone="neutral"
               variant="outline"
               icon="edit"
-              [disabled]="!isAccountActive(account)"
+              [disabled]="!canWriteAccounting() || !isAccountActive(account)"
               (pressed)="openEditAccount(account)"
             >
               {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco }}
@@ -97,7 +97,7 @@
               tone="danger"
               variant="outline"
               icon="block"
-              [disabled]="!isAccountActive(account)"
+              [disabled]="!canWriteAccounting() || !isAccountActive(account)"
               (pressed)="openDisableAccount(account)"
             >
               {{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}
@@ -144,6 +144,7 @@
         tone="brand"
         variant="solid"
         icon="add"
+        [disabled]="!canWriteAccounting()"
         [ariaLabel]="'ACCOUNTING.ACCOUNTS.ACTIONS.NEW_ACCOUNT' | transloco"
         (pressed)="openCreateAccount()"
       >
@@ -332,7 +333,7 @@
                       type="button"
                       class="liass-menu-action liass-menu-action-info"
                       data-testid="account-edit-action"
-                      [disabled]="!isAccountActive(account)"
+                      [disabled]="!canWriteAccounting() || !isAccountActive(account)"
                       (click)="openEditAccount(account)"
                     >
                       <mat-icon>edit</mat-icon>
@@ -343,7 +344,7 @@
                       type="button"
                       class="liass-menu-action liass-menu-action-danger"
                       data-testid="account-disable-action"
-                      [disabled]="!isAccountActive(account)"
+                      [disabled]="!canWriteAccounting() || !isAccountActive(account)"
                       (click)="openDisableAccount(account)"
                     >
                       <mat-icon>block</mat-icon>
@@ -400,11 +401,11 @@
                   <mat-icon>visibility</mat-icon>
                   <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.VIEW_DETAILS' | transloco }}</span>
                 </button>
-                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" [disabled]="!isAccountActive(account)" (click)="openEditAccount(account)">
+                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" [disabled]="!canWriteAccounting() || !isAccountActive(account)" (click)="openEditAccount(account)">
                   <mat-icon>edit</mat-icon>
                   <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.EDIT_ACCOUNT' | transloco }}</span>
                 </button>
-                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-danger" [disabled]="!isAccountActive(account)" (click)="openDisableAccount(account)">
+                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-danger" [disabled]="!canWriteAccounting() || !isAccountActive(account)" (click)="openDisableAccount(account)">
                   <mat-icon>block</mat-icon>
                   <span>{{ 'ACCOUNTING.ACCOUNTS.ACTIONS.DISABLE_ACCOUNT' | transloco }}</span>
                 </button>

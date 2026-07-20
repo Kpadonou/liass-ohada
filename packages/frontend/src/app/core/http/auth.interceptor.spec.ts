@@ -9,7 +9,7 @@ import { vi } from 'vitest';
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { environment } from '../../../environments/environment';
 import { authInterceptor } from './auth.interceptor';
-import { TENANT_REQUEST_SCOPE } from './tenant-request-context';
+import { accountingWriteContext, TENANT_REQUEST_SCOPE } from './tenant-request-context';
 
 vi.mock('aws-amplify/auth', () => {
   const globalScope = globalThis as unknown as {
@@ -113,8 +113,45 @@ describe('authInterceptor', () => {
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/accounts`);
     expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
     expect(request.request.headers.get('x-org-id')).toBe('org-client');
+    expect(request.request.headers.get('x-workspace-org-id')).toBe('org-cabinet');
     request.flush({ accounts: [] });
     await response;
+  });
+
+  it('blocks a Reader accounting mutation locally without sending a request', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-cabinet',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetId: 'cab-123'
+      },
+      'org-cabinet'
+    );
+    authStore.setCreatedDossier(
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        accessMode: 'READ_ONLY',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client'
+    );
+
+    const http = TestBed.inject(HttpClient);
+    await expect(
+      firstValueFrom(
+        http.post(`${environment.apiBaseUrl}/entries`, {}, { context: accountingWriteContext() })
+      )
+    ).rejects.toMatchObject({ status: 403 });
+    httpMock.expectNone(`${environment.apiBaseUrl}/entries`);
+    expect(authStore.activeDossierOrgId()).toBe('org-client');
+    expect(fetchAuthSession).not.toHaveBeenCalled();
   });
 
   it('blocks accounting requests when an accounting firm has no open dossier', async () => {

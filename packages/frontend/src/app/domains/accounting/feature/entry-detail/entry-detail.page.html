@@ -77,7 +77,7 @@
           {{ detail.voucherNumber || detail.entryId }}
         </span>
       </div>
-      @if (detail.status === 'DRAFT') {
+      @if (canWriteAccounting() && detail.status === 'DRAFT') {
         <liass-button
           tone="info"
           variant="outline"

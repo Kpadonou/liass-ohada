@@ -7,6 +7,7 @@ import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
 import * as path from "path";
 import { DeploymentStage } from "../../config/deployment";
+import type { AccountingPermission } from "../../../lambda/shared/authorization/accounting-permission";
 
 const DOMAIN_LAMBDA_RUNTIME = Runtime.NODEJS_24_X;
 
@@ -19,6 +20,7 @@ export interface DomainProps {
 }
 
 interface AddRouteOptions {
+  accountingPermission?: AccountingPermission;
   actionName?: string;
   api: apigw.HttpApi;
   authorizer?: apigw.IHttpRouteAuthorizer;
@@ -30,6 +32,7 @@ interface AddRouteOptions {
   memorySize?: number;
   method: apigw.HttpMethod;
   routePath: string;
+  routeInDomainStack?: boolean;
   stage: DeploymentStage;
   table: cdk.aws_dynamodb.ITable;
   timeout?: cdk.Duration;
@@ -106,17 +109,33 @@ export abstract class DomainConstructFactory extends Construct {
         // are available in the managed runtime. Keep domain Lambdas self-contained.
         bundleAwsSDK: true,
       },
-      environment: { TABLE_NAME: options.table.tableName },
+      environment: {
+        TABLE_NAME: options.table.tableName,
+        ...(options.accountingPermission
+          ? { ACCOUNTING_PERMISSION: options.accountingPermission }
+          : {}),
+      },
     });
 
     if (!options.lambdaRole) {
       options.table.grantReadWriteData(fn);
     }
 
+    const integration = new HttpLambdaIntegration(`${id}Integ`, fn);
+    if (options.routeInDomainStack) {
+      new apigw.HttpRoute(this, `${id}Route`, {
+        authorizer: options.authorizer,
+        httpApi: options.api,
+        integration,
+        routeKey: apigw.HttpRouteKey.with(options.routePath, options.method),
+      });
+      return;
+    }
+
     const routeOptions: any = {
       path: options.routePath,
       methods: [options.method],
-      integration: new HttpLambdaIntegration(`${id}Integ`, fn),
+      integration,
     };
 
     if (options.authorizer) {

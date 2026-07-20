@@ -3,7 +3,7 @@
     [eyebrow]="'ACCOUNTING.ENTRIES.EYEBROW' | transloco"
     [title]="'ACCOUNTING.ENTRIES.TITLE' | transloco"
     [subtitle]="'ACCOUNTING.ENTRIES.SUBTITLE' | transloco"
-    [actionLabel]="'ACCOUNTING.ENTRIES.ACTIONS.NEW_ENTRY' | transloco"
+    [actionLabel]="canWriteAccounting() ? ('ACCOUNTING.ENTRIES.ACTIONS.NEW_ENTRY' | transloco) : null"
     actionIcon="add"
     (actionTriggered)="openNewEntryPage()"
   />
@@ -186,6 +186,7 @@
                           type="button"
                           class="liass-menu-action liass-menu-action-info"
                           data-testid="entry-edit-action"
+                          [disabled]="!canWriteAccounting()"
                           (click)="editEntry(entry)"
                         >
                           <mat-icon>edit</mat-icon>
@@ -196,7 +197,7 @@
                           type="button"
                           class="liass-menu-action liass-menu-action-warning"
                           data-testid="entry-post-action"
-                          [disabled]="!!pendingEntryAction()"
+                          [disabled]="!canWriteAccounting() || !!pendingEntryAction()"
                           (click)="confirmPostEntry(entry)"
                         >
                           <mat-icon>task_alt</mat-icon>
@@ -207,7 +208,7 @@
                           type="button"
                           class="liass-menu-action liass-menu-action-danger"
                           data-testid="entry-delete-action"
-                          [disabled]="!!pendingEntryAction()"
+                          [disabled]="!canWriteAccounting() || !!pendingEntryAction()"
                           (click)="confirmDeleteDraft(entry)"
                         >
                           <mat-icon>delete_outline</mat-icon>
@@ -252,15 +253,15 @@
                     <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.VIEW_DETAILS' | transloco }}</span>
                   </button>
                   @if (entry.status === 'DRAFT') {
-                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" (click)="editEntry(entry)">
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" [disabled]="!canWriteAccounting()" (click)="editEntry(entry)">
                       <mat-icon>edit</mat-icon>
                       <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.EDIT' | transloco }}</span>
                     </button>
-                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-warning" [disabled]="!!pendingEntryAction()" (click)="confirmPostEntry(entry)">
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-warning" [disabled]="!canWriteAccounting() || !!pendingEntryAction()" (click)="confirmPostEntry(entry)">
                       <mat-icon>task_alt</mat-icon>
                       <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.POST' | transloco }}</span>
                     </button>
-                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-danger" [disabled]="!!pendingEntryAction()" (click)="confirmDeleteDraft(entry)">
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-danger" [disabled]="!canWriteAccounting() || !!pendingEntryAction()" (click)="confirmDeleteDraft(entry)">
                       <mat-icon>delete_outline</mat-icon>
                       <span>{{ 'ACCOUNTING.ENTRIES.ACTIONS.DELETE_DRAFT' | transloco }}</span>
                     </button>

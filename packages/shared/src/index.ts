@@ -165,6 +165,7 @@ export * from "./treasury";
 export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export * from "./shared/cabinet-team";
 export {
+  AccountingAccessModeSchema,
   CabinetDossierSummarySchema,
   CabinetSchema,
   CreateCabinetDossierRequestSchema,
@@ -172,6 +173,7 @@ export {
   CreateInitialWorkspaceRequestSchema,
   CreateInitialWorkspaceResponseSchema,
   InitialWorkspaceOrganizationSchema,
+  ListCabinetDossiersRequestSchema,
   ListCabinetDossiersResponseSchema,
   OnboardingAccountingFrameworkSchema,
   OrganizationSchema,
@@ -182,6 +184,7 @@ export {
   WorkspaceTypeSchema,
 } from "./shared/workspace";
 export type {
+  AccountingAccessMode,
   Cabinet,
   CabinetDossierSummary,
   CreateCabinetDossierRequest,
@@ -189,6 +192,7 @@ export type {
   CreateInitialWorkspaceRequest,
   CreateInitialWorkspaceResponse,
   InitialWorkspaceOrganization,
+  ListCabinetDossiersRequest,
   ListCabinetDossiersResponse,
   OnboardingAccountingFramework,
   Organization,

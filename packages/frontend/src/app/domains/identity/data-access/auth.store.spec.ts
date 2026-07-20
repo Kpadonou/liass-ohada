@@ -695,6 +695,65 @@ describe('AuthStore', () => {
     ]);
   });
 
+  it('derives read-only capabilities from an authorized Reader dossier', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      { orgId: 'org-firm', displayName: 'Cabinet Demo', workspaceType: 'ACCOUNTING_FIRM' },
+      'org-firm'
+    );
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        accessMode: 'READ_ONLY',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+
+    await expect(store.openDossier('org-client')).resolves.toBe(true);
+    expect(store.activeAccountingAccessMode()).toBe('READ_ONLY');
+    expect(store.canReadAccounting()).toBe(true);
+    expect(store.canWriteAccounting()).toBe(false);
+    expect(store.isAccountingReadOnly()).toBe(true);
+  });
+
+  it('clears revoked dossier context and cache but keeps Reader context on write denial', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      { orgId: 'org-firm', displayName: 'Cabinet Demo', workspaceType: 'ACCOUNTING_FIRM' },
+      'org-firm'
+    );
+    cabinetDossiersApi.listDossiers.mockResolvedValue([
+      {
+        orgId: 'org-client',
+        displayName: 'Client SARL',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        accessMode: 'READ_ONLY',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      }
+    ]);
+    await store.openDossier('org-client');
+    queryClient.setQueryData(['accounting', 'org-client', 'accounts'], ['readable']);
+
+    store.handleAccountingAuthorizationFailure('CABINET_DOSSIER_READ_ONLY');
+    expect(store.activeDossierOrgId()).toBe('org-client');
+    expect(queryClient.getQueryData(['accounting', 'org-client', 'accounts'])).toEqual([
+      'readable'
+    ]);
+
+    store.handleAccountingAuthorizationFailure('CABINET_DOSSIER_ASSIGNMENT_REQUIRED');
+    expect(store.activeDossierOrgId()).toBeNull();
+    expect(store.activeAccountingAccessMode()).toBeNull();
+    expect(queryClient.getQueryData(['accounting', 'org-client', 'accounts'])).toBeUndefined();
+  });
+
   it('adds a newly created dossier to the list without opening it', () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(

@@ -16,6 +16,7 @@
         variant="solid"
         icon="add"
         data-testid="third-party-create-action"
+        [disabled]="!canWriteAccounting()"
         [ariaLabel]="createButtonKey() | transloco"
         (pressed)="openCreateThirdParty()"
       >
@@ -176,7 +177,7 @@
                     <mat-icon>more_vert</mat-icon>
                   </button>
                   <mat-menu #thirdPartyActionsMenu="matMenu" xPosition="before">
-                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" data-testid="third-party-edit-action" (click)="openEditThirdParty(thirdParty)">
+                    <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" data-testid="third-party-edit-action" [disabled]="!canWriteAccounting()" (click)="openEditThirdParty(thirdParty)">
                       <mat-icon>edit</mat-icon>
                       <span>{{ 'ACCOUNTING.THIRD_PARTIES.ACTIONS.EDIT' | transloco }}</span>
                     </button>
@@ -185,6 +186,7 @@
                       type="button"
                       class="liass-menu-action"
                       data-testid="third-party-status-action"
+                      [disabled]="!canWriteAccounting()"
                       [class.liass-menu-action-danger]="thirdParty.status === 'ACTIVE'"
                       [class.liass-menu-action-brand]="thirdParty.status === 'INACTIVE'"
                       (click)="openStatusDialog(thirdParty)"
@@ -235,7 +237,7 @@
                 <mat-icon>more_vert</mat-icon>
               </button>
               <mat-menu #mobileThirdPartyActionsMenu="matMenu" xPosition="before">
-                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" (click)="openEditThirdParty(thirdParty)">
+                <button mat-menu-item type="button" class="liass-menu-action liass-menu-action-info" [disabled]="!canWriteAccounting()" (click)="openEditThirdParty(thirdParty)">
                   <mat-icon>edit</mat-icon>
                   <span>{{ 'ACCOUNTING.THIRD_PARTIES.ACTIONS.EDIT' | transloco }}</span>
                 </button>
@@ -243,6 +245,7 @@
                   mat-menu-item
                   type="button"
                   class="liass-menu-action"
+                  [disabled]="!canWriteAccounting()"
                   [class.liass-menu-action-danger]="thirdParty.status === 'ACTIVE'"
                   [class.liass-menu-action-brand]="thirdParty.status === 'INACTIVE'"
                   (click)="openStatusDialog(thirdParty)"

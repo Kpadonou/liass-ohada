@@ -24,6 +24,7 @@ import { LiassStatusChipComponent, type LiassStatusTone } from '../../../../shar
 import { AccountingApi } from '../../data-access/accounting.api';
 import { AccountingFiscalYearContextService } from '../../data-access/accounting-fiscal-year-context.service';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 
 interface FiscalPeriod {
   month: string;
@@ -319,6 +320,8 @@ export class FiscalYearCloseConfirmationDialogComponent {
   templateUrl: './fiscal-year.page.html'
 })
 export class FiscalYearPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingApi = inject(AccountingApi);
   private readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   private readonly accountingQueries = inject(AccountingQueries);

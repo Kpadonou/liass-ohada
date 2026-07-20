@@ -1,20 +1,25 @@
 import { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { z } from "zod";
 import type { CabinetRole } from "@liass-ohada/shared";
+import type { AccountingAccessMode } from "@liass-ohada/shared";
+import { isAccountingPermission } from "../authorization/accounting-permission";
 import { AppError } from "../app-error";
 import { I18nResolver } from "../i18n";
 import { TenantAccessService } from "../services/tenant-access-service";
+import { AccountingAuthorizationService } from "../services/accounting-authorization-service";
 
 export { AppError };
 
 // Note: On utilise l'interface avec JWT Authorizer par défaut
 export interface HandlerContext {
+  accountingAccessMode?: AccountingAccessMode;
   orgId: string;
   userId: string;
   role?: string;
   cabinetRole?: CabinetRole;
   cabinetId?: string;
   workspaceType?: "COMPANY" | "ACCOUNTING_FIRM";
+  workspaceOrgId?: string;
   accountingFramework?: string;
   i18n: I18nResolver;
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
@@ -87,27 +92,52 @@ const createTenantHandler = <T>(
         throw new AppError(400, "ERROR_MISSING_ORG_ID");
       }
 
-      const access = await TenantAccessService.assertUserCanAccessOrg({
-        orgId,
-        userId,
-      });
+      const workspaceOrgId = getHeader(event.headers, "x-workspace-org-id");
+      const access =
+        requiredWorkspaceType === "COMPANY"
+          ? await (async () => {
+              const permission = process.env.ACCOUNTING_PERMISSION;
+              if (!isAccountingPermission(permission)) {
+                throw new AppError(500, "ACCOUNTING_PERMISSION_NOT_CONFIGURED");
+              }
+              const decision = await AccountingAuthorizationService.resolve({
+                orgId,
+                permission,
+                userId,
+                workspaceOrgId,
+              });
+              return {
+                accountingAccessMode: decision.accessMode,
+                accountingFramework: decision.accountingFramework,
+                cabinetId: decision.cabinetId,
+                cabinetRole: decision.cabinetRole,
+                role: decision.role,
+                workspaceOrgId: decision.workspaceOrgId,
+                workspaceType: "COMPANY" as const,
+              };
+            })()
+          : await TenantAccessService.assertUserCanAccessOrg({
+              orgId,
+              userId,
+            });
 
-      if (access.workspaceType !== requiredWorkspaceType) {
-        throw new AppError(
-          403,
-          requiredWorkspaceType === "ACCOUNTING_FIRM"
-            ? "ERROR_CABINET_WORKSPACE_REQUIRED"
-            : "ERROR_ACCOUNTING_DOSSIER_REQUIRED",
-        );
+      if (
+        requiredWorkspaceType === "ACCOUNTING_FIRM" &&
+        access.workspaceType !== "ACCOUNTING_FIRM"
+      ) {
+        throw new AppError(403, "ERROR_CABINET_WORKSPACE_REQUIRED");
       }
 
       const result = await logic(validatedData, {
         orgId,
+        accountingAccessMode: access.accountingAccessMode,
         userId,
         role: access.role,
         cabinetRole: access.cabinetRole,
         cabinetId: access.cabinetId,
         workspaceType: access.workspaceType,
+        workspaceOrgId:
+          "workspaceOrgId" in access ? access.workspaceOrgId : orgId,
         accountingFramework: access.accountingFramework,
         i18n,
         event,
@@ -127,8 +157,20 @@ const createTenantHandler = <T>(
       }
 
       if (error instanceof AppError) {
+        if (
+          requiredWorkspaceType === "COMPANY" &&
+          (error.messageCode.startsWith("CABINET_") ||
+            error.messageCode === "ACCOUNTING_ACCESS_CONTEXT_INVALID")
+        ) {
+          console.warn("[ACCOUNTING_AUTHORIZATION_DENIED]", {
+            code: error.messageCode,
+            result: "DENIED",
+            timestamp: new Date().toISOString(),
+          });
+        }
         return sendResponse(error.statusCode, {
           message: i18n.getMessage(error.messageCode, error.details),
+          error: { code: error.messageCode },
           details: error.details,
         });
       }
@@ -202,6 +244,7 @@ export const createAuthenticatedHandler = <T>(
       if (error instanceof AppError) {
         return sendResponse(error.statusCode, {
           message: i18n.getMessage(error.messageCode, error.details),
+          error: { code: error.messageCode },
           details: error.details,
         });
       }

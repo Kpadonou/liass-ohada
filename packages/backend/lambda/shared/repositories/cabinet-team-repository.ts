@@ -3,6 +3,7 @@ import {
   BatchGetItemCommand,
   DeleteItemCommand,
   GetItemCommand,
+  PutItemCommand,
   QueryCommand,
   TransactWriteItem,
   TransactWriteItemsCommand,
@@ -84,11 +85,15 @@ export interface CabinetDossierAssignmentRecord {
 }
 
 export interface CabinetDossierRecord {
+  accountingFramework?: string;
   cabinetId: string;
+  country?: string;
+  createdAt?: string;
   orgId: string;
   displayName?: string;
   status: string;
   relationship?: string;
+  updatedAt?: string;
 }
 
 export interface OrganizationRecord {
@@ -858,14 +863,100 @@ export class CabinetTeamRepository {
       .map((item) => unmarshall(item))
       .filter((value) => value.entityType === "CABINET_DOSSIER")
       .map((value) => ({
+        accountingFramework:
+          typeof value.accountingFramework === "string"
+            ? value.accountingFramework
+            : undefined,
         cabinetId: String(value.cabinetId),
+        country: typeof value.country === "string" ? value.country : undefined,
+        createdAt:
+          typeof value.createdAt === "string" ? value.createdAt : undefined,
         orgId: String(value.orgId),
         displayName:
           typeof value.displayName === "string" ? value.displayName : undefined,
         status: String(value.status),
         relationship:
           typeof value.relationship === "string" ? value.relationship : undefined,
+        updatedAt:
+          typeof value.updatedAt === "string" ? value.updatedAt : undefined,
       }));
+  }
+
+  static async getCurrentDossiers(
+    cabinetId: string,
+    dossierOrgIds: string[],
+  ): Promise<CabinetDossierRecord[]> {
+    if (dossierOrgIds.length === 0) return [];
+    const result = await dynamoClient.send(
+      new BatchGetItemCommand({
+        RequestItems: {
+          [config.TABLE_NAME]: {
+            Keys: dossierOrgIds.flatMap((orgId) => [
+              {
+                PK: { S: KeyFactory.cabinetPK(cabinetId) },
+                SK: { S: KeyFactory.cabinetDossierSK(orgId) },
+              },
+              {
+                PK: { S: KeyFactory.orgKey(orgId) },
+                SK: { S: KeyFactory.organizationSK() },
+              },
+            ]),
+            ConsistentRead: true,
+          },
+        },
+      }),
+    );
+    const values = (result.Responses?.[config.TABLE_NAME] ?? []).map((item) =>
+      unmarshall(item),
+    );
+    const relationships = new Map(
+      values
+        .filter((value) => value.entityType === "CABINET_DOSSIER")
+        .map((value) => [String(value.orgId), value]),
+    );
+    const organizations = new Map(
+      values
+        .filter((value) => value.entityType === "ORGANIZATION")
+        .map((value) => [String(value.orgId), value]),
+    );
+
+    return dossierOrgIds.flatMap((orgId) => {
+      const relationship = relationships.get(orgId);
+      const organization = organizations.get(orgId);
+      if (
+        !relationship ||
+        !organization ||
+        organization.workspaceType !== "COMPANY"
+      ) return [];
+      return [{
+        accountingFramework:
+          typeof organization.accountingFramework === "string"
+            ? organization.accountingFramework
+            : undefined,
+        cabinetId: String(relationship.cabinetId),
+        country:
+          typeof organization.country === "string" ? organization.country : undefined,
+        createdAt:
+          typeof organization.createdAt === "string"
+            ? organization.createdAt
+            : undefined,
+        displayName:
+          typeof organization.name === "string" ? organization.name : undefined,
+        orgId,
+        relationship:
+          typeof relationship.relationship === "string"
+            ? relationship.relationship
+            : undefined,
+        status:
+          relationship.status === "ACTIVE" && organization.status === "ACTIVE"
+            ? "ACTIVE"
+            : "INACTIVE",
+        updatedAt:
+          typeof organization.updatedAt === "string"
+            ? organization.updatedAt
+            : undefined,
+      }];
+    });
   }
 
   static async getOrganization(
@@ -956,6 +1047,124 @@ export class CabinetTeamRepository {
     return (result.Items ?? [])
       .map(toAssignmentRecord)
       .filter((item): item is CabinetDossierAssignmentRecord => Boolean(item));
+  }
+
+  static async getAssignment(input: {
+    cabinetOrgId: string;
+    dossierOrgId: string;
+    userId: string;
+  }): Promise<CabinetDossierAssignmentRecord | undefined> {
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: {
+          PK: { S: KeyFactory.cabinetPK(input.cabinetOrgId) },
+          SK: {
+            S: KeyFactory.cabinetMemberDossierAssignmentSK(
+              input.userId,
+              input.dossierOrgId,
+            ),
+          },
+        },
+        ConsistentRead: true,
+      }),
+    );
+    return toAssignmentRecord(result.Item);
+  }
+
+  static async addAssignment(
+    assignment: CabinetDossierAssignmentRecord,
+  ): Promise<void> {
+    await dynamoClient.send(
+      new PutItemCommand({
+        TableName: config.TABLE_NAME,
+        Item: marshall(
+          {
+            PK: KeyFactory.cabinetPK(assignment.cabinetOrgId),
+            SK: KeyFactory.cabinetMemberDossierAssignmentSK(
+              assignment.userId,
+              assignment.dossierOrgId,
+            ),
+            entityType: "CABINET_DOSSIER_ASSIGNMENT",
+            ...assignment,
+            GSI1PK: KeyFactory.cabinetDossierAssignmentsGSI_PK(
+              assignment.cabinetOrgId,
+              assignment.dossierOrgId,
+            ),
+            GSI1SK: KeyFactory.cabinetDossierAssignmentsGSI_SK(
+              assignment.userId,
+            ),
+          },
+          { removeUndefinedValues: true },
+        ),
+        ConditionExpression:
+          "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      }),
+    );
+  }
+
+  static async removeAssignment(input: {
+    cabinetOrgId: string;
+    dossierOrgId: string;
+    userId: string;
+  }): Promise<void> {
+    await dynamoClient.send(
+      new DeleteItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: {
+          PK: { S: KeyFactory.cabinetPK(input.cabinetOrgId) },
+          SK: {
+            S: KeyFactory.cabinetMemberDossierAssignmentSK(
+              input.userId,
+              input.dossierOrgId,
+            ),
+          },
+        },
+        ConditionExpression:
+          "entityType = :entityType AND cabinetOrgId = :cabinetOrgId AND userId = :userId AND dossierOrgId = :dossierOrgId",
+        ExpressionAttributeValues: {
+          ":entityType": { S: "CABINET_DOSSIER_ASSIGNMENT" },
+          ":cabinetOrgId": { S: input.cabinetOrgId },
+          ":userId": { S: input.userId },
+          ":dossierOrgId": { S: input.dossierOrgId },
+        },
+      }),
+    );
+  }
+
+  static async listMemberAssignmentsPage(input: {
+    cabinetOrgId: string;
+    cursor?: string;
+    limit: number;
+    userId: string;
+  }): Promise<Page<CabinetDossierAssignmentRecord>> {
+    const partitionKey = KeyFactory.cabinetPK(input.cabinetOrgId);
+    const prefix = KeyFactory.cabinetMemberAssignmentsPrefix(input.userId);
+    const cursor = decodeCursor(input.cursor);
+    if (
+      cursor &&
+      (cursor.PK?.S !== partitionKey || !cursor.SK?.S?.startsWith(prefix))
+    ) {
+      throw new Error("Invalid cursor");
+    }
+    const result = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+        ExpressionAttributeValues: {
+          ":pk": { S: partitionKey },
+          ":prefix": { S: prefix },
+        },
+        ExclusiveStartKey: cursor,
+        Limit: input.limit,
+      }),
+    );
+    return {
+      items: (result.Items ?? [])
+        .map(toAssignmentRecord)
+        .filter((item): item is CabinetDossierAssignmentRecord => Boolean(item)),
+      nextCursor: encodeCursor(result.LastEvaluatedKey),
+    };
   }
 
   static async listDossierAssignments(

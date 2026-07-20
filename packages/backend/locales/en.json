@@ -211,6 +211,16 @@
   "CABINET_DOSSIER_NOT_FOUND": "Client dossier not found.",
   "CABINET_DOSSIER_INACTIVE": "This client dossier is inactive.",
   "CABINET_DOSSIER_NOT_OWNED": "This client dossier does not belong to the current Cabinet.",
+  "CABINET_DOSSIER_ASSIGNMENT_REQUIRED": "You are no longer assigned to this client dossier.",
+  "CABINET_DOSSIER_ACCESS_FORBIDDEN": "This client dossier is no longer accessible.",
+  "CABINET_DOSSIER_READ_ONLY": "This action requires write access; your dossier access is read-only.",
+  "CABINET_DOSSIER_ACCESS_REVOKED": "Your access to this client dossier has been revoked.",
+  "CABINET_SUPERVISOR_ASSIGNMENT_REQUIRED": "You may manage assignments only for dossiers you supervise.",
+  "CABINET_SUPERVISOR_TARGET_ROLE_FORBIDDEN": "A Supervisor may manage assignments only for Collaborators and Readers.",
+  "ACCOUNTING_ACCESS_CONTEXT_INVALID": "The selected accounting context is invalid.",
+  "ACCOUNTING_PERMISSION_NOT_CONFIGURED": "Accounting access configuration is unavailable.",
+  "CABINET_DOSSIER_ASSIGNMENT_EXISTS": "This member is already assigned to the client dossier.",
+  "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND": "This member is not assigned to the client dossier.",
   "CABINET_ASSIGNMENT_NOT_FOUND": "Cabinet dossier assignment not found.",
   "CABINET_ASSIGNMENT_FORBIDDEN": "Your Cabinet role does not allow assignment management."
 }

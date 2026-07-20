@@ -7,12 +7,16 @@ import {
   CreateCabinetDossierResponseSchema,
   ListCabinetDossiersResponse,
   ListCabinetDossiersResponseSchema,
+  ListCabinetDossiersRequest,
+  ListCabinetDossiersRequestSchema,
   Organization,
   WorkspaceSummary,
 } from "@liass-ohada/shared";
 import { randomUUID } from "crypto";
 import { AppError } from "../app-error";
 import { CabinetDossierRepository } from "../repositories/cabinet-dossier-repository";
+import { CabinetTeamRepository } from "../repositories/cabinet-team-repository";
+import { CabinetAuthorizationService } from "./cabinet-authorization-service";
 
 interface CabinetContext {
   orgId: string;
@@ -40,14 +44,81 @@ function createOrgId(): string {
 export class CabinetDossierService {
   static async listClientDossiers(
     context: CabinetContext,
+    input: ListCabinetDossiersRequest = {},
   ): Promise<ListCabinetDossiersResponse> {
     const cabinetId = assertAccountingFirmContext(context);
-    const dossiers = await CabinetDossierRepository.listClientDossiers({
-      cabinetId,
-      cabinetOrgId: context.orgId,
+    const request = ListCabinetDossiersRequestSchema.parse(input);
+    const authorized = await CabinetAuthorizationService.requireActiveMembership({
+      orgId: context.orgId,
+      userId: context.userId,
+      cabinetId: context.cabinetId,
+      workspaceType: context.workspaceType,
     });
+    if (authorized.caller.cabinetRole === "CABINET_ADMIN") {
+      const dossiers = await CabinetDossierRepository.listClientDossiers({
+        cabinetId,
+        cabinetOrgId: context.orgId,
+      });
+      return ListCabinetDossiersResponseSchema.parse({
+        dossiers: dossiers.map((dossier) => ({
+          ...dossier,
+          accessMode: "READ_WRITE",
+        })),
+      });
+    }
 
-    return ListCabinetDossiersResponseSchema.parse({ dossiers });
+    const limit = request.limit ?? 50;
+    const dossiers: ListCabinetDossiersResponse["dossiers"] = [];
+    let cursor = request.cursor;
+    let iteration = 0;
+    const maximumInternalPageFetches = 3;
+
+    do {
+      const page = await CabinetTeamRepository.listMemberAssignmentsPage({
+        cabinetOrgId: authorized.cabinetOrgId,
+        cursor,
+        limit: Math.min(50, Math.max(1, limit - dossiers.length)),
+        userId: context.userId,
+      });
+      cursor = page.nextCursor;
+      const relationships = await CabinetTeamRepository.getCurrentDossiers(
+        cabinetId,
+        page.items.map((assignment) => assignment.dossierOrgId),
+      );
+      for (const relationship of relationships) {
+        const parsed = CabinetDossierSummarySchema.safeParse({
+          accessMode:
+            authorized.caller.cabinetRole === "READER"
+              ? "READ_ONLY"
+              : "READ_WRITE",
+          accountingFramework: relationship.accountingFramework,
+          country: relationship.country,
+          createdAt: relationship.createdAt,
+          displayName: relationship.displayName,
+          orgId: relationship.orgId,
+          status: relationship.status,
+          updatedAt: relationship.updatedAt,
+        });
+        if (
+          relationship.cabinetId === cabinetId &&
+          relationship.relationship === "CLIENT" &&
+          relationship.status === "ACTIVE" &&
+          parsed.success
+        ) {
+          dossiers.push(parsed.data);
+        }
+      }
+      iteration += 1;
+    } while (
+      cursor &&
+      dossiers.length < limit &&
+      iteration < maximumInternalPageFetches
+    );
+
+    return ListCabinetDossiersResponseSchema.parse({
+      dossiers: dossiers.slice(0, limit),
+      nextCursor: cursor,
+    });
   }
 
   static async createClientDossier(

@@ -25,6 +25,7 @@ import {
 } from '../../../../shared/ui/table-preferences/table-preferences.storage';
 import { AccountingApi, type PaginatedResult } from '../../data-access/accounting.api';
 import { AccountingQueries } from '../../data-access/accounting-queries';
+import { AuthStore } from '../../../identity/data-access/auth.store';
 import { AccountDialogComponent } from './account-dialog.component';
 import { DisableAccountDialogComponent } from './disable-account-dialog.component';
 
@@ -78,6 +79,8 @@ const ACCOUNT_TABLE_COLUMNS: LiassTableColumnPreference[] = [
   templateUrl: './accounts.page.html'
 })
 export class AccountsPage implements OnDestroy {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly accountingApi = inject(AccountingApi);
   private readonly accountingQueries = inject(AccountingQueries);
   private readonly dialog = inject(MatDialog);

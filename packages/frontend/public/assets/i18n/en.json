@@ -786,6 +786,11 @@
     }
   },
   "ACCOUNTING": {
+    "ACCESS": {
+      "READ_ONLY": "Read-only access",
+      "READ_ONLY_ACTION": "This action requires write access.",
+      "REVOKED": "This dossier is no longer accessible. Choose another client dossier."
+    },
     "PAGES": {
       "OVERVIEW": {
         "SUBTITLE": "Track the key accounting indicators for the active fiscal year.",
@@ -2467,6 +2472,7 @@
         "OPEN": "Open"
       },
       "ERRORS": {
+        "ACCESS_REVOKED": "Your access to this dossier is no longer active. Select another client dossier.",
         "CREATE_FAILED": "Client dossier creation could not finish. Please retry.",
         "DUPLICATE": "This client dossier already exists.",
         "LOAD_FAILED": "Client dossiers could not be loaded. Please retry.",

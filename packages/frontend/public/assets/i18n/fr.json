@@ -786,6 +786,11 @@
     }
   },
   "ACCOUNTING": {
+    "ACCESS": {
+      "READ_ONLY": "Accès en lecture seule",
+      "READ_ONLY_ACTION": "Cette action nécessite un accès en modification.",
+      "REVOKED": "Ce dossier n’est plus accessible. Sélectionnez un autre dossier client."
+    },
     "PAGES": {
       "OVERVIEW": {
         "SUBTITLE": "Suivez les principaux indicateurs comptables de l’exercice actif.",
@@ -2467,6 +2472,7 @@
         "OPEN": "Ouvrir"
       },
       "ERRORS": {
+        "ACCESS_REVOKED": "Votre accès à ce dossier n’est plus actif. Sélectionnez un autre dossier client.",
         "CREATE_FAILED": "La création du dossier client n’a pas pu se terminer. Veuillez réessayer.",
         "DUPLICATE": "Ce dossier client existe déjà.",
         "LOAD_FAILED": "Les dossiers clients n’ont pas pu être chargés. Veuillez réessayer.",

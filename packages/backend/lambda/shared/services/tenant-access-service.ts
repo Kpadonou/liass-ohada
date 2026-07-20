@@ -8,12 +8,14 @@ import { KeyFactory } from "../key-builder";
 import { OnboardingRepository } from "../repositories/onboarding-repository";
 
 export interface TenantAccess {
+  accountingAccessMode?: "READ_WRITE" | "READ_ONLY";
   role?: string;
   cabinetRole?: CabinetRole;
   cabinetId?: string;
   accessSource?: string;
   displayName?: string;
   workspaceType?: "COMPANY" | "ACCOUNTING_FIRM";
+  workspaceOrgId?: string;
   country?: string;
   accountingFramework?: string;
 }
@@ -35,6 +37,7 @@ export class TenantAccessService {
           PK: { S: KeyFactory.orgKey(orgId) },
           SK: { S: KeyFactory.orgUserAccessSK(userId) },
         },
+        ConsistentRead: true,
       }),
     );
 

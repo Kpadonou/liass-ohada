@@ -1,4 +1,5 @@
 import {
+  AccountingAccessModeSchema,
   CabinetDossierSummarySchema,
   CabinetSchema,
   CreateCabinetDossierRequestSchema,
@@ -12,6 +13,22 @@ import {
 } from "@liass-ohada/shared";
 
 describe("workspace shared schemas", () => {
+  test("supports canonical read/write modes and defaults legacy dossier summaries to writable", () => {
+    expect(AccountingAccessModeSchema.parse("READ_ONLY")).toBe("READ_ONLY");
+    expect(AccountingAccessModeSchema.parse("READ_WRITE")).toBe("READ_WRITE");
+    expect(AccountingAccessModeSchema.safeParse("READER").success).toBe(false);
+    expect(
+      CabinetDossierSummarySchema.parse({
+        accountingFramework: "SYSCOHADA_REVISED",
+        country: "BJ",
+        createdAt: "2026-06-03T00:00:00.000Z",
+        displayName: "Demo SARL",
+        orgId: "org-123",
+        status: "ACTIVE",
+        updatedAt: "2026-06-03T00:00:00.000Z",
+      }).accessMode,
+    ).toBe("READ_WRITE");
+  });
   test("accepts only the initial workspace request contract", () => {
     const parsed = CreateInitialWorkspaceRequestSchema.parse({
       workspaceType: "COMPANY",
@@ -226,7 +243,7 @@ describe("workspace shared schemas", () => {
     };
 
     expect(ListCabinetDossiersResponseSchema.parse({ dossiers: [dossier] })).toEqual({
-      dossiers: [dossier],
+      dossiers: [{ ...dossier, accessMode: "READ_WRITE" }],
     });
     expect(
       CreateCabinetDossierResponseSchema.parse({

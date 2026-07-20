@@ -25,6 +25,7 @@ import { LiassStatCardComponent } from '../../../shared/ui/stat-card/stat-card.c
 import { LiassStatusChipComponent, type LiassStatusTone } from '../../../shared/ui/status-chip/status-chip.component';
 import { TreasuryApi } from '../data-access/treasury.api';
 import { TreasuryQueries } from '../data-access/treasury-queries';
+import { AuthStore } from '../../identity/data-access/auth.store';
 import { CancelReconciliationDialogComponent } from './cancel-reconciliation-dialog.component';
 import { CreateTreasuryAccountDialogComponent } from './create-treasury-account-dialog.component';
 import { CreateTreasuryTransactionDialogComponent } from './create-treasury-transaction-dialog.component';
@@ -60,6 +61,8 @@ interface MatchEligibility {
   templateUrl: './treasury.page.html'
 })
 export class TreasuryPage {
+  protected readonly authStore = inject(AuthStore);
+  protected readonly canWriteAccounting = () => !this.authStore.isAccountingReadOnly?.();
   private readonly dialog = inject(MatDialog);
   private readonly notification = inject(NotificationService);
   private readonly queryClient = inject(QueryClient);
