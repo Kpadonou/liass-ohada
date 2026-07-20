@@ -6,6 +6,7 @@ import { fetchAuthSession } from 'aws-amplify/auth';
 
 import { environment } from '../../../../../environments/environment';
 import { AuthStore } from '../../data-access/auth.store';
+import { InvitationAcceptanceState } from '../../data-access/invitation-acceptance-state';
 
 const CALLBACK_STEP_TIMEOUT_MS = 10000;
 
@@ -18,6 +19,7 @@ type CallbackErrorKey = 'IDENTITY.AUTH_CALLBACK.ERRORS.GENERIC' | 'IDENTITY.AUTH
 })
 export class AuthCallbackPage implements OnInit {
   private readonly authStore = inject(AuthStore);
+  private readonly invitationAcceptanceState = inject(InvitationAcceptanceState);
   private readonly router = inject(Router);
 
   protected readonly errorKey = signal<CallbackErrorKey | null>(null);
@@ -58,6 +60,12 @@ export class AuthCallbackPage implements OnInit {
 
       if (!this.authStore.isAuthenticated()) {
         await this.router.navigate(['/login'], { replaceUrl: true });
+        return;
+      }
+
+      const returnUrl = this.invitationAcceptanceState.consumeReturnUrl();
+      if (returnUrl) {
+        await this.router.navigateByUrl(returnUrl, { replaceUrl: true });
         return;
       }
 

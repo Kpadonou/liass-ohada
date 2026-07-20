@@ -5,6 +5,7 @@ import type { CabinetRole } from "@liass-ohada/shared";
 import { AppError } from "../app-error";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
+import { resolveCabinetRole } from "../cabinet-role";
 import { OnboardingRepository } from "../repositories/onboarding-repository";
 
 export interface TenantAccess {
@@ -58,13 +59,7 @@ export class TenantAccessService {
 
     return {
       role: typeof access.role === "string" ? access.role : undefined,
-      cabinetRole:
-        access.cabinetRole === "CABINET_ADMIN" ||
-        access.cabinetRole === "SUPERVISOR" ||
-        access.cabinetRole === "COLLABORATOR" ||
-        access.cabinetRole === "READER"
-          ? access.cabinetRole
-          : undefined,
+      cabinetRole: resolveCabinetRole(access),
       cabinetId: typeof access.cabinetId === "string" ? access.cabinetId : undefined,
       accessSource:
         typeof access.accessSource === "string" ? access.accessSource : undefined,

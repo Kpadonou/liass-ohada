@@ -26,6 +26,7 @@ interface AddRouteOptions {
   authorizer?: apigw.IHttpRouteAuthorizer;
   constructIdOverride?: string;
   domainName: string;
+  environment?: Record<string, string>;
   handlerEntry: string;
   idPrefix?: string;
   lambdaRole?: iam.IRole;
@@ -114,6 +115,7 @@ export abstract class DomainConstructFactory extends Construct {
         ...(options.accountingPermission
           ? { ACCOUNTING_PERMISSION: options.accountingPermission }
           : {}),
+        ...(options.environment ?? {}),
       },
     });
 

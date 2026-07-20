@@ -15,6 +15,7 @@ import {
 import { z } from "zod";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
+import { resolveCabinetRole } from "../cabinet-role";
 
 const AccessSourceSchema = z.literal("DIRECT");
 const OwnerRoleSchema = z.literal("OWNER");
@@ -144,10 +145,7 @@ export class OnboardingRepository {
         WorkspaceSummarySchema.safeParse({
           orgId: access.orgId,
           role: typeof access.role === "string" ? access.role : undefined,
-          cabinetRole:
-            typeof access.cabinetRole === "string"
-              ? access.cabinetRole
-              : undefined,
+          cabinetRole: resolveCabinetRole(access),
           cabinetId:
             typeof access.cabinetId === "string" ? access.cabinetId : undefined,
           accessSource:

@@ -9,8 +9,10 @@ import {
   appRootRedirectGuard,
   authGuard,
   cabinetDashboardGuard,
+  cabinetTeamGuard,
   cabinetDossierGuard,
   loginRedirectGuard,
+  invitationAcceptanceGuard,
   tenantGuard
 } from './auth.guards';
 
@@ -28,6 +30,14 @@ export const routes: Routes = [
   {
     path: 'auth/callback',
     component: AuthCallbackPage
+  },
+  {
+    path: 'accept-invitation',
+    loadComponent: () =>
+      import(
+        '../../domains/identity/feature/invitation-acceptance/invitation-acceptance.page'
+      ).then((module) => module.InvitationAcceptancePage),
+    canActivate: [invitationAcceptanceGuard]
   },
   {
     path: 'select-workspace',
@@ -133,6 +143,14 @@ export const routes: Routes = [
             '../../domains/identity/feature/cabinet-dossier-new/cabinet-dossier-new.page'
           ).then((module) => module.CabinetDossierNewPage),
         canActivate: [cabinetDashboardGuard]
+      },
+      {
+        path: 'cabinet/team',
+        loadComponent: () =>
+          import('../../domains/identity/feature/cabinet-team/cabinet-team.page').then(
+            (module) => module.CabinetTeamPage
+          ),
+        canActivate: [cabinetTeamGuard]
       },
       {
         path: 'accounting',

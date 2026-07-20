@@ -65,6 +65,7 @@ const translations = {
         SYCEBNL_BADGE: 'SYCEBNL',
         THIRD_PARTIES: 'Tiers',
         TREASURY: 'Trésorerie',
+        TEAM: 'Équipe',
         TRIAL_BALANCE: 'Balance'
       }
     }
@@ -172,7 +173,9 @@ describe('AppSidebarComponent', () => {
       {
         orgId: 'org-firm',
         displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetRole: 'CABINET_ADMIN',
+        status: 'ACTIVE'
       },
       'org-firm'
     );
@@ -182,7 +185,7 @@ describe('AppSidebarComponent', () => {
 
     expect(text).toContain('Tableau de bord cabinet');
     expect(text).toContain('Dossiers clients');
-    expect(text).toContain('Collaborateurs');
+    expect(text).toContain('Équipe');
     expect(text).toContain('Missions');
     expect(text).toContain('Échéances');
     expect(text).toContain('Paramètres du cabinet');
@@ -200,6 +203,22 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('Trésorerie');
     expect(text).not.toContain('États OHADA');
     expect(text).not.toContain('Projets et fonds');
+  });
+
+  it('hides Team navigation from Collaborators in Cabinet context', () => {
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetRole: 'COLLABORATOR',
+        status: 'ACTIVE'
+      },
+      'org-firm'
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Équipe');
   });
 
   it('restores standard accounting navigation after a cabinet dossier is selected', () => {

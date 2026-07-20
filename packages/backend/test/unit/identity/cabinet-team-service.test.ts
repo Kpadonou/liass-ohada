@@ -64,6 +64,11 @@ describe("CabinetTeamService", () => {
 
   test("lists members with an organization-partition Query and never Scan", async () => {
     dynamoMock.on(GetItemCommand).resolves({ Item: memberItem("admin-1", "CABINET_ADMIN") });
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "CABINET#cab-1" }, SK: { S: "CABINET#METADATA" } },
+      })
+      .resolves({ Item: cabinetItem() });
     dynamoMock.on(QueryCommand).resolves({
       Items: [
         memberItem("admin-1", "CABINET_ADMIN"),
@@ -81,6 +86,8 @@ describe("CabinetTeamService", () => {
     const query = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
 
     expect(response.members).toHaveLength(2);
+    expect(response.members[0]).toMatchObject({ userId: "admin-1", isOwner: true });
+    expect(response.members[1]).toMatchObject({ userId: "member-1", isOwner: false });
     expect(query.IndexName).toBeUndefined();
     expect(query.KeyConditionExpression).toBe(
       "PK = :pk AND begins_with(SK, :prefix)",
@@ -90,6 +97,29 @@ describe("CabinetTeamService", () => {
       ":prefix": { S: "USER#" },
     });
     expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("allows a legacy Cabinet owner whose access row predates cabinetRole", async () => {
+    const legacyOwner = unmarshall(memberItem("admin-1", "CABINET_ADMIN"));
+    delete legacyOwner.cabinetRole;
+    dynamoMock.on(GetItemCommand).resolves({ Item: marshall(legacyOwner) });
+    dynamoMock
+      .on(GetItemCommand, {
+        Key: { PK: { S: "CABINET#cab-1" }, SK: { S: "CABINET#METADATA" } },
+      })
+      .resolves({ Item: cabinetItem() });
+    dynamoMock.on(QueryCommand).resolves({ Items: [marshall(legacyOwner)] });
+    dynamoMock.on(BatchGetItemCommand).resolves({
+      Responses: { "liass-ohada-test-accounting-table": [] },
+    });
+
+    const response = await CabinetTeamService.listMembers(context, { limit: 25 });
+
+    expect(response.members[0]).toMatchObject({
+      userId: "admin-1",
+      cabinetRole: "CABINET_ADMIN",
+      isOwner: true,
+    });
   });
 
   test("allows a Supervisor to list active members but not suspended members", async () => {

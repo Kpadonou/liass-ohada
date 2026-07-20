@@ -1,10 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { AuthStore } from '../../data-access/auth.store';
+import { InvitationAcceptanceState } from '../../data-access/invitation-acceptance-state';
 import { AuthLayoutComponent } from '../../ui/auth-layout/auth-layout.component';
 
 @Component({
@@ -21,6 +22,8 @@ import { AuthLayoutComponent } from '../../ui/auth-layout/auth-layout.component'
 export class LoginPage {
   protected readonly authStore = inject(AuthStore);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly invitationAcceptanceState = inject(InvitationAcceptanceState);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   protected hidePassword = true;
@@ -115,6 +118,15 @@ export class LoginPage {
   }
 
   private async routeAfterWorkspaceDiscovery(): Promise<void> {
+    const requestedReturnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    const acceptanceReturnUrl =
+      requestedReturnUrl === '/accept-invitation'
+        ? requestedReturnUrl
+        : this.invitationAcceptanceState.consumeReturnUrl();
+    if (acceptanceReturnUrl) {
+      await this.router.navigateByUrl(acceptanceReturnUrl, { replaceUrl: true });
+      return;
+    }
     await this.authStore.loadWorkspaces(true);
     const destination = this.authStore.workspaceDestination();
     if (destination) {

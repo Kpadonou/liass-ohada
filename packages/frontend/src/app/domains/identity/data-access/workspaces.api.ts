@@ -18,16 +18,29 @@ function parseWorkspaceSummary(value: unknown): WorkspaceSummary {
     throw new Error('Invalid workspace discovery response.');
   }
 
+  const workspaceType =
+    value['workspaceType'] === 'COMPANY' || value['workspaceType'] === 'ACCOUNTING_FIRM'
+      ? value['workspaceType']
+      : undefined;
+  const role = optionalString(value['role']);
+  const cabinetRole =
+    value['cabinetRole'] === 'CABINET_ADMIN' ||
+    value['cabinetRole'] === 'SUPERVISOR' ||
+    value['cabinetRole'] === 'COLLABORATOR' ||
+    value['cabinetRole'] === 'READER'
+      ? value['cabinetRole']
+      : workspaceType === 'ACCOUNTING_FIRM' && role === 'OWNER'
+        ? 'CABINET_ADMIN'
+        : undefined;
+
   return {
     orgId: value['orgId'],
-    role: optionalString(value['role']),
+    role,
+    cabinetRole,
     cabinetId: optionalString(value['cabinetId']),
     accessSource: optionalString(value['accessSource']),
     displayName: optionalString(value['displayName']),
-    workspaceType:
-      value['workspaceType'] === 'COMPANY' || value['workspaceType'] === 'ACCOUNTING_FIRM'
-        ? value['workspaceType']
-        : undefined,
+    workspaceType,
     status: value['status'] === 'ACTIVE' ? value['status'] : undefined,
     country: optionalString(value['country']) as WorkspaceSummary['country'],
     accountingFramework: optionalString(

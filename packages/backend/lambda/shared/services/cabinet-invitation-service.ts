@@ -88,11 +88,13 @@ function responseWithOptionalToken(
   invitation: CabinetInvitationRecord,
   rawToken: string,
 ) {
+  const exposeDevelopmentToken = CabinetTeamConfig.exposeInvitationToken();
   return {
     invitation: invitationDto(invitation),
-    invitationToken: CabinetTeamConfig.exposeInvitationToken()
-      ? rawToken
-      : undefined,
+    invitationToken: exposeDevelopmentToken ? rawToken : undefined,
+    deliveryMode: exposeDevelopmentToken
+      ? ("DEVELOPMENT_TOKEN" as const)
+      : ("UNAVAILABLE" as const),
   };
 }
 

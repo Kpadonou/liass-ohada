@@ -52,6 +52,7 @@ export const CabinetMemberSchema = z
     createdAt: z.string().datetime().optional(),
     updatedAt: z.string().datetime(),
     updatedBy: z.string().min(1).optional(),
+    isOwner: z.boolean().default(false),
   })
   .strict();
 
@@ -62,7 +63,8 @@ export const CabinetMemberSummarySchema = CabinetMemberSchema.pick({
   displayName: true,
   email: true,
   joinedAt: true,
-  updatedAt: true,
+    updatedAt: true,
+    isOwner: true,
 });
 
 export const CabinetInvitationSchema = z
@@ -138,6 +140,9 @@ export const CreateCabinetInvitationResponseSchema = z
   .object({
     invitation: CabinetInvitationSchema,
     invitationToken: z.string().min(1).optional(),
+    deliveryMode: z
+      .enum(["DEVELOPMENT_TOKEN", "UNAVAILABLE"])
+      .default("UNAVAILABLE"),
   })
   .strict();
 
@@ -162,6 +167,10 @@ export const ListCabinetInvitationsResponseSchema = z
 
 export const ResendCabinetInvitationResponseSchema =
   CreateCabinetInvitationResponseSchema;
+
+export const CabinetInvitationResponseSchema = z
+  .object({ invitation: CabinetInvitationSchema })
+  .strict();
 
 export const AcceptCabinetInvitationRequestSchema = z
   .object({ token: z.string().min(32).max(512) })
@@ -231,4 +240,25 @@ export type AcceptCabinetInvitationRequest = z.infer<
 >;
 export type ReplaceCabinetMemberAssignmentsRequest = z.infer<
   typeof ReplaceCabinetMemberAssignmentsRequestSchema
+>;
+export type ListCabinetMembersResponse = z.infer<
+  typeof ListCabinetMembersResponseSchema
+>;
+export type GetCabinetMemberResponse = z.infer<
+  typeof GetCabinetMemberResponseSchema
+>;
+export type CreateCabinetInvitationResponse = z.infer<
+  typeof CreateCabinetInvitationResponseSchema
+>;
+export type ListCabinetInvitationsResponse = z.infer<
+  typeof ListCabinetInvitationsResponseSchema
+>;
+export type AcceptCabinetInvitationResponse = z.infer<
+  typeof AcceptCabinetInvitationResponseSchema
+>;
+export type ListCabinetMemberAssignmentsResponse = z.infer<
+  typeof ListCabinetMemberAssignmentsResponseSchema
+>;
+export type ListCabinetDossierMembersResponse = z.infer<
+  typeof ListCabinetDossierMembersResponseSchema
 >;

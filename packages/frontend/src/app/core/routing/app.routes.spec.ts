@@ -1,5 +1,12 @@
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
-import { appRootRedirectGuard, authGuard, cabinetDashboardGuard, tenantGuard } from './auth.guards';
+import {
+  appRootRedirectGuard,
+  authGuard,
+  cabinetDashboardGuard,
+  cabinetTeamGuard,
+  invitationAcceptanceGuard,
+  tenantGuard
+} from './auth.guards';
 import { routes } from './app.routes';
 import { vi } from 'vitest';
 import type { Route } from '@angular/router';
@@ -53,6 +60,17 @@ describe('routes', () => {
     expect(onboardingRoute?.canActivate).not.toContain(tenantGuard);
   });
 
+  it('registers invitation acceptance as an authenticated pre-tenant route', async () => {
+    const acceptanceRoute = routes.find((route) => route.path === 'accept-invitation');
+    const component = await acceptanceRoute?.loadComponent?.();
+    const { InvitationAcceptancePage } = await import(
+      '../../domains/identity/feature/invitation-acceptance/invitation-acceptance.page'
+    );
+    expect(component).toBe(InvitationAcceptancePage);
+    expect(acceptanceRoute?.canActivate).toEqual([invitationAcceptanceGuard]);
+    expect(acceptanceRoute?.canActivate).not.toContain(tenantGuard);
+  });
+
   it('registers dashboard under the authenticated tenant shell', async () => {
     const shell = shellRoute();
     const dashboardRoute = shell?.children?.find((route) => route.path === 'dashboard');
@@ -99,6 +117,16 @@ describe('routes', () => {
 
     expect(component).toBe(CabinetDossiersPage);
     expect(cabinetDossiersRoute?.canActivate).toEqual([cabinetDashboardGuard]);
+  });
+
+  it('registers Cabinet Team under the tenant shell with its capability guard', async () => {
+    const teamRoute = shellRoute()?.children?.find((route) => route.path === 'cabinet/team');
+    const component = await teamRoute?.loadComponent?.();
+    const { CabinetTeamPage } = await import(
+      '../../domains/identity/feature/cabinet-team/cabinet-team.page'
+    );
+    expect(component).toBe(CabinetTeamPage);
+    expect(teamRoute?.canActivate).toEqual([cabinetTeamGuard]);
   });
 
   it('registers new client dossier creation inside the authenticated tenant shell', async () => {

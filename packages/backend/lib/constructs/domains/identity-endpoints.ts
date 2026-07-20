@@ -104,6 +104,15 @@ export class IdentityEndpoints extends DomainConstructFactory {
         api: props.api,
         authorizer: props.authorizer,
         domainName: "identity",
+        environment:
+          handlerName === "create-cabinet-invitation" ||
+          handlerName === "resend-cabinet-invitation"
+            ? {
+                CABINET_INVITATION_EXPOSE_TOKEN:
+                  props.stage === "prod" ? "false" : "true",
+                NODE_ENV: props.stage === "prod" ? "production" : "development",
+              }
+            : undefined,
         handlerEntry: path.join(
           projectRoot,
           "lambda",

@@ -140,10 +140,10 @@ const cabinetItems: readonly ShellNavItem[] = [
     route: '/cabinet/dossiers'
   },
   {
-    disabled: true,
     icon: 'group',
-    labelKey: 'SHELL.NAV.COLLABORATORS',
-    page: 'cabinet.collaborators'
+    labelKey: 'SHELL.NAV.TEAM',
+    page: 'cabinet.team',
+    route: '/cabinet/team'
   },
   {
     disabled: true,
@@ -179,6 +179,11 @@ export class AppSidebarComponent {
   protected readonly uiStore = inject(UiStore);
   protected readonly cabinetMode = computed(
     () => this.authStore.isCabinetContext()
+  );
+  protected readonly visibleCabinetItems = computed(() =>
+    cabinetItems.filter(
+      (item) => item.page !== 'cabinet.team' || this.authStore.canViewCabinetTeam()
+    )
   );
   private readonly router = inject(Router);
 

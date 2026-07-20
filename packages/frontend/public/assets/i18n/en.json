@@ -4,11 +4,20 @@
       "BRAND": "Liass-OHADA"
     },
     "EMPTY_VALUE": "—",
+    "NOT_AVAILABLE": "Not provided",
     "ACTIONS": {
       "SAVE": "Save",
       "CANCEL": "Cancel",
       "CLOSE": "Close",
-      "RETRY": "Try again"
+      "RETRY": "Try again",
+      "COPY": "Copy"
+    },
+    "FILTERS": {
+      "ALL": "All"
+    },
+    "PAGINATION": {
+      "PREVIOUS": "Previous",
+      "NEXT": "Next"
     },
     "TABLE": {
       "ACTION_MENU": "Open row actions",
@@ -72,6 +81,7 @@
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Third parties",
       "TREASURY": "Treasury",
+      "TEAM": "Team",
       "TRIAL_BALANCE": "Trial balance"
     },
     "PAGES": {
@@ -2552,6 +2562,44 @@
         "SIGN_UP": "Sign up",
         "SIGN_IN": "Sign in"
       }
+    },
+    "CABINET_TEAM": {
+      "EYEBROW": "Cabinet",
+      "TITLE": "Team",
+      "SUBTITLE": "Manage Cabinet members, roles, and access to client dossiers.",
+      "TABS": { "MEMBERS": "Members", "INVITATIONS": "Invitations" },
+      "ACTIONS": { "INVITE": "Invite a member", "VIEW_DETAILS": "View details", "MANAGE_ACCESS": "Manage access", "RESEND": "Regenerate invitation", "CANCEL_INVITATION": "Cancel invitation", "CONFIRM_ROLE": "Confirm role", "SUSPEND": "Suspend", "REACTIVATE": "Reactivate", "REVOKE": "Revoke" },
+      "FILTERS": { "ROLE": "Role", "STATUS": "Status" },
+      "ROLES": { "CABINET_ADMIN": "Cabinet Administrator", "SUPERVISOR": "Supervisor", "COLLABORATOR": "Collaborator", "READER": "Reader" },
+      "MEMBER_STATUS": { "ACTIVE": "Active", "SUSPENDED": "Suspended", "REVOKED": "Revoked" },
+      "INVITATION_STATUS": { "PENDING": "Pending", "ACCEPTED": "Accepted", "EXPIRED": "Expired", "CANCELLED": "Cancelled" },
+      "MEMBERS": {
+        "MEMBER": "Member", "EMAIL": "Email", "ROLE": "Role", "STATUS": "Status", "DOSSIERS": "Assigned dossiers", "ACTIONS": "Actions", "OWNER": "Owner",
+        "OWNER_PROTECTION": "The Cabinet owner cannot be demoted, suspended, or revoked.", "PROFILE_INCOMPLETE": "Incomplete profile", "LOADING": "Loading members…", "LOADING_DETAIL": "Loading profile and access…", "EMPTY": "No member has joined this Cabinet yet.", "JOINED_AT": "Joined", "INVITATION_SOURCE": "Access source", "INVITED": "Cabinet invitation", "DIRECT_ACCESS": "Initial access", "ACTION_MENU": "Actions for {{name}}"
+      },
+      "INVITE": {
+        "TITLE": "Invite a member", "SUBTITLE": "Choose a role and, when needed, initial dossiers.", "EMAIL": "Email address", "EMAIL_ERROR": "Enter a valid email address.", "ROLE": "Role", "DOSSIERS": "Dossiers to assign", "ADMIN_ALL_DOSSIERS": "An administrator has implicit access to all Cabinet dossiers.", "CREATE_DEV": "Create development invitation", "DEV_LINK_TITLE": "Development link", "DEV_LINK_HELP": "This sensitive link is shown only because the development server returned a token. It will not be stored."
+      },
+      "INVITATIONS": {
+        "EMAIL": "Invited email", "ROLE": "Role", "STATUS": "Status", "INVITED_AT": "Invited date", "EXPIRES_AT": "Expiration date", "ACTIONS": "Actions", "ACTION_MENU": "Actions for {{email}} invitation", "LOADING": "Loading invitations…", "EMPTY": "No invitation matches your criteria.", "DELIVERY_UNAVAILABLE": "Email invitation delivery is not available yet.", "CANCEL_TITLE": "Cancel this invitation?", "CANCEL_DESCRIPTION": "The invitation link will no longer be usable.", "RESEND_TITLE": "Regenerate this invitation?", "RESEND_DESCRIPTION": "The previous link will be invalidated and replaced by a new development link when authorized."
+      },
+      "ROLE_CHANGE": { "TITLE": "Change role", "NEW_ROLE": "New role", "DEMOTE_ADMIN": "Implicit access to all dossiers will end. Only explicit assignments will remain accessible.", "PROMOTE_ADMIN": "The member will gain implicit access to all Cabinet dossiers.", "TO_READER": "The member will keep only assigned dossiers and accounting access will become read-only.", "GENERIC": "The new permissions apply to subsequent requests immediately." },
+      "STATUS_CHANGE": {
+        "TITLE": "Manage status",
+        "SUSPENDED": { "TITLE": "Suspend this member?", "DESCRIPTION": "The member will temporarily lose Cabinet and dossier access. Existing assignments are preserved.", "CONFIRM": "Suspend" },
+        "REACTIVATE": { "TITLE": "Reactivate this member?", "DESCRIPTION": "The member regains access according to their role and existing assignments.", "CONFIRM": "Reactivate" },
+        "REVOKED": { "TITLE": "Revoke this member?", "DESCRIPTION": "The member loses Cabinet access. Historical information remains available.", "CONFIRM": "Revoke" }
+      },
+      "ASSIGNMENTS": { "TITLE": "Dossier access", "SEARCH": "Search dossiers", "NO_DOSSIER": "No matching dossier.", "ALL_DOSSIERS": "All dossiers", "ADMIN_IMPLICIT": "This access comes from the Administrator role and needs no explicit assignment.", "VIEW_DETAILS": "View in details", "DIFF": "{{added}} added, {{removed}} removed", "SAVE": "Save access" },
+      "SUPERVISOR": { "TITLE": "Dossier team", "DESCRIPTION": "Assign active Collaborators or Readers only to dossiers you supervise.", "DOSSIER": "Supervised dossier", "LOADING_DOSSIERS": "Loading dossiers…", "LOADING_MEMBERS": "Loading dossier team…", "NO_DOSSIER": "No dossier is currently assigned to you.", "SELECT_DOSSIER": "Select a dossier to manage its team.", "NO_ELIGIBLE_MEMBER": "No active Collaborator or Reader on this page.", "TOGGLE_ACCESS": "Change {{name}} access to this dossier" },
+      "NOTIFICATIONS": { "INVITATION_CREATED_DEV": "Invitation created. The development link is ready.", "INVITATION_RENEWED_DEV": "Invitation regenerated. The new link replaces the previous one.", "INVITATION_RENEWED_NO_DELIVERY": "Invitation regenerated without email delivery.", "INVITATION_CANCELLED": "Invitation cancelled.", "LINK_COPIED": "Link copied.", "ROLE_UPDATED": "Role updated.", "STATUS_UPDATED": "Status updated.", "ASSIGNMENTS_UPDATED": "Dossier access updated.", "ASSIGNMENT_UPDATED": "Dossier assignment updated." },
+      "ERRORS": {
+        "FORBIDDEN": "You are not authorized to perform this action.", "ACCESS_REVOKED": "Your Cabinet Team access is no longer active.", "MEMBER_NOT_FOUND": "This member could not be found.", "MEMBER_INACTIVE": "This member is not active.", "MEMBER_REVOKED": "A revoked member cannot be changed.", "MEMBER_ALREADY_ACTIVE": "This person is already an active Cabinet member.", "INVALID_TRANSITION": "The status changed in the meantime. Refresh and try again.", "LAST_ADMIN": "The Cabinet must retain at least one active administrator.", "OWNER_ROLE": "The owner role cannot be changed.", "OWNER_STATUS": "The owner status cannot be changed.", "OWNER_TRANSFER_REQUIRED": "This operation first requires an ownership transfer, which is not available yet.", "INVITATION_NOT_FOUND": "This invitation could not be found.", "INVITATION_PENDING": "A pending invitation already exists for this address.", "INVITATION_EXPIRED": "This invitation has expired.", "INVITATION_ACCEPTED": "This invitation has already been accepted.", "INVITATION_CANCELLED": "This invitation was cancelled.", "EMAIL_MISMATCH": "This invitation was sent to another email address.", "INVALID_TOKEN": "This invitation link is invalid.", "ASSIGNMENT_LIMIT": "An invitation may include at most 20 dossiers.", "DOSSIER_NOT_OWNED": "This dossier does not belong to this Cabinet.", "DOSSIER_INACTIVE": "This dossier is not active.", "ASSIGNMENT_MISSING": "This assignment no longer exists.", "ASSIGNMENT_DUPLICATE": "This member is already assigned to the dossier.", "SUPERVISOR_ASSIGNMENT_REQUIRED": "You must be assigned to this dossier to manage its team.", "SUPERVISOR_TARGET_FORBIDDEN": "A Supervisor may assign only active Collaborators and Readers.", "MEMBERS_LOAD_FAILED": "Unable to load Cabinet members.", "INVITATIONS_LOAD_FAILED": "Unable to load invitations.", "MEMBER_LOAD_FAILED": "Unable to load member information.", "MEMBER_UPDATE_FAILED": "Unable to update this member.", "ASSIGNMENTS_UPDATE_FAILED": "Unable to update assignments.", "INVITATION_CREATE_FAILED": "Unable to create the invitation.", "INVITATION_RESEND_FAILED": "Unable to regenerate the invitation.", "INVITATION_UPDATE_FAILED": "Unable to update the invitation."
+      }
+    },
+    "INVITATION_ACCEPTANCE": {
+      "TITLE": "Join the Cabinet", "READY": "Your identity is verified. Confirm to accept the invitation and add the Cabinet to your workspaces.", "ACCEPT": "Accept invitation", "ACCEPTING": "Accepting invitation…", "SUCCESS_TITLE": "Invitation accepted", "SUCCESS_DESCRIPTION": "The Cabinet is now available in your workspaces without another sign-in.", "CONTINUE": "Continue", "LEAVE": "Leave this page", "EMAIL_MISMATCH_HELP": "Sign in with the email address used for the invitation.",
+      "STATES": { "EMAIL_MISMATCH": { "TITLE": "Different email address", "DESCRIPTION": "This invitation was sent to a different email address." }, "EXPIRED": { "TITLE": "Invitation expired", "DESCRIPTION": "Ask a Cabinet administrator to regenerate the invitation." }, "CANCELLED": { "TITLE": "Invitation cancelled", "DESCRIPTION": "This link can no longer be used." }, "ACCEPTED": { "TITLE": "Invitation already accepted", "DESCRIPTION": "This link has already been used." }, "INVALID": { "TITLE": "Invalid invitation", "DESCRIPTION": "The link is missing, incomplete, or no longer valid." }, "ERROR": { "TITLE": "Unable to accept", "DESCRIPTION": "A temporary error prevented acceptance. Request a new invitation if the problem persists." } }
     },
     "WORKSPACE": {
       "EYEBROW": "Workspace",

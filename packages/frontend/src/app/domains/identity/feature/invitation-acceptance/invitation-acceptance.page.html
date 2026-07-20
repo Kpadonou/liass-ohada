@@ -1,0 +1,29 @@
+<liass-auth-layout>
+  <section class="text-center" aria-live="polite">
+    @if (state() === 'READY') {
+      <span class="mx-auto grid size-14 place-items-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300"><mat-icon>group_add</mat-icon></span>
+      <h1 class="mt-5 text-2xl font-semibold text-slate-950 dark:text-white">{{ 'IDENTITY.INVITATION_ACCEPTANCE.TITLE' | transloco }}</h1>
+      <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">{{ 'IDENTITY.INVITATION_ACCEPTANCE.READY' | transloco }}</p>
+      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+        <liass-button tone="neutral" variant="outline" (pressed)="leave()">{{ 'COMMON.ACTIONS.CANCEL' | transloco }}</liass-button>
+        <liass-button tone="brand" variant="solid" icon="check" (pressed)="accept()">{{ 'IDENTITY.INVITATION_ACCEPTANCE.ACCEPT' | transloco }}</liass-button>
+      </div>
+    } @else if (state() === 'PENDING') {
+      <span class="mx-auto block size-8 animate-spin rounded-full border-2 border-brand-700 border-r-transparent" aria-hidden="true"></span>
+      <h1 class="mt-5 text-xl font-semibold text-slate-950 dark:text-white">{{ 'IDENTITY.INVITATION_ACCEPTANCE.ACCEPTING' | transloco }}</h1>
+    } @else if (state() === 'SUCCESS') {
+      <span class="mx-auto grid size-14 place-items-center rounded-full bg-success-50 text-success-600 dark:bg-emerald-950/35 dark:text-emerald-300"><mat-icon>check_circle</mat-icon></span>
+      <h1 class="mt-5 text-2xl font-semibold text-slate-950 dark:text-white">{{ 'IDENTITY.INVITATION_ACCEPTANCE.SUCCESS_TITLE' | transloco }}</h1>
+      <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">{{ 'IDENTITY.INVITATION_ACCEPTANCE.SUCCESS_DESCRIPTION' | transloco }}</p>
+      <div class="mt-6"><liass-button tone="brand" variant="solid" icon="arrow_forward" (pressed)="continueToWorkspace()">{{ 'IDENTITY.INVITATION_ACCEPTANCE.CONTINUE' | transloco }}</liass-button></div>
+    } @else {
+      <span class="mx-auto grid size-14 place-items-center rounded-full bg-danger-50 text-danger-600 dark:bg-rose-950/35 dark:text-rose-300"><mat-icon>error</mat-icon></span>
+      <h1 class="mt-5 text-2xl font-semibold text-slate-950 dark:text-white">{{ ('IDENTITY.INVITATION_ACCEPTANCE.STATES.' + state() + '.TITLE') | transloco }}</h1>
+      <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">{{ ('IDENTITY.INVITATION_ACCEPTANCE.STATES.' + state() + '.DESCRIPTION') | transloco }}</p>
+      @if (state() === 'EMAIL_MISMATCH') {
+        <p class="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300">{{ 'IDENTITY.INVITATION_ACCEPTANCE.EMAIL_MISMATCH_HELP' | transloco }}</p>
+      }
+      <div class="mt-6"><liass-button tone="neutral" variant="outline" icon="arrow_back" (pressed)="leave()">{{ 'IDENTITY.INVITATION_ACCEPTANCE.LEAVE' | transloco }}</liass-button></div>
+    }
+  </section>
+</liass-auth-layout>

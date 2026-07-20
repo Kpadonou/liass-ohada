@@ -4,11 +4,20 @@
       "BRAND": "Liass-OHADA"
     },
     "EMPTY_VALUE": "—",
+    "NOT_AVAILABLE": "Non renseigné",
     "ACTIONS": {
       "SAVE": "Enregistrer",
       "CANCEL": "Annuler",
       "CLOSE": "Fermer",
-      "RETRY": "Réessayer"
+      "RETRY": "Réessayer",
+      "COPY": "Copier"
+    },
+    "FILTERS": {
+      "ALL": "Tous"
+    },
+    "PAGINATION": {
+      "PREVIOUS": "Précédent",
+      "NEXT": "Suivant"
     },
     "TABLE": {
       "ACTION_MENU": "Ouvrir les actions de la ligne",
@@ -72,6 +81,7 @@
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Tiers",
       "TREASURY": "Trésorerie",
+      "TEAM": "Équipe",
       "TRIAL_BALANCE": "Balance"
     },
     "PAGES": {
@@ -2551,6 +2561,179 @@
       "ACTIONS": {
         "SIGN_UP": "Créer un compte",
         "SIGN_IN": "Se connecter"
+      }
+    },
+    "CABINET_TEAM": {
+      "EYEBROW": "Cabinet",
+      "TITLE": "Équipe",
+      "SUBTITLE": "Gérez les membres du cabinet, leurs rôles et leurs accès aux dossiers clients.",
+      "TABS": { "MEMBERS": "Membres", "INVITATIONS": "Invitations" },
+      "ACTIONS": {
+        "INVITE": "Inviter un membre",
+        "VIEW_DETAILS": "Voir les détails",
+        "MANAGE_ACCESS": "Gérer les accès",
+        "RESEND": "Régénérer l’invitation",
+        "CANCEL_INVITATION": "Annuler l’invitation",
+        "CONFIRM_ROLE": "Confirmer le rôle",
+        "SUSPEND": "Suspendre",
+        "REACTIVATE": "Réactiver",
+        "REVOKE": "Révoquer"
+      },
+      "FILTERS": { "ROLE": "Rôle", "STATUS": "Statut" },
+      "ROLES": {
+        "CABINET_ADMIN": "Administrateur du cabinet",
+        "SUPERVISOR": "Superviseur",
+        "COLLABORATOR": "Collaborateur",
+        "READER": "Lecteur"
+      },
+      "MEMBER_STATUS": { "ACTIVE": "Actif", "SUSPENDED": "Suspendu", "REVOKED": "Révoqué" },
+      "INVITATION_STATUS": { "PENDING": "En attente", "ACCEPTED": "Acceptée", "EXPIRED": "Expirée", "CANCELLED": "Annulée" },
+      "MEMBERS": {
+        "MEMBER": "Membre",
+        "EMAIL": "Adresse électronique",
+        "ROLE": "Rôle",
+        "STATUS": "Statut",
+        "DOSSIERS": "Dossiers affectés",
+        "ACTIONS": "Actions",
+        "OWNER": "Propriétaire",
+        "OWNER_PROTECTION": "Le propriétaire du cabinet ne peut pas être rétrogradé, suspendu ou révoqué.",
+        "PROFILE_INCOMPLETE": "Profil incomplet",
+        "LOADING": "Chargement des membres…",
+        "LOADING_DETAIL": "Chargement du profil et des accès…",
+        "EMPTY": "Aucun membre n’a encore rejoint ce cabinet.",
+        "JOINED_AT": "Date d’arrivée",
+        "INVITATION_SOURCE": "Origine de l’accès",
+        "INVITED": "Invitation du cabinet",
+        "DIRECT_ACCESS": "Accès initial",
+        "ACTION_MENU": "Actions pour {{name}}"
+      },
+      "INVITE": {
+        "TITLE": "Inviter un membre",
+        "SUBTITLE": "Définissez son rôle et, si nécessaire, ses premiers dossiers.",
+        "EMAIL": "Adresse électronique",
+        "EMAIL_ERROR": "Saisissez une adresse électronique valide.",
+        "ROLE": "Rôle",
+        "DOSSIERS": "Dossiers à affecter",
+        "ADMIN_ALL_DOSSIERS": "Un administrateur accède implicitement à tous les dossiers du cabinet.",
+        "CREATE_DEV": "Créer l’invitation de développement",
+        "DEV_LINK_TITLE": "Lien de développement",
+        "DEV_LINK_HELP": "Ce lien sensible est affiché uniquement parce que le serveur de développement a retourné un jeton. Il ne sera pas conservé."
+      },
+      "INVITATIONS": {
+        "EMAIL": "Adresse invitée",
+        "ROLE": "Rôle",
+        "STATUS": "Statut",
+        "INVITED_AT": "Invitation créée",
+        "EXPIRES_AT": "Expiration",
+        "ACTIONS": "Actions",
+        "ACTION_MENU": "Actions pour l’invitation de {{email}}",
+        "LOADING": "Chargement des invitations…",
+        "EMPTY": "Aucune invitation ne correspond à vos critères.",
+        "DELIVERY_UNAVAILABLE": "L’envoi des invitations par e-mail n’est pas encore disponible.",
+        "CANCEL_TITLE": "Annuler cette invitation ?",
+        "CANCEL_DESCRIPTION": "Le lien d’invitation ne pourra plus être utilisé.",
+        "RESEND_TITLE": "Régénérer cette invitation ?",
+        "RESEND_DESCRIPTION": "Le lien précédent sera invalidé et remplacé par un nouveau lien de développement lorsqu’il est autorisé."
+      },
+      "ROLE_CHANGE": {
+        "TITLE": "Modifier le rôle",
+        "NEW_ROLE": "Nouveau rôle",
+        "DEMOTE_ADMIN": "L’accès implicite à tous les dossiers prendra fin. Seules les affectations explicites resteront accessibles.",
+        "PROMOTE_ADMIN": "Le membre obtiendra un accès implicite à tous les dossiers du cabinet.",
+        "TO_READER": "Le membre conservera uniquement ses dossiers affectés et son accès comptable deviendra en lecture seule.",
+        "GENERIC": "Les nouvelles permissions s’appliqueront immédiatement aux prochaines requêtes."
+      },
+      "STATUS_CHANGE": {
+        "TITLE": "Gérer le statut",
+        "SUSPENDED": { "TITLE": "Suspendre ce membre ?", "DESCRIPTION": "Le membre perdra temporairement l’accès au cabinet et à ses dossiers. Ses affectations seront conservées.", "CONFIRM": "Suspendre" },
+        "REACTIVATE": { "TITLE": "Réactiver ce membre ?", "DESCRIPTION": "Le membre retrouvera ses accès selon son rôle et ses affectations existantes.", "CONFIRM": "Réactiver" },
+        "REVOKED": { "TITLE": "Révoquer ce membre ?", "DESCRIPTION": "Le membre perdra l’accès au cabinet. Les informations historiques seront conservées.", "CONFIRM": "Révoquer" }
+      },
+      "ASSIGNMENTS": {
+        "TITLE": "Accès aux dossiers",
+        "SEARCH": "Rechercher un dossier",
+        "NO_DOSSIER": "Aucun dossier correspondant.",
+        "ALL_DOSSIERS": "Tous les dossiers",
+        "ADMIN_IMPLICIT": "Cet accès découle du rôle Administrateur et ne nécessite aucune affectation explicite.",
+        "VIEW_DETAILS": "Voir dans les détails",
+        "DIFF": "{{added}} ajouté(s), {{removed}} retiré(s)",
+        "SAVE": "Enregistrer les accès"
+      },
+      "SUPERVISOR": {
+        "TITLE": "Équipe du dossier",
+        "DESCRIPTION": "Affectez des collaborateurs ou lecteurs actifs uniquement aux dossiers qui vous sont confiés.",
+        "DOSSIER": "Dossier supervisé",
+        "LOADING_DOSSIERS": "Chargement des dossiers…",
+        "LOADING_MEMBERS": "Chargement de l’équipe du dossier…",
+        "NO_DOSSIER": "Aucun dossier ne vous est actuellement affecté.",
+        "SELECT_DOSSIER": "Sélectionnez un dossier pour gérer son équipe.",
+        "NO_ELIGIBLE_MEMBER": "Aucun collaborateur ou lecteur actif sur cette page.",
+        "TOGGLE_ACCESS": "Modifier l’accès de {{name}} à ce dossier"
+      },
+      "NOTIFICATIONS": {
+        "INVITATION_CREATED_DEV": "Invitation créée. Le lien de développement est prêt.",
+        "INVITATION_RENEWED_DEV": "Invitation régénérée. Le nouveau lien remplace le précédent.",
+        "INVITATION_RENEWED_NO_DELIVERY": "Invitation régénérée, sans envoi d’e-mail.",
+        "INVITATION_CANCELLED": "Invitation annulée.",
+        "LINK_COPIED": "Lien copié.",
+        "ROLE_UPDATED": "Rôle mis à jour.",
+        "STATUS_UPDATED": "Statut mis à jour.",
+        "ASSIGNMENTS_UPDATED": "Accès aux dossiers mis à jour.",
+        "ASSIGNMENT_UPDATED": "Affectation du dossier mise à jour."
+      },
+      "ERRORS": {
+        "FORBIDDEN": "Vous n’êtes pas autorisé à effectuer cette action.",
+        "ACCESS_REVOKED": "Votre accès à l’équipe du cabinet n’est plus actif.",
+        "MEMBER_NOT_FOUND": "Ce membre est introuvable.",
+        "MEMBER_INACTIVE": "Ce membre n’est pas actif.",
+        "MEMBER_REVOKED": "Le membre révoqué ne peut pas être modifié.",
+        "MEMBER_ALREADY_ACTIVE": "Cette personne est déjà membre actif du cabinet.",
+        "INVALID_TRANSITION": "Le statut a changé entre-temps. Actualisez puis réessayez.",
+        "LAST_ADMIN": "Le cabinet doit conserver au moins un administrateur actif.",
+        "OWNER_ROLE": "Le rôle du propriétaire ne peut pas être modifié.",
+        "OWNER_STATUS": "Le statut du propriétaire ne peut pas être modifié.",
+        "OWNER_TRANSFER_REQUIRED": "Cette opération nécessite d’abord un transfert de propriété, qui n’est pas encore disponible.",
+        "INVITATION_NOT_FOUND": "Cette invitation est introuvable.",
+        "INVITATION_PENDING": "Une invitation en attente existe déjà pour cette adresse.",
+        "INVITATION_EXPIRED": "Cette invitation a expiré.",
+        "INVITATION_ACCEPTED": "Cette invitation a déjà été acceptée.",
+        "INVITATION_CANCELLED": "Cette invitation a été annulée.",
+        "EMAIL_MISMATCH": "Cette invitation a été envoyée à une autre adresse électronique.",
+        "INVALID_TOKEN": "Ce lien d’invitation n’est pas valide.",
+        "ASSIGNMENT_LIMIT": "Une invitation peut contenir au maximum 20 dossiers.",
+        "DOSSIER_NOT_OWNED": "Ce dossier n’appartient pas à ce cabinet.",
+        "DOSSIER_INACTIVE": "Ce dossier n’est pas actif.",
+        "ASSIGNMENT_MISSING": "Cette affectation n’existe plus.",
+        "ASSIGNMENT_DUPLICATE": "Ce membre est déjà affecté à ce dossier.",
+        "SUPERVISOR_ASSIGNMENT_REQUIRED": "Vous devez être affecté à ce dossier pour gérer son équipe.",
+        "SUPERVISOR_TARGET_FORBIDDEN": "Un superviseur peut uniquement affecter des collaborateurs et lecteurs actifs.",
+        "MEMBERS_LOAD_FAILED": "Impossible de charger les membres du cabinet.",
+        "INVITATIONS_LOAD_FAILED": "Impossible de charger les invitations.",
+        "MEMBER_LOAD_FAILED": "Impossible de charger les informations du membre.",
+        "MEMBER_UPDATE_FAILED": "Impossible de mettre à jour ce membre.",
+        "ASSIGNMENTS_UPDATE_FAILED": "Impossible de mettre à jour les affectations.",
+        "INVITATION_CREATE_FAILED": "Impossible de créer l’invitation.",
+        "INVITATION_RESEND_FAILED": "Impossible de régénérer l’invitation.",
+        "INVITATION_UPDATE_FAILED": "Impossible de mettre à jour l’invitation."
+      }
+    },
+    "INVITATION_ACCEPTANCE": {
+      "TITLE": "Rejoindre le cabinet",
+      "READY": "Votre identité est vérifiée. Confirmez pour accepter l’invitation et ajouter le cabinet à vos espaces de travail.",
+      "ACCEPT": "Accepter l’invitation",
+      "ACCEPTING": "Acceptation de l’invitation…",
+      "SUCCESS_TITLE": "Invitation acceptée",
+      "SUCCESS_DESCRIPTION": "Le cabinet est maintenant disponible dans vos espaces de travail, sans nouvelle connexion.",
+      "CONTINUE": "Continuer",
+      "LEAVE": "Quitter cette page",
+      "EMAIL_MISMATCH_HELP": "Connectez-vous avec l’adresse utilisée pour l’invitation.",
+      "STATES": {
+        "EMAIL_MISMATCH": { "TITLE": "Adresse différente", "DESCRIPTION": "Cette invitation a été envoyée à une autre adresse électronique." },
+        "EXPIRED": { "TITLE": "Invitation expirée", "DESCRIPTION": "Demandez à un administrateur du cabinet de régénérer l’invitation." },
+        "CANCELLED": { "TITLE": "Invitation annulée", "DESCRIPTION": "Ce lien ne peut plus être utilisé." },
+        "ACCEPTED": { "TITLE": "Invitation déjà acceptée", "DESCRIPTION": "Ce lien a déjà été utilisé." },
+        "INVALID": { "TITLE": "Invitation invalide", "DESCRIPTION": "Le lien est absent, incomplet ou n’est plus valide." },
+        "ERROR": { "TITLE": "Acceptation impossible", "DESCRIPTION": "Une erreur temporaire empêche l’acceptation. Demandez une nouvelle invitation si le problème persiste." }
       }
     },
     "WORKSPACE": {

@@ -2,6 +2,7 @@ import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
+import { InvitationAcceptanceState } from '../../domains/identity/data-access/invitation-acceptance-state';
 
 async function ensureHydrated(authStore: InstanceType<typeof AuthStore>): Promise<void> {
   if (!authStore.hydrated()) {
@@ -16,6 +17,24 @@ export const authGuard: CanActivateFn = async () => {
   await ensureHydrated(authStore);
 
   return authStore.isAuthenticated() ? true : router.createUrlTree(['/login']);
+};
+
+export const invitationAcceptanceGuard: CanActivateFn = async (route) => {
+  const authStore = inject(AuthStore);
+  const router = inject(Router);
+  const acceptanceState = inject(InvitationAcceptanceState);
+  const queryToken = route.queryParamMap.get('token');
+
+  if (queryToken) {
+    acceptanceState.captureToken(queryToken);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState({}, document.title, '/accept-invitation');
+    }
+  }
+  await ensureHydrated(authStore);
+  if (authStore.isAuthenticated()) return true;
+  acceptanceState.rememberReturnToAcceptance();
+  return router.createUrlTree(['/login'], { queryParams: { returnUrl: '/accept-invitation' } });
 };
 
 export const appRootRedirectGuard: CanActivateFn = async () => {
@@ -120,6 +139,26 @@ export const cabinetDashboardGuard: CanActivateFn = async () => {
 
   return router.createUrlTree([
     destination === '/cabinet/dashboard' ? '/dashboard' : (destination ?? '/dashboard')
+  ]);
+};
+
+export const cabinetTeamGuard: CanActivateFn = async () => {
+  const authStore = inject(AuthStore);
+  const router = inject(Router);
+
+  await ensureHydrated(authStore);
+  if (!authStore.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+  if (!authStore.workspacesLoaded()) {
+    await authStore.loadWorkspaces();
+  }
+  if (authStore.canViewCabinetTeam()) {
+    authStore.enterCabinetContext();
+    return true;
+  }
+  return router.createUrlTree([
+    authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard'
   ]);
 };
 

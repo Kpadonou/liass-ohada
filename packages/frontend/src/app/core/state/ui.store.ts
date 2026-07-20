@@ -6,6 +6,7 @@ export type AppPage =
   | 'dashboard'
   | 'cabinet.dashboard'
   | 'cabinet.dossiers'
+  | 'cabinet.team'
   | 'cabinet.collaborators'
   | 'cabinet.missions'
   | 'cabinet.deadlines'

@@ -19,6 +19,7 @@ import {
 
 import { WorkspacesApi } from './workspaces.api';
 import { CabinetDossiersApi } from './cabinet-dossiers.api';
+import { clearInvitationAcceptanceState } from './invitation-acceptance-state';
 
 const ACTIVE_ORG_STORAGE_KEY = 'liass-ohada.activeOrgId';
 const ACTIVE_DOSSIER_STORAGE_KEY = 'liass-ohada.activeDossierOrgId';
@@ -267,7 +268,7 @@ function clearTenantQueries(queryClient: QueryClient | null, orgId?: string | nu
     return;
   }
 
-  const tenantRoots = ['accounting', 'treasury', 'projects'] as const;
+  const tenantRoots = ['accounting', 'treasury', 'projects', 'cabinet-team'] as const;
 
   for (const root of tenantRoots) {
     const filters = orgId ? { queryKey: [root, orgId] } : { queryKey: [root] };
@@ -402,6 +403,29 @@ export const AuthStore = signalStore(
     currentUserDisplayName: computed(() => userDisplayName(user(), userAttributes())),
     currentUserEmail: computed(() => userEmail(user(), userAttributes())),
     currentUserPicture: computed(() => cleanDisplayValue(userAttributes()['picture'])),
+    currentUserId: computed(() => user()?.userId ?? null),
+    activeCabinetRole: computed(() => {
+      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+      return workspace?.workspaceType === 'ACCOUNTING_FIRM'
+        ? (workspace.cabinetRole ?? null)
+        : null;
+    }),
+    canViewCabinetTeam: computed(() => {
+      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+      return (
+        workspace?.workspaceType === 'ACCOUNTING_FIRM' &&
+        workspace.status === 'ACTIVE' &&
+        (workspace.cabinetRole === 'CABINET_ADMIN' || workspace.cabinetRole === 'SUPERVISOR')
+      );
+    }),
+    canViewCabinetInvitations: computed(() => {
+      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+      return (
+        workspace?.workspaceType === 'ACCOUNTING_FIRM' &&
+        workspace.status === 'ACTIVE' &&
+        workspace.cabinetRole === 'CABINET_ADMIN'
+      );
+    }),
     activeDossier: computed((): ActiveDossierSummary | null => {
       const orgId = activeOrgId();
       const workspace = orgId
@@ -747,6 +771,7 @@ export const AuthStore = signalStore(
         await signOut();
       } finally {
         clearTenantQueries(queryClient);
+        clearInvitationAcceptanceState();
         persistTenant(null);
         persistDossier(null);
         patchState(store, {

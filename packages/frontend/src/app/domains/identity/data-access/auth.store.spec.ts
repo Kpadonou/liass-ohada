@@ -263,6 +263,25 @@ describe('AuthStore', () => {
     expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
   });
 
+  it('derives Cabinet Team capabilities from the active membership role', async () => {
+    workspacesApi.listWorkspaces.mockResolvedValue([
+      {
+        orgId: 'org-firm',
+        role: 'MEMBER',
+        cabinetRole: 'SUPERVISOR',
+        accessSource: 'DIRECT',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        status: 'ACTIVE'
+      }
+    ]);
+    const store = TestBed.inject(AuthStore);
+    await store.loadWorkspaces(true);
+    expect(store.activeCabinetRole()).toBe('SUPERVISOR');
+    expect(store.canViewCabinetTeam()).toBe(true);
+    expect(store.canViewCabinetInvitations()).toBe(false);
+  });
+
   it('does not treat cabinet-sourced client rows as direct selectable workspaces', async () => {
     workspacesApi.listWorkspaces.mockResolvedValue([
       {

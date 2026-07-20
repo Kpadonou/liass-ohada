@@ -106,6 +106,7 @@ describe("CabinetInvitationService", () => {
 
     expect(response.invitation.email).toBe("member@example.com");
     expect(response.invitationToken).toEqual(expect.any(String));
+    expect(response.deliveryMode).toBe("DEVELOPMENT_TOKEN");
     expect(items.map((item) => item.entityType)).toEqual([
       "CABINET_INVITATION",
       "INVITATION_EMAIL_LOCK",
@@ -131,6 +132,7 @@ describe("CabinetInvitationService", () => {
     });
 
     expect(response.invitationToken).toBeUndefined();
+    expect(response.deliveryMode).toBe("UNAVAILABLE");
   });
 
   test("lists invitations through the sparse GSI1 status prefix", async () => {

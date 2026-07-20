@@ -17,6 +17,7 @@ import type {
 } from "@liass-ohada/shared";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
+import { resolveCabinetRole } from "../cabinet-role";
 
 export interface CabinetMemberRecord {
   orgId: string;
@@ -147,7 +148,7 @@ function toMemberRecord(item?: Record<string, AttributeValue>): CabinetMemberRec
     orgId: value.orgId,
     userId: value.userId,
     role: typeof value.role === "string" ? value.role : undefined,
-    cabinetRole: isCabinetRole(value.cabinetRole) ? value.cabinetRole : undefined,
+    cabinetRole: resolveCabinetRole(value),
     status: value.status,
     cabinetId: typeof value.cabinetId === "string" ? value.cabinetId : undefined,
     accessSource:

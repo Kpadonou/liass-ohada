@@ -25,6 +25,7 @@ const pageLabelKeys: Record<AppPage, string> = {
   'cabinet.dossiers': 'SHELL.PAGES.CLIENT_DOSSIERS',
   'cabinet.missions': 'SHELL.PAGES.CABINET_MISSIONS',
   'cabinet.settings': 'SHELL.PAGES.CABINET_SETTINGS',
+  'cabinet.team': 'SHELL.PAGES.CABINET_COLLABORATORS',
   dashboard: 'SHELL.PAGES.DASHBOARD',
   projects: 'SHELL.NAV.PROJECTS',
   reports: 'SHELL.NAV.REPORTS',

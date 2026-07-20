@@ -26,7 +26,11 @@ import {
   CabinetRequestContext,
 } from "./cabinet-authorization-service";
 
-function memberDto(member: CabinetMemberRecord, profile?: UserProfileRecord) {
+function memberDto(
+  member: CabinetMemberRecord,
+  profile?: UserProfileRecord,
+  ownerUserId?: string,
+) {
   if (!member.cabinetRole) {
     throw new AppError(409, "CABINET_MEMBER_ROLE_REQUIRED");
   }
@@ -41,11 +45,16 @@ function memberDto(member: CabinetMemberRecord, profile?: UserProfileRecord) {
     createdAt: member.createdAt,
     updatedAt: member.updatedAt,
     updatedBy: member.updatedBy,
+    isOwner: ownerUserId === member.userId,
   });
 }
 
-function memberSummaryDto(member: CabinetMemberRecord, profile?: UserProfileRecord) {
-  const value = memberDto(member, profile);
+function memberSummaryDto(
+  member: CabinetMemberRecord,
+  profile?: UserProfileRecord,
+  ownerUserId?: string,
+) {
+  const value = memberDto(member, profile, ownerUserId);
   return {
     userId: value.userId,
     cabinetRole: value.cabinetRole,
@@ -54,6 +63,7 @@ function memberSummaryDto(member: CabinetMemberRecord, profile?: UserProfileReco
     email: value.email,
     joinedAt: value.joinedAt,
     updatedAt: value.updatedAt,
+    isOwner: value.isOwner,
   };
 }
 
@@ -256,9 +266,12 @@ export class CabinetTeamService {
     const profiles = await UserProfileRepository.batchGet(
       page.items.map((member) => member.userId),
     );
+    const cabinet = await CabinetTeamRepository.getCabinetMetadata(
+      authorized.cabinetId,
+    );
     return ListCabinetMembersResponseSchema.parse({
       members: page.items.map((member) =>
-        memberSummaryDto(member, profiles.get(member.userId)),
+        memberSummaryDto(member, profiles.get(member.userId), cabinet?.ownerUserId),
       ),
       nextCursor: page.nextCursor,
     });
@@ -278,7 +291,12 @@ export class CabinetTeamService {
     );
     if (!member) throw new AppError(404, "CABINET_MEMBER_NOT_FOUND");
     const profile = await UserProfileRepository.get(targetUserId);
-    return GetCabinetMemberResponseSchema.parse({ member: memberDto(member, profile) });
+    const cabinet = await CabinetTeamRepository.getCabinetMetadata(
+      authorized.cabinetId,
+    );
+    return GetCabinetMemberResponseSchema.parse({
+      member: memberDto(member, profile, cabinet?.ownerUserId),
+    });
   }
 
   static async updateMemberRole(

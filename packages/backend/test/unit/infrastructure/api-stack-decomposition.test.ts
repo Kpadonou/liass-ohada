@@ -33,6 +33,19 @@ jest.mock("aws-cdk-lib/aws-lambda-nodejs", () => {
   };
 });
 
+function lambdaEnvironmentVariable(
+  fn: lambda.CfnFunction,
+  name: string,
+): unknown {
+  const environment = cdk.Stack.of(fn).resolve(fn.environment) as
+    | lambda.CfnFunction.EnvironmentProperty
+    | undefined;
+  const variables = environment?.variables;
+  return variables && typeof variables === "object"
+    ? (variables as Record<string, unknown>)[name]
+    : undefined;
+}
+
 describe("API stack decomposition", () => {
   const app = new cdk.App({
     context: {
@@ -87,5 +100,37 @@ describe("API stack decomposition", () => {
     );
     expect(functions.length).toBeGreaterThan(0);
     expect(functions.every((fn) => String(fn.functionName).startsWith("liass-ohada-dev-api-"))).toBe(true);
+  });
+
+  test("exposes invitation tokens only from development invitation Lambdas", () => {
+    const functions = constructs.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    const invitationFunctions = functions.filter((fn) =>
+      ["create-cabinet-invitation", "resend-cabinet-invitation"].some((name) =>
+        String(fn.functionName).includes(name),
+      ),
+    );
+    expect(invitationFunctions).toHaveLength(2);
+    expect(
+      invitationFunctions.every(
+        (fn) =>
+          lambdaEnvironmentVariable(
+            fn,
+            "CABINET_INVITATION_EXPOSE_TOKEN",
+          ) === "true",
+      ),
+    ).toBe(true);
+    expect(
+      functions
+        .filter((fn) => !invitationFunctions.includes(fn))
+        .every(
+          (fn) =>
+            !lambdaEnvironmentVariable(
+              fn,
+              "CABINET_INVITATION_EXPOSE_TOKEN",
+            ),
+        ),
+    ).toBe(true);
   });
 });

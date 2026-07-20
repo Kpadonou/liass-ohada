@@ -92,6 +92,7 @@ describe("Cabinet team shared contracts", () => {
       status: "ACTIVE",
       updatedAt: now,
     });
+    expect(member.isOwner).toBe(false);
     const invitation = CabinetInvitationSchema.parse({
       invitationId: "inv-1",
       email: "member@example.com",

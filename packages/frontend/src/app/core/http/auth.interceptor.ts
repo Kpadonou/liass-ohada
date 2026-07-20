@@ -2,6 +2,7 @@ import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { TranslocoService } from '@ngneat/transloco';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { fetchAuthSession } from 'aws-amplify/auth';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 
@@ -33,6 +34,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const authStore = inject(AuthStore);
   const notification = inject(NotificationService, { optional: true });
   const router = inject(Router, { optional: true });
+  const queryClient = inject(QueryClient, { optional: true });
   const translocoService = inject(TranslocoService);
   const activeLanguage = translocoService.getActiveLang() || 'fr';
   const isCabinetInvitationAcceptanceRequest =
@@ -141,6 +143,27 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
             replaceUrl: true
           });
         }
+      }
+      if (
+        requestScope === 'CABINET' &&
+        httpError.status === 403 &&
+        (errorCode(httpError) === 'CABINET_MEMBER_NOT_ACTIVE' ||
+          errorCode(httpError) === 'CABINET_WORKSPACE_REQUIRED')
+      ) {
+        const cabinetOrgId = authStore.activeWorkspaceOrgId();
+        if (queryClient && cabinetOrgId) {
+          void queryClient.cancelQueries({ queryKey: ['cabinet-team', cabinetOrgId] });
+          queryClient.removeQueries({ queryKey: ['cabinet-team', cabinetOrgId] });
+        }
+        notification?.error(
+          translate(translocoService, 'IDENTITY.CABINET_TEAM.ERRORS.ACCESS_REVOKED')
+        );
+        void authStore
+          .loadWorkspaces(true)
+          .catch(() => undefined)
+          .finally(() => {
+            void router?.navigate(['/dashboard'], { replaceUrl: true });
+          });
       }
       return throwError(() => httpError);
     })
