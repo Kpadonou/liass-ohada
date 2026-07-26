@@ -155,6 +155,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       ) {
         const cabinetOrgId = authStore.activeWorkspaceOrgId();
         if (queryClient && cabinetOrgId) {
+          void queryClient.cancelQueries({ queryKey: ['cabinet-dashboard', cabinetOrgId] });
+          queryClient.removeQueries({ queryKey: ['cabinet-dashboard', cabinetOrgId] });
           void queryClient.cancelQueries({ queryKey: ['cabinet-team', cabinetOrgId] });
           queryClient.removeQueries({ queryKey: ['cabinet-team', cabinetOrgId] });
         }

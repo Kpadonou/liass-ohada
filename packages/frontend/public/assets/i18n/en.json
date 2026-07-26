@@ -2366,60 +2366,128 @@
       }
     },
     "CABINET_DASHBOARD": {
-      "EYEBROW": "Accounting firm workspace",
-      "TITLE": "Cabinet dashboard",
-      "SUBTITLE": "Manage the client dossiers attached to this accounting firm before opening a client accounting workspace.",
+      "EYEBROW": "Cabinet",
+      "TITLE": "Dashboard",
+      "SUBTITLE": {
+        "CABINET": "Overview of the Cabinet's activity and priorities.",
+        "SUPERVISED_DOSSIERS": "Track activity and priorities for the dossiers you supervise.",
+        "PERSONAL_ACTIVITY": "Track your work, deadlines, and items that need your attention.",
+        "ASSIGNED_DOSSIERS_READ_ONLY": "Review activity for the dossiers you can access."
+      },
       "FALLBACK_CABINET_NAME": "Accounting firm",
-      "WORKSPACE_TYPE": "Workspace type",
-      "CONNECTED_USER": "Connected user",
-      "OPEN_DOSSIER_LABEL": "Open dossier",
-      "CONTEXT_TITLE": "Cabinet context",
-      "CONTEXT_DESCRIPTION": "Cabinet actions use the accounting-firm workspace. Client accounting modules open only after selecting a dossier.",
-      "CONTEXT_HINT": "The cabinet remains the management context. Accounting modules open dossier by dossier.",
-      "CONTEXT_ITEM_CABINET": "Manage the accounting firm and client dossiers",
-      "CONTEXT_ITEM_DOSSIERS": "Open a dossier explicitly before accounting modules",
-      "RECENT_DOSSIERS_TITLE": "Recently opened dossiers",
-      "RECENT_DOSSIERS_SUBTITLE": "Open a client dossier to work on its accounting dashboard.",
-      "LOADING": "Loading client dossiers...",
+      "SNAPSHOT": "As of {{ date }} · refreshed at {{ time }}",
       "EMPTY_TITLE": "No client dossier yet",
       "EMPTY_SUBTITLE": "Create the first client dossier to start managing client accounting from this cabinet.",
-      "COLLABORATORS_TITLE": "Collaborators",
-      "COLLABORATORS_PLACEHOLDER": "Collaborator management will be connected when cabinet staffing workflows are enabled.",
-      "MISSIONS_TITLE": "Missions",
-      "MISSIONS_PLACEHOLDER": "Mission planning is reserved for the cabinet workspace roadmap.",
-      "DEADLINES_TITLE": "Deadlines",
-      "DEADLINES_PLACEHOLDER": "Upcoming accounting and declaration deadlines will appear here.",
+      "SCOPE": {
+        "CABINET": "Cabinet view",
+        "SUPERVISED_DOSSIERS": "My supervised dossiers",
+        "PERSONAL_ACTIVITY": "My activity",
+        "ASSIGNED_DOSSIERS_READ_ONLY": "My accessible dossiers"
+      },
       "METRICS": {
+        "ACCESSIBLE_DOSSIERS": "Accessible dossiers",
         "ACTIVE_DOSSIERS": "Active dossiers",
-        "COLLABORATORS": "Collaborators",
-        "PENDING_TASKS": "Pending tasks",
-        "TOTAL_DOSSIERS": "Total dossiers",
-        "UPCOMING_DEADLINES": "Upcoming deadlines"
+        "ACTIVE_WORK": "Active work",
+        "MY_ACTIVE_WORK": "My active work",
+        "MY_OVERDUE_DEADLINES": "My overdue deadlines",
+        "MY_OVERDUE_WORK": "My overdue work",
+        "OVERDUE_DEADLINES": "Overdue deadlines",
+        "OVERDUE_WORK": "Overdue work",
+        "SUPERVISED_DOSSIERS": "Supervised dossiers"
       },
       "METRICS_META": {
-        "ACTIVE_DOSSIERS": "Dossiers available for accounting modules.",
-        "COLLABORATORS": "Cabinet staffing view to connect.",
-        "PENDING_TASKS": "Cabinet tasks to connect.",
-        "TOTAL_DOSSIERS": "Client portfolio attached to the firm.",
-        "UPCOMING_DEADLINES": "Cabinet deadlines to connect."
+        "ACCESSIBLE_DOSSIERS": "Dossiers included in your current view.",
+        "ACTIVE_DOSSIERS": "Active client dossiers in the cabinet portfolio.",
+        "ACTIVE_WORK": "Open accounting work in this dashboard scope.",
+        "MY_ACTIVE_WORK": "Open work assigned to or involving you.",
+        "MY_OVERDUE_DEADLINES": "Personal deadlines past their due date.",
+        "MY_OVERDUE_WORK": "Personal work past its due date.",
+        "OVERDUE_DEADLINES": "Deadlines past their due date.",
+        "OVERDUE_WORK": "Active work past its due date.",
+        "SUPERVISED_DOSSIERS": "Active dossiers assigned to your supervision."
       },
-      "PLACEHOLDERS": {
-        "NO_DEADLINE": "No deadline connected",
-        "NO_MISSION": "No mission connected",
-        "PRIMARY_CONTACT": "Cabinet lead",
-        "ROADMAP": "Coming soon"
+      "WORK": {
+        "DESCRIPTION": "Exact backend totals by active work status.",
+        "IN_PROGRESS": "In progress",
+        "TITLE": "Accounting work",
+        "TO_DO": "To do",
+        "TO_PLAN": "To plan",
+        "UNASSIGNED": "Unassigned",
+        "WAITING": "Waiting"
+      },
+      "DEADLINES": {
+        "DAYS_8_30": "Days 8-30",
+        "DESCRIPTION": "Pending deadlines grouped by due date bucket.",
+        "NEXT_7_DAYS": "Next 7 days",
+        "OVERDUE": "Overdue",
+        "TITLE": "Deadlines",
+        "TODAY": "Today"
+      },
+      "ATTENTION": {
+        "BOUNDED_DEADLINES": "Bounded preview from the dashboard response.",
+        "BOUNDED_WORK": "Bounded preview from the dashboard response.",
+        "DEADLINE_TITLE": "{{ count }} overdue deadlines",
+        "NO_OVERDUE_DEADLINES": "No overdue deadline currently needs attention.",
+        "NO_OVERDUE_WORK": "No overdue work currently needs attention.",
+        "TITLE": "Needs attention",
+        "WORK_TITLE": "{{ count }} overdue work items",
+        "ZERO_DESCRIPTION": "Upcoming items to monitor appear below.",
+        "ZERO_TITLE": "Nothing overdue."
+      },
+      "UPCOMING": {
+        "DESCRIPTION": "Upcoming deadline preview in the order returned by the cabinet service.",
+        "EMPTY": "No upcoming deadline appears in this preview.",
+        "TITLE": "Upcoming deadlines"
+      },
+      "PORTFOLIO": {
+        "ACCESSIBLE": "Accessible dossiers",
+        "ACTIVE": "Active dossiers",
+        "DESCRIPTION": "Portfolio totals from the dashboard response.",
+        "TITLE_CABINET": "Client portfolio",
+        "TITLE_SCOPED": "Dossier access"
+      },
+      "TEAM": {
+        "ACTIVE_MEMBERS": "Active members",
+        "ADMINISTRATORS": "Administrators",
+        "COLLABORATORS": "Collaborators",
+        "DESCRIPTION": "Shown only when the dashboard response includes team totals.",
+        "PENDING_INVITATIONS": "Pending invitations",
+        "READERS": "Readers",
+        "SUPERVISORS": "Supervisors",
+        "TITLE": "Team"
+      },
+      "EMPTY": {
+        "CABINET_DESCRIPTION": "Start by creating or adding a client dossier to organize your team's work.",
+        "CABINET_TITLE": "Your cabinet workspace is ready.",
+        "SCOPED_DESCRIPTION": "Work and deadlines will appear here when dossiers are assigned to you.",
+        "SCOPED_TITLE": "No dossier is currently assigned to you."
+      },
+      "DATE": {
+        "TODAY": "Today",
+        "TOMORROW": "Tomorrow"
       },
       "STATUS": {
         "ACTIVE": "Active",
+        "INACTIVE": "Inactive",
         "UNKNOWN": "Unknown"
       },
       "ACTIONS": {
         "CREATE_FIRST_DOSSIER": "Create your first client dossier",
+        "NEW_DEADLINE": "New deadline",
         "NEW_DOSSIER": "New dossier",
-        "VIEW_DOSSIERS": "View dossiers"
+        "NEW_WORK": "New work",
+        "RETRY": "Retry",
+        "VIEW_DEADLINES": "View deadlines",
+        "VIEW_DOSSIERS": "View dossiers",
+        "VIEW_TEAM": "View team",
+        "VIEW_WORK": "View work"
       },
       "ERRORS": {
-        "LOAD_FAILED": "Client dossiers could not be loaded. Please retry."
+        "AGGREGATION_LIMIT_DESCRIPTION": "The Dossiers, Accounting work, and Deadlines modules remain accessible.",
+        "AGGREGATION_LIMIT_TITLE": "The data volume is currently too large to generate this summary.",
+        "LOAD_DESCRIPTION": "Retry in a few moments.",
+        "LOAD_FAILED": "Client dossiers could not be loaded. Please retry.",
+        "LOAD_TITLE": "The dashboard could not be loaded."
       }
     },
     "CABINET_DOSSIERS": {

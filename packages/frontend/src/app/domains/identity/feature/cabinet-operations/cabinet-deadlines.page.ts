@@ -27,6 +27,7 @@ import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AuthStore } from '../../data-access/auth.store';
+import { CabinetDashboardQueries } from '../../data-access/cabinet-dashboard.queries';
 import { CabinetOperationsApi } from '../../data-access/cabinet-operations.api';
 import { CabinetOperationsCapabilities } from '../../data-access/cabinet-operations-capabilities';
 import { CabinetOperationsQueries } from '../../data-access/cabinet-operations.queries';
@@ -85,6 +86,7 @@ export class CabinetDeadlinesPage implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly notification = inject(NotificationService);
   private readonly queryClient = inject(QueryClient);
+  private readonly dashboardQueries = inject(CabinetDashboardQueries);
   protected readonly queries = inject(CabinetOperationsQueries);
   protected readonly teamQueries = inject(CabinetTeamQueries);
   private readonly transloco = inject(TranslocoService);
@@ -339,6 +341,7 @@ export class CabinetDeadlinesPage implements OnInit {
     try {
       const deadline = await operation();
       await Promise.all([
+        this.queryClient.invalidateQueries({ queryKey: this.dashboardQueries.all() }),
         this.queryClient.invalidateQueries({ queryKey: this.queries.deadlinesRoot() }),
         this.queryClient.invalidateQueries({
           queryKey: ['cabinet-operations', this.queries.scope(), 'deadlines', deadline.deadlineId]

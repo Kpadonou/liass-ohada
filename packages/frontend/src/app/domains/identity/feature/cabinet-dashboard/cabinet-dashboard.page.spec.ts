@@ -1,11 +1,13 @@
+import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
+import type { CabinetDashboardResponse, CabinetRole } from '@liass-ohada/shared/shared';
 import { TranslocoTestingModule } from '@ngneat/transloco';
+import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { vi } from 'vitest';
 
 import { AuthStore } from '../../data-access/auth.store';
-import { CabinetDossiersApi } from '../../data-access/cabinet-dossiers.api';
-import { WorkspacesApi } from '../../data-access/workspaces.api';
+import { CabinetDashboardApi } from '../../data-access/cabinet-dashboard.api';
 import { CabinetDashboardPage } from './cabinet-dashboard.page';
 
 vi.mock('aws-amplify/auth', () => {
@@ -29,92 +31,222 @@ const translations = {
   en: {
     IDENTITY: {
       CABINET_DASHBOARD: {
-        EYEBROW: 'Accounting firm workspace',
-        TITLE: 'Cabinet dashboard',
-        SUBTITLE: 'Manage client dossiers.',
-        FALLBACK_CABINET_NAME: 'Accounting firm',
-        WORKSPACE_TYPE: 'Workspace type',
-        CONNECTED_USER: 'Connected user',
-        OPEN_DOSSIER_LABEL: 'Open dossier',
-        CONTEXT_TITLE: 'Cabinet context',
-        CONTEXT_DESCRIPTION: 'Cabinet actions use the accounting-firm workspace.',
-        CONTEXT_HINT: 'The cabinet remains the management context.',
-        CONTEXT_ITEM_CABINET: 'Manage the accounting firm and client dossiers',
-        CONTEXT_ITEM_DOSSIERS: 'Open a dossier explicitly before accounting modules',
-        RECENT_DOSSIERS_TITLE: 'Recently opened dossiers',
-        RECENT_DOSSIERS_SUBTITLE: 'Open a client dossier.',
-        LOADING: 'Loading client dossiers...',
-        EMPTY_TITLE: 'No client dossier yet',
-        EMPTY_SUBTITLE: 'Create the first client dossier.',
-        COLLABORATORS_TITLE: 'Collaborators',
-        COLLABORATORS_PLACEHOLDER: 'Collaborator placeholder.',
-        MISSIONS_TITLE: 'Missions',
-        MISSIONS_PLACEHOLDER: 'Mission placeholder.',
-        DEADLINES_TITLE: 'Deadlines',
-        DEADLINES_PLACEHOLDER: 'Deadline placeholder.',
-        METRICS: {
-          ACTIVE_DOSSIERS: 'Active dossiers',
-          COLLABORATORS: 'Collaborators',
-          PENDING_TASKS: 'Pending tasks',
-          TOTAL_DOSSIERS: 'Total dossiers',
-          UPCOMING_DEADLINES: 'Upcoming deadlines'
-        },
-        METRICS_META: {
-          ACTIVE_DOSSIERS: 'Dossiers available for accounting modules.',
-          COLLABORATORS: 'Cabinet staffing view to connect.',
-          PENDING_TASKS: 'Cabinet tasks to connect.',
-          TOTAL_DOSSIERS: 'Client portfolio attached to the firm.',
-          UPCOMING_DEADLINES: 'Cabinet deadlines to connect.'
-        },
-        PLACEHOLDERS: {
-          NO_DEADLINE: 'No deadline connected',
-          NO_MISSION: 'No mission connected',
-          PRIMARY_CONTACT: 'Cabinet lead',
-          ROADMAP: 'Coming soon'
-        },
-        STATUS: {
-          ACTIVE: 'Active',
-          UNKNOWN: 'Unknown'
-        },
         ACTIONS: {
-          CREATE_FIRST_DOSSIER: 'Create your first client dossier',
-          NEW_DOSSIER: 'New dossier',
-          VIEW_DOSSIERS: 'View dossiers'
+          NEW_DEADLINE: 'New deadline',
+          NEW_WORK: 'New work',
+          RETRY: 'Retry',
+          VIEW_DEADLINES: 'View deadlines',
+          VIEW_DOSSIERS: 'View dossiers',
+          VIEW_TEAM: 'View team',
+          VIEW_WORK: 'View work'
+        },
+        ATTENTION: {
+          BOUNDED_DEADLINES: 'Bounded deadline preview',
+          BOUNDED_WORK: 'Bounded work preview',
+          DEADLINE_TITLE: '{{ count }} overdue deadlines',
+          NO_OVERDUE_DEADLINES: 'No overdue deadline',
+          NO_OVERDUE_WORK: 'No overdue work',
+          TITLE: 'Needs attention',
+          WORK_TITLE: '{{ count }} overdue work items',
+          ZERO_DESCRIPTION: 'Upcoming items appear below.',
+          ZERO_TITLE: 'Nothing overdue.'
+        },
+        DATE: { TODAY: 'Today', TOMORROW: 'Tomorrow' },
+        DEADLINES: {
+          DAYS_8_30: 'Days 8-30',
+          DESCRIPTION: 'Deadline buckets',
+          NEXT_7_DAYS: 'Next 7 days',
+          OVERDUE: 'Overdue',
+          TITLE: 'Deadlines',
+          TODAY: 'Today'
+        },
+        EMPTY: {
+          CABINET_DESCRIPTION: 'Create or add a dossier.',
+          CABINET_TITLE: 'Your cabinet workspace is ready.',
+          SCOPED_DESCRIPTION: 'Assignments will appear here.',
+          SCOPED_TITLE: 'No dossier is currently assigned to you.'
         },
         ERRORS: {
-          LOAD_FAILED: 'Client dossiers could not be loaded. Please retry.'
-        }
-      },
-      ONBOARDING: {
-        COUNTRIES: {
-          BENIN: 'Benin'
+          AGGREGATION_LIMIT_DESCRIPTION: 'Modules remain accessible.',
+          AGGREGATION_LIMIT_TITLE: 'Too much data.',
+          LOAD_DESCRIPTION: 'Retry later.',
+          LOAD_TITLE: 'Dashboard could not be loaded.'
         },
-        FRAMEWORKS: {
-          SYSCOHADA_REVISED: 'Revised SYSCOHADA'
+        EYEBROW: 'Cabinet',
+        METRICS: {
+          ACCESSIBLE_DOSSIERS: 'Accessible dossiers',
+          ACTIVE_DOSSIERS: 'Active dossiers',
+          ACTIVE_WORK: 'Active work',
+          MY_ACTIVE_WORK: 'My active work',
+          MY_OVERDUE_DEADLINES: 'My overdue deadlines',
+          MY_OVERDUE_WORK: 'My overdue work',
+          OVERDUE_DEADLINES: 'Overdue deadlines',
+          OVERDUE_WORK: 'Overdue work',
+          SUPERVISED_DOSSIERS: 'Supervised dossiers'
+        },
+        METRICS_META: {
+          ACCESSIBLE_DOSSIERS: 'Accessible scope',
+          ACTIVE_DOSSIERS: 'Cabinet portfolio',
+          ACTIVE_WORK: 'Open work',
+          MY_ACTIVE_WORK: 'Open personal work',
+          MY_OVERDUE_DEADLINES: 'Personal overdue deadlines',
+          MY_OVERDUE_WORK: 'Personal overdue work',
+          OVERDUE_DEADLINES: 'Past due deadlines',
+          OVERDUE_WORK: 'Past due work',
+          SUPERVISED_DOSSIERS: 'Supervised scope'
+        },
+        PORTFOLIO: {
+          ACCESSIBLE: 'Accessible dossiers',
+          ACTIVE: 'Active dossiers',
+          DESCRIPTION: 'Portfolio totals',
+          TITLE_CABINET: 'Client portfolio',
+          TITLE_SCOPED: 'Dossier access'
+        },
+        SCOPE: {
+          ASSIGNED_DOSSIERS_READ_ONLY: 'My accessible dossiers',
+          CABINET: 'Cabinet view',
+          PERSONAL_ACTIVITY: 'My activity',
+          SUPERVISED_DOSSIERS: 'My supervised dossiers'
+        },
+        SNAPSHOT: 'As of {{ date }} refreshed at {{ time }}',
+        SUBTITLE: {
+          ASSIGNED_DOSSIERS_READ_ONLY: 'Review accessible dossiers.',
+          CABINET: "Overview of the Cabinet's activity and priorities.",
+          PERSONAL_ACTIVITY: 'Track your work, deadlines, and attention items.',
+          SUPERVISED_DOSSIERS: 'Track supervised dossiers.'
+        },
+        TEAM: {
+          ACTIVE_MEMBERS: 'Active members',
+          ADMINISTRATORS: 'Administrators',
+          COLLABORATORS: 'Collaborators',
+          DESCRIPTION: 'Team totals',
+          PENDING_INVITATIONS: 'Pending invitations',
+          READERS: 'Readers',
+          SUPERVISORS: 'Supervisors',
+          TITLE: 'Team'
+        },
+        TITLE: 'Dashboard',
+        UPCOMING: {
+          DESCRIPTION: 'Upcoming preview',
+          EMPTY: 'No upcoming deadlines',
+          TITLE: 'Upcoming deadlines'
+        },
+        WORK: {
+          DESCRIPTION: 'Work status totals',
+          IN_PROGRESS: 'In progress',
+          TITLE: 'Accounting work',
+          TO_DO: 'To do',
+          TO_PLAN: 'To plan',
+          UNASSIGNED: 'Unassigned',
+          WAITING: 'Waiting'
         }
-      }
-    },
-    SHELL: {
-      TOPBAR: {
-        NO_DOSSIER: 'No dossier open',
-        USER: 'User'
       },
-      WORKSPACE_TYPES: {
-        ACCOUNTING_FIRM: 'Accounting firm'
+      CABINET_OPERATIONS: {
+        DEADLINE: { TYPES: { TAX: 'Tax' } },
+        PRIORITY: { HIGH: 'High', NORMAL: 'Normal', URGENT: 'Urgent' },
+        UNASSIGNED: 'Unassigned',
+        UNKNOWN_DOSSIER: 'Client dossier',
+        WORK: { TYPES: { ACCOUNT_REVIEW: 'Account review' } }
       }
     }
   }
 };
 
+const baseDashboard: CabinetDashboardResponse = {
+  generatedAt: '2026-07-26T18:30:00.000Z',
+  asOfDate: '2026-07-26',
+  scope: 'CABINET',
+  cabinet: { cabinetOrgId: 'org-cabinet', displayName: 'Cabinet Conseil' },
+  portfolio: { accessibleDossiers: 12, activeDossiers: 10 },
+  team: {
+    activeMembers: 8,
+    administrators: 1,
+    supervisors: 2,
+    collaborators: 4,
+    readers: 1,
+    pendingInvitations: 2
+  },
+  work: {
+    totalActive: 20,
+    toPlan: 2,
+    toDo: 7,
+    inProgress: 6,
+    waiting: 5,
+    overdue: 12,
+    dueSoon: 3,
+    unassigned: 1
+  },
+  deadlines: {
+    pending: 11,
+    overdue: 4,
+    dueToday: 1,
+    next7Days: 3,
+    next30Days: 7
+  },
+  attention: {
+    overdueWorks: [
+      {
+        workId: 'work-1',
+        dossierOrgId: 'org-client',
+        dossierName: 'Dona Shop',
+        title: 'Review receivables',
+        type: 'ACCOUNT_REVIEW',
+        priority: 'HIGH',
+        status: 'IN_PROGRESS',
+        responsibleDisplayName: 'Awa Mensah',
+        dueDate: '2026-07-25'
+      }
+    ],
+    overdueDeadlines: [
+      {
+        deadlineId: 'deadline-1',
+        dossierOrgId: 'org-client',
+        dossierName: 'Dona Shop',
+        title: 'Tax return',
+        type: 'TAX',
+        priority: 'URGENT',
+        status: 'PENDING',
+        responsibleDisplayName: 'Chris',
+        dueDate: '2026-07-24'
+      }
+    ],
+    upcomingDeadlines: [
+      {
+        deadlineId: 'deadline-2',
+        dossierOrgId: 'org-client',
+        dossierName: 'Dona Shop',
+        title: 'Today filing',
+        type: 'TAX',
+        priority: 'NORMAL',
+        status: 'PENDING',
+        responsibleDisplayName: 'Chris',
+        dueDate: '2026-07-26'
+      },
+      {
+        deadlineId: 'deadline-3',
+        dossierOrgId: 'org-client',
+        dossierName: 'Eco Bank',
+        title: 'Tomorrow filing',
+        type: 'TAX',
+        priority: 'NORMAL',
+        status: 'PENDING',
+        dueDate: '2026-07-27'
+      }
+    ]
+  }
+};
+
 describe('CabinetDashboardPage', () => {
-  let fixture: ComponentFixture<CabinetDashboardPage>;
-  let cabinetDossiersApi: { listDossiers: ReturnType<typeof vi.fn> };
+  let queryClient: QueryClient;
   let router: Router;
+  let getCabinetDashboard: ReturnType<typeof vi.fn>;
+  const activeCabinetRole = signal<CabinetRole | null>('CABINET_ADMIN');
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
-    localStorage.clear();
-    cabinetDossiersApi = { listDossiers: vi.fn().mockResolvedValue([]) };
+    activeCabinetRole.set('CABINET_ADMIN');
+    queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    getCabinetDashboard = vi.fn().mockResolvedValue(baseDashboard);
 
     await TestBed.configureTestingModule({
       imports: [
@@ -124,113 +256,134 @@ describe('CabinetDashboardPage', () => {
           preloadLangs: true,
           translocoConfig: {
             availableLangs: ['en'],
-            defaultLang: 'en',
-          },
-        }),
+            defaultLang: 'en'
+          }
+        })
       ],
       providers: [
         provideRouter([]),
-        { provide: CabinetDossiersApi, useValue: cabinetDossiersApi },
-        { provide: WorkspacesApi, useValue: { listWorkspaces: vi.fn().mockResolvedValue([]) } },
-      ],
+        provideTanStackQuery(queryClient),
+        { provide: CabinetDashboardApi, useValue: { getCabinetDashboard } },
+        {
+          provide: AuthStore,
+          useValue: {
+            activeCabinetRole,
+            activeWorkspaceOrgId: () => 'org-cabinet',
+            activeWorkspaceType: () => 'ACCOUNTING_FIRM',
+            currentUserId: () => 'user-1',
+            dossiers: () => []
+          }
+        }
+      ]
     }).compileComponents();
 
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
   });
 
-  it('loads and renders cabinet client dossiers', async () => {
-    TestBed.inject(AuthStore).setCreatedWorkspace(
-      {
-        orgId: 'org-firm',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      },
-      'org-firm'
-    );
-    cabinetDossiersApi.listDossiers.mockResolvedValue([
-      {
-        orgId: 'org-client',
-        displayName: 'Client SARL',
-        country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED',
-        status: 'ACTIVE',
-        createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
-    ]);
-
-    fixture = TestBed.createComponent(CabinetDashboardPage);
-    await fixture.componentInstance.ngOnInit();
-    fixture.detectChanges();
-
-    expect(cabinetDossiersApi.listDossiers).toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Cabinet Demo');
-    expect(fixture.nativeElement.textContent).toContain('Accounting firm');
-    expect(fixture.nativeElement.textContent).toContain('Open dossier');
-    expect(fixture.nativeElement.textContent).toContain('No dossier open');
-    expect(fixture.nativeElement.textContent).toContain('Total dossiers');
-    expect(fixture.nativeElement.textContent).toContain('Active dossiers');
-    expect(fixture.nativeElement.textContent).toContain('Client portfolio attached to the firm.');
-    expect(fixture.nativeElement.textContent).toContain('Cabinet lead');
-    expect(fixture.nativeElement.textContent).toContain('Client SARL');
-    expect(fixture.nativeElement.textContent).toContain('Benin');
-    expect(fixture.nativeElement.textContent).toContain('Revised SYSCOHADA');
-    expect(fixture.nativeElement.textContent).not.toContain('org-firm');
+  afterEach(() => {
+    queryClient.clear();
+    TestBed.resetTestingModule();
   });
 
-  it('selects a dossier before opening the standard dashboard', async () => {
-    const authStore = TestBed.inject(AuthStore);
-    authStore.setCreatedWorkspace(
-      {
-        orgId: 'org-firm',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      },
-      'org-firm'
-    );
-    cabinetDossiersApi.listDossiers.mockResolvedValue([
-      {
-        orgId: 'org-client',
-        displayName: 'Client SARL',
-        country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED',
-        status: 'ACTIVE',
-        createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
-    ]);
-
-    fixture = TestBed.createComponent(CabinetDashboardPage);
-    await fixture.componentInstance.ngOnInit();
+  it('renders CABINET dashboard metrics from exact backend totals, not bounded previews', async () => {
+    const fixture = TestBed.createComponent(CabinetDashboardPage);
     fixture.detectChanges();
-    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
-    buttons.find((button) => button.textContent?.includes('Client SARL'))?.click();
-    await fixture.whenStable();
+    await waitForText(fixture, '12 overdue work items');
 
-    expect(authStore.activeWorkspaceOrgId()).toBe('org-firm');
-    expect(authStore.activeDossierOrgId()).toBe('org-client');
-    expect(router.navigate).toHaveBeenCalledWith(['/dashboard'], { replaceUrl: true });
+    const text = compactText(fixture);
+    expect(getCabinetDashboard).toHaveBeenCalledTimes(1);
+    expect(text).toContain("Overview of the Cabinet's activity and priorities.");
+    expect(text).toContain('Active dossiers');
+    expect(text).toContain('20');
+    expect(text).toContain('12 overdue work items');
+    expect(text).toContain('4 overdue deadlines');
+    expect(text).toContain('Review receivables');
+    expect(text).toContain('Dona Shop');
+    expect(text).toContain('Awa Mensah');
+    expect(text).toContain('Today filing');
+    expect(text).toContain('Today');
+    expect(text).toContain('Tomorrow filing');
+    expect(text).toContain('Tomorrow');
+    expect(text).toContain('Active members');
+    expect(text).toContain('8');
+    expect(text).not.toContain('1 overdue work items');
+    expect(text).not.toContain('CABINET');
   });
 
-  it('routes new dossier creation to the dialog deep link on the dossiers page', async () => {
-    TestBed.inject(AuthStore).setCreatedWorkspace(
-      {
-        orgId: 'org-firm',
-        displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      },
-      'org-firm'
-    );
+  it('uses personal scope copy and omits unauthorized creation actions', async () => {
+    activeCabinetRole.set('COLLABORATOR');
+    getCabinetDashboard.mockResolvedValue({
+      ...baseDashboard,
+      scope: 'PERSONAL_ACTIVITY',
+      team: undefined,
+      portfolio: { activeDossiers: 1, accessibleDossiers: 2 }
+    } satisfies CabinetDashboardResponse);
 
-    fixture = TestBed.createComponent(CabinetDashboardPage);
-    await fixture.componentInstance.ngOnInit();
+    const fixture = TestBed.createComponent(CabinetDashboardPage);
     fixture.detectChanges();
-    const buttons = Array.from(fixture.nativeElement.querySelectorAll('button')) as HTMLButtonElement[];
-    buttons.find((button) => button.textContent?.includes('New dossier'))?.click();
+    await waitForText(fixture, 'My active work');
 
-    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dossiers'], {
-      queryParams: { createDossier: '1' }
-    });
+    const text = compactText(fixture);
+    expect(text).toContain('Track your work, deadlines, and attention items.');
+    expect(text).toContain('My activity');
+    expect(text).toContain('My overdue work');
+    expect(text).toMatch(/Accessible dossiers\s*2/);
+    expect(text).not.toContain('New work');
+    expect(text).not.toContain('New deadline');
+    expect(text).not.toContain('Active members');
+    expect(text).not.toContain('PERSONAL_ACTIVITY');
+  });
+
+  it('keeps reader scope informational and navigates to cabinet modules only', async () => {
+    activeCabinetRole.set('READER');
+    getCabinetDashboard.mockResolvedValue({
+      ...baseDashboard,
+      scope: 'ASSIGNED_DOSSIERS_READ_ONLY',
+      team: undefined,
+      portfolio: { activeDossiers: 1, accessibleDossiers: 3 }
+    } satisfies CabinetDashboardResponse);
+
+    const fixture = TestBed.createComponent(CabinetDashboardPage);
+    fixture.detectChanges();
+    await waitForText(fixture, 'My accessible dossiers');
+
+    const page = fixture.componentInstance as unknown as {
+      openDeadlines(): void;
+      openDossiers(): void;
+      openWorks(): void;
+    };
+    page.openWorks();
+    page.openDeadlines();
+    page.openDossiers();
+
+    const text = compactText(fixture);
+    expect(text).toContain('Review accessible dossiers.');
+    expect(text).toContain('Accessible dossiers');
+    expect(text).toMatch(/Accessible dossiers\s*3/);
+    expect(text).not.toContain('New work');
+    expect(text).not.toContain('New deadline');
+    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/works']);
+    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/deadlines']);
+    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dossiers']);
   });
 });
+
+async function waitForText(
+  fixture: ComponentFixture<CabinetDashboardPage>,
+  expectedText: string
+): Promise<void> {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    fixture.detectChanges();
+    if (fixture.nativeElement.textContent.includes(expectedText)) {
+      return;
+    }
+  }
+  throw new Error(`Expected dashboard text was not rendered: ${expectedText}`);
+}
+
+function compactText(fixture: ComponentFixture<CabinetDashboardPage>): string {
+  return fixture.nativeElement.textContent.replace(/\s+/g, ' ').trim();
+}

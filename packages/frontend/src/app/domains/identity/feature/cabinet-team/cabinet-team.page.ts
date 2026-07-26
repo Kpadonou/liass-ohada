@@ -28,6 +28,7 @@ import { LiassPageHeaderComponent } from '../../../../shared/ui/page-header/page
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { AuthStore } from '../../data-access/auth.store';
+import { CabinetDashboardQueries } from '../../data-access/cabinet-dashboard.queries';
 import { CabinetTeamApi } from '../../data-access/cabinet-team.api';
 import { CabinetTeamCapabilities } from '../../data-access/cabinet-team-capabilities';
 import {
@@ -83,6 +84,7 @@ export class CabinetTeamPage implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly notification = inject(NotificationService);
   private readonly queryClient = inject(QueryClient);
+  private readonly dashboardQueries = inject(CabinetDashboardQueries);
   protected readonly queries = inject(CabinetTeamQueries);
   private readonly transloco = inject(TranslocoService);
 
@@ -298,6 +300,7 @@ export class CabinetTeamPage implements OnInit {
         );
       }
       await this.invalidateInvitations();
+      await this.invalidateDashboard();
       this.notification.success(
         this.transloco.translate(
           response.deliveryMode === 'DEVELOPMENT_TOKEN'
@@ -347,6 +350,7 @@ export class CabinetTeamPage implements OnInit {
         this.queryClient.invalidateQueries({
           queryKey: [...this.queries.all(), 'assignments', member.userId],
         }),
+        this.invalidateDashboard(),
       ]);
       this.notification.success(
         this.transloco.translate('IDENTITY.CABINET_TEAM.NOTIFICATIONS.ASSIGNMENT_UPDATED'),
@@ -373,6 +377,7 @@ export class CabinetTeamPage implements OnInit {
     try {
       await operation();
       await this.invalidateInvitations();
+      await this.invalidateDashboard();
       this.notification.success(this.transloco.translate(successKey));
     } catch (error) {
       this.actionErrorKey.set(
@@ -384,6 +389,12 @@ export class CabinetTeamPage implements OnInit {
   private invalidateInvitations(): Promise<void> {
     return this.queryClient.invalidateQueries({
       queryKey: [...this.queries.all(), 'invitations'],
+    });
+  }
+
+  private invalidateDashboard(): Promise<void> {
+    return this.queryClient.invalidateQueries({
+      queryKey: this.dashboardQueries.all(),
     });
   }
 

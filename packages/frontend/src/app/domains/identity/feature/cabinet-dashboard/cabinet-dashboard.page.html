@@ -1,193 +1,326 @@
 <div class="space-y-6">
-  <liass-page-header
-    [eyebrow]="'IDENTITY.CABINET_DASHBOARD.EYEBROW' | transloco"
-    [title]="authStore.activeWorkspaceDisplayName() || ('IDENTITY.CABINET_DASHBOARD.FALLBACK_CABINET_NAME' | transloco)"
-    [subtitle]="'IDENTITY.CABINET_DASHBOARD.SUBTITLE' | transloco"
-    [actionLabel]="'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_DOSSIER' | transloco"
-    actionIcon="add"
-    (actionTriggered)="createDossier()"
-  />
+  @if (dashboard(); as dashboard) {
+    <liass-page-header
+      [eyebrow]="'IDENTITY.CABINET_DASHBOARD.EYEBROW' | transloco"
+      [title]="'IDENTITY.CABINET_DASHBOARD.TITLE' | transloco"
+      [subtitle]="subtitleKey(dashboard.scope) | transloco"
+    />
+  } @else {
+    <liass-page-header
+      [eyebrow]="'IDENTITY.CABINET_DASHBOARD.EYEBROW' | transloco"
+      [title]="'IDENTITY.CABINET_DASHBOARD.TITLE' | transloco"
+      [subtitle]="'IDENTITY.CABINET_DASHBOARD.SUBTITLE.CABINET' | transloco"
+    />
+  }
 
-  <section class="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,0.65fr)]">
-    <liass-card variant="accent">
-      <div class="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div class="min-w-0">
-          <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
-            {{ 'IDENTITY.CABINET_DASHBOARD.WORKSPACE_TYPE' | transloco }}
-          </p>
-          <p class="mt-2 text-xl font-semibold text-slate-950 dark:text-white">
-            {{ 'SHELL.WORKSPACE_TYPES.ACCOUNTING_FIRM' | transloco }}
-          </p>
-          <p class="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-            {{ 'IDENTITY.CABINET_DASHBOARD.CONTEXT_DESCRIPTION' | transloco }}
-          </p>
-        </div>
-
-        <div class="grid gap-3 sm:grid-cols-2 lg:min-w-[360px]">
-          <div class="rounded-app-card border border-brand-100 bg-white/80 px-4 py-3 dark:border-brand-900/70 dark:bg-slate-950/70">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'IDENTITY.CABINET_DASHBOARD.CONNECTED_USER' | transloco }}
-            </p>
-            <p class="mt-1 truncate font-semibold text-slate-950 dark:text-white">
-              {{ currentUserLabel() || ('SHELL.TOPBAR.USER' | transloco) }}
-            </p>
-          </div>
-
-          <div class="rounded-app-card border border-brand-100 bg-white/80 px-4 py-3 dark:border-brand-900/70 dark:bg-slate-950/70">
-            <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">
-              {{ 'IDENTITY.CABINET_DASHBOARD.OPEN_DOSSIER_LABEL' | transloco }}
-            </p>
-            <p class="mt-1 font-semibold text-slate-950 dark:text-white">
-              {{ 'SHELL.TOPBAR.NO_DOSSIER' | transloco }}
-            </p>
-          </div>
-        </div>
-      </div>
-    </liass-card>
-
-    <liass-card
-      [title]="'IDENTITY.CABINET_DASHBOARD.CONTEXT_TITLE' | transloco"
-      [description]="'IDENTITY.CABINET_DASHBOARD.CONTEXT_HINT' | transloco"
-    >
-      <div class="grid gap-3">
-        <div class="flex items-center gap-3 rounded-app-card bg-slate-50 px-4 py-3 dark:bg-slate-950">
-          <mat-icon class="text-brand-700 dark:text-brand-300">business_center</mat-icon>
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
-            {{ 'IDENTITY.CABINET_DASHBOARD.CONTEXT_ITEM_CABINET' | transloco }}
-          </span>
-        </div>
-        <div class="flex items-center gap-3 rounded-app-card bg-slate-50 px-4 py-3 dark:bg-slate-950">
-          <mat-icon class="text-brand-700 dark:text-brand-300">folder_open</mat-icon>
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
-            {{ 'IDENTITY.CABINET_DASHBOARD.CONTEXT_ITEM_DOSSIERS' | transloco }}
-          </span>
-        </div>
-      </div>
-    </liass-card>
-  </section>
-
-  <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-    @for (metric of metricCards(); track metric.labelKey) {
-      <liass-stat-card
-        [icon]="metric.icon"
-        [label]="metric.labelKey | transloco"
-        [meta]="metric.metaKey | transloco"
-        [tone]="metric.tone"
-        [value]="metric.value"
-      />
-    }
-  </section>
-
-  <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
-    <liass-card
-      [title]="'IDENTITY.CABINET_DASHBOARD.RECENT_DOSSIERS_TITLE' | transloco"
-      [description]="'IDENTITY.CABINET_DASHBOARD.RECENT_DOSSIERS_SUBTITLE' | transloco"
-    >
-      <liass-button liassCardActions tone="neutral" variant="outline" icon="folder_open" (pressed)="openDossiers()">
-        {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DOSSIERS' | transloco }}
-      </liass-button>
-
-      @if (authStore.dossierLoading()) {
-        <div class="space-y-3" aria-live="polite">
-          <div class="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
-            <mat-spinner diameter="20"></mat-spinner>
-            <span>{{ 'IDENTITY.CABINET_DASHBOARD.LOADING' | transloco }}</span>
-          </div>
-          @for (_ of [0, 1, 2]; track $index) {
-            <div class="rounded-app-card border border-slate-100 p-4 dark:border-slate-800">
-              <liass-skeleton variant="text" />
-              <div class="mt-3 max-w-sm">
-                <liass-skeleton variant="text" />
-              </div>
+  @if (dashboardQuery.isPending()) {
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-hidden="true">
+      @for (_ of [0, 1, 2, 3]; track $index) {
+        <liass-stat-card icon="pending" label="" meta="" value="" state="loading" />
+      }
+    </section>
+    <section class="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]" aria-hidden="true">
+      <liass-card state="loading" />
+      <liass-card state="loading" />
+    </section>
+    <section class="grid gap-5 xl:grid-cols-2" aria-hidden="true">
+      <liass-card state="loading" />
+      <liass-card state="loading" />
+    </section>
+  } @else if (dashboardQuery.isError()) {
+    <liass-card variant="muted">
+      <div
+        class="flex flex-col gap-4 rounded-app-card border border-warning-200 bg-warning-50 p-4 text-warning-800 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-100 sm:flex-row sm:items-start"
+        role="alert"
+      >
+        <mat-icon class="shrink-0">{{ errorState().variant === 'limit' ? 'database' : 'error' }}</mat-icon>
+        <div class="min-w-0 flex-1">
+          <h2 class="text-base font-semibold">{{ errorState().titleKey | transloco }}</h2>
+          <p class="mt-1 text-sm leading-6">{{ errorState().descriptionKey | transloco }}</p>
+          @if (errorState().variant === 'limit') {
+            <div class="mt-4 flex flex-wrap gap-2">
+              <liass-button tone="neutral" variant="outline" icon="folder_open" (pressed)="openDossiers()">
+                {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DOSSIERS' | transloco }}
+              </liass-button>
+              <liass-button tone="neutral" variant="outline" icon="task_alt" (pressed)="openWorks()">
+                {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_WORK' | transloco }}
+              </liass-button>
+              <liass-button tone="neutral" variant="outline" icon="event" (pressed)="openDeadlines()">
+                {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DEADLINES' | transloco }}
+              </liass-button>
             </div>
           }
         </div>
-      } @else if (authStore.dossierError()) {
-        <div
-          class="flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200"
-          role="alert"
-        >
-          <mat-icon class="mt-0.5 text-red-600 dark:text-red-300">error</mat-icon>
-          <p>{{ (authStore.dossierError() ?? 'IDENTITY.CABINET_DASHBOARD.ERRORS.LOAD_FAILED') | transloco }}</p>
-        </div>
-      } @else if (authStore.dossiers().length === 0) {
-        <div class="rounded-app-card border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950">
-          <div class="mx-auto flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300">
-            <mat-icon>folder_open</mat-icon>
-          </div>
-          <p class="mt-4 text-base font-semibold text-slate-950 dark:text-white">
-            {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_TITLE' | transloco }}
-          </p>
-          <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-            {{ 'IDENTITY.CABINET_DASHBOARD.EMPTY_SUBTITLE' | transloco }}
-          </p>
-          <div class="mt-5">
-            <liass-button tone="brand" variant="solid" icon="add" (pressed)="createDossier()">
-              {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.CREATE_FIRST_DOSSIER' | transloco }}
+        <liass-button tone="warning" variant="solid" icon="refresh" (pressed)="retry()">
+          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.RETRY' | transloco }}
+        </liass-button>
+      </div>
+    </liass-card>
+  } @else if (dashboard(); as dashboard) {
+    <section class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div class="flex flex-wrap items-center gap-2">
+        <liass-status-chip [label]="scopeLabelKey(dashboard.scope) | transloco" tone="brand" />
+        <span class="text-sm text-app-muted">{{ snapshotLabel(dashboard) }}</span>
+      </div>
+
+      @if (canCreateWork() || canCreateDeadline()) {
+        <div class="flex flex-wrap gap-2">
+          @if (canCreateWork()) {
+            <liass-button tone="brand" variant="solid" icon="add_task" (pressed)="openWorks()">
+              {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_WORK' | transloco }}
             </liass-button>
-          </div>
-        </div>
-      } @else {
-        <div class="divide-y divide-slate-100 overflow-hidden rounded-app-card border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
-          @for (dossier of recentDossiers(); track dossier.orgId) {
-            <button
-              class="flex w-full items-center justify-between gap-4 bg-white px-4 py-4 text-left transition hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-65 dark:bg-slate-950 dark:hover:bg-brand-950/25"
-              type="button"
-              [disabled]="authStore.dossierLoading()"
-              (click)="selectDossier(dossier)"
-            >
-              <span class="min-w-0">
-                <span class="block truncate font-semibold text-slate-950 dark:text-white">{{ dossier.displayName }}</span>
-                <span class="mt-1 block text-sm text-slate-500 dark:text-slate-400">
-                  {{ countryLabelKey(dossier) | transloco }} · {{ frameworkLabelKey(dossier) | transloco }}
-                </span>
-              </span>
-              <span class="flex shrink-0 items-center gap-3">
-                <liass-status-chip [label]="statusLabelKey(dossier) | transloco" tone="success" size="sm" />
-                <mat-icon class="text-brand-700 dark:text-brand-300">arrow_forward</mat-icon>
-              </span>
-            </button>
+          }
+          @if (canCreateDeadline()) {
+            <liass-button tone="neutral" variant="outline" icon="event_available" (pressed)="openDeadlines()">
+              {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.NEW_DEADLINE' | transloco }}
+            </liass-button>
           }
         </div>
       }
-    </liass-card>
+    </section>
 
-    <aside class="grid gap-5">
+    @if (isEmptyDashboard(dashboard)) {
+      <liass-card variant="accent">
+        <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div class="min-w-0">
+            <h2 class="text-base font-semibold text-app-text">{{ emptyTitleKey(dashboard.scope) | transloco }}</h2>
+            <p class="mt-1 max-w-3xl text-sm leading-6 text-app-muted">
+              {{ emptyDescriptionKey(dashboard.scope) | transloco }}
+            </p>
+          </div>
+          <liass-button tone="brand" variant="solid" icon="folder_open" (pressed)="openDossiers()">
+            {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DOSSIERS' | transloco }}
+          </liass-button>
+        </div>
+      </liass-card>
+    }
+
+    <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      @for (metric of metricCards(); track metric.labelKey) {
+        <liass-stat-card
+          [icon]="metric.icon"
+          [label]="metric.labelKey | transloco"
+          [meta]="metric.metaKey | transloco"
+          [tone]="metric.tone"
+          [value]="metric.value"
+        />
+      }
+    </section>
+
+    <section class="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
       <liass-card
-        [title]="'IDENTITY.CABINET_DASHBOARD.COLLABORATORS_TITLE' | transloco"
-        [description]="'IDENTITY.CABINET_DASHBOARD.COLLABORATORS_PLACEHOLDER' | transloco"
+        [title]="'IDENTITY.CABINET_DASHBOARD.WORK.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_DASHBOARD.WORK.DESCRIPTION' | transloco"
       >
-        <div class="flex items-center justify-between rounded-app-card bg-slate-50 px-4 py-3 dark:bg-slate-950">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
-            {{ 'IDENTITY.CABINET_DASHBOARD.PLACEHOLDERS.PRIMARY_CONTACT' | transloco }}
-          </span>
-          <liass-status-chip [label]="'IDENTITY.CABINET_DASHBOARD.PLACEHOLDERS.ROADMAP' | transloco" tone="neutral" size="sm" />
+        <liass-button liassCardActions tone="neutral" variant="outline" icon="task_alt" (pressed)="openWorks()">
+          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_WORK' | transloco }}
+        </liass-button>
+        <div class="grid gap-3 sm:grid-cols-2">
+          @for (row of workRows(dashboard); track row.labelKey) {
+            <div class="flex items-center justify-between gap-3 rounded-app-card border border-app-border bg-app-surface-muted px-3 py-2.5">
+              <span class="flex min-w-0 items-center gap-2">
+                <mat-icon class="text-app-muted">{{ row.icon }}</mat-icon>
+                <span class="truncate text-sm font-medium text-app-text">{{ row.labelKey | transloco }}</span>
+              </span>
+              <liass-status-chip [label]="row.value.toString()" [tone]="row.tone" />
+            </div>
+          }
         </div>
       </liass-card>
 
       <liass-card
-        [title]="'IDENTITY.CABINET_DASHBOARD.MISSIONS_TITLE' | transloco"
-        [description]="'IDENTITY.CABINET_DASHBOARD.MISSIONS_PLACEHOLDER' | transloco"
+        [title]="'IDENTITY.CABINET_DASHBOARD.DEADLINES.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_DASHBOARD.DEADLINES.DESCRIPTION' | transloco"
       >
-        <div class="flex items-center justify-between rounded-app-card bg-slate-50 px-4 py-3 dark:bg-slate-950">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
-            {{ 'IDENTITY.CABINET_DASHBOARD.PLACEHOLDERS.NO_MISSION' | transloco }}
-          </span>
-          <liass-status-chip [label]="'IDENTITY.CABINET_DASHBOARD.PLACEHOLDERS.ROADMAP' | transloco" tone="neutral" size="sm" />
+        <liass-button liassCardActions tone="neutral" variant="outline" icon="event" (pressed)="openDeadlines()">
+          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DEADLINES' | transloco }}
+        </liass-button>
+        <div class="space-y-3">
+          @for (row of deadlineRows(dashboard); track row.labelKey) {
+            <div class="flex items-center justify-between gap-3 rounded-app-card border border-app-border bg-app-surface-muted px-3 py-2.5">
+              <span class="flex min-w-0 items-center gap-2">
+                <mat-icon class="text-app-muted">{{ row.icon }}</mat-icon>
+                <span class="truncate text-sm font-medium text-app-text">{{ row.labelKey | transloco }}</span>
+              </span>
+              <liass-status-chip [label]="row.value.toString()" [tone]="row.tone" />
+            </div>
+          }
         </div>
+      </liass-card>
+    </section>
+
+    <section
+      class="grid gap-5 xl:grid-cols-2"
+      [attr.aria-label]="'IDENTITY.CABINET_DASHBOARD.ATTENTION.TITLE' | transloco"
+    >
+      <liass-card
+        [title]="'IDENTITY.CABINET_DASHBOARD.ATTENTION.WORK_TITLE' | transloco: { count: dashboard.work.overdue }"
+        [description]="'IDENTITY.CABINET_DASHBOARD.ATTENTION.BOUNDED_WORK' | transloco"
+      >
+        <liass-button liassCardActions tone="neutral" variant="outline" icon="task_alt" (pressed)="openWorks()">
+          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_WORK' | transloco }}
+        </liass-button>
+        @if (dashboard.attention.overdueWorks.length === 0) {
+          <div class="rounded-app-card border border-dashed border-success-200 bg-success-50 p-4 text-sm leading-6 text-success-700 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-200">
+            {{ 'IDENTITY.CABINET_DASHBOARD.ATTENTION.NO_OVERDUE_WORK' | transloco }}
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (work of dashboard.attention.overdueWorks; track work.workId) {
+              <button
+                type="button"
+                class="liass-focus-ring w-full rounded-app-card border border-danger-100 bg-white p-3 text-left shadow-app-xs transition hover:border-danger-200 hover:bg-danger-50/60 dark:border-rose-900/50 dark:bg-slate-950 dark:hover:bg-rose-950/20"
+                (click)="openWorks()"
+              >
+                <span class="flex items-start justify-between gap-3">
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-semibold text-app-text">{{ dossierName(work) }}</span>
+                    <span class="mt-1 block line-clamp-2 text-sm text-app-muted">{{ work.title }}</span>
+                  </span>
+                  <liass-status-chip [label]="priorityKey(work.priority) | transloco" [tone]="priorityTone(work.priority)" size="sm" />
+                </span>
+                <span class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-app-muted">
+                  <span>{{ workTypeKey(work.type) | transloco }}</span>
+                  <span>{{ responsibleName(work) }}</span>
+                  <span>{{ dateLabel(work.dueDate) }}</span>
+                </span>
+              </button>
+            }
+          </div>
+        }
       </liass-card>
 
       <liass-card
-        [title]="'IDENTITY.CABINET_DASHBOARD.DEADLINES_TITLE' | transloco"
-        [description]="'IDENTITY.CABINET_DASHBOARD.DEADLINES_PLACEHOLDER' | transloco"
+        [title]="'IDENTITY.CABINET_DASHBOARD.ATTENTION.DEADLINE_TITLE' | transloco: { count: dashboard.deadlines.overdue }"
+        [description]="'IDENTITY.CABINET_DASHBOARD.ATTENTION.BOUNDED_DEADLINES' | transloco"
       >
-        <div class="flex items-center justify-between rounded-app-card bg-slate-50 px-4 py-3 dark:bg-slate-950">
-          <span class="text-sm font-medium text-slate-700 dark:text-slate-300">
-            {{ 'IDENTITY.CABINET_DASHBOARD.PLACEHOLDERS.NO_DEADLINE' | transloco }}
-          </span>
-          <liass-status-chip [label]="'IDENTITY.CABINET_DASHBOARD.PLACEHOLDERS.ROADMAP' | transloco" tone="neutral" size="sm" />
+        <liass-button liassCardActions tone="neutral" variant="outline" icon="event" (pressed)="openDeadlines()">
+          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DEADLINES' | transloco }}
+        </liass-button>
+        @if (dashboard.attention.overdueDeadlines.length === 0) {
+          <div class="rounded-app-card border border-dashed border-success-200 bg-success-50 p-4 text-sm leading-6 text-success-700 dark:border-emerald-900 dark:bg-emerald-950/25 dark:text-emerald-200">
+            {{ 'IDENTITY.CABINET_DASHBOARD.ATTENTION.NO_OVERDUE_DEADLINES' | transloco }}
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (deadline of dashboard.attention.overdueDeadlines; track deadline.deadlineId) {
+              <button
+                type="button"
+                class="liass-focus-ring w-full rounded-app-card border border-danger-100 bg-white p-3 text-left shadow-app-xs transition hover:border-danger-200 hover:bg-danger-50/60 dark:border-rose-900/50 dark:bg-slate-950 dark:hover:bg-rose-950/20"
+                (click)="openDeadlines()"
+              >
+                <span class="flex items-start justify-between gap-3">
+                  <span class="min-w-0">
+                    <span class="block truncate text-sm font-semibold text-app-text">{{ dossierName(deadline) }}</span>
+                    <span class="mt-1 block line-clamp-2 text-sm text-app-muted">{{ deadline.title }}</span>
+                  </span>
+                  <liass-status-chip [label]="priorityKey(deadline.priority) | transloco" [tone]="priorityTone(deadline.priority)" size="sm" />
+                </span>
+                <span class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-app-muted">
+                  <span>{{ deadlineTypeKey(deadline.type) | transloco }}</span>
+                  <span>{{ responsibleName(deadline) }}</span>
+                  <span>{{ dateLabel(deadline.dueDate) }}</span>
+                </span>
+              </button>
+            }
+          </div>
+        }
+      </liass-card>
+    </section>
+
+    @if (!hasOverdueAttention(dashboard)) {
+      <liass-card variant="accent">
+        <div class="flex items-center gap-3">
+          <mat-icon class="text-success-600 dark:text-emerald-300">check_circle</mat-icon>
+          <div>
+            <h2 class="text-base font-semibold text-app-text">{{ 'IDENTITY.CABINET_DASHBOARD.ATTENTION.ZERO_TITLE' | transloco }}</h2>
+            <p class="mt-1 text-sm leading-6 text-app-muted">{{ 'IDENTITY.CABINET_DASHBOARD.ATTENTION.ZERO_DESCRIPTION' | transloco }}</p>
+          </div>
         </div>
       </liass-card>
-    </aside>
-  </section>
+    }
+
+    <section class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <liass-card
+        [title]="'IDENTITY.CABINET_DASHBOARD.UPCOMING.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_DASHBOARD.UPCOMING.DESCRIPTION' | transloco"
+      >
+        <liass-button liassCardActions tone="neutral" variant="outline" icon="event" (pressed)="openDeadlines()">
+          {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DEADLINES' | transloco }}
+        </liass-button>
+        @if (dashboard.attention.upcomingDeadlines.length === 0) {
+          <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-4 text-sm leading-6 text-app-muted">
+            {{ 'IDENTITY.CABINET_DASHBOARD.UPCOMING.EMPTY' | transloco }}
+          </div>
+        } @else {
+          <div class="space-y-3">
+            @for (deadline of dashboard.attention.upcomingDeadlines; track deadline.deadlineId) {
+              <button
+                type="button"
+                class="liass-focus-ring grid w-full gap-3 rounded-app-card border border-app-border bg-white p-3 text-left shadow-app-xs transition hover:border-brand-200 hover:bg-brand-50/60 dark:bg-slate-950 dark:hover:bg-brand-950/20 sm:grid-cols-[92px_minmax(0,1fr)]"
+                (click)="openDeadlines()"
+              >
+                <span class="rounded-app-control bg-brand-50 px-2 py-1 text-center text-xs font-semibold uppercase text-brand-700 dark:bg-brand-950/35 dark:text-brand-300">
+                  {{ dateBadge(deadline.dueDate, dashboard.asOfDate) }}
+                </span>
+                <span class="min-w-0">
+                  <span class="block truncate text-sm font-semibold text-app-text">{{ deadline.title }}</span>
+                  <span class="mt-1 block truncate text-xs text-app-muted">
+                    {{ dossierName(deadline) }} · {{ responsibleName(deadline) }}
+                  </span>
+                </span>
+              </button>
+            }
+          </div>
+        }
+      </liass-card>
+
+      <aside class="space-y-5">
+        <liass-card
+          [title]="portfolioTitleKey(dashboard.scope) | transloco"
+          [description]="'IDENTITY.CABINET_DASHBOARD.PORTFOLIO.DESCRIPTION' | transloco"
+        >
+          <liass-button liassCardActions tone="neutral" variant="outline" icon="folder_open" (pressed)="openDossiers()">
+            {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_DOSSIERS' | transloco }}
+          </liass-button>
+          <div class="space-y-3">
+            <div class="flex items-center justify-between gap-3 rounded-app-card bg-app-surface-muted px-3 py-2.5">
+              <span class="text-sm font-medium text-app-text">{{ 'IDENTITY.CABINET_DASHBOARD.PORTFOLIO.ACTIVE' | transloco }}</span>
+              <liass-status-chip [label]="dashboard.portfolio.activeDossiers.toString()" tone="brand" />
+            </div>
+            <div class="flex items-center justify-between gap-3 rounded-app-card bg-app-surface-muted px-3 py-2.5">
+              <span class="text-sm font-medium text-app-text">{{ 'IDENTITY.CABINET_DASHBOARD.PORTFOLIO.ACCESSIBLE' | transloco }}</span>
+              <liass-status-chip [label]="dashboard.portfolio.accessibleDossiers.toString()" tone="neutral" />
+            </div>
+          </div>
+        </liass-card>
+
+        @if (dashboard.team) {
+          <liass-card
+            [title]="'IDENTITY.CABINET_DASHBOARD.TEAM.TITLE' | transloco"
+            [description]="'IDENTITY.CABINET_DASHBOARD.TEAM.DESCRIPTION' | transloco"
+          >
+            <liass-button liassCardActions tone="neutral" variant="outline" icon="groups" (pressed)="openTeam()">
+              {{ 'IDENTITY.CABINET_DASHBOARD.ACTIONS.VIEW_TEAM' | transloco }}
+            </liass-button>
+            <div class="mb-3 rounded-app-card bg-app-surface-muted px-3 py-3">
+              <p class="text-sm text-app-muted">{{ 'IDENTITY.CABINET_DASHBOARD.TEAM.ACTIVE_MEMBERS' | transloco }}</p>
+              <p class="mt-1 text-2xl font-semibold text-app-text">{{ dashboard.team.activeMembers }}</p>
+            </div>
+            <div class="space-y-3">
+              @for (row of teamRows(dashboard); track row.labelKey) {
+                <div class="flex items-center justify-between gap-3 rounded-app-card border border-app-border px-3 py-2.5">
+                  <span class="flex min-w-0 items-center gap-2">
+                    <mat-icon class="text-app-muted">{{ row.icon }}</mat-icon>
+                    <span class="truncate text-sm font-medium text-app-text">{{ row.labelKey | transloco }}</span>
+                  </span>
+                  <liass-status-chip [label]="row.value.toString()" [tone]="row.tone" />
+                </div>
+              }
+            </div>
+          </liass-card>
+        }
+      </aside>
+    </section>
+  }
 </div>

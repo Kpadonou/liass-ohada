@@ -13,6 +13,7 @@ import { environment } from '../../../../../environments/environment';
 import { NotificationService } from '../../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { AuthStore } from '../../data-access/auth.store';
+import { CabinetDashboardQueries } from '../../data-access/cabinet-dashboard.queries';
 import { CabinetTeamApi } from '../../data-access/cabinet-team.api';
 import { CabinetTeamQueries } from '../../data-access/cabinet-team.queries';
 import { DossierMultiSelectComponent } from '../../ui/dossier-multi-select/dossier-multi-select.component';
@@ -50,6 +51,7 @@ export class InviteCabinetMemberDialogComponent implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly notification = inject(NotificationService);
   private readonly queryClient = inject(QueryClient);
+  private readonly dashboardQueries = inject(CabinetDashboardQueries);
   private readonly queries = inject(CabinetTeamQueries);
   private readonly transloco = inject(TranslocoService);
 
@@ -116,6 +118,9 @@ export class InviteCabinetMemberDialogComponent implements OnInit {
       });
       await this.queryClient.invalidateQueries({
         queryKey: [...this.queries.all(), 'invitations']
+      });
+      await this.queryClient.invalidateQueries({
+        queryKey: this.dashboardQueries.all()
       });
       if (response.deliveryMode === 'DEVELOPMENT_TOKEN' && response.invitationToken) {
         const origin = typeof window === 'undefined' ? '' : window.location.origin;

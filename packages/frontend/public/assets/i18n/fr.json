@@ -2366,60 +2366,128 @@
       }
     },
     "CABINET_DASHBOARD": {
-      "EYEBROW": "Espace cabinet comptable",
-      "TITLE": "Tableau de bord cabinet",
-      "SUBTITLE": "Gérez les dossiers clients rattachés à ce cabinet avant d’ouvrir un espace comptable client.",
+      "EYEBROW": "Cabinet",
+      "TITLE": "Tableau de bord",
+      "SUBTITLE": {
+        "CABINET": "Vue d’ensemble de l’activité et des priorités du cabinet.",
+        "SUPERVISED_DOSSIERS": "Suivez l’activité et les priorités des dossiers que vous supervisez.",
+        "PERSONAL_ACTIVITY": "Suivez vos travaux, vos échéances et les actions qui nécessitent votre attention.",
+        "ASSIGNED_DOSSIERS_READ_ONLY": "Consultez l’activité des dossiers auxquels vous avez accès."
+      },
       "FALLBACK_CABINET_NAME": "Cabinet comptable",
-      "WORKSPACE_TYPE": "Type d’espace",
-      "CONNECTED_USER": "Utilisateur connecté",
-      "OPEN_DOSSIER_LABEL": "Dossier ouvert",
-      "CONTEXT_TITLE": "Contexte cabinet",
-      "CONTEXT_DESCRIPTION": "Les actions cabinet utilisent l’espace du cabinet comptable. Les modules comptables client s’ouvrent uniquement après sélection d’un dossier.",
-      "CONTEXT_HINT": "Le cabinet reste le contexte de pilotage. Les modules comptables s’ouvrent dossier par dossier.",
-      "CONTEXT_ITEM_CABINET": "Pilotage du cabinet et des dossiers clients",
-      "CONTEXT_ITEM_DOSSIERS": "Ouverture explicite d’un dossier avant les modules comptables",
-      "RECENT_DOSSIERS_TITLE": "Derniers dossiers ouverts",
-      "RECENT_DOSSIERS_SUBTITLE": "Ouvrez un dossier client pour travailler sur son tableau de bord comptable.",
-      "LOADING": "Chargement des dossiers clients...",
+      "SNAPSHOT": "Situation au {{ date }} · actualisée à {{ time }}",
       "EMPTY_TITLE": "Aucun dossier client",
       "EMPTY_SUBTITLE": "Créez le premier dossier client pour démarrer la gestion comptable depuis ce cabinet.",
-      "COLLABORATORS_TITLE": "Collaborateurs",
-      "COLLABORATORS_PLACEHOLDER": "La gestion des collaborateurs sera connectée lorsque les workflows d’équipe cabinet seront activés.",
-      "MISSIONS_TITLE": "Missions",
-      "MISSIONS_PLACEHOLDER": "La planification des missions est réservée à la feuille de route de l’espace cabinet.",
-      "DEADLINES_TITLE": "Échéances",
-      "DEADLINES_PLACEHOLDER": "Les prochaines échéances comptables et déclaratives apparaîtront ici.",
+      "SCOPE": {
+        "CABINET": "Vue Cabinet",
+        "SUPERVISED_DOSSIERS": "Mes dossiers supervisés",
+        "PERSONAL_ACTIVITY": "Mon activité",
+        "ASSIGNED_DOSSIERS_READ_ONLY": "Mes dossiers accessibles"
+      },
       "METRICS": {
+        "ACCESSIBLE_DOSSIERS": "Dossiers accessibles",
         "ACTIVE_DOSSIERS": "Dossiers actifs",
-        "COLLABORATORS": "Collaborateurs",
-        "PENDING_TASKS": "Tâches en attente",
-        "TOTAL_DOSSIERS": "Total dossiers clients",
-        "UPCOMING_DEADLINES": "Échéances à venir"
+        "ACTIVE_WORK": "Travaux actifs",
+        "MY_ACTIVE_WORK": "Mes travaux actifs",
+        "MY_OVERDUE_DEADLINES": "Mes échéances en retard",
+        "MY_OVERDUE_WORK": "Mes travaux en retard",
+        "OVERDUE_DEADLINES": "Échéances en retard",
+        "OVERDUE_WORK": "Travaux en retard",
+        "SUPERVISED_DOSSIERS": "Dossiers supervisés"
       },
       "METRICS_META": {
-        "ACTIVE_DOSSIERS": "Dossiers disponibles pour les modules comptables.",
-        "COLLABORATORS": "Vue équipe cabinet à connecter.",
-        "PENDING_TASKS": "Tâches cabinet à connecter.",
-        "TOTAL_DOSSIERS": "Portefeuille client rattaché au cabinet.",
-        "UPCOMING_DEADLINES": "Échéances cabinet à connecter."
+        "ACCESSIBLE_DOSSIERS": "Dossiers inclus dans votre vue actuelle.",
+        "ACTIVE_DOSSIERS": "Dossiers clients actifs du portefeuille cabinet.",
+        "ACTIVE_WORK": "Travaux comptables ouverts dans le périmètre affiché.",
+        "MY_ACTIVE_WORK": "Travaux ouverts qui vous sont affectés ou auxquels vous participez.",
+        "MY_OVERDUE_DEADLINES": "Échéances personnelles dépassées.",
+        "MY_OVERDUE_WORK": "Travaux personnels dont l’échéance est dépassée.",
+        "OVERDUE_DEADLINES": "Échéances dont la date est dépassée.",
+        "OVERDUE_WORK": "Travaux actifs dont l’échéance est dépassée.",
+        "SUPERVISED_DOSSIERS": "Dossiers actifs affectés à votre supervision."
       },
-      "PLACEHOLDERS": {
-        "NO_DEADLINE": "Aucune échéance connectée",
-        "NO_MISSION": "Aucune mission connectée",
-        "PRIMARY_CONTACT": "Responsable cabinet",
-        "ROADMAP": "À venir"
+      "WORK": {
+        "DESCRIPTION": "Totaux exacts du service cabinet par statut actif.",
+        "IN_PROGRESS": "En cours",
+        "TITLE": "Travaux comptables",
+        "TO_DO": "À faire",
+        "TO_PLAN": "À planifier",
+        "UNASSIGNED": "Sans responsable",
+        "WAITING": "En attente"
+      },
+      "DEADLINES": {
+        "DAYS_8_30": "Jours 8 à 30",
+        "DESCRIPTION": "Échéances en attente regroupées par période.",
+        "NEXT_7_DAYS": "7 prochains jours",
+        "OVERDUE": "En retard",
+        "TITLE": "Échéances",
+        "TODAY": "Aujourd’hui"
+      },
+      "ATTENTION": {
+        "BOUNDED_DEADLINES": "Aperçu limité fourni par le tableau de bord.",
+        "BOUNDED_WORK": "Aperçu limité fourni par le tableau de bord.",
+        "DEADLINE_TITLE": "{{ count }} échéances en retard",
+        "NO_OVERDUE_DEADLINES": "Aucune échéance en retard ne nécessite votre attention actuellement.",
+        "NO_OVERDUE_WORK": "Aucun travail en retard ne nécessite votre attention actuellement.",
+        "TITLE": "À traiter en priorité",
+        "WORK_TITLE": "{{ count }} travaux en retard",
+        "ZERO_DESCRIPTION": "Les prochains éléments à suivre apparaissent ci-dessous.",
+        "ZERO_TITLE": "Aucun retard à traiter."
+      },
+      "UPCOMING": {
+        "DESCRIPTION": "Aperçu des échéances à venir dans l’ordre renvoyé par le service cabinet.",
+        "EMPTY": "Aucune échéance à venir dans cet aperçu.",
+        "TITLE": "Prochaines échéances"
+      },
+      "PORTFOLIO": {
+        "ACCESSIBLE": "Dossiers accessibles",
+        "ACTIVE": "Dossiers actifs",
+        "DESCRIPTION": "Totaux du portefeuille issus du tableau de bord.",
+        "TITLE_CABINET": "Portefeuille clients",
+        "TITLE_SCOPED": "Accès aux dossiers"
+      },
+      "TEAM": {
+        "ACTIVE_MEMBERS": "Membres actifs",
+        "ADMINISTRATORS": "Administrateurs",
+        "COLLABORATORS": "Collaborateurs",
+        "DESCRIPTION": "Affiché uniquement lorsque le tableau de bord fournit les totaux d’équipe.",
+        "PENDING_INVITATIONS": "Invitations en attente",
+        "READERS": "Lecteurs",
+        "SUPERVISORS": "Superviseurs",
+        "TITLE": "Équipe"
+      },
+      "EMPTY": {
+        "CABINET_DESCRIPTION": "Commencez par créer ou ajouter un dossier client pour organiser les travaux de votre équipe.",
+        "CABINET_TITLE": "Votre espace cabinet est prêt.",
+        "SCOPED_DESCRIPTION": "Les travaux et échéances apparaîtront ici lorsque des dossiers vous seront affectés.",
+        "SCOPED_TITLE": "Aucun dossier ne vous est actuellement affecté."
+      },
+      "DATE": {
+        "TODAY": "Aujourd’hui",
+        "TOMORROW": "Demain"
       },
       "STATUS": {
         "ACTIVE": "Actif",
+        "INACTIVE": "Inactif",
         "UNKNOWN": "Inconnu"
       },
       "ACTIONS": {
         "CREATE_FIRST_DOSSIER": "Créer votre premier dossier client",
+        "NEW_DEADLINE": "Nouvelle échéance",
         "NEW_DOSSIER": "Nouveau dossier",
-        "VIEW_DOSSIERS": "Voir les dossiers"
+        "NEW_WORK": "Nouveau travail",
+        "RETRY": "Réessayer",
+        "VIEW_DEADLINES": "Voir les échéances",
+        "VIEW_DOSSIERS": "Voir les dossiers",
+        "VIEW_TEAM": "Voir l’équipe",
+        "VIEW_WORK": "Voir les travaux"
       },
       "ERRORS": {
-        "LOAD_FAILED": "Les dossiers clients n’ont pas pu être chargés. Veuillez réessayer."
+        "AGGREGATION_LIMIT_DESCRIPTION": "Les modules Dossiers, Travaux comptables et Échéances restent accessibles.",
+        "AGGREGATION_LIMIT_TITLE": "Le volume de données est actuellement trop important pour générer cette vue synthétique.",
+        "LOAD_DESCRIPTION": "Réessayez dans quelques instants.",
+        "LOAD_FAILED": "Les dossiers clients n’ont pas pu être chargés. Veuillez réessayer.",
+        "LOAD_TITLE": "Impossible de charger le tableau de bord."
       }
     },
     "CABINET_DOSSIERS": {

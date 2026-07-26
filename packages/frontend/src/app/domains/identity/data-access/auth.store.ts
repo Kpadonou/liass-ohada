@@ -268,7 +268,14 @@ function clearTenantQueries(queryClient: QueryClient | null, orgId?: string | nu
     return;
   }
 
-  const tenantRoots = ['accounting', 'treasury', 'projects', 'cabinet-team', 'cabinet-operations'] as const;
+  const tenantRoots = [
+    'accounting',
+    'treasury',
+    'projects',
+    'cabinet-dashboard',
+    'cabinet-team',
+    'cabinet-operations'
+  ] as const;
 
   for (const root of tenantRoots) {
     const filters = orgId ? { queryKey: [root, orgId] } : { queryKey: [root] };

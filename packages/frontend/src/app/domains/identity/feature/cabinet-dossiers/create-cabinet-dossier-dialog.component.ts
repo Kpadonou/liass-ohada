@@ -8,11 +8,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import type { CabinetDossierSummary, CreateCabinetDossierRequest } from '@liass-ohada/shared/shared';
 import { TranslocoModule } from '@ngneat/transloco';
+import { QueryClient } from '@tanstack/angular-query-experimental';
 import { ZodError } from 'zod';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable-select/searchable-select.component';
 import { AuthStore } from '../../data-access/auth.store';
+import { CabinetDashboardQueries } from '../../data-access/cabinet-dashboard.queries';
 import { CabinetDossiersApi } from '../../data-access/cabinet-dossiers.api';
 
 type AccountingFramework = 'SYSCOHADA_REVISED' | 'SYCEBNL';
@@ -44,11 +46,13 @@ interface SelectOption<T extends string> {
 })
 export class CreateCabinetDossierDialogComponent {
   private readonly authStore = inject(AuthStore);
+  private readonly dashboardQueries = inject(CabinetDashboardQueries, { optional: true });
   private readonly cabinetDossiersApi = inject(CabinetDossiersApi);
   private readonly dialogRef = inject<
     MatDialogRef<CreateCabinetDossierDialogComponent, CabinetDossierSummary | null>
   >(MatDialogRef);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly queryClient = inject(QueryClient, { optional: true });
 
   protected readonly submitting = signal(false);
   protected readonly errorKey = signal<DossierErrorKey | null>(null);
@@ -104,6 +108,9 @@ export class CreateCabinetDossierDialogComponent {
     try {
       const result = await this.cabinetDossiersApi.createDossier(request);
       this.authStore.upsertDossier(result.dossier);
+      if (this.queryClient && this.dashboardQueries) {
+        await this.queryClient.invalidateQueries({ queryKey: this.dashboardQueries.all() });
+      }
       this.dialogRef.close(result.dossier);
     } catch (error) {
       this.errorKey.set(errorKeyFromFailure(error));
