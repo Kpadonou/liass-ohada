@@ -164,7 +164,26 @@ export type {
 export * from "./treasury";
 export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export * from "./shared/cabinet-operations";
+export * from "./shared/cabinet-dashboard";
 export * from "./shared/cabinet-team";
+export {
+  CabinetDashboardAttentionSchema,
+  CabinetDashboardCabinetSchema,
+  CabinetDashboardDeadlineAttentionItemSchema,
+  CabinetDashboardDeadlineMetricsSchema,
+  CabinetDashboardPortfolioSchema,
+  CabinetDashboardRequestSchema,
+  CabinetDashboardResponseSchema,
+  CabinetDashboardScopeSchema,
+  CabinetDashboardTeamSchema,
+  CabinetDashboardWorkAttentionItemSchema,
+  CabinetDashboardWorkMetricsSchema,
+} from "./shared/cabinet-dashboard";
+export type {
+  CabinetDashboardRequest,
+  CabinetDashboardResponse,
+  CabinetDashboardScope,
+} from "./shared/cabinet-dashboard";
 export {
   AccountingAccessModeSchema,
   CabinetDossierSummarySchema,

@@ -133,6 +133,7 @@ export class IdentityEndpoints extends DomainConstructFactory {
     }
 
     const cabinetOperationsRoutes = [
+      ["get-cabinet-dashboard", apigw.HttpMethod.GET, "/cabinet/dashboard"],
       ["list-cabinet-works", apigw.HttpMethod.GET, "/cabinet/works"],
       ["create-cabinet-work", apigw.HttpMethod.POST, "/cabinet/works"],
       ["get-cabinet-work", apigw.HttpMethod.GET, "/cabinet/works/{workId}"],

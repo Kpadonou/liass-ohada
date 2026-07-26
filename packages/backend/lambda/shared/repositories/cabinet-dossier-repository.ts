@@ -1,4 +1,5 @@
 import {
+  AttributeValue,
   QueryCommand,
   TransactWriteItem,
   TransactWriteItemsCommand,
@@ -80,6 +81,15 @@ interface CreateClientDossierItemsInput {
   workspace: WorkspaceSummary;
 }
 
+export interface CabinetDossierDashboardRecord {
+  orgId: string;
+}
+
+export interface CabinetDossierDashboardPage {
+  items: CabinetDossierDashboardRecord[];
+  nextCursor?: string;
+}
+
 const putIfAbsent = (
   item:
     | CabinetClientDossierItem
@@ -105,7 +115,70 @@ function dossierSummaryFromItem(item: Record<string, unknown>) {
   });
 }
 
+function encodeCursor(key?: Record<string, AttributeValue>): string | undefined {
+  return key
+    ? Buffer.from(JSON.stringify(key), "utf8").toString("base64url")
+    : undefined;
+}
+
+function decodeCursor(cursor?: string): Record<string, AttributeValue> | undefined {
+  if (!cursor) return undefined;
+  try {
+    const value = JSON.parse(
+      Buffer.from(cursor, "base64url").toString("utf8"),
+    ) as Record<string, AttributeValue>;
+    if (!value || typeof value !== "object") {
+      throw new Error("Invalid cursor");
+    }
+    return value;
+  } catch {
+    throw new Error("Invalid cursor");
+  }
+}
+
 export class CabinetDossierRepository {
+  static async listClientDossiersForDashboard(input: {
+    cabinetId: string;
+    cabinetOrgId: string;
+    cursor?: string;
+    limit: number;
+  }): Promise<CabinetDossierDashboardPage> {
+    const gsiPk = KeyFactory.cabinetDossierGSI_PK(input.cabinetId);
+    const cursor = decodeCursor(input.cursor);
+    if (cursor && cursor.GSI1PK?.S !== gsiPk) {
+      throw new Error("Invalid cursor");
+    }
+    const response = await dynamoClient.send(
+      new QueryCommand({
+        TableName: config.TABLE_NAME,
+        IndexName: config.GSI1,
+        KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :skPrefix)",
+        ExpressionAttributeValues: {
+          ":pk": { S: gsiPk },
+          ":skPrefix": { S: "DOSSIER#" },
+        },
+        ExclusiveStartKey: cursor,
+        Limit: input.limit,
+      }),
+    );
+
+    return {
+      items: (response.Items ?? [])
+        .map((item) => unmarshall(item))
+        .filter(
+          (item) =>
+            item.entityType === "CABINET_DOSSIER" &&
+            item.cabinetId === input.cabinetId &&
+            item.orgId !== input.cabinetOrgId &&
+            item.relationship !== "OWNED" &&
+            item.status === "ACTIVE" &&
+            typeof item.orgId === "string",
+        )
+        .map((item) => ({ orgId: item.orgId as string })),
+      nextCursor: encodeCursor(response.LastEvaluatedKey),
+    };
+  }
+
   static async listClientDossiers({
     cabinetId,
     cabinetOrgId,
