@@ -23,18 +23,19 @@ describe('AppContextBreadcrumbComponent', () => {
                 BREADCRUMB_LABEL: 'Active context breadcrumb',
                 PAGES: {
                   CABINET_DASHBOARD: 'Cabinet dashboard',
-                  GENERAL_LEDGER: 'General ledger'
-                }
-              }
-            }
+                  CABINET_COLLABORATORS: 'Team',
+                  GENERAL_LEDGER: 'General ledger',
+                },
+              },
+            },
           },
-          translocoConfig: { availableLangs: ['en'], defaultLang: 'en' }
-        })
+          translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
+        }),
       ],
       providers: [
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
-        { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } }
-      ]
+        { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } },
+      ],
     }).compileComponents();
 
     authStore = TestBed.inject(AuthStore);
@@ -44,7 +45,7 @@ describe('AppContextBreadcrumbComponent', () => {
   it('renders cabinet, dossier, and current accounting page without mixing cabinet navigation', () => {
     authStore.setCreatedWorkspace(
       { orgId: 'org-firm', displayName: 'Cabinet Conseil', workspaceType: 'ACCOUNTING_FIRM' },
-      'org-firm'
+      'org-firm',
     );
     authStore.setCreatedDossier(
       {
@@ -54,9 +55,9 @@ describe('AppContextBreadcrumbComponent', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     uiStore.setCurrentPage('accounting.generalLedger');
 
@@ -72,7 +73,7 @@ describe('AppContextBreadcrumbComponent', () => {
   it('drops the dossier segment immediately when returning to cabinet context', () => {
     authStore.setCreatedWorkspace(
       { orgId: 'org-firm', displayName: 'Cabinet Conseil', workspaceType: 'ACCOUNTING_FIRM' },
-      'org-firm'
+      'org-firm',
     );
     authStore.setCreatedDossier(
       {
@@ -82,9 +83,9 @@ describe('AppContextBreadcrumbComponent', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     authStore.enterCabinetContext();
     uiStore.setCurrentPage('cabinet.dashboard');
@@ -95,5 +96,21 @@ describe('AppContextBreadcrumbComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Cabinet Conseil');
     expect(fixture.nativeElement.textContent).toContain('Cabinet dashboard');
     expect(fixture.nativeElement.textContent).not.toContain('Dona Shop');
+  });
+
+  it('renders the Team breadcrumb for the cabinet Team page', () => {
+    authStore.setCreatedWorkspace(
+      { orgId: 'org-firm', displayName: 'CLO Comptabilite', workspaceType: 'ACCOUNTING_FIRM' },
+      'org-firm',
+    );
+    authStore.enterCabinetContext();
+    uiStore.setCurrentPage('cabinet.team');
+
+    fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('CLO Comptabilite');
+    expect(fixture.nativeElement.textContent).toContain('Team');
+    expect(fixture.nativeElement.textContent).not.toContain('Cabinet dashboard');
   });
 });

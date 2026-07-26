@@ -76,30 +76,25 @@
           <p class="mt-1 text-sm text-brand-700 dark:text-brand-300">{{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.ADMIN_IMPLICIT' | transloco }}</p>
         </section>
       } @else if (capabilities.canManageAssignments(member())) {
-        <section aria-labelledby="member-assignments-title">
+        <section>
           <div class="flex items-center justify-between gap-3">
-            <h3 id="member-assignments-title" class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.TITLE' | transloco }}</h3>
             @if (assignmentsChanged()) {
-              <span class="text-xs font-medium text-brand-700 dark:text-brand-300">
+              <span class="ml-auto text-xs font-medium text-brand-700 dark:text-brand-300">
                 {{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.DIFF' | transloco: assignmentDiff() }}
               </span>
             }
           </div>
-          <mat-form-field appearance="outline" class="mt-3 w-full">
-            <mat-label>{{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.SEARCH' | transloco }}</mat-label>
-            <mat-icon matPrefix>search</mat-icon>
-            <input matInput type="search" [value]="dossierSearch()" (input)="updateDossierSearch($event)" />
-          </mat-form-field>
-          <div class="max-h-56 space-y-1 overflow-y-auto rounded-app-card border border-slate-200 p-2 dark:border-slate-800">
-            @for (dossier of filteredDossiers(); track dossier.orgId) {
-              <mat-checkbox class="block" [checked]="selectedAssignments().has(dossier.orgId)" (change)="toggleAssignment(dossier.orgId, $event.checked)">
-                <span class="font-medium">{{ dossier.displayName }}</span>
-                <span class="ml-2 text-xs text-slate-500">{{ dossier.country }} · {{ dossier.accountingFramework }}</span>
-              </mat-checkbox>
-            } @empty {
-              <p class="px-2 py-3 text-sm text-slate-500">{{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.NO_DOSSIER' | transloco }}</p>
-            }
-          </div>
+          <liass-dossier-multi-select
+            class="mt-3"
+            [dossiers]="authStore.dossiers()"
+            [disabled]="submitting()"
+            [errorKey]="dossierErrorKey()"
+            [labelKey]="'IDENTITY.CABINET_TEAM.ASSIGNMENTS.TITLE'"
+            [loading]="authStore.dossierLoading()"
+            [selectedIds]="selectedAssignments()"
+            [showStatus]="true"
+            (selectedIdsChange)="updateSelectedAssignments($event)"
+          />
           <div class="mt-3 flex justify-end">
             <liass-button tone="brand" variant="solid" icon="save" [loading]="submitting()" [disabled]="!assignmentsChanged()" (pressed)="saveAssignments()">
               {{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.SAVE' | transloco }}

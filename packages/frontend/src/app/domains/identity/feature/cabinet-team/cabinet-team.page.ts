@@ -14,7 +14,7 @@ import type {
   CabinetInvitationStatus,
   CabinetMemberStatus,
   CabinetMemberSummary,
-  CabinetRole
+  CabinetRole,
 } from '@liass-ohada/shared/shared';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { QueryClient, injectQuery } from '@tanstack/angular-query-experimental';
@@ -33,12 +33,12 @@ import { CabinetTeamCapabilities } from '../../data-access/cabinet-team-capabili
 import {
   CabinetTeamQueries,
   type CabinetInvitationFilters,
-  type CabinetMemberFilters
+  type CabinetMemberFilters,
 } from '../../data-access/cabinet-team.queries';
 import { CabinetMemberDialogComponent } from './cabinet-member-dialog.component';
 import {
   CabinetTeamConfirmDialogComponent,
-  type CabinetTeamConfirmDialogData
+  type CabinetTeamConfirmDialogData,
 } from './cabinet-team-confirm-dialog.component';
 import {
   cabinetInvitationStatusKey,
@@ -46,7 +46,7 @@ import {
   cabinetRoleKey,
   cabinetTeamErrorKey,
   memberDisplayName,
-  memberInitials
+  memberInitials,
 } from './cabinet-team.presentation';
 import { InviteCabinetMemberDialogComponent } from './invite-cabinet-member-dialog.component';
 
@@ -72,9 +72,9 @@ type FilterInvitationStatus = CabinetInvitationStatus | 'ALL';
     MatProgressSpinnerModule,
     MatSelectModule,
     MatTabsModule,
-    TranslocoModule
+    TranslocoModule,
   ],
-  templateUrl: './cabinet-team.page.html'
+  templateUrl: './cabinet-team.page.html',
 })
 export class CabinetTeamPage implements OnInit {
   private readonly api = inject(CabinetTeamApi);
@@ -106,7 +106,7 @@ export class CabinetTeamPage implements OnInit {
       limit: 25,
       cursor: this.memberCursor(),
       role: role === 'ALL' ? undefined : role,
-      status: status === 'ALL' ? undefined : status
+      status: status === 'ALL' ? undefined : status,
     };
   });
   protected readonly invitationFilters = computed<CabinetInvitationFilters>(() => {
@@ -114,24 +114,36 @@ export class CabinetTeamPage implements OnInit {
     return {
       limit: 25,
       cursor: this.invitationCursor(),
-      status: status === 'ALL' ? undefined : status
+      status: status === 'ALL' ? undefined : status,
     };
   });
 
   protected readonly membersQuery = injectQuery(() => this.queries.members(this.memberFilters()));
   protected readonly invitationsQuery = injectQuery(() =>
-    this.queries.invitations(this.invitationFilters())
+    this.queries.invitations(this.invitationFilters()),
   );
   protected readonly dossierMembersQuery = injectQuery(() =>
-    this.queries.dossierMembers(this.selectedDossierOrgId())
+    this.queries.dossierMembers(this.selectedDossierOrgId()),
   );
   protected readonly assignedSupervisorMemberIds = computed(
-    () => new Set((this.dossierMembersQuery.data() ?? []).map((member) => member.userId))
+    () => new Set((this.dossierMembersQuery.data() ?? []).map((member) => member.userId)),
+  );
+  protected readonly memberPageContext = computed(() =>
+    this.transloco.translate('IDENTITY.CABINET_TEAM.MEMBERS.PAGE_CONTEXT', {
+      count: this.membersQuery.data()?.members?.length ?? 0,
+      page: this.memberCursorHistory().length + 1,
+    }),
+  );
+  protected readonly invitationPageContext = computed(() =>
+    this.transloco.translate('IDENTITY.CABINET_TEAM.INVITATIONS.PAGE_CONTEXT', {
+      count: this.invitationsQuery.data()?.invitations?.length ?? 0,
+      page: this.invitationCursorHistory().length + 1,
+    }),
   );
   protected readonly supervisorEligibleMembers = computed(() =>
     (this.membersQuery.data()?.members ?? []).filter((member) =>
-      this.capabilities.canSupervisorManageTarget(member)
-    )
+      this.capabilities.canSupervisorManageTarget(member),
+    ),
   );
 
   async ngOnInit(): Promise<void> {
@@ -171,7 +183,7 @@ export class CabinetTeamPage implements OnInit {
   }
 
   protected invitationTone(
-    status: CabinetInvitationStatus
+    status: CabinetInvitationStatus,
   ): 'success' | 'warning' | 'danger' | 'neutral' {
     if (status === 'ACCEPTED') return 'success';
     if (status === 'PENDING') return 'warning';
@@ -234,7 +246,7 @@ export class CabinetTeamPage implements OnInit {
       maxWidth: 'calc(100vw - 32px)',
       panelClass: 'liass-dialog-panel',
       restoreFocus: true,
-      width: '680px'
+      width: '680px',
     });
   }
 
@@ -245,7 +257,7 @@ export class CabinetTeamPage implements OnInit {
       maxWidth: 'calc(100vw - 32px)',
       panelClass: 'liass-dialog-panel',
       restoreFocus: true,
-      width: '720px'
+      width: '720px',
     });
   }
 
@@ -258,12 +270,12 @@ export class CabinetTeamPage implements OnInit {
       descriptionKey: 'IDENTITY.CABINET_TEAM.INVITATIONS.CANCEL_DESCRIPTION',
       confirmKey: 'IDENTITY.CABINET_TEAM.ACTIONS.CANCEL_INVITATION',
       memberName: invitation.email,
-      danger: true
+      danger: true,
     });
     if (!confirmed) return;
     await this.invitationMutation(
       () => this.api.cancelInvitation(invitation.invitationId),
-      'IDENTITY.CABINET_TEAM.NOTIFICATIONS.INVITATION_CANCELLED'
+      'IDENTITY.CABINET_TEAM.NOTIFICATIONS.INVITATION_CANCELLED',
     );
   }
 
@@ -274,7 +286,7 @@ export class CabinetTeamPage implements OnInit {
     const confirmed = await this.confirm({
       titleKey: 'IDENTITY.CABINET_TEAM.INVITATIONS.RESEND_TITLE',
       descriptionKey: 'IDENTITY.CABINET_TEAM.INVITATIONS.RESEND_DESCRIPTION',
-      confirmKey: 'IDENTITY.CABINET_TEAM.ACTIONS.RESEND'
+      confirmKey: 'IDENTITY.CABINET_TEAM.ACTIONS.RESEND',
     });
     if (!confirmed) return;
     this.developmentLink.set(null);
@@ -282,7 +294,7 @@ export class CabinetTeamPage implements OnInit {
       const response = await this.api.resendInvitation(invitation.invitationId);
       if (response.deliveryMode === 'DEVELOPMENT_TOKEN' && response.invitationToken) {
         this.developmentLink.set(
-          `${window.location.origin}/accept-invitation?token=${encodeURIComponent(response.invitationToken)}`
+          `${window.location.origin}/accept-invitation?token=${encodeURIComponent(response.invitationToken)}`,
         );
       }
       await this.invalidateInvitations();
@@ -290,12 +302,12 @@ export class CabinetTeamPage implements OnInit {
         this.transloco.translate(
           response.deliveryMode === 'DEVELOPMENT_TOKEN'
             ? 'IDENTITY.CABINET_TEAM.NOTIFICATIONS.INVITATION_RENEWED_DEV'
-            : 'IDENTITY.CABINET_TEAM.NOTIFICATIONS.INVITATION_RENEWED_NO_DELIVERY'
-        )
+            : 'IDENTITY.CABINET_TEAM.NOTIFICATIONS.INVITATION_RENEWED_NO_DELIVERY',
+        ),
       );
     } catch (error) {
       this.actionErrorKey.set(
-        cabinetTeamErrorKey(error, 'IDENTITY.CABINET_TEAM.ERRORS.INVITATION_RESEND_FAILED')
+        cabinetTeamErrorKey(error, 'IDENTITY.CABINET_TEAM.ERRORS.INVITATION_RESEND_FAILED'),
       );
     }
   }
@@ -305,7 +317,7 @@ export class CabinetTeamPage implements OnInit {
     if (!link) return;
     await navigator.clipboard.writeText(link);
     this.notification.success(
-      this.transloco.translate('IDENTITY.CABINET_TEAM.NOTIFICATIONS.LINK_COPIED')
+      this.transloco.translate('IDENTITY.CABINET_TEAM.NOTIFICATIONS.LINK_COPIED'),
     );
   }
 
@@ -316,7 +328,7 @@ export class CabinetTeamPage implements OnInit {
 
   protected async toggleSupervisorAssignment(
     member: CabinetMemberSummary,
-    assigned: boolean
+    assigned: boolean,
   ): Promise<void> {
     const dossierOrgId = this.selectedDossierOrgId();
     if (!dossierOrgId || !this.capabilities.canSupervisorManageTarget(member)) return;
@@ -330,18 +342,18 @@ export class CabinetTeamPage implements OnInit {
       }
       await Promise.all([
         this.queryClient.invalidateQueries({
-          queryKey: [...this.queries.all(), 'dossier-members', dossierOrgId]
+          queryKey: [...this.queries.all(), 'dossier-members', dossierOrgId],
         }),
         this.queryClient.invalidateQueries({
-          queryKey: [...this.queries.all(), 'assignments', member.userId]
-        })
+          queryKey: [...this.queries.all(), 'assignments', member.userId],
+        }),
       ]);
       this.notification.success(
-        this.transloco.translate('IDENTITY.CABINET_TEAM.NOTIFICATIONS.ASSIGNMENT_UPDATED')
+        this.transloco.translate('IDENTITY.CABINET_TEAM.NOTIFICATIONS.ASSIGNMENT_UPDATED'),
       );
     } catch (error) {
       this.actionErrorKey.set(
-        cabinetTeamErrorKey(error, 'IDENTITY.CABINET_TEAM.ERRORS.ASSIGNMENTS_UPDATE_FAILED')
+        cabinetTeamErrorKey(error, 'IDENTITY.CABINET_TEAM.ERRORS.ASSIGNMENTS_UPDATE_FAILED'),
       );
     } finally {
       this.supervisorMutationUserId.set(null);
@@ -355,7 +367,7 @@ export class CabinetTeamPage implements OnInit {
 
   private async invitationMutation(
     operation: () => Promise<unknown>,
-    successKey: string
+    successKey: string,
   ): Promise<void> {
     this.actionErrorKey.set(null);
     try {
@@ -364,14 +376,14 @@ export class CabinetTeamPage implements OnInit {
       this.notification.success(this.transloco.translate(successKey));
     } catch (error) {
       this.actionErrorKey.set(
-        cabinetTeamErrorKey(error, 'IDENTITY.CABINET_TEAM.ERRORS.INVITATION_UPDATE_FAILED')
+        cabinetTeamErrorKey(error, 'IDENTITY.CABINET_TEAM.ERRORS.INVITATION_UPDATE_FAILED'),
       );
     }
   }
 
   private invalidateInvitations(): Promise<void> {
     return this.queryClient.invalidateQueries({
-      queryKey: [...this.queries.all(), 'invitations']
+      queryKey: [...this.queries.all(), 'invitations'],
     });
   }
 
@@ -384,9 +396,9 @@ export class CabinetTeamPage implements OnInit {
             maxWidth: 'calc(100vw - 32px)',
             panelClass: 'liass-dialog-panel',
             restoreFocus: true,
-            width: '480px'
+            width: '480px',
           })
-          .afterClosed()
+          .afterClosed(),
       )) ?? false
     );
   }

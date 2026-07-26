@@ -1,6 +1,8 @@
 <header class="px-6 pt-6">
   <div class="flex items-start gap-3">
-    <span class="inline-flex size-10 items-center justify-center rounded-app-control bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300">
+    <span
+      class="inline-flex size-10 items-center justify-center rounded-app-control bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300"
+    >
       <mat-icon>person_add</mat-icon>
     </span>
     <div>
@@ -16,7 +18,10 @@
 
 <mat-dialog-content class="px-6 pb-0 pt-5">
   @if (production) {
-    <div class="flex items-start gap-3 rounded-app-card border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100" role="status">
+    <div
+      class="flex items-start gap-3 rounded-app-card border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-100"
+      role="status"
+    >
       <mat-icon>info</mat-icon>
       <p>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.DELIVERY_UNAVAILABLE' | transloco }}</p>
     </div>
@@ -40,43 +45,30 @@
       </mat-form-field>
 
       @if (!assignmentsAvailable()) {
-        <div class="rounded-app-card border border-brand-100 bg-brand-50/70 px-4 py-3 text-sm leading-6 text-brand-900 dark:border-brand-900 dark:bg-brand-950/25 dark:text-brand-100">
+        <div
+          class="rounded-app-card border border-brand-100 bg-brand-50/70 px-4 py-3 text-sm leading-6 text-brand-900 dark:border-brand-900 dark:bg-brand-950/25 dark:text-brand-100"
+        >
           {{ 'IDENTITY.CABINET_TEAM.INVITE.ADMIN_ALL_DOSSIERS' | transloco }}
         </div>
       } @else {
-        <section aria-labelledby="invite-dossiers-title">
-          <div class="flex items-center justify-between gap-3">
-            <h3 id="invite-dossiers-title" class="text-sm font-semibold text-slate-900 dark:text-white">
-              {{ 'IDENTITY.CABINET_TEAM.INVITE.DOSSIERS' | transloco }}
-            </h3>
-            <span class="text-xs text-slate-500">{{ selectedDossiers().size }}/20</span>
-          </div>
-          <mat-form-field appearance="outline" class="mt-3 w-full">
-            <mat-label>{{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.SEARCH' | transloco }}</mat-label>
-            <mat-icon matPrefix>search</mat-icon>
-            <input matInput type="search" [value]="dossierSearch()" (input)="updateDossierSearch($event)" />
-          </mat-form-field>
-          <div class="max-h-52 space-y-1 overflow-y-auto rounded-app-card border border-slate-200 p-2 dark:border-slate-800">
-            @for (dossier of filteredDossiers(); track dossier.orgId) {
-              <mat-checkbox
-                class="block"
-                [checked]="selectedDossiers().has(dossier.orgId)"
-                [disabled]="selectedDossiers().size >= 20 && !selectedDossiers().has(dossier.orgId)"
-                (change)="toggleDossier(dossier.orgId, $event.checked)"
-              >{{ dossier.displayName }}</mat-checkbox>
-            } @empty {
-              <p class="px-2 py-3 text-sm text-slate-500">
-                {{ 'IDENTITY.CABINET_TEAM.ASSIGNMENTS.NO_DOSSIER' | transloco }}
-              </p>
-            }
-          </div>
-        </section>
+        <liass-dossier-multi-select
+          [dossiers]="authStore.dossiers()"
+          [errorKey]="dossierErrorKey()"
+          [labelKey]="'IDENTITY.CABINET_TEAM.INVITE.DOSSIERS'"
+          [loading]="authStore.dossierLoading()"
+          [maxSelected]="20"
+          [selectedIds]="selectedDossiers()"
+          [showStatus]="true"
+          (selectedIdsChange)="updateSelectedDossiers($event)"
+        />
       }
     </form>
   }
 
   @if (developmentLink(); as link) {
-    <div class="mt-4 rounded-app-card border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/25">
+    <div
+      class="mt-4 rounded-app-card border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/25"
+    >
       <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">
         {{ 'IDENTITY.CABINET_TEAM.INVITE.DEV_LINK_TITLE' | transloco }}
       </p>
@@ -84,8 +76,18 @@
         {{ 'IDENTITY.CABINET_TEAM.INVITE.DEV_LINK_HELP' | transloco }}
       </p>
       <div class="mt-3 flex items-center gap-2">
-        <input class="min-w-0 flex-1 rounded-app-control border border-amber-300 bg-white px-3 py-2 text-xs" readonly [value]="link" />
-        <liass-button size="sm" tone="neutral" variant="outline" icon="content_copy" (pressed)="copyDevelopmentLink()">
+        <input
+          class="min-w-0 flex-1 rounded-app-control border border-amber-300 bg-white px-3 py-2 text-xs"
+          readonly
+          [value]="link"
+        />
+        <liass-button
+          size="sm"
+          tone="neutral"
+          variant="outline"
+          icon="content_copy"
+          (pressed)="copyDevelopmentLink()"
+        >
           {{ 'COMMON.ACTIONS.COPY' | transloco }}
         </liass-button>
       </div>
@@ -93,8 +95,12 @@
   }
 
   @if (errorKey(); as key) {
-    <div class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200" role="alert">
-      <mat-icon>error</mat-icon><p>{{ key | transloco }}</p>
+    <div
+      class="mt-4 flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
+      role="alert"
+    >
+      <mat-icon>error</mat-icon>
+      <p>{{ key | transloco }}</p>
     </div>
   }
 </mat-dialog-content>
@@ -109,8 +115,15 @@
       {{ 'COMMON.ACTIONS.CANCEL' | transloco }}
     </liass-button>
     @if (!production) {
-      <liass-button tone="brand" variant="solid" icon="person_add" [loading]="submitting()" [disabled]="form.invalid" (pressed)="submit()">
-        {{ 'IDENTITY.CABINET_TEAM.INVITE.CREATE_DEV' | transloco }}
+      <liass-button
+        tone="brand"
+        variant="solid"
+        icon="person_add"
+        [loading]="submitting()"
+        [disabled]="form.invalid"
+        (pressed)="submit()"
+      >
+        {{ 'IDENTITY.CABINET_TEAM.INVITE.CREATE' | transloco }}
       </liass-button>
     }
   }

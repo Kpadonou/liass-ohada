@@ -17,6 +17,10 @@ export function pageFromUrl(url: string): AppPage {
     return 'cabinet.dossiers';
   }
 
+  if (path.startsWith('/cabinet/team')) {
+    return 'cabinet.team';
+  }
+
   if (path.startsWith('/cabinet/dashboard')) {
     return 'cabinet.dashboard';
   }
@@ -95,9 +99,9 @@ export function pageFromUrl(url: string): AppPage {
     AppContextBreadcrumbComponent,
     AppSidebarComponent,
     AppTopbarComponent,
-    RouterOutlet
+    RouterOutlet,
   ],
-  templateUrl: './app-shell.component.html'
+  templateUrl: './app-shell.component.html',
 })
 export class AppShellComponent {
   private readonly authStore = inject(AuthStore);
@@ -111,7 +115,7 @@ export class AppShellComponent {
     this.router.events
       .pipe(
         filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-        takeUntilDestroyed()
+        takeUntilDestroyed(),
       )
       .subscribe((event) => {
         this.syncCurrentPage(event.urlAfterRedirects);

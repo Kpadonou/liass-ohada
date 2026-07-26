@@ -333,6 +333,7 @@ export class LiassOhadaAuth extends Construct {
         scopes: OAUTH_SCOPES,
         attributeMapping: {
           email: cognito.ProviderAttribute.GOOGLE_EMAIL,
+          emailVerified: cognito.ProviderAttribute.GOOGLE_EMAIL_VERIFIED,
           givenName: cognito.ProviderAttribute.GOOGLE_GIVEN_NAME,
           familyName: cognito.ProviderAttribute.GOOGLE_FAMILY_NAME,
           profilePicture: cognito.ProviderAttribute.GOOGLE_PICTURE,

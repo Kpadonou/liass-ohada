@@ -64,6 +64,19 @@ describe("API stack decomposition", () => {
     expect(constructs.filter((item) => item instanceof apigwv2.CfnApi)).toHaveLength(1);
   });
 
+  test("maps Google's verified-email assertion into the shared User Pool", () => {
+    const googleProvider = constructs.find(
+      (item): item is cognito.CfnUserPoolIdentityProvider =>
+        item instanceof cognito.CfnUserPoolIdentityProvider &&
+        item.providerName === "Google",
+    );
+
+    expect(googleProvider?.attributeMapping).toMatchObject({
+      email: "email",
+      email_verified: "email_verified",
+    });
+  });
+
   test("creates one nested API stack per current domain", () => {
     expect(constructs.filter((item) => item instanceof IdentityApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof AccountingApiStack)).toHaveLength(1);
@@ -94,12 +107,18 @@ describe("API stack decomposition", () => {
     expect(table?.globalSecondaryIndexes).toHaveLength(7);
   });
 
-  test("uses distinct stable names for replacement Lambdas in nested stacks", () => {
+  test("uses the canonical domain-oriented names for nested-stack Lambdas", () => {
     const functions = constructs.filter(
       (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
     );
     expect(functions.length).toBeGreaterThan(0);
-    expect(functions.every((fn) => String(fn.functionName).startsWith("liass-ohada-dev-api-"))).toBe(true);
+    expect(
+      functions.every((fn) =>
+        /^liass-ohada-dev-(identity|accounting|projects|treasury)-/.test(
+          String(fn.functionName),
+        ),
+      ),
+    ).toBe(true);
   });
 
   test("exposes invitation tokens only from development invitation Lambdas", () => {

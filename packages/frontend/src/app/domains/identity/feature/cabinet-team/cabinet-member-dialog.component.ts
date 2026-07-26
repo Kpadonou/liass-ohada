@@ -1,10 +1,8 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MAT_DIALOG_DATA, MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import type {
   CabinetMember,
@@ -23,6 +21,7 @@ import { AuthStore } from '../../data-access/auth.store';
 import { CabinetTeamApi } from '../../data-access/cabinet-team.api';
 import { CabinetTeamCapabilities } from '../../data-access/cabinet-team-capabilities';
 import { CabinetTeamQueries } from '../../data-access/cabinet-team.queries';
+import { DossierMultiSelectComponent } from '../../ui/dossier-multi-select/dossier-multi-select.component';
 import {
   cabinetMemberStatusKey,
   cabinetRoleKey,
@@ -49,14 +48,13 @@ const ROLES: readonly CabinetRole[] = [
 @Component({
   selector: 'liass-cabinet-member-dialog',
   imports: [
+    DossierMultiSelectComponent,
     LiassButtonComponent,
     LiassStatusChipComponent,
     DatePipe,
-    MatCheckboxModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
     MatSelectModule,
     TranslocoModule
   ],
@@ -84,17 +82,13 @@ export class CabinetMemberDialogComponent implements OnInit {
   protected readonly selectedRole = signal<CabinetRole>(this.data.member.cabinetRole);
   protected readonly originalAssignments = signal<Set<string>>(new Set());
   protected readonly selectedAssignments = signal<Set<string>>(new Set());
-  protected readonly dossierSearch = signal('');
   protected readonly displayName = computed(
     () => memberDisplayName(this.member()) ?? this.transloco.translate('IDENTITY.CABINET_TEAM.MEMBERS.PROFILE_INCOMPLETE')
   );
   protected readonly initials = computed(() => memberInitials(this.member()));
-  protected readonly filteredDossiers = computed(() => {
-    const search = this.dossierSearch().trim().toLocaleLowerCase();
-    return this.authStore.dossiers().filter(
-      (dossier) => !search || dossier.displayName.toLocaleLowerCase().includes(search)
-    );
-  });
+  protected readonly dossierErrorKey = computed(() =>
+    this.authStore.dossierError() ?? null
+  );
   protected readonly assignmentDiff = computed(() => {
     const before = this.originalAssignments();
     const after = this.selectedAssignments();
@@ -192,14 +186,8 @@ export class CabinetMemberDialogComponent implements OnInit {
     );
   }
 
-  protected updateDossierSearch(event: Event): void {
-    this.dossierSearch.set((event.target as HTMLInputElement).value);
-  }
-
-  protected toggleAssignment(dossierOrgId: string, checked: boolean): void {
-    const next = new Set(this.selectedAssignments());
-    checked ? next.add(dossierOrgId) : next.delete(dossierOrgId);
-    this.selectedAssignments.set(next);
+  protected updateSelectedAssignments(dossierOrgIds: Set<string>): void {
+    this.selectedAssignments.set(new Set(dossierOrgIds));
   }
 
   protected async saveAssignments(): Promise<void> {

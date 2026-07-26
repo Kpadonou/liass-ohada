@@ -39,6 +39,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const activeLanguage = translocoService.getActiveLang() || 'fr';
   const isCabinetInvitationAcceptanceRequest =
     request.url === cabinetInvitationAcceptanceUrl && request.method === 'POST';
+  const requiresIdentityClaims =
+    request.url === workspacesDiscoveryUrl ||
+    isCabinetInvitationAcceptanceRequest;
   const isPreTenantRequest =
     (request.url === workspacesDiscoveryUrl &&
       (request.method === 'GET' || request.method === 'POST')) ||
@@ -86,7 +89,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
 
   return from(fetchAuthSession()).pipe(
     switchMap((session) => {
-      const token = isCabinetInvitationAcceptanceRequest
+      const token = requiresIdentityClaims
         ? session.tokens?.idToken?.toString()
         : session.tokens?.accessToken?.toString();
 

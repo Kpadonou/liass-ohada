@@ -3,34 +3,62 @@
     [eyebrow]="'IDENTITY.CABINET_TEAM.EYEBROW' | transloco"
     [title]="'IDENTITY.CABINET_TEAM.TITLE' | transloco"
     [subtitle]="'IDENTITY.CABINET_TEAM.SUBTITLE' | transloco"
-    [actionLabel]="capabilities.canInviteCabinetMember() && !production ? ('IDENTITY.CABINET_TEAM.ACTIONS.INVITE' | transloco) : null"
+    [actionLabel]="
+      capabilities.canInviteCabinetMember() && !production
+        ? ('IDENTITY.CABINET_TEAM.ACTIONS.INVITE' | transloco)
+        : null
+    "
     actionIcon="person_add"
     (actionTriggered)="openInvitationDialog()"
   />
 
   @if (capabilities.canInviteCabinetMember() && production) {
-    <div class="flex items-start gap-3 rounded-app-card border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900 dark:border-blue-900 dark:bg-blue-950/25 dark:text-blue-100" role="status">
+    <div
+      class="flex items-start gap-3 rounded-app-card border border-blue-200 bg-blue-50 px-4 py-3 text-sm leading-6 text-blue-900 dark:border-blue-900 dark:bg-blue-950/25 dark:text-blue-100"
+      role="status"
+    >
       <mat-icon>info</mat-icon>
       <p>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.DELIVERY_UNAVAILABLE' | transloco }}</p>
     </div>
   }
 
   @if (actionErrorKey(); as key) {
-    <div class="flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200" role="alert">
-      <mat-icon>error</mat-icon><p>{{ key | transloco }}</p>
+    <div
+      class="flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
+      role="alert"
+    >
+      <mat-icon>error</mat-icon>
+      <p>{{ key | transloco }}</p>
     </div>
   }
 
   @if (developmentLink(); as link) {
-    <div class="rounded-app-card border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/25">
+    <div
+      class="rounded-app-card border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/25"
+    >
       <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ 'IDENTITY.CABINET_TEAM.INVITE.DEV_LINK_TITLE' | transloco }}</p>
-          <p class="mt-1 text-xs text-amber-800 dark:text-amber-200">{{ 'IDENTITY.CABINET_TEAM.INVITE.DEV_LINK_HELP' | transloco }}</p>
+          <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">
+            {{ 'IDENTITY.CABINET_TEAM.INVITE.DEV_LINK_TITLE' | transloco }}
+          </p>
+          <p class="mt-1 text-xs text-amber-800 dark:text-amber-200">
+            {{ 'IDENTITY.CABINET_TEAM.INVITE.DEV_LINK_HELP' | transloco }}
+          </p>
         </div>
-        <liass-button size="sm" tone="neutral" variant="outline" icon="content_copy" (pressed)="copyDevelopmentLink()">{{ 'COMMON.ACTIONS.COPY' | transloco }}</liass-button>
+        <liass-button
+          size="sm"
+          tone="neutral"
+          variant="outline"
+          icon="content_copy"
+          (pressed)="copyDevelopmentLink()"
+          >{{ 'COMMON.ACTIONS.COPY' | transloco }}</liass-button
+        >
       </div>
-      <input class="mt-3 w-full rounded-app-control border border-amber-300 bg-white px-3 py-2 text-xs" readonly [value]="link" />
+      <input
+        class="mt-3 w-full rounded-app-control border border-amber-300 bg-white px-3 py-2 text-xs"
+        readonly
+        [value]="link"
+      />
     </div>
   }
 
@@ -39,14 +67,29 @@
       <mat-tab [label]="'IDENTITY.CABINET_TEAM.TABS.MEMBERS' | transloco">
         <div class="p-4 sm:p-5">
           @if (capabilities.canManageSupervisedDossierAssignments()) {
-            <section class="mb-5 rounded-app-card border border-brand-100 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/15" aria-labelledby="supervisor-team-title">
+            <section
+              class="mb-5 rounded-app-card border border-brand-100 bg-brand-50/50 p-4 dark:border-brand-900 dark:bg-brand-950/15"
+              aria-labelledby="supervisor-team-title"
+            >
               <div class="grid gap-4 lg:grid-cols-[minmax(0,320px)_1fr]">
                 <div>
-                  <h2 id="supervisor-team-title" class="text-sm font-semibold text-slate-950 dark:text-white">{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.TITLE' | transloco }}</h2>
-                  <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.DESCRIPTION' | transloco }}</p>
+                  <h2
+                    id="supervisor-team-title"
+                    class="text-sm font-semibold text-slate-950 dark:text-white"
+                  >
+                    {{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.TITLE' | transloco }}
+                  </h2>
+                  <p class="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                    {{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.DESCRIPTION' | transloco }}
+                  </p>
                   <mat-form-field appearance="outline" class="mt-3 w-full">
-                    <mat-label>{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.DOSSIER' | transloco }}</mat-label>
-                    <mat-select [value]="selectedDossierOrgId()" (valueChange)="selectSupervisorDossier($event)">
+                    <mat-label>{{
+                      'IDENTITY.CABINET_TEAM.SUPERVISOR.DOSSIER' | transloco
+                    }}</mat-label>
+                    <mat-select
+                      [value]="selectedDossierOrgId()"
+                      (valueChange)="selectSupervisorDossier($event)"
+                    >
                       @for (dossier of authStore.dossiers(); track dossier.orgId) {
                         <mat-option [value]="dossier.orgId">{{ dossier.displayName }}</mat-option>
                       }
@@ -55,30 +98,66 @@
                 </div>
                 <div>
                   @if (authStore.dossierLoading()) {
-                    <div class="flex min-h-32 items-center justify-center gap-3 text-sm text-slate-500" role="status"><mat-spinner diameter="20" />{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.LOADING_DOSSIERS' | transloco }}</div>
+                    <div
+                      class="flex min-h-32 items-center justify-center gap-3 text-sm text-slate-500"
+                      role="status"
+                    >
+                      <mat-spinner diameter="20" />{{
+                        'IDENTITY.CABINET_TEAM.SUPERVISOR.LOADING_DOSSIERS' | transloco
+                      }}
+                    </div>
                   } @else if (authStore.dossiers().length === 0) {
-                    <div class="rounded-app-card border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800">{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.NO_DOSSIER' | transloco }}</div>
+                    <div
+                      class="rounded-app-card border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800"
+                    >
+                      {{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.NO_DOSSIER' | transloco }}
+                    </div>
                   } @else if (!selectedDossierOrgId()) {
-                    <div class="rounded-app-card border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800">{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.SELECT_DOSSIER' | transloco }}</div>
+                    <div
+                      class="rounded-app-card border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800"
+                    >
+                      {{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.SELECT_DOSSIER' | transloco }}
+                    </div>
                   } @else if (dossierMembersQuery.isPending()) {
-                    <div class="flex min-h-32 items-center justify-center gap-3 text-sm text-slate-500" role="status"><mat-spinner diameter="20" />{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.LOADING_MEMBERS' | transloco }}</div>
+                    <div
+                      class="flex min-h-32 items-center justify-center gap-3 text-sm text-slate-500"
+                      role="status"
+                    >
+                      <mat-spinner diameter="20" />{{
+                        'IDENTITY.CABINET_TEAM.SUPERVISOR.LOADING_MEMBERS' | transloco
+                      }}
+                    </div>
                   } @else {
                     <div class="max-h-64 space-y-2 overflow-y-auto">
                       @for (member of supervisorEligibleMembers(); track member.userId) {
-                        <label class="flex items-center justify-between gap-3 rounded-app-control border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+                        <label
+                          class="flex items-center justify-between gap-3 rounded-app-control border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-900"
+                        >
                           <span class="min-w-0">
-                            <span class="block truncate text-sm font-medium text-slate-900 dark:text-white">{{ memberName(member) }}</span>
-                            <span class="block text-xs text-slate-500">{{ roleKey(member.cabinetRole) | transloco }}</span>
+                            <span
+                              class="block truncate text-sm font-medium text-slate-900 dark:text-white"
+                              >{{ memberName(member) }}</span
+                            >
+                            <span class="block text-xs text-slate-500">{{
+                              roleKey(member.cabinetRole) | transloco
+                            }}</span>
                           </span>
                           <mat-checkbox
                             [checked]="assignedSupervisorMemberIds().has(member.userId)"
                             [disabled]="supervisorMutationUserId() === member.userId"
-                            [attr.aria-label]="('IDENTITY.CABINET_TEAM.SUPERVISOR.TOGGLE_ACCESS' | transloco: { name: memberName(member) })"
+                            [attr.aria-label]="
+                              'IDENTITY.CABINET_TEAM.SUPERVISOR.TOGGLE_ACCESS'
+                                | transloco: { name: memberName(member) }
+                            "
                             (change)="toggleSupervisorAssignment(member, $event.checked)"
                           />
                         </label>
                       } @empty {
-                        <p class="rounded-app-card border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800">{{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.NO_ELIGIBLE_MEMBER' | transloco }}</p>
+                        <p
+                          class="rounded-app-card border border-dashed border-slate-200 px-4 py-6 text-center text-sm text-slate-500 dark:border-slate-800"
+                        >
+                          {{ 'IDENTITY.CABINET_TEAM.SUPERVISOR.NO_ELIGIBLE_MEMBER' | transloco }}
+                        </p>
                       }
                     </div>
                   }
@@ -92,9 +171,13 @@
               <mat-label>{{ 'IDENTITY.CABINET_TEAM.FILTERS.ROLE' | transloco }}</mat-label>
               <mat-select [value]="memberRole()" (valueChange)="memberRoleChanged($event)">
                 <mat-option value="ALL">{{ 'COMMON.FILTERS.ALL' | transloco }}</mat-option>
-                <mat-option value="CABINET_ADMIN">{{ roleKey('CABINET_ADMIN') | transloco }}</mat-option>
+                <mat-option value="CABINET_ADMIN">{{
+                  roleKey('CABINET_ADMIN') | transloco
+                }}</mat-option>
                 <mat-option value="SUPERVISOR">{{ roleKey('SUPERVISOR') | transloco }}</mat-option>
-                <mat-option value="COLLABORATOR">{{ roleKey('COLLABORATOR') | transloco }}</mat-option>
+                <mat-option value="COLLABORATOR">{{
+                  roleKey('COLLABORATOR') | transloco
+                }}</mat-option>
                 <mat-option value="READER">{{ roleKey('READER') | transloco }}</mat-option>
               </mat-select>
             </mat-form-field>
@@ -103,9 +186,15 @@
                 <mat-label>{{ 'IDENTITY.CABINET_TEAM.FILTERS.STATUS' | transloco }}</mat-label>
                 <mat-select [value]="memberStatus()" (valueChange)="memberStatusChanged($event)">
                   <mat-option value="ALL">{{ 'COMMON.FILTERS.ALL' | transloco }}</mat-option>
-                  <mat-option value="ACTIVE">{{ memberStatusKey('ACTIVE') | transloco }}</mat-option>
-                  <mat-option value="SUSPENDED">{{ memberStatusKey('SUSPENDED') | transloco }}</mat-option>
-                  <mat-option value="REVOKED">{{ memberStatusKey('REVOKED') | transloco }}</mat-option>
+                  <mat-option value="ACTIVE">{{
+                    memberStatusKey('ACTIVE') | transloco
+                  }}</mat-option>
+                  <mat-option value="SUSPENDED">{{
+                    memberStatusKey('SUSPENDED') | transloco
+                  }}</mat-option>
+                  <mat-option value="REVOKED">{{
+                    memberStatusKey('REVOKED') | transloco
+                  }}</mat-option>
                 </mat-select>
               </mat-form-field>
             }
@@ -113,37 +202,143 @@
 
           @if (membersQuery.isPending()) {
             <div class="space-y-3" aria-live="polite">
-              <p class="flex items-center gap-2 text-sm text-slate-500"><mat-spinner diameter="18" />{{ 'IDENTITY.CABINET_TEAM.MEMBERS.LOADING' | transloco }}</p>
-              @for (_ of [0,1,2,3]; track $index) { <liass-skeleton class="block" variant="card" /> }
+              <p class="flex items-center gap-2 text-sm text-slate-500">
+                <mat-spinner diameter="18" />{{
+                  'IDENTITY.CABINET_TEAM.MEMBERS.LOADING' | transloco
+                }}
+              </p>
+              @for (_ of [0, 1, 2, 3]; track $index) {
+                <liass-skeleton class="block" variant="card" />
+              }
             </div>
           } @else if (membersQuery.isError()) {
-            <div class="rounded-app-card border border-red-200 bg-red-50 px-5 py-6 text-center dark:border-red-900 dark:bg-red-950/25" role="alert">
-              <p class="text-sm text-red-800 dark:text-red-200">{{ 'IDENTITY.CABINET_TEAM.ERRORS.MEMBERS_LOAD_FAILED' | transloco }}</p>
-              <div class="mt-4"><liass-button tone="neutral" variant="outline" icon="refresh" (pressed)="membersQuery.refetch()">{{ 'COMMON.ACTIONS.RETRY' | transloco }}</liass-button></div>
+            <div
+              class="rounded-app-card border border-red-200 bg-red-50 px-5 py-6 text-center dark:border-red-900 dark:bg-red-950/25"
+              role="alert"
+            >
+              <p class="text-sm text-red-800 dark:text-red-200">
+                {{ 'IDENTITY.CABINET_TEAM.ERRORS.MEMBERS_LOAD_FAILED' | transloco }}
+              </p>
+              <div class="mt-4">
+                <liass-button
+                  tone="neutral"
+                  variant="outline"
+                  icon="refresh"
+                  (pressed)="membersQuery.refetch()"
+                  >{{ 'COMMON.ACTIONS.RETRY' | transloco }}</liass-button
+                >
+              </div>
             </div>
           } @else if ((membersQuery.data()?.members?.length ?? 0) === 0) {
-            <div class="rounded-app-card border border-dashed border-slate-200 px-5 py-10 text-center dark:border-slate-800">
+            <div
+              class="rounded-app-card border border-dashed border-slate-200 px-5 py-10 text-center dark:border-slate-800"
+            >
               <mat-icon class="!size-10 !text-4xl text-slate-400">group_off</mat-icon>
-              <p class="mt-3 font-semibold text-slate-900 dark:text-white">{{ 'IDENTITY.CABINET_TEAM.MEMBERS.EMPTY' | transloco }}</p>
-              @if (capabilities.canInviteCabinetMember() && !production) { <div class="mt-4"><liass-button tone="brand" variant="solid" icon="person_add" (pressed)="openInvitationDialog()">{{ 'IDENTITY.CABINET_TEAM.ACTIONS.INVITE' | transloco }}</liass-button></div> }
+              <p class="mt-3 font-semibold text-slate-900 dark:text-white">
+                {{ 'IDENTITY.CABINET_TEAM.MEMBERS.EMPTY' | transloco }}
+              </p>
+              @if (capabilities.canInviteCabinetMember() && !production) {
+                <div class="mt-4">
+                  <liass-button
+                    tone="brand"
+                    variant="solid"
+                    icon="person_add"
+                    (pressed)="openInvitationDialog()"
+                    >{{ 'IDENTITY.CABINET_TEAM.ACTIONS.INVITE' | transloco }}</liass-button
+                  >
+                </div>
+              }
             </div>
           } @else {
-            <div class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 lg:block">
+            <div
+              class="hidden overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800 lg:block"
+            >
               <table class="liass-data-table w-full min-w-[860px] border-collapse text-left">
-                <thead><tr><th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.MEMBER' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.EMAIL' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.ROLE' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.STATUS' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.DOSSIERS' | transloco }}</th><th class="text-right">{{ 'IDENTITY.CABINET_TEAM.MEMBERS.ACTIONS' | transloco }}</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.MEMBER' | transloco }}</th>
+                    <th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.EMAIL' | transloco }}</th>
+                    <th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.ROLE' | transloco }}</th>
+                    <th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.STATUS' | transloco }}</th>
+                    <th>{{ 'IDENTITY.CABINET_TEAM.MEMBERS.DOSSIERS' | transloco }}</th>
+                    <th class="text-right">
+                      {{ 'IDENTITY.CABINET_TEAM.MEMBERS.ACTIONS' | transloco }}
+                    </th>
+                  </tr>
+                </thead>
                 <tbody>
                   @for (member of membersQuery.data()?.members ?? []; track member.userId) {
                     <tr>
-                      <td><div class="flex items-center gap-3"><span class="grid size-9 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200">{{ initials(member) }}</span><div class="min-w-0"><p class="truncate font-semibold text-slate-950 dark:text-white">{{ memberName(member) }}</p>@if (member.isOwner) { <span class="text-xs font-medium text-brand-700 dark:text-brand-300">{{ 'IDENTITY.CABINET_TEAM.MEMBERS.OWNER' | transloco }}</span> }</div></div></td>
-                      <td class="text-sm text-slate-600 dark:text-slate-400">{{ member.email || ('COMMON.NOT_AVAILABLE' | transloco) }}</td>
-                      <td class="text-sm text-slate-700 dark:text-slate-300">{{ roleKey(member.cabinetRole) | transloco }}</td>
-                      <td><liass-status-chip [label]="memberStatusKey(member.status) | transloco" [tone]="memberTone(member.status)" size="sm" /></td>
-                      <td class="text-sm text-slate-600 dark:text-slate-400">{{ member.cabinetRole === 'CABINET_ADMIN' ? ('IDENTITY.CABINET_TEAM.ASSIGNMENTS.ALL_DOSSIERS' | transloco) : ('IDENTITY.CABINET_TEAM.ASSIGNMENTS.VIEW_DETAILS' | transloco) }}</td>
+                      <td>
+                        <div class="flex items-center gap-3">
+                          <span
+                            class="grid size-9 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+                            >{{ initials(member) }}</span
+                          >
+                          <div class="min-w-0">
+                            <p class="truncate font-semibold text-slate-950 dark:text-white">
+                              {{ memberName(member) }}
+                            </p>
+                            @if (member.isOwner) {
+                              <span
+                                class="text-xs font-medium text-brand-700 dark:text-brand-300"
+                                >{{ 'IDENTITY.CABINET_TEAM.MEMBERS.OWNER' | transloco }}</span
+                              >
+                            }
+                          </div>
+                        </div>
+                      </td>
+                      <td class="text-sm text-slate-600 dark:text-slate-400">
+                        {{ member.email || ('COMMON.NOT_AVAILABLE' | transloco) }}
+                      </td>
+                      <td class="text-sm text-slate-700 dark:text-slate-300">
+                        {{ roleKey(member.cabinetRole) | transloco }}
+                      </td>
+                      <td>
+                        <liass-status-chip
+                          [label]="memberStatusKey(member.status) | transloco"
+                          [tone]="memberTone(member.status)"
+                          size="sm"
+                        />
+                      </td>
+                      <td class="text-sm text-slate-600 dark:text-slate-400">
+                        {{
+                          member.cabinetRole === 'CABINET_ADMIN'
+                            ? ('IDENTITY.CABINET_TEAM.ASSIGNMENTS.ALL_DOSSIERS' | transloco)
+                            : ('IDENTITY.CABINET_TEAM.ASSIGNMENTS.VIEW_DETAILS' | transloco)
+                        }}
+                      </td>
                       <td class="text-right">
                         @if (capabilities.canViewCabinetInvitations()) {
-                          <button mat-icon-button [matMenuTriggerFor]="memberMenu" [attr.aria-label]="('IDENTITY.CABINET_TEAM.MEMBERS.ACTION_MENU' | transloco: { name: memberName(member) })"><mat-icon>more_vert</mat-icon></button>
-                          <mat-menu #memberMenu="matMenu"><button mat-menu-item (click)="openMember(member)"><mat-icon>visibility</mat-icon><span>{{ 'IDENTITY.CABINET_TEAM.ACTIONS.VIEW_DETAILS' | transloco }}</span></button>@if (capabilities.canManageAssignments(member)) { <button mat-menu-item (click)="openMember(member)"><mat-icon>folder_shared</mat-icon><span>{{ 'IDENTITY.CABINET_TEAM.ACTIONS.MANAGE_ACCESS' | transloco }}</span></button> }</mat-menu>
-                        } @else { <span class="text-xs text-slate-400">—</span> }
+                          <button
+                            mat-icon-button
+                            [matMenuTriggerFor]="memberMenu"
+                            [attr.aria-label]="
+                              'IDENTITY.CABINET_TEAM.MEMBERS.ACTION_MENU'
+                                | transloco: { name: memberName(member) }
+                            "
+                          >
+                            <mat-icon>more_vert</mat-icon>
+                          </button>
+                          <mat-menu #memberMenu="matMenu"
+                            ><button mat-menu-item (click)="openMember(member)">
+                              <mat-icon>visibility</mat-icon
+                              ><span>{{
+                                'IDENTITY.CABINET_TEAM.ACTIONS.VIEW_DETAILS' | transloco
+                              }}</span>
+                            </button>
+                            @if (capabilities.canManageAssignments(member)) {
+                              <button mat-menu-item (click)="openMember(member)">
+                                <mat-icon>folder_shared</mat-icon
+                                ><span>{{
+                                  'IDENTITY.CABINET_TEAM.ACTIONS.MANAGE_ACCESS' | transloco
+                                }}</span>
+                              </button>
+                            }
+                          </mat-menu>
+                        } @else {
+                          <span class="text-xs text-slate-400">—</span>
+                        }
                       </td>
                     </tr>
                   }
@@ -153,16 +348,78 @@
 
             <div class="grid gap-3 lg:hidden">
               @for (member of membersQuery.data()?.members ?? []; track member.userId) {
-                <article class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                  <div class="flex items-start gap-3"><span class="grid size-10 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200">{{ initials(member) }}</span><div class="min-w-0 flex-1"><div class="flex flex-wrap items-center gap-2"><p class="truncate font-semibold text-slate-950 dark:text-white">{{ memberName(member) }}</p>@if (member.isOwner) { <span class="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700">{{ 'IDENTITY.CABINET_TEAM.MEMBERS.OWNER' | transloco }}</span> }</div><p class="truncate text-sm text-slate-500">{{ member.email || ('COMMON.NOT_AVAILABLE' | transloco) }}</p></div><liass-status-chip [label]="memberStatusKey(member.status) | transloco" [tone]="memberTone(member.status)" size="sm" /></div>
-                  <div class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-sm dark:border-slate-800"><span>{{ roleKey(member.cabinetRole) | transloco }}</span>@if (capabilities.canViewCabinetInvitations()) { <liass-button size="sm" tone="neutral" variant="ghost" (pressed)="openMember(member)">{{ 'IDENTITY.CABINET_TEAM.ACTIONS.VIEW_DETAILS' | transloco }}</liass-button> }</div>
+                <article
+                  class="rounded-app-card border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                >
+                  <div class="flex items-start gap-3">
+                    <span
+                      class="grid size-10 shrink-0 place-items-center rounded-full bg-brand-100 text-xs font-bold text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+                      >{{ initials(member) }}</span
+                    >
+                    <div class="min-w-0 flex-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <p class="truncate font-semibold text-slate-950 dark:text-white">
+                          {{ memberName(member) }}
+                        </p>
+                        @if (member.isOwner) {
+                          <span
+                            class="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-700"
+                            >{{ 'IDENTITY.CABINET_TEAM.MEMBERS.OWNER' | transloco }}</span
+                          >
+                        }
+                      </div>
+                      <p class="truncate text-sm text-slate-500">
+                        {{ member.email || ('COMMON.NOT_AVAILABLE' | transloco) }}
+                      </p>
+                    </div>
+                    <liass-status-chip
+                      [label]="memberStatusKey(member.status) | transloco"
+                      [tone]="memberTone(member.status)"
+                      size="sm"
+                    />
+                  </div>
+                  <div
+                    class="mt-3 flex items-center justify-between gap-3 border-t border-slate-100 pt-3 text-sm dark:border-slate-800"
+                  >
+                    <span>{{ roleKey(member.cabinetRole) | transloco }}</span>
+                    @if (capabilities.canViewCabinetInvitations()) {
+                      <liass-button
+                        size="sm"
+                        tone="neutral"
+                        variant="ghost"
+                        (pressed)="openMember(member)"
+                        >{{
+                          'IDENTITY.CABINET_TEAM.ACTIONS.VIEW_DETAILS' | transloco
+                        }}</liass-button
+                      >
+                    }
+                  </div>
                 </article>
               }
             </div>
 
             <div class="mt-5 flex items-center justify-between gap-3">
-              <liass-button size="sm" tone="neutral" variant="outline" icon="chevron_left" [disabled]="memberCursorHistory().length === 0" (pressed)="previousMembersPage()">{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button>
-              <liass-button size="sm" tone="neutral" variant="outline" icon="chevron_right" [disabled]="!membersQuery.data()?.nextCursor" (pressed)="nextMembersPage()">{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button>
+              <liass-button
+                size="sm"
+                tone="neutral"
+                variant="outline"
+                icon="chevron_left"
+                [disabled]="memberCursorHistory().length === 0"
+                (pressed)="previousMembersPage()"
+                >{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button
+              >
+              <span class="text-center text-xs font-medium text-slate-500 dark:text-slate-400">{{
+                memberPageContext()
+              }}</span>
+              <liass-button
+                size="sm"
+                tone="neutral"
+                variant="outline"
+                icon="chevron_right"
+                [disabled]="!membersQuery.data()?.nextCursor"
+                (pressed)="nextMembersPage()"
+                >{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button
+              >
             </div>
           }
         </div>
@@ -173,29 +430,167 @@
           <div class="p-4 sm:p-5">
             <mat-form-field appearance="outline" class="mb-5 w-full sm:max-w-xs">
               <mat-label>{{ 'IDENTITY.CABINET_TEAM.FILTERS.STATUS' | transloco }}</mat-label>
-              <mat-select [value]="invitationStatus()" (valueChange)="invitationStatusChanged($event)">
+              <mat-select
+                [value]="invitationStatus()"
+                (valueChange)="invitationStatusChanged($event)"
+              >
                 <mat-option value="ALL">{{ 'COMMON.FILTERS.ALL' | transloco }}</mat-option>
-                <mat-option value="PENDING">{{ invitationStatusKey('PENDING') | transloco }}</mat-option>
-                <mat-option value="ACCEPTED">{{ invitationStatusKey('ACCEPTED') | transloco }}</mat-option>
-                <mat-option value="EXPIRED">{{ invitationStatusKey('EXPIRED') | transloco }}</mat-option>
-                <mat-option value="CANCELLED">{{ invitationStatusKey('CANCELLED') | transloco }}</mat-option>
+                <mat-option value="PENDING">{{
+                  invitationStatusKey('PENDING') | transloco
+                }}</mat-option>
+                <mat-option value="ACCEPTED">{{
+                  invitationStatusKey('ACCEPTED') | transloco
+                }}</mat-option>
+                <mat-option value="EXPIRED">{{
+                  invitationStatusKey('EXPIRED') | transloco
+                }}</mat-option>
+                <mat-option value="CANCELLED">{{
+                  invitationStatusKey('CANCELLED') | transloco
+                }}</mat-option>
               </mat-select>
             </mat-form-field>
 
             @if (invitationsQuery.isPending()) {
-              <div class="space-y-3" aria-live="polite"><p class="flex items-center gap-2 text-sm text-slate-500"><mat-spinner diameter="18" />{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.LOADING' | transloco }}</p>@for (_ of [0,1,2]; track $index) { <liass-skeleton class="block" variant="card" /> }</div>
+              <div class="space-y-3" aria-live="polite">
+                <p class="flex items-center gap-2 text-sm text-slate-500">
+                  <mat-spinner diameter="18" />{{
+                    'IDENTITY.CABINET_TEAM.INVITATIONS.LOADING' | transloco
+                  }}
+                </p>
+                @for (_ of [0, 1, 2]; track $index) {
+                  <liass-skeleton class="block" variant="card" />
+                }
+              </div>
             } @else if (invitationsQuery.isError()) {
-              <div class="rounded-app-card border border-red-200 bg-red-50 px-5 py-6 text-center dark:border-red-900 dark:bg-red-950/25" role="alert"><p class="text-sm text-red-800 dark:text-red-200">{{ 'IDENTITY.CABINET_TEAM.ERRORS.INVITATIONS_LOAD_FAILED' | transloco }}</p><div class="mt-4"><liass-button tone="neutral" variant="outline" icon="refresh" (pressed)="invitationsQuery.refetch()">{{ 'COMMON.ACTIONS.RETRY' | transloco }}</liass-button></div></div>
+              <div
+                class="rounded-app-card border border-red-200 bg-red-50 px-5 py-6 text-center dark:border-red-900 dark:bg-red-950/25"
+                role="alert"
+              >
+                <p class="text-sm text-red-800 dark:text-red-200">
+                  {{ 'IDENTITY.CABINET_TEAM.ERRORS.INVITATIONS_LOAD_FAILED' | transloco }}
+                </p>
+                <div class="mt-4">
+                  <liass-button
+                    tone="neutral"
+                    variant="outline"
+                    icon="refresh"
+                    (pressed)="invitationsQuery.refetch()"
+                    >{{ 'COMMON.ACTIONS.RETRY' | transloco }}</liass-button
+                  >
+                </div>
+              </div>
             } @else if ((invitationsQuery.data()?.invitations?.length ?? 0) === 0) {
-              <div class="rounded-app-card border border-dashed border-slate-200 px-5 py-10 text-center dark:border-slate-800"><mat-icon class="!size-10 !text-4xl text-slate-400">mail_outline</mat-icon><p class="mt-3 font-semibold text-slate-900 dark:text-white">{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.EMPTY' | transloco }}</p></div>
+              <div
+                class="rounded-app-card border border-dashed border-slate-200 px-5 py-10 text-center dark:border-slate-800"
+              >
+                <mat-icon class="!size-10 !text-4xl text-slate-400">mail_outline</mat-icon>
+                <p class="mt-3 font-semibold text-slate-900 dark:text-white">
+                  {{ 'IDENTITY.CABINET_TEAM.INVITATIONS.EMPTY' | transloco }}
+                </p>
+              </div>
             } @else {
-              <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+              <div
+                class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800"
+              >
                 <table class="liass-data-table w-full min-w-[900px] border-collapse text-left">
-                  <thead><tr><th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.EMAIL' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.ROLE' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.STATUS' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.INVITED_AT' | transloco }}</th><th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.EXPIRES_AT' | transloco }}</th><th class="text-right">{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.ACTIONS' | transloco }}</th></tr></thead>
-                  <tbody>@for (invitation of invitationsQuery.data()?.invitations ?? []; track invitation.invitationId) { <tr><td class="font-medium text-slate-950 dark:text-white">{{ invitation.email }}</td><td>{{ roleKey(invitation.role) | transloco }}</td><td><liass-status-chip [label]="invitationStatusKey(invitation.status) | transloco" [tone]="invitationTone(invitation.status)" size="sm" /></td><td>{{ invitation.createdAt | date: 'mediumDate' }}</td><td>{{ invitation.expiresAt | date: 'mediumDate' }}</td><td class="text-right">@if (isPendingInvitation(invitation)) { <button mat-icon-button [matMenuTriggerFor]="invitationMenu" [attr.aria-label]="('IDENTITY.CABINET_TEAM.INVITATIONS.ACTION_MENU' | transloco: { email: invitation.email })"><mat-icon>more_vert</mat-icon></button><mat-menu #invitationMenu="matMenu"><button mat-menu-item (click)="resendInvitation(invitation)"><mat-icon>forward_to_inbox</mat-icon><span>{{ 'IDENTITY.CABINET_TEAM.ACTIONS.RESEND' | transloco }}</span></button><button mat-menu-item class="!text-danger-600" (click)="cancelInvitation(invitation)"><mat-icon>cancel</mat-icon><span>{{ 'IDENTITY.CABINET_TEAM.ACTIONS.CANCEL_INVITATION' | transloco }}</span></button></mat-menu> } @else { <span class="text-slate-400">—</span> }</td></tr> }</tbody>
+                  <thead>
+                    <tr>
+                      <th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.EMAIL' | transloco }}</th>
+                      <th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.ROLE' | transloco }}</th>
+                      <th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.STATUS' | transloco }}</th>
+                      <th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.INVITED_AT' | transloco }}</th>
+                      <th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.EXPIRES_AT' | transloco }}</th>
+                      <th>{{ 'IDENTITY.CABINET_TEAM.INVITATIONS.INVITED_BY' | transloco }}</th>
+                      <th class="text-right">
+                        {{ 'IDENTITY.CABINET_TEAM.INVITATIONS.ACTIONS' | transloco }}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (
+                      invitation of invitationsQuery.data()?.invitations ?? [];
+                      track invitation.invitationId
+                    ) {
+                      <tr>
+                        <td class="font-medium text-slate-950 dark:text-white">
+                          {{ invitation.email }}
+                        </td>
+                        <td>{{ roleKey(invitation.role) | transloco }}</td>
+                        <td>
+                          <liass-status-chip
+                            [label]="invitationStatusKey(invitation.status) | transloco"
+                            [tone]="invitationTone(invitation.status)"
+                            size="sm"
+                          />
+                        </td>
+                        <td>{{ invitation.createdAt | date: 'mediumDate' }}</td>
+                        <td>{{ invitation.expiresAt | date: 'mediumDate' }}</td>
+                        <td>
+                          {{
+                            invitation.invitedBy
+                              ? ('IDENTITY.CABINET_TEAM.INVITATIONS.INVITED_BY_CABINET' | transloco)
+                              : ('COMMON.NOT_AVAILABLE' | transloco)
+                          }}
+                        </td>
+                        <td class="text-right">
+                          @if (isPendingInvitation(invitation)) {
+                            <button
+                              mat-icon-button
+                              [matMenuTriggerFor]="invitationMenu"
+                              [attr.aria-label]="
+                                'IDENTITY.CABINET_TEAM.INVITATIONS.ACTION_MENU'
+                                  | transloco: { email: invitation.email }
+                              "
+                            >
+                              <mat-icon>more_vert</mat-icon></button
+                            ><mat-menu #invitationMenu="matMenu"
+                              ><button mat-menu-item (click)="resendInvitation(invitation)">
+                                <mat-icon>forward_to_inbox</mat-icon
+                                ><span>{{
+                                  'IDENTITY.CABINET_TEAM.ACTIONS.RESEND' | transloco
+                                }}</span></button
+                              ><button
+                                mat-menu-item
+                                class="!text-danger-600"
+                                (click)="cancelInvitation(invitation)"
+                              >
+                                <mat-icon>cancel</mat-icon
+                                ><span>{{
+                                  'IDENTITY.CABINET_TEAM.ACTIONS.CANCEL_INVITATION' | transloco
+                                }}</span>
+                              </button></mat-menu
+                            >
+                          } @else {
+                            <span class="text-slate-400">—</span>
+                          }
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
                 </table>
               </div>
-              <div class="mt-5 flex items-center justify-between gap-3"><liass-button size="sm" tone="neutral" variant="outline" icon="chevron_left" [disabled]="invitationCursorHistory().length === 0" (pressed)="previousInvitationsPage()">{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button><liass-button size="sm" tone="neutral" variant="outline" icon="chevron_right" [disabled]="!invitationsQuery.data()?.nextCursor" (pressed)="nextInvitationsPage()">{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button></div>
+              <div class="mt-5 flex items-center justify-between gap-3">
+                <liass-button
+                  size="sm"
+                  tone="neutral"
+                  variant="outline"
+                  icon="chevron_left"
+                  [disabled]="invitationCursorHistory().length === 0"
+                  (pressed)="previousInvitationsPage()"
+                  >{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button
+                ><span class="text-center text-xs font-medium text-slate-500 dark:text-slate-400">{{
+                  invitationPageContext()
+                }}</span
+                ><liass-button
+                  size="sm"
+                  tone="neutral"
+                  variant="outline"
+                  icon="chevron_right"
+                  [disabled]="!invitationsQuery.data()?.nextCursor"
+                  (pressed)="nextInvitationsPage()"
+                  >{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button
+                >
+              </div>
             }
           </div>
         </mat-tab>

@@ -279,10 +279,11 @@ describe('authInterceptor', () => {
     await response;
   });
 
-  it('adds only bearer token for workspace discovery calls', async () => {
+  it('uses the ID token without a tenant header for workspace discovery', async () => {
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
-        accessToken: { toString: () => 'jwt-token' }
+        accessToken: { toString: () => 'access-token' },
+        idToken: { toString: () => 'id-token-with-verified-email' }
       }
     } as never);
 
@@ -291,19 +292,22 @@ describe('authInterceptor', () => {
     await Promise.resolve();
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/workspaces`);
-    expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.get('Authorization')).toBe(
+      'Bearer id-token-with-verified-email'
+    );
     expect(request.request.headers.get('Accept-Language')).toBe('fr');
     expect(request.request.headers.has('x-org-id')).toBe(false);
     request.flush({ workspaces: [] });
     await response;
   });
 
-  it('omits active organization header for initial workspace creation', async () => {
+  it('uses the ID token without a tenant header for initial workspace creation', async () => {
     const authStore = TestBed.inject(AuthStore);
     authStore.setTenant('org-test');
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
-        accessToken: { toString: () => 'jwt-token' }
+        accessToken: { toString: () => 'access-token' },
+        idToken: { toString: () => 'id-token-with-verified-email' }
       }
     } as never);
 
@@ -319,7 +323,9 @@ describe('authInterceptor', () => {
     await Promise.resolve();
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/workspaces`);
-    expect(request.request.headers.get('Authorization')).toBe('Bearer jwt-token');
+    expect(request.request.headers.get('Authorization')).toBe(
+      'Bearer id-token-with-verified-email'
+    );
     expect(request.request.headers.get('Accept-Language')).toBe('fr');
     expect(request.request.headers.has('x-org-id')).toBe(false);
     request.flush({

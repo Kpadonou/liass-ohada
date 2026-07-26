@@ -1,0 +1,86 @@
+<section [attr.aria-busy]="loading()">
+  <div class="flex items-center justify-between gap-3">
+    <h3 class="text-sm font-semibold text-slate-900 dark:text-white">{{ labelKey() | transloco }}</h3>
+    <span class="text-xs font-medium text-slate-500 dark:text-slate-400">{{ countLabel() }}</span>
+  </div>
+
+  <mat-form-field appearance="outline" class="mt-3 w-full">
+    <mat-label>{{ searchKey() | transloco }}</mat-label>
+    <mat-icon matPrefix>search</mat-icon>
+    <input
+      matInput
+      type="search"
+      autocomplete="off"
+      [disabled]="disabled() || loading()"
+      [value]="searchQuery()"
+      (input)="updateSearch($event)"
+    />
+    @if (loading()) {
+      <mat-spinner matSuffix diameter="18" />
+    }
+  </mat-form-field>
+
+  @if (errorKey(); as key) {
+    <div
+      class="flex items-start gap-2 rounded-app-card border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-200"
+      role="alert"
+    >
+      <mat-icon>error</mat-icon>
+      <p>{{ key | transloco }}</p>
+    </div>
+  } @else if (loading()) {
+    <div
+      class="flex min-h-40 items-center justify-center gap-3 rounded-app-card border border-slate-200 text-sm text-slate-500 dark:border-slate-800"
+      role="status"
+    >
+      <mat-spinner diameter="20" />
+      {{ loadingKey() | transloco }}
+    </div>
+  } @else {
+    <div
+      class="max-h-60 space-y-2 overflow-y-auto rounded-app-card border border-slate-200 p-2 dark:border-slate-800"
+      role="group"
+      tabindex="0"
+      [attr.aria-label]="labelKey() | transloco"
+    >
+      @for (dossier of filteredDossiers(); track dossier.orgId) {
+        <div
+          [class]="rowClass(dossier)"
+        >
+          <mat-checkbox
+            class="block"
+            [checked]="isSelected(dossier)"
+            [disabled]="isItemDisabled(dossier)"
+            (change)="toggleDossier(dossier, $event.checked)"
+          >
+            <span class="block min-w-0">
+              <span class="block truncate text-sm font-semibold text-slate-950 dark:text-white">
+                {{ dossier.displayName }}
+              </span>
+              <span class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span>{{ countryLabelKey(dossier) | transloco }} · {{ frameworkLabelKey(dossier) | transloco }}</span>
+                @if (showStatus()) {
+                  <liass-status-chip
+                    [label]="statusLabelKey(dossier) | transloco"
+                    [tone]="dossier.status === 'ACTIVE' ? 'success' : 'neutral'"
+                    size="sm"
+                  />
+                }
+              </span>
+            </span>
+          </mat-checkbox>
+        </div>
+      } @empty {
+        <p class="px-3 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+          {{ emptyKey() | transloco }}
+        </p>
+      }
+    </div>
+
+    @if (showMaxSelectedHint()) {
+      <p class="mt-2 text-xs font-medium text-amber-700 dark:text-amber-300">
+        {{ 'IDENTITY.CABINET_TEAM.DOSSIER_SELECTOR.MAX_REACHED' | transloco: { max: maxSelected() } }}
+      </p>
+    }
+  }
+</section>

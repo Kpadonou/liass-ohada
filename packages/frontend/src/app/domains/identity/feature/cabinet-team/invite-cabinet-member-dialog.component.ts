@@ -1,6 +1,5 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +15,7 @@ import { LiassButtonComponent } from '../../../../shared/ui/button/button.compon
 import { AuthStore } from '../../data-access/auth.store';
 import { CabinetTeamApi } from '../../data-access/cabinet-team.api';
 import { CabinetTeamQueries } from '../../data-access/cabinet-team.queries';
+import { DossierMultiSelectComponent } from '../../ui/dossier-multi-select/dossier-multi-select.component';
 import { cabinetRoleKey, cabinetTeamErrorKey } from './cabinet-team.presentation';
 
 const INVITABLE_ROLES: readonly CabinetRole[] = [
@@ -29,8 +29,8 @@ const MAX_INITIAL_ASSIGNMENTS = 20;
 @Component({
   selector: 'liass-invite-cabinet-member-dialog',
   imports: [
+    DossierMultiSelectComponent,
     LiassButtonComponent,
-    MatCheckboxModule,
     MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
@@ -56,16 +56,12 @@ export class InviteCabinetMemberDialogComponent implements OnInit {
   protected readonly roles = INVITABLE_ROLES;
   protected readonly production = environment.production;
   protected readonly selectedDossiers = signal<Set<string>>(new Set());
-  protected readonly dossierSearch = signal('');
   protected readonly submitting = signal(false);
   protected readonly errorKey = signal<string | null>(null);
   protected readonly developmentLink = signal<string | null>(null);
-  protected readonly filteredDossiers = computed(() => {
-    const search = this.dossierSearch().trim().toLocaleLowerCase();
-    return this.authStore.dossiers().filter(
-      (dossier) => !search || dossier.displayName.toLocaleLowerCase().includes(search)
-    );
-  });
+  protected readonly dossierErrorKey = computed(() =>
+    this.authStore.dossierError() ?? null
+  );
 
   protected readonly form = this.formBuilder.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
@@ -86,14 +82,14 @@ export class InviteCabinetMemberDialogComponent implements OnInit {
     return this.form.controls.role.value !== 'CABINET_ADMIN';
   }
 
-  protected updateDossierSearch(event: Event): void {
-    this.dossierSearch.set((event.target as HTMLInputElement).value);
-  }
-
-  protected toggleDossier(dossierOrgId: string, checked: boolean): void {
-    const next = new Set(this.selectedDossiers());
-    checked ? next.add(dossierOrgId) : next.delete(dossierOrgId);
-    this.selectedDossiers.set(next);
+  protected updateSelectedDossiers(dossierOrgIds: Set<string>): void {
+    this.selectedDossiers.set(new Set(dossierOrgIds));
+    if (
+      dossierOrgIds.size <= MAX_INITIAL_ASSIGNMENTS &&
+      this.errorKey() === 'IDENTITY.CABINET_TEAM.ERRORS.ASSIGNMENT_LIMIT'
+    ) {
+      this.errorKey.set(null);
+    }
   }
 
   protected async submit(): Promise<void> {

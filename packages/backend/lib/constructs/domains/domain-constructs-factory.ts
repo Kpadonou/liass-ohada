@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as logs from "aws-cdk-lib/aws-logs";
 import { Runtime } from "aws-cdk-lib/aws-lambda";
 import * as lambda from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
@@ -67,7 +68,6 @@ export abstract class DomainConstructFactory extends Construct {
     const name = [
       "liass-ohada",
       stage,
-      "api",
       DomainConstructFactory.sanitizeNamePart(domainName),
       DomainConstructFactory.sanitizeNamePart(actionName),
     ].join("-");
@@ -97,10 +97,16 @@ export abstract class DomainConstructFactory extends Construct {
       options.domainName,
       actionName,
     );
+    const logGroup = logs.LogGroup.fromLogGroupName(
+      this,
+      `${id}ExistingLogGroup`,
+      `/aws/lambda/${functionName}`,
+    );
 
     const fn = new lambda.NodejsFunction(this, id, {
       entry: options.handlerEntry,
       functionName,
+      logGroup,
       role: options.lambdaRole,
       runtime: DOMAIN_LAMBDA_RUNTIME,
       memorySize: options.memorySize,

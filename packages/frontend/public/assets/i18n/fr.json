@@ -2436,6 +2436,11 @@
         "TOTAL": "Total dossiers",
         "VISIBLE": "Dossiers affichés"
       },
+      "STATUS": {
+        "ACTIVE": "Actif",
+        "INACTIVE": "Inactif",
+        "UNKNOWN": "Inconnu"
+      },
       "TABLE": {
         "ACTIONS": "Action",
         "COMPANY": "Entreprise cliente",
@@ -2587,7 +2592,12 @@
         "READER": "Lecteur"
       },
       "MEMBER_STATUS": { "ACTIVE": "Actif", "SUSPENDED": "Suspendu", "REVOKED": "Révoqué" },
-      "INVITATION_STATUS": { "PENDING": "En attente", "ACCEPTED": "Acceptée", "EXPIRED": "Expirée", "CANCELLED": "Annulée" },
+      "INVITATION_STATUS": {
+        "PENDING": "En attente",
+        "ACCEPTED": "Acceptée",
+        "EXPIRED": "Expirée",
+        "CANCELLED": "Annulée"
+      },
       "MEMBERS": {
         "MEMBER": "Membre",
         "EMAIL": "Adresse électronique",
@@ -2605,7 +2615,8 @@
         "INVITATION_SOURCE": "Origine de l’accès",
         "INVITED": "Invitation du cabinet",
         "DIRECT_ACCESS": "Accès initial",
-        "ACTION_MENU": "Actions pour {{name}}"
+        "ACTION_MENU": "Actions pour {{name}}",
+        "PAGE_CONTEXT": "Page {{page}} · {{count}} membre(s) affiché(s)"
       },
       "INVITE": {
         "TITLE": "Inviter un membre",
@@ -2614,10 +2625,20 @@
         "EMAIL_ERROR": "Saisissez une adresse électronique valide.",
         "ROLE": "Rôle",
         "DOSSIERS": "Dossiers à affecter",
-        "ADMIN_ALL_DOSSIERS": "Un administrateur accède implicitement à tous les dossiers du cabinet.",
-        "CREATE_DEV": "Créer l’invitation de développement",
-        "DEV_LINK_TITLE": "Lien de développement",
-        "DEV_LINK_HELP": "Ce lien sensible est affiché uniquement parce que le serveur de développement a retourné un jeton. Il ne sera pas conservé."
+        "ADMIN_ALL_DOSSIERS": "Les administrateurs du cabinet ont accès à tous les dossiers clients.",
+        "CREATE": "Créer l’invitation",
+        "CREATE_DEV": "Créer l’invitation",
+        "DEV_LINK_TITLE": "Outil de développement",
+        "DEV_LINK_HELP": "L’envoi d’e-mail n’est pas encore configuré dans cet environnement. Utilisez temporairement ce lien pour tester le parcours d’invitation."
+      },
+      "DOSSIER_SELECTOR": {
+        "LABEL": "Dossiers à affecter",
+        "SEARCH": "Rechercher un dossier",
+        "EMPTY": "Aucun dossier correspondant.",
+        "LOADING": "Chargement des dossiers…",
+        "COUNT": "{{count}} sélectionné(s)",
+        "COUNT_WITH_MAX": "{{count}}/{{max}} sélectionné(s)",
+        "MAX_REACHED": "Maximum {{max}} dossiers sélectionnés."
       },
       "INVITATIONS": {
         "EMAIL": "Adresse invitée",
@@ -2625,10 +2646,13 @@
         "STATUS": "Statut",
         "INVITED_AT": "Invitation créée",
         "EXPIRES_AT": "Expiration",
+        "INVITED_BY": "Invité par",
+        "INVITED_BY_CABINET": "Membre du cabinet",
         "ACTIONS": "Actions",
         "ACTION_MENU": "Actions pour l’invitation de {{email}}",
         "LOADING": "Chargement des invitations…",
         "EMPTY": "Aucune invitation ne correspond à vos critères.",
+        "PAGE_CONTEXT": "Page {{page}} · {{count}} invitation(s) affichée(s)",
         "DELIVERY_UNAVAILABLE": "L’envoi des invitations par e-mail n’est pas encore disponible.",
         "CANCEL_TITLE": "Annuler cette invitation ?",
         "CANCEL_DESCRIPTION": "Le lien d’invitation ne pourra plus être utilisé.",
@@ -2645,9 +2669,21 @@
       },
       "STATUS_CHANGE": {
         "TITLE": "Gérer le statut",
-        "SUSPENDED": { "TITLE": "Suspendre ce membre ?", "DESCRIPTION": "Le membre perdra temporairement l’accès au cabinet et à ses dossiers. Ses affectations seront conservées.", "CONFIRM": "Suspendre" },
-        "REACTIVATE": { "TITLE": "Réactiver ce membre ?", "DESCRIPTION": "Le membre retrouvera ses accès selon son rôle et ses affectations existantes.", "CONFIRM": "Réactiver" },
-        "REVOKED": { "TITLE": "Révoquer ce membre ?", "DESCRIPTION": "Le membre perdra l’accès au cabinet. Les informations historiques seront conservées.", "CONFIRM": "Révoquer" }
+        "SUSPENDED": {
+          "TITLE": "Suspendre ce membre ?",
+          "DESCRIPTION": "Le membre perdra temporairement l’accès au cabinet et à ses dossiers. Ses affectations seront conservées.",
+          "CONFIRM": "Suspendre"
+        },
+        "REACTIVATE": {
+          "TITLE": "Réactiver ce membre ?",
+          "DESCRIPTION": "Le membre retrouvera ses accès selon son rôle et ses affectations existantes.",
+          "CONFIRM": "Réactiver"
+        },
+        "REVOKED": {
+          "TITLE": "Révoquer ce membre ?",
+          "DESCRIPTION": "Le membre perdra l’accès au cabinet. Les informations historiques seront conservées.",
+          "CONFIRM": "Révoquer"
+        }
       },
       "ASSIGNMENTS": {
         "TITLE": "Accès aux dossiers",
@@ -2728,12 +2764,30 @@
       "LEAVE": "Quitter cette page",
       "EMAIL_MISMATCH_HELP": "Connectez-vous avec l’adresse utilisée pour l’invitation.",
       "STATES": {
-        "EMAIL_MISMATCH": { "TITLE": "Adresse différente", "DESCRIPTION": "Cette invitation a été envoyée à une autre adresse électronique." },
-        "EXPIRED": { "TITLE": "Invitation expirée", "DESCRIPTION": "Demandez à un administrateur du cabinet de régénérer l’invitation." },
-        "CANCELLED": { "TITLE": "Invitation annulée", "DESCRIPTION": "Ce lien ne peut plus être utilisé." },
-        "ACCEPTED": { "TITLE": "Invitation déjà acceptée", "DESCRIPTION": "Ce lien a déjà été utilisé." },
-        "INVALID": { "TITLE": "Invitation invalide", "DESCRIPTION": "Le lien est absent, incomplet ou n’est plus valide." },
-        "ERROR": { "TITLE": "Acceptation impossible", "DESCRIPTION": "Une erreur temporaire empêche l’acceptation. Demandez une nouvelle invitation si le problème persiste." }
+        "EMAIL_MISMATCH": {
+          "TITLE": "Adresse différente",
+          "DESCRIPTION": "Cette invitation a été envoyée à une autre adresse électronique."
+        },
+        "EXPIRED": {
+          "TITLE": "Invitation expirée",
+          "DESCRIPTION": "Demandez à un administrateur du cabinet de régénérer l’invitation."
+        },
+        "CANCELLED": {
+          "TITLE": "Invitation annulée",
+          "DESCRIPTION": "Ce lien ne peut plus être utilisé."
+        },
+        "ACCEPTED": {
+          "TITLE": "Invitation déjà acceptée",
+          "DESCRIPTION": "Ce lien a déjà été utilisé."
+        },
+        "INVALID": {
+          "TITLE": "Invitation invalide",
+          "DESCRIPTION": "Le lien est absent, incomplet ou n’est plus valide."
+        },
+        "ERROR": {
+          "TITLE": "Acceptation impossible",
+          "DESCRIPTION": "Une erreur temporaire empêche l’acceptation. Demandez une nouvelle invitation si le problème persiste."
+        }
       }
     },
     "WORKSPACE": {
