@@ -97,4 +97,58 @@ describe("KeyFactory", () => {
       "USER#user-1",
     );
   });
+
+  test("builds Cabinet accounting work keys and date ranges", () => {
+    expect(KeyFactory.cabinetWorkPrefix()).toBe("WORK#");
+    expect(KeyFactory.cabinetWorkSK("wrk-1")).toBe("WORK#wrk-1");
+    expect(KeyFactory.cabinetWorkDueSentinel()).toBe("9999-12-31");
+    expect(KeyFactory.cabinetWorksGSI_PK("org-cabinet")).toBe(
+      "CABINET#org-cabinet#WORKS",
+    );
+    expect(KeyFactory.cabinetWorkGSI_SK("2026-07-31", "wrk-1")).toBe(
+      "DUE#2026-07-31#WORK#wrk-1",
+    );
+    expect(KeyFactory.cabinetWorkGSI_SK(undefined, "wrk-2")).toBe(
+      "DUE#9999-12-31#WORK#wrk-2",
+    );
+    expect(
+      KeyFactory.cabinetDossierWorksGSI_PK("org-cabinet", "org-client"),
+    ).toBe("CABINET#org-cabinet#DOSSIER#org-client#WORKS");
+    expect(
+      KeyFactory.cabinetResponsibleWorksGSI_PK("org-cabinet", "user-1"),
+    ).toBe("CABINET#org-cabinet#USER#user-1#WORKS");
+    expect(KeyFactory.cabinetWorkDueRangeStart()).toBe("DUE#0000-00-00");
+    expect(KeyFactory.cabinetWorkDueRangeStart("2026-01-01")).toBe(
+      "DUE#2026-01-01",
+    );
+    expect(KeyFactory.cabinetWorkDueRangeEnd()).toBe("DUE#9999-99-99#~");
+    expect(KeyFactory.cabinetWorkDueRangeEnd("2026-12-31")).toBe(
+      "DUE#2026-12-31#~",
+    );
+  });
+
+  test("builds Cabinet deadline keys and date ranges", () => {
+    expect(KeyFactory.cabinetDeadlinePrefix()).toBe("DEADLINE#");
+    expect(KeyFactory.cabinetDeadlineSK("ddl-1")).toBe("DEADLINE#ddl-1");
+    expect(KeyFactory.cabinetDeadlinesGSI_PK("org-cabinet")).toBe(
+      "CABINET#org-cabinet#DEADLINES",
+    );
+    expect(KeyFactory.cabinetDeadlineGSI_SK("2026-08-15", "ddl-1")).toBe(
+      "DUE#2026-08-15#DEADLINE#ddl-1",
+    );
+    expect(
+      KeyFactory.cabinetDossierDeadlinesGSI_PK("org-cabinet", "org-client"),
+    ).toBe("CABINET#org-cabinet#DOSSIER#org-client#DEADLINES");
+    expect(
+      KeyFactory.cabinetResponsibleDeadlinesGSI_PK("org-cabinet", "user-1"),
+    ).toBe("CABINET#org-cabinet#USER#user-1#DEADLINES");
+    expect(KeyFactory.cabinetDeadlineDueRangeStart()).toBe("DUE#0000-00-00");
+    expect(KeyFactory.cabinetDeadlineDueRangeStart("2026-01-01")).toBe(
+      "DUE#2026-01-01",
+    );
+    expect(KeyFactory.cabinetDeadlineDueRangeEnd()).toBe("DUE#9999-99-99#~");
+    expect(KeyFactory.cabinetDeadlineDueRangeEnd("2026-12-31")).toBe(
+      "DUE#2026-12-31#~",
+    );
+  });
 });

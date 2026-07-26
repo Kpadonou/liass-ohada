@@ -76,6 +76,40 @@ export const KeyFactory = {
   ) => `CABINET#${cabinetOrgId}#DOSSIER#${dossierOrgId}#ASSIGNMENTS`,
   cabinetDossierAssignmentsGSI_SK: (userId: string) => `USER#${userId}`,
 
+  /** Cabinet accounting-work operational records. */
+  cabinetWorkPrefix: () => "WORK#",
+  cabinetWorkSK: (workId: string) => `WORK#${workId}`,
+  cabinetWorkDueSentinel: () => "9999-12-31",
+  cabinetWorksGSI_PK: (cabinetOrgId: string) =>
+    `CABINET#${cabinetOrgId}#WORKS`,
+  cabinetWorkGSI_SK: (dueDate: string | undefined, workId: string) =>
+    `DUE#${dueDate ?? KeyFactory.cabinetWorkDueSentinel()}#WORK#${workId}`,
+  cabinetDossierWorksGSI_PK: (cabinetOrgId: string, dossierOrgId: string) =>
+    `CABINET#${cabinetOrgId}#DOSSIER#${dossierOrgId}#WORKS`,
+  cabinetResponsibleWorksGSI_PK: (cabinetOrgId: string, userId: string) =>
+    `CABINET#${cabinetOrgId}#USER#${userId}#WORKS`,
+  cabinetWorkDueRangeStart: (date?: string) => `DUE#${date ?? "0000-00-00"}`,
+  cabinetWorkDueRangeEnd: (date?: string) =>
+    `DUE#${date ?? "9999-99-99"}#~`,
+
+  /** Cabinet deadline operational records. */
+  cabinetDeadlinePrefix: () => "DEADLINE#",
+  cabinetDeadlineSK: (deadlineId: string) => `DEADLINE#${deadlineId}`,
+  cabinetDeadlinesGSI_PK: (cabinetOrgId: string) =>
+    `CABINET#${cabinetOrgId}#DEADLINES`,
+  cabinetDeadlineGSI_SK: (dueDate: string, deadlineId: string) =>
+    `DUE#${dueDate}#DEADLINE#${deadlineId}`,
+  cabinetDossierDeadlinesGSI_PK: (
+    cabinetOrgId: string,
+    dossierOrgId: string,
+  ) => `CABINET#${cabinetOrgId}#DOSSIER#${dossierOrgId}#DEADLINES`,
+  cabinetResponsibleDeadlinesGSI_PK: (cabinetOrgId: string, userId: string) =>
+    `CABINET#${cabinetOrgId}#USER#${userId}#DEADLINES`,
+  cabinetDeadlineDueRangeStart: (date?: string) =>
+    `DUE#${date ?? "0000-00-00"}`,
+  cabinetDeadlineDueRangeEnd: (date?: string) =>
+    `DUE#${date ?? "9999-99-99"}#~`,
+
   /** GSI PK to list all organization dossiers linked to a cabinet */
   cabinetDossierGSI_PK: (cabinetId: string) => `CABINET#${cabinetId}`,
 

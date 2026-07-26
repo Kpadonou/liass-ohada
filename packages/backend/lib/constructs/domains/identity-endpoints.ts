@@ -132,6 +132,58 @@ export class IdentityEndpoints extends DomainConstructFactory {
       });
     }
 
+    const cabinetOperationsRoutes = [
+      ["list-cabinet-works", apigw.HttpMethod.GET, "/cabinet/works"],
+      ["create-cabinet-work", apigw.HttpMethod.POST, "/cabinet/works"],
+      ["get-cabinet-work", apigw.HttpMethod.GET, "/cabinet/works/{workId}"],
+      ["update-cabinet-work", apigw.HttpMethod.PATCH, "/cabinet/works/{workId}"],
+      [
+        "update-cabinet-work-status",
+        apigw.HttpMethod.PATCH,
+        "/cabinet/works/{workId}/status",
+      ],
+      ["list-cabinet-deadlines", apigw.HttpMethod.GET, "/cabinet/deadlines"],
+      ["create-cabinet-deadline", apigw.HttpMethod.POST, "/cabinet/deadlines"],
+      [
+        "get-cabinet-deadline",
+        apigw.HttpMethod.GET,
+        "/cabinet/deadlines/{deadlineId}",
+      ],
+      [
+        "update-cabinet-deadline",
+        apigw.HttpMethod.PATCH,
+        "/cabinet/deadlines/{deadlineId}",
+      ],
+      [
+        "update-cabinet-deadline-status",
+        apigw.HttpMethod.PATCH,
+        "/cabinet/deadlines/{deadlineId}/status",
+      ],
+    ] as const;
+
+    for (const [handlerName, method, routePath] of cabinetOperationsRoutes) {
+      this.addRoute({
+        actionName: handlerName,
+        api: props.api,
+        authorizer: props.authorizer,
+        domainName: "identity",
+        handlerEntry: path.join(
+          projectRoot,
+          "lambda",
+          "domains",
+          "identity",
+          `${handlerName}.ts`,
+        ),
+        idPrefix: "Identity-",
+        lambdaRole: props.lambdaRole,
+        method,
+        routePath,
+        routeInDomainStack: true,
+        stage: props.stage,
+        table: props.table,
+      });
+    }
+
     const createWorkspaceEntry = path.join(
       projectRoot,
       "lambda",
