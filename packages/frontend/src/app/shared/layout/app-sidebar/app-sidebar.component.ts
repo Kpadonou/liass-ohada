@@ -146,16 +146,16 @@ const cabinetItems: readonly ShellNavItem[] = [
     route: '/cabinet/team'
   },
   {
-    disabled: true,
     icon: 'assignment',
     labelKey: 'SHELL.NAV.MISSIONS',
-    page: 'cabinet.missions'
+    page: 'cabinet.missions',
+    route: '/cabinet/works'
   },
   {
-    disabled: true,
     icon: 'event_upcoming',
     labelKey: 'SHELL.NAV.DEADLINES',
-    page: 'cabinet.deadlines'
+    page: 'cabinet.deadlines',
+    route: '/cabinet/deadlines'
   },
   {
     disabled: true,

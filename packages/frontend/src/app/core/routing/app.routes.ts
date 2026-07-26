@@ -145,6 +145,22 @@ export const routes: Routes = [
         canActivate: [cabinetDashboardGuard]
       },
       {
+        path: 'cabinet/works',
+        loadComponent: () =>
+          import('../../domains/identity/feature/cabinet-operations/cabinet-works.page').then(
+            (module) => module.CabinetWorksPage
+          ),
+        canActivate: [cabinetDashboardGuard]
+      },
+      {
+        path: 'cabinet/deadlines',
+        loadComponent: () =>
+          import(
+            '../../domains/identity/feature/cabinet-operations/cabinet-deadlines.page'
+          ).then((module) => module.CabinetDeadlinesPage),
+        canActivate: [cabinetDashboardGuard]
+      },
+      {
         path: 'cabinet/team',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-team/cabinet-team.page').then(

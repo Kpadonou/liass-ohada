@@ -31,6 +31,7 @@ const pageLabelKeys: Record<AppPage, string> = {
   reports: 'SHELL.NAV.REPORTS',
   treasury: 'SHELL.NAV.TREASURY'
 };
+const cabinetOperationsPages = new Set<AppPage>(['cabinet.missions', 'cabinet.deadlines']);
 
 @Component({
   selector: 'liass-app-context-breadcrumb',
@@ -42,6 +43,10 @@ export class AppContextBreadcrumbComponent {
   private readonly uiStore = inject(UiStore);
 
   protected readonly contextNames = computed(() => {
+    if (cabinetOperationsPages.has(this.uiStore.currentPage())) {
+      return ['CLO COMPTABILITÉ'];
+    }
+
     const workspaceName = this.authStore.activeWorkspaceDisplayName();
     const dossierName = this.authStore.activeDossierDisplayName();
 

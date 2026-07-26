@@ -1,0 +1,184 @@
+<div class="space-y-6">
+  <liass-page-header
+    [eyebrow]="'IDENTITY.CABINET_OPERATIONS.EYEBROW' | transloco"
+    [title]="'IDENTITY.CABINET_OPERATIONS.WORK.PAGE_TITLE' | transloco"
+    [subtitle]="'IDENTITY.CABINET_OPERATIONS.WORK.PAGE_SUBTITLE' | transloco"
+    [actionLabel]="capabilities.canCreateCabinetWork() ? ('IDENTITY.CABINET_OPERATIONS.WORK.NEW' | transloco) : null"
+    actionIcon="add"
+    (actionTriggered)="openCreateDialog()"
+  />
+
+  @if (actionErrorKey()) {
+    <div class="flex items-start gap-3 rounded-app-card border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+      <mat-icon class="mt-0.5 text-red-600 dark:text-red-300">error</mat-icon>
+      <p>{{ actionErrorKey()! | transloco }}</p>
+    </div>
+  }
+
+  <liass-card [title]="'IDENTITY.CABINET_OPERATIONS.FILTERS.TITLE' | transloco">
+    <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'IDENTITY.CABINET_OPERATIONS.FIELDS.DOSSIER' | transloco }}</mat-label>
+        <mat-select [value]="dossierOrgId()" (valueChange)="updateSignal(dossierOrgId, $event)">
+          <mat-option value="ALL">{{ 'IDENTITY.CABINET_OPERATIONS.FILTERS.ALL_DOSSIERS' | transloco }}</mat-option>
+          @for (dossier of activeDossiers(); track dossier.orgId) {
+            <mat-option [value]="dossier.orgId">{{ dossier.displayName }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'IDENTITY.CABINET_OPERATIONS.FIELDS.TYPE' | transloco }}</mat-label>
+        <mat-select [value]="type()" (valueChange)="type.set($event); cursor.set(undefined); cursorHistory.set([])">
+          <mat-option value="ALL">{{ 'IDENTITY.CABINET_OPERATIONS.FILTERS.ALL_TYPES' | transloco }}</mat-option>
+          @for (item of types; track item) {
+            <mat-option [value]="item">{{ workTypeKey(item) | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'IDENTITY.CABINET_OPERATIONS.FIELDS.STATUS' | transloco }}</mat-label>
+        <mat-select [value]="status()" (valueChange)="status.set($event); cursor.set(undefined); cursorHistory.set([])">
+          <mat-option value="ALL">{{ 'IDENTITY.CABINET_OPERATIONS.FILTERS.ALL_STATUSES' | transloco }}</mat-option>
+          @for (item of statuses; track item) {
+            <mat-option [value]="item">{{ workStatusKey(item) | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'IDENTITY.CABINET_OPERATIONS.FIELDS.PRIORITY' | transloco }}</mat-label>
+        <mat-select [value]="priority()" (valueChange)="priority.set($event); cursor.set(undefined); cursorHistory.set([])">
+          <mat-option value="ALL">{{ 'IDENTITY.CABINET_OPERATIONS.FILTERS.ALL_PRIORITIES' | transloco }}</mat-option>
+          @for (item of priorities; track item) {
+            <mat-option [value]="item">{{ priorityKey(item) | transloco }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'IDENTITY.CABINET_OPERATIONS.FIELDS.RESPONSIBLE' | transloco }}</mat-label>
+        <mat-select [value]="responsibleUserId()" (valueChange)="updateSignal(responsibleUserId, $event)">
+          <mat-option value="ALL">{{ 'IDENTITY.CABINET_OPERATIONS.FILTERS.ALL_RESPONSIBLES' | transloco }}</mat-option>
+          @for (member of eligibleMembers(); track member.userId) {
+            <mat-option [value]="member.userId">{{ memberName(member.userId, member.displayName) }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'IDENTITY.CABINET_OPERATIONS.FIELDS.DUE_FROM' | transloco }}</mat-label>
+        <input matInput type="date" [value]="dueFrom()" (input)="updateDate(dueFrom, $event)" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>{{ 'IDENTITY.CABINET_OPERATIONS.FIELDS.DUE_TO' | transloco }}</mat-label>
+        <input matInput type="date" [value]="dueTo()" (input)="updateDate(dueTo, $event)" />
+      </mat-form-field>
+      <div class="flex flex-wrap items-center gap-2">
+        <liass-button size="sm" tone="brand" variant="soft" icon="person" (pressed)="setMyWork()">
+          {{ 'IDENTITY.CABINET_OPERATIONS.WORK.MY_WORK' | transloco }}
+        </liass-button>
+        @if (hasFilters()) {
+          <liass-button size="sm" tone="neutral" variant="outline" icon="close" (pressed)="resetFilters()">
+            {{ 'IDENTITY.CABINET_OPERATIONS.ACTIONS.CLEAR_FILTERS' | transloco }}
+          </liass-button>
+        }
+      </div>
+    </div>
+  </liass-card>
+
+  <liass-card [title]="'IDENTITY.CABINET_OPERATIONS.WORK.TABLE_TITLE' | transloco">
+    @if (worksQuery.isLoading()) {
+      <div class="space-y-3" aria-live="polite">
+        <div class="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+          <mat-spinner diameter="20"></mat-spinner>
+          <span>{{ 'IDENTITY.CABINET_OPERATIONS.WORK.LOADING' | transloco }}</span>
+        </div>
+        @for (_ of [0,1,2,3]; track $index) {
+          <liass-skeleton variant="block" />
+        }
+      </div>
+    } @else if (worksQuery.isError()) {
+      <div class="rounded-app-card border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+        {{ 'IDENTITY.CABINET_OPERATIONS.ERRORS.WORK_LOAD_FAILED' | transloco }}
+        <liass-button class="ml-2" size="sm" tone="danger" variant="ghost" icon="refresh" (pressed)="worksQuery.refetch()">
+          {{ 'IDENTITY.CABINET_OPERATIONS.ACTIONS.RETRY' | transloco }}
+        </liass-button>
+      </div>
+    } @else if ((worksQuery.data()?.works ?? []).length === 0) {
+      <div class="rounded-app-card border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center dark:border-slate-800 dark:bg-slate-950">
+        <mat-icon class="text-brand-700 dark:text-brand-300">assignment</mat-icon>
+        <p class="mt-3 text-base font-semibold text-slate-950 dark:text-white">{{ 'IDENTITY.CABINET_OPERATIONS.WORK.EMPTY_TITLE' | transloco }}</p>
+        <p class="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600 dark:text-slate-400">{{ 'IDENTITY.CABINET_OPERATIONS.WORK.EMPTY_SUBTITLE' | transloco }}</p>
+        @if (capabilities.canCreateCabinetWork()) {
+          <div class="mt-5">
+            <liass-button tone="brand" variant="solid" icon="add" (pressed)="openCreateDialog()">{{ 'IDENTITY.CABINET_OPERATIONS.WORK.NEW' | transloco }}</liass-button>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="overflow-x-auto rounded-app-card border border-slate-200 dark:border-slate-800">
+        <table class="liass-data-table w-full min-w-[1080px] border-collapse text-left">
+          <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+            <tr>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.DOSSIER' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.WORK' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.TYPE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.RESPONSIBLE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.PERIOD' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.DUE_DATE' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.PRIORITY' | transloco }}</th>
+              <th class="px-4 py-3">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.STATUS' | transloco }}</th>
+              <th class="px-4 py-3 text-right">{{ 'IDENTITY.CABINET_OPERATIONS.COLUMNS.ACTIONS' | transloco }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            @for (work of worksQuery.data()?.works ?? []; track work.workId) {
+              <tr class="bg-white transition hover:bg-brand-50/55 dark:bg-slate-900 dark:hover:bg-brand-950/20">
+                <td class="px-4 py-4 text-sm font-medium text-slate-800 dark:text-slate-200">{{ dossierName(work) }}</td>
+                <td class="px-4 py-4">
+                  <p class="font-semibold text-slate-950 dark:text-white">{{ work.title }}</p>
+                  @if (work.description) {
+                    <p class="mt-1 max-w-[260px] truncate text-sm text-slate-500 dark:text-slate-400">{{ work.description }}</p>
+                  }
+                </td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ workTypeKey(work.type) | transloco }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ memberName(work.responsibleUserId, work.responsibleDisplayName) }}</td>
+                <td class="px-4 py-4 text-sm text-slate-600 dark:text-slate-400">{{ periodLabel(work) }}</td>
+                <td class="px-4 py-4 text-sm">
+                  <span class="text-slate-700 dark:text-slate-300">{{ dateLabel(work.dueDate) }}</span>
+                  @if (isWorkOverdue(work)) {
+                    <liass-status-chip class="ml-2" [label]="'IDENTITY.CABINET_OPERATIONS.OVERDUE' | transloco" tone="danger" size="sm" />
+                  }
+                </td>
+                <td class="px-4 py-4"><liass-status-chip [label]="priorityKey(work.priority) | transloco" [tone]="priorityTone(work.priority)" size="sm" /></td>
+                <td class="px-4 py-4"><liass-status-chip [label]="workStatusKey(work.status) | transloco" [tone]="workStatusTone(work.status)" size="sm" /></td>
+                <td class="px-4 py-4 text-right">
+                  <button mat-icon-button [matMenuTriggerFor]="workMenu" [attr.aria-label]="'IDENTITY.CABINET_OPERATIONS.WORK.ACTION_MENU' | transloco: { name: work.title }">
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #workMenu="matMenu">
+                    <button mat-menu-item (click)="openDetails(work)"><mat-icon>visibility</mat-icon><span>{{ 'IDENTITY.CABINET_OPERATIONS.ACTIONS.VIEW' | transloco }}</span></button>
+                    @if (capabilities.canEditCabinetWork(work)) {
+                      <button mat-menu-item (click)="openEdit(work)"><mat-icon>edit</mat-icon><span>{{ 'IDENTITY.CABINET_OPERATIONS.ACTIONS.EDIT' | transloco }}</span></button>
+                    }
+                    @for (target of validTransitions(work); track target) {
+                      <button mat-menu-item [disabled]="mutatingId() === work.workId" (click)="updateStatus(work, target)">
+                        <mat-icon>{{ target === 'CANCELLED' ? 'cancel' : target === 'COMPLETED' ? 'task_alt' : 'published_with_changes' }}</mat-icon>
+                        <span>{{ workTransitionKey(target) | transloco }}</span>
+                      </button>
+                    }
+                  </mat-menu>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 flex items-center justify-between">
+        <span class="text-sm text-slate-500 dark:text-slate-400">{{ 'IDENTITY.CABINET_OPERATIONS.PAGINATION.PAGE' | transloco: { page: cursorHistory().length + 1 } }}</span>
+        <div class="flex gap-2">
+          <liass-button size="sm" variant="outline" icon="chevron_left" [disabled]="cursorHistory().length === 0" (pressed)="previousPage()">{{ 'IDENTITY.CABINET_OPERATIONS.PAGINATION.PREVIOUS' | transloco }}</liass-button>
+          <liass-button size="sm" variant="outline" icon="chevron_right" [disabled]="!worksQuery.data()?.nextCursor" (pressed)="nextPage()">{{ 'IDENTITY.CABINET_OPERATIONS.PAGINATION.NEXT' | transloco }}</liass-button>
+        </div>
+      </div>
+    }
+  </liass-card>
+</div>

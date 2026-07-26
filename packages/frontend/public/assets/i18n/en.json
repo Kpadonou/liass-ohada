@@ -2501,6 +2501,194 @@
         "COMPANY_NAME": "Enter the client company name."
       }
     },
+    "CABINET_OPERATIONS": {
+      "EYEBROW": "Cabinet",
+      "NONE": "None",
+      "OVERDUE": "Overdue",
+      "ASSIGNED_MEMBER": "Assigned member",
+      "UPCOMING": "Upcoming",
+      "UNASSIGNED": "Unassigned",
+      "UNKNOWN_DOSSIER": "Client dossier",
+      "LINKED_WORK_AVAILABLE": "Linked work",
+      "ACTIONS": {
+        "CANCEL": "Cancel",
+        "CLEAR_FILTERS": "Reset",
+        "CLOSE": "Close",
+        "CREATE": "Create",
+        "EDIT": "Edit",
+        "RETRY": "Retry",
+        "SAVE": "Save",
+        "VIEW": "View"
+      },
+      "COLUMNS": {
+        "ACTIONS": "Actions",
+        "DATE": "Date",
+        "DEADLINE": "Deadline",
+        "DOSSIER": "Dossier",
+        "DUE_DATE": "Due date",
+        "LINKED_WORK": "Linked work",
+        "PERIOD": "Period",
+        "PRIORITY": "Priority",
+        "RESPONSIBLE": "Responsible",
+        "STATUS": "Status",
+        "TYPE": "Type",
+        "WORK": "Work"
+      },
+      "FIELDS": {
+        "DESCRIPTION": "Description",
+        "DOSSIER": "Client dossier",
+        "DUE_DATE": "Due date",
+        "DUE_FROM": "Due from",
+        "DUE_TO": "Due to",
+        "LINKED_WORK": "Linked work",
+        "PARTICIPANTS": "Participants",
+        "PERIOD": "Period",
+        "PERIOD_END": "Period end",
+        "PERIOD_START": "Period start",
+        "PRIORITY": "Priority",
+        "RESPONSIBLE": "Responsible",
+        "SELECTED_COUNT": "{{count}} selected",
+        "START_DATE": "Start date",
+        "STATUS": "Status",
+        "TITLE": "Title",
+        "TYPE": "Type"
+      },
+      "FILTERS": {
+        "ALL": "All",
+        "ALL_DOSSIERS": "All dossiers",
+        "ALL_PRIORITIES": "All priorities",
+        "ALL_RESPONSIBLES": "All responsible members",
+        "ALL_STATUSES": "All statuses",
+        "ALL_TYPES": "All types",
+        "COMPLETED": "Completed",
+        "TITLE": "Filters"
+      },
+      "PAGINATION": {
+        "NEXT": "Next",
+        "PAGE": "Page {{page}}",
+        "PREVIOUS": "Previous"
+      },
+      "PRIORITY": {
+        "HIGH": "High",
+        "LOW": "Low",
+        "NORMAL": "Normal",
+        "URGENT": "Urgent"
+      },
+      "VALIDATION": {
+        "DATE_RANGE": "The start date must be before the due date.",
+        "DOSSIER_REQUIRED": "Choose a client dossier.",
+        "DUE_DATE_REQUIRED": "Enter a due date.",
+        "PERIOD_RANGE": "The period start must be before the period end.",
+        "TITLE_REQUIRED": "Enter a title."
+      },
+      "WORK": {
+        "ACTION_MENU": "Actions for {{name}}",
+        "CANCEL_TITLE": "Cancel this work?",
+        "CONFIRM_CANCEL": "The work “{{name}}” will be marked as cancelled.",
+        "CREATE_TITLE": "New work",
+        "DETAIL_TITLE": "Work details",
+        "EDIT_TITLE": "Edit work",
+        "EMPTY_SUBTITLE": "Create work to organize the cabinet’s next actions.",
+        "EMPTY_TITLE": "No accounting work matches your criteria.",
+        "LOADING": "Loading accounting work...",
+        "MY_WORK": "My responsible work",
+        "NEW": "New work",
+        "PAGE_SUBTITLE": "Plan and track work to complete for the cabinet’s client dossiers.",
+        "PAGE_TITLE": "Accounting work",
+        "TABLE_TITLE": "Work list",
+        "STATUS": {
+          "CANCELLED": "Cancelled",
+          "COMPLETED": "Completed",
+          "IN_PROGRESS": "In progress",
+          "TO_DO": "To do",
+          "TO_PLAN": "To plan",
+          "WAITING": "Waiting"
+        },
+        "TRANSITIONS": {
+          "CANCELLED": "Cancel",
+          "COMPLETED": "Complete",
+          "IN_PROGRESS": "Start",
+          "TO_DO": "Move to “To do”",
+          "TO_PLAN": "To plan",
+          "WAITING": "Put on hold"
+        },
+        "TYPES": {
+          "ACCOUNTING_ENTRY": "Accounting entry",
+          "ACCOUNT_REVIEW": "Account review",
+          "ANNUAL_CLOSE": "Annual close",
+          "BANK_RECONCILIATION": "Bank reconciliation",
+          "FINANCIAL_STATEMENTS": "Financial statements",
+          "MONTHLY_CLOSE": "Monthly close",
+          "OTHER": "Other",
+          "TAX_DECLARATION": "Tax declaration"
+        }
+      },
+      "DEADLINE": {
+        "ACTION_MENU": "Actions for {{name}}",
+        "CANCEL_TITLE": "Cancel this deadline?",
+        "CONFIRM_CANCEL": "The deadline “{{name}}” will be marked as cancelled.",
+        "CREATE_TITLE": "New deadline",
+        "DETAIL_TITLE": "Deadline details",
+        "EDIT_TITLE": "Edit deadline",
+        "EMPTY_SUBTITLE": "Add a deadline to track an important date.",
+        "EMPTY_TITLE": "No deadline matches your criteria.",
+        "LOADING": "Loading deadlines...",
+        "MY_DEADLINES": "My deadlines",
+        "NEW": "New deadline",
+        "PAGE_SUBTITLE": "Track important dates and commitments for client dossiers.",
+        "PAGE_TITLE": "Deadlines",
+        "TABLE_TITLE": "Deadline list",
+        "STATUS": {
+          "CANCELLED": "Cancelled",
+          "COMPLETED": "Completed",
+          "PENDING": "Pending"
+        },
+        "TRANSITIONS": {
+          "CANCELLED": "Cancel deadline",
+          "COMPLETED": "Mark as completed",
+          "PENDING": "Pending"
+        },
+        "TYPES": {
+          "ACCOUNTING": "Accounting",
+          "CLIENT": "Client",
+          "INTERNAL": "Internal",
+          "OTHER": "Other",
+          "REGULATORY": "Regulatory",
+          "TAX": "Tax"
+        }
+      },
+      "NOTIFICATIONS": {
+        "DEADLINE_CANCELLED": "Deadline cancelled.",
+        "DEADLINE_COMPLETED": "Deadline completed.",
+        "DEADLINE_CREATED": "Deadline created.",
+        "DEADLINE_UPDATED": "Deadline updated.",
+        "WORK_CANCELLED": "Work cancelled.",
+        "WORK_CREATED": "Work created.",
+        "WORK_STATUS_UPDATED": "Work status updated.",
+        "WORK_UPDATED": "Work updated."
+      },
+      "ERRORS": {
+        "DEADLINE_DOSSIER_FORBIDDEN": "You cannot manage deadlines for this dossier.",
+        "DEADLINE_LINKED_WORK_DOSSIER_MISMATCH": "The selected work belongs to another client dossier.",
+        "DEADLINE_LOAD_FAILED": "Deadlines could not be loaded. Please retry.",
+        "DEADLINE_MUTATION_FAILED": "The deadline could not be updated. Please retry.",
+        "DEADLINE_NOT_FOUND": "This deadline no longer exists or is no longer accessible.",
+        "DEADLINE_RESPONSIBLE_INVALID": "The selected responsible member cannot be assigned to this deadline.",
+        "DEADLINE_STATUS_TRANSITION_INVALID": "This status change is no longer allowed.",
+        "DEADLINE_STATUS_UPDATE_FORBIDDEN": "You are not allowed to update this deadline status.",
+        "STALE_STATE": "The state changed after this page loaded. The list has been refreshed.",
+        "WORK_ASSIGNEE_INVALID": "The selected responsible member cannot be assigned to this work.",
+        "WORK_DATE_RANGE_INVALID": "The entered dates do not form a valid period.",
+        "WORK_DOSSIER_FORBIDDEN": "You cannot manage work for this dossier.",
+        "WORK_LOAD_FAILED": "Accounting work could not be loaded. Please retry.",
+        "WORK_MUTATION_FAILED": "The work could not be updated. Please retry.",
+        "WORK_NOT_FOUND": "This work no longer exists or is no longer accessible.",
+        "WORK_PARTICIPANT_INVALID": "One or more participants cannot be assigned to this work.",
+        "WORK_READER_NOT_ASSIGNABLE": "A read-only user cannot be responsible for or participate in work.",
+        "WORK_STATUS_TRANSITION_INVALID": "This status change is no longer allowed.",
+        "WORK_STATUS_UPDATE_FORBIDDEN": "You are not allowed to update this work status."
+      }
+    },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
       "TITLE": "Welcome back",

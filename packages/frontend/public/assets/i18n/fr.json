@@ -2501,6 +2501,194 @@
         "COMPANY_NAME": "Saisissez le nom de l’entreprise cliente."
       }
     },
+    "CABINET_OPERATIONS": {
+      "EYEBROW": "Cabinet",
+      "NONE": "Aucun",
+      "OVERDUE": "En retard",
+      "ASSIGNED_MEMBER": "Membre affecté",
+      "UPCOMING": "À venir",
+      "UNASSIGNED": "Non affecté",
+      "UNKNOWN_DOSSIER": "Dossier client",
+      "LINKED_WORK_AVAILABLE": "Travail associé",
+      "ACTIONS": {
+        "CANCEL": "Annuler",
+        "CLEAR_FILTERS": "Réinitialiser",
+        "CLOSE": "Fermer",
+        "CREATE": "Créer",
+        "EDIT": "Modifier",
+        "RETRY": "Réessayer",
+        "SAVE": "Enregistrer",
+        "VIEW": "Voir"
+      },
+      "COLUMNS": {
+        "ACTIONS": "Actions",
+        "DATE": "Date",
+        "DEADLINE": "Échéance",
+        "DOSSIER": "Dossier",
+        "DUE_DATE": "Échéance",
+        "LINKED_WORK": "Travail associé",
+        "PERIOD": "Période",
+        "PRIORITY": "Priorité",
+        "RESPONSIBLE": "Responsable",
+        "STATUS": "Statut",
+        "TYPE": "Type",
+        "WORK": "Travail"
+      },
+      "FIELDS": {
+        "DESCRIPTION": "Description",
+        "DOSSIER": "Dossier client",
+        "DUE_DATE": "Date d’échéance",
+        "DUE_FROM": "Échéance du",
+        "DUE_TO": "Échéance au",
+        "LINKED_WORK": "Travail associé",
+        "PARTICIPANTS": "Participants",
+        "PERIOD": "Période",
+        "PERIOD_END": "Fin de période",
+        "PERIOD_START": "Début de période",
+        "PRIORITY": "Priorité",
+        "RESPONSIBLE": "Responsable",
+        "SELECTED_COUNT": "{{count}} sélectionné(s)",
+        "START_DATE": "Date de début",
+        "STATUS": "Statut",
+        "TITLE": "Titre",
+        "TYPE": "Type"
+      },
+      "FILTERS": {
+        "ALL": "Toutes",
+        "ALL_DOSSIERS": "Tous les dossiers",
+        "ALL_PRIORITIES": "Toutes les priorités",
+        "ALL_RESPONSIBLES": "Tous les responsables",
+        "ALL_STATUSES": "Tous les statuts",
+        "ALL_TYPES": "Tous les types",
+        "COMPLETED": "Terminées",
+        "TITLE": "Filtres"
+      },
+      "PAGINATION": {
+        "NEXT": "Suivant",
+        "PAGE": "Page {{page}}",
+        "PREVIOUS": "Précédent"
+      },
+      "PRIORITY": {
+        "HIGH": "Élevée",
+        "LOW": "Faible",
+        "NORMAL": "Normale",
+        "URGENT": "Urgente"
+      },
+      "VALIDATION": {
+        "DATE_RANGE": "La date de début doit précéder l’échéance.",
+        "DOSSIER_REQUIRED": "Choisissez un dossier client.",
+        "DUE_DATE_REQUIRED": "Saisissez une date d’échéance.",
+        "PERIOD_RANGE": "La période de début doit précéder la période de fin.",
+        "TITLE_REQUIRED": "Saisissez un titre."
+      },
+      "WORK": {
+        "ACTION_MENU": "Actions pour {{name}}",
+        "CANCEL_TITLE": "Annuler ce travail ?",
+        "CONFIRM_CANCEL": "Le travail « {{name}} » passera en état annulé.",
+        "CREATE_TITLE": "Nouveau travail",
+        "DETAIL_TITLE": "Détail du travail",
+        "EDIT_TITLE": "Modifier le travail",
+        "EMPTY_SUBTITLE": "Créez un travail pour organiser les prochaines actions du cabinet.",
+        "EMPTY_TITLE": "Aucun travail comptable ne correspond à vos critères.",
+        "LOADING": "Chargement des travaux comptables...",
+        "MY_WORK": "Mes travaux en responsabilité",
+        "NEW": "Nouveau travail",
+        "PAGE_SUBTITLE": "Planifiez et suivez les travaux à réaliser pour les dossiers clients du cabinet.",
+        "PAGE_TITLE": "Travaux comptables",
+        "TABLE_TITLE": "Liste des travaux",
+        "STATUS": {
+          "CANCELLED": "Annulé",
+          "COMPLETED": "Terminé",
+          "IN_PROGRESS": "En cours",
+          "TO_DO": "À faire",
+          "TO_PLAN": "À planifier",
+          "WAITING": "En attente"
+        },
+        "TRANSITIONS": {
+          "CANCELLED": "Annuler",
+          "COMPLETED": "Terminer",
+          "IN_PROGRESS": "Démarrer",
+          "TO_DO": "Passer à « À faire »",
+          "TO_PLAN": "À planifier",
+          "WAITING": "Mettre en attente"
+        },
+        "TYPES": {
+          "ACCOUNTING_ENTRY": "Saisie comptable",
+          "ACCOUNT_REVIEW": "Révision des comptes",
+          "ANNUAL_CLOSE": "Clôture annuelle",
+          "BANK_RECONCILIATION": "Rapprochement bancaire",
+          "FINANCIAL_STATEMENTS": "États financiers",
+          "MONTHLY_CLOSE": "Clôture mensuelle",
+          "OTHER": "Autre",
+          "TAX_DECLARATION": "Déclaration fiscale"
+        }
+      },
+      "DEADLINE": {
+        "ACTION_MENU": "Actions pour {{name}}",
+        "CANCEL_TITLE": "Annuler cette échéance ?",
+        "CONFIRM_CANCEL": "L’échéance « {{name}} » passera en état annulé.",
+        "CREATE_TITLE": "Nouvelle échéance",
+        "DETAIL_TITLE": "Détail de l’échéance",
+        "EDIT_TITLE": "Modifier l’échéance",
+        "EMPTY_SUBTITLE": "Ajoutez une échéance pour suivre une date importante.",
+        "EMPTY_TITLE": "Aucune échéance ne correspond à vos critères.",
+        "LOADING": "Chargement des échéances...",
+        "MY_DEADLINES": "Mes échéances",
+        "NEW": "Nouvelle échéance",
+        "PAGE_SUBTITLE": "Suivez les dates importantes et les engagements à respecter pour les dossiers clients.",
+        "PAGE_TITLE": "Échéances",
+        "TABLE_TITLE": "Liste des échéances",
+        "STATUS": {
+          "CANCELLED": "Annulée",
+          "COMPLETED": "Terminée",
+          "PENDING": "En attente"
+        },
+        "TRANSITIONS": {
+          "CANCELLED": "Annuler l’échéance",
+          "COMPLETED": "Marquer comme terminée",
+          "PENDING": "En attente"
+        },
+        "TYPES": {
+          "ACCOUNTING": "Comptable",
+          "CLIENT": "Client",
+          "INTERNAL": "Interne",
+          "OTHER": "Autre",
+          "REGULATORY": "Réglementaire",
+          "TAX": "Fiscale"
+        }
+      },
+      "NOTIFICATIONS": {
+        "DEADLINE_CANCELLED": "Échéance annulée.",
+        "DEADLINE_COMPLETED": "Échéance terminée.",
+        "DEADLINE_CREATED": "Échéance créée.",
+        "DEADLINE_UPDATED": "Échéance mise à jour.",
+        "WORK_CANCELLED": "Travail annulé.",
+        "WORK_CREATED": "Travail créé.",
+        "WORK_STATUS_UPDATED": "Statut du travail mis à jour.",
+        "WORK_UPDATED": "Travail mis à jour."
+      },
+      "ERRORS": {
+        "DEADLINE_DOSSIER_FORBIDDEN": "Vous ne pouvez pas gérer les échéances de ce dossier.",
+        "DEADLINE_LINKED_WORK_DOSSIER_MISMATCH": "Le travail sélectionné appartient à un autre dossier client.",
+        "DEADLINE_LOAD_FAILED": "Les échéances n’ont pas pu être chargées. Veuillez réessayer.",
+        "DEADLINE_MUTATION_FAILED": "L’échéance n’a pas pu être mise à jour. Veuillez réessayer.",
+        "DEADLINE_NOT_FOUND": "Cette échéance n’existe plus ou n’est plus accessible.",
+        "DEADLINE_RESPONSIBLE_INVALID": "Le responsable sélectionné ne peut pas être affecté à cette échéance.",
+        "DEADLINE_STATUS_TRANSITION_INVALID": "Ce changement de statut n’est plus autorisé.",
+        "DEADLINE_STATUS_UPDATE_FORBIDDEN": "Vous n’êtes pas autorisé à modifier le statut de cette échéance.",
+        "STALE_STATE": "L’état a changé depuis l’affichage. La liste a été actualisée.",
+        "WORK_ASSIGNEE_INVALID": "Le responsable sélectionné ne peut pas être affecté à ce travail.",
+        "WORK_DATE_RANGE_INVALID": "Les dates renseignées ne forment pas une période valide.",
+        "WORK_DOSSIER_FORBIDDEN": "Vous ne pouvez pas gérer des travaux pour ce dossier.",
+        "WORK_LOAD_FAILED": "Les travaux comptables n’ont pas pu être chargés. Veuillez réessayer.",
+        "WORK_MUTATION_FAILED": "Le travail n’a pas pu être mis à jour. Veuillez réessayer.",
+        "WORK_NOT_FOUND": "Ce travail n’existe plus ou n’est plus accessible.",
+        "WORK_PARTICIPANT_INVALID": "Un ou plusieurs participants ne peuvent pas être affectés à ce travail.",
+        "WORK_READER_NOT_ASSIGNABLE": "Un utilisateur en lecture seule ne peut pas être responsable ou participant d’un travail.",
+        "WORK_STATUS_TRANSITION_INVALID": "Ce changement de statut n’est plus autorisé.",
+        "WORK_STATUS_UPDATE_FORBIDDEN": "Vous n’êtes pas autorisé à modifier le statut de ce travail."
+      }
+    },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
       "TITLE": "Se connecter",
