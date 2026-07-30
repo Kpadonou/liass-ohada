@@ -9,10 +9,12 @@ import {
   appRootRedirectGuard,
   authGuard,
   cabinetDashboardGuard,
+  cabinetSettingsGuard,
   cabinetTeamGuard,
   cabinetDossierGuard,
   loginRedirectGuard,
   invitationAcceptanceGuard,
+  pendingChangesGuard,
   tenantGuard
 } from './auth.guards';
 
@@ -167,6 +169,15 @@ export const routes: Routes = [
             (module) => module.CabinetTeamPage
           ),
         canActivate: [cabinetTeamGuard]
+      },
+      {
+        path: 'cabinet/settings',
+        loadComponent: () =>
+          import('../../domains/identity/feature/cabinet-settings/cabinet-settings.page').then(
+            (module) => module.CabinetSettingsPage
+          ),
+        canActivate: [cabinetSettingsGuard],
+        canDeactivate: [pendingChangesGuard]
       },
       {
         path: 'accounting',

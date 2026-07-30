@@ -1,0 +1,264 @@
+<div class="space-y-5">
+  <liass-page-header
+    [eyebrow]="'IDENTITY.CABINET_SETTINGS.EYEBROW' | transloco"
+    [title]="'IDENTITY.CABINET_SETTINGS.TITLE' | transloco"
+    [subtitle]="'IDENTITY.CABINET_SETTINGS.SUBTITLE' | transloco"
+  />
+
+  @if (settingsQuery.isPending() && !authoritative()) {
+    <div class="space-y-4" aria-live="polite">
+      <p class="sr-only">{{ 'IDENTITY.CABINET_SETTINGS.LOADING' | transloco }}</p>
+      @for (_ of [0, 1, 2, 3]; track $index) {
+        <liass-card state="loading" />
+      }
+      <div class="sticky bottom-3 flex justify-end gap-2 rounded-app-card border border-app-border bg-app-surface/95 p-3 shadow-app-card backdrop-blur">
+        <liass-button [disabled]="true">
+          {{ 'IDENTITY.CABINET_SETTINGS.ACTIONS.DISCARD' | transloco }}
+        </liass-button>
+        <liass-button tone="brand" variant="solid" [disabled]="true">
+          {{ 'IDENTITY.CABINET_SETTINGS.ACTIONS.SAVE' | transloco }}
+        </liass-button>
+      </div>
+    </div>
+  } @else if (settingsQuery.isError() && !authoritative()) {
+    <liass-card variant="muted">
+      <div class="flex flex-col gap-4 rounded-app-card border border-danger-200 bg-danger-50 p-4 text-danger-600 dark:border-rose-900 dark:bg-rose-950/25 dark:text-rose-200 sm:flex-row sm:items-start" role="alert">
+        <mat-icon class="shrink-0">error_outline</mat-icon>
+        <div class="min-w-0 flex-1">
+          <h2 class="text-base font-semibold">{{ 'IDENTITY.CABINET_SETTINGS.LOAD_ERROR.TITLE' | transloco }}</h2>
+          <p class="mt-1 text-sm leading-6">{{ loadErrorDescriptionKey() | transloco }}</p>
+        </div>
+        <liass-button tone="danger" variant="solid" icon="refresh" (pressed)="retry()">
+          {{ 'IDENTITY.CABINET_SETTINGS.ACTIONS.RETRY' | transloco }}
+        </liass-button>
+      </div>
+    </liass-card>
+  } @else if (authoritative()) {
+    <form class="space-y-4" [formGroup]="form" (ngSubmit)="save()">
+      @if (conflict() && conflictExpanded()) {
+        <section class="rounded-app-card border border-warning-200 bg-warning-50 p-4 text-warning-600 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200" role="alert" aria-live="assertive">
+          <div class="flex items-start gap-3">
+            <mat-icon class="shrink-0">sync_problem</mat-icon>
+            <div class="min-w-0 flex-1">
+              <h2 class="text-base font-semibold">{{ 'IDENTITY.CABINET_SETTINGS.CONFLICT.TITLE' | transloco }}</h2>
+              <p class="mt-1 text-sm leading-6">{{ 'IDENTITY.CABINET_SETTINGS.CONFLICT.DESCRIPTION' | transloco }}</p>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <liass-button tone="warning" variant="solid" icon="refresh" (pressed)="reloadLatest()">
+                  {{ 'IDENTITY.CABINET_SETTINGS.ACTIONS.RELOAD' | transloco }}
+                </liass-button>
+                <liass-button tone="neutral" variant="outline" icon="visibility" (pressed)="keepDraft()">
+                  {{ 'IDENTITY.CABINET_SETTINGS.CONFLICT.KEEP_DRAFT' | transloco }}
+                </liass-button>
+              </div>
+            </div>
+          </div>
+        </section>
+      } @else if (conflict()) {
+        <section class="flex flex-col gap-3 rounded-app-card border border-warning-200 bg-warning-50 px-4 py-3 text-warning-600 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200 sm:flex-row sm:items-center" role="status">
+          <mat-icon class="shrink-0">sync_problem</mat-icon>
+          <p class="min-w-0 flex-1 text-sm font-semibold">{{ 'IDENTITY.CABINET_SETTINGS.CONFLICT.TITLE' | transloco }}</p>
+          <liass-button tone="warning" variant="solid" icon="refresh" (pressed)="reloadLatest()">
+            {{ 'IDENTITY.CABINET_SETTINGS.ACTIONS.RELOAD' | transloco }}
+          </liass-button>
+        </section>
+      }
+
+      @if (formErrorKey(); as errorKey) {
+        <div class="flex items-start gap-3 rounded-app-card border border-danger-200 bg-danger-50 px-4 py-3 text-sm text-danger-600 dark:border-rose-900 dark:bg-rose-950/25 dark:text-rose-200" role="alert">
+          <mat-icon class="shrink-0">error_outline</mat-icon>
+          <p>{{ errorKey | transloco }}</p>
+        </div>
+      }
+
+      <liass-card
+        [title]="'IDENTITY.CABINET_SETTINGS.SECTIONS.GENERAL.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_SETTINGS.SECTIONS.GENERAL.DESCRIPTION' | transloco"
+      >
+        <section class="grid gap-4 md:grid-cols-2" aria-labelledby="cabinet-settings-general">
+          <h2 id="cabinet-settings-general" class="sr-only">{{ 'IDENTITY.CABINET_SETTINGS.SECTIONS.GENERAL.TITLE' | transloco }}</h2>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.ORGANIZATION_NAME' | transloco }}</mat-label>
+            <mat-icon matPrefix>corporate_fare</mat-icon>
+            <input matInput required autocomplete="organization" formControlName="organizationName" />
+            <mat-hint>{{ 'IDENTITY.CABINET_SETTINGS.HELP.ORGANIZATION_NAME' | transloco }}</mat-hint>
+            @if (form.controls.organizationName.touched && form.controls.organizationName.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.ORGANIZATION_NAME' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+
+          <div>
+            <liass-searchable-select
+              formControlName="country"
+              icon="public"
+              [emptyResultLabelKey]="'COMMON.SELECT.NO_RESULTS'"
+              [errorKey]="'IDENTITY.CABINET_SETTINGS.VALIDATION.COUNTRY'"
+              [labelKey]="'IDENTITY.CABINET_SETTINGS.FIELDS.COUNTRY'"
+              [options]="countryOptions"
+              [searchPlaceholderKey]="'COMMON.SELECT.SEARCH_PLACEHOLDER'"
+              [showError]="form.controls.country.touched && form.controls.country.invalid"
+            />
+            <p class="-mt-3 text-xs leading-5 text-app-muted">{{ 'IDENTITY.CABINET_SETTINGS.HELP.COUNTRY' | transloco }}</p>
+          </div>
+        </section>
+      </liass-card>
+
+      <liass-card
+        [title]="'IDENTITY.CABINET_SETTINGS.SECTIONS.CONTACT.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_SETTINGS.SECTIONS.CONTACT.DESCRIPTION' | transloco"
+      >
+        <section class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" formGroupName="contact" aria-labelledby="cabinet-settings-contact">
+          <h2 id="cabinet-settings-contact" class="sr-only">{{ 'IDENTITY.CABINET_SETTINGS.SECTIONS.CONTACT.TITLE' | transloco }}</h2>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.EMAIL' | transloco }}</mat-label>
+            <mat-icon matPrefix>alternate_email</mat-icon>
+            <input matInput type="email" autocomplete="email" formControlName="email" />
+            <mat-hint>{{ 'IDENTITY.CABINET_SETTINGS.HELP.EMAIL' | transloco }}</mat-hint>
+            @if (form.controls.contact.controls.email.touched && form.controls.contact.controls.email.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.EMAIL' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.PHONE' | transloco }}</mat-label>
+            <mat-icon matPrefix>call</mat-icon>
+            <input matInput type="tel" autocomplete="tel" formControlName="phone" />
+            @if (form.controls.contact.controls.phone.touched && form.controls.contact.controls.phone.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.PHONE' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.WEBSITE' | transloco }}</mat-label>
+            <mat-icon matPrefix>language</mat-icon>
+            <input matInput type="url" autocomplete="url" placeholder="https://www.example.com" formControlName="website" />
+            @if (form.controls.contact.controls.website.touched && form.controls.contact.controls.website.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.WEBSITE' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+        </section>
+      </liass-card>
+
+      <liass-card
+        [title]="'IDENTITY.CABINET_SETTINGS.SECTIONS.ADDRESS.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_SETTINGS.SECTIONS.ADDRESS.DESCRIPTION' | transloco"
+      >
+        <section class="grid gap-4 md:grid-cols-2" formGroupName="address" aria-labelledby="cabinet-settings-address">
+          <h2 id="cabinet-settings-address" class="sr-only">{{ 'IDENTITY.CABINET_SETTINGS.SECTIONS.ADDRESS.TITLE' | transloco }}</h2>
+          <mat-form-field appearance="outline" class="md:col-span-2">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.ADDRESS_LINE_1' | transloco }}</mat-label>
+            <mat-icon matPrefix>location_on</mat-icon>
+            <input matInput autocomplete="address-line1" formControlName="line1" />
+            @if (form.controls.address.controls.line1.touched && form.controls.address.controls.line1.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.ADDRESS' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="md:col-span-2">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.ADDRESS_LINE_2' | transloco }}</mat-label>
+            <input matInput autocomplete="address-line2" formControlName="line2" />
+            @if (form.controls.address.controls.line2.touched && form.controls.address.controls.line2.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.ADDRESS' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.CITY' | transloco }}</mat-label>
+            <input matInput autocomplete="address-level2" formControlName="city" />
+            @if (form.controls.address.controls.city.touched && form.controls.address.controls.city.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.ADDRESS' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.REGION' | transloco }}</mat-label>
+            <input matInput autocomplete="address-level1" formControlName="region" />
+            @if (form.controls.address.controls.region.touched && form.controls.address.controls.region.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.ADDRESS' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.POSTAL_CODE' | transloco }}</mat-label>
+            <input matInput autocomplete="postal-code" formControlName="postalCode" />
+            @if (form.controls.address.controls.postalCode.touched && form.controls.address.controls.postalCode.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.ADDRESS' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+        </section>
+      </liass-card>
+
+      <liass-card
+        [title]="'IDENTITY.CABINET_SETTINGS.SECTIONS.LANGUAGE.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_SETTINGS.SECTIONS.LANGUAGE.DESCRIPTION' | transloco"
+      >
+        <section aria-labelledby="cabinet-settings-language">
+          <h2 id="cabinet-settings-language" class="sr-only">{{ 'IDENTITY.CABINET_SETTINGS.SECTIONS.LANGUAGE.TITLE' | transloco }}</h2>
+          <mat-form-field appearance="outline" class="w-full md:max-w-xl">
+            <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.PREFERRED_LANGUAGE' | transloco }}</mat-label>
+            <mat-icon matPrefix>translate</mat-icon>
+            <mat-select formControlName="preferredLanguage">
+              @for (language of languageOptions; track language.value) {
+                <mat-option [value]="language.value">{{ language.labelKey | transloco }}</mat-option>
+              }
+            </mat-select>
+            <mat-hint>{{ 'IDENTITY.CABINET_SETTINGS.HELP.PREFERRED_LANGUAGE' | transloco }}</mat-hint>
+            @if (form.controls.preferredLanguage.touched && form.controls.preferredLanguage.invalid) {
+              <mat-error>{{ 'IDENTITY.CABINET_SETTINGS.VALIDATION.LANGUAGE' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+        </section>
+      </liass-card>
+
+      <liass-card
+        [title]="'IDENTITY.CABINET_SETTINGS.SECTIONS.DEFAULTS.TITLE' | transloco"
+        [description]="'IDENTITY.CABINET_SETTINGS.SECTIONS.DEFAULTS.DESCRIPTION' | transloco"
+      >
+        <section formGroupName="defaults" aria-labelledby="cabinet-settings-defaults">
+          <h2 id="cabinet-settings-defaults" class="sr-only">{{ 'IDENTITY.CABINET_SETTINGS.SECTIONS.DEFAULTS.TITLE' | transloco }}</h2>
+          <div class="mb-4 flex items-start gap-3 rounded-app-card border border-info-200 bg-info-50 px-4 py-3 text-sm leading-6 text-info-600 dark:border-sky-900 dark:bg-sky-950/25 dark:text-sky-200" role="note">
+            <mat-icon class="shrink-0">info</mat-icon>
+            <p>{{ 'IDENTITY.CABINET_SETTINGS.HELP.DEFAULTS_BANNER' | transloco }}</p>
+          </div>
+          <div class="grid gap-4 md:grid-cols-2">
+            <liass-searchable-select
+              formControlName="country"
+              icon="public"
+              [emptyResultLabelKey]="'COMMON.SELECT.NO_RESULTS'"
+              [labelKey]="'IDENTITY.CABINET_SETTINGS.FIELDS.DEFAULT_COUNTRY'"
+              [options]="countryOptions"
+              [searchPlaceholderKey]="'COMMON.SELECT.SEARCH_PLACEHOLDER'"
+            />
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'IDENTITY.CABINET_SETTINGS.FIELDS.DEFAULT_FRAMEWORK' | transloco }}</mat-label>
+              <mat-icon matPrefix>account_balance</mat-icon>
+              <mat-select formControlName="accountingFramework">
+                @for (framework of frameworkOptions; track framework.value) {
+                  <mat-option [value]="framework.value">{{ framework.labelKey | transloco }}</mat-option>
+                }
+              </mat-select>
+              <mat-hint>{{ 'IDENTITY.CABINET_SETTINGS.HELP.DEFAULT_FRAMEWORK' | transloco }}</mat-hint>
+            </mat-form-field>
+          </div>
+        </section>
+      </liass-card>
+
+      <footer class="sticky bottom-3 z-10 flex flex-col-reverse gap-2 rounded-app-card border border-app-border bg-app-surface/95 p-3 shadow-app-popover backdrop-blur sm:flex-row sm:items-center sm:justify-end">
+        <liass-button
+          [ariaLabel]="'IDENTITY.CABINET_SETTINGS.ACTIONS.DISCARD' | transloco"
+          [disabled]="!canDiscard()"
+          icon="undo"
+          tone="neutral"
+          variant="outline"
+          (pressed)="discard()"
+        >
+          {{ 'IDENTITY.CABINET_SETTINGS.ACTIONS.DISCARD' | transloco }}
+        </liass-button>
+        <liass-button
+          buttonType="submit"
+          [ariaLabel]="'IDENTITY.CABINET_SETTINGS.ACTIONS.SAVE' | transloco"
+          [disabled]="!canSave()"
+          [loading]="pendingUpdate()"
+          icon="save"
+          tone="brand"
+          variant="solid"
+        >
+          {{ 'IDENTITY.CABINET_SETTINGS.ACTIONS.SAVE' | transloco }}
+        </liass-button>
+      </footer>
+    </form>
+  }
+</div>

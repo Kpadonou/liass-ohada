@@ -25,6 +25,7 @@ describe('pageFromUrl', () => {
     expect(pageFromUrl('/cabinet/team?tab=members')).toBe('cabinet.team');
     expect(pageFromUrl('/cabinet/dashboard')).toBe('cabinet.dashboard');
     expect(pageFromUrl('/cabinet/dossiers')).toBe('cabinet.dossiers');
+    expect(pageFromUrl('/cabinet/settings')).toBe('cabinet.settings');
   });
 
   it('maps direct accounting child URLs to their shell page', () => {

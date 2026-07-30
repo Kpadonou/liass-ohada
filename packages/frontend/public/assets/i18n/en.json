@@ -2322,7 +2322,7 @@
       },
       "FRAMEWORKS": {
         "SYSCOHADA_REVISED": "Revised SYSCOHADA",
-        "SYCEBNL": "SYCEBNL"
+        "SYCEBNL": "SYCEBNL — Accounting system for nonprofit entities"
       },
       "COUNTRIES": {
         "BENIN": "Benin",
@@ -3007,6 +3007,107 @@
         "INVITATION_CREATE_FAILED": "Unable to create the invitation.",
         "INVITATION_RESEND_FAILED": "Unable to regenerate the invitation.",
         "INVITATION_UPDATE_FAILED": "Unable to update the invitation."
+      }
+    },
+    "CABINET_SETTINGS": {
+      "EYEBROW": "Cabinet",
+      "TITLE": "Cabinet settings",
+      "SUBTITLE": "Manage your Cabinet's general information and default values.",
+      "LOADING": "Loading Cabinet settings…",
+      "SECTIONS": {
+        "GENERAL": {
+          "TITLE": "General information",
+          "DESCRIPTION": "Canonical Cabinet identity used throughout the workspace."
+        },
+        "CONTACT": {
+          "TITLE": "Professional contact details",
+          "DESCRIPTION": "General contact details the Cabinet uses in its communications."
+        },
+        "ADDRESS": {
+          "TITLE": "Address",
+          "DESCRIPTION": "The Cabinet's professional address. All fields are optional."
+        },
+        "LANGUAGE": {
+          "TITLE": "Cabinet language",
+          "DESCRIPTION": "Language preference stored at Cabinet level."
+        },
+        "DEFAULTS": {
+          "TITLE": "Default values for new dossiers",
+          "DESCRIPTION": "Suggested values when future client dossiers are created."
+        }
+      },
+      "FIELDS": {
+        "ORGANIZATION_NAME": "Cabinet name",
+        "COUNTRY": "Cabinet country",
+        "EMAIL": "Professional email",
+        "PHONE": "Phone",
+        "WEBSITE": "Website",
+        "ADDRESS_LINE_1": "Address",
+        "ADDRESS_LINE_2": "Address line 2",
+        "CITY": "City",
+        "REGION": "Region / State",
+        "POSTAL_CODE": "Postal code",
+        "PREFERRED_LANGUAGE": "Preferred Cabinet language",
+        "DEFAULT_COUNTRY": "Default country for new dossiers",
+        "DEFAULT_FRAMEWORK": "Default accounting framework"
+      },
+      "HELP": {
+        "ORGANIZATION_NAME": "This name is used in the header, breadcrumbs, and workspace selector.",
+        "COUNTRY": "The Cabinet country identifies where the Cabinet is established. Changing it does not change existing client dossier countries.",
+        "EMAIL": "General contact address for the Cabinet, separate from the owner's personal email.",
+        "PREFERRED_LANGUAGE": "This preference may be used for Cabinet documents and communications. It does not automatically change your personal interface language.",
+        "DEFAULTS_BANNER": "These values are used only to prefill future client dossiers. They do not modify existing dossiers.",
+        "DEFAULT_FRAMEWORK": "The selected framework will be suggested when a new dossier is created and may be adjusted according to the client's applicable rules."
+      },
+      "LANGUAGES": {
+        "FR": "Français",
+        "EN": "English"
+      },
+      "ACTIONS": {
+        "SAVE": "Save changes",
+        "DISCARD": "Discard changes",
+        "RELOAD": "Reload latest settings",
+        "RETRY": "Retry"
+      },
+      "VALIDATION": {
+        "ORGANIZATION_NAME": "Enter a valid Cabinet name of no more than 160 characters.",
+        "COUNTRY": "Select a valid OHADA country.",
+        "EMAIL": "Enter a valid email address.",
+        "PHONE": "The phone number cannot exceed 40 characters.",
+        "WEBSITE": "Enter a valid HTTP or HTTPS web address.",
+        "ADDRESS": "This value exceeds the allowed length.",
+        "LANGUAGE": "Select a valid language."
+      },
+      "CONFLICT": {
+        "TITLE": "The settings were changed by another administrator.",
+        "DESCRIPTION": "Reload the latest version before saving your changes.",
+        "KEEP_DRAFT": "Keep reviewing my changes",
+        "RELOAD_TITLE": "Reload settings?",
+        "RELOAD_DESCRIPTION": "Your unsaved local changes will be lost."
+      },
+      "UNSAVED": {
+        "TITLE": "Unsaved changes",
+        "DESCRIPTION": "You have changes that have not been saved yet. Do you really want to leave this page?",
+        "STAY": "Stay on page",
+        "LEAVE": "Leave without saving"
+      },
+      "LOAD_ERROR": {
+        "TITLE": "Unable to load Cabinet settings.",
+        "DESCRIPTION": "Try again in a few moments."
+      },
+      "ERRORS": {
+        "NAME": "The Cabinet name is invalid.",
+        "COUNTRY": "The selected country is invalid.",
+        "CONTACT": "The professional contact details contain an invalid value.",
+        "ADDRESS": "The address contains an invalid value.",
+        "LANGUAGE": "The selected language is invalid.",
+        "DEFAULTS": "The default values for new dossiers are invalid.",
+        "VERSION_REQUIRED": "The settings version is missing. Reload the page and try again.",
+        "DATA_INCONSISTENT": "The Cabinet information cannot be loaded correctly. Contact support if the problem persists.",
+        "GENERIC": "The settings could not be saved. Check the information and try again."
+      },
+      "NOTIFICATIONS": {
+        "SAVED": "Cabinet settings saved."
       }
     },
     "INVITATION_ACCEPTANCE": {

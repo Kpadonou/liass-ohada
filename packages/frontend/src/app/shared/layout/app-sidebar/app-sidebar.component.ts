@@ -4,6 +4,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
+import { CabinetSettingsCapabilities } from '../../../domains/identity/data-access/cabinet-settings-capabilities';
 import { LiassSidebarNavItemComponent } from '../../ui/sidebar-nav-item/sidebar-nav-item.component';
 
 interface ShellNavItem {
@@ -158,10 +159,10 @@ const cabinetItems: readonly ShellNavItem[] = [
     route: '/cabinet/deadlines'
   },
   {
-    disabled: true,
     icon: 'settings',
     labelKey: 'SHELL.NAV.CABINET_SETTINGS',
-    page: 'cabinet.settings'
+    page: 'cabinet.settings',
+    route: '/cabinet/settings'
   }
 ];
 
@@ -176,13 +177,17 @@ export class AppSidebarComponent {
   protected readonly dashboardItems = dashboardItems;
   protected readonly secondaryItems = secondaryItems;
   protected readonly authStore = inject(AuthStore);
+  private readonly cabinetSettingsCapabilities = inject(CabinetSettingsCapabilities);
   protected readonly uiStore = inject(UiStore);
   protected readonly cabinetMode = computed(
     () => this.authStore.isCabinetContext()
   );
   protected readonly visibleCabinetItems = computed(() =>
     cabinetItems.filter(
-      (item) => item.page !== 'cabinet.team' || this.authStore.canViewCabinetTeam()
+      (item) =>
+        (item.page !== 'cabinet.team' || this.authStore.canViewCabinetTeam()) &&
+        (item.page !== 'cabinet.settings' ||
+          this.cabinetSettingsCapabilities.canManageCabinetSettings())
     )
   );
   private readonly router = inject(Router);

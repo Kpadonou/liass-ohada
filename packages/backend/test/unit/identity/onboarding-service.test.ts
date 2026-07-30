@@ -1,4 +1,5 @@
 import {
+  BatchGetItemCommand,
   DynamoDBClient,
   QueryCommand,
   ScanCommand,
@@ -9,6 +10,7 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 import { randomUUID } from "crypto";
 import { OnboardingService } from "@/lambda/shared/services/onboarding-service";
+import { OnboardingRepository } from "@/lambda/shared/repositories/onboarding-repository";
 
 jest.mock("crypto", () => ({
   randomUUID: jest.fn(),
@@ -143,7 +145,7 @@ describe("OnboardingService", () => {
     });
     expect(response.workspace.cabinetId).toBe(GENERATED_CABINET_ID);
     expect(response.workspace.cabinetRole).toBe("CABINET_ADMIN");
-    expect(transactionItems).toHaveLength(5);
+    expect(transactionItems).toHaveLength(6);
     expect(transactionItems[3].item).toMatchObject({
       PK: `CABINET#${GENERATED_CABINET_ID}`,
       SK: "CABINET#METADATA",
@@ -165,6 +167,20 @@ describe("OnboardingService", () => {
       cabinetRole: "CABINET_ADMIN",
       status: "ACTIVE",
     });
+    expect(transactionItems[5].item).toMatchObject({
+      PK: `ORG#${GENERATED_ORG_ID}`,
+      SK: "SETTINGS#CABINET",
+      entityType: "CABINET_SETTINGS",
+      cabinetOrgId: GENERATED_ORG_ID,
+      preferredLanguage: "fr",
+      defaultClientCountry: "BJ",
+      defaultAccountingFramework: "SYSCOHADA_REVISED",
+      version: 1,
+      createdBy: "user-123",
+      updatedBy: "user-123",
+    });
+    expect(transactionItems[5].item.contact).toBeUndefined();
+    expect(transactionItems[5].item.address).toBeUndefined();
   });
 
   test("rejects duplicate onboarding when active workspaces already exist", async () => {
@@ -191,6 +207,56 @@ describe("OnboardingService", () => {
       messageCode: "WORKSPACE_ALREADY_EXISTS",
     });
     expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
+  test("workspace discovery resolves the current canonical Organization name", async () => {
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [
+        marshall({
+          entityType: "USER_ORG_ACCESS",
+          orgId: "org-existing",
+          userId: "user-123",
+          status: "ACTIVE",
+          displayName: "Stale projection",
+          workspaceType: "ACCOUNTING_FIRM",
+          country: "BJ",
+          accountingFramework: "SYSCOHADA_REVISED",
+        }),
+      ],
+    });
+    dynamoMock.on(BatchGetItemCommand).resolves({
+      Responses: {
+        "liass-ohada-test-accounting-table": [
+          marshall({
+            entityType: "ORGANIZATION",
+            orgId: "org-existing",
+            name: "Canonical Cabinet Name",
+            status: "ACTIVE",
+            workspaceType: "ACCOUNTING_FIRM",
+            country: "SN",
+            accountingFramework: "SYCEBNL",
+          }),
+        ],
+      },
+    });
+
+    const workspaces =
+      await OnboardingRepository.listActiveUserWorkspaces("user-123");
+    expect(workspaces[0]).toMatchObject({
+      displayName: "Canonical Cabinet Name",
+      country: "SN",
+      accountingFramework: "SYCEBNL",
+    });
+    const batchInput =
+      dynamoMock.commandCalls(BatchGetItemCommand)[0].args[0].input;
+    expect(
+      batchInput.RequestItems?.["liass-ohada-test-accounting-table"]?.Keys,
+    ).toEqual([
+      {
+        PK: { S: "ORG#org-existing" },
+        SK: { S: "ORG#METADATA" },
+      },
+    ]);
   });
 
   test("maps transaction cancellation to duplicate onboarding", async () => {

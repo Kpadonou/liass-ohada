@@ -273,6 +273,7 @@ function clearTenantQueries(queryClient: QueryClient | null, orgId?: string | nu
     'treasury',
     'projects',
     'cabinet-dashboard',
+    'cabinet-settings',
     'cabinet-team',
     'cabinet-operations'
   ] as const;

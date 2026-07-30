@@ -240,5 +240,17 @@
   "CABINET_DOSSIER_ASSIGNMENT_EXISTS": "This member is already assigned to the client dossier.",
   "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND": "This member is not assigned to the client dossier.",
   "CABINET_ASSIGNMENT_NOT_FOUND": "Cabinet dossier assignment not found.",
-  "CABINET_ASSIGNMENT_FORBIDDEN": "Your Cabinet role does not allow assignment management."
+  "CABINET_ASSIGNMENT_FORBIDDEN": "Your Cabinet role does not allow assignment management.",
+  "CABINET_SETTINGS_ACCESS_FORBIDDEN": "Only active Cabinet administrators can manage Cabinet settings.",
+  "CABINET_SETTINGS_CONTEXT_INVALID": "The active Cabinet context is invalid.",
+  "CABINET_SETTINGS_ORGANIZATION_NOT_FOUND": "The Cabinet organization could not be found.",
+  "CABINET_SETTINGS_UPDATE_CONFLICT": "These settings were updated by someone else. Refresh and try again.",
+  "CABINET_SETTINGS_VERSION_REQUIRED": "The current settings version is required.",
+  "CABINET_SETTINGS_ORGANIZATION_NAME_INVALID": "The Cabinet name is invalid.",
+  "CABINET_SETTINGS_COUNTRY_INVALID": "The Cabinet country is invalid.",
+  "CABINET_SETTINGS_CONTACT_INVALID": "The Cabinet contact information is invalid.",
+  "CABINET_SETTINGS_ADDRESS_INVALID": "The Cabinet address is invalid.",
+  "CABINET_SETTINGS_LANGUAGE_INVALID": "The Cabinet language is invalid.",
+  "CABINET_SETTINGS_DEFAULTS_INVALID": "The future dossier defaults are invalid.",
+  "CABINET_SETTINGS_DATA_INCONSISTENT": "The Cabinet settings data is inconsistent."
 }

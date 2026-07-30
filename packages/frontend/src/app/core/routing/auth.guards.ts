@@ -1,8 +1,10 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateFn, CanDeactivateFn, Router } from '@angular/router';
 
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
+import { CabinetSettingsCapabilities } from '../../domains/identity/data-access/cabinet-settings-capabilities';
 import { InvitationAcceptanceState } from '../../domains/identity/data-access/invitation-acceptance-state';
+import { PendingChangesService } from './pending-changes.service';
 
 async function ensureHydrated(authStore: InstanceType<typeof AuthStore>): Promise<void> {
   if (!authStore.hydrated()) {
@@ -161,6 +163,31 @@ export const cabinetTeamGuard: CanActivateFn = async () => {
     authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard'
   ]);
 };
+
+export const cabinetSettingsGuard: CanActivateFn = async () => {
+  const authStore = inject(AuthStore);
+  const capabilities = inject(CabinetSettingsCapabilities);
+  const router = inject(Router);
+
+  await ensureHydrated(authStore);
+  if (!authStore.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+  if (!authStore.workspacesLoaded()) {
+    await authStore.loadWorkspaces();
+  }
+  if (capabilities.canManageCabinetSettings()) {
+    authStore.enterCabinetContext();
+    return true;
+  }
+
+  return router.createUrlTree([
+    authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard'
+  ]);
+};
+
+export const pendingChangesGuard: CanDeactivateFn<unknown> = () =>
+  inject(PendingChangesService).confirmDeparture();
 
 export const cabinetDossierGuard: CanActivateFn = async () => {
   const authStore = inject(AuthStore);

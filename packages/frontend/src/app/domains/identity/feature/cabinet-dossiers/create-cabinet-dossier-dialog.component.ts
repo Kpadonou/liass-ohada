@@ -16,18 +16,16 @@ import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable
 import { AuthStore } from '../../data-access/auth.store';
 import { CabinetDashboardQueries } from '../../data-access/cabinet-dashboard.queries';
 import { CabinetDossiersApi } from '../../data-access/cabinet-dossiers.api';
+import {
+  accountingFrameworkOptions,
+  ohadaCountryOptions
+} from '../../utils/workspace-presentation';
 
-type AccountingFramework = 'SYSCOHADA_REVISED' | 'SYCEBNL';
 type DossierErrorKey =
   | 'IDENTITY.CABINET_DOSSIERS.ERRORS.CREATE_FAILED'
   | 'IDENTITY.CABINET_DOSSIERS.ERRORS.DUPLICATE'
   | 'IDENTITY.CABINET_DOSSIERS.ERRORS.NETWORK'
   | 'IDENTITY.CABINET_DOSSIERS.ERRORS.VALIDATION';
-
-interface SelectOption<T extends string> {
-  value: T;
-  labelKey: string;
-}
 
 @Component({
   selector: 'liass-create-cabinet-dossier-dialog',
@@ -57,35 +55,13 @@ export class CreateCabinetDossierDialogComponent {
   protected readonly submitting = signal(false);
   protected readonly errorKey = signal<DossierErrorKey | null>(null);
 
-  protected readonly countryOptions: SelectOption<string>[] = [
-    { value: 'BJ', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.BENIN' },
-    { value: 'TG', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.TOGO' },
-    { value: 'CI', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.COTE_D_IVOIRE' },
-    { value: 'SN', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.SENEGAL' },
-    { value: 'BF', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.BURKINA_FASO' },
-    { value: 'ML', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.MALI' },
-    { value: 'NE', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.NIGER' },
-    { value: 'CM', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CAMEROON' },
-    { value: 'CG', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CONGO' },
-    { value: 'GA', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.GABON' },
-    { value: 'TD', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CHAD' },
-    { value: 'CF', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CENTRAL_AFRICAN_REPUBLIC' },
-    { value: 'GN', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.GUINEA' },
-    { value: 'GW', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.GUINEA_BISSAU' },
-    { value: 'GQ', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.EQUATORIAL_GUINEA' },
-    { value: 'CD', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.DEMOCRATIC_REPUBLIC_OF_CONGO' },
-    { value: 'KM', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.COMOROS' }
-  ];
-
-  protected readonly frameworkOptions: SelectOption<AccountingFramework>[] = [
-    { value: 'SYSCOHADA_REVISED', labelKey: 'IDENTITY.ONBOARDING.FRAMEWORKS.SYSCOHADA_REVISED' },
-    { value: 'SYCEBNL', labelKey: 'IDENTITY.ONBOARDING.FRAMEWORKS.SYCEBNL' }
-  ];
+  protected readonly countryOptions = ohadaCountryOptions;
+  protected readonly frameworkOptions = accountingFrameworkOptions;
 
   protected readonly form = this.formBuilder.nonNullable.group({
     companyName: ['', [Validators.required]],
     country: ['BJ', [Validators.required]],
-    accountingFramework: ['SYSCOHADA_REVISED' as AccountingFramework, [Validators.required]]
+    accountingFramework: ['SYSCOHADA_REVISED' as const, [Validators.required]]
   });
 
   protected async submit(): Promise<void> {

@@ -33,6 +33,14 @@ describe("KeyFactory", () => {
     expect(KeyFactory.cabinetPK("cab-123")).toBe("CABINET#cab-123");
     expect(KeyFactory.cabinetDossierSK("org-456")).toBe("DOSSIER#org-456");
     expect(KeyFactory.organizationSK()).toBe("ORG#METADATA");
+    expect(KeyFactory.cabinetSettingsSK()).toBe("SETTINGS#CABINET");
+    expect({
+      PK: KeyFactory.orgKey("org-cabinet"),
+      SK: KeyFactory.cabinetSettingsSK(),
+    }).toEqual({
+      PK: "ORG#org-cabinet",
+      SK: "SETTINGS#CABINET",
+    });
     expect(KeyFactory.cabinetMetadataSK()).toBe("CABINET#METADATA");
     expect(KeyFactory.initialWorkspaceLockSK()).toBe("ONBOARDING#INITIAL_WORKSPACE");
     expect(KeyFactory.orgUserAccessSK("user-123")).toBe("USER#user-123");

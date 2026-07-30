@@ -14,8 +14,11 @@ import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable-select/searchable-select.component';
 import { AuthStore, type ActiveWorkspaceSummary } from '../../data-access/auth.store';
 import { OnboardingApi } from '../../data-access/onboarding.api';
+import {
+  accountingFrameworkOptions,
+  ohadaCountryOptions
+} from '../../utils/workspace-presentation';
 
-type AccountingFramework = 'SYSCOHADA_REVISED' | 'SYCEBNL';
 type OnboardingErrorKey =
   | 'IDENTITY.ONBOARDING.ERRORS.AUTH_REQUIRED'
   | 'IDENTITY.ONBOARDING.ERRORS.CREATE_FAILED'
@@ -26,11 +29,6 @@ type OnboardingErrorKey =
   | 'IDENTITY.ONBOARDING.ERRORS.VALIDATION';
 type OnboardingStep = 'workspaceType' | 'organizationDetails';
 type WorkspaceType = 'ACCOUNTING_FIRM' | 'COMPANY';
-
-interface SelectOption<T extends string> {
-  value: T;
-  labelKey: string;
-}
 
 @Component({
   selector: 'liass-onboarding-page',
@@ -58,36 +56,14 @@ export class OnboardingPage implements OnInit {
   protected readonly selectedWorkspaceType = signal<WorkspaceType | null>(null);
   protected readonly submitting = signal(false);
 
-  protected readonly countryOptions: SelectOption<string>[] = [
-    { value: 'BJ', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.BENIN' },
-    { value: 'TG', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.TOGO' },
-    { value: 'CI', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.COTE_D_IVOIRE' },
-    { value: 'SN', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.SENEGAL' },
-    { value: 'BF', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.BURKINA_FASO' },
-    { value: 'ML', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.MALI' },
-    { value: 'NE', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.NIGER' },
-    { value: 'CM', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CAMEROON' },
-    { value: 'CG', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CONGO' },
-    { value: 'GA', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.GABON' },
-    { value: 'TD', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CHAD' },
-    { value: 'CF', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.CENTRAL_AFRICAN_REPUBLIC' },
-    { value: 'GN', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.GUINEA' },
-    { value: 'GW', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.GUINEA_BISSAU' },
-    { value: 'GQ', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.EQUATORIAL_GUINEA' },
-    { value: 'CD', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.DEMOCRATIC_REPUBLIC_OF_CONGO' },
-    { value: 'KM', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.COMOROS' }
-  ];
-
-  protected readonly frameworkOptions: SelectOption<AccountingFramework>[] = [
-    { value: 'SYSCOHADA_REVISED', labelKey: 'IDENTITY.ONBOARDING.FRAMEWORKS.SYSCOHADA_REVISED' },
-    { value: 'SYCEBNL', labelKey: 'IDENTITY.ONBOARDING.FRAMEWORKS.SYCEBNL' }
-  ];
+  protected readonly countryOptions = ohadaCountryOptions;
+  protected readonly frameworkOptions = accountingFrameworkOptions;
 
   protected readonly form = this.formBuilder.nonNullable.group({
     workspaceType: ['', [Validators.required]],
     organizationName: ['', [Validators.required]],
     country: ['BJ', [Validators.required]],
-    accountingFramework: ['SYSCOHADA_REVISED' as AccountingFramework, [Validators.required]]
+    accountingFramework: ['SYSCOHADA_REVISED' as const, [Validators.required]]
   });
 
   protected readonly organizationNameLabelKey = computed(() =>

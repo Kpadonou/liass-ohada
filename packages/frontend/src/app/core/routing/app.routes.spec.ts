@@ -3,8 +3,10 @@ import {
   appRootRedirectGuard,
   authGuard,
   cabinetDashboardGuard,
+  cabinetSettingsGuard,
   cabinetTeamGuard,
   invitationAcceptanceGuard,
+  pendingChangesGuard,
   tenantGuard
 } from './auth.guards';
 import { routes } from './app.routes';
@@ -127,6 +129,20 @@ describe('routes', () => {
     );
     expect(component).toBe(CabinetTeamPage);
     expect(teamRoute?.canActivate).toEqual([cabinetTeamGuard]);
+  });
+
+  it('registers Cabinet Settings with capability and unsaved-changes guards', async () => {
+    const settingsRoute = shellRoute()?.children?.find(
+      (route) => route.path === 'cabinet/settings'
+    );
+    const component = await settingsRoute?.loadComponent?.();
+    const { CabinetSettingsPage } = await import(
+      '../../domains/identity/feature/cabinet-settings/cabinet-settings.page'
+    );
+
+    expect(component).toBe(CabinetSettingsPage);
+    expect(settingsRoute?.canActivate).toEqual([cabinetSettingsGuard]);
+    expect(settingsRoute?.canDeactivate).toEqual([pendingChangesGuard]);
   });
 
   it('registers new client dossier creation inside the authenticated tenant shell', async () => {

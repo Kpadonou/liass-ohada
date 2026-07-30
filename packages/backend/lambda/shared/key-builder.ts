@@ -23,6 +23,9 @@ export const KeyFactory = {
   /** SK for organization metadata under the organization partition */
   organizationSK: () => "ORG#METADATA",
 
+  /** SK for Cabinet settings under the Cabinet organization partition */
+  cabinetSettingsSK: () => "SETTINGS#CABINET",
+
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",
 

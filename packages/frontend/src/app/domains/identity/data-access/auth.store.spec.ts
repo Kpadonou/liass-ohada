@@ -806,6 +806,7 @@ describe('AuthStore', () => {
     vi.mocked(signOut).mockResolvedValue(undefined);
     const store = TestBed.inject(AuthStore);
     store.setTenant('org-test');
+    queryClient.setQueryData(['cabinet-settings', 'org-test', 'detail'], { version: 1 });
 
     await store.logout();
 
@@ -813,6 +814,9 @@ describe('AuthStore', () => {
     expect(store.activeOrgId()).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeOrgId')).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
+    expect(
+      queryClient.getQueryData(['cabinet-settings', 'org-test', 'detail'])
+    ).toBeUndefined();
   });
 
   it('starts Google hosted UI sign-in with account selection', async () => {

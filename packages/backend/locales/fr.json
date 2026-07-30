@@ -241,5 +241,17 @@
   "CABINET_DOSSIER_ASSIGNMENT_EXISTS": "Ce membre est déjà affecté au dossier client.",
   "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND": "Ce membre n’est pas affecté au dossier client.",
   "CABINET_ASSIGNMENT_NOT_FOUND": "Affectation au dossier client introuvable.",
-  "CABINET_ASSIGNMENT_FORBIDDEN": "Votre rôle au sein du cabinet ne permet pas de gérer les affectations."
+  "CABINET_ASSIGNMENT_FORBIDDEN": "Votre rôle au sein du cabinet ne permet pas de gérer les affectations.",
+  "CABINET_SETTINGS_ACCESS_FORBIDDEN": "Seuls les administrateurs actifs peuvent gérer les paramètres du cabinet.",
+  "CABINET_SETTINGS_CONTEXT_INVALID": "Le contexte du cabinet actif est invalide.",
+  "CABINET_SETTINGS_ORGANIZATION_NOT_FOUND": "L’organisation du cabinet est introuvable.",
+  "CABINET_SETTINGS_UPDATE_CONFLICT": "Ces paramètres ont été modifiés par une autre personne. Actualisez puis réessayez.",
+  "CABINET_SETTINGS_VERSION_REQUIRED": "La version actuelle des paramètres est requise.",
+  "CABINET_SETTINGS_ORGANIZATION_NAME_INVALID": "Le nom du cabinet est invalide.",
+  "CABINET_SETTINGS_COUNTRY_INVALID": "Le pays du cabinet est invalide.",
+  "CABINET_SETTINGS_CONTACT_INVALID": "Les coordonnées professionnelles du cabinet sont invalides.",
+  "CABINET_SETTINGS_ADDRESS_INVALID": "L’adresse du cabinet est invalide.",
+  "CABINET_SETTINGS_LANGUAGE_INVALID": "La langue du cabinet est invalide.",
+  "CABINET_SETTINGS_DEFAULTS_INVALID": "Les valeurs par défaut des futurs dossiers sont invalides.",
+  "CABINET_SETTINGS_DATA_INCONSISTENT": "Les données des paramètres du cabinet sont incohérentes."
 }

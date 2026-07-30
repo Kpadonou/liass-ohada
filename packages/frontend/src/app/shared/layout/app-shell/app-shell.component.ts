@@ -21,6 +21,10 @@ export function pageFromUrl(url: string): AppPage {
     return 'cabinet.team';
   }
 
+  if (path.startsWith('/cabinet/settings')) {
+    return 'cabinet.settings';
+  }
+
   if (path.startsWith('/cabinet/dashboard')) {
     return 'cabinet.dashboard';
   }

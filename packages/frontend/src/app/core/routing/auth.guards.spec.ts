@@ -3,10 +3,12 @@ import { Router, UrlTree, provideRouter } from '@angular/router';
 import { vi } from 'vitest';
 
 import { AuthStore, type WorkspaceDestination } from '../../domains/identity/data-access/auth.store';
+import { CabinetSettingsCapabilities } from '../../domains/identity/data-access/cabinet-settings-capabilities';
 import {
   appRootRedirectGuard,
   authGuard,
   cabinetDashboardGuard,
+  cabinetSettingsGuard,
   loginRedirectGuard,
   tenantGuard
 } from './auth.guards';
@@ -114,7 +116,11 @@ describe('auth guards', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
-        { provide: AuthStore, useValue: authStore }
+        { provide: AuthStore, useValue: authStore },
+        {
+          provide: CabinetSettingsCapabilities,
+          useValue: { canManageCabinetSettings: () => false }
+        }
       ]
     });
   });
@@ -329,6 +335,35 @@ describe('auth guards', () => {
     );
 
     expect(result).toBe(true);
+  });
+
+  it('allows only users with the Cabinet Settings capability', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.workspaceType = 'ACCOUNTING_FIRM';
+    TestBed.overrideProvider(CabinetSettingsCapabilities, {
+      useValue: { canManageCabinetSettings: () => true }
+    });
+
+    const result = await TestBed.runInInjectionContext(() =>
+      cabinetSettingsGuard({} as never, {} as never)
+    );
+
+    expect(result).toBe(true);
+    expect(authStore.enterCabinetContext).toHaveBeenCalled();
+  });
+
+  it('redirects users without the Cabinet Settings capability without query parameters', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.workspaceType = 'ACCOUNTING_FIRM';
+    const router = TestBed.inject(Router);
+
+    const result = await TestBed.runInInjectionContext(() =>
+      cabinetSettingsGuard({} as never, {} as never)
+    );
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/cabinet/dashboard');
   });
 
   it('allows accounting-firm users into new dossier creation without an active dossier', async () => {

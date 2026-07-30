@@ -24,6 +24,7 @@ describe('AppContextBreadcrumbComponent', () => {
                 PAGES: {
                   CABINET_DASHBOARD: 'Cabinet dashboard',
                   CABINET_COLLABORATORS: 'Team',
+                  CABINET_SETTINGS: 'Cabinet settings',
                   GENERAL_LEDGER: 'General ledger',
                 },
               },
@@ -112,5 +113,26 @@ describe('AppContextBreadcrumbComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('CLO Comptabilite');
     expect(fixture.nativeElement.textContent).toContain('Team');
     expect(fixture.nativeElement.textContent).not.toContain('Cabinet dashboard');
+  });
+
+  it('renders the dynamic Cabinet name and Settings page only', () => {
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet Nouvelle Donne',
+        workspaceType: 'ACCOUNTING_FIRM'
+      },
+      'org-firm'
+    );
+    authStore.enterCabinetContext();
+    uiStore.setCurrentPage('cabinet.settings');
+
+    fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Cabinet Nouvelle Donne');
+    expect(fixture.nativeElement.textContent).toContain('Cabinet settings');
+    expect(fixture.nativeElement.textContent).not.toContain('Cabinet dashboard');
+    expect(fixture.nativeElement.textContent).not.toContain('org-firm');
   });
 });

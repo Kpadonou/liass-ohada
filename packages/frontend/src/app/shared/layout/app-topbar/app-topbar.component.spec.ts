@@ -22,7 +22,7 @@ vi.mock('aws-amplify/auth', () => {
     getCurrentUser: vi.fn(),
     signIn: vi.fn(),
     signInWithRedirect: vi.fn(),
-    signOut: vi.fn()
+    signOut: vi.fn(),
   };
 
   return globalScope.__liassAmplifyAuthMock;
@@ -35,7 +35,7 @@ const translations = {
         ACCOUNTING: 'Accounting',
         PROJECTS: 'Projects and funds',
         REPORTS: 'OHADA reports',
-        TREASURY: 'Treasury'
+        TREASURY: 'Treasury',
       },
       PAGES: {
         ACCOUNTING_OVERVIEW: 'Accounting',
@@ -50,11 +50,11 @@ const translations = {
         GENERAL_LEDGER: 'General ledger',
         JOURNALS: 'Journals',
         LETTERING: 'Lettering',
-        TRIAL_BALANCE: 'Trial balance'
+        TRIAL_BALANCE: 'Trial balance',
       },
       SIDEBAR: {
         COLLAPSE: 'Collapse sidebar',
-        EXPAND: 'Expand sidebar'
+        EXPAND: 'Expand sidebar',
       },
       TOPBAR: {
         CABINET_DASHBOARD: 'Cabinet dashboard',
@@ -84,31 +84,31 @@ const translations = {
         USER_MENU: 'Open user menu',
         WORKSPACE: 'Active workspace',
         WORKSPACE_MENU_LABEL: 'Open active workspace menu',
-        WORKSPACE_LOADING: 'Loading workspace...'
+        WORKSPACE_LOADING: 'Loading workspace...',
       },
       WORKSPACE_TYPES: {
         ACCOUNTING_FIRM: 'Accounting firm',
-        COMPANY: 'Company'
-      }
+        COMPANY: 'Company',
+      },
     },
     ACCOUNTING: {
       ACCESS: {
-        READ_ONLY: 'Read-only access'
+        READ_ONLY: 'Read-only access',
       },
       FISCAL_YEAR: {
         STATUS: {
           OPEN: 'Open',
           LOCKED: 'Locked',
           CLOSED: 'Closed',
-          DRAFT: 'Draft'
-        }
+          DRAFT: 'Draft',
+        },
       },
       FISCAL_YEAR_CONTEXT: {
         GO_TO_FISCAL_YEARS: 'Manage fiscal years',
-        NO_FISCAL_YEAR: 'No fiscal year known for this dossier.'
-      }
-    }
-  }
+        NO_FISCAL_YEAR: 'No fiscal year known for this dossier.',
+      },
+    },
+  },
 };
 
 describe('AppTopbarComponent', () => {
@@ -139,15 +139,15 @@ describe('AppTopbarComponent', () => {
           preloadLangs: true,
           translocoConfig: {
             availableLangs: ['en'],
-            defaultLang: 'en'
-          }
-        })
+            defaultLang: 'en',
+          },
+        }),
       ],
       providers: [
         provideRouter([]),
         { provide: CabinetDossiersApi, useValue: cabinetDossiersApi },
-        { provide: WorkspacesApi, useValue: workspacesApi }
-      ]
+        { provide: WorkspacesApi, useValue: workspacesApi },
+      ],
     }).compileComponents();
 
     authStore = TestBed.inject(AuthStore);
@@ -185,9 +185,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
 
     renderText();
@@ -204,9 +204,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
 
     renderText();
@@ -218,14 +218,31 @@ describe('AppTopbarComponent', () => {
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
+  it('keeps a responsive gap between the proportional brand mark and menu button', () => {
+    renderText();
+
+    const group: HTMLElement = fixture.nativeElement.querySelector(
+      '[data-testid="brand-menu-group"]',
+    );
+    const horizontalLogoLink = group.querySelector(
+      'liass-logo[variant="horizontal"]',
+    )?.parentElement;
+    const compactLogoLink = group.querySelector('liass-logo[variant="icon"]')?.parentElement;
+
+    expect(group.className).toContain('gap-3');
+    expect(group.className).toContain('md:gap-4');
+    expect(horizontalLogoLink?.className).toContain('md:inline-flex');
+    expect(compactLogoLink?.className).toContain('md:hidden');
+  });
+
   it('renders the direct company identity without the old card styling', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
 
     renderText();
@@ -248,9 +265,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
 
     const text = renderText();
@@ -267,14 +284,14 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
 
     renderText();
     const toggle = fixture.nativeElement.querySelector(
-      '[data-testid="sidebar-toggle"]'
+      '[data-testid="sidebar-toggle"]',
     ) as HTMLButtonElement | null;
 
     expect(toggle).not.toBeNull();
@@ -287,9 +304,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
     fiscalYearContext.selectFiscalYear({
       accountingFramework: 'SYSCOHADA_REVISED',
@@ -297,12 +314,12 @@ describe('AppTopbarComponent', () => {
       fiscalYearId: 'FY#2026',
       startDate: '2026-01-01',
       status: 'OPEN',
-      year: 2026
+      year: 2026,
     });
 
     renderText();
     const selector = fixture.nativeElement.querySelector(
-      '[data-testid="active-fiscal-year"]'
+      '[data-testid="active-fiscal-year"]',
     ) as HTMLButtonElement;
 
     expect(selector).not.toBeNull();
@@ -317,9 +334,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
 
     renderText();
@@ -333,9 +350,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
     fiscalYearContext.rememberFiscalYear({
       accountingFramework: 'SYSCOHADA_REVISED',
@@ -343,7 +360,7 @@ describe('AppTopbarComponent', () => {
       fiscalYearId: 'FY#2026',
       startDate: '2026-01-01',
       status: 'OPEN',
-      year: 2026
+      year: 2026,
     });
     fiscalYearContext.rememberFiscalYear({
       accountingFramework: 'SYSCOHADA_REVISED',
@@ -351,17 +368,17 @@ describe('AppTopbarComponent', () => {
       fiscalYearId: 'FY#2025',
       startDate: '2025-01-01',
       status: 'CLOSED',
-      year: 2025
+      year: 2025,
     });
 
     renderText();
     const selector = fixture.nativeElement.querySelector(
-      '[data-testid="active-fiscal-year"]'
+      '[data-testid="active-fiscal-year"]',
     ) as HTMLButtonElement;
     selector.click();
     fixture.detectChanges();
     const fiscalYearButtons = Array.from(
-      fixture.nativeElement.querySelectorAll('button[role="menuitem"]')
+      fixture.nativeElement.querySelectorAll('button[role="menuitem"]'),
     ) as HTMLButtonElement[];
 
     fiscalYearButtons.find((button) => button.textContent?.includes('2025'))?.click();
@@ -376,9 +393,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
     fiscalYearContext.selectFiscalYear({
       accountingFramework: 'SYSCOHADA_REVISED',
@@ -386,13 +403,15 @@ describe('AppTopbarComponent', () => {
       fiscalYearId: 'FY#2026',
       startDate: '2026-01-01',
       status: 'OPEN',
-      year: 2026
+      year: 2026,
     });
 
     renderText();
 
     expect(activeWorkspaceText()).toContain('Demo SARL');
-    expect(fixture.nativeElement.querySelector('[data-testid="active-fiscal-year"]')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-fiscal-year"]'),
+    ).not.toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="active-dossier"]')).toBeNull();
   });
 
@@ -402,9 +421,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-firm-123',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
 
     renderText();
@@ -419,9 +438,9 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
 
     renderText();
@@ -439,15 +458,17 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
 
     renderText();
-    const workspaceIdentities = fixture.nativeElement.querySelectorAll('[data-testid="active-workspace"]');
+    const workspaceIdentities = fixture.nativeElement.querySelectorAll(
+      '[data-testid="active-workspace"]',
+    );
     const headerButtons = Array.from(
-      fixture.nativeElement.querySelectorAll('header > div > button')
+      fixture.nativeElement.querySelectorAll('header > div > button'),
     ) as HTMLButtonElement[];
 
     expect(workspaceIdentities).toHaveLength(1);
@@ -461,9 +482,9 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
 
     renderText();
@@ -491,14 +512,14 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
 
     renderText();
     const trigger = fixture.nativeElement.querySelector(
-      '[data-testid="active-workspace"]'
+      '[data-testid="active-workspace"]',
     ) as HTMLButtonElement;
     trigger.click();
     fixture.detectChanges();
@@ -517,9 +538,9 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
     authStore.setCreatedDossier(
       {
@@ -529,23 +550,25 @@ describe('AppTopbarComponent', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client-123'
+      'org-client-123',
     );
 
     renderText();
     const trigger = fixture.nativeElement.querySelector(
-      '[data-testid="active-workspace"]'
+      '[data-testid="active-workspace"]',
     ) as HTMLButtonElement;
     trigger.click();
     fixture.detectChanges();
-    (fixture.nativeElement.querySelector(
-      '[data-testid="cabinet-new-dossier-menu-item"]'
-    ) as HTMLButtonElement).click();
+    (
+      fixture.nativeElement.querySelector(
+        '[data-testid="cabinet-new-dossier-menu-item"]',
+      ) as HTMLButtonElement
+    ).click();
 
     expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dossiers'], {
-      queryParams: { createDossier: '1' }
+      queryParams: { createDossier: '1' },
     });
     expect(authStore.activeWorkspaceOrgId()).toBe('org-firm-123');
     expect(authStore.activeDossierOrgId()).toBe('org-client-123');
@@ -556,15 +579,15 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-company-123',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company-123'
+      'org-company-123',
     );
 
     renderText();
 
     expect(
-      fixture.nativeElement.querySelector('[data-testid="cabinet-new-dossier-menu-item"]')
+      fixture.nativeElement.querySelector('[data-testid="cabinet-new-dossier-menu-item"]'),
     ).toBeNull();
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
@@ -575,9 +598,9 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
     authStore.setCreatedDossier(
       {
@@ -587,9 +610,9 @@ describe('AppTopbarComponent', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client-123'
+      'org-client-123',
     );
 
     renderText();
@@ -610,9 +633,9 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
     authStore.setCreatedDossier(
       {
@@ -623,9 +646,9 @@ describe('AppTopbarComponent', () => {
         status: 'ACTIVE',
         accessMode: 'READ_ONLY',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client-123'
+      'org-client-123',
     );
 
     expect(renderText()).toContain('Read-only access');
@@ -637,9 +660,9 @@ describe('AppTopbarComponent', () => {
         orgId: 'org-firm-123',
         cabinetId: 'cabinet-001',
         displayName: 'Cabinet KPADONOU Conseil',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm-123'
+      'org-firm-123',
     );
 
     renderText();
@@ -657,9 +680,9 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-created',
         displayName: 'Created SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-created'
+      'org-created',
     );
     fixture.detectChanges();
 
@@ -673,7 +696,7 @@ describe('AppTopbarComponent', () => {
     workspacesApi.listWorkspaces.mockReturnValue(
       new Promise((resolve) => {
         resolveWorkspaces = resolve;
-      })
+      }),
     );
     await authStore.hydrate();
     const loadingPromise = authStore.loadWorkspaces();
@@ -686,8 +709,8 @@ describe('AppTopbarComponent', () => {
       {
         orgId: 'org-reloaded',
         displayName: 'Reloaded SARL',
-        workspaceType: 'COMPANY'
-      }
+        workspaceType: 'COMPANY',
+      },
     ]);
     await loadingPromise;
     fixture.detectChanges();
@@ -700,23 +723,23 @@ describe('AppTopbarComponent', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     });
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
         idToken: {
           payload: {
             email: 'chrys.kpadonou@example.com',
-            name: 'Chrys Kpadonou'
-          }
-        }
-      }
+            name: 'Chrys Kpadonou',
+          },
+        },
+      },
     } as never);
     await authStore.hydrate();
 
     renderText();
     const trigger = fixture.nativeElement.querySelector(
-      'button[aria-label="Open user menu"]'
+      'button[aria-label="Open user menu"]',
     ) as HTMLButtonElement;
     trigger.click();
     fixture.detectChanges();
@@ -733,7 +756,7 @@ describe('AppTopbarComponent', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     });
     vi.mocked(fetchUserAttributes).mockResolvedValue({});
     await authStore.hydrate();

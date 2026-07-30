@@ -219,7 +219,28 @@ describe('AppSidebarComponent', () => {
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).not.toContain('Équipe');
+    expect(fixture.nativeElement.textContent).not.toContain('Paramètres du cabinet');
   });
+
+  it.each(['SUPERVISOR', 'READER'] as const)(
+    'hides Cabinet Settings navigation from %s',
+    (cabinetRole) => {
+      TestBed.inject(AuthStore).setCreatedWorkspace(
+        {
+          orgId: 'org-firm',
+          displayName: 'Cabinet Demo',
+          workspaceType: 'ACCOUNTING_FIRM',
+          cabinetRole,
+          status: 'ACTIVE'
+        },
+        'org-firm'
+      );
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.textContent).not.toContain('Paramètres du cabinet');
+    }
+  );
 
   it('restores standard accounting navigation after a cabinet dossier is selected', () => {
     const authStore = TestBed.inject(AuthStore);

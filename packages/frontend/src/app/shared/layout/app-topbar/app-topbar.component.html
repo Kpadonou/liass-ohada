@@ -1,10 +1,12 @@
 <header
   class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#021f46] text-white shadow-[0_16px_40px_rgb(2_6_23/0.18)]"
 >
-  <div class="flex min-h-[var(--spacing-app-header)] items-center gap-2 px-3 py-1.5 sm:px-3.5 lg:px-4">
-    <div class="flex shrink-0 items-center gap-2">
+  <div
+    class="flex min-h-[var(--spacing-app-header)] items-center gap-2 px-3 py-1.5 sm:px-3.5 lg:px-4"
+  >
+    <div class="flex shrink-0 items-center gap-3 md:gap-4" data-testid="brand-menu-group">
       <a
-        class="liass-focus-ring hidden rounded-app-control lg:inline-flex"
+        class="liass-focus-ring hidden rounded-app-control md:inline-flex"
         routerLink="/dashboard"
         [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
       >
@@ -16,16 +18,11 @@
         />
       </a>
       <a
-        class="liass-focus-ring inline-flex rounded-app-control lg:hidden"
+        class="liass-focus-ring inline-flex rounded-app-control md:hidden"
         routerLink="/dashboard"
         [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
       >
-        <liass-logo
-          variant="icon"
-          size="sm"
-          theme="light"
-          [alt]="'SHELL.LOGO_ALT' | transloco"
-        />
+        <liass-logo variant="icon" size="sm" theme="light" [alt]="'SHELL.LOGO_ALT' | transloco" />
       </a>
 
       <button
@@ -41,7 +38,12 @@
     </div>
 
     @if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-      <liass-dropdown [open]="cabinetMenuOpen" width="md" align="start" (closed)="cabinetMenuOpen = false">
+      <liass-dropdown
+        [open]="cabinetMenuOpen"
+        width="md"
+        align="start"
+        (closed)="cabinetMenuOpen = false"
+      >
         <button
           liassDropdownTrigger
           class="liass-focus-ring hidden h-9 min-w-0 max-w-[210px] shrink-0 items-center gap-1.5 rounded-app-control px-1.5 text-left text-sm font-semibold text-white/95 transition hover:bg-white/[0.06] sm:flex"
@@ -57,22 +59,26 @@
           </span>
           <span class="min-w-0 truncate">
             {{
-              activeWorkspaceLabel()
-                || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+              activeWorkspaceLabel() ||
+                ((authStore.workspaceLoading() && authStore.hasActiveTenant()
                   ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
-                  : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
-              }}
+                  : 'SHELL.TOPBAR.NO_WORKSPACE'
+                ) | transloco)
+            }}
           </span>
-          <mat-icon class="shrink-0 text-white/70">{{ cabinetMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          <mat-icon class="shrink-0 text-white/70">{{
+            cabinetMenuOpen ? 'expand_less' : 'expand_more'
+          }}</mat-icon>
         </button>
 
         <div class="border-b border-slate-100 px-2 pb-3 dark:border-slate-800">
           <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">
             {{
-              activeWorkspaceLabel()
-                || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+              activeWorkspaceLabel() ||
+                ((authStore.workspaceLoading() && authStore.hasActiveTenant()
                   ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
-                  : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+                  : 'SHELL.TOPBAR.NO_WORKSPACE'
+                ) | transloco)
             }}
           </p>
         </div>
@@ -120,10 +126,11 @@
         </span>
         <span class="min-w-0 truncate">
           {{
-            activeWorkspaceLabel()
-              || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+            activeWorkspaceLabel() ||
+              ((authStore.workspaceLoading() && authStore.hasActiveTenant()
                 ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
-                : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+                : 'SHELL.TOPBAR.NO_WORKSPACE'
+              ) | transloco)
           }}
         </span>
         <mat-icon class="shrink-0 text-white/55" aria-hidden="true">expand_more</mat-icon>
@@ -148,7 +155,9 @@
           [attr.aria-label]="'SHELL.TOPBAR.DOSSIER' | transloco"
           (click)="openDossierContext()"
         >
-          <span class="grid size-6 shrink-0 place-items-center rounded-app-control bg-sky-300/14 text-sky-200">
+          <span
+            class="grid size-6 shrink-0 place-items-center rounded-app-control bg-sky-300/14 text-sky-200"
+          >
             <mat-icon>business_center</mat-icon>
           </span>
           <span class="min-w-0">
@@ -170,7 +179,12 @@
       }
 
       @if (showFiscalYearSelector()) {
-        <liass-dropdown [open]="fiscalYearMenuOpen" width="md" align="end" (closed)="fiscalYearMenuOpen = false">
+        <liass-dropdown
+          [open]="fiscalYearMenuOpen"
+          width="md"
+          align="end"
+          (closed)="fiscalYearMenuOpen = false"
+        >
           <button
             liassDropdownTrigger
             class="hidden h-10 min-w-0 items-center gap-2 rounded-app-panel border border-emerald-500/20 bg-emerald-500/18 px-2 text-left text-sm text-emerald-50 transition hover:bg-emerald-500/25 sm:flex"
@@ -181,7 +195,9 @@
             [attr.aria-label]="'SHELL.TOPBAR.FISCAL_YEAR_SELECTOR_LABEL' | transloco"
             (click)="toggleFiscalYearMenu()"
           >
-            <span class="grid size-6 shrink-0 place-items-center rounded-app-control bg-emerald-300/14 text-emerald-200">
+            <span
+              class="grid size-6 shrink-0 place-items-center rounded-app-control bg-emerald-300/14 text-emerald-200"
+            >
               <mat-icon>event_available</mat-icon>
             </span>
             <span class="min-w-0">
@@ -190,12 +206,14 @@
               </span>
               <span class="block max-w-[110px] truncate font-semibold text-white">
                 {{
-                  fiscalYearContext.activeFiscalYear()?.year
-                    || ('SHELL.TOPBAR.SELECT_FISCAL_YEAR' | transloco)
+                  fiscalYearContext.activeFiscalYear()?.year ||
+                    ('SHELL.TOPBAR.SELECT_FISCAL_YEAR' | transloco)
                 }}
               </span>
             </span>
-            <mat-icon class="text-emerald-200">{{ fiscalYearMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+            <mat-icon class="text-emerald-200">{{
+              fiscalYearMenuOpen ? 'expand_less' : 'expand_more'
+            }}</mat-icon>
           </button>
 
           <div class="border-b border-slate-100 px-2 pb-3 dark:border-slate-800">
@@ -204,8 +222,8 @@
             </p>
             <p class="mt-1 text-sm font-semibold text-slate-950 dark:text-white">
               {{
-                fiscalYearContext.activeFiscalYear()?.year
-                  || ('SHELL.TOPBAR.SELECT_FISCAL_YEAR' | transloco)
+                fiscalYearContext.activeFiscalYear()?.year ||
+                  ('SHELL.TOPBAR.SELECT_FISCAL_YEAR' | transloco)
               }}
             </p>
             @if (fiscalYearContext.activeFiscalYear(); as fiscalYear) {
@@ -252,8 +270,16 @@
       <button
         class="liass-focus-ring grid size-8 shrink-0 place-items-center rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1]"
         type="button"
-        [attr.aria-label]="uiStore.themeMode() === 'dark' ? ('SHELL.TOPBAR.LIGHT_MODE' | transloco) : ('SHELL.TOPBAR.DARK_MODE' | transloco)"
-        [matTooltip]="uiStore.themeMode() === 'dark' ? ('SHELL.TOPBAR.LIGHT_MODE' | transloco) : ('SHELL.TOPBAR.DARK_MODE' | transloco)"
+        [attr.aria-label]="
+          uiStore.themeMode() === 'dark'
+            ? ('SHELL.TOPBAR.LIGHT_MODE' | transloco)
+            : ('SHELL.TOPBAR.DARK_MODE' | transloco)
+        "
+        [matTooltip]="
+          uiStore.themeMode() === 'dark'
+            ? ('SHELL.TOPBAR.LIGHT_MODE' | transloco)
+            : ('SHELL.TOPBAR.DARK_MODE' | transloco)
+        "
         (click)="uiStore.toggleThemeMode()"
       >
         <mat-icon>{{ uiStore.themeMode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
@@ -287,13 +313,17 @@
                 [alt]="userLabel() || ('SHELL.TOPBAR.USER' | transloco)"
               />
             } @else {
-              <span class="text-xs font-bold">{{ (userLabel() || ('SHELL.TOPBAR.USER' | transloco)).slice(0, 1) }}</span>
+              <span class="text-xs font-bold">{{
+                (userLabel() || ('SHELL.TOPBAR.USER' | transloco)).slice(0, 1)
+              }}</span>
             }
           </span>
           <span class="hidden max-w-[120px] truncate md:inline">
             {{ userLabel() || ('SHELL.TOPBAR.USER' | transloco) }}
           </span>
-          <mat-icon class="text-white/75">{{ userMenuOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          <mat-icon class="text-white/75">{{
+            userMenuOpen ? 'expand_less' : 'expand_more'
+          }}</mat-icon>
         </button>
 
         <div class="border-b border-slate-100 pb-3 dark:border-slate-800">
@@ -308,10 +338,11 @@
           </p>
           <p class="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">
             {{
-              activeWorkspaceLabel()
-                || ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+              activeWorkspaceLabel() ||
+                ((authStore.workspaceLoading() && authStore.hasActiveTenant()
                   ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
-                  : 'SHELL.TOPBAR.NO_WORKSPACE') | transloco)
+                  : 'SHELL.TOPBAR.NO_WORKSPACE'
+                ) | transloco)
             }}
           </p>
           @if (showActiveDossier()) {
@@ -320,10 +351,11 @@
             </p>
             <p class="mt-1 truncate text-sm text-slate-600 dark:text-slate-300">
               {{
-                activeDossierLabel()
-                  || ((authStore.dossierLoading()
+                activeDossierLabel() ||
+                  ((authStore.dossierLoading()
                     ? 'SHELL.TOPBAR.DOSSIER_LOADING'
-                    : 'SHELL.TOPBAR.NO_DOSSIER') | transloco)
+                    : 'SHELL.TOPBAR.NO_DOSSIER'
+                  ) | transloco)
               }}
             </p>
           }

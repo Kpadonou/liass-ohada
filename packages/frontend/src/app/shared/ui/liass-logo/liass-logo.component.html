@@ -5,7 +5,7 @@
     </span>
   } @else if (theme() === 'auto') {
     <img
-      class="block h-full w-full object-contain dark:hidden"
+      [class]="imageClass() + ' dark:hidden'"
       [src]="darkSource()"
       [alt]="alt()"
       [width]="darkDimensions().width"
@@ -14,7 +14,7 @@
       (error)="handleImageError()"
     />
     <img
-      class="hidden h-full w-full object-contain dark:block"
+      [class]="imageClass() + ' hidden dark:block'"
       [src]="lightSource()"
       [alt]="alt()"
       [width]="lightDimensions().width"
@@ -24,7 +24,7 @@
     />
   } @else {
     <img
-      class="block h-full w-full object-contain"
+      [class]="imageClass()"
       [src]="singleSource()"
       [alt]="alt()"
       [width]="singleDimensions().width"

@@ -81,6 +81,21 @@ export class OnboardingService {
         cabinet,
         workspace,
       });
+      if (cabinet) {
+        console.info("[CABINET_SETTINGS_AUDIT]", {
+          action: "CREATED",
+          actorUserId: userId,
+          cabinetOrgId: organization.orgId,
+          changedFields: [
+            "preferredLanguage",
+            "defaults.country",
+            "defaults.accountingFramework",
+          ],
+          previousVersion: 0,
+          newVersion: 1,
+          timestamp: now,
+        });
+      }
     } catch (error) {
       if (error instanceof TransactionCanceledException) {
         throw new AppError(409, "WORKSPACE_ALREADY_EXISTS");

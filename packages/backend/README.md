@@ -211,7 +211,7 @@ ORG_ID=org-0ca75a05-c547-4c26-8929-387f4fff94ce \
 FISCAL_YEAR=2026 \
 STAGE=dev \
 TABLE_NAME=liass-ohada-dev-accounting-table \
-AWS_REGION=eu-west-2 \
+AWS_REGION=eu-west-3 \
 AWS_PROFILE=rem \
 npm run seed:accounting-test-data -w @liass-ohada/backend
 ```

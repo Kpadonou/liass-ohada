@@ -6,6 +6,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 
 import { LanguageSelectorComponent } from '../../../core/i18n/language-selector/language-selector.component';
 import { UiStore } from '../../../core/state/ui.store';
+import { PendingChangesService } from '../../../core/routing/pending-changes.service';
 import { AccountingFiscalYearContextService } from '../../../domains/accounting/data-access/accounting-fiscal-year-context.service';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { LiassDropdownComponent } from '../../ui/dropdown/dropdown.component';
@@ -64,6 +65,7 @@ export class AppTopbarComponent implements OnInit {
         : 'menu'
   );
   private readonly router = inject(Router);
+  private readonly pendingChanges = inject(PendingChangesService);
 
   protected cabinetMenuOpen = false;
   protected fiscalYearMenuOpen = false;
@@ -79,6 +81,9 @@ export class AppTopbarComponent implements OnInit {
 
   protected async logout(): Promise<void> {
     this.userMenuOpen = false;
+    if (!(await this.pendingChanges.confirmDeparture())) {
+      return;
+    }
     await this.authStore.logout();
     await this.router.navigate(['/login']);
   }

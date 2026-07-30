@@ -2322,7 +2322,7 @@
       },
       "FRAMEWORKS": {
         "SYSCOHADA_REVISED": "SYSCOHADA révisé",
-        "SYCEBNL": "SYCEBNL"
+        "SYCEBNL": "SYCEBNL — Système comptable des entités à but non lucratif"
       },
       "COUNTRIES": {
         "BENIN": "Bénin",
@@ -3007,6 +3007,107 @@
         "INVITATION_CREATE_FAILED": "Impossible de créer l’invitation.",
         "INVITATION_RESEND_FAILED": "Impossible de régénérer l’invitation.",
         "INVITATION_UPDATE_FAILED": "Impossible de mettre à jour l’invitation."
+      }
+    },
+    "CABINET_SETTINGS": {
+      "EYEBROW": "Cabinet",
+      "TITLE": "Paramètres du cabinet",
+      "SUBTITLE": "Gérez les informations générales et les valeurs par défaut de votre cabinet.",
+      "LOADING": "Chargement des paramètres du cabinet…",
+      "SECTIONS": {
+        "GENERAL": {
+          "TITLE": "Informations générales",
+          "DESCRIPTION": "Identité canonique du cabinet utilisée dans l’ensemble de l’espace de travail."
+        },
+        "CONTACT": {
+          "TITLE": "Coordonnées professionnelles",
+          "DESCRIPTION": "Coordonnées générales que le cabinet souhaite utiliser dans ses échanges."
+        },
+        "ADDRESS": {
+          "TITLE": "Adresse",
+          "DESCRIPTION": "Adresse professionnelle du cabinet. Tous les champs sont facultatifs."
+        },
+        "LANGUAGE": {
+          "TITLE": "Langue du cabinet",
+          "DESCRIPTION": "Préférence linguistique enregistrée au niveau du cabinet."
+        },
+        "DEFAULTS": {
+          "TITLE": "Valeurs par défaut des nouveaux dossiers",
+          "DESCRIPTION": "Préremplissage proposé lors de la création de futurs dossiers clients."
+        }
+      },
+      "FIELDS": {
+        "ORGANIZATION_NAME": "Nom du cabinet",
+        "COUNTRY": "Pays du cabinet",
+        "EMAIL": "Adresse électronique professionnelle",
+        "PHONE": "Téléphone",
+        "WEBSITE": "Site web",
+        "ADDRESS_LINE_1": "Adresse",
+        "ADDRESS_LINE_2": "Complément d’adresse",
+        "CITY": "Ville",
+        "REGION": "Région / Département",
+        "POSTAL_CODE": "Code postal",
+        "PREFERRED_LANGUAGE": "Langue préférée du cabinet",
+        "DEFAULT_COUNTRY": "Pays par défaut des nouveaux dossiers",
+        "DEFAULT_FRAMEWORK": "Référentiel comptable par défaut"
+      },
+      "HELP": {
+        "ORGANIZATION_NAME": "Ce nom est utilisé dans l’en-tête, les fils d’Ariane et le sélecteur d’espaces.",
+        "COUNTRY": "Le pays du cabinet décrit son implantation. Sa modification ne change pas le pays des dossiers clients existants.",
+        "EMAIL": "Adresse de contact générale du cabinet, distincte de l’adresse personnelle du propriétaire.",
+        "PREFERRED_LANGUAGE": "Cette préférence pourra être utilisée pour les documents et communications du cabinet. Elle ne modifie pas automatiquement la langue personnelle de votre interface.",
+        "DEFAULTS_BANNER": "Ces valeurs servent uniquement à préremplir les futurs dossiers clients. Elles ne modifient aucun dossier existant.",
+        "DEFAULT_FRAMEWORK": "Le référentiel sélectionné sera proposé à la création d’un dossier et pourra être ajusté selon les règles applicables au client."
+      },
+      "LANGUAGES": {
+        "FR": "Français",
+        "EN": "English"
+      },
+      "ACTIONS": {
+        "SAVE": "Enregistrer les modifications",
+        "DISCARD": "Annuler les modifications",
+        "RELOAD": "Recharger les dernières données",
+        "RETRY": "Réessayer"
+      },
+      "VALIDATION": {
+        "ORGANIZATION_NAME": "Saisissez un nom de cabinet valide de 160 caractères maximum.",
+        "COUNTRY": "Sélectionnez un pays OHADA valide.",
+        "EMAIL": "Saisissez une adresse électronique valide.",
+        "PHONE": "Le téléphone ne peut pas dépasser 40 caractères.",
+        "WEBSITE": "Saisissez une adresse web HTTP ou HTTPS valide.",
+        "ADDRESS": "Cette valeur dépasse la longueur autorisée.",
+        "LANGUAGE": "Sélectionnez une langue valide."
+      },
+      "CONFLICT": {
+        "TITLE": "Les paramètres ont été modifiés par un autre administrateur.",
+        "DESCRIPTION": "Rechargez la dernière version avant d’enregistrer vos modifications.",
+        "KEEP_DRAFT": "Continuer à consulter mes modifications",
+        "RELOAD_TITLE": "Recharger les paramètres ?",
+        "RELOAD_DESCRIPTION": "Vos modifications locales non enregistrées seront perdues."
+      },
+      "UNSAVED": {
+        "TITLE": "Modifications non enregistrées",
+        "DESCRIPTION": "Vous avez des modifications qui n’ont pas encore été enregistrées. Voulez-vous vraiment quitter cette page ?",
+        "STAY": "Rester sur la page",
+        "LEAVE": "Quitter sans enregistrer"
+      },
+      "LOAD_ERROR": {
+        "TITLE": "Impossible de charger les paramètres du cabinet.",
+        "DESCRIPTION": "Réessayez dans quelques instants."
+      },
+      "ERRORS": {
+        "NAME": "Le nom du cabinet n’est pas valide.",
+        "COUNTRY": "Le pays sélectionné n’est pas valide.",
+        "CONTACT": "Les coordonnées professionnelles contiennent une valeur invalide.",
+        "ADDRESS": "L’adresse contient une valeur invalide.",
+        "LANGUAGE": "La langue sélectionnée n’est pas valide.",
+        "DEFAULTS": "Les valeurs par défaut des nouveaux dossiers ne sont pas valides.",
+        "VERSION_REQUIRED": "La version des paramètres est manquante. Rechargez la page puis réessayez.",
+        "DATA_INCONSISTENT": "Les informations du cabinet ne peuvent pas être chargées correctement. Contactez l’assistance si le problème persiste.",
+        "GENERIC": "Les paramètres n’ont pas pu être enregistrés. Vérifiez les informations puis réessayez."
+      },
+      "NOTIFICATIONS": {
+        "SAVED": "Paramètres du cabinet enregistrés."
       }
     },
     "INVITATION_ACCEPTANCE": {

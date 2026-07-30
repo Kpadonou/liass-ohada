@@ -1,4 +1,5 @@
 import {
+  BatchGetItemCommand,
   QueryCommand,
   TransactWriteItemsCommand,
   TransactWriteItem,
@@ -16,6 +17,10 @@ import { z } from "zod";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
 import { resolveCabinetRole } from "../cabinet-role";
+import {
+  CabinetSettingsItem,
+  CabinetSettingsRepository,
+} from "./cabinet-settings-repository";
 
 const AccessSourceSchema = z.literal("DIRECT");
 const OwnerRoleSchema = z.literal("OWNER");
@@ -107,7 +112,8 @@ const putIfAbsent = (
     | UserOrgAccessItem
     | InitialWorkspaceLockItem
     | CabinetItem
-    | CabinetDossierItem,
+    | CabinetDossierItem
+    | CabinetSettingsItem,
 ): TransactWriteItem => ({
   Put: {
     TableName: config.TABLE_NAME,
@@ -132,7 +138,7 @@ export class OnboardingRepository {
       }),
     );
 
-    return (response.Items || [])
+    const accessRows = (response.Items || [])
       .map((item) => unmarshall(item))
       .filter(
         (access) =>
@@ -140,30 +146,83 @@ export class OnboardingRepository {
           access.userId === userId &&
           access.status === "ACTIVE" &&
           typeof access.orgId === "string",
-      )
-      .map((access) =>
-        WorkspaceSummarySchema.safeParse({
+      );
+    const organizationResponses = await Promise.all(
+      Array.from(
+        { length: Math.ceil(accessRows.length / 100) },
+        (_, index) => accessRows.slice(index * 100, (index + 1) * 100),
+      ).map((chunk) =>
+        dynamoClient.send(
+          new BatchGetItemCommand({
+            RequestItems: {
+              [config.TABLE_NAME]: {
+                Keys: chunk.map((access) => ({
+                  PK: { S: KeyFactory.orgKey(String(access.orgId)) },
+                  SK: { S: KeyFactory.organizationSK() },
+                })),
+                ConsistentRead: true,
+              },
+            },
+          }),
+        ),
+      ),
+    );
+    const organizations = new Map(
+      organizationResponses
+        .flatMap((result) => result?.Responses?.[config.TABLE_NAME] ?? [])
+        .map((item) => unmarshall(item))
+        .filter(
+          (item) =>
+            item.entityType === "ORGANIZATION" && typeof item.orgId === "string",
+        )
+        .map((item) => [String(item.orgId), item]),
+    );
+
+    return accessRows
+      .map((access) => {
+        const organization = organizations.get(String(access.orgId));
+        return WorkspaceSummarySchema.safeParse({
           orgId: access.orgId,
           role: typeof access.role === "string" ? access.role : undefined,
           cabinetRole: resolveCabinetRole(access),
           cabinetId:
             typeof access.cabinetId === "string" ? access.cabinetId : undefined,
           accessSource:
-            typeof access.accessSource === "string" ? access.accessSource : undefined,
+            typeof access.accessSource === "string"
+              ? access.accessSource
+              : undefined,
           displayName:
-            typeof access.displayName === "string" ? access.displayName : undefined,
+            typeof organization?.name === "string"
+              ? organization.name
+              : typeof access.displayName === "string"
+                ? access.displayName
+                : undefined,
           workspaceType:
-            typeof access.workspaceType === "string"
-              ? access.workspaceType
-              : undefined,
-          status: typeof access.status === "string" ? access.status : undefined,
-          country: typeof access.country === "string" ? access.country : undefined,
+            typeof organization?.workspaceType === "string"
+              ? organization.workspaceType
+              : typeof access.workspaceType === "string"
+                ? access.workspaceType
+                : undefined,
+          status:
+            typeof organization?.status === "string"
+              ? organization.status
+              : typeof access.status === "string"
+                ? access.status
+                : undefined,
+          country:
+            typeof organization?.country === "string"
+              ? organization.country
+              : typeof access.country === "string"
+                ? access.country
+                : undefined,
           accountingFramework:
-            typeof access.accountingFramework === "string"
-              ? access.accountingFramework
-              : undefined,
-        }),
-      )
+            typeof organization?.accountingFramework === "string"
+              ? organization.accountingFramework
+              : typeof access.accountingFramework === "string"
+                ? access.accountingFramework
+                : undefined,
+        });
+      })
       .filter((result): result is { success: true; data: WorkspaceSummary } =>
         Boolean(result.success),
       )
@@ -221,6 +280,13 @@ export class OnboardingRepository {
     ];
 
     if (cabinet) {
+      const settingsItem = CabinetSettingsRepository.buildInitialItem({
+        cabinetOrgId: organization.orgId,
+        country: organization.country,
+        accountingFramework: organization.accountingFramework,
+        actorUserId: userId,
+        now: organization.createdAt,
+      });
       const cabinetPk = KeyFactory.cabinetPK(cabinet.cabinetId);
       const cabinetItem = CabinetItemSchema.parse({
         ...cabinet,
@@ -244,7 +310,11 @@ export class OnboardingRepository {
         GSI1SK: KeyFactory.cabinetDossierGSI_SK(organization.orgId),
       });
 
-      transactItems.push(putIfAbsent(cabinetItem), putIfAbsent(cabinetDossierItem));
+      transactItems.push(
+        putIfAbsent(cabinetItem),
+        putIfAbsent(cabinetDossierItem),
+        putIfAbsent(settingsItem),
+      );
     }
 
     await dynamoClient.send(
