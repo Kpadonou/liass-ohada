@@ -18,7 +18,7 @@
     "path-to-regexp": "$path-to-regexp"
   },
   "scripts": {
-    "build": "npm run build -w @liass-ohada/shared && npm run build -w @liass-ohada/backend && npm exec --workspace @liass-ohada/frontend -- ng build --progress=false",
+    "build": "npm run build -w @liass-ohada/shared && npm run build -w @liass-ohada/backend && npm run build -w @liass-ohada/frontend",
     "test": "npm test -w @liass-ohada/backend && npm test -w @liass-ohada/frontend",
     "backend:synth": "npm run aws:synth -w @liass-ohada/backend",
     "backend:deploy": "npm run aws:deploy -w @liass-ohada/backend",

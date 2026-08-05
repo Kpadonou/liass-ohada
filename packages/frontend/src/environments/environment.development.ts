@@ -4,8 +4,6 @@ export const environment = {
   publicSite: {
     publicBaseUrl: 'http://localhost:4200',
     appBaseUrl: 'http://localhost:4200',
-    signupUrl: 'http://localhost:4200/signup',
-    loginUrl: 'http://localhost:4200/login',
     contactEmail: null,
     linkedInUrl: null
   },

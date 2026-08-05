@@ -6,6 +6,7 @@ dist/
 packages/*/dist/
 packages/*/cdk.out/
 packages/*/coverage/
+packages/frontend/src/environments/environment.production.generated.ts
 .env*
 !.env.example
 !packages/**/.env.example

@@ -2,6 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 
 import { PublicLandingPage } from './public-landing.page';
+import { publicSiteConfig } from './public-site.config';
 
 const translations = {
   fr: {
@@ -64,13 +65,20 @@ describe('PublicLandingPage', () => {
     expect(host.querySelector('liass-app-shell')).toBeNull();
   });
 
-  it('links primary actions directly to configured signup and login routes', () => {
+  it('links every signup and login action directly to its centralized application route', () => {
     const host: HTMLElement = fixture.nativeElement;
-    const hrefs = Array.from(host.querySelectorAll('a')).map((link) => link.href);
+    const signupLinks = Array.from(
+      host.querySelectorAll<HTMLAnchorElement>('a[data-auth-cta="signup"]')
+    );
+    const loginLinks = Array.from(
+      host.querySelectorAll<HTMLAnchorElement>('a[data-auth-cta="login"]')
+    );
 
-    expect(hrefs.some((href) => href.endsWith('/signup'))).toBe(true);
-    expect(hrefs.some((href) => href.endsWith('/login'))).toBe(true);
-    expect(hrefs.some((href) => href.includes('waitlist'))).toBe(false);
+    expect(signupLinks).toHaveLength(8);
+    expect(loginLinks).toHaveLength(4);
+    expect(signupLinks.every((link) => link.href === publicSiteConfig.signupUrl)).toBe(true);
+    expect(loginLinks.every((link) => link.href === publicSiteConfig.loginUrl)).toBe(true);
+    expect([...signupLinks, ...loginLinks].some((link) => link.href.includes('waitlist'))).toBe(false);
   });
 
   it('keeps desktop navigation and its primary action on one semantic line', () => {

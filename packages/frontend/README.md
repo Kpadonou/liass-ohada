@@ -28,20 +28,28 @@ ng generate --help
 
 ## Building
 
-To build the project run:
+Development builds do not need production configuration:
 
 ```bash
-ng build
+npm run build:development
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+Production builds must use the repository script so the checked-in placeholder-free source is replaced with validated CDK outputs:
+
+```bash
+LIASS_CDK_OUTPUTS_FILE=../../cdk-outputs.prod.json npm run build
+```
+
+The outputs file is created by the production infrastructure workflow with CDK's `--outputs-file` option. The frontend build does not deploy infrastructure. It extracts `ApiUrl`, Cognito pool/client IDs, the hosted UI domain, enabled providers, and callback/logout URLs, then rejects missing values, placeholders, development URLs, non-HTTPS origins, or redirects that do not return to `https://app.liassohada.com/auth/callback` and `https://app.liassohada.com/login`.
+
+The same public values may be supplied explicitly with the `LIASS_*` variables documented in [`.env.example`](.env.example). Cognito pool/client IDs are browser configuration, not secrets; social-provider client secrets remain in the backend deployment/Secrets Manager flow and must never be placed here.
 
 ## Running unit tests
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+To execute the production-config guard tests followed by the Angular [Vitest](https://vitest.dev/) suite, use:
 
 ```bash
-ng test
+npm test
 ```
 
 ## Running end-to-end tests

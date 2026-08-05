@@ -1,6 +1,13 @@
 import { environment } from '../../../environments/environment';
 
-export const publicSiteConfig = environment.publicSite;
+const appBaseUrl = environment.publicSite.appBaseUrl.replace(/\/$/, '');
+
+export const publicSiteConfig = {
+  ...environment.publicSite,
+  appBaseUrl,
+  signupUrl: `${appBaseUrl}/signup`,
+  loginUrl: `${appBaseUrl}/login`
+} as const;
 
 export function isPublicSiteHost(
   hostname = globalThis.location?.hostname ?? '',

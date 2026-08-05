@@ -33,10 +33,10 @@
 
       <div class="mt-auto space-y-3 pt-8">
         <liass-language-selector />
-        <a class="public-button public-button-secondary w-full" [href]="config.loginUrl">
+        <a data-auth-cta="login" class="public-button public-button-secondary w-full" [href]="config.loginUrl">
           {{ 'PUBLIC.CTA.LOGIN' | transloco }}
         </a>
-        <a class="public-button public-button-primary w-full" [href]="config.signupUrl">
+        <a data-auth-cta="signup" class="public-button public-button-primary w-full" [href]="config.signupUrl">
           {{ 'PUBLIC.CTA.SIGNUP_SHORT' | transloco }}
         </a>
       </div>
@@ -69,8 +69,8 @@
 
           <div class="public-desktop-actions hidden min-[86rem]:flex">
             <liass-language-selector />
-            <a class="public-login-link" [href]="config.loginUrl">{{ 'PUBLIC.CTA.LOGIN' | transloco }}</a>
-            <a class="public-button public-button-primary" [href]="config.signupUrl">
+            <a data-auth-cta="login" class="public-login-link" [href]="config.loginUrl">{{ 'PUBLIC.CTA.LOGIN' | transloco }}</a>
+            <a data-auth-cta="signup" class="public-button public-button-primary" [href]="config.signupUrl">
               {{ 'PUBLIC.CTA.TRY_FREE' | transloco }}
             </a>
           </div>
@@ -101,7 +101,7 @@
                 {{ 'PUBLIC.HERO.DESCRIPTION' | transloco }}
               </p>
               <div class="public-hero-actions public-hero-enter public-hero-enter-4 mt-8">
-                <a class="public-button public-button-hero" [href]="config.signupUrl">
+                <a data-auth-cta="signup" class="public-button public-button-hero" [href]="config.signupUrl">
                   <span class="public-label-wide">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</span>
                   <span class="public-label-compact">{{ 'PUBLIC.CTA.SIGNUP_SHORT' | transloco }}</span>
                   <mat-icon aria-hidden="true">arrow_forward</mat-icon>
@@ -217,7 +217,7 @@
                 </article>
               }
             </div>
-            <a class="public-button public-button-primary mt-9" liassPublicReveal="fade" [href]="config.signupUrl">{{ 'PUBLIC.FEATURES.CTA' | transloco }}</a>
+            <a data-auth-cta="signup" class="public-button public-button-primary mt-9" liassPublicReveal="fade" [href]="config.signupUrl">{{ 'PUBLIC.FEATURES.CTA' | transloco }}</a>
           </div>
         </section>
 
@@ -293,7 +293,7 @@
                   <mat-icon aria-hidden="true">info</mat-icon>
                   <p>{{ 'PUBLIC.FACTURATION.DISCLAIMER' | transloco }}</p>
                 </div>
-                <a class="public-button public-button-primary mt-8" [href]="config.signupUrl">{{ 'PUBLIC.FACTURATION.CTA' | transloco }}</a>
+                <a data-auth-cta="signup" class="public-button public-button-primary mt-8" [href]="config.signupUrl">{{ 'PUBLIC.FACTURATION.CTA' | transloco }}</a>
               </div>
             </div>
           </div>
@@ -317,7 +317,7 @@
               }
             </ol>
             <div class="mt-10 text-center" liassPublicReveal="fade">
-              <a class="public-button public-button-primary" [href]="config.signupUrl">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</a>
+              <a data-auth-cta="signup" class="public-button public-button-primary" [href]="config.signupUrl">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</a>
               <p class="mt-3 text-sm text-slate-500">{{ 'PUBLIC.ACCESS.REASSURANCE' | transloco }}</p>
             </div>
           </div>
@@ -418,8 +418,8 @@
             <h2 id="final-cta-title">{{ 'PUBLIC.FINAL_CTA.TITLE' | transloco }}</h2>
             <p>{{ 'PUBLIC.FINAL_CTA.DESCRIPTION' | transloco }}</p>
             <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <a class="public-button public-button-hero" [href]="config.signupUrl">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</a>
-              <a class="public-button public-button-ghost-light" [href]="config.loginUrl">{{ 'PUBLIC.CTA.LOGIN' | transloco }}</a>
+              <a data-auth-cta="signup" class="public-button public-button-hero" [href]="config.signupUrl">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</a>
+              <a data-auth-cta="login" class="public-button public-button-ghost-light" [href]="config.loginUrl">{{ 'PUBLIC.CTA.LOGIN' | transloco }}</a>
             </div>
             <p class="mt-5 !text-sm !text-slate-300">{{ 'PUBLIC.FINAL_CTA.REASSURANCE' | transloco }}</p>
           </div>
@@ -441,8 +441,8 @@
           <div>
             <h2>{{ 'PUBLIC.FOOTER.ACCESS' | transloco }}</h2>
             <nav class="mt-4 flex flex-col gap-3" [attr.aria-label]="'PUBLIC.FOOTER.ACCESS' | transloco">
-              <a [href]="config.signupUrl">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</a>
-              <a [href]="config.loginUrl">{{ 'PUBLIC.CTA.LOGIN' | transloco }}</a>
+              <a data-auth-cta="signup" [href]="config.signupUrl">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</a>
+              <a data-auth-cta="login" [href]="config.loginUrl">{{ 'PUBLIC.CTA.LOGIN' | transloco }}</a>
             </nav>
           </div>
         </div>
