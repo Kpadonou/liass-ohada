@@ -8,7 +8,8 @@
     "build": "npm run prepare:production-config && ng build --progress=false",
     "build:development": "ng build --progress=false --configuration development",
     "watch": "ng build --watch --configuration development",
-    "test": "npm run test:production-config && ng test",
+    "test": "npm run test:frontend-contracts && ng test",
+    "test:frontend-contracts": "node --test scripts/*.test.mjs",
     "test:production-config": "node --test scripts/production-config.test.mjs"
   },
   "private": true,

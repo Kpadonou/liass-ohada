@@ -2266,22 +2266,22 @@
   },
   "IDENTITY": {
     "AUTH_LAYOUT": {
-      "BACK_TO_DASHBOARD": "Retour au tableau de bord",
-      "LOGO_ALT": "logo liass-ohada",
-      "APPROVED_MESSAGE": "L'ERP de référence pour les entreprises et organisations de l’espace OHADA. 100 % aligné sur le SYSCOHADA révisé et le SYCEBNL.",
-      "TAGLINE": "Votre ERP comptable OHADA",
-      "DESCRIPTION": "Conçu pour les workflows SYSCOHADA révisé et SYCEBNL. Comptabilité, trésorerie, reporting et assistance IA dans un seul espace.",
-      "PILLARS": {
-        "ACCOUNTING": "Comptabilité",
-        "TREASURY": "Trésorerie",
-        "AI": "Assistance IA"
+      "BACK_TO_PUBLIC_SITE": "Retour au site Liass-OHADA",
+      "LOGO_ALT": "Logo Liass-OHADA",
+      "REASSURANCE": {
+        "LABEL": "Repères de confiance",
+        "SECURE": "Accès sécurisé",
+        "ISOLATION": "Isolation des organisations",
+        "OHADA": "Conçu pour l’espace OHADA"
       }
     },
     "AUTH_SOCIAL": {
+      "LABEL": "Options de connexion avec un fournisseur",
       "GOOGLE": "Continuer avec Google",
       "LINKEDIN": "Continuer avec LinkedIn",
       "LINKEDIN_UNAVAILABLE": "Continuer avec LinkedIn n’est pas encore configuré",
-      "DIVIDER": "Ou"
+      "DIVIDER": "Ou",
+      "LOADING": "Ouverture de la connexion sécurisée…"
     },
     "AUTH_CALLBACK": {
       "COMPLETING": "Finalisation de la connexion...",
@@ -2759,15 +2759,14 @@
     },
     "LOGIN": {
       "BRAND": "Liass-OHADA",
-      "TITLE": "Se connecter",
+      "TITLE": "Bienvenue sur Liass-OHADA",
       "SUBTITLE": "Connectez-vous pour accéder à votre espace de travail.",
       "NEW_PASSWORD_TITLE": "Créez un nouveau mot de passe",
       "NEW_PASSWORD_SUBTITLE": "Finalisez la sécurisation de votre compte avant d’ouvrir votre espace.",
       "DIVIDER": "Ou",
       "NEW_PASSWORD_NOTICE": "Votre mot de passe temporaire a été accepté. Créez un nouveau mot de passe pour finaliser la connexion.",
-      "REMEMBER_ME": "Rester connecté",
       "FORGOT_PASSWORD": "Mot de passe oublié ?",
-      "NO_ACCOUNT": "Vous n’avez pas de compte ?",
+      "NO_ACCOUNT": "Vous n’avez pas encore de compte ?",
       "FIELDS": {
         "EMAIL": "Email",
         "PASSWORD": "Mot de passe",
@@ -2776,15 +2775,17 @@
       },
       "PLACEHOLDERS": {
         "EMAIL": "info@entreprise.com",
-        "PASSWORD": "Saisissez votre mot de passe",
-        "NEW_PASSWORD": "Saisissez un nouveau mot de passe",
-        "CONFIRM_NEW_PASSWORD": "Confirmez votre nouveau mot de passe"
+        "PASSWORD": "Votre mot de passe",
+        "NEW_PASSWORD": "Nouveau mot de passe",
+        "CONFIRM_NEW_PASSWORD": "Confirmez le mot de passe"
       },
       "ACTIONS": {
         "GOOGLE_SIGN_IN": "Se connecter avec Google",
         "SIGN_IN": "Se connecter",
-        "SIGN_UP": "Créer un compte",
+        "SIGNING_IN": "Connexion en cours…",
+        "SIGN_UP": "Créer mon compte",
         "SET_NEW_PASSWORD": "Définir le nouveau mot de passe",
+        "SETTING_NEW_PASSWORD": "Enregistrement en cours…",
         "SHOW_PASSWORD": "Afficher le mot de passe",
         "HIDE_PASSWORD": "Masquer le mot de passe",
         "SHOW_NEW_PASSWORD": "Afficher le nouveau mot de passe",
@@ -2802,11 +2803,10 @@
       }
     },
     "SIGNUP": {
-      "TITLE": "Créer votre compte",
-      "SUBTITLE": "L’inscription autonome n’est pas encore activée. Cette page prévisualise la future expérience d’onboarding.",
-      "DISABLED_NOTICE": "La création de compte est actuellement gérée par l’administrateur de votre organisation.",
+      "TITLE": "Créer votre compte Liass-OHADA",
+      "SUBTITLE": "Créez gratuitement votre compte et configurez votre premier espace.",
+      "EMAIL_UNAVAILABLE": "La création par email n’est pas encore disponible. Continuez avec Google ou LinkedIn pour créer votre compte.",
       "HAVE_ACCOUNT": "Vous avez déjà un compte ?",
-      "TERMS": "En créant un compte, vous acceptez les conditions de la plateforme et la politique de confidentialité.",
       "FIELDS": {
         "FIRST_NAME": "Prénom",
         "LAST_NAME": "Nom",
@@ -2820,7 +2820,7 @@
         "PASSWORD": "Créez un mot de passe"
       },
       "ACTIONS": {
-        "SIGN_UP": "Créer un compte",
+        "SIGN_UP": "Créer mon compte",
         "SIGN_IN": "Se connecter"
       }
     },

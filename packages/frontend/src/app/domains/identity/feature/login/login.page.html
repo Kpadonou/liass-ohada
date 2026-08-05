@@ -1,101 +1,97 @@
 <liass-auth-layout>
-  <div class="mb-5 sm:mb-8">
-    <h1 class="text-3xl font-semibold leading-tight text-slate-800 dark:text-white/90 sm:text-4xl">
+  <header class="liass-auth-section">
+    <h1 class="liass-auth-heading">
       {{
         authStore.requiresNewPassword()
           ? ('IDENTITY.LOGIN.NEW_PASSWORD_TITLE' | transloco)
           : ('IDENTITY.LOGIN.TITLE' | transloco)
       }}
     </h1>
-    <p class="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+    <p class="liass-auth-subtitle">
       {{
         authStore.requiresNewPassword()
           ? ('IDENTITY.LOGIN.NEW_PASSWORD_SUBTITLE' | transloco)
           : ('IDENTITY.LOGIN.SUBTITLE' | transloco)
       }}
     </p>
-  </div>
+  </header>
 
   @if (!authStore.requiresNewPassword()) {
-    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-5">
-      <button
-        class="liass-auth-social-button liass-focus-ring inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-700 transition hover:bg-slate-200 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-65 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
-        type="button"
-        [disabled]="authStore.loading()"
-        (click)="loginWithGoogle()"
-      >
-        @if (authStore.loading()) {
-          <span class="size-5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
-        } @else {
-          <svg class="size-5" viewBox="0 0 20 20" aria-hidden="true">
-            <path
-              fill="#4285F4"
-              d="M18.75 10.19c0-.72-.06-1.24-.19-1.78h-8.38v3.24h4.92c-.1.81-.64 2.03-1.83 2.84l-.02.11 2.65 2.01.19.02c1.68-1.53 2.66-3.77 2.66-6.44z"
-            />
-            <path
-              fill="#34A853"
-              d="M10.18 18.75c2.41 0 4.43-.78 5.91-2.12l-2.82-2.14c-.75.52-1.76.88-3.09.88-2.36 0-4.36-1.53-5.08-3.64l-.1.01-2.76 2.09-.04.1c1.47 2.86 4.49 4.82 7.98 4.82z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.1 11.73A5.47 5.47 0 0 1 4.8 10c0-.6.11-1.19.29-1.73v-.12L2.29 6.03l-.09.04A8.6 8.6 0 0 0 1.25 10c0 1.41.35 2.74.95 3.93l2.9-2.2z"
-            />
-            <path
-              fill="#EB4335"
-              d="M10.18 4.63c1.68 0 2.81.71 3.45 1.31l2.52-2.42C14.6 2.12 12.59 1.25 10.18 1.25c-3.49 0-6.51 1.96-7.98 4.82l2.89 2.2c.72-2.11 2.73-3.64 5.09-3.64z"
-            />
-          </svg>
-        }
-        <span>{{ 'IDENTITY.AUTH_SOCIAL.GOOGLE' | transloco }}</span>
-      </button>
-      <button
-        class="liass-auth-social-button liass-focus-ring inline-flex items-center justify-center gap-3 rounded-lg bg-slate-100 px-5 py-3 text-sm font-normal text-slate-700 transition hover:bg-slate-200 hover:text-slate-800 disabled:cursor-not-allowed disabled:opacity-65 dark:bg-white/5 dark:text-white/90 dark:hover:bg-white/10"
-        type="button"
-        [disabled]="authStore.loading()"
-        (click)="loginWithLinkedIn()"
-      >
-        @if (authStore.loading()) {
-          <span class="size-5 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
-        } @else {
-          <span class="grid size-5 place-items-center rounded bg-[#0A66C2] text-xs font-bold text-white" aria-hidden="true">in</span>
-        }
-        <span>{{ 'IDENTITY.AUTH_SOCIAL.LINKEDIN' | transloco }}</span>
-      </button>
-    </div>
+    <section class="liass-auth-section mt-6" [attr.aria-label]="'IDENTITY.AUTH_SOCIAL.LABEL' | transloco">
+      @if (authStore.loading()) {
+        <p class="sr-only" role="status" aria-live="polite">
+          {{ 'IDENTITY.AUTH_SOCIAL.LOADING' | transloco }}
+        </p>
+      }
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <button
+          data-testid="google-auth-button"
+          class="liass-auth-social-button liass-focus-ring inline-flex items-center justify-center gap-2.5 rounded-app-control px-4 text-sm font-semibold"
+          type="button"
+          [disabled]="authStore.loading()"
+          [attr.aria-busy]="authStore.loading()"
+          (click)="loginWithGoogle()"
+        >
+          @if (authStore.loading()) {
+            <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+          } @else {
+            <svg class="size-5 shrink-0" viewBox="0 0 20 20" aria-hidden="true">
+              <path fill="#4285F4" d="M18.75 10.19c0-.72-.06-1.24-.19-1.78h-8.38v3.24h4.92c-.1.81-.64 2.03-1.83 2.84l-.02.11 2.65 2.01.19.02c1.68-1.53 2.66-3.77 2.66-6.44z" />
+              <path fill="#34A853" d="M10.18 18.75c2.41 0 4.43-.78 5.91-2.12l-2.82-2.14c-.75.52-1.76.88-3.09.88-2.36 0-4.36-1.53-5.08-3.64l-.1.01-2.76 2.09-.04.1c1.47 2.86 4.49 4.82 7.98 4.82z" />
+              <path fill="#FBBC05" d="M5.1 11.73A5.47 5.47 0 0 1 4.8 10c0-.6.11-1.19.29-1.73v-.12L2.29 6.03l-.09.04A8.6 8.6 0 0 0 1.25 10c0 1.41.35 2.74.95 3.93l2.9-2.2z" />
+              <path fill="#EB4335" d="M10.18 4.63c1.68 0 2.81.71 3.45 1.31l2.52-2.42C14.6 2.12 12.59 1.25 10.18 1.25c-3.49 0-6.51 1.96-7.98 4.82l2.89 2.2c.72-2.11 2.73-3.64 5.09-3.64z" />
+            </svg>
+          }
+          <span>{{ 'IDENTITY.AUTH_SOCIAL.GOOGLE' | transloco }}</span>
+        </button>
 
-    <div class="relative py-4 sm:py-6">
-      <div class="absolute inset-0 flex items-center" aria-hidden="true">
-        <div class="w-full border-t border-slate-200 dark:border-slate-800"></div>
+        <button
+          data-testid="linkedin-auth-button"
+          class="liass-auth-social-button liass-focus-ring inline-flex items-center justify-center gap-2.5 rounded-app-control px-4 text-sm font-semibold"
+          type="button"
+          [disabled]="authStore.loading()"
+          [attr.aria-busy]="authStore.loading()"
+          (click)="loginWithLinkedIn()"
+        >
+          @if (authStore.loading()) {
+            <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+          } @else {
+            <span class="grid size-5 shrink-0 place-items-center rounded bg-[#0A66C2] text-[0.68rem] font-bold text-white" aria-hidden="true">in</span>
+          }
+          <span>{{ 'IDENTITY.AUTH_SOCIAL.LINKEDIN' | transloco }}</span>
+        </button>
       </div>
-      <div class="relative flex justify-center text-sm">
-        <span class="bg-white px-4 py-1 text-slate-400 dark:bg-slate-950">
-          {{ 'IDENTITY.AUTH_SOCIAL.DIVIDER' | transloco }}
-        </span>
-      </div>
+    </section>
+
+    <div class="liass-auth-divider liass-auth-section" aria-hidden="true">
+      <span>{{ 'IDENTITY.AUTH_SOCIAL.DIVIDER' | transloco }}</span>
     </div>
   } @else {
-    <div class="mb-6 rounded-lg border border-brand-100 bg-brand-50 px-4 py-3 text-sm leading-6 text-brand-900 dark:border-brand-900/60 dark:bg-brand-900/20 dark:text-brand-100">
-      {{ 'IDENTITY.LOGIN.NEW_PASSWORD_NOTICE' | transloco }}
+    <div class="liass-auth-section mt-6 flex items-start gap-3 rounded-app-panel border border-brand-100 bg-brand-50 px-4 py-3 text-sm leading-6 text-brand-900">
+      <mat-icon class="mt-0.5 shrink-0 text-brand-600" aria-hidden="true">lock_reset</mat-icon>
+      <p>{{ 'IDENTITY.LOGIN.NEW_PASSWORD_NOTICE' | transloco }}</p>
     </div>
   }
 
-  <form class="space-y-6" [formGroup]="form" (ngSubmit)="submit()">
+  <form class="liass-auth-section space-y-5" [class.mt-6]="authStore.requiresNewPassword()" [formGroup]="form" (ngSubmit)="submit()">
     @if (!authStore.requiresNewPassword()) {
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300" for="login-email">
+        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="login-email">
           {{ 'IDENTITY.LOGIN.FIELDS.EMAIL' | transloco }}
-          <span class="text-danger-600">*</span>
         </label>
-        <input
-          id="login-email"
-          class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
-          type="email"
-          autocomplete="email"
-          formControlName="email"
-          [placeholder]="'IDENTITY.LOGIN.PLACEHOLDERS.EMAIL' | transloco"
-          [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
-          [attr.aria-describedby]="form.controls.email.touched && form.controls.email.invalid ? 'login-email-error' : null"
-        />
+        <div class="relative">
+          <mat-icon class="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true">mail_outline</mat-icon>
+          <input
+            id="login-email"
+            class="liass-auth-input liass-focus-ring h-12 w-full rounded-app-control border px-4 pl-12 text-sm outline-none"
+            type="email"
+            autocomplete="email"
+            formControlName="email"
+            [placeholder]="'IDENTITY.LOGIN.PLACEHOLDERS.EMAIL' | transloco"
+            [attr.aria-invalid]="form.controls.email.touched && form.controls.email.invalid"
+            [attr.aria-describedby]="form.controls.email.touched && form.controls.email.invalid ? 'login-email-error' : null"
+          />
+        </div>
         @if (form.controls.email.touched && form.controls.email.invalid) {
           <p id="login-email-error" class="mt-1.5 text-sm text-danger-600">
             {{ 'IDENTITY.LOGIN.VALIDATION.EMAIL' | transloco }}
@@ -104,14 +100,14 @@
       </div>
 
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300" for="login-password">
+        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="login-password">
           {{ 'IDENTITY.LOGIN.FIELDS.PASSWORD' | transloco }}
-          <span class="text-danger-600">*</span>
         </label>
         <div class="relative">
+          <mat-icon class="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true">lock_outline</mat-icon>
           <input
             id="login-password"
-            class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+            class="liass-auth-input liass-focus-ring h-12 w-full rounded-app-control border px-12 text-sm outline-none"
             [type]="hidePassword ? 'password' : 'text'"
             autocomplete="current-password"
             formControlName="password"
@@ -120,7 +116,7 @@
             [attr.aria-describedby]="form.controls.password.touched && form.controls.password.invalid ? 'login-password-error' : null"
           />
           <button
-            class="liass-focus-ring absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-app-control text-slate-500 transition hover:text-slate-700 disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-200"
+            class="liass-focus-ring absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-app-control text-slate-500 transition hover:bg-brand-50 hover:text-brand-700 disabled:opacity-50"
             type="button"
             [attr.aria-label]="hidePassword ? ('IDENTITY.LOGIN.ACTIONS.SHOW_PASSWORD' | transloco) : ('IDENTITY.LOGIN.ACTIONS.HIDE_PASSWORD' | transloco)"
             [disabled]="authStore.loading()"
@@ -136,19 +132,10 @@
         }
       </div>
 
-      <div class="flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <input
-            id="login-remember"
-            class="liass-focus-ring size-5 rounded border-slate-300 text-brand-700 dark:border-slate-700"
-            type="checkbox"
-          />
-          <label class="text-sm text-slate-700 dark:text-slate-300" for="login-remember">
-            {{ 'IDENTITY.LOGIN.REMEMBER_ME' | transloco }}
-          </label>
-        </div>
+      <div class="flex justify-end">
         <span
-          class="text-sm font-medium text-brand-700 opacity-70 dark:text-brand-300"
+          data-testid="forgot-password-unavailable"
+          class="text-sm font-semibold text-brand-700/65"
           aria-disabled="true"
         >
           {{ 'IDENTITY.LOGIN.FORGOT_PASSWORD' | transloco }}
@@ -156,14 +143,14 @@
       </div>
     } @else {
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300" for="login-new-password">
+        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="login-new-password">
           {{ 'IDENTITY.LOGIN.FIELDS.NEW_PASSWORD' | transloco }}
-          <span class="text-danger-600">*</span>
         </label>
         <div class="relative">
+          <mat-icon class="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true">password</mat-icon>
           <input
             id="login-new-password"
-            class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+            class="liass-auth-input liass-focus-ring h-12 w-full rounded-app-control border px-12 text-sm outline-none"
             [type]="hideNewPassword ? 'password' : 'text'"
             autocomplete="new-password"
             formControlName="newPassword"
@@ -172,7 +159,7 @@
             [attr.aria-describedby]="form.controls.newPassword.touched && form.controls.newPassword.invalid ? 'login-new-password-error' : null"
           />
           <button
-            class="liass-focus-ring absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-app-control text-slate-500 transition hover:text-slate-700 disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-200"
+            class="liass-focus-ring absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-app-control text-slate-500 transition hover:bg-brand-50 hover:text-brand-700 disabled:opacity-50"
             type="button"
             [attr.aria-label]="hideNewPassword ? ('IDENTITY.LOGIN.ACTIONS.SHOW_NEW_PASSWORD' | transloco) : ('IDENTITY.LOGIN.ACTIONS.HIDE_NEW_PASSWORD' | transloco)"
             [disabled]="authStore.loading()"
@@ -185,8 +172,7 @@
           <p id="login-new-password-error" class="mt-1.5 text-sm text-danger-600">
             {{ 'IDENTITY.LOGIN.VALIDATION.NEW_PASSWORD_REQUIRED' | transloco }}
           </p>
-        }
-        @if (form.controls.newPassword.touched && form.controls.newPassword.hasError('minlength')) {
+        } @else if (form.controls.newPassword.touched && form.controls.newPassword.hasError('minlength')) {
           <p id="login-new-password-error" class="mt-1.5 text-sm text-danger-600">
             {{ 'IDENTITY.LOGIN.VALIDATION.NEW_PASSWORD_MIN_LENGTH' | transloco }}
           </p>
@@ -194,14 +180,14 @@
       </div>
 
       <div>
-        <label class="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300" for="login-confirm-password">
+        <label class="mb-1.5 block text-sm font-semibold text-slate-700" for="login-confirm-password">
           {{ 'IDENTITY.LOGIN.FIELDS.CONFIRM_NEW_PASSWORD' | transloco }}
-          <span class="text-danger-600">*</span>
         </label>
         <div class="relative">
+          <mat-icon class="pointer-events-none absolute left-4 top-1/2 z-10 -translate-y-1/2 text-slate-400" aria-hidden="true">verified_user</mat-icon>
           <input
             id="login-confirm-password"
-            class="liass-auth-input liass-focus-ring h-11 w-full rounded-lg border border-slate-200 bg-white px-4 pr-12 text-sm text-slate-900 shadow-app-xs outline-none transition placeholder:text-slate-400 disabled:bg-slate-50 disabled:text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:disabled:bg-white/5"
+            class="liass-auth-input liass-focus-ring h-12 w-full rounded-app-control border px-12 text-sm outline-none"
             [type]="hideConfirmPassword ? 'password' : 'text'"
             autocomplete="new-password"
             formControlName="confirmNewPassword"
@@ -210,7 +196,7 @@
             [attr.aria-describedby]="form.controls.confirmNewPassword.touched && (form.controls.confirmNewPassword.invalid || passwordsDoNotMatch()) ? 'login-confirm-password-error' : null"
           />
           <button
-            class="liass-focus-ring absolute right-3 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-app-control text-slate-500 transition hover:text-slate-700 disabled:opacity-50 dark:text-slate-400 dark:hover:text-slate-200"
+            class="liass-focus-ring absolute right-2 top-1/2 grid size-9 -translate-y-1/2 place-items-center rounded-app-control text-slate-500 transition hover:bg-brand-50 hover:text-brand-700 disabled:opacity-50"
             type="button"
             [attr.aria-label]="hideConfirmPassword ? ('IDENTITY.LOGIN.ACTIONS.SHOW_CONFIRM_PASSWORD' | transloco) : ('IDENTITY.LOGIN.ACTIONS.HIDE_CONFIRM_PASSWORD' | transloco)"
             [disabled]="authStore.loading()"
@@ -223,8 +209,7 @@
           <p id="login-confirm-password-error" class="mt-1.5 text-sm text-danger-600">
             {{ 'IDENTITY.LOGIN.VALIDATION.CONFIRM_NEW_PASSWORD' | transloco }}
           </p>
-        }
-        @if (form.controls.confirmNewPassword.touched && passwordsDoNotMatch()) {
+        } @else if (form.controls.confirmNewPassword.touched && passwordsDoNotMatch()) {
           <p id="login-confirm-password-error" class="mt-1.5 text-sm text-danger-600">
             {{ 'IDENTITY.LOGIN.VALIDATION.PASSWORDS_DO_NOT_MATCH' | transloco }}
           </p>
@@ -233,36 +218,38 @@
     }
 
     @if (authStore.error()) {
-      <div class="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-100">
-        <mat-icon class="mt-0.5 text-red-600 dark:text-red-300">error</mat-icon>
+      <div class="flex items-start gap-3 rounded-app-panel border border-red-200 bg-red-50 px-4 py-3 text-sm leading-6 text-red-800" role="alert" aria-live="assertive">
+        <mat-icon class="mt-0.5 shrink-0 text-red-600" aria-hidden="true">error</mat-icon>
         <p>{{ authStore.error() }}</p>
       </div>
     }
 
     <button
-      class="liass-auth-primary-button liass-focus-ring flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-medium text-white shadow-app-xs transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+      data-testid="native-login-submit"
+      class="liass-auth-primary-button liass-focus-ring flex h-12 w-full items-center justify-center gap-2 rounded-app-control px-4 text-sm font-semibold whitespace-nowrap"
       type="submit"
       [disabled]="!canSubmit()"
+      [attr.aria-busy]="authStore.loading()"
     >
       @if (authStore.loading()) {
-        <span class="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+        <span class="size-4 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
       } @else {
-        <mat-icon>{{ authStore.requiresNewPassword() ? 'lock_reset' : 'login' }}</mat-icon>
+        <mat-icon aria-hidden="true">{{ authStore.requiresNewPassword() ? 'lock_reset' : 'login' }}</mat-icon>
       }
       <span>
-        {{
-          authStore.requiresNewPassword()
-            ? ('IDENTITY.LOGIN.ACTIONS.SET_NEW_PASSWORD' | transloco)
-            : ('IDENTITY.LOGIN.ACTIONS.SIGN_IN' | transloco)
-        }}
+        @if (authStore.loading()) {
+          {{ authStore.requiresNewPassword() ? ('IDENTITY.LOGIN.ACTIONS.SETTING_NEW_PASSWORD' | transloco) : ('IDENTITY.LOGIN.ACTIONS.SIGNING_IN' | transloco) }}
+        } @else {
+          {{ authStore.requiresNewPassword() ? ('IDENTITY.LOGIN.ACTIONS.SET_NEW_PASSWORD' | transloco) : ('IDENTITY.LOGIN.ACTIONS.SIGN_IN' | transloco) }}
+        }
       </span>
     </button>
   </form>
 
   @if (!authStore.requiresNewPassword()) {
-    <p class="mt-5 text-center text-sm font-normal text-slate-700 dark:text-slate-400 sm:text-left">
+    <p class="liass-auth-section mt-5 text-center text-sm text-slate-600">
       {{ 'IDENTITY.LOGIN.NO_ACCOUNT' | transloco }}
-      <a routerLink="/signup" class="liass-auth-link liass-focus-ring rounded-app-sm text-brand-700 hover:text-brand-600 dark:text-brand-300">
+      <a routerLink="/signup" class="liass-auth-link liass-focus-ring ml-1 inline-block whitespace-nowrap rounded-app-sm font-semibold text-brand-700 hover:text-brand-600">
         {{ 'IDENTITY.LOGIN.ACTIONS.SIGN_UP' | transloco }}
       </a>
     </p>

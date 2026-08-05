@@ -1,42 +1,55 @@
-<main class="liass-auth-shell min-h-dvh text-slate-950 dark:text-white">
-  <div class="relative flex min-h-dvh flex-col lg:flex-row">
-    <section class="flex min-h-dvh w-full flex-1 flex-col px-5 py-6 sm:px-8 lg:w-1/2 lg:px-10">
-      <a
-        routerLink="/"
-        class="liass-focus-ring inline-flex w-fit items-center gap-2 rounded-app-control text-sm font-medium text-slate-500 transition hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-      >
-        <span aria-hidden="true">&lsaquo;</span>
-        <span>{{ 'IDENTITY.AUTH_LAYOUT.BACK_TO_DASHBOARD' | transloco }}</span>
-      </a>
+<main class="liass-auth-shell min-h-dvh text-slate-950">
+  <div class="liass-auth-background" aria-hidden="true">
+    <span class="liass-auth-grid"></span>
+    <span class="liass-auth-glow liass-auth-glow-left"></span>
+    <span class="liass-auth-glow liass-auth-glow-right"></span>
+    <span class="liass-auth-arc liass-auth-arc-one"></span>
+    <span class="liass-auth-arc liass-auth-arc-two"></span>
+  </div>
 
-      <div class="flex flex-1 items-center justify-center py-8 sm:py-12">
-        <div class="liass-auth-form-panel w-full max-w-md">
+  <div class="relative z-10 flex min-h-dvh flex-col px-4 py-4 sm:px-6 sm:py-5 lg:px-8">
+    <header class="liass-auth-topbar flex w-full items-center justify-between gap-4">
+      <a
+        data-testid="auth-public-return"
+        [href]="publicSiteUrl"
+        class="liass-auth-return-link liass-focus-ring inline-flex min-w-0 items-center gap-2 rounded-app-control text-sm font-semibold text-brand-700"
+      >
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        <span>{{ 'IDENTITY.AUTH_LAYOUT.BACK_TO_PUBLIC_SITE' | transloco }}</span>
+      </a>
+      <liass-language-selector />
+    </header>
+
+    <section class="flex flex-1 items-center justify-center py-6 sm:py-8">
+      <div class="liass-auth-frame w-full max-w-[32rem]">
+        <div class="liass-auth-brand-surface">
+          <liass-logo
+            size="md"
+            theme="light"
+            variant="horizontal"
+            [alt]="'IDENTITY.AUTH_LAYOUT.LOGO_ALT' | transloco"
+          />
+        </div>
+
+        <div class="liass-auth-card">
           <ng-content />
         </div>
+
+        <footer class="liass-auth-reassurance" [attr.aria-label]="'IDENTITY.AUTH_LAYOUT.REASSURANCE.LABEL' | transloco">
+          <div>
+            <mat-icon aria-hidden="true">verified_user</mat-icon>
+            <span>{{ 'IDENTITY.AUTH_LAYOUT.REASSURANCE.SECURE' | transloco }}</span>
+          </div>
+          <div>
+            <mat-icon aria-hidden="true">domain</mat-icon>
+            <span>{{ 'IDENTITY.AUTH_LAYOUT.REASSURANCE.ISOLATION' | transloco }}</span>
+          </div>
+          <div>
+            <mat-icon aria-hidden="true">public</mat-icon>
+            <span>{{ 'IDENTITY.AUTH_LAYOUT.REASSURANCE.OHADA' | transloco }}</span>
+          </div>
+        </footer>
       </div>
     </section>
-
-    <aside class="liass-auth-marketing-panel relative isolate hidden min-h-dvh w-full overflow-hidden text-white lg:sticky lg:top-0 lg:grid lg:h-dvh lg:w-1/2 lg:self-start lg:place-items-center">
-      <div class="liass-auth-panel-ambient pointer-events-none absolute inset-0" aria-hidden="true"></div>
-      <span class="liass-auth-orbit liass-auth-orbit-one pointer-events-none absolute" aria-hidden="true"></span>
-      <span class="liass-auth-orbit liass-auth-orbit-two pointer-events-none absolute" aria-hidden="true"></span>
-      <span class="liass-auth-sweep pointer-events-none absolute" aria-hidden="true"></span>
-      <div class="relative z-10 flex min-h-dvh w-full items-center justify-center px-12 py-16">
-        <div class="liass-auth-panel-content flex max-w-[36rem] -translate-y-[50px] flex-col items-center text-center">
-          <img
-            class="h-auto w-[24rem] max-w-full object-contain xl:w-[26rem]"
-            src="/assets/brand/logos/liass-horizontal-light-on-blue.png"
-            alt="liass-ohada logo"
-            width="1448"
-            height="1086"
-            decoding="async"
-          />
-          <span class="-mt-16 h-0.5 w-24 rounded-full bg-[#d4a328]/90" aria-hidden="true"></span>
-          <p class="mt-11 max-w-[31.25rem] text-center text-base font-[350] leading-[1.85] tracking-[0.002em] text-white/76 antialiased">
-            {{ 'IDENTITY.AUTH_LAYOUT.APPROVED_MESSAGE' | transloco }}
-          </p>
-        </div>
-      </div>
-    </aside>
   </div>
 </main>
