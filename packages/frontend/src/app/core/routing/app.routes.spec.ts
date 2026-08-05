@@ -10,6 +10,7 @@ import {
   tenantGuard
 } from './auth.guards';
 import { routes } from './app.routes';
+import { publicLandingHostGuard } from '../public/public-site.guard';
 import { vi } from 'vitest';
 import type { Route } from '@angular/router';
 
@@ -83,8 +84,22 @@ describe('routes', () => {
     expect(component).toBe(DashboardPage);
   });
 
-  it('registers the app root as an explicit authenticated redirect surface', async () => {
-    const rootRoute = routes.find((route) => route.path === '' && route.pathMatch === 'full');
+  it('registers the public landing at the root without the authenticated shell', async () => {
+    const rootRoute = routes.find(
+      (route) => route.path === '' && route.pathMatch === 'full' && route.canMatch
+    );
+    const component = await rootRoute?.loadComponent?.();
+    const { PublicLandingPage } = await import('../public/public-landing.page');
+
+    expect(rootRoute?.canMatch).toEqual([publicLandingHostGuard]);
+    expect(rootRoute?.canActivate).toBeUndefined();
+    expect(component).toBe(PublicLandingPage);
+  });
+
+  it('keeps an explicit application-root redirect after the public host route', async () => {
+    const rootRoute = routes.find(
+      (route) => route.path === '' && route.pathMatch === 'full' && route.canActivate
+    );
     const component = await rootRoute?.loadComponent?.();
     const { AppShellComponent } = await import('../../shared/layout/app-shell/app-shell.component');
 

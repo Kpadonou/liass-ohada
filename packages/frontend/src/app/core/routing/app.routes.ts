@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 
+import { publicLandingHostGuard } from '../public/public-site.guard';
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
 import { LoginPage } from '../../domains/identity/feature/login/login.page';
 import { SelectWorkspacePage } from '../../domains/identity/feature/select-workspace/select-workspace.page';
@@ -19,6 +20,13 @@ import {
 } from './auth.guards';
 
 export const routes: Routes = [
+  {
+    path: '',
+    pathMatch: 'full',
+    canMatch: [publicLandingHostGuard],
+    loadComponent: () =>
+      import('../public/public-landing.page').then((module) => module.PublicLandingPage)
+  },
   {
     path: 'login',
     component: LoginPage,

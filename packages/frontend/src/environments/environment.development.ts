@@ -1,6 +1,14 @@
 export const environment = {
   production: false,
   apiBaseUrl: 'https://mk5jf2sco3.execute-api.eu-west-3.amazonaws.com',
+  publicSite: {
+    publicBaseUrl: 'http://localhost:4200',
+    appBaseUrl: 'http://localhost:4200',
+    signupUrl: 'http://localhost:4200/signup',
+    loginUrl: 'http://localhost:4200/login',
+    contactEmail: null,
+    linkedInUrl: null
+  },
   cognito: {
     region: 'eu-west-3',
     userPoolId: 'eu-west-3_UIXfYuL4D',
