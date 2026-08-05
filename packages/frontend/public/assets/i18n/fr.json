@@ -3200,16 +3200,17 @@
     "CTA": {
       "SIGNUP": "Créer mon compte gratuitement",
       "SIGNUP_SHORT": "Créer mon compte",
+      "TRY_FREE": "Essayer gratuitement",
       "LOGIN": "Se connecter",
       "EXPLORE": "Découvrir la plateforme"
     },
     "HERO": {
       "BADGE": "Accès anticipé ouvert",
       "TITLE": "L’ERP pensé pour l’OHADA",
-      "DESCRIPTION": "Gérez votre comptabilité, vos dossiers clients et vos opérations financières dans une plateforme moderne conçue pour les entreprises et cabinets comptables de l’espace OHADA.",
+      "DESCRIPTION": "Pilotez la comptabilité et la trésorerie de votre entreprise. Pour les cabinets, centralisez également les entreprises clientes, les travaux et les échéances de l’équipe dans une seule plateforme conçue pour l’espace OHADA.",
       "REASSURANCE": "Inscription gratuite · Accès immédiat · Aucune carte bancaire requise",
       "EARLY_NOTICE": "Liass-OHADA est en développement actif. Découvrez dès maintenant les fonctionnalités disponibles et contribuez à l’évolution du produit.",
-      "PREVIEW_LABEL": "Aperçu schématique des espaces Liass-OHADA",
+      "PREVIEW_LABEL": "Illustration décorative de l’aperçu fonctionnel de la plateforme",
       "PREVIEW_KICKER": "Une plateforme unifiée",
       "PREVIEW_TITLE": "Vos opérations, au même endroit",
       "PREVIEW_STATUS": "Disponible",
@@ -3219,7 +3220,7 @@
         "TREASURY": "Trésorerie",
         "FIRM": "Gestion Cabinet"
       },
-      "PREVIEW_CAPTION": "Illustration fonctionnelle — les écrans réels sont accessibles après inscription."
+      "PREVIEW_CAPTION": "Aperçu fonctionnel de la plateforme"
     },
     "TRUST": {
       "TITLE": "Conçu pour les réalités des 17 États membres de l’OHADA",
@@ -3233,7 +3234,7 @@
     "PROBLEMS": {
       "EYEBROW": "Une vision métier",
       "TITLE": "Les ERP généralistes ne sont pas toujours pensés pour vos réalités",
-      "INTRO": "Entre référentiels comptables, gestion des dossiers clients, collaboration des équipes et suivi des échéances, les organisations de l’espace OHADA ont besoin d’une plateforme qui comprend leur environnement dès sa conception.",
+      "INTRO": "Entre référentiels comptables, portefeuille d’entreprises clientes, collaboration des équipes et suivi des échéances, les organisations de l’espace OHADA ont besoin d’une plateforme qui comprend leur environnement dès sa conception.",
       "ITEMS": {
         "DISPERSED": {
           "TITLE": "Des outils souvent dispersés",
@@ -3245,7 +3246,7 @@
         },
         "VISIBILITY": {
           "TITLE": "Un pilotage difficile",
-          "DESCRIPTION": "Les responsables manquent souvent d’une vue consolidée sur les opérations, les dossiers et les travaux prioritaires."
+          "DESCRIPTION": "Les responsables manquent souvent d’une vue consolidée sur les opérations, les entreprises suivies et les travaux prioritaires."
         }
       },
       "CLOSING": "Liass-OHADA rassemble ces besoins dans une plateforme cohérente, moderne et évolutive."
@@ -3270,14 +3271,14 @@
       "FIRM": {
         "KICKER": "Espace Cabinet",
         "TITLE": "Pour les cabinets comptables",
-        "SUBTITLE": "Gérez vos dossiers clients et organisez le travail de votre équipe depuis une vue consolidée.",
+        "SUBTITLE": "Gérez votre portefeuille d’entreprises clientes et organisez le travail de votre équipe depuis une vue consolidée.",
         "FEATURES": {
-          "DOSSIERS": "Portefeuille de dossiers clients",
+          "DOSSIERS": "Portefeuille d’entreprises clientes",
           "TEAM": "Équipe, rôles et affectations",
           "WORK": "Travaux comptables",
           "DEADLINES": "Échéances",
           "DASHBOARD": "Tableau de bord Cabinet",
-          "ACCOUNTING": "Accès encadré à la comptabilité des dossiers"
+          "ACCOUNTING": "Accès encadré à l’espace comptable de chaque entreprise cliente"
         },
         "CTA": "Découvrir l’espace Cabinet"
       }
@@ -3304,7 +3305,7 @@
         },
         "FIRM": {
           "TITLE": "Gestion de cabinet",
-          "DOSSIERS": "Dossiers clients",
+          "DOSSIERS": "Entreprises clientes et dossiers comptables",
           "TEAM": "Membres, invitations, rôles et affectations",
           "WORK": "Travaux comptables",
           "DEADLINES": "Échéances et priorités",
@@ -3320,7 +3321,7 @@
       "ITEMS": {
         "CABINET": {
           "TITLE": "Pilotage Cabinet",
-          "DESCRIPTION": "Retrouvez les dossiers, les travaux, les échéances et les priorités de votre équipe."
+          "DESCRIPTION": "Retrouvez les entreprises clientes, les travaux, les échéances et les priorités de votre équipe."
         },
         "ACCOUNTING": {
           "TITLE": "Comptabilité structurée",
@@ -3426,7 +3427,7 @@
           "THIRD_PARTIES": "Tiers et lettrage",
           "TREASURY": "Trésorerie",
           "RECONCILIATION": "Import de relevés et rapprochement",
-          "DOSSIERS": "Dossiers clients Cabinet",
+          "DOSSIERS": "Dossiers comptables des entreprises clientes",
           "TEAM": "Équipe, rôles et affectations",
           "WORK": "Travaux et échéances",
           "MULTI_ORG": "Accès multi-organisation"
@@ -3485,7 +3486,7 @@
         "1": { "QUESTION": "Liass-OHADA est-il déjà disponible ?", "ANSWER": "Oui. La plateforme est accessible en accès anticipé et plusieurs fonctionnalités sont déjà opérationnelles." },
         "2": { "QUESTION": "Faut-il attendre une validation ?", "ANSWER": "Non. Vous pouvez utiliser les options d’inscription disponibles puis créer votre espace sans file d’attente ni approbation manuelle." },
         "3": { "QUESTION": "L’accès est-il gratuit ?", "ANSWER": "L’accès anticipé est actuellement proposé gratuitement et sans carte bancaire. Les futures conditions commerciales seront communiquées avant leur application." },
-        "4": { "QUESTION": "Puis-je créer un espace Cabinet comptable ?", "ANSWER": "Oui. Vous pouvez créer un cabinet, organiser des dossiers clients, gérer une équipe et suivre les travaux et échéances disponibles." },
+        "4": { "QUESTION": "Puis-je créer un espace Cabinet comptable ?", "ANSWER": "Oui. Vous pouvez créer un cabinet, organiser votre portefeuille d’entreprises clientes, gérer une équipe et suivre les travaux et échéances disponibles." },
         "5": { "QUESTION": "Liass-OHADA couvre-t-il tous les pays OHADA ?", "ANSWER": "Liass-OHADA est conçu pour les organisations de l’espace OHADA. Les fonctionnalités spécifiques aux réglementations nationales sont ajoutées progressivement." },
         "6": { "QUESTION": "Le SYCEBNL est-il pris en charge ?", "ANSWER": "Liass-OHADA développe progressivement les besoins du SYCEBNL, notamment la gestion des projets, financements et fonds affectés. Ces capacités restent présentées comme une trajectoire produit tant qu’elles ne sont pas entièrement disponibles." },
         "7": { "QUESTION": "Qu’est-ce que Liass Facturation ?", "ANSWER": "Liass Facturation est le futur espace de facturation normalisée destiné aux entreprises béninoises, avec une connexion prévue aux services e-MECeF sous réserve de finalisation technique et des procédures applicables." },

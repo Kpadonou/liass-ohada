@@ -3200,16 +3200,17 @@
     "CTA": {
       "SIGNUP": "Create my free account",
       "SIGNUP_SHORT": "Create my account",
+      "TRY_FREE": "Try it free",
       "LOGIN": "Sign in",
       "EXPLORE": "Explore the platform"
     },
     "HERO": {
       "BADGE": "Open early access",
       "TITLE": "The ERP built for OHADA",
-      "DESCRIPTION": "Manage your accounting, client dossiers, and financial operations in a modern platform designed for businesses and accounting firms across the OHADA region.",
+      "DESCRIPTION": "Run your company’s accounting and treasury operations. Accounting firms can also centralize client companies, team work and deadlines in one platform built for OHADA.",
       "REASSURANCE": "Free signup · Immediate access · No credit card required",
       "EARLY_NOTICE": "Liass-OHADA is under active development. Explore the available features now and help shape the product’s evolution.",
-      "PREVIEW_LABEL": "Schematic overview of Liass-OHADA workspaces",
+      "PREVIEW_LABEL": "Decorative illustration of the functional platform preview",
       "PREVIEW_KICKER": "One unified platform",
       "PREVIEW_TITLE": "Your operations, in one place",
       "PREVIEW_STATUS": "Available",
@@ -3219,7 +3220,7 @@
         "TREASURY": "Treasury",
         "FIRM": "Firm management"
       },
-      "PREVIEW_CAPTION": "Functional illustration — real product screens are available after signup."
+      "PREVIEW_CAPTION": "Functional platform preview"
     },
     "TRUST": {
       "TITLE": "Designed for the realities of OHADA’s 17 member states",
@@ -3233,7 +3234,7 @@
     "PROBLEMS": {
       "EYEBROW": "A business-first vision",
       "TITLE": "General-purpose ERPs are not always built for your realities",
-      "INTRO": "Accounting frameworks, client dossier management, team collaboration, and deadline tracking require a platform that understands the OHADA environment by design.",
+      "INTRO": "Accounting frameworks, portfolios of client companies, team collaboration, and deadline tracking require a platform that understands the OHADA environment by design.",
       "ITEMS": {
         "DISPERSED": {
           "TITLE": "Tools are often scattered",
@@ -3245,7 +3246,7 @@
         },
         "VISIBILITY": {
           "TITLE": "Limited operational visibility",
-          "DESCRIPTION": "Leaders often lack a consolidated view of operations, dossiers, and priority work."
+          "DESCRIPTION": "Leaders often lack a consolidated view of operations, client companies, and priority work."
         }
       },
       "CLOSING": "Liass-OHADA brings these needs together in one coherent, modern, and evolving platform."
@@ -3270,14 +3271,14 @@
       "FIRM": {
         "KICKER": "Accounting Firm workspace",
         "TITLE": "For accounting firms",
-        "SUBTITLE": "Manage client dossiers and organize your team’s work from a consolidated view.",
+        "SUBTITLE": "Manage your portfolio of client companies and organize your team’s work from a consolidated view.",
         "FEATURES": {
-          "DOSSIERS": "Client dossier portfolio",
+          "DOSSIERS": "Portfolio of client companies",
           "TEAM": "Team, roles, and assignments",
           "WORK": "Accounting work",
           "DEADLINES": "Deadlines",
           "DASHBOARD": "Accounting Firm dashboard",
-          "ACCOUNTING": "Controlled access to client accounting"
+          "ACCOUNTING": "Controlled access to the accounting workspace for each client company"
         },
         "CTA": "Explore the Accounting Firm workspace"
       }
@@ -3304,7 +3305,7 @@
         },
         "FIRM": {
           "TITLE": "Accounting-firm management",
-          "DOSSIERS": "Client dossiers",
+          "DOSSIERS": "Client companies and accounting records",
           "TEAM": "Members, invitations, roles, and assignments",
           "WORK": "Accounting work",
           "DEADLINES": "Deadlines and priorities",
@@ -3320,7 +3321,7 @@
       "ITEMS": {
         "CABINET": {
           "TITLE": "Accounting Firm overview",
-          "DESCRIPTION": "Bring client dossiers, work, deadlines, and team priorities into one view."
+          "DESCRIPTION": "Bring client companies, work, deadlines, and team priorities into one view."
         },
         "ACCOUNTING": {
           "TITLE": "Structured accounting",
@@ -3426,7 +3427,7 @@
           "THIRD_PARTIES": "Third parties and matching",
           "TREASURY": "Treasury",
           "RECONCILIATION": "Statement import and reconciliation",
-          "DOSSIERS": "Accounting Firm client dossiers",
+          "DOSSIERS": "Accounting records of client companies",
           "TEAM": "Team, roles, and assignments",
           "WORK": "Work and deadlines",
           "MULTI_ORG": "Multi-organization access"
@@ -3485,7 +3486,7 @@
         "1": { "QUESTION": "Is Liass-OHADA already available?", "ANSWER": "Yes. The platform is available in early access, and several capabilities are already operational." },
         "2": { "QUESTION": "Do I need to wait for approval?", "ANSWER": "No. You can use the available signup options and then create your workspace without a waiting list or manual approval." },
         "3": { "QUESTION": "Is access free?", "ANSWER": "Early access is currently offered free of charge and without a credit card. Future commercial terms will be communicated before they apply." },
-        "4": { "QUESTION": "Can I create an Accounting Firm workspace?", "ANSWER": "Yes. You can create a firm, organize client dossiers, manage a team, and track the available work and deadlines." },
+        "4": { "QUESTION": "Can I create an Accounting Firm workspace?", "ANSWER": "Yes. You can create a firm, organize your portfolio of client companies, manage a team, and track the available work and deadlines." },
         "5": { "QUESTION": "Does Liass-OHADA cover every OHADA country?", "ANSWER": "Liass-OHADA is designed for organizations across the OHADA region. Features specific to national regulations are added progressively." },
         "6": { "QUESTION": "Is SYCEBNL supported?", "ANSWER": "Liass-OHADA is progressively developing SYCEBNL needs, including project, funding, and restricted-fund management. These capabilities remain presented as a product direction until fully available." },
         "7": { "QUESTION": "What is Liass Invoicing?", "ANSWER": "Liass Invoicing is the future normalized invoicing workspace for Beninese businesses, with a planned connection to e-MECeF services subject to technical completion and applicable procedures." },

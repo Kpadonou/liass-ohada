@@ -1,5 +1,5 @@
 import { DOCUMENT } from '@angular/common';
-import { Component, DestroyRef, inject, viewChild } from '@angular/core';
+import { Component, DestroyRef, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
@@ -10,6 +10,9 @@ import { combineLatest } from 'rxjs';
 
 import { LanguageSelectorComponent } from '../i18n/language-selector/language-selector.component';
 import { LiassLogoComponent } from '../../shared/ui/liass-logo/liass-logo.component';
+import { PublicProductPreviewComponent } from './public-product-preview.component';
+import { PublicRevealDirective } from './public-reveal.directive';
+import { PublicScrollStateDirective } from './public-scroll-state.directive';
 import { publicSiteConfig } from './public-site.config';
 
 type PublicItem = {
@@ -32,6 +35,9 @@ type PublicGroup = {
     MatExpansionModule,
     MatIconModule,
     MatSidenavModule,
+    PublicProductPreviewComponent,
+    PublicRevealDirective,
+    PublicScrollStateDirective,
     TranslocoModule
   ],
   templateUrl: './public-landing.page.html',
@@ -46,6 +52,7 @@ export class PublicLandingPage {
 
   protected readonly mobileNav = viewChild(MatSidenav);
   protected readonly config = publicSiteConfig;
+  protected readonly headerScrolled = signal(false);
 
   protected readonly navigation = [
     { href: '#product', labelKey: 'PUBLIC.NAV.PRODUCT' },

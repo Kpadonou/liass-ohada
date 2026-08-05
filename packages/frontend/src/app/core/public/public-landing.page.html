@@ -37,18 +37,22 @@
           {{ 'PUBLIC.CTA.LOGIN' | transloco }}
         </a>
         <a class="public-button public-button-primary w-full" [href]="config.signupUrl">
-          {{ 'PUBLIC.CTA.SIGNUP' | transloco }}
+          {{ 'PUBLIC.CTA.SIGNUP_SHORT' | transloco }}
         </a>
       </div>
     </div>
   </mat-sidenav>
 
-  <mat-sidenav-content>
+  <mat-sidenav-content
+    class="public-scroll-content"
+    liassPublicScrollState
+    (liassPublicScrollStateChange)="headerScrolled.set($event)"
+  >
     <div class="public-page">
       <a class="public-skip-link" href="#main-content">{{ 'PUBLIC.ACCESSIBILITY.SKIP' | transloco }}</a>
 
-      <header class="public-header">
-        <div class="public-container flex h-[4.75rem] items-center justify-between gap-6">
+      <header class="public-header" [class.public-header-scrolled]="headerScrolled()">
+        <div class="public-container public-header-inner">
           <a class="public-brand-link" href="#top" [attr.aria-label]="'PUBLIC.BRAND.HOME_LABEL' | transloco">
             <liass-logo
               size="md"
@@ -57,22 +61,22 @@
             />
           </a>
 
-          <nav class="hidden items-center gap-1 xl:flex" [attr.aria-label]="'PUBLIC.NAV.DESKTOP_LABEL' | transloco">
+          <nav class="public-desktop-nav hidden min-[86rem]:flex" [attr.aria-label]="'PUBLIC.NAV.DESKTOP_LABEL' | transloco">
             @for (item of navigation; track item.href) {
               <a class="public-nav-link" [href]="item.href">{{ item.labelKey | transloco }}</a>
             }
           </nav>
 
-          <div class="hidden items-center gap-2 md:flex">
+          <div class="public-desktop-actions hidden min-[86rem]:flex">
             <liass-language-selector />
             <a class="public-login-link" [href]="config.loginUrl">{{ 'PUBLIC.CTA.LOGIN' | transloco }}</a>
             <a class="public-button public-button-primary" [href]="config.signupUrl">
-              {{ 'PUBLIC.CTA.SIGNUP_SHORT' | transloco }}
+              {{ 'PUBLIC.CTA.TRY_FREE' | transloco }}
             </a>
           </div>
 
           <button
-            class="public-icon-button inline-flex md:hidden"
+            class="public-icon-button inline-flex min-[86rem]:hidden"
             type="button"
             [attr.aria-label]="'PUBLIC.NAV.OPEN' | transloco"
             (click)="mobileNavigation.open()"
@@ -85,71 +89,41 @@
       <main id="main-content">
         <section id="top" class="public-hero" aria-labelledby="hero-title">
           <div class="public-hero-grid" aria-hidden="true"></div>
+          <div class="public-hero-glow" aria-hidden="true"></div>
           <div class="public-container public-hero-layout">
             <div class="relative z-10 max-w-3xl">
-              <div class="public-badge public-badge-light">
+              <div class="public-badge public-badge-light public-hero-enter public-hero-enter-1">
                 <span class="public-live-dot"></span>
                 {{ 'PUBLIC.HERO.BADGE' | transloco }}
               </div>
-              <h1 id="hero-title" class="public-display mt-7">{{ 'PUBLIC.HERO.TITLE' | transloco }}</h1>
-              <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl">
+              <h1 id="hero-title" class="public-display public-hero-enter public-hero-enter-2 mt-6">{{ 'PUBLIC.HERO.TITLE' | transloco }}</h1>
+              <p class="public-hero-copy public-hero-enter public-hero-enter-3 mt-5">
                 {{ 'PUBLIC.HERO.DESCRIPTION' | transloco }}
               </p>
-              <div class="mt-9 flex flex-col gap-3 sm:flex-row">
+              <div class="public-hero-actions public-hero-enter public-hero-enter-4 mt-8">
                 <a class="public-button public-button-hero" [href]="config.signupUrl">
-                  {{ 'PUBLIC.CTA.SIGNUP' | transloco }}
+                  <span class="public-label-wide">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</span>
+                  <span class="public-label-compact">{{ 'PUBLIC.CTA.SIGNUP_SHORT' | transloco }}</span>
                   <mat-icon aria-hidden="true">arrow_forward</mat-icon>
                 </a>
                 <a class="public-button public-button-ghost-light" href="#product">
                   {{ 'PUBLIC.CTA.EXPLORE' | transloco }}
                 </a>
               </div>
-              <p class="mt-4 flex items-center gap-2 text-sm text-slate-300">
+              <p class="public-hero-reassurance public-hero-enter public-hero-enter-5 mt-4">
                 <mat-icon class="!text-base" aria-hidden="true">verified_user</mat-icon>
                 {{ 'PUBLIC.HERO.REASSURANCE' | transloco }}
               </p>
-              <div class="public-early-note mt-8">
-                <mat-icon aria-hidden="true">science</mat-icon>
+              <div class="public-early-note public-hero-enter public-hero-enter-6 mt-6">
+                <mat-icon aria-hidden="true">info</mat-icon>
                 <p>{{ 'PUBLIC.HERO.EARLY_NOTICE' | transloco }}</p>
               </div>
             </div>
 
-            <div class="public-product-frame" [attr.aria-label]="'PUBLIC.HERO.PREVIEW_LABEL' | transloco">
-              <div class="public-browser-bar">
-                <span></span><span></span><span></span>
-                <div class="public-browser-address">app.liassohada.com</div>
-              </div>
-              <div class="public-product-canvas">
-                <aside class="public-product-rail" aria-hidden="true">
-                  <img src="/assets/brand/logos/liass-icon-light.png" alt="" width="820" height="706" />
-                  @for (icon of ['space_dashboard', 'account_balance', 'payments', 'folder_open']; track icon) {
-                    <mat-icon>{{ icon }}</mat-icon>
-                  }
-                </aside>
-                <div class="public-product-content">
-                  <div class="flex items-start justify-between gap-4">
-                    <div>
-                      <span class="public-preview-kicker">{{ 'PUBLIC.HERO.PREVIEW_KICKER' | transloco }}</span>
-                      <h2 class="mt-2 text-xl font-semibold text-slate-950">{{ 'PUBLIC.HERO.PREVIEW_TITLE' | transloco }}</h2>
-                    </div>
-                    <span class="public-status-pill">{{ 'PUBLIC.HERO.PREVIEW_STATUS' | transloco }}</span>
-                  </div>
-                  <p class="mt-3 max-w-xl text-sm leading-6 text-slate-600">{{ 'PUBLIC.HERO.PREVIEW_DESCRIPTION' | transloco }}</p>
-                  <div class="mt-6 grid gap-3 sm:grid-cols-3">
-                    @for (item of ['ACCOUNTING', 'TREASURY', 'FIRM']; track item) {
-                      <div class="public-mini-card">
-                        <mat-icon aria-hidden="true">{{ item === 'ACCOUNTING' ? 'menu_book' : item === 'TREASURY' ? 'account_balance_wallet' : 'business_center' }}</mat-icon>
-                        <span>{{ 'PUBLIC.HERO.PREVIEW_ITEMS.' + item | transloco }}</span>
-                      </div>
-                    }
-                  </div>
-                  <div class="public-preview-lines mt-6" aria-hidden="true">
-                    <span></span><span></span><span></span><span></span>
-                  </div>
-                  <p class="mt-4 text-xs text-slate-500">{{ 'PUBLIC.HERO.PREVIEW_CAPTION' | transloco }}</p>
-                </div>
-              </div>
-            </div>
+            <liass-public-product-preview
+              class="public-product-stage public-hero-enter public-hero-enter-preview"
+              aria-hidden="true"
+            />
           </div>
         </section>
 
@@ -168,32 +142,32 @@
 
         <section id="product" class="public-section" aria-labelledby="problems-title">
           <div class="public-container">
-            <div class="public-section-heading mx-auto text-center">
+            <div class="public-section-heading mx-auto text-center" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.PROBLEMS.EYEBROW' | transloco }}</span>
               <h2 id="problems-title" class="public-section-title">{{ 'PUBLIC.PROBLEMS.TITLE' | transloco }}</h2>
               <p>{{ 'PUBLIC.PROBLEMS.INTRO' | transloco }}</p>
             </div>
             <div class="mt-12 grid gap-5 md:grid-cols-3">
               @for (problem of problems; track problem.titleKey) {
-                <article class="public-info-card">
+                <article class="public-info-card" liassPublicReveal="up" [liassPublicRevealDelay]="$index * 80">
                   <span class="public-icon-surface"><mat-icon>{{ problem.icon }}</mat-icon></span>
                   <h3>{{ problem.titleKey | transloco }}</h3>
                   <p>{{ problem.descriptionKey | transloco }}</p>
                 </article>
               }
             </div>
-            <p class="public-closing-statement">{{ 'PUBLIC.PROBLEMS.CLOSING' | transloco }}</p>
+            <p class="public-closing-statement" liassPublicReveal="fade">{{ 'PUBLIC.PROBLEMS.CLOSING' | transloco }}</p>
           </div>
         </section>
 
         <section class="public-section public-section-soft" aria-labelledby="workspaces-title">
           <div class="public-container">
-            <div class="public-section-heading mx-auto text-center">
+            <div class="public-section-heading mx-auto text-center" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.WORKSPACES.EYEBROW' | transloco }}</span>
               <h2 id="workspaces-title" class="public-section-title">{{ 'PUBLIC.WORKSPACES.TITLE' | transloco }}</h2>
             </div>
             <div class="mt-12 grid gap-6 lg:grid-cols-2">
-              <article id="companies" class="public-workspace-card public-workspace-company">
+              <article id="companies" class="public-workspace-card public-workspace-company" liassPublicReveal="left">
                 <div class="public-workspace-card-header">
                   <span class="public-icon-surface"><mat-icon>apartment</mat-icon></span>
                   <div>
@@ -207,7 +181,7 @@
                 </ul>
                 <a class="public-text-link mt-7" href="#features">{{ 'PUBLIC.WORKSPACES.COMPANY.CTA' | transloco }}<mat-icon>arrow_forward</mat-icon></a>
               </article>
-              <article id="firms" class="public-workspace-card public-workspace-firm">
+              <article id="firms" class="public-workspace-card public-workspace-firm" liassPublicReveal="right" [liassPublicRevealDelay]="80">
                 <div class="public-workspace-card-header">
                   <span class="public-icon-surface"><mat-icon>business_center</mat-icon></span>
                   <div>
@@ -227,14 +201,14 @@
 
         <section id="features" class="public-section" aria-labelledby="features-title">
           <div class="public-container">
-            <div class="public-section-heading">
+            <div class="public-section-heading" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.FEATURES.EYEBROW' | transloco }}</span>
               <h2 id="features-title" class="public-section-title">{{ 'PUBLIC.FEATURES.TITLE' | transloco }}</h2>
               <p>{{ 'PUBLIC.FEATURES.INTRO' | transloco }}</p>
             </div>
             <div class="mt-12 grid gap-5 lg:grid-cols-3">
               @for (group of availableGroups; track group.titleKey) {
-                <article class="public-feature-group">
+                <article class="public-feature-group" liassPublicReveal="up" [liassPublicRevealDelay]="$index * 80">
                   <span class="public-icon-surface"><mat-icon>{{ group.icon }}</mat-icon></span>
                   <h3>{{ group.titleKey | transloco }}</h3>
                   <ul>
@@ -243,20 +217,20 @@
                 </article>
               }
             </div>
-            <a class="public-button public-button-primary mt-9" [href]="config.signupUrl">{{ 'PUBLIC.FEATURES.CTA' | transloco }}</a>
+            <a class="public-button public-button-primary mt-9" liassPublicReveal="fade" [href]="config.signupUrl">{{ 'PUBLIC.FEATURES.CTA' | transloco }}</a>
           </div>
         </section>
 
         <section class="public-section public-tour-section" aria-labelledby="tour-title">
           <div class="public-container">
-            <div class="public-section-heading mx-auto text-center">
+            <div class="public-section-heading mx-auto text-center" liassPublicReveal="up">
               <span class="public-eyebrow public-eyebrow-light">{{ 'PUBLIC.TOUR.EYEBROW' | transloco }}</span>
               <h2 id="tour-title" class="public-section-title !text-white">{{ 'PUBLIC.TOUR.TITLE' | transloco }}</h2>
               <p class="!text-slate-300">{{ 'PUBLIC.TOUR.INTRO' | transloco }}</p>
             </div>
             <div class="mt-12 grid gap-5 lg:grid-cols-3">
               @for (view of productViews; track view.titleKey) {
-                <article class="public-tour-card">
+                <article class="public-tour-card" liassPublicReveal="scale" [liassPublicRevealDelay]="$index * 80">
                   <div class="public-tour-window" aria-hidden="true">
                     <div class="public-tour-bar"><span></span><span></span><span></span></div>
                     <div class="public-tour-body">
@@ -275,14 +249,14 @@
 
         <section class="public-section" aria-labelledby="ohada-title">
           <div class="public-container">
-            <div class="public-section-heading mx-auto text-center">
+            <div class="public-section-heading mx-auto text-center" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.OHADA.EYEBROW' | transloco }}</span>
               <h2 id="ohada-title" class="public-section-title">{{ 'PUBLIC.OHADA.TITLE' | transloco }}</h2>
               <p>{{ 'PUBLIC.OHADA.INTRO' | transloco }}</p>
             </div>
             <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
               @for (pillar of ohadaPillars; track pillar.titleKey) {
-                <article class="public-pillar-card">
+                <article class="public-pillar-card" liassPublicReveal="up" [liassPublicRevealDelay]="$index * 70">
                   <mat-icon>{{ pillar.icon }}</mat-icon>
                   <h3>{{ pillar.titleKey | transloco }}</h3>
                   <p>{{ pillar.descriptionKey | transloco }}</p>
@@ -295,7 +269,7 @@
 
         <section id="facturation" class="public-section public-section-soft" aria-labelledby="facturation-title">
           <div class="public-container">
-            <div class="public-facturation-panel">
+            <div class="public-facturation-panel" liassPublicReveal="scale">
               <div>
                 <div class="flex flex-wrap items-center gap-3">
                   <span class="public-eyebrow">{{ 'PUBLIC.FACTURATION.EYEBROW' | transloco }}</span>
@@ -327,14 +301,14 @@
 
         <section id="early-access" class="public-section" aria-labelledby="access-title">
           <div class="public-container">
-            <div class="public-section-heading mx-auto text-center">
+            <div class="public-section-heading mx-auto text-center" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.ACCESS.EYEBROW' | transloco }}</span>
               <h2 id="access-title" class="public-section-title">{{ 'PUBLIC.ACCESS.TITLE' | transloco }}</h2>
               <p>{{ 'PUBLIC.ACCESS.INTRO' | transloco }}</p>
             </div>
             <ol class="public-steps mt-12">
               @for (step of accessSteps; track step.titleKey; let index = $index) {
-                <li>
+                <li liassPublicReveal="up" [liassPublicRevealDelay]="index * 80">
                   <span class="public-step-number">{{ index + 1 }}</span>
                   <mat-icon>{{ step.icon }}</mat-icon>
                   <h3>{{ step.titleKey | transloco }}</h3>
@@ -342,7 +316,7 @@
                 </li>
               }
             </ol>
-            <div class="mt-10 text-center">
+            <div class="mt-10 text-center" liassPublicReveal="fade">
               <a class="public-button public-button-primary" [href]="config.signupUrl">{{ 'PUBLIC.CTA.SIGNUP' | transloco }}</a>
               <p class="mt-3 text-sm text-slate-500">{{ 'PUBLIC.ACCESS.REASSURANCE' | transloco }}</p>
             </div>
@@ -351,13 +325,13 @@
 
         <section class="public-section public-section-soft" aria-labelledby="roadmap-title">
           <div class="public-container">
-            <div class="public-section-heading mx-auto text-center">
+            <div class="public-section-heading mx-auto text-center" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.ROADMAP.EYEBROW' | transloco }}</span>
               <h2 id="roadmap-title" class="public-section-title">{{ 'PUBLIC.ROADMAP.TITLE' | transloco }}</h2>
               <p>{{ 'PUBLIC.ROADMAP.INTRO' | transloco }}</p>
             </div>
             <div class="mt-12 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-              <article class="public-roadmap-column public-roadmap-now">
+              <article class="public-roadmap-column public-roadmap-now" liassPublicReveal="left">
                 <span class="public-badge public-badge-success">{{ 'PUBLIC.ROADMAP.NOW.BADGE' | transloco }}</span>
                 <h3>{{ 'PUBLIC.ROADMAP.NOW.TITLE' | transloco }}</h3>
                 <ul class="public-feature-list">
@@ -366,7 +340,7 @@
                   }
                 </ul>
               </article>
-              <article class="public-roadmap-column">
+              <article class="public-roadmap-column" liassPublicReveal="right" [liassPublicRevealDelay]="80">
                 <span class="public-badge public-badge-warning">{{ 'PUBLIC.ROADMAP.NEXT.BADGE' | transloco }}</span>
                 <h3>{{ 'PUBLIC.ROADMAP.NEXT.TITLE' | transloco }}</h3>
                 <div class="grid gap-3 sm:grid-cols-2">
@@ -385,7 +359,7 @@
 
         <section class="public-section" aria-labelledby="early-value-title">
           <div class="public-container grid gap-8 lg:grid-cols-2">
-            <div>
+            <div liassPublicReveal="left">
               <span class="public-eyebrow">{{ 'PUBLIC.EARLY_VALUE.EYEBROW' | transloco }}</span>
               <h2 id="early-value-title" class="public-section-title">{{ 'PUBLIC.EARLY_VALUE.TITLE' | transloco }}</h2>
               <p class="mt-5 max-w-2xl text-base leading-7 text-slate-600">{{ 'PUBLIC.EARLY_VALUE.DESCRIPTION' | transloco }}</p>
@@ -395,7 +369,7 @@
                 }
               </ul>
             </div>
-            <article class="public-feedback-card">
+            <article class="public-feedback-card" liassPublicReveal="right">
               <mat-icon>forum</mat-icon>
               <div>
                 <h3>{{ 'PUBLIC.FEEDBACK.TITLE' | transloco }}</h3>
@@ -408,13 +382,13 @@
 
         <section class="public-security-section" aria-labelledby="security-title">
           <div class="public-container grid items-center gap-10 lg:grid-cols-[0.9fr_1.1fr]">
-            <div>
+            <div liassPublicReveal="left">
               <span class="public-eyebrow public-eyebrow-light">{{ 'PUBLIC.SECURITY.EYEBROW' | transloco }}</span>
               <h2 id="security-title" class="public-section-title !text-white">{{ 'PUBLIC.SECURITY.TITLE' | transloco }}</h2>
               <p class="mt-5 text-base leading-7 text-slate-300">{{ 'PUBLIC.SECURITY.INTRO' | transloco }}</p>
               <div class="public-security-note mt-7"><mat-icon>shield</mat-icon><p>{{ 'PUBLIC.SECURITY.NOTICE' | transloco }}</p></div>
             </div>
-            <ul class="public-security-grid">
+            <ul class="public-security-grid" liassPublicReveal="right">
               @for (item of securityItems; track item) { <li><mat-icon>verified_user</mat-icon>{{ item | transloco }}</li> }
             </ul>
           </div>
@@ -422,13 +396,13 @@
 
         <section class="public-section" aria-labelledby="faq-title">
           <div class="public-container max-w-5xl">
-            <div class="public-section-heading mx-auto text-center">
+            <div class="public-section-heading mx-auto text-center" liassPublicReveal="fade">
               <span class="public-eyebrow">{{ 'PUBLIC.FAQ.EYEBROW' | transloco }}</span>
               <h2 id="faq-title" class="public-section-title">{{ 'PUBLIC.FAQ.TITLE' | transloco }}</h2>
             </div>
             <mat-accordion class="public-faq mt-10 block" multi>
               @for (faq of faqs; track faq.questionKey) {
-                <mat-expansion-panel>
+                <mat-expansion-panel liassPublicReveal="fade" [liassPublicRevealDelay]="$index * 45">
                   <mat-expansion-panel-header>
                     <mat-panel-title>{{ faq.questionKey | transloco }}</mat-panel-title>
                   </mat-expansion-panel-header>
@@ -440,7 +414,7 @@
         </section>
 
         <section class="public-final-cta" aria-labelledby="final-cta-title">
-          <div class="public-container relative z-10 text-center">
+          <div class="public-container relative z-10 text-center" liassPublicReveal="up">
             <h2 id="final-cta-title">{{ 'PUBLIC.FINAL_CTA.TITLE' | transloco }}</h2>
             <p>{{ 'PUBLIC.FINAL_CTA.DESCRIPTION' | transloco }}</p>
             <div class="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
