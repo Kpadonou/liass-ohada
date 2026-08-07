@@ -242,6 +242,7 @@ describe("fiscal year lifecycle", () => {
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    dynamoMock.on(GetItemCommand).resolves({});
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({
@@ -296,6 +297,30 @@ describe("fiscal year lifecycle", () => {
     expect(response.statusCode).toBe(200);
     expect(item.accountingFramework).toBe("SYCEBNL");
     expect(body.data.accountingFramework).toBe("SYCEBNL");
+  });
+
+  test("prefers AccountingSettings over the legacy tenant projection", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: marshall({
+        PK: "ORG#test-org",
+        SK: "SETTINGS#ACCOUNTING",
+        entityType: "ACCOUNTING_SETTINGS",
+        orgId: "test-org",
+        accountingFramework: "SYCEBNL",
+        createdAt: "2026-08-07T10:00:00.000Z",
+        updatedAt: "2026-08-07T10:00:00.000Z",
+      }),
+    });
+    dynamoMock.on(PutItemCommand).resolves({});
+
+    const response = await createFiscalYearHandler(
+      createEvent({ year: 2029 }) as any,
+    );
+    const putInput = dynamoMock.commandCalls(PutItemCommand)[0].args[0].input;
+    const item = unmarshall(putInput.Item ?? {});
+
+    expect(response.statusCode).toBe(200);
+    expect(item.accountingFramework).toBe("SYCEBNL");
   });
 
   test("rejects client attempts to override fiscal year accounting framework", async () => {

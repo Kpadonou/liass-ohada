@@ -47,10 +47,13 @@ const line = (
 function mockReads(secondCredit: number) {
   dynamoMock
     .on(GetItemCommand)
+    .resolvesOnce({ Item: undefined })
     .resolvesOnce({
       Item: marshall({
         PK: "ORG#org-a",
         SK: "ORG#METADATA",
+        entityType: "ORGANIZATION",
+        orgId: "org-a",
         accountingFramework: "SYSCOHADA_REVISED",
       }),
     })

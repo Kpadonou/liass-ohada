@@ -29,6 +29,17 @@ describe("KeyFactory", () => {
     expect(KeyFactory.unletteredSKPrefix()).toBe("UNLETTERED#");
   });
 
+  test("builds ProductAccess keys and list prefix centrally", () => {
+    expect(KeyFactory.productAccessPrefix()).toBe("PRODUCT_ACCESS#");
+    expect(KeyFactory.productAccessSK("accounting")).toBe(
+      "PRODUCT_ACCESS#ACCOUNTING",
+    );
+  });
+
+  test("builds the Accounting-owned settings key centrally", () => {
+    expect(KeyFactory.accountingSettingsSK()).toBe("SETTINGS#ACCOUNTING");
+  });
+
   test("builds cabinet supervision keys without mutating identifiers", () => {
     expect(KeyFactory.cabinetPK("cab-123")).toBe("CABINET#cab-123");
     expect(KeyFactory.cabinetDossierSK("org-456")).toBe("DOSSIER#org-456");

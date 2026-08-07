@@ -17,6 +17,7 @@ import { AppError } from "../app-error";
 import { CabinetDossierRepository } from "../repositories/cabinet-dossier-repository";
 import { CabinetTeamRepository } from "../repositories/cabinet-team-repository";
 import { CabinetAuthorizationService } from "./cabinet-authorization-service";
+import { AccountingSettingsService } from "@/lambda/domains/accounting/settings/accounting-settings-service";
 
 interface CabinetContext {
   orgId: string;
@@ -156,6 +157,12 @@ export class CabinetDossierService {
         cabinetId,
         organization,
         workspace,
+        accountingSettingsWrite:
+          AccountingSettingsService.buildOnboardingWrite({
+            orgId: organization.orgId,
+            accountingFramework: organization.accountingFramework,
+            timestamp: now,
+          }),
       });
     } catch (error) {
       if (isTransactionCanceled(error)) {

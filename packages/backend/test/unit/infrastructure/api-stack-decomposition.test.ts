@@ -91,6 +91,7 @@ describe("API stack decomposition", () => {
     expect(routeKeys).toEqual(
       expect.arrayContaining([
         "GET /me/workspaces",
+        "GET /me/product-access",
         "GET /cabinet/team/members",
         "POST /me/cabinet-invitations/accept",
         "GET /accounts",

@@ -11,6 +11,7 @@ import {
 import { randomUUID } from "crypto";
 import { AppError } from "../app-error";
 import { OnboardingRepository } from "../repositories/onboarding-repository";
+import { AccountingSettingsService } from "@/lambda/domains/accounting/settings/accounting-settings-service";
 
 const ACCESS_STATUS = "ACTIVE" as const;
 const OWNER_ROLE = "OWNER" as const;
@@ -80,6 +81,12 @@ export class OnboardingService {
         organization,
         cabinet,
         workspace,
+        accountingSettingsWrite:
+          AccountingSettingsService.buildOnboardingWrite({
+            orgId: organization.orgId,
+            accountingFramework: organization.accountingFramework,
+            timestamp: now,
+          }),
       });
       if (cabinet) {
         console.info("[CABINET_SETTINGS_AUDIT]", {

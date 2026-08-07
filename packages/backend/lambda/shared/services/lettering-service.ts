@@ -28,6 +28,7 @@ import { createHash } from "crypto";
 import { resolveAuxiliaryMetadata } from "../account-auxiliary";
 import { LockPeriodService } from "./lock-period-service";
 import { ThirdPartyService } from "./third-party-service";
+import { AccountingSettingsService } from "@/lambda/domains/accounting/settings/accounting-settings-service";
 
 interface FIFOCandidate {
   lineId: string;
@@ -662,8 +663,9 @@ export class LetteringService {
       throw new AppError(400, "ERROR_LETTERING_INSUFFICIENT_DATA");
     }
 
-    const organization = await LetteringService.getOrganization(orgId);
-    const isSYCEBNL = organization.accountingFramework === "SYCEBNL";
+    const accountingFramework =
+      await AccountingSettingsService.resolveAccountingFramework(orgId);
+    const isSYCEBNL = accountingFramework === "SYCEBNL";
     const lines = await LetteringService.getLinesByRefs(orgId, params.lines);
     const normalizedAccountId = params.accountId.padEnd(8, "0");
 
@@ -807,20 +809,6 @@ export class LetteringService {
     }
 
     return { linesProcessed: lines.length };
-  }
-
-  private static async getOrganization(orgId: string) {
-    const result = await dynamoClient.send(
-      new GetItemCommand({
-        TableName: config.TABLE_NAME,
-        Key: marshall({
-          PK: KeyFactory.orgKey(orgId),
-          SK: KeyFactory.organizationSK(),
-        }),
-      }),
-    );
-
-    return result.Item ? unmarshall(result.Item) : {};
   }
 
   private static async getLinesByRefs(orgId: string, lineRefs: LineRef[]) {

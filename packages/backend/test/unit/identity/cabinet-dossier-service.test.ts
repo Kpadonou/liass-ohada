@@ -226,8 +226,9 @@ describe("CabinetDossierService", () => {
 
     expect(response.activeDossierOrgId).toBe(GENERATED_ORG_ID);
     expect(response.dossier.displayName).toBe("Client SARL");
-    expect(transactionItems).toHaveLength(3);
+    expect(transactionItems).toHaveLength(4);
     expect(transactionItems.map(({ condition }) => condition)).toEqual([
+      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
       "attribute_not_exists(PK) AND attribute_not_exists(SK)",
       "attribute_not_exists(PK) AND attribute_not_exists(SK)",
       "attribute_not_exists(PK) AND attribute_not_exists(SK)",
@@ -236,6 +237,7 @@ describe("CabinetDossierService", () => {
       "ORGANIZATION",
       "USER_ORG_ACCESS",
       "CABINET_DOSSIER",
+      "ACCOUNTING_SETTINGS",
     ]);
     expect(transactionItems[1].item).toMatchObject({
       PK: `ORG#${GENERATED_ORG_ID}`,
@@ -252,6 +254,12 @@ describe("CabinetDossierService", () => {
       relationship: "CLIENT",
       GSI1PK: "CABINET#cab-123",
       GSI1SK: `DOSSIER#${GENERATED_ORG_ID}`,
+    });
+    expect(transactionItems[3].item).toMatchObject({
+      PK: `ORG#${GENERATED_ORG_ID}`,
+      SK: "SETTINGS#ACCOUNTING",
+      entityType: "ACCOUNTING_SETTINGS",
+      accountingFramework: "SYSCOHADA_REVISED",
     });
   });
 

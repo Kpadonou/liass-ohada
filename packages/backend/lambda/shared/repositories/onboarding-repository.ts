@@ -21,6 +21,10 @@ import {
   CabinetSettingsItem,
   CabinetSettingsRepository,
 } from "./cabinet-settings-repository";
+import {
+  ProductAccessItem,
+  ProductAccessRepository,
+} from "./product-access-repository";
 
 const AccessSourceSchema = z.literal("DIRECT");
 const OwnerRoleSchema = z.literal("OWNER");
@@ -100,6 +104,7 @@ export type InitialWorkspaceLockItem = z.infer<
 >;
 
 interface CreateInitialWorkspaceItemsInput {
+  accountingSettingsWrite: TransactWriteItem;
   userId: string;
   organization: Organization;
   cabinet: Cabinet | null;
@@ -113,7 +118,8 @@ const putIfAbsent = (
     | InitialWorkspaceLockItem
     | CabinetItem
     | CabinetDossierItem
-    | CabinetSettingsItem,
+    | CabinetSettingsItem
+    | ProductAccessItem,
 ): TransactWriteItem => ({
   Put: {
     TableName: config.TABLE_NAME,
@@ -231,6 +237,7 @@ export class OnboardingRepository {
   }
 
   static async createInitialWorkspaceItems({
+    accountingSettingsWrite,
     userId,
     organization,
     cabinet,
@@ -316,6 +323,16 @@ export class OnboardingRepository {
         putIfAbsent(settingsItem),
       );
     }
+
+    for (const productAccessItem of
+      ProductAccessRepository.buildCompatibilityBaseline(
+        organization.orgId,
+        organization.createdAt,
+      )) {
+      transactItems.push(putIfAbsent(productAccessItem));
+    }
+
+    transactItems.push(accountingSettingsWrite);
 
     await dynamoClient.send(
       new TransactWriteItemsCommand({ TransactItems: transactItems }),

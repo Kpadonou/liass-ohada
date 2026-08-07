@@ -25,7 +25,7 @@ Organization
 
 - `Organization` owns platform-wide identity and status attributes.
 - `UserOrgAccess` represents a user's verified access to an organization.
-- `ProductAccess` is the future platform-level entitlement for enabled products or capabilities. It is not implemented yet.
+- `ProductAccess` is the platform-level entitlement for enabled products or capabilities. Its additive persistence and read foundation is implemented; authorization and frontend enforcement remain future migration phases.
 - `DomainSettings` belongs to the owning business domain. In particular, `accountingFramework` conceptually belongs to `AccountingSettings`, not to universal Organization metadata.
 
 Current onboarding, Organization, workspace, access-projection, and response contracts may still carry `accountingFramework`. This is an explicit compatibility state. It must remain supported until a reviewed, backward-compatible runtime and data migration moves ownership to Accounting.

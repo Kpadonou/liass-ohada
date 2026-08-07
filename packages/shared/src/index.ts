@@ -15,6 +15,12 @@ export type {
   ListAccountsRequest,
 } from "./accounting/account";
 export {
+  AccountingSettingsSchema,
+} from "./accounting/accounting-settings";
+export type {
+  AccountingSettings,
+} from "./accounting/accounting-settings";
+export {
   AccountingFramework,
   CreateEntryDraftRequestSchema,
   CreateEntryRequestSchema,
@@ -166,6 +172,7 @@ export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export * from "./shared/cabinet-operations";
 export * from "./shared/cabinet-dashboard";
 export * from "./shared/cabinet-team";
+export * from "./shared/product-access";
 export {
   CabinetDashboardAttentionSchema,
   CabinetDashboardCabinetSchema,

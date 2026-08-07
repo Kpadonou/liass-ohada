@@ -26,6 +26,9 @@ export const KeyFactory = {
   /** SK for Cabinet settings under the Cabinet organization partition */
   cabinetSettingsSK: () => "SETTINGS#CABINET",
 
+  /** SK for Accounting-owned settings under the organization partition. */
+  accountingSettingsSK: () => "SETTINGS#ACCOUNTING",
+
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",
 
@@ -37,6 +40,11 @@ export const KeyFactory = {
 
   /** Prefix for all effective user access rows under an organization */
   orgUserAccessPrefix: () => "USER#",
+
+  /** Platform product entitlements stored under the organization partition. */
+  productAccessPrefix: () => "PRODUCT_ACCESS#",
+  productAccessSK: (productCode: string) =>
+    `${KeyFactory.productAccessPrefix()}${productCode.toUpperCase()}`,
 
   /** Cabinet invitation records and normalized-email uniqueness locks */
   cabinetInvitationPrefix: () => "INV#",

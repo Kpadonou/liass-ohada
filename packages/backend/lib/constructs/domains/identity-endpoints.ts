@@ -29,6 +29,27 @@ export class IdentityEndpoints extends DomainConstructFactory {
       table: props.table,
     });
 
+    this.addRoute({
+      actionName: "get-product-access",
+      api: props.api,
+      authorizer: props.authorizer,
+      domainName: "identity",
+      handlerEntry: path.join(
+        projectRoot,
+        "lambda",
+        "domains",
+        "identity",
+        "get-product-access.ts",
+      ),
+      idPrefix: "Identity-",
+      lambdaRole: props.lambdaRole,
+      method: apigw.HttpMethod.GET,
+      routePath: "/me/product-access",
+      routeInDomainStack: true,
+      stage: props.stage,
+      table: props.table,
+    });
+
     const cabinetTeamRoutes = [
       ["list-cabinet-members", apigw.HttpMethod.GET, "/cabinet/team/members"],
       [

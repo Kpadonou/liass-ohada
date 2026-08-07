@@ -9,7 +9,6 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  AccountingFramework,
   CreateFiscalYearRequest,
   FiscalYear,
   FiscalYearDetailsDtoSchema,
@@ -18,6 +17,7 @@ import {
   FiscalYearSchema,
   PeriodLockDtoSchema,
 } from "@liass-ohada/shared/accounting";
+import { AccountingSettingsService } from "@/lambda/domains/accounting/settings/accounting-settings-service";
 import { ClosingService } from "./closing-service";
 import { LockPeriodService } from "./lock-period-service";
 
@@ -41,11 +41,13 @@ export class FiscalYearService {
     orgId: string,
     userId: string,
     input: CreateFiscalYearRequest,
-    organizationAccountingFramework: string | undefined,
+    legacyOrganizationAccountingFramework: string | undefined,
   ) {
-    const accountingFramework = AccountingFramework.parse(
-      organizationAccountingFramework,
-    );
+    const accountingFramework =
+      await AccountingSettingsService.resolveAccountingFramework(
+        orgId,
+        legacyOrganizationAccountingFramework,
+      );
     const now = new Date().toISOString();
     const fiscalYear = FiscalYearSchema.parse({
       orgId,

@@ -59,7 +59,7 @@ const getHeader = (
 const createTenantHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
-  requiredWorkspaceType: "COMPANY" | "ACCOUNTING_FIRM",
+  requiredWorkspaceType: "COMPANY" | "ACCOUNTING_FIRM" | "PLATFORM",
 ) => {
   return async (
       event: any,
@@ -192,6 +192,12 @@ export const createCabinetHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
 ) => createTenantHandler(schema, logic, "ACCOUNTING_FIRM");
+
+/** Tenant-scoped Platform Core handler. Verifies membership without product enforcement. */
+export const createPlatformHandler = <T>(
+  schema: z.ZodSchema<T>,
+  logic: (data: T, context: HandlerContext) => Promise<any>,
+) => createTenantHandler(schema, logic, "PLATFORM");
 
 export const createAuthenticatedHandler = <T>(
   schema: z.ZodSchema<T>,
