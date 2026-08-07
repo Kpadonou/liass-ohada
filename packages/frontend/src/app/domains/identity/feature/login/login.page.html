@@ -17,7 +17,7 @@
   </header>
 
   @if (!authStore.requiresNewPassword()) {
-    <section class="liass-auth-section mt-6" [attr.aria-label]="'IDENTITY.AUTH_SOCIAL.LABEL' | transloco">
+    <section class="liass-auth-section mt-7" [attr.aria-label]="'IDENTITY.AUTH_SOCIAL.LABEL' | transloco">
       @if (authStore.loading()) {
         <p class="sr-only" role="status" aria-live="polite">
           {{ 'IDENTITY.AUTH_SOCIAL.LOADING' | transloco }}

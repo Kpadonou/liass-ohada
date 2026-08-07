@@ -622,9 +622,11 @@ select:-webkit-autofill {
 }
 
 .liass-auth-glow {
+  animation: liass-auth-ambient-drift 18s ease-in-out infinite alternate;
   border-radius: 9999px;
-  filter: blur(8px);
+  filter: blur(10px);
   position: absolute;
+  will-change: transform;
 }
 
 .liass-auth-glow-left {
@@ -636,6 +638,8 @@ select:-webkit-autofill {
 }
 
 .liass-auth-glow-right {
+  animation-delay: -8s;
+  animation-direction: alternate-reverse;
   background: rgb(31 111 184 / 0.1);
   bottom: 8%;
   height: 34rem;
@@ -687,16 +691,16 @@ select:-webkit-autofill {
   align-items: center;
   animation: liass-auth-brand-reveal 520ms ease-out 40ms both;
   background:
-    radial-gradient(circle at 50% 0%, rgb(134 184 245 / 0.22), transparent 16rem),
-    linear-gradient(135deg, #031f46 0%, #082b55 54%, #0b4378 100%);
-  border: 1px solid rgb(255 255 255 / 0.08);
+    radial-gradient(circle at 50% -35%, rgb(134 184 245 / 0.25), transparent 14rem),
+    linear-gradient(135deg, #05254f 0%, #082f5d 54%, #0b4b83 100%);
+  border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 1rem 1rem 0 0;
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
   display: flex;
   justify-content: center;
-  min-height: 6.5rem;
+  min-height: 5.5rem;
   overflow: hidden;
-  padding: 1.25rem 2rem;
+  padding: 1rem 2.25rem;
   position: relative;
 }
 
@@ -714,7 +718,10 @@ select:-webkit-autofill {
 
 .liass-auth-brand-surface liass-logo {
   display: block;
+  filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.14));
   position: relative;
+  transform: scale(1.035);
+  transform-origin: center;
   z-index: 1;
 }
 
@@ -725,20 +732,22 @@ select:-webkit-autofill {
   border-radius: 0 0 1rem 1rem;
   border-top: 0;
   box-shadow:
-    0 24px 64px rgb(3 34 77 / 0.12),
-    0 4px 18px rgb(15 23 42 / 0.05);
+    0 28px 72px rgb(3 34 77 / 0.13),
+    0 6px 20px rgb(15 23 42 / 0.055),
+    inset 0 1px 0 rgb(255 255 255 / 0.86);
   padding: 1.5rem;
 }
 
 .liass-auth-reassurance {
   animation: liass-auth-fade-in 520ms ease-out 180ms both;
-  color: #64748b;
+  color: #53657a;
   display: grid;
-  font-size: 0.75rem;
-  gap: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 520;
+  gap: 0.625rem;
   grid-template-columns: 1fr;
-  line-height: 1.15rem;
-  margin-top: 1rem;
+  line-height: 1.2rem;
+  margin-top: 1.125rem;
   text-align: center;
 }
 
@@ -747,6 +756,7 @@ select:-webkit-autofill {
   display: flex;
   gap: 0.375rem;
   justify-content: center;
+  white-space: nowrap;
 }
 
 .liass-auth-reassurance .mat-icon {
@@ -759,17 +769,19 @@ select:-webkit-autofill {
 .liass-auth-heading {
   color: #0f172a;
   font-size: 1.75rem;
-  font-weight: 650;
+  font-weight: 660;
   letter-spacing: -0.025em;
   line-height: 2.15rem;
   text-wrap: balance;
 }
 
 .liass-auth-subtitle {
-  color: #64748b;
-  font-size: 0.875rem;
-  line-height: 1.45rem;
-  margin-top: 0.5rem;
+  color: #6a7b90;
+  font-size: 0.90625rem;
+  font-weight: 400;
+  line-height: 1.55rem;
+  margin-top: 0.625rem;
+  max-width: 29rem;
 }
 
 .liass-auth-section {
@@ -890,8 +902,15 @@ select:-webkit-autofill {
 }
 
 .liass-auth-primary-button:disabled {
-  filter: saturate(0.74);
-  opacity: 0.62;
+  background: linear-gradient(135deg, #173b63 0%, #28537f 52%, #3d6d99 100%);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.14) inset,
+    0 9px 24px rgb(3 34 77 / 0.16),
+    0 1px 2px rgb(15 23 42 / 0.08);
+  color: rgb(255 255 255 / 0.9);
+  cursor: not-allowed;
+  filter: saturate(0.86);
+  opacity: 1;
 }
 
 .liass-auth-link {
@@ -950,13 +969,23 @@ select:-webkit-autofill {
   }
 }
 
+@keyframes liass-auth-ambient-drift {
+  from {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+
+  to {
+    transform: translate3d(10px, -8px, 0) scale(1.025);
+  }
+}
+
 @media (min-width: 40rem) {
   .liass-auth-card {
-    padding: 2rem 2.25rem 2.25rem;
+    padding: 2.125rem 2.5rem 2.5rem;
   }
 
   .liass-auth-reassurance {
-    gap: 0.75rem;
+    gap: 0.875rem;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
@@ -973,7 +1002,7 @@ select:-webkit-autofill {
   }
 
   .liass-auth-brand-surface {
-    min-height: 5.75rem;
+    min-height: 5.5rem;
     padding: 1rem 1.25rem;
   }
 
@@ -984,6 +1013,7 @@ select:-webkit-autofill {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .liass-auth-glow,
   .liass-auth-topbar,
   .liass-auth-frame,
   .liass-auth-brand-surface,

@@ -2271,8 +2271,8 @@
       "REASSURANCE": {
         "LABEL": "Repères de confiance",
         "SECURE": "Accès sécurisé",
-        "ISOLATION": "Isolation des organisations",
-        "OHADA": "Conçu pour l’espace OHADA"
+        "ISOLATION": "Données isolées",
+        "OHADA": "Conçu pour l’OHADA"
       }
     },
     "AUTH_SOCIAL": {

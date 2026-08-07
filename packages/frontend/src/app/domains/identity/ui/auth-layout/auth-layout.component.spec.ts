@@ -22,8 +22,8 @@ const translations = {
         REASSURANCE: {
           LABEL: 'Repères de confiance',
           SECURE: 'Accès sécurisé',
-          ISOLATION: 'Isolation des organisations',
-          OHADA: 'Conçu pour l’espace OHADA'
+          ISOLATION: 'Données isolées',
+          OHADA: 'Conçu pour l’OHADA'
         }
       }
     }
@@ -44,8 +44,8 @@ const translations = {
         REASSURANCE: {
           LABEL: 'Trust indicators',
           SECURE: 'Secure access',
-          ISOLATION: 'Organization data isolation',
-          OHADA: 'Built for the OHADA region'
+          ISOLATION: 'Isolated data',
+          OHADA: 'Built for OHADA'
         }
       }
     }
@@ -114,8 +114,8 @@ describe('AuthLayoutComponent', () => {
     const text = fixture.nativeElement.textContent as string;
 
     expect(text).toContain('Accès sécurisé');
-    expect(text).toContain('Isolation des organisations');
-    expect(text).toContain('Conçu pour l’espace OHADA');
+    expect(text).toContain('Données isolées');
+    expect(text).toContain('Conçu pour l’OHADA');
     expect(text).not.toMatch(/100\s?%|certifi/i);
   });
 

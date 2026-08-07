@@ -20,6 +20,7 @@ test('the shared auth shell uses the white logo on a navy surface without a spli
   const template = read('src/app/domains/identity/ui/auth-layout/auth-layout.component.html');
 
   assert.match(template, /class="liass-auth-brand-surface"/);
+  assert.match(template, /max-w-\[34rem\]/);
   assert.match(template, /theme="light"/);
   assert.match(template, /variant="horizontal"/);
   assert.doesNotMatch(template, /liass-auth-marketing-panel|APPROVED_MESSAGE/);
@@ -30,10 +31,23 @@ test('auth motion has an explicit reduced-motion override', () => {
   const reducedMotion = styles.slice(styles.indexOf('@media (prefers-reduced-motion: reduce)'));
 
   assert.match(reducedMotion, /\.liass-auth-brand-surface/);
+  assert.match(reducedMotion, /\.liass-auth-glow/);
   assert.match(reducedMotion, /\.liass-auth-card/);
   assert.match(reducedMotion, /\.liass-auth-section/);
   assert.match(reducedMotion, /animation:\s*none/);
   assert.match(reducedMotion, /transition:\s*none/);
+});
+
+test('disabled auth actions retain a branded primary treatment', () => {
+  const styles = read('src/styles.css');
+  const disabledState = styles.slice(
+    styles.indexOf('.liass-auth-primary-button:disabled'),
+    styles.indexOf('.liass-auth-link')
+  );
+
+  assert.match(disabledState, /linear-gradient/);
+  assert.match(disabledState, /opacity:\s*1/);
+  assert.match(disabledState, /cursor:\s*not-allowed/);
 });
 
 test('auth templates contain no waitlist or manual-approval flow', () => {

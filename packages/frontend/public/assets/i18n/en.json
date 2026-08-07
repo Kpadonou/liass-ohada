@@ -2271,8 +2271,8 @@
       "REASSURANCE": {
         "LABEL": "Trust indicators",
         "SECURE": "Secure access",
-        "ISOLATION": "Organization data isolation",
-        "OHADA": "Built for the OHADA region"
+        "ISOLATION": "Isolated data",
+        "OHADA": "Built for OHADA"
       }
     },
     "AUTH_SOCIAL": {
