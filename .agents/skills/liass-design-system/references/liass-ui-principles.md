@@ -2,12 +2,12 @@
 
 ## Product Personality
 
-Liass-OHADA is a premium OHADA/SYSCOHADA accounting ERP and SaaS workspace. It should feel like:
+Liass-OHADA is a premium modular ERP platform for organizations operating in the OHADA environment. It should feel like:
 
-- A reliable financial operations cockpit.
-- A modern SaaS product for demanding accounting teams.
+- A reliable operational and financial cockpit.
+- A modern SaaS product for demanding business and accounting teams.
 - An intelligent assistant for accountants and accounting firms.
-- A professional ERP that understands OHADA/SYSCOHADA workflows.
+- A professional ERP platform that understands OHADA/SYSCOHADA workflows where they apply.
 
 ## Visual Keywords
 

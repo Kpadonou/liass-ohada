@@ -58,7 +58,7 @@ The practical guide `guide-application-syscohada.md` must not override the offic
 
 ## Liass-OHADA conventions
 
-- Liass-OHADA is an OHADA/SYSCOHADA accounting ERP/SaaS.
+- Liass-OHADA is a modular ERP platform; its Accounting and applicable financial domains remain governed by OHADA/SYSCOHADA/SYCEBNL requirements.
 - The accounting domain should use SYSCOHADA terminology.
 - Business operations must generate auditable accounting traces where applicable.
 - Accounting entries must be generated automatically for supported business workflows.

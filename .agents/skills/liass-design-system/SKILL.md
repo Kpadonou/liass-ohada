@@ -7,7 +7,7 @@ description: Use this skill when designing, reviewing, or modifying Liass-OHADA 
 
 ## Purpose
 
-Guide Codex toward premium, coherent, ergonomic frontend UI for Liass-OHADA: an OHADA/SYSCOHADA accounting ERP/SaaS for companies, accounting firms, and nonprofit/project accounting workflows.
+Guide Codex toward premium, coherent, ergonomic frontend UI for Liass-OHADA: a modular ERP platform for organizations operating in the OHADA environment, including companies, accounting firms, and nonprofit/project workflows.
 
 Use this skill for UI design, UI review, frontend page implementation, shell/navigation work, Angular Material 3 choices, Tailwind styling, Transloco/i18n copy surfaces, and shared `liass-*` component usage.
 

@@ -55,7 +55,9 @@ Before any proposed stateful-resource move, the implementer **MUST** inspect `cd
 - Domain stacks **MUST** reuse the single shared API, existing DynamoDB table, existing authorizer and identity resources, shared Lambda environment configuration, and shared roles where the current architecture still uses them.
 - Direct construct references **SHOULD** be used instead of global lookups when available.
 - Circular dependencies are forbidden. One domain nested stack **SHOULD NOT** depend directly on another domain stack; both should depend on shared resources owned by the core unless a reviewed exception is necessary.
-- When domains exchange data, share application contracts or services at code level. **MUST NOT** duplicate infrastructure, move unrelated resources merely to eliminate a typed reference, or create cross-domain DynamoDB tables.
+- Physical co-location in the shared DynamoDB table does not grant cross-domain ownership. A domain **MUST NOT** import another domain's repository internals, construct its persistence keys, or mutate its aggregates directly.
+- When domains exchange data, use explicit APIs or versioned domain/integration events with shared contracts. **MUST NOT** duplicate infrastructure, move unrelated resources merely to eliminate a typed reference, create cross-domain DynamoDB tables, or use shared code as a backdoor for cross-domain persistence writes.
+- Logical domain separation comes before physical separation. A new service, API, event bus, queue, or table **MUST NOT** be introduced solely to demonstrate domain separation.
 
 ## Adding an endpoint or domain resource
 
@@ -95,9 +97,9 @@ If a domain template approaches 350 resources, do not silently continue. Audit t
 
 ## New business domains
 
-For Sales, Purchases, Invoicing, Inventory, Fixed Assets, Payroll, Tax, Document Management, or another new domain:
+For Sales, Purchases, Invoicing, Inventory, Fixed Assets, Payroll, Tax, or another new domain:
 
-1. First determine whether it belongs to Accounting, Identity/Cabinet, Projects, or Treasury.
+1. Classify the capability using the Platform V2 rules in `SPEC.md`, then determine whether it belongs to Platform Core, Accounting, Identity/Cabinet, Projects, or Treasury. Genuinely cross-domain documents, notifications, audit, entitlement, or integration infrastructure belongs to Platform Core; domain-specific behavior stays with its business owner.
 2. If it does not fit, estimate the number and types of CloudFormation resources and define a coherent, durable domain boundary.
 3. Create one domain-oriented nested stack only when its expected growth justifies it.
 4. Register it through the existing API domain-stack composition mechanism.

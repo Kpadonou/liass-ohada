@@ -32,6 +32,8 @@ When working on DynamoDB-related features, Codex must:
 12. Preserve existing architecture, shared DTO boundaries, tests, and i18n conventions.
 13. Treat the reference files as intended conventions and design principles, not replacements for `KeyFactory`.
 14. Do not rename PK/SK/GSI formats or introduce new key formats unless the task explicitly asks for a key model refactor.
+15. Respect domain ownership: physical co-location in the shared table does not authorize a domain to use another domain's internal key helpers, repositories, or persistence operations.
+16. Use an explicit API or versioned event for cross-domain collaboration rather than direct cross-domain persistence writes.
 
 ## Reference priority
 
