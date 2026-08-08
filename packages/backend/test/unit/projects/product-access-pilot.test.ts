@@ -49,7 +49,7 @@ describe("GET /donors ProductAccess pilot", () => {
   beforeEach(() => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
-    process.env.ACCOUNTING_PERMISSION = "ACCOUNTING_READ";
+    delete process.env.ACCOUNTING_PERMISSION;
     jest
       .spyOn(AccountingAuthorizationService, "resolveAccess")
       .mockResolvedValue({

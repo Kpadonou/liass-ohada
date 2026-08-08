@@ -51,32 +51,6 @@ export const ACCOUNTING_ENDPOINT_PERMISSIONS = {
   "journals/delete-journal": "ACCOUNTING_WRITE",
 } as const satisfies Record<string, AccountingPermission>;
 
-export const PROJECT_ENDPOINT_PERMISSIONS = {
-  "create-donor": "ACCOUNTING_WRITE",
-  "get-donors": "ACCOUNTING_READ",
-  "create-project": "ACCOUNTING_WRITE",
-  "get-projects": "ACCOUNTING_READ",
-  "create-funding-source": "ACCOUNTING_WRITE",
-  "list-funding-sources": "ACCOUNTING_READ",
-  "create-budget-line": "ACCOUNTING_WRITE",
-  "list-budget-lines": "ACCOUNTING_READ",
-  "get-project-report": "ACCOUNTING_READ",
-  "list-projects-summary": "ACCOUNTING_READ",
-} as const satisfies Record<string, AccountingPermission>;
-
-export const TREASURY_ENDPOINT_PERMISSIONS = {
-  "list-accounts": "ACCOUNTING_READ",
-  "create-account": "ACCOUNTING_WRITE",
-  "list-movements": "ACCOUNTING_READ",
-  "post-transaction": "ACCOUNTING_WRITE",
-  "list-statement-lines": "ACCOUNTING_READ",
-  "import-statement-lines": "ACCOUNTING_WRITE",
-  "reconcile": "ACCOUNTING_WRITE",
-  "list-reconciliations": "ACCOUNTING_READ",
-  "cancel-reconciliation": "ACCOUNTING_WRITE",
-  "get-summary": "ACCOUNTING_READ",
-} as const satisfies Record<string, AccountingPermission>;
-
 export function requireEndpointPermission(
   registry: Readonly<Record<string, AccountingPermission>>,
   handlerPath: string,

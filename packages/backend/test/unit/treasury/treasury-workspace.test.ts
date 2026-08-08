@@ -234,12 +234,19 @@ const reconciledEntryLineItem = {
 };
 
 describe("treasury workspace handlers", () => {
+  const originalPermission = process.env.ACCOUNTING_PERMISSION;
+
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    delete process.env.ACCOUNTING_PERMISSION;
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
+  });
+
+  afterAll(() => {
+    process.env.ACCOUNTING_PERMISSION = originalPermission;
   });
 
   test("POST /treasury/accounts validates class 5 account and returns a public DTO", async () => {

@@ -364,7 +364,9 @@ describe("handler-wrapper auth context", () => {
     expect(logic).not.toHaveBeenCalled();
   });
 
-  test("enforces permission-only metadata without checking ProductAccess", async () => {
+  test("lets explicit permission metadata override the Accounting fallback", async () => {
+    const originalPermission = process.env.ACCOUNTING_PERMISSION;
+    process.env.ACCOUNTING_PERMISSION = "ACCOUNTING_WRITE";
     const membership = jest
       .spyOn(AccountingAuthorizationService, "resolveAccess")
       .mockResolvedValue({
@@ -398,6 +400,40 @@ describe("handler-wrapper auth context", () => {
     expect(permission.mock.invocationCallOrder[0]).toBeLessThan(
       logic.mock.invocationCallOrder[0],
     );
+    process.env.ACCOUNTING_PERMISSION = originalPermission;
+  });
+
+  test("preserves the Accounting permission environment fallback", async () => {
+    const originalPermission = process.env.ACCOUNTING_PERMISSION;
+    process.env.ACCOUNTING_PERMISSION = "ACCOUNTING_READ";
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "test-org",
+        permissions: ["ACCOUNTING_READ"],
+        workspaceOrgId: "test-org",
+      });
+    const product = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+    const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
+    const logic = jest.fn().mockResolvedValue({ ok: true });
+
+    const response = await createHandler(z.object({}), logic)(
+      createEvent() as any,
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(product).not.toHaveBeenCalled();
+    expect(permission).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "test-org" }),
+      "ACCOUNTING_READ",
+    );
+    expect(logic).toHaveBeenCalled();
+    process.env.ACCOUNTING_PERMISSION = originalPermission;
   });
 
   test("keeps permission-only metadata exact across domains", async () => {

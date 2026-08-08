@@ -2,10 +2,6 @@ import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { Construct } from "constructs";
 import * as path from "path";
 import { DomainConstructFactory, DomainProps } from "./domain-constructs-factory";
-import {
-  PROJECT_ENDPOINT_PERMISSIONS,
-  requireEndpointPermission,
-} from "./accounting-endpoint-permissions";
 
 export class ProjectEndpoints extends DomainConstructFactory {
   constructor(scope: Construct, id: string, props: DomainProps) {
@@ -34,10 +30,6 @@ export class ProjectEndpoints extends DomainConstructFactory {
     ) => {
       const entry = resolveHandlerEntry("projects", handlerPath);
       this.addRoute({
-        accountingPermission: requireEndpointPermission(
-          PROJECT_ENDPOINT_PERMISSIONS,
-          handlerPath,
-        ),
         actionName,
         api: props.api,
         authorizer: props.authorizer,

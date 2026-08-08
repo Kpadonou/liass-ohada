@@ -69,12 +69,19 @@ const projectItem = {
 };
 
 describe("projects workspace handlers", () => {
+  const originalPermission = process.env.ACCOUNTING_PERMISSION;
+
   beforeEach(() => {
     dynamoMock.reset();
     jest.clearAllMocks();
+    delete process.env.ACCOUNTING_PERMISSION;
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
+  });
+
+  afterAll(() => {
+    process.env.ACCOUNTING_PERMISSION = originalPermission;
   });
 
   test("GET /donors queries donor third-party records and returns frontend-safe DTOs", async () => {

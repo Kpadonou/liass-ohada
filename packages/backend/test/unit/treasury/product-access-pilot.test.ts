@@ -24,9 +24,12 @@ const event = {
 };
 
 describe("GET /treasury/summary ProductAccess pilot", () => {
+  const originalPermission = process.env.ACCOUNTING_PERMISSION;
+
   beforeEach(() => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
+    delete process.env.ACCOUNTING_PERMISSION;
     jest
       .spyOn(AccountingAuthorizationService, "resolveAccess")
       .mockResolvedValue({
@@ -49,6 +52,10 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
       count: 0,
       hasMore: false,
     });
+  });
+
+  afterAll(() => {
+    process.env.ACCOUNTING_PERMISSION = originalPermission;
   });
 
   test("declares TREASURY and executes only after ACTIVE entitlement", async () => {

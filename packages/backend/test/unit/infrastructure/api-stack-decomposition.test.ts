@@ -122,6 +122,31 @@ describe("API stack decomposition", () => {
     ).toBe(true);
   });
 
+  test("keeps Accounting permission fallback out of Projects and Treasury Lambdas", () => {
+    const functions = constructs.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    const projectAndTreasuryFunctions = functions.filter((fn) =>
+      /-dev-(projects|treasury)-/.test(String(fn.functionName)),
+    );
+    const accountingFunctions = functions.filter((fn) =>
+      String(fn.functionName).includes("-dev-accounting-"),
+    );
+
+    expect(projectAndTreasuryFunctions).toHaveLength(21);
+    expect(
+      projectAndTreasuryFunctions.every(
+        (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),
+      ),
+    ).toBe(true);
+    expect(accountingFunctions).toHaveLength(50);
+    expect(
+      accountingFunctions.every((fn) =>
+        lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),
+      ),
+    ).toBe(true);
+  });
+
   test("exposes invitation tokens only from development invitation Lambdas", () => {
     const functions = constructs.filter(
       (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
