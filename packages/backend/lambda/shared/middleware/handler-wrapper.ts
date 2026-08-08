@@ -3,12 +3,14 @@ import { z } from "zod";
 import type { CabinetRole } from "@liass-ohada/shared";
 import type { AccountingAccessMode } from "@liass-ohada/shared";
 import type { ProductCode } from "@liass-ohada/shared/shared";
-import { isAccountingPermission } from "../authorization/accounting-permission";
+import { isDomainPermission } from "../authorization/domain-permission";
+import type { DomainPermission } from "../authorization/domain-permission";
 import { AppError } from "../app-error";
 import { I18nResolver } from "../i18n";
 import { TenantAccessService } from "../services/tenant-access-service";
 import { AccountingAuthorizationService } from "../services/accounting-authorization-service";
 import { ProductAccessService } from "../services/product-access-service";
+import { DomainAuthorizationService } from "../services/domain-authorization-service";
 
 export { AppError };
 
@@ -35,6 +37,7 @@ export interface AuthenticatedHandlerContext {
 
 export interface ProductAuthorizationMetadata {
   action: string;
+  permission: DomainPermission;
   productCode: ProductCode;
 }
 
@@ -102,8 +105,10 @@ const createTenantHandler = <T>(
       const access =
         requiredWorkspaceType === "COMPANY"
           ? await (async () => {
-              const permission = process.env.ACCOUNTING_PERMISSION;
-              if (!isAccountingPermission(permission)) {
+              const permission =
+                productAuthorization?.permission ??
+                process.env.ACCOUNTING_PERMISSION;
+              if (!isDomainPermission(permission)) {
                 throw new AppError(500, "ACCOUNTING_PERMISSION_NOT_CONFIGURED");
               }
               const decision = await AccountingAuthorizationService.resolveAccess({
@@ -118,7 +123,7 @@ const createTenantHandler = <T>(
                   productCode: productAuthorization.productCode,
                 });
               }
-              AccountingAuthorizationService.assertPermission(
+              DomainAuthorizationService.assertPermission(
                 decision,
                 permission,
               );

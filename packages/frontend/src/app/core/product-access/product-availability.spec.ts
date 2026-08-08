@@ -1,11 +1,14 @@
-import type { ProductAccess } from '@liass-ohada/shared/shared';
+import type { ProductAccess, ProductCode } from '@liass-ohada/shared/shared';
 
 import { resolveProductAvailability } from './product-availability';
 
 const timestamp = '2026-08-07T10:00:00.000Z';
-const access = (status: ProductAccess['status']): ProductAccess => ({
+const access = (
+  status: ProductAccess['status'],
+  productCode: ProductCode = 'TREASURY',
+): ProductAccess => ({
   orgId: 'org-a',
-  productCode: 'TREASURY',
+  productCode,
   status,
   createdAt: timestamp,
   updatedAt: timestamp,
@@ -32,4 +35,12 @@ describe('resolveProductAvailability', () => {
       expect(resolveProductAvailability(productAccess, 'TREASURY', succeeded)).toBe('UNKNOWN');
     },
   );
+
+  it.each([
+    ['ACTIVE', [access('ACTIVE', 'PROJECTS')], 'AVAILABLE'],
+    ['INACTIVE', [access('INACTIVE', 'PROJECTS')], 'UNAVAILABLE'],
+    ['missing', [], 'UNAVAILABLE'],
+  ] as const)('resolves known PROJECTS %s access as %s', (_case, productAccess, expected) => {
+    expect(resolveProductAvailability(productAccess, 'PROJECTS', true)).toBe(expected);
+  });
 });

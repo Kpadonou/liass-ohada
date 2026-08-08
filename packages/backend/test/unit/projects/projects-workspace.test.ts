@@ -78,6 +78,18 @@ describe("projects workspace handlers", () => {
   });
 
   test("GET /donors queries donor third-party records and returns frontend-safe DTOs", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: {
+        PK: { S: "ORG#test-org" },
+        SK: { S: "PRODUCT_ACCESS#PROJECTS" },
+        entityType: { S: "PRODUCT_ACCESS" },
+        orgId: { S: "test-org" },
+        productCode: { S: "PROJECTS" },
+        status: { S: "ACTIVE" },
+        createdAt: { S: "2026-01-01T00:00:00Z" },
+        updatedAt: { S: "2026-01-01T00:00:00Z" },
+      },
+    });
     dynamoMock.on(QueryCommand).resolves({
       Items: [
         {

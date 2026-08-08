@@ -84,11 +84,25 @@ describe('ProductAccessQueries', () => {
         createdAt: timestamp,
         updatedAt: timestamp,
       },
+      {
+        orgId: 'org-a',
+        productCode: 'PROJECTS',
+        status: 'ACTIVE',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
     ];
     const orgBAccess: ProductAccess[] = [
       {
         orgId: 'org-b',
         productCode: 'TREASURY',
+        status: 'ACTIVE',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      },
+      {
+        orgId: 'org-b',
+        productCode: 'PROJECTS',
         status: 'INACTIVE',
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -100,11 +114,13 @@ describe('ProductAccessQueries', () => {
     const cachedOrgB = queryClient.getQueryData<ProductAccess[]>(
       productAccessQueryKeys.list('org-b'),
     );
-    expect(resolveProductAvailability(cachedOrgB, 'TREASURY', true)).toBe('UNAVAILABLE');
+    expect(resolveProductAvailability(cachedOrgB, 'TREASURY', true)).toBe('AVAILABLE');
+    expect(resolveProductAvailability(cachedOrgB, 'PROJECTS', true)).toBe('UNAVAILABLE');
 
     const cachedOrgA = queryClient.getQueryData<ProductAccess[]>(
       productAccessQueryKeys.list('org-a'),
     );
     expect(resolveProductAvailability(cachedOrgA, 'TREASURY', true)).toBe('AVAILABLE');
+    expect(resolveProductAvailability(cachedOrgA, 'PROJECTS', true)).toBe('AVAILABLE');
   });
 });

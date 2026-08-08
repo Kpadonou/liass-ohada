@@ -239,6 +239,7 @@
   "CABINET_DEADLINE_STATUS_UPDATE_FORBIDDEN": "Votre rôle au sein du cabinet ne permet pas cette modification de l’échéance.",
   "ACCOUNTING_ACCESS_CONTEXT_INVALID": "Le contexte comptable sélectionné n’est pas valide.",
   "ACCOUNTING_PERMISSION_NOT_CONFIGURED": "La configuration des accès comptables est indisponible.",
+  "DOMAIN_PERMISSION_REQUIRED": "Votre accès ne permet pas cette action.",
   "CABINET_DOSSIER_ASSIGNMENT_EXISTS": "Ce membre est déjà affecté au dossier client.",
   "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND": "Ce membre n’est pas affecté au dossier client.",
   "CABINET_ASSIGNMENT_NOT_FOUND": "Affectation au dossier client introuvable.",

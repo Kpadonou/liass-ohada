@@ -9,6 +9,7 @@ import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.
 import { UiStore } from '../../../core/state/ui.store';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import type { ProductAvailability } from '../../../core/product-access/product-availability';
+import type { ProductCode } from '@liass-ohada/shared/shared';
 import { AppSidebarComponent } from './app-sidebar.component';
 
 vi.mock('aws-amplify/auth', () => {
@@ -79,12 +80,16 @@ const translations = {
 
 describe('AppSidebarComponent', () => {
   let fixture: ComponentFixture<AppSidebarComponent>;
-  let productAvailability: ProductAvailability;
+  let productAvailability: Record<ProductCode, ProductAvailability>;
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
-    productAvailability = 'UNKNOWN';
+    productAvailability = {
+      ACCOUNTING: 'UNKNOWN',
+      PROJECTS: 'UNKNOWN',
+      TREASURY: 'UNKNOWN',
+    };
 
     await TestBed.configureTestingModule({
       imports: [
@@ -104,7 +109,7 @@ describe('AppSidebarComponent', () => {
         { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } },
         {
           provide: ProductAccessState,
-          useValue: { availability: () => productAvailability }
+          useValue: { availability: (productCode: ProductCode) => productAvailability[productCode] },
         }
       ]
     }).compileComponents();
@@ -156,7 +161,7 @@ describe('AppSidebarComponent', () => {
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
 
     for (const availability of ['AVAILABLE', 'UNKNOWN'] as const) {
-      productAvailability = availability;
+      productAvailability.TREASURY = availability;
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
       const treasuryButton = fixture.nativeElement.querySelector(
@@ -172,7 +177,7 @@ describe('AppSidebarComponent', () => {
   });
 
   it('keeps known unavailable Treasury discoverable but prevents navigation', () => {
-    productAvailability = 'UNAVAILABLE';
+    productAvailability.TREASURY = 'UNAVAILABLE';
     const router = TestBed.inject(Router);
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
@@ -196,8 +201,61 @@ describe('AppSidebarComponent', () => {
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
-  it('leaves Accounting, Projects, and Platform Core navigation unaffected', () => {
-    productAvailability = 'UNAVAILABLE';
+  it('keeps Projects navigation unchanged while access is active or technically unknown', () => {
+    const authStore = TestBed.inject(AuthStore);
+    const router = TestBed.inject(Router);
+    authStore.setCreatedWorkspace(
+      { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-company'
+    );
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+
+    for (const availability of ['AVAILABLE', 'UNKNOWN'] as const) {
+      productAvailability.PROJECTS = availability;
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+      const projectsButton = fixture.nativeElement.querySelector(
+        'liass-sidebar-nav-item button[aria-label="Projets et fonds"]'
+      ) as HTMLButtonElement;
+
+      expect(projectsButton.disabled).toBe(false);
+      expect(fixture.nativeElement.textContent).not.toContain('Indisponible');
+      projectsButton.click();
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/projects');
+      fixture.destroy();
+    }
+  });
+
+  it('keeps known unavailable Projects discoverable but prevents navigation', () => {
+    productAvailability.PROJECTS = 'UNAVAILABLE';
+    const router = TestBed.inject(Router);
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-company'
+    );
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const projectsButton = fixture.nativeElement.querySelector(
+      'liass-sidebar-nav-item button[aria-label^="Projets et fonds"]'
+    ) as HTMLButtonElement;
+    expect(projectsButton).not.toBeNull();
+    expect(projectsButton.disabled).toBe(true);
+    expect(projectsButton.getAttribute('aria-disabled')).toBe('true');
+    expect(projectsButton.getAttribute('aria-label')).toContain(
+      'Cette fonctionnalité n’est pas disponible pour cette organisation.'
+    );
+    expect(fixture.nativeElement.textContent).toContain('Indisponible');
+    expect(fixture.nativeElement.textContent).not.toContain('SYCEBNL');
+    projectsButton.click();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('keeps the staged rollout limited to Projects and Treasury', () => {
+    productAvailability.ACCOUNTING = 'UNAVAILABLE';
+    productAvailability.PROJECTS = 'UNAVAILABLE';
+    productAvailability.TREASURY = 'UNAVAILABLE';
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
       'org-company'
@@ -205,12 +263,20 @@ describe('AppSidebarComponent', () => {
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
 
-    for (const label of ['Tableau de bord', 'Vue d’ensemble', 'Projets et fonds']) {
-      const button = fixture.nativeElement.querySelector(
+    for (const label of ['Tableau de bord', 'Vue d’ensemble']) {
+      const unaffectedButton = fixture.nativeElement.querySelector(
         `liass-sidebar-nav-item button[aria-label="${label}"]`
       ) as HTMLButtonElement;
-      expect(button.disabled).toBe(false);
+      expect(unaffectedButton.disabled).toBe(false);
     }
+
+    const productButtons = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        'liass-sidebar-nav-item button[aria-label^="Projets et fonds"], liass-sidebar-nav-item button[aria-label^="Trésorerie"]'
+      )
+    ) as HTMLButtonElement[];
+    expect(productButtons).toHaveLength(2);
+    expect(productButtons.every((button) => button.disabled)).toBe(true);
   });
 
   it('collapses the desktop sidebar into an accessible icon rail', () => {

@@ -1,11 +1,13 @@
 import { handler } from "@/lambda/domains/treasury/get-summary";
+import { handler as listAccountsHandler } from "@/lambda/domains/treasury/list-accounts";
 import { AppError } from "@/lambda/shared/app-error";
 import { AccountingAuthorizationService } from "@/lambda/shared/services/accounting-authorization-service";
+import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { TreasuryService } from "@/lambda/shared/services/treasury-service";
 
 jest.mock("@/lambda/shared/services/treasury-service", () => ({
-  TreasuryService: { getSummary: jest.fn() },
+  TreasuryService: { getSummary: jest.fn(), listAccounts: jest.fn() },
 }));
 
 const event = {
@@ -42,6 +44,11 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
       unreconciledStatementLines: 0,
       unreconciledMovements: 0,
     });
+    jest.mocked(TreasuryService.listAccounts).mockResolvedValue({
+      accounts: [],
+      count: 0,
+      hasMore: false,
+    });
   });
 
   test("declares TREASURY and executes only after ACTIVE entitlement", async () => {
@@ -54,6 +61,10 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
         createdAt: "2026-08-07T10:00:00.000Z",
         updatedAt: "2026-08-07T10:00:00.000Z",
       });
+    const requirePermission = jest.spyOn(
+      DomainAuthorizationService,
+      "assertPermission",
+    );
 
     const response = await handler(event as any);
 
@@ -63,7 +74,27 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
       orgId: "org-123",
       productCode: "TREASURY",
     });
+    expect(requirePermission).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "org-123" }),
+      "TREASURY_READ",
+    );
     expect(TreasuryService.getSummary).toHaveBeenCalledWith("org-123", "2026");
+  });
+
+  test("rejects a non-member before checking ProductAccess", async () => {
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockRejectedValue(new AppError(403, "ERROR_ORG_ACCESS_DENIED"));
+    const requireAccess = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+
+    const response = await handler(event as any);
+
+    expect(response.statusCode).toBe(403);
+    expect(requireAccess).not.toHaveBeenCalled();
+    expect(TreasuryService.getSummary).not.toHaveBeenCalled();
   });
 
   test("does not execute Treasury logic when entitlement is unavailable", async () => {
@@ -78,5 +109,54 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
       "PRODUCT_ACCESS_REQUIRED",
     );
     expect(TreasuryService.getSummary).not.toHaveBeenCalled();
+  });
+
+  test("does not accept a Projects permission for the Treasury pilot", async () => {
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "org-123",
+        permissions: ["PROJECTS_READ"],
+        workspaceOrgId: "org-123",
+      });
+    jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockResolvedValue({
+        orgId: "org-123",
+        productCode: "TREASURY",
+        status: "ACTIVE",
+        createdAt: "2026-08-07T10:00:00.000Z",
+        updatedAt: "2026-08-07T10:00:00.000Z",
+      });
+
+    const response = await handler(event as any);
+
+    expect(response.statusCode).toBe(403);
+    expect(JSON.parse(response.body).error.code).toBe(
+      "DOMAIN_PERMISSION_REQUIRED",
+    );
+    expect(TreasuryService.getSummary).not.toHaveBeenCalled();
+  });
+
+  test("leaves an un-migrated Treasury route on its existing authorization path", async () => {
+    const requireAccess = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+
+    const response = await listAccountsHandler({
+      ...event,
+      routeKey: "GET /treasury/accounts",
+      rawPath: "/treasury/accounts",
+      queryStringParameters: undefined,
+    } as any);
+
+    expect(response.statusCode).toBe(200);
+    expect(requireAccess).not.toHaveBeenCalled();
+    expect(TreasuryService.listAccounts).toHaveBeenCalledWith("org-123", {
+      limit: 100,
+    });
   });
 });

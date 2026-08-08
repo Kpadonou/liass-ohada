@@ -1,0 +1,52 @@
+import type { AccountingAccessMode } from "@liass-ohada/shared";
+import {
+  DOMAIN_PERMISSIONS,
+  isWritePermission,
+} from "../authorization/domain-permission";
+import type { DomainPermission } from "../authorization/domain-permission";
+import { AppError } from "../app-error";
+
+export interface DomainPermissionContext {
+  accessMode: AccountingAccessMode;
+  permissions?: readonly DomainPermission[];
+}
+
+const READ_PERMISSIONS = DOMAIN_PERMISSIONS.filter((permission) =>
+  permission.endsWith("_READ"),
+);
+
+export class DomainAuthorizationService {
+  static permissionsForAccessMode(
+    accessMode: AccountingAccessMode,
+  ): readonly DomainPermission[] {
+    return accessMode === "READ_ONLY" ? READ_PERMISSIONS : DOMAIN_PERMISSIONS;
+  }
+
+  static hasPermission(
+    grantedPermissions: readonly DomainPermission[],
+    requiredPermission: DomainPermission,
+  ): boolean {
+    return grantedPermissions.includes(requiredPermission);
+  }
+
+  static assertPermission<T extends DomainPermissionContext>(
+    context: T,
+    requiredPermission: DomainPermission,
+  ): T {
+    const grantedPermissions =
+      context.permissions ?? this.permissionsForAccessMode(context.accessMode);
+
+    if (this.hasPermission(grantedPermissions, requiredPermission)) {
+      return context;
+    }
+
+    if (
+      context.accessMode === "READ_ONLY" &&
+      isWritePermission(requiredPermission)
+    ) {
+      throw new AppError(403, "CABINET_DOSSIER_READ_ONLY");
+    }
+
+    throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+  }
+}

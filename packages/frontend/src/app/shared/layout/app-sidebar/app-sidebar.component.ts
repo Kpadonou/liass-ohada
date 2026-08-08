@@ -106,6 +106,7 @@ const topLevelItems: readonly ShellNavItem[] = [
     icon: 'folder_managed',
     labelKey: 'SHELL.NAV.PROJECTS',
     page: 'projects',
+    productCode: 'PROJECTS',
     route: '/projects'
   },
   {
@@ -241,7 +242,7 @@ export class AppSidebarComponent {
 
   private productUnavailable(item: ShellNavItem): boolean {
     return (
-      item.productCode === 'TREASURY' &&
+      item.productCode !== undefined &&
       this.productAccessState.availability(item.productCode) === 'UNAVAILABLE'
     );
   }

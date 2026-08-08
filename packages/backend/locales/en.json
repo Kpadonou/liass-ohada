@@ -238,6 +238,7 @@
   "CABINET_DEADLINE_STATUS_UPDATE_FORBIDDEN": "Your Cabinet role does not allow this deadline change.",
   "ACCOUNTING_ACCESS_CONTEXT_INVALID": "The selected accounting context is invalid.",
   "ACCOUNTING_PERMISSION_NOT_CONFIGURED": "Accounting access configuration is unavailable.",
+  "DOMAIN_PERMISSION_REQUIRED": "Your access does not allow this action.",
   "CABINET_DOSSIER_ASSIGNMENT_EXISTS": "This member is already assigned to the client dossier.",
   "CABINET_DOSSIER_ASSIGNMENT_NOT_FOUND": "This member is not assigned to the client dossier.",
   "CABINET_ASSIGNMENT_NOT_FOUND": "Cabinet dossier assignment not found.",

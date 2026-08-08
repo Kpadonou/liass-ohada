@@ -20,6 +20,7 @@ export const handler = createHandler(
   },
   {
     action: "GET /treasury/summary",
+    permission: "TREASURY_READ",
     productCode: "TREASURY",
   },
 );

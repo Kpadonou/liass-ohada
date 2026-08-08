@@ -1,9 +1,11 @@
 import type { AccountingAccessMode, CabinetRole } from "@liass-ohada/shared";
 import type { AccountingPermission } from "../authorization/accounting-permission";
+import type { DomainPermission } from "../authorization/domain-permission";
 import { AppError } from "../app-error";
 import { AccountingAuthorizationRepository } from "../repositories/accounting-authorization-repository";
 import { CabinetTeamRepository } from "../repositories/cabinet-team-repository";
 import { TenantAccessService } from "./tenant-access-service";
+import { DomainAuthorizationService } from "./domain-authorization-service";
 
 export interface AuthorizedAccountingContext {
   accountingFramework?: string;
@@ -13,6 +15,7 @@ export interface AuthorizedAccountingContext {
   cabinetOrgId?: string;
   cabinetRole?: CabinetRole;
   orgId: string;
+  permissions?: readonly DomainPermission[];
   role?: string;
   workspaceOrgId: string;
 }
@@ -46,6 +49,8 @@ export class AccountingAuthorizationService {
         accessSource: "DIRECT",
         cabinetId: directAccess.cabinetId,
         orgId: input.orgId,
+        permissions:
+          DomainAuthorizationService.permissionsForAccessMode("READ_WRITE"),
         role: directAccess.role,
         workspaceOrgId,
       };
@@ -109,6 +114,8 @@ export class AccountingAuthorizationService {
       cabinetOrgId: workspaceOrgId,
       cabinetRole: role,
       orgId: input.orgId,
+      permissions:
+        DomainAuthorizationService.permissionsForAccessMode(accessMode),
       workspaceOrgId,
     };
   }
@@ -117,10 +124,7 @@ export class AccountingAuthorizationService {
     context: AuthorizedAccountingContext,
     permission: AccountingPermission,
   ): AuthorizedAccountingContext {
-    if (permission === "ACCOUNTING_WRITE" && context.accessMode === "READ_ONLY") {
-      throw new AppError(403, "CABINET_DOSSIER_READ_ONLY");
-    }
-    return context;
+    return DomainAuthorizationService.assertPermission(context, permission);
   }
 
   static async resolve(input: {

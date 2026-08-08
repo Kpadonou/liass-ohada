@@ -9,6 +9,7 @@ import {
 } from "@/lambda/shared/middleware/handler-wrapper";
 import { AppError } from "@/lambda/shared/app-error";
 import { AccountingAuthorizationService } from "@/lambda/shared/services/accounting-authorization-service";
+import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 
 const dynamoMock = mockClient(DynamoDBClient);
@@ -233,13 +234,11 @@ describe("handler-wrapper auth context", () => {
         createdAt: "2026-08-07T10:00:00.000Z",
         updatedAt: "2026-08-07T10:00:00.000Z",
       });
-    const permission = jest.spyOn(
-      AccountingAuthorizationService,
-      "assertPermission",
-    );
+    const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
     const logic = jest.fn().mockResolvedValue({ ok: true });
     const handler = createHandler(z.object({}), logic, {
       action: "GET /treasury/summary",
+      permission: "TREASURY_READ",
       productCode: "TREASURY",
     });
 
@@ -254,7 +253,7 @@ describe("handler-wrapper auth context", () => {
     });
     expect(permission).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "test-org" }),
-      "ACCOUNTING_WRITE",
+      "TREASURY_READ",
     );
     expect(membership.mock.invocationCallOrder[0]).toBeLessThan(
       product.mock.invocationCallOrder[0],
@@ -275,6 +274,7 @@ describe("handler-wrapper auth context", () => {
     );
     const handler = createHandler(z.object({}), jest.fn(), {
       action: "GET /treasury/summary",
+      permission: "TREASURY_READ",
       productCode: "TREASURY",
     });
 
@@ -291,6 +291,7 @@ describe("handler-wrapper auth context", () => {
     );
     const handler = createHandler(z.object({}), jest.fn(), {
       action: "GET /treasury/summary",
+      permission: "TREASURY_READ",
       productCode: "TREASURY",
     });
 
@@ -312,13 +313,11 @@ describe("handler-wrapper auth context", () => {
     jest
       .spyOn(ProductAccessService, "requireActiveProductAccess")
       .mockRejectedValue(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
-    const permission = jest.spyOn(
-      AccountingAuthorizationService,
-      "assertPermission",
-    );
+    const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
     const logic = jest.fn();
     const handler = createHandler(z.object({}), logic, {
       action: "GET /treasury/summary",
+      permission: "TREASURY_READ",
       productCode: "TREASURY",
     });
 
@@ -352,6 +351,7 @@ describe("handler-wrapper auth context", () => {
     const logic = jest.fn();
     const handler = createHandler(z.object({}), logic, {
       action: "GET /treasury/summary",
+      permission: "TREASURY_WRITE",
       productCode: "TREASURY",
     });
 

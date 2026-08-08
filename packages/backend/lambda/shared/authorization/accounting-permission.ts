@@ -1,9 +1,8 @@
-export const ACCOUNTING_PERMISSIONS = [
-  "ACCOUNTING_READ",
-  "ACCOUNTING_WRITE",
-] as const;
+import { ACCOUNTING_PERMISSIONS } from "./domain-permission";
+import type { AccountingPermission } from "./domain-permission";
 
-export type AccountingPermission = (typeof ACCOUNTING_PERMISSIONS)[number];
+export { ACCOUNTING_PERMISSIONS };
+export type { AccountingPermission };
 
 export function isAccountingPermission(
   value: unknown,

@@ -1,0 +1,33 @@
+export const ACCOUNTING_PERMISSIONS = [
+  "ACCOUNTING_READ",
+  "ACCOUNTING_WRITE",
+] as const;
+
+export const PROJECTS_PERMISSIONS = ["PROJECTS_READ", "PROJECTS_WRITE"] as const;
+
+export const TREASURY_PERMISSIONS = [
+  "TREASURY_READ",
+  "TREASURY_WRITE",
+] as const;
+
+export const DOMAIN_PERMISSIONS = [
+  ...ACCOUNTING_PERMISSIONS,
+  ...PROJECTS_PERMISSIONS,
+  ...TREASURY_PERMISSIONS,
+] as const;
+
+export type AccountingPermission = (typeof ACCOUNTING_PERMISSIONS)[number];
+export type ProjectsPermission = (typeof PROJECTS_PERMISSIONS)[number];
+export type TreasuryPermission = (typeof TREASURY_PERMISSIONS)[number];
+export type DomainPermission = (typeof DOMAIN_PERMISSIONS)[number];
+
+export function isDomainPermission(value: unknown): value is DomainPermission {
+  return (
+    typeof value === "string" &&
+    DOMAIN_PERMISSIONS.includes(value as DomainPermission)
+  );
+}
+
+export function isWritePermission(permission: DomainPermission): boolean {
+  return permission.endsWith("_WRITE");
+}

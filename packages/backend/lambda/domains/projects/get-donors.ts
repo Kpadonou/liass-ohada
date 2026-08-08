@@ -16,4 +16,9 @@ export const handler = createHandler(
       },
     };
   },
+  {
+    action: "GET /donors",
+    permission: "PROJECTS_READ",
+    productCode: "PROJECTS",
+  },
 );

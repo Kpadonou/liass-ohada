@@ -44,6 +44,10 @@ describe("AccountingAuthorizationService", () => {
       accessMode: "READ_WRITE",
       accessSource: "DIRECT",
       orgId: "company-1",
+      permissions: expect.arrayContaining([
+        "ACCOUNTING_READ",
+        "ACCOUNTING_WRITE",
+      ]),
     });
     expect(snapshot).not.toHaveBeenCalled();
   });
