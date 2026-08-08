@@ -54,6 +54,27 @@ describe("DomainAuthorizationService", () => {
     },
   );
 
+  test.each([
+    [["PROJECTS_WRITE"], "TREASURY_WRITE"],
+    [["PROJECTS_WRITE"], "ACCOUNTING_WRITE"],
+    [["TREASURY_WRITE"], "PROJECTS_WRITE"],
+    [["TREASURY_WRITE"], "ACCOUNTING_WRITE"],
+    [["ACCOUNTING_WRITE"], "PROJECTS_WRITE"],
+    [["ACCOUNTING_WRITE"], "TREASURY_WRITE"],
+    [["PROJECTS_READ"], "PROJECTS_WRITE"],
+    [["TREASURY_READ"], "TREASURY_WRITE"],
+  ] as const)(
+    "does not let %p satisfy owning-domain write %s",
+    (grantedPermissions, requiredPermission) => {
+      expect(
+        DomainAuthorizationService.hasPermission(
+          grantedPermissions,
+          requiredPermission,
+        ),
+      ).toBe(false);
+    },
+  );
+
   test("accepts an explicitly granted owning-domain permission", () => {
     expect(
       DomainAuthorizationService.assertPermission(
@@ -65,6 +86,21 @@ describe("DomainAuthorizationService", () => {
       ),
     ).toMatchObject({ permissions: ["PROJECTS_READ"] });
   });
+
+  test.each(["PROJECTS_WRITE", "TREASURY_WRITE"] as const)(
+    "accepts explicitly granted %s without another domain permission",
+    (permission) => {
+      expect(
+        DomainAuthorizationService.assertPermission(
+          {
+            accessMode: "READ_WRITE",
+            permissions: [permission],
+          },
+          permission,
+        ),
+      ).toMatchObject({ permissions: [permission] });
+    },
+  );
 
   test("keeps the existing read-only write denial", () => {
     expect(() =>

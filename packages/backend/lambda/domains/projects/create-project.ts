@@ -14,4 +14,5 @@ export const handler = createHandler(
       data: project,
     };
   },
+  { permission: "PROJECTS_WRITE" },
 );

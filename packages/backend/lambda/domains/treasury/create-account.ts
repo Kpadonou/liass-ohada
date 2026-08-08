@@ -12,4 +12,5 @@ export const handler = createHandler(
       data: account,
     };
   },
+  { permission: "TREASURY_WRITE" },
 );

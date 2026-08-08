@@ -19,4 +19,5 @@ export const handler = createHandler(
       data: match,
     };
   },
+  { permission: "TREASURY_WRITE" },
 );

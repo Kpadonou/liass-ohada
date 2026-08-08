@@ -14,4 +14,5 @@ export const handler = createHandler(
       data: donor,
     };
   },
+  { permission: "PROJECTS_WRITE" },
 );

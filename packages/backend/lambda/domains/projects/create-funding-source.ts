@@ -24,4 +24,5 @@ export const handler = createHandler(
       data: fundingSource,
     };
   },
+  { permission: "PROJECTS_WRITE" },
 );
