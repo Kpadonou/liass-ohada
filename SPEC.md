@@ -171,6 +171,7 @@ Organization membership and current permission checks exist today. `ProductAcces
 Business-domain actions must use the owning domain's explicit permission vocabulary. Accounting permissions remain `ACCOUNTING_*`; Projects and Treasury use their own `PROJECTS_*` and `TREASURY_*` permissions as routes migrate. Any temporary cross-domain compatibility alias must be centralized, one-way from a legacy permission to the owning-domain permission, and removed after migration evidence is complete. ProductAccess never grants a user permission, and a user permission never grants organization ProductAccess.
 
 - Extract `userId` from Cognito JWT claims and resolve active `orgId` from the verified `x-org-id` context after membership verification. Never trust tenant identifiers from body, query, or path.
+- Effective organization membership and access resolution belongs to Platform Core. Business-domain authorization consumes that verified context and must not independently own tenant-membership resolution.
 - Authenticated `GET /me/workspaces` is the pre-tenant exception: it omits `x-org-id` and returns only the caller's active workspace summaries through the user discovery index.
 - Preserve cabinet supervision checks and dossier assignment/access rules.
 - Use `TransactWriteItems` for atomic multi-item updates such as Accounting entry plus lines.

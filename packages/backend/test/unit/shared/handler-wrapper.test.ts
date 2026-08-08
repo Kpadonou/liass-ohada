@@ -8,7 +8,7 @@ import {
   createPlatformHandler,
 } from "@/lambda/shared/middleware/handler-wrapper";
 import { AppError } from "@/lambda/shared/app-error";
-import { AccountingAuthorizationService } from "@/lambda/shared/services/accounting-authorization-service";
+import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 
@@ -218,7 +218,7 @@ describe("handler-wrapper auth context", () => {
 
   test("orders annotated authorization as membership, ProductAccess, then permission", async () => {
     const membership = jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
@@ -266,7 +266,7 @@ describe("handler-wrapper auth context", () => {
 
   test("does not check ProductAccess before successful membership", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockRejectedValue(new AppError(403, "ERROR_ORG_ACCESS_DENIED"));
     const product = jest.spyOn(
       ProductAccessService,
@@ -303,7 +303,7 @@ describe("handler-wrapper auth context", () => {
 
   test("denies an annotated route when ProductAccess is missing", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
@@ -332,7 +332,7 @@ describe("handler-wrapper auth context", () => {
 
   test("checks ProductAccess before rejecting insufficient domain permission", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_ONLY",
         accessSource: "CABINET",
@@ -368,7 +368,7 @@ describe("handler-wrapper auth context", () => {
     const originalPermission = process.env.ACCOUNTING_PERMISSION;
     process.env.ACCOUNTING_PERMISSION = "ACCOUNTING_WRITE";
     const membership = jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
@@ -407,7 +407,7 @@ describe("handler-wrapper auth context", () => {
     const originalPermission = process.env.ACCOUNTING_PERMISSION;
     process.env.ACCOUNTING_PERMISSION = "ACCOUNTING_READ";
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
@@ -438,7 +438,7 @@ describe("handler-wrapper auth context", () => {
 
   test("keeps permission-only metadata exact across domains", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
@@ -467,7 +467,7 @@ describe("handler-wrapper auth context", () => {
 
   test("leaves unannotated and Platform Core routes non-enforcing", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",

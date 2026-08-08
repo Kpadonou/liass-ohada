@@ -8,7 +8,7 @@ import type { DomainPermission } from "../authorization/domain-permission";
 import { AppError } from "../app-error";
 import { I18nResolver } from "../i18n";
 import { TenantAccessService } from "../services/tenant-access-service";
-import { AccountingAuthorizationService } from "../services/accounting-authorization-service";
+import { EffectiveOrganizationAccessService } from "../services/effective-organization-access-service";
 import { ProductAccessService } from "../services/product-access-service";
 import { DomainAuthorizationService } from "../services/domain-authorization-service";
 
@@ -119,7 +119,7 @@ const createTenantHandler = <T>(
               if (!isDomainPermission(permission)) {
                 throw new AppError(500, "ACCOUNTING_PERMISSION_NOT_CONFIGURED");
               }
-              const decision = await AccountingAuthorizationService.resolveAccess({
+              const decision = await EffectiveOrganizationAccessService.resolveAccess({
                 orgId,
                 userId,
                 workspaceOrgId,

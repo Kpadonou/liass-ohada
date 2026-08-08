@@ -1,6 +1,7 @@
 import { AccountingAuthorizationRepository } from "@/lambda/shared/repositories/accounting-authorization-repository";
 import { CabinetTeamRepository } from "@/lambda/shared/repositories/cabinet-team-repository";
 import { AccountingAuthorizationService } from "@/lambda/shared/services/accounting-authorization-service";
+import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 
 const activeDossierSnapshot = (assignmentExists: boolean) => ({
@@ -21,6 +22,26 @@ const activeDossierSnapshot = (assignmentExists: boolean) => ({
 
 describe("AccountingAuthorizationService", () => {
   afterEach(() => jest.restoreAllMocks());
+
+  test("delegates effective organization access resolution to Platform Core", async () => {
+    const context = {
+      accessMode: "READ_WRITE" as const,
+      accessSource: "DIRECT" as const,
+      orgId: "company-1",
+      permissions: ["ACCOUNTING_READ" as const],
+      workspaceOrgId: "company-1",
+    };
+    const resolveAccess = jest
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
+      .mockResolvedValue(context);
+    const input = { orgId: "company-1", userId: "user-1" };
+
+    await expect(
+      AccountingAuthorizationService.resolveAccess(input),
+    ).resolves.toBe(context);
+    expect(resolveAccess).toHaveBeenCalledTimes(1);
+    expect(resolveAccess).toHaveBeenCalledWith(input);
+  });
 
   test("preserves active direct-company read and write access without Cabinet assignment", async () => {
     jest.spyOn(TenantAccessService, "assertUserCanAccessOrg").mockResolvedValue({

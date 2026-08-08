@@ -2,7 +2,7 @@ import { handler as listDonorsHandler } from "@/lambda/domains/projects/get-dono
 import { handler as listProjectsHandler } from "@/lambda/domains/projects/get-projects";
 import { AppError } from "@/lambda/shared/app-error";
 import { ProductAccessRepository } from "@/lambda/shared/repositories/product-access-repository";
-import { AccountingAuthorizationService } from "@/lambda/shared/services/accounting-authorization-service";
+import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { ProjectService } from "@/lambda/shared/services/project-service";
@@ -51,7 +51,7 @@ describe("GET /donors ProductAccess pilot", () => {
     jest.clearAllMocks();
     delete process.env.ACCOUNTING_PERMISSION;
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
@@ -67,7 +67,10 @@ describe("GET /donors ProductAccess pilot", () => {
   });
 
   test("rejects unauthenticated requests before membership or ProductAccess", async () => {
-    const membership = jest.spyOn(AccountingAuthorizationService, "resolveAccess");
+    const membership = jest.spyOn(
+      EffectiveOrganizationAccessService,
+      "resolveAccess",
+    );
     const product = jest.spyOn(ProductAccessService, "requireActiveProductAccess");
 
     const response = await listDonorsHandler(
@@ -82,7 +85,7 @@ describe("GET /donors ProductAccess pilot", () => {
 
   test("rejects non-members before ProductAccess", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockRejectedValue(new AppError(403, "ERROR_ORG_ACCESS_DENIED"));
     const product = jest.spyOn(ProductAccessService, "requireActiveProductAccess");
 
@@ -111,7 +114,10 @@ describe("GET /donors ProductAccess pilot", () => {
   });
 
   test("orders membership, PROJECTS access, read permission, then handler logic", async () => {
-    const membership = jest.spyOn(AccountingAuthorizationService, "resolveAccess");
+    const membership = jest.spyOn(
+      EffectiveOrganizationAccessService,
+      "resolveAccess",
+    );
     membership.mockResolvedValue({
       accessMode: "READ_WRITE",
       accessSource: "DIRECT",
@@ -167,7 +173,7 @@ describe("GET /donors ProductAccess pilot", () => {
 
   test("does not accept a Treasury permission for the Projects pilot", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",

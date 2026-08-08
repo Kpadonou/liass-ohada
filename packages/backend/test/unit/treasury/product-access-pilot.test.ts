@@ -1,7 +1,7 @@
 import { handler } from "@/lambda/domains/treasury/get-summary";
 import { handler as listAccountsHandler } from "@/lambda/domains/treasury/list-accounts";
 import { AppError } from "@/lambda/shared/app-error";
-import { AccountingAuthorizationService } from "@/lambda/shared/services/accounting-authorization-service";
+import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { TreasuryService } from "@/lambda/shared/services/treasury-service";
@@ -31,7 +31,7 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
     jest.clearAllMocks();
     delete process.env.ACCOUNTING_PERMISSION;
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
@@ -90,7 +90,7 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
 
   test("rejects a non-member before checking ProductAccess", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockRejectedValue(new AppError(403, "ERROR_ORG_ACCESS_DENIED"));
     const requireAccess = jest.spyOn(
       ProductAccessService,
@@ -120,7 +120,7 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
 
   test("does not accept a Projects permission for the Treasury pilot", async () => {
     jest
-      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
       .mockResolvedValue({
         accessMode: "READ_WRITE",
         accessSource: "DIRECT",
