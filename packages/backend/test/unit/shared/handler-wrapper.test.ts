@@ -364,6 +364,71 @@ describe("handler-wrapper auth context", () => {
     expect(logic).not.toHaveBeenCalled();
   });
 
+  test("enforces permission-only metadata without checking ProductAccess", async () => {
+    const membership = jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "test-org",
+        permissions: ["PROJECTS_READ"],
+        workspaceOrgId: "test-org",
+      });
+    const product = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+    const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
+    const logic = jest.fn().mockResolvedValue({ ok: true });
+    const handler = createHandler(z.object({}), logic, {
+      permission: "PROJECTS_READ",
+    });
+
+    const response = await handler(createEvent() as any);
+
+    expect(response.statusCode).toBe(200);
+    expect(product).not.toHaveBeenCalled();
+    expect(permission).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "test-org" }),
+      "PROJECTS_READ",
+    );
+    expect(membership.mock.invocationCallOrder[0]).toBeLessThan(
+      permission.mock.invocationCallOrder[0],
+    );
+    expect(permission.mock.invocationCallOrder[0]).toBeLessThan(
+      logic.mock.invocationCallOrder[0],
+    );
+  });
+
+  test("keeps permission-only metadata exact across domains", async () => {
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "test-org",
+        permissions: ["TREASURY_READ"],
+        workspaceOrgId: "test-org",
+      });
+    const product = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+    const logic = jest.fn();
+    const handler = createHandler(z.object({}), logic, {
+      permission: "PROJECTS_READ",
+    });
+
+    const response = await handler(createEvent() as any);
+
+    expect(response.statusCode).toBe(403);
+    expect(JSON.parse(response.body).error.code).toBe(
+      "DOMAIN_PERMISSION_REQUIRED",
+    );
+    expect(product).not.toHaveBeenCalled();
+    expect(logic).not.toHaveBeenCalled();
+  });
+
   test("leaves unannotated and Platform Core routes non-enforcing", async () => {
     jest
       .spyOn(AccountingAuthorizationService, "resolveAccess")

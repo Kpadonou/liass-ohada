@@ -25,4 +25,5 @@ export const handler = createHandler(
       },
     };
   },
+  { permission: "PROJECTS_READ" },
 );

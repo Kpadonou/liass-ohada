@@ -18,4 +18,5 @@ export const handler = createHandler(
       data: dashboard,
     };
   },
+  { permission: "PROJECTS_READ" },
 );

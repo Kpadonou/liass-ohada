@@ -23,4 +23,5 @@ export const handler = createHandler(
       data: report,
     };
   },
+  { permission: "PROJECTS_READ" },
 );

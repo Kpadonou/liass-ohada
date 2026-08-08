@@ -22,4 +22,5 @@ export const handler = createHandler(
       },
     };
   },
+  { permission: "TREASURY_READ" },
 );

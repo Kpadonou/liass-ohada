@@ -140,10 +140,14 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
     expect(TreasuryService.getSummary).not.toHaveBeenCalled();
   });
 
-  test("leaves an un-migrated Treasury route on its existing authorization path", async () => {
+  test("leaves a permission-only Treasury route ProductAccess-non-enforcing", async () => {
     const requireAccess = jest.spyOn(
       ProductAccessService,
       "requireActiveProductAccess",
+    );
+    const requirePermission = jest.spyOn(
+      DomainAuthorizationService,
+      "assertPermission",
     );
 
     const response = await listAccountsHandler({
@@ -155,6 +159,10 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
 
     expect(response.statusCode).toBe(200);
     expect(requireAccess).not.toHaveBeenCalled();
+    expect(requirePermission).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "org-123" }),
+      "TREASURY_READ",
+    );
     expect(TreasuryService.listAccounts).toHaveBeenCalledWith("org-123", {
       limit: 100,
     });

@@ -188,8 +188,9 @@ describe("GET /donors ProductAccess pilot", () => {
     expect(ProjectService.listDonors).not.toHaveBeenCalled();
   });
 
-  test("leaves an unannotated Projects route non-enforcing", async () => {
+  test("leaves a permission-only Projects route ProductAccess-non-enforcing", async () => {
     const product = jest.spyOn(ProductAccessService, "requireActiveProductAccess");
+    const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
 
     const response = await listProjectsHandler(
       createEvent({ routeKey: "GET /projects" }) as any,
@@ -197,6 +198,10 @@ describe("GET /donors ProductAccess pilot", () => {
 
     expect(response.statusCode).toBe(200);
     expect(product).not.toHaveBeenCalled();
+    expect(permission).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "org-123" }),
+      "PROJECTS_READ",
+    );
     expect(ProjectService.listProjects).toHaveBeenCalledWith("org-123");
   });
 });

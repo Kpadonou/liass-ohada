@@ -35,11 +35,19 @@ export interface AuthenticatedHandlerContext {
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
 }
 
-export interface ProductAuthorizationMetadata {
-  action: string;
+export interface PermissionAuthorizationMetadata {
   permission: DomainPermission;
+}
+
+export interface ProductAuthorizationMetadata
+  extends PermissionAuthorizationMetadata {
+  action: string;
   productCode: ProductCode;
 }
+
+export type HandlerAuthorizationMetadata =
+  | PermissionAuthorizationMetadata
+  | ProductAuthorizationMetadata;
 
 const sendResponse = (
   statusCode: number,
@@ -70,7 +78,7 @@ const createTenantHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
   requiredWorkspaceType: "COMPANY" | "ACCOUNTING_FIRM" | "PLATFORM",
-  productAuthorization?: ProductAuthorizationMetadata,
+  authorization?: HandlerAuthorizationMetadata,
 ) => {
   return async (event: any) => {
     const i18n = new I18nResolver(event.headers["accept-language"] || "fr");
@@ -106,7 +114,7 @@ const createTenantHandler = <T>(
         requiredWorkspaceType === "COMPANY"
           ? await (async () => {
               const permission =
-                productAuthorization?.permission ??
+                authorization?.permission ??
                 process.env.ACCOUNTING_PERMISSION;
               if (!isDomainPermission(permission)) {
                 throw new AppError(500, "ACCOUNTING_PERMISSION_NOT_CONFIGURED");
@@ -116,11 +124,11 @@ const createTenantHandler = <T>(
                 userId,
                 workspaceOrgId,
               });
-              if (productAuthorization) {
+              if (authorization && "productCode" in authorization) {
                 await ProductAccessService.requireActiveProductAccess({
-                  action: productAuthorization.action,
+                  action: authorization.action,
                   orgId,
-                  productCode: productAuthorization.productCode,
+                  productCode: authorization.productCode,
                 });
               }
               DomainAuthorizationService.assertPermission(
@@ -207,9 +215,9 @@ const createTenantHandler = <T>(
 export const createHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
-  productAuthorization?: ProductAuthorizationMetadata,
+  authorization?: HandlerAuthorizationMetadata,
 ) =>
-  createTenantHandler(schema, logic, "COMPANY", productAuthorization);
+  createTenantHandler(schema, logic, "COMPANY", authorization);
 
 export const createCabinetHandler = <T>(
   schema: z.ZodSchema<T>,
