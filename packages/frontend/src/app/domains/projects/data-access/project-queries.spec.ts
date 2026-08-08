@@ -6,14 +6,15 @@ import { ProjectQueries } from './project-queries';
 import { ProjectsApi } from './projects.api';
 
 describe('ProjectQueries', () => {
-  it('includes the effective accounting organization in tenant-sensitive keys', () => {
+  it('includes the effective organization in tenant-sensitive keys', () => {
+    const effectiveOrgId = vi.fn().mockReturnValue('org-client');
     TestBed.configureTestingModule({
       providers: [
         ProjectQueries,
         { provide: ProjectsApi, useValue: {} },
         {
           provide: AuthStore,
-          useValue: { effectiveAccountingOrgId: vi.fn().mockReturnValue('org-client') }
+          useValue: { effectiveOrgId }
         }
       ]
     });
@@ -33,5 +34,8 @@ describe('ProjectQueries', () => {
       'summary',
       '2026'
     ]);
+
+    effectiveOrgId.mockReturnValue('org-client-b');
+    expect(queries.listProjects().queryKey).toEqual(['projects', 'org-client-b', 'list']);
   });
 });

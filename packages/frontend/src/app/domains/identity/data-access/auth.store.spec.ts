@@ -391,7 +391,7 @@ describe('AuthStore', () => {
     expect(store.isDirectCompanyContext()).toBe(true);
     expect(store.isCabinetContext()).toBe(false);
     expect(store.isDossierContext()).toBe(true);
-    expect(store.effectiveAccountingOrgId()).toBe('org-created');
+    expect(store.effectiveOrgId()).toBe('org-created');
   });
 
   it('resolves the active workspace display name after reload from the loaded workspace list', async () => {
@@ -465,7 +465,7 @@ describe('AuthStore', () => {
     expect(store.accessSource()).toBe('CABINET');
     expect(store.isCabinetContext()).toBe(true);
     expect(store.isDossierContext()).toBe(false);
-    expect(store.effectiveAccountingOrgId()).toBeNull();
+    expect(store.effectiveOrgId()).toBeNull();
   });
 
   it('loads but does not auto-select the only accounting-firm client dossier', async () => {
@@ -609,7 +609,7 @@ describe('AuthStore', () => {
     expect(store.activeWorkspaceType()).toBe('ACCOUNTING_FIRM');
     expect(store.activeDossierOrgId()).toBeNull();
     expect(store.hasActiveDossier()).toBe(false);
-    expect(store.effectiveAccountingOrgId()).toBeNull();
+    expect(store.effectiveOrgId()).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
     expect(store.dossierError()).toBe('IDENTITY.CABINET_DOSSIERS.ERRORS.LOAD_FAILED');
   });
@@ -676,8 +676,44 @@ describe('AuthStore', () => {
     expect(store.activeDossierDisplayName()).toBe('Created Client SARL');
     expect(store.isCabinetContext()).toBe(false);
     expect(store.isDossierContext()).toBe(true);
-    expect(store.effectiveAccountingOrgId()).toBe('org-client');
+    expect(store.effectiveOrgId()).toBe('org-client');
     expect(store.workspaceDestination()).toBe('/cabinet/dashboard');
+  });
+
+  it('updates the effective organization when switching client dossiers', () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      { orgId: 'org-firm', displayName: 'Cabinet Demo', workspaceType: 'ACCOUNTING_FIRM' },
+      'org-firm'
+    );
+    store.setCreatedDossier(
+      {
+        orgId: 'org-client-a',
+        displayName: 'Client A',
+        country: 'BJ',
+        accountingFramework: 'SYSCOHADA_REVISED',
+        status: 'ACTIVE',
+        createdAt: '2026-06-03T00:00:00.000Z',
+        updatedAt: '2026-06-03T00:00:00.000Z'
+      },
+      'org-client-a'
+    );
+    store.upsertDossier({
+      orgId: 'org-client-b',
+      displayName: 'Client B',
+      country: 'BJ',
+      accountingFramework: 'SYSCOHADA_REVISED',
+      status: 'ACTIVE',
+      createdAt: '2026-06-03T00:00:00.000Z',
+      updatedAt: '2026-06-03T00:00:00.000Z'
+    });
+
+    expect(store.activeOrgId()).toBe('org-firm');
+    expect(store.effectiveOrgId()).toBe('org-client-a');
+    expect(store.setActiveDossier('org-client-b')).toBe(true);
+    expect(store.activeOrgId()).toBe('org-firm');
+    expect(store.activeDossierOrgId()).toBe('org-client-b');
+    expect(store.effectiveOrgId()).toBe('org-client-b');
   });
 
   it('returns to cabinet context and removes only dossier-scoped cached data', () => {
@@ -707,7 +743,7 @@ describe('AuthStore', () => {
     expect(store.activeDossierOrgId()).toBeNull();
     expect(store.activeDossier()).toBeNull();
     expect(store.isCabinetContext()).toBe(true);
-    expect(store.effectiveAccountingOrgId()).toBeNull();
+    expect(store.effectiveOrgId()).toBeNull();
     expect(queryClient.getQueryData(['accounting', 'org-client', 'accounts'])).toBeUndefined();
     expect(queryClient.getQueryData(['identity', 'workspaces'])).toEqual([
       'preserved discovery data'

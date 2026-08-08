@@ -12,7 +12,7 @@ export class ProjectQueries {
   private readonly authStore = inject(AuthStore);
 
   tenantScope(): string {
-    return this.authStore.effectiveAccountingOrgId() || NO_TENANT_SCOPE;
+    return this.authStore.effectiveOrgId() || NO_TENANT_SCOPE;
   }
 
   listProjects() {

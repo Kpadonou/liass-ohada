@@ -17,7 +17,7 @@ export class ProductAccessQueries {
   private readonly authStore = inject(AuthStore);
 
   activeOrgId(): string | null {
-    return this.authStore.effectiveAccountingOrgId();
+    return this.authStore.effectiveOrgId();
   }
 
   list() {

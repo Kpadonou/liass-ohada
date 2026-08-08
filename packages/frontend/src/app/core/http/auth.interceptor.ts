@@ -23,7 +23,7 @@ function tenantOrgIdForRequest(
 ): string | null {
   return request.context.get(TENANT_REQUEST_SCOPE) === 'CABINET'
     ? authStore.activeWorkspaceOrgId()
-    : authStore.effectiveAccountingOrgId();
+    : authStore.effectiveOrgId();
 }
 
 export const authInterceptor: HttpInterceptorFn = (request, next) => {

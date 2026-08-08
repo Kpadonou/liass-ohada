@@ -371,7 +371,7 @@ export const AuthStore = signalStore(
         dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
       );
     }),
-    effectiveAccountingOrgId: computed(() => {
+    effectiveOrgId: computed(() => {
       const workspaceType = workspaces().find(
         (workspace) => workspace.orgId === activeOrgId()
       )?.workspaceType;

@@ -46,7 +46,7 @@ describe('AccountingQueries', () => {
     activeDossierOrgId: ReturnType<typeof vi.fn>;
     activeWorkspaceOrgId: ReturnType<typeof vi.fn>;
     activeWorkspaceType: ReturnType<typeof vi.fn>;
-    effectiveAccountingOrgId: ReturnType<typeof vi.fn>;
+    effectiveOrgId: ReturnType<typeof vi.fn>;
   };
   let queries: AccountingQueries;
 
@@ -77,7 +77,7 @@ describe('AccountingQueries', () => {
       activeDossierOrgId: vi.fn().mockReturnValue(null),
       activeWorkspaceOrgId: vi.fn().mockReturnValue('org-test'),
       activeWorkspaceType: vi.fn().mockReturnValue('COMPANY'),
-      effectiveAccountingOrgId: vi.fn().mockReturnValue('org-test')
+      effectiveOrgId: vi.fn().mockReturnValue('org-test')
     };
 
     TestBed.configureTestingModule({
@@ -167,12 +167,20 @@ describe('AccountingQueries', () => {
     authStore.activeWorkspaceType.mockReturnValue('ACCOUNTING_FIRM');
     authStore.activeWorkspaceOrgId.mockReturnValue('org-firm');
     authStore.activeDossierOrgId.mockReturnValue('org-client');
-    authStore.effectiveAccountingOrgId.mockReturnValue('org-client');
+    authStore.effectiveOrgId.mockReturnValue('org-client');
 
     expect(queries.tenantScope()).toBe('org-client');
     expect(queries.listAccounts().queryKey).toEqual([
       'accounting',
       'org-client',
+      'accounts',
+      { cursor: null, limit: 100 }
+    ]);
+
+    authStore.effectiveOrgId.mockReturnValue('org-client-b');
+    expect(queries.listAccounts().queryKey).toEqual([
+      'accounting',
+      'org-client-b',
       'accounts',
       { cursor: null, limit: 100 }
     ]);

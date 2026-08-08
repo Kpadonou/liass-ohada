@@ -196,7 +196,7 @@ export class AccountingQueries {
   private readonly authStore = inject(AuthStore);
 
   tenantScope(): TenantScope {
-    return this.authStore.effectiveAccountingOrgId() || NO_TENANT_SCOPE;
+    return this.authStore.effectiveOrgId() || NO_TENANT_SCOPE;
   }
 
   accountsQueryKey(options: ListAccountsParams = { limit: 100 }) {

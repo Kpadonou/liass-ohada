@@ -42,7 +42,7 @@ describe('AccountingFiscalYearContextService', () => {
             activeDossierOrgId,
             activeWorkspaceOrgId,
             activeWorkspaceType,
-            effectiveAccountingOrgId: computed(() =>
+            effectiveOrgId: computed(() =>
               activeWorkspaceType() === 'ACCOUNTING_FIRM'
                 ? activeDossierOrgId()
                 : activeWorkspaceOrgId()

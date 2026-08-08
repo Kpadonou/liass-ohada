@@ -14,13 +14,13 @@ import {
 } from './product-access.queries';
 
 describe('ProductAccessQueries', () => {
-  const effectiveAccountingOrgId = signal<string | null>(null);
+  const effectiveOrgId = signal<string | null>(null);
   const isAuthenticated = signal(false);
   const workspacesLoaded = signal(false);
   const listProductAccess = vi.fn();
 
   beforeEach(() => {
-    effectiveAccountingOrgId.set(null);
+    effectiveOrgId.set(null);
     isAuthenticated.set(false);
     workspacesLoaded.set(false);
     listProductAccess.mockReset();
@@ -30,7 +30,7 @@ describe('ProductAccessQueries', () => {
         { provide: ProductAccessApi, useValue: { listProductAccess } },
         {
           provide: AuthStore,
-          useValue: { effectiveAccountingOrgId, isAuthenticated, workspacesLoaded },
+          useValue: { effectiveOrgId, isAuthenticated, workspacesLoaded },
         },
       ],
     });
@@ -43,7 +43,7 @@ describe('ProductAccessQueries', () => {
 
     expect(queries.list().enabled).toBe(false);
     isAuthenticated.set(true);
-    effectiveAccountingOrgId.set('org-a');
+    effectiveOrgId.set('org-a');
     expect(queries.list().enabled).toBe(false);
     workspacesLoaded.set(true);
     expect(queries.list().enabled).toBe(true);
@@ -53,14 +53,14 @@ describe('ProductAccessQueries', () => {
   it('uses isolated organization query keys without previous-tenant placeholder data', async () => {
     isAuthenticated.set(true);
     workspacesLoaded.set(true);
-    effectiveAccountingOrgId.set('org-a');
+    effectiveOrgId.set('org-a');
     const queries = TestBed.inject(ProductAccessQueries);
     const orgAOptions = queries.list();
 
     expect(orgAOptions.queryKey).toEqual(productAccessQueryKeys.list('org-a'));
     expect(orgAOptions.placeholderData).toBeUndefined();
 
-    effectiveAccountingOrgId.set('org-b');
+    effectiveOrgId.set('org-b');
     const orgBOptions = queries.list();
     expect(orgBOptions.queryKey).toEqual(productAccessQueryKeys.list('org-b'));
     expect(orgBOptions.queryKey).not.toEqual(orgAOptions.queryKey);
@@ -69,7 +69,7 @@ describe('ProductAccessQueries', () => {
     await orgBOptions.queryFn?.({} as never);
     expect(listProductAccess).toHaveBeenCalledWith('org-b');
 
-    effectiveAccountingOrgId.set('org-a');
+    effectiveOrgId.set('org-a');
     expect(queries.list().queryKey).toEqual(orgAOptions.queryKey);
   });
 

@@ -235,7 +235,7 @@ describe('TreasuryPage accounts tab', () => {
             activeDossierOrgId: () => null,
             activeWorkspaceOrgId: () => 'org-test',
             activeWorkspaceType: () => 'COMPANY',
-            effectiveAccountingOrgId: () => 'org-test'
+            effectiveOrgId: () => 'org-test'
           }
         },
         { provide: NotificationService, useValue: notification },
