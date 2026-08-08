@@ -11,11 +11,19 @@ export class LiassSidebarNavItemComponent {
   readonly active = input(false);
   readonly badge = input<string | null>(null);
   readonly compact = input(false);
+  readonly description = input<string | null>(null);
   readonly disabled = input(false);
   readonly icon = input.required<string>();
   readonly label = input.required<string>();
 
   readonly selected = output<void>();
+
+  protected readonly accessibleLabel = computed(() =>
+    this.description() ? `${this.label()}. ${this.description()}` : this.label()
+  );
+  protected readonly tooltip = computed(() =>
+    this.description() ?? (this.compact() ? this.label() : '')
+  );
 
   protected readonly itemClass = computed(() => {
     const state = this.active()

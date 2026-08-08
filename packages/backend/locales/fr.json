@@ -90,6 +90,7 @@
   "ERROR_PERIOD_LOCKED": "La période pour cette opération est verrouillée.",
   "ERROR_MISSING_ORG_ID": "Identifiant de l'organisation manquant ou non autorisé.",
   "ERROR_ORG_ACCESS_DENIED": "Vous n'avez pas accès à cette organisation.",
+  "PRODUCT_ACCESS_REQUIRED": "Ce produit n'est pas disponible pour l'organisation active.",
   "ERROR_DONOR_EXISTS": "Un donateur avec le même code existe déjà.",
   "SUCCESS_DONOR_CREATED": "Donateur créé avec succès.",
   "SUCCESS_DONORS_RETRIEVED": "Bailleurs récupérés avec succès.",

@@ -11,6 +11,7 @@ import {
 import { randomUUID } from "crypto";
 import { AppError } from "../app-error";
 import { OnboardingRepository } from "../repositories/onboarding-repository";
+import { ProductAccessService } from "./product-access-service";
 import { AccountingSettingsService } from "@/lambda/domains/accounting/settings/accounting-settings-service";
 
 const ACCESS_STATUS = "ACTIVE" as const;
@@ -81,6 +82,8 @@ export class OnboardingService {
         organization,
         cabinet,
         workspace,
+        productAccessWrites:
+          ProductAccessService.buildCompatibilityBaselineWrites(orgId, now),
         accountingSettingsWrite:
           AccountingSettingsService.buildOnboardingWrite({
             orgId: organization.orgId,

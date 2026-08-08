@@ -77,6 +77,27 @@ describe('authInterceptor', () => {
     await response;
   });
 
+  it('uses the effective active organization for ProductAccess observation', async () => {
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      { orgId: 'org-test', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-test'
+    );
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: { accessToken: { toString: () => 'jwt-token' } }
+    } as never);
+
+    const response = firstValueFrom(
+      TestBed.inject(HttpClient).get(`${environment.apiBaseUrl}/me/product-access`)
+    );
+    await Promise.resolve();
+
+    const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/product-access`);
+    expect(request.request.headers.get('x-org-id')).toBe('org-test');
+    request.flush({ productAccess: [] });
+    await response;
+  });
+
   it('uses the active client dossier for tenant API calls in accounting-firm workspaces', async () => {
     const authStore = TestBed.inject(AuthStore);
     authStore.setCreatedWorkspace(

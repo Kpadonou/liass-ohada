@@ -1,7 +1,9 @@
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import type { ProductCode } from '@liass-ohada/shared/shared';
 import { TranslocoModule } from '@ngneat/transloco';
 
+import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { CabinetSettingsCapabilities } from '../../../domains/identity/data-access/cabinet-settings-capabilities';
@@ -13,6 +15,7 @@ interface ShellNavItem {
   icon: string;
   labelKey: string;
   page: AppPage;
+  productCode?: ProductCode;
   route?: string;
 }
 
@@ -109,6 +112,7 @@ const topLevelItems: readonly ShellNavItem[] = [
     icon: 'payments',
     labelKey: 'SHELL.NAV.TREASURY',
     page: 'treasury',
+    productCode: 'TREASURY',
     route: '/treasury'
   },
   {
@@ -178,6 +182,7 @@ export class AppSidebarComponent {
   protected readonly secondaryItems = secondaryItems;
   protected readonly authStore = inject(AuthStore);
   private readonly cabinetSettingsCapabilities = inject(CabinetSettingsCapabilities);
+  private readonly productAccessState = inject(ProductAccessState);
   protected readonly uiStore = inject(UiStore);
   protected readonly cabinetMode = computed(
     () => this.authStore.isCabinetContext()
@@ -204,7 +209,7 @@ export class AppSidebarComponent {
   }
 
   protected async selectItem(item: ShellNavItem): Promise<void> {
-    if (item.disabled) {
+    if (this.itemDisabled(item)) {
       return;
     }
 
@@ -214,5 +219,30 @@ export class AppSidebarComponent {
     if (item.route) {
       await this.router.navigateByUrl(item.route);
     }
+  }
+
+  protected itemBadge(item: ShellNavItem): string | null {
+    if (this.productUnavailable(item)) {
+      return 'SHELL.NAV.UNAVAILABLE';
+    }
+
+    return item.badgeKey ?? null;
+  }
+
+  protected itemDescription(item: ShellNavItem): string | null {
+    return this.productUnavailable(item)
+      ? 'SHELL.NAV.PRODUCT_UNAVAILABLE_FOR_ORGANIZATION'
+      : null;
+  }
+
+  protected itemDisabled(item: ShellNavItem): boolean {
+    return (item.disabled ?? false) || this.productUnavailable(item);
+  }
+
+  private productUnavailable(item: ShellNavItem): boolean {
+    return (
+      item.productCode === 'TREASURY' &&
+      this.productAccessState.availability(item.productCode) === 'UNAVAILABLE'
+    );
   }
 }

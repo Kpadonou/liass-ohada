@@ -2,11 +2,13 @@ import { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { z } from "zod";
 import type { CabinetRole } from "@liass-ohada/shared";
 import type { AccountingAccessMode } from "@liass-ohada/shared";
+import type { ProductCode } from "@liass-ohada/shared/shared";
 import { isAccountingPermission } from "../authorization/accounting-permission";
 import { AppError } from "../app-error";
 import { I18nResolver } from "../i18n";
 import { TenantAccessService } from "../services/tenant-access-service";
 import { AccountingAuthorizationService } from "../services/accounting-authorization-service";
+import { ProductAccessService } from "../services/product-access-service";
 
 export { AppError };
 
@@ -29,6 +31,11 @@ export interface AuthenticatedHandlerContext {
   userId: string;
   i18n: I18nResolver;
   event: APIGatewayProxyEventV2WithJWTAuthorizer;
+}
+
+export interface ProductAuthorizationMetadata {
+  action: string;
+  productCode: ProductCode;
 }
 
 const sendResponse = (
@@ -60,10 +67,9 @@ const createTenantHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
   requiredWorkspaceType: "COMPANY" | "ACCOUNTING_FIRM" | "PLATFORM",
+  productAuthorization?: ProductAuthorizationMetadata,
 ) => {
-  return async (
-      event: any,
-  ) => {
+  return async (event: any) => {
     const i18n = new I18nResolver(event.headers["accept-language"] || "fr");
 
     try {
@@ -100,12 +106,22 @@ const createTenantHandler = <T>(
               if (!isAccountingPermission(permission)) {
                 throw new AppError(500, "ACCOUNTING_PERMISSION_NOT_CONFIGURED");
               }
-              const decision = await AccountingAuthorizationService.resolve({
+              const decision = await AccountingAuthorizationService.resolveAccess({
                 orgId,
-                permission,
                 userId,
                 workspaceOrgId,
               });
+              if (productAuthorization) {
+                await ProductAccessService.requireActiveProductAccess({
+                  action: productAuthorization.action,
+                  orgId,
+                  productCode: productAuthorization.productCode,
+                });
+              }
+              AccountingAuthorizationService.assertPermission(
+                decision,
+                permission,
+              );
               return {
                 accountingAccessMode: decision.accessMode,
                 accountingFramework: decision.accountingFramework,
@@ -186,7 +202,9 @@ const createTenantHandler = <T>(
 export const createHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
-) => createTenantHandler(schema, logic, "COMPANY");
+  productAuthorization?: ProductAuthorizationMetadata,
+) =>
+  createTenantHandler(schema, logic, "COMPANY", productAuthorization);
 
 export const createCabinetHandler = <T>(
   schema: z.ZodSchema<T>,

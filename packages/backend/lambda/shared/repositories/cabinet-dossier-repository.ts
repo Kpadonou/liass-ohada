@@ -76,6 +76,7 @@ export type CabinetClientUserOrgAccessItem = z.infer<
 
 interface CreateClientDossierItemsInput {
   accountingSettingsWrite: TransactWriteItem;
+  productAccessWrites: TransactWriteItem[];
   userId: string;
   cabinetId: string;
   organization: Organization;
@@ -216,6 +217,7 @@ export class CabinetDossierRepository {
 
   static async createClientDossierItems({
     accountingSettingsWrite,
+    productAccessWrites,
     userId,
     cabinetId,
     organization,
@@ -270,6 +272,7 @@ export class CabinetDossierRepository {
           putIfAbsent(organizationItem),
           putIfAbsent(accessItem),
           putIfAbsent(dossierItem),
+          ...productAccessWrites,
           accountingSettingsWrite,
         ],
       }),

@@ -45,6 +45,7 @@ describe("ProductAccessRepository", () => {
       createdAt: persistenceItem.createdAt,
       updatedAt: persistenceItem.updatedAt,
     });
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 
   test("lists organization ProductAccess with Query and the canonical prefix", async () => {
@@ -85,5 +86,24 @@ describe("ProductAccessRepository", () => {
     expect(
       dynamoMock.commandCalls(PutItemCommand)[0].args[0].input.ConditionExpression,
     ).toBe("attribute_not_exists(PK) AND attribute_not_exists(SK)");
+  });
+
+  test("builds conditional transaction writes for centralized provisioning", () => {
+    const write = ProductAccessRepository.buildPutIfAbsentTransaction(
+      ProductAccessRepository.buildItem({
+        orgId: "org-123",
+        productCode: "ACCOUNTING",
+        status: "ACTIVE",
+        timestamp: "2026-08-07T10:00:00.000Z",
+      }),
+    );
+
+    expect(write.Put).toMatchObject({
+      ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      Item: {
+        PK: { S: "ORG#org-123" },
+        SK: { S: "PRODUCT_ACCESS#ACCOUNTING" },
+      },
+    });
   });
 });

@@ -18,4 +18,8 @@ export const handler = createHandler(
       data: summary,
     };
   },
+  {
+    action: "GET /treasury/summary",
+    productCode: "TREASURY",
+  },
 );

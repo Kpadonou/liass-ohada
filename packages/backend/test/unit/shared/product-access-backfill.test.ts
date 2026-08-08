@@ -28,10 +28,24 @@ describe("ProductAccess backfill", () => {
       ProductAccessService,
       "provisionCompatibilityBaseline",
     );
+    const inspect = jest
+      .spyOn(ProductAccessService, "inspectCompatibilityBaseline")
+      .mockResolvedValue({
+        active: ["ACCOUNTING"],
+        coverage: "PARTIAL",
+        inactive: [],
+        missing: ["PROJECTS", "TREASURY"],
+        orgId: "org-1",
+      });
     jest.spyOn(console, "info").mockImplementation(() => undefined);
 
-    await runProductAccessBackfill({ apply: false, orgIds: ["org-1"] });
+    await expect(
+      runProductAccessBackfill({ apply: false, orgIds: ["org-1"] }),
+    ).resolves.toEqual([
+      expect.objectContaining({ coverage: "PARTIAL", orgId: "org-1" }),
+    ]);
     expect(provision).not.toHaveBeenCalled();
+    expect(inspect).toHaveBeenCalledWith("org-1");
   });
 
   test("provisions only explicitly supplied organizations with --apply", async () => {
@@ -42,6 +56,15 @@ describe("ProductAccess backfill", () => {
         existing: ["ACCOUNTING", "TREASURY"],
       });
     jest.spyOn(console, "info").mockImplementation(() => undefined);
+    jest
+      .spyOn(ProductAccessService, "inspectCompatibilityBaseline")
+      .mockImplementation(async (orgId) => ({
+        active: ["ACCOUNTING", "PROJECTS", "TREASURY"],
+        coverage: "COMPLETE",
+        inactive: [],
+        missing: [],
+        orgId,
+      }));
 
     await runProductAccessBackfill({ apply: true, orgIds: ["org-1", "org-2"] });
     expect(provision.mock.calls).toEqual([["org-1"], ["org-2"]]);

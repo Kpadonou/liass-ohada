@@ -25,7 +25,7 @@ Organization
 
 - `Organization` owns platform-wide identity and status attributes.
 - `UserOrgAccess` represents a user's verified access to an organization.
-- `ProductAccess` is the platform-level entitlement for enabled products or capabilities. Its additive persistence and read foundation is implemented; authorization and frontend enforcement remain future migration phases.
+- `ProductAccess` is the platform-level entitlement for enabled products or capabilities. Its persistence, read, and opt-in backend authorization foundations are implemented. Enforcement remains limited to explicitly annotated pilot routes; global backend enforcement and frontend filtering remain future migration work.
 - `DomainSettings` belongs to the owning business domain. In particular, `accountingFramework` conceptually belongs to `AccountingSettings`, not to universal Organization metadata.
 
 Current onboarding, Organization, workspace, access-projection, and response contracts may still carry `accountingFramework`. This is an explicit compatibility state. It must remain supported until a reviewed, backward-compatible runtime and data migration moves ownership to Accounting.
@@ -166,7 +166,7 @@ authenticated identity
     -> domain action
 ```
 
-Organization membership and current permission checks exist today. `ProductAccess` verification is a future required layer and must not be represented as already implemented.
+Organization membership and current permission checks exist today. `ProductAccess` verification is implemented only for handlers carrying explicit typed product metadata; unannotated and Platform Core routes remain non-enforcing during progressive rollout.
 
 - Extract `userId` from Cognito JWT claims and resolve active `orgId` from the verified `x-org-id` context after membership verification. Never trust tenant identifiers from body, query, or path.
 - Authenticated `GET /me/workspaces` is the pre-tenant exception: it omits `x-org-id` and returns only the caller's active workspace summaries through the user discovery index.

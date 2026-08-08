@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { ProductAccessService } from "../lambda/shared/services/product-access-service";
+import type { ProductAccessCoverageReport } from "../lambda/shared/services/product-access-service";
 
 export interface ProductAccessBackfillOptions {
   apply: boolean;
@@ -76,19 +77,29 @@ export const parseProductAccessBackfillArgs = (
 
 export const runProductAccessBackfill = async (
   options: ProductAccessBackfillOptions,
-): Promise<void> => {
+): Promise<ProductAccessCoverageReport[]> => {
+  const reports: ProductAccessCoverageReport[] = [];
   for (const orgId of options.orgIds) {
-    if (!options.apply) {
-      console.info(`Dry run: would provision ProductAccess for ${orgId}.`);
-      continue;
+    if (options.apply) {
+      const result =
+        await ProductAccessService.provisionCompatibilityBaseline(orgId);
+      console.info("[PRODUCT_ACCESS_BACKFILL]", {
+        created: result.created,
+        existing: result.existing,
+        mode: "APPLY",
+        orgId,
+      });
     }
 
-    const result =
-      await ProductAccessService.provisionCompatibilityBaseline(orgId);
-    console.info(
-      `Provisioned ProductAccess for ${orgId}: created=${result.created.join(",") || "none"}; existing=${result.existing.join(",") || "none"}.`,
-    );
+    const report =
+      await ProductAccessService.inspectCompatibilityBaseline(orgId);
+    console.info("[PRODUCT_ACCESS_COVERAGE]", {
+      ...report,
+      mode: options.apply ? "APPLY" : "DRY_RUN",
+    });
+    reports.push(report);
   }
+  return reports;
 };
 
 if (require.main === module) {

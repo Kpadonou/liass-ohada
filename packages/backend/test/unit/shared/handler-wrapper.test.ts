@@ -5,7 +5,11 @@ import { z } from "zod";
 import {
   createAuthenticatedHandler,
   createHandler,
+  createPlatformHandler,
 } from "@/lambda/shared/middleware/handler-wrapper";
+import { AppError } from "@/lambda/shared/app-error";
+import { AccountingAuthorizationService } from "@/lambda/shared/services/accounting-authorization-service";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 
 const dynamoMock = mockClient(DynamoDBClient);
 
@@ -53,6 +57,7 @@ const createEvent = ({
 
 describe("handler-wrapper auth context", () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
     dynamoMock.reset();
     jest.clearAllMocks();
   });
@@ -208,5 +213,195 @@ describe("handler-wrapper auth context", () => {
 
     expect(response.statusCode).toBe(401);
     expect(body.message.code).toBe("ERROR_MISSING_USER_ID");
+  });
+
+  test("orders annotated authorization as membership, ProductAccess, then permission", async () => {
+    const membership = jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "test-org",
+        workspaceOrgId: "test-org",
+      });
+    const product = jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockResolvedValue({
+        orgId: "test-org",
+        productCode: "TREASURY",
+        status: "ACTIVE",
+        createdAt: "2026-08-07T10:00:00.000Z",
+        updatedAt: "2026-08-07T10:00:00.000Z",
+      });
+    const permission = jest.spyOn(
+      AccountingAuthorizationService,
+      "assertPermission",
+    );
+    const logic = jest.fn().mockResolvedValue({ ok: true });
+    const handler = createHandler(z.object({}), logic, {
+      action: "GET /treasury/summary",
+      productCode: "TREASURY",
+    });
+
+    const response = await handler(createEvent() as any);
+
+    expect(response.statusCode).toBe(200);
+    expect(membership).toHaveBeenCalled();
+    expect(product).toHaveBeenCalledWith({
+      action: "GET /treasury/summary",
+      orgId: "test-org",
+      productCode: "TREASURY",
+    });
+    expect(permission).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "test-org" }),
+      "ACCOUNTING_WRITE",
+    );
+    expect(membership.mock.invocationCallOrder[0]).toBeLessThan(
+      product.mock.invocationCallOrder[0],
+    );
+    expect(product.mock.invocationCallOrder[0]).toBeLessThan(
+      permission.mock.invocationCallOrder[0],
+    );
+    expect(logic).toHaveBeenCalled();
+  });
+
+  test("does not check ProductAccess before successful membership", async () => {
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockRejectedValue(new AppError(403, "ERROR_ORG_ACCESS_DENIED"));
+    const product = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+    const handler = createHandler(z.object({}), jest.fn(), {
+      action: "GET /treasury/summary",
+      productCode: "TREASURY",
+    });
+
+    const response = await handler(createEvent() as any);
+
+    expect(response.statusCode).toBe(403);
+    expect(product).not.toHaveBeenCalled();
+  });
+
+  test("does not check ProductAccess for an unauthenticated annotated request", async () => {
+    const product = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+    const handler = createHandler(z.object({}), jest.fn(), {
+      action: "GET /treasury/summary",
+      productCode: "TREASURY",
+    });
+
+    const response = await handler(createEvent({ claims: {} }) as any);
+
+    expect(response.statusCode).toBe(401);
+    expect(product).not.toHaveBeenCalled();
+  });
+
+  test("denies an annotated route when ProductAccess is missing", async () => {
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "test-org",
+        workspaceOrgId: "test-org",
+      });
+    jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockRejectedValue(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
+    const permission = jest.spyOn(
+      AccountingAuthorizationService,
+      "assertPermission",
+    );
+    const logic = jest.fn();
+    const handler = createHandler(z.object({}), logic, {
+      action: "GET /treasury/summary",
+      productCode: "TREASURY",
+    });
+
+    const response = await handler(createEvent() as any);
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(403);
+    expect(body.error.code).toBe("PRODUCT_ACCESS_REQUIRED");
+    expect(permission).not.toHaveBeenCalled();
+    expect(logic).not.toHaveBeenCalled();
+  });
+
+  test("checks ProductAccess before rejecting insufficient domain permission", async () => {
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_ONLY",
+        accessSource: "CABINET",
+        orgId: "test-org",
+        workspaceOrgId: "cabinet-org",
+      });
+    const product = jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockResolvedValue({
+        orgId: "test-org",
+        productCode: "TREASURY",
+        status: "ACTIVE",
+        createdAt: "2026-08-07T10:00:00.000Z",
+        updatedAt: "2026-08-07T10:00:00.000Z",
+      });
+    const logic = jest.fn();
+    const handler = createHandler(z.object({}), logic, {
+      action: "GET /treasury/summary",
+      productCode: "TREASURY",
+    });
+
+    const response = await handler(createEvent() as any);
+    const body = JSON.parse(response.body);
+
+    expect(product).toHaveBeenCalled();
+    expect(response.statusCode).toBe(403);
+    expect(body.error.code).toBe("CABINET_DOSSIER_READ_ONLY");
+    expect(logic).not.toHaveBeenCalled();
+  });
+
+  test("leaves unannotated and Platform Core routes non-enforcing", async () => {
+    jest
+      .spyOn(AccountingAuthorizationService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "test-org",
+        workspaceOrgId: "test-org",
+      });
+    const product = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+    const tenantLogic = jest.fn().mockResolvedValue({ ok: true });
+    const platformLogic = jest.fn().mockResolvedValue({ ok: true });
+
+    const tenantResponse = await createHandler(z.object({}), tenantLogic)(
+      createEvent() as any,
+    );
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: marshall({
+        PK: "ORG#test-org",
+        SK: "USER#user-123",
+        entityType: "USER_ORG_ACCESS",
+        orgId: "test-org",
+        userId: "user-123",
+        role: "ACCOUNTANT",
+        status: "ACTIVE",
+        workspaceType: "COMPANY",
+      }),
+    });
+    const platformResponse = await createPlatformHandler(
+      z.object({}),
+      platformLogic,
+    )(createEvent() as any);
+
+    expect(tenantResponse.statusCode).toBe(200);
+    expect(platformResponse.statusCode).toBe(200);
+    expect(product).not.toHaveBeenCalled();
   });
 });

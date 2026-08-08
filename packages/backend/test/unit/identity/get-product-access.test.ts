@@ -6,6 +6,7 @@ import {
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
 import { handler } from "@/lambda/domains/identity/get-product-access";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 
 const dynamoMock = mockClient(DynamoDBClient);
 
@@ -50,7 +51,10 @@ const activeAccess = (
   });
 
 describe("GET /me/product-access", () => {
-  beforeEach(() => dynamoMock.reset());
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    dynamoMock.reset();
+  });
 
   test("rejects an unauthenticated request", async () => {
     const response = await handler(createEvent({ claims: {} }) as any);
@@ -106,12 +110,17 @@ describe("GET /me/product-access", () => {
   });
 
   test("returns an empty list when the organization has not been backfilled", async () => {
+    const requireAccess = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
     dynamoMock.on(GetItemCommand).resolves({ Item: activeAccess("org-123") });
     dynamoMock.on(QueryCommand).resolves({ Items: [] });
 
     const response = await handler(createEvent() as any);
     expect(response.statusCode).toBe(200);
     expect(JSON.parse(response.body)).toEqual({ productAccess: [] });
+    expect(requireAccess).not.toHaveBeenCalled();
   });
 
   test("uses the same membership-only read path for accounting-firm workspaces", async () => {

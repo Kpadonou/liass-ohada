@@ -3,10 +3,10 @@ import {
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
+  TransactWriteItem,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
-  PRODUCT_CODES,
   ProductAccess,
   ProductAccessSchema,
   ProductAccessStatus,
@@ -52,18 +52,17 @@ export class ProductAccessRepository {
     });
   }
 
-  static buildCompatibilityBaseline(
-    orgId: string,
-    timestamp: string,
-  ): ProductAccessItem[] {
-    return PRODUCT_CODES.map((productCode) =>
-      this.buildItem({
-        orgId,
-        productCode,
-        status: "ACTIVE",
-        timestamp,
-      }),
-    );
+  static buildPutIfAbsentTransaction(
+    item: ProductAccessItem,
+  ): TransactWriteItem {
+    return {
+      Put: {
+        TableName: config.TABLE_NAME,
+        Item: marshall(ProductAccessItemSchema.parse(item)),
+        ConditionExpression:
+          "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      },
+    };
   }
 
   static async getProductAccess(

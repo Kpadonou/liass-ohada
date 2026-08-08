@@ -17,6 +17,7 @@ import { AppError } from "../app-error";
 import { CabinetDossierRepository } from "../repositories/cabinet-dossier-repository";
 import { CabinetTeamRepository } from "../repositories/cabinet-team-repository";
 import { CabinetAuthorizationService } from "./cabinet-authorization-service";
+import { ProductAccessService } from "./product-access-service";
 import { AccountingSettingsService } from "@/lambda/domains/accounting/settings/accounting-settings-service";
 
 interface CabinetContext {
@@ -157,6 +158,11 @@ export class CabinetDossierService {
         cabinetId,
         organization,
         workspace,
+        productAccessWrites:
+          ProductAccessService.buildCompatibilityBaselineWrites(
+            organization.orgId,
+            now,
+          ),
         accountingSettingsWrite:
           AccountingSettingsService.buildOnboardingWrite({
             orgId: organization.orgId,

@@ -1,6 +1,7 @@
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { UserProfileService } from "@/lambda/shared/services/user-profile-service";
 import { handler } from "@/lambda/domains/identity/get-workspaces";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 
 jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
   TenantAccessService: {
@@ -41,10 +42,15 @@ const createEvent = (claims = {
 
 describe("GET /me/workspaces", () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
   });
 
   test("returns frontend-safe workspaces for the authenticated user", async () => {
+    const requireAccess = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
     jest.mocked(TenantAccessService.getUserWorkspaces).mockResolvedValue([
       {
         orgId: "org-test",
@@ -74,5 +80,6 @@ describe("GET /me/workspaces", () => {
         },
       ],
     });
+    expect(requireAccess).not.toHaveBeenCalled();
   });
 });

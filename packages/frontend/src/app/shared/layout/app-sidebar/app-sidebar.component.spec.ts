@@ -7,6 +7,8 @@ import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
 import { UiStore } from '../../../core/state/ui.store';
+import { ProductAccessState } from '../../../core/product-access/product-access.state';
+import type { ProductAvailability } from '../../../core/product-access/product-availability';
 import { AppSidebarComponent } from './app-sidebar.component';
 
 vi.mock('aws-amplify/auth', () => {
@@ -65,6 +67,9 @@ const translations = {
         SYCEBNL_BADGE: 'SYCEBNL',
         THIRD_PARTIES: 'Tiers',
         TREASURY: 'Trésorerie',
+        UNAVAILABLE: 'Indisponible',
+        PRODUCT_UNAVAILABLE_FOR_ORGANIZATION:
+          'Cette fonctionnalité n’est pas disponible pour cette organisation.',
         TEAM: 'Équipe',
         TRIAL_BALANCE: 'Balance'
       }
@@ -74,10 +79,12 @@ const translations = {
 
 describe('AppSidebarComponent', () => {
   let fixture: ComponentFixture<AppSidebarComponent>;
+  let productAvailability: ProductAvailability;
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
     localStorage.clear();
+    productAvailability = 'UNKNOWN';
 
     await TestBed.configureTestingModule({
       imports: [
@@ -94,7 +101,11 @@ describe('AppSidebarComponent', () => {
       providers: [
         provideRouter([]),
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
-        { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } }
+        { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } },
+        {
+          provide: ProductAccessState,
+          useValue: { availability: () => productAvailability }
+        }
       ]
     }).compileComponents();
   });
@@ -133,6 +144,73 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('POSTE ERP');
     expect(text).not.toContain('Poste ERP');
     expect(text).not.toContain('ESPACE');
+  });
+
+  it('keeps Treasury navigation unchanged while access is active or technically unknown', () => {
+    const authStore = TestBed.inject(AuthStore);
+    const router = TestBed.inject(Router);
+    authStore.setCreatedWorkspace(
+      { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-company'
+    );
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+
+    for (const availability of ['AVAILABLE', 'UNKNOWN'] as const) {
+      productAvailability = availability;
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+      const treasuryButton = fixture.nativeElement.querySelector(
+        'liass-sidebar-nav-item button[aria-label="Trésorerie"]'
+      ) as HTMLButtonElement;
+
+      expect(treasuryButton.disabled).toBe(false);
+      expect(fixture.nativeElement.textContent).not.toContain('Indisponible');
+      treasuryButton.click();
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/treasury');
+      fixture.destroy();
+    }
+  });
+
+  it('keeps known unavailable Treasury discoverable but prevents navigation', () => {
+    productAvailability = 'UNAVAILABLE';
+    const router = TestBed.inject(Router);
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-company'
+    );
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const treasuryButton = fixture.nativeElement.querySelector(
+      'liass-sidebar-nav-item button[aria-label^="Trésorerie"]'
+    ) as HTMLButtonElement;
+    expect(treasuryButton).not.toBeNull();
+    expect(treasuryButton.disabled).toBe(true);
+    expect(treasuryButton.getAttribute('aria-disabled')).toBe('true');
+    expect(treasuryButton.getAttribute('aria-label')).toContain(
+      'Cette fonctionnalité n’est pas disponible pour cette organisation.'
+    );
+    expect(fixture.nativeElement.textContent).toContain('Indisponible');
+    treasuryButton.click();
+    expect(router.navigateByUrl).not.toHaveBeenCalled();
+  });
+
+  it('leaves Accounting, Projects, and Platform Core navigation unaffected', () => {
+    productAvailability = 'UNAVAILABLE';
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-company'
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    for (const label of ['Tableau de bord', 'Vue d’ensemble', 'Projets et fonds']) {
+      const button = fixture.nativeElement.querySelector(
+        `liass-sidebar-nav-item button[aria-label="${label}"]`
+      ) as HTMLButtonElement;
+      expect(button.disabled).toBe(false);
+    }
   });
 
   it('collapses the desktop sidebar into an accessible icon rail', () => {

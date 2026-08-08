@@ -81,6 +81,8 @@
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Third parties",
       "TREASURY": "Treasury",
+      "UNAVAILABLE": "Unavailable",
+      "PRODUCT_UNAVAILABLE_FOR_ORGANIZATION": "This feature is not available for this organization.",
       "TEAM": "Team",
       "TRIAL_BALANCE": "Trial balance"
     },

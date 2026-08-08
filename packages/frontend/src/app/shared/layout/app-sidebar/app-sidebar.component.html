@@ -5,9 +5,10 @@
         @for (item of visibleCabinetItems(); track item.page) {
           <liass-sidebar-nav-item
             [active]="uiStore.currentPage() === item.page"
-            [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
             [compact]="!sidebarExpanded()"
-            [disabled]="item.disabled ?? false"
+            [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
+            [disabled]="itemDisabled(item)"
             [icon]="item.icon"
             [label]="item.labelKey | transloco"
             (selected)="selectItem(item)"
@@ -17,9 +18,10 @@
         @for (item of dashboardItems; track item.page) {
           <liass-sidebar-nav-item
             [active]="uiStore.currentPage() === item.page"
-            [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+            [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
             [compact]="!sidebarExpanded()"
-            [disabled]="item.disabled ?? false"
+            [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
+            [disabled]="itemDisabled(item)"
             [icon]="item.icon"
             [label]="item.labelKey | transloco"
             (selected)="selectItem(item)"
@@ -41,9 +43,10 @@
             @for (item of accountingItems; track item.page) {
               <liass-sidebar-nav-item
                 [active]="uiStore.currentPage() === item.page"
-                [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+                [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
                 [compact]="!sidebarExpanded()"
-                [disabled]="item.disabled ?? false"
+                [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
+                [disabled]="itemDisabled(item)"
                 [icon]="item.icon"
                 [label]="item.labelKey | transloco"
                 (selected)="selectItem(item)"
@@ -56,9 +59,10 @@
           @for (item of secondaryItems; track item.page) {
             <liass-sidebar-nav-item
               [active]="uiStore.currentPage() === item.page"
-              [badge]="item.badgeKey ? (item.badgeKey | transloco) : null"
+              [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
               [compact]="!sidebarExpanded()"
-              [disabled]="item.disabled ?? false"
+              [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
+              [disabled]="itemDisabled(item)"
               [icon]="item.icon"
               [label]="item.labelKey | transloco"
               (selected)="selectItem(item)"

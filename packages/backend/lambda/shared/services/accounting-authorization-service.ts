@@ -22,9 +22,8 @@ function accessModeForRole(role: CabinetRole): AccountingAccessMode {
 }
 
 export class AccountingAuthorizationService {
-  static async resolve(input: {
+  static async resolveAccess(input: {
     orgId: string;
-    permission: AccountingPermission;
     userId: string;
     workspaceOrgId?: string;
   }): Promise<AuthorizedAccountingContext> {
@@ -101,9 +100,6 @@ export class AccountingAuthorizationService {
     }
 
     const accessMode = accessModeForRole(role);
-    if (input.permission === "ACCOUNTING_WRITE" && accessMode === "READ_ONLY") {
-      throw new AppError(403, "CABINET_DOSSIER_READ_ONLY");
-    }
 
     return {
       accountingFramework: snapshot.organization.accountingFramework,
@@ -115,6 +111,26 @@ export class AccountingAuthorizationService {
       orgId: input.orgId,
       workspaceOrgId,
     };
+  }
+
+  static assertPermission(
+    context: AuthorizedAccountingContext,
+    permission: AccountingPermission,
+  ): AuthorizedAccountingContext {
+    if (permission === "ACCOUNTING_WRITE" && context.accessMode === "READ_ONLY") {
+      throw new AppError(403, "CABINET_DOSSIER_READ_ONLY");
+    }
+    return context;
+  }
+
+  static async resolve(input: {
+    orgId: string;
+    permission: AccountingPermission;
+    userId: string;
+    workspaceOrgId?: string;
+  }): Promise<AuthorizedAccountingContext> {
+    const context = await this.resolveAccess(input);
+    return this.assertPermission(context, input.permission);
   }
 }
 
