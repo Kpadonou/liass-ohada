@@ -20,4 +20,9 @@ export const handler = createHandler(
         ...(await JournalBookService.getJournalBook(orgId, data)),
       },
     }),
+  {
+    action: "GET /books/journal-book",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

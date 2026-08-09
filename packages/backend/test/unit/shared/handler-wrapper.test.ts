@@ -368,6 +368,40 @@ describe("handler-wrapper auth context", () => {
     expect(logic).not.toHaveBeenCalled();
   });
 
+  test("checks Accounting Core entitlement against the selected cabinet client", async () => {
+    jest
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "CABINET",
+        orgId: "client-org",
+        workspaceOrgId: "cabinet-org",
+      });
+    const product = jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockRejectedValue(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
+    const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
+    const logic = jest.fn();
+    const handler = createHandler(z.object({}), logic, {
+      action: "GET /accounts",
+      permission: "ACCOUNTING_READ",
+      productCode: "ACCOUNTING",
+    });
+
+    const response = await handler(
+      createEvent({ headers: { "x-org-id": "client-org" } }) as any,
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(product).toHaveBeenCalledWith({
+      action: "GET /accounts",
+      orgId: "client-org",
+      productCode: "ACCOUNTING",
+    });
+    expect(permission).not.toHaveBeenCalled();
+    expect(logic).not.toHaveBeenCalled();
+  });
+
   test("lets explicit permission metadata override the Accounting fallback", async () => {
     const originalPermission = process.env.ACCOUNTING_PERMISSION;
     process.env.ACCOUNTING_PERMISSION = "ACCOUNTING_WRITE";

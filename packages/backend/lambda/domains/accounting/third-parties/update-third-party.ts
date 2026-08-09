@@ -39,4 +39,9 @@ export const handler = createHandler(
       ),
     };
   },
+  {
+    action: "PATCH /third-parties/{thirdPartyId}",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

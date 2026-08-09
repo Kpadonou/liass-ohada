@@ -23,4 +23,9 @@ export const handler = createHandler(
       data: lock,
     };
   },
+  {
+    action: "POST /fiscal-year/{year}/unlock",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

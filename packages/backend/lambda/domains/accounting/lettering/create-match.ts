@@ -16,4 +16,9 @@ export const handler = createHandler(
       data: result,
     };
   },
+  {
+    action: "POST /lettering/matches",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

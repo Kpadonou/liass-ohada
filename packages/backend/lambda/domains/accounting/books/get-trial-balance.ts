@@ -98,6 +98,11 @@ export const handler = createHandler(
       },
     });
   },
+  {
+    action: "GET /books/trial-balance",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );
 
 function toTrialBalanceRow(

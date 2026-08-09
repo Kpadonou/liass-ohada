@@ -18,4 +18,9 @@ export const handler = createHandler(
       data: report,
     });
   },
+  {
+    action: "GET /reports/summary",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -35,4 +35,9 @@ export const handler = createHandler(
       },
     };
   },
+  {
+    action: "GET /books/matching-report",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

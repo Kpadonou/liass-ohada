@@ -25,4 +25,9 @@ export const handler = createHandler(
       data: BalanceService.toDto(balance),
     });
   },
+  {
+    action: "GET /accounts/{accountId}/balance",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

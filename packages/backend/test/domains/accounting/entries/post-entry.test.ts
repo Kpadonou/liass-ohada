@@ -1,5 +1,8 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/entries/post-entry";
+import { AppError } from "@/lambda/shared/app-error";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 
 jest.mock("@/lambda/shared/services/ledger-service", () => ({
@@ -59,6 +62,7 @@ const createEvent = (claims: Record<string, string> = {}) => ({
 
 describe("post-entry handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
@@ -91,6 +95,20 @@ describe("post-entry handler", () => {
 
     expect(response.statusCode).toBe(401);
     expect(body.message.code).toBe("ERROR_MISSING_USER_ID");
+    expect(LedgerService.postEntry).not.toHaveBeenCalled();
+  });
+
+  test("does not start Accounting posting when ACCOUNTING ProductAccess is unavailable", async () => {
+    jest
+      .mocked(ProductAccessService.requireActiveProductAccess)
+      .mockRejectedValueOnce(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
+
+    const response = await handler(createEvent({ sub: "user-123" }) as any);
+
+    expect(response.statusCode).toBe(403);
+    expect(JSON.parse(response.body).error.code).toBe(
+      "PRODUCT_ACCESS_REQUIRED",
+    );
     expect(LedgerService.postEntry).not.toHaveBeenCalled();
   });
 });

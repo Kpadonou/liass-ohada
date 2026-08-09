@@ -21,4 +21,9 @@ export const handler = createHandler(
       },
     };
   },
+  {
+    action: "GET /journals/{journalCode}/entries",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

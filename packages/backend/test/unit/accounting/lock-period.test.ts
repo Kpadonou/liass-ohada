@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/fiscal-year/lock-period";
 import { handler as closePeriodHandler } from "@/lambda/domains/accounting/fiscal-year/close-period";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
@@ -62,6 +63,7 @@ const parseResponse = (response: any) => {
 
 describe("lock-period handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     jest

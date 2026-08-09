@@ -19,4 +19,9 @@ export const handler = createHandler(
       data: balance,
     });
   },
+  {
+    action: "GET /books/third-party-balance",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

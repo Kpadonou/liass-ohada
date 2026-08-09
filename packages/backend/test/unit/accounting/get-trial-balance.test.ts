@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/books/get-trial-balance";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
@@ -59,6 +60,7 @@ const fiscalYearItem = {
 
 describe("get-trial-balance handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     jest

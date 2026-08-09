@@ -16,4 +16,9 @@ export const handler = createHandler(
       data: statement,
     };
   },
+  {
+    action: "GET /reports/income-statement",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -16,4 +16,9 @@ export const handler = createHandler(
       data: {},
     };
   },
+  {
+    action: "DELETE /journals/{journalCode}",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

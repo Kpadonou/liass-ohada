@@ -19,4 +19,9 @@ export const handler = createHandler(
       data: report,
     });
   },
+  {
+    action: "GET /books/third-party-ledger",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

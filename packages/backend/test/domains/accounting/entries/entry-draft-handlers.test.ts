@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler as createDraftHandler } from "@/lambda/domains/accounting/entries/create-draft";
 import { handler as deleteDraftHandler } from "@/lambda/domains/accounting/entries/delete-draft";
 import { handler as postDraftHandler } from "@/lambda/domains/accounting/entries/post-draft";
@@ -58,6 +59,7 @@ const createEvent = (
 
 describe("entry draft handlers", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)

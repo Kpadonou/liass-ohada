@@ -22,4 +22,9 @@ export const handler = createHandler(
       },
     };
   },
+  {
+    action: "GET /accounts",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

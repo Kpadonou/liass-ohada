@@ -8,4 +8,9 @@ export const handler = createHandler(
     message: i18n.getMessage("SUCCESS_THIRD_PARTIES_RETRIEVED"),
     data: await ThirdPartyService.list(orgId, data),
   }),
+  {
+    action: "GET /third-parties",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

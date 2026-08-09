@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/entries/list-entries";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { DynamoDBClient, QueryCommand, ScanCommand } from "@aws-sdk/client-dynamodb";
@@ -33,6 +34,7 @@ const parseResponse = (response: any) => JSON.parse(response.body ?? "{}");
 
 describe("list-entries handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     jest

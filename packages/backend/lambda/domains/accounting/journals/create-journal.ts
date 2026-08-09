@@ -14,4 +14,9 @@ export const handler = createHandler(
       data: journal,
     };
   },
+  {
+    action: "POST /journals",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

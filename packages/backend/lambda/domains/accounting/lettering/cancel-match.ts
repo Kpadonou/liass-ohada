@@ -8,4 +8,9 @@ export const handler = createHandler(
     message: i18n.getMessage("SUCCESS_LETTERING_MATCH_CANCELLED"),
     data: await LetteringService.cancelMatch(orgId, userId, data),
   }),
+  {
+    action: "POST /lettering/matches/{letteringId}/cancel",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

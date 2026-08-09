@@ -12,4 +12,9 @@ export const handler = createHandler(
       data: draft,
     };
   },
+  {
+    action: "PUT /entries/{entryId}/draft",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

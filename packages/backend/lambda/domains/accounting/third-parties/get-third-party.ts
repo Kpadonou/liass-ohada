@@ -12,4 +12,9 @@ export const handler = createHandler(
       data.thirdPartyId,
     ),
   }),
+  {
+    action: "GET /third-parties/{thirdPartyId}",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

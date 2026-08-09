@@ -16,4 +16,9 @@ export const handler = createHandler(
       data: detail,
     };
   },
+  {
+    action: "GET /entries/{entryId}",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

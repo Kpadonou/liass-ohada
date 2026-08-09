@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/accounts/disable-account";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
@@ -53,6 +54,7 @@ const parseResponse = (response: any) => JSON.parse(response.body ?? "{}");
 
 describe("disable-account handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     jest

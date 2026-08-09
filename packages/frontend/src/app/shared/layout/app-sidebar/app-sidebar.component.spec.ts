@@ -59,6 +59,7 @@ const translations = {
         GENERAL_LEDGER: 'Grand livre',
         AUXILIARY_LEDGER: 'Grand livre auxiliaire',
         AUXILIARY_BALANCE: 'Balance auxiliaire',
+        JOURNAL_BOOK: 'Livre-journal',
         JOURNALS: 'Journaux',
         LETTERING: 'Lettrage',
         MISSIONS: 'Missions',
@@ -250,7 +251,30 @@ describe('AppSidebarComponent', () => {
     expect(router.navigateByUrl).not.toHaveBeenCalled();
   });
 
-  it('keeps the staged rollout limited to Projects and Treasury', () => {
+  it('keeps Accounting Core navigation usable while access is active or technically unknown', () => {
+    const router = TestBed.inject(Router);
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-company'
+    );
+    vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
+
+    for (const availability of ['AVAILABLE', 'UNKNOWN'] as const) {
+      productAvailability.ACCOUNTING = availability;
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+      const overviewButton = fixture.nativeElement.querySelector(
+        'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]'
+      ) as HTMLButtonElement;
+
+      expect(overviewButton.disabled).toBe(false);
+      overviewButton.click();
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/accounting');
+      fixture.destroy();
+    }
+  });
+
+  it('keeps known unavailable Accounting Core navigation discoverable but disabled', () => {
     productAvailability.ACCOUNTING = 'UNAVAILABLE';
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
@@ -259,20 +283,33 @@ describe('AppSidebarComponent', () => {
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
 
-    for (const label of ['Tableau de bord', 'Vue d’ensemble']) {
-      const unaffectedButton = fixture.nativeElement.querySelector(
-        `liass-sidebar-nav-item button[aria-label="${label}"]`
+    const accountingLabels = [
+      'Vue d’ensemble',
+      'Exercices',
+      'Grand livre',
+      'Grand livre auxiliaire',
+      'Balance auxiliaire',
+      'Livre-journal',
+      'Journaux',
+      'Tiers',
+      'Écritures',
+      'Lettrage',
+      'Balance',
+      'Plan comptable'
+    ];
+    for (const label of accountingLabels) {
+      const button = fixture.nativeElement.querySelector(
+        `liass-sidebar-nav-item button[aria-label^="${label}"]`
       ) as HTMLButtonElement;
-      expect(unaffectedButton.disabled).toBe(false);
+      expect(button.disabled).toBe(true);
+      expect(button.getAttribute('aria-disabled')).toBe('true');
     }
 
-    const productButtons = Array.from(
-      fixture.nativeElement.querySelectorAll(
-        'liass-sidebar-nav-item button[aria-label^="Projets et fonds"], liass-sidebar-nav-item button[aria-label^="Trésorerie"]'
-      )
-    ) as HTMLButtonElement[];
-    expect(productButtons).toHaveLength(2);
-    expect(productButtons.every((button) => button.disabled)).toBe(true);
+    const dashboardButton = fixture.nativeElement.querySelector(
+      'liass-sidebar-nav-item button[aria-label="Tableau de bord"]'
+    ) as HTMLButtonElement;
+    expect(dashboardButton.disabled).toBe(false);
+    expect(fixture.nativeElement.textContent).toContain('Indisponible');
   });
 
   it('collapses the desktop sidebar into an accessible icon rail', () => {

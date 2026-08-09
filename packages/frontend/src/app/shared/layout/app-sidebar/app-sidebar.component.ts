@@ -24,72 +24,84 @@ const accountingItems: readonly ShellNavItem[] = [
     icon: 'space_dashboard',
     labelKey: 'SHELL.NAV.ACCOUNTING_OVERVIEW',
     page: 'accounting.overview',
+    productCode: 'ACCOUNTING',
     route: '/accounting'
   },
   {
     icon: 'event_available',
     labelKey: 'SHELL.NAV.FISCAL_YEAR',
     page: 'accounting.fiscalYear',
+    productCode: 'ACCOUNTING',
     route: '/accounting/fiscal-years'
   },
   {
     icon: 'account_balance',
     labelKey: 'SHELL.NAV.GENERAL_LEDGER',
     page: 'accounting.generalLedger',
+    productCode: 'ACCOUNTING',
     route: '/accounting/general-ledger'
   },
   {
     icon: 'account_tree',
     labelKey: 'SHELL.NAV.AUXILIARY_LEDGER',
     page: 'accounting.auxiliaryLedger',
+    productCode: 'ACCOUNTING',
     route: '/accounting/auxiliary-ledger'
   },
   {
     icon: 'diversity_3',
     labelKey: 'SHELL.NAV.AUXILIARY_BALANCE',
     page: 'accounting.auxiliaryBalance',
+    productCode: 'ACCOUNTING',
     route: '/accounting/auxiliary-balance'
   },
   {
     icon: 'history_edu',
     labelKey: 'SHELL.NAV.JOURNAL_BOOK',
     page: 'accounting.journalBook',
+    productCode: 'ACCOUNTING',
     route: '/accounting/journal-book'
   },
   {
     icon: 'menu_book',
     labelKey: 'SHELL.NAV.JOURNALS',
     page: 'accounting.journals',
+    productCode: 'ACCOUNTING',
     route: '/accounting/journals'
   },
   {
     icon: 'groups',
     labelKey: 'SHELL.NAV.THIRD_PARTIES',
     page: 'accounting.thirdParties',
+    productCode: 'ACCOUNTING',
     route: '/accounting/third-parties'
   },
   {
     icon: 'receipt_long',
     labelKey: 'SHELL.NAV.ENTRIES',
     page: 'accounting.entries',
+    productCode: 'ACCOUNTING',
     route: '/accounting/entries'
   },
   {
     icon: 'rule',
     labelKey: 'SHELL.NAV.LETTERING',
     page: 'accounting.lettering',
+    productCode: 'ACCOUNTING',
     route: '/accounting/lettering'
   },
   {
     icon: 'balance',
     labelKey: 'SHELL.NAV.TRIAL_BALANCE',
     page: 'accounting.trialBalance',
+    productCode: 'ACCOUNTING',
     route: '/accounting/trial-balance'
   },
   {
     icon: 'format_list_numbered',
     labelKey: 'SHELL.NAV.CHART_OF_ACCOUNTS',
     page: 'accounting.chartOfAccounts',
+    productCode: 'ACCOUNTING',
     route: '/accounting/accounts'
   }
 ];

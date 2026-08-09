@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/accounts/get-entries";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
@@ -78,6 +79,7 @@ const parseResponse = (response: any) => {
 
 describe("get-entries handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     jest

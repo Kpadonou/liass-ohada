@@ -48,4 +48,9 @@ export const handler = createHandler(
       account: LedgerService.toAccountDto(validAccount),
     };
   },
+  {
+    action: "POST /accounts",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

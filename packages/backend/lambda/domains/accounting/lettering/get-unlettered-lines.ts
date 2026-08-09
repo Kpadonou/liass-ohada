@@ -27,4 +27,9 @@ export const handler = createHandler(
       ...result,
     };
   },
+  {
+    action: "GET /lettering/unlettered",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

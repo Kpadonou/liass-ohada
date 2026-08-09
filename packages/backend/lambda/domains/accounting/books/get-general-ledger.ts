@@ -15,4 +15,9 @@ export const handler = createHandler(
       data: ledger,
     });
   },
+  {
+    action: "GET /books/general-ledger",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -66,7 +66,10 @@ const treasuryWriteRoutes: RouteExpectation[] = [
   },
 ];
 
-const sourceFor = (domain: "projects" | "treasury", handler: string) =>
+const sourceFor = (
+  domain: "accounting" | "projects" | "treasury",
+  handler: string,
+) =>
   readFileSync(
     path.join(
       __dirname,
@@ -95,7 +98,20 @@ const routesFromEndpointSource = (source: string) =>
     }),
   );
 
-describe("Projects and Treasury route permission inventory", () => {
+const accountingPermissions = Object.fromEntries(
+  Array.from(
+    readFileSync(
+      path.join(
+        __dirname,
+        "../../../lib/constructs/domains/accounting-endpoint-permissions.ts",
+      ),
+      "utf8",
+    ).matchAll(/\s+"([^"]+)": "(ACCOUNTING_READ|ACCOUNTING_WRITE)"/g),
+    ([, handler, permission]) => [handler, permission],
+  ),
+);
+
+describe("Accounting product route permission inventory", () => {
   test.each(projectsReadRoutes)(
     "$route explicitly requires PROJECTS_READ and ACCOUNTING ProductAccess",
     ({ handler }) => {
@@ -136,7 +152,7 @@ describe("Projects and Treasury route permission inventory", () => {
     },
   );
 
-  test("keeps the route inventory at Accounting Core 0/50, Projects 11/11, and Treasury 10/10", () => {
+  test("keeps the route inventory at Accounting Core 50/50, Projects 11/11, and Treasury 10/10", () => {
     const accountingRoutes = routesFromEndpointSource(
       endpointSourceFor("accounting"),
     );
@@ -171,15 +187,14 @@ describe("Projects and Treasury route permission inventory", () => {
       treasuryReadRoutes[4],
     ]);
 
+    expect(Object.keys(accountingPermissions)).toHaveLength(48);
     for (const { handler } of accountingRoutes) {
-      const source = readFileSync(
-        path.join(
-          __dirname,
-          `../../../lambda/domains/accounting/${handler}.ts`,
-        ),
-        "utf8",
-      );
-      expect(source).not.toContain("productCode:");
+      const source = sourceFor("accounting", handler);
+      const permission = accountingPermissions[handler];
+
+      expect(permission).toMatch(/^ACCOUNTING_(READ|WRITE)$/);
+      expect(source).toContain(`permission: "${permission}"`);
+      expect(source).toContain('productCode: "ACCOUNTING"');
     }
   });
 

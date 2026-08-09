@@ -22,4 +22,9 @@ export const handler = createHandler(
       account: LedgerService.toAccountDto(account),
     };
   },
+  {
+    action: "GET /accounts/{accountId}",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

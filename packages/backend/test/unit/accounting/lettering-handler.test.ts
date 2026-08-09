@@ -1,10 +1,13 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler as cancelHandler } from "@/lambda/domains/accounting/lettering/cancel-lettering";
 import { handler as cancelMatchHandler } from "@/lambda/domains/accounting/lettering/cancel-match";
 import { handler as candidatesHandler } from "@/lambda/domains/accounting/lettering/get-candidates";
 import { handler as createMatchHandler } from "@/lambda/domains/accounting/lettering/create-match";
 import { handler as getMatchHandler } from "@/lambda/domains/accounting/lettering/get-match";
 import { handler as postHandler } from "@/lambda/domains/accounting/lettering/post-lettering";
+import { AppError } from "@/lambda/shared/app-error";
 import { LetteringService } from "@/lambda/shared/services/lettering-service";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 
 jest.mock("@/lambda/shared/services/lettering-service", () => ({
@@ -56,10 +59,32 @@ const parseResponse = (response: any) => JSON.parse(response.body ?? "{}");
 
 describe("lettering handlers", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     jest.clearAllMocks();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
+  });
+
+  test("does not start a lettering mutation when ACCOUNTING ProductAccess is unavailable", async () => {
+    jest
+      .mocked(ProductAccessService.requireActiveProductAccess)
+      .mockRejectedValueOnce(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
+
+    const response = await postHandler(
+      createEvent({
+        accountId: "41100000",
+        thirdPartyId: "CUST-1",
+        letteringCode: "A1",
+        lines: [
+          { year: 2026, entryId: "E-1", lineId: "L-1" },
+          { year: 2026, entryId: "E-2", lineId: "L-2" },
+        ],
+      }) as any,
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(LetteringService.postLettering).not.toHaveBeenCalled();
   });
 
   test("posts lettering with business line references instead of PK/SK", async () => {

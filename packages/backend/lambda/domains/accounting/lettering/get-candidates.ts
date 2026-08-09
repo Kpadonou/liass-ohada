@@ -16,4 +16,9 @@ export const handler = createHandler(
       data: result,
     };
   },
+  {
+    action: "GET /lettering/candidates",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

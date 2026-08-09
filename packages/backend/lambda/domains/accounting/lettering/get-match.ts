@@ -12,4 +12,9 @@ export const handler = createHandler(
       data.letteringId,
     ),
   }),
+  {
+    action: "GET /lettering/matches/{letteringId}",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

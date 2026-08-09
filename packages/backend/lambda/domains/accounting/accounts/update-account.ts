@@ -24,4 +24,9 @@ export const handler = createHandler(
       account: LedgerService.toAccountDto(account),
     };
   },
+  {
+    action: "PUT /accounts/{accountId}",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

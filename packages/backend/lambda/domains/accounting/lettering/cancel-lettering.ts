@@ -12,4 +12,9 @@ export const handler = createHandler(
       ...result,
     };
   },
+  {
+    action: "POST /lettering/cancel",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

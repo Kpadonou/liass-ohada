@@ -57,4 +57,9 @@ export const handler = createHandler(
       hasMore: result.hasMore,
     };
   },
+  {
+    action: "GET /accounts/{accountId}/entries",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/journals/get-journal-entries";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
@@ -67,6 +68,7 @@ const parseResponse = (response: any) =>
 
 describe("journal-specific book handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     jest

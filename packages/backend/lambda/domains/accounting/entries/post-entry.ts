@@ -12,4 +12,9 @@ export const handler = createHandler(
       entryId: result.entryId,
     };
   },
+  {
+    action: "POST /entries",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -17,4 +17,9 @@ export const handler = createHandler(
       entryId: result.entryId,
     };
   },
+  {
+    action: "POST /entries/{entryId}/post",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -20,4 +20,9 @@ export const handler = createHandler(
       data: result,
     });
   },
+  {
+    action: "POST /fiscal-year/{year}/close",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

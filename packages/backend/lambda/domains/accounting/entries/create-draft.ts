@@ -12,4 +12,9 @@ export const handler = createHandler(
       data: draft,
     };
   },
+  {
+    action: "POST /entries/drafts",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

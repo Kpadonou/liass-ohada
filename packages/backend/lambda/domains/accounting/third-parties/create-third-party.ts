@@ -8,4 +8,9 @@ export const handler = createHandler(
     message: i18n.getMessage("SUCCESS_THIRD_PARTY_CREATED"),
     thirdParty: await ThirdPartyService.create(orgId, data),
   }),
+  {
+    action: "POST /third-parties",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

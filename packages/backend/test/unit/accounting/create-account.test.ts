@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/accounts/create-account";
 import {
   DynamoDBClient,
@@ -55,6 +56,7 @@ const createEvent = (body = {}, orgId = "test-org") => {
 
 describe("create-account handler", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     jest

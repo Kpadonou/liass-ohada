@@ -1,3 +1,4 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler } from "@/lambda/domains/accounting/reports/get-summary";
 import { ClosingService } from "@/lambda/shared/services/closing-service";
 import { LedgerService } from "@/lambda/shared/services/ledger-service";
@@ -135,6 +136,7 @@ describe("Lot 6.3 simplified reporting", () => {
     dynamoMock.reset();
     jest.restoreAllMocks();
     jest.clearAllMocks();
+    allowAccountingProductAccess();
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });

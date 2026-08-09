@@ -16,4 +16,9 @@ export const handler = createHandler(
       entryId: result.entryId,
     };
   },
+  {
+    action: "DELETE /entries/{entryId}/draft",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -17,4 +17,9 @@ export const handler = createHandler(
       data: checks,
     });
   },
+  {
+    action: "GET /fiscal-year/{year}/closing-checks",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

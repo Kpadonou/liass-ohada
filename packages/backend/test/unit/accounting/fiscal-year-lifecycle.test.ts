@@ -1,7 +1,10 @@
+import { allowAccountingProductAccess } from "@/test/helpers/product-access";
 import { handler as createFiscalYearHandler } from "@/lambda/domains/accounting/fiscal-year/create-fiscal-year";
 import { handler as closeFiscalYearHandler } from "@/lambda/domains/accounting/fiscal-year/close-fiscal-year";
 import { handler as getClosingChecksHandler } from "@/lambda/domains/accounting/fiscal-year/get-closing-checks";
+import { AppError } from "@/lambda/shared/app-error";
 import { ClosingService } from "@/lambda/shared/services/closing-service";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   BatchGetItemCommand,
@@ -240,6 +243,7 @@ const mockCleanClosingData = () => {
 
 describe("fiscal year lifecycle", () => {
   beforeEach(() => {
+    allowAccountingProductAccess();
     dynamoMock.reset();
     jest.clearAllMocks();
     dynamoMock.on(GetItemCommand).resolves({});
@@ -482,6 +486,25 @@ describe("fiscal year lifecycle", () => {
     expect(body.data.fiscalYear.status).toBe("CLOSED");
     expect(body.data.checks.canClose).toBe(true);
     expect(body.data.fiscalYear.PK).toBeUndefined();
+  });
+
+  test("does not start fiscal-year closing when ACCOUNTING ProductAccess is unavailable", async () => {
+    jest
+      .mocked(ProductAccessService.requireActiveProductAccess)
+      .mockRejectedValueOnce(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
+
+    const response = await closeFiscalYearHandler(
+      createTenantEvent(
+        "POST",
+        "POST /fiscal-year/{year}/close",
+        { year: "2026" },
+        {},
+      ) as any,
+    );
+
+    expect(response.statusCode).toBe(403);
+    expect(dynamoMock.commandCalls(QueryCommand)).toHaveLength(0);
+    expect(dynamoMock.commandCalls(UpdateItemCommand)).toHaveLength(0);
   });
 
   test("fiscal year close rejects blocking checks before updating", async () => {

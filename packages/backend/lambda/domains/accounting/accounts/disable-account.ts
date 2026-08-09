@@ -16,4 +16,9 @@ export const handler = createHandler(
       account: LedgerService.toAccountDto(account),
     };
   },
+  {
+    action: "DELETE /accounts/{accountId}",
+    permission: "ACCOUNTING_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

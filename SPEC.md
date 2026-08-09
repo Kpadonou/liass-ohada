@@ -25,7 +25,7 @@ Organization
 
 - `Organization` owns platform-wide identity and status attributes.
 - `UserOrgAccess` represents a user's verified access to an organization.
-- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The only currently implemented top-level product code is `ACCOUNTING`. Enforcement remains limited to explicitly annotated pilot routes; frontend presentation awareness is limited to reviewed pilots, and global enforcement remains future migration work.
+- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The only currently implemented top-level product code is `ACCOUNTING`. Every current Accounting-product business route is explicitly annotated with `ACCOUNTING`; Platform Core discovery, onboarding, entitlement observation, and recovery routes remain outside product enforcement. Accounting Core, Treasury, and Project Accounting navigation derive availability from the same effective-organization entitlement.
 - `DomainSettings` belongs to the owning business domain. In particular, `accountingFramework` conceptually belongs to `AccountingSettings`, not to universal Organization metadata.
 
 Current onboarding, Organization, workspace, access-projection, and response contracts may still carry `accountingFramework`. This is an explicit compatibility state. It must remain supported until a reviewed, backward-compatible runtime and data migration moves ownership to Accounting.
@@ -56,7 +56,7 @@ Current onboarding, Organization, workspace, access-projection, and response con
   - Domain folders use `feature/`, `ui/`, `data-access/`, and `utils/`.
   - `shared/ui/` contains stateless reusable design-system components and must not inject stores, domain services, API clients, or application state.
 
-The platform shell owns active organization, connected user, global navigation, search or command palette, notifications, preferences, global permission context, and product availability. Business domains own routed experiences and domain rules. The dashboard is a platform-level surface that may aggregate KPIs exposed by enabled domains without absorbing their business logic. Navigation awareness is being introduced progressively through explicit ProductAccess pilots; broad ProductAccess-plus-permission filtering is not yet implemented.
+The platform shell owns active organization, connected user, global navigation, search or command palette, notifications, preferences, global permission context, and product availability. Business domains own routed experiences and domain rules. The dashboard is a platform-level surface that may aggregate KPIs exposed by enabled domains without absorbing their business logic. All three current Accounting modules use the canonical effective-organization `ACCOUNTING` availability state; this presentation signal does not replace module-granular RBAC or backend authorization.
 
 The single application may progressively expose routes such as `/dashboard`, `/accounting/...`, `/treasury/...`, `/projects/...`, and `/administration/...`. A future `/restaurants/...` route remains deferred until the Restaurants implementation phase.
 
@@ -183,7 +183,7 @@ authenticated identity
     -> domain action
 ```
 
-Organization membership and current permission checks exist today. `ProductAccess` verification is implemented only for handlers carrying explicit typed product metadata; unannotated and Platform Core routes remain non-enforcing during progressive rollout.
+Organization membership and current permission checks exist today. `ProductAccess` verification is implemented only for handlers carrying explicit typed product metadata. All 71 current Accounting-product business routes carry canonical `ACCOUNTING` metadata; unannotated and Platform Core routes remain non-enforcing so identity, workspace discovery, entitlement observation, onboarding, and cabinet recovery can establish or restore product context.
 
 Business-domain actions must use the owning domain's explicit permission vocabulary. Accounting permissions remain `ACCOUNTING_*`; Projects and Treasury use their own `PROJECTS_*` and `TREASURY_*` permissions as routes migrate. Any temporary cross-domain compatibility alias must be centralized, one-way from a legacy permission to the owning-domain permission, and removed after migration evidence is complete. ProductAccess never grants a user permission, and a user permission never grants organization ProductAccess.
 

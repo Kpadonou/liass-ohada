@@ -16,4 +16,9 @@ export const handler = createHandler(
       data: JournalService.toDto(journal),
     };
   },
+  {
+    action: "GET /journals/{journalCode}",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

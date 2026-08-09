@@ -16,4 +16,9 @@ export const handler = createHandler(
       data: details,
     };
   },
+  {
+    action: "GET /fiscal-year/{year}",
+    permission: "ACCOUNTING_READ",
+    productCode: "ACCOUNTING",
+  },
 );

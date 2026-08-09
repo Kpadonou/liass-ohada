@@ -93,6 +93,21 @@ describe("ProductAccessService", () => {
     );
   });
 
+  test("never treats legacy module rows as canonical Accounting entitlement", async () => {
+    const get = jest
+      .spyOn(ProductAccessRepository, "getProductAccess")
+      .mockResolvedValue(null);
+
+    await expect(
+      ProductAccessService.requireActiveProductAccess({
+        action: "GET /accounts",
+        orgId: "org-123",
+        productCode: "ACCOUNTING",
+      }),
+    ).rejects.toMatchObject({ messageCode: "PRODUCT_ACCESS_REQUIRED" });
+    expect(get).toHaveBeenCalledWith("org-123", "ACCOUNTING");
+  });
+
   test("rejects invalid product codes before repository access", async () => {
     const get = jest.spyOn(ProductAccessRepository, "getProductAccess");
     await expect(
