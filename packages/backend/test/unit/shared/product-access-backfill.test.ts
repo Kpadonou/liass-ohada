@@ -32,9 +32,10 @@ describe("ProductAccess backfill", () => {
       .spyOn(ProductAccessService, "inspectCompatibilityBaseline")
       .mockResolvedValue({
         active: ["ACCOUNTING"],
-        coverage: "PARTIAL",
+        coverage: "COMPLETE",
         inactive: [],
-        missing: ["PROJECTS", "TREASURY"],
+        legacyPresent: ["PROJECTS", "TREASURY"],
+        missing: [],
         orgId: "org-1",
       });
     jest.spyOn(console, "info").mockImplementation(() => undefined);
@@ -42,7 +43,7 @@ describe("ProductAccess backfill", () => {
     await expect(
       runProductAccessBackfill({ apply: false, orgIds: ["org-1"] }),
     ).resolves.toEqual([
-      expect.objectContaining({ coverage: "PARTIAL", orgId: "org-1" }),
+      expect.objectContaining({ coverage: "COMPLETE", orgId: "org-1" }),
     ]);
     expect(provision).not.toHaveBeenCalled();
     expect(inspect).toHaveBeenCalledWith("org-1");
@@ -52,16 +53,17 @@ describe("ProductAccess backfill", () => {
     const provision = jest
       .spyOn(ProductAccessService, "provisionCompatibilityBaseline")
       .mockResolvedValue({
-        created: ["PROJECTS"],
-        existing: ["ACCOUNTING", "TREASURY"],
+        created: ["ACCOUNTING"],
+        existing: [],
       });
     jest.spyOn(console, "info").mockImplementation(() => undefined);
     jest
       .spyOn(ProductAccessService, "inspectCompatibilityBaseline")
       .mockImplementation(async (orgId) => ({
-        active: ["ACCOUNTING", "PROJECTS", "TREASURY"],
+        active: ["ACCOUNTING"],
         coverage: "COMPLETE",
         inactive: [],
+        legacyPresent: ["PROJECTS", "TREASURY"],
         missing: [],
         orgId,
       }));

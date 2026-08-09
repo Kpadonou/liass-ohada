@@ -1,5 +1,6 @@
 import {
   ConditionalCheckFailedException,
+  DeleteItemCommand,
   DynamoDBClient,
   GetItemCommand,
   PutItemCommand,
@@ -49,7 +50,16 @@ describe("ProductAccessRepository", () => {
   });
 
   test("lists organization ProductAccess with Query and the canonical prefix", async () => {
-    dynamoMock.on(QueryCommand).resolves({ Items: [marshall(persistenceItem)] });
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [
+        marshall(persistenceItem),
+        marshall({
+          ...persistenceItem,
+          SK: "PRODUCT_ACCESS#PROJECTS",
+          productCode: "PROJECTS",
+        }),
+      ],
+    });
 
     const result = await ProductAccessRepository.listProductAccess("org-123");
     const input = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
@@ -63,6 +73,10 @@ describe("ProductAccessRepository", () => {
     });
     expect(result[0]).not.toHaveProperty("PK");
     expect(result[0]).not.toHaveProperty("SK");
+    expect(result.map((access) => access.productCode)).toEqual([
+      "ACCOUNTING",
+      "PROJECTS",
+    ]);
     expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 
@@ -105,5 +119,136 @@ describe("ProductAccessRepository", () => {
         SK: { S: "PRODUCT_ACCESS#ACCOUNTING" },
       },
     });
+  });
+
+  test.each(["PROJECTS", "TREASURY"])(
+    "rejects new writes for legacy module code %s",
+    (productCode) => {
+      expect(() =>
+        ProductAccessRepository.buildItem({
+          orgId: "org-123",
+          productCode: productCode as never,
+          status: "ACTIVE",
+          timestamp: "2026-08-07T10:00:00.000Z",
+        }),
+      ).toThrow();
+    },
+  );
+
+  test("inspects legacy storage rows through an exact consistent read", async () => {
+    dynamoMock.on(GetItemCommand).resolves({
+      Item: marshall({
+        ...persistenceItem,
+        SK: "PRODUCT_ACCESS#PROJECTS",
+        productCode: "PROJECTS",
+      }),
+    });
+
+    const result = await ProductAccessRepository.inspectProductAccessForMigration(
+      "org-123",
+      "PROJECTS",
+    );
+    const input = dynamoMock.commandCalls(GetItemCommand)[0].args[0].input;
+
+    expect(input).toMatchObject({
+      ConsistentRead: true,
+      Key: {
+        PK: { S: "ORG#org-123" },
+        SK: { S: "PRODUCT_ACCESS#PROJECTS" },
+      },
+    });
+    expect(result).toMatchObject({
+      expectedProductCode: "PROJECTS",
+      state: "VALID",
+    });
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test("reports absent and mismatched migration rows without returning raw items", async () => {
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({})
+      .resolvesOnce({
+        Item: marshall({
+          ...persistenceItem,
+          SK: "PRODUCT_ACCESS#PROJECTS",
+          productCode: "TREASURY",
+          secret: "must-not-leak",
+        }),
+      });
+
+    await expect(
+      ProductAccessRepository.inspectProductAccessForMigration(
+        "org-123",
+        "PROJECTS",
+      ),
+    ).resolves.toEqual({ expectedProductCode: "PROJECTS", state: "ABSENT" });
+    const mismatch = await ProductAccessRepository.inspectProductAccessForMigration(
+      "org-123",
+      "PROJECTS",
+    );
+
+    expect(mismatch).toEqual({
+      actualEntityType: "PRODUCT_ACCESS",
+      actualOrgId: "org-123",
+      actualProductCode: "TREASURY",
+      expectedProductCode: "PROJECTS",
+      state: "MISMATCH",
+    });
+    expect(mismatch).not.toHaveProperty("secret");
+  });
+
+  test("conditionally deletes only an exact legacy ProductAccess identity", async () => {
+    dynamoMock.on(DeleteItemCommand).resolves({});
+
+    await ProductAccessRepository.deleteLegacyProductAccessForMigration(
+      "org-123",
+      "TREASURY",
+    );
+    const input = dynamoMock.commandCalls(DeleteItemCommand)[0].args[0].input;
+
+    expect(input).toEqual({
+      TableName: expect.any(String),
+      Key: {
+        PK: { S: "ORG#org-123" },
+        SK: { S: "PRODUCT_ACCESS#TREASURY" },
+      },
+      ConditionExpression:
+        "PK = :pk AND SK = :sk AND entityType = :entityType AND orgId = :orgId AND productCode = :productCode",
+      ExpressionAttributeValues: {
+        ":pk": { S: "ORG#org-123" },
+        ":sk": { S: "PRODUCT_ACCESS#TREASURY" },
+        ":entityType": { S: "PRODUCT_ACCESS" },
+        ":orgId": { S: "org-123" },
+        ":productCode": { S: "TREASURY" },
+      },
+    });
+  });
+
+  test("cannot delete canonical ACCOUNTING through the migration API", async () => {
+    await expect(
+      ProductAccessRepository.deleteLegacyProductAccessForMigration(
+        "org-123",
+        "ACCOUNTING" as never,
+      ),
+    ).rejects.toThrow();
+    expect(dynamoMock.commandCalls(DeleteItemCommand)).toHaveLength(0);
+  });
+
+  test("propagates a conditional deletion race without retrying unconditionally", async () => {
+    dynamoMock.on(DeleteItemCommand).rejects(
+      new ConditionalCheckFailedException({
+        $metadata: {},
+        message: "row changed",
+      }),
+    );
+
+    await expect(
+      ProductAccessRepository.deleteLegacyProductAccessForMigration(
+        "org-123",
+        "PROJECTS",
+      ),
+    ).rejects.toThrow("row changed");
+    expect(dynamoMock.commandCalls(DeleteItemCommand)).toHaveLength(1);
   });
 });

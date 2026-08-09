@@ -1,4 +1,5 @@
 import { config } from "@/lambda/shared/config";
+import { AccountingProjectReportingService } from "@/lambda/domains/accounting/reporting/accounting-project-reporting-service";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
@@ -415,7 +416,7 @@ export class ProjectService {
 
   /**
    * Builds the SYCEBNL project report from budget lines, funding envelopes, and
-   * GSI4 analytical entry lines. Keeps all reads tenant-scoped and reconciles
+   * Accounting-owned analytical facts. Keeps all reads tenant-scoped and reconciles
    * OHADA account totals with donor/project cash follow-up.
    */
   static async getProjectReport(
@@ -427,7 +428,11 @@ export class ProjectService {
     const [budgetLines, fundingSources, allLines] = await Promise.all([
       ProjectService.listBudgetLines(orgId, projectId, reportYear),
       ProjectService.listFundingSources(orgId, projectId),
-      ProjectService.listProjectLines(orgId, projectId, reportYear),
+      AccountingProjectReportingService.listProjectFacts({
+        orgId,
+        projectId,
+        year: reportYear,
+      }),
     ]);
 
     let annualExpenses = 0;
@@ -561,21 +566,19 @@ export class ProjectService {
   }
 
   /**
-   * Produces a dashboard summary across all tenant projects using GSI4 lines.
+   * Produces a dashboard summary across all tenant projects using Accounting facts.
    * The aggregation surfaces overspend and negative-cash alerts without scanning
    * outside the organization project index partition.
    */
   static async getProjectsSummary(orgId: string, currentYear: string) {
     const [projects, allLines] = await Promise.all([
       ProjectService.listProjects(orgId),
-      ProjectService.listAllProjectLines(orgId),
+      AccountingProjectReportingService.listOrganizationProjectFacts({ orgId }),
     ]);
 
     return projects.map((project) => {
       const projectLines = allLines.filter(
-        (line) =>
-          line.projectId === project.projectId ||
-          String(line.GSI4SK || "").includes(project.projectId),
+        (line) => line.projectId === project.projectId,
       );
 
       let totalEmplois = 0;
@@ -636,38 +639,4 @@ export class ProjectService {
     }
   }
 
-  private static async listProjectLines(
-    orgId: string,
-    projectId: string,
-    year: string,
-  ) {
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        IndexName: config.GSI4,
-        KeyConditionExpression: "GSI4PK = :pk AND begins_with(GSI4SK, :sk)",
-        ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.gsi4PK(orgId),
-          ":sk": KeyFactory.projectYearPrefix(projectId, year),
-        }),
-      }),
-    );
-
-    return (result.Items || []).map((item) => unmarshall(item));
-  }
-
-  private static async listAllProjectLines(orgId: string) {
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        IndexName: config.GSI4,
-        KeyConditionExpression: "GSI4PK = :pk",
-        ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.gsi4PK(orgId),
-        }),
-      }),
-    );
-
-    return (result.Items || []).map((item) => unmarshall(item));
-  }
 }

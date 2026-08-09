@@ -28,6 +28,7 @@ describe('treasury form validation schemas', () => {
   it('validates balanced treasury operation inputs before posting', () => {
     expect(() =>
       CreateTreasuryTransactionRequestSchema.parse({
+        clientRequestId: '11111111-1111-4111-8111-111111111111',
         treasuryAccountId: '52100000',
         year: 2026,
         entryDate: '2026-01-15',
@@ -41,6 +42,7 @@ describe('treasury form validation schemas', () => {
 
     expect(() =>
       CreateTreasuryTransactionRequestSchema.parse({
+        clientRequestId: '11111111-1111-4111-8111-111111111111',
         treasuryAccountId: '52100000',
         year: 2026,
         entryDate: '2026-01-15',
@@ -49,6 +51,22 @@ describe('treasury form validation schemas', () => {
         amount: -1000,
         counterpartyAccountId: '60600000',
         label: 'Bank payment'
+      })
+    ).toThrow();
+  });
+
+  it('requires a valid opaque request identity for treasury posting', () => {
+    expect(() =>
+      CreateTreasuryTransactionRequestSchema.parse({
+        clientRequestId: 'not-a-uuid',
+        treasuryAccountId: '52100000',
+        year: 2026,
+        entryDate: '2026-01-15',
+        journalCode: 'BANK',
+        direction: 'INFLOW',
+        amount: 1000,
+        counterpartyAccountId: '41100000',
+        label: 'Customer receipt'
       })
     ).toThrow();
   });

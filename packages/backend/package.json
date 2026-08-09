@@ -21,6 +21,7 @@
     "aws:deploy:all": "env -u AWS_PROFILE npx cdk deploy --all --profile rem",
     "backfill:user-workspaces": "ts-node -r tsconfig-paths/register scripts/backfill-user-workspace-index.ts",
     "backfill:product-access": "ts-node -r tsconfig-paths/register scripts/backfill-product-access.ts",
+    "cleanup:legacy-product-access": "ts-node -r tsconfig-paths/register scripts/cleanup-legacy-product-access.ts",
     "backfill:accounting-settings": "ts-node -r tsconfig-paths/register scripts/backfill-accounting-settings.ts",
     "repair:cabinet-admin-roles": "ts-node -r tsconfig-paths/register scripts/repair-cabinet-admin-roles.ts",
     "repair:user-profiles": "ts-node -r tsconfig-paths/register scripts/repair-user-profiles.ts",

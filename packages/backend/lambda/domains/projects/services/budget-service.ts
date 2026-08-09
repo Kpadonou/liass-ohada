@@ -1,32 +1,26 @@
-import { GetItemCommand, QueryCommand } from "@aws-sdk/client-dynamodb";
+import { AccountingProjectReportingService } from "@/lambda/domains/accounting/reporting/accounting-project-reporting-service";
+import { GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
-import { config } from "../config";
-import { dynamoClient } from "../dynamo-client";
-import { KeyFactory } from "../key-builder";
-import { AppError } from "../middleware/handler-wrapper";
+import { config } from "@/lambda/shared/config";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { KeyFactory } from "@/lambda/shared/key-builder";
+import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
 
 export class BudgetService {
   /**
    * Centralise la récupération de toutes les transactions d'un projet pour une année.
-   * Utilise l'index GSI4 (Vue Analytique).
+   * Consomme les faits analytiques via la frontière de requête Accounting Core.
    */
   private static async fetchProjectTransactions(
     orgId: string,
     projectId: string,
     year: number,
   ) {
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        IndexName: config.GSI4,
-        KeyConditionExpression: "GSI4PK = :pk AND begins_with(GSI4SK, :sk)",
-        ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.gsi4PK(orgId),
-          ":sk": KeyFactory.projectYearPrefix(projectId, year),
-        }),
-      }),
-    );
-    return (result.Items || []).map((i) => unmarshall(i));
+    return AccountingProjectReportingService.listProjectFacts({
+      orgId,
+      projectId,
+      year: String(year),
+    });
   }
 
   /**

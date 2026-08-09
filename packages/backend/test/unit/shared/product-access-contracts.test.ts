@@ -13,8 +13,8 @@ const validProductAccess = {
 };
 
 describe("ProductAccess shared contracts", () => {
-  test.each(["ACCOUNTING", "PROJECTS", "TREASURY"])(
-    "accepts implemented product code %s",
+  test.each(["ACCOUNTING"])(
+    "accepts canonical top-level product code %s",
     (productCode) => {
       expect(ProductCodeSchema.parse(productCode)).toBe(productCode);
     },
@@ -23,6 +23,13 @@ describe("ProductAccess shared contracts", () => {
   test("rejects unknown product codes", () => {
     expect(ProductCodeSchema.safeParse("RESTAURANTS").success).toBe(false);
   });
+
+  test.each(["PROJECTS", "TREASURY"])(
+    "rejects legacy module code %s from the public contract",
+    (productCode) => {
+      expect(ProductCodeSchema.safeParse(productCode).success).toBe(false);
+    },
+  );
 
   test.each(["ACTIVE", "INACTIVE"])("accepts status %s", (status) => {
     expect(ProductAccessStatusSchema.parse(status)).toBe(status);

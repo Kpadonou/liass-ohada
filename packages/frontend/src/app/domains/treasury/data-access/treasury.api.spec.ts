@@ -85,6 +85,7 @@ describe('TreasuryApi', () => {
 
   it('posts treasury transactions and returns the entry id', async () => {
     const promise = api.postTransaction({
+      clientRequestId: '11111111-1111-4111-8111-111111111111',
       treasuryAccountId: '52100000',
       year: 2026,
       entryDate: '2026-01-15',
@@ -97,6 +98,9 @@ describe('TreasuryApi', () => {
     const request = httpMock.expectOne(`${apiBaseUrl}/treasury/transactions`);
 
     expect(request.request.method).toBe('POST');
+    expect(request.request.body.clientRequestId).toBe(
+      '11111111-1111-4111-8111-111111111111'
+    );
     expect(request.request.body.lines).toBeUndefined();
     request.flush({ data: { entryId: 'E-123' } });
 

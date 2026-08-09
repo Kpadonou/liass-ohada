@@ -87,6 +87,26 @@ describe("GET /me/product-access", () => {
           createdAt: "2026-08-07T10:00:00.000Z",
           updatedAt: "2026-08-07T10:00:00.000Z",
         }),
+        marshall({
+          PK: "ORG#org-123",
+          SK: "PRODUCT_ACCESS#PROJECTS",
+          entityType: "PRODUCT_ACCESS",
+          orgId: "org-123",
+          productCode: "PROJECTS",
+          status: "ACTIVE",
+          createdAt: "2026-08-07T10:00:00.000Z",
+          updatedAt: "2026-08-07T10:00:00.000Z",
+        }),
+        marshall({
+          PK: "ORG#org-123",
+          SK: "PRODUCT_ACCESS#TREASURY",
+          entityType: "PRODUCT_ACCESS",
+          orgId: "org-123",
+          productCode: "TREASURY",
+          status: "INACTIVE",
+          createdAt: "2026-08-07T10:00:00.000Z",
+          updatedAt: "2026-08-07T10:00:00.000Z",
+        }),
       ],
     });
 
@@ -97,6 +117,7 @@ describe("GET /me/product-access", () => {
     const query = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
 
     expect(response.statusCode).toBe(200);
+    expect(body.productAccess).toHaveLength(1);
     expect(query.ExpressionAttributeValues?.[":pk"]).toEqual({ S: "ORG#org-123" });
     expect(body.productAccess[0]).toEqual({
       orgId: "org-123",

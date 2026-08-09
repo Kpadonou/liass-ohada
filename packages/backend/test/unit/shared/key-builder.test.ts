@@ -40,6 +40,12 @@ describe("KeyFactory", () => {
     expect(KeyFactory.accountingSettingsSK()).toBe("SETTINGS#ACCOUNTING");
   });
 
+  test("builds the Accounting-owned Treasury posting idempotency key centrally", () => {
+    expect(KeyFactory.treasuryPostingIdempotencySK("ABC123")).toBe(
+      "IDEMPOTENCY#TREASURY_POSTING#abc123",
+    );
+  });
+
   test("builds cabinet supervision keys without mutating identifiers", () => {
     expect(KeyFactory.cabinetPK("cab-123")).toBe("CABINET#cab-123");
     expect(KeyFactory.cabinetDossierSK("org-456")).toBe("DOSSIER#org-456");

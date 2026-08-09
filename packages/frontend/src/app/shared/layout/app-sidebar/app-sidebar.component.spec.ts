@@ -87,8 +87,6 @@ describe('AppSidebarComponent', () => {
     localStorage.clear();
     productAvailability = {
       ACCOUNTING: 'UNKNOWN',
-      PROJECTS: 'UNKNOWN',
-      TREASURY: 'UNKNOWN',
     };
 
     await TestBed.configureTestingModule({
@@ -161,7 +159,7 @@ describe('AppSidebarComponent', () => {
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
 
     for (const availability of ['AVAILABLE', 'UNKNOWN'] as const) {
-      productAvailability.TREASURY = availability;
+      productAvailability.ACCOUNTING = availability;
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
       const treasuryButton = fixture.nativeElement.querySelector(
@@ -177,7 +175,7 @@ describe('AppSidebarComponent', () => {
   });
 
   it('keeps known unavailable Treasury discoverable but prevents navigation', () => {
-    productAvailability.TREASURY = 'UNAVAILABLE';
+    productAvailability.ACCOUNTING = 'UNAVAILABLE';
     const router = TestBed.inject(Router);
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
@@ -211,7 +209,7 @@ describe('AppSidebarComponent', () => {
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
 
     for (const availability of ['AVAILABLE', 'UNKNOWN'] as const) {
-      productAvailability.PROJECTS = availability;
+      productAvailability.ACCOUNTING = availability;
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
       const projectsButton = fixture.nativeElement.querySelector(
@@ -227,7 +225,7 @@ describe('AppSidebarComponent', () => {
   });
 
   it('keeps known unavailable Projects discoverable but prevents navigation', () => {
-    productAvailability.PROJECTS = 'UNAVAILABLE';
+    productAvailability.ACCOUNTING = 'UNAVAILABLE';
     const router = TestBed.inject(Router);
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
@@ -254,8 +252,6 @@ describe('AppSidebarComponent', () => {
 
   it('keeps the staged rollout limited to Projects and Treasury', () => {
     productAvailability.ACCOUNTING = 'UNAVAILABLE';
-    productAvailability.PROJECTS = 'UNAVAILABLE';
-    productAvailability.TREASURY = 'UNAVAILABLE';
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
       'org-company'

@@ -3,34 +3,47 @@ import {
   COMPATIBILITY_PRODUCT_BASELINE,
   ProductAccessService,
 } from "@/lambda/shared/services/product-access-service";
-import type { ProductCode } from "@liass-ohada/shared/shared";
+import type { ProductAccess } from "@liass-ohada/shared/shared";
+import type { PersistedProductAccess } from "@/lambda/shared/repositories/product-access-repository";
 
 const access = (
   status: "ACTIVE" | "INACTIVE",
-  productCode: ProductCode = "ACCOUNTING",
-) => ({
+): ProductAccess => ({
   orgId: "org-123",
-  productCode,
+  productCode: "ACCOUNTING",
   status,
   createdAt: "2026-08-07T10:00:00.000Z",
   updatedAt: "2026-08-07T10:00:00.000Z",
 });
 
+const persistedAccess = (
+  status: "ACTIVE" | "INACTIVE",
+  productCode: PersistedProductAccess["productCode"],
+): PersistedProductAccess => ({ ...access(status), productCode });
+
 describe("ProductAccessService", () => {
   afterEach(() => jest.restoreAllMocks());
 
   test("owns the one compatibility baseline used for transaction provisioning", () => {
-    expect(COMPATIBILITY_PRODUCT_BASELINE).toEqual([
-      "ACCOUNTING",
-      "PROJECTS",
-      "TREASURY",
-    ]);
+    expect(COMPATIBILITY_PRODUCT_BASELINE).toEqual(["ACCOUNTING"]);
     expect(
       ProductAccessService.buildCompatibilityBaselineWrites(
         "org-123",
         "2026-08-07T10:00:00.000Z",
       ),
-    ).toHaveLength(3);
+    ).toHaveLength(1);
+  });
+
+  test("exposes only canonical top-level ProductAccess", async () => {
+    jest.spyOn(ProductAccessRepository, "listProductAccess").mockResolvedValue([
+      persistedAccess("ACTIVE", "ACCOUNTING"),
+      persistedAccess("ACTIVE", "PROJECTS"),
+      persistedAccess("INACTIVE", "TREASURY"),
+    ]);
+
+    await expect(
+      ProductAccessService.listProductAccess("org-123"),
+    ).resolves.toEqual([access("ACTIVE")]);
   });
 
   test("allows ACTIVE access and rejects missing or INACTIVE access", async () => {
@@ -95,25 +108,27 @@ describe("ProductAccessService", () => {
   test("classifies complete, partial, and missing baseline coverage", async () => {
     const list = jest.spyOn(ProductAccessRepository, "listProductAccess");
     list.mockResolvedValueOnce([
-      access("ACTIVE", "ACCOUNTING"),
-      access("INACTIVE", "PROJECTS"),
-      access("ACTIVE", "TREASURY"),
+      persistedAccess("ACTIVE", "ACCOUNTING"),
+      persistedAccess("INACTIVE", "PROJECTS"),
+      persistedAccess("ACTIVE", "TREASURY"),
     ]);
     await expect(
       ProductAccessService.inspectCompatibilityBaseline("org-123"),
     ).resolves.toMatchObject({
-      active: ["ACCOUNTING", "TREASURY"],
+      active: ["ACCOUNTING"],
       coverage: "COMPLETE",
-      inactive: ["PROJECTS"],
+      inactive: [],
+      legacyPresent: ["PROJECTS", "TREASURY"],
       missing: [],
     });
 
-    list.mockResolvedValueOnce([access("ACTIVE", "ACCOUNTING")]);
+    list.mockResolvedValueOnce([persistedAccess("INACTIVE", "ACCOUNTING")]);
     await expect(
       ProductAccessService.inspectCompatibilityBaseline("org-123"),
     ).resolves.toMatchObject({
-      coverage: "PARTIAL",
-      missing: ["PROJECTS", "TREASURY"],
+      coverage: "COMPLETE",
+      inactive: ["ACCOUNTING"],
+      missing: [],
     });
 
     list.mockResolvedValueOnce([]);
@@ -131,7 +146,7 @@ describe("ProductAccessService", () => {
         "2026-08-07T10:00:00.000Z",
       ),
     ).resolves.toEqual({
-      created: ["ACCOUNTING", "PROJECTS", "TREASURY"],
+      created: ["ACCOUNTING"],
       existing: [],
     });
   });
@@ -148,21 +163,19 @@ describe("ProductAccessService", () => {
       ),
     ).resolves.toEqual({
       created: [],
-      existing: ["ACCOUNTING", "PROJECTS", "TREASURY"],
+      existing: ["ACCOUNTING"],
     });
     expect(put.mock.calls[0][0]).toMatchObject({
       productCode: "ACCOUNTING",
       status: "ACTIVE",
     });
-    expect(put).toHaveBeenCalledTimes(3);
+    expect(put).toHaveBeenCalledTimes(1);
   });
 
   test("completes a partial baseline without overwriting existing rows", async () => {
     jest
       .spyOn(ProductAccessRepository, "putIfAbsent")
-      .mockResolvedValueOnce(false)
-      .mockResolvedValueOnce(true)
-      .mockResolvedValueOnce(true);
+      .mockResolvedValueOnce(false);
 
     await expect(
       ProductAccessService.provisionCompatibilityBaseline(
@@ -170,7 +183,7 @@ describe("ProductAccessService", () => {
         "2026-08-07T10:00:00.000Z",
       ),
     ).resolves.toEqual({
-      created: ["PROJECTS", "TREASURY"],
+      created: [],
       existing: ["ACCOUNTING"],
     });
   });

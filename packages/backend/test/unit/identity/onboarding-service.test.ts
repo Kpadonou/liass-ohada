@@ -82,16 +82,14 @@ describe("OnboardingService", () => {
     });
     expect(response.organization.createdAt).toEqual(expect.any(String));
     expect(response.organization.updatedAt).toEqual(expect.any(String));
-    expect(transactionItems).toHaveLength(7);
+    expect(transactionItems).toHaveLength(5);
     expect(transactionItems.map(({ condition }) => condition)).toEqual(
-      Array(7).fill("attribute_not_exists(PK) AND attribute_not_exists(SK)"),
+      Array(5).fill("attribute_not_exists(PK) AND attribute_not_exists(SK)"),
     );
     expect(transactionItems.map(({ item }) => item.entityType)).toEqual([
       "ORGANIZATION",
       "USER_ORG_ACCESS",
       "INITIAL_WORKSPACE_LOCK",
-      "PRODUCT_ACCESS",
-      "PRODUCT_ACCESS",
       "PRODUCT_ACCESS",
       "ACCOUNTING_SETTINGS",
     ]);
@@ -118,19 +116,15 @@ describe("OnboardingService", () => {
       userId: "user-123",
       orgId: GENERATED_ORG_ID,
     });
-    expect(transactionItems.slice(3, 6).map(({ item }) => item)).toEqual(
-      ["ACCOUNTING", "PROJECTS", "TREASURY"].map((productCode) =>
-        expect.objectContaining({
-          PK: `ORG#${GENERATED_ORG_ID}`,
-          SK: `PRODUCT_ACCESS#${productCode}`,
-          entityType: "PRODUCT_ACCESS",
-          orgId: GENERATED_ORG_ID,
-          productCode,
-          status: "ACTIVE",
-        }),
-      ),
-    );
-    expect(transactionItems[6].item).toMatchObject({
+    expect(transactionItems[3].item).toMatchObject({
+      PK: `ORG#${GENERATED_ORG_ID}`,
+      SK: "PRODUCT_ACCESS#ACCOUNTING",
+      entityType: "PRODUCT_ACCESS",
+      orgId: GENERATED_ORG_ID,
+      productCode: "ACCOUNTING",
+      status: "ACTIVE",
+    });
+    expect(transactionItems[4].item).toMatchObject({
       PK: `ORG#${GENERATED_ORG_ID}`,
       SK: "SETTINGS#ACCOUNTING",
       entityType: "ACCOUNTING_SETTINGS",
@@ -166,7 +160,7 @@ describe("OnboardingService", () => {
     });
     expect(response.workspace.cabinetId).toBe(GENERATED_CABINET_ID);
     expect(response.workspace.cabinetRole).toBe("CABINET_ADMIN");
-    expect(transactionItems).toHaveLength(10);
+    expect(transactionItems).toHaveLength(8);
     expect(transactionItems[3].item).toMatchObject({
       PK: `CABINET#${GENERATED_CABINET_ID}`,
       SK: "CABINET#METADATA",
@@ -188,6 +182,17 @@ describe("OnboardingService", () => {
       cabinetRole: "CABINET_ADMIN",
       status: "ACTIVE",
     });
+    expect(
+      transactionItems.filter(({ item }) => item.entityType === "PRODUCT_ACCESS"),
+    ).toEqual([
+      expect.objectContaining({
+        item: expect.objectContaining({
+          SK: "PRODUCT_ACCESS#ACCOUNTING",
+          productCode: "ACCOUNTING",
+          status: "ACTIVE",
+        }),
+      }),
+    ]);
     expect(transactionItems[5].item).toMatchObject({
       PK: `ORG#${GENERATED_ORG_ID}`,
       SK: "SETTINGS#CABINET",
@@ -202,20 +207,12 @@ describe("OnboardingService", () => {
     });
     expect(transactionItems[5].item.contact).toBeUndefined();
     expect(transactionItems[5].item.address).toBeUndefined();
-    expect(transactionItems.slice(6, 9).map(({ item }) => item.productCode)).toEqual([
-      "ACCOUNTING",
-      "PROJECTS",
-      "TREASURY",
-    ]);
-    expect(transactionItems.slice(6, 9).map(({ item }) => item.status)).toEqual([
-      "ACTIVE",
-      "ACTIVE",
-      "ACTIVE",
-    ]);
+    expect(transactionItems[6].item.productCode).toBe("ACCOUNTING");
+    expect(transactionItems[6].item.status).toBe("ACTIVE");
     expect(transactionItems.map(({ condition }) => condition)).toEqual(
-      Array(10).fill("attribute_not_exists(PK) AND attribute_not_exists(SK)"),
+      Array(8).fill("attribute_not_exists(PK) AND attribute_not_exists(SK)"),
     );
-    expect(transactionItems[9].item).toMatchObject({
+    expect(transactionItems[7].item).toMatchObject({
       PK: `ORG#${GENERATED_ORG_ID}`,
       SK: "SETTINGS#ACCOUNTING",
       entityType: "ACCOUNTING_SETTINGS",

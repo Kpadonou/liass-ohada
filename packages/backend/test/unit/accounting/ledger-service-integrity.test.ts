@@ -8,6 +8,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
+import { EntrySchema } from "@liass-ohada/shared/accounting";
 
 const dynamoMock = mockClient(DynamoDBClient);
 
@@ -99,6 +100,27 @@ describe("LedgerService accounting integrity", () => {
     dynamoMock.reset();
   });
 
+  test("continues parsing historical entries without source metadata", () => {
+    expect(
+      EntrySchema.parse({
+        orgId: "test-org",
+        year: 2026,
+        entryId: "E-historical",
+        entryType: "STANDARD",
+        entryDate: "2026-01-15",
+        journalCode: "MISC",
+        totalDebit: 1000,
+        totalCredit: 1000,
+        status: "POSTED",
+        entityType: "ENTRY",
+        PK: "ORG#test-org#FY#2026",
+        SK: "E#E-historical",
+        createdAt: "2026-01-15T00:00:00.000Z",
+        updatedAt: "2026-01-15T00:00:00.000Z",
+      }),
+    ).not.toHaveProperty("sourceType");
+  });
+
   test("validates fiscal year, journal, period, entities and writes atomically", async () => {
     dynamoMock
       .on(GetItemCommand)
@@ -126,6 +148,52 @@ describe("LedgerService accounting integrity", () => {
     expect(header.GSI5PK).toBe("ORG#test-org#FY#2026");
     expect(header.GSI5SK).toContain("JNL#SALES#DT#2026-03-15#E#");
     expect(header.updatedBy).toBe("user-123");
+  });
+
+  test("commits Treasury source identity with the Accounting posting atomically", async () => {
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({ Item: fiscalYearItem })
+      .resolvesOnce({ Item: journalItem })
+      .resolvesOnce({ Item: undefined });
+    dynamoMock.on(BatchGetItemCommand).resolves({
+      Responses: {
+        "liass-ohada-test-accounting-table": accountItems,
+      },
+    });
+    dynamoMock.on(TransactWriteItemsCommand).resolves({});
+
+    await LedgerService.postEntry({
+      orgId: "test-org",
+      userId: "user-123",
+      data: validEntry,
+      treasuryPostingIdempotency: {
+        clientRequestId: "11111111-1111-4111-8111-111111111111",
+        clientRequestIdHash: "a".repeat(64),
+        requestFingerprint: "b".repeat(64),
+      },
+    });
+
+    const transaction =
+      dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input;
+    expect(transaction.TransactItems).toHaveLength(6);
+    const header = unmarshall(transaction.TransactItems?.[0].Put?.Item ?? {});
+    const identity = unmarshall(transaction.TransactItems?.[1].Put?.Item ?? {});
+    expect(header).toMatchObject({
+      sourceType: "TREASURY",
+      sourceId: "11111111-1111-4111-8111-111111111111",
+      sourceFingerprint: "b".repeat(64),
+    });
+    expect(identity).toMatchObject({
+      PK: "ORG#test-org",
+      SK: `IDEMPOTENCY#TREASURY_POSTING#${"a".repeat(64)}`,
+      entityType: "TREASURY_POSTING_IDEMPOTENCY",
+      entryId: header.entryId,
+      status: "COMPLETED",
+    });
+    expect(transaction.TransactItems?.[1].Put?.ConditionExpression).toBe(
+      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+    );
   });
 
   test("rejects entries outside fiscal year boundaries", async () => {

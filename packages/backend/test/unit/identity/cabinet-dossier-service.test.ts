@@ -226,22 +226,14 @@ describe("CabinetDossierService", () => {
 
     expect(response.activeDossierOrgId).toBe(GENERATED_ORG_ID);
     expect(response.dossier.displayName).toBe("Client SARL");
-    expect(transactionItems).toHaveLength(7);
-    expect(transactionItems.map(({ condition }) => condition)).toEqual([
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-    ]);
+    expect(transactionItems).toHaveLength(5);
+    expect(transactionItems.map(({ condition }) => condition)).toEqual(
+      Array(5).fill("attribute_not_exists(PK) AND attribute_not_exists(SK)"),
+    );
     expect(transactionItems.map(({ item }) => item.entityType)).toEqual([
       "ORGANIZATION",
       "USER_ORG_ACCESS",
       "CABINET_DOSSIER",
-      "PRODUCT_ACCESS",
-      "PRODUCT_ACCESS",
       "PRODUCT_ACCESS",
       "ACCOUNTING_SETTINGS",
     ]);
@@ -261,18 +253,14 @@ describe("CabinetDossierService", () => {
       GSI1PK: "CABINET#cab-123",
       GSI1SK: `DOSSIER#${GENERATED_ORG_ID}`,
     });
-    expect(transactionItems.slice(3, 6).map(({ item }) => item)).toEqual(
-      ["ACCOUNTING", "PROJECTS", "TREASURY"].map((productCode) =>
-        expect.objectContaining({
-          PK: `ORG#${GENERATED_ORG_ID}`,
-          SK: `PRODUCT_ACCESS#${productCode}`,
-          entityType: "PRODUCT_ACCESS",
-          productCode,
-          status: "ACTIVE",
-        }),
-      ),
-    );
-    expect(transactionItems[6].item).toMatchObject({
+    expect(transactionItems[3].item).toMatchObject({
+      PK: `ORG#${GENERATED_ORG_ID}`,
+      SK: "PRODUCT_ACCESS#ACCOUNTING",
+      entityType: "PRODUCT_ACCESS",
+      productCode: "ACCOUNTING",
+      status: "ACTIVE",
+    });
+    expect(transactionItems[4].item).toMatchObject({
       PK: `ORG#${GENERATED_ORG_ID}`,
       SK: "SETTINGS#ACCOUNTING",
       entityType: "ACCOUNTING_SETTINGS",

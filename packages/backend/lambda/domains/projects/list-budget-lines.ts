@@ -1,5 +1,5 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
-import { ProjectService } from "@/lambda/shared/services/project-service";
+import { ProjectService } from "@/lambda/domains/projects/services/project-service";
 import { z } from "zod";
 
 const currentYear = () => String(new Date().getFullYear());

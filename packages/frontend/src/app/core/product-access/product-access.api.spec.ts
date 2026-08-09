@@ -31,7 +31,7 @@ describe('ProductAccessApi', () => {
       productAccess: [
         {
           orgId: 'org-a',
-          productCode: 'TREASURY',
+          productCode: 'ACCOUNTING',
           status: 'ACTIVE',
           createdAt: timestamp,
           updatedAt: timestamp,
@@ -42,7 +42,7 @@ describe('ProductAccessApi', () => {
     await expect(promise).resolves.toEqual([
       {
         orgId: 'org-a',
-        productCode: 'TREASURY',
+        productCode: 'ACCOUNTING',
         status: 'ACTIVE',
         createdAt: timestamp,
         updatedAt: timestamp,
@@ -56,12 +56,12 @@ describe('ProductAccessApi', () => {
       productAccess: [
         {
           orgId: 'org-a',
-          productCode: 'TREASURY',
+          productCode: 'ACCOUNTING',
           status: 'ACTIVE',
           createdAt: timestamp,
           updatedAt: timestamp,
           PK: 'ORG#org-a',
-          SK: 'PRODUCT_ACCESS#TREASURY',
+          SK: 'PRODUCT_ACCESS#ACCOUNTING',
         },
       ],
     });
@@ -75,7 +75,7 @@ describe('ProductAccessApi', () => {
       productAccess: [
         {
           orgId: 'org-a',
-          productCode: 'TREASURY',
+          productCode: 'ACCOUNTING',
           status: 'ACTIVE',
           createdAt: timestamp,
           updatedAt: timestamp,
@@ -85,4 +85,24 @@ describe('ProductAccessApi', () => {
 
     await expect(promise).rejects.toThrow(/active organization/i);
   });
+
+  it.each(['PROJECTS', 'TREASURY'])(
+    'rejects legacy %s rows from the public response',
+    async (productCode) => {
+      const promise = api.listProductAccess('org-a');
+      http.expectOne(url).flush({
+        productAccess: [
+          {
+            orgId: 'org-a',
+            productCode,
+            status: 'ACTIVE',
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          },
+        ],
+      });
+
+      await expect(promise).rejects.toBeTruthy();
+    },
+  );
 });

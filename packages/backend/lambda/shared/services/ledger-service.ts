@@ -35,7 +35,6 @@ import { dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
 import { AppError } from "../middleware/handler-wrapper";
 import { BalanceService } from "./balance-service";
-import { BudgetService } from "./budget-service";
 import { JournalService } from "./journal-service";
 import {
   AuxiliaryAccountingService,
@@ -45,6 +44,11 @@ import {
   defaultAuxiliaryMetadata,
   resolveAuxiliaryMetadata,
 } from "../account-auxiliary";
+import {
+  AccountingTreasuryPostingIdempotencyRepository,
+  type TreasuryPostingIdempotencyIdentity,
+} from "@/lambda/domains/accounting/posting/accounting-treasury-posting-idempotency-repository";
+import { ProjectAccountingReferenceService } from "@/lambda/domains/projects/references/project-accounting-reference-service";
 
 /**
  * Interface definitions for Ledger queries
@@ -107,6 +111,7 @@ export interface PostEntryParams {
   orgId: string;
   userId: string;
   data: CreateEntryRequest;
+  treasuryPostingIdempotency?: TreasuryPostingIdempotencyIdentity;
 }
 
 export interface DraftEntryParams {
@@ -130,7 +135,12 @@ export class LedgerService {
   /**
    * Posts a balanced accounting entry and its lines in one atomic transaction.
    */
-  static async postEntry({ orgId, userId, data }: PostEntryParams) {
+  static async postEntry({
+    orgId,
+    userId,
+    data,
+    treasuryPostingIdempotency,
+  }: PostEntryParams) {
     const {
       year,
       entryDate: inputDate,
@@ -170,9 +180,6 @@ export class LedgerService {
       throw new AppError(400, "ERROR_PERIOD_LOCKED");
     }
 
-    const accountIds = [
-      ...new Set(lines.map((line) => LedgerService.formatAccount(line.accountId))),
-    ];
     const projectIds = [
       ...new Set(
         lines
@@ -181,7 +188,10 @@ export class LedgerService {
       ),
     ];
 
-    await LedgerService.validateEntities(orgId, accountIds, projectIds);
+    await ProjectAccountingReferenceService.validateAccountingReferences({
+      orgId,
+      projectIds,
+    });
     const validatedLines =
       await AuxiliaryAccountingService.validateAndEnrichLines(orgId, lines);
 
@@ -197,9 +207,15 @@ export class LedgerService {
       const postingOrdinal = index + 1;
       lineIds.push(lineId);
 
-      if (line.projectId && line.debit > 0) {
-        await BudgetService.enforceBudget(orgId, year, line);
-      }
+      await ProjectAccountingReferenceService.validatePostingLine({
+        orgId,
+        year,
+        projectId: line.projectId,
+        budgetLineId: line.budgetLineId,
+        donorId: line.donorId,
+        debit: line.debit,
+        credit: line.credit,
+      });
 
       const lineItem = LedgerService.buildEntryLineItem({
         orgId,
@@ -278,7 +294,22 @@ export class LedgerService {
       updatedAt: now,
       postedBy: userId,
       postedAt: now,
+      sourceType: treasuryPostingIdempotency ? "TREASURY" : undefined,
+      sourceId: treasuryPostingIdempotency?.clientRequestId,
+      sourceFingerprint: treasuryPostingIdempotency?.requestFingerprint,
     };
+
+    if (treasuryPostingIdempotency) {
+      transactItems.unshift(
+        AccountingTreasuryPostingIdempotencyRepository.buildCompletedPut({
+          orgId,
+          userId,
+          identity: treasuryPostingIdempotency,
+          entryId,
+          now,
+        }),
+      );
+    }
 
     transactItems.unshift({
       Put: {
@@ -638,9 +669,6 @@ export class LedgerService {
       throw new AppError(400, "ERROR_PERIOD_LOCKED");
     }
 
-    const accountIds = [
-      ...new Set(data.lines.map((line) => LedgerService.formatAccount(line.accountId))),
-    ];
     const projectIds = [
       ...new Set(
         data.lines
@@ -649,7 +677,10 @@ export class LedgerService {
       ),
     ];
 
-    await LedgerService.validateEntities(orgId, accountIds, projectIds);
+    await ProjectAccountingReferenceService.validateAccountingReferences({
+      orgId,
+      projectIds,
+    });
     const validatedLines =
       await AuxiliaryAccountingService.validateAndEnrichLines(
         orgId,
@@ -699,9 +730,15 @@ export class LedgerService {
       const paddedAccountId = LedgerService.formatAccount(line.accountId);
       const postingOrdinal = draftLine.postingOrdinal ?? index + 1;
 
-      if (line.projectId && line.debit > 0) {
-        await BudgetService.enforceBudget(orgId, year, line);
-      }
+      await ProjectAccountingReferenceService.validatePostingLine({
+        orgId,
+        year,
+        projectId: line.projectId,
+        budgetLineId: line.budgetLineId,
+        donorId: line.donorId,
+        debit: line.debit,
+        credit: line.credit,
+      });
 
       const lineItem = LedgerService.buildEntryLineItem({
         orgId,
@@ -862,83 +899,6 @@ export class LedgerService {
     }
 
     return FiscalYearSchema.parse(unmarshall(result.Item));
-  }
-
-  /**
-   * Validates the existence of multiple accounts and projects in a single batch.
-   * Throws AppError if any entity is missing.
-   */
-  static async validateEntities(
-    orgId: string,
-    accountIds: string[],
-    projectIds: string[],
-  ): Promise<void> {
-    if (accountIds.length === 0 && projectIds.length === 0) return;
-
-    const keys = [
-      ...accountIds.map((id) =>
-        marshall({
-          PK: KeyFactory.orgKey(orgId),
-          SK: KeyFactory.accountSK(id),
-        }),
-      ),
-      ...projectIds.map((id) =>
-        marshall({
-          PK: KeyFactory.orgKey(orgId),
-          SK: KeyFactory.projectSK(id),
-        }),
-      ),
-    ];
-
-    const result = await dynamoClient.send(
-      new BatchGetItemCommand({
-        RequestItems: {
-          [config.TABLE_NAME]: { Keys: keys },
-        },
-      }),
-    );
-
-    const foundItems = result.Responses?.[config.TABLE_NAME] || [];
-    const expectedCount = accountIds.length + projectIds.length;
-
-    if (foundItems.length !== expectedCount) {
-      throw new AppError(400, "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND");
-    }
-
-    const foundBusinessIds = new Set(
-      foundItems.map((item) => {
-        const data = unmarshall(item);
-        const sk = data.SK || item.SK?.S;
-        if (typeof sk === "string" && sk.startsWith("ACC#")) {
-          return sk.slice("ACC#".length);
-        }
-        if (typeof sk === "string" && sk.startsWith("PRJ#")) {
-          return sk.slice("PRJ#".length);
-        }
-        return (
-          data.accountId ||
-          data.projectId ||
-          item.accountId?.S ||
-          item.projectId?.S
-        );
-      }),
-    );
-
-    const hasInactiveAccount = foundItems.some((item) => {
-      const data = unmarshall(item);
-      return data.entityType === "ACCOUNT" && data.isActive === false;
-    });
-
-    if (hasInactiveAccount) {
-      throw new AppError(400, "ERROR_ACCOUNT_INACTIVE");
-    }
-
-    if (
-      !accountIds.every((id) => foundBusinessIds.has(id)) ||
-      !projectIds.every((id) => foundBusinessIds.has(id))
-    ) {
-      throw new AppError(400, "ERROR_ACCOUNT_OR_PROJECT_NOT_FOUND");
-    }
   }
 
   /**

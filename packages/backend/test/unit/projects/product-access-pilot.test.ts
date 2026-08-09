@@ -5,18 +5,18 @@ import { ProductAccessRepository } from "@/lambda/shared/repositories/product-ac
 import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
-import { ProjectService } from "@/lambda/shared/services/project-service";
+import { ProjectService } from "@/lambda/domains/projects/services/project-service";
 
-jest.mock("@/lambda/shared/services/project-service", () => ({
+jest.mock("@/lambda/domains/projects/services/project-service", () => ({
   ProjectService: {
     listDonors: jest.fn(),
     listProjects: jest.fn(),
   },
 }));
 
-const activeProjectsAccess = {
+const activeAccountingAccess = {
   orgId: "org-123",
-  productCode: "PROJECTS" as const,
+  productCode: "ACCOUNTING" as const,
   status: "ACTIVE" as const,
   createdAt: "2026-08-08T10:00:00.000Z",
   updatedAt: "2026-08-08T10:00:00.000Z",
@@ -98,8 +98,8 @@ describe("GET /donors ProductAccess pilot", () => {
 
   test.each([
     ["missing", null],
-    ["inactive", { ...activeProjectsAccess, status: "INACTIVE" as const }],
-  ])("denies %s PROJECTS access", async (_case, productAccess) => {
+    ["inactive", { ...activeAccountingAccess, status: "INACTIVE" as const }],
+  ])("denies %s ACCOUNTING product access", async (_case, productAccess) => {
     jest
       .spyOn(ProductAccessRepository, "getProductAccess")
       .mockResolvedValue(productAccess);
@@ -113,7 +113,7 @@ describe("GET /donors ProductAccess pilot", () => {
     expect(ProjectService.listDonors).not.toHaveBeenCalled();
   });
 
-  test("orders membership, PROJECTS access, read permission, then handler logic", async () => {
+  test("orders membership, ACCOUNTING access, PROJECTS permission, then handler logic", async () => {
     const membership = jest.spyOn(
       EffectiveOrganizationAccessService,
       "resolveAccess",
@@ -128,7 +128,7 @@ describe("GET /donors ProductAccess pilot", () => {
     const product = jest.spyOn(ProductAccessService, "requireActiveProductAccess");
     const productLookup = jest
       .spyOn(ProductAccessRepository, "getProductAccess")
-      .mockResolvedValue(activeProjectsAccess);
+      .mockResolvedValue(activeAccountingAccess);
     const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
 
     const response = await listDonorsHandler(createEvent() as any);
@@ -137,7 +137,7 @@ describe("GET /donors ProductAccess pilot", () => {
     expect(product).toHaveBeenCalledWith({
       action: "GET /donors",
       orgId: "org-123",
-      productCode: "PROJECTS",
+      productCode: "ACCOUNTING",
     });
     expect(permission).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "org-123" }),
@@ -157,7 +157,7 @@ describe("GET /donors ProductAccess pilot", () => {
   test("preserves existing RBAC denial after ACTIVE ProductAccess", async () => {
     jest
       .spyOn(ProductAccessRepository, "getProductAccess")
-      .mockResolvedValue(activeProjectsAccess);
+      .mockResolvedValue(activeAccountingAccess);
     jest
       .spyOn(DomainAuthorizationService, "assertPermission")
       .mockImplementation(() => {
@@ -183,7 +183,7 @@ describe("GET /donors ProductAccess pilot", () => {
       });
     jest
       .spyOn(ProductAccessRepository, "getProductAccess")
-      .mockResolvedValue(activeProjectsAccess);
+      .mockResolvedValue(activeAccountingAccess);
 
     const response = await listDonorsHandler(createEvent() as any);
 

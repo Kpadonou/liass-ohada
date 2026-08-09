@@ -2,7 +2,7 @@ import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import {
   CreateFundingSourceInputSchema,
   ProjectService,
-} from "@/lambda/shared/services/project-service";
+} from "@/lambda/domains/projects/services/project-service";
 import { z } from "zod";
 
 const CreateProjectFundingSourceSchema = CreateFundingSourceInputSchema.extend({

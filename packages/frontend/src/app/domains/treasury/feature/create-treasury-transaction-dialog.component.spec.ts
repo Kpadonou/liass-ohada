@@ -168,6 +168,7 @@ describe('CreateTreasuryTransactionDialogComponent', () => {
     await fixture.componentInstance['submit']();
 
     expect(treasuryApi.postTransaction).toHaveBeenCalledWith({
+      clientRequestId: expect.any(String),
       treasuryAccountId: 'treasury-521',
       year: 2026,
       entryDate: '2026-01-15',
@@ -205,6 +206,38 @@ describe('CreateTreasuryTransactionDialogComponent', () => {
         counterpartyAccountId: '40100000',
       }),
     );
+  });
+
+  it('reuses the request identity when retrying the same failed submission', async () => {
+    treasuryApi.postTransaction
+      .mockRejectedValueOnce(new Error('ambiguous result'))
+      .mockResolvedValueOnce('entry-3');
+    fillValidForm();
+
+    await fixture.componentInstance['submit']();
+    await fixture.componentInstance['submit']();
+
+    const firstRequest = treasuryApi.postTransaction.mock.calls[0][0];
+    const retryRequest = treasuryApi.postTransaction.mock.calls[1][0];
+    expect(firstRequest.clientRequestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(retryRequest.clientRequestId).toBe(firstRequest.clientRequestId);
+  });
+
+  it('generates a new request identity when the failed submission intent changes', async () => {
+    treasuryApi.postTransaction
+      .mockRejectedValueOnce(new Error('ambiguous result'))
+      .mockResolvedValueOnce('entry-4');
+    fillValidForm();
+
+    await fixture.componentInstance['submit']();
+    fixture.componentInstance['form'].controls.amount.setValue(175000);
+    await fixture.componentInstance['submit']();
+
+    expect(
+      treasuryApi.postTransaction.mock.calls[1][0].clientRequestId,
+    ).not.toBe(treasuryApi.postTransaction.mock.calls[0][0].clientRequestId);
   });
 
   function fillValidForm(

@@ -85,6 +85,7 @@ export const TreasuryMovementDtoSchema = z.object({
 export type TreasuryMovementDto = z.infer<typeof TreasuryMovementDtoSchema>;
 
 export const CreateTreasuryTransactionRequestSchema = z.object({
+  clientRequestId: z.string().uuid(),
   treasuryAccountId: z.string().min(1),
   year: z.number().int(),
   entryDate: DateSchema,

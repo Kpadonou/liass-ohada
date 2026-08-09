@@ -46,6 +46,10 @@ export const KeyFactory = {
   productAccessSK: (productCode: string) =>
     `${KeyFactory.productAccessPrefix()}${productCode.toUpperCase()}`,
 
+  /** Accounting-owned retry identity for a Treasury-originated posting. */
+  treasuryPostingIdempotencySK: (clientRequestIdHash: string) =>
+    `IDEMPOTENCY#TREASURY_POSTING#${clientRequestIdHash.toLowerCase()}`,
+
   /** Cabinet invitation records and normalized-email uniqueness locks */
   cabinetInvitationPrefix: () => "INV#",
   cabinetInvitationSK: (invitationId: string) => `INV#${invitationId}`,

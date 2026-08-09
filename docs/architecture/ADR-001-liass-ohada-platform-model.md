@@ -29,6 +29,8 @@ The shared API Gateway, Cognito resources, DynamoDB Single Table, S3 resources, 
 
 Restaurants is the first planned vertical solution, but it is not implemented or scaffolded by this decision.
 
+`ProductAccess` represents top-level products or verticals, not every internal module. The only currently implemented top-level entitlement is `ACCOUNTING`, whose current module hierarchy is Accounting Core, Treasury, and Project Accounting. The existing `projects` technical domain and `PROJECTS_*` permissions remain compatibility identifiers for Project Accounting; Treasury and Project Accounting retain module-granular RBAC without separate top-level ProductAccess codes. Persisted historical `PROJECTS` and `TREASURY` ProductAccess rows are migration data, not current entitlement authority.
+
 ## Consequences
 
 - Platform Core owns cross-domain identity, organizations, access, entitlement, permissions, shared audit/integration capabilities, and the authenticated shell.

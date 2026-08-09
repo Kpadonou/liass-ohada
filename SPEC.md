@@ -25,7 +25,7 @@ Organization
 
 - `Organization` owns platform-wide identity and status attributes.
 - `UserOrgAccess` represents a user's verified access to an organization.
-- `ProductAccess` is the platform-level entitlement for enabled products or capabilities. Its persistence, read, and opt-in backend authorization foundations are implemented. Enforcement remains limited to explicitly annotated pilot routes; frontend presentation awareness is limited to reviewed product pilots, and global enforcement remains future migration work.
+- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The only currently implemented top-level product code is `ACCOUNTING`. Enforcement remains limited to explicitly annotated pilot routes; frontend presentation awareness is limited to reviewed pilots, and global enforcement remains future migration work.
 - `DomainSettings` belongs to the owning business domain. In particular, `accountingFramework` conceptually belongs to `AccountingSettings`, not to universal Organization metadata.
 
 Current onboarding, Organization, workspace, access-projection, and response contracts may still carry `accountingFramework`. This is an explicit compatibility state. It must remain supported until a reviewed, backward-compatible runtime and data migration moves ownership to Accounting.
@@ -79,13 +79,28 @@ The authoritative CDK resource-placement and validation rules are defined in [`p
 
 Platform-wide capabilities include identity and authentication, organizations, user-to-organization access, future product entitlement, permissions/RBAC, notifications, documents, audit/traceability, shared integrations/events, and the shared application shell and navigation.
 
-### B. ERP Business Domains
+### B. Products and ERP Modules
+
+The current canonical product taxonomy is:
+
+```text
+LIASS-OHADA
+├── PLATFORM CORE
+└── PRODUCT: ACCOUNTING
+    ├── Accounting Core
+    ├── Treasury
+    └── Project Accounting
+```
+
+`ACCOUNTING` is the top-level `ProductAccess` entitlement for current ERP functionality. Treasury and Project Accounting are Accounting modules and must not use `TREASURY` or `PROJECTS` as current ProductAccess codes. Module-granular RBAC remains independent: Accounting Core uses `ACCOUNTING_*`, Treasury uses `TREASURY_*`, and Project Accounting uses `PROJECTS_*` permissions.
+
+The existing `/projects` routes, `domains/projects` folders, and `PROJECTS_*` permissions remain compatibility-sensitive technical identifiers for the Project Accounting module. This taxonomy does not authorize a broad technical rename or a speculative module-entitlement model.
 
 The target ERP domain map is:
 
 - **Accounting**: chart of accounts, journals, entries, general ledger, closing, and compliant financial processing; account identifiers remain normalized 8-digit strings where the current Accounting contracts require them.
-- **Projects / SYCEBNL**: donor/grant, fund, budget, and project tracking for nonprofit and donor-funded organizations.
-- **Treasury**: cash movements, bank statements, cash-flow visibility, and reconciliation.
+- **Project Accounting / SYCEBNL**: the currently named Projects technical domain, covering donor/grant, fund, budget, and project tracking for nonprofit and donor-funded organizations within the Accounting product.
+- **Treasury**: the Accounting module for cash movements, bank statements, cash-flow visibility, and reconciliation.
 - **Commercial**: invoicing, quotes, bills, product catalog, and customer/supplier relationships.
 - **Fixed Assets**: acquisition, depreciation/amortization, impairment, and disposal lifecycle.
 - **Payroll**: payroll and its Accounting integration under applicable local rules.
@@ -106,8 +121,10 @@ Every business domain owns its entities, invariants, persistence operations, and
 - A domain must not construct another domain's persistence keys, import another domain's repository internals, or mutate another domain's aggregates.
 - KeyFactory helpers and repositories must respect domain ownership even though concrete keys remain centralized.
 - Cross-domain collaboration must use explicit APIs or versioned domain/integration events.
+- Cross-module financial references must be checked against the owning aggregate's authoritative identity, and cancellation or reversal operations must conditionally prove ownership of the state they clear.
 - A producer may publish a business fact such as `SaleClosed`; the consuming domain translates it into its own consequences. A Restaurants component, for example, must never create an Accounting `ENTRY` directly.
 - Shared technical code may provide infrastructure-neutral utilities and contract transport, but it must not become a backdoor for cross-domain business mutation.
+- Modules inside one top-level product may collaborate synchronously through explicit owning-module application boundaries, but a module must not directly mutate another module's aggregates or persistence structures.
 - Logical domain separation comes before physical separation. Separate services or tables may be considered later only when scale, security, deployment isolation, or operational requirements justify them.
 
 ---
@@ -175,6 +192,7 @@ Business-domain actions must use the owning domain's explicit permission vocabul
 - Authenticated `GET /me/workspaces` is the pre-tenant exception: it omits `x-org-id` and returns only the caller's active workspace summaries through the user discovery index.
 - Preserve cabinet supervision checks and dossier assignment/access rules.
 - Use `TransactWriteItems` for atomic multi-item updates such as Accounting entry plus lines.
+- Retry-prone financial commands must carry a stable caller-supplied idempotency identity when duplicate execution would create duplicate financial effects. The uniqueness evidence and financial write must commit atomically, and reuse with a materially different intent must fail.
 - Every service method validates its input DTO using Zod.
 - Frontend API clients treat responses as `unknown` and validate important payloads with `@liass-ohada/shared` schemas.
 - Frontend business-domain directories mirror backend domain names. Platform-only surfaces such as dashboard and shell context belong under `core/`.

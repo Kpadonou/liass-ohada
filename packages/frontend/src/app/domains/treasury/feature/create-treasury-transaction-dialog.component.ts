@@ -6,7 +6,10 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { type AccountDto } from '@liass-ohada/shared/accounting';
-import { type TreasuryAccountDto } from '@liass-ohada/shared/treasury';
+import {
+  type CreateTreasuryTransactionRequest,
+  type TreasuryAccountDto
+} from '@liass-ohada/shared/treasury';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
@@ -41,6 +44,7 @@ export class CreateTreasuryTransactionDialogComponent {
   );
   private readonly formBuilder = inject(FormBuilder);
   private readonly treasuryApi = inject(TreasuryApi);
+  private pendingPosting?: { fingerprint: string; clientRequestId: string };
 
   protected readonly accounts = this.data.accounts;
   protected readonly selectedTreasuryAccountId = signal(this.data.selectedAccountId);
@@ -101,21 +105,32 @@ export class CreateTreasuryTransactionDialogComponent {
     }
 
     const raw = this.form.getRawValue();
+    const postingIntent: Omit<CreateTreasuryTransactionRequest, 'clientRequestId'> = {
+      treasuryAccountId: raw.treasuryAccountId,
+      year: Number(raw.year),
+      entryDate: raw.entryDate,
+      journalCode: raw.journalCode,
+      direction: raw.direction,
+      amount: Number(raw.amount),
+      counterpartyAccountId: raw.counterpartyAccountId,
+      label: raw.label.trim(),
+      voucherNumber: raw.voucherNumber.trim() || undefined
+    };
+    const fingerprint = JSON.stringify(postingIntent);
+    const clientRequestId =
+      this.pendingPosting?.fingerprint === fingerprint
+        ? this.pendingPosting.clientRequestId
+        : crypto.randomUUID();
+    this.pendingPosting = { fingerprint, clientRequestId };
     this.submitting.set(true);
     this.errorKey.set(null);
 
     try {
       const entryId = await this.treasuryApi.postTransaction({
-        treasuryAccountId: raw.treasuryAccountId,
-        year: Number(raw.year),
-        entryDate: raw.entryDate,
-        journalCode: raw.journalCode,
-        direction: raw.direction,
-        amount: Number(raw.amount),
-        counterpartyAccountId: raw.counterpartyAccountId,
-        label: raw.label.trim(),
-        voucherNumber: raw.voucherNumber.trim() || undefined
+        ...postingIntent,
+        clientRequestId
       });
+      this.pendingPosting = undefined;
       this.dialogRef.close(entryId);
     } catch {
       this.errorKey.set('TREASURY.ERRORS.POST_TRANSACTION_FAILED');

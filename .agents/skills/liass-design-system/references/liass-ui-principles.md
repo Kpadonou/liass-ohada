@@ -46,4 +46,4 @@ The app should feel calm under pressure. Accounting users work with regulated, h
 - AI panels must be contextual and clearly identified.
 - AI should explain, suggest, summarize, or draft; it must not silently perform irreversible accounting/legal actions.
 - AI suggestions should use restrained visual treatment and fit the surrounding ERP surface.
-- The app remains an accounting ERP first, not a chatbot shell.
+- The app remains an ERP platform first, not a chatbot shell.

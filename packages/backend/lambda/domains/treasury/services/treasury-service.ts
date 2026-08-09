@@ -1,8 +1,13 @@
 import { config } from "@/lambda/shared/config";
+import { AccountingAccountReferenceService } from "@/lambda/domains/accounting/accounts/accounting-account-reference-service";
+import { AccountingTreasuryPostingService } from "@/lambda/domains/accounting/posting/accounting-treasury-posting-service";
+import {
+  AccountingReconciliationLine,
+  AccountingReconciliationService,
+} from "@/lambda/domains/accounting/reconciliation/accounting-reconciliation-service";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
-import { AccountSchema } from "@liass-ohada/shared/accounting";
 import {
   BankStatementLineDto,
   BankStatementLineDtoSchema,
@@ -32,8 +37,6 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { createHash, randomUUID } from "crypto";
-import { BalanceService } from "./balance-service";
-import { LedgerService } from "./ledger-service";
 
 export class TreasuryService {
   static async createAccount(
@@ -42,7 +45,10 @@ export class TreasuryService {
     input: CreateTreasuryAccountRequest,
   ): Promise<TreasuryAccountDto> {
     const accountId = input.accountId.padEnd(8, "0");
-    await TreasuryService.assertTreasuryLedgerAccount(orgId, accountId);
+    await AccountingAccountReferenceService.assertTreasuryAccountReference({
+      orgId,
+      accountId,
+    });
 
     const now = new Date().toISOString();
     const treasuryAccountId = accountId;
@@ -151,33 +157,18 @@ export class TreasuryService {
     year: string,
   ): Promise<TreasuryMovementDto[]> {
     const account = await TreasuryService.getAccount(orgId, treasuryAccountId);
-    const balance = await BalanceService.getAccountBalance(
-      orgId,
-      year,
-      account.accountId,
-    );
-    let runningBalance = balance.openingDebit - balance.openingCredit;
-
-    const result = await dynamoClient.send(
-      new QueryCommand({
-        TableName: config.TABLE_NAME,
-        IndexName: config.GSI1,
-        KeyConditionExpression: "GSI1PK = :pk AND begins_with(GSI1SK, :sk)",
-        ExpressionAttributeValues: marshall({
-          ":pk": KeyFactory.gsi1PK(orgId),
-          ":sk": KeyFactory.gsi1SKPrefix(account.accountId, year),
-        }),
-        ScanIndexForward: true,
-      }),
-    );
+    const candidates =
+      await AccountingReconciliationService.listReconciliationCandidates({
+        orgId,
+        year,
+        accountId: account.accountId,
+      });
+    let runningBalance = candidates.openingBalance;
 
     const movements: TreasuryMovementDto[] = [];
-    for (const item of result.Items || []) {
-      const line = unmarshall(item);
-      if (line.journalCode === "RAN") continue;
-
-      const debit = Number(line.debit) || 0;
-      const credit = Number(line.credit) || 0;
+    for (const line of candidates.lines) {
+      const debit = line.debit;
+      const credit = line.credit;
       runningBalance += debit - credit;
 
       movements.push(
@@ -185,11 +176,11 @@ export class TreasuryService {
           treasuryAccountId,
           accountId: account.accountId,
           entryId: line.entryId,
-          lineId: line.lineId,
-          date: line.entryDate,
+          lineId: line.entryLineId,
+          date: line.date,
           journalCode: line.journalCode,
-          label: line.label || line.description || "-",
-          reference: line.voucherNumber || line.entryId || "N/A",
+          label: line.label,
+          reference: line.reference,
           debit,
           credit,
           amount: debit > 0 ? debit : credit,
@@ -197,8 +188,7 @@ export class TreasuryService {
           runningBalance,
           statementLineId: line.statementLineId,
           reconciliationMatchId: line.reconciliationMatchId,
-          reconciliationStatus:
-            line.reconciliationStatus === "MATCHED" ? "MATCHED" : "UNMATCHED",
+          reconciliationStatus: line.reconciliationStatus,
         }),
       );
     }
@@ -216,63 +206,26 @@ export class TreasuryService {
       input.treasuryAccountId,
     );
 
-    if (!["BANK", "MISC"].includes(input.journalCode.toUpperCase())) {
-      throw new AppError(400, "ERROR_TREASURY_JOURNAL_INVALID");
-    }
-
-    const treasuryLine =
-      input.direction === "INFLOW"
-        ? {
-            accountId: account.accountId,
-            debit: input.amount,
-            credit: 0,
-            label: input.label,
-          }
-        : {
-            accountId: account.accountId,
-            debit: 0,
-            credit: input.amount,
-            label: input.label,
-          };
-    const counterpartyLine =
-      input.direction === "INFLOW"
-        ? {
-            accountId: input.counterpartyAccountId,
-            debit: 0,
-            credit: input.amount,
-            label: input.label,
-            thirdPartyId: input.thirdPartyId,
-            projectId: input.projectId,
-            budgetLineId: input.budgetLineId,
-            donorId: input.donorId,
-          }
-        : {
-            accountId: input.counterpartyAccountId,
-            debit: input.amount,
-            credit: 0,
-            label: input.label,
-            thirdPartyId: input.thirdPartyId,
-            projectId: input.projectId,
-            budgetLineId: input.budgetLineId,
-            donorId: input.donorId,
-          };
-
-    const result = await LedgerService.postEntry({
+    return AccountingTreasuryPostingService.postTreasuryTransaction({
       orgId,
       userId,
-      data: {
-        year: input.year,
-        entryDate: input.entryDate,
-        journalCode: input.journalCode.toUpperCase(),
-        voucherNumber: input.voucherNumber,
-        entryType: "STANDARD",
-        label: input.label,
-        currency: account.currency,
-        lines: [treasuryLine, counterpartyLine],
-      },
+      clientRequestId: input.clientRequestId,
+      treasuryAccountId: input.treasuryAccountId,
+      treasuryAccountingAccountId: account.accountId,
+      counterpartyAccountId: input.counterpartyAccountId,
+      year: input.year,
+      transactionDate: input.entryDate,
+      journalCode: input.journalCode,
+      direction: input.direction,
+      amount: input.amount,
+      description: input.label,
+      reference: input.voucherNumber,
+      currency: account.currency,
+      thirdPartyId: input.thirdPartyId,
+      projectId: input.projectId,
+      budgetLineId: input.budgetLineId,
+      donorId: input.donorId,
     });
-
-    return { entryId: result.entryId };
   }
 
   static async listStatementLines(
@@ -473,11 +426,13 @@ export class TreasuryService {
         input.statementDate,
         input.statementLineId,
       );
-    const entryLine = await TreasuryService.getEntryLine(
-      orgId,
-      input.year,
-      movementLineId,
-    );
+    const entryLine =
+      await AccountingReconciliationService.getReconciliationLine({
+        orgId,
+        year: input.year,
+        entryLineId: movementLineId,
+        expectedEntryId: input.entryId,
+      });
 
     if (
       statementLine.treasuryAccountId !== input.treasuryAccountId ||
@@ -490,7 +445,6 @@ export class TreasuryService {
       throw new AppError(400, "ERROR_BANK_STATEMENT_LINE_ALREADY_RECONCILED");
     }
 
-    TreasuryService.assertEligibleMovementLine(entryLine, orgId, input.year);
     if (entryLine.accountId !== account.accountId) {
       throw new AppError(400, "ERROR_RECONCILIATION_ACCOUNT_MISMATCH");
     }
@@ -507,7 +461,7 @@ export class TreasuryService {
       statementLineId: input.statementLineId,
       statementDate: input.statementDate,
       movementLineId,
-      entryId: input.entryId ?? entryLine.entryId,
+      entryId: entryLine.entryId,
       lineId: movementLineId,
       amount: statementLine.amount,
       direction: statementLine.direction,
@@ -564,32 +518,21 @@ export class TreasuryService {
                 ExpressionAttributeValues: marshall({
                   ":matched": "MATCHED",
                   ":unmatched": "UNMATCHED",
-                  ":entryId": input.entryId ?? entryLine.entryId,
+                  ":entryId": entryLine.entryId,
                   ":lineId": movementLineId,
                   ":matchId": matchId,
                 }),
               },
             },
-            {
-              Update: {
-                TableName: config.TABLE_NAME,
-                Key: marshall({
-                  PK: KeyFactory.partitionKey(orgId, input.year),
-                  SK: KeyFactory.entryLineSK(movementLineId),
-                }),
-                UpdateExpression:
-                  "SET reconciliationStatus = :matched, statementLineId = :statementLineId, statementDate = :statementDate, reconciledAt = :now, reconciliationMatchId = :matchId",
-                ConditionExpression:
-                  "attribute_exists(PK) AND attribute_exists(SK) AND attribute_not_exists(reconciliationMatchId)",
-                ExpressionAttributeValues: marshall({
-                  ":matched": "MATCHED",
-                  ":statementLineId": input.statementLineId,
-                  ":statementDate": input.statementDate,
-                  ":now": now,
-                  ":matchId": matchId,
-                }),
-              },
-            },
+            AccountingReconciliationService.buildApplyReconciliationOperation({
+              orgId,
+              year: input.year,
+              entryLineId: movementLineId,
+              statementLineId: input.statementLineId,
+              statementDate: input.statementDate,
+              reconciliationMatchId: matchId,
+              reconciledAt: now,
+            }).transactWriteItem,
           ],
         }),
       );
@@ -697,26 +640,21 @@ export class TreasuryService {
                 }),
               },
             },
-            {
-              Update: {
-                TableName: config.TABLE_NAME,
-                Key: marshall({
-                  PK: KeyFactory.partitionKey(orgId, year),
-                  SK: KeyFactory.entryLineSK(movementLineId),
-                }),
-                UpdateExpression:
-                  "SET reconciliationStatus = :unmatched REMOVE statementLineId, statementDate, reconciledAt, reconciliationMatchId",
-                ExpressionAttributeValues: marshall({
-                  ":unmatched": "UNMATCHED",
-                }),
-              },
-            },
+            AccountingReconciliationService.buildCancelReconciliationOperation({
+              orgId,
+              year,
+              entryLineId: movementLineId,
+              reconciliationMatchId: matchId,
+            }).transactWriteItem,
           ],
         }),
       );
     } catch (error: any) {
-      if (error?.name === "ConditionalCheckFailedException") {
-        throw new AppError(400, "ERROR_RECONCILIATION_MATCH_ALREADY_CANCELLED");
+      if (
+        error?.name === "ConditionalCheckFailedException" ||
+        error?.name === "TransactionCanceledException"
+      ) {
+        throw new AppError(409, "ERROR_RECONCILIATION_STATE_CONFLICT");
       }
       throw error;
     }
@@ -865,40 +803,6 @@ export class TreasuryService {
     return statementLines;
   }
 
-  private static async assertTreasuryLedgerAccount(
-    orgId: string,
-    accountId: string,
-  ) {
-    if (!accountId.startsWith("5")) {
-      throw new AppError(400, "ERROR_ACCOUNT_NOT_TREASURY_CLASS");
-    }
-
-    const result = await dynamoClient.send(
-      new GetItemCommand({
-        TableName: config.TABLE_NAME,
-        Key: marshall({
-          PK: KeyFactory.orgKey(orgId),
-          SK: KeyFactory.accountSK(accountId),
-        }),
-      }),
-    );
-
-    if (!result.Item) {
-      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
-    }
-
-    const account = AccountSchema.parse(unmarshall(result.Item));
-    if (account.orgId !== orgId) {
-      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
-    }
-    if (!account.isActive) {
-      throw new AppError(400, "ERROR_ACCOUNT_NOT_ACTIVE");
-    }
-    if (account.classCode !== 5) {
-      throw new AppError(400, "ERROR_ACCOUNT_NOT_TREASURY_CLASS");
-    }
-  }
-
   private static async assertActiveTreasuryAccount(
     orgId: string,
     treasuryAccountId: string,
@@ -918,65 +822,17 @@ export class TreasuryService {
       orgId,
       treasuryAccountId,
     );
-    const result = await dynamoClient.send(
-      new GetItemCommand({
-        TableName: config.TABLE_NAME,
-        Key: marshall({
-          PK: KeyFactory.orgKey(orgId),
-          SK: KeyFactory.accountSK(account.accountId),
-        }),
-      }),
-    );
-
-    if (!result.Item) {
-      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
-    }
-
-    const ledgerAccount = AccountSchema.parse(unmarshall(result.Item));
-    if (ledgerAccount.orgId !== orgId) {
-      throw new AppError(404, "ERROR_ACCOUNT_NOT_FOUND");
-    }
-    if (!ledgerAccount.isActive) {
-      throw new AppError(400, "ERROR_ACCOUNT_NOT_ACTIVE");
-    }
-    if (!ledgerAccount.allowReconciliation) {
-      throw new AppError(
-        400,
-        "ERROR_TREASURY_ACCOUNT_RECONCILIATION_DISABLED",
-      );
-    }
+    await AccountingReconciliationService.assertAccountAllowsReconciliation({
+      orgId,
+      accountId: account.accountId,
+    });
 
     return account;
   }
 
-  private static assertEligibleMovementLine(
-    entryLine: Record<string, any>,
-    orgId: string,
-    year: string,
-  ) {
-    if (
-      entryLine.orgId !== orgId ||
-      (entryLine.year && String(entryLine.year) !== year) ||
-      (entryLine.fiscalYear && String(entryLine.fiscalYear) !== year) ||
-      (entryLine.PK && entryLine.PK !== KeyFactory.partitionKey(orgId, year))
-    ) {
-      throw new AppError(404, "ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
-    }
-    if (entryLine.status === "DRAFT" || entryLine.entryStatus === "DRAFT") {
-      throw new AppError(404, "ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
-    }
-    if (
-      entryLine.reconciliationStatus === "MATCHED" ||
-      entryLine.reconciliationMatchId ||
-      entryLine.statementLineId
-    ) {
-      throw new AppError(400, "ERROR_ACCOUNTING_MOVEMENT_ALREADY_RECONCILED");
-    }
-  }
-
   private static assertDirectionAwareAmountMatch(
     statementLine: BankStatementLineDto,
-    entryLine: Record<string, any>,
+    entryLine: AccountingReconciliationLine,
   ) {
     const debit = Number(entryLine.debit || 0);
     const credit = Number(entryLine.credit || 0);
@@ -1150,25 +1006,4 @@ export class TreasuryService {
     return BankStatementLineDtoSchema.parse(unmarshall(result.Item));
   }
 
-  private static async getEntryLine(
-    orgId: string,
-    year: string,
-    lineId: string,
-  ) {
-    const result = await dynamoClient.send(
-      new GetItemCommand({
-        TableName: config.TABLE_NAME,
-        Key: marshall({
-          PK: KeyFactory.partitionKey(orgId, year),
-          SK: KeyFactory.entryLineSK(lineId),
-        }),
-      }),
-    );
-
-    if (!result.Item) {
-      throw new AppError(404, "ERROR_ACCOUNTING_MOVEMENT_NOT_FOUND");
-    }
-
-    return unmarshall(result.Item);
-  }
 }

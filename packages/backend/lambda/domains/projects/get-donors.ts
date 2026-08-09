@@ -1,5 +1,5 @@
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
-import { ProjectService } from "@/lambda/shared/services/project-service";
+import { ProjectService } from "@/lambda/domains/projects/services/project-service";
 import { z } from "zod";
 
 const ListDonorsSchema = z.object({});
@@ -19,6 +19,6 @@ export const handler = createHandler(
   {
     action: "GET /donors",
     permission: "PROJECTS_READ",
-    productCode: "PROJECTS",
+    productCode: "ACCOUNTING",
   },
 );

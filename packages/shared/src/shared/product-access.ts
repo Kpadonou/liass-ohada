@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const PRODUCT_CODES = ["ACCOUNTING", "PROJECTS", "TREASURY"] as const;
+export const PRODUCT_CODES = ["ACCOUNTING"] as const;
 export const PRODUCT_ACCESS_STATUSES = ["ACTIVE", "INACTIVE"] as const;
 
 export const ProductCodeSchema = z.enum(PRODUCT_CODES);

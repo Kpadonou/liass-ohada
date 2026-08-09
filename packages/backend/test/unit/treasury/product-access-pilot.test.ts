@@ -4,9 +4,9 @@ import { AppError } from "@/lambda/shared/app-error";
 import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
-import { TreasuryService } from "@/lambda/shared/services/treasury-service";
+import { TreasuryService } from "@/lambda/domains/treasury/services/treasury-service";
 
-jest.mock("@/lambda/shared/services/treasury-service", () => ({
+jest.mock("@/lambda/domains/treasury/services/treasury-service", () => ({
   TreasuryService: { getSummary: jest.fn(), listAccounts: jest.fn() },
 }));
 
@@ -58,12 +58,12 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
     process.env.ACCOUNTING_PERMISSION = originalPermission;
   });
 
-  test("declares TREASURY and executes only after ACTIVE entitlement", async () => {
+  test("declares ACCOUNTING and executes only after ACTIVE entitlement", async () => {
     const requireAccess = jest
       .spyOn(ProductAccessService, "requireActiveProductAccess")
       .mockResolvedValue({
         orgId: "org-123",
-        productCode: "TREASURY",
+        productCode: "ACCOUNTING",
         status: "ACTIVE",
         createdAt: "2026-08-07T10:00:00.000Z",
         updatedAt: "2026-08-07T10:00:00.000Z",
@@ -79,7 +79,7 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
     expect(requireAccess).toHaveBeenCalledWith({
       action: "GET /treasury/summary",
       orgId: "org-123",
-      productCode: "TREASURY",
+      productCode: "ACCOUNTING",
     });
     expect(requirePermission).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "org-123" }),
@@ -132,7 +132,7 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
       .spyOn(ProductAccessService, "requireActiveProductAccess")
       .mockResolvedValue({
         orgId: "org-123",
-        productCode: "TREASURY",
+        productCode: "ACCOUNTING",
         status: "ACTIVE",
         createdAt: "2026-08-07T10:00:00.000Z",
         updatedAt: "2026-08-07T10:00:00.000Z",

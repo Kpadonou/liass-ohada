@@ -106,14 +106,14 @@ const topLevelItems: readonly ShellNavItem[] = [
     icon: 'folder_managed',
     labelKey: 'SHELL.NAV.PROJECTS',
     page: 'projects',
-    productCode: 'PROJECTS',
+    productCode: 'ACCOUNTING',
     route: '/projects'
   },
   {
     icon: 'payments',
     labelKey: 'SHELL.NAV.TREASURY',
     page: 'treasury',
-    productCode: 'TREASURY',
+    productCode: 'ACCOUNTING',
     route: '/treasury'
   },
   {

@@ -3,12 +3,12 @@ import path from "node:path";
 
 interface RouteExpectation {
   handler: string;
-  productCode?: "PROJECTS" | "TREASURY";
+  productCode?: "ACCOUNTING";
   route: string;
 }
 
 const projectsReadRoutes: RouteExpectation[] = [
-  { handler: "get-donors", productCode: "PROJECTS", route: "GET /donors" },
+  { handler: "get-donors", productCode: "ACCOUNTING", route: "GET /donors" },
   { handler: "get-projects", route: "GET /projects" },
   { handler: "get-projects", route: "GET /projects/{projectId}" },
   {
@@ -49,7 +49,7 @@ const treasuryReadRoutes: RouteExpectation[] = [
   { handler: "list-reconciliations", route: "GET /treasury/reconciliations" },
   {
     handler: "get-summary",
-    productCode: "TREASURY",
+    productCode: "ACCOUNTING",
     route: "GET /treasury/summary",
   },
 ];

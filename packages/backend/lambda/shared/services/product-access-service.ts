@@ -8,6 +8,7 @@ import type { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { z } from "zod";
 import { AppError } from "../app-error";
 import { ProductAccessRepository } from "../repositories/product-access-repository";
+import type { PersistedProductCode } from "../repositories/product-access-repository";
 
 const OrganizationIdSchema = z.string().min(1);
 
@@ -21,6 +22,7 @@ export interface ProductAccessCoverageReport {
   coverage: ProductAccessCoverage;
   inactive: ProductCode[];
   missing: ProductCode[];
+  legacyPresent: Exclude<PersistedProductCode, ProductCode>[];
   orgId: string;
 }
 
@@ -60,9 +62,20 @@ export class ProductAccessService {
   }
 
   static async listProductAccess(orgId: string): Promise<ProductAccess[]> {
-    return ProductAccessRepository.listProductAccess(
+    const persisted = await ProductAccessRepository.listProductAccess(
       OrganizationIdSchema.parse(orgId),
     );
+    return persisted.flatMap((access) => {
+      const productCode = ProductCodeSchema.safeParse(access.productCode);
+      return productCode.success
+        ? [
+            {
+              ...access,
+              productCode: productCode.data,
+            },
+          ]
+        : [];
+    });
   }
 
   static async requireActiveProductAccess(input: {
@@ -101,6 +114,10 @@ export class ProductAccessService {
         (access) => [access.productCode, access],
       ),
     );
+    const legacyPresent = Array.from(accessByProduct.keys()).filter(
+      (productCode): productCode is Exclude<PersistedProductCode, ProductCode> =>
+        !ProductCodeSchema.safeParse(productCode).success,
+    );
     const active: ProductCode[] = [];
     const inactive: ProductCode[] = [];
     const missing: ProductCode[] = [];
@@ -125,6 +142,7 @@ export class ProductAccessService {
             ? "PARTIAL"
             : "COMPLETE",
       inactive,
+      legacyPresent,
       missing,
       orgId: validatedOrgId,
     };

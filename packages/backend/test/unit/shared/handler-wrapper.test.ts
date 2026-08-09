@@ -229,7 +229,7 @@ describe("handler-wrapper auth context", () => {
       .spyOn(ProductAccessService, "requireActiveProductAccess")
       .mockResolvedValue({
         orgId: "test-org",
-        productCode: "TREASURY",
+        productCode: "ACCOUNTING",
         status: "ACTIVE",
         createdAt: "2026-08-07T10:00:00.000Z",
         updatedAt: "2026-08-07T10:00:00.000Z",
@@ -239,7 +239,7 @@ describe("handler-wrapper auth context", () => {
     const handler = createHandler(z.object({}), logic, {
       action: "GET /treasury/summary",
       permission: "TREASURY_READ",
-      productCode: "TREASURY",
+      productCode: "ACCOUNTING",
     });
 
     const response = await handler(createEvent() as any);
@@ -249,7 +249,7 @@ describe("handler-wrapper auth context", () => {
     expect(product).toHaveBeenCalledWith({
       action: "GET /treasury/summary",
       orgId: "test-org",
-      productCode: "TREASURY",
+      productCode: "ACCOUNTING",
     });
     expect(permission).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "test-org" }),
@@ -275,7 +275,7 @@ describe("handler-wrapper auth context", () => {
     const handler = createHandler(z.object({}), jest.fn(), {
       action: "GET /treasury/summary",
       permission: "TREASURY_READ",
-      productCode: "TREASURY",
+      productCode: "ACCOUNTING",
     });
 
     const response = await handler(createEvent() as any);
@@ -292,7 +292,7 @@ describe("handler-wrapper auth context", () => {
     const handler = createHandler(z.object({}), jest.fn(), {
       action: "GET /treasury/summary",
       permission: "TREASURY_READ",
-      productCode: "TREASURY",
+      productCode: "ACCOUNTING",
     });
 
     const response = await handler(createEvent({ claims: {} }) as any);
@@ -318,7 +318,7 @@ describe("handler-wrapper auth context", () => {
     const handler = createHandler(z.object({}), logic, {
       action: "GET /treasury/summary",
       permission: "TREASURY_READ",
-      productCode: "TREASURY",
+      productCode: "ACCOUNTING",
     });
 
     const response = await handler(createEvent() as any);
@@ -343,7 +343,7 @@ describe("handler-wrapper auth context", () => {
       .spyOn(ProductAccessService, "requireActiveProductAccess")
       .mockResolvedValue({
         orgId: "test-org",
-        productCode: "TREASURY",
+        productCode: "ACCOUNTING",
         status: "ACTIVE",
         createdAt: "2026-08-07T10:00:00.000Z",
         updatedAt: "2026-08-07T10:00:00.000Z",
@@ -352,7 +352,7 @@ describe("handler-wrapper auth context", () => {
     const handler = createHandler(z.object({}), logic, {
       action: "GET /treasury/summary",
       permission: "TREASURY_WRITE",
-      productCode: "TREASURY",
+      productCode: "ACCOUNTING",
     });
 
     const response = await handler(createEvent() as any);

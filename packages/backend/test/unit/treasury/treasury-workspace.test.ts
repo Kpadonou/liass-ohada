@@ -7,9 +7,11 @@ import { handler as listReconciliationsHandler } from "@/lambda/domains/treasury
 import { handler as listStatementLinesHandler } from "@/lambda/domains/treasury/list-statement-lines";
 import { handler as postTransactionHandler } from "@/lambda/domains/treasury/post-transaction";
 import { handler as reconcileHandler } from "@/lambda/domains/treasury/reconcile";
-import { LedgerService } from "@/lambda/shared/services/ledger-service";
+import { AccountingAccountReferenceService } from "@/lambda/domains/accounting/accounts/accounting-account-reference-service";
+import { AccountingTreasuryPostingService } from "@/lambda/domains/accounting/posting/accounting-treasury-posting-service";
+import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
-import { TreasuryService } from "@/lambda/shared/services/treasury-service";
+import { TreasuryService } from "@/lambda/domains/treasury/services/treasury-service";
 import {
   DynamoDBClient,
   GetItemCommand,
@@ -22,11 +24,23 @@ import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
 
-jest.mock("@/lambda/shared/services/ledger-service", () => ({
-  LedgerService: {
-    postEntry: jest.fn(),
-  },
-}));
+jest.mock(
+  "@/lambda/domains/accounting/accounts/accounting-account-reference-service",
+  () => ({
+    AccountingAccountReferenceService: {
+      assertTreasuryAccountReference: jest.fn(),
+    },
+  }),
+);
+
+jest.mock(
+  "@/lambda/domains/accounting/posting/accounting-treasury-posting-service",
+  () => ({
+    AccountingTreasuryPostingService: {
+      postTreasuryTransaction: jest.fn(),
+    },
+  }),
+);
 
 jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
   TenantAccessService: {
@@ -77,25 +91,6 @@ const ledgerAccountItem = {
   entityType: { S: "ACCOUNT" },
   createdAt: { S: "2026-01-01T00:00:00Z" },
   updatedAt: { S: "2026-01-01T00:00:00Z" },
-};
-
-const nonTreasuryLedgerAccountItem = {
-  ...ledgerAccountItem,
-  SK: { S: "ACC#41100000" },
-  accountId: { S: "41100000" },
-  accountName: { S: "Customer" },
-  classCode: { N: "4" },
-};
-
-const inactiveLedgerAccountItem = {
-  ...ledgerAccountItem,
-  isActive: { BOOL: false },
-};
-
-const otherOrgLedgerAccountItem = {
-  ...ledgerAccountItem,
-  PK: { S: "ORG#other-org" },
-  orgId: { S: "other-org" },
 };
 
 const treasuryAccountItem = {
@@ -241,6 +236,14 @@ describe("treasury workspace handlers", () => {
     jest.clearAllMocks();
     delete process.env.ACCOUNTING_PERMISSION;
     jest
+      .mocked(
+        AccountingAccountReferenceService.assertTreasuryAccountReference,
+      )
+      .mockResolvedValue(undefined);
+    jest
+      .mocked(AccountingTreasuryPostingService.postTreasuryTransaction)
+      .mockResolvedValue({ entryId: "entry-1" });
+    jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
   });
@@ -250,7 +253,6 @@ describe("treasury workspace handlers", () => {
   });
 
   test("POST /treasury/accounts validates class 5 account and returns a public DTO", async () => {
-    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: ledgerAccountItem });
     dynamoMock.on(PutItemCommand).resolves({});
 
     const response = await createAccountHandler(
@@ -269,6 +271,9 @@ describe("treasury workspace handlers", () => {
       "attribute_not_exists(PK) AND attribute_not_exists(SK)",
     );
     expect(putInput.Item?.SK).toEqual({ S: "TRS#ACC#52100000" });
+    expect(
+      AccountingAccountReferenceService.assertTreasuryAccountReference,
+    ).toHaveBeenCalledWith({ orgId: "test-org", accountId: "52100000" });
     expect(body.data).toMatchObject({
       treasuryAccountId: "52100000",
       accountId: "52100000",
@@ -281,9 +286,13 @@ describe("treasury workspace handlers", () => {
   });
 
   test("POST /treasury/accounts rejects non-class-5 linked accounts", async () => {
-    dynamoMock
-      .on(GetItemCommand)
-      .resolvesOnce({ Item: nonTreasuryLedgerAccountItem });
+    jest
+      .mocked(
+        AccountingAccountReferenceService.assertTreasuryAccountReference,
+      )
+      .mockRejectedValueOnce(
+        new AppError(400, "ERROR_ACCOUNT_NOT_TREASURY_CLASS"),
+      );
 
     const response = await createAccountHandler(
       createEvent("POST /treasury/accounts", {
@@ -305,9 +314,11 @@ describe("treasury workspace handlers", () => {
   });
 
   test("POST /treasury/accounts rejects inactive linked accounts", async () => {
-    dynamoMock.on(GetItemCommand).resolvesOnce({
-      Item: inactiveLedgerAccountItem,
-    });
+    jest
+      .mocked(
+        AccountingAccountReferenceService.assertTreasuryAccountReference,
+      )
+      .mockRejectedValueOnce(new AppError(400, "ERROR_ACCOUNT_NOT_ACTIVE"));
 
     const response = await createAccountHandler(
       createEvent("POST /treasury/accounts", {
@@ -328,9 +339,11 @@ describe("treasury workspace handlers", () => {
   });
 
   test("POST /treasury/accounts rejects linked accounts from another org", async () => {
-    dynamoMock.on(GetItemCommand).resolvesOnce({
-      Item: otherOrgLedgerAccountItem,
-    });
+    jest
+      .mocked(
+        AccountingAccountReferenceService.assertTreasuryAccountReference,
+      )
+      .mockRejectedValueOnce(new AppError(404, "ERROR_ACCOUNT_NOT_FOUND"));
 
     const response = await createAccountHandler(
       createEvent("POST /treasury/accounts", {
@@ -351,7 +364,11 @@ describe("treasury workspace handlers", () => {
   });
 
   test("POST /treasury/accounts rejects missing linked accounts", async () => {
-    dynamoMock.on(GetItemCommand).resolvesOnce({});
+    jest
+      .mocked(
+        AccountingAccountReferenceService.assertTreasuryAccountReference,
+      )
+      .mockRejectedValueOnce(new AppError(404, "ERROR_ACCOUNT_NOT_FOUND"));
 
     const response = await createAccountHandler(
       createEvent("POST /treasury/accounts", {
@@ -372,7 +389,6 @@ describe("treasury workspace handlers", () => {
   });
 
   test("POST /treasury/accounts prevents duplicates for the same linked account", async () => {
-    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: ledgerAccountItem });
     dynamoMock.on(PutItemCommand).rejects({
       name: "ConditionalCheckFailedException",
     });
@@ -477,52 +493,57 @@ describe("treasury workspace handlers", () => {
     expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 
-  test("POST /treasury/transactions delegates a balanced class 5 entry to LedgerService", async () => {
-    dynamoMock.on(GetItemCommand).resolvesOnce({ Item: treasuryAccountItem });
-    jest
-      .mocked(LedgerService.postEntry)
-      .mockResolvedValue({ entryId: "entry-1" });
+  test.each(["INFLOW", "OUTFLOW"] as const)(
+    "POST /treasury/transactions sends $direction business intent to Accounting Core",
+    async (direction) => {
+      dynamoMock.on(GetItemCommand).resolvesOnce({ Item: treasuryAccountItem });
 
-    const response = await postTransactionHandler(
-      createEvent("POST /treasury/transactions", {
-        treasuryAccountId: "52100000",
-        year: 2026,
-        entryDate: "2026-01-15",
-        journalCode: "BANK",
-        direction: "INFLOW",
-        amount: 1000,
-        counterpartyAccountId: "41100000",
-        label: "Customer receipt",
-      }),
-    );
-    const body = parseResponse(response);
+      const response = await postTransactionHandler(
+        createEvent("POST /treasury/transactions", {
+          clientRequestId: "11111111-1111-4111-8111-111111111111",
+          treasuryAccountId: "52100000",
+          year: 2026,
+          entryDate: "2026-01-15",
+          journalCode: "bank",
+          direction,
+          amount: 1000,
+          counterpartyAccountId: "41100000",
+          label: "Treasury operation",
+          voucherNumber: "VCH-1",
+          thirdPartyId: "TP-1",
+          projectId: "PRJ-1",
+          budgetLineId: "BL-1",
+          donorId: "DNR-1",
+        }),
+      );
+      const body = parseResponse(response);
 
-    expect({ statusCode: response.statusCode, body }).toMatchObject({
-      statusCode: 200,
-    });
-    expect(body.data.entryId).toBe("entry-1");
-    expect(LedgerService.postEntry).toHaveBeenCalledWith(
-      expect.objectContaining({
+      expect(response.statusCode).toBe(200);
+      expect(body.data).toEqual({ entryId: "entry-1" });
+      expect(
+        AccountingTreasuryPostingService.postTreasuryTransaction,
+      ).toHaveBeenCalledWith({
         orgId: "test-org",
         userId: "user-123",
-        data: expect.objectContaining({
-          journalCode: "BANK",
-          lines: [
-            expect.objectContaining({
-              accountId: "52100000",
-              debit: 1000,
-              credit: 0,
-            }),
-            expect.objectContaining({
-              accountId: "41100000",
-              debit: 0,
-              credit: 1000,
-            }),
-          ],
-        }),
-      }),
-    );
-  });
+        clientRequestId: "11111111-1111-4111-8111-111111111111",
+        treasuryAccountId: "52100000",
+        treasuryAccountingAccountId: "52100000",
+        counterpartyAccountId: "41100000",
+        year: 2026,
+        transactionDate: "2026-01-15",
+        journalCode: "bank",
+        direction,
+        amount: 1000,
+        description: "Treasury operation",
+        reference: "VCH-1",
+        currency: "XOF",
+        thirdPartyId: "TP-1",
+        projectId: "PRJ-1",
+        budgetLineId: "BL-1",
+        donorId: "DNR-1",
+      });
+    },
+  );
 
   test("POST /treasury/accounts/{id}/statement-lines/import writes deterministic statement lines idempotently", async () => {
     dynamoMock.on(GetItemCommand).resolvesOnce({ Item: treasuryAccountItem });
@@ -928,6 +949,28 @@ describe("treasury workspace handlers", () => {
     });
   });
 
+  test("POST /treasury/reconciliations rejects an entryId that does not own the selected line", async () => {
+    setupReconciliationMocks();
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+        entryId: "entry-other",
+      }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(409);
+    expect(body.message.code).toBe(
+      "ERROR_RECONCILIATION_ENTRY_OWNERSHIP_MISMATCH",
+    );
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
   test("POST /treasury/reconciliations rejects INFLOW matched to a credit movement", async () => {
     setupReconciliationMocks(statementLineItem, creditEntryLineItem);
 
@@ -1094,6 +1137,34 @@ describe("treasury workspace handlers", () => {
     expect(body.message.code).toBe("ERROR_ACCOUNTING_MOVEMENT_ALREADY_RECONCILED");
   });
 
+  test("POST /treasury/reconciliations leaves no partial state when the atomic transaction fails", async () => {
+    setupReconciliationMocks();
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    dynamoMock
+      .on(TransactWriteItemsCommand)
+      .rejects(new Error("transaction failed"));
+
+    const response = await reconcileHandler(
+      createEvent("POST /treasury/reconciliations", {
+        treasuryAccountId: "52100000",
+        year: "2026",
+        statementLineId: "stmt-1",
+        statementDate: "2026-01-15",
+        movementLineId: "line-1",
+      }),
+    );
+
+    expect(response.statusCode).toBe(500);
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(1);
+    expect(
+      dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input
+        .TransactItems,
+    ).toHaveLength(3);
+    consoleError.mockRestore();
+  });
+
   test("POST /treasury/reconciliations/{matchId}/cancel restores unmatched statuses transactionally", async () => {
     dynamoMock.on(GetItemCommand).resolvesOnce({
       Item: {
@@ -1145,6 +1216,14 @@ describe("treasury workspace handlers", () => {
     expect(transaction.TransactItems?.[2].Update?.UpdateExpression).toContain(
       "reconciliationStatus = :unmatched",
     );
+    expect(transaction.TransactItems?.[2].Update?.ConditionExpression).toBe(
+      "attribute_exists(PK) AND attribute_exists(SK) AND reconciliationMatchId = :expectedMatchId",
+    );
+    expect(
+      transaction.TransactItems?.[2].Update?.ExpressionAttributeValues,
+    ).toMatchObject({
+      ":expectedMatchId": { S: "RCN-1" },
+    });
     expect(body.data.status).toBe("CANCELLED");
     expect(body.data.entityType).toBeUndefined();
   });
@@ -1187,6 +1266,104 @@ describe("treasury workspace handlers", () => {
     expect(response.statusCode).toBe(400);
     expect(body.message.code).toBe("ERROR_RECONCILIATION_MATCH_ALREADY_CANCELLED");
     expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  });
+
+  test("POST /treasury/reconciliations/{matchId}/cancel remains atomic when an owned mutation fails", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({
+      Item: {
+        PK: { S: "ORG#test-org#FY#2026" },
+        SK: { S: "TRS#52100000#FY#2026#RCN#RCN-1" },
+        orgId: { S: "test-org" },
+        treasuryAccountId: { S: "52100000" },
+        matchId: { S: "RCN-1" },
+        year: { S: "2026" },
+        statementLineId: { S: "stmt-1" },
+        statementDate: { S: "2026-01-15" },
+        movementLineId: { S: "line-1" },
+        entryId: { S: "entry-1" },
+        lineId: { S: "line-1" },
+        amount: { N: "1000" },
+        direction: { S: "INFLOW" },
+        status: { S: "ACTIVE" },
+        matchedAt: { S: "2026-01-15T00:00:00Z" },
+        matchedBy: { S: "user-123" },
+        entityType: { S: "RECONCILIATION_MATCH" },
+      },
+    });
+    dynamoMock
+      .on(TransactWriteItemsCommand)
+      .rejects(new Error("transaction failed"));
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    const response = await cancelReconciliationHandler(
+      createEvent(
+        "POST /treasury/reconciliations/{matchId}/cancel",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          matchId: "RCN-1",
+        },
+        { matchId: "RCN-1" },
+      ),
+    );
+
+    expect(response.statusCode).toBe(500);
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(1);
+    expect(
+      dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input
+        .TransactItems,
+    ).toHaveLength(3);
+    consoleError.mockRestore();
+  });
+
+  test("POST /treasury/reconciliations/{matchId}/cancel maps a match-ownership race to a stable conflict", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({
+      Item: {
+        PK: { S: "ORG#test-org#FY#2026" },
+        SK: { S: "TRS#52100000#FY#2026#RCN#RCN-1" },
+        orgId: { S: "test-org" },
+        treasuryAccountId: { S: "52100000" },
+        matchId: { S: "RCN-1" },
+        year: { S: "2026" },
+        statementLineId: { S: "stmt-1" },
+        statementDate: { S: "2026-01-15" },
+        movementLineId: { S: "line-1" },
+        entryId: { S: "entry-1" },
+        lineId: { S: "line-1" },
+        amount: { N: "1000" },
+        direction: { S: "INFLOW" },
+        status: { S: "ACTIVE" },
+        matchedAt: { S: "2026-01-15T00:00:00Z" },
+        matchedBy: { S: "user-123" },
+        entityType: { S: "RECONCILIATION_MATCH" },
+      },
+    });
+    dynamoMock.on(TransactWriteItemsCommand).rejects({
+      name: "TransactionCanceledException",
+    });
+
+    const response = await cancelReconciliationHandler(
+      createEvent(
+        "POST /treasury/reconciliations/{matchId}/cancel",
+        {
+          treasuryAccountId: "52100000",
+          year: "2026",
+          matchId: "RCN-1",
+        },
+        { matchId: "RCN-1" },
+      ),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(409);
+    expect(body.message.code).toBe("ERROR_RECONCILIATION_STATE_CONFLICT");
+    expect(dynamoMock.commandCalls(TransactWriteItemsCommand)).toHaveLength(1);
+    expect(
+      dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input
+        .TransactItems,
+    ).toHaveLength(3);
   });
 
   test("GET /treasury/reconciliations lists current org/year/account matches with pagination", async () => {

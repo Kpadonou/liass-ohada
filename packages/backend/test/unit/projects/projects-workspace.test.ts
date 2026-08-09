@@ -1,8 +1,11 @@
 import { handler as createBudgetLineHandler } from "@/lambda/domains/projects/create-budget-line";
 import { handler as createDonorHandler } from "@/lambda/domains/projects/create-donor";
+import { handler as getProjectReportHandler } from "@/lambda/domains/projects/get-project-report";
 import { handler as getProjectsHandler } from "@/lambda/domains/projects/get-projects";
 import { handler as listBudgetLinesHandler } from "@/lambda/domains/projects/list-budget-lines";
 import { handler as listDonorsHandler } from "@/lambda/domains/projects/get-donors";
+import { handler as listProjectsSummaryHandler } from "@/lambda/domains/projects/list-projects-summary";
+import { AccountingProjectReportingService } from "@/lambda/domains/accounting/reporting/accounting-project-reporting-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import {
   DynamoDBClient,
@@ -14,6 +17,16 @@ import {
 import { mockClient } from "aws-sdk-client-mock";
 
 const dynamoMock = mockClient(DynamoDBClient);
+
+jest.mock(
+  "@/lambda/domains/accounting/reporting/accounting-project-reporting-service",
+  () => ({
+    AccountingProjectReportingService: {
+      listProjectFacts: jest.fn(),
+      listOrganizationProjectFacts: jest.fn(),
+    },
+  }),
+);
 
 jest.mock("@/lambda/shared/services/tenant-access-service", () => ({
   TenantAccessService: {
@@ -78,6 +91,12 @@ describe("projects workspace handlers", () => {
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
+    jest
+      .mocked(AccountingProjectReportingService.listProjectFacts)
+      .mockResolvedValue([]);
+    jest
+      .mocked(AccountingProjectReportingService.listOrganizationProjectFacts)
+      .mockResolvedValue([]);
   });
 
   afterAll(() => {
@@ -88,10 +107,10 @@ describe("projects workspace handlers", () => {
     dynamoMock.on(GetItemCommand).resolves({
       Item: {
         PK: { S: "ORG#test-org" },
-        SK: { S: "PRODUCT_ACCESS#PROJECTS" },
+        SK: { S: "PRODUCT_ACCESS#ACCOUNTING" },
         entityType: { S: "PRODUCT_ACCESS" },
         orgId: { S: "test-org" },
-        productCode: { S: "PROJECTS" },
+        productCode: { S: "ACCOUNTING" },
         status: { S: "ACTIVE" },
         createdAt: { S: "2026-01-01T00:00:00Z" },
         updatedAt: { S: "2026-01-01T00:00:00Z" },
@@ -257,5 +276,202 @@ describe("projects workspace handlers", () => {
       code: "ACT-1",
     });
     expect(body.data.SK).toBeUndefined();
+  });
+
+  test("GET /projects/{projectId}/report preserves Project Accounting calculations over key-free Accounting facts", async () => {
+    dynamoMock.on(GetItemCommand).resolves({ Item: projectItem });
+    dynamoMock.on(QueryCommand).callsFake((input) => {
+      const prefix = input.ExpressionAttributeValues?.[":sk"]?.S;
+      if (prefix === "PRJ#PRJ-1#BDG#2026#L#") {
+        return {
+          Items: [
+            {
+              PK: { S: "ORG#test-org" },
+              SK: { S: "PRJ#PRJ-1#BDG#2026#L#ACT-1" },
+              entityType: { S: "BUDGET_LINE" },
+              projectId: { S: "PRJ-1" },
+              fiscalYear: { S: "2026" },
+              code: { S: "ACT-1" },
+              label: { S: "Activity" },
+              amount: { N: "800" },
+              category: { S: "ACTIVITY" },
+            },
+          ],
+        };
+      }
+      if (prefix === "PRJ#PRJ-1#FS#") {
+        return {
+          Items: [
+            {
+              PK: { S: "ORG#test-org" },
+              SK: { S: "PRJ#PRJ-1#FS#UNICEF" },
+              entityType: { S: "FUNDING_SOURCE" },
+              projectId: { S: "PRJ-1" },
+              donorId: { S: "UNICEF" },
+              label: { S: "UNICEF grant" },
+              amount: { N: "2000" },
+              currency: { S: "XOF" },
+              createdAt: { S: "2026-01-01T00:00:00Z" },
+              updatedAt: { S: "2026-01-01T00:00:00Z" },
+            },
+          ],
+        };
+      }
+      return { Items: [] };
+    });
+    jest.mocked(AccountingProjectReportingService.listProjectFacts).mockResolvedValue([
+      {
+        entryId: "entry-1",
+        entryLineId: "line-1",
+        date: "2026-03-01",
+        year: 2026,
+        accountId: "60100000",
+        debit: 400,
+        credit: 0,
+        projectId: "PRJ-1",
+        donorId: "UNICEF",
+        budgetLineId: "ACT-1",
+      },
+      {
+        entryId: "entry-2",
+        entryLineId: "line-2",
+        date: "2026-03-02",
+        year: 2026,
+        accountId: "71800000",
+        debit: 0,
+        credit: 1000,
+        projectId: "PRJ-1",
+        donorId: "UNICEF",
+      },
+      {
+        entryId: "entry-3",
+        entryLineId: "line-3",
+        date: "2026-03-03",
+        year: 2026,
+        accountId: "60200000",
+        debit: 100,
+        credit: 0,
+        projectId: "PRJ-1",
+        budgetLineId: "ACT-1",
+      },
+    ]);
+
+    const response = await getProjectReportHandler(
+      createEvent(
+        "GET /projects/{projectId}/report",
+        {},
+        { projectId: "PRJ-1" },
+        { year: "2026" },
+      ),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(200);
+    expect(AccountingProjectReportingService.listProjectFacts).toHaveBeenCalledWith({
+      orgId: "test-org",
+      projectId: "PRJ-1",
+      year: "2026",
+    });
+    expect(body.data.financialPosition).toEqual({
+      totalResources: 1000,
+      totalExpenses: 500,
+      netCash: 500,
+    });
+    expect(body.data.fundingFollowUp).toEqual([
+      {
+        donorId: "UNICEF",
+        label: "UNICEF grant",
+        promised: 2000,
+        received: 1000,
+        spent: 400,
+        availableCash: 600,
+        remainingToReceive: 1000,
+        disbursementRate: 50,
+      },
+    ]);
+    expect(body.data.budgetVsActual).toEqual([
+      {
+        code: "ACT-1",
+        label: "Activity",
+        allocated: 800,
+        donors: { UNICEF: 400 },
+        unallocated: 100,
+        spent: 500,
+        remaining: 300,
+        executionRate: 62.5,
+      },
+    ]);
+    expect(body.data.accountDetails.map(({ accountId }: { accountId: string }) => accountId)).toEqual([
+      "60100000",
+      "60200000",
+      "71800000",
+    ]);
+  });
+
+  test("GET /projects/summary preserves global and fiscal-year calculations", async () => {
+    dynamoMock.on(QueryCommand).resolves({
+      Items: [
+        {
+          ...projectItem,
+          totalBudget: { N: "1000" },
+          annualBudgets: { M: { "2026": { N: "800" } } },
+        },
+      ],
+    });
+    jest
+      .mocked(AccountingProjectReportingService.listOrganizationProjectFacts)
+      .mockResolvedValue([
+        {
+          entryId: "entry-1",
+          entryLineId: "line-1",
+          date: "2026-03-01",
+          year: 2026,
+          accountId: "60100000",
+          debit: 500,
+          credit: 0,
+          projectId: "PRJ-1",
+        },
+        {
+          entryId: "entry-2",
+          entryLineId: "line-2",
+          date: "2025-12-31",
+          year: 2025,
+          accountId: "71800000",
+          debit: 0,
+          credit: 1000,
+          projectId: "PRJ-1",
+        },
+      ]);
+
+    const response = await listProjectsSummaryHandler(
+      createEvent("GET /projects/summary", {}, undefined, { year: "2026" }),
+    );
+    const body = parseResponse(response);
+
+    expect(response.statusCode).toBe(200);
+    expect(
+      AccountingProjectReportingService.listOrganizationProjectFacts,
+    ).toHaveBeenCalledWith({ orgId: "test-org" });
+    expect(body.data).toEqual([
+      {
+        projectInfo: {
+          id: "PRJ-1",
+          code: "EDU-1",
+          name: "Education project",
+          donor: "UNICEF",
+          status: "ACTIVE",
+        },
+        financials: {
+          netPosition: 500,
+          globalExecutionRate: 50,
+          annualExecutionRate: 62.5,
+        },
+        alerts: {
+          isOverSpentGlobal: false,
+          isOverSpentAnnual: false,
+          isCashNegative: false,
+        },
+      },
+    ]);
   });
 });
