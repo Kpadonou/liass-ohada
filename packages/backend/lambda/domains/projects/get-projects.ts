@@ -25,5 +25,9 @@ export const handler = createHandler(
       },
     };
   },
-  { permission: "PROJECTS_READ" },
+  {
+    action: "GET /projects",
+    permission: "PROJECTS_READ",
+    productCode: "ACCOUNTING",
+  },
 );

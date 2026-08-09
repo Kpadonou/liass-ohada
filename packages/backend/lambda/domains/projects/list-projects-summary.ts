@@ -18,5 +18,9 @@ export const handler = createHandler(
       data: dashboard,
     };
   },
-  { permission: "PROJECTS_READ" },
+  {
+    action: "GET /projects/summary",
+    permission: "PROJECTS_READ",
+    productCode: "ACCOUNTING",
+  },
 );

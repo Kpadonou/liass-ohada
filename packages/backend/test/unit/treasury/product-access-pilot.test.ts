@@ -1,5 +1,8 @@
 import { handler } from "@/lambda/domains/treasury/get-summary";
 import { handler as listAccountsHandler } from "@/lambda/domains/treasury/list-accounts";
+import { handler as postTransactionHandler } from "@/lambda/domains/treasury/post-transaction";
+import { handler as reconcileHandler } from "@/lambda/domains/treasury/reconcile";
+import { handler as cancelReconciliationHandler } from "@/lambda/domains/treasury/cancel-reconciliation";
 import { AppError } from "@/lambda/shared/app-error";
 import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
@@ -7,7 +10,13 @@ import { ProductAccessService } from "@/lambda/shared/services/product-access-se
 import { TreasuryService } from "@/lambda/domains/treasury/services/treasury-service";
 
 jest.mock("@/lambda/domains/treasury/services/treasury-service", () => ({
-  TreasuryService: { getSummary: jest.fn(), listAccounts: jest.fn() },
+  TreasuryService: {
+    cancelReconciliation: jest.fn(),
+    getSummary: jest.fn(),
+    listAccounts: jest.fn(),
+    postTransaction: jest.fn(),
+    reconcile: jest.fn(),
+  },
 }));
 
 const event = {
@@ -147,11 +156,16 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
     expect(TreasuryService.getSummary).not.toHaveBeenCalled();
   });
 
-  test("leaves a permission-only Treasury route ProductAccess-non-enforcing", async () => {
-    const requireAccess = jest.spyOn(
-      ProductAccessService,
-      "requireActiveProductAccess",
-    );
+  test("protects another Treasury read route with ACCOUNTING", async () => {
+    const requireAccess = jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockResolvedValue({
+        orgId: "org-123",
+        productCode: "ACCOUNTING",
+        status: "ACTIVE",
+        createdAt: "2026-08-07T10:00:00.000Z",
+        updatedAt: "2026-08-07T10:00:00.000Z",
+      });
     const requirePermission = jest.spyOn(
       DomainAuthorizationService,
       "assertPermission",
@@ -165,7 +179,11 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
     } as any);
 
     expect(response.statusCode).toBe(200);
-    expect(requireAccess).not.toHaveBeenCalled();
+    expect(requireAccess).toHaveBeenCalledWith({
+      action: "GET /treasury/accounts",
+      orgId: "org-123",
+      productCode: "ACCOUNTING",
+    });
     expect(requirePermission).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "org-123" }),
       "TREASURY_READ",
@@ -174,4 +192,71 @@ describe("GET /treasury/summary ProductAccess pilot", () => {
       limit: 100,
     });
   });
+
+  test.each([
+    {
+      handler: postTransactionHandler,
+      event: {
+        ...event,
+        routeKey: "POST /treasury/transactions",
+        rawPath: "/treasury/transactions",
+        queryStringParameters: undefined,
+        body: JSON.stringify({
+          clientRequestId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          treasuryAccountId: "bank-1",
+          year: 2026,
+          entryDate: "2026-08-09",
+          direction: "INFLOW",
+          amount: 1000,
+          counterpartyAccountId: "41100000",
+          label: "Treasury posting",
+        }),
+      },
+      service: "postTransaction" as const,
+    },
+    {
+      handler: reconcileHandler,
+      event: {
+        ...event,
+        routeKey: "POST /treasury/reconciliations",
+        rawPath: "/treasury/reconciliations",
+        queryStringParameters: undefined,
+        body: JSON.stringify({
+          treasuryAccountId: "bank-1",
+          year: "2026",
+          statementLineId: "statement-1",
+          statementDate: "2026-08-09",
+          movementLineId: "line-1",
+        }),
+      },
+      service: "reconcile" as const,
+    },
+    {
+      handler: cancelReconciliationHandler,
+      event: {
+        ...event,
+        routeKey: "POST /treasury/reconciliations/{matchId}/cancel",
+        rawPath: "/treasury/reconciliations/match-1/cancel",
+        queryStringParameters: undefined,
+        pathParameters: { matchId: "match-1" },
+        body: JSON.stringify({
+          treasuryAccountId: "bank-1",
+          year: "2026",
+        }),
+      },
+      service: "cancelReconciliation" as const,
+    },
+  ])(
+    "$event.routeKey stops Treasury side effects before $service when ACCOUNTING is unavailable",
+    async ({ handler: protectedHandler, event: protectedEvent, service }) => {
+      jest
+        .spyOn(ProductAccessService, "requireActiveProductAccess")
+        .mockRejectedValue(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
+
+      const response = await protectedHandler(protectedEvent as any);
+
+      expect(response.statusCode).toBe(403);
+      expect(TreasuryService[service]).not.toHaveBeenCalled();
+    },
+  );
 });

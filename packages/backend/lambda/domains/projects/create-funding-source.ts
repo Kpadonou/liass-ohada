@@ -24,5 +24,9 @@ export const handler = createHandler(
       data: fundingSource,
     };
   },
-  { permission: "PROJECTS_WRITE" },
+  {
+    action: "POST /projects/{projectId}/funding-sources",
+    permission: "PROJECTS_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

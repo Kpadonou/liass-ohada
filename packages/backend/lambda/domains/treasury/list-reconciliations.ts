@@ -12,5 +12,9 @@ export const handler = createHandler(
       data: result,
     };
   },
-  { permission: "TREASURY_READ" },
+  {
+    action: "GET /treasury/reconciliations",
+    permission: "TREASURY_READ",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -25,5 +25,9 @@ export const handler = createHandler(
       },
     };
   },
-  { permission: "TREASURY_READ" },
+  {
+    action: "GET /treasury/accounts/{treasuryAccountId}/movements",
+    permission: "TREASURY_READ",
+    productCode: "ACCOUNTING",
+  },
 );

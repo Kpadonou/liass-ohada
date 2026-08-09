@@ -3,12 +3,11 @@ import path from "node:path";
 
 interface RouteExpectation {
   handler: string;
-  productCode?: "ACCOUNTING";
   route: string;
 }
 
 const projectsReadRoutes: RouteExpectation[] = [
-  { handler: "get-donors", productCode: "ACCOUNTING", route: "GET /donors" },
+  { handler: "get-donors", route: "GET /donors" },
   { handler: "get-projects", route: "GET /projects" },
   { handler: "get-projects", route: "GET /projects/{projectId}" },
   {
@@ -49,7 +48,6 @@ const treasuryReadRoutes: RouteExpectation[] = [
   { handler: "list-reconciliations", route: "GET /treasury/reconciliations" },
   {
     handler: "get-summary",
-    productCode: "ACCOUNTING",
     route: "GET /treasury/summary",
   },
 ];
@@ -77,54 +75,113 @@ const sourceFor = (domain: "projects" | "treasury", handler: string) =>
     "utf8",
   );
 
+const endpointSourceFor = (domain: "accounting" | "project" | "treasury") =>
+  readFileSync(
+    path.join(
+      __dirname,
+      `../../../lib/constructs/domains/${domain}-endpoints.ts`,
+    ),
+    "utf8",
+  );
+
+const routesFromEndpointSource = (source: string) =>
+  Array.from(
+    source.matchAll(
+      /map\(\s*apigw\.HttpMethod\.(GET|POST|PUT|PATCH|DELETE),\s*"([^"]+)",\s*"([^"]+)"/g,
+    ),
+    ([, method, routePath, handler]) => ({
+      handler,
+      route: `${method} ${routePath}`,
+    }),
+  );
+
 describe("Projects and Treasury route permission inventory", () => {
   test.each(projectsReadRoutes)(
-    "$route explicitly requires PROJECTS_READ without expanding ProductAccess",
-    ({ handler, productCode }) => {
+    "$route explicitly requires PROJECTS_READ and ACCOUNTING ProductAccess",
+    ({ handler }) => {
       const source = sourceFor("projects", handler);
 
       expect(source).toContain('permission: "PROJECTS_READ"');
-      if (productCode) {
-        expect(source).toContain(`productCode: "${productCode}"`);
-      } else {
-        expect(source).not.toContain("productCode:");
-      }
+      expect(source).toContain('productCode: "ACCOUNTING"');
     },
   );
 
   test.each(treasuryReadRoutes)(
-    "$route explicitly requires TREASURY_READ without expanding ProductAccess",
-    ({ handler, productCode }) => {
+    "$route explicitly requires TREASURY_READ and ACCOUNTING ProductAccess",
+    ({ handler }) => {
       const source = sourceFor("treasury", handler);
 
       expect(source).toContain('permission: "TREASURY_READ"');
-      if (productCode) {
-        expect(source).toContain(`productCode: "${productCode}"`);
-      } else {
-        expect(source).not.toContain("productCode:");
-      }
+      expect(source).toContain('productCode: "ACCOUNTING"');
     },
   );
 
   test.each(projectsWriteRoutes)(
-    "$route explicitly requires PROJECTS_WRITE without expanding ProductAccess",
+    "$route explicitly requires PROJECTS_WRITE and ACCOUNTING ProductAccess",
     ({ handler }) => {
       const source = sourceFor("projects", handler);
 
       expect(source).toContain('permission: "PROJECTS_WRITE"');
-      expect(source).not.toContain("productCode:");
+      expect(source).toContain('productCode: "ACCOUNTING"');
     },
   );
 
   test.each(treasuryWriteRoutes)(
-    "$route explicitly requires TREASURY_WRITE without expanding ProductAccess",
+    "$route explicitly requires TREASURY_WRITE and ACCOUNTING ProductAccess",
     ({ handler }) => {
       const source = sourceFor("treasury", handler);
 
       expect(source).toContain('permission: "TREASURY_WRITE"');
-      expect(source).not.toContain("productCode:");
+      expect(source).toContain('productCode: "ACCOUNTING"');
     },
   );
+
+  test("keeps the route inventory at Accounting Core 0/50, Projects 11/11, and Treasury 10/10", () => {
+    const accountingRoutes = routesFromEndpointSource(
+      endpointSourceFor("accounting"),
+    );
+    const projectRoutes = routesFromEndpointSource(
+      endpointSourceFor("project"),
+    );
+    const treasuryRoutes = routesFromEndpointSource(
+      endpointSourceFor("treasury"),
+    );
+
+    expect(accountingRoutes).toHaveLength(50);
+    expect(projectRoutes).toEqual([
+      ...projectsWriteRoutes.slice(0, 1),
+      ...projectsReadRoutes.slice(0, 1),
+      ...projectsWriteRoutes.slice(1, 2),
+      ...projectsReadRoutes.slice(1, 3),
+      ...projectsWriteRoutes.slice(2, 3),
+      ...projectsReadRoutes.slice(3, 4),
+      ...projectsWriteRoutes.slice(3, 4),
+      ...projectsReadRoutes.slice(4),
+    ]);
+    expect(treasuryRoutes).toEqual([
+      treasuryReadRoutes[0],
+      treasuryWriteRoutes[0],
+      treasuryReadRoutes[1],
+      treasuryWriteRoutes[1],
+      treasuryReadRoutes[2],
+      treasuryWriteRoutes[2],
+      treasuryWriteRoutes[3],
+      treasuryReadRoutes[3],
+      treasuryWriteRoutes[4],
+      treasuryReadRoutes[4],
+    ]);
+
+    for (const { handler } of accountingRoutes) {
+      const source = readFileSync(
+        path.join(
+          __dirname,
+          `../../../lambda/domains/accounting/${handler}.ts`,
+        ),
+        "utf8",
+      );
+      expect(source).not.toContain("productCode:");
+    }
+  });
 
   test("keeps Accounting-named permissions out of Projects and Treasury handlers", () => {
     const routeFiles = [

@@ -14,5 +14,9 @@ export const handler = createHandler(
       data: project,
     };
   },
-  { permission: "PROJECTS_WRITE" },
+  {
+    action: "POST /projects",
+    permission: "PROJECTS_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

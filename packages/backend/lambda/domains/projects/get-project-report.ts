@@ -23,5 +23,9 @@ export const handler = createHandler(
       data: report,
     };
   },
-  { permission: "PROJECTS_READ" },
+  {
+    action: "GET /projects/{projectId}/report",
+    permission: "PROJECTS_READ",
+    productCode: "ACCOUNTING",
+  },
 );

@@ -7,6 +7,7 @@ import { handler as listDonorsHandler } from "@/lambda/domains/projects/get-dono
 import { handler as listProjectsSummaryHandler } from "@/lambda/domains/projects/list-projects-summary";
 import { AccountingProjectReportingService } from "@/lambda/domains/accounting/reporting/accounting-project-reporting-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import {
   DynamoDBClient,
   GetItemCommand,
@@ -85,12 +86,22 @@ describe("projects workspace handlers", () => {
   const originalPermission = process.env.ACCOUNTING_PERMISSION;
 
   beforeEach(() => {
+    jest.restoreAllMocks();
     dynamoMock.reset();
     jest.clearAllMocks();
     delete process.env.ACCOUNTING_PERMISSION;
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
+    jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockResolvedValue({
+        orgId: "test-org",
+        productCode: "ACCOUNTING",
+        status: "ACTIVE",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
     jest
       .mocked(AccountingProjectReportingService.listProjectFacts)
       .mockResolvedValue([]);

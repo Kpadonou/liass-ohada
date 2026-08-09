@@ -358,7 +358,11 @@ describe("handler-wrapper auth context", () => {
     const response = await handler(createEvent() as any);
     const body = JSON.parse(response.body);
 
-    expect(product).toHaveBeenCalled();
+    expect(product).toHaveBeenCalledWith({
+      action: "GET /treasury/summary",
+      orgId: "test-org",
+      productCode: "ACCOUNTING",
+    });
     expect(response.statusCode).toBe(403);
     expect(body.error.code).toBe("CABINET_DOSSIER_READ_ONLY");
     expect(logic).not.toHaveBeenCalled();

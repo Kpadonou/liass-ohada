@@ -22,5 +22,9 @@ export const handler = createHandler(
       },
     };
   },
-  { permission: "TREASURY_READ" },
+  {
+    action: "GET /treasury/accounts/{treasuryAccountId}/statement-lines",
+    permission: "TREASURY_READ",
+    productCode: "ACCOUNTING",
+  },
 );

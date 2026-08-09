@@ -11,6 +11,7 @@ import { AccountingAccountReferenceService } from "@/lambda/domains/accounting/a
 import { AccountingTreasuryPostingService } from "@/lambda/domains/accounting/posting/accounting-treasury-posting-service";
 import { AppError } from "@/lambda/shared/middleware/handler-wrapper";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
+import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { TreasuryService } from "@/lambda/domains/treasury/services/treasury-service";
 import {
   DynamoDBClient,
@@ -232,6 +233,7 @@ describe("treasury workspace handlers", () => {
   const originalPermission = process.env.ACCOUNTING_PERMISSION;
 
   beforeEach(() => {
+    jest.restoreAllMocks();
     dynamoMock.reset();
     jest.clearAllMocks();
     delete process.env.ACCOUNTING_PERMISSION;
@@ -246,6 +248,15 @@ describe("treasury workspace handlers", () => {
     jest
       .mocked(TenantAccessService.assertUserCanAccessOrg)
       .mockResolvedValue({ role: "ACCOUNTANT", workspaceType: "COMPANY" });
+    jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockResolvedValue({
+        orgId: "test-org",
+        productCode: "ACCOUNTING",
+        status: "ACTIVE",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
   });
 
   afterAll(() => {

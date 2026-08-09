@@ -22,5 +22,10 @@ export const handler = createHandler(
       data: result,
     };
   },
-  { permission: "TREASURY_WRITE" },
+  {
+    action:
+      "POST /treasury/accounts/{treasuryAccountId}/statement-lines/import",
+    permission: "TREASURY_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

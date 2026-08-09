@@ -24,5 +24,9 @@ export const handler = createHandler(
       data: budgetLine,
     };
   },
-  { permission: "PROJECTS_WRITE" },
+  {
+    action: "POST /projects/{projectId}/budget-lines",
+    permission: "PROJECTS_WRITE",
+    productCode: "ACCOUNTING",
+  },
 );

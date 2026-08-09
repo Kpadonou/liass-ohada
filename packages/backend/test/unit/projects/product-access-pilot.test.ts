@@ -1,5 +1,6 @@
 import { handler as listDonorsHandler } from "@/lambda/domains/projects/get-donors";
 import { handler as listProjectsHandler } from "@/lambda/domains/projects/get-projects";
+import { handler as createDonorHandler } from "@/lambda/domains/projects/create-donor";
 import { AppError } from "@/lambda/shared/app-error";
 import { ProductAccessRepository } from "@/lambda/shared/repositories/product-access-repository";
 import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
@@ -7,12 +8,19 @@ import { DomainAuthorizationService } from "@/lambda/shared/services/domain-auth
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
 import { ProjectService } from "@/lambda/domains/projects/services/project-service";
 
-jest.mock("@/lambda/domains/projects/services/project-service", () => ({
-  ProjectService: {
-    listDonors: jest.fn(),
-    listProjects: jest.fn(),
-  },
-}));
+jest.mock("@/lambda/domains/projects/services/project-service", () => {
+  const actual = jest.requireActual(
+    "@/lambda/domains/projects/services/project-service",
+  );
+  return {
+    ...actual,
+    ProjectService: {
+      listDonors: jest.fn(),
+      listProjects: jest.fn(),
+      createDonor: jest.fn(),
+    },
+  };
+});
 
 const activeAccountingAccess = {
   orgId: "org-123",
@@ -60,6 +68,16 @@ describe("GET /donors ProductAccess pilot", () => {
       });
     jest.mocked(ProjectService.listDonors).mockResolvedValue([]);
     jest.mocked(ProjectService.listProjects).mockResolvedValue([]);
+    jest.mocked(ProjectService.createDonor).mockResolvedValue({
+      orgId: "org-123",
+      donorId: "AFD",
+      code: "AFD",
+      name: "Agence francaise",
+      type: "PUBLIC",
+      currency: "XOF",
+      createdAt: "2026-08-08T10:00:00.000Z",
+      updatedAt: "2026-08-08T10:00:00.000Z",
+    });
   });
 
   afterAll(() => {
@@ -194,20 +212,81 @@ describe("GET /donors ProductAccess pilot", () => {
     expect(ProjectService.listDonors).not.toHaveBeenCalled();
   });
 
-  test("leaves a permission-only Projects route ProductAccess-non-enforcing", async () => {
-    const product = jest.spyOn(ProductAccessService, "requireActiveProductAccess");
-    const permission = jest.spyOn(DomainAuthorizationService, "assertPermission");
+  test("protects another Project Accounting read route with ACCOUNTING", async () => {
+    const product = jest.spyOn(
+      ProductAccessService,
+      "requireActiveProductAccess",
+    );
+    const permission = jest.spyOn(
+      DomainAuthorizationService,
+      "assertPermission",
+    );
+    jest
+      .spyOn(ProductAccessRepository, "getProductAccess")
+      .mockResolvedValue(activeAccountingAccess);
 
     const response = await listProjectsHandler(
       createEvent({ routeKey: "GET /projects" }) as any,
     );
 
     expect(response.statusCode).toBe(200);
-    expect(product).not.toHaveBeenCalled();
+    expect(product).toHaveBeenCalledWith({
+      action: "GET /projects",
+      orgId: "org-123",
+      productCode: "ACCOUNTING",
+    });
     expect(permission).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "org-123" }),
       "PROJECTS_READ",
     );
     expect(ProjectService.listProjects).toHaveBeenCalledWith("org-123");
+  });
+
+  test("blocks a Project Accounting write before business logic when ACCOUNTING is unavailable", async () => {
+    jest
+      .spyOn(ProductAccessService, "requireActiveProductAccess")
+      .mockRejectedValue(new AppError(403, "PRODUCT_ACCESS_REQUIRED"));
+
+    const response = await createDonorHandler({
+      ...createEvent({ routeKey: "POST /donors" }),
+      body: JSON.stringify({
+        code: "AFD",
+        name: "Agence francaise",
+        type: "PUBLIC",
+      }),
+    } as any);
+
+    expect(response.statusCode).toBe(403);
+    expect(ProjectService.createDonor).not.toHaveBeenCalled();
+  });
+
+  test("keeps PROJECTS_WRITE independent from ACTIVE ACCOUNTING ProductAccess", async () => {
+    jest
+      .spyOn(EffectiveOrganizationAccessService, "resolveAccess")
+      .mockResolvedValue({
+        accessMode: "READ_WRITE",
+        accessSource: "DIRECT",
+        orgId: "org-123",
+        permissions: ["PROJECTS_READ"],
+        workspaceOrgId: "org-123",
+      });
+    jest
+      .spyOn(ProductAccessRepository, "getProductAccess")
+      .mockResolvedValue(activeAccountingAccess);
+
+    const response = await createDonorHandler({
+      ...createEvent({ routeKey: "POST /donors" }),
+      body: JSON.stringify({
+        code: "AFD",
+        name: "Agence francaise",
+        type: "PUBLIC",
+      }),
+    } as any);
+
+    expect(response.statusCode).toBe(403);
+    expect(JSON.parse(response.body).error.code).toBe(
+      "DOMAIN_PERMISSION_REQUIRED",
+    );
+    expect(ProjectService.createDonor).not.toHaveBeenCalled();
   });
 });
