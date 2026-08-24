@@ -17,7 +17,7 @@ Before implementation, classify the feature as exactly one of:
 
 - `PLATFORM_CORE`: cross-domain identity, organizations, access, entitlement, permissions, notifications, documents, audit, integrations, or shell capabilities.
 - `ERP_DOMAIN`: Accounting, Treasury, Commercial, Fixed Assets, Payroll, Projects/SYCEBNL, Reporting, or another reviewed ERP domain.
-- `VERTICAL_SOLUTION`: an industry solution such as the planned Restaurants vertical.
+- `VERTICAL_SOLUTION`: an industry solution such as the planned Liass-Resto vertical.
 - `SHARED_TECHNICAL`: business-neutral utilities or infrastructure used by multiple owners.
 
 Name the owning domain or platform capability. Classification does not authorize speculative scaffolding.

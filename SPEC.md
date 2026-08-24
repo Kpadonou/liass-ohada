@@ -58,7 +58,7 @@ Current onboarding, Organization, workspace, access-projection, and response con
 
 The platform shell owns active organization, connected user, global navigation, search or command palette, notifications, preferences, global permission context, and product availability. Business domains own routed experiences and domain rules. The dashboard is a platform-level surface that may aggregate KPIs exposed by enabled domains without absorbing their business logic. All three current Accounting modules use the canonical effective-organization `ACCOUNTING` availability state; this presentation signal does not replace module-granular RBAC or backend authorization.
 
-The single application may progressively expose routes such as `/dashboard`, `/accounting/...`, `/treasury/...`, `/projects/...`, and `/administration/...`. A future `/restaurants/...` route remains deferred until the Restaurants implementation phase.
+The single application may progressively expose routes such as `/dashboard`, `/accounting/...`, `/treasury/...`, `/projects/...`, and `/administration/...`. A future `/restaurants/...` route remains deferred until the Liass-Resto implementation phase.
 
 ### Mandatory CDK Stack Boundaries
 
@@ -86,10 +86,12 @@ The current canonical product taxonomy is:
 ```text
 LIASS-OHADA
 ├── PLATFORM CORE
-└── PRODUCT: ACCOUNTING
-    ├── Accounting Core
-    ├── Treasury
-    └── Project Accounting
+├── PRODUCT: ACCOUNTING
+│   ├── Accounting Core
+│   ├── Treasury
+│   └── Project Accounting
+└── FUTURE PRODUCT: LIASS-RESTO
+    └── restaurant / bar operations
 ```
 
 `ACCOUNTING` is the top-level `ProductAccess` entitlement for current ERP functionality. Treasury and Project Accounting are Accounting modules and must not use `TREASURY` or `PROJECTS` as current ProductAccess codes. Module-granular RBAC remains independent: Accounting Core uses `ACCOUNTING_*`, Treasury uses `TREASURY_*`, and Project Accounting uses `PROJECTS_*` permissions.
@@ -110,7 +112,7 @@ A domain is implemented only when corresponding runtime code and infrastructure 
 
 ### C. Vertical Solutions
 
-Restaurants is the first planned vertical solution. It is not an implemented domain and must not receive routes, packages, persistence, infrastructure, or a separate application until a reviewed implementation phase authorizes them. Other verticals such as Retail remain possible future decisions, not current scaffolding requirements.
+Liass-Resto is the first planned vertical solution and a future top-level business product within the Liass-OHADA platform. It is not an Accounting module, a replacement for Accounting, a separate brand, or a standalone application. It is not implemented and must not receive routes, packages, persistence, infrastructure, or a separate application until a reviewed implementation phase authorizes them. The intended machine-oriented domain identifier is `restaurants`, and the intended future technical `ProductCode` is `RESTAURANTS`; this naming decision does not implement that code or create a ProductAccess row. Other verticals such as Retail remain possible future decisions, not current scaffolding requirements.
 
 ---
 
@@ -122,7 +124,7 @@ Every business domain owns its entities, invariants, persistence operations, and
 - KeyFactory helpers and repositories must respect domain ownership even though concrete keys remain centralized.
 - Cross-domain collaboration must use explicit APIs or versioned domain/integration events.
 - Cross-module financial references must be checked against the owning aggregate's authoritative identity, and cancellation or reversal operations must conditionally prove ownership of the state they clear.
-- A producer may publish a business fact such as `SaleClosed`; the consuming domain translates it into its own consequences. A Restaurants component, for example, must never create an Accounting `ENTRY` directly.
+- A producer may publish a business fact such as `SaleClosed`; the consuming domain translates it into its own consequences. A future Liass-Resto component, for example, must never create an Accounting `ENTRY` directly.
 - Shared technical code may provide infrastructure-neutral utilities and contract transport, but it must not become a backdoor for cross-domain business mutation.
 - Modules inside one top-level product may collaborate synchronously through explicit owning-module application boundaries, but a module must not directly mutate another module's aggregates or persistence structures.
 - Logical domain separation comes before physical separation. Separate services or tables may be considered later only when scale, security, deployment isolation, or operational requirements justify them.
@@ -158,7 +160,7 @@ Do not manually concatenate persistence keys in repository logic. `key-builder.t
 - **Indexes**: every GSI requires a concrete access pattern. Use `Query`, `GetItem`, or `BatchGetItem`; no business-path `Scan`.
 - **Atomicity**: use `TransactWriteItems` where multi-item invariants must succeed or fail together.
 
-The Single Table strategy remains authoritative. Do not add a platform table, a Restaurants table, or speculative tables. A future physical split requires an explicit migration decision.
+The Single Table strategy remains authoritative. Do not add a platform table, a Liass-Resto table, or speculative tables. A future physical split requires an explicit migration decision.
 
 ---
 

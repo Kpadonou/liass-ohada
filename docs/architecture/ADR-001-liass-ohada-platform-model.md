@@ -27,7 +27,7 @@ The platform uses:
 
 The shared API Gateway, Cognito resources, DynamoDB Single Table, S3 resources, and existing CDK stack ownership remain in place. Platform V2 does not require premature microservices, per-domain databases, per-product applications, or per-product authentication.
 
-Restaurants is the first planned vertical solution, but it is not implemented or scaffolded by this decision.
+Liass-Resto is the first planned vertical solution within the Liass-OHADA master platform, but it is not implemented or scaffolded by this decision. Its business name is `Liass-Resto`; its intended future technical domain identifier and ProductCode remain `restaurants` and `RESTAURANTS` respectively.
 
 `ProductAccess` represents top-level products or verticals, not every internal module. The only currently implemented top-level entitlement is `ACCOUNTING`, whose current module hierarchy is Accounting Core, Treasury, and Project Accounting. The existing `projects` technical domain and `PROJECTS_*` permissions remain compatibility identifiers for Project Accounting; Treasury and Project Accounting retain module-granular RBAC without separate top-level ProductAccess codes. Persisted historical `PROJECTS` and `TREASURY` ProductAccess rows are migration data, not current entitlement authority.
 
@@ -50,6 +50,6 @@ Adopt the model progressively:
 4. add entitlement verification alongside membership and RBAC;
 5. make the platform shell and navigation product-aware;
 6. add integration APIs or events only for real producer/consumer workflows;
-7. begin Restaurants only after the platform boundaries are stable.
+7. begin Liass-Resto only after the platform boundaries are stable.
 
 Each phase must preserve existing APIs, routes, authentication, workspace selection, cabinet behavior, accounting behavior, DynamoDB items, and stateful AWS resources unless its reviewed migration plan explicitly changes them.

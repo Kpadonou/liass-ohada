@@ -21,7 +21,19 @@ type PublicItem = {
   descriptionKey: string;
 };
 
-type PublicGroup = {
+type PublicDomainStatus = 'AVAILABLE' | 'IN_DEVELOPMENT' | 'COMING';
+
+type PublicCapability = PublicItem & {
+  id: string;
+  status: PublicDomainStatus;
+};
+
+type PublicDomainCard = PublicItem & {
+  id: string;
+  status: PublicDomainStatus;
+};
+
+type PublicFeatureGroup = {
   icon: string;
   titleKey: string;
   itemKeys: string[];
@@ -99,40 +111,48 @@ export class PublicLandingPage {
     'PUBLIC.WORKSPACES.FIRM.FEATURES.ACCOUNTING'
   ];
 
-  protected readonly availableGroups: PublicGroup[] = [
+  protected readonly accountingCapabilities: PublicCapability[] = [
     {
+      id: 'general-accounting',
       icon: 'account_balance',
-      titleKey: 'PUBLIC.FEATURES.GROUPS.ACCOUNTING.TITLE',
-      itemKeys: [
-        'PUBLIC.FEATURES.GROUPS.ACCOUNTING.ACCOUNTS',
-        'PUBLIC.FEATURES.GROUPS.ACCOUNTING.ENTRIES',
-        'PUBLIC.FEATURES.GROUPS.ACCOUNTING.BOOKS',
-        'PUBLIC.FEATURES.GROUPS.ACCOUNTING.THIRD_PARTIES',
-        'PUBLIC.FEATURES.GROUPS.ACCOUNTING.FISCAL_YEARS'
-      ]
+      status: 'AVAILABLE',
+      titleKey: 'PUBLIC.FEATURES.CAPABILITIES.ACCOUNTING.TITLE',
+      descriptionKey: 'PUBLIC.FEATURES.CAPABILITIES.ACCOUNTING.DESCRIPTION'
     },
     {
+      id: 'treasury',
       icon: 'payments',
-      titleKey: 'PUBLIC.FEATURES.GROUPS.TREASURY.TITLE',
-      itemKeys: [
-        'PUBLIC.FEATURES.GROUPS.TREASURY.ACCOUNTS',
-        'PUBLIC.FEATURES.GROUPS.TREASURY.IMPORT',
-        'PUBLIC.FEATURES.GROUPS.TREASURY.RECONCILIATION',
-        'PUBLIC.FEATURES.GROUPS.TREASURY.HISTORY'
-      ]
+      status: 'AVAILABLE',
+      titleKey: 'PUBLIC.FEATURES.CAPABILITIES.TREASURY.TITLE',
+      descriptionKey: 'PUBLIC.FEATURES.CAPABILITIES.TREASURY.DESCRIPTION'
     },
     {
-      icon: 'business_center',
-      titleKey: 'PUBLIC.FEATURES.GROUPS.FIRM.TITLE',
-      itemKeys: [
-        'PUBLIC.FEATURES.GROUPS.FIRM.DOSSIERS',
-        'PUBLIC.FEATURES.GROUPS.FIRM.TEAM',
-        'PUBLIC.FEATURES.GROUPS.FIRM.WORK',
-        'PUBLIC.FEATURES.GROUPS.FIRM.DEADLINES',
-        'PUBLIC.FEATURES.GROUPS.FIRM.DASHBOARD'
-      ]
+      id: 'project-accounting',
+      icon: 'folder_managed',
+      status: 'IN_DEVELOPMENT',
+      titleKey: 'PUBLIC.FEATURES.CAPABILITIES.PROJECT_ACCOUNTING.TITLE',
+      descriptionKey: 'PUBLIC.FEATURES.CAPABILITIES.PROJECT_ACCOUNTING.DESCRIPTION'
+    },
+    {
+      id: 'reporting-closing',
+      icon: 'query_stats',
+      status: 'AVAILABLE',
+      titleKey: 'PUBLIC.FEATURES.CAPABILITIES.REPORTING.TITLE',
+      descriptionKey: 'PUBLIC.FEATURES.CAPABILITIES.REPORTING.DESCRIPTION'
     }
   ];
+
+  protected readonly accountingFirmGroup: PublicFeatureGroup = {
+    icon: 'business_center',
+    titleKey: 'PUBLIC.FEATURES.FIRM.TITLE',
+    itemKeys: [
+      'PUBLIC.FEATURES.FIRM.DOSSIERS',
+      'PUBLIC.FEATURES.FIRM.TEAM',
+      'PUBLIC.FEATURES.FIRM.WORK',
+      'PUBLIC.FEATURES.FIRM.DEADLINES',
+      'PUBLIC.FEATURES.FIRM.DASHBOARD'
+    ]
+  };
 
   protected readonly productViews: PublicItem[] = [
     {
@@ -212,15 +232,14 @@ export class PublicLandingPage {
     }
   ];
 
-  protected readonly roadmapGroups: PublicGroup[] = [
-    { icon: 'shopping_cart', titleKey: 'PUBLIC.ROADMAP.GROUPS.SALES.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.SALES.ITEMS'] },
-    { icon: 'inventory_2', titleKey: 'PUBLIC.ROADMAP.GROUPS.PURCHASES.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.PURCHASES.ITEMS'] },
-    { icon: 'warehouse', titleKey: 'PUBLIC.ROADMAP.GROUPS.ASSETS.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.ASSETS.ITEMS'] },
-    { icon: 'groups', titleKey: 'PUBLIC.ROADMAP.GROUPS.HR.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.HR.ITEMS'] },
-    { icon: 'query_stats', titleKey: 'PUBLIC.ROADMAP.GROUPS.PERFORMANCE.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.PERFORMANCE.ITEMS'] },
-    { icon: 'diversity_1', titleKey: 'PUBLIC.ROADMAP.GROUPS.SYCEBNL.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.SYCEBNL.ITEMS'] },
-    { icon: 'verified_user', titleKey: 'PUBLIC.ROADMAP.GROUPS.COMPLIANCE.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.COMPLIANCE.ITEMS'] },
-    { icon: 'auto_awesome', titleKey: 'PUBLIC.ROADMAP.GROUPS.AUTOMATION.TITLE', itemKeys: ['PUBLIC.ROADMAP.GROUPS.AUTOMATION.ITEMS'] }
+  protected readonly futureDomains: PublicDomainCard[] = [
+    { id: 'sales-invoicing', icon: 'receipt_long', status: 'COMING', titleKey: 'PUBLIC.ROADMAP.DOMAINS.SALES.TITLE', descriptionKey: 'PUBLIC.ROADMAP.DOMAINS.SALES.DESCRIPTION' },
+    { id: 'purchasing-suppliers', icon: 'shopping_cart', status: 'COMING', titleKey: 'PUBLIC.ROADMAP.DOMAINS.PURCHASES.TITLE', descriptionKey: 'PUBLIC.ROADMAP.DOMAINS.PURCHASES.DESCRIPTION' },
+    { id: 'inventory', icon: 'inventory_2', status: 'COMING', titleKey: 'PUBLIC.ROADMAP.DOMAINS.INVENTORY.TITLE', descriptionKey: 'PUBLIC.ROADMAP.DOMAINS.INVENTORY.DESCRIPTION' },
+    { id: 'fixed-assets', icon: 'precision_manufacturing', status: 'COMING', titleKey: 'PUBLIC.ROADMAP.DOMAINS.FIXED_ASSETS.TITLE', descriptionKey: 'PUBLIC.ROADMAP.DOMAINS.FIXED_ASSETS.DESCRIPTION' },
+    { id: 'payroll-hr', icon: 'groups', status: 'COMING', titleKey: 'PUBLIC.ROADMAP.DOMAINS.PAYROLL.TITLE', descriptionKey: 'PUBLIC.ROADMAP.DOMAINS.PAYROLL.DESCRIPTION' },
+    { id: 'tax-declarations', icon: 'verified_user', status: 'COMING', titleKey: 'PUBLIC.ROADMAP.DOMAINS.TAX.TITLE', descriptionKey: 'PUBLIC.ROADMAP.DOMAINS.TAX.DESCRIPTION' },
+    { id: 'restaurants', icon: 'restaurant', status: 'COMING', titleKey: 'PUBLIC.ROADMAP.DOMAINS.RESTAURANTS.TITLE', descriptionKey: 'PUBLIC.ROADMAP.DOMAINS.RESTAURANTS.DESCRIPTION' }
   ];
 
   protected readonly securityItems = [

@@ -203,21 +203,88 @@
           <div class="public-container">
             <div class="public-section-heading" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.FEATURES.EYEBROW' | transloco }}</span>
-              <h2 id="features-title" class="public-section-title">{{ 'PUBLIC.FEATURES.TITLE' | transloco }}</h2>
+              <h2 id="features-title" class="public-section-title">
+                {{ 'PUBLIC.FEATURES.TITLE' | transloco }}
+              </h2>
               <p>{{ 'PUBLIC.FEATURES.INTRO' | transloco }}</p>
             </div>
-            <div class="mt-12 grid gap-5 lg:grid-cols-3">
-              @for (group of availableGroups; track group.titleKey) {
-                <article class="public-feature-group" liassPublicReveal="up" [liassPublicRevealDelay]="$index * 80">
-                  <span class="public-icon-surface"><mat-icon>{{ group.icon }}</mat-icon></span>
-                  <h3>{{ group.titleKey | transloco }}</h3>
-                  <ul>
-                    @for (item of group.itemKeys; track item) { <li><mat-icon>done</mat-icon>{{ item | transloco }}</li> }
-                  </ul>
-                </article>
-              }
+            <div class="public-available-layout mt-12">
+              <article
+                class="public-flagship-card"
+                data-marketing-domain="accounting-finance"
+                data-public-status="AVAILABLE"
+                liassPublicReveal="left"
+              >
+                <div class="public-domain-heading">
+                  <span class="public-icon-surface"><mat-icon>account_balance</mat-icon></span>
+                  <span class="public-badge public-badge-success">{{
+                    'PUBLIC.STATUS.AVAILABLE' | transloco
+                  }}</span>
+                </div>
+                <p class="public-domain-kicker">
+                  {{ 'PUBLIC.FEATURES.FLAGSHIP.KICKER' | transloco }}
+                </p>
+                <h3>{{ 'PUBLIC.FEATURES.FLAGSHIP.TITLE' | transloco }}</h3>
+                <p class="public-domain-description">
+                  {{ 'PUBLIC.FEATURES.FLAGSHIP.DESCRIPTION' | transloco }}
+                </p>
+
+                <div class="public-capability-grid">
+                  @for (capability of accountingCapabilities; track capability.id) {
+                    <section
+                      class="public-capability-card"
+                      [attr.data-marketing-domain]="capability.id"
+                      [attr.data-public-status]="capability.status"
+                    >
+                      <div class="public-capability-heading">
+                        <mat-icon aria-hidden="true">{{ capability.icon }}</mat-icon>
+                        @if (capability.status === 'IN_DEVELOPMENT') {
+                          <span class="public-badge public-badge-info">{{
+                            'PUBLIC.STATUS.IN_DEVELOPMENT' | transloco
+                          }}</span>
+                        }
+                      </div>
+                      <h4>{{ capability.titleKey | transloco }}</h4>
+                      <p>{{ capability.descriptionKey | transloco }}</p>
+                    </section>
+                  }
+                </div>
+              </article>
+
+              <article
+                class="public-feature-group public-firm-capability"
+                data-marketing-domain="accounting-firms"
+                data-public-status="AVAILABLE"
+                liassPublicReveal="right"
+                [liassPublicRevealDelay]="80"
+              >
+                <div class="public-domain-heading">
+                  <span class="public-icon-surface"
+                    ><mat-icon>{{ accountingFirmGroup.icon }}</mat-icon></span
+                  >
+                  <span class="public-badge public-badge-success">{{
+                    'PUBLIC.STATUS.AVAILABLE' | transloco
+                  }}</span>
+                </div>
+                <p class="public-domain-kicker">{{ 'PUBLIC.FEATURES.FIRM.KICKER' | transloco }}</p>
+                <h3>{{ accountingFirmGroup.titleKey | transloco }}</h3>
+                <p class="public-domain-description">
+                  {{ 'PUBLIC.FEATURES.FIRM.DESCRIPTION' | transloco }}
+                </p>
+                <ul>
+                  @for (item of accountingFirmGroup.itemKeys; track item) {
+                    <li><mat-icon>done</mat-icon>{{ item | transloco }}</li>
+                  }
+                </ul>
+              </article>
             </div>
-            <a data-auth-cta="signup" class="public-button public-button-primary mt-9" liassPublicReveal="fade" [href]="config.signupUrl">{{ 'PUBLIC.FEATURES.CTA' | transloco }}</a>
+            <a
+              data-auth-cta="signup"
+              class="public-button public-button-primary mt-9"
+              liassPublicReveal="fade"
+              [href]="config.signupUrl"
+              >{{ 'PUBLIC.FEATURES.CTA' | transloco }}</a
+            >
           </div>
         </section>
 
@@ -273,7 +340,7 @@
               <div>
                 <div class="flex flex-wrap items-center gap-3">
                   <span class="public-eyebrow">{{ 'PUBLIC.FACTURATION.EYEBROW' | transloco }}</span>
-                  <span class="public-badge public-badge-warning">{{ 'PUBLIC.FACTURATION.STATUS' | transloco }}</span>
+                  <span class="public-badge public-badge-muted" data-public-status="COMING">{{ 'PUBLIC.FACTURATION.STATUS' | transloco }}</span>
                 </div>
                 <h2 id="facturation-title" class="public-section-title mt-4">{{ 'PUBLIC.FACTURATION.TITLE' | transloco }}</h2>
                 <p class="mt-3 text-xl font-medium text-brand-700">{{ 'PUBLIC.FACTURATION.SUBTITLE' | transloco }}</p>
@@ -327,33 +394,38 @@
           <div class="public-container">
             <div class="public-section-heading mx-auto text-center" liassPublicReveal="up">
               <span class="public-eyebrow">{{ 'PUBLIC.ROADMAP.EYEBROW' | transloco }}</span>
-              <h2 id="roadmap-title" class="public-section-title">{{ 'PUBLIC.ROADMAP.TITLE' | transloco }}</h2>
+              <h2 id="roadmap-title" class="public-section-title">
+                {{ 'PUBLIC.ROADMAP.TITLE' | transloco }}
+              </h2>
               <p>{{ 'PUBLIC.ROADMAP.INTRO' | transloco }}</p>
             </div>
-            <div class="mt-12 grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-              <article class="public-roadmap-column public-roadmap-now" liassPublicReveal="left">
-                <span class="public-badge public-badge-success">{{ 'PUBLIC.ROADMAP.NOW.BADGE' | transloco }}</span>
-                <h3>{{ 'PUBLIC.ROADMAP.NOW.TITLE' | transloco }}</h3>
-                <ul class="public-feature-list">
-                  @for (item of ['ACCOUNTING', 'BOOKS', 'THIRD_PARTIES', 'TREASURY', 'RECONCILIATION', 'DOSSIERS', 'TEAM', 'WORK', 'MULTI_ORG']; track item) {
-                    <li><mat-icon>check_circle</mat-icon>{{ 'PUBLIC.ROADMAP.NOW.ITEMS.' + item | transloco }}</li>
-                  }
-                </ul>
-              </article>
-              <article class="public-roadmap-column" liassPublicReveal="right" [liassPublicRevealDelay]="80">
-                <span class="public-badge public-badge-warning">{{ 'PUBLIC.ROADMAP.NEXT.BADGE' | transloco }}</span>
-                <h3>{{ 'PUBLIC.ROADMAP.NEXT.TITLE' | transloco }}</h3>
-                <div class="grid gap-3 sm:grid-cols-2">
-                  @for (group of roadmapGroups; track group.titleKey) {
-                    <div class="public-roadmap-group">
-                      <mat-icon>{{ group.icon }}</mat-icon>
-                      <div><h4>{{ group.titleKey | transloco }}</h4><p>{{ group.itemKeys[0] | transloco }}</p></div>
-                    </div>
-                  }
-                </div>
-              </article>
+            <div class="public-roadmap-intro mt-10" liassPublicReveal="fade">
+              <mat-icon aria-hidden="true">moving</mat-icon>
+              <p>{{ 'PUBLIC.ROADMAP.CONTEXT' | transloco }}</p>
             </div>
-            <p class="mt-6 text-center text-sm text-slate-500">{{ 'PUBLIC.ROADMAP.NOTICE' | transloco }}</p>
+            <div class="public-future-grid mt-8">
+              @for (domain of futureDomains; track domain.id) {
+                <article
+                  class="public-future-card"
+                  [attr.data-marketing-domain]="domain.id"
+                  [attr.data-public-status]="domain.status"
+                  liassPublicReveal="up"
+                  [liassPublicRevealDelay]="$index * 60"
+                >
+                  <div class="public-domain-heading">
+                    <mat-icon aria-hidden="true">{{ domain.icon }}</mat-icon>
+                    <span class="public-badge public-badge-muted">{{
+                      'PUBLIC.STATUS.COMING' | transloco
+                    }}</span>
+                  </div>
+                  <h3>{{ domain.titleKey | transloco }}</h3>
+                  <p>{{ domain.descriptionKey | transloco }}</p>
+                </article>
+              }
+            </div>
+            <p class="mt-6 text-center text-sm text-slate-500">
+              {{ 'PUBLIC.ROADMAP.NOTICE' | transloco }}
+            </p>
           </div>
         </section>
 

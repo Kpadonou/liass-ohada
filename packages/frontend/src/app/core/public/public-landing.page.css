@@ -402,6 +402,18 @@
   color: #047857;
 }
 
+.public-badge-info {
+  background: #eef6ff;
+  border: 1px solid #bfdbfe;
+  color: #0b4378;
+}
+
+.public-badge-muted {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+}
+
 .public-live-dot {
   background: #34d399;
   border-radius: 50%;
@@ -707,6 +719,104 @@
   margin-top: 1.25rem;
 }
 
+.public-available-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.public-flagship-card {
+  background: linear-gradient(145deg, #eef6ff 0%, #ffffff 48%, #f8fafc 100%);
+  border: 1px solid #a9cff7;
+  border-radius: 1rem;
+  box-shadow: 0 18px 48px rgb(15 23 42 / 0.08);
+  overflow: hidden;
+  padding: 2rem;
+  position: relative;
+}
+
+.public-flagship-card::before {
+  background: linear-gradient(90deg, #155a9a, #60a5fa, #7dd3fc);
+  content: '';
+  height: 3px;
+  inset: 0 0 auto;
+  position: absolute;
+}
+
+.public-domain-heading,
+.public-capability-heading {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.public-domain-kicker {
+  color: #155a9a;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  margin-top: 1.3rem;
+  text-transform: uppercase;
+}
+
+.public-flagship-card > h3,
+.public-firm-capability > h3 {
+  color: #0f172a;
+  font-size: clamp(1.45rem, 2.4vw, 2rem);
+  font-weight: 740;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+  margin-top: 0.35rem;
+}
+
+.public-domain-description {
+  color: #64748b;
+  font-size: 0.925rem;
+  line-height: 1.55rem;
+  margin-top: 0.75rem;
+}
+
+.public-capability-grid {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.75rem;
+}
+
+.public-capability-card {
+  background: rgb(255 255 255 / 0.82);
+  border: 1px solid #dbe7f4;
+  border-radius: 0.8rem;
+  min-width: 0;
+  padding: 1rem;
+}
+
+.public-capability-heading mat-icon {
+  color: #155a9a;
+}
+
+.public-capability-card .public-badge {
+  font-size: 0.625rem;
+  padding: 0.3rem 0.55rem;
+}
+
+.public-capability-card h4 {
+  color: #1e293b;
+  font-size: 0.9rem;
+  font-weight: 720;
+  margin-top: 0.8rem;
+}
+
+.public-capability-card p {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.3rem;
+  margin-top: 0.35rem;
+}
+
+.public-firm-capability {
+  border-top: 3px solid #0f766e;
+}
+
 .public-tour-section,
 .public-security-section {
   background:
@@ -978,6 +1088,75 @@
   margin-top: 0.25rem;
 }
 
+.public-roadmap-intro {
+  align-items: flex-start;
+  background: #ffffff;
+  border: 1px solid #d8eaff;
+  border-radius: 0.85rem;
+  color: #334155;
+  display: flex;
+  gap: 0.8rem;
+  margin-inline: auto;
+  max-width: 58rem;
+  padding: 1rem 1.15rem;
+}
+
+.public-roadmap-intro mat-icon {
+  color: #155a9a;
+  flex: 0 0 auto;
+}
+
+.public-roadmap-intro p {
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+}
+
+.public-future-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.public-future-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.9rem;
+  min-width: 0;
+  padding: 1.15rem;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.public-future-card:hover {
+  border-color: #bfdbfe;
+  box-shadow: 0 12px 28px rgb(15 23 42 / 0.06);
+  transform: translateY(-2px);
+}
+
+.public-future-card .public-domain-heading > mat-icon {
+  color: #155a9a;
+}
+
+.public-future-card .public-badge {
+  font-size: 0.625rem;
+  padding: 0.3rem 0.55rem;
+}
+
+.public-future-card h3 {
+  color: #1e293b;
+  font-size: 0.95rem;
+  font-weight: 720;
+  margin-top: 1rem;
+}
+
+.public-future-card p {
+  color: #64748b;
+  font-size: 0.78rem;
+  line-height: 1.3rem;
+  margin-top: 0.4rem;
+}
+
 .public-feedback-card {
   align-items: flex-start;
   background: linear-gradient(135deg, #eef6ff, #ffffff);
@@ -1199,6 +1378,11 @@
   .public-steps {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .public-capability-grid,
+  .public-future-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 70rem) {
@@ -1209,6 +1393,20 @@
 
 @media (min-width: 64rem) {
   .public-steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .public-available-layout {
+    grid-template-columns: minmax(0, 1.55fr) minmax(17rem, 0.75fr);
+  }
+
+  .public-future-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 80rem) {
+  .public-future-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
@@ -1234,7 +1432,8 @@
   }
 
   .public-workspace-card,
-  .public-roadmap-column {
+  .public-roadmap-column,
+  .public-flagship-card {
     padding: 1.4rem;
   }
 
@@ -1270,6 +1469,7 @@
   .public-button:hover,
   .public-info-card:hover,
   .public-feature-group:hover,
+  .public-future-card:hover,
   .public-pillar-card:hover,
   .public-workspace-card:hover,
   .public-roadmap-column:hover,
