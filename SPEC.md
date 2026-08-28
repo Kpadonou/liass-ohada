@@ -25,7 +25,7 @@ Organization
 
 - `Organization` owns platform-wide identity and status attributes.
 - `UserOrgAccess` represents a user's verified access to an organization.
-- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The only currently implemented top-level product code is `ACCOUNTING`. Every current Accounting-product business route is explicitly annotated with `ACCOUNTING`; Platform Core discovery, onboarding, entitlement observation, and recovery routes remain outside product enforcement. Accounting Core, Treasury, and Project Accounting navigation derive availability from the same effective-organization entitlement.
+- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The canonical public product codes are `ACCOUNTING` and `SALES`; their entitlements are independent. Every current Accounting-product business route is explicitly annotated with `ACCOUNTING`; SALES has no business route yet. Platform Core discovery, onboarding, entitlement observation, and recovery routes remain outside product enforcement. Accounting Core, Treasury, and Project Accounting navigation derive availability from the same effective-organization `ACCOUNTING` entitlement.
 - `DomainSettings` belongs to the owning business domain. In particular, `accountingFramework` conceptually belongs to `AccountingSettings`, not to universal Organization metadata.
 
 Current onboarding, Organization, workspace, access-projection, and response contracts may still carry `accountingFramework`. This is an explicit compatibility state. It must remain supported until a reviewed, backward-compatible runtime and data migration moves ownership to Accounting.
@@ -90,11 +90,15 @@ LIASS-OHADA
 │   ├── Accounting Core
 │   ├── Treasury
 │   └── Project Accounting
+├── PRODUCT: SALES
+│   └── foundation only; no business route or navigation yet
 └── FUTURE PRODUCT: LIASS-RESTO
     └── restaurant / bar operations
 ```
 
 `ACCOUNTING` is the top-level `ProductAccess` entitlement for current ERP functionality. Treasury and Project Accounting are Accounting modules and must not use `TREASURY` or `PROJECTS` as current ProductAccess codes. Module-granular RBAC remains independent: Accounting Core uses `ACCOUNTING_*`, Treasury uses `TREASURY_*`, and Project Accounting uses `PROJECTS_*` permissions.
+
+`SALES` is an independent top-level `ProductAccess` entitlement. Its S1A foundation is activated only through an explicit dry-run-first operational command that atomically creates `PRODUCT_ACCESS#SALES` and SALES-owned `SETTINGS#SALES` for an eligible `COMPANY`. Default onboarding continues to provision only `ACCOUNTING`. Liass-Facturation is a future business experience that may consume SALES; it is not itself a `ProductCode` and remains commercially unavailable until its functional lots are delivered.
 
 The existing `/projects` routes, `domains/projects` folders, and `PROJECTS_*` permissions remain compatibility-sensitive technical identifiers for the Project Accounting module. This taxonomy does not authorize a broad technical rename or a speculative module-entitlement model.
 

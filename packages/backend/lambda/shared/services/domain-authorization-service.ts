@@ -1,5 +1,6 @@
 import type { AccountingAccessMode } from "@liass-ohada/shared";
 import {
+  ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
   DOMAIN_PERMISSIONS,
   isWritePermission,
 } from "../authorization/domain-permission";
@@ -11,15 +12,26 @@ export interface DomainPermissionContext {
   permissions?: readonly DomainPermission[];
 }
 
-const READ_PERMISSIONS = DOMAIN_PERMISSIONS.filter((permission) =>
-  permission.endsWith("_READ"),
-);
+const ACCOUNTING_PRODUCT_READ_PERMISSIONS =
+  ACCOUNTING_PRODUCT_MODULE_PERMISSIONS.filter((permission) =>
+    permission.endsWith("_READ"),
+  );
 
 export class DomainAuthorizationService {
   static permissionsForAccessMode(
     accessMode: AccountingAccessMode,
   ): readonly DomainPermission[] {
-    return accessMode === "READ_ONLY" ? READ_PERMISSIONS : DOMAIN_PERMISSIONS;
+    return accessMode === "READ_ONLY"
+      ? ACCOUNTING_PRODUCT_READ_PERMISSIONS
+      : ACCOUNTING_PRODUCT_MODULE_PERMISSIONS;
+  }
+
+  static permissionsForDirectOrganizationRole(
+    role: string | undefined,
+  ): readonly DomainPermission[] {
+    return role === "OWNER"
+      ? DOMAIN_PERMISSIONS
+      : ACCOUNTING_PRODUCT_MODULE_PERMISSIONS;
   }
 
   static hasPermission(

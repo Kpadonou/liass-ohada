@@ -168,6 +168,7 @@ export type {
   ProjectSummaryDto,
 } from "./projects/project";
 export * from "./treasury";
+export * from "./sales";
 export type { ApiMessage, ApiResponse } from "./shared/api-response";
 export * from "./shared/cabinet-operations";
 export * from "./shared/cabinet-dashboard";

@@ -121,6 +121,21 @@ describe("ProductAccessRepository", () => {
     });
   });
 
+  test("builds canonical SALES access without changing legacy compatibility", () => {
+    const item = ProductAccessRepository.buildItem({
+      orgId: "org-123",
+      productCode: "SALES",
+      status: "ACTIVE",
+      timestamp: "2026-08-28T10:00:00.000Z",
+    });
+
+    expect(item).toMatchObject({
+      PK: "ORG#org-123",
+      SK: "PRODUCT_ACCESS#SALES",
+      productCode: "SALES",
+    });
+  });
+
   test.each(["PROJECTS", "TREASURY"])(
     "rejects new writes for legacy module code %s",
     (productCode) => {

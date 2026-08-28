@@ -23,6 +23,7 @@ export const LEGACY_PRODUCT_CODES = ["PROJECTS", "TREASURY"] as const;
 export const LegacyProductCodeSchema = z.enum(LEGACY_PRODUCT_CODES);
 export const PersistedProductCodeSchema = z.enum([
   "ACCOUNTING",
+  "SALES",
   ...LEGACY_PRODUCT_CODES,
 ]);
 

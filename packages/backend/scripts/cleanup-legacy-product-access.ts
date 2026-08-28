@@ -166,14 +166,19 @@ export const cleanupLegacyProductAccessForOrganization = async (
   const validLegacy = LEGACY_PRODUCT_CODES.filter(
     (productCode) => legacy[productCode] === "VALID",
   );
-  const mismatches = [accounting, ...legacyInspections].flatMap((inspection) =>
+  const mismatches: LegacyProductAccessCleanupReport["mismatches"] = [
+    accounting,
+    ...legacyInspections,
+  ].flatMap((inspection) =>
     inspection.state === "MISMATCH"
       ? [
           {
             actualEntityType: inspection.actualEntityType,
             actualOrgId: inspection.actualOrgId,
             actualProductCode: inspection.actualProductCode,
-            expectedProductCode: inspection.expectedProductCode,
+            expectedProductCode: inspection.expectedProductCode as
+              | "ACCOUNTING"
+              | LegacyProductCode,
           },
         ]
       : [],

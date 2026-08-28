@@ -1,6 +1,6 @@
 import { ProductAccessRepository } from "@/lambda/shared/repositories/product-access-repository";
 import {
-  COMPATIBILITY_PRODUCT_BASELINE,
+  DEFAULT_PROVISIONED_PRODUCT_CODES,
   ProductAccessService,
 } from "@/lambda/shared/services/product-access-service";
 import type { ProductAccess } from "@liass-ohada/shared/shared";
@@ -8,9 +8,10 @@ import type { PersistedProductAccess } from "@/lambda/shared/repositories/produc
 
 const access = (
   status: "ACTIVE" | "INACTIVE",
+  productCode: ProductAccess["productCode"] = "ACCOUNTING",
 ): ProductAccess => ({
   orgId: "org-123",
-  productCode: "ACCOUNTING",
+  productCode,
   status,
   createdAt: "2026-08-07T10:00:00.000Z",
   updatedAt: "2026-08-07T10:00:00.000Z",
@@ -25,7 +26,7 @@ describe("ProductAccessService", () => {
   afterEach(() => jest.restoreAllMocks());
 
   test("owns the one compatibility baseline used for transaction provisioning", () => {
-    expect(COMPATIBILITY_PRODUCT_BASELINE).toEqual(["ACCOUNTING"]);
+    expect(DEFAULT_PROVISIONED_PRODUCT_CODES).toEqual(["ACCOUNTING"]);
     expect(
       ProductAccessService.buildCompatibilityBaselineWrites(
         "org-123",
@@ -37,13 +38,44 @@ describe("ProductAccessService", () => {
   test("exposes only canonical top-level ProductAccess", async () => {
     jest.spyOn(ProductAccessRepository, "listProductAccess").mockResolvedValue([
       persistedAccess("ACTIVE", "ACCOUNTING"),
+      persistedAccess("INACTIVE", "SALES"),
       persistedAccess("ACTIVE", "PROJECTS"),
       persistedAccess("INACTIVE", "TREASURY"),
     ]);
 
     await expect(
       ProductAccessService.listProductAccess("org-123"),
-    ).resolves.toEqual([access("ACTIVE")]);
+    ).resolves.toEqual([access("ACTIVE"), access("INACTIVE", "SALES")]);
+  });
+
+  test("authorizes SALES independently from ACCOUNTING", async () => {
+    const get = jest.spyOn(ProductAccessRepository, "getProductAccess");
+    get.mockResolvedValueOnce(access("ACTIVE", "SALES"));
+    await expect(
+      ProductAccessService.requireActiveProductAccess({
+        action: "GET /sales/test",
+        orgId: "org-123",
+        productCode: "SALES",
+      }),
+    ).resolves.toMatchObject({ productCode: "SALES", status: "ACTIVE" });
+
+    jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    get.mockResolvedValueOnce(access("INACTIVE", "SALES"));
+    await expect(
+      ProductAccessService.requireActiveProductAccess({
+        action: "GET /sales/test",
+        orgId: "org-123",
+        productCode: "SALES",
+      }),
+    ).rejects.toMatchObject({ messageCode: "PRODUCT_ACCESS_REQUIRED" });
+    get.mockResolvedValueOnce(null);
+    await expect(
+      ProductAccessService.requireActiveProductAccess({
+        action: "GET /sales/test",
+        orgId: "org-123",
+        productCode: "SALES",
+      }),
+    ).rejects.toMatchObject({ messageCode: "PRODUCT_ACCESS_REQUIRED" });
   });
 
   test("allows ACTIVE access and rejects missing or INACTIVE access", async () => {

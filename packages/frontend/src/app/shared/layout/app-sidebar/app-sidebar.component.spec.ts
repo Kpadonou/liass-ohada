@@ -88,6 +88,7 @@ describe('AppSidebarComponent', () => {
     localStorage.clear();
     productAvailability = {
       ACCOUNTING: 'UNKNOWN',
+      SALES: 'UNKNOWN',
     };
 
     await TestBed.configureTestingModule({
@@ -148,6 +149,8 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('POSTE ERP');
     expect(text).not.toContain('Poste ERP');
     expect(text).not.toContain('ESPACE');
+    expect(text).not.toContain('Ventes');
+    expect(text).not.toContain('Sales');
   });
 
   it('keeps Treasury navigation unchanged while access is active or technically unknown', () => {

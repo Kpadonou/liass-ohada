@@ -10,15 +10,23 @@ export const TREASURY_PERMISSIONS = [
   "TREASURY_WRITE",
 ] as const;
 
-export const DOMAIN_PERMISSIONS = [
+export const SALES_PERMISSIONS = ["SALES_READ", "SALES_WRITE"] as const;
+
+export const ACCOUNTING_PRODUCT_MODULE_PERMISSIONS = [
   ...ACCOUNTING_PERMISSIONS,
   ...PROJECTS_PERMISSIONS,
   ...TREASURY_PERMISSIONS,
 ] as const;
 
+export const DOMAIN_PERMISSIONS = [
+  ...ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
+  ...SALES_PERMISSIONS,
+] as const;
+
 export type AccountingPermission = (typeof ACCOUNTING_PERMISSIONS)[number];
 export type ProjectsPermission = (typeof PROJECTS_PERMISSIONS)[number];
 export type TreasuryPermission = (typeof TREASURY_PERMISSIONS)[number];
+export type SalesPermission = (typeof SALES_PERMISSIONS)[number];
 export type DomainPermission = (typeof DOMAIN_PERMISSIONS)[number];
 
 export function isDomainPermission(value: unknown): value is DomainPermission {

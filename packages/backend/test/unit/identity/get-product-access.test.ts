@@ -89,6 +89,16 @@ describe("GET /me/product-access", () => {
         }),
         marshall({
           PK: "ORG#org-123",
+          SK: "PRODUCT_ACCESS#SALES",
+          entityType: "PRODUCT_ACCESS",
+          orgId: "org-123",
+          productCode: "SALES",
+          status: "INACTIVE",
+          createdAt: "2026-08-07T10:00:00.000Z",
+          updatedAt: "2026-08-07T10:00:00.000Z",
+        }),
+        marshall({
+          PK: "ORG#org-123",
           SK: "PRODUCT_ACCESS#PROJECTS",
           entityType: "PRODUCT_ACCESS",
           orgId: "org-123",
@@ -117,7 +127,7 @@ describe("GET /me/product-access", () => {
     const query = dynamoMock.commandCalls(QueryCommand)[0].args[0].input;
 
     expect(response.statusCode).toBe(200);
-    expect(body.productAccess).toHaveLength(1);
+    expect(body.productAccess).toHaveLength(2);
     expect(query.ExpressionAttributeValues?.[":pk"]).toEqual({ S: "ORG#org-123" });
     expect(body.productAccess[0]).toEqual({
       orgId: "org-123",
@@ -128,7 +138,38 @@ describe("GET /me/product-access", () => {
     });
     expect(body.productAccess[0]).not.toHaveProperty("PK");
     expect(body.productAccess[0]).not.toHaveProperty("SK");
+    expect(body.productAccess[1]).toMatchObject({
+      productCode: "SALES",
+      status: "INACTIVE",
+    });
   });
+
+  test.each(["ACCOUNTING", "SALES"] as const)(
+    "returns a canonical %s-only entitlement response",
+    async (productCode) => {
+      dynamoMock.on(GetItemCommand).resolves({ Item: activeAccess("org-123") });
+      dynamoMock.on(QueryCommand).resolves({
+        Items: [
+          marshall({
+            PK: "ORG#org-123",
+            SK: `PRODUCT_ACCESS#${productCode}`,
+            entityType: "PRODUCT_ACCESS",
+            orgId: "org-123",
+            productCode,
+            status: "ACTIVE",
+            createdAt: "2026-08-07T10:00:00.000Z",
+            updatedAt: "2026-08-07T10:00:00.000Z",
+          }),
+        ],
+      });
+
+      const response = await handler(createEvent() as any);
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body).productAccess).toEqual([
+        expect.objectContaining({ productCode, status: "ACTIVE" }),
+      ]);
+    },
+  );
 
   test("returns an empty list when the organization has not been backfilled", async () => {
     const requireAccess = jest.spyOn(

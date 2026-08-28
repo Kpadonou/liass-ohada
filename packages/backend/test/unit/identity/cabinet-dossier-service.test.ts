@@ -266,6 +266,12 @@ describe("CabinetDossierService", () => {
       entityType: "ACCOUNTING_SETTINGS",
       accountingFramework: "SYSCOHADA_REVISED",
     });
+    expect(
+      transactionItems.some(
+        ({ item }) =>
+          item.SK === "PRODUCT_ACCESS#SALES" || item.SK === "SETTINGS#SALES",
+      ),
+    ).toBe(false);
   });
 
   test("maps transaction cancellation to duplicate dossier conflict", async () => {

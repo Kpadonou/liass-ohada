@@ -53,7 +53,9 @@ export class EffectiveOrganizationAccessService {
         cabinetId: directAccess.cabinetId,
         orgId: input.orgId,
         permissions:
-          DomainAuthorizationService.permissionsForAccessMode("READ_WRITE"),
+          DomainAuthorizationService.permissionsForDirectOrganizationRole(
+            directAccess.role,
+          ),
         role: directAccess.role,
         workspaceOrgId,
       };

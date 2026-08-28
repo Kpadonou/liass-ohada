@@ -29,6 +29,9 @@ export const KeyFactory = {
   /** SK for Accounting-owned settings under the organization partition. */
   accountingSettingsSK: () => "SETTINGS#ACCOUNTING",
 
+  /** SK for Sales-owned settings under the organization partition. */
+  salesSettingsSK: () => "SETTINGS#SALES",
+
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",
 

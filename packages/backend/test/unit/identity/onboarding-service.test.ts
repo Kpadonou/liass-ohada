@@ -131,6 +131,12 @@ describe("OnboardingService", () => {
       orgId: GENERATED_ORG_ID,
       accountingFramework: "SYSCOHADA_REVISED",
     });
+    expect(
+      transactionItems.some(
+        ({ item }) =>
+          item.SK === "PRODUCT_ACCESS#SALES" || item.SK === "SETTINGS#SALES",
+      ),
+    ).toBe(false);
     expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
   });
 
@@ -218,6 +224,12 @@ describe("OnboardingService", () => {
       entityType: "ACCOUNTING_SETTINGS",
       accountingFramework: "SYSCOHADA_REVISED",
     });
+    expect(
+      transactionItems.some(
+        ({ item }) =>
+          item.SK === "PRODUCT_ACCESS#SALES" || item.SK === "SETTINGS#SALES",
+      ),
+    ).toBe(false);
   });
 
   test("rejects duplicate onboarding when active workspaces already exist", async () => {

@@ -643,6 +643,14 @@ All current Accounting-product business routes are now protected: Accounting Cor
 
 **PLATFORM V2 ARCHITECTURE COMPLETE. PRODUCTION ROLLOUT REMAINS SEPARATELY GATED. STOP ARCHITECTURE WORK.** Remaining service-location/name compatibility work, production ACCOUNTING inventory/backfill, legacy ProductAccess cleanup/parser retirement, and idempotency retention are backlog or operational items, not additional Platform V2 architecture phases. The next planning category is product development.
 
+### S1A — SALES product foundation
+
+S1A is product development on the closed Platform V2 architecture. The public canonical `ProductCode` set is now `ACCOUNTING` and `SALES`; persisted `PROJECTS` and `TREASURY` codes remain backend-storage compatibility only and are still filtered from public entitlement responses. ACCOUNTING and SALES availability are resolved independently for the effective organization.
+
+SALES owns a minimal `SalesSettings` item at `PK = ORG#{orgId}`, `SK = SETTINGS#SALES`, with `entityType = SALES_SETTINGS`, an explicit three-letter uppercase default currency code, version `1`, and timestamps. Platform Core continues to own `PRODUCT_ACCESS#SALES`. The dry-run-first `activate:sales -- --org-id ORG_ID --default-currency XOF [--apply]` operation verifies an active `COMPANY` by exact key and conditionally creates both owner-built records in one transaction. It rejects Cabinet roots, inactive access, missing organizations, partial state, and invalid currency; it uses no discovery or Scan.
+
+Default COMPANY onboarding, ACCOUNTING_FIRM onboarding, and Cabinet-created client organizations continue to create only `PRODUCT_ACCESS#ACCOUNTING` plus AccountingSettings. SALES is never inferred from the public product universe. Liass-Facturation remains coming soon. No SALES route, navigation, customer, catalog, invoicing, public activation endpoint, CDK stack, Lambda, table, GSI, migration, backfill, or deployment is introduced by S1A.
+
 ### Product-roadmap candidate — Liass-Resto foundation
 
 If selected through product-roadmap planning, classify Liass-Resto as a vertical solution, define its real access patterns and domain model, reuse the single app/Cognito/org/table architecture, and integrate through owned contracts. The intended future technical identifiers remain `restaurants` and `RESTAURANTS`. This is product development, not another Platform V2 architecture phase.

@@ -1,5 +1,4 @@
 import {
-  PRODUCT_CODES,
   ProductAccess,
   ProductCode,
   ProductCodeSchema,
@@ -12,8 +11,9 @@ import type { PersistedProductCode } from "../repositories/product-access-reposi
 
 const OrganizationIdSchema = z.string().min(1);
 
-export const COMPATIBILITY_PRODUCT_BASELINE: readonly ProductCode[] =
-  PRODUCT_CODES;
+export const DEFAULT_PROVISIONED_PRODUCT_CODES = [
+  "ACCOUNTING",
+] as const satisfies readonly ProductCode[];
 
 export type ProductAccessCoverage = "COMPLETE" | "PARTIAL" | "MISSING";
 
@@ -27,12 +27,27 @@ export interface ProductAccessCoverageReport {
 }
 
 export class ProductAccessService {
+  static buildActivationWrite(input: {
+    orgId: string;
+    productCode: ProductCode;
+    timestamp: string;
+  }): TransactWriteItem {
+    return ProductAccessRepository.buildPutIfAbsentTransaction(
+      ProductAccessRepository.buildItem({
+        orgId: OrganizationIdSchema.parse(input.orgId),
+        productCode: ProductCodeSchema.parse(input.productCode),
+        status: "ACTIVE",
+        timestamp: input.timestamp,
+      }),
+    );
+  }
+
   static buildCompatibilityBaselineItems(
     orgId: string,
     timestamp: string,
   ) {
     const validatedOrgId = OrganizationIdSchema.parse(orgId);
-    return COMPATIBILITY_PRODUCT_BASELINE.map((productCode) =>
+    return DEFAULT_PROVISIONED_PRODUCT_CODES.map((productCode) =>
       ProductAccessRepository.buildItem({
         orgId: validatedOrgId,
         productCode,
@@ -122,7 +137,7 @@ export class ProductAccessService {
     const inactive: ProductCode[] = [];
     const missing: ProductCode[] = [];
 
-    for (const productCode of COMPATIBILITY_PRODUCT_BASELINE) {
+    for (const productCode of DEFAULT_PROVISIONED_PRODUCT_CODES) {
       const access = accessByProduct.get(productCode);
       if (!access) {
         missing.push(productCode);
@@ -136,7 +151,7 @@ export class ProductAccessService {
     return {
       active,
       coverage:
-        missing.length === COMPATIBILITY_PRODUCT_BASELINE.length
+        missing.length === DEFAULT_PROVISIONED_PRODUCT_CODES.length
           ? "MISSING"
           : missing.length > 0
             ? "PARTIAL"

@@ -40,6 +40,10 @@ describe("KeyFactory", () => {
     expect(KeyFactory.accountingSettingsSK()).toBe("SETTINGS#ACCOUNTING");
   });
 
+  test("builds the Sales-owned settings key centrally", () => {
+    expect(KeyFactory.salesSettingsSK()).toBe("SETTINGS#SALES");
+  });
+
   test("builds the Accounting-owned Treasury posting idempotency key centrally", () => {
     expect(KeyFactory.treasuryPostingIdempotencySK("ABC123")).toBe(
       "IDEMPOTENCY#TREASURY_POSTING#abc123",

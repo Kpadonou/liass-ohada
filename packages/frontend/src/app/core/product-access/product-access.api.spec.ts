@@ -50,6 +50,45 @@ describe('ProductAccessApi', () => {
     ]);
   });
 
+  it('accepts SALES-only and ACCOUNTING plus SALES responses', async () => {
+    const salesOnlyPromise = api.listProductAccess('org-a');
+    http.expectOne(url).flush({
+      productAccess: [
+        {
+          orgId: 'org-a',
+          productCode: 'SALES',
+          status: 'ACTIVE',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+    });
+    await expect(salesOnlyPromise).resolves.toEqual([
+      expect.objectContaining({ productCode: 'SALES', status: 'ACTIVE' }),
+    ]);
+
+    const combinedPromise = api.listProductAccess('org-a');
+    http.expectOne(url).flush({
+      productAccess: [
+        {
+          orgId: 'org-a',
+          productCode: 'ACCOUNTING',
+          status: 'ACTIVE',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+        {
+          orgId: 'org-a',
+          productCode: 'SALES',
+          status: 'INACTIVE',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        },
+      ],
+    });
+    await expect(combinedPromise).resolves.toHaveLength(2);
+  });
+
   it('rejects persistence fields and invalid public responses', async () => {
     const promise = api.listProductAccess('org-a');
     http.expectOne(url).flush({

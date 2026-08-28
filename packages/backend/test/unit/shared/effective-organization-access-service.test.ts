@@ -71,6 +71,23 @@ describe("EffectiveOrganizationAccessService", () => {
     expect(snapshot).not.toHaveBeenCalled();
   });
 
+  test("grants SALES read/write to a direct company OWNER", async () => {
+    jest.spyOn(TenantAccessService, "assertUserCanAccessOrg").mockResolvedValue({
+      accessSource: "DIRECT",
+      role: "OWNER",
+      workspaceType: "COMPANY",
+    });
+
+    await expect(
+      EffectiveOrganizationAccessService.resolveAccess({
+        orgId: "company-1",
+        userId: "owner-1",
+      }),
+    ).resolves.toMatchObject({
+      permissions: expect.arrayContaining(["SALES_READ", "SALES_WRITE"]),
+    });
+  });
+
   test.each(["missing", "inactive"])(
     "preserves %s direct membership denial",
     async () => {
@@ -124,16 +141,19 @@ describe("EffectiveOrganizationAccessService", () => {
       .spyOn(AccountingAuthorizationRepository, "getSnapshot")
       .mockResolvedValue(activeDossierSnapshot(false));
 
-    await expect(
-      EffectiveOrganizationAccessService.resolveAccess({
+    const access = await EffectiveOrganizationAccessService.resolveAccess(
+      {
         orgId: "dossier-1",
         userId: "member-1",
         workspaceOrgId: "cabinet-org-1",
-      }),
-    ).resolves.toMatchObject({
+      },
+    );
+    expect(access).toMatchObject({
       accessMode: "READ_WRITE",
       cabinetRole: "CABINET_ADMIN",
     });
+    expect(access.permissions).not.toContain("SALES_READ");
+    expect(access.permissions).not.toContain("SALES_WRITE");
     expect(snapshot).toHaveBeenCalledWith(
       expect.objectContaining({ includeAssignment: false }),
     );

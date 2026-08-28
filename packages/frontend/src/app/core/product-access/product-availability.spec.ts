@@ -19,6 +19,18 @@ describe('resolveProductAvailability', () => {
     expect(resolveProductAvailability([access('ACTIVE')], 'ACCOUNTING', true)).toBe('AVAILABLE');
   });
 
+  it('resolves SALES independently from ACCOUNTING', () => {
+    const productAccess = [access('ACTIVE', 'ACCOUNTING'), access('INACTIVE', 'SALES')];
+
+    expect(resolveProductAvailability(productAccess, 'ACCOUNTING', true)).toBe('AVAILABLE');
+    expect(resolveProductAvailability(productAccess, 'SALES', true)).toBe('UNAVAILABLE');
+    expect(resolveProductAvailability([access('ACTIVE', 'SALES')], 'SALES', true)).toBe(
+      'AVAILABLE',
+    );
+    expect(resolveProductAvailability([], 'SALES', true)).toBe('UNAVAILABLE');
+    expect(resolveProductAvailability(undefined, 'SALES', false)).toBe('UNKNOWN');
+  });
+
   it.each([
     ['INACTIVE', [access('INACTIVE')]],
     ['missing', []],

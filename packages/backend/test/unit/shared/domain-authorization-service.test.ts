@@ -1,11 +1,12 @@
 import {
+  ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
   DOMAIN_PERMISSIONS,
   isDomainPermission,
 } from "@/lambda/shared/authorization/domain-permission";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 
 describe("DomainAuthorizationService", () => {
-  test("defines only the reviewed Accounting, Projects, and Treasury read/write vocabulary", () => {
+  test("defines the reviewed Accounting-module and SALES permission vocabulary", () => {
     expect(DOMAIN_PERMISSIONS).toEqual([
       "ACCOUNTING_READ",
       "ACCOUNTING_WRITE",
@@ -13,12 +14,31 @@ describe("DomainAuthorizationService", () => {
       "PROJECTS_WRITE",
       "TREASURY_READ",
       "TREASURY_WRITE",
+      "SALES_READ",
+      "SALES_WRITE",
     ]);
     for (const permission of DOMAIN_PERMISSIONS) {
       expect(isDomainPermission(permission)).toBe(true);
     }
     expect(isDomainPermission("RESTAURANTS_READ")).toBe(false);
     expect(isDomainPermission("PROJECT_CLOSE_GRANT")).toBe(false);
+  });
+
+  test("grants SALES only to the direct organization OWNER role", () => {
+    expect(
+      DomainAuthorizationService.permissionsForDirectOrganizationRole("OWNER"),
+    ).toEqual(DOMAIN_PERMISSIONS);
+    expect(
+      DomainAuthorizationService.permissionsForDirectOrganizationRole(
+        "ACCOUNTANT",
+      ),
+    ).not.toContain("SALES_READ");
+    expect(
+      DomainAuthorizationService.permissionsForAccessMode("READ_WRITE"),
+    ).not.toContain("SALES_WRITE");
+    expect(
+      DomainAuthorizationService.permissionsForAccessMode("READ_ONLY"),
+    ).not.toContain("SALES_READ");
   });
 
   test("derives equivalent domain reads for the existing read-only role semantics", () => {
@@ -30,7 +50,7 @@ describe("DomainAuthorizationService", () => {
   test("derives equivalent domain reads and writes for existing read-write access", () => {
     expect(
       DomainAuthorizationService.permissionsForAccessMode("READ_WRITE"),
-    ).toEqual(DOMAIN_PERMISSIONS);
+    ).toEqual(ACCOUNTING_PRODUCT_MODULE_PERMISSIONS);
   });
 
   test.each([
