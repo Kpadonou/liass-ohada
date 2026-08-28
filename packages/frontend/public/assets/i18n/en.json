@@ -2296,31 +2296,52 @@
     },
     "ONBOARDING": {
       "EYEBROW": "Onboarding",
-      "TITLE": "Create your Liass-OHADA workspace",
-      "SUBTITLE": "Start with the organization profile that fits your OHADA accounting setup.",
-      "TYPE_CARD_TITLE": "Choose your workspace type",
-      "TYPE_CARD_SUBTITLE": "This shapes the initial organization profile and future supervision workflows.",
-      "DETAILS_CARD_TITLE": "Set up the initial organization",
-      "DETAILS_CARD_SUBTITLE": "These details prepare the workspace for OHADA-compliant provisioning.",
+      "TITLE": "Welcome to Liass-OHADA",
+      "INTENT_QUESTION": "What would you like to do first?",
+      "SUBTITLE": "Choose your main need. Your Liass-OHADA workspace can evolve as your needs grow.",
       "STEPS": {
-        "WORKSPACE_TYPE": "Workspace type",
-        "ORGANIZATION_DETAILS": "Organization details"
+        "LABEL": "Workspace creation steps",
+        "INTENT": "Your need",
+        "ORGANIZATION": "Your organization",
+        "CONFIGURATION": "Configuration",
+        "PROGRESS": "Step {{ current }} of {{ total }}"
       },
-      "CHOICES": {
-        "COMPANY": {
-          "TITLE": "Create a Company",
-          "DESCRIPTION": "For PME and standard business tenants."
+      "INTENTS": {
+        "SELECTED": "Need selected",
+        "COMING_SOON": "Coming soon",
+        "ACCOUNTING": {
+          "TITLE": "Manage my accounting",
+          "DESCRIPTION": "Manage your organization's accounting, treasury, and financial tracking."
+        },
+        "BENIN_INVOICING": {
+          "BRAND": "Liass-Facturation",
+          "TITLE": "Issue standardized invoices in Benin",
+          "DESCRIPTION": "An invoicing experience designed for Beninese businesses and a future connection to e-MECeF."
         },
         "ACCOUNTING_FIRM": {
-          "TITLE": "Register as an Accounting Firm",
-          "DESCRIPTION": "For Cabinet Comptable teams supervising client dossiers."
+          "TITLE": "Manage my accounting firm",
+          "DESCRIPTION": "Bring your client companies, team, work, and deadlines together in one workspace."
         }
+      },
+      "ORGANIZATION": {
+        "COMPANY_TITLE": "Your organization",
+        "COMPANY_DESCRIPTION": "Provide the essential information about your organization.",
+        "CABINET_TITLE": "Your accounting firm",
+        "CABINET_DESCRIPTION": "Provide the essential information about your accounting firm."
+      },
+      "CONFIGURATION": {
+        "ACCOUNTING_TITLE": "Accounting configuration",
+        "ACCOUNTING_DESCRIPTION": "Choose the framework that will govern your organization's accounting.",
+        "CABINET_TITLE": "Preferences for new client companies",
+        "CABINET_DESCRIPTION": "Prepare future client dossier creation with a preference that can be changed."
       },
       "FIELDS": {
         "COMPANY_NAME": "Company name",
         "ACCOUNTING_FIRM_NAME": "Accounting firm name",
         "COUNTRY": "Country",
-        "ACCOUNTING_FRAMEWORK": "Accounting framework"
+        "ACCOUNTING_FRAMEWORK": "Accounting framework",
+        "DEFAULT_ACCOUNTING_FRAMEWORK": "Default suggested framework",
+        "DEFAULT_ACCOUNTING_FRAMEWORK_HELPER": "This choice will be suggested by default when creating a new client company and can be adapted for each dossier."
       },
       "FRAMEWORKS": {
         "SYSCOHADA_REVISED": "Revised SYSCOHADA",
@@ -2361,7 +2382,7 @@
         "VALIDATION": "The workspace was created, but the response could not be verified. Please retry or refresh your workspace list."
       },
       "VALIDATION": {
-        "WORKSPACE_TYPE": "Choose a workspace type.",
+        "INTENT": "Choose what you would like to do first.",
         "ORGANIZATION_NAME": "Enter an organization name.",
         "COUNTRY": "Choose a country.",
         "ACCOUNTING_FRAMEWORK": "Choose an accounting framework."

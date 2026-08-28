@@ -27,8 +27,32 @@ type OnboardingErrorKey =
   | 'IDENTITY.ONBOARDING.ERRORS.NETWORK'
   | 'IDENTITY.ONBOARDING.ERRORS.SERVER'
   | 'IDENTITY.ONBOARDING.ERRORS.VALIDATION';
-type OnboardingStep = 'workspaceType' | 'organizationDetails';
+type OnboardingStep = 'intent' | 'organization' | 'configuration';
+type AvailableOnboardingIntent = 'ACCOUNTING' | 'ACCOUNTING_FIRM';
+type OnboardingIntent = AvailableOnboardingIntent | 'BENIN_INVOICING';
 type WorkspaceType = 'ACCOUNTING_FIRM' | 'COMPANY';
+
+type OnboardingIntentOption =
+  | {
+      id: AvailableOnboardingIntent;
+      icon: string;
+      available: true;
+      titleKey: string;
+      descriptionKey: string;
+    }
+  | {
+      id: Exclude<OnboardingIntent, AvailableOnboardingIntent>;
+      icon: string;
+      available: false;
+      titleKey: string;
+      descriptionKey: string;
+      brandKey: string;
+    };
+
+const WORKSPACE_TYPE_BY_INTENT: Record<AvailableOnboardingIntent, WorkspaceType> = {
+  ACCOUNTING: 'COMPANY',
+  ACCOUNTING_FIRM: 'ACCOUNTING_FIRM'
+};
 
 @Component({
   selector: 'liass-onboarding-page',
@@ -51,26 +75,87 @@ export class OnboardingPage implements OnInit {
   private readonly onboardingApi = inject(OnboardingApi);
   private readonly router = inject(Router);
 
-  protected readonly currentStep = signal<OnboardingStep>('workspaceType');
+  protected readonly currentStep = signal<OnboardingStep>('intent');
   protected readonly onboardingErrorKey = signal<OnboardingErrorKey | null>(null);
-  protected readonly selectedWorkspaceType = signal<WorkspaceType | null>(null);
+  protected readonly selectedIntent = signal<AvailableOnboardingIntent | null>(null);
+  protected readonly intentTouched = signal(false);
   protected readonly submitting = signal(false);
 
   protected readonly countryOptions = ohadaCountryOptions;
   protected readonly frameworkOptions = accountingFrameworkOptions;
+  protected readonly intentOptions: readonly OnboardingIntentOption[] = [
+    {
+      id: 'ACCOUNTING',
+      icon: 'account_balance',
+      available: true,
+      titleKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING.TITLE',
+      descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING.DESCRIPTION'
+    },
+    {
+      id: 'BENIN_INVOICING',
+      icon: 'receipt_long',
+      available: false,
+      brandKey: 'IDENTITY.ONBOARDING.INTENTS.BENIN_INVOICING.BRAND',
+      titleKey: 'IDENTITY.ONBOARDING.INTENTS.BENIN_INVOICING.TITLE',
+      descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.BENIN_INVOICING.DESCRIPTION'
+    },
+    {
+      id: 'ACCOUNTING_FIRM',
+      icon: 'groups',
+      available: true,
+      titleKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING_FIRM.TITLE',
+      descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING_FIRM.DESCRIPTION'
+    }
+  ];
+
+  protected readonly stepNumber = computed(() => {
+    switch (this.currentStep()) {
+      case 'intent':
+        return 1;
+      case 'organization':
+        return 2;
+      case 'configuration':
+        return 3;
+    }
+  });
+  protected readonly isAccountingFirm = computed(() => this.selectedIntent() === 'ACCOUNTING_FIRM');
+  protected readonly organizationHeadingKey = computed(() =>
+    this.isAccountingFirm()
+      ? 'IDENTITY.ONBOARDING.ORGANIZATION.CABINET_TITLE'
+      : 'IDENTITY.ONBOARDING.ORGANIZATION.COMPANY_TITLE'
+  );
+  protected readonly organizationDescriptionKey = computed(() =>
+    this.isAccountingFirm()
+      ? 'IDENTITY.ONBOARDING.ORGANIZATION.CABINET_DESCRIPTION'
+      : 'IDENTITY.ONBOARDING.ORGANIZATION.COMPANY_DESCRIPTION'
+  );
+  protected readonly organizationNameLabelKey = computed(() =>
+    this.isAccountingFirm()
+      ? 'IDENTITY.ONBOARDING.FIELDS.ACCOUNTING_FIRM_NAME'
+      : 'IDENTITY.ONBOARDING.FIELDS.COMPANY_NAME'
+  );
+  protected readonly configurationHeadingKey = computed(() =>
+    this.isAccountingFirm()
+      ? 'IDENTITY.ONBOARDING.CONFIGURATION.CABINET_TITLE'
+      : 'IDENTITY.ONBOARDING.CONFIGURATION.ACCOUNTING_TITLE'
+  );
+  protected readonly configurationDescriptionKey = computed(() =>
+    this.isAccountingFirm()
+      ? 'IDENTITY.ONBOARDING.CONFIGURATION.CABINET_DESCRIPTION'
+      : 'IDENTITY.ONBOARDING.CONFIGURATION.ACCOUNTING_DESCRIPTION'
+  );
+  protected readonly accountingFrameworkLabelKey = computed(() =>
+    this.isAccountingFirm()
+      ? 'IDENTITY.ONBOARDING.FIELDS.DEFAULT_ACCOUNTING_FRAMEWORK'
+      : 'IDENTITY.ONBOARDING.FIELDS.ACCOUNTING_FRAMEWORK'
+  );
 
   protected readonly form = this.formBuilder.nonNullable.group({
     workspaceType: ['', [Validators.required]],
     organizationName: ['', [Validators.required]],
     country: ['BJ', [Validators.required]],
-    accountingFramework: ['SYSCOHADA_REVISED' as const, [Validators.required]]
+    accountingFramework: ['', [Validators.required]]
   });
-
-  protected readonly organizationNameLabelKey = computed(() =>
-    this.selectedWorkspaceType() === 'ACCOUNTING_FIRM'
-      ? 'IDENTITY.ONBOARDING.FIELDS.ACCOUNTING_FIRM_NAME'
-      : 'IDENTITY.ONBOARDING.FIELDS.COMPANY_NAME'
-  );
 
   async ngOnInit(): Promise<void> {
     if (!this.authStore.workspacesLoaded()) {
@@ -83,33 +168,55 @@ export class OnboardingPage implements OnInit {
     }
   }
 
-  protected selectWorkspaceType(workspaceType: WorkspaceType): void {
-    this.selectedWorkspaceType.set(workspaceType);
-    this.form.controls.workspaceType.setValue(workspaceType);
+  protected selectIntent(intent: AvailableOnboardingIntent): void {
+    if (this.selectedIntent() !== intent) {
+      this.form.controls.accountingFramework.reset('');
+    }
+
+    this.selectedIntent.set(intent);
+    this.form.controls.workspaceType.setValue(WORKSPACE_TYPE_BY_INTENT[intent]);
     this.form.controls.workspaceType.markAsTouched();
+    this.intentTouched.set(true);
     this.onboardingErrorKey.set(null);
   }
 
-  protected continueToDetails(): void {
-    this.form.controls.workspaceType.markAsTouched();
+  protected continueFromIntent(): void {
+    this.intentTouched.set(true);
 
-    if (this.form.controls.workspaceType.invalid) {
+    if (!this.selectedIntent()) {
       return;
     }
 
-    this.currentStep.set('organizationDetails');
+    this.currentStep.set('organization');
   }
 
-  protected backToWorkspaceType(): void {
+  protected continueFromOrganization(): void {
+    this.form.controls.organizationName.markAsTouched();
+    this.form.controls.country.markAsTouched();
+
+    if (this.form.controls.organizationName.invalid || this.form.controls.country.invalid) {
+      return;
+    }
+
+    this.currentStep.set('configuration');
+  }
+
+  protected back(): void {
     this.onboardingErrorKey.set(null);
-    this.currentStep.set('workspaceType');
+
+    if (this.currentStep() === 'configuration') {
+      this.currentStep.set('organization');
+      return;
+    }
+
+    this.currentStep.set('intent');
   }
 
   protected async submitOnboarding(): Promise<void> {
     this.form.markAllAsTouched();
     this.onboardingErrorKey.set(null);
 
-    if (this.form.invalid || this.submitting()) {
+    if (this.form.invalid || this.submitting() || this.currentStep() !== 'configuration') {
       return;
     }
 
@@ -149,27 +256,21 @@ export class OnboardingPage implements OnInit {
       if (httpError.status === 0) {
         return 'IDENTITY.ONBOARDING.ERRORS.NETWORK';
       }
-
       if (httpError.code === 'WORKSPACE_ALREADY_EXISTS') {
         return 'IDENTITY.ONBOARDING.ERRORS.DUPLICATE_WORKSPACE';
       }
-
       if (httpError.status === 400) {
         return 'IDENTITY.ONBOARDING.ERRORS.VALIDATION';
       }
-
       if (httpError.status === 401 || httpError.status === 403) {
         return 'IDENTITY.ONBOARDING.ERRORS.AUTH_REQUIRED';
       }
-
       if (httpError.status === 404) {
         return 'IDENTITY.ONBOARDING.ERRORS.MISSING_ROUTE';
       }
-
       if (httpError.status >= 500) {
         return 'IDENTITY.ONBOARDING.ERRORS.SERVER';
       }
-
       return 'IDENTITY.ONBOARDING.ERRORS.CREATE_FAILED';
     }
 

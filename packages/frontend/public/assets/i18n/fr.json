@@ -2296,31 +2296,52 @@
     },
     "ONBOARDING": {
       "EYEBROW": "Onboarding",
-      "TITLE": "Créez votre espace Liass-OHADA",
-      "SUBTITLE": "Commencez par le profil d’organisation adapté à votre configuration comptable OHADA.",
-      "TYPE_CARD_TITLE": "Choisissez votre type d’espace",
-      "TYPE_CARD_SUBTITLE": "Ce choix prépare le profil initial de l’organisation et les futurs workflows de supervision.",
-      "DETAILS_CARD_TITLE": "Configurez l’organisation initiale",
-      "DETAILS_CARD_SUBTITLE": "Ces informations préparent l’espace pour un provisionnement conforme OHADA.",
+      "TITLE": "Bienvenue sur Liass-OHADA",
+      "INTENT_QUESTION": "Que souhaitez-vous faire en premier ?",
+      "SUBTITLE": "Choisissez votre besoin principal. Vous pourrez faire évoluer votre espace Liass-OHADA avec vos besoins.",
       "STEPS": {
-        "WORKSPACE_TYPE": "Type d’espace",
-        "ORGANIZATION_DETAILS": "Détails organisation"
+        "LABEL": "Étapes de création de votre espace",
+        "INTENT": "Votre besoin",
+        "ORGANIZATION": "Votre organisation",
+        "CONFIGURATION": "Configuration",
+        "PROGRESS": "Étape {{ current }} sur {{ total }}"
       },
-      "CHOICES": {
-        "COMPANY": {
-          "TITLE": "Créer une entreprise",
-          "DESCRIPTION": "Pour les PME et les tenants d’entreprise standard."
+      "INTENTS": {
+        "SELECTED": "Besoin sélectionné",
+        "COMING_SOON": "Bientôt disponible",
+        "ACCOUNTING": {
+          "TITLE": "Tenir ma comptabilité",
+          "DESCRIPTION": "Gérez la comptabilité, la trésorerie et le suivi financier de votre organisation."
+        },
+        "BENIN_INVOICING": {
+          "BRAND": "Liass-Facturation",
+          "TITLE": "Émettre des factures normalisées au Bénin",
+          "DESCRIPTION": "Une expérience de facturation pensée pour les entreprises béninoises et la future connexion à e-MECeF."
         },
         "ACCOUNTING_FIRM": {
-          "TITLE": "S’inscrire comme cabinet comptable",
-          "DESCRIPTION": "Pour les équipes de Cabinet Comptable supervisant des dossiers clients."
+          "TITLE": "Gérer mon cabinet comptable",
+          "DESCRIPTION": "Centralisez vos entreprises clientes, votre équipe, vos travaux et vos échéances dans un même espace."
         }
+      },
+      "ORGANIZATION": {
+        "COMPANY_TITLE": "Votre organisation",
+        "COMPANY_DESCRIPTION": "Renseignez les informations essentielles de votre organisation.",
+        "CABINET_TITLE": "Votre cabinet",
+        "CABINET_DESCRIPTION": "Renseignez les informations essentielles de votre cabinet comptable."
+      },
+      "CONFIGURATION": {
+        "ACCOUNTING_TITLE": "Configuration comptable",
+        "ACCOUNTING_DESCRIPTION": "Choisissez le référentiel qui encadrera la comptabilité de votre organisation.",
+        "CABINET_TITLE": "Préférences des nouvelles entreprises clientes",
+        "CABINET_DESCRIPTION": "Préparez la création de vos futurs dossiers clients avec une préférence modifiable."
       },
       "FIELDS": {
         "COMPANY_NAME": "Nom de l’entreprise",
         "ACCOUNTING_FIRM_NAME": "Nom du cabinet comptable",
         "COUNTRY": "Pays",
-        "ACCOUNTING_FRAMEWORK": "Référentiel comptable"
+        "ACCOUNTING_FRAMEWORK": "Référentiel comptable",
+        "DEFAULT_ACCOUNTING_FRAMEWORK": "Référentiel proposé par défaut",
+        "DEFAULT_ACCOUNTING_FRAMEWORK_HELPER": "Ce choix sera proposé par défaut lors de la création d’une nouvelle entreprise cliente et pourra être adapté pour chaque dossier."
       },
       "FRAMEWORKS": {
         "SYSCOHADA_REVISED": "SYSCOHADA révisé",
@@ -2361,7 +2382,7 @@
         "VALIDATION": "L’espace a été créé, mais la réponse n’a pas pu être vérifiée. Réessayez ou actualisez la liste des espaces."
       },
       "VALIDATION": {
-        "WORKSPACE_TYPE": "Choisissez un type d’espace.",
+        "INTENT": "Choisissez ce que vous souhaitez faire en premier.",
         "ORGANIZATION_NAME": "Saisissez un nom d’organisation.",
         "COUNTRY": "Choisissez un pays.",
         "ACCOUNTING_FRAMEWORK": "Choisissez un référentiel comptable."

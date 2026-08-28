@@ -1,6 +1,6 @@
-<main class="min-h-screen bg-slate-50 px-4 py-6 text-slate-950 dark:bg-slate-950 dark:text-white sm:px-6 lg:px-8">
+<main class="min-h-screen overflow-x-hidden bg-slate-50 px-4 py-6 text-slate-950 dark:bg-slate-950 dark:text-white sm:px-6 lg:px-8">
   <form
-    class="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-5xl flex-col justify-center gap-6"
+    class="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-6xl flex-col justify-center gap-6"
     [formGroup]="form"
     (ngSubmit)="submitOnboarding()"
   >
@@ -11,128 +11,164 @@
       <h1 class="mt-3 text-3xl font-semibold leading-tight text-slate-900 dark:text-white sm:text-4xl">
         {{ 'IDENTITY.ONBOARDING.TITLE' | transloco }}
       </h1>
-      <p class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base">
-        {{ 'IDENTITY.ONBOARDING.SUBTITLE' | transloco }}
-      </p>
+      @if (currentStep() === 'intent') {
+        <h2 class="mt-4 text-xl font-semibold text-slate-900 dark:text-white sm:text-2xl">
+          {{ 'IDENTITY.ONBOARDING.INTENT_QUESTION' | transloco }}
+        </h2>
+        <p class="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base">
+          {{ 'IDENTITY.ONBOARDING.SUBTITLE' | transloco }}
+        </p>
+      }
     </header>
 
-    <nav class="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-500 dark:bg-white/5 dark:text-slate-400">
-      <div
-        class="rounded-md px-3 py-2 text-center transition"
-        [class.bg-white]="currentStep() === 'workspaceType'"
-        [class.text-brand-700]="currentStep() === 'workspaceType'"
-        [class.shadow-app-xs]="currentStep() === 'workspaceType'"
-        [class.dark:bg-slate-950]="currentStep() === 'workspaceType'"
-        [class.dark:text-brand-300]="currentStep() === 'workspaceType'"
-      >
-        {{ 'IDENTITY.ONBOARDING.STEPS.WORKSPACE_TYPE' | transloco }}
-      </div>
-      <div
-        class="rounded-md px-3 py-2 text-center transition"
-        [class.bg-white]="currentStep() === 'organizationDetails'"
-        [class.text-brand-700]="currentStep() === 'organizationDetails'"
-        [class.shadow-app-xs]="currentStep() === 'organizationDetails'"
-        [class.dark:bg-slate-950]="currentStep() === 'organizationDetails'"
-        [class.dark:text-brand-300]="currentStep() === 'organizationDetails'"
-      >
-        {{ 'IDENTITY.ONBOARDING.STEPS.ORGANIZATION_DETAILS' | transloco }}
-      </div>
+    <nav [attr.aria-label]="'IDENTITY.ONBOARDING.STEPS.LABEL' | transloco">
+      <ol class="grid grid-cols-3 gap-2 rounded-lg bg-slate-100 p-1 text-xs font-semibold text-slate-500 dark:bg-white/5 dark:text-slate-400">
+        <li
+          class="rounded-md px-2 py-2 text-center transition motion-reduce:transition-none sm:px-3"
+          [class.bg-white]="currentStep() === 'intent'"
+          [class.text-brand-700]="currentStep() === 'intent'"
+          [class.shadow-app-xs]="currentStep() === 'intent'"
+          [class.dark:bg-slate-950]="currentStep() === 'intent'"
+          [class.dark:text-brand-300]="currentStep() === 'intent'"
+          [attr.aria-current]="currentStep() === 'intent' ? 'step' : null"
+          [attr.aria-label]="'IDENTITY.ONBOARDING.STEPS.INTENT' | transloco"
+        >
+          <span class="sm:hidden">1</span>
+          <span class="hidden sm:inline">{{ 'IDENTITY.ONBOARDING.STEPS.INTENT' | transloco }}</span>
+        </li>
+        <li
+          class="rounded-md px-2 py-2 text-center transition motion-reduce:transition-none sm:px-3"
+          [class.bg-white]="currentStep() === 'organization'"
+          [class.text-brand-700]="currentStep() === 'organization'"
+          [class.shadow-app-xs]="currentStep() === 'organization'"
+          [class.dark:bg-slate-950]="currentStep() === 'organization'"
+          [class.dark:text-brand-300]="currentStep() === 'organization'"
+          [attr.aria-current]="currentStep() === 'organization' ? 'step' : null"
+          [attr.aria-label]="'IDENTITY.ONBOARDING.STEPS.ORGANIZATION' | transloco"
+        >
+          <span class="sm:hidden">2</span>
+          <span class="hidden sm:inline">{{ 'IDENTITY.ONBOARDING.STEPS.ORGANIZATION' | transloco }}</span>
+        </li>
+        <li
+          class="rounded-md px-2 py-2 text-center transition motion-reduce:transition-none sm:px-3"
+          [class.bg-white]="currentStep() === 'configuration'"
+          [class.text-brand-700]="currentStep() === 'configuration'"
+          [class.shadow-app-xs]="currentStep() === 'configuration'"
+          [class.dark:bg-slate-950]="currentStep() === 'configuration'"
+          [class.dark:text-brand-300]="currentStep() === 'configuration'"
+          [attr.aria-current]="currentStep() === 'configuration' ? 'step' : null"
+          [attr.aria-label]="'IDENTITY.ONBOARDING.STEPS.CONFIGURATION' | transloco"
+        >
+          <span class="sm:hidden">3</span>
+          <span class="hidden sm:inline">{{ 'IDENTITY.ONBOARDING.STEPS.CONFIGURATION' | transloco }}</span>
+        </li>
+      </ol>
+      <p class="sr-only" aria-live="polite">
+        {{ 'IDENTITY.ONBOARDING.STEPS.PROGRESS' | transloco: { current: stepNumber(), total: 3 } }}
+      </p>
     </nav>
 
-    @if (currentStep() === 'workspaceType') {
-      <section class="space-y-4">
-        <liass-card
-          padding="md"
-          [title]="'IDENTITY.ONBOARDING.TYPE_CARD_TITLE' | transloco"
-          [description]="'IDENTITY.ONBOARDING.TYPE_CARD_SUBTITLE' | transloco"
-        >
-          <div class="grid gap-3">
-            <button
-              class="liass-focus-ring w-full rounded-lg border bg-white p-4 text-left shadow-app-xs transition hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950 dark:hover:bg-brand-950/30"
-              type="button"
-              [class.border-brand-500]="selectedWorkspaceType() === 'COMPANY'"
-              [class.border-slate-200]="selectedWorkspaceType() !== 'COMPANY'"
-              [class.dark:border-brand-500]="selectedWorkspaceType() === 'COMPANY'"
-              [class.dark:border-slate-800]="selectedWorkspaceType() !== 'COMPANY'"
-              [attr.aria-pressed]="selectedWorkspaceType() === 'COMPANY'"
-              (click)="selectWorkspaceType('COMPANY')"
-            >
-              <span class="flex items-start gap-3">
-                <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300">
-                  <mat-icon>domain</mat-icon>
-                </span>
-                <span class="min-w-0">
-                  <span class="block text-base font-semibold text-slate-950 dark:text-white">
-                    {{ 'IDENTITY.ONBOARDING.CHOICES.COMPANY.TITLE' | transloco }}
+    @if (currentStep() === 'intent') {
+      <section [attr.aria-label]="'IDENTITY.ONBOARDING.INTENT_QUESTION' | transloco">
+        <div class="grid gap-4 lg:grid-cols-3">
+          @for (intent of intentOptions; track intent.id) {
+            @if (intent.available) {
+              <button
+                class="liass-focus-ring group min-h-52 w-full rounded-xl border bg-white p-5 text-left shadow-app-xs transition duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-app-sm motion-reduce:transform-none motion-reduce:transition-none dark:bg-slate-900"
+                type="button"
+                [class.border-brand-500]="selectedIntent() === intent.id"
+                [class.bg-brand-50]="selectedIntent() === intent.id"
+                [class.border-slate-200]="selectedIntent() !== intent.id"
+                [class.dark:border-brand-500]="selectedIntent() === intent.id"
+                [class.dark:bg-brand-950/25]="selectedIntent() === intent.id"
+                [class.dark:border-slate-800]="selectedIntent() !== intent.id"
+                [attr.aria-pressed]="selectedIntent() === intent.id"
+                [attr.aria-describedby]="intentTouched() && !selectedIntent() ? 'intent-error' : null"
+                (click)="selectIntent(intent.id)"
+              >
+                <span class="flex h-full flex-col">
+                  <span class="grid size-11 place-items-center rounded-xl bg-brand-50 text-brand-700 transition group-hover:bg-brand-100 motion-reduce:transition-none dark:bg-brand-950/40 dark:text-brand-300">
+                    <mat-icon>{{ intent.icon }}</mat-icon>
                   </span>
-                  <span class="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    {{ 'IDENTITY.ONBOARDING.CHOICES.COMPANY.DESCRIPTION' | transloco }}
+                  <span class="mt-5 block text-lg font-semibold text-slate-950 dark:text-white">
+                    {{ intent.titleKey | transloco }}
                   </span>
-                </span>
-              </span>
-            </button>
-
-            <button
-              class="liass-focus-ring w-full rounded-lg border bg-white p-4 text-left shadow-app-xs transition hover:border-brand-300 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950 dark:hover:bg-brand-950/30"
-              type="button"
-              [class.border-brand-500]="selectedWorkspaceType() === 'ACCOUNTING_FIRM'"
-              [class.border-slate-200]="selectedWorkspaceType() !== 'ACCOUNTING_FIRM'"
-              [class.dark:border-brand-500]="selectedWorkspaceType() === 'ACCOUNTING_FIRM'"
-              [class.dark:border-slate-800]="selectedWorkspaceType() !== 'ACCOUNTING_FIRM'"
-              [attr.aria-pressed]="selectedWorkspaceType() === 'ACCOUNTING_FIRM'"
-              (click)="selectWorkspaceType('ACCOUNTING_FIRM')"
-            >
-              <span class="flex items-start gap-3">
-                <span class="grid size-10 shrink-0 place-items-center rounded-lg bg-sky-50 text-sky-700 dark:bg-sky-950/35 dark:text-sky-300">
-                  <mat-icon>groups</mat-icon>
-                </span>
-                <span class="min-w-0">
-                  <span class="block text-base font-semibold text-slate-950 dark:text-white">
-                    {{ 'IDENTITY.ONBOARDING.CHOICES.ACCOUNTING_FIRM.TITLE' | transloco }}
+                  <span class="mt-2 block text-sm leading-6 text-slate-600 dark:text-slate-400">
+                    {{ intent.descriptionKey | transloco }}
                   </span>
-                  <span class="mt-1 block text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    {{ 'IDENTITY.ONBOARDING.CHOICES.ACCOUNTING_FIRM.DESCRIPTION' | transloco }}
-                  </span>
+                  @if (selectedIntent() === intent.id) {
+                    <span class="mt-auto flex items-center gap-2 pt-5 text-sm font-semibold text-brand-700 dark:text-brand-300">
+                      <mat-icon class="text-[20px]">check_circle</mat-icon>
+                      {{ 'IDENTITY.ONBOARDING.INTENTS.SELECTED' | transloco }}
+                    </span>
+                  }
                 </span>
-              </span>
-            </button>
-          </div>
-
-          @if (form.controls.workspaceType.touched && form.controls.workspaceType.invalid) {
-            <p class="mt-3 text-sm text-danger-600 dark:text-rose-300">
-              {{ 'IDENTITY.ONBOARDING.VALIDATION.WORKSPACE_TYPE' | transloco }}
-            </p>
+              </button>
+            } @else {
+              <article
+                class="min-h-52 rounded-xl border border-slate-200 bg-gradient-to-br from-white to-amber-50/60 p-5 shadow-app-xs dark:border-slate-800 dark:from-slate-900 dark:to-amber-950/15"
+                aria-disabled="true"
+                [attr.aria-labelledby]="'intent-' + intent.id + '-title'"
+                [attr.aria-describedby]="'intent-' + intent.id + '-description intent-' + intent.id + '-status'"
+              >
+                <div class="flex items-start justify-between gap-3">
+                  <span class="grid size-11 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                    <mat-icon>{{ intent.icon }}</mat-icon>
+                  </span>
+                  <span
+                    [id]="'intent-' + intent.id + '-status'"
+                    class="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-900 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100"
+                  >
+                    {{ 'IDENTITY.ONBOARDING.INTENTS.COMING_SOON' | transloco }}
+                  </span>
+                </div>
+                @if (intent.brandKey) {
+                  <p class="mt-5 text-xs font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300">
+                    {{ intent.brandKey | transloco }}
+                  </p>
+                }
+                <h3 [id]="'intent-' + intent.id + '-title'" class="mt-1 text-lg font-semibold text-slate-950 dark:text-white">
+                  {{ intent.titleKey | transloco }}
+                </h3>
+                <p [id]="'intent-' + intent.id + '-description'" class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+                  {{ intent.descriptionKey | transloco }}
+                </p>
+              </article>
+            }
           }
-        </liass-card>
+        </div>
 
-        <liass-button
-          class="block"
-          buttonType="button"
-          icon="arrow_forward"
-          size="lg"
-          tone="brand"
-          variant="solid"
-          [disabled]="form.controls.workspaceType.invalid"
-          (pressed)="continueToDetails()"
-        >
-          {{ 'IDENTITY.ONBOARDING.ACTIONS.CONTINUE' | transloco }}
-        </liass-button>
+        @if (intentTouched() && !selectedIntent()) {
+          <p id="intent-error" class="mt-3 text-sm text-danger-600 dark:text-rose-300">
+            {{ 'IDENTITY.ONBOARDING.VALIDATION.INTENT' | transloco }}
+          </p>
+        }
+
+        <div class="mt-5 flex justify-end">
+          <liass-button
+            buttonType="button"
+            icon="arrow_forward"
+            size="lg"
+            tone="brand"
+            variant="solid"
+            [disabled]="!selectedIntent()"
+            (pressed)="continueFromIntent()"
+          >
+            {{ 'IDENTITY.ONBOARDING.ACTIONS.CONTINUE' | transloco }}
+          </liass-button>
+        </div>
       </section>
-    } @else {
-      <section class="space-y-5">
+    } @else if (currentStep() === 'organization') {
+      <section class="space-y-5" [attr.aria-label]="organizationHeadingKey() | transloco">
         <liass-card
           padding="md"
-          [title]="'IDENTITY.ONBOARDING.DETAILS_CARD_TITLE' | transloco"
-          [description]="'IDENTITY.ONBOARDING.DETAILS_CARD_SUBTITLE' | transloco"
+          [title]="organizationHeadingKey() | transloco"
+          [description]="organizationDescriptionKey() | transloco"
         >
-          <div class="grid gap-5">
+          <div class="grid gap-5 md:grid-cols-2">
             <mat-form-field appearance="outline">
               <mat-label>{{ organizationNameLabelKey() | transloco }}</mat-label>
-              <input
-                matInput
-                autocomplete="organization"
-                formControlName="organizationName"
-              />
+              <input matInput autocomplete="organization" formControlName="organizationName" />
               <mat-icon matPrefix>business</mat-icon>
               @if (form.controls.organizationName.touched && form.controls.organizationName.invalid) {
                 <mat-error>{{ 'IDENTITY.ONBOARDING.VALIDATION.ORGANIZATION_NAME' | transloco }}</mat-error>
@@ -149,23 +185,43 @@
               [searchPlaceholderKey]="'COMMON.SELECT.SEARCH_PLACEHOLDER'"
               [showError]="form.controls.country.touched && form.controls.country.invalid"
             />
-
-            <mat-form-field appearance="outline">
-              <mat-label>{{ 'IDENTITY.ONBOARDING.FIELDS.ACCOUNTING_FRAMEWORK' | transloco }}</mat-label>
-              <mat-select formControlName="accountingFramework">
-                @for (framework of frameworkOptions; track framework.value) {
-                  <mat-option [value]="framework.value">{{ framework.labelKey | transloco }}</mat-option>
-                }
-              </mat-select>
-              <mat-icon matPrefix>account_balance</mat-icon>
-              @if (form.controls.accountingFramework.touched && form.controls.accountingFramework.invalid) {
-                <mat-error>{{ 'IDENTITY.ONBOARDING.VALIDATION.ACCOUNTING_FRAMEWORK' | transloco }}</mat-error>
-              }
-            </mat-form-field>
           </div>
+        </liass-card>
+
+        <div class="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+          <liass-button buttonType="button" icon="arrow_back" size="lg" tone="neutral" variant="ghost" (pressed)="back()">
+            {{ 'IDENTITY.ONBOARDING.ACTIONS.BACK' | transloco }}
+          </liass-button>
+          <liass-button buttonType="button" icon="arrow_forward" size="lg" tone="brand" variant="solid" (pressed)="continueFromOrganization()">
+            {{ 'IDENTITY.ONBOARDING.ACTIONS.CONTINUE' | transloco }}
+          </liass-button>
+        </div>
+      </section>
+    } @else {
+      <section class="space-y-5" [attr.aria-label]="configurationHeadingKey() | transloco">
+        <liass-card
+          padding="md"
+          [title]="configurationHeadingKey() | transloco"
+          [description]="configurationDescriptionKey() | transloco"
+        >
+          <mat-form-field class="w-full" appearance="outline">
+            <mat-label>{{ accountingFrameworkLabelKey() | transloco }}</mat-label>
+            <mat-select formControlName="accountingFramework">
+              @for (framework of frameworkOptions; track framework.value) {
+                <mat-option [value]="framework.value">{{ framework.labelKey | transloco }}</mat-option>
+              }
+            </mat-select>
+            <mat-icon matPrefix>account_balance</mat-icon>
+            @if (form.controls.accountingFramework.touched && form.controls.accountingFramework.invalid) {
+              <mat-error>{{ 'IDENTITY.ONBOARDING.VALIDATION.ACCOUNTING_FRAMEWORK' | transloco }}</mat-error>
+            }
+            @if (isAccountingFirm()) {
+              <mat-hint>{{ 'IDENTITY.ONBOARDING.FIELDS.DEFAULT_ACCOUNTING_FRAMEWORK_HELPER' | transloco }}</mat-hint>
+            }
+          </mat-form-field>
 
           @if (onboardingErrorKey(); as errorKey) {
-            <div class="mt-5 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100">
+            <div class="mt-5 flex items-start gap-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-6 text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-100" role="alert">
               <mat-icon class="mt-0.5 text-rose-700 dark:text-rose-300">error_outline</mat-icon>
               <p>{{ errorKey | transloco }}</p>
             </div>
@@ -180,26 +236,22 @@
             tone="neutral"
             variant="ghost"
             [disabled]="submitting()"
-            (pressed)="backToWorkspaceType()"
+            (pressed)="back()"
           >
             {{ 'IDENTITY.ONBOARDING.ACTIONS.BACK' | transloco }}
           </liass-button>
           <button
-            class="liass-focus-ring inline-flex h-12 shrink-0 items-center justify-center gap-2 rounded-app-control bg-brand-700 px-5 text-sm font-semibold text-white shadow-app-xs shadow-brand-900/10 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+            class="liass-focus-ring inline-flex h-12 min-w-0 shrink-0 items-center justify-center gap-2 rounded-app-control bg-brand-700 px-5 text-sm font-semibold text-white shadow-app-xs shadow-brand-900/10 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60 motion-reduce:transition-none"
             type="submit"
             [disabled]="form.invalid || submitting()"
           >
             @if (submitting()) {
-              <span class="size-4 animate-spin rounded-full border-2 border-current border-r-transparent" aria-hidden="true"></span>
+              <span class="size-4 animate-spin rounded-full border-2 border-current border-r-transparent motion-reduce:animate-none" aria-hidden="true"></span>
             } @else {
               <mat-icon>rocket_launch</mat-icon>
             }
-            <span class="truncate">
-              {{
-                (submitting()
-                  ? 'IDENTITY.ONBOARDING.ACTIONS.SUBMITTING'
-                  : 'IDENTITY.ONBOARDING.ACTIONS.SUBMIT') | transloco
-              }}
+            <span>
+              {{ (submitting() ? 'IDENTITY.ONBOARDING.ACTIONS.SUBMITTING' : 'IDENTITY.ONBOARDING.ACTIONS.SUBMIT') | transloco }}
             </span>
           </button>
         </div>
