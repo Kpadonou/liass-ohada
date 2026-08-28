@@ -338,3 +338,30 @@ describe('routes', () => {
     expect(detailEntryRoute?.data?.['titleKey']).toBe('ACCOUNTING.ENTRIES.DETAIL.TITLE');
   });
 });
+
+describe('SALES routes', () => {
+  it('registers /sales/customers and redirects /sales to the customer directory', async () => {
+    const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
+    const redirect = salesRoute?.children?.find((route) => route.path === '');
+    const customersRoute = salesRoute?.children?.find((route) => route.path === 'customers');
+    const component = await customersRoute?.loadComponent?.();
+    const { SalesCustomersPage } = await import(
+      '../../domains/sales/feature/customers/sales-customers.page'
+    );
+
+    expect(redirect?.redirectTo).toBe('customers');
+    expect(redirect?.pathMatch).toBe('full');
+    expect(component).toBe(SalesCustomersPage);
+    expect(customersRoute?.data?.['titleKey']).toBe('SALES.CUSTOMERS.PAGE.TITLE');
+  });
+
+  it('does not register a SALES dashboard or deferred commercial placeholders', () => {
+    const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
+    const paths = salesRoute?.children?.map((route) => route.path) ?? [];
+
+    expect(paths).toEqual(['', 'customers']);
+    expect(paths).not.toContain('dashboard');
+    expect(paths).not.toContain('catalog');
+    expect(paths).not.toContain('invoices');
+  });
+});

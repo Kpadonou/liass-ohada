@@ -6,6 +6,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
+import { SalesCapabilities } from '../../../domains/sales/data-access/sales-capabilities';
 import { CabinetSettingsCapabilities } from '../../../domains/identity/data-access/cabinet-settings-capabilities';
 import { LiassSidebarNavItemComponent } from '../../ui/sidebar-nav-item/sidebar-nav-item.component';
 
@@ -144,6 +145,15 @@ const topLevelItems: readonly ShellNavItem[] = [
 
 const dashboardItems: readonly ShellNavItem[] = topLevelItems.slice(0, 1);
 const secondaryItems: readonly ShellNavItem[] = topLevelItems.slice(1);
+const salesItems: readonly ShellNavItem[] = [
+  {
+    icon: 'group',
+    labelKey: 'SHELL.NAV.SALES_CUSTOMERS',
+    page: 'sales.customers',
+    productCode: 'SALES',
+    route: '/sales/customers'
+  }
+];
 const cabinetItems: readonly ShellNavItem[] = [
   {
     icon: 'dashboard',
@@ -193,9 +203,11 @@ export class AppSidebarComponent {
   protected readonly cabinetItems = cabinetItems;
   protected readonly dashboardItems = dashboardItems;
   protected readonly secondaryItems = secondaryItems;
+  protected readonly salesItems = salesItems;
   protected readonly authStore = inject(AuthStore);
   private readonly cabinetSettingsCapabilities = inject(CabinetSettingsCapabilities);
   private readonly productAccessState = inject(ProductAccessState);
+  private readonly salesCapabilities = inject(SalesCapabilities);
   protected readonly uiStore = inject(UiStore);
   protected readonly cabinetMode = computed(
     () => this.authStore.isCabinetContext()
@@ -211,6 +223,12 @@ export class AppSidebarComponent {
   private readonly router = inject(Router);
 
   protected readonly sidebarExpanded = computed(() => !this.uiStore.sidebarCollapsed());
+  protected readonly showSalesNavigation = computed(
+    () =>
+      !!this.authStore.effectiveOrgId() &&
+      this.productAccessState.availability('SALES') === 'AVAILABLE' &&
+      this.salesCapabilities.canRead()
+  );
 
   protected sidebarClass(): string {
     const mobileState = this.uiStore.sidebarOpen() ? 'translate-x-0' : '-translate-x-full';

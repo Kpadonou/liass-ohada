@@ -7,10 +7,12 @@ import { DeploymentStage } from "../config/deployment";
 import { AccountingEndpoints } from "../constructs/domains/accounting-endpoints";
 import { IdentityEndpoints } from "../constructs/domains/identity-endpoints";
 import { ProjectEndpoints } from "../constructs/domains/project-endpoints";
+import { SalesEndpoints } from "../constructs/domains/sales-endpoints";
 import { TreasuryEndpoints } from "../constructs/domains/treasury-endpoints";
 
 interface ApiDomainStackProps extends NestedStackProps {
   api: apigwv2.HttpApi;
+  authorizer?: apigwv2.IHttpRouteAuthorizer;
   lambdaRole: iam.IRole;
   stage: DeploymentStage;
   table: dynamodb.ITable;
@@ -41,5 +43,12 @@ export class TreasuryApiStack extends NestedStack {
   constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
     super(scope, id, props);
     new TreasuryEndpoints(this, "TreasuryModule", props);
+  }
+}
+
+export class SalesApiStack extends NestedStack {
+  constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
+    super(scope, id, props);
+    new SalesEndpoints(this, "SalesModule", props);
   }
 }

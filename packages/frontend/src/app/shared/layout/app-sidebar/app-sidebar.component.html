@@ -55,6 +55,32 @@
           </div>
         </div>
 
+        @if (showSalesNavigation()) {
+          <div class="pt-2.5" data-testid="sales-navigation">
+            @if (sidebarExpanded()) {
+              <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+                {{ 'SHELL.NAV.SALES' | transloco }}
+              </p>
+            } @else {
+              <div class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block" aria-hidden="true"></div>
+              <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400 lg:hidden">
+                {{ 'SHELL.NAV.SALES' | transloco }}
+              </p>
+            }
+            <div class="grid gap-1">
+              @for (item of salesItems; track item.page) {
+                <liass-sidebar-nav-item
+                  [active]="uiStore.currentPage() === item.page"
+                  [compact]="!sidebarExpanded()"
+                  [icon]="item.icon"
+                  [label]="item.labelKey | transloco"
+                  (selected)="selectItem(item)"
+                />
+              }
+            </div>
+          </div>
+        }
+
         <div class="grid gap-1 pt-2.5">
           @for (item of secondaryItems; track item.page) {
             <liass-sidebar-nav-item

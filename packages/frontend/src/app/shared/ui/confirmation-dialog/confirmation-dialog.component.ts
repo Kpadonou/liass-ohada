@@ -11,6 +11,7 @@ export interface LiassConfirmationDialogData {
   confirmKey: string;
   cancelKey: string;
   tone?: 'brand' | 'warning' | 'danger';
+  descriptionParams?: Record<string, unknown>;
 }
 
 @Component({
@@ -33,7 +34,7 @@ export interface LiassConfirmationDialogData {
     </header>
     <mat-dialog-content class="px-5 pb-0 pt-4 sm:px-6">
       <p class="text-sm leading-6 text-app-text-secondary">
-        {{ data.descriptionKey | transloco }}
+        {{ data.descriptionKey | transloco: data.descriptionParams }}
       </p>
     </mat-dialog-content>
     <mat-dialog-actions align="end" class="flex-wrap gap-2 px-5 pb-5 pt-5 sm:px-6 sm:pb-6">

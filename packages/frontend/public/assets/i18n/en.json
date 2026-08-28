@@ -7,10 +7,15 @@
     "NOT_AVAILABLE": "Not provided",
     "ACTIONS": {
       "SAVE": "Save",
+      "CREATE": "Create",
       "CANCEL": "Cancel",
       "CLOSE": "Close",
       "RETRY": "Try again",
       "COPY": "Copy"
+    },
+    "VALIDATION": {
+      "REQUIRED": "This field is required.",
+      "EMAIL": "Enter a valid email address."
     },
     "FILTERS": {
       "ALL": "All"
@@ -77,6 +82,8 @@
       "MISSIONS": "Accounting work",
       "PROJECTS": "Projects and funds",
       "REPORTS": "OHADA reports",
+      "SALES": "Sales",
+      "SALES_CUSTOMERS": "Customers",
       "SECTION_LABEL": "Workspace",
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Third parties",
@@ -105,6 +112,7 @@
       "JOURNAL_BOOK": "Journal book",
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
+      "SALES_CUSTOMERS": "Customers",
       "THIRD_PARTIES": "Third parties",
       "TRIAL_BALANCE": "Trial balance"
     },
@@ -3193,6 +3201,37 @@
       },
       "VALIDATION": {
         "ORGANIZATION_ID": "Enter an organization ID."
+      }
+    }
+  },
+  "SALES": {
+    "CUSTOMERS": {
+      "PAGE": { "EYEBROW": "Sales", "TITLE": "Customers", "SUBTITLE": "Manage the active organization's customer directory." },
+      "LIST": { "TITLE": "Customer directory", "DESCRIPTION": "Review and maintain your customers' commercial contact details." },
+      "LOADING": "Loading customers…",
+      "ACCESS": {
+        "CHECKING": "Checking access to Sales…",
+        "UNAVAILABLE_TITLE": "Customer directory unavailable",
+        "UNAVAILABLE_DESCRIPTION": "Your access or the Sales product activation does not currently allow these customers to be displayed."
+      },
+      "ACTIONS": { "CREATE": "New customer", "EDIT": "Edit", "ACTIVATE": "Reactivate", "DEACTIVATE": "Deactivate", "COLUMNS": "Columns" },
+      "TABLE": { "NAME": "Customer", "TYPE": "Type", "PHONE": "Phone", "EMAIL": "Email", "TAX_IDENTIFIER": "Tax identifier", "STATUS": "Status", "ACTIONS": "Actions" },
+      "TYPES": { "BUSINESS": "Business / organization", "INDIVIDUAL": "Individual" },
+      "STATUS": { "ACTIVE": "Active", "INACTIVE": "Inactive" },
+      "EMPTY": { "TITLE": "No customers yet", "DESCRIPTION": "Create your first customer to start building your commercial directory." },
+      "DIALOG": { "CREATE_TITLE": "New customer", "EDIT_TITLE": "Edit customer", "SUBTITLE": "Enter only the identity and contact information needed for commercial follow-up." },
+      "FORM": {
+        "TYPE": "Customer type", "NAME": "Name", "EMAIL": "Email", "PHONE": "Phone", "TAX_IDENTIFIER": "Tax identifier", "BILLING_ADDRESS": "Billing address", "ADDRESS_LINE_1": "Address", "ADDRESS_LINE_2": "Address line 2", "CITY": "City", "POSTAL_CODE": "Postal code", "COUNTRY": "Country", "NO_COUNTRY": "Not provided"
+      },
+      "COUNTRIES": { "BJ": "Benin", "TG": "Togo", "CI": "Côte d'Ivoire", "SN": "Senegal", "BF": "Burkina Faso", "ML": "Mali", "NE": "Niger", "CM": "Cameroon", "CG": "Congo", "GA": "Gabon", "TD": "Chad", "CF": "Central African Republic", "GN": "Guinea", "GW": "Guinea-Bissau", "GQ": "Equatorial Guinea", "CD": "Democratic Republic of Congo", "KM": "Comoros" },
+      "LIFECYCLE": {
+        "DEACTIVATE_TITLE": "Deactivate this customer?", "DEACTIVATE_DESCRIPTION": "{{name}} will remain stored in the directory but will be marked inactive. This action is reversible.",
+        "ACTIVATE_TITLE": "Reactivate this customer?", "ACTIVATE_DESCRIPTION": "{{name}} will be marked active in the directory again."
+      },
+      "PAGINATION": { "LABEL": "Customer pagination", "PAGE_SIZE": "Up to {{count}} customers per page" },
+      "NOTIFICATIONS": { "CREATED": "Customer created.", "UPDATED": "Customer updated.", "ACTIVATED": "Customer reactivated.", "DEACTIVATED": "Customer deactivated." },
+      "ERRORS": {
+        "LOAD_FAILED": "Customers could not be loaded.", "DETAIL_FAILED": "The latest customer details could not be loaded.", "CREATE_FAILED": "The customer could not be created.", "UPDATE_FAILED": "The customer could not be updated.", "STATUS_FAILED": "The customer status could not be changed.", "CONFLICT": "This customer changed since you last viewed it. The latest data was reloaded; review it before trying again."
       }
     }
   },

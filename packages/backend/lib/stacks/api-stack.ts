@@ -14,6 +14,7 @@ import {
   AccountingApiStack,
   IdentityApiStack,
   ProjectApiStack,
+  SalesApiStack,
   TreasuryApiStack,
 } from "./api-domain-stacks";
 
@@ -107,7 +108,16 @@ export class ApiStack extends Stack {
       stage: props.stage,
     });
 
-    // FUTURE: Add more modules here (Payroll, Commercial, etc.)
+    /** SALES MODULE — customer management and future SALES capabilities. */
+    new SalesApiStack(this, "SalesApi", {
+      api: this.apiGateway.httpApi,
+      authorizer: this.auth.authorizer,
+      lambdaRole: apiLambdaRole,
+      table: props.accountingTable,
+      stage: props.stage,
+    });
+
+    // FUTURE: Add more modules here (Payroll, etc.)
     // new PayrollEndpoints(this, "PayrollModule", { ... });
 
     // Output the API URL for easy access

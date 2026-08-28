@@ -9,6 +9,7 @@ import {
   AccountingApiStack,
   IdentityApiStack,
   ProjectApiStack,
+  SalesApiStack,
   TreasuryApiStack,
 } from "../../../lib/stacks/api-domain-stacks";
 
@@ -82,6 +83,7 @@ describe("API stack decomposition", () => {
     expect(constructs.filter((item) => item instanceof AccountingApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof ProjectApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof TreasuryApiStack)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof SalesApiStack)).toHaveLength(1);
   });
 
   test("preserves expected identity and business routes on the shared API", () => {
@@ -97,6 +99,12 @@ describe("API stack decomposition", () => {
         "GET /accounts",
         "GET /projects",
         "GET /treasury/summary",
+        "POST /sales/customers",
+        "GET /sales/customers",
+        "GET /sales/customers/{customerId}",
+        "PATCH /sales/customers/{customerId}",
+        "POST /sales/customers/{customerId}/activate",
+        "POST /sales/customers/{customerId}/deactivate",
       ]),
     );
   });
@@ -115,9 +123,24 @@ describe("API stack decomposition", () => {
     expect(functions.length).toBeGreaterThan(0);
     expect(
       functions.every((fn) =>
-        /^liass-ohada-dev-(identity|accounting|projects|treasury)-/.test(
+        /^liass-ohada-dev-(identity|accounting|projects|treasury|sales)-/.test(
           String(fn.functionName),
         ),
+      ),
+    ).toBe(true);
+  });
+
+  test("keeps all six SALES Lambdas in the SALES domain without Accounting fallback", () => {
+    const functions = constructs.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    const salesFunctions = functions.filter((fn) =>
+      String(fn.functionName).includes("-dev-sales-"),
+    );
+    expect(salesFunctions).toHaveLength(6);
+    expect(
+      salesFunctions.every(
+        (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),
       ),
     ).toBe(true);
   });

@@ -7,10 +7,15 @@
     "NOT_AVAILABLE": "Non renseigné",
     "ACTIONS": {
       "SAVE": "Enregistrer",
+      "CREATE": "Créer",
       "CANCEL": "Annuler",
       "CLOSE": "Fermer",
       "RETRY": "Réessayer",
       "COPY": "Copier"
+    },
+    "VALIDATION": {
+      "REQUIRED": "Ce champ est obligatoire.",
+      "EMAIL": "Saisissez une adresse électronique valide."
     },
     "FILTERS": {
       "ALL": "Tous"
@@ -77,6 +82,8 @@
       "MISSIONS": "Travaux comptables",
       "PROJECTS": "Projets et fonds",
       "REPORTS": "États OHADA",
+      "SALES": "Ventes",
+      "SALES_CUSTOMERS": "Clients",
       "SECTION_LABEL": "Espace",
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Tiers",
@@ -105,6 +112,7 @@
       "JOURNAL_BOOK": "Livre-journal",
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
+      "SALES_CUSTOMERS": "Clients",
       "THIRD_PARTIES": "Tiers",
       "TRIAL_BALANCE": "Balance"
     },
@@ -3193,6 +3201,37 @@
       },
       "VALIDATION": {
         "ORGANIZATION_ID": "Saisissez un ID d’organisation."
+      }
+    }
+  },
+  "SALES": {
+    "CUSTOMERS": {
+      "PAGE": { "EYEBROW": "Ventes", "TITLE": "Clients", "SUBTITLE": "Gérez le répertoire client de l’organisation active." },
+      "LIST": { "TITLE": "Répertoire clients", "DESCRIPTION": "Consultez et tenez à jour les coordonnées commerciales de vos clients." },
+      "LOADING": "Chargement des clients…",
+      "ACCESS": {
+        "CHECKING": "Vérification de l’accès à Ventes…",
+        "UNAVAILABLE_TITLE": "Répertoire clients indisponible",
+        "UNAVAILABLE_DESCRIPTION": "Votre accès ou l’activation du produit Ventes ne permet pas d’afficher ces clients pour le moment."
+      },
+      "ACTIONS": { "CREATE": "Nouveau client", "EDIT": "Modifier", "ACTIVATE": "Réactiver", "DEACTIVATE": "Désactiver", "COLUMNS": "Colonnes" },
+      "TABLE": { "NAME": "Client", "TYPE": "Type", "PHONE": "Téléphone", "EMAIL": "Adresse électronique", "TAX_IDENTIFIER": "Identifiant fiscal", "STATUS": "Statut", "ACTIONS": "Actions" },
+      "TYPES": { "BUSINESS": "Entreprise / organisation", "INDIVIDUAL": "Particulier" },
+      "STATUS": { "ACTIVE": "Actif", "INACTIVE": "Inactif" },
+      "EMPTY": { "TITLE": "Aucun client enregistré", "DESCRIPTION": "Créez votre premier client pour commencer à constituer votre répertoire commercial." },
+      "DIALOG": { "CREATE_TITLE": "Nouveau client", "EDIT_TITLE": "Modifier le client", "SUBTITLE": "Renseignez uniquement les informations d’identité et de contact utiles au suivi commercial." },
+      "FORM": {
+        "TYPE": "Type de client", "NAME": "Nom", "EMAIL": "Adresse électronique", "PHONE": "Téléphone", "TAX_IDENTIFIER": "Identifiant fiscal", "BILLING_ADDRESS": "Adresse de facturation", "ADDRESS_LINE_1": "Adresse", "ADDRESS_LINE_2": "Complément d’adresse", "CITY": "Ville", "POSTAL_CODE": "Code postal", "COUNTRY": "Pays", "NO_COUNTRY": "Non renseigné"
+      },
+      "COUNTRIES": { "BJ": "Bénin", "TG": "Togo", "CI": "Côte d’Ivoire", "SN": "Sénégal", "BF": "Burkina Faso", "ML": "Mali", "NE": "Niger", "CM": "Cameroun", "CG": "Congo", "GA": "Gabon", "TD": "Tchad", "CF": "République centrafricaine", "GN": "Guinée", "GW": "Guinée-Bissau", "GQ": "Guinée équatoriale", "CD": "République démocratique du Congo", "KM": "Comores" },
+      "LIFECYCLE": {
+        "DEACTIVATE_TITLE": "Désactiver ce client ?", "DEACTIVATE_DESCRIPTION": "{{name}} restera enregistré dans le répertoire, mais sera marqué comme inactif. Cette action est réversible.",
+        "ACTIVATE_TITLE": "Réactiver ce client ?", "ACTIVATE_DESCRIPTION": "{{name}} sera de nouveau marqué comme actif dans le répertoire."
+      },
+      "PAGINATION": { "LABEL": "Pagination des clients", "PAGE_SIZE": "Jusqu’à {{count}} clients par page" },
+      "NOTIFICATIONS": { "CREATED": "Client créé.", "UPDATED": "Client mis à jour.", "ACTIVATED": "Client réactivé.", "DEACTIVATED": "Client désactivé." },
+      "ERRORS": {
+        "LOAD_FAILED": "Les clients n’ont pas pu être chargés.", "DETAIL_FAILED": "Les informations à jour de ce client n’ont pas pu être chargées.", "CREATE_FAILED": "Le client n’a pas pu être créé.", "UPDATE_FAILED": "Le client n’a pas pu être mis à jour.", "STATUS_FAILED": "Le statut du client n’a pas pu être modifié.", "CONFLICT": "Ce client a été modifié depuis votre dernier affichage. Les données à jour ont été rechargées ; vérifiez-les avant de réessayer."
       }
     }
   },

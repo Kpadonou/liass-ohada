@@ -25,6 +25,7 @@ export type AppPage =
   | 'accounting.chartOfAccounts'
   | 'projects'
   | 'treasury'
+  | 'sales.customers'
   | 'reports'
   | 'administration';
 export type ThemeMode = 'light' | 'dark';

@@ -2,6 +2,7 @@ export const KeyFactory = {
   // Prefixes
   projectPrefix: () => `PRJ#`,
   thirdPartyPrefix: (type: string) => `TP#${type.toUpperCase()}#`,
+  salesCustomerPrefix: () => "SALES_CUSTOMER#",
 
   // --- PK (Partition Keys) ---
 
@@ -31,6 +32,10 @@ export const KeyFactory = {
 
   /** SK for Sales-owned settings under the organization partition. */
   salesSettingsSK: () => "SETTINGS#SALES",
+
+  /** SALES-owned Customer aggregate under the organization partition. */
+  salesCustomerSK: (customerId: string) =>
+    `${KeyFactory.salesCustomerPrefix()}${customerId}`,
 
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",

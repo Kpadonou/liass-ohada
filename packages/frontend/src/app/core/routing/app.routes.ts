@@ -131,6 +131,27 @@ export const routes: Routes = [
         }
       },
       {
+        path: 'sales',
+        children: [
+          {
+            path: '',
+            pathMatch: 'full',
+            redirectTo: 'customers'
+          },
+          {
+            path: 'customers',
+            loadComponent: () =>
+              import('../../domains/sales/feature/customers/sales-customers.page').then(
+                (module) => module.SalesCustomersPage
+              ),
+            data: {
+              subtitleKey: 'SALES.CUSTOMERS.PAGE.SUBTITLE',
+              titleKey: 'SALES.CUSTOMERS.PAGE.TITLE'
+            }
+          }
+        ]
+      },
+      {
         path: 'cabinet/dashboard',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page').then(

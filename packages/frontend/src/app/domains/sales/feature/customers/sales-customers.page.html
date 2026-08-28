@@ -1,0 +1,119 @@
+<div class="space-y-4">
+  <liass-page-header
+    [eyebrow]="'SALES.CUSTOMERS.PAGE.EYEBROW' | transloco"
+    [title]="'SALES.CUSTOMERS.PAGE.TITLE' | transloco"
+    [subtitle]="'SALES.CUSTOMERS.PAGE.SUBTITLE' | transloco"
+    [actionIcon]="capabilities.canWrite() && canLoad() ? 'person_add' : null"
+    [actionLabel]="capabilities.canWrite() && canLoad() ? ('SALES.CUSTOMERS.ACTIONS.CREATE' | transloco) : null"
+    (actionTriggered)="openCreate()"
+  />
+
+  @if (availability() === 'UNKNOWN') {
+    <liass-card>
+      <div class="space-y-3" role="status" aria-busy="true">
+        <p class="text-sm font-medium text-app-text-secondary">{{ 'SALES.CUSTOMERS.ACCESS.CHECKING' | transloco }}</p>
+        <liass-skeleton variant="block" />
+      </div>
+    </liass-card>
+  } @else if (!canLoad()) {
+    <liass-card>
+      <div class="rounded-app-card border border-amber-200 bg-amber-50 p-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950/25 dark:text-amber-200" role="alert">
+        <p class="font-semibold">{{ 'SALES.CUSTOMERS.ACCESS.UNAVAILABLE_TITLE' | transloco }}</p>
+        <p class="mt-1 text-sm leading-6">{{ 'SALES.CUSTOMERS.ACCESS.UNAVAILABLE_DESCRIPTION' | transloco }}</p>
+      </div>
+    </liass-card>
+  } @else {
+    <liass-card [title]="'SALES.CUSTOMERS.LIST.TITLE' | transloco" [description]="'SALES.CUSTOMERS.LIST.DESCRIPTION' | transloco">
+      <div liassCardActions>
+        <liass-button tone="neutral" variant="outline" size="sm" icon="view_column" (pressed)="openPreferences()">
+          {{ 'SALES.CUSTOMERS.ACTIONS.COLUMNS' | transloco }}
+        </liass-button>
+      </div>
+
+      @if (customersQuery.isPending()) {
+        <div class="space-y-3" role="status" aria-busy="true">
+          <p class="text-sm font-medium text-app-text-secondary">{{ 'SALES.CUSTOMERS.LOADING' | transloco }}</p>
+          @for (_ of [0,1,2,3,4]; track $index) { <liass-skeleton variant="block" /> }
+        </div>
+      } @else if (customersQuery.isError()) {
+        <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span class="text-sm">{{ 'SALES.CUSTOMERS.ERRORS.LOAD_FAILED' | transloco }}</span>
+            <liass-button tone="danger" variant="outline" size="sm" icon="refresh" (pressed)="retry()">{{ 'COMMON.ACTIONS.RETRY' | transloco }}</liass-button>
+          </div>
+        </div>
+      } @else if (customers().length === 0) {
+        <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-8 text-center">
+          <mat-icon class="text-brand-600" aria-hidden="true">group_add</mat-icon>
+          <p class="mt-2 font-semibold text-app-text">{{ 'SALES.CUSTOMERS.EMPTY.TITLE' | transloco }}</p>
+          <p class="mx-auto mt-1 max-w-lg text-sm leading-6 text-app-text-secondary">{{ 'SALES.CUSTOMERS.EMPTY.DESCRIPTION' | transloco }}</p>
+          @if (capabilities.canWrite()) {
+            <div class="mt-4"><liass-button tone="brand" variant="solid" icon="person_add" (pressed)="openCreate()">{{ 'SALES.CUSTOMERS.ACTIONS.CREATE' | transloco }}</liass-button></div>
+          }
+        </div>
+      } @else {
+        <div class="hidden overflow-x-auto rounded-app-card border border-app-border lg:block">
+          <table class="liass-data-table w-full min-w-[920px] border-collapse text-left">
+            <thead><tr>
+              @if (isColumnVisible('name')) { <th class="px-4 py-3">{{ 'SALES.CUSTOMERS.TABLE.NAME' | transloco }}</th> }
+              @if (isColumnVisible('type')) { <th class="px-4 py-3">{{ 'SALES.CUSTOMERS.TABLE.TYPE' | transloco }}</th> }
+              @if (isColumnVisible('phone')) { <th class="px-4 py-3">{{ 'SALES.CUSTOMERS.TABLE.PHONE' | transloco }}</th> }
+              @if (isColumnVisible('email')) { <th class="px-4 py-3">{{ 'SALES.CUSTOMERS.TABLE.EMAIL' | transloco }}</th> }
+              @if (isColumnVisible('taxIdentifier')) { <th class="px-4 py-3">{{ 'SALES.CUSTOMERS.TABLE.TAX_IDENTIFIER' | transloco }}</th> }
+              @if (isColumnVisible('status')) { <th class="px-4 py-3">{{ 'SALES.CUSTOMERS.TABLE.STATUS' | transloco }}</th> }
+              @if (capabilities.canWrite()) { <th class="w-14 px-3 py-3 text-right">{{ 'SALES.CUSTOMERS.TABLE.ACTIONS' | transloco }}</th> }
+            </tr></thead>
+            <tbody class="divide-y divide-app-border">
+              @for (customer of customers(); track customer.id) {
+                <tr class="bg-app-surface transition hover:bg-brand-50/55 dark:hover:bg-brand-950/20" [class.opacity-70]="!customer.isActive">
+                  @if (isColumnVisible('name')) { <td class="px-4 py-3"><p class="font-semibold text-app-text">{{ customer.name }}</p>@if (address(customer)) { <p class="mt-1 max-w-64 truncate text-xs text-app-text-secondary" [title]="address(customer)">{{ address(customer) }}</p> }</td> }
+                  @if (isColumnVisible('type')) { <td class="px-4 py-3 text-sm text-app-text-secondary">{{ typeKey(customer) | transloco }}</td> }
+                  @if (isColumnVisible('phone')) { <td class="px-4 py-3 text-sm text-app-text-secondary">{{ customer.phone || ('COMMON.EMPTY_VALUE' | transloco) }}</td> }
+                  @if (isColumnVisible('email')) { <td class="px-4 py-3 text-sm text-app-text-secondary">{{ customer.email || ('COMMON.EMPTY_VALUE' | transloco) }}</td> }
+                  @if (isColumnVisible('taxIdentifier')) { <td class="px-4 py-3 text-sm text-app-text-secondary">{{ customer.taxIdentifier || ('COMMON.EMPTY_VALUE' | transloco) }}</td> }
+                  @if (isColumnVisible('status')) { <td class="px-4 py-3"><liass-status-chip size="sm" [tone]="customer.isActive ? 'success' : 'neutral'" [label]="statusKey(customer) | transloco" /></td> }
+                  @if (capabilities.canWrite()) { <td class="px-3 py-3 text-right">
+                    <button mat-icon-button type="button" [matMenuTriggerFor]="actions" [disabled]="!capabilities.canWrite() || mutatingCustomerId() === customer.id" [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"><mat-icon>more_vert</mat-icon></button>
+                    <mat-menu #actions="matMenu" xPosition="before">
+                      <button mat-menu-item class="liass-menu-action liass-menu-action-info" type="button" (click)="openEdit(customer)"><mat-icon>edit</mat-icon><span>{{ 'SALES.CUSTOMERS.ACTIONS.EDIT' | transloco }}</span></button>
+                      <button mat-menu-item type="button" class="liass-menu-action" [class.liass-menu-action-danger]="customer.isActive" [class.liass-menu-action-brand]="!customer.isActive" (click)="confirmStatus(customer)"><mat-icon>{{ customer.isActive ? 'block' : 'check_circle' }}</mat-icon><span>{{ (customer.isActive ? 'SALES.CUSTOMERS.ACTIONS.DEACTIVATE' : 'SALES.CUSTOMERS.ACTIONS.ACTIVATE') | transloco }}</span></button>
+                    </mat-menu>
+                  </td> }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="grid gap-3 lg:hidden">
+          @for (customer of customers(); track customer.id) {
+            <article class="rounded-app-card border border-app-border bg-app-surface p-4" [class.opacity-70]="!customer.isActive">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0"><p class="font-semibold text-app-text">{{ customer.name }}</p><p class="mt-1 text-sm text-app-text-secondary">{{ typeKey(customer) | transloco }}</p></div>
+                <liass-status-chip size="sm" [tone]="customer.isActive ? 'success' : 'neutral'" [label]="statusKey(customer) | transloco" />
+              </div>
+              <dl class="mt-4 grid gap-2 text-sm text-app-text-secondary">
+                <div class="flex justify-between gap-4"><dt>{{ 'SALES.CUSTOMERS.TABLE.PHONE' | transloco }}</dt><dd class="text-right">{{ customer.phone || ('COMMON.EMPTY_VALUE' | transloco) }}</dd></div>
+                <div class="flex justify-between gap-4"><dt>{{ 'SALES.CUSTOMERS.TABLE.EMAIL' | transloco }}</dt><dd class="break-all text-right">{{ customer.email || ('COMMON.EMPTY_VALUE' | transloco) }}</dd></div>
+                <div class="flex justify-between gap-4"><dt>{{ 'SALES.CUSTOMERS.TABLE.TAX_IDENTIFIER' | transloco }}</dt><dd class="text-right">{{ customer.taxIdentifier || ('COMMON.EMPTY_VALUE' | transloco) }}</dd></div>
+              </dl>
+              @if (capabilities.canWrite()) {
+                <div class="mt-3 flex justify-end"><button mat-icon-button type="button" [matMenuTriggerFor]="mobileActions" [disabled]="mutatingCustomerId() === customer.id" [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"><mat-icon>more_vert</mat-icon></button></div>
+                <mat-menu #mobileActions="matMenu" xPosition="before">
+                  <button mat-menu-item class="liass-menu-action liass-menu-action-info" type="button" (click)="openEdit(customer)"><mat-icon>edit</mat-icon><span>{{ 'SALES.CUSTOMERS.ACTIONS.EDIT' | transloco }}</span></button>
+                  <button mat-menu-item type="button" class="liass-menu-action" [class.liass-menu-action-danger]="customer.isActive" [class.liass-menu-action-brand]="!customer.isActive" (click)="confirmStatus(customer)"><mat-icon>{{ customer.isActive ? 'block' : 'check_circle' }}</mat-icon><span>{{ (customer.isActive ? 'SALES.CUSTOMERS.ACTIONS.DEACTIVATE' : 'SALES.CUSTOMERS.ACTIONS.ACTIVATE') | transloco }}</span></button>
+                </mat-menu>
+              }
+            </article>
+          }
+        </div>
+
+        <nav class="mt-4 flex items-center justify-between gap-3 border-t border-app-border pt-4" [attr.aria-label]="'SALES.CUSTOMERS.PAGINATION.LABEL' | transloco">
+          <liass-button tone="neutral" variant="outline" icon="chevron_left" [disabled]="!hasPrevious()" (pressed)="previousPage()">{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button>
+          <span class="text-xs font-medium text-app-text-secondary">{{ 'SALES.CUSTOMERS.PAGINATION.PAGE_SIZE' | transloco: { count: 50 } }}</span>
+          <liass-button tone="neutral" variant="outline" icon="chevron_right" [disabled]="!hasNext()" (pressed)="nextPage()">{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button>
+        </nav>
+      }
+    </liass-card>
+  }
+</div>

@@ -65,6 +65,8 @@ const translations = {
         MISSIONS: 'Missions',
         PROJECTS: 'Projets et fonds',
         REPORTS: 'États OHADA',
+        SALES: 'Ventes',
+        SALES_CUSTOMERS: 'Clients',
         SECTION_LABEL: 'Espace',
         SYCEBNL_BADGE: 'SYCEBNL',
         THIRD_PARTIES: 'Tiers',
@@ -558,5 +560,108 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('Tiers');
     expect(text).not.toContain('Lettrage');
     expect(authStore.activeDossierOrgId()).toBeNull();
+  });
+
+  it('shows only Customers under SALES for an entitled direct OWNER', () => {
+    productAvailability.SALES = 'AVAILABLE';
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-sales',
+        displayName: 'Sales SARL',
+        workspaceType: 'COMPANY',
+        role: 'OWNER'
+      },
+      'org-sales'
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Ventes');
+    expect(text).toContain('Clients');
+    expect(text).not.toContain('Catalog');
+    expect(text).not.toContain('Factures');
+    expect(text).not.toContain('Invoices');
+  });
+
+  it.each(['UNKNOWN', 'UNAVAILABLE'] as const)(
+    'hides SALES navigation when product availability is %s',
+    (availability) => {
+      productAvailability.SALES = availability;
+      TestBed.inject(AuthStore).setCreatedWorkspace(
+        {
+          orgId: 'org-sales',
+          displayName: 'Sales SARL',
+          workspaceType: 'COMPANY',
+          role: 'OWNER'
+        },
+        'org-sales'
+      );
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+
+      expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
+    }
+  );
+
+  it('keeps SALES independent from ACCOUNTING and supports both entitlements together', () => {
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-sales',
+        displayName: 'Sales SARL',
+        workspaceType: 'COMPANY',
+        role: 'OWNER'
+      },
+      'org-sales'
+    );
+    productAvailability.SALES = 'AVAILABLE';
+    productAvailability.ACCOUNTING = 'UNAVAILABLE';
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('Clients');
+    const accountingOverview = fixture.nativeElement.querySelector(
+      'liass-sidebar-nav-item button[aria-label^="Vue d’ensemble"]'
+    ) as HTMLButtonElement;
+    expect(accountingOverview.disabled).toBe(true);
+    fixture.destroy();
+
+    productAvailability.ACCOUNTING = 'AVAILABLE';
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Clients');
+    expect(
+      (fixture.nativeElement.querySelector(
+        'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]'
+      ) as HTMLButtonElement).disabled
+    ).toBe(false);
+  });
+
+  it('does not show SALES without the current SALES_READ projection or in Cabinet context', () => {
+    productAvailability.SALES = 'AVAILABLE';
+    const authStore = TestBed.inject(AuthStore);
+    authStore.setCreatedWorkspace(
+      { orgId: 'org-member', displayName: 'Member SARL', workspaceType: 'COMPANY', role: 'MEMBER' },
+      'org-member'
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
+    fixture.destroy();
+
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'org-firm',
+        displayName: 'Cabinet Demo',
+        workspaceType: 'ACCOUNTING_FIRM',
+        cabinetRole: 'CABINET_ADMIN',
+        role: 'OWNER'
+      },
+      'org-firm'
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
   });
 });
