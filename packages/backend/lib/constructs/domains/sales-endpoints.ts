@@ -11,6 +11,7 @@ export class SalesEndpoints extends DomainConstructFactory {
     const map = (
       method: apigw.HttpMethod,
       routePath: string,
+      area: "catalog" | "customers",
       handlerName: string,
     ) =>
       this.addRoute({
@@ -22,7 +23,7 @@ export class SalesEndpoints extends DomainConstructFactory {
           "lambda",
           "domains",
           "sales",
-          "customers",
+          area,
           `${handlerName}.ts`,
         ),
         idPrefix: "Sales-",
@@ -34,11 +35,18 @@ export class SalesEndpoints extends DomainConstructFactory {
         table: props.table,
       });
 
-    map(apigw.HttpMethod.POST, "/sales/customers", "create-sales-customer");
-    map(apigw.HttpMethod.GET, "/sales/customers", "list-sales-customers");
-    map(apigw.HttpMethod.GET, "/sales/customers/{customerId}", "get-sales-customer");
-    map(apigw.HttpMethod.PATCH, "/sales/customers/{customerId}", "update-sales-customer");
-    map(apigw.HttpMethod.POST, "/sales/customers/{customerId}/activate", "activate-sales-customer");
-    map(apigw.HttpMethod.POST, "/sales/customers/{customerId}/deactivate", "deactivate-sales-customer");
+    map(apigw.HttpMethod.POST, "/sales/customers", "customers", "create-sales-customer");
+    map(apigw.HttpMethod.GET, "/sales/customers", "customers", "list-sales-customers");
+    map(apigw.HttpMethod.GET, "/sales/customers/{customerId}", "customers", "get-sales-customer");
+    map(apigw.HttpMethod.PATCH, "/sales/customers/{customerId}", "customers", "update-sales-customer");
+    map(apigw.HttpMethod.POST, "/sales/customers/{customerId}/activate", "customers", "activate-sales-customer");
+    map(apigw.HttpMethod.POST, "/sales/customers/{customerId}/deactivate", "customers", "deactivate-sales-customer");
+
+    map(apigw.HttpMethod.POST, "/sales/items", "catalog", "create-sales-catalog-item");
+    map(apigw.HttpMethod.GET, "/sales/items", "catalog", "list-sales-catalog-items");
+    map(apigw.HttpMethod.GET, "/sales/items/{itemId}", "catalog", "get-sales-catalog-item");
+    map(apigw.HttpMethod.PATCH, "/sales/items/{itemId}", "catalog", "update-sales-catalog-item");
+    map(apigw.HttpMethod.POST, "/sales/items/{itemId}/activate", "catalog", "activate-sales-catalog-item");
+    map(apigw.HttpMethod.POST, "/sales/items/{itemId}/deactivate", "catalog", "deactivate-sales-catalog-item");
   }
 }

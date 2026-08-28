@@ -44,6 +44,13 @@ describe("KeyFactory", () => {
     expect(KeyFactory.salesSettingsSK()).toBe("SETTINGS#SALES");
   });
 
+  test("builds SALES Customer and Catalog Item keys independently", () => {
+    expect(KeyFactory.salesCustomerPrefix()).toBe("SALES_CUSTOMER#");
+    expect(KeyFactory.salesCustomerSK("SC-1")).toBe("SALES_CUSTOMER#SC-1");
+    expect(KeyFactory.salesItemPrefix()).toBe("SALES_ITEM#");
+    expect(KeyFactory.salesItemSK("SI-1")).toBe("SALES_ITEM#SI-1");
+  });
+
   test("builds the Accounting-owned Treasury posting idempotency key centrally", () => {
     expect(KeyFactory.treasuryPostingIdempotencySK("ABC123")).toBe(
       "IDEMPOTENCY#TREASURY_POSTING#abc123",

@@ -25,7 +25,7 @@ Organization
 
 - `Organization` owns platform-wide identity and status attributes.
 - `UserOrgAccess` represents a user's verified access to an organization.
-- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The canonical public product codes are `ACCOUNTING` and `SALES`; their entitlements are independent. Every current Accounting-product business route is explicitly annotated with `ACCOUNTING`; the six SALES Customer routes require active `SALES` access and `SALES_READ` or `SALES_WRITE`. Platform Core discovery, onboarding, entitlement observation, and recovery routes remain outside product enforcement. Accounting Core, Treasury, and Project Accounting navigation derive availability from the same effective-organization `ACCOUNTING` entitlement.
+- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The canonical public product codes are `ACCOUNTING` and `SALES`; their entitlements are independent. Every current Accounting-product business route is explicitly annotated with `ACCOUNTING`; the twelve SALES Customer and Catalog routes require active `SALES` access and `SALES_READ` or `SALES_WRITE`. Platform Core discovery, onboarding, entitlement observation, and recovery routes remain outside product enforcement. Accounting Core, Treasury, and Project Accounting navigation derive availability from the same effective-organization `ACCOUNTING` entitlement.
 - `DomainSettings` belongs to the owning business domain. In particular, `accountingFramework` conceptually belongs to `AccountingSettings`, not to universal Organization metadata.
 
 Current onboarding, Organization, workspace, access-projection, and response contracts may still carry `accountingFramework`. This is an explicit compatibility state. It must remain supported until a reviewed, backward-compatible runtime and data migration moves ownership to Accounting.
@@ -91,7 +91,7 @@ LIASS-OHADA
 │   ├── Treasury
 │   └── Project Accounting
 ├── PRODUCT: SALES
-│   └── Customer backend foundation; no SALES navigation or invoicing yet
+│   └── Customer and Catalog backend foundations; no SALES navigation or invoicing yet
 └── FUTURE PRODUCT: LIASS-RESTO
     └── restaurant / bar operations
 ```

@@ -651,6 +651,12 @@ SALES owns a minimal `SalesSettings` item at `PK = ORG#{orgId}`, `SK = SETTINGS#
 
 Default COMPANY onboarding, ACCOUNTING_FIRM onboarding, and Cabinet-created client organizations continue to create only `PRODUCT_ACCESS#ACCOUNTING` plus AccountingSettings. SALES is never inferred from the public product universe. Liass-Facturation remains coming soon. No SALES route, navigation, customer, catalog, invoicing, public activation endpoint, CDK stack, Lambda, table, GSI, migration, backfill, or deployment is introduced by S1A.
 
+### S1B/S1C — SALES Customer and Catalog backend foundations
+
+S1B adds the SALES-owned Customer aggregate and S1C adds the independent SALES-owned Catalog Item aggregate. Catalog Items contain only a `PRODUCT` or `SERVICE` type, name, optional plain-text description, optional simple unit label, active status, version, and timestamps. Pricing, currency, tax/VAT, inventory, stock, SKU/barcode, variants, invoicing, Accounting mappings, and Customer-specific pricing remain deferred.
+
+Both aggregates use the effective organization partition and distinct `KeyFactory` prefixes. Catalog Items use `PK = ORG#{orgId}`, `SK = SALES_ITEM#{itemId}`, and `entityType = SALES_ITEM`. Their six endpoints require active SALES ProductAccess and SALES_READ or SALES_WRITE. Lists use prefix-scoped cursor pagination and DynamoDB `Query`; writes use optimistic-concurrency conditions. No Scan, table, GSI, migration, backfill, default-onboarding mutation, frontend SALES navigation, or deployment is introduced.
+
 ### Product-roadmap candidate — Liass-Resto foundation
 
 If selected through product-roadmap planning, classify Liass-Resto as a vertical solution, define its real access patterns and domain model, reuse the single app/Cognito/org/table architecture, and integrate through owned contracts. The intended future technical identifiers remain `restaurants` and `RESTAURANTS`. This is product development, not another Platform V2 architecture phase.
