@@ -340,26 +340,33 @@ describe('routes', () => {
 });
 
 describe('SALES routes', () => {
-  it('registers /sales/customers and redirects /sales to the customer directory', async () => {
+  it('registers the implemented SALES foundations and redirects /sales to customers', async () => {
     const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
     const redirect = salesRoute?.children?.find((route) => route.path === '');
     const customersRoute = salesRoute?.children?.find((route) => route.path === 'customers');
-    const component = await customersRoute?.loadComponent?.();
+    const itemsRoute = salesRoute?.children?.find((route) => route.path === 'items');
+    const customersComponent = await customersRoute?.loadComponent?.();
+    const itemsComponent = await itemsRoute?.loadComponent?.();
     const { SalesCustomersPage } = await import(
       '../../domains/sales/feature/customers/sales-customers.page'
+    );
+    const { SalesItemsPage } = await import(
+      '../../domains/sales/feature/items/sales-items.page'
     );
 
     expect(redirect?.redirectTo).toBe('customers');
     expect(redirect?.pathMatch).toBe('full');
-    expect(component).toBe(SalesCustomersPage);
+    expect(customersComponent).toBe(SalesCustomersPage);
+    expect(itemsComponent).toBe(SalesItemsPage);
     expect(customersRoute?.data?.['titleKey']).toBe('SALES.CUSTOMERS.PAGE.TITLE');
+    expect(itemsRoute?.data?.['titleKey']).toBe('SALES.ITEMS.PAGE.TITLE');
   });
 
   it('does not register a SALES dashboard or deferred commercial placeholders', () => {
     const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
     const paths = salesRoute?.children?.map((route) => route.path) ?? [];
 
-    expect(paths).toEqual(['', 'customers']);
+    expect(paths).toEqual(['', 'customers', 'items']);
     expect(paths).not.toContain('dashboard');
     expect(paths).not.toContain('catalog');
     expect(paths).not.toContain('invoices');

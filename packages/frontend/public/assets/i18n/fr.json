@@ -84,6 +84,7 @@
       "REPORTS": "États OHADA",
       "SALES": "Ventes",
       "SALES_CUSTOMERS": "Clients",
+      "SALES_ITEMS": "Articles & services",
       "SECTION_LABEL": "Espace",
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Tiers",
@@ -113,6 +114,7 @@
       "JOURNALS": "Journaux",
       "LETTERING": "Lettrage",
       "SALES_CUSTOMERS": "Clients",
+      "SALES_ITEMS": "Articles & services",
       "THIRD_PARTIES": "Tiers",
       "TRIAL_BALANCE": "Balance"
     },
@@ -3232,6 +3234,34 @@
       "NOTIFICATIONS": { "CREATED": "Client créé.", "UPDATED": "Client mis à jour.", "ACTIVATED": "Client réactivé.", "DEACTIVATED": "Client désactivé." },
       "ERRORS": {
         "LOAD_FAILED": "Les clients n’ont pas pu être chargés.", "DETAIL_FAILED": "Les informations à jour de ce client n’ont pas pu être chargées.", "CREATE_FAILED": "Le client n’a pas pu être créé.", "UPDATE_FAILED": "Le client n’a pas pu être mis à jour.", "STATUS_FAILED": "Le statut du client n’a pas pu être modifié.", "CONFLICT": "Ce client a été modifié depuis votre dernier affichage. Les données à jour ont été rechargées ; vérifiez-les avant de réessayer."
+      }
+    },
+    "ITEMS": {
+      "PAGE": { "EYEBROW": "Ventes", "TITLE": "Articles & services", "SUBTITLE": "Gérez ce que l’organisation active vend ou fournit." },
+      "LIST": { "TITLE": "Catalogue", "DESCRIPTION": "Consultez et tenez à jour les articles et services proposés par votre organisation." },
+      "LOADING": "Chargement des articles et services…",
+      "ACCESS": {
+        "CHECKING": "Vérification de l’accès à Ventes…",
+        "UNAVAILABLE_TITLE": "Articles et services indisponibles",
+        "UNAVAILABLE_DESCRIPTION": "Votre accès ou l’activation du produit Ventes ne permet pas d’afficher ce catalogue pour le moment."
+      },
+      "ACTIONS": { "CREATE": "Ajouter un article ou service", "EDIT": "Modifier", "ACTIVATE": "Réactiver", "DEACTIVATE": "Désactiver" },
+      "TABLE": { "NAME": "Nom", "TYPE": "Type", "UNIT": "Unité", "STATUS": "Statut", "ACTIONS": "Actions" },
+      "TYPES": { "PRODUCT": "Article", "SERVICE": "Service" },
+      "STATUS": { "ACTIVE": "Actif", "INACTIVE": "Inactif" },
+      "EMPTY": { "TITLE": "Aucun article ou service pour le moment", "DESCRIPTION": "Ajoutez ce que votre organisation vend ou fournit." },
+      "DIALOG": { "CREATE_TITLE": "Ajouter un article ou service", "EDIT_TITLE": "Modifier l’article ou le service", "SUBTITLE": "Renseignez uniquement les informations utiles pour identifier cette offre." },
+      "FORM": {
+        "TYPE": "Type", "NAME": "Nom", "DESCRIPTION": "Description", "UNIT": "Unité", "UNIT_PLACEHOLDER": "Unité, heure, jour, kg…", "UNIT_HINT": "Libellé libre et facultatif.", "MAX_LENGTH": "Maximum {{count}} caractères."
+      },
+      "LIFECYCLE": {
+        "DEACTIVATE_TITLE": "Désactiver cet article ou service ?", "DEACTIVATE_DESCRIPTION": "{{name}} restera enregistré mais sera marqué comme inactif. Cette action est réversible.",
+        "ACTIVATE_TITLE": "Réactiver cet article ou service ?", "ACTIVATE_DESCRIPTION": "{{name}} sera de nouveau marqué comme actif."
+      },
+      "PAGINATION": { "LABEL": "Pagination des articles et services", "PAGE_SIZE": "Jusqu’à {{count}} éléments par page" },
+      "NOTIFICATIONS": { "CREATED": "Article ou service créé.", "UPDATED": "Article ou service mis à jour.", "ACTIVATED": "Article ou service réactivé.", "DEACTIVATED": "Article ou service désactivé." },
+      "ERRORS": {
+        "LOAD_FAILED": "Les articles et services n’ont pas pu être chargés.", "DETAIL_FAILED": "Les informations à jour de cet article ou service n’ont pas pu être chargées.", "CREATE_FAILED": "L’article ou le service n’a pas pu être créé.", "UPDATE_FAILED": "L’article ou le service n’a pas pu être mis à jour.", "STATUS_FAILED": "Le statut de l’article ou du service n’a pas pu être modifié.", "CONFLICT": "Cet article ou service a été modifié entre-temps. Les informations ont été actualisées ; vérifiez vos modifications avant de réessayer."
       }
     }
   },

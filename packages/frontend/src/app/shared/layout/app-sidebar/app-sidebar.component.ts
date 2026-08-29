@@ -152,6 +152,13 @@ const salesItems: readonly ShellNavItem[] = [
     page: 'sales.customers',
     productCode: 'SALES',
     route: '/sales/customers'
+  },
+  {
+    icon: 'category',
+    labelKey: 'SHELL.NAV.SALES_ITEMS',
+    page: 'sales.items',
+    productCode: 'SALES',
+    route: '/sales/items'
   }
 ];
 const cabinetItems: readonly ShellNavItem[] = [

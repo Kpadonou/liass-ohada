@@ -67,6 +67,7 @@ const translations = {
         REPORTS: 'États OHADA',
         SALES: 'Ventes',
         SALES_CUSTOMERS: 'Clients',
+        SALES_ITEMS: 'Articles & services',
         SECTION_LABEL: 'Espace',
         SYCEBNL_BADGE: 'SYCEBNL',
         THIRD_PARTIES: 'Tiers',
@@ -562,7 +563,7 @@ describe('AppSidebarComponent', () => {
     expect(authStore.activeDossierOrgId()).toBeNull();
   });
 
-  it('shows only Customers under SALES for an entitled direct OWNER', () => {
+  it('shows Customers and Articles & services under SALES for an entitled direct OWNER', () => {
     productAvailability.SALES = 'AVAILABLE';
     TestBed.inject(AuthStore).setCreatedWorkspace(
       {
@@ -579,6 +580,7 @@ describe('AppSidebarComponent', () => {
     const text = fixture.nativeElement.textContent;
     expect(text).toContain('Ventes');
     expect(text).toContain('Clients');
+    expect(text).toContain('Articles & services');
     expect(text).not.toContain('Catalog');
     expect(text).not.toContain('Factures');
     expect(text).not.toContain('Invoices');
@@ -621,6 +623,7 @@ describe('AppSidebarComponent', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.textContent).toContain('Clients');
+    expect(fixture.nativeElement.textContent).toContain('Articles & services');
     const accountingOverview = fixture.nativeElement.querySelector(
       'liass-sidebar-nav-item button[aria-label^="Vue d’ensemble"]'
     ) as HTMLButtonElement;
@@ -631,6 +634,7 @@ describe('AppSidebarComponent', () => {
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Clients');
+    expect(fixture.nativeElement.textContent).toContain('Articles & services');
     expect(
       (fixture.nativeElement.querySelector(
         'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]'

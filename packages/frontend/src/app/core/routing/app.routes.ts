@@ -148,6 +148,17 @@ export const routes: Routes = [
               subtitleKey: 'SALES.CUSTOMERS.PAGE.SUBTITLE',
               titleKey: 'SALES.CUSTOMERS.PAGE.TITLE'
             }
+          },
+          {
+            path: 'items',
+            loadComponent: () =>
+              import('../../domains/sales/feature/items/sales-items.page').then(
+                (module) => module.SalesItemsPage
+              ),
+            data: {
+              subtitleKey: 'SALES.ITEMS.PAGE.SUBTITLE',
+              titleKey: 'SALES.ITEMS.PAGE.TITLE'
+            }
           }
         ]
       },

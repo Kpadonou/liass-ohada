@@ -1,0 +1,44 @@
+<header class="px-5 pt-5 sm:px-6 sm:pt-6">
+  <h2 mat-dialog-title class="m-0 p-0 text-xl font-semibold text-app-text">
+    {{ (isEdit ? 'SALES.ITEMS.DIALOG.EDIT_TITLE' : 'SALES.ITEMS.DIALOG.CREATE_TITLE') | transloco }}
+  </h2>
+  <p class="mt-1 text-sm text-app-text-secondary">{{ 'SALES.ITEMS.DIALOG.SUBTITLE' | transloco }}</p>
+</header>
+
+<mat-dialog-content class="px-5 py-4 sm:px-6">
+  <form class="grid gap-3 sm:grid-cols-2" [formGroup]="form" (ngSubmit)="submit()" id="sales-item-form">
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'SALES.ITEMS.FORM.TYPE' | transloco }}</mat-label>
+      <mat-select formControlName="itemType">
+        <mat-option value="PRODUCT">{{ 'SALES.ITEMS.TYPES.PRODUCT' | transloco }}</mat-option>
+        <mat-option value="SERVICE">{{ 'SALES.ITEMS.TYPES.SERVICE' | transloco }}</mat-option>
+      </mat-select>
+      @if (form.controls.itemType.hasError('required')) { <mat-error>{{ 'COMMON.VALIDATION.REQUIRED' | transloco }}</mat-error> }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'SALES.ITEMS.FORM.NAME' | transloco }}</mat-label>
+      <input matInput formControlName="name" autocomplete="off" />
+      @if (form.controls.name.hasError('required')) { <mat-error>{{ 'COMMON.VALIDATION.REQUIRED' | transloco }}</mat-error> }
+      @if (form.controls.name.hasError('maxlength')) { <mat-error>{{ 'SALES.ITEMS.FORM.MAX_LENGTH' | transloco: { count: 160 } }}</mat-error> }
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="sm:col-span-2">
+      <mat-label>{{ 'SALES.ITEMS.FORM.DESCRIPTION' | transloco }}</mat-label>
+      <textarea matInput formControlName="description" rows="4"></textarea>
+      @if (form.controls.description.hasError('maxlength')) { <mat-error>{{ 'SALES.ITEMS.FORM.MAX_LENGTH' | transloco: { count: 2000 } }}</mat-error> }
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="sm:col-span-2">
+      <mat-label>{{ 'SALES.ITEMS.FORM.UNIT' | transloco }}</mat-label>
+      <input matInput formControlName="unit" [placeholder]="'SALES.ITEMS.FORM.UNIT_PLACEHOLDER' | transloco" autocomplete="off" />
+      <mat-hint>{{ 'SALES.ITEMS.FORM.UNIT_HINT' | transloco }}</mat-hint>
+      @if (form.controls.unit.hasError('maxlength')) { <mat-error>{{ 'SALES.ITEMS.FORM.MAX_LENGTH' | transloco: { count: 80 } }}</mat-error> }
+    </mat-form-field>
+    @if (errorMessage()) {
+      <p class="sm:col-span-2 rounded-app-control border border-red-200 bg-red-50 p-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/25 dark:text-red-200" role="alert">{{ errorMessage() }}</p>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="gap-2 px-5 pb-5 sm:px-6 sm:pb-6">
+  <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">{{ 'COMMON.ACTIONS.CANCEL' | transloco }}</liass-button>
+  <liass-button tone="brand" variant="solid" [loading]="submitting()" (pressed)="submit()">{{ (isEdit ? 'COMMON.ACTIONS.SAVE' : 'COMMON.ACTIONS.CREATE') | transloco }}</liass-button>
+</mat-dialog-actions>

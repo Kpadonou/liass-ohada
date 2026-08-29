@@ -26,6 +26,7 @@ export type AppPage =
   | 'projects'
   | 'treasury'
   | 'sales.customers'
+  | 'sales.items'
   | 'reports'
   | 'administration';
 export type ThemeMode = 'light' | 'dark';

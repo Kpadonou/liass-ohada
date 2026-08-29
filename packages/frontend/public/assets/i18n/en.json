@@ -84,6 +84,7 @@
       "REPORTS": "OHADA reports",
       "SALES": "Sales",
       "SALES_CUSTOMERS": "Customers",
+      "SALES_ITEMS": "Items & services",
       "SECTION_LABEL": "Workspace",
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Third parties",
@@ -113,6 +114,7 @@
       "JOURNALS": "Journals",
       "LETTERING": "Lettering",
       "SALES_CUSTOMERS": "Customers",
+      "SALES_ITEMS": "Items & services",
       "THIRD_PARTIES": "Third parties",
       "TRIAL_BALANCE": "Trial balance"
     },
@@ -3232,6 +3234,34 @@
       "NOTIFICATIONS": { "CREATED": "Customer created.", "UPDATED": "Customer updated.", "ACTIVATED": "Customer reactivated.", "DEACTIVATED": "Customer deactivated." },
       "ERRORS": {
         "LOAD_FAILED": "Customers could not be loaded.", "DETAIL_FAILED": "The latest customer details could not be loaded.", "CREATE_FAILED": "The customer could not be created.", "UPDATE_FAILED": "The customer could not be updated.", "STATUS_FAILED": "The customer status could not be changed.", "CONFLICT": "This customer changed since you last viewed it. The latest data was reloaded; review it before trying again."
+      }
+    },
+    "ITEMS": {
+      "PAGE": { "EYEBROW": "Sales", "TITLE": "Items & services", "SUBTITLE": "Manage what the active organization sells or provides." },
+      "LIST": { "TITLE": "Catalog", "DESCRIPTION": "Review and maintain the items and services offered by your organization." },
+      "LOADING": "Loading items and services…",
+      "ACCESS": {
+        "CHECKING": "Checking access to Sales…",
+        "UNAVAILABLE_TITLE": "Items and services unavailable",
+        "UNAVAILABLE_DESCRIPTION": "Your access or the Sales product activation does not currently allow this catalog to be displayed."
+      },
+      "ACTIONS": { "CREATE": "Add item or service", "EDIT": "Edit", "ACTIVATE": "Reactivate", "DEACTIVATE": "Deactivate" },
+      "TABLE": { "NAME": "Name", "TYPE": "Type", "UNIT": "Unit", "STATUS": "Status", "ACTIONS": "Actions" },
+      "TYPES": { "PRODUCT": "Product", "SERVICE": "Service" },
+      "STATUS": { "ACTIVE": "Active", "INACTIVE": "Inactive" },
+      "EMPTY": { "TITLE": "No items or services yet", "DESCRIPTION": "Add what your organization sells or provides." },
+      "DIALOG": { "CREATE_TITLE": "Add item or service", "EDIT_TITLE": "Edit item or service", "SUBTITLE": "Enter only the information needed to identify this offering." },
+      "FORM": {
+        "TYPE": "Type", "NAME": "Name", "DESCRIPTION": "Description", "UNIT": "Unit", "UNIT_PLACEHOLDER": "Unit, hour, day, kg…", "UNIT_HINT": "Optional free-text label.", "MAX_LENGTH": "Maximum {{count}} characters."
+      },
+      "LIFECYCLE": {
+        "DEACTIVATE_TITLE": "Deactivate this item or service?", "DEACTIVATE_DESCRIPTION": "{{name}} will remain stored but will be marked inactive. This action is reversible.",
+        "ACTIVATE_TITLE": "Reactivate this item or service?", "ACTIVATE_DESCRIPTION": "{{name}} will be marked active again."
+      },
+      "PAGINATION": { "LABEL": "Item and service pagination", "PAGE_SIZE": "Up to {{count}} items per page" },
+      "NOTIFICATIONS": { "CREATED": "Item or service created.", "UPDATED": "Item or service updated.", "ACTIVATED": "Item or service reactivated.", "DEACTIVATED": "Item or service deactivated." },
+      "ERRORS": {
+        "LOAD_FAILED": "Items and services could not be loaded.", "DETAIL_FAILED": "The latest item or service details could not be loaded.", "CREATE_FAILED": "The item or service could not be created.", "UPDATE_FAILED": "The item or service could not be updated.", "STATUS_FAILED": "The item or service status could not be changed.", "CONFLICT": "This item or service changed in the meantime. The latest information was reloaded; review your changes before trying again."
       }
     }
   },
