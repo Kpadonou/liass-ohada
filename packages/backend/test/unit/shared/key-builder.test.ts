@@ -47,6 +47,10 @@ describe("KeyFactory", () => {
   test("builds SALES Customer and Catalog Item keys independently", () => {
     expect(KeyFactory.salesCustomerPrefix()).toBe("SALES_CUSTOMER#");
     expect(KeyFactory.salesCustomerSK("SC-1")).toBe("SALES_CUSTOMER#SC-1");
+    expect(KeyFactory.salesInvoicePrefix()).toBe("SALES_INVOICE#");
+    expect(KeyFactory.salesInvoiceSK("SINV-1")).toBe(
+      "SALES_INVOICE#SINV-1",
+    );
     expect(KeyFactory.salesItemPrefix()).toBe("SALES_ITEM#");
     expect(KeyFactory.salesItemSK("SI-1")).toBe("SALES_ITEM#SI-1");
   });

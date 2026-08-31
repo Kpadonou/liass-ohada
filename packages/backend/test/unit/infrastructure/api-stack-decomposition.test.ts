@@ -136,14 +136,14 @@ describe("API stack decomposition", () => {
     ).toBe(true);
   });
 
-  test("keeps all twelve SALES Lambdas in the SALES domain without Accounting fallback", () => {
+  test("keeps all nineteen SALES Lambdas in the SALES domain without Accounting fallback", () => {
     const functions = constructs.filter(
       (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
     );
     const salesFunctions = functions.filter((fn) =>
       String(fn.functionName).includes("-dev-sales-"),
     );
-    expect(salesFunctions).toHaveLength(12);
+    expect(salesFunctions).toHaveLength(19);
     expect(
       salesFunctions.every(
         (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),

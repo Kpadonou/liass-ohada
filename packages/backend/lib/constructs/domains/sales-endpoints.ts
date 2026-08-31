@@ -11,7 +11,7 @@ export class SalesEndpoints extends DomainConstructFactory {
     const map = (
       method: apigw.HttpMethod,
       routePath: string,
-      area: "catalog" | "customers",
+      area: "catalog" | "customers" | "invoices",
       handlerName: string,
     ) =>
       this.addRoute({
@@ -48,5 +48,13 @@ export class SalesEndpoints extends DomainConstructFactory {
     map(apigw.HttpMethod.PATCH, "/sales/items/{itemId}", "catalog", "update-sales-catalog-item");
     map(apigw.HttpMethod.POST, "/sales/items/{itemId}/activate", "catalog", "activate-sales-catalog-item");
     map(apigw.HttpMethod.POST, "/sales/items/{itemId}/deactivate", "catalog", "deactivate-sales-catalog-item");
+
+    map(apigw.HttpMethod.POST, "/sales/invoices", "invoices", "create-sales-invoice");
+    map(apigw.HttpMethod.GET, "/sales/invoices", "invoices", "list-sales-invoices");
+    map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}", "invoices", "get-sales-invoice");
+    map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}", "invoices", "update-sales-invoice");
+    map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/lines", "invoices", "add-sales-invoice-line");
+    map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "update-sales-invoice-line");
+    map(apigw.HttpMethod.DELETE, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "remove-sales-invoice-line");
   }
 }

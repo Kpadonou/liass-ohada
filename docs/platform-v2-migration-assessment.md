@@ -657,6 +657,14 @@ S1B adds the SALES-owned Customer aggregate and S1C adds the independent SALES-o
 
 Both aggregates use the effective organization partition and distinct `KeyFactory` prefixes. Catalog Items use `PK = ORG#{orgId}`, `SK = SALES_ITEM#{itemId}`, and `entityType = SALES_ITEM`. Their six endpoints require active SALES ProductAccess and SALES_READ or SALES_WRITE. Lists use prefix-scoped cursor pagination and DynamoDB `Query`; writes use optimistic-concurrency conditions. No Scan, table, GSI, migration, backfill, default-onboarding mutation, frontend SALES navigation, or deployment is introduced.
 
+### S2A-BE — SALES Draft Invoicing Core
+
+S2A-BE adds the SALES-owned `SalesInvoice` bounded aggregate with operational status `DRAFT` only. A draft has an explicit validated ISO 4217 currency, an optional server-created Customer snapshot, at most 100 ordered Catalog-backed or free-form lines, exact decimal quantity/price/rate inputs, canonical rounded line amounts, aggregate totals, and one optimistic-concurrency version. `SalesSettings.defaultCurrency` is copied only when the request omits currency; an existing invoice never depends on live settings, Customer, or Catalog data for reads.
+
+The aggregate is one DynamoDB item at `PK = ORG#{orgId}`, `SK = SALES_INVOICE#{invoiceId}`. All line mutations conditionally replace that item, so lines, totals, line count, ordering, and version commit atomically. Organization-scoped invoice listing uses `Query`, the invoice prefix, a header-only projection, and a tenant-bound opaque cursor. No Scan, GSI, table, migration, backfill, event, queue, or stateful resource is introduced.
+
+The calculation policy is SALES-owned and generic: line subtotal is quantity multiplied by unit price and rounded `ROUND_HALF_UP` to the invoice currency's ISO minor-unit scale; tax is calculated from that rounded line subtotal and the generic percentage rate, then rounded the same way; invoice totals sum the canonical rounded line amounts. This is not national tax validation or fiscal certification. Issuance, official numbering, PDF/S3, e-MECeF, discounts, payments/receivables, and Accounting posting remain unavailable. Liass-Facturation remains coming soon, and S2A frontend work is separately deferred.
+
 ### Product-roadmap candidate — Liass-Resto foundation
 
 If selected through product-roadmap planning, classify Liass-Resto as a vertical solution, define its real access patterns and domain model, reuse the single app/Cognito/org/table architecture, and integrate through owned contracts. The intended future technical identifiers remain `restaurants` and `RESTAURANTS`. This is product development, not another Platform V2 architecture phase.
