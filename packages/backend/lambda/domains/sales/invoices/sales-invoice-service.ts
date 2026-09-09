@@ -4,6 +4,8 @@ import {
   AddSalesInvoiceLineRequestSchema,
   CreateSalesInvoiceRequest,
   CreateSalesInvoiceRequestSchema,
+  IssueSalesInvoiceRequest,
+  IssueSalesInvoiceRequestSchema,
   ListSalesInvoicesRequest,
   ListSalesInvoicesRequestSchema,
   SalesInvoice,
@@ -11,6 +13,8 @@ import {
   SalesInvoiceListResponse,
   SalesInvoiceListResponseSchema,
   SalesInvoiceSchema,
+  SalesDraftInvoice,
+  SalesIssuedInvoice,
   UpdateSalesInvoiceLineRequest,
   UpdateSalesInvoiceLineRequestSchema,
   UpdateSalesInvoiceRequest,
@@ -24,6 +28,12 @@ import { SalesSettingsService } from "../settings/sales-settings-service";
 import { resolveSalesCurrency } from "./sales-currency";
 import { SalesInvoiceCalculator } from "./sales-invoice-calculator";
 import {
+  formatSalesInvoiceNumber,
+  nextSalesInvoiceSequence,
+} from "./sales-invoice-number";
+import {
+  SalesInvoiceIssueIdempotencyRecord,
+  SalesInvoiceIssueTransactionError,
   SalesInvoiceRepository,
   SalesInvoiceWriteConflictError,
 } from "./sales-invoice-repository";
@@ -31,13 +41,15 @@ import {
 const OrganizationIdSchema = z.string().min(1);
 const EntityIdSchema = z.string().trim().min(1).max(200);
 const MAX_INVOICE_LINES = 100;
+const MAX_ISSUE_SEQUENCE_ATTEMPTS = 4;
 
 type AuditAction =
   | "SALES_INVOICE_DRAFT_CREATED"
   | "SALES_INVOICE_DRAFT_UPDATED"
   | "SALES_INVOICE_LINE_ADDED"
   | "SALES_INVOICE_LINE_UPDATED"
-  | "SALES_INVOICE_LINE_REMOVED";
+  | "SALES_INVOICE_LINE_REMOVED"
+  | "SALES_INVOICE_ISSUED";
 
 const audit = (input: {
   action: AuditAction;
@@ -49,6 +61,8 @@ const audit = (input: {
   orgId: string;
   resultingVersion: number;
   timestamp: string;
+  invoiceNumber?: string;
+  issueDate?: string;
 }) => console.info("[SALES_INVOICE_AUDIT]", input);
 
 const customerSnapshot = async (
@@ -152,6 +166,7 @@ export class SalesInvoiceService {
     const id = EntityIdSchema.parse(invoiceId);
     const request = UpdateSalesInvoiceRequestSchema.parse(input);
     const current = await this.get(tenantId, id);
+    this.assertDraftEditable(current);
     this.assertVersion(current, request.expectedVersion);
 
     let nextCustomerId = current.customerId;
@@ -223,6 +238,7 @@ export class SalesInvoiceService {
     const id = EntityIdSchema.parse(invoiceId);
     const request = AddSalesInvoiceLineRequestSchema.parse(input);
     const current = await this.get(tenantId, id);
+    this.assertDraftEditable(current);
     this.assertVersion(current, request.expectedVersion);
     if (current.lineCount >= MAX_INVOICE_LINES) {
       throw new AppError(409, "MAX_INVOICE_LINES_EXCEEDED");
@@ -282,6 +298,7 @@ export class SalesInvoiceService {
     const targetLineId = EntityIdSchema.parse(lineId);
     const request = UpdateSalesInvoiceLineRequestSchema.parse(input);
     const current = await this.get(tenantId, id);
+    this.assertDraftEditable(current);
     this.assertVersion(current, request.expectedVersion);
     const existing = current.lines.find((line) => line.id === targetLineId);
     if (!existing) throw new AppError(404, "SALES_INVOICE_LINE_NOT_FOUND");
@@ -296,8 +313,8 @@ export class SalesInvoiceService {
     ] as const) {
       if (!Object.prototype.hasOwnProperty.call(request, field)) continue;
       const value = request[field];
-      if (value === undefined) delete mutable[field];
-      else mutable[field] = value;
+      if (value === null) delete mutable[field];
+      else if (value !== undefined) mutable[field] = value;
     }
     const now = new Date().toISOString();
     const updated = SalesInvoiceCalculator.calculateLine(current.currency, {
@@ -342,6 +359,7 @@ export class SalesInvoiceService {
     const id = EntityIdSchema.parse(invoiceId);
     const targetLineId = EntityIdSchema.parse(lineId);
     const current = await this.get(tenantId, id);
+    this.assertDraftEditable(current);
     this.assertVersion(current, expectedVersion);
     if (!current.lines.some((line) => line.id === targetLineId)) {
       throw new AppError(404, "SALES_INVOICE_LINE_NOT_FOUND");
@@ -367,11 +385,111 @@ export class SalesInvoiceService {
     return next;
   }
 
+  static async issue(
+    orgId: string,
+    actorUserId: string,
+    invoiceId: string,
+    input: IssueSalesInvoiceRequest,
+  ): Promise<SalesIssuedInvoice> {
+    const tenantId = OrganizationIdSchema.parse(orgId);
+    const userId = EntityIdSchema.parse(actorUserId);
+    const id = EntityIdSchema.parse(invoiceId);
+    const request = IssueSalesInvoiceRequestSchema.parse(input);
+    const existing = await SalesInvoiceRepository.getIssueIdempotency(
+      tenantId,
+      request.clientRequestId,
+    );
+    if (existing) return this.resolveIssueReplay(tenantId, id, request, existing);
+
+    for (let attempt = 1; attempt <= MAX_ISSUE_SEQUENCE_ATTEMPTS; attempt += 1) {
+      const current = await this.get(tenantId, id);
+      if (current.status === "ISSUED") {
+        throw new AppError(409, "SALES_INVOICE_ALREADY_ISSUED");
+      }
+      this.assertVersion(current, request.expectedVersion);
+      if (current.lineCount < 1 || current.lines.length < 1) {
+        throw new AppError(409, "SALES_INVOICE_HAS_NO_LINES");
+      }
+
+      const sequence = await SalesInvoiceRepository.getSequence(tenantId);
+      const nextSequenceValue = nextSalesInvoiceSequence(sequence.lastValue);
+      const invoiceNumber = formatSalesInvoiceNumber(nextSequenceValue);
+      const issuedAt = new Date().toISOString();
+      const issued = SalesInvoiceSchema.parse({
+        ...current,
+        status: "ISSUED",
+        invoiceNumber,
+        issueDate: request.issueDate,
+        issuedAt,
+        version: current.version + 1,
+        updatedAt: issuedAt,
+      }) as SalesIssuedInvoice;
+
+      try {
+        await SalesInvoiceRepository.issueAtomically({
+          orgId: tenantId,
+          invoice: issued,
+          issuedByUserId: userId,
+          clientRequestId: request.clientRequestId,
+          originalExpectedVersion: request.expectedVersion,
+          previousSequenceExists: sequence.exists,
+          previousSequenceValue: sequence.lastValue,
+          nextSequenceValue,
+        });
+        audit({
+          action: "SALES_INVOICE_ISSUED",
+          actorUserId: userId,
+          currency: issued.currency,
+          invoiceId: id,
+          invoiceNumber,
+          issueDate: request.issueDate,
+          lineCount: issued.lineCount,
+          orgId: tenantId,
+          resultingVersion: issued.version,
+          timestamp: issuedAt,
+        });
+        return issued;
+      } catch (error) {
+        if (!(error instanceof SalesInvoiceIssueTransactionError)) throw error;
+
+        const winner = await SalesInvoiceRepository.getIssueIdempotency(
+          tenantId,
+          request.clientRequestId,
+        );
+        if (winner) return this.resolveIssueReplay(tenantId, id, request, winner);
+
+        const authoritative = await SalesInvoiceRepository.get(tenantId, id);
+        if (!authoritative) throw new AppError(404, "SALES_INVOICE_NOT_FOUND");
+        if (authoritative.status === "ISSUED") {
+          throw new AppError(409, "SALES_INVOICE_ALREADY_ISSUED");
+        }
+        this.assertVersion(authoritative, request.expectedVersion);
+
+        if (error.failure === "SEQUENCE_CONTENTION") continue;
+        console.error("[SALES_INVOICE_ISSUANCE_INTEGRITY]", {
+          event: "ISSUE_TRANSACTION_FAILURE",
+          failure: error.failure,
+          invoiceId: id,
+          orgId: tenantId,
+        });
+        throw new AppError(409, "SALES_INVOICE_ISSUE_CONCURRENCY_CONFLICT");
+      }
+    }
+
+    console.warn("[SALES_INVOICE_ISSUANCE_INTEGRITY]", {
+      event: "SEQUENCE_CONTENTION_EXHAUSTED",
+      invoiceId: id,
+      orgId: tenantId,
+      attempts: MAX_ISSUE_SEQUENCE_ATTEMPTS,
+    });
+    throw new AppError(409, "SALES_INVOICE_SEQUENCE_CONTENTION");
+  }
+
   private static withLines(
-    current: SalesInvoice,
+    current: SalesDraftInvoice,
     lines: SalesInvoice["lines"],
     timestamp: string,
-  ): SalesInvoice {
+  ): SalesDraftInvoice {
     return SalesInvoiceSchema.parse({
       ...current,
       lines,
@@ -379,7 +497,44 @@ export class SalesInvoiceService {
       lineCount: lines.length,
       version: current.version + 1,
       updatedAt: timestamp,
-    });
+    }) as SalesDraftInvoice;
+  }
+
+  private static assertDraftEditable(
+    invoice: SalesInvoice,
+  ): asserts invoice is SalesDraftInvoice {
+    if (invoice.status !== "DRAFT") {
+      throw new AppError(409, "SALES_INVOICE_NOT_EDITABLE");
+    }
+  }
+
+  private static async resolveIssueReplay(
+    orgId: string,
+    invoiceId: string,
+    request: IssueSalesInvoiceRequest,
+    record: SalesInvoiceIssueIdempotencyRecord,
+  ): Promise<SalesIssuedInvoice> {
+    if (
+      record.invoiceId !== invoiceId ||
+      record.issueDate !== request.issueDate ||
+      record.originalExpectedVersion !== request.expectedVersion
+    ) {
+      throw new AppError(409, "SALES_INVOICE_IDEMPOTENCY_KEY_REUSED");
+    }
+    const invoice = await SalesInvoiceRepository.get(orgId, record.invoiceId);
+    if (
+      !invoice ||
+      invoice.status !== "ISSUED" ||
+      invoice.invoiceNumber !== record.invoiceNumber
+    ) {
+      console.error("[SALES_INVOICE_ISSUANCE_INTEGRITY]", {
+        event: "IDEMPOTENCY_RECORD_MISMATCH",
+        invoiceId: record.invoiceId,
+        orgId,
+      });
+      throw new AppError(500, "SALES_INVOICE_ISSUANCE_INTEGRITY_ERROR");
+    }
+    return invoice;
   }
 
   private static assertVersion(

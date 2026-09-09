@@ -340,35 +340,44 @@ describe('routes', () => {
 });
 
 describe('SALES routes', () => {
-  it('registers the implemented SALES foundations and redirects /sales to customers', async () => {
+  it('registers the implemented SALES foundations and draft invoices while redirecting /sales to customers', async () => {
     const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
     const redirect = salesRoute?.children?.find((route) => route.path === '');
     const customersRoute = salesRoute?.children?.find((route) => route.path === 'customers');
     const itemsRoute = salesRoute?.children?.find((route) => route.path === 'items');
+    const invoicesRoute = salesRoute?.children?.find((route) => route.path === 'invoices');
+    const invoiceDetailRoute = salesRoute?.children?.find((route) => route.path === 'invoices/:invoiceId');
     const customersComponent = await customersRoute?.loadComponent?.();
     const itemsComponent = await itemsRoute?.loadComponent?.();
+    const invoicesComponent = await invoicesRoute?.loadComponent?.();
+    const invoiceDetailComponent = await invoiceDetailRoute?.loadComponent?.();
     const { SalesCustomersPage } = await import(
       '../../domains/sales/feature/customers/sales-customers.page'
     );
     const { SalesItemsPage } = await import(
       '../../domains/sales/feature/items/sales-items.page'
     );
+    const { SalesInvoicesPage } = await import('../../domains/sales/feature/invoices/sales-invoices.page');
+    const { SalesInvoiceDetailPage } = await import('../../domains/sales/feature/invoices/sales-invoice-detail.page');
 
     expect(redirect?.redirectTo).toBe('customers');
     expect(redirect?.pathMatch).toBe('full');
     expect(customersComponent).toBe(SalesCustomersPage);
     expect(itemsComponent).toBe(SalesItemsPage);
+    expect(invoicesComponent).toBe(SalesInvoicesPage);
+    expect(invoiceDetailComponent).toBe(SalesInvoiceDetailPage);
     expect(customersRoute?.data?.['titleKey']).toBe('SALES.CUSTOMERS.PAGE.TITLE');
     expect(itemsRoute?.data?.['titleKey']).toBe('SALES.ITEMS.PAGE.TITLE');
   });
 
-  it('does not register a SALES dashboard or deferred commercial placeholders', () => {
+  it('does not register a SALES dashboard or deferred issuing routes', () => {
     const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
     const paths = salesRoute?.children?.map((route) => route.path) ?? [];
 
-    expect(paths).toEqual(['', 'customers', 'items']);
+    expect(paths).toEqual(['', 'customers', 'items', 'invoices', 'invoices/:invoiceId']);
     expect(paths).not.toContain('dashboard');
     expect(paths).not.toContain('catalog');
-    expect(paths).not.toContain('invoices');
+    expect(paths).not.toContain('invoices/:invoiceId/issue');
+    expect(paths).not.toContain('invoices/:invoiceId/pdf');
   });
 });

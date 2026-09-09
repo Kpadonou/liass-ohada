@@ -11,7 +11,8 @@
       "CANCEL": "Annuler",
       "CLOSE": "Fermer",
       "RETRY": "Réessayer",
-      "COPY": "Copier"
+      "COPY": "Copier",
+      "OPEN": "Ouvrir"
     },
     "VALIDATION": {
       "REQUIRED": "Ce champ est obligatoire.",
@@ -26,6 +27,7 @@
     },
     "TABLE": {
       "ACTION_MENU": "Ouvrir les actions de la ligne",
+      "ACTIONS": "Actions",
       "HIDDEN_COLUMN": "Masquée",
       "LOCKED_COLUMN": "Verrouillée",
       "PREFERENCES_EYEBROW": "Tableau",
@@ -85,6 +87,7 @@
       "SALES": "Ventes",
       "SALES_CUSTOMERS": "Clients",
       "SALES_ITEMS": "Articles & services",
+      "SALES_INVOICES": "Factures",
       "SECTION_LABEL": "Espace",
       "SYCEBNL_BADGE": "SYCEBNL",
       "THIRD_PARTIES": "Tiers",
@@ -115,6 +118,7 @@
       "LETTERING": "Lettrage",
       "SALES_CUSTOMERS": "Clients",
       "SALES_ITEMS": "Articles & services",
+      "SALES_INVOICES": "Factures",
       "THIRD_PARTIES": "Tiers",
       "TRIAL_BALANCE": "Balance"
     },
@@ -3263,6 +3267,28 @@
       "ERRORS": {
         "LOAD_FAILED": "Les articles et services n’ont pas pu être chargés.", "DETAIL_FAILED": "Les informations à jour de cet article ou service n’ont pas pu être chargées.", "CREATE_FAILED": "L’article ou le service n’a pas pu être créé.", "UPDATE_FAILED": "L’article ou le service n’a pas pu être mis à jour.", "STATUS_FAILED": "Le statut de l’article ou du service n’a pas pu être modifié.", "CONFLICT": "Cet article ou service a été modifié entre-temps. Les informations ont été actualisées ; vérifiez vos modifications avant de réessayer."
       }
+    },
+    "INVOICES": {
+      "PAGE": { "EYEBROW": "Ventes", "TITLE": "Factures", "SUBTITLE": "Préparez et tenez à jour vos brouillons de factures." },
+      "LIST": { "TITLE": "Brouillons de factures", "DESCRIPTION": "Consultez les documents commerciaux encore en préparation." },
+      "LOADING": "Chargement des brouillons de factures…",
+      "ACCESS": { "CHECKING": "Vérification de l’accès à Ventes…", "UNAVAILABLE_TITLE": "Brouillons de factures indisponibles", "UNAVAILABLE_DESCRIPTION": "Votre accès ou l’activation du produit Ventes ne permet pas d’afficher ces brouillons pour le moment." },
+      "STATUS": { "DRAFT": "Brouillon" },
+      "ACTIONS": { "CREATE": "Nouvelle facture", "BACK_TO_LIST": "Retour aux factures", "SELECT_CUSTOMER": "Sélectionner un client", "CHANGE_CUSTOMER": "Changer le client", "CLEAR_CUSTOMER": "Retirer le client", "CHANGE_CURRENCY": "Changer la devise", "ADD_LINE": "Ajouter une ligne", "EDIT_LINE": "Modifier la ligne", "REMOVE_LINE": "Retirer la ligne" },
+      "TABLE": { "DRAFT": "Brouillon", "INTERNAL_REFERENCE": "Réf. interne" },
+      "FIELDS": { "CUSTOMER": "Client", "NO_CUSTOMER": "Sans client", "CURRENCY": "Devise", "LINES": "Lignes", "DESCRIPTION": "Description", "UNIT": "Unité", "QUANTITY": "Quantité", "UNIT_PRICE": "Prix unitaire", "TAX_RATE": "Taux de taxe (%)", "SUBTOTAL": "Sous-total", "TAX": "Taxe", "TOTAL": "Total", "TAX_IDENTIFIER": "Identifiant fiscal" },
+      "EMPTY": { "TITLE": "Aucun brouillon de facture pour le moment", "DESCRIPTION": "Créez un brouillon pour préparer une vente." },
+      "PAGINATION": { "LABEL": "Pagination des brouillons de factures", "PAGE_SIZE": "Jusqu’à {{count}} brouillons par page" },
+      "DETAIL": { "EYEBROW": "Ventes · Brouillon", "TITLE": "Brouillon de facture", "SUBTITLE": "Préparez le client, les lignes commerciales et les montants avant un futur processus d’émission.", "LOADING": "Chargement du brouillon de facture…", "DRAFT_NOTICE": "Ce document est un brouillon modifiable et ne possède aucun numéro officiel de facture.", "NO_CUSTOMER_DESCRIPTION": "Aucun client n’est sélectionné. Vous pouvez poursuivre la préparation de ce brouillon." },
+      "LINES": { "DESCRIPTION": "Les montants affichés sont les valeurs de référence retournées par le service.", "EMPTY_TITLE": "Aucune ligne pour le moment", "EMPTY_DESCRIPTION": "Ajoutez un article du catalogue ou une ligne commerciale libre.", "CATALOG_SNAPSHOT": "Instantané issu du catalogue" },
+      "TOTALS": { "TITLE": "Totaux du brouillon", "AUTHORITATIVE": "Les totaux sont calculés et arrondis par le service Ventes." },
+      "CUSTOMER_DIALOG": { "TITLE": "Sélectionner un client", "SUBTITLE": "Les coordonnées actuelles du client seront copiées dans ce brouillon lors de la confirmation.", "LOADING": "Chargement des clients…", "LOAD_FAILED": "Les clients n’ont pas pu être chargés.", "EMPTY": "Aucun client n’est disponible sur cette page.", "PAGINATION": "Pagination du sélecteur de clients" },
+      "CURRENCY_DIALOG": { "TITLE": "Changer la devise", "SUBTITLE": "La devise ne peut être modifiée qu’avant l’ajout de la première ligne.", "HINT": "Code devise de trois lettres, par exemple XOF, EUR ou USD." },
+      "LINE_DIALOG": { "ADD_TITLE": "Ajouter une ligne", "EDIT_TITLE": "Modifier la ligne", "SUBTITLE": "Saisissez des valeurs décimales exactes avec un point comme séparateur.", "SOURCE": "Origine de la ligne", "FROM_CATALOG": "Depuis le catalogue", "FREE_FORM": "Ligne libre", "CATALOG_SOURCE_LOCKED": "La source catalogue reste affichée à titre de contexte. Retirez puis recréez la ligne pour la changer.", "LOADING_ITEMS": "Chargement des articles et services…", "ITEMS_FAILED": "Les articles et services n’ont pas pu être chargés.", "NO_ITEMS": "Aucun article ou service n’est disponible sur cette page.", "CATALOG_PAGINATION": "Pagination du sélecteur de catalogue", "DEFAULTS_HINT": "Sans modification, la description et l’unité proviennent de {{name}} (unité : {{unit}}).", "OPTIONAL_OVERRIDE": "Remplacement facultatif ; laissez vide pour utiliser l’instantané du catalogue." },
+      "REMOVE_LINE": { "TITLE": "Retirer cette ligne ?", "DESCRIPTION": "« {{description}} » sera retirée du brouillon et les totaux seront actualisés. Le brouillon lui-même est conservé." },
+      "VALIDATION": { "CURRENCY": "Saisissez un code devise valide de trois lettres majuscules.", "DESCRIPTION_REQUIRED": "Une description est obligatoire pour une ligne libre.", "ITEM_REQUIRED": "Sélectionnez un article ou service actif.", "QUANTITY": "Saisissez une quantité supérieure à zéro avec au plus 6 décimales.", "UNIT_PRICE": "Saisissez un prix positif ou nul avec au plus 6 décimales.", "TAX_RATE": "Saisissez un taux de taxe compris entre 0 et 100 avec au plus 4 décimales.", "MAX_LENGTH": "Maximum {{count}} caractères." },
+      "NOTIFICATIONS": { "CREATED": "Brouillon de facture créé.", "UPDATED": "Brouillon de facture mis à jour.", "LINE_ADDED": "Ligne ajoutée.", "LINE_UPDATED": "Ligne mise à jour.", "LINE_REMOVED": "Ligne retirée." },
+      "ERRORS": { "LOAD_FAILED": "Les brouillons de factures n’ont pas pu être chargés.", "DETAIL_FAILED": "Ce brouillon de facture n’a pas pu être chargé.", "CREATE_FAILED": "Le brouillon n’a pas pu être créé. Vérifiez la configuration de devise de Ventes puis réessayez.", "UPDATE_FAILED": "Le brouillon n’a pas pu être mis à jour.", "LINE_ADD_FAILED": "La ligne n’a pas pu être ajoutée.", "LINE_UPDATE_FAILED": "La ligne n’a pas pu être mise à jour.", "LINE_REMOVE_FAILED": "La ligne n’a pas pu être retirée.", "CONFLICT": "Ce brouillon a été modifié entre-temps. Les informations ont été actualisées. Vérifiez vos modifications avant de réessayer.", "CUSTOMER_INACTIVE": "Le client sélectionné n’est plus actif. Choisissez un autre client actif.", "CUSTOMER_NOT_FOUND": "Le client sélectionné n’existe plus. Choisissez un autre client.", "ITEM_INACTIVE": "L’article ou service sélectionné n’est plus actif. Choisissez un autre élément actif.", "ITEM_NOT_FOUND": "L’article ou service sélectionné n’existe plus. Choisissez un autre élément.", "CURRENCY_LOCKED": "La devise ne peut plus être modifiée après l’ajout d’une ligne.", "UNSUPPORTED_CURRENCY": "La devise sélectionnée n’est pas prise en charge.", "MAX_LINES": "Un brouillon de facture ne peut pas contenir plus de 100 lignes." }
     }
   },
   "PUBLIC": {

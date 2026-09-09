@@ -1,11 +1,13 @@
 import { SalesInvoiceService } from "@/lambda/domains/sales/invoices/sales-invoice-service";
 import {
   SalesInvoiceRepository,
+  SalesInvoiceIssueTransactionError,
   SalesInvoiceWriteConflictError,
 } from "@/lambda/domains/sales/invoices/sales-invoice-repository";
 import { SalesCustomerService } from "@/lambda/domains/sales/customers/sales-customer-service";
 import { SalesCatalogItemService } from "@/lambda/domains/sales/catalog/sales-catalog-item-service";
 import { SalesSettingsService } from "@/lambda/domains/sales/settings/sales-settings-service";
+import { SalesInvoiceCalculator } from "@/lambda/domains/sales/invoices/sales-invoice-calculator";
 
 const timestamp = "2026-08-28T10:00:00.000Z";
 const customer = {
@@ -288,6 +290,58 @@ describe("SalesInvoiceService", () => {
     expect(removed).toMatchObject({ lineCount: 1, subtotal: "10", taxTotal: "0", total: "10", version: 3 });
   });
 
+  test("distinguishes omitted, undefined, null, and replacement line units", async () => {
+    const current = {
+      ...draft,
+      lines: [invoiceLine()],
+      lineCount: 1,
+      subtotal: "10",
+      total: "10",
+    };
+    const get = jest.spyOn(SalesInvoiceRepository, "get");
+    get.mockResolvedValueOnce(current);
+
+    const omitted = await SalesInvoiceService.updateLine(
+      "org-123",
+      "user-1",
+      "SINV-1",
+      "SIL-1",
+      { expectedVersion: 1, quantity: "2" },
+    );
+    expect(omitted.lines[0]?.unit).toBe("Heure");
+
+    get.mockResolvedValueOnce(current);
+    const undefinedUnit = await SalesInvoiceService.updateLine(
+      "org-123",
+      "user-1",
+      "SINV-1",
+      "SIL-1",
+      { expectedVersion: 1, unit: undefined, quantity: "2" },
+    );
+    expect(undefinedUnit.lines[0]?.unit).toBe("Heure");
+
+    get.mockResolvedValueOnce(current);
+
+    const cleared = await SalesInvoiceService.updateLine(
+      "org-123",
+      "user-1",
+      "SINV-1",
+      "SIL-1",
+      { expectedVersion: 1, unit: null },
+    );
+    expect(cleared.lines[0]?.unit).toBeUndefined();
+
+    get.mockResolvedValueOnce(current);
+    const replaced = await SalesInvoiceService.updateLine(
+      "org-123",
+      "user-1",
+      "SINV-1",
+      "SIL-1",
+      { expectedVersion: 1, unit: "day" },
+    );
+    expect(replaced.lines[0]?.unit).toBe("day");
+  });
+
   test("enforces aggregate versions, conditional conflicts, missing lines, and the 100-line bound", async () => {
     jest.spyOn(SalesInvoiceRepository, "get").mockResolvedValue(draft);
     await expect(
@@ -343,6 +397,293 @@ describe("SalesInvoiceService", () => {
         description: expect.anything(),
       }),
     );
+  });
+
+  test("issues a customer-optional zero-total Draft without live reload or recalculation", async () => {
+    const current = {
+      ...draft,
+      customerId: undefined,
+      customerSnapshot: undefined,
+      lines: [invoiceLine()],
+      lineCount: 1,
+      subtotal: "0",
+      taxTotal: "0",
+      total: "0",
+    };
+    jest.spyOn(SalesInvoiceRepository, "getIssueIdempotency").mockResolvedValue(undefined);
+    jest.spyOn(SalesInvoiceRepository, "get").mockResolvedValue(current);
+    jest.spyOn(SalesInvoiceRepository, "getSequence").mockResolvedValue({
+      exists: false,
+      lastValue: "0",
+    });
+    const transact = jest.spyOn(SalesInvoiceRepository, "issueAtomically").mockResolvedValue();
+    const totals = jest.spyOn(SalesInvoiceCalculator, "calculateTotals");
+    const lines = jest.spyOn(SalesInvoiceCalculator, "calculateLine");
+
+    const result = await SalesInvoiceService.issue(
+      "org-123",
+      "user-1",
+      "SINV-1",
+      {
+        expectedVersion: 1,
+        clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+        issueDate: "2026-09-08",
+      },
+    );
+
+    expect(result).toMatchObject({
+      status: "ISSUED",
+      invoiceNumber: "00000001",
+      issueDate: "2026-09-08",
+      version: 2,
+      total: "0",
+    });
+    expect(result.issuedAt).toMatch(/Z$/);
+    expect(transact).toHaveBeenCalledWith(expect.objectContaining({
+      orgId: "org-123",
+      issuedByUserId: "user-1",
+      previousSequenceExists: false,
+      previousSequenceValue: "0",
+      nextSequenceValue: "1",
+    }));
+    expect(SalesCustomerService.get).not.toHaveBeenCalled();
+    expect(SalesCatalogItemService.get).not.toHaveBeenCalled();
+    expect(SalesSettingsService.getSalesSettings).not.toHaveBeenCalled();
+    expect(totals).not.toHaveBeenCalled();
+    expect(lines).not.toHaveBeenCalled();
+  });
+
+  test("replays the exact idempotent Issue before stale-version checks", async () => {
+    const issued = {
+      ...draft,
+      status: "ISSUED" as const,
+      lines: [invoiceLine()],
+      lineCount: 1,
+      invoiceNumber: "00000042",
+      issueDate: "2026-09-08",
+      issuedAt: timestamp,
+      version: 2,
+    };
+    jest.spyOn(SalesInvoiceRepository, "getIssueIdempotency").mockResolvedValue({
+      PK: "ORG#org-123",
+      SK: "SALES_INVOICE_ISSUE_IDEMPOTENCY#243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      entityType: "SALES_INVOICE_ISSUE_IDEMPOTENCY",
+      orgId: "org-123",
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      invoiceId: "SINV-1",
+      issueDate: "2026-09-08",
+      originalExpectedVersion: 1,
+      invoiceNumber: "00000042",
+      createdAt: timestamp,
+    });
+    jest.spyOn(SalesInvoiceRepository, "get").mockResolvedValue(issued);
+    const transact = jest.spyOn(SalesInvoiceRepository, "issueAtomically");
+
+    await expect(SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 1,
+        clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+        issueDate: "2026-09-08",
+      },
+    )).resolves.toEqual(issued);
+    expect(transact).not.toHaveBeenCalled();
+  });
+
+  test("rejects idempotency key reuse with different Invoice semantics", async () => {
+    jest.spyOn(SalesInvoiceRepository, "getIssueIdempotency").mockResolvedValue({
+      PK: "ORG#org-123",
+      SK: "SALES_INVOICE_ISSUE_IDEMPOTENCY#243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      entityType: "SALES_INVOICE_ISSUE_IDEMPOTENCY",
+      orgId: "org-123",
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      invoiceId: "SINV-other",
+      issueDate: "2026-09-08",
+      originalExpectedVersion: 1,
+      invoiceNumber: "00000042",
+      createdAt: timestamp,
+    });
+    await expect(SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 1,
+        clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+        issueDate: "2026-09-08",
+      },
+    )).rejects.toMatchObject({ messageCode: "SALES_INVOICE_IDEMPOTENCY_KEY_REUSED" });
+  });
+
+  test("retries bounded sequence contention and allocates the reloaded candidate", async () => {
+    const current = {
+      ...draft,
+      lines: [invoiceLine()],
+      lineCount: 1,
+      subtotal: "10",
+      total: "10",
+    };
+    jest.spyOn(SalesInvoiceRepository, "getIssueIdempotency").mockResolvedValue(undefined);
+    jest.spyOn(SalesInvoiceRepository, "get").mockResolvedValue(current);
+    jest.spyOn(SalesInvoiceRepository, "getSequence")
+      .mockResolvedValueOnce({ exists: true, lastValue: "41" })
+      .mockResolvedValueOnce({ exists: true, lastValue: "42" });
+    const transact = jest.spyOn(SalesInvoiceRepository, "issueAtomically")
+      .mockRejectedValueOnce(new SalesInvoiceIssueTransactionError("SEQUENCE_CONTENTION"))
+      .mockResolvedValueOnce();
+
+    const result = await SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 1,
+        clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+        issueDate: "2026-09-08",
+      },
+    );
+    expect(result.invoiceNumber).toBe("00000043");
+    expect(transact).toHaveBeenCalledTimes(2);
+  });
+
+  test("concurrent same-request loser resolves through the winning idempotency record", async () => {
+    const current = {
+      ...draft,
+      lines: [invoiceLine()],
+      lineCount: 1,
+      subtotal: "10",
+      total: "10",
+    };
+    const issued = {
+      ...current,
+      status: "ISSUED" as const,
+      invoiceNumber: "00000042",
+      issueDate: "2026-09-08",
+      issuedAt: timestamp,
+      version: 2,
+    };
+    const record = {
+      PK: "ORG#org-123",
+      SK: "SALES_INVOICE_ISSUE_IDEMPOTENCY#243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      entityType: "SALES_INVOICE_ISSUE_IDEMPOTENCY" as const,
+      orgId: "org-123",
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      invoiceId: "SINV-1",
+      issueDate: "2026-09-08",
+      originalExpectedVersion: 1,
+      invoiceNumber: "00000042",
+      createdAt: timestamp,
+    };
+    jest.spyOn(SalesInvoiceRepository, "getIssueIdempotency")
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(record);
+    jest.spyOn(SalesInvoiceRepository, "get")
+      .mockResolvedValueOnce(current)
+      .mockResolvedValueOnce(issued);
+    jest.spyOn(SalesInvoiceRepository, "getSequence").mockResolvedValue({
+      exists: true,
+      lastValue: "41",
+    });
+    jest.spyOn(SalesInvoiceRepository, "issueAtomically").mockRejectedValue(
+      new SalesInvoiceIssueTransactionError("IDEMPOTENCY_CONFLICT"),
+    );
+
+    await expect(SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 1,
+        clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+        issueDate: "2026-09-08",
+      },
+    )).resolves.toEqual(issued);
+  });
+
+  test("stops after four sequence-contention attempts", async () => {
+    jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    const current = {
+      ...draft,
+      lines: [invoiceLine()],
+      lineCount: 1,
+      subtotal: "10",
+      total: "10",
+    };
+    jest.spyOn(SalesInvoiceRepository, "getIssueIdempotency").mockResolvedValue(undefined);
+    jest.spyOn(SalesInvoiceRepository, "get").mockResolvedValue(current);
+    jest.spyOn(SalesInvoiceRepository, "getSequence").mockResolvedValue({
+      exists: true,
+      lastValue: "41",
+    });
+    const transact = jest.spyOn(SalesInvoiceRepository, "issueAtomically").mockRejectedValue(
+      new SalesInvoiceIssueTransactionError("SEQUENCE_CONTENTION"),
+    );
+
+    await expect(SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 1,
+        clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+        issueDate: "2026-09-08",
+      },
+    )).rejects.toMatchObject({ messageCode: "SALES_INVOICE_SEQUENCE_CONTENTION" });
+    expect(transact).toHaveBeenCalledTimes(4);
+  });
+
+  test("requires lines, protects reviewed version, and rejects a new request for ISSUED", async () => {
+    jest.spyOn(SalesInvoiceRepository, "getIssueIdempotency").mockResolvedValue(undefined);
+    const get = jest.spyOn(SalesInvoiceRepository, "get");
+    get.mockResolvedValueOnce(draft);
+    await expect(SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 1,
+        clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+        issueDate: "2026-09-08",
+      },
+    )).rejects.toMatchObject({ messageCode: "SALES_INVOICE_HAS_NO_LINES" });
+
+    get.mockResolvedValueOnce({ ...draft, lines: [invoiceLine()], lineCount: 1 });
+    await expect(SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 2,
+        clientRequestId: "8066c596-a236-41cf-9061-9ea5a54eab46",
+        issueDate: "2026-09-08",
+      },
+    )).rejects.toMatchObject({ messageCode: "SALES_INVOICE_VERSION_CONFLICT" });
+
+    get.mockResolvedValueOnce({
+      ...draft,
+      status: "ISSUED",
+      lines: [invoiceLine()],
+      lineCount: 1,
+      invoiceNumber: "00000001",
+      issueDate: "2026-09-08",
+      issuedAt: timestamp,
+      version: 2,
+    });
+    await expect(SalesInvoiceService.issue(
+      "org-123", "user-1", "SINV-1", {
+        expectedVersion: 2,
+        clientRequestId: "4ca3d105-a325-478a-b3bd-4c4174f47e20",
+        issueDate: "2026-09-08",
+      },
+    )).rejects.toMatchObject({ messageCode: "SALES_INVOICE_ALREADY_ISSUED" });
+  });
+
+  test("rejects every S2A mutation once the Invoice is ISSUED", async () => {
+    const issued = {
+      ...draft,
+      status: "ISSUED" as const,
+      lines: [invoiceLine()],
+      lineCount: 1,
+      invoiceNumber: "00000001",
+      issueDate: "2026-09-08",
+      issuedAt: timestamp,
+      version: 2,
+    };
+    jest.spyOn(SalesInvoiceRepository, "get").mockResolvedValue(issued);
+    await expect(SalesInvoiceService.update("org-123", "user-1", "SINV-1", {
+      expectedVersion: 2, currency: "USD",
+    })).rejects.toMatchObject({ messageCode: "SALES_INVOICE_NOT_EDITABLE" });
+    await expect(SalesInvoiceService.addLine("org-123", "user-1", "SINV-1", {
+      expectedVersion: 2, description: "Extra", quantity: "1", unitPrice: "1",
+    })).rejects.toMatchObject({ messageCode: "SALES_INVOICE_NOT_EDITABLE" });
+    await expect(SalesInvoiceService.updateLine("org-123", "user-1", "SINV-1", "SIL-1", {
+      expectedVersion: 2, quantity: "2",
+    })).rejects.toMatchObject({ messageCode: "SALES_INVOICE_NOT_EDITABLE" });
+    await expect(SalesInvoiceService.removeLine(
+      "org-123", "user-1", "SINV-1", "SIL-1", 2,
+    )).rejects.toMatchObject({ messageCode: "SALES_INVOICE_NOT_EDITABLE" });
+    expect(SalesInvoiceRepository.update).not.toHaveBeenCalled();
   });
 });
 

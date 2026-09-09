@@ -1,10 +1,13 @@
 import {
   AddSalesInvoiceLineRequestSchema,
   CreateSalesInvoiceRequestSchema,
+  IssueSalesInvoiceRequestSchema,
   ListSalesInvoicesRequestSchema,
   SalesInvoiceListResponseSchema,
   SalesInvoiceQuantitySchema,
   SalesInvoiceSchema,
+  SalesInvoiceIssueDateSchema,
+  SalesInvoiceSummarySchema,
   SalesInvoiceTaxRateSchema,
   SalesInvoiceUnitPriceSchema,
   UpdateSalesInvoiceLineRequestSchema,
@@ -26,16 +29,64 @@ const draft = {
   updatedAt: timestamp,
 };
 
-describe("SALES Draft Invoice shared contracts", () => {
-  test("validates DRAFT only and exposes no persistence or official fields", () => {
+describe("SALES Invoice shared contracts", () => {
+  test("validates discriminated DRAFT and ISSUED invoices", () => {
     expect(SalesInvoiceSchema.parse(draft)).toEqual(draft);
     for (const invalid of [
-      { ...draft, status: "ISSUED" },
       { ...draft, invoiceNumber: "F-1" },
+      { ...draft, issueDate: "2026-09-08" },
+      { ...draft, issuedAt: timestamp },
       { ...draft, PK: "ORG#org-1" },
       { ...draft, SK: "SALES_INVOICE#SINV-1" },
     ]) {
       expect(SalesInvoiceSchema.safeParse(invalid).success).toBe(false);
+    }
+
+    const issued = {
+      ...draft,
+      status: "ISSUED" as const,
+      lines: [{
+        id: "SIL-1", position: 1, description: "Service", quantity: "1",
+        unitPrice: "0", taxRate: "0", subtotal: "0", taxAmount: "0",
+        total: "0", createdAt: timestamp, updatedAt: timestamp,
+      }],
+      lineCount: 1,
+      invoiceNumber: "00000001",
+      issueDate: "2026-09-08",
+      issuedAt: timestamp,
+      version: 2,
+    };
+    expect(SalesInvoiceSchema.parse(issued)).toEqual(issued);
+    for (const field of ["invoiceNumber", "issueDate", "issuedAt"] as const) {
+      const invalid = { ...issued };
+      delete invalid[field];
+      expect(SalesInvoiceSchema.safeParse(invalid).success).toBe(false);
+    }
+  });
+
+  test("validates real date-only issue dates without timezone conversion", () => {
+    for (const value of ["2024-02-29", "2020-01-01", "2099-12-31"]) {
+      expect(SalesInvoiceIssueDateSchema.parse(value)).toBe(value);
+    }
+    for (const value of ["2026-2-03", "2026-02-30", "2025-02-29", "2026-09-08T00:00:00Z"]) {
+      expect(SalesInvoiceIssueDateSchema.safeParse(value).success).toBe(false);
+    }
+  });
+
+  test("accepts only the three client-owned Issue fields", () => {
+    const request = {
+      expectedVersion: 1,
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      issueDate: "2026-09-08",
+    };
+    expect(IssueSalesInvoiceRequestSchema.parse(request)).toEqual(request);
+    for (const field of ["expectedVersion", "clientRequestId", "issueDate"] as const) {
+      const invalid = { ...request } as Record<string, unknown>;
+      delete invalid[field];
+      expect(IssueSalesInvoiceRequestSchema.safeParse(invalid).success).toBe(false);
+    }
+    for (const field of ["invoiceNumber", "issuedAt", "issuedByUserId", "status", "lines", "total"]) {
+      expect(IssueSalesInvoiceRequestSchema.safeParse({ ...request, [field]: "forbidden" }).success).toBe(false);
     }
   });
 
@@ -116,6 +167,12 @@ describe("SALES Draft Invoice shared contracts", () => {
         quantity: "2",
       }),
     ).toEqual({ expectedVersion: 1, quantity: "2" });
+    expect(
+      UpdateSalesInvoiceLineRequestSchema.parse({
+        expectedVersion: 1,
+        unit: null,
+      }),
+    ).toEqual({ expectedVersion: 1, unit: null });
     for (const field of ["catalogItemId", "position", "subtotal", "taxAmount", "total"]) {
       expect(
         UpdateSalesInvoiceLineRequestSchema.safeParse({
@@ -134,5 +191,13 @@ describe("SALES Draft Invoice shared contracts", () => {
     expect(
       SalesInvoiceListResponseSchema.parse({ items: [summary], nextCursor: "next" }),
     ).toMatchObject({ nextCursor: "next" });
+    expect(SalesInvoiceSummarySchema.safeParse({ ...summary, status: "ISSUED" }).success).toBe(false);
+    expect(SalesInvoiceSummarySchema.parse({
+      ...summary,
+      status: "ISSUED",
+      invoiceNumber: "00000042",
+      issueDate: "2026-09-08",
+      lineCount: 1,
+    })).toMatchObject({ status: "ISSUED", invoiceNumber: "00000042" });
   });
 });

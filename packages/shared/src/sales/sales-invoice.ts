@@ -47,7 +47,18 @@ export const SalesInvoiceMoneySchema = z
   .string()
   .regex(/^(?:0|[1-9]\d*)(?:\.\d{1,4})?$/);
 
-export const SalesInvoiceStatusSchema = z.literal("DRAFT");
+export const SalesInvoiceStatusSchema = z.enum(["DRAFT", "ISSUED"]);
+
+export const SalesInvoiceIssueDateSchema = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((value) => {
+    const [year, month, day] = value.split("-").map(Number);
+    if (month < 1 || month > 12 || day < 1) return false;
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return day <= daysInMonth[month - 1];
+  }, { message: "Issue date must be a valid calendar date" });
 
 export const SalesInvoiceCustomerSnapshotSchema = z
   .object({
@@ -79,7 +90,6 @@ export const SalesInvoiceLineSchema = z
 
 const invoiceHeaderFields = {
   id: z.string().min(1),
-  status: SalesInvoiceStatusSchema,
   currency: CurrencyCodeSchema,
   customerId: z.string().min(1).optional(),
   customerSnapshot: SalesInvoiceCustomerSnapshotSchema.optional(),
@@ -92,33 +102,78 @@ const invoiceHeaderFields = {
   updatedAt: z.string().datetime(),
 };
 
-export const SalesInvoiceSchema = z
+const SalesInvoiceBaseSchema = z
   .object({
     ...invoiceHeaderFields,
     lines: z.array(SalesInvoiceLineSchema).max(100),
   })
-  .strict()
-  .refine((invoice) => invoice.lineCount === invoice.lines.length, {
-    message: "Invoice line count must match lines",
-    path: ["lineCount"],
-  })
-  .refine(
-    (invoice) =>
-      (invoice.customerId === undefined) ===
-      (invoice.customerSnapshot === undefined),
-    {
-      message: "Customer id and snapshot must be present together",
-      path: ["customerSnapshot"],
-    },
-  );
+  .strict();
 
-export const SalesInvoiceSummarySchema = z
+const lineCountMatches = (invoice: { lineCount: number; lines: unknown[] }) =>
+  invoice.lineCount === invoice.lines.length;
+
+const customerSnapshotMatches = (invoice: {
+  customerId?: string;
+  customerSnapshot?: unknown;
+}) => (invoice.customerId === undefined) ===
+  (invoice.customerSnapshot === undefined);
+
+export const SalesDraftInvoiceSchema = SalesInvoiceBaseSchema.extend({
+  status: z.literal("DRAFT"),
+}).strict().refine(lineCountMatches, {
+  message: "Invoice line count must match lines",
+  path: ["lineCount"],
+}).refine(customerSnapshotMatches, {
+  message: "Customer id and snapshot must be present together",
+  path: ["customerSnapshot"],
+});
+
+export const SalesIssuedInvoiceSchema = SalesInvoiceBaseSchema.extend({
+    status: z.literal("ISSUED"),
+    invoiceNumber: z.string().regex(/^0*[1-9]\d*$/),
+    issueDate: SalesInvoiceIssueDateSchema,
+    issuedAt: z.string().datetime(),
+}).strict().refine(lineCountMatches, {
+  message: "Invoice line count must match lines",
+  path: ["lineCount"],
+}).refine(customerSnapshotMatches, {
+  message: "Customer id and snapshot must be present together",
+  path: ["customerSnapshot"],
+}).refine((invoice) => invoice.lineCount >= 1, {
+  message: "Issued invoice must contain at least one line",
+  path: ["lineCount"],
+});
+
+export const SalesInvoiceSchema = z.discriminatedUnion("status", [
+  SalesDraftInvoiceSchema,
+  SalesIssuedInvoiceSchema,
+]);
+
+const SalesInvoiceSummaryBaseSchema = z
   .object({
     ...invoiceHeaderFields,
     customerName: z.string().trim().min(1).max(160).optional(),
   })
   .omit({ customerSnapshot: true })
   .strict();
+
+export const SalesDraftInvoiceSummarySchema =
+  SalesInvoiceSummaryBaseSchema.extend({ status: z.literal("DRAFT") }).strict();
+
+export const SalesIssuedInvoiceSummarySchema =
+  SalesInvoiceSummaryBaseSchema.extend({
+    status: z.literal("ISSUED"),
+    invoiceNumber: z.string().regex(/^0*[1-9]\d*$/),
+    issueDate: SalesInvoiceIssueDateSchema,
+  }).strict().refine((invoice) => invoice.lineCount >= 1, {
+    message: "Issued invoice summary must contain at least one line",
+    path: ["lineCount"],
+  });
+
+export const SalesInvoiceSummarySchema = z.discriminatedUnion("status", [
+  SalesDraftInvoiceSummarySchema,
+  SalesIssuedInvoiceSummarySchema,
+]);
 
 export const CreateSalesInvoiceRequestSchema = z
   .object({
@@ -165,7 +220,7 @@ export const UpdateSalesInvoiceLineRequestSchema = z
   .object({
     expectedVersion: z.number().int().positive(),
     description: z.string().trim().min(1).max(2000).optional(),
-    unit: optionalTrimmedString(80),
+    unit: optionalTrimmedString(80).nullable(),
     quantity: SalesInvoiceQuantitySchema.optional(),
     unitPrice: SalesInvoiceUnitPriceSchema.optional(),
     taxRate: SalesInvoiceTaxRateSchema.optional(),
@@ -179,6 +234,14 @@ export const UpdateSalesInvoiceLineRequestSchema = z
 
 export const RemoveSalesInvoiceLineRequestSchema = z
   .object({ expectedVersion: z.coerce.number().int().positive() })
+  .strict();
+
+export const IssueSalesInvoiceRequestSchema = z
+  .object({
+    expectedVersion: z.number().int().positive(),
+    clientRequestId: z.string().uuid(),
+    issueDate: SalesInvoiceIssueDateSchema,
+  })
   .strict();
 
 export const SalesInvoiceIdRequestSchema = z
@@ -207,11 +270,14 @@ export type SalesInvoiceStatus = z.infer<typeof SalesInvoiceStatusSchema>;
 export type SalesInvoiceCustomerSnapshot = z.infer<typeof SalesInvoiceCustomerSnapshotSchema>;
 export type SalesInvoiceLine = z.infer<typeof SalesInvoiceLineSchema>;
 export type SalesInvoice = z.infer<typeof SalesInvoiceSchema>;
+export type SalesDraftInvoice = z.infer<typeof SalesDraftInvoiceSchema>;
+export type SalesIssuedInvoice = z.infer<typeof SalesIssuedInvoiceSchema>;
 export type SalesInvoiceSummary = z.infer<typeof SalesInvoiceSummarySchema>;
 export type CreateSalesInvoiceRequest = z.infer<typeof CreateSalesInvoiceRequestSchema>;
 export type UpdateSalesInvoiceRequest = z.infer<typeof UpdateSalesInvoiceRequestSchema>;
 export type AddSalesInvoiceLineRequest = z.infer<typeof AddSalesInvoiceLineRequestSchema>;
 export type UpdateSalesInvoiceLineRequest = z.infer<typeof UpdateSalesInvoiceLineRequestSchema>;
 export type RemoveSalesInvoiceLineRequest = z.infer<typeof RemoveSalesInvoiceLineRequestSchema>;
+export type IssueSalesInvoiceRequest = z.infer<typeof IssueSalesInvoiceRequestSchema>;
 export type ListSalesInvoicesRequest = z.infer<typeof ListSalesInvoicesRequestSchema>;
 export type SalesInvoiceListResponse = z.infer<typeof SalesInvoiceListResponseSchema>;

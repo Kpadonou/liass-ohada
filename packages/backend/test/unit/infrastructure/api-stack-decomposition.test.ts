@@ -111,6 +111,7 @@ describe("API stack decomposition", () => {
         "PATCH /sales/items/{itemId}",
         "POST /sales/items/{itemId}/activate",
         "POST /sales/items/{itemId}/deactivate",
+        "POST /sales/invoices/{invoiceId}/issue",
       ]),
     );
   });
@@ -136,14 +137,14 @@ describe("API stack decomposition", () => {
     ).toBe(true);
   });
 
-  test("keeps all nineteen SALES Lambdas in the SALES domain without Accounting fallback", () => {
+  test("keeps all twenty SALES Lambdas in the SALES domain without Accounting fallback", () => {
     const functions = constructs.filter(
       (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
     );
     const salesFunctions = functions.filter((fn) =>
       String(fn.functionName).includes("-dev-sales-"),
     );
-    expect(salesFunctions).toHaveLength(19);
+    expect(salesFunctions).toHaveLength(20);
     expect(
       salesFunctions.every(
         (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),

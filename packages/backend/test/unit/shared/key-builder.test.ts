@@ -51,6 +51,12 @@ describe("KeyFactory", () => {
     expect(KeyFactory.salesInvoiceSK("SINV-1")).toBe(
       "SALES_INVOICE#SINV-1",
     );
+    expect(KeyFactory.salesInvoiceSequenceSK()).toBe(
+      "SALES_INVOICE_SEQUENCE#DEFAULT",
+    );
+    expect(KeyFactory.salesInvoiceIssueIdempotencySK("request-1")).toBe(
+      "SALES_INVOICE_ISSUE_IDEMPOTENCY#request-1",
+    );
     expect(KeyFactory.salesItemPrefix()).toBe("SALES_ITEM#");
     expect(KeyFactory.salesItemSK("SI-1")).toBe("SALES_ITEM#SI-1");
   });

@@ -1,0 +1,35 @@
+<div class="space-y-4">
+  <liass-page-header
+    [eyebrow]="'SALES.INVOICES.PAGE.EYEBROW' | transloco"
+    [title]="'SALES.INVOICES.PAGE.TITLE' | transloco"
+    [subtitle]="'SALES.INVOICES.PAGE.SUBTITLE' | transloco"
+    [actionIcon]="capabilities.canWrite() && canLoad() ? 'note_add' : null"
+    [actionLabel]="capabilities.canWrite() && canLoad() ? ('SALES.INVOICES.ACTIONS.CREATE' | transloco) : null"
+    (actionTriggered)="createDraft()"
+  />
+
+  @if (availability() === 'UNKNOWN') {
+    <liass-card><div class="space-y-3" role="status" aria-busy="true"><p class="text-sm text-app-text-secondary">{{ 'SALES.INVOICES.ACCESS.CHECKING' | transloco }}</p><liass-skeleton variant="block" /></div></liass-card>
+  } @else if (!canLoad()) {
+    <liass-card><div class="rounded-app-card border border-amber-200 bg-amber-50 p-5 text-amber-900" role="alert"><p class="font-semibold">{{ 'SALES.INVOICES.ACCESS.UNAVAILABLE_TITLE' | transloco }}</p><p class="mt-1 text-sm">{{ 'SALES.INVOICES.ACCESS.UNAVAILABLE_DESCRIPTION' | transloco }}</p></div></liass-card>
+  } @else {
+    <liass-card [title]="'SALES.INVOICES.LIST.TITLE' | transloco" [description]="'SALES.INVOICES.LIST.DESCRIPTION' | transloco">
+      @if (invoicesQuery.isPending()) {
+        <div class="space-y-3" role="status" aria-busy="true"><p class="text-sm text-app-text-secondary">{{ 'SALES.INVOICES.LOADING' | transloco }}</p>@for (_ of [0,1,2,3]; track $index) { <liass-skeleton variant="block" /> }</div>
+      } @else if (invoicesQuery.isError()) {
+        <div class="rounded-app-card border border-red-200 bg-red-50 p-4 text-red-800" role="alert"><div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><span class="text-sm">{{ 'SALES.INVOICES.ERRORS.LOAD_FAILED' | transloco }}</span><liass-button tone="danger" variant="outline" size="sm" icon="refresh" (pressed)="retry()">{{ 'COMMON.ACTIONS.RETRY' | transloco }}</liass-button></div></div>
+      } @else if (invoices().length === 0) {
+        <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-8 text-center"><mat-icon class="text-brand-600" aria-hidden="true">drafts</mat-icon><p class="mt-2 font-semibold text-app-text">{{ 'SALES.INVOICES.EMPTY.TITLE' | transloco }}</p><p class="mx-auto mt-1 max-w-lg text-sm text-app-text-secondary">{{ 'SALES.INVOICES.EMPTY.DESCRIPTION' | transloco }}</p>@if (capabilities.canWrite()) { <div class="mt-4"><liass-button tone="brand" variant="solid" icon="note_add" [loading]="creating()" (pressed)="createDraft()">{{ 'SALES.INVOICES.ACTIONS.CREATE' | transloco }}</liass-button></div> }</div>
+      } @else {
+        <div class="hidden overflow-x-auto rounded-app-card border border-app-border lg:block">
+          <table class="liass-data-table w-full min-w-[960px] border-collapse text-left">
+            <thead><tr><th class="px-4 py-3">{{ 'SALES.INVOICES.TABLE.DRAFT' | transloco }}</th><th class="px-4 py-3">{{ 'SALES.INVOICES.FIELDS.CUSTOMER' | transloco }}</th><th class="px-4 py-3 text-right">{{ 'SALES.INVOICES.FIELDS.LINES' | transloco }}</th><th class="px-4 py-3 text-right">{{ 'SALES.INVOICES.FIELDS.SUBTOTAL' | transloco }}</th><th class="px-4 py-3 text-right">{{ 'SALES.INVOICES.FIELDS.TAX' | transloco }}</th><th class="px-4 py-3 text-right">{{ 'SALES.INVOICES.FIELDS.TOTAL' | transloco }}</th><th class="w-24 px-4 py-3 text-right">{{ 'COMMON.TABLE.ACTIONS' | transloco }}</th></tr></thead>
+            <tbody class="divide-y divide-app-border">@for (invoice of invoices(); track invoice.id) { <tr class="bg-app-surface hover:bg-brand-50/55"><td class="px-4 py-3"><liass-status-chip size="sm" tone="neutral" [label]="'SALES.INVOICES.STATUS.DRAFT' | transloco" /><p class="mt-1 text-xs text-app-text-secondary">{{ 'SALES.INVOICES.TABLE.INTERNAL_REFERENCE' | transloco }} {{ reference(invoice) }}</p></td><td class="max-w-60 px-4 py-3 font-medium text-app-text">{{ invoice.customerName || ('SALES.INVOICES.FIELDS.NO_CUSTOMER' | transloco) }}</td><td class="px-4 py-3 text-right text-sm">{{ invoice.lineCount }}</td><td class="px-4 py-3 text-right text-sm tabular-nums">{{ money(invoice.subtotal, invoice.currency) }}</td><td class="px-4 py-3 text-right text-sm tabular-nums">{{ money(invoice.taxTotal, invoice.currency) }}</td><td class="px-4 py-3 text-right font-semibold tabular-nums">{{ money(invoice.total, invoice.currency) }}</td><td class="px-4 py-3 text-right"><liass-button size="sm" tone="info" variant="ghost" (pressed)="open(invoice)">{{ 'COMMON.ACTIONS.OPEN' | transloco }}</liass-button></td></tr> }</tbody>
+          </table>
+        </div>
+        <div class="grid gap-3 lg:hidden">@for (invoice of invoices(); track invoice.id) { <article class="rounded-app-card border border-app-border bg-app-surface p-4"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="break-words font-semibold text-app-text">{{ invoice.customerName || ('SALES.INVOICES.FIELDS.NO_CUSTOMER' | transloco) }}</p><p class="mt-1 text-xs text-app-text-secondary">{{ 'SALES.INVOICES.TABLE.INTERNAL_REFERENCE' | transloco }} {{ reference(invoice) }}</p></div><liass-status-chip size="sm" tone="neutral" [label]="'SALES.INVOICES.STATUS.DRAFT' | transloco" /></div><dl class="mt-4 grid gap-2 text-sm"><div class="flex justify-between gap-4"><dt class="text-app-text-secondary">{{ 'SALES.INVOICES.FIELDS.LINES' | transloco }}</dt><dd>{{ invoice.lineCount }}</dd></div><div class="flex justify-between gap-4"><dt class="text-app-text-secondary">{{ 'SALES.INVOICES.FIELDS.TAX' | transloco }}</dt><dd class="tabular-nums">{{ money(invoice.taxTotal, invoice.currency) }}</dd></div><div class="flex justify-between gap-4 border-t border-app-border pt-2 font-semibold"><dt>{{ 'SALES.INVOICES.FIELDS.TOTAL' | transloco }}</dt><dd class="tabular-nums">{{ money(invoice.total, invoice.currency) }}</dd></div></dl><div class="mt-3 flex justify-end"><liass-button size="sm" tone="info" variant="outline" (pressed)="open(invoice)">{{ 'COMMON.ACTIONS.OPEN' | transloco }}</liass-button></div></article> }</div>
+        <nav class="mt-4 flex items-center justify-between gap-3 border-t border-app-border pt-4" [attr.aria-label]="'SALES.INVOICES.PAGINATION.LABEL' | transloco"><liass-button icon="chevron_left" [disabled]="!hasPrevious()" (pressed)="previousPage()">{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button><span class="text-xs text-app-text-secondary">{{ 'SALES.INVOICES.PAGINATION.PAGE_SIZE' | transloco: { count: 50 } }}</span><liass-button icon="chevron_right" [disabled]="!hasNext()" (pressed)="nextPage()">{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button></nav>
+      }
+    </liass-card>
+  }
+</div>

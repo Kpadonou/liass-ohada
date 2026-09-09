@@ -663,7 +663,15 @@ S2A-BE adds the SALES-owned `SalesInvoice` bounded aggregate with operational st
 
 The aggregate is one DynamoDB item at `PK = ORG#{orgId}`, `SK = SALES_INVOICE#{invoiceId}`. All line mutations conditionally replace that item, so lines, totals, line count, ordering, and version commit atomically. Organization-scoped invoice listing uses `Query`, the invoice prefix, a header-only projection, and a tenant-bound opaque cursor. No Scan, GSI, table, migration, backfill, event, queue, or stateful resource is introduced.
 
-The calculation policy is SALES-owned and generic: line subtotal is quantity multiplied by unit price and rounded `ROUND_HALF_UP` to the invoice currency's ISO minor-unit scale; tax is calculated from that rounded line subtotal and the generic percentage rate, then rounded the same way; invoice totals sum the canonical rounded line amounts. This is not national tax validation or fiscal certification. Issuance, official numbering, PDF/S3, e-MECeF, discounts, payments/receivables, and Accounting posting remain unavailable. Liass-Facturation remains coming soon, and S2A frontend work is separately deferred.
+The calculation policy is SALES-owned and generic: line subtotal is quantity multiplied by unit price and rounded `ROUND_HALF_UP` to the invoice currency's ISO minor-unit scale; tax is calculated from that rounded line subtotal and the generic percentage rate, then rounded the same way; invoice totals sum the canonical rounded line amounts. This is not national tax validation or fiscal certification.
+
+### S2B-BE — SALES Invoice Issuance Core
+
+S2B-BE adds the sole transition `DRAFT -> ISSUED`. Issuance requires the reviewed aggregate version, a valid date-only commercial issue date, at least one line, and an organization-scoped UUID request identity. It freezes the persisted Customer and Catalog snapshots and canonical monetary facts without reloading or recalculating them. Customer remains optional and a zero-total Invoice remains issuable. An `ISSUED` Invoice is immutable through every S2A mutation route.
+
+The SALES-owned default sequence and issuance idempotency proof share `PK = ORG#{orgId}` with the Invoice aggregate. One conditional DynamoDB transaction advances or initializes the decimal-string sequence, replaces the Invoice as `ISSUED`, and creates the durable idempotency record. The commercial `invoiceNumber` is the zero-padded sequence (minimum eight digits), has no annual reset, and is not an e-MECeF, DGI, fiscal-certification, or other national fiscal number. No table, GSI, Scan, migration, backfill, Accounting/Treasury side effect, event, or queue is introduced.
+
+PDF/S3 generation, payments/receivables, credit notes, Accounting posting, fiscal certification, and e-MECeF remain unavailable. Liass-Facturation remains coming soon, and the S2B frontend issuance experience is deferred.
 
 ### Product-roadmap candidate — Liass-Resto foundation
 

@@ -1,0 +1,69 @@
+<header class="px-5 pt-5 sm:px-6 sm:pt-6">
+  <h2 mat-dialog-title class="m-0 p-0 text-xl font-semibold text-app-text">{{ (isEdit ? 'SALES.INVOICES.LINE_DIALOG.EDIT_TITLE' : 'SALES.INVOICES.LINE_DIALOG.ADD_TITLE') | transloco }}</h2>
+  <p class="mt-1 text-sm text-app-text-secondary">{{ 'SALES.INVOICES.LINE_DIALOG.SUBTITLE' | transloco }}</p>
+</header>
+<mat-dialog-content class="px-5 py-4 sm:px-6">
+  @if (!isEdit) {
+    <mat-button-toggle-group class="mb-4" [value]="sourceMode()" (change)="setMode($event.value)" [attr.aria-label]="'SALES.INVOICES.LINE_DIALOG.SOURCE' | transloco">
+      <mat-button-toggle value="catalog">{{ 'SALES.INVOICES.LINE_DIALOG.FROM_CATALOG' | transloco }}</mat-button-toggle>
+      <mat-button-toggle value="free">{{ 'SALES.INVOICES.LINE_DIALOG.FREE_FORM' | transloco }}</mat-button-toggle>
+    </mat-button-toggle-group>
+  } @else if (data.line?.catalogItemId) {
+    <p class="mb-4 rounded-app-control border border-app-border bg-app-surface-muted p-3 text-sm text-app-text-secondary">{{ 'SALES.INVOICES.LINE_DIALOG.CATALOG_SOURCE_LOCKED' | transloco }}</p>
+  }
+
+  @if (!isEdit && sourceMode() === 'catalog') {
+    <section class="mb-4" [attr.aria-label]="'SALES.INVOICES.LINE_DIALOG.FROM_CATALOG' | transloco">
+      @if (itemsQuery.isPending()) {
+        <div class="space-y-2" role="status" aria-busy="true"><p class="text-sm text-app-text-secondary">{{ 'SALES.INVOICES.LINE_DIALOG.LOADING_ITEMS' | transloco }}</p><liass-skeleton variant="block" /><liass-skeleton variant="block" /></div>
+      } @else if (itemsQuery.isError()) {
+        <p class="rounded-app-control border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ 'SALES.INVOICES.LINE_DIALOG.ITEMS_FAILED' | transloco }}</p>
+      } @else {
+        <div class="grid max-h-56 gap-2 overflow-y-auto pr-1" role="radiogroup" [attr.aria-label]="'SALES.INVOICES.LINE_DIALOG.FROM_CATALOG' | transloco">
+          @for (item of items(); track item.id) {
+            <button type="button" role="radio" class="liass-focus-ring flex items-center justify-between gap-3 rounded-app-control border p-3 text-left" [class.border-brand-500]="selectedItem()?.id === item.id" [class.bg-brand-50]="selectedItem()?.id === item.id" [disabled]="!item.isActive" [class.opacity-55]="!item.isActive" [attr.aria-checked]="selectedItem()?.id === item.id" (click)="selectItem(item)">
+              <span class="min-w-0"><span class="block break-words font-semibold text-app-text">{{ item.name }}</span><span class="block break-words text-xs text-app-text-secondary">{{ ('SALES.ITEMS.TYPES.' + item.itemType) | transloco }} · {{ item.unit || ('COMMON.EMPTY_VALUE' | transloco) }}</span></span>
+            </button>
+          } @empty { <p class="rounded-app-control border border-dashed border-app-border p-4 text-center text-sm text-app-text-secondary">{{ 'SALES.INVOICES.LINE_DIALOG.NO_ITEMS' | transloco }}</p> }
+        </div>
+        <nav class="mt-2 flex justify-between" [attr.aria-label]="'SALES.INVOICES.LINE_DIALOG.CATALOG_PAGINATION' | transloco"><liass-button size="sm" icon="chevron_left" [disabled]="!hasPrevious()" (pressed)="previousPage()">{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button><liass-button size="sm" icon="chevron_right" [disabled]="!hasNext()" (pressed)="nextPage()">{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button></nav>
+      }
+      @if (selectedItem()) { <p class="mt-2 text-xs text-app-text-secondary">{{ 'SALES.INVOICES.LINE_DIALOG.DEFAULTS_HINT' | transloco: { name: selectedItem()!.name, unit: selectedItem()!.unit || ('COMMON.EMPTY_VALUE' | transloco) } }}</p> }
+    </section>
+  }
+
+  <form class="grid gap-3 sm:grid-cols-2" [formGroup]="form" (ngSubmit)="submit()" id="invoice-line-form">
+    <mat-form-field appearance="outline" class="sm:col-span-2">
+      <mat-label>{{ 'SALES.INVOICES.FIELDS.DESCRIPTION' | transloco }}</mat-label>
+      <textarea matInput formControlName="description" rows="3"></textarea>
+      @if (!isEdit && sourceMode() === 'catalog') { <mat-hint>{{ 'SALES.INVOICES.LINE_DIALOG.OPTIONAL_OVERRIDE' | transloco }}</mat-hint> }
+      @if (form.controls.description.hasError('maxlength')) { <mat-error>{{ 'SALES.INVOICES.VALIDATION.MAX_LENGTH' | transloco: { count: 2000 } }}</mat-error> }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'SALES.INVOICES.FIELDS.UNIT' | transloco }}</mat-label>
+      <input matInput formControlName="unit" autocomplete="off" />
+      @if (form.controls.unit.hasError('maxlength')) { <mat-error>{{ 'SALES.INVOICES.VALIDATION.MAX_LENGTH' | transloco: { count: 80 } }}</mat-error> }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'SALES.INVOICES.FIELDS.QUANTITY' | transloco }}</mat-label>
+      <input matInput type="text" inputmode="decimal" formControlName="quantity" autocomplete="off" />
+      @if (form.controls.quantity.invalid && form.controls.quantity.touched) { <mat-error>{{ 'SALES.INVOICES.VALIDATION.QUANTITY' | transloco }}</mat-error> }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'SALES.INVOICES.FIELDS.UNIT_PRICE' | transloco }}</mat-label>
+      <input matInput type="text" inputmode="decimal" formControlName="unitPrice" autocomplete="off" />
+      @if (form.controls.unitPrice.invalid && form.controls.unitPrice.touched) { <mat-error>{{ 'SALES.INVOICES.VALIDATION.UNIT_PRICE' | transloco }}</mat-error> }
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>{{ 'SALES.INVOICES.FIELDS.TAX_RATE' | transloco }}</mat-label>
+      <input matInput type="text" inputmode="decimal" formControlName="taxRate" autocomplete="off" />
+      <span matTextSuffix>%</span>
+      @if (form.controls.taxRate.invalid && form.controls.taxRate.touched) { <mat-error>{{ 'SALES.INVOICES.VALIDATION.TAX_RATE' | transloco }}</mat-error> }
+    </mat-form-field>
+    @if (errorMessage()) { <p class="sm:col-span-2 rounded-app-control border border-red-200 bg-red-50 p-3 text-sm text-red-800" role="alert">{{ errorMessage() }}</p> }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end" class="gap-2 px-5 pb-5 sm:px-6 sm:pb-6">
+  <liass-button [disabled]="submitting()" (pressed)="cancel()">{{ 'COMMON.ACTIONS.CANCEL' | transloco }}</liass-button>
+  <liass-button tone="brand" variant="solid" [loading]="submitting()" (pressed)="submit()">{{ (isEdit ? 'COMMON.ACTIONS.SAVE' : 'SALES.INVOICES.ACTIONS.ADD_LINE') | transloco }}</liass-button>
+</mat-dialog-actions>

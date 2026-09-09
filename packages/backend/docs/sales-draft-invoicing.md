@@ -1,6 +1,6 @@
-# SALES Draft Invoicing Core
+# SALES Invoicing Core
 
-S2A-BE owns editable draft invoices inside SALES. It does not issue invoices and does not claim national fiscal compliance.
+S2A-BE owns editable draft invoices inside SALES. S2B-BE adds the single `DRAFT -> ISSUED` transition with immutable commercial content. Neither lot claims national fiscal compliance.
 
 ## Access patterns
 
@@ -35,4 +35,15 @@ The tax rate is a generic percentage only. It is not a VAT regime, DGI category,
 
 ## Deferred behavior
 
-Issuance, immutable `ISSUED` invoices, official numbering, issue dates, PDF/S3 documents, fiscal certification, e-MECeF, discounts, credit notes, payments, receivables, Accounting posting, Treasury integration, and asynchronous events are outside S2A-BE.
+PDF/S3 documents, fiscal certification, e-MECeF, discounts, credit notes, payments, receivables, Accounting posting, Treasury integration, and asynchronous events remain deferred.
+
+## Issuance persistence and integrity
+
+- Invoice detail: direct strongly consistent read at `PK = ORG#{orgId}`, `SK = SALES_INVOICE#{invoiceId}`.
+- Default sequence: direct strongly consistent read at `PK = ORG#{orgId}`, `SK = SALES_INVOICE_SEQUENCE#DEFAULT`.
+- Request replay: direct strongly consistent read at `PK = ORG#{orgId}`, `SK = SALES_INVOICE_ISSUE_IDEMPOTENCY#{clientRequestId}`.
+- Successful issue: one `TransactWriteItems` call conditionally advances or initializes the sequence, replaces the reviewed DRAFT aggregate, and creates the idempotency record.
+
+The sequence is a canonical unsigned decimal string and is incremented with `BigInt`. The display formatter pads to a minimum width of eight digits without truncation or annual reset. `invoiceNumber` is a SALES commercial number only; it is not an e-MECeF, DGI, fiscal-certification, or other national fiscal number.
+
+The Issue operation does not reload Customer, Catalog Item, or SalesSettings data and does not recalculate monetary facts. It records the caller-authenticated user internally, generates the technical UTC `issuedAt`, preserves the supplied date-only `issueDate`, increments the aggregate version once, and makes all S2A mutations reject the issued aggregate.

@@ -159,6 +159,13 @@ const salesItems: readonly ShellNavItem[] = [
     page: 'sales.items',
     productCode: 'SALES',
     route: '/sales/items'
+  },
+  {
+    icon: 'receipt_long',
+    labelKey: 'SHELL.NAV.SALES_INVOICES',
+    page: 'sales.invoices',
+    productCode: 'SALES',
+    route: '/sales/invoices'
   }
 ];
 const cabinetItems: readonly ShellNavItem[] = [

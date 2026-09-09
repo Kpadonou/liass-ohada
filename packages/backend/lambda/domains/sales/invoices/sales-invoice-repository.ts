@@ -4,6 +4,7 @@ import {
   GetItemCommand,
   PutItemCommand,
   QueryCommand,
+  TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
@@ -14,6 +15,7 @@ import {
   SalesInvoiceSchema,
   SalesInvoiceSummary,
   SalesInvoiceSummarySchema,
+  SalesIssuedInvoice,
 } from "@liass-ohada/shared/sales";
 import { z } from "zod";
 import { AppError } from "@/lambda/shared/app-error";
@@ -35,14 +37,13 @@ const SalesInvoiceLinePersistenceSchema = SalesInvoiceLineSchema.omit({
   })
   .strict();
 
-const SalesInvoiceItemSchema = z
+const SalesInvoiceItemBaseSchema = z
   .object({
     PK: z.string().min(1),
     SK: z.string().startsWith("SALES_INVOICE#"),
     entityType: z.literal("SALES_INVOICE"),
     orgId: z.string().min(1),
     id: z.string().min(1),
-    status: z.literal("DRAFT"),
     currency: z.string().regex(/^[A-Z]{3}$/),
     customerId: z.string().min(1).optional(),
     customerSnapshot: SalesInvoiceCustomerSnapshotSchema.optional(),
@@ -57,16 +58,73 @@ const SalesInvoiceItemSchema = z
   })
   .strict();
 
+const SalesDraftInvoiceItemSchema = SalesInvoiceItemBaseSchema.extend({
+  status: z.literal("DRAFT"),
+}).strict();
+
+const SalesIssuedInvoiceItemSchema = SalesInvoiceItemBaseSchema.extend({
+  status: z.literal("ISSUED"),
+  invoiceNumber: z.string().regex(/^0*[1-9]\d*$/),
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  issuedAt: z.string().datetime(),
+  issuedByUserId: z.string().min(1),
+}).strict();
+
+const SalesInvoiceItemSchema = z.union([
+  SalesDraftInvoiceItemSchema,
+  SalesIssuedInvoiceItemSchema,
+]);
+
 type SalesInvoiceItem = z.infer<typeof SalesInvoiceItemSchema>;
 
-const SalesInvoiceSummaryItemSchema = SalesInvoiceItemSchema.omit({
-  lines: true,
+const SalesInvoiceSummaryItemSchema = z.union([
+  SalesDraftInvoiceItemSchema.omit({ lines: true }).strict(),
+  SalesIssuedInvoiceItemSchema.omit({ lines: true }).strict(),
+]);
+
+const SalesInvoiceSequenceItemSchema = z.object({
+  PK: z.string().min(1),
+  SK: z.literal("SALES_INVOICE_SEQUENCE#DEFAULT"),
+  entityType: z.literal("SALES_INVOICE_SEQUENCE"),
+  orgId: z.string().min(1),
+  lastValue: z.string().regex(/^(?:0|[1-9]\d*)$/),
+  updatedAt: z.string().datetime(),
 }).strict();
+
+const SalesInvoiceIssueIdempotencyItemSchema = z.object({
+  PK: z.string().min(1),
+  SK: z.string().startsWith("SALES_INVOICE_ISSUE_IDEMPOTENCY#"),
+  entityType: z.literal("SALES_INVOICE_ISSUE_IDEMPOTENCY"),
+  orgId: z.string().min(1),
+  clientRequestId: z.string().uuid(),
+  invoiceId: z.string().min(1),
+  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  originalExpectedVersion: z.number().int().positive(),
+  invoiceNumber: z.string().regex(/^0*[1-9]\d*$/),
+  createdAt: z.string().datetime(),
+}).strict();
+
+export type SalesInvoiceIssueIdempotencyRecord = z.infer<
+  typeof SalesInvoiceIssueIdempotencyItemSchema
+>;
 
 export class SalesInvoiceWriteConflictError extends Error {
   constructor() {
     super("Sales invoice conditional write failed");
     this.name = "SalesInvoiceWriteConflictError";
+  }
+}
+
+export type SalesInvoiceIssueTransactionFailure =
+  | "SEQUENCE_CONTENTION"
+  | "INVOICE_CONFLICT"
+  | "IDEMPOTENCY_CONFLICT"
+  | "UNKNOWN_TRANSACTION_CANCELLATION";
+
+export class SalesInvoiceIssueTransactionError extends Error {
+  constructor(public readonly failure: SalesInvoiceIssueTransactionFailure) {
+    super(`Sales Invoice issue transaction failed: ${failure}`);
+    this.name = "SalesInvoiceIssueTransactionError";
   }
 }
 
@@ -124,6 +182,11 @@ const toInvoice = (item: SalesInvoiceItem): SalesInvoice =>
     version: item.version,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    ...(item.status === "ISSUED" ? {
+      invoiceNumber: item.invoiceNumber,
+      issueDate: item.issueDate,
+      issuedAt: item.issuedAt,
+    } : {}),
   });
 
 const toSummary = (
@@ -148,6 +211,10 @@ const toSummary = (
     version: item.version,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
+    ...(item.status === "ISSUED" ? {
+      invoiceNumber: item.invoiceNumber,
+      issueDate: item.issueDate,
+    } : {}),
   });
 
 const decodeCursor = (
@@ -180,7 +247,11 @@ const encodeCursor = (
   key ? Buffer.from(JSON.stringify(key)).toString("base64") : undefined;
 
 export class SalesInvoiceRepository {
-  static buildItem(orgId: string, invoice: SalesInvoice): SalesInvoiceItem {
+  static buildItem(
+    orgId: string,
+    invoice: SalesInvoice,
+    issuedByUserId?: string,
+  ): SalesInvoiceItem {
     return SalesInvoiceItemSchema.parse({
       PK: KeyFactory.orgKey(orgId),
       SK: KeyFactory.salesInvoiceSK(invoice.id),
@@ -208,6 +279,12 @@ export class SalesInvoiceRepository {
       version: invoice.version,
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
+      ...(invoice.status === "ISSUED" ? {
+        invoiceNumber: invoice.invoiceNumber,
+        issueDate: invoice.issueDate,
+        issuedAt: invoice.issuedAt,
+        issuedByUserId,
+      } : {}),
     });
   }
 
@@ -253,7 +330,7 @@ export class SalesInvoiceRepository {
           ":prefix": KeyFactory.salesInvoicePrefix(),
         }),
         ProjectionExpression:
-          "PK, SK, entityType, orgId, id, #status, currency, customerId, customerSnapshot, subtotalMinor, taxTotalMinor, totalMinor, lineCount, #version, createdAt, updatedAt",
+          "PK, SK, entityType, orgId, id, #status, currency, customerId, customerSnapshot, subtotalMinor, taxTotalMinor, totalMinor, lineCount, #version, createdAt, updatedAt, invoiceNumber, issueDate, issuedAt, issuedByUserId",
         Limit: input.limit ?? 50,
         ExclusiveStartKey: decodeCursor(input.cursor, orgId),
         ScanIndexForward: true,
@@ -291,6 +368,140 @@ export class SalesInvoiceRepository {
         ":expectedVersion": { N: String(expectedVersion) },
       },
     );
+  }
+
+  static async getSequence(
+    orgId: string,
+  ): Promise<{ exists: boolean; lastValue: string }> {
+    const result = await dynamoClient.send(new GetItemCommand({
+      TableName: config.TABLE_NAME,
+      Key: marshall({
+        PK: KeyFactory.orgKey(orgId),
+        SK: KeyFactory.salesInvoiceSequenceSK(),
+      }),
+      ConsistentRead: true,
+    }));
+    if (!result.Item) return { exists: false, lastValue: "0" };
+    const item = SalesInvoiceSequenceItemSchema.parse(unmarshall(result.Item));
+    if (item.orgId !== orgId) throw new Error("SALES Invoice sequence tenant mismatch");
+    return { exists: true, lastValue: item.lastValue };
+  }
+
+  static async getIssueIdempotency(
+    orgId: string,
+    clientRequestId: string,
+  ): Promise<SalesInvoiceIssueIdempotencyRecord | undefined> {
+    const result = await dynamoClient.send(new GetItemCommand({
+      TableName: config.TABLE_NAME,
+      Key: marshall({
+        PK: KeyFactory.orgKey(orgId),
+        SK: KeyFactory.salesInvoiceIssueIdempotencySK(clientRequestId),
+      }),
+      ConsistentRead: true,
+    }));
+    if (!result.Item) return undefined;
+    const record = SalesInvoiceIssueIdempotencyItemSchema.parse(
+      unmarshall(result.Item),
+    );
+    if (record.orgId !== orgId || record.clientRequestId !== clientRequestId) {
+      throw new Error("SALES Invoice idempotency tenant mismatch");
+    }
+    return record;
+  }
+
+  static async issueAtomically(input: {
+    orgId: string;
+    invoice: SalesIssuedInvoice;
+    issuedByUserId: string;
+    clientRequestId: string;
+    originalExpectedVersion: number;
+    previousSequenceExists: boolean;
+    previousSequenceValue: string;
+    nextSequenceValue: string;
+  }): Promise<void> {
+    const sequence = SalesInvoiceSequenceItemSchema.parse({
+      PK: KeyFactory.orgKey(input.orgId),
+      SK: KeyFactory.salesInvoiceSequenceSK(),
+      entityType: "SALES_INVOICE_SEQUENCE",
+      orgId: input.orgId,
+      lastValue: input.nextSequenceValue,
+      updatedAt: input.invoice.issuedAt,
+    });
+    const idempotency = SalesInvoiceIssueIdempotencyItemSchema.parse({
+      PK: KeyFactory.orgKey(input.orgId),
+      SK: KeyFactory.salesInvoiceIssueIdempotencySK(input.clientRequestId),
+      entityType: "SALES_INVOICE_ISSUE_IDEMPOTENCY",
+      orgId: input.orgId,
+      clientRequestId: input.clientRequestId,
+      invoiceId: input.invoice.id,
+      issueDate: input.invoice.issueDate,
+      originalExpectedVersion: input.originalExpectedVersion,
+      invoiceNumber: input.invoice.invoiceNumber,
+      createdAt: input.invoice.issuedAt,
+    });
+    const sequenceCondition = !input.previousSequenceExists
+      ? "attribute_not_exists(PK) AND attribute_not_exists(SK)"
+      : "#entityType = :sequenceType AND lastValue = :previousValue";
+
+    try {
+      await dynamoClient.send(new TransactWriteItemsCommand({
+        TransactItems: [
+          { Put: {
+            TableName: config.TABLE_NAME,
+            Item: marshall(sequence),
+            ConditionExpression: sequenceCondition,
+            ...(!input.previousSequenceExists ? {} : {
+              ExpressionAttributeNames: { "#entityType": "entityType" },
+              ExpressionAttributeValues: marshall({
+                ":sequenceType": "SALES_INVOICE_SEQUENCE",
+                ":previousValue": input.previousSequenceValue,
+              }),
+            }),
+          } },
+          { Put: {
+            TableName: config.TABLE_NAME,
+            Item: marshall(
+              this.buildItem(input.orgId, input.invoice, input.issuedByUserId),
+              { removeUndefinedValues: true },
+            ),
+            ConditionExpression:
+              "#entityType = :invoiceType AND #status = :draft AND #version = :expectedVersion",
+            ExpressionAttributeNames: {
+              "#entityType": "entityType",
+              "#status": "status",
+              "#version": "version",
+            },
+            ExpressionAttributeValues: marshall({
+              ":invoiceType": "SALES_INVOICE",
+              ":draft": "DRAFT",
+              ":expectedVersion": input.originalExpectedVersion,
+            }),
+          } },
+          { Put: {
+            TableName: config.TABLE_NAME,
+            Item: marshall(idempotency),
+            ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+          } },
+        ],
+      }));
+    } catch (error) {
+      const transactionError = error as {
+        name?: string;
+        CancellationReasons?: Array<{ Code?: string }>;
+      };
+      if (transactionError.name !== "TransactionCanceledException") throw error;
+      const failedIndex = transactionError.CancellationReasons?.findIndex(
+        (reason) => reason.Code === "ConditionalCheckFailed",
+      );
+      const failure: SalesInvoiceIssueTransactionFailure = failedIndex === 0
+        ? "SEQUENCE_CONTENTION"
+        : failedIndex === 1
+          ? "INVOICE_CONFLICT"
+          : failedIndex === 2
+            ? "IDEMPOTENCY_CONFLICT"
+            : "UNKNOWN_TRANSACTION_CANCELLATION";
+      throw new SalesInvoiceIssueTransactionError(failure);
+    }
   }
 
   private static async put(

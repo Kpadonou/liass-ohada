@@ -159,6 +159,28 @@ export const routes: Routes = [
               subtitleKey: 'SALES.ITEMS.PAGE.SUBTITLE',
               titleKey: 'SALES.ITEMS.PAGE.TITLE'
             }
+          },
+          {
+            path: 'invoices',
+            loadComponent: () =>
+              import('../../domains/sales/feature/invoices/sales-invoices.page').then(
+                (module) => module.SalesInvoicesPage
+              ),
+            data: {
+              subtitleKey: 'SALES.INVOICES.PAGE.SUBTITLE',
+              titleKey: 'SALES.INVOICES.PAGE.TITLE'
+            }
+          },
+          {
+            path: 'invoices/:invoiceId',
+            loadComponent: () =>
+              import('../../domains/sales/feature/invoices/sales-invoice-detail.page').then(
+                (module) => module.SalesInvoiceDetailPage
+              ),
+            data: {
+              subtitleKey: 'SALES.INVOICES.DETAIL.SUBTITLE',
+              titleKey: 'SALES.INVOICES.DETAIL.TITLE'
+            }
           }
         ]
       },

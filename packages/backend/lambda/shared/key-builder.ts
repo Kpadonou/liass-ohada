@@ -47,6 +47,13 @@ export const KeyFactory = {
   salesInvoiceSK: (invoiceId: string) =>
     `${KeyFactory.salesInvoicePrefix()}${invoiceId}`,
 
+  /** SALES-owned default commercial Invoice number sequence. */
+  salesInvoiceSequenceSK: () => "SALES_INVOICE_SEQUENCE#DEFAULT",
+
+  /** SALES-owned durable idempotency record for Invoice issuance. */
+  salesInvoiceIssueIdempotencySK: (clientRequestId: string) =>
+    `SALES_INVOICE_ISSUE_IDEMPOTENCY#${clientRequestId}`,
+
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",
 

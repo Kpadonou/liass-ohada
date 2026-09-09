@@ -93,6 +93,10 @@ export function pageFromUrl(url: string): AppPage {
     return 'sales.items';
   }
 
+  if (path.startsWith('/sales/invoices')) {
+    return 'sales.invoices';
+  }
+
   if (path.startsWith('/reports')) {
     return 'reports';
   }

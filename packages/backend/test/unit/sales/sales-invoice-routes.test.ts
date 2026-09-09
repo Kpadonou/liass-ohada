@@ -5,6 +5,7 @@ import { handler as updateHandler } from "@/lambda/domains/sales/invoices/update
 import { handler as addLineHandler } from "@/lambda/domains/sales/invoices/add-sales-invoice-line";
 import { handler as updateLineHandler } from "@/lambda/domains/sales/invoices/update-sales-invoice-line";
 import { handler as removeLineHandler } from "@/lambda/domains/sales/invoices/remove-sales-invoice-line";
+import { handler as issueHandler } from "@/lambda/domains/sales/invoices/issue-sales-invoice";
 import { SalesInvoiceService } from "@/lambda/domains/sales/invoices/sales-invoice-service";
 import { AppError } from "@/lambda/shared/app-error";
 import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
@@ -15,6 +16,7 @@ jest.mock("@/lambda/domains/sales/invoices/sales-invoice-service", () => ({
     addLine: jest.fn(),
     create: jest.fn(),
     get: jest.fn(),
+    issue: jest.fn(),
     list: jest.fn(),
     removeLine: jest.fn(),
     update: jest.fn(),
@@ -35,6 +37,20 @@ const draft = {
   version: 1,
   createdAt: timestamp,
   updatedAt: timestamp,
+};
+const issued = {
+  ...draft,
+  status: "ISSUED" as const,
+  lines: [{
+    id: "SIL-1", position: 1, description: "Service", quantity: "1",
+    unitPrice: "0", taxRate: "0", subtotal: "0", taxAmount: "0", total: "0",
+    createdAt: timestamp, updatedAt: timestamp,
+  }],
+  lineCount: 1,
+  invoiceNumber: "00000001",
+  issueDate: "2026-09-08",
+  issuedAt: timestamp,
+  version: 2,
 };
 const event = (
   routeKey: string,
@@ -80,6 +96,7 @@ describe("SALES Draft Invoice route authorization", () => {
     jest.mocked(SalesInvoiceService.create).mockResolvedValue(draft);
     jest.mocked(SalesInvoiceService.list).mockResolvedValue({ items: [draft] });
     jest.mocked(SalesInvoiceService.get).mockResolvedValue(draft);
+    jest.mocked(SalesInvoiceService.issue).mockResolvedValue(issued);
     jest.mocked(SalesInvoiceService.update).mockResolvedValue(draft);
     jest.mocked(SalesInvoiceService.addLine).mockResolvedValue(draft);
     jest.mocked(SalesInvoiceService.updateLine).mockResolvedValue(draft);
@@ -131,6 +148,48 @@ describe("SALES Draft Invoice route authorization", () => {
     expect(SalesInvoiceService.removeLine).toHaveBeenCalledWith(
       "org-123", "user-123", "SINV-1", "SIL-1", 3,
     );
+  });
+
+  test("SALES_WRITE issues in effectiveOrgId with authenticated user identity", async () => {
+    const request = {
+      expectedVersion: 1,
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      issueDate: "2026-09-08",
+    };
+    const response = await issueHandler(event("POST /sales/invoices/{invoiceId}/issue", {
+      body: request,
+      pathParameters: { invoiceId: "SINV-1" },
+    }) as any);
+    expect(response.statusCode).toBe(200);
+    expect(SalesInvoiceService.issue).toHaveBeenCalledWith(
+      "org-123", "user-123", "SINV-1", request,
+    );
+    expect(ProductAccessService.requireActiveProductAccess).toHaveBeenCalledWith({
+      action: "POST /sales/invoices/{invoiceId}/issue",
+      orgId: "org-123",
+      productCode: "SALES",
+    });
+  });
+
+  test("Issue rejects missing fields and client-controlled issuance fields", async () => {
+    const base = {
+      expectedVersion: 1,
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      issueDate: "2026-09-08",
+    };
+    const responses = await Promise.all([
+      issueHandler(event("POST /sales/invoices/{invoiceId}/issue", {
+        body: { expectedVersion: 1 }, pathParameters: { invoiceId: "SINV-1" },
+      }) as any),
+      ...["invoiceNumber", "issuedAt", "issuedByUserId"].map((field) =>
+        issueHandler(event("POST /sales/invoices/{invoiceId}/issue", {
+          body: { ...base, [field]: "forbidden" },
+          pathParameters: { invoiceId: "SINV-1" },
+        }) as any),
+      ),
+    ]);
+    expect(responses.every((response) => response.statusCode === 400)).toBe(true);
+    expect(SalesInvoiceService.issue).not.toHaveBeenCalled();
   });
 
   test("SALES_READ without SALES_WRITE cannot mutate", async () => {

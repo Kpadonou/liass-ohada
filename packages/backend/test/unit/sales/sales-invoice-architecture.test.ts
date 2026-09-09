@@ -12,13 +12,13 @@ const endpoints = readFileSync(
   "utf8",
 );
 
-describe("SALES Draft Invoice architecture boundaries", () => {
-  test("registers exactly seven S2A routes without issue or invoice delete", () => {
+describe("SALES Invoice architecture boundaries", () => {
+  test("registers exactly eight routes including one Issue route and no invoice delete", () => {
     const routeCalls = endpoints
       .split("\n")
       .filter((line) => line.includes('"/sales/invoices'));
-    expect(routeCalls).toHaveLength(7);
-    expect(routeCalls.some((line) => line.includes("/issue"))).toBe(false);
+    expect(routeCalls).toHaveLength(8);
+    expect(routeCalls.filter((line) => line.includes("/issue"))).toHaveLength(1);
     expect(routeCalls.some((line) =>
       line.includes("HttpMethod.DELETE") &&
       line.includes('"/sales/invoices/{invoiceId}"') &&
@@ -26,7 +26,7 @@ describe("SALES Draft Invoice architecture boundaries", () => {
     )).toBe(false);
   });
 
-  test("has no Accounting, Treasury, events, queues, PDF, S3, numbering, or issuance dependency", () => {
+  test("has no Accounting, Treasury, events, queues, PDF, S3, fiscal, or payment dependency", () => {
     for (const forbidden of [
       "domains/accounting",
       "domains/treasury",
@@ -34,9 +34,6 @@ describe("SALES Draft Invoice architecture boundaries", () => {
       "SQS",
       "SNS",
       "S3",
-      "invoiceNumber",
-      "ISSUED",
-      "issueDate",
       "eMECeF",
       "discount",
       "amountPaid",

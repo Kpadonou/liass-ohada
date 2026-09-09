@@ -5,6 +5,7 @@ import {
   PutItemCommand,
   QueryCommand,
   ScanCommand,
+  TransactWriteItemsCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
@@ -45,6 +46,14 @@ const invoice = {
   version: 2,
   createdAt: timestamp,
   updatedAt: timestamp,
+};
+const issuedInvoice = {
+  ...invoice,
+  status: "ISSUED" as const,
+  invoiceNumber: "00000042",
+  issueDate: "2026-09-08",
+  issuedAt: timestamp,
+  version: 3,
 };
 
 describe("SalesInvoiceRepository", () => {
@@ -174,5 +183,103 @@ describe("SalesInvoiceRepository", () => {
     expect(
       (SalesInvoiceRepository as unknown as Record<string, unknown>).delete,
     ).toBeUndefined();
+  });
+
+  test("persists and reads issued fields while keeping issuedByUserId private", async () => {
+    const item = SalesInvoiceRepository.buildItem(
+      "org-123",
+      issuedInvoice,
+      "user-123",
+    );
+    expect(item).toMatchObject({
+      invoiceNumber: "00000042",
+      issueDate: "2026-09-08",
+      issuedAt: timestamp,
+      issuedByUserId: "user-123",
+    });
+    dynamoMock.on(GetItemCommand).resolves({ Item: marshall(item) });
+    const result = await SalesInvoiceRepository.get("org-123", "SINV-1");
+    expect(result).toMatchObject({ status: "ISSUED", invoiceNumber: "00000042" });
+    expect(result).not.toHaveProperty("issuedByUserId");
+  });
+
+  test("reads missing and existing sequence values consistently with exact strings", async () => {
+    dynamoMock.on(GetItemCommand).resolvesOnce({}).resolvesOnce({
+      Item: marshall({
+        PK: "ORG#org-123",
+        SK: "SALES_INVOICE_SEQUENCE#DEFAULT",
+        entityType: "SALES_INVOICE_SEQUENCE",
+        orgId: "org-123",
+        lastValue: "9007199254740993123456789",
+        updatedAt: timestamp,
+      }),
+    });
+    await expect(SalesInvoiceRepository.getSequence("org-123"))
+      .resolves.toEqual({ exists: false, lastValue: "0" });
+    await expect(SalesInvoiceRepository.getSequence("org-123"))
+      .resolves.toEqual({ exists: true, lastValue: "9007199254740993123456789" });
+    expect(dynamoMock.commandCalls(GetItemCommand).every(
+      (call) => call.args[0].input.ConsistentRead === true,
+    )).toBe(true);
+  });
+
+  test("issues sequence, aggregate, and idempotency in one conditional transaction", async () => {
+    dynamoMock.on(TransactWriteItemsCommand).resolves({});
+    await SalesInvoiceRepository.issueAtomically({
+      orgId: "org-123",
+      invoice: issuedInvoice,
+      issuedByUserId: "user-123",
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      originalExpectedVersion: 2,
+      previousSequenceExists: true,
+      previousSequenceValue: "41",
+      nextSequenceValue: "42",
+    });
+    const input = dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input;
+    expect(input.TransactItems).toHaveLength(3);
+    const [sequence, aggregate, idempotency] = input.TransactItems ?? [];
+    expect(unmarshall(sequence.Put?.Item ?? {})).toMatchObject({
+      PK: "ORG#org-123",
+      SK: "SALES_INVOICE_SEQUENCE#DEFAULT",
+      lastValue: "42",
+    });
+    expect(unmarshall(aggregate.Put?.Item ?? {})).toMatchObject({
+      status: "ISSUED",
+      invoiceNumber: "00000042",
+      issuedByUserId: "user-123",
+    });
+    expect(unmarshall(idempotency.Put?.Item ?? {})).toMatchObject({
+      SK: "SALES_INVOICE_ISSUE_IDEMPOTENCY#243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      entityType: "SALES_INVOICE_ISSUE_IDEMPOTENCY",
+      invoiceId: "SINV-1",
+      originalExpectedVersion: 2,
+    });
+    expect(dynamoMock.commandCalls(PutItemCommand)).toHaveLength(0);
+    expect(dynamoMock.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+
+  test.each([
+    [0, "SEQUENCE_CONTENTION"],
+    [1, "INVOICE_CONFLICT"],
+    [2, "IDEMPOTENCY_CONFLICT"],
+  ] as const)("classifies conditional cancellation at item %s", async (index, failure) => {
+    const reasons = Array.from({ length: 3 }, (_, reasonIndex) => ({
+      Code: reasonIndex === index ? "ConditionalCheckFailed" : "None",
+    }));
+    dynamoMock.on(TransactWriteItemsCommand).rejects({
+      name: "TransactionCanceledException",
+      message: "transaction cancelled",
+      CancellationReasons: reasons,
+    } as Error);
+    await expect(SalesInvoiceRepository.issueAtomically({
+      orgId: "org-123",
+      invoice: issuedInvoice,
+      issuedByUserId: "user-123",
+      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+      originalExpectedVersion: 2,
+      previousSequenceExists: true,
+      previousSequenceValue: "41",
+      nextSequenceValue: "42",
+    })).rejects.toMatchObject({ failure });
   });
 });

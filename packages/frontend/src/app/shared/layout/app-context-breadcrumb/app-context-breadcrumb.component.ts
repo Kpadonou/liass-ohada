@@ -31,6 +31,7 @@ const pageLabelKeys: Record<AppPage, string> = {
   reports: 'SHELL.NAV.REPORTS',
   'sales.customers': 'SHELL.PAGES.SALES_CUSTOMERS',
   'sales.items': 'SHELL.PAGES.SALES_ITEMS',
+  'sales.invoices': 'SHELL.PAGES.SALES_INVOICES',
   treasury: 'SHELL.NAV.TREASURY'
 };
 const cabinetOperationsPages = new Set<AppPage>([

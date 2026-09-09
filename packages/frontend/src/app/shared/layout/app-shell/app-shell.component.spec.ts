@@ -45,5 +45,7 @@ describe('pageFromUrl', () => {
     expect(pageFromUrl('/sales/customers')).toBe('sales.customers');
     expect(pageFromUrl('/sales/items')).toBe('sales.items');
     expect(pageFromUrl('/sales/items?cursor=opaque')).toBe('sales.items');
+    expect(pageFromUrl('/sales/invoices')).toBe('sales.invoices');
+    expect(pageFromUrl('/sales/invoices/INV-1')).toBe('sales.invoices');
   });
 });
