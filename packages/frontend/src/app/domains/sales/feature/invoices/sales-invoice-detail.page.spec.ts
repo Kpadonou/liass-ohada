@@ -1,8 +1,9 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
-import type { SalesDraftInvoice, SalesInvoice } from '@liass-ohada/shared/sales';
+import type { SalesDraftInvoice, SalesInvoice, SalesInvoiceDocument } from '@liass-ohada/shared/sales';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, queryOptions, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
@@ -18,18 +19,27 @@ import { SalesInvoiceDetailPage } from './sales-invoice-detail.page';
 describe('SalesInvoiceDetailPage', () => {
   let canWrite = true;
   let get = vi.fn(async (): Promise<SalesInvoice> => invoice());
+  let getDocument = vi.fn<() => Promise<SalesInvoiceDocument>>(async () => { throw new HttpErrorResponse({ status: 404 }); });
   const open = vi.fn(() => ({ afterClosed: () => of(null) }));
   const capabilities = { canRead: () => true, canWrite: vi.fn(() => canWrite) };
   const queries = {
     rootKey: () => ['sales', 'org-sales', 'invoices'],
     listRootKey: () => ['sales', 'org-sales', 'invoices', 'list'],
     detailKey: (id: string) => ['sales', 'org-sales', 'invoices', id],
-    detail: (id: string, enabled = true) => queryOptions({ queryKey: ['sales', 'org-sales', 'invoices', id], queryFn: () => get(), enabled })
+    documentKey: (id: string) => ['sales', 'org-sales', 'invoices', id, 'document', 'pdf'],
+    detail: (id: string, enabled = true) => queryOptions({ queryKey: ['sales', 'org-sales', 'invoices', id], queryFn: () => get(), enabled }),
+    document: (id: string) => queryOptions({
+      queryKey: ['sales', 'org-sales', 'invoices', id, 'document', 'pdf'],
+      queryFn: () => getDocument(),
+      enabled: true,
+      retry: false
+    })
   };
 
   beforeEach(async () => {
     canWrite = true;
     get = vi.fn(async (): Promise<SalesInvoice> => invoice());
+    getDocument = vi.fn<() => Promise<SalesInvoiceDocument>>(async () => { throw new HttpErrorResponse({ status: 404 }); });
     capabilities.canWrite.mockImplementation(() => canWrite);
     await TestBed.configureTestingModule({
       imports: [SalesInvoiceDetailPage, TranslocoTestingModule.forRoot({ langs: { en: translations }, preloadLangs: true, translocoConfig: { availableLangs: ['en'], defaultLang: 'en' } })],
@@ -38,7 +48,7 @@ describe('SalesInvoiceDetailPage', () => {
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
         { provide: SalesCapabilities, useValue: capabilities },
-        { provide: SalesInvoicesApi, useValue: { removeLine: vi.fn(), issueInvoice: vi.fn() } },
+        { provide: SalesInvoicesApi, useValue: { removeLine: vi.fn(), issueInvoice: vi.fn(), generateDocument: vi.fn(), createDocumentDownloadUrl: vi.fn() } },
         { provide: SalesInvoicesQueries, useValue: queries },
         { provide: MatDialog, useValue: { open } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
@@ -148,6 +158,36 @@ describe('SalesInvoiceDetailPage', () => {
     expect(text).not.toMatch(/certif|fiscal|DGI|e-MECeF/i);
   });
 
+  it('shows a writer the generate action only for an issued invoice whose document is absent', async () => {
+    get.mockResolvedValue(issuedInvoice());
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('PDF document not generated');
+    expect(buttonWithText(fixture.nativeElement, 'Generate PDF')).toBeTruthy();
+  });
+
+  it('shows read-only users the available document actions without its integrity hash', async () => {
+    canWrite = false;
+    get.mockResolvedValue(issuedInvoice());
+    getDocument.mockResolvedValue({
+      status: 'AVAILABLE', invoiceId: 'INV-1', documentType: 'INVOICE_PDF', renderingVersion: '1',
+      contentHash: 'a'.repeat(64), contentType: 'application/pdf', sizeBytes: 2048,
+      generatedAt: '2026-09-08T10:00:00.000Z'
+    } satisfies SalesInvoiceDocument);
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('PDF available');
+    expect(buttonWithText(fixture.nativeElement, 'Open PDF')).toBeTruthy();
+    expect(buttonWithText(fixture.nativeElement, 'Download')).toBeTruthy();
+    expect(buttonWithText(fixture.nativeElement, 'Print')).toBeTruthy();
+    expect(text).not.toContain('Generate PDF');
+    expect(text).not.toContain('a'.repeat(64));
+    expect(text).not.toMatch(/digital signature|certificate/i);
+  });
+
   it('accepts the server-issued aggregate and refreshes the existing invoice list cache', async () => {
     const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
     const component = fixture.componentInstance as unknown as {
@@ -219,6 +259,8 @@ async function settle(fixture: { detectChanges(): void }): Promise<void> {
   fixture.detectChanges();
   await new Promise((resolve) => setTimeout(resolve, 0));
   fixture.detectChanges();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  fixture.detectChanges();
 }
 const translations = {
   COMMON: { EMPTY_VALUE: '—', ACTIONS: { RETRY: 'Try again', CANCEL: 'Cancel' }, TABLE: { ACTIONS: 'Actions' } },
@@ -226,6 +268,7 @@ const translations = {
     STATUS: { DRAFT: 'Draft', ISSUED: 'Issued' }, DETAIL: { EYEBROW: 'Sales · Draft', TITLE: 'Draft invoice', SUBTITLE: 'Prepare the draft', LOADING: 'Loading', DRAFT_NOTICE: 'Editable draft.', NO_CUSTOMER_DESCRIPTION: 'No customer.', ISSUED_EYEBROW: 'Sales · Issued', ISSUED_TITLE: 'Issued invoice', ISSUED_SUBTITLE: 'Read only', ISSUED_NOTICE: 'This invoice has been issued and can no longer be edited.', INVOICE_NUMBER: 'Invoice no. {{invoiceNumber}}' },
     ACCESS: { UNAVAILABLE_DESCRIPTION: 'Unavailable' }, ACTIONS: { ADD_LINE: 'Add line', ISSUE: 'Issue invoice', BACK_TO_LIST: 'Back', CHANGE_CURRENCY: 'Change currency', CHANGE_CUSTOMER: 'Change customer', SELECT_CUSTOMER: 'Select customer', EDIT_LINE: 'Edit line', REMOVE_LINE: 'Remove line' },
     TABLE: { INTERNAL_REFERENCE: 'Internal ref.' }, FIELDS: { CUSTOMER: 'Customer', CURRENCY: 'Currency', TAX_IDENTIFIER: 'Tax identifier', LINES: 'Lines', DESCRIPTION: 'Description', QUANTITY: 'Quantity', UNIT: 'Unit', UNIT_PRICE: 'Unit price', TAX_RATE: 'Tax rate', TAX: 'Tax', TOTAL: 'Total', SUBTOTAL: 'Subtotal', ISSUE_DATE: 'Invoice date', ISSUED_AT: 'Issued at' },
-    LINES: { DESCRIPTION: 'Authoritative amounts', EMPTY_TITLE: 'No lines', EMPTY_DESCRIPTION: 'Add line', CATALOG_SNAPSHOT: 'Catalog snapshot' }, TOTALS: { TITLE: 'Invoice totals', AUTHORITATIVE: 'Authoritative.' }, ISSUE: { NO_LINES_HINT: 'Add at least one line' }, ERRORS: { DETAIL_FAILED: 'Failed' }, REMOVE_LINE: { TITLE: 'Remove?', DESCRIPTION: '{{description}}' }
+    LINES: { DESCRIPTION: 'Authoritative amounts', EMPTY_TITLE: 'No lines', EMPTY_DESCRIPTION: 'Add line', CATALOG_SNAPSHOT: 'Catalog snapshot' }, TOTALS: { TITLE: 'Invoice totals', AUTHORITATIVE: 'Authoritative.' }, ISSUE: { NO_LINES_HINT: 'Add at least one line' }, ERRORS: { DETAIL_FAILED: 'Failed' }, REMOVE_LINE: { TITLE: 'Remove?', DESCRIPTION: '{{description}}' },
+    DOCUMENT: { TITLE: 'PDF document', LOADING: 'Checking', NOT_GENERATED_TITLE: 'PDF document not generated', NOT_GENERATED_DESCRIPTION: 'Not generated', GENERATING: 'Generating PDF', AVAILABLE: 'PDF available', AVAILABLE_DESCRIPTION: 'PDF representation', GENERATED_AT: 'Generated at {{generatedAt}}', ACTIONS: { GENERATE: 'Generate PDF', OPEN: 'Open PDF', DOWNLOAD: 'Download', PRINT: 'Print' }, NOTIFICATIONS: { READY: 'Ready' }, ERRORS: { UNAVAILABLE: 'Unavailable', GENERATION_FAILED: 'Generation failed', SECURE_LINK_FAILED: 'Link failed' } }
   } }
 };

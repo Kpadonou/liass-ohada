@@ -12,7 +12,9 @@ export const salesInvoiceQueryKeys = {
   lists: (orgId: string) => ['sales', orgId, 'invoices', 'list'] as const,
   list: (orgId: string, options: ListSalesInvoicesRequest) =>
     ['sales', orgId, 'invoices', 'list', { cursor: options.cursor ?? null, limit: options.limit ?? 50 }] as const,
-  detail: (orgId: string, invoiceId: string) => ['sales', orgId, 'invoices', invoiceId] as const
+  detail: (orgId: string, invoiceId: string) => ['sales', orgId, 'invoices', invoiceId] as const,
+  document: (orgId: string, invoiceId: string) =>
+    ['sales', orgId, 'invoices', invoiceId, 'document', 'pdf'] as const
 };
 
 @Injectable({ providedIn: 'root' })
@@ -24,6 +26,7 @@ export class SalesInvoicesQueries {
   rootKey() { return salesInvoiceQueryKeys.root(this.tenantScope()); }
   listRootKey() { return salesInvoiceQueryKeys.lists(this.tenantScope()); }
   detailKey(invoiceId: string) { return salesInvoiceQueryKeys.detail(this.tenantScope(), invoiceId); }
+  documentKey(invoiceId: string) { return salesInvoiceQueryKeys.document(this.tenantScope(), invoiceId); }
 
   list(options: ListSalesInvoicesRequest, enabled = true) {
     return queryOptions({
@@ -40,6 +43,16 @@ export class SalesInvoicesQueries {
       queryFn: () => this.api.get(invoiceId),
       enabled: enabled && this.tenantScope() !== NO_TENANT_SCOPE && invoiceId.trim().length > 0,
       staleTime: 15_000
+    });
+  }
+
+  document(invoiceId: string, enabled = true) {
+    return queryOptions({
+      queryKey: this.documentKey(invoiceId),
+      queryFn: () => this.api.getDocument(invoiceId),
+      enabled: enabled && this.tenantScope() !== NO_TENANT_SCOPE && invoiceId.trim().length > 0,
+      staleTime: 30_000,
+      retry: false
     });
   }
 }

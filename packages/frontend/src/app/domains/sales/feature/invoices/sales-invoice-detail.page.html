@@ -165,6 +165,69 @@
             </p>
           }
         </liass-card>
+        @if (document.status === 'ISSUED') {
+          <liass-card [title]="'SALES.INVOICES.DOCUMENT.TITLE' | transloco">
+            @if (documentQuery.isPending()) {
+              <div class="space-y-3" role="status" aria-busy="true">
+                <p class="text-sm text-app-text-secondary">
+                  {{ 'SALES.INVOICES.DOCUMENT.LOADING' | transloco }}
+                </p>
+                <liass-skeleton variant="text" />
+                <liass-skeleton variant="text" />
+              </div>
+            } @else if (documentAbsent()) {
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p class="font-semibold text-app-text">{{ 'SALES.INVOICES.DOCUMENT.NOT_GENERATED_TITLE' | transloco }}</p>
+                  <p class="mt-1 text-sm text-app-text-secondary">
+                    {{ 'SALES.INVOICES.DOCUMENT.NOT_GENERATED_DESCRIPTION' | transloco }}
+                  </p>
+                </div>
+                @if (capabilities.canWrite()) {
+                  <liass-button
+                    tone="brand"
+                    variant="solid"
+                    icon="picture_as_pdf"
+                    [loading]="generatingDocument()"
+                    (pressed)="generateDocument()"
+                  >{{ generatingDocument() ? ('SALES.INVOICES.DOCUMENT.GENERATING' | transloco) : ('SALES.INVOICES.DOCUMENT.ACTIONS.GENERATE' | transloco) }}</liass-button>
+                }
+              </div>
+            } @else if (documentQuery.data(); as pdfDocument) {
+              <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <liass-status-chip tone="success" [label]="'SALES.INVOICES.DOCUMENT.AVAILABLE' | transloco" />
+                    <span class="text-sm text-app-text-secondary">
+                      {{ 'SALES.INVOICES.DOCUMENT.GENERATED_AT' | transloco: { generatedAt: invoiceTimestamp(pdfDocument.generatedAt) } }}
+                    </span>
+                  </div>
+                  <p class="mt-2 text-sm text-app-text-secondary">
+                    {{ 'SALES.INVOICES.DOCUMENT.AVAILABLE_DESCRIPTION' | transloco }}
+                  </p>
+                </div>
+                <div class="flex flex-wrap gap-2 max-sm:flex-col">
+                  <liass-button tone="brand" variant="outline" icon="open_in_new" [loading]="documentAction() === 'open'" (pressed)="openDocument()">
+                    {{ 'SALES.INVOICES.DOCUMENT.ACTIONS.OPEN' | transloco }}
+                  </liass-button>
+                  <liass-button tone="neutral" variant="outline" icon="download" [loading]="documentAction() === 'download'" (pressed)="downloadDocument()">
+                    {{ 'SALES.INVOICES.DOCUMENT.ACTIONS.DOWNLOAD' | transloco }}
+                  </liass-button>
+                  <liass-button tone="neutral" variant="outline" icon="print" [loading]="documentAction() === 'print'" (pressed)="printDocument()">
+                    {{ 'SALES.INVOICES.DOCUMENT.ACTIONS.PRINT' | transloco }}
+                  </liass-button>
+                </div>
+              </div>
+            } @else if (documentQuery.isError()) {
+              <div class="flex flex-col gap-3 rounded-app-card border border-red-200 bg-red-50 p-4 text-red-800 sm:flex-row sm:items-center sm:justify-between dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+                <span>{{ documentErrorMessage() }}</span>
+                <liass-button tone="danger" variant="outline" icon="refresh" (pressed)="retryDocument()">
+                  {{ 'COMMON.ACTIONS.RETRY' | transloco }}
+                </liass-button>
+              </div>
+            }
+          </liass-card>
+        }
         <liass-card
           [title]="'SALES.INVOICES.FIELDS.LINES' | transloco"
           [description]="'SALES.INVOICES.LINES.DESCRIPTION' | transloco"

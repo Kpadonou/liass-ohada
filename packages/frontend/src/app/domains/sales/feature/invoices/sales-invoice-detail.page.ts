@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal, type Type } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -21,7 +22,7 @@ import { SalesInvoicesApi } from '../../data-access/sales-invoices.api';
 import { SalesInvoicesQueries } from '../../data-access/sales-invoices.queries';
 import { formatExactMoney } from '../../utils/exact-money-display';
 import { formatInvoiceDate, formatInvoiceTimestamp } from '../../utils/sales-invoice-dates';
-import { isSalesInvoiceVersionConflict } from '../../utils/sales-invoice-errors';
+import { isSalesInvoiceVersionConflict, salesInvoiceErrorCode } from '../../utils/sales-invoice-errors';
 import { SalesInvoiceCurrencyDialogComponent } from './sales-invoice-currency-dialog.component';
 import { SalesInvoiceCustomerDialogComponent } from './sales-invoice-customer-dialog.component';
 import { SalesInvoiceLineDialogComponent } from './sales-invoice-line-dialog.component';
@@ -49,10 +50,29 @@ export class SalesInvoiceDetailPage {
   private readonly transloco = inject(TranslocoService);
   protected readonly invoiceId = this.route.snapshot.paramMap.get('invoiceId') ?? '';
   protected readonly removingLineId = signal<string | null>(null);
+  protected readonly generatingDocument = signal(false);
+  protected readonly documentAction = signal<'open' | 'download' | 'print' | null>(null);
   protected readonly availability = computed(() => this.productAccess.availability('SALES'));
   protected readonly canLoad = computed(() => this.availability() === 'AVAILABLE' && this.capabilities.canRead());
   protected readonly invoiceQuery = injectQuery(() => this.queries.detail(this.invoiceId, this.canLoad()));
   protected readonly invoice = computed(() => this.invoiceQuery.data());
+  protected readonly documentQuery = injectQuery(() =>
+    this.queries.document(
+      this.invoiceId,
+      this.canLoad() && this.invoice()?.status === 'ISSUED'
+    )
+  );
+  protected readonly documentAbsent = computed(() => {
+    const error = this.documentQuery.error();
+    return this.invoice()?.status === 'ISSUED' &&
+      this.documentQuery.isError() &&
+      error instanceof HttpErrorResponse &&
+      error.status === 404;
+  });
+  protected readonly documentErrorMessage = computed(() =>
+    safeMessageFromError(this.documentQuery.error()) ??
+    this.transloco.translate('SALES.INVOICES.DOCUMENT.ERRORS.UNAVAILABLE')
+  );
 
   protected money(value: string, currency: string): string { return formatExactMoney(value, currency, this.transloco.getActiveLang()); }
   protected invoiceDate(value: string): string { return formatInvoiceDate(value, this.transloco.getActiveLang()); }
@@ -65,6 +85,34 @@ export class SalesInvoiceDetailPage {
 
   protected back(): void { void this.router.navigate(['/sales/invoices']); }
   protected retry(): void { void this.invoiceQuery.refetch(); }
+  protected retryDocument(): void { void this.documentQuery.refetch(); }
+
+  protected async generateDocument(): Promise<void> {
+    const invoice = this.invoice();
+    if (!invoice || invoice.status !== 'ISSUED' || !this.capabilities.canWrite() || this.generatingDocument()) return;
+
+    this.generatingDocument.set(true);
+    try {
+      const result = await this.api.generateDocument(invoice.id);
+      this.queryClient.setQueryData(this.queries.documentKey(invoice.id), result.data);
+      this.notification.success(
+        result.message ?? this.transloco.translate('SALES.INVOICES.DOCUMENT.NOTIFICATIONS.READY')
+      );
+    } catch (error) {
+      if (salesInvoiceErrorCode(error) === 'INVOICE_DOCUMENT_REQUIRES_ISSUED') {
+        await this.refreshAuthoritative();
+      }
+      this.notification.error(
+        safeMessageFromError(error) ?? this.transloco.translate('SALES.INVOICES.DOCUMENT.ERRORS.GENERATION_FAILED')
+      );
+    } finally {
+      this.generatingDocument.set(false);
+    }
+  }
+
+  protected openDocument(): void { void this.useDocumentUrl('open'); }
+  protected downloadDocument(): void { void this.useDocumentUrl('download'); }
+  protected printDocument(): void { void this.useDocumentUrl('print'); }
 
   protected openCustomer(): void {
     const invoice = this.invoice();
@@ -145,6 +193,41 @@ export class SalesInvoiceDetailPage {
       this.notification.error(message);
       if (isSalesInvoiceVersionConflict(error)) await this.refreshAuthoritative();
     } finally { this.removingLineId.set(null); }
+  }
+
+  private async useDocumentUrl(action: 'open' | 'download' | 'print'): Promise<void> {
+    const invoice = this.invoice();
+    if (!invoice || invoice.status !== 'ISSUED' || this.documentAction()) return;
+
+    const popup = action === 'download' ? null : this.openDocumentWindow();
+    this.documentAction.set(action);
+    try {
+      const { url } = await this.api.createDocumentDownloadUrl(invoice.id);
+      if (action === 'download') {
+        const anchor = globalThis.document.createElement('a');
+        anchor.href = url;
+        anchor.download = `facture-${invoice.invoiceNumber}.pdf`;
+        anchor.rel = 'noopener noreferrer';
+        anchor.click();
+      } else if (popup) {
+        popup.location.href = url;
+      } else {
+        globalThis.window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      popup?.close();
+      this.notification.error(
+        safeMessageFromError(error) ?? this.transloco.translate('SALES.INVOICES.DOCUMENT.ERRORS.SECURE_LINK_FAILED')
+      );
+    } finally {
+      this.documentAction.set(null);
+    }
+  }
+
+  private openDocumentWindow(): Window | null {
+    const popup = globalThis.window.open('', '_blank');
+    if (popup) popup.opener = null;
+    return popup;
   }
 
   private async handleIssueResult(result: SalesInvoiceIssueDialogResult): Promise<void> {

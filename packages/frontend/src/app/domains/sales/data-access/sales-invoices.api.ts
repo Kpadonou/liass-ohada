@@ -8,6 +8,8 @@ import {
   RemoveSalesInvoiceLineRequestSchema,
   SalesInvoiceListResponseSchema,
   SalesInvoiceSchema,
+  SalesInvoiceDocumentResponseSchema,
+  SalesInvoiceDownloadUrlResponseSchema,
   UpdateSalesInvoiceLineRequestSchema,
   UpdateSalesInvoiceRequestSchema,
   type AddSalesInvoiceLineRequest,
@@ -15,6 +17,8 @@ import {
   type IssueSalesInvoiceRequest,
   type ListSalesInvoicesRequest,
   type SalesInvoice,
+  type SalesInvoiceDocument,
+  type SalesInvoiceDownloadUrl,
   type SalesInvoiceListResponse,
   type UpdateSalesInvoiceLineRequest,
   type UpdateSalesInvoiceRequest
@@ -90,6 +94,22 @@ export class SalesInvoicesApi {
     return this.mutationResult(response);
   }
 
+  async getDocument(invoiceId: string): Promise<SalesInvoiceDocument> {
+    const response = await firstValueFrom(this.http.get<unknown>(this.documentUrl(invoiceId)));
+    return SalesInvoiceDocumentResponseSchema.parse(response).data;
+  }
+
+  async generateDocument(invoiceId: string): Promise<ApiMutationResult<SalesInvoiceDocument>> {
+    const response = await firstValueFrom(this.http.post<unknown>(this.documentUrl(invoiceId), {}));
+    const parsed = SalesInvoiceDocumentResponseSchema.parse(response);
+    return { data: parsed.data, message: userMessageFromResponse(response) };
+  }
+
+  async createDocumentDownloadUrl(invoiceId: string): Promise<SalesInvoiceDownloadUrl> {
+    const response = await firstValueFrom(this.http.post<unknown>(`${this.documentUrl(invoiceId)}/download-url`, {}));
+    return SalesInvoiceDownloadUrlResponseSchema.parse(response).data;
+  }
+
   private mutationResult(response: unknown): ApiMutationResult<SalesInvoice> {
     const parsed = InvoiceEnvelopeSchema.parse(response);
     return { data: parsed.data, message: userMessageFromResponse(response) };
@@ -99,4 +119,5 @@ export class SalesInvoicesApi {
   private invoiceUrl(invoiceId: string): string { return `${this.invoicesUrl()}/${encodeURIComponent(invoiceId)}`; }
   private linesUrl(invoiceId: string): string { return `${this.invoiceUrl(invoiceId)}/lines`; }
   private lineUrl(invoiceId: string, lineId: string): string { return `${this.linesUrl(invoiceId)}/${encodeURIComponent(lineId)}`; }
+  private documentUrl(invoiceId: string): string { return `${this.invoiceUrl(invoiceId)}/documents/pdf`; }
 }

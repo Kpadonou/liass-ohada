@@ -19,6 +19,7 @@ describe('SalesInvoicesQueries', () => {
     expect(queries.rootKey()).toEqual(['sales', 'org-effective', 'invoices']);
     expect(queries.listRootKey()).toEqual(['sales', 'org-effective', 'invoices', 'list']);
     expect(queries.detailKey('INV-1')).toEqual(['sales', 'org-effective', 'invoices', 'INV-1']);
+    expect(queries.documentKey('INV-1')).toEqual(['sales', 'org-effective', 'invoices', 'INV-1', 'document', 'pdf']);
     expect(queries.list({ limit: 50, cursor: 'opaque+/=' }).queryKey).toEqual([
       'sales', 'org-effective', 'invoices', 'list', { cursor: 'opaque+/=', limit: 50 }
     ]);
@@ -27,6 +28,12 @@ describe('SalesInvoicesQueries', () => {
   it('cannot share a cursor cache entry across organizations', () => {
     expect(salesInvoiceQueryKeys.list('org-a', { cursor: 'same' })).not.toEqual(
       salesInvoiceQueryKeys.list('org-b', { cursor: 'same' })
+    );
+  });
+
+  it('keeps document metadata cache entries isolated by effective organization', () => {
+    expect(salesInvoiceQueryKeys.document('org-a', 'INV-1')).not.toEqual(
+      salesInvoiceQueryKeys.document('org-b', 'INV-1')
     );
   });
 });

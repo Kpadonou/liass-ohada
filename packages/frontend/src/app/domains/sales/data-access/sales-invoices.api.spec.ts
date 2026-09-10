@@ -97,6 +97,29 @@ describe('SalesInvoicesApi', () => {
     });
   });
 
+  it('uses the document endpoints without sending invoice or storage fields', async () => {
+    const metadata = documentMetadata();
+    const getDocument = api.getDocument('INV/1');
+    const getRequest = http.expectOne(`${baseUrl}/INV%2F1/documents/pdf`);
+    expect(getRequest.request.method).toBe('GET');
+    getRequest.flush({ data: metadata });
+    await expect(getDocument).resolves.toEqual(metadata);
+
+    const generate = api.generateDocument('INV/1');
+    const generateRequest = http.expectOne(`${baseUrl}/INV%2F1/documents/pdf`);
+    expect(generateRequest.request.method).toBe('POST');
+    expect(generateRequest.request.body).toEqual({});
+    generateRequest.flush({ data: metadata, message: 'Ready' });
+    await expect(generate).resolves.toMatchObject({ data: metadata, message: 'Ready' });
+
+    const secureUrl = api.createDocumentDownloadUrl('INV/1');
+    const urlRequest = http.expectOne(`${baseUrl}/INV%2F1/documents/pdf/download-url`);
+    expect(urlRequest.request.method).toBe('POST');
+    expect(urlRequest.request.body).toEqual({});
+    urlRequest.flush({ data: { url: 'https://documents.example.test/invoice.pdf?signature=short-lived', expiresAt: '2026-09-08T10:05:00.000Z' } });
+    await expect(secureUrl).resolves.toMatchObject({ expiresAt: '2026-09-08T10:05:00.000Z' });
+  });
+
   it('rejects client-supplied calculated fields through the shared strict schema', async () => {
     await expect(api.addLine('INV-1', {
       expectedVersion: 1, description: 'Line', quantity: '1', unitPrice: '1', total: '1'
@@ -126,5 +149,18 @@ function issuedInvoice(): SalesInvoice {
     invoiceNumber: '00000042',
     issueDate: '2026-09-08',
     issuedAt: '2026-09-08T10:00:00.000Z'
+  };
+}
+
+function documentMetadata() {
+  return {
+    status: 'AVAILABLE' as const,
+    invoiceId: 'INV/1',
+    documentType: 'INVOICE_PDF' as const,
+    renderingVersion: '1',
+    contentHash: 'a'.repeat(64),
+    contentType: 'application/pdf' as const,
+    sizeBytes: 2048,
+    generatedAt: '2026-09-08T10:00:00.000Z'
   };
 }
