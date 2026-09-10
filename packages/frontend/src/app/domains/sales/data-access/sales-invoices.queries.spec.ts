@@ -17,6 +17,7 @@ describe('SalesInvoicesQueries', () => {
   it('scopes invoice list/detail keys to effectiveOrgId and keeps cursor opaque', () => {
     const queries = TestBed.inject(SalesInvoicesQueries);
     expect(queries.rootKey()).toEqual(['sales', 'org-effective', 'invoices']);
+    expect(queries.listRootKey()).toEqual(['sales', 'org-effective', 'invoices', 'list']);
     expect(queries.detailKey('INV-1')).toEqual(['sales', 'org-effective', 'invoices', 'INV-1']);
     expect(queries.list({ limit: 50, cursor: 'opaque+/=' }).queryKey).toEqual([
       'sales', 'org-effective', 'invoices', 'list', { cursor: 'opaque+/=', limit: 50 }

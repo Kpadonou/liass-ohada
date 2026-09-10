@@ -9,6 +9,7 @@ const NO_TENANT_SCOPE = 'no-active-tenant';
 
 export const salesInvoiceQueryKeys = {
   root: (orgId: string) => ['sales', orgId, 'invoices'] as const,
+  lists: (orgId: string) => ['sales', orgId, 'invoices', 'list'] as const,
   list: (orgId: string, options: ListSalesInvoicesRequest) =>
     ['sales', orgId, 'invoices', 'list', { cursor: options.cursor ?? null, limit: options.limit ?? 50 }] as const,
   detail: (orgId: string, invoiceId: string) => ['sales', orgId, 'invoices', invoiceId] as const
@@ -21,6 +22,7 @@ export class SalesInvoicesQueries {
 
   tenantScope(): string { return this.authStore.effectiveOrgId() || NO_TENANT_SCOPE; }
   rootKey() { return salesInvoiceQueryKeys.root(this.tenantScope()); }
+  listRootKey() { return salesInvoiceQueryKeys.lists(this.tenantScope()); }
   detailKey(invoiceId: string) { return salesInvoiceQueryKeys.detail(this.tenantScope(), invoiceId); }
 
   list(options: ListSalesInvoicesRequest, enabled = true) {

@@ -1,7 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import type { SalesInvoice } from '@liass-ohada/shared/sales';
+import type { SalesDraftInvoice, SalesInvoice } from '@liass-ohada/shared/sales';
 
 import { environment } from '../../../../environments/environment';
 import { SalesInvoicesApi } from './sales-invoices.api';
@@ -77,6 +77,26 @@ describe('SalesInvoicesApi', () => {
     await promise;
   });
 
+  it('issues through the canonical endpoint with only the shared request fields', async () => {
+    const payload = {
+      expectedVersion: 7,
+      clientRequestId: '00000000-0000-4000-8000-000000000001',
+      issueDate: '2026-09-08'
+    };
+    const promise = api.issueInvoice('INV/1', payload);
+    const request = http.expectOne(`${baseUrl}/INV%2F1/issue`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(payload);
+    expect(request.request.body).not.toHaveProperty('invoiceNumber');
+    expect(request.request.body).not.toHaveProperty('issuedAt');
+    expect(request.request.body).not.toHaveProperty('issuedByUserId');
+    request.flush({ data: issuedInvoice(), message: 'Issued' });
+    await expect(promise).resolves.toMatchObject({
+      data: { status: 'ISSUED', invoiceNumber: '00000042' },
+      message: 'Issued'
+    });
+  });
+
   it('rejects client-supplied calculated fields through the shared strict schema', async () => {
     await expect(api.addLine('INV-1', {
       expectedVersion: 1, description: 'Line', quantity: '1', unitPrice: '1', total: '1'
@@ -84,10 +104,27 @@ describe('SalesInvoicesApi', () => {
   });
 });
 
-function invoice(overrides: Partial<SalesInvoice> = {}): SalesInvoice {
+function invoice(overrides: Partial<SalesDraftInvoice> = {}): SalesDraftInvoice {
   return {
     id: 'INV-1', status: 'DRAFT', currency: 'XOF', subtotal: '0', taxTotal: '0', total: '0',
     lineCount: 0, lines: [], version: 1, createdAt: '2026-08-31T10:00:00.000Z', updatedAt: '2026-08-31T10:00:00.000Z',
     ...overrides
+  };
+}
+
+function issuedInvoice(): SalesInvoice {
+  return {
+    ...invoice({
+      lines: [{
+        id: 'L-1', position: 1, description: 'Service', quantity: '1', unitPrice: '0', taxRate: '0',
+        subtotal: '0', taxAmount: '0', total: '0', createdAt: '2026-09-08T10:00:00.000Z', updatedAt: '2026-09-08T10:00:00.000Z'
+      }],
+      lineCount: 1,
+      version: 2
+    }),
+    status: 'ISSUED',
+    invoiceNumber: '00000042',
+    issueDate: '2026-09-08',
+    issuedAt: '2026-09-08T10:00:00.000Z'
   };
 }

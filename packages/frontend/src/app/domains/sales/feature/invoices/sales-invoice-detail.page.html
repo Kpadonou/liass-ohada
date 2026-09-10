@@ -1,20 +1,36 @@
 <div class="space-y-4">
   <liass-page-header
-    [eyebrow]="'SALES.INVOICES.DETAIL.EYEBROW' | transloco"
-    [title]="'SALES.INVOICES.DETAIL.TITLE' | transloco"
-    [subtitle]="'SALES.INVOICES.DETAIL.SUBTITLE' | transloco"
-    [actionIcon]="capabilities.canWrite() && invoice() && invoice()!.lineCount < 100 ? 'add' : null"
+    [eyebrow]="(invoice()?.status === 'ISSUED' ? 'SALES.INVOICES.DETAIL.ISSUED_EYEBROW' : 'SALES.INVOICES.DETAIL.EYEBROW') | transloco"
+    [title]="(invoice()?.status === 'ISSUED' ? 'SALES.INVOICES.DETAIL.ISSUED_TITLE' : 'SALES.INVOICES.DETAIL.TITLE') | transloco"
+    [subtitle]="(invoice()?.status === 'ISSUED' ? 'SALES.INVOICES.DETAIL.ISSUED_SUBTITLE' : 'SALES.INVOICES.DETAIL.SUBTITLE') | transloco"
+    [actionIcon]="capabilities.canWrite() && invoice()?.status === 'DRAFT' && invoice()!.lineCount < 100 ? 'add' : null"
     [actionLabel]="
-      capabilities.canWrite() && invoice() && invoice()!.lineCount < 100
+      capabilities.canWrite() && invoice()?.status === 'DRAFT' && invoice()!.lineCount < 100
         ? ('SALES.INVOICES.ACTIONS.ADD_LINE' | transloco)
         : null
     "
     (actionTriggered)="openAddLine()"
   />
-  <div>
+  <div class="flex flex-wrap items-center justify-between gap-3">
     <liass-button icon="arrow_back" variant="ghost" (pressed)="back()">{{
       'SALES.INVOICES.ACTIONS.BACK_TO_LIST' | transloco
     }}</liass-button>
+    @if (capabilities.canWrite() && invoice()?.status === 'DRAFT') {
+      <div class="flex flex-col items-end gap-1">
+        <liass-button
+          tone="brand"
+          variant="solid"
+          icon="publish"
+          [disabled]="invoice()!.lineCount === 0"
+          (pressed)="openIssue()"
+        >{{ 'SALES.INVOICES.ACTIONS.ISSUE' | transloco }}</liass-button>
+        @if (invoice()!.lineCount === 0) {
+          <p class="max-w-sm text-right text-xs text-app-text-secondary">
+            {{ 'SALES.INVOICES.ISSUE.NO_LINES_HINT' | transloco }}
+          </p>
+        }
+      </div>
+    }
   </div>
 
   @if (availability() === 'UNKNOWN' || invoiceQuery.isPending()) {
@@ -48,7 +64,7 @@
       </div></liass-card
     >
   } @else {
-    @let draft = invoice()!;
+    @let document = invoice()!;
     <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div class="space-y-4">
         <liass-card>
@@ -57,22 +73,41 @@
               <div class="flex flex-wrap items-center gap-2">
                 <liass-status-chip
                   tone="neutral"
-                  [label]="'SALES.INVOICES.STATUS.DRAFT' | transloco"
-                /><span class="text-xs text-app-text-secondary"
-                  >{{ 'SALES.INVOICES.TABLE.INTERNAL_REFERENCE' | transloco }}
-                  {{ reference(draft) }}</span
-                >
+                  [tone]="document.status === 'ISSUED' ? 'success' : 'neutral'"
+                  [label]="(document.status === 'ISSUED' ? 'SALES.INVOICES.STATUS.ISSUED' : 'SALES.INVOICES.STATUS.DRAFT') | transloco"
+                />
+                @if (document.status === 'ISSUED') {
+                  <span class="text-sm font-semibold text-app-text">
+                    {{ 'SALES.INVOICES.DETAIL.INVOICE_NUMBER' | transloco: { invoiceNumber: document.invoiceNumber } }}
+                  </span>
+                } @else {
+                  <span class="text-xs text-app-text-secondary">
+                    {{ 'SALES.INVOICES.TABLE.INTERNAL_REFERENCE' | transloco }} {{ reference(document) }}
+                  </span>
+                }
               </div>
               <p class="mt-3 text-sm text-app-text-secondary">
-                {{ 'SALES.INVOICES.DETAIL.DRAFT_NOTICE' | transloco }}
+                {{ (document.status === 'ISSUED' ? 'SALES.INVOICES.DETAIL.ISSUED_NOTICE' : 'SALES.INVOICES.DETAIL.DRAFT_NOTICE') | transloco }}
               </p>
+              @if (document.status === 'ISSUED') {
+                <dl class="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+                  <div>
+                    <dt class="text-app-text-secondary">{{ 'SALES.INVOICES.FIELDS.ISSUE_DATE' | transloco }}</dt>
+                    <dd class="font-medium text-app-text">{{ invoiceDate(document.issueDate) }}</dd>
+                  </div>
+                  <div>
+                    <dt class="text-app-text-secondary">{{ 'SALES.INVOICES.FIELDS.ISSUED_AT' | transloco }}</dt>
+                    <dd class="font-medium text-app-text">{{ invoiceTimestamp(document.issuedAt) }}</dd>
+                  </div>
+                </dl>
+              }
             </div>
             <div class="text-left sm:text-right">
               <p class="text-xs uppercase tracking-wide text-app-text-secondary">
                 {{ 'SALES.INVOICES.FIELDS.CURRENCY' | transloco }}
               </p>
-              <p class="mt-1 text-lg font-semibold text-app-text">{{ draft.currency }}</p>
-              @if (capabilities.canWrite() && draft.lineCount === 0) {
+              <p class="mt-1 text-lg font-semibold text-app-text">{{ document.currency }}</p>
+              @if (capabilities.canWrite() && document.status === 'DRAFT' && document.lineCount === 0) {
                 <liass-button
                   class="mt-2"
                   size="sm"
@@ -87,7 +122,7 @@
         </liass-card>
         <liass-card [title]="'SALES.INVOICES.FIELDS.CUSTOMER' | transloco">
           <div liassCardActions>
-            @if (capabilities.canWrite()) {
+            @if (capabilities.canWrite() && document.status === 'DRAFT') {
               <liass-button
                 size="sm"
                 tone="info"
@@ -95,7 +130,7 @@
                 icon="person_search"
                 (pressed)="openCustomer()"
                 >{{
-                  (draft.customerId
+                  (document.customerId
                     ? 'SALES.INVOICES.ACTIONS.CHANGE_CUSTOMER'
                     : 'SALES.INVOICES.ACTIONS.SELECT_CUSTOMER'
                   ) | transloco
@@ -103,25 +138,25 @@
               >
             }
           </div>
-          @if (draft.customerSnapshot) {
+          @if (document.customerSnapshot) {
             <div class="grid gap-2 text-sm">
               <p class="text-lg font-semibold text-app-text break-words">
-                {{ draft.customerSnapshot.name }}
+                {{ document.customerSnapshot.name }}
               </p>
-              @if (draft.customerSnapshot.email) {
-                <p class="break-all text-app-text-secondary">{{ draft.customerSnapshot.email }}</p>
+              @if (document.customerSnapshot.email) {
+                <p class="break-all text-app-text-secondary">{{ document.customerSnapshot.email }}</p>
               }
-              @if (draft.customerSnapshot.phone) {
-                <p class="text-app-text-secondary">{{ draft.customerSnapshot.phone }}</p>
+              @if (document.customerSnapshot.phone) {
+                <p class="text-app-text-secondary">{{ document.customerSnapshot.phone }}</p>
               }
-              @if (draft.customerSnapshot.taxIdentifier) {
+              @if (document.customerSnapshot.taxIdentifier) {
                 <p class="text-app-text-secondary">
                   {{ 'SALES.INVOICES.FIELDS.TAX_IDENTIFIER' | transloco }}:
-                  {{ draft.customerSnapshot.taxIdentifier }}
+                  {{ document.customerSnapshot.taxIdentifier }}
                 </p>
               }
-              @if (address(draft)) {
-                <p class="break-words text-app-text-secondary">{{ address(draft) }}</p>
+              @if (address(document)) {
+                <p class="break-words text-app-text-secondary">{{ address(document) }}</p>
               }
             </div>
           } @else {
@@ -134,7 +169,7 @@
           [title]="'SALES.INVOICES.FIELDS.LINES' | transloco"
           [description]="'SALES.INVOICES.LINES.DESCRIPTION' | transloco"
         >
-          @if (draft.lines.length === 0) {
+          @if (document.lines.length === 0) {
             <div
               class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-7 text-center"
             >
@@ -143,7 +178,7 @@
               <p class="mt-1 text-sm text-app-text-secondary">
                 {{ 'SALES.INVOICES.LINES.EMPTY_DESCRIPTION' | transloco }}
               </p>
-              @if (capabilities.canWrite()) {
+              @if (capabilities.canWrite() && document.status === 'DRAFT') {
                 <div class="mt-4">
                   <liass-button tone="brand" variant="solid" icon="add" (pressed)="openAddLine()">{{
                     'SALES.INVOICES.ACTIONS.ADD_LINE' | transloco
@@ -177,13 +212,13 @@
                     <th class="px-3 py-3 text-right">
                       {{ 'SALES.INVOICES.FIELDS.TOTAL' | transloco }}
                     </th>
-                    @if (capabilities.canWrite()) {
+                    @if (capabilities.canWrite() && document.status === 'DRAFT') {
                       <th class="px-3 py-3 text-right">{{ 'COMMON.TABLE.ACTIONS' | transloco }}</th>
                     }
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-app-border">
-                  @for (line of draft.lines; track line.id) {
+                  @for (line of document.lines; track line.id) {
                     <tr>
                       <td class="max-w-64 px-3 py-3">
                         <p class="break-words font-medium">{{ line.description }}</p>
@@ -198,16 +233,16 @@
                         {{ line.unit || ('COMMON.EMPTY_VALUE' | transloco) }}
                       </td>
                       <td class="px-3 py-3 text-right tabular-nums">
-                        {{ money(line.unitPrice, draft.currency) }}
+                        {{ money(line.unitPrice, document.currency) }}
                       </td>
                       <td class="px-3 py-3 text-right tabular-nums">{{ line.taxRate }}%</td>
                       <td class="px-3 py-3 text-right tabular-nums">
-                        {{ money(line.taxAmount, draft.currency) }}
+                        {{ money(line.taxAmount, document.currency) }}
                       </td>
                       <td class="px-3 py-3 text-right font-semibold tabular-nums">
-                        {{ money(line.total, draft.currency) }}
+                        {{ money(line.total, document.currency) }}
                       </td>
-                      @if (capabilities.canWrite()) {
+                      @if (capabilities.canWrite() && document.status === 'DRAFT') {
                         <td class="px-3 py-3">
                           <div class="flex justify-end gap-1">
                             <liass-button
@@ -235,7 +270,7 @@
               </table>
             </div>
             <div class="grid gap-3 lg:hidden">
-              @for (line of draft.lines; track line.id) {
+              @for (line of document.lines; track line.id) {
                 <article class="rounded-app-card border border-app-border p-4">
                   <div class="flex items-start justify-between gap-3">
                     <p class="min-w-0 break-words font-semibold">{{ line.description }}</p>
@@ -244,7 +279,7 @@
                     >
                   </div>
                   <p class="mt-2 text-sm text-app-text-secondary">
-                    {{ line.quantity }} × {{ money(line.unitPrice, draft.currency) }}
+                    {{ line.quantity }} × {{ money(line.unitPrice, document.currency) }}
                     @if (line.unit) {
                       <span> · {{ line.unit }}</span>
                     }
@@ -260,16 +295,16 @@
                       <dt class="text-app-text-secondary">
                         {{ 'SALES.INVOICES.FIELDS.TAX' | transloco }}
                       </dt>
-                      <dd>{{ money(line.taxAmount, draft.currency) }}</dd>
+                      <dd>{{ money(line.taxAmount, document.currency) }}</dd>
                     </div>
                     <div
                       class="flex justify-between gap-4 border-t border-app-border pt-2 font-semibold"
                     >
                       <dt>{{ 'SALES.INVOICES.FIELDS.TOTAL' | transloco }}</dt>
-                      <dd>{{ money(line.total, draft.currency) }}</dd>
+                      <dd>{{ money(line.total, document.currency) }}</dd>
                     </div>
                   </dl>
-                  @if (capabilities.canWrite()) {
+                  @if (capabilities.canWrite() && document.status === 'DRAFT') {
                     <div class="mt-3 flex justify-end gap-2">
                       <liass-button
                         size="sm"
@@ -302,17 +337,17 @@
               <dt class="text-app-text-secondary">
                 {{ 'SALES.INVOICES.FIELDS.SUBTOTAL' | transloco }}
               </dt>
-              <dd class="font-medium tabular-nums">{{ money(draft.subtotal, draft.currency) }}</dd>
+              <dd class="font-medium tabular-nums">{{ money(document.subtotal, document.currency) }}</dd>
             </div>
             <div class="flex justify-between gap-4 text-sm">
               <dt class="text-app-text-secondary">{{ 'SALES.INVOICES.FIELDS.TAX' | transloco }}</dt>
-              <dd class="font-medium tabular-nums">{{ money(draft.taxTotal, draft.currency) }}</dd>
+              <dd class="font-medium tabular-nums">{{ money(document.taxTotal, document.currency) }}</dd>
             </div>
             <div
               class="flex justify-between gap-4 border-t border-brand-200 pt-4 text-lg font-bold"
             >
               <dt>{{ 'SALES.INVOICES.FIELDS.TOTAL' | transloco }}</dt>
-              <dd class="tabular-nums">{{ money(draft.total, draft.currency) }}</dd>
+              <dd class="tabular-nums">{{ money(document.total, document.currency) }}</dd>
             </div>
           </dl>
           <p class="mt-4 text-xs leading-5 text-app-text-secondary">

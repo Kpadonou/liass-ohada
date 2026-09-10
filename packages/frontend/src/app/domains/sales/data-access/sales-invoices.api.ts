@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import {
   AddSalesInvoiceLineRequestSchema,
   CreateSalesInvoiceRequestSchema,
+  IssueSalesInvoiceRequestSchema,
   ListSalesInvoicesRequestSchema,
   RemoveSalesInvoiceLineRequestSchema,
   SalesInvoiceListResponseSchema,
@@ -11,6 +12,7 @@ import {
   UpdateSalesInvoiceRequestSchema,
   type AddSalesInvoiceLineRequest,
   type CreateSalesInvoiceRequest,
+  type IssueSalesInvoiceRequest,
   type ListSalesInvoicesRequest,
   type SalesInvoice,
   type SalesInvoiceListResponse,
@@ -77,6 +79,13 @@ export class SalesInvoicesApi {
     const params = new HttpParams().set('expectedVersion', request.expectedVersion);
     const response = await firstValueFrom(
       this.http.delete<unknown>(this.lineUrl(invoiceId, lineId), { params })
+    );
+    return this.mutationResult(response);
+  }
+
+  async issueInvoice(invoiceId: string, payload: IssueSalesInvoiceRequest): Promise<ApiMutationResult<SalesInvoice>> {
+    const response = await firstValueFrom(
+      this.http.post<unknown>(`${this.invoiceUrl(invoiceId)}/issue`, IssueSalesInvoiceRequestSchema.parse(payload))
     );
     return this.mutationResult(response);
   }

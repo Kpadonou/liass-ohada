@@ -2,7 +2,7 @@ import { Component, computed, inject, signal, type Type } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import type { SalesInvoice, SalesInvoiceLine } from '@liass-ohada/shared/sales';
+import type { SalesDraftInvoice, SalesInvoice, SalesInvoiceLine } from '@liass-ohada/shared/sales';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { take } from 'rxjs';
@@ -20,10 +20,15 @@ import { SalesCapabilities } from '../../data-access/sales-capabilities';
 import { SalesInvoicesApi } from '../../data-access/sales-invoices.api';
 import { SalesInvoicesQueries } from '../../data-access/sales-invoices.queries';
 import { formatExactMoney } from '../../utils/exact-money-display';
+import { formatInvoiceDate, formatInvoiceTimestamp } from '../../utils/sales-invoice-dates';
 import { isSalesInvoiceVersionConflict } from '../../utils/sales-invoice-errors';
 import { SalesInvoiceCurrencyDialogComponent } from './sales-invoice-currency-dialog.component';
 import { SalesInvoiceCustomerDialogComponent } from './sales-invoice-customer-dialog.component';
 import { SalesInvoiceLineDialogComponent } from './sales-invoice-line-dialog.component';
+import {
+  SalesInvoiceIssueDialogComponent,
+  type SalesInvoiceIssueDialogResult
+} from './sales-invoice-issue-dialog.component';
 
 @Component({
   selector: 'liass-sales-invoice-detail-page',
@@ -50,6 +55,8 @@ export class SalesInvoiceDetailPage {
   protected readonly invoice = computed(() => this.invoiceQuery.data());
 
   protected money(value: string, currency: string): string { return formatExactMoney(value, currency, this.transloco.getActiveLang()); }
+  protected invoiceDate(value: string): string { return formatInvoiceDate(value, this.transloco.getActiveLang()); }
+  protected invoiceTimestamp(value: string): string { return formatInvoiceTimestamp(value, this.transloco.getActiveLang()); }
   protected reference(invoice: SalesInvoice): string { return invoice.id.slice(-8).toUpperCase(); }
   protected address(invoice: SalesInvoice): string {
     const value = invoice.customerSnapshot?.billingAddress;
@@ -61,34 +68,60 @@ export class SalesInvoiceDetailPage {
 
   protected openCustomer(): void {
     const invoice = this.invoice();
-    if (!invoice || !this.capabilities.canWrite()) return;
+    if (!invoice || invoice.status !== 'DRAFT' || !this.capabilities.canWrite()) return;
     this.openMutationDialog(SalesInvoiceCustomerDialogComponent, invoice, '720px');
   }
 
   protected openCurrency(): void {
     const invoice = this.invoice();
-    if (!invoice || !this.capabilities.canWrite() || invoice.lineCount > 0) return;
+    if (!invoice || invoice.status !== 'DRAFT' || !this.capabilities.canWrite() || invoice.lineCount > 0) return;
     this.openMutationDialog(SalesInvoiceCurrencyDialogComponent, invoice, '460px');
   }
 
   protected openAddLine(): void {
     const invoice = this.invoice();
-    if (!invoice || !this.capabilities.canWrite() || invoice.lineCount >= 100) return;
+    if (!invoice || invoice.status !== 'DRAFT' || !this.capabilities.canWrite() || invoice.lineCount >= 100) return;
     this.openMutationDialog(SalesInvoiceLineDialogComponent, { invoice }, '820px');
   }
 
   protected openEditLine(line: SalesInvoiceLine): void {
     const invoice = this.invoice();
-    if (!invoice || !this.capabilities.canWrite()) return;
+    if (!invoice || invoice.status !== 'DRAFT' || !this.capabilities.canWrite()) return;
     this.openMutationDialog(SalesInvoiceLineDialogComponent, { invoice, line }, '760px');
   }
 
   protected confirmRemove(line: SalesInvoiceLine): void {
-    if (!this.capabilities.canWrite()) return;
+    if (this.invoice()?.status !== 'DRAFT' || !this.capabilities.canWrite()) return;
     this.dialog.open(LiassConfirmationDialogComponent, {
       data: { titleKey: 'SALES.INVOICES.REMOVE_LINE.TITLE', descriptionKey: 'SALES.INVOICES.REMOVE_LINE.DESCRIPTION', descriptionParams: { description: line.description }, confirmKey: 'SALES.INVOICES.ACTIONS.REMOVE_LINE', cancelKey: 'COMMON.ACTIONS.CANCEL', tone: 'danger' },
       disableClose: true, panelClass: 'liass-dialog-panel', width: '500px', maxWidth: 'calc(100vw - 24px)'
     }).afterClosed().pipe(take(1)).subscribe((confirmed) => { if (confirmed) void this.removeLine(line); });
+  }
+
+  protected openIssue(): void {
+    const invoice = this.invoice();
+    if (
+      !invoice ||
+      invoice.status !== 'DRAFT' ||
+      invoice.lineCount === 0 ||
+      !this.capabilities.canWrite()
+    ) return;
+
+    this.dialog.open<
+      SalesInvoiceIssueDialogComponent,
+      SalesDraftInvoice,
+      SalesInvoiceIssueDialogResult | null
+    >(SalesInvoiceIssueDialogComponent, {
+      data: invoice,
+      disableClose: true,
+      panelClass: 'liass-dialog-panel',
+      width: '680px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: 'calc(100dvh - 24px)',
+      autoFocus: 'first-tabbable'
+    }).afterClosed().pipe(take(1)).subscribe((result) => {
+      if (result) void this.handleIssueResult(result);
+    });
   }
 
   private openMutationDialog(component: Type<unknown>, data: unknown, width: string): void {
@@ -98,7 +131,7 @@ export class SalesInvoiceDetailPage {
 
   private async removeLine(line: SalesInvoiceLine): Promise<void> {
     const invoice = this.invoice();
-    if (!invoice) return;
+    if (!invoice || invoice.status !== 'DRAFT') return;
     this.removingLineId.set(line.id);
     try {
       const result = await this.api.removeLine(invoice.id, line.id, invoice.version);
@@ -114,9 +147,34 @@ export class SalesInvoiceDetailPage {
     } finally { this.removingLineId.set(null); }
   }
 
+  private async handleIssueResult(result: SalesInvoiceIssueDialogResult): Promise<void> {
+    if (result.kind === 'issued') {
+      await this.acceptInvoice(result.invoice);
+      this.notification.success(
+        result.message ??
+          this.transloco.translate('SALES.INVOICES.NOTIFICATIONS.ISSUED', {
+            invoiceNumber: result.invoice.invoiceNumber
+          })
+      );
+      return;
+    }
+
+    await this.refreshAuthoritative();
+    const key = {
+      'version-conflict': 'SALES.INVOICES.ISSUE.ERRORS.VERSION_CONFLICT',
+      'already-issued': 'SALES.INVOICES.ISSUE.ERRORS.ALREADY_ISSUED',
+      'idempotency-reused': 'SALES.INVOICES.ISSUE.ERRORS.IDEMPOTENCY_REUSED',
+      'no-lines': 'SALES.INVOICES.ISSUE.ERRORS.NO_LINES'
+    }[result.reason];
+    const message = this.transloco.translate(key);
+    if (result.reason === 'already-issued') this.notification.info(message);
+    else if (result.reason === 'version-conflict' || result.reason === 'no-lines') this.notification.warn(message);
+    else this.notification.error(message);
+  }
+
   private async acceptInvoice(invoice: SalesInvoice): Promise<void> {
     this.queryClient.setQueryData(this.queries.detailKey(invoice.id), invoice);
-    await this.queryClient.invalidateQueries({ queryKey: this.queries.rootKey() });
+    await this.queryClient.invalidateQueries({ queryKey: this.queries.listRootKey() });
   }
 
   private async refreshAuthoritative(): Promise<void> {

@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
-import type { SalesInvoice, SalesInvoiceListResponse, SalesInvoiceSummary } from '@liass-ohada/shared/sales';
+import type { SalesDraftInvoice, SalesInvoice, SalesInvoiceListResponse, SalesInvoiceSummary } from '@liass-ohada/shared/sales';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, queryOptions, QueryClient } from '@tanstack/angular-query-experimental';
 import { vi } from 'vitest';
@@ -72,6 +72,20 @@ describe('SalesInvoicesPage', () => {
     expect(text).not.toMatch(/FACT-\d/);
   });
 
+  it('renders mixed Draft and Issued rows without presenting a technical ID as an invoice number', async () => {
+    list.mockResolvedValue({ items: [summary(), issuedSummary()] });
+    const fixture = TestBed.createComponent(SalesInvoicesPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Draft');
+    expect(text).toContain('Issued');
+    expect(text).toContain('Invoice no. 00000042');
+    expect(text).toContain('Issued on 09/08/2026');
+    expect(text).not.toContain('Invoice no. INV-ISSUED');
+    expect(text).not.toMatch(/certif|fiscal|DGI|e-MECeF/i);
+  });
+
   it('keeps the next cursor opaque and uses a local previous-page stack', async () => {
     list.mockImplementation(async (options: { cursor?: string }) => options.cursor
       ? { items: [summary({ id: 'INV-2' })] }
@@ -108,10 +122,20 @@ describe('SalesInvoicesPage', () => {
   });
 });
 
-function summary(overrides: Partial<SalesInvoiceSummary> = {}): SalesInvoiceSummary {
+type DraftInvoiceSummary = Extract<SalesInvoiceSummary, { status: 'DRAFT' }>;
+
+function summary(overrides: Partial<DraftInvoiceSummary> = {}): DraftInvoiceSummary {
   return { id: 'INV-1', status: 'DRAFT', currency: 'XOF', customerId: 'C-1', customerName: 'ABC SARL', lineCount: 2, subtotal: '50000', taxTotal: '9000', total: '59000', version: 3, createdAt: '2026-08-31T10:00:00.000Z', updatedAt: '2026-08-31T10:00:00.000Z', ...overrides };
 }
-function invoice(): SalesInvoice { return { ...summary({ lineCount: 0, subtotal: '0', taxTotal: '0', total: '0' }), customerSnapshot: { name: 'ABC SARL' }, lines: [] }; }
+function issuedSummary(): SalesInvoiceSummary {
+  return {
+    id: 'INV-ISSUED', status: 'ISSUED', invoiceNumber: '00000042', issueDate: '2026-09-08',
+    currency: 'XOF', customerId: 'C-1', customerName: 'ABC SARL', lineCount: 2,
+    subtotal: '50000', taxTotal: '9000', total: '59000', version: 4,
+    createdAt: '2026-08-31T10:00:00.000Z', updatedAt: '2026-09-08T10:00:00.000Z'
+  };
+}
+function invoice(): SalesDraftInvoice { return { ...summary({ lineCount: 0, subtotal: '0', taxTotal: '0', total: '0' }), customerSnapshot: { name: 'ABC SARL' }, lines: [] }; }
 async function settle(fixture: { detectChanges(): void }): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
   fixture.detectChanges();
@@ -121,9 +145,9 @@ async function settle(fixture: { detectChanges(): void }): Promise<void> {
 const translations = {
   COMMON: { EMPTY_VALUE: '—', ACTIONS: { RETRY: 'Try again', OPEN: 'Open' }, PAGINATION: { PREVIOUS: 'Previous', NEXT: 'Next' }, TABLE: { ACTIONS: 'Actions' } },
   SALES: { INVOICES: {
-    PAGE: { EYEBROW: 'Sales', TITLE: 'Invoices', SUBTITLE: 'Draft invoices' }, LIST: { TITLE: 'Draft invoices', DESCRIPTION: 'Description' }, LOADING: 'Loading draft invoices…',
-    ACCESS: { CHECKING: 'Checking', UNAVAILABLE_TITLE: 'Unavailable', UNAVAILABLE_DESCRIPTION: 'Unavailable' }, STATUS: { DRAFT: 'Draft' }, ACTIONS: { CREATE: 'New invoice' },
-    TABLE: { DRAFT: 'Draft', INTERNAL_REFERENCE: 'Internal ref.' }, FIELDS: { CUSTOMER: 'Customer', NO_CUSTOMER: 'No customer', LINES: 'Lines', SUBTOTAL: 'Subtotal', TAX: 'Tax', TOTAL: 'Total' },
+    PAGE: { EYEBROW: 'Sales', TITLE: 'Invoices', SUBTITLE: 'Draft invoices' }, LIST: { TITLE: 'Invoices', DESCRIPTION: 'Description', INVOICE_NUMBER: 'Invoice no. {{invoiceNumber}}', ISSUED_ON: 'Issued on {{issueDate}}' }, LOADING: 'Loading draft invoices…',
+    ACCESS: { CHECKING: 'Checking', UNAVAILABLE_TITLE: 'Unavailable', UNAVAILABLE_DESCRIPTION: 'Unavailable' }, STATUS: { DRAFT: 'Draft', ISSUED: 'Issued' }, ACTIONS: { CREATE: 'New invoice' },
+    TABLE: { DRAFT: 'Draft', INVOICE: 'Invoice', INTERNAL_REFERENCE: 'Internal ref.' }, FIELDS: { CUSTOMER: 'Customer', NO_CUSTOMER: 'No customer', LINES: 'Lines', SUBTOTAL: 'Subtotal', TAX: 'Tax', TOTAL: 'Total' },
     EMPTY: { TITLE: 'No draft invoices yet', DESCRIPTION: 'Create a draft.' }, PAGINATION: { LABEL: 'Pagination', PAGE_SIZE: '{{count}} drafts' }, ERRORS: { LOAD_FAILED: 'Failed', CREATE_FAILED: 'Failed' }, NOTIFICATIONS: { CREATED: 'Created' }
   } }
 };

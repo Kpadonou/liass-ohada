@@ -14,6 +14,10 @@ export function isSalesInvoiceVersionConflict(error: unknown): boolean {
   return salesInvoiceErrorCode(error) === 'SALES_INVOICE_VERSION_CONFLICT';
 }
 
+export function isAmbiguousSalesInvoiceIssueFailure(error: unknown): boolean {
+  return error instanceof HttpErrorResponse && (error.status === 0 || error.status >= 500);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }

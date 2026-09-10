@@ -17,6 +17,7 @@ import { SalesCapabilities } from '../../data-access/sales-capabilities';
 import { SalesInvoicesApi } from '../../data-access/sales-invoices.api';
 import { SalesInvoicesQueries } from '../../data-access/sales-invoices.queries';
 import { formatExactMoney } from '../../utils/exact-money-display';
+import { formatInvoiceDate } from '../../utils/sales-invoice-dates';
 
 const PAGE_SIZE = 50;
 
@@ -51,6 +52,9 @@ export class SalesInvoicesPage {
   }
 
   protected reference(invoice: SalesInvoiceSummary): string { return invoice.id.slice(-8).toUpperCase(); }
+  protected invoiceDate(value: string): string {
+    return formatInvoiceDate(value, this.transloco.getActiveLang());
+  }
 
   protected async createDraft(): Promise<void> {
     if (!this.capabilities.canWrite() || this.creating()) return;

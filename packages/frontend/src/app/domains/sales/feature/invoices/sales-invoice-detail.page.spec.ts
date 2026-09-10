@@ -2,13 +2,14 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
-import type { SalesInvoice } from '@liass-ohada/shared/sales';
+import type { SalesDraftInvoice, SalesInvoice } from '@liass-ohada/shared/sales';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, queryOptions, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
 import { vi } from 'vitest';
 
 import { ProductAccessState } from '../../../../core/product-access/product-access.state';
+import { NotificationService } from '../../../../core/notifications/notification.service';
 import { SalesCapabilities } from '../../data-access/sales-capabilities';
 import { SalesInvoicesApi } from '../../data-access/sales-invoices.api';
 import { SalesInvoicesQueries } from '../../data-access/sales-invoices.queries';
@@ -16,17 +17,19 @@ import { SalesInvoiceDetailPage } from './sales-invoice-detail.page';
 
 describe('SalesInvoiceDetailPage', () => {
   let canWrite = true;
-  let get = vi.fn(async () => invoice());
+  let get = vi.fn(async (): Promise<SalesInvoice> => invoice());
+  const open = vi.fn(() => ({ afterClosed: () => of(null) }));
   const capabilities = { canRead: () => true, canWrite: vi.fn(() => canWrite) };
   const queries = {
     rootKey: () => ['sales', 'org-sales', 'invoices'],
+    listRootKey: () => ['sales', 'org-sales', 'invoices', 'list'],
     detailKey: (id: string) => ['sales', 'org-sales', 'invoices', id],
     detail: (id: string, enabled = true) => queryOptions({ queryKey: ['sales', 'org-sales', 'invoices', id], queryFn: () => get(), enabled })
   };
 
   beforeEach(async () => {
     canWrite = true;
-    get = vi.fn(async () => invoice());
+    get = vi.fn(async (): Promise<SalesInvoice> => invoice());
     capabilities.canWrite.mockImplementation(() => canWrite);
     await TestBed.configureTestingModule({
       imports: [SalesInvoiceDetailPage, TranslocoTestingModule.forRoot({ langs: { en: translations }, preloadLangs: true, translocoConfig: { availableLangs: ['en'], defaultLang: 'en' } })],
@@ -35,9 +38,9 @@ describe('SalesInvoiceDetailPage', () => {
         { provide: Router, useValue: { navigate: vi.fn() } },
         { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
         { provide: SalesCapabilities, useValue: capabilities },
-        { provide: SalesInvoicesApi, useValue: { removeLine: vi.fn() } },
+        { provide: SalesInvoicesApi, useValue: { removeLine: vi.fn(), issueInvoice: vi.fn() } },
         { provide: SalesInvoicesQueries, useValue: queries },
-        { provide: MatDialog, useValue: { open: vi.fn(() => ({ afterClosed: () => of(null) })) } },
+        { provide: MatDialog, useValue: { open } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
       ]
@@ -78,14 +81,138 @@ describe('SalesInvoiceDetailPage', () => {
     expect(text).not.toContain('Remove line');
     expect(text).not.toContain('Delete invoice');
   });
+
+  it('shows issuance for a writable draft with lines and opens a focused review dialog', async () => {
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    const componentDialog = (fixture.componentInstance as unknown as { dialog: MatDialog }).dialog;
+    const dialogOpen = vi.spyOn(componentDialog, 'open').mockReturnValue({
+      afterClosed: () => of(null)
+    } as never);
+    fixture.detectChanges();
+    await settle(fixture);
+    const issue = buttonWithText(fixture.nativeElement, 'Issue invoice');
+    expect(issue?.disabled).toBe(false);
+    issue?.click();
+    expect(dialogOpen).toHaveBeenCalledWith(expect.any(Function), expect.objectContaining({
+      data: expect.objectContaining({ id: 'INV-1', version: 2 }),
+      disableClose: true
+    }));
+  });
+
+  it('prevents a zero-line draft but allows customerless and zero-total issuance', async () => {
+    get.mockResolvedValue(invoice({
+      customerId: undefined,
+      customerSnapshot: undefined,
+      lines: [],
+      lineCount: 0,
+      subtotal: '0',
+      taxTotal: '0',
+      total: '0'
+    }));
+    const emptyFixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    emptyFixture.detectChanges();
+    await settle(emptyFixture);
+    expect(buttonWithText(emptyFixture.nativeElement, 'Issue invoice')?.disabled).toBe(true);
+    expect(emptyFixture.nativeElement.textContent).toContain('Add at least one line');
+
+    get.mockResolvedValue(invoice({
+      customerId: undefined,
+      customerSnapshot: undefined,
+      subtotal: '0',
+      taxTotal: '0',
+      total: '0'
+    }));
+    const eligibleFixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    eligibleFixture.detectChanges();
+    await settle(eligibleFixture);
+    expect(buttonWithText(eligibleFixture.nativeElement, 'Issue invoice')?.disabled).toBe(false);
+  });
+
+  it('renders issued facts and removes all mutation controls even for a writer', async () => {
+    get.mockResolvedValue(issuedInvoice());
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Issued');
+    expect(text).toContain('Invoice no. 00000042');
+    expect(text).toContain('09/08/2026');
+    expect(text).toContain('ABC SARL (snapshot)');
+    expect(text).toContain('35.39 EUR');
+    expect(text).not.toContain('Issue invoice');
+    expect(text).not.toContain('Change customer');
+    expect(text).not.toContain('Change currency');
+    expect(text).not.toContain('Add line');
+    expect(text).not.toContain('Edit line');
+    expect(text).not.toContain('Remove line');
+    expect(text).not.toMatch(/certif|fiscal|DGI|e-MECeF/i);
+  });
+
+  it('accepts the server-issued aggregate and refreshes the existing invoice list cache', async () => {
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    const component = fixture.componentInstance as unknown as {
+      dialog: MatDialog;
+      queryClient: QueryClient;
+      notification: NotificationService;
+    };
+    vi.spyOn(component.dialog, 'open').mockReturnValue({
+      afterClosed: () => of({ kind: 'issued', invoice: issuedInvoice(), message: 'Issued by server' })
+    } as never);
+    const invalidate = vi.spyOn(component.queryClient, 'invalidateQueries');
+    const success = vi.spyOn(component.notification, 'success');
+    fixture.detectChanges();
+    await settle(fixture);
+    buttonWithText(fixture.nativeElement, 'Issue invoice')?.click();
+    await settle(fixture);
+    expect(component.queryClient.getQueryData(queries.detailKey('INV-1'))).toMatchObject({
+      status: 'ISSUED',
+      invoiceNumber: '00000042'
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queries.listRootKey() });
+    expect(success).toHaveBeenCalledWith('Issued by server');
+  });
+
+  it('refetches authoritative detail/list and requires re-review after a version conflict', async () => {
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    const component = fixture.componentInstance as unknown as {
+      dialog: MatDialog;
+      queryClient: QueryClient;
+      notification: NotificationService;
+    };
+    vi.spyOn(component.dialog, 'open').mockReturnValue({
+      afterClosed: () => of({ kind: 'refresh', reason: 'version-conflict' })
+    } as never);
+    const invalidate = vi.spyOn(component.queryClient, 'invalidateQueries');
+    const warn = vi.spyOn(component.notification, 'warn');
+    fixture.detectChanges();
+    await settle(fixture);
+    buttonWithText(fixture.nativeElement, 'Issue invoice')?.click();
+    await settle(fixture);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queries.detailKey('INV-1') });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: queries.rootKey() });
+    expect(warn).toHaveBeenCalled();
+  });
 });
 
-function invoice(overrides: Partial<SalesInvoice> = {}): SalesInvoice {
+function invoice(overrides: Partial<SalesDraftInvoice> = {}): SalesDraftInvoice {
   return {
     id: 'INV-1', status: 'DRAFT', currency: 'EUR', customerId: 'C-1', customerSnapshot: { name: 'ABC SARL (snapshot)', taxIdentifier: 'IFU-1' },
     lines: [{ id: 'L-1', position: 1, catalogItemId: 'I-1', description: 'Advisory', unit: 'hour', quantity: '1.5', unitPrice: '19.99', taxRate: '18', subtotal: '29.99', taxAmount: '5.40', total: '35.39', createdAt: '2026-08-31T10:00:00.000Z', updatedAt: '2026-08-31T10:00:00.000Z' }],
     lineCount: 1, subtotal: '29.99', taxTotal: '5.40', total: '35.39', version: 2, createdAt: '2026-08-31T10:00:00.000Z', updatedAt: '2026-08-31T10:00:00.000Z', ...overrides
   };
+}
+function issuedInvoice(): SalesInvoice {
+  return {
+    ...invoice(),
+    status: 'ISSUED',
+    invoiceNumber: '00000042',
+    issueDate: '2026-09-08',
+    issuedAt: '2026-09-08T10:30:00.000Z',
+    version: 3
+  };
+}
+function buttonWithText(root: HTMLElement, label: string): HTMLButtonElement | undefined {
+  return [...root.querySelectorAll('button')].find((button) => button.textContent?.includes(label));
 }
 async function settle(fixture: { detectChanges(): void }): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -96,9 +223,9 @@ async function settle(fixture: { detectChanges(): void }): Promise<void> {
 const translations = {
   COMMON: { EMPTY_VALUE: '—', ACTIONS: { RETRY: 'Try again', CANCEL: 'Cancel' }, TABLE: { ACTIONS: 'Actions' } },
   SALES: { INVOICES: {
-    STATUS: { DRAFT: 'Draft' }, DETAIL: { EYEBROW: 'Sales · Draft', TITLE: 'Draft invoice', SUBTITLE: 'Prepare the draft', LOADING: 'Loading', DRAFT_NOTICE: 'Editable draft.', NO_CUSTOMER_DESCRIPTION: 'No customer.' },
-    ACCESS: { UNAVAILABLE_DESCRIPTION: 'Unavailable' }, ACTIONS: { ADD_LINE: 'Add line', BACK_TO_LIST: 'Back', CHANGE_CURRENCY: 'Change currency', CHANGE_CUSTOMER: 'Change customer', SELECT_CUSTOMER: 'Select customer', EDIT_LINE: 'Edit line', REMOVE_LINE: 'Remove line' },
-    TABLE: { INTERNAL_REFERENCE: 'Internal ref.' }, FIELDS: { CUSTOMER: 'Customer', CURRENCY: 'Currency', TAX_IDENTIFIER: 'Tax identifier', LINES: 'Lines', DESCRIPTION: 'Description', QUANTITY: 'Quantity', UNIT: 'Unit', UNIT_PRICE: 'Unit price', TAX_RATE: 'Tax rate', TAX: 'Tax', TOTAL: 'Total', SUBTOTAL: 'Subtotal' },
-    LINES: { DESCRIPTION: 'Authoritative amounts', EMPTY_TITLE: 'No lines', EMPTY_DESCRIPTION: 'Add line', CATALOG_SNAPSHOT: 'Catalog snapshot' }, TOTALS: { TITLE: 'Draft totals', AUTHORITATIVE: 'Calculated by Sales.' }, ERRORS: { DETAIL_FAILED: 'Failed' }, REMOVE_LINE: { TITLE: 'Remove?', DESCRIPTION: '{{description}}' }
+    STATUS: { DRAFT: 'Draft', ISSUED: 'Issued' }, DETAIL: { EYEBROW: 'Sales · Draft', TITLE: 'Draft invoice', SUBTITLE: 'Prepare the draft', LOADING: 'Loading', DRAFT_NOTICE: 'Editable draft.', NO_CUSTOMER_DESCRIPTION: 'No customer.', ISSUED_EYEBROW: 'Sales · Issued', ISSUED_TITLE: 'Issued invoice', ISSUED_SUBTITLE: 'Read only', ISSUED_NOTICE: 'This invoice has been issued and can no longer be edited.', INVOICE_NUMBER: 'Invoice no. {{invoiceNumber}}' },
+    ACCESS: { UNAVAILABLE_DESCRIPTION: 'Unavailable' }, ACTIONS: { ADD_LINE: 'Add line', ISSUE: 'Issue invoice', BACK_TO_LIST: 'Back', CHANGE_CURRENCY: 'Change currency', CHANGE_CUSTOMER: 'Change customer', SELECT_CUSTOMER: 'Select customer', EDIT_LINE: 'Edit line', REMOVE_LINE: 'Remove line' },
+    TABLE: { INTERNAL_REFERENCE: 'Internal ref.' }, FIELDS: { CUSTOMER: 'Customer', CURRENCY: 'Currency', TAX_IDENTIFIER: 'Tax identifier', LINES: 'Lines', DESCRIPTION: 'Description', QUANTITY: 'Quantity', UNIT: 'Unit', UNIT_PRICE: 'Unit price', TAX_RATE: 'Tax rate', TAX: 'Tax', TOTAL: 'Total', SUBTOTAL: 'Subtotal', ISSUE_DATE: 'Invoice date', ISSUED_AT: 'Issued at' },
+    LINES: { DESCRIPTION: 'Authoritative amounts', EMPTY_TITLE: 'No lines', EMPTY_DESCRIPTION: 'Add line', CATALOG_SNAPSHOT: 'Catalog snapshot' }, TOTALS: { TITLE: 'Invoice totals', AUTHORITATIVE: 'Authoritative.' }, ISSUE: { NO_LINES_HINT: 'Add at least one line' }, ERRORS: { DETAIL_FAILED: 'Failed' }, REMOVE_LINE: { TITLE: 'Remove?', DESCRIPTION: '{{description}}' }
   } }
 };
