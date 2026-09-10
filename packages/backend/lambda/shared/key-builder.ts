@@ -5,6 +5,7 @@ export const KeyFactory = {
   salesCustomerPrefix: () => "SALES_CUSTOMER#",
   salesItemPrefix: () => "SALES_ITEM#",
   salesInvoicePrefix: () => "SALES_INVOICE#",
+  salesPaymentPrefix: (invoiceId: string) => `SALES_PAYMENT#${invoiceId}#`,
 
   // --- PK (Partition Keys) ---
 
@@ -57,6 +58,18 @@ export const KeyFactory = {
   /** SALES-owned canonical PDF metadata for an Invoice. */
   salesInvoiceDocumentSK: (invoiceId: string) =>
     `SALES_INVOICE_DOCUMENT#${invoiceId}#PDF`,
+
+  /** SALES-owned operational settlement state for an issued Invoice. */
+  salesReceivableSK: (invoiceId: string) =>
+    `SALES_RECEIVABLE#${invoiceId}`,
+
+  /** SALES-owned immutable Payment fact, grouped by Invoice. */
+  salesPaymentSK: (invoiceId: string, paymentId: string) =>
+    `${KeyFactory.salesPaymentPrefix(invoiceId)}${paymentId}`,
+
+  /** SALES-owned durable idempotency record for recording a Payment. */
+  salesPaymentIdempotencySK: (clientRequestId: string) =>
+    `SALES_PAYMENT_IDEMPOTENCY#${clientRequestId}`,
 
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",

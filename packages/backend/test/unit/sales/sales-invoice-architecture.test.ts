@@ -13,12 +13,14 @@ const endpoints = readFileSync(
 );
 
 describe("SALES Invoice architecture boundaries", () => {
-  test("registers eleven routes including Issue and three document routes", () => {
+  test("registers fourteen routes including three settlement and three document routes", () => {
     const routeCalls = endpoints
       .split("\n")
       .filter((line) => line.includes('"/sales/invoices'));
-    expect(routeCalls).toHaveLength(11);
+    expect(routeCalls).toHaveLength(14);
     expect(routeCalls.filter((line) => line.includes("/issue"))).toHaveLength(1);
+    expect(routeCalls.filter((line) => line.includes("/payments"))).toHaveLength(2);
+    expect(routeCalls.filter((line) => line.includes("/receivable"))).toHaveLength(1);
     expect(routeCalls.filter((line) => line.includes("/documents/pdf"))).toHaveLength(3);
     expect(routeCalls.some((line) =>
       line.includes("HttpMethod.DELETE") &&
@@ -27,7 +29,7 @@ describe("SALES Invoice architecture boundaries", () => {
     )).toBe(false);
   });
 
-  test("has no Accounting, Treasury, events, queues, fiscal, or payment dependency", () => {
+  test("has no Accounting, Treasury, events, queues, or fiscal dependency", () => {
     for (const forbidden of [
       "domains/accounting",
       "domains/treasury",
@@ -36,8 +38,6 @@ describe("SALES Invoice architecture boundaries", () => {
       "SNS",
       "eMECeF",
       "discount",
-      "amountPaid",
-      "balanceDue",
       "ScanCommand",
     ]) {
       expect(source).not.toContain(forbidden);

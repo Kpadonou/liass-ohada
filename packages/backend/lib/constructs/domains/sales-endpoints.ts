@@ -87,6 +87,9 @@ export class SalesEndpoints extends DomainConstructFactory {
     map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}", "invoices", "get-sales-invoice");
     map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}", "invoices", "update-sales-invoice");
     map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/issue", "invoices", "issue-sales-invoice");
+    map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}/receivable", "invoices", "get-sales-invoice-receivable");
+    map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}/payments", "invoices", "list-sales-invoice-payments");
+    map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/payments", "invoices", "record-sales-invoice-payment");
     map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/lines", "invoices", "add-sales-invoice-line");
     map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "update-sales-invoice-line");
     map(apigw.HttpMethod.DELETE, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "remove-sales-invoice-line");

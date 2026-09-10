@@ -671,7 +671,15 @@ S2B-BE adds the sole transition `DRAFT -> ISSUED`. Issuance requires the reviewe
 
 The SALES-owned default sequence and issuance idempotency proof share `PK = ORG#{orgId}` with the Invoice aggregate. One conditional DynamoDB transaction advances or initializes the decimal-string sequence, replaces the Invoice as `ISSUED`, and creates the durable idempotency record. The commercial `invoiceNumber` is the zero-padded sequence (minimum eight digits), has no annual reset, and is not an e-MECeF, DGI, fiscal-certification, or other national fiscal number. No table, GSI, Scan, migration, backfill, Accounting/Treasury side effect, event, or queue is introduced.
 
-PDF/S3 generation, payments/receivables, credit notes, Accounting posting, fiscal certification, and e-MECeF remain unavailable. Liass-Facturation remains coming soon, and the S2B frontend issuance experience is deferred.
+S2B itself does not generate PDF/S3 documents, create settlement state, issue credit notes, post to Accounting, or perform fiscal certification/e-MECeF. Those concerns remain separate product increments.
+
+### S3A-BE — SALES Payments and Receivables Core
+
+S3A-BE adds a SALES-owned operational settlement aggregate without changing the commercial Invoice state machine. `SalesInvoice.status` remains `DRAFT | ISSUED`; an issued Invoice stays `ISSUED` when unpaid, partially paid, or paid. `SalesInvoiceReceivable.status` independently derives `UNPAID`, `PARTIALLY_PAID`, or `PAID`, while immutable `SalesPayment` records form its commercial settlement history. This operational Receivable is not the Accounting accounts-receivable ledger.
+
+Before the first Payment, reads synthesize a version-0 Receivable from the immutable issued Invoice and do not persist. A zero-total issued Invoice is already `PAID`. The first accepted Payment materializes version 1; every later Payment conditionally advances the Receivable once. Payment, Receivable, and durable organization-scoped idempotency are committed in one DynamoDB transaction, after an issued-Invoice condition check. Exact decimal amounts reuse the SALES BigInt/minor-unit primitives, and Payment currency is copied from the Invoice.
+
+Payment history uses an organization-and-Invoice prefix `Query` with an opaque scoped cursor. The existing table and `SalesApiStack` are reused; no Scan, GSI, table, migration, backfill, queue, event, Accounting/Treasury persistence access, frontend settlement UX, or deployment is introduced. Reversal/refund, Credit Notes, aging, Accounting posting, Treasury reconciliation, receipts, and fiscal certification/e-MECeF remain deferred.
 
 ### Product-roadmap candidate — Liass-Resto foundation
 

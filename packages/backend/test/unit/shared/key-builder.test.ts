@@ -60,6 +60,18 @@ describe("KeyFactory", () => {
     expect(KeyFactory.salesInvoiceDocumentSK("SINV-1")).toBe(
       "SALES_INVOICE_DOCUMENT#SINV-1#PDF",
     );
+    expect(KeyFactory.salesReceivableSK("SINV-1")).toBe(
+      "SALES_RECEIVABLE#SINV-1",
+    );
+    expect(KeyFactory.salesPaymentPrefix("SINV-1")).toBe(
+      "SALES_PAYMENT#SINV-1#",
+    );
+    expect(KeyFactory.salesPaymentSK("SINV-1", "SPAY-1")).toBe(
+      "SALES_PAYMENT#SINV-1#SPAY-1",
+    );
+    expect(KeyFactory.salesPaymentIdempotencySK("request-1")).toBe(
+      "SALES_PAYMENT_IDEMPOTENCY#request-1",
+    );
     expect(KeyFactory.salesItemPrefix()).toBe("SALES_ITEM#");
     expect(KeyFactory.salesItemSK("SI-1")).toBe("SALES_ITEM#SI-1");
   });
