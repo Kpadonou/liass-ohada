@@ -166,6 +166,128 @@
           }
         </liass-card>
         @if (document.status === 'ISSUED') {
+          <liass-card
+            [title]="'SALES.INVOICES.SETTLEMENT.TITLE' | transloco"
+            [description]="'SALES.INVOICES.SETTLEMENT.DESCRIPTION' | transloco"
+            variant="accent"
+          >
+            <div liassCardActions>
+              @if (canRecordPayment()) {
+                <liass-button tone="brand" variant="solid" icon="payments" (pressed)="openPayment()">
+                  {{ 'SALES.INVOICES.SETTLEMENT.ACTIONS.RECORD' | transloco }}
+                </liass-button>
+              }
+            </div>
+            @if (receivableQuery.isPending()) {
+              <div class="space-y-3" role="status" aria-busy="true">
+                <p class="text-sm text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.LOADING' | transloco }}</p>
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  @for (_ of [0, 1, 2, 3]; track $index) { <liass-skeleton variant="block" /> }
+                </div>
+              </div>
+            } @else if (receivableQuery.isError() || !receivable()) {
+              <div class="flex flex-col gap-3 rounded-app-card border border-red-200 bg-red-50 p-4 text-red-800 sm:flex-row sm:items-center sm:justify-between dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+                <span>{{ 'SALES.INVOICES.SETTLEMENT.ERRORS.LOAD_FAILED' | transloco }}</span>
+                <liass-button tone="danger" variant="outline" icon="refresh" (pressed)="retryReceivable()">
+                  {{ 'COMMON.ACTIONS.RETRY' | transloco }}
+                </liass-button>
+              </div>
+            } @else {
+              @let settlement = receivable()!;
+              <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <p class="text-sm font-medium text-app-text">{{ 'SALES.INVOICES.SETTLEMENT.PAYMENT_STATUS' | transloco }}</p>
+                <liass-status-chip [tone]="settlementTone(settlement.status)" [label]="settlementStatusKey(settlement.status) | transloco" />
+              </div>
+              <dl class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div class="rounded-app-card border border-app-border bg-app-surface p-3.5">
+                  <dt class="text-xs uppercase tracking-wide text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.INVOICE_AMOUNT' | transloco }}</dt>
+                  <dd class="mt-2 font-semibold tabular-nums text-app-text">{{ money(settlement.invoiceAmount, settlement.currency) }}</dd>
+                </div>
+                <div class="rounded-app-card border border-app-border bg-app-surface p-3.5">
+                  <dt class="text-xs uppercase tracking-wide text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.AMOUNT_PAID' | transloco }}</dt>
+                  <dd class="mt-2 font-semibold tabular-nums text-success-600 dark:text-emerald-300">{{ money(settlement.amountPaid, settlement.currency) }}</dd>
+                </div>
+                <div class="rounded-app-card border border-app-border bg-app-surface p-3.5">
+                  <dt class="text-xs uppercase tracking-wide text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.BALANCE_DUE' | transloco }}</dt>
+                  <dd class="mt-2 font-bold tabular-nums text-brand-700 dark:text-brand-300">{{ money(settlement.balanceDue, settlement.currency) }}</dd>
+                </div>
+                <div class="rounded-app-card border border-app-border bg-app-surface p-3.5">
+                  <dt class="text-xs uppercase tracking-wide text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.PAYMENT_COUNT' | transloco }}</dt>
+                  <dd class="mt-2 font-semibold tabular-nums text-app-text">{{ settlement.paymentCount }}</dd>
+                </div>
+              </dl>
+            }
+          </liass-card>
+
+          <liass-card
+            [title]="'SALES.INVOICES.SETTLEMENT.HISTORY.TITLE' | transloco"
+            [description]="'SALES.INVOICES.SETTLEMENT.HISTORY.DESCRIPTION' | transloco"
+          >
+            @if (paymentsQuery.isPending()) {
+              <div class="space-y-3" role="status" aria-busy="true">
+                <p class="text-sm text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.HISTORY.LOADING' | transloco }}</p>
+                @for (_ of [0, 1, 2]; track $index) { <liass-skeleton variant="block" /> }
+              </div>
+            } @else if (paymentsQuery.isError()) {
+              <div class="flex flex-col gap-3 rounded-app-card border border-red-200 bg-red-50 p-4 text-red-800 sm:flex-row sm:items-center sm:justify-between dark:border-red-950 dark:bg-red-950/35 dark:text-red-200" role="alert">
+                <span>{{ 'SALES.INVOICES.SETTLEMENT.HISTORY.ERROR' | transloco }}</span>
+                <liass-button tone="danger" variant="outline" icon="refresh" (pressed)="retryPayments()">
+                  {{ 'COMMON.ACTIONS.RETRY' | transloco }}
+                </liass-button>
+              </div>
+            } @else if (payments().length === 0) {
+              <div class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-7 text-center">
+                <mat-icon class="text-brand-600" aria-hidden="true">receipt_long</mat-icon>
+                <p class="mt-2 font-semibold text-app-text">{{ 'SALES.INVOICES.SETTLEMENT.HISTORY.EMPTY' | transloco }}</p>
+              </div>
+            } @else {
+              <div class="hidden overflow-x-auto rounded-app-card border border-app-border lg:block">
+                <table class="liass-data-table w-full min-w-[680px] border-collapse">
+                  <thead><tr>
+                    <th class="px-4 py-3 text-left">{{ 'SALES.INVOICES.SETTLEMENT.FORM.PAYMENT_DATE' | transloco }}</th>
+                    <th class="px-4 py-3 text-left">{{ 'SALES.INVOICES.SETTLEMENT.FORM.METHOD' | transloco }}</th>
+                    <th class="px-4 py-3 text-left">{{ 'SALES.INVOICES.SETTLEMENT.FORM.REFERENCE' | transloco }}</th>
+                    <th class="px-4 py-3 text-right">{{ 'SALES.INVOICES.SETTLEMENT.FORM.AMOUNT' | transloco }}</th>
+                  </tr></thead>
+                  <tbody class="divide-y divide-app-border">
+                    @for (payment of payments(); track payment.id) {
+                      <tr>
+                        <td class="px-4 py-3 text-sm">{{ invoiceDate(payment.paymentDate) }}</td>
+                        <td class="px-4 py-3 text-sm">{{ paymentMethodKey(payment.method) | transloco }}</td>
+                        <td class="max-w-64 break-words px-4 py-3 text-sm text-app-text-secondary">{{ payment.reference || ('COMMON.EMPTY_VALUE' | transloco) }}</td>
+                        <td class="px-4 py-3 text-right font-semibold tabular-nums">{{ money(payment.amount, payment.currency) }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <div class="grid gap-3 lg:hidden">
+                @for (payment of payments(); track payment.id) {
+                  <article class="rounded-app-card border border-app-border bg-app-surface p-4">
+                    <div class="flex items-start justify-between gap-4">
+                      <div>
+                        <p class="font-semibold text-app-text">{{ paymentMethodKey(payment.method) | transloco }}</p>
+                        <p class="mt-1 text-sm text-app-text-secondary">{{ invoiceDate(payment.paymentDate) }}</p>
+                      </div>
+                      <p class="shrink-0 font-bold tabular-nums text-app-text">{{ money(payment.amount, payment.currency) }}</p>
+                    </div>
+                    @if (payment.reference) {
+                      <p class="mt-3 break-words border-t border-app-border pt-3 text-sm text-app-text-secondary">
+                        <span class="font-medium text-app-text">{{ 'SALES.INVOICES.SETTLEMENT.FORM.REFERENCE' | transloco }}:</span>
+                        {{ payment.reference }}
+                      </p>
+                    }
+                  </article>
+                }
+              </div>
+              <nav class="mt-4 flex items-center justify-between gap-3 border-t border-app-border pt-4" [attr.aria-label]="'SALES.INVOICES.SETTLEMENT.HISTORY.PAGINATION' | transloco">
+                <liass-button icon="chevron_left" [disabled]="!hasPreviousPayments()" (pressed)="previousPaymentsPage()">{{ 'COMMON.PAGINATION.PREVIOUS' | transloco }}</liass-button>
+                <span class="text-xs text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.HISTORY.PAGE_SIZE' | transloco: { count: 25 } }}</span>
+                <liass-button icon="chevron_right" [disabled]="!hasNextPayments()" (pressed)="nextPaymentsPage()">{{ 'COMMON.PAGINATION.NEXT' | transloco }}</liass-button>
+              </nav>
+            }
+          </liass-card>
+
           <liass-card [title]="'SALES.INVOICES.DOCUMENT.TITLE' | transloco">
             @if (documentQuery.isPending()) {
               <div class="space-y-3" role="status" aria-busy="true">

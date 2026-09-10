@@ -1,0 +1,113 @@
+<header class="px-5 pt-5 sm:px-6 sm:pt-6">
+  <div class="flex items-start gap-3">
+    <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-app-control bg-brand-50 text-brand-700 dark:bg-brand-950/35 dark:text-brand-300" aria-hidden="true">
+      <mat-icon>payments</mat-icon>
+    </span>
+    <div class="min-w-0">
+      <h2 mat-dialog-title class="m-0 p-0 text-xl font-semibold text-app-text">
+        {{ 'SALES.INVOICES.SETTLEMENT.DIALOG.TITLE' | transloco }}
+      </h2>
+      <p class="mt-1 text-sm text-app-text-secondary">
+        {{ 'SALES.INVOICES.SETTLEMENT.DIALOG.SUBTITLE' | transloco }}
+      </p>
+    </div>
+  </div>
+</header>
+
+<mat-dialog-content class="px-5 pb-0 pt-4 sm:px-6">
+  <div class="max-h-[calc(100dvh-13rem)] space-y-4 overflow-y-auto pr-1">
+    <dl class="grid gap-3 rounded-app-card border border-app-border bg-app-surface-muted p-4 sm:grid-cols-3">
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.DIALOG.INVOICE' | transloco }}</dt>
+        <dd class="mt-1 font-semibold text-app-text">{{ data.invoiceNumber }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-app-text-secondary">{{ 'SALES.INVOICES.FIELDS.CURRENCY' | transloco }}</dt>
+        <dd class="mt-1 font-semibold text-app-text">{{ receivable().currency }}</dd>
+      </div>
+      <div>
+        <dt class="text-xs uppercase tracking-wide text-app-text-secondary">{{ 'SALES.INVOICES.SETTLEMENT.BALANCE_DUE' | transloco }}</dt>
+        <dd class="mt-1 font-bold tabular-nums text-brand-700 dark:text-brand-300">{{ money(receivable().balanceDue) }}</dd>
+      </div>
+    </dl>
+
+    @if (!settled()) {
+      <form id="sales-payment-form" class="grid gap-3" [formGroup]="form" (ngSubmit)="submit()">
+        <div class="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'SALES.INVOICES.SETTLEMENT.FORM.AMOUNT' | transloco }}</mat-label>
+            <input matInput formControlName="amount" inputmode="decimal" autocomplete="off" [attr.aria-describedby]="form.controls.amount.invalid && form.controls.amount.touched ? 'sales-payment-amount-error' : 'sales-payment-currency-context'" />
+            <span matTextSuffix id="sales-payment-currency-context">{{ receivable().currency }}</span>
+            @if (form.controls.amount.invalid && form.controls.amount.touched) {
+              <mat-error id="sales-payment-amount-error">{{ 'SALES.INVOICES.SETTLEMENT.VALIDATION.AMOUNT' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+          <liass-button class="sm:mt-2" size="sm" tone="brand" variant="ghost" [disabled]="form.disabled" (pressed)="payRemaining()">
+            {{ 'SALES.INVOICES.SETTLEMENT.ACTIONS.PAY_REMAINING' | transloco }}
+          </liass-button>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-2">
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'SALES.INVOICES.SETTLEMENT.FORM.PAYMENT_DATE' | transloco }}</mat-label>
+            <input matInput type="date" formControlName="paymentDate" />
+            @if (form.controls.paymentDate.invalid && form.controls.paymentDate.touched) {
+              <mat-error>{{ 'SALES.INVOICES.SETTLEMENT.VALIDATION.DATE' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="w-full">
+            <mat-label>{{ 'SALES.INVOICES.SETTLEMENT.FORM.METHOD' | transloco }}</mat-label>
+            <mat-select formControlName="method">
+              @for (method of methods; track method) {
+                <mat-option [value]="method">{{ methodKey(method) | transloco }}</mat-option>
+              }
+            </mat-select>
+            @if (form.controls.method.invalid && form.controls.method.touched) {
+              <mat-error>{{ 'SALES.INVOICES.SETTLEMENT.VALIDATION.METHOD' | transloco }}</mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="outline" class="w-full">
+          <mat-label>{{ 'SALES.INVOICES.SETTLEMENT.FORM.REFERENCE' | transloco }}</mat-label>
+          <input matInput formControlName="reference" maxlength="200" autocomplete="off" />
+          <mat-hint>{{ 'SALES.INVOICES.SETTLEMENT.FORM.REFERENCE_HINT' | transloco }}</mat-hint>
+          @if (form.controls.reference.hasError('maxlength')) {
+            <mat-error>{{ 'SALES.INVOICES.SETTLEMENT.VALIDATION.REFERENCE' | transloco }}</mat-error>
+          }
+        </mat-form-field>
+      </form>
+    }
+
+    @if (settled()) {
+      <div class="rounded-app-card border border-emerald-200 bg-success-50 p-4 text-sm text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100" role="status">
+        {{ 'SALES.INVOICES.SETTLEMENT.ERRORS.ALREADY_SETTLED' | transloco }}
+      </div>
+    } @else if (errorMessage()) {
+      <div class="rounded-app-card border p-4 text-sm leading-6" [class]="errorTone() === 'warning' ? 'border-amber-200 bg-warning-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100' : 'border-red-200 bg-danger-50 text-red-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200'" role="alert">
+        <p>{{ errorMessage() }}</p>
+        @if (ambiguous()) {
+          <p class="mt-2 font-medium">{{ 'SALES.INVOICES.SETTLEMENT.ERRORS.RETRY_SAME_ATTEMPT' | transloco }}</p>
+        }
+      </div>
+    }
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" class="flex-wrap gap-2 px-5 pb-5 pt-5 sm:px-6 sm:pb-6">
+  @if (ambiguous()) {
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="reviewDetails()">
+      {{ 'SALES.INVOICES.SETTLEMENT.ACTIONS.REVIEW' | transloco }}
+    </liass-button>
+  } @else {
+    <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">
+      {{ (settled() ? 'COMMON.ACTIONS.CLOSE' : 'COMMON.ACTIONS.CANCEL') | transloco }}
+    </liass-button>
+  }
+  @if (!settled()) {
+    <liass-button buttonType="submit" tone="brand" variant="solid" icon="payments" [loading]="submitting()" [disabled]="form.invalid" (pressed)="submit()">
+      {{ (ambiguous() ? 'COMMON.ACTIONS.RETRY' : 'SALES.INVOICES.SETTLEMENT.ACTIONS.RECORD') | transloco }}
+    </liass-button>
+  }
+</mat-dialog-actions>

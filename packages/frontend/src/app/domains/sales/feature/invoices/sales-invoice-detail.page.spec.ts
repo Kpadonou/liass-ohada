@@ -3,7 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
-import type { SalesDraftInvoice, SalesInvoice, SalesInvoiceDocument } from '@liass-ohada/shared/sales';
+import type {
+  SalesDraftInvoice,
+  SalesInvoice,
+  SalesInvoiceDocument,
+  SalesInvoiceReceivable,
+  SalesPaymentListResponse
+} from '@liass-ohada/shared/sales';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { provideTanStackQuery, queryOptions, QueryClient } from '@tanstack/angular-query-experimental';
 import { of } from 'rxjs';
@@ -14,12 +20,15 @@ import { NotificationService } from '../../../../core/notifications/notification
 import { SalesCapabilities } from '../../data-access/sales-capabilities';
 import { SalesInvoicesApi } from '../../data-access/sales-invoices.api';
 import { SalesInvoicesQueries } from '../../data-access/sales-invoices.queries';
+import { SalesPaymentsQueries } from '../../data-access/sales-payments.queries';
 import { SalesInvoiceDetailPage } from './sales-invoice-detail.page';
 
 describe('SalesInvoiceDetailPage', () => {
   let canWrite = true;
   let get = vi.fn(async (): Promise<SalesInvoice> => invoice());
   let getDocument = vi.fn<() => Promise<SalesInvoiceDocument>>(async () => { throw new HttpErrorResponse({ status: 404 }); });
+  let getReceivable = vi.fn(async (): Promise<SalesInvoiceReceivable> => receivable());
+  let listPayments = vi.fn(async (): Promise<SalesPaymentListResponse> => ({ items: [] }));
   const open = vi.fn(() => ({ afterClosed: () => of(null) }));
   const capabilities = { canRead: () => true, canWrite: vi.fn(() => canWrite) };
   const queries = {
@@ -35,11 +44,25 @@ describe('SalesInvoiceDetailPage', () => {
       retry: false
     })
   };
+  const paymentQueries = {
+    receivableKey: (id: string) => ['sales', 'org-sales', 'invoices', id, 'receivable'],
+    paymentsRootKey: (id: string) => ['sales', 'org-sales', 'invoices', id, 'payments'],
+    receivable: (id: string, enabled = true) => queryOptions({
+      queryKey: ['sales', 'org-sales', 'invoices', id, 'receivable'],
+      queryFn: () => getReceivable(), enabled, retry: false
+    }),
+    payments: (id: string, options: { cursor?: string; limit?: number }, enabled = true) => queryOptions({
+      queryKey: ['sales', 'org-sales', 'invoices', id, 'payments', options],
+      queryFn: () => listPayments(), enabled, retry: false
+    })
+  };
 
   beforeEach(async () => {
     canWrite = true;
     get = vi.fn(async (): Promise<SalesInvoice> => invoice());
     getDocument = vi.fn<() => Promise<SalesInvoiceDocument>>(async () => { throw new HttpErrorResponse({ status: 404 }); });
+    getReceivable = vi.fn(async (): Promise<SalesInvoiceReceivable> => receivable());
+    listPayments = vi.fn(async (): Promise<SalesPaymentListResponse> => ({ items: [] }));
     capabilities.canWrite.mockImplementation(() => canWrite);
     await TestBed.configureTestingModule({
       imports: [SalesInvoiceDetailPage, TranslocoTestingModule.forRoot({ langs: { en: translations }, preloadLangs: true, translocoConfig: { availableLangs: ['en'], defaultLang: 'en' } })],
@@ -50,6 +73,7 @@ describe('SalesInvoiceDetailPage', () => {
         { provide: SalesCapabilities, useValue: capabilities },
         { provide: SalesInvoicesApi, useValue: { removeLine: vi.fn(), issueInvoice: vi.fn(), generateDocument: vi.fn(), createDocumentDownloadUrl: vi.fn() } },
         { provide: SalesInvoicesQueries, useValue: queries },
+        { provide: SalesPaymentsQueries, useValue: paymentQueries },
         { provide: MatDialog, useValue: { open } },
         { provide: MatSnackBar, useValue: { open: vi.fn() } },
         provideTanStackQuery(new QueryClient({ defaultOptions: { queries: { retry: false } } }))
@@ -77,6 +101,16 @@ describe('SalesInvoiceDetailPage', () => {
     fixture.detectChanges();
     await settle(fixture);
     expect(fixture.nativeElement.textContent).toContain('Change currency');
+  });
+
+  it('keeps settlement entirely absent and unfetched for a draft', async () => {
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(getReceivable).not.toHaveBeenCalled();
+    expect(listPayments).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('Settlement');
+    expect(fixture.nativeElement.textContent).not.toContain('Payment history');
   });
 
   it('omits all mutation controls for read-only users while preserving draft detail', async () => {
@@ -156,6 +190,97 @@ describe('SalesInvoiceDetailPage', () => {
     expect(text).not.toContain('Edit line');
     expect(text).not.toContain('Remove line');
     expect(text).not.toMatch(/certif|fiscal|DGI|e-MECeF/i);
+  });
+
+  it('renders an issued invoice and its version-zero settlement as separate state machines', async () => {
+    get.mockResolvedValue(issuedInvoice());
+    getReceivable.mockResolvedValue(receivable());
+    listPayments.mockResolvedValue({ items: [{
+      id: 'PAY-1', invoiceId: 'INV-1', amount: '10.50', currency: 'EUR',
+      paymentDate: '2026-09-09', method: 'BANK_TRANSFER', reference: 'BANK-42',
+      createdAt: '2026-09-09T10:00:00.000Z'
+    }] });
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    const text = fixture.nativeElement.textContent;
+    expect(getReceivable).toHaveBeenCalled();
+    expect(listPayments).toHaveBeenCalled();
+    expect(text).toContain('Issued');
+    expect(text).toContain('Settlement');
+    expect(text).toContain('Unpaid');
+    expect(text).toContain('35.39 EUR');
+    expect(text).toContain('0 EUR');
+    expect(text).toContain('Bank transfer');
+    expect(text).toContain('BANK-42');
+    expect(text).toContain('10.50 EUR');
+    expect(buttonWithText(fixture.nativeElement, 'Record payment')).toBeTruthy();
+  });
+
+  it('lets a reader inspect settlement history without showing a disabled payment action', async () => {
+    canWrite = false;
+    get.mockResolvedValue(issuedInvoice());
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Settlement');
+    expect(fixture.nativeElement.textContent).toContain('No payments recorded');
+    expect(buttonWithText(fixture.nativeElement, 'Record payment')).toBeUndefined();
+  });
+
+  it('renders a zero-total paid settlement without a payment action', async () => {
+    get.mockResolvedValue(issuedInvoice({ total: '0', subtotal: '0', taxTotal: '0' }));
+    getReceivable.mockResolvedValue(receivable({
+      invoiceAmount: '0', amountPaid: '0', balanceDue: '0', status: 'PAID'
+    }));
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Paid');
+    expect(buttonWithText(fixture.nativeElement, 'Record payment')).toBeUndefined();
+  });
+
+  it('keeps settlement query failures local to the issued invoice detail', async () => {
+    get.mockResolvedValue(issuedInvoice());
+    getReceivable.mockRejectedValue(new Error('offline'));
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    fixture.detectChanges();
+    await settle(fixture);
+    expect(fixture.nativeElement.textContent).toContain('Invoice no. 00000042');
+    expect(fixture.nativeElement.textContent).toContain('The payment status could not be loaded');
+    expect(fixture.nativeElement.textContent).toContain('No payments recorded');
+  });
+
+  it('accepts the authoritative Payment response without mutating Invoice or PDF state', async () => {
+    get.mockResolvedValue(issuedInvoice());
+    const fixture = TestBed.createComponent(SalesInvoiceDetailPage);
+    const component = fixture.componentInstance as unknown as {
+      dialog: MatDialog;
+      queryClient: QueryClient;
+      notification: NotificationService;
+      paymentQueries: typeof paymentQueries;
+    };
+    const authoritative = receivable({
+      amountPaid: '10.50', balanceDue: '24.89', status: 'PARTIALLY_PAID', paymentCount: 1, version: 1
+    });
+    vi.spyOn(component.dialog, 'open').mockReturnValue({ afterClosed: () => of({
+      data: {
+        payment: { id: 'PAY-1', invoiceId: 'INV-1', amount: '10.50', currency: 'EUR', paymentDate: '2026-09-10', method: 'CASH', createdAt: '2026-09-10T10:00:00.000Z' },
+        receivable: authoritative
+      },
+      message: 'Recorded by server'
+    }) } as never);
+    const invalidate = vi.spyOn(component.queryClient, 'invalidateQueries');
+    const success = vi.spyOn(component.notification, 'success');
+    fixture.detectChanges();
+    await settle(fixture);
+    buttonWithText(fixture.nativeElement, 'Record payment')?.click();
+    await settle(fixture);
+    expect(component.queryClient.getQueryData(paymentQueries.receivableKey('INV-1'))).toEqual(authoritative);
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: paymentQueries.paymentsRootKey('INV-1') });
+    expect(success).toHaveBeenCalledWith('Recorded by server');
+    expect(component.queryClient.getQueryData(queries.detailKey('INV-1'))).toMatchObject({ status: 'ISSUED', version: 3 });
+    expect((TestBed.inject(SalesInvoicesApi) as unknown as { generateDocument: ReturnType<typeof vi.fn> }).generateDocument).not.toHaveBeenCalled();
   });
 
   it('shows a writer the generate action only for an issued invoice whose document is absent', async () => {
@@ -241,26 +366,32 @@ function invoice(overrides: Partial<SalesDraftInvoice> = {}): SalesDraftInvoice 
     lineCount: 1, subtotal: '29.99', taxTotal: '5.40', total: '35.39', version: 2, createdAt: '2026-08-31T10:00:00.000Z', updatedAt: '2026-08-31T10:00:00.000Z', ...overrides
   };
 }
-function issuedInvoice(): SalesInvoice {
+function issuedInvoice(overrides: Partial<SalesInvoice> = {}): SalesInvoice {
   return {
     ...invoice(),
     status: 'ISSUED',
     invoiceNumber: '00000042',
     issueDate: '2026-09-08',
     issuedAt: '2026-09-08T10:30:00.000Z',
-    version: 3
+    version: 3,
+    ...overrides
+  };
+}
+function receivable(overrides: Partial<SalesInvoiceReceivable> = {}): SalesInvoiceReceivable {
+  return {
+    invoiceId: 'INV-1', currency: 'EUR', invoiceAmount: '35.39', amountPaid: '0',
+    balanceDue: '35.39', status: 'UNPAID', paymentCount: 0, version: 0,
+    updatedAt: '2026-09-08T10:30:00.000Z', ...overrides
   };
 }
 function buttonWithText(root: HTMLElement, label: string): HTMLButtonElement | undefined {
   return [...root.querySelectorAll('button')].find((button) => button.textContent?.includes(label));
 }
 async function settle(fixture: { detectChanges(): void }): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  fixture.detectChanges();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  fixture.detectChanges();
-  await new Promise((resolve) => setTimeout(resolve, 0));
-  fixture.detectChanges();
+  for (let index = 0; index < 7; index += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    fixture.detectChanges();
+  }
 }
 const translations = {
   COMMON: { EMPTY_VALUE: '—', ACTIONS: { RETRY: 'Try again', CANCEL: 'Cancel' }, TABLE: { ACTIONS: 'Actions' } },
@@ -269,6 +400,10 @@ const translations = {
     ACCESS: { UNAVAILABLE_DESCRIPTION: 'Unavailable' }, ACTIONS: { ADD_LINE: 'Add line', ISSUE: 'Issue invoice', BACK_TO_LIST: 'Back', CHANGE_CURRENCY: 'Change currency', CHANGE_CUSTOMER: 'Change customer', SELECT_CUSTOMER: 'Select customer', EDIT_LINE: 'Edit line', REMOVE_LINE: 'Remove line' },
     TABLE: { INTERNAL_REFERENCE: 'Internal ref.' }, FIELDS: { CUSTOMER: 'Customer', CURRENCY: 'Currency', TAX_IDENTIFIER: 'Tax identifier', LINES: 'Lines', DESCRIPTION: 'Description', QUANTITY: 'Quantity', UNIT: 'Unit', UNIT_PRICE: 'Unit price', TAX_RATE: 'Tax rate', TAX: 'Tax', TOTAL: 'Total', SUBTOTAL: 'Subtotal', ISSUE_DATE: 'Invoice date', ISSUED_AT: 'Issued at' },
     LINES: { DESCRIPTION: 'Authoritative amounts', EMPTY_TITLE: 'No lines', EMPTY_DESCRIPTION: 'Add line', CATALOG_SNAPSHOT: 'Catalog snapshot' }, TOTALS: { TITLE: 'Invoice totals', AUTHORITATIVE: 'Authoritative.' }, ISSUE: { NO_LINES_HINT: 'Add at least one line' }, ERRORS: { DETAIL_FAILED: 'Failed' }, REMOVE_LINE: { TITLE: 'Remove?', DESCRIPTION: '{{description}}' },
-    DOCUMENT: { TITLE: 'PDF document', LOADING: 'Checking', NOT_GENERATED_TITLE: 'PDF document not generated', NOT_GENERATED_DESCRIPTION: 'Not generated', GENERATING: 'Generating PDF', AVAILABLE: 'PDF available', AVAILABLE_DESCRIPTION: 'PDF representation', GENERATED_AT: 'Generated at {{generatedAt}}', ACTIONS: { GENERATE: 'Generate PDF', OPEN: 'Open PDF', DOWNLOAD: 'Download', PRINT: 'Print' }, NOTIFICATIONS: { READY: 'Ready' }, ERRORS: { UNAVAILABLE: 'Unavailable', GENERATION_FAILED: 'Generation failed', SECURE_LINK_FAILED: 'Link failed' } }
+    DOCUMENT: { TITLE: 'PDF document', LOADING: 'Checking', NOT_GENERATED_TITLE: 'PDF document not generated', NOT_GENERATED_DESCRIPTION: 'Not generated', GENERATING: 'Generating PDF', AVAILABLE: 'PDF available', AVAILABLE_DESCRIPTION: 'PDF representation', GENERATED_AT: 'Generated at {{generatedAt}}', ACTIONS: { GENERATE: 'Generate PDF', OPEN: 'Open PDF', DOWNLOAD: 'Download', PRINT: 'Print' }, NOTIFICATIONS: { READY: 'Ready' }, ERRORS: { UNAVAILABLE: 'Unavailable', GENERATION_FAILED: 'Generation failed', SECURE_LINK_FAILED: 'Link failed' } },
+    SETTLEMENT: {
+      TITLE: 'Settlement', DESCRIPTION: 'Separate settlement', LOADING: 'Loading settlement', PAYMENT_STATUS: 'Payment status', INVOICE_AMOUNT: 'Invoice amount', AMOUNT_PAID: 'Amount paid', BALANCE_DUE: 'Balance due', PAYMENT_COUNT: 'Payment count',
+      STATUS: { UNPAID: 'Unpaid', PARTIALLY_PAID: 'Partially paid', PAID: 'Paid' }, METHODS: { CASH: 'Cash', BANK_TRANSFER: 'Bank transfer', CARD: 'Card', MOBILE_MONEY: 'Mobile Money', CHEQUE: 'Cheque', OTHER: 'Other' }, ACTIONS: { RECORD: 'Record payment' }, FORM: { PAYMENT_DATE: 'Payment date', METHOD: 'Payment method', REFERENCE: 'Reference', AMOUNT: 'Amount' }, HISTORY: { TITLE: 'Payment history', DESCRIPTION: 'Immutable', LOADING: 'Loading payments', EMPTY: 'No payments recorded', ERROR: 'History failed', PAGINATION: 'Payment history pagination', PAGE_SIZE: '{{count}} payments' }, NOTIFICATIONS: { RECORDED: 'Payment recorded' }, ERRORS: { LOAD_FAILED: 'The payment status could not be loaded' }
+    }
   } }
 };

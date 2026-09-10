@@ -3,7 +3,14 @@ import { Component, computed, inject, signal, type Type } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import type { SalesDraftInvoice, SalesInvoice, SalesInvoiceLine } from '@liass-ohada/shared/sales';
+import type {
+  SalesDraftInvoice,
+  SalesInvoice,
+  SalesInvoiceLine,
+  SalesIssuedInvoice,
+  SalesPaymentMethod,
+  SalesReceivableStatus
+} from '@liass-ohada/shared/sales';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { take } from 'rxjs';
@@ -20,9 +27,11 @@ import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/stat
 import { SalesCapabilities } from '../../data-access/sales-capabilities';
 import { SalesInvoicesApi } from '../../data-access/sales-invoices.api';
 import { SalesInvoicesQueries } from '../../data-access/sales-invoices.queries';
+import { SalesPaymentsQueries } from '../../data-access/sales-payments.queries';
 import { formatExactMoney } from '../../utils/exact-money-display';
 import { formatInvoiceDate, formatInvoiceTimestamp } from '../../utils/sales-invoice-dates';
 import { isSalesInvoiceVersionConflict, salesInvoiceErrorCode } from '../../utils/sales-invoice-errors';
+import { hasPositiveExactAmount } from '../../utils/sales-payment-attempt';
 import { SalesInvoiceCurrencyDialogComponent } from './sales-invoice-currency-dialog.component';
 import { SalesInvoiceCustomerDialogComponent } from './sales-invoice-customer-dialog.component';
 import { SalesInvoiceLineDialogComponent } from './sales-invoice-line-dialog.component';
@@ -30,6 +39,13 @@ import {
   SalesInvoiceIssueDialogComponent,
   type SalesInvoiceIssueDialogResult
 } from './sales-invoice-issue-dialog.component';
+import {
+  SalesPaymentDialogComponent,
+  type SalesPaymentDialogData,
+  type SalesPaymentDialogResult
+} from './sales-payment-dialog.component';
+
+const PAYMENT_PAGE_SIZE = 25;
 
 @Component({
   selector: 'liass-sales-invoice-detail-page',
@@ -44,6 +60,7 @@ export class SalesInvoiceDetailPage {
   private readonly notification = inject(NotificationService);
   private readonly productAccess = inject(ProductAccessState);
   private readonly queries = inject(SalesInvoicesQueries);
+  private readonly paymentQueries = inject(SalesPaymentsQueries);
   private readonly queryClient = inject(QueryClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -52,10 +69,34 @@ export class SalesInvoiceDetailPage {
   protected readonly removingLineId = signal<string | null>(null);
   protected readonly generatingDocument = signal(false);
   protected readonly documentAction = signal<'open' | 'download' | 'print' | null>(null);
+  protected readonly paymentCursor = signal<string | undefined>(undefined);
+  protected readonly paymentCursorHistory = signal<string[]>([]);
   protected readonly availability = computed(() => this.productAccess.availability('SALES'));
   protected readonly canLoad = computed(() => this.availability() === 'AVAILABLE' && this.capabilities.canRead());
   protected readonly invoiceQuery = injectQuery(() => this.queries.detail(this.invoiceId, this.canLoad()));
   protected readonly invoice = computed(() => this.invoiceQuery.data());
+  protected readonly settlementEnabled = computed(() =>
+    this.canLoad() && this.invoice()?.status === 'ISSUED'
+  );
+  protected readonly receivableQuery = injectQuery(() =>
+    this.paymentQueries.receivable(this.invoiceId, this.settlementEnabled())
+  );
+  protected readonly receivable = computed(() => this.receivableQuery.data());
+  protected readonly paymentsQuery = injectQuery(() =>
+    this.paymentQueries.payments(
+      this.invoiceId,
+      { limit: PAYMENT_PAGE_SIZE, cursor: this.paymentCursor() },
+      this.settlementEnabled()
+    )
+  );
+  protected readonly payments = computed(() => this.paymentsQuery.data()?.items ?? []);
+  protected readonly hasPreviousPayments = computed(() => this.paymentCursorHistory().length > 0);
+  protected readonly hasNextPayments = computed(() => !!this.paymentsQuery.data()?.nextCursor);
+  protected readonly canRecordPayment = computed(() => {
+    const receivable = this.receivable();
+    return this.settlementEnabled() && this.capabilities.canWrite() && !!receivable &&
+      receivable.status !== 'PAID' && hasPositiveExactAmount(receivable.balanceDue);
+  });
   protected readonly documentQuery = injectQuery(() =>
     this.queries.document(
       this.invoiceId,
@@ -86,6 +127,56 @@ export class SalesInvoiceDetailPage {
   protected back(): void { void this.router.navigate(['/sales/invoices']); }
   protected retry(): void { void this.invoiceQuery.refetch(); }
   protected retryDocument(): void { void this.documentQuery.refetch(); }
+  protected retryReceivable(): void { void this.receivableQuery.refetch(); }
+  protected retryPayments(): void { void this.paymentsQuery.refetch(); }
+
+  protected settlementStatusKey(status: SalesReceivableStatus): string {
+    return `SALES.INVOICES.SETTLEMENT.STATUS.${status}`;
+  }
+
+  protected settlementTone(status: SalesReceivableStatus): 'warning' | 'info' | 'success' {
+    return status === 'PAID' ? 'success' : status === 'PARTIALLY_PAID' ? 'info' : 'warning';
+  }
+
+  protected paymentMethodKey(method: SalesPaymentMethod): string {
+    return `SALES.INVOICES.SETTLEMENT.METHODS.${method}`;
+  }
+
+  protected nextPaymentsPage(): void {
+    const next = this.paymentsQuery.data()?.nextCursor;
+    if (!next) return;
+    this.paymentCursorHistory.update((history) => [...history, this.paymentCursor() ?? '']);
+    this.paymentCursor.set(next);
+  }
+
+  protected previousPaymentsPage(): void {
+    const history = [...this.paymentCursorHistory()];
+    const previous = history.pop();
+    this.paymentCursorHistory.set(history);
+    this.paymentCursor.set(previous || undefined);
+  }
+
+  protected openPayment(): void {
+    const invoice = this.invoice();
+    const receivable = this.receivable();
+    if (!invoice || invoice.status !== 'ISSUED' || !receivable || !this.canRecordPayment()) return;
+
+    this.dialog.open<
+      SalesPaymentDialogComponent,
+      SalesPaymentDialogData,
+      SalesPaymentDialogResult | null
+    >(SalesPaymentDialogComponent, {
+      data: this.paymentDialogData(invoice),
+      disableClose: true,
+      panelClass: 'liass-dialog-panel',
+      width: '680px',
+      maxWidth: 'calc(100vw - 24px)',
+      maxHeight: 'calc(100dvh - 24px)',
+      autoFocus: 'first-tabbable'
+    }).afterClosed().pipe(take(1)).subscribe((result) => {
+      if (result) void this.acceptPayment(result);
+    });
+  }
 
   protected async generateDocument(): Promise<void> {
     const invoice = this.invoice();
@@ -258,6 +349,27 @@ export class SalesInvoiceDetailPage {
   private async acceptInvoice(invoice: SalesInvoice): Promise<void> {
     this.queryClient.setQueryData(this.queries.detailKey(invoice.id), invoice);
     await this.queryClient.invalidateQueries({ queryKey: this.queries.listRootKey() });
+  }
+
+  private paymentDialogData(invoice: SalesIssuedInvoice): SalesPaymentDialogData {
+    return {
+      invoiceId: invoice.id,
+      invoiceNumber: invoice.invoiceNumber,
+      receivable: this.receivable()!
+    };
+  }
+
+  private async acceptPayment(result: SalesPaymentDialogResult): Promise<void> {
+    this.queryClient.setQueryData(
+      this.paymentQueries.receivableKey(this.invoiceId),
+      result.data.receivable
+    );
+    await this.queryClient.invalidateQueries({
+      queryKey: this.paymentQueries.paymentsRootKey(this.invoiceId)
+    });
+    this.notification.success(
+      result.message ?? this.transloco.translate('SALES.INVOICES.SETTLEMENT.NOTIFICATIONS.RECORDED')
+    );
   }
 
   private async refreshAuthoritative(): Promise<void> {
