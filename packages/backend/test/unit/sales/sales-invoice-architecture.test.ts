@@ -13,12 +13,13 @@ const endpoints = readFileSync(
 );
 
 describe("SALES Invoice architecture boundaries", () => {
-  test("registers exactly eight routes including one Issue route and no invoice delete", () => {
+  test("registers eleven routes including Issue and three document routes", () => {
     const routeCalls = endpoints
       .split("\n")
       .filter((line) => line.includes('"/sales/invoices'));
-    expect(routeCalls).toHaveLength(8);
+    expect(routeCalls).toHaveLength(11);
     expect(routeCalls.filter((line) => line.includes("/issue"))).toHaveLength(1);
+    expect(routeCalls.filter((line) => line.includes("/documents/pdf"))).toHaveLength(3);
     expect(routeCalls.some((line) =>
       line.includes("HttpMethod.DELETE") &&
       line.includes('"/sales/invoices/{invoiceId}"') &&
@@ -26,14 +27,13 @@ describe("SALES Invoice architecture boundaries", () => {
     )).toBe(false);
   });
 
-  test("has no Accounting, Treasury, events, queues, PDF, S3, fiscal, or payment dependency", () => {
+  test("has no Accounting, Treasury, events, queues, fiscal, or payment dependency", () => {
     for (const forbidden of [
       "domains/accounting",
       "domains/treasury",
       "EventBridge",
       "SQS",
       "SNS",
-      "S3",
       "eMECeF",
       "discount",
       "amountPaid",
@@ -42,6 +42,18 @@ describe("SALES Invoice architecture boundaries", () => {
     ]) {
       expect(source).not.toContain(forbidden);
     }
+  });
+
+  test("document rendering uses snapshots and persisted amounts without live reads or recalculation", () => {
+    const documentSource = source
+      .split("\n")
+      .filter((line) => line.includes("Document") || line.includes("Pdf") || line.includes("PDF"))
+      .join("\n");
+    expect(documentSource).not.toContain("SalesCustomerService");
+    expect(documentSource).not.toContain("SalesCatalogItemService");
+    expect(documentSource).not.toContain("SalesInvoiceCalculator");
+    expect(source).not.toContain("EventBridge");
+    expect(source).not.toContain("ScanCommand");
   });
 
   test("reads Customer, Catalog, and settings only through SALES application services", () => {

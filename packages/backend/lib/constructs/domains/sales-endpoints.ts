@@ -1,10 +1,16 @@
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { Construct } from "constructs";
+import * as s3 from "aws-cdk-lib/aws-s3";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as path from "path";
 import { DomainConstructFactory, DomainProps } from "./domain-constructs-factory";
 
+interface SalesDomainProps extends DomainProps {
+  documentBucket: s3.IBucket;
+}
+
 export class SalesEndpoints extends DomainConstructFactory {
-  constructor(scope: Construct, id: string, props: DomainProps) {
+  constructor(scope: Construct, id: string, props: SalesDomainProps) {
     super(scope, id);
 
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
@@ -13,6 +19,7 @@ export class SalesEndpoints extends DomainConstructFactory {
       routePath: string,
       area: "catalog" | "customers" | "invoices",
       handlerName: string,
+      documentAccess?: "READ" | "READ_WRITE",
     ) =>
       this.addRoute({
         api: props.api,
@@ -27,13 +34,39 @@ export class SalesEndpoints extends DomainConstructFactory {
           `${handlerName}.ts`,
         ),
         idPrefix: "Sales-",
-        lambdaRole: props.lambdaRole,
+        lambdaRole: documentAccess ? undefined : props.lambdaRole,
         method,
         routePath,
         routeInDomainStack: true,
         stage: props.stage,
         table: props.table,
+        ...(documentAccess
+          ? {
+              tableActions: documentAccess === "READ"
+                ? ["dynamodb:GetItem"]
+                : ["dynamodb:GetItem", "dynamodb:PutItem"],
+            }
+          : {}),
+        ...(documentAccess
+          ? { environment: { SALES_DOCUMENT_BUCKET_NAME: props.documentBucket.bucketName } }
+          : {}),
       });
+
+    const documentRoute = (
+      method: apigw.HttpMethod,
+      routePath: string,
+      handlerName: string,
+      access: "READ" | "READ_WRITE",
+    ) => {
+      const fn = map(method, routePath, "invoices", handlerName, access);
+      fn.addToRolePolicy(new iam.PolicyStatement({
+        actions: [
+          "s3:GetObject",
+          ...(access === "READ_WRITE" ? ["s3:PutObject"] : []),
+        ],
+        resources: [props.documentBucket.arnForObjects("sales/*")],
+      }));
+    };
 
     map(apigw.HttpMethod.POST, "/sales/customers", "customers", "create-sales-customer");
     map(apigw.HttpMethod.GET, "/sales/customers", "customers", "list-sales-customers");
@@ -57,5 +90,23 @@ export class SalesEndpoints extends DomainConstructFactory {
     map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/lines", "invoices", "add-sales-invoice-line");
     map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "update-sales-invoice-line");
     map(apigw.HttpMethod.DELETE, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "remove-sales-invoice-line");
+    documentRoute(
+      apigw.HttpMethod.POST,
+      "/sales/invoices/{invoiceId}/documents/pdf",
+      "generate-sales-invoice-pdf",
+      "READ_WRITE",
+    );
+    documentRoute(
+      apigw.HttpMethod.GET,
+      "/sales/invoices/{invoiceId}/documents/pdf",
+      "get-sales-invoice-pdf",
+      "READ",
+    );
+    documentRoute(
+      apigw.HttpMethod.POST,
+      "/sales/invoices/{invoiceId}/documents/pdf/download-url",
+      "create-sales-invoice-pdf-download-url",
+      "READ",
+    );
   }
 }

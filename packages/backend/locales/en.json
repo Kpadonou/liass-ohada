@@ -300,5 +300,13 @@
   "CABINET_SETTINGS_ADDRESS_INVALID": "The Cabinet address is invalid.",
   "CABINET_SETTINGS_LANGUAGE_INVALID": "The Cabinet language is invalid.",
   "CABINET_SETTINGS_DEFAULTS_INVALID": "The future dossier defaults are invalid.",
-  "CABINET_SETTINGS_DATA_INCONSISTENT": "The Cabinet settings data is inconsistent."
+  "CABINET_SETTINGS_DATA_INCONSISTENT": "The Cabinet settings data is inconsistent.",
+  "SUCCESS_SALES_INVOICE_DOCUMENT_GENERATED": "The Invoice document is available.",
+  "SUCCESS_SALES_INVOICE_DOCUMENT_RETRIEVED": "The Invoice document was retrieved.",
+  "SUCCESS_SALES_INVOICE_DOWNLOAD_URL_CREATED": "The secure download link is available.",
+  "INVOICE_DOCUMENT_REQUIRES_ISSUED": "Only an issued Invoice can generate a final document.",
+  "SALES_INVOICE_DOCUMENT_NOT_FOUND": "No final document is available for this Invoice.",
+  "SALES_INVOICE_DOCUMENT_VERSION_CONFLICT": "Another document rendering version already exists.",
+  "SALES_INVOICE_DOCUMENT_INTEGRITY_ERROR": "The Invoice document is temporarily unavailable because an integrity check failed.",
+  "SALES_INVOICE_DOCUMENT_ISSUER_NOT_FOUND": "The issuer organization information is unavailable."
 }

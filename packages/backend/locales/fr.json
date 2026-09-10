@@ -301,5 +301,13 @@
   "CABINET_SETTINGS_ADDRESS_INVALID": "L’adresse du cabinet est invalide.",
   "CABINET_SETTINGS_LANGUAGE_INVALID": "La langue du cabinet est invalide.",
   "CABINET_SETTINGS_DEFAULTS_INVALID": "Les valeurs par défaut des futurs dossiers sont invalides.",
-  "CABINET_SETTINGS_DATA_INCONSISTENT": "Les données des paramètres du cabinet sont incohérentes."
+  "CABINET_SETTINGS_DATA_INCONSISTENT": "Les données des paramètres du cabinet sont incohérentes.",
+  "SUCCESS_SALES_INVOICE_DOCUMENT_GENERATED": "Le document de la facture est disponible.",
+  "SUCCESS_SALES_INVOICE_DOCUMENT_RETRIEVED": "Le document de la facture a été récupéré.",
+  "SUCCESS_SALES_INVOICE_DOWNLOAD_URL_CREATED": "Le lien de téléchargement sécurisé est disponible.",
+  "INVOICE_DOCUMENT_REQUIRES_ISSUED": "Seule une facture émise peut générer un document final.",
+  "SALES_INVOICE_DOCUMENT_NOT_FOUND": "Aucun document final n'est disponible pour cette facture.",
+  "SALES_INVOICE_DOCUMENT_VERSION_CONFLICT": "Une autre version du document existe déjà.",
+  "SALES_INVOICE_DOCUMENT_INTEGRITY_ERROR": "Le document de la facture est temporairement indisponible en raison d'un contrôle d'intégrité.",
+  "SALES_INVOICE_DOCUMENT_ISSUER_NOT_FOUND": "Les informations de l'organisation émettrice sont indisponibles."
 }

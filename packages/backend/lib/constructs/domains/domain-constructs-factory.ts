@@ -37,6 +37,7 @@ interface AddRouteOptions {
   routeInDomainStack?: boolean;
   stage: DeploymentStage;
   table: cdk.aws_dynamodb.ITable;
+  tableActions?: string[];
   timeout?: cdk.Duration;
 }
 
@@ -82,7 +83,7 @@ export abstract class DomainConstructFactory extends Construct {
    * functionName controls the readable physical name shown in AWS.
    * * @returns {void}
    */
-  protected addRoute(options: AddRouteOptions) {
+  protected addRoute(options: AddRouteOptions): lambda.NodejsFunction {
     const handlerName = path.basename(options.handlerEntry, ".ts");
     const actionName = options.actionName ?? handlerName;
     const routeSuffix = `${options.method}-${options.routePath}`
@@ -126,7 +127,8 @@ export abstract class DomainConstructFactory extends Construct {
     });
 
     if (!options.lambdaRole) {
-      options.table.grantReadWriteData(fn);
+      if (options.tableActions) options.table.grant(fn, ...options.tableActions);
+      else options.table.grantReadWriteData(fn);
     }
 
     const integration = new HttpLambdaIntegration(`${id}Integ`, fn);
@@ -137,7 +139,7 @@ export abstract class DomainConstructFactory extends Construct {
         integration,
         routeKey: apigw.HttpRouteKey.with(options.routePath, options.method),
       });
-      return;
+      return fn;
     }
 
     const routeOptions: any = {
@@ -151,5 +153,6 @@ export abstract class DomainConstructFactory extends Construct {
     }
 
     options.api.addRoutes(routeOptions);
+    return fn;
   }
 }

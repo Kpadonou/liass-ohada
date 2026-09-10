@@ -2,7 +2,9 @@ import * as cdk from "aws-cdk-lib";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as cognito from "aws-cdk-lib/aws-cognito";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
 import {
@@ -59,8 +61,9 @@ describe("API stack decomposition", () => {
   });
   const constructs = root.node.findAll();
 
-  test("keeps one shared stateful table, User Pool, and HTTP API", () => {
+  test("keeps one shared stateful table, private document bucket, User Pool, and HTTP API", () => {
     expect(constructs.filter((item) => item instanceof dynamodb.CfnTable)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof s3.CfnBucket)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof cognito.CfnUserPool)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof apigwv2.CfnApi)).toHaveLength(1);
   });
@@ -112,6 +115,9 @@ describe("API stack decomposition", () => {
         "POST /sales/items/{itemId}/activate",
         "POST /sales/items/{itemId}/deactivate",
         "POST /sales/invoices/{invoiceId}/issue",
+        "POST /sales/invoices/{invoiceId}/documents/pdf",
+        "GET /sales/invoices/{invoiceId}/documents/pdf",
+        "POST /sales/invoices/{invoiceId}/documents/pdf/download-url",
       ]),
     );
   });
@@ -137,19 +143,74 @@ describe("API stack decomposition", () => {
     ).toBe(true);
   });
 
-  test("keeps all twenty SALES Lambdas in the SALES domain without Accounting fallback", () => {
+  test("keeps all twenty-three SALES Lambdas in the SALES domain without Accounting fallback", () => {
     const functions = constructs.filter(
       (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
     );
     const salesFunctions = functions.filter((fn) =>
       String(fn.functionName).includes("-dev-sales-"),
     );
-    expect(salesFunctions).toHaveLength(20);
+    expect(salesFunctions).toHaveLength(23);
     expect(
       salesFunctions.every(
         (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),
       ),
     ).toBe(true);
+  });
+
+  test("configures the document bucket as encrypted, public-blocked, retained, and TLS-only", () => {
+    const bucket = constructs.find(
+      (item): item is s3.CfnBucket => item instanceof s3.CfnBucket,
+    );
+    expect(bucket).toBeDefined();
+    expect(bucket?.bucketEncryption).toBeDefined();
+    expect(bucket?.publicAccessBlockConfiguration).toEqual({
+      blockPublicAcls: true,
+      blockPublicPolicy: true,
+      ignorePublicAcls: true,
+      restrictPublicBuckets: true,
+    });
+    expect(bucket?.cfnOptions.deletionPolicy).toBe(cdk.CfnDeletionPolicy.RETAIN);
+
+    const policies = constructs.filter(
+      (item): item is s3.CfnBucketPolicy => item instanceof s3.CfnBucketPolicy,
+    );
+    expect(policies).toHaveLength(1);
+    expect(JSON.stringify(cdk.Stack.of(policies[0]).resolve(policies[0].policyDocument)))
+      .toContain("aws:SecureTransport");
+  });
+
+  test("exposes the private bucket only to the three SALES document Lambdas", () => {
+    const functions = constructs.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    const withBucket = functions.filter((fn) =>
+      lambdaEnvironmentVariable(fn, "SALES_DOCUMENT_BUCKET_NAME"),
+    );
+    expect(withBucket).toHaveLength(3);
+    expect(withBucket.every((fn) =>
+      String(fn.functionName).includes("invoice-pdf"),
+    )).toBe(true);
+  });
+
+  test("limits document Lambda data access to exact item and object actions", () => {
+    const documentPolicies = constructs.filter(
+      (item): item is iam.CfnPolicy =>
+        item instanceof iam.CfnPolicy &&
+        /invoice-pdf/i.test(item.node.path),
+    );
+    expect(documentPolicies).toHaveLength(3);
+    const serialized = documentPolicies.map((policy) =>
+      JSON.stringify(cdk.Stack.of(policy).resolve(policy.policyDocument)),
+    );
+    expect(serialized.every((policy) => policy.includes("dynamodb:GetItem"))).toBe(true);
+    expect(serialized.filter((policy) => policy.includes("dynamodb:PutItem"))).toHaveLength(1);
+    expect(serialized.every((policy) => policy.includes("s3:GetObject"))).toBe(true);
+    expect(serialized.filter((policy) => policy.includes("s3:PutObject"))).toHaveLength(1);
+    for (const policy of serialized) {
+      expect(policy).not.toMatch(/dynamodb:(Scan|DeleteItem|BatchWriteItem|\*)/);
+      expect(policy).not.toMatch(/s3:(List|DeleteObject|\*)/);
+    }
   });
 
   test("keeps Accounting permission fallback out of Projects and Treasury Lambdas", () => {

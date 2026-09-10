@@ -16,6 +16,7 @@ export class LiassOhadaBackendStack extends cdk.Stack {
 
     // Data Stack
     const dataStack = new DataStack(this, "DataStack", {
+      documentBucketName: `${resourcePrefix}-documents-${cdk.Stack.of(this).account}-${cdk.Stack.of(this).region}`,
       env: props.env,
       tableName: `${resourcePrefix}-accounting-table`,
     });
@@ -23,6 +24,7 @@ export class LiassOhadaBackendStack extends cdk.Stack {
     // API Stack
     new ApiStack(this, "ApiStack", {
       accountingTable: dataStack.accountingTable.table,
+      documentBucket: dataStack.documentBucket,
       env: props.env,
       stage: props.stage,
     });

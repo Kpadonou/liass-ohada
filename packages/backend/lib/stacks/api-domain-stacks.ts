@@ -2,6 +2,7 @@ import { NestedStack, NestedStackProps } from "aws-cdk-lib";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as iam from "aws-cdk-lib/aws-iam";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { DeploymentStage } from "../config/deployment";
 import { AccountingEndpoints } from "../constructs/domains/accounting-endpoints";
@@ -16,6 +17,10 @@ interface ApiDomainStackProps extends NestedStackProps {
   lambdaRole: iam.IRole;
   stage: DeploymentStage;
   table: dynamodb.ITable;
+}
+
+interface SalesApiStackProps extends ApiDomainStackProps {
+  documentBucket: s3.IBucket;
 }
 
 export class IdentityApiStack extends NestedStack {
@@ -47,8 +52,11 @@ export class TreasuryApiStack extends NestedStack {
 }
 
 export class SalesApiStack extends NestedStack {
-  constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
+  constructor(scope: Construct, id: string, props: SalesApiStackProps) {
     super(scope, id, props);
-    new SalesEndpoints(this, "SalesModule", props);
+    new SalesEndpoints(this, "SalesModule", {
+      ...props,
+      documentBucket: props.documentBucket,
+    });
   }
 }

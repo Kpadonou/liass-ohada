@@ -2,6 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Stack, StackProps } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { DeploymentStage } from "../config/deployment";
 
@@ -25,6 +26,7 @@ import {
 interface ApiStackProps extends StackProps {
   /** The DynamoDB table provided by the DataStack */
   accountingTable: dynamodb.ITable;
+  documentBucket: s3.IBucket;
   stage: DeploymentStage;
 }
 
@@ -113,6 +115,7 @@ export class ApiStack extends Stack {
       api: this.apiGateway.httpApi,
       authorizer: this.auth.authorizer,
       lambdaRole: apiLambdaRole,
+      documentBucket: props.documentBucket,
       table: props.accountingTable,
       stage: props.stage,
     });

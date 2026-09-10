@@ -93,7 +93,7 @@ LIASS-OHADA
 ├── PRODUCT: SALES
 │   ├── Customers
 │   ├── Catalog
-│   └── Invoicing Core: editable DRAFT -> immutable ISSUED with SALES commercial numbering; no PDF, fiscal certification, payments, or Accounting posting yet
+│   └── Invoicing Core: editable DRAFT -> immutable ISSUED with SALES commercial numbering and an explicit private PDF representation for ISSUED invoices; no fiscal certification, payments, or Accounting posting yet
 └── FUTURE PRODUCT: LIASS-RESTO
     └── restaurant / bar operations
 ```

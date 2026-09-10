@@ -54,6 +54,10 @@ export const KeyFactory = {
   salesInvoiceIssueIdempotencySK: (clientRequestId: string) =>
     `SALES_INVOICE_ISSUE_IDEMPOTENCY#${clientRequestId}`,
 
+  /** SALES-owned canonical PDF metadata for an Invoice. */
+  salesInvoiceDocumentSK: (invoiceId: string) =>
+    `SALES_INVOICE_DOCUMENT#${invoiceId}#PDF`,
+
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",
 
