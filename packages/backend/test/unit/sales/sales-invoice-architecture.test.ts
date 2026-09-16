@@ -13,12 +13,12 @@ const endpoints = readFileSync(
 );
 
 describe("SALES Invoice architecture boundaries", () => {
-  test("registers fourteen routes including three settlement and three document routes", () => {
+  test("registers twenty-two routes including settlement, Credit Note, and document routes", () => {
     const routeCalls = endpoints
       .split("\n")
       .filter((line) => line.includes('"/sales/invoices'));
-    expect(routeCalls).toHaveLength(14);
-    expect(routeCalls.filter((line) => line.includes("/issue"))).toHaveLength(1);
+    expect(routeCalls).toHaveLength(22);
+    expect(routeCalls.filter((line) => line.includes("/issue"))).toHaveLength(2);
     expect(routeCalls.filter((line) => line.includes("/payments"))).toHaveLength(2);
     expect(routeCalls.filter((line) => line.includes("/receivable"))).toHaveLength(1);
     expect(routeCalls.filter((line) => line.includes("/documents/pdf"))).toHaveLength(3);

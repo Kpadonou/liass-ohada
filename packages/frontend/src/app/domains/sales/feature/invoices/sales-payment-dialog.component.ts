@@ -72,7 +72,7 @@ export class SalesPaymentDialogComponent {
   protected readonly ambiguous = signal(false);
   protected readonly errorMessage = signal<string | null>(null);
   protected readonly errorTone = signal<'danger' | 'warning'>('danger');
-  protected readonly settled = computed(() => this.receivable().status === 'PAID');
+  protected readonly settled = computed(() => this.receivable().status === 'SETTLED');
   private readonly attempt = signal<RecordSalesPaymentRequest | null>(null);
 
   protected readonly form = this.formBuilder.group({

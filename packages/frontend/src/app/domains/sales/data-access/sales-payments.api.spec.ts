@@ -51,7 +51,7 @@ describe('SalesPaymentsApi', () => {
     expect(request.request.body).not.toHaveProperty('orgId');
     expect(request.request.body).not.toHaveProperty('currency');
     expect(request.request.body).not.toHaveProperty('recordedByUserId');
-    const paid = receivable({ amountPaid: '10.50', balanceDue: '24.89', status: 'PARTIALLY_PAID', paymentCount: 1, version: 1 });
+    const paid = receivable({ amountPaid: '10.50', creditedAmount: '0', balanceDue: '24.89', status: 'PARTIALLY_SETTLED', paymentCount: 1, version: 1 });
     request.flush({ data: { payment: { id: 'PAY-1', invoiceId: 'INV/1', amount: '10.50', currency: 'EUR', paymentDate: '2026-09-10', method: 'BANK_TRANSFER', reference: 'BANK-42', createdAt: '2026-09-10T10:00:00.000Z' }, receivable: paid }, message: 'Recorded' });
     await expect(promise).resolves.toMatchObject({ data: { receivable: paid }, message: 'Recorded' });
   });
@@ -68,7 +68,7 @@ describe('SalesPaymentsApi', () => {
 function receivable(overrides: Partial<SalesInvoiceReceivable> = {}): SalesInvoiceReceivable {
   return {
     invoiceId: 'INV/1', currency: 'EUR', invoiceAmount: '35.39', amountPaid: '0',
-    balanceDue: '35.39', status: 'UNPAID', paymentCount: 0, version: 0,
+    creditedAmount: '0', balanceDue: '35.39', status: 'OPEN', paymentCount: 0, version: 0,
     updatedAt: '2026-09-10T10:00:00.000Z', ...overrides
   };
 }

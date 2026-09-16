@@ -14,7 +14,7 @@ jest.mock("@/lambda/domains/sales/invoices/sales-payment-service", () => ({
 const timestamp = "2026-09-10T10:00:00.000Z";
 const receivable = {
   invoiceId: "SINV-1", currency: "XOF", invoiceAmount: "100000",
-  amountPaid: "0", balanceDue: "100000", status: "UNPAID" as const,
+  amountPaid: "0", creditedAmount: "0", balanceDue: "100000", status: "OPEN" as const,
   paymentCount: 0, version: 0, updatedAt: timestamp,
 };
 const event = (
@@ -50,7 +50,7 @@ describe("SALES Payment route authorization", () => {
         id: "SPAY-1", invoiceId: "SINV-1", amount: "10", currency: "XOF",
         paymentDate: "2026-09-10", method: "CASH", createdAt: timestamp,
       },
-      receivable: { ...receivable, amountPaid: "10", balanceDue: "99990", status: "PARTIALLY_PAID", paymentCount: 1, version: 1, createdAt: timestamp },
+      receivable: { ...receivable, amountPaid: "10", balanceDue: "99990", status: "PARTIALLY_SETTLED", paymentCount: 1, version: 1, createdAt: timestamp },
     });
   });
 

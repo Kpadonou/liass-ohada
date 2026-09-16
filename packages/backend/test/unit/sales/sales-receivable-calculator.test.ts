@@ -15,10 +15,10 @@ describe("SalesReceivableCalculator", () => {
       receivable("XOF", "100000"), "30000", timestamp,
     ).receivable;
     expect(partial).toMatchObject({
-      amountPaid: "30000", balanceDue: "70000", status: "PARTIALLY_PAID", version: 1,
+      amountPaid: "30000", creditedAmount: "0", balanceDue: "70000", status: "PARTIALLY_SETTLED", version: 1,
     });
     const paid = SalesReceivableCalculator.applyPayment(partial, "70000", timestamp).receivable;
-    expect(paid).toMatchObject({ amountPaid: "100000", balanceDue: "0", status: "PAID", version: 2 });
+    expect(paid).toMatchObject({ amountPaid: "100000", creditedAmount: "0", balanceDue: "0", status: "SETTLED", version: 2 });
   });
 
   test("calculates EUR decimals with no floating-point artifact", () => {
@@ -32,7 +32,7 @@ describe("SalesReceivableCalculator", () => {
 
   test("derives zero-total Invoice as paid without a Payment", () => {
     expect(receivable("XOF", "0")).toMatchObject({
-      amountPaid: "0", balanceDue: "0", status: "PAID", paymentCount: 0, version: 0,
+      amountPaid: "0", creditedAmount: "0", balanceDue: "0", status: "SETTLED", paymentCount: 0, version: 0,
     });
   });
 

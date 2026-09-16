@@ -90,6 +90,14 @@ export class SalesEndpoints extends DomainConstructFactory {
     map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}/receivable", "invoices", "get-sales-invoice-receivable");
     map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}/payments", "invoices", "list-sales-invoice-payments");
     map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/payments", "invoices", "record-sales-invoice-payment");
+    map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/credit-notes", "invoices", "create-sales-credit-note");
+    map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}/credit-notes", "invoices", "list-sales-credit-notes");
+    map(apigw.HttpMethod.GET, "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}", "invoices", "get-sales-credit-note");
+    map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}", "invoices", "update-sales-credit-note");
+    map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/lines", "invoices", "add-sales-credit-note-line");
+    map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/lines/{lineId}", "invoices", "update-sales-credit-note-line");
+    map(apigw.HttpMethod.DELETE, "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/lines/{lineId}", "invoices", "remove-sales-credit-note-line");
+    map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/issue", "invoices", "issue-sales-credit-note");
     map(apigw.HttpMethod.POST, "/sales/invoices/{invoiceId}/lines", "invoices", "add-sales-invoice-line");
     map(apigw.HttpMethod.PATCH, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "update-sales-invoice-line");
     map(apigw.HttpMethod.DELETE, "/sales/invoices/{invoiceId}/lines/{lineId}", "invoices", "remove-sales-invoice-line");

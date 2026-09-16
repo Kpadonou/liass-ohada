@@ -97,7 +97,7 @@ describe('SalesPaymentDialogComponent', () => {
   it('refreshes after a version conflict and creates a new reviewed attempt from the new Receivable version', async () => {
     recordPayment.mockRejectedValueOnce(domainError('SALES_RECEIVABLE_VERSION_CONFLICT', 'Changed'));
     getReceivable.mockResolvedValueOnce(receivable({
-      amountPaid: '5', balanceDue: '30.39', status: 'PARTIALLY_PAID', paymentCount: 1, version: 1
+      amountPaid: '5', creditedAmount: '0', balanceDue: '30.39', status: 'PARTIALLY_SETTLED', paymentCount: 1, version: 1
     }));
     const fixture = TestBed.createComponent(SalesPaymentDialogComponent);
     const component = fixture.componentInstance as unknown as DialogHarness;
@@ -150,13 +150,13 @@ interface DialogHarness {
 function receivable(overrides: Partial<SalesInvoiceReceivable> = {}): SalesInvoiceReceivable {
   return {
     invoiceId: 'INV-1', currency: 'EUR', invoiceAmount: '35.39', amountPaid: '0',
-    balanceDue: '35.39', status: 'UNPAID', paymentCount: 0, version: 0,
+    creditedAmount: '0', balanceDue: '35.39', status: 'OPEN', paymentCount: 0, version: 0,
     updatedAt: '2026-09-10T10:00:00.000Z', ...overrides
   };
 }
 
 function successResult() {
-  const current = receivable({ amountPaid: '10.50', balanceDue: '24.89', status: 'PARTIALLY_PAID', paymentCount: 1, version: 1 });
+  const current = receivable({ amountPaid: '10.50', creditedAmount: '0', balanceDue: '24.89', status: 'PARTIALLY_SETTLED', paymentCount: 1, version: 1 });
   return { data: { payment: { id: 'PAY-1', invoiceId: 'INV-1', amount: '10.50', currency: 'EUR', paymentDate: '2026-09-10', method: 'CASH' as const, createdAt: '2026-09-10T10:00:00.000Z' }, receivable: current }, message: 'Recorded' };
 }
 

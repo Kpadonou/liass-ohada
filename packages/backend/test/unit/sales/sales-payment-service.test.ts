@@ -13,7 +13,7 @@ jest.mock("@/lambda/domains/sales/invoices/sales-payment-repository", () => {
   return {
     ...actual,
     SalesPaymentRepository: {
-      getReceivable: jest.fn(), getPayment: jest.fn(), getIdempotency: jest.fn(),
+      getReceivable: jest.fn(), getReceivableState: jest.fn(), getPayment: jest.fn(), getIdempotency: jest.fn(),
       list: jest.fn(), recordAtomically: jest.fn(),
     },
   };
@@ -46,6 +46,7 @@ describe("SalesPaymentService", () => {
     jest.spyOn(console, "error").mockImplementation(() => undefined);
     jest.mocked(SalesInvoiceService.get).mockResolvedValue(issued);
     jest.mocked(SalesPaymentRepository.getReceivable).mockResolvedValue(undefined);
+    jest.mocked(SalesPaymentRepository.getReceivableState).mockResolvedValue(undefined);
     jest.mocked(SalesPaymentRepository.getIdempotency).mockResolvedValue(undefined);
     jest.mocked(SalesPaymentRepository.recordAtomically).mockResolvedValue(undefined);
   });
@@ -55,19 +56,19 @@ describe("SalesPaymentService", () => {
   test("returns a read-only synthetic version-0 Receivable before first Payment", async () => {
     await expect(SalesPaymentService.getReceivable("org-123", "SINV-1")).resolves.toMatchObject({
       invoiceId: "SINV-1", invoiceAmount: "100000", amountPaid: "0",
-      balanceDue: "100000", status: "UNPAID", paymentCount: 0, version: 0,
+      creditedAmount: "0", balanceDue: "100000", status: "OPEN", paymentCount: 0, version: 0,
     });
     expect(SalesPaymentRepository.recordAtomically).not.toHaveBeenCalled();
   });
 
-  test("zero-total issued Invoice is synthetically PAID and rejects a Payment", async () => {
+  test("zero-total issued Invoice is synthetically SETTLED and rejects a Payment", async () => {
     jest.mocked(SalesInvoiceService.get).mockResolvedValue({
       ...issued,
       lines: [{ ...issued.lines[0], unitPrice: "0", subtotal: "0", total: "0" }],
       subtotal: "0", total: "0",
     });
     await expect(SalesPaymentService.getReceivable("org-123", "SINV-1"))
-      .resolves.toMatchObject({ invoiceAmount: "0", status: "PAID", version: 0 });
+      .resolves.toMatchObject({ invoiceAmount: "0", creditedAmount: "0", status: "SETTLED", version: 0 });
     await expect(SalesPaymentService.record("org-123", "user-123", "SINV-1", request))
       .rejects.toMatchObject({ messageCode: "SALES_INVOICE_ALREADY_SETTLED" });
   });
@@ -90,7 +91,7 @@ describe("SalesPaymentService", () => {
       invoiceId: "SINV-1", amount: "30000", currency: "XOF", method: "CASH",
     });
     expect(result.receivable).toMatchObject({
-      amountPaid: "30000", balanceDue: "70000", status: "PARTIALLY_PAID",
+      amountPaid: "30000", creditedAmount: "0", balanceDue: "70000", status: "PARTIALLY_SETTLED",
       paymentCount: 1, version: 1,
     });
     expect(SalesPaymentRepository.recordAtomically).toHaveBeenCalledWith(expect.objectContaining({
@@ -124,7 +125,7 @@ describe("SalesPaymentService", () => {
     };
     const paid = {
       invoiceId: "SINV-1", currency: "XOF", invoiceAmount: "100000",
-      amountPaid: "100000", balanceDue: "0", status: "PAID" as const,
+      amountPaid: "100000", creditedAmount: "0", balanceDue: "0", status: "SETTLED" as const,
       paymentCount: 1, version: 1, createdAt: timestamp, updatedAt: timestamp,
     };
     jest.mocked(SalesPaymentRepository.getIdempotency).mockResolvedValue({
@@ -136,6 +137,7 @@ describe("SalesPaymentService", () => {
     });
     jest.mocked(SalesPaymentRepository.getPayment).mockResolvedValue(payment);
     jest.mocked(SalesPaymentRepository.getReceivable).mockResolvedValue(paid);
+    jest.mocked(SalesPaymentRepository.getReceivableState).mockResolvedValue({ receivable: paid, creditedLineQuantities: {} });
     await expect(SalesPaymentService.record("org-123", "user-123", "SINV-1", {
       ...request, amount: "100000",
     })).resolves.toEqual({ payment, receivable: paid });
@@ -149,7 +151,7 @@ describe("SalesPaymentService", () => {
     };
     const receivable = {
       invoiceId: "SINV-1", currency: "XOF", invoiceAmount: "100000",
-      amountPaid: "30000", balanceDue: "70000", status: "PARTIALLY_PAID" as const,
+      amountPaid: "30000", creditedAmount: "0", balanceDue: "70000", status: "PARTIALLY_SETTLED" as const,
       paymentCount: 1, version: 1, createdAt: timestamp, updatedAt: timestamp,
     };
     const winner = {
@@ -165,9 +167,9 @@ describe("SalesPaymentService", () => {
     jest.mocked(SalesPaymentRepository.recordAtomically).mockRejectedValue(
       new SalesPaymentTransactionError("IDEMPOTENCY_CONFLICT"),
     );
-    jest.mocked(SalesPaymentRepository.getReceivable)
+    jest.mocked(SalesPaymentRepository.getReceivableState)
       .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(receivable);
+      .mockResolvedValueOnce({ receivable, creditedLineQuantities: {} });
     jest.mocked(SalesPaymentRepository.getPayment).mockResolvedValue(payment);
 
     await expect(SalesPaymentService.record("org-123", "user-123", "SINV-1", request))
@@ -192,9 +194,9 @@ describe("SalesPaymentService", () => {
     jest.mocked(SalesPaymentRepository.recordAtomically).mockRejectedValue(
       new SalesPaymentTransactionError("RECEIVABLE_CONFLICT"),
     );
-    jest.mocked(SalesPaymentRepository.getReceivable).mockResolvedValueOnce(undefined).mockResolvedValueOnce({
+    jest.mocked(SalesPaymentRepository.getReceivable).mockResolvedValue({
       invoiceId: "SINV-1", currency: "XOF", invoiceAmount: "100000",
-      amountPaid: "10000", balanceDue: "90000", status: "PARTIALLY_PAID",
+      amountPaid: "10000", creditedAmount: "0", balanceDue: "90000", status: "PARTIALLY_SETTLED",
       paymentCount: 1, version: 1, createdAt: timestamp, updatedAt: timestamp,
     });
     await expect(SalesPaymentService.record("org-123", "user-123", "SINV-1", request))

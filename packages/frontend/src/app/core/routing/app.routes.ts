@@ -172,6 +172,17 @@ export const routes: Routes = [
             }
           },
           {
+            path: 'invoices/:invoiceId/credit-notes/:creditNoteId',
+            loadComponent: () =>
+              import('../../domains/sales/feature/invoices/sales-credit-note-detail.page').then(
+                (module) => module.SalesCreditNoteDetailPage
+              ),
+            data: {
+              subtitleKey: 'SALES.CREDIT_NOTES.DETAIL.SUBTITLE',
+              titleKey: 'SALES.CREDIT_NOTES.DETAIL.TITLE'
+            }
+          },
+          {
             path: 'invoices/:invoiceId',
             loadComponent: () =>
               import('../../domains/sales/feature/invoices/sales-invoice-detail.page').then(

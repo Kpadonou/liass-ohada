@@ -1,0 +1,50 @@
+<header class="px-5 pt-5 sm:px-6 sm:pt-6">
+  <h2 mat-dialog-title class="m-0 p-0 text-xl font-semibold text-app-text">{{ (isEdit ? 'SALES.CREDIT_NOTES.LINE_DIALOG.EDIT_TITLE' : 'SALES.CREDIT_NOTES.LINE_DIALOG.ADD_TITLE') | transloco }}</h2>
+  <p class="mt-1 text-sm text-app-text-secondary">{{ 'SALES.CREDIT_NOTES.LINE_DIALOG.SUBTITLE' | transloco }}</p>
+</header>
+<mat-dialog-content class="px-5 py-4 sm:px-6">
+  <div class="max-h-[calc(100dvh-13rem)] space-y-4 overflow-y-auto pr-1">
+    @if (!isEdit) {
+      <section [attr.aria-label]="'SALES.CREDIT_NOTES.LINE_DIALOG.SOURCE_LABEL' | transloco">
+        <p class="mb-2 text-sm font-semibold text-app-text">{{ 'SALES.CREDIT_NOTES.LINE_DIALOG.SOURCE_LABEL' | transloco }}</p>
+        <div class="grid gap-2" role="radiogroup">
+          @for (line of availableLines(); track line.id) {
+            <button type="button" role="radio" class="liass-focus-ring grid gap-2 rounded-app-control border p-3 text-left sm:grid-cols-[minmax(0,1fr)_auto]" [class.border-brand-500]="selectedSourceLine()?.id === line.id" [class.bg-brand-50]="selectedSourceLine()?.id === line.id" [attr.aria-checked]="selectedSourceLine()?.id === line.id" (click)="selectSource(line)">
+              <span class="min-w-0">
+                <span class="block break-words font-semibold text-app-text">{{ line.description }}</span>
+                <span class="mt-1 block text-xs text-app-text-secondary">{{ 'SALES.CREDIT_NOTES.LINE_DIALOG.ORIGINAL_QUANTITY' | transloco }}: {{ line.quantity }} {{ line.unit || '' }} · {{ 'SALES.INVOICES.FIELDS.TAX_RATE' | transloco }}: {{ line.taxRate }}%</span>
+              </span>
+              <span class="font-semibold tabular-nums text-app-text">{{ money(line.total) }}</span>
+            </button>
+          } @empty {
+            <p class="rounded-app-control border border-dashed border-app-border bg-app-surface-muted p-4 text-center text-sm text-app-text-secondary">{{ 'SALES.CREDIT_NOTES.LINE_DIALOG.NO_LINES_AVAILABLE' | transloco }}</p>
+          }
+        </div>
+      </section>
+    } @else if (selectedSourceLine(); as source) {
+      <div class="rounded-app-card border border-app-border bg-app-surface-muted p-4">
+        <p class="break-words font-semibold text-app-text">{{ source.description }}</p>
+        <p class="mt-1 text-sm text-app-text-secondary">{{ 'SALES.CREDIT_NOTES.LINE_DIALOG.ORIGINAL_QUANTITY' | transloco }}: {{ source.quantity }} {{ source.unit || '' }}</p>
+      </div>
+    }
+
+    <form id="credit-note-line-form" [formGroup]="form" (ngSubmit)="submit()">
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>{{ 'SALES.CREDIT_NOTES.FIELDS.QUANTITY' | transloco }}</mat-label>
+        <input matInput type="text" inputmode="decimal" formControlName="quantity" autocomplete="off" />
+        <mat-hint>{{ 'SALES.CREDIT_NOTES.LINE_DIALOG.QUANTITY_HINT' | transloco }}</mat-hint>
+        @if (form.controls.quantity.invalid && form.controls.quantity.touched) {
+          <mat-error>{{ 'SALES.CREDIT_NOTES.ERRORS.QUANTITY_INVALID' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+    </form>
+
+    @if (errorMessage()) {
+      <p class="rounded-app-control border border-red-200 bg-danger-50 p-3 text-sm text-red-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200" role="alert">{{ errorMessage() }}</p>
+    }
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end" class="gap-2 px-5 pb-5 sm:px-6 sm:pb-6">
+  <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">{{ 'COMMON.ACTIONS.CANCEL' | transloco }}</liass-button>
+  <liass-button buttonType="submit" tone="brand" variant="solid" [loading]="submitting()" [disabled]="form.invalid || !selectedSourceLine()" (pressed)="submit()">{{ (isEdit ? 'COMMON.ACTIONS.SAVE' : 'SALES.CREDIT_NOTES.ACTIONS.ADD_LINE') | transloco }}</liass-button>
+</mat-dialog-actions>

@@ -96,7 +96,8 @@ export class SalesPaymentService {
     if (invoice.status !== "ISSUED") {
       throw new AppError(409, "SALES_RECEIVABLE_REQUIRES_ISSUED");
     }
-    const current = await this.loadCanonicalReceivable(tenantId, invoice);
+    const currentState = await this.loadCanonicalReceivableState(tenantId, invoice);
+    const current = currentState.receivable;
     if (current.balanceDue === "0") {
       throw new AppError(409, "SALES_INVOICE_ALREADY_SETTLED");
     }
@@ -130,6 +131,7 @@ export class SalesPaymentService {
         clientRequestId: request.clientRequestId,
         originalExpectedVersion: request.expectedVersion,
         previousReceivableVersion: current.version,
+        creditedLineQuantities: currentState.creditedLineQuantities,
       });
     } catch (error) {
       if (!(error instanceof SalesPaymentTransactionError)) throw error;
@@ -174,20 +176,28 @@ export class SalesPaymentService {
     orgId: string,
     invoice: Awaited<ReturnType<typeof SalesInvoiceService.get>>,
   ): Promise<SalesInvoiceReceivable> {
+    return (await this.loadCanonicalReceivableState(orgId, invoice)).receivable;
+  }
+
+  static async loadCanonicalReceivableState(
+    orgId: string,
+    invoice: Awaited<ReturnType<typeof SalesInvoiceService.get>>,
+  ): Promise<import("./sales-payment-repository").SalesReceivableState> {
     try {
-      const persisted = await SalesPaymentRepository.getReceivable(orgId, invoice.id);
+      const persisted = await SalesPaymentRepository.getReceivableState(orgId, invoice.id);
       if (!persisted) {
-        return SalesReceivableCalculator.synthetic({
+        return { receivable: SalesReceivableCalculator.synthetic({
           invoiceId: invoice.id,
           currency: invoice.currency,
           invoiceAmount: invoice.total,
           timestamp: invoice.updatedAt,
-        });
+        }), creditedLineQuantities: {} };
       }
+      const receivable = persisted.receivable;
       if (
-        persisted.invoiceId !== invoice.id ||
-        persisted.currency !== invoice.currency ||
-        normalizeDecimal(persisted.invoiceAmount) !== normalizeDecimal(invoice.total)
+        receivable.invoiceId !== invoice.id ||
+        receivable.currency !== invoice.currency ||
+        normalizeDecimal(receivable.invoiceAmount) !== normalizeDecimal(invoice.total)
       ) {
         throw new Error("Receivable Invoice snapshot mismatch");
       }

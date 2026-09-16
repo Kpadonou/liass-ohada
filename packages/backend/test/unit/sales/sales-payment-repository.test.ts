@@ -28,7 +28,8 @@ const receivable = {
   invoiceAmount: "100",
   amountPaid: "30",
   balanceDue: "70",
-  status: "PARTIALLY_PAID" as const,
+  creditedAmount: "0",
+  status: "PARTIALLY_SETTLED" as const,
   paymentCount: 1,
   version: 1,
   createdAt: timestamp,
@@ -67,7 +68,8 @@ describe("SalesPaymentRepository", () => {
     expect(unmarshall(receivablePut.Put?.Item ?? {})).toMatchObject({
       PK: "ORG#org-123", SK: "SALES_RECEIVABLE#SINV-1",
       entityType: "SALES_RECEIVABLE", invoiceAmountMinor: "10000",
-      amountPaidMinor: "3000", balanceDueMinor: "7000", version: 1,
+      amountPaidMinor: "3000", creditedAmountMinor: "0", balanceDueMinor: "7000",
+      creditedLineQuantities: {}, version: 1,
     });
     expect(unmarshall(paymentPut.Put?.Item ?? {})).toMatchObject({
       SK: `SALES_PAYMENT#SINV-1#${payment.id}`,

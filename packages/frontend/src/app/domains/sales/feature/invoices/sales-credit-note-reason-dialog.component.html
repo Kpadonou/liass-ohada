@@ -1,0 +1,23 @@
+<header class="px-5 pt-5 sm:px-6 sm:pt-6">
+  <h2 mat-dialog-title class="m-0 p-0 text-xl font-semibold text-app-text">{{ 'SALES.CREDIT_NOTES.REASON_DIALOG.TITLE' | transloco }}</h2>
+  <p class="mt-1 text-sm text-app-text-secondary">{{ 'SALES.CREDIT_NOTES.REASON_DIALOG.SUBTITLE' | transloco }}</p>
+</header>
+<mat-dialog-content class="px-5 py-4 sm:px-6">
+  <form id="credit-note-reason-form" [formGroup]="form" (ngSubmit)="submit()">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'SALES.CREDIT_NOTES.FIELDS.REASON' | transloco }}</mat-label>
+      <textarea matInput formControlName="reason" rows="5" maxlength="1000"></textarea>
+      <mat-hint>{{ 'SALES.CREDIT_NOTES.REASON_DIALOG.HINT' | transloco }}</mat-hint>
+      @if (form.controls.reason.hasError('maxlength')) {
+        <mat-error>{{ 'SALES.INVOICES.VALIDATION.MAX_LENGTH' | transloco: { count: 1000 } }}</mat-error>
+      }
+    </mat-form-field>
+    @if (errorMessage()) {
+      <p class="rounded-app-control border border-red-200 bg-danger-50 p-3 text-sm text-red-800 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200" role="alert">{{ errorMessage() }}</p>
+    }
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end" class="gap-2 px-5 pb-5 sm:px-6 sm:pb-6">
+  <liass-button tone="neutral" variant="outline" [disabled]="submitting()" (pressed)="cancel()">{{ 'COMMON.ACTIONS.CANCEL' | transloco }}</liass-button>
+  <liass-button buttonType="submit" tone="brand" variant="solid" [loading]="submitting()" [disabled]="form.invalid" (pressed)="submit()">{{ 'COMMON.ACTIONS.SAVE' | transloco }}</liass-button>
+</mat-dialog-actions>

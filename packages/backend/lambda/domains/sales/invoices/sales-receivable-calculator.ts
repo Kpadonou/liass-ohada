@@ -25,8 +25,9 @@ export class SalesReceivableCalculator {
       currency: input.currency,
       invoiceAmount,
       amountPaid: "0",
+      creditedAmount: "0",
       balanceDue: invoiceAmount,
-      status: invoiceAmount === "0" ? "PAID" : "UNPAID",
+      status: invoiceAmount === "0" ? "SETTLED" : "OPEN",
       paymentCount: 0,
       version: 0,
       updatedAt: input.timestamp,
@@ -59,7 +60,10 @@ export class SalesReceivableCalculator {
     const invoiceMinor = BigInt(
       SalesInvoiceCalculator.toMinorUnits(current.currency, current.invoiceAmount),
     );
-    const nextBalanceMinor = invoiceMinor - paidMinor;
+    const creditedMinor = BigInt(
+      SalesInvoiceCalculator.toMinorUnits(current.currency, current.creditedAmount),
+    );
+    const nextBalanceMinor = invoiceMinor - paidMinor - creditedMinor;
     const amountPaid = SalesInvoiceCalculator.fromMinorUnits(
       current.currency,
       paidMinor.toString(),
@@ -78,12 +82,48 @@ export class SalesReceivableCalculator {
         ...current,
         amountPaid,
         balanceDue,
-        status: nextBalanceMinor === 0n ? "PAID" : "PARTIALLY_PAID",
+        status: nextBalanceMinor === 0n ? "SETTLED" : "PARTIALLY_SETTLED",
         paymentCount: current.paymentCount + 1,
         version: current.version + 1,
         createdAt: current.createdAt ?? timestamp,
         updatedAt: timestamp,
       }),
     };
+  }
+
+  static applyCredit(
+    current: SalesInvoiceReceivable,
+    creditAmount: string,
+    timestamp: string,
+  ): SalesInvoiceReceivable {
+    const creditMinor = BigInt(
+      SalesInvoiceCalculator.toMinorUnits(current.currency, creditAmount),
+    );
+    const balanceMinor = BigInt(
+      SalesInvoiceCalculator.toMinorUnits(current.currency, current.balanceDue),
+    );
+    if (creditMinor <= 0n) throw new AppError(409, "SALES_CREDIT_NOTE_ZERO_TOTAL");
+    if (creditMinor > balanceMinor) {
+      throw new AppError(409, "SALES_CREDIT_NOTE_EXCEEDS_BALANCE");
+    }
+    const creditedMinor = BigInt(
+      SalesInvoiceCalculator.toMinorUnits(current.currency, current.creditedAmount),
+    ) + creditMinor;
+    const nextBalanceMinor = balanceMinor - creditMinor;
+    return SalesInvoiceReceivableSchema.parse({
+      ...current,
+      creditedAmount: SalesInvoiceCalculator.fromMinorUnits(
+        current.currency,
+        creditedMinor.toString(),
+      ),
+      balanceDue: SalesInvoiceCalculator.fromMinorUnits(
+        current.currency,
+        nextBalanceMinor.toString(),
+      ),
+      status: nextBalanceMinor === 0n ? "SETTLED" : "PARTIALLY_SETTLED",
+      version: current.version + 1,
+      createdAt: current.createdAt ?? timestamp,
+      updatedAt: timestamp,
+    });
   }
 }

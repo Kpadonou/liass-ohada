@@ -8,6 +8,7 @@ import type {
   SalesInvoice,
   SalesInvoiceLine,
   SalesIssuedInvoice,
+  SalesCreditNoteSummary,
   SalesPaymentMethod,
   SalesReceivableStatus
 } from '@liass-ohada/shared/sales';
@@ -26,6 +27,8 @@ import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { SalesCapabilities } from '../../data-access/sales-capabilities';
 import { SalesInvoicesApi } from '../../data-access/sales-invoices.api';
+import { SalesCreditNotesApi } from '../../data-access/sales-credit-notes.api';
+import { SalesCreditNotesQueries } from '../../data-access/sales-credit-notes.queries';
 import { SalesInvoicesQueries } from '../../data-access/sales-invoices.queries';
 import { SalesPaymentsQueries } from '../../data-access/sales-payments.queries';
 import { formatExactMoney } from '../../utils/exact-money-display';
@@ -46,6 +49,7 @@ import {
 } from './sales-payment-dialog.component';
 
 const PAYMENT_PAGE_SIZE = 25;
+const CREDIT_NOTE_PAGE_SIZE = 25;
 
 @Component({
   selector: 'liass-sales-invoice-detail-page',
@@ -55,6 +59,8 @@ const PAYMENT_PAGE_SIZE = 25;
 })
 export class SalesInvoiceDetailPage {
   private readonly api = inject(SalesInvoicesApi);
+  private readonly creditNotesApi = inject(SalesCreditNotesApi);
+  private readonly creditNoteQueries = inject(SalesCreditNotesQueries);
   protected readonly capabilities = inject(SalesCapabilities);
   private readonly dialog = inject(MatDialog);
   private readonly notification = inject(NotificationService);
@@ -71,6 +77,9 @@ export class SalesInvoiceDetailPage {
   protected readonly documentAction = signal<'open' | 'download' | 'print' | null>(null);
   protected readonly paymentCursor = signal<string | undefined>(undefined);
   protected readonly paymentCursorHistory = signal<string[]>([]);
+  protected readonly creditNoteCursor = signal<string | undefined>(undefined);
+  protected readonly creditNoteCursorHistory = signal<string[]>([]);
+  protected readonly creatingCreditNote = signal(false);
   protected readonly availability = computed(() => this.productAccess.availability('SALES'));
   protected readonly canLoad = computed(() => this.availability() === 'AVAILABLE' && this.capabilities.canRead());
   protected readonly invoiceQuery = injectQuery(() => this.queries.detail(this.invoiceId, this.canLoad()));
@@ -95,7 +104,22 @@ export class SalesInvoiceDetailPage {
   protected readonly canRecordPayment = computed(() => {
     const receivable = this.receivable();
     return this.settlementEnabled() && this.capabilities.canWrite() && !!receivable &&
-      receivable.status !== 'PAID' && hasPositiveExactAmount(receivable.balanceDue);
+      receivable.status !== 'SETTLED' && hasPositiveExactAmount(receivable.balanceDue);
+  });
+  protected readonly creditNotesQuery = injectQuery(() =>
+    this.creditNoteQueries.list(
+      this.invoiceId,
+      { limit: CREDIT_NOTE_PAGE_SIZE, cursor: this.creditNoteCursor() },
+      this.settlementEnabled()
+    )
+  );
+  protected readonly creditNotes = computed(() => this.creditNotesQuery.data()?.items ?? []);
+  protected readonly hasPreviousCreditNotes = computed(() => this.creditNoteCursorHistory().length > 0);
+  protected readonly hasNextCreditNotes = computed(() => !!this.creditNotesQuery.data()?.nextCursor);
+  protected readonly canCreateCreditNote = computed(() => {
+    const receivable = this.receivable();
+    return this.settlementEnabled() && this.capabilities.canWrite() && !!receivable &&
+      receivable.status !== 'SETTLED' && hasPositiveExactAmount(receivable.balanceDue);
   });
   protected readonly documentQuery = injectQuery(() =>
     this.queries.document(
@@ -129,13 +153,62 @@ export class SalesInvoiceDetailPage {
   protected retryDocument(): void { void this.documentQuery.refetch(); }
   protected retryReceivable(): void { void this.receivableQuery.refetch(); }
   protected retryPayments(): void { void this.paymentsQuery.refetch(); }
+  protected retryCreditNotes(): void { void this.creditNotesQuery.refetch(); }
+
+  protected creditNoteStatusKey(status: SalesCreditNoteSummary['status']): string {
+    return `SALES.CREDIT_NOTES.STATUS.${status}`;
+  }
+
+  protected creditNoteTitle(note: SalesCreditNoteSummary): string {
+    return note.status === 'ISSUED'
+      ? this.transloco.translate('SALES.CREDIT_NOTES.NUMBER', { number: note.creditNoteNumber })
+      : this.transloco.translate('SALES.CREDIT_NOTES.DRAFT_TITLE');
+  }
+
+  protected openCreditNote(note: SalesCreditNoteSummary): void {
+    void this.router.navigate(['/sales/invoices', this.invoiceId, 'credit-notes', note.id]);
+  }
+
+  protected async createCreditNote(): Promise<void> {
+    if (!this.canCreateCreditNote() || this.creatingCreditNote()) return;
+    this.creatingCreditNote.set(true);
+    try {
+      const result = await this.creditNotesApi.create(this.invoiceId);
+      this.queryClient.setQueryData(
+        this.creditNoteQueries.detailKey(this.invoiceId, result.data.id), result.data
+      );
+      await this.queryClient.invalidateQueries({ queryKey: this.creditNoteQueries.rootKey(this.invoiceId) });
+      this.notification.success(result.message ?? this.transloco.translate('SALES.CREDIT_NOTES.NOTIFICATIONS.CREATED'));
+      await this.router.navigate(['/sales/invoices', this.invoiceId, 'credit-notes', result.data.id]);
+    } catch (error) {
+      const key = salesInvoiceErrorCode(error) === 'SALES_INVOICE_ALREADY_SETTLED'
+        ? 'SALES.CREDIT_NOTES.ERRORS.ALREADY_SETTLED'
+        : 'SALES.CREDIT_NOTES.ERRORS.CREATE_FAILED';
+      this.notification.error(safeMessageFromError(error) ?? this.transloco.translate(key));
+      if (salesInvoiceErrorCode(error) === 'SALES_INVOICE_ALREADY_SETTLED') await this.receivableQuery.refetch();
+    } finally { this.creatingCreditNote.set(false); }
+  }
+
+  protected nextCreditNotesPage(): void {
+    const next = this.creditNotesQuery.data()?.nextCursor;
+    if (!next) return;
+    this.creditNoteCursorHistory.update((history) => [...history, this.creditNoteCursor() ?? '']);
+    this.creditNoteCursor.set(next);
+  }
+
+  protected previousCreditNotesPage(): void {
+    const history = [...this.creditNoteCursorHistory()];
+    const previous = history.pop();
+    this.creditNoteCursorHistory.set(history);
+    this.creditNoteCursor.set(previous || undefined);
+  }
 
   protected settlementStatusKey(status: SalesReceivableStatus): string {
     return `SALES.INVOICES.SETTLEMENT.STATUS.${status}`;
   }
 
   protected settlementTone(status: SalesReceivableStatus): 'warning' | 'info' | 'success' {
-    return status === 'PAID' ? 'success' : status === 'PARTIALLY_PAID' ? 'info' : 'warning';
+    return status === 'SETTLED' ? 'success' : status === 'PARTIALLY_SETTLED' ? 'info' : 'warning';
   }
 
   protected paymentMethodKey(method: SalesPaymentMethod): string {

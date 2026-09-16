@@ -29,8 +29,10 @@ const SalesReceivableItemSchema = z.object({
   currency: z.string().regex(/^[A-Z]{3}$/),
   invoiceAmountMinor: MinorAmountSchema,
   amountPaidMinor: MinorAmountSchema,
+  creditedAmountMinor: MinorAmountSchema,
   balanceDueMinor: MinorAmountSchema,
-  status: z.enum(["UNPAID", "PARTIALLY_PAID", "PAID"]),
+  creditedLineQuantities: z.record(z.string().min(1), z.string().regex(/^(?:0|[1-9]\d*)(?:\.\d+)?$/)),
+  status: z.enum(["OPEN", "PARTIALLY_SETTLED", "SETTLED"]),
   paymentCount: z.number().int().min(0),
   version: z.number().int().positive(),
   createdAt: z.string().datetime(),
@@ -70,6 +72,10 @@ const SalesPaymentIdempotencyItemSchema = z.object({
 }).strict();
 
 type SalesReceivableItem = z.infer<typeof SalesReceivableItemSchema>;
+export type SalesReceivableState = {
+  receivable: SalesInvoiceReceivable;
+  creditedLineQuantities: Record<string, string>;
+};
 type SalesPaymentItem = z.infer<typeof SalesPaymentItemSchema>;
 export type SalesPaymentIdempotencyRecord = z.infer<typeof SalesPaymentIdempotencyItemSchema>;
 
@@ -93,6 +99,7 @@ const toReceivable = (item: SalesReceivableItem): SalesInvoiceReceivable =>
     currency: item.currency,
     invoiceAmount: SalesInvoiceCalculator.fromMinorUnits(item.currency, item.invoiceAmountMinor),
     amountPaid: SalesInvoiceCalculator.fromMinorUnits(item.currency, item.amountPaidMinor),
+    creditedAmount: SalesInvoiceCalculator.fromMinorUnits(item.currency, item.creditedAmountMinor),
     balanceDue: SalesInvoiceCalculator.fromMinorUnits(item.currency, item.balanceDueMinor),
     status: item.status,
     paymentCount: item.paymentCount,
@@ -113,7 +120,11 @@ const toPayment = (item: SalesPaymentItem): SalesPayment =>
     createdAt: item.createdAt,
   });
 
-const buildReceivableItem = (orgId: string, value: SalesInvoiceReceivable): SalesReceivableItem =>
+export const buildSalesReceivableItem = (
+  orgId: string,
+  value: SalesInvoiceReceivable,
+  creditedLineQuantities: Record<string, string>,
+): SalesReceivableItem =>
   SalesReceivableItemSchema.parse({
     PK: KeyFactory.orgKey(orgId),
     SK: KeyFactory.salesReceivableSK(value.invoiceId),
@@ -123,7 +134,9 @@ const buildReceivableItem = (orgId: string, value: SalesInvoiceReceivable): Sale
     currency: value.currency,
     invoiceAmountMinor: SalesInvoiceCalculator.toMinorUnits(value.currency, value.invoiceAmount),
     amountPaidMinor: SalesInvoiceCalculator.toMinorUnits(value.currency, value.amountPaid),
+    creditedAmountMinor: SalesInvoiceCalculator.toMinorUnits(value.currency, value.creditedAmount),
     balanceDueMinor: SalesInvoiceCalculator.toMinorUnits(value.currency, value.balanceDue),
+    creditedLineQuantities,
     status: value.status,
     paymentCount: value.paymentCount,
     version: value.version,
@@ -184,6 +197,13 @@ export class SalesPaymentRepository {
     orgId: string,
     invoiceId: string,
   ): Promise<SalesInvoiceReceivable | undefined> {
+    return (await this.getReceivableState(orgId, invoiceId))?.receivable;
+  }
+
+  static async getReceivableState(
+    orgId: string,
+    invoiceId: string,
+  ): Promise<SalesReceivableState | undefined> {
     const result = await dynamoClient.send(new GetItemCommand({
       TableName: config.TABLE_NAME,
       Key: marshall({
@@ -195,7 +215,7 @@ export class SalesPaymentRepository {
     if (!result.Item) return undefined;
     const item = SalesReceivableItemSchema.parse(unmarshall(result.Item));
     if (item.orgId !== orgId || item.invoiceId !== invoiceId) return undefined;
-    return toReceivable(item);
+    return { receivable: toReceivable(item), creditedLineQuantities: item.creditedLineQuantities };
   }
 
   static async getPayment(
@@ -274,8 +294,13 @@ export class SalesPaymentRepository {
     clientRequestId: string;
     originalExpectedVersion: number;
     previousReceivableVersion: number;
+    creditedLineQuantities?: Record<string, string>;
   }): Promise<void> {
-    const receivable = buildReceivableItem(input.orgId, input.receivable);
+    const receivable = buildSalesReceivableItem(
+      input.orgId,
+      input.receivable,
+      input.creditedLineQuantities ?? {},
+    );
     const payment = buildPaymentItem(input.orgId, input.payment, input.recordedByUserId);
     const idempotency = SalesPaymentIdempotencyItemSchema.parse({
       PK: KeyFactory.orgKey(input.orgId),

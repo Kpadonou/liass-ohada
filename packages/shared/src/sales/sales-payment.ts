@@ -9,30 +9,34 @@ const toScaledInteger = (value: string, scale: number): bigint => {
 
 const receivableAmountsAreConsistent = (value: {
   amountPaid: string;
+  creditedAmount: string;
   balanceDue: string;
   invoiceAmount: string;
-  status: "UNPAID" | "PARTIALLY_PAID" | "PAID";
+  status: "OPEN" | "PARTIALLY_SETTLED" | "SETTLED";
 }): boolean => {
   const scale = Math.max(
     value.amountPaid.split(".")[1]?.length ?? 0,
+    value.creditedAmount.split(".")[1]?.length ?? 0,
     value.balanceDue.split(".")[1]?.length ?? 0,
     value.invoiceAmount.split(".")[1]?.length ?? 0,
   );
   const paid = toScaledInteger(value.amountPaid, scale);
+  const credited = toScaledInteger(value.creditedAmount, scale);
   const balance = toScaledInteger(value.balanceDue, scale);
   const invoice = toScaledInteger(value.invoiceAmount, scale);
-  const expectedStatus = invoice === 0n || paid === invoice
-    ? "PAID"
-    : paid === 0n
-      ? "UNPAID"
-      : "PARTIALLY_PAID";
-  return paid + balance === invoice && paid <= invoice && value.status === expectedStatus;
+  const expectedStatus = invoice === 0n || balance === 0n
+    ? "SETTLED"
+    : balance === invoice
+      ? "OPEN"
+      : "PARTIALLY_SETTLED";
+  return paid + credited + balance === invoice &&
+    paid + credited <= invoice && value.status === expectedStatus;
 };
 
 export const SalesReceivableStatusSchema = z.enum([
-  "UNPAID",
-  "PARTIALLY_PAID",
-  "PAID",
+  "OPEN",
+  "PARTIALLY_SETTLED",
+  "SETTLED",
 ]);
 
 export const SalesInvoiceReceivableSchema = z
@@ -41,6 +45,7 @@ export const SalesInvoiceReceivableSchema = z
     currency: CurrencyCodeSchema,
     invoiceAmount: SalesInvoiceMoneySchema,
     amountPaid: SalesInvoiceMoneySchema,
+    creditedAmount: SalesInvoiceMoneySchema,
     balanceDue: SalesInvoiceMoneySchema,
     status: SalesReceivableStatusSchema,
     paymentCount: z.number().int().min(0),

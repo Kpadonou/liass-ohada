@@ -10,16 +10,18 @@ const timestamp = "2026-09-10T10:00:00.000Z";
 
 describe("SALES Payment shared contracts", () => {
   test.each([
-    ["UNPAID", "0", "100", 0],
-    ["PARTIALLY_PAID", "30", "70", 1],
-    ["PAID", "100", "0", 2],
-    ["PAID", "0", "0", 0],
-  ])("accepts canonical %s Receivable state", (status, amountPaid, balanceDue, paymentCount) => {
+    ["OPEN", "0", "0", "100", 0],
+    ["PARTIALLY_SETTLED", "30", "0", "70", 1],
+    ["PARTIALLY_SETTLED", "20", "30", "50", 1],
+    ["SETTLED", "100", "0", "0", 2],
+    ["SETTLED", "0", "0", "0", 0],
+  ])("accepts canonical %s Receivable state", (status, amountPaid, creditedAmount, balanceDue, paymentCount) => {
     expect(SalesInvoiceReceivableSchema.safeParse({
       invoiceId: "SINV-1",
       currency: "XOF",
-      invoiceAmount: status === "PAID" && amountPaid === "0" ? "0" : "100",
+      invoiceAmount: status === "SETTLED" && amountPaid === "0" && creditedAmount === "0" ? "0" : "100",
       amountPaid,
+      creditedAmount,
       balanceDue,
       status,
       paymentCount,
@@ -31,11 +33,11 @@ describe("SALES Payment shared contracts", () => {
   test("rejects inconsistent status, sums, negative-like values, and persistence keys", () => {
     const base = {
       invoiceId: "SINV-1", currency: "EUR", invoiceAmount: "100",
-      amountPaid: "20", balanceDue: "80", status: "PARTIALLY_PAID",
+      amountPaid: "20", creditedAmount: "0", balanceDue: "80", status: "PARTIALLY_SETTLED",
       paymentCount: 1, version: 1, updatedAt: timestamp,
     };
     for (const invalid of [
-      { ...base, status: "PAID" },
+      { ...base, status: "SETTLED" },
       { ...base, balanceDue: "81" },
       { ...base, amountPaid: "-1" },
       { ...base, PK: "ORG#org-1" },

@@ -6,6 +6,8 @@ export const KeyFactory = {
   salesItemPrefix: () => "SALES_ITEM#",
   salesInvoicePrefix: () => "SALES_INVOICE#",
   salesPaymentPrefix: (invoiceId: string) => `SALES_PAYMENT#${invoiceId}#`,
+  salesCreditNotePrefix: (invoiceId: string) =>
+    `SALES_CREDIT_NOTE#${invoiceId}#`,
 
   // --- PK (Partition Keys) ---
 
@@ -70,6 +72,17 @@ export const KeyFactory = {
   /** SALES-owned durable idempotency record for recording a Payment. */
   salesPaymentIdempotencySK: (clientRequestId: string) =>
     `SALES_PAYMENT_IDEMPOTENCY#${clientRequestId}`,
+
+  /** SALES-owned Credit Note aggregate, grouped by its source Invoice. */
+  salesCreditNoteSK: (invoiceId: string, creditNoteId: string) =>
+    `${KeyFactory.salesCreditNotePrefix(invoiceId)}${creditNoteId}`,
+
+  /** SALES-owned default commercial Credit Note number sequence. */
+  salesCreditNoteSequenceSK: () => "SALES_CREDIT_NOTE_SEQUENCE#DEFAULT",
+
+  /** SALES-owned durable idempotency record for Credit Note issuance. */
+  salesCreditNoteIssueIdempotencySK: (clientRequestId: string) =>
+    `SALES_CREDIT_NOTE_ISSUE_IDEMPOTENCY#${clientRequestId}`,
 
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",

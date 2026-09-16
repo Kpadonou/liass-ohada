@@ -347,10 +347,12 @@ describe('SALES routes', () => {
     const itemsRoute = salesRoute?.children?.find((route) => route.path === 'items');
     const invoicesRoute = salesRoute?.children?.find((route) => route.path === 'invoices');
     const invoiceDetailRoute = salesRoute?.children?.find((route) => route.path === 'invoices/:invoiceId');
+    const creditNoteDetailRoute = salesRoute?.children?.find((route) => route.path === 'invoices/:invoiceId/credit-notes/:creditNoteId');
     const customersComponent = await customersRoute?.loadComponent?.();
     const itemsComponent = await itemsRoute?.loadComponent?.();
     const invoicesComponent = await invoicesRoute?.loadComponent?.();
     const invoiceDetailComponent = await invoiceDetailRoute?.loadComponent?.();
+    const creditNoteDetailComponent = await creditNoteDetailRoute?.loadComponent?.();
     const { SalesCustomersPage } = await import(
       '../../domains/sales/feature/customers/sales-customers.page'
     );
@@ -359,6 +361,7 @@ describe('SALES routes', () => {
     );
     const { SalesInvoicesPage } = await import('../../domains/sales/feature/invoices/sales-invoices.page');
     const { SalesInvoiceDetailPage } = await import('../../domains/sales/feature/invoices/sales-invoice-detail.page');
+    const { SalesCreditNoteDetailPage } = await import('../../domains/sales/feature/invoices/sales-credit-note-detail.page');
 
     expect(redirect?.redirectTo).toBe('customers');
     expect(redirect?.pathMatch).toBe('full');
@@ -366,6 +369,7 @@ describe('SALES routes', () => {
     expect(itemsComponent).toBe(SalesItemsPage);
     expect(invoicesComponent).toBe(SalesInvoicesPage);
     expect(invoiceDetailComponent).toBe(SalesInvoiceDetailPage);
+    expect(creditNoteDetailComponent).toBe(SalesCreditNoteDetailPage);
     expect(customersRoute?.data?.['titleKey']).toBe('SALES.CUSTOMERS.PAGE.TITLE');
     expect(itemsRoute?.data?.['titleKey']).toBe('SALES.ITEMS.PAGE.TITLE');
   });
@@ -374,7 +378,7 @@ describe('SALES routes', () => {
     const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
     const paths = salesRoute?.children?.map((route) => route.path) ?? [];
 
-    expect(paths).toEqual(['', 'customers', 'items', 'invoices', 'invoices/:invoiceId']);
+    expect(paths).toEqual(['', 'customers', 'items', 'invoices', 'invoices/:invoiceId/credit-notes/:creditNoteId', 'invoices/:invoiceId']);
     expect(paths).not.toContain('dashboard');
     expect(paths).not.toContain('catalog');
     expect(paths).not.toContain('invoices/:invoiceId/issue');
