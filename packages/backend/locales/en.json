@@ -348,5 +348,13 @@
   "SALES_INVOICE_DOCUMENT_NOT_FOUND": "No final document is available for this Invoice.",
   "SALES_INVOICE_DOCUMENT_VERSION_CONFLICT": "Another document rendering version already exists.",
   "SALES_INVOICE_DOCUMENT_INTEGRITY_ERROR": "The Invoice document is temporarily unavailable because an integrity check failed.",
-  "SALES_INVOICE_DOCUMENT_ISSUER_NOT_FOUND": "The issuer organization information is unavailable."
+  "SALES_INVOICE_DOCUMENT_ISSUER_NOT_FOUND": "The issuer organization information is unavailable.",
+  "SUCCESS_SALES_CREDIT_NOTE_DOCUMENT_GENERATED": "The Credit Note document is available.",
+  "SUCCESS_SALES_CREDIT_NOTE_DOCUMENT_RETRIEVED": "The Credit Note document was retrieved.",
+  "SUCCESS_SALES_CREDIT_NOTE_DOWNLOAD_URL_CREATED": "The Credit Note download link is available.",
+  "CREDIT_NOTE_DOCUMENT_REQUIRES_ISSUED": "Only an issued Credit Note can generate a final document.",
+  "SALES_CREDIT_NOTE_DOCUMENT_NOT_FOUND": "No final document is available for this Credit Note.",
+  "SALES_CREDIT_NOTE_DOCUMENT_VERSION_CONFLICT": "Another Credit Note document rendering version already exists.",
+  "SALES_CREDIT_NOTE_DOCUMENT_INTEGRITY_ERROR": "The Credit Note document is temporarily unavailable because an integrity check failed.",
+  "SALES_CREDIT_NOTE_DOCUMENT_ISSUER_NOT_FOUND": "The issuer organization information is unavailable."
 }

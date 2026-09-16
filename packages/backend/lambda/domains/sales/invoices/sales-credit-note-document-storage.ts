@@ -1,0 +1,136 @@
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  NotFound,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { SALES_INVOICE_DOWNLOAD_TTL_SECONDS } from "./sales-invoice-document-storage";
+
+export const SALES_CREDIT_NOTE_DOWNLOAD_TTL_SECONDS =
+  SALES_INVOICE_DOWNLOAD_TTL_SECONDS;
+
+const bucketName = (): string => {
+  const value = process.env.SALES_DOCUMENT_BUCKET_NAME;
+  if (!value) throw new Error("SALES_DOCUMENT_BUCKET_NAME is required");
+  return value;
+};
+
+const s3Client = new S3Client({});
+
+export const salesCreditNotePdfObjectKey = (
+  orgId: string,
+  invoiceId: string,
+  creditNoteId: string,
+): string =>
+  `sales/${encodeURIComponent(orgId)}/invoices/${encodeURIComponent(invoiceId)}/credit-notes/${encodeURIComponent(creditNoteId)}/credit-note.pdf`;
+
+export interface StoredSalesCreditNotePdfDescriptor {
+  contentHash: string;
+  creditNoteId: string;
+  invoiceId: string;
+  objectKey: string;
+  renderingVersion: string;
+  sizeBytes: number;
+}
+
+export class SalesCreditNoteDocumentStorage {
+  static async put(
+    orgId: string,
+    invoiceId: string,
+    creditNoteId: string,
+    renderingVersion: string,
+    contentHash: string,
+    bytes: Buffer,
+  ): Promise<StoredSalesCreditNotePdfDescriptor> {
+    const objectKey = salesCreditNotePdfObjectKey(orgId, invoiceId, creditNoteId);
+    await s3Client.send(
+      new PutObjectCommand({
+        Bucket: bucketName(),
+        Key: objectKey,
+        Body: bytes,
+        ContentType: "application/pdf",
+        Metadata: {
+          creditnoteid: creditNoteId,
+          invoiceid: invoiceId,
+          renderingversion: renderingVersion,
+          contenthash: contentHash,
+        },
+      }),
+    );
+    return {
+      contentHash,
+      creditNoteId,
+      invoiceId,
+      objectKey,
+      renderingVersion,
+      sizeBytes: bytes.byteLength,
+    };
+  }
+
+  static async assertAvailable(
+    input: StoredSalesCreditNotePdfDescriptor,
+  ): Promise<void> {
+    let response;
+    try {
+      response = await s3Client.send(
+        new HeadObjectCommand({ Bucket: bucketName(), Key: input.objectKey }),
+      );
+    } catch (error) {
+      if (
+        error instanceof NotFound ||
+        ["NotFound", "NoSuchKey"].includes(
+          String((error as { name?: string } | undefined)?.name),
+        )
+      ) {
+        throw new SalesCreditNoteDocumentObjectMissingError();
+      }
+      throw error;
+    }
+    if (
+      response.ContentType !== "application/pdf" ||
+      response.ContentLength !== input.sizeBytes ||
+      response.Metadata?.creditnoteid !== input.creditNoteId ||
+      response.Metadata?.invoiceid !== input.invoiceId ||
+      response.Metadata?.renderingversion !== input.renderingVersion ||
+      response.Metadata?.contenthash !== input.contentHash
+    ) {
+      throw new SalesCreditNoteDocumentObjectIntegrityError();
+    }
+  }
+
+  static async createDownloadUrl(
+    objectKey: string,
+    creditNoteNumber: string,
+  ): Promise<{ url: string; expiresAt: string }> {
+    const expiresAt = new Date(
+      Date.now() + SALES_CREDIT_NOTE_DOWNLOAD_TTL_SECONDS * 1000,
+    ).toISOString();
+    const url = await getSignedUrl(
+      s3Client,
+      new GetObjectCommand({
+        Bucket: bucketName(),
+        Key: objectKey,
+        ResponseContentType: "application/pdf",
+        ResponseContentDisposition: `attachment; filename="avoir-${creditNoteNumber}.pdf"`,
+      }),
+      { expiresIn: SALES_CREDIT_NOTE_DOWNLOAD_TTL_SECONDS },
+    );
+    return { url, expiresAt };
+  }
+}
+
+export class SalesCreditNoteDocumentObjectMissingError extends Error {
+  constructor() {
+    super("Sales Credit Note document object is missing");
+    this.name = "SalesCreditNoteDocumentObjectMissingError";
+  }
+}
+
+export class SalesCreditNoteDocumentObjectIntegrityError extends Error {
+  constructor() {
+    super("Sales Credit Note document object failed integrity checks");
+    this.name = "SalesCreditNoteDocumentObjectIntegrityError";
+  }
+}

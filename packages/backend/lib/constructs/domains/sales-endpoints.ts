@@ -119,5 +119,23 @@ export class SalesEndpoints extends DomainConstructFactory {
       "create-sales-invoice-pdf-download-url",
       "READ",
     );
+    documentRoute(
+      apigw.HttpMethod.POST,
+      "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/documents/pdf",
+      "generate-sales-credit-note-pdf",
+      "READ_WRITE",
+    );
+    documentRoute(
+      apigw.HttpMethod.GET,
+      "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/documents/pdf",
+      "get-sales-credit-note-pdf",
+      "READ",
+    );
+    documentRoute(
+      apigw.HttpMethod.POST,
+      "/sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/documents/pdf/download-url",
+      "create-sales-credit-note-pdf-download-url",
+      "READ",
+    );
   }
 }

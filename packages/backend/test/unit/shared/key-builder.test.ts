@@ -60,6 +60,9 @@ describe("KeyFactory", () => {
     expect(KeyFactory.salesInvoiceDocumentSK("SINV-1")).toBe(
       "SALES_INVOICE_DOCUMENT#SINV-1#PDF",
     );
+    expect(KeyFactory.salesCreditNoteDocumentSK("SINV-1", "SCN-1")).toBe(
+      "SALES_CREDIT_NOTE_DOCUMENT#SINV-1#SCN-1#PDF",
+    );
     expect(KeyFactory.salesReceivableSK("SINV-1")).toBe(
       "SALES_RECEIVABLE#SINV-1",
     );

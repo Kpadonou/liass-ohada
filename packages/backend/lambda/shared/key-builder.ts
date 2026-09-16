@@ -84,6 +84,10 @@ export const KeyFactory = {
   salesCreditNoteIssueIdempotencySK: (clientRequestId: string) =>
     `SALES_CREDIT_NOTE_ISSUE_IDEMPOTENCY#${clientRequestId}`,
 
+  /** SALES-owned canonical PDF metadata for a Credit Note. */
+  salesCreditNoteDocumentSK: (invoiceId: string, creditNoteId: string) =>
+    `SALES_CREDIT_NOTE_DOCUMENT#${invoiceId}#${creditNoteId}#PDF`,
+
   /** SK for cabinet metadata under the cabinet partition */
   cabinetMetadataSK: () => "CABINET#METADATA",
 

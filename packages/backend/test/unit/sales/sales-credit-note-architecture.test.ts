@@ -8,19 +8,20 @@ const creditFiles = readdirSync(invoiceRoot).filter((file) => file.includes("cre
 const source = creditFiles.map((file) => readFileSync(path.join(invoiceRoot, file), "utf8")).join("\n");
 
 describe("SALES Credit Note architecture", () => {
-  test("registers exactly eight scoped routes once with no document, refund, or aggregate delete route", () => {
+  test("registers eight lifecycle and exactly three document routes with no refund or aggregate delete route", () => {
     const routes = endpoints.split("\n").filter((line) => line.includes("/credit-notes"));
-    expect(routes).toHaveLength(8);
-    expect(new Set(routes.map((line) => line.match(/"(\/sales[^"]+)"/)?.[1])).size).toBe(5);
-    expect(routes.filter((line) => line.includes("documents") || line.includes("refund"))).toHaveLength(0);
+    expect(routes).toHaveLength(11);
+    expect(new Set(routes.map((line) => line.match(/"(\/sales[^"]+)"/)?.[1])).size).toBe(7);
+    expect(routes.filter((line) => line.includes("documents/pdf"))).toHaveLength(3);
+    expect(routes.filter((line) => line.includes("refund"))).toHaveLength(0);
     expect(routes.filter((line) => line.includes("HttpMethod.DELETE") && !line.includes("/lines/"))).toHaveLength(0);
   });
 
-  test("assigns SALES_READ to two reads and SALES_WRITE to six mutations", () => {
-    const handlers = creditFiles.filter((file) => /^(create|list|get|update|add|remove|issue)-/.test(file));
+  test("assigns SALES_READ to four reads and SALES_WRITE to seven mutations", () => {
+    const handlers = creditFiles.filter((file) => /^(create|generate|list|get|update|add|remove|issue)-/.test(file));
     const permissions = handlers.map((file) => readFileSync(path.join(invoiceRoot, file), "utf8"));
-    expect(permissions.filter((text) => text.includes('permission: "SALES_READ"'))).toHaveLength(2);
-    expect(permissions.filter((text) => text.includes('permission: "SALES_WRITE"'))).toHaveLength(6);
+    expect(permissions.filter((text) => text.includes('permission: "SALES_READ"'))).toHaveLength(4);
+    expect(permissions.filter((text) => text.includes('permission: "SALES_WRITE"'))).toHaveLength(7);
     expect(permissions.every((text) => text.includes('productCode: "SALES"'))).toBe(true);
   });
 

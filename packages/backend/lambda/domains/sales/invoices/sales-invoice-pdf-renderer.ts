@@ -29,7 +29,7 @@ export interface SalesInvoicePdfView {
   total: string;
 }
 
-const formatExactDecimal = (value: string): string => {
+export const formatExactDecimal = (value: string): string => {
   const [integer, fraction] = value.split(".");
   const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
   return fraction === undefined ? grouped : `${grouped},${fraction}`;
@@ -38,7 +38,7 @@ const formatExactDecimal = (value: string): string => {
 export const formatExactMoney = (value: string, currency: string): string =>
   `${formatExactDecimal(value)} ${currency}`;
 
-const formatIssueDate = (value: string): string => {
+export const formatIssueDate = (value: string): string => {
   const [year, month, day] = value.split("-");
   return `${day}/${month}/${year}`;
 };

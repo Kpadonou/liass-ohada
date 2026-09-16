@@ -118,6 +118,9 @@ describe("API stack decomposition", () => {
         "POST /sales/invoices/{invoiceId}/documents/pdf",
         "GET /sales/invoices/{invoiceId}/documents/pdf",
         "POST /sales/invoices/{invoiceId}/documents/pdf/download-url",
+        "POST /sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/documents/pdf",
+        "GET /sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/documents/pdf",
+        "POST /sales/invoices/{invoiceId}/credit-notes/{creditNoteId}/documents/pdf/download-url",
       ]),
     );
   });
@@ -143,14 +146,14 @@ describe("API stack decomposition", () => {
     ).toBe(true);
   });
 
-  test("keeps all thirty-four SALES Lambdas in the SALES domain without Accounting fallback", () => {
+  test("keeps all thirty-seven SALES Lambdas in the SALES domain without Accounting fallback", () => {
     const functions = constructs.filter(
       (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
     );
     const salesFunctions = functions.filter((fn) =>
       String(fn.functionName).includes("-dev-sales-"),
     );
-    expect(salesFunctions).toHaveLength(34);
+    expect(salesFunctions).toHaveLength(37);
     expect(
       salesFunctions.every(
         (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),
@@ -180,16 +183,16 @@ describe("API stack decomposition", () => {
       .toContain("aws:SecureTransport");
   });
 
-  test("exposes the private bucket only to the three SALES document Lambdas", () => {
+  test("exposes the private bucket only to the six SALES document Lambdas", () => {
     const functions = constructs.filter(
       (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
     );
     const withBucket = functions.filter((fn) =>
       lambdaEnvironmentVariable(fn, "SALES_DOCUMENT_BUCKET_NAME"),
     );
-    expect(withBucket).toHaveLength(3);
+    expect(withBucket).toHaveLength(6);
     expect(withBucket.every((fn) =>
-      String(fn.functionName).includes("invoice-pdf"),
+      String(fn.functionName).includes("pdf"),
     )).toBe(true);
   });
 
@@ -197,16 +200,16 @@ describe("API stack decomposition", () => {
     const documentPolicies = constructs.filter(
       (item): item is iam.CfnPolicy =>
         item instanceof iam.CfnPolicy &&
-        /invoice-pdf/i.test(item.node.path),
+        /(?:invoice|credit-note)-pdf/i.test(item.node.path),
     );
-    expect(documentPolicies).toHaveLength(3);
+    expect(documentPolicies).toHaveLength(6);
     const serialized = documentPolicies.map((policy) =>
       JSON.stringify(cdk.Stack.of(policy).resolve(policy.policyDocument)),
     );
     expect(serialized.every((policy) => policy.includes("dynamodb:GetItem"))).toBe(true);
-    expect(serialized.filter((policy) => policy.includes("dynamodb:PutItem"))).toHaveLength(1);
+    expect(serialized.filter((policy) => policy.includes("dynamodb:PutItem"))).toHaveLength(2);
     expect(serialized.every((policy) => policy.includes("s3:GetObject"))).toBe(true);
-    expect(serialized.filter((policy) => policy.includes("s3:PutObject"))).toHaveLength(1);
+    expect(serialized.filter((policy) => policy.includes("s3:PutObject"))).toHaveLength(2);
     for (const policy of serialized) {
       expect(policy).not.toMatch(/dynamodb:(Scan|DeleteItem|BatchWriteItem|\*)/);
       expect(policy).not.toMatch(/s3:(List|DeleteObject|\*)/);

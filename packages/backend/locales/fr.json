@@ -349,5 +349,13 @@
   "SALES_INVOICE_DOCUMENT_NOT_FOUND": "Aucun document final n'est disponible pour cette facture.",
   "SALES_INVOICE_DOCUMENT_VERSION_CONFLICT": "Une autre version du document existe déjà.",
   "SALES_INVOICE_DOCUMENT_INTEGRITY_ERROR": "Le document de la facture est temporairement indisponible en raison d'un contrôle d'intégrité.",
-  "SALES_INVOICE_DOCUMENT_ISSUER_NOT_FOUND": "Les informations de l'organisation émettrice sont indisponibles."
+  "SALES_INVOICE_DOCUMENT_ISSUER_NOT_FOUND": "Les informations de l'organisation émettrice sont indisponibles.",
+  "SUCCESS_SALES_CREDIT_NOTE_DOCUMENT_GENERATED": "Le document de l'avoir est disponible.",
+  "SUCCESS_SALES_CREDIT_NOTE_DOCUMENT_RETRIEVED": "Le document de l'avoir a été récupéré.",
+  "SUCCESS_SALES_CREDIT_NOTE_DOWNLOAD_URL_CREATED": "Le lien de téléchargement de l'avoir est disponible.",
+  "CREDIT_NOTE_DOCUMENT_REQUIRES_ISSUED": "Seul un avoir émis peut générer un document final.",
+  "SALES_CREDIT_NOTE_DOCUMENT_NOT_FOUND": "Aucun document final n'est disponible pour cet avoir.",
+  "SALES_CREDIT_NOTE_DOCUMENT_VERSION_CONFLICT": "Une autre version du document de l'avoir existe déjà.",
+  "SALES_CREDIT_NOTE_DOCUMENT_INTEGRITY_ERROR": "Le document de l'avoir est temporairement indisponible en raison d'un contrôle d'intégrité.",
+  "SALES_CREDIT_NOTE_DOCUMENT_ISSUER_NOT_FOUND": "Les informations de l'organisation émettrice sont indisponibles."
 }
