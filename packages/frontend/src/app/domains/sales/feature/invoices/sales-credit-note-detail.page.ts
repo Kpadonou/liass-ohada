@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal, type Type } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -52,6 +53,8 @@ export class SalesCreditNoteDetailPage {
   protected readonly invoiceId = this.route.snapshot.paramMap.get('invoiceId') ?? '';
   protected readonly creditNoteId = this.route.snapshot.paramMap.get('creditNoteId') ?? '';
   protected readonly removingLineId = signal<string | null>(null);
+  protected readonly generatingDocument = signal(false);
+  protected readonly documentAction = signal<'open' | 'download' | 'print' | null>(null);
   protected readonly canLoad = computed(() =>
     this.productAccess.availability('SALES') === 'AVAILABLE' && this.capabilities.canRead()
   );
@@ -67,6 +70,24 @@ export class SalesCreditNoteDetailPage {
     return invoice?.status === 'ISSUED' ? invoice : undefined;
   });
   protected readonly creditNote = computed(() => this.creditNoteQuery.data());
+  protected readonly documentQuery = injectQuery(() =>
+    this.creditNoteQueries.document(
+      this.invoiceId,
+      this.creditNoteId,
+      this.canLoad() && this.creditNote()?.status === 'ISSUED'
+    )
+  );
+  protected readonly documentAbsent = computed(() => {
+    const error = this.documentQuery.error();
+    return this.creditNote()?.status === 'ISSUED' && this.documentQuery.isError() &&
+      error instanceof HttpErrorResponse && error.status === 404;
+  });
+  protected readonly documentErrorMessage = computed(() => {
+    const key = salesInvoiceErrorCode(this.documentQuery.error()) === 'SALES_CREDIT_NOTE_DOCUMENT_INTEGRITY_ERROR'
+      ? 'SALES.CREDIT_NOTES.DOCUMENT.ERRORS.INTEGRITY'
+      : 'SALES.CREDIT_NOTES.DOCUMENT.ERRORS.UNAVAILABLE';
+    return safeMessageFromError(this.documentQuery.error()) ?? this.transloco.translate(key);
+  });
   protected readonly receivable = computed(() => this.receivableQuery.data());
   protected readonly editable = computed(() =>
     this.creditNote()?.status === 'DRAFT' && this.capabilities.canWrite()
@@ -96,6 +117,35 @@ export class SalesCreditNoteDetailPage {
 
   protected back(): void { void this.router.navigate(['/sales/invoices', this.invoiceId]); }
   protected retry(): void { void Promise.all([this.creditNoteQuery.refetch(), this.invoiceQuery.refetch(), this.receivableQuery.refetch()]); }
+  protected retryDocument(): void { void this.documentQuery.refetch(); }
+
+  protected async generateDocument(): Promise<void> {
+    const note = this.creditNote();
+    if (!note || note.status !== 'ISSUED' || !this.capabilities.canWrite() || this.generatingDocument()) return;
+
+    this.generatingDocument.set(true);
+    try {
+      const result = await this.api.generateDocument(this.invoiceId, note.id);
+      this.queryClient.setQueryData(this.creditNoteQueries.documentKey(this.invoiceId, note.id), result.data);
+      this.notification.success(
+        result.message ?? this.transloco.translate('SALES.CREDIT_NOTES.DOCUMENT.NOTIFICATIONS.READY')
+      );
+    } catch (error) {
+      const code = salesInvoiceErrorCode(error);
+      if (code === 'CREDIT_NOTE_DOCUMENT_REQUIRES_ISSUED' || code === 'SALES_CREDIT_NOTE_NOT_FOUND') {
+        await this.creditNoteQuery.refetch();
+      }
+      this.notification.error(
+        safeMessageFromError(error) ?? this.transloco.translate('SALES.CREDIT_NOTES.DOCUMENT.ERRORS.GENERATION_FAILED')
+      );
+    } finally {
+      this.generatingDocument.set(false);
+    }
+  }
+
+  protected openDocument(): void { void this.useDocumentUrl('open'); }
+  protected downloadDocument(): void { void this.useDocumentUrl('download'); }
+  protected printDocument(): void { void this.useDocumentUrl('print'); }
 
   protected openReason(): void {
     const note = this.creditNote();
@@ -185,6 +235,40 @@ export class SalesCreditNoteDetailPage {
         this.notification.error(safeMessageFromError(error) ?? this.transloco.translate('SALES.CREDIT_NOTES.ERRORS.LINE_REMOVE_FAILED'));
       }
     } finally { this.removingLineId.set(null); }
+  }
+
+  private async useDocumentUrl(action: 'open' | 'download' | 'print'): Promise<void> {
+    const note = this.creditNote();
+    if (!note || note.status !== 'ISSUED' || !this.documentQuery.data() || this.documentAction()) return;
+
+    const popup = action === 'download' ? null : this.openDocumentWindow();
+    this.documentAction.set(action);
+    try {
+      const { url } = await this.api.createDocumentDownloadUrl(this.invoiceId, note.id);
+      if (action === 'download') {
+        const anchor = globalThis.document.createElement('a');
+        anchor.href = url;
+        anchor.rel = 'noopener noreferrer';
+        anchor.click();
+      } else if (popup) {
+        popup.location.href = url;
+      } else {
+        globalThis.window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch (error) {
+      popup?.close();
+      this.notification.error(
+        safeMessageFromError(error) ?? this.transloco.translate('SALES.CREDIT_NOTES.DOCUMENT.ERRORS.SECURE_LINK_FAILED')
+      );
+    } finally {
+      this.documentAction.set(null);
+    }
+  }
+
+  private openDocumentWindow(): Window | null {
+    const popup = globalThis.window.open('', '_blank');
+    if (popup) popup.opener = null;
+    return popup;
   }
 
   private async acceptCreditNote(note: SalesCreditNote): Promise<void> {

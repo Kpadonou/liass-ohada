@@ -8,6 +8,8 @@ import {
   ListSalesCreditNotesRequestSchema,
   RemoveSalesCreditNoteLineRequestSchema,
   SalesCreditNoteListResponseSchema,
+  SalesCreditNoteDocumentResponseSchema,
+  SalesCreditNoteDownloadUrlResponseSchema,
   SalesCreditNoteSchema,
   UpdateSalesCreditNoteLineRequestSchema,
   UpdateSalesCreditNoteRequestSchema,
@@ -16,6 +18,8 @@ import {
   type IssueSalesCreditNoteRequest,
   type IssueSalesCreditNoteResponse,
   type SalesCreditNote,
+  type SalesCreditNoteDocument,
+  type SalesCreditNoteDownloadUrl,
   type SalesCreditNoteListResponse,
   type UpdateSalesCreditNoteLineRequest,
   type UpdateSalesCreditNoteRequest
@@ -94,6 +98,26 @@ export class SalesCreditNotesApi {
     return { data: parsed.data, message: userMessageFromResponse(response) };
   }
 
+  async getDocument(invoiceId: string, creditNoteId: string): Promise<SalesCreditNoteDocument> {
+    const response = await firstValueFrom(this.http.get<unknown>(this.documentUrl(invoiceId, creditNoteId)));
+    return SalesCreditNoteDocumentResponseSchema.parse(response).data;
+  }
+
+  async generateDocument(invoiceId: string, creditNoteId: string): Promise<ApiMutationResult<SalesCreditNoteDocument>> {
+    const response = await firstValueFrom(
+      this.http.post<unknown>(this.documentUrl(invoiceId, creditNoteId), {})
+    );
+    const parsed = SalesCreditNoteDocumentResponseSchema.parse(response);
+    return { data: parsed.data, message: userMessageFromResponse(response) };
+  }
+
+  async createDocumentDownloadUrl(invoiceId: string, creditNoteId: string): Promise<SalesCreditNoteDownloadUrl> {
+    const response = await firstValueFrom(
+      this.http.post<unknown>(`${this.documentUrl(invoiceId, creditNoteId)}/download-url`, {})
+    );
+    return SalesCreditNoteDownloadUrlResponseSchema.parse(response).data;
+  }
+
   private noteResult(response: unknown): ApiMutationResult<SalesCreditNote> {
     const parsed = CreditNoteEnvelopeSchema.parse(response);
     return { data: parsed.data, message: userMessageFromResponse(response) };
@@ -110,5 +134,8 @@ export class SalesCreditNotesApi {
   }
   private lineUrl(invoiceId: string, creditNoteId: string, lineId: string): string {
     return `${this.linesUrl(invoiceId, creditNoteId)}/${encodeURIComponent(lineId)}`;
+  }
+  private documentUrl(invoiceId: string, creditNoteId: string): string {
+    return `${this.detailUrl(invoiceId, creditNoteId)}/documents/pdf`;
   }
 }

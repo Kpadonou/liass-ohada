@@ -1,0 +1,935 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "e-MCF",
+    "description": "DGI Bénin - Tous droits réservés",
+    "contact": {
+      "name": "DGI Bénin",
+      "url": "https://www.impots.finances.gouv.bj"
+    },
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "/sygmef-emcf"
+    }
+  ],
+  "paths": {
+    "/api/info/status": {
+      "get": {
+        "tags": [
+          "SfeInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfoResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfoResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InfoResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/info/taxGroups": {
+      "get": {
+        "tags": [
+          "SfeInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxGroupsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxGroupsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxGroupsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/info/invoiceTypes": {
+      "get": {
+        "tags": [
+          "SfeInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceTypeDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceTypeDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/InvoiceTypeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/info/paymentTypes": {
+      "get": {
+        "tags": [
+          "SfeInfo"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentTypeDto"
+                  }
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentTypeDto"
+                  }
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentTypeDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoice": {
+      "get": {
+        "tags": [
+          "SfeInvoice"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusResponseDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "SfeInvoice"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceRequestDataDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceRequestDataDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceRequestDataDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/InvoiceRequestDataDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoice/{uid}": {
+      "get": {
+        "tags": [
+          "SfeInvoice"
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvoiceDetailsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoice/{uid}/confirm": {
+      "put": {
+        "tags": [
+          "SfeInvoice"
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityElementsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityElementsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityElementsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoice/{uid}/cancel": {
+      "put": {
+        "tags": [
+          "SfeInvoice"
+        ],
+        "parameters": [
+          {
+            "name": "uid",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "nullable": true
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityElementsDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityElementsDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecurityElementsDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EmcfInfoDto": {
+        "type": "object",
+        "properties": {
+          "nim": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "shopName": {
+            "type": "string",
+            "nullable": true
+          },
+          "address1": {
+            "type": "string",
+            "nullable": true
+          },
+          "address2": {
+            "type": "string",
+            "nullable": true
+          },
+          "address3": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact1": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact2": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact3": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InfoResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "ifu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nim": {
+            "type": "string",
+            "nullable": true
+          },
+          "tokenValid": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "serverDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "emcfList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EmcfInfoDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaxGroupsDto": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "b": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "c": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "d": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "e": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "f": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aibA": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "aibB": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvoiceTypeDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaymentTypeDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "nullable": true
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PendingRequestDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uid": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "StatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "ifu": {
+            "type": "string",
+            "nullable": true
+          },
+          "nim": {
+            "type": "string",
+            "nullable": true
+          },
+          "tokenValid": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "serverDateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "pendingRequestsCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pendingRequestsList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingRequestDto"
+            },
+            "nullable": true
+          },
+          "pendingAibPaymentUid": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingAibPaymentUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingAibPaymentList": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PendingRequestDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AibGroupTypeEnum": {
+        "enum": [
+          "A",
+          "B"
+        ],
+        "type": "string"
+      },
+      "InvoiceTypeEnum": {
+        "enum": [
+          "FV",
+          "FA",
+          "EV",
+          "EA"
+        ],
+        "type": "string"
+      },
+      "TaxGroupTypeEnum": {
+        "enum": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F"
+        ],
+        "type": "string"
+      },
+      "ItemDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "price": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "number",
+            "format": "double"
+          },
+          "taxGroup": {
+            "$ref": "#/components/schemas/TaxGroupTypeEnum"
+          },
+          "taxSpecific": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "originalPrice": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "priceModification": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ClientDto": {
+        "type": "object",
+        "properties": {
+          "ifu": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "OperatorDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PaymentTypeEnum": {
+        "enum": [
+          "ESPECES",
+          "VIREMENT",
+          "CARTEBANCAIRE",
+          "MOBILEMONEY",
+          "CHEQUES",
+          "CREDIT",
+          "AUTRE"
+        ],
+        "type": "string"
+      },
+      "PaymentDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/PaymentTypeEnum"
+          },
+          "amount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvoiceNatureEnum": {
+        "enum": [
+          "NA",
+          "Type1",
+          "Type2",
+          "Type3",
+          "Type4",
+          "Type5",
+          "Type6",
+          "Other"
+        ],
+        "type": "string"
+      },
+      "InvoiceRequestDataDto": {
+        "type": "object",
+        "properties": {
+          "ifu": {
+            "type": "string",
+            "nullable": true
+          },
+          "aib": {
+            "$ref": "#/components/schemas/AibGroupTypeEnum"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InvoiceTypeEnum"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDto"
+            },
+            "nullable": true
+          },
+          "client": {
+            "$ref": "#/components/schemas/ClientDto"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/OperatorDto"
+          },
+          "payment": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentDto"
+            },
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvoiceResponseDto": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "ta": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tb": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tc": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "td": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taa": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tab": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tac": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tad": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "tae": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "taf": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "hab": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "had": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "vab": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "vad": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "aib": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "ts": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorDesc": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "InvoiceDetailsDto": {
+        "type": "object",
+        "properties": {
+          "ifu": {
+            "type": "string",
+            "nullable": true
+          },
+          "aib": {
+            "$ref": "#/components/schemas/AibGroupTypeEnum"
+          },
+          "type": {
+            "$ref": "#/components/schemas/InvoiceTypeEnum"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemDto"
+            },
+            "nullable": true
+          },
+          "client": {
+            "$ref": "#/components/schemas/ClientDto"
+          },
+          "operator": {
+            "$ref": "#/components/schemas/OperatorDto"
+          },
+          "payment": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaymentDto"
+            },
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorDesc": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SecurityElementsDto": {
+        "type": "object",
+        "properties": {
+          "dateTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "qrCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "codeMECeFDGI": {
+            "type": "string",
+            "nullable": true
+          },
+          "counters": {
+            "type": "string",
+            "nullable": true
+          },
+          "nim": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "errorDesc": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "apiKey",
+        "description": "JWT Authorization header using the Bearer scheme (Example: 'Bearer 12345abcdef')",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ]
+}

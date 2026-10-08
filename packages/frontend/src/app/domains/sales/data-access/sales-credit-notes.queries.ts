@@ -15,7 +15,9 @@ export const salesCreditNoteQueryKeys = {
   list: (orgId: string, invoiceId: string, options: ListSalesCreditNotesRequest) =>
     ['sales', orgId, 'invoices', invoiceId, 'credit-notes', { cursor: options.cursor ?? null, limit: options.limit ?? 50 }] as const,
   detail: (orgId: string, invoiceId: string, creditNoteId: string) =>
-    ['sales', orgId, 'invoices', invoiceId, 'credit-notes', creditNoteId] as const
+    ['sales', orgId, 'invoices', invoiceId, 'credit-notes', creditNoteId] as const,
+  document: (orgId: string, invoiceId: string, creditNoteId: string) =>
+    ['sales', orgId, 'invoices', invoiceId, 'credit-notes', creditNoteId, 'document', 'pdf'] as const
 };
 
 @Injectable({ providedIn: 'root' })
@@ -27,6 +29,9 @@ export class SalesCreditNotesQueries {
   rootKey(invoiceId: string) { return salesCreditNoteQueryKeys.root(this.tenantScope(), invoiceId); }
   detailKey(invoiceId: string, creditNoteId: string) {
     return salesCreditNoteQueryKeys.detail(this.tenantScope(), invoiceId, creditNoteId);
+  }
+  documentKey(invoiceId: string, creditNoteId: string) {
+    return salesCreditNoteQueryKeys.document(this.tenantScope(), invoiceId, creditNoteId);
   }
 
   list(invoiceId: string, options: ListSalesCreditNotesRequest, enabled = true) {
@@ -46,6 +51,17 @@ export class SalesCreditNotesQueries {
       enabled: enabled && this.tenantScope() !== NO_TENANT_SCOPE &&
         invoiceId.trim().length > 0 && creditNoteId.trim().length > 0,
       staleTime: 10_000,
+      retry: false
+    });
+  }
+
+  document(invoiceId: string, creditNoteId: string, enabled = true) {
+    return queryOptions({
+      queryKey: this.documentKey(invoiceId, creditNoteId),
+      queryFn: () => this.api.getDocument(invoiceId, creditNoteId),
+      enabled: enabled && this.tenantScope() !== NO_TENANT_SCOPE &&
+        invoiceId.trim().length > 0 && creditNoteId.trim().length > 0,
+      staleTime: 30_000,
       retry: false
     });
   }

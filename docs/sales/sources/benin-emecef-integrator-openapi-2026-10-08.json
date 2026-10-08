@@ -1,0 +1,825 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "e-MCF INTEGRATOR",
+    "description": "DGI Bénin - Tous droits réservés",
+    "contact": {
+      "name": "DGI Bénin",
+      "url": "https://www.impots.finances.gouv.bj"
+    },
+    "version": "1.0"
+  },
+  "servers": [
+    {
+      "url": "/sygmef-emcf"
+    }
+  ],
+  "paths": {
+    "/api/integrator/status": {
+      "get": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegratorStatusDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegratorStatusDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegratorStatusDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrator/verifyTaxpayer": {
+      "post": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyTaxpayerRequestDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyTaxpayerRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyTaxpayerRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyTaxpayerRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyTaxpayerResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyTaxpayerResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyTaxpayerResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrator/submitDemand": {
+      "post": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitDemandRequestDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitDemandRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitDemandRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmitDemandRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitDemandResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitDemandResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmitDemandResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrator/verifyDemand": {
+      "post": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyDemandRequestDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyDemandRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyDemandRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyDemandRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyDemandResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyDemandResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyDemandResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrator/confirmDemand": {
+      "post": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmDemandRequestDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmDemandRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmDemandRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmDemandRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmDemandResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmDemandResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmDemandResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrator/requestToken": {
+      "post": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestTokenRequestDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestTokenRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestTokenRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestTokenRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestTokenResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestTokenResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestTokenResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrator/confirmToken": {
+      "post": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmTokenRequestDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmTokenRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmTokenRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmTokenRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmTokenResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmTokenResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmTokenResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/integrator/getToken": {
+      "post": {
+        "tags": [
+          "IntegratorApi"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetTokenRequestDto"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetTokenRequestDto"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetTokenRequestDto"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GetTokenRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTokenResponseDto"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTokenResponseDto"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetTokenResponseDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "IntegratorStatusDto": {
+        "type": "object",
+        "properties": {
+          "isTokenValid": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "dateTime": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "tokenValidUntil": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "isTokenActive": {
+            "type": "boolean"
+          },
+          "isIntegratorActive": {
+            "type": "boolean"
+          },
+          "tokenType": {
+            "type": "string",
+            "nullable": true
+          },
+          "tokenName": {
+            "type": "string",
+            "nullable": true
+          },
+          "integratorDesignation": {
+            "type": "string",
+            "nullable": true
+          },
+          "integratorName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyTaxpayerRequestDto": {
+        "type": "object",
+        "properties": {
+          "ifu": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyTaxpayerStatusEnum": {
+        "enum": [
+          "NA",
+          "ERROR",
+          "NOT_VALID",
+          "NOT_REGISTERED",
+          "REGISTERED"
+        ],
+        "type": "string"
+      },
+      "VerifyTaxpayerResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/VerifyTaxpayerStatusEnum"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "rccm": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "nim": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubmitDemandRequestDto": {
+        "type": "object",
+        "properties": {
+          "ifu": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "individualConsultant": {
+            "type": "boolean"
+          },
+          "primActivity": {
+            "type": "string",
+            "nullable": true
+          },
+          "secActivity": {
+            "type": "string",
+            "nullable": true
+          },
+          "applicant": {
+            "type": "string",
+            "nullable": true
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "place": {
+            "type": "string",
+            "nullable": true
+          },
+          "pos": {
+            "type": "string",
+            "nullable": true
+          },
+          "address1": {
+            "type": "string",
+            "nullable": true
+          },
+          "address2": {
+            "type": "string",
+            "nullable": true
+          },
+          "address3": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact1": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact2": {
+            "type": "string",
+            "nullable": true
+          },
+          "contact3": {
+            "type": "string",
+            "nullable": true
+          },
+          "approvalReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "posModel": {
+            "type": "string",
+            "nullable": true
+          },
+          "posVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "posDeveloper": {
+            "type": "string",
+            "nullable": true
+          },
+          "posCountry": {
+            "type": "string",
+            "nullable": true
+          },
+          "posSupplier": {
+            "type": "string",
+            "nullable": true
+          },
+          "posSupplierPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "posSupplierEmail": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "SubmitDemandStatusEnum": {
+        "enum": [
+          "NA",
+          "ERROR",
+          "NOT_VALID",
+          "SUCCESS",
+          "ERROR_FORMAT"
+        ],
+        "type": "string"
+      },
+      "SubmitDemandResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/SubmitDemandStatusEnum"
+          },
+          "uid": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyDemandRequestDto": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VerifyDemandStatusEnum": {
+        "enum": [
+          "NA",
+          "ERROR",
+          "PENDING_CODE",
+          "PENDING",
+          "REJECTED",
+          "APPROVED"
+        ],
+        "type": "string"
+      },
+      "VerifyDemandResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/VerifyDemandStatusEnum"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmDemandRequestDto": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmDemandStatusEnum": {
+        "enum": [
+          "NA",
+          "SUCCESS",
+          "ERROR"
+        ],
+        "type": "string"
+      },
+      "ConfirmDemandResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ConfirmDemandStatusEnum"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestTokenRequestDto": {
+        "type": "object",
+        "properties": {
+          "nim": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RequestTokenStatusEnum": {
+        "enum": [
+          "NA",
+          "NIM_NOT_VALID",
+          "TOKEN_FOUND",
+          "SUCCESS"
+        ],
+        "type": "string"
+      },
+      "RequestTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/RequestTokenStatusEnum"
+          },
+          "uid": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmTokenRequestDto": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string",
+            "nullable": true
+          },
+          "code": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmTokenStatusEnum": {
+        "enum": [
+          "NA",
+          "SUCCESS",
+          "ERROR"
+        ],
+        "type": "string"
+      },
+      "ConfirmTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/ConfirmTokenStatusEnum"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetTokenRequestDto": {
+        "type": "object",
+        "properties": {
+          "uid": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GetTokenStatusEnum": {
+        "enum": [
+          "NA",
+          "ERROR",
+          "PENDING_CODE",
+          "SUCCESS"
+        ],
+        "type": "string"
+      },
+      "GetTokenResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/GetTokenStatusEnum"
+          },
+          "token": {
+            "type": "string",
+            "nullable": true,
+            "readOnly": true
+          },
+          "expiration": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "apiKey",
+        "description": "JWT Authorization header using the Bearer scheme (Example: 'Bearer 12345abcdef')",
+        "name": "Authorization",
+        "in": "header"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": [ ]
+    }
+  ]
+}

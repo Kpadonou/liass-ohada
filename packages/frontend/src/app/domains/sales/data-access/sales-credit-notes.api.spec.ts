@@ -63,6 +63,37 @@ describe('SalesCreditNotesApi', () => {
     request.flush({ data: { creditNote: issued(), receivable: receivable() } });
     await expect(issue).resolves.toMatchObject({ data: { creditNote: { status: 'ISSUED' }, receivable: { creditedAmount: '10' } } });
   });
+
+  it('gets and generates the canonical credit-note PDF without sending business or storage data', async () => {
+    const document = creditNoteDocument();
+    const getPromise = api.getDocument('INV/1', 'CN/1');
+    let request = http.expectOne(`${baseUrl}/CN%2F1/documents/pdf`);
+    expect(request.request.method).toBe('GET');
+    request.flush({ data: document });
+    await expect(getPromise).resolves.toEqual(document);
+
+    const generatePromise = api.generateDocument('INV/1', 'CN/1');
+    request = http.expectOne(`${baseUrl}/CN%2F1/documents/pdf`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    expect(request.request.body).not.toHaveProperty('objectKey');
+    expect(request.request.body).not.toHaveProperty('bucket');
+    expect(request.request.body).not.toHaveProperty('creditNote');
+    expect(request.request.body).not.toHaveProperty('invoice');
+    request.flush({ data: document, message: 'Ready' });
+    await expect(generatePromise).resolves.toEqual({ data: document, message: 'Ready' });
+  });
+
+  it('requests a fresh backend-issued download URL from the exact document route', async () => {
+    const promise = api.createDocumentDownloadUrl('INV/1', 'CN/1');
+    const request = http.expectOne(`${baseUrl}/CN%2F1/documents/pdf/download-url`);
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({});
+    request.flush({ data: { url: 'https://documents.example.test/opaque', expiresAt: '2026-09-16T11:05:00.000Z' } });
+    await expect(promise).resolves.toEqual({
+      url: 'https://documents.example.test/opaque', expiresAt: '2026-09-16T11:05:00.000Z'
+    });
+  });
 });
 
 function draft(overrides: Record<string, unknown> = {}) {
@@ -70,3 +101,10 @@ function draft(overrides: Record<string, unknown> = {}) {
 }
 function issued() { return { ...draft(), status: 'ISSUED', reason: 'Reduction', creditNoteNumber: '7', issueDate: '2026-09-11', issuedAt: '2026-09-11T11:00:00.000Z', lines: [{ id: 'CL-1', originalInvoiceLineId: 'L-1', position: 1, description: 'Service', quantity: '1', unitPrice: '10', taxRate: '0', subtotal: '10', taxAmount: '0', total: '10', createdAt: '2026-09-11T10:00:00.000Z', updatedAt: '2026-09-11T10:00:00.000Z' }], subtotal: '10', total: '10', lineCount: 1, version: 5 }; }
 function receivable() { return { invoiceId: 'INV/1', currency: 'EUR', invoiceAmount: '35.39', amountPaid: '0', creditedAmount: '10', balanceDue: '25.39', status: 'PARTIALLY_SETTLED', paymentCount: 0, version: 1, updatedAt: '2026-09-11T11:00:00.000Z' }; }
+function creditNoteDocument() {
+  return {
+    status: 'AVAILABLE', creditNoteId: 'CN/1', documentType: 'CREDIT_NOTE_PDF', renderingVersion: '1',
+    contentHash: 'a'.repeat(64), contentType: 'application/pdf', sizeBytes: 2048,
+    generatedAt: '2026-09-16T11:00:00.000Z'
+  };
+}
