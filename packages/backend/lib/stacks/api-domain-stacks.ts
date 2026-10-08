@@ -1,3 +1,4 @@
+import { FiscalComplianceEndpoints } from "../constructs/domains/fiscal-compliance-endpoints";
 import { NestedStack, NestedStackProps } from "aws-cdk-lib";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
@@ -58,5 +59,13 @@ export class SalesApiStack extends NestedStack {
       ...props,
       documentBucket: props.documentBucket,
     });
+  }
+}
+
+/** Durable fiscal ownership: local configuration now, provider evidence and recovery later. */
+export class FiscalComplianceApiStack extends NestedStack {
+  constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
+    super(scope, id, props);
+    new FiscalComplianceEndpoints(this, "FiscalComplianceModule", props);
   }
 }

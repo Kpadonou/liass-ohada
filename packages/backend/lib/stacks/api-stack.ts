@@ -13,6 +13,7 @@ import { LiassOhadaAuth } from "../constructs/auth/cognito-auth";
 // Import your Domain Constructs
 import {
   AccountingApiStack,
+  FiscalComplianceApiStack,
   IdentityApiStack,
   ProjectApiStack,
   SalesApiStack,
@@ -116,6 +117,14 @@ export class ApiStack extends Stack {
       authorizer: this.auth.authorizer,
       lambdaRole: apiLambdaRole,
       documentBucket: props.documentBucket,
+      table: props.accountingTable,
+      stage: props.stage,
+    });
+
+    new FiscalComplianceApiStack(this, "FiscalComplianceApi", {
+      api: this.apiGateway.httpApi,
+      authorizer: this.auth.authorizer,
+      lambdaRole: apiLambdaRole,
       table: props.accountingTable,
       stage: props.stage,
     });

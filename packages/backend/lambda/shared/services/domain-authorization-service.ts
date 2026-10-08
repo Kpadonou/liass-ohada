@@ -1,7 +1,8 @@
 import type { AccountingAccessMode } from "@liass-ohada/shared";
 import {
   ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
-  DOMAIN_PERMISSIONS,
+  SALES_PERMISSIONS,
+  FISCAL_COMPLIANCE_PERMISSIONS,
   isWritePermission,
 } from "../authorization/domain-permission";
 import type { DomainPermission } from "../authorization/domain-permission";
@@ -29,8 +30,10 @@ export class DomainAuthorizationService {
   static permissionsForDirectOrganizationRole(
     role: string | undefined,
   ): readonly DomainPermission[] {
+    // Only direct COMPANY ownership grants commercial and fiscal capabilities.
+    // Cabinet roles and every other/unknown direct role keep their existing grants.
     return role === "OWNER"
-      ? DOMAIN_PERMISSIONS
+      ? [...ACCOUNTING_PRODUCT_MODULE_PERMISSIONS, ...SALES_PERMISSIONS, ...FISCAL_COMPLIANCE_PERMISSIONS]
       : ACCOUNTING_PRODUCT_MODULE_PERMISSIONS;
   }
 

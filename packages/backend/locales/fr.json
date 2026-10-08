@@ -357,5 +357,21 @@
   "SALES_CREDIT_NOTE_DOCUMENT_NOT_FOUND": "Aucun document final n'est disponible pour cet avoir.",
   "SALES_CREDIT_NOTE_DOCUMENT_VERSION_CONFLICT": "Une autre version du document de l'avoir existe déjà.",
   "SALES_CREDIT_NOTE_DOCUMENT_INTEGRITY_ERROR": "Le document de l'avoir est temporairement indisponible en raison d'un contrôle d'intégrité.",
-  "SALES_CREDIT_NOTE_DOCUMENT_ISSUER_NOT_FOUND": "Les informations de l'organisation émettrice sont indisponibles."
+  "SALES_CREDIT_NOTE_DOCUMENT_ISSUER_NOT_FOUND": "Les informations de l'organisation émettrice sont indisponibles.",
+  "FISCAL_SOURCE_NOT_FOUND": "Document commercial introuvable.",
+  "FISCAL_SOURCE_NOT_ISSUED": "Émettez le document commercial avant sa préparation fiscale.",
+  "FISCAL_RECORD_NOT_FOUND": "Dossier fiscal introuvable.",
+  "FISCAL_SNAPSHOT_TOO_LARGE": "Cette préparation fiscale est trop volumineuse. Réduisez ses descriptions justificatives.",
+  "FISCAL_PROFILE_VERSION_CONFLICT": "Le profil fiscal a changé. Actualisez avant de sauvegarder.",
+  "FISCAL_CONNECTION_VERSION_CONFLICT": "La configuration de connexion a changé. Actualisez avant de sauvegarder.",
+  "FISCAL_CONNECTION_NOT_FOUND": "Connexion fiscale introuvable.",
+  "FISCAL_CERTIFICATION_NOT_FOUND": "Préparation fiscale introuvable.",
+  "FISCAL_PREPARATION_NOT_EDITABLE": "Cette préparation fiscale ne peut plus être modifiée localement.",
+  "FISCAL_COMMAND_INTENT_CONFLICT": "Cet identifiant de demande a déjà été utilisé pour une autre opération.",
+  "FISCAL_CERTIFICATION_ALREADY_EXISTS": "Une préparation fiscale existe déjà pour ce document et cet environnement.",
+  "FISCAL_CERTIFICATION_VERSION_CONFLICT": "La préparation fiscale a changé. Actualisez avant de sauvegarder.",
+  "FISCAL_SOURCE_CHANGED": "Le document commercial diffère de sa préparation fiscale figée.",
+  "FISCAL_ENVIRONMENT_MISMATCH": "Choisissez une connexion du même environnement fiscal.",
+  "FISCAL_CLASSIFICATION_INVALID": "Vérifiez les classifications fiscales du document et de ses lignes.",
+  "SUCCESS_FISCAL_LOCAL_OPERATION": "Opération fiscale locale terminée."
 }

@@ -1,4 +1,19 @@
 export const KeyFactory = {
+  // Fiscal Compliance-owned local foundation; source keys are connection-independent.
+  fiscalProfileSK: () => "FISCAL_PROFILE#BJ",
+  fiscalConnectionPrefix: (environment: string) => `FISCAL_CONNECTION#BJ#BENIN_E_MECEF#${environment}#`,
+  fiscalConnectionSK: (environment: string, connectionId: string) =>
+    `${KeyFactory.fiscalConnectionPrefix(environment)}${connectionId}`,
+  fiscalCertificationSK: (environment: string, sourceType: string, sourceId: string) =>
+    `FISCAL_CERTIFICATION#BJ#BENIN_E_MECEF#${environment}#${sourceType}#${sourceId}`,
+  fiscalHistoryPrefix: (environment: string, sourceType: string, sourceId: string) =>
+    `FISCAL_HISTORY#BJ#BENIN_E_MECEF#${environment}#${sourceType}#${sourceId}#`,
+  fiscalHistorySK: (environment: string, sourceType: string, sourceId: string, version: number) =>
+    `${KeyFactory.fiscalHistoryPrefix(environment, sourceType, sourceId)}${String(version).padStart(10, "0")}`,
+  fiscalCommandSK: (clientRequestId: string) => `FISCAL_COMMAND#${clientRequestId}`,
+  fiscalConfigurationHistorySK: (configurationId: string, version: number) =>
+    `FISCAL_CONFIGURATION_HISTORY#${configurationId}#${String(version).padStart(10, "0")}`,
+
   // Prefixes
   projectPrefix: () => `PRJ#`,
   thirdPartyPrefix: (type: string) => `TP#${type.toUpperCase()}#`,

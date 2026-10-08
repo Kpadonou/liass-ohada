@@ -25,6 +25,9 @@
       ],
       "shared": [
         "dist/shared/index.d.ts"
+      ],
+      "fiscal-compliance": [
+        "dist/fiscal-compliance/index.d.ts"
       ]
     }
   },
@@ -63,6 +66,11 @@
       "types": "./dist/backend.d.ts",
       "import": "./dist/backend.mjs",
       "require": "./dist/backend.js"
+    },
+    "./fiscal-compliance": {
+      "types": "./dist/fiscal-compliance/index.d.ts",
+      "import": "./dist/fiscal-compliance/index.mjs",
+      "require": "./dist/fiscal-compliance/index.js"
     }
   },
   "files": [
@@ -70,7 +78,7 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "tsup src/index.ts src/accounting/index.ts src/projects/index.ts src/treasury/index.ts src/sales/index.ts src/shared/index.ts src/backend.ts --format cjs,esm --dts --sourcemap --clean"
+    "build": "tsup src/index.ts src/accounting/index.ts src/projects/index.ts src/treasury/index.ts src/sales/index.ts src/fiscal-compliance/index.ts src/shared/index.ts src/backend.ts --format cjs,esm --dts --sourcemap --clean"
   },
   "dependencies": {
     "zod": "^4.3.4"

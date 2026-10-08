@@ -16,6 +16,8 @@ describe("DomainAuthorizationService", () => {
       "TREASURY_WRITE",
       "SALES_READ",
       "SALES_WRITE",
+      "FISCAL_COMPLIANCE_READ",
+      "FISCAL_COMPLIANCE_WRITE",
     ]);
     for (const permission of DOMAIN_PERMISSIONS) {
       expect(isDomainPermission(permission)).toBe(true);

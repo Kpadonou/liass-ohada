@@ -19,16 +19,17 @@ The purpose of nesting is not necessarily to reduce the application's total numb
 
 ## Current composition and ownership
 
-The following counts are the post-Lot C3.1-bis baseline and are approximate; the synthesized templates and the resource-count command are the source of truth after every infrastructure change.
+The following counts reflect the S4B synthesis (2026-10-08); the synthesized templates and the resource-count command are the source of truth after every infrastructure change.
 
 | Owner | Current template size | Owns |
 | --- | ---: | --- |
-| API core | 276 | The single shared HTTP API, shared authorizers, Cognito User Pool and related shared identity infrastructure, the currently shared Lambda execution role, shared API configuration and outputs, shared environment references, the existing DynamoDB table reference, nested-stack declarations, and genuinely shared cross-domain resources. It is not the default destination for new domain endpoints. |
+| API core | 277 | The single shared HTTP API, shared authorizers, Cognito User Pool and related shared identity infrastructure, the currently shared Lambda execution role, shared API configuration and outputs, shared environment references, the existing DynamoDB table reference, nested-stack declarations, and genuinely shared cross-domain resources. It is not the default destination for new domain endpoints. |
 | Accounting nested stack (`AccountingApiStack`) | 51 | Chart of accounts, journals, accounting entries and movements, general ledger, journal book, third parties, auxiliary ledger, lettering, fiscal years, accounting periods, closing, accounting reports and summaries, and future accounting-domain APIs. |
 | Identity/Cabinet nested stack (`IdentityApiStack`) | 81 | Authentication-adjacent application endpoints, workspace discovery, user profiles, onboarding, cabinet dossiers, members, roles, invitations, dossier assignments, pre-tenant invitation acceptance, and future Cabinet administration APIs. |
-| Sales nested stack (`SalesApiStack`) | 99 | The twenty-three baseline SALES Customer, Catalog, Invoice, and private Invoice-document Lambdas, plus future SALES-owned endpoints. S3A adds three settlement routes in this same stack; synthesized counts remain the source of truth. |
+| Sales nested stack (`SalesApiStack`) | 161 | Thirty-seven SALES Customer, Catalog, Invoice, Payment, Receivable, Credit Note and private commercial-document Lambdas; future SALES-owned endpoints. |
 | Projects nested stack (`ProjectApiStack`) | 12 | Projects, SYCEBNL analytical dimensions, budgets, budget lines, funding sources, donors, project reporting, and future project-domain APIs. |
 | Treasury nested stack (`TreasuryApiStack`) | 11 | Treasury accounts and transactions, bank statement imports and lines, reconciliation and its history, treasury summaries, and future treasury-domain APIs. |
+| Fiscal Compliance nested stack (`FiscalComplianceApiStack`) | 41 | Ten local fiscal profile, connection, readiness and certification-preparation endpoints. Durable growth includes jurisdiction adapters, provider evidence and safe recovery; no provider calls or secret resources in S4B. |
 | Data stack | 4 | Existing stateful data infrastructure: the shared DynamoDB table and the retained private application document bucket with its TLS-only bucket policy. |
 | Root stack | ~1 | Top-level stack composition. |
 

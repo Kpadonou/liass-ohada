@@ -18,14 +18,18 @@ export const ACCOUNTING_PRODUCT_MODULE_PERMISSIONS = [
   ...TREASURY_PERMISSIONS,
 ] as const;
 
+export const FISCAL_COMPLIANCE_PERMISSIONS = ["FISCAL_COMPLIANCE_READ", "FISCAL_COMPLIANCE_WRITE"] as const;
+
 export const DOMAIN_PERMISSIONS = [
   ...ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
   ...SALES_PERMISSIONS,
+  ...FISCAL_COMPLIANCE_PERMISSIONS,
 ] as const;
 
 export type AccountingPermission = (typeof ACCOUNTING_PERMISSIONS)[number];
 export type ProjectsPermission = (typeof PROJECTS_PERMISSIONS)[number];
 export type TreasuryPermission = (typeof TREASURY_PERMISSIONS)[number];
+export type FiscalCompliancePermission = (typeof FISCAL_COMPLIANCE_PERMISSIONS)[number];
 export type SalesPermission = (typeof SALES_PERMISSIONS)[number];
 export type DomainPermission = (typeof DOMAIN_PERMISSIONS)[number];
 

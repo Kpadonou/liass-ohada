@@ -356,5 +356,21 @@
   "SALES_CREDIT_NOTE_DOCUMENT_NOT_FOUND": "No final document is available for this Credit Note.",
   "SALES_CREDIT_NOTE_DOCUMENT_VERSION_CONFLICT": "Another Credit Note document rendering version already exists.",
   "SALES_CREDIT_NOTE_DOCUMENT_INTEGRITY_ERROR": "The Credit Note document is temporarily unavailable because an integrity check failed.",
-  "SALES_CREDIT_NOTE_DOCUMENT_ISSUER_NOT_FOUND": "The issuer organization information is unavailable."
+  "SALES_CREDIT_NOTE_DOCUMENT_ISSUER_NOT_FOUND": "The issuer organization information is unavailable.",
+  "FISCAL_SOURCE_NOT_FOUND": "Commercial document not found.",
+  "FISCAL_SOURCE_NOT_ISSUED": "Issue the commercial document before fiscal preparation.",
+  "FISCAL_RECORD_NOT_FOUND": "Fiscal record not found.",
+  "FISCAL_SNAPSHOT_TOO_LARGE": "This fiscal preparation is too large. Reduce its supporting descriptions.",
+  "FISCAL_PROFILE_VERSION_CONFLICT": "The fiscal profile changed. Refresh before saving.",
+  "FISCAL_CONNECTION_VERSION_CONFLICT": "The connection settings changed. Refresh before saving.",
+  "FISCAL_CONNECTION_NOT_FOUND": "Fiscal connection not found.",
+  "FISCAL_CERTIFICATION_NOT_FOUND": "Fiscal preparation not found.",
+  "FISCAL_PREPARATION_NOT_EDITABLE": "This fiscal preparation can no longer be modified locally.",
+  "FISCAL_COMMAND_INTENT_CONFLICT": "This request identifier has already been used for another operation.",
+  "FISCAL_CERTIFICATION_ALREADY_EXISTS": "A fiscal preparation already exists for this document and environment.",
+  "FISCAL_CERTIFICATION_VERSION_CONFLICT": "The fiscal preparation changed. Refresh before saving.",
+  "FISCAL_SOURCE_CHANGED": "The commercial document differs from its frozen fiscal preparation.",
+  "FISCAL_ENVIRONMENT_MISMATCH": "Choose a connection in the same fiscal environment.",
+  "FISCAL_CLASSIFICATION_INVALID": "Check the fiscal document and line classifications.",
+  "SUCCESS_FISCAL_LOCAL_OPERATION": "Local fiscal operation completed."
 }

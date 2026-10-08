@@ -9,6 +9,7 @@ import { Construct } from "constructs";
 import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
 import {
   AccountingApiStack,
+  FiscalComplianceApiStack,
   IdentityApiStack,
   ProjectApiStack,
   SalesApiStack,
@@ -87,6 +88,7 @@ describe("API stack decomposition", () => {
     expect(constructs.filter((item) => item instanceof ProjectApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof TreasuryApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof SalesApiStack)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof FiscalComplianceApiStack)).toHaveLength(1);
   });
 
   test("preserves expected identity and business routes on the shared API", () => {
@@ -125,6 +127,25 @@ describe("API stack decomposition", () => {
     );
   });
 
+  test("keeps all ten fiscal routes, integrations and functions in the Fiscal Compliance nested stack", () => {
+    const fiscal = constructs.find((item) => item instanceof FiscalComplianceApiStack)!;
+    const owned = fiscal.node.findAll();
+    const functions = owned.filter((item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction);
+    const routes = owned.filter((item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute);
+    expect(functions).toHaveLength(10);
+    expect(routes).toHaveLength(10);
+    expect(owned.filter(item => item instanceof apigwv2.CfnIntegration)).toHaveLength(10);
+    expect(routes.every(route => route.authorizationType === "JWT")).toBe(true);
+    expect(routes.map(route => route.routeKey)).toEqual(expect.arrayContaining([
+      "GET /fiscal-compliance/benin/profile", "PUT /fiscal-compliance/benin/profile",
+      "POST /fiscal-compliance/certifications", "POST /fiscal-compliance/readiness",
+    ]));
+    expect(routes.map(route => route.routeKey).join(" ")).not.toMatch(/\/(submit|confirm|cancel|retry|reconcile)/);
+    expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"))).toBe(true);
+    expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "SALES_DOCUMENT_BUCKET_NAME"))).toBe(true);
+    expect(owned.filter(item => item instanceof dynamodb.CfnTable || item instanceof s3.CfnBucket)).toHaveLength(0);
+  });
+
   test("does not add a physical index", () => {
     const table = constructs.find(
       (item): item is dynamodb.CfnTable => item instanceof dynamodb.CfnTable,
@@ -139,7 +160,7 @@ describe("API stack decomposition", () => {
     expect(functions.length).toBeGreaterThan(0);
     expect(
       functions.every((fn) =>
-        /^liass-ohada-dev-(identity|accounting|projects|treasury|sales)-/.test(
+        /^liass-ohada-dev-(identity|accounting|projects|treasury|sales|fiscal-compliance)-/.test(
           String(fn.functionName),
         ),
       ),
