@@ -1,4 +1,9 @@
 {
+  "RESTAURANTS_NOT_FOUND": "La configuration demandée est introuvable dans cet établissement.",
+  "RESTAURANTS_PARENT_INACTIVE": "Réactivez le parent avant de modifier cette configuration.",
+  "RESTAURANTS_WRITE_CONFLICT": "La configuration a changé ou une identité existe déjà. Actualisez puis réessayez.",
+  "RESTAURANTS_CURRENCY_MISMATCH": "La devise du prix doit correspondre à celle du menu.",
+  "SUCCESS_RESTAURANTS_CONFIGURATION_SAVED": "Configuration Liass-Resto enregistrée.",
   "ERROR_INVALID_PASSWORD": "Mot de passe invalide fourni.",
   "ERROR_ACCOUNT_NOT_FOUND": "Compte non trouvé.",
   "SUCCESS_ACCOUNT_CREATED": "Compte créé avec succès.",

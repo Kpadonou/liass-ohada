@@ -17,6 +17,7 @@ import {
   IdentityApiStack,
   ProjectApiStack,
   SalesApiStack,
+  RestaurantsApiStack,
   TreasuryApiStack,
 } from "./api-domain-stacks";
 
@@ -122,6 +123,14 @@ export class ApiStack extends Stack {
     });
 
     new FiscalComplianceApiStack(this, "FiscalComplianceApi", {
+      api: this.apiGateway.httpApi,
+      authorizer: this.auth.authorizer,
+      lambdaRole: apiLambdaRole,
+      table: props.accountingTable,
+      stage: props.stage,
+    });
+
+    new RestaurantsApiStack(this, "RestaurantsApi", {
       api: this.apiGateway.httpApi,
       authorizer: this.auth.authorizer,
       lambdaRole: apiLambdaRole,

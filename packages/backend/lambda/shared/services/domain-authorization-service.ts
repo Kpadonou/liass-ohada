@@ -41,7 +41,10 @@ export class DomainAuthorizationService {
 
   /** No global organization, Accounting, Sales or cabinet role implies this assignment. */
   static permissionsForRestaurantsRole(role: unknown): readonly DomainPermission[] {
-    return RestaurantsRoleSchema.safeParse(role).success ? RESTAURANTS_PERMISSIONS : [];
+    const parsed = RestaurantsRoleSchema.safeParse(role);
+    if (!parsed.success) return [];
+    return parsed.data === "OWNER" || parsed.data === "MANAGER"
+      ? RESTAURANTS_PERMISSIONS : ["RESTAURANTS_READ", "RESTAURANTS_MENU_READ"];
   }
 
   static hasPermission(

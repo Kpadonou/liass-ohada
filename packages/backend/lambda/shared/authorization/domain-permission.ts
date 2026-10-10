@@ -10,7 +10,7 @@ export const TREASURY_PERMISSIONS = [
   "TREASURY_WRITE",
 ] as const;
 
-export const RESTAURANTS_PERMISSIONS = ["RESTAURANTS_READ"] as const;
+export const RESTAURANTS_PERMISSIONS = ["RESTAURANTS_READ", "RESTAURANTS_SETUP_MANAGE", "RESTAURANTS_MENU_READ", "RESTAURANTS_MENU_MANAGE"] as const;
 
 export const SALES_PERMISSIONS = ["SALES_READ", "SALES_WRITE"] as const;
 
@@ -44,5 +44,5 @@ export function isDomainPermission(value: unknown): value is DomainPermission {
 }
 
 export function isWritePermission(permission: DomainPermission): boolean {
-  return permission.endsWith("_WRITE");
+  return permission.endsWith("_WRITE") || permission.endsWith("_MANAGE");
 }

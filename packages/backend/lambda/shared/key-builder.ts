@@ -1,4 +1,23 @@
 export const KeyFactory = {
+  // RESTAURANTS owns these configurations and lookup/reservation records.
+  restaurantSK: () => "RESTAURANTS#ROOT",
+  restaurantOutletPrefix: () => "RESTAURANTS#OUTLET#",
+  restaurantOutletSK: (id: string) => `${KeyFactory.restaurantOutletPrefix()}${id}`,
+  restaurantServiceAreaPrefix: (outletId: string) => `RESTAURANTS#AREA#${outletId}#`,
+  restaurantServiceAreaSK: (outletId: string, id: string) => `${KeyFactory.restaurantServiceAreaPrefix(outletId)}${id}`,
+  restaurantTablePrefix: (outletId: string, areaId: string) => `RESTAURANTS#TABLE#${outletId}#${areaId}#`,
+  restaurantTableSK: (outletId: string, areaId: string, id: string) => `${KeyFactory.restaurantTablePrefix(outletId, areaId)}${id}`,
+  restaurantTableCodeSK: (outletId: string, code: string) => `RESTAURANTS#TABLE_CODE#${outletId}#${code}`,
+  restaurantStationPrefix: (outletId: string) => `RESTAURANTS#STATION#${outletId}#`,
+  restaurantStationSK: (outletId: string, id: string) => `${KeyFactory.restaurantStationPrefix(outletId)}${id}`,
+  restaurantMenuSK: (outletId: string) => `RESTAURANTS#MENU#${outletId}`,
+  restaurantCategoryPrefix: (outletId: string) => `RESTAURANTS#CATEGORY#${outletId}#`,
+  restaurantCategorySK: (outletId: string, id: string) => `${KeyFactory.restaurantCategoryPrefix(outletId)}${id}`,
+  restaurantMenuItemPrefix: (outletId: string, categoryId: string) => `RESTAURANTS#ITEM#${outletId}#${categoryId}#`,
+  restaurantMenuItemSK: (outletId: string, categoryId: string, id: string) => `${KeyFactory.restaurantMenuItemPrefix(outletId, categoryId)}${id}`,
+  restaurantQrPK: (tokenHash: string) => `RESTAURANTS_QR#${tokenHash}`,
+  restaurantQrSK: () => "LOOKUP",
+
   // Fiscal Compliance-owned local foundation; source keys are connection-independent.
   fiscalProfileSK: () => "FISCAL_PROFILE#BJ",
   fiscalConnectionPrefix: (environment: string) => `FISCAL_CONNECTION#BJ#BENIN_E_MECEF#${environment}#`,

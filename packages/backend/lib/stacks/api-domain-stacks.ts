@@ -1,3 +1,4 @@
+import { RestaurantsEndpoints } from "../constructs/domains/restaurants-endpoints";
 import { FiscalComplianceEndpoints } from "../constructs/domains/fiscal-compliance-endpoints";
 import { NestedStack, NestedStackProps } from "aws-cdk-lib";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
@@ -67,5 +68,13 @@ export class FiscalComplianceApiStack extends NestedStack {
   constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
     super(scope, id, props);
     new FiscalComplianceEndpoints(this, "FiscalComplianceModule", props);
+  }
+}
+
+/** RESTAURANTS owns setup/menu APIs and expected operational domain growth. */
+export class RestaurantsApiStack extends NestedStack {
+  constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
+    super(scope, id, props);
+    new RestaurantsEndpoints(this, "RestaurantsModule", props);
   }
 }

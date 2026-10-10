@@ -13,6 +13,7 @@ import {
   IdentityApiStack,
   ProjectApiStack,
   SalesApiStack,
+  RestaurantsApiStack,
   TreasuryApiStack,
 } from "../../../lib/stacks/api-domain-stacks";
 
@@ -88,6 +89,7 @@ describe("API stack decomposition", () => {
     expect(constructs.filter((item) => item instanceof ProjectApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof TreasuryApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof SalesApiStack)).toHaveLength(1);
+    expect(constructs.filter((item) => item instanceof RestaurantsApiStack)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof FiscalComplianceApiStack)).toHaveLength(1);
   });
 
@@ -146,6 +148,21 @@ describe("API stack decomposition", () => {
     expect(owned.filter(item => item instanceof dynamodb.CfnTable || item instanceof s3.CfnBucket)).toHaveLength(0);
   });
 
+  test("owns all 38 restaurant routes, functions, integrations and permissions in one domain stack", () => {
+    const restaurants = constructs.find(item => item instanceof RestaurantsApiStack)!;
+    const owned = restaurants.node.findAll();
+    const functions = owned.filter((item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction);
+    const routes = owned.filter((item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute);
+    expect(functions).toHaveLength(38);
+    expect(routes).toHaveLength(38);
+    expect(owned.filter(item => item instanceof apigwv2.CfnIntegration)).toHaveLength(38);
+    expect(owned.filter(item => item instanceof lambda.CfnPermission)).toHaveLength(38);
+    expect(routes.every(route => route.authorizationType === "JWT")).toBe(true);
+    expect(routes.every(route => String(route.routeKey).includes(" /restaurants/"))).toBe(true);
+    expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"))).toBe(true);
+    expect(owned.filter(item => item instanceof dynamodb.CfnTable || item instanceof cognito.CfnUserPool || item instanceof apigwv2.CfnApi)).toHaveLength(0);
+  });
+
   test("does not add a physical index", () => {
     const table = constructs.find(
       (item): item is dynamodb.CfnTable => item instanceof dynamodb.CfnTable,
@@ -160,7 +177,7 @@ describe("API stack decomposition", () => {
     expect(functions.length).toBeGreaterThan(0);
     expect(
       functions.every((fn) =>
-        /^liass-ohada-dev-(identity|accounting|projects|treasury|sales|fiscal-compliance)-/.test(
+        /^liass-ohada-dev-(identity|accounting|projects|treasury|sales|restaurants|fiscal-compliance)-/.test(
           String(fn.functionName),
         ),
       ),

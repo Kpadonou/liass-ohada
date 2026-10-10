@@ -17,6 +17,9 @@ describe("DomainAuthorizationService", () => {
       "SALES_READ",
       "SALES_WRITE",
       "RESTAURANTS_READ",
+      "RESTAURANTS_SETUP_MANAGE",
+      "RESTAURANTS_MENU_READ",
+      "RESTAURANTS_MENU_MANAGE",
       "FISCAL_COMPLIANCE_READ",
       "FISCAL_COMPLIANCE_WRITE",
     ]);
@@ -30,7 +33,7 @@ describe("DomainAuthorizationService", () => {
   test("grants SALES only to the direct organization OWNER role", () => {
     expect(
       DomainAuthorizationService.permissionsForDirectOrganizationRole("OWNER"),
-    ).toEqual(DOMAIN_PERMISSIONS.filter((permission) => permission !== "RESTAURANTS_READ"));
+    ).toEqual(DOMAIN_PERMISSIONS.filter((permission) => !permission.startsWith("RESTAURANTS_")));
     expect(
       DomainAuthorizationService.permissionsForDirectOrganizationRole(
         "ACCOUNTANT",
