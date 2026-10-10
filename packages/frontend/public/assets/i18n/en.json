@@ -63,6 +63,7 @@
     "BRAND_TAGLINE": "ERP cockpit",
     "LOGO_ALT": "liass-ohada logo",
     "NAV": {
+      "RESTAURANTS": "Liass-Resto",
       "ACCOUNTING": "Accounting",
       "ACCOUNTING_OVERVIEW": "Overview",
       "ADMINISTRATION": "Administration",
@@ -3695,6 +3696,18 @@
       "ACCESS": "Access",
       "COPYRIGHT": "Liass-OHADA. All rights reserved.",
       "EARLY_ACCESS": "Open early access · Product under active development"
+    }
+  },
+  "RESTAURANTS": {
+    "PAGE": {
+      "TITLE": "Liass-Resto",
+      "EYEBROW": "Liass-OHADA",
+      "SUBTITLE": "Restaurant management workspace",
+      "READY": "Your Liass-Resto workspace is accessible."
+    },
+    "ACCESS": {
+      "CHECKING": "Checking access…",
+      "DENIED": "Liass-Resto is not available for this organization."
     }
   }
 }

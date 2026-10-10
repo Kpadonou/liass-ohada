@@ -28,6 +28,7 @@ export type AppPage =
   | 'sales.customers'
   | 'sales.items'
   | 'sales.invoices'
+  | 'restaurants'
   | 'reports'
   | 'administration';
 export type ThemeMode = 'light' | 'dark';

@@ -1,3 +1,4 @@
+import { ProductRolesSchema } from "@liass-ohada/shared/shared";
 import {
   BatchGetItemCommand,
   QueryCommand,
@@ -47,6 +48,7 @@ export const UserOrgAccessItemSchema = z
     orgId: z.string().min(1),
     userId: z.string().min(1),
     role: OwnerRoleSchema,
+    productRoles: ProductRolesSchema.optional(),
     cabinetRole: z.literal("CABINET_ADMIN").optional(),
     status: z.literal("ACTIVE"),
     accessSource: AccessSourceSchema,

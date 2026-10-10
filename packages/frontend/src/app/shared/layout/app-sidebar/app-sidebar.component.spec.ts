@@ -65,6 +65,7 @@ const translations = {
         MISSIONS: 'Missions',
         PROJECTS: 'Projets et fonds',
         REPORTS: 'États OHADA',
+        RESTAURANTS: 'Liass-Resto',
         SALES: 'Ventes',
         SALES_CUSTOMERS: 'Clients',
         SALES_ITEMS: 'Articles & services',
@@ -93,6 +94,7 @@ describe('AppSidebarComponent', () => {
     productAvailability = {
       ACCOUNTING: 'UNKNOWN',
       SALES: 'UNKNOWN',
+      RESTAURANTS: 'UNKNOWN',
     };
 
     await TestBed.configureTestingModule({
@@ -671,4 +673,26 @@ describe('AppSidebarComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
   });
+  it.each(['AVAILABLE', 'UNAVAILABLE', 'UNKNOWN'] as const)('shows Liass-Resto only when access is AVAILABLE (%s)', (availability) => {
+    productAvailability.RESTAURANTS = availability;
+    productAvailability.ACCOUNTING = 'UNAVAILABLE';
+    productAvailability.SALES = 'UNAVAILABLE';
+    TestBed.inject(AuthStore).setCreatedWorkspace({ orgId: 'org-resto', workspaceType: 'COMPANY', role: 'OWNER' }, 'org-resto');
+    fixture = TestBed.createComponent(AppSidebarComponent); fixture.detectChanges();
+    const resto = fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]');
+    expect(!!resto).toBe(availability === 'AVAILABLE');
+    if (resto) expect(resto.textContent).toContain('Liass-Resto');
+    expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
+  });
+
+  it('keeps Liass-Resto and SALES as peer entries when all products are enabled', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE'; productAvailability.SALES = 'AVAILABLE'; productAvailability.ACCOUNTING = 'AVAILABLE';
+    TestBed.inject(AuthStore).setCreatedWorkspace({ orgId: 'org-all', workspaceType: 'COMPANY', role: 'OWNER' }, 'org-all');
+    fixture = TestBed.createComponent(AppSidebarComponent); fixture.detectChanges();
+    const resto = fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]');
+    const sales = fixture.nativeElement.querySelector('[data-testid="sales-navigation"]');
+    expect(resto).not.toBeNull(); expect(sales).not.toBeNull();
+    expect(resto.parentElement).toBe(sales.parentElement);
+  });
+
 });

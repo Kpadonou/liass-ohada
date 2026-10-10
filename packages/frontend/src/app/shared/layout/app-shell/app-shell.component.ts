@@ -97,6 +97,8 @@ export function pageFromUrl(url: string): AppPage {
     return 'sales.invoices';
   }
 
+  if (path === '/restaurants' || path.startsWith('/restaurants/')) return 'restaurants';
+
   if (path.startsWith('/reports')) {
     return 'reports';
   }

@@ -16,20 +16,21 @@ describe("DomainAuthorizationService", () => {
       "TREASURY_WRITE",
       "SALES_READ",
       "SALES_WRITE",
+      "RESTAURANTS_READ",
       "FISCAL_COMPLIANCE_READ",
       "FISCAL_COMPLIANCE_WRITE",
     ]);
     for (const permission of DOMAIN_PERMISSIONS) {
       expect(isDomainPermission(permission)).toBe(true);
     }
-    expect(isDomainPermission("RESTAURANTS_READ")).toBe(false);
+    expect(isDomainPermission("RESTAURANTS_WRITE")).toBe(false);
     expect(isDomainPermission("PROJECT_CLOSE_GRANT")).toBe(false);
   });
 
   test("grants SALES only to the direct organization OWNER role", () => {
     expect(
       DomainAuthorizationService.permissionsForDirectOrganizationRole("OWNER"),
-    ).toEqual(DOMAIN_PERMISSIONS);
+    ).toEqual(DOMAIN_PERMISSIONS.filter((permission) => permission !== "RESTAURANTS_READ"));
     expect(
       DomainAuthorizationService.permissionsForDirectOrganizationRole(
         "ACCOUNTANT",

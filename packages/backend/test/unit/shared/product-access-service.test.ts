@@ -146,7 +146,7 @@ describe("ProductAccessService", () => {
       ProductAccessService.requireActiveProductAccess({
         action: "GET /test",
         orgId: "org-123",
-        productCode: "RESTAURANTS" as never,
+        productCode: "RESTO" as never,
       }),
     ).rejects.toMatchObject({ name: "ZodError" });
     expect(get).not.toHaveBeenCalled();

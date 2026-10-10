@@ -81,6 +81,14 @@
           </div>
         }
 
+        @if (showRestaurantsNavigation()) {
+          <div class="pt-2.5" data-testid="restaurants-navigation">
+            <liass-sidebar-nav-item [active]="uiStore.currentPage() === 'restaurants'"
+              [compact]="!sidebarExpanded()" icon="restaurant"
+              [label]="'SHELL.NAV.RESTAURANTS' | transloco" (selected)="selectItem(restaurantsItem)" />
+          </div>
+        }
+
         <div class="grid gap-1 pt-2.5">
           @for (item of secondaryItems; track item.page) {
             <liass-sidebar-nav-item

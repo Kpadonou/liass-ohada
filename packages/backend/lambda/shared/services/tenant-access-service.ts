@@ -1,3 +1,4 @@
+import { ProductRolesSchema, type ProductRoles } from "@liass-ohada/shared/shared";
 import { GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import type { WorkspaceSummary } from "@liass-ohada/shared";
@@ -9,6 +10,7 @@ import { resolveCabinetRole } from "../cabinet-role";
 import { OnboardingRepository } from "../repositories/onboarding-repository";
 
 export interface TenantAccess {
+  productRoles?: ProductRoles;
   accountingAccessMode?: "READ_WRITE" | "READ_ONLY";
   role?: string;
   cabinetRole?: CabinetRole;
@@ -57,7 +59,10 @@ export class TenantAccessService {
       throw new AppError(403, "ERROR_ORG_ACCESS_DENIED");
     }
 
+    const productRoles = ProductRolesSchema.safeParse(access.productRoles);
+
     return {
+      productRoles: productRoles.success ? productRoles.data : undefined,
       role: typeof access.role === "string" ? access.role : undefined,
       cabinetRole: resolveCabinetRole(access),
       cabinetId: typeof access.cabinetId === "string" ? access.cabinetId : undefined,

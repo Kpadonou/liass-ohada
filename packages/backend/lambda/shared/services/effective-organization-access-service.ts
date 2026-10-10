@@ -55,7 +55,9 @@ export class EffectiveOrganizationAccessService {
         permissions:
           DomainAuthorizationService.permissionsForDirectOrganizationRole(
             directAccess.role,
-          ),
+          ).concat(DomainAuthorizationService.permissionsForRestaurantsRole(
+            directAccess.productRoles?.RESTAURANTS,
+          )),
         role: directAccess.role,
         workspaceOrgId,
       };

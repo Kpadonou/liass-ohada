@@ -144,7 +144,7 @@ describe("GET /me/product-access", () => {
     });
   });
 
-  test.each(["ACCOUNTING", "SALES"] as const)(
+  test.each(["ACCOUNTING", "SALES", "RESTAURANTS"] as const)(
     "returns a canonical %s-only entitlement response",
     async (productCode) => {
       dynamoMock.on(GetItemCommand).resolves({ Item: activeAccess("org-123") });

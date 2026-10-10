@@ -63,6 +63,7 @@
     "BRAND_TAGLINE": "Poste ERP",
     "LOGO_ALT": "logo liass-ohada",
     "NAV": {
+      "RESTAURANTS": "Liass-Resto",
       "ACCOUNTING": "Comptabilité",
       "ACCOUNTING_OVERVIEW": "Vue d’ensemble",
       "ADMINISTRATION": "Administration",
@@ -3695,6 +3696,18 @@
       "ACCESS": "Accès",
       "COPYRIGHT": "Liass-OHADA. Tous droits réservés.",
       "EARLY_ACCESS": "Accès anticipé ouvert · Produit en développement actif"
+    }
+  },
+  "RESTAURANTS": {
+    "PAGE": {
+      "TITLE": "Liass-Resto",
+      "EYEBROW": "Liass-OHADA",
+      "SUBTITLE": "Espace de gestion de restaurant",
+      "READY": "Votre espace Liass-Resto est accessible."
+    },
+    "ACCESS": {
+      "CHECKING": "Vérification de l’accès…",
+      "DENIED": "Liass-Resto n’est pas disponible pour cette organisation."
     }
   }
 }

@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { productAccessGuard } from '../product-access/product-access.guard';
 
 import { publicLandingHostGuard } from '../public/public-site.guard';
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
@@ -128,6 +129,17 @@ export const routes: Routes = [
         data: {
           subtitleKey: 'TREASURY.PAGE.SUBTITLE',
           titleKey: 'TREASURY.PAGE.TITLE'
+        }
+      },
+      {
+        path: 'restaurants',
+        canActivate: [productAccessGuard],
+        loadComponent: () =>
+          import('../restaurants/restaurants.page').then((module) => module.RestaurantsPage),
+        data: {
+          productCode: 'RESTAURANTS',
+          titleKey: 'RESTAURANTS.PAGE.TITLE',
+          subtitleKey: 'RESTAURANTS.PAGE.SUBTITLE'
         }
       },
       {

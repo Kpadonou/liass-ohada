@@ -24,11 +24,12 @@ test('Liass-Resto is the untranslated public name and remains future-only', () =
   assert.match(landingSource, /id: 'restaurants'.*status: 'COMING'/);
 });
 
-test('the rename does not introduce a route or product entitlement', () => {
+test('RESTO-0 introduces only the canonical foundation route and product entitlement', () => {
   const routes = readFrontend('src/app/core/routing/app.routes.ts');
   const productCodes = readRepository('packages/shared/src/shared/product-access.ts');
 
-  assert.doesNotMatch(routes, /path:\s*['"](?:liass-resto|restaurants)['"]/);
+  assert.match(routes, /path:\s*['"]restaurants['"]/);
+  assert.doesNotMatch(routes, /path:\s*['"]liass-resto['"]/);
   assert.doesNotMatch(productCodes, /LIASS_RESTO/);
-  assert.doesNotMatch(productCodes, /RESTAURANTS/);
+  assert.match(productCodes, /RESTAURANTS/);
 });

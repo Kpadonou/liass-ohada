@@ -17,7 +17,7 @@ const validProductAccess = {
 };
 
 describe("ProductAccess shared contracts", () => {
-  test.each(["ACCOUNTING", "SALES"])(
+  test.each(["ACCOUNTING", "SALES", "RESTAURANTS"])(
     "accepts canonical top-level product code %s",
     (productCode) => {
       expect(ProductCodeSchema.parse(productCode)).toBe(productCode);
@@ -41,8 +41,8 @@ describe("ProductAccess shared contracts", () => {
     ).toBe(false);
   });
 
-  test("rejects unknown product codes", () => {
-    expect(ProductCodeSchema.safeParse("RESTAURANTS").success).toBe(false);
+  test.each(["LIASS_RESTO", "RESTO", "RESTAURANT", "UNKNOWN"])("rejects alias %s", (code) => {
+    expect(ProductCodeSchema.safeParse(code).success).toBe(false);
   });
 
   test.each(["PROJECTS", "TREASURY"])(

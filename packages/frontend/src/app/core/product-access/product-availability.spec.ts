@@ -48,4 +48,13 @@ describe('resolveProductAvailability', () => {
     },
   );
 
+  it.each([
+    ['RESTAURANTS'], ['ACCOUNTING', 'RESTAURANTS'], ['SALES', 'RESTAURANTS'], ['ACCOUNTING', 'SALES', 'RESTAURANTS'], ['SALES']
+  ] satisfies ProductCode[][])('resolves every product independently for %j', (...products) => {
+    const entitlements = products.map(product => access('ACTIVE', product));
+    for (const code of ['ACCOUNTING', 'SALES', 'RESTAURANTS'] as const) {
+      expect(resolveProductAvailability(entitlements, code, true)).toBe(products.includes(code) ? 'AVAILABLE' : 'UNAVAILABLE');
+    }
+  });
+
 });

@@ -25,7 +25,7 @@ Organization
 
 - `Organization` owns platform-wide identity and status attributes.
 - `UserOrgAccess` represents a user's verified access to an organization.
-- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The canonical public product codes are `ACCOUNTING` and `SALES`; their entitlements are independent. Every current Accounting-product business route is explicitly annotated with `ACCOUNTING`; the twenty-six SALES Customer, Catalog, Invoice, document, Payment, and Receivable routes require active `SALES` access and `SALES_READ` or `SALES_WRITE`. Platform Core discovery, onboarding, entitlement observation, and recovery routes remain outside product enforcement. Accounting Core, Treasury, and Project Accounting navigation derive availability from the same effective-organization `ACCOUNTING` entitlement.
+- `ProductAccess` is the organization-level entitlement for a top-level Liass-OHADA product or vertical, not for each internal business module. The canonical public product codes are `ACCOUNTING`, `SALES`, and `RESTAURANTS`; their entitlements are independent. RESTO-0 registers the Liass-Resto foundation only, without restaurant business entities or endpoints. Every current Accounting-product business route is explicitly annotated with `ACCOUNTING`; the twenty-six SALES Customer, Catalog, Invoice, document, Payment, and Receivable routes require active `SALES` access and `SALES_READ` or `SALES_WRITE`. Platform Core discovery, onboarding, entitlement observation, and recovery routes remain outside product enforcement. Accounting Core, Treasury, and Project Accounting navigation derive availability from the same effective-organization `ACCOUNTING` entitlement.
 - `DomainSettings` belongs to the owning business domain. In particular, `accountingFramework` conceptually belongs to `AccountingSettings`, not to universal Organization metadata.
 
 Current onboarding, Organization, workspace, access-projection, and response contracts may still carry `accountingFramework`. This is an explicit compatibility state. It must remain supported until a reviewed, backward-compatible runtime and data migration moves ownership to Accounting.
@@ -58,7 +58,7 @@ Current onboarding, Organization, workspace, access-projection, and response con
 
 The platform shell owns active organization, connected user, global navigation, search or command palette, notifications, preferences, global permission context, and product availability. Business domains own routed experiences and domain rules. The dashboard is a platform-level surface that may aggregate KPIs exposed by enabled domains without absorbing their business logic. All three current Accounting modules use the canonical effective-organization `ACCOUNTING` availability state; this presentation signal does not replace module-granular RBAC or backend authorization.
 
-The single application may progressively expose routes such as `/dashboard`, `/accounting/...`, `/treasury/...`, `/projects/...`, and `/administration/...`. A future `/restaurants/...` route remains deferred until the Liass-Resto implementation phase.
+The single application may progressively expose routes such as `/dashboard`, `/accounting/...`, `/treasury/...`, `/projects/...`, and `/administration/...`. RESTO-0 adds the ProductAccess-protected `/restaurants` foundation landing page under `core/`; restaurant business workflows and domain routes remain deferred.
 
 ### Mandatory CDK Stack Boundaries
 
@@ -94,8 +94,9 @@ LIASS-OHADA
 │   ├── Customers
 │   ├── Catalog
 │   └── Invoicing Core: editable DRAFT -> immutable ISSUED with SALES commercial numbering and an explicit private PDF representation for ISSUED invoices; no fiscal certification, payments, or Accounting posting yet
-└── FUTURE PRODUCT: LIASS-RESTO
-    └── restaurant / bar operations
+└── PRODUCT: RESTAURANTS (Liass-Resto)
+    ├── RESTO-0: product foundation
+    └── restaurant / bar operations (deferred)
 ```
 
 `ACCOUNTING` is the top-level `ProductAccess` entitlement for current ERP functionality. Treasury and Project Accounting are Accounting modules and must not use `TREASURY` or `PROJECTS` as current ProductAccess codes. Module-granular RBAC remains independent: Accounting Core uses `ACCOUNTING_*`, Treasury uses `TREASURY_*`, and Project Accounting uses `PROJECTS_*` permissions.
@@ -118,7 +119,7 @@ A domain is implemented only when corresponding runtime code and infrastructure 
 
 ### C. Vertical Solutions
 
-Liass-Resto is the first planned vertical solution and a future top-level business product within the Liass-OHADA platform. It is not an Accounting module, a replacement for Accounting, a separate brand, or a standalone application. It is not implemented and must not receive routes, packages, persistence, infrastructure, or a separate application until a reviewed implementation phase authorizes them. The intended machine-oriented domain identifier is `restaurants`, and the intended future technical `ProductCode` is `RESTAURANTS`; this naming decision does not implement that code or create a ProductAccess row. Other verticals such as Retail remain possible future decisions, not current scaffolding requirements.
+Liass-Resto is the first vertical solution and an independent top-level product within the Liass-OHADA platform, with technical `ProductCode` `RESTAURANTS` and future business-domain identifier `restaurants`. RESTO-0 implements only ProductCode, existing ProductAccess compatibility, the protected platform landing page, and the initial RESTAURANTS role vocabulary. It creates no restaurant business domain, business entities, endpoint, or AWS resources. It is not an Accounting or SALES module, a replacement for Accounting, a separate platform brand, or a standalone application. Activation remains explicit; onboarding does not automatically grant RESTAURANTS. The optional `productRoles.RESTAURANTS` assignment on existing `USER_ORG_ACCESS` maps OWNER, MANAGER, WAITER, CASHIER, and KITCHEN to `RESTAURANTS_READ` through the existing permission engine; no global or other-product role implies this assignment. Future business permissions and role administration remain deferred. Other verticals such as Retail remain possible future decisions, not current scaffolding requirements.
 
 ---
 

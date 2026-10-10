@@ -1,0 +1,25 @@
+<div class="space-y-4">
+  <liass-page-header
+    [eyebrow]="'RESTAURANTS.PAGE.EYEBROW' | transloco"
+    [title]="'RESTAURANTS.PAGE.TITLE' | transloco"
+    [subtitle]="'RESTAURANTS.PAGE.SUBTITLE' | transloco"
+  />
+  @if (availability() === 'AVAILABLE') {
+    <liass-card>
+      <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS.PAGE.READY' | transloco }}</p>
+    </liass-card>
+  } @else if (availability() === 'UNKNOWN') {
+    <liass-card>
+      <div class="space-y-3" role="status" aria-busy="true">
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.ACCESS.CHECKING' | transloco }}
+        </p>
+        <liass-skeleton variant="block" />
+      </div>
+    </liass-card>
+  } @else {
+    <liass-card
+      ><p role="alert">{{ 'RESTAURANTS.ACCESS.DENIED' | transloco }}</p></liass-card
+    >
+  }
+</div>

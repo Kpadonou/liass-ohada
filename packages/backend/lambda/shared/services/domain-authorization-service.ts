@@ -1,7 +1,9 @@
+import { RestaurantsRoleSchema } from "@liass-ohada/shared/shared";
 import type { AccountingAccessMode } from "@liass-ohada/shared";
 import {
   ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
   SALES_PERMISSIONS,
+  RESTAURANTS_PERMISSIONS,
   FISCAL_COMPLIANCE_PERMISSIONS,
   isWritePermission,
 } from "../authorization/domain-permission";
@@ -35,6 +37,11 @@ export class DomainAuthorizationService {
     return role === "OWNER"
       ? [...ACCOUNTING_PRODUCT_MODULE_PERMISSIONS, ...SALES_PERMISSIONS, ...FISCAL_COMPLIANCE_PERMISSIONS]
       : ACCOUNTING_PRODUCT_MODULE_PERMISSIONS;
+  }
+
+  /** No global organization, Accounting, Sales or cabinet role implies this assignment. */
+  static permissionsForRestaurantsRole(role: unknown): readonly DomainPermission[] {
+    return RestaurantsRoleSchema.safeParse(role).success ? RESTAURANTS_PERMISSIONS : [];
   }
 
   static hasPermission(

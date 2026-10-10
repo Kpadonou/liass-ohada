@@ -8,6 +8,7 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
+  PRODUCT_CODES,
   ProductAccess,
   ProductAccessSchema,
   ProductAccessStatus,
@@ -22,8 +23,7 @@ import { KeyFactory } from "../key-builder";
 export const LEGACY_PRODUCT_CODES = ["PROJECTS", "TREASURY"] as const;
 export const LegacyProductCodeSchema = z.enum(LEGACY_PRODUCT_CODES);
 export const PersistedProductCodeSchema = z.enum([
-  "ACCOUNTING",
-  "SALES",
+  ...PRODUCT_CODES,
   ...LEGACY_PRODUCT_CODES,
 ]);
 

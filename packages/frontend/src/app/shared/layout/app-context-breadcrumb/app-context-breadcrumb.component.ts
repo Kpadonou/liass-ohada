@@ -29,6 +29,7 @@ const pageLabelKeys: Record<AppPage, string> = {
   dashboard: 'SHELL.PAGES.DASHBOARD',
   projects: 'SHELL.NAV.PROJECTS',
   reports: 'SHELL.NAV.REPORTS',
+  restaurants: 'SHELL.NAV.RESTAURANTS',
   'sales.customers': 'SHELL.PAGES.SALES_CUSTOMERS',
   'sales.items': 'SHELL.PAGES.SALES_ITEMS',
   'sales.invoices': 'SHELL.PAGES.SALES_INVOICES',

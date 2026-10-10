@@ -218,6 +218,17 @@ export class AppSidebarComponent {
   protected readonly dashboardItems = dashboardItems;
   protected readonly secondaryItems = secondaryItems;
   protected readonly salesItems = salesItems;
+  protected readonly restaurantsItem: ShellNavItem = {
+    icon: 'restaurant',
+    labelKey: 'SHELL.NAV.RESTAURANTS',
+    page: 'restaurants',
+    productCode: 'RESTAURANTS',
+    route: '/restaurants'
+  };
+  protected readonly showRestaurantsNavigation = computed(
+    () => !!this.authStore.effectiveOrgId() &&
+      this.productAccessState.availability('RESTAURANTS') === 'AVAILABLE'
+  );
   protected readonly authStore = inject(AuthStore);
   private readonly cabinetSettingsCapabilities = inject(CabinetSettingsCapabilities);
   private readonly productAccessState = inject(ProductAccessState);

@@ -64,7 +64,7 @@ test("identity and membership remain required", async () => {
   expect(ProductAccessService.requireActiveProductAccess).not.toHaveBeenCalled();
 });
 test("OWNER grants are explicit; all other direct roles, unknown roles and every cabinet access mode retain no fiscal grant", () => {
-  expect(DomainAuthorizationService.permissionsForDirectOrganizationRole("OWNER")).toEqual(DOMAIN_PERMISSIONS);
+  expect(DomainAuthorizationService.permissionsForDirectOrganizationRole("OWNER")).toEqual(DOMAIN_PERMISSIONS.filter(permission => permission !== "RESTAURANTS_READ"));
   for (const role of ["ACCOUNTANT", "ADMIN", "MEMBER", "READER", "CABINET_ADMIN", "SUPERVISOR", "COLLABORATOR", undefined]) {
     for (const permission of FISCAL_COMPLIANCE_PERMISSIONS) expect(DomainAuthorizationService.permissionsForDirectOrganizationRole(role)).not.toContain(permission);
   }

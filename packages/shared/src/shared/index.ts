@@ -5,3 +5,4 @@ export * from "./cabinet-team";
 export * from "./cabinet-settings";
 export * from "./workspace";
 export * from "./product-access";
+export * from "./restaurants-access";
