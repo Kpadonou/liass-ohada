@@ -1,25 +1,28 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { ProductAccessState } from '../product-access/product-access.state';
+import { RestaurantsCapabilities } from '../../domains/restaurants/data-access/restaurants-capabilities';
 import type { ProductAvailability } from '../product-access/product-availability';
 import { RestaurantsPage } from './restaurants.page';
-
 const translations = {
   RESTAURANTS: {
-    PAGE: {
-      TITLE: 'Liass-Resto',
-      EYEBROW: 'Liass-OHADA',
-      SUBTITLE: 'Restaurant management workspace',
-      READY: 'Workspace accessible',
-    },
+    PAGE: { TITLE: 'Liass-Resto', EYEBROW: 'Liass-OHADA', SUBTITLE: 'Your restaurant' },
     ACCESS: { CHECKING: 'Checking access', DENIED: 'Access unavailable' },
+    UI: {
+      NAV: { OVERVIEW: 'Overview', SETUP: 'Restaurant setup', MENU: 'Menu', LABEL: 'Navigation' },
+    },
   },
 };
-describe('RestaurantsPage foundation', () => {
-  const availability = signal<ProductAvailability>('UNKNOWN');
+describe('Liass-Resto product navigation', () => {
+  const availability = signal<ProductAvailability>('UNKNOWN'),
+    read = signal(true),
+    menu = signal(true);
   beforeEach(() => {
     availability.set('UNKNOWN');
+    read.set(true);
+    menu.set(true);
     TestBed.configureTestingModule({
       imports: [
         RestaurantsPage,
@@ -29,41 +32,44 @@ describe('RestaurantsPage foundation', () => {
           translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
         }),
       ],
-      providers: [{ provide: ProductAccessState, useValue: { availability } }],
+      providers: [
+        provideRouter([]),
+        { provide: ProductAccessState, useValue: { availability } },
+        { provide: RestaurantsCapabilities, useValue: { canRead: read, canReadMenu: menu } },
+      ],
     });
   });
   afterEach(() => TestBed.resetTestingModule());
-  it('renders translated header, landing and stable shared page primitives', () => {
+  it('shows available product and permission-driven navigation with shared block hosts', () => {
     availability.set('AVAILABLE');
-    const fixture = TestBed.createComponent(RestaurantsPage);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Liass-Resto');
-    expect(fixture.nativeElement.textContent).toContain('Restaurant management workspace');
-    expect(fixture.nativeElement.textContent).toContain('Workspace accessible');
-    expect(
-      fixture.nativeElement.querySelector('liass-page-header').classList.contains('block'),
-    ).toBe(true);
-    expect(fixture.nativeElement.querySelector('liass-card').classList.contains('block')).toBe(
+    const f = TestBed.createComponent(RestaurantsPage);
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Restaurant setup');
+    expect(f.nativeElement.textContent).toContain('Menu');
+    expect(f.nativeElement.querySelector('liass-page-header').classList.contains('block')).toBe(
       true,
     );
+    menu.set(false);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('a[href="/restaurants/menu"]')).toBeNull();
   });
-  it('shows access loading and hides the landing until verified', () => {
-    const fixture = TestBed.createComponent(RestaurantsPage);
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[aria-busy="true"]').textContent).toContain(
+  it('announces access loading and hides business navigation', () => {
+    const f = TestBed.createComponent(RestaurantsPage);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[aria-busy="true"]').textContent).toContain(
       'Checking access',
     );
-    expect(fixture.nativeElement.textContent).not.toContain('Workspace accessible');
+    expect(f.nativeElement.querySelector('nav')).toBeNull();
   });
-  it('removes authorized content when the active workspace loses access', () => {
+  it('removes business content on ProductAccess loss', () => {
     availability.set('AVAILABLE');
-    const fixture = TestBed.createComponent(RestaurantsPage);
-    fixture.detectChanges();
+    const f = TestBed.createComponent(RestaurantsPage);
+    f.detectChanges();
     availability.set('UNAVAILABLE');
-    fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[role="alert"]').textContent).toContain(
       'Access unavailable',
     );
-    expect(fixture.nativeElement.textContent).not.toContain('Workspace accessible');
+    expect(f.nativeElement.querySelector('router-outlet')).toBeNull();
   });
 });

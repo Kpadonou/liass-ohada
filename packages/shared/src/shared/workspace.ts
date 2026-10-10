@@ -1,3 +1,5 @@
+import { ProductAccessSchema, ProductCodeSchema } from "./product-access";
+import { ProductRolesSchema } from "./restaurants-access";
 import { z } from "zod";
 
 export const WorkspaceTypeSchema = z.enum(["COMPANY", "ACCOUNTING_FIRM"]);
@@ -35,6 +37,7 @@ export const WorkspaceSummarySchema = z
   .object({
     orgId: z.string().min(1),
     role: z.string().optional(),
+    productRoles: ProductRolesSchema.optional(),
     cabinetRole: z
       .enum(["CABINET_ADMIN", "SUPERVISOR", "COLLABORATOR", "READER"])
       .optional(),
@@ -54,21 +57,55 @@ export const WorkspacesResponseSchema = z
   })
   .strict();
 
+const InitialWorkspaceFields = {
+  organizationName: z.string().trim().min(1).max(160),
+  country: WorkspaceCountrySchema,
+};
+
 export const CreateInitialWorkspaceRequestSchema = z
-  .object({
-    workspaceType: WorkspaceTypeSchema,
-    organizationName: z.string().trim().min(1).max(160),
-    country: WorkspaceCountrySchema,
-    accountingFramework: OnboardingAccountingFrameworkSchema,
-  })
-  .strict();
+  .discriminatedUnion("workspaceType", [
+    z
+      .object({
+        ...InitialWorkspaceFields,
+        workspaceType: z.literal("COMPANY"),
+        products: z
+          .array(ProductCodeSchema)
+          .min(1)
+          .max(3)
+          .refine((products) => new Set(products).size === products.length, {
+            message: "Products must be unique",
+          }),
+        accountingFramework: OnboardingAccountingFrameworkSchema.optional(),
+      })
+      .strict(),
+    z
+      .object({
+        ...InitialWorkspaceFields,
+        workspaceType: z.literal("ACCOUNTING_FIRM"),
+        accountingFramework: OnboardingAccountingFrameworkSchema,
+      })
+      .strict(),
+  ])
+  .superRefine((request, context) => {
+    if (request.workspaceType !== "COMPANY") return;
+    const accountingSelected = request.products.includes("ACCOUNTING");
+    if (accountingSelected !== (request.accountingFramework !== undefined)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["accountingFramework"],
+        message: accountingSelected
+          ? "Accounting framework is required for ACCOUNTING"
+          : "Accounting framework requires ACCOUNTING",
+      });
+    }
+  });
 
 export const OrganizationSchema = z
   .object({
     orgId: z.string().min(1),
     name: z.string().min(1),
     country: WorkspaceCountrySchema,
-    accountingFramework: OnboardingAccountingFrameworkSchema,
+    accountingFramework: OnboardingAccountingFrameworkSchema.optional(),
     workspaceType: WorkspaceTypeSchema,
     status: WorkspaceStatusSchema,
     createdAt: z.string().datetime(),
@@ -107,6 +144,7 @@ export const CreateInitialWorkspaceResponseSchema = z
     cabinet: CabinetSchema.nullable(),
     workspace: WorkspaceSummarySchema,
     activeOrgId: z.string().min(1),
+    productAccess: z.array(ProductAccessSchema).optional(),
   })
   .strict();
 

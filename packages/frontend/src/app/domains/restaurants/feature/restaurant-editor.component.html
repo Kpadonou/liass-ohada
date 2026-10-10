@@ -1,0 +1,155 @@
+<h2 mat-dialog-title>
+  {{ (data.entity ? 'RESTAURANTS.UI.EDIT' : 'RESTAURANTS.UI.ADD') | transloco }} ·
+  {{ 'RESTAURANTS.UI.KINDS.' + data.kind | transloco }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="space-y-4">
+    @if (data.contextName) {
+      <p class="text-sm text-app-text-secondary">{{ data.contextName }}</p>
+    }
+    @if (error()) {
+      <p role="alert" class="text-danger-600">{{ error() }}</p>
+    }
+    @if (conflict()) {
+      <p class="text-sm">{{ 'RESTAURANTS.UI.CONFLICT_REVIEW' | transloco }}</p>
+      @if (latestName()) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.UI.LATEST' | transloco: { name: latestName() } }}
+        </p>
+      }
+      @if (!refreshed()) {
+        <button mat-button type="button" (click)="refreshConflict()">
+          {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+        </button>
+      }
+    }
+    <mat-form-field class="w-full"
+      ><mat-label>{{ 'RESTAURANTS.UI.NAME' | transloco }}</mat-label
+      ><input matInput formControlName="name" maxlength="160" /><mat-error>{{
+        'RESTAURANTS.UI.REQUIRED' | transloco
+      }}</mat-error></mat-form-field
+    >
+    @if (data.kind === 'restaurant') {
+      <mat-form-field class="w-full"
+        ><mat-label>{{ 'RESTAURANTS.UI.POLICY' | transloco }}</mat-label
+        ><mat-select formControlName="policy">
+          @for (policy of ['DISABLED', 'STAFF_APPROVAL', 'DIRECT']; track policy) {
+            <mat-option [value]="policy">{{
+              'RESTAURANTS.UI.POLICIES.' + policy | transloco
+            }}</mat-option>
+          }
+        </mat-select></mat-form-field
+      >
+      @if (data.entity) {
+        <mat-slide-toggle formControlName="active">{{
+          'RESTAURANTS.UI.ACTIVE' | transloco
+        }}</mat-slide-toggle>
+      }
+    }
+    @if (data.kind === 'table') {
+      <div class="grid gap-4 sm:grid-cols-2">
+        <mat-form-field
+          ><mat-label>{{ 'RESTAURANTS.UI.CODE' | transloco }}</mat-label
+          ><input matInput formControlName="code" maxlength="32" /><mat-hint>{{
+            'RESTAURANTS.UI.CODE_HELP' | transloco
+          }}</mat-hint
+          ><mat-error>{{ 'RESTAURANTS.UI.CODE_INVALID' | transloco }}</mat-error></mat-form-field
+        >
+        <mat-form-field
+          ><mat-label>{{ 'RESTAURANTS.UI.CAPACITY' | transloco }}</mat-label
+          ><input matInput formControlName="capacity" inputmode="numeric" /><mat-hint>{{
+            'RESTAURANTS.UI.OPTIONAL' | transloco
+          }}</mat-hint
+          ><mat-error>{{
+            'RESTAURANTS.UI.CAPACITY_INVALID' | transloco
+          }}</mat-error></mat-form-field
+        >
+      </div>
+    }
+    @if (data.kind === 'menu') {
+      @if (!data.entity) {
+        <mat-form-field class="w-full"
+          ><mat-label>{{ 'RESTAURANTS.UI.CURRENCY' | transloco }}</mat-label
+          ><input matInput formControlName="currency" maxlength="3" /><mat-hint>{{
+            'RESTAURANTS.UI.CURRENCY_FIXED' | transloco
+          }}</mat-hint
+          ><mat-error>{{
+            'RESTAURANTS.UI.CURRENCY_INVALID' | transloco
+          }}</mat-error></mat-form-field
+        >
+      } @else {
+        <p>{{ data.currency }} · {{ 'RESTAURANTS.UI.CURRENCY_FIXED' | transloco }}</p>
+      }
+    }
+    @if (data.kind === 'item') {
+      <mat-form-field class="w-full"
+        ><mat-label>{{ 'RESTAURANTS.UI.PRICE' | transloco }} ({{ data.currency }})</mat-label
+        ><input matInput formControlName="price" inputmode="decimal" /><mat-error>{{
+          'RESTAURANTS.UI.PRICE_INVALID' | transloco
+        }}</mat-error></mat-form-field
+      >
+      @if (!data.entity) {
+        <mat-form-field class="w-full"
+          ><mat-label>{{ 'RESTAURANTS.UI.AVAILABILITY' | transloco }}</mat-label
+          ><mat-select formControlName="availability"
+            ><mat-option value="AVAILABLE">{{ 'RESTAURANTS.UI.AVAILABLE' | transloco }}</mat-option
+            ><mat-option value="UNAVAILABLE">{{
+              'RESTAURANTS.UI.UNAVAILABLE' | transloco
+            }}</mat-option></mat-select
+          ></mat-form-field
+        >
+      }
+      <liass-searchable-select
+        unresolvedLabelKey="RESTAURANTS.UI.SELECTED_REFERENCE"
+        formControlName="station"
+        labelKey="RESTAURANTS.UI.STATION"
+        [options]="stationOptions()"
+        [loading]="stations.isPending()"
+      />
+      @if (selectedStation.isError()) {
+        <p role="alert">{{ 'RESTAURANTS.UI.ERRORS.PARENT' | transloco }}</p>
+      }
+      <button mat-button type="button" (click)="form.controls.station.setValue(null)">
+        {{ 'RESTAURANTS.UI.NO_STATION' | transloco }}
+      </button>
+      @if (stations.isError()) {
+        <p role="alert">{{ 'RESTAURANTS.UI.ERRORS.NETWORK' | transloco }}</p>
+        <button mat-button type="button" (click)="stations.refetch()">
+          {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+        </button>
+      }
+      @if (stations.hasNextPage()) {
+        <button
+          mat-button
+          type="button"
+          [disabled]="stations.isFetchingNextPage()"
+          (click)="stations.fetchNextPage()"
+        >
+          {{ 'RESTAURANTS.UI.MORE_STATIONS' | transloco }}
+        </button>
+      }
+      <mat-slide-toggle formControlName="reorder">{{
+        'RESTAURANTS.UI.REORDER' | transloco
+      }}</mat-slide-toggle>
+      <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS.UI.REORDER_HELP' | transloco }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end"
+    ><button mat-button type="button" [mat-dialog-close]="null" [disabled]="pending()">
+      {{ 'RESTAURANTS.UI.CANCEL' | transloco }}</button
+    ><button
+      mat-flat-button
+      type="submit"
+      [disabled]="pending() || !canManage() || (conflict() && !refreshed())"
+    >
+      {{
+        (pending()
+          ? 'RESTAURANTS.UI.SAVING'
+          : conflict()
+            ? 'RESTAURANTS.UI.RETRY_SAVE'
+            : 'RESTAURANTS.UI.SAVE'
+        ) | transloco
+      }}
+    </button></mat-dialog-actions
+  >
+</form>

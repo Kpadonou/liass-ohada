@@ -14,6 +14,7 @@ jest.mock("@/lambda/shared/services/user-profile-service", () => ({
 const createEvent = ({
   body = {
     workspaceType: "COMPANY",
+    products: ["ACCOUNTING"],
     organizationName: "Demo SARL",
     country: "BJ",
     accountingFramework: "SYSCOHADA_REVISED",
@@ -90,6 +91,7 @@ describe("POST /me/workspaces", () => {
       "user-123",
       {
         workspaceType: "COMPANY",
+        products: ["ACCOUNTING"],
         organizationName: "Demo SARL",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",
@@ -110,6 +112,7 @@ describe("POST /me/workspaces", () => {
       createEvent({
         body: {
           workspaceType: "COMPANY",
+          products: ["ACCOUNTING"],
           organizationName: "Demo SARL",
           country: "BJ",
           accountingFramework: "SYSCOHADA_REVISED",
@@ -156,6 +159,7 @@ describe("POST /me/workspaces", () => {
       createEvent({
         body: {
           workspaceType: "COMPANY",
+          products: ["ACCOUNTING"],
           organizationName: "Demo SARL",
           country: "BJ",
           accountingFramework: "SYSCOHADA_REVISED",
@@ -170,6 +174,7 @@ describe("POST /me/workspaces", () => {
       "user-123",
       {
         workspaceType: "COMPANY",
+        products: ["ACCOUNTING"],
         organizationName: "Demo SARL",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",

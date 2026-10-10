@@ -1,9 +1,8 @@
-import { RestaurantsRoleSchema } from "@liass-ohada/shared/shared";
+import { restaurantsPermissionsForRole } from "@liass-ohada/shared/shared";
 import type { AccountingAccessMode } from "@liass-ohada/shared";
 import {
   ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
   SALES_PERMISSIONS,
-  RESTAURANTS_PERMISSIONS,
   FISCAL_COMPLIANCE_PERMISSIONS,
   isWritePermission,
 } from "../authorization/domain-permission";
@@ -35,16 +34,19 @@ export class DomainAuthorizationService {
     // Only direct COMPANY ownership grants commercial and fiscal capabilities.
     // Cabinet roles and every other/unknown direct role keep their existing grants.
     return role === "OWNER"
-      ? [...ACCOUNTING_PRODUCT_MODULE_PERMISSIONS, ...SALES_PERMISSIONS, ...FISCAL_COMPLIANCE_PERMISSIONS]
+      ? [
+          ...ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
+          ...SALES_PERMISSIONS,
+          ...FISCAL_COMPLIANCE_PERMISSIONS,
+        ]
       : ACCOUNTING_PRODUCT_MODULE_PERMISSIONS;
   }
 
   /** No global organization, Accounting, Sales or cabinet role implies this assignment. */
-  static permissionsForRestaurantsRole(role: unknown): readonly DomainPermission[] {
-    const parsed = RestaurantsRoleSchema.safeParse(role);
-    if (!parsed.success) return [];
-    return parsed.data === "OWNER" || parsed.data === "MANAGER"
-      ? RESTAURANTS_PERMISSIONS : ["RESTAURANTS_READ", "RESTAURANTS_MENU_READ"];
+  static permissionsForRestaurantsRole(
+    role: unknown,
+  ): readonly DomainPermission[] {
+    return restaurantsPermissionsForRole(role);
   }
 
   static hasPermission(

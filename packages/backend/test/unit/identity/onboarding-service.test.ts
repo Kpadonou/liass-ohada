@@ -23,7 +23,8 @@ const GENERATED_ORG_ID = `org-${ORG_UUID}`;
 const GENERATED_CABINET_ID = `cab-${CABINET_UUID}`;
 
 const unmarshalledTransactItems = () => {
-  const input = dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input;
+  const input = dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0]
+    .input;
 
   return (input.TransactItems || []).map((item) => {
     if (!item.Put?.Item) {
@@ -45,17 +46,19 @@ describe("OnboardingService", () => {
   });
 
   test("creates a company organization and user access in one transaction", async () => {
-    jest
-      .mocked(randomUUID)
-      .mockReturnValueOnce(ORG_UUID);
+    jest.mocked(randomUUID).mockReturnValueOnce(ORG_UUID);
     dynamoMock.on(TransactWriteItemsCommand).resolves({});
 
-    const response = await OnboardingService.createInitialWorkspace("user-123", {
-      workspaceType: "COMPANY",
-      organizationName: "Demo SARL",
-      country: "BJ",
-      accountingFramework: "SYSCOHADA_REVISED",
-    });
+    const response = await OnboardingService.createInitialWorkspace(
+      "user-123",
+      {
+        workspaceType: "COMPANY",
+        products: ["ACCOUNTING"],
+        organizationName: "Demo SARL",
+        country: "BJ",
+        accountingFramework: "SYSCOHADA_REVISED",
+      },
+    );
     const transactionItems = unmarshalledTransactItems();
 
     expect(response).toMatchObject({
@@ -147,12 +150,15 @@ describe("OnboardingService", () => {
       .mockReturnValueOnce(CABINET_UUID);
     dynamoMock.on(TransactWriteItemsCommand).resolves({});
 
-    const response = await OnboardingService.createInitialWorkspace("user-123", {
-      workspaceType: "ACCOUNTING_FIRM",
-      organizationName: "Cabinet Demo",
-      country: "BJ",
-      accountingFramework: "SYSCOHADA_REVISED",
-    });
+    const response = await OnboardingService.createInitialWorkspace(
+      "user-123",
+      {
+        workspaceType: "ACCOUNTING_FIRM",
+        organizationName: "Cabinet Demo",
+        country: "BJ",
+        accountingFramework: "SYSCOHADA_REVISED",
+      },
+    );
     const transactionItems = unmarshalledTransactItems();
 
     expect(response.activeOrgId).toBe(GENERATED_ORG_ID);
@@ -189,7 +195,9 @@ describe("OnboardingService", () => {
       status: "ACTIVE",
     });
     expect(
-      transactionItems.filter(({ item }) => item.entityType === "PRODUCT_ACCESS"),
+      transactionItems.filter(
+        ({ item }) => item.entityType === "PRODUCT_ACCESS",
+      ),
     ).toEqual([
       expect.objectContaining({
         item: expect.objectContaining({
@@ -247,6 +255,7 @@ describe("OnboardingService", () => {
     await expect(
       OnboardingService.createInitialWorkspace("user-123", {
         workspaceType: "COMPANY",
+        products: ["ACCOUNTING"],
         organizationName: "Demo SARL",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",
@@ -309,9 +318,7 @@ describe("OnboardingService", () => {
   });
 
   test("maps transaction cancellation to duplicate onboarding", async () => {
-    jest
-      .mocked(randomUUID)
-      .mockReturnValueOnce(ORG_UUID);
+    jest.mocked(randomUUID).mockReturnValueOnce(ORG_UUID);
     dynamoMock.on(TransactWriteItemsCommand).rejects(
       new TransactionCanceledException({
         $metadata: {},
@@ -322,6 +329,7 @@ describe("OnboardingService", () => {
     await expect(
       OnboardingService.createInitialWorkspace("user-123", {
         workspaceType: "COMPANY",
+        products: ["ACCOUNTING"],
         organizationName: "Demo SARL",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",
@@ -333,14 +341,15 @@ describe("OnboardingService", () => {
   });
 
   test("maps non-cancellation transaction failures to onboarding creation failure", async () => {
-    jest
-      .mocked(randomUUID)
-      .mockReturnValueOnce(ORG_UUID);
-    dynamoMock.on(TransactWriteItemsCommand).rejects(new Error("DynamoDB failed"));
+    jest.mocked(randomUUID).mockReturnValueOnce(ORG_UUID);
+    dynamoMock
+      .on(TransactWriteItemsCommand)
+      .rejects(new Error("DynamoDB failed"));
 
     await expect(
       OnboardingService.createInitialWorkspace("user-123", {
         workspaceType: "COMPANY",
+        products: ["ACCOUNTING"],
         organizationName: "Demo SARL",
         country: "BJ",
         accountingFramework: "SYSCOHADA_REVISED",

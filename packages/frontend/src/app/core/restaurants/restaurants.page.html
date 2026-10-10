@@ -5,9 +5,35 @@
     [subtitle]="'RESTAURANTS.PAGE.SUBTITLE' | transloco"
   />
   @if (availability() === 'AVAILABLE') {
-    <liass-card>
-      <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS.PAGE.READY' | transloco }}</p>
-    </liass-card>
+    <nav class="flex flex-wrap gap-2" [attr.aria-label]="'RESTAURANTS.UI.NAV.LABEL' | transloco">
+      <a
+        mat-button
+        routerLink="/restaurants"
+        routerLinkActive="bg-app-surface-selected"
+        [routerLinkActiveOptions]="{ exact: true }"
+        ariaCurrentWhenActive="page"
+        >{{ 'RESTAURANTS.UI.NAV.OVERVIEW' | transloco }}</a
+      >
+      @if (capabilities.canRead()) {
+        <a
+          mat-button
+          routerLink="/restaurants/setup"
+          routerLinkActive="bg-app-surface-selected"
+          ariaCurrentWhenActive="page"
+          >{{ 'RESTAURANTS.UI.NAV.SETUP' | transloco }}</a
+        >
+      }
+      @if (capabilities.canReadMenu()) {
+        <a
+          mat-button
+          routerLink="/restaurants/menu"
+          routerLinkActive="bg-app-surface-selected"
+          ariaCurrentWhenActive="page"
+          >{{ 'RESTAURANTS.UI.NAV.MENU' | transloco }}</a
+        >
+      }
+    </nav>
+    <router-outlet />
   } @else if (availability() === 'UNKNOWN') {
     <liass-card>
       <div class="space-y-3" role="status" aria-busy="true">

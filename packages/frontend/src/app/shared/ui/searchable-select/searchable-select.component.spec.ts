@@ -5,7 +5,7 @@ import { TranslocoTestingModule } from '@ngneat/transloco';
 
 import {
   LiassSearchableSelectComponent,
-  type LiassSearchableSelectOption
+  type LiassSearchableSelectOption,
 } from './searchable-select.component';
 
 const translations = {
@@ -13,22 +13,22 @@ const translations = {
     COMMON: {
       SELECT: {
         NO_RESULTS: 'No results',
-        SEARCH_PLACEHOLDER: 'Search...'
-      }
+        SEARCH_PLACEHOLDER: 'Search...',
+      },
     },
     IDENTITY: {
       ONBOARDING: {
         COUNTRIES: {
           BENIN: 'Benin',
           COTE_D_IVOIRE: "Côte d'Ivoire",
-          SENEGAL: 'Senegal'
+          SENEGAL: 'Senegal',
         },
         FIELDS: {
-          COUNTRY: 'Country'
-        }
-      }
-    }
-  }
+          COUNTRY: 'Country',
+        },
+      },
+    },
+  },
 };
 
 @Component({
@@ -39,19 +39,21 @@ const translations = {
       [emptyResultLabelKey]="'COMMON.SELECT.NO_RESULTS'"
       [labelKey]="'IDENTITY.ONBOARDING.FIELDS.COUNTRY'"
       [loading]="loading"
+      [unresolvedLabelKey]="unresolvedLabelKey"
       [options]="options"
       [searchPlaceholderKey]="'COMMON.SELECT.SEARCH_PLACEHOLDER'"
       [formControl]="control"
     />
-  `
+  `,
 })
 class SearchableSelectHostComponent {
   control = new FormControl<string | null>('BJ');
   loading = false;
+  unresolvedLabelKey: string | null = null;
   options: LiassSearchableSelectOption[] = [
     { value: 'BJ', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.BENIN' },
     { value: 'CI', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.COTE_D_IVOIRE' },
-    { value: 'SN', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.SENEGAL' }
+    { value: 'SN', labelKey: 'IDENTITY.ONBOARDING.COUNTRIES.SENEGAL' },
   ];
 }
 
@@ -70,10 +72,10 @@ describe('LiassSearchableSelectComponent', () => {
           preloadLangs: true,
           translocoConfig: {
             availableLangs: ['en'],
-            defaultLang: 'en'
-          }
-        })
-      ]
+            defaultLang: 'en',
+          },
+        }),
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(SearchableSelectHostComponent);
@@ -94,7 +96,7 @@ describe('LiassSearchableSelectComponent', () => {
   it('supports direct labels for dynamic domain options', () => {
     host.options.splice(0, host.options.length, {
       value: '41100000',
-      label: '41100000 - Clients'
+      label: '41100000 - Clients',
     });
     host.control.setValue('41100000');
     fixture.detectChanges();
@@ -135,7 +137,7 @@ describe('LiassSearchableSelectComponent', () => {
     await fixture.whenStable();
 
     const option = Array.from(document.body.querySelectorAll('mat-option')).find((candidate) =>
-      candidate.textContent?.includes('Senegal')
+      candidate.textContent?.includes('Senegal'),
     ) as HTMLElement | undefined;
     option?.click();
     fixture.detectChanges();
@@ -143,6 +145,30 @@ describe('LiassSearchableSelectComponent', () => {
 
     expect(host.control.value).toBe('SN');
     expect(input.value).toBe('Senegal');
+  });
+
+  it('masks an unresolved identifier and resolves its label when options arrive', () => {
+    host.options = [];
+    fixture.changeDetectorRef.markForCheck();
+    host.unresolvedLabelKey = 'COMMON.SELECT.SEARCH_PLACEHOLDER';
+    host.control.setValue('opaque-reference');
+    fixture.detectChanges();
+    expect(inputElement().value).toBe('Search...');
+    host.options = [{ value: 'opaque-reference', label: 'Agla' }];
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(inputElement().value).toBe('Agla');
+  });
+
+  it('preserves active search when options refresh', () => {
+    const input = inputElement();
+    input.value = 'ter';
+    input.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    host.options = [{ value: 'terrace', label: 'Terrace' }];
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    expect(input.value).toBe('ter');
   });
 
   it('handles disabled and loading states', () => {

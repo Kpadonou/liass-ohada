@@ -5,7 +5,9 @@ import {
   CreateInitialWorkspaceRequestSchema,
   CreateInitialWorkspaceResponse,
   CreateInitialWorkspaceResponseSchema,
+  OnboardingAccountingFrameworkSchema,
   Organization,
+  ProductCode,
   WorkspaceSummary,
 } from "@liass-ohada/shared";
 import { randomUUID } from "crypto";
@@ -13,6 +15,8 @@ import { AppError } from "../app-error";
 import { OnboardingRepository } from "../repositories/onboarding-repository";
 import { ProductAccessService } from "./product-access-service";
 import { AccountingSettingsService } from "@/lambda/domains/accounting/settings/accounting-settings-service";
+
+import { SalesSettingsService } from "@/lambda/domains/sales/settings/sales-settings-service";
 
 const ACCESS_STATUS = "ACTIVE" as const;
 const OWNER_ROLE = "OWNER" as const;
@@ -31,6 +35,8 @@ export class OnboardingService {
       throw new AppError(409, "WORKSPACE_ALREADY_EXISTS");
     }
 
+    const products: ProductCode[] =
+      request.workspaceType === "COMPANY" ? request.products : ["ACCOUNTING"];
     const now = new Date().toISOString();
     const orgId = `org-${randomUUID()}`;
     const cabinetId =
@@ -42,7 +48,9 @@ export class OnboardingService {
       orgId,
       name: organizationName,
       country: request.country,
-      accountingFramework: request.accountingFramework,
+      ...(request.accountingFramework
+        ? { accountingFramework: request.accountingFramework }
+        : {}),
       workspaceType: request.workspaceType,
       status: ACCESS_STATUS,
       createdAt: now,
@@ -63,6 +71,9 @@ export class OnboardingService {
     const workspace: WorkspaceSummary = {
       orgId,
       role: OWNER_ROLE,
+      ...(products.includes("RESTAURANTS")
+        ? { productRoles: { RESTAURANTS: "OWNER" as const } }
+        : {}),
       cabinetRole:
         request.workspaceType === "ACCOUNTING_FIRM"
           ? "CABINET_ADMIN"
@@ -73,7 +84,9 @@ export class OnboardingService {
       workspaceType: request.workspaceType,
       status: ACCESS_STATUS,
       country: request.country,
-      accountingFramework: request.accountingFramework,
+      ...(request.accountingFramework
+        ? { accountingFramework: request.accountingFramework }
+        : {}),
     };
 
     try {
@@ -82,14 +95,29 @@ export class OnboardingService {
         organization,
         cabinet,
         workspace,
-        productAccessWrites:
-          ProductAccessService.buildCompatibilityBaselineWrites(orgId, now),
-        accountingSettingsWrite:
-          AccountingSettingsService.buildOnboardingWrite({
-            orgId: organization.orgId,
-            accountingFramework: organization.accountingFramework,
+        productAccessWrites: products.map((productCode) =>
+          ProductAccessService.buildActivationWrite({
+            orgId,
+            productCode,
             timestamp: now,
           }),
+        ),
+        accountingSettingsWrite: products.includes("ACCOUNTING")
+          ? AccountingSettingsService.buildOnboardingWrite({
+              orgId,
+              accountingFramework: OnboardingAccountingFrameworkSchema.parse(
+                request.accountingFramework,
+              ),
+              timestamp: now,
+            })
+          : undefined,
+        salesSettingsWrite: products.includes("SALES")
+          ? SalesSettingsService.buildActivationWrite({
+              orgId,
+              defaultCurrency: "XOF",
+              timestamp: now,
+            })
+          : undefined,
       });
       if (cabinet) {
         console.info("[CABINET_SETTINGS_AUDIT]", {
@@ -119,6 +147,13 @@ export class OnboardingService {
       cabinet,
       workspace,
       activeOrgId: orgId,
+      productAccess: products.map((productCode) => ({
+        orgId,
+        productCode,
+        status: ACCESS_STATUS,
+        createdAt: now,
+        updatedAt: now,
+      })),
     });
   }
 }

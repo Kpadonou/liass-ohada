@@ -9,6 +9,7 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   Cabinet,
   CabinetSchema,
+  OnboardingAccountingFrameworkSchema,
   Organization,
   OrganizationSchema,
   WorkspaceSummary,
@@ -56,7 +57,7 @@ export const UserOrgAccessItemSchema = z
     displayName: z.string().min(1),
     workspaceType: z.enum(["COMPANY", "ACCOUNTING_FIRM"]),
     country: z.string().min(1),
-    accountingFramework: z.string().min(1),
+    accountingFramework: z.string().min(1).optional(),
     createdAt: z.string().datetime(),
     updatedAt: z.string().datetime(),
     GSI6PK: z.string().min(1),
@@ -102,7 +103,8 @@ export type InitialWorkspaceLockItem = z.infer<
 >;
 
 interface CreateInitialWorkspaceItemsInput {
-  accountingSettingsWrite: TransactWriteItem;
+  accountingSettingsWrite?: TransactWriteItem;
+  salesSettingsWrite?: TransactWriteItem;
   productAccessWrites: TransactWriteItem[];
   userId: string;
   organization: Organization;
@@ -122,7 +124,8 @@ const putIfAbsent = (
   Put: {
     TableName: config.TABLE_NAME,
     Item: marshall(item, { removeUndefinedValues: true }),
-    ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+    ConditionExpression:
+      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
   },
 });
 
@@ -134,7 +137,8 @@ export class OnboardingRepository {
       new QueryCommand({
         TableName: config.TABLE_NAME,
         IndexName: config.GSI6,
-        KeyConditionExpression: "GSI6PK = :pk AND begins_with(GSI6SK, :skPrefix)",
+        KeyConditionExpression:
+          "GSI6PK = :pk AND begins_with(GSI6SK, :skPrefix)",
         ExpressionAttributeValues: {
           ":pk": { S: KeyFactory.userWorkspacesPK(userId) },
           ":skPrefix": { S: KeyFactory.activeUserWorkspacePrefix() },
@@ -152,9 +156,8 @@ export class OnboardingRepository {
           typeof access.orgId === "string",
       );
     const organizationResponses = await Promise.all(
-      Array.from(
-        { length: Math.ceil(accessRows.length / 100) },
-        (_, index) => accessRows.slice(index * 100, (index + 1) * 100),
+      Array.from({ length: Math.ceil(accessRows.length / 100) }, (_, index) =>
+        accessRows.slice(index * 100, (index + 1) * 100),
       ).map((chunk) =>
         dynamoClient.send(
           new BatchGetItemCommand({
@@ -177,7 +180,8 @@ export class OnboardingRepository {
         .map((item) => unmarshall(item))
         .filter(
           (item) =>
-            item.entityType === "ORGANIZATION" && typeof item.orgId === "string",
+            item.entityType === "ORGANIZATION" &&
+            typeof item.orgId === "string",
         )
         .map((item) => [String(item.orgId), item]),
     );
@@ -188,6 +192,7 @@ export class OnboardingRepository {
         return WorkspaceSummarySchema.safeParse({
           orgId: access.orgId,
           role: typeof access.role === "string" ? access.role : undefined,
+          productRoles: ProductRolesSchema.safeParse(access.productRoles).data,
           cabinetRole: resolveCabinetRole(access),
           cabinetId:
             typeof access.cabinetId === "string" ? access.cabinetId : undefined,
@@ -236,6 +241,7 @@ export class OnboardingRepository {
 
   static async createInitialWorkspaceItems({
     accountingSettingsWrite,
+    salesSettingsWrite,
     productAccessWrites,
     userId,
     organization,
@@ -257,6 +263,7 @@ export class OnboardingRepository {
       orgId: organization.orgId,
       userId,
       role: "OWNER",
+      productRoles: workspace.productRoles,
       cabinetRole: workspace.cabinetRole,
       status: "ACTIVE",
       accessSource: "DIRECT",
@@ -286,10 +293,13 @@ export class OnboardingRepository {
     ];
 
     if (cabinet) {
+      const accountingFramework = OnboardingAccountingFrameworkSchema.parse(
+        organization.accountingFramework,
+      );
       const settingsItem = CabinetSettingsRepository.buildInitialItem({
         cabinetOrgId: organization.orgId,
         country: organization.country,
-        accountingFramework: organization.accountingFramework,
+        accountingFramework,
         actorUserId: userId,
         now: organization.createdAt,
       });
@@ -324,7 +334,8 @@ export class OnboardingRepository {
     }
 
     transactItems.push(...productAccessWrites);
-    transactItems.push(accountingSettingsWrite);
+    if (accountingSettingsWrite) transactItems.push(accountingSettingsWrite);
+    if (salesSettingsWrite) transactItems.push(salesSettingsWrite);
 
     await dynamoClient.send(
       new TransactWriteItemsCommand({ TransactItems: transactItems }),

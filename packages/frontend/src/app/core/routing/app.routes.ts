@@ -17,7 +17,7 @@ import {
   loginRedirectGuard,
   invitationAcceptanceGuard,
   pendingChangesGuard,
-  tenantGuard
+  tenantGuard,
 } from './auth.guards';
 
 export const routes: Routes = [
@@ -26,110 +26,110 @@ export const routes: Routes = [
     pathMatch: 'full',
     canMatch: [publicLandingHostGuard],
     loadComponent: () =>
-      import('../public/public-landing.page').then((module) => module.PublicLandingPage)
+      import('../public/public-landing.page').then((module) => module.PublicLandingPage),
   },
   {
     path: 'login',
     component: LoginPage,
-    canActivate: [loginRedirectGuard]
+    canActivate: [loginRedirectGuard],
   },
   {
     path: 'signup',
     component: SignupPage,
-    canActivate: [loginRedirectGuard]
+    canActivate: [loginRedirectGuard],
   },
   {
     path: 'auth/callback',
-    component: AuthCallbackPage
+    component: AuthCallbackPage,
   },
   {
     path: 'accept-invitation',
     loadComponent: () =>
-      import(
-        '../../domains/identity/feature/invitation-acceptance/invitation-acceptance.page'
-      ).then((module) => module.InvitationAcceptancePage),
-    canActivate: [invitationAcceptanceGuard]
+      import('../../domains/identity/feature/invitation-acceptance/invitation-acceptance.page').then(
+        (module) => module.InvitationAcceptancePage,
+      ),
+    canActivate: [invitationAcceptanceGuard],
   },
   {
     path: 'select-workspace',
     component: SelectWorkspacePage,
-    canActivate: [authGuard]
+    canActivate: [authGuard],
   },
   {
     path: 'onboarding',
     loadComponent: () =>
       import('../../domains/identity/feature/onboarding/onboarding.page').then(
-        (module) => module.OnboardingPage
+        (module) => module.OnboardingPage,
       ),
-    canActivate: [authGuard]
+    canActivate: [authGuard],
   },
   {
     path: 'cabinet/dossiers/select',
     loadComponent: () =>
-      import(
-        '../../domains/identity/feature/cabinet-dossier-select/cabinet-dossier-select.page'
-      ).then((module) => module.CabinetDossierSelectPage),
-    canActivate: [cabinetDossierGuard]
+      import('../../domains/identity/feature/cabinet-dossier-select/cabinet-dossier-select.page').then(
+        (module) => module.CabinetDossierSelectPage,
+      ),
+    canActivate: [cabinetDossierGuard],
   },
   {
     path: '',
     pathMatch: 'full',
     loadComponent: () =>
       import('../../shared/layout/app-shell/app-shell.component').then(
-        (module) => module.AppShellComponent
+        (module) => module.AppShellComponent,
       ),
-    canActivate: [appRootRedirectGuard]
+    canActivate: [appRootRedirectGuard],
   },
   {
     path: '',
     loadComponent: () =>
       import('../../shared/layout/app-shell/app-shell.component').then(
-        (module) => module.AppShellComponent
+        (module) => module.AppShellComponent,
       ),
     canActivate: [authGuard, tenantGuard],
     children: [
       {
         path: '',
         pathMatch: 'full',
-        redirectTo: 'dashboard'
+        redirectTo: 'dashboard',
       },
       {
         path: 'dashboard',
         loadComponent: () =>
-          import('../feature/dashboard/dashboard.page').then((module) => module.DashboardPage)
+          import('../feature/dashboard/dashboard.page').then((module) => module.DashboardPage),
       },
       {
         path: 'projects',
         loadComponent: () =>
           import('../../domains/projects/feature/projects.page').then(
-            (module) => module.ProjectsPage
+            (module) => module.ProjectsPage,
           ),
         data: {
           subtitleKey: 'PROJECTS.PAGE.SUBTITLE',
-          titleKey: 'PROJECTS.PAGE.TITLE'
-        }
+          titleKey: 'PROJECTS.PAGE.TITLE',
+        },
       },
       {
         path: 'projects/:projectId',
         loadComponent: () =>
           import('../../domains/projects/feature/project-detail.page').then(
-            (module) => module.ProjectDetailPage
+            (module) => module.ProjectDetailPage,
           ),
         data: {
           subtitleKey: 'PROJECTS.DETAIL.ROUTE_SUBTITLE',
-          titleKey: 'PROJECTS.DETAIL.ROUTE_TITLE'
-        }
+          titleKey: 'PROJECTS.DETAIL.ROUTE_TITLE',
+        },
       },
       {
         path: 'treasury',
         loadComponent: () =>
           import('../../domains/treasury/feature/treasury.page').then(
-            (module) => module.TreasuryPage
+            (module) => module.TreasuryPage,
           ),
         data: {
           subtitleKey: 'TREASURY.PAGE.SUBTITLE',
-          titleKey: 'TREASURY.PAGE.TITLE'
-        }
+          titleKey: 'TREASURY.PAGE.TITLE',
+        },
       },
       {
         path: 'restaurants',
@@ -139,8 +139,23 @@ export const routes: Routes = [
         data: {
           productCode: 'RESTAURANTS',
           titleKey: 'RESTAURANTS.PAGE.TITLE',
-          subtitleKey: 'RESTAURANTS.PAGE.SUBTITLE'
-        }
+          subtitleKey: 'RESTAURANTS.PAGE.SUBTITLE',
+        },
+        children: [
+          ...(['overview', 'setup', 'menu'] as const).map((restaurantPage) => ({
+            path: restaurantPage === 'overview' ? '' : restaurantPage,
+            canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurants-workspace.page').then(
+                (module) => module.RestaurantsWorkspacePage,
+              ),
+            data: {
+              productCode: 'RESTAURANTS',
+              restaurantPage,
+              titleKey: 'RESTAURANTS.PAGE.TITLE',
+            },
+          })),
+        ],
       },
       {
         path: 'sales',
@@ -148,121 +163,121 @@ export const routes: Routes = [
           {
             path: '',
             pathMatch: 'full',
-            redirectTo: 'customers'
+            redirectTo: 'customers',
           },
           {
             path: 'customers',
             loadComponent: () =>
               import('../../domains/sales/feature/customers/sales-customers.page').then(
-                (module) => module.SalesCustomersPage
+                (module) => module.SalesCustomersPage,
               ),
             data: {
               subtitleKey: 'SALES.CUSTOMERS.PAGE.SUBTITLE',
-              titleKey: 'SALES.CUSTOMERS.PAGE.TITLE'
-            }
+              titleKey: 'SALES.CUSTOMERS.PAGE.TITLE',
+            },
           },
           {
             path: 'items',
             loadComponent: () =>
               import('../../domains/sales/feature/items/sales-items.page').then(
-                (module) => module.SalesItemsPage
+                (module) => module.SalesItemsPage,
               ),
             data: {
               subtitleKey: 'SALES.ITEMS.PAGE.SUBTITLE',
-              titleKey: 'SALES.ITEMS.PAGE.TITLE'
-            }
+              titleKey: 'SALES.ITEMS.PAGE.TITLE',
+            },
           },
           {
             path: 'invoices',
             loadComponent: () =>
               import('../../domains/sales/feature/invoices/sales-invoices.page').then(
-                (module) => module.SalesInvoicesPage
+                (module) => module.SalesInvoicesPage,
               ),
             data: {
               subtitleKey: 'SALES.INVOICES.PAGE.SUBTITLE',
-              titleKey: 'SALES.INVOICES.PAGE.TITLE'
-            }
+              titleKey: 'SALES.INVOICES.PAGE.TITLE',
+            },
           },
           {
             path: 'invoices/:invoiceId/credit-notes/:creditNoteId',
             loadComponent: () =>
               import('../../domains/sales/feature/invoices/sales-credit-note-detail.page').then(
-                (module) => module.SalesCreditNoteDetailPage
+                (module) => module.SalesCreditNoteDetailPage,
               ),
             data: {
               subtitleKey: 'SALES.CREDIT_NOTES.DETAIL.SUBTITLE',
-              titleKey: 'SALES.CREDIT_NOTES.DETAIL.TITLE'
-            }
+              titleKey: 'SALES.CREDIT_NOTES.DETAIL.TITLE',
+            },
           },
           {
             path: 'invoices/:invoiceId',
             loadComponent: () =>
               import('../../domains/sales/feature/invoices/sales-invoice-detail.page').then(
-                (module) => module.SalesInvoiceDetailPage
+                (module) => module.SalesInvoiceDetailPage,
               ),
             data: {
               subtitleKey: 'SALES.INVOICES.DETAIL.SUBTITLE',
-              titleKey: 'SALES.INVOICES.DETAIL.TITLE'
-            }
-          }
-        ]
+              titleKey: 'SALES.INVOICES.DETAIL.TITLE',
+            },
+          },
+        ],
       },
       {
         path: 'cabinet/dashboard',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-dashboard/cabinet-dashboard.page').then(
-            (module) => module.CabinetDashboardPage
+            (module) => module.CabinetDashboardPage,
           ),
-        canActivate: [cabinetDashboardGuard]
+        canActivate: [cabinetDashboardGuard],
       },
       {
         path: 'cabinet/dossiers',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-dossiers/cabinet-dossiers.page').then(
-            (module) => module.CabinetDossiersPage
+            (module) => module.CabinetDossiersPage,
           ),
-        canActivate: [cabinetDashboardGuard]
+        canActivate: [cabinetDashboardGuard],
       },
       {
         path: 'cabinet/dossiers/new',
         loadComponent: () =>
-          import(
-            '../../domains/identity/feature/cabinet-dossier-new/cabinet-dossier-new.page'
-          ).then((module) => module.CabinetDossierNewPage),
-        canActivate: [cabinetDashboardGuard]
+          import('../../domains/identity/feature/cabinet-dossier-new/cabinet-dossier-new.page').then(
+            (module) => module.CabinetDossierNewPage,
+          ),
+        canActivate: [cabinetDashboardGuard],
       },
       {
         path: 'cabinet/works',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-operations/cabinet-works.page').then(
-            (module) => module.CabinetWorksPage
+            (module) => module.CabinetWorksPage,
           ),
-        canActivate: [cabinetDashboardGuard]
+        canActivate: [cabinetDashboardGuard],
       },
       {
         path: 'cabinet/deadlines',
         loadComponent: () =>
-          import(
-            '../../domains/identity/feature/cabinet-operations/cabinet-deadlines.page'
-          ).then((module) => module.CabinetDeadlinesPage),
-        canActivate: [cabinetDashboardGuard]
+          import('../../domains/identity/feature/cabinet-operations/cabinet-deadlines.page').then(
+            (module) => module.CabinetDeadlinesPage,
+          ),
+        canActivate: [cabinetDashboardGuard],
       },
       {
         path: 'cabinet/team',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-team/cabinet-team.page').then(
-            (module) => module.CabinetTeamPage
+            (module) => module.CabinetTeamPage,
           ),
-        canActivate: [cabinetTeamGuard]
+        canActivate: [cabinetTeamGuard],
       },
       {
         path: 'cabinet/settings',
         loadComponent: () =>
           import('../../domains/identity/feature/cabinet-settings/cabinet-settings.page').then(
-            (module) => module.CabinetSettingsPage
+            (module) => module.CabinetSettingsPage,
           ),
         canActivate: [cabinetSettingsGuard],
-        canDeactivate: [pendingChangesGuard]
+        canDeactivate: [pendingChangesGuard],
       },
       {
         path: 'accounting',
@@ -272,195 +287,195 @@ export const routes: Routes = [
             pathMatch: 'full',
             loadComponent: () =>
               import('../../domains/accounting/feature/simplified-reporting/simplified-reporting.page').then(
-                (module) => module.SimplifiedReportingPage
+                (module) => module.SimplifiedReportingPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.OVERVIEW.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.OVERVIEW.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.OVERVIEW.TITLE',
+            },
           },
           {
             path: 'fiscal-year',
             pathMatch: 'full',
-            redirectTo: 'fiscal-years'
+            redirectTo: 'fiscal-years',
           },
           {
             path: 'fiscal-years',
             loadComponent: () =>
               import('../../domains/accounting/feature/fiscal-year/fiscal-year.page').then(
-                (module) => module.FiscalYearPage
+                (module) => module.FiscalYearPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.FISCAL_YEAR.TITLE',
+            },
           },
           {
             path: 'general-ledger',
             loadComponent: () =>
               import('../../domains/accounting/feature/general-ledger/general-ledger.page').then(
-                (module) => module.GeneralLedgerPage
+                (module) => module.GeneralLedgerPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.GENERAL_LEDGER.TITLE',
+            },
           },
           {
             path: 'auxiliary-ledger',
             loadComponent: () =>
               import('../../domains/accounting/feature/auxiliary-ledger/auxiliary-ledger.page').then(
-                (module) => module.AuxiliaryLedgerPage
+                (module) => module.AuxiliaryLedgerPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.AUXILIARY_LEDGER.TITLE',
+            },
           },
           {
             path: 'auxiliary-balance',
             loadComponent: () =>
               import('../../domains/accounting/feature/auxiliary-balance/auxiliary-balance.page').then(
-                (module) => module.AuxiliaryBalancePage
+                (module) => module.AuxiliaryBalancePage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.AUXILIARY_BALANCE.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.AUXILIARY_BALANCE.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.AUXILIARY_BALANCE.TITLE',
+            },
           },
           {
             path: 'journal-book',
             loadComponent: () =>
               import('../../domains/accounting/feature/journal-book/journal-book.page').then(
-                (module) => module.JournalBookPage
+                (module) => module.JournalBookPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.JOURNAL_BOOK.SUBTITLE',
-              titleKey: 'ACCOUNTING.JOURNAL_BOOK.TITLE'
-            }
+              titleKey: 'ACCOUNTING.JOURNAL_BOOK.TITLE',
+            },
           },
           {
             path: 'journals',
             loadComponent: () =>
               import('../../domains/accounting/feature/journals/journals.page').then(
-                (module) => module.JournalsPage
+                (module) => module.JournalsPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.JOURNALS.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.JOURNALS.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.JOURNALS.TITLE',
+            },
           },
           {
             path: 'third-parties',
             loadComponent: () =>
               import('../../domains/accounting/feature/third-parties/third-parties.page').then(
-                (module) => module.ThirdPartiesPage
+                (module) => module.ThirdPartiesPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.THIRD_PARTIES.TITLE',
+            },
           },
           {
             path: 'entries/new',
             loadComponent: () =>
               import('../../domains/accounting/feature/entry-form/entry-form.page').then(
-                (module) => module.EntryFormPage
+                (module) => module.EntryFormPage,
               ),
             canActivate: [accountingWriteGuard],
             data: {
               subtitleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_SUBTITLE',
-              titleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_TITLE'
-            }
+              titleKey: 'ACCOUNTING.ENTRIES.FORM.NEW_TITLE',
+            },
           },
           {
             path: 'entries/:entryId/edit',
             loadComponent: () =>
               import('../../domains/accounting/feature/entry-form/entry-form.page').then(
-                (module) => module.EntryFormPage
+                (module) => module.EntryFormPage,
               ),
             canActivate: [accountingWriteGuard],
             data: {
               subtitleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_SUBTITLE',
-              titleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_TITLE'
-            }
+              titleKey: 'ACCOUNTING.ENTRIES.FORM.EDIT_TITLE',
+            },
           },
           {
             path: 'entries/:entryId',
             loadComponent: () =>
               import('../../domains/accounting/feature/entry-detail/entry-detail.page').then(
-                (module) => module.EntryDetailPage
+                (module) => module.EntryDetailPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.ENTRIES.DETAIL.SUBTITLE',
-              titleKey: 'ACCOUNTING.ENTRIES.DETAIL.TITLE'
-            }
+              titleKey: 'ACCOUNTING.ENTRIES.DETAIL.TITLE',
+            },
           },
           {
             path: 'entries',
             loadComponent: () =>
               import('../../domains/accounting/feature/entries/entries.page').then(
-                (module) => module.EntriesPage
+                (module) => module.EntriesPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.ENTRIES.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.ENTRIES.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.ENTRIES.TITLE',
+            },
           },
           {
             path: 'lettering',
             loadComponent: () =>
               import('../../domains/accounting/feature/lettering/lettering.page').then(
-                (module) => module.LetteringPage
+                (module) => module.LetteringPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.LETTERING.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.LETTERING.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.LETTERING.TITLE',
+            },
           },
           {
             path: 'trial-balance',
             loadComponent: () =>
               import('../../domains/accounting/feature/trial-balance/trial-balance.page').then(
-                (module) => module.TrialBalancePage
+                (module) => module.TrialBalancePage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.TRIAL_BALANCE.TITLE',
+            },
           },
           {
             path: 'reports/simplified',
             pathMatch: 'full',
-            redirectTo: '/accounting'
+            redirectTo: '/accounting',
           },
           {
             path: 'accounts',
             loadComponent: () =>
               import('../../domains/accounting/feature/accounts/accounts.page').then(
-                (module) => module.AccountsPage
+                (module) => module.AccountsPage,
               ),
             data: {
               subtitleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.SUBTITLE',
-              titleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE'
-            }
+              titleKey: 'ACCOUNTING.PAGES.CHART_OF_ACCOUNTS.TITLE',
+            },
           },
           {
             path: 'chart-of-accounts',
             redirectTo: 'accounts',
-            pathMatch: 'full'
-          }
-        ]
-      }
-    ]
+            pathMatch: 'full',
+          },
+        ],
+      },
+    ],
   },
   {
     path: '',
     pathMatch: 'full',
-    redirectTo: 'dashboard'
+    redirectTo: 'dashboard',
   },
   {
     path: '**',
-    redirectTo: 'dashboard'
-  }
+    redirectTo: 'dashboard',
+  },
 ];

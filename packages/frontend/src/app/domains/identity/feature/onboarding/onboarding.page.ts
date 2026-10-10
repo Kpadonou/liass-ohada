@@ -222,11 +222,14 @@ export class OnboardingPage implements OnInit {
 
     const rawValue = this.form.getRawValue();
     const request: CreateInitialWorkspaceRequest = {
-      workspaceType: rawValue.workspaceType as WorkspaceType,
+      ...(rawValue.workspaceType === 'COMPANY'
+        ? { workspaceType: 'COMPANY' as const, products: ['ACCOUNTING' as const] }
+        : { workspaceType: 'ACCOUNTING_FIRM' as const }),
       organizationName: rawValue.organizationName,
       country: rawValue.country as CreateInitialWorkspaceRequest['country'],
-      accountingFramework:
-        rawValue.accountingFramework as CreateInitialWorkspaceRequest['accountingFramework']
+      accountingFramework: rawValue.accountingFramework as NonNullable<
+        CreateInitialWorkspaceRequest['accountingFramework']
+      >
     };
 
     this.submitting.set(true);

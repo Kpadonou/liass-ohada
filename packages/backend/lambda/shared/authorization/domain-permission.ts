@@ -1,16 +1,19 @@
+import { RESTAURANTS_PERMISSIONS } from "@liass-ohada/shared/shared";
+export { RESTAURANTS_PERMISSIONS };
 export const ACCOUNTING_PERMISSIONS = [
   "ACCOUNTING_READ",
   "ACCOUNTING_WRITE",
 ] as const;
 
-export const PROJECTS_PERMISSIONS = ["PROJECTS_READ", "PROJECTS_WRITE"] as const;
+export const PROJECTS_PERMISSIONS = [
+  "PROJECTS_READ",
+  "PROJECTS_WRITE",
+] as const;
 
 export const TREASURY_PERMISSIONS = [
   "TREASURY_READ",
   "TREASURY_WRITE",
 ] as const;
-
-export const RESTAURANTS_PERMISSIONS = ["RESTAURANTS_READ", "RESTAURANTS_SETUP_MANAGE", "RESTAURANTS_MENU_READ", "RESTAURANTS_MENU_MANAGE"] as const;
 
 export const SALES_PERMISSIONS = ["SALES_READ", "SALES_WRITE"] as const;
 
@@ -20,7 +23,10 @@ export const ACCOUNTING_PRODUCT_MODULE_PERMISSIONS = [
   ...TREASURY_PERMISSIONS,
 ] as const;
 
-export const FISCAL_COMPLIANCE_PERMISSIONS = ["FISCAL_COMPLIANCE_READ", "FISCAL_COMPLIANCE_WRITE"] as const;
+export const FISCAL_COMPLIANCE_PERMISSIONS = [
+  "FISCAL_COMPLIANCE_READ",
+  "FISCAL_COMPLIANCE_WRITE",
+] as const;
 
 export const DOMAIN_PERMISSIONS = [
   ...ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
@@ -32,7 +38,8 @@ export const DOMAIN_PERMISSIONS = [
 export type AccountingPermission = (typeof ACCOUNTING_PERMISSIONS)[number];
 export type ProjectsPermission = (typeof PROJECTS_PERMISSIONS)[number];
 export type TreasuryPermission = (typeof TREASURY_PERMISSIONS)[number];
-export type FiscalCompliancePermission = (typeof FISCAL_COMPLIANCE_PERMISSIONS)[number];
+export type FiscalCompliancePermission =
+  (typeof FISCAL_COMPLIANCE_PERMISSIONS)[number];
 export type SalesPermission = (typeof SALES_PERMISSIONS)[number];
 export type DomainPermission = (typeof DOMAIN_PERMISSIONS)[number];
 

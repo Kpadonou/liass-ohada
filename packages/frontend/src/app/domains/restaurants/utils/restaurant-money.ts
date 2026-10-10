@@ -1,0 +1,31 @@
+import { formatExactMoney } from '../../../shared/utils/exact-money-display';
+export function currencyDigits(currency: string): number {
+  return (
+    new Intl.NumberFormat('en', { style: 'currency', currency }).resolvedOptions()
+      .maximumFractionDigits ?? 2
+  );
+}
+export function minorInput(amount: number, currency: string): string {
+  const digits = currencyDigits(currency),
+    value = BigInt(amount)
+      .toString()
+      .padStart(digits + 1, '0');
+  return digits ? `${value.slice(0, -digits)}.${value.slice(-digits)}` : value;
+}
+export function parseMinorInput(input: string, currency: string): number {
+  const text = input.trim();
+  if (!/^(?:\d+|\d{1,3}(?:[ \u00a0\u202f]\d{3})+)(?:[.,]\d+)?$/.test(text))
+    throw new Error('Invalid money input');
+  const [whole, fraction = ''] = text
+    .replace(/[ \u00a0\u202f]/g, '')
+    .replace(',', '.')
+    .split('.');
+  const digits = currencyDigits(currency);
+  if (fraction.length > digits) throw new Error('Invalid currency precision');
+  const value = BigInt(whole) * 10n ** BigInt(digits) + BigInt(fraction.padEnd(digits, '0') || '0');
+  if (value > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error('Unsafe amount');
+  return Number(value);
+}
+export function restaurantPrice(amount: number, currency: string, locale: string) {
+  return formatExactMoney(minorInput(amount, currency), currency, locale);
+}

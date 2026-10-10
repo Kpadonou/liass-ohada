@@ -1,3 +1,6 @@
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { RestaurantsCapabilities } from '../../domains/restaurants/data-access/restaurants-capabilities';
 import { Component, computed, inject } from '@angular/core';
 import { TranslocoModule } from '@ngneat/transloco';
 
@@ -9,10 +12,20 @@ import { LiassPageHeaderComponent } from '../../shared/ui/page-header/page-heade
 @Component({
   selector: 'liass-restaurants-page',
   host: { class: 'block' },
-  imports: [TranslocoModule, LiassCardComponent, LiassPageHeaderComponent, LiassSkeletonComponent],
+  imports: [
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    MatButtonModule,
+    TranslocoModule,
+    LiassCardComponent,
+    LiassPageHeaderComponent,
+    LiassSkeletonComponent,
+  ],
   templateUrl: './restaurants.page.html',
 })
 export class RestaurantsPage {
+  protected readonly capabilities = inject(RestaurantsCapabilities);
   private readonly productAccess = inject(ProductAccessState);
   protected readonly availability = computed(() => this.productAccess.availability('RESTAURANTS'));
 }

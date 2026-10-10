@@ -32,6 +32,7 @@ describe("workspace shared schemas", () => {
   test("accepts only the initial workspace request contract", () => {
     const parsed = CreateInitialWorkspaceRequestSchema.parse({
       workspaceType: "COMPANY",
+      products: ["ACCOUNTING"],
       organizationName: "  Demo SARL  ",
       country: "BJ",
       accountingFramework: "SYSCOHADA_REVISED",
@@ -39,6 +40,7 @@ describe("workspace shared schemas", () => {
 
     expect(parsed).toEqual({
       workspaceType: "COMPANY",
+      products: ["ACCOUNTING"],
       organizationName: "Demo SARL",
       country: "BJ",
       accountingFramework: "SYSCOHADA_REVISED",
@@ -51,6 +53,7 @@ describe("workspace shared schemas", () => {
       expect(() =>
         CreateInitialWorkspaceRequestSchema.parse({
           workspaceType: "COMPANY",
+          products: ["ACCOUNTING"],
           organizationName: "Demo SARL",
           country: "BJ",
           accountingFramework: "SYSCOHADA_REVISED",
@@ -242,7 +245,9 @@ describe("workspace shared schemas", () => {
       updatedAt: "2026-06-03T00:00:00.000Z",
     };
 
-    expect(ListCabinetDossiersResponseSchema.parse({ dossiers: [dossier] })).toEqual({
+    expect(
+      ListCabinetDossiersResponseSchema.parse({ dossiers: [dossier] }),
+    ).toEqual({
       dossiers: [{ ...dossier, accessMode: "READ_WRITE" }],
     });
     expect(

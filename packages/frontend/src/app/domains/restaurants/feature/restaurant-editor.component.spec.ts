@@ -1,0 +1,233 @@
+import { TestBed } from '@angular/core/testing';
+import { signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
+import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { TranslocoTestingModule } from '@ngneat/transloco';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { ProductAccessState } from '../../../core/product-access/product-access.state';
+import { NotificationService } from '../../../core/notifications/notification.service';
+import { RestaurantsApi } from '../data-access/restaurants.api';
+import { RestaurantsQueries } from '../data-access/restaurants.queries';
+import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
+import { RestaurantKind } from '../data-access/restaurants-model';
+import { context, row } from '../data-access/restaurants.test-fixture';
+import { RestaurantEditorComponent, RestaurantEditorData } from './restaurant-editor.component';
+const langs = {
+  en: {
+    RESTAURANTS: {
+      UI: {
+        NAME: 'Name',
+        SAVE: 'Save',
+        CONFLICT_REVIEW: 'Review preserved changes',
+        RETRY_SAVE: 'Save reviewed changes',
+        ERRORS: {
+          CONFLICT: 'Changed or duplicate code: review and retry.',
+          VALIDATION: 'Check entered values',
+          ACCESS: 'Access changed',
+        },
+      },
+    },
+  },
+};
+describe('Restaurant configuration dialogs', () => {
+  const api = { save: vi.fn(), get: vi.fn(), list: vi.fn() },
+    org = signal('org'),
+    manage = signal(true);
+  const ref = { close: vi.fn() },
+    notification = { success: vi.fn() },
+    changed = vi.fn().mockResolvedValue(undefined),
+    denied = vi.fn().mockResolvedValue(undefined);
+  let client: QueryClient;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    org.set('org');
+    manage.set(true);
+    client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    api.list.mockResolvedValue({ items: [row('station')] });
+    api.get.mockResolvedValue(row('restaurant'));
+    api.save.mockResolvedValue({ data: row('restaurant'), message: 'Saved.' });
+  });
+  afterEach(() => {
+    client.clear();
+    TestBed.resetTestingModule();
+  });
+  async function create(data: RestaurantEditorData) {
+    TestBed.configureTestingModule({
+      imports: [
+        RestaurantEditorComponent,
+        TranslocoTestingModule.forRoot({
+          langs,
+          preloadLangs: true,
+          translocoConfig: { availableLangs: ['en'], defaultLang: 'en' },
+        }),
+      ],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: data },
+        { provide: MatDialogRef, useValue: ref },
+        { provide: QueryClient, useValue: client },
+        { provide: RestaurantsApi, useValue: api },
+        {
+          provide: RestaurantsQueries,
+          useValue: {
+            scope: org,
+            changed,
+            denied,
+            detail: () => ({
+              queryKey: ['station-selected', org()],
+              queryFn: () => Promise.resolve(row('station')),
+              enabled: false,
+            }),
+            list: () => ({
+              queryKey: ['stations', org()],
+              initialPageParam: undefined,
+              queryFn: () => api.list(),
+              getNextPageParam: () => undefined,
+              enabled: manage(),
+            }),
+          },
+        },
+        {
+          provide: RestaurantsCapabilities,
+          useValue: { canManageSetup: manage, canManageMenu: manage },
+        },
+        { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
+        { provide: NotificationService, useValue: notification },
+      ],
+    });
+    await TestBed.compileComponents();
+    const f = TestBed.createComponent(RestaurantEditorComponent);
+    f.detectChanges();
+    return f;
+  }
+  it.each([
+    'restaurant',
+    'outlet',
+    'area',
+    'table',
+    'station',
+    'menu',
+    'category',
+    'item',
+  ] as const)('creates %s using shared contracts and preserved request identity', async (kind) => {
+    const f = await create({ org: 'org', kind, context, currency: 'XOF' });
+    f.componentInstance.form.patchValue({
+      name: row(kind).name,
+      code: 't01',
+      price: '5 000',
+      station: null,
+      reorder: true,
+      policy: 'STAFF_APPROVAL',
+    });
+    await f.componentInstance.submit();
+    expect(api.save).toHaveBeenCalledWith(
+      'org',
+      kind,
+      context,
+      expect.objectContaining({ clientRequestId: expect.any(String), name: row(kind).name }),
+      undefined,
+    );
+    const payload = api.save.mock.calls[0][3];
+    expect(payload).not.toHaveProperty('orgId');
+    expect(payload).not.toHaveProperty('expectedVersion');
+    if (kind === 'table') {
+      expect(payload.code).toBe('T01');
+      expect(payload).not.toHaveProperty('capacity');
+    }
+    if (kind === 'menu') expect(payload.currency).toBe('XOF');
+    if (kind === 'item') {
+      expect(payload.price).toEqual({ amountMinor: 5000, currency: 'XOF' });
+      expect(payload.guestReorderEnabled).toBe(true);
+      expect(payload).not.toHaveProperty('preparationStationId');
+    }
+    expect(changed).toHaveBeenCalledWith('org', kind, context);
+    expect(notification.success).toHaveBeenCalledWith('Saved.');
+    expect(ref.close).toHaveBeenCalled();
+  });
+  it.each([
+    'restaurant',
+    'outlet',
+    'area',
+    'table',
+    'station',
+    'menu',
+    'category',
+    'item',
+  ] as const)('edits %s without changing its parent or currency', async (kind) => {
+    const entity = row(kind),
+      f = await create({ org: 'org', kind, context, entity, currency: 'XOF' });
+    f.componentInstance.form.controls.name.setValue('Updated');
+    await f.componentInstance.submit();
+    const payload = api.save.mock.calls[0][3];
+    expect(payload.expectedVersion).toBe(1);
+    expect(payload).not.toHaveProperty('clientRequestId');
+    expect(payload).not.toHaveProperty('outletId');
+    expect(payload).not.toHaveProperty('currency');
+    if (kind === 'table') expect(payload.capacity).toBeNull();
+    if (kind === 'item')
+      expect(payload.preparationStationId).toBe(
+        context.outletId === undefined ? null : row('station').id,
+      );
+  });
+  it('keeps create table input usable after a duplicate code error and retries the same intent', async () => {
+    const f = await create({ org: 'org', kind: 'table', context });
+    f.componentInstance.form.patchValue({ name: 'Terrace 1', code: 'T01' });
+    api.save.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
+    await f.componentInstance.submit();
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(f.componentInstance.form.controls.code.value).toBe('T01');
+    const id = api.save.mock.calls[0][3].clientRequestId;
+    f.componentInstance.form.controls.code.setValue('T02');
+    api.save.mockResolvedValueOnce({ data: row('table'), message: null });
+    await f.componentInstance.submit();
+    expect(api.save.mock.calls[1][3].clientRequestId).toBe(id);
+    expect(ref.close).toHaveBeenCalled();
+  });
+  it('preserves edit input, refreshes authoritative version and requires explicit reviewed retry', async () => {
+    const f = await create({
+      org: 'org',
+      kind: 'restaurant',
+      context: {},
+      entity: row('restaurant'),
+    });
+    f.componentInstance.form.patchValue({ name: 'New name', policy: 'DIRECT' });
+    api.save.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
+    api.get.mockResolvedValueOnce({ ...row('restaurant'), version: 5 });
+    await f.componentInstance.submit();
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(f.componentInstance.form.controls.name.value).toBe('New name');
+    expect(f.componentInstance.conflict()).toBe(true);
+    expect(f.componentInstance.version()).toBe(5);
+    expect(api.save).toHaveBeenCalledTimes(1);
+    await f.componentInstance.submit();
+    expect(api.save.mock.calls[1][3]).toMatchObject({
+      expectedVersion: 5,
+      name: 'New name',
+      guestOrderingPolicy: 'DIRECT',
+    });
+  });
+  it('rejects invalid price/capacity inline without persistence', async () => {
+    const f = await create({ org: 'org', kind: 'item', context, currency: 'XOF' });
+    f.componentInstance.form.patchValue({ name: 'Beer', price: '1.5' });
+    await f.componentInstance.submit();
+    expect(f.componentInstance.form.controls.price.invalid).toBe(true);
+    expect(api.save).not.toHaveBeenCalled();
+  });
+  it('suppresses submission for read-only roles and closes on workspace change', async () => {
+    const f = await create({ org: 'org', kind: 'outlet', context: {} });
+    manage.set(false);
+    f.componentInstance.form.controls.name.setValue('Agla');
+    await f.componentInstance.submit();
+    expect(api.save).not.toHaveBeenCalled();
+    org.set('other');
+    f.detectChanges();
+    expect(ref.close).toHaveBeenCalled();
+  });
+  it('blocks further management after permission loss while preserving the form', async () => {
+    const f = await create({ org: 'org', kind: 'outlet', context: {}, entity: row('outlet') });
+    api.save.mockRejectedValueOnce(new HttpErrorResponse({ status: 403 }));
+    await f.componentInstance.submit();
+    expect(f.componentInstance.canManage()).toBe(false);
+    expect(denied).toHaveBeenCalledWith('org');
+    expect(ref.close).not.toHaveBeenCalled();
+  });
+});

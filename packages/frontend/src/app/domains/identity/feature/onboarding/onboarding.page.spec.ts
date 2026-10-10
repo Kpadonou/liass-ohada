@@ -266,9 +266,9 @@ describe('OnboardingPage', () => {
 
     const choices = fixture.nativeElement.querySelectorAll('button[aria-pressed]');
     expect(choices).toHaveLength(2);
-    expect(Array.from(choices).every((choice) => (choice as HTMLButtonElement).type === 'button')).toBe(
-      true
-    );
+    expect(
+      Array.from(choices).every((choice) => (choice as HTMLButtonElement).type === 'button')
+    ).toBe(true);
   });
 
   it('derives COMPANY internally for Accounting and separates organization from configuration', async () => {
@@ -286,13 +286,16 @@ describe('OnboardingPage', () => {
     page.continueFromOrganization();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Accounting configuration');
-    expect(fixture.nativeElement.querySelector('mat-select[formControlName="accountingFramework"]')).toBeTruthy();
+    expect(
+      fixture.nativeElement.querySelector('mat-select[formControlName="accountingFramework"]')
+    ).toBeTruthy();
 
     page.form.controls.accountingFramework.setValue('SYSCOHADA_REVISED');
     await page.submitOnboarding();
 
     expect(onboardingApi.createInitialWorkspace).toHaveBeenCalledWith({
       workspaceType: 'COMPANY',
+      products: ['ACCOUNTING'],
       organizationName: 'Demo SARL',
       country: 'BJ',
       accountingFramework: 'SYSCOHADA_REVISED'

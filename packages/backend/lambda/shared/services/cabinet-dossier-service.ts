@@ -50,12 +50,13 @@ export class CabinetDossierService {
   ): Promise<ListCabinetDossiersResponse> {
     const cabinetId = assertAccountingFirmContext(context);
     const request = ListCabinetDossiersRequestSchema.parse(input);
-    const authorized = await CabinetAuthorizationService.requireActiveMembership({
-      orgId: context.orgId,
-      userId: context.userId,
-      cabinetId: context.cabinetId,
-      workspaceType: context.workspaceType,
-    });
+    const authorized =
+      await CabinetAuthorizationService.requireActiveMembership({
+        orgId: context.orgId,
+        userId: context.userId,
+        cabinetId: context.cabinetId,
+        workspaceType: context.workspaceType,
+      });
     if (authorized.caller.cabinetRole === "CABINET_ADMIN") {
       const dossiers = await CabinetDossierRepository.listClientDossiers({
         cabinetId,
@@ -163,12 +164,13 @@ export class CabinetDossierService {
             organization.orgId,
             now,
           ),
-        accountingSettingsWrite:
-          AccountingSettingsService.buildOnboardingWrite({
+        accountingSettingsWrite: AccountingSettingsService.buildOnboardingWrite(
+          {
             orgId: organization.orgId,
-            accountingFramework: organization.accountingFramework,
+            accountingFramework: request.accountingFramework,
             timestamp: now,
-          }),
+          },
+        ),
       });
     } catch (error) {
       if (isTransactionCanceled(error)) {

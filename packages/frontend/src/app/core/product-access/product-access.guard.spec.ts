@@ -25,11 +25,11 @@ function access(productCode: ProductCode): ProductAccess {
 describe('RESTO-0 product route protection', () => {
   const fetchQuery = vi.fn();
   let orgId: string | null;
-  const run = () => {
+  const run = (url = '/restaurants') => {
     const route = new ActivatedRouteSnapshot();
     route.data = { productCode: 'RESTAURANTS' };
     return TestBed.runInInjectionContext(() =>
-      productAccessGuard(route, { url: '/restaurants' } as RouterStateSnapshot),
+      productAccessGuard(route, { url } as RouterStateSnapshot),
     );
   };
   beforeEach(() => {
@@ -68,6 +68,14 @@ describe('RESTO-0 product route protection', () => {
     fetchQuery.mockResolvedValue(products);
     expect(
       TestBed.inject(Router).serializeUrl((await run()) as ReturnType<Router['createUrlTree']>),
+    ).toBe('/dashboard');
+  });
+  it.each(['/restaurants/setup', '/restaurants/menu'])('protects direct %s entry', async (url) => {
+    fetchQuery.mockResolvedValue([access('RESTAURANTS')]);
+    expect(await run(url)).toBe(true);
+    fetchQuery.mockResolvedValue([access('SALES')]);
+    expect(
+      TestBed.inject(Router).serializeUrl((await run(url)) as ReturnType<Router['createUrlTree']>),
     ).toBe('/dashboard');
   });
   it('waits for access loading before allowing entry', async () => {

@@ -1,6 +1,9 @@
-import { Component, computed, forwardRef, input, signal, inject } from '@angular/core';
+import { Component, computed, effect, forwardRef, input, signal, inject } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
+import {
+  MatAutocompleteModule,
+  MatAutocompleteSelectedEvent,
+} from '@angular/material/autocomplete';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -16,7 +19,7 @@ export interface LiassSearchableSelectOption {
 @Component({
   selector: 'liass-searchable-select',
   host: {
-    class: 'block'
+    class: 'block',
   },
   imports: [
     MatAutocompleteModule,
@@ -24,22 +27,23 @@ export interface LiassSearchableSelectOption {
     MatIconModule,
     MatInputModule,
     MatProgressSpinnerModule,
-    TranslocoModule
+    TranslocoModule,
   ],
   providers: [
     {
       multi: true,
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => LiassSearchableSelectComponent)
-    }
+      useExisting: forwardRef(() => LiassSearchableSelectComponent),
+    },
   ],
-  templateUrl: './searchable-select.component.html'
+  templateUrl: './searchable-select.component.html',
 })
 export class LiassSearchableSelectComponent implements ControlValueAccessor {
   readonly emptyResultLabelKey = input('COMMON.SELECT.NO_RESULTS');
   readonly errorKey = input<string | null>(null);
   readonly icon = input<string | null>(null);
   readonly labelKey = input.required<string>();
+  readonly unresolvedLabelKey = input<string | null>(null);
   readonly loading = input(false);
   readonly options = input<readonly LiassSearchableSelectOption[]>([]);
   readonly searchPlaceholderKey = input('COMMON.SELECT.SEARCH_PLACEHOLDER');
@@ -47,6 +51,7 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
 
   protected readonly disabled = signal(false);
   protected readonly inputValue = signal('');
+  private readonly searching = signal(false);
   private readonly selectedValue = signal<string | null>(null);
   private readonly transloco = inject(TranslocoService);
 
@@ -58,15 +63,22 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
       return options;
     }
 
-    return options.filter((option) =>
-      normalizeSearch(this.optionLabel(option)).includes(query)
-    );
+    return options.filter((option) => normalizeSearch(this.optionLabel(option)).includes(query));
   });
 
   private onChange: (value: string | null) => void = () => undefined;
   private onTouched: () => void = () => undefined;
 
+  constructor() {
+    effect(() => {
+      this.options();
+      this.unresolvedLabelKey();
+      if (!this.searching()) this.syncInputToSelectedValue();
+    });
+  }
+
   writeValue(value: string | null): void {
+    this.searching.set(false);
     this.selectedValue.set(value || null);
     this.syncInputToSelectedValue();
   }
@@ -84,16 +96,21 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
   }
 
   protected handleInput(event: Event): void {
+    this.searching.set(true);
     this.inputValue.set((event.target as HTMLInputElement).value);
   }
 
   protected handleBlur(): void {
     this.onTouched();
-    window.setTimeout(() => this.syncInputToSelectedValue(), 100);
+    window.setTimeout(() => {
+      this.searching.set(false);
+      this.syncInputToSelectedValue();
+    }, 100);
   }
 
   protected selectOption(event: MatAutocompleteSelectedEvent): void {
     const value = `${event.option.value}`;
+    this.searching.set(false);
     this.selectedValue.set(value);
     this.onChange(value);
     this.syncInputToSelectedValue();
@@ -112,7 +129,13 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
     }
 
     const selectedOption = this.options().find((option) => option.value === value);
-    this.inputValue.set(selectedOption ? this.optionLabel(selectedOption) : value);
+    this.inputValue.set(
+      selectedOption
+        ? this.optionLabel(selectedOption)
+        : this.unresolvedLabelKey()
+          ? this.transloco.translate(this.unresolvedLabelKey()!)
+          : value,
+    );
   }
 }
 
