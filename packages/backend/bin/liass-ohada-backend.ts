@@ -91,4 +91,5 @@ const region = app.node.tryGetContext("region") ?? "eu-west-3";
 new LiassOhadaBackendStack(app, "LiassOhadaBackendStack", {
   env: { account, region },
   stage,
+  restaurantsMigrationTrustedRoleArn: app.node.tryGetContext("restaurantsMigrationTrustedRoleArn"),
 });

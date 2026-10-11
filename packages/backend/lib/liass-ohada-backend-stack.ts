@@ -6,6 +6,7 @@ import { ApiStack } from "./stacks/api-stack";
 
 export interface LiassOhadaBackendStackProps extends cdk.StackProps {
   stage: DeploymentStage;
+  restaurantsMigrationTrustedRoleArn?: string;
 }
 
 export class LiassOhadaBackendStack extends cdk.Stack {
@@ -20,6 +21,7 @@ export class LiassOhadaBackendStack extends cdk.Stack {
       env: props.env,
       tableName: `${resourcePrefix}-accounting-table`,
       restaurantsTableName: `${resourcePrefix}-restaurants-table`,
+      restaurantsMigrationTrustedRoleArn: props.restaurantsMigrationTrustedRoleArn,
     });
 
     // API Stack

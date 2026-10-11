@@ -1,0 +1,346 @@
+{
+  "phase": "LP-3B",
+  "recordedUTC": "2026-10-11T15:18:52.761206+00:00",
+  "baseCommit": "6289818c72efd3fc1e86709808af28be08926d00",
+  "stage": "dev",
+  "account": "570197775998",
+  "region": "eu-west-3",
+  "classification": "SHARED_TECHNICAL",
+  "owner": "DataStack release/operator capability",
+  "operatorRoleArn": "arn:aws:iam::570197775998:role/LiassOhadaBackendStackDat-RestaurantsMigrationOpera-1TqSL8EHU5uT",
+  "validationPrincipal": "arn:aws:sts::570197775998:assumed-role/LiassOhadaBackendStackDat-RestaurantsMigrationOpera-1TqSL8EHU5uT/lp3b-scoped-main",
+  "iamAuditRoleArn": "arn:aws:iam::570197775998:role/cdk-hnb659fds-lookup-role-570197775998-eu-west-3",
+  "iamAuditManagedPolicy": "ReadOnlyAccess",
+  "administratorUsedForDataPlaneOrIamSimulation": false,
+  "deploymentAndStsAssumptionUsedExistingAuthorizedSsoSession": true,
+  "resources": {
+    "source": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-accounting-table",
+    "destination": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-restaurants-table"
+  },
+  "requiredMigrationActions": {
+    "source": [
+      "dynamodb:Scan"
+    ],
+    "destination": [
+      "dynamodb:Scan",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem"
+    ]
+  },
+  "deployedPolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Action": "dynamodb:Scan",
+        "Resource": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-accounting-table",
+        "Effect": "Allow"
+      },
+      {
+        "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:Scan"
+        ],
+        "Resource": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-restaurants-table",
+        "Effect": "Allow"
+      },
+      {
+        "Condition": {
+          "ForAnyValue:StringEquals": {
+            "dynamodb:EnclosingOperation": [
+              "TransactWriteItems",
+              "TransactGetItems"
+            ]
+          }
+        },
+        "Action": [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem"
+        ],
+        "Resource": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-restaurants-table",
+        "Effect": "Deny"
+      }
+    ]
+  },
+  "attachedManagedPolicies": [],
+  "tableResourcePolicies": {
+    "source": {
+      "absent": true
+    },
+    "destination": {
+      "absent": true
+    }
+  },
+  "iamSimulation": {
+    "source": {
+      "dynamodb:Scan": "allowed",
+      "dynamodb:GetItem": "implicitDeny",
+      "dynamodb:Query": "implicitDeny",
+      "dynamodb:PutItem": "implicitDeny",
+      "dynamodb:UpdateItem": "implicitDeny",
+      "dynamodb:DeleteItem": "implicitDeny",
+      "dynamodb:BatchWriteItem": "implicitDeny",
+      "dynamodb:ConditionCheckItem": "implicitDeny"
+    },
+    "source-transact-api": {
+      "dynamodb:TransactWriteItems": "implicitDeny"
+    },
+    "destination": {
+      "dynamodb:Scan": "allowed",
+      "dynamodb:GetItem": "allowed",
+      "dynamodb:PutItem": "allowed",
+      "dynamodb:UpdateItem": "implicitDeny",
+      "dynamodb:DeleteItem": "implicitDeny",
+      "dynamodb:BatchWriteItem": "implicitDeny",
+      "dynamodb:Query": "implicitDeny",
+      "dynamodb:ConditionCheckItem": "implicitDeny"
+    },
+    "unrelated": {
+      "dynamodb:Scan": "implicitDeny",
+      "dynamodb:GetItem": "implicitDeny",
+      "dynamodb:PutItem": "implicitDeny"
+    },
+    "destination-transaction-put": {
+      "dynamodb:PutItem": "explicitDeny"
+    },
+    "destination-transaction-get": {
+      "dynamodb:GetItem": "explicitDeny"
+    }
+  },
+  "sourceLiveDenials": [
+    {
+      "operation": "PutItem",
+      "result": "AccessDeniedException"
+    },
+    {
+      "operation": "UpdateItem",
+      "result": "AccessDeniedException"
+    },
+    {
+      "operation": "DeleteItem",
+      "result": "AccessDeniedException"
+    },
+    {
+      "operation": "BatchWriteItem",
+      "result": "AccessDeniedException"
+    },
+    {
+      "operation": "TransactWriteItems",
+      "result": "AccessDeniedException"
+    }
+  ],
+  "sourceProbeSafety": "Fresh non-business key; unsatisfiable conditions on Put/Update/Delete/transaction; batch delete targets only the nonexistent key. All calls returned AccessDeniedException.",
+  "actualCliDryRun": {
+    "mode": "DRY_RUN",
+    "sourceCount": 36,
+    "targetCount": 54,
+    "mappingCount": 36,
+    "qrCount": 5,
+    "conflictCount": 18,
+    "unknownKeyCount": 0,
+    "validationErrorCount": 0,
+    "missingCount": 0,
+    "createdCount": 0,
+    "identicalCount": 36,
+    "families": {
+      "RESTAURANT_TABLE_QR": 5,
+      "RESTAURANT_SERVICE_AREA": 3,
+      "RESTAURANT_MENU_CATEGORY": 4,
+      "RESTAURANT_MENU_ITEM": 4,
+      "RESTAURANT_MENU": 2,
+      "RESTAURANT_OUTLET": 3,
+      "RESTAURANT": 1,
+      "RESTAURANT_PREPARATION_STATION": 4,
+      "RESTAURANT_TABLE": 5,
+      "RESTAURANT_TABLE_CODE": 5
+    },
+    "sourceFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+    "targetFingerprint": "",
+    "verified": false
+  },
+  "actualCliExitCode": 1,
+  "currentDestinationApplyPerformed": false,
+  "currentDestinationExplanation": "18 canonical-only post-cutover records from LP-3 deliberately make full-inventory CLI preflight fail closed. All 36 migrated records are identical; missing/unknown/validation=0. No application record was created, overwritten or deleted in LP-3B.",
+  "currentDestinationPutAuthorization": {
+    "result": "ConditionalCheckFailedException",
+    "noMutation": true
+  },
+  "destinationTransactionalWriteDenied": {
+    "operation": "Destination transactional PutItem",
+    "result": "AccessDeniedException"
+  },
+  "rehearsal": {
+    "tableArn": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-restaurants-migration-rehearsal",
+    "operatorPrincipal": "arn:aws:sts::570197775998:assumed-role/liass-ohada-dev-restaurants-mi-OperatorRoleE90607EC-EuyGk80zuWvr/lp3b-scoped-rehearsal",
+    "method": "Unmodified migrateRestaurants engine and createMigrationStore adapter; local harness routes only destination operations to the disposable table. Canonical CLI validation, key transformation and conditional write remain unchanged.",
+    "rolePolicyConstruct": "Same RestaurantsMigrationOperator construct, with exact source and disposable destination references",
+    "dryRun": {
+      "mode": "DRY_RUN",
+      "sourceCount": 36,
+      "targetCount": 0,
+      "mappingCount": 36,
+      "qrCount": 5,
+      "conflictCount": 0,
+      "unknownKeyCount": 0,
+      "validationErrorCount": 0,
+      "missingCount": 36,
+      "createdCount": 0,
+      "identicalCount": 0,
+      "families": {
+        "RESTAURANT_TABLE_QR": 5,
+        "RESTAURANT_SERVICE_AREA": 3,
+        "RESTAURANT_MENU_CATEGORY": 4,
+        "RESTAURANT_MENU_ITEM": 4,
+        "RESTAURANT_MENU": 2,
+        "RESTAURANT_OUTLET": 3,
+        "RESTAURANT": 1,
+        "RESTAURANT_PREPARATION_STATION": 4,
+        "RESTAURANT_TABLE": 5,
+        "RESTAURANT_TABLE_CODE": 5
+      },
+      "sourceFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+      "targetFingerprint": "b8a49e5c5b5083c01b079ade99839fffa2001fd1364bd23482c8e2ebc8101e8b",
+      "verified": false
+    },
+    "apply": {
+      "mode": "APPLY",
+      "sourceCount": 36,
+      "targetCount": 36,
+      "mappingCount": 36,
+      "qrCount": 5,
+      "conflictCount": 0,
+      "unknownKeyCount": 0,
+      "validationErrorCount": 0,
+      "missingCount": 36,
+      "createdCount": 36,
+      "identicalCount": 0,
+      "families": {
+        "RESTAURANT_TABLE_QR": 5,
+        "RESTAURANT_SERVICE_AREA": 3,
+        "RESTAURANT_MENU_CATEGORY": 4,
+        "RESTAURANT_MENU_ITEM": 4,
+        "RESTAURANT_MENU": 2,
+        "RESTAURANT_OUTLET": 3,
+        "RESTAURANT": 1,
+        "RESTAURANT_PREPARATION_STATION": 4,
+        "RESTAURANT_TABLE": 5,
+        "RESTAURANT_TABLE_CODE": 5
+      },
+      "sourceFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+      "targetFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+      "verified": true
+    },
+    "rerun": {
+      "mode": "APPLY",
+      "sourceCount": 36,
+      "targetCount": 36,
+      "mappingCount": 36,
+      "qrCount": 5,
+      "conflictCount": 0,
+      "unknownKeyCount": 0,
+      "validationErrorCount": 0,
+      "missingCount": 0,
+      "createdCount": 0,
+      "identicalCount": 36,
+      "families": {
+        "RESTAURANT_TABLE_QR": 5,
+        "RESTAURANT_SERVICE_AREA": 3,
+        "RESTAURANT_MENU_CATEGORY": 4,
+        "RESTAURANT_MENU_ITEM": 4,
+        "RESTAURANT_MENU": 2,
+        "RESTAURANT_OUTLET": 3,
+        "RESTAURANT": 1,
+        "RESTAURANT_PREPARATION_STATION": 4,
+        "RESTAURANT_TABLE": 5,
+        "RESTAURANT_TABLE_CODE": 5
+      },
+      "sourceFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+      "targetFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+      "verified": true
+    },
+    "verification": {
+      "mode": "DRY_RUN",
+      "sourceCount": 36,
+      "targetCount": 36,
+      "mappingCount": 36,
+      "qrCount": 5,
+      "conflictCount": 0,
+      "unknownKeyCount": 0,
+      "validationErrorCount": 0,
+      "missingCount": 0,
+      "createdCount": 0,
+      "identicalCount": 36,
+      "families": {
+        "RESTAURANT_TABLE_QR": 5,
+        "RESTAURANT_SERVICE_AREA": 3,
+        "RESTAURANT_MENU_CATEGORY": 4,
+        "RESTAURANT_MENU_ITEM": 4,
+        "RESTAURANT_MENU": 2,
+        "RESTAURANT_OUTLET": 3,
+        "RESTAURANT": 1,
+        "RESTAURANT_PREPARATION_STATION": 4,
+        "RESTAURANT_TABLE": 5,
+        "RESTAURANT_TABLE_CODE": 5
+      },
+      "sourceFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+      "targetFingerprint": "3f5b464f63c435191045ec98debd1ff6df4f31128b2cb859536f407342704ea4",
+      "verified": true
+    },
+    "temporaryStackResourceCount": 3,
+    "stackTableRoleAndPolicyDestroyed": true,
+    "migrationRoleDeletePermissionGranted": false
+  },
+  "finalApplicationVerification": {
+    "sourceCount": 36,
+    "targetCount": 54,
+    "transformedIdentical": 36,
+    "postCutoverOnly": 18,
+    "sourceUnchanged": true,
+    "destinationUnchanged": true,
+    "graphValid": true,
+    "qrCount": 5
+  },
+  "runtimeVerification": {
+    "functionsCompared": 38,
+    "codeHashesRolesRevisionIdsAndAllAccessibleConfigurationFieldsUnchanged": true,
+    "runtimeIamUnchanged": true,
+    "environmentAuditNote": "The CDK read-only lookup role masks environment values because it explicitly denies KMS Decrypt. All 38 RevisionId values and all synthesized environment definitions remain unchanged; this is an audit-reader permission difference, not a runtime configuration change."
+  },
+  "validation": {
+    "sharedBuild": "PASS",
+    "backendBuild": "PASS",
+    "backendTests": {
+      "suites": 157,
+      "tests": 1258,
+      "result": "PASS"
+    },
+    "frontendTests": {
+      "suites": 124,
+      "tests": 982,
+      "result": "PASS"
+    },
+    "cdkSynth": "PASS",
+    "resourceCount": "PASS <= 350",
+    "dataStackResourcesBefore": 5,
+    "dataStackResourcesAfter": 7,
+    "allOtherApplicationTemplatesUnchanged": true,
+    "predeployDiff": "Role + policy + output only; no stateful changes/replacements",
+    "finalCdkDiff": "0 stacks with differences",
+    "devDataStackDeployment": "SUCCESS",
+    "productionDeploymentOrMigration": false,
+    "correctedValidationAttempts": [
+      "Jest first invoked from repository root could not resolve backend tsconfig.json and executed zero tests; rerun from backend passed all 1258 tests.",
+      "IAM simulator rejected batching TransactWriteItems with item actions; separate simulations passed.",
+      "Installed AWS CLI lacks GetResourcePolicy; bundled AWS SDK confirmed both table resource policies absent.",
+      "Temporary compiled-code harness needed the existing tsconfig-paths alias registration; corrected harness passed all scoped checks."
+    ]
+  },
+  "nonBlockingLimitation": "No supported provisioned WAITER/CASHIER/KITCHEN live HTTP/JWT test account; existing authorization regression tests passed. This remains non-blocking as explicitly authorized.",
+  "productionCutoverReadiness": "YES",
+  "productionReleasePreflightStillRequired": [
+    "Resolve approved production deployment/table/trust identifiers",
+    "IAM simulation for production operator",
+    "Live source-write denial proof",
+    "Migration freeze, recovery and dry-run before approved apply"
+  ]
+}
