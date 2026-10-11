@@ -3,12 +3,16 @@ import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import { LiassOhadaAccountingTable } from "../constructs/storage/accounting-table";
 
+import { RestaurantsTable } from "../constructs/storage/restaurants-table";
+
 interface DataStackProps extends StackProps {
   documentBucketName: string;
   tableName: string;
+  restaurantsTableName: string;
 }
 
 export class DataStack extends Stack {
+  public readonly restaurantsTable: RestaurantsTable;
   public readonly accountingTable: LiassOhadaAccountingTable;
   public readonly documentBucket: s3.Bucket;
 
@@ -22,6 +26,10 @@ export class DataStack extends Stack {
         tableName: props.tableName,
       },
     );
+
+    this.restaurantsTable = new RestaurantsTable(this, "RestaurantsTable", {
+      tableName: props.restaurantsTableName,
+    });
 
     this.documentBucket = new s3.Bucket(this, "PrivateDocumentBucket", {
       bucketName: props.documentBucketName,

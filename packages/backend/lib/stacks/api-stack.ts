@@ -28,6 +28,7 @@ import {
 interface ApiStackProps extends StackProps {
   /** The DynamoDB table provided by the DataStack */
   accountingTable: dynamodb.ITable;
+  restaurantsTable: dynamodb.ITable;
   documentBucket: s3.IBucket;
   stage: DeploymentStage;
 }
@@ -133,7 +134,7 @@ export class ApiStack extends Stack {
     new RestaurantsApiStack(this, "RestaurantsApi", {
       api: this.apiGateway.httpApi,
       authorizer: this.auth.authorizer,
-      lambdaRole: apiLambdaRole,
+      restaurantsTable: props.restaurantsTable,
       table: props.accountingTable,
       stage: props.stage,
     });

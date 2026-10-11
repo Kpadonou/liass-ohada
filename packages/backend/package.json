@@ -23,6 +23,7 @@
     "backfill:product-access": "ts-node -r tsconfig-paths/register scripts/backfill-product-access.ts",
     "cleanup:legacy-product-access": "ts-node -r tsconfig-paths/register scripts/cleanup-legacy-product-access.ts",
     "backfill:accounting-settings": "ts-node -r tsconfig-paths/register scripts/backfill-accounting-settings.ts",
+    "migrate:restaurants-storage": "ts-node -r tsconfig-paths/register scripts/migrate-restaurants-storage.ts",
     "activate:sales": "ts-node -r tsconfig-paths/register scripts/activate-sales.ts",
     "repair:cabinet-admin-roles": "ts-node -r tsconfig-paths/register scripts/repair-cabinet-admin-roles.ts",
     "repair:user-profiles": "ts-node -r tsconfig-paths/register scripts/repair-user-profiles.ts",

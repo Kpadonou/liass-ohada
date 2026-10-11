@@ -3,3 +3,5 @@ process.env.TABLE_NAME =
 process.env.AWS_REGION = process.env.AWS_REGION || "us-east-1";
 process.env.ACCOUNTING_PERMISSION =
   process.env.ACCOUNTING_PERMISSION || "ACCOUNTING_WRITE";
+
+process.env.RESTAURANTS_TABLE_NAME = "liass-ohada-test-restaurants-table";

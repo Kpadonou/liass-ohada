@@ -35,7 +35,7 @@ export class TenantAccessService {
   }: AssertUserCanAccessOrgInput): Promise<TenantAccess> {
     const response = await dynamoClient.send(
       new GetItemCommand({
-        TableName: config.TABLE_NAME,
+        TableName: config.PLATFORM_TABLE_NAME,
         Key: {
           PK: { S: KeyFactory.orgKey(orgId) },
           SK: { S: KeyFactory.orgUserAccessSK(userId) },

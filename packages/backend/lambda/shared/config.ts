@@ -4,6 +4,7 @@ import { z } from "zod";
  * Environment configuration schema
  */
 const ConfigSchema = z.object({
+  PLATFORM_TABLE_NAME: z.string().min(1),
   TABLE_NAME: z.string().min(1, "TABLE_NAME is required"),
   REGION: z.string().default("us-east-1"),
   IS_LOCAL: z.boolean(),
@@ -27,7 +28,7 @@ export type Config = z.infer<typeof ConfigSchema>;
  */
 function loadConfig(): Config {
   const isLocal = !!process.env.LOCALSTACK_URL;
-  const tableName = process.env.TABLE_NAME;
+  const tableName = process.env.PLATFORM_TABLE_NAME || process.env.TABLE_NAME;
 
   // In production, TABLE_NAME is required
   // In local development, default to liass-ohada-dev-accounting-table
@@ -45,6 +46,7 @@ function loadConfig(): Config {
 
   const config = {
     TABLE_NAME: finalTableName,
+    PLATFORM_TABLE_NAME: finalTableName,
     REGION: process.env.AWS_REGION || "us-east-1",
     IS_LOCAL: isLocal,
     DYNAMODB_ENDPOINT: process.env.LOCALSTACK_URL,

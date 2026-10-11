@@ -58,44 +58,44 @@ describe("RESTAURANTS domain architecture", () => {
     ).toBe(true);
   });
   test("defines all physical keys and entity-specific bounded collections centrally", () => {
-    expect(KeyFactory.restaurantSK()).toBe("RESTAURANTS#ROOT");
-    expect(KeyFactory.restaurantOutletPrefix()).toBe("RESTAURANTS#OUTLET#");
-    expect(KeyFactory.restaurantOutletSK("o")).toBe("RESTAURANTS#OUTLET#o");
+    expect(KeyFactory.restaurantSK()).toBe("ROOT");
+    expect(KeyFactory.restaurantOutletPrefix()).toBe("OUT#");
+    expect(KeyFactory.restaurantOutletSK("o")).toBe("OUT#o");
     expect(KeyFactory.restaurantServiceAreaPrefix("o")).toBe(
-      "RESTAURANTS#AREA#o#",
+      "AREA#o#",
     );
     expect(KeyFactory.restaurantServiceAreaSK("o", "a")).toBe(
-      "RESTAURANTS#AREA#o#a",
+      "AREA#o#a",
     );
     expect(KeyFactory.restaurantTablePrefix("o", "a")).toBe(
-      "RESTAURANTS#TABLE#o#a#",
+      "TBL#o#a#",
     );
     expect(KeyFactory.restaurantTableSK("o", "a", "t")).toBe(
-      "RESTAURANTS#TABLE#o#a#t",
+      "TBL#o#a#t",
     );
     expect(KeyFactory.restaurantTableCodeSK("o", "T01")).toBe(
-      "RESTAURANTS#TABLE_CODE#o#T01",
+      "TC#o#T01",
     );
     expect(KeyFactory.restaurantStationPrefix("o")).toBe(
-      "RESTAURANTS#STATION#o#",
+      "STN#o#",
     );
     expect(KeyFactory.restaurantStationSK("o", "s")).toBe(
-      "RESTAURANTS#STATION#o#s",
+      "STN#o#s",
     );
-    expect(KeyFactory.restaurantMenuSK("o")).toBe("RESTAURANTS#MENU#o");
+    expect(KeyFactory.restaurantMenuSK("o")).toBe("MENU#o");
     expect(KeyFactory.restaurantCategoryPrefix("o")).toBe(
-      "RESTAURANTS#CATEGORY#o#",
+      "CAT#o#",
     );
     expect(KeyFactory.restaurantCategorySK("o", "c")).toBe(
-      "RESTAURANTS#CATEGORY#o#c",
+      "CAT#o#c",
     );
     expect(KeyFactory.restaurantMenuItemPrefix("o", "c")).toBe(
-      "RESTAURANTS#ITEM#o#c#",
+      "ITEM#o#c#",
     );
     expect(KeyFactory.restaurantMenuItemSK("o", "c", "i")).toBe(
-      "RESTAURANTS#ITEM#o#c#i",
+      "ITEM#o#c#i",
     );
-    expect(KeyFactory.restaurantQrPK("hash")).toBe("RESTAURANTS_QR#hash");
+    expect(KeyFactory.restaurantQrPK("hash")).toBe("QR#hash");
     expect(KeyFactory.restaurantQrSK()).toBe("LOOKUP");
   });
 });

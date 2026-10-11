@@ -63,8 +63,8 @@ describe("API stack decomposition", () => {
   });
   const constructs = root.node.findAll();
 
-  test("keeps one shared stateful table, private document bucket, User Pool, and HTTP API", () => {
-    expect(constructs.filter((item) => item instanceof dynamodb.CfnTable)).toHaveLength(1);
+  test("keeps the shared and Restaurants stateful tables, private document bucket, User Pool, and HTTP API", () => {
+    expect(constructs.filter((item) => item instanceof dynamodb.CfnTable)).toHaveLength(2);
     expect(constructs.filter((item) => item instanceof s3.CfnBucket)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof cognito.CfnUserPool)).toHaveLength(1);
     expect(constructs.filter((item) => item instanceof apigwv2.CfnApi)).toHaveLength(1);
@@ -161,6 +161,96 @@ describe("API stack decomposition", () => {
     expect(routes.every(route => String(route.routeKey).includes(" /restaurants/"))).toBe(true);
     expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"))).toBe(true);
     expect(owned.filter(item => item instanceof dynamodb.CfnTable || item instanceof cognito.CfnUserPool || item instanceof apigwv2.CfnApi)).toHaveLength(0);
+  });
+
+  test("isolates Restaurants write permissions and protects the new stateful table", () => {
+    const restaurants = constructs.find(
+      (item) => item instanceof RestaurantsApiStack,
+    )!;
+    const owned = restaurants.node.findAll();
+    const functions = owned.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    expect(
+      functions.every(
+        (fn) =>
+          lambdaEnvironmentVariable(fn, "PLATFORM_TABLE_NAME") &&
+          lambdaEnvironmentVariable(fn, "RESTAURANTS_TABLE_NAME"),
+      ),
+    ).toBe(true);
+    const executionRole = owned.find((item): item is iam.Role => item instanceof iam.Role)!;
+    for (const fn of functions) expect(cdk.Stack.of(fn).resolve(fn.role)).toEqual(cdk.Stack.of(fn).resolve(executionRole.roleArn));
+    const policy = owned.find(
+      (item): item is iam.CfnPolicy => item instanceof iam.CfnPolicy,
+    )!;
+    const document = cdk.Stack.of(policy).resolve(policy.policyDocument);
+    const statements = document.Statement.filter(
+      (entry: { Action: string[] }) =>
+        entry.Action.some((action) => action.startsWith("dynamodb:")),
+    );
+    expect(statements).toHaveLength(2);
+    expect(statements[0].Action).toEqual([
+      "dynamodb:GetItem",
+      "dynamodb:BatchGetItem",
+    ]);
+    expect(statements[1].Action).toEqual([
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:ConditionCheckItem",
+    ]);
+    expect(JSON.stringify(statements[0].Resource)).not.toBe(
+      JSON.stringify(statements[1].Resource),
+    );
+    const table = constructs.find(
+      (item): item is dynamodb.CfnTable =>
+        item instanceof dynamodb.CfnTable &&
+        String(item.tableName).endsWith("restaurants-table"),
+    )!;
+    expect(table.billingMode).toBe("PAY_PER_REQUEST");
+    expect(cdk.Stack.of(table).resolve(table.globalSecondaryIndexes) ?? []).toEqual([]);
+    expect(table.deletionProtectionEnabled).toBe(true);
+    expect(table.pointInTimeRecoverySpecification).toEqual({
+      pointInTimeRecoveryEnabled: true,
+    });
+    expect(table.cfnOptions.deletionPolicy).toBe(cdk.CfnDeletionPolicy.RETAIN);
+    expect(table.cfnOptions.updateReplacePolicy).toBe(
+      cdk.CfnDeletionPolicy.RETAIN,
+    );
+    const newTableId = cdk.Stack.of(table).getLogicalId(table);
+    for (const stack of constructs.filter(
+      (item) =>
+        item instanceof AccountingApiStack ||
+        item instanceof SalesApiStack ||
+        item instanceof IdentityApiStack,
+    )) {
+      const resources = stack.node
+        .findAll()
+        .filter(
+          (item) =>
+            item instanceof iam.CfnPolicy || item instanceof lambda.CfnFunction,
+        );
+      for (const resource of resources)
+        expect(
+          JSON.stringify(
+            cdk.Stack.of(resource).resolve(
+              resource instanceof iam.CfnPolicy
+                ? resource.policyDocument
+                : (resource as lambda.CfnFunction).environment,
+            ),
+          ),
+        ).not.toContain(newTableId);
+    }
+    const coreRole = constructs.find(
+      (item): item is iam.Role =>
+        item instanceof iam.Role && item.node.id === "ApiLambdaExecutionRole",
+    )!;
+    for (const item of coreRole.node.findAll())
+      if (item instanceof iam.CfnPolicy)
+        expect(
+          JSON.stringify(cdk.Stack.of(item).resolve(item.policyDocument)),
+        ).not.toContain(newTableId);
   });
 
   test("does not add a physical index", () => {

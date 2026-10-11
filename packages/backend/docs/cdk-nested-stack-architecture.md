@@ -4,6 +4,8 @@ This document is the authoritative reference for placing Liass-OHADA AWS CDK res
 
 The architecture is coordinated by [`lib/stacks/api-domain-stacks.ts`](../lib/stacks/api-domain-stacks.ts). The API core declares the domain nested stacks and passes their shared dependencies. Domain endpoint constructs remain under `lib/constructs/domains/`, while Lambda business logic remains under `lambda/domains/`.
 
+LP-2 reviewed exception: DataStack also owns the dedicated Restaurants business table. Restaurants consumes both tables through typed references and owns its execution role. No other product receives Restaurants access. The shared table remains authoritative for Platform/Accounting/Sales. See [cutover runbook](restaurants-storage-cutover.md).
+
 ## Mandatory placement rule
 
 - Future domain-specific stateless AWS resources **MUST NOT** be added directly to the API core by default.

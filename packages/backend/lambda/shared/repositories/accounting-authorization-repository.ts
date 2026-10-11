@@ -59,7 +59,7 @@ export class AccountingAuthorizationRepository {
     const response = await dynamoClient.send(
       new BatchGetItemCommand({
         RequestItems: {
-          [config.TABLE_NAME]: {
+          [config.PLATFORM_TABLE_NAME]: {
             Keys: keys,
             ConsistentRead: true,
           },
@@ -67,7 +67,7 @@ export class AccountingAuthorizationRepository {
       }),
     );
     const items = new Map(
-      (response.Responses?.[config.TABLE_NAME] ?? [])
+      (response.Responses?.[config.PLATFORM_TABLE_NAME] ?? [])
         .map((item) => [itemKey(item), unmarshall(item)] as const)
         .filter(
           (entry): entry is [string, Record<string, unknown>] =>

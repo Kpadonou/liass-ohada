@@ -73,7 +73,13 @@ export class FiscalComplianceApiStack extends NestedStack {
 
 /** RESTAURANTS owns setup/menu APIs and expected operational domain growth. */
 export class RestaurantsApiStack extends NestedStack {
-  constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: Omit<ApiDomainStackProps, "lambdaRole"> & {
+      restaurantsTable: dynamodb.ITable;
+    },
+  ) {
     super(scope, id, props);
     new RestaurantsEndpoints(this, "RestaurantsModule", props);
   }

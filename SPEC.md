@@ -168,7 +168,7 @@ Do not manually concatenate persistence keys in repository logic. `key-builder.t
 - **Indexes**: every GSI requires a concrete access pattern. Use `Query`, `GetItem`, or `BatchGetItem`; no business-path `Scan`.
 - **Atomicity**: use `TransactWriteItems` where multi-item invariants must succeed or fail together.
 
-The Single Table strategy remains authoritative. Do not add a platform table, a Liass-Resto table, or speculative tables. A future physical split requires an explicit migration decision.
+Single-table-first remains the default; physical separation requires a reviewed decision and migration plan. LP-2 explicitly approves RESTAURANTS business storage in `liass-ohada-{stage}-restaurants-table` with compact KeyFactory keys. Platform identity, Organization, USER_ORG_ACCESS, ProductAccess, product roles and cabinet access remain authoritative in the existing table. ACCOUNTING and SALES remain in the existing table; SALES remains logically independent and physically colocated for migration-sequencing reasons only. This exception does not establish one table per product. Future splits still require evidence and reviewed migration planning. See `packages/backend/docs/restaurants-storage-cutover.md`.
 
 ---
 

@@ -1,3 +1,4 @@
+process.env.RESTAURANTS_TABLE_NAME = "liass-ohada-test-restaurants-table";
 /** Test-only loopback adapter. Cognito authorizer is simulated; domain boundaries are production code. */
 import { createServer } from "node:http";
 import {

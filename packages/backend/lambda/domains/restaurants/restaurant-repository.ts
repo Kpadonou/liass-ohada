@@ -14,7 +14,8 @@ import {
   RestaurantsListRequest,
 } from "@liass-ohada/shared/restaurants";
 import { AppError } from "@/lambda/shared/app-error";
-import { config, dynamoClient } from "@/lambda/shared/dynamo-client";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { restaurantsTableName } from "./restaurant-storage";
 import { KeyFactory } from "@/lambda/shared/key-builder";
 import {
   collectionPrefix,
@@ -149,7 +150,7 @@ export class RestaurantsRepository {
   ): Promise<RestaurantSnapshot<K> | undefined> {
     const result = await dynamoClient.send(
       new GetItemCommand({
-        TableName: config.TABLE_NAME,
+        TableName: restaurantsTableName(),
         Key: key(orgId, kind, parents, id),
         ConsistentRead: true,
       }),
@@ -185,7 +186,7 @@ export class RestaurantsRepository {
     }
     const result = await dynamoClient.send(
       new QueryCommand({
-        TableName: config.TABLE_NAME,
+        TableName: restaurantsTableName(),
         KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
         ExpressionAttributeValues: marshall({
           ":pk": KeyFactory.orgKey(orgId),
@@ -236,7 +237,7 @@ export class RestaurantsRepository {
     const transaction: TransactWriteItem[] = [
       {
         Put: {
-          TableName: config.TABLE_NAME,
+          TableName: restaurantsTableName(),
           Item: marshall(item, { removeUndefinedValues: true }),
           ...conditions,
           ...(previous
@@ -254,7 +255,7 @@ export class RestaurantsRepository {
       const condition = writeCondition(check.snapshot);
       transaction.push({
         ConditionCheck: {
-          TableName: config.TABLE_NAME,
+          TableName: restaurantsTableName(),
           Key: key(
             orgId,
             check.snapshot.kind,
@@ -285,7 +286,7 @@ export class RestaurantsRepository {
       if (!old || old.code !== data.code) {
         transaction.push({
           Put: {
-            TableName: config.TABLE_NAME,
+            TableName: restaurantsTableName(),
             Item: marshall({
               PK: KeyFactory.orgKey(orgId),
               SK: KeyFactory.restaurantTableCodeSK(data.outletId, data.code),
@@ -301,7 +302,7 @@ export class RestaurantsRepository {
         if (old)
           transaction.push({
             Delete: {
-              TableName: config.TABLE_NAME,
+              TableName: restaurantsTableName(),
               Key: {
                 PK: { S: KeyFactory.orgKey(orgId) },
                 SK: {
@@ -324,7 +325,7 @@ export class RestaurantsRepository {
         );
         transaction.push({
           Put: {
-            TableName: config.TABLE_NAME,
+            TableName: restaurantsTableName(),
             Item: marshall(
               QrLookupSchema.parse({
                 ...unmarshall(qrKey(token)),
@@ -362,7 +363,7 @@ export class RestaurantsRepository {
     RestaurantTableQrResponseSchema.shape.token.parse(token);
     const result = await dynamoClient.send(
       new GetItemCommand({
-        TableName: config.TABLE_NAME,
+        TableName: restaurantsTableName(),
         Key: qrKey(token),
         ConsistentRead: true,
       }),
