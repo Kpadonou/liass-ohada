@@ -1,3 +1,4 @@
+import { ShellRouteContext } from '../../../core/navigation/product-navigation';
 import { Component, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -30,30 +31,32 @@ const pageLabelKeys: Record<AppPage, string> = {
   projects: 'SHELL.NAV.PROJECTS',
   reports: 'SHELL.NAV.REPORTS',
   restaurants: 'SHELL.NAV.RESTAURANTS',
+  'sales.dashboard': 'SHELL.PAGES.DASHBOARD',
   'sales.customers': 'SHELL.PAGES.SALES_CUSTOMERS',
   'sales.items': 'SHELL.PAGES.SALES_ITEMS',
   'sales.invoices': 'SHELL.PAGES.SALES_INVOICES',
-  treasury: 'SHELL.NAV.TREASURY'
+  treasury: 'SHELL.NAV.TREASURY',
 };
 const cabinetOperationsPages = new Set<AppPage>([
   'cabinet.dashboard',
   'cabinet.deadlines',
-  'cabinet.missions'
+  'cabinet.missions',
 ]);
 
 @Component({
   selector: 'liass-app-context-breadcrumb',
   imports: [MatIconModule, TranslocoModule],
-  templateUrl: './app-context-breadcrumb.component.html'
+  templateUrl: './app-context-breadcrumb.component.html',
 })
 export class AppContextBreadcrumbComponent {
+  protected readonly routeContext = inject(ShellRouteContext);
   private readonly authStore = inject(AuthStore);
   private readonly uiStore = inject(UiStore);
 
   protected readonly contextNames = computed(() => {
     if (cabinetOperationsPages.has(this.uiStore.currentPage())) {
       return [this.authStore.activeWorkspaceDisplayName()].filter(
-        (value): value is string => !!value
+        (value): value is string => !!value,
       );
     }
 
@@ -61,8 +64,16 @@ export class AppContextBreadcrumbComponent {
     const dossierName = this.authStore.activeDossierDisplayName();
 
     return [workspaceName, this.authStore.isDossierContext() ? dossierName : null].filter(
-      (value): value is string => !!value
+      (value): value is string => !!value,
     );
   });
-  protected readonly pageLabelKey = computed(() => pageLabelKeys[this.uiStore.currentPage()]);
+  protected readonly restaurantContext = computed(
+    () => this.uiStore.currentPage() === 'restaurants',
+  );
+  protected readonly salesContext = computed(() => this.uiStore.currentPage().startsWith('sales.'));
+  protected readonly pageLabelKey = computed(() =>
+    this.restaurantContext()
+      ? 'RESTAURANTS.UX.PAGES.' + this.routeContext.restaurantKey() + '.TITLE'
+      : pageLabelKeys[this.uiStore.currentPage()],
+  );
 }

@@ -1,3 +1,4 @@
+import { Router, provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 
@@ -19,9 +20,20 @@ describe('AppContextBreadcrumbComponent', () => {
         TranslocoTestingModule.forRoot({
           langs: {
             en: {
+              RESTAURANTS: {
+                UX: {
+                  PAGES: {
+                    table: { TITLE: 'Tables' },
+                    menu: { TITLE: 'Menu' },
+                    overview: { TITLE: 'Dashboard' },
+                  },
+                },
+              },
               SHELL: {
+                NAV: { RESTAURANTS: 'Liass-Resto', SALES: 'Sales' },
                 BREADCRUMB_LABEL: 'Active context breadcrumb',
                 PAGES: {
+                  DASHBOARD: 'Dashboard',
                   CABINET_DASHBOARD: 'Cabinet dashboard',
                   CABINET_COLLABORATORS: 'Team',
                   CABINET_SETTINGS: 'Cabinet settings',
@@ -34,6 +46,7 @@ describe('AppContextBreadcrumbComponent', () => {
         }),
       ],
       providers: [
+        provideRouter([]),
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
         { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } },
       ],
@@ -120,9 +133,9 @@ describe('AppContextBreadcrumbComponent', () => {
       {
         orgId: 'org-firm',
         displayName: 'Cabinet Nouvelle Donne',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm'
+      'org-firm',
     );
     authStore.enterCabinetContext();
     uiStore.setCurrentPage('cabinet.settings');
@@ -134,5 +147,51 @@ describe('AppContextBreadcrumbComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Cabinet settings');
     expect(fixture.nativeElement.textContent).not.toContain('Cabinet dashboard');
     expect(fixture.nativeElement.textContent).not.toContain('org-firm');
+  });
+  it('uses Dashboard for the restaurant landing breadcrumb', () => {
+    vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/restaurants');
+    authStore.setCreatedWorkspace(
+      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      'beta',
+    );
+    uiStore.setCurrentPage('restaurants');
+    fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[aria-current="page"]').textContent.trim()).toBe(
+      'Dashboard',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Overview');
+  });
+
+  it('shows organization, product and exact restaurant task without a Configuration segment', () => {
+    vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/restaurants/setup/tables');
+    authStore.setCreatedWorkspace(
+      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      'beta',
+    );
+    uiStore.setCurrentPage('restaurants');
+    fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('BETA');
+    expect(fixture.nativeElement.textContent).toContain('Liass-Resto');
+    expect(fixture.nativeElement.querySelector('[aria-current="page"]').textContent.trim()).toBe(
+      'Tables',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Configuration');
+  });
+  it('includes the Sales product and Dashboard label on its landing route', () => {
+    authStore.setCreatedWorkspace(
+      { orgId: 'sales', displayName: 'BETA', workspaceType: 'COMPANY' },
+      'sales',
+    );
+    uiStore.setCurrentPage('sales.dashboard');
+    fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('BETA');
+    expect(fixture.nativeElement.textContent).toContain('Sales');
+    expect(fixture.nativeElement.querySelector('[aria-current="page"]').textContent.trim()).toBe(
+      'Dashboard',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Liass-Resto');
   });
 });

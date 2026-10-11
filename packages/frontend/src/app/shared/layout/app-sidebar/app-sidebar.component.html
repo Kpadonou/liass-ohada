@@ -15,55 +15,74 @@
           />
         }
       } @else {
-        @for (item of dashboardItems; track item.page) {
-          <liass-sidebar-nav-item
-            [active]="uiStore.currentPage() === item.page"
-            [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
-            [compact]="!sidebarExpanded()"
-            [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
-            [disabled]="itemDisabled(item)"
-            [icon]="item.icon"
-            [label]="item.labelKey | transloco"
-            (selected)="selectItem(item)"
-          />
+        @if (currentProduct() !== 'RESTAURANTS') {
+          @for (item of dashboardItems(); track item.page) {
+            <liass-sidebar-nav-item
+              [active]="uiStore.currentPage() === item.page"
+              [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
+              [compact]="!sidebarExpanded()"
+              [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
+              [disabled]="itemDisabled(item)"
+              [icon]="item.icon"
+              [label]="item.labelKey | transloco"
+              (selected)="selectItem(item)"
+            />
+          }
         }
 
-        <div class="pt-2.5">
-          @if (sidebarExpanded()) {
-            <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
-              {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
-            </p>
-          } @else {
-            <div class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block" aria-hidden="true"></div>
-            <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400 lg:hidden">
-              {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
-            </p>
-          }
-          <div class="grid gap-1">
-            @for (item of accountingItems; track item.page) {
-              <liass-sidebar-nav-item
-                [active]="uiStore.currentPage() === item.page"
-                [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
-                [compact]="!sidebarExpanded()"
-                [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
-                [disabled]="itemDisabled(item)"
-                [icon]="item.icon"
-                [label]="item.labelKey | transloco"
-                (selected)="selectItem(item)"
-              />
+        @if (currentProduct() === 'ACCOUNTING') {
+          <div class="pt-2.5">
+            @if (sidebarExpanded()) {
+              <p
+                class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400"
+              >
+                {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
+              </p>
+            } @else {
+              <div
+                class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block"
+                aria-hidden="true"
+              ></div>
+              <p
+                class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400 lg:hidden"
+              >
+                {{ 'SHELL.NAV.ACCOUNTING' | transloco }}
+              </p>
             }
+            <div class="grid gap-1">
+              @for (item of accountingItems; track item.page) {
+                <liass-sidebar-nav-item
+                  [active]="uiStore.currentPage() === item.page"
+                  [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
+                  [compact]="!sidebarExpanded()"
+                  [description]="
+                    itemDescription(item) ? (itemDescription(item)! | transloco) : null
+                  "
+                  [disabled]="itemDisabled(item)"
+                  [icon]="item.icon"
+                  [label]="item.labelKey | transloco"
+                  (selected)="selectItem(item)"
+                />
+              }
+            </div>
           </div>
-        </div>
-
-        @if (showSalesNavigation()) {
+        }
+        @if (currentProduct() === 'SALES' && showSalesNavigation()) {
           <div class="pt-2.5" data-testid="sales-navigation">
             @if (sidebarExpanded()) {
-              <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">
+              <p
+                class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400"
+              >
                 {{ 'SHELL.NAV.SALES' | transloco }}
               </p>
             } @else {
-              <div class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block" aria-hidden="true"></div>
-              <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400 lg:hidden">
+              <div
+                class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block"
+                aria-hidden="true"
+              ></div>
+              <p
+                class="mb-2 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400 lg:hidden"
+              >
                 {{ 'SHELL.NAV.SALES' | transloco }}
               </p>
             }
@@ -81,53 +100,97 @@
           </div>
         }
 
-        @if (showRestaurantsNavigation()) {
-          <div class="pt-2.5" data-testid="restaurants-navigation">
-            <liass-sidebar-nav-item [active]="uiStore.currentPage() === 'restaurants'"
-              [compact]="!sidebarExpanded()" icon="restaurant"
-              [label]="'SHELL.NAV.RESTAURANTS' | transloco" (selected)="selectItem(restaurantsItem)" />
+        @if (currentProduct() === 'RESTAURANTS' && showRestaurantsNavigation()) {
+          <div class="grid gap-4" data-testid="restaurants-navigation">
+            @for (group of restaurantGroups(); track group.labelKey) {
+              @if (group.items.length) {
+                <section>
+                  @if (group.showHeading) {
+                    <p
+                      [class]="
+                        sidebarExpanded()
+                          ? 'mb-2 px-3 text-xs font-semibold uppercase tracking-[0.14em] text-app-text-secondary'
+                          : 'mb-2 px-3 text-xs font-semibold uppercase tracking-[0.14em] text-app-text-secondary lg:sr-only'
+                      "
+                    >
+                      {{ group.labelKey | transloco }}
+                    </p>
+                  }
+                  <div class="grid gap-1">
+                    @for (item of group.items; track item.route) {
+                      <liass-sidebar-nav-item
+                        [active]="restaurantActive(item)"
+                        [restrained]="true"
+                        [compact]="!sidebarExpanded()"
+                        [icon]="item.icon"
+                        [label]="item.labelKey | transloco"
+                        (selected)="selectItem(item)"
+                      />
+                    }
+                  </div>
+                </section>
+              }
+            }
           </div>
         }
 
-        <div class="grid gap-1 pt-2.5">
-          @for (item of secondaryItems; track item.page) {
-            <liass-sidebar-nav-item
-              [active]="uiStore.currentPage() === item.page"
-              [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
-              [compact]="!sidebarExpanded()"
-              [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
-              [disabled]="itemDisabled(item)"
-              [icon]="item.icon"
-              [label]="item.labelKey | transloco"
-              (selected)="selectItem(item)"
-            />
-          }
-        </div>
+        @if (currentProduct() === 'ACCOUNTING') {
+          <div class="grid gap-1 pt-2.5">
+            @for (item of secondaryItems; track item.page) {
+              <liass-sidebar-nav-item
+                [active]="uiStore.currentPage() === item.page"
+                [badge]="itemBadge(item) ? (itemBadge(item)! | transloco) : null"
+                [compact]="!sidebarExpanded()"
+                [description]="itemDescription(item) ? (itemDescription(item)! | transloco) : null"
+                [disabled]="itemDisabled(item)"
+                [icon]="item.icon"
+                [label]="item.labelKey | transloco"
+                (selected)="selectItem(item)"
+              />
+            }
+          </div>
+        }
       }
     </nav>
   </div>
 
-  @if (sidebarExpanded()) {
-    <div class="border-t border-slate-100 py-3 dark:border-slate-800" data-testid="sidebar-ai-panel">
-      <div class="rounded-app-panel bg-brand-50/80 p-3 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
-          {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
-        </p>
-        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-          {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
-        </p>
+  @if (currentProduct() === 'ACCOUNTING') {
+    @if (sidebarExpanded()) {
+      <div
+        class="border-t border-slate-100 py-3 dark:border-slate-800"
+        data-testid="sidebar-ai-panel"
+      >
+        <div
+          class="rounded-app-panel bg-brand-50/80 p-3 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60"
+        >
+          <p
+            class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300"
+          >
+            {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
+          </p>
+          <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
+          </p>
+        </div>
       </div>
-    </div>
-  } @else {
-    <div class="border-t border-slate-100 py-3 dark:border-slate-800 lg:hidden" data-testid="sidebar-ai-panel">
-      <div class="rounded-app-panel bg-brand-50/80 p-3 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60">
-        <p class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300">
-          {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
-        </p>
-        <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
-          {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
-        </p>
+    } @else {
+      <div
+        class="border-t border-slate-100 py-3 dark:border-slate-800 lg:hidden"
+        data-testid="sidebar-ai-panel"
+      >
+        <div
+          class="rounded-app-panel bg-brand-50/80 p-3 ring-1 ring-brand-100 dark:bg-brand-900/20 dark:ring-brand-900/60"
+        >
+          <p
+            class="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700 dark:text-brand-300"
+          >
+            {{ 'SHELL.AI_PANEL.EYEBROW' | transloco }}
+          </p>
+          <p class="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">
+            {{ 'SHELL.AI_PANEL.TEXT' | transloco }}
+          </p>
+        </div>
       </div>
-    </div>
+    }
   }
 </aside>

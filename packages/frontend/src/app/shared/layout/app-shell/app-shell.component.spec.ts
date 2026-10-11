@@ -42,6 +42,8 @@ describe('pageFromUrl', () => {
   });
 
   it('maps each implemented SALES foundation to its distinct shell page', () => {
+    expect(pageFromUrl('/sales')).toBe('sales.dashboard');
+    expect(pageFromUrl('/sales/?view=all')).toBe('sales.dashboard');
     expect(pageFromUrl('/sales/customers')).toBe('sales.customers');
     expect(pageFromUrl('/sales/items')).toBe('sales.items');
     expect(pageFromUrl('/sales/items?cursor=opaque')).toBe('sales.items');

@@ -132,7 +132,10 @@
     "SIDEBAR": {
       "COLLAPSE": "Collapse sidebar",
       "EXPAND": "Expand sidebar",
-      "NAVIGATION_LABEL": "Primary navigation"
+      "NAVIGATION_LABEL": "Primary navigation",
+      "PRODUCTS": "Switch product",
+      "PLATFORM": "Platform",
+      "ACTIVE_PRODUCT": "Active product"
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Search workspace or ask AI...",
@@ -164,7 +167,8 @@
       "USER_MENU": "Open user menu",
       "WORKSPACE": "Active workspace",
       "WORKSPACE_MENU_LABEL": "Open active workspace menu",
-      "WORKSPACE_LOADING": "Loading workspace..."
+      "WORKSPACE_LOADING": "Loading workspace...",
+      "NO_ACCESSIBLE_PRODUCT": "No products are accessible right now. Check your workspace or try again later."
     },
     "WORKSPACE_TYPES": {
       "ACCOUNTING_FIRM": "Accounting firm",
@@ -2312,17 +2316,19 @@
     "ONBOARDING": {
       "EYEBROW": "Onboarding",
       "TITLE": "Welcome to Liass-OHADA",
-      "INTENT_QUESTION": "What would you like to do first?",
-      "SUBTITLE": "Choose your main need. Your Liass-OHADA workspace can evolve as your needs grow.",
+      "INTENT_QUESTION": "Choose your workspace type",
+      "SUBTITLE": "Create a company workspace or manage your accounting firm.",
       "STEPS": {
         "LABEL": "Workspace creation steps",
-        "INTENT": "Your need",
+        "INTENT": "Workspace type",
         "ORGANIZATION": "Your organization",
         "CONFIGURATION": "Configuration",
-        "PROGRESS": "Step {{ current }} of {{ total }}"
+        "PROGRESS": "Step {{ current }} of {{ total }}",
+        "PRODUCTS": "Products",
+        "REVIEW": "Review"
       },
       "INTENTS": {
-        "SELECTED": "Need selected",
+        "SELECTED": "Selected",
         "COMING_SOON": "Coming soon",
         "ACCOUNTING": {
           "TITLE": "Manage my accounting",
@@ -2336,6 +2342,10 @@
         "ACCOUNTING_FIRM": {
           "TITLE": "Manage my accounting firm",
           "DESCRIPTION": "Bring your client companies, team, work, and deadlines together in one workspace."
+        },
+        "COMPANY": {
+          "TITLE": "Company",
+          "DESCRIPTION": "Choose the products your organization needs."
         }
       },
       "ORGANIZATION": {
@@ -2397,10 +2407,31 @@
         "VALIDATION": "The workspace was created, but the response could not be verified. Please retry or refresh your workspace list."
       },
       "VALIDATION": {
-        "INTENT": "Choose what you would like to do first.",
+        "INTENT": "Choose a workspace type.",
         "ORGANIZATION_NAME": "Enter an organization name.",
         "COUNTRY": "Choose a country.",
-        "ACCOUNTING_FRAMEWORK": "Choose an accounting framework."
+        "ACCOUNTING_FRAMEWORK": "Choose an accounting framework.",
+        "PRODUCTS": "Select at least one product to continue."
+      },
+      "PRODUCTS": {
+        "TITLE": "Choose your products",
+        "DESCRIPTION": "Select one or more products. Each can be used independently.",
+        "ACCOUNTING": {
+          "TITLE": "Accounting",
+          "DESCRIPTION": "General accounting, treasury and project accounting."
+        },
+        "SALES": {
+          "TITLE": "Invoicing",
+          "DESCRIPTION": "Customers, catalog, invoicing, receivables and credit notes."
+        },
+        "RESTAURANTS": {
+          "TITLE": "Liass-Resto",
+          "DESCRIPTION": "Restaurant setup, menu and table configuration."
+        }
+      },
+      "REVIEW": {
+        "TITLE": "Review your workspace",
+        "DESCRIPTION": "Check your choices before creating your workspace."
       }
     },
     "CABINET_DASHBOARD": {
@@ -2866,7 +2897,10 @@
       "EYEBROW": "Cabinet",
       "TITLE": "Team",
       "SUBTITLE": "Manage Cabinet members, roles, and access to client dossiers.",
-      "TABS": { "MEMBERS": "Members", "INVITATIONS": "Invitations" },
+      "TABS": {
+        "MEMBERS": "Members",
+        "INVITATIONS": "Invitations"
+      },
       "ACTIONS": {
         "INVITE": "Invite a member",
         "VIEW_DETAILS": "View details",
@@ -2878,14 +2912,21 @@
         "REACTIVATE": "Reactivate",
         "REVOKE": "Revoke"
       },
-      "FILTERS": { "ROLE": "Role", "STATUS": "Status" },
+      "FILTERS": {
+        "ROLE": "Role",
+        "STATUS": "Status"
+      },
       "ROLES": {
         "CABINET_ADMIN": "Cabinet Administrator",
         "SUPERVISOR": "Supervisor",
         "COLLABORATOR": "Collaborator",
         "READER": "Reader"
       },
-      "MEMBER_STATUS": { "ACTIVE": "Active", "SUSPENDED": "Suspended", "REVOKED": "Revoked" },
+      "MEMBER_STATUS": {
+        "ACTIVE": "Active",
+        "SUSPENDED": "Suspended",
+        "REVOKED": "Revoked"
+      },
       "INVITATION_STATUS": {
         "PENDING": "Pending",
         "ACCEPTED": "Accepted",
@@ -3213,117 +3254,630 @@
   },
   "SALES": {
     "CUSTOMERS": {
-      "PAGE": { "EYEBROW": "Sales", "TITLE": "Customers", "SUBTITLE": "Manage the active organization's customer directory." },
-      "LIST": { "TITLE": "Customer directory", "DESCRIPTION": "Review and maintain your customers' commercial contact details." },
+      "PAGE": {
+        "EYEBROW": "Sales",
+        "TITLE": "Customers",
+        "SUBTITLE": "Manage the active organization's customer directory."
+      },
+      "LIST": {
+        "TITLE": "Customer directory",
+        "DESCRIPTION": "Review and maintain your customers' commercial contact details."
+      },
       "LOADING": "Loading customers…",
       "ACCESS": {
         "CHECKING": "Checking access to Sales…",
         "UNAVAILABLE_TITLE": "Customer directory unavailable",
         "UNAVAILABLE_DESCRIPTION": "Your access or the Sales product activation does not currently allow these customers to be displayed."
       },
-      "ACTIONS": { "CREATE": "New customer", "EDIT": "Edit", "ACTIVATE": "Reactivate", "DEACTIVATE": "Deactivate", "COLUMNS": "Columns" },
-      "TABLE": { "NAME": "Customer", "TYPE": "Type", "PHONE": "Phone", "EMAIL": "Email", "TAX_IDENTIFIER": "Tax identifier", "STATUS": "Status", "ACTIONS": "Actions" },
-      "TYPES": { "BUSINESS": "Business / organization", "INDIVIDUAL": "Individual" },
-      "STATUS": { "ACTIVE": "Active", "INACTIVE": "Inactive" },
-      "EMPTY": { "TITLE": "No customers yet", "DESCRIPTION": "Create your first customer to start building your commercial directory." },
-      "DIALOG": { "CREATE_TITLE": "New customer", "EDIT_TITLE": "Edit customer", "SUBTITLE": "Enter only the identity and contact information needed for commercial follow-up." },
+      "ACTIONS": {
+        "CREATE": "New customer",
+        "EDIT": "Edit",
+        "ACTIVATE": "Reactivate",
+        "DEACTIVATE": "Deactivate",
+        "COLUMNS": "Columns"
+      },
+      "TABLE": {
+        "NAME": "Customer",
+        "TYPE": "Type",
+        "PHONE": "Phone",
+        "EMAIL": "Email",
+        "TAX_IDENTIFIER": "Tax identifier",
+        "STATUS": "Status",
+        "ACTIONS": "Actions"
+      },
+      "TYPES": {
+        "BUSINESS": "Business / organization",
+        "INDIVIDUAL": "Individual"
+      },
+      "STATUS": {
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive"
+      },
+      "EMPTY": {
+        "TITLE": "No customers yet",
+        "DESCRIPTION": "Create your first customer to start building your commercial directory."
+      },
+      "DIALOG": {
+        "CREATE_TITLE": "New customer",
+        "EDIT_TITLE": "Edit customer",
+        "SUBTITLE": "Enter only the identity and contact information needed for commercial follow-up."
+      },
       "FORM": {
-        "TYPE": "Customer type", "NAME": "Name", "EMAIL": "Email", "PHONE": "Phone", "TAX_IDENTIFIER": "Tax identifier", "BILLING_ADDRESS": "Billing address", "ADDRESS_LINE_1": "Address", "ADDRESS_LINE_2": "Address line 2", "CITY": "City", "POSTAL_CODE": "Postal code", "COUNTRY": "Country", "NO_COUNTRY": "Not provided"
+        "TYPE": "Customer type",
+        "NAME": "Name",
+        "EMAIL": "Email",
+        "PHONE": "Phone",
+        "TAX_IDENTIFIER": "Tax identifier",
+        "BILLING_ADDRESS": "Billing address",
+        "ADDRESS_LINE_1": "Address",
+        "ADDRESS_LINE_2": "Address line 2",
+        "CITY": "City",
+        "POSTAL_CODE": "Postal code",
+        "COUNTRY": "Country",
+        "NO_COUNTRY": "Not provided"
       },
-      "COUNTRIES": { "BJ": "Benin", "TG": "Togo", "CI": "Côte d'Ivoire", "SN": "Senegal", "BF": "Burkina Faso", "ML": "Mali", "NE": "Niger", "CM": "Cameroon", "CG": "Congo", "GA": "Gabon", "TD": "Chad", "CF": "Central African Republic", "GN": "Guinea", "GW": "Guinea-Bissau", "GQ": "Equatorial Guinea", "CD": "Democratic Republic of Congo", "KM": "Comoros" },
+      "COUNTRIES": {
+        "BJ": "Benin",
+        "TG": "Togo",
+        "CI": "Côte d'Ivoire",
+        "SN": "Senegal",
+        "BF": "Burkina Faso",
+        "ML": "Mali",
+        "NE": "Niger",
+        "CM": "Cameroon",
+        "CG": "Congo",
+        "GA": "Gabon",
+        "TD": "Chad",
+        "CF": "Central African Republic",
+        "GN": "Guinea",
+        "GW": "Guinea-Bissau",
+        "GQ": "Equatorial Guinea",
+        "CD": "Democratic Republic of Congo",
+        "KM": "Comoros"
+      },
       "LIFECYCLE": {
-        "DEACTIVATE_TITLE": "Deactivate this customer?", "DEACTIVATE_DESCRIPTION": "{{name}} will remain stored in the directory but will be marked inactive. This action is reversible.",
-        "ACTIVATE_TITLE": "Reactivate this customer?", "ACTIVATE_DESCRIPTION": "{{name}} will be marked active in the directory again."
+        "DEACTIVATE_TITLE": "Deactivate this customer?",
+        "DEACTIVATE_DESCRIPTION": "{{name}} will remain stored in the directory but will be marked inactive. This action is reversible.",
+        "ACTIVATE_TITLE": "Reactivate this customer?",
+        "ACTIVATE_DESCRIPTION": "{{name}} will be marked active in the directory again."
       },
-      "PAGINATION": { "LABEL": "Customer pagination", "PAGE_SIZE": "Up to {{count}} customers per page" },
-      "NOTIFICATIONS": { "CREATED": "Customer created.", "UPDATED": "Customer updated.", "ACTIVATED": "Customer reactivated.", "DEACTIVATED": "Customer deactivated." },
+      "PAGINATION": {
+        "LABEL": "Customer pagination",
+        "PAGE_SIZE": "Up to {{count}} customers per page"
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Customer created.",
+        "UPDATED": "Customer updated.",
+        "ACTIVATED": "Customer reactivated.",
+        "DEACTIVATED": "Customer deactivated."
+      },
       "ERRORS": {
-        "LOAD_FAILED": "Customers could not be loaded.", "DETAIL_FAILED": "The latest customer details could not be loaded.", "CREATE_FAILED": "The customer could not be created.", "UPDATE_FAILED": "The customer could not be updated.", "STATUS_FAILED": "The customer status could not be changed.", "CONFLICT": "This customer changed since you last viewed it. The latest data was reloaded; review it before trying again."
+        "LOAD_FAILED": "Customers could not be loaded.",
+        "DETAIL_FAILED": "The latest customer details could not be loaded.",
+        "CREATE_FAILED": "The customer could not be created.",
+        "UPDATE_FAILED": "The customer could not be updated.",
+        "STATUS_FAILED": "The customer status could not be changed.",
+        "CONFLICT": "This customer changed since you last viewed it. The latest data was reloaded; review it before trying again."
       }
     },
     "ITEMS": {
-      "PAGE": { "EYEBROW": "Sales", "TITLE": "Items & services", "SUBTITLE": "Manage what the active organization sells or provides." },
-      "LIST": { "TITLE": "Catalog", "DESCRIPTION": "Review and maintain the items and services offered by your organization." },
+      "PAGE": {
+        "EYEBROW": "Sales",
+        "TITLE": "Items & services",
+        "SUBTITLE": "Manage what the active organization sells or provides."
+      },
+      "LIST": {
+        "TITLE": "Catalog",
+        "DESCRIPTION": "Review and maintain the items and services offered by your organization."
+      },
       "LOADING": "Loading items and services…",
       "ACCESS": {
         "CHECKING": "Checking access to Sales…",
         "UNAVAILABLE_TITLE": "Items and services unavailable",
         "UNAVAILABLE_DESCRIPTION": "Your access or the Sales product activation does not currently allow this catalog to be displayed."
       },
-      "ACTIONS": { "CREATE": "Add item or service", "EDIT": "Edit", "ACTIVATE": "Reactivate", "DEACTIVATE": "Deactivate" },
-      "TABLE": { "NAME": "Name", "TYPE": "Type", "UNIT": "Unit", "STATUS": "Status", "ACTIONS": "Actions" },
-      "TYPES": { "PRODUCT": "Product", "SERVICE": "Service" },
-      "STATUS": { "ACTIVE": "Active", "INACTIVE": "Inactive" },
-      "EMPTY": { "TITLE": "No items or services yet", "DESCRIPTION": "Add what your organization sells or provides." },
-      "DIALOG": { "CREATE_TITLE": "Add item or service", "EDIT_TITLE": "Edit item or service", "SUBTITLE": "Enter only the information needed to identify this offering." },
+      "ACTIONS": {
+        "CREATE": "Add item or service",
+        "EDIT": "Edit",
+        "ACTIVATE": "Reactivate",
+        "DEACTIVATE": "Deactivate"
+      },
+      "TABLE": {
+        "NAME": "Name",
+        "TYPE": "Type",
+        "UNIT": "Unit",
+        "STATUS": "Status",
+        "ACTIONS": "Actions"
+      },
+      "TYPES": {
+        "PRODUCT": "Product",
+        "SERVICE": "Service"
+      },
+      "STATUS": {
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive"
+      },
+      "EMPTY": {
+        "TITLE": "No items or services yet",
+        "DESCRIPTION": "Add what your organization sells or provides."
+      },
+      "DIALOG": {
+        "CREATE_TITLE": "Add item or service",
+        "EDIT_TITLE": "Edit item or service",
+        "SUBTITLE": "Enter only the information needed to identify this offering."
+      },
       "FORM": {
-        "TYPE": "Type", "NAME": "Name", "DESCRIPTION": "Description", "UNIT": "Unit", "UNIT_PLACEHOLDER": "Unit, hour, day, kg…", "UNIT_HINT": "Optional free-text label.", "MAX_LENGTH": "Maximum {{count}} characters."
+        "TYPE": "Type",
+        "NAME": "Name",
+        "DESCRIPTION": "Description",
+        "UNIT": "Unit",
+        "UNIT_PLACEHOLDER": "Unit, hour, day, kg…",
+        "UNIT_HINT": "Optional free-text label.",
+        "MAX_LENGTH": "Maximum {{count}} characters."
       },
       "LIFECYCLE": {
-        "DEACTIVATE_TITLE": "Deactivate this item or service?", "DEACTIVATE_DESCRIPTION": "{{name}} will remain stored but will be marked inactive. This action is reversible.",
-        "ACTIVATE_TITLE": "Reactivate this item or service?", "ACTIVATE_DESCRIPTION": "{{name}} will be marked active again."
+        "DEACTIVATE_TITLE": "Deactivate this item or service?",
+        "DEACTIVATE_DESCRIPTION": "{{name}} will remain stored but will be marked inactive. This action is reversible.",
+        "ACTIVATE_TITLE": "Reactivate this item or service?",
+        "ACTIVATE_DESCRIPTION": "{{name}} will be marked active again."
       },
-      "PAGINATION": { "LABEL": "Item and service pagination", "PAGE_SIZE": "Up to {{count}} items per page" },
-      "NOTIFICATIONS": { "CREATED": "Item or service created.", "UPDATED": "Item or service updated.", "ACTIVATED": "Item or service reactivated.", "DEACTIVATED": "Item or service deactivated." },
+      "PAGINATION": {
+        "LABEL": "Item and service pagination",
+        "PAGE_SIZE": "Up to {{count}} items per page"
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Item or service created.",
+        "UPDATED": "Item or service updated.",
+        "ACTIVATED": "Item or service reactivated.",
+        "DEACTIVATED": "Item or service deactivated."
+      },
       "ERRORS": {
-        "LOAD_FAILED": "Items and services could not be loaded.", "DETAIL_FAILED": "The latest item or service details could not be loaded.", "CREATE_FAILED": "The item or service could not be created.", "UPDATE_FAILED": "The item or service could not be updated.", "STATUS_FAILED": "The item or service status could not be changed.", "CONFLICT": "This item or service changed in the meantime. The latest information was reloaded; review your changes before trying again."
+        "LOAD_FAILED": "Items and services could not be loaded.",
+        "DETAIL_FAILED": "The latest item or service details could not be loaded.",
+        "CREATE_FAILED": "The item or service could not be created.",
+        "UPDATE_FAILED": "The item or service could not be updated.",
+        "STATUS_FAILED": "The item or service status could not be changed.",
+        "CONFLICT": "This item or service changed in the meantime. The latest information was reloaded; review your changes before trying again."
       }
     },
     "INVOICES": {
-      "PAGE": { "EYEBROW": "Sales", "TITLE": "Invoices", "SUBTITLE": "Prepare drafts and review issued invoices." },
-      "LIST": { "TITLE": "Invoices", "DESCRIPTION": "Review drafts in preparation and issued commercial invoices.", "INVOICE_NUMBER": "Invoice no. {{invoiceNumber}}", "ISSUED_ON": "Issued on {{issueDate}}" },
-      "LOADING": "Loading invoices…",
-      "ACCESS": { "CHECKING": "Checking access to Sales…", "UNAVAILABLE_TITLE": "Invoices unavailable", "UNAVAILABLE_DESCRIPTION": "Your access or the Sales product activation does not currently allow these invoices to be displayed." },
-      "STATUS": { "DRAFT": "Draft", "ISSUED": "Issued" },
-      "ACTIONS": { "CREATE": "New invoice", "BACK_TO_LIST": "Back to invoices", "SELECT_CUSTOMER": "Select customer", "CHANGE_CUSTOMER": "Change customer", "CLEAR_CUSTOMER": "Clear customer", "CHANGE_CURRENCY": "Change currency", "ADD_LINE": "Add line", "EDIT_LINE": "Edit line", "REMOVE_LINE": "Remove line", "ISSUE": "Issue invoice" },
-      "TABLE": { "DRAFT": "Draft", "INVOICE": "Invoice", "INTERNAL_REFERENCE": "Internal ref." },
-      "FIELDS": { "CUSTOMER": "Customer", "NO_CUSTOMER": "No customer", "CURRENCY": "Currency", "LINES": "Lines", "DESCRIPTION": "Description", "UNIT": "Unit", "QUANTITY": "Quantity", "UNIT_PRICE": "Unit price", "TAX_RATE": "Tax rate (%)", "SUBTOTAL": "Subtotal", "TAX": "Tax", "TOTAL": "Total", "TAX_IDENTIFIER": "Tax identifier", "ISSUE_DATE": "Invoice date", "ISSUED_AT": "Issued at" },
-      "EMPTY": { "TITLE": "No invoices yet", "DESCRIPTION": "Create a draft to prepare a sale." },
-      "PAGINATION": { "LABEL": "Invoice pagination", "PAGE_SIZE": "Up to {{count}} invoices per page" },
-      "DETAIL": { "EYEBROW": "Sales · Draft", "TITLE": "Draft invoice", "SUBTITLE": "Prepare the customer, commercial lines and amounts before issuing.", "LOADING": "Loading the invoice…", "DRAFT_NOTICE": "This document is an editable draft and has no commercial invoice number.", "NO_CUSTOMER_DESCRIPTION": "No customer has been selected. You can continue preparing this draft.", "ISSUED_EYEBROW": "Sales · Issued invoice", "ISSUED_TITLE": "Issued invoice", "ISSUED_SUBTITLE": "Review the commercial information frozen when the invoice was issued.", "ISSUED_NOTICE": "This invoice has been issued and can no longer be edited.", "INVOICE_NUMBER": "Invoice no. {{invoiceNumber}}" },
-      "ISSUE": { "TITLE": "Issue this invoice?", "REVIEW_INTRO": "Review the information below before issuing.", "IRREVERSIBLE_TITLE": "This action is irreversible.", "IRREVERSIBLE_DESCRIPTION": "After issuing, the number, date, customer, lines, amounts and other commercial information can no longer be changed.", "DATE_HINT": "The invoice date may be in the past or future.", "BACK_TO_EDIT": "Return to editing", "RETRY": "Try again", "RETRY_SAME_ATTEMPT": "Try again to verify and complete this same issuance request.", "NO_LINES_HINT": "Add at least one line before issuing the invoice.", "ERRORS": { "INVALID_DATE": "Enter a valid invoice date.", "AMBIGUOUS": "The issuance result could not be confirmed.", "FAILED": "The invoice could not be issued.", "VERSION_CONFLICT": "This draft changed in the meantime. The information was refreshed. Review the invoice before issuing it.", "ALREADY_ISSUED": "This invoice has already been issued.", "IDEMPOTENCY_REUSED": "This issuance request cannot continue. The invoice was refreshed; review it before starting again.", "NO_LINES": "Add at least one line before issuing the invoice." } },
-      "LINES": { "DESCRIPTION": "Amounts shown are the invoice’s authoritative commercial values.", "EMPTY_TITLE": "No lines yet", "EMPTY_DESCRIPTION": "Add a catalog item or a free-form commercial line.", "CATALOG_SNAPSHOT": "Catalog-based snapshot" },
-      "TOTALS": { "TITLE": "Invoice totals", "AUTHORITATIVE": "The totals shown are this invoice’s authoritative commercial amounts." },
-      "DOCUMENT": { "TITLE": "PDF document", "LOADING": "Checking the PDF document…", "NOT_GENERATED_TITLE": "PDF document not generated", "NOT_GENERATED_DESCRIPTION": "The PDF document has not been generated yet.", "GENERATING": "Generating PDF…", "AVAILABLE": "PDF available", "AVAILABLE_DESCRIPTION": "This is the PDF representation of the issued invoice.", "GENERATED_AT": "Generated at {{generatedAt}}", "ACTIONS": { "GENERATE": "Generate PDF", "OPEN": "Open PDF", "DOWNLOAD": "Download", "PRINT": "Print" }, "NOTIFICATIONS": { "READY": "The invoice PDF is ready." }, "ERRORS": { "UNAVAILABLE": "The PDF document is unavailable at the moment.", "GENERATION_FAILED": "The PDF document could not be generated. Try again.", "SECURE_LINK_FAILED": "A secure link to the PDF could not be created. Try again." } },
-      "SETTLEMENT": {
-        "TITLE": "Settlement", "DESCRIPTION": "Track payments separately from the issued commercial invoice.", "LOADING": "Loading the payment status…", "PAYMENT_STATUS": "Payment status", "INVOICE_AMOUNT": "Invoice amount", "AMOUNT_PAID": "Amount paid", "CREDITED_AMOUNT": "Credited amount", "BALANCE_DUE": "Balance due", "PAYMENT_COUNT": "Payment count",
-        "STATUS": { "OPEN": "Open", "PARTIALLY_SETTLED": "Partially settled", "SETTLED": "Settled" },
-        "METHODS": { "CASH": "Cash", "BANK_TRANSFER": "Bank transfer", "CARD": "Card", "MOBILE_MONEY": "Mobile Money", "CHEQUE": "Cheque", "OTHER": "Other" },
-        "ACTIONS": { "RECORD": "Record payment", "PAY_REMAINING": "Pay remaining balance", "REVIEW": "Review details" },
-        "DIALOG": { "TITLE": "Record a payment", "SUBTITLE": "Review the balance and enter the payment details.", "INVOICE": "Invoice" },
-        "FORM": { "AMOUNT": "Amount", "PAYMENT_DATE": "Payment date", "METHOD": "Payment method", "REFERENCE": "Reference", "REFERENCE_HINT": "Transfer, cheque, or transaction reference, if applicable." },
-        "VALIDATION": { "AMOUNT": "Enter an amount greater than zero using a valid decimal format.", "DATE": "Enter a valid payment date.", "METHOD": "Select a payment method.", "REFERENCE": "The reference cannot exceed 200 characters." },
-        "HISTORY": { "TITLE": "Payment history", "DESCRIPTION": "Payments are recorded as an immutable history for this invoice.", "LOADING": "Loading payments…", "EMPTY": "No payments recorded.", "ERROR": "The payment history could not be loaded.", "PAGINATION": "Payment history pagination", "PAGE_SIZE": "Up to {{count}} payments per page" },
-        "NOTIFICATIONS": { "RECORDED": "Payment recorded successfully." },
-        "ERRORS": { "LOAD_FAILED": "The payment status could not be loaded.", "RECORD_FAILED": "The payment could not be recorded. Review the information and try again.", "VERSION_CONFLICT": "The settlement changed in the meantime. The balance was refreshed; review the amount before trying again.", "EXCEEDS_BALANCE": "The entered amount exceeds the balance due.", "PRECISION": "The number of decimal places is not valid for this currency.", "ALREADY_SETTLED": "This invoice is already fully settled.", "IDEMPOTENCY_REUSED": "This payment attempt cannot continue. Review the refreshed settlement before starting a new attempt.", "AMBIGUOUS": "The payment result could not be confirmed.", "RETRY_SAME_ATTEMPT": "Retrying will reuse the exact same request so the payment cannot be applied twice." }
+      "PAGE": {
+        "EYEBROW": "Sales",
+        "TITLE": "Invoices",
+        "SUBTITLE": "Prepare drafts and review issued invoices."
       },
-      "CUSTOMER_DIALOG": { "TITLE": "Select a customer", "SUBTITLE": "The current customer details will be copied into this draft when you confirm.", "LOADING": "Loading customers…", "LOAD_FAILED": "Customers could not be loaded.", "EMPTY": "No customers are available on this page.", "PAGINATION": "Customer picker pagination" },
-      "CURRENCY_DIALOG": { "TITLE": "Change currency", "SUBTITLE": "The currency can only be changed before the first line is added.", "HINT": "Three-letter currency code, for example XOF, EUR or USD." },
-      "LINE_DIALOG": { "ADD_TITLE": "Add a line", "EDIT_TITLE": "Edit line", "SUBTITLE": "Enter exact decimal values using a dot as the separator.", "SOURCE": "Line source", "FROM_CATALOG": "From catalog", "FREE_FORM": "Free-form line", "CATALOG_SOURCE_LOCKED": "The catalog source is retained as read-only context. Remove and recreate the line to change it.", "LOADING_ITEMS": "Loading catalog items…", "ITEMS_FAILED": "Catalog items could not be loaded.", "NO_ITEMS": "No catalog items are available on this page.", "CATALOG_PAGINATION": "Catalog picker pagination", "DEFAULTS_HINT": "If left unchanged, description and unit come from {{name}} (unit: {{unit}}).", "OPTIONAL_OVERRIDE": "Optional override; leave empty to use the catalog snapshot." },
-      "REMOVE_LINE": { "TITLE": "Remove this line?", "DESCRIPTION": "“{{description}}” will be removed from the draft and the totals will be refreshed. The draft itself is kept." },
-      "VALIDATION": { "CURRENCY": "Enter a valid three-letter uppercase currency code.", "DESCRIPTION_REQUIRED": "A description is required for a free-form line.", "ITEM_REQUIRED": "Select an active catalog item.", "QUANTITY": "Enter a quantity greater than zero with up to 6 decimal places.", "UNIT_PRICE": "Enter a non-negative price with up to 6 decimal places.", "TAX_RATE": "Enter a tax rate from 0 to 100 with up to 4 decimal places.", "MAX_LENGTH": "Maximum {{count}} characters." },
-      "NOTIFICATIONS": { "CREATED": "Draft invoice created.", "UPDATED": "Draft invoice updated.", "LINE_ADDED": "Line added.", "LINE_UPDATED": "Line updated.", "LINE_REMOVED": "Line removed.", "ISSUED": "Invoice no. {{invoiceNumber}} issued successfully." },
-      "ERRORS": { "LOAD_FAILED": "Draft invoices could not be loaded.", "DETAIL_FAILED": "This draft invoice could not be loaded.", "CREATE_FAILED": "The draft invoice could not be created. Check the Sales currency configuration and try again.", "UPDATE_FAILED": "The draft invoice could not be updated.", "LINE_ADD_FAILED": "The line could not be added.", "LINE_UPDATE_FAILED": "The line could not be updated.", "LINE_REMOVE_FAILED": "The line could not be removed.", "CONFLICT": "This draft changed in the meantime. The information was refreshed. Review your changes before trying again.", "CUSTOMER_INACTIVE": "The selected customer is no longer active. Choose another active customer.", "CUSTOMER_NOT_FOUND": "The selected customer no longer exists. Choose another customer.", "ITEM_INACTIVE": "The selected item or service is no longer active. Choose another active item.", "ITEM_NOT_FOUND": "The selected item or service no longer exists. Choose another item.", "CURRENCY_LOCKED": "The currency cannot be changed after a line has been added.", "UNSUPPORTED_CURRENCY": "The selected currency is not supported.", "MAX_LINES": "A draft invoice cannot contain more than 100 lines." }
+      "LIST": {
+        "TITLE": "Invoices",
+        "DESCRIPTION": "Review drafts in preparation and issued commercial invoices.",
+        "INVOICE_NUMBER": "Invoice no. {{invoiceNumber}}",
+        "ISSUED_ON": "Issued on {{issueDate}}"
+      },
+      "LOADING": "Loading invoices…",
+      "ACCESS": {
+        "CHECKING": "Checking access to Sales…",
+        "UNAVAILABLE_TITLE": "Invoices unavailable",
+        "UNAVAILABLE_DESCRIPTION": "Your access or the Sales product activation does not currently allow these invoices to be displayed."
+      },
+      "STATUS": {
+        "DRAFT": "Draft",
+        "ISSUED": "Issued"
+      },
+      "ACTIONS": {
+        "CREATE": "New invoice",
+        "BACK_TO_LIST": "Back to invoices",
+        "SELECT_CUSTOMER": "Select customer",
+        "CHANGE_CUSTOMER": "Change customer",
+        "CLEAR_CUSTOMER": "Clear customer",
+        "CHANGE_CURRENCY": "Change currency",
+        "ADD_LINE": "Add line",
+        "EDIT_LINE": "Edit line",
+        "REMOVE_LINE": "Remove line",
+        "ISSUE": "Issue invoice"
+      },
+      "TABLE": {
+        "DRAFT": "Draft",
+        "INVOICE": "Invoice",
+        "INTERNAL_REFERENCE": "Internal ref."
+      },
+      "FIELDS": {
+        "CUSTOMER": "Customer",
+        "NO_CUSTOMER": "No customer",
+        "CURRENCY": "Currency",
+        "LINES": "Lines",
+        "DESCRIPTION": "Description",
+        "UNIT": "Unit",
+        "QUANTITY": "Quantity",
+        "UNIT_PRICE": "Unit price",
+        "TAX_RATE": "Tax rate (%)",
+        "SUBTOTAL": "Subtotal",
+        "TAX": "Tax",
+        "TOTAL": "Total",
+        "TAX_IDENTIFIER": "Tax identifier",
+        "ISSUE_DATE": "Invoice date",
+        "ISSUED_AT": "Issued at"
+      },
+      "EMPTY": {
+        "TITLE": "No invoices yet",
+        "DESCRIPTION": "Create a draft to prepare a sale."
+      },
+      "PAGINATION": {
+        "LABEL": "Invoice pagination",
+        "PAGE_SIZE": "Up to {{count}} invoices per page"
+      },
+      "DETAIL": {
+        "EYEBROW": "Sales · Draft",
+        "TITLE": "Draft invoice",
+        "SUBTITLE": "Prepare the customer, commercial lines and amounts before issuing.",
+        "LOADING": "Loading the invoice…",
+        "DRAFT_NOTICE": "This document is an editable draft and has no commercial invoice number.",
+        "NO_CUSTOMER_DESCRIPTION": "No customer has been selected. You can continue preparing this draft.",
+        "ISSUED_EYEBROW": "Sales · Issued invoice",
+        "ISSUED_TITLE": "Issued invoice",
+        "ISSUED_SUBTITLE": "Review the commercial information frozen when the invoice was issued.",
+        "ISSUED_NOTICE": "This invoice has been issued and can no longer be edited.",
+        "INVOICE_NUMBER": "Invoice no. {{invoiceNumber}}"
+      },
+      "ISSUE": {
+        "TITLE": "Issue this invoice?",
+        "REVIEW_INTRO": "Review the information below before issuing.",
+        "IRREVERSIBLE_TITLE": "This action is irreversible.",
+        "IRREVERSIBLE_DESCRIPTION": "After issuing, the number, date, customer, lines, amounts and other commercial information can no longer be changed.",
+        "DATE_HINT": "The invoice date may be in the past or future.",
+        "BACK_TO_EDIT": "Return to editing",
+        "RETRY": "Try again",
+        "RETRY_SAME_ATTEMPT": "Try again to verify and complete this same issuance request.",
+        "NO_LINES_HINT": "Add at least one line before issuing the invoice.",
+        "ERRORS": {
+          "INVALID_DATE": "Enter a valid invoice date.",
+          "AMBIGUOUS": "The issuance result could not be confirmed.",
+          "FAILED": "The invoice could not be issued.",
+          "VERSION_CONFLICT": "This draft changed in the meantime. The information was refreshed. Review the invoice before issuing it.",
+          "ALREADY_ISSUED": "This invoice has already been issued.",
+          "IDEMPOTENCY_REUSED": "This issuance request cannot continue. The invoice was refreshed; review it before starting again.",
+          "NO_LINES": "Add at least one line before issuing the invoice."
+        }
+      },
+      "LINES": {
+        "DESCRIPTION": "Amounts shown are the invoice’s authoritative commercial values.",
+        "EMPTY_TITLE": "No lines yet",
+        "EMPTY_DESCRIPTION": "Add a catalog item or a free-form commercial line.",
+        "CATALOG_SNAPSHOT": "Catalog-based snapshot"
+      },
+      "TOTALS": {
+        "TITLE": "Invoice totals",
+        "AUTHORITATIVE": "The totals shown are this invoice’s authoritative commercial amounts."
+      },
+      "DOCUMENT": {
+        "TITLE": "PDF document",
+        "LOADING": "Checking the PDF document…",
+        "NOT_GENERATED_TITLE": "PDF document not generated",
+        "NOT_GENERATED_DESCRIPTION": "The PDF document has not been generated yet.",
+        "GENERATING": "Generating PDF…",
+        "AVAILABLE": "PDF available",
+        "AVAILABLE_DESCRIPTION": "This is the PDF representation of the issued invoice.",
+        "GENERATED_AT": "Generated at {{generatedAt}}",
+        "ACTIONS": {
+          "GENERATE": "Generate PDF",
+          "OPEN": "Open PDF",
+          "DOWNLOAD": "Download",
+          "PRINT": "Print"
+        },
+        "NOTIFICATIONS": {
+          "READY": "The invoice PDF is ready."
+        },
+        "ERRORS": {
+          "UNAVAILABLE": "The PDF document is unavailable at the moment.",
+          "GENERATION_FAILED": "The PDF document could not be generated. Try again.",
+          "SECURE_LINK_FAILED": "A secure link to the PDF could not be created. Try again."
+        }
+      },
+      "SETTLEMENT": {
+        "TITLE": "Settlement",
+        "DESCRIPTION": "Track payments separately from the issued commercial invoice.",
+        "LOADING": "Loading the payment status…",
+        "PAYMENT_STATUS": "Payment status",
+        "INVOICE_AMOUNT": "Invoice amount",
+        "AMOUNT_PAID": "Amount paid",
+        "CREDITED_AMOUNT": "Credited amount",
+        "BALANCE_DUE": "Balance due",
+        "PAYMENT_COUNT": "Payment count",
+        "STATUS": {
+          "OPEN": "Open",
+          "PARTIALLY_SETTLED": "Partially settled",
+          "SETTLED": "Settled"
+        },
+        "METHODS": {
+          "CASH": "Cash",
+          "BANK_TRANSFER": "Bank transfer",
+          "CARD": "Card",
+          "MOBILE_MONEY": "Mobile Money",
+          "CHEQUE": "Cheque",
+          "OTHER": "Other"
+        },
+        "ACTIONS": {
+          "RECORD": "Record payment",
+          "PAY_REMAINING": "Pay remaining balance",
+          "REVIEW": "Review details"
+        },
+        "DIALOG": {
+          "TITLE": "Record a payment",
+          "SUBTITLE": "Review the balance and enter the payment details.",
+          "INVOICE": "Invoice"
+        },
+        "FORM": {
+          "AMOUNT": "Amount",
+          "PAYMENT_DATE": "Payment date",
+          "METHOD": "Payment method",
+          "REFERENCE": "Reference",
+          "REFERENCE_HINT": "Transfer, cheque, or transaction reference, if applicable."
+        },
+        "VALIDATION": {
+          "AMOUNT": "Enter an amount greater than zero using a valid decimal format.",
+          "DATE": "Enter a valid payment date.",
+          "METHOD": "Select a payment method.",
+          "REFERENCE": "The reference cannot exceed 200 characters."
+        },
+        "HISTORY": {
+          "TITLE": "Payment history",
+          "DESCRIPTION": "Payments are recorded as an immutable history for this invoice.",
+          "LOADING": "Loading payments…",
+          "EMPTY": "No payments recorded.",
+          "ERROR": "The payment history could not be loaded.",
+          "PAGINATION": "Payment history pagination",
+          "PAGE_SIZE": "Up to {{count}} payments per page"
+        },
+        "NOTIFICATIONS": {
+          "RECORDED": "Payment recorded successfully."
+        },
+        "ERRORS": {
+          "LOAD_FAILED": "The payment status could not be loaded.",
+          "RECORD_FAILED": "The payment could not be recorded. Review the information and try again.",
+          "VERSION_CONFLICT": "The settlement changed in the meantime. The balance was refreshed; review the amount before trying again.",
+          "EXCEEDS_BALANCE": "The entered amount exceeds the balance due.",
+          "PRECISION": "The number of decimal places is not valid for this currency.",
+          "ALREADY_SETTLED": "This invoice is already fully settled.",
+          "IDEMPOTENCY_REUSED": "This payment attempt cannot continue. Review the refreshed settlement before starting a new attempt.",
+          "AMBIGUOUS": "The payment result could not be confirmed.",
+          "RETRY_SAME_ATTEMPT": "Retrying will reuse the exact same request so the payment cannot be applied twice."
+        }
+      },
+      "CUSTOMER_DIALOG": {
+        "TITLE": "Select a customer",
+        "SUBTITLE": "The current customer details will be copied into this draft when you confirm.",
+        "LOADING": "Loading customers…",
+        "LOAD_FAILED": "Customers could not be loaded.",
+        "EMPTY": "No customers are available on this page.",
+        "PAGINATION": "Customer picker pagination"
+      },
+      "CURRENCY_DIALOG": {
+        "TITLE": "Change currency",
+        "SUBTITLE": "The currency can only be changed before the first line is added.",
+        "HINT": "Three-letter currency code, for example XOF, EUR or USD."
+      },
+      "LINE_DIALOG": {
+        "ADD_TITLE": "Add a line",
+        "EDIT_TITLE": "Edit line",
+        "SUBTITLE": "Enter exact decimal values using a dot as the separator.",
+        "SOURCE": "Line source",
+        "FROM_CATALOG": "From catalog",
+        "FREE_FORM": "Free-form line",
+        "CATALOG_SOURCE_LOCKED": "The catalog source is retained as read-only context. Remove and recreate the line to change it.",
+        "LOADING_ITEMS": "Loading catalog items…",
+        "ITEMS_FAILED": "Catalog items could not be loaded.",
+        "NO_ITEMS": "No catalog items are available on this page.",
+        "CATALOG_PAGINATION": "Catalog picker pagination",
+        "DEFAULTS_HINT": "If left unchanged, description and unit come from {{name}} (unit: {{unit}}).",
+        "OPTIONAL_OVERRIDE": "Optional override; leave empty to use the catalog snapshot."
+      },
+      "REMOVE_LINE": {
+        "TITLE": "Remove this line?",
+        "DESCRIPTION": "“{{description}}” will be removed from the draft and the totals will be refreshed. The draft itself is kept."
+      },
+      "VALIDATION": {
+        "CURRENCY": "Enter a valid three-letter uppercase currency code.",
+        "DESCRIPTION_REQUIRED": "A description is required for a free-form line.",
+        "ITEM_REQUIRED": "Select an active catalog item.",
+        "QUANTITY": "Enter a quantity greater than zero with up to 6 decimal places.",
+        "UNIT_PRICE": "Enter a non-negative price with up to 6 decimal places.",
+        "TAX_RATE": "Enter a tax rate from 0 to 100 with up to 4 decimal places.",
+        "MAX_LENGTH": "Maximum {{count}} characters."
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Draft invoice created.",
+        "UPDATED": "Draft invoice updated.",
+        "LINE_ADDED": "Line added.",
+        "LINE_UPDATED": "Line updated.",
+        "LINE_REMOVED": "Line removed.",
+        "ISSUED": "Invoice no. {{invoiceNumber}} issued successfully."
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "Draft invoices could not be loaded.",
+        "DETAIL_FAILED": "This draft invoice could not be loaded.",
+        "CREATE_FAILED": "The draft invoice could not be created. Check the Sales currency configuration and try again.",
+        "UPDATE_FAILED": "The draft invoice could not be updated.",
+        "LINE_ADD_FAILED": "The line could not be added.",
+        "LINE_UPDATE_FAILED": "The line could not be updated.",
+        "LINE_REMOVE_FAILED": "The line could not be removed.",
+        "CONFLICT": "This draft changed in the meantime. The information was refreshed. Review your changes before trying again.",
+        "CUSTOMER_INACTIVE": "The selected customer is no longer active. Choose another active customer.",
+        "CUSTOMER_NOT_FOUND": "The selected customer no longer exists. Choose another customer.",
+        "ITEM_INACTIVE": "The selected item or service is no longer active. Choose another active item.",
+        "ITEM_NOT_FOUND": "The selected item or service no longer exists. Choose another item.",
+        "CURRENCY_LOCKED": "The currency cannot be changed after a line has been added.",
+        "UNSUPPORTED_CURRENCY": "The selected currency is not supported.",
+        "MAX_LINES": "A draft invoice cannot contain more than 100 lines."
+      }
     },
     "CREDIT_NOTES": {
-      "NUMBER": "Credit note no. {{number}}", "SOURCE_NUMBER": "Original invoice no. {{number}}", "DRAFT_TITLE": "Credit note draft", "STATUS": { "DRAFT": "Draft", "ISSUED": "Issued" },
-      "ACTIONS": { "CREATE": "Create credit note", "BACK_TO_INVOICE": "Back to invoice", "EDIT_REASON": "Edit reason", "ADD_LINE": "Add invoice line", "EDIT_LINE": "Edit quantity", "REMOVE_LINE": "Remove line", "ISSUE": "Issue credit note" },
-      "LIST": { "TITLE": "Credit notes", "DESCRIPTION": "Review the credit notes linked to this issued invoice.", "LOADING": "Loading credit notes…", "EMPTY_TITLE": "No credit notes", "EMPTY_DESCRIPTION": "No credit note has been prepared for this invoice.", "PAGINATION": "Credit note pagination", "PAGE_SIZE": "Up to {{count}} credit notes per page" },
-      "TABLE": { "CREDIT_NOTE": "Credit note" },
-      "DETAIL": { "EYEBROW": "Sales · Credit note", "TITLE": "Credit note", "SUBTITLE": "Prepare or review a credit note for the source invoice.", "LOADING": "Loading the credit note…", "DRAFT_NOTICE": "This credit note is an editable draft. It has no official number until it is issued.", "ISSUED_NOTICE": "This credit note has been issued and its commercial information can no longer be edited." },
-      "SOURCE": { "TITLE": "Source invoice", "DESCRIPTION": "The customer, currency, prices and tax treatment come from the issued source invoice." },
-      "FIELDS": { "SOURCE_INVOICE": "Source invoice", "ORIGINAL_INVOICE": "Original invoice", "CUSTOMER": "Customer", "NO_CUSTOMER": "No customer", "CURRENCY": "Currency", "STATUS": "Status", "DATE": "Date", "ISSUE_DATE": "Credit note date", "REASON": "Reason", "DESCRIPTION": "Description", "QUANTITY": "Credited quantity", "LINE_COUNT": "Lines", "UNIT_PRICE": "Unit price", "SUBTOTAL": "Subtotal", "TAX": "Tax", "TOTAL": "Total", "BALANCE_DUE": "Current balance due" },
-      "REASON": { "TITLE": "Reason", "EMPTY": "No reason has been entered yet." },
-      "LINES": { "TITLE": "Credited lines", "DESCRIPTION": "Lines are selected only from the issued source invoice; amounts are calculated by the service.", "EMPTY_TITLE": "No credited lines", "EMPTY_DESCRIPTION": "Add at least one source invoice line before issuing." },
-      "TOTALS": { "TITLE": "Credit note totals", "AUTHORITATIVE": "These are the authoritative amounts returned by the service." },
-      "DOCUMENT": { "TITLE": "PDF document", "LOADING": "Checking the PDF document…", "NOT_GENERATED_TITLE": "PDF document not generated", "NOT_GENERATED_DESCRIPTION": "The credit note PDF has not been generated yet.", "GENERATING": "Generating PDF…", "AVAILABLE": "PDF available", "AVAILABLE_DESCRIPTION": "This is the PDF representation of the issued credit note.", "GENERATED_AT": "Generated at {{generatedAt}}", "ACTIONS": { "GENERATE": "Generate PDF", "RETRY_GENERATION": "Try generating again", "OPEN": "Open PDF in a new tab", "DOWNLOAD": "Download", "PRINT": "Print" }, "NOTIFICATIONS": { "READY": "The credit note PDF is ready." }, "ERRORS": { "UNAVAILABLE": "The PDF document is unavailable at the moment.", "GENERATION_FAILED": "The credit note PDF could not be generated. Try again.", "INTEGRITY": "The PDF is unavailable because its integrity could not be verified. Try generating it again or contact an administrator.", "SECURE_LINK_FAILED": "A secure link to the PDF could not be created. Try again." } },
-      "REASON_DIALOG": { "TITLE": "Credit note reason", "SUBTITLE": "Describe the return, reduction or other commercial reason.", "HINT": "Required before issue; maximum 1,000 characters." },
-      "LINE_DIALOG": { "ADD_TITLE": "Add an invoice line", "EDIT_TITLE": "Edit credited quantity", "SUBTITLE": "Select a source invoice line and enter only the quantity to credit.", "SOURCE_LABEL": "Source invoice line", "ORIGINAL_QUANTITY": "Original quantity", "NO_LINES_AVAILABLE": "Every source invoice line is already included.", "QUANTITY_HINT": "Use a dot for decimals. The quantity cannot exceed the remaining source quantity." },
-      "REMOVE_LINE": { "TITLE": "Remove this credited line?", "DESCRIPTION": "“{{description}}” will be removed from the draft and its totals will be refreshed." },
+      "NUMBER": "Credit note no. {{number}}",
+      "SOURCE_NUMBER": "Original invoice no. {{number}}",
+      "DRAFT_TITLE": "Credit note draft",
+      "STATUS": {
+        "DRAFT": "Draft",
+        "ISSUED": "Issued"
+      },
+      "ACTIONS": {
+        "CREATE": "Create credit note",
+        "BACK_TO_INVOICE": "Back to invoice",
+        "EDIT_REASON": "Edit reason",
+        "ADD_LINE": "Add invoice line",
+        "EDIT_LINE": "Edit quantity",
+        "REMOVE_LINE": "Remove line",
+        "ISSUE": "Issue credit note"
+      },
+      "LIST": {
+        "TITLE": "Credit notes",
+        "DESCRIPTION": "Review the credit notes linked to this issued invoice.",
+        "LOADING": "Loading credit notes…",
+        "EMPTY_TITLE": "No credit notes",
+        "EMPTY_DESCRIPTION": "No credit note has been prepared for this invoice.",
+        "PAGINATION": "Credit note pagination",
+        "PAGE_SIZE": "Up to {{count}} credit notes per page"
+      },
+      "TABLE": {
+        "CREDIT_NOTE": "Credit note"
+      },
+      "DETAIL": {
+        "EYEBROW": "Sales · Credit note",
+        "TITLE": "Credit note",
+        "SUBTITLE": "Prepare or review a credit note for the source invoice.",
+        "LOADING": "Loading the credit note…",
+        "DRAFT_NOTICE": "This credit note is an editable draft. It has no official number until it is issued.",
+        "ISSUED_NOTICE": "This credit note has been issued and its commercial information can no longer be edited."
+      },
+      "SOURCE": {
+        "TITLE": "Source invoice",
+        "DESCRIPTION": "The customer, currency, prices and tax treatment come from the issued source invoice."
+      },
+      "FIELDS": {
+        "SOURCE_INVOICE": "Source invoice",
+        "ORIGINAL_INVOICE": "Original invoice",
+        "CUSTOMER": "Customer",
+        "NO_CUSTOMER": "No customer",
+        "CURRENCY": "Currency",
+        "STATUS": "Status",
+        "DATE": "Date",
+        "ISSUE_DATE": "Credit note date",
+        "REASON": "Reason",
+        "DESCRIPTION": "Description",
+        "QUANTITY": "Credited quantity",
+        "LINE_COUNT": "Lines",
+        "UNIT_PRICE": "Unit price",
+        "SUBTOTAL": "Subtotal",
+        "TAX": "Tax",
+        "TOTAL": "Total",
+        "BALANCE_DUE": "Current balance due"
+      },
+      "REASON": {
+        "TITLE": "Reason",
+        "EMPTY": "No reason has been entered yet."
+      },
+      "LINES": {
+        "TITLE": "Credited lines",
+        "DESCRIPTION": "Lines are selected only from the issued source invoice; amounts are calculated by the service.",
+        "EMPTY_TITLE": "No credited lines",
+        "EMPTY_DESCRIPTION": "Add at least one source invoice line before issuing."
+      },
+      "TOTALS": {
+        "TITLE": "Credit note totals",
+        "AUTHORITATIVE": "These are the authoritative amounts returned by the service."
+      },
+      "DOCUMENT": {
+        "TITLE": "PDF document",
+        "LOADING": "Checking the PDF document…",
+        "NOT_GENERATED_TITLE": "PDF document not generated",
+        "NOT_GENERATED_DESCRIPTION": "The credit note PDF has not been generated yet.",
+        "GENERATING": "Generating PDF…",
+        "AVAILABLE": "PDF available",
+        "AVAILABLE_DESCRIPTION": "This is the PDF representation of the issued credit note.",
+        "GENERATED_AT": "Generated at {{generatedAt}}",
+        "ACTIONS": {
+          "GENERATE": "Generate PDF",
+          "RETRY_GENERATION": "Try generating again",
+          "OPEN": "Open PDF in a new tab",
+          "DOWNLOAD": "Download",
+          "PRINT": "Print"
+        },
+        "NOTIFICATIONS": {
+          "READY": "The credit note PDF is ready."
+        },
+        "ERRORS": {
+          "UNAVAILABLE": "The PDF document is unavailable at the moment.",
+          "GENERATION_FAILED": "The credit note PDF could not be generated. Try again.",
+          "INTEGRITY": "The PDF is unavailable because its integrity could not be verified. Try generating it again or contact an administrator.",
+          "SECURE_LINK_FAILED": "A secure link to the PDF could not be created. Try again."
+        }
+      },
+      "REASON_DIALOG": {
+        "TITLE": "Credit note reason",
+        "SUBTITLE": "Describe the return, reduction or other commercial reason.",
+        "HINT": "Required before issue; maximum 1,000 characters."
+      },
+      "LINE_DIALOG": {
+        "ADD_TITLE": "Add an invoice line",
+        "EDIT_TITLE": "Edit credited quantity",
+        "SUBTITLE": "Select a source invoice line and enter only the quantity to credit.",
+        "SOURCE_LABEL": "Source invoice line",
+        "ORIGINAL_QUANTITY": "Original quantity",
+        "NO_LINES_AVAILABLE": "Every source invoice line is already included.",
+        "QUANTITY_HINT": "Use a dot for decimals. The quantity cannot exceed the remaining source quantity."
+      },
+      "REMOVE_LINE": {
+        "TITLE": "Remove this credited line?",
+        "DESCRIPTION": "“{{description}}” will be removed from the draft and its totals will be refreshed."
+      },
       "ISSUE_SETTLEMENT_EFFECT": "Issuing this credit note reduces the invoice balance due by the authoritative credit note total.",
-      "ISSUE": { "TITLE": "Issue this credit note?", "SUBTITLE": "Review the credit note and the current invoice balance before issuing.", "IMMUTABLE_TITLE": "Issuance is irreversible.", "IMMUTABLE_DESCRIPTION": "The number, date, reason, lines and amounts become read-only after issue. This does not record a payment or refund.", "RETRY_SAME_ATTEMPT": "Retrying uses the exact same request so the credit is not applied twice.", "ERRORS": { "INVALID_DATE": "Enter a valid credit note date.", "AMBIGUOUS": "The issuance result could not be confirmed.", "FAILED": "The credit note could not be issued.", "VERSION_CONFLICT": "This draft changed in the meantime. Its latest version was loaded; review it before issuing.", "SETTLEMENT_CONFLICT": "The invoice settlement changed in the meantime. The latest balance was loaded; review it before issuing.", "EXCEEDS_BALANCE": "The credit note total exceeds the current balance due.", "ALREADY_SETTLED": "This invoice is already fully settled and cannot receive a credit note.", "IDEMPOTENCY_REUSED": "This issuance attempt cannot continue. Review the refreshed information before starting again." } },
-      "NOTIFICATIONS": { "CREATED": "Credit note draft created.", "UPDATED": "Credit note updated.", "LINE_ADDED": "Source line added.", "LINE_UPDATED": "Credited quantity updated.", "LINE_REMOVED": "Credited line removed.", "ISSUED": "Credit note issued successfully." },
-      "ERRORS": { "LOAD_FAILED": "Credit notes could not be loaded.", "DETAIL_FAILED": "This credit note could not be loaded.", "CREATE_FAILED": "The credit note draft could not be created.", "UPDATE_FAILED": "The credit note could not be updated.", "LINE_ADD_FAILED": "The source line could not be added.", "LINE_UPDATE_FAILED": "The credited quantity could not be updated.", "LINE_REMOVE_FAILED": "The credited line could not be removed.", "VERSION_CONFLICT": "This draft changed in the meantime. The latest information was loaded; review it before trying again.", "QUANTITY_INVALID": "Enter a quantity greater than zero with up to 6 decimal places.", "SOURCE_REQUIRED": "Select a source invoice line.", "DUPLICATE_LINE": "This source invoice line is already included.", "QUANTITY_EXCEEDS_SOURCE": "The credited quantity exceeds the source invoice line quantity.", "QUANTITY_EXCEEDS_REMAINING": "The total credited quantity for this source line would exceed its original quantity.", "SOURCE_LINE_NOT_FOUND": "This source invoice line is no longer available.", "MAX_LINES": "A credit note cannot contain more than 100 lines.", "EXCEEDS_BALANCE": "The credit note would exceed the current balance due.", "ALREADY_SETTLED": "This invoice is already fully settled." }
+      "ISSUE": {
+        "TITLE": "Issue this credit note?",
+        "SUBTITLE": "Review the credit note and the current invoice balance before issuing.",
+        "IMMUTABLE_TITLE": "Issuance is irreversible.",
+        "IMMUTABLE_DESCRIPTION": "The number, date, reason, lines and amounts become read-only after issue. This does not record a payment or refund.",
+        "RETRY_SAME_ATTEMPT": "Retrying uses the exact same request so the credit is not applied twice.",
+        "ERRORS": {
+          "INVALID_DATE": "Enter a valid credit note date.",
+          "AMBIGUOUS": "The issuance result could not be confirmed.",
+          "FAILED": "The credit note could not be issued.",
+          "VERSION_CONFLICT": "This draft changed in the meantime. Its latest version was loaded; review it before issuing.",
+          "SETTLEMENT_CONFLICT": "The invoice settlement changed in the meantime. The latest balance was loaded; review it before issuing.",
+          "EXCEEDS_BALANCE": "The credit note total exceeds the current balance due.",
+          "ALREADY_SETTLED": "This invoice is already fully settled and cannot receive a credit note.",
+          "IDEMPOTENCY_REUSED": "This issuance attempt cannot continue. Review the refreshed information before starting again."
+        }
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Credit note draft created.",
+        "UPDATED": "Credit note updated.",
+        "LINE_ADDED": "Source line added.",
+        "LINE_UPDATED": "Credited quantity updated.",
+        "LINE_REMOVED": "Credited line removed.",
+        "ISSUED": "Credit note issued successfully."
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "Credit notes could not be loaded.",
+        "DETAIL_FAILED": "This credit note could not be loaded.",
+        "CREATE_FAILED": "The credit note draft could not be created.",
+        "UPDATE_FAILED": "The credit note could not be updated.",
+        "LINE_ADD_FAILED": "The source line could not be added.",
+        "LINE_UPDATE_FAILED": "The credited quantity could not be updated.",
+        "LINE_REMOVE_FAILED": "The credited line could not be removed.",
+        "VERSION_CONFLICT": "This draft changed in the meantime. The latest information was loaded; review it before trying again.",
+        "QUANTITY_INVALID": "Enter a quantity greater than zero with up to 6 decimal places.",
+        "SOURCE_REQUIRED": "Select a source invoice line.",
+        "DUPLICATE_LINE": "This source invoice line is already included.",
+        "QUANTITY_EXCEEDS_SOURCE": "The credited quantity exceeds the source invoice line quantity.",
+        "QUANTITY_EXCEEDS_REMAINING": "The total credited quantity for this source line would exceed its original quantity.",
+        "SOURCE_LINE_NOT_FOUND": "This source invoice line is no longer available.",
+        "MAX_LINES": "A credit note cannot contain more than 100 lines.",
+        "EXCEEDS_BALANCE": "The credit note would exceed the current balance due.",
+        "ALREADY_SETTLED": "This invoice is already fully settled."
+      }
+    },
+    "DASHBOARD": {
+      "TITLE": "Dashboard",
+      "DESCRIPTION": "Access your customers, catalog, and invoices.",
+      "CUSTOMERS": "Manage customers and their contact details.",
+      "ITEMS": "Organize your items and services.",
+      "INVOICES": "View and prepare invoices."
     }
   },
   "PUBLIC": {
@@ -3712,7 +4266,7 @@
     "UI": {
       "NAV": {
         "LABEL": "Liass-Resto navigation",
-        "OVERVIEW": "Overview",
+        "OVERVIEW": "Dashboard",
         "SETUP": "Restaurant setup",
         "MENU": "Menu"
       },
@@ -3721,7 +4275,7 @@
         "outlet": "Locations",
         "area": "Dining areas",
         "table": "Tables",
-        "station": "Kitchen & bar stations",
+        "station": "Preparation stations",
         "menu": "Menu",
         "category": "Categories",
         "item": "Items"
@@ -3823,6 +4377,82 @@
       "LATEST": "Refreshed name: {{name}}",
       "TOGGLE_AVAILABILITY": "Change availability of {{name}}",
       "SITE_COUNTS": "Configuration at {{name}}"
+    },
+    "UX": {
+      "CONFIGURATION": "Configuration",
+      "PAGES": {
+        "overview": {
+          "TITLE": "Dashboard",
+          "DESCRIPTION": "Review your restaurant configuration and menu."
+        },
+        "restaurant": {
+          "TITLE": "Restaurant configuration",
+          "DESCRIPTION": "Manage your restaurant identity and guest ordering preference."
+        },
+        "outlet": {
+          "TITLE": "Locations",
+          "DESCRIPTION": "Manage the locations that welcome your guests."
+        },
+        "area": {
+          "TITLE": "Dining areas",
+          "DESCRIPTION": "Organize the dining areas of the selected location."
+        },
+        "table": {
+          "TITLE": "Tables",
+          "DESCRIPTION": "Manage table codes, capacity and QR identities in each dining area."
+        },
+        "station": {
+          "TITLE": "Kitchen & bar stations",
+          "DESCRIPTION": "Configure the preparation stations of the selected location."
+        },
+        "menu": {
+          "TITLE": "Menu",
+          "DESCRIPTION": "Organize categories and items for the selected location."
+        }
+      },
+      "ADD": {
+        "outlet": "Add location",
+        "area": "Add dining area",
+        "table": "Add table",
+        "station": "Add station",
+        "item": "Add item"
+      },
+      "NAV": {
+        "restaurant": "Restaurant",
+        "outlet": "Locations",
+        "area": "Dining areas",
+        "table": "Tables",
+        "station": "Preparation stations",
+        "menu": "Menu",
+        "MENU_SECTION": "Menu",
+        "overview": "Dashboard"
+      },
+      "EMPTY": {
+        "outlet": {
+          "TITLE": "No locations yet",
+          "DESCRIPTION": "Add your first location to start configuring its dining areas, tables, and preparation stations."
+        },
+        "area": {
+          "TITLE": "No dining areas yet",
+          "DESCRIPTION": "Add the first dining area to this location to organize its tables."
+        },
+        "table": {
+          "TITLE": "No tables yet",
+          "DESCRIPTION": "Add the first tables to this dining area and set their capacity."
+        },
+        "station": {
+          "TITLE": "No preparation stations yet",
+          "DESCRIPTION": "Add the first station to organize preparation at this location."
+        },
+        "category": {
+          "TITLE": "No categories yet",
+          "DESCRIPTION": "Add the first category to organize your menu items."
+        },
+        "item": {
+          "TITLE": "No items yet",
+          "DESCRIPTION": "Add the first item to this category to complete your menu."
+        }
+      }
     }
   }
 }

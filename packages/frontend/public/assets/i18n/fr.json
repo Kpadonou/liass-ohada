@@ -132,7 +132,10 @@
     "SIDEBAR": {
       "COLLAPSE": "Réduire la barre latérale",
       "EXPAND": "Déployer la barre latérale",
-      "NAVIGATION_LABEL": "Navigation principale"
+      "NAVIGATION_LABEL": "Navigation principale",
+      "PRODUCTS": "Changer de produit",
+      "PLATFORM": "Plateforme",
+      "ACTIVE_PRODUCT": "Produit actif"
     },
     "TOPBAR": {
       "COMMAND_PLACEHOLDER": "Rechercher ou interroger l’IA...",
@@ -164,7 +167,8 @@
       "USER_MENU": "Ouvrir le menu utilisateur",
       "WORKSPACE": "Espace actif",
       "WORKSPACE_MENU_LABEL": "Ouvrir le menu de l’espace actif",
-      "WORKSPACE_LOADING": "Chargement de l’espace..."
+      "WORKSPACE_LOADING": "Chargement de l’espace...",
+      "NO_ACCESSIBLE_PRODUCT": "Aucun produit accessible pour le moment. Vérifiez votre espace de travail ou réessayez plus tard."
     },
     "WORKSPACE_TYPES": {
       "ACCOUNTING_FIRM": "Cabinet comptable",
@@ -2312,17 +2316,19 @@
     "ONBOARDING": {
       "EYEBROW": "Onboarding",
       "TITLE": "Bienvenue sur Liass-OHADA",
-      "INTENT_QUESTION": "Que souhaitez-vous faire en premier ?",
-      "SUBTITLE": "Choisissez votre besoin principal. Vous pourrez faire évoluer votre espace Liass-OHADA avec vos besoins.",
+      "INTENT_QUESTION": "Choisissez votre type d’espace",
+      "SUBTITLE": "Créez l’espace de votre entreprise ou gérez votre cabinet comptable.",
       "STEPS": {
         "LABEL": "Étapes de création de votre espace",
-        "INTENT": "Votre besoin",
+        "INTENT": "Type d’espace",
         "ORGANIZATION": "Votre organisation",
         "CONFIGURATION": "Configuration",
-        "PROGRESS": "Étape {{ current }} sur {{ total }}"
+        "PROGRESS": "Étape {{ current }} sur {{ total }}",
+        "PRODUCTS": "Produits",
+        "REVIEW": "Récapitulatif"
       },
       "INTENTS": {
-        "SELECTED": "Besoin sélectionné",
+        "SELECTED": "Sélectionné",
         "COMING_SOON": "Bientôt disponible",
         "ACCOUNTING": {
           "TITLE": "Tenir ma comptabilité",
@@ -2336,6 +2342,10 @@
         "ACCOUNTING_FIRM": {
           "TITLE": "Gérer mon cabinet comptable",
           "DESCRIPTION": "Centralisez vos entreprises clientes, votre équipe, vos travaux et vos échéances dans un même espace."
+        },
+        "COMPANY": {
+          "TITLE": "Entreprise",
+          "DESCRIPTION": "Choisissez les produits dont votre organisation a besoin."
         }
       },
       "ORGANIZATION": {
@@ -2397,10 +2407,31 @@
         "VALIDATION": "L’espace a été créé, mais la réponse n’a pas pu être vérifiée. Réessayez ou actualisez la liste des espaces."
       },
       "VALIDATION": {
-        "INTENT": "Choisissez ce que vous souhaitez faire en premier.",
+        "INTENT": "Choisissez un type d’espace.",
         "ORGANIZATION_NAME": "Saisissez un nom d’organisation.",
         "COUNTRY": "Choisissez un pays.",
-        "ACCOUNTING_FRAMEWORK": "Choisissez un référentiel comptable."
+        "ACCOUNTING_FRAMEWORK": "Choisissez un référentiel comptable.",
+        "PRODUCTS": "Sélectionnez au moins un produit pour continuer."
+      },
+      "PRODUCTS": {
+        "TITLE": "Choisissez vos produits",
+        "DESCRIPTION": "Sélectionnez un ou plusieurs produits. Chacun peut être utilisé indépendamment.",
+        "ACCOUNTING": {
+          "TITLE": "Comptabilité",
+          "DESCRIPTION": "Comptabilité générale, trésorerie et comptabilité de projets."
+        },
+        "SALES": {
+          "TITLE": "Facturation",
+          "DESCRIPTION": "Clients, catalogue, facturation, créances et avoirs."
+        },
+        "RESTAURANTS": {
+          "TITLE": "Liass-Resto",
+          "DESCRIPTION": "Configuration du restaurant, du menu et des tables."
+        }
+      },
+      "REVIEW": {
+        "TITLE": "Vérifiez votre espace",
+        "DESCRIPTION": "Vérifiez vos choix avant de créer votre espace."
       }
     },
     "CABINET_DASHBOARD": {
@@ -2866,7 +2897,10 @@
       "EYEBROW": "Cabinet",
       "TITLE": "Équipe",
       "SUBTITLE": "Gérez les membres du cabinet, leurs rôles et leurs accès aux dossiers clients.",
-      "TABS": { "MEMBERS": "Membres", "INVITATIONS": "Invitations" },
+      "TABS": {
+        "MEMBERS": "Membres",
+        "INVITATIONS": "Invitations"
+      },
       "ACTIONS": {
         "INVITE": "Inviter un membre",
         "VIEW_DETAILS": "Voir les détails",
@@ -2878,14 +2912,21 @@
         "REACTIVATE": "Réactiver",
         "REVOKE": "Révoquer"
       },
-      "FILTERS": { "ROLE": "Rôle", "STATUS": "Statut" },
+      "FILTERS": {
+        "ROLE": "Rôle",
+        "STATUS": "Statut"
+      },
       "ROLES": {
         "CABINET_ADMIN": "Administrateur du cabinet",
         "SUPERVISOR": "Superviseur",
         "COLLABORATOR": "Collaborateur",
         "READER": "Lecteur"
       },
-      "MEMBER_STATUS": { "ACTIVE": "Actif", "SUSPENDED": "Suspendu", "REVOKED": "Révoqué" },
+      "MEMBER_STATUS": {
+        "ACTIVE": "Actif",
+        "SUSPENDED": "Suspendu",
+        "REVOKED": "Révoqué"
+      },
       "INVITATION_STATUS": {
         "PENDING": "En attente",
         "ACCEPTED": "Acceptée",
@@ -3213,117 +3254,630 @@
   },
   "SALES": {
     "CUSTOMERS": {
-      "PAGE": { "EYEBROW": "Ventes", "TITLE": "Clients", "SUBTITLE": "Gérez le répertoire client de l’organisation active." },
-      "LIST": { "TITLE": "Répertoire clients", "DESCRIPTION": "Consultez et tenez à jour les coordonnées commerciales de vos clients." },
+      "PAGE": {
+        "EYEBROW": "Ventes",
+        "TITLE": "Clients",
+        "SUBTITLE": "Gérez le répertoire client de l’organisation active."
+      },
+      "LIST": {
+        "TITLE": "Répertoire clients",
+        "DESCRIPTION": "Consultez et tenez à jour les coordonnées commerciales de vos clients."
+      },
       "LOADING": "Chargement des clients…",
       "ACCESS": {
         "CHECKING": "Vérification de l’accès à Ventes…",
         "UNAVAILABLE_TITLE": "Répertoire clients indisponible",
         "UNAVAILABLE_DESCRIPTION": "Votre accès ou l’activation du produit Ventes ne permet pas d’afficher ces clients pour le moment."
       },
-      "ACTIONS": { "CREATE": "Nouveau client", "EDIT": "Modifier", "ACTIVATE": "Réactiver", "DEACTIVATE": "Désactiver", "COLUMNS": "Colonnes" },
-      "TABLE": { "NAME": "Client", "TYPE": "Type", "PHONE": "Téléphone", "EMAIL": "Adresse électronique", "TAX_IDENTIFIER": "Identifiant fiscal", "STATUS": "Statut", "ACTIONS": "Actions" },
-      "TYPES": { "BUSINESS": "Entreprise / organisation", "INDIVIDUAL": "Particulier" },
-      "STATUS": { "ACTIVE": "Actif", "INACTIVE": "Inactif" },
-      "EMPTY": { "TITLE": "Aucun client enregistré", "DESCRIPTION": "Créez votre premier client pour commencer à constituer votre répertoire commercial." },
-      "DIALOG": { "CREATE_TITLE": "Nouveau client", "EDIT_TITLE": "Modifier le client", "SUBTITLE": "Renseignez uniquement les informations d’identité et de contact utiles au suivi commercial." },
+      "ACTIONS": {
+        "CREATE": "Nouveau client",
+        "EDIT": "Modifier",
+        "ACTIVATE": "Réactiver",
+        "DEACTIVATE": "Désactiver",
+        "COLUMNS": "Colonnes"
+      },
+      "TABLE": {
+        "NAME": "Client",
+        "TYPE": "Type",
+        "PHONE": "Téléphone",
+        "EMAIL": "Adresse électronique",
+        "TAX_IDENTIFIER": "Identifiant fiscal",
+        "STATUS": "Statut",
+        "ACTIONS": "Actions"
+      },
+      "TYPES": {
+        "BUSINESS": "Entreprise / organisation",
+        "INDIVIDUAL": "Particulier"
+      },
+      "STATUS": {
+        "ACTIVE": "Actif",
+        "INACTIVE": "Inactif"
+      },
+      "EMPTY": {
+        "TITLE": "Aucun client enregistré",
+        "DESCRIPTION": "Créez votre premier client pour commencer à constituer votre répertoire commercial."
+      },
+      "DIALOG": {
+        "CREATE_TITLE": "Nouveau client",
+        "EDIT_TITLE": "Modifier le client",
+        "SUBTITLE": "Renseignez uniquement les informations d’identité et de contact utiles au suivi commercial."
+      },
       "FORM": {
-        "TYPE": "Type de client", "NAME": "Nom", "EMAIL": "Adresse électronique", "PHONE": "Téléphone", "TAX_IDENTIFIER": "Identifiant fiscal", "BILLING_ADDRESS": "Adresse de facturation", "ADDRESS_LINE_1": "Adresse", "ADDRESS_LINE_2": "Complément d’adresse", "CITY": "Ville", "POSTAL_CODE": "Code postal", "COUNTRY": "Pays", "NO_COUNTRY": "Non renseigné"
+        "TYPE": "Type de client",
+        "NAME": "Nom",
+        "EMAIL": "Adresse électronique",
+        "PHONE": "Téléphone",
+        "TAX_IDENTIFIER": "Identifiant fiscal",
+        "BILLING_ADDRESS": "Adresse de facturation",
+        "ADDRESS_LINE_1": "Adresse",
+        "ADDRESS_LINE_2": "Complément d’adresse",
+        "CITY": "Ville",
+        "POSTAL_CODE": "Code postal",
+        "COUNTRY": "Pays",
+        "NO_COUNTRY": "Non renseigné"
       },
-      "COUNTRIES": { "BJ": "Bénin", "TG": "Togo", "CI": "Côte d’Ivoire", "SN": "Sénégal", "BF": "Burkina Faso", "ML": "Mali", "NE": "Niger", "CM": "Cameroun", "CG": "Congo", "GA": "Gabon", "TD": "Tchad", "CF": "République centrafricaine", "GN": "Guinée", "GW": "Guinée-Bissau", "GQ": "Guinée équatoriale", "CD": "République démocratique du Congo", "KM": "Comores" },
+      "COUNTRIES": {
+        "BJ": "Bénin",
+        "TG": "Togo",
+        "CI": "Côte d’Ivoire",
+        "SN": "Sénégal",
+        "BF": "Burkina Faso",
+        "ML": "Mali",
+        "NE": "Niger",
+        "CM": "Cameroun",
+        "CG": "Congo",
+        "GA": "Gabon",
+        "TD": "Tchad",
+        "CF": "République centrafricaine",
+        "GN": "Guinée",
+        "GW": "Guinée-Bissau",
+        "GQ": "Guinée équatoriale",
+        "CD": "République démocratique du Congo",
+        "KM": "Comores"
+      },
       "LIFECYCLE": {
-        "DEACTIVATE_TITLE": "Désactiver ce client ?", "DEACTIVATE_DESCRIPTION": "{{name}} restera enregistré dans le répertoire, mais sera marqué comme inactif. Cette action est réversible.",
-        "ACTIVATE_TITLE": "Réactiver ce client ?", "ACTIVATE_DESCRIPTION": "{{name}} sera de nouveau marqué comme actif dans le répertoire."
+        "DEACTIVATE_TITLE": "Désactiver ce client ?",
+        "DEACTIVATE_DESCRIPTION": "{{name}} restera enregistré dans le répertoire, mais sera marqué comme inactif. Cette action est réversible.",
+        "ACTIVATE_TITLE": "Réactiver ce client ?",
+        "ACTIVATE_DESCRIPTION": "{{name}} sera de nouveau marqué comme actif dans le répertoire."
       },
-      "PAGINATION": { "LABEL": "Pagination des clients", "PAGE_SIZE": "Jusqu’à {{count}} clients par page" },
-      "NOTIFICATIONS": { "CREATED": "Client créé.", "UPDATED": "Client mis à jour.", "ACTIVATED": "Client réactivé.", "DEACTIVATED": "Client désactivé." },
+      "PAGINATION": {
+        "LABEL": "Pagination des clients",
+        "PAGE_SIZE": "Jusqu’à {{count}} clients par page"
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Client créé.",
+        "UPDATED": "Client mis à jour.",
+        "ACTIVATED": "Client réactivé.",
+        "DEACTIVATED": "Client désactivé."
+      },
       "ERRORS": {
-        "LOAD_FAILED": "Les clients n’ont pas pu être chargés.", "DETAIL_FAILED": "Les informations à jour de ce client n’ont pas pu être chargées.", "CREATE_FAILED": "Le client n’a pas pu être créé.", "UPDATE_FAILED": "Le client n’a pas pu être mis à jour.", "STATUS_FAILED": "Le statut du client n’a pas pu être modifié.", "CONFLICT": "Ce client a été modifié depuis votre dernier affichage. Les données à jour ont été rechargées ; vérifiez-les avant de réessayer."
+        "LOAD_FAILED": "Les clients n’ont pas pu être chargés.",
+        "DETAIL_FAILED": "Les informations à jour de ce client n’ont pas pu être chargées.",
+        "CREATE_FAILED": "Le client n’a pas pu être créé.",
+        "UPDATE_FAILED": "Le client n’a pas pu être mis à jour.",
+        "STATUS_FAILED": "Le statut du client n’a pas pu être modifié.",
+        "CONFLICT": "Ce client a été modifié depuis votre dernier affichage. Les données à jour ont été rechargées ; vérifiez-les avant de réessayer."
       }
     },
     "ITEMS": {
-      "PAGE": { "EYEBROW": "Ventes", "TITLE": "Articles & services", "SUBTITLE": "Gérez ce que l’organisation active vend ou fournit." },
-      "LIST": { "TITLE": "Catalogue", "DESCRIPTION": "Consultez et tenez à jour les articles et services proposés par votre organisation." },
+      "PAGE": {
+        "EYEBROW": "Ventes",
+        "TITLE": "Articles & services",
+        "SUBTITLE": "Gérez ce que l’organisation active vend ou fournit."
+      },
+      "LIST": {
+        "TITLE": "Catalogue",
+        "DESCRIPTION": "Consultez et tenez à jour les articles et services proposés par votre organisation."
+      },
       "LOADING": "Chargement des articles et services…",
       "ACCESS": {
         "CHECKING": "Vérification de l’accès à Ventes…",
         "UNAVAILABLE_TITLE": "Articles et services indisponibles",
         "UNAVAILABLE_DESCRIPTION": "Votre accès ou l’activation du produit Ventes ne permet pas d’afficher ce catalogue pour le moment."
       },
-      "ACTIONS": { "CREATE": "Ajouter un article ou service", "EDIT": "Modifier", "ACTIVATE": "Réactiver", "DEACTIVATE": "Désactiver" },
-      "TABLE": { "NAME": "Nom", "TYPE": "Type", "UNIT": "Unité", "STATUS": "Statut", "ACTIONS": "Actions" },
-      "TYPES": { "PRODUCT": "Article", "SERVICE": "Service" },
-      "STATUS": { "ACTIVE": "Actif", "INACTIVE": "Inactif" },
-      "EMPTY": { "TITLE": "Aucun article ou service pour le moment", "DESCRIPTION": "Ajoutez ce que votre organisation vend ou fournit." },
-      "DIALOG": { "CREATE_TITLE": "Ajouter un article ou service", "EDIT_TITLE": "Modifier l’article ou le service", "SUBTITLE": "Renseignez uniquement les informations utiles pour identifier cette offre." },
+      "ACTIONS": {
+        "CREATE": "Ajouter un article ou service",
+        "EDIT": "Modifier",
+        "ACTIVATE": "Réactiver",
+        "DEACTIVATE": "Désactiver"
+      },
+      "TABLE": {
+        "NAME": "Nom",
+        "TYPE": "Type",
+        "UNIT": "Unité",
+        "STATUS": "Statut",
+        "ACTIONS": "Actions"
+      },
+      "TYPES": {
+        "PRODUCT": "Article",
+        "SERVICE": "Service"
+      },
+      "STATUS": {
+        "ACTIVE": "Actif",
+        "INACTIVE": "Inactif"
+      },
+      "EMPTY": {
+        "TITLE": "Aucun article ou service pour le moment",
+        "DESCRIPTION": "Ajoutez ce que votre organisation vend ou fournit."
+      },
+      "DIALOG": {
+        "CREATE_TITLE": "Ajouter un article ou service",
+        "EDIT_TITLE": "Modifier l’article ou le service",
+        "SUBTITLE": "Renseignez uniquement les informations utiles pour identifier cette offre."
+      },
       "FORM": {
-        "TYPE": "Type", "NAME": "Nom", "DESCRIPTION": "Description", "UNIT": "Unité", "UNIT_PLACEHOLDER": "Unité, heure, jour, kg…", "UNIT_HINT": "Libellé libre et facultatif.", "MAX_LENGTH": "Maximum {{count}} caractères."
+        "TYPE": "Type",
+        "NAME": "Nom",
+        "DESCRIPTION": "Description",
+        "UNIT": "Unité",
+        "UNIT_PLACEHOLDER": "Unité, heure, jour, kg…",
+        "UNIT_HINT": "Libellé libre et facultatif.",
+        "MAX_LENGTH": "Maximum {{count}} caractères."
       },
       "LIFECYCLE": {
-        "DEACTIVATE_TITLE": "Désactiver cet article ou service ?", "DEACTIVATE_DESCRIPTION": "{{name}} restera enregistré mais sera marqué comme inactif. Cette action est réversible.",
-        "ACTIVATE_TITLE": "Réactiver cet article ou service ?", "ACTIVATE_DESCRIPTION": "{{name}} sera de nouveau marqué comme actif."
+        "DEACTIVATE_TITLE": "Désactiver cet article ou service ?",
+        "DEACTIVATE_DESCRIPTION": "{{name}} restera enregistré mais sera marqué comme inactif. Cette action est réversible.",
+        "ACTIVATE_TITLE": "Réactiver cet article ou service ?",
+        "ACTIVATE_DESCRIPTION": "{{name}} sera de nouveau marqué comme actif."
       },
-      "PAGINATION": { "LABEL": "Pagination des articles et services", "PAGE_SIZE": "Jusqu’à {{count}} éléments par page" },
-      "NOTIFICATIONS": { "CREATED": "Article ou service créé.", "UPDATED": "Article ou service mis à jour.", "ACTIVATED": "Article ou service réactivé.", "DEACTIVATED": "Article ou service désactivé." },
+      "PAGINATION": {
+        "LABEL": "Pagination des articles et services",
+        "PAGE_SIZE": "Jusqu’à {{count}} éléments par page"
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Article ou service créé.",
+        "UPDATED": "Article ou service mis à jour.",
+        "ACTIVATED": "Article ou service réactivé.",
+        "DEACTIVATED": "Article ou service désactivé."
+      },
       "ERRORS": {
-        "LOAD_FAILED": "Les articles et services n’ont pas pu être chargés.", "DETAIL_FAILED": "Les informations à jour de cet article ou service n’ont pas pu être chargées.", "CREATE_FAILED": "L’article ou le service n’a pas pu être créé.", "UPDATE_FAILED": "L’article ou le service n’a pas pu être mis à jour.", "STATUS_FAILED": "Le statut de l’article ou du service n’a pas pu être modifié.", "CONFLICT": "Cet article ou service a été modifié entre-temps. Les informations ont été actualisées ; vérifiez vos modifications avant de réessayer."
+        "LOAD_FAILED": "Les articles et services n’ont pas pu être chargés.",
+        "DETAIL_FAILED": "Les informations à jour de cet article ou service n’ont pas pu être chargées.",
+        "CREATE_FAILED": "L’article ou le service n’a pas pu être créé.",
+        "UPDATE_FAILED": "L’article ou le service n’a pas pu être mis à jour.",
+        "STATUS_FAILED": "Le statut de l’article ou du service n’a pas pu être modifié.",
+        "CONFLICT": "Cet article ou service a été modifié entre-temps. Les informations ont été actualisées ; vérifiez vos modifications avant de réessayer."
       }
     },
     "INVOICES": {
-      "PAGE": { "EYEBROW": "Ventes", "TITLE": "Factures", "SUBTITLE": "Préparez vos brouillons et consultez vos factures émises." },
-      "LIST": { "TITLE": "Factures", "DESCRIPTION": "Consultez les brouillons en préparation et les factures commerciales émises.", "INVOICE_NUMBER": "Facture n° {{invoiceNumber}}", "ISSUED_ON": "Émise le {{issueDate}}" },
-      "LOADING": "Chargement des factures…",
-      "ACCESS": { "CHECKING": "Vérification de l’accès à Ventes…", "UNAVAILABLE_TITLE": "Factures indisponibles", "UNAVAILABLE_DESCRIPTION": "Votre accès ou l’activation du produit Ventes ne permet pas d’afficher ces factures pour le moment." },
-      "STATUS": { "DRAFT": "Brouillon", "ISSUED": "Émise" },
-      "ACTIONS": { "CREATE": "Nouvelle facture", "BACK_TO_LIST": "Retour aux factures", "SELECT_CUSTOMER": "Sélectionner un client", "CHANGE_CUSTOMER": "Changer le client", "CLEAR_CUSTOMER": "Retirer le client", "CHANGE_CURRENCY": "Changer la devise", "ADD_LINE": "Ajouter une ligne", "EDIT_LINE": "Modifier la ligne", "REMOVE_LINE": "Retirer la ligne", "ISSUE": "Émettre la facture" },
-      "TABLE": { "DRAFT": "Brouillon", "INVOICE": "Facture", "INTERNAL_REFERENCE": "Réf. interne" },
-      "FIELDS": { "CUSTOMER": "Client", "NO_CUSTOMER": "Sans client", "CURRENCY": "Devise", "LINES": "Lignes", "DESCRIPTION": "Description", "UNIT": "Unité", "QUANTITY": "Quantité", "UNIT_PRICE": "Prix unitaire", "TAX_RATE": "Taux de taxe (%)", "SUBTOTAL": "Sous-total", "TAX": "Taxe", "TOTAL": "Total", "TAX_IDENTIFIER": "Identifiant fiscal", "ISSUE_DATE": "Date de facture", "ISSUED_AT": "Émise le" },
-      "EMPTY": { "TITLE": "Aucune facture pour le moment", "DESCRIPTION": "Créez un brouillon pour préparer une vente." },
-      "PAGINATION": { "LABEL": "Pagination des factures", "PAGE_SIZE": "Jusqu’à {{count}} factures par page" },
-      "DETAIL": { "EYEBROW": "Ventes · Brouillon", "TITLE": "Brouillon de facture", "SUBTITLE": "Préparez le client, les lignes commerciales et les montants avant l’émission.", "LOADING": "Chargement de la facture…", "DRAFT_NOTICE": "Ce document est un brouillon modifiable et ne possède aucun numéro commercial de facture.", "NO_CUSTOMER_DESCRIPTION": "Aucun client n’est sélectionné. Vous pouvez poursuivre la préparation de ce brouillon.", "ISSUED_EYEBROW": "Ventes · Facture émise", "ISSUED_TITLE": "Facture émise", "ISSUED_SUBTITLE": "Consultez les informations commerciales figées lors de l’émission.", "ISSUED_NOTICE": "Cette facture a été émise et ne peut plus être modifiée.", "INVOICE_NUMBER": "Facture n° {{invoiceNumber}}" },
-      "ISSUE": { "TITLE": "Émettre cette facture ?", "REVIEW_INTRO": "Vérifiez les informations ci-dessous avant l’émission.", "IRREVERSIBLE_TITLE": "Cette action est irréversible.", "IRREVERSIBLE_DESCRIPTION": "Après émission, le numéro, la date, le client, les lignes, les montants et les autres informations commerciales ne pourront plus être modifiés.", "DATE_HINT": "La date de facture peut être antérieure ou future.", "BACK_TO_EDIT": "Retourner à la modification", "RETRY": "Réessayer", "RETRY_SAME_ATTEMPT": "Réessayez pour vérifier et terminer cette même demande d’émission.", "NO_LINES_HINT": "Ajoutez au moins une ligne avant d’émettre la facture.", "ERRORS": { "INVALID_DATE": "Saisissez une date de facture valide.", "AMBIGUOUS": "Le résultat de l’émission n’a pas pu être confirmé.", "FAILED": "La facture n’a pas pu être émise.", "VERSION_CONFLICT": "Ce brouillon a été modifié entre-temps. Les informations ont été actualisées. Vérifiez la facture avant de l’émettre.", "ALREADY_ISSUED": "Cette facture a déjà été émise.", "IDEMPOTENCY_REUSED": "Cette demande d’émission ne peut pas être poursuivie. La facture a été actualisée ; vérifiez-la avant de recommencer.", "NO_LINES": "Ajoutez au moins une ligne avant d’émettre la facture." } },
-      "LINES": { "DESCRIPTION": "Les montants affichés sont les valeurs commerciales de référence de la facture.", "EMPTY_TITLE": "Aucune ligne pour le moment", "EMPTY_DESCRIPTION": "Ajoutez un article du catalogue ou une ligne commerciale libre.", "CATALOG_SNAPSHOT": "Instantané issu du catalogue" },
-      "TOTALS": { "TITLE": "Totaux de la facture", "AUTHORITATIVE": "Les totaux affichés sont les montants commerciaux de référence de cette facture." },
-      "DOCUMENT": { "TITLE": "Document PDF", "LOADING": "Vérification du document PDF…", "NOT_GENERATED_TITLE": "Document PDF non généré", "NOT_GENERATED_DESCRIPTION": "Le document PDF n’a pas encore été généré.", "GENERATING": "Génération du PDF…", "AVAILABLE": "PDF disponible", "AVAILABLE_DESCRIPTION": "Il s’agit de la représentation PDF de la facture émise.", "GENERATED_AT": "Généré le {{generatedAt}}", "ACTIONS": { "GENERATE": "Générer le PDF", "OPEN": "Ouvrir le PDF", "DOWNLOAD": "Télécharger", "PRINT": "Imprimer" }, "NOTIFICATIONS": { "READY": "Le PDF de la facture est disponible." }, "ERRORS": { "UNAVAILABLE": "Le document PDF est indisponible pour le moment.", "GENERATION_FAILED": "Le document PDF n’a pas pu être généré. Réessayez.", "SECURE_LINK_FAILED": "Un lien sécurisé vers le PDF n’a pas pu être créé. Réessayez." } },
-      "SETTLEMENT": {
-        "TITLE": "Règlement", "DESCRIPTION": "Suivez les paiements séparément de la facture commerciale émise.", "LOADING": "Chargement du suivi du règlement…", "PAYMENT_STATUS": "Statut du règlement", "INVOICE_AMOUNT": "Montant de la facture", "AMOUNT_PAID": "Montant encaissé", "CREDITED_AMOUNT": "Montant crédité", "BALANCE_DUE": "Reste à payer", "PAYMENT_COUNT": "Nombre de paiements",
-        "STATUS": { "OPEN": "Non réglée", "PARTIALLY_SETTLED": "Partiellement réglée", "SETTLED": "Réglée" },
-        "METHODS": { "CASH": "Espèces", "BANK_TRANSFER": "Virement bancaire", "CARD": "Carte", "MOBILE_MONEY": "Mobile Money", "CHEQUE": "Chèque", "OTHER": "Autre" },
-        "ACTIONS": { "RECORD": "Enregistrer un paiement", "PAY_REMAINING": "Solder le reste", "REVIEW": "Revoir les informations" },
-        "DIALOG": { "TITLE": "Enregistrer un paiement", "SUBTITLE": "Vérifiez le solde puis renseignez les informations du paiement.", "INVOICE": "Facture" },
-        "FORM": { "AMOUNT": "Montant", "PAYMENT_DATE": "Date du paiement", "METHOD": "Mode de paiement", "REFERENCE": "Référence", "REFERENCE_HINT": "Référence de virement, chèque ou transaction, si applicable." },
-        "VALIDATION": { "AMOUNT": "Saisissez un montant supérieur à zéro dans un format décimal valide.", "DATE": "Saisissez une date de paiement valide.", "METHOD": "Sélectionnez un mode de paiement.", "REFERENCE": "La référence ne peut pas dépasser 200 caractères." },
-        "HISTORY": { "TITLE": "Historique des paiements", "DESCRIPTION": "Les paiements constituent un historique immuable pour cette facture.", "LOADING": "Chargement des paiements…", "EMPTY": "Aucun paiement enregistré.", "ERROR": "L’historique des paiements n’a pas pu être chargé.", "PAGINATION": "Pagination de l’historique des paiements", "PAGE_SIZE": "Jusqu’à {{count}} paiements par page" },
-        "NOTIFICATIONS": { "RECORDED": "Paiement enregistré avec succès." },
-        "ERRORS": { "LOAD_FAILED": "Le suivi du règlement n’a pas pu être chargé.", "RECORD_FAILED": "Le paiement n’a pas pu être enregistré. Vérifiez les informations puis réessayez.", "VERSION_CONFLICT": "Le règlement de cette facture a été modifié entre-temps. Le solde a été actualisé ; vérifiez le montant avant de réessayer.", "EXCEEDS_BALANCE": "Le montant saisi dépasse le reste à payer.", "PRECISION": "Le nombre de décimales n’est pas valide pour cette devise.", "ALREADY_SETTLED": "Cette facture est déjà entièrement réglée.", "IDEMPOTENCY_REUSED": "Cette tentative de paiement ne peut pas continuer. Vérifiez le règlement actualisé avant de recommencer.", "AMBIGUOUS": "Le résultat du paiement n’a pas pu être confirmé.", "RETRY_SAME_ATTEMPT": "La nouvelle tentative réutilisera exactement la même demande afin que le paiement ne soit pas appliqué deux fois." }
+      "PAGE": {
+        "EYEBROW": "Ventes",
+        "TITLE": "Factures",
+        "SUBTITLE": "Préparez vos brouillons et consultez vos factures émises."
       },
-      "CUSTOMER_DIALOG": { "TITLE": "Sélectionner un client", "SUBTITLE": "Les coordonnées actuelles du client seront copiées dans ce brouillon lors de la confirmation.", "LOADING": "Chargement des clients…", "LOAD_FAILED": "Les clients n’ont pas pu être chargés.", "EMPTY": "Aucun client n’est disponible sur cette page.", "PAGINATION": "Pagination du sélecteur de clients" },
-      "CURRENCY_DIALOG": { "TITLE": "Changer la devise", "SUBTITLE": "La devise ne peut être modifiée qu’avant l’ajout de la première ligne.", "HINT": "Code devise de trois lettres, par exemple XOF, EUR ou USD." },
-      "LINE_DIALOG": { "ADD_TITLE": "Ajouter une ligne", "EDIT_TITLE": "Modifier la ligne", "SUBTITLE": "Saisissez des valeurs décimales exactes avec un point comme séparateur.", "SOURCE": "Origine de la ligne", "FROM_CATALOG": "Depuis le catalogue", "FREE_FORM": "Ligne libre", "CATALOG_SOURCE_LOCKED": "La source catalogue reste affichée à titre de contexte. Retirez puis recréez la ligne pour la changer.", "LOADING_ITEMS": "Chargement des articles et services…", "ITEMS_FAILED": "Les articles et services n’ont pas pu être chargés.", "NO_ITEMS": "Aucun article ou service n’est disponible sur cette page.", "CATALOG_PAGINATION": "Pagination du sélecteur de catalogue", "DEFAULTS_HINT": "Sans modification, la description et l’unité proviennent de {{name}} (unité : {{unit}}).", "OPTIONAL_OVERRIDE": "Remplacement facultatif ; laissez vide pour utiliser l’instantané du catalogue." },
-      "REMOVE_LINE": { "TITLE": "Retirer cette ligne ?", "DESCRIPTION": "« {{description}} » sera retirée du brouillon et les totaux seront actualisés. Le brouillon lui-même est conservé." },
-      "VALIDATION": { "CURRENCY": "Saisissez un code devise valide de trois lettres majuscules.", "DESCRIPTION_REQUIRED": "Une description est obligatoire pour une ligne libre.", "ITEM_REQUIRED": "Sélectionnez un article ou service actif.", "QUANTITY": "Saisissez une quantité supérieure à zéro avec au plus 6 décimales.", "UNIT_PRICE": "Saisissez un prix positif ou nul avec au plus 6 décimales.", "TAX_RATE": "Saisissez un taux de taxe compris entre 0 et 100 avec au plus 4 décimales.", "MAX_LENGTH": "Maximum {{count}} caractères." },
-      "NOTIFICATIONS": { "CREATED": "Brouillon de facture créé.", "UPDATED": "Brouillon de facture mis à jour.", "LINE_ADDED": "Ligne ajoutée.", "LINE_UPDATED": "Ligne mise à jour.", "LINE_REMOVED": "Ligne retirée.", "ISSUED": "Facture n° {{invoiceNumber}} émise avec succès." },
-      "ERRORS": { "LOAD_FAILED": "Les brouillons de factures n’ont pas pu être chargés.", "DETAIL_FAILED": "Ce brouillon de facture n’a pas pu être chargé.", "CREATE_FAILED": "Le brouillon n’a pas pu être créé. Vérifiez la configuration de devise de Ventes puis réessayez.", "UPDATE_FAILED": "Le brouillon n’a pas pu être mis à jour.", "LINE_ADD_FAILED": "La ligne n’a pas pu être ajoutée.", "LINE_UPDATE_FAILED": "La ligne n’a pas pu être mise à jour.", "LINE_REMOVE_FAILED": "La ligne n’a pas pu être retirée.", "CONFLICT": "Ce brouillon a été modifié entre-temps. Les informations ont été actualisées. Vérifiez vos modifications avant de réessayer.", "CUSTOMER_INACTIVE": "Le client sélectionné n’est plus actif. Choisissez un autre client actif.", "CUSTOMER_NOT_FOUND": "Le client sélectionné n’existe plus. Choisissez un autre client.", "ITEM_INACTIVE": "L’article ou service sélectionné n’est plus actif. Choisissez un autre élément actif.", "ITEM_NOT_FOUND": "L’article ou service sélectionné n’existe plus. Choisissez un autre élément.", "CURRENCY_LOCKED": "La devise ne peut plus être modifiée après l’ajout d’une ligne.", "UNSUPPORTED_CURRENCY": "La devise sélectionnée n’est pas prise en charge.", "MAX_LINES": "Un brouillon de facture ne peut pas contenir plus de 100 lignes." }
+      "LIST": {
+        "TITLE": "Factures",
+        "DESCRIPTION": "Consultez les brouillons en préparation et les factures commerciales émises.",
+        "INVOICE_NUMBER": "Facture n° {{invoiceNumber}}",
+        "ISSUED_ON": "Émise le {{issueDate}}"
+      },
+      "LOADING": "Chargement des factures…",
+      "ACCESS": {
+        "CHECKING": "Vérification de l’accès à Ventes…",
+        "UNAVAILABLE_TITLE": "Factures indisponibles",
+        "UNAVAILABLE_DESCRIPTION": "Votre accès ou l’activation du produit Ventes ne permet pas d’afficher ces factures pour le moment."
+      },
+      "STATUS": {
+        "DRAFT": "Brouillon",
+        "ISSUED": "Émise"
+      },
+      "ACTIONS": {
+        "CREATE": "Nouvelle facture",
+        "BACK_TO_LIST": "Retour aux factures",
+        "SELECT_CUSTOMER": "Sélectionner un client",
+        "CHANGE_CUSTOMER": "Changer le client",
+        "CLEAR_CUSTOMER": "Retirer le client",
+        "CHANGE_CURRENCY": "Changer la devise",
+        "ADD_LINE": "Ajouter une ligne",
+        "EDIT_LINE": "Modifier la ligne",
+        "REMOVE_LINE": "Retirer la ligne",
+        "ISSUE": "Émettre la facture"
+      },
+      "TABLE": {
+        "DRAFT": "Brouillon",
+        "INVOICE": "Facture",
+        "INTERNAL_REFERENCE": "Réf. interne"
+      },
+      "FIELDS": {
+        "CUSTOMER": "Client",
+        "NO_CUSTOMER": "Sans client",
+        "CURRENCY": "Devise",
+        "LINES": "Lignes",
+        "DESCRIPTION": "Description",
+        "UNIT": "Unité",
+        "QUANTITY": "Quantité",
+        "UNIT_PRICE": "Prix unitaire",
+        "TAX_RATE": "Taux de taxe (%)",
+        "SUBTOTAL": "Sous-total",
+        "TAX": "Taxe",
+        "TOTAL": "Total",
+        "TAX_IDENTIFIER": "Identifiant fiscal",
+        "ISSUE_DATE": "Date de facture",
+        "ISSUED_AT": "Émise le"
+      },
+      "EMPTY": {
+        "TITLE": "Aucune facture pour le moment",
+        "DESCRIPTION": "Créez un brouillon pour préparer une vente."
+      },
+      "PAGINATION": {
+        "LABEL": "Pagination des factures",
+        "PAGE_SIZE": "Jusqu’à {{count}} factures par page"
+      },
+      "DETAIL": {
+        "EYEBROW": "Ventes · Brouillon",
+        "TITLE": "Brouillon de facture",
+        "SUBTITLE": "Préparez le client, les lignes commerciales et les montants avant l’émission.",
+        "LOADING": "Chargement de la facture…",
+        "DRAFT_NOTICE": "Ce document est un brouillon modifiable et ne possède aucun numéro commercial de facture.",
+        "NO_CUSTOMER_DESCRIPTION": "Aucun client n’est sélectionné. Vous pouvez poursuivre la préparation de ce brouillon.",
+        "ISSUED_EYEBROW": "Ventes · Facture émise",
+        "ISSUED_TITLE": "Facture émise",
+        "ISSUED_SUBTITLE": "Consultez les informations commerciales figées lors de l’émission.",
+        "ISSUED_NOTICE": "Cette facture a été émise et ne peut plus être modifiée.",
+        "INVOICE_NUMBER": "Facture n° {{invoiceNumber}}"
+      },
+      "ISSUE": {
+        "TITLE": "Émettre cette facture ?",
+        "REVIEW_INTRO": "Vérifiez les informations ci-dessous avant l’émission.",
+        "IRREVERSIBLE_TITLE": "Cette action est irréversible.",
+        "IRREVERSIBLE_DESCRIPTION": "Après émission, le numéro, la date, le client, les lignes, les montants et les autres informations commerciales ne pourront plus être modifiés.",
+        "DATE_HINT": "La date de facture peut être antérieure ou future.",
+        "BACK_TO_EDIT": "Retourner à la modification",
+        "RETRY": "Réessayer",
+        "RETRY_SAME_ATTEMPT": "Réessayez pour vérifier et terminer cette même demande d’émission.",
+        "NO_LINES_HINT": "Ajoutez au moins une ligne avant d’émettre la facture.",
+        "ERRORS": {
+          "INVALID_DATE": "Saisissez une date de facture valide.",
+          "AMBIGUOUS": "Le résultat de l’émission n’a pas pu être confirmé.",
+          "FAILED": "La facture n’a pas pu être émise.",
+          "VERSION_CONFLICT": "Ce brouillon a été modifié entre-temps. Les informations ont été actualisées. Vérifiez la facture avant de l’émettre.",
+          "ALREADY_ISSUED": "Cette facture a déjà été émise.",
+          "IDEMPOTENCY_REUSED": "Cette demande d’émission ne peut pas être poursuivie. La facture a été actualisée ; vérifiez-la avant de recommencer.",
+          "NO_LINES": "Ajoutez au moins une ligne avant d’émettre la facture."
+        }
+      },
+      "LINES": {
+        "DESCRIPTION": "Les montants affichés sont les valeurs commerciales de référence de la facture.",
+        "EMPTY_TITLE": "Aucune ligne pour le moment",
+        "EMPTY_DESCRIPTION": "Ajoutez un article du catalogue ou une ligne commerciale libre.",
+        "CATALOG_SNAPSHOT": "Instantané issu du catalogue"
+      },
+      "TOTALS": {
+        "TITLE": "Totaux de la facture",
+        "AUTHORITATIVE": "Les totaux affichés sont les montants commerciaux de référence de cette facture."
+      },
+      "DOCUMENT": {
+        "TITLE": "Document PDF",
+        "LOADING": "Vérification du document PDF…",
+        "NOT_GENERATED_TITLE": "Document PDF non généré",
+        "NOT_GENERATED_DESCRIPTION": "Le document PDF n’a pas encore été généré.",
+        "GENERATING": "Génération du PDF…",
+        "AVAILABLE": "PDF disponible",
+        "AVAILABLE_DESCRIPTION": "Il s’agit de la représentation PDF de la facture émise.",
+        "GENERATED_AT": "Généré le {{generatedAt}}",
+        "ACTIONS": {
+          "GENERATE": "Générer le PDF",
+          "OPEN": "Ouvrir le PDF",
+          "DOWNLOAD": "Télécharger",
+          "PRINT": "Imprimer"
+        },
+        "NOTIFICATIONS": {
+          "READY": "Le PDF de la facture est disponible."
+        },
+        "ERRORS": {
+          "UNAVAILABLE": "Le document PDF est indisponible pour le moment.",
+          "GENERATION_FAILED": "Le document PDF n’a pas pu être généré. Réessayez.",
+          "SECURE_LINK_FAILED": "Un lien sécurisé vers le PDF n’a pas pu être créé. Réessayez."
+        }
+      },
+      "SETTLEMENT": {
+        "TITLE": "Règlement",
+        "DESCRIPTION": "Suivez les paiements séparément de la facture commerciale émise.",
+        "LOADING": "Chargement du suivi du règlement…",
+        "PAYMENT_STATUS": "Statut du règlement",
+        "INVOICE_AMOUNT": "Montant de la facture",
+        "AMOUNT_PAID": "Montant encaissé",
+        "CREDITED_AMOUNT": "Montant crédité",
+        "BALANCE_DUE": "Reste à payer",
+        "PAYMENT_COUNT": "Nombre de paiements",
+        "STATUS": {
+          "OPEN": "Non réglée",
+          "PARTIALLY_SETTLED": "Partiellement réglée",
+          "SETTLED": "Réglée"
+        },
+        "METHODS": {
+          "CASH": "Espèces",
+          "BANK_TRANSFER": "Virement bancaire",
+          "CARD": "Carte",
+          "MOBILE_MONEY": "Mobile Money",
+          "CHEQUE": "Chèque",
+          "OTHER": "Autre"
+        },
+        "ACTIONS": {
+          "RECORD": "Enregistrer un paiement",
+          "PAY_REMAINING": "Solder le reste",
+          "REVIEW": "Revoir les informations"
+        },
+        "DIALOG": {
+          "TITLE": "Enregistrer un paiement",
+          "SUBTITLE": "Vérifiez le solde puis renseignez les informations du paiement.",
+          "INVOICE": "Facture"
+        },
+        "FORM": {
+          "AMOUNT": "Montant",
+          "PAYMENT_DATE": "Date du paiement",
+          "METHOD": "Mode de paiement",
+          "REFERENCE": "Référence",
+          "REFERENCE_HINT": "Référence de virement, chèque ou transaction, si applicable."
+        },
+        "VALIDATION": {
+          "AMOUNT": "Saisissez un montant supérieur à zéro dans un format décimal valide.",
+          "DATE": "Saisissez une date de paiement valide.",
+          "METHOD": "Sélectionnez un mode de paiement.",
+          "REFERENCE": "La référence ne peut pas dépasser 200 caractères."
+        },
+        "HISTORY": {
+          "TITLE": "Historique des paiements",
+          "DESCRIPTION": "Les paiements constituent un historique immuable pour cette facture.",
+          "LOADING": "Chargement des paiements…",
+          "EMPTY": "Aucun paiement enregistré.",
+          "ERROR": "L’historique des paiements n’a pas pu être chargé.",
+          "PAGINATION": "Pagination de l’historique des paiements",
+          "PAGE_SIZE": "Jusqu’à {{count}} paiements par page"
+        },
+        "NOTIFICATIONS": {
+          "RECORDED": "Paiement enregistré avec succès."
+        },
+        "ERRORS": {
+          "LOAD_FAILED": "Le suivi du règlement n’a pas pu être chargé.",
+          "RECORD_FAILED": "Le paiement n’a pas pu être enregistré. Vérifiez les informations puis réessayez.",
+          "VERSION_CONFLICT": "Le règlement de cette facture a été modifié entre-temps. Le solde a été actualisé ; vérifiez le montant avant de réessayer.",
+          "EXCEEDS_BALANCE": "Le montant saisi dépasse le reste à payer.",
+          "PRECISION": "Le nombre de décimales n’est pas valide pour cette devise.",
+          "ALREADY_SETTLED": "Cette facture est déjà entièrement réglée.",
+          "IDEMPOTENCY_REUSED": "Cette tentative de paiement ne peut pas continuer. Vérifiez le règlement actualisé avant de recommencer.",
+          "AMBIGUOUS": "Le résultat du paiement n’a pas pu être confirmé.",
+          "RETRY_SAME_ATTEMPT": "La nouvelle tentative réutilisera exactement la même demande afin que le paiement ne soit pas appliqué deux fois."
+        }
+      },
+      "CUSTOMER_DIALOG": {
+        "TITLE": "Sélectionner un client",
+        "SUBTITLE": "Les coordonnées actuelles du client seront copiées dans ce brouillon lors de la confirmation.",
+        "LOADING": "Chargement des clients…",
+        "LOAD_FAILED": "Les clients n’ont pas pu être chargés.",
+        "EMPTY": "Aucun client n’est disponible sur cette page.",
+        "PAGINATION": "Pagination du sélecteur de clients"
+      },
+      "CURRENCY_DIALOG": {
+        "TITLE": "Changer la devise",
+        "SUBTITLE": "La devise ne peut être modifiée qu’avant l’ajout de la première ligne.",
+        "HINT": "Code devise de trois lettres, par exemple XOF, EUR ou USD."
+      },
+      "LINE_DIALOG": {
+        "ADD_TITLE": "Ajouter une ligne",
+        "EDIT_TITLE": "Modifier la ligne",
+        "SUBTITLE": "Saisissez des valeurs décimales exactes avec un point comme séparateur.",
+        "SOURCE": "Origine de la ligne",
+        "FROM_CATALOG": "Depuis le catalogue",
+        "FREE_FORM": "Ligne libre",
+        "CATALOG_SOURCE_LOCKED": "La source catalogue reste affichée à titre de contexte. Retirez puis recréez la ligne pour la changer.",
+        "LOADING_ITEMS": "Chargement des articles et services…",
+        "ITEMS_FAILED": "Les articles et services n’ont pas pu être chargés.",
+        "NO_ITEMS": "Aucun article ou service n’est disponible sur cette page.",
+        "CATALOG_PAGINATION": "Pagination du sélecteur de catalogue",
+        "DEFAULTS_HINT": "Sans modification, la description et l’unité proviennent de {{name}} (unité : {{unit}}).",
+        "OPTIONAL_OVERRIDE": "Remplacement facultatif ; laissez vide pour utiliser l’instantané du catalogue."
+      },
+      "REMOVE_LINE": {
+        "TITLE": "Retirer cette ligne ?",
+        "DESCRIPTION": "« {{description}} » sera retirée du brouillon et les totaux seront actualisés. Le brouillon lui-même est conservé."
+      },
+      "VALIDATION": {
+        "CURRENCY": "Saisissez un code devise valide de trois lettres majuscules.",
+        "DESCRIPTION_REQUIRED": "Une description est obligatoire pour une ligne libre.",
+        "ITEM_REQUIRED": "Sélectionnez un article ou service actif.",
+        "QUANTITY": "Saisissez une quantité supérieure à zéro avec au plus 6 décimales.",
+        "UNIT_PRICE": "Saisissez un prix positif ou nul avec au plus 6 décimales.",
+        "TAX_RATE": "Saisissez un taux de taxe compris entre 0 et 100 avec au plus 4 décimales.",
+        "MAX_LENGTH": "Maximum {{count}} caractères."
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Brouillon de facture créé.",
+        "UPDATED": "Brouillon de facture mis à jour.",
+        "LINE_ADDED": "Ligne ajoutée.",
+        "LINE_UPDATED": "Ligne mise à jour.",
+        "LINE_REMOVED": "Ligne retirée.",
+        "ISSUED": "Facture n° {{invoiceNumber}} émise avec succès."
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "Les brouillons de factures n’ont pas pu être chargés.",
+        "DETAIL_FAILED": "Ce brouillon de facture n’a pas pu être chargé.",
+        "CREATE_FAILED": "Le brouillon n’a pas pu être créé. Vérifiez la configuration de devise de Ventes puis réessayez.",
+        "UPDATE_FAILED": "Le brouillon n’a pas pu être mis à jour.",
+        "LINE_ADD_FAILED": "La ligne n’a pas pu être ajoutée.",
+        "LINE_UPDATE_FAILED": "La ligne n’a pas pu être mise à jour.",
+        "LINE_REMOVE_FAILED": "La ligne n’a pas pu être retirée.",
+        "CONFLICT": "Ce brouillon a été modifié entre-temps. Les informations ont été actualisées. Vérifiez vos modifications avant de réessayer.",
+        "CUSTOMER_INACTIVE": "Le client sélectionné n’est plus actif. Choisissez un autre client actif.",
+        "CUSTOMER_NOT_FOUND": "Le client sélectionné n’existe plus. Choisissez un autre client.",
+        "ITEM_INACTIVE": "L’article ou service sélectionné n’est plus actif. Choisissez un autre élément actif.",
+        "ITEM_NOT_FOUND": "L’article ou service sélectionné n’existe plus. Choisissez un autre élément.",
+        "CURRENCY_LOCKED": "La devise ne peut plus être modifiée après l’ajout d’une ligne.",
+        "UNSUPPORTED_CURRENCY": "La devise sélectionnée n’est pas prise en charge.",
+        "MAX_LINES": "Un brouillon de facture ne peut pas contenir plus de 100 lignes."
+      }
     },
     "CREDIT_NOTES": {
-      "NUMBER": "Avoir n° {{number}}", "SOURCE_NUMBER": "Facture d’origine n° {{number}}", "DRAFT_TITLE": "Brouillon d’avoir", "STATUS": { "DRAFT": "Brouillon", "ISSUED": "Émis" },
-      "ACTIONS": { "CREATE": "Créer un avoir", "BACK_TO_INVOICE": "Retour à la facture", "EDIT_REASON": "Modifier le motif", "ADD_LINE": "Ajouter une ligne de facture", "EDIT_LINE": "Modifier la quantité", "REMOVE_LINE": "Retirer la ligne", "ISSUE": "Émettre l’avoir" },
-      "LIST": { "TITLE": "Avoirs", "DESCRIPTION": "Consultez les avoirs liés à cette facture émise.", "LOADING": "Chargement des avoirs…", "EMPTY_TITLE": "Aucun avoir", "EMPTY_DESCRIPTION": "Aucun avoir n’a été préparé pour cette facture.", "PAGINATION": "Pagination des avoirs", "PAGE_SIZE": "Jusqu’à {{count}} avoirs par page" },
-      "TABLE": { "CREDIT_NOTE": "Avoir" },
-      "DETAIL": { "EYEBROW": "Ventes · Avoir", "TITLE": "Avoir", "SUBTITLE": "Préparez ou consultez un avoir rattaché à la facture d’origine.", "LOADING": "Chargement de l’avoir…", "DRAFT_NOTICE": "Cet avoir est un brouillon modifiable. Il ne reçoit un numéro officiel qu’à son émission.", "ISSUED_NOTICE": "Cet avoir a été émis et ses informations commerciales ne peuvent plus être modifiées." },
-      "SOURCE": { "TITLE": "Facture d’origine", "DESCRIPTION": "Le client, la devise, les prix et le traitement des taxes proviennent de la facture d’origine émise." },
-      "FIELDS": { "SOURCE_INVOICE": "Facture d’origine", "ORIGINAL_INVOICE": "Facture d’origine", "CUSTOMER": "Client", "NO_CUSTOMER": "Sans client", "CURRENCY": "Devise", "STATUS": "Statut", "DATE": "Date", "ISSUE_DATE": "Date de l’avoir", "REASON": "Motif", "DESCRIPTION": "Description", "QUANTITY": "Quantité créditée", "LINE_COUNT": "Lignes", "UNIT_PRICE": "Prix unitaire", "SUBTOTAL": "Sous-total", "TAX": "Taxe", "TOTAL": "Total", "BALANCE_DUE": "Reste à payer actuel" },
-      "REASON": { "TITLE": "Motif", "EMPTY": "Aucun motif n’a encore été renseigné." },
-      "LINES": { "TITLE": "Lignes créditées", "DESCRIPTION": "Les lignes sont sélectionnées uniquement depuis la facture d’origine émise ; les montants sont calculés par le service.", "EMPTY_TITLE": "Aucune ligne créditée", "EMPTY_DESCRIPTION": "Ajoutez au moins une ligne de la facture d’origine avant l’émission." },
-      "TOTALS": { "TITLE": "Totaux de l’avoir", "AUTHORITATIVE": "Ces montants sont les valeurs de référence renvoyées par le service." },
-      "DOCUMENT": { "TITLE": "Document PDF", "LOADING": "Vérification du document PDF…", "NOT_GENERATED_TITLE": "Document PDF non généré", "NOT_GENERATED_DESCRIPTION": "Le document PDF de cet avoir n’a pas encore été généré.", "GENERATING": "Génération du PDF…", "AVAILABLE": "PDF disponible", "AVAILABLE_DESCRIPTION": "Il s’agit de la représentation PDF de l’avoir émis.", "GENERATED_AT": "Généré le {{generatedAt}}", "ACTIONS": { "GENERATE": "Générer le PDF", "RETRY_GENERATION": "Relancer la génération", "OPEN": "Ouvrir le PDF dans un nouvel onglet", "DOWNLOAD": "Télécharger", "PRINT": "Imprimer" }, "NOTIFICATIONS": { "READY": "Le PDF de l’avoir est disponible." }, "ERRORS": { "UNAVAILABLE": "Le document PDF est indisponible pour le moment.", "GENERATION_FAILED": "Le PDF de l’avoir n’a pas pu être généré. Réessayez.", "INTEGRITY": "Le PDF est indisponible car son intégrité n’a pas pu être vérifiée. Relancez sa génération ou contactez un administrateur.", "SECURE_LINK_FAILED": "Un lien sécurisé vers le PDF n’a pas pu être créé. Réessayez." } },
-      "REASON_DIALOG": { "TITLE": "Motif de l’avoir", "SUBTITLE": "Précisez le retour, la réduction ou l’autre motif commercial.", "HINT": "Obligatoire avant l’émission ; 1 000 caractères maximum." },
-      "LINE_DIALOG": { "ADD_TITLE": "Ajouter une ligne de facture", "EDIT_TITLE": "Modifier la quantité créditée", "SUBTITLE": "Sélectionnez une ligne de la facture d’origine puis saisissez uniquement la quantité à créditer.", "SOURCE_LABEL": "Ligne de la facture d’origine", "ORIGINAL_QUANTITY": "Quantité d’origine", "NO_LINES_AVAILABLE": "Toutes les lignes de la facture d’origine sont déjà incluses.", "QUANTITY_HINT": "Utilisez un point pour les décimales. La quantité ne peut pas dépasser la quantité d’origine restante." },
-      "REMOVE_LINE": { "TITLE": "Retirer cette ligne créditée ?", "DESCRIPTION": "« {{description}} » sera retirée du brouillon et ses totaux seront actualisés." },
+      "NUMBER": "Avoir n° {{number}}",
+      "SOURCE_NUMBER": "Facture d’origine n° {{number}}",
+      "DRAFT_TITLE": "Brouillon d’avoir",
+      "STATUS": {
+        "DRAFT": "Brouillon",
+        "ISSUED": "Émis"
+      },
+      "ACTIONS": {
+        "CREATE": "Créer un avoir",
+        "BACK_TO_INVOICE": "Retour à la facture",
+        "EDIT_REASON": "Modifier le motif",
+        "ADD_LINE": "Ajouter une ligne de facture",
+        "EDIT_LINE": "Modifier la quantité",
+        "REMOVE_LINE": "Retirer la ligne",
+        "ISSUE": "Émettre l’avoir"
+      },
+      "LIST": {
+        "TITLE": "Avoirs",
+        "DESCRIPTION": "Consultez les avoirs liés à cette facture émise.",
+        "LOADING": "Chargement des avoirs…",
+        "EMPTY_TITLE": "Aucun avoir",
+        "EMPTY_DESCRIPTION": "Aucun avoir n’a été préparé pour cette facture.",
+        "PAGINATION": "Pagination des avoirs",
+        "PAGE_SIZE": "Jusqu’à {{count}} avoirs par page"
+      },
+      "TABLE": {
+        "CREDIT_NOTE": "Avoir"
+      },
+      "DETAIL": {
+        "EYEBROW": "Ventes · Avoir",
+        "TITLE": "Avoir",
+        "SUBTITLE": "Préparez ou consultez un avoir rattaché à la facture d’origine.",
+        "LOADING": "Chargement de l’avoir…",
+        "DRAFT_NOTICE": "Cet avoir est un brouillon modifiable. Il ne reçoit un numéro officiel qu’à son émission.",
+        "ISSUED_NOTICE": "Cet avoir a été émis et ses informations commerciales ne peuvent plus être modifiées."
+      },
+      "SOURCE": {
+        "TITLE": "Facture d’origine",
+        "DESCRIPTION": "Le client, la devise, les prix et le traitement des taxes proviennent de la facture d’origine émise."
+      },
+      "FIELDS": {
+        "SOURCE_INVOICE": "Facture d’origine",
+        "ORIGINAL_INVOICE": "Facture d’origine",
+        "CUSTOMER": "Client",
+        "NO_CUSTOMER": "Sans client",
+        "CURRENCY": "Devise",
+        "STATUS": "Statut",
+        "DATE": "Date",
+        "ISSUE_DATE": "Date de l’avoir",
+        "REASON": "Motif",
+        "DESCRIPTION": "Description",
+        "QUANTITY": "Quantité créditée",
+        "LINE_COUNT": "Lignes",
+        "UNIT_PRICE": "Prix unitaire",
+        "SUBTOTAL": "Sous-total",
+        "TAX": "Taxe",
+        "TOTAL": "Total",
+        "BALANCE_DUE": "Reste à payer actuel"
+      },
+      "REASON": {
+        "TITLE": "Motif",
+        "EMPTY": "Aucun motif n’a encore été renseigné."
+      },
+      "LINES": {
+        "TITLE": "Lignes créditées",
+        "DESCRIPTION": "Les lignes sont sélectionnées uniquement depuis la facture d’origine émise ; les montants sont calculés par le service.",
+        "EMPTY_TITLE": "Aucune ligne créditée",
+        "EMPTY_DESCRIPTION": "Ajoutez au moins une ligne de la facture d’origine avant l’émission."
+      },
+      "TOTALS": {
+        "TITLE": "Totaux de l’avoir",
+        "AUTHORITATIVE": "Ces montants sont les valeurs de référence renvoyées par le service."
+      },
+      "DOCUMENT": {
+        "TITLE": "Document PDF",
+        "LOADING": "Vérification du document PDF…",
+        "NOT_GENERATED_TITLE": "Document PDF non généré",
+        "NOT_GENERATED_DESCRIPTION": "Le document PDF de cet avoir n’a pas encore été généré.",
+        "GENERATING": "Génération du PDF…",
+        "AVAILABLE": "PDF disponible",
+        "AVAILABLE_DESCRIPTION": "Il s’agit de la représentation PDF de l’avoir émis.",
+        "GENERATED_AT": "Généré le {{generatedAt}}",
+        "ACTIONS": {
+          "GENERATE": "Générer le PDF",
+          "RETRY_GENERATION": "Relancer la génération",
+          "OPEN": "Ouvrir le PDF dans un nouvel onglet",
+          "DOWNLOAD": "Télécharger",
+          "PRINT": "Imprimer"
+        },
+        "NOTIFICATIONS": {
+          "READY": "Le PDF de l’avoir est disponible."
+        },
+        "ERRORS": {
+          "UNAVAILABLE": "Le document PDF est indisponible pour le moment.",
+          "GENERATION_FAILED": "Le PDF de l’avoir n’a pas pu être généré. Réessayez.",
+          "INTEGRITY": "Le PDF est indisponible car son intégrité n’a pas pu être vérifiée. Relancez sa génération ou contactez un administrateur.",
+          "SECURE_LINK_FAILED": "Un lien sécurisé vers le PDF n’a pas pu être créé. Réessayez."
+        }
+      },
+      "REASON_DIALOG": {
+        "TITLE": "Motif de l’avoir",
+        "SUBTITLE": "Précisez le retour, la réduction ou l’autre motif commercial.",
+        "HINT": "Obligatoire avant l’émission ; 1 000 caractères maximum."
+      },
+      "LINE_DIALOG": {
+        "ADD_TITLE": "Ajouter une ligne de facture",
+        "EDIT_TITLE": "Modifier la quantité créditée",
+        "SUBTITLE": "Sélectionnez une ligne de la facture d’origine puis saisissez uniquement la quantité à créditer.",
+        "SOURCE_LABEL": "Ligne de la facture d’origine",
+        "ORIGINAL_QUANTITY": "Quantité d’origine",
+        "NO_LINES_AVAILABLE": "Toutes les lignes de la facture d’origine sont déjà incluses.",
+        "QUANTITY_HINT": "Utilisez un point pour les décimales. La quantité ne peut pas dépasser la quantité d’origine restante."
+      },
+      "REMOVE_LINE": {
+        "TITLE": "Retirer cette ligne créditée ?",
+        "DESCRIPTION": "« {{description}} » sera retirée du brouillon et ses totaux seront actualisés."
+      },
       "ISSUE_SETTLEMENT_EFFECT": "L’émission de cet avoir réduit le reste à payer de la facture selon le total de référence de l’avoir.",
-      "ISSUE": { "TITLE": "Émettre cet avoir ?", "SUBTITLE": "Vérifiez l’avoir et le reste à payer actuel avant l’émission.", "IMMUTABLE_TITLE": "L’émission est irréversible.", "IMMUTABLE_DESCRIPTION": "Le numéro, la date, le motif, les lignes et les montants deviennent non modifiables après émission. Cette action n’enregistre ni paiement ni remboursement.", "RETRY_SAME_ATTEMPT": "La nouvelle tentative réutilise exactement la même demande afin que le crédit ne soit pas appliqué deux fois.", "ERRORS": { "INVALID_DATE": "Saisissez une date d’avoir valide.", "AMBIGUOUS": "Le résultat de l’émission n’a pas pu être confirmé.", "FAILED": "L’avoir n’a pas pu être émis.", "VERSION_CONFLICT": "Ce brouillon a été modifié entre-temps. Sa dernière version a été chargée ; vérifiez-la avant l’émission.", "SETTLEMENT_CONFLICT": "Le règlement de la facture a été modifié entre-temps. Le dernier solde a été chargé ; vérifiez-le avant l’émission.", "EXCEEDS_BALANCE": "Le total de l’avoir dépasse le reste à payer actuel.", "ALREADY_SETTLED": "Cette facture est déjà entièrement réglée et ne peut pas recevoir d’avoir.", "IDEMPOTENCY_REUSED": "Cette tentative d’émission ne peut pas continuer. Vérifiez les informations actualisées avant de recommencer." } },
-      "NOTIFICATIONS": { "CREATED": "Brouillon d’avoir créé.", "UPDATED": "Avoir mis à jour.", "LINE_ADDED": "Ligne d’origine ajoutée.", "LINE_UPDATED": "Quantité créditée mise à jour.", "LINE_REMOVED": "Ligne créditée retirée.", "ISSUED": "Avoir émis avec succès." },
-      "ERRORS": { "LOAD_FAILED": "Les avoirs n’ont pas pu être chargés.", "DETAIL_FAILED": "Cet avoir n’a pas pu être chargé.", "CREATE_FAILED": "Le brouillon d’avoir n’a pas pu être créé.", "UPDATE_FAILED": "L’avoir n’a pas pu être mis à jour.", "LINE_ADD_FAILED": "La ligne d’origine n’a pas pu être ajoutée.", "LINE_UPDATE_FAILED": "La quantité créditée n’a pas pu être mise à jour.", "LINE_REMOVE_FAILED": "La ligne créditée n’a pas pu être retirée.", "VERSION_CONFLICT": "Ce brouillon a été modifié entre-temps. Les dernières informations ont été chargées ; vérifiez-les avant de réessayer.", "QUANTITY_INVALID": "Saisissez une quantité supérieure à zéro avec au plus 6 décimales.", "SOURCE_REQUIRED": "Sélectionnez une ligne de la facture d’origine.", "DUPLICATE_LINE": "Cette ligne de la facture d’origine est déjà incluse.", "QUANTITY_EXCEEDS_SOURCE": "La quantité créditée dépasse celle de la ligne d’origine.", "QUANTITY_EXCEEDS_REMAINING": "La quantité totale créditée pour cette ligne dépasserait sa quantité d’origine.", "SOURCE_LINE_NOT_FOUND": "Cette ligne de la facture d’origine n’est plus disponible.", "MAX_LINES": "Un avoir ne peut pas contenir plus de 100 lignes.", "EXCEEDS_BALANCE": "L’avoir dépasserait le reste à payer actuel.", "ALREADY_SETTLED": "Cette facture est déjà entièrement réglée." }
+      "ISSUE": {
+        "TITLE": "Émettre cet avoir ?",
+        "SUBTITLE": "Vérifiez l’avoir et le reste à payer actuel avant l’émission.",
+        "IMMUTABLE_TITLE": "L’émission est irréversible.",
+        "IMMUTABLE_DESCRIPTION": "Le numéro, la date, le motif, les lignes et les montants deviennent non modifiables après émission. Cette action n’enregistre ni paiement ni remboursement.",
+        "RETRY_SAME_ATTEMPT": "La nouvelle tentative réutilise exactement la même demande afin que le crédit ne soit pas appliqué deux fois.",
+        "ERRORS": {
+          "INVALID_DATE": "Saisissez une date d’avoir valide.",
+          "AMBIGUOUS": "Le résultat de l’émission n’a pas pu être confirmé.",
+          "FAILED": "L’avoir n’a pas pu être émis.",
+          "VERSION_CONFLICT": "Ce brouillon a été modifié entre-temps. Sa dernière version a été chargée ; vérifiez-la avant l’émission.",
+          "SETTLEMENT_CONFLICT": "Le règlement de la facture a été modifié entre-temps. Le dernier solde a été chargé ; vérifiez-le avant l’émission.",
+          "EXCEEDS_BALANCE": "Le total de l’avoir dépasse le reste à payer actuel.",
+          "ALREADY_SETTLED": "Cette facture est déjà entièrement réglée et ne peut pas recevoir d’avoir.",
+          "IDEMPOTENCY_REUSED": "Cette tentative d’émission ne peut pas continuer. Vérifiez les informations actualisées avant de recommencer."
+        }
+      },
+      "NOTIFICATIONS": {
+        "CREATED": "Brouillon d’avoir créé.",
+        "UPDATED": "Avoir mis à jour.",
+        "LINE_ADDED": "Ligne d’origine ajoutée.",
+        "LINE_UPDATED": "Quantité créditée mise à jour.",
+        "LINE_REMOVED": "Ligne créditée retirée.",
+        "ISSUED": "Avoir émis avec succès."
+      },
+      "ERRORS": {
+        "LOAD_FAILED": "Les avoirs n’ont pas pu être chargés.",
+        "DETAIL_FAILED": "Cet avoir n’a pas pu être chargé.",
+        "CREATE_FAILED": "Le brouillon d’avoir n’a pas pu être créé.",
+        "UPDATE_FAILED": "L’avoir n’a pas pu être mis à jour.",
+        "LINE_ADD_FAILED": "La ligne d’origine n’a pas pu être ajoutée.",
+        "LINE_UPDATE_FAILED": "La quantité créditée n’a pas pu être mise à jour.",
+        "LINE_REMOVE_FAILED": "La ligne créditée n’a pas pu être retirée.",
+        "VERSION_CONFLICT": "Ce brouillon a été modifié entre-temps. Les dernières informations ont été chargées ; vérifiez-les avant de réessayer.",
+        "QUANTITY_INVALID": "Saisissez une quantité supérieure à zéro avec au plus 6 décimales.",
+        "SOURCE_REQUIRED": "Sélectionnez une ligne de la facture d’origine.",
+        "DUPLICATE_LINE": "Cette ligne de la facture d’origine est déjà incluse.",
+        "QUANTITY_EXCEEDS_SOURCE": "La quantité créditée dépasse celle de la ligne d’origine.",
+        "QUANTITY_EXCEEDS_REMAINING": "La quantité totale créditée pour cette ligne dépasserait sa quantité d’origine.",
+        "SOURCE_LINE_NOT_FOUND": "Cette ligne de la facture d’origine n’est plus disponible.",
+        "MAX_LINES": "Un avoir ne peut pas contenir plus de 100 lignes.",
+        "EXCEEDS_BALANCE": "L’avoir dépasserait le reste à payer actuel.",
+        "ALREADY_SETTLED": "Cette facture est déjà entièrement réglée."
+      }
+    },
+    "DASHBOARD": {
+      "TITLE": "Tableau de bord",
+      "DESCRIPTION": "Retrouvez vos clients, votre catalogue et vos factures.",
+      "CUSTOMERS": "Gérez vos clients et leurs coordonnées.",
+      "ITEMS": "Organisez vos articles et services.",
+      "INVOICES": "Consultez et préparez vos factures."
     }
   },
   "PUBLIC": {
@@ -3712,16 +4266,16 @@
     "UI": {
       "NAV": {
         "LABEL": "Navigation Liass-Resto",
-        "OVERVIEW": "Vue d’ensemble",
+        "OVERVIEW": "Tableau de bord",
         "SETUP": "Configuration du restaurant",
         "MENU": "Carte"
       },
       "KINDS": {
         "restaurant": "Restaurant",
         "outlet": "Établissements",
-        "area": "Salles et terrasses",
+        "area": "Espaces de restauration",
         "table": "Tables",
-        "station": "Cuisine et bar",
+        "station": "Postes de préparation",
         "menu": "Carte",
         "category": "Catégories",
         "item": "Articles"
@@ -3823,6 +4377,82 @@
       "LATEST": "Nom actualisé : {{name}}",
       "TOGGLE_AVAILABILITY": "Changer la disponibilité de {{name}}",
       "SITE_COUNTS": "Configuration de {{name}}"
+    },
+    "UX": {
+      "CONFIGURATION": "Configuration",
+      "PAGES": {
+        "overview": {
+          "TITLE": "Tableau de bord",
+          "DESCRIPTION": "Retrouvez la configuration de votre restaurant et de sa carte."
+        },
+        "restaurant": {
+          "TITLE": "Configuration du restaurant",
+          "DESCRIPTION": "Gérez l’identité du restaurant et les préférences de commande des clients."
+        },
+        "outlet": {
+          "TITLE": "Établissements",
+          "DESCRIPTION": "Gérez les établissements qui accueillent vos clients."
+        },
+        "area": {
+          "TITLE": "Espaces de restauration",
+          "DESCRIPTION": "Organisez les espaces de restauration de l’établissement sélectionné."
+        },
+        "table": {
+          "TITLE": "Tables",
+          "DESCRIPTION": "Gérez les codes, capacités et identités QR des tables de chaque espace."
+        },
+        "station": {
+          "TITLE": "Postes de cuisine et de bar",
+          "DESCRIPTION": "Configurez les postes de préparation de l’établissement sélectionné."
+        },
+        "menu": {
+          "TITLE": "Carte",
+          "DESCRIPTION": "Organisez les catégories et les articles de l’établissement sélectionné."
+        }
+      },
+      "ADD": {
+        "outlet": "Ajouter un établissement",
+        "area": "Ajouter un espace",
+        "table": "Ajouter une table",
+        "station": "Ajouter un poste",
+        "item": "Ajouter un article"
+      },
+      "NAV": {
+        "restaurant": "Restaurant",
+        "outlet": "Établissements",
+        "area": "Espaces de restauration",
+        "table": "Tables",
+        "station": "Postes de préparation",
+        "menu": "Menu",
+        "MENU_SECTION": "Carte",
+        "overview": "Tableau de bord"
+      },
+      "EMPTY": {
+        "outlet": {
+          "TITLE": "Aucun établissement",
+          "DESCRIPTION": "Ajoutez votre premier établissement pour commencer à configurer ses espaces, ses tables et ses postes de préparation."
+        },
+        "area": {
+          "TITLE": "Aucun espace de restauration",
+          "DESCRIPTION": "Ajoutez un premier espace de restauration à cet établissement pour y organiser vos tables."
+        },
+        "table": {
+          "TITLE": "Aucune table",
+          "DESCRIPTION": "Ajoutez les premières tables de cet espace et renseignez leur capacité."
+        },
+        "station": {
+          "TITLE": "Aucun poste de préparation",
+          "DESCRIPTION": "Ajoutez un premier poste pour organiser la préparation dans cet établissement."
+        },
+        "category": {
+          "TITLE": "Aucune catégorie",
+          "DESCRIPTION": "Ajoutez une première catégorie pour organiser les articles du menu."
+        },
+        "item": {
+          "TITLE": "Aucun article",
+          "DESCRIPTION": "Ajoutez un premier article à cette catégorie pour compléter votre menu."
+        }
+      }
     }
   }
 }

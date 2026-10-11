@@ -25,6 +25,7 @@ export type AppPage =
   | 'accounting.chartOfAccounts'
   | 'projects'
   | 'treasury'
+  | 'sales.dashboard'
   | 'sales.customers'
   | 'sales.items'
   | 'sales.invoices'
@@ -86,7 +87,7 @@ const initialState: UiState = {
   currentPage: 'dashboard',
   sidebarCollapsed: readStoredSidebarCollapsed(),
   sidebarOpen: false,
-  themeMode: readStoredThemeMode()
+  themeMode: readStoredThemeMode(),
 };
 
 export const UiStore = signalStore(
@@ -127,7 +128,7 @@ export const UiStore = signalStore(
         const sidebarCollapsed = !store.sidebarCollapsed();
         persistSidebarCollapsed(sidebarCollapsed);
         patchState(store, { sidebarCollapsed });
-      }
+      },
     };
-  })
+  }),
 );

@@ -1,4 +1,13 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
+import { ProductAccessState } from '../../../core/product-access/product-access.state';
+import {
+  ShellProductNavigation,
+  type ShellProduct,
+} from '../../../core/navigation/product-navigation';
+import type { WorkspaceSummary } from '@liass-ohada/shared';
+
+import { Component, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
@@ -19,13 +28,21 @@ import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
     LiassDropdownComponent,
     LiassLogoComponent,
     MatIconModule,
+    MatButtonModule,
+    MatMenuModule,
     MatTooltipModule,
     RouterLink,
-    TranslocoModule
+    TranslocoModule,
   ],
-  templateUrl: './app-topbar.component.html'
+  templateUrl: './app-topbar.component.html',
 })
 export class AppTopbarComponent implements OnInit {
+  protected readonly productNavigation = inject(ShellProductNavigation);
+  private readonly workspaceSwitching = signal(false);
+  private readonly productAccess = inject(ProductAccessState);
+  protected readonly workspaces = computed(() =>
+    this.authStore.workspaces().filter((workspace) => workspace.accessSource !== 'CABINET'),
+  );
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
@@ -49,20 +66,16 @@ export class AppTopbarComponent implements OnInit {
     return this.authStore.activeDossierDisplayName();
   });
   protected readonly showActiveDossier = computed(
-    () => this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM'
+    () => this.authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM',
   );
   protected readonly showFiscalYearSelector = computed(() =>
-    this.uiStore.currentPage().startsWith('accounting.')
+    this.uiStore.currentPage().startsWith('accounting.'),
   );
   protected readonly sidebarToggleLabelKey = computed(() =>
-    this.uiStore.sidebarCollapsed() ? 'SHELL.SIDEBAR.EXPAND' : 'SHELL.SIDEBAR.COLLAPSE'
+    this.uiStore.sidebarCollapsed() ? 'SHELL.SIDEBAR.EXPAND' : 'SHELL.SIDEBAR.COLLAPSE',
   );
   protected readonly sidebarToggleIcon = computed(() =>
-    this.uiStore.sidebarOpen()
-      ? 'close'
-      : this.uiStore.sidebarCollapsed()
-        ? 'menu_open'
-        : 'menu'
+    this.uiStore.sidebarOpen() ? 'close' : this.uiStore.sidebarCollapsed() ? 'menu_open' : 'menu',
   );
   private readonly router = inject(Router);
   private readonly pendingChanges = inject(PendingChangesService);
@@ -72,6 +85,48 @@ export class AppTopbarComponent implements OnInit {
   protected userMenuOpen = false;
 
   protected readonly userLabel = computed(() => this.authStore.currentUserDisplayName());
+
+  constructor() {
+    effect(() => {
+      const product = this.productNavigation.routeProduct();
+      if (
+        !this.workspaceSwitching() &&
+        this.uiStore.currentPage() !== 'dashboard' &&
+        product &&
+        this.productAccess.availability(product) === 'UNAVAILABLE'
+      ) {
+        void this.router.navigateByUrl('/dashboard', { replaceUrl: true });
+      }
+    });
+  }
+
+  protected async selectProduct(product: ShellProduct): Promise<void> {
+    if (!this.productNavigation.products().some((candidate) => candidate.code === product.code))
+      return;
+    await this.router.navigateByUrl(product.route);
+    this.uiStore.closeSidebar();
+  }
+
+  protected async selectWorkspace(workspace: WorkspaceSummary): Promise<void> {
+    if (
+      workspace.orgId === this.authStore.activeOrgId() ||
+      this.authStore.workspaceLoading() ||
+      !this.workspaces().some((candidate) => candidate.orgId === workspace.orgId)
+    )
+      return;
+    if (!(await this.pendingChanges.confirmDeparture())) return;
+    this.cabinetMenuOpen = false;
+    this.workspaceSwitching.set(true);
+    try {
+      this.authStore.setTenant(workspace.orgId);
+      this.uiStore.closeSidebar();
+      await this.router.navigateByUrl(
+        workspace.workspaceType === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard',
+      );
+    } finally {
+      this.workspaceSwitching.set(false);
+    }
+  }
 
   async ngOnInit(): Promise<void> {
     if (this.authStore.isAuthenticated() && !this.authStore.currentUserDisplayName()) {
@@ -123,12 +178,14 @@ export class AppTopbarComponent implements OnInit {
     }
 
     await this.router.navigate([
-      this.authStore.isCabinetContext() ? '/cabinet/dossiers' : '/cabinet/dossiers/select'
+      this.authStore.isCabinetContext() ? '/cabinet/dossiers' : '/cabinet/dossiers/select',
     ]);
   }
 
   protected selectFiscalYear(year: number): void {
-    const fiscalYear = this.fiscalYearContext.fiscalYears().find((candidate) => candidate.year === year);
+    const fiscalYear = this.fiscalYearContext
+      .fiscalYears()
+      .find((candidate) => candidate.year === year);
 
     if (fiscalYear) {
       this.fiscalYearContext.selectFiscalYear(fiscalYear);
@@ -156,7 +213,7 @@ export class AppTopbarComponent implements OnInit {
   protected async createCabinetDossier(): Promise<void> {
     this.cabinetMenuOpen = false;
     await this.router.navigate(['/cabinet/dossiers'], {
-      queryParams: { createDossier: '1' }
+      queryParams: { createDossier: '1' },
     });
   }
 }

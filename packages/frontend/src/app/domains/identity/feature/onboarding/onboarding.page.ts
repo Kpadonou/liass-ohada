@@ -1,12 +1,14 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ElementRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { Router } from '@angular/router';
-import type { CreateInitialWorkspaceRequest } from '@liass-ohada/shared/shared';
+import { CreateInitialWorkspaceRequestSchema, type ProductCode } from '@liass-ohada/shared/shared';
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { productAccessQueryKeys } from '../../../../core/product-access/product-access.queries';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -27,32 +29,8 @@ type OnboardingErrorKey =
   | 'IDENTITY.ONBOARDING.ERRORS.NETWORK'
   | 'IDENTITY.ONBOARDING.ERRORS.SERVER'
   | 'IDENTITY.ONBOARDING.ERRORS.VALIDATION';
-type OnboardingStep = 'intent' | 'organization' | 'configuration';
-type AvailableOnboardingIntent = 'ACCOUNTING' | 'ACCOUNTING_FIRM';
-type OnboardingIntent = AvailableOnboardingIntent | 'BENIN_INVOICING';
-type WorkspaceType = 'ACCOUNTING_FIRM' | 'COMPANY';
-
-type OnboardingIntentOption =
-  | {
-      id: AvailableOnboardingIntent;
-      icon: string;
-      available: true;
-      titleKey: string;
-      descriptionKey: string;
-    }
-  | {
-      id: Exclude<OnboardingIntent, AvailableOnboardingIntent>;
-      icon: string;
-      available: false;
-      titleKey: string;
-      descriptionKey: string;
-      brandKey: string;
-    };
-
-const WORKSPACE_TYPE_BY_INTENT: Record<AvailableOnboardingIntent, WorkspaceType> = {
-  ACCOUNTING: 'COMPANY',
-  ACCOUNTING_FIRM: 'ACCOUNTING_FIRM'
-};
+type OnboardingStep = 'intent' | 'organization' | 'products' | 'configuration' | 'review';
+type AvailableOnboardingIntent = 'COMPANY' | 'ACCOUNTING_FIRM';
 
 @Component({
   selector: 'liass-onboarding-page',
@@ -74,6 +52,9 @@ export class OnboardingPage implements OnInit {
   private readonly formBuilder = inject(FormBuilder);
   private readonly onboardingApi = inject(OnboardingApi);
   private readonly router = inject(Router);
+  private readonly queryClient = inject(QueryClient);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly stepHeading = viewChild<ElementRef<HTMLElement>>('stepHeading');
 
   protected readonly currentStep = signal<OnboardingStep>('intent');
   protected readonly onboardingErrorKey = signal<OnboardingErrorKey | null>(null);
@@ -83,42 +64,83 @@ export class OnboardingPage implements OnInit {
 
   protected readonly countryOptions = ohadaCountryOptions;
   protected readonly frameworkOptions = accountingFrameworkOptions;
-  protected readonly intentOptions: readonly OnboardingIntentOption[] = [
+  protected readonly intentOptions = [
     {
-      id: 'ACCOUNTING',
-      icon: 'account_balance',
-      available: true,
-      titleKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING.TITLE',
-      descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING.DESCRIPTION'
+      id: 'COMPANY' as const,
+      icon: 'business',
+      titleKey: 'IDENTITY.ONBOARDING.INTENTS.COMPANY.TITLE',
+      descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.COMPANY.DESCRIPTION'
     },
     {
-      id: 'BENIN_INVOICING',
-      icon: 'receipt_long',
-      available: false,
-      brandKey: 'IDENTITY.ONBOARDING.INTENTS.BENIN_INVOICING.BRAND',
-      titleKey: 'IDENTITY.ONBOARDING.INTENTS.BENIN_INVOICING.TITLE',
-      descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.BENIN_INVOICING.DESCRIPTION'
-    },
-    {
-      id: 'ACCOUNTING_FIRM',
+      id: 'ACCOUNTING_FIRM' as const,
       icon: 'groups',
-      available: true,
       titleKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING_FIRM.TITLE',
       descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING_FIRM.DESCRIPTION'
     }
   ];
-
-  protected readonly stepNumber = computed(() => {
-    switch (this.currentStep()) {
-      case 'intent':
-        return 1;
-      case 'organization':
-        return 2;
-      case 'configuration':
-        return 3;
+  protected readonly productOptions: readonly {
+    code: ProductCode;
+    icon: string;
+    titleKey: string;
+    descriptionKey: string;
+  }[] = [
+    {
+      code: 'ACCOUNTING',
+      icon: 'account_balance',
+      titleKey: 'IDENTITY.ONBOARDING.PRODUCTS.ACCOUNTING.TITLE',
+      descriptionKey: 'IDENTITY.ONBOARDING.PRODUCTS.ACCOUNTING.DESCRIPTION'
+    },
+    {
+      code: 'SALES',
+      icon: 'receipt_long',
+      titleKey: 'IDENTITY.ONBOARDING.PRODUCTS.SALES.TITLE',
+      descriptionKey: 'IDENTITY.ONBOARDING.PRODUCTS.SALES.DESCRIPTION'
+    },
+    {
+      code: 'RESTAURANTS',
+      icon: 'restaurant',
+      titleKey: 'IDENTITY.ONBOARDING.PRODUCTS.RESTAURANTS.TITLE',
+      descriptionKey: 'IDENTITY.ONBOARDING.PRODUCTS.RESTAURANTS.DESCRIPTION'
     }
-  });
+  ];
+  protected readonly selectedProducts = signal<readonly ProductCode[]>([]);
+  protected readonly productsTouched = signal(false);
   protected readonly isAccountingFirm = computed(() => this.selectedIntent() === 'ACCOUNTING_FIRM');
+  protected readonly requiresAccounting = computed(
+    () => this.isAccountingFirm() || this.selectedProducts().includes('ACCOUNTING')
+  );
+  protected readonly steps = computed<OnboardingStep[]>(() => [
+    'intent',
+    'organization',
+    ...(this.isAccountingFirm() ? [] : ['products' as const]),
+    ...(this.requiresAccounting() ? ['configuration' as const] : []),
+    'review'
+  ]);
+  protected readonly stepNumber = computed(() => this.steps().indexOf(this.currentStep()) + 1);
+  protected readonly reviewProducts = computed(() =>
+    this.productOptions.filter((option) =>
+      this.isAccountingFirm()
+        ? option.code === 'ACCOUNTING'
+        : this.selectedProducts().includes(option.code)
+    )
+  );
+  protected stepLabelKey(step: OnboardingStep): string {
+    return `IDENTITY.ONBOARDING.STEPS.${step.toUpperCase()}`;
+  }
+  protected countryLabelKey(): string {
+    return (
+      this.countryOptions.find((option) => option.value === this.form.controls.country.value)
+        ?.labelKey ?? 'IDENTITY.ONBOARDING.FIELDS.COUNTRY'
+    );
+  }
+  protected frameworkLabelKey(): string {
+    return (
+      this.frameworkOptions.find(
+        (option) => option.value === this.form.controls.accountingFramework.value
+      )?.labelKey ?? 'IDENTITY.ONBOARDING.FIELDS.ACCOUNTING_FRAMEWORK'
+    );
+  }
+
   protected readonly organizationHeadingKey = computed(() =>
     this.isAccountingFirm()
       ? 'IDENTITY.ONBOARDING.ORGANIZATION.CABINET_TITLE'
@@ -152,9 +174,12 @@ export class OnboardingPage implements OnInit {
 
   protected readonly form = this.formBuilder.nonNullable.group({
     workspaceType: ['', [Validators.required]],
-    organizationName: ['', [Validators.required]],
+    organizationName: [
+      '',
+      [Validators.required, Validators.maxLength(160), Validators.pattern(/\S/)]
+    ],
     country: ['BJ', [Validators.required]],
-    accountingFramework: ['', [Validators.required]]
+    accountingFramework: ['']
   });
 
   async ngOnInit(): Promise<void> {
@@ -169,14 +194,18 @@ export class OnboardingPage implements OnInit {
   }
 
   protected selectIntent(intent: AvailableOnboardingIntent): void {
+    if (this.submitting()) return;
     if (this.selectedIntent() !== intent) {
+      this.selectedProducts.set([]);
+      this.productsTouched.set(false);
       this.form.controls.accountingFramework.reset('');
     }
 
     this.selectedIntent.set(intent);
-    this.form.controls.workspaceType.setValue(WORKSPACE_TYPE_BY_INTENT[intent]);
+    this.form.controls.workspaceType.setValue(intent);
     this.form.controls.workspaceType.markAsTouched();
     this.intentTouched.set(true);
+    this.syncAccountingValidation();
     this.onboardingErrorKey.set(null);
   }
 
@@ -184,10 +213,11 @@ export class OnboardingPage implements OnInit {
     this.intentTouched.set(true);
 
     if (!this.selectedIntent()) {
+      this.focusInvalid();
       return;
     }
 
-    this.currentStep.set('organization');
+    this.moveTo('organization');
   }
 
   protected continueFromOrganization(): void {
@@ -195,56 +225,130 @@ export class OnboardingPage implements OnInit {
     this.form.controls.country.markAsTouched();
 
     if (this.form.controls.organizationName.invalid || this.form.controls.country.invalid) {
+      this.focusInvalid();
       return;
     }
 
-    this.currentStep.set('configuration');
+    this.moveTo(this.isAccountingFirm() ? 'configuration' : 'products');
+  }
+
+  protected toggleProduct(product: ProductCode): void {
+    if (this.submitting()) return;
+    const current = this.selectedProducts();
+    this.selectedProducts.set(
+      this.productOptions
+        .filter((option) =>
+          option.code === product ? !current.includes(product) : current.includes(option.code)
+        )
+        .map((option) => option.code)
+    );
+    this.productsTouched.set(true);
+    this.syncAccountingValidation();
+  }
+
+  protected continueFromProducts(): void {
+    this.productsTouched.set(true);
+    if (!this.selectedProducts().length) {
+      this.focusInvalid();
+      return;
+    }
+    this.moveTo(this.requiresAccounting() ? 'configuration' : 'review');
+  }
+
+  protected continueFromConfiguration(): void {
+    this.form.controls.accountingFramework.markAsTouched();
+    if (this.form.controls.accountingFramework.invalid) {
+      this.focusInvalid();
+      return;
+    }
+    this.moveTo('review');
   }
 
   protected back(): void {
-    this.onboardingErrorKey.set(null);
+    if (this.submitting()) return;
+    const steps = this.steps();
+    this.moveTo(steps[Math.max(0, steps.indexOf(this.currentStep()) - 1)]);
+  }
 
-    if (this.currentStep() === 'configuration') {
-      this.currentStep.set('organization');
-      return;
+  private syncAccountingValidation(): void {
+    const framework = this.form.controls.accountingFramework;
+    if (this.requiresAccounting()) framework.setValidators(Validators.required);
+    else {
+      framework.clearValidators();
+      framework.reset('');
     }
+    framework.updateValueAndValidity();
+  }
 
-    this.currentStep.set('intent');
+  private moveTo(step: OnboardingStep): void {
+    this.onboardingErrorKey.set(null);
+    this.currentStep.set(step);
+    // Focus after Angular has rendered the next step; never steal focus during creation.
+    setTimeout(() => this.stepHeading()?.nativeElement.focus());
+  }
+
+  private focusInvalid(): void {
+    setTimeout(() =>
+      this.element.nativeElement
+        .querySelector<HTMLElement>(
+          'input.ng-invalid, mat-select.ng-invalid, button[aria-describedby="products-error"], button[aria-describedby="intent-error"]'
+        )
+        ?.focus()
+    );
   }
 
   protected async submitOnboarding(): Promise<void> {
     this.form.markAllAsTouched();
     this.onboardingErrorKey.set(null);
 
-    if (this.form.invalid || this.submitting() || this.currentStep() !== 'configuration') {
+    if (this.form.invalid || this.submitting() || this.currentStep() !== 'review') {
       return;
     }
 
+    if (!this.isAccountingFirm() && !this.selectedProducts().length) {
+      this.moveTo('products');
+      this.productsTouched.set(true);
+      return;
+    }
     const rawValue = this.form.getRawValue();
-    const request: CreateInitialWorkspaceRequest = {
-      ...(rawValue.workspaceType === 'COMPANY'
-        ? { workspaceType: 'COMPANY' as const, products: ['ACCOUNTING' as const] }
-        : { workspaceType: 'ACCOUNTING_FIRM' as const }),
+    const request = CreateInitialWorkspaceRequestSchema.safeParse({
+      workspaceType: rawValue.workspaceType,
       organizationName: rawValue.organizationName,
-      country: rawValue.country as CreateInitialWorkspaceRequest['country'],
-      accountingFramework: rawValue.accountingFramework as NonNullable<
-        CreateInitialWorkspaceRequest['accountingFramework']
-      >
-    };
+      country: rawValue.country,
+      ...(!this.isAccountingFirm() ? { products: [...this.selectedProducts()] } : {}),
+      ...(this.requiresAccounting() ? { accountingFramework: rawValue.accountingFramework } : {})
+    });
+    if (!request.success) {
+      this.onboardingErrorKey.set('IDENTITY.ONBOARDING.ERRORS.VALIDATION');
+      return;
+    }
 
     this.submitting.set(true);
 
     try {
-      const result = await this.onboardingApi.createInitialWorkspace(request);
+      const result = await this.onboardingApi.createInitialWorkspace(request.data);
       const createdWorkspace: ActiveWorkspaceSummary = {
         ...result.workspace,
         cabinet: result.cabinet,
         organization: result.organization
       };
       this.authStore.setCreatedWorkspace(createdWorkspace, result.activeOrgId);
-      await this.router.navigate([this.authStore.workspaceDestination() ?? '/dashboard'], {
-        replaceUrl: true
-      });
+      const accessKey = productAccessQueryKeys.list(result.activeOrgId);
+      if (result.productAccess) this.queryClient.setQueryData(accessKey, result.productAccess);
+      else await this.queryClient.invalidateQueries({ queryKey: accessKey, exact: true });
+      const activeProducts =
+        result.productAccess
+          ?.filter((access) => access.status === 'ACTIVE')
+          .map((access) => access.productCode) ?? [];
+      const destination =
+        result.workspace.workspaceType === 'ACCOUNTING_FIRM'
+          ? '/cabinet/dashboard'
+          : activeProducts.length === 1 && activeProducts[0] === 'RESTAURANTS'
+            ? '/restaurants'
+            : activeProducts.length === 1 && activeProducts[0] === 'SALES'
+              ? '/sales'
+              : '/dashboard';
+      await this.router.navigate([destination], { replaceUrl: true });
     } catch (error) {
       this.onboardingErrorKey.set(this.errorKeyFrom(error));
     } finally {

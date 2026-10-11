@@ -2,11 +2,11 @@
   class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#021f46] text-white shadow-[0_16px_40px_rgb(2_6_23/0.18)]"
 >
   <div
-    class="flex min-h-[var(--spacing-app-header)] items-center gap-2 px-3 py-1.5 sm:px-3.5 lg:px-4"
+    class="flex min-h-[var(--spacing-app-header)] flex-wrap items-center gap-2 px-3 py-1.5 sm:flex-nowrap sm:px-3.5 lg:px-4"
   >
     <div class="flex shrink-0 items-center gap-3 md:gap-4" data-testid="brand-menu-group">
       <a
-        class="liass-focus-ring hidden rounded-app-control md:inline-flex"
+        class="liass-focus-ring hidden rounded-app-control xl:inline-flex"
         routerLink="/dashboard"
         [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
       >
@@ -18,7 +18,7 @@
         />
       </a>
       <a
-        class="liass-focus-ring inline-flex rounded-app-control md:hidden"
+        class="liass-focus-ring inline-flex rounded-app-control xl:hidden"
         routerLink="/dashboard"
         [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
       >
@@ -37,107 +37,203 @@
       </button>
     </div>
 
-    @if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-      <liass-dropdown
-        [open]="cabinetMenuOpen"
-        width="md"
-        align="start"
-        (closed)="cabinetMenuOpen = false"
-      >
-        <button
-          liassDropdownTrigger
-          class="liass-focus-ring hidden h-9 min-w-0 max-w-[210px] shrink-0 items-center gap-1.5 rounded-app-control px-1.5 text-left text-sm font-semibold text-white/95 transition hover:bg-white/[0.06] sm:flex"
-          type="button"
-          data-testid="active-workspace"
-          aria-haspopup="menu"
-          [attr.aria-expanded]="cabinetMenuOpen"
-          [attr.aria-label]="'SHELL.TOPBAR.WORKSPACE_MENU_LABEL' | transloco"
-          (click)="toggleCabinetMenu()"
+    <div
+      class="order-3 flex w-full min-w-0 items-center gap-2 sm:order-none sm:w-auto sm:flex-1"
+      data-testid="shell-context-selectors"
+    >
+      @if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
+        <liass-dropdown
+          class="min-w-0 flex-1 sm:flex-initial"
+          [open]="cabinetMenuOpen"
+          width="md"
+          align="start"
+          (closed)="cabinetMenuOpen = false"
         >
-          <span class="inline-flex shrink-0 text-white/90">
-            <mat-icon>{{ activeWorkspaceIcon() }}</mat-icon>
-          </span>
-          <span class="min-w-0 truncate">
-            {{
+          <button
+            liassDropdownTrigger
+            class="liass-focus-ring flex h-9 min-w-0 max-w-[210px] items-center gap-1.5 rounded-app-control px-1.5 text-left text-sm font-semibold text-white/95 transition hover:bg-white/[0.06]"
+            type="button"
+            data-testid="active-workspace"
+            aria-haspopup="menu"
+            [attr.aria-expanded]="cabinetMenuOpen"
+            [attr.aria-label]="
+              ('SHELL.TOPBAR.WORKSPACE_MENU_LABEL' | transloco) + ': ' + activeWorkspaceLabel()
+            "
+            [matTooltip]="activeWorkspaceLabel() || ''"
+            (click)="toggleCabinetMenu()"
+          >
+            <span class="inline-flex shrink-0 text-white/90">
+              <mat-icon>{{ activeWorkspaceIcon() }}</mat-icon>
+            </span>
+            <span class="min-w-0 truncate">
+              {{
+                activeWorkspaceLabel() ||
+                  ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+                    ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
+                    : 'SHELL.TOPBAR.NO_WORKSPACE'
+                  ) | transloco)
+              }}
+            </span>
+            <mat-icon class="shrink-0 text-white/70">{{
+              cabinetMenuOpen ? 'expand_less' : 'expand_more'
+            }}</mat-icon>
+          </button>
+
+          <div class="border-b border-slate-100 px-2 pb-3 dark:border-slate-800">
+            <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">
+              {{
+                activeWorkspaceLabel() ||
+                  ((authStore.workspaceLoading() && authStore.hasActiveTenant()
+                    ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
+                    : 'SHELL.TOPBAR.NO_WORKSPACE'
+                  ) | transloco)
+              }}
+            </p>
+          </div>
+
+          <div class="pt-2">
+            <button
+              class="flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              type="button"
+              role="menuitem"
+              data-testid="cabinet-dashboard-menu-item"
+              (click)="navigateToCabinetDashboard()"
+            >
+              <mat-icon>dashboard</mat-icon>
+              <span>{{ 'SHELL.TOPBAR.CABINET_DASHBOARD' | transloco }}</span>
+            </button>
+            <button
+              class="mt-1 flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
+              type="button"
+              role="menuitem"
+              data-testid="cabinet-dossiers-menu-item"
+              (click)="navigateToCabinetDossiers()"
+            >
+              <mat-icon>folder_managed</mat-icon>
+              <span>{{ 'SHELL.TOPBAR.CLIENT_DOSSIERS' | transloco }}</span>
+            </button>
+            <button
+              class="mt-1 flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-200"
+              type="button"
+              role="menuitem"
+              data-testid="cabinet-new-dossier-menu-item"
+              (click)="createCabinetDossier()"
+            >
+              <mat-icon>add_business</mat-icon>
+              <span>{{ 'SHELL.TOPBAR.NEW_CLIENT_DOSSIER' | transloco }}</span>
+            </button>
+          </div>
+          @if (workspaces().length > 1) {
+            <div class="mt-2 border-t border-app-border pt-2">
+              @for (workspace of workspaces(); track workspace.orgId) {
+                <button
+                  type="button"
+                  role="menuitem"
+                  class="liass-focus-ring flex w-full items-center gap-2 rounded-app-control px-3 py-2 text-left text-sm text-app-text hover:bg-app-surface-hover"
+                  (click)="selectWorkspace(workspace)"
+                >
+                  <mat-icon aria-hidden="true">corporate_fare</mat-icon>
+                  <span class="truncate">{{
+                    workspace.displayName || ('SHELL.TOPBAR.WORKSPACE' | transloco)
+                  }}</span>
+                </button>
+              }
+            </div>
+          }
+        </liass-dropdown>
+      } @else {
+        <button
+          mat-button
+          class="!h-9 !min-w-0 !max-w-[210px] !px-1.5 !text-white/95"
+          data-testid="active-workspace"
+          [matMenuTriggerFor]="workspaceMenu"
+          [matTooltip]="activeWorkspaceLabel() || ''"
+          [attr.aria-label]="
+            ('SHELL.TOPBAR.WORKSPACE_MENU_LABEL' | transloco) +
+            ': ' +
+            (activeWorkspaceLabel() || ('SHELL.TOPBAR.NO_WORKSPACE' | transloco))
+          "
+        >
+          <span class="flex min-w-0 items-center gap-1.5">
+            <mat-icon class="shrink-0" aria-hidden="true">{{ activeWorkspaceIcon() }}</mat-icon>
+            <span class="min-w-0 truncate">{{
               activeWorkspaceLabel() ||
                 ((authStore.workspaceLoading() && authStore.hasActiveTenant()
                   ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
                   : 'SHELL.TOPBAR.NO_WORKSPACE'
                 ) | transloco)
-            }}
+            }}</span>
+            @if (workspaces().length > 1) {
+              <mat-icon class="shrink-0 text-white/55" aria-hidden="true">expand_more</mat-icon>
+            }
           </span>
-          <mat-icon class="shrink-0 text-white/70">{{
-            cabinetMenuOpen ? 'expand_less' : 'expand_more'
-          }}</mat-icon>
         </button>
-
-        <div class="border-b border-slate-100 px-2 pb-3 dark:border-slate-800">
-          <p class="truncate text-sm font-semibold text-slate-950 dark:text-white">
-            {{
-              activeWorkspaceLabel() ||
-                ((authStore.workspaceLoading() && authStore.hasActiveTenant()
-                  ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
-                  : 'SHELL.TOPBAR.NO_WORKSPACE'
-                ) | transloco)
-            }}
-          </p>
-        </div>
-
-        <div class="pt-2">
+      }
+      <mat-menu #workspaceMenu="matMenu">
+        @for (workspace of workspaces(); track workspace.orgId) {
           <button
-            class="flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-            type="button"
-            role="menuitem"
-            data-testid="cabinet-dashboard-menu-item"
-            (click)="navigateToCabinetDashboard()"
+            mat-menu-item
+            [attr.aria-current]="workspace.orgId === authStore.activeOrgId() ? 'true' : null"
+            (click)="selectWorkspace(workspace)"
           >
-            <mat-icon>dashboard</mat-icon>
-            <span>{{ 'SHELL.TOPBAR.CABINET_DASHBOARD' | transloco }}</span>
+            <mat-icon aria-hidden="true">corporate_fare</mat-icon>
+            <span>{{ workspace.displayName || ('SHELL.TOPBAR.WORKSPACE' | transloco) }}</span>
           </button>
+        }
+      </mat-menu>
+      @if (!authStore.isCabinetContext()) {
+        @if (productNavigation.activeProduct(); as product) {
+          <span class="h-5 shrink-0 border-l border-white/20" aria-hidden="true"></span>
+          @if (productNavigation.products().length > 1) {
+            <button
+              mat-button
+              class="!h-9 !min-w-0 !max-w-[180px] !px-1.5 !font-semibold !text-white"
+              data-testid="active-product"
+              [matMenuTriggerFor]="productMenu"
+              [matTooltip]="product.labelKey | transloco"
+              [attr.aria-label]="
+                ('SHELL.SIDEBAR.PRODUCTS' | transloco) + ': ' + (product.labelKey | transloco)
+              "
+            >
+              <span class="flex min-w-0 items-center gap-1.5">
+                <mat-icon class="shrink-0" aria-hidden="true">{{ product.icon }}</mat-icon>
+                <span class="min-w-0 truncate">{{ product.labelKey | transloco }}</span>
+                <mat-icon class="shrink-0 text-white/70" aria-hidden="true">expand_more</mat-icon>
+              </span>
+            </button>
+          } @else {
+            <button
+              mat-button
+              class="!h-9 !min-w-0 !max-w-[180px] !px-1.5 !font-semibold !text-white"
+              data-testid="active-product"
+              [matTooltip]="product.labelKey | transloco"
+              [attr.aria-label]="product.labelKey | transloco"
+              (click)="selectProduct(product)"
+            >
+              <span class="flex min-w-0 items-center gap-1.5">
+                <mat-icon class="shrink-0" aria-hidden="true">{{ product.icon }}</mat-icon>
+                <span class="min-w-0 truncate">{{ product.labelKey | transloco }}</span>
+              </span>
+            </button>
+          }
+        }
+      }
+      <mat-menu #productMenu="matMenu">
+        @for (product of productNavigation.products(); track product.code) {
           <button
-            class="mt-1 flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-            type="button"
-            role="menuitem"
-            data-testid="cabinet-dossiers-menu-item"
-            (click)="navigateToCabinetDossiers()"
+            mat-menu-item
+            [attr.aria-current]="
+              product.code === productNavigation.activeProduct()?.code ? 'true' : null
+            "
+            (click)="selectProduct(product)"
           >
-            <mat-icon>folder_managed</mat-icon>
-            <span>{{ 'SHELL.TOPBAR.CLIENT_DOSSIERS' | transloco }}</span>
+            <mat-icon aria-hidden="true">{{ product.icon }}</mat-icon>
+            {{ product.labelKey | transloco }}
           </button>
-          <button
-            class="mt-1 flex w-full items-center gap-3 rounded-app-control px-3 py-2 text-left text-sm font-semibold text-brand-700 transition hover:bg-brand-50 hover:text-brand-800 dark:text-brand-300 dark:hover:bg-brand-950/30 dark:hover:text-brand-200"
-            type="button"
-            role="menuitem"
-            data-testid="cabinet-new-dossier-menu-item"
-            (click)="createCabinetDossier()"
-          >
-            <mat-icon>add_business</mat-icon>
-            <span>{{ 'SHELL.TOPBAR.NEW_CLIENT_DOSSIER' | transloco }}</span>
-          </button>
-        </div>
-      </liass-dropdown>
-    } @else {
-      <div
-        class="hidden h-9 min-w-0 max-w-[210px] shrink-0 items-center gap-1.5 rounded-app-control px-1.5 text-sm font-semibold text-white/95 sm:flex"
-        data-testid="active-workspace"
-      >
-        <span class="inline-flex shrink-0 text-white/90">
-          <mat-icon>{{ activeWorkspaceIcon() }}</mat-icon>
-        </span>
-        <span class="min-w-0 truncate">
-          {{
-            activeWorkspaceLabel() ||
-              ((authStore.workspaceLoading() && authStore.hasActiveTenant()
-                ? 'SHELL.TOPBAR.WORKSPACE_LOADING'
-                : 'SHELL.TOPBAR.NO_WORKSPACE'
-              ) | transloco)
-          }}
-        </span>
-        <mat-icon class="shrink-0 text-white/55" aria-hidden="true">expand_more</mat-icon>
-      </div>
-    }
-
-    <div class="ml-auto flex min-w-0 items-center justify-end gap-2">
+        }
+      </mat-menu>
+    </div>
+    <div class="order-2 ml-auto flex shrink-0 min-w-0 sm:order-none items-center justify-end gap-2">
       @if (authStore.isAccountingReadOnly()) {
         <span
           class="hidden items-center gap-1.5 rounded-app-control border border-amber-300/30 bg-amber-300/15 px-2.5 py-1.5 text-xs font-semibold text-amber-100 sm:inline-flex"

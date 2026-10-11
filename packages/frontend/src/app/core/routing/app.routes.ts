@@ -1,3 +1,5 @@
+import { salesDashboardReadGuard } from '../../domains/sales/data-access/sales-dashboard-read.guard';
+import { restaurantSections } from '../navigation/product-navigation';
 import { Routes } from '@angular/router';
 import { productAccessGuard } from '../product-access/product-access.guard';
 
@@ -96,7 +98,9 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         loadComponent: () =>
-          import('../feature/dashboard/dashboard.page').then((module) => module.DashboardPage),
+          import('../feature/dashboard/dashboard-entry.page').then(
+            (module) => module.DashboardEntryPage,
+          ),
       },
       {
         path: 'projects',
@@ -142,8 +146,16 @@ export const routes: Routes = [
           subtitleKey: 'RESTAURANTS.PAGE.SUBTITLE',
         },
         children: [
-          ...(['overview', 'setup', 'menu'] as const).map((restaurantPage) => ({
-            path: restaurantPage === 'overview' ? '' : restaurantPage,
+          ...[
+            { path: '', restaurantPage: 'overview', restaurantSection: 'restaurant' },
+            ...restaurantSections.map((section) => ({
+              path: section.path,
+              restaurantPage: 'setup',
+              restaurantSection: section.kind,
+            })),
+            { path: 'menu', restaurantPage: 'menu', restaurantSection: 'restaurant' },
+          ].map(({ path, restaurantPage, restaurantSection }) => ({
+            path,
             canActivate: [productAccessGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurants-workspace.page').then(
@@ -152,6 +164,7 @@ export const routes: Routes = [
             data: {
               productCode: 'RESTAURANTS',
               restaurantPage,
+              restaurantSection,
               titleKey: 'RESTAURANTS.PAGE.TITLE',
             },
           })),
@@ -163,7 +176,16 @@ export const routes: Routes = [
           {
             path: '',
             pathMatch: 'full',
-            redirectTo: 'customers',
+            loadComponent: () =>
+              import('../../domains/sales/feature/dashboard/sales-dashboard.page').then(
+                (module) => module.SalesDashboardPage,
+              ),
+            canActivate: [productAccessGuard, salesDashboardReadGuard],
+            data: {
+              productCode: 'SALES',
+              titleKey: 'SALES.DASHBOARD.TITLE',
+              subtitleKey: 'SALES.DASHBOARD.DESCRIPTION',
+            },
           },
           {
             path: 'customers',

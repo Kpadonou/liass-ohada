@@ -1,4 +1,9 @@
+import { provideLocationMocks } from '@angular/common/testing';
+import { Component } from '@angular/core';
+import { Location } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { RouterTestingHarness } from '@angular/router/testing';
+import { SalesDashboardPage } from '../../../domains/sales/feature/dashboard/sales-dashboard.page';
 import { Router, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { vi } from 'vitest';
@@ -23,25 +28,54 @@ vi.mock('aws-amplify/auth', () => {
     getCurrentUser: vi.fn(),
     signIn: vi.fn(),
     signInWithRedirect: vi.fn(),
-    signOut: vi.fn()
+    signOut: vi.fn(),
   };
 
   return globalScope.__liassAmplifyAuthMock;
 });
 
+@Component({ template: '' })
+class NavigationTarget {}
+
 const translations = {
   fr: {
+    RESTAURANTS: {
+      UX: {
+        NAV: {
+          restaurant: 'Restaurant',
+          outlet: 'Établissements',
+          area: 'Espaces de restauration',
+          table: 'Tables',
+          station: 'Postes de préparation',
+          menu: 'Menu',
+          MENU_SECTION: 'Carte',
+          overview: 'Tableau de bord',
+        },
+        CONFIGURATION: 'Configuration',
+        PAGES: {
+          overview: { TITLE: 'Vue resto' },
+          restaurant: { TITLE: 'Restaurant' },
+          outlet: { TITLE: 'Établissements' },
+          area: { TITLE: 'Espaces' },
+          table: { TITLE: 'Tables' },
+          station: { TITLE: 'Postes cuisine et bar' },
+        },
+      },
+      UI: { NAV: { MENU: 'Carte' } },
+    },
     SHELL: {
       AI_PANEL: {
         EYEBROW: 'IA native',
-        TEXT: 'Les suggestions comptables restent limitées.'
+        TEXT: 'Les suggestions comptables restent limitées.',
       },
       BRAND_TAGLINE: 'Poste ERP',
       LOGO_ALT: 'logo liass-ohada',
       SIDEBAR: {
+        PLATFORM: 'Plateforme',
+        ACTIVE_PRODUCT: 'Produit actif',
         COLLAPSE: 'Réduire la barre latérale',
         EXPAND: 'Déployer la barre latérale',
-        NAVIGATION_LABEL: 'Navigation principale'
+        NAVIGATION_LABEL: 'Navigation principale',
       },
       NAV: {
         ACCOUNTING: 'Comptabilité',
@@ -78,10 +112,10 @@ const translations = {
         PRODUCT_UNAVAILABLE_FOR_ORGANIZATION:
           'Cette fonctionnalité n’est pas disponible pour cette organisation.',
         TEAM: 'Équipe',
-        TRIAL_BALANCE: 'Balance'
-      }
-    }
-  }
+        TRIAL_BALANCE: 'Balance',
+      },
+    },
+  },
 };
 
 describe('AppSidebarComponent', () => {
@@ -105,19 +139,22 @@ describe('AppSidebarComponent', () => {
           preloadLangs: true,
           translocoConfig: {
             availableLangs: ['fr'],
-            defaultLang: 'fr'
-          }
-        })
+            defaultLang: 'fr',
+          },
+        }),
       ],
       providers: [
         provideRouter([]),
+        provideLocationMocks(),
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
         { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } },
         {
           provide: ProductAccessState,
-          useValue: { availability: (productCode: ProductCode) => productAvailability[productCode] },
-        }
-      ]
+          useValue: {
+            availability: (productCode: ProductCode) => productAvailability[productCode],
+          },
+        },
+      ],
     }).compileComponents();
   });
 
@@ -126,9 +163,9 @@ describe('AppSidebarComponent', () => {
       {
         orgId: 'org-company',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company'
+      'org-company',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -164,7 +201,7 @@ describe('AppSidebarComponent', () => {
     const router = TestBed.inject(Router);
     authStore.setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-company'
+      'org-company',
     );
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
 
@@ -173,7 +210,7 @@ describe('AppSidebarComponent', () => {
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
       const treasuryButton = fixture.nativeElement.querySelector(
-        'liass-sidebar-nav-item button[aria-label="Trésorerie"]'
+        'liass-sidebar-nav-item button[aria-label="Trésorerie"]',
       ) as HTMLButtonElement;
 
       expect(treasuryButton.disabled).toBe(false);
@@ -189,20 +226,20 @@ describe('AppSidebarComponent', () => {
     const router = TestBed.inject(Router);
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-company'
+      'org-company',
     );
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
 
     const treasuryButton = fixture.nativeElement.querySelector(
-      'liass-sidebar-nav-item button[aria-label^="Trésorerie"]'
+      'liass-sidebar-nav-item button[aria-label^="Trésorerie"]',
     ) as HTMLButtonElement;
     expect(treasuryButton).not.toBeNull();
     expect(treasuryButton.disabled).toBe(true);
     expect(treasuryButton.getAttribute('aria-disabled')).toBe('true');
     expect(treasuryButton.getAttribute('aria-label')).toContain(
-      'Cette fonctionnalité n’est pas disponible pour cette organisation.'
+      'Cette fonctionnalité n’est pas disponible pour cette organisation.',
     );
     expect(fixture.nativeElement.textContent).toContain('Indisponible');
     treasuryButton.click();
@@ -214,7 +251,7 @@ describe('AppSidebarComponent', () => {
     const router = TestBed.inject(Router);
     authStore.setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-company'
+      'org-company',
     );
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
 
@@ -223,7 +260,7 @@ describe('AppSidebarComponent', () => {
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
       const projectsButton = fixture.nativeElement.querySelector(
-        'liass-sidebar-nav-item button[aria-label="Projets et fonds"]'
+        'liass-sidebar-nav-item button[aria-label="Projets et fonds"]',
       ) as HTMLButtonElement;
 
       expect(projectsButton.disabled).toBe(false);
@@ -239,20 +276,20 @@ describe('AppSidebarComponent', () => {
     const router = TestBed.inject(Router);
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-company'
+      'org-company',
     );
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
 
     const projectsButton = fixture.nativeElement.querySelector(
-      'liass-sidebar-nav-item button[aria-label^="Projets et fonds"]'
+      'liass-sidebar-nav-item button[aria-label^="Projets et fonds"]',
     ) as HTMLButtonElement;
     expect(projectsButton).not.toBeNull();
     expect(projectsButton.disabled).toBe(true);
     expect(projectsButton.getAttribute('aria-disabled')).toBe('true');
     expect(projectsButton.getAttribute('aria-label')).toContain(
-      'Cette fonctionnalité n’est pas disponible pour cette organisation.'
+      'Cette fonctionnalité n’est pas disponible pour cette organisation.',
     );
     expect(fixture.nativeElement.textContent).toContain('Indisponible');
     expect(fixture.nativeElement.textContent).not.toContain('SYCEBNL');
@@ -264,7 +301,7 @@ describe('AppSidebarComponent', () => {
     const router = TestBed.inject(Router);
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-company'
+      'org-company',
     );
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
 
@@ -273,7 +310,7 @@ describe('AppSidebarComponent', () => {
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
       const overviewButton = fixture.nativeElement.querySelector(
-        'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]'
+        'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]',
       ) as HTMLButtonElement;
 
       expect(overviewButton.disabled).toBe(false);
@@ -287,7 +324,7 @@ describe('AppSidebarComponent', () => {
     productAvailability.ACCOUNTING = 'UNAVAILABLE';
     TestBed.inject(AuthStore).setCreatedWorkspace(
       { orgId: 'org-company', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-company'
+      'org-company',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -304,18 +341,18 @@ describe('AppSidebarComponent', () => {
       'Écritures',
       'Lettrage',
       'Balance',
-      'Plan comptable'
+      'Plan comptable',
     ];
     for (const label of accountingLabels) {
       const button = fixture.nativeElement.querySelector(
-        `liass-sidebar-nav-item button[aria-label^="${label}"]`
+        `liass-sidebar-nav-item button[aria-label^="${label}"]`,
       ) as HTMLButtonElement;
       expect(button.disabled).toBe(true);
       expect(button.getAttribute('aria-disabled')).toBe('true');
     }
 
     const dashboardButton = fixture.nativeElement.querySelector(
-      'liass-sidebar-nav-item button[aria-label="Tableau de bord"]'
+      'liass-sidebar-nav-item button[aria-label="Tableau de bord"]',
     ) as HTMLButtonElement;
     expect(dashboardButton.disabled).toBe(false);
     expect(fixture.nativeElement.textContent).toContain('Indisponible');
@@ -327,9 +364,9 @@ describe('AppSidebarComponent', () => {
       {
         orgId: 'org-company',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company'
+      'org-company',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -339,11 +376,13 @@ describe('AppSidebarComponent', () => {
 
     const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
     const dashboardButton = fixture.nativeElement.querySelector(
-      'liass-sidebar-nav-item button[aria-label="Tableau de bord"]'
+      'liass-sidebar-nav-item button[aria-label="Tableau de bord"]',
     ) as HTMLButtonElement | null;
-    const dashboardLabel = dashboardButton?.querySelector('span:nth-child(2)') as HTMLElement | null;
+    const dashboardLabel = dashboardButton?.querySelector(
+      'span:nth-child(2)',
+    ) as HTMLElement | null;
     const aiPanel = fixture.nativeElement.querySelector(
-      '[data-testid="sidebar-ai-panel"]'
+      '[data-testid="sidebar-ai-panel"]',
     ) as HTMLElement | null;
 
     expect(uiStore.sidebarCollapsed()).toBe(true);
@@ -361,9 +400,9 @@ describe('AppSidebarComponent', () => {
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
         cabinetRole: 'CABINET_ADMIN',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
       },
-      'org-firm'
+      'org-firm',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -398,9 +437,9 @@ describe('AppSidebarComponent', () => {
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
         cabinetRole: 'COLLABORATOR',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
       },
-      'org-firm'
+      'org-firm',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -417,15 +456,15 @@ describe('AppSidebarComponent', () => {
           displayName: 'Cabinet Demo',
           workspaceType: 'ACCOUNTING_FIRM',
           cabinetRole,
-          status: 'ACTIVE'
+          status: 'ACTIVE',
         },
-        'org-firm'
+        'org-firm',
       );
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
 
       expect(fixture.nativeElement.textContent).not.toContain('Paramètres du cabinet');
-    }
+    },
   );
 
   it('restores standard accounting navigation after a cabinet dossier is selected', () => {
@@ -434,9 +473,9 @@ describe('AppSidebarComponent', () => {
       {
         orgId: 'org-firm',
         displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm'
+      'org-firm',
     );
     authStore.setCreatedDossier(
       {
@@ -446,9 +485,9 @@ describe('AppSidebarComponent', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -476,9 +515,9 @@ describe('AppSidebarComponent', () => {
       {
         orgId: 'org-company',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company'
+      'org-company',
     );
     uiStore.setCurrentPage('accounting.overview');
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
@@ -486,18 +525,20 @@ describe('AppSidebarComponent', () => {
     fixture.detectChanges();
 
     const overviewButton = fixture.nativeElement.querySelector(
-      'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]'
+      'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]',
     ) as HTMLButtonElement;
     overviewButton.click();
     fixture.detectChanges();
     const activeButtons = Array.from(
-      fixture.nativeElement.querySelectorAll('liass-sidebar-nav-item button')
+      fixture.nativeElement.querySelectorAll('liass-sidebar-nav-item button'),
     ).filter((button) => (button as HTMLButtonElement).className.includes('bg-brand-50'));
 
     expect(router.navigateByUrl).toHaveBeenCalledWith('/accounting');
     expect(uiStore.currentPage()).toBe('accounting.overview');
     expect(activeButtons).toHaveLength(1);
-    expect((activeButtons[0] as HTMLButtonElement).getAttribute('aria-label')).toBe('Vue d’ensemble');
+    expect((activeButtons[0] as HTMLButtonElement).getAttribute('aria-label')).toBe(
+      'Vue d’ensemble',
+    );
     expect(fixture.nativeElement.textContent).not.toContain('Reporting simplifié');
   });
 
@@ -509,9 +550,9 @@ describe('AppSidebarComponent', () => {
       {
         orgId: 'org-company',
         displayName: 'Demo SARL',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-company'
+      'org-company',
     );
     uiStore.setCurrentPage('accounting.overview');
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(false);
@@ -519,7 +560,7 @@ describe('AppSidebarComponent', () => {
     fixture.detectChanges();
 
     const auxiliaryBalanceButton = fixture.nativeElement.querySelector(
-      'liass-sidebar-nav-item button[aria-label="Balance auxiliaire"]'
+      'liass-sidebar-nav-item button[aria-label="Balance auxiliaire"]',
     ) as HTMLButtonElement;
     auxiliaryBalanceButton.click();
     fixture.detectChanges();
@@ -535,9 +576,9 @@ describe('AppSidebarComponent', () => {
       {
         orgId: 'org-firm',
         displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-firm'
+      'org-firm',
     );
     authStore.setCreatedDossier(
       {
@@ -547,9 +588,9 @@ describe('AppSidebarComponent', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     authStore.enterCabinetContext();
 
@@ -568,14 +609,15 @@ describe('AppSidebarComponent', () => {
 
   it('shows Customers, Articles & services and Invoices under SALES for an entitled direct OWNER', () => {
     productAvailability.SALES = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('sales.customers');
     TestBed.inject(AuthStore).setCreatedWorkspace(
       {
         orgId: 'org-sales',
         displayName: 'Sales SARL',
         workspaceType: 'COMPANY',
-        role: 'OWNER'
+        role: 'OWNER',
       },
-      'org-sales'
+      'org-sales',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -598,52 +640,45 @@ describe('AppSidebarComponent', () => {
           orgId: 'org-sales',
           displayName: 'Sales SARL',
           workspaceType: 'COMPANY',
-          role: 'OWNER'
+          role: 'OWNER',
         },
-        'org-sales'
+        'org-sales',
       );
       fixture = TestBed.createComponent(AppSidebarComponent);
       fixture.detectChanges();
 
       expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
-    }
+    },
   );
 
-  it('keeps SALES independent from ACCOUNTING and supports both entitlements together', () => {
-    const authStore = TestBed.inject(AuthStore);
-    authStore.setCreatedWorkspace(
-      {
-        orgId: 'org-sales',
-        displayName: 'Sales SARL',
-        workspaceType: 'COMPANY',
-        role: 'OWNER'
-      },
-      'org-sales'
+  it('keeps SALES independent from ACCOUNTING and switches module navigation by product', () => {
+    const auth = TestBed.inject(AuthStore),
+      ui = TestBed.inject(UiStore);
+    auth.setCreatedWorkspace(
+      { orgId: 'org-sales', workspaceType: 'COMPANY', role: 'OWNER' },
+      'org-sales',
     );
     productAvailability.SALES = 'AVAILABLE';
     productAvailability.ACCOUNTING = 'UNAVAILABLE';
+    ui.setCurrentPage('sales.customers');
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
-
     expect(fixture.nativeElement.textContent).toContain('Clients');
     expect(fixture.nativeElement.textContent).toContain('Articles & services');
     expect(fixture.nativeElement.textContent).toContain('Factures');
-    const accountingOverview = fixture.nativeElement.querySelector(
-      'liass-sidebar-nav-item button[aria-label^="Vue d’ensemble"]'
-    ) as HTMLButtonElement;
-    expect(accountingOverview.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).not.toContain('Grand livre');
+    ui.setCurrentPage('accounting.overview');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label^="Vue d’ensemble"]').disabled,
+    ).toBe(true);
     fixture.destroy();
-
     productAvailability.ACCOUNTING = 'AVAILABLE';
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Clients');
-    expect(fixture.nativeElement.textContent).toContain('Articles & services');
-    expect(fixture.nativeElement.textContent).toContain('Factures');
     expect(
-      (fixture.nativeElement.querySelector(
-        'liass-sidebar-nav-item button[aria-label="Vue d’ensemble"]'
-      ) as HTMLButtonElement).disabled
+      fixture.nativeElement.querySelector('button[aria-label^="Vue d’ensemble"]').disabled,
     ).toBe(false);
   });
 
@@ -652,7 +687,7 @@ describe('AppSidebarComponent', () => {
     const authStore = TestBed.inject(AuthStore);
     authStore.setCreatedWorkspace(
       { orgId: 'org-member', displayName: 'Member SARL', workspaceType: 'COMPANY', role: 'MEMBER' },
-      'org-member'
+      'org-member',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
@@ -665,34 +700,208 @@ describe('AppSidebarComponent', () => {
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
         cabinetRole: 'CABINET_ADMIN',
-        role: 'OWNER'
+        role: 'OWNER',
       },
-      'org-firm'
+      'org-firm',
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
   });
-  it.each(['AVAILABLE', 'UNAVAILABLE', 'UNKNOWN'] as const)('shows Liass-Resto only when access is AVAILABLE (%s)', (availability) => {
-    productAvailability.RESTAURANTS = availability;
+  it.each(['AVAILABLE', 'UNAVAILABLE', 'UNKNOWN'] as const)(
+    'shows contextual Liass-Resto only with AVAILABLE access (%s)',
+    (availability) => {
+      productAvailability.RESTAURANTS = availability;
+      TestBed.inject(UiStore).setCurrentPage('restaurants');
+      TestBed.inject(AuthStore).setCreatedWorkspace(
+        {
+          orgId: 'org-resto',
+          workspaceType: 'COMPANY',
+          role: 'OWNER',
+          productRoles: { RESTAURANTS: 'OWNER' },
+        },
+        'org-resto',
+      );
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+      expect(!!fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]')).toBe(
+        availability === 'AVAILABLE',
+      );
+      expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
+      expect(fixture.nativeElement.textContent).not.toContain('Grand livre');
+    },
+  );
+
+  it('deep-links, highlights exactly one restaurant entry, routes selections and follows history', async () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    const ui = TestBed.inject(UiStore),
+      router = TestBed.inject(Router);
+    router.resetConfig([{ path: '**', component: NavigationTarget }]);
+    router.setUpLocationChangeListener();
+    ui.setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'WAITER' } },
+      'org-resto',
+    );
+    await router.navigateByUrl('/restaurants/setup/tables?view=all');
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    const active = () =>
+      fixture.nativeElement.querySelectorAll('liass-sidebar-nav-item button[aria-current="page"]');
+    expect(active()).toHaveLength(1);
+    expect(active()[0].getAttribute('aria-label')).toBe('Tables');
+    ui.toggleSidebar();
+    ui.setSidebarCollapsed(true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('aside').className).toContain('translate-x-0');
+    expect(active()[0].querySelector('span:nth-child(2)').className).toContain('lg:sr-only');
+    fixture.nativeElement.querySelector('button[aria-label="Établissements"]').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(router.url).toBe('/restaurants/setup/locations');
+    expect(ui.sidebarOpen()).toBe(false);
+    expect(active()).toHaveLength(1);
+    expect(active()[0].getAttribute('aria-label')).toBe('Établissements');
+    TestBed.inject(Location).back();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(active()[0].getAttribute('aria-label')).toBe('Tables');
+    });
+    TestBed.inject(Location).forward();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(active()[0].getAttribute('aria-label')).toBe('Établissements');
+    });
+    expect(
+      fixture.nativeElement.querySelectorAll(
+        '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
+      ),
+    ).toHaveLength(7);
+  });
+
+  it('retains product discovery but hides all restaurant modules without read permissions', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-resto', workspaceType: 'COMPANY', role: 'OWNER' },
+      'org-resto',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelectorAll(
+        '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
+      ),
+    ).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector('[data-testid="product-navigation"]')).toBeNull();
+  });
+  it('shows only restaurant navigation without product or platform context', async () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'OWNER' } },
+      'resto',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    const resto = fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]');
+    expect(fixture.nativeElement.querySelector('[data-testid="product-navigation"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="active-product-label"]')).toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Liass-Resto');
+    expect(fixture.nativeElement.textContent).not.toContain('Plateforme');
+    expect(
+      fixture.nativeElement.querySelectorAll(
+        'liass-sidebar-nav-item button[aria-label="Tableau de bord"]',
+      ),
+    ).toHaveLength(1);
+    expect(resto.querySelectorAll('section')[0].querySelector('p')).toBeNull();
+    expect(resto.querySelectorAll('section p')).toHaveLength(2);
+    expect(resto.querySelector('button[aria-label="Restaurant"]')).not.toBeNull();
+    expect(resto.querySelector('button[aria-label="Postes de préparation"]')).not.toBeNull();
+    expect(resto.textContent).not.toContain('Configuration du restaurant');
+    expect(resto.querySelectorAll('section p')[0].textContent.trim()).toBe('Configuration');
+    const menu = resto.querySelectorAll('section')[2];
+    expect(menu.querySelector('p').textContent.trim()).toBe('Carte');
+    expect(menu.querySelector('button').getAttribute('aria-label')).toBe('Menu');
+    TestBed.inject(UiStore).setSidebarCollapsed(true);
+    fixture.detectChanges();
+    expect(
+      resto.querySelector('button[aria-label="Restaurant"]').querySelector('span:nth-child(2)')
+        .className,
+    ).toContain('lg:sr-only');
+    const router = TestBed.inject(Router);
+    router.resetConfig([{ path: '**', component: NavigationTarget }]);
+    await router.navigateByUrl('/restaurants/setup/locations');
+    fixture.detectChanges();
+    resto.querySelector('button[aria-label="Tableau de bord"]').click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(router.url).toBe('/restaurants');
+    expect(resto.querySelector('button[aria-current="page"]').className).not.toContain(
+      'shadow-app-xs',
+    );
+    expect(resto.querySelector('button[aria-current="page"]').getAttribute('aria-label')).toBe(
+      'Tableau de bord',
+    );
+  });
+  it('keeps sidebar context aligned with a Sales-only workspace on its own dashboard', () => {
     productAvailability.ACCOUNTING = 'UNAVAILABLE';
-    productAvailability.SALES = 'UNAVAILABLE';
-    TestBed.inject(AuthStore).setCreatedWorkspace({ orgId: 'org-resto', workspaceType: 'COMPANY', role: 'OWNER' }, 'org-resto');
-    fixture = TestBed.createComponent(AppSidebarComponent); fixture.detectChanges();
-    const resto = fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]');
-    expect(!!resto).toBe(availability === 'AVAILABLE');
-    if (resto) expect(resto.textContent).toContain('Liass-Resto');
-    expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
+    productAvailability.SALES = 'AVAILABLE';
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'sales-only', workspaceType: 'COMPANY', role: 'OWNER' },
+      'sales-only',
+    );
+    TestBed.inject(UiStore).setCurrentPage('sales.dashboard');
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).not.toBeNull();
+    expect(fixture.nativeElement.textContent).not.toContain('Grand livre');
+    expect(fixture.nativeElement.querySelector('[data-testid="product-navigation"]')).toBeNull();
   });
-
-  it('keeps Liass-Resto and SALES as peer entries when all products are enabled', () => {
-    productAvailability.RESTAURANTS = 'AVAILABLE'; productAvailability.SALES = 'AVAILABLE'; productAvailability.ACCOUNTING = 'AVAILABLE';
-    TestBed.inject(AuthStore).setCreatedWorkspace({ orgId: 'org-all', workspaceType: 'COMPANY', role: 'OWNER' }, 'org-all');
-    fixture = TestBed.createComponent(AppSidebarComponent); fixture.detectChanges();
-    const resto = fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]');
-    const sales = fixture.nativeElement.querySelector('[data-testid="sales-navigation"]');
-    expect(resto).not.toBeNull(); expect(sales).not.toBeNull();
-    expect(resto.parentElement).toBe(sales.parentElement);
+  it('routes the Sales Dashboard item to /sales with a current route state', async () => {
+    productAvailability.SALES = 'AVAILABLE';
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'sales', workspaceType: 'COMPANY', role: 'OWNER' },
+      'sales',
+    );
+    TestBed.inject(UiStore).setCurrentPage('sales.customers');
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    const router = TestBed.inject(Router);
+    const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    fixture.nativeElement.querySelector('button[aria-label="Tableau de bord"]').click();
+    await fixture.whenStable();
+    expect(navigate).toHaveBeenCalledWith('/sales');
+    TestBed.inject(UiStore).setCurrentPage('sales.dashboard');
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement
+        .querySelector('button[aria-label="Tableau de bord"]')
+        .getAttribute('aria-current'),
+    ).toBe('page');
   });
-
+  it('clicking Sales Dashboard renders the Sales landing component rather than Accounting', async () => {
+    productAvailability.SALES = 'AVAILABLE';
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'sales', workspaceType: 'COMPANY', role: 'OWNER' },
+      'sales',
+    );
+    TestBed.inject(UiStore).setCurrentPage('sales.customers');
+    const router = TestBed.inject(Router);
+    router.resetConfig([
+      { path: 'sales/customers', component: NavigationTarget },
+      { path: 'sales', component: SalesDashboardPage },
+    ]);
+    const harness = await RouterTestingHarness.create('/sales/customers');
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('button[aria-label="Tableau de bord"]').click();
+    await fixture.whenStable();
+    harness.detectChanges();
+    expect(router.url).toBe('/sales');
+    expect(
+      harness.routeNativeElement?.querySelector('a[href="/sales/customers"]')?.textContent,
+    ).toContain('Clients');
+    expect(harness.routeNativeElement?.querySelector('liass-dashboard-page')).toBeNull();
+  });
 });

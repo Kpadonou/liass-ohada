@@ -23,6 +23,13 @@ export class OnboardingApi {
       this.http.post<unknown>(`${this.apiBaseUrl}/me/workspaces`, request)
     );
 
-    return CreateInitialWorkspaceResponseSchema.parse(response);
+    return CreateInitialWorkspaceResponseSchema.refine(
+      (result) =>
+        result.organization.orgId === result.activeOrgId &&
+        result.workspace.orgId === result.activeOrgId &&
+        (!result.productAccess ||
+          result.productAccess.every((access) => access.orgId === result.activeOrgId)),
+      { message: 'Workspace creation response has inconsistent organization identity.' }
+    ).parse(response);
   }
 }

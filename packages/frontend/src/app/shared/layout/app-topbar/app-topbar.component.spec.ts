@@ -1,3 +1,6 @@
+import { signal } from '@angular/core';
+import { ProductAccessState } from '../../../core/product-access/product-access.state';
+import type { ProductCode } from '@liass-ohada/shared/shared';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
@@ -31,6 +34,7 @@ vi.mock('aws-amplify/auth', () => {
 const translations = {
   en: {
     SHELL: {
+      NAV: { ACCOUNTING: 'Accounting', SALES: 'Sales', RESTAURANTS: 'Liass-Resto' },
       SECTIONS: {
         ACCOUNTING: 'Accounting',
         PROJECTS: 'Projects and funds',
@@ -53,6 +57,7 @@ const translations = {
         TRIAL_BALANCE: 'Trial balance',
       },
       SIDEBAR: {
+        PRODUCTS: 'Switch product',
         COLLAPSE: 'Collapse sidebar',
         EXPAND: 'Expand sidebar',
       },
@@ -112,6 +117,8 @@ const translations = {
 };
 
 describe('AppTopbarComponent', () => {
+  const available = signal<ProductCode[]>([]);
+  const unavailable = signal<ProductCode[]>([]);
   let fixture: ComponentFixture<AppTopbarComponent>;
   let authStore: InstanceType<typeof AuthStore>;
   let fiscalYearContext: AccountingFiscalYearContextService;
@@ -122,6 +129,8 @@ describe('AppTopbarComponent', () => {
 
   beforeEach(async () => {
     TestBed.resetTestingModule();
+    available.set([]);
+    unavailable.set([]);
     localStorage.clear();
     vi.mocked(getCurrentUser).mockReset();
     vi.mocked(fetchAuthSession).mockReset();
@@ -145,6 +154,17 @@ describe('AppTopbarComponent', () => {
       ],
       providers: [
         provideRouter([]),
+        {
+          provide: ProductAccessState,
+          useValue: {
+            availability: (code: ProductCode) =>
+              available().includes(code)
+                ? 'AVAILABLE'
+                : unavailable().includes(code)
+                  ? 'UNAVAILABLE'
+                  : 'UNKNOWN',
+          },
+        },
         { provide: CabinetDossiersApi, useValue: cabinetDossiersApi },
         { provide: WorkspacesApi, useValue: workspacesApi },
       ],
@@ -231,8 +251,8 @@ describe('AppTopbarComponent', () => {
 
     expect(group.className).toContain('gap-3');
     expect(group.className).toContain('md:gap-4');
-    expect(horizontalLogoLink?.className).toContain('md:inline-flex');
-    expect(compactLogoLink?.className).toContain('md:hidden');
+    expect(horizontalLogoLink?.className).toContain('xl:inline-flex');
+    expect(compactLogoLink?.className).toContain('xl:hidden');
   });
 
   it('renders the direct company identity without the old card styling', () => {
@@ -249,14 +269,14 @@ describe('AppTopbarComponent', () => {
     const identity = activeWorkspaceElement();
 
     expect(identity.textContent).toContain('Demo SARL');
-    expect(identity.textContent).toContain('expand_more');
+    expect(identity.textContent).not.toContain('expand_more');
     expect(identity.className).not.toContain('border-orange');
     expect(identity.className).not.toContain('bg-slate-950');
     expect(identity.className).not.toContain('shadow-[');
     expect(identity.className).not.toContain('rounded-app-panel');
     expect(identity.querySelector('span')?.className).not.toContain('bg-orange');
     expect(identity.querySelector('span')?.className).not.toContain('text-orange');
-    expect(identity.querySelector('span')?.className).toContain('text-white/90');
+    expect(identity.className).toContain('!text-white/95');
     expect(identity.querySelector('mat-icon')?.textContent?.trim()).toBe('corporate_fare');
   });
 
@@ -525,7 +545,9 @@ describe('AppTopbarComponent', () => {
     fixture.detectChanges();
     const text = fixture.nativeElement.textContent;
 
-    expect(trigger.getAttribute('aria-label')).toBe('Open active workspace menu');
+    expect(trigger.getAttribute('aria-label')).toBe(
+      'Open active workspace menu: Cabinet KPADONOU Conseil',
+    );
     expect(text).toContain('Cabinet dashboard');
     expect(text).toContain('Client dossiers');
     expect(text).toContain('New client dossier');
@@ -767,4 +789,175 @@ describe('AppTopbarComponent', () => {
     expect(text).toContain('Workspace');
     expect(text).not.toContain('Google_123456789');
   });
+  it('renders the current product near the workspace and switches through canonical routes', async () => {
+    available.set(['ACCOUNTING', 'SALES', 'RESTAURANTS']);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'beta',
+        displayName: 'BETA',
+        workspaceType: 'COMPANY',
+        role: 'OWNER',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
+      'beta',
+    );
+    uiStore.setCurrentPage('restaurants');
+    fixture = TestBed.createComponent(AppTopbarComponent);
+    fixture.detectChanges();
+    const contexts = fixture.nativeElement.querySelector('[data-testid="shell-context-selectors"]');
+    expect(contexts.querySelector('[data-testid="active-workspace"]').textContent).toContain(
+      'BETA',
+    );
+    const trigger = contexts.querySelector('[data-testid="active-product"]');
+    expect(trigger.textContent).toContain('Liass-Resto');
+    expect(trigger.textContent).toContain('restaurant');
+    expect(trigger.getAttribute('aria-label')).toBe('Switch product: Liass-Resto');
+    expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    trigger.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const entries = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel button'),
+    );
+    expect(entries.map((entry) => entry.textContent)).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Accounting'),
+        expect.stringContaining('Sales'),
+        expect.stringContaining('Liass-Resto'),
+      ]),
+    );
+    entries.find((entry) => entry.textContent?.includes('Sales'))!.click();
+    await fixture.whenStable();
+    expect(navigation).toHaveBeenCalledWith('/sales');
+    expect(authStore.activeOrgId()).toBe('beta');
+  });
+
+  it('shows one product without a switch chevron and still opens its landing page', async () => {
+    available.set(['RESTAURANTS']);
+    authStore.setCreatedWorkspace(
+      { orgId: 'beta', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'WAITER' } },
+      'beta',
+    );
+    uiStore.setCurrentPage('restaurants');
+    fixture = TestBed.createComponent(AppTopbarComponent);
+    fixture.detectChanges();
+    const trigger = fixture.nativeElement.querySelector('[data-testid="active-product"]');
+    expect(trigger.textContent).toContain('Liass-Resto');
+    expect(trigger.textContent).not.toContain('expand_more');
+    expect(trigger.getAttribute('aria-haspopup')).toBeNull();
+    const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    trigger.click();
+    await fixture.whenStable();
+    expect(navigation).toHaveBeenCalledWith('/restaurants');
+  });
+
+  it('updates visible products and workspace labels when workspace context changes', () => {
+    available.set(['ACCOUNTING', 'RESTAURANTS']);
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'a',
+        displayName: 'A very long workspace name for a restaurant company',
+        workspaceType: 'COMPANY',
+        role: 'OWNER',
+      },
+      'a',
+    );
+    uiStore.setCurrentPage('dashboard');
+    fixture = TestBed.createComponent(AppTopbarComponent);
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-product"]').textContent,
+    ).toContain('Accounting');
+    available.set(['SALES']);
+    authStore.setCreatedWorkspace(
+      { orgId: 'b', displayName: 'Workspace B', workspaceType: 'COMPANY', role: 'OWNER' },
+      'b',
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('[data-testid="active-product"]')).toBeNull();
+    uiStore.setCurrentPage('sales.dashboard');
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-product"]').textContent,
+    ).toContain('Sales');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-product"]').textContent,
+    ).not.toContain('Liass-Resto');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-workspace"]').textContent,
+    ).toContain('Workspace B');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="active-workspace"] .truncate').className,
+    ).toContain('truncate');
+  });
+  it('recovers to the platform destination after active product access is lost', async () => {
+    available.set(['RESTAURANTS']);
+    authStore.setCreatedWorkspace({ orgId: 'beta', workspaceType: 'COMPANY' }, 'beta');
+    uiStore.setCurrentPage('restaurants');
+    const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    fixture = TestBed.createComponent(AppTopbarComponent);
+    fixture.detectChanges();
+    expect(navigation).not.toHaveBeenCalled();
+    available.set([]);
+    unavailable.set(['RESTAURANTS']);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(navigation).toHaveBeenCalledWith('/dashboard', { replaceUrl: true });
+    expect(fixture.nativeElement.querySelector('[data-testid="active-product"]')).toBeNull();
+  });
+
+  it('uses the existing tenant selection and destination when switching workspace', async () => {
+    const a = {
+      orgId: 'a',
+      displayName: 'Workspace A',
+      workspaceType: 'COMPANY' as const,
+      role: 'OWNER' as const,
+    };
+    const b = { ...a, orgId: 'b', displayName: 'Workspace B' };
+    authStore.setCreatedWorkspace(a, 'a');
+    workspacesApi.listWorkspaces.mockResolvedValue([a, b]);
+    await authStore.loadWorkspaces(true);
+    const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    fixture = TestBed.createComponent(AppTopbarComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('[data-testid="active-workspace"]').click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const choices = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel button'),
+    );
+    choices.find((choice) => choice.textContent?.includes('Workspace B'))!.click();
+    await fixture.whenStable();
+    expect(authStore.activeOrgId()).toBe('b');
+    expect(navigation).toHaveBeenCalledWith('/dashboard');
+  });
+  it.each([
+    ['ACCOUNTING', 'Accounting', '/dashboard'],
+    ['SALES', 'Sales', '/sales'],
+    ['RESTAURANTS', 'Liass-Resto', '/restaurants'],
+  ] as const)(
+    'switches %s to its canonical landing while keeping the workspace',
+    async (code, label, destination) => {
+      available.set(['ACCOUNTING', 'SALES', 'RESTAURANTS']);
+      authStore.setCreatedWorkspace(
+        { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY', role: 'OWNER' },
+        'beta',
+      );
+      uiStore.setCurrentPage('sales.dashboard');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+      fixture = TestBed.createComponent(AppTopbarComponent);
+      fixture.detectChanges();
+      fixture.nativeElement.querySelector('[data-testid="active-product"]').click();
+      await fixture.whenStable();
+      const item = [...document.querySelectorAll('[role="menuitem"]')].find((item) =>
+        item.textContent?.includes(label),
+      ) as HTMLElement;
+      expect(item).toBeDefined();
+      item.click();
+      await fixture.whenStable();
+      expect(navigate).toHaveBeenCalledWith(destination);
+      expect(authStore.effectiveOrgId()).toBe('beta');
+    },
+  );
 });

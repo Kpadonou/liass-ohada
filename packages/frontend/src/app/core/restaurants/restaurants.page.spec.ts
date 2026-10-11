@@ -40,18 +40,13 @@ describe('Liass-Resto product navigation', () => {
     });
   });
   afterEach(() => TestBed.resetTestingModule());
-  it('shows available product and permission-driven navigation with shared block hosts', () => {
+  it('renders the product outlet without duplicated horizontal navigation or product headers', () => {
     availability.set('AVAILABLE');
     const f = TestBed.createComponent(RestaurantsPage);
     f.detectChanges();
-    expect(f.nativeElement.textContent).toContain('Restaurant setup');
-    expect(f.nativeElement.textContent).toContain('Menu');
-    expect(f.nativeElement.querySelector('liass-page-header').classList.contains('block')).toBe(
-      true,
-    );
-    menu.set(false);
-    f.detectChanges();
-    expect(f.nativeElement.querySelector('a[href="/restaurants/menu"]')).toBeNull();
+    expect(f.nativeElement.querySelector('router-outlet')).not.toBeNull();
+    expect(f.nativeElement.querySelector('nav')).toBeNull();
+    expect(f.nativeElement.querySelector('liass-page-header')).toBeNull();
   });
   it('announces access loading and hides business navigation', () => {
     const f = TestBed.createComponent(RestaurantsPage);

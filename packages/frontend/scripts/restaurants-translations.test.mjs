@@ -27,3 +27,47 @@ test('restaurant interface translations belong to the product root and match in 
     assert.equal(translations[language].SHELL.PAGES.UI, undefined);
   }
 });
+
+test('restaurant shell task titles, descriptions and primary actions are translated in both languages', () => {
+  const french = leaves(translations.fr.RESTAURANTS.UX);
+  const english = leaves(translations.en.RESTAURANTS.UX);
+  assert.deepEqual(french.map(([key]) => key).sort(), english.map(([key]) => key).sort());
+  for (const [, value] of [...french, ...english]) {
+    assert.ok(value.trim());
+    assert.doesNotMatch(value, /DynamoDB|Lambda|GSI|PreparationTicket/);
+  }
+  for (const language of ['fr', 'en']) assert.ok(translations[language].SHELL.SIDEBAR.PRODUCTS);
+});
+
+test('restaurant navigation labels remain concise and distinct from task titles', () => {
+  for (const language of ['fr', 'en']) {
+    const navigation = translations[language].RESTAURANTS.UX.NAV;
+    assert.equal(navigation.restaurant, 'Restaurant');
+    assert.equal(navigation.menu, 'Menu');
+    assert.ok(translations[language].SHELL.SIDEBAR.PLATFORM);
+  }
+  assert.equal(translations.fr.RESTAURANTS.UX.NAV.station, 'Postes de préparation');
+  assert.equal(translations.en.RESTAURANTS.UX.NAV.station, 'Preparation stations');
+  assert.equal(translations.fr.RESTAURANTS.UX.NAV.MENU_SECTION, 'Carte');
+  assert.equal(translations.en.RESTAURANTS.UX.NAV.MENU_SECTION, 'Menu');
+  assert.equal(translations.fr.RESTAURANTS.UX.EMPTY.outlet.TITLE, 'Aucun établissement');
+  assert.equal(translations.en.RESTAURANTS.UX.EMPTY.outlet.TITLE, 'No locations yet');
+});
+
+test('active product and restaurant dashboard labels remain translated', () => {
+  assert.equal(translations.fr.SHELL.SIDEBAR.ACTIVE_PRODUCT, 'Produit actif');
+  assert.equal(translations.en.SHELL.SIDEBAR.ACTIVE_PRODUCT, 'Active product');
+  assert.equal(translations.fr.RESTAURANTS.UX.NAV.overview, 'Tableau de bord');
+  assert.equal(translations.en.RESTAURANTS.UX.NAV.overview, 'Dashboard');
+});
+
+test('restaurant dashboard naming is consistent in page, navigation and breadcrumb title keys', () => {
+  for (const [language, title] of [
+    ['fr', 'Tableau de bord'],
+    ['en', 'Dashboard'],
+  ]) {
+    assert.equal(translations[language].RESTAURANTS.UX.PAGES.overview.TITLE, title);
+    assert.equal(translations[language].RESTAURANTS.UX.NAV.overview, title);
+    assert.equal(translations[language].RESTAURANTS.UI.NAV.OVERVIEW, title);
+  }
+});

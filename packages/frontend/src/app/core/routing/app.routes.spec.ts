@@ -76,10 +76,10 @@ describe('routes', () => {
     const shell = shellRoute();
     const dashboardRoute = shell?.children?.find((route) => route.path === 'dashboard');
     const component = await dashboardRoute?.loadComponent?.();
-    const { DashboardPage } = await import('../feature/dashboard/dashboard.page');
+    const { DashboardEntryPage } = await import('../feature/dashboard/dashboard-entry.page');
 
     expect(shell?.canActivate).toEqual([authGuard, tenantGuard]);
-    expect(component).toBe(DashboardPage);
+    expect(component).toBe(DashboardEntryPage);
   });
 
   it('registers the public landing at the root without the authenticated shell', async () => {
@@ -323,7 +323,7 @@ describe('routes', () => {
 });
 
 describe('SALES routes', () => {
-  it('registers the implemented SALES foundations and draft invoices while redirecting /sales to customers', async () => {
+  it('registers the implemented SALES foundations and draft invoices with a guarded /sales dashboard', async () => {
     const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
     const redirect = salesRoute?.children?.find((route) => route.path === '');
     const customersRoute = salesRoute?.children?.find((route) => route.path === 'customers');
@@ -350,7 +350,11 @@ describe('SALES routes', () => {
     const { SalesCreditNoteDetailPage } =
       await import('../../domains/sales/feature/invoices/sales-credit-note-detail.page');
 
-    expect(redirect?.redirectTo).toBe('customers');
+    const { SalesDashboardPage } =
+      await import('../../domains/sales/feature/dashboard/sales-dashboard.page');
+    expect(await redirect?.loadComponent?.()).toBe(SalesDashboardPage);
+    expect(redirect?.data?.['productCode']).toBe('SALES');
+    expect(redirect?.canActivate).toHaveLength(2);
     expect(redirect?.pathMatch).toBe('full');
     expect(customersComponent).toBe(SalesCustomersPage);
     expect(itemsComponent).toBe(SalesItemsPage);
@@ -361,7 +365,7 @@ describe('SALES routes', () => {
     expect(itemsRoute?.data?.['titleKey']).toBe('SALES.ITEMS.PAGE.TITLE');
   });
 
-  it('does not register a SALES dashboard or deferred issuing routes', () => {
+  it('keeps the canonical Sales dashboard at /sales without deferred issuing routes', () => {
     const salesRoute = shellRoute()?.children?.find((route) => route.path === 'sales');
     const paths = salesRoute?.children?.map((route) => route.path) ?? [];
 
@@ -382,7 +386,15 @@ describe('SALES routes', () => {
 
 it('keeps Setup and Menu behind RESTAURANTS ProductAccess without future modules', () => {
   const product = shellRoute()?.children?.find((route) => route.path === 'restaurants');
-  expect(product?.children?.map((route) => route.path)).toEqual(['', 'setup', 'menu']);
+  expect(product?.children?.map((route) => route.path)).toEqual([
+    '',
+    'setup',
+    'setup/locations',
+    'setup/areas',
+    'setup/tables',
+    'setup/stations',
+    'menu',
+  ]);
   for (const route of product?.children ?? []) {
     expect(route.canActivate).toHaveLength(1);
     expect(route.data?.['productCode']).toBe('RESTAURANTS');

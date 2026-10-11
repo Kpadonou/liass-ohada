@@ -18,7 +18,83 @@ import { RestaurantEditorComponent } from './restaurant-editor.component';
 import { RestaurantQrDialogComponent } from './restaurant-qr-dialog.component';
 const translations = {
   RESTAURANTS: {
-    ACCESS: { DENIED: 'Access unavailable' },
+    UX: {
+      CONFIGURATION: 'Configuration',
+      PAGES: {
+        overview: {
+          TITLE: 'Dashboard',
+          DESCRIPTION: 'Review your restaurant configuration and menu.',
+        },
+        restaurant: {
+          TITLE: 'Restaurant configuration',
+          DESCRIPTION: 'Manage your restaurant identity and guest ordering preference.',
+        },
+        outlet: {
+          TITLE: 'Locations',
+          DESCRIPTION: 'Manage the locations that welcome your guests.',
+        },
+        area: {
+          TITLE: 'Dining areas',
+          DESCRIPTION: 'Organize the dining areas of the selected location.',
+        },
+        table: {
+          TITLE: 'Tables',
+          DESCRIPTION: 'Manage table codes, capacity and QR identities in each dining area.',
+        },
+        station: {
+          TITLE: 'Kitchen & bar stations',
+          DESCRIPTION: 'Configure the preparation stations of the selected location.',
+        },
+        menu: {
+          TITLE: 'Menu',
+          DESCRIPTION: 'Organize categories and items for the selected location.',
+        },
+      },
+      ADD: {
+        outlet: 'Add location',
+        area: 'Add dining area',
+        table: 'Add table',
+        station: 'Add station',
+        item: 'Add item',
+      },
+      NAV: {
+        restaurant: 'Restaurant',
+        outlet: 'Locations',
+        area: 'Dining areas',
+        table: 'Tables',
+        station: 'Preparation stations',
+        menu: 'Menu',
+        MENU_SECTION: 'Menu',
+      },
+      EMPTY: {
+        outlet: {
+          TITLE: 'No locations yet',
+          DESCRIPTION:
+            'Add your first location to start configuring its dining areas, tables, and preparation stations.',
+        },
+        area: {
+          TITLE: 'No dining areas yet',
+          DESCRIPTION: 'Add the first dining area to this location to organize its tables.',
+        },
+        table: {
+          TITLE: 'No tables yet',
+          DESCRIPTION: 'Add the first tables to this dining area and set their capacity.',
+        },
+        station: {
+          TITLE: 'No preparation stations yet',
+          DESCRIPTION: 'Add the first station to organize preparation at this location.',
+        },
+        category: {
+          TITLE: 'No categories yet',
+          DESCRIPTION: 'Add the first category to organize your menu items.',
+        },
+        item: {
+          TITLE: 'No items yet',
+          DESCRIPTION: 'Add the first item to this category to complete your menu.',
+        },
+      },
+    },
+    ACCESS: { DENIED: 'Access unavailable', CHECKING: 'Checking product access' },
     UI: {
       WELCOME: 'Welcome',
       EMPTY_RESTAURANT: 'Set up your restaurant',
@@ -45,14 +121,19 @@ const translations = {
         item: 'Add your first item',
       },
       POLICIES: { STAFF_APPROVAL: 'Staff approval' },
-      ERRORS: { NETWORK: 'Check your connection', CONFLICT: 'Refresh and review changes' },
+      ERRORS: {
+        ACCESS: 'Restaurant permissions required',
+        NETWORK: 'Check your connection',
+        CONFLICT: 'Refresh and review changes',
+      },
     },
   },
 };
 describe('Liass-Resto frontend setup/menu surfaces', () => {
   const scope = signal('org'),
     manage = signal(true),
-    access = signal('AVAILABLE');
+    access = signal('AVAILABLE'),
+    read = signal(true);
   const api = { get: vi.fn(), list: vi.fn(), deactivate: vi.fn(), availability: vi.fn() };
   const dialog = { open: vi.fn() };
   let client: QueryClient;
@@ -61,6 +142,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     scope.set('org');
     manage.set(true);
     access.set('AVAILABLE');
+    read.set(true);
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     api.get.mockImplementation(async (_org: string, kind: RestaurantKind) => row(kind));
     api.list.mockImplementation(async (_org: string, kind: RestaurantKind) => ({
@@ -74,7 +156,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     client.clear();
     TestBed.resetTestingModule();
   });
-  async function create(mode = 'setup') {
+  async function create(mode = 'setup', restaurantSection = 'restaurant') {
     TestBed.configureTestingModule({
       imports: [
         RestaurantsWorkspacePage,
@@ -86,14 +168,17 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       ],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { data: { restaurantPage: mode } } } },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { data: { restaurantPage: mode, restaurantSection } } },
+        },
         { provide: QueryClient, useValue: client },
         { provide: AuthStore, useValue: { effectiveOrgId: scope } },
         { provide: ProductAccessState, useValue: { availability: access } },
         {
           provide: RestaurantsCapabilities,
           useValue: {
-            canRead: () => true,
+            canRead: read,
             canReadMenu: () => true,
             canManageSetup: manage,
             canManageMenu: manage,
@@ -178,6 +263,11 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     });
     expect(f.nativeElement.textContent).toContain('Agla Menu');
     expect(f.nativeElement.textContent).toContain('Drinks');
+    expect(
+      Array.from(f.nativeElement.querySelectorAll('h2')).some(
+        (node) => (node as HTMLElement).textContent?.trim() === 'Drinks',
+      ),
+    ).toBe(true);
     expect(f.nativeElement.textContent).toContain('Beer');
     expect(f.nativeElement.textContent).toContain('1,000 XOF');
     expect(f.componentInstance.reorder(row('item'))).toBe(true);
@@ -230,6 +320,10 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     });
     expect(f.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
     expect(f.nativeElement.textContent).not.toContain('Add your first location');
+    expect(f.nativeElement.querySelector('[data-testid="collection-empty-state"]')).toBeNull();
+    expect(
+      f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]'),
+    ).toBeNull();
     access.set('UNAVAILABLE');
     f.detectChanges();
     expect(f.nativeElement.textContent).toContain('Access unavailable');
@@ -349,5 +443,160 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     expect(f.componentInstance.outletId()).toBeNull();
     expect(f.componentInstance.categoryId()).toBeNull();
     expect(f.nativeElement.textContent).not.toContain('Héritage Bistro');
+  });
+  it('keeps ACTIVE product availability separate from missing read permissions', async () => {
+    const f = await create('overview');
+    read.set(false);
+    f.detectChanges();
+    expect(f.componentInstance.availability()).toBe('AVAILABLE');
+    expect(f.nativeElement.textContent).toContain('Restaurant permissions required');
+    expect(f.nativeElement.textContent).not.toContain('Access unavailable');
+    api.get.mockClear();
+    await f.componentInstance.refresh();
+    expect(api.get).not.toHaveBeenCalled();
+    read.set(true);
+    f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Restaurant permissions required');
+  });
+  it('shows loading rather than denial and reacts to restored product access', async () => {
+    const f = await create('overview');
+    access.set('UNKNOWN');
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[aria-busy="true"]')).not.toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('Access unavailable');
+    access.set('UNAVAILABLE');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('Access unavailable');
+    access.set('AVAILABLE');
+    f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Access unavailable');
+  });
+  it.each(['restaurant', 'outlet', 'area', 'table', 'station'] as const)(
+    'opens the %s deep link without local navigation tabs',
+    async (kind) => {
+      const f = await create('setup', kind);
+      expect(f.componentInstance.section()).toBe(kind);
+      expect(f.nativeElement.querySelector('nav')).toBeNull();
+      expect(f.nativeElement.querySelector('liass-page-header')).not.toBeNull();
+      if (kind !== 'restaurant')
+        await vi.waitFor(() => {
+          f.detectChanges();
+          expect(f.componentInstance.rows()).toHaveLength(1);
+        });
+      scope.set('org-new');
+      f.detectChanges();
+      expect(f.componentInstance.section()).toBe(kind);
+    },
+  );
+  it.each(['outlet', 'area', 'table', 'station', 'item'] as const)(
+    'places the only primary %s create action in its empty state',
+    async (kind) => {
+      api.list.mockImplementation(async (_org: string, requested: RestaurantKind) => ({
+        items: requested === kind ? [] : [row(requested)],
+      }));
+      const f = await create(kind === 'item' ? 'menu' : 'setup', kind);
+      await vi.waitFor(() => {
+        f.detectChanges();
+        expect(
+          f.nativeElement.querySelector('[data-testid="collection-empty-state"]'),
+        ).not.toBeNull();
+      });
+      const empty = f.nativeElement.querySelector('[data-testid="collection-empty-state"]');
+      expect(empty.querySelector('h2').textContent.trim()).toBe(
+        translations.RESTAURANTS.UX.EMPTY[kind].TITLE,
+      );
+      expect(empty.textContent).toContain(translations.RESTAURANTS.UX.EMPTY[kind].DESCRIPTION);
+      expect(
+        f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]'),
+      ).toBeNull();
+      expect(f.nativeElement.querySelector('nav')).toBeNull();
+      if (kind === 'outlet')
+        expect(
+          Array.from(f.nativeElement.querySelectorAll('h1,h2')).map((node) =>
+            (node as HTMLElement).textContent?.trim(),
+          ),
+        ).toEqual(['Locations', 'No locations yet']);
+      empty.querySelector('liass-button button').click();
+      expect(dialog.open).toHaveBeenCalledWith(
+        RestaurantEditorComponent,
+        expect.objectContaining({ data: expect.objectContaining({ kind }) }),
+      );
+      manage.set(false);
+      f.detectChanges();
+      expect(empty.querySelector('liass-button')).toBeNull();
+    },
+  );
+
+  it('keeps Add location in the header for populated collections without a duplicate collection heading', async () => {
+    const f = await create('setup', 'outlet');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.rows()).toHaveLength(1);
+    });
+    expect(f.nativeElement.querySelector('[data-testid="collection-empty-state"]')).toBeNull();
+    expect(f.nativeElement.querySelectorAll('h1')).toHaveLength(1);
+    expect(f.nativeElement.querySelectorAll('h2')).toHaveLength(0);
+    const button = f.nativeElement.querySelector(
+      'liass-page-header [data-testid="page-actions"] button',
+    );
+    expect(button.textContent).toContain('Add location');
+    button.click();
+    expect(dialog.open).toHaveBeenCalledWith(
+      RestaurantEditorComponent,
+      expect.objectContaining({ data: expect.objectContaining({ kind: 'outlet' }) }),
+    );
+  });
+
+  it('uses one category empty-state action and preserves meaningful selected category headings', async () => {
+    api.list.mockImplementation(async (_org: string, kind: RestaurantKind) => ({
+      items: kind === 'category' ? [] : [row(kind)],
+    }));
+    const f = await create('menu');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(
+        f.nativeElement.querySelector('[data-testid="category-empty-state"] liass-button'),
+      ).not.toBeNull();
+    });
+    const empty = f.nativeElement.querySelector('[data-testid="category-empty-state"]');
+    expect(empty.textContent).toContain('No categories yet');
+    expect(
+      f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]'),
+    ).toBeNull();
+    empty.querySelector('button').click();
+    expect(dialog.open).toHaveBeenCalledWith(
+      RestaurantEditorComponent,
+      expect.objectContaining({ data: expect.objectContaining({ kind: 'category' }) }),
+    );
+  });
+  it('uses canonical dashboard shortcuts and preserves bounded counts without a test heading', async () => {
+    const f = await create('overview');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.stations.isSuccess()).toBe(true);
+    });
+    const links = [...f.nativeElement.querySelectorAll('a')] as HTMLAnchorElement[];
+    expect(links.map((link) => link.getAttribute('href'))).toEqual(
+      expect.arrayContaining([
+        '/restaurants/setup',
+        '/restaurants/setup/locations',
+        '/restaurants/setup/areas',
+        '/restaurants/setup/stations',
+        '/restaurants/menu',
+      ]),
+    );
+    expect(f.nativeElement.querySelector('liass-page-header').textContent).toContain('Dashboard');
+    expect(f.nativeElement.textContent).not.toContain('RESTAURANTS.UI.SITE_COUNTS');
+    expect(f.nativeElement.textContent).not.toContain('Configuration de test');
+    expect(f.nativeElement.textContent).not.toContain('Vue d’ensemble');
+    for (const kind of ['outlet', 'area', 'station']) {
+      const link = f.nativeElement.querySelector(
+        'a[aria-label="' +
+          translations.RESTAURANTS.UX.NAV[kind as 'outlet' | 'area' | 'station'] +
+          '"]',
+      );
+      expect(link.querySelector('p').textContent.trim()).toBe('1');
+      expect(link.querySelector('mat-icon').getAttribute('aria-hidden')).toBe('true');
+    }
   });
 });

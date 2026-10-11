@@ -1,3 +1,10 @@
+import {
+  ShellRouteContext,
+  shellProducts,
+  restaurantSections,
+  ShellProductNavigation,
+} from '../../../core/navigation/product-navigation';
+import { RestaurantsCapabilities } from '../../../domains/restaurants/data-access/restaurants-capabilities';
 import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import type { ProductCode } from '@liass-ohada/shared/shared';
@@ -26,85 +33,85 @@ const accountingItems: readonly ShellNavItem[] = [
     labelKey: 'SHELL.NAV.ACCOUNTING_OVERVIEW',
     page: 'accounting.overview',
     productCode: 'ACCOUNTING',
-    route: '/accounting'
+    route: '/accounting',
   },
   {
     icon: 'event_available',
     labelKey: 'SHELL.NAV.FISCAL_YEAR',
     page: 'accounting.fiscalYear',
     productCode: 'ACCOUNTING',
-    route: '/accounting/fiscal-years'
+    route: '/accounting/fiscal-years',
   },
   {
     icon: 'account_balance',
     labelKey: 'SHELL.NAV.GENERAL_LEDGER',
     page: 'accounting.generalLedger',
     productCode: 'ACCOUNTING',
-    route: '/accounting/general-ledger'
+    route: '/accounting/general-ledger',
   },
   {
     icon: 'account_tree',
     labelKey: 'SHELL.NAV.AUXILIARY_LEDGER',
     page: 'accounting.auxiliaryLedger',
     productCode: 'ACCOUNTING',
-    route: '/accounting/auxiliary-ledger'
+    route: '/accounting/auxiliary-ledger',
   },
   {
     icon: 'diversity_3',
     labelKey: 'SHELL.NAV.AUXILIARY_BALANCE',
     page: 'accounting.auxiliaryBalance',
     productCode: 'ACCOUNTING',
-    route: '/accounting/auxiliary-balance'
+    route: '/accounting/auxiliary-balance',
   },
   {
     icon: 'history_edu',
     labelKey: 'SHELL.NAV.JOURNAL_BOOK',
     page: 'accounting.journalBook',
     productCode: 'ACCOUNTING',
-    route: '/accounting/journal-book'
+    route: '/accounting/journal-book',
   },
   {
     icon: 'menu_book',
     labelKey: 'SHELL.NAV.JOURNALS',
     page: 'accounting.journals',
     productCode: 'ACCOUNTING',
-    route: '/accounting/journals'
+    route: '/accounting/journals',
   },
   {
     icon: 'groups',
     labelKey: 'SHELL.NAV.THIRD_PARTIES',
     page: 'accounting.thirdParties',
     productCode: 'ACCOUNTING',
-    route: '/accounting/third-parties'
+    route: '/accounting/third-parties',
   },
   {
     icon: 'receipt_long',
     labelKey: 'SHELL.NAV.ENTRIES',
     page: 'accounting.entries',
     productCode: 'ACCOUNTING',
-    route: '/accounting/entries'
+    route: '/accounting/entries',
   },
   {
     icon: 'rule',
     labelKey: 'SHELL.NAV.LETTERING',
     page: 'accounting.lettering',
     productCode: 'ACCOUNTING',
-    route: '/accounting/lettering'
+    route: '/accounting/lettering',
   },
   {
     icon: 'balance',
     labelKey: 'SHELL.NAV.TRIAL_BALANCE',
     page: 'accounting.trialBalance',
     productCode: 'ACCOUNTING',
-    route: '/accounting/trial-balance'
+    route: '/accounting/trial-balance',
   },
   {
     icon: 'format_list_numbered',
     labelKey: 'SHELL.NAV.CHART_OF_ACCOUNTS',
     page: 'accounting.chartOfAccounts',
     productCode: 'ACCOUNTING',
-    route: '/accounting/accounts'
-  }
+    route: '/accounting/accounts',
+  },
 ];
 
 const topLevelItems: readonly ShellNavItem[] = [
@@ -112,7 +119,7 @@ const topLevelItems: readonly ShellNavItem[] = [
     icon: 'dashboard',
     labelKey: 'SHELL.NAV.DASHBOARD',
     page: 'dashboard',
-    route: '/dashboard'
+    route: '/dashboard',
   },
   {
     badgeKey: 'SHELL.NAV.SYCEBNL_BADGE',
@@ -120,27 +127,27 @@ const topLevelItems: readonly ShellNavItem[] = [
     labelKey: 'SHELL.NAV.PROJECTS',
     page: 'projects',
     productCode: 'ACCOUNTING',
-    route: '/projects'
+    route: '/projects',
   },
   {
     icon: 'payments',
     labelKey: 'SHELL.NAV.TREASURY',
     page: 'treasury',
     productCode: 'ACCOUNTING',
-    route: '/treasury'
+    route: '/treasury',
   },
   {
     disabled: true,
     icon: 'analytics',
     labelKey: 'SHELL.NAV.REPORTS',
-    page: 'reports'
+    page: 'reports',
   },
   {
     disabled: true,
     icon: 'admin_panel_settings',
     labelKey: 'SHELL.NAV.ADMINISTRATION',
-    page: 'administration'
-  }
+    page: 'administration',
+  },
 ];
 
 const dashboardItems: readonly ShellNavItem[] = topLevelItems.slice(0, 1);
@@ -151,99 +158,156 @@ const salesItems: readonly ShellNavItem[] = [
     labelKey: 'SHELL.NAV.SALES_CUSTOMERS',
     page: 'sales.customers',
     productCode: 'SALES',
-    route: '/sales/customers'
+    route: '/sales/customers',
   },
   {
     icon: 'category',
     labelKey: 'SHELL.NAV.SALES_ITEMS',
     page: 'sales.items',
     productCode: 'SALES',
-    route: '/sales/items'
+    route: '/sales/items',
   },
   {
     icon: 'receipt_long',
     labelKey: 'SHELL.NAV.SALES_INVOICES',
     page: 'sales.invoices',
     productCode: 'SALES',
-    route: '/sales/invoices'
-  }
+    route: '/sales/invoices',
+  },
 ];
 const cabinetItems: readonly ShellNavItem[] = [
   {
     icon: 'dashboard',
     labelKey: 'SHELL.NAV.CABINET_DASHBOARD',
     page: 'cabinet.dashboard',
-    route: '/cabinet/dashboard'
+    route: '/cabinet/dashboard',
   },
   {
     icon: 'folder_managed',
     labelKey: 'SHELL.NAV.CLIENT_DOSSIERS',
     page: 'cabinet.dossiers',
-    route: '/cabinet/dossiers'
+    route: '/cabinet/dossiers',
   },
   {
     icon: 'group',
     labelKey: 'SHELL.NAV.TEAM',
     page: 'cabinet.team',
-    route: '/cabinet/team'
+    route: '/cabinet/team',
   },
   {
     icon: 'assignment',
     labelKey: 'SHELL.NAV.MISSIONS',
     page: 'cabinet.missions',
-    route: '/cabinet/works'
+    route: '/cabinet/works',
   },
   {
     icon: 'event_upcoming',
     labelKey: 'SHELL.NAV.DEADLINES',
     page: 'cabinet.deadlines',
-    route: '/cabinet/deadlines'
+    route: '/cabinet/deadlines',
   },
   {
     icon: 'settings',
     labelKey: 'SHELL.NAV.CABINET_SETTINGS',
     page: 'cabinet.settings',
-    route: '/cabinet/settings'
-  }
+    route: '/cabinet/settings',
+  },
 ];
 
 @Component({
   selector: 'liass-app-sidebar',
   imports: [LiassSidebarNavItemComponent, TranslocoModule],
-  templateUrl: './app-sidebar.component.html'
+  templateUrl: './app-sidebar.component.html',
 })
 export class AppSidebarComponent {
+  protected readonly routeContext = inject(ShellRouteContext);
+  private readonly restaurantsCapabilities = inject(RestaurantsCapabilities);
+  private readonly productNavigation = inject(ShellProductNavigation);
+  protected readonly currentProduct = computed(
+    () =>
+      this.productNavigation.activeProduct()?.code ??
+      this.productNavigation.routeProduct() ??
+      'ACCOUNTING',
+  );
+  protected readonly restaurantGroups = computed(() => [
+    {
+      labelKey: 'SHELL.NAV.RESTAURANTS',
+      showHeading: false,
+      items: this.restaurantsCapabilities.canRead()
+        ? [
+            {
+              icon: 'space_dashboard',
+              labelKey: 'RESTAURANTS.UX.NAV.overview',
+              page: 'restaurants' as const,
+              route: '/restaurants',
+              productCode: 'RESTAURANTS' as const,
+            },
+          ]
+        : [],
+    },
+    {
+      labelKey: 'RESTAURANTS.UX.CONFIGURATION',
+      showHeading: true,
+      items: this.restaurantsCapabilities.canRead()
+        ? restaurantSections.map((section) => ({
+            icon: section.icon,
+            labelKey: 'RESTAURANTS.UX.NAV.' + section.kind,
+            page: 'restaurants' as const,
+            route: '/restaurants/' + section.path,
+            productCode: 'RESTAURANTS' as const,
+          }))
+        : [],
+    },
+    {
+      labelKey: 'RESTAURANTS.UX.NAV.MENU_SECTION',
+      showHeading: true,
+      items: this.restaurantsCapabilities.canReadMenu()
+        ? [
+            {
+              icon: 'restaurant_menu',
+              labelKey: 'RESTAURANTS.UX.NAV.menu',
+              page: 'restaurants' as const,
+              route: '/restaurants/menu',
+              productCode: 'RESTAURANTS' as const,
+            },
+          ]
+        : [],
+    },
+  ]);
   protected readonly accountingItems = accountingItems;
   protected readonly cabinetItems = cabinetItems;
-  protected readonly dashboardItems = dashboardItems;
+  protected readonly dashboardItems = computed<readonly ShellNavItem[]>(() =>
+    this.currentProduct() === 'SALES'
+      ? [
+          {
+            ...dashboardItems[0],
+            page: 'sales.dashboard',
+            productCode: 'SALES',
+            route: shellProducts.find((product) => product.code === 'SALES')!.route,
+          },
+        ]
+      : dashboardItems,
+  );
   protected readonly secondaryItems = secondaryItems;
   protected readonly salesItems = salesItems;
-  protected readonly restaurantsItem: ShellNavItem = {
-    icon: 'restaurant',
-    labelKey: 'SHELL.NAV.RESTAURANTS',
-    page: 'restaurants',
-    productCode: 'RESTAURANTS',
-    route: '/restaurants'
-  };
   protected readonly showRestaurantsNavigation = computed(
-    () => !!this.authStore.effectiveOrgId() &&
-      this.productAccessState.availability('RESTAURANTS') === 'AVAILABLE'
+    () =>
+      !!this.authStore.effectiveOrgId() &&
+      this.productAccessState.availability('RESTAURANTS') === 'AVAILABLE',
   );
   protected readonly authStore = inject(AuthStore);
   private readonly cabinetSettingsCapabilities = inject(CabinetSettingsCapabilities);
   private readonly productAccessState = inject(ProductAccessState);
   private readonly salesCapabilities = inject(SalesCapabilities);
   protected readonly uiStore = inject(UiStore);
-  protected readonly cabinetMode = computed(
-    () => this.authStore.isCabinetContext()
-  );
+  protected readonly cabinetMode = computed(() => this.authStore.isCabinetContext());
   protected readonly visibleCabinetItems = computed(() =>
     cabinetItems.filter(
       (item) =>
         (item.page !== 'cabinet.team' || this.authStore.canViewCabinetTeam()) &&
         (item.page !== 'cabinet.settings' ||
-          this.cabinetSettingsCapabilities.canManageCabinetSettings())
-    )
+          this.cabinetSettingsCapabilities.canManageCabinetSettings()),
+    ),
   );
   private readonly router = inject(Router);
 
@@ -252,8 +316,12 @@ export class AppSidebarComponent {
     () =>
       !!this.authStore.effectiveOrgId() &&
       this.productAccessState.availability('SALES') === 'AVAILABLE' &&
-      this.salesCapabilities.canRead()
+      this.salesCapabilities.canRead(),
   );
+
+  protected restaurantActive(item: ShellNavItem): boolean {
+    return this.routeContext.url() === item.route;
+  }
 
   protected sidebarClass(): string {
     const mobileState = this.uiStore.sidebarOpen() ? 'translate-x-0' : '-translate-x-full';
@@ -286,9 +354,7 @@ export class AppSidebarComponent {
   }
 
   protected itemDescription(item: ShellNavItem): string | null {
-    return this.productUnavailable(item)
-      ? 'SHELL.NAV.PRODUCT_UNAVAILABLE_FOR_ORGANIZATION'
-      : null;
+    return this.productUnavailable(item) ? 'SHELL.NAV.PRODUCT_UNAVAILABLE_FOR_ORGANIZATION' : null;
   }
 
   protected itemDisabled(item: ShellNavItem): boolean {

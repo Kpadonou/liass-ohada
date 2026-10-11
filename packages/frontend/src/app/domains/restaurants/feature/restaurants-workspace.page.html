@@ -1,10 +1,29 @@
-<div class="space-y-4">
+<div class="mx-auto w-full max-w-[var(--spacing-app-settings)] space-y-5">
+  <liass-page-header
+    [eyebrow]="''"
+    [title]="'RESTAURANTS.UX.PAGES.' + pageKey() + '.TITLE' | transloco"
+    [subtitle]="'RESTAURANTS.UX.PAGES.' + pageKey() + '.DESCRIPTION' | transloco"
+    [actionLabel]="headerAction() ? (headerAction()! | transloco) : null"
+    [actionIcon]="section() === 'restaurant' && mode === 'setup' ? 'edit' : 'add'"
+    (actionTriggered)="headerActionTriggered()"
+  />
   @if (busy()) {
     <p role="status" aria-live="polite">{{ 'RESTAURANTS.UI.SAVING' | transloco }}</p>
   }
-  @if (!allowed()) {
+  @if (availability() === 'UNKNOWN') {
+    <liass-card>
+      <div role="status" aria-busy="true" class="space-y-3">
+        <p>{{ 'RESTAURANTS.ACCESS.CHECKING' | transloco }}</p>
+        <liass-skeleton variant="block" />
+      </div>
+    </liass-card>
+  } @else if (availability() === 'UNAVAILABLE') {
     <liass-card
-      ><p role="alert">{{ 'RESTAURANTS.ACCESS.DENIED' | transloco }}</p>
+      ><p role="alert">{{ 'RESTAURANTS.ACCESS.DENIED' | transloco }}</p></liass-card
+    >
+  } @else if (!allowed()) {
+    <liass-card
+      ><p role="alert">{{ 'RESTAURANTS.UI.ERRORS.ACCESS' | transloco }}</p>
       <button mat-button (click)="refresh()">
         {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
       </button></liass-card
@@ -57,7 +76,7 @@
           }}</a>
           @if (caps.canReadMenu()) {
             <a mat-stroked-button routerLink="/restaurants/menu">{{
-              'RESTAURANTS.UI.NAV.MENU' | transloco
+              'RESTAURANTS.UX.NAV.menu' | transloco
             }}</a>
           }
         </div>
@@ -76,27 +95,56 @@
         >
       } @else {
         <div class="grid gap-4 sm:grid-cols-2">
-          <liass-card [title]="'RESTAURANTS.UI.KINDS.restaurant' | transloco"
-            ><p>{{ 'RESTAURANTS.UI.CONFIGURED' | transloco }}</p></liass-card
-          ><liass-card [title]="'RESTAURANTS.UI.KINDS.outlet' | transloco"
-            ><p class="text-2xl font-semibold">
-              {{ outlets().length }}{{ locations.hasNextPage() ? '+' : '' }}
-            </p>
-            <p class="text-sm text-app-text-secondary">
-              {{
-                (outlets().length
-                  ? 'RESTAURANTS.UI.LOCATIONS_READY'
-                  : 'RESTAURANTS.UI.EMPTY.outlet'
-                ) | transloco
-              }}
-            </p></liass-card
+          <a
+            routerLink="/restaurants/setup"
+            class="liass-focus-ring group block rounded-app-card"
+            [attr.aria-label]="'RESTAURANTS.UX.NAV.restaurant' | transloco"
+            ><liass-card
+              ><div class="flex items-center justify-between gap-3">
+                <h2 class="text-sm font-semibold text-app-text-primary">
+                  {{ 'RESTAURANTS.UX.NAV.restaurant' | transloco }}
+                </h2>
+                <mat-icon
+                  class="text-app-text-secondary group-hover:text-brand-700"
+                  aria-hidden="true"
+                  >chevron_right</mat-icon
+                >
+              </div>
+              <p class="mt-3 text-sm text-app-text-secondary">
+                {{ 'RESTAURANTS.UI.CONFIGURED' | transloco }}
+              </p></liass-card
+            ></a
+          ><a
+            routerLink="/restaurants/setup/locations"
+            class="liass-focus-ring group block rounded-app-card"
+            [attr.aria-label]="'RESTAURANTS.UX.NAV.outlet' | transloco"
+            ><liass-card
+              ><div class="flex items-center justify-between gap-3">
+                <h2 class="text-sm font-semibold text-app-text-primary">
+                  {{ 'RESTAURANTS.UX.NAV.outlet' | transloco }}
+                </h2>
+                <mat-icon
+                  class="text-app-text-secondary group-hover:text-brand-700"
+                  aria-hidden="true"
+                  >chevron_right</mat-icon
+                >
+              </div>
+              <p class="mt-3 text-2xl font-semibold">
+                {{ outlets().length }}{{ locations.hasNextPage() ? '+' : '' }}
+              </p>
+              <p class="text-sm text-app-text-secondary">
+                {{
+                  (outlets().length
+                    ? 'RESTAURANTS.UI.LOCATIONS_READY'
+                    : 'RESTAURANTS.UI.EMPTY.outlet'
+                  ) | transloco
+                }}
+              </p></liass-card
+            ></a
           >
         </div>
       }
       @if (outlet()) {
-        <p class="text-sm text-app-text-secondary">
-          {{ 'RESTAURANTS.UI.SITE_COUNTS' | transloco: { name: outlet()?.name } }}
-        </p>
         @if (areas.isPending() || stations.isPending()) {
           <liass-card
             ><p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
@@ -111,14 +159,44 @@
           >
         } @else {
           <div class="grid gap-4 sm:grid-cols-2">
-            <liass-card [title]="'RESTAURANTS.UI.KINDS.area' | transloco"
-              ><p class="text-2xl font-semibold">
-                {{ areaRows().length }}{{ areas.hasNextPage() ? '+' : '' }}
-              </p></liass-card
-            ><liass-card [title]="'RESTAURANTS.UI.KINDS.station' | transloco"
-              ><p class="text-2xl font-semibold">
-                {{ stationRows().length }}{{ stations.hasNextPage() ? '+' : '' }}
-              </p></liass-card
+            <a
+              routerLink="/restaurants/setup/areas"
+              class="liass-focus-ring group block rounded-app-card"
+              [attr.aria-label]="'RESTAURANTS.UX.NAV.area' | transloco"
+              ><liass-card
+                ><div class="flex items-center justify-between gap-3">
+                  <h2 class="text-sm font-semibold text-app-text-primary">
+                    {{ 'RESTAURANTS.UX.NAV.area' | transloco }}
+                  </h2>
+                  <mat-icon
+                    class="text-app-text-secondary group-hover:text-brand-700"
+                    aria-hidden="true"
+                    >chevron_right</mat-icon
+                  >
+                </div>
+                <p class="mt-3 text-2xl font-semibold">
+                  {{ areaRows().length }}{{ areas.hasNextPage() ? '+' : '' }}
+                </p></liass-card
+              ></a
+            ><a
+              routerLink="/restaurants/setup/stations"
+              class="liass-focus-ring group block rounded-app-card"
+              [attr.aria-label]="'RESTAURANTS.UX.NAV.station' | transloco"
+              ><liass-card
+                ><div class="flex items-center justify-between gap-3">
+                  <h2 class="text-sm font-semibold text-app-text-primary">
+                    {{ 'RESTAURANTS.UX.NAV.station' | transloco }}
+                  </h2>
+                  <mat-icon
+                    class="text-app-text-secondary group-hover:text-brand-700"
+                    aria-hidden="true"
+                    >chevron_right</mat-icon
+                  >
+                </div>
+                <p class="mt-3 text-2xl font-semibold">
+                  {{ stationRows().length }}{{ stations.hasNextPage() ? '+' : '' }}
+                </p></liass-card
+              ></a
             >
           </div>
         }
@@ -126,20 +204,6 @@
     } @else {
       @if (!canManage()) {
         <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS.UI.READ_ONLY' | transloco }}</p>
-      }
-      @if (mode === 'setup') {
-        <nav class="flex flex-wrap gap-2" [attr.aria-label]="'RESTAURANTS.UI.SECTIONS' | transloco">
-          @for (kind of sections; track kind) {
-            <button
-              mat-button
-              [attr.aria-current]="section() === kind ? 'page' : null"
-              [class.bg-app-surface-selected]="section() === kind"
-              (click)="section.set(kind)"
-            >
-              {{ 'RESTAURANTS.UI.KINDS.' + kind | transloco }}
-            </button>
-          }
-        </nav>
       }
       @if (mode === 'menu' || (section() !== 'restaurant' && section() !== 'outlet')) {
         <liass-card>
@@ -152,12 +216,24 @@
               {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
             </button>
           } @else if (!outlets().length) {
-            <p>{{ 'RESTAURANTS.UI.EMPTY.outlet' | transloco }}</p>
-            @if (caps.canManageSetup() && root.data()?.isActive) {
-              <button mat-flat-button (click)="open('outlet')">
-                {{ 'RESTAURANTS.UI.ADD_LOCATION' | transloco }}
-              </button>
-            }
+            <div class="space-y-2" data-testid="location-empty-state">
+              <h2 class="text-base font-semibold">
+                {{ 'RESTAURANTS.UX.EMPTY.outlet.TITLE' | transloco }}
+              </h2>
+              <p class="max-w-xl text-sm leading-6 text-app-text-secondary">
+                {{ 'RESTAURANTS.UX.EMPTY.outlet.DESCRIPTION' | transloco }}
+              </p>
+              @if (caps.canManageSetup() && root.data()?.isActive) {
+                <liass-button
+                  tone="brand"
+                  variant="solid"
+                  icon="add"
+                  [disabled]="busy()"
+                  (pressed)="open('outlet')"
+                  >{{ 'RESTAURANTS.UX.ADD.outlet' | transloco }}</liass-button
+                >
+              }
+            </div>
           } @else {
             <div class="grid gap-4 sm:grid-cols-2">
               <liass-searchable-select
@@ -204,12 +280,24 @@
                 </button>
               }
               @if (!areas.isPending() && !areas.isError() && !areaRows().length) {
-                <p>{{ 'RESTAURANTS.UI.EMPTY.area' | transloco }}</p>
-                @if (caps.canManageSetup() && siteActive()) {
-                  <button mat-button (click)="open('area')">
-                    {{ 'RESTAURANTS.UI.ADD_AREA' | transloco }}
-                  </button>
-                }
+                <div class="space-y-2">
+                  <h2 class="text-base font-semibold">
+                    {{ 'RESTAURANTS.UX.EMPTY.area.TITLE' | transloco }}
+                  </h2>
+                  <p class="max-w-xl text-sm leading-6 text-app-text-secondary">
+                    {{ 'RESTAURANTS.UX.EMPTY.area.DESCRIPTION' | transloco }}
+                  </p>
+                  @if (caps.canManageSetup() && siteActive()) {
+                    <liass-button
+                      tone="brand"
+                      variant="solid"
+                      icon="add"
+                      [disabled]="busy()"
+                      (pressed)="open('area')"
+                      >{{ 'RESTAURANTS.UX.ADD.area' | transloco }}</liass-button
+                    >
+                  }
+                </div>
               }
             }
             @if (!outlet()?.isActive) {
@@ -219,7 +307,7 @@
         </liass-card>
       }
       @if (mode === 'setup' && section() === 'restaurant') {
-        <liass-card [title]="root.data()?.name ?? null"
+        <liass-card class="max-w-3xl" [title]="root.data()?.name ?? null"
           ><div class="space-y-4">
             <liass-status-chip
               [label]="
@@ -228,19 +316,14 @@
               "
               [tone]="root.data()?.isActive ? 'success' : 'neutral'"
             />
-            <dl>
+            <dl class="rounded-app-panel bg-app-surface-muted p-4">
               <dt class="text-sm text-app-text-secondary">
                 {{ 'RESTAURANTS.UI.POLICY' | transloco }}
               </dt>
-              <dd>
+              <dd class="mt-1 font-medium text-app-text">
                 {{ 'RESTAURANTS.UI.POLICIES.' + root.data()?.guestOrderingPolicy | transloco }}
               </dd>
             </dl>
-            @if (caps.canManageSetup()) {
-              <button mat-stroked-button (click)="open('restaurant', root.data()!)">
-                {{ 'RESTAURANTS.UI.EDIT' | transloco }}
-              </button>
-            }
           </div></liass-card
         >
       } @else if (mode === 'menu' && outlet()) {
@@ -294,7 +377,24 @@
                 </button>
               } @else {
                 @if (!categoryRows().length) {
-                  <p class="text-sm">{{ 'RESTAURANTS.UI.EMPTY.category' | transloco }}</p>
+                  <div class="space-y-2" data-testid="category-empty-state">
+                    <h3 class="text-sm font-semibold">
+                      {{ 'RESTAURANTS.UX.EMPTY.category.TITLE' | transloco }}
+                    </h3>
+                    <p class="text-sm leading-6 text-app-text-secondary">
+                      {{ 'RESTAURANTS.UX.EMPTY.category.DESCRIPTION' | transloco }}
+                    </p>
+                    @if (caps.canManageMenu() && siteActive() && menu.data()?.isActive) {
+                      <liass-button
+                        tone="brand"
+                        variant="solid"
+                        icon="add"
+                        [disabled]="busy()"
+                        (pressed)="open('category')"
+                        >{{ 'RESTAURANTS.UI.ADD_CATEGORY' | transloco }}</liass-button
+                      >
+                    }
+                  </div>
                 }
                 <ul class="space-y-2">
                   @for (row of categoryRows(); track row.id) {
@@ -344,7 +444,7 @@
                     {{ 'RESTAURANTS.UI.MORE' | transloco }}
                   </button>
                 }
-                @if (caps.canManageMenu() && siteActive()) {
+                @if (caps.canManageMenu() && siteActive() && categoryRows().length) {
                   <button mat-stroked-button class="mt-3" (click)="open('category')">
                     {{ 'RESTAURANTS.UI.ADD_CATEGORY' | transloco }}
                   </button>
@@ -365,17 +465,9 @@
   }
   <ng-template #collectionView>
     <div class="min-w-0 space-y-4">
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-lg font-semibold">
-          {{ mode === 'menu' ? category()?.name : ('RESTAURANTS.UI.KINDS.' + kind() | transloco) }}
-        </h2>
-        @if (canCreate()) {
-          <button mat-flat-button (click)="open()">
-            {{ 'RESTAURANTS.UI.ADD' | transloco }} ·
-            {{ 'RESTAURANTS.UI.KINDS.' + kind() | transloco }}
-          </button>
-        }
-      </div>
+      @if (mode === 'menu' && category()) {
+        <h2 class="text-base font-semibold">{{ category()?.name }}</h2>
+      }
       @if (mode === 'menu' && !category()) {
         <liass-card
           ><p>{{ 'RESTAURANTS.UI.CHOOSE_CATEGORY' | transloco }}</p></liass-card
@@ -394,9 +486,36 @@
           </button></liass-card
         >
       } @else if (!rows().length) {
-        <liass-card
-          ><p>{{ 'RESTAURANTS.UI.EMPTY.' + kind() | transloco }}</p></liass-card
-        >
+        <liass-card class="max-w-3xl" padding="md">
+          <div
+            class="flex flex-col items-start gap-3 sm:flex-row sm:items-start"
+            data-testid="collection-empty-state"
+          >
+            <span
+              class="grid size-9 shrink-0 place-items-center rounded-app-control bg-app-surface-muted text-app-text-secondary"
+              aria-hidden="true"
+              ><mat-icon>add_circle_outline</mat-icon></span
+            >
+            <div class="min-w-0 space-y-2">
+              <h2 class="text-base font-semibold text-app-text">
+                {{ 'RESTAURANTS.UX.EMPTY.' + kind() + '.TITLE' | transloco }}
+              </h2>
+              <p class="max-w-xl text-sm leading-6 text-app-text-secondary">
+                {{ 'RESTAURANTS.UX.EMPTY.' + kind() + '.DESCRIPTION' | transloco }}
+              </p>
+              @if (canCreate()) {
+                <liass-button
+                  tone="brand"
+                  variant="solid"
+                  icon="add"
+                  [disabled]="busy()"
+                  (pressed)="open()"
+                  >{{ 'RESTAURANTS.UX.ADD.' + kind() | transloco }}</liass-button
+                >
+              }
+            </div>
+          </div>
+        </liass-card>
       } @else {
         <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           @for (row of rows(); track row.id) {

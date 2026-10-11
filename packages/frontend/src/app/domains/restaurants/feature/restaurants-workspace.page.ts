@@ -24,6 +24,8 @@ import { restaurantPrice } from '../utils/restaurant-money';
 import { restaurantError } from '../utils/restaurant-errors';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { NotificationService } from '../../../core/notifications/notification.service';
+import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
+import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
@@ -62,6 +64,8 @@ function collectionState(query: {
     MatIconModule,
     MatMenuModule,
     TranslocoModule,
+    LiassPageHeaderComponent,
+    LiassButtonComponent,
     LiassCardComponent,
     LiassSkeletonComponent,
     LiassStatusChipComponent,
@@ -81,17 +85,37 @@ export class RestaurantsWorkspacePage {
   private readonly notification = inject(NotificationService);
   readonly t = inject(TranslocoService);
   private readonly product = inject(ProductAccessState);
-  readonly sections: RestaurantKind[] = ['restaurant', 'outlet', 'area', 'table', 'station'];
-  readonly section = signal<RestaurantKind>('restaurant');
+  readonly section = signal<RestaurantKind>(
+    inject(ActivatedRoute).snapshot.data['restaurantSection'] ?? 'restaurant',
+  );
+  readonly pageKey = computed(() => (this.mode === 'setup' ? this.section() : this.mode));
+  readonly headerAction = computed(() => {
+    if (!this.root.data() || !this.allowed()) return null;
+    if (this.mode === 'setup' && this.section() === 'restaurant')
+      return this.caps.canManageSetup() ? 'RESTAURANTS.UI.EDIT' : null;
+    if (
+      this.mode !== 'overview' &&
+      this.canCreate() &&
+      this.rows().length > 0 &&
+      !this.collection().pending &&
+      !this.collection().failed
+    )
+      return 'RESTAURANTS.UX.ADD.' + this.kind();
+    return null;
+  });
+  headerActionTriggered() {
+    this.open(this.kind(), this.kind() === 'restaurant' ? this.root.data()! : undefined);
+  }
   readonly outletId = signal<string | null>(null);
   readonly areaId = signal<string | null>(null);
   readonly categoryId = signal<string | null>(null);
   readonly busy = signal(false);
   readonly actionError = signal<string | null>(null);
   readonly deniedOrg = signal<string | null>(null);
+  readonly availability = computed(() => this.product.availability('RESTAURANTS'));
   readonly allowed = computed(
     () =>
-      this.product.availability('RESTAURANTS') === 'AVAILABLE' &&
+      this.availability() === 'AVAILABLE' &&
       this.caps.canRead() &&
       this.deniedOrg() !== this.queries.scope(),
   );
@@ -220,7 +244,6 @@ export class RestaurantsWorkspacePage {
         this.categoryId.set(null);
         this.actionError.set(null);
         this.deniedOrg.set(null);
-        this.section.set('restaurant');
       }
     });
     effect(() => {
@@ -407,6 +430,6 @@ export class RestaurantsWorkspacePage {
     this.actionError.set(null);
     this.deniedOrg.set(null);
     await this.queries.denied(this.queries.scope());
-    await this.root.refetch();
+    if (this.allowed()) await this.root.refetch();
   }
 }

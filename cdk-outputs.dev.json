@@ -1,6 +1,8 @@
 {
   "LiassOhadaBackendStackDataStack20BA4040": {
+    "ExportsOutputFnGetAttPrivateDocumentBucketC2976AF8Arn841630A3": "arn:aws:s3:::liass-ohada-dev-documents-570197775998-eu-west-3",
     "ExportsOutputRefAccountingTableLiassOhadaAccountingTable227E774D00AE2031": "liass-ohada-dev-accounting-table",
+    "ExportsOutputRefPrivateDocumentBucketC2976AF8A5B58F2C": "liass-ohada-dev-documents-570197775998-eu-west-3",
     "ExportsOutputFnGetAttAccountingTableLiassOhadaAccountingTable227E774DArnAC508755": "arn:aws:dynamodb:eu-west-3:570197775998:table/liass-ohada-dev-accounting-table"
   },
   "LiassOhadaBackendStackApiStack2823DE88": {

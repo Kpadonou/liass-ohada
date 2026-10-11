@@ -85,7 +85,9 @@ export function pageFromUrl(url: string): AppPage {
     return 'treasury';
   }
 
-  if (path.startsWith('/sales/customers') || path === '/sales' || path === '/sales/') {
+  if (path === '/sales' || path === '/sales/') return 'sales.dashboard';
+
+  if (path.startsWith('/sales/customers')) {
     return 'sales.customers';
   }
 

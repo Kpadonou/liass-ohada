@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import type { WorkspaceSummary } from '@liass-ohada/shared/shared';
+import { ProductRolesSchema, type WorkspaceSummary } from '@liass-ohada/shared/shared';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
@@ -36,6 +36,7 @@ function parseWorkspaceSummary(value: unknown): WorkspaceSummary {
   return {
     orgId: value['orgId'],
     role,
+    productRoles: ProductRolesSchema.safeParse(value['productRoles']).data,
     cabinetRole,
     cabinetId: optionalString(value['cabinetId']),
     accessSource: optionalString(value['accessSource']),
@@ -44,8 +45,8 @@ function parseWorkspaceSummary(value: unknown): WorkspaceSummary {
     status: value['status'] === 'ACTIVE' ? value['status'] : undefined,
     country: optionalString(value['country']) as WorkspaceSummary['country'],
     accountingFramework: optionalString(
-      value['accountingFramework']
-    ) as WorkspaceSummary['accountingFramework']
+      value['accountingFramework'],
+    ) as WorkspaceSummary['accountingFramework'],
   };
 }
 
@@ -64,7 +65,7 @@ export class WorkspacesApi {
 
   async listWorkspaces(): Promise<WorkspaceSummary[]> {
     const response = await firstValueFrom(
-      this.http.get<unknown>(`${this.apiBaseUrl}/me/workspaces`)
+      this.http.get<unknown>(`${this.apiBaseUrl}/me/workspaces`),
     );
 
     return parseWorkspacesResponse(response);
