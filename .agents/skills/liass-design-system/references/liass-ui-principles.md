@@ -1,5 +1,9 @@
 # Liass UI Principles
 
+## Charter authority and completion
+
+This existing charter is authoritative for frontend work. Inspect relevant principles/tokens, typography/spacing, shell/navigation, headers/cards/panels, form/table/list patterns, Material 3 theme, Tailwind layout and responsive/accessibility/loading/empty/error conventions before coding. Visual alignment, translated operational language, appropriate controls, coherent permission states, keyboard/focus and rendered responsive verification are part of completion; tests alone are insufficient. Avoid duplicated navigation, improvised spacing/colors/controls/cards/action placement. Canonical Angular form/control rules live in root AGENTS.md and the design-system SKILL.md.
+
 ## Product Personality
 
 Liass-OHADA is a premium modular ERP platform for organizations operating in the OHADA environment. It should feel like:

@@ -24,7 +24,7 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 9. Ensure shared layout/page primitives render with stable block-level host behavior when they are used as standalone page sections.
 10. For table/list management pages, make simple create and edit actions dialog-based by default so the user stays in context.
 11. For `mat-select` fields with more than 10 options, or likely to grow beyond 10 options, provide search/filter capability by default.
-11a. For large server-backed reference data such as accounting accounts, do not treat a fixed first page as the complete option list. Use a reusable remote-search selector with debounce, explicit loading/no-results states, cursor pagination when available, and selected-value hydration.
+    11a. For large server-backed reference data such as accounting accounts, do not treat a fixed first page as the complete option list. Use a reusable remote-search selector with debounce, explicit loading/no-results states, cursor pagination when available, and selected-value hydration.
 12. For pages that load remote data, especially data-heavy tables and lists, always show an explicit loading state; users must never see a blank table/list area while data is loading.
 13. Use snackbars only for short, transient, action-related feedback; keep validation, blocking errors, empty states, confirmations, and long business guidance contextual.
 14. Prefer backend-provided user-facing messages over generic frontend messages, including nested payloads such as `{ message: { code, message } }`; use translated frontend fallbacks only when backend message extraction returns no safe message.
@@ -34,6 +34,16 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 18. Tables with many columns should provide local table preferences for optional visible columns; mandatory identity/action columns must remain visible.
 19. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
 20. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
+
+## Permanent visual and Angular form contract
+
+The existing visual charter is authoritative; visually inconsistent UI is incomplete even when functional tests pass. This skill and its existing references own the permanent frontend design and form rules; root `AGENTS.md` links here. Before significant screen changes, inspect existing typography/spacing, shell/navigation, page-header/card/panel, form/list/table, responsive/accessibility and loading/empty/error patterns alongside tokens, Material 3 theme and Tailwind utilities. Report relevant files, reused components, form/control strategy, responsive approach and deviations before coding.
+
+Use the contextual sidebar for product sections and subsections. Add permission-aware entries when distinct feature destinations are needed, including the existing mobile drawer. Keep pages focused on their current task, context filters and actions; do not duplicate sidebar navigation or overload pages with module menus.
+
+Use typed Reactive Forms by default, with validators in configuration and translated control-state `mat-error` messages. Standalone context selectors and simple local UI selections may use `ngModel` with Signals. Document exceptional template-driven business forms or native-control choices; do not mix form paradigms within a form unnecessarily. Material provides semantic controls; Tailwind provides layout/spacing/sizing/responsiveness. Use `mat-select` for closed enums/reference assignments, search/filter for growing options, checkbox for a form-saved boolean, toggle for immediate enable/disable, radio for appropriate small exclusive sets and datepicker for actual date selection. Existing constrained Material autocomplete primitives remain valid when justified by search/reference UX; custom pseudo-selects do not. Avoid heavy overrides or Tailwind-only control replicas.
+
+True sequential gated forms use Material Stepper with Reactive Forms, per-step validation, preserved navigation state and clearing of invalidated hidden configuration; small forms do not need cosmetic steppers. Definition of Done includes the charter, translated business language, no duplicated navigation, meaningful states, permissions/read-only presentation, responsiveness, keyboard and focus verification. Inspect rendered spacing and report visual evidence rather than relying solely on tests.
 
 ## Reference priority
 

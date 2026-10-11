@@ -23,14 +23,14 @@
         </button>
       }
     }
-    <mat-form-field class="w-full"
+    <mat-form-field subscriptSizing="dynamic" class="w-full"
       ><mat-label>{{ 'RESTAURANTS.UI.NAME' | transloco }}</mat-label
       ><input matInput formControlName="name" maxlength="160" /><mat-error>{{
         'RESTAURANTS.UI.REQUIRED' | transloco
       }}</mat-error></mat-form-field
     >
     @if (data.kind === 'restaurant') {
-      <mat-form-field class="w-full"
+      <mat-form-field subscriptSizing="dynamic" class="w-full"
         ><mat-label>{{ 'RESTAURANTS.UI.POLICY' | transloco }}</mat-label
         ><mat-select formControlName="policy">
           @for (policy of ['DISABLED', 'STAFF_APPROVAL', 'DIRECT']; track policy) {
@@ -41,21 +41,21 @@
         </mat-select></mat-form-field
       >
       @if (data.entity) {
-        <mat-slide-toggle formControlName="active">{{
+        <mat-checkbox formControlName="active">{{
           'RESTAURANTS.UI.ACTIVE' | transloco
-        }}</mat-slide-toggle>
+        }}</mat-checkbox>
       }
     }
     @if (data.kind === 'table') {
       <div class="grid gap-4 sm:grid-cols-2">
-        <mat-form-field
+        <mat-form-field subscriptSizing="dynamic"
           ><mat-label>{{ 'RESTAURANTS.UI.CODE' | transloco }}</mat-label
           ><input matInput formControlName="code" maxlength="32" /><mat-hint>{{
             'RESTAURANTS.UI.CODE_HELP' | transloco
           }}</mat-hint
           ><mat-error>{{ 'RESTAURANTS.UI.CODE_INVALID' | transloco }}</mat-error></mat-form-field
         >
-        <mat-form-field
+        <mat-form-field subscriptSizing="dynamic"
           ><mat-label>{{ 'RESTAURANTS.UI.CAPACITY' | transloco }}</mat-label
           ><input matInput formControlName="capacity" inputmode="numeric" /><mat-hint>{{
             'RESTAURANTS.UI.OPTIONAL' | transloco
@@ -68,7 +68,7 @@
     }
     @if (data.kind === 'menu') {
       @if (!data.entity) {
-        <mat-form-field class="w-full"
+        <mat-form-field subscriptSizing="dynamic" class="w-full"
           ><mat-label>{{ 'RESTAURANTS.UI.CURRENCY' | transloco }}</mat-label
           ><input matInput formControlName="currency" maxlength="3" /><mat-hint>{{
             'RESTAURANTS.UI.CURRENCY_FIXED' | transloco
@@ -82,14 +82,14 @@
       }
     }
     @if (data.kind === 'item') {
-      <mat-form-field class="w-full"
+      <mat-form-field subscriptSizing="dynamic" class="w-full"
         ><mat-label>{{ 'RESTAURANTS.UI.PRICE' | transloco }} ({{ data.currency }})</mat-label
         ><input matInput formControlName="price" inputmode="decimal" /><mat-error>{{
           'RESTAURANTS.UI.PRICE_INVALID' | transloco
         }}</mat-error></mat-form-field
       >
       @if (!data.entity) {
-        <mat-form-field class="w-full"
+        <mat-form-field subscriptSizing="dynamic" class="w-full"
           ><mat-label>{{ 'RESTAURANTS.UI.AVAILABILITY' | transloco }}</mat-label
           ><mat-select formControlName="availability"
             ><mat-option value="AVAILABLE">{{ 'RESTAURANTS.UI.AVAILABLE' | transloco }}</mat-option
@@ -100,6 +100,7 @@
         >
       }
       <liass-searchable-select
+        controlType="select"
         unresolvedLabelKey="RESTAURANTS.UI.SELECTED_REFERENCE"
         formControlName="station"
         labelKey="RESTAURANTS.UI.STATION"
@@ -128,9 +129,9 @@
           {{ 'RESTAURANTS.UI.MORE_STATIONS' | transloco }}
         </button>
       }
-      <mat-slide-toggle formControlName="reorder">{{
+      <mat-checkbox formControlName="reorder">{{
         'RESTAURANTS.UI.REORDER' | transloco
-      }}</mat-slide-toggle>
+      }}</mat-checkbox>
       <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS.UI.REORDER_HELP' | transloco }}</p>
     }
   </mat-dialog-content>

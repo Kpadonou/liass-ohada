@@ -237,6 +237,7 @@
           } @else {
             <div class="grid gap-4 sm:grid-cols-2">
               <liass-searchable-select
+                controlType="select"
                 unresolvedLabelKey="RESTAURANTS.UI.SELECTED_REFERENCE"
                 labelKey="RESTAURANTS.UI.LOCATION"
                 [options]="outletOptions()"
@@ -245,6 +246,7 @@
               />
               @if (mode === 'setup' && section() === 'table') {
                 <liass-searchable-select
+                  controlType="select"
                   unresolvedLabelKey="RESTAURANTS.UI.SELECTED_REFERENCE"
                   labelKey="RESTAURANTS.UI.AREA"
                   [options]="areaOptions()"

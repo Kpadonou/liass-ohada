@@ -1,11 +1,11 @@
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Component, computed, effect, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experimental';
@@ -41,7 +41,7 @@ export interface RestaurantEditorData {
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatSlideToggleModule,
+    MatCheckboxModule,
     MatButtonModule,
     TranslocoModule,
     LiassSearchableSelectComponent,
@@ -67,7 +67,10 @@ export class RestaurantEditorComponent {
   private readonly requestId = crypto.randomUUID();
   private readonly entity = this.data.entity;
   readonly form = this.fb.group({
-    name: [this.entity?.name ?? '', [Validators.required, Validators.maxLength(160)]],
+    name: [
+      this.entity?.name ?? '',
+      [Validators.required, Validators.pattern(/\S/), Validators.maxLength(160)],
+    ],
     code: [
       'code' in (this.entity ?? {}) ? (this.entity as { code: string }).code : '',
       this.data.kind === 'table'
@@ -78,6 +81,16 @@ export class RestaurantEditorComponent {
       'capacity' in (this.entity ?? {})
         ? String((this.entity as { capacity: number }).capacity)
         : '',
+      this.data.kind === 'table'
+        ? [
+            (control: AbstractControl) => {
+              const text = String(control.value ?? '').trim();
+              return !text || (/^\d+$/.test(text) && Number(text) >= 1 && Number(text) <= 1000)
+                ? null
+                : { invalid: true };
+            },
+          ]
+        : [],
     ],
     policy: [
       'guestOrderingPolicy' in (this.entity ?? {})
@@ -85,7 +98,10 @@ export class RestaurantEditorComponent {
         : 'STAFF_APPROVAL',
     ],
     active: [this.entity?.isActive ?? true],
-    currency: [this.data.currency ?? 'XOF', [Validators.pattern(/^[A-Z]{3}$/)]],
+    currency: [
+      this.data.currency ?? 'XOF',
+      [Validators.required, Validators.pattern(/^[A-Z]{3}$/)],
+    ],
     price: [
       'price' in (this.entity ?? {})
         ? minorInput(
@@ -93,6 +109,18 @@ export class RestaurantEditorComponent {
             this.data.currency ?? 'XOF',
           )
         : '',
+      this.data.kind === 'item'
+        ? [
+            (control: AbstractControl) => {
+              try {
+                parseMinorInput(String(control.value ?? ''), this.data.currency ?? 'XOF');
+                return null;
+              } catch {
+                return { invalid: true };
+              }
+            },
+          ]
+        : [],
     ],
     availability: [
       'availability' in (this.entity ?? {})

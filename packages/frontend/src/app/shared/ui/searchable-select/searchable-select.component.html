@@ -1,32 +1,63 @@
-<mat-form-field appearance="outline" class="w-full">
-  <mat-label>{{ labelKey() | transloco }}</mat-label>
-  @if (icon(); as iconName) {
-    <mat-icon matPrefix>{{ iconName }}</mat-icon>
+@if (controlType() === 'select') {
+  @if (options().length > 10) {
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ searchPlaceholderKey() | transloco }}</mat-label>
+      <input matInput [formControl]="filter" />
+    </mat-form-field>
   }
-  <input
-    matInput
-    type="text"
-    autocomplete="off"
-    [disabled]="disabled() || loading()"
-    [matAutocomplete]="selectAutocomplete"
-    [placeholder]="searchPlaceholderKey() | transloco"
-    [value]="inputValue()"
-    (blur)="handleBlur()"
-    (input)="handleInput($event)"
-  />
-  @if (loading()) {
-    <mat-spinner matSuffix diameter="18" />
-  }
-  <mat-autocomplete #selectAutocomplete="matAutocomplete" (optionSelected)="selectOption($event)">
-    @for (option of filteredOptions(); track option.value) {
-      <mat-option [value]="option.value">{{ optionLabel(option) }}</mat-option>
-    } @empty {
-      <mat-option disabled>{{ emptyResultLabelKey() | transloco }}</mat-option>
+  <mat-form-field appearance="outline" class="w-full">
+    <mat-label>{{ labelKey() | transloco }}</mat-label>
+    <mat-select
+      [value]="selectedValue()"
+      [disabled]="disabled() || loading()"
+      (selectionChange)="selectValue($event.value)"
+      (closed)="handleBlur()"
+    >
+      <mat-select-trigger>{{ inputValue() }}</mat-select-trigger>
+      @if (selectedValue() && !hasSelectedOption()) {
+        <mat-option [value]="selectedValue()" disabled>{{ inputValue() }}</mat-option>
+      }
+      @for (option of selectOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ optionLabel(option) }}</mat-option>
+      } @empty {
+        <mat-option disabled>{{ emptyResultLabelKey() | transloco }}</mat-option>
+      }
+    </mat-select>
+    @if (loading()) {
+      <mat-spinner matSuffix diameter="18" />
     }
-  </mat-autocomplete>
-</mat-form-field>
-@if (showError() && errorKey(); as validationKey) {
-  <p class="-mt-4 text-xs text-red-600 dark:text-red-300">
-    {{ validationKey | transloco }}
-  </p>
+  </mat-form-field>
+} @else {
+  <mat-form-field appearance="outline" class="w-full">
+    <mat-label>{{ labelKey() | transloco }}</mat-label>
+    @if (icon(); as iconName) {
+      <mat-icon matPrefix>{{ iconName }}</mat-icon>
+    }
+    <input
+      matInput
+      type="text"
+      autocomplete="off"
+      [disabled]="disabled() || loading()"
+      [matAutocomplete]="selectAutocomplete"
+      [placeholder]="searchPlaceholderKey() | transloco"
+      [value]="inputValue()"
+      (blur)="handleBlur()"
+      (input)="handleInput($event)"
+    />
+    @if (loading()) {
+      <mat-spinner matSuffix diameter="18" />
+    }
+    <mat-autocomplete #selectAutocomplete="matAutocomplete" (optionSelected)="selectOption($event)">
+      @for (option of filteredOptions(); track option.value) {
+        <mat-option [value]="option.value">{{ optionLabel(option) }}</mat-option>
+      } @empty {
+        <mat-option disabled>{{ emptyResultLabelKey() | transloco }}</mat-option>
+      }
+    </mat-autocomplete>
+  </mat-form-field>
+  @if (showError() && errorKey(); as validationKey) {
+    <p class="-mt-4 text-xs text-red-600 dark:text-red-300">
+      {{ validationKey | transloco }}
+    </p>
+  }
 }

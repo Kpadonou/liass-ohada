@@ -1,5 +1,12 @@
 import { Component, computed, effect, forwardRef, input, signal, inject } from '@angular/core';
-import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  ControlValueAccessor,
+  NG_VALUE_ACCESSOR,
+  FormControl,
+  ReactiveFormsModule,
+} from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { MatSelectModule } from '@angular/material/select';
 import {
   MatAutocompleteModule,
   MatAutocompleteSelectedEvent,
@@ -23,6 +30,8 @@ export interface LiassSearchableSelectOption {
   },
   imports: [
     MatAutocompleteModule,
+    MatSelectModule,
+    ReactiveFormsModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -39,6 +48,17 @@ export interface LiassSearchableSelectOption {
   templateUrl: './searchable-select.component.html',
 })
 export class LiassSearchableSelectComponent implements ControlValueAccessor {
+  readonly controlType = input<'autocomplete' | 'select'>('autocomplete');
+  readonly filter = new FormControl('', { nonNullable: true });
+  private readonly filterText = toSignal(this.filter.valueChanges, { initialValue: '' });
+  protected readonly selectOptions = computed(() =>
+    this.options().filter((option) =>
+      normalizeSearch(this.optionLabel(option)).includes(normalizeSearch(this.filterText())),
+    ),
+  );
+  protected readonly hasSelectedOption = computed(() =>
+    this.selectOptions().some((option) => option.value === this.selectedValue()),
+  );
   readonly emptyResultLabelKey = input('COMMON.SELECT.NO_RESULTS');
   readonly errorKey = input<string | null>(null);
   readonly icon = input<string | null>(null);
@@ -52,7 +72,7 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
   protected readonly disabled = signal(false);
   protected readonly inputValue = signal('');
   private readonly searching = signal(false);
-  private readonly selectedValue = signal<string | null>(null);
+  protected readonly selectedValue = signal<string | null>(null);
   private readonly transloco = inject(TranslocoService);
 
   protected readonly filteredOptions = computed(() => {
@@ -70,6 +90,11 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
   private onTouched: () => void = () => undefined;
 
   constructor() {
+    effect(() =>
+      this.disabled()
+        ? this.filter.disable({ emitEvent: false })
+        : this.filter.enable({ emitEvent: false }),
+    );
     effect(() => {
       this.options();
       this.unresolvedLabelKey();
@@ -106,6 +131,15 @@ export class LiassSearchableSelectComponent implements ControlValueAccessor {
       this.searching.set(false);
       this.syncInputToSelectedValue();
     }, 100);
+  }
+
+  protected selectValue(value: string): void {
+    if (!this.options().some((option) => option.value === value)) return;
+    this.searching.set(false);
+    this.selectedValue.set(value);
+    this.onChange(value);
+    this.onTouched();
+    this.syncInputToSelectedValue();
   }
 
   protected selectOption(event: MatAutocompleteSelectedEvent): void {

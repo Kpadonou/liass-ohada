@@ -48,15 +48,21 @@ export function memoryDynamo() {
     Item: rows.get(identity(input.Key ?? {})),
   }));
   db.on(QueryCommand).callsFake(async (input: QueryCommandInput) => {
+    const platformProducts =
+      input.ExpressionAttributeValues?.[":skPrefix"]?.S ===
+      KeyFactory.productAccessPrefix();
     if (
       input.IndexName ||
       input.FilterExpression ||
-      !input.Limit ||
-      input.Limit > 100
+      (!input.Limit && !platformProducts) ||
+      (input.Limit ?? 0) > 100
     )
       throw new Error("Unbounded restaurant query");
     const pk = input.ExpressionAttributeValues?.[":pk"]?.S;
-    const prefix = input.ExpressionAttributeValues?.[":prefix"]?.S ?? "";
+    const prefix =
+      input.ExpressionAttributeValues?.[":prefix"]?.S ??
+      input.ExpressionAttributeValues?.[":skPrefix"]?.S ??
+      "";
     const start = input.ExclusiveStartKey?.SK?.S ?? "";
     const matching = [...rows.values()]
       .filter(
@@ -64,7 +70,7 @@ export function memoryDynamo() {
           row.PK.S === pk && row.SK.S?.startsWith(prefix) && row.SK.S > start,
       )
       .sort((a, b) => a.SK.S!.localeCompare(b.SK.S!));
-    const page = matching.slice(0, input.Limit);
+    const page = matching.slice(0, input.Limit ?? matching.length);
     const last = matching.length > page.length ? page.at(-1) : undefined;
     return {
       Items: page,

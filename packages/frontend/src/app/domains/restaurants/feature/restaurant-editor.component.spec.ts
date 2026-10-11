@@ -168,6 +168,36 @@ describe('Restaurant configuration dialogs', () => {
         context.outletId === undefined ? null : row('station').id,
       );
   });
+  it('uses typed Reactive Forms with Material selects and form-saved checkboxes', async () => {
+    const root = await create({
+      org: 'org',
+      kind: 'restaurant',
+      context: {},
+      entity: row('restaurant'),
+    });
+    expect(root.nativeElement.querySelector('mat-select[formControlName="policy"]')).not.toBeNull();
+    expect(
+      root.nativeElement.querySelector('mat-checkbox[formControlName="active"]'),
+    ).not.toBeNull();
+    root.destroy();
+    TestBed.resetTestingModule();
+    const item = await create({ org: 'org', kind: 'item', context, currency: 'XOF' });
+    expect(item.nativeElement.querySelector('liass-searchable-select mat-select')).not.toBeNull();
+    expect(
+      item.nativeElement.querySelector('mat-checkbox[formControlName="reorder"]'),
+    ).not.toBeNull();
+    item.componentInstance.form.controls.price.setValue('-1');
+    expect(item.componentInstance.form.controls.price.invalid).toBe(true);
+    item.componentInstance.form.controls.price.markAsTouched();
+    item.detectChanges();
+    await item.whenStable();
+    item.detectChanges();
+    const price = item.nativeElement.querySelector('input[formControlName="price"]');
+    const error = price.closest('mat-form-field').querySelector('mat-error');
+    expect(error).not.toBeNull();
+    expect(price.getAttribute('aria-describedby')).toContain(error.id);
+  });
+
   it('keeps create table input usable after a duplicate code error and retries the same intent', async () => {
     const f = await create({ org: 'org', kind: 'table', context });
     f.componentInstance.form.patchValue({ name: 'Terrace 1', code: 'T01' });

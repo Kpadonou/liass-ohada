@@ -76,7 +76,7 @@ Use steppers for guided multi-step workflows such as:
 - Accounting setup.
 - Nonprofit/project setup.
 
-Validate each step before moving forward. Preserve user input when navigating back. Avoid too many steps; merge steps when separation does not help comprehension.
+Use Angular Material Stepper with typed Reactive Forms for genuinely sequential flows, not cosmetic splitting of a small form. Each step owns its validators; validate before moving forward, preserve valid back/next state, clear hidden configuration invalidated by changed choices, and preserve keyboard/focus accessibility. Avoid too many steps; merge steps when separation does not help comprehension.
 
 ## Drawers
 

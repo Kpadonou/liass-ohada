@@ -109,3 +109,7 @@
 - Show confidence, source, or scope when useful.
 - Require explicit user confirmation before irreversible accounting/legal actions.
 - Never let AI cards replace core ERP navigation or controls.
+
+## Angular form semantics
+
+Typed Reactive Forms are the default; use FormGroup/FormControl or (NonNullable)FormBuilder, configuration validators and control-state mat-error. Standalone context selectors and simple local UI selections may use `ngModel` with Signals; template-driven business-form exceptions must be documented. Closed choices/reference assignments use Material Select with search/filter when they grow; constrained Material autocomplete is appropriate for justified searchable references, never arbitrary free text. Form-saved booleans use checkbox; immediate activation uses slide-toggle. Material owns interaction semantics; Tailwind owns layout, spacing, sizing and responsiveness. Native controls and heavy Material overrides require documented justification. Follow the permanent contract in AGENTS.md and SKILL.md.

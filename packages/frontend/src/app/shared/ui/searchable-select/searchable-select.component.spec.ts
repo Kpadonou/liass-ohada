@@ -36,6 +36,7 @@ const translations = {
   template: `
     <liass-searchable-select
       icon="public"
+      [controlType]="controlType"
       [emptyResultLabelKey]="'COMMON.SELECT.NO_RESULTS'"
       [labelKey]="'IDENTITY.ONBOARDING.FIELDS.COUNTRY'"
       [loading]="loading"
@@ -47,6 +48,7 @@ const translations = {
   `,
 })
 class SearchableSelectHostComponent {
+  controlType: 'autocomplete' | 'select' = 'autocomplete';
   control = new FormControl<string | null>('BJ');
   loading = false;
   unresolvedLabelKey: string | null = null;
@@ -169,6 +171,36 @@ describe('LiassSearchableSelectComponent', () => {
     fixture.changeDetectorRef.markForCheck();
     fixture.detectChanges();
     expect(input.value).toBe('ter');
+  });
+
+  it('offers constrained Material Select with search for growing references and preserves the selected label', async () => {
+    host.controlType = 'select';
+    host.options = Array.from({ length: 12 }, (_, index) => ({
+      value: String(index),
+      label: `Station ${index}`,
+    }));
+    host.control.setValue('0');
+    fixture.changeDetectorRef.markForCheck();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('mat-select').textContent).toContain('Station 0');
+    const search = fixture.nativeElement.querySelector('input') as HTMLInputElement;
+    search.value = 'Station 11';
+    search.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('mat-select').textContent).toContain('Station 0');
+    (fixture.nativeElement.querySelector('.mat-mdc-select-trigger') as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const option = Array.from(document.body.querySelectorAll('mat-option')).find((node) =>
+      node.textContent?.includes('Station 11'),
+    ) as HTMLElement;
+    option.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(host.control.value).toBe('11');
   });
 
   it('handles disabled and loading states', () => {
