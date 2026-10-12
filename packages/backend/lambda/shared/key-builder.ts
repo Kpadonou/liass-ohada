@@ -1,4 +1,82 @@
+function restaurantTransactionSegment(value: string): string {
+  if (!/^[A-Za-z0-9_-]+$/.test(value))
+    throw new Error("Invalid Restaurants key segment");
+  return value;
+}
+function restaurantTransactionTimestamp(value: string): string {
+  if (
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ||
+    !Number.isFinite(Date.parse(value)) ||
+    new Date(value).toISOString() !== value
+  )
+    throw new Error("Invalid Restaurants timestamp");
+  return value;
+}
 export const KeyFactory = {
+  restaurantTransactionScope: (orgId: string, outletId: string) =>
+    `ORG#${restaurantTransactionSegment(orgId)}#OUT#${restaurantTransactionSegment(outletId)}`,
+  restaurantSessionPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#GS#${restaurantTransactionSegment(id)}`,
+  restaurantOrderPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#ORD#${restaurantTransactionSegment(id)}`,
+  restaurantOccupancyPK: (orgId: string, outletId: string, tableId: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#TABLE#${restaurantTransactionSegment(tableId)}`,
+  restaurantTransactionMetaSK: () => "META",
+  restaurantTransactionTimeBoundSK: (timestamp: string) =>
+    restaurantTransactionTimestamp(timestamp),
+  restaurantOccupancySK: () => "ACTIVE",
+  restaurantOrderItemSK: (id: string) =>
+    `OI#${restaurantTransactionSegment(id)}`,
+  restaurantOrderItemPrefix: () => "OI#",
+  restaurantSubmissionSK: (id: string) =>
+    `SUB#${restaurantTransactionSegment(id)}`,
+  restaurantTransactionLocatorSK: (timestamp: string, id: string) =>
+    `${restaurantTransactionTimestamp(timestamp)}#${restaurantTransactionSegment(id)}`,
+  restaurantSessionOrderSK: (timestamp: string, id: string, open = false) =>
+    `${open ? "OPENORD" : "ORD"}#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
+  restaurantSessionOrderPrefix: (open = false) => (open ? "OPENORD#" : "ORD#"),
+  restaurantTransactionAuditSK: (timestamp: string, id: string) =>
+    `EVT#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
+  restaurantTransactionActivePK: (
+    orgId: string,
+    outletId: string,
+    kind: "GS" | "ORD" | "UNPAID",
+  ) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#ACTIVE#${restaurantTransactionSegment(kind)}`,
+  restaurantWaiterActivePK: (orgId: string, outletId: string, userId: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#WAITER#${restaurantTransactionSegment(userId)}#ACTIVE`,
+  restaurantTransactionHistoryPK: (
+    orgId: string,
+    outletId: string,
+    kind: "GS" | "ORD" | "ACT",
+    day: string,
+    tableId?: string,
+  ) => {
+    if (tableId && kind !== "GS")
+      throw new Error("Invalid Restaurants table history kind");
+    if (!/^\d{8}$/.test(day))
+      throw new Error("Invalid Restaurants history bucket");
+    restaurantTransactionTimestamp(
+      `${day.slice(0, 4)}-${day.slice(4, 6)}-${day.slice(6, 8)}T00:00:00.000Z`,
+    );
+    return `${KeyFactory.restaurantTransactionScope(orgId, outletId)}${tableId ? `#TABLE#${restaurantTransactionSegment(tableId)}` : ""}#HIST#${kind}#${day}`;
+  },
+  restaurantTransactionCommandPK: (
+    orgId: string,
+    outletId: string,
+    kind: string,
+    owner: string,
+    hash: string,
+  ) => {
+    if (!/^[a-f0-9]{64}$/.test(hash))
+      throw new Error("Invalid Restaurants command hash");
+    return `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#CMD#${restaurantTransactionSegment(kind)}#${owner === "NEW" ? `NEW#${hash}` : restaurantTransactionSegment(owner)}`;
+  },
+  restaurantTransactionCommandSK: (owner: string, hash: string) => {
+    if (!/^[a-f0-9]{64}$/.test(hash))
+      throw new Error("Invalid Restaurants command hash");
+    return owner === "NEW" ? "IDEM" : `IDEM#${hash}`;
+  },
   // RESTAURANTS owns these configurations and lookup/reservation records.
   restaurantSK: () => "ROOT",
   restaurantOutletPrefix: () => "OUT#",

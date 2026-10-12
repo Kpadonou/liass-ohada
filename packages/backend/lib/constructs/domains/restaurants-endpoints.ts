@@ -1,4 +1,5 @@
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
+import { Duration } from "aws-cdk-lib";
 import { Construct } from "constructs";
 import * as path from "path";
 import {
@@ -6,6 +7,7 @@ import {
   DomainProps,
 } from "./domain-constructs-factory";
 import { RESTAURANTS_ROUTES } from "../../../lambda/domains/restaurants/restaurant-routes";
+import { RESTAURANT_TRANSACTION_ROUTES } from "../../../lambda/domains/restaurants/transaction-routes";
 
 import * as iam from "aws-cdk-lib/aws-iam";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
@@ -46,8 +48,14 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
       }),
     );
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
-    for (const route of RESTAURANTS_ROUTES) {
+    for (const route of [
+      ...RESTAURANTS_ROUTES,
+      ...RESTAURANT_TRANSACTION_ROUTES,
+    ]) {
       this.addRoute({
+        ...("command" in route || "query" in route
+          ? { timeout: Duration.seconds(30), memorySize: 512 }
+          : {}),
         api: props.api,
         authorizer: props.authorizer,
         domainName: "restaurants",

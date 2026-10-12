@@ -1,4 +1,7 @@
-import { restaurantsPermissionsForRole } from "@liass-ohada/shared/shared";
+import {
+  restaurantsPermissionsForRole,
+  RESTAURANTS_TRANSACTION_PERMISSIONS,
+} from "@liass-ohada/shared/shared";
 import type { AccountingAccessMode } from "@liass-ohada/shared";
 import {
   ACCOUNTING_PRODUCT_MODULE_PERMISSIONS,
@@ -46,7 +49,11 @@ export class DomainAuthorizationService {
   static permissionsForRestaurantsRole(
     role: unknown,
   ): readonly DomainPermission[] {
-    return restaurantsPermissionsForRole(role);
+    const config = restaurantsPermissionsForRole(role);
+    // No outlet assignment exists yet: WAITER/CASHIER/KITCHEN stay mutation-disabled.
+    return role === "OWNER" || role === "MANAGER"
+      ? [...config, ...RESTAURANTS_TRANSACTION_PERMISSIONS]
+      : config;
   }
 
   static hasPermission(

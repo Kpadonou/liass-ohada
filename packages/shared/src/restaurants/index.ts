@@ -1,4 +1,5 @@
 import { z } from "zod";
+export * from "./transactions";
 
 export const RestaurantIdSchema = z.string().uuid();
 export const RestaurantNameSchema = z.string().trim().min(1).max(160);

@@ -148,15 +148,15 @@ describe("API stack decomposition", () => {
     expect(owned.filter(item => item instanceof dynamodb.CfnTable || item instanceof s3.CfnBucket)).toHaveLength(0);
   });
 
-  test("owns all 38 restaurant routes, functions, integrations and permissions in one domain stack", () => {
+  test("owns all 59 configuration and transactional restaurant routes in one domain stack", () => {
     const restaurants = constructs.find(item => item instanceof RestaurantsApiStack)!;
     const owned = restaurants.node.findAll();
     const functions = owned.filter((item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction);
     const routes = owned.filter((item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute);
-    expect(functions).toHaveLength(38);
-    expect(routes).toHaveLength(38);
-    expect(owned.filter(item => item instanceof apigwv2.CfnIntegration)).toHaveLength(38);
-    expect(owned.filter(item => item instanceof lambda.CfnPermission)).toHaveLength(38);
+    expect(functions).toHaveLength(59);
+    expect(routes).toHaveLength(59);
+    expect(owned.filter(item => item instanceof apigwv2.CfnIntegration)).toHaveLength(59);
+    expect(owned.filter(item => item instanceof lambda.CfnPermission)).toHaveLength(59);
     expect(routes.every(route => route.authorizationType === "JWT")).toBe(true);
     expect(routes.every(route => String(route.routeKey).includes(" /restaurants/"))).toBe(true);
     expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"))).toBe(true);

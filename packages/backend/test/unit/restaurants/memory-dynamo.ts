@@ -63,13 +63,26 @@ export function memoryDynamo() {
       input.ExpressionAttributeValues?.[":prefix"]?.S ??
       input.ExpressionAttributeValues?.[":skPrefix"]?.S ??
       "";
+    const lower = input.ExpressionAttributeValues?.[":start"]?.S;
+    const upper = input.ExpressionAttributeValues?.[":end"]?.S;
     const start = input.ExclusiveStartKey?.SK?.S ?? "";
     const matching = [...rows.values()]
       .filter(
         (row) =>
-          row.PK.S === pk && row.SK.S?.startsWith(prefix) && row.SK.S > start,
+          row.PK.S === pk &&
+          row.SK.S?.startsWith(prefix) &&
+          (!start ||
+            (input.ScanIndexForward === false
+              ? row.SK.S < start
+              : row.SK.S > start)) &&
+          (!lower || row.SK.S >= lower) &&
+          (!upper || row.SK.S <= upper),
       )
-      .sort((a, b) => a.SK.S!.localeCompare(b.SK.S!));
+      .sort((a, b) =>
+        input.ScanIndexForward === false
+          ? b.SK.S!.localeCompare(a.SK.S!)
+          : a.SK.S!.localeCompare(b.SK.S!),
+      );
     const page = matching.slice(0, input.Limit ?? matching.length);
     const last = matching.length > page.length ? page.at(-1) : undefined;
     return {

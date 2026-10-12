@@ -377,5 +377,15 @@
   "FISCAL_SOURCE_CHANGED": "The commercial document differs from its frozen fiscal preparation.",
   "FISCAL_ENVIRONMENT_MISMATCH": "Choose a connection in the same fiscal environment.",
   "FISCAL_CLASSIFICATION_INVALID": "Check the fiscal document and line classifications.",
-  "SUCCESS_FISCAL_LOCAL_OPERATION": "Local fiscal operation completed."
+  "SUCCESS_FISCAL_LOCAL_OPERATION": "Local fiscal operation completed.",
+  "RESTAURANTS_TRANSACTION_INTEGRITY": "Restaurant transaction consistency check failed.",
+  "RESTAURANTS_TRANSACTION_LIMIT": "The operation exceeds the supported limit.",
+  "RESTAURANTS_TRANSACTION_STATE": "This operation is not allowed in the current state.",
+  "RESTAURANTS_TRANSACTION_MONEY": "The amount exceeds the supported range.",
+  "RESTAURANTS_IDEMPOTENCY_CONFLICT": "This request identity was already used for another operation.",
+  "RESTAURANTS_TABLE_OCCUPIED": "This table already has an open session.",
+  "RESTAURANTS_UNPAID_CLOSE": "Close requires settled totals and no pending work.",
+  "RESTAURANTS_CONFIGURATION_CHANGED": "The menu changed. Refresh and review before submitting.",
+  "RESTAURANTS_PREPARATION_DEFERRED": "Preparation completion is not available yet.",
+  "RESTAURANTS_HISTORY_WINDOW": "Choose a shorter time interval."
 }

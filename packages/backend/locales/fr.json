@@ -378,5 +378,15 @@
   "FISCAL_SOURCE_CHANGED": "Le document commercial diffère de sa préparation fiscale figée.",
   "FISCAL_ENVIRONMENT_MISMATCH": "Choisissez une connexion du même environnement fiscal.",
   "FISCAL_CLASSIFICATION_INVALID": "Vérifiez les classifications fiscales du document et de ses lignes.",
-  "SUCCESS_FISCAL_LOCAL_OPERATION": "Opération fiscale locale terminée."
+  "SUCCESS_FISCAL_LOCAL_OPERATION": "Opération fiscale locale terminée.",
+  "RESTAURANTS_TRANSACTION_INTEGRITY": "Le contrôle de cohérence de cette opération a échoué.",
+  "RESTAURANTS_TRANSACTION_LIMIT": "L’opération dépasse la limite prise en charge.",
+  "RESTAURANTS_TRANSACTION_STATE": "Cette opération n’est pas autorisée dans l’état actuel.",
+  "RESTAURANTS_TRANSACTION_MONEY": "Le montant dépasse la plage prise en charge.",
+  "RESTAURANTS_IDEMPOTENCY_CONFLICT": "Cette demande a déjà été utilisée pour une autre opération.",
+  "RESTAURANTS_TABLE_OCCUPIED": "Cette table a déjà une session ouverte.",
+  "RESTAURANTS_UNPAID_CLOSE": "La clôture exige un solde réglé et aucune opération en attente.",
+  "RESTAURANTS_CONFIGURATION_CHANGED": "La carte a changé. Actualisez et vérifiez avant de soumettre.",
+  "RESTAURANTS_PREPARATION_DEFERRED": "La validation de la préparation n’est pas encore disponible.",
+  "RESTAURANTS_HISTORY_WINDOW": "Choisissez une période plus courte."
 }
