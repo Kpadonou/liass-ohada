@@ -177,20 +177,6 @@ mat-icon {
 }
 
 .mat-mdc-form-field {
-  --mdc-outlined-text-field-container-shape: var(--radius-app-control);
-  --mdc-outlined-text-field-container-color: var(--liass-input-bg);
-  --mdc-outlined-text-field-disabled-container-color: var(--liass-surface-subtle);
-  --mdc-outlined-text-field-focus-outline-color: var(--liass-input-focus);
-  --mdc-outlined-text-field-hover-outline-color: var(--liass-input-hover);
-  --mdc-outlined-text-field-outline-color: var(--liass-input-border);
-  --mdc-outlined-text-field-disabled-outline-color: var(--liass-border);
-  --mdc-outlined-text-field-label-text-color: var(--liass-input-label);
-  --mdc-outlined-text-field-focus-label-text-color: var(--liass-input-focus);
-  --mdc-outlined-text-field-hover-label-text-color: var(--liass-text-secondary);
-  --mdc-outlined-text-field-disabled-label-text-color: var(--liass-text-disabled);
-  --mdc-outlined-text-field-input-text-color: var(--liass-input-text);
-  --mdc-outlined-text-field-disabled-input-text-color: var(--liass-text-disabled);
-  --mdc-outlined-text-field-caret-color: var(--liass-input-focus);
   --mat-form-field-leading-icon-color: var(--liass-text-muted);
   --mat-form-field-trailing-icon-color: var(--liass-text-muted);
   --mat-form-field-disabled-leading-icon-color: var(--liass-text-disabled);
@@ -273,10 +259,6 @@ select:-webkit-autofill {
 }
 
 .mat-mdc-button-base {
-  --mdc-text-button-container-shape: var(--radius-app-control);
-  --mdc-filled-button-container-shape: var(--radius-app-control);
-  --mdc-protected-button-container-shape: var(--radius-app-control);
-  --mdc-outlined-button-container-shape: var(--radius-app-control);
   font-family: var(--font-sans);
 }
 
@@ -288,7 +270,6 @@ select:-webkit-autofill {
   box-shadow: var(--shadow-app-popover);
 }
 
-.mat-mdc-dialog-container,
 .mat-mdc-select-panel,
 .mat-mdc-autocomplete-panel,
 .mat-datepicker-content,
@@ -303,16 +284,15 @@ select:-webkit-autofill {
 }
 
 .liass-dialog-panel {
-  --mdc-dialog-container-shape: 2rem;
-  --mat-dialog-container-shape: 2rem;
+  --mat-dialog-container-shape: var(--radius-app-panel);
   --mat-dialog-container-color: var(--liass-overlay-bg);
-  --mat-dialog-container-elevation-shadow: 0 28px 72px rgb(15 23 42 / 0.24);
+  --mat-dialog-container-elevation-shadow: var(--shadow-app-popover);
 }
 
 .liass-dialog-panel .mat-mdc-dialog-container,
 .liass-dialog-panel .mdc-dialog__container,
 .liass-dialog-panel .mdc-dialog__surface {
-  border-radius: 2rem;
+  border-radius: var(--radius-app-panel);
 }
 
 .liass-dialog-panel .mdc-dialog__surface {
@@ -329,11 +309,6 @@ select:-webkit-autofill {
   --mat-option-focus-state-layer-color: var(--liass-surface-hover);
   --mat-option-selected-state-label-text-color: var(--liass-text-primary);
   color: var(--liass-text-primary);
-}
-
-.mat-mdc-tooltip {
-  --mdc-plain-tooltip-container-color: var(--liass-surface-elevated);
-  --mdc-plain-tooltip-supporting-text-color: var(--liass-text-primary);
 }
 
 .mat-mdc-checkbox,
@@ -480,10 +455,6 @@ select:-webkit-autofill {
   --liass-menu-action-hover-bg: rgb(136 19 55 / 0.42);
 }
 
-.mat-mdc-progress-spinner {
-  --mdc-circular-progress-active-indicator-color: var(--color-brand-600);
-}
-
 .mat-mdc-snack-bar-container.default-notification-overlay {
   --liass-notification-bg: var(--liass-notification-default);
   --liass-notification-fg: var(--liass-on-notification-default);
@@ -514,8 +485,6 @@ select:-webkit-autofill {
 .mat-mdc-snack-bar-container.success-notification-overlay,
 .mat-mdc-snack-bar-container.warning-notification-overlay,
 .mat-mdc-snack-bar-container.error-notification-overlay {
-  --mdc-snackbar-container-color: var(--liass-notification-bg);
-  --mdc-snackbar-supporting-text-color: var(--liass-notification-fg);
   --mat-snack-bar-button-color: var(--liass-notification-fg);
   --mat-snack-bar-container-color: var(--liass-notification-bg);
   --mat-snack-bar-supporting-text-color: var(--liass-notification-fg);

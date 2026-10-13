@@ -5,6 +5,68 @@
 // custom components at https://material.angular.dev/guide/theming
 @use '@angular/material' as mat;
 
+// Bridge the established Liass tokens to Material's supported component API.
+// Both pages and body-hosted CDK overlays inherit these same variables.
+@mixin liass-component-tokens() {
+  @include mat.button-overrides(
+    (
+      filled-container-shape: var(--radius-app-control),
+      outlined-container-shape: var(--radius-app-control),
+      protected-container-shape: var(--radius-app-control),
+      text-container-shape: var(--radius-app-control),
+      tonal-container-shape: var(--radius-app-control),
+    )
+  );
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: var(--radius-app-control),
+      outlined-outline-color: var(--liass-input-border),
+      outlined-hover-outline-color: var(--liass-input-hover),
+      outlined-focus-outline-color: var(--liass-input-focus),
+      outlined-focus-label-text-color: var(--liass-input-focus),
+      outlined-label-text-color: var(--liass-input-label),
+      outlined-input-text-color: var(--liass-input-text),
+      outlined-caret-color: var(--liass-input-focus),
+      outlined-disabled-outline-color: var(--liass-border),
+      outlined-disabled-input-text-color: var(--liass-text-disabled),
+      outlined-disabled-label-text-color: var(--liass-text-disabled),
+      filled-container-color: var(--liass-input-bg),
+    )
+  );
+  @include mat.dialog-overrides(
+    (
+      container-color: var(--liass-overlay-bg),
+      container-shape: var(--radius-app-panel),
+      container-elevation-shadow: var(--shadow-app-popover),
+      subhead-color: var(--liass-text-primary),
+      supporting-text-color: var(--liass-text-secondary),
+    )
+  );
+  @include mat.menu-overrides(
+    (
+      container-color: var(--liass-overlay-bg),
+      container-shape: var(--radius-app-panel),
+    )
+  );
+  @include mat.select-overrides(
+    (
+      panel-background-color: var(--liass-overlay-bg),
+    )
+  );
+  @include mat.autocomplete-overrides(
+    (
+      background-color: var(--liass-overlay-bg),
+      container-shape: var(--radius-app-control),
+    )
+  );
+  @include mat.tooltip-overrides(
+    (
+      container-color: var(--liass-surface-elevated),
+      supporting-text-color: var(--liass-text-primary),
+    )
+  );
+}
+
 html {
   height: 100%;
   @include mat.theme(
@@ -15,8 +77,18 @@ html {
         theme-type: light,
       ),
       typography: (
-        plain-family: (Inter, ui-sans-serif, system-ui, sans-serif),
-        brand-family: (Inter, ui-sans-serif, system-ui, sans-serif),
+        plain-family: (
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          sans-serif,
+        ),
+        brand-family: (
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          sans-serif,
+        ),
         regular-weight: 400,
         medium-weight: 500,
         bold-weight: 700,
@@ -24,6 +96,18 @@ html {
       density: -1,
     )
   );
+  @include mat.theme-overrides(
+    (
+      primary: var(--color-brand-700),
+      on-primary: #ffffff,
+      primary-container: var(--color-brand-100),
+      on-primary-container: var(--color-brand-900),
+      surface: var(--liass-surface),
+      on-surface: var(--liass-text-primary),
+      on-surface-variant: var(--liass-text-secondary),
+    )
+  );
+  @include liass-component-tokens();
 }
 
 html.dark {
@@ -35,8 +119,18 @@ html.dark {
         theme-type: dark,
       ),
       typography: (
-        plain-family: (Inter, ui-sans-serif, system-ui, sans-serif),
-        brand-family: (Inter, ui-sans-serif, system-ui, sans-serif),
+        plain-family: (
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          sans-serif,
+        ),
+        brand-family: (
+          Inter,
+          ui-sans-serif,
+          system-ui,
+          sans-serif,
+        ),
         regular-weight: 400,
         medium-weight: 500,
         bold-weight: 700,
@@ -44,6 +138,18 @@ html.dark {
       density: -1,
     )
   );
+  @include mat.theme-overrides(
+    (
+      primary: var(--color-brand-300),
+      on-primary: var(--color-brand-900),
+      primary-container: var(--liass-surface-selected),
+      on-primary-container: var(--color-brand-100),
+      surface: var(--liass-surface),
+      on-surface: var(--liass-text-primary),
+      on-surface-variant: var(--liass-text-secondary),
+    )
+  );
+  @include liass-component-tokens();
 }
 
 body {

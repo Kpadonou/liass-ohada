@@ -7,13 +7,13 @@ description: Use this skill when designing, reviewing, or modifying Liass-OHADA 
 
 ## Purpose
 
-Guide Codex toward premium, coherent, ergonomic frontend UI for Liass-OHADA: a modular ERP platform for organizations operating in the OHADA environment, including companies, accounting firms, and nonprofit/project workflows.
+Preserve the approved, coherent, ergonomic frontend UI for Liass-OHADA: a modular ERP platform for organizations operating in the OHADA environment, including companies, accounting firms, and nonprofit/project workflows.
 
 Use this skill for UI design, UI review, frontend page implementation, shell/navigation work, Angular Material 3 choices, Tailwind styling, Transloco/i18n copy surfaces, and shared `liass-*` component usage.
 
 ## Mandatory behavior
 
-1. Preserve Liass-OHADA architecture and frontend conventions.
+1. Preserve the approved Liass-OHADA visual baseline, architecture and frontend conventions. Do not premiumize, restyle or re-theme existing components unless the user explicitly requests that visual change.
 2. Reuse existing shared `liass-*` UI components before creating local UI patterns.
 3. Use Angular Material 3 components by default where they fit the workflow.
 4. Keep all visible strings behind Transloco/i18n keys.
@@ -37,11 +37,11 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 
 ## Permanent visual and Angular form contract
 
-The existing visual charter is authoritative; visually inconsistent UI is incomplete even when functional tests pass. This skill and its existing references own the permanent frontend design and form rules; root `AGENTS.md` links here. Before significant screen changes, inspect existing typography/spacing, shell/navigation, page-header/card/panel, form/list/table, responsive/accessibility and loading/empty/error patterns alongside tokens, Material 3 theme and Tailwind utilities. Report relevant files, reused components, form/control strategy, responsive approach and deviations before coding.
+The approved existing UI and its central Material theme/tokens are the visual source of truth; preserve before redesign. Find the closest approved screen/component, inspect its theme and tokens, and preserve its appearance by default. Introduce only visual changes explicitly required by the task. A functional feature or shell/navigation task is not an opportunity to restyle forms, dialogs or controls. Do not casually invent colors, radii, shadows or local Material hacks. The existing visual charter supports this baseline; visually inconsistent UI is incomplete even when functional tests pass. This skill and its existing references own the permanent frontend design and form rules; root `AGENTS.md` links here. Before significant screen changes, inspect existing typography/spacing, shell/navigation, page-header/card/panel, form/list/table, responsive/accessibility and loading/empty/error patterns alongside tokens, Material 3 theme and Tailwind utilities. Report relevant files, reused components, form/control strategy, responsive approach and deviations before coding.
 
 Use the contextual sidebar for product sections and subsections. Add permission-aware entries when distinct feature destinations are needed, including the existing mobile drawer. Keep pages focused on their current task, context filters and actions; do not duplicate sidebar navigation or overload pages with module menus.
 
-Use typed Reactive Forms by default, with validators in configuration and translated control-state `mat-error` messages. Standalone context selectors and simple local UI selections may use `ngModel` with Signals. Document exceptional template-driven business forms or native-control choices; do not mix form paradigms within a form unnecessarily. Material provides semantic controls; Tailwind provides layout/spacing/sizing/responsiveness. Use `mat-select` for closed enums/reference assignments, search/filter for growing options, checkbox for a form-saved boolean, toggle for immediate enable/disable, radio for appropriate small exclusive sets and datepicker for actual date selection. Existing constrained Material autocomplete primitives remain valid when justified by search/reference UX; custom pseudo-selects do not. Avoid heavy overrides or Tailwind-only control replicas.
+Use ReactiveFormsModule and typed FormGroup/FormControl by default, with FormBuilder/NonNullableFormBuilder where appropriate, validators in the form model, translated control-state `mat-error` and useful `mat-hint`. Use `input matInput` inside mat-form-field for short single-line free text and `textarea matInput` for long/multiline text; do not force notes/descriptions into a single-line input. Standalone context selectors and simple local UI selections may use `ngModel` with Signals. Document exceptional template-driven business forms or native-control choices; do not mix form paradigms within a form unnecessarily. Material provides semantic controls; Tailwind provides layout/spacing/sizing/responsiveness. Use `mat-select` for closed enums/reference assignments, search/filter for growing options, checkbox for a form-saved boolean, toggle for immediate enable/disable, radio for appropriate small exclusive sets and datepicker for actual date selection. Existing constrained Material autocomplete primitives remain valid when justified by search/reference UX; custom pseudo-selects do not. Avoid heavy overrides or Tailwind-only control replicas.
 
 True sequential gated forms use Material Stepper with Reactive Forms, per-step validation, preserved navigation state and clearing of invalidated hidden configuration; small forms do not need cosmetic steppers. Definition of Done includes the charter, translated business language, no duplicated navigation, meaningful states, permissions/read-only presentation, responsiveness, keyboard and focus verification. Inspect rendered spacing and report visual evidence rather than relying solely on tests.
 
@@ -130,16 +130,15 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 ## Brand and color rules
 
 - Inspect existing logo/assets/theme files before changing color direction.
-- Deduce the primary color from the Liass-OHADA logo and current brand assets.
-- Choose secondary and tertiary colors in harmony with the primary.
-- Prefer a premium navy/blue financial-tech direction when consistent with assets.
+- Preserve existing brand and Material tokens. The approved light primary action is Liass navy `brand-700`; use the central Material theme bridge, including its accessible dark-mode on-colors. Do not derive a new palette from assets during functional work.
+- Palette or component appearance redesign requires an explicit user request.
 - Keep the palette restrained, modern, and suitable for accounting/finance.
 - Use status colors sparingly for success, warning, error, AI, and operational states.
 - Avoid noisy, multicolored, decorative UI.
 
 ## Inspiration references
 
-Liass-OHADA may be inspired by:
+Only for an explicitly requested new visual design, Liass-OHADA may be inspired by:
 
 - Stripe Dashboard for financial SaaS clarity, cards, and premium data presentation.
 - Linear for calm hierarchy, spacing, dark mode, and minimalism.
@@ -147,7 +146,7 @@ Liass-OHADA may be inspired by:
 - Retool for operational ERP workflows, tables, filters, and forms.
 - Odoo for ERP module structure and business workflows, not necessarily visual style.
 
-Do not copy these products directly. Use them only as inspiration for hierarchy, spacing, data readability, workflow design, density, and premium SaaS feel. Liass-OHADA must remain visually distinct.
+Existing approved components take precedence over external inspiration. Do not copy these products directly. Use them only as inspiration for hierarchy, spacing, data readability, workflow design, density, and premium SaaS feel. Liass-OHADA must remain visually distinct.
 
 ## Implementation workflow
 

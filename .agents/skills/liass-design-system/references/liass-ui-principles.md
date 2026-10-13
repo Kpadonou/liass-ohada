@@ -27,7 +27,7 @@ Liass-OHADA is a premium modular ERP platform for organizations operating in the
 
 ## Core Principles
 
-Liass-OHADA must not look like a generic admin dashboard. It should use refined hierarchy, restrained color, strong spacing discipline, premium data presentation, and workflow-first layouts.
+Preserve the approved Liass-OHADA appearance by default: existing hierarchy, restrained colors, spacing and successful control patterns. Do not use the desire for premium polish as permission to restyle correct components. Visual redesign requires an explicit user request; functional and navigation work must preserve the existing design.
 
 The product should express OHADA/SYSCOHADA identity through terminology, modules, workflows, forms, financial presentation, and compliance-oriented structure. Avoid excessive decorative patterns, flags, map motifs, or ornamental regional styling unless the task explicitly calls for it.
 
