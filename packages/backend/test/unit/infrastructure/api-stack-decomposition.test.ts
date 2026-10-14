@@ -64,10 +64,18 @@ describe("API stack decomposition", () => {
   const constructs = root.node.findAll();
 
   test("keeps the shared and Restaurants stateful tables, private document bucket, User Pool, and HTTP API", () => {
-    expect(constructs.filter((item) => item instanceof dynamodb.CfnTable)).toHaveLength(2);
-    expect(constructs.filter((item) => item instanceof s3.CfnBucket)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof cognito.CfnUserPool)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof apigwv2.CfnApi)).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof dynamodb.CfnTable),
+    ).toHaveLength(2);
+    expect(
+      constructs.filter((item) => item instanceof s3.CfnBucket),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof cognito.CfnUserPool),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof apigwv2.CfnApi),
+    ).toHaveLength(1);
   });
 
   test("maps Google's verified-email assertion into the shared User Pool", () => {
@@ -84,18 +92,34 @@ describe("API stack decomposition", () => {
   });
 
   test("creates one nested API stack per current domain", () => {
-    expect(constructs.filter((item) => item instanceof IdentityApiStack)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof AccountingApiStack)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof ProjectApiStack)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof TreasuryApiStack)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof SalesApiStack)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof RestaurantsApiStack)).toHaveLength(1);
-    expect(constructs.filter((item) => item instanceof FiscalComplianceApiStack)).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof IdentityApiStack),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof AccountingApiStack),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof ProjectApiStack),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof TreasuryApiStack),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof SalesApiStack),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof RestaurantsApiStack),
+    ).toHaveLength(1);
+    expect(
+      constructs.filter((item) => item instanceof FiscalComplianceApiStack),
+    ).toHaveLength(1);
   });
 
   test("preserves expected identity and business routes on the shared API", () => {
     const routeKeys = constructs
-      .filter((item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute)
+      .filter(
+        (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+      )
       .map((route) => route.routeKey);
     expect(routeKeys).toEqual(
       expect.arrayContaining([
@@ -130,37 +154,93 @@ describe("API stack decomposition", () => {
   });
 
   test("keeps all ten fiscal routes, integrations and functions in the Fiscal Compliance nested stack", () => {
-    const fiscal = constructs.find((item) => item instanceof FiscalComplianceApiStack)!;
+    const fiscal = constructs.find(
+      (item) => item instanceof FiscalComplianceApiStack,
+    )!;
     const owned = fiscal.node.findAll();
-    const functions = owned.filter((item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction);
-    const routes = owned.filter((item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute);
+    const functions = owned.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    const routes = owned.filter(
+      (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+    );
     expect(functions).toHaveLength(10);
     expect(routes).toHaveLength(10);
-    expect(owned.filter(item => item instanceof apigwv2.CfnIntegration)).toHaveLength(10);
-    expect(routes.every(route => route.authorizationType === "JWT")).toBe(true);
-    expect(routes.map(route => route.routeKey)).toEqual(expect.arrayContaining([
-      "GET /fiscal-compliance/benin/profile", "PUT /fiscal-compliance/benin/profile",
-      "POST /fiscal-compliance/certifications", "POST /fiscal-compliance/readiness",
-    ]));
-    expect(routes.map(route => route.routeKey).join(" ")).not.toMatch(/\/(submit|confirm|cancel|retry|reconcile)/);
-    expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"))).toBe(true);
-    expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "SALES_DOCUMENT_BUCKET_NAME"))).toBe(true);
-    expect(owned.filter(item => item instanceof dynamodb.CfnTable || item instanceof s3.CfnBucket)).toHaveLength(0);
+    expect(
+      owned.filter((item) => item instanceof apigwv2.CfnIntegration),
+    ).toHaveLength(10);
+    expect(routes.every((route) => route.authorizationType === "JWT")).toBe(
+      true,
+    );
+    expect(routes.map((route) => route.routeKey)).toEqual(
+      expect.arrayContaining([
+        "GET /fiscal-compliance/benin/profile",
+        "PUT /fiscal-compliance/benin/profile",
+        "POST /fiscal-compliance/certifications",
+        "POST /fiscal-compliance/readiness",
+      ]),
+    );
+    expect(routes.map((route) => route.routeKey).join(" ")).not.toMatch(
+      /\/(submit|confirm|cancel|retry|reconcile)/,
+    );
+    expect(
+      functions.every(
+        (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),
+      ),
+    ).toBe(true);
+    expect(
+      functions.every(
+        (fn) => !lambdaEnvironmentVariable(fn, "SALES_DOCUMENT_BUCKET_NAME"),
+      ),
+    ).toBe(true);
+    expect(
+      owned.filter(
+        (item) =>
+          item instanceof dynamodb.CfnTable || item instanceof s3.CfnBucket,
+      ),
+    ).toHaveLength(0);
   });
 
-  test("owns all 59 configuration and transactional restaurant routes in one domain stack", () => {
-    const restaurants = constructs.find(item => item instanceof RestaurantsApiStack)!;
+  test("owns all 60 configuration and transactional restaurant routes in one domain stack", () => {
+    const restaurants = constructs.find(
+      (item) => item instanceof RestaurantsApiStack,
+    )!;
     const owned = restaurants.node.findAll();
-    const functions = owned.filter((item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction);
-    const routes = owned.filter((item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute);
-    expect(functions).toHaveLength(59);
-    expect(routes).toHaveLength(59);
-    expect(owned.filter(item => item instanceof apigwv2.CfnIntegration)).toHaveLength(59);
-    expect(owned.filter(item => item instanceof lambda.CfnPermission)).toHaveLength(59);
-    expect(routes.every(route => route.authorizationType === "JWT")).toBe(true);
-    expect(routes.every(route => String(route.routeKey).includes(" /restaurants/"))).toBe(true);
-    expect(functions.every(fn => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"))).toBe(true);
-    expect(owned.filter(item => item instanceof dynamodb.CfnTable || item instanceof cognito.CfnUserPool || item instanceof apigwv2.CfnApi)).toHaveLength(0);
+    const functions = owned.filter(
+      (item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction,
+    );
+    const routes = owned.filter(
+      (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+    );
+    expect(functions).toHaveLength(60);
+    expect(routes).toHaveLength(60);
+    expect(
+      owned.filter((item) => item instanceof apigwv2.CfnIntegration),
+    ).toHaveLength(60);
+    expect(
+      owned.filter((item) => item instanceof lambda.CfnPermission),
+    ).toHaveLength(60);
+    expect(routes.every((route) => route.authorizationType === "JWT")).toBe(
+      true,
+    );
+    expect(
+      routes.every((route) =>
+        String(route.routeKey).includes(" /restaurants/"),
+      ),
+    ).toBe(true);
+    expect(
+      functions.every(
+        (fn) => !lambdaEnvironmentVariable(fn, "ACCOUNTING_PERMISSION"),
+      ),
+    ).toBe(true);
+    expect(
+      owned.filter(
+        (item) =>
+          item instanceof dynamodb.CfnTable ||
+          item instanceof cognito.CfnUserPool ||
+          item instanceof apigwv2.CfnApi,
+      ),
+    ).toHaveLength(0);
   });
 
   test("isolates Restaurants write permissions and protects the new stateful table", () => {
@@ -178,8 +258,13 @@ describe("API stack decomposition", () => {
           lambdaEnvironmentVariable(fn, "RESTAURANTS_TABLE_NAME"),
       ),
     ).toBe(true);
-    const executionRole = owned.find((item): item is iam.Role => item instanceof iam.Role)!;
-    for (const fn of functions) expect(cdk.Stack.of(fn).resolve(fn.role)).toEqual(cdk.Stack.of(fn).resolve(executionRole.roleArn));
+    const executionRole = owned.find(
+      (item): item is iam.Role => item instanceof iam.Role,
+    )!;
+    for (const fn of functions)
+      expect(cdk.Stack.of(fn).resolve(fn.role)).toEqual(
+        cdk.Stack.of(fn).resolve(executionRole.roleArn),
+      );
     const policy = owned.find(
       (item): item is iam.CfnPolicy => item instanceof iam.CfnPolicy,
     )!;
@@ -196,6 +281,7 @@ describe("API stack decomposition", () => {
     expect(statements[1].Action).toEqual([
       "dynamodb:GetItem",
       "dynamodb:Query",
+      "dynamodb:BatchGetItem",
       "dynamodb:PutItem",
       "dynamodb:DeleteItem",
       "dynamodb:ConditionCheckItem",
@@ -209,7 +295,9 @@ describe("API stack decomposition", () => {
         String(item.tableName).endsWith("restaurants-table"),
     )!;
     expect(table.billingMode).toBe("PAY_PER_REQUEST");
-    expect(cdk.Stack.of(table).resolve(table.globalSecondaryIndexes) ?? []).toEqual([]);
+    expect(
+      cdk.Stack.of(table).resolve(table.globalSecondaryIndexes) ?? [],
+    ).toEqual([]);
     expect(table.deletionProtectionEnabled).toBe(true);
     expect(table.pointInTimeRecoverySpecification).toEqual({
       pointInTimeRecoveryEnabled: true,
@@ -301,14 +389,19 @@ describe("API stack decomposition", () => {
       ignorePublicAcls: true,
       restrictPublicBuckets: true,
     });
-    expect(bucket?.cfnOptions.deletionPolicy).toBe(cdk.CfnDeletionPolicy.RETAIN);
+    expect(bucket?.cfnOptions.deletionPolicy).toBe(
+      cdk.CfnDeletionPolicy.RETAIN,
+    );
 
     const policies = constructs.filter(
       (item): item is s3.CfnBucketPolicy => item instanceof s3.CfnBucketPolicy,
     );
     expect(policies).toHaveLength(1);
-    expect(JSON.stringify(cdk.Stack.of(policies[0]).resolve(policies[0].policyDocument)))
-      .toContain("aws:SecureTransport");
+    expect(
+      JSON.stringify(
+        cdk.Stack.of(policies[0]).resolve(policies[0].policyDocument),
+      ),
+    ).toContain("aws:SecureTransport");
   });
 
   test("exposes the private bucket only to the six SALES document Lambdas", () => {
@@ -319,9 +412,9 @@ describe("API stack decomposition", () => {
       lambdaEnvironmentVariable(fn, "SALES_DOCUMENT_BUCKET_NAME"),
     );
     expect(withBucket).toHaveLength(6);
-    expect(withBucket.every((fn) =>
-      String(fn.functionName).includes("pdf"),
-    )).toBe(true);
+    expect(
+      withBucket.every((fn) => String(fn.functionName).includes("pdf")),
+    ).toBe(true);
   });
 
   test("limits document Lambda data access to exact item and object actions", () => {
@@ -334,12 +427,22 @@ describe("API stack decomposition", () => {
     const serialized = documentPolicies.map((policy) =>
       JSON.stringify(cdk.Stack.of(policy).resolve(policy.policyDocument)),
     );
-    expect(serialized.every((policy) => policy.includes("dynamodb:GetItem"))).toBe(true);
-    expect(serialized.filter((policy) => policy.includes("dynamodb:PutItem"))).toHaveLength(2);
-    expect(serialized.every((policy) => policy.includes("s3:GetObject"))).toBe(true);
-    expect(serialized.filter((policy) => policy.includes("s3:PutObject"))).toHaveLength(2);
+    expect(
+      serialized.every((policy) => policy.includes("dynamodb:GetItem")),
+    ).toBe(true);
+    expect(
+      serialized.filter((policy) => policy.includes("dynamodb:PutItem")),
+    ).toHaveLength(2);
+    expect(serialized.every((policy) => policy.includes("s3:GetObject"))).toBe(
+      true,
+    );
+    expect(
+      serialized.filter((policy) => policy.includes("s3:PutObject")),
+    ).toHaveLength(2);
     for (const policy of serialized) {
-      expect(policy).not.toMatch(/dynamodb:(Scan|DeleteItem|BatchWriteItem|\*)/);
+      expect(policy).not.toMatch(
+        /dynamodb:(Scan|DeleteItem|BatchWriteItem|\*)/,
+      );
       expect(policy).not.toMatch(/s3:(List|DeleteObject|\*)/);
     }
   });
@@ -382,10 +485,8 @@ describe("API stack decomposition", () => {
     expect(
       invitationFunctions.every(
         (fn) =>
-          lambdaEnvironmentVariable(
-            fn,
-            "CABINET_INVITATION_EXPOSE_TOKEN",
-          ) === "true",
+          lambdaEnvironmentVariable(fn, "CABINET_INVITATION_EXPOSE_TOKEN") ===
+          "true",
       ),
     ).toBe(true);
     expect(
@@ -393,10 +494,7 @@ describe("API stack decomposition", () => {
         .filter((fn) => !invitationFunctions.includes(fn))
         .every(
           (fn) =>
-            !lambdaEnvironmentVariable(
-              fn,
-              "CABINET_INVITATION_EXPOSE_TOKEN",
-            ),
+            !lambdaEnvironmentVariable(fn, "CABINET_INVITATION_EXPOSE_TOKEN"),
         ),
     ).toBe(true);
   });

@@ -1,0 +1,14 @@
+@use '@angular/material' as mat;
+
+// Reuse the approved contextual surface and navy from the central theme for
+// the existing card action, without defining a new global button variant.
+.service-open-action {
+  @include mat.button-overrides(
+    (
+      tonal-container-color: var(--liass-surface-hover),
+      tonal-label-text-color: var(--mat-sys-primary),
+      tonal-state-layer-color: var(--mat-sys-primary),
+      tonal-container-height: 44px,
+    )
+  );
+}

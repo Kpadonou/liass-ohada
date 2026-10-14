@@ -1,7 +1,7 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import * as c from '@liass-ohada/shared/restaurants';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, timeout } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import {
@@ -137,6 +137,41 @@ export class RestaurantsApi {
       data: c.MenuItemResponseSchema.parse(response).data,
       message: userMessageFromResponse(response),
     };
+  }
+  async serviceFloor(scope: string, outletId: string, cursor?: string) {
+    this.assertScope(scope);
+    c.RestaurantIdSchema.parse(outletId);
+    const request = c.RestaurantServiceFloorRequestSchema.parse({ limit: 100, cursor });
+    let params = new HttpParams().set('limit', request.limit);
+    if (request.cursor) params = params.set('cursor', request.cursor);
+    const result = c.RestaurantServiceFloorResponseSchema.parse(
+      await firstValueFrom(
+        this.http
+          .get<unknown>(this.base + `/restaurants/outlets/${outletId}/service-floor`, { params })
+          .pipe(timeout(35_000)),
+      ),
+    );
+    if (result.outletId !== outletId) throw new Error('Mismatched floor context');
+    return result;
+  }
+  async openSession(scope: string, outletId: string, input: unknown) {
+    this.assertScope(scope);
+    c.RestaurantIdSchema.parse(outletId);
+    const request = c.OpenGuestSessionRequestSchema.parse(input);
+    const response = await firstValueFrom(
+      this.http
+        .post<unknown>(this.base + `/restaurants/outlets/${outletId}/sessions`, request)
+        .pipe(timeout(35_000)),
+    );
+    const data = c.GuestSessionResponseSchema.parse(response).data;
+    if (
+      data.orgId !== scope ||
+      data.outletId !== outletId ||
+      data.tableId !== request.tableId ||
+      data.areaId !== request.areaId
+    )
+      throw new Error('Mismatched session context');
+    return { data, message: userMessageFromResponse(response) };
   }
   async qr(scope: string, context: RestaurantContext, id: string) {
     this.assertScope(scope);

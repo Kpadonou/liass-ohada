@@ -13,6 +13,13 @@ interface TransactionRoute {
 const base = "/restaurants/outlets/{outletId}";
 export const RESTAURANT_TRANSACTION_ROUTES = [
   {
+    name: "service-floor",
+    method: "GET",
+    path: `${base}/service-floor`,
+    permission: "RESTAURANTS_SESSION_READ",
+    query: "SERVICE_FLOOR",
+  },
+  {
     name: "open-session",
     method: "POST",
     path: `${base}/sessions`,

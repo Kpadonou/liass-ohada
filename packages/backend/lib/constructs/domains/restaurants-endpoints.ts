@@ -40,6 +40,7 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
         actions: [
           "dynamodb:GetItem",
           "dynamodb:Query",
+          "dynamodb:BatchGetItem",
           "dynamodb:PutItem",
           "dynamodb:DeleteItem",
           "dynamodb:ConditionCheckItem",

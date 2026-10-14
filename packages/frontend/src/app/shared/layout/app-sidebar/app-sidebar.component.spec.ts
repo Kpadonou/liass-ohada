@@ -40,6 +40,7 @@ class NavigationTarget {}
 const translations = {
   fr: {
     RESTAURANTS: {
+      SERVICE: { GROUP: 'Service' },
       UX: {
         NAV: {
           restaurant: 'Restaurant',
@@ -53,6 +54,7 @@ const translations = {
         },
         CONFIGURATION: 'Configuration',
         PAGES: {
+          service: { TITLE: 'Service en salle' },
           overview: { TITLE: 'Vue resto' },
           restaurant: { TITLE: 'Restaurant' },
           outlet: { TITLE: 'Établissements' },
@@ -750,6 +752,7 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelectorAll('liass-sidebar-nav-item button[aria-current="page"]');
     expect(active()).toHaveLength(1);
     expect(active()[0].getAttribute('aria-label')).toBe('Tables');
+    expect(fixture.nativeElement.querySelector('button[aria-label="Service en salle"]')).toBeNull();
     ui.toggleSidebar();
     ui.setSidebarCollapsed(true);
     fixture.detectChanges();
@@ -816,13 +819,14 @@ describe('AppSidebarComponent', () => {
     ).toHaveLength(1);
     expect(resto.querySelectorAll('section')[0].querySelector('p')).toBeNull();
     expect(resto.querySelectorAll('section p')).toHaveLength(2);
+    expect(resto.querySelector('button[aria-label="Service en salle"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Restaurant"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Postes de préparation"]')).not.toBeNull();
     expect(resto.textContent).not.toContain('Configuration du restaurant');
-    expect(resto.querySelectorAll('section p')[0].textContent.trim()).toBe('Configuration');
-    const menu = resto.querySelectorAll('section')[2];
-    expect(menu.querySelector('p').textContent.trim()).toBe('Carte');
-    expect(menu.querySelector('button').getAttribute('aria-label')).toBe('Menu');
+    expect(resto.querySelectorAll('section p')[1].textContent.trim()).toBe('Configuration');
+    const configuration = resto.querySelectorAll('section')[2];
+    expect(configuration.querySelector('button[aria-label="Menu"]')).not.toBeNull();
+    expect(resto.querySelectorAll('section')).toHaveLength(3);
     TestBed.inject(UiStore).setSidebarCollapsed(true);
     fixture.detectChanges();
     expect(
@@ -831,6 +835,11 @@ describe('AppSidebarComponent', () => {
     ).toContain('lg:sr-only');
     const router = TestBed.inject(Router);
     router.resetConfig([{ path: '**', component: NavigationTarget }]);
+    await router.navigateByUrl('/restaurants/service?outlet=site-a');
+    fixture.detectChanges();
+    expect(resto.querySelector('button[aria-current="page"]').getAttribute('aria-label')).toBe(
+      'Service en salle',
+    );
     await router.navigateByUrl('/restaurants/setup/locations');
     fixture.detectChanges();
     resto.querySelector('button[aria-label="Tableau de bord"]').click();
@@ -903,5 +912,24 @@ describe('AppSidebarComponent', () => {
       harness.routeNativeElement?.querySelector('a[href="/sales/customers"]')?.textContent,
     ).toContain('Clients');
     expect(harness.routeNativeElement?.querySelector('liass-dashboard-page')).toBeNull();
+  });
+  it('keeps outlet context when moving between restaurant configuration destinations', async () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'OWNER' } },
+      'resto',
+    );
+    const router = TestBed.inject(Router);
+    router.resetConfig([{ path: '**', component: NavigationTarget }]);
+    await router.navigateByUrl('/restaurants/setup/tables?outlet=site-a&area=room-a');
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    fixture.nativeElement.querySelector('button[aria-label="Postes de préparation"]').click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/restaurants/setup/stations?outlet=site-a');
+    fixture.nativeElement.querySelector('button[aria-label="Menu"]').click();
+    await fixture.whenStable();
+    expect(router.url).toBe('/restaurants/menu?outlet=site-a');
   });
 });

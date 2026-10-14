@@ -1,10 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
-import { ActivatedRoute, provideRouter } from '@angular/router';
+import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { of } from 'rxjs';
+import { of, BehaviorSubject } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
@@ -137,8 +137,10 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
   const api = { get: vi.fn(), list: vi.fn(), deactivate: vi.fn(), availability: vi.fn() };
   const dialog = { open: vi.fn() };
   let client: QueryClient;
+  let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
   beforeEach(() => {
     vi.clearAllMocks();
+    params = new BehaviorSubject(convertToParamMap({}));
     scope.set('org');
     manage.set(true);
     access.set('AVAILABLE');
@@ -170,7 +172,10 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
         provideRouter([]),
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { data: { restaurantPage: mode, restaurantSection } } },
+          useValue: {
+            snapshot: { data: { restaurantPage: mode, restaurantSection } },
+            queryParamMap: params.asObservable(),
+          },
         },
         { provide: QueryClient, useValue: client },
         { provide: AuthStore, useValue: { effectiveOrgId: scope } },
@@ -189,6 +194,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
         { provide: NotificationService, useValue: { success: vi.fn() } },
       ],
     });
+    vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
     await TestBed.compileComponents();
     const f = TestBed.createComponent(RestaurantsWorkspacePage);
     f.detectChanges();
@@ -215,6 +221,9 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     const f = await create();
     expect(f.nativeElement.textContent).toContain('Héritage Bistro');
     expect(f.nativeElement.textContent).toContain('Staff approval');
+    expect(f.nativeElement.querySelector('a')?.getAttribute('href')).toBe(
+      '/restaurants/setup/locations',
+    );
     expect(f.nativeElement.textContent).toContain('Read only');
     f.componentInstance.open('restaurant', row('restaurant'));
     expect(dialog.open).not.toHaveBeenCalled();
@@ -476,7 +485,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     async (kind) => {
       const f = await create('setup', kind);
       expect(f.componentInstance.section()).toBe(kind);
-      expect(f.nativeElement.querySelector('nav')).toBeNull();
+      expect(f.nativeElement.querySelector('[role="tablist"]')).toBeNull();
       expect(f.nativeElement.querySelector('liass-page-header')).not.toBeNull();
       if (kind !== 'restaurant')
         await vi.waitFor(() => {
@@ -509,7 +518,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       expect(
         f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]'),
       ).toBeNull();
-      expect(f.nativeElement.querySelector('nav')).toBeNull();
+      expect(f.nativeElement.querySelector('[role="tablist"]')).toBeNull();
       if (kind === 'outlet')
         expect(
           Array.from(f.nativeElement.querySelectorAll('h1,h2')).map((node) =>
@@ -576,7 +585,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       expect(f.componentInstance.stations.isSuccess()).toBe(true);
     });
     const links = [...f.nativeElement.querySelectorAll('a')] as HTMLAnchorElement[];
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(
+    expect(links.map((link) => link.getAttribute('href')?.split('?')[0])).toEqual(
       expect.arrayContaining([
         '/restaurants/setup',
         '/restaurants/setup/locations',
@@ -598,5 +607,83 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       expect(link.querySelector('p').textContent.trim()).toBe('1');
       expect(link.querySelector('mat-icon').getAttribute('aria-hidden')).toBe('true');
     }
+  });
+  it('inherits outlet/area context from a deep link and follows back/forward parameter changes', async () => {
+    params.next(convertToParamMap({ outlet: rid(2), area: rid(3) }));
+    const f = await create('setup', 'table');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.tables.isSuccess()).toBe(true);
+    });
+    expect(f.componentInstance.outlet()?.name).toBe('Agla');
+    expect(f.componentInstance.area()?.name).toBe('Main Room');
+    expect(f.nativeElement.querySelector('[data-testid="table-context"]').textContent).toContain(
+      'Main Room',
+    );
+    const router = TestBed.inject(Router);
+    Object.defineProperty(router, 'url', { get: () => '/restaurants/setup/tables' });
+    f.componentInstance.selectArea(rid(3));
+    expect(router.navigateByUrl).toHaveBeenCalledWith(
+      '/restaurants/setup/tables?outlet=' + rid(2) + '&area=' + rid(3),
+    );
+    params.next(convertToParamMap({ outlet: rid(2), area: 'not-a-loaded-area' }));
+    f.detectChanges();
+    expect(f.componentInstance.area()).toBeUndefined();
+    expect(f.componentInstance.contextUnavailable()).toBe(true);
+    params.next(convertToParamMap({ outlet: rid(2), area: rid(3) }));
+    f.detectChanges();
+    expect(f.componentInstance.area()?.name).toBe('Main Room');
+  });
+  it('does not query a supplied outlet until it belongs to the current loaded organization data', async () => {
+    params.next(convertToParamMap({ outlet: 'foreign-outlet' }));
+    const f = await create('setup', 'table');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.locations.isSuccess()).toBe(true);
+    });
+    expect(f.componentInstance.outlet()).toBeUndefined();
+    expect(f.componentInstance.contextUnavailable()).toBe(true);
+    expect(api.list.mock.calls.map((call) => call[1])).toEqual(['outlet']);
+    expect(f.nativeElement.textContent).toContain('RESTAURANTS.IA.CONTEXT_UNAVAILABLE');
+    f.componentInstance.selectOutlet(null);
+    f.detectChanges();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.outlet()?.id).toBe(rid(2));
+    });
+  });
+  it('offers outlet child links and area-to-table links even to read-only staff', async () => {
+    manage.set(false);
+    const f = await create('setup', 'outlet');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.locations.isSuccess()).toBe(true);
+    });
+    const destinations = [...f.nativeElement.querySelectorAll('a')].map((link: unknown) =>
+      (link as HTMLAnchorElement).getAttribute('href'),
+    );
+    expect(destinations).toContain('/restaurants/setup/tables?outlet=' + rid(2));
+    expect(destinations).toContain('/restaurants/setup/areas?outlet=' + rid(2));
+    expect(destinations).toContain('/restaurants/setup/stations?outlet=' + rid(2));
+    expect(destinations).toContain('/restaurants/menu?outlet=' + rid(2));
+    expect(f.nativeElement.querySelector('button[aria-label="Actions for Agla"]')).toBeNull();
+    expect(f.nativeElement.querySelector('[data-testid="restaurant-context"]')).toBeNull();
+  });
+  it('shows area parent and a scoped Tables destination without aggregate requests', async () => {
+    const f = await create('setup', 'area');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.areas.isSuccess()).toBe(true);
+    });
+    const destinations = [...f.nativeElement.querySelectorAll('a')].map((link: unknown) =>
+      (link as HTMLAnchorElement).getAttribute('href'),
+    );
+    expect(destinations).toContain(
+      '/restaurants/setup/tables?outlet=' + rid(2) + '&area=' + rid(3),
+    );
+    expect(api.list.mock.calls.map((call) => call[1])).not.toContain('table');
+    expect(f.nativeElement.querySelector('[data-testid="restaurant-context"]')?.tagName).toBe(
+      'SECTION',
+    );
   });
 });

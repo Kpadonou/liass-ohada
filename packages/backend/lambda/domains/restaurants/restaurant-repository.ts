@@ -1,3 +1,4 @@
+import { restaurantBatchRead } from "./restaurant-batch-read";
 import { createHash } from "crypto";
 import {
   AttributeValue,
@@ -217,6 +218,111 @@ export class RestaurantsRepository {
       );
     }
     return { items, nextCursor };
+  }
+
+  /** One physical table page across the outlet's area keys; no new projection. */
+  static async floorTables(
+    orgId: string,
+    outletId: string,
+    input: RestaurantsListRequest,
+  ) {
+    RestaurantIdSchema.parse(outletId);
+    const prefix = KeyFactory.restaurantOutletTablePrefix(outletId);
+    const pk = KeyFactory.orgKey(orgId);
+    const scope = createHash("sha256")
+      .update(JSON.stringify([orgId, outletId, "SERVICE_FLOOR"]))
+      .digest("hex");
+    const positionSchema = z
+      .object({
+        scope: z.literal(scope),
+        areaId: RestaurantIdSchema,
+        tableId: RestaurantIdSchema,
+      })
+      .strict();
+    let start: Record<string, AttributeValue> | undefined;
+    if (input.cursor) {
+      try {
+        const cursor = positionSchema.parse(
+          JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8")),
+        );
+        start = key(
+          orgId,
+          "table",
+          { outletId, serviceAreaId: cursor.areaId },
+          cursor.tableId,
+        );
+      } catch {
+        throw new AppError(400, "ERROR_INVALID_CURSOR");
+      }
+    }
+    const response = await dynamoClient.send(
+      new QueryCommand({
+        TableName: restaurantsTableName(),
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+        ExpressionAttributeValues: marshall({ ":pk": pk, ":prefix": prefix }),
+        Limit: input.limit,
+        ExclusiveStartKey: start,
+        ConsistentRead: true,
+        ScanIndexForward: true,
+      }),
+    );
+    const position = (raw: Record<string, AttributeValue>) => {
+      const value = unmarshall(raw);
+      if (
+        value.PK !== pk ||
+        typeof value.SK !== "string" ||
+        !value.SK.startsWith(prefix)
+      )
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      const [areaId, tableId, extra] = value.SK.slice(prefix.length).split("#");
+      const cursor = positionSchema.safeParse({ scope, areaId, tableId });
+      if (
+        !cursor.success ||
+        extra !== undefined ||
+        value.SK !== KeyFactory.restaurantTableSK(outletId, areaId, tableId)
+      )
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      return cursor.data;
+    };
+    const items = (response.Items ?? [])
+      .map((raw) => {
+        const p = position(raw);
+        const table = decode(
+          orgId,
+          "table",
+          { outletId, serviceAreaId: p.areaId },
+          raw,
+          p.tableId,
+        );
+        if (!table)
+          throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+        return table.data;
+      })
+      .filter((table) => table.isActive);
+    const nextCursor = response.LastEvaluatedKey
+      ? Buffer.from(
+          JSON.stringify(position(response.LastEvaluatedKey)),
+        ).toString("base64url")
+      : undefined;
+    return { items, nextCursor };
+  }
+  static async floorAreas(orgId: string, outletId: string, areaIds: string[]) {
+    const ids = [...new Set(areaIds)];
+    const raw = await restaurantBatchRead(
+      ids.map((id) => ({
+        PK: KeyFactory.orgKey(orgId),
+        SK: KeyFactory.restaurantServiceAreaSK(outletId, id),
+      })),
+    );
+    return new Map(
+      ids.map((id, index) => {
+        const area =
+          raw[index] &&
+          decode(orgId, "serviceArea", { outletId }, raw[index]!, id);
+        if (!area) throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+        return [id, area.data.name] as const;
+      }),
+    );
   }
 
   /** Configuration, parent versions, uniqueness reservations and QR mapping commit together. */

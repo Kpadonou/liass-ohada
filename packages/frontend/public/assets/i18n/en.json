@@ -4402,12 +4402,16 @@
           "DESCRIPTION": "Manage table codes, capacity and QR identities in each dining area."
         },
         "station": {
-          "TITLE": "Kitchen & bar stations",
+          "TITLE": "Preparation stations",
           "DESCRIPTION": "Configure the preparation stations of the selected location."
         },
         "menu": {
           "TITLE": "Menu",
           "DESCRIPTION": "Organize categories and items for the selected location."
+        },
+        "service": {
+          "TITLE": "Dining room service",
+          "DESCRIPTION": "Follow the current state of your tables and manage service for your guests."
         }
       },
       "ADD": {
@@ -4453,6 +4457,43 @@
           "DESCRIPTION": "Add the first item to this category to complete your menu."
         }
       }
+    },
+    "IA": {
+      "CONTEXT": "Configuration context",
+      "CONTEXT_UNAVAILABLE": "This context is not among the loaded entries. Load more or choose another location or dining area.",
+      "RESET_CONTEXT": "Choose an available context",
+      "CAPACITY_UNSET": "Capacity not specified",
+      "LOCATION_LINKS": "Configure {{name}}",
+      "AREAS": "Dining areas",
+      "STATIONS": "Stations",
+      "CONFIGURE_TABLES": "View tables",
+      "VIEW_LOCATIONS": "View locations"
+    },
+    "SERVICE": {
+      "GROUP": "Service",
+      "ALL": "All dining areas",
+      "TOTAL": "tables in total",
+      "OCCUPIED": "occupied",
+      "FREE": "free",
+      "FLOOR": "Dining room",
+      "OPEN": "Open table",
+      "OPENED": "Table opened.",
+      "OPENING": "Opening table…",
+      "OPEN_CONFLICT": "This table’s state has changed. Refreshing the current information.",
+      "REFRESHING": "Refreshing tables…",
+      "PARTIAL": "Counts cover the loaded tables. Load more to complete this view.",
+      "PARTIAL_EMPTY": "No tables in the loaded results",
+      "AREA_EMPTY": "No active tables in this dining area",
+      "EMPTY": "No active tables",
+      "EMPTY_HELP": "Choose another area or review table configuration.",
+      "CONFIGURE": "Configure tables",
+      "MORE": "Load more tables",
+      "UNDER_MINUTE": "< 1 min",
+      "MINUTES": "{{minutes}} min",
+      "HOURS": "{{hours}} h {{minutes}}",
+      "STATE_FREE": "Free",
+      "STATE_OCCUPIED": "Occupied",
+      "CONTEXT": "Service context"
     }
   }
 }

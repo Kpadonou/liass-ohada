@@ -1,6 +1,8 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, effect, inject, signal } from '@angular/core';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink, convertToParamMap } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -74,10 +76,12 @@ function collectionState(query: {
   templateUrl: './restaurants-workspace.page.html',
 })
 export class RestaurantsWorkspacePage {
-  readonly mode = inject(ActivatedRoute).snapshot.data['restaurantPage'] as
-    | 'overview'
-    | 'setup'
-    | 'menu';
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly contextParams = toSignal(this.route.queryParamMap ?? of(convertToParamMap({})), {
+    initialValue: this.route.snapshot.queryParamMap ?? convertToParamMap({}),
+  });
+  readonly mode = this.route.snapshot.data['restaurantPage'] as 'overview' | 'setup' | 'menu';
   readonly queries = inject(RestaurantsQueries);
   readonly caps = inject(RestaurantsCapabilities);
   private readonly api = inject(RestaurantsApi);
@@ -86,7 +90,7 @@ export class RestaurantsWorkspacePage {
   readonly t = inject(TranslocoService);
   private readonly product = inject(ProductAccessState);
   readonly section = signal<RestaurantKind>(
-    inject(ActivatedRoute).snapshot.data['restaurantSection'] ?? 'restaurant',
+    this.route.snapshot.data['restaurantSection'] ?? 'restaurant',
   );
   readonly pageKey = computed(() => (this.mode === 'setup' ? this.section() : this.mode));
   readonly headerAction = computed(() => {
@@ -220,6 +224,29 @@ export class RestaurantsWorkspacePage {
     }
   });
   readonly rows = computed<RestaurantEntity[]>(() => this.collection().items);
+  readonly contextUnavailable = computed(
+    () =>
+      (this.locations.isSuccess() && !!this.outletId() && !this.outlet()) ||
+      (this.section() === 'table' &&
+        !!this.outlet() &&
+        this.areas.isSuccess() &&
+        !!this.areaId() &&
+        !this.area()),
+  );
+  configurationContext(outletId: string | null = this.outletId(), areaId: string | null = null) {
+    return { outlet: outletId, ...(areaId ? { area: areaId } : {}) };
+  }
+  private writeContext() {
+    const url = this.router.parseUrl(this.router.url);
+    url.queryParams = {
+      ...url.queryParams,
+      outlet: this.outletId(),
+      area: this.section() === 'table' ? this.areaId() : null,
+    };
+    if (!url.queryParams['outlet']) delete url.queryParams['outlet'];
+    if (!url.queryParams['area']) delete url.queryParams['area'];
+    void this.router.navigateByUrl(this.router.serializeUrl(url));
+  }
   readonly siteActive = computed(() => !!this.root.data()?.isActive && !!this.outlet()?.isActive);
   readonly canManage = computed(() =>
     this.mode === 'menu' ? this.caps.canManageMenu() : this.caps.canManageSetup(),
@@ -234,6 +261,15 @@ export class RestaurantsWorkspacePage {
     return true;
   });
   constructor() {
+    effect(() => {
+      const params = this.contextParams();
+      const outlet = params.get('outlet');
+      if (outlet !== untracked(this.outletId)) {
+        this.outletId.set(outlet);
+        this.categoryId.set(null);
+      }
+      this.areaId.set(untracked(this.section) === 'table' ? params.get('area') : null);
+    });
     let previous = this.queries.scope();
     effect(() => {
       const scope = this.queries.scope();
@@ -266,10 +302,12 @@ export class RestaurantsWorkspacePage {
     this.areaId.set(null);
     this.categoryId.set(null);
     this.actionError.set(null);
+    this.writeContext();
   }
   selectArea(value: string | null) {
     this.areaId.set(value);
     this.actionError.set(null);
+    this.writeContext();
   }
   selectCategory(value: string) {
     this.categoryId.set(value);

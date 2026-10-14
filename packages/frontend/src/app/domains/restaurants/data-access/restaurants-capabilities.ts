@@ -12,6 +12,13 @@ export class RestaurantsCapabilities {
       ? restaurantsPermissionsForRole(workspace.productRoles?.RESTAURANTS)
       : [];
   }
+  // Mirrors LR-TX-1: unassigned staff have no transactional read/write grants.
+  canReadService() {
+    return this.canManageSetup();
+  }
+  canOpenSession() {
+    return this.canManageSetup();
+  }
   canRead() {
     return this.permissions().includes('RESTAURANTS_READ');
   }

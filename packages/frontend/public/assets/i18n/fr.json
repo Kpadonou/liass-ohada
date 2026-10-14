@@ -4349,7 +4349,7 @@
       "MORE_STATIONS": "Autres postes de préparation",
       "SECTIONS": "Rubriques de configuration",
       "LOCATION": "Établissement",
-      "AREA": "Salle ou terrasse",
+      "AREA": "Espace de restauration",
       "ADD_LOCATION": "Ajouter un établissement",
       "ADD_AREA": "Ajouter une salle",
       "ADD_CATEGORY": "Ajouter une catégorie",
@@ -4402,12 +4402,16 @@
           "DESCRIPTION": "Gérez les codes, capacités et identités QR des tables de chaque espace."
         },
         "station": {
-          "TITLE": "Postes de cuisine et de bar",
+          "TITLE": "Postes de préparation",
           "DESCRIPTION": "Configurez les postes de préparation de l’établissement sélectionné."
         },
         "menu": {
-          "TITLE": "Carte",
+          "TITLE": "Menu",
           "DESCRIPTION": "Organisez les catégories et les articles de l’établissement sélectionné."
+        },
+        "service": {
+          "TITLE": "Service en salle",
+          "DESCRIPTION": "Suivez en temps réel l’état de vos tables et gérez le service de vos clients."
         }
       },
       "ADD": {
@@ -4453,6 +4457,43 @@
           "DESCRIPTION": "Ajoutez un premier article à cette catégorie pour compléter votre menu."
         }
       }
+    },
+    "IA": {
+      "CONTEXT": "Contexte de configuration",
+      "CONTEXT_UNAVAILABLE": "Ce contexte ne figure pas dans les éléments chargés. Chargez la suite ou choisissez un autre établissement ou espace.",
+      "RESET_CONTEXT": "Choisir un contexte disponible",
+      "CAPACITY_UNSET": "Capacité à préciser",
+      "LOCATION_LINKS": "Configuration de {{name}}",
+      "AREAS": "Espaces",
+      "STATIONS": "Postes",
+      "CONFIGURE_TABLES": "Voir les tables",
+      "VIEW_LOCATIONS": "Voir les établissements"
+    },
+    "SERVICE": {
+      "GROUP": "Service",
+      "ALL": "Tous les espaces",
+      "TOTAL": "tables au total",
+      "OCCUPIED": "occupées",
+      "FREE": "libres",
+      "FLOOR": "Plan de salle",
+      "OPEN": "Ouvrir la table",
+      "OPENED": "Table ouverte.",
+      "OPENING": "Ouverture de la table…",
+      "OPEN_CONFLICT": "L’état de cette table a changé. Les informations sont actualisées.",
+      "REFRESHING": "Actualisation des tables…",
+      "PARTIAL": "Les chiffres concernent les tables chargées. Chargez la suite pour compléter cette vue.",
+      "PARTIAL_EMPTY": "Aucune table dans les résultats chargés",
+      "AREA_EMPTY": "Aucune table active dans cet espace",
+      "EMPTY": "Aucune table active",
+      "EMPTY_HELP": "Choisissez un autre espace ou consultez la configuration des tables.",
+      "CONFIGURE": "Configurer les tables",
+      "MORE": "Charger plus de tables",
+      "UNDER_MINUTE": "< 1 min",
+      "MINUTES": "{{minutes}} min",
+      "HOURS": "{{hours}} h {{minutes}}",
+      "STATE_FREE": "Libre",
+      "STATE_OCCUPIED": "Occupée",
+      "CONTEXT": "Contexte du service"
     }
   }
 }

@@ -61,6 +61,8 @@ export function restaurantTransactionHandler(name: string) {
         input,
         ids,
       );
+      if (query === "SERVICE_FLOOR")
+        return contracts.RestaurantServiceFloorResponseSchema.parse(result);
       if (query === "GET_SESSION")
         return contracts.GuestSessionResponseSchema.parse(result);
       if (query === "GET_ORDER")

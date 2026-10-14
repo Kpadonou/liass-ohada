@@ -80,34 +80,59 @@ export const KeyFactory = {
   // RESTAURANTS owns these configurations and lookup/reservation records.
   restaurantSK: () => "ROOT",
   restaurantOutletPrefix: () => "OUT#",
-  restaurantOutletSK: (id: string) => `${KeyFactory.restaurantOutletPrefix()}${id}`,
+  restaurantOutletSK: (id: string) =>
+    `${KeyFactory.restaurantOutletPrefix()}${id}`,
   restaurantServiceAreaPrefix: (outletId: string) => `AREA#${outletId}#`,
-  restaurantServiceAreaSK: (outletId: string, id: string) => `${KeyFactory.restaurantServiceAreaPrefix(outletId)}${id}`,
-  restaurantTablePrefix: (outletId: string, areaId: string) => `TBL#${outletId}#${areaId}#`,
-  restaurantTableSK: (outletId: string, areaId: string, id: string) => `${KeyFactory.restaurantTablePrefix(outletId, areaId)}${id}`,
-  restaurantTableCodeSK: (outletId: string, code: string) => `TC#${outletId}#${code}`,
+  restaurantServiceAreaSK: (outletId: string, id: string) =>
+    `${KeyFactory.restaurantServiceAreaPrefix(outletId)}${id}`,
+  restaurantOutletTablePrefix: (outletId: string) => `TBL#${outletId}#`,
+  restaurantTablePrefix: (outletId: string, areaId: string) =>
+    `TBL#${outletId}#${areaId}#`,
+  restaurantTableSK: (outletId: string, areaId: string, id: string) =>
+    `${KeyFactory.restaurantTablePrefix(outletId, areaId)}${id}`,
+  restaurantTableCodeSK: (outletId: string, code: string) =>
+    `TC#${outletId}#${code}`,
   restaurantStationPrefix: (outletId: string) => `STN#${outletId}#`,
-  restaurantStationSK: (outletId: string, id: string) => `${KeyFactory.restaurantStationPrefix(outletId)}${id}`,
+  restaurantStationSK: (outletId: string, id: string) =>
+    `${KeyFactory.restaurantStationPrefix(outletId)}${id}`,
   restaurantMenuSK: (outletId: string) => `MENU#${outletId}`,
   restaurantCategoryPrefix: (outletId: string) => `CAT#${outletId}#`,
-  restaurantCategorySK: (outletId: string, id: string) => `${KeyFactory.restaurantCategoryPrefix(outletId)}${id}`,
-  restaurantMenuItemPrefix: (outletId: string, categoryId: string) => `ITEM#${outletId}#${categoryId}#`,
-  restaurantMenuItemSK: (outletId: string, categoryId: string, id: string) => `${KeyFactory.restaurantMenuItemPrefix(outletId, categoryId)}${id}`,
+  restaurantCategorySK: (outletId: string, id: string) =>
+    `${KeyFactory.restaurantCategoryPrefix(outletId)}${id}`,
+  restaurantMenuItemPrefix: (outletId: string, categoryId: string) =>
+    `ITEM#${outletId}#${categoryId}#`,
+  restaurantMenuItemSK: (outletId: string, categoryId: string, id: string) =>
+    `${KeyFactory.restaurantMenuItemPrefix(outletId, categoryId)}${id}`,
   restaurantQrPK: (tokenHash: string) => `QR#${tokenHash}`,
   restaurantQrSK: () => "LOOKUP",
 
   // Fiscal Compliance-owned local foundation; source keys are connection-independent.
   fiscalProfileSK: () => "FISCAL_PROFILE#BJ",
-  fiscalConnectionPrefix: (environment: string) => `FISCAL_CONNECTION#BJ#BENIN_E_MECEF#${environment}#`,
+  fiscalConnectionPrefix: (environment: string) =>
+    `FISCAL_CONNECTION#BJ#BENIN_E_MECEF#${environment}#`,
   fiscalConnectionSK: (environment: string, connectionId: string) =>
     `${KeyFactory.fiscalConnectionPrefix(environment)}${connectionId}`,
-  fiscalCertificationSK: (environment: string, sourceType: string, sourceId: string) =>
+  fiscalCertificationSK: (
+    environment: string,
+    sourceType: string,
+    sourceId: string,
+  ) =>
     `FISCAL_CERTIFICATION#BJ#BENIN_E_MECEF#${environment}#${sourceType}#${sourceId}`,
-  fiscalHistoryPrefix: (environment: string, sourceType: string, sourceId: string) =>
+  fiscalHistoryPrefix: (
+    environment: string,
+    sourceType: string,
+    sourceId: string,
+  ) =>
     `FISCAL_HISTORY#BJ#BENIN_E_MECEF#${environment}#${sourceType}#${sourceId}#`,
-  fiscalHistorySK: (environment: string, sourceType: string, sourceId: string, version: number) =>
+  fiscalHistorySK: (
+    environment: string,
+    sourceType: string,
+    sourceId: string,
+    version: number,
+  ) =>
     `${KeyFactory.fiscalHistoryPrefix(environment, sourceType, sourceId)}${String(version).padStart(10, "0")}`,
-  fiscalCommandSK: (clientRequestId: string) => `FISCAL_COMMAND#${clientRequestId}`,
+  fiscalCommandSK: (clientRequestId: string) =>
+    `FISCAL_COMMAND#${clientRequestId}`,
   fiscalConfigurationHistorySK: (configurationId: string, version: number) =>
     `FISCAL_CONFIGURATION_HISTORY#${configurationId}#${String(version).padStart(10, "0")}`,
 
@@ -155,8 +180,7 @@ export const KeyFactory = {
     `${KeyFactory.salesCustomerPrefix()}${customerId}`,
 
   /** SALES-owned Catalog Item aggregate under the organization partition. */
-  salesItemSK: (itemId: string) =>
-    `${KeyFactory.salesItemPrefix()}${itemId}`,
+  salesItemSK: (itemId: string) => `${KeyFactory.salesItemPrefix()}${itemId}`,
 
   /** SALES-owned Draft Invoice aggregate under the organization partition. */
   salesInvoiceSK: (invoiceId: string) =>
@@ -174,8 +198,7 @@ export const KeyFactory = {
     `SALES_INVOICE_DOCUMENT#${invoiceId}#PDF`,
 
   /** SALES-owned operational settlement state for an issued Invoice. */
-  salesReceivableSK: (invoiceId: string) =>
-    `SALES_RECEIVABLE#${invoiceId}`,
+  salesReceivableSK: (invoiceId: string) => `SALES_RECEIVABLE#${invoiceId}`,
 
   /** SALES-owned immutable Payment fact, grouped by Invoice. */
   salesPaymentSK: (invoiceId: string, paymentId: string) =>
@@ -252,10 +275,8 @@ export const KeyFactory = {
   /** Cabinet member-to-client-dossier assignment adjacency keys. */
   cabinetMemberAssignmentsPrefix: (userId: string) =>
     `ASSIGNMENT#USER#${userId}#DOSSIER#`,
-  cabinetMemberDossierAssignmentSK: (
-    userId: string,
-    dossierOrgId: string,
-  ) => `ASSIGNMENT#USER#${userId}#DOSSIER#${dossierOrgId}`,
+  cabinetMemberDossierAssignmentSK: (userId: string, dossierOrgId: string) =>
+    `ASSIGNMENT#USER#${userId}#DOSSIER#${dossierOrgId}`,
   cabinetDossierAssignmentsGSI_PK: (
     cabinetOrgId: string,
     dossierOrgId: string,
@@ -266,8 +287,7 @@ export const KeyFactory = {
   cabinetWorkPrefix: () => "WORK#",
   cabinetWorkSK: (workId: string) => `WORK#${workId}`,
   cabinetWorkDueSentinel: () => "9999-12-31",
-  cabinetWorksGSI_PK: (cabinetOrgId: string) =>
-    `CABINET#${cabinetOrgId}#WORKS`,
+  cabinetWorksGSI_PK: (cabinetOrgId: string) => `CABINET#${cabinetOrgId}#WORKS`,
   cabinetWorkGSI_SK: (dueDate: string | undefined, workId: string) =>
     `DUE#${dueDate ?? KeyFactory.cabinetWorkDueSentinel()}#WORK#${workId}`,
   cabinetDossierWorksGSI_PK: (cabinetOrgId: string, dossierOrgId: string) =>
@@ -275,8 +295,7 @@ export const KeyFactory = {
   cabinetResponsibleWorksGSI_PK: (cabinetOrgId: string, userId: string) =>
     `CABINET#${cabinetOrgId}#USER#${userId}#WORKS`,
   cabinetWorkDueRangeStart: (date?: string) => `DUE#${date ?? "0000-00-00"}`,
-  cabinetWorkDueRangeEnd: (date?: string) =>
-    `DUE#${date ?? "9999-99-99"}#~`,
+  cabinetWorkDueRangeEnd: (date?: string) => `DUE#${date ?? "9999-99-99"}#~`,
 
   /** Cabinet deadline operational records. */
   cabinetDeadlinePrefix: () => "DEADLINE#",
@@ -285,10 +304,8 @@ export const KeyFactory = {
     `CABINET#${cabinetOrgId}#DEADLINES`,
   cabinetDeadlineGSI_SK: (dueDate: string, deadlineId: string) =>
     `DUE#${dueDate}#DEADLINE#${deadlineId}`,
-  cabinetDossierDeadlinesGSI_PK: (
-    cabinetOrgId: string,
-    dossierOrgId: string,
-  ) => `CABINET#${cabinetOrgId}#DOSSIER#${dossierOrgId}#DEADLINES`,
+  cabinetDossierDeadlinesGSI_PK: (cabinetOrgId: string, dossierOrgId: string) =>
+    `CABINET#${cabinetOrgId}#DOSSIER#${dossierOrgId}#DEADLINES`,
   cabinetResponsibleDeadlinesGSI_PK: (cabinetOrgId: string, userId: string) =>
     `CABINET#${cabinetOrgId}#USER#${userId}#DEADLINES`,
   cabinetDeadlineDueRangeStart: (date?: string) =>
@@ -354,10 +371,8 @@ export const KeyFactory = {
   treasuryAccountSK: (treasuryAccountId: string) =>
     `TRS#ACC#${treasuryAccountId}`,
 
-  bankStatementLinePrefix: (
-    treasuryAccountId: string,
-    year: number | string,
-  ) => `TRS#${treasuryAccountId}#FY#${year}#STMT#`,
+  bankStatementLinePrefix: (treasuryAccountId: string, year: number | string) =>
+    `TRS#${treasuryAccountId}#FY#${year}#STMT#`,
 
   bankStatementLineDatePrefix: (
     treasuryAccountId: string,
@@ -498,6 +513,5 @@ export const KeyFactory = {
   journalBookPK: (orgId: string, year: number | string) =>
     KeyFactory.partitionKey(orgId, year),
 
-  journalBookSK: (date: string, entryId: string) =>
-    `DT#${date}#E#${entryId}`,
+  journalBookSK: (date: string, entryId: string) => `DT#${date}#E#${entryId}`,
 };

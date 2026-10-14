@@ -1,3 +1,4 @@
+import { RestaurantServiceFloor } from "./service-floor-query";
 import { z } from "zod";
 import * as contracts from "@liass-ohada/shared/restaurants";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
@@ -11,6 +12,7 @@ import { RestaurantTransactionsService as S } from "./transaction-service";
 import { TransactionRow, TransactionScope } from "./transaction-model";
 
 export type TransactionQuery =
+  | "SERVICE_FLOOR"
   | "GET_SESSION"
   | "GET_ORDER"
   | "ACTIVE_TABLE"
@@ -34,6 +36,7 @@ type QueryPage = {
 };
 type QueryResult =
   | QueryPage
+  | contracts.RestaurantServiceFloorResponse
   | { data: contracts.GuestSession | contracts.RestaurantOrder | null };
 export class RestaurantTransactionQueries {
   static async hydrate(
@@ -64,7 +67,7 @@ export class RestaurantTransactionQueries {
     scope: TransactionScope,
     query: Exclude<
       TransactionQuery,
-      "GET_SESSION" | "GET_ORDER" | "ACTIVE_TABLE"
+      "GET_SESSION" | "GET_ORDER" | "ACTIVE_TABLE" | "SERVICE_FLOOR"
     >,
     request: unknown,
     ids?: QueryIds,
@@ -82,6 +85,8 @@ export class RestaurantTransactionQueries {
     ids: QueryIds = {},
   ): Promise<QueryResult> {
     await RestaurantsService.get(scope.orgId, "outlet", {}, scope.outletId);
+    if (query === "SERVICE_FLOOR")
+      return RestaurantServiceFloor.read(scope, request);
     if (query === "GET_SESSION")
       return {
         data: (

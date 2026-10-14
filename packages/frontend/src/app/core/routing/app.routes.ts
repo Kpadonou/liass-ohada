@@ -146,6 +146,15 @@ export const routes: Routes = [
           subtitleKey: 'RESTAURANTS.PAGE.SUBTITLE',
         },
         children: [
+          {
+            path: 'service',
+            canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-service-floor.page').then(
+                (m) => m.RestaurantServiceFloorPage,
+              ),
+            data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.UX.PAGES.service.TITLE' },
+          },
           ...[
             { path: '', restaurantPage: 'overview', restaurantSection: 'restaurant' },
             ...restaurantSections.map((section) => ({

@@ -1,5 +1,7 @@
 import {
   DynamoDBClient,
+  BatchGetItemCommand,
+  BatchGetItemCommandInput,
   GetItemCommand,
   GetItemCommandInput,
   QueryCommand,
@@ -47,6 +49,22 @@ export function memoryDynamo() {
   db.on(GetItemCommand).callsFake(async (input: GetItemCommandInput) => ({
     Item: rows.get(identity(input.Key ?? {})),
   }));
+  db.on(BatchGetItemCommand).callsFake(
+    async (input: BatchGetItemCommandInput) => ({
+      Responses: Object.fromEntries(
+        Object.entries(input.RequestItems ?? {}).map(([table, request]) => {
+          if ((request.Keys?.length ?? 0) > 100)
+            throw new Error("Unbounded restaurant batch");
+          return [
+            table,
+            (request.Keys ?? []).flatMap((key) =>
+              rows.has(identity(key)) ? [rows.get(identity(key))!] : [],
+            ),
+          ];
+        }),
+      ),
+    }),
+  );
   db.on(QueryCommand).callsFake(async (input: QueryCommandInput) => {
     const platformProducts =
       input.ExpressionAttributeValues?.[":skPrefix"]?.S ===

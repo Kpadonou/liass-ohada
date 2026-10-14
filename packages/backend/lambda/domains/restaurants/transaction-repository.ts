@@ -1,3 +1,4 @@
+import { restaurantBatchRead } from "./restaurant-batch-read";
 import {
   AttributeValue,
   GetItemCommand,
@@ -165,6 +166,25 @@ export class RestaurantTransactionsRepository {
       }),
     );
     return result.Item ? this.decode(scope, key, kind, result.Item) : undefined;
+  }
+  static async batch(
+    scope: TransactionScope,
+    keys: TransactionKey[],
+    kind: TransactionKind,
+  ) {
+    if (
+      keys.some(
+        (key) =>
+          !key.PK.startsWith(
+            K.restaurantTransactionScope(scope.orgId, scope.outletId) + "#",
+          ),
+      )
+    )
+      throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    const raw = await restaurantBatchRead(keys);
+    return raw.map((item, index) =>
+      item ? this.decode(scope, keys[index], kind, item) : undefined,
+    );
   }
   static put(
     row: TransactionRow,

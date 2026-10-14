@@ -246,32 +246,45 @@ export class AppSidebarComponent {
         : [],
     },
     {
-      labelKey: 'RESTAURANTS.UX.CONFIGURATION',
+      labelKey: 'RESTAURANTS.SERVICE.GROUP',
       showHeading: true,
-      items: this.restaurantsCapabilities.canRead()
-        ? restaurantSections.map((section) => ({
-            icon: section.icon,
-            labelKey: 'RESTAURANTS.UX.NAV.' + section.kind,
-            page: 'restaurants' as const,
-            route: '/restaurants/' + section.path,
-            productCode: 'RESTAURANTS' as const,
-          }))
-        : [],
-    },
-    {
-      labelKey: 'RESTAURANTS.UX.NAV.MENU_SECTION',
-      showHeading: true,
-      items: this.restaurantsCapabilities.canReadMenu()
+      items: this.restaurantsCapabilities.canReadService?.()
         ? [
             {
-              icon: 'restaurant_menu',
-              labelKey: 'RESTAURANTS.UX.NAV.menu',
+              icon: 'table_restaurant',
+              labelKey: 'RESTAURANTS.UX.PAGES.service.TITLE',
               page: 'restaurants' as const,
-              route: '/restaurants/menu',
+              route: '/restaurants/service',
               productCode: 'RESTAURANTS' as const,
             },
           ]
         : [],
+    },
+    {
+      labelKey: 'RESTAURANTS.UX.CONFIGURATION',
+      showHeading: true,
+      items: [
+        ...(this.restaurantsCapabilities.canRead()
+          ? restaurantSections.map((section) => ({
+              icon: section.icon,
+              labelKey: 'RESTAURANTS.UX.NAV.' + section.kind,
+              page: 'restaurants' as const,
+              route: '/restaurants/' + section.path,
+              productCode: 'RESTAURANTS' as const,
+            }))
+          : []),
+        ...(this.restaurantsCapabilities.canReadMenu()
+          ? [
+              {
+                icon: 'restaurant_menu',
+                labelKey: 'RESTAURANTS.UX.NAV.menu',
+                page: 'restaurants' as const,
+                route: '/restaurants/menu',
+                productCode: 'RESTAURANTS' as const,
+              },
+            ]
+          : []),
+      ],
     },
   ]);
   protected readonly accountingItems = accountingItems;
@@ -341,7 +354,24 @@ export class AppSidebarComponent {
     this.uiStore.closeSidebar();
 
     if (item.route) {
-      await this.router.navigateByUrl(item.route);
+      let destination = item.route;
+      if (
+        item.page === 'restaurants' &&
+        (item.route.includes('/setup/') ||
+          item.route === '/restaurants/menu' ||
+          item.route === '/restaurants/service')
+      ) {
+        const current = this.router.parseUrl(this.router.url).queryParams;
+        const target = this.router.parseUrl(item.route);
+        if (current['outlet']) target.queryParams['outlet'] = current['outlet'];
+        if (
+          (item.route.endsWith('/tables') || item.route === '/restaurants/service') &&
+          current['area']
+        )
+          target.queryParams['area'] = current['area'];
+        destination = this.router.serializeUrl(target);
+      }
+      await this.router.navigateByUrl(destination);
     }
   }
 
