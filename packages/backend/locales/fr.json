@@ -399,5 +399,13 @@
   "RESTAURANTS_STAFF_INACTIVE": "Ce membre de l’équipe est inactif.",
   "RESTAURANTS_STAFF_ASSIGNMENT_EXISTS": "Cette affectation est déjà active.",
   "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Affectation active introuvable.",
-  "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE": "Cette personne ne peut pas être désignée responsable du service dans cet établissement."
+  "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE": "Cette personne ne peut pas être désignée responsable du service dans cet établissement.",
+  "ORGANIZATION_INVITATION_INVALID": "Cette invitation n’est pas disponible.",
+  "ORGANIZATION_INVITATION_EMAIL_MISMATCH": "Connectez-vous avec l’adresse email vérifiée destinataire de cette invitation.",
+  "ORGANIZATION_INVITATION_MEMBER_EXISTS": "Cette personne appartient déjà à cet espace de travail. Son adhésion doit être gérée séparément.",
+  "ORGANIZATION_INVITATION_PENDING": "Une invitation est déjà en attente pour cette adresse.",
+  "ORGANIZATION_INVITATION_CONFLICT": "La situation a changé. Vérifiez l’invitation avant de réessayer.",
+  "ORGANIZATION_INVITATION_UNAVAILABLE": "Cette invitation n’est plus disponible.",
+  "ORGANIZATION_INVITATION_EXPIRED": "Cette invitation a expiré.",
+  "ORGANIZATION_INVITATION_IDEMPOTENCY_CONFLICT": "Cette demande a déjà été utilisée pour une autre invitation."
 }

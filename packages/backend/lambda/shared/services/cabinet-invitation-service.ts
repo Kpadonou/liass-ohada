@@ -11,7 +11,12 @@ import {
   ListCabinetInvitationsResponseSchema,
   ResendCabinetInvitationResponseSchema,
 } from "@liass-ohada/shared";
-import { createHash, randomBytes, randomUUID } from "crypto";
+import { randomUUID } from "crypto";
+import {
+  normalizeInvitationEmail as normalizeEmail,
+  hashInvitationToken as hashToken,
+  newInvitationToken as newToken,
+} from "./invitation-security";
 import { AppError } from "../app-error";
 import { UserProfileRepository } from "../repositories/user-profile-repository";
 import {
@@ -33,19 +38,6 @@ export interface InvitationAcceptanceIdentity {
   displayName?: unknown;
   givenName?: unknown;
   familyName?: unknown;
-}
-
-function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-function hashToken(token: string): string {
-  return createHash("sha256").update(token, "utf8").digest("hex");
-}
-
-function newToken(): { rawToken: string; tokenHash: string } {
-  const rawToken = randomBytes(32).toString("base64url");
-  return { rawToken, tokenHash: hashToken(rawToken) };
 }
 
 function expirationFrom(now: Date): string {
@@ -180,11 +172,7 @@ export class CabinetInvitationService {
         throw new AppError(409, "CABINET_MEMBER_ALREADY_ACTIVE");
       }
     }
-    await resolvePendingLock(
-      authorized.cabinetOrgId,
-      normalizedEmail,
-      nowIso,
-    );
+    await resolvePendingLock(authorized.cabinetOrgId, normalizedEmail, nowIso);
 
     const token = newToken();
     const invitation: CabinetInvitationRecord = {
@@ -332,9 +320,8 @@ export class CabinetInvitationService {
     identity: InvitationAcceptanceIdentity,
   ) {
     const tokenHash = hashToken(token);
-    const lookup = await CabinetTeamRepository.getInvitationTokenLookup(
-      tokenHash,
-    );
+    const lookup =
+      await CabinetTeamRepository.getInvitationTokenLookup(tokenHash);
     if (!lookup) throw new AppError(404, "CABINET_INVITATION_TOKEN_INVALID");
     const invitation = await CabinetTeamRepository.getInvitation(
       lookup.cabinetOrgId,

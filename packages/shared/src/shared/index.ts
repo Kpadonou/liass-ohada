@@ -8,3 +8,5 @@ export * from "./product-access";
 export * from "./restaurants-access";
 export * from "./organization-members";
 export * from "./initial-product-role";
+
+export * from "./organization-invitations";

@@ -14,6 +14,16 @@ import { DomainAuthorizationService } from "../services/domain-authorization-ser
 
 export { AppError };
 
+/** JSON parser diagnostics may echo request text, including invitation tokens. */
+function parseRequestBody(body?: string): Record<string, unknown> {
+  if (!body) return {};
+  try {
+    return JSON.parse(body) as Record<string, unknown>;
+  } catch {
+    throw new AppError(400, "ERROR_INVALID_INPUT");
+  }
+}
+
 // Note: On utilise l'interface avec JWT Authorizer par défaut
 export interface HandlerContext {
   accountingAccessMode?: AccountingAccessMode;
@@ -39,8 +49,7 @@ export interface PermissionAuthorizationMetadata {
   permission: DomainPermission;
 }
 
-export interface ProductAuthorizationMetadata
-  extends PermissionAuthorizationMetadata {
+export interface ProductAuthorizationMetadata extends PermissionAuthorizationMetadata {
   action: string;
   productCode: ProductCode;
 }
@@ -49,10 +58,7 @@ export type HandlerAuthorizationMetadata =
   | PermissionAuthorizationMetadata
   | ProductAuthorizationMetadata;
 
-const sendResponse = (
-  statusCode: number,
-  body: any,
-) => ({
+const sendResponse = (statusCode: number, body: any) => ({
   statusCode,
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(body),
@@ -84,7 +90,7 @@ const createTenantHandler = <T>(
     const i18n = new I18nResolver(event.headers["accept-language"] || "fr");
 
     try {
-      const body = event.body ? JSON.parse(event.body) : {};
+      const body = parseRequestBody(event.body);
       const requestData = {
         ...body,
         ...(event.queryStringParameters || {}),
@@ -114,16 +120,16 @@ const createTenantHandler = <T>(
         requiredWorkspaceType === "COMPANY"
           ? await (async () => {
               const permission =
-                authorization?.permission ??
-                process.env.ACCOUNTING_PERMISSION;
+                authorization?.permission ?? process.env.ACCOUNTING_PERMISSION;
               if (!isDomainPermission(permission)) {
                 throw new AppError(500, "ACCOUNTING_PERMISSION_NOT_CONFIGURED");
               }
-              const decision = await EffectiveOrganizationAccessService.resolveAccess({
-                orgId,
-                userId,
-                workspaceOrgId,
-              });
+              const decision =
+                await EffectiveOrganizationAccessService.resolveAccess({
+                  orgId,
+                  userId,
+                  workspaceOrgId,
+                });
               if (authorization && "productCode" in authorization) {
                 await ProductAccessService.requireActiveProductAccess({
                   action: authorization.action,
@@ -131,10 +137,7 @@ const createTenantHandler = <T>(
                   productCode: authorization.productCode,
                 });
               }
-              DomainAuthorizationService.assertPermission(
-                decision,
-                permission,
-              );
+              DomainAuthorizationService.assertPermission(decision, permission);
               return {
                 accountingAccessMode: decision.accessMode,
                 accountingFramework: decision.accountingFramework,
@@ -216,8 +219,7 @@ export const createHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: HandlerContext) => Promise<any>,
   authorization?: HandlerAuthorizationMetadata,
-) =>
-  createTenantHandler(schema, logic, "COMPANY", authorization);
+) => createTenantHandler(schema, logic, "COMPANY", authorization);
 
 export const createCabinetHandler = <T>(
   schema: z.ZodSchema<T>,
@@ -234,13 +236,13 @@ export const createAuthenticatedHandler = <T>(
   schema: z.ZodSchema<T>,
   logic: (data: T, context: AuthenticatedHandlerContext) => Promise<any>,
 ) => {
-  return async (
-      event: any,
-  ) => {
-    const i18n = new I18nResolver(getHeader(event.headers, "accept-language") || "fr");
+  return async (event: any) => {
+    const i18n = new I18nResolver(
+      getHeader(event.headers, "accept-language") || "fr",
+    );
 
     try {
-      const body = event.body ? JSON.parse(event.body) : {};
+      const body = parseRequestBody(event.body);
       const requestData = {
         ...body,
         ...(event.queryStringParameters || {}),

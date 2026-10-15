@@ -63,6 +63,83 @@ describe("API stack decomposition", () => {
   });
   const constructs = root.node.findAll();
 
+  test("COMPANY invitations stay in Identity with JWT, explicit development token policy and no Scan/index IAM", () => {
+    for (const [handlerName, path] of [
+      ["create-organization-invitation", "/me/organization/invitations"],
+      ["accept-organization-invitation", "/me/organization/invitations/accept"],
+    ]) {
+      const fn = constructs.find(
+        (item): item is lambda.CfnFunction =>
+          item instanceof lambda.CfnFunction &&
+          item.functionName === `liass-ohada-dev-identity-${handlerName}`,
+      );
+      expect(fn).toBeDefined();
+      expect(cdk.Stack.of(fn!)).toBeInstanceOf(IdentityApiStack);
+      expect(lambdaEnvironmentVariable(fn!, "NODE_ENV")).toBe("development");
+      expect(
+        lambdaEnvironmentVariable(fn!, "ORGANIZATION_INVITATION_EXPOSE_TOKEN"),
+      ).toBe("true");
+      const route = constructs.find(
+        (item): item is apigwv2.CfnRoute =>
+          item instanceof apigwv2.CfnRoute && item.routeKey === `POST ${path}`,
+      );
+      expect(route?.authorizationType).toBe("JWT");
+      expect(cdk.Stack.of(route!)).toBeInstanceOf(IdentityApiStack);
+    }
+    const policy = constructs.find(
+      (item): item is iam.CfnPolicy =>
+        item instanceof iam.CfnPolicy &&
+        item.node.path.includes("OrganizationInvitationRole"),
+    );
+    const document = cdk.Stack.of(policy!).resolve(policy!.policyDocument);
+    expect(document.Statement).toHaveLength(1);
+    expect(document.Statement[0].Action.sort()).toEqual([
+      "dynamodb:ConditionCheckItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]);
+    expect(JSON.stringify(document.Statement[0].Resource)).toContain(
+      "AccountingTable",
+    );
+    expect(JSON.stringify(document.Statement[0].Resource)).not.toContain(
+      "/index/",
+    );
+    expect(JSON.stringify(document)).not.toContain("RestaurantsTable");
+  });
+
+  test("production COMPANY invitations never expose raw tokens", () => {
+    const production = new LiassOhadaBackendStack(
+      new cdk.App({
+        context: {
+          authUseSecretsManager: true,
+          "auth.prod.callbackUrls": ["https://app.example.test/auth/callback"],
+          "auth.prod.logoutUrls": ["https://app.example.test/login"],
+        },
+      }),
+      "ProductionInvitationTest",
+      {
+        stage: "prod",
+        env: { account: "123456789012", region: "eu-west-3" },
+      },
+    );
+    const functions = production.node
+      .findAll()
+      .filter(
+        (item): item is lambda.CfnFunction =>
+          item instanceof lambda.CfnFunction &&
+          String(item.functionName).includes("organization-invitation"),
+      );
+    expect(functions).toHaveLength(2);
+    for (const fn of functions) {
+      expect(lambdaEnvironmentVariable(fn, "NODE_ENV")).toBe("production");
+      expect(
+        lambdaEnvironmentVariable(fn, "ORGANIZATION_INVITATION_EXPOSE_TOKEN"),
+      ).toBe("false");
+    }
+  });
+
   test("initial product-role assignment stays in Identity with narrowly scoped transaction IAM", () => {
     const fn = constructs.find(
       (item): item is lambda.CfnFunction =>

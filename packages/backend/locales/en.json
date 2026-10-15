@@ -398,5 +398,13 @@
   "RESTAURANTS_STAFF_INACTIVE": "This staff member is inactive.",
   "RESTAURANTS_STAFF_ASSIGNMENT_EXISTS": "This outlet assignment is already active.",
   "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Active outlet assignment not found.",
-  "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE": "This team member cannot be assigned responsibility for table service at this establishment."
+  "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE": "This team member cannot be assigned responsibility for table service at this establishment.",
+  "ORGANIZATION_INVITATION_INVALID": "This invitation is not available.",
+  "ORGANIZATION_INVITATION_EMAIL_MISMATCH": "Sign in with the verified email address this invitation was sent to.",
+  "ORGANIZATION_INVITATION_MEMBER_EXISTS": "This person already belongs to this workspace. Manage their membership separately.",
+  "ORGANIZATION_INVITATION_PENDING": "An invitation is already pending for this email address.",
+  "ORGANIZATION_INVITATION_CONFLICT": "The situation has changed. Check the invitation before retrying.",
+  "ORGANIZATION_INVITATION_UNAVAILABLE": "This invitation is no longer available.",
+  "ORGANIZATION_INVITATION_EXPIRED": "This invitation has expired.",
+  "ORGANIZATION_INVITATION_IDEMPOTENCY_CONFLICT": "This request has already been used for another invitation."
 }

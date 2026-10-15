@@ -268,6 +268,19 @@ export const KeyFactory = {
   treasuryPostingIdempotencySK: (clientRequestIdHash: string) =>
     `IDEMPOTENCY#TREASURY_POSTING#${clientRequestIdHash.toLowerCase()}`,
 
+  /** Platform COMPANY invitations under ORG; Cabinet retains its CABINET item collection. */
+  organizationInvitationSK: (invitationId: string) => `INV#${invitationId}`,
+  organizationInvitationEmailLockSK: (email: string) =>
+    `INVLOCK#EMAIL#${email.trim().toLowerCase()}`,
+  /** Actor USER partition: one request ID is pinned to its organization/email intent. */
+  organizationInvitationCommandSK: (clientRequestId: string) =>
+    `ORGANIZATION_INVITATION_COMMAND#${clientRequestId}`,
+  organizationInvitationAuditSK: (
+    timestamp: string,
+    invitationId: string,
+    action: string,
+  ) => `ORGANIZATION_INVITATION_AUDIT#${timestamp}#${invitationId}#${action}`,
+
   /** Cabinet invitation records and normalized-email uniqueness locks */
   cabinetInvitationPrefix: () => "INV#",
   cabinetInvitationSK: (invitationId: string) => `INV#${invitationId}`,

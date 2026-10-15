@@ -12,6 +12,61 @@ export class IdentityEndpoints extends DomainConstructFactory {
     super(scope, id);
 
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
+    // Platform invitations only: no product/table ownership expansion or email infrastructure.
+    const organizationInvitationRole = new iam.Role(
+      this,
+      "OrganizationInvitationRole",
+      {
+        assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "service-role/AWSLambdaBasicExecutionRole",
+          ),
+        ],
+      },
+    );
+    organizationInvitationRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:ConditionCheckItem",
+        ],
+        resources: [props.table.tableArn],
+      }),
+    );
+    for (const [handlerName, routePath] of [
+      ["create-organization-invitation", "/me/organization/invitations"],
+      ["accept-organization-invitation", "/me/organization/invitations/accept"],
+    ] as const) {
+      this.addRoute({
+        actionName: handlerName,
+        api: props.api,
+        authorizer: props.authorizer,
+        domainName: "identity",
+        handlerEntry: path.join(
+          projectRoot,
+          "lambda",
+          "domains",
+          "identity",
+          `${handlerName}.ts`,
+        ),
+        idPrefix: "Identity-",
+        lambdaRole: organizationInvitationRole,
+        method: apigw.HttpMethod.POST,
+        routePath,
+        routeInDomainStack: true,
+        stage: props.stage,
+        table: props.table,
+        environment: {
+          NODE_ENV: props.stage === "prod" ? "production" : "development",
+          ORGANIZATION_INVITATION_EXPOSE_TOKEN:
+            props.stage === "prod" ? "false" : "true",
+        },
+      });
+    }
     const productRoleAssignmentRole = new iam.Role(
       this,
       "InitialProductRoleAssignmentRole",
