@@ -6,9 +6,16 @@ export interface RestaurantStaffRoute {
   path: string;
   permission: DomainPermission;
   command?: StaffCommand;
-  query?: "LIST" | "GET" | "STAFF_OUTLETS" | "OUTLET_STAFF";
+  query?: "LIST" | "GET" | "STAFF_OUTLETS" | "OUTLET_STAFF" | "MY_OUTLETS";
 }
 export const RESTAURANT_STAFF_ROUTES = [
+  {
+    name: "my-service-outlets",
+    method: "GET",
+    path: "/restaurants/me/outlets",
+    permission: "RESTAURANTS_SERVICE_FLOOR_READ",
+    query: "MY_OUTLETS",
+  },
   {
     name: "list-staff",
     method: "GET",

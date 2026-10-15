@@ -1,3 +1,4 @@
+import { RestaurantServiceAccess } from "./service-access";
 import { ResponsibleStaff } from "./responsible-staff";
 import { z } from "zod";
 import * as contracts from "@liass-ohada/shared/restaurants";
@@ -66,6 +67,8 @@ export function restaurantTransactionHandler(name: string) {
             : contracts.RestaurantOrderResponseSchema.parse(result);
       }
       if (!query) throw new Error("Missing Restaurants query");
+      if (query === "SERVICE_FLOOR")
+        await RestaurantServiceAccess.authorize(scope, context.userId);
       const result = await RestaurantTransactionQueries.run(
         scope,
         query,

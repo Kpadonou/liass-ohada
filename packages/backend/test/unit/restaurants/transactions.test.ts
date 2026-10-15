@@ -80,6 +80,7 @@ beforeEach(async () => {
   jest.spyOn(console, "info").mockImplementation(() => undefined);
   fixture = await acceptanceFixture();
   ctx = { orgId: "org-resto", outletId: fixture.outlet.id, actorId: "owner" };
+  memory.seedAccess("org-resto", "owner", "OWNER");
   sequence = 1000;
 });
 afterEach(() => {

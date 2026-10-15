@@ -41,6 +41,11 @@ export const RESTAURANTS_TRANSACTION_PERMISSIONS = [
   "RESTAURANTS_ORDER_CANCEL_MANAGE",
   "RESTAURANTS_ORDER_CLOSE_MANAGE",
 ] as const;
+/** Service entry permissions still require server-side outlet/staff authorization. */
+export const RESTAURANTS_SERVICE_PERMISSIONS = [
+  "RESTAURANTS_SERVICE_FLOOR_READ",
+  "RESTAURANTS_SERVICE_SESSION_OPEN_MANAGE",
+] as const;
 export function restaurantsPermissionsForRole(
   role: unknown,
 ): readonly (typeof RESTAURANTS_PERMISSIONS)[number][] {

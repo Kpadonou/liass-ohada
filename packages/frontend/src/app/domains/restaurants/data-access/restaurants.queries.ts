@@ -12,6 +12,7 @@ import { RestaurantKind, RestaurantListKind, RestaurantContext } from './restaur
 import { ZodError } from 'zod';
 import { HttpErrorResponse } from '@angular/common/http';
 export const restaurantKeys = {
+  myOutlets: (org: string, user: string) => ['restaurants', org, 'my-outlets', user] as const,
   staff: (org: string) => ['restaurants', org, 'staff'] as const,
   staffMember: (org: string, userId: string) =>
     ['restaurants', org, 'staff-member', userId] as const,
@@ -47,6 +48,26 @@ export class RestaurantsQueries {
   private readonly client = inject(QueryClient);
   scope() {
     return this.auth.effectiveOrgId() ?? '';
+  }
+  userScope() {
+    return this.auth.currentUserId?.() ?? '';
+  }
+  myOutlets(enabled = true) {
+    const org = this.scope(),
+      user = this.userScope();
+    return infiniteQueryOptions({
+      queryKey: restaurantKeys.myOutlets(org, user),
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam }) => this.api.myOutlets(org, user, pageParam),
+      getNextPageParam: (last) => last.nextCursor,
+      enabled: enabled && !!org && !!user,
+      staleTime: 0,
+      refetchOnMount: 'always' as const,
+      retry: false,
+    });
+  }
+  async refreshMyOutlets(org: string, user: string) {
+    await this.client.resetQueries({ queryKey: restaurantKeys.myOutlets(org, user), exact: true });
   }
   get<K extends RestaurantKind>(kind: K, ctx: RestaurantContext = {}, enabled = true) {
     const org = this.scope();

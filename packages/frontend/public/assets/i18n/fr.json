@@ -4498,7 +4498,15 @@
       "HOURS": "{{hours}} h {{minutes}}",
       "STATE_FREE": "Libre",
       "STATE_OCCUPIED": "Occupée",
-      "CONTEXT": "Contexte du service"
+      "CONTEXT": "Contexte du service",
+      "SELF": {
+        "EMPTY_TITLE": "Aucun établissement affecté",
+        "EMPTY_DESCRIPTION": "Vous n’êtes actuellement affecté à aucun établissement pour le service en salle.",
+        "PARTIAL": "Les établissements chargés sont affichés. Chargez la suite pour consulter vos autres affectations.",
+        "CONTEXT": "Cet établissement n’est pas disponible pour votre service. Choisissez un établissement affecté.",
+        "CHOOSE": "Choisissez un établissement affecté. Si nécessaire, chargez la suite de vos affectations.",
+        "FLOOR_EMPTY_HELP": "Choisissez un autre espace ou un autre établissement affecté pour consulter ses tables."
+      }
     },
     "TEAM": {
       "TITLE": "Équipe",

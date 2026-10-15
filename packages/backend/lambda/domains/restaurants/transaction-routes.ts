@@ -16,14 +16,14 @@ export const RESTAURANT_TRANSACTION_ROUTES = [
     name: "service-floor",
     method: "GET",
     path: `${base}/service-floor`,
-    permission: "RESTAURANTS_SESSION_READ",
+    permission: "RESTAURANTS_SERVICE_FLOOR_READ",
     query: "SERVICE_FLOOR",
   },
   {
     name: "open-session",
     method: "POST",
     path: `${base}/sessions`,
-    permission: "RESTAURANTS_SESSION_OPEN_MANAGE",
+    permission: "RESTAURANTS_SERVICE_SESSION_OPEN_MANAGE",
     command: "OPEN_SESSION",
   },
   {

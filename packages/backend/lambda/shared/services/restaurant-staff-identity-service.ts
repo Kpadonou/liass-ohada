@@ -145,6 +145,27 @@ export class RestaurantStaffIdentityService {
       throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     if (subject && (!subject.active || !subject.restaurantRole))
       throw new AppError(403, "RESTAURANTS_STAFF_MEMBER_REQUIRED");
+    return this.membershipChecks(orgId, actor, subject);
+  }
+
+  /** Narrow service authorization guard; never grants staff administration. */
+  static serviceChecks(
+    orgId: string,
+    actor: RestaurantStaffIdentity,
+  ): TransactWriteItem[] {
+    if (
+      !actor.active ||
+      !["OWNER", "MANAGER", "WAITER"].includes(actor.restaurantRole ?? "")
+    )
+      throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    return this.membershipChecks(orgId, actor);
+  }
+
+  private static membershipChecks(
+    orgId: string,
+    actor: RestaurantStaffIdentity,
+    subject?: RestaurantStaffIdentity,
+  ): TransactWriteItem[] {
     const members = new Map(
       [...(subject ? [subject] : []), actor].map((member) => [
         member.userId,

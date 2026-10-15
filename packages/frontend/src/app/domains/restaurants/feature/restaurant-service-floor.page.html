@@ -18,7 +18,7 @@
           controlType="select"
           labelKey="RESTAURANTS.UI.LOCATION"
           [options]="outletOptions()"
-          [ngModel]="outletId()"
+          [ngModel]="selfService() ? (outlet()?.id ?? null) : outletId()"
           (ngModelChange)="selectOutlet($event)"
         />
         @if (outlet()) {
@@ -26,6 +26,7 @@
             class="block w-full min-w-0 sm:w-56"
             controlType="select"
             labelKey="RESTAURANTS.UI.AREA"
+            unresolvedLabelKey="RESTAURANTS.SERVICE.ALL"
             [options]="areaOptions()"
             [ngModel]="areaId() ?? 'ALL'"
             (ngModelChange)="selectArea($event)"
@@ -51,17 +52,32 @@
     <liass-card
       ><p role="alert">{{ 'RESTAURANTS.UI.ERRORS.ACCESS' | transloco }}</p></liass-card
     >
-  } @else if (root.isPending()) {
+  } @else if (selfService() && (myLocations.isPending() || revoking())) {
+    <p role="status" aria-live="polite">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+    <liass-skeleton variant="block" />
+  } @else if (selfService() && myLocations.isError()) {
+    <liass-card
+      ><p role="alert">{{ errorText(myLocations.error()) }}</p>
+      <button mat-button (click)="refreshOutlets()">
+        {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+      </button>
+    </liass-card>
+  } @else if (selfService() && !outlets().length && !myLocations.hasNextPage()) {
+    <liass-card
+      [title]="'RESTAURANTS.SERVICE.SELF.EMPTY_TITLE' | transloco"
+      [description]="'RESTAURANTS.SERVICE.SELF.EMPTY_DESCRIPTION' | transloco"
+    />
+  } @else if (!selfService() && root.isPending()) {
     <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
     <liass-skeleton variant="block" />
-  } @else if (root.isError()) {
+  } @else if (!selfService() && root.isError()) {
     <liass-card
       ><p role="alert">{{ errorText(root.error()) }}</p>
       <button mat-button (click)="root.refetch()">
         {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
       </button></liass-card
     >
-  } @else if (!root.data()) {
+  } @else if (!selfService() && !root.data()) {
     <liass-card
       [title]="'RESTAURANTS.UX.EMPTY.outlet.TITLE' | transloco"
       [description]="'RESTAURANTS.UX.EMPTY.outlet.DESCRIPTION' | transloco"
@@ -72,19 +88,19 @@
         }}</a>
       }
     </liass-card>
-  } @else if (locations.isPending()) {
+  } @else if (!selfService() && locations.isPending()) {
     <div role="status" aria-busy="true">
       <p>{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
       <liass-skeleton variant="block" />
     </div>
-  } @else if (locations.isError()) {
+  } @else if (!selfService() && locations.isError()) {
     <liass-card
       ><p role="alert">{{ errorText(locations.error()) }}</p>
       <button mat-button (click)="locations.refetch()">
         {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
       </button></liass-card
     >
-  } @else if (!outlets().length && !locations.hasNextPage()) {
+  } @else if (!selfService() && !outlets().length && !locations.hasNextPage()) {
     <liass-card
       [title]="'RESTAURANTS.UX.EMPTY.outlet.TITLE' | transloco"
       [description]="'RESTAURANTS.UX.EMPTY.outlet.DESCRIPTION' | transloco"
@@ -96,7 +112,24 @@
       }
     </liass-card>
   } @else {
-    @if (locations.hasNextPage()) {
+    @if (selfService() && myLocations.hasNextPage()) {
+      <p class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS.SERVICE.SELF.PARTIAL' | transloco }}
+      </p>
+      <button
+        mat-button
+        (click)="myLocations.fetchNextPage()"
+        [disabled]="myLocations.isFetchingNextPage()"
+      >
+        {{ 'RESTAURANTS.UI.MORE_LOCATIONS' | transloco }}
+      </button>
+    }
+    @if (selfService() && contextError()) {
+      <p role="status" class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS.SERVICE.SELF.CONTEXT' | transloco }}
+      </p>
+    }
+    @if (!selfService() && locations.hasNextPage()) {
       <button
         mat-button
         (click)="locations.fetchNextPage()"
@@ -107,11 +140,20 @@
     }
     @if (!outlet()) {
       <liass-card
-        ><p>{{ 'RESTAURANTS.IA.CONTEXT_UNAVAILABLE' | transloco }}</p>
-        <button mat-button (click)="selectOutlet(null)">
-          {{ 'RESTAURANTS.IA.RESET_CONTEXT' | transloco }}
-        </button></liass-card
-      >
+        ><p>
+          {{
+            (selfService()
+              ? 'RESTAURANTS.SERVICE.SELF.CHOOSE'
+              : 'RESTAURANTS.IA.CONTEXT_UNAVAILABLE'
+            ) | transloco
+          }}
+        </p>
+        @if (!selfService() || outletId()) {
+          <button mat-button (click)="selectOutlet(null)">
+            {{ 'RESTAURANTS.IA.RESET_CONTEXT' | transloco }}
+          </button>
+        }
+      </liass-card>
     } @else {
       @if (areas.hasNextPage()) {
         <button mat-button (click)="areas.fetchNextPage()" [disabled]="areas.isFetchingNextPage()">
@@ -171,7 +213,12 @@
                     : 'RESTAURANTS.SERVICE.EMPTY'
                 ) | transloco
               "
-              [description]="'RESTAURANTS.SERVICE.EMPTY_HELP' | transloco"
+              [description]="
+                (selfService()
+                  ? 'RESTAURANTS.SERVICE.SELF.FLOOR_EMPTY_HELP'
+                  : 'RESTAURANTS.SERVICE.EMPTY_HELP'
+                ) | transloco
+              "
             >
               @if (areaId()) {
                 <button mat-button (click)="selectArea(null)">

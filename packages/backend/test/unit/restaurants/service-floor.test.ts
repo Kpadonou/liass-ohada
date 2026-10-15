@@ -50,6 +50,7 @@ beforeEach(async () => {
   jest.spyOn(console, "info").mockImplementation(() => undefined);
   f = await acceptanceFixture();
   scope = { orgId: "org-resto", outletId: f.outlet.id, actorId: "owner" };
+  m.seedAccess("org-resto", "owner", "OWNER");
   sequence = 1000;
 });
 afterEach(() => {

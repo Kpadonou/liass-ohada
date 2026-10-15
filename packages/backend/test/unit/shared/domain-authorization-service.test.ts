@@ -4,7 +4,10 @@ import {
   isDomainPermission,
 } from "@/lambda/shared/authorization/domain-permission";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
-import { RESTAURANTS_TRANSACTION_PERMISSIONS } from "@liass-ohada/shared/shared";
+import {
+  RESTAURANTS_TRANSACTION_PERMISSIONS,
+  RESTAURANTS_SERVICE_PERMISSIONS,
+} from "@liass-ohada/shared/shared";
 
 describe("DomainAuthorizationService", () => {
   test("defines the reviewed Accounting-module and SALES permission vocabulary", () => {
@@ -24,6 +27,7 @@ describe("DomainAuthorizationService", () => {
       "RESTAURANTS_STAFF_READ",
       "RESTAURANTS_STAFF_MANAGE",
       ...RESTAURANTS_TRANSACTION_PERMISSIONS,
+      ...RESTAURANTS_SERVICE_PERMISSIONS,
       "FISCAL_COMPLIANCE_READ",
       "FISCAL_COMPLIANCE_WRITE",
     ]);

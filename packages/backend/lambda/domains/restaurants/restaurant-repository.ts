@@ -306,6 +306,25 @@ export class RestaurantsRepository {
       : undefined;
     return { items, nextCursor };
   }
+  static async staffOutlets(orgId: string, outletIds: string[]) {
+    const ids = [...new Set(outletIds)];
+    if (ids.length > 100)
+      throw new AppError(400, "RESTAURANTS_TRANSACTION_LIMIT");
+    const raw = await restaurantBatchRead(
+      ids.map((id) => ({
+        PK: KeyFactory.orgKey(orgId),
+        SK: KeyFactory.restaurantOutletSK(id),
+      })),
+    );
+    return ids.flatMap((id, index) => {
+      const outlet = raw[index] && decode(orgId, "outlet", {}, raw[index]!, id);
+      if (raw[index] && !outlet)
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      return outlet?.data.isActive
+        ? [{ outletId: id, name: outlet.data.name }]
+        : [];
+    });
+  }
   static async floorAreas(orgId: string, outletId: string, areaIds: string[]) {
     const ids = [...new Set(areaIds)];
     const raw = await restaurantBatchRead(

@@ -362,6 +362,7 @@ test.each(["WAITER", "CASHIER", "KITCHEN"])(
     await bind("operational");
     await assign(outlets[0], {}, "operational");
     for (const route of RESTAURANT_STAFF_ROUTES) {
+      if ("query" in route && route.query === "MY_OUTLETS") continue;
       const body =
         "command" in route
           ? route.command === "BIND"

@@ -4498,7 +4498,15 @@
       "HOURS": "{{hours}} h {{minutes}}",
       "STATE_FREE": "Free",
       "STATE_OCCUPIED": "Occupied",
-      "CONTEXT": "Service context"
+      "CONTEXT": "Service context",
+      "SELF": {
+        "EMPTY_TITLE": "No establishment assigned",
+        "EMPTY_DESCRIPTION": "You are not currently assigned to an establishment for floor service.",
+        "PARTIAL": "Loaded establishments are shown. Load more to see your other assignments.",
+        "CONTEXT": "This establishment is unavailable for your service. Choose an assigned establishment.",
+        "CHOOSE": "Choose an assigned establishment. Load more assignments if needed.",
+        "FLOOR_EMPTY_HELP": "Choose another dining area or assigned establishment to view its tables."
+      }
     },
     "TEAM": {
       "TITLE": "Team",

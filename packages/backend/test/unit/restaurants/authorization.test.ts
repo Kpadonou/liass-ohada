@@ -12,7 +12,10 @@ import {
   RESTAURANTS_PERMISSIONS,
 } from "@/lambda/shared/authorization/domain-permission";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
-import { RESTAURANTS_TRANSACTION_PERMISSIONS } from "@liass-ohada/shared/shared";
+import {
+  RESTAURANTS_TRANSACTION_PERMISSIONS,
+  RESTAURANTS_SERVICE_PERMISSIONS,
+} from "@liass-ohada/shared/shared";
 import {
   RestaurantResponseSchema,
   RestaurantTableQrResponseSchema,
@@ -279,11 +282,19 @@ describe("RESTO-1B authoritative authorization", () => {
     for (const role of ["OWNER", "MANAGER"])
       expect(
         DomainAuthorizationService.permissionsForRestaurantsRole(role),
-      ).toEqual([...RESTAURANTS_PERMISSIONS, ...RESTAURANTS_TRANSACTION_PERMISSIONS]);
+      ).toEqual([
+        ...RESTAURANTS_PERMISSIONS,
+        ...RESTAURANTS_TRANSACTION_PERMISSIONS,
+        ...RESTAURANTS_SERVICE_PERMISSIONS,
+      ]);
     for (const role of ["WAITER", "CASHIER", "KITCHEN"])
       expect(
         DomainAuthorizationService.permissionsForRestaurantsRole(role),
-      ).toEqual(["RESTAURANTS_READ", "RESTAURANTS_MENU_READ"]);
+      ).toEqual([
+        "RESTAURANTS_READ",
+        "RESTAURANTS_MENU_READ",
+        ...(role === "WAITER" ? RESTAURANTS_SERVICE_PERMISSIONS : []),
+      ]);
     for (const permission of RESTAURANTS_PERMISSIONS)
       expect(isWritePermission(permission)).toBe(
         permission.endsWith("_MANAGE"),

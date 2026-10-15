@@ -97,6 +97,32 @@ export class ResponsibleStaff {
     userId: string | null,
   ): Promise<TransactWriteItem[]> {
     if (userId === null) return Identity.writeChecks(scope.orgId, actor);
+    const { conditions, subject } = await this.candidate(scope, userId);
+    return [
+      ...Identity.writeChecks(scope.orgId, actor, subject),
+      ...conditions,
+    ];
+  }
+  static async selfChecks(
+    scope: TransactionScope,
+    actor: RestaurantStaffIdentity,
+  ) {
+    if (actor.restaurantRole !== "WAITER")
+      throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    const candidate = await this.candidate(scope, actor.userId, actor);
+    return {
+      displayName: candidate.displayName,
+      actions: [
+        ...Identity.serviceChecks(scope.orgId, actor),
+        ...candidate.conditions,
+      ],
+    };
+  }
+  private static async candidate(
+    scope: TransactionScope,
+    userId: string,
+    knownIdentity?: RestaurantStaffIdentity,
+  ) {
     const [staff, assignment, subject] = await Promise.all([
       Staff.get(scope.orgId, Staff.staffKey(scope.orgId, userId), "STAFF"),
       Staff.get(
@@ -104,7 +130,7 @@ export class ResponsibleStaff {
         Staff.assignmentKeys(scope.orgId, userId, scope.outletId)[0],
         "ASSIGNMENT",
       ),
-      Identity.get(scope.orgId, userId),
+      knownIdentity ?? Identity.get(scope.orgId, userId),
     ]);
     if (
       !staff ||
@@ -115,40 +141,43 @@ export class ResponsibleStaff {
       !eligibleRole(subject.restaurantRole)
     )
       throw new AppError(409, "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");
-    return [
-      ...Identity.writeChecks(scope.orgId, actor, subject),
-      ...[
-        {
-          key: Staff.staffKey(scope.orgId, userId),
-          version: staff.version,
-          type: "RESTAURANT_STAFF",
-        },
-        {
-          key: Staff.assignmentKeys(scope.orgId, userId, scope.outletId)[0],
-          version: assignment.version,
-          type: "RESTAURANT_STAFF_ASSIGNMENT",
-        },
-      ].map(
-        ({ key, version, type }): TransactWriteItem => ({
-          ConditionCheck: {
-            TableName: restaurantsTableName(),
-            Key: marshall(key),
-            ConditionExpression:
-              "entityType = :type AND orgId = :org AND #data.#version = :version AND #data.#status = :active",
-            ExpressionAttributeNames: {
-              "#data": "data",
-              "#version": "version",
-              "#status": "status",
-            },
-            ExpressionAttributeValues: marshall({
-              ":type": type,
-              ":org": scope.orgId,
-              ":version": version,
-              ":active": "ACTIVE",
-            }),
+    return {
+      subject,
+      displayName: staff.operationalLabel ?? subject.displayName,
+      conditions: [
+        ...[
+          {
+            key: Staff.staffKey(scope.orgId, userId),
+            version: staff.version,
+            type: "RESTAURANT_STAFF",
           },
-        }),
-      ),
-    ];
+          {
+            key: Staff.assignmentKeys(scope.orgId, userId, scope.outletId)[0],
+            version: assignment.version,
+            type: "RESTAURANT_STAFF_ASSIGNMENT",
+          },
+        ].map(
+          ({ key, version, type }): TransactWriteItem => ({
+            ConditionCheck: {
+              TableName: restaurantsTableName(),
+              Key: marshall(key),
+              ConditionExpression:
+                "entityType = :type AND orgId = :org AND #data.#version = :version AND #data.#status = :active",
+              ExpressionAttributeNames: {
+                "#data": "data",
+                "#version": "version",
+                "#status": "status",
+              },
+              ExpressionAttributeValues: marshall({
+                ":type": type,
+                ":org": scope.orgId,
+                ":version": version,
+                ":active": "ACTIVE",
+              }),
+            },
+          }),
+        ),
+      ],
+    };
   }
 }

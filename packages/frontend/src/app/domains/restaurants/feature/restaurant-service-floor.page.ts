@@ -72,13 +72,35 @@ export class RestaurantServiceFloorPage {
       this.caps.canReadService() &&
       this.denied() !== this.queries.scope(),
   );
+  readonly selfService = computed(() => this.caps.usesAssignedOutlets?.() ?? false);
+  readonly contextError = signal(false);
+  readonly chooseOutlet = signal(false);
+  readonly blockedOutlets = signal<ReadonlySet<string>>(new Set());
+  readonly revoking = signal(false);
+  readonly myLocations = injectInfiniteQuery(() =>
+    this.queries.myOutlets(this.allowed() && this.selfService()),
+  );
   readonly outletId = signal<string | null>(null);
   readonly areaId = signal<string | null>(null);
-  readonly root = injectQuery(() => this.queries.get('restaurant', {}, this.allowed()));
-  readonly locations = injectInfiniteQuery(() =>
-    this.queries.list('outlet', {}, this.allowed() && !!this.root.data()),
+  readonly root = injectQuery(() =>
+    this.queries.get('restaurant', {}, this.allowed() && !this.selfService()),
   );
-  readonly outlets = computed(() => this.locations.data()?.pages.flatMap((p) => p.items) ?? []);
+  readonly locations = injectInfiniteQuery(() =>
+    this.queries.list('outlet', {}, this.allowed() && !this.selfService() && !!this.root.data()),
+  );
+  readonly outlets = computed(() =>
+    this.selfService()
+      ? !this.myLocations.isSuccess() || this.revoking()
+        ? []
+        : [
+            ...new Map(
+              (this.myLocations.data()?.pages.flatMap((p) => p.items) ?? [])
+                .filter((o) => !this.blockedOutlets().has(o.outletId))
+                .map((o) => [o.outletId, { id: o.outletId, name: o.name, isActive: true }]),
+            ).values(),
+          ]
+      : (this.locations.data()?.pages.flatMap((p) => p.items) ?? []),
+  );
   readonly outlet = computed(() => this.outlets().find((o) => o.id === this.outletId()));
   readonly areas = injectInfiniteQuery(() =>
     this.queries.list(
@@ -96,7 +118,10 @@ export class RestaurantServiceFloorPage {
     ...this.areaRows().map((a) => ({ value: a.id, label: a.name })),
   ]);
   readonly floor = injectInfiniteQuery(() =>
-    this.queries.serviceFloor(this.outletId() ?? '', this.allowed() && !!this.outlet()),
+    this.queries.serviceFloor(
+      this.outletId() ?? '',
+      this.allowed() && !!this.outlet() && !this.revoking(),
+    ),
   );
   readonly tables = computed(() => {
     const unique = new Map<string, FloorTable>();
@@ -121,14 +146,48 @@ export class RestaurantServiceFloorPage {
       this.areaId.set(params.get('area'));
     });
     effect(() => {
-      if (!this.outletId() && this.outlets().length)
-        this.outletId.set((this.outlets().find((o) => o.isActive) ?? this.outlets()[0]).id);
+      const outlets = this.outlets();
+      if (this.selfService()) {
+        if (!this.myLocations.isSuccess() || this.myLocations.isFetching() || this.revoking())
+          return;
+        const selected = this.outletId();
+        if (
+          selected &&
+          !outlets.some((o) => o.id === selected) &&
+          !this.myLocations.hasNextPage()
+        ) {
+          this.contextError.set(true);
+          this.chooseOutlet.set(true);
+          this.outletId.set(null);
+          this.areaId.set(null);
+          this.writeContext();
+        } else if (
+          !selected &&
+          outlets.length === 1 &&
+          !this.myLocations.hasNextPage() &&
+          !this.chooseOutlet()
+        )
+          this.outletId.set(outlets[0].id);
+      } else if (!this.outletId() && outlets.length)
+        this.outletId.set((outlets.find((o) => o.isActive) ?? outlets[0]).id);
     });
-    let previous = this.queries.scope();
     effect(() => {
-      const org = this.queries.scope();
-      if (org !== previous) {
-        previous = org;
+      const error = this.myLocations.error();
+      if (this.selfService() && error instanceof HttpErrorResponse && error.status === 403) {
+        const org = this.queries.scope();
+        void untracked(() => this.queries.denied(org));
+      }
+    });
+    let previous = this.queries.scope() + ':' + this.queries.userScope();
+    effect(() => {
+      const org = this.queries.scope(),
+        identity = org + ':' + this.queries.userScope();
+      if (identity !== previous) {
+        previous = identity;
+        this.blockedOutlets.set(new Set());
+        this.chooseOutlet.set(false);
+        this.contextError.set(false);
+        this.revoking.set(false);
         this.outletId.set(null);
         this.areaId.set(null);
         this.intents.clear();
@@ -142,9 +201,12 @@ export class RestaurantServiceFloorPage {
       const error = this.floor.error();
       if (!error) this.conflictRefresh = '';
       if (!(error instanceof HttpErrorResponse)) return;
-      if (error.status === 403) {
-        this.denied.set(this.queries.scope());
-        void this.queries.denied(this.queries.scope());
+      if (error.status === 403 || (this.selfService() && error.status === 404)) {
+        if (this.selfService()) void untracked(() => this.revokeOutlet());
+        else {
+          this.denied.set(this.queries.scope());
+          void this.queries.denied(this.queries.scope());
+        }
       }
       if (error.status === 409) {
         const identity =
@@ -160,6 +222,9 @@ export class RestaurantServiceFloorPage {
     });
   }
   selectOutlet(value: string | null) {
+    if (this.selfService() && value && !this.outlets().some((o) => o.id === value)) return;
+    this.contextError.set(false);
+    this.chooseOutlet.set(false);
     this.outletId.set(value);
     this.areaId.set(null);
     this.openingError.set(null);
@@ -175,6 +240,29 @@ export class RestaurantServiceFloorPage {
       queryParams: { outlet: this.outletId(), area: this.areaId() },
       queryParamsHandling: 'merge',
     });
+  }
+  async refreshOutlets() {
+    this.blockedOutlets.set(new Set());
+    await this.queries.refreshMyOutlets(this.queries.scope(), this.queries.userScope());
+  }
+  private async revokeOutlet() {
+    const org = this.queries.scope(),
+      user = this.queries.userScope(),
+      outlet = this.outletId();
+    if (this.revoking()) return;
+    this.revoking.set(true);
+    if (outlet) this.blockedOutlets.update((previous) => new Set([...previous, outlet]));
+    this.outletId.set(null);
+    this.areaId.set(null);
+    this.chooseOutlet.set(true);
+    this.contextError.set(true);
+    this.writeContext();
+    try {
+      await Promise.all([this.queries.refreshMyOutlets(org, user), this.queries.denied(org)]);
+    } finally {
+      if (this.queries.scope() === org && this.queries.userScope() === user)
+        this.revoking.set(false);
+    }
   }
   async refresh() {
     this.conflictRefresh = '';
@@ -192,7 +280,9 @@ export class RestaurantServiceFloorPage {
   }
   canOpenTable(table: FloorTable) {
     return (
-      !!this.root.data()?.isActive &&
+      this.allowed() &&
+      !this.revoking() &&
+      (this.selfService() || !!this.root.data()?.isActive) &&
       this.caps.canOpenSession() &&
       !!this.outlet()?.isActive &&
       !this.areaRows().some((area) => area.id === table.areaId && !area.isActive)
@@ -240,6 +330,7 @@ export class RestaurantServiceFloorPage {
   }
   async open(table: FloorTable) {
     const org = this.queries.scope(),
+      user = this.queries.userScope(),
       outlet = this.outlet();
     if (
       !this.allowed() ||
@@ -250,7 +341,7 @@ export class RestaurantServiceFloorPage {
       !this.tables().some((t) => t.tableId === table.tableId && t.state === 'FREE')
     )
       return;
-    const key = org + ':' + outlet.id + ':' + table.tableId;
+    const key = org + ':' + user + ':' + outlet.id + ':' + table.tableId;
     const id = this.intents.get(key) ?? crypto.randomUUID();
     this.intents.set(key, id);
     this.busy.set(key);
@@ -263,18 +354,32 @@ export class RestaurantServiceFloorPage {
       });
       this.intents.delete(key);
       await this.queries.floorChanged(org, outlet.id);
-      if (this.queries.scope() === org && this.outletId() === outlet.id)
+      if (
+        this.queries.scope() === org &&
+        this.queries.userScope() === user &&
+        this.outletId() === outlet.id
+      )
         this.notification.success(result.message ?? this.t.translate('RESTAURANTS.SERVICE.OPENED'));
     } catch (error) {
-      if (this.queries.scope() === org && this.outletId() === outlet.id) {
+      if (
+        this.queries.scope() === org &&
+        this.queries.userScope() === user &&
+        this.outletId() === outlet.id
+      ) {
         this.openingError.set(
           error instanceof HttpErrorResponse && error.status === 409
             ? this.t.translate('RESTAURANTS.SERVICE.OPEN_CONFLICT')
             : this.errorText(error),
         );
-        if (error instanceof HttpErrorResponse && error.status === 403) {
-          this.denied.set(org);
-          void this.queries.denied(org);
+        if (
+          error instanceof HttpErrorResponse &&
+          (error.status === 403 || (this.selfService() && error.status === 404))
+        ) {
+          if (this.selfService()) await this.revokeOutlet();
+          else {
+            this.denied.set(org);
+            void this.queries.denied(org);
+          }
         }
       }
       if (error instanceof HttpErrorResponse && error.status === 409) {

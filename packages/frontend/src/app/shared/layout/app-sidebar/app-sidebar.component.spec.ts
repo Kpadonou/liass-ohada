@@ -743,7 +743,7 @@ describe('AppSidebarComponent', () => {
     router.setUpLocationChangeListener();
     ui.setCurrentPage('restaurants');
     TestBed.inject(AuthStore).setCreatedWorkspace(
-      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'WAITER' } },
+      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'MANAGER' } },
       'org-resto',
     );
     await router.navigateByUrl('/restaurants/setup/tables?view=all');
@@ -753,8 +753,10 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelectorAll('liass-sidebar-nav-item button[aria-current="page"]');
     expect(active()).toHaveLength(1);
     expect(active()[0].getAttribute('aria-label')).toBe('Tables');
-    expect(fixture.nativeElement.querySelector('button[aria-label="Service en salle"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('button[aria-label="Équipe"]')).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label="Service en salle"]'),
+    ).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Équipe"]')).not.toBeNull();
     ui.toggleSidebar();
     ui.setSidebarCollapsed(true);
     fixture.detectChanges();
@@ -781,7 +783,7 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelectorAll(
         '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
       ),
-    ).toHaveLength(7);
+    ).toHaveLength(9);
   });
 
   it('retains product discovery but hides all restaurant modules without read permissions', () => {
@@ -934,5 +936,29 @@ describe('AppSidebarComponent', () => {
     fixture.nativeElement.querySelector('button[aria-label="Menu"]').click();
     await fixture.whenStable();
     expect(router.url).toBe('/restaurants/menu?outlet=site-a');
+  });
+
+  it('shows only Service en salle, without configuration or Team navigation for WAITER', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'WAITER' } },
+      'org-resto',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label="Service en salle"]'),
+    ).not.toBeNull();
+    for (const label of [
+      'Restaurant',
+      'Établissements',
+      'Espaces de restauration',
+      'Tables',
+      'Postes de préparation',
+      'Menu',
+      'Équipe',
+    ])
+      expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
   });
 });

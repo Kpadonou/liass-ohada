@@ -1,6 +1,7 @@
 import {
   restaurantsPermissionsForRole,
   RESTAURANTS_TRANSACTION_PERMISSIONS,
+  RESTAURANTS_SERVICE_PERMISSIONS,
 } from "@liass-ohada/shared/shared";
 import type { AccountingAccessMode } from "@liass-ohada/shared";
 import {
@@ -50,10 +51,16 @@ export class DomainAuthorizationService {
     role: unknown,
   ): readonly DomainPermission[] {
     const config = restaurantsPermissionsForRole(role);
-    // STAFF-1A assignments are prerequisites only; operational grants remain deferred.
+    // Service entry grants are always followed by Restaurants-owned outlet checks.
     return role === "OWNER" || role === "MANAGER"
-      ? [...config, ...RESTAURANTS_TRANSACTION_PERMISSIONS]
-      : config;
+      ? [
+          ...config,
+          ...RESTAURANTS_TRANSACTION_PERMISSIONS,
+          ...RESTAURANTS_SERVICE_PERMISSIONS,
+        ]
+      : role === "WAITER"
+        ? [...config, ...RESTAURANTS_SERVICE_PERMISSIONS]
+        : config;
   }
 
   static hasPermission(

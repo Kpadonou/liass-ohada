@@ -39,7 +39,8 @@ describe('Independent scoped RESTAURANTS permissions', () => {
     expect(caps.canManageMenu()).toBe(caps.canManageSetup());
     expect(caps.canReadStaff()).toBe(caps.canManageSetup());
     expect(caps.canManageStaff()).toBe(caps.canManageSetup());
-    expect(caps.canReadService()).toBe(['OWNER', 'MANAGER'].includes(role));
+    expect(caps.canReadService()).toBe(['OWNER', 'MANAGER', 'WAITER'].includes(role));
+    expect(caps.usesAssignedOutlets()).toBe(role === 'WAITER');
     expect(caps.canManageResponsibility()).toBe(['OWNER', 'MANAGER'].includes(role));
     expect(caps.canOpenSession()).toBe(caps.canReadService());
   });

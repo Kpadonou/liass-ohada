@@ -29,6 +29,28 @@ export class RestaurantsApi {
     if (!scope || this.auth.effectiveOrgId() !== scope)
       throw new HttpErrorResponse({ status: 409, error: { error: { code: 'WORKSPACE_CHANGED' } } });
   }
+  async myOutlets(scope: string, userId: string, cursor?: string) {
+    this.assertScope(scope);
+    const assertUser = () => {
+      if (!userId || this.auth.currentUserId() !== userId) throw new Error('User context changed');
+    };
+    assertUser();
+    const input = c.RestaurantsListRequestSchema.parse({ limit: 50, cursor });
+    let params = new HttpParams().set('limit', input.limit);
+    if (input.cursor) params = params.set('cursor', input.cursor);
+    const response = await firstValueFrom(
+      this.http.get<unknown>(this.base + '/restaurants/me/outlets', { params }),
+    );
+    this.assertScope(scope);
+    assertUser();
+    const data = c.RestaurantMyOutletsResponseSchema.parse(response);
+    if (
+      new Set(data.items.map((item) => item.outletId)).size !== data.items.length ||
+      (input.cursor && data.nextCursor === input.cursor)
+    )
+      throw new Error('Invalid operational context');
+    return data;
+  }
   async get<K extends RestaurantKind>(
     scope: string,
     kind: K,
@@ -156,6 +178,7 @@ export class RestaurantsApi {
   }
   async openSession(scope: string, outletId: string, input: unknown) {
     this.assertScope(scope);
+    const user = this.auth.currentUserId?.();
     c.RestaurantIdSchema.parse(outletId);
     const request = c.OpenGuestSessionRequestSchema.parse(input);
     const response = await firstValueFrom(
@@ -163,6 +186,8 @@ export class RestaurantsApi {
         .post<unknown>(this.base + `/restaurants/outlets/${outletId}/sessions`, request)
         .pipe(timeout(35_000)),
     );
+    this.assertScope(scope);
+    if (user && this.auth.currentUserId?.() !== user) throw new Error('User context changed');
     const data = c.GuestSessionResponseSchema.parse(response).data;
     if (
       data.orgId !== scope ||

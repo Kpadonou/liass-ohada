@@ -1,3 +1,4 @@
+import { RestaurantServiceAccess } from "./service-access";
 import { ResponsibleStaff } from "./responsible-staff";
 import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
@@ -310,6 +311,10 @@ export class RestaurantTransactionsService {
       command === "REPLACE_RESPONSIBLE_STAFF"
         ? await ResponsibleStaff.authorize(ctx, ctx.actorId)
         : undefined;
+    const serviceAccess =
+      command === "OPEN_SESSION"
+        ? await RestaurantServiceAccess.authorize(ctx, ctx.actorId)
+        : undefined;
     const prior = await replay();
     if (prior) {
       console.info("[RESTAURANTS_TRANSACTION]", {
@@ -322,7 +327,8 @@ export class RestaurantTransactionsService {
     const now = new Date().toISOString(),
       commandId = randomUUID();
     const checks = new Map<string, RestaurantSnapshot>();
-    const actions: TransactWriteItem[] = [];
+    const actions: TransactWriteItem[] = [...(serviceAccess?.actions ?? [])];
+    const serviceGuardCount = actions.length;
     const put = (
       kind: TransactionKind,
       key: TransactionKey,
@@ -459,6 +465,7 @@ export class RestaurantTransactionsService {
         status: "OPEN",
         openedAt: now,
         openedBy: ctx.actorId,
+        responsibleStaffId: serviceAccess?.staffId,
         version: 1,
         financialRevision: 0,
         orderCount: 0,
@@ -507,7 +514,20 @@ export class RestaurantTransactionsService {
         ),
         result,
       );
-      activity = audit(result);
+      activity = audit(
+        result,
+        undefined,
+        undefined,
+        serviceAccess?.staffId
+          ? {
+              tableId,
+              before: null,
+              after: serviceAccess.staffId,
+              beforeDisplayName: null,
+              afterDisplayName: serviceAccess.displayName ?? null,
+            }
+          : undefined,
+      );
     } else if (command === "CREATE_ORDER") {
       const req = contracts.CreateRestaurantOrderRequestSchema.parse(request);
       const menu = await this.foundation(ctx, checks);
@@ -1000,6 +1020,20 @@ export class RestaurantTransactionsService {
     try {
       await R.commit(actions);
     } catch (error) {
+      const serviceGuardFailed =
+        serviceGuardCount > 0 &&
+        error &&
+        typeof error === "object" &&
+        "CancellationReasons" in error &&
+        Array.isArray(error.CancellationReasons) &&
+        error.CancellationReasons.slice(0, serviceGuardCount).some(
+          (reason: { Code?: string }) =>
+            reason.Code === "ConditionalCheckFailed",
+        );
+      if (serviceGuardFailed)
+        throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+      if (serviceAccess)
+        await RestaurantServiceAccess.authorize(ctx, ctx.actorId);
       const committed = await replay();
       if (committed) return { data: committed };
       const name = error instanceof Error ? error.name : "";

@@ -51,6 +51,7 @@ const assignments = [
   assignmentFixture(rid(3), { userId: 'fixture-c' }),
   assignmentFixture(rid(4), { userId: 'fixture-d' }),
 ];
+const waiterReview = scenario?.startsWith('service-waiter') ?? false;
 const serviceReview = scenario?.startsWith('service') ?? false;
 const serviceTables = floorFixture().items;
 const sessionData = new Map<string, ReturnType<typeof sessionFixture>>();
@@ -148,7 +149,65 @@ const localOnly: HttpInterceptorFn = (request, next) => {
         { year: 2026, journalCode: 'BQ', journalName: 'Banque', type: 'BANK' },
       ],
     };
-  else if (path === '/restaurants/restaurant') body = { data: row('restaurant') };
+  else if (path === '/restaurants/me/outlets') {
+    body = {
+      items:
+        scenario === 'service-waiter-empty'
+          ? []
+          : scenario === 'service-waiter-multi'
+            ? [
+                { outletId: rid(2), name: 'Agla' },
+                { outletId: rid(3), name: 'Fidjrossè' },
+              ]
+            : [{ outletId: rid(2), name: 'Agla' }],
+    };
+  } else if (request.method === 'POST' && /^\/restaurants\/outlets\/[^/]+\/sessions$/.test(path)) {
+    const input = request.body as { clientRequestId: string; tableId: string; areaId: string };
+    const replay = commands.get(input.clientRequestId);
+    if (replay) body = replay.result;
+    else {
+      const table = serviceTables.find((t) => t.tableId === input.tableId);
+      if (!table || table.state !== 'FREE')
+        return throwError(() => new HttpErrorResponse({ status: 409 }));
+      const session = sessionFixture({
+        orgId: 'fixture-org',
+        outletId: path.split('/')[3],
+        tableId: input.tableId,
+        areaId: input.areaId,
+        tableCode: table.code,
+        guestSessionId: rid(900),
+        openedBy: waiterReview ? 'fixture-a' : 'fixture-owner',
+        responsibleStaff: waiterReview
+          ? { staffId: 'fixture-a', displayName: 'Aïssatou S.', available: true }
+          : undefined,
+      });
+      const occupied = {
+        ...table,
+        state: 'OCCUPIED' as const,
+        guestSessionId: session.guestSessionId,
+        openedAt: session.openedAt,
+        openedBy: session.openedBy,
+        currentAmountMinor: 0,
+        orderCount: 0,
+        currency: 'XOF',
+        responsibleStaff: session.responsibleStaff,
+      };
+      serviceTables.splice(serviceTables.indexOf(table), 1, occupied);
+      if (scenario === 'service-waiter-conflict') {
+        occupied.responsibleStaff = {
+          staffId: 'fixture-c',
+          displayName: 'Élodie A.',
+          available: true,
+        };
+        return throwError(() => new HttpErrorResponse({ status: 409 }));
+      }
+      body = { data: session };
+      commands.set(input.clientRequestId, {
+        fingerprint: JSON.stringify(input),
+        result: structuredClone(body),
+      });
+    }
+  } else if (path === '/restaurants/restaurant') body = { data: row('restaurant') };
   else if (/^\/restaurants\/outlets\/[^/]+\/service-areas$/.test(path))
     body = { items: [{ ...row('area'), name: 'Salle principale' }] };
   else if (/^\/restaurants\/outlets\/[^/]+\/service-floor$/.test(path))
@@ -313,8 +372,8 @@ bootstrapApplication(App, {
     provideAppInitializer(() => {
       const auth = inject(AuthStore);
       patchState(unprotected(auth), {
-        user: { userId: 'fixture-owner', username: 'fixture-owner' },
-        userAttributes: { name: 'Camille M.' },
+        user: { userId: waiterReview ? 'fixture-a' : 'fixture-owner', username: 'fixture-owner' },
+        userAttributes: { name: waiterReview ? 'Aïssatou S.' : 'Camille M.' },
         activeOrgId: 'fixture-org',
         activeDossierOrgId: null,
         hydrated: true,
@@ -326,7 +385,9 @@ bootstrapApplication(App, {
             workspaceType: 'COMPANY',
             accessSource: 'DIRECT',
             role: 'OWNER',
-            productRoles: { RESTAURANTS: scenario === 'denied' ? 'WAITER' : 'OWNER' },
+            productRoles: {
+              RESTAURANTS: waiterReview ? 'WAITER' : scenario === 'denied' ? 'CASHIER' : 'OWNER',
+            },
           },
         ],
       });

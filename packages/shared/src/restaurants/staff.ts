@@ -108,3 +108,23 @@ export const RestaurantOutletStaffListResponseSchema = z
   .strict();
 export type RestaurantStaff = z.infer<typeof RestaurantStaffSchema>;
 export type RestaurantStaffOutlet = z.infer<typeof RestaurantStaffOutletSchema>;
+
+/** Current authenticated user's active operational outlet page, never a staff directory. */
+export const RestaurantMyOutletsResponseSchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            outletId: z.string().uuid(),
+            name: z.string().min(1).max(160),
+          })
+          .strict(),
+      )
+      .max(100),
+    nextCursor: z.string().optional(),
+  })
+  .strict();
+export type RestaurantMyOutletsResponse = z.infer<
+  typeof RestaurantMyOutletsResponseSchema
+>;

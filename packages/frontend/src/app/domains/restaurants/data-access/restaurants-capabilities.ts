@@ -1,5 +1,9 @@
 import { Injectable, inject } from '@angular/core';
-import { restaurantsPermissionsForRole } from '@liass-ohada/shared/shared';
+import {
+  restaurantsPermissionsForRole,
+  RESTAURANTS_SERVICE_PERMISSIONS,
+  RestaurantsRoleSchema,
+} from '@liass-ohada/shared/shared';
 import { AuthStore } from '../../identity/data-access/auth.store';
 @Injectable({ providedIn: 'root' })
 export class RestaurantsCapabilities {
@@ -12,12 +16,23 @@ export class RestaurantsCapabilities {
       ? restaurantsPermissionsForRole(workspace.productRoles?.RESTAURANTS)
       : [];
   }
-  // Mirrors LR-TX-1: unassigned staff have no transactional read/write grants.
+  // SVC-2C1 publishes service vocabulary; the server owns the role projection and outlet gate.
+  private servicePermissions(): readonly (typeof RESTAURANTS_SERVICE_PERMISSIONS)[number][] {
+    return this.canManageSetup() ||
+      (this.canRead() &&
+        this.auth.activeWorkspace()?.productRoles?.RESTAURANTS ===
+          RestaurantsRoleSchema.enum.WAITER)
+      ? RESTAURANTS_SERVICE_PERMISSIONS
+      : [];
+  }
+  usesAssignedOutlets() {
+    return this.canReadService() && !this.canManageSetup();
+  }
   canReadService() {
-    return this.canManageSetup();
+    return this.servicePermissions().includes('RESTAURANTS_SERVICE_FLOOR_READ');
   }
   canOpenSession() {
-    return this.canManageSetup();
+    return this.servicePermissions().includes('RESTAURANTS_SERVICE_SESSION_OPEN_MANAGE');
   }
   // SVC-2A responsibility management shares the existing OWNER/MANAGER-only transaction boundary.
   canManageResponsibility() {

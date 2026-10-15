@@ -1,3 +1,4 @@
+import { MyRestaurantOutlets } from "./my-service-outlets-query";
 import { z } from "zod";
 import * as c from "@liass-ohada/shared/restaurants";
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
@@ -52,6 +53,8 @@ export function restaurantStaffHandler(name: string) {
               data: await S.dto(context.orgId, record),
             });
       }
+      if (query === "MY_OUTLETS")
+        return MyRestaurantOutlets.read(context.orgId, context.userId, input);
       if (query === "LIST") return S.list(context.orgId, input);
       if (query === "GET")
         return c.RestaurantStaffResponseSchema.parse({

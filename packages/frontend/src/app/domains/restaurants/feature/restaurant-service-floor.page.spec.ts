@@ -19,18 +19,31 @@ import { rid, row } from '../data-access/restaurants.test-fixture';
 import { floorFixture } from '../data-access/service-floor.test-fixture';
 import { serviceDuration } from '../utils/service-duration';
 import { RestaurantServiceFloorPage } from './restaurant-service-floor.page';
+const availability = signal('AVAILABLE');
 const org = signal('org'),
   read = signal(true),
-  write = signal(true);
-const api = { get: vi.fn(), list: vi.fn(), serviceFloor: vi.fn(), openSession: vi.fn() };
+  write = signal(true),
+  selfService = signal(false),
+  user = signal('user');
+const api = {
+  get: vi.fn(),
+  list: vi.fn(),
+  serviceFloor: vi.fn(),
+  openSession: vi.fn(),
+  myOutlets: vi.fn(),
+};
 let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>, client: QueryClient;
 let fixture: ReturnType<typeof TestBed.createComponent<RestaurantServiceFloorPage>>;
 beforeEach(() => {
+  availability.set('AVAILABLE');
   org.set('org');
+  selfService.set(false);
+  user.set('user');
   read.set(true);
   write.set(true);
   params = new BehaviorSubject(convertToParamMap({ outlet: rid(2) }));
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  api.myOutlets.mockReset().mockResolvedValue({ items: [{ outletId: rid(2), name: 'Agla' }] });
   api.get.mockReset().mockResolvedValue(row('restaurant'));
   api.list.mockReset().mockImplementation(async (_org, kind) => ({
     items:
@@ -67,18 +80,19 @@ async function create() {
         },
       },
       { provide: QueryClient, useValue: client },
-      { provide: AuthStore, useValue: { effectiveOrgId: org } },
+      { provide: AuthStore, useValue: { effectiveOrgId: org, currentUserId: user } },
       {
         provide: RestaurantsCapabilities,
         useValue: {
           canReadService: read,
+          usesAssignedOutlets: selfService,
           canOpenSession: write,
-          canManageSetup: write,
-          canManageResponsibility: write,
+          canManageSetup: () => write() && !selfService(),
+          canManageResponsibility: () => write() && !selfService(),
         },
       },
       { provide: RestaurantsApi, useValue: api },
-      { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
+      { provide: ProductAccessState, useValue: { availability } },
       { provide: NotificationService, useValue: { success: vi.fn() } },
     ],
   });
@@ -90,7 +104,10 @@ async function create() {
     expect(
       !read() ||
         (fixture.componentInstance.root.isSuccess() && !fixture.componentInstance.root.data()) ||
-        fixture.componentInstance.locations.isSuccess(),
+        fixture.componentInstance.locations.isSuccess() ||
+        (selfService() &&
+          (fixture.componentInstance.myLocations.isSuccess() ||
+            fixture.componentInstance.myLocations.isError())),
     ).toBe(true);
   });
   return fixture.componentInstance;
@@ -468,4 +485,299 @@ it('exposes change/clear in the occupied card menu and restores focus after the 
     }),
   );
   expect(focus).toHaveBeenCalledOnce();
+});
+
+async function waiter() {
+  selfService.set(true);
+  return create();
+}
+it('auto-selects one complete assigned outlet, reads no generic restaurant/outlet directory and hides administration', async () => {
+  params.next(convertToParamMap({}));
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.floor.isSuccess()).toBe(true);
+  });
+  expect(page.outletId()).toBe(rid(2));
+  expect(api.myOutlets).toHaveBeenCalledWith('org', 'user', undefined);
+  expect(api.get).not.toHaveBeenCalled();
+  expect(
+    api.list.mock.calls.every((call) => call[1] === 'area' && call[2].outletId === rid(2)),
+  ).toBe(true);
+  expect(fixture.nativeElement.querySelector('[data-testid="floor-grid"]')).not.toBeNull();
+  expect(
+    fixture.nativeElement.querySelector('button[aria-label="Ouvrir la table T01"]'),
+  ).not.toBeNull();
+  expect(
+    fixture.nativeElement.querySelector('button[aria-label^="Actions de la table"]'),
+  ).toBeNull();
+});
+it('waits for explicit choice with multiple outlets and switches only among self-context results', async () => {
+  params.next(convertToParamMap({}));
+  api.myOutlets.mockResolvedValue({
+    items: [
+      { outletId: rid(2), name: 'Agla' },
+      { outletId: rid(8), name: 'Fidjrossè' },
+    ],
+  });
+  const page = await waiter();
+  expect(page.outletId()).toBeNull();
+  expect(api.serviceFloor).not.toHaveBeenCalled();
+  page.selectOutlet(rid(99));
+  expect(page.outletId()).toBeNull();
+  page.selectOutlet(rid(8));
+  await vi.waitFor(() => expect(api.serviceFloor).toHaveBeenCalledWith('org', rid(8), undefined));
+});
+it('shows a dedicated no-assignment state without management CTAs', async () => {
+  api.myOutlets.mockResolvedValue({ items: [] });
+  const page = await waiter();
+  fixture.detectChanges();
+  expect(fixture.nativeElement.textContent).toContain('Aucun établissement affecté');
+  expect(fixture.nativeElement.querySelector('a[href*="setup"]')).toBeNull();
+  expect(api.serviceFloor).not.toHaveBeenCalled();
+  expect(page.outlet()).toBeUndefined();
+});
+it('does not auto-select a partial singleton and resolves an unknown deep link only after explicit load-more', async () => {
+  params.next(convertToParamMap({ outlet: rid(8) }));
+  api.myOutlets.mockImplementation(async (_org, _user, cursor) =>
+    cursor
+      ? { items: [{ outletId: rid(8), name: 'Fidjrossè' }] }
+      : { items: [{ outletId: rid(2), name: 'Agla' }], nextCursor: 'opaque' },
+  );
+  const page = await waiter();
+  fixture.detectChanges();
+  expect(api.serviceFloor).not.toHaveBeenCalled();
+  expect(fixture.nativeElement.textContent).not.toContain(rid(8));
+  expect(page.outletId()).toBe(rid(8));
+  expect(page.myLocations.hasNextPage()).toBe(true);
+  await page.myLocations.fetchNextPage();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(api.serviceFloor).toHaveBeenCalledWith('org', rid(8), undefined);
+  });
+  expect(api.myOutlets).toHaveBeenCalledTimes(2);
+});
+it('requires choice for one loaded outlet while further assignments remain', async () => {
+  params.next(convertToParamMap({}));
+  api.myOutlets.mockResolvedValue({
+    items: [{ outletId: rid(2), name: 'Agla' }],
+    nextCursor: 'more',
+  });
+  const page = await waiter();
+  expect(page.outletId()).toBeNull();
+  expect(api.serviceFloor).not.toHaveBeenCalled();
+});
+it('rejects an unassigned complete deep link without disclosing or reading the requested outlet', async () => {
+  params.next(convertToParamMap({ outlet: rid(99) }));
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.outletId()).toBeNull();
+  });
+  expect(page.contextError()).toBe(true);
+  expect(api.serviceFloor).not.toHaveBeenCalled();
+  expect(api.get).not.toHaveBeenCalled();
+  expect(api.list).not.toHaveBeenCalled();
+  expect(fixture.nativeElement.textContent).not.toContain(rid(99));
+});
+it.each([
+  new HttpErrorResponse({ status: 0 }),
+  new HttpErrorResponse({ status: 403 }),
+  new Error('Invalid response'),
+])('does not confuse self-context failure with zero assignments: %s', async (error) => {
+  api.myOutlets.mockRejectedValue(error);
+  const page = await waiter();
+  fixture.detectChanges();
+  expect(page.myLocations.isError()).toBe(true);
+  expect(fixture.nativeElement.textContent).not.toContain('Aucun établissement affecté');
+  expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
+  expect(api.serviceFloor).not.toHaveBeenCalled();
+});
+it('waiter opening refreshes canonical responsibility with no dialog or second assignment call', async () => {
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.floor.isSuccess()).toBe(true);
+  });
+  const table = page.tables()[0];
+  api.openSession.mockImplementation(async () => {
+    const old = floorFixture();
+    const occupied = old.items[1];
+    if (occupied.state !== 'OCCUPIED') throw Error('fixture');
+    api.serviceFloor.mockResolvedValue({
+      ...old,
+      items: [
+        {
+          ...occupied,
+          tableId: table.tableId,
+          code: table.code,
+          responsibleStaff: { staffId: 'user', displayName: 'Aïssatou S.', available: true },
+        },
+      ],
+    });
+    return { data: {}, message: null };
+  });
+  const dialog = vi.spyOn(TestBed.inject(MatDialog), 'open');
+  await page.open(table);
+  fixture.detectChanges();
+  expect(api.openSession.mock.calls[0][2]).toEqual({
+    clientRequestId: expect.any(String),
+    tableId: table.tableId,
+    areaId: table.areaId,
+  });
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Aïssatou S.');
+  });
+  expect(dialog).not.toHaveBeenCalled();
+  expect(api.get).not.toHaveBeenCalled();
+  expect(
+    fixture.nativeElement.querySelector('button[aria-label^="Actions de la table"]'),
+  ).toBeNull();
+});
+it.each(['floor', 'open'])(
+  'revokes stale outlet after %s 403 and reloads self context without repeated floor requests',
+  async (source) => {
+    const page = await waiter();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.floor.isSuccess()).toBe(true);
+    });
+    api.myOutlets.mockResolvedValue({ items: [] });
+    if (source === 'floor') {
+      api.serviceFloor.mockRejectedValue(new HttpErrorResponse({ status: 403 }));
+      await page.refresh();
+    } else {
+      api.openSession.mockRejectedValue(new HttpErrorResponse({ status: 403 }));
+      await page.open(page.tables()[0]);
+    }
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Aucun établissement affecté');
+    });
+    const count = api.serviceFloor.mock.calls.length;
+    fixture.detectChanges();
+    expect(page.outletId()).toBeNull();
+    expect(api.myOutlets.mock.calls.length).toBeGreaterThan(1);
+    expect(api.serviceFloor.mock.calls.length).toBe(count);
+  },
+);
+it('separates self queries and local opening intents across user changes in the same organization', async () => {
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.floor.isSuccess()).toBe(true);
+  });
+  let resolve!: (value: unknown) => void;
+  api.myOutlets.mockImplementation(
+    () =>
+      new Promise((r) => {
+        resolve = r;
+      }),
+  );
+  user.set('other-user');
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(api.myOutlets).toHaveBeenCalledWith('org', 'other-user', undefined);
+  });
+  expect(page.outlet()).toBeUndefined();
+  expect(page.tables().length === 0 || !page.outlet()).toBe(true);
+  resolve({ items: [] });
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.myLocations.isSuccess()).toBe(true);
+  });
+  expect(client.getQueryData(restaurantKeys.myOutlets('org', 'user'))).toBeDefined();
+  expect(client.getQueryData(restaurantKeys.myOutlets('org', 'other-user'))).not.toEqual(
+    client.getQueryData(restaurantKeys.myOutlets('org', 'user')),
+  );
+});
+it('does not show no-assignment while the self-context request is still loading', async () => {
+  selfService.set(true);
+  api.myOutlets.mockImplementation(() => new Promise(() => undefined));
+  const pending = create();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.myLocations.isPending()).toBe(true);
+  });
+  expect(fixture.nativeElement.textContent).not.toContain('Aucun établissement affecté');
+  expect(fixture.nativeElement.querySelector('[role="status"]')).not.toBeNull();
+  // Resolve the helper independently by ending access; the query itself remains deliberately pending.
+  read.set(false);
+  await pending;
+});
+it('waiter retries ambiguous opening with the same intent and never claims a conflict winner', async () => {
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.floor.isSuccess()).toBe(true);
+  });
+  const table = page.tables()[0];
+  api.openSession.mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+  await page.open(table);
+  await page.open(table);
+  expect(api.openSession.mock.calls[0][2]).toEqual(api.openSession.mock.calls[1][2]);
+  const occupied = floorFixture().items[1];
+  if (occupied.state !== 'OCCUPIED') throw Error('fixture');
+  api.serviceFloor.mockResolvedValue({
+    outletId: rid(2),
+    items: [
+      {
+        ...occupied,
+        tableId: table.tableId,
+        responsibleStaff: { staffId: 'other', displayName: 'Binta S.', available: true },
+      },
+    ],
+  });
+  api.openSession.mockRejectedValue(new HttpErrorResponse({ status: 409 }));
+  await page.open(table);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Binta S.');
+  });
+  expect(fixture.nativeElement.textContent).toContain(fr.RESTAURANTS.SERVICE.OPEN_CONFLICT);
+});
+
+it('fails closed immediately when RESTAURANTS ProductAccess is removed', async () => {
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.floor.isSuccess()).toBe(true);
+  });
+  availability.set('UNAVAILABLE');
+  fixture.detectChanges();
+  expect(page.allowed()).toBe(false);
+  expect(fixture.nativeElement.querySelector('[data-testid="floor-grid"]')).toBeNull();
+  const before = api.openSession.mock.calls.length;
+  await page.open(page.tables()[0]);
+  expect(api.openSession.mock.calls.length).toBe(before);
+});
+it('after revocation offers another assigned outlet without silently choosing it', async () => {
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.floor.isSuccess()).toBe(true);
+  });
+  api.myOutlets.mockResolvedValue({ items: [{ outletId: rid(8), name: 'Fidjrossè' }] });
+  api.openSession.mockRejectedValue(new HttpErrorResponse({ status: 403 }));
+  await page.open(page.tables()[0]);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.outlets().map((o) => o.id)).toEqual([rid(8)]);
+  });
+  expect(page.outletId()).toBeNull();
+  expect(api.serviceFloor.mock.calls.some((call) => call[1] === rid(8))).toBe(false);
+});
+
+it('waiter empty floor offers operational guidance without configuration links or copy', async () => {
+  api.serviceFloor.mockResolvedValue({ outletId: rid(2), items: [] });
+  const page = await waiter();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.floor.isSuccess()).toBe(true);
+  });
+  expect(fixture.nativeElement.textContent).toContain('Aucune table active');
+  expect(fixture.nativeElement.textContent).not.toContain('configuration');
+  expect(fixture.nativeElement.querySelector('a[href*="setup"]')).toBeNull();
 });
