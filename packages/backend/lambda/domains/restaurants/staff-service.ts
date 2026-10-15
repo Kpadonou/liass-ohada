@@ -145,6 +145,15 @@ export class RestaurantStaffService {
       action: command,
     });
     const checks = Identity.writeChecks(orgId, actor);
+    const provisioning =
+      command === "BIND" ||
+      command === "ASSIGN" ||
+      (command === "UPDATE" &&
+        "status" in request &&
+        request.status === "ACTIVE");
+    const organizationChecks = provisioning
+      ? await Identity.staffProvisioningChecks(orgId)
+      : [];
     const pk = K.restaurantStaffHistoryPK(orgId, userId);
     const commandKey = {
       PK: pk,
@@ -321,6 +330,7 @@ export class RestaurantStaffService {
     }
     actions.push(
       ...checks,
+      ...organizationChecks,
       R.put(orgId, commandKey, "COMMAND", { fingerprint, result: after }),
       R.put(
         orgId,

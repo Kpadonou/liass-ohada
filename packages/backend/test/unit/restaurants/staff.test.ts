@@ -660,7 +660,7 @@ test("binding oneself deduplicates Platform guards without losing management aut
   const guards = m.transactions
     .at(-1)!
     .TransactItems!.filter((action) => action.ConditionCheck);
-  expect(guards).toHaveLength(2); // one membership plus one ProductAccess
+  expect(guards).toHaveLength(3); // one membership, ProductAccess and active organization
 });
 test("ProductAccess loss, role loss and outlet deactivation each fail the assignment prerequisite closed", async () => {
   await bind();

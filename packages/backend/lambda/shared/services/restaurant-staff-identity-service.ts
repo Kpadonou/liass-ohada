@@ -16,6 +16,7 @@ import {
   UserProfileRecord,
   UserProfileRepository,
 } from "../repositories/user-profile-repository";
+import { OrganizationMemberRepository } from "../repositories/organization-member-repository";
 
 export interface RestaurantStaffIdentity {
   userId: string;
@@ -26,6 +27,29 @@ export interface RestaurantStaffIdentity {
 }
 /** Platform-owned read/check boundary. Restaurants never reads identity repositories or keys. */
 export class RestaurantStaffIdentityService {
+  /** Platform-owned organization precondition for staff activation/provisioning only. */
+  static async staffProvisioningChecks(
+    orgId: string,
+  ): Promise<TransactWriteItem[]> {
+    await OrganizationMemberRepository.requireActiveCompany(orgId);
+    return [
+      {
+        ConditionCheck: {
+          TableName: config.PLATFORM_TABLE_NAME,
+          Key: marshall({ PK: K.orgKey(orgId), SK: K.organizationSK() }),
+          ConditionExpression:
+            "entityType = :type AND orgId = :org AND workspaceType = :company AND #status = :active",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: marshall({
+            ":type": "ORGANIZATION",
+            ":org": orgId,
+            ":company": "COMPANY",
+            ":active": "ACTIVE",
+          }),
+        },
+      },
+    ];
+  }
   static async get(
     orgId: string,
     userId: string,
@@ -72,9 +96,7 @@ export class RestaurantStaffIdentityService {
       active:
         row.status === "ACTIVE" &&
         row.workspaceType === "COMPANY" &&
-        (row.accessSource === undefined ||
-          typeof row.accessSource === "string") &&
-        row.accessSource !== "CABINET",
+        (row.accessSource === undefined || row.accessSource === "DIRECT"),
       membershipSource:
         typeof row.accessSource === "string" ? row.accessSource : undefined,
       restaurantRole: roles.success ? (roles.data.RESTAURANTS ?? null) : null,

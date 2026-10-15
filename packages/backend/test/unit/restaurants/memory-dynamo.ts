@@ -26,20 +26,44 @@ function condition(
   if (!expression) return true;
   const data = item ? unmarshall(item) : {};
   const values = unmarshall(attributes);
-  return expression.split(" AND ").every((clause) => {
-    const absent = /^attribute_not_exists\((\w+)\)$/.exec(clause);
-    if (absent) return data[absent[1]] === undefined;
+  const split = (value: string, separator: string) => {
+    const parts: string[] = [];
+    let depth = 0,
+      start = 0;
+    for (let index = 0; index < value.length; index++) {
+      if (value[index] === "(") depth++;
+      if (value[index] === ")") depth--;
+      if (!depth && value.startsWith(separator, index)) {
+        parts.push(value.slice(start, index));
+        start = index + separator.length;
+      }
+    }
+    return [...parts, value.slice(start)];
+  };
+  const valueAt = (path: string) =>
+    path
+      .split(".")
+      .reduce<unknown>(
+        (value, part) =>
+          typeof value === "object" && value !== null
+            ? (value as Record<string, unknown>)[names[part] ?? part]
+            : undefined,
+        data,
+      );
+  const evaluate = (clause: string): boolean => {
+    const and = split(clause, " AND ");
+    if (and.length > 1) return and.every(evaluate);
+    if (clause.startsWith("(") && clause.endsWith(")"))
+      return evaluate(clause.slice(1, -1));
+    const or = split(clause, " OR ");
+    if (or.length > 1) return or.some(evaluate);
+    const absent = /^attribute_not_exists\(([\w.#]+)\)$/.exec(clause);
+    if (absent) return valueAt(absent[1]) === undefined;
     const comparison = /^([\w.#]+) = (:\w+)$/.exec(clause);
     if (!comparison) throw new Error(`Unsupported test condition: ${clause}`);
-    let value: unknown = data;
-    for (const part of comparison[1].split(".")) {
-      value =
-        typeof value === "object" && value !== null
-          ? (value as Record<string, unknown>)[names[part] ?? part]
-          : undefined;
-    }
-    return value === values[comparison[2]];
-  });
+    return valueAt(comparison[1]) === values[comparison[2]];
+  };
+  return evaluate(expression);
 }
 /** Exercises repository DynamoDB commands and atomic conditions, not a substitute repository. */
 export function memoryDynamo() {
@@ -114,13 +138,17 @@ export function memoryDynamo() {
       const operations = input.TransactItems ?? [];
       const keys = operations.map((op) =>
         identity(
-          op.Put?.Item ?? op.Delete?.Key ?? op.ConditionCheck?.Key ?? {},
+          op.Put?.Item ??
+            op.Update?.Key ??
+            op.Delete?.Key ??
+            op.ConditionCheck?.Key ??
+            {},
         ),
       );
       if (new Set(keys).size !== keys.length)
         throw new Error("DynamoDB transaction targets the same item twice");
       const failures = operations.map((op, index) => {
-        const action = op.Put ?? op.Delete ?? op.ConditionCheck;
+        const action = op.Put ?? op.Update ?? op.Delete ?? op.ConditionCheck;
         if (!action) throw new Error("Unsupported transaction operation");
         return condition(
           rows.get(keys[index]),
@@ -140,6 +168,26 @@ export function memoryDynamo() {
       operations.forEach((operation, index) => {
         if (operation.Put) rows.set(keys[index], operation.Put.Item ?? {});
         if (operation.Delete) rows.delete(keys[index]);
+        if (operation.Update) {
+          const update = operation.Update;
+          const data = unmarshall(rows.get(keys[index])!);
+          const names = update.ExpressionAttributeNames ?? {};
+          const values = unmarshall(update.ExpressionAttributeValues ?? {});
+          for (const assignment of update
+            .UpdateExpression!.slice(4)
+            .split(", ")) {
+            const [path, token] = assignment.split(" = ");
+            const parts = path.split(".").map((part) => names[part] ?? part);
+            let nested = data;
+            for (const part of parts.slice(0, -1))
+              nested = nested[part] as Record<string, unknown>;
+            nested[parts.at(-1)!] = values[token];
+          }
+          rows.set(
+            keys[index],
+            marshall(data, { removeUndefinedValues: true }),
+          );
+        }
       });
       return {};
     },
@@ -150,6 +198,22 @@ export function memoryDynamo() {
     role: string,
     entitled = true,
   ) {
+    const organizationKey = marshall({
+      PK: KeyFactory.orgKey(orgId),
+      SK: KeyFactory.organizationSK(),
+    });
+    if (!rows.has(identity(organizationKey)))
+      rows.set(
+        identity(organizationKey),
+        marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.organizationSK(),
+          orgId,
+          entityType: "ORGANIZATION",
+          workspaceType: "COMPANY",
+          status: "ACTIVE",
+        }),
+      );
     const membership = {
       PK: KeyFactory.orgKey(orgId),
       SK: KeyFactory.orgUserAccessSK(userId),
