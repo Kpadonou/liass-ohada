@@ -251,6 +251,14 @@ export const KeyFactory = {
   /** Prefix for all effective user access rows under an organization */
   orgUserAccessPrefix: () => "USER#",
 
+  /** Platform-owned durable evidence for initial member product-role commands. */
+  organizationProductRoleCommandSK: (clientRequestId: string) =>
+    `PRODUCT_ROLE_COMMAND#${clientRequestId}`,
+  organizationProductRoleAuditSK: (
+    timestamp: string,
+    clientRequestId: string,
+  ) => `PRODUCT_ROLE_AUDIT#${timestamp}#${clientRequestId}`,
+
   /** Platform product entitlements stored under the organization partition. */
   productAccessPrefix: () => "PRODUCT_ACCESS#",
   productAccessSK: (productCode: string) =>

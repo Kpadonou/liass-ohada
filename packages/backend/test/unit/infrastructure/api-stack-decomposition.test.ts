@@ -63,6 +63,44 @@ describe("API stack decomposition", () => {
   });
   const constructs = root.node.findAll();
 
+  test("initial product-role assignment stays in Identity with narrowly scoped transaction IAM", () => {
+    const fn = constructs.find(
+      (item): item is lambda.CfnFunction =>
+        item instanceof lambda.CfnFunction &&
+        item.functionName ===
+          "liass-ohada-dev-identity-assign-initial-product-role",
+    );
+    expect(fn).toBeDefined();
+    expect(cdk.Stack.of(fn!)).toBeInstanceOf(IdentityApiStack);
+    const route = constructs.find(
+      (item): item is apigwv2.CfnRoute =>
+        item instanceof apigwv2.CfnRoute &&
+        item.routeKey ===
+          "PUT /me/organization/members/{memberUserId}/product-roles/{productCode}",
+    );
+    expect(route?.authorizationType).toBe("JWT");
+    expect(cdk.Stack.of(route!)).toBeInstanceOf(IdentityApiStack);
+    const policy = constructs.find(
+      (item): item is iam.CfnPolicy =>
+        item instanceof iam.CfnPolicy &&
+        item.node.path.includes("InitialProductRoleAssignmentRole"),
+    );
+    const document = cdk.Stack.of(policy!).resolve(policy!.policyDocument);
+    expect(document.Statement).toHaveLength(1);
+    expect(document.Statement[0].Action.sort()).toEqual([
+      "dynamodb:ConditionCheckItem",
+      "dynamodb:GetItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+    ]);
+    expect(JSON.stringify(document.Statement[0].Resource)).toContain(
+      "AccountingTable",
+    );
+    expect(JSON.stringify(document.Statement[0].Resource)).not.toContain(
+      "/index/",
+    );
+  });
+
   test("keeps the COMPANY member directory in Identity with JWT and table-only read IAM", () => {
     const directory = constructs.find(
       (item): item is lambda.CfnFunction =>

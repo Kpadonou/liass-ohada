@@ -208,6 +208,7 @@ export {
   WorkspaceTypeSchema,
 } from "./shared/workspace";
 export * from "./shared/organization-members";
+export * from "./shared/initial-product-role";
 export type {
   AccountingAccessMode,
   Cabinet,

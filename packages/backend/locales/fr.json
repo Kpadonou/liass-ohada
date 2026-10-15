@@ -1,4 +1,7 @@
 {
+  "PLATFORM_PRODUCT_ROLE_CONFLICT": "Ce membre possède déjà un autre rôle pour ce produit.",
+  "PLATFORM_PRODUCT_ROLE_IDEMPOTENCY_CONFLICT": "Cette demande a déjà été utilisée pour une autre opération.",
+  "PLATFORM_PRODUCT_ROLE_WRITE_CONFLICT": "Les accès du membre ont changé. Actualisez puis réessayez.",
   "RESTAURANTS_NOT_FOUND": "La configuration demandée est introuvable dans cet établissement.",
   "RESTAURANTS_PARENT_INACTIVE": "Réactivez le parent avant de modifier cette configuration.",
   "RESTAURANTS_WRITE_CONFLICT": "La configuration a changé ou une identité existe déjà. Actualisez puis réessayez.",

@@ -12,6 +12,50 @@ export class IdentityEndpoints extends DomainConstructFactory {
     super(scope, id);
 
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
+    const productRoleAssignmentRole = new iam.Role(
+      this,
+      "InitialProductRoleAssignmentRole",
+      {
+        assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "service-role/AWSLambdaBasicExecutionRole",
+          ),
+        ],
+      },
+    );
+    productRoleAssignmentRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:PutItem",
+          "dynamodb:ConditionCheckItem",
+        ],
+        resources: [props.table.tableArn],
+      }),
+    );
+    this.addRoute({
+      actionName: "assign-initial-product-role",
+      api: props.api,
+      authorizer: props.authorizer,
+      domainName: "identity",
+      handlerEntry: path.join(
+        projectRoot,
+        "lambda",
+        "domains",
+        "identity",
+        "assign-initial-product-role.ts",
+      ),
+      idPrefix: "Identity-",
+      lambdaRole: productRoleAssignmentRole,
+      method: apigw.HttpMethod.PUT,
+      routePath:
+        "/me/organization/members/{memberUserId}/product-roles/{productCode}",
+      routeInDomainStack: true,
+      stage: props.stage,
+      table: props.table,
+    });
     const memberDirectoryRole = new iam.Role(
       this,
       "OrganizationMemberDirectoryRole",
