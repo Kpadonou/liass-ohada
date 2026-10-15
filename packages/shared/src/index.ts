@@ -14,12 +14,8 @@ export type {
   CreateAccountRequest,
   ListAccountsRequest,
 } from "./accounting/account";
-export {
-  AccountingSettingsSchema,
-} from "./accounting/accounting-settings";
-export type {
-  AccountingSettings,
-} from "./accounting/accounting-settings";
+export { AccountingSettingsSchema } from "./accounting/accounting-settings";
+export type { AccountingSettings } from "./accounting/accounting-settings";
 export {
   AccountingFramework,
   CreateEntryDraftRequestSchema,
@@ -211,6 +207,7 @@ export {
   WorkspaceSummarySchema,
   WorkspaceTypeSchema,
 } from "./shared/workspace";
+export * from "./shared/organization-members";
 export type {
   AccountingAccessMode,
   Cabinet,

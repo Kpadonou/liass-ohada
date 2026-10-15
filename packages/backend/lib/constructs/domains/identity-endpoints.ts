@@ -1,13 +1,60 @@
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import * as path from "path";
-import { DomainConstructFactory, DomainProps } from "./domain-constructs-factory";
+import {
+  DomainConstructFactory,
+  DomainProps,
+} from "./domain-constructs-factory";
 
 export class IdentityEndpoints extends DomainConstructFactory {
   constructor(scope: Construct, id: string, props: DomainProps) {
     super(scope, id);
 
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
+    const memberDirectoryRole = new iam.Role(
+      this,
+      "OrganizationMemberDirectoryRole",
+      {
+        assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "service-role/AWSLambdaBasicExecutionRole",
+          ),
+        ],
+      },
+    );
+    memberDirectoryRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:BatchGetItem",
+        ],
+        resources: [props.table.tableArn],
+      }),
+    );
+    this.addRoute({
+      actionName: "list-organization-members",
+      api: props.api,
+      authorizer: props.authorizer,
+      domainName: "identity",
+      handlerEntry: path.join(
+        projectRoot,
+        "lambda",
+        "domains",
+        "identity",
+        "list-organization-members.ts",
+      ),
+      idPrefix: "Identity-",
+      // A dedicated read-only execution role, rather than the legacy shared writer role.
+      lambdaRole: memberDirectoryRole,
+      method: apigw.HttpMethod.GET,
+      routePath: "/me/organization/members",
+      routeInDomainStack: true,
+      stage: props.stage,
+      table: props.table,
+    });
     const getWorkspacesEntry = path.join(
       projectRoot,
       "lambda",
@@ -160,7 +207,11 @@ export class IdentityEndpoints extends DomainConstructFactory {
       ["list-cabinet-works", apigw.HttpMethod.GET, "/cabinet/works"],
       ["create-cabinet-work", apigw.HttpMethod.POST, "/cabinet/works"],
       ["get-cabinet-work", apigw.HttpMethod.GET, "/cabinet/works/{workId}"],
-      ["update-cabinet-work", apigw.HttpMethod.PATCH, "/cabinet/works/{workId}"],
+      [
+        "update-cabinet-work",
+        apigw.HttpMethod.PATCH,
+        "/cabinet/works/{workId}",
+      ],
       [
         "update-cabinet-work-status",
         apigw.HttpMethod.PATCH,

@@ -6,3 +6,4 @@ export * from "./cabinet-settings";
 export * from "./workspace";
 export * from "./product-access";
 export * from "./restaurants-access";
+export * from "./organization-members";

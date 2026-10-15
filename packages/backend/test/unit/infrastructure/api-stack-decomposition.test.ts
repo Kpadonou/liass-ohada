@@ -63,6 +63,43 @@ describe("API stack decomposition", () => {
   });
   const constructs = root.node.findAll();
 
+  test("keeps the COMPANY member directory in Identity with JWT and table-only read IAM", () => {
+    const directory = constructs.find(
+      (item): item is lambda.CfnFunction =>
+        item instanceof lambda.CfnFunction &&
+        item.functionName ===
+          "liass-ohada-dev-identity-list-organization-members",
+    );
+    expect(directory).toBeDefined();
+    expect(cdk.Stack.of(directory!)).toBeInstanceOf(IdentityApiStack);
+    const route = constructs.find(
+      (item): item is apigwv2.CfnRoute =>
+        item instanceof apigwv2.CfnRoute &&
+        item.routeKey === "GET /me/organization/members",
+    );
+    expect(cdk.Stack.of(route!)).toBeInstanceOf(IdentityApiStack);
+    expect(route?.authorizationType).toBe("JWT");
+    const policy = constructs.find(
+      (item): item is iam.CfnPolicy =>
+        item instanceof iam.CfnPolicy &&
+        item.node.path.includes("OrganizationMemberDirectoryRole"),
+    );
+    expect(policy).toBeDefined();
+    const document = cdk.Stack.of(policy!).resolve(policy!.policyDocument);
+    expect(document.Statement).toHaveLength(1);
+    expect(document.Statement[0].Action.sort()).toEqual([
+      "dynamodb:BatchGetItem",
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+    ]);
+    expect(JSON.stringify(document.Statement[0].Resource)).not.toContain(
+      "/index/",
+    );
+    expect(JSON.stringify(document.Statement[0].Resource)).toContain(
+      "AccountingTable",
+    );
+  });
+
   test("keeps the shared and Restaurants stateful tables, private document bucket, User Pool, and HTTP API", () => {
     expect(
       constructs.filter((item) => item instanceof dynamodb.CfnTable),
