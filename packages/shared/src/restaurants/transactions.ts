@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RestaurantStaffUserIdSchema } from "./staff";
 const id = z.string().uuid();
 const version = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -30,6 +31,7 @@ export const GuestSessionSchema = z
     status: z.enum(["OPEN", "CLOSED"]),
     openedAt: timestamp,
     openedBy: z.string().min(1),
+    responsibleStaffId: RestaurantStaffUserIdSchema.optional(),
     closedAt: timestamp.optional(),
     closedBy: z.string().min(1).optional(),
     version,
@@ -38,6 +40,22 @@ export const GuestSessionSchema = z
     openOrderCount: count,
   })
   .strict();
+/** Current operational presentation, never persisted in session META or command results. */
+export const ResponsibleRestaurantStaffSchema = z
+  .object({
+    staffId: RestaurantStaffUserIdSchema,
+    displayName: z.string().min(1).max(160).nullable(),
+    available: z.boolean(),
+  })
+  .strict();
+export const GuestSessionReadSchema = GuestSessionSchema.omit({
+  responsibleStaffId: true,
+})
+  .extend({
+    responsibleStaff: ResponsibleRestaurantStaffSchema.optional(),
+  })
+  .strict();
+export type GuestSessionRead = z.infer<typeof GuestSessionReadSchema>;
 export const RestaurantOrderSchema = z
   .object({
     ...owner,
@@ -114,6 +132,12 @@ export const OpenGuestSessionRequestSchema = z
   })
   .strict();
 export const CloseGuestSessionRequestSchema = z.object(edit).strict();
+export const ReplaceGuestSessionResponsibleStaffRequestSchema = z
+  .object({
+    ...edit,
+    staffId: RestaurantStaffUserIdSchema.nullable(),
+  })
+  .strict();
 export const CreateRestaurantOrderRequestSchema = z
   .object({
     ...intent,
@@ -181,7 +205,7 @@ export const RestaurantTransactionHistoryRequestSchema =
     .strict()
     .refine((v) => v.start < v.end, { message: "Invalid UTC interval" });
 export const GuestSessionResponseSchema = z
-  .object({ data: GuestSessionSchema })
+  .object({ data: GuestSessionReadSchema })
   .strict();
 export const RestaurantOrderResponseSchema = z
   .object({ data: RestaurantOrderSchema })
@@ -191,7 +215,7 @@ export const RestaurantOrderItemResponseSchema = z
   .strict();
 export const GuestSessionListResponseSchema = z
   .object({
-    items: z.array(GuestSessionSchema),
+    items: z.array(GuestSessionReadSchema),
     nextCursor: z.string().optional(),
   })
   .strict();
@@ -208,7 +232,7 @@ export const RestaurantOrderItemListResponseSchema = z
   })
   .strict();
 export const ActiveTableGuestSessionResponseSchema = z
-  .object({ data: GuestSessionSchema.nullable() })
+  .object({ data: GuestSessionReadSchema.nullable() })
   .strict();
 export type GuestSession = z.infer<typeof GuestSessionSchema>;
 export type RestaurantOrder = z.infer<typeof RestaurantOrderSchema>;

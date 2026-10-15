@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ResponsibleRestaurantStaffSchema } from "./transactions";
 
 const id = z.string().uuid();
 export const RestaurantServiceFloorRequestSchema = z
@@ -24,6 +25,7 @@ export const RestaurantServiceFloorTableSchema = z.discriminatedUnion("state", [
       guestSessionId: id,
       openedAt: z.string().datetime(),
       openedBy: z.string().min(1),
+      responsibleStaff: ResponsibleRestaurantStaffSchema.optional(),
       currentAmountMinor: z
         .number()
         .int()

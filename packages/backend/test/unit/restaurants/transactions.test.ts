@@ -549,6 +549,11 @@ test.each(["WAITER", "CASHIER", "KITCHEN"])(
         reason: "Test",
       },
       CLOSE_ORDER: { clientRequestId: requestId(), expectedVersion: 1 },
+      REPLACE_RESPONSIBLE_STAFF: {
+        clientRequestId: requestId(),
+        expectedVersion: 1,
+        staffId: null,
+      },
     };
     const before = rows().length;
     for (const route of RESTAURANT_TRANSACTION_ROUTES)

@@ -394,5 +394,6 @@
   "RESTAURANTS_STAFF_LABEL_REQUIRED": "An operational display name is required for this member.",
   "RESTAURANTS_STAFF_INACTIVE": "This staff member is inactive.",
   "RESTAURANTS_STAFF_ASSIGNMENT_EXISTS": "This outlet assignment is already active.",
-  "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Active outlet assignment not found."
+  "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Active outlet assignment not found.",
+  "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE": "This team member cannot be assigned responsibility for table service at this establishment."
 }

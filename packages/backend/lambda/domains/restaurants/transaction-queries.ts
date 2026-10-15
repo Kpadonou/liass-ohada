@@ -1,3 +1,4 @@
+import { ResponsibleStaff } from "./responsible-staff";
 import { RestaurantServiceFloor } from "./service-floor-query";
 import { z } from "zod";
 import * as contracts from "@liass-ohada/shared/restaurants";
@@ -61,7 +62,16 @@ export class RestaurantTransactionQueries {
       );
       items.push(...page);
     }
-    return items;
+    const sessions = await ResponsibleStaff.sessions(
+      scope,
+      items.filter(
+        (item): item is contracts.GuestSession => !("orderId" in item),
+      ),
+    );
+    const byId = new Map(sessions.map((s) => [s.guestSessionId, s]));
+    return items.map((item) =>
+      "orderId" in item ? item : byId.get(item.guestSessionId)!,
+    );
   }
   static run(
     scope: TransactionScope,
@@ -90,11 +100,15 @@ export class RestaurantTransactionQueries {
     if (query === "GET_SESSION")
       return {
         data: (
-          await S.session(
-            scope,
-            contracts.RestaurantIdSchema.parse(ids.sessionId),
-          )
-        ).data,
+          await ResponsibleStaff.sessions(scope, [
+            (
+              await S.session(
+                scope,
+                contracts.RestaurantIdSchema.parse(ids.sessionId),
+              )
+            ).data,
+          ])
+        )[0],
       };
     if (query === "GET_ORDER")
       return {
@@ -102,11 +116,17 @@ export class RestaurantTransactionQueries {
           await S.order(scope, contracts.RestaurantIdSchema.parse(ids.orderId))
         ).data,
       };
-    if (query === "ACTIVE_TABLE")
-      return S.activeTable(
+    if (query === "ACTIVE_TABLE") {
+      const result = await S.activeTable(
         scope,
         contracts.RestaurantIdSchema.parse(ids.tableId),
       );
+      return {
+        data: result.data
+          ? (await ResponsibleStaff.sessions(scope, [result.data]))[0]
+          : null,
+      };
+    }
     if (
       query === "SESSION_HISTORY" ||
       query === "TABLE_SESSION_HISTORY" ||

@@ -33,6 +33,16 @@ const audit = z
     fromState: z.string().optional(),
     toState: z.string(),
     reason: z.string().max(500).optional(),
+    responsibility: z
+      .object({
+        tableId: id,
+        before: z.string().nullable(),
+        after: z.string().nullable(),
+        beforeDisplayName: z.string().nullable(),
+        afterDisplayName: z.string().nullable(),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export const TransactionSchemas = {

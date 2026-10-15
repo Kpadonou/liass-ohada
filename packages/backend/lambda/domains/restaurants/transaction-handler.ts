@@ -1,3 +1,4 @@
+import { ResponsibleStaff } from "./responsible-staff";
 import { z } from "zod";
 import * as contracts from "@liass-ohada/shared/restaurants";
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
@@ -48,8 +49,18 @@ export function restaurantTransactionHandler(name: string) {
           input,
           ids,
         );
-        return command === "OPEN_SESSION" || command === "CLOSE_SESSION"
-          ? contracts.GuestSessionResponseSchema.parse(result)
+        return [
+          "OPEN_SESSION",
+          "CLOSE_SESSION",
+          "REPLACE_RESPONSIBLE_STAFF",
+        ].includes(command)
+          ? contracts.GuestSessionResponseSchema.parse({
+              data: (
+                await ResponsibleStaff.sessions(scope, [
+                  contracts.GuestSessionSchema.parse(result.data),
+                ])
+              )[0],
+            })
           : ["ADD_ITEM", "EDIT_ITEM", "CANCEL_ITEM"].includes(command)
             ? contracts.RestaurantOrderItemResponseSchema.parse(result)
             : contracts.RestaurantOrderResponseSchema.parse(result);

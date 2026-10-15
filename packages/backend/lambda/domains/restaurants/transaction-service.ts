@@ -1,3 +1,4 @@
+import { ResponsibleStaff } from "./responsible-staff";
 import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
@@ -32,6 +33,8 @@ export interface RestaurantTransactionContext extends TransactionScope {
 export const transactionRequestSchemas = {
   OPEN_SESSION: contracts.OpenGuestSessionRequestSchema,
   CLOSE_SESSION: contracts.CloseGuestSessionRequestSchema,
+  REPLACE_RESPONSIBLE_STAFF:
+    contracts.ReplaceGuestSessionResponsibleStaffRequestSchema,
   CREATE_ORDER: contracts.CreateRestaurantOrderRequestSchema,
   ADD_ITEM: contracts.AddRestaurantDraftItemRequestSchema,
   EDIT_ITEM: contracts.EditRestaurantDraftItemRequestSchema,
@@ -269,7 +272,7 @@ export class RestaurantTransactionsService {
     const owner =
       command === "OPEN_SESSION" || command === "CREATE_ORDER"
         ? "NEW"
-        : command === "CLOSE_SESSION"
+        : ["CLOSE_SESSION", "REPLACE_RESPONSIBLE_STAFF"].includes(command)
           ? contracts.RestaurantIdSchema.parse(ids.sessionId)
           : contracts.RestaurantIdSchema.parse(ids.orderId);
     const hash = fingerprint([
@@ -303,6 +306,10 @@ export class RestaurantTransactionsService {
         return fail("RESTAURANTS_IDEMPOTENCY_CONFLICT");
       return row.data.result;
     };
+    const responsibleActor =
+      command === "REPLACE_RESPONSIBLE_STAFF"
+        ? await ResponsibleStaff.authorize(ctx, ctx.actorId)
+        : undefined;
     const prior = await replay();
     if (prior) {
       console.info("[RESTAURANTS_TRANSACTION]", {
@@ -370,6 +377,13 @@ export class RestaurantTransactionsService {
       target: contracts.GuestSession | contracts.RestaurantOrder,
       oldState?: string,
       reason?: string,
+      responsibility?: {
+        tableId: string;
+        before: string | null;
+        after: string | null;
+        beforeDisplayName: string | null;
+        afterDisplayName: string | null;
+      },
     ) => {
       const isOrder = "orderId" in target;
       const id = isOrder ? target.orderId : target.guestSessionId;
@@ -386,6 +400,7 @@ export class RestaurantTransactionsService {
         fromState: oldState,
         toState: target.status,
         reason,
+        responsibility,
       };
       put(
         "AUDIT",
@@ -572,6 +587,40 @@ export class RestaurantTransactionsService {
         audit(next, session.data.status);
       }
       activity = audit(result);
+    } else if (command === "REPLACE_RESPONSIBLE_STAFF") {
+      const req =
+        contracts.ReplaceGuestSessionResponsibleStaffRequestSchema.parse(
+          request,
+        );
+      const session = await this.session(ctx, owner);
+      if (session.data.version !== req.expectedVersion)
+        return fail("RESTAURANTS_WRITE_CONFLICT");
+      if (session.data.status !== "OPEN") return fail();
+      if (req.staffId !== null)
+        await this.config(ctx, checks, "outlet", {}, ctx.outletId);
+      actions.push(
+        ...(await ResponsibleStaff.checks(ctx, responsibleActor!, req.staffId)),
+      );
+      const names = await ResponsibleStaff.read(
+        ctx,
+        [session.data.responsibleStaffId, req.staffId].filter(
+          (id): id is string => !!id,
+        ),
+      );
+      result = contracts.GuestSessionSchema.parse({
+        ...session.data,
+        responsibleStaffId: req.staffId ?? undefined,
+        version: session.data.version + 1,
+      });
+      put("SESSION", { PK: session.PK, SK: session.SK }, result, session);
+      activity = audit(result, session.data.status, undefined, {
+        tableId: session.data.tableId,
+        before: session.data.responsibleStaffId ?? null,
+        after: req.staffId,
+        beforeDisplayName:
+          names.get(session.data.responsibleStaffId ?? "")?.displayName ?? null,
+        afterDisplayName: names.get(req.staffId ?? "")?.displayName ?? null,
+      });
     } else if (command === "CLOSE_SESSION") {
       const req = contracts.CloseGuestSessionRequestSchema.parse(request),
         session = await this.session(ctx, owner);

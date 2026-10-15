@@ -1,3 +1,4 @@
+import { ResponsibleStaff } from "./responsible-staff";
 import * as contracts from "@liass-ohada/shared/restaurants";
 import { AppError } from "@/lambda/shared/app-error";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
@@ -43,6 +44,14 @@ export class RestaurantServiceFloor {
       "SESSION",
     );
     const sessionById = new Map(ids.map((id, i) => [id, sessions[i]]));
+    const people = await ResponsibleStaff.read(
+      scope,
+      sessions.flatMap((row) => {
+        if (!row) return [];
+        const session = contracts.GuestSessionSchema.parse(row.data);
+        return session.responsibleStaffId ? [session.responsibleStaffId] : [];
+      }),
+    );
     const areas = await Config.floorAreas(
       scope.orgId,
       scope.outletId,
@@ -75,6 +84,9 @@ export class RestaurantServiceFloor {
         guestSessionId: session.guestSessionId,
         openedAt: session.openedAt,
         openedBy: session.openedBy,
+        ...(session.responsibleStaffId
+          ? { responsibleStaff: people.get(session.responsibleStaffId) }
+          : {}),
         currentAmountMinor: session.dueMinor,
         orderCount: session.orderCount,
         currency: session.currency,

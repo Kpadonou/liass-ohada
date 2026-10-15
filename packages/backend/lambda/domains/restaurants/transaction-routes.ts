@@ -62,6 +62,13 @@ export const RESTAURANT_TRANSACTION_ROUTES = [
     query: "TABLE_SESSION_HISTORY",
   },
   {
+    name: "replace-responsible-staff",
+    method: "PATCH",
+    path: `${base}/sessions/{sessionId}/responsible-staff`,
+    permission: "RESTAURANTS_SESSION_RESPONSIBILITY_MANAGE",
+    command: "REPLACE_RESPONSIBLE_STAFF",
+  },
+  {
     name: "close-session",
     method: "POST",
     path: `${base}/sessions/{sessionId}/close`,

@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { GetItemCommand, TransactWriteItem } from "@aws-sdk/client-dynamodb";
+import {
+  BatchGetItemCommand,
+  GetItemCommand,
+  TransactWriteItem,
+} from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   ProductRolesSchema,
@@ -8,7 +12,10 @@ import {
 import { AppError } from "../app-error";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory as K } from "../key-builder";
-import { UserProfileRepository } from "../repositories/user-profile-repository";
+import {
+  UserProfileRecord,
+  UserProfileRepository,
+} from "../repositories/user-profile-repository";
 
 export interface RestaurantStaffIdentity {
   userId: string;
@@ -31,15 +38,24 @@ export class RestaurantStaffIdentityService {
       }),
     );
     if (!result.Item) return null;
-    const row = unmarshall(result.Item);
+    const profile = await UserProfileRepository.get(userId);
+    return this.project(orgId, userId, unmarshall(result.Item), profile);
+  }
+  private static project(
+    orgId: string,
+    userId: string,
+    row: Record<string, unknown>,
+    profile?: UserProfileRecord,
+  ): RestaurantStaffIdentity | null {
     if (
       row.entityType !== "USER_ORG_ACCESS" ||
       row.orgId !== orgId ||
-      row.userId !== userId
+      row.userId !== userId ||
+      row.PK !== K.orgKey(orgId) ||
+      row.SK !== K.orgUserAccessSK(userId)
     )
       return null;
     const roles = ProductRolesSchema.safeParse(row.productRoles);
-    const profile = await UserProfileRepository.get(userId);
     const name =
       profile?.userId === userId ? profile.displayName.trim() : undefined;
     // Canonical profiles can fall back to email. Never propagate that fallback to operations.
@@ -59,10 +75,61 @@ export class RestaurantStaffIdentityService {
         (row.accessSource === undefined ||
           typeof row.accessSource === "string") &&
         row.accessSource !== "CABINET",
-      membershipSource: row.accessSource,
+      membershipSource:
+        typeof row.accessSource === "string" ? row.accessSource : undefined,
       restaurantRole: roles.success ? (roles.data.RESTAURANTS ?? null) : null,
       displayName: safe ? name : null,
     };
+  }
+
+  /** Bounded Platform-owned membership/profile join for operational read models. */
+  static async batch(
+    orgId: string,
+    userIds: string[],
+  ): Promise<Map<string, RestaurantStaffIdentity>> {
+    const ids = [...new Set(userIds)];
+    if (ids.length > 100)
+      throw new AppError(400, "RESTAURANTS_TRANSACTION_LIMIT");
+    if (!ids.length) return new Map();
+    const table = config.PLATFORM_TABLE_NAME;
+    const keyId = (key: Record<string, unknown>) =>
+      JSON.stringify([key.PK, key.SK]);
+    let pending = ids.map((userId) =>
+      marshall({ PK: K.orgKey(orgId), SK: K.orgUserAccessSK(userId) }),
+    );
+    const rows = new Map<string, Record<string, unknown>>();
+    for (let attempt = 0; pending.length && attempt < 3; attempt++) {
+      const requested = new Set(pending.map((key) => keyId(unmarshall(key))));
+      const response = await dynamoClient.send(
+        new BatchGetItemCommand({
+          RequestItems: { [table]: { Keys: pending, ConsistentRead: true } },
+        }),
+      );
+      for (const raw of response.Responses?.[table] ?? []) {
+        const row = unmarshall(raw);
+        if (
+          !requested.has(keyId(row)) ||
+          typeof row.userId !== "string" ||
+          rows.has(row.userId)
+        )
+          throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+        rows.set(row.userId, row);
+      }
+      pending = response.UnprocessedKeys?.[table]?.Keys ?? [];
+      if (pending.some((key) => !requested.has(keyId(unmarshall(key)))))
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    }
+    if (pending.length) throw new AppError(503, "ERROR_INTERNAL_SERVER");
+    const profiles = await UserProfileRepository.batchGet(ids, true);
+    const result = new Map<string, RestaurantStaffIdentity>();
+    for (const userId of ids) {
+      const row = rows.get(userId);
+      const value = row
+        ? this.project(orgId, userId, row, profiles.get(userId))
+        : null;
+      if (value) result.set(userId, value);
+    }
+    return result;
   }
 
   /** Read-only Platform condition checks can participate in the caller's atomic business write. */

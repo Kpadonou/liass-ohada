@@ -395,5 +395,6 @@
   "RESTAURANTS_STAFF_LABEL_REQUIRED": "Un nom d’usage est requis pour ce membre.",
   "RESTAURANTS_STAFF_INACTIVE": "Ce membre de l’équipe est inactif.",
   "RESTAURANTS_STAFF_ASSIGNMENT_EXISTS": "Cette affectation est déjà active.",
-  "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Affectation active introuvable."
+  "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Affectation active introuvable.",
+  "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE": "Cette personne ne peut pas être désignée responsable du service dans cet établissement."
 }

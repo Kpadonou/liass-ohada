@@ -6,6 +6,7 @@ import {
   UpdateItemCommand,
 } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { AppError } from "../app-error";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory } from "../key-builder";
 
@@ -53,10 +54,13 @@ function profileFromItem(
     email: value.email,
     normalizedEmail: value.normalizedEmail,
     emailVerified: true,
-    givenName: typeof value.givenName === "string" ? value.givenName : undefined,
-    familyName: typeof value.familyName === "string" ? value.familyName : undefined,
+    givenName:
+      typeof value.givenName === "string" ? value.givenName : undefined,
+    familyName:
+      typeof value.familyName === "string" ? value.familyName : undefined,
     displayName: value.displayName,
-    avatarUrl: typeof value.avatarUrl === "string" ? value.avatarUrl : undefined,
+    avatarUrl:
+      typeof value.avatarUrl === "string" ? value.avatarUrl : undefined,
     createdAt: value.createdAt,
     updatedAt: value.updatedAt,
     lastSyncedFromIdentityAt: value.lastSyncedFromIdentityAt,
@@ -132,7 +136,10 @@ export class UserProfileRepository {
     return lookupFromItem(result.Item);
   }
 
-  static async batchGet(userIds: string[]): Promise<Map<string, UserProfileRecord>> {
+  static async batchGet(
+    userIds: string[],
+    requireComplete = false,
+  ): Promise<Map<string, UserProfileRecord>> {
     const profiles = new Map<string, UserProfileRecord>();
     const uniqueIds = [...new Set(userIds)];
     for (let offset = 0; offset < uniqueIds.length; offset += 100) {
@@ -156,6 +163,8 @@ export class UserProfileRepository {
         }
         keys = result.UnprocessedKeys?.[config.TABLE_NAME]?.Keys ?? [];
       }
+      if (requireComplete && keys.length)
+        throw new AppError(503, "ERROR_INTERNAL_SERVER");
     }
     return profiles;
   }
@@ -163,13 +172,16 @@ export class UserProfileRepository {
   static async create(profile: UserProfileRecord): Promise<void> {
     await dynamoClient.send(
       new TransactWriteItemsCommand({
-        TransactItems: [profileItem(profile), lookupItem(profile)].map((item) => ({
-          Put: {
-            TableName: config.TABLE_NAME,
-            Item: marshall(item, { removeUndefinedValues: true }),
-            ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-          },
-        })),
+        TransactItems: [profileItem(profile), lookupItem(profile)].map(
+          (item) => ({
+            Put: {
+              TableName: config.TABLE_NAME,
+              Item: marshall(item, { removeUndefinedValues: true }),
+              ConditionExpression:
+                "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+            },
+          }),
+        ),
       }),
     );
   }
@@ -182,7 +194,8 @@ export class UserProfileRepository {
           PK: KeyFactory.userProfilePK(profile.userId),
           SK: KeyFactory.userProfileSK(),
         }),
-        ConditionExpression: "entityType = :entityType AND normalizedEmail = :email",
+        ConditionExpression:
+          "entityType = :entityType AND normalizedEmail = :email",
         UpdateExpression:
           "SET email = :displayEmail, emailVerified = :verified, givenName = :givenName, familyName = :familyName, displayName = :displayName, avatarUrl = :avatarUrl, updatedAt = :now, lastSyncedFromIdentityAt = :now",
         ExpressionAttributeValues: marshall(
@@ -214,13 +227,16 @@ export class UserProfileRepository {
             Put: {
               TableName: config.TABLE_NAME,
               Item: marshall(lookupItem(profile)),
-              ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+              ConditionExpression:
+                "attribute_not_exists(PK) AND attribute_not_exists(SK)",
             },
           },
           {
             Put: {
               TableName: config.TABLE_NAME,
-              Item: marshall(profileItem(profile), { removeUndefinedValues: true }),
+              Item: marshall(profileItem(profile), {
+                removeUndefinedValues: true,
+              }),
               ConditionExpression: "normalizedEmail = :previousEmail",
               ExpressionAttributeValues: marshall({
                 ":previousEmail": previous.normalizedEmail,
@@ -235,7 +251,9 @@ export class UserProfileRepository {
                 SK: KeyFactory.userEmailLookupSK(),
               }),
               ConditionExpression: "userId = :userId",
-              ExpressionAttributeValues: marshall({ ":userId": profile.userId }),
+              ExpressionAttributeValues: marshall({
+                ":userId": profile.userId,
+              }),
             },
           },
         ],

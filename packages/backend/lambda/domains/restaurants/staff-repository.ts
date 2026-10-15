@@ -1,3 +1,4 @@
+import { restaurantBatchRead } from "./restaurant-batch-read";
 import { createHash } from "crypto";
 import {
   AttributeValue,
@@ -91,6 +92,16 @@ export class RestaurantStaffRepository {
     return response.Item
       ? this.decode(orgId, key, kind, response.Item)
       : undefined;
+  }
+  static async batch<T extends "STAFF" | "ASSIGNMENT">(
+    orgId: string,
+    keys: StaffKey[],
+    kind: T,
+  ): Promise<(Data<T> | undefined)[]> {
+    const raw = await restaurantBatchRead(keys);
+    return raw.map((item, index) =>
+      item ? this.decode(orgId, keys[index], kind, item) : undefined,
+    );
   }
   static put<T extends StaffKind>(
     orgId: string,
