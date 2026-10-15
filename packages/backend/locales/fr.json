@@ -388,5 +388,12 @@
   "RESTAURANTS_UNPAID_CLOSE": "La clôture exige un solde réglé et aucune opération en attente.",
   "RESTAURANTS_CONFIGURATION_CHANGED": "La carte a changé. Actualisez et vérifiez avant de soumettre.",
   "RESTAURANTS_PREPARATION_DEFERRED": "La validation de la préparation n’est pas encore disponible.",
-  "RESTAURANTS_HISTORY_WINDOW": "Choisissez une période plus courte."
+  "RESTAURANTS_HISTORY_WINDOW": "Choisissez une période plus courte.",
+  "RESTAURANTS_STAFF_MEMBER_REQUIRED": "Un membre actif avec un rôle Liass-Resto est requis.",
+  "RESTAURANTS_STAFF_NOT_FOUND": "Membre de l’équipe introuvable.",
+  "RESTAURANTS_STAFF_EXISTS": "Ce membre appartient déjà à l’équipe.",
+  "RESTAURANTS_STAFF_LABEL_REQUIRED": "Un nom d’usage est requis pour ce membre.",
+  "RESTAURANTS_STAFF_INACTIVE": "Ce membre de l’équipe est inactif.",
+  "RESTAURANTS_STAFF_ASSIGNMENT_EXISTS": "Cette affectation est déjà active.",
+  "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Affectation active introuvable."
 }

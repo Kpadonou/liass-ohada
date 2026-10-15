@@ -117,12 +117,12 @@ it('renders real summaries, free/occupied cards, optional capacity and no future
     expect(text).not.toContain(forbidden);
   expect(fixture.nativeElement.querySelector('[data-state="OCCUPIED"] a')).toBeNull();
 });
-it('keeps URL outlet/area context and filters summary scope', async () => {
+it('keeps URL outlet/area context and filters the visible table scope', async () => {
   const page = await ready();
   page.selectArea(rid(7));
   fixture.detectChanges();
   expect(page.visibleTables()).toHaveLength(1);
-  expect(page.summary().map((s) => s.count)).toEqual([1, 0, 1]);
+  expect(page.visibleTables()[0].state).toBe('FREE');
   expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(
     [],
     expect.objectContaining({ queryParams: { outlet: rid(2), area: rid(7) } }),
@@ -194,7 +194,7 @@ it('does not show a definitive empty floor for an incomplete page', async () => 
   const page = await ready();
   expect(api.serviceFloor).toHaveBeenNthCalledWith(2, 'org', rid(2), 'next');
   expect(page.floor.hasNextPage()).toBe(true);
-  expect(fixture.nativeElement.textContent).toContain('3+');
+  expect(fixture.nativeElement.querySelector('[data-testid="floor-summary"]')).toBeNull();
   expect(fixture.nativeElement.textContent).toContain('Charger plus de tables');
 });
 it('distinguishes completed empty floor and empty selected area', async () => {
@@ -349,3 +349,40 @@ it('restores direct URL and history context in the area select independently of 
     expect(select.value).toBe('ALL');
   });
 });
+
+it('places Material context controls after the canonical header with no KPI row', async () => {
+  await ready();
+  const header = fixture.nativeElement.querySelector('[data-testid="service-page-header"]');
+  const context = fixture.nativeElement.querySelector('[data-testid="floor-context"]');
+  expect(header.querySelector('header').classList.contains('border-b')).toBe(true);
+  expect(header.querySelector('mat-select')).toBeNull();
+  expect(context.querySelectorAll('mat-select')).toHaveLength(2);
+  expect(header.compareDocumentPosition(context) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(fixture.nativeElement.querySelector('[data-testid="floor-summary"]')).toBeNull();
+  expect(fixture.nativeElement.textContent).toContain('Tables en service');
+  expect(fixture.nativeElement.textContent).not.toContain('tables au total');
+});
+
+it.each([
+  [0, 0, true],
+  [1, 0, false],
+  [undefined, 0, false],
+  [1, 12500, false],
+  [0, 12500, false],
+])(
+  'uses canonical order count %s with amount %s for no-order presentation',
+  async (orderCount, amount, noOrder) => {
+    const data = floorFixture();
+    const occupied = data.items[1];
+    if (occupied.state !== 'OCCUPIED') throw new Error('Fixture must be occupied');
+    occupied.currentAmountMinor = amount as number;
+    if (orderCount !== undefined) occupied.orderCount = orderCount as number;
+    api.serviceFloor.mockResolvedValue(data);
+    await ready();
+    const card = fixture.nativeElement.querySelector('[data-state="OCCUPIED"]');
+    expect(!!card.querySelector('[data-testid="table-no-order"]')).toBe(noOrder);
+    expect(!!card.querySelector('[data-testid="table-amount"]')).toBe(!noOrder);
+    if (noOrder) expect(card.textContent).toContain('Aucune commande');
+    else expect(card.textContent).toContain('XOF');
+  },
+);

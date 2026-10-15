@@ -127,6 +127,7 @@ test("mixed floor exposes real session, actor, currency and canonical commercial
     openedAt: session.openedAt,
     openedBy: "owner",
     currentAmountMinor: 0,
+    orderCount: 0,
     currency: "XOF",
   });
   const order = c.RestaurantOrderSchema.parse(
@@ -157,7 +158,7 @@ test("mixed floor exposes real session, actor, currency and canonical commercial
   );
   expect(
     (await floor()).items.find((t) => t.tableId === session.tableId),
-  ).toMatchObject({ currentAmountMinor: 0 });
+  ).toMatchObject({ currentAmountMinor: 0, orderCount: 1 });
   await S.mutate(
     scope,
     "SUBMIT_ORDER",
@@ -171,8 +172,32 @@ test("mixed floor exposes real session, actor, currency and canonical commercial
   occupied = (await floor()).items.find((t) => t.tableId === session.tableId);
   expect(occupied).toMatchObject({
     currentAmountMinor: 10000,
+    orderCount: 1,
     currency: "XOF",
   });
+  await S.mutate(
+    scope,
+    "CANCEL_ITEM",
+    {
+      clientRequestId: req(),
+      expectedVersion: 3,
+      expectedItemVersion: 2,
+      reason: "Correction",
+    },
+    { orderId: order.orderId, itemId: item.itemId },
+  );
+  expect(
+    (await floor()).items.find((t) => t.tableId === session.tableId),
+  ).toMatchObject({ currentAmountMinor: 0, orderCount: 1 });
+  await S.mutate(
+    scope,
+    "CANCEL_ORDER",
+    { clientRequestId: req(), expectedVersion: 4, reason: "Correction" },
+    { orderId: order.orderId },
+  );
+  expect(
+    (await floor()).items.find((t) => t.tableId === session.tableId),
+  ).toMatchObject({ currentAmountMinor: 0, orderCount: 1 });
   expect((await floor()).items.filter((t) => t.state === "FREE")).toHaveLength(
     3,
   );
@@ -398,4 +423,86 @@ test("public contracts reject fake states, leaked keys and fractional money", ()
   expect(c.RestaurantServiceFloorTableSchema.safeParse(occupied).success).toBe(
     false,
   );
+});
+
+test("zero-priced accepted sale retains order activity with bounded floor hydration", async () => {
+  const source = f.items[0];
+  await Config.update(
+    scope.orgId,
+    "owner",
+    "item",
+    { outletId: scope.outletId, categoryId: source.categoryId },
+    source.id,
+    { expectedVersion: 1, price: { amountMinor: 0, currency: "XOF" } },
+  );
+  const session = c.GuestSessionSchema.parse((await open()).data);
+  const order = c.RestaurantOrderSchema.parse(
+    (
+      await S.mutate(scope, "CREATE_ORDER", {
+        clientRequestId: req(),
+        orderType: "DINE_IN",
+        guestSessionId: session.guestSessionId,
+      })
+    ).data,
+  );
+  const item = c.RestaurantOrderItemSchema.parse(
+    (
+      await S.mutate(
+        scope,
+        "ADD_ITEM",
+        {
+          clientRequestId: req(),
+          expectedVersion: 1,
+          menuItemId: source.id,
+          categoryId: source.categoryId,
+          expectedMenuItemVersion: 2,
+          quantity: 1,
+        },
+        { orderId: order.orderId },
+      )
+    ).data,
+  );
+  await S.mutate(
+    scope,
+    "SUBMIT_ORDER",
+    {
+      clientRequestId: req(),
+      expectedVersion: 2,
+      items: [{ itemId: item.itemId, expectedVersion: 1 }],
+    },
+    { orderId: order.orderId },
+  );
+  m.db.resetHistory();
+  const result = await floor();
+  const occupied = result.items.find((t) => t.tableId === session.tableId)!;
+  expect(occupied).toMatchObject({
+    state: "OCCUPIED",
+    currentAmountMinor: 0,
+    orderCount: 1,
+  });
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+  expect(m.db.commandCalls(BatchGetItemCommand)).toHaveLength(3);
+  expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
+  expect(
+    c.RestaurantServiceFloorResponseSchema.safeParse({
+      ...result,
+      items: [{ ...occupied, orderCount: -1 }],
+    }).success,
+  ).toBe(false);
+  expect(
+    c.RestaurantServiceFloorResponseSchema.safeParse({
+      ...result,
+      items: [{ ...occupied, madeUp: true }],
+    }).success,
+  ).toBe(false);
+  const { orderCount, ...legacy } = occupied as Extract<
+    c.RestaurantServiceFloorResponse["items"][number],
+    { state: "OCCUPIED" }
+  >;
+  expect(
+    c.RestaurantServiceFloorResponseSchema.safeParse({
+      ...result,
+      items: [legacy],
+    }).success,
+  ).toBe(true);
 });

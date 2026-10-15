@@ -50,7 +50,7 @@ export class DomainAuthorizationService {
     role: unknown,
   ): readonly DomainPermission[] {
     const config = restaurantsPermissionsForRole(role);
-    // No outlet assignment exists yet: WAITER/CASHIER/KITCHEN stay mutation-disabled.
+    // STAFF-1A assignments are prerequisites only; operational grants remain deferred.
     return role === "OWNER" || role === "MANAGER"
       ? [...config, ...RESTAURANTS_TRANSACTION_PERMISSIONS]
       : config;

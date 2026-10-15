@@ -9,6 +9,8 @@ import {
 import { RESTAURANTS_ROUTES } from "../../../lambda/domains/restaurants/restaurant-routes";
 import { RESTAURANT_TRANSACTION_ROUTES } from "../../../lambda/domains/restaurants/transaction-routes";
 
+import { RESTAURANT_STAFF_ROUTES } from "../../../lambda/domains/restaurants/staff-routes";
+
 import * as iam from "aws-cdk-lib/aws-iam";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 
@@ -27,10 +29,14 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
         ),
       ],
     });
-    // Direct membership/product reads and reachable cabinet snapshot BatchGet. No Query/Scan needed for Platform.
+    // Platform identity/product reads and read-only guards for atomic staff writes. No Platform mutations or Scan.
     role.addToPolicy(
       new iam.PolicyStatement({
-        actions: ["dynamodb:GetItem", "dynamodb:BatchGetItem"],
+        actions: [
+          "dynamodb:GetItem",
+          "dynamodb:BatchGetItem",
+          "dynamodb:ConditionCheckItem",
+        ],
         resources: [props.table.tableArn],
       }),
     );
@@ -52,6 +58,7 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
     for (const route of [
       ...RESTAURANTS_ROUTES,
       ...RESTAURANT_TRANSACTION_ROUTES,
+      ...RESTAURANT_STAFF_ROUTES,
     ]) {
       this.addRoute({
         ...("command" in route || "query" in route

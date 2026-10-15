@@ -25,6 +25,8 @@ export const RESTAURANTS_PERMISSIONS = [
   "RESTAURANTS_SETUP_MANAGE",
   "RESTAURANTS_MENU_READ",
   "RESTAURANTS_MENU_MANAGE",
+  "RESTAURANTS_STAFF_READ",
+  "RESTAURANTS_STAFF_MANAGE",
 ] as const;
 /** LR-TX-1 command vocabulary. Unscoped staff roles receive no mutation grants. */
 export const RESTAURANTS_TRANSACTION_PERMISSIONS = [

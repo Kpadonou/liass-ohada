@@ -201,7 +201,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(0);
   });
 
-  test("owns all 60 configuration and transactional restaurant routes in one domain stack", () => {
+  test("owns all 68 configuration, transactional and staff restaurant routes in one domain stack", () => {
     const restaurants = constructs.find(
       (item) => item instanceof RestaurantsApiStack,
     )!;
@@ -212,14 +212,14 @@ describe("API stack decomposition", () => {
     const routes = owned.filter(
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
-    expect(functions).toHaveLength(60);
-    expect(routes).toHaveLength(60);
+    expect(functions).toHaveLength(68);
+    expect(routes).toHaveLength(68);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
-    ).toHaveLength(60);
+    ).toHaveLength(68);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(60);
+    ).toHaveLength(68);
     expect(routes.every((route) => route.authorizationType === "JWT")).toBe(
       true,
     );
@@ -277,6 +277,7 @@ describe("API stack decomposition", () => {
     expect(statements[0].Action).toEqual([
       "dynamodb:GetItem",
       "dynamodb:BatchGetItem",
+      "dynamodb:ConditionCheckItem",
     ]);
     expect(statements[1].Action).toEqual([
       "dynamodb:GetItem",

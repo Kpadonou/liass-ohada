@@ -13,6 +13,22 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  // Restaurants staff directory and bidirectional outlet adjacency (no GSI).
+  restaurantStaffPrefix: () => "RSTAFF#",
+  restaurantStaffSK: (userId: string) =>
+    `RSTAFF#${restaurantTransactionSegment(userId)}`,
+  restaurantStaffOutletPrefix: (userId: string) =>
+    `RSOUT#${restaurantTransactionSegment(userId)}#`,
+  restaurantStaffOutletSK: (userId: string, outletId: string) =>
+    `${KeyFactory.restaurantStaffOutletPrefix(userId)}${restaurantTransactionSegment(outletId)}`,
+  restaurantOutletStaffPrefix: (outletId: string) =>
+    `ROSTAFF#${restaurantTransactionSegment(outletId)}#`,
+  restaurantOutletStaffSK: (outletId: string, userId: string) =>
+    `${KeyFactory.restaurantOutletStaffPrefix(outletId)}${restaurantTransactionSegment(userId)}`,
+  restaurantStaffHistoryPK: (orgId: string, userId: string) =>
+    `${KeyFactory.orgKey(orgId)}#RSTAFF#${restaurantTransactionSegment(userId)}`,
+  restaurantStaffCommandSK: (clientRequestId: string) =>
+    `CMD#${restaurantTransactionSegment(clientRequestId)}`,
   restaurantTransactionScope: (orgId: string, outletId: string) =>
     `ORG#${restaurantTransactionSegment(orgId)}#OUT#${restaurantTransactionSegment(outletId)}`,
   restaurantSessionPK: (orgId: string, outletId: string, id: string) =>

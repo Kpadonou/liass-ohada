@@ -1,21 +1,18 @@
 <div class="space-y-6">
-  <div
-    class="flex flex-col gap-4 border-b border-app-border/75 pb-3 xl:flex-row xl:items-start xl:justify-between"
-  >
-    <header class="min-w-0 flex-1">
-      <h1 class="text-lg font-semibold leading-tight text-app-text md:text-app-page-title">
-        {{ 'RESTAURANTS.UX.PAGES.service.TITLE' | transloco }}
-      </h1>
-      <p class="mt-1 max-w-3xl text-app-body text-app-text-secondary">
-        {{ 'RESTAURANTS.UX.PAGES.service.DESCRIPTION' | transloco }}
-      </p>
-    </header>
-    @if (allowed() && outlets().length) {
-      <div
-        class="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start xl:shrink-0"
-        role="region"
-        [attr.aria-label]="'RESTAURANTS.SERVICE.CONTEXT' | transloco"
-      >
+  <liass-page-header
+    eyebrow=""
+    [title]="'RESTAURANTS.UX.PAGES.service.TITLE' | transloco"
+    [subtitle]="'RESTAURANTS.UX.PAGES.service.DESCRIPTION' | transloco"
+    data-testid="service-page-header"
+  />
+  @if (allowed() && outlets().length) {
+    <div
+      class="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+      data-testid="floor-context"
+      role="region"
+      [attr.aria-label]="'RESTAURANTS.SERVICE.CONTEXT' | transloco"
+    >
+      <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap">
         <liass-searchable-select
           class="block w-full min-w-0 sm:w-56"
           controlType="select"
@@ -35,8 +32,18 @@
           />
         }
       </div>
-    }
-  </div>
+      @if (outlet()) {
+        <button
+          mat-button
+          class="min-h-11 self-start sm:mt-1"
+          [disabled]="floor.isFetching() || floor.isPending()"
+          (click)="refresh()"
+        >
+          <mat-icon aria-hidden="true">refresh</mat-icon>{{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+        </button>
+      }
+    </div>
+  }
   @if (availability() === 'UNKNOWN') {
     <p role="status">{{ 'RESTAURANTS.ACCESS.CHECKING' | transloco }}</p>
     <liass-skeleton variant="block" />
@@ -142,42 +149,10 @@
           />
         </div>
       } @else {
-        <div class="grid grid-cols-3 gap-3 sm:gap-4" data-testid="floor-summary">
-          @for (metric of summary(); track metric.key) {
-            <liass-card>
-              <div class="flex items-center gap-3">
-                <div
-                  class="hidden size-11 shrink-0 items-center justify-center rounded-app-control sm:flex"
-                  [class]="
-                    metric.key === 'FREE'
-                      ? 'bg-success-50 text-success-600 dark:bg-emerald-950/35 dark:text-emerald-300'
-                      : 'bg-brand-50 text-brand-700 dark:bg-brand-900/20 dark:text-brand-300'
-                  "
-                >
-                  <mat-icon aria-hidden="true">{{ metric.icon }}</mat-icon>
-                </div>
-                <div class="min-w-0">
-                  <p class="text-app-kpi font-semibold leading-tight tabular-nums">
-                    {{ metric.count }}{{ floor.hasNextPage() ? '+' : '' }}
-                  </p>
-                  <p class="mt-1 text-xs text-app-text-secondary sm:text-sm">
-                    {{ 'RESTAURANTS.SERVICE.' + metric.key | transloco }}
-                  </p>
-                </div>
-              </div>
-            </liass-card>
-          }
-        </div>
         <section class="space-y-3" aria-labelledby="service-floor-heading">
-          <div class="flex min-h-11 flex-wrap items-center justify-between gap-3">
-            <h2 id="service-floor-heading" class="text-xl font-semibold">
-              {{ 'RESTAURANTS.SERVICE.FLOOR' | transloco }}
-            </h2>
-            <button mat-button class="min-h-11" [disabled]="floor.isFetching()" (click)="refresh()">
-              <mat-icon aria-hidden="true">refresh</mat-icon
-              >{{ 'RESTAURANTS.UI.REFRESH' | transloco }}
-            </button>
-          </div>
+          <h2 id="service-floor-heading" class="text-xl font-semibold">
+            {{ 'RESTAURANTS.SERVICE.FLOOR' | transloco }}
+          </h2>
           @if (floor.isFetching()) {
             <p role="status">{{ 'RESTAURANTS.SERVICE.REFRESHING' | transloco }}</p>
           }
@@ -248,12 +223,18 @@
                       }
                     </div>
                     @if (table.state === 'OCCUPIED') {
-                      <p
-                        class="text-2xl font-semibold leading-tight tabular-nums"
-                        data-testid="table-amount"
-                      >
-                        {{ amount(table.currentAmountMinor, table.currency) }}
-                      </p>
+                      @if (table.orderCount === 0 && table.currentAmountMinor === 0) {
+                        <p class="text-sm text-app-text-secondary" data-testid="table-no-order">
+                          {{ 'RESTAURANTS.SERVICE.NO_ORDER' | transloco }}
+                        </p>
+                      } @else {
+                        <p
+                          class="text-2xl font-semibold leading-tight tabular-nums"
+                          data-testid="table-amount"
+                        >
+                          {{ amount(table.currentAmountMinor, table.currency) }}
+                        </p>
+                      }
                     }
                     <div class="space-y-1 text-sm text-app-text-secondary">
                       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">

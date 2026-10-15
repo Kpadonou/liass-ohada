@@ -76,6 +76,7 @@ export class RestaurantServiceFloor {
         openedAt: session.openedAt,
         openedBy: session.openedBy,
         currentAmountMinor: session.dueMinor,
+        orderCount: session.orderCount,
         currency: session.currency,
       };
     });

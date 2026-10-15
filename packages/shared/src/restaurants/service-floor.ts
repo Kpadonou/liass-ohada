@@ -29,6 +29,14 @@ export const RestaurantServiceFloorTableSchema = z.discriminatedUnion("state", [
         .int()
         .nonnegative()
         .max(Number.MAX_SAFE_INTEGER),
+      // Total orders ever created in this session, including drafts/terminal orders.
+      // Optional for compatibility with older Service Floor responses.
+      orderCount: z
+        .number()
+        .int()
+        .nonnegative()
+        .max(Number.MAX_SAFE_INTEGER)
+        .optional(),
       currency: z.string().regex(/^[A-Z]{3}$/),
     })
     .strict(),

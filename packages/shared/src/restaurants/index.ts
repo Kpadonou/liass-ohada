@@ -1,6 +1,7 @@
 import { z } from "zod";
 export * from "./transactions";
 export * from "./service-floor";
+export * from "./staff";
 
 export const RestaurantIdSchema = z.string().uuid();
 export const RestaurantNameSchema = z.string().trim().min(1).max(160);

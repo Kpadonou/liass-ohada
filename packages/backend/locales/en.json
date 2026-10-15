@@ -387,5 +387,12 @@
   "RESTAURANTS_UNPAID_CLOSE": "Close requires settled totals and no pending work.",
   "RESTAURANTS_CONFIGURATION_CHANGED": "The menu changed. Refresh and review before submitting.",
   "RESTAURANTS_PREPARATION_DEFERRED": "Preparation completion is not available yet.",
-  "RESTAURANTS_HISTORY_WINDOW": "Choose a shorter time interval."
+  "RESTAURANTS_HISTORY_WINDOW": "Choose a shorter time interval.",
+  "RESTAURANTS_STAFF_MEMBER_REQUIRED": "An active organization member with a Liass-Resto role is required.",
+  "RESTAURANTS_STAFF_NOT_FOUND": "Staff member not found.",
+  "RESTAURANTS_STAFF_EXISTS": "This member already belongs to the team.",
+  "RESTAURANTS_STAFF_LABEL_REQUIRED": "An operational display name is required for this member.",
+  "RESTAURANTS_STAFF_INACTIVE": "This staff member is inactive.",
+  "RESTAURANTS_STAFF_ASSIGNMENT_EXISTS": "This outlet assignment is already active.",
+  "RESTAURANTS_STAFF_ASSIGNMENT_NOT_FOUND": "Active outlet assignment not found."
 }

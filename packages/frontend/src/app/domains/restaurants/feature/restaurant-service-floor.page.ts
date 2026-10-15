@@ -14,6 +14,7 @@ import { RestaurantsQueries } from '../data-access/restaurants.queries';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { NotificationService } from '../../../core/notifications/notification.service';
+import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
@@ -34,6 +35,7 @@ type FloorTable = RestaurantServiceFloorResponse['items'][number];
     MatProgressSpinnerModule,
     TranslocoModule,
     LiassCardComponent,
+    LiassPageHeaderComponent,
     LiassStatusChipComponent,
     LiassSkeletonComponent,
     LiassSearchableSelectComponent,
@@ -96,19 +98,6 @@ export class RestaurantServiceFloorPage {
   readonly visibleTables = computed(() =>
     this.tables().filter((table) => !this.areaId() || table.areaId === this.areaId()),
   );
-  readonly summary = computed(() => [
-    { key: 'TOTAL', icon: 'table_restaurant', count: this.visibleTables().length },
-    {
-      key: 'OCCUPIED',
-      icon: 'people',
-      count: this.visibleTables().filter((t) => t.state === 'OCCUPIED').length,
-    },
-    {
-      key: 'FREE',
-      icon: 'people_outline',
-      count: this.visibleTables().filter((t) => t.state === 'FREE').length,
-    },
-  ]);
   readonly now = signal(Date.now());
   readonly busy = signal<string | null>(null);
   readonly openingError = signal<string | null>(null);
