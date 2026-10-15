@@ -266,6 +266,17 @@ export class RestaurantsApi {
     if (data.userId !== userId) throw new Error('Mismatched staff context');
     return data;
   }
+  async bindStaff(scope: string, input: unknown) {
+    this.assertScope(scope);
+    const request = c.BindRestaurantStaffRequestSchema.parse(input);
+    const response = await firstValueFrom(
+      this.http.post<unknown>(this.base + '/restaurants/staff', request).pipe(timeout(35_000)),
+    );
+    this.assertScope(scope);
+    const data = c.RestaurantStaffResponseSchema.parse(response).data;
+    if (data.userId !== request.memberUserId) throw new Error('Mismatched staff context');
+    return { data, message: userMessageFromResponse(response) };
+  }
   async staffOutlets(scope: string, userId: string, cursor?: string) {
     this.assertScope(scope);
     const response = await firstValueFrom(

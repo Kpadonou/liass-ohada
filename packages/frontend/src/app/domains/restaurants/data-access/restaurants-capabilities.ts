@@ -5,6 +5,7 @@ import {
   RestaurantsRoleSchema,
 } from '@liass-ohada/shared/shared';
 import { AuthStore } from '../../identity/data-access/auth.store';
+import { canAdministerCompanyMembers } from '../../identity/data-access/organization-members.api';
 @Injectable({ providedIn: 'root' })
 export class RestaurantsCapabilities {
   private readonly auth = inject(AuthStore);
@@ -43,6 +44,16 @@ export class RestaurantsCapabilities {
   }
   canManageStaff() {
     return this.permissions().includes('RESTAURANTS_STAFF_MANAGE');
+  }
+  canProvisionStaff() {
+    return (
+      this.canManageStaff() &&
+      canAdministerCompanyMembers(
+        this.auth.activeWorkspace(),
+        this.auth.activeWorkspaceType(),
+        this.auth.effectiveOrgId(),
+      )
+    );
   }
   canRead() {
     return this.permissions().includes('RESTAURANTS_READ');

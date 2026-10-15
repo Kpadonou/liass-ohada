@@ -134,3 +134,24 @@ describe('Restaurants staff boundary', () => {
     await assertion;
   });
 });
+
+it('binds only member reference and request ID, validates the returned identity', async () => {
+  const org = signal('org');
+  TestBed.configureTestingModule({
+    providers: [
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      { provide: AuthStore, useValue: { effectiveOrgId: org } },
+    ],
+  });
+  const api = TestBed.inject(RestaurantsApi),
+    http = TestBed.inject(HttpTestingController);
+  const request = { memberUserId: 'private-user-a', clientRequestId: crypto.randomUUID() };
+  const promise = api.bindStaff('org', request);
+  const call = http.expectOne(base + '/restaurants/staff');
+  expect(call.request.body).toEqual(request);
+  call.flush({ data: staffFixture() });
+  expect((await promise).data.userId).toBe('private-user-a');
+  http.verify();
+  TestBed.resetTestingModule();
+});

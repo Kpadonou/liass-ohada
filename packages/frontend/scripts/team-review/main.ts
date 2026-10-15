@@ -51,6 +51,32 @@ const assignments = [
   assignmentFixture(rid(3), { userId: 'fixture-c' }),
   assignmentFixture(rid(4), { userId: 'fixture-d' }),
 ];
+const directoryMembers = [
+  {
+    userId: 'fixture-eligible',
+    displayName: 'Sènami A.',
+    email: 'senami@example.test',
+    status: 'ACTIVE',
+  },
+  {
+    userId: 'fixture-long-new',
+    displayName: 'Aïssatou Sènami Agossou — équipe du service du soir',
+    email: 'aissatou.senami.agossou@example.test',
+    status: 'ACTIVE',
+  },
+  ...members.map((member) => ({
+    userId: member.userId,
+    displayName: member.displayName!,
+    email: 'equipe@example.test',
+    status: 'ACTIVE',
+  })),
+];
+const productRoles = new Map(members.map((member) => [member.userId, member.restaurantRole!]));
+if (scenario === 'add-role-conflict') productRoles.set('fixture-eligible', 'CASHIER');
+if (scenario === 'add-empty-team') {
+  members.splice(0);
+  assignments.splice(0);
+}
 const waiterReview = scenario?.startsWith('service-waiter') ?? false;
 const serviceReview = scenario?.startsWith('service') ?? false;
 const serviceTables = floorFixture().items;
@@ -121,15 +147,39 @@ if (serviceReview) {
 }
 let staleOnce = scenario === 'service-stale';
 const commands = new Map<string, { fingerprint: string; result: unknown }>();
-let partialOnce = scenario === 'partial';
+let partialOnce = scenario === 'partial' || scenario === 'add-partial';
 const localOnly: HttpInterceptorFn = (request, next) => {
   if (request.url.startsWith('/assets/')) return next(request);
   const path = new URL(request.url, location.origin).pathname;
   let body: unknown;
   const userPath =
     /^\/restaurants\/staff\/([^/]+)(?:\/outlets(?:\/([^/]+)(\/deactivate)?)?)?$/.exec(path);
-  if (path === '/me/workspaces') body = { items: [] };
-  else if (path.endsWith('/product-access'))
+  if (path === '/me/workspaces') body = { workspaces: [] };
+  else if (path === '/me/organization/members') {
+    body =
+      scenario === 'add-directory-empty'
+        ? { items: [] }
+        : scenario === 'add-directory-pages' && !request.params.has('cursor')
+          ? { items: [], nextCursor: 'fixture-members-next' }
+          : { items: directoryMembers };
+  } else if (/^\/me\/organization\/members\/[^/]+\/product-roles\/RESTAURANTS$/.test(path)) {
+    const userId = path.split('/')[4];
+    const input = request.body as {
+      clientRequestId: string;
+      role: 'MANAGER' | 'WAITER' | 'CASHIER' | 'KITCHEN';
+    };
+    const current = productRoles.get(userId);
+    if (current && current !== input.role)
+      return throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { error: { code: 'PLATFORM_PRODUCT_ROLE_CONFLICT' } },
+          }),
+      );
+    productRoles.set(userId, input.role);
+    body = { userId, productCode: 'RESTAURANTS', role: input.role };
+  } else if (path.endsWith('/product-access'))
     body = {
       productAccess: [
         {
@@ -269,6 +319,25 @@ const localOnly: HttpInterceptorFn = (request, next) => {
         commands.set(input.clientRequestId, { fingerprint, result: structuredClone(body) });
       }
     }
+  } else if (path === '/restaurants/staff' && request.method === 'POST') {
+    const input = request.body as { memberUserId: string; clientRequestId: string };
+    if (members.some((member) => member.userId === input.memberUserId))
+      return throwError(
+        () =>
+          new HttpErrorResponse({
+            status: 409,
+            error: { error: { code: 'RESTAURANTS_STAFF_EXISTS' } },
+          }),
+      );
+    const person = directoryMembers.find((member) => member.userId === input.memberUserId);
+    const role = productRoles.get(input.memberUserId);
+    if (!person || !role) return throwError(() => new HttpErrorResponse({ status: 403 }));
+    const data = staffFixture(input.memberUserId, {
+      displayName: person.displayName,
+      restaurantRole: role,
+    });
+    members.push(data);
+    body = { data };
   } else if (path === '/restaurants/staff')
     body =
       scenario === 'paged'
@@ -292,6 +361,7 @@ const localOnly: HttpInterceptorFn = (request, next) => {
   else if (userPath) {
     const [, userId, outletId, deactivate] = userPath;
     const member = members.find((row) => row.userId === userId)!;
+    if (!member) return throwError(() => new HttpErrorResponse({ status: 404 }));
     if (request.method === 'GET')
       body = path.endsWith('/outlets')
         ? { items: assignments.filter((row) => row.userId === userId) }
@@ -383,10 +453,17 @@ bootstrapApplication(App, {
             orgId: 'fixture-org',
             displayName: 'Héritage Bistro',
             workspaceType: 'COMPANY',
+            status: 'ACTIVE',
             accessSource: 'DIRECT',
-            role: 'OWNER',
+            role: scenario === 'add-manager' ? 'MEMBER' : 'OWNER',
             productRoles: {
-              RESTAURANTS: waiterReview ? 'WAITER' : scenario === 'denied' ? 'CASHIER' : 'OWNER',
+              RESTAURANTS: waiterReview
+                ? 'WAITER'
+                : scenario === 'denied'
+                  ? 'CASHIER'
+                  : scenario === 'add-manager'
+                    ? 'MANAGER'
+                    : 'OWNER',
             },
           },
         ],

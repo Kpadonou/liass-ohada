@@ -16,7 +16,7 @@
         </p>
       }
       <section
-        class="grid items-start gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_192px] xl:grid-cols-[minmax(280px,1fr)_280px_192px]"
+        class="grid items-start gap-3 md:grid-cols-2 xl:grid-cols-[minmax(240px,1fr)_240px_160px_auto]"
         [attr.aria-label]="'RESTAURANTS.TEAM.FILTERS' | transloco"
       >
         <mat-form-field subscriptSizing="dynamic" class="w-full">
@@ -62,6 +62,16 @@
             }
           </mat-select>
         </mat-form-field>
+        @if (caps.canProvisionStaff()) {
+          <button
+            mat-flat-button
+            type="button"
+            class="min-h-14 w-full xl:w-auto"
+            (click)="addMember()"
+          >
+            <mat-icon>person_add</mat-icon>{{ 'RESTAURANTS.TEAM.ADD.TITLE' | transloco }}
+          </button>
+        }
         @if (locations.hasNextPage()) {
           <button
             mat-button
@@ -265,6 +275,17 @@
                     ) | transloco
                   }}
                 </p>
+                @if (
+                  caps.canProvisionStaff() &&
+                  !search() &&
+                  !outletId() &&
+                  status() === 'ALL' &&
+                  !source().hasNextPage()
+                ) {
+                  <button mat-flat-button type="button" class="mt-4" (click)="addMember()">
+                    <mat-icon>person_add</mat-icon>{{ 'RESTAURANTS.TEAM.ADD.TITLE' | transloco }}
+                  </button>
+                }
               </div>
             </liass-card>
           }

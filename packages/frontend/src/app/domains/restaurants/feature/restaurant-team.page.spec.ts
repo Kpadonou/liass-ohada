@@ -21,7 +21,8 @@ import { StaffAssignmentsDialogComponent } from './staff-assignments-dialog.comp
 import { StaffStatusDialogComponent } from './staff-status-dialog.component';
 const org = signal('org'),
   read = signal(true),
-  manage = signal(true);
+  manage = signal(true),
+  provision = signal(false);
 const api = {
   staff: vi.fn(),
   staffMember: vi.fn(),
@@ -42,6 +43,7 @@ beforeEach(() => {
   org.set('org');
   read.set(true);
   manage.set(true);
+  provision.set(false);
   ref.close.mockReset();
   for (const mock of Object.values(api)) mock.mockReset();
   for (const mock of Object.values(notifications)) mock.mockReset();
@@ -89,7 +91,7 @@ beforeEach(() => {
       { provide: AuthStore, useValue: { effectiveOrgId: org } },
       {
         provide: RestaurantsCapabilities,
-        useValue: { canReadStaff: read, canManageStaff: manage },
+        useValue: { canReadStaff: read, canManageStaff: manage, canProvisionStaff: provision },
       },
       { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
       { provide: RestaurantsApi, useValue: api },
@@ -241,7 +243,7 @@ it('distinguishes the empty directory and a partial-page empty filter result', a
   api.staff.mockResolvedValue({ items: [] });
   const f = await page();
   expect(f.nativeElement.textContent).toContain('Votre équipe n’est pas encore configurée');
-  expect(f.nativeElement.textContent).toContain('membres de cet espace');
+  expect(f.nativeElement.textContent).toContain('appartenir à cet espace de travail');
   client.setQueryData(restaurantKeys.staff('org'), {
     pages: [{ items: [], nextCursor: 'more' }],
     pageParams: [undefined],
@@ -696,3 +698,19 @@ it.each([
     expect(f.componentInstance.members()[0].restaurantRole).toBe(restaurantRole);
   },
 );
+
+it('OWNER provisioning action is in the collection toolbar and genuine empty state', async () => {
+  provision.set(true);
+  api.staff.mockResolvedValue({ items: [] });
+  const f = await page();
+  const buttons = Array.from(f.nativeElement.querySelectorAll('button')).filter((button: unknown) =>
+    (button as HTMLElement).textContent?.includes('Ajouter un membre'),
+  );
+  expect(buttons).toHaveLength(2);
+  expect(f.nativeElement.querySelector('section')?.textContent).toContain('Ajouter un membre');
+});
+it('MANAGER retains row management without an Add member control', async () => {
+  const f = await page();
+  expect(f.nativeElement.textContent).not.toContain('Ajouter un membre');
+  expect(f.nativeElement.querySelector('tbody button[aria-haspopup]')).not.toBeNull();
+});

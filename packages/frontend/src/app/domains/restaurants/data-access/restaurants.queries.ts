@@ -16,6 +16,8 @@ export const restaurantKeys = {
   staff: (org: string) => ['restaurants', org, 'staff'] as const,
   staffMember: (org: string, userId: string) =>
     ['restaurants', org, 'staff-member', userId] as const,
+  staffCandidate: (org: string, userId: string) =>
+    ['restaurants', org, 'staff-candidate', userId] as const,
   staffOutlets: (org: string, userId: string) =>
     ['restaurants', org, 'staff-outlets', userId] as const,
   outletStaff: (org: string, outletId?: string) =>
@@ -163,6 +165,23 @@ export class RestaurantsQueries {
       enabled: enabled && !!org && !!userId,
       staleTime: 60_000,
       retry,
+    });
+  }
+  staffCandidate(userId: string, enabled = true) {
+    const org = this.scope();
+    return queryOptions({
+      queryKey: restaurantKeys.staffCandidate(org, userId),
+      queryFn: async () => {
+        try {
+          return await this.api.staffMember(org, userId);
+        } catch (error) {
+          if (error instanceof HttpErrorResponse && error.status === 404) return null;
+          throw error;
+        }
+      },
+      enabled: enabled && !!org && !!userId,
+      staleTime: 0,
+      retry: false,
     });
   }
   staffOutlets(userId: string, enabled = true) {

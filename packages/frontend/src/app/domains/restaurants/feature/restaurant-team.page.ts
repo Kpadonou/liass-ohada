@@ -25,6 +25,7 @@ import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-
 import { staffError } from '../utils/staff-errors';
 import { StaffAssignmentsDialogComponent } from './staff-assignments-dialog.component';
 import { StaffStatusDialogComponent } from './staff-status-dialog.component';
+import { AddStaffDialogComponent } from './add-staff-dialog.component';
 
 @Component({
   selector: 'liass-restaurant-team',
@@ -151,6 +152,15 @@ export class RestaurantTeamPage {
     });
   }
   readonly columns = ['member', 'role', 'status', 'outlets', 'actions'];
+  addMember() {
+    if (!this.allowed() || !this.caps.canProvisionStaff()) return;
+    this.dialog.open(AddStaffDialogComponent, {
+      width: '600px',
+      maxWidth: 'calc(100vw - 24px)',
+      autoFocus: 'first-tabbable',
+      data: { org: this.queries.scope(), user: this.queries.userScope() },
+    });
+  }
   name(staff: RestaurantStaff) {
     return staff.displayName ?? this.t.translate('RESTAURANTS.TEAM.UNNAMED');
   }

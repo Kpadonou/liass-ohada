@@ -8,6 +8,7 @@ describe('Independent scoped RESTAURANTS permissions', () => {
     role: string;
     productRoles?: { RESTAURANTS: string };
     accessSource?: string;
+    status?: string;
   }>({ orgId: 'org', role: 'OWNER' });
   const org = signal('org');
   const type = signal('COMPANY');
@@ -44,6 +45,30 @@ describe('Independent scoped RESTAURANTS permissions', () => {
     expect(caps.canManageResponsibility()).toBe(['OWNER', 'MANAGER'].includes(role));
     expect(caps.canOpenSession()).toBe(caps.canReadService());
   });
+  it('requires active organization OWNER authority for provisioning', () => {
+    workspace.set({
+      orgId: 'org',
+      role: 'OWNER',
+      status: 'ACTIVE',
+      productRoles: { RESTAURANTS: 'OWNER' },
+    });
+    const caps = TestBed.inject(RestaurantsCapabilities);
+    expect(caps.canProvisionStaff()).toBe(true);
+    workspace.update((value) => ({ ...value, status: 'REVOKED' }));
+    expect(caps.canProvisionStaff()).toBe(false);
+  });
+  it.each(['MANAGER', 'WAITER', 'CASHIER', 'KITCHEN'])(
+    'product %s alone cannot provision members',
+    (role) => {
+      workspace.set({
+        orgId: 'org',
+        role: 'MEMBER',
+        status: 'ACTIVE',
+        productRoles: { RESTAURANTS: role },
+      });
+      expect(TestBed.inject(RestaurantsCapabilities).canProvisionStaff()).toBe(false);
+    },
+  );
   it('fails closed on workspace/cabinet context changes', () => {
     workspace.set({ orgId: 'org', role: 'OWNER', productRoles: { RESTAURANTS: 'OWNER' } });
     const caps = TestBed.inject(RestaurantsCapabilities);
