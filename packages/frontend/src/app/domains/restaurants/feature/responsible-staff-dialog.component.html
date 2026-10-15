@@ -1,0 +1,116 @@
+<h2 mat-dialog-title>
+  {{
+    (data.clear
+      ? 'RESTAURANTS.RESPONSIBILITY.CLEAR'
+      : assigned()
+        ? 'RESTAURANTS.RESPONSIBILITY.CHANGE'
+        : 'RESTAURANTS.RESPONSIBILITY.ASSIGN'
+    ) | transloco
+  }}
+</h2>
+<mat-dialog-content class="space-y-4">
+  <p class="text-sm text-app-text-secondary">
+    {{ data.table.code }}
+    @if (data.table.areaName) {
+      · {{ data.table.areaName }}
+    }
+  </p>
+  @if (!allowed()) {
+    <p role="alert">{{ 'RESTAURANTS.TEAM.ACCESS_DENIED' | transloco }}</p>
+  } @else if (session.isPending() || session.isFetching()) {
+    <p role="status" aria-live="polite">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+  } @else if (session.isError()) {
+    <p role="alert" class="text-danger-600">{{ text(session.error()) }}</p>
+    <button mat-button type="button" (click)="refresh()">
+      {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+    </button>
+  } @else if (!contextMatches()) {
+    <p role="alert">{{ 'RESTAURANTS.RESPONSIBILITY.SESSION_UNAVAILABLE' | transloco }}</p>
+  } @else {
+    @if (data.clear && !assigned()) {
+      <p>{{ 'RESTAURANTS.RESPONSIBILITY.UNASSIGNED' | transloco }}</p>
+    } @else if (data.clear) {
+      <p>
+        {{
+          'RESTAURANTS.RESPONSIBILITY.CLEAR_CONFIRM'
+            | transloco: { name: currentName(), table: data.table.code }
+        }}
+      </p>
+    } @else {
+      @if (assigned()) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.RESPONSIBILITY.CURRENT' | transloco: { name: currentName() } }}
+        </p>
+      }
+      @if (!data.canAssign()) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.TEAM.INACTIVE_OUTLET' | transloco }}
+        </p>
+      }
+      <liass-searchable-select
+        labelKey="RESTAURANTS.RESPONSIBILITY.SELECT"
+        icon="person_outline"
+        [options]="options()"
+        [formControl]="selection"
+        [loading]="candidates.isPending() && candidates.isFetching()"
+        unresolvedLabelKey="RESTAURANTS.TEAM.UNNAMED"
+        [showError]="selection.touched && selection.invalid"
+        errorKey="RESTAURANTS.RESPONSIBILITY.REQUIRED"
+      />
+      @if (candidates.hasNextPage()) {
+        <p class="text-xs text-app-text-secondary">
+          {{ 'RESTAURANTS.RESPONSIBILITY.PARTIAL' | transloco }}
+        </p>
+        <button
+          mat-button
+          type="button"
+          [disabled]="candidates.isFetchingNextPage() || pending()"
+          (click)="candidates.fetchNextPage()"
+        >
+          {{ 'RESTAURANTS.TEAM.MORE_MEMBERS' | transloco }}
+        </button>
+      } @else if (!candidates.isPending() && !options().length && !candidates.isError()) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.RESPONSIBILITY.NO_CANDIDATE' | transloco }}
+        </p>
+      }
+      @if (candidates.isError()) {
+        <p role="alert" class="text-danger-600">{{ text(candidates.error()) }}</p>
+        <button mat-button type="button" [disabled]="pending()" (click)="candidates.refetch()">
+          {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+        </button>
+      }
+    }
+  }
+  @if (error()) {
+    <p role="alert" class="text-danger-600">{{ error() }}</p>
+  }
+  @if (ambiguous()) {
+    <p class="text-sm text-app-text-secondary">
+      {{ 'RESTAURANTS.RESPONSIBILITY.RETRY_HELP' | transloco }}
+    </p>
+  }
+  @if (pending()) {
+    <p role="status" aria-live="polite">{{ 'RESTAURANTS.TEAM.SAVING' | transloco }}</p>
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end" class="flex-wrap gap-2">
+  <button mat-button type="button" [disabled]="pending()" (click)="cancel()">
+    {{ 'RESTAURANTS.UI.CANCEL' | transloco }}
+  </button>
+  <liass-button
+    variant="solid"
+    [tone]="data.clear ? 'warning' : 'brand'"
+    [disabled]="!canSubmit()"
+    [loading]="pending()"
+    (pressed)="save()"
+    >{{
+      (ambiguous()
+        ? 'RESTAURANTS.RESPONSIBILITY.RETRY'
+        : data.clear
+          ? 'RESTAURANTS.RESPONSIBILITY.CLEAR'
+          : 'RESTAURANTS.RESPONSIBILITY.CONFIRM'
+      ) | transloco
+    }}</liass-button
+  >
+</mat-dialog-actions>

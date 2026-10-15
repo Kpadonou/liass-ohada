@@ -21,6 +21,8 @@ export const restaurantKeys = {
     outletId
       ? (['restaurants', org, 'outlet-staff', outletId] as const)
       : (['restaurants', org, 'outlet-staff'] as const),
+  session: (org: string, outletId: string, sessionId: string) =>
+    ['restaurants', org, 'session', outletId, sessionId] as const,
   floor: (org: string, outletId: string) =>
     ['restaurants', org, 'service-floor', outletId] as const,
   root: (org: string) => ['restaurants', org] as const,
@@ -193,6 +195,39 @@ export class RestaurantsQueries {
       }),
       // A staff lifecycle change affects their entry in any cached outlet directory.
       this.client.invalidateQueries({ queryKey: restaurantKeys.outletStaff(org) }),
+    ]);
+  }
+  guestSession(outletId: string, sessionId: string, enabled = true) {
+    const org = this.scope();
+    return queryOptions({
+      queryKey: restaurantKeys.session(org, outletId, sessionId),
+      queryFn: () => this.api.guestSession(org, outletId, sessionId),
+      enabled: enabled && !!org && !!outletId && !!sessionId,
+      staleTime: 0,
+      refetchOnMount: 'always',
+      retry,
+    });
+  }
+  async responsibilityChanged(
+    org: string,
+    outletId: string,
+    sessionId: string,
+    refreshCandidates = false,
+  ) {
+    await Promise.all([
+      this.floorChanged(org, outletId),
+      this.client.invalidateQueries({
+        queryKey: restaurantKeys.session(org, outletId, sessionId),
+        exact: true,
+      }),
+      ...(refreshCandidates
+        ? [
+            this.client.invalidateQueries({
+              queryKey: restaurantKeys.outletStaff(org, outletId),
+              exact: true,
+            }),
+          ]
+        : []),
     ]);
   }
   async floorChanged(org: string, outletId: string) {

@@ -189,25 +189,67 @@
             </liass-card>
           } @else {
             <div
-              class="grid items-start gap-4 sm:grid-cols-2 xl:grid-cols-4"
+              class="grid grid-cols-1 items-start gap-4 sm:grid-cols-2 xl:grid-cols-4"
               data-testid="floor-grid"
             >
               @for (table of visibleTables(); track table.tableId) {
                 <liass-card
+                  class="min-w-0"
                   padding="md"
                   [attr.data-state]="table.state"
                   [attr.aria-busy]="busy()?.endsWith(':' + table.tableId) ?? false"
                 >
-                  <div class="flex min-h-44 flex-col gap-3">
+                  <div class="flex min-h-44 min-w-0 flex-col gap-3">
                     <div class="flex items-center justify-between gap-3">
                       <h3 class="min-w-0 break-all text-xl font-semibold leading-tight">
                         {{ table.code }}
                       </h3>
-                      <div
-                        class="flex size-8 shrink-0 items-center justify-center rounded-app-control bg-app-surface-muted text-app-muted"
-                      >
-                        <mat-icon aria-hidden="true">table_restaurant</mat-icon>
-                      </div>
+                      @if (table.state === 'OCCUPIED' && caps.canManageResponsibility()) {
+                        <button
+                          #responsibilityTrigger
+                          mat-icon-button
+                          type="button"
+                          [matMenuTriggerFor]="responsibilityMenu"
+                          [attr.aria-label]="
+                            'RESTAURANTS.RESPONSIBILITY.ACTIONS' | transloco: { table: table.code }
+                          "
+                        >
+                          <mat-icon>more_vert</mat-icon>
+                        </button>
+                        <mat-menu #responsibilityMenu="matMenu" xPosition="before">
+                          <button
+                            mat-menu-item
+                            type="button"
+                            class="liass-menu-action liass-menu-action-info"
+                            (click)="manageResponsibility(table, false, responsibilityTrigger)"
+                          >
+                            <mat-icon>person_outline</mat-icon
+                            ><span>{{
+                              (table.responsibleStaff
+                                ? 'RESTAURANTS.RESPONSIBILITY.CHANGE'
+                                : 'RESTAURANTS.RESPONSIBILITY.ASSIGN'
+                              ) | transloco
+                            }}</span>
+                          </button>
+                          @if (table.responsibleStaff) {
+                            <button
+                              mat-menu-item
+                              type="button"
+                              class="liass-menu-action liass-menu-action-warning"
+                              (click)="manageResponsibility(table, true, responsibilityTrigger)"
+                            >
+                              <mat-icon>person_remove</mat-icon
+                              ><span>{{ 'RESTAURANTS.RESPONSIBILITY.CLEAR' | transloco }}</span>
+                            </button>
+                          }
+                        </mat-menu>
+                      } @else {
+                        <div
+                          class="flex size-8 shrink-0 items-center justify-center rounded-app-control bg-app-surface-muted text-app-muted"
+                        >
+                          <mat-icon aria-hidden="true">table_restaurant</mat-icon>
+                        </div>
+                      }
                     </div>
                     <div class="flex flex-wrap items-center gap-2" data-testid="table-status">
                       <liass-status-chip
@@ -235,6 +277,37 @@
                           {{ amount(table.currentAmountMinor, table.currency) }}
                         </p>
                       }
+                    }
+                    @if (table.state === 'OCCUPIED') {
+                      <p
+                        class="flex min-w-0 items-center gap-1 text-xs text-app-text-secondary"
+                        data-testid="table-responsible"
+                        [attr.aria-label]="
+                          'RESTAURANTS.RESPONSIBILITY.CARD_LABEL'
+                            | transloco
+                              : {
+                                  name: table.responsibleStaff
+                                    ? responsibleName(table)
+                                    : ('RESTAURANTS.RESPONSIBILITY.UNASSIGNED' | transloco),
+                                }
+                        "
+                      >
+                        <mat-icon class="shrink-0" aria-hidden="true">person_outline</mat-icon>
+                        <span
+                          class="min-w-0 truncate"
+                          [title]="table.responsibleStaff ? responsibleName(table) : ''"
+                          >{{
+                            table.responsibleStaff
+                              ? responsibleName(table)
+                              : ('RESTAURANTS.RESPONSIBILITY.UNASSIGNED' | transloco)
+                          }}</span
+                        >
+                        @if (table.responsibleStaff && !table.responsibleStaff.available) {
+                          <span class="shrink-0"
+                            >· {{ 'RESTAURANTS.RESPONSIBILITY.UNAVAILABLE' | transloco }}</span
+                          >
+                        }
+                      </p>
                     }
                     <div class="space-y-1 text-sm text-app-text-secondary">
                       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">

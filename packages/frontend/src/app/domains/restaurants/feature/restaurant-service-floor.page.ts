@@ -3,6 +3,12 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
+import { MatDialog } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
+import {
+  ResponsibleStaffDialogComponent,
+  ResponsibilityIntent,
+} from './responsible-staff-dialog.component';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -31,6 +37,7 @@ type FloorTable = RestaurantServiceFloorResponse['items'][number];
     RouterLink,
     FormsModule,
     MatButtonModule,
+    MatMenuModule,
     MatIconModule,
     MatProgressSpinnerModule,
     TranslocoModule,
@@ -47,6 +54,8 @@ export class RestaurantServiceFloorPage {
   readonly queries = inject(RestaurantsQueries);
   readonly caps = inject(RestaurantsCapabilities);
   private readonly api = inject(RestaurantsApi);
+  private readonly dialog = inject(MatDialog);
+  private readonly responsibilityIntents = new Map<string, ResponsibilityIntent>();
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly t = inject(TranslocoService);
@@ -123,6 +132,7 @@ export class RestaurantServiceFloorPage {
         this.outletId.set(null);
         this.areaId.set(null);
         this.intents.clear();
+        this.responsibilityIntents.clear();
         this.busy.set(null);
         this.denied.set(null);
         this.openingError.set(null);
@@ -187,6 +197,46 @@ export class RestaurantServiceFloorPage {
       !!this.outlet()?.isActive &&
       !this.areaRows().some((area) => area.id === table.areaId && !area.isActive)
     );
+  }
+  responsibleName(table: FloorTable) {
+    return table.state === 'OCCUPIED'
+      ? (table.responsibleStaff?.displayName ?? this.t.translate('RESTAURANTS.TEAM.UNNAMED'))
+      : '';
+  }
+  manageResponsibility(table: FloorTable, clear: boolean, returnFocus: { focus: () => void }) {
+    const org = this.queries.scope(),
+      outletId = this.outletId();
+    if (
+      !this.allowed() ||
+      !this.caps.canManageResponsibility() ||
+      !outletId ||
+      table.state !== 'OCCUPIED'
+    )
+      return;
+    const key = org + ':' + outletId + ':' + table.guestSessionId;
+    const intent = this.responsibilityIntents.get(key) ?? {};
+    this.responsibilityIntents.set(key, intent);
+    this.dialog
+      .open(ResponsibleStaffDialogComponent, {
+        width: '560px',
+        maxWidth: 'calc(100vw - 24px)',
+        panelClass: 'liass-dialog-panel',
+        autoFocus: 'first-tabbable',
+        restoreFocus: false,
+        data: {
+          org,
+          outletId,
+          table,
+          intent,
+          clear: intent.current ? intent.current.staffId === null : clear,
+          isCurrent: () => this.allowed() && this.outletId() === outletId,
+          canAssign: () => this.outlet()?.isActive === true,
+        },
+      })
+      .afterClosed()
+      .subscribe(() => {
+        if (this.queries.scope() === org && this.outletId() === outletId) returnFocus.focus();
+      });
   }
   async open(table: FloorTable) {
     const org = this.queries.scope(),

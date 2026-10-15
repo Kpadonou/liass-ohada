@@ -3,7 +3,8 @@ import { signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
 import { MatSelect } from '@angular/material/select';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -69,7 +70,12 @@ async function create() {
       { provide: AuthStore, useValue: { effectiveOrgId: org } },
       {
         provide: RestaurantsCapabilities,
-        useValue: { canReadService: read, canOpenSession: write, canManageSetup: write },
+        useValue: {
+          canReadService: read,
+          canOpenSession: write,
+          canManageSetup: write,
+          canManageResponsibility: write,
+        },
       },
       { provide: RestaurantsApi, useValue: api },
       { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
@@ -386,3 +392,80 @@ it.each([
     else expect(card.textContent).toContain('XOF');
   },
 );
+
+it('shows canonical responsibility only on occupied cards and never uses the opener as the server', async () => {
+  const data = floorFixture();
+  const table = data.items[1];
+  if (table.state !== 'OCCUPIED') throw new Error('Fixture');
+  table.responsibleStaff = {
+    staffId: 'private-member',
+    displayName: 'Aïssatou S.',
+    available: false,
+  };
+  api.serviceFloor.mockResolvedValue(data);
+  await ready();
+  const occupied = fixture.nativeElement.querySelector('[data-state="OCCUPIED"]');
+  expect(occupied.querySelector('[data-testid="table-responsible"]').textContent).toContain(
+    'Aïssatou S.',
+  );
+  expect(occupied.textContent).toContain('Indisponible');
+  expect(
+    occupied.querySelector('[data-testid="table-responsible"]').getAttribute('aria-label'),
+  ).toContain('Responsable de la table : Aïssatou S.');
+  expect(fixture.nativeElement.textContent).not.toMatch(/private-actor|private-member/);
+  for (const free of fixture.nativeElement.querySelectorAll('[data-state="FREE"]')) {
+    expect(free.querySelector('[data-testid="table-responsible"]')).toBeNull();
+    expect(free.querySelector('[aria-label^="Actions de la table"]')).toBeNull();
+  }
+  expect(occupied.querySelector('a')).toBeNull();
+});
+it('offers assign for unassigned occupied cards and change/clear for assigned cards', async () => {
+  await ready();
+  let trigger = fixture.nativeElement.querySelector(
+    'button[aria-label="Actions de la table T02"]',
+  ) as HTMLButtonElement;
+  trigger.click();
+  fixture.detectChanges();
+  expect(document.querySelector('.cdk-overlay-container')?.textContent).toContain(
+    'Affecter un responsable',
+  );
+  expect(
+    fixture.nativeElement.querySelector('[data-testid="table-responsible"]').textContent,
+  ).toContain('Responsable non affecté');
+});
+it('keeps responsibility visible but management absent when write permission is unavailable', async () => {
+  write.set(false);
+  await ready();
+  expect(fixture.nativeElement.querySelector('[data-testid="table-responsible"]')).not.toBeNull();
+  expect(fixture.nativeElement.querySelector('[aria-label^="Actions de la table"]')).toBeNull();
+});
+
+it('exposes change/clear in the occupied card menu and restores focus after the dialog', async () => {
+  const data = floorFixture(),
+    table = data.items[1];
+  if (table.state !== 'OCCUPIED') throw new Error('Occupied fixture');
+  table.responsibleStaff = { staffId: 'member', displayName: 'Aïssatou S.', available: true };
+  api.serviceFloor.mockResolvedValue(data);
+  const page = await ready();
+  const trigger = fixture.nativeElement.querySelector(
+    'button[aria-label="Actions de la table T02"]',
+  ) as HTMLButtonElement;
+  trigger.click();
+  fixture.detectChanges();
+  const menu = document.querySelector('.cdk-overlay-container');
+  expect(menu?.textContent).toContain('Changer le responsable');
+  expect(menu?.textContent).toContain('Retirer l’affectation');
+  const focus = vi.spyOn(trigger, 'focus');
+  const open = vi
+    .spyOn(TestBed.inject(MatDialog), 'open')
+    .mockReturnValue({ afterClosed: () => of(true) } as unknown as ReturnType<MatDialog['open']>);
+  page.manageResponsibility(table, true, trigger);
+  expect(open).toHaveBeenCalledWith(
+    expect.anything(),
+    expect.objectContaining({
+      restoreFocus: false,
+      data: expect.objectContaining({ clear: true, outletId: rid(2), org: 'org' }),
+    }),
+  );
+  expect(focus).toHaveBeenCalledOnce();
+});

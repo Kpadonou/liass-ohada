@@ -4581,6 +4581,27 @@
       "SEARCH_SCOPE": "La recherche porte sur les membres chargés. Chargez la suite pour élargir les résultats.",
       "EMPTY_SEARCH": "Aucun membre ne correspond à votre recherche.",
       "SEARCH_GUIDANCE": "Modifiez ou effacez votre recherche pour retrouver les membres de l’équipe."
+    },
+    "RESPONSIBILITY": {
+      "ASSIGN": "Affecter un responsable",
+      "CHANGE": "Changer le responsable",
+      "CLEAR": "Retirer l’affectation",
+      "ACTIONS": "Actions de la table {{table}}",
+      "CARD_LABEL": "Responsable de la table : {{name}}",
+      "UNASSIGNED": "Responsable non affecté",
+      "UNAVAILABLE": "Indisponible",
+      "SELECT": "Responsable de la table",
+      "REQUIRED": "Sélectionnez une personne dans la liste.",
+      "PARTIAL": "Recherche parmi les membres chargés. Affichez la suite pour voir d’autres personnes éligibles.",
+      "NO_CANDIDATE": "Aucun membre éligible dans cet établissement. Vérifiez les affectations dans Équipe.",
+      "CURRENT": "Responsable actuel : {{name}}",
+      "CLEAR_CONFIRM": "Retirer {{name}} de la table {{table}} ? Cette personne reste dans votre équipe et conserve ses établissements d’affectation.",
+      "CONFIRM": "Affecter à la table",
+      "SAVED": "Le responsable de la table a été mis à jour.",
+      "CONFLICT": "La table ou les affectations ont changé. Les dernières informations ont été rechargées. Vérifiez avant de confirmer.",
+      "SESSION_UNAVAILABLE": "Cette table n’est plus disponible pour cette action. Actualisez le plan de salle.",
+      "RETRY": "Réessayer la demande",
+      "RETRY_HELP": "Le résultat de la demande précédente n’a pas pu être confirmé. Réessayez cette même demande avant de choisir une autre personne."
     }
   }
 }

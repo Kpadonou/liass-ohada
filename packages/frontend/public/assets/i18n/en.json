@@ -4581,6 +4581,27 @@
       "SEARCH_SCOPE": "Search covers loaded members. Load more to expand the results.",
       "EMPTY_SEARCH": "No team member matches your search.",
       "SEARCH_GUIDANCE": "Change or clear your search to find team members."
+    },
+    "RESPONSIBILITY": {
+      "ASSIGN": "Assign a responsible team member",
+      "CHANGE": "Change responsible team member",
+      "CLEAR": "Remove assignment",
+      "ACTIONS": "Actions for table {{table}}",
+      "CARD_LABEL": "Responsible for table: {{name}}",
+      "UNASSIGNED": "No responsible team member",
+      "UNAVAILABLE": "Unavailable",
+      "SELECT": "Responsible for table",
+      "REQUIRED": "Select a person from the list.",
+      "PARTIAL": "Search covers loaded members. Load more to see further eligible people.",
+      "NO_CANDIDATE": "No eligible team members at this establishment. Check assignments in Team.",
+      "CURRENT": "Currently responsible: {{name}}",
+      "CLEAR_CONFIRM": "Remove {{name}} from table {{table}}? They remain on your team and keep their establishment assignments.",
+      "CONFIRM": "Assign to table",
+      "SAVED": "The responsible team member has been updated.",
+      "CONFLICT": "The table or assignments changed. The latest information has been reloaded. Review before confirming.",
+      "SESSION_UNAVAILABLE": "This table is no longer available for this action. Refresh the service floor.",
+      "RETRY": "Retry request",
+      "RETRY_HELP": "The previous request could not be confirmed. Retry the same request before choosing another person."
     }
   }
 }

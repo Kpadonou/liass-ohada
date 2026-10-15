@@ -173,6 +173,47 @@ export class RestaurantsApi {
       throw new Error('Mismatched session context');
     return { data, message: userMessageFromResponse(response) };
   }
+  async guestSession(scope: string, outletId: string, sessionId: string) {
+    this.assertScope(scope);
+    c.RestaurantIdSchema.parse(outletId);
+    c.RestaurantIdSchema.parse(sessionId);
+    const response = await firstValueFrom(
+      this.http
+        .get<unknown>(this.base + `/restaurants/outlets/${outletId}/sessions/${sessionId}`)
+        .pipe(timeout(35_000)),
+    );
+    this.assertScope(scope);
+    const data = c.GuestSessionResponseSchema.parse(response).data;
+    if (data.orgId !== scope || data.outletId !== outletId || data.guestSessionId !== sessionId)
+      throw new Error('Mismatched session context');
+    return data;
+  }
+  async replaceResponsibleStaff(
+    scope: string,
+    outletId: string,
+    sessionId: string,
+    input: unknown,
+  ) {
+    this.assertScope(scope);
+    c.RestaurantIdSchema.parse(outletId);
+    c.RestaurantIdSchema.parse(sessionId);
+    const request = c.ReplaceGuestSessionResponsibleStaffRequestSchema.parse(input);
+    const response = await firstValueFrom(
+      this.http
+        .patch<unknown>(
+          this.base + `/restaurants/outlets/${outletId}/sessions/${sessionId}/responsible-staff`,
+          request,
+        )
+        .pipe(timeout(35_000)),
+    );
+    this.assertScope(scope);
+    const data = c.GuestSessionResponseSchema.parse(response).data;
+    if (data.orgId !== scope || data.outletId !== outletId || data.guestSessionId !== sessionId)
+      throw new Error('Mismatched session context');
+    if ((data.responsibleStaff?.staffId ?? null) !== request.staffId)
+      throw new Error('Mismatched responsibility context');
+    return { data, message: userMessageFromResponse(response) };
+  }
   private staffPath(userId: string) {
     return '/restaurants/staff/' + encodeURIComponent(c.RestaurantStaffUserIdSchema.parse(userId));
   }

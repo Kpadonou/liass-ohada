@@ -25,6 +25,9 @@ import {
   assignmentFixture,
   teamOutlets,
 } from '../../src/app/domains/restaurants/data-access/staff.test-fixture';
+import { row } from '../../src/app/domains/restaurants/data-access/restaurants.test-fixture';
+import { floorFixture } from '../../src/app/domains/restaurants/data-access/service-floor.test-fixture';
+import { sessionFixture } from '../../src/app/domains/restaurants/data-access/responsible-staff.test-fixture';
 import { rid } from '../../src/app/domains/restaurants/data-access/restaurants.test-fixture';
 import {
   RestaurantStaffSchema,
@@ -48,6 +51,74 @@ const assignments = [
   assignmentFixture(rid(3), { userId: 'fixture-c' }),
   assignmentFixture(rid(4), { userId: 'fixture-d' }),
 ];
+const serviceReview = scenario?.startsWith('service') ?? false;
+const serviceTables = floorFixture().items;
+const sessionData = new Map<string, ReturnType<typeof sessionFixture>>();
+if (serviceReview) {
+  assignments.push(assignmentFixture(rid(2), { userId: 'fixture-c' }));
+  members.push(
+    staffFixture('fixture-long', {
+      displayName: 'Aïssatou Sènami Agossou — équipe du service du soir',
+      restaurantRole: 'WAITER',
+      status: 'INACTIVE',
+    }),
+  );
+  assignments.push(assignmentFixture(rid(2), { userId: 'fixture-long' }));
+  const base = serviceTables[1];
+  if (base.state === 'OCCUPIED') {
+    const openedAt = new Date(Date.now() - 26 * 60_000).toISOString();
+    serviceTables[1] = {
+      ...base,
+      openedAt,
+      responsibleStaff: { staffId: 'private-user-a', displayName: 'Aïssatou S.', available: true },
+    };
+    serviceTables[2] = {
+      ...base,
+      tableId: rid(6),
+      code: 'T03',
+      guestSessionId: rid(10),
+      openedAt,
+      responsibleStaff: { staffId: 'fixture-c', displayName: 'Élodie A.', available: true },
+    };
+    serviceTables.push({
+      ...base,
+      tableId: rid(20),
+      code: 'T04',
+      guestSessionId: rid(11),
+      openedAt,
+      currentAmountMinor: 0,
+      orderCount: 0,
+    });
+    serviceTables.push({
+      ...base,
+      tableId: rid(21),
+      code: 'T05',
+      guestSessionId: rid(12),
+      openedAt,
+      responsibleStaff: {
+        staffId: 'fixture-long',
+        displayName: 'Aïssatou Sènami Agossou — équipe du service du soir',
+        available: false,
+      },
+    });
+  }
+  for (const table of serviceTables)
+    if (table.state === 'OCCUPIED')
+      sessionData.set(
+        table.guestSessionId,
+        sessionFixture({
+          orgId: 'fixture-org',
+          guestSessionId: table.guestSessionId,
+          tableId: table.tableId,
+          tableCode: table.code,
+          tableName: table.code,
+          areaId: table.areaId,
+          openedAt: table.openedAt,
+          responsibleStaff: table.responsibleStaff,
+        }),
+      );
+}
+let staleOnce = scenario === 'service-stale';
 const commands = new Map<string, { fingerprint: string; result: unknown }>();
 let partialOnce = scenario === 'partial';
 const localOnly: HttpInterceptorFn = (request, next) => {
@@ -77,7 +148,69 @@ const localOnly: HttpInterceptorFn = (request, next) => {
         { year: 2026, journalCode: 'BQ', journalName: 'Banque', type: 'BANK' },
       ],
     };
-  else if (path === '/restaurants/staff')
+  else if (path === '/restaurants/restaurant') body = { data: row('restaurant') };
+  else if (/^\/restaurants\/outlets\/[^/]+\/service-areas$/.test(path))
+    body = { items: [{ ...row('area'), name: 'Salle principale' }] };
+  else if (/^\/restaurants\/outlets\/[^/]+\/service-floor$/.test(path))
+    body = { outletId: path.split('/')[3], items: serviceTables };
+  else if (/^\/restaurants\/outlets\/[^/]+\/sessions\/[^/]+(?:\/responsible-staff)?$/.test(path)) {
+    const sessionId = path.split('/')[5];
+    const session = sessionData.get(sessionId);
+    if (!session) return throwError(() => new HttpErrorResponse({ status: 404 }));
+    if (request.method === 'GET') body = { data: session };
+    else {
+      const input = request.body as {
+        clientRequestId: string;
+        expectedVersion: number;
+        staffId: string | null;
+      };
+      const previous = commands.get(input.clientRequestId);
+      const fingerprint = JSON.stringify([path, input]);
+      if (previous) {
+        if (previous.fingerprint !== fingerprint)
+          return throwError(() => new HttpErrorResponse({ status: 409 }));
+        body = previous.result;
+      } else {
+        if (staleOnce) {
+          staleOnce = false;
+          session.version++;
+          session.responsibleStaff = {
+            staffId: 'fixture-c',
+            displayName: 'Élodie A.',
+            available: true,
+          };
+          const table = serviceTables.find(
+            (t) => t.state === 'OCCUPIED' && t.guestSessionId === sessionId,
+          );
+          if (table?.state === 'OCCUPIED') table.responsibleStaff = session.responsibleStaff;
+          return throwError(() => new HttpErrorResponse({ status: 409 }));
+        }
+        if (session.version !== input.expectedVersion)
+          return throwError(() => new HttpErrorResponse({ status: 409 }));
+        const staff = members.find((person) => person.userId === input.staffId);
+        if (
+          input.staffId &&
+          (!staff ||
+            staff.status !== 'ACTIVE' ||
+            !['OWNER', 'MANAGER', 'WAITER'].includes(staff.restaurantRole ?? ''))
+        )
+          return throwError(() => new HttpErrorResponse({ status: 409 }));
+        session.version++;
+        session.responsibleStaff = staff
+          ? { staffId: staff.userId, displayName: staff.displayName, available: true }
+          : undefined;
+        const table = serviceTables.find(
+          (t) => t.state === 'OCCUPIED' && t.guestSessionId === sessionId,
+        );
+        if (table?.state === 'OCCUPIED') {
+          if (session.responsibleStaff) table.responsibleStaff = session.responsibleStaff;
+          else delete table.responsibleStaff;
+        }
+        body = { data: session };
+        commands.set(input.clientRequestId, { fingerprint, result: structuredClone(body) });
+      }
+    }
+  } else if (path === '/restaurants/staff')
     body =
       scenario === 'paged'
         ? request.params.has('cursor')
