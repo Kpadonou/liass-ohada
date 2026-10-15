@@ -26,7 +26,7 @@
 
 ## Cards
 
-- Use cards for meaningful content groups, repeated items, dashboard metrics, and framed tools.
+- Use cards for meaningful content groups, dashboard summaries, spatial/state-heavy visual objects and framed tools when they materially improve the workflow. Do not default comparable management collections to repeated cards merely for a premium appearance; follow the canonical skill’s Collection presentation rule.
 - Do not use cards as generic page sections when an unframed layout is clearer.
 - Keep card titles compact and content useful.
 - Place card actions consistently in header or footer.
@@ -54,6 +54,8 @@
 - Loading and disabled states must be handled when options come from an API.
 
 ## Tables
+
+Default to tables for homogeneous, comparable management collections. Inspect approved Accounting lists for density, badges, filters, pagination, states and compact Material menus. Put record actions in the final column. Include labelled Material text search, distinct from structured filters, in the same coherent collection toolbar. Disclose incomplete loaded-page scope for local search; document any concrete exception where text search is meaningless. Narrow-screen stacked items may adapt the desktop table without changing its information architecture.
 
 - Use tables for operational ERP data.
 - Prioritize readability, column alignment, filters, sorting, pagination, row actions, and keyboard efficiency.

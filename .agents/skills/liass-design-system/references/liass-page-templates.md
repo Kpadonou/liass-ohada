@@ -45,8 +45,10 @@ Inspired by Stripe for financial cards and data hierarchy, Linear for calm spaci
 Use for dossiers, journals, entries, accounts, projects, invoices, payments, and operational records.
 
 - Header with title, subtitle/context, primary action.
-- Search and filters.
-- Table or dense card list depending on data shape.
+- Required labelled text search plus structured filters in a coherent toolbar, followed by any appropriate primary action. Filters do not replace search; disclose loaded-page scope and preserve pagination when search is local. Document concrete exceptions where text search is meaningless.
+- Default to a table for comparable management records; inspect approved Accounting lists first. Cards need a concrete workflow justification, not an aesthetic claim.
+- Put row actions in the final column using the established Material action pattern.
+- Adapt to compact stacked items on narrow screens when appropriate; retain table-oriented desktop information architecture.
 - Sorting, pagination, row actions.
 - Loading, empty, no-results, and error states.
 - Bulk actions only when useful and safe.

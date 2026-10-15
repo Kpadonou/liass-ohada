@@ -173,6 +173,106 @@ export class RestaurantsApi {
       throw new Error('Mismatched session context');
     return { data, message: userMessageFromResponse(response) };
   }
+  private staffPath(userId: string) {
+    return '/restaurants/staff/' + encodeURIComponent(c.RestaurantStaffUserIdSchema.parse(userId));
+  }
+  private pageParams(cursor?: string) {
+    const request = c.RestaurantsListRequestSchema.parse({ limit: 50, cursor });
+    let params = new HttpParams().set('limit', request.limit);
+    if (request.cursor) params = params.set('cursor', request.cursor);
+    return params;
+  }
+  async staff(scope: string, cursor?: string) {
+    this.assertScope(scope);
+    const response = await firstValueFrom(
+      this.http.get<unknown>(this.base + '/restaurants/staff', { params: this.pageParams(cursor) }),
+    );
+    this.assertScope(scope);
+    return c.RestaurantStaffListResponseSchema.parse(response);
+  }
+  async staffMember(scope: string, userId: string) {
+    this.assertScope(scope);
+    const response = await firstValueFrom(
+      this.http.get<unknown>(this.base + this.staffPath(userId)),
+    );
+    this.assertScope(scope);
+    const data = c.RestaurantStaffResponseSchema.parse(response).data;
+    if (data.userId !== userId) throw new Error('Mismatched staff context');
+    return data;
+  }
+  async staffOutlets(scope: string, userId: string, cursor?: string) {
+    this.assertScope(scope);
+    const response = await firstValueFrom(
+      this.http.get<unknown>(this.base + this.staffPath(userId) + '/outlets', {
+        params: this.pageParams(cursor),
+      }),
+    );
+    this.assertScope(scope);
+    const result = c.RestaurantStaffOutletListResponseSchema.parse(response);
+    if (result.items.some((row) => row.userId !== userId))
+      throw new Error('Mismatched assignment context');
+    return result;
+  }
+  async outletStaff(scope: string, outletId: string, cursor?: string) {
+    this.assertScope(scope);
+    c.RestaurantIdSchema.parse(outletId);
+    const response = await firstValueFrom(
+      this.http.get<unknown>(this.base + `/restaurants/outlets/${outletId}/staff`, {
+        params: this.pageParams(cursor),
+      }),
+    );
+    this.assertScope(scope);
+    const result = c.RestaurantOutletStaffListResponseSchema.parse(response);
+    if (
+      result.items.some(
+        (row) => row.assignment.outletId !== outletId || row.staff.userId !== row.assignment.userId,
+      )
+    )
+      throw new Error('Mismatched outlet staff context');
+    return result;
+  }
+  async updateStaff(scope: string, userId: string, input: unknown) {
+    this.assertScope(scope);
+    const request = c.UpdateRestaurantStaffRequestSchema.parse(input);
+    const response = await firstValueFrom(
+      this.http.patch<unknown>(this.base + this.staffPath(userId), request).pipe(timeout(35_000)),
+    );
+    this.assertScope(scope);
+    const data = c.RestaurantStaffResponseSchema.parse(response).data;
+    if (data.userId !== userId) throw new Error('Mismatched staff context');
+    return { data, message: userMessageFromResponse(response) };
+  }
+  async staffAssignment(
+    scope: string,
+    userId: string,
+    outletId: string,
+    active: boolean,
+    input: unknown,
+  ) {
+    this.assertScope(scope);
+    c.RestaurantIdSchema.parse(outletId);
+    const request = (
+      active
+        ? c.AssignRestaurantStaffOutletRequestSchema
+        : c.UnassignRestaurantStaffOutletRequestSchema
+    ).parse(input);
+    const response = await firstValueFrom(
+      this.http
+        .post<unknown>(
+          this.base +
+            this.staffPath(userId) +
+            `/outlets/${outletId}` +
+            (active ? '' : '/deactivate'),
+          request,
+        )
+        .pipe(timeout(35_000)),
+    );
+    this.assertScope(scope);
+    const data = c.RestaurantStaffOutletResponseSchema.parse(response).data;
+    if (data.userId !== userId || data.outletId !== outletId)
+      throw new Error('Mismatched assignment context');
+    return { data, message: userMessageFromResponse(response) };
+  }
   async qr(scope: string, context: RestaurantContext, id: string) {
     this.assertScope(scope);
     return c.RestaurantTableQrResponseSchema.parse(

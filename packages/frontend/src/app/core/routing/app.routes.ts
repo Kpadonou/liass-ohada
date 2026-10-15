@@ -155,6 +155,15 @@ export const routes: Routes = [
               ),
             data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.UX.PAGES.service.TITLE' },
           },
+          {
+            path: 'setup/team',
+            canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-team.page').then(
+                (m) => m.RestaurantTeamPage,
+              ),
+            data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.TEAM.TITLE' },
+          },
           ...[
             { path: '', restaurantPage: 'overview', restaurantSection: 'restaurant' },
             ...restaurantSections.map((section) => ({

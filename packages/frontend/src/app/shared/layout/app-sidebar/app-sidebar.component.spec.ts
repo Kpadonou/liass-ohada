@@ -49,6 +49,7 @@ const translations = {
           table: 'Tables',
           station: 'Postes de préparation',
           menu: 'Menu',
+          team: 'Équipe',
           MENU_SECTION: 'Carte',
           overview: 'Tableau de bord',
         },
@@ -753,6 +754,7 @@ describe('AppSidebarComponent', () => {
     expect(active()).toHaveLength(1);
     expect(active()[0].getAttribute('aria-label')).toBe('Tables');
     expect(fixture.nativeElement.querySelector('button[aria-label="Service en salle"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Équipe"]')).toBeNull();
     ui.toggleSidebar();
     ui.setSidebarCollapsed(true);
     fixture.detectChanges();
@@ -826,6 +828,7 @@ describe('AppSidebarComponent', () => {
     expect(resto.querySelectorAll('section p')[1].textContent.trim()).toBe('Configuration');
     const configuration = resto.querySelectorAll('section')[2];
     expect(configuration.querySelector('button[aria-label="Menu"]')).not.toBeNull();
+    expect(configuration.querySelector('button[aria-label="Équipe"]')).not.toBeNull();
     expect(resto.querySelectorAll('section')).toHaveLength(3);
     TestBed.inject(UiStore).setSidebarCollapsed(true);
     fixture.detectChanges();

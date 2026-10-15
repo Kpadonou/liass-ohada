@@ -19,6 +19,12 @@ export class RestaurantsCapabilities {
   canOpenSession() {
     return this.canManageSetup();
   }
+  canReadStaff() {
+    return this.permissions().includes('RESTAURANTS_STAFF_READ');
+  }
+  canManageStaff() {
+    return this.permissions().includes('RESTAURANTS_STAFF_MANAGE');
+  }
   canRead() {
     return this.permissions().includes('RESTAURANTS_READ');
   }

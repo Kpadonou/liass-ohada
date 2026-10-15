@@ -4412,6 +4412,9 @@
         "service": {
           "TITLE": "Service en salle",
           "DESCRIPTION": "Suivez en temps réel l’état de vos tables et gérez le service de vos clients."
+        },
+        "team": {
+          "TITLE": "Équipe"
         }
       },
       "ADD": {
@@ -4429,7 +4432,8 @@
         "station": "Postes de préparation",
         "menu": "Menu",
         "MENU_SECTION": "Carte",
-        "overview": "Tableau de bord"
+        "overview": "Tableau de bord",
+        "team": "Équipe"
       },
       "EMPTY": {
         "outlet": {
@@ -4495,6 +4499,88 @@
       "STATE_FREE": "Libre",
       "STATE_OCCUPIED": "Occupée",
       "CONTEXT": "Contexte du service"
+    },
+    "TEAM": {
+      "TITLE": "Équipe",
+      "SUBTITLE": "Les membres de votre équipe et leurs établissements d’affectation.",
+      "FILTERS": "Filtrer l’équipe",
+      "ESTABLISHMENT_FILTER": "Établissement",
+      "ALL_ESTABLISHMENTS": "Tous les établissements",
+      "STATUS_FILTER": "Statut",
+      "STATUS": {
+        "ALL": "Tous les statuts",
+        "ACTIVE": "Actif",
+        "INACTIVE": "Inactif"
+      },
+      "ROLES": {
+        "OWNER": "Propriétaire",
+        "MANAGER": "Gérant",
+        "WAITER": "Serveur",
+        "CASHIER": "Caissier",
+        "KITCHEN": "Cuisinier",
+        "NONE": "Rôle indisponible"
+      },
+      "UNNAMED": "Membre de l’équipe",
+      "MEMBERSHIP_INACTIVE": "L’accès de cette personne à l’espace de travail est inactif.",
+      "ESTABLISHMENTS": "Établissements",
+      "INACTIVE_OUTLET": "Établissement inactif",
+      "PAST_ASSIGNMENT": "Affectation inactive",
+      "OUTLET_LOADING": "Chargement de l’établissement…",
+      "OUTLET_UNAVAILABLE": "Établissement indisponible",
+      "ASSIGNMENTS_ERROR": "Les affectations ne peuvent pas être chargées. Réessayez.",
+      "OUTLETS_ERROR": "Les établissements ne peuvent pas être chargés. Réessayez.",
+      "NO_ASSIGNMENTS": "Aucun établissement affecté.",
+      "MORE_ASSIGNMENTS": "Afficher d’autres affectations",
+      "MORE_ESTABLISHMENTS": "Afficher d’autres établissements",
+      "MORE_MEMBERS": "Afficher d’autres membres",
+      "MANAGE_ASSIGNMENTS": "Gérer les affectations",
+      "MEMBER_ACTIONS": "Actions pour {{name}}",
+      "DEACTIVATE": "Désactiver",
+      "REACTIVATE": "Réactiver",
+      "DEACTIVATE_TITLE": "Désactiver {{name}}",
+      "REACTIVATE_TITLE": "Réactiver {{name}}",
+      "DEACTIVATE_HELP": "Cette personne sera inactive dans l’équipe. Ses affectations et son historique seront conservés. Ses affectations actives redeviendront utilisables après une réactivation, sous réserve de ses accès.",
+      "REACTIVATE_HELP": "Cette personne redeviendra active dans l’équipe. Ses affectations encore actives seront de nouveau utilisables dans les établissements ouverts, sous réserve de ses accès.",
+      "COUNT": "{{count}} membres",
+      "SHOWN_COUNT": "{{count}} membres affichés",
+      "EMPTY": "Votre équipe n’est pas encore configurée",
+      "EMPTY_GUIDANCE": "Les personnes doivent d’abord être membres de cet espace de travail et disposer des accès Liass-Resto. L’ajout à l’équipe sera proposé lorsque la sélection des membres sera disponible.",
+      "EMPTY_OUTLET": "Aucun membre affecté à cet établissement",
+      "EMPTY_FILTER": "Aucun membre avec ce statut",
+      "EMPTY_PARTIAL": "Aucun résultat parmi les membres chargés. Vous pouvez afficher la suite de la liste.",
+      "FILTER_GUIDANCE": "Essayez un autre établissement ou un autre statut.",
+      "ACCESS_DENIED": "Vous n’avez pas accès à la gestion de l’équipe.",
+      "ASSIGNMENTS_TITLE": "Gérer les affectations — {{name}}",
+      "ASSIGNMENTS_HELP": "Sélectionnez les établissements où cette personne peut travailler.",
+      "REMOVAL_ONLY": "Vous pouvez retirer les affectations existantes. Pour en ajouter, cette personne doit être active et disposer des accès à cet espace de travail.",
+      "COMPLETE_ASSIGNMENTS": "Affichez toutes les affectations de cette personne avant de les modifier.",
+      "NO_ESTABLISHMENTS": "Aucun établissement n’est configuré.",
+      "SAVE_ASSIGNMENTS": "Enregistrer les affectations",
+      "RETRY_REMAINING": "Réessayer les changements restants",
+      "RELOAD_REVIEW": "Recharger et vérifier",
+      "PARTIAL_FAILURE": "Les changements n’ont pas tous été confirmés. Certains ont pu être enregistrés. Réessayez les changements restants, ou rechargez pour vérifier les affectations actuelles avant de les modifier.",
+      "SAVING": "Enregistrement en cours…",
+      "NO_CHANGES": "Aucun changement à enregistrer.",
+      "ASSIGNMENTS_SAVED": "Les affectations ont été enregistrées.",
+      "STATUS_SAVED": "Le statut du membre a été mis à jour.",
+      "LOADING": "Chargement de l’équipe…",
+      "ERROR_CONFLICT": "L’équipe ou les affectations ont changé. Rechargez les informations et vérifiez vos choix.",
+      "ERROR_MISSING": "Ce membre ou cet établissement n’est plus disponible. Rechargez les informations.",
+      "ERROR_INPUT": "Vérifiez les affectations et l’état du membre avant de réessayer.",
+      "EMPTY_LOADED": "Aucun membre affiché pour le moment",
+      "READ_ONLY": "Vous pouvez consulter l’équipe. Un responsable peut modifier les statuts et les affectations.",
+      "COUNT_ONE": "{{count}} membre",
+      "SHOWN_COUNT_ONE": "{{count}} membre affiché",
+      "MEMBER": "Membre",
+      "ROLE": "Rôle",
+      "ACTIONS": "Actions",
+      "OTHER_ASSIGNMENTS": "+{{count}}",
+      "FEWER_ASSIGNMENTS": "Réduire",
+      "SEARCH": "Rechercher un membre",
+      "CLEAR_SEARCH": "Effacer la recherche",
+      "SEARCH_SCOPE": "La recherche porte sur les membres chargés. Chargez la suite pour élargir les résultats.",
+      "EMPTY_SEARCH": "Aucun membre ne correspond à votre recherche.",
+      "SEARCH_GUIDANCE": "Modifiez ou effacez votre recherche pour retrouver les membres de l’équipe."
     }
   }
 }

@@ -284,6 +284,17 @@ export class AppSidebarComponent {
               },
             ]
           : []),
+        ...(this.restaurantsCapabilities.canReadStaff?.()
+          ? [
+              {
+                icon: 'groups',
+                labelKey: 'RESTAURANTS.UX.NAV.team',
+                page: 'restaurants' as const,
+                route: '/restaurants/setup/team',
+                productCode: 'RESTAURANTS' as const,
+              },
+            ]
+          : []),
       ],
     },
   ]);

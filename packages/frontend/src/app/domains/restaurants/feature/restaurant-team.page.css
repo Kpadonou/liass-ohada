@@ -1,0 +1,93 @@
+/* Match Accounting management-list density; Material retains table semantics. */
+.team-collection .mat-mdc-table {
+  background: transparent;
+  table-layout: fixed;
+}
+.team-collection .mat-mdc-header-row {
+  height: 44px;
+  background: var(--liass-table-header-bg);
+}
+.team-collection .mat-mdc-header-cell {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--liass-text-muted);
+}
+.team-collection .mat-mdc-cell,
+.team-collection .mat-mdc-header-cell {
+  padding: 8px 16px;
+  border-bottom-color: var(--liass-border);
+  overflow-wrap: anywhere;
+}
+.team-collection .mat-mdc-row {
+  height: 56px;
+}
+.team-collection .mat-mdc-row:last-child .mat-mdc-cell {
+  border-bottom: 0;
+}
+.team-collection .mat-column-member {
+  width: 23%;
+}
+.team-collection .mat-column-role {
+  width: 17%;
+}
+.team-collection .mat-column-status {
+  width: 15%;
+}
+.team-collection .mat-column-actions {
+  width: 104px;
+  white-space: nowrap;
+  text-align: right;
+}
+/* Accounting's narrow-screen stacked records, using one DOM/query instance per member. */
+@media (max-width: 767px) {
+  .team-collection {
+    border: 0;
+  }
+  .team-collection .mat-mdc-table {
+    display: grid;
+  }
+  .team-collection .mat-mdc-header-row {
+    display: none;
+  }
+  .team-collection .mat-mdc-row {
+    display: block;
+    height: auto;
+    border: 1px solid var(--liass-border);
+    border-radius: var(--radius-app-card);
+    margin-bottom: 12px;
+    padding: 8px 16px;
+  }
+  .team-collection .mat-mdc-cell {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 16px;
+    width: auto;
+    border: 0;
+    padding: 8px 0;
+  }
+  .team-collection .mat-mdc-cell::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    color: var(--liass-text-muted);
+    font-size: 0.75rem;
+  }
+  .team-collection .mat-column-member {
+    display: block;
+  }
+  .team-collection .mat-column-member::before {
+    display: none;
+  }
+  .team-collection .mat-column-outlets {
+    display: block;
+  }
+  .team-collection .mat-column-outlets::before {
+    display: block;
+    margin-bottom: 8px;
+  }
+  .team-collection .mat-column-actions {
+    align-items: center;
+  }
+}

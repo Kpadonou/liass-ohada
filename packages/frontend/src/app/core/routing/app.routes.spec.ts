@@ -388,6 +388,7 @@ it('keeps Setup and Menu behind RESTAURANTS ProductAccess without future modules
   const product = shellRoute()?.children?.find((route) => route.path === 'restaurants');
   expect(product?.children?.map((route) => route.path)).toEqual([
     'service',
+    'setup/team',
     '',
     'setup',
     'setup/locations',
@@ -400,4 +401,13 @@ it('keeps Setup and Menu behind RESTAURANTS ProductAccess without future modules
     expect(route.canActivate).toHaveLength(1);
     expect(route.data?.['productCode']).toBe('RESTAURANTS');
   }
+});
+
+it('loads the Team destination inside the existing Restaurants product wrapper', async () => {
+  const product = shellRoute()?.children?.find((route) => route.path === 'restaurants');
+  const team = product?.children?.find((route) => route.path === 'setup/team');
+  expect(await team?.loadComponent?.()).toBe(
+    (await import('../../domains/restaurants/feature/restaurant-team.page')).RestaurantTeamPage,
+  );
+  expect(team?.data?.['titleKey']).toBe('RESTAURANTS.TEAM.TITLE');
 });

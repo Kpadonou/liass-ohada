@@ -1,0 +1,114 @@
+<h2 mat-dialog-title>{{ 'RESTAURANTS.TEAM.ASSIGNMENTS_TITLE' | transloco: { name: name() } }}</h2>
+<form [formGroup]="form" (ngSubmit)="save()">
+  <mat-dialog-content class="space-y-4">
+    @if (!allowed()) {
+      <p role="alert">{{ 'RESTAURANTS.TEAM.ACCESS_DENIED' | transloco }}</p>
+    } @else {
+      <p class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS.TEAM.ASSIGNMENTS_HELP' | transloco }}
+      </p>
+      @if (stale()) {
+        <div role="alert" class="text-sm">
+          <p>{{ 'RESTAURANTS.TEAM.ERROR_CONFLICT' | transloco }}</p>
+          <button mat-button type="button" [disabled]="pending()" (click)="reload()">
+            {{ 'RESTAURANTS.TEAM.RELOAD_REVIEW' | transloco }}
+          </button>
+        </div>
+      }
+      @if (error()) {
+        <div role="alert" class="space-y-2 text-sm">
+          <p class="text-danger-600">{{ error() }}</p>
+          <p>{{ 'RESTAURANTS.TEAM.PARTIAL_FAILURE' | transloco }}</p>
+          <button mat-button type="button" [disabled]="pending()" (click)="reload()">
+            {{ 'RESTAURANTS.TEAM.RELOAD_REVIEW' | transloco }}
+          </button>
+        </div>
+      }
+      @if (assignments.isPending() || member.isPending() || locations.isPending()) {
+        <div role="status" aria-busy="true">
+          <p class="text-sm">{{ 'RESTAURANTS.TEAM.LOADING' | transloco }}</p>
+          <liass-skeleton variant="block" />
+        </div>
+      } @else if (assignments.isError() || member.isError() || locations.isError()) {
+        <div role="alert">
+          <p class="text-sm text-danger-600">{{ loadError() }}</p>
+          <button mat-button type="button" (click)="reload(); locations.refetch()">
+            {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+          </button>
+        </div>
+      } @else {
+        @if (!allowNew()) {
+          <p class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.TEAM.REMOVAL_ONLY' | transloco }}
+          </p>
+        }
+        @if (!complete()) {
+          <p class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.TEAM.COMPLETE_ASSIGNMENTS' | transloco }}
+          </p>
+        }
+        @if (assignments.hasNextPage()) {
+          <button
+            mat-button
+            type="button"
+            [disabled]="assignments.isFetchingNextPage()"
+            (click)="assignments.fetchNextPage()"
+          >
+            {{ 'RESTAURANTS.TEAM.MORE_ASSIGNMENTS' | transloco }}
+          </button>
+        }
+        <fieldset
+          class="min-w-0 space-y-2"
+          [disabled]="pending() || locked() || stale() || !complete()"
+        >
+          <legend class="sr-only">{{ 'RESTAURANTS.TEAM.ESTABLISHMENTS' | transloco }}</legend>
+          @for (id of entries(); track id) {
+            @if (control(id); as checkbox) {
+              <liass-staff-outlet
+                [outletId]="id"
+                [known]="known(id)"
+                [control]="checkbox"
+                [wasAssigned]="wasAssigned(id)"
+                [allowNew]="allowNew()"
+                [locked]="pending() || locked() || stale() || !complete()"
+              />
+            }
+          }
+        </fieldset>
+        @if (!entries().length) {
+          <p class="text-sm">{{ 'RESTAURANTS.TEAM.NO_ESTABLISHMENTS' | transloco }}</p>
+        }
+        @if (locations.hasNextPage()) {
+          <button
+            mat-button
+            type="button"
+            [disabled]="pending() || locked() || locations.isFetchingNextPage()"
+            (click)="locations.fetchNextPage()"
+          >
+            {{ 'RESTAURANTS.TEAM.MORE_ESTABLISHMENTS' | transloco }}
+          </button>
+        }
+      }
+    }
+    @if (pending()) {
+      <p role="status" aria-live="polite" class="text-sm">
+        {{ 'RESTAURANTS.TEAM.SAVING' | transloco }}
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end" class="flex-wrap gap-2">
+    <button mat-button type="button" [disabled]="pending()" (click)="cancel()">
+      {{ 'RESTAURANTS.UI.CANCEL' | transloco }}
+    </button>
+    <button
+      mat-flat-button
+      type="submit"
+      [disabled]="!allowed() || pending() || stale() || !complete() || locations.isError()"
+    >
+      {{
+        (locked() ? 'RESTAURANTS.TEAM.RETRY_REMAINING' : 'RESTAURANTS.TEAM.SAVE_ASSIGNMENTS')
+          | transloco
+      }}
+    </button>
+  </mat-dialog-actions>
+</form>

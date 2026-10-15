@@ -1,0 +1,292 @@
+<div class="space-y-4">
+  <liass-page-header
+    [eyebrow]="'RESTAURANTS.UX.CONFIGURATION' | transloco"
+    [title]="'RESTAURANTS.TEAM.TITLE' | transloco"
+    [subtitle]="'RESTAURANTS.TEAM.SUBTITLE' | transloco"
+  />
+  @if (!allowed()) {
+    <liass-card
+      ><p role="alert">{{ 'RESTAURANTS.TEAM.ACCESS_DENIED' | transloco }}</p></liass-card
+    >
+  } @else {
+    <div class="space-y-3" data-testid="team-management-collection">
+      @if (!caps.canManageStaff()) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.TEAM.READ_ONLY' | transloco }}
+        </p>
+      }
+      <section
+        class="grid items-start gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_192px] xl:grid-cols-[minmax(280px,1fr)_280px_192px]"
+        [attr.aria-label]="'RESTAURANTS.TEAM.FILTERS' | transloco"
+      >
+        <mat-form-field subscriptSizing="dynamic" class="w-full">
+          <mat-label>{{ 'RESTAURANTS.TEAM.SEARCH' | transloco }}</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input
+            #memberSearch
+            matInput
+            type="search"
+            [formControl]="searchFilter"
+            [attr.aria-describedby]="source().hasNextPage() ? 'team-search-scope' : null"
+          />
+          @if (searchValue()) {
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              [attr.aria-label]="'RESTAURANTS.TEAM.CLEAR_SEARCH' | transloco"
+              (click)="searchFilter.reset(''); memberSearch.focus()"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </mat-form-field>
+        <liass-searchable-select
+          class="w-full"
+          controlType="select"
+          labelKey="RESTAURANTS.TEAM.ESTABLISHMENT_FILTER"
+          [options]="options()"
+          [formControl]="outletFilter"
+          [loading]="locations.isPending()"
+        />
+        <mat-form-field subscriptSizing="dynamic" class="w-full">
+          <mat-label>{{ 'RESTAURANTS.TEAM.STATUS_FILTER' | transloco }}</mat-label>
+          <mat-select [formControl]="statusFilter">
+            <mat-select-trigger>{{
+              'RESTAURANTS.TEAM.STATUS.' + status() | transloco
+            }}</mat-select-trigger>
+            @for (value of ['ALL', 'ACTIVE', 'INACTIVE']; track value) {
+              <mat-option [value]="value">{{
+                'RESTAURANTS.TEAM.STATUS.' + value | transloco
+              }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        @if (locations.hasNextPage()) {
+          <button
+            mat-button
+            type="button"
+            [disabled]="locations.isFetchingNextPage()"
+            (click)="locations.fetchNextPage()"
+          >
+            {{ 'RESTAURANTS.TEAM.MORE_ESTABLISHMENTS' | transloco }}
+          </button>
+        }
+      </section>
+      @if (source().hasNextPage()) {
+        <p id="team-search-scope" class="text-xs text-app-text-secondary">
+          {{ 'RESTAURANTS.TEAM.SEARCH_SCOPE' | transloco }}
+        </p>
+      }
+      @if (locations.isError()) {
+        <div role="alert" class="flex flex-wrap items-center gap-2 text-sm text-danger-600">
+          <p>{{ outletsError() }}</p>
+          <button mat-button type="button" (click)="locations.refetch()">
+            {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+          </button>
+        </div>
+      }
+      @if (source().isPending()) {
+        <div class="space-y-3" role="status" aria-busy="true">
+          <span class="sr-only">{{ 'RESTAURANTS.TEAM.LOADING' | transloco }}</span>
+          @for (index of [1, 2, 3, 4]; track index) {
+            <liass-skeleton variant="block" />
+          }
+        </div>
+      } @else {
+        @if (error()) {
+          <liass-card
+            ><p role="alert" class="text-sm text-danger-600">{{ error() }}</p>
+            <button mat-button type="button" (click)="source().refetch()">
+              {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+            </button></liass-card
+          >
+        }
+        @if (!denied() && (!error() || members().length)) {
+          @if (members().length) {
+            <div
+              class="team-collection rounded-app-card border border-slate-200 dark:border-slate-800"
+            >
+              <table
+                mat-table
+                [dataSource]="members()"
+                class="liass-data-table w-full"
+                [attr.aria-label]="'RESTAURANTS.TEAM.TITLE' | transloco"
+              >
+                <ng-container matColumnDef="member">
+                  <th mat-header-cell *matHeaderCellDef>
+                    {{ 'RESTAURANTS.TEAM.MEMBER' | transloco }}
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let member"
+                    [attr.data-label]="'RESTAURANTS.TEAM.MEMBER' | transloco"
+                  >
+                    <span class="font-semibold text-app-text">{{ name(member) }}</span>
+                    @if (!member.organizationMembershipActive) {
+                      <p class="mt-1 text-xs text-warning-600">
+                        {{ 'RESTAURANTS.TEAM.MEMBERSHIP_INACTIVE' | transloco }}
+                      </p>
+                    }
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="role">
+                  <th mat-header-cell *matHeaderCellDef>
+                    {{ 'RESTAURANTS.TEAM.ROLE' | transloco }}
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let member"
+                    [attr.data-label]="'RESTAURANTS.TEAM.ROLE' | transloco"
+                  >
+                    {{ 'RESTAURANTS.TEAM.ROLES.' + (member.restaurantRole ?? 'NONE') | transloco }}
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef>
+                    {{ 'RESTAURANTS.TEAM.STATUS_FILTER' | transloco }}
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let member"
+                    [attr.data-label]="'RESTAURANTS.TEAM.STATUS_FILTER' | transloco"
+                  >
+                    <liass-status-chip
+                      size="sm"
+                      [label]="'RESTAURANTS.TEAM.STATUS.' + member.status | transloco"
+                      [tone]="member.status === 'ACTIVE' ? 'success' : 'neutral'"
+                    />
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="outlets">
+                  <th mat-header-cell *matHeaderCellDef>
+                    {{ 'RESTAURANTS.TEAM.ESTABLISHMENTS' | transloco }}
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let member"
+                    [attr.data-label]="'RESTAURANTS.TEAM.ESTABLISHMENTS' | transloco"
+                  >
+                    <liass-staff-assignments-summary
+                      [userId]="member.userId"
+                      [outlets]="outlets()"
+                    />
+                  </td>
+                </ng-container>
+                <ng-container matColumnDef="actions">
+                  <th mat-header-cell *matHeaderCellDef class="text-right">
+                    {{ 'RESTAURANTS.TEAM.ACTIONS' | transloco }}
+                  </th>
+                  <td
+                    mat-cell
+                    *matCellDef="let member"
+                    class="text-right"
+                    [attr.data-label]="'RESTAURANTS.TEAM.ACTIONS' | transloco"
+                  >
+                    @if (caps.canManageStaff()) {
+                      <button
+                        #memberMenuButton
+                        mat-icon-button
+                        type="button"
+                        [matMenuTriggerFor]="actions"
+                        [attr.aria-label]="
+                          'RESTAURANTS.TEAM.MEMBER_ACTIONS' | transloco: { name: name(member) }
+                        "
+                      >
+                        <mat-icon>more_vert</mat-icon>
+                      </button>
+                      <mat-menu #actions="matMenu" xPosition="before">
+                        <button
+                          mat-menu-item
+                          type="button"
+                          class="liass-menu-action liass-menu-action-info"
+                          (click)="manageAssignments(member, memberMenuButton)"
+                        >
+                          <mat-icon>location_on</mat-icon
+                          ><span>{{ 'RESTAURANTS.TEAM.MANAGE_ASSIGNMENTS' | transloco }}</span>
+                        </button>
+                        <button
+                          mat-menu-item
+                          type="button"
+                          class="liass-menu-action"
+                          [class.liass-menu-action-danger]="member.status === 'ACTIVE'"
+                          [class.liass-menu-action-info]="member.status === 'INACTIVE'"
+                          (click)="changeStatus(member, memberMenuButton)"
+                          [disabled]="
+                            member.status === 'INACTIVE' &&
+                            (!member.organizationMembershipActive || !member.restaurantRole)
+                          "
+                        >
+                          <mat-icon>{{
+                            member.status === 'ACTIVE' ? 'person_off' : 'person'
+                          }}</mat-icon>
+                          <span>{{
+                            (member.status === 'ACTIVE'
+                              ? 'RESTAURANTS.TEAM.DEACTIVATE'
+                              : 'RESTAURANTS.TEAM.REACTIVATE'
+                            ) | transloco
+                          }}</span>
+                        </button>
+                      </mat-menu>
+                    }
+                  </td>
+                </ng-container>
+                <tr mat-header-row *matHeaderRowDef="columns"></tr>
+                <tr mat-row *matRowDef="let member; columns: columns"></tr>
+              </table>
+            </div>
+          } @else {
+            <liass-card>
+              <div class="py-8 text-center">
+                <mat-icon class="text-app-text-secondary" aria-hidden="true">groups</mat-icon>
+                <h2 class="mt-3 text-base font-semibold text-app-text">
+                  {{
+                    (search()
+                      ? 'RESTAURANTS.TEAM.EMPTY_SEARCH'
+                      : source().hasNextPage()
+                        ? 'RESTAURANTS.TEAM.EMPTY_LOADED'
+                        : status() !== 'ALL'
+                          ? 'RESTAURANTS.TEAM.EMPTY_FILTER'
+                          : outletId()
+                            ? 'RESTAURANTS.TEAM.EMPTY_OUTLET'
+                            : 'RESTAURANTS.TEAM.EMPTY'
+                    ) | transloco
+                  }}
+                </h2>
+                <p class="mx-auto mt-2 max-w-lg text-sm text-app-text-secondary">
+                  {{
+                    (source().hasNextPage()
+                      ? 'RESTAURANTS.TEAM.EMPTY_PARTIAL'
+                      : search()
+                        ? 'RESTAURANTS.TEAM.SEARCH_GUIDANCE'
+                        : !outletId() && status() === 'ALL'
+                          ? 'RESTAURANTS.TEAM.EMPTY_GUIDANCE'
+                          : 'RESTAURANTS.TEAM.FILTER_GUIDANCE'
+                    ) | transloco
+                  }}
+                </p>
+              </div>
+            </liass-card>
+          }
+          @if (source().hasNextPage()) {
+            <div class="flex justify-center">
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="source().isFetchingNextPage()"
+                (click)="source().fetchNextPage()"
+              >
+                {{
+                  (source().isFetchingNextPage()
+                    ? 'RESTAURANTS.TEAM.LOADING'
+                    : 'RESTAURANTS.TEAM.MORE_MEMBERS'
+                  ) | transloco
+                }}
+              </button>
+            </div>
+          }
+        }
+      }
+    </div>
+  }
+</div>

@@ -45,6 +45,18 @@ Use ReactiveFormsModule and typed FormGroup/FormControl by default, with FormBui
 
 True sequential gated forms use Material Stepper with Reactive Forms, per-step validation, preserved navigation state and clearing of invalidated hidden configuration; small forms do not need cosmetic steppers. Definition of Done includes the charter, translated business language, no duplicated navigation, meaningful states, permissions/read-only presentation, responsiveness, keyboard and focus verification. Inspect rendered spacing and report visual evidence rather than relying solely on tests.
 
+## Collection presentation
+
+Inspect approved product patterns before inventing UI. Accounting management lists are a valid reference for cross-product ERP consistency.
+
+Tables are the default for homogeneous management collections whose repeated attributes users compare, filter, sort or paginate, with actions per record (for example team members, customers, suppliers, accounts, journals and invoices). Use the existing approved Material table/list grammar, one row per entity, with row actions in the final column, labelled Actions where appropriate. Reuse established compact Material menus and semantic action styling.
+
+Every management/list table must include an accessible text-search control alongside structured filters and any appropriate primary action, in a coherent cross-product toolbar. Search finds known records by human-recognizable text; filters constrain structured attributes and do not replace search. Do not omit search because fixtures are small or pagination exists. Any exception requires a concrete explanation in the feature report showing why text search is meaningless. Respect endpoint capabilities: local search must disclose its loaded-page scope when incomplete, preserve explicit pagination, and never imply full-dataset coverage or trigger unbounded loading. Inspect existing Accounting search/filter toolbars before implementing.
+
+Cards require a concrete UX justification: spatial or state-heavy interaction, dashboard summaries, visual objects, or an intentionally visual master-detail workflow. Cards are not a synonym for premium; premium means appropriate information architecture, hierarchy, spacing, readability and efficient interaction.
+
+Desktop information architecture remains table-oriented. On narrow screens, an established compact stacked-item adaptation is allowed when it improves readability and avoids unusable horizontal scrolling. Frontend Definition of Done includes consistency with existing cross-product interaction patterns, verified in the rendered UI.
+
 ## Reference priority
 
 Read only the references needed for the task, in this order:

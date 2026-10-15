@@ -12,6 +12,15 @@ import { RestaurantKind, RestaurantListKind, RestaurantContext } from './restaur
 import { ZodError } from 'zod';
 import { HttpErrorResponse } from '@angular/common/http';
 export const restaurantKeys = {
+  staff: (org: string) => ['restaurants', org, 'staff'] as const,
+  staffMember: (org: string, userId: string) =>
+    ['restaurants', org, 'staff-member', userId] as const,
+  staffOutlets: (org: string, userId: string) =>
+    ['restaurants', org, 'staff-outlets', userId] as const,
+  outletStaff: (org: string, outletId?: string) =>
+    outletId
+      ? (['restaurants', org, 'outlet-staff', outletId] as const)
+      : (['restaurants', org, 'outlet-staff'] as const),
   floor: (org: string, outletId: string) =>
     ['restaurants', org, 'service-floor', outletId] as const,
   root: (org: string) => ['restaurants', org] as const,
@@ -110,6 +119,81 @@ export class RestaurantsQueries {
       refetchInterval: 60_000,
       refetchIntervalInBackground: false,
     });
+  }
+  staff(enabled = true) {
+    const org = this.scope();
+    return infiniteQueryOptions({
+      queryKey: restaurantKeys.staff(org),
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam }) => this.api.staff(org, pageParam),
+      getNextPageParam: (last) => last.nextCursor,
+      enabled: enabled && !!org,
+      staleTime: 60_000,
+      retry,
+    });
+  }
+  staffMember(userId: string, enabled = true) {
+    const org = this.scope();
+    return queryOptions({
+      queryKey: restaurantKeys.staffMember(org, userId),
+      queryFn: () => this.api.staffMember(org, userId),
+      enabled: enabled && !!org && !!userId,
+      staleTime: 60_000,
+      retry,
+    });
+  }
+  staffOutlets(userId: string, enabled = true) {
+    const org = this.scope();
+    return infiniteQueryOptions({
+      queryKey: restaurantKeys.staffOutlets(org, userId),
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam }) => this.api.staffOutlets(org, userId, pageParam),
+      getNextPageParam: (last) => last.nextCursor,
+      enabled: enabled && !!org && !!userId,
+      staleTime: 60_000,
+      retry,
+    });
+  }
+  outletStaff(outletId: string, enabled = true) {
+    const org = this.scope();
+    return infiniteQueryOptions({
+      queryKey: restaurantKeys.outletStaff(org, outletId),
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam }) => this.api.outletStaff(org, outletId, pageParam),
+      getNextPageParam: (last) => last.nextCursor,
+      enabled: enabled && !!org && !!outletId,
+      staleTime: 60_000,
+      retry,
+    });
+  }
+  async staffAssignmentsChanged(org: string, userId: string, outletIds: string[]) {
+    await Promise.all([
+      this.client.invalidateQueries({
+        queryKey: restaurantKeys.staffOutlets(org, userId),
+        exact: true,
+      }),
+      ...[...new Set(outletIds)].map((id) =>
+        this.client.invalidateQueries({
+          queryKey: restaurantKeys.outletStaff(org, id),
+          exact: true,
+        }),
+      ),
+    ]);
+  }
+  async staffChanged(org: string, userId: string) {
+    await Promise.all([
+      this.client.invalidateQueries({ queryKey: restaurantKeys.staff(org), exact: true }),
+      this.client.invalidateQueries({
+        queryKey: restaurantKeys.staffMember(org, userId),
+        exact: true,
+      }),
+      this.client.invalidateQueries({
+        queryKey: restaurantKeys.staffOutlets(org, userId),
+        exact: true,
+      }),
+      // A staff lifecycle change affects their entry in any cached outlet directory.
+      this.client.invalidateQueries({ queryKey: restaurantKeys.outletStaff(org) }),
+    ]);
   }
   async floorChanged(org: string, outletId: string) {
     await this.client.invalidateQueries({

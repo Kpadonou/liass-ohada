@@ -4412,6 +4412,9 @@
         "service": {
           "TITLE": "Dining room service",
           "DESCRIPTION": "Follow the current state of your tables and manage service for your guests."
+        },
+        "team": {
+          "TITLE": "Team"
         }
       },
       "ADD": {
@@ -4429,7 +4432,8 @@
         "station": "Preparation stations",
         "menu": "Menu",
         "MENU_SECTION": "Menu",
-        "overview": "Dashboard"
+        "overview": "Dashboard",
+        "team": "Team"
       },
       "EMPTY": {
         "outlet": {
@@ -4495,6 +4499,88 @@
       "STATE_FREE": "Free",
       "STATE_OCCUPIED": "Occupied",
       "CONTEXT": "Service context"
+    },
+    "TEAM": {
+      "TITLE": "Team",
+      "SUBTITLE": "Your team members and the establishments they are assigned to.",
+      "FILTERS": "Filter the team",
+      "ESTABLISHMENT_FILTER": "Establishment",
+      "ALL_ESTABLISHMENTS": "All establishments",
+      "STATUS_FILTER": "Status",
+      "STATUS": {
+        "ALL": "All statuses",
+        "ACTIVE": "Active",
+        "INACTIVE": "Inactive"
+      },
+      "ROLES": {
+        "OWNER": "Owner",
+        "MANAGER": "Manager",
+        "WAITER": "Waiter",
+        "CASHIER": "Cashier",
+        "KITCHEN": "Cook",
+        "NONE": "Role unavailable"
+      },
+      "UNNAMED": "Team member",
+      "MEMBERSHIP_INACTIVE": "This person’s workspace access is inactive.",
+      "ESTABLISHMENTS": "Establishments",
+      "INACTIVE_OUTLET": "Inactive establishment",
+      "PAST_ASSIGNMENT": "Inactive assignment",
+      "OUTLET_LOADING": "Loading establishment…",
+      "OUTLET_UNAVAILABLE": "Establishment unavailable",
+      "ASSIGNMENTS_ERROR": "Assignments could not be loaded. Try again.",
+      "OUTLETS_ERROR": "Establishments could not be loaded. Try again.",
+      "NO_ASSIGNMENTS": "No assigned establishment.",
+      "MORE_ASSIGNMENTS": "Show more assignments",
+      "MORE_ESTABLISHMENTS": "Show more establishments",
+      "MORE_MEMBERS": "Show more members",
+      "MANAGE_ASSIGNMENTS": "Manage assignments",
+      "MEMBER_ACTIONS": "Actions for {{name}}",
+      "DEACTIVATE": "Deactivate",
+      "REACTIVATE": "Reactivate",
+      "DEACTIVATE_TITLE": "Deactivate {{name}}",
+      "REACTIVATE_TITLE": "Reactivate {{name}}",
+      "DEACTIVATE_HELP": "This person will become inactive on the team. Their assignments and history will be kept. Retained active assignments become usable again after reactivation, subject to their access.",
+      "REACTIVATE_HELP": "This person will become active on the team again. Retained active assignments become usable in active establishments, subject to their access.",
+      "COUNT": "{{count}} members",
+      "SHOWN_COUNT": "{{count}} members shown",
+      "EMPTY": "Your team has not been configured yet",
+      "EMPTY_GUIDANCE": "People must first belong to this workspace and have Liass-Resto access. Adding people to the team will be offered when member selection is available.",
+      "EMPTY_OUTLET": "No team member assigned to this establishment",
+      "EMPTY_FILTER": "No team member with this status",
+      "EMPTY_PARTIAL": "No match among the members loaded. You can show the next page.",
+      "FILTER_GUIDANCE": "Try another establishment or status.",
+      "ACCESS_DENIED": "You do not have access to team management.",
+      "ASSIGNMENTS_TITLE": "Manage assignments — {{name}}",
+      "ASSIGNMENTS_HELP": "Select the establishments where this person can work.",
+      "REMOVAL_ONLY": "Existing assignments can be removed. New assignments require this person to be active and have workspace access.",
+      "COMPLETE_ASSIGNMENTS": "Show all of this person’s assignments before making changes.",
+      "NO_ESTABLISHMENTS": "No establishment has been configured.",
+      "SAVE_ASSIGNMENTS": "Save assignments",
+      "RETRY_REMAINING": "Retry remaining changes",
+      "RELOAD_REVIEW": "Reload and review",
+      "PARTIAL_FAILURE": "Not all changes were confirmed. Some may have been saved. Retry the remaining changes, or reload to review current assignments before editing.",
+      "SAVING": "Saving…",
+      "NO_CHANGES": "No changes to save.",
+      "ASSIGNMENTS_SAVED": "Assignments saved.",
+      "STATUS_SAVED": "Team member status updated.",
+      "LOADING": "Loading the team…",
+      "ERROR_CONFLICT": "The team or its assignments have changed. Reload the information and review your choices.",
+      "ERROR_MISSING": "This team member or establishment is no longer available. Reload the information.",
+      "ERROR_INPUT": "Check the assignments and team member status before retrying.",
+      "EMPTY_LOADED": "No members shown yet",
+      "READ_ONLY": "You can view the team. A manager can change statuses and assignments.",
+      "COUNT_ONE": "{{count}} member",
+      "SHOWN_COUNT_ONE": "{{count}} member shown",
+      "MEMBER": "Member",
+      "ROLE": "Role",
+      "ACTIONS": "Actions",
+      "OTHER_ASSIGNMENTS": "+{{count}}",
+      "FEWER_ASSIGNMENTS": "Show less",
+      "SEARCH": "Search team members",
+      "CLEAR_SEARCH": "Clear search",
+      "SEARCH_SCOPE": "Search covers loaded members. Load more to expand the results.",
+      "EMPTY_SEARCH": "No team member matches your search.",
+      "SEARCH_GUIDANCE": "Change or clear your search to find team members."
     }
   }
 }
