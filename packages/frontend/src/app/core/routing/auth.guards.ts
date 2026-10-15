@@ -25,18 +25,25 @@ export const invitationAcceptanceGuard: CanActivateFn = async (route) => {
   const authStore = inject(AuthStore);
   const router = inject(Router);
   const acceptanceState = inject(InvitationAcceptanceState);
+  const company = route.routeConfig?.path === 'accept-company-invitation';
+  const path = company ? '/accept-company-invitation' : '/accept-invitation';
   const queryToken = route.queryParamMap.get('token');
 
   if (queryToken) {
-    acceptanceState.captureToken(queryToken);
+    acceptanceState.captureToken(queryToken, company);
     if (typeof window !== 'undefined') {
-      window.history.replaceState({}, document.title, '/accept-invitation');
+      window.history.replaceState({}, document.title, path);
     }
   }
+  if (!queryToken && acceptanceState.token() && acceptanceState.isCompany() !== company)
+    acceptanceState.clearToken();
   await ensureHydrated(authStore);
-  if (authStore.isAuthenticated()) return true;
-  acceptanceState.rememberReturnToAcceptance();
-  return router.createUrlTree(['/login'], { queryParams: { returnUrl: '/accept-invitation' } });
+  if (authStore.isAuthenticated()) {
+    if (company) acceptanceState.bindUser(authStore.currentUserId() ?? '');
+    return true;
+  }
+  acceptanceState.rememberReturnToAcceptance(company);
+  return router.createUrlTree(['/login'], { queryParams: { returnUrl: path } });
 };
 
 export const appRootRedirectGuard: CanActivateFn = async () => {
@@ -106,7 +113,7 @@ export const tenantGuard: CanActivateFn = async (_route, state) => {
     authStore.enterCabinetContext();
     return persistedDossierOrgId
       ? router.createUrlTree(['/cabinet/dossiers'], {
-          queryParams: { contextRecovery: '1' }
+          queryParams: { contextRecovery: '1' },
         })
       : router.createUrlTree(['/cabinet/dashboard']);
   }
@@ -140,7 +147,7 @@ export const cabinetDashboardGuard: CanActivateFn = async () => {
   const destination = authStore.workspaceDestination();
 
   return router.createUrlTree([
-    destination === '/cabinet/dashboard' ? '/dashboard' : (destination ?? '/dashboard')
+    destination === '/cabinet/dashboard' ? '/dashboard' : (destination ?? '/dashboard'),
   ]);
 };
 
@@ -160,7 +167,7 @@ export const cabinetTeamGuard: CanActivateFn = async () => {
     return true;
   }
   return router.createUrlTree([
-    authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard'
+    authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard',
   ]);
 };
 
@@ -182,7 +189,7 @@ export const cabinetSettingsGuard: CanActivateFn = async () => {
   }
 
   return router.createUrlTree([
-    authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard'
+    authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard',
   ]);
 };
 
@@ -224,9 +231,7 @@ export const accountingWriteGuard: CanActivateFn = async () => {
   if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM' && !authStore.dossiersLoaded()) {
     await authStore.loadDossiers(true);
   }
-  return authStore.canWriteAccounting()
-    ? true
-    : router.createUrlTree(['/accounting/entries']);
+  return authStore.canWriteAccounting() ? true : router.createUrlTree(['/accounting/entries']);
 };
 
 export const loginRedirectGuard: CanActivateFn = async () => {

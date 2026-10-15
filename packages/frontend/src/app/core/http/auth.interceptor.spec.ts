@@ -22,7 +22,7 @@ vi.mock('aws-amplify/auth', () => {
     getCurrentUser: vi.fn(),
     signIn: vi.fn(),
     signInWithRedirect: vi.fn(),
-    signOut: vi.fn()
+    signOut: vi.fn(),
   };
 
   return globalScope.__liassAmplifyAuthMock;
@@ -39,10 +39,10 @@ describe('authInterceptor', () => {
         {
           provide: TranslocoService,
           useValue: {
-            getActiveLang: () => 'fr'
-          }
-        }
-      ]
+            getActiveLang: () => 'fr',
+          },
+        },
+      ],
     });
     httpMock = TestBed.inject(HttpTestingController);
     localStorage.clear();
@@ -57,12 +57,12 @@ describe('authInterceptor', () => {
     const authStore = TestBed.inject(AuthStore);
     authStore.setCreatedWorkspace(
       { orgId: 'org-test', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-test'
+      'org-test',
     );
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
-        accessToken: { toString: () => 'jwt-token' }
-      }
+        accessToken: { toString: () => 'jwt-token' },
+      },
     } as never);
 
     const http = TestBed.inject(HttpClient);
@@ -81,14 +81,14 @@ describe('authInterceptor', () => {
     const authStore = TestBed.inject(AuthStore);
     authStore.setCreatedWorkspace(
       { orgId: 'org-test', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
-      'org-test'
+      'org-test',
     );
     vi.mocked(fetchAuthSession).mockResolvedValue({
-      tokens: { accessToken: { toString: () => 'jwt-token' } }
+      tokens: { accessToken: { toString: () => 'jwt-token' } },
     } as never);
 
     const response = firstValueFrom(
-      TestBed.inject(HttpClient).get(`${environment.apiBaseUrl}/me/product-access`)
+      TestBed.inject(HttpClient).get(`${environment.apiBaseUrl}/me/product-access`),
     );
     await Promise.resolve();
 
@@ -105,9 +105,9 @@ describe('authInterceptor', () => {
         orgId: 'org-cabinet',
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-cabinet'
+      'org-cabinet',
     );
     authStore.setCreatedDossier(
       {
@@ -117,14 +117,14 @@ describe('authInterceptor', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
-        accessToken: { toString: () => 'jwt-token' }
-      }
+        accessToken: { toString: () => 'jwt-token' },
+      },
     } as never);
 
     const http = TestBed.inject(HttpClient);
@@ -146,9 +146,9 @@ describe('authInterceptor', () => {
         orgId: 'org-cabinet',
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-cabinet'
+      'org-cabinet',
     );
     authStore.setCreatedDossier(
       {
@@ -159,16 +159,16 @@ describe('authInterceptor', () => {
         status: 'ACTIVE',
         accessMode: 'READ_ONLY',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
 
     const http = TestBed.inject(HttpClient);
     await expect(
       firstValueFrom(
-        http.post(`${environment.apiBaseUrl}/entries`, {}, { context: accountingWriteContext() })
-      )
+        http.post(`${environment.apiBaseUrl}/entries`, {}, { context: accountingWriteContext() }),
+      ),
     ).rejects.toMatchObject({ status: 403 });
     httpMock.expectNone(`${environment.apiBaseUrl}/entries`);
     expect(authStore.activeDossierOrgId()).toBe('org-client');
@@ -182,14 +182,14 @@ describe('authInterceptor', () => {
         orgId: 'org-cabinet',
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-cabinet'
+      'org-cabinet',
     );
 
     const http = TestBed.inject(HttpClient);
     await expect(
-      firstValueFrom(http.get(`${environment.apiBaseUrl}/accounts`))
+      firstValueFrom(http.get(`${environment.apiBaseUrl}/accounts`)),
     ).rejects.toMatchObject({ status: 401, statusText: 'Missing active organization' });
     httpMock.expectNone(`${environment.apiBaseUrl}/accounts`);
     expect(fetchAuthSession).not.toHaveBeenCalled();
@@ -202,9 +202,9 @@ describe('authInterceptor', () => {
         orgId: 'org-cabinet',
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-cabinet'
+      'org-cabinet',
     );
     authStore.setCreatedDossier(
       {
@@ -214,21 +214,21 @@ describe('authInterceptor', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
-        accessToken: { toString: () => 'jwt-token' }
-      }
+        accessToken: { toString: () => 'jwt-token' },
+      },
     } as never);
 
     const http = TestBed.inject(HttpClient);
     const response = firstValueFrom(
       http.get(`${environment.apiBaseUrl}/cabinet/dossiers`, {
-        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET')
-      })
+        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET'),
+      }),
     );
     await Promise.resolve();
 
@@ -246,9 +246,9 @@ describe('authInterceptor', () => {
         orgId: 'org-cabinet',
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-cabinet'
+      'org-cabinet',
     );
     authStore.setCreatedDossier(
       {
@@ -258,26 +258,26 @@ describe('authInterceptor', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
-        accessToken: { toString: () => 'jwt-token' }
-      }
+        accessToken: { toString: () => 'jwt-token' },
+      },
     } as never);
 
     const payload = {
       companyName: 'New Client SARL',
       country: 'BJ',
-      accountingFramework: 'SYSCOHADA_REVISED'
+      accountingFramework: 'SYSCOHADA_REVISED',
     };
     const http = TestBed.inject(HttpClient);
     const response = firstValueFrom(
       http.post(`${environment.apiBaseUrl}/cabinet/dossiers`, payload, {
-        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET')
-      })
+        context: new HttpContext().set(TENANT_REQUEST_SCOPE, 'CABINET'),
+      }),
     );
     await Promise.resolve();
 
@@ -293,9 +293,9 @@ describe('authInterceptor', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      activeDossierOrgId: 'org-new-client'
+      activeDossierOrgId: 'org-new-client',
     });
     await response;
   });
@@ -304,8 +304,8 @@ describe('authInterceptor', () => {
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
         accessToken: { toString: () => 'access-token' },
-        idToken: { toString: () => 'id-token-with-verified-email' }
-      }
+        idToken: { toString: () => 'id-token-with-verified-email' },
+      },
     } as never);
 
     const http = TestBed.inject(HttpClient);
@@ -314,7 +314,7 @@ describe('authInterceptor', () => {
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/workspaces`);
     expect(request.request.headers.get('Authorization')).toBe(
-      'Bearer id-token-with-verified-email'
+      'Bearer id-token-with-verified-email',
     );
     expect(request.request.headers.get('Accept-Language')).toBe('fr');
     expect(request.request.headers.has('x-org-id')).toBe(false);
@@ -328,8 +328,8 @@ describe('authInterceptor', () => {
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
         accessToken: { toString: () => 'access-token' },
-        idToken: { toString: () => 'id-token-with-verified-email' }
-      }
+        idToken: { toString: () => 'id-token-with-verified-email' },
+      },
     } as never);
 
     const http = TestBed.inject(HttpClient);
@@ -338,14 +338,14 @@ describe('authInterceptor', () => {
         workspaceType: 'COMPANY',
         organizationName: 'Demo SARL',
         country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED'
-      })
+        accountingFramework: 'SYSCOHADA_REVISED',
+      }),
     );
     await Promise.resolve();
 
     const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/workspaces`);
     expect(request.request.headers.get('Authorization')).toBe(
-      'Bearer id-token-with-verified-email'
+      'Bearer id-token-with-verified-email',
     );
     expect(request.request.headers.get('Accept-Language')).toBe('fr');
     expect(request.request.headers.has('x-org-id')).toBe(false);
@@ -358,7 +358,7 @@ describe('authInterceptor', () => {
         country: 'BJ',
         accountingFramework: 'SYSCOHADA_REVISED',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
       cabinet: null,
       workspace: {
@@ -369,46 +369,47 @@ describe('authInterceptor', () => {
         workspaceType: 'COMPANY',
         status: 'ACTIVE',
         country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED'
+        accountingFramework: 'SYSCOHADA_REVISED',
       },
-      activeOrgId: 'org-created'
+      activeOrgId: 'org-created',
     });
     await response;
   });
 
-  it('uses the ID token and no tenant header for invitation acceptance', async () => {
-    vi.mocked(fetchAuthSession).mockResolvedValue({
-      tokens: {
-        accessToken: { toString: () => 'access-token' },
-        idToken: { toString: () => 'id-token-with-verified-email' }
-      }
-    } as never);
+  it.each(['cabinet-invitations', 'organization/invitations'])(
+    'uses the ID token and no tenant header for %s acceptance',
+    async (route) => {
+      vi.mocked(fetchAuthSession).mockResolvedValue({
+        tokens: {
+          accessToken: { toString: () => 'access-token' },
+          idToken: { toString: () => 'id-token-with-verified-email' },
+        },
+      } as never);
 
-    const http = TestBed.inject(HttpClient);
-    const response = firstValueFrom(
-      http.post(`${environment.apiBaseUrl}/me/cabinet-invitations/accept`, {
-        token: 'invitation-token'
-      })
-    );
-    await Promise.resolve();
+      const http = TestBed.inject(HttpClient);
+      const response = firstValueFrom(
+        http.post(`${environment.apiBaseUrl}/me/${route}/accept`, {
+          token: 'invitation-token',
+        }),
+      );
+      await Promise.resolve();
 
-    const request = httpMock.expectOne(
-      `${environment.apiBaseUrl}/me/cabinet-invitations/accept`
-    );
-    expect(request.request.headers.get('Authorization')).toBe(
-      'Bearer id-token-with-verified-email'
-    );
-    expect(request.request.headers.get('Accept-Language')).toBe('fr');
-    expect(request.request.headers.has('x-org-id')).toBe(false);
-    request.flush({ member: {}, assignments: [] });
-    await response;
-  });
+      const request = httpMock.expectOne(`${environment.apiBaseUrl}/me/${route}/accept`);
+      expect(request.request.headers.get('Authorization')).toBe(
+        'Bearer id-token-with-verified-email',
+      );
+      expect(request.request.headers.get('Accept-Language')).toBe('fr');
+      expect(request.request.headers.has('x-org-id')).toBe(false);
+      request.flush({ member: {}, assignments: [] });
+      await response;
+    },
+  );
 
   it('does not add auth headers for non-backend requests', () => {
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
-        accessToken: { toString: () => 'jwt-token' }
-      }
+        accessToken: { toString: () => 'jwt-token' },
+      },
     } as never);
 
     const http = TestBed.inject(HttpClient);

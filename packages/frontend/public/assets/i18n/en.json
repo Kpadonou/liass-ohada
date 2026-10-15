@@ -3250,6 +3250,36 @@
       "VALIDATION": {
         "ORGANIZATION_ID": "Enter an organization ID."
       }
+    },
+    "COMPANY_INVITATIONS": {
+      "TITLE": "Invite a person",
+      "EMAIL": "Email address",
+      "EMAIL_HELP": "The person must sign in with this same email address to accept the invitation.",
+      "EMAIL_INVALID": "Enter a valid email address.",
+      "CREATE": "Create invitation",
+      "CREATED": "Invitation created.",
+      "DELIVERY": "Automatic email delivery is not available yet.",
+      "DEV_HELP": "This link is for testing in this development environment only.",
+      "COPY": "Copy invitation link",
+      "COPIED": "Link copied.",
+      "COPY_ERROR": "The link could not be copied. Try again.",
+      "PENDING": "Please wait…",
+      "ENTRY_HELP": "Not a workspace member yet?",
+      "ACCEPT_TITLE": "Join a workspace",
+      "ACCEPT_HELP": "You have been invited to join a workspace.",
+      "ACCEPT": "Accept invitation",
+      "ACCEPTED": "Invitation accepted.",
+      "ACCEPTED_HELP": "Your membership is confirmed. The administrator can then grant the access you need.",
+      "CONTINUE": "Choose a workspace",
+      "EMAIL_MISMATCH": "This invitation requires the verified email address it was created for. Sign in with that address after verifying it.",
+      "EXPIRED": "This invitation has expired. Contact the workspace administrator.",
+      "INVALID": "This invitation is not valid.",
+      "UNAVAILABLE": "This invitation is no longer available.",
+      "MEMBER_EXISTS": "This person already belongs to this workspace. Select an existing member.",
+      "ALREADY_PENDING": "An invitation is already pending for this address.",
+      "CONFLICT": "This invitation cannot be created in its current state. Close and reopen the form to review your request.",
+      "DENIED": "You are no longer authorized to create this invitation.",
+      "ERROR": "The operation could not be confirmed. You can retry the same request."
     }
   },
   "SALES": {

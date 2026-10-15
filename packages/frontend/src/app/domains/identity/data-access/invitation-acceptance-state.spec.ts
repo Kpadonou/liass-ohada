@@ -26,3 +26,28 @@ describe('InvitationAcceptanceState', () => {
     expect(state.consumeReturnUrl()).toBeNull();
   });
 });
+
+it('keeps COMPANY auth return isolated from Cabinet and rejects malformed replacement tokens', () => {
+  const state = TestBed.inject(InvitationAcceptanceState);
+  expect(state.captureToken('a'.repeat(43), true)).toBe(true);
+  expect(state.isCompany()).toBe(true);
+  state.rememberReturnToAcceptance();
+  expect(state.consumeReturnUrl()).toBe('/accept-company-invitation');
+  expect(state.captureToken('invalid', true)).toBe(false);
+  expect(state.token()).toBeNull();
+});
+
+it('binds COMPANY context on authenticated return and clears every transient field on completion or account change', () => {
+  const state = TestBed.inject(InvitationAcceptanceState);
+  state.captureToken('b'.repeat(43), true);
+  state.rememberReturnToAcceptance();
+  expect(state.bindUser('first')).toBe(true);
+  expect(state.bindUser('second')).toBe(false);
+  expect(state.token()).toBeNull();
+  expect(state.consumeReturnUrl()).toBeNull();
+  state.captureToken('c'.repeat(43), true);
+  state.rememberReturnToAcceptance();
+  state.clearToken();
+  expect(state.isCompany()).toBe(false);
+  expect(state.consumeReturnUrl()).toBeNull();
+});

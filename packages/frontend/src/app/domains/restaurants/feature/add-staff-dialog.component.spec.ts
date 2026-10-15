@@ -132,9 +132,7 @@ it('renders safe existing-member selection, exactly four role choices and zero o
   expect(f.componentInstance.options()[0].label).toContain('Aïssatou S.');
   expect(f.componentInstance.options().some((row) => row.value === 'suspended-id')).toBe(false);
   expect(f.componentInstance.roles).toEqual(['MANAGER', 'WAITER', 'CASHIER', 'KITCHEN']);
-  expect(f.nativeElement.textContent).not.toMatch(
-    /member|suspended-id|Cognito|Inviter|mot de passe/,
-  );
+  expect(f.nativeElement.textContent).not.toMatch(/member|suspended-id|Cognito|mot de passe/);
   expect(f.componentInstance.form.controls.outlets.value).toEqual([]);
   await f.componentInstance.submit();
   expect(api.bindStaff).toHaveBeenCalledWith('org', {
@@ -255,4 +253,32 @@ it('does not submit duplicates while pending and retains intent for retry', asyn
   const original = identity.assignInitialRole.mock.calls[0][3];
   await f.componentInstance.submit();
   expect(identity.assignInitialRole.mock.calls[1][3]).toEqual(original);
+});
+
+it('offers only a secondary Identity invitation to the authorized OWNER alongside existing-member selection', async () => {
+  const f = await dialog();
+  expect(f.nativeElement.textContent).toContain('Inviter une personne');
+  expect(f.componentInstance.form.controls).not.toHaveProperty('email');
+  expect(f.componentInstance.form.controls).not.toHaveProperty('password');
+});
+it.each(['MANAGER', 'WAITER', 'CASHIER', 'KITCHEN'])(
+  'does not render an invitation affordance without OWNER provisioning authority (%s)',
+  async () => {
+    permission.set(false);
+    fixture = TestBed.createComponent(AddStaffDialogComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).not.toContain('Inviter une personne');
+    expect(identity.assignInitialRole).not.toHaveBeenCalled();
+  },
+);
+it('allows a newly accepted directory member to be selected without automatically provisioning them', async () => {
+  identity.members.mockResolvedValue({
+    items: [
+      { userId: 'member', displayName: 'Nadia A.', email: 'nadia@example.test', status: 'ACTIVE' },
+    ],
+  });
+  const f = await select();
+  expect(f.componentInstance.options()[0].label).toContain('Nadia A.');
+  expect(identity.assignInitialRole).not.toHaveBeenCalled();
+  expect(api.bindStaff).not.toHaveBeenCalled();
 });

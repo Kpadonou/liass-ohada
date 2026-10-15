@@ -3250,6 +3250,36 @@
       "VALIDATION": {
         "ORGANIZATION_ID": "Saisissez un ID d’organisation."
       }
+    },
+    "COMPANY_INVITATIONS": {
+      "TITLE": "Inviter une personne",
+      "EMAIL": "Adresse e-mail",
+      "EMAIL_HELP": "La personne devra se connecter avec cette même adresse e-mail pour accepter l’invitation.",
+      "EMAIL_INVALID": "Saisissez une adresse e-mail valide.",
+      "CREATE": "Créer l’invitation",
+      "CREATED": "Invitation créée.",
+      "DELIVERY": "La livraison automatique par e-mail n’est pas encore disponible.",
+      "DEV_HELP": "Lien réservé aux essais dans cet environnement de développement.",
+      "COPY": "Copier le lien d’invitation",
+      "COPIED": "Lien copié.",
+      "COPY_ERROR": "Le lien n’a pas pu être copié. Réessayez.",
+      "PENDING": "Veuillez patienter…",
+      "ENTRY_HELP": "La personne n’est pas encore membre ?",
+      "ACCEPT_TITLE": "Rejoindre un espace de travail",
+      "ACCEPT_HELP": "Vous avez été invité à rejoindre un espace de travail.",
+      "ACCEPT": "Accepter l’invitation",
+      "ACCEPTED": "Invitation acceptée.",
+      "ACCEPTED_HELP": "Votre adhésion est confirmée. L’administrateur pourra ensuite vous attribuer les accès nécessaires.",
+      "CONTINUE": "Choisir un espace de travail",
+      "EMAIL_MISMATCH": "Cette invitation nécessite l’adresse e-mail vérifiée pour laquelle elle a été créée. Connectez-vous avec cette adresse après l’avoir vérifiée.",
+      "EXPIRED": "Cette invitation a expiré. Contactez l’administrateur de l’espace de travail.",
+      "INVALID": "Cette invitation n’est pas valide.",
+      "UNAVAILABLE": "Cette invitation n’est plus disponible.",
+      "MEMBER_EXISTS": "Cette personne appartient déjà à cet espace de travail. Utilisez la sélection des membres existants.",
+      "ALREADY_PENDING": "Une invitation est déjà en attente pour cette adresse.",
+      "CONFLICT": "Cette invitation ne peut pas être créée dans l’état actuel. Fermez puis rouvrez le formulaire pour vérifier votre demande.",
+      "DENIED": "Vous n’avez plus l’autorisation de créer cette invitation.",
+      "ERROR": "L’opération n’a pas pu être confirmée. Vous pouvez réessayer avec la même demande."
     }
   },
   "SALES": {

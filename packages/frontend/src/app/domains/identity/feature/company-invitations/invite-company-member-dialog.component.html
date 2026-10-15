@@ -1,0 +1,46 @@
+<h2 mat-dialog-title>{{ 'IDENTITY.COMPANY_INVITATIONS.TITLE' | transloco }}</h2>
+<form [formGroup]="form" (ngSubmit)="submit()">
+  <mat-dialog-content class="space-y-4">
+    @if (created()) {
+      <p role="status">{{ 'IDENTITY.COMPANY_INVITATIONS.CREATED' | transloco }}</p>
+      <p class="text-sm text-app-text-secondary">
+        {{ 'IDENTITY.COMPANY_INVITATIONS.DELIVERY' | transloco }}
+      </p>
+      @if (link()) {
+        <p class="text-xs text-app-text-secondary">
+          {{ 'IDENTITY.COMPANY_INVITATIONS.DEV_HELP' | transloco }}
+        </p>
+        <button mat-stroked-button type="button" (click)="copy()">
+          {{ 'IDENTITY.COMPANY_INVITATIONS.COPY' | transloco }}
+        </button>
+      }
+    } @else {
+      <p class="text-sm text-app-text-secondary">
+        {{ 'IDENTITY.COMPANY_INVITATIONS.EMAIL_HELP' | transloco }}
+      </p>
+      <mat-form-field appearance="outline" class="w-full">
+        <mat-label>{{ 'IDENTITY.COMPANY_INVITATIONS.EMAIL' | transloco }}</mat-label>
+        <input matInput type="email" autocomplete="email" [formControl]="email" />
+        @if (email.touched && email.invalid) {
+          <mat-error>{{ 'IDENTITY.COMPANY_INVITATIONS.EMAIL_INVALID' | transloco }}</mat-error>
+        }
+      </mat-form-field>
+    }
+    @if (error(); as key) {
+      <p role="alert" class="text-sm text-danger-600">{{ key | transloco }}</p>
+    }
+    @if (pending()) {
+      <p role="status">{{ 'IDENTITY.COMPANY_INVITATIONS.PENDING' | transloco }}</p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end" class="flex-wrap gap-2">
+    <button mat-button type="button" [disabled]="pending()" (click)="close()">
+      {{ (created() ? 'COMMON.ACTIONS.CLOSE' : 'COMMON.ACTIONS.CANCEL') | transloco }}
+    </button>
+    @if (!created()) {
+      <button mat-flat-button type="submit" [disabled]="pending() || email.invalid">
+        {{ 'IDENTITY.COMPANY_INVITATIONS.CREATE' | transloco }}
+      </button>
+    }
+  </mat-dialog-actions>
+</form>

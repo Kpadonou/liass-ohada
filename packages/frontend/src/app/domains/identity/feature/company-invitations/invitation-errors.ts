@@ -1,0 +1,16 @@
+import { backendErrorCode } from '../cabinet-team/cabinet-team.presentation';
+export function invitationError(error: unknown): string {
+  const code = backendErrorCode(error);
+  const states: Record<string, string> = {
+    ORGANIZATION_INVITATION_EMAIL_MISMATCH: 'EMAIL_MISMATCH',
+    ORGANIZATION_INVITATION_EXPIRED: 'EXPIRED',
+    ORGANIZATION_INVITATION_INVALID: 'INVALID',
+    ORGANIZATION_INVITATION_UNAVAILABLE: 'UNAVAILABLE',
+    ORGANIZATION_INVITATION_MEMBER_EXISTS: 'MEMBER_EXISTS',
+    ORGANIZATION_INVITATION_PENDING: 'ALREADY_PENDING',
+    ORGANIZATION_INVITATION_CONFLICT: 'CONFLICT',
+    ORGANIZATION_INVITATION_IDEMPOTENCY_CONFLICT: 'CONFLICT',
+    ERROR_ORG_ACCESS_DENIED: 'DENIED',
+  };
+  return 'IDENTITY.COMPANY_INVITATIONS.' + (states[code ?? ''] ?? 'ERROR');
+}

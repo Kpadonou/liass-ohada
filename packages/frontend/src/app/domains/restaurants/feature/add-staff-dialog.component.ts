@@ -2,7 +2,12 @@ import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { HttpErrorResponse } from '@angular/common/http';
-import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import {
+  MAT_DIALOG_DATA,
+  MatDialog,
+  MatDialogModule,
+  MatDialogRef,
+} from '@angular/material/dialog';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS, MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
@@ -16,6 +21,7 @@ import {
 } from '@tanstack/angular-query-experimental';
 import { AssignInitialProductRoleBodySchema } from '@liass-ohada/shared/shared';
 import type { RestaurantStaff } from '@liass-ohada/shared/restaurants';
+import { InviteCompanyMemberDialogComponent } from '../../identity/feature/company-invitations/invite-company-member-dialog.component';
 import { OrganizationMembersApi } from '../../identity/data-access/organization-members.api';
 import { OrganizationMembersQueries } from '../../identity/data-access/organization-members.queries';
 import { AuthStore } from '../../identity/data-access/auth.store';
@@ -54,6 +60,20 @@ import {
   templateUrl: './add-staff-dialog.component.html',
 })
 export class AddStaffDialogComponent {
+  private readonly dialogs = inject(MatDialog);
+  invite() {
+    if (!this.allowed() || this.pending() || this.started()) return;
+    this.dialogs
+      .open(InviteCompanyMemberDialogComponent, {
+        width: '520px',
+        maxWidth: 'calc(100vw - 32px)',
+        data: this.data,
+      })
+      .afterClosed()
+      .subscribe(() => {
+        if (this.allowed()) void this.directory.refetch();
+      });
+  }
   readonly data = inject<{ org: string; user: string }>(MAT_DIALOG_DATA);
   private readonly ref = inject(MatDialogRef<AddStaffDialogComponent>);
   private readonly api = inject(RestaurantsApi);

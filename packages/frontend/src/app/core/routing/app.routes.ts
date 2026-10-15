@@ -45,6 +45,14 @@ export const routes: Routes = [
     component: AuthCallbackPage,
   },
   {
+    path: 'accept-company-invitation',
+    loadComponent: () =>
+      import('../../domains/identity/feature/company-invitations/company-invitation-acceptance.page').then(
+        (m) => m.CompanyInvitationAcceptancePage,
+      ),
+    canActivate: [invitationAcceptanceGuard],
+  },
+  {
     path: 'accept-invitation',
     loadComponent: () =>
       import('../../domains/identity/feature/invitation-acceptance/invitation-acceptance.page').then(

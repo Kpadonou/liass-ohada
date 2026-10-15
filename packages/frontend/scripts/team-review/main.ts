@@ -10,7 +10,7 @@ import {
 } from '@angular/common/http';
 import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { patchState } from '@ngrx/signals';
 import { unprotected } from '@ngrx/signals/testing';
@@ -154,7 +154,43 @@ const localOnly: HttpInterceptorFn = (request, next) => {
   let body: unknown;
   const userPath =
     /^\/restaurants\/staff\/([^/]+)(?:\/outlets(?:\/([^/]+)(\/deactivate)?)?)?$/.exec(path);
-  if (path === '/me/workspaces') body = { workspaces: [] };
+  if (path === '/me/organization/invitations/accept') {
+    const token = (request.body as { token: string }).token;
+    const code = token.startsWith('e')
+      ? 'EXPIRED'
+      : token.startsWith('m')
+        ? 'EMAIL_MISMATCH'
+        : token.startsWith('d')
+          ? null
+          : 'INVALID';
+    if (code)
+      return throwError(
+        () =>
+          new HttpErrorResponse({
+            status: code === 'INVALID' ? 404 : 409,
+            error: { error: { code: 'ORGANIZATION_INVITATION_' + code } },
+          }),
+      );
+    directoryMembers.push({
+      userId: 'fixture-invited',
+      displayName: 'Nadia A.',
+      email: 'nadia@example.test',
+      status: 'ACTIVE',
+    });
+    body = { organizationId: 'fixture-org', membershipStatus: 'ACTIVE' };
+  } else if (path === '/me/organization/invitations') {
+    const input = request.body as { email: string };
+    body = {
+      invitation: {
+        invitationId: rid(990),
+        email: input.email,
+        status: 'PENDING',
+        expiresAt: '2026-11-01T00:00:00.000Z',
+      },
+      deliveryMode: 'DEVELOPMENT_TOKEN',
+      invitationToken: 'd'.repeat(43),
+    };
+  } else if (path === '/me/workspaces') body = { workspaces: [] };
   else if (path === '/me/organization/members') {
     body =
       scenario === 'add-directory-empty'
@@ -441,8 +477,49 @@ bootstrapApplication(App, {
     },
     provideAppInitializer(() => {
       const auth = inject(AuthStore);
+      if (scenario?.startsWith('invite')) auth.refreshUserProfile = async () => undefined;
+      if (scenario === 'invite-login')
+        auth.login = async () => {
+          patchState(unprotected(auth), {
+            user: { userId: 'fixture-invitee', username: 'fixture-invitee' },
+            activeOrgId: null,
+            workspaces: [],
+          });
+        };
+      if (scenario === 'invite-login') {
+        const router = inject(Router);
+        const button = document.createElement('button');
+        button.textContent = 'Revue : revenir au propriétaire';
+        button.style.cssText =
+          'position:fixed;bottom:8px;right:8px;z-index:9999;background:white;padding:8px;border:1px solid #ccc';
+        button.onclick = () => {
+          patchState(unprotected(auth), {
+            user: { userId: 'fixture-owner', username: 'fixture-owner' },
+            activeOrgId: 'fixture-org',
+            workspacesLoaded: true,
+            workspaces: [
+              {
+                orgId: 'fixture-org',
+                displayName: 'Héritage Bistro',
+                workspaceType: 'COMPANY',
+                status: 'ACTIVE',
+                accessSource: 'DIRECT',
+                role: 'OWNER',
+                productRoles: { RESTAURANTS: 'OWNER' },
+              },
+            ],
+          });
+          void router.navigateByUrl('/restaurants/setup/team');
+          button.remove();
+        };
+        document.body.append(button);
+      }
+
       patchState(unprotected(auth), {
-        user: { userId: waiterReview ? 'fixture-a' : 'fixture-owner', username: 'fixture-owner' },
+        user:
+          scenario === 'invite-login'
+            ? null
+            : { userId: waiterReview ? 'fixture-a' : 'fixture-owner', username: 'fixture-owner' },
         userAttributes: { name: waiterReview ? 'Aïssatou S.' : 'Camille M.' },
         activeOrgId: 'fixture-org',
         activeDossierOrgId: null,

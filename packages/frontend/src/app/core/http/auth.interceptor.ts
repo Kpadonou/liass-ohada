@@ -9,17 +9,14 @@ import { catchError, from, switchMap, throwError } from 'rxjs';
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { environment } from '../../../environments/environment';
 import { NotificationService } from '../notifications/notification.service';
-import {
-  ACCOUNTING_REQUEST_PERMISSION,
-  TENANT_REQUEST_SCOPE
-} from './tenant-request-context';
+import { ACCOUNTING_REQUEST_PERMISSION, TENANT_REQUEST_SCOPE } from './tenant-request-context';
 
 const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 const workspacesDiscoveryUrl = `${apiBaseUrl}/me/workspaces`;
 const cabinetInvitationAcceptanceUrl = `${apiBaseUrl}/me/cabinet-invitations/accept`;
 function tenantOrgIdForRequest(
   authStore: InstanceType<typeof AuthStore>,
-  request: Parameters<HttpInterceptorFn>[0]
+  request: Parameters<HttpInterceptorFn>[0],
 ): string | null {
   return request.context.get(TENANT_REQUEST_SCOPE) === 'CABINET'
     ? authStore.activeWorkspaceOrgId()
@@ -38,10 +35,11 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const translocoService = inject(TranslocoService);
   const activeLanguage = translocoService.getActiveLang() || 'fr';
   const isCabinetInvitationAcceptanceRequest =
-    request.url === cabinetInvitationAcceptanceUrl && request.method === 'POST';
+    (request.url === cabinetInvitationAcceptanceUrl ||
+      request.url === `${apiBaseUrl}/me/organization/invitations/accept`) &&
+    request.method === 'POST';
   const requiresIdentityClaims =
-    request.url === workspacesDiscoveryUrl ||
-    isCabinetInvitationAcceptanceRequest;
+    request.url === workspacesDiscoveryUrl || isCabinetInvitationAcceptanceRequest;
   const isPreTenantRequest =
     (request.url === workspacesDiscoveryUrl &&
       (request.method === 'GET' || request.method === 'POST')) ||
@@ -65,13 +63,10 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           error: {
             message: {
               code: 'CABINET_DOSSIER_READ_ONLY',
-              message: translate(
-                translocoService,
-                'ACCOUNTING.ACCESS.READ_ONLY_ACTION'
-              )
-            }
-          }
-        })
+              message: translate(translocoService, 'ACCOUNTING.ACCESS.READ_ONLY_ACTION'),
+            },
+          },
+        }),
     );
   }
 
@@ -82,8 +77,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           status: 401,
           statusText: 'Missing active organization',
           url: request.url,
-          error: { message: 'Select a workspace before continuing.' }
-        })
+          error: { message: 'Select a workspace before continuing.' },
+        }),
     );
   }
 
@@ -98,14 +93,14 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           status: 401,
           statusText: 'Missing auth token',
           url: request.url,
-          error: { message: 'Sign in before continuing.' }
+          error: { message: 'Sign in before continuing.' },
         });
       }
 
       const setHeaders: Record<string, string> = isPreTenantRequest
         ? {
             Authorization: `Bearer ${token}`,
-            'Accept-Language': activeLanguage
+            'Accept-Language': activeLanguage,
           }
         : {
             Authorization: `Bearer ${token}`,
@@ -115,13 +110,13 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
             authStore.activeWorkspaceOrgId() &&
             authStore.activeWorkspaceOrgId() !== tenantOrgId
               ? { 'x-workspace-org-id': authStore.activeWorkspaceOrgId() as string }
-              : {})
+              : {}),
           };
 
       return next(
         request.clone({
-          setHeaders
-        })
+          setHeaders,
+        }),
       );
     }),
     catchError((error) => {
@@ -132,7 +127,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
               status: 401,
               statusText: 'Authentication required',
               url: request.url,
-              error
+              error,
             });
       if (requestScope === 'ACCOUNTING' && httpError.status === 403) {
         const code = errorCode(httpError);
@@ -143,7 +138,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           notification?.error(translate(translocoService, 'ACCOUNTING.ACCESS.REVOKED'));
           void router?.navigate(['/cabinet/dossiers'], {
             queryParams: { contextRecovery: '1' },
-            replaceUrl: true
+            replaceUrl: true,
           });
         }
       }
@@ -161,7 +156,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           queryClient.removeQueries({ queryKey: ['cabinet-team', cabinetOrgId] });
         }
         notification?.error(
-          translate(translocoService, 'IDENTITY.CABINET_TEAM.ERRORS.ACCESS_REVOKED')
+          translate(translocoService, 'IDENTITY.CABINET_TEAM.ERRORS.ACCESS_REVOKED'),
         );
         void authStore
           .loadWorkspaces(true)
@@ -171,7 +166,7 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
           });
       }
       return throwError(() => httpError);
-    })
+    }),
   );
 };
 
@@ -180,9 +175,7 @@ function errorCode(error: HttpErrorResponse): string | null {
     | { message?: string | { code?: string }; error?: { code?: string } }
     | undefined;
   return (
-    (typeof body?.message === 'object' ? body.message.code : undefined) ??
-    body?.error?.code ??
-    null
+    (typeof body?.message === 'object' ? body.message.code : undefined) ?? body?.error?.code ?? null
   );
 }
 

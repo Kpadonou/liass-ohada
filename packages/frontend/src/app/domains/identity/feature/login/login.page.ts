@@ -10,14 +10,8 @@ import { AuthLayoutComponent } from '../../ui/auth-layout/auth-layout.component'
 
 @Component({
   selector: 'liass-login-page',
-  imports: [
-    AuthLayoutComponent,
-    MatIconModule,
-    ReactiveFormsModule,
-    RouterModule,
-    TranslocoModule
-  ],
-  templateUrl: './login.page.html'
+  imports: [AuthLayoutComponent, MatIconModule, ReactiveFormsModule, RouterModule, TranslocoModule],
+  templateUrl: './login.page.html',
 })
 export class LoginPage {
   protected readonly authStore = inject(AuthStore);
@@ -34,7 +28,7 @@ export class LoginPage {
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]],
     newPassword: ['', [Validators.required, Validators.minLength(12)]],
-    confirmNewPassword: ['', [Validators.required]]
+    confirmNewPassword: ['', [Validators.required]],
   });
 
   protected async loginWithGoogle(): Promise<void> {
@@ -119,10 +113,12 @@ export class LoginPage {
 
   private async routeAfterWorkspaceDiscovery(): Promise<void> {
     const requestedReturnUrl = this.route.snapshot.queryParamMap.get('returnUrl');
+    const rememberedReturnUrl = this.invitationAcceptanceState.consumeReturnUrl();
     const acceptanceReturnUrl =
-      requestedReturnUrl === '/accept-invitation'
+      requestedReturnUrl === '/accept-invitation' ||
+      requestedReturnUrl === '/accept-company-invitation'
         ? requestedReturnUrl
-        : this.invitationAcceptanceState.consumeReturnUrl();
+        : rememberedReturnUrl;
     if (acceptanceReturnUrl) {
       await this.router.navigateByUrl(acceptanceReturnUrl, { replaceUrl: true });
       return;

@@ -135,6 +135,16 @@
         }
       }
     }
+    @if (allowed() && !started()) {
+      <div class="border-t border-app-border pt-4">
+        <p class="text-sm text-app-text-secondary">
+          {{ 'IDENTITY.COMPANY_INVITATIONS.ENTRY_HELP' | transloco }}
+        </p>
+        <button mat-button type="button" [disabled]="pending()" (click)="invite()">
+          {{ 'IDENTITY.COMPANY_INVITATIONS.TITLE' | transloco }}
+        </button>
+      </div>
+    }
     @if (error()) {
       <div role="alert" class="space-y-2 text-sm">
         <p class="text-danger-600">{{ error() }}</p>
