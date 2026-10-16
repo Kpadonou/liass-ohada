@@ -32,6 +32,7 @@ const langs = {
 describe('Restaurant configuration dialogs', () => {
   const api = { save: vi.fn(), get: vi.fn(), list: vi.fn() },
     org = signal('org'),
+    user = signal('owner'),
     manage = signal(true);
   const ref = { close: vi.fn() },
     notification = { success: vi.fn() },
@@ -41,6 +42,7 @@ describe('Restaurant configuration dialogs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     org.set('org');
+    user.set('owner');
     manage.set(true);
     client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     api.list.mockResolvedValue({ items: [row('station')] });
@@ -70,6 +72,7 @@ describe('Restaurant configuration dialogs', () => {
           provide: RestaurantsQueries,
           useValue: {
             scope: org,
+            userScope: user,
             changed,
             denied,
             detail: () => ({
@@ -259,5 +262,15 @@ describe('Restaurant configuration dialogs', () => {
     expect(f.componentInstance.canManage()).toBe(false);
     expect(denied).toHaveBeenCalledWith('org');
     expect(ref.close).not.toHaveBeenCalled();
+  });
+  it('rejects an intent prepared by another account in the same organization', async () => {
+    const f = await create({ org: 'org', kind: 'restaurant', context: {} });
+    f.componentInstance.form.controls.name.setValue('Prepared by owner');
+    user.set('chrys');
+    // Submission is denied even before the closing effect runs.
+    await f.componentInstance.submit();
+    expect(api.save).not.toHaveBeenCalled();
+    f.detectChanges();
+    expect(ref.close).toHaveBeenCalled();
   });
 });

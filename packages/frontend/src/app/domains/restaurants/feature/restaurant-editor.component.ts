@@ -54,6 +54,7 @@ export class RestaurantEditorComponent {
   private readonly api = inject(RestaurantsApi);
   readonly queries = inject(RestaurantsQueries);
   private readonly caps = inject(RestaurantsCapabilities);
+  private readonly originalUser = this.queries.userScope();
   private readonly access = inject(ProductAccessState);
   private readonly notification = inject(NotificationService);
   private readonly t = inject(TranslocoService);
@@ -174,6 +175,7 @@ export class RestaurantEditorComponent {
     effect(() => {
       if (
         this.queries.scope() !== this.data.org ||
+        this.queries.userScope() !== this.originalUser ||
         this.access.availability('RESTAURANTS') === 'UNAVAILABLE'
       )
         this.ref.close();
@@ -181,6 +183,8 @@ export class RestaurantEditorComponent {
   }
   canManage() {
     return (
+      this.queries.scope() === this.data.org &&
+      this.queries.userScope() === this.originalUser &&
       !this.accessDenied() &&
       this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
       (['menu', 'category', 'item'].includes(this.data.kind)
@@ -240,6 +244,8 @@ export class RestaurantEditorComponent {
       this.version.set(current.version);
       this.refreshed.set(true);
     } catch (error) {
+      if (this.queries.scope() !== this.data.org || this.queries.userScope() !== this.originalUser)
+        return;
       this.error.set(restaurantError(error, (key) => this.t.translate(key)));
     }
   }
@@ -303,11 +309,16 @@ export class RestaurantEditorComponent {
         this.entity?.id,
       );
       await this.queries.changed(this.data.org, this.data.kind, this.data.context);
-      if (this.queries.scope() === this.data.org) {
+      if (
+        this.queries.scope() === this.data.org &&
+        this.queries.userScope() === this.originalUser
+      ) {
         this.notification.success(result.message ?? this.t.translate('RESTAURANTS.UI.SAVED'));
         this.ref.close(result.data);
       }
     } catch (error) {
+      if (this.queries.scope() !== this.data.org || this.queries.userScope() !== this.originalUser)
+        return;
       this.error.set(restaurantError(error, (key) => this.t.translate(key)));
       if (error instanceof HttpErrorResponse && error.status === 409) {
         this.conflict.set(!!this.entity);

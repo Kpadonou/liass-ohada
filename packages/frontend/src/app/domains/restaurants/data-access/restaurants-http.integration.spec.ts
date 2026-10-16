@@ -143,6 +143,10 @@ async function createFixture() {
       ).data,
     );
 }
+function selectOrganization(id: string) {
+  org.set(id);
+  localStorage.setItem('liass-ohada.activeOrgId', id);
+}
 function configure(mode = 'menu', data?: RestaurantEditorData) {
   TestBed.configureTestingModule({
     imports: [
@@ -162,6 +166,9 @@ function configure(mode = 'menu', data?: RestaurantEditorData) {
         provide: AuthStore,
         useValue: {
           effectiveOrgId: org,
+          currentUserId: () => 'integration-user',
+          contextRevision: org,
+          invalidateSessionContext: vi.fn(),
           activeWorkspaceOrgId: org,
           activeWorkspaceType: () => 'COMPANY',
           activeWorkspace: () => ({
@@ -201,7 +208,7 @@ async function page(mode = 'menu') {
   return fixture;
 }
 beforeEach(async () => {
-  org.set('org-a');
+  selectOrganization('org-a');
   role.set('OWNER');
   sequence = 0;
   close.close.mockReset();
@@ -347,7 +354,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
     20000,
   );
   it('uses real ProductAccess for route denial, product switcher visibility and backend denial', async () => {
-    org.set('org-no-product');
+    selectOrganization('org-no-product');
     const access = TestBed.inject(ProductAccessQueries);
     await client.fetchQuery(access.list());
     const route = new ActivatedRouteSnapshot();
@@ -364,7 +371,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
     );
     expect(navigation.products()).toEqual([]);
     await expect(api.get('org-no-product', 'restaurant')).rejects.toMatchObject({ status: 403 });
-    org.set('org-a');
+    selectOrganization('org-a');
     await client.fetchQuery(access.list());
     expect(await TestBed.runInInjectionContext(() => productAccessGuard(route, {} as never))).toBe(
       true,
@@ -384,7 +391,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       userId: 'manager',
     });
     expect(forged.status).toBe(200);
-    org.set('org-b');
+    selectOrganization('org-b');
     expect(await api.get('org-b', 'restaurant')).toBeNull();
     await expect(api.get('org-b', 'outlet', {}, outlet.id)).rejects.toMatchObject({ status: 404 });
     await expect(api.get('org-a', 'restaurant')).rejects.toMatchObject({ status: 409 });
@@ -560,14 +567,14 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
     await expect(api.list('org-a', 'area', site(), first.nextCursor)).rejects.toMatchObject({
       status: 400,
     });
-    org.set('org-b');
+    selectOrganization('org-b');
     await api.save('org-b', 'restaurant', {}, request('Cursor isolation check'));
     const other = (await api.save('org-b', 'outlet', {}, request('Cursor isolation location')))
       .data;
     await expect(
       api.list('org-b', 'station', { outletId: other.id }, first.nextCursor),
     ).rejects.toMatchObject({ status: 400 });
-    org.set('org-a');
+    selectOrganization('org-a');
     const f = await page('setup');
     f.componentInstance.section.set('station');
     await vi.waitFor(() => {
@@ -587,7 +594,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       f.detectChanges();
       expect(f.componentInstance.items.isSuccess()).toBe(true);
     });
-    org.set('org-b');
+    selectOrganization('org-b');
     f.detectChanges();
     expect(f.nativeElement.textContent).not.toContain('Grilled Chicken');
     expect(f.nativeElement.textContent).not.toContain('Agla Menu');
@@ -597,7 +604,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       expect(f.componentInstance.root.data()).toBeNull();
     });
     expect(f.componentInstance.outletId()).toBeNull();
-    org.set('org-a');
+    selectOrganization('org-a');
     await vi.waitFor(() => {
       f.detectChanges();
       expect(f.nativeElement.textContent).toContain('Agla Menu');

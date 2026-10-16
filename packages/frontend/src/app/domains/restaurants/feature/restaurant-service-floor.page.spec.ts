@@ -781,3 +781,19 @@ it('waiter empty floor offers operational guidance without configuration links o
   expect(fixture.nativeElement.textContent).not.toContain('configuration');
   expect(fixture.nativeElement.querySelector('a[href*="setup"]')).toBeNull();
 });
+
+it('rejects a foreign establishment deep link for management without requesting its floor', async () => {
+  params.next(convertToParamMap({ outlet: rid(999), area: rid(998) }));
+  await create();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.contextError()).toBe(true);
+  });
+  expect(fixture.componentInstance.outletId()).toBeNull();
+  expect(fixture.componentInstance.areaId()).toBeNull();
+  expect(api.serviceFloor).not.toHaveBeenCalled();
+  expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(
+    [],
+    expect.objectContaining({ queryParams: { outlet: null, area: null } }),
+  );
+});

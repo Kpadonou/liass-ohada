@@ -81,4 +81,20 @@ describe('Independent scoped RESTAURANTS permissions', () => {
     workspace.update((value) => ({ ...value, accessSource: 'CABINET_LINK' }));
     expect(caps.canRead()).toBe(false);
   });
+  it('recalculates WAITER capabilities across BETA to CLO and back without signing out', () => {
+    const caps = TestBed.inject(RestaurantsCapabilities);
+    workspace.set({ orgId: 'beta', role: 'MEMBER', productRoles: { RESTAURANTS: 'WAITER' } });
+    org.set('beta');
+    expect(caps.canReadService()).toBe(true);
+    org.set('clo');
+    // Even while the old membership is still present, it cannot authorize CLO.
+    expect(caps.canReadService()).toBe(false);
+    workspace.set({ orgId: 'clo', role: 'MEMBER' });
+    expect(caps.canRead()).toBe(false);
+    expect(caps.canOpenSession()).toBe(false);
+    org.set('beta');
+    workspace.set({ orgId: 'beta', role: 'MEMBER', productRoles: { RESTAURANTS: 'WAITER' } });
+    expect(caps.canReadService()).toBe(true);
+    expect(caps.canReadStaff()).toBe(false);
+  });
 });

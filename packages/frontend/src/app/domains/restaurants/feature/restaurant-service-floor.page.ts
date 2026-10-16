@@ -168,7 +168,18 @@ export class RestaurantServiceFloorPage {
           !this.chooseOutlet()
         )
           this.outletId.set(outlets[0].id);
-      } else if (!this.outletId() && outlets.length)
+      } else if (
+        this.locations.isSuccess() &&
+        this.outletId() &&
+        !outlets.some((o) => o.id === this.outletId()) &&
+        !this.locations.hasNextPage()
+      ) {
+        this.contextError.set(true);
+        this.chooseOutlet.set(true);
+        this.outletId.set(null);
+        this.areaId.set(null);
+        this.writeContext();
+      } else if (!this.outletId() && outlets.length && !this.chooseOutlet())
         this.outletId.set((outlets.find((o) => o.isActive) ?? outlets[0]).id);
     });
     effect(() => {
@@ -295,7 +306,8 @@ export class RestaurantServiceFloorPage {
   }
   manageResponsibility(table: FloorTable, clear: boolean, returnFocus: { focus: () => void }) {
     const org = this.queries.scope(),
-      outletId = this.outletId();
+      outletId = this.outletId(),
+      user = this.queries.userScope();
     if (
       !this.allowed() ||
       !this.caps.canManageResponsibility() ||
@@ -319,7 +331,11 @@ export class RestaurantServiceFloorPage {
           table,
           intent,
           clear: intent.current ? intent.current.staffId === null : clear,
-          isCurrent: () => this.allowed() && this.outletId() === outletId,
+          isCurrent: () =>
+            this.allowed() &&
+            this.queries.scope() === org &&
+            this.queries.userScope() === user &&
+            this.outletId() === outletId,
           canAssign: () => this.outlet()?.isActive === true,
         },
       })

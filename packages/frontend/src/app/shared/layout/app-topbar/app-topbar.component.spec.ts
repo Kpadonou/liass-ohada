@@ -930,6 +930,7 @@ describe('AppTopbarComponent', () => {
     choices.find((choice) => choice.textContent?.includes('Workspace B'))!.click();
     await fixture.whenStable();
     expect(authStore.activeOrgId()).toBe('b');
+    expect(workspacesApi.listWorkspaces).toHaveBeenCalledTimes(2);
     expect(navigation).toHaveBeenCalledWith('/dashboard');
   });
   it.each([
@@ -960,4 +961,25 @@ describe('AppTopbarComponent', () => {
       expect(authStore.effectiveOrgId()).toBe('beta');
     },
   );
+  it('keeps the verified workspace label while memberships refresh for a switch', async () => {
+    const a = { orgId: 'a', displayName: 'BETA', workspaceType: 'COMPANY' as const };
+    authStore.setCreatedWorkspace(a, 'a');
+    let finish!: (rows: unknown[]) => void;
+    workspacesApi.listWorkspaces.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const loading = authStore.loadWorkspaces(true);
+    renderText();
+    expect(activeWorkspaceText()).toContain('BETA');
+    expect(
+      fixture.nativeElement
+        .querySelector('[data-testid="active-workspace"]')
+        .getAttribute('aria-label'),
+    ).toContain('BETA');
+    finish([a]);
+    await loading;
+  });
 });

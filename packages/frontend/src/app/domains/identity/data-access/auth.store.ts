@@ -3,7 +3,7 @@ import { patchState, signalStore, withComputed, withMethods, withState } from '@
 import type {
   AccountingAccessMode,
   CabinetDossierSummary,
-  WorkspaceSummary
+  WorkspaceSummary,
 } from '@liass-ohada/shared';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import type { AuthUser } from 'aws-amplify/auth';
@@ -14,7 +14,7 @@ import {
   getCurrentUser,
   signIn,
   signInWithRedirect,
-  signOut
+  signOut,
 } from 'aws-amplify/auth';
 
 import { WorkspacesApi } from './workspaces.api';
@@ -40,6 +40,7 @@ export type ActiveWorkspaceSummary = WorkspaceSummary & {
 export type ActiveDossierSummary = CabinetDossierSummary | ActiveWorkspaceSummary;
 
 interface AuthState {
+  contextRevision: number;
   user: AuthUser | null;
   userAttributes: Record<string, string | undefined>;
   activeOrgId: string | null;
@@ -60,6 +61,7 @@ interface AuthState {
 }
 
 const initialState: AuthState = {
+  contextRevision: 0,
   user: null,
   userAttributes: {},
   activeOrgId: readStoredTenant(),
@@ -76,7 +78,7 @@ const initialState: AuthState = {
   dossiers: [],
   dossierLoading: false,
   dossierError: null,
-  dossiersLoaded: false
+  dossiersLoaded: false,
 };
 
 function readStoredTenant(): string | null {
@@ -136,7 +138,9 @@ function isMissingDossierEndpoint(error: unknown): boolean {
   );
 }
 
-async function loadCurrentUserProfile(options: { allowUserAttributeFetch?: boolean } = {}): Promise<{
+async function loadCurrentUserProfile(
+  options: { allowUserAttributeFetch?: boolean } = {},
+): Promise<{
   attributes: Record<string, string | undefined>;
   user: AuthUser;
 }> {
@@ -165,7 +169,7 @@ async function loadCurrentUserProfile(options: { allowUserAttributeFetch?: boole
 
     return {
       user,
-      attributes: { ...tokenAttributes, ...(attributes ?? {}) }
+      attributes: { ...tokenAttributes, ...(attributes ?? {}) },
     };
   } catch {
     return { user, attributes: tokenAttributes };
@@ -195,9 +199,9 @@ function profileAttributesFromClaims(
 function hasReadableProfileAttributes(attributes: Record<string, string | undefined>): boolean {
   return Boolean(
     cleanDisplayValue(attributes['name']) ||
-      cleanDisplayValue(attributes['email']) ||
-      cleanDisplayValue(attributes['given_name']) ||
-      cleanDisplayValue(attributes['family_name'])
+    cleanDisplayValue(attributes['email']) ||
+    cleanDisplayValue(attributes['given_name']) ||
+    cleanDisplayValue(attributes['family_name']),
   );
 }
 
@@ -269,13 +273,17 @@ function clearTenantQueries(queryClient: QueryClient | null, orgId?: string | nu
   }
 
   const tenantRoots = [
+    'restaurants',
+    'sales',
+    'product-access',
+    'identity',
     'accounting',
     'treasury',
     'projects',
     'cabinet-dashboard',
     'cabinet-settings',
     'cabinet-team',
-    'cabinet-operations'
+    'cabinet-operations',
   ] as const;
 
   for (const root of tenantRoots) {
@@ -288,8 +296,8 @@ function clearTenantQueries(queryClient: QueryClient | null, orgId?: string | nu
 export const AuthStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withComputed((
-    {
+  withComputed(
+    ({
       user,
       userAttributes,
       activeOrgId,
@@ -298,392 +306,508 @@ export const AuthStore = signalStore(
       dossiers,
       dossiersLoaded,
       dossierError,
-      dossierOpeningOrgId
-    }
-  ) => ({
-    isAuthenticated: computed(() => !!user()),
-    hasActiveTenant: computed(() => !!activeOrgId()),
-    hasDiscoveredWorkspaces: computed(() => workspaces().length > 0),
-    activeWorkspaceOrgId: computed(() => activeOrgId()),
-    directWorkspaces: computed(() => directWorkspaces(workspaces())),
-    canAccessDashboard: computed(() => !!user() && !!activeOrgId()),
-    activeWorkspace: computed(() => {
-      const orgId = activeOrgId();
+      dossierOpeningOrgId,
+    }) => ({
+      isAuthenticated: computed(() => !!user()),
+      hasActiveTenant: computed(() => !!activeOrgId()),
+      hasDiscoveredWorkspaces: computed(() => workspaces().length > 0),
+      activeWorkspaceOrgId: computed(() => activeOrgId()),
+      directWorkspaces: computed(() => directWorkspaces(workspaces())),
+      canAccessDashboard: computed(() => !!user() && !!activeOrgId()),
+      activeWorkspace: computed(() => {
+        const orgId = activeOrgId();
 
-      return orgId ? (workspaces().find((workspace) => workspace.orgId === orgId) ?? null) : null;
-    }),
-    activeWorkspaceDisplayName: computed(() => {
-      const orgId = activeOrgId();
-      const workspace = orgId
-        ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
-        : null;
+        return orgId ? (workspaces().find((workspace) => workspace.orgId === orgId) ?? null) : null;
+      }),
+      activeWorkspaceDisplayName: computed(() => {
+        const orgId = activeOrgId();
+        const workspace = orgId
+          ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
+          : null;
 
-      return workspaceDisplayName(workspace);
-    }),
-    activeWorkspaceType: computed(() =>
-      activeOrgId()
-        ? (workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ??
-          null)
-        : null
-    ),
-    activeWorkspaceKind: computed(() =>
-      activeOrgId()
-        ? (workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ??
-          null)
-        : null
-    ),
-    workspaceType: computed(() =>
-      activeOrgId()
-        ? (workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ?? null)
-        : null
-    ),
-    accessSource: computed(() => {
-      const workspace = activeOrgId()
-        ? workspaces().find((candidate) => candidate.orgId === activeOrgId())
-        : null;
+        return workspaceDisplayName(workspace);
+      }),
+      activeWorkspaceType: computed(() =>
+        activeOrgId()
+          ? (workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ??
+            null)
+          : null,
+      ),
+      activeWorkspaceKind: computed(() =>
+        activeOrgId()
+          ? (workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ??
+            null)
+          : null,
+      ),
+      workspaceType: computed(() =>
+        activeOrgId()
+          ? (workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ??
+            null)
+          : null,
+      ),
+      accessSource: computed(() => {
+        const workspace = activeOrgId()
+          ? workspaces().find((candidate) => candidate.orgId === activeOrgId())
+          : null;
 
-      return workspace?.workspaceType === 'ACCOUNTING_FIRM'
-        ? 'CABINET'
-        : (workspace?.accessSource ?? null);
-    }),
-    isDirectCompanyContext: computed(() =>
-      workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType === 'COMPANY'
-    ),
-    isCabinetContext: computed(() =>
-      workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ===
-        'ACCOUNTING_FIRM' && !activeDossierOrgId()
-    ),
-    isDossierContext: computed(() => {
-      const workspaceType = workspaces().find(
-        (workspace) => workspace.orgId === activeOrgId()
-      )?.workspaceType;
+        return workspace?.workspaceType === 'ACCOUNTING_FIRM'
+          ? 'CABINET'
+          : (workspace?.accessSource ?? null);
+      }),
+      isDirectCompanyContext: computed(
+        () =>
+          workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ===
+          'COMPANY',
+      ),
+      isCabinetContext: computed(
+        () =>
+          workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType ===
+            'ACCOUNTING_FIRM' && !activeDossierOrgId(),
+      ),
+      isDossierContext: computed(() => {
+        const workspaceType = workspaces().find(
+          (workspace) => workspace.orgId === activeOrgId(),
+        )?.workspaceType;
 
-      if (workspaceType === 'COMPANY') {
-        return true;
-      }
+        if (workspaceType === 'COMPANY') {
+          return true;
+        }
 
-      const dossierOrgId = activeDossierOrgId();
-      return (
-        workspaceType === 'ACCOUNTING_FIRM' &&
-        !!dossierOrgId &&
-        dossiersLoaded() &&
-        !dossierError() &&
-        dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
-      );
-    }),
-    effectiveOrgId: computed(() => {
-      const workspaceType = workspaces().find(
-        (workspace) => workspace.orgId === activeOrgId()
-      )?.workspaceType;
+        const dossierOrgId = activeDossierOrgId();
+        return (
+          workspaceType === 'ACCOUNTING_FIRM' &&
+          !!dossierOrgId &&
+          dossiersLoaded() &&
+          !dossierError() &&
+          dossiers().some(
+            (dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE',
+          )
+        );
+      }),
+      effectiveOrgId: computed(() => {
+        const workspaceType = workspaces().find(
+          (workspace) => workspace.orgId === activeOrgId(),
+        )?.workspaceType;
 
-      if (workspaceType === 'COMPANY') {
-        return activeOrgId();
-      }
+        if (workspaceType === 'COMPANY') {
+          return activeOrgId();
+        }
 
-      const dossierOrgId = activeDossierOrgId();
-      return workspaceType === 'ACCOUNTING_FIRM' &&
-        dossierOrgId &&
-        dossiersLoaded() &&
-        !dossierError() &&
-        dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
-        ? dossierOrgId
-        : null;
-    }),
-    dossierOpening: computed(() => !!dossierOpeningOrgId()),
-    activeWorkspaceTypeLabelKey: computed(() => {
-      const workspaceType = activeOrgId()
-        ? workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType
-        : null;
+        const dossierOrgId = activeDossierOrgId();
+        return workspaceType === 'ACCOUNTING_FIRM' &&
+          dossierOrgId &&
+          dossiersLoaded() &&
+          !dossierError() &&
+          dossiers().some(
+            (dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE',
+          )
+          ? dossierOrgId
+          : null;
+      }),
+      dossierOpening: computed(() => !!dossierOpeningOrgId()),
+      activeWorkspaceTypeLabelKey: computed(() => {
+        const workspaceType = activeOrgId()
+          ? workspaces().find((workspace) => workspace.orgId === activeOrgId())?.workspaceType
+          : null;
 
-      if (workspaceType === 'ACCOUNTING_FIRM') {
-        return 'SHELL.WORKSPACE_TYPES.ACCOUNTING_FIRM';
-      }
+        if (workspaceType === 'ACCOUNTING_FIRM') {
+          return 'SHELL.WORKSPACE_TYPES.ACCOUNTING_FIRM';
+        }
 
-      if (workspaceType === 'COMPANY') {
-        return 'SHELL.WORKSPACE_TYPES.COMPANY';
-      }
+        if (workspaceType === 'COMPANY') {
+          return 'SHELL.WORKSPACE_TYPES.COMPANY';
+        }
 
-      return null;
-    }),
-    userDisplayName: computed(() => userDisplayName(user(), userAttributes())),
-    userEmail: computed(() => userEmail(user(), userAttributes())),
-    userPictureUrl: computed(() => cleanDisplayValue(userAttributes()['picture'])),
-    currentUserDisplayName: computed(() => userDisplayName(user(), userAttributes())),
-    currentUserEmail: computed(() => userEmail(user(), userAttributes())),
-    currentUserPicture: computed(() => cleanDisplayValue(userAttributes()['picture'])),
-    currentUserId: computed(() => user()?.userId ?? null),
-    activeCabinetRole: computed(() => {
-      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
-      return workspace?.workspaceType === 'ACCOUNTING_FIRM'
-        ? (workspace.cabinetRole ?? null)
-        : null;
-    }),
-    canViewCabinetTeam: computed(() => {
-      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
-      return (
-        workspace?.workspaceType === 'ACCOUNTING_FIRM' &&
-        workspace.status === 'ACTIVE' &&
-        (workspace.cabinetRole === 'CABINET_ADMIN' || workspace.cabinetRole === 'SUPERVISOR')
-      );
-    }),
-    canViewCabinetInvitations: computed(() => {
-      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
-      return (
-        workspace?.workspaceType === 'ACCOUNTING_FIRM' &&
-        workspace.status === 'ACTIVE' &&
-        workspace.cabinetRole === 'CABINET_ADMIN'
-      );
-    }),
-    activeDossier: computed((): ActiveDossierSummary | null => {
-      const orgId = activeOrgId();
-      const workspace = orgId
-        ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
-        : null;
-
-      if (workspace?.workspaceType === 'COMPANY') {
         return null;
-      }
+      }),
+      userDisplayName: computed(() => userDisplayName(user(), userAttributes())),
+      userEmail: computed(() => userEmail(user(), userAttributes())),
+      userPictureUrl: computed(() => cleanDisplayValue(userAttributes()['picture'])),
+      currentUserDisplayName: computed(() => userDisplayName(user(), userAttributes())),
+      currentUserEmail: computed(() => userEmail(user(), userAttributes())),
+      currentUserPicture: computed(() => cleanDisplayValue(userAttributes()['picture'])),
+      currentUserId: computed(() => user()?.userId ?? null),
+      activeCabinetRole: computed(() => {
+        const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+        return workspace?.workspaceType === 'ACCOUNTING_FIRM'
+          ? (workspace.cabinetRole ?? null)
+          : null;
+      }),
+      canViewCabinetTeam: computed(() => {
+        const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+        return (
+          workspace?.workspaceType === 'ACCOUNTING_FIRM' &&
+          workspace.status === 'ACTIVE' &&
+          (workspace.cabinetRole === 'CABINET_ADMIN' || workspace.cabinetRole === 'SUPERVISOR')
+        );
+      }),
+      canViewCabinetInvitations: computed(() => {
+        const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+        return (
+          workspace?.workspaceType === 'ACCOUNTING_FIRM' &&
+          workspace.status === 'ACTIVE' &&
+          workspace.cabinetRole === 'CABINET_ADMIN'
+        );
+      }),
+      activeDossier: computed((): ActiveDossierSummary | null => {
+        const orgId = activeOrgId();
+        const workspace = orgId
+          ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
+          : null;
 
-      if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
-        return null;
-      }
+        if (workspace?.workspaceType === 'COMPANY') {
+          return null;
+        }
 
-      const dossierOrgId = activeDossierOrgId();
+        if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
+          return null;
+        }
 
-      return dossierOrgId
-        ? (dossiers().find((dossier) => dossier.orgId === dossierOrgId) ?? null)
-        : null;
+        const dossierOrgId = activeDossierOrgId();
+
+        return dossierOrgId
+          ? (dossiers().find((dossier) => dossier.orgId === dossierOrgId) ?? null)
+          : null;
+      }),
+      activeDossierDisplayName: computed(() => {
+        const orgId = activeOrgId();
+        const workspace = orgId
+          ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
+          : null;
+
+        if (workspace?.workspaceType === 'COMPANY') {
+          return null;
+        }
+
+        if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
+          return null;
+        }
+
+        const dossierOrgId = activeDossierOrgId();
+        const dossier = dossierOrgId
+          ? (dossiers().find((candidate) => candidate.orgId === dossierOrgId) ?? null)
+          : null;
+
+        return dossierDisplayName(dossier);
+      }),
+      hasActiveDossier: computed(() => {
+        const orgId = activeOrgId();
+        const workspace = orgId
+          ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
+          : null;
+
+        if (workspace?.workspaceType === 'COMPANY') {
+          return true;
+        }
+
+        if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
+          return false;
+        }
+
+        const dossierOrgId = activeDossierOrgId();
+
+        return (
+          !!dossierOrgId &&
+          dossiersLoaded() &&
+          !dossierError() &&
+          dossiers().some(
+            (dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE',
+          )
+        );
+      }),
+      activeAccountingAccessMode: computed((): AccountingAccessMode | null => {
+        const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+        if (workspace?.workspaceType === 'COMPANY') {
+          return 'READ_WRITE';
+        }
+        if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
+          return null;
+        }
+        const dossier = dossiers().find(
+          (candidate) => candidate.orgId === activeDossierOrgId() && candidate.status === 'ACTIVE',
+        );
+        return dossier?.accessMode ?? null;
+      }),
+      canReadAccounting: computed(() => {
+        const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+        if (workspace?.workspaceType === 'COMPANY') return true;
+        const dossier = dossiers().find(
+          (candidate) => candidate.orgId === activeDossierOrgId() && candidate.status === 'ACTIVE',
+        );
+        return dossier?.accessMode === 'READ_WRITE' || dossier?.accessMode === 'READ_ONLY';
+      }),
+      canWriteAccounting: computed(() => {
+        const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+        if (workspace?.workspaceType === 'COMPANY') return true;
+        return dossiers().some(
+          (candidate) =>
+            candidate.orgId === activeDossierOrgId() &&
+            candidate.status === 'ACTIVE' &&
+            candidate.accessMode === 'READ_WRITE',
+        );
+      }),
+      isAccountingReadOnly: computed(() => {
+        const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
+        if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') return false;
+        return dossiers().some(
+          (candidate) =>
+            candidate.orgId === activeDossierOrgId() &&
+            candidate.status === 'ACTIVE' &&
+            candidate.accessMode === 'READ_ONLY',
+        );
+      }),
     }),
-    activeDossierDisplayName: computed(() => {
-      const orgId = activeOrgId();
-      const workspace = orgId
-        ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
-        : null;
-
-      if (workspace?.workspaceType === 'COMPANY') {
-        return null;
-      }
-
-      if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
-        return null;
-      }
-
-      const dossierOrgId = activeDossierOrgId();
-      const dossier = dossierOrgId
-        ? (dossiers().find((candidate) => candidate.orgId === dossierOrgId) ?? null)
-        : null;
-
-      return dossierDisplayName(dossier);
-    }),
-    hasActiveDossier: computed(() => {
-      const orgId = activeOrgId();
-      const workspace = orgId
-        ? (workspaces().find((candidate) => candidate.orgId === orgId) ?? null)
-        : null;
-
-      if (workspace?.workspaceType === 'COMPANY') {
-        return true;
-      }
-
-      if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
-        return false;
-      }
-
-      const dossierOrgId = activeDossierOrgId();
-
-      return (
-        !!dossierOrgId &&
-        dossiersLoaded() &&
-        !dossierError() &&
-        dossiers().some((dossier) => dossier.orgId === dossierOrgId && dossier.status === 'ACTIVE')
-      );
-    }),
-    activeAccountingAccessMode: computed((): AccountingAccessMode | null => {
-      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
-      if (workspace?.workspaceType === 'COMPANY') {
-        return 'READ_WRITE';
-      }
-      if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') {
-        return null;
-      }
-      const dossier = dossiers().find(
-        (candidate) => candidate.orgId === activeDossierOrgId() && candidate.status === 'ACTIVE'
-      );
-      return dossier?.accessMode ?? null;
-    }),
-    canReadAccounting: computed(() => {
-      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
-      if (workspace?.workspaceType === 'COMPANY') return true;
-      const dossier = dossiers().find(
-        (candidate) => candidate.orgId === activeDossierOrgId() && candidate.status === 'ACTIVE'
-      );
-      return dossier?.accessMode === 'READ_WRITE' || dossier?.accessMode === 'READ_ONLY';
-    }),
-    canWriteAccounting: computed(() => {
-      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
-      if (workspace?.workspaceType === 'COMPANY') return true;
-      return dossiers().some(
-        (candidate) =>
-          candidate.orgId === activeDossierOrgId() &&
-          candidate.status === 'ACTIVE' &&
-          candidate.accessMode === 'READ_WRITE'
-      );
-    }),
-    isAccountingReadOnly: computed(() => {
-      const workspace = workspaces().find((candidate) => candidate.orgId === activeOrgId());
-      if (workspace?.workspaceType !== 'ACCOUNTING_FIRM') return false;
-      return dossiers().some(
-        (candidate) =>
-          candidate.orgId === activeDossierOrgId() &&
-          candidate.status === 'ACTIVE' &&
-          candidate.accessMode === 'READ_ONLY'
-      );
-    })
-  })),
-  withMethods((
-    store,
-    workspacesApi = inject(WorkspacesApi),
-    cabinetDossiersApi = inject(CabinetDossiersApi),
-    queryClient = inject(QueryClient, { optional: true })
-  ) => ({
-    async hydrate(): Promise<void> {
-      patchState(store, {
-        activeOrgId: readStoredTenant(),
-        activeDossierOrgId: readStoredDossier(),
-        loading: true,
-        error: null
-      });
-
-      try {
-        const { user, attributes } = await loadCurrentUserProfile();
-        patchState(store, { user, userAttributes: attributes, loading: false, hydrated: true });
-      } catch {
-        patchState(store, { user: null, userAttributes: {}, loading: false, hydrated: true });
-      }
-    },
-
-    async refreshUserProfile(): Promise<void> {
-      try {
-        const { user, attributes } = await loadCurrentUserProfile();
+  ),
+  withMethods(
+    (
+      store,
+      workspacesApi = inject(WorkspacesApi),
+      cabinetDossiersApi = inject(CabinetDossiersApi),
+      queryClient = inject(QueryClient, { optional: true }),
+    ) => ({
+      invalidateSessionContext(): void {
+        void queryClient?.cancelQueries();
+        queryClient?.clear();
+        clearInvitationAcceptanceState();
         patchState(store, {
-          user,
-          userAttributes: attributes,
+          ...initialState,
+          activeOrgId: null,
+          activeDossierOrgId: null,
+          contextRevision: store.contextRevision() + 1,
           hydrated: true,
-          error: null
         });
-      } catch (error) {
-        if (!store.user()) {
+      },
+
+      async hydrate(): Promise<void> {
+        const revision = store.contextRevision();
+        patchState(store, {
+          activeOrgId: readStoredTenant(),
+          activeDossierOrgId: readStoredDossier(),
+          loading: true,
+          error: null,
+        });
+
+        try {
+          const { user, attributes } = await loadCurrentUserProfile();
+          if (revision !== store.contextRevision()) return;
+          if (store.currentUserId() && store.currentUserId() !== user.userId)
+            this.invalidateSessionContext();
+          patchState(store, { user, userAttributes: attributes, loading: false, hydrated: true });
+        } catch {
+          if (revision !== store.contextRevision()) return;
+          this.invalidateSessionContext();
+        }
+      },
+
+      async refreshUserProfile(): Promise<void> {
+        const revision = store.contextRevision();
+        try {
+          const { user, attributes } = await loadCurrentUserProfile();
+          if (revision !== store.contextRevision()) return;
+          if (store.currentUserId() !== user.userId) this.invalidateSessionContext();
+          patchState(store, {
+            user,
+            userAttributes: attributes,
+            hydrated: true,
+            error: null,
+          });
+        } catch (error) {
+          if (revision !== store.contextRevision()) return;
+          if (!store.user()) {
+            patchState(store, {
+              user: null,
+              userAttributes: {},
+              hydrated: true,
+              error: messageFromError(error),
+            });
+          }
+        }
+      },
+
+      async login(email: string, password: string): Promise<void> {
+        const revision = store.contextRevision();
+        patchState(store, { loading: true, error: null });
+
+        try {
+          const result = await signIn({ username: email, password });
+          if (revision !== store.contextRevision()) return;
+
+          if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+            patchState(store, {
+              loading: false,
+              error: null,
+              requiresNewPassword: true,
+              hydrated: true,
+            });
+            return;
+          }
+
+          if (result.nextStep.signInStep !== 'DONE') {
+            throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
+          }
+
+          const { user, attributes } = await loadCurrentUserProfile({
+            allowUserAttributeFetch: true,
+          });
+          if (revision !== store.contextRevision()) return;
+          if (store.currentUserId() !== user.userId) this.invalidateSessionContext();
+          patchState(store, {
+            user,
+            userAttributes: attributes,
+            activeOrgId: readStoredTenant(),
+            activeDossierOrgId: readStoredDossier(),
+            loading: false,
+            hydrated: true,
+            requiresNewPassword: false,
+            workspacesLoaded: false,
+            workspaceError: null,
+          });
+        } catch (error) {
+          if (revision !== store.contextRevision()) return;
+          const message = messageFromError(error);
           patchState(store, {
             user: null,
             userAttributes: {},
-            hydrated: true,
-            error: messageFromError(error)
-          });
-        }
-      }
-    },
-
-    async login(email: string, password: string): Promise<void> {
-      patchState(store, { loading: true, error: null });
-
-      try {
-        const result = await signIn({ username: email, password });
-
-        if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-          patchState(store, {
             loading: false,
-            error: null,
-            requiresNewPassword: true,
-            hydrated: true
+            error: message,
+            requiresNewPassword: false,
           });
-          return;
+          throw error;
+        }
+      },
+
+      async confirmNewPassword(newPassword: string): Promise<void> {
+        const revision = store.contextRevision();
+        patchState(store, { loading: true, error: null });
+
+        try {
+          const result = await confirmSignIn({ challengeResponse: newPassword });
+          if (revision !== store.contextRevision()) return;
+
+          if (result.nextStep.signInStep !== 'DONE') {
+            throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
+          }
+
+          const { user, attributes } = await loadCurrentUserProfile({
+            allowUserAttributeFetch: true,
+          });
+          if (revision !== store.contextRevision()) return;
+          if (store.currentUserId() !== user.userId) this.invalidateSessionContext();
+          patchState(store, {
+            user,
+            userAttributes: attributes,
+            activeOrgId: readStoredTenant(),
+            activeDossierOrgId: readStoredDossier(),
+            loading: false,
+            hydrated: true,
+            requiresNewPassword: false,
+            workspacesLoaded: false,
+            workspaceError: null,
+          });
+        } catch (error) {
+          if (revision !== store.contextRevision()) return;
+          const message = messageFromError(error);
+          patchState(store, { user: null, userAttributes: {}, loading: false, error: message });
+          throw error;
+        }
+      },
+
+      async loadWorkspaces(force = false): Promise<ActiveWorkspaceSummary[]> {
+        if (store.workspacesLoaded() && !force) {
+          return store.workspaces();
         }
 
-        if (result.nextStep.signInStep !== 'DONE') {
-          throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
+        const revision = store.contextRevision();
+        const userId = store.currentUserId();
+        patchState(store, {
+          workspaceLoading: true,
+          workspaceError: null,
+        });
+
+        try {
+          const workspaces = await workspacesApi.listWorkspaces();
+          if (revision !== store.contextRevision() || userId !== store.currentUserId()) return [];
+          const directWorkspaceList = directWorkspaces(workspaces);
+          const currentTenant = store.activeOrgId();
+          const currentTenantIsValid =
+            !!currentTenant &&
+            directWorkspaceList.some((workspace) => workspace.orgId === currentTenant);
+
+          if (directWorkspaceList.length === 1) {
+            const directWorkspace = directWorkspaceList[0];
+            const activeOrgId = applyTenantSelection(store, directWorkspace.orgId);
+            const shouldClearDossier =
+              currentTenant !== directWorkspace.orgId ||
+              directWorkspace.workspaceType === 'COMPANY';
+
+            if (shouldClearDossier) {
+              persistDossier(null);
+            }
+
+            patchState(store, {
+              activeOrgId,
+              activeDossierOrgId: shouldClearDossier ? null : store.activeDossierOrgId(),
+              workspaces,
+              workspaceLoading: false,
+              workspaceError: null,
+              workspacesLoaded: true,
+            });
+            return workspaces;
+          }
+
+          if (!currentTenantIsValid) {
+            const activeOrgId = applyTenantSelection(store, null);
+            persistDossier(null);
+            patchState(store, { activeOrgId, activeDossierOrgId: null });
+          }
+
+          patchState(store, {
+            workspaces,
+            workspaceLoading: false,
+            workspaceError: null,
+            workspacesLoaded: true,
+          });
+
+          return workspaces;
+        } catch (error) {
+          if (revision !== store.contextRevision() || userId !== store.currentUserId()) return [];
+          const message = messageFromError(error);
+          patchState(store, {
+            workspaceLoading: false,
+            workspaceError: message,
+            workspacesLoaded: true,
+          });
+          throw error;
+        }
+      },
+
+      workspaceDestination(): WorkspaceDestination | null {
+        if (store.hasActiveTenant()) {
+          if (store.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
+            return '/cabinet/dashboard';
+          }
+
+          return '/dashboard';
         }
 
-        const { user, attributes } = await loadCurrentUserProfile({
-          allowUserAttributeFetch: true
-        });
-        patchState(store, {
-          user,
-          userAttributes: attributes,
-          activeOrgId: readStoredTenant(),
-          activeDossierOrgId: readStoredDossier(),
-          loading: false,
-          hydrated: true,
-          requiresNewPassword: false,
-          workspacesLoaded: false,
-          workspaceError: null
-        });
-      } catch (error) {
-        const message = messageFromError(error);
-        patchState(store, {
-          user: null,
-          userAttributes: {},
-          loading: false,
-          error: message,
-          requiresNewPassword: false
-        });
-        throw error;
-      }
-    },
-
-    async confirmNewPassword(newPassword: string): Promise<void> {
-      patchState(store, { loading: true, error: null });
-
-      try {
-        const result = await confirmSignIn({ challengeResponse: newPassword });
-
-        if (result.nextStep.signInStep !== 'DONE') {
-          throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
+        if (store.workspaceLoading() || !store.workspacesLoaded()) {
+          return null;
         }
 
-        const { user, attributes } = await loadCurrentUserProfile({
-          allowUserAttributeFetch: true
-        });
-        patchState(store, {
-          user,
-          userAttributes: attributes,
-          activeOrgId: readStoredTenant(),
-          activeDossierOrgId: readStoredDossier(),
-          loading: false,
-          hydrated: true,
-          requiresNewPassword: false,
-          workspacesLoaded: false,
-          workspaceError: null
-        });
-      } catch (error) {
-        const message = messageFromError(error);
-        patchState(store, { user: null, userAttributes: {}, loading: false, error: message });
-        throw error;
-      }
-    },
-
-    async loadWorkspaces(force = false): Promise<ActiveWorkspaceSummary[]> {
-      if (store.workspacesLoaded() && !force) {
-        return store.workspaces();
-      }
-
-      patchState(store, {
-        workspaceLoading: true,
-        workspaceError: null
-      });
-
-      try {
-        const workspaces = await workspacesApi.listWorkspaces();
+        const workspaces = store.workspaces();
         const directWorkspaceList = directWorkspaces(workspaces);
-        const currentTenant = store.activeOrgId();
-        const currentTenantIsValid = !!currentTenant && directWorkspaceList.some(
-          (workspace) => workspace.orgId === currentTenant
-        );
+
+        if (directWorkspaceList.length === 0) {
+          return '/onboarding';
+        }
 
         if (directWorkspaceList.length === 1) {
           const directWorkspace = directWorkspaceList[0];
+          const previousActiveOrgId = store.activeOrgId();
           const activeOrgId = applyTenantSelection(store, directWorkspace.orgId);
           const shouldClearDossier =
-            currentTenant !== directWorkspace.orgId || directWorkspace.workspaceType === 'COMPANY';
+            previousActiveOrgId !== directWorkspace.orgId ||
+            directWorkspace.workspaceType === 'COMPANY';
 
           if (shouldClearDossier) {
             persistDossier(null);
@@ -692,346 +816,286 @@ export const AuthStore = signalStore(
           patchState(store, {
             activeOrgId,
             activeDossierOrgId: shouldClearDossier ? null : store.activeDossierOrgId(),
-            workspaces,
+            error: null,
+            workspaceError: null,
+          });
+
+          return directWorkspace.workspaceType === 'ACCOUNTING_FIRM'
+            ? '/cabinet/dashboard'
+            : '/dashboard';
+        }
+
+        return '/select-workspace';
+      },
+
+      async logout(): Promise<void> {
+        this.invalidateSessionContext();
+        patchState(store, { loading: true, error: null });
+
+        try {
+          await signOut();
+        } finally {
+          this.invalidateSessionContext();
+          clearInvitationAcceptanceState();
+          persistTenant(null);
+          persistDossier(null);
+          patchState(store, {
+            user: null,
+            userAttributes: {},
+            activeOrgId: null,
+            loading: false,
+            error: null,
+            hydrated: true,
+            requiresNewPassword: false,
+            workspaces: [],
             workspaceLoading: false,
             workspaceError: null,
-            workspacesLoaded: true
+            workspacesLoaded: false,
+            activeDossierOrgId: null,
+            dossierOpeningOrgId: null,
+            dossiers: [],
+            dossierLoading: false,
+            dossierError: null,
+            dossiersLoaded: false,
           });
-          return workspaces;
         }
+      },
 
-        if (!currentTenantIsValid) {
-          const activeOrgId = applyTenantSelection(store, null);
-          persistDossier(null);
-          patchState(store, { activeOrgId, activeDossierOrgId: null });
+      async loginWithGoogle(): Promise<void> {
+        patchState(store, { loading: true, error: null });
+
+        try {
+          await signInWithRedirect({
+            provider: 'Google',
+            options: { prompt: GOOGLE_SIGN_IN_PROMPT },
+          });
+        } catch (error) {
+          const message = messageFromError(error);
+          patchState(store, { loading: false, error: message });
+          throw error;
         }
+      },
 
-        patchState(store, {
-          workspaces,
-          workspaceLoading: false,
-          workspaceError: null,
-          workspacesLoaded: true
-        });
+      async loginWithLinkedIn(): Promise<void> {
+        patchState(store, { loading: true, error: null });
 
-        return workspaces;
-      } catch (error) {
-        const message = messageFromError(error);
-        patchState(store, {
-          workspaceLoading: false,
-          workspaceError: message,
-          workspacesLoaded: true
-        });
-        throw error;
-      }
-    },
-
-    workspaceDestination(): WorkspaceDestination | null {
-      if (store.hasActiveTenant()) {
-        if (store.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
-          return '/cabinet/dashboard';
+        try {
+          await signInWithRedirect({ provider: { custom: LINKEDIN_PROVIDER_NAME } });
+        } catch (error) {
+          const message = messageFromError(error);
+          patchState(store, { loading: false, error: message });
+          throw error;
         }
+      },
 
-        return '/dashboard';
-      }
-
-      if (store.workspaceLoading() || !store.workspacesLoaded()) {
-        return null;
-      }
-
-      const workspaces = store.workspaces();
-      const directWorkspaceList = directWorkspaces(workspaces);
-
-      if (directWorkspaceList.length === 0) {
-        return '/onboarding';
-      }
-
-      if (directWorkspaceList.length === 1) {
-        const directWorkspace = directWorkspaceList[0];
-        const previousActiveOrgId = store.activeOrgId();
-        const activeOrgId = applyTenantSelection(store, directWorkspace.orgId);
-        const shouldClearDossier =
-          previousActiveOrgId !== directWorkspace.orgId || directWorkspace.workspaceType === 'COMPANY';
-
-        if (shouldClearDossier) {
-          persistDossier(null);
+      setTenant(orgId: string): void {
+        const previousWorkspaceOrgId = store.activeOrgId();
+        const previousDossierOrgId = store.activeDossierOrgId();
+        const activeOrgId = applyTenantSelection(store, orgId);
+        persistDossier(null);
+        clearTenantQueries(queryClient, previousDossierOrgId);
+        if (previousWorkspaceOrgId !== activeOrgId) {
+          clearTenantQueries(queryClient, previousWorkspaceOrgId);
         }
-
         patchState(store, {
           activeOrgId,
-          activeDossierOrgId: shouldClearDossier ? null : store.activeDossierOrgId(),
+          contextRevision: store.contextRevision() + 1,
+          activeDossierOrgId: null,
+          dossierOpeningOrgId: null,
+          dossiers: [],
+          dossierLoading: false,
+          dossierError: null,
+          dossiersLoaded: false,
           error: null,
-          workspaceError: null
+          workspaceError: null,
         });
+      },
 
-        return directWorkspace.workspaceType === 'ACCOUNTING_FIRM'
-          ? '/cabinet/dashboard'
-          : '/dashboard';
-      }
-
-      // TODO: Multi-direct-company workspaces are outside the MVP; keep this as a fallback.
-      return '/select-workspace';
-    },
-
-    async logout(): Promise<void> {
-      patchState(store, { loading: true, error: null });
-
-      try {
-        await signOut();
-      } finally {
-        clearTenantQueries(queryClient);
-        clearInvitationAcceptanceState();
-        persistTenant(null);
+      setCreatedWorkspace(workspace: ActiveWorkspaceSummary, activeOrgId: string): void {
+        const selectedOrgId = applyTenantSelection(store, activeOrgId);
         persistDossier(null);
         patchState(store, {
-          user: null,
-          userAttributes: {},
-          activeOrgId: null,
-          loading: false,
-          error: null,
-          hydrated: true,
-          requiresNewPassword: false,
-          workspaces: [],
+          activeOrgId: selectedOrgId,
+          activeDossierOrgId: null,
+          dossierOpeningOrgId: null,
+          workspaces: [workspace],
           workspaceLoading: false,
           workspaceError: null,
-          workspacesLoaded: false,
-          activeDossierOrgId: null,
-          dossierOpeningOrgId: null,
+          workspacesLoaded: true,
           dossiers: [],
           dossierLoading: false,
           dossierError: null,
-          dossiersLoaded: false
+          dossiersLoaded: workspace.workspaceType !== 'ACCOUNTING_FIRM',
+          error: null,
         });
-      }
-    },
+      },
 
-    async loginWithGoogle(): Promise<void> {
-      patchState(store, { loading: true, error: null });
+      async loadDossiers(force = false): Promise<CabinetDossierSummary[]> {
+        if (store.activeWorkspaceType() !== 'ACCOUNTING_FIRM') {
+          persistDossier(null);
+          patchState(store, {
+            activeDossierOrgId: null,
+            dossierOpeningOrgId: null,
+            dossiers: [],
+            dossierLoading: false,
+            dossierError: null,
+            dossiersLoaded: true,
+          });
+          return [];
+        }
 
-      try {
-        await signInWithRedirect({
-          provider: 'Google',
-          options: { prompt: GOOGLE_SIGN_IN_PROMPT }
-        });
-      } catch (error) {
-        const message = messageFromError(error);
-        patchState(store, { loading: false, error: message });
-        throw error;
-      }
-    },
+        if (store.dossiersLoaded() && !force) {
+          return store.dossiers();
+        }
 
-    async loginWithLinkedIn(): Promise<void> {
-      patchState(store, { loading: true, error: null });
+        const revision = store.contextRevision();
+        patchState(store, { dossierLoading: true, dossierError: null });
 
-      try {
-        await signInWithRedirect({ provider: { custom: LINKEDIN_PROVIDER_NAME } });
-      } catch (error) {
-        const message = messageFromError(error);
-        patchState(store, { loading: false, error: message });
-        throw error;
-      }
-    },
+        try {
+          const dossiers = await cabinetDossiersApi.listDossiers();
+          if (revision !== store.contextRevision()) return [];
+          const currentDossierOrgId = store.activeDossierOrgId();
+          const currentDossierIsValid =
+            !!currentDossierOrgId &&
+            dossiers.some((dossier) => dossier.orgId === currentDossierOrgId);
+          const selectedDossierOrgId = currentDossierIsValid ? currentDossierOrgId : null;
 
-    setTenant(orgId: string): void {
-      const previousWorkspaceOrgId = store.activeOrgId();
-      const previousDossierOrgId = store.activeDossierOrgId();
-      const activeOrgId = applyTenantSelection(store, orgId);
-      persistDossier(null);
-      clearTenantQueries(queryClient, previousDossierOrgId);
-      if (previousWorkspaceOrgId !== activeOrgId) {
-        clearTenantQueries(queryClient, previousWorkspaceOrgId);
-      }
-      patchState(store, {
-        activeOrgId,
-        activeDossierOrgId: null,
-        dossierOpeningOrgId: null,
-        dossiers: [],
-        dossierLoading: false,
-        dossierError: null,
-        dossiersLoaded: false,
-        error: null,
-        workspaceError: null
-      });
-    },
+          if (currentDossierOrgId && !selectedDossierOrgId) {
+            clearTenantQueries(queryClient, currentDossierOrgId);
+          }
 
-    setCreatedWorkspace(workspace: ActiveWorkspaceSummary, activeOrgId: string): void {
-      const selectedOrgId = applyTenantSelection(store, activeOrgId);
-      persistDossier(null);
-      patchState(store, {
-        activeOrgId: selectedOrgId,
-        activeDossierOrgId: null,
-        dossierOpeningOrgId: null,
-        workspaces: [workspace],
-        workspaceLoading: false,
-        workspaceError: null,
-        workspacesLoaded: true,
-        dossiers: [],
-        dossierLoading: false,
-        dossierError: null,
-        dossiersLoaded: workspace.workspaceType !== 'ACCOUNTING_FIRM',
-        error: null
-      });
-    },
+          persistDossier(selectedDossierOrgId);
+          patchState(store, {
+            activeDossierOrgId: selectedDossierOrgId,
+            dossiers,
+            dossierLoading: false,
+            dossierError: null,
+            dossiersLoaded: true,
+          });
 
-    async loadDossiers(force = false): Promise<CabinetDossierSummary[]> {
-      if (store.activeWorkspaceType() !== 'ACCOUNTING_FIRM') {
+          return dossiers;
+        } catch (error) {
+          if (revision !== store.contextRevision()) return [];
+          const dossierError = isMissingDossierEndpoint(error)
+            ? 'IDENTITY.CABINET_DOSSIERS.ERRORS.SERVICE_UNAVAILABLE'
+            : 'IDENTITY.CABINET_DOSSIERS.ERRORS.LOAD_FAILED';
+          persistDossier(null);
+          patchState(store, {
+            activeDossierOrgId: null,
+            dossierLoading: false,
+            dossierError,
+            dossiersLoaded: true,
+          });
+          return [];
+        }
+      },
+
+      setActiveDossier(orgId: string): boolean {
+        const activeDossierOrgId = orgId.trim();
+
+        const dossier = store
+          .dossiers()
+          .find(
+            (candidate) => candidate.orgId === activeDossierOrgId && candidate.status === 'ACTIVE',
+          );
+        if (store.activeWorkspaceType() !== 'ACCOUNTING_FIRM' || !dossier) {
+          persistDossier(null);
+          patchState(store, {
+            activeDossierOrgId: null,
+            dossierError: 'IDENTITY.CABINET_DOSSIERS.ERRORS.OPEN_FAILED',
+          });
+          return false;
+        }
+
+        clearTenantQueries(queryClient, store.activeDossierOrgId());
+        persistDossier(activeDossierOrgId);
+        patchState(store, { activeDossierOrgId, dossierError: null });
+        return true;
+      },
+
+      async openDossier(orgId: string): Promise<boolean> {
+        const dossierOrgId = orgId.trim();
+        if (!dossierOrgId || store.dossierOpeningOrgId()) {
+          return false;
+        }
+
+        patchState(store, { dossierOpeningOrgId: dossierOrgId, dossierError: null });
+        try {
+          await this.loadDossiers(true);
+          return this.setActiveDossier(dossierOrgId);
+        } finally {
+          patchState(store, { dossierOpeningOrgId: null });
+        }
+      },
+
+      enterCabinetContext(): void {
+        const previousDossierOrgId = store.activeDossierOrgId();
         persistDossier(null);
+        clearTenantQueries(queryClient, previousDossierOrgId);
         patchState(store, {
           activeDossierOrgId: null,
           dossierOpeningOrgId: null,
-          dossiers: [],
-          dossierLoading: false,
           dossierError: null,
-          dossiersLoaded: true
         });
-        return [];
-      }
+      },
 
-      if (store.dossiersLoaded() && !force) {
-        return store.dossiers();
-      }
-
-      patchState(store, { dossierLoading: true, dossierError: null });
-
-      try {
-        const dossiers = await cabinetDossiersApi.listDossiers();
-        const currentDossierOrgId = store.activeDossierOrgId();
-        const currentDossierIsValid =
-          !!currentDossierOrgId &&
-          dossiers.some((dossier) => dossier.orgId === currentDossierOrgId);
-        const selectedDossierOrgId = currentDossierIsValid ? currentDossierOrgId : null;
-
-        if (currentDossierOrgId && !selectedDossierOrgId) {
-          clearTenantQueries(queryClient, currentDossierOrgId);
+      handleAccountingAuthorizationFailure(code: string | null): void {
+        if (code === 'CABINET_DOSSIER_READ_ONLY') {
+          void this.loadDossiers(true);
+          return;
         }
+        const accessRevokedCodes = new Set([
+          'CABINET_DOSSIER_ASSIGNMENT_REQUIRED',
+          'CABINET_DOSSIER_ACCESS_FORBIDDEN',
+          'CABINET_DOSSIER_ACCESS_REVOKED',
+          'CABINET_DOSSIER_NOT_OWNED',
+          'CABINET_DOSSIER_INACTIVE',
+          'CABINET_MEMBER_NOT_ACTIVE',
+          'ACCOUNTING_ACCESS_CONTEXT_INVALID',
+          'ERROR_ORG_ACCESS_DENIED',
+        ]);
+        if (!code || !accessRevokedCodes.has(code)) {
+          return;
+        }
+        const previousDossierOrgId = store.activeDossierOrgId();
+        persistDossier(null);
+        clearTenantQueries(queryClient, previousDossierOrgId);
+        patchState(store, {
+          activeDossierOrgId: null,
+          dossierError: 'IDENTITY.CABINET_DOSSIERS.ERRORS.ACCESS_REVOKED',
+          dossiersLoaded: false,
+        });
+      },
+
+      setCreatedDossier(dossier: CabinetDossierSummary, activeDossierOrgId: string): void {
+        const selectedDossierOrgId = activeDossierOrgId.trim();
+        const existingDossiers = store
+          .dossiers()
+          .filter((candidate) => candidate.orgId !== dossier.orgId);
 
         persistDossier(selectedDossierOrgId);
         patchState(store, {
           activeDossierOrgId: selectedDossierOrgId,
-          dossiers,
+          dossierOpeningOrgId: null,
+          dossiers: [...existingDossiers, dossier],
           dossierLoading: false,
           dossierError: null,
-          dossiersLoaded: true
+          dossiersLoaded: true,
         });
+      },
 
-        return dossiers;
-      } catch (error) {
-        const dossierError = isMissingDossierEndpoint(error)
-          ? 'IDENTITY.CABINET_DOSSIERS.ERRORS.SERVICE_UNAVAILABLE'
-          : 'IDENTITY.CABINET_DOSSIERS.ERRORS.LOAD_FAILED';
-        persistDossier(null);
+      upsertDossier(dossier: CabinetDossierSummary): void {
+        const existingDossiers = store
+          .dossiers()
+          .filter((candidate) => candidate.orgId !== dossier.orgId);
+
         patchState(store, {
-          activeDossierOrgId: null,
+          dossiers: [...existingDossiers, dossier],
           dossierLoading: false,
-          dossierError,
-          dossiersLoaded: true
+          dossierError: null,
+          dossiersLoaded: true,
         });
-        return [];
-      }
-    },
-
-    setActiveDossier(orgId: string): boolean {
-      const activeDossierOrgId = orgId.trim();
-
-      const dossier = store.dossiers().find(
-        (candidate) => candidate.orgId === activeDossierOrgId && candidate.status === 'ACTIVE'
-      );
-      if (store.activeWorkspaceType() !== 'ACCOUNTING_FIRM' || !dossier) {
-        persistDossier(null);
-        patchState(store, {
-          activeDossierOrgId: null,
-          dossierError: 'IDENTITY.CABINET_DOSSIERS.ERRORS.OPEN_FAILED'
-        });
-        return false;
-      }
-
-      clearTenantQueries(queryClient, store.activeDossierOrgId());
-      persistDossier(activeDossierOrgId);
-      patchState(store, { activeDossierOrgId, dossierError: null });
-      return true;
-    },
-
-    async openDossier(orgId: string): Promise<boolean> {
-      const dossierOrgId = orgId.trim();
-      if (!dossierOrgId || store.dossierOpeningOrgId()) {
-        return false;
-      }
-
-      patchState(store, { dossierOpeningOrgId: dossierOrgId, dossierError: null });
-      try {
-        await this.loadDossiers(true);
-        return this.setActiveDossier(dossierOrgId);
-      } finally {
-        patchState(store, { dossierOpeningOrgId: null });
-      }
-    },
-
-    enterCabinetContext(): void {
-      const previousDossierOrgId = store.activeDossierOrgId();
-      persistDossier(null);
-      clearTenantQueries(queryClient, previousDossierOrgId);
-      patchState(store, {
-        activeDossierOrgId: null,
-        dossierOpeningOrgId: null,
-        dossierError: null
-      });
-    },
-
-    handleAccountingAuthorizationFailure(code: string | null): void {
-      if (code === 'CABINET_DOSSIER_READ_ONLY') {
-        void this.loadDossiers(true);
-        return;
-      }
-      const accessRevokedCodes = new Set([
-        'CABINET_DOSSIER_ASSIGNMENT_REQUIRED',
-        'CABINET_DOSSIER_ACCESS_FORBIDDEN',
-        'CABINET_DOSSIER_ACCESS_REVOKED',
-        'CABINET_DOSSIER_NOT_OWNED',
-        'CABINET_DOSSIER_INACTIVE',
-        'CABINET_MEMBER_NOT_ACTIVE',
-        'ACCOUNTING_ACCESS_CONTEXT_INVALID',
-        'ERROR_ORG_ACCESS_DENIED'
-      ]);
-      if (!code || !accessRevokedCodes.has(code)) {
-        return;
-      }
-      const previousDossierOrgId = store.activeDossierOrgId();
-      persistDossier(null);
-      clearTenantQueries(queryClient, previousDossierOrgId);
-      patchState(store, {
-        activeDossierOrgId: null,
-        dossierError: 'IDENTITY.CABINET_DOSSIERS.ERRORS.ACCESS_REVOKED',
-        dossiersLoaded: false
-      });
-    },
-
-    setCreatedDossier(dossier: CabinetDossierSummary, activeDossierOrgId: string): void {
-      const selectedDossierOrgId = activeDossierOrgId.trim();
-      const existingDossiers = store.dossiers().filter(
-        (candidate) => candidate.orgId !== dossier.orgId
-      );
-
-      persistDossier(selectedDossierOrgId);
-      patchState(store, {
-        activeDossierOrgId: selectedDossierOrgId,
-        dossierOpeningOrgId: null,
-        dossiers: [...existingDossiers, dossier],
-        dossierLoading: false,
-        dossierError: null,
-        dossiersLoaded: true
-      });
-    },
-
-    upsertDossier(dossier: CabinetDossierSummary): void {
-      const existingDossiers = store.dossiers().filter(
-        (candidate) => candidate.orgId !== dossier.orgId
-      );
-
-      patchState(store, {
-        dossiers: [...existingDossiers, dossier],
-        dossierLoading: false,
-        dossierError: null,
-        dossiersLoaded: true
-      });
-    }
-  }))
+      },
+    }),
+  ),
 );

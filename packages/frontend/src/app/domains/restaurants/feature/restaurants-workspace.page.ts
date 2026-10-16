@@ -270,9 +270,9 @@ export class RestaurantsWorkspacePage {
       }
       this.areaId.set(untracked(this.section) === 'table' ? params.get('area') : null);
     });
-    let previous = this.queries.scope();
+    let previous = this.queries.scope() + ':' + this.queries.userScope();
     effect(() => {
-      const scope = this.queries.scope();
+      const scope = this.queries.scope() + ':' + this.queries.userScope();
       if (previous !== scope) {
         previous = scope;
         this.outletId.set(null);

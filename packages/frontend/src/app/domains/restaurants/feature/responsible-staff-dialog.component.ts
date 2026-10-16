@@ -56,6 +56,7 @@ export class ResponsibleStaffDialogComponent {
   private readonly api = inject(RestaurantsApi);
   readonly queries = inject(RestaurantsQueries);
   private readonly caps = inject(RestaurantsCapabilities);
+  private readonly originalUser = this.queries.userScope();
   private readonly access = inject(ProductAccessState);
   private readonly t = inject(TranslocoService);
   private readonly notification = inject(NotificationService);
@@ -63,6 +64,7 @@ export class ResponsibleStaffDialogComponent {
   readonly allowed = computed(
     () =>
       this.queries.scope() === this.data.org &&
+      this.queries.userScope() === this.originalUser &&
       this.data.isCurrent() &&
       this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
       this.caps.canManageResponsibility() &&

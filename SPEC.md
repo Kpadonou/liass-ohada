@@ -60,6 +60,12 @@ The platform shell owns active organization, connected user, global navigation, 
 
 The single application may progressively expose routes such as `/dashboard`, `/accounting/...`, `/treasury/...`, `/projects/...`, and `/administration/...`. RESTO-0 adds the ProductAccess-protected `/restaurants` foundation landing page under `core/`; RESTO-1C adds authenticated Overview, Setup and Menu child routes backed by `domains/restaurants`, matching the existing backend domain.
 
+### Multi-organization browser context
+
+One authenticated identity may belong to many organizations and switch without signing out. Product roles belong to the selected organization's membership; neither another organization's role nor ProductAccess grants member authority. The current browser model is **global across tabs on the same origin**, consistent with shared persisted workspace/dossier selection and the shared Cognito session. An external organization, dossier or account change must invalidate protected state and safely refresh through platform discovery before interaction resumes. Tabs must not silently act as independent workspaces.
+
+Tenant query keys include organization and relevant operational parents; self-context and other user-sensitive keys also include authenticated user identity. Organization/account changes must invalidate or revalidate permissions, caches, forms and operational context. Logout clears all account caches. Persisted selections are hints, revalidated against discovered memberships on reload. Deep-link parent identifiers must resolve within the active tenant before child data or actions become available. Capture tenant, principal and context revision for asynchronous work: stale results and errors must not populate, authorize, redirect or mutate a later tenant/account context, including switching away and back.
+
 ### Mandatory CDK Stack Boundaries
 
 The authoritative CDK resource-placement and validation rules are defined in [`packages/backend/docs/cdk-nested-stack-architecture.md`](packages/backend/docs/cdk-nested-stack-architecture.md).

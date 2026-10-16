@@ -6,7 +6,7 @@ import {
   getCurrentUser,
   signIn,
   signInWithRedirect,
-  signOut
+  signOut,
 } from 'aws-amplify/auth';
 import { vi } from 'vitest';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -26,7 +26,7 @@ vi.mock('aws-amplify/auth', () => {
     getCurrentUser: vi.fn(),
     signIn: vi.fn(),
     signInWithRedirect: vi.fn(),
-    signOut: vi.fn()
+    signOut: vi.fn(),
   };
 
   return globalScope.__liassAmplifyAuthMock;
@@ -46,8 +46,8 @@ describe('AuthStore', () => {
       providers: [
         { provide: WorkspacesApi, useValue: workspacesApi },
         { provide: CabinetDossiersApi, useValue: cabinetDossiersApi },
-        { provide: QueryClient, useValue: queryClient }
-      ]
+        { provide: QueryClient, useValue: queryClient },
+      ],
     });
     localStorage.clear();
     vi.mocked(confirmSignIn).mockReset();
@@ -65,16 +65,16 @@ describe('AuthStore', () => {
     const user = {
       username: 'user@example.com',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     };
     vi.mocked(signIn).mockResolvedValue({
       isSignedIn: true,
-      nextStep: { signInStep: 'DONE' }
+      nextStep: { signInStep: 'DONE' },
     });
     vi.mocked(getCurrentUser).mockResolvedValue(user);
     vi.mocked(fetchUserAttributes).mockResolvedValue({
       email: 'user@example.com',
-      name: 'Chrys Kpadonou'
+      name: 'Chrys Kpadonou',
     });
 
     const store = TestBed.inject(AuthStore);
@@ -89,7 +89,7 @@ describe('AuthStore', () => {
   it('prompts for a new password when Cognito requires it', async () => {
     vi.mocked(signIn).mockResolvedValue({
       isSignedIn: false,
-      nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED' }
+      nextStep: { signInStep: 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED' },
     });
 
     const store = TestBed.inject(AuthStore);
@@ -103,17 +103,17 @@ describe('AuthStore', () => {
     const user = {
       username: 'user@example.com',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     };
     vi.mocked(confirmSignIn).mockResolvedValue({
       isSignedIn: true,
-      nextStep: { signInStep: 'DONE' }
+      nextStep: { signInStep: 'DONE' },
     });
     vi.mocked(getCurrentUser).mockResolvedValue(user);
     vi.mocked(fetchUserAttributes).mockResolvedValue({
       email: 'user@example.com',
       given_name: 'Chrys',
-      family_name: 'Kpadonou'
+      family_name: 'Kpadonou',
     });
 
     const store = TestBed.inject(AuthStore);
@@ -129,16 +129,16 @@ describe('AuthStore', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     });
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
         idToken: {
           payload: {
-            email: 'chrys.kpadonou@example.com'
-          }
-        }
-      }
+            email: 'chrys.kpadonou@example.com',
+          },
+        },
+      },
     } as never);
     const store = TestBed.inject(AuthStore);
 
@@ -153,7 +153,7 @@ describe('AuthStore', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     });
     vi.mocked(fetchAuthSession).mockResolvedValue({
       tokens: {
@@ -162,10 +162,10 @@ describe('AuthStore', () => {
             email: 'remi@example.com',
             given_name: 'Remi',
             family_name: 'KPADONOU',
-            picture: 'https://example.com/profile.png'
-          }
-        }
-      }
+            picture: 'https://example.com/profile.png',
+          },
+        },
+      },
     } as never);
     const store = TestBed.inject(AuthStore);
 
@@ -184,7 +184,7 @@ describe('AuthStore', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     });
     vi.mocked(fetchAuthSession)
       .mockResolvedValueOnce({} as never)
@@ -193,10 +193,10 @@ describe('AuthStore', () => {
           idToken: {
             payload: {
               email: 'chrys.kpadonou@example.com',
-              name: 'Chrys Kpadonou'
-            }
-          }
-        }
+              name: 'Chrys Kpadonou',
+            },
+          },
+        },
       } as never);
     const store = TestBed.inject(AuthStore);
 
@@ -214,7 +214,7 @@ describe('AuthStore', () => {
     vi.mocked(getCurrentUser).mockResolvedValue({
       username: 'Google_123456789',
       userId: 'user-123',
-      signInDetails: undefined
+      signInDetails: undefined,
     });
     vi.mocked(fetchUserAttributes).mockResolvedValue({});
     const store = TestBed.inject(AuthStore);
@@ -227,19 +227,21 @@ describe('AuthStore', () => {
 
   it('auto-selects the only discovered workspace', async () => {
     workspacesApi.listWorkspaces.mockResolvedValue([
-      { orgId: 'org-test', role: 'ACCOUNTANT', workspaceType: 'COMPANY' }
+      { orgId: 'org-test', role: 'ACCOUNTANT', workspaceType: 'COMPANY' },
     ]);
     const store = TestBed.inject(AuthStore);
 
     const workspaces = await store.loadWorkspaces(true);
 
-    expect(workspaces).toEqual([{ orgId: 'org-test', role: 'ACCOUNTANT', workspaceType: 'COMPANY' }]);
+    expect(workspaces).toEqual([
+      { orgId: 'org-test', role: 'ACCOUNTANT', workspaceType: 'COMPANY' },
+    ]);
     expect(store.activeOrgId()).toBe('org-test');
     expect(store.activeWorkspaceOrgId()).toBe('org-test');
     expect(store.activeWorkspace()).toEqual({
       orgId: 'org-test',
       role: 'ACCOUNTANT',
-      workspaceType: 'COMPANY'
+      workspaceType: 'COMPANY',
     });
     expect(store.workspaceDestination()).toBe('/dashboard');
   });
@@ -251,8 +253,8 @@ describe('AuthStore', () => {
         role: 'OWNER',
         accessSource: 'DIRECT',
         displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
-      }
+        workspaceType: 'ACCOUNTING_FIRM',
+      },
     ]);
     const store = TestBed.inject(AuthStore);
 
@@ -272,8 +274,8 @@ describe('AuthStore', () => {
         accessSource: 'DIRECT',
         displayName: 'Cabinet Demo',
         workspaceType: 'ACCOUNTING_FIRM',
-        status: 'ACTIVE'
-      }
+        status: 'ACTIVE',
+      },
     ]);
     const store = TestBed.inject(AuthStore);
     await store.loadWorkspaces(true);
@@ -288,15 +290,15 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         accessSource: 'DIRECT',
         displayName: 'Cabinet Demo',
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
       {
         orgId: 'org-client',
         accessSource: 'CABINET',
         cabinetId: 'cab-123',
         displayName: 'Client SARL',
-        workspaceType: 'COMPANY'
-      }
+        workspaceType: 'COMPANY',
+      },
     ]);
     const store = TestBed.inject(AuthStore);
 
@@ -304,7 +306,7 @@ describe('AuthStore', () => {
 
     expect(store.workspaces().map((workspace) => workspace.orgId)).toEqual([
       'org-firm',
-      'org-client'
+      'org-client',
     ]);
     expect(store.directWorkspaces().map((workspace) => workspace.orgId)).toEqual(['org-firm']);
     expect(store.activeWorkspaceOrgId()).toBe('org-firm');
@@ -320,16 +322,13 @@ describe('AuthStore', () => {
   it('keeps multiple direct discovered workspaces for fallback selection', async () => {
     workspacesApi.listWorkspaces.mockResolvedValue([
       { orgId: 'org-a', role: 'ACCOUNTANT' },
-      { orgId: 'org-b', role: 'MANAGER' }
+      { orgId: 'org-b', role: 'MANAGER' },
     ]);
     const store = TestBed.inject(AuthStore);
 
     await store.loadWorkspaces(true);
 
-    expect(store.workspaces().map((workspace) => workspace.orgId)).toEqual([
-      'org-a',
-      'org-b'
-    ]);
+    expect(store.workspaces().map((workspace) => workspace.orgId)).toEqual(['org-a', 'org-b']);
     expect(store.activeOrgId()).toBeNull();
     expect(store.workspaceDestination()).toBe('/select-workspace');
   });
@@ -365,9 +364,9 @@ describe('AuthStore', () => {
         workspaceType: 'COMPANY',
         status: 'ACTIVE',
         country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED'
+        accountingFramework: 'SYSCOHADA_REVISED',
       },
-      'org-created'
+      'org-created',
     );
 
     expect(store.activeOrgId()).toBe('org-created');
@@ -384,8 +383,8 @@ describe('AuthStore', () => {
         workspaceType: 'COMPANY',
         status: 'ACTIVE',
         country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED'
-      }
+        accountingFramework: 'SYSCOHADA_REVISED',
+      },
     ]);
     expect(store.workspaceDestination()).toBe('/dashboard');
     expect(store.isDirectCompanyContext()).toBe(true);
@@ -400,13 +399,13 @@ describe('AuthStore', () => {
       {
         orgId: 'org-other',
         displayName: 'Other Workspace',
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
       {
         orgId: 'org-reloaded',
         displayName: 'Reloaded SARL',
-        workspaceType: 'COMPANY'
-      }
+        workspaceType: 'COMPANY',
+      },
     ]);
     const store = TestBed.inject(AuthStore);
 
@@ -425,9 +424,9 @@ describe('AuthStore', () => {
       {
         orgId: 'org-nested-company',
         organization: { name: 'Nested Company SARL' },
-        workspaceType: 'COMPANY'
+        workspaceType: 'COMPANY',
       },
-      'org-nested-company'
+      'org-nested-company',
     );
     expect(store.activeWorkspaceDisplayName()).toBe('Nested Company SARL');
 
@@ -435,9 +434,9 @@ describe('AuthStore', () => {
       {
         orgId: 'org-nested-firm',
         cabinet: { name: 'Nested Cabinet Conseil' },
-        workspaceType: 'ACCOUNTING_FIRM'
+        workspaceType: 'ACCOUNTING_FIRM',
       },
-      'org-nested-firm'
+      'org-nested-firm',
     );
     expect(store.activeWorkspaceDisplayName()).toBe('Nested Cabinet Conseil');
     expect(store.activeWorkspaceTypeLabelKey()).toBe('SHELL.WORKSPACE_TYPES.ACCOUNTING_FIRM');
@@ -455,9 +454,9 @@ describe('AuthStore', () => {
         workspaceType: 'ACCOUNTING_FIRM',
         status: 'ACTIVE',
         country: 'BJ',
-        accountingFramework: 'SYSCOHADA_REVISED'
+        accountingFramework: 'SYSCOHADA_REVISED',
       },
-      'org-firm'
+      'org-firm',
     );
 
     expect(store.activeWorkspaceDisplayName()).toBe('Cabinet KPADONOU Conseil');
@@ -475,9 +474,9 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-firm'
+      'org-firm',
     );
     cabinetDossiersApi.listDossiers.mockResolvedValue([
       {
@@ -487,8 +486,8 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
+        updatedAt: '2026-06-03T00:00:00.000Z',
+      },
     ]);
 
     await store.loadDossiers();
@@ -506,9 +505,9 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-firm'
+      'org-firm',
     );
     cabinetDossiersApi.listDossiers.mockResolvedValue([]);
 
@@ -525,9 +524,9 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-firm'
+      'org-firm',
     );
     cabinetDossiersApi.listDossiers.mockResolvedValue([
       {
@@ -537,7 +536,7 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
       {
         orgId: 'org-client-b',
@@ -546,8 +545,8 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
+        updatedAt: '2026-06-03T00:00:00.000Z',
+      },
     ]);
 
     await store.loadDossiers();
@@ -564,8 +563,8 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
-      }
+        cabinetId: 'cab-123',
+      },
     ]);
     cabinetDossiersApi.listDossiers.mockResolvedValue([
       {
@@ -575,8 +574,8 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
+        updatedAt: '2026-06-03T00:00:00.000Z',
+      },
     ]);
     const store = TestBed.inject(AuthStore);
 
@@ -596,8 +595,8 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
-      }
+        cabinetId: 'cab-123',
+      },
     ]);
     cabinetDossiersApi.listDossiers.mockRejectedValue(new Error('Service unavailable'));
     const store = TestBed.inject(AuthStore);
@@ -622,8 +621,8 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
-      }
+        cabinetId: 'cab-123',
+      },
     ]);
     cabinetDossiersApi.listDossiers.mockResolvedValue([
       {
@@ -633,8 +632,8 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
+        updatedAt: '2026-06-03T00:00:00.000Z',
+      },
     ]);
     const store = TestBed.inject(AuthStore);
 
@@ -654,9 +653,9 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-firm'
+      'org-firm',
     );
 
     store.setCreatedDossier(
@@ -667,9 +666,9 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
 
     expect(store.activeDossierOrgId()).toBe('org-client');
@@ -684,7 +683,7 @@ describe('AuthStore', () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(
       { orgId: 'org-firm', displayName: 'Cabinet Demo', workspaceType: 'ACCOUNTING_FIRM' },
-      'org-firm'
+      'org-firm',
     );
     store.setCreatedDossier(
       {
@@ -694,9 +693,9 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client-a'
+      'org-client-a',
     );
     store.upsertDossier({
       orgId: 'org-client-b',
@@ -705,7 +704,7 @@ describe('AuthStore', () => {
       accountingFramework: 'SYSCOHADA_REVISED',
       status: 'ACTIVE',
       createdAt: '2026-06-03T00:00:00.000Z',
-      updatedAt: '2026-06-03T00:00:00.000Z'
+      updatedAt: '2026-06-03T00:00:00.000Z',
     });
 
     expect(store.activeOrgId()).toBe('org-firm');
@@ -720,7 +719,7 @@ describe('AuthStore', () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(
       { orgId: 'org-firm', displayName: 'Cabinet Demo', workspaceType: 'ACCOUNTING_FIRM' },
-      'org-firm'
+      'org-firm',
     );
     store.setCreatedDossier(
       {
@@ -730,9 +729,9 @@ describe('AuthStore', () => {
         accountingFramework: 'SYSCOHADA_REVISED',
         status: 'ACTIVE',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
+        updatedAt: '2026-06-03T00:00:00.000Z',
       },
-      'org-client'
+      'org-client',
     );
     queryClient.setQueryData(['accounting', 'org-client', 'accounts'], ['stale client data']);
     queryClient.setQueryData(['identity', 'workspaces'], ['preserved discovery data']);
@@ -746,7 +745,7 @@ describe('AuthStore', () => {
     expect(store.effectiveOrgId()).toBeNull();
     expect(queryClient.getQueryData(['accounting', 'org-client', 'accounts'])).toBeUndefined();
     expect(queryClient.getQueryData(['identity', 'workspaces'])).toEqual([
-      'preserved discovery data'
+      'preserved discovery data',
     ]);
   });
 
@@ -754,7 +753,7 @@ describe('AuthStore', () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(
       { orgId: 'org-firm', displayName: 'Cabinet Demo', workspaceType: 'ACCOUNTING_FIRM' },
-      'org-firm'
+      'org-firm',
     );
     cabinetDossiersApi.listDossiers.mockResolvedValue([
       {
@@ -765,8 +764,8 @@ describe('AuthStore', () => {
         status: 'ACTIVE',
         accessMode: 'READ_ONLY',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
+        updatedAt: '2026-06-03T00:00:00.000Z',
+      },
     ]);
 
     await expect(store.openDossier('org-client')).resolves.toBe(true);
@@ -780,7 +779,7 @@ describe('AuthStore', () => {
     const store = TestBed.inject(AuthStore);
     store.setCreatedWorkspace(
       { orgId: 'org-firm', displayName: 'Cabinet Demo', workspaceType: 'ACCOUNTING_FIRM' },
-      'org-firm'
+      'org-firm',
     );
     cabinetDossiersApi.listDossiers.mockResolvedValue([
       {
@@ -791,8 +790,8 @@ describe('AuthStore', () => {
         status: 'ACTIVE',
         accessMode: 'READ_ONLY',
         createdAt: '2026-06-03T00:00:00.000Z',
-        updatedAt: '2026-06-03T00:00:00.000Z'
-      }
+        updatedAt: '2026-06-03T00:00:00.000Z',
+      },
     ]);
     await store.openDossier('org-client');
     queryClient.setQueryData(['accounting', 'org-client', 'accounts'], ['readable']);
@@ -800,7 +799,7 @@ describe('AuthStore', () => {
     store.handleAccountingAuthorizationFailure('CABINET_DOSSIER_READ_ONLY');
     expect(store.activeDossierOrgId()).toBe('org-client');
     expect(queryClient.getQueryData(['accounting', 'org-client', 'accounts'])).toEqual([
-      'readable'
+      'readable',
     ]);
 
     store.handleAccountingAuthorizationFailure('CABINET_DOSSIER_ASSIGNMENT_REQUIRED');
@@ -816,9 +815,9 @@ describe('AuthStore', () => {
         orgId: 'org-firm',
         displayName: 'Cabinet KPADONOU Conseil',
         workspaceType: 'ACCOUNTING_FIRM',
-        cabinetId: 'cab-123'
+        cabinetId: 'cab-123',
       },
-      'org-firm'
+      'org-firm',
     );
 
     store.upsertDossier({
@@ -828,7 +827,7 @@ describe('AuthStore', () => {
       accountingFramework: 'SYSCOHADA_REVISED',
       status: 'ACTIVE',
       createdAt: '2026-06-03T00:00:00.000Z',
-      updatedAt: '2026-06-03T00:00:00.000Z'
+      updatedAt: '2026-06-03T00:00:00.000Z',
     });
 
     expect(store.activeWorkspaceOrgId()).toBe('org-firm');
@@ -850,9 +849,7 @@ describe('AuthStore', () => {
     expect(store.activeOrgId()).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeOrgId')).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeDossierOrgId')).toBeNull();
-    expect(
-      queryClient.getQueryData(['cabinet-settings', 'org-test', 'detail'])
-    ).toBeUndefined();
+    expect(queryClient.getQueryData(['cabinet-settings', 'org-test', 'detail'])).toBeUndefined();
   });
 
   it('starts Google hosted UI sign-in with account selection', async () => {
@@ -863,7 +860,7 @@ describe('AuthStore', () => {
 
     expect(signInWithRedirect).toHaveBeenCalledWith({
       provider: 'Google',
-      options: { prompt: 'SELECT_ACCOUNT' }
+      options: { prompt: 'SELECT_ACCOUNT' },
     });
   });
 
@@ -874,5 +871,96 @@ describe('AuthStore', () => {
     await store.loginWithLinkedIn();
 
     expect(signInWithRedirect).toHaveBeenCalledWith({ provider: { custom: 'LinkedIn' } });
+  });
+  it('purges every product and self-context cache immediately when logout starts', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      'beta',
+    );
+    for (const root of ['restaurants', 'sales', 'identity', 'product-access', 'accounting'])
+      queryClient.setQueryData([root, 'beta'], { private: 'owner' });
+    let finish!: () => void;
+    vi.mocked(signOut).mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = store.logout();
+    expect(store.activeWorkspace()).toBeNull();
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+    finish();
+    await pending;
+  });
+
+  it('ignores late membership discovery after the principal context is invalidated', async () => {
+    const store = TestBed.inject(AuthStore);
+    let finish!: (value: unknown[]) => void;
+    workspacesApi.listWorkspaces.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = store.loadWorkspaces();
+    store.invalidateSessionContext();
+    finish([
+      {
+        orgId: 'beta',
+        displayName: 'BETA',
+        workspaceType: 'COMPANY',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
+    ]);
+    await pending;
+    expect(store.workspaces()).toEqual([]);
+    expect(store.activeOrgId()).toBeNull();
+  });
+
+  it('does not retain memberships or caches when profile refresh finds a different account', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      'beta',
+    );
+    queryClient.setQueryData(['restaurants', 'beta', 'staff'], ['owner-data']);
+    vi.mocked(getCurrentUser).mockResolvedValue({ userId: 'chrys', username: 'chrys' });
+    await store.refreshUserProfile();
+    expect(store.currentUserId()).toBe('chrys');
+    expect(store.workspaces()).toEqual([]);
+    expect(store.workspacesLoaded()).toBe(false);
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+  it.each([
+    ['owner', 'chrys'],
+    ['chrys', 'owner'],
+  ])('isolates same-runtime login from %s to %s in BETA', async (first, second) => {
+    const store = TestBed.inject(AuthStore);
+    vi.mocked(signIn).mockResolvedValue({ isSignedIn: true, nextStep: { signInStep: 'DONE' } });
+    vi.mocked(signOut).mockResolvedValue();
+    for (const id of [first, second]) {
+      vi.mocked(getCurrentUser).mockResolvedValue({ userId: id, username: id });
+      workspacesApi.listWorkspaces.mockResolvedValue([
+        {
+          orgId: 'beta',
+          displayName: 'BETA',
+          workspaceType: 'COMPANY',
+          productRoles: { RESTAURANTS: id === 'owner' ? 'OWNER' : 'WAITER' },
+        },
+      ]);
+      await store.login(id, 'fixture-password');
+      await store.loadWorkspaces();
+      expect(store.currentUserId()).toBe(id);
+      expect(store.activeWorkspace()?.productRoles?.RESTAURANTS).toBe(
+        id === 'owner' ? 'OWNER' : 'WAITER',
+      );
+      expect(queryClient.getQueryData(['restaurants', 'beta', 'staff'])).toBeUndefined();
+      queryClient.setQueryData(['restaurants', 'beta', 'staff'], [id]);
+      await store.logout();
+      expect(store.workspaces()).toEqual([]);
+      expect(store.activeOrgId()).toBeNull();
+      expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+    }
   });
 });

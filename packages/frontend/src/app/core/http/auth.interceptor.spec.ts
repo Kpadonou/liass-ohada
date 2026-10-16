@@ -2,7 +2,7 @@ import { HttpClient, HttpContext, provideHttpClient, withInterceptors } from '@a
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService } from '@ngneat/transloco';
-import { fetchAuthSession } from 'aws-amplify/auth';
+import { fetchAuthSession, getCurrentUser } from 'aws-amplify/auth';
 import { firstValueFrom } from 'rxjs';
 import { vi } from 'vitest';
 
@@ -421,5 +421,89 @@ describe('authInterceptor', () => {
     expect(request.request.headers.has('x-org-id')).toBe(false);
     expect(fetchAuthSession).not.toHaveBeenCalled();
     request.flush({});
+  });
+  it('blocks a prepared request if another tab changed the persisted workspace before storage delivery', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      'beta',
+    );
+    localStorage.setItem('liass-ohada.activeOrgId', 'clo');
+    const request = firstValueFrom(
+      TestBed.inject(HttpClient).post(`${environment.apiBaseUrl}/restaurants/staff`, {}),
+    );
+    await expect(request).rejects.toMatchObject({ status: 409 });
+    httpMock.expectNone(`${environment.apiBaseUrl}/restaurants/staff`);
+    expect(fetchAuthSession).not.toHaveBeenCalled();
+  });
+
+  it('blocks sending after context changes while credentials are loading', async () => {
+    const store = TestBed.inject(AuthStore);
+    store.setCreatedWorkspace(
+      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      'beta',
+    );
+    let finish!: (value: never) => void;
+    vi.mocked(fetchAuthSession).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = firstValueFrom(
+      TestBed.inject(HttpClient).post(`${environment.apiBaseUrl}/restaurants/staff`, {}),
+    );
+    const rejected = expect(pending).rejects.toMatchObject({ status: 409 });
+    store.setTenant('clo');
+    finish({ tokens: { accessToken: { toString: () => 'token' } } } as never);
+    await rejected;
+    httpMock.expectNone(`${environment.apiBaseUrl}/restaurants/staff`);
+  });
+
+  it.each(['GET', 'POST'])(
+    'rejects a late %s completion after switching A to B and back to A',
+    async (method) => {
+      const store = TestBed.inject(AuthStore);
+      store.setCreatedWorkspace(
+        { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+        'beta',
+      );
+      vi.mocked(fetchAuthSession).mockResolvedValue({
+        tokens: { accessToken: { toString: () => 'token' } },
+      } as never);
+      const pending = firstValueFrom(
+        TestBed.inject(HttpClient).request(method, `${environment.apiBaseUrl}/restaurants/staff`),
+      );
+      const rejected = expect(pending).rejects.toMatchObject({ status: 409 });
+      await Promise.resolve();
+      const request = httpMock.expectOne(`${environment.apiBaseUrl}/restaurants/staff`);
+      store.setTenant('clo');
+      store.setTenant('beta');
+      request.flush({ items: ['old-data'] });
+      await rejected;
+    },
+  );
+  it('rejects credentials from a different principal even when both users belong to BETA', async () => {
+    const store = TestBed.inject(AuthStore);
+    vi.mocked(getCurrentUser).mockResolvedValue({ userId: 'owner', username: 'owner' });
+    vi.mocked(fetchAuthSession).mockResolvedValue({} as never);
+    await store.hydrate();
+    store.setCreatedWorkspace({ orgId: 'beta', workspaceType: 'COMPANY' }, 'beta');
+    vi.mocked(fetchAuthSession).mockResolvedValue({
+      tokens: {
+        accessToken: {
+          toString: () => 'chrys-token',
+          payload: { sub: 'chrys' },
+        },
+      },
+    } as never);
+    await expect(
+      firstValueFrom(
+        TestBed.inject(HttpClient).post(`${environment.apiBaseUrl}/restaurants/staff`, {}),
+      ),
+    ).rejects.toMatchObject({ status: 409 });
+    httpMock.expectNone(`${environment.apiBaseUrl}/restaurants/staff`);
+    expect(store.currentUserId()).toBeNull();
+    expect(store.activeWorkspace()).toBeNull();
   });
 });

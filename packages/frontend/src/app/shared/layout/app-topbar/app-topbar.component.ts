@@ -48,10 +48,6 @@ export class AppTopbarComponent implements OnInit {
   protected readonly uiStore = inject(UiStore);
   protected readonly activeWorkspaceIcon = computed(() => 'corporate_fare');
   protected readonly activeWorkspaceLabel = computed(() => {
-    if (this.authStore.workspaceLoading() && this.authStore.hasActiveTenant()) {
-      return null;
-    }
-
     return this.authStore.activeWorkspaceDisplayName();
   });
   protected readonly activeDossierLabel = computed(() => {
@@ -114,14 +110,27 @@ export class AppTopbarComponent implements OnInit {
       !this.workspaces().some((candidate) => candidate.orgId === workspace.orgId)
     )
       return;
+    const revision = this.authStore.contextRevision();
     if (!(await this.pendingChanges.confirmDeparture())) return;
+    if (this.authStore.contextRevision() !== revision) return;
     this.cabinetMenuOpen = false;
     this.workspaceSwitching.set(true);
     try {
-      this.authStore.setTenant(workspace.orgId);
+      const memberships = await this.authStore.loadWorkspaces(true);
+      if (this.authStore.contextRevision() !== revision) return;
+      const selected = memberships.find(
+        (candidate) => candidate.orgId === workspace.orgId && candidate.accessSource !== 'CABINET',
+      );
+      if (!selected) {
+        await this.router.navigateByUrl(
+          this.authStore.workspaceDestination() ?? '/select-workspace',
+        );
+        return;
+      }
+      this.authStore.setTenant(selected.orgId);
       this.uiStore.closeSidebar();
       await this.router.navigateByUrl(
-        workspace.workspaceType === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard',
+        selected.workspaceType === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard',
       );
     } finally {
       this.workspaceSwitching.set(false);

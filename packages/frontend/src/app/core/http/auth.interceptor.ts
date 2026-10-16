@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { TranslocoService } from '@ngneat/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { fetchAuthSession } from 'aws-amplify/auth';
-import { catchError, from, switchMap, throwError } from 'rxjs';
+import { catchError, from, switchMap, throwError, map } from 'rxjs';
 
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { environment } from '../../../environments/environment';
@@ -45,6 +45,27 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
       (request.method === 'GET' || request.method === 'POST')) ||
     isCabinetInvitationAcceptanceRequest;
   const tenantOrgId = tenantOrgIdForRequest(authStore, request);
+  const userId = authStore.currentUserId();
+  const revision = authStore.contextRevision();
+  const workspaceOrgId = authStore.activeWorkspaceOrgId();
+  const storedOrgId = localStorage.getItem('liass-ohada.activeOrgId');
+  const storedDossierId = localStorage.getItem('liass-ohada.activeDossierOrgId');
+  const isCurrent = () =>
+    authStore.contextRevision() === revision &&
+    authStore.currentUserId() === userId &&
+    (isPreTenantRequest ||
+      (tenantOrgIdForRequest(authStore, request) === tenantOrgId &&
+        localStorage.getItem('liass-ohada.activeOrgId') === storedOrgId &&
+        localStorage.getItem('liass-ohada.activeDossierOrgId') === storedDossierId &&
+        storedOrgId === workspaceOrgId));
+  const assertCurrent = () => {
+    if (!isCurrent())
+      throw new HttpErrorResponse({
+        status: 409,
+        url: request.url,
+        error: { error: { code: 'WORKSPACE_CHANGED' } },
+      });
+  };
   const requestScope = request.context.get(TENANT_REQUEST_SCOPE);
   const accountingPermission = request.context.get(ACCOUNTING_REQUEST_PERMISSION);
 
@@ -82,8 +103,20 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     );
   }
 
+  try {
+    assertCurrent();
+  } catch (error) {
+    return throwError(() => error);
+  }
+
   return from(fetchAuthSession()).pipe(
     switchMap((session) => {
+      assertCurrent();
+      const subject = session.tokens?.accessToken?.payload?.sub;
+      if (userId && typeof subject === 'string' && subject !== userId) {
+        authStore.invalidateSessionContext();
+        throw new HttpErrorResponse({ status: 401, url: request.url });
+      }
       const token = requiresIdentityClaims
         ? session.tokens?.idToken?.toString()
         : session.tokens?.accessToken?.toString();
@@ -106,10 +139,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
             Authorization: `Bearer ${token}`,
             'Accept-Language': activeLanguage,
             'x-org-id': tenantOrgId as string,
-            ...(requestScope === 'ACCOUNTING' &&
-            authStore.activeWorkspaceOrgId() &&
-            authStore.activeWorkspaceOrgId() !== tenantOrgId
-              ? { 'x-workspace-org-id': authStore.activeWorkspaceOrgId() as string }
+            ...(requestScope === 'ACCOUNTING' && workspaceOrgId && workspaceOrgId !== tenantOrgId
+              ? { 'x-workspace-org-id': workspaceOrgId as string }
               : {}),
           };
 
@@ -119,7 +150,21 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
         }),
       );
     }),
+    map((event) => {
+      assertCurrent();
+      return event;
+    }),
     catchError((error) => {
+      // An old request must not revoke or redirect the newly selected workspace.
+      if (!isCurrent())
+        return throwError(
+          () =>
+            new HttpErrorResponse({
+              status: 409,
+              url: request.url,
+              error: { error: { code: 'WORKSPACE_CHANGED' } },
+            }),
+        );
       const httpError =
         error instanceof HttpErrorResponse
           ? error
