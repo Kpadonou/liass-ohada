@@ -30,7 +30,7 @@ export const RESTAURANT_TRANSACTION_ROUTES = [
     name: "get-session",
     method: "GET",
     path: `${base}/sessions/{sessionId}`,
-    permission: "RESTAURANTS_SESSION_READ",
+    permission: "RESTAURANTS_SERVICE_SESSION_READ",
     query: "GET_SESSION",
   },
   {

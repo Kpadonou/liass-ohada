@@ -10,6 +10,8 @@ This is a **dev foundation**, not a complete operational food-service release. P
 
 ## Authorization
 
+RESTO-SVC-2D: WAITER service access is scoped by active outlet assignment through `RestaurantServiceAccess`. The existing keyed GuestSession GET uses `RESTAURANTS_SERVICE_SESSION_READ` for OWNER/MANAGER/WAITER and reevaluates that gate on every request. Known OPEN or CLOSED sessions are readable within the authorized outlet; responsible staff is metadata, not authorization. This permission grants no legacy session collection/history/active-table discovery and no order reads. OWNER/MANAGER retain legacy transaction permissions without staff-binding requirements. The LR-TX-1 matrix below records the original foundation.
+
 The existing authenticated handler verifies Cognito identity, organization membership and Restaurants ProductAccess before command execution or replay. Tenant identity comes from verified context; outlet IDs are validated within that tenant.
 
 Explicit permissions are `RESTAURANTS_SESSION_READ`, `RESTAURANTS_SESSION_OPEN_MANAGE`, `RESTAURANTS_SESSION_CLOSE_MANAGE`, `RESTAURANTS_ORDER_READ`, `RESTAURANTS_ORDER_CREATE_MANAGE`, `RESTAURANTS_ORDER_DRAFT_MANAGE`, `RESTAURANTS_ORDER_SUBMIT_MANAGE`, `RESTAURANTS_ORDER_CANCEL_MANAGE` and `RESTAURANTS_ORDER_CLOSE_MANAGE`.

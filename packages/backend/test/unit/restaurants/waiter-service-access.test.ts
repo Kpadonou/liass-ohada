@@ -98,6 +98,14 @@ function self(actor = "Aissa", query: object = {}) {
     requestContext: { authorizer: { jwt: { claims: { sub: actor } } } },
   });
 }
+function readSession(
+  sessionId: string,
+  actor = "Aissa",
+  outletId = f.outlet.id,
+  tenant = org,
+) {
+  return call("get-session", actor, {}, outletId, tenant, { sessionId });
+}
 beforeEach(async () => {
   m = memoryDynamo();
   seq = 8000;
@@ -172,6 +180,236 @@ test("assigned waiter reads all outlet tables without claiming and opens atomica
   expect(
     floor.items.find((t) => t.tableId === f.tables[1].id),
   ).not.toHaveProperty("responsibleStaff");
+});
+
+describe("scoped keyed service session read", () => {
+  test("only the existing keyed route consumes the narrow permission", () => {
+    expect(
+      RESTAURANT_TRANSACTION_ROUTES.filter(
+        (route) => route.permission === "RESTAURANTS_SERVICE_SESSION_READ",
+      ).map((route) => [route.method, route.path]),
+    ).toEqual([
+      ["GET", "/restaurants/outlets/{outletId}/sessions/{sessionId}"],
+    ]);
+    expect(
+      RESTAURANT_TRANSACTION_ROUTES.filter(
+        (route) => route.permission === "RESTAURANTS_SESSION_READ",
+      ).map((route) => route.name),
+    ).toEqual([
+      "active-sessions",
+      "active-table-session",
+      "session-history",
+      "table-session-history",
+    ]);
+  });
+  test.each(["owner", "manager", "Aissa"])(
+    "%s reads OPEN and CLOSED sessions without writes; responsibility is not authorization",
+    async (actor) => {
+      const session = JSON.parse(
+        (await call("open-session", "Binta", body())).body,
+      ).data;
+      const read = await readSession(session.guestSessionId, actor);
+      expect(read.statusCode).toBe(200);
+      expect(
+        c.GuestSessionResponseSchema.parse(JSON.parse(read.body)).data,
+      ).toMatchObject({
+        status: "OPEN",
+        responsibleStaff: { staffId: "Binta" },
+      });
+      const close = await call(
+        "close-session",
+        "owner",
+        {
+          clientRequestId: req(),
+          expectedVersion: session.version,
+        },
+        f.outlet.id,
+        org,
+        { sessionId: session.guestSessionId },
+      );
+      expect(close.statusCode).toBe(200);
+      const before = new Map(m.rows);
+      const writes = m.transactions.length;
+      const closed = await readSession(session.guestSessionId, actor);
+      expect(closed.statusCode).toBe(200);
+      const data = c.GuestSessionResponseSchema.parse(
+        JSON.parse(closed.body),
+      ).data;
+      expect(data).toMatchObject({
+        status: "CLOSED",
+        guestSessionId: session.guestSessionId,
+      });
+      expect(data).not.toHaveProperty("PK");
+      expect(data).not.toHaveProperty("SK");
+      expect(data).not.toHaveProperty("responsibleStaffId");
+      expect(m.rows).toEqual(before);
+      expect(m.transactions).toHaveLength(writes);
+      if (actor !== "Aissa")
+        expect(
+          await SR.get(org, SR.staffKey(org, actor), "STAFF"),
+        ).toBeUndefined();
+    },
+  );
+
+  test.each([
+    "staff",
+    "assignment",
+    "deleted-assignment",
+    "membership",
+    "product",
+    "role",
+    "missing-staff",
+    "inactive-outlet",
+  ])(
+    "reevaluates %s revocation before session lookup even for the responsible waiter",
+    async (change) => {
+      const session = JSON.parse(
+        (await call("open-session", "Aissa", body())).body,
+      ).data;
+      expect((await readSession(session.guestSessionId)).statusCode).toBe(200);
+      if (change === "staff")
+        await Staff.mutate(org, "owner", "Aissa", "UPDATE", {
+          clientRequestId: req(),
+          expectedVersion: 1,
+          status: "INACTIVE",
+        });
+      if (change === "assignment")
+        await Staff.mutate(
+          org,
+          "owner",
+          "Aissa",
+          "UNASSIGN",
+          {
+            clientRequestId: req(),
+            expectedVersion: 1,
+          },
+          f.outlet.id,
+        );
+      if (change === "deleted-assignment" || change === "missing-staff") {
+        const key =
+          change === "deleted-assignment"
+            ? SR.assignmentKeys(org, "Aissa", f.outlet.id)[0]
+            : SR.staffKey(org, "Aissa");
+        m.rows.delete(JSON.stringify([key.PK, key.SK]));
+      }
+      if (change === "membership")
+        patch(
+          { PK: K.orgKey(org), SK: K.orgUserAccessSK("Aissa") },
+          { status: "INACTIVE" },
+        );
+      if (change === "product")
+        patch(
+          { PK: K.orgKey(org), SK: K.productAccessSK("RESTAURANTS") },
+          { status: "INACTIVE" },
+        );
+      if (change === "role") m.seedAccess(org, "Aissa", "KITCHEN");
+      if (change === "inactive-outlet")
+        await Config.update(
+          org,
+          "owner",
+          "outlet",
+          {},
+          f.outlet.id,
+          { expectedVersion: 1 },
+          "deactivate",
+        );
+      const lookup = jest.spyOn(S, "session");
+      const before = new Map(m.rows);
+      const denied = await readSession(session.guestSessionId);
+      expect(denied.statusCode).toBe(403);
+      expect(lookup).not.toHaveBeenCalled();
+      expect(denied.body).not.toContain(session.guestSessionId);
+      expect(m.rows).toEqual(before);
+    },
+  );
+
+  test.each(["CASHIER", "KITCHEN", "UNKNOWN", "", undefined])(
+    "rejects role %s before session lookup",
+    async (role) => {
+      const session = JSON.parse(
+        (await call("open-session", "owner", body())).body,
+      ).data;
+      m.seedAccess(org, "Aissa", role ?? "WAITER");
+      if (role === undefined)
+        patch(
+          { PK: K.orgKey(org), SK: K.orgUserAccessSK("Aissa") },
+          { productRoles: {} },
+        );
+      const lookup = jest.spyOn(S, "session");
+      expect((await readSession(session.guestSessionId)).statusCode).toBe(403);
+      expect(lookup).not.toHaveBeenCalled();
+    },
+  );
+
+  test("unassigned waiter and wrong outlet fail before lookup; assigned wrong-parent and missing IDs return safe 404", async () => {
+    const session = JSON.parse(
+      (await call("open-session", "owner", body())).body,
+    ).data;
+    await person("unassigned", "WAITER", false);
+    const b = await Config.create(
+      org,
+      "owner",
+      "outlet",
+      {},
+      { name: "Other", clientRequestId: req() },
+    );
+    const lookup = jest.spyOn(S, "session");
+    expect(
+      (await readSession(session.guestSessionId, "unassigned")).statusCode,
+    ).toBe(403);
+    expect(
+      (await readSession(session.guestSessionId, "Aissa", b.id)).statusCode,
+    ).toBe(403);
+    expect(lookup).not.toHaveBeenCalled();
+    await Staff.mutate(
+      org,
+      "owner",
+      "Aissa",
+      "ASSIGN",
+      { clientRequestId: req() },
+      b.id,
+    );
+    const foreign = await readSession(session.guestSessionId, "Aissa", b.id);
+    const absent = await readSession(fixtureId(9900), "Aissa", b.id);
+    expect(foreign.statusCode).toBe(404);
+    expect(foreign).toEqual(absent);
+    expect(foreign.body).not.toContain(session.guestSessionId);
+  });
+
+  test("foreign tenant does not expose the session even with service membership in both tenants", async () => {
+    const session = JSON.parse(
+      (await call("open-session", "owner", body())).body,
+    ).data;
+    m.seedAccess("foreign", "Aissa", "OWNER");
+    const foreign = await readSession(
+      session.guestSessionId,
+      "Aissa",
+      f.outlet.id,
+      "foreign",
+    );
+    const absent = await readSession(
+      fixtureId(9900),
+      "Aissa",
+      f.outlet.id,
+      "foreign",
+    );
+    expect(foreign.statusCode).toBe(404);
+    expect(foreign).toEqual(absent);
+    expect(foreign.body).not.toContain(session.guestSessionId);
+  });
+
+  test("requires authentication and rejects malformed session identity", async () => {
+    expect(
+      (
+        await restaurantTransactionHandler("get-session")({
+          headers: { "x-org-id": org },
+          pathParameters: { outletId: f.outlet.id, sessionId: fixtureId(9900) },
+          requestContext: {},
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect((await readSession("invalid")).statusCode).toBe(400);
+  });
 });
 test.each(["OWNER", "MANAGER"])(
   "%s opens without staff binding or automatic responsibility",
@@ -319,7 +557,11 @@ test("all historical/order/close/responsibility commands remain denied to an ass
     CREATE_ORDER: { clientRequestId: req(), orderType: "COUNTER" },
   };
   for (const route of RESTAURANT_TRANSACTION_ROUTES) {
-    if (route.name === "service-floor" || route.name === "open-session")
+    if (
+      route.name === "service-floor" ||
+      route.name === "open-session" ||
+      route.name === "get-session"
+    )
       continue;
     expect(Auth.permissionsForRestaurantsRole("WAITER")).not.toContain(
       route.permission,

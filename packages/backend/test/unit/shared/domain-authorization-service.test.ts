@@ -10,6 +10,38 @@ import {
 } from "@liass-ohada/shared/shared";
 
 describe("DomainAuthorizationService", () => {
+  test.each([
+    "OWNER",
+    "MANAGER",
+    "WAITER",
+    "CASHIER",
+    "KITCHEN",
+    "UNKNOWN",
+    undefined,
+  ])("scoped session read is explicit for role %s", (role) => {
+    const permissions =
+      DomainAuthorizationService.permissionsForRestaurantsRole(role);
+    expect(permissions.includes("RESTAURANTS_SERVICE_SESSION_READ")).toBe(
+      ["OWNER", "MANAGER", "WAITER"].includes(role ?? ""),
+    );
+    if (role === "WAITER") {
+      expect(permissions).not.toContain("RESTAURANTS_SESSION_READ");
+      expect(permissions).not.toContain("RESTAURANTS_ORDER_READ");
+    }
+  });
+  test("scoped session read never aliases legacy discovery or order permissions", () => {
+    expect(isDomainPermission("RESTAURANTS_SERVICE_SESSION_READ")).toBe(true);
+    for (const permission of [
+      "RESTAURANTS_SESSION_READ",
+      "RESTAURANTS_ORDER_READ",
+    ] as const)
+      expect(
+        DomainAuthorizationService.hasPermission(
+          ["RESTAURANTS_SERVICE_SESSION_READ"],
+          permission,
+        ),
+      ).toBe(false);
+  });
   test("defines the reviewed Accounting-module and SALES permission vocabulary", () => {
     expect(DOMAIN_PERMISSIONS).toEqual([
       "ACCOUNTING_READ",

@@ -67,7 +67,7 @@ export function restaurantTransactionHandler(name: string) {
             : contracts.RestaurantOrderResponseSchema.parse(result);
       }
       if (!query) throw new Error("Missing Restaurants query");
-      if (query === "SERVICE_FLOOR")
+      if (query === "SERVICE_FLOOR" || query === "GET_SESSION")
         await RestaurantServiceAccess.authorize(scope, context.userId);
       const result = await RestaurantTransactionQueries.run(
         scope,
