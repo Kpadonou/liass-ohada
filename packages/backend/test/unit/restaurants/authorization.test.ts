@@ -217,9 +217,8 @@ describe("RESTO-1B authoritative authorization", () => {
     );
     expect(qr.statusCode).toBe(200);
     RestaurantTableQrResponseSchema.parse(JSON.parse(qr.body));
-    expect(JSON.stringify(JSON.parse(qr.body))).not.toMatch(
-      /PK|SK|orgId|tableId|outletId/,
-    );
+    // Opaque random tokens may contain strings such as PK; validate exposed fields.
+    expect(Object.keys(JSON.parse(qr.body))).toEqual(["token"]);
   });
   test("API fails closed for malformed paths, invalid children, absent auth and forged tenant input", async () => {
     const f = await acceptanceFixture();

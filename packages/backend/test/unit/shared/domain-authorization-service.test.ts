@@ -21,9 +21,13 @@ describe("DomainAuthorizationService", () => {
   ])("scoped session read is explicit for role %s", (role) => {
     const permissions =
       DomainAuthorizationService.permissionsForRestaurantsRole(role);
-    expect(permissions.includes("RESTAURANTS_SERVICE_SESSION_READ")).toBe(
-      ["OWNER", "MANAGER", "WAITER"].includes(role ?? ""),
-    );
+    for (const permission of [
+      "RESTAURANTS_SERVICE_SESSION_READ",
+      "RESTAURANTS_SERVICE_ORDER_READ",
+    ] as const)
+      expect(permissions.includes(permission)).toBe(
+        ["OWNER", "MANAGER", "WAITER"].includes(role ?? ""),
+      );
     if (role === "WAITER") {
       expect(permissions).not.toContain("RESTAURANTS_SESSION_READ");
       expect(permissions).not.toContain("RESTAURANTS_ORDER_READ");

@@ -70,8 +70,15 @@ export function restaurantTransactionHandler(name: string) {
       if (query === "SERVICE_FLOOR" || query === "GET_SESSION")
         await RestaurantServiceAccess.authorize(scope, context.userId);
       let serviceOrderRead = false;
-      if (query === "SESSION_ORDERS" || query === "GET_ORDER" || query === "ORDER_ITEMS") {
-        const access = await RestaurantServiceAccess.authorize(scope, context.userId);
+      if (
+        query === "SESSION_ORDERS" ||
+        query === "GET_ORDER" ||
+        query === "ORDER_ITEMS"
+      ) {
+        const access = await RestaurantServiceAccess.authorize(
+          scope,
+          context.userId,
+        );
         serviceOrderRead = access.staffId !== undefined;
       }
       const result = await RestaurantTransactionQueries.run(

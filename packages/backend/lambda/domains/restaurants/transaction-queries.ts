@@ -114,7 +114,9 @@ export class RestaurantTransactionQueries {
         )[0],
       };
     if (query === "GET_ORDER") {
-      const order = (await S.order(scope, contracts.RestaurantIdSchema.parse(ids.orderId))).data;
+      const order = (
+        await S.order(scope, contracts.RestaurantIdSchema.parse(ids.orderId))
+      ).data;
       if (serviceOrderRead) await this.requireOpenOrderSession(scope, order);
       return { data: order };
     }
@@ -182,7 +184,15 @@ export class RestaurantTransactionQueries {
         input,
       );
       const items = await this.hydrate(scope, page.rows, sessionId);
-      if (serviceOrderRead && items.some((item) => !("orderId" in item) || item.orderType !== "DINE_IN" || item.tableId !== session.tableId))
+      if (
+        serviceOrderRead &&
+        items.some(
+          (item) =>
+            !("orderId" in item) ||
+            item.orderType !== "DINE_IN" ||
+            item.tableId !== session.tableId,
+        )
+      )
         throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
       return { items, nextCursor: page.nextCursor };
     }
@@ -209,12 +219,17 @@ export class RestaurantTransactionQueries {
     };
   }
   /** Authorization has already validated outlet service access once for this request. */
-  private static async requireOpenOrderSession(scope: TransactionScope, order: contracts.RestaurantOrder) {
+  private static async requireOpenOrderSession(
+    scope: TransactionScope,
+    order: contracts.RestaurantOrder,
+  ) {
     if (order.orderType !== "DINE_IN" || !order.guestSessionId)
       throw new AppError(404, "RESTAURANTS_NOT_FOUND");
     const session = (await S.session(scope, order.guestSessionId)).data;
-    if (session.status !== "OPEN") throw new AppError(404, "RESTAURANTS_NOT_FOUND");
-    if (session.tableId !== order.tableId) throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    if (session.status !== "OPEN")
+      throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+    if (session.tableId !== order.tableId)
+      throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
   }
   private static async history(
     scope: TransactionScope,
