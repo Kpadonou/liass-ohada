@@ -4665,6 +4665,33 @@
       "SESSION_UNAVAILABLE": "This table is no longer available for this action. Refresh the service floor.",
       "RETRY": "Retry request",
       "RETRY_HELP": "The previous request could not be confirmed. Retry the same request before choosing another person."
+    },
+    "ACCESS_LIFECYCLE": {
+      "REFRESH": "Refresh my access",
+      "CHANGE_WORKSPACE": "Change workspace",
+      "REFRESH_FAILED": "Your access could not be refreshed. Please try again shortly.",
+      "YOUR_ROLE": "Your role:",
+      "CONFIGURE": {
+        "TITLE": "Your Liass-Resto access is being configured",
+        "DESCRIPTION": "You belong to this workspace. A workspace owner must finalize your Liass-Resto access before you can begin."
+      },
+      "UNASSIGNED": {
+        "TITLE": "No establishment has been assigned to you yet",
+        "DESCRIPTION": "A manager or owner must assign you an establishment before you can begin service."
+      },
+      "UNSUPPORTED": {
+        "TITLE": "Your Liass-Resto workspace is not available yet",
+        "DESCRIPTION": "The operational interface associated with your role is not available yet. You can change workspace or check your access."
+      },
+      "CHANGED": {
+        "TITLE": "Your access has changed",
+        "DESCRIPTION": "Your previous access can no longer be used in this workspace. Refresh your access or choose another workspace."
+      },
+      "UNVERIFIED": {
+        "TITLE": "Your service access could not be confirmed",
+        "DESCRIPTION": "We cannot open your workspace at the moment. Ask an owner or manager to check your access and assignment, then refresh."
+      },
+      "BREADCRUMB": "Liass-Resto access"
     }
   }
 }

@@ -951,6 +951,7 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelector('button[aria-label="Service en salle"]'),
     ).not.toBeNull();
     for (const label of [
+      'Tableau de bord',
       'Restaurant',
       'Établissements',
       'Espaces de restauration',

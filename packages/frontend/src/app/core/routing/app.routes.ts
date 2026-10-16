@@ -1,3 +1,4 @@
+import { restaurantRouteGuard } from '../../domains/restaurants/data-access/restaurant-route.guard';
 import { salesDashboardReadGuard } from '../../domains/sales/data-access/sales-dashboard-read.guard';
 import { restaurantSections } from '../navigation/product-navigation';
 import { Routes } from '@angular/router';
@@ -146,6 +147,7 @@ export const routes: Routes = [
       {
         path: 'restaurants',
         canActivate: [productAccessGuard],
+        canActivateChild: [restaurantRouteGuard],
         loadComponent: () =>
           import('../restaurants/restaurants.page').then((module) => module.RestaurantsPage),
         data: {

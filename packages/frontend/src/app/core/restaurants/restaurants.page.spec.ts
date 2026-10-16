@@ -1,4 +1,5 @@
-import { signal } from '@angular/core';
+import { RestaurantAccessState } from '../../domains/restaurants/data-access/restaurant-access-state';
+import { signal, computed } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
@@ -10,6 +11,7 @@ const translations = {
   RESTAURANTS: {
     PAGE: { TITLE: 'Liass-Resto', EYEBROW: 'Liass-OHADA', SUBTITLE: 'Your restaurant' },
     ACCESS: { CHECKING: 'Checking access', DENIED: 'Access unavailable' },
+    ACCESS_LIFECYCLE: { CHANGED: { TITLE: 'Access changed' } },
     UI: {
       NAV: { OVERVIEW: 'Overview', SETUP: 'Restaurant setup', MENU: 'Menu', LABEL: 'Navigation' },
     },
@@ -34,6 +36,21 @@ describe('Liass-Resto product navigation', () => {
       ],
       providers: [
         provideRouter([]),
+        {
+          provide: RestaurantAccessState,
+          useValue: {
+            mode: computed(() =>
+              availability() === 'UNKNOWN'
+                ? 'checking'
+                : availability() === 'AVAILABLE'
+                  ? 'management'
+                  : 'changed',
+            ),
+            role: () => 'OWNER',
+            refreshing: () => false,
+            refreshFailed: () => false,
+          },
+        },
         { provide: ProductAccessState, useValue: { availability } },
         { provide: RestaurantsCapabilities, useValue: { canRead: read, canReadMenu: menu } },
       ],
@@ -62,9 +79,7 @@ describe('Liass-Resto product navigation', () => {
     f.detectChanges();
     availability.set('UNAVAILABLE');
     f.detectChanges();
-    expect(f.nativeElement.querySelector('[role="alert"]').textContent).toContain(
-      'Access unavailable',
-    );
+    expect(f.nativeElement.querySelector('[role="alert"]').textContent).toContain('Access changed');
     expect(f.nativeElement.querySelector('router-outlet')).toBeNull();
   });
 });

@@ -233,7 +233,7 @@ export class AppSidebarComponent {
     {
       labelKey: 'SHELL.NAV.RESTAURANTS',
       showHeading: false,
-      items: this.restaurantsCapabilities.canRead()
+      items: this.restaurantsCapabilities.canManageSetup()
         ? [
             {
               icon: 'space_dashboard',
@@ -264,8 +264,7 @@ export class AppSidebarComponent {
       labelKey: 'RESTAURANTS.UX.CONFIGURATION',
       showHeading: true,
       items: [
-        ...(this.restaurantsCapabilities.canRead() &&
-        !this.restaurantsCapabilities.usesAssignedOutlets?.()
+        ...(this.restaurantsCapabilities.canManageSetup()
           ? restaurantSections.map((section) => ({
               icon: section.icon,
               labelKey: 'RESTAURANTS.UX.NAV.' + section.kind,
@@ -274,8 +273,7 @@ export class AppSidebarComponent {
               productCode: 'RESTAURANTS' as const,
             }))
           : []),
-        ...(this.restaurantsCapabilities.canReadMenu() &&
-        !this.restaurantsCapabilities.usesAssignedOutlets?.()
+        ...(this.restaurantsCapabilities.canManageMenu()
           ? [
               {
                 icon: 'restaurant_menu',

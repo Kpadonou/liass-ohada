@@ -1,3 +1,4 @@
+import { ProductAccessState } from '../product-access/product-access.state';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -97,5 +98,38 @@ describe('Canonical product dashboards', () => {
     expect(productForPage('sales.dashboard')).toBe('SALES');
     expect(productForPage('restaurants')).toBe('RESTAURANTS');
     expect(productForPage('accounting.overview')).toBe('ACCOUNTING');
+  });
+});
+
+describe('Restaurants shell framing by implemented member role', () => {
+  afterEach(() => TestBed.resetTestingModule());
+  it.each([
+    [undefined, false],
+    ['WAITER', true],
+    ['OWNER', true],
+    ['MANAGER', true],
+    ['CASHIER', false],
+    ['KITCHEN', false],
+  ])('keeps a useful sidebar only for %s when supported', (role, visible) => {
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: AuthStore,
+          useValue: {
+            activeWorkspace: () => ({
+              orgId: 'org-a',
+              workspaceType: 'COMPANY',
+              productRoles: role ? { RESTAURANTS: role } : undefined,
+            }),
+            activeWorkspaceType: () => 'COMPANY',
+            effectiveOrgId: () => 'org-a',
+          },
+        },
+        { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
+        { provide: UiStore, useValue: { currentPage: () => 'restaurants' } },
+        { provide: SalesCapabilities, useValue: {} },
+      ],
+    });
+    expect(TestBed.inject(ShellProductNavigation).hasSidebar()).toBe(visible);
   });
 });

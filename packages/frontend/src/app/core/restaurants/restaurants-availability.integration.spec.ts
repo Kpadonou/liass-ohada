@@ -60,6 +60,16 @@ describe('canonical restaurant availability across frontend surfaces', () => {
           provide: AuthStore,
           useValue: {
             effectiveOrgId: org,
+            currentUserId: () => 'fixture-user',
+            activeWorkspace: () => ({
+              orgId: org(),
+              workspaceType: 'COMPANY',
+              status: 'ACTIVE',
+              accessSource: 'DIRECT',
+              productRoles: { RESTAURANTS: 'OWNER' },
+            }),
+            workspaceError: () => null,
+            contextRevision: () => 0,
             isAuthenticated: () => true,
             workspacesLoaded: () => true,
           },

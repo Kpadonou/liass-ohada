@@ -1,3 +1,4 @@
+import { restaurantMemberMode } from '../../../domains/restaurants/data-access/restaurant-access-state';
 import { ShellRouteContext } from '../../../core/navigation/product-navigation';
 import { Component, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -73,7 +74,11 @@ export class AppContextBreadcrumbComponent {
   protected readonly salesContext = computed(() => this.uiStore.currentPage().startsWith('sales.'));
   protected readonly pageLabelKey = computed(() =>
     this.restaurantContext()
-      ? 'RESTAURANTS.UX.PAGES.' + this.routeContext.restaurantKey() + '.TITLE'
+      ? this.routeContext.restaurantKey() === 'overview' &&
+        restaurantMemberMode(this.authStore.activeWorkspace(), this.authStore.effectiveOrgId()) !==
+          'management'
+        ? 'RESTAURANTS.ACCESS_LIFECYCLE.BREADCRUMB'
+        : 'RESTAURANTS.UX.PAGES.' + this.routeContext.restaurantKey() + '.TITLE'
       : pageLabelKeys[this.uiStore.currentPage()],
   );
 }

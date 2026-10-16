@@ -1,3 +1,4 @@
+import { RestaurantAccessState } from '../data-access/restaurant-access-state';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { By } from '@angular/platform-browser';
@@ -72,6 +73,10 @@ async function create() {
     ],
     providers: [
       provideRouter([]),
+      {
+        provide: RestaurantAccessState,
+        useValue: { refreshing: () => false, refreshFailed: () => false, refresh: vi.fn() },
+      },
       {
         provide: ActivatedRoute,
         useValue: {
@@ -532,7 +537,9 @@ it('shows a dedicated no-assignment state without management CTAs', async () => 
   api.myOutlets.mockResolvedValue({ items: [] });
   const page = await waiter();
   fixture.detectChanges();
-  expect(fixture.nativeElement.textContent).toContain('Aucun établissement affecté');
+  expect(fixture.nativeElement.textContent).toContain(
+    'Aucun établissement ne vous est encore affecté',
+  );
   expect(fixture.nativeElement.querySelector('a[href*="setup"]')).toBeNull();
   expect(api.serviceFloor).not.toHaveBeenCalled();
   expect(page.outlet()).toBeUndefined();
@@ -589,7 +596,9 @@ it.each([
   const page = await waiter();
   fixture.detectChanges();
   expect(page.myLocations.isError()).toBe(true);
-  expect(fixture.nativeElement.textContent).not.toContain('Aucun établissement affecté');
+  expect(fixture.nativeElement.textContent).not.toContain(
+    'Aucun établissement ne vous est encore affecté',
+  );
   expect(fixture.nativeElement.querySelector('[role="alert"]')).not.toBeNull();
   expect(api.serviceFloor).not.toHaveBeenCalled();
 });
@@ -653,7 +662,9 @@ it.each(['floor', 'open'])(
     }
     await vi.waitFor(() => {
       fixture.detectChanges();
-      expect(fixture.nativeElement.textContent).toContain('Aucun établissement affecté');
+      expect(fixture.nativeElement.textContent).toContain(
+        'Aucun établissement ne vous est encore affecté',
+      );
     });
     const count = api.serviceFloor.mock.calls.length;
     fixture.detectChanges();
@@ -701,7 +712,9 @@ it('does not show no-assignment while the self-context request is still loading'
     fixture.detectChanges();
     expect(fixture.componentInstance.myLocations.isPending()).toBe(true);
   });
-  expect(fixture.nativeElement.textContent).not.toContain('Aucun établissement affecté');
+  expect(fixture.nativeElement.textContent).not.toContain(
+    'Aucun établissement ne vous est encore affecté',
+  );
   expect(fixture.nativeElement.querySelector('[role="status"]')).not.toBeNull();
   // Resolve the helper independently by ending access; the query itself remains deliberately pending.
   read.set(false);

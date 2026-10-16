@@ -3,24 +3,20 @@ import type { WorkspaceSummary } from '@liass-ohada/shared';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { AuthStore } from '../../data-access/auth.store';
 
 @Component({
   selector: 'liass-select-workspace-page',
-  imports: [
-    MatButtonModule,
-    MatIconModule,
-    MatProgressSpinnerModule,
-    TranslocoModule
-  ],
-  templateUrl: './select-workspace.page.html'
+  imports: [MatButtonModule, MatIconModule, MatProgressSpinnerModule, TranslocoModule],
+  templateUrl: './select-workspace.page.html',
 })
 export class SelectWorkspacePage implements OnInit {
   protected readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   async ngOnInit(): Promise<void> {
     if (!this.authStore.workspacesLoaded()) {
@@ -28,7 +24,11 @@ export class SelectWorkspacePage implements OnInit {
     }
 
     const destination = this.authStore.workspaceDestination();
-    if (destination && destination !== '/select-workspace') {
+    if (
+      this.route.snapshot.queryParamMap.get('change') !== '1' &&
+      destination &&
+      destination !== '/select-workspace'
+    ) {
       await this.router.navigate([destination], { replaceUrl: true });
     }
   }
@@ -49,7 +49,7 @@ export class SelectWorkspacePage implements OnInit {
 
     this.authStore.setTenant(workspace.orgId);
     await this.router.navigate([
-      workspace.workspaceType === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard'
+      workspace.workspaceType === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard',
     ]);
   }
 

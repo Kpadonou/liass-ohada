@@ -93,7 +93,7 @@ describe('workspace product-role discovery', () => {
     },
   );
   it.each([undefined, { RESTAURANTS: 'INVALID' }, { RESTAURANTS: ['OWNER'] }])(
-    'does not invent permissions for absent or malformed roles: %j',
+    'distinguishes absent roles from malformed authorization data: %j',
     async (productRoles) => {
       TestBed.configureTestingModule({
         providers: [WorkspacesApi, provideHttpClient(), provideHttpClientTesting()],
@@ -105,9 +105,11 @@ describe('workspace product-role discovery', () => {
         .flush({
           workspaces: [{ orgId: 'beta', workspaceType: 'COMPANY', role: 'OWNER', productRoles }],
         });
-      await expect(response).resolves.toEqual([
-        expect.objectContaining({ productRoles: undefined }),
-      ]);
+      if (productRoles === undefined)
+        await expect(response).resolves.toEqual([
+          expect.objectContaining({ productRoles: undefined }),
+        ]);
+      else await expect(response).rejects.toThrow();
       http.verify();
     },
   );

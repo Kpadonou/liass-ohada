@@ -25,16 +25,18 @@
         <liass-logo variant="icon" size="sm" theme="light" [alt]="'SHELL.LOGO_ALT' | transloco" />
       </a>
 
-      <button
-        class="liass-focus-ring grid size-9 shrink-0 place-items-center rounded-app-panel border border-white/15 bg-white/[0.06] text-white transition hover:border-white/25 hover:bg-white/[0.1]"
-        type="button"
-        data-testid="sidebar-toggle"
-        [attr.aria-label]="sidebarToggleLabelKey() | transloco"
-        [matTooltip]="sidebarToggleLabelKey() | transloco"
-        (click)="toggleShellNavigation()"
-      >
-        <mat-icon>{{ sidebarToggleIcon() }}</mat-icon>
-      </button>
+      @if (productNavigation.hasSidebar()) {
+        <button
+          class="liass-focus-ring grid size-9 shrink-0 place-items-center rounded-app-panel border border-white/15 bg-white/[0.06] text-white transition hover:border-white/25 hover:bg-white/[0.1]"
+          type="button"
+          data-testid="sidebar-toggle"
+          [attr.aria-label]="sidebarToggleLabelKey() | transloco"
+          [matTooltip]="sidebarToggleLabelKey() | transloco"
+          (click)="toggleShellNavigation()"
+        >
+          <mat-icon>{{ sidebarToggleIcon() }}</mat-icon>
+        </button>
+      }
     </div>
 
     <div

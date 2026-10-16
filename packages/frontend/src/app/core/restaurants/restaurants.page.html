@@ -1,18 +1,30 @@
 <div class="space-y-4">
-  @if (availability() === 'AVAILABLE') {
+  @if (state.mode() === 'management' || state.mode() === 'service') {
     <router-outlet />
-  } @else if (availability() === 'UNKNOWN') {
-    <liass-card>
-      <div class="space-y-3" role="status" aria-busy="true">
+  } @else if (state.mode() === 'checking') {
+    <liass-card
+      ><div class="space-y-3" role="status" aria-busy="true">
         <p class="text-sm text-app-text-secondary">
           {{ 'RESTAURANTS.ACCESS.CHECKING' | transloco }}
         </p>
-        <liass-skeleton variant="block" />
-      </div>
-    </liass-card>
+        <liass-skeleton variant="block" /></div
+    ></liass-card>
   } @else {
-    <liass-card
-      ><p role="alert">{{ 'RESTAURANTS.ACCESS.DENIED' | transloco }}</p></liass-card
-    >
+    <liass-restaurant-access-notice
+      [kind]="
+        state.mode() === 'configure'
+          ? 'configure'
+          : state.mode() === 'unsupported'
+            ? 'unsupported'
+            : state.mode() === 'unverified'
+              ? 'unverified'
+              : 'changed'
+      "
+      [role]="state.role()"
+      [busy]="state.refreshing()"
+      [failed]="state.refreshFailed()"
+      (refresh)="state.refresh()"
+      (changeWorkspace)="changeWorkspace()"
+    />
   }
 </div>

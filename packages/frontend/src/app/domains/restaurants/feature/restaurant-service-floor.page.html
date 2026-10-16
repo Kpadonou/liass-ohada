@@ -56,16 +56,31 @@
     <p role="status" aria-live="polite">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
     <liass-skeleton variant="block" />
   } @else if (selfService() && myLocations.isError()) {
-    <liass-card
-      ><p role="alert">{{ errorText(myLocations.error()) }}</p>
-      <button mat-button (click)="refreshOutlets()">
-        {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
-      </button>
-    </liass-card>
+    @if (selfAccessDenied()) {
+      <liass-restaurant-access-notice
+        [secondaryHeading]="true"
+        [kind]="selfAccessWasVerified() ? 'changed' : 'unverified'"
+        [busy]="accessState.refreshing()"
+        [failed]="accessState.refreshFailed()"
+        (refresh)="accessState.refresh()"
+        (changeWorkspace)="changeWorkspace()"
+      />
+    } @else {
+      <liass-card
+        ><p role="alert">{{ errorText(myLocations.error()) }}</p>
+        <button mat-button (click)="refreshOutlets()">
+          {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+        </button>
+      </liass-card>
+    }
   } @else if (selfService() && !outlets().length && !myLocations.hasNextPage()) {
-    <liass-card
-      [title]="'RESTAURANTS.SERVICE.SELF.EMPTY_TITLE' | transloco"
-      [description]="'RESTAURANTS.SERVICE.SELF.EMPTY_DESCRIPTION' | transloco"
+    <liass-restaurant-access-notice
+      kind="unassigned"
+      [secondaryHeading]="true"
+      [busy]="accessState.refreshing()"
+      [failed]="accessState.refreshFailed()"
+      (refresh)="accessState.refresh()"
+      (changeWorkspace)="changeWorkspace()"
     />
   } @else if (!selfService() && root.isPending()) {
     <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>

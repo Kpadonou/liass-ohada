@@ -1,3 +1,4 @@
+import { RestaurantsCapabilities } from '../../domains/restaurants/data-access/restaurants-capabilities';
 import type { ProductCode } from '@liass-ohada/shared/shared';
 import { UiStore, type AppPage } from '../state/ui.store';
 import { ProductAccessState } from '../product-access/product-access.state';
@@ -73,8 +74,15 @@ export class ShellProductNavigation {
   private readonly auth = inject(AuthStore);
   private readonly access = inject(ProductAccessState);
   private readonly sales = inject(SalesCapabilities);
+  private readonly restaurants = inject(RestaurantsCapabilities);
   private readonly ui = inject(UiStore);
   readonly routeProduct = computed(() => productForPage(this.ui.currentPage()));
+  readonly hasSidebar = computed(
+    () =>
+      this.routeProduct() !== 'RESTAURANTS' ||
+      (this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
+        (this.restaurants.canManageSetup() || this.restaurants.canReadService())),
+  );
   readonly products = computed(() =>
     !this.auth.effectiveOrgId()
       ? []

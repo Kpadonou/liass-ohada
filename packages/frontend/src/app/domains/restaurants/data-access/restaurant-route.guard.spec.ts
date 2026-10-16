@@ -1,0 +1,64 @@
+import { signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
+import {
+  ActivatedRouteSnapshot,
+  Router,
+  RouterStateSnapshot,
+  provideRouter,
+} from '@angular/router';
+import type { WorkspaceSummary } from '@liass-ohada/shared/shared';
+import { AuthStore } from '../../identity/data-access/auth.store';
+import { RestaurantsCapabilities } from './restaurants-capabilities';
+import { restaurantRouteGuard } from './restaurant-route.guard';
+import { accessWorkspace } from './restaurant-access.test-fixture';
+
+describe('Restaurant role-aware routes', () => {
+  const workspace = signal<WorkspaceSummary>(accessWorkspace());
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        {
+          provide: AuthStore,
+          useValue: {
+            activeWorkspace: workspace,
+            effectiveOrgId: () => workspace().orgId,
+            activeWorkspaceType: () => workspace().workspaceType,
+          },
+        },
+      ],
+    }),
+  );
+  afterEach(() => TestBed.resetTestingModule());
+  const check = (path: string) => {
+    const route = { routeConfig: { path } } as ActivatedRouteSnapshot;
+    const result = TestBed.runInInjectionContext(() =>
+      restaurantRouteGuard(route, {} as RouterStateSnapshot),
+    );
+    return result === true ? true : TestBed.inject(Router).serializeUrl(result as never);
+  };
+  it.each(['OWNER', 'MANAGER'] as const)('%s retains management dashboard and routes', (role) => {
+    workspace.set(accessWorkspace(role));
+    expect(check('')).toBe(true);
+    expect(check('setup/team')).toBe(true);
+    expect(check('service')).toBe(true);
+  });
+  it('redirects WAITER landing, reload and direct configuration to Service Floor without management access', () => {
+    workspace.set(accessWorkspace('WAITER'));
+    expect(check('')).toBe('/restaurants/service');
+    expect(check('')).toBe('/restaurants/service');
+    for (const path of ['setup', 'setup/team', 'setup/tables', 'menu'])
+      expect(check(path)).toBe('/restaurants/service');
+    expect(check('service')).toBe(true);
+    expect(TestBed.inject(RestaurantsCapabilities).canReadStaff()).toBe(false);
+  });
+  it.each([undefined, 'CASHIER', 'KITCHEN'] as const)(
+    'keeps %s on its explicit current-user access state',
+    (role) => {
+      workspace.set(accessWorkspace(role));
+      expect(check('')).toBe(true);
+      expect(check('service')).toBe('/restaurants');
+      expect(check('setup/team')).toBe('/restaurants');
+    },
+  );
+});

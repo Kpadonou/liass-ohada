@@ -4665,6 +4665,33 @@
       "SESSION_UNAVAILABLE": "Cette table n’est plus disponible pour cette action. Actualisez le plan de salle.",
       "RETRY": "Réessayer la demande",
       "RETRY_HELP": "Le résultat de la demande précédente n’a pas pu être confirmé. Réessayez cette même demande avant de choisir une autre personne."
+    },
+    "ACCESS_LIFECYCLE": {
+      "REFRESH": "Actualiser mon accès",
+      "CHANGE_WORKSPACE": "Changer d’espace de travail",
+      "REFRESH_FAILED": "Votre accès n’a pas pu être actualisé. Réessayez dans un instant.",
+      "YOUR_ROLE": "Votre rôle :",
+      "CONFIGURE": {
+        "TITLE": "Votre accès à Liass-Resto est en cours de configuration",
+        "DESCRIPTION": "Vous faites partie de cet espace de travail. Un propriétaire de l’espace doit finaliser votre accès à Liass-Resto avant que vous puissiez commencer."
+      },
+      "UNASSIGNED": {
+        "TITLE": "Aucun établissement ne vous est encore affecté",
+        "DESCRIPTION": "Un gérant ou un propriétaire doit vous affecter un établissement avant que vous puissiez commencer le service."
+      },
+      "UNSUPPORTED": {
+        "TITLE": "Votre espace Liass-Resto n’est pas encore disponible",
+        "DESCRIPTION": "L’interface opérationnelle associée à votre rôle n’est pas encore disponible. Vous pouvez changer d’espace de travail ou vérifier votre accès."
+      },
+      "CHANGED": {
+        "TITLE": "Votre accès a changé",
+        "DESCRIPTION": "Votre accès précédent ne peut plus être utilisé dans cet espace. Actualisez votre accès ou choisissez un autre espace de travail."
+      },
+      "UNVERIFIED": {
+        "TITLE": "Votre accès au service ne peut pas être confirmé",
+        "DESCRIPTION": "Nous ne pouvons pas ouvrir votre espace pour le moment. Demandez à un propriétaire ou un gérant de vérifier votre accès et votre affectation, puis actualisez."
+      },
+      "BREADCRUMB": "Accès Liass-Resto"
     }
   }
 }

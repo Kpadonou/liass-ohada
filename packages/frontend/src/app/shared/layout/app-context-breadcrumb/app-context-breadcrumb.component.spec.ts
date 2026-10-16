@@ -151,7 +151,12 @@ describe('AppContextBreadcrumbComponent', () => {
   it('uses Dashboard for the restaurant landing breadcrumb', () => {
     vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/restaurants');
     authStore.setCreatedWorkspace(
-      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      {
+        orgId: 'beta',
+        displayName: 'BETA',
+        workspaceType: 'COMPANY',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
       'beta',
     );
     uiStore.setCurrentPage('restaurants');
@@ -166,7 +171,12 @@ describe('AppContextBreadcrumbComponent', () => {
   it('shows organization, product and exact restaurant task without a Configuration segment', () => {
     vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/restaurants/setup/tables');
     authStore.setCreatedWorkspace(
-      { orgId: 'beta', displayName: 'BETA', workspaceType: 'COMPANY' },
+      {
+        orgId: 'beta',
+        displayName: 'BETA',
+        workspaceType: 'COMPANY',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
       'beta',
     );
     uiStore.setCurrentPage('restaurants');

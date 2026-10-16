@@ -1,3 +1,4 @@
+import { ShellProductNavigation } from '../../../core/navigation/product-navigation';
 import { Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
@@ -124,6 +125,7 @@ export function pageFromUrl(url: string): AppPage {
   templateUrl: './app-shell.component.html',
 })
 export class AppShellComponent {
+  protected readonly productNavigation = inject(ShellProductNavigation);
   private readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
   private readonly router = inject(Router);
@@ -147,9 +149,11 @@ export class AppShellComponent {
   }
 
   protected contentClass(): string {
-    const sidebarPadding = this.uiStore.sidebarCollapsed()
-      ? 'lg:pl-[var(--spacing-shell-sidebar-collapsed)]'
-      : 'lg:pl-[var(--spacing-shell-sidebar)]';
+    const sidebarPadding = !this.productNavigation.hasSidebar()
+      ? ''
+      : this.uiStore.sidebarCollapsed()
+        ? 'lg:pl-[var(--spacing-shell-sidebar-collapsed)]'
+        : 'lg:pl-[var(--spacing-shell-sidebar)]';
 
     return `min-h-dvh pt-[var(--spacing-app-header)] transition-[padding] duration-300 ease-in-out ${sidebarPadding}`;
   }

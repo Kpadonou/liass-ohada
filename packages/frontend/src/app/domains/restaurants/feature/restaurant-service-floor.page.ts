@@ -1,3 +1,5 @@
+import { RestaurantAccessNoticeComponent } from '../ui/restaurant-access-notice.component';
+import { RestaurantAccessState } from '../data-access/restaurant-access-state';
 import { Component, computed, DestroyRef, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -34,6 +36,7 @@ type FloorTable = RestaurantServiceFloorResponse['items'][number];
   selector: 'liass-restaurant-service-floor',
   host: { class: 'block' },
   imports: [
+    RestaurantAccessNoticeComponent,
     RouterLink,
     FormsModule,
     MatButtonModule,
@@ -51,6 +54,7 @@ type FloorTable = RestaurantServiceFloorResponse['items'][number];
   styleUrl: './restaurant-service-floor.page.scss',
 })
 export class RestaurantServiceFloorPage {
+  readonly accessState = inject(RestaurantAccessState);
   readonly queries = inject(RestaurantsQueries);
   readonly caps = inject(RestaurantsCapabilities);
   private readonly api = inject(RestaurantsApi);
@@ -64,6 +68,7 @@ export class RestaurantServiceFloorPage {
   private readonly params = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
   });
+  readonly selfAccessWasVerified = signal(false);
   readonly denied = signal<string | null>(null);
   readonly availability = computed(() => this.access.availability('RESTAURANTS'));
   readonly allowed = computed(
@@ -183,6 +188,10 @@ export class RestaurantServiceFloorPage {
         this.outletId.set((outlets.find((o) => o.isActive) ?? outlets[0]).id);
     });
     effect(() => {
+      if (this.myLocations.isSuccess() && this.outlets().length)
+        this.selfAccessWasVerified.set(true);
+    });
+    effect(() => {
       const error = this.myLocations.error();
       if (this.selfService() && error instanceof HttpErrorResponse && error.status === 403) {
         const org = this.queries.scope();
@@ -195,6 +204,7 @@ export class RestaurantServiceFloorPage {
         identity = org + ':' + this.queries.userScope();
       if (identity !== previous) {
         previous = identity;
+        this.selfAccessWasVerified.set(false);
         this.blockedOutlets.set(new Set());
         this.chooseOutlet.set(false);
         this.contextError.set(false);
@@ -251,6 +261,13 @@ export class RestaurantServiceFloorPage {
       queryParams: { outlet: this.outletId(), area: this.areaId() },
       queryParamsHandling: 'merge',
     });
+  }
+  changeWorkspace() {
+    void this.router.navigate(['/select-workspace'], { queryParams: { change: '1' } });
+  }
+  selfAccessDenied() {
+    const error = this.myLocations.error();
+    return error instanceof HttpErrorResponse && (error.status === 403 || error.status === 401);
   }
   async refreshOutlets() {
     this.blockedOutlets.set(new Set());

@@ -60,6 +60,10 @@ The platform shell owns active organization, connected user, global navigation, 
 
 The single application may progressively expose routes such as `/dashboard`, `/accounting/...`, `/treasury/...`, `/projects/...`, and `/administration/...`. RESTO-0 adds the ProductAccess-protected `/restaurants` foundation landing page under `core/`; RESTO-1C adds authenticated Overview, Setup and Menu child routes backed by `domains/restaurants`, matching the existing backend domain.
 
+### Restaurants current-user access UX
+
+Organization product entitlement, member product authorization and operational configuration are distinct. Within an entitled direct COMPANY workspace, a member without a Restaurants role sees an initial access-configuration state; OWNER/MANAGER retain the management dashboard; WAITER enters `/restaurants/service` with Service en salle as their only product navigation. A successful self-outlet response with no assignments is an operational configuration state, not revocation. CASHIER/KITCHEN receive truthful unavailable-yet content until their operational interfaces exist. Previously verified access subsequently lost uses access-changed semantics; an initial ambiguous authorization failure must not be labeled either initial configuration or revocation. Access refresh re-reads canonical membership, entitlement and scoped self-context without polling or logout. Product-specific entry guards do not broaden server permissions and preserve the platform tenant/account isolation contract.
+
 ### Multi-organization browser context
 
 One authenticated identity may belong to many organizations and switch without signing out. Product roles belong to the selected organization's membership; neither another organization's role nor ProductAccess grants member authority. The current browser model is **global across tabs on the same origin**, consistent with shared persisted workspace/dossier selection and the shared Cognito session. An external organization, dossier or account change must invalidate protected state and safely refresh through platform discovery before interaction resumes. Tabs must not silently act as independent workspaces.

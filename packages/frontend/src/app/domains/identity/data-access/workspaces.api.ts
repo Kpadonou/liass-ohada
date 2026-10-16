@@ -36,7 +36,10 @@ function parseWorkspaceSummary(value: unknown): WorkspaceSummary {
   return {
     orgId: value['orgId'],
     role,
-    productRoles: ProductRolesSchema.safeParse(value['productRoles']).data,
+    productRoles:
+      value['productRoles'] === undefined
+        ? undefined
+        : ProductRolesSchema.parse(value['productRoles']),
     cabinetRole,
     cabinetId: optionalString(value['cabinetId']),
     accessSource: optionalString(value['accessSource']),
