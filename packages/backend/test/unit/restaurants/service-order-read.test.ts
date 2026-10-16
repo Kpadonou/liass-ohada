@@ -571,47 +571,36 @@ test.each(["active-orders", "unpaid-orders", "table-orders", "order-history"])(
     expect(result.statusCode).toBe(403);
   },
 );
-test("all order mutations remain denied through real handlers", async () => {
+test("exception mutations remain denied through real handlers", async () => {
   const item = await add();
-  const common = { clientRequestId: request(), expectedVersion: 2 };
-  const draft = {
-    ...common,
-    menuItemId: f.items[0].id,
-    categoryId: f.items[0].categoryId,
-    quantity: 1,
-    expectedMenuItemVersion: 1,
-  };
-  const commands: Record<string, object> = {
-    "create-order": {
+  await S.mutate(
+    scope(),
+    "SUBMIT_ORDER",
+    {
       clientRequestId: request(),
-      orderType: "DINE_IN",
-      guestSessionId: session.guestSessionId,
-    },
-    "add-draft-item": draft,
-    "edit-draft-item": { ...draft, expectedItemVersion: 1 },
-    "cancel-order-item": {
-      ...common,
-      expectedItemVersion: 1,
-      reason: "No longer needed",
-    },
-    "submit-order": {
-      ...common,
+      expectedVersion: 2,
       items: [{ itemId: item.itemId, expectedVersion: 1 }],
     },
-    "cancel-order": { ...common, reason: "No longer needed" },
+    { orderId: order.orderId },
+  );
+  const common = { clientRequestId: request(), expectedVersion: 3 };
+  for (const [name, body] of Object.entries({
+    "cancel-order-item": {
+      ...common,
+      expectedItemVersion: 2,
+      reason: "Exception",
+    },
+    "cancel-order": { ...common, reason: "Exception" },
     "close-order": common,
-  };
-  for (const [name, body] of Object.entries(commands)) {
-    const ids =
-      name === "create-order"
-        ? {}
-        : {
-            orderId: order.orderId,
-            ...(name.includes("item") && name !== "add-draft-item"
-              ? { itemId: item.itemId }
-              : {}),
-          };
-    expect((await call(name, "Aissa", body, ids)).statusCode).toBe(403);
+  })) {
+    expect(
+      (
+        await call(name, "Aissa", body, {
+          orderId: order.orderId,
+          ...(name === "cancel-order-item" ? { itemId: item.itemId } : {}),
+        })
+      ).statusCode,
+    ).toBe(403);
   }
 });
 

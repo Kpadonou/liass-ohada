@@ -6,13 +6,17 @@ Classification: `VERTICAL_SOLUTION`; owner: Restaurants. The approved contract r
 
 GuestSession, Order, OrderItem, bounded submission rounds, base-table locators, immutable audit/activity and durable command replay are implemented in the dedicated Restaurants table. Existing configuration keys, setup/menu/QR APIs and Platform ProductAccess ownership are preserved.
 
-This is a **dev foundation**, not a complete operational food-service release. Preparation, station work queues, payments, receipts, providers, public guests, table transfer/merge and transactional Angular screens are deferred. Positive-price orders cannot settle until the payment phase. Station-routed accepted lines cannot close merely because preparation is absent. No staff administration or fabricated outlet assignment is introduced.
+This is a **dev foundation**, not a complete operational food-service release. Preparation, station work queues, payments, receipts, providers, public guests, table transfer/merge and transactional Angular screens are deferred. Positive-price orders cannot settle until the payment phase. Station-routed accepted lines cannot close merely because preparation is absent. The original LR-TX-1 phase introduced no staff administration or fabricated outlet assignment.
 
 ## Authorization
 
 RESTO-SVC-2D: WAITER service access is scoped by active outlet assignment through `RestaurantServiceAccess`. The existing keyed GuestSession GET uses `RESTAURANTS_SERVICE_SESSION_READ` for OWNER/MANAGER/WAITER and reevaluates that gate on every request. Known OPEN or CLOSED sessions are readable within the authorized outlet; responsible staff is metadata, not authorization. This permission grants no legacy session collection/history/active-table discovery and no order reads. OWNER/MANAGER retain legacy transaction permissions without staff-binding requirements. The LR-TX-1 matrix below records the original foundation.
 
-RESTO-ORDER-1A: `RESTAURANTS_SERVICE_ORDER_READ` independently grants the existing session-orders, keyed Order and OrderItems reads to service roles. WAITER must pass current outlet service authorization and read only DINE_IN Orders whose canonical parent GuestSession is OPEN; list hydration also verifies the requested session association. Known CLOSED sessions remain readable through SVC-2D while their Order content is unavailable to WAITER. Responsible staff/waiter references do not authorize reads. OWNER/MANAGER retain broad standalone and historical reads. Legacy outlet/unpaid/table/history discovery and every Order mutation remain separately protected. No Order/OrderItem schema or snapshot semantics change.
+RESTO-ORDER-1A: `RESTAURANTS_SERVICE_ORDER_READ` independently grants the existing session-orders, keyed Order and OrderItems reads to service roles. WAITER must pass current outlet service authorization and read only DINE_IN Orders whose canonical parent GuestSession is OPEN; list hydration also verifies the requested session association. Known CLOSED sessions remain readable through SVC-2D while their Order content is unavailable to WAITER. Responsible staff/waiter references do not authorize reads. OWNER/MANAGER retain broad standalone and historical reads. Legacy outlet/unpaid/table/history discovery remains separately protected; normal commands are independently scoped by RESTO-ORDER-1B below. No Order/OrderItem schema or snapshot semantics change.
+
+RESTO-ORDER-1B: `RESTAURANTS_SERVICE_ORDER_CREATE_MANAGE`, `RESTAURANTS_SERVICE_ORDER_DRAFT_MANAGE` and `RESTAURANTS_SERVICE_ORDER_SUBMIT_MANAGE` grant OWNER/MANAGER/WAITER only the existing create, add/edit draft, item-cancel and submit routes. WAITER passes `RestaurantServiceAccess` before replay and may operate only DINE_IN Orders attached to a canonical OPEN GuestSession with matching table/outlet/tenant. Membership, entitlement, staff, assignment, outlet configuration and parent-session conditions protect commercial writes against intervening revocation/closure. Responsible staff and Order waiter attribution are not authorization boundaries. WAITER creation derives `waiterId` from the authenticated active staff actor and populates the existing validated waiter locator; no reassignment contract exists. OWNER/MANAGER retain broad standalone, accepted-cancellation and lifecycle semantics without staff requirements.
+
+The shared item-cancel route permits WAITER only its DRAFT branch: retained CANCELLED line, actor/time/reason, no sale snapshot or money reversal. Conditional line/Order versions prevent draft-versus-submit races; replay rejects accepted-sale results containing a snapshot. Accepted cancellation, whole-Order cancellation/closure and GuestSession closure remain separately protected. Each request, including durable replay, rechecks current service access and OPEN session scope. Submission retains the explicit maximum twelve-line round, immutable sale snapshots, financial/session updates and later-round support on SUBMITTED Orders. LR-TX-1 writes no preparation task/projection; this grant adds no preparation, payment, bill, history discovery or frontend capability. The historical LR-TX-1 counts below exclude later service guards.
 
 The existing authenticated handler verifies Cognito identity, organization membership and Restaurants ProductAccess before command execution or replay. Tenant identity comes from verified context; outlet IDs are validated within that tenant.
 
@@ -28,25 +32,25 @@ Service Floor supervises multiple tables; Table Workspace operates one keyed Gue
 
 `S = ORG#{orgId}#OUT#{outletId}`. New helpers are additive in the existing KeyFactory. Every persisted row has strict entity type, schema version and tenant/outlet metadata; canonical records additionally carry their parent identities.
 
-| Collection                                                       | PK                                     | SK                                                            |
-| ---------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------- |
-| GuestSession                                                     | `S#GS#{sessionId}`                     | `META`                                                        |
-| Session order links                                              | `S#GS#{sessionId}`                     | `ORD#{createdAt}#{orderId}` / `OPENORD#{createdAt}#{orderId}` |
-| Session audit                                                    | `S#GS#{sessionId}`                     | `EVT#{committedAt}#{commandId}`                               |
-| Table occupancy                                                  | `S#TABLE#{tableId}`                    | `ACTIVE`                                                      |
-| Order                                                            | `S#ORD#{orderId}`                      | `META`                                                        |
-| OrderItem                                                        | `S#ORD#{orderId}`                      | `OI#{itemId}`                                                 |
-| Submission                                                       | `S#ORD#{orderId}`                      | `SUB#{submissionId}`                                          |
-| Order audit                                                      | `S#ORD#{orderId}`                      | `EVT#{committedAt}#{commandId}`                               |
-| Active sessions                                                  | `S#ACTIVE#GS`                          | `{openedAt}#{sessionId}`                                      |
-| Active/unpaid orders                                             | `S#ACTIVE#ORD` / `S#ACTIVE#UNPAID`     | `{createdAt}#{orderId}`                                       |
-| Validated waiter locator (reserved, not populated by this phase) | `S#WAITER#{userId}#ACTIVE`             | `{createdAt}#{orderId}`                                       |
-| Session history                                                  | `S#HIST#GS#{YYYYMMDD}`                 | `{openedAt}#{sessionId}`                                      |
-| Table session history                                            | `S#TABLE#{tableId}#HIST#GS#{YYYYMMDD}` | `{openedAt}#{sessionId}`                                      |
-| Order history                                                    | `S#HIST#ORD#{YYYYMMDD}`                | `{createdAt}#{orderId}`                                       |
-| Activity                                                         | `S#HIST#ACT#{YYYYMMDD}`                | `{committedAt}#{commandId}`                                   |
-| New-aggregate command                                            | `S#CMD#{commandKind}#NEW#{hash}`       | `IDEM`                                                        |
-| Existing-aggregate command                                       | `S#CMD#{commandKind}#{aggregateId}`    | `IDEM#{hash}`                                                 |
+| Collection                                                      | PK                                     | SK                                                            |
+| --------------------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------- |
+| GuestSession                                                    | `S#GS#{sessionId}`                     | `META`                                                        |
+| Session order links                                             | `S#GS#{sessionId}`                     | `ORD#{createdAt}#{orderId}` / `OPENORD#{createdAt}#{orderId}` |
+| Session audit                                                   | `S#GS#{sessionId}`                     | `EVT#{committedAt}#{commandId}`                               |
+| Table occupancy                                                 | `S#TABLE#{tableId}`                    | `ACTIVE`                                                      |
+| Order                                                           | `S#ORD#{orderId}`                      | `META`                                                        |
+| OrderItem                                                       | `S#ORD#{orderId}`                      | `OI#{itemId}`                                                 |
+| Submission                                                      | `S#ORD#{orderId}`                      | `SUB#{submissionId}`                                          |
+| Order audit                                                     | `S#ORD#{orderId}`                      | `EVT#{committedAt}#{commandId}`                               |
+| Active sessions                                                 | `S#ACTIVE#GS`                          | `{openedAt}#{sessionId}`                                      |
+| Active/unpaid orders                                            | `S#ACTIVE#ORD` / `S#ACTIVE#UNPAID`     | `{createdAt}#{orderId}`                                       |
+| Validated waiter locator (populated for scoped WAITER creation) | `S#WAITER#{userId}#ACTIVE`             | `{createdAt}#{orderId}`                                       |
+| Session history                                                 | `S#HIST#GS#{YYYYMMDD}`                 | `{openedAt}#{sessionId}`                                      |
+| Table session history                                           | `S#TABLE#{tableId}#HIST#GS#{YYYYMMDD}` | `{openedAt}#{sessionId}`                                      |
+| Order history                                                   | `S#HIST#ORD#{YYYYMMDD}`                | `{createdAt}#{orderId}`                                       |
+| Activity                                                        | `S#HIST#ACT#{YYYYMMDD}`                | `{committedAt}#{commandId}`                                   |
+| New-aggregate command                                           | `S#CMD#{commandKind}#NEW#{hash}`       | `IDEM`                                                        |
+| Existing-aggregate command                                      | `S#CMD#{commandKind}#{aggregateId}`    | `IDEM#{hash}`                                                 |
 
 Canonical decisions use strongly consistent GetItem; lists use strongly consistent base-table Query with no filter expression. Locators contain identities and immutable timestamps, not mutable balances. Hydration uses at most eight concurrent GetItem calls. No BatchGetItem grant is needed.
 

@@ -543,7 +543,7 @@ test("foreign staff persistence identity is rejected", async () => {
     200,
   );
 });
-test("legacy discovery/close/responsibility and all order mutations remain denied to an assigned waiter", async () => {
+test("legacy discovery/close/responsibility remain denied to an assigned waiter", async () => {
   const s = c.GuestSessionResponseSchema.parse(
     JSON.parse((await call("open-session", "Aissa", body())).body),
   ).data;
@@ -563,7 +563,12 @@ test("legacy discovery/close/responsibility and all order mutations remain denie
       route.name === "get-session" ||
       route.name === "session-orders" ||
       route.name === "get-order" ||
-      route.name === "order-items"
+      route.name === "order-items" ||
+      route.name === "create-order" ||
+      route.name === "add-draft-item" ||
+      route.name === "edit-draft-item" ||
+      route.name === "cancel-order-item" ||
+      route.name === "submit-order"
     )
       continue;
     expect(Auth.permissionsForRestaurantsRole("WAITER")).not.toContain(

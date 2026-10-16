@@ -294,6 +294,13 @@ export class RestaurantTransactionsService {
       ),
       SK: K.restaurantTransactionCommandSK(owner, hash),
     };
+    const serviceCommand = [
+      "CREATE_ORDER",
+      "ADD_ITEM",
+      "EDIT_ITEM",
+      "CANCEL_ITEM",
+      "SUBMIT_ORDER",
+    ].includes(command);
     const replay = async (): Promise<Business | undefined> => {
       const row = await R.get(ctx, commandKey, "COMMAND");
       if (!row) return undefined;
@@ -305,6 +312,14 @@ export class RestaurantTransactionsService {
         row.data.fingerprint !== intent
       )
         return fail("RESTAURANTS_IDEMPOTENCY_CONFLICT");
+      // A draft-removal replay must never become an accepted-sale reversal grant.
+      if (serviceAccess?.staffId && command === "CANCEL_ITEM") {
+        const result = contracts.RestaurantOrderItemSchema.parse(
+          row.data.result,
+        );
+        if (result.status !== "CANCELLED" || result.snapshot)
+          return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+      }
       return row.data.result;
     };
     const responsibleActor =
@@ -312,9 +327,36 @@ export class RestaurantTransactionsService {
         ? await ResponsibleStaff.authorize(ctx, ctx.actorId)
         : undefined;
     const serviceAccess =
-      command === "OPEN_SESSION"
+      command === "OPEN_SESSION" || serviceCommand
         ? await RestaurantServiceAccess.authorize(ctx, ctx.actorId)
         : undefined;
+    let serviceOrder: Awaited<ReturnType<typeof this.order>> | undefined;
+    let serviceSession: Awaited<ReturnType<typeof this.session>> | undefined;
+    const authorizeOrderScope = async () => {
+      if (!serviceAccess?.staffId || !serviceCommand) return;
+      if (command === "CREATE_ORDER") {
+        const req = contracts.CreateRestaurantOrderRequestSchema.parse(request);
+        if (req.orderType !== "DINE_IN" || !req.guestSessionId)
+          return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+        serviceSession = await this.session(ctx, req.guestSessionId);
+      } else {
+        serviceOrder = await this.order(ctx, owner);
+        if (
+          serviceOrder.data.orderType !== "DINE_IN" ||
+          !serviceOrder.data.guestSessionId
+        )
+          return fail("RESTAURANTS_NOT_FOUND", 404);
+        serviceSession = await this.session(
+          ctx,
+          serviceOrder.data.guestSessionId,
+        );
+        if (serviceOrder.data.tableId !== serviceSession.data.tableId)
+          return fail("RESTAURANTS_NOT_FOUND", 404);
+      }
+      if (serviceSession.data.status !== "OPEN")
+        return fail("RESTAURANTS_NOT_FOUND", 404);
+    };
+    await authorizeOrderScope();
     const prior = await replay();
     if (prior) {
       console.info("[RESTAURANTS_TRANSACTION]", {
@@ -327,8 +369,25 @@ export class RestaurantTransactionsService {
     const now = new Date().toISOString(),
       commandId = randomUUID();
     const checks = new Map<string, RestaurantSnapshot>();
-    const actions: TransactWriteItem[] = [...(serviceAccess?.actions ?? [])];
+    const actions: TransactWriteItem[] = [
+      ...(command === "OPEN_SESSION" || serviceAccess?.staffId
+        ? (serviceAccess?.actions ?? [])
+        : []),
+    ];
     const serviceGuardCount = actions.length;
+    if (serviceSession) {
+      await this.config(ctx, checks, "outlet", {}, ctx.outletId);
+      // Create and submit conditionally replace this same session below. Other
+      // draft operations need a read guard to reject concurrent session closure.
+      if (command !== "CREATE_ORDER" && command !== "SUBMIT_ORDER")
+        actions.push({
+          ConditionCheck: {
+            TableName: restaurantsTableName(),
+            Key: marshall({ PK: serviceSession.PK, SK: serviceSession.SK }),
+            ...R.conditions(serviceSession),
+          },
+        });
+    }
     const put = (
       kind: TransactionKind,
       key: TransactionKey,
@@ -362,6 +421,9 @@ export class RestaurantTransactionsService {
           targetId,
           targetKind: session ? "SESSION" : "ORDER",
           timestamp,
+          ...(kind === "WAITER" && "waiterId" in target
+            ? { waiterId: target.waiterId }
+            : {}),
           ...(target.guestSessionId
             ? { guestSessionId: target.guestSessionId }
             : {}),
@@ -532,7 +594,7 @@ export class RestaurantTransactionsService {
       const req = contracts.CreateRestaurantOrderRequestSchema.parse(request);
       const menu = await this.foundation(ctx, checks);
       const session = req.guestSessionId
-        ? await this.session(ctx, req.guestSessionId)
+        ? (serviceSession ?? (await this.session(ctx, req.guestSessionId)))
         : undefined;
       if (
         session &&
@@ -554,6 +616,7 @@ export class RestaurantTransactionsService {
         currency: menu.data.currency,
         createdAt: now,
         createdBy: ctx.actorId,
+        waiterId: serviceAccess?.staffId,
         version: 1,
         financialRevision: 0,
         lineCount: 0,
@@ -584,6 +647,12 @@ export class RestaurantTransactionsService {
         ),
         result,
       );
+      if (result.waiterId)
+        locator(
+          "WAITER",
+          K.restaurantWaiterActivePK(ctx.orgId, ctx.outletId, result.waiterId),
+          result,
+        );
       if (session) {
         const next = {
           ...session.data,
@@ -691,7 +760,7 @@ export class RestaurantTransactionsService {
       );
       activity = audit(result, session.data.status);
     } else {
-      const order = await this.order(ctx, owner);
+      const order = serviceOrder ?? (await this.order(ctx, owner));
       this.editable(
         order.data,
         (request as { expectedVersion: number }).expectedVersion,
@@ -840,6 +909,8 @@ export class RestaurantTransactionsService {
             owner,
             contracts.RestaurantIdSchema.parse(ids.itemId),
           );
+        if (serviceAccess?.staffId && line.data.status !== "DRAFT")
+          return fail("DOMAIN_PERMISSION_REQUIRED", 403);
         if (line.data.version !== req.expectedItemVersion)
           return fail("RESTAURANTS_WRITE_CONFLICT");
         if (line.data.status === "CANCELLED") return fail();
@@ -936,7 +1007,8 @@ export class RestaurantTransactionsService {
           next,
         );
       if (next.guestSessionId && (financialChanged || isTerminal)) {
-        const session = await this.session(ctx, next.guestSessionId);
+        const session =
+          serviceSession ?? (await this.session(ctx, next.guestSessionId));
         if (
           session.data.status !== "OPEN" ||
           session.data.currency !== next.currency ||
@@ -1034,6 +1106,7 @@ export class RestaurantTransactionsService {
         throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
       if (serviceAccess)
         await RestaurantServiceAccess.authorize(ctx, ctx.actorId);
+      await authorizeOrderScope();
       const committed = await replay();
       if (committed) return { data: committed };
       const name = error instanceof Error ? error.name : "";
