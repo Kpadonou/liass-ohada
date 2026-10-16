@@ -1,5 +1,6 @@
+import { AvailableOrganizationMembersComponent } from './available-organization-members.component';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, computed, effect, inject } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatDialog } from '@angular/material/dialog';
@@ -37,6 +38,7 @@ import { AddStaffDialogComponent } from './add-staff-dialog.component';
   ],
   host: { class: 'block' },
   imports: [
+    AvailableOrganizationMembersComponent,
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
@@ -151,6 +153,7 @@ export class RestaurantTeamPage {
       }
     });
   }
+  readonly availableExpanded = signal(false);
   readonly columns = ['member', 'role', 'status', 'outlets', 'actions'];
   addMember() {
     if (!this.allowed() || !this.caps.canProvisionStaff()) return;

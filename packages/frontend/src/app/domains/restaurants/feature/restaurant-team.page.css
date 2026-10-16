@@ -91,3 +91,12 @@
     align-items: center;
   }
 }
+
+.available-collection .mat-column-member {
+  width: auto;
+}
+@media (min-width: 768px) {
+  .available-collection .mat-column-actions {
+    width: 140px;
+  }
+}

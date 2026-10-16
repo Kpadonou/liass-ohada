@@ -16,12 +16,21 @@
         </button>
       } @else {
         <div class="space-y-2">
-          <liass-searchable-select
-            labelKey="RESTAURANTS.TEAM.MEMBER"
-            searchPlaceholderKey="RESTAURANTS.TEAM.ADD.SEARCH"
-            [options]="options()"
-            [formControl]="form.controls.member"
-          />
+          @if (data.member) {
+            <p class="text-sm font-semibold text-app-text">
+              {{ data.member.displayName || data.member.email }}
+            </p>
+            <p class="text-xs text-app-text-secondary">
+              {{ 'RESTAURANTS.TEAM.AVAILABLE.SELECTED' | transloco }}
+            </p>
+          } @else {
+            <liass-searchable-select
+              labelKey="RESTAURANTS.TEAM.MEMBER"
+              searchPlaceholderKey="RESTAURANTS.TEAM.ADD.SEARCH"
+              [options]="options()"
+              [formControl]="form.controls.member"
+            />
+          }
           @if (form.controls.member.touched && !selected()) {
             <p class="text-sm text-danger-600">{{ 'RESTAURANTS.TEAM.ADD.REQUIRED' | transloco }}</p>
           }

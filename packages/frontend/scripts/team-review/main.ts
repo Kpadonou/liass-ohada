@@ -71,6 +71,27 @@ const directoryMembers = [
     status: 'ACTIVE',
   })),
 ];
+if (scenario === 'available-one') directoryMembers.splice(1, 1);
+directoryMembers.push(
+  {
+    userId: 'fixture-owner',
+    displayName: 'Camille M.',
+    email: 'owner@example.test',
+    status: 'ACTIVE',
+  },
+  {
+    userId: 'fixture-suspended',
+    displayName: 'Membre suspendu',
+    email: 'suspended@example.test',
+    status: 'SUSPENDED',
+  },
+  {
+    userId: 'fixture-revoked',
+    displayName: 'Membre révoqué',
+    email: 'revoked@example.test',
+    status: 'REVOKED',
+  },
+);
 const productRoles = new Map(members.map((member) => [member.userId, member.restaurantRole!]));
 if (scenario === 'add-role-conflict') productRoles.set('fixture-eligible', 'CASHIER');
 if (scenario === 'add-empty-team') {

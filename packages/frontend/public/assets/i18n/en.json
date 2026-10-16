@@ -4643,6 +4643,21 @@
         "ERROR_LIFECYCLE": "This member’s situation has changed. Review their information before continuing.",
         "ERROR_PAGES": "Load the remaining assignments before continuing.",
         "ERROR_VERSION": "Assignments or member information changed. Review and confirm again."
+      },
+      "AVAILABLE": {
+        "TITLE": "Available members",
+        "HELP": "These people already belong to the organization and have no Liass-Resto team record. You can configure their access if they need to join the team.",
+        "CHECKING": "Checking existing team members…",
+        "COMPLETE_STAFF": "Load the remaining team pages to identify organization members who are not already listed.",
+        "STAFF_ERROR": "Unable to check existing team members.",
+        "DIRECTORY_ERROR": "Unable to load organization members.",
+        "SEARCH": "Search available members",
+        "CONFIGURE": "Configure",
+        "CONFIGURE_MEMBER": "Configure access for {{name}}",
+        "EMPTY": "No other organization members to add at the moment.",
+        "EMPTY_LOADED": "No available members among the people loaded. You can load more directory members.",
+        "SELECTED": "Member selected from the organization directory.",
+        "HELP_PARTIAL": "Product access may already exist. Configuration checks completed steps before continuing."
       }
     },
     "RESPONSIBILITY": {

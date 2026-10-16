@@ -4643,6 +4643,21 @@
         "ERROR_LIFECYCLE": "La situation de ce membre a changé. Relisez ses informations avant de poursuivre.",
         "ERROR_PAGES": "Chargez les affectations restantes avant de poursuivre.",
         "ERROR_VERSION": "Les affectations ou le membre ont changé. Relisez les informations et confirmez à nouveau."
+      },
+      "AVAILABLE": {
+        "TITLE": "Membres disponibles",
+        "HELP": "Ces personnes appartiennent déjà à l’organisation et n’ont pas de fiche dans l’équipe Liass-Resto. Vous pouvez configurer leur accès si elles doivent rejoindre l’équipe.",
+        "CHECKING": "Vérification des membres déjà présents dans l’équipe…",
+        "COMPLETE_STAFF": "Chargez la suite de l’équipe pour identifier les membres de l’organisation qui n’y figurent pas encore.",
+        "STAFF_ERROR": "Impossible de vérifier les membres déjà présents dans l’équipe.",
+        "DIRECTORY_ERROR": "Impossible de charger les membres de l’organisation.",
+        "SEARCH": "Rechercher un membre disponible",
+        "CONFIGURE": "Configurer",
+        "CONFIGURE_MEMBER": "Configurer l’accès de {{name}}",
+        "EMPTY": "Aucun autre membre de l’organisation à ajouter pour le moment.",
+        "EMPTY_LOADED": "Aucun membre disponible parmi les personnes chargées. Vous pouvez charger la suite du répertoire.",
+        "SELECTED": "Membre sélectionné depuis le répertoire de l’organisation.",
+        "HELP_PARTIAL": "Un accès produit peut déjà exister. La configuration vérifie les étapes déjà réalisées avant de poursuivre."
       }
     },
     "RESPONSIBILITY": {

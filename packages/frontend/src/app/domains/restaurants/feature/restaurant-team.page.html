@@ -308,6 +308,27 @@
           }
         }
       }
+      @if (caps.canProvisionStaff()) {
+        <section class="border-t border-app-border pt-4" aria-labelledby="available-members-title">
+          <h2 id="available-members-title" class="text-base font-semibold">
+            <button
+              mat-button
+              type="button"
+              [attr.aria-expanded]="availableExpanded()"
+              aria-controls="available-members-content"
+              (click)="availableExpanded.set(!availableExpanded())"
+            >
+              <mat-icon aria-hidden="true">{{
+                availableExpanded() ? 'expand_less' : 'expand_more'
+              }}</mat-icon
+              >{{ 'RESTAURANTS.TEAM.AVAILABLE.TITLE' | transloco }}
+            </button>
+          </h2>
+          @if (availableExpanded()) {
+            <liass-available-organization-members id="available-members-content" class="mt-3" />
+          }
+        </section>
+      }
     </div>
   }
 </div>

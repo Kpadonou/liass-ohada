@@ -19,6 +19,7 @@ import {
   injectQuery,
   QueryClient,
 } from '@tanstack/angular-query-experimental';
+import type { OrganizationMemberSummary } from '@liass-ohada/shared/shared';
 import { AssignInitialProductRoleBodySchema } from '@liass-ohada/shared/shared';
 import type { RestaurantStaff } from '@liass-ohada/shared/restaurants';
 import { InviteCompanyMemberDialogComponent } from '../../identity/feature/company-invitations/invite-company-member-dialog.component';
@@ -74,7 +75,9 @@ export class AddStaffDialogComponent {
         if (this.allowed()) void this.directory.refetch();
       });
   }
-  readonly data = inject<{ org: string; user: string }>(MAT_DIALOG_DATA);
+  readonly data = inject<{ org: string; user: string; member?: OrganizationMemberSummary }>(
+    MAT_DIALOG_DATA,
+  );
   private readonly ref = inject(MatDialogRef<AddStaffDialogComponent>);
   private readonly api = inject(RestaurantsApi);
   private readonly identity = inject(OrganizationMembersApi);
@@ -92,7 +95,7 @@ export class AddStaffDialogComponent {
   readonly error = signal<string | null>(null);
   readonly issue = signal<string | null>(null);
   readonly form = new FormGroup({
-    member: new FormControl<string | null>(null, Validators.required),
+    member: new FormControl<string | null>(this.data.member?.userId ?? null, Validators.required),
     role: new FormControl<InitialStaffRole>('WAITER', {
       nonNullable: true,
       validators: Validators.required,
@@ -100,16 +103,20 @@ export class AddStaffDialogComponent {
     outlets: new FormControl<string[]>([], { nonNullable: true }),
     confirm: new FormControl(false, { nonNullable: true }),
   });
-  readonly selected = toSignal(this.form.controls.member.valueChanges, { initialValue: null });
+  readonly selected = toSignal(this.form.controls.member.valueChanges, {
+    initialValue: this.data.member?.userId ?? null,
+  });
   readonly confirmed = toSignal(this.form.controls.confirm.valueChanges, { initialValue: false });
   readonly outletSearch = new FormControl('', { nonNullable: true });
   private readonly outletSearchValue = toSignal(this.outletSearch.valueChanges, {
     initialValue: '',
   });
   readonly roles = AssignInitialProductRoleBodySchema.shape.role.options;
+  private readonly revision = this.auth.contextRevision?.();
   readonly allowed = computed(
     () =>
       !this.denied() &&
+      this.auth.contextRevision?.() === this.revision &&
       this.queries.scope() === this.data.org &&
       this.auth.currentUserId() === this.data.user &&
       this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
@@ -183,7 +190,11 @@ export class AddStaffDialogComponent {
   constructor() {
     effect(() => {
       this.ref.disableClose = this.pending();
-      if (this.queries.scope() !== this.data.org || this.auth.currentUserId() !== this.data.user)
+      if (
+        this.queries.scope() !== this.data.org ||
+        this.auth.currentUserId() !== this.data.user ||
+        this.auth.contextRevision?.() !== this.revision
+      )
         this.ref.close();
     });
     this.form.controls.member.valueChanges.subscribe(() => {

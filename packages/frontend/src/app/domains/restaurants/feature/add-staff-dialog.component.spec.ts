@@ -282,3 +282,65 @@ it('allows a newly accepted directory member to be selected without automaticall
   expect(identity.assignInitialRole).not.toHaveBeenCalled();
   expect(api.bindStaff).not.toHaveBeenCalled();
 });
+it('preselects and identifies a directory member while preserving canonical lookup and provisioning', async () => {
+  TestBed.overrideProvider(MAT_DIALOG_DATA, {
+    useValue: {
+      org: 'org',
+      user: 'owner',
+      member: { userId: 'member', displayName: 'Aïssatou S.', status: 'ACTIVE' },
+    },
+  });
+  const f = await dialog();
+  await vi.waitFor(() => {
+    f.detectChanges();
+    expect(f.componentInstance.ready()).toBe(true);
+  });
+  expect(f.componentInstance.selected()).toBe('member');
+  expect(f.nativeElement.querySelector('liass-searchable-select')).toBeNull();
+  expect(f.nativeElement.textContent).toContain('Membre sélectionné');
+  await f.componentInstance.submit();
+  expect(api.bindStaff).toHaveBeenCalledTimes(1);
+  expect(ref.close).toHaveBeenCalledWith(true);
+});
+it('does not recreate a preselected Staff member discovered by the canonical detail read', async () => {
+  current = staffFixture('member');
+  TestBed.overrideProvider(MAT_DIALOG_DATA, {
+    useValue: {
+      org: 'org',
+      user: 'owner',
+      member: { userId: 'member', displayName: 'Aïssatou S.', status: 'ACTIVE' },
+    },
+  });
+  const f = await dialog();
+  await vi.waitFor(() => {
+    f.detectChanges();
+    expect(f.componentInstance.existing()).toBe(true);
+  });
+  await f.componentInstance.submit();
+  expect(api.bindStaff).not.toHaveBeenCalled();
+  expect(identity.assignInitialRole).not.toHaveBeenCalled();
+});
+it('closes a preselected dialog on context revision change even when organization and identity return', async () => {
+  const revision = signal(1);
+  TestBed.overrideProvider(AuthStore, {
+    useValue: {
+      effectiveOrgId: org,
+      currentUserId: user,
+      loadWorkspaces: refresh,
+      contextRevision: revision,
+    },
+  });
+  TestBed.overrideProvider(MAT_DIALOG_DATA, {
+    useValue: {
+      org: 'org',
+      user: 'owner',
+      member: { userId: 'member', displayName: 'Aïssatou S.', status: 'ACTIVE' },
+    },
+  });
+  const f = await dialog();
+  revision.set(3);
+  f.detectChanges();
+  await f.componentInstance.submit();
+  expect(ref.close).toHaveBeenCalled();
+  expect(identity.assignInitialRole).not.toHaveBeenCalled();
+});
