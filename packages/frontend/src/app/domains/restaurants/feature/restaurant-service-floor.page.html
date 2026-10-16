@@ -387,6 +387,26 @@
                         <p class="truncate text-app-muted" [title]="table.name">{{ table.name }}</p>
                       }
                     </div>
+                    @if (table.state === 'OCCUPIED' && caps.canReadSession()) {
+                      <a
+                        matButton="filled"
+                        class="mt-auto min-h-11 w-full"
+                        [routerLink]="[
+                          '/restaurants/service/outlets',
+                          outletId(),
+                          'sessions',
+                          table.guestSessionId,
+                        ]"
+                        [queryParams]="{ area: areaId() }"
+                        [attr.aria-label]="
+                          'RESTAURANTS.WORKSPACE.OPEN_TABLE' | transloco: { table: table.code }
+                        "
+                        data-testid="open-workspace"
+                      >
+                        {{ 'RESTAURANTS.WORKSPACE.OPEN' | transloco }}
+                        <mat-icon iconPositionEnd aria-hidden="true">arrow_forward</mat-icon>
+                      </a>
+                    }
                     @if (table.state === 'FREE' && canOpenTable(table)) {
                       <button
                         matButton="tonal"

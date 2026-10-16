@@ -42,6 +42,7 @@ describe('Restaurant role-aware routes', () => {
     expect(check('')).toBe(true);
     expect(check('setup/team')).toBe(true);
     expect(check('service')).toBe(true);
+    expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe(true);
   });
   it('redirects WAITER landing, reload and direct configuration to Service Floor without management access', () => {
     workspace.set(accessWorkspace('WAITER'));
@@ -50,6 +51,7 @@ describe('Restaurant role-aware routes', () => {
     for (const path of ['setup', 'setup/team', 'setup/tables', 'menu'])
       expect(check(path)).toBe('/restaurants/service');
     expect(check('service')).toBe(true);
+    expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe(true);
     expect(TestBed.inject(RestaurantsCapabilities).canReadStaff()).toBe(false);
   });
   it.each([undefined, 'CASHIER', 'KITCHEN'] as const)(
@@ -58,6 +60,7 @@ describe('Restaurant role-aware routes', () => {
       workspace.set(accessWorkspace(role));
       expect(check('')).toBe(true);
       expect(check('service')).toBe('/restaurants');
+      expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe('/restaurants');
       expect(check('setup/team')).toBe('/restaurants');
     },
   );

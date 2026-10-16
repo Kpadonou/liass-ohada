@@ -18,6 +18,10 @@ Explicit permissions are `RESTAURANTS_SESSION_READ`, `RESTAURANTS_SESSION_OPEN_M
 
 Restaurants OWNER and MANAGER receive these permissions under current organization-level semantics. WAITER, CASHIER and KITCHEN receive no LR-TX-1 transactional grants; their existing configuration/menu permissions remain unchanged. WAITER activation requires supported outlet-assignment enforcement. No waiter assignment/reassignment API is exposed and no waiter locator is written without a validated assignment.
 
+## Frontend service context
+
+Service Floor supervises multiple tables; Table Workspace operates one keyed GuestSession, the visit-level context rather than a single Order. Its contextual `/restaurants/service/outlets/:outletId/sessions/:guestSessionId` route supports reload and deep links without global session state or a sidebar destination. Keyed session authorization is independent of order permissions. The foundation uses session totals/counters only and must not imply Kitchen or Payment workflow states before those domains exist.
+
 ## Persistence and access paths
 
 `S = ORG#{orgId}#OUT#{outletId}`. New helpers are additive in the existing KeyFactory. Every persisted row has strict entity type, schema version and tenant/outlet metadata; canonical records additionally carry their parent identities.

@@ -4707,6 +4707,32 @@
         "DESCRIPTION": "Nous ne pouvons pas ouvrir votre espace pour le moment. Demandez à un propriétaire ou un gérant de vérifier votre accès et votre affectation, puis actualisez."
       },
       "BREADCRUMB": "Accès Liass-Resto"
+    },
+    "WORKSPACE": {
+      "TITLE": "Espace table",
+      "OPEN": "Ouvrir",
+      "OPEN_TABLE": "Ouvrir la table {{table}}",
+      "NAV": "Navigation de la table",
+      "CONTEXT": "Session en cours",
+      "OPEN_STATE": "Session ouverte",
+      "CLOSED": "Session terminée",
+      "OPENED": "Ouverte le",
+      "AMOUNT": "Montant actuel",
+      "ONE_ORDER": "1 commande enregistrée",
+      "ORDERS": "{{count}} commandes enregistrées",
+      "EMPTY_HELP": "Cet espace est dédié au service de cette table.",
+      "CONTENT_HELP": "Les commandes sont enregistrées pour cette session. Leur détail sera disponible dans une prochaine étape.",
+      "TERMINATED": "Cette session est terminée",
+      "TERMINATED_HELP": "Cette visite de la table n’est plus active. Retrouvez les tables en cours dans Service en salle.",
+      "RETURN_HELP": "Vous pouvez revenir à Service en salle pour retrouver les tables accessibles.",
+      "RETRY": "Réessayer",
+      "ERRORS": {
+        "INVALID": "Le lien de cette table est invalide",
+        "ACCESS": "Cette session ne vous est pas accessible",
+        "UNAVAILABLE": "Cette session est indisponible",
+        "LOAD": "La session ne peut pas être chargée pour le moment"
+      },
+      "EMPTY": "Aucune commande pour le moment"
     }
   }
 }

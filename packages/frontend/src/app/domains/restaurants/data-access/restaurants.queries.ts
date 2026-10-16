@@ -24,8 +24,15 @@ export const restaurantKeys = {
     outletId
       ? (['restaurants', org, 'outlet-staff', outletId] as const)
       : (['restaurants', org, 'outlet-staff'] as const),
-  session: (org: string, outletId: string, sessionId: string) =>
-    ['restaurants', org, 'session', outletId, sessionId] as const,
+  session: (org: string, outletId: string, sessionId: string, user?: string) =>
+    [
+      'restaurants',
+      org,
+      'session',
+      outletId,
+      sessionId,
+      ...(user === undefined ? [] : [user]),
+    ] as const,
   floor: (org: string, outletId: string) =>
     ['restaurants', org, 'service-floor', outletId] as const,
   root: (org: string) => ['restaurants', org] as const,
@@ -240,12 +247,13 @@ export class RestaurantsQueries {
   guestSession(outletId: string, sessionId: string, enabled = true) {
     const org = this.scope();
     return queryOptions({
-      queryKey: restaurantKeys.session(org, outletId, sessionId),
+      queryKey: restaurantKeys.session(org, outletId, sessionId, this.userScope()),
       queryFn: () => this.api.guestSession(org, outletId, sessionId),
       enabled: enabled && !!org && !!outletId && !!sessionId,
       staleTime: 0,
       refetchOnMount: 'always',
-      retry,
+      refetchOnWindowFocus: true,
+      retry: false,
     });
   }
   async responsibilityChanged(
@@ -258,7 +266,6 @@ export class RestaurantsQueries {
       this.floorChanged(org, outletId),
       this.client.invalidateQueries({
         queryKey: restaurantKeys.session(org, outletId, sessionId),
-        exact: true,
       }),
       ...(refreshCandidates
         ? [

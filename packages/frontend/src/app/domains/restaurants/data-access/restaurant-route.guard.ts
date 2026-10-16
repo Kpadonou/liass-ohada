@@ -11,6 +11,8 @@ export const restaurantRouteGuard: CanActivateChildFn = (route) => {
     router = inject(Router);
   const mode = restaurantMemberMode(auth.activeWorkspace(), auth.effectiveOrgId());
   const path = route.routeConfig?.path ?? '';
+  if (path === 'service/outlets/:outletId/sessions/:guestSessionId')
+    return caps.canReadSession() ? true : router.createUrlTree(['/restaurants']);
   if (mode === 'service')
     return path === 'service' ? true : router.createUrlTree(['/restaurants/service']);
   if (mode !== 'management') return path === '' ? true : router.createUrlTree(['/restaurants']);

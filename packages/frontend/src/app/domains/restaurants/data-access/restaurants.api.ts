@@ -199,7 +199,17 @@ export class RestaurantsApi {
     return { data, message: userMessageFromResponse(response) };
   }
   async guestSession(scope: string, outletId: string, sessionId: string) {
-    this.assertScope(scope);
+    const user = this.auth.currentUserId?.();
+    const revision = this.auth.contextRevision?.();
+    const assertContext = () => {
+      this.assertScope(scope);
+      if (this.auth.currentUserId?.() !== user || this.auth.contextRevision?.() !== revision)
+        throw new HttpErrorResponse({
+          status: 409,
+          error: { error: { code: 'WORKSPACE_CHANGED' } },
+        });
+    };
+    assertContext();
     c.RestaurantIdSchema.parse(outletId);
     c.RestaurantIdSchema.parse(sessionId);
     const response = await firstValueFrom(
@@ -207,7 +217,7 @@ export class RestaurantsApi {
         .get<unknown>(this.base + `/restaurants/outlets/${outletId}/sessions/${sessionId}`)
         .pipe(timeout(35_000)),
     );
-    this.assertScope(scope);
+    assertContext();
     const data = c.GuestSessionResponseSchema.parse(response).data;
     if (data.orgId !== scope || data.outletId !== outletId || data.guestSessionId !== sessionId)
       throw new Error('Mismatched session context');

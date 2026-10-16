@@ -30,7 +30,8 @@ export class ShellRouteContext {
   );
   restaurantKey(): string {
     if (this.url() === '/restaurants/setup/team') return 'team';
-    if (this.url() === '/restaurants/service') return 'service';
+    if (this.url() === '/restaurants/service' || this.url().startsWith('/restaurants/service/'))
+      return 'service';
     return this.url() === '/restaurants/menu'
       ? 'menu'
       : (restaurantSections.find((section) => this.url() === '/restaurants/' + section.path)

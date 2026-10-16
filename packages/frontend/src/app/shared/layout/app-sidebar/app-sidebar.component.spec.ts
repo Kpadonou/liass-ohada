@@ -845,6 +845,12 @@ describe('AppSidebarComponent', () => {
     expect(resto.querySelector('button[aria-current="page"]').getAttribute('aria-label')).toBe(
       'Service en salle',
     );
+    await router.navigateByUrl('/restaurants/service/outlets/site-a/sessions/visit-a');
+    fixture.detectChanges();
+    expect(resto.querySelectorAll('button[aria-current="page"]')).toHaveLength(1);
+    expect(resto.querySelector('button[aria-current="page"]').getAttribute('aria-label')).toBe(
+      'Service en salle',
+    );
     await router.navigateByUrl('/restaurants/setup/locations');
     fixture.detectChanges();
     resto.querySelector('button[aria-label="Tableau de bord"]').click();

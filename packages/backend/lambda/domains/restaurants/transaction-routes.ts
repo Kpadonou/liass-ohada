@@ -86,7 +86,7 @@ export const RESTAURANT_TRANSACTION_ROUTES = [
     name: "get-order",
     method: "GET",
     path: `${base}/orders/{orderId}`,
-    permission: "RESTAURANTS_ORDER_READ",
+    permission: "RESTAURANTS_SERVICE_ORDER_READ",
     query: "GET_ORDER",
   },
   {
@@ -107,7 +107,7 @@ export const RESTAURANT_TRANSACTION_ROUTES = [
     name: "session-orders",
     method: "GET",
     path: `${base}/sessions/{sessionId}/orders`,
-    permission: "RESTAURANTS_ORDER_READ",
+    permission: "RESTAURANTS_SERVICE_ORDER_READ",
     query: "SESSION_ORDERS",
   },
   {
@@ -128,7 +128,7 @@ export const RESTAURANT_TRANSACTION_ROUTES = [
     name: "order-items",
     method: "GET",
     path: `${base}/orders/{orderId}/items`,
-    permission: "RESTAURANTS_ORDER_READ",
+    permission: "RESTAURANTS_SERVICE_ORDER_READ",
     query: "ORDER_ITEMS",
   },
   {

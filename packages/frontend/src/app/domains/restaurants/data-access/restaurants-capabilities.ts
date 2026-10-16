@@ -32,6 +32,9 @@ export class RestaurantsCapabilities {
   canReadService() {
     return this.servicePermissions().includes('RESTAURANTS_SERVICE_FLOOR_READ');
   }
+  canReadSession() {
+    return this.servicePermissions().includes('RESTAURANTS_SERVICE_SESSION_READ');
+  }
   canOpenSession() {
     return this.servicePermissions().includes('RESTAURANTS_SERVICE_SESSION_OPEN_MANAGE');
   }

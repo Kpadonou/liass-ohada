@@ -344,7 +344,11 @@ export class AppSidebarComponent {
   );
 
   protected restaurantActive(item: ShellNavItem): boolean {
-    return this.routeContext.url() === item.route;
+    return (
+      this.routeContext.url() === item.route ||
+      (item.route === '/restaurants/service' &&
+        this.routeContext.url().startsWith('/restaurants/service/'))
+    );
   }
 
   protected sidebarClass(): string {

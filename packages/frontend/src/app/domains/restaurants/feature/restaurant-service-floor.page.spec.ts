@@ -90,6 +90,7 @@ async function create() {
         provide: RestaurantsCapabilities,
         useValue: {
           canReadService: read,
+          canReadSession: read,
           usesAssignedOutlets: selfService,
           canOpenSession: write,
           canManageSetup: () => write() && !selfService(),
@@ -143,7 +144,7 @@ it('renders real summaries, free/occupied cards, optional capacity and no future
     'Voir la commande',
   ])
     expect(text).not.toContain(forbidden);
-  expect(fixture.nativeElement.querySelector('[data-state="OCCUPIED"] a')).toBeNull();
+  expect(fixture.nativeElement.querySelector('[data-state="OCCUPIED"] a')).not.toBeNull();
 });
 it('keeps URL outlet/area context and filters the visible table scope', async () => {
   const page = await ready();
@@ -439,7 +440,7 @@ it('shows canonical responsibility only on occupied cards and never uses the ope
     expect(free.querySelector('[data-testid="table-responsible"]')).toBeNull();
     expect(free.querySelector('[aria-label^="Actions de la table"]')).toBeNull();
   }
-  expect(occupied.querySelector('a')).toBeNull();
+  expect(occupied.querySelector('[data-testid="open-workspace"]')).not.toBeNull();
 });
 it('offers assign for unassigned occupied cards and change/clear for assigned cards', async () => {
   await ready();
@@ -809,4 +810,23 @@ it('rejects a foreign establishment deep link for management without requesting 
     [],
     expect.objectContaining({ queryParams: { outlet: null, area: null } }),
   );
+});
+it('opens an occupied session through an independent semantic link while secondary controls stay separate', async () => {
+  await ready();
+  const link = fixture.nativeElement.querySelector(
+    '[data-testid="open-workspace"]',
+  ) as HTMLAnchorElement;
+  expect(link.tagName).toBe('A');
+  expect(link.getAttribute('href')).toContain(
+    `/restaurants/service/outlets/${rid(2)}/sessions/${rid(9)}`,
+  );
+  expect(link.querySelector('button')).toBeNull();
+  const card = link.closest('liass-card')!;
+  const secondary = card.querySelector('button[aria-label]') as HTMLButtonElement;
+  expect(secondary).not.toBeNull();
+  expect(secondary.closest('a')).toBeNull();
+  secondary.click();
+  fixture.detectChanges();
+  expect(TestBed.inject(Router).url).toBe('/');
+  expect(document.querySelector('[role="menu"]')).not.toBeNull();
 });

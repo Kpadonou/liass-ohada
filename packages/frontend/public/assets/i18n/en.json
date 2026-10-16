@@ -4707,6 +4707,32 @@
         "DESCRIPTION": "We cannot open your workspace at the moment. Ask an owner or manager to check your access and assignment, then refresh."
       },
       "BREADCRUMB": "Liass-Resto access"
+    },
+    "WORKSPACE": {
+      "TITLE": "Table workspace",
+      "OPEN": "Open",
+      "OPEN_TABLE": "Open table {{table}}",
+      "NAV": "Table navigation",
+      "CONTEXT": "Current session",
+      "OPEN_STATE": "Open session",
+      "CLOSED": "Session ended",
+      "OPENED": "Opened on",
+      "AMOUNT": "Current amount",
+      "ONE_ORDER": "1 recorded order",
+      "ORDERS": "{{count}} recorded orders",
+      "EMPTY_HELP": "This space is dedicated to serving this table.",
+      "CONTENT_HELP": "Orders are recorded for this session. Their details will be available in a later step.",
+      "TERMINATED": "This session has ended",
+      "TERMINATED_HELP": "This table visit is no longer active. Return to Service Floor to find current tables.",
+      "RETURN_HELP": "Return to Service Floor to find accessible tables.",
+      "RETRY": "Try again",
+      "ERRORS": {
+        "INVALID": "This table link is invalid",
+        "ACCESS": "This session is not accessible to you",
+        "UNAVAILABLE": "This session is unavailable",
+        "LOAD": "The session cannot be loaded right now"
+      },
+      "EMPTY": "No orders yet"
     }
   }
 }

@@ -6,15 +6,22 @@ import { AuthStore } from '../../identity/data-access/auth.store';
 import { RestaurantsApi } from './restaurants.api';
 import { rid } from './restaurants.test-fixture';
 import { sessionFixture } from './responsible-staff.test-fixture';
-const org = signal('org');
+const org = signal('org'),
+  user = signal('owner'),
+  revision = signal(1);
 let api: RestaurantsApi, http: HttpTestingController;
 beforeEach(() => {
   org.set('org');
+  user.set('owner');
+  revision.set(1);
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
-      { provide: AuthStore, useValue: { effectiveOrgId: org } },
+      {
+        provide: AuthStore,
+        useValue: { effectiveOrgId: org, currentUserId: user, contextRevision: revision },
+      },
     ],
   });
   api = TestBed.inject(RestaurantsApi);
@@ -86,3 +93,15 @@ it('rejects stale organization both before and after response and rejects forged
     }),
   ).rejects.toBeInstanceOf(Error);
 });
+
+it.each(['principal', 'revision'])(
+  'rejects late keyed response after %s change',
+  async (change) => {
+    const promise = api.guestSession('org', rid(2), rid(9));
+    const rejected = expect(promise).rejects.toMatchObject({ status: 409 });
+    if (change === 'principal') user.set('Chrys');
+    else revision.update((v) => v + 2);
+    http.expectOne((r) => r.url.includes('/sessions/')).flush({ data: sessionFixture() });
+    await rejected;
+  },
+);

@@ -155,7 +155,6 @@ it('invalidates only captured floor/session keys after success', async () => {
   });
   expect(invalidate).toHaveBeenCalledWith({
     queryKey: restaurantKeys.session('org', rid(2), rid(9)),
-    exact: true,
   });
   expect(invalidate).not.toHaveBeenCalledWith({
     queryKey: restaurantKeys.floor('another-org', rid(2)),

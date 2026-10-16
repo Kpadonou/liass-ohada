@@ -44,6 +44,7 @@ describe('Independent scoped RESTAURANTS permissions', () => {
     expect(caps.usesAssignedOutlets()).toBe(role === 'WAITER');
     expect(caps.canManageResponsibility()).toBe(['OWNER', 'MANAGER'].includes(role));
     expect(caps.canOpenSession()).toBe(caps.canReadService());
+    expect(caps.canReadSession()).toBe(caps.canReadService());
   });
   it('requires active organization OWNER authority for provisioning', () => {
     workspace.set({

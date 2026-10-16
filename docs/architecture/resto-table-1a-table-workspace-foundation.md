@@ -1,5 +1,7 @@
 # RESTO-TABLE-1A — Table Workspace Foundation
 
+**Current result: PASS after resumption on 2026-10-16.** Sections 1–27 retain the original BLOCKED reconnaissance as historical context. The resumed implementation and final validation follow below; this is the same lot, not a replacement lot.
+
 Date: 2026-10-16. Result: **BLOCKED during reconnaissance**. Classification: `VERTICAL_SOLUTION`; owner: Restaurants transactional frontend. No application implementation was started.
 
 ## 1. Motivation
@@ -142,3 +144,127 @@ Working tree was clean at reconnaissance start. Final intended change is this un
 ## 27. Remaining limitations
 
 No Table Workspace shipped; no browser review or runtime validation claim. Existing session and order reads cannot currently support the full requested role matrix. No order mutations, Kitchen, checkout/payment, closing, guest-count, notes or other future workflows were added. No AWS access or deployment was attempted. Historical deployment statements in older architecture reports were not used as live deployment evidence.
+
+## Resumed implementation — final result, 2026-10-16
+
+### 1. Initial blocker and SVC-2D resolution
+
+The initial stop was required because WAITER lacked a scoped keyed GuestSession read. Accepted RESTO-SVC-2D resolved that prerequisite using `RESTAURANTS_SERVICE_SESSION_READ` on the existing keyed route and `RestaurantServiceAccess` before lookup. OWNER/MANAGER retain management authority without staff-binding requirements; WAITER requires current operational outlet authorization. Legacy session discovery and all order permissions remain independent. The original reconnaissance above is preserved unchanged apart from the current-result banner.
+
+### 2. Delta reconnaissance and scope
+
+Confirmed the additive permission, OWNER/MANAGER/WAITER server projection, keyed-route permission and service gate. GuestSession frontend DTOs are unchanged; no generated/deployed contract prerequisite blocks local implementation. Classification: `VERTICAL_SOLUTION`; owner: Restaurants transactional frontend. Platform architecture and Design System skills were applied. No backend or shared source change was needed in this resumed lot.
+
+### 3. Route and authorization
+
+Implemented `/restaurants/service/outlets/:outletId/sessions/:guestSessionId` within the existing application and Restaurants wrapper. Outlet and immutable visit identity are route-local and support direct loading, reload and browser history. No global active-session state or sidebar destination was introduced.
+
+The frontend `canReadSession` capability mirrors SVC-2D for navigation suppression. OWNER/MANAGER/WAITER may enter; CASHIER/KITCHEN and missing/invalid Restaurants roles are denied through existing route/access patterns. Staff/outlet eligibility is not duplicated in Angular: the keyed backend read remains authoritative. Responsible staff is not an authorization boundary.
+
+### 4. Canonical query and principal isolation
+
+The existing `RestaurantsApi.guestSession` adapter issues only `GET /restaurants/outlets/{outletId}/sessions/{sessionId}`, parses `GuestSessionResponseSchema`, and checks organization/outlet/session ownership. It now captures principal and context revision as well as organization, rejecting late responses after context changes, including switch-away-and-back revisions.
+
+The canonical session query key is `['restaurants', orgId, 'session', outletId, sessionId, userId]`. The helper without its final principal remains a prefix for targeted session invalidation; responsibility changes invalidate only that session's principal variants and its floor context. This avoids a separate workspace-specific key family. Existing platform logout/cache clearing, context revisions and HTTP interception remain intact.
+
+Queries have zero stale time, revalidate on mount and window focus, and provide explicit refresh with no automatic retries or polling. The minute timer updates elapsed text only. No previous-data placeholder is used. Cached contents are hidden during authorization refetches, errors, invalid context or capability loss. Session display additionally checks current organization/outlet/session identity.
+
+### 5. Service Floor entry and return
+
+Occupied cards expose a single explicit Material/router link labelled “Ouvrir”, with a table-specific accessible name and a minimum 44 px height. It is a sibling of responsibility controls, not a clickable card wrapper. Those controls remain usable without navigation. Free-table opening retains its accepted create-and-refresh-floor behavior; there is no open-and-navigate redesign.
+
+The return link uses validated session outlet context. An area filter is retained only when it matches the canonical session area; invalid or inaccessible contexts contribute no return hints. Existing Service Floor validation still checks whether outlet/area selections remain authorized and valid. Browser Back/Forward works. Service en salle remains the selected contextual sidebar entry; WAITER still has that entry only.
+
+### 6. Information architecture and header
+
+Reuses the existing global shell, Material buttons/icons and `liass-page-header`, `liass-status-chip`, and `liass-skeleton` primitives with approved typography, theme, tokens and Tailwind spacing. A compact header and one session content region provide table code, meaningful table name, canonical state, opening timestamp/duration, responsible staff and current amount. There are no KPI cards or speculative modules.
+
+No outlet/area label or capacity request was added solely for decoration. Canonical table snapshot fields are sufficient. Technical IDs/revisions, guest count, notes and unsupported operational states are not displayed.
+
+### 7. Responsible staff and current amount
+
+Uses server-hydrated `responsibleStaff`: human name when present, established unnamed wording for an assigned person without a display name, unavailable indication when appropriate, and “Responsable non affecté” only when no assignment exists. Internal staff/user IDs are not rendered. Long names wrap on mobile. Assignment management is unchanged.
+
+“Montant actuel” displays canonical `dueMinor` through the existing exact minor-unit/currency helper. No line-based total is calculated and no paid/checkout/fiscal interpretation is introduced. Zero is displayed only after a canonical zero-valued response resolves.
+
+### 8. Counters, empty and OPEN state
+
+An OPEN session with `orderCount === 0` shows “Aucune commande pour le moment” and concise contextual text. A nonzero counter shows singular/plural recorded-order wording, without rows, item details or implied preparation state. OWNER/MANAGER and WAITER share this same information structure. There is no disabled/fake ordering CTA.
+
+### 9. CLOSED, missing, malformed and temporary failure states
+
+A canonical CLOSED response shows “Cette session est terminée”, suppresses active context/contents and retains a return path. OPEN-to-CLOSED refresh is handled without reopening or replacing the session. No history, receipt or payment action is implied.
+
+Missing/404 sessions show a safe unavailable state; 401/403 use neutral access-denial wording, not an unsupported revocation claim; malformed identifiers/400 show invalid-link wording. Temporary/network failures offer retry. No raw backend error payload is displayed. Stale card data is never substituted for the keyed response.
+
+### 10. Explicit absence of order reads
+
+No workspace call is made to session orders, individual orders, order items, active orders, unpaid orders or order history, for any role. The HTTP-backed test renders a nonempty counter through the real RestaurantsApi adapter, expects exactly the keyed session GET, rejects outstanding requests matching `orders|items|service-areas|tables|menu`, and finishes with `HttpTestingController.verify()`. The component tests also provide an API substitute containing only the keyed-session method. No order-read fixtures or role-dependent richer workspace were added.
+
+No order mutation, menu picker, draft/composer, round/submission, Kitchen, checkout/payment, closing, receipt or guest workflow was implemented.
+
+### 11. Tenant/account and late-response tests
+
+Tests reject foreign organization/outlet/session responses and malformed contracts. Workspace tests cover late responses after organization, principal and route-session changes. API tests cover principal and context-revision changes after request start. Two final tests start with an already rendered cached OWNER session and prove that changing organization to CLO or principal to Chrys immediately removes table identity and amount while the new read is pending. Both passed; no isolation defect required a code fix.
+
+Each tab's session identity remains in its route. No new cross-tab state mechanism was added; existing global organization/account behavior remains authoritative.
+
+### 12. Accessibility and browser review
+
+Semantic heading, accessible return/navigation controls, independent focus targets and announced loading/error/closed/content states are implemented. Keyboard entry focuses the workspace heading. Loading never flashes a default amount or previous session. Navigation and occupied-entry targets are at least 44 px high; status meaning is textual, not color-only.
+
+Deterministic localhost fixtures exercised the real application shell and workspace at 1440, 900 and 390 px. Reviewed occupied-card entry, empty and nonempty counters, assigned/unavailable/unassigned responsible staff, CLOSED and missing states, retry, OPEN-to-CLOSED refresh, OWNER and WAITER framing, direct reload, return action and browser Back. Responsibility-menu activation did not navigate; keyboard entry worked. At 390 px the long name wrapped, amount/status remained readable, the return action measured 44 px, and document width matched the 390 px viewport with no horizontal overflow. The existing mobile WAITER drawer contained Service en salle only.
+
+Browser evidence is local synthetic data, not live API/Cognito authorization or deployed acceptance. The completed browser review was retained during closure and was not repeated.
+
+### 13. Exact validation results
+
+- Initial targeted workspace/floor/route/capability/API selection: 5 files, 95 tests PASS.
+- Final workspace selection, including both already-rendered OWNER isolation tests: 1 file, 22 tests PASS; 5.30 seconds, no failed tests.
+- Latest completed full Angular run: 145 files, 1,307 tests PASS; 12.69 seconds, no failed tests. This supersedes the earlier 1,305-test run.
+- Frontend contracts: 21 tests PASS, 0 failures, included in the final frontend test command.
+- Shared development build: PASS, `npm run build -w @liass-ohada/shared`; shared has one build script rather than a separate development configuration.
+- Frontend development build: PASS, `npm run build:development -w @liass-ohada/frontend`.
+- Prettier: PASS for every changed/new file, including this report.
+- `git diff --check`: PASS, no whitespace diagnostics.
+- Backend tests: not rerun; no backend source changed. No production build, synth, AWS diff or deployment was performed.
+
+Commands used for the final test selections were `npm exec --workspace @liass-ohada/frontend -- ng test --watch=false --include='**/restaurant-table-workspace.page.spec.ts'` and `npm test -w @liass-ohada/frontend -- --watch=false`. Existing nonblocking shared side-effects/Browserslist warnings remain. The report-only closure required no application suite rerun. Previously completed builds/tests were retained rather than repeated.
+
+### 14. Files changed and Git status
+
+23 files in this lot: 20 tracked modifications and 3 new workspace files. Paths below are repository-relative for the inventory:
+
+- `docs/architecture/resto-table-1a-table-workspace-foundation.md` — historical report retained, resumed outcome appended.
+- `docs/architecture/restaurants-staff-sessions-orders.md` — concise permanent frontend context guidance.
+- `packages/frontend/public/assets/i18n/en.json`
+- `packages/frontend/public/assets/i18n/fr.json`
+- `packages/frontend/scripts/team-review/main.ts` — deterministic preview scenarios only.
+- `packages/frontend/src/app/core/navigation/product-navigation.ts`
+- `packages/frontend/src/app/core/routing/app.routes.ts`
+- `packages/frontend/src/app/core/routing/app.routes.spec.ts`
+- `packages/frontend/src/app/domains/restaurants/data-access/restaurant-route.guard.ts`
+- `packages/frontend/src/app/domains/restaurants/data-access/restaurant-route.guard.spec.ts`
+- `packages/frontend/src/app/domains/restaurants/data-access/restaurants-capabilities.ts`
+- `packages/frontend/src/app/domains/restaurants/data-access/restaurants-capabilities.spec.ts`
+- `packages/frontend/src/app/domains/restaurants/data-access/restaurants.api.ts`
+- `packages/frontend/src/app/domains/restaurants/data-access/responsible-staff.api.spec.ts`
+- `packages/frontend/src/app/domains/restaurants/data-access/restaurants.queries.ts`
+- `packages/frontend/src/app/domains/restaurants/feature/restaurant-service-floor.page.html`
+- `packages/frontend/src/app/domains/restaurants/feature/restaurant-service-floor.page.spec.ts`
+- `packages/frontend/src/app/domains/restaurants/feature/responsible-staff-dialog.component.spec.ts`
+- `packages/frontend/src/app/domains/restaurants/feature/restaurant-table-workspace.page.ts` — new.
+- `packages/frontend/src/app/domains/restaurants/feature/restaurant-table-workspace.page.html` — new.
+- `packages/frontend/src/app/domains/restaurants/feature/restaurant-table-workspace.page.spec.ts` — new.
+- `packages/frontend/src/app/shared/layout/app-sidebar/app-sidebar.component.ts`
+- `packages/frontend/src/app/shared/layout/app-sidebar/app-sidebar.component.spec.ts`
+
+No backend/shared source or infrastructure change is included. No commit was made. No duplicate report or replacement lot was created.
+
+### 15. Final outcome and next prerequisite
+
+**RESTO-TABLE-1A: PASS. Backend changes: NO. Infrastructure changes: NO.** Resources added/replaced: zero; stateful impact: none. Existing backend owner remains RestaurantsApiStack. Template counts/synth/AWS diff were not rerun because no infrastructure changed. No deployment occurred.
+
+The next smallest prerequisite for WAITER order access is a separate scoped service-order-read authorization decision/implementation: bounded session-order and required linked order/item reads must reuse current outlet service access and validate organization/outlet/session/order ownership, without granting broad legacy `RESTAURANTS_ORDER_READ`. Its exact endpoints and permission projection need their own review; responsibility must not become authorization. No part of this prerequisite was implemented here.
+
+**RESTO-TABLE-1B actual order-taking readiness: NO.** The workspace foundation is ready for the next prerequisite, but does not authorize WAITER order reads or drafting/submission mutations. Order-taking additionally requires explicit scoped mutation authorization and validation. Kitchen, checkout/payment and other later workflows remain outside this lot.

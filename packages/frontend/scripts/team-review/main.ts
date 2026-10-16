@@ -99,7 +99,9 @@ if (scenario === 'add-empty-team') {
   assignments.splice(0);
 }
 const waiterReview = scenario?.startsWith('service-waiter') ?? false;
-const serviceReview = scenario?.startsWith('service') ?? false;
+const serviceReview =
+  (scenario?.startsWith('service') ?? false) ||
+  location.pathname.startsWith('/restaurants/service');
 const serviceTables = floorFixture().items;
 const sessionData = new Map<string, ReturnType<typeof sessionFixture>>();
 if (serviceReview) {
@@ -163,9 +165,13 @@ if (serviceReview) {
           areaId: table.areaId,
           openedAt: table.openedAt,
           responsibleStaff: table.responsibleStaff,
+          dueMinor: table.currentAmountMinor,
+          orderCount: table.orderCount ?? 3,
+          status: scenario?.includes('workspace-closed') ? 'CLOSED' : 'OPEN',
         }),
       );
 }
+let workspaceReadAttempts = 0;
 let staleOnce = scenario === 'service-stale';
 const commands = new Map<string, { fingerprint: string; result: unknown }>();
 let partialOnce = scenario === 'partial' || scenario === 'add-partial';
@@ -323,8 +329,16 @@ const localOnly: HttpInterceptorFn = (request, next) => {
     const sessionId = path.split('/')[5];
     const session = sessionData.get(sessionId);
     if (!session) return throwError(() => new HttpErrorResponse({ status: 404 }));
-    if (request.method === 'GET') body = { data: session };
-    else {
+    if (request.method === 'GET') {
+      workspaceReadAttempts++;
+      if (scenario?.includes('workspace-retry') && workspaceReadAttempts === 1)
+        return throwError(() => new HttpErrorResponse({ status: 503 }));
+      if (scenario?.includes('workspace-closes') && workspaceReadAttempts > 1)
+        session.status = 'CLOSED';
+      if (scenario?.includes('workspace-missing'))
+        return throwError(() => new HttpErrorResponse({ status: 404 }));
+      body = { data: session };
+    } else {
       const input = request.body as {
         clientRequestId: string;
         expectedVersion: number;

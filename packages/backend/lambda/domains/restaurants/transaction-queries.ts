@@ -81,18 +81,21 @@ export class RestaurantTransactionQueries {
     >,
     request: unknown,
     ids?: QueryIds,
+    serviceOrderRead?: boolean,
   ): Promise<QueryPage>;
   static run(
     scope: TransactionScope,
     query: TransactionQuery,
     request: unknown,
     ids?: QueryIds,
+    serviceOrderRead?: boolean,
   ): Promise<QueryResult>;
   static async run(
     scope: TransactionScope,
     query: TransactionQuery,
     request: unknown,
     ids: QueryIds = {},
+    serviceOrderRead = false,
   ): Promise<QueryResult> {
     await RestaurantsService.get(scope.orgId, "outlet", {}, scope.outletId);
     if (query === "SERVICE_FLOOR")
@@ -110,12 +113,11 @@ export class RestaurantTransactionQueries {
           ])
         )[0],
       };
-    if (query === "GET_ORDER")
-      return {
-        data: (
-          await S.order(scope, contracts.RestaurantIdSchema.parse(ids.orderId))
-        ).data,
-      };
+    if (query === "GET_ORDER") {
+      const order = (await S.order(scope, contracts.RestaurantIdSchema.parse(ids.orderId))).data;
+      if (serviceOrderRead) await this.requireOpenOrderSession(scope, order);
+      return { data: order };
+    }
     if (query === "ACTIVE_TABLE") {
       const result = await S.activeTable(
         scope,
@@ -137,7 +139,8 @@ export class RestaurantTransactionQueries {
       contracts.RestaurantTransactionListRequestSchema.parse(request);
     if (query === "ORDER_ITEMS") {
       const orderId = contracts.RestaurantIdSchema.parse(ids.orderId);
-      await S.order(scope, orderId);
+      const order = (await S.order(scope, orderId)).data;
+      if (serviceOrderRead) await this.requireOpenOrderSession(scope, order);
       const page = await R.query(
         scope,
         K.restaurantOrderPK(scope.orgId, scope.outletId, orderId),
@@ -167,7 +170,9 @@ export class RestaurantTransactionQueries {
             ).data?.guestSessionId
           : contracts.RestaurantIdSchema.parse(ids.sessionId);
       if (!sessionId) return { items: [] };
-      await S.session(scope, sessionId);
+      const session = (await S.session(scope, sessionId)).data;
+      if (serviceOrderRead && session.status !== "OPEN")
+        throw new AppError(404, "RESTAURANTS_NOT_FOUND");
       const open = query === "TABLE_ORDERS";
       const page = await R.query(
         scope,
@@ -176,10 +181,10 @@ export class RestaurantTransactionQueries {
         open ? "OPEN_SESSION_ORDER" : "SESSION_ORDER",
         input,
       );
-      return {
-        items: await this.hydrate(scope, page.rows, sessionId),
-        nextCursor: page.nextCursor,
-      };
+      const items = await this.hydrate(scope, page.rows, sessionId);
+      if (serviceOrderRead && items.some((item) => !("orderId" in item) || item.orderType !== "DINE_IN" || item.tableId !== session.tableId))
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      return { items, nextCursor: page.nextCursor };
     }
     const kind =
       query === "ACTIVE_SESSIONS"
@@ -202,6 +207,14 @@ export class RestaurantTransactionQueries {
       items: await this.hydrate(scope, page.rows),
       nextCursor: page.nextCursor,
     };
+  }
+  /** Authorization has already validated outlet service access once for this request. */
+  private static async requireOpenOrderSession(scope: TransactionScope, order: contracts.RestaurantOrder) {
+    if (order.orderType !== "DINE_IN" || !order.guestSessionId)
+      throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+    const session = (await S.session(scope, order.guestSessionId)).data;
+    if (session.status !== "OPEN") throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+    if (session.tableId !== order.tableId) throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
   }
   private static async history(
     scope: TransactionScope,

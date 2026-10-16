@@ -387,6 +387,7 @@ describe('SALES routes', () => {
 it('keeps Setup and Menu behind RESTAURANTS ProductAccess without future modules', () => {
   const product = shellRoute()?.children?.find((route) => route.path === 'restaurants');
   expect(product?.children?.map((route) => route.path)).toEqual([
+    'service/outlets/:outletId/sessions/:guestSessionId',
     'service',
     'setup/team',
     '',
@@ -410,4 +411,15 @@ it('loads the Team destination inside the existing Restaurants product wrapper',
     (await import('../../domains/restaurants/feature/restaurant-team.page')).RestaurantTeamPage,
   );
   expect(team?.data?.['titleKey']).toBe('RESTAURANTS.TEAM.TITLE');
+});
+
+it('lazy-loads the contextual keyed GuestSession workspace inside Restaurants', async () => {
+  const product = shellRoute()?.children?.find((route) => route.path === 'restaurants');
+  const workspace = product?.children?.find(
+    (route) => route.path === 'service/outlets/:outletId/sessions/:guestSessionId',
+  );
+  expect(await workspace?.loadComponent?.()).toBe(
+    (await import('../../domains/restaurants/feature/restaurant-table-workspace.page'))
+      .RestaurantTableWorkspacePage,
+  );
 });

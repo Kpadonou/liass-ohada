@@ -157,6 +157,15 @@ export const routes: Routes = [
         },
         children: [
           {
+            path: 'service/outlets/:outletId/sessions/:guestSessionId',
+            canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-table-workspace.page').then(
+                (m) => m.RestaurantTableWorkspacePage,
+              ),
+            data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.WORKSPACE.TITLE' },
+          },
+          {
             path: 'service',
             canActivate: [productAccessGuard],
             loadComponent: () =>
