@@ -170,6 +170,21 @@ export class RestaurantStaffIdentityService {
     return this.membershipChecks(orgId, actor, subject);
   }
 
+  /** Role-neutral self discovery; no service/preparation authority is implied. */
+  static outletSelfChecks(
+    orgId: string,
+    actor: RestaurantStaffIdentity,
+  ): TransactWriteItem[] {
+    if (
+      !actor.active ||
+      !["OWNER", "MANAGER", "WAITER", "KITCHEN"].includes(
+        actor.restaurantRole ?? "",
+      )
+    )
+      throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    return this.membershipChecks(orgId, actor);
+  }
+
   /** Narrow service authorization guard; never grants staff administration. */
   static serviceChecks(
     orgId: string,

@@ -15,6 +15,7 @@ import { DomainAuthorizationService } from "@/lambda/shared/services/domain-auth
 import {
   RESTAURANTS_TRANSACTION_PERMISSIONS,
   RESTAURANTS_PREPARATION_PERMISSIONS,
+  RESTAURANTS_STAFF_SELF_PERMISSIONS,
   RESTAURANTS_SERVICE_PERMISSIONS,
 } from "@liass-ohada/shared/shared";
 import {
@@ -287,6 +288,7 @@ describe("RESTO-1B authoritative authorization", () => {
         ...RESTAURANTS_TRANSACTION_PERMISSIONS,
         ...RESTAURANTS_SERVICE_PERMISSIONS,
         ...RESTAURANTS_PREPARATION_PERMISSIONS,
+        ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
       ]);
     for (const role of ["WAITER", "CASHIER", "KITCHEN"])
       expect(
@@ -304,6 +306,9 @@ describe("RESTO-1B authoritative authorization", () => {
                 "RESTAURANTS_PREPARATION_READY_MANAGE",
               ]
             : []),
+        ...(role === "WAITER" || role === "KITCHEN"
+          ? RESTAURANTS_STAFF_SELF_PERMISSIONS
+          : []),
       ]);
     for (const permission of RESTAURANTS_PERMISSIONS)
       expect(isWritePermission(permission)).toBe(

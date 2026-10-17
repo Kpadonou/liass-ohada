@@ -57,6 +57,10 @@ export const RESTAURANTS_PREPARATION_PERMISSIONS = [
   "RESTAURANTS_PREPARATION_READY_MANAGE",
   "RESTAURANTS_PREPARATION_SERVE_MANAGE",
 ] as const;
+/** Self assignment discovery does not grant any service or preparation action. */
+export const RESTAURANTS_STAFF_SELF_PERMISSIONS = [
+  "RESTAURANTS_STAFF_OUTLET_SELF_READ",
+] as const;
 export function restaurantsPermissionsForRole(
   role: unknown,
 ): readonly (typeof RESTAURANTS_PERMISSIONS)[number][] {

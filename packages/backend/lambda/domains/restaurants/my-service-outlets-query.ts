@@ -10,7 +10,7 @@ export class MyRestaurantOutlets {
     const input = c.RestaurantsListRequestSchema.parse(request);
     const actor = await Identity.get(orgId, actorId);
     if (!actor) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
-    Identity.serviceChecks(orgId, actor);
+    Identity.outletSelfChecks(orgId, actor);
     const staff = await Staff.get(
       orgId,
       Staff.staffKey(orgId, actorId),

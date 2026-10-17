@@ -423,12 +423,14 @@ test.each(["OWNER", "MANAGER"])(
   },
 );
 test.each(["CASHIER", "KITCHEN"])(
-  "%s remains denied despite active staff and outlet",
+  "%s remains denied Service Floor and opening despite active staff and outlet",
   async (role) => {
     await person("other", role);
     expect((await call("service-floor", "other")).statusCode).toBe(403);
     expect((await call("open-session", "other", body())).statusCode).toBe(403);
-    expect((await self("other")).statusCode).toBe(403);
+    expect((await self("other")).statusCode).toBe(
+      role === "KITCHEN" ? 200 : 403,
+    );
   },
 );
 test.each([

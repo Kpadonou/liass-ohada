@@ -13,7 +13,7 @@ export const RESTAURANT_STAFF_ROUTES = [
     name: "my-service-outlets",
     method: "GET",
     path: "/restaurants/me/outlets",
-    permission: "RESTAURANTS_SERVICE_FLOOR_READ",
+    permission: "RESTAURANTS_STAFF_OUTLET_SELF_READ",
     query: "MY_OUTLETS",
   },
   {
