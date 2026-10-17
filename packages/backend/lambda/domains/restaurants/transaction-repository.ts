@@ -82,6 +82,34 @@ export class RestaurantTransactionsRepository {
     )
       throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
     const data = row.data.data;
+    if ((kind === "PREPARATION" || kind === "WORK") && "fireId" in data) {
+      const expected =
+        kind === "PREPARATION"
+          ? {
+              PK: K.restaurantOrderPK(
+                scope.orgId,
+                scope.outletId,
+                data.orderId,
+              ),
+              SK: K.restaurantPreparationSK(data.itemId, data.fireId),
+            }
+          : {
+              PK: K.restaurantWorkPK(
+                scope.orgId,
+                scope.outletId,
+                data.stationId,
+                data.state,
+              ),
+              SK: K.restaurantWorkSK(
+                data.queuedAt,
+                data.orderId,
+                data.itemId,
+                data.fireId,
+              ),
+            };
+      if (key.PK !== expected.PK || key.SK !== expected.SK)
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    }
     if (
       "orgId" in data &&
       (data.orgId !== scope.orgId || data.outletId !== scope.outletId)
@@ -205,19 +233,30 @@ export class RestaurantTransactionsRepository {
   }
   static conditions(row: TransactionRow) {
     const version = "version" in row.data ? row.data.version : undefined;
+    const state =
+      row.entityType === "RESTAURANT_PREPARATION" ||
+      row.entityType === "RESTAURANT_PREPARATION_WORK"
+        ? row.data.state
+        : undefined;
     return {
       ConditionExpression:
         "entityType = :type AND orgId = :org AND outletId = :out" +
-        (version === undefined ? "" : " AND #data.#version = :version"),
+        (version === undefined ? "" : " AND #data.#version = :version") +
+        (state === undefined ? "" : " AND #data.#state = :state"),
       ExpressionAttributeNames:
         version === undefined
           ? undefined
-          : { "#data": "data", "#version": "version" },
+          : {
+              "#data": "data",
+              "#version": "version",
+              ...(state === undefined ? {} : { "#state": "state" }),
+            },
       ExpressionAttributeValues: marshall({
         ":type": row.entityType,
         ":org": row.orgId,
         ":out": row.outletId,
         ...(version === undefined ? {} : { ":version": version }),
+        ...(state === undefined ? {} : { ":state": state }),
       }),
     };
   }
@@ -230,6 +269,7 @@ export class RestaurantTransactionsRepository {
         "RESTAURANT_UNPAID_ORDER",
         "RESTAURANT_WAITER_ORDER",
         "RESTAURANT_OPEN_SESSION_ORDER",
+        "RESTAURANT_PREPARATION_WORK",
       ].includes(row.entityType)
     )
       throw new AppError(409, "RESTAURANTS_TRANSACTION_STATE");
@@ -312,6 +352,23 @@ export class RestaurantTransactionsRepository {
     ]);
     let start: Record<string, AttributeValue> | undefined;
     const cursorSK = (id: string, timestamp?: string) => {
+      if (kind === "PREPARATION" || kind === "WORK") {
+        const parts = id.split("#");
+        const size = kind === "PREPARATION" ? 2 : 3;
+        if (
+          parts.length !== size ||
+          parts.some((p) => !z.string().uuid().safeParse(p).success)
+        )
+          throw new Error("Invalid preparation cursor");
+        return kind === "PREPARATION"
+          ? K.restaurantPreparationSK(parts[0], parts[1])
+          : K.restaurantWorkSK(
+              z.string().datetime().parse(timestamp),
+              parts[0],
+              parts[1],
+              parts[2],
+            );
+      }
       if (kind === "LINE") {
         if (timestamp) throw new Error("Unexpected cursor timestamp");
         return K.restaurantOrderItemSK(id);
@@ -332,7 +389,10 @@ export class RestaurantTransactionsRepository {
         const cursor = z
           .object({
             scope: z.literal(digest),
-            id: z.string().uuid(),
+            id:
+              kind === "PREPARATION" || kind === "WORK"
+                ? z.string().max(120)
+                : z.string().uuid(),
             timestamp: z.string().datetime().optional(),
           })
           .strict()
@@ -385,11 +445,16 @@ export class RestaurantTransactionsRepository {
       const logical = k.SK.slice(prefix.length);
       let id: string, timestamp: string | undefined;
       try {
-        id = z
-          .string()
-          .uuid()
-          .parse(kind === "LINE" ? logical : logical.slice(25));
-        timestamp = kind === "LINE" ? undefined : logical.slice(0, 24);
+        if (kind === "PREPARATION" || kind === "WORK") {
+          id = kind === "PREPARATION" ? logical : logical.slice(25);
+          timestamp = kind === "WORK" ? logical.slice(0, 24) : undefined;
+        } else {
+          id = z
+            .string()
+            .uuid()
+            .parse(kind === "LINE" ? logical : logical.slice(25));
+          timestamp = kind === "LINE" ? undefined : logical.slice(0, 24);
+        }
         if (cursorSK(id, timestamp) !== k.SK)
           throw new Error("Invalid cursor position");
       } catch {

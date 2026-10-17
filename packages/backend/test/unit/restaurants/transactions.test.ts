@@ -601,7 +601,7 @@ test("transaction guard rejects oversized/duplicate operations before AWS", asyn
   ).rejects.toMatchObject({ messageCode: "RESTAURANTS_TRANSACTION_LIMIT" });
   expect(memory.transactions).toHaveLength(before);
 });
-test("new rows have no GSI/TTL/PREP and use the dedicated business table", async () => {
+test("transaction and preparation rows have no GSI/TTL and use the dedicated business table", async () => {
   const order = contracts.RestaurantOrderSchema.parse((await create()).data),
     line = contracts.RestaurantOrderItemSchema.parse(
       (await add(order.orderId)).data,
@@ -611,7 +611,7 @@ test("new rows have no GSI/TTL/PREP and use the dedicated business table", async
   for (const row of rows().filter((r) => String(r.PK).startsWith(scope))) {
     expect(Object.keys(row).some((k) => k.startsWith("GSI"))).toBe(false);
     expect(row).not.toHaveProperty("ttl");
-    expect(row.SK).not.toMatch(/^(PREP|WORK|RESTAURANTS)#/);
+    expect(row.SK).not.toMatch(/^RESTAURANTS#/);
   }
   expect(
     memory.db
@@ -627,7 +627,7 @@ test("new rows have no GSI/TTL/PREP and use the dedicated business table", async
         "liass-ohada-test-restaurants-table",
       );
 });
-test("worst-case twelve-line submission deduplicates checks and uses exactly 59 actions", async () => {
+test("worst-case twelve-line submission atomically includes preparation within 83 actions", async () => {
   const session = contracts.GuestSessionSchema.parse((await open()).data),
     order = contracts.RestaurantOrderSchema.parse(
       (await create(session.guestSessionId)).data,
@@ -686,7 +686,7 @@ test("worst-case twelve-line submission deduplicates checks and uses exactly 59 
     { orderId: order.orderId },
   );
   const tx = memory.transactions.at(-1)!;
-  expect(tx.TransactItems).toHaveLength(59);
+  expect(tx.TransactItems).toHaveLength(83);
   expect(
     Buffer.byteLength(JSON.stringify(tx.TransactItems), "utf8"),
   ).toBeLessThan(3 * 1024 * 1024);
@@ -767,7 +767,7 @@ test("complimentary no-station sale can close; routed work cannot fake completio
     if (itemIndex === 4) expect((await closing).data.status).toBe("CLOSED");
     else
       await expect(closing).rejects.toMatchObject({
-        messageCode: "RESTAURANTS_PREPARATION_DEFERRED",
+        messageCode: "RESTAURANTS_UNPAID_CLOSE",
       });
   }
 });

@@ -76,6 +76,7 @@ export const RestaurantOrderSchema = z
     lineCount: count.max(200),
     acceptedLineCount: count.max(200),
     draftLineCount: count.max(200),
+    outstandingWorkCount: count.max(200).optional(),
   })
   .strict();
 export const AcceptedSaleSnapshotSchema = z
@@ -119,6 +120,8 @@ export const RestaurantOrderItemSchema = z
     cancelledAt: timestamp.optional(),
     cancelledBy: z.string().min(1).optional(),
     cancellationReason: z.string().trim().min(1).max(500).optional(),
+    latestFireId: id.optional(),
+    fireCount: z.number().int().min(1).max(11).optional(),
   })
   .strict();
 const intent = { clientRequestId: id };

@@ -174,10 +174,16 @@ export class RestaurantStaffIdentityService {
   static serviceChecks(
     orgId: string,
     actor: RestaurantStaffIdentity,
+    preparation = false,
   ): TransactWriteItem[] {
     if (
       !actor.active ||
-      !["OWNER", "MANAGER", "WAITER"].includes(actor.restaurantRole ?? "")
+      ![
+        "OWNER",
+        "MANAGER",
+        "WAITER",
+        ...(preparation ? ["KITCHEN"] : []),
+      ].includes(actor.restaurantRole ?? "")
     )
       throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     return this.membershipChecks(orgId, actor);

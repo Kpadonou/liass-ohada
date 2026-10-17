@@ -1,4 +1,5 @@
 import {
+  RESTAURANTS_PREPARATION_PERMISSIONS,
   restaurantsPermissionsForRole,
   RESTAURANTS_TRANSACTION_PERMISSIONS,
   RESTAURANTS_SERVICE_PERMISSIONS,
@@ -57,10 +58,22 @@ export class DomainAuthorizationService {
           ...config,
           ...RESTAURANTS_TRANSACTION_PERMISSIONS,
           ...RESTAURANTS_SERVICE_PERMISSIONS,
+          ...RESTAURANTS_PREPARATION_PERMISSIONS,
         ]
       : role === "WAITER"
-        ? [...config, ...RESTAURANTS_SERVICE_PERMISSIONS]
-        : config;
+        ? [
+            ...config,
+            ...RESTAURANTS_SERVICE_PERMISSIONS,
+            "RESTAURANTS_PREPARATION_SERVE_MANAGE",
+          ]
+        : role === "KITCHEN"
+          ? [
+              ...config,
+              "RESTAURANTS_PREPARATION_READ",
+              "RESTAURANTS_PREPARATION_START_MANAGE",
+              "RESTAURANTS_PREPARATION_READY_MANAGE",
+            ]
+          : config;
   }
 
   static hasPermission(

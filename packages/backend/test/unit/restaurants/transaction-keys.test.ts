@@ -67,8 +67,20 @@ test.each(["evil#OUT#other", "", "../foreign", "a b", "a\n"])(
     expect(() => K.restaurantTransactionScope(segment, outlet)).toThrow();
     expect(() => K.restaurantSessionPK(org, outlet, segment)).toThrow();
     expect(() => K.restaurantWaiterActivePK(org, outlet, segment)).toThrow();
+    expect(() => K.restaurantPreparationSK(id, segment)).toThrow();
+    expect(() => K.restaurantWorkPK(org, outlet, segment, "READY")).toThrow();
   },
 );
+test("preparation uses the frozen per-fire Order and station/state base-table shapes", () => {
+  expect(K.restaurantPreparationSK(id, id)).toBe(`PREP#${id}#${id}`);
+  expect(K.restaurantPreparationPrefix()).toBe("PREP#");
+  expect(K.restaurantWorkPK(org, outlet, id, "READY")).toBe(
+    `${scope}#WORK#${id}#READY`,
+  );
+  expect(K.restaurantWorkSK(timestamp, id, id, id)).toBe(
+    `${timestamp}#${id}#${id}#${id}`,
+  );
+});
 test.each(["20261301", "20260231", "2026101", "2026#1012"])(
   "invalid history bucket %p is rejected",
   (bucket) =>

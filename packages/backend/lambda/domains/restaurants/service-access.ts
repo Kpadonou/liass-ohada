@@ -11,10 +11,12 @@ export class RestaurantServiceAccess {
   static async authorize(
     scope: TransactionScope,
     actorId: string,
+    preparation = false,
   ): Promise<{
     actions: TransactWriteItem[];
     staffId?: string;
     displayName?: string | null;
+    role?: string;
   }> {
     await ProductAccessService.requireActiveProductAccess({
       orgId: scope.orgId,
@@ -23,10 +25,11 @@ export class RestaurantServiceAccess {
     });
     const actor = await Identity.get(scope.orgId, actorId);
     if (!actor) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
-    const actions = Identity.serviceChecks(scope.orgId, actor);
-    if (actor.restaurantRole !== "WAITER") return { actions };
+    const actions = Identity.serviceChecks(scope.orgId, actor, preparation);
+    if (!["WAITER", "KITCHEN"].includes(actor.restaurantRole ?? ""))
+      return { actions, role: actor.restaurantRole! };
     try {
-      const self = await ResponsibleStaff.selfChecks(scope, actor);
+      const self = await ResponsibleStaff.selfChecks(scope, actor, preparation);
       const outlet = await RestaurantsRepository.get(
         scope.orgId,
         "outlet",
@@ -35,7 +38,7 @@ export class RestaurantServiceAccess {
       );
       if (!outlet?.data.isActive)
         throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
-      return { ...self, staffId: actor.userId };
+      return { ...self, staffId: actor.userId, role: actor.restaurantRole! };
     } catch (error) {
       if (
         error instanceof AppError &&

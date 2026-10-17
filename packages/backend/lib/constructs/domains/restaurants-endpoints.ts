@@ -10,6 +10,7 @@ import { RESTAURANTS_ROUTES } from "../../../lambda/domains/restaurants/restaura
 import { RESTAURANT_TRANSACTION_ROUTES } from "../../../lambda/domains/restaurants/transaction-routes";
 
 import { RESTAURANT_STAFF_ROUTES } from "../../../lambda/domains/restaurants/staff-routes";
+import { RESTAURANT_PREPARATION_ROUTES } from "../../../lambda/domains/restaurants/preparation-routes";
 
 import * as iam from "aws-cdk-lib/aws-iam";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
@@ -59,9 +60,10 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
       ...RESTAURANTS_ROUTES,
       ...RESTAURANT_TRANSACTION_ROUTES,
       ...RESTAURANT_STAFF_ROUTES,
+      ...RESTAURANT_PREPARATION_ROUTES,
     ]) {
       this.addRoute({
-        ...("command" in route || "query" in route
+        ...("command" in route || "query" in route || "preparation" in route
           ? { timeout: Duration.seconds(30), memorySize: 512 }
           : {}),
         api: props.api,

@@ -38,6 +38,23 @@ export const KeyFactory = {
   restaurantOccupancyPK: (orgId: string, outletId: string, tableId: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#TABLE#${restaurantTransactionSegment(tableId)}`,
   restaurantTransactionMetaSK: () => "META",
+  restaurantPreparationPrefix: () => "PREP#",
+  restaurantPreparationSK: (itemId: string, fireId: string) =>
+    `PREP#${restaurantTransactionSegment(itemId)}#${restaurantTransactionSegment(fireId)}`,
+  restaurantWorkPK: (
+    orgId: string,
+    outletId: string,
+    stationId: string,
+    state: string,
+  ) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#WORK#${restaurantTransactionSegment(stationId)}#${restaurantTransactionSegment(state)}`,
+  restaurantWorkSK: (
+    queuedAt: string,
+    orderId: string,
+    itemId: string,
+    fireId: string,
+  ) =>
+    `${restaurantTransactionTimestamp(queuedAt)}#${restaurantTransactionSegment(orderId)}#${restaurantTransactionSegment(itemId)}#${restaurantTransactionSegment(fireId)}`,
   restaurantTransactionTimeBoundSK: (timestamp: string) =>
     restaurantTransactionTimestamp(timestamp),
   restaurantOccupancySK: () => "ACTIVE",

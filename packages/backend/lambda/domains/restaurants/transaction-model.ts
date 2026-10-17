@@ -3,6 +3,7 @@ import {
   GuestSessionSchema,
   RestaurantOrderSchema,
   RestaurantOrderItemSchema,
+  RestaurantPreparationSchema,
 } from "@liass-ohada/shared/restaurants";
 
 const id = z.string().uuid();
@@ -33,6 +34,10 @@ const audit = z
     fromState: z.string().optional(),
     toState: z.string(),
     reason: z.string().max(500).optional(),
+    preparation: z
+      .object({ itemId: id, fireId: id, stationId: id, submissionId: id })
+      .strict()
+      .optional(),
     responsibility: z
       .object({
         tableId: id,
@@ -46,6 +51,47 @@ const audit = z
   })
   .strict();
 export const TransactionSchemas = {
+  PREPARATION: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PREPARATION"),
+      data: RestaurantPreparationSchema,
+    })
+    .strict(),
+  WORK: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PREPARATION_WORK"),
+      data: z
+        .object({
+          orderId: id,
+          itemId: id,
+          fireId: id,
+          stationId: id,
+          state: z.enum(["QUEUED", "IN_PROGRESS", "READY"]),
+          queuedAt: z.string().datetime(),
+          version: z.number().int().positive(),
+        })
+        .strict(),
+    })
+    .strict(),
+  PREPARATION_COMMAND: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PREPARATION_COMMAND"),
+      data: z
+        .object({
+          commandId: id,
+          commandKind: z.string().min(1),
+          ownerId: id,
+          lookupHash: z.string().regex(/^[a-f0-9]{64}$/),
+          committedAt: z.string().datetime(),
+          fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+          result: RestaurantPreparationSchema,
+        })
+        .strict(),
+    })
+    .strict(),
   SESSION: z
     .object({
       ...base,

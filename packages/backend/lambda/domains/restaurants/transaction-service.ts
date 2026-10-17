@@ -1,4 +1,5 @@
 import { RestaurantServiceAccess } from "./service-access";
+import { RestaurantPreparationService as Preparation } from "./preparation-service";
 import { ResponsibleStaff } from "./responsible-staff";
 import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
@@ -304,6 +305,8 @@ export class RestaurantTransactionsService {
     const replay = async (): Promise<Business | undefined> => {
       const row = await R.get(ctx, commandKey, "COMMAND");
       if (!row) return undefined;
+      if (row.entityType !== "RESTAURANT_TRANSACTION_COMMAND")
+        return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
       if (
         !("lookupHash" in row.data) ||
         row.data.lookupHash !== hash ||
@@ -617,6 +620,7 @@ export class RestaurantTransactionsService {
         createdAt: now,
         createdBy: ctx.actorId,
         waiterId: serviceAccess?.staffId,
+        outstandingWorkCount: 0,
         version: 1,
         financialRevision: 0,
         lineCount: 0,
@@ -871,6 +875,15 @@ export class RestaurantTransactionsService {
           }
         }
         for (const { line, snapshot, amount } of prepared) {
+          const work = Preparation.creation(
+            ctx,
+            { ...line.data, status: "ACCEPTED", snapshot },
+            ctx.actorId,
+          );
+          if (work) {
+            actions.push(...work.actions);
+            next.outstandingWorkCount = (next.outstandingWorkCount ?? 0) + 1;
+          }
           put(
             "LINE",
             { PK: line.PK, SK: line.SK },
@@ -878,6 +891,7 @@ export class RestaurantTransactionsService {
               ...line.data,
               status: "ACCEPTED",
               snapshot,
+              ...(work ? { latestFireId: work.task.fireId, fireCount: 1 } : {}),
               version: line.data.version + 1,
             },
             line,
@@ -920,6 +934,19 @@ export class RestaurantTransactionsService {
           delta = -line.data.snapshot.lineTotalMinor;
           next.financialRevision++;
           financialChanged = true;
+          const work = await Preparation.cancellation(
+            ctx,
+            line.data,
+            ctx.actorId,
+            req.reason,
+            now,
+          );
+          actions.push(...work.actions);
+          if (work.decrement) {
+            if (!next.outstandingWorkCount)
+              return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+            next.outstandingWorkCount -= work.decrement;
+          }
         } else next.draftLineCount--;
         result = {
           ...line.data,
@@ -937,16 +964,22 @@ export class RestaurantTransactionsService {
           next.reservedMinor ||
           next.pendingPaymentCount ||
           next.draftLineCount ||
+          (next.outstandingWorkCount ?? 0) > 0 ||
           (cancel && next.paidMinor)
         )
           return fail("RESTAURANTS_UNPAID_CLOSE");
         if (!cancel && (next.status !== "SUBMITTED" || !next.acceptedLineCount))
           return fail();
-        // Do not pretend station-routed complimentary items were fulfilled before LR-TX-2.
+        // Pre-feature station sales have no canonical completion evidence.
         if (!cancel) {
           const lines = await this.allLines(ctx, owner);
           if (
-            lines.some((l) => l.status === "ACCEPTED" && l.snapshot?.stationId)
+            lines.some(
+              (l) =>
+                l.status === "ACCEPTED" &&
+                l.snapshot?.stationId &&
+                !l.latestFireId,
+            )
           )
             return fail("RESTAURANTS_PREPARATION_DEFERRED");
         }
