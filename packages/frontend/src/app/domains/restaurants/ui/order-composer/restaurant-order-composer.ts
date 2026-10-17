@@ -1,0 +1,596 @@
+import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable-select/searchable-select.component';
+import { DatePipe } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+  DestroyRef,
+  ElementRef,
+  afterEveryRender,
+} from '@angular/core';
+import { FormControl, ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
+import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experimental';
+import * as c from '@liass-ohada/shared/restaurants';
+import { AuthStore } from '../../../identity/data-access/auth.store';
+import { RestaurantsQueries } from '../../data-access/restaurants.queries';
+import { RestaurantOrdersQueries } from '../../data-access/restaurant-orders.queries';
+import { OrderCommand, orderCommands } from '../../data-access/restaurant-orders.api';
+import { safeMessageFromError } from '../../../../core/notifications/notification-message';
+import { NotificationService } from '../../../../core/notifications/notification.service';
+import { restaurantPrice } from '../../utils/restaurant-money';
+
+type Intent = { kind: OrderCommand; input: Record<string, unknown>; order?: string; item?: string };
+@Component({
+  selector: 'liass-restaurant-order-composer',
+  host: { class: 'block min-w-0' },
+  imports: [
+    LiassSearchableSelectComponent,
+    DatePipe,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatIconModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    TranslocoModule,
+  ],
+  templateUrl: './restaurant-order-composer.html',
+})
+export class RestaurantOrderComposer {
+  readonly session = input<c.GuestSessionRead | null>(null);
+  readonly accessValid = input(true);
+  readonly outletId = input.required<string>();
+  readonly sessionId = input.required<string>();
+  private readonly auth = inject(AuthStore);
+  private readonly scope = inject(RestaurantsQueries);
+  readonly queries = inject(RestaurantOrdersQueries);
+  private readonly t = inject(TranslocoService);
+  private readonly notifications = inject(NotificationService);
+  private destroyed = false;
+  private focusTimer: ReturnType<typeof setTimeout> | undefined;
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly focusRequest = signal<string | null>(null);
+  readonly ctx = computed(() => ({
+    org: this.scope.scope(),
+    user: this.scope.userScope(),
+    revision: this.auth.contextRevision?.() ?? 0,
+    outlet: this.outletId(),
+    session: this.sessionId(),
+  }));
+  readonly identity = computed(() => JSON.stringify(this.ctx()));
+  readonly denied = signal(false);
+  readonly live = computed(() => {
+    const s = this.session(),
+      ctx = this.ctx();
+    return (
+      !!s &&
+      this.accessValid() &&
+      !this.denied() &&
+      s.status === 'OPEN' &&
+      s.orgId === ctx.org &&
+      s.outletId === ctx.outlet &&
+      s.guestSessionId === ctx.session
+    );
+  });
+  readonly ordersQuery = injectInfiniteQuery(() => this.queries.orders(this.ctx(), this.live()));
+  readonly orders = computed(() =>
+    this.ordersQuery.isSuccess() && !this.ordersQuery.isFetching()
+      ? this.ordersQuery.data()!.pages.flatMap((page) => page.items)
+      : [],
+  );
+  readonly candidates = computed(() => this.orders().filter((order) => this.editable(order)));
+  readonly choice = signal<{ context: string; id: string } | null>(null);
+  readonly selectedId = computed(() => {
+    const choice = this.choice();
+    if (choice?.context === this.identity() && this.orders().some((o) => o.orderId === choice.id))
+      return choice.id;
+    return this.candidates().length === 1
+      ? this.candidates()[0].orderId
+      : this.orders().length === 1
+        ? this.orders()[0].orderId
+        : '';
+  });
+  readonly orderQuery = injectQuery(() =>
+    this.queries.order(this.ctx(), this.selectedId(), this.live()),
+  );
+  readonly order = computed(() =>
+    this.orderQuery.isSuccess() &&
+    !this.orderQuery.isFetching() &&
+    this.orderQuery.data()?.orderId === this.selectedId()
+      ? this.orderQuery.data()!
+      : null,
+  );
+  readonly itemsQuery = injectInfiniteQuery(() =>
+    this.queries.items(this.ctx(), this.selectedId(), this.live()),
+  );
+  readonly lines = computed(() =>
+    this.itemsQuery.isSuccess() && !this.itemsQuery.isFetching()
+      ? this.itemsQuery.data()!.pages.flatMap((page) => page.items)
+      : [],
+  );
+  readonly drafts = computed(() => this.lines().filter((line) => line.status === 'DRAFT'));
+  readonly rounds = computed(() => {
+    const groups = new Map<string, c.RestaurantOrderItem[]>();
+    for (const line of this.lines())
+      if (line.status === 'ACCEPTED' && line.snapshot)
+        groups.set(line.snapshot.submissionId, [
+          ...(groups.get(line.snapshot.submissionId) ?? []),
+          line,
+        ]);
+    return [...groups.values()].sort((a, b) =>
+      a[0].snapshot!.acceptedAt.localeCompare(b[0].snapshot!.acceptedAt),
+    );
+  });
+  readonly menuQuery = injectQuery(() => this.queries.menu(this.ctx(), this.live()));
+  readonly categoryQuery = injectInfiniteQuery(() =>
+    this.queries.menuPages(
+      this.ctx(),
+      'category',
+      '',
+      this.live() && !!this.menuQuery.data()?.isActive,
+    ),
+  );
+  readonly categories = computed(() =>
+    this.categoryQuery.isSuccess()
+      ? this.categoryQuery
+          .data()!
+          .pages.flatMap((page) => page.items)
+          .filter((item) => item.isActive)
+      : [],
+  );
+  readonly categoryChoice = signal<{ context: string; id: string } | null>(null);
+  readonly category = computed(() =>
+    this.categoryChoice()?.context === this.identity() &&
+    this.categories().some((c) => c.id === this.categoryChoice()!.id)
+      ? this.categoryChoice()!.id
+      : (this.categories()[0]?.id ?? ''),
+  );
+  readonly menuItemsQuery = injectInfiniteQuery(() =>
+    this.queries.menuPages(this.ctx(), 'item', this.category(), this.live()),
+  );
+  readonly orderControl = new FormControl('', { nonNullable: true });
+  readonly categoryControl = new FormControl('', { nonNullable: true });
+  readonly orderOptions = computed(() =>
+    this.orders().map((order) => ({
+      value: order.orderId,
+      label:
+        new Date(order.createdAt).toLocaleString(this.t.getActiveLang()) +
+        ' · ' +
+        this.t.translate('RESTAURANTS.ORDER_TAKING.STATUS.' + order.status),
+    })),
+  );
+  readonly categoryOptions = computed(() =>
+    this.categories().map((category) => ({ value: category.id, label: category.name })),
+  );
+  readonly search = new FormControl('', { nonNullable: true });
+  readonly searchText = signal('');
+  readonly menuItems = computed(() => {
+    if (!this.menuItemsQuery.isSuccess() || this.menuItemsQuery.isFetching()) return [];
+    const query = this.normalize(this.searchText());
+    return this.menuItemsQuery
+      .data()!
+      .pages.flatMap((page) => page.items)
+      .filter((item) => item.isActive && this.normalize(item.name).includes(query));
+  });
+  readonly names = signal<Record<string, string>>({});
+  readonly busy = signal(false);
+  readonly pending = signal<Intent | null>(null);
+  readonly message = signal('');
+  readonly ready = computed(
+    () =>
+      this.live() &&
+      !this.busy() &&
+      !this.pending() &&
+      this.ordersQuery.isSuccess() &&
+      !this.ordersQuery.isFetching() &&
+      !this.ordersQuery.hasNextPage() &&
+      (!this.selectedId() ||
+        (this.order() &&
+          this.itemsQuery.isSuccess() &&
+          !this.itemsQuery.isFetching() &&
+          !this.itemsQuery.hasNextPage())),
+  );
+  readonly canAdd = computed(
+    () =>
+      this.ready() &&
+      (this.candidates().length === 0 ||
+        (!!this.order() && this.editable(this.order()!) && this.drafts().length < 12)),
+  );
+  readonly canSubmit = computed(
+    () =>
+      this.ready() &&
+      !!this.order() &&
+      this.editable(this.order()!) &&
+      this.drafts().length > 0 &&
+      this.drafts().length <= 12,
+  );
+  private contextAtStart = '';
+  private storageKey = '';
+  private intentStorage() {
+    const c = this.ctx();
+    return 'liass-order-intent:' + JSON.stringify([c.user, c.org, c.outlet, c.session]);
+  }
+  private saveIntent(intent: Intent | null) {
+    this.pending.set(intent);
+    try {
+      if (intent) sessionStorage.setItem(this.intentStorage(), JSON.stringify(intent));
+      else sessionStorage.removeItem(this.intentStorage());
+    } catch {
+      /* Per-tab in-memory replay remains available when storage is unavailable. */
+    }
+  }
+  constructor() {
+    afterEveryRender(() => {
+      clearTimeout(this.focusTimer);
+      const label = this.focusRequest(),
+        identity = this.identity();
+      if (label === null || this.busy() || !this.live() || (!this.ready() && !this.pending()))
+        return;
+      // Query observers can render again after invalidation resolves. Restore
+      // focus only after that render burst, rather than focusing a removed node.
+      this.focusTimer = setTimeout(() => {
+        if (!this.same(identity) || !this.live() || this.busy()) return;
+        const target = label
+          ? [...this.host.nativeElement.querySelectorAll<HTMLElement>('[aria-label]')].find(
+              (el) => el.getAttribute('aria-label') === label && !el.matches(':disabled'),
+            )
+          : null;
+        const destination =
+          target ?? this.host.nativeElement.querySelector<HTMLElement>('#draft-title');
+        if (destination) {
+          destination.focus({ preventScroll: true });
+          this.focusRequest.set(null);
+        }
+      }, 100);
+    });
+    const orderSub = this.orderControl.valueChanges.subscribe((value) => this.choose(value));
+    const categorySub = this.categoryControl.valueChanges.subscribe((value) =>
+      this.chooseCategory(value),
+    );
+    effect(() => {
+      this.orderControl.setValue(this.selectedId(), { emitEvent: false });
+      if (this.busy() || this.pending()) this.orderControl.disable({ emitEvent: false });
+      else this.orderControl.enable({ emitEvent: false });
+    });
+    effect(() => this.categoryControl.setValue(this.category(), { emitEvent: false }));
+    const sub = this.search.valueChanges.subscribe((value) => this.searchText.set(value));
+    inject(DestroyRef).onDestroy(() => {
+      clearTimeout(this.focusTimer);
+      sub.unsubscribe();
+      orderSub.unsubscribe();
+      categorySub.unsubscribe();
+      this.destroyed = true;
+    });
+    effect(() => {
+      const identity = this.identity();
+      if (identity !== this.contextAtStart) {
+        try {
+          if (this.storageKey) sessionStorage.removeItem(this.storageKey);
+        } catch {}
+        this.contextAtStart = identity;
+        this.focusRequest.set(null);
+        this.choice.set(null);
+        this.categoryChoice.set(null);
+        this.pending.set(null);
+        this.busy.set(false);
+        this.denied.set(false);
+        this.message.set('');
+        this.names.set({});
+        this.search.setValue('');
+        this.storageKey = this.intentStorage();
+        try {
+          const saved = JSON.parse(
+            sessionStorage.getItem(this.storageKey) ?? 'null',
+          ) as Intent | null;
+          if (
+            saved &&
+            Object.hasOwn(orderCommands, saved.kind) &&
+            orderCommands[saved.kind].safeParse(saved.input).success
+          ) {
+            this.pending.set(saved);
+            this.message.set(saved.kind === 'create' ? 'CREATE_RETRY' : 'RETRY');
+          }
+        } catch {
+          try {
+            sessionStorage.removeItem(this.storageKey);
+          } catch {}
+        }
+      }
+    });
+    effect(() => {
+      const ctx = this.ctx(),
+        identity = this.identity(),
+        drafts = this.drafts();
+      // Only visible draft references need current names; accepted content uses snapshots.
+      void (async () => {
+        for (let offset = 0; offset < drafts.length; offset += 4) {
+          const batch = await Promise.all(
+            drafts.slice(offset, offset + 4).map(async (line) => {
+              try {
+                return [
+                  line.itemId,
+                  await this.queries.draftName(ctx, line.categoryId, line.menuItemId),
+                ] as const;
+              } catch {
+                return [line.itemId, ''] as const;
+              }
+            }),
+          );
+          if (!this.same(identity)) return;
+          this.names.update((names) => ({ ...names, ...Object.fromEntries(batch) }));
+        }
+      })();
+    });
+    effect(() => {
+      if (!this.accessValid() || this.session()?.status === 'CLOSED') {
+        this.saveIntent(null);
+        this.focusRequest.set(null);
+      }
+    });
+    effect(() => {
+      const errors = [this.ordersQuery.error(), this.orderQuery.error(), this.itemsQuery.error()];
+      if (
+        errors.some(
+          (error) => error instanceof HttpErrorResponse && [401, 403, 404].includes(error.status),
+        )
+      )
+        this.denied.set(true);
+    });
+  }
+  private same(identity: string) {
+    return !this.destroyed && identity === this.identity();
+  }
+  private normalize(value: string) {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase();
+  }
+  editable(order: c.RestaurantOrder) {
+    return order.status === 'DRAFT' || order.status === 'SUBMITTED';
+  }
+  price(amount: number, currency: string) {
+    return restaurantPrice(amount, currency, this.t.getActiveLang());
+  }
+  name(line: c.RestaurantOrderItem) {
+    return this.names()[line.itemId] || this.t.translate('RESTAURANTS.ORDER_TAKING.UNKNOWN_ITEM');
+  }
+  jump(id: 'draft-title' | 'menu-title') {
+    const heading = this.host.nativeElement.querySelector<HTMLElement>('#' + id);
+    heading?.scrollIntoView({ block: 'start' });
+    heading?.focus({ preventScroll: true });
+  }
+  choose(id: string) {
+    if (!this.busy() && !this.pending()) this.choice.set({ context: this.identity(), id });
+  }
+  chooseCategory(id: string) {
+    this.categoryChoice.set({ context: this.identity(), id });
+    this.search.setValue('');
+  }
+  private equivalentDraft(item: c.MenuItem) {
+    return this.drafts().find(
+      (line) =>
+        line.menuItemId === item.id &&
+        line.categoryId === item.categoryId &&
+        !line.notes?.trim() &&
+        line.expectedMenuItemVersion === item.version,
+    );
+  }
+  canAddItem(item: c.MenuItem) {
+    const equivalent = this.equivalentDraft(item);
+    return (
+      item.isActive &&
+      item.availability === 'AVAILABLE' &&
+      (equivalent
+        ? this.ready() &&
+          !!this.order() &&
+          this.editable(this.order()!) &&
+          Number.isSafeInteger(equivalent.quantity + 1)
+        : this.canAdd())
+    );
+  }
+  async add(item: c.MenuItem) {
+    if (!this.canAddItem(item)) return;
+    const equivalent = this.equivalentDraft(item);
+    if (equivalent) {
+      await this.quantity(equivalent, 1);
+      return;
+    }
+    let order = this.order() && this.editable(this.order()!) ? this.order() : null;
+    const ctx = this.ctx(),
+      identity = this.identity();
+    let created = false;
+    if (!order) {
+      const result = await this.run({
+        kind: 'create',
+        input: {
+          clientRequestId: crypto.randomUUID(),
+          orderType: 'DINE_IN',
+          guestSessionId: this.sessionId(),
+        },
+      });
+      if (
+        !result ||
+        !this.same(identity) ||
+        !('orderId' in result) ||
+        'itemId' in result ||
+        !this.live()
+      )
+        return;
+      order = result;
+      created = true;
+      this.choice.set({ context: this.identity(), id: order.orderId });
+    }
+    const added = await this.run({
+      kind: 'add',
+      order: order.orderId,
+      input: {
+        clientRequestId: crypto.randomUUID(),
+        expectedVersion: order.version,
+        menuItemId: item.id,
+        categoryId: item.categoryId,
+        quantity: 1,
+        expectedMenuItemVersion: item.version,
+      },
+    });
+    if (created && this.same(identity)) {
+      if (!added) this.message.set('PARTIAL_CREATE');
+      await this.queries.changed(ctx, order.orderId, true);
+    }
+  }
+  async quantity(line: c.RestaurantOrderItem, delta: number) {
+    const order = this.order();
+    if (
+      !this.ready() ||
+      !order ||
+      !this.editable(order) ||
+      line.status !== 'DRAFT' ||
+      line.quantity + delta < 1 ||
+      !Number.isSafeInteger(line.quantity + delta)
+    )
+      return;
+    await this.run({
+      kind: 'edit',
+      order: order.orderId,
+      item: line.itemId,
+      input: {
+        clientRequestId: crypto.randomUUID(),
+        expectedVersion: order.version,
+        expectedItemVersion: line.version,
+        menuItemId: line.menuItemId,
+        categoryId: line.categoryId,
+        quantity: line.quantity + delta,
+        notes: line.notes,
+        expectedMenuItemVersion: line.expectedMenuItemVersion,
+      },
+    });
+  }
+  async remove(line: c.RestaurantOrderItem) {
+    const order = this.order();
+    if (!this.ready() || !order || !this.editable(order) || line.status !== 'DRAFT') return;
+    await this.run({
+      kind: 'remove',
+      order: order.orderId,
+      item: line.itemId,
+      input: {
+        clientRequestId: crypto.randomUUID(),
+        expectedVersion: order.version,
+        expectedItemVersion: line.version,
+        reason: this.t.translate('RESTAURANTS.ORDER_TAKING.REMOVAL_REASON'),
+      },
+    });
+  }
+  async submit() {
+    if (!this.canSubmit()) return;
+    await this.run({
+      kind: 'submit',
+      order: this.order()!.orderId,
+      input: {
+        clientRequestId: crypto.randomUUID(),
+        expectedVersion: this.order()!.version,
+        items: this.drafts().map((line) => ({
+          itemId: line.itemId,
+          expectedVersion: line.version,
+        })),
+      },
+    });
+  }
+  async retry() {
+    const intent = this.pending();
+    if (!intent || this.busy() || !this.live()) return;
+    const ctx = this.ctx(),
+      identity = this.identity(),
+      order = intent.order ?? (this.selectedId() || undefined);
+    this.busy.set(true);
+    try {
+      // Reconcile the captured Order without making the parent session disappear
+      // during this retry. Scoped reads and the command recheck OPEN service access.
+      await this.queries.changed(ctx, order, false);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (!this.same(identity)) return;
+      this.busy.set(false);
+      if (this.live()) await this.run(intent);
+    } finally {
+      if (this.same(identity)) this.busy.set(false);
+    }
+  }
+  async refresh() {
+    const ctx = this.ctx(),
+      identity = this.identity();
+    await this.queries.changed(ctx, this.selectedId() || undefined, true);
+    if (this.same(identity)) this.denied.set(false);
+  }
+  private async run(intent: Intent) {
+    if (this.busy() || !this.live()) return null;
+    const ctx = this.ctx(),
+      identity = this.identity();
+    const focusLabel = document.activeElement?.getAttribute('aria-label');
+    this.busy.set(true);
+    this.saveIntent(intent);
+    this.message.set('');
+    try {
+      const result = await this.queries.api.command(
+        ctx,
+        intent.kind,
+        intent.input,
+        intent.order,
+        intent.item,
+      );
+      if (!this.same(identity)) return null;
+      this.saveIntent(null);
+      if (intent.kind === 'create' && 'orderId' in result)
+        this.choice.set({ context: identity, id: result.orderId });
+      await this.queries.changed(
+        ctx,
+        intent.order ?? ('orderId' in result ? result.orderId : undefined),
+        intent.kind === 'submit',
+      );
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      if (!this.same(identity)) return null;
+      if (intent.kind === 'submit')
+        this.notifications.success(this.t.translate('RESTAURANTS.ORDER_TAKING.SUBMITTED'));
+      return result;
+    } catch (error) {
+      if (!this.same(identity)) return null;
+      const status = error instanceof HttpErrorResponse ? error.status : 0;
+      if ([401, 403, 404].includes(status)) {
+        this.denied.set(true);
+        this.saveIntent(null);
+      } else if (status >= 400 && status < 500) {
+        this.saveIntent(null);
+        this.message.set(
+          status === 409
+            ? error instanceof HttpErrorResponse &&
+              error.error?.error?.code === 'RESTAURANTS_CONFIGURATION_CHANGED'
+              ? 'MENU_CONFLICT'
+              : 'CONFLICT'
+            : 'REJECTED',
+        );
+      } else this.message.set(intent.kind === 'create' ? 'CREATE_RETRY' : 'RETRY');
+      this.notifications.error(
+        safeMessageFromError(error) ??
+          this.t.translate('RESTAURANTS.ORDER_TAKING.' + (this.message() || 'ACCESS')),
+      );
+      await Promise.allSettled([
+        this.queries.changed(ctx, intent.order, true),
+        this.queries.menuChanged(ctx, this.category()),
+      ]);
+      return null;
+    } finally {
+      if (this.same(identity)) {
+        this.busy.set(false);
+        this.focusRequest.set(focusLabel ?? '');
+      }
+    }
+  }
+}

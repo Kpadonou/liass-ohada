@@ -117,32 +117,11 @@
         </p>
       </div>
     </section>
-    <section
-      role="status"
-      aria-live="polite"
-      class="space-y-2 py-4"
-      data-testid="workspace-content"
-    >
-      <h2 class="text-base font-semibold">
-        @if (session()!.orderCount === 0) {
-          {{ 'RESTAURANTS.WORKSPACE.EMPTY' | transloco }}
-        } @else {
-          {{
-            (session()!.orderCount === 1
-              ? 'RESTAURANTS.WORKSPACE.ONE_ORDER'
-              : 'RESTAURANTS.WORKSPACE.ORDERS'
-            ) | transloco: { count: session()!.orderCount }
-          }}
-        }
-      </h2>
-      <p class="max-w-xl text-sm text-app-text-secondary">
-        {{
-          (session()!.orderCount === 0
-            ? 'RESTAURANTS.WORKSPACE.EMPTY_HELP'
-            : 'RESTAURANTS.WORKSPACE.CONTENT_HELP'
-          ) | transloco
-        }}
-      </p>
-    </section>
   }
+  <liass-restaurant-order-composer
+    [accessValid]="allowed() && valid() && (!query.isError() || errorKey() === 'LOAD')"
+    [session]="session()"
+    [outletId]="outletId()"
+    [sessionId]="sessionId()"
+  />
 </div>

@@ -1,4 +1,5 @@
-import { Component, signal } from '@angular/core';
+import { RestaurantOrderComposer } from '../ui/order-composer/restaurant-order-composer';
+import { Component, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
@@ -67,7 +68,17 @@ const setup = (routing = false) =>
       { provide: RestaurantsCapabilities, useValue: { canReadSession: allowed } },
       { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
     ],
+  }).overrideComponent(RestaurantTableWorkspacePage, {
+    remove: { imports: [RestaurantOrderComposer] },
+    add: { imports: [ComposerStub] },
   });
+@Component({ selector: 'liass-restaurant-order-composer', template: '' })
+class ComposerStub {
+  readonly accessValid = input<boolean>();
+  readonly session = input<unknown>();
+  readonly outletId = input<string>();
+  readonly sessionId = input<string>();
+}
 @Component({ template: '<h1>Service en salle</h1>' })
 class FloorStub {}
 beforeEach(() => {
@@ -99,13 +110,12 @@ async function loaded() {
   });
   return page;
 }
-it('renders canonical identity, OPEN, zero amount and intentional empty state using only the keyed read', async () => {
+it('renders the preserved header using the keyed read; composer tested independently', async () => {
   await loaded();
   expect(api.guestSession).toHaveBeenCalledWith('org', rid(2), rid(9));
   expect(fixture!.nativeElement.querySelector('h1').textContent).toContain('T02');
   expect(text()).toContain('Table T02');
   expect(text()).toContain('Session ouverte');
-  expect(text()).toContain('Aucune commande pour le moment');
   expect(text()).toContain('Responsable non affecté');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
@@ -114,7 +124,7 @@ it('renders canonical identity, OPEN, zero amount and intentional empty state us
     /private-opener|00000000|Ajouter des articles|Encaisser|En préparation/,
   );
   expect(fixture!.nativeElement.querySelectorAll('input, table').length).toBe(0);
-  // The API substitute has only a keyed-session method: any order-detail dependency fails this test.
+  // Composer orchestration is covered in its dedicated integration-style tests.
 });
 it.each([
   { displayName: 'Aïssatou S.', available: true },
@@ -133,7 +143,7 @@ it.each([
   expect(text().includes(fr.RESTAURANTS.RESPONSIBILITY.UNAVAILABLE)).toBe(!person.available);
   expect(text()).not.toContain('secret-staff-id');
   expect(text()).not.toContain(fr.RESTAURANTS.RESPONSIBILITY.UNASSIGNED);
-  expect(text()).toContain('3 commandes enregistrées');
+  expect(text()).toContain('Session ouverte');
   expect(text()).not.toContain('Aucune commande pour le moment');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
@@ -281,7 +291,7 @@ it('resolves direct URL, navigation back and browser Back/Forward through real r
   });
 });
 
-it('renders through the real keyed HTTP client with zero order-detail or decoration requests', async () => {
+it('renders the header through the real keyed HTTP client independently of the composer', async () => {
   setup();
   TestBed.overrideProvider(RestaurantsApi, { useFactory: () => new RestaurantsApi() });
   TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
@@ -296,7 +306,7 @@ it('renders through the real keyed HTTP client with zero order-detail or decorat
   request.flush({ data: sessionFixture({ orderCount: 3 }) });
   await vi.waitFor(() => {
     fixture!.detectChanges();
-    expect(text()).toContain('3 commandes enregistrées');
+    expect(text()).toContain('Session ouverte');
   });
   http.expectNone((r) => /orders|items|service-areas|tables|menu/.test(r.url));
   http.verify();

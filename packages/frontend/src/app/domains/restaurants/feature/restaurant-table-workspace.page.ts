@@ -1,3 +1,4 @@
+import { RestaurantOrderComposer } from '../ui/order-composer/restaurant-order-composer';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
@@ -29,6 +30,7 @@ import { serviceDuration } from '../utils/service-duration';
   selector: 'liass-restaurant-table-workspace',
   host: { class: 'block min-w-0' },
   imports: [
+    RestaurantOrderComposer,
     DatePipe,
     RouterLink,
     MatButtonModule,

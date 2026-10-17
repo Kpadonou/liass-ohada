@@ -1,0 +1,337 @@
+@if (session()?.status === 'OPEN') {
+  @if (denied()) {
+    <section role="alert" class="space-y-2 py-4">
+      <h2 class="font-semibold">{{ 'RESTAURANTS.ORDER_TAKING.ACCESS' | transloco }}</h2>
+      <button mat-stroked-button type="button" class="min-h-11" (click)="refresh()">
+        {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+      </button>
+    </section>
+  } @else if (live()) {
+    <div class="min-w-0 space-y-4" data-testid="order-taking">
+      <nav
+        class="sticky top-[var(--spacing-app-header)] z-20 flex gap-2 border-b border-app-border bg-app-surface py-2 xl:hidden"
+        [attr.aria-label]="'RESTAURANTS.ORDER_TAKING.NAV' | transloco"
+      >
+        <button mat-button type="button" (click)="jump('draft-title')" class="min-h-11">
+          {{ 'RESTAURANTS.ORDER_TAKING.DRAFT' | transloco }} · {{ drafts().length }}
+        </button>
+        <button mat-button type="button" (click)="jump('menu-title')" class="min-h-11">
+          {{ 'RESTAURANTS.ORDER_TAKING.MENU' | transloco }}
+        </button>
+      </nav>
+      @if (ordersQuery.isPending() || ordersQuery.isFetching()) {
+        <p role="status" class="py-4 text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.UI.LOADING' | transloco }}
+        </p>
+      } @else if (ordersQuery.isError()) {
+        <div role="alert" class="space-y-2">
+          <p>{{ 'RESTAURANTS.ORDER_TAKING.LOAD' | transloco }}</p>
+          <button mat-stroked-button type="button" (click)="ordersQuery.refetch()">
+            {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
+          </button>
+        </div>
+      } @else {
+        @if (ordersQuery.hasNextPage()) {
+          <button
+            mat-stroked-button
+            type="button"
+            [disabled]="ordersQuery.isFetchingNextPage()"
+            (click)="ordersQuery.fetchNextPage()"
+          >
+            {{ 'RESTAURANTS.ORDER_TAKING.MORE_ORDERS' | transloco }}
+          </button>
+        }
+        @if (orders().length > 1) {
+          <liass-searchable-select
+            labelKey="RESTAURANTS.ORDER_TAKING.SELECT_ORDER"
+            [options]="orderOptions()"
+            [formControl]="orderControl"
+          />
+        }
+        @if (candidates().length > 1 && !selectedId()) {
+          <p role="status" class="text-sm">
+            {{ 'RESTAURANTS.ORDER_TAKING.CHOOSE_ORDER' | transloco }}
+          </p>
+        }
+        @if (message()) {
+          <div
+            role="alert"
+            class="space-y-2 rounded-app-control border border-app-border bg-app-surface-muted p-3 text-sm"
+          >
+            <p>{{ 'RESTAURANTS.ORDER_TAKING.' + message() | transloco }}</p>
+            @if (pending()) {
+              <button
+                mat-stroked-button
+                type="button"
+                class="min-h-11"
+                [disabled]="busy()"
+                (click)="retry()"
+              >
+                {{ 'RESTAURANTS.ORDER_TAKING.RETRY_INTENT' | transloco }}
+              </button>
+            }
+          </div>
+        }
+        <div class="grid min-w-0 gap-5 xl:grid-cols-2 xl:items-start xl:grid-rows-[auto_1fr]">
+          <section
+            class="min-w-0 space-y-3 xl:col-start-2 xl:row-start-1"
+            [attr.aria-busy]="busy()"
+            aria-labelledby="draft-title"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="draft-title" class="scroll-mt-40 font-semibold" tabindex="-1">
+                {{ 'RESTAURANTS.ORDER_TAKING.DRAFT' | transloco }}
+              </h2>
+              <span class="text-sm text-app-text-secondary" aria-live="polite">{{
+                'RESTAURANTS.ORDER_TAKING.LINE_COUNT' | transloco: { count: drafts().length }
+              }}</span>
+            </div>
+            @if (busy()) {
+              <p role="status" class="text-sm">
+                {{ 'RESTAURANTS.ORDER_TAKING.SAVING' | transloco }}
+              </p>
+            }
+            @if (
+              selectedId() &&
+              (orderQuery.isPending() ||
+                orderQuery.isFetching() ||
+                itemsQuery.isPending() ||
+                itemsQuery.isFetching())
+            ) {
+              <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+            } @else if (selectedId() && (itemsQuery.isError() || orderQuery.isError())) {
+              <p role="alert">{{ 'RESTAURANTS.ORDER_TAKING.LOAD' | transloco }}</p>
+              <button mat-stroked-button type="button" (click)="refresh()">
+                {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
+              </button>
+            } @else {
+              @if (order() && !editable(order()!)) {
+                <p class="text-sm">{{ 'RESTAURANTS.ORDER_TAKING.TERMINAL' | transloco }}</p>
+              }
+              @for (line of drafts(); track line.itemId) {
+                <div class="space-y-2 border-b border-app-border pb-3" data-testid="draft-line">
+                  <p class="break-words text-sm font-medium">{{ name(line) }}</p>
+                  @if (line.notes) {
+                    <p class="break-words text-xs text-app-text-secondary">{{ line.notes }}</p>
+                  }
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-1">
+                      <button
+                        mat-icon-button
+                        type="button"
+                        class="min-h-11 min-w-11"
+                        [attr.aria-label]="
+                          'RESTAURANTS.ORDER_TAKING.DECREASE' | transloco: { name: name(line) }
+                        "
+                        [disabled]="
+                          !ready() || !order() || !editable(order()!) || line.quantity <= 1
+                        "
+                        (click)="quantity(line, -1)"
+                      >
+                        <mat-icon>remove</mat-icon>
+                      </button>
+                      <span class="min-w-6 text-center text-sm tabular-nums">{{
+                        line.quantity
+                      }}</span>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        class="min-h-11 min-w-11"
+                        [attr.aria-label]="
+                          'RESTAURANTS.ORDER_TAKING.INCREASE' | transloco: { name: name(line) }
+                        "
+                        [disabled]="!ready() || !order() || !editable(order()!)"
+                        (click)="quantity(line, 1)"
+                      >
+                        <mat-icon>add</mat-icon>
+                      </button>
+                    </div>
+                    <button
+                      mat-button
+                      type="button"
+                      class="min-h-11"
+                      [attr.aria-label]="
+                        'RESTAURANTS.ORDER_TAKING.REMOVE_ITEM' | transloco: { name: name(line) }
+                      "
+                      [disabled]="!ready() || !order() || !editable(order()!)"
+                      (click)="remove(line)"
+                    >
+                      {{ 'RESTAURANTS.ORDER_TAKING.REMOVE' | transloco }}
+                    </button>
+                  </div>
+                </div>
+              } @empty {
+                <p class="text-sm text-app-text-secondary">
+                  {{ 'RESTAURANTS.ORDER_TAKING.NO_DRAFT' | transloco }}
+                </p>
+              }
+              @if (itemsQuery.hasNextPage()) {
+                <p class="text-xs text-app-text-secondary">
+                  {{ 'RESTAURANTS.ORDER_TAKING.LOAD_BEFORE_EDIT' | transloco }}
+                </p>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="itemsQuery.isFetchingNextPage() || busy()"
+                  (click)="itemsQuery.fetchNextPage()"
+                >
+                  {{ 'RESTAURANTS.ORDER_TAKING.MORE_LINES' | transloco }}
+                </button>
+              }
+              @if (drafts().length >= 12) {
+                <p role="status" class="text-sm">
+                  {{ 'RESTAURANTS.ORDER_TAKING.LIMIT' | transloco }}
+                </p>
+              }
+              @if (drafts().length) {
+                <div
+                  class="sticky bottom-0 z-10 space-y-2 border-t border-app-border bg-app-surface py-3"
+                >
+                  <p class="text-xs text-app-text-secondary">
+                    {{ 'RESTAURANTS.ORDER_TAKING.ACCEPT_HELP' | transloco }}
+                  </p>
+                  <button
+                    mat-flat-button
+                    type="button"
+                    class="min-h-11 w-full"
+                    [disabled]="!canSubmit()"
+                    (click)="submit()"
+                    data-testid="submit-round"
+                  >
+                    {{ 'RESTAURANTS.ORDER_TAKING.SUBMIT' | transloco }}
+                  </button>
+                </div>
+              }
+            }
+          </section>
+          <section
+            class="min-w-0 space-y-3 xl:col-start-1 xl:row-span-2 xl:row-start-1"
+            aria-labelledby="menu-title"
+          >
+            <h2 id="menu-title" tabindex="-1" class="scroll-mt-40 font-semibold">
+              {{ 'RESTAURANTS.ORDER_TAKING.MENU' | transloco }}
+            </h2>
+            @if (menuQuery.isPending() || categoryQuery.isFetching()) {
+              <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+            } @else if (menuQuery.isError() || categoryQuery.isError()) {
+              <p role="alert">{{ 'RESTAURANTS.ORDER_TAKING.MENU_ERROR' | transloco }}</p>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="queries.menuChanged(ctx(), category())"
+              >
+                {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
+              </button>
+            } @else if (!menuQuery.data()?.isActive) {
+              <p role="status">{{ 'RESTAURANTS.ORDER_TAKING.NO_MENU' | transloco }}</p>
+            } @else {
+              <liass-searchable-select
+                labelKey="RESTAURANTS.ORDER_TAKING.CATEGORY"
+                [options]="categoryOptions()"
+                [formControl]="categoryControl"
+              />
+              @if (categoryQuery.hasNextPage()) {
+                <button mat-button type="button" (click)="categoryQuery.fetchNextPage()">
+                  {{ 'RESTAURANTS.ORDER_TAKING.MORE_CATEGORIES' | transloco }}
+                </button>
+              }
+              <mat-form-field class="w-full"
+                ><mat-label>{{ 'RESTAURANTS.ORDER_TAKING.SEARCH' | transloco }}</mat-label
+                ><input matInput [formControl]="search" /><mat-icon matPrefix>search</mat-icon
+                ><mat-hint>{{
+                  'RESTAURANTS.ORDER_TAKING.LOADED_SEARCH' | transloco
+                }}</mat-hint></mat-form-field
+              >
+              @if (menuItemsQuery.isFetching()) {
+                <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+              } @else if (menuItemsQuery.isError()) {
+                <p role="alert">{{ 'RESTAURANTS.ORDER_TAKING.MENU_ERROR' | transloco }}</p>
+                <button mat-stroked-button type="button" (click)="menuItemsQuery.refetch()">
+                  {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
+                </button>
+              } @else {
+                @for (item of menuItems(); track item.id) {
+                  <div
+                    class="flex min-w-0 items-center justify-between gap-3 border-b border-app-border py-3"
+                  >
+                    <div class="min-w-0">
+                      <p class="break-words text-sm font-medium">{{ item.name }}</p>
+                      <p class="text-sm text-app-text-secondary tabular-nums">
+                        {{ price(item.price.amountMinor, item.price.currency) }}
+                      </p>
+                      @if (item.availability !== 'AVAILABLE') {
+                        <p class="text-xs">
+                          {{ 'RESTAURANTS.ORDER_TAKING.UNAVAILABLE' | transloco }}
+                        </p>
+                      }
+                    </div>
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      class="min-h-11 shrink-0"
+                      [attr.aria-label]="
+                        'RESTAURANTS.ORDER_TAKING.ADD_ITEM' | transloco: { name: item.name }
+                      "
+                      [disabled]="!canAddItem(item)"
+                      (click)="add(item)"
+                    >
+                      {{ 'RESTAURANTS.ORDER_TAKING.ADD' | transloco }}
+                    </button>
+                  </div>
+                } @empty {
+                  <p role="status" class="text-sm text-app-text-secondary">
+                    {{ 'RESTAURANTS.ORDER_TAKING.NO_ITEMS' | transloco }}
+                  </p>
+                }
+                @if (menuItemsQuery.hasNextPage()) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="min-h-11"
+                    (click)="menuItemsQuery.fetchNextPage()"
+                  >
+                    {{ 'RESTAURANTS.ORDER_TAKING.MORE_ITEMS' | transloco }}
+                  </button>
+                }
+              }
+            }
+          </section>
+          <section class="min-w-0 space-y-3 xl:col-start-2" aria-labelledby="accepted-title">
+            <h2 id="accepted-title" class="font-semibold">
+              {{ 'RESTAURANTS.ORDER_TAKING.ACCEPTED' | transloco }}
+            </h2>
+            @for (round of rounds(); track round[0].snapshot!.submissionId) {
+              <div class="space-y-2 border-t border-app-border pt-3" data-testid="accepted-round">
+                <h3 class="text-xs font-medium text-app-text-secondary">
+                  {{ 'RESTAURANTS.ORDER_TAKING.RECORDED' | transloco }}
+                  <time [attr.datetime]="round[0].snapshot!.acceptedAt">{{
+                    round[0].snapshot!.acceptedAt | date: 'dd/MM HH:mm'
+                  }}</time>
+                </h3>
+                @for (line of round; track line.itemId) {
+                  <div class="flex min-w-0 items-start justify-between gap-3 text-sm">
+                    <div class="min-w-0">
+                      <p class="break-words">
+                        {{ line.snapshot!.quantity }} × {{ line.snapshot!.name }}
+                      </p>
+                      <p class="text-xs text-app-text-secondary">
+                        {{ price(line.snapshot!.unitPriceMinor, line.snapshot!.currency) }}
+                      </p>
+                    </div>
+                    <span class="shrink-0 tabular-nums">{{
+                      price(line.snapshot!.lineTotalMinor, line.snapshot!.currency)
+                    }}</span>
+                  </div>
+                }
+              </div>
+            } @empty {
+              <p class="text-sm text-app-text-secondary">
+                {{ 'RESTAURANTS.ORDER_TAKING.NO_ACCEPTED' | transloco }}
+              </p>
+            }
+          </section>
+        </div>
+      }
+    </div>
+  }
+}

@@ -12,6 +12,16 @@ import { RestaurantKind, RestaurantListKind, RestaurantContext } from './restaur
 import { ZodError } from 'zod';
 import { HttpErrorResponse } from '@angular/common/http';
 export const restaurantKeys = {
+  serviceOrder: (
+    org: string,
+    user: string,
+    outlet: string,
+    session: string,
+    revision: number,
+    kind: string,
+    parent = '',
+  ) =>
+    ['restaurants', org, 'service-order', user, outlet, session, revision, kind, parent] as const,
   myOutlets: (org: string, user: string) => ['restaurants', org, 'my-outlets', user] as const,
   staff: (org: string) => ['restaurants', org, 'staff'] as const,
   staffMember: (org: string, userId: string) =>
