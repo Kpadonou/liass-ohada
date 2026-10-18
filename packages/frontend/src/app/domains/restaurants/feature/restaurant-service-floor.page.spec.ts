@@ -45,7 +45,7 @@ beforeEach(() => {
   params = new BehaviorSubject(convertToParamMap({ outlet: rid(2) }));
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   api.myOutlets.mockReset().mockResolvedValue({ items: [{ outletId: rid(2), name: 'Agla' }] });
-  api.get.mockReset().mockResolvedValue(row('restaurant'));
+  api.get.mockReset().mockImplementation(async (_org, kind) => row(kind));
   api.list.mockReset().mockImplementation(async (_org, kind) => ({
     items:
       kind === 'outlet'
@@ -53,7 +53,9 @@ beforeEach(() => {
         : [row('area'), { ...row('area'), id: rid(7), name: 'Terrace' }],
   }));
   api.serviceFloor.mockReset().mockResolvedValue(floorFixture());
-  api.openSession.mockReset().mockResolvedValue({ data: {}, message: 'Ouverte' });
+  api.openSession
+    .mockReset()
+    .mockResolvedValue({ data: { guestSessionId: rid(90) }, message: 'Ouverte' });
 });
 afterEach(() => {
   fixture?.destroy();
@@ -542,7 +544,7 @@ it('auto-selects one complete assigned outlet, reads no generic restaurant/outle
   });
   expect(page.outletId()).toBe(rid(2));
   expect(api.myOutlets).toHaveBeenCalledWith('org', 'user', undefined);
-  expect(api.get).not.toHaveBeenCalled();
+  expect(api.get.mock.calls.every((call) => call[1] === 'menu')).toBe(true);
   expect(
     api.list.mock.calls.every((call) => call[1] === 'area' && call[2].outletId === rid(2)),
   ).toBe(true);
@@ -620,7 +622,7 @@ it('rejects an unassigned complete deep link without disclosing or reading the r
   });
   expect(page.contextError()).toBe(true);
   expect(api.serviceFloor).not.toHaveBeenCalled();
-  expect(api.get).not.toHaveBeenCalled();
+  expect(api.get.mock.calls.every((call) => call[1] === 'menu')).toBe(true);
   expect(api.list).not.toHaveBeenCalled();
   expect(fixture.nativeElement.textContent).not.toContain(rid(99));
 });
@@ -676,7 +678,7 @@ it('waiter opening refreshes canonical responsibility with no dialog or second a
     expect(fixture.nativeElement.textContent).toContain('Aïssatou S.');
   });
   expect(dialog).not.toHaveBeenCalled();
-  expect(api.get).not.toHaveBeenCalled();
+  expect(api.get.mock.calls.every((call) => call[1] === 'menu')).toBe(true);
   expect(
     fixture.nativeElement.querySelector('button[aria-label^="Actions de la table"]'),
   ).toBeNull();
@@ -865,4 +867,156 @@ it('opens an occupied session through an independent semantic link while seconda
   fixture.detectChanges();
   expect(TestBed.inject(Router).url).toBe('/');
   expect(document.querySelector('[role="menu"]')).not.toBeNull();
+});
+
+describe('HOTFIX-2 canonical opening and navigation', () => {
+  it('navigates once to the returned session, retaining the valid area filter', async () => {
+    const page = await ready();
+    page.selectArea(rid(7));
+    fixture.detectChanges();
+    const navigation = TestBed.inject(Router).navigate;
+    vi.mocked(navigation).mockClear();
+    await page.open(page.visibleTables()[0]);
+    expect(api.openSession).toHaveBeenCalledWith('org', rid(2), {
+      clientRequestId: expect.any(String),
+      tableId: rid(6),
+      areaId: rid(7),
+    });
+    expect(navigation).toHaveBeenCalledExactlyOnceWith(
+      ['/restaurants/service/outlets', rid(2), 'sessions', rid(90)],
+      { queryParams: { area: rid(7) } },
+    );
+  });
+  it('uses each card area under ALL and rejects mismatched stale card parents', async () => {
+    const page = await ready();
+    expect(page.areaId()).toBeNull();
+    await page.open({ ...page.tables()[0], areaId: rid(999) });
+    expect(api.openSession).not.toHaveBeenCalled();
+    await page.open(page.tables()[2]);
+    expect(api.openSession.mock.calls[0][2]).toMatchObject({ tableId: rid(6), areaId: rid(7) });
+  });
+  it('does not offer opening when the canonical menu prerequisite is missing', async () => {
+    api.get.mockImplementation(async (_org, kind) => (kind === 'menu' ? null : row(kind)));
+    const page = await ready();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.menu.isSuccess()).toBe(true);
+    });
+    await page.open(page.tables()[0]);
+    expect(api.openSession).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain(fr.RESTAURANTS.SERVICE.MENU_REQUIRED);
+    expect(fixture.nativeElement.textContent).toContain('Libre');
+  });
+  it('keeps the floor and route on a real 404 and never invents occupancy', async () => {
+    const page = await ready();
+    const navigation = vi.mocked(TestBed.inject(Router).navigate);
+    navigation.mockClear();
+    api.openSession.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+    await page.open(page.tables()[0]);
+    expect(navigation).not.toHaveBeenCalled();
+    expect(page.tables()[0].state).toBe('FREE');
+    expect(page.openingError()).toBeTruthy();
+  });
+  it('switches A → B → A with canonical per-outlet cards and rejects stale actions', async () => {
+    api.list.mockImplementation(async (_org, kind, ctx) => ({
+      items:
+        kind === 'outlet'
+          ? [row('outlet'), { ...row('outlet'), id: rid(22), name: 'Outlet B' }]
+          : [
+              {
+                ...row('area'),
+                outletId: ctx.outletId,
+                id: ctx.outletId === rid(22) ? rid(23) : rid(3),
+              },
+            ],
+    }));
+    api.serviceFloor.mockImplementation(async (_org, outlet) =>
+      outlet === rid(22)
+        ? {
+            outletId: rid(22),
+            items: [{ ...floorFixture().items[0], tableId: rid(24), areaId: rid(23) }],
+          }
+        : floorFixture(),
+    );
+    const page = await ready();
+    const stale = page.tables()[0];
+    page.selectOutlet(rid(22));
+    params.next(convertToParamMap({ outlet: rid(22) }));
+    fixture.detectChanges();
+    await page.open(stale);
+    expect(api.openSession).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.tables()[0]?.tableId).toBe(rid(24));
+      expect(page.floor.isFetching()).toBe(false);
+    });
+    await page.open(page.tables()[0]);
+    expect(api.openSession.mock.calls[0]).toEqual([
+      'org',
+      rid(22),
+      { clientRequestId: expect.any(String), tableId: rid(24), areaId: rid(23) },
+    ]);
+    page.selectOutlet(rid(2));
+    params.next(convertToParamMap({ outlet: rid(2) }));
+    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.tables()[0]?.tableId).toBe(rid(4));
+      expect(page.floor.isFetching()).toBe(false);
+    });
+    await page.open(page.tables()[0]);
+    expect(api.openSession.mock.calls[1][1]).toBe(rid(2));
+  });
+  for (const change of ['account', 'organization', 'outlet'] as const) {
+    it(`does not navigate after ${change} changes during opening`, async () => {
+      const page = await ready();
+      let finish!: (value: unknown) => void;
+      api.openSession.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+      const pending = page.open(page.tables()[0]);
+      const navigation = vi.mocked(TestBed.inject(Router).navigate);
+      navigation.mockClear();
+      if (change === 'account') user.set('other');
+      if (change === 'organization') org.set('other');
+      if (change === 'outlet') page.outletId.set(rid(22));
+      fixture.detectChanges();
+      finish({ data: { guestSessionId: rid(90) } });
+      await pending;
+      expect(
+        navigation.mock.calls.some((call) => call[0]?.[0] === '/restaurants/service/outlets'),
+      ).toBe(false);
+    });
+  }
+});
+it('does not navigate for a late success after switching away and back to the same outlet', async () => {
+  const page = await ready();
+  let finish!: (value: unknown) => void;
+  api.openSession.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+  const pending = page.open(page.tables()[0]);
+  page.selectOutlet(rid(22));
+  page.selectOutlet(rid(2));
+  const navigation = vi.mocked(TestBed.inject(Router).navigate);
+  navigation.mockClear();
+  finish({ data: { guestSessionId: rid(90) } });
+  await pending;
+  expect(navigation).not.toHaveBeenCalled();
+});
+it('keeps pending feedback local and preserves cards during unresolved opening', async () => {
+  const page = await ready();
+  let finish!: (value: unknown) => void;
+  api.openSession.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+  const pending = page.open(page.tables()[0]);
+  fixture.detectChanges();
+  const buttons = [
+    ...fixture.nativeElement.querySelectorAll('.service-open-action'),
+  ] as HTMLButtonElement[];
+  expect(buttons[0].type).toBe('button');
+  expect(buttons[0].disabled).toBe(true);
+  expect(buttons[0].textContent).toContain(fr.RESTAURANTS.SERVICE.OPENING);
+  expect(buttons[1].textContent).not.toContain(fr.RESTAURANTS.SERVICE.OPENING);
+  expect(fixture.nativeElement.querySelector('[data-testid="floor-grid"]')).not.toBeNull();
+  expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
+  await page.open(page.tables()[0]);
+  expect(api.openSession).toHaveBeenCalledTimes(1);
+  finish({ data: { guestSessionId: rid(90) } });
+  await pending;
 });

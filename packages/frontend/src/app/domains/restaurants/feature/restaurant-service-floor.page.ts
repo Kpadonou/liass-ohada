@@ -21,7 +21,6 @@ import { RestaurantsApi } from '../data-access/restaurants.api';
 import { RestaurantsQueries } from '../data-access/restaurants.queries';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
-import { NotificationService } from '../../../core/notifications/notification.service';
 import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
@@ -65,7 +64,6 @@ export class RestaurantServiceFloorPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   readonly t = inject(TranslocoService);
-  private readonly notification = inject(NotificationService);
   private readonly access = inject(ProductAccessState);
   private readonly params = toSignal(this.route.queryParamMap, {
     initialValue: this.route.snapshot.queryParamMap,
@@ -109,6 +107,13 @@ export class RestaurantServiceFloorPage {
       : (this.locations.data()?.pages.flatMap((p) => p.items) ?? []),
   );
   readonly outlet = computed(() => this.outlets().find((o) => o.id === this.outletId()));
+  readonly menu = injectQuery(() =>
+    this.queries.get(
+      'menu',
+      { outletId: this.outletId() ?? undefined },
+      this.allowed() && !!this.outlet(),
+    ),
+  );
   readonly areas = injectInfiniteQuery(() =>
     this.queries.list(
       'area',
@@ -143,12 +148,14 @@ export class RestaurantServiceFloorPage {
   readonly busy = signal<string | null>(null);
   readonly openingError = signal<string | null>(null);
   private readonly intents = new Map<string, string>();
+  private openingContext = 0;
   private conflictRefresh = '';
   constructor() {
     const timer = setInterval(() => this.now.set(Date.now()), 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
     effect(() => {
       const params = this.params();
+      if (untracked(this.outletId) !== params.get('outlet')) this.openingContext++;
       this.outletId.set(params.get('outlet'));
       this.areaId.set(params.get('area'));
     });
@@ -205,6 +212,7 @@ export class RestaurantServiceFloorPage {
       const org = this.queries.scope(),
         identity = org + ':' + this.queries.userScope();
       if (identity !== previous) {
+        this.openingContext++;
         previous = identity;
         this.selfAccessWasVerified.set(false);
         this.blockedOutlets.set(new Set());
@@ -246,6 +254,7 @@ export class RestaurantServiceFloorPage {
   }
   selectOutlet(value: string | null) {
     if (this.selfService() && value && !this.outlets().some((o) => o.id === value)) return;
+    if (value !== this.outletId()) this.openingContext++;
     this.contextError.set(false);
     this.chooseOutlet.set(false);
     this.outletId.set(value);
@@ -296,7 +305,7 @@ export class RestaurantServiceFloorPage {
   }
   async refresh() {
     this.conflictRefresh = '';
-    await this.floor.refetch();
+    await Promise.all([this.floor.refetch(), this.menu.refetch()]);
   }
   errorText(error: unknown) {
     return restaurantError(error, (key) => this.t.translate(key));
@@ -322,6 +331,15 @@ export class RestaurantServiceFloorPage {
   canOpenTable(table: FloorTable) {
     return (
       this.allowed() &&
+      this.menu.isSuccess() &&
+      !!this.menu.data()?.isActive &&
+      this.floor.data()?.pages.every((page) => page.outletId === this.outletId()) &&
+      this.tables().some(
+        (current) =>
+          current.tableId === table.tableId &&
+          current.areaId === table.areaId &&
+          current.state === table.state,
+      ) &&
       !this.revoking() &&
       (this.selfService() || !!this.root.data()?.isActive) &&
       this.caps.canOpenSession() &&
@@ -383,11 +401,13 @@ export class RestaurantServiceFloorPage {
       !this.canOpenTable(table) ||
       !outlet ||
       table.state !== 'FREE' ||
-      this.busy() ||
-      !this.tables().some((t) => t.tableId === table.tableId && t.state === 'FREE')
+      this.floor.isFetching() ||
+      this.busy()
     )
       return;
     const key = org + ':' + user + ':' + outlet.id + ':' + table.tableId;
+    const openingContext = this.openingContext;
+    const area = this.areaId();
     const id = this.intents.get(key) ?? crypto.randomUUID();
     this.intents.set(key, id);
     this.busy.set(key);
@@ -399,18 +419,26 @@ export class RestaurantServiceFloorPage {
         areaId: table.areaId,
       });
       this.intents.delete(key);
-      await this.queries.floorChanged(org, outlet.id);
+      // Floor reconciliation must not turn a confirmed opening into a failed command.
+      void this.queries.floorChanged(org, outlet.id);
       if (
         this.queries.scope() === org &&
         this.queries.userScope() === user &&
-        this.outletId() === outlet.id
-      )
-        this.notification.success(result.message ?? this.t.translate('RESTAURANTS.SERVICE.OPENED'));
+        this.outletId() === outlet.id &&
+        this.openingContext === openingContext &&
+        this.allowed()
+      ) {
+        await this.router.navigate(
+          ['/restaurants/service/outlets', outlet.id, 'sessions', result.data.guestSessionId],
+          { queryParams: { area } },
+        );
+      }
     } catch (error) {
       if (
         this.queries.scope() === org &&
         this.queries.userScope() === user &&
-        this.outletId() === outlet.id
+        this.outletId() === outlet.id &&
+        this.openingContext === openingContext
       ) {
         this.openingError.set(
           error instanceof HttpErrorResponse && error.status === 409

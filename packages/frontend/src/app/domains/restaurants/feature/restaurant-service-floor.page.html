@@ -184,6 +184,14 @@
       @if (openingError()) {
         <p role="alert" class="text-warning-600">{{ openingError() }}</p>
       }
+      @if (outlet() && menu.isSuccess() && !menu.data()?.isActive) {
+        <p role="status">{{ 'RESTAURANTS.SERVICE.MENU_REQUIRED' | transloco }}</p>
+      } @else if (outlet() && menu.isError()) {
+        <p role="alert">{{ errorText(menu.error()) }}</p>
+        <button mat-button type="button" (click)="menu.refetch()">
+          {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+        </button>
+      }
       @if (busy()) {
         <p role="status" aria-live="polite" class="sr-only">
           {{ 'RESTAURANTS.SERVICE.OPENING' | transloco }}
@@ -413,6 +421,7 @@
                     }
                     @if (table.state === 'FREE' && canOpenTable(table)) {
                       <button
+                        type="button"
                         matButton="tonal"
                         class="service-open-action mt-auto min-h-11 w-full"
                         [attr.aria-label]="

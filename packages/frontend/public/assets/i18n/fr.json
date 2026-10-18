@@ -4514,6 +4514,7 @@
       "OPEN": "Ouvrir la table",
       "OPENED": "Table ouverte.",
       "OPENING": "Ouverture de la table…",
+      "MENU_REQUIRED": "La carte doit être configurée et active avant de pouvoir ouvrir une table.",
       "OPEN_CONFLICT": "L’état de cette table a changé. Les informations sont actualisées.",
       "REFRESHING": "Actualisation des tables…",
       "PARTIAL": "Les chiffres concernent les tables chargées. Chargez la suite pour compléter cette vue.",

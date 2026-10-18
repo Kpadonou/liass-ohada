@@ -162,3 +162,7 @@ Do not use snackbars for critical legal/accounting warnings, irreversible action
 - Provide labels for icon-only actions.
 - Keep contrast readable in light and dark modes.
 - Do not rely on color alone for status.
+
+## Restaurants Service Floor review fixtures
+
+Deterministic Service Floor reviews must contain at least one FREE and one OCCUPIED table, with valid outlet/area ownership and active opening prerequisites (including the menu). Exercise outlet A → B → A, ALL-areas opening from each card's own area, confirmed-open navigation to the returned GuestSession, and return to the occupied floor. Also include missing/inactive configuration, ambiguous retry and concurrent occupancy cases; a FREE occupancy state alone does not prove configuration readiness.

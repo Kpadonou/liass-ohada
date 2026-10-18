@@ -4514,6 +4514,7 @@
       "OPEN": "Open table",
       "OPENED": "Table opened.",
       "OPENING": "Opening table…",
+      "MENU_REQUIRED": "The menu must be configured and active before a table can be opened.",
       "OPEN_CONFLICT": "This table’s state has changed. Refreshing the current information.",
       "REFRESHING": "Refreshing tables…",
       "PARTIAL": "Counts cover the loaded tables. Load more to complete this view.",
