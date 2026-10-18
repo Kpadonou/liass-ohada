@@ -19,7 +19,7 @@
         class="liass-action-neutral min-h-11"
         type="button"
         [disabled]="query.isFetching()"
-        (click)="query.refetch()"
+        (click)="refresh()"
       >
         <mat-icon aria-hidden="true">refresh</mat-icon>{{ 'RESTAURANTS.UI.REFRESH' | transloco }}
       </button>
@@ -47,7 +47,7 @@
               mat-stroked-button
               class="liass-action-neutral min-h-11"
               type="button"
-              (click)="query.refetch()"
+              (click)="refresh()"
             >
               {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
             </button>

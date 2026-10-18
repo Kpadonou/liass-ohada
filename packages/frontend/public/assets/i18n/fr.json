@@ -4757,7 +4757,7 @@
       "ADD": "Ajouter",
       "ADD_ITEM": "Ajouter {{name}}",
       "SEARCH": "Rechercher un article",
-      "LOADED_SEARCH": "Recherche dans les articles chargés de cette catégorie.",
+      "LOADED_SEARCH": "Recherche dans les articles chargés de la carte.",
       "MORE_CATEGORIES": "Charger d’autres catégories",
       "MORE_ITEMS": "Charger d’autres articles",
       "MORE_LINES": "Charger la suite de la commande",
@@ -4792,7 +4792,9 @@
         "CANCELLED": "Annulée"
       },
       "NAV": "Sections de la commande",
-      "MENU_CONFLICT": "La carte a changé. Retirez les articles concernés, puis ajoutez-les depuis la carte actualisée avant de valider."
+      "MENU_CONFLICT": "La carte a changé. Retirez les articles concernés, puis ajoutez-les depuis la carte actualisée avant de valider.",
+      "PARTIAL_CARTE": "Recherche dans les articles chargés · carte en cours de chargement ou incomplète.",
+      "CONTINUE_CARTE": "Charger la suite de la carte"
     }
   }
 }

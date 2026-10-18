@@ -29,6 +29,50 @@ export class RestaurantsApi {
     if (!scope || this.auth.effectiveOrgId() !== scope)
       throw new HttpErrorResponse({ status: 409, error: { error: { code: 'WORKSPACE_CHANGED' } } });
   }
+  async cartePage(
+    ctx: { org: string; user: string; revision: number; outlet: string; menu: string },
+    cursor: string | undefined,
+    signal: AbortSignal,
+  ) {
+    const assertCurrent = () => {
+      this.assertScope(ctx.org);
+      if (
+        this.auth.currentUserId() !== ctx.user ||
+        this.auth.contextRevision() !== ctx.revision ||
+        signal.aborted
+      )
+        throw new HttpErrorResponse({
+          status: 409,
+          error: { error: { code: 'WORKSPACE_CHANGED' } },
+        });
+    };
+    assertCurrent();
+    let params = new HttpParams().set('limit', 100);
+    if (cursor) params = params.set('cursor', cursor);
+    // Unsubscription aborts Angular HttpClient's underlying request.
+    const response = await new Promise<unknown>((resolve, reject) => {
+      const abort = () => {
+        subscription.unsubscribe();
+        reject(new DOMException('Aborted', 'AbortError'));
+      };
+      const subscription = this.http
+        .get<unknown>(this.base + '/restaurants/outlets/' + ctx.outlet + '/menu/items', { params })
+        .subscribe({ next: resolve, error: reject });
+      signal.addEventListener('abort', abort, { once: true });
+      subscription.add(() => signal.removeEventListener('abort', abort));
+      if (signal.aborted) abort();
+    });
+    assertCurrent();
+    const page = c.MenuItemsBrowseResponseSchema.parse(response);
+    if (
+      page.outletId !== ctx.outlet ||
+      page.menuId !== ctx.menu ||
+      page.items.some((item) => item.outletId !== ctx.outlet || item.menuId !== ctx.menu) ||
+      (cursor && cursor === page.nextCursor)
+    )
+      throw new Error('Mismatched Carte context');
+    return page;
+  }
   async myOutlets(scope: string, userId: string, cursor?: string) {
     this.assertScope(scope);
     const assertUser = () => {

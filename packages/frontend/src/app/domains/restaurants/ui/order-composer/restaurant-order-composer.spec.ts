@@ -49,7 +49,18 @@ const api = {
   items: vi.fn(),
   command: vi.fn(),
 };
-const menu = { get: vi.fn(), list: vi.fn() };
+const menu = { get: vi.fn(), list: vi.fn(), cartePage: vi.fn() };
+const operational = (value = item()) => ({
+  id: value.id,
+  name: value.name,
+  outletId: value.outletId,
+  menuId: value.menuId,
+  categoryId: value.categoryId,
+  categoryName: 'Boissons',
+  price: value.price,
+  version: value.version,
+  availability: value.availability,
+});
 let client: QueryClient,
   fixture: ReturnType<typeof TestBed.createComponent<RestaurantOrderComposer>>,
   page: RestaurantOrderComposer;
@@ -87,6 +98,11 @@ beforeEach(async () => {
   api.order.mockImplementation(async (_ctx, id) => ({ ...orders.find((o) => o.orderId === id)! }));
   api.items.mockImplementation(async (_ctx, id) => ({
     items: lines.filter((line) => line.orderId === id).map((line) => ({ ...line })),
+  }));
+  menu.cartePage.mockImplementation(async () => ({
+    outletId: rid(2),
+    menuId: rid(7),
+    items: [operational()],
   }));
   menu.get.mockImplementation(async (_org, kind) => row(kind));
   menu.list.mockImplementation(async (_org, kind) => ({ items: [row(kind)] }));
@@ -290,12 +306,12 @@ it('requires explicit selection for multiple current Orders and excludes termina
   expect(page.canAdd()).toBe(false);
   expect(page.canSubmit()).toBe(false);
 });
-it('searches loaded names with accents, hides unavailable Add and retains explicit pagination', async () => {
-  menu.list.mockImplementation(async (_org, kind) => ({
-    items:
-      kind === 'item' ? [{ ...item(), name: 'Café', availability: 'UNAVAILABLE' }] : [row(kind)],
-    nextCursor: kind === 'item' ? 'page2' : undefined,
-  }));
+it('searches unified loaded names with accents and preserves unavailable semantics', async () => {
+  menu.cartePage.mockResolvedValue({
+    outletId: rid(2),
+    menuId: rid(7),
+    items: [operational({ ...item(), name: 'Café', availability: 'UNAVAILABLE' })],
+  });
   await page.menuItemsQuery.refetch();
   page.search.setValue('cafe');
   await vi.waitFor(() => {
@@ -305,8 +321,6 @@ it('searches loaded names with accents, hides unavailable Add and retains explic
   const before = api.command.mock.calls.length;
   await page.add(page.menuItems()[0]);
   expect(api.command).toHaveBeenCalledTimes(before);
-  expect(page.menuItemsQuery.hasNextPage()).toBe(true);
-  expect(menu.list.mock.calls.filter((call) => call[3] === 'page2')).toHaveLength(0);
 });
 it.each(['organization', 'principal', 'revision', 'session'])(
   'drops stale mutation completions on %s change',
@@ -584,41 +598,29 @@ async function draftInput() {
   input.focus();
   return input;
 }
-it('auto-selects the sole category without rendering category navigation or a form field', async () => {
-  await settle();
+it('browses categories together without category navigation or category reads', async () => {
+  menu.cartePage.mockResolvedValue({
+    outletId: rid(2),
+    menuId: rid(7),
+    items: [
+      operational(),
+      {
+        ...operational(),
+        id: rid(88),
+        categoryId: rid(16),
+        categoryName: 'Plats',
+        name: 'Poulet braisé',
+      },
+    ],
+  });
+  await page.menuItemsQuery.refetch();
   await vi.waitFor(() => {
     fixture.detectChanges();
-    expect(page.category()).toBe(rid(6));
+    expect(page.menuItems()).toHaveLength(2);
   });
   expect(fixture.nativeElement.querySelector('[data-testid="category-navigation"]')).toBeNull();
-  expect(fixture.nativeElement.querySelector('liass-searchable-select')).toBeNull();
-});
-it('uses compact accessible category navigation and retains bounded category pagination', async () => {
-  menu.list.mockImplementation(async (_org, kind, context) => ({
-    items:
-      kind === 'category'
-        ? [row('category'), { ...row('category'), id: rid(16), name: 'Plats' }]
-        : [{ ...item(), categoryId: context.categoryId }],
-    nextCursor: kind === 'category' ? 'more-categories' : undefined,
-  }));
-  await page.categoryQuery.refetch();
-  await vi.waitFor(() => {
-    fixture.detectChanges();
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="category-navigation"]'),
-    ).not.toBeNull();
-  });
   expect(fixture.nativeElement.textContent).toContain('Plats');
-  const buttons = [
-    ...fixture.nativeElement.querySelectorAll('mat-button-toggle button'),
-  ] as HTMLButtonElement[];
-  buttons.find((b) => b.textContent!.includes('Plats'))!.click();
-  await vi.waitFor(() => {
-    fixture.detectChanges();
-    expect(page.category()).toBe(rid(16));
-  });
-  expect(page.categoryQuery.hasNextPage()).toBe(true);
-  expect(menu.list.mock.calls.some((call) => call[3] === 'more-categories')).toBe(false);
+  expect(menu.list).not.toHaveBeenCalled();
 });
 it('formats operational prices without redundant currency and retains an ambiguous currency suffix', async () => {
   await settle();
@@ -749,9 +751,11 @@ it('uses labelled secondary Add and danger Remove controls and disables unavaila
   expect(remove.classList.contains('liass-action-danger')).toBe(true);
   add.focus();
   expect(document.activeElement).toBe(add);
-  menu.list.mockImplementation(async (_org, kind) => ({
-    items: kind === 'item' ? [{ ...item(), availability: 'UNAVAILABLE' }] : [row(kind)],
-  }));
+  menu.cartePage.mockResolvedValue({
+    outletId: rid(2),
+    menuId: rid(7),
+    items: [operational({ ...item(), availability: 'UNAVAILABLE' })],
+  });
   await page.menuItemsQuery.refetch();
   await vi.waitFor(() => {
     fixture.detectChanges();
@@ -924,3 +928,107 @@ it.each(['organization', 'principal'] as const)(
     api.assertContext.mockReset();
   },
 );
+
+it('hydrates sequentially to the physical-page budget and continues only on request', async () => {
+  let active = 0,
+    maxActive = 0;
+  menu.cartePage.mockImplementation(async (_ctx, cursor) => {
+    active++;
+    maxActive = Math.max(active, maxActive);
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    active--;
+    const index = cursor ? Number(cursor) : 0;
+    return {
+      outletId: rid(2),
+      menuId: rid(7),
+      items: [{ ...operational(), id: rid(100 + index), name: 'Poulet braisé ' + index }],
+      nextCursor: index < 24 ? String(index + 1) : undefined,
+    };
+  });
+  menu.cartePage.mockClear();
+  await page.menuItemsQuery.refetch();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.menuItemsQuery.data()?.pages).toHaveLength(20);
+  });
+  expect(page.budgetReached()).toBe(true);
+  expect(page.incomplete()).toBe(true);
+  expect(maxActive).toBe(1);
+  const calls = menu.cartePage.mock.calls.length;
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  fixture.detectChanges();
+  expect(menu.cartePage).toHaveBeenCalledTimes(calls);
+  page.continueCarte();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.incomplete()).toBe(false);
+  });
+  expect(page.matchingItems()).toHaveLength(25);
+});
+it('searches cached unrendered rows without requests and renders 50-row chunks', async () => {
+  menu.cartePage.mockResolvedValue({
+    outletId: rid(2),
+    menuId: rid(7),
+    items: Array.from({ length: 100 }, (_, i) => ({
+      ...operational(),
+      id: rid(100 + i),
+      name: i === 99 ? 'Café crème' : 'Poulet braisé ' + i,
+    })),
+  });
+  await page.menuItemsQuery.refetch();
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.menuItems()).toHaveLength(50);
+  });
+  const calls = menu.cartePage.mock.calls.length;
+  page.search.setValue('cafe');
+  fixture.detectChanges();
+  expect(page.menuItems().map((item) => item.name)).toEqual(['Café crème']);
+  expect(menu.cartePage).toHaveBeenCalledTimes(calls);
+  page.search.setValue('');
+  page.displayCount.set(100);
+  fixture.detectChanges();
+  expect(page.menuItems()).toHaveLength(100);
+});
+it('retains loaded DOM on later-page failure and never claims exhaustive zero matches', async () => {
+  page.foreground.set(false);
+  menu.cartePage
+    .mockResolvedValueOnce({
+      outletId: rid(2),
+      menuId: rid(7),
+      items: [operational()],
+      nextCursor: 'next',
+    })
+    .mockRejectedValue(new HttpErrorResponse({ status: 503 }));
+  await page.menuItemsQuery.refetch();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.incomplete()).toBe(true);
+  });
+  const add = fixture.nativeElement.querySelector('button[aria-label="Ajouter Beer"]');
+  await page.menuItemsQuery.fetchNextPage();
+  fixture.detectChanges();
+  expect(fixture.nativeElement.querySelector('button[aria-label="Ajouter Beer"]')).toBe(add);
+  page.search.setValue('introuvable');
+  fixture.detectChanges();
+  expect(page.incomplete()).toBe(true);
+  expect(fixture.nativeElement.textContent).not.toContain(fr.RESTAURANTS.ORDER_TAKING.NO_ITEMS);
+});
+it('does not hydrate while hidden/offline and resumes sequentially in foreground', async () => {
+  page.foreground.set(false);
+  menu.cartePage.mockImplementation(async (_ctx, cursor) => ({
+    outletId: rid(2),
+    menuId: rid(7),
+    items: [],
+    ...(!cursor ? { nextCursor: 'last' } : {}),
+  }));
+  await page.menuItemsQuery.refetch();
+  fixture.detectChanges();
+  expect(page.menuItemsQuery.data()?.pages).toHaveLength(1);
+  page.foreground.set(true);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.menuItemsQuery.data()?.pages).toHaveLength(2);
+  });
+});

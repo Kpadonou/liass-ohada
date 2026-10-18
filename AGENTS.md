@@ -93,6 +93,137 @@ Preserve the approved Liass-OHADA visual baseline by default. Before modifying e
 
 Frontend server state must use TanStack Query where applicable. Query keys must be stable, domain-specific, and include active tenant/workspace or dossier context for tenant-scoped data. Reuse shared domain query helpers instead of creating duplicate API calls in components, and avoid refetching on every component mount when cached data is still fresh. Use longer `staleTime` values for stable master/reference data such as accounting accounts and journals, and filter/pagination-aware keys for transactional data such as ledgers, entries, balances, and reports. Mutations should update or invalidate only the affected query caches; imperative component refetches should be reserved for explicit user refresh actions or cases where targeted invalidation cannot represent the change. NgRx Signal Store is for UI/client state such as active workspace, active dossier, filters, and local interaction state; it must not replace TanStack Query server-state caching.
 
+## Frontend Cache & Read Architecture Rule
+
+Before solving a read, browse, filtering, search, aggregation, or repeated-data-access problem by adding more backend infrastructure, ALWAYS evaluate whether the existing frontend data/cache capabilities can provide a simpler, cheaper, faster, and sufficiently reliable solution.
+
+In particular, explicitly evaluate:
+
+- TanStack Query server-state caching;
+- existing browser/session cache reuse;
+- already-loaded canonical data;
+- bounded background prefetch/hydration;
+- local derived filtering/search/sorting;
+- Angular Signals / computed state for presentation;
+- existing Signal Store / local UI state where appropriate;
+- query reuse across routes/workspaces;
+- staleTime / gcTime / invalidation strategies;
+- whether data is reasonably bounded in realistic product usage.
+
+Do NOT automatically add:
+
+- a new DynamoDB GSI;
+- a new DynamoDB projection/read model;
+- a new Lambda;
+- a new API endpoint;
+- a search index;
+- polling;
+- realtime infrastructure;
+- duplicated frontend stores;
+
+until the cache/local-computation alternative has been evaluated.
+
+### Required decision process
+
+For any significant read/search architecture decision, compare at least:
+
+1. expected dataset cardinality;
+2. serialized payload size;
+3. browser memory impact;
+4. number of API requests;
+5. DynamoDB read/write cost;
+6. Lambda/API Gateway cost;
+7. cache reuse potential;
+8. data freshness requirements;
+9. mutation/invalidation behavior;
+10. tenant/account/outlet isolation;
+11. weak-network/mobile behavior;
+12. frontend computation/rendering cost;
+13. UX latency;
+14. implementation and maintenance complexity.
+
+Prefer the simplest architecture that meets correctness, scale, security, freshness, and UX requirements.
+
+### Server-state ownership
+
+Fetched canonical server collections should normally remain owned by TanStack Query.
+
+Do NOT copy the same canonical collection into NgRx Signal Store, Angular signals, or another custom cache merely to make it searchable/filterable.
+
+Prefer:
+
+API
+→ TanStack Query cache
+→ derived local/computed presentation state
+→ UI
+
+Use local Signals / Signal Store primarily for:
+
+- interaction state;
+- UI state;
+- search text;
+- selection state;
+- workflow state;
+- derived presentation state;
+
+unless there is a documented reason to duplicate canonical server state.
+
+### Backend authority
+
+Frontend caching and local computation must NEVER weaken backend authority.
+
+The backend remains authoritative for:
+
+- authorization;
+- tenant ownership;
+- current versions;
+- prices and financial values;
+- availability;
+- configuration validity;
+- transactional commands;
+- concurrency control.
+
+Cached frontend data may optimize reads and UX, but must not become a second business authority.
+
+### Partial-cache correctness
+
+If only part of a paginated collection is cached:
+
+- local filtering may return immediate partial matches;
+- the UI must NOT claim that no result exists if more pages may still exist;
+- cache exhaustiveness must be derived from canonical pagination state such as `nextCursor`;
+- background hydration may continue when bounded and justified.
+
+### Infrastructure escalation rule
+
+Add new backend read/search infrastructure only when evidence shows that frontend caching/local computation is insufficient because of factors such as:
+
+- dataset cardinality;
+- payload size;
+- unacceptable memory usage;
+- excessive hydration time;
+- freshness requirements;
+- cross-dataset search;
+- server-side authorization needs;
+- cost;
+- measurable UX/performance constraints.
+
+When escalating to backend infrastructure, document WHY the frontend/cache solution is insufficient.
+
+Do not choose a more sophisticated backend architecture merely because it is technically possible.
+
+### Cost and UX principle
+
+Optimize the complete path:
+
+DynamoDB access pattern
+→ API/Lambda
+→ TanStack Query cache
+→ Angular derived state
+→ DOM rendering
+
+The preferred solution is the one that minimizes total system cost and complexity while preserving correctness and delivering the best practical user experience.
+
 ## Frontend Notifications
 
 Frontend action feedback should use the shared `NotificationService` backed by Angular Material `MatSnackBar`. Use snackbars for short, transient messages such as created, updated, disabled, saved, selection changed, lock/unlock completed, no changes detected, or recoverable action failures. Prefer backend-provided user-facing `message` values from success or normalized error responses, including nested shapes like `{ message: { code, message } }`; use Transloco fallback keys only when no safe backend message is available. Error snackbars must use `error-notification-overlay` and keep the error/red visual treatment rather than Material’s default dark snackbar. Never expose technical details such as `PK`, `SK`, `GSI*`, stack traces, raw AWS errors, or internal exception names. Keep form validation inline, page empty states in page context, blocking errors visible in the page, and risky-action explanations in confirmation dialogs; snackbars may be secondary feedback after those actions complete or fail.

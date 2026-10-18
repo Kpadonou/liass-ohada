@@ -152,3 +152,70 @@ describe('RESTO-1C validated API contracts', () => {
     http.expectNone(base + restaurantPath('table', context, rid(4)) + '/qr');
   });
 });
+
+describe('operational Carte transport safety', () => {
+  const org = signal('org'),
+    user = signal('user'),
+    revision = signal(1);
+  let api: RestaurantsApi, http: HttpTestingController;
+  const ctx = { org: 'org', user: 'user', revision: 1, outlet: rid(2), menu: rid(7) };
+  beforeEach(() => {
+    org.set('org');
+    user.set('user');
+    revision.set(1);
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: AuthStore,
+          useValue: { effectiveOrgId: org, currentUserId: user, contextRevision: revision },
+        },
+      ],
+    });
+    api = TestBed.inject(RestaurantsApi);
+    http = TestBed.inject(HttpTestingController);
+  });
+  afterEach(() => {
+    http.verify();
+    TestBed.resetTestingModule();
+  });
+  it('requests one unified 100-row page with no category or search parameter', async () => {
+    const promise = api.cartePage(ctx, 'next', new AbortController().signal);
+    const request = http.expectOne((r) => r.url.endsWith('/menu/items'));
+    expect(request.request.params.keys()).toEqual(['limit', 'cursor']);
+    expect(request.request.params.get('limit')).toBe('100');
+    request.flush({ outletId: ctx.outlet, menuId: ctx.menu, items: [] });
+    await expect(promise).resolves.toMatchObject({ items: [] });
+  });
+  it('aborts the underlying HTTP request when the Query signal is cancelled', async () => {
+    const controller = new AbortController();
+    const promise = api.cartePage(ctx, undefined, controller.signal);
+    const rejected = expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+    const request = http.expectOne((r) => r.url.endsWith('/menu/items'));
+    controller.abort();
+    expect(request.cancelled).toBe(true);
+    await rejected;
+  });
+  it.each(['organization', 'principal', 'revision'])(
+    'rejects late data after %s change',
+    async (dimension) => {
+      const promise = api.cartePage(ctx, undefined, new AbortController().signal);
+      const rejected = expect(promise).rejects.toMatchObject({ status: 409 });
+      const request = http.expectOne((r) => r.url.endsWith('/menu/items'));
+      if (dimension === 'organization') org.set('other');
+      if (dimension === 'principal') user.set('other');
+      if (dimension === 'revision') revision.set(2);
+      request.flush({ outletId: ctx.outlet, menuId: ctx.menu, items: [] });
+      await rejected;
+    },
+  );
+  it('rejects foreign outlet/Menu response ownership', async () => {
+    const promise = api.cartePage(ctx, undefined, new AbortController().signal);
+    const rejected = expect(promise).rejects.toThrow('Mismatched Carte');
+    http
+      .expectOne((r) => r.url.endsWith('/menu/items'))
+      .flush({ outletId: rid(12), menuId: ctx.menu, items: [] });
+    await rejected;
+  });
+});

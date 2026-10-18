@@ -37,6 +37,10 @@ Before changing code or infrastructure, check and record:
 9. **Observability/audit**: identify logs, metrics, trace correlation, audit records, idempotency, retries, and sensitive-data handling appropriate to the change.
 10. **Backward-compatible migration**: preserve current APIs, data, routes, authentication, cabinet workflows, and AWS resources unless an explicit reviewed migration changes them.
 
+## Read-model simplification review
+
+Before adding backend indexes, projections, search infrastructure or specialized read models, evaluate bounded frontend/server-state caching, prefetch, reuse and local derived computation first. Compare real DTO/cardinality, network/database cost, memory/rendering, freshness, pagination, concurrency, cancellation and tenant safety; do not assume loading an unbounded collection is acceptable. Preserve backend command authority. Where established, TanStack Query owns fetched server collections; do not duplicate them in Signal Store or another store merely for local search. UI signals may own search/selection and derived views. Record the simpler option and its limits before approving extra backend infrastructure.
+
 ## Invariants
 
 - Keep one platform brand, one authenticated application, one Cognito identity system, and one global organization identity.

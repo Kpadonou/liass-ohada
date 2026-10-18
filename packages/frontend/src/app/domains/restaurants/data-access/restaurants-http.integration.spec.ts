@@ -167,7 +167,7 @@ function configure(mode = 'menu', data?: RestaurantEditorData) {
         useValue: {
           effectiveOrgId: org,
           currentUserId: () => 'integration-user',
-          contextRevision: org,
+          contextRevision: () => 0,
           invalidateSessionContext: vi.fn(),
           activeWorkspaceOrgId: org,
           activeWorkspaceType: () => 'COMPANY',
@@ -638,7 +638,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
     expect((await raw('/restaurants/restaurant', 'POST', { name: 'invalid' })).status).toBe(400);
     expect((await raw('/restaurants/outlets/' + rid(900))).status).toBe(404);
   });
-  it('verifies all 38 client operations against the canonical runtime registry', async () => {
+  it('verifies all 39 client operations against the canonical runtime registry', async () => {
     await createFixture();
     const map = {
       restaurant: root,
@@ -650,6 +650,12 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       category: categories[0],
       item: items[0],
     };
+    const carte = await api.cartePage(
+      { org: 'org-a', user: 'integration-user', revision: 0, outlet: outlet.id, menu: map.menu.id },
+      undefined,
+      new AbortController().signal,
+    );
+    expect(carte.items.length).toBeGreaterThan(0);
     const ctxFor = (kind: RestaurantKind) =>
       kind === 'table'
         ? { ...site(), areaId: areas[0].id }
@@ -687,7 +693,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
     expect(new Set(stats.calls.map((call) => call.name))).toEqual(
       new Set(registry.map((route) => route.name)),
     );
-    expect(registry).toHaveLength(38);
+    expect(registry).toHaveLength(39);
     expect(stats.scans).toBe(0);
   }, 30000);
 });

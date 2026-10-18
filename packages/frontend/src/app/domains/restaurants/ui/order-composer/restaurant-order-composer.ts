@@ -1,3 +1,12 @@
+import {
+  RestaurantCarteQueries,
+  CarteItem,
+  carteBytes,
+  carteTokens,
+  matchesCarteTokens,
+  CARTE_PAGE_BUDGET,
+  CARTE_BYTE_BUDGET,
+} from '../../data-access/restaurant-carte.queries';
 import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable-select/searchable-select.component';
 import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -17,8 +26,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
@@ -44,8 +51,6 @@ type Intent = { kind: OrderCommand; input: Record<string, unknown>; order?: stri
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
-    MatButtonToggleModule,
     MatTooltipModule,
     LiassCardComponent,
     TranslocoModule,
@@ -142,32 +147,41 @@ export class RestaurantOrderComposer {
     );
   });
   readonly menuQuery = injectQuery(() => this.queries.menu(this.ctx(), this.live()));
-  readonly categoryQuery = injectInfiniteQuery(() =>
-    this.queries.menuPages(
-      this.ctx(),
-      'category',
-      '',
+  private readonly carteQueries = inject(RestaurantCarteQueries);
+  readonly carteContext = computed(() => ({
+    ...this.ctx(),
+    menu: this.menuQuery.data()?.id ?? '',
+  }));
+  readonly hydrationBudget = signal({ pages: CARTE_PAGE_BUDGET, bytes: CARTE_BYTE_BUDGET });
+  // Cached query callbacks retain the small budget signal, never this page/DOM.
+  private readonly restartCarteBudget = this.hydrationBudget.set.bind(this.hydrationBudget, {
+    pages: CARTE_PAGE_BUDGET,
+    bytes: CARTE_BYTE_BUDGET,
+  });
+  readonly menuItemsQuery = injectInfiniteQuery(() =>
+    this.carteQueries.pages(
+      this.carteContext(),
       this.live() && !!this.menuQuery.data()?.isActive,
+      this.hydrationBudget,
+      this.restartCarteBudget,
     ),
   );
-  readonly categories = computed(() =>
-    this.categoryQuery.isSuccess()
-      ? this.categoryQuery
-          .data()!
-          .pages.flatMap((page) => page.items)
-          .filter((item) => item.isActive)
-      : [],
-  );
-  readonly categoryChoice = signal<{ context: string; id: string } | null>(null);
-  readonly category = computed(() =>
-    this.categoryChoice()?.context === this.identity() &&
-    this.categories().some((c) => c.id === this.categoryChoice()!.id)
-      ? this.categoryChoice()!.id
-      : (this.categories()[0]?.id ?? ''),
-  );
-  readonly menuItemsQuery = injectInfiniteQuery(() =>
-    this.queries.menuPages(this.ctx(), 'item', this.category(), this.live()),
-  );
+  readonly displayCount = signal(50);
+  readonly foreground = signal(document.visibilityState !== 'hidden' && navigator.onLine);
+  readonly budgetReached = computed(() => {
+    const pages = this.menuItemsQuery.data()?.pages ?? [],
+      budget = this.hydrationBudget();
+    return pages.length >= budget.pages || carteBytes(pages) >= budget.bytes;
+  });
+  readonly incomplete = computed(() => !!this.menuItemsQuery.data()?.pages.at(-1)?.nextCursor);
+  continueCarte() {
+    const pages = this.menuItemsQuery.data()?.pages ?? [];
+    this.hydrationBudget.set({
+      pages: pages.length + CARTE_PAGE_BUDGET,
+      bytes: carteBytes(pages) + CARTE_BYTE_BUDGET,
+    });
+    void this.menuItemsQuery.fetchNextPage();
+  }
   readonly orderControl = new FormControl('', { nonNullable: true });
   readonly orderOptions = computed(() =>
     this.orders().map((order) => ({
@@ -180,14 +194,22 @@ export class RestaurantOrderComposer {
   );
   readonly search = new FormControl('', { nonNullable: true });
   readonly searchText = signal('');
-  readonly menuItems = computed(() => {
-    if (!this.menuItemsQuery.isSuccess()) return [];
-    const query = this.normalize(this.searchText());
-    return this.menuItemsQuery
-      .data()!
-      .pages.flatMap((page) => page.items)
-      .filter((item) => item.isActive && this.normalize(item.name).includes(query));
+  readonly indexedItems = computed(() =>
+    [
+      ...new Map(
+        (this.menuItemsQuery.data()?.pages ?? [])
+          .flatMap((page) => page.items)
+          .map((item) => [item.id, item]),
+      ).values(),
+    ].map((item) => ({ item, tokens: carteTokens(item.name) })),
+  );
+  readonly matchingItems = computed(() => {
+    const query = carteTokens(this.searchText());
+    return this.indexedItems()
+      .filter((row) => matchesCarteTokens(row.tokens, query))
+      .map((row) => row.item);
   });
+  readonly menuItems = computed(() => this.matchingItems().slice(0, this.displayCount()));
   readonly names = signal<Record<string, string>>({});
   readonly busy = signal(false);
   readonly addingItem = signal<string | null>(null);
@@ -338,9 +360,31 @@ export class RestaurantOrderComposer {
       if (this.busy() || this.pending()) this.orderControl.disable({ emitEvent: false });
       else this.orderControl.enable({ emitEvent: false });
     });
-    const sub = this.search.valueChanges.subscribe((value) => this.searchText.set(value));
+    const sub = this.search.valueChanges.subscribe((value) => {
+      this.searchText.set(value);
+      this.displayCount.set(50);
+    });
+    const visibility = () =>
+      this.foreground.set(document.visibilityState !== 'hidden' && navigator.onLine);
+    document.addEventListener('visibilitychange', visibility);
+    window.addEventListener('online', visibility);
+    window.addEventListener('offline', visibility);
+    effect(() => {
+      if (
+        this.live() &&
+        this.foreground() &&
+        this.menuItemsQuery.hasNextPage() &&
+        !this.menuItemsQuery.isFetching() &&
+        !this.menuItemsQuery.isError() &&
+        !this.budgetReached()
+      )
+        void this.menuItemsQuery.fetchNextPage();
+    });
     window.addEventListener('resize', this.measureOrderRegion);
     inject(DestroyRef).onDestroy(() => {
+      document.removeEventListener('visibilitychange', visibility);
+      window.removeEventListener('online', visibility);
+      window.removeEventListener('offline', visibility);
       this.orderResize?.disconnect();
       window.removeEventListener('resize', this.measureOrderRegion);
       clearTimeout(this.focusTimer);
@@ -357,7 +401,8 @@ export class RestaurantOrderComposer {
         this.contextAtStart = identity;
         this.focusRequest.set(null);
         this.choice.set(null);
-        this.categoryChoice.set(null);
+        this.displayCount.set(50);
+        this.hydrationBudget.set({ pages: CARTE_PAGE_BUDGET, bytes: CARTE_BYTE_BUDGET });
         this.pending.set(null);
         this.busy.set(false);
         this.addingItem.set(null);
@@ -418,7 +463,13 @@ export class RestaurantOrderComposer {
       }
     });
     effect(() => {
-      const errors = [this.ordersQuery.error(), this.orderQuery.error(), this.itemsQuery.error()];
+      const errors = [
+        this.ordersQuery.error(),
+        this.orderQuery.error(),
+        this.itemsQuery.error(),
+        this.menuItemsQuery.error(),
+        this.menuQuery.error(),
+      ];
       if (
         errors.some(
           (error) => error instanceof HttpErrorResponse && [401, 403, 404].includes(error.status),
@@ -429,12 +480,6 @@ export class RestaurantOrderComposer {
   }
   private same(identity: string) {
     return !this.destroyed && identity === this.identity();
-  }
-  private normalize(value: string) {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .toLocaleLowerCase();
   }
   editable(order: c.RestaurantOrder) {
     return order.status === 'DRAFT' || order.status === 'SUBMITTED';
@@ -458,11 +503,9 @@ export class RestaurantOrderComposer {
   choose(id: string) {
     if (!this.busy() && !this.pending()) this.choice.set({ context: this.identity(), id });
   }
-  chooseCategory(id: string) {
-    this.categoryChoice.set({ context: this.identity(), id });
-    this.search.setValue('');
-  }
-  private equivalentDraft(item: c.MenuItem) {
+  private equivalentDraft(
+    item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>,
+  ) {
     return this.drafts().find(
       (line) =>
         line.menuItemId === item.id &&
@@ -471,11 +514,10 @@ export class RestaurantOrderComposer {
         line.expectedMenuItemVersion === item.version,
     );
   }
-  canAddItem(item: c.MenuItem) {
+  canAddItem(item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>) {
     const equivalent = this.equivalentDraft(item);
     return (
       !this.addingItem() &&
-      item.isActive &&
       item.availability === 'AVAILABLE' &&
       (equivalent
         ? this.ready() &&
@@ -485,7 +527,7 @@ export class RestaurantOrderComposer {
         : this.canAdd())
     );
   }
-  async add(item: c.MenuItem) {
+  async add(item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>) {
     if (!this.canAddItem(item)) return;
     const identity = this.identity();
     const focusLabel = document.activeElement?.getAttribute('aria-label');
@@ -508,7 +550,9 @@ export class RestaurantOrderComposer {
       }
     }
   }
-  private async performAdd(item: c.MenuItem) {
+  private async performAdd(
+    item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>,
+  ) {
     const equivalent = this.equivalentDraft(item);
     if (equivalent) {
       await this.quantity(equivalent, 1);
@@ -643,7 +687,10 @@ export class RestaurantOrderComposer {
   async refresh() {
     const ctx = this.ctx(),
       identity = this.identity();
-    await this.queries.changed(ctx, this.selectedId() || undefined, true);
+    await Promise.all([
+      this.queries.changed(ctx, this.selectedId() || undefined, true),
+      this.queries.menuChanged(ctx, ''),
+    ]);
     if (this.same(identity)) this.denied.set(false);
   }
   private async run(intent: Intent) {
@@ -700,7 +747,7 @@ export class RestaurantOrderComposer {
       );
       await Promise.allSettled([
         this.queries.changed(ctx, intent.order, true),
-        this.queries.menuChanged(ctx, this.category()),
+        ...(this.message() === 'MENU_CONFLICT' ? [this.queries.menuChanged(ctx, '')] : []),
       ]);
       return null;
     } finally {

@@ -4757,7 +4757,7 @@
       "ADD": "Add",
       "ADD_ITEM": "Add {{name}}",
       "SEARCH": "Search items",
-      "LOADED_SEARCH": "Searches loaded items in this category.",
+      "LOADED_SEARCH": "Search loaded menu items.",
       "MORE_CATEGORIES": "Load more categories",
       "MORE_ITEMS": "Load more items",
       "MORE_LINES": "Load more order lines",
@@ -4792,7 +4792,9 @@
         "CANCELLED": "Cancelled"
       },
       "NAV": "Order workspace sections",
-      "MENU_CONFLICT": "The menu has changed. Remove the affected draft items, then add them from the refreshed menu before confirming."
+      "MENU_CONFLICT": "The menu has changed. Remove the affected draft items, then add them from the refreshed menu before confirming.",
+      "PARTIAL_CARTE": "Searching loaded items · menu loading or incomplete.",
+      "CONTINUE_CARTE": "Load more menu items"
     }
   }
 }

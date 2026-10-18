@@ -12,6 +12,10 @@ import { RestaurantKind, RestaurantListKind, RestaurantContext } from './restaur
 import { ZodError } from 'zod';
 import { HttpErrorResponse } from '@angular/common/http';
 export const restaurantKeys = {
+  carteMenu: (org: string, user: string, revision: number, outlet: string) =>
+    ['restaurants', org, 'operational-menu', user, revision, outlet] as const,
+  carte: (org: string, user: string, revision: number, outlet: string, menu: string) =>
+    ['restaurants', org, 'operational-carte', user, revision, outlet, menu, 'browse-v1'] as const,
   serviceOrder: (
     org: string,
     user: string,
@@ -295,12 +299,29 @@ export class RestaurantsQueries {
   }
   async changed(org: string, kind: RestaurantKind, ctx: RestaurantContext = {}) {
     await this.client.invalidateQueries({ queryKey: restaurantKeys.collection(org, kind, ctx) });
+    if (['menu', 'category', 'item'].includes(kind) && ctx.outletId)
+      await this.client.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === 'restaurants' &&
+          query.queryKey[1] === org &&
+          ['operational-carte', 'operational-menu'].includes(String(query.queryKey[2])) &&
+          query.queryKey[5] === ctx.outletId,
+      });
     if (kind === 'table' || kind === 'area' || kind === 'outlet')
       await this.client.invalidateQueries({
         queryKey: ctx.outletId
           ? restaurantKeys.floor(org, ctx.outletId)
           : ['restaurants', org, 'service-floor'],
       });
+  }
+  async refreshCarte(org: string, outlet: string) {
+    await this.client.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey[0] === 'restaurants' &&
+        query.queryKey[1] === org &&
+        ['operational-carte', 'operational-menu'].includes(String(query.queryKey[2])) &&
+        query.queryKey[5] === outlet,
+    });
   }
   async denied(org: string) {
     await this.client.invalidateQueries({ queryKey: ['product-access', org] });

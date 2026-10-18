@@ -70,7 +70,7 @@ export class RestaurantOrdersQueries {
   }
   menu(ctx: ServiceOrderContext, enabled: boolean) {
     return queryOptions({
-      queryKey: this.key(ctx, 'menu'),
+      queryKey: restaurantKeys.carteMenu(ctx.org, ctx.user, ctx.revision, ctx.outlet),
       queryFn: async () => {
         this.api.assertContext(ctx);
         const menu = await this.menuApi.get(ctx.org, 'menu', { outletId: ctx.outlet });
@@ -80,7 +80,8 @@ export class RestaurantOrdersQueries {
       },
       enabled,
       retry: false,
-      staleTime: 60_000,
+      staleTime: 300_000,
+      gcTime: 900_000,
     });
   }
   menuPages<K extends Extract<RestaurantListKind, 'category' | 'item'>>(
@@ -166,6 +167,13 @@ export class RestaurantOrdersQueries {
     else await reconcile();
   }
   async menuChanged(ctx: ServiceOrderContext, category: string) {
+    await this.client.invalidateQueries({
+      predicate: (query) =>
+        query.queryKey[0] === 'restaurants' &&
+        query.queryKey[1] === ctx.org &&
+        ['operational-carte', 'operational-menu'].includes(String(query.queryKey[2])) &&
+        query.queryKey[5] === ctx.outlet,
+    });
     await Promise.all(
       ['menu', 'category', 'item', 'draft-name'].map((kind) =>
         this.client.invalidateQueries({

@@ -97,39 +97,16 @@
                 <mat-icon aria-hidden="true">restaurant_menu</mat-icon>
                 {{ 'RESTAURANTS.ORDER_TAKING.MENU' | transloco }}
               </h2>
-              @if (menuQuery.isPending() || categoryQuery.isPending()) {
+              @if (menuQuery.isPending()) {
                 <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
-              } @else if (menuQuery.isError() || categoryQuery.isError()) {
+              } @else if (menuQuery.isError()) {
                 <p role="alert">{{ 'RESTAURANTS.ORDER_TAKING.MENU_ERROR' | transloco }}</p>
-                <button
-                  mat-stroked-button
-                  type="button"
-                  (click)="queries.menuChanged(ctx(), category())"
-                >
+                <button mat-stroked-button type="button" (click)="queries.menuChanged(ctx(), '')">
                   {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
                 </button>
               } @else if (!menuQuery.data()?.isActive) {
                 <p role="status">{{ 'RESTAURANTS.ORDER_TAKING.NO_MENU' | transloco }}</p>
               } @else {
-                @if (categories().length > 1) {
-                  <mat-button-toggle-group
-                    class="max-w-full min-w-0 overflow-x-auto"
-                    [value]="category()"
-                    [hideSingleSelectionIndicator]="true"
-                    [attr.aria-label]="'RESTAURANTS.ORDER_TAKING.CATEGORY' | transloco"
-                    (change)="chooseCategory($event.value)"
-                    data-testid="category-navigation"
-                  >
-                    @for (option of categories(); track option.id) {
-                      <mat-button-toggle [value]="option.id">{{ option.name }}</mat-button-toggle>
-                    }
-                  </mat-button-toggle-group>
-                }
-                @if (categoryQuery.hasNextPage()) {
-                  <button mat-button type="button" (click)="categoryQuery.fetchNextPage()">
-                    {{ 'RESTAURANTS.ORDER_TAKING.MORE_CATEGORIES' | transloco }}
-                  </button>
-                }
                 <mat-form-field class="liass-compact-filter w-full" subscriptSizing="dynamic"
                   ><mat-label>{{ 'RESTAURANTS.ORDER_TAKING.SEARCH' | transloco }}</mat-label
                   ><input matInput [formControl]="search" /><mat-icon matPrefix>search</mat-icon
@@ -139,7 +116,7 @@
                 >
                 @if (menuItemsQuery.isPending()) {
                   <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
-                } @else if (menuItemsQuery.isError()) {
+                } @else if (menuItemsQuery.isError() && !menuItemsQuery.data()) {
                   <p role="alert">{{ 'RESTAURANTS.ORDER_TAKING.MENU_ERROR' | transloco }}</p>
                   <button mat-stroked-button type="button" (click)="menuItemsQuery.refetch()">
                     {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
@@ -151,6 +128,7 @@
                     >
                       <div class="min-w-0 flex-1">
                         <p class="break-words text-sm font-medium">{{ item.name }}</p>
+                        <p class="text-xs text-app-text-secondary">{{ item.categoryName }}</p>
                         @if (item.availability !== 'AVAILABLE') {
                           <p class="text-xs">
                             {{ 'RESTAURANTS.ORDER_TAKING.UNAVAILABLE' | transloco }}
@@ -181,19 +159,35 @@
                       </button>
                     </div>
                   } @empty {
-                    <p role="status" class="text-sm text-app-text-secondary">
-                      {{ 'RESTAURANTS.ORDER_TAKING.NO_ITEMS' | transloco }}
-                    </p>
+                    @if (!incomplete()) {
+                      <p role="status" class="text-sm text-app-text-secondary">
+                        {{ 'RESTAURANTS.ORDER_TAKING.NO_ITEMS' | transloco }}
+                      </p>
+                    }
                   }
-                  @if (menuItemsQuery.hasNextPage()) {
+                  @if (matchingItems().length > displayCount()) {
                     <button
-                      mat-stroked-button
+                      mat-button
                       type="button"
-                      class="min-h-11"
-                      (click)="menuItemsQuery.fetchNextPage()"
+                      (click)="displayCount.set(displayCount() + 50)"
                     >
                       {{ 'RESTAURANTS.ORDER_TAKING.MORE_ITEMS' | transloco }}
                     </button>
+                  }
+                  @if (incomplete()) {
+                    <p role="status" class="text-xs text-app-text-secondary">
+                      {{ 'RESTAURANTS.ORDER_TAKING.PARTIAL_CARTE' | transloco }}
+                    </p>
+                    @if (budgetReached() || menuItemsQuery.isError()) {
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        [disabled]="menuItemsQuery.isFetching()"
+                        (click)="continueCarte()"
+                      >
+                        {{ 'RESTAURANTS.ORDER_TAKING.CONTINUE_CARTE' | transloco }}
+                      </button>
+                    }
                   }
                 }
               }

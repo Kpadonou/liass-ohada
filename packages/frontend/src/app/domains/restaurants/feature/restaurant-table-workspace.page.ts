@@ -127,6 +127,12 @@ export class RestaurantTableWorkspacePage {
         )
       : '';
   });
+  async refresh() {
+    await Promise.all([
+      this.query.refetch(),
+      this.queries.refreshCarte(this.queries.scope(), this.outletId()),
+    ]);
+  }
   duration() {
     const session = this.session();
     if (!session) return '';
