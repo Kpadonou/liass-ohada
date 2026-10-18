@@ -4759,7 +4759,7 @@
       "SEARCH": "Search items",
       "LOADED_SEARCH": "Search loaded menu items.",
       "MORE_CATEGORIES": "Load more categories",
-      "MORE_ITEMS": "Load more items",
+      "MORE_ITEMS": "Show more",
       "MORE_LINES": "Load more order lines",
       "LOAD_BEFORE_EDIT": "Load the remaining lines before editing or confirming this order.",
       "NO_DRAFT": "No draft items. Choose items from the menu.",
@@ -4793,8 +4793,10 @@
       },
       "NAV": "Order workspace sections",
       "MENU_CONFLICT": "The menu has changed. Remove the affected draft items, then add them from the refreshed menu before confirming.",
-      "PARTIAL_CARTE": "Searching loaded items · menu loading or incomplete.",
-      "CONTINUE_CARTE": "Load more menu items"
+      "PARTIAL_CARTE": "Search covers loaded items only.",
+      "CONTINUE_CARTE": "Load more menu items",
+      "SUBMIT_PENDING": "Submitting…",
+      "CARTE_HYDRATING": "Menu items loading…"
     }
   }
 }

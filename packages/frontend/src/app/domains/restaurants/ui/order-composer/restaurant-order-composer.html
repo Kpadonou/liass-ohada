@@ -109,11 +109,20 @@
               } @else {
                 <mat-form-field class="liass-compact-filter w-full" subscriptSizing="dynamic"
                   ><mat-label>{{ 'RESTAURANTS.ORDER_TAKING.SEARCH' | transloco }}</mat-label
-                  ><input matInput [formControl]="search" /><mat-icon matPrefix>search</mat-icon
-                  ><mat-hint>{{
-                    'RESTAURANTS.ORDER_TAKING.LOADED_SEARCH' | transloco
-                  }}</mat-hint></mat-form-field
+                  ><input matInput [formControl]="search" /><mat-icon matPrefix
+                    >search</mat-icon
+                  ></mat-form-field
                 >
+                @if (incomplete()) {
+                  <p role="status" class="text-xs text-app-text-secondary">
+                    {{
+                      (menuItemsQuery.isFetchingNextPage()
+                        ? 'RESTAURANTS.ORDER_TAKING.CARTE_HYDRATING'
+                        : 'RESTAURANTS.ORDER_TAKING.PARTIAL_CARTE'
+                      ) | transloco
+                    }}
+                  </p>
+                }
                 @if (menuItemsQuery.isPending()) {
                   <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
                 } @else if (menuItemsQuery.isError() && !menuItemsQuery.data()) {
@@ -128,7 +137,9 @@
                     >
                       <div class="min-w-0 flex-1">
                         <p class="break-words text-sm font-medium">{{ item.name }}</p>
-                        <p class="text-xs text-app-text-secondary">{{ item.categoryName }}</p>
+                        <p class="break-words text-xs text-app-text-secondary">
+                          {{ item.categoryName }}
+                        </p>
                         @if (item.availability !== 'AVAILABLE') {
                           <p class="text-xs">
                             {{ 'RESTAURANTS.ORDER_TAKING.UNAVAILABLE' | transloco }}
@@ -141,7 +152,7 @@
                         {{ price(item.price.amountMinor, item.price.currency) }}
                       </p>
                       <button
-                        matButton="tonal"
+                        mat-flat-button
                         type="button"
                         class="liass-action-secondary min-h-11 shrink-0"
                         [attr.aria-label]="
@@ -175,9 +186,6 @@
                     </button>
                   }
                   @if (incomplete()) {
-                    <p role="status" class="text-xs text-app-text-secondary">
-                      {{ 'RESTAURANTS.ORDER_TAKING.PARTIAL_CARTE' | transloco }}
-                    </p>
                     @if (budgetReached() || menuItemsQuery.isError()) {
                       <button
                         mat-stroked-button
@@ -203,7 +211,6 @@
             <liass-card
               class="min-w-0 space-y-3 xl:col-start-2 xl:row-start-1"
               padding="sm"
-              [attr.aria-busy]="busy()"
               aria-labelledby="draft-title"
             >
               <div class="space-y-2">
@@ -226,11 +233,6 @@
                     {{ quantityError() }}
                   </p>
                 }
-                @if (busy() && !addingItem()) {
-                  <p role="status" class="text-sm">
-                    {{ 'RESTAURANTS.ORDER_TAKING.SAVING' | transloco }}
-                  </p>
-                }
                 @if (selectedId() && (orderQuery.isPending() || itemsQuery.isPending())) {
                   <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
                 } @else if (selectedId() && (itemsQuery.isError() || orderQuery.isError())) {
@@ -243,7 +245,11 @@
                     <p class="text-sm">{{ 'RESTAURANTS.ORDER_TAKING.TERMINAL' | transloco }}</p>
                   }
                   @for (line of drafts(); track line.itemId) {
-                    <div class="space-y-1 border-b border-app-border py-2" data-testid="draft-line">
+                    <div
+                      class="space-y-1 border-b border-app-border py-2"
+                      data-testid="draft-line"
+                      [attr.aria-busy]="busy() && pending()?.item === line.itemId"
+                    >
                       <p class="break-words text-sm font-medium">{{ name(line) }}</p>
                       @if (line.notes) {
                         <p class="break-words text-xs text-app-text-secondary">{{ line.notes }}</p>
@@ -337,14 +343,12 @@
                       {{ 'RESTAURANTS.ORDER_TAKING.MORE_LINES' | transloco }}
                     </button>
                   }
-                  @if (drafts().length >= 12) {
-                    <p role="status" class="text-sm">
-                      {{ 'RESTAURANTS.ORDER_TAKING.LIMIT' | transloco }}
-                    </p>
-                  }
                   @if (drafts().length) {
-                    <div class="space-y-2 bg-app-surface pt-1">
-                      <p class="text-xs text-app-text-secondary">
+                    <div
+                      class="flex flex-col gap-2 bg-app-surface pt-1 sm:items-end"
+                      data-testid="draft-footer"
+                    >
+                      <p class="text-xs text-app-text-secondary sm:self-start">
                         {{ 'RESTAURANTS.ORDER_TAKING.ACCEPT_HELP' | transloco }}
                       </p>
                       <button
@@ -353,10 +357,16 @@
                         class="min-h-11 w-full sm:w-auto"
                         [disabled]="!canSubmit()"
                         (click)="submit()"
+                        [attr.aria-busy]="busy() && pending()?.kind === 'submit'"
                         data-testid="submit-round"
                       >
                         <mat-icon aria-hidden="true">check</mat-icon>
-                        {{ 'RESTAURANTS.ORDER_TAKING.SUBMIT' | transloco }}
+                        {{
+                          (busy() && pending()?.kind === 'submit'
+                            ? 'RESTAURANTS.ORDER_TAKING.SUBMIT_PENDING'
+                            : 'RESTAURANTS.ORDER_TAKING.SUBMIT'
+                          ) | transloco
+                        }}
                       </button>
                     </div>
                   }

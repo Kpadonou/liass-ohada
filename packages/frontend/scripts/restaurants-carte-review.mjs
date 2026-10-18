@@ -15,6 +15,74 @@ const calls = [],
   items = [];
 let sequence = 5000;
 const config = () => JSON.parse(readFileSync(process.argv[2], 'utf8'));
+const reviewNames = [
+  'Poulet braisé sauce maison',
+  'Jus d’ananas frais',
+  'Poisson grillé accompagné d’attiéké',
+  'Salade de fruits de saison',
+  'Café au lait',
+  'Eau minérale 1,5 L',
+];
+if (config().presentation) {
+  const owner = { orgId: org, outletId: id(2), schemaVersion: 1 };
+  const order = c.RestaurantOrderSchema.parse({
+    ...owner,
+    orderId: id(5000),
+    guestSessionId: id(9),
+    tableId: id(4),
+    orderType: 'DINE_IN',
+    status: 'SUBMITTED',
+    currency: 'XOF',
+    createdAt: stamp,
+    createdBy: 'review',
+    version: 1,
+    financialRevision: 0,
+    lineCount: 18,
+    acceptedLineCount: 6,
+    draftLineCount: 12,
+    dueMinor: 1050000,
+    paidMinor: 0,
+    reservedMinor: 0,
+    pendingPaymentCount: 0,
+  });
+  orders.push(order);
+  for (let i = 0; i < 18; i++) {
+    const line = {
+      ...owner,
+      orderId: order.orderId,
+      itemId: id(++sequence),
+      menuItemId: id(100 + i),
+      categoryId: id(i % 2 ? 16 : 6),
+      expectedMenuItemVersion: 1,
+      quantity: i === 0 ? 12 : 1,
+      status: i < 12 ? 'DRAFT' : 'ACCEPTED',
+      version: 1,
+      createdAt: stamp,
+    };
+    if (i >= 12)
+      line.snapshot = {
+        menuItemId: line.menuItemId,
+        menuId: id(7),
+        categoryId: line.categoryId,
+        itemVersion: 1,
+        categoryVersion: 1,
+        menuVersion: 1,
+        name: reviewNames[i % 6],
+        quantity: 1,
+        unitPriceMinor: 150000,
+        grossMinor: 150000,
+        subtotalMinor: 150000,
+        discountMinor: 0,
+        taxMinor: 0,
+        lineTotalMinor: 150000,
+        currency: 'XOF',
+        acceptedAt: stamp,
+        acceptedBy: 'review',
+        submissionId: id(6000 + Math.floor((i - 12) / 2)),
+      };
+    items.push(c.RestaurantOrderItemSchema.parse(line));
+  }
+}
 const server = http.createServer(async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', 'http://localhost:4200');
   res.setHeader(
@@ -83,7 +151,7 @@ const server = http.createServer(async (req, res) => {
       items: [4, 5]
         .map((n) => ({
           tableId: id(n),
-          name: n === 4 ? 'Terrasse des amis' : 'Salon du jardin',
+          name: n === 4 ? 'Terrasse jardin près de la baie vitrée' : 'Salle principale',
           code: 'T' + n,
           areaId: id(3),
           areaName: 'Terrasse',
@@ -123,20 +191,13 @@ const server = http.createServer(async (req, res) => {
         items: Array.from({ length: 100 }, (_, j) => ({
           id: id(100 + index * 100 + j),
           name:
-            (index === 2 && j === 99
-              ? 'Café crème spécial'
-              : [
-                  'Poulet braisé sauce maison',
-                  'Jus d’ananas frais',
-                  'Poisson grillé accompagné d’attiéké',
-                  'Assiette de fruits de saison',
-                ][j % 4]) +
+            (index === 2 && j === 99 ? 'Café crème spécial' : reviewNames[j % reviewNames.length]) +
             ' ' +
             (index * 100 + j + 1),
           outletId: outlet,
           menuId: id(7),
           categoryId: id(j % 2 ? 16 : 6),
-          categoryName: j % 2 ? 'Boissons' : 'Cuisine maison',
+          categoryName: j % 2 ? 'Boissons fraîches et spécialités de la maison' : 'Plats',
           price: { amountMinor: j % 2 ? 2500 : 150000, currency: 'XOF' },
           version: 1,
           availability: j === 8 ? 'UNAVAILABLE' : 'AVAILABLE',
@@ -156,7 +217,13 @@ const server = http.createServer(async (req, res) => {
         tableId: id(Number(session.slice(-2)) - 5),
         areaId: id(3),
         tableCode: 'T04',
-        tableName: session === id(9) ? 'Terrasse des amis' : 'Salon du jardin',
+        tableName:
+          session === id(9) ? 'Terrasse jardin près de la baie vitrée' : 'Salle principale',
+        responsibleStaff: {
+          staffId: 'review-staff',
+          displayName: 'Marie-Christine Adélaïde Kpadonou',
+          available: true,
+        },
         currency: 'XOF',
         status: 'OPEN',
         openedAt: stamp,
@@ -165,7 +232,7 @@ const server = http.createServer(async (req, res) => {
         financialRevision: 0,
         orderCount: orders.length,
         openOrderCount: orders.length,
-        dueMinor: 150000,
+        dueMinor: 1050000,
         paidMinor: 0,
         reservedMinor: 0,
         pendingPaymentCount: 0,
@@ -183,6 +250,8 @@ const server = http.createServer(async (req, res) => {
         : dataOrder(order),
     );
   if (req.method === 'POST' || req.method === 'PATCH') {
+    if (config().commandDelay)
+      await new Promise((resolve) => setTimeout(resolve, config().commandDelay));
     let raw = '';
     for await (const chunk of req) raw += chunk;
     const input = JSON.parse(raw || '{}');
@@ -280,7 +349,7 @@ const server = http.createServer(async (req, res) => {
       data: {
         ...meta,
         id: parts.at(-1),
-        name: 'Poulet braisé sauce maison',
+        name: reviewNames[(Number(parts.at(-1).slice(-4)) - 100) % 6] ?? reviewNames[0],
         outletId: outlet,
         menuId: id(7),
         categoryId: parts[6],

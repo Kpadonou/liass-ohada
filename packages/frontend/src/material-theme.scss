@@ -169,6 +169,9 @@ body {
 .liass-action-secondary {
   @include mat.button-overrides(
     (
+      filled-container-color: var(--mat-sys-secondary),
+      filled-label-text-color: var(--mat-sys-on-secondary),
+      filled-state-layer-color: var(--mat-sys-on-secondary),
       tonal-container-color: var(--mat-sys-secondary-container),
       tonal-label-text-color: var(--mat-sys-on-secondary-container),
     )

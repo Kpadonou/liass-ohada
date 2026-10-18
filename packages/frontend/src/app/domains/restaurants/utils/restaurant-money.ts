@@ -36,6 +36,8 @@ export function restaurantOperationalPrice(
   locale: string,
   contextCurrency?: string | null,
 ) {
-  const formatted = restaurantPrice(amount, currency, locale);
+  // Preserve locale grouping and exact minor-unit conversion, using a legible
+  // nonbreaking French group separator rather than the very narrow variant.
+  const formatted = restaurantPrice(amount, currency, locale).replaceAll('\u202f', '\u00a0');
   return contextCurrency === currency ? formatted.slice(0, -(currency.length + 1)) : formatted;
 }

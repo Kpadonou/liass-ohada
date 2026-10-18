@@ -4759,7 +4759,7 @@
       "SEARCH": "Rechercher un article",
       "LOADED_SEARCH": "Recherche dans les articles chargés de la carte.",
       "MORE_CATEGORIES": "Charger d’autres catégories",
-      "MORE_ITEMS": "Charger d’autres articles",
+      "MORE_ITEMS": "Afficher davantage",
       "MORE_LINES": "Charger la suite de la commande",
       "LOAD_BEFORE_EDIT": "Chargez la suite avant de modifier ou valider cette commande.",
       "NO_DRAFT": "Aucun article à valider. Choisissez des articles dans la carte.",
@@ -4793,8 +4793,10 @@
       },
       "NAV": "Sections de la commande",
       "MENU_CONFLICT": "La carte a changé. Retirez les articles concernés, puis ajoutez-les depuis la carte actualisée avant de valider.",
-      "PARTIAL_CARTE": "Recherche dans les articles chargés · carte en cours de chargement ou incomplète.",
-      "CONTINUE_CARTE": "Charger la suite de la carte"
+      "PARTIAL_CARTE": "Recherche limitée aux articles chargés.",
+      "CONTINUE_CARTE": "Charger la suite de la carte",
+      "SUBMIT_PENDING": "Validation…",
+      "CARTE_HYDRATING": "Carte en cours de chargement…"
     }
   }
 }

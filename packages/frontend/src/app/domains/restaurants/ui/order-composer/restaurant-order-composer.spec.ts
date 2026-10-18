@@ -1017,6 +1017,12 @@ it('retains loaded DOM on later-page failure and never claims exhaustive zero ma
 });
 it('does not hydrate while hidden/offline and resumes sequentially in foreground', async () => {
   page.foreground.set(false);
+  // Resolve the canonical Menu identity before explicitly refetching its Carte;
+  // otherwise the test can refetch the still-disabled placeholder key.
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.menuItemsQuery.isSuccess()).toBe(true);
+  });
   menu.cartePage.mockImplementation(async (_ctx, cursor) => ({
     outletId: rid(2),
     menuId: rid(7),
@@ -1024,11 +1030,112 @@ it('does not hydrate while hidden/offline and resumes sequentially in foreground
     ...(!cursor ? { nextCursor: 'last' } : {}),
   }));
   await page.menuItemsQuery.refetch();
-  fixture.detectChanges();
-  expect(page.menuItemsQuery.data()?.pages).toHaveLength(1);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.menuItemsQuery.data()?.pages).toHaveLength(1);
+    expect(page.incomplete()).toBe(true);
+  });
   page.foreground.set(true);
   await vi.waitFor(() => {
     fixture.detectChanges();
     expect(page.menuItemsQuery.data()?.pages).toHaveLength(2);
   });
+});
+
+it.each(['increase', 'decrease', 'entry', 'remove'] as const)(
+  'keeps %s pending local without a draft saving banner',
+  async (action) => {
+    await settle();
+    await page.add(item());
+    await settle();
+    await page.quantity(page.drafts()[0], 1);
+    await settle();
+    const command = api.command.getMockImplementation()!;
+    let release!: () => void;
+    api.command.mockImplementationOnce(
+      (...args) =>
+        new Promise((resolve) => {
+          release = () => resolve(command(...args));
+        }),
+    );
+    const line = page.drafts()[0],
+      menuNode = fixture.nativeElement.querySelector('#menu-title'),
+      draftNode = fixture.nativeElement.querySelector('[data-testid="draft-line"]');
+    let promise: Promise<unknown>;
+    if (action === 'entry') {
+      page.beginQuantity(line);
+      page.quantityInput(line).setValue('12');
+      promise = page.commitQuantity(line);
+    } else
+      promise =
+        action === 'remove'
+          ? page.remove(line)
+          : page.quantity(line, action === 'increase' ? 1 : -1);
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.busy()).toBe(true);
+    });
+    expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
+    expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
+    expect(fixture.nativeElement.querySelector('[data-testid="draft-line"]')).toBe(draftNode);
+    expect(page.search.enabled).toBe(true);
+    release();
+    await promise;
+    await settle();
+  },
+);
+it('aligns a compact desktop commit right and keeps mobile full width', async () => {
+  await settle();
+  await page.add(item());
+  await settle();
+  fixture.detectChanges();
+  const footer = fixture.nativeElement.querySelector('[data-testid="draft-footer"]');
+  const submit = fixture.nativeElement.querySelector('[data-testid="submit-round"]');
+  expect(footer.classList.contains('sm:items-end')).toBe(true);
+  expect(submit.classList.contains('w-full')).toBe(true);
+  expect(submit.classList.contains('sm:w-auto')).toBe(true);
+});
+it('local search and cached chunk expansion have no network/pending affordance', async () => {
+  await settle();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.menuItems().length).toBeGreaterThan(0);
+  });
+  const reads = menu.cartePage.mock.calls.length,
+    commands = api.command.mock.calls.length;
+  page.search.setValue('beer');
+  page.displayCount.set(100);
+  fixture.detectChanges();
+  expect(menu.cartePage).toHaveBeenCalledTimes(reads);
+  expect(api.command).toHaveBeenCalledTimes(commands);
+  expect(page.busy()).toBe(false);
+  expect(page.search.enabled).toBe(true);
+  expect(fixture.nativeElement.querySelector('mat-spinner,mat-progress-spinner')).toBeNull();
+});
+it('keeps submit progress on its button without replacing the workspace', async () => {
+  await settle();
+  await page.add(item());
+  await settle();
+  const command = api.command.getMockImplementation()!;
+  let release!: () => void;
+  api.command.mockImplementationOnce(
+    (...args) =>
+      new Promise((resolve) => {
+        release = () => resolve(command(...args));
+      }),
+  );
+  const menuNode = fixture.nativeElement.querySelector('#menu-title');
+  const promise = page.submit();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.busy()).toBe(true);
+  });
+  const button = fixture.nativeElement.querySelector('[data-testid="submit-round"]');
+  expect(button.textContent).toContain('Validation…');
+  expect(button.getAttribute('aria-busy')).toBe('true');
+  expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
+  expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
+  release();
+  await promise;
+  await settle();
 });

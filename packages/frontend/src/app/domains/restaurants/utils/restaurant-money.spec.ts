@@ -31,3 +31,17 @@ describe('Canonical restaurant minor-unit money', () => {
     expect(parseMinorInput('9007199254740991', 'XOF')).toBe(Number.MAX_SAFE_INTEGER);
   });
 });
+it.each([150000, 300000, 1050000])(
+  'renders %s with legible French locale grouping in operational context',
+  (amount) => {
+    const display = restaurantOperationalPrice(amount, 'XOF', 'fr', 'XOF');
+    expect(display).toBe(
+      new Intl.NumberFormat('fr', { maximumFractionDigits: 0, useGrouping: true })
+        .format(amount)
+        .replaceAll('\u202f', '\u00a0'),
+    );
+    expect(display).toContain('\u00a0');
+    expect(display).not.toContain('XOF');
+    expect(restaurantPrice(amount, 'XOF', 'fr')).toContain('XOF');
+  },
+);

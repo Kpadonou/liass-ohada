@@ -166,3 +166,7 @@ Do not use snackbars for critical legal/accounting warnings, irreversible action
 ## Restaurants Service Floor review fixtures
 
 Deterministic Service Floor reviews must contain at least one FREE and one OCCUPIED table, with valid outlet/area ownership and active opening prerequisites (including the menu). Exercise outlet A → B → A, ALL-areas opening from each card's own area, confirmed-open navigation to the returned GuestSession, and return to the occupied floor. Also include missing/inactive configuration, ambiguous retry and concurrent occupancy cases; a FREE occupancy state alone does not prove configuration readiness.
+
+## Local work and operational micro-actions
+
+No network = no waiting affordance. Local search, cached-row expansion and presentation changes respond immediately, without a spinner, disabled/pending state, saving copy or artificial delay. Independently running hydration may show a subtle local incomplete-data indicator without delaying useful local results. Server-backed restaurant Add/quantity/remove actions preserve canonical concurrency and mounted content; pending feedback stays local and never shows a page/draft-wide saving banner. Quantity supports neutral +/- plus labelled numeric entry, with Enter/blur commit and no mutation while typing. Global waiting feedback is reserved for genuinely blocking broad workflows.
