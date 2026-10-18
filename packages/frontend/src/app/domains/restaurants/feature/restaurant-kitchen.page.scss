@@ -1,0 +1,46 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.kitchen-board {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+}
+.kitchen-mobile-lanes {
+  display: none;
+}
+.kitchen-stations {
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+@media (max-width: 1100px) {
+  .kitchen-board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .kitchen-mobile-lanes {
+    display: flex;
+    max-width: 100%;
+  }
+  .kitchen-mobile-lanes mat-button-toggle {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.75rem;
+  }
+  .kitchen-lane-hidden {
+    display: none;
+  }
+}
+
+.kitchen-station-select {
+  display: none;
+}
+@media (max-width: 600px) {
+  .kitchen-stations {
+    display: none;
+  }
+  .kitchen-station-select {
+    display: block;
+  }
+}

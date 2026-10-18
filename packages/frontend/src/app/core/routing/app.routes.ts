@@ -157,6 +157,15 @@ export const routes: Routes = [
         },
         children: [
           {
+            path: 'kitchen',
+            canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-kitchen.page').then(
+                (m) => m.RestaurantKitchenPage,
+              ),
+            data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.KITCHEN.TITLE' },
+          },
+          {
             path: 'service/outlets/:outletId/sessions/:guestSessionId',
             canActivate: [productAccessGuard],
             loadComponent: () =>

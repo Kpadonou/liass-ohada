@@ -1,0 +1,96 @@
+<section
+  class="min-w-0 rounded-app-panel border border-app-border bg-app-surface-muted p-3"
+  [attr.aria-labelledby]="'kitchen-' + state()"
+>
+  <h2
+    [id]="'kitchen-' + state()"
+    tabindex="-1"
+    class="mb-3 flex items-center justify-between gap-2 text-base font-semibold outline-offset-4"
+  >
+    {{ 'RESTAURANTS.KITCHEN.' + state() | transloco
+    }}<span class="text-sm font-normal text-app-text-secondary"
+      >{{ tasks().length }}{{ queue.hasNextPage() ? '+' : '' }}</span
+    >
+  </h2>
+  <div class="space-y-2">
+    @if (queue.isPending()) {
+      <p role="status" class="text-sm">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+    }
+    @if (queue.isError()) {
+      <div role="alert" class="space-y-1 text-sm">
+        <p>{{ message(queue.error()) }}</p>
+        <button mat-button type="button" (click)="queue.refetch()">
+          {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
+        </button>
+      </div>
+    }
+    @if (!queue.isPending() && !queue.isError() && !tasks().length) {
+      <p class="py-4 text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS.KITCHEN.EMPTY_' + state() | transloco }}
+      </p>
+    }
+    @for (task of tasks(); track task.fireId) {
+      <article
+        class="min-w-0 space-y-2 rounded-app-control border border-app-border bg-app-surface p-3"
+        [attr.aria-busy]="pending(task)"
+      >
+        <h3 class="break-words text-sm font-semibold">{{ task.quantity }} × {{ task.name }}</h3>
+        <p class="break-words text-sm text-app-text-secondary">
+          @if (task.serviceContext.mode === 'DINE_IN') {
+            {{ task.serviceContext.tableName }}
+          } @else {
+            {{ 'RESTAURANTS.KITCHEN.' + task.serviceContext.mode | transloco }}
+          }
+        </p>
+        @if (task.notes) {
+          <p
+            class="whitespace-pre-wrap break-words rounded-app-control bg-app-surface-muted px-2 py-1 text-sm"
+          >
+            <span class="sr-only">{{ 'RESTAURANTS.KITCHEN.NOTES' | transloco }}: </span
+            >{{ task.notes }}
+          </p>
+        }
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <span class="text-xs text-app-text-secondary">{{ duration(task) }}</span>
+          @if (task.state === 'QUEUED' || task.state === 'IN_PROGRESS') {
+            <button
+              mat-flat-button
+              type="button"
+              class="min-h-11"
+              [disabled]="pending(task)"
+              [attr.aria-label]="
+                ('RESTAURANTS.KITCHEN.' + (task.state === 'QUEUED' ? 'START' : 'READY_ACTION')
+                  | transloco) +
+                ' · ' +
+                task.name
+              "
+              (click)="act(task)"
+            >
+              {{
+                'RESTAURANTS.KITCHEN.' +
+                  (pending(task) ? 'PENDING' : task.state === 'QUEUED' ? 'START' : 'READY_ACTION')
+                  | transloco
+              }}
+            </button>
+          } @else {
+            <span class="text-xs font-medium">{{ 'RESTAURANTS.KITCHEN.READY' | transloco }}</span>
+          }
+        </div>
+        @if (errors()[key(task)]) {
+          <p role="alert" class="text-sm">{{ errors()[key(task)] }}</p>
+        }
+      </article>
+    }
+    @if (queue.hasNextPage()) {
+      <button
+        mat-stroked-button
+        type="button"
+        class="w-full min-h-11"
+        [disabled]="queue.isFetchingNextPage()"
+        (click)="queue.fetchNextPage()"
+      >
+        {{ 'RESTAURANTS.KITCHEN.MORE' | transloco }}
+      </button>
+    }
+  </div>
+</section>

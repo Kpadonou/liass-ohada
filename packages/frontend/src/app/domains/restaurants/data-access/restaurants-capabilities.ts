@@ -26,6 +26,14 @@ export class RestaurantsCapabilities {
       ? RESTAURANTS_SERVICE_PERMISSIONS
       : [];
   }
+  canReadKitchen() {
+    return (
+      this.canRead() &&
+      ['OWNER', 'MANAGER', 'KITCHEN'].includes(
+        this.auth.activeWorkspace()?.productRoles?.RESTAURANTS ?? '',
+      )
+    );
+  }
   usesAssignedOutlets() {
     return this.canReadService() && !this.canManageSetup();
   }

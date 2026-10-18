@@ -1,0 +1,192 @@
+<div class="min-w-0 space-y-4">
+  <liass-page-header eyebrow="" subtitle="" [title]="'RESTAURANTS.KITCHEN.TITLE' | transloco" />
+  @if (!allowed()) {
+    <liass-restaurant-access-notice
+      kind="changed"
+      [secondaryHeading]="true"
+      [busy]="accessState.refreshing()"
+      [failed]="accessState.refreshFailed()"
+      (changeWorkspace)="changeWorkspace()"
+      (refresh)="refreshAccess()"
+    />
+  } @else {
+    @if (outletsQuery.isPending()) {
+      <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+    } @else if (outletsQuery.isError()) {
+      <p role="alert">{{ 'RESTAURANTS.UI.ERRORS.NETWORK' | transloco }}</p>
+      <button mat-button type="button" (click)="outletsQuery.refetch()">
+        {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+      </button>
+    } @else if (!outlets().length && !outletsQuery.hasNextPage()) {
+      @if (!self()) {
+        <section class="space-y-2">
+          <h2 class="text-base font-semibold">
+            {{ 'RESTAURANTS.UX.EMPTY.outlet.TITLE' | transloco }}
+          </h2>
+          <p class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.UX.EMPTY.outlet.DESCRIPTION' | transloco }}
+          </p>
+          <a mat-button routerLink="/restaurants/setup/locations">{{
+            'RESTAURANTS.UI.LOCATION' | transloco
+          }}</a>
+        </section>
+      } @else {
+        <liass-restaurant-access-notice
+          kind="unassigned"
+          [secondaryHeading]="true"
+          [busy]="accessState.refreshing()"
+          [failed]="accessState.refreshFailed()"
+          (changeWorkspace)="changeWorkspace()"
+          (refresh)="refreshAccess()"
+        />
+      }
+    } @else {
+      <div class="flex min-w-0 flex-wrap items-center justify-between gap-3">
+        @if (outlets().length > 1 || outletsQuery.hasNextPage()) {
+          <liass-searchable-select
+            class="block w-full min-w-0 sm:w-64"
+            controlType="select"
+            labelKey="RESTAURANTS.UI.LOCATION"
+            [options]="outletOptions()"
+            [ngModel]="outletId()"
+            (ngModelChange)="selectOutlet($event)"
+          />
+        } @else {
+          <p class="break-words text-sm font-medium">{{ outlet()?.name }}</p>
+        }
+        @if (station()) {
+          <button
+            mat-button
+            type="button"
+            class="min-h-11"
+            [disabled]="refreshing()"
+            (click)="refresh()"
+          >
+            <mat-icon>refresh</mat-icon>{{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+          </button>
+        }
+      </div>
+      @if (outletsQuery.hasNextPage()) {
+        <button
+          mat-button
+          type="button"
+          [disabled]="outletsQuery.isFetchingNextPage()"
+          (click)="outletsQuery.fetchNextPage()"
+        >
+          {{ 'RESTAURANTS.KITCHEN.MORE_OUTLETS' | transloco }}
+        </button>
+      }
+      @if (outlet()) {
+        @if (stationsQuery.isPending()) {
+          <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+        } @else if (stationsQuery.isError()) {
+          <p role="alert">{{ 'RESTAURANTS.UI.ERRORS.NETWORK' | transloco }}</p>
+          <button mat-button type="button" (click)="stationsQuery.refetch()">
+            {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
+          </button>
+        } @else {
+          @if (
+            activeStations().length && (activeStations().length > 1 || stationsQuery.hasNextPage())
+          ) {
+            @if (activeStations().length > 5) {
+              <liass-searchable-select
+                class="block w-full min-w-0 sm:w-72"
+                controlType="select"
+                labelKey="RESTAURANTS.KITCHEN.STATION"
+                [options]="stationOptions()"
+                [ngModel]="stationId()"
+                (ngModelChange)="selectStation($event)"
+              />
+            } @else {
+              <liass-searchable-select
+                class="kitchen-station-select block w-full"
+                controlType="select"
+                labelKey="RESTAURANTS.KITCHEN.STATION"
+                [options]="stationOptions()"
+                [ngModel]="stationId()"
+                (ngModelChange)="selectStation($event)"
+              /><mat-button-toggle-group
+                class="kitchen-stations"
+                [value]="stationId()"
+                (change)="selectStation($event.value)"
+                [attr.aria-label]="'RESTAURANTS.KITCHEN.STATION' | transloco"
+              >
+                @for (station of activeStations(); track station.id) {
+                  <mat-button-toggle [value]="station.id">{{ station.name }}</mat-button-toggle>
+                }
+              </mat-button-toggle-group>
+            }
+          }
+          @if (!activeStations().length && !stationsQuery.hasNextPage()) {
+            <p role="status" class="text-sm">{{ 'RESTAURANTS.KITCHEN.NO_STATION' | transloco }}</p>
+            @if (caps.canManageSetup()) {
+              <a mat-button routerLink="/restaurants/setup/stations">{{
+                'RESTAURANTS.KITCHEN.CONFIGURE' | transloco
+              }}</a>
+            }
+          }
+          @if (inactiveStations().length) {
+            <details class="text-sm">
+              <summary class="cursor-pointer py-2">
+                {{ 'RESTAURANTS.KITCHEN.INACTIVE_WORK' | transloco }}
+              </summary>
+              <div class="flex flex-wrap gap-2">
+                @for (station of inactiveStations(); track station.id) {
+                  <button mat-stroked-button type="button" (click)="selectStation(station.id)">
+                    {{ station.name }}
+                  </button>
+                }
+              </div>
+            </details>
+          }
+          @if (stationsQuery.hasNextPage()) {
+            <button
+              mat-button
+              type="button"
+              [disabled]="stationsQuery.isFetchingNextPage()"
+              (click)="stationsQuery.fetchNextPage()"
+            >
+              {{ 'RESTAURANTS.KITCHEN.MORE_STATIONS' | transloco }}
+            </button>
+          }
+          @if (station()) {
+            @if (activeStations().length === 1 || !station()?.isActive) {
+              <p class="break-words text-sm font-semibold">
+                {{ station()?.name }}
+                @if (!station()?.isActive) {
+                  <span class="font-normal text-app-text-secondary"
+                    >· {{ 'RESTAURANTS.UI.INACTIVE' | transloco }}</span
+                  >
+                }
+              </p>
+            }
+            <mat-button-toggle-group
+              class="kitchen-mobile-lanes"
+              [value]="mobileLane()"
+              (change)="mobileLane.set($event.value)"
+              [attr.aria-label]="'RESTAURANTS.KITCHEN.STATE' | transloco"
+            >
+              @for (lane of lanes; track lane) {
+                <mat-button-toggle [value]="lane">{{
+                  'RESTAURANTS.KITCHEN.' + lane | transloco
+                }}</mat-button-toggle>
+              }
+            </mat-button-toggle-group>
+            <div class="kitchen-board">
+              @for (lane of lanes; track lane) {
+                <liass-restaurant-kitchen-lane
+                  [class.kitchen-lane-hidden]="mobileLane() !== lane"
+                  [context]="ctx()"
+                  [station]="stationId()"
+                  [state]="lane"
+                  [now]="now()"
+                  (denied)="denied.set(identity())"
+                />
+              }
+            </div>
+          }
+        }
+      }
+    }
+  }
+</div>

@@ -13,6 +13,10 @@ export const restaurantRouteGuard: CanActivateChildFn = (route) => {
   const path = route.routeConfig?.path ?? '';
   if (path === 'service/outlets/:outletId/sessions/:guestSessionId')
     return caps.canReadSession() ? true : router.createUrlTree(['/restaurants']);
+  if (mode === 'kitchen')
+    return path === 'kitchen' ? true : router.createUrlTree(['/restaurants/kitchen']);
+  if (path === 'kitchen')
+    return caps.canReadKitchen() ? true : router.createUrlTree(['/restaurants']);
   if (mode === 'service')
     return path === 'service' ? true : router.createUrlTree(['/restaurants/service']);
   if (mode !== 'management') return path === '' ? true : router.createUrlTree(['/restaurants']);

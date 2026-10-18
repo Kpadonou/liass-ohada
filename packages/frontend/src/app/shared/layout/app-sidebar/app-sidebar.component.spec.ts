@@ -783,7 +783,7 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelectorAll(
         '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
       ),
-    ).toHaveLength(9);
+    ).toHaveLength(10);
   });
 
   it('retains product discovery but hides all restaurant modules without read permissions', () => {

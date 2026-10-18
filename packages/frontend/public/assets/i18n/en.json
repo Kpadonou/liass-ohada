@@ -4445,6 +4445,10 @@
         },
         "team": {
           "TITLE": "Team"
+        },
+        "kitchen": {
+          "TITLE": "Kitchen",
+          "DESCRIPTION": "Preparation work for the selected station."
         }
       },
       "ADD": {
@@ -4463,7 +4467,8 @@
         "menu": "Menu",
         "MENU_SECTION": "Menu",
         "overview": "Dashboard",
-        "team": "Team"
+        "team": "Team",
+        "kitchen": "Kitchen"
       },
       "EMPTY": {
         "outlet": {
@@ -4797,6 +4802,29 @@
       "CONTINUE_CARTE": "Load more menu items",
       "SUBMIT_PENDING": "Submitting…",
       "CARTE_HYDRATING": "Menu items loading…"
+    },
+    "KITCHEN": {
+      "TITLE": "Kitchen",
+      "STATION": "Preparation station",
+      "STATE": "Preparation state",
+      "QUEUED": "Queued",
+      "IN_PROGRESS": "In progress",
+      "READY": "Ready",
+      "START": "Start",
+      "READY_ACTION": "Mark ready",
+      "PENDING": "Please wait…",
+      "TAKEAWAY": "Takeaway",
+      "COUNTER": "Counter",
+      "NOTES": "Instructions",
+      "MORE": "Load more",
+      "MORE_OUTLETS": "More outlets",
+      "MORE_STATIONS": "More stations",
+      "NO_STATION": "No active preparation station is configured for this outlet.",
+      "CONFIGURE": "Configure stations",
+      "INACTIVE_WORK": "View work at inactive stations",
+      "EMPTY_QUEUED": "No queued preparation",
+      "EMPTY_IN_PROGRESS": "No preparation in progress",
+      "EMPTY_READY": "No ready preparation"
     }
   }
 }

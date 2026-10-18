@@ -68,7 +68,7 @@ describe('Explicit Restaurants access lifecycle', () => {
     ['MANAGER', 'management'],
     ['WAITER', 'service'],
     ['CASHIER', 'unsupported'],
-    ['KITCHEN', 'unsupported'],
+    ['KITCHEN', 'kitchen'],
     [undefined, 'configure'],
   ] as const)('resolves canonical role %s as %s', (role, expected) => {
     workspace.set(accessWorkspace(role));

@@ -23,6 +23,8 @@ import fr from '../../../../../public/assets/i18n/fr.json';
 class ManagementDashboard {}
 @Component({ template: 'Protected management fixture' })
 class ManagementDetail {}
+@Component({ template: 'Kitchen workflow fixture' })
+class KitchenWorkflow {}
 
 describe('Current-user Restaurants lifecycle through actual routing and Service Floor', () => {
   const workspace = signal<WorkspaceSummary>(accessWorkspace());
@@ -59,6 +61,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
             canActivateChild: [restaurantRouteGuard],
             children: [
               { path: '', component: ManagementDashboard },
+              { path: 'kitchen', component: KitchenWorkflow },
               { path: 'service', component: RestaurantServiceFloorPage },
               { path: 'setup/team', component: ManagementDetail },
               { path: 'setup', component: ManagementDetail },
@@ -151,7 +154,14 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     expect(h.routeNativeElement?.textContent).toContain('Management dashboard fixture');
     expect(TestBed.inject(Router).url).toBe('/restaurants');
   });
-  it.each(['CASHIER', 'KITCHEN'] as const)(
+  it('lands KITCHEN on its operational route without starting Service Floor', async () => {
+    workspace.set(accessWorkspace('KITCHEN'));
+    const h = await RouterTestingHarness.create('/restaurants');
+    expect(TestBed.inject(Router).url).toBe('/restaurants/kitchen');
+    expect(h.routeNativeElement?.textContent).toContain('Kitchen workflow fixture');
+    expect(myOutlets).not.toHaveBeenCalled();
+  });
+  it.each(['CASHIER'] as const)(
     'gives %s truthful unavailable-yet content without starting Service Floor',
     async (role) => {
       workspace.set(accessWorkspace(role));
@@ -159,9 +169,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
       expect(h.routeNativeElement?.textContent).toContain(
         'Votre espace Liass-Resto n’est pas encore disponible',
       );
-      expect(h.routeNativeElement?.textContent).toContain(
-        role === 'CASHIER' ? 'Caissier' : 'Cuisinier',
-      );
+      expect(h.routeNativeElement?.textContent).toContain('Caissier');
       expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard');
       expect(myOutlets).not.toHaveBeenCalled();
     },

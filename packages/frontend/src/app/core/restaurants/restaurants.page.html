@@ -1,5 +1,5 @@
 <div class="space-y-4">
-  @if (state.mode() === 'management' || state.mode() === 'service') {
+  @if (state.mode() === 'management' || state.mode() === 'service' || state.mode() === 'kitchen') {
     <router-outlet />
   } @else if (state.mode() === 'checking') {
     <liass-card

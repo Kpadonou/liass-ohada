@@ -109,7 +109,7 @@ describe('Restaurants shell framing by implemented member role', () => {
     ['OWNER', true],
     ['MANAGER', true],
     ['CASHIER', false],
-    ['KITCHEN', false],
+    ['KITCHEN', true],
   ])('keeps a useful sidebar only for %s when supported', (role, visible) => {
     TestBed.configureTestingModule({
       providers: [

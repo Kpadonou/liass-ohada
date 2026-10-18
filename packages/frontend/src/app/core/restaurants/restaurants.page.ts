@@ -28,6 +28,8 @@ export class RestaurantsPage {
       if (!this.router.url.split('?')[0].startsWith('/restaurants')) return;
       if (mode === 'service' && !this.router.url.split('?')[0].startsWith('/restaurants/service'))
         void this.router.navigateByUrl('/restaurants/service', { replaceUrl: true });
+      else if (mode === 'kitchen' && this.router.url.split('?')[0] !== '/restaurants/kitchen')
+        void this.router.navigateByUrl('/restaurants/kitchen', { replaceUrl: true });
       else if (
         ['configure', 'unsupported', 'changed'].includes(mode) &&
         this.router.url.split('?')[0] !== '/restaurants'
