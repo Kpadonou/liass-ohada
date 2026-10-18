@@ -26,12 +26,12 @@ describe("RESTAURANTS domain architecture", () => {
     expect(source).not.toMatch(/\bany\b/);
   });
   test("registers every reviewed route in the domain stack, with no public QR or DELETE", () => {
-    expect(RESTAURANTS_ROUTES).toHaveLength(38);
+    expect(RESTAURANTS_ROUTES).toHaveLength(39);
     expect(
       new Set(
         RESTAURANTS_ROUTES.map((route) => `${route.method} ${route.path}`),
       ).size,
-    ).toBe(38);
+    ).toBe(39);
     for (const route of RESTAURANTS_ROUTES) {
       expect(
         readFileSync(path.join(domain, `${route.name}.ts`), "utf8"),
@@ -61,40 +61,18 @@ describe("RESTAURANTS domain architecture", () => {
     expect(KeyFactory.restaurantSK()).toBe("ROOT");
     expect(KeyFactory.restaurantOutletPrefix()).toBe("OUT#");
     expect(KeyFactory.restaurantOutletSK("o")).toBe("OUT#o");
-    expect(KeyFactory.restaurantServiceAreaPrefix("o")).toBe(
-      "AREA#o#",
-    );
-    expect(KeyFactory.restaurantServiceAreaSK("o", "a")).toBe(
-      "AREA#o#a",
-    );
-    expect(KeyFactory.restaurantTablePrefix("o", "a")).toBe(
-      "TBL#o#a#",
-    );
-    expect(KeyFactory.restaurantTableSK("o", "a", "t")).toBe(
-      "TBL#o#a#t",
-    );
-    expect(KeyFactory.restaurantTableCodeSK("o", "T01")).toBe(
-      "TC#o#T01",
-    );
-    expect(KeyFactory.restaurantStationPrefix("o")).toBe(
-      "STN#o#",
-    );
-    expect(KeyFactory.restaurantStationSK("o", "s")).toBe(
-      "STN#o#s",
-    );
+    expect(KeyFactory.restaurantServiceAreaPrefix("o")).toBe("AREA#o#");
+    expect(KeyFactory.restaurantServiceAreaSK("o", "a")).toBe("AREA#o#a");
+    expect(KeyFactory.restaurantTablePrefix("o", "a")).toBe("TBL#o#a#");
+    expect(KeyFactory.restaurantTableSK("o", "a", "t")).toBe("TBL#o#a#t");
+    expect(KeyFactory.restaurantTableCodeSK("o", "T01")).toBe("TC#o#T01");
+    expect(KeyFactory.restaurantStationPrefix("o")).toBe("STN#o#");
+    expect(KeyFactory.restaurantStationSK("o", "s")).toBe("STN#o#s");
     expect(KeyFactory.restaurantMenuSK("o")).toBe("MENU#o");
-    expect(KeyFactory.restaurantCategoryPrefix("o")).toBe(
-      "CAT#o#",
-    );
-    expect(KeyFactory.restaurantCategorySK("o", "c")).toBe(
-      "CAT#o#c",
-    );
-    expect(KeyFactory.restaurantMenuItemPrefix("o", "c")).toBe(
-      "ITEM#o#c#",
-    );
-    expect(KeyFactory.restaurantMenuItemSK("o", "c", "i")).toBe(
-      "ITEM#o#c#i",
-    );
+    expect(KeyFactory.restaurantCategoryPrefix("o")).toBe("CAT#o#");
+    expect(KeyFactory.restaurantCategorySK("o", "c")).toBe("CAT#o#c");
+    expect(KeyFactory.restaurantMenuItemPrefix("o", "c")).toBe("ITEM#o#c#");
+    expect(KeyFactory.restaurantMenuItemSK("o", "c", "i")).toBe("ITEM#o#c#i");
     expect(KeyFactory.restaurantQrPK("hash")).toBe("QR#hash");
     expect(KeyFactory.restaurantQrSK()).toBe("LOOKUP");
   });

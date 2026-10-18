@@ -1,6 +1,10 @@
 import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import {
+  MenuItemsBrowseRequestSchema,
+  MenuItemsBrowseResponseSchema,
+  OperationalMenuItemSchema,
+  matchesMenuItemSearch,
   ChangeMenuItemAvailabilityRequestSchema,
   RestaurantIdSchema,
   RestaurantsLifecycleRequestSchema,
@@ -165,6 +169,66 @@ export class RestaurantsService {
         checks,
       );
     return page;
+  }
+
+  static async browseMenuItems(
+    orgId: string,
+    outletId: string,
+    input: unknown,
+  ) {
+    TenantIdSchema.parse(orgId);
+    RestaurantIdSchema.parse(outletId);
+    const request = MenuItemsBrowseRequestSchema.parse(input);
+    // Category parents load root, outlet and the canonical singleton Menu without a category read.
+    const checks = await this.parents(orgId, "category", { outletId }, true);
+    const menu = checks.find(
+      (check) => check.snapshot.kind === "menu",
+    )!.snapshot;
+    const menuData = entitySchemas.menu.parse(menu.data);
+    if (menuData.outletId !== outletId)
+      throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+    const page = await RestaurantsRepository.menuItemsPage(
+      orgId,
+      outletId,
+      menuData.id,
+      request,
+    );
+    const candidates = page.items.filter(
+      (item) =>
+        item.isActive && matchesMenuItemSearch(item.name, request.q ?? ""),
+    );
+    const categories = await RestaurantsRepository.menuCategories(
+      orgId,
+      outletId,
+      menuData.id,
+      candidates.map((item) => item.categoryId),
+    );
+    const items = candidates.flatMap((item) => {
+      const category = categories.get(item.categoryId)!;
+      if (!category.isActive) return [];
+      if (item.price.currency !== menuData.currency)
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      const { id, name, version, categoryId, price, availability } = item;
+      return [
+        OperationalMenuItemSchema.parse({
+          id,
+          name,
+          version,
+          categoryId,
+          price,
+          availability,
+          outletId,
+          menuId: menuData.id,
+          categoryName: category.name,
+        }),
+      ];
+    });
+    return MenuItemsBrowseResponseSchema.parse({
+      outletId,
+      menuId: menuData.id,
+      items,
+      nextCursor: page.nextCursor,
+    });
   }
 
   static async create<K extends RestaurantKind>(

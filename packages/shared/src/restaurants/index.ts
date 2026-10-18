@@ -341,3 +341,55 @@ export type MenuCategoryListResponse = z.infer<
 >;
 export type MenuItemListResponse = z.infer<typeof MenuItemListResponseSchema>;
 export * from "./preparation";
+
+/** Shared local/server matching; display names are never rewritten. */
+export function normalizeMenuItemSearch(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+export function matchesMenuItemSearch(name: string, query: string): boolean {
+  const words = normalizeMenuItemSearch(name).split(" ");
+  return normalizeMenuItemSearch(query)
+    .split(" ")
+    .filter(Boolean)
+    .every((token) => words.some((word) => word.startsWith(token)));
+}
+export const MenuItemsBrowseRequestSchema = RestaurantsListRequestSchema.extend(
+  {
+    q: z
+      .string()
+      .max(160)
+      .transform(normalizeMenuItemSearch)
+      .refine((value) => !value || value.length >= 2)
+      .optional(),
+  },
+).strict();
+export const OperationalMenuItemSchema = MenuItemSchema.pick({
+  id: true,
+  name: true,
+  outletId: true,
+  menuId: true,
+  categoryId: true,
+  version: true,
+  price: true,
+  availability: true,
+})
+  .extend({ categoryName: RestaurantNameSchema })
+  .strict();
+/** A page can be empty while nextCursor remains: no exhaustive no-match conclusion yet. */
+export const MenuItemsBrowseResponseSchema = z
+  .object({
+    outletId: RestaurantIdSchema,
+    menuId: RestaurantIdSchema,
+    items: z.array(OperationalMenuItemSchema).max(100),
+    nextCursor: z.string().min(1).max(2000).optional(),
+  })
+  .strict();
+export type MenuItemsBrowseRequest = z.infer<
+  typeof MenuItemsBrowseRequestSchema
+>;

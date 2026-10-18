@@ -4,6 +4,7 @@ export interface RestaurantsRoute {
   name: string;
   kind: RestaurantKind;
   operation:
+    | "browse"
     | "get"
     | "list"
     | "create"
@@ -17,6 +18,14 @@ export interface RestaurantsRoute {
 }
 /** One reviewed domain API inventory shared by registration and authorization. */
 export const RESTAURANTS_ROUTES = [
+  {
+    name: "browse-menu-items",
+    kind: "item",
+    operation: "browse",
+    method: "GET",
+    path: "/restaurants/outlets/{outletId}/menu/items",
+    permission: "RESTAURANTS_MENU_READ",
+  },
   {
     name: "get-restaurant",
     kind: "restaurant",

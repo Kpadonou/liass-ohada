@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  MenuItemsBrowseRequestSchema,
   ChangeMenuItemAvailabilityRequestSchema,
   RestaurantIdSchema,
   RestaurantsLifecycleRequestSchema,
@@ -22,17 +23,19 @@ export function restaurantsHandler(name: string) {
   for (const match of route.path.matchAll(/\{(\w+)\}/g))
     pathFields[match[1]] = RestaurantIdSchema;
   const command =
-    route.operation === "create"
-      ? createSchemas[route.kind]
-      : route.operation === "update"
-        ? updateSchemas[route.kind]
-        : route.operation === "deactivate"
-          ? RestaurantsLifecycleRequestSchema
-          : route.operation === "availability"
-            ? ChangeMenuItemAvailabilityRequestSchema
-            : route.operation === "list"
-              ? RestaurantsListRequestSchema
-              : z.object({}).strict();
+    route.operation === "browse"
+      ? MenuItemsBrowseRequestSchema
+      : route.operation === "create"
+        ? createSchemas[route.kind]
+        : route.operation === "update"
+          ? updateSchemas[route.kind]
+          : route.operation === "deactivate"
+            ? RestaurantsLifecycleRequestSchema
+            : route.operation === "availability"
+              ? ChangeMenuItemAvailabilityRequestSchema
+              : route.operation === "list"
+                ? RestaurantsListRequestSchema
+                : z.object({}).strict();
   // Requests remain strict; the service validates the command again without route parameters.
   const requestSchema = z.object({ ...command.shape, ...pathFields }).strict();
   return createHandler(
@@ -66,6 +69,12 @@ export function restaurantsHandler(name: string) {
           : undefined;
       // Parent IDs come only from validated route context, never mutable request attributes.
       for (const field of Object.keys(pathFields)) delete input[field];
+      if (route.operation === "browse")
+        return RestaurantsService.browseMenuItems(
+          orgId,
+          RestaurantIdSchema.parse(parents.outletId),
+          input,
+        );
       if (route.operation === "list")
         return RestaurantsService.list(orgId, route.kind, parents, input);
       if (route.operation === "qr")

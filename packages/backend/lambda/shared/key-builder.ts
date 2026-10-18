@@ -132,8 +132,9 @@ export const KeyFactory = {
   restaurantCategoryPrefix: (outletId: string) => `CAT#${outletId}#`,
   restaurantCategorySK: (outletId: string, id: string) =>
     `${KeyFactory.restaurantCategoryPrefix(outletId)}${id}`,
+  restaurantOutletMenuItemPrefix: (outletId: string) => `ITEM#${outletId}#`,
   restaurantMenuItemPrefix: (outletId: string, categoryId: string) =>
-    `ITEM#${outletId}#${categoryId}#`,
+    `${KeyFactory.restaurantOutletMenuItemPrefix(outletId)}${categoryId}#`,
   restaurantMenuItemSK: (outletId: string, categoryId: string, id: string) =>
     `${KeyFactory.restaurantMenuItemPrefix(outletId, categoryId)}${id}`,
   restaurantQrPK: (tokenHash: string) => `QR#${tokenHash}`,

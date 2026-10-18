@@ -10,6 +10,7 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { z } from "zod";
 import {
+  MenuItemsBrowseRequest,
   RestaurantIdSchema,
   RestaurantTableQrResponseSchema,
   RestaurantsListRequest,
@@ -218,6 +219,131 @@ export class RestaurantsRepository {
       );
     }
     return { items, nextCursor };
+  }
+
+  /** One physical page across category keys; matching is bounded in the service. */
+  static async menuItemsPage(
+    orgId: string,
+    outletId: string,
+    menuId: string,
+    input: MenuItemsBrowseRequest,
+  ) {
+    const prefix = KeyFactory.restaurantOutletMenuItemPrefix(outletId);
+    const pk = KeyFactory.orgKey(orgId);
+    const scope = createHash("sha256")
+      .update(
+        JSON.stringify([
+          orgId,
+          outletId,
+          menuId,
+          "OPERATIONAL_MENU_ITEMS_V1",
+          input.q ?? "",
+        ]),
+      )
+      .digest("hex");
+    const positionSchema = z
+      .object({
+        scope: z.literal(scope),
+        categoryId: RestaurantIdSchema,
+        itemId: RestaurantIdSchema,
+      })
+      .strict();
+    let start: Record<string, AttributeValue> | undefined;
+    if (input.cursor) {
+      try {
+        const cursor = positionSchema.parse(
+          JSON.parse(Buffer.from(input.cursor, "base64url").toString("utf8")),
+        );
+        start = key(
+          orgId,
+          "item",
+          { outletId, categoryId: cursor.categoryId },
+          cursor.itemId,
+        );
+      } catch {
+        throw new AppError(400, "ERROR_INVALID_CURSOR");
+      }
+    }
+    const response = await dynamoClient.send(
+      new QueryCommand({
+        TableName: restaurantsTableName(),
+        KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+        ExpressionAttributeValues: marshall({ ":pk": pk, ":prefix": prefix }),
+        Limit: input.limit,
+        ExclusiveStartKey: start,
+        ConsistentRead: true,
+        ScanIndexForward: true,
+      }),
+    );
+    const position = (raw: Record<string, AttributeValue>) => {
+      const value = unmarshall(raw);
+      if (
+        value.PK !== pk ||
+        typeof value.SK !== "string" ||
+        !value.SK.startsWith(prefix)
+      )
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      const [categoryId, itemId, extra] = value.SK.slice(prefix.length).split(
+        "#",
+      );
+      const parsed = positionSchema.safeParse({ scope, categoryId, itemId });
+      if (
+        !parsed.success ||
+        extra !== undefined ||
+        value.SK !==
+          KeyFactory.restaurantMenuItemSK(outletId, categoryId, itemId)
+      )
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      return parsed.data;
+    };
+    const items = (response.Items ?? []).map((raw) => {
+      const p = position(raw);
+      const snapshot = decode(
+        orgId,
+        "item",
+        { outletId, categoryId: p.categoryId },
+        raw,
+        p.itemId,
+      );
+      if (!snapshot || snapshot.data.menuId !== menuId)
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      return snapshot.data;
+    });
+    if (new Set(items.map((item) => item.id)).size !== items.length)
+      throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    return {
+      items,
+      nextCursor: response.LastEvaluatedKey
+        ? Buffer.from(
+            JSON.stringify(position(response.LastEvaluatedKey)),
+          ).toString("base64url")
+        : undefined,
+    };
+  }
+
+  static async menuCategories(
+    orgId: string,
+    outletId: string,
+    menuId: string,
+    categoryIds: string[],
+  ) {
+    const ids = [...new Set(categoryIds)];
+    const raw = await restaurantBatchRead(
+      ids.map((id) => ({
+        PK: KeyFactory.orgKey(orgId),
+        SK: KeyFactory.restaurantCategorySK(outletId, id),
+      })),
+    );
+    return new Map(
+      ids.map((id, index) => {
+        const category =
+          raw[index] &&
+          decode(orgId, "category", { outletId }, raw[index]!, id);
+        if (!category || category.data.menuId !== menuId)
+          throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+        return [id, category.data] as const;
+      }),
+    );
   }
 
   /** One physical table page across the outlet's area keys; no new projection. */
