@@ -29,3 +29,13 @@ export function parseMinorInput(input: string, currency: string): number {
 export function restaurantPrice(amount: number, currency: string, locale: string) {
   return formatExactMoney(minorInput(amount, currency), currency, locale);
 }
+/** Omit repetition only when the surface explicitly identifies this currency. */
+export function restaurantOperationalPrice(
+  amount: number,
+  currency: string,
+  locale: string,
+  contextCurrency?: string | null,
+) {
+  const formatted = restaurantPrice(amount, currency, locale);
+  return contextCurrency === currency ? formatted.slice(0, -(currency.length + 1)) : formatted;
+}

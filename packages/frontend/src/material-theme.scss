@@ -164,3 +164,31 @@ body {
   margin: 0;
   height: 100%;
 }
+
+// Additive semantic action treatments; opt in by action intent, never by product palette.
+.liass-action-secondary {
+  @include mat.button-overrides(
+    (
+      tonal-container-color: var(--mat-sys-secondary-container),
+      tonal-label-text-color: var(--mat-sys-on-secondary-container),
+    )
+  );
+}
+.liass-action-danger {
+  @include mat.button-overrides(
+    (
+      text-label-text-color: var(--mat-sys-error),
+      text-state-layer-color: var(--mat-sys-error),
+    )
+  );
+}
+.liass-action-neutral {
+  @include mat.button-overrides(
+    (
+      text-label-text-color: var(--mat-sys-on-surface),
+    )
+  );
+}
+.liass-compact-filter {
+  @include mat.form-field-density(-4);
+}

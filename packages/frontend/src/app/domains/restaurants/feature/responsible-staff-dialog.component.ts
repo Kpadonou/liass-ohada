@@ -19,6 +19,7 @@ import { NotificationService } from '../../../core/notifications/notification.se
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-select/searchable-select.component';
 import { staffError } from '../utils/staff-errors';
+import { tableDisplayName } from '../utils/table-display-name';
 
 type Request = z.infer<typeof ReplaceGuestSessionResponsibleStaffRequestSchema>;
 export type OccupiedFloorTable = Extract<
@@ -51,6 +52,7 @@ export interface ResponsibleStaffDialogData {
   templateUrl: './responsible-staff-dialog.component.html',
 })
 export class ResponsibleStaffDialogComponent {
+  readonly tableDisplayName = tableDisplayName;
   readonly data = inject<ResponsibleStaffDialogData>(MAT_DIALOG_DATA);
   private readonly ref = inject(MatDialogRef<ResponsibleStaffDialogComponent>);
   private readonly api = inject(RestaurantsApi);

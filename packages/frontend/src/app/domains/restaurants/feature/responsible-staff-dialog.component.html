@@ -10,7 +10,7 @@
 </h2>
 <mat-dialog-content class="space-y-4">
   <p class="text-sm text-app-text-secondary">
-    {{ data.table.code }}
+    {{ tableDisplayName(data.table) }}
     @if (data.table.areaName) {
       · {{ data.table.areaName }}
     }
@@ -33,7 +33,7 @@
       <p>
         {{
           'RESTAURANTS.RESPONSIBILITY.CLEAR_CONFIRM'
-            | transloco: { name: currentName(), table: data.table.code }
+            | transloco: { name: currentName(), table: tableDisplayName(data.table) }
         }}
       </p>
     } @else {

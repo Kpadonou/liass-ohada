@@ -5,6 +5,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import * as c from '@liass-ohada/shared/restaurants';
 import fr from '../../../../../../public/assets/i18n/fr.json';
+import en from '../../../../../../public/assets/i18n/en.json';
 import { RestaurantOrderComposer } from './restaurant-order-composer';
 import { RestaurantOrdersApi } from '../../data-access/restaurant-orders.api';
 import { RestaurantsApi } from '../../data-access/restaurants.api';
@@ -571,3 +572,355 @@ it('cannot replay an old intent after a context switch during retry reconciliati
   expect(page.pending()).toBeNull();
   expect(page.busy()).toBe(false);
 });
+
+async function draftInput() {
+  await settle();
+  await page.add(item());
+  await settle();
+  fixture.detectChanges();
+  const input = fixture.nativeElement.querySelector(
+    '[data-testid="draft-line"] input',
+  ) as HTMLInputElement;
+  input.focus();
+  return input;
+}
+it('auto-selects the sole category without rendering category navigation or a form field', async () => {
+  await settle();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.category()).toBe(rid(6));
+  });
+  expect(fixture.nativeElement.querySelector('[data-testid="category-navigation"]')).toBeNull();
+  expect(fixture.nativeElement.querySelector('liass-searchable-select')).toBeNull();
+});
+it('uses compact accessible category navigation and retains bounded category pagination', async () => {
+  menu.list.mockImplementation(async (_org, kind, context) => ({
+    items:
+      kind === 'category'
+        ? [row('category'), { ...row('category'), id: rid(16), name: 'Plats' }]
+        : [{ ...item(), categoryId: context.categoryId }],
+    nextCursor: kind === 'category' ? 'more-categories' : undefined,
+  }));
+  await page.categoryQuery.refetch();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="category-navigation"]'),
+    ).not.toBeNull();
+  });
+  expect(fixture.nativeElement.textContent).toContain('Plats');
+  const buttons = [
+    ...fixture.nativeElement.querySelectorAll('mat-button-toggle button'),
+  ] as HTMLButtonElement[];
+  buttons.find((b) => b.textContent!.includes('Plats'))!.click();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.category()).toBe(rid(16));
+  });
+  expect(page.categoryQuery.hasNextPage()).toBe(true);
+  expect(menu.list.mock.calls.some((call) => call[3] === 'more-categories')).toBe(false);
+});
+it('formats operational prices without redundant currency and retains an ambiguous currency suffix', async () => {
+  await settle();
+  expect(page.price(150000, 'XOF')).toMatch(/^150\s000$/);
+  expect(page.price(1025, 'EUR')).toBe('10,25 EUR');
+});
+it('enables desktop stickiness only when the whole order region fits the viewport', async () => {
+  await settle();
+  const region = fixture.nativeElement.querySelector('[data-order-region]') as HTMLElement;
+  Object.defineProperty(region, 'scrollHeight', { configurable: true, value: 2000 });
+  window.dispatchEvent(new Event('resize'));
+  fixture.detectChanges();
+  expect(page.orderPanelFits()).toBe(false);
+  expect(region.classList.contains('xl:sticky')).toBe(false);
+  Object.defineProperty(region, 'scrollHeight', { configurable: true, value: 200 });
+  window.dispatchEvent(new Event('resize'));
+  fixture.detectChanges();
+  expect(page.orderPanelFits()).toBe(true);
+  expect(region.classList.contains('xl:sticky')).toBe(true);
+});
+function typeQuantity(input: HTMLInputElement, value: string) {
+  input.value = value;
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+}
+it('edits multiple digits locally and commits one captured edit on Enter followed by blur', async () => {
+  const input = await draftInput();
+  expect(input.value).toBe('1');
+  expect(input.inputMode).toBe('numeric');
+  expect(input.getAttribute('pattern')).toBe('[0-9]*');
+  expect(input.getAttribute('aria-label')).toContain('Beer');
+  const before = api.command.mock.calls.length;
+  typeQuantity(input, '1');
+  typeQuantity(input, '12');
+  expect(api.command).toHaveBeenCalledTimes(before);
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  input.blur();
+  await settle();
+  expect(api.command).toHaveBeenCalledTimes(before + 1);
+  expect(api.command.mock.calls.at(-1)![2]).toMatchObject({
+    quantity: 12,
+    expectedVersion: 2,
+    expectedItemVersion: 1,
+  });
+});
+it('commits on blur and leaves an unchanged value without a mutation', async () => {
+  let input = await draftInput();
+  const before = api.command.mock.calls.length;
+  input.blur();
+  expect(api.command).toHaveBeenCalledTimes(before);
+  input.focus();
+  typeQuantity(input, '7');
+  input.blur();
+  await settle();
+  expect(lines[0].quantity).toBe(7);
+  expect(api.command).toHaveBeenCalledTimes(before + 1);
+});
+it('does not repeat an Enter edit when blur happens after the refreshed value renders', async () => {
+  const input = await draftInput();
+  const before = api.command.mock.calls.length;
+  typeQuantity(input, '9');
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  await settle();
+  const refreshed = fixture.nativeElement.querySelector(
+    '[data-testid="draft-line"] input',
+  ) as HTMLInputElement;
+  refreshed.focus();
+  refreshed.blur();
+  expect(api.command).toHaveBeenCalledTimes(before + 1);
+  expect(lines[0].quantity).toBe(9);
+});
+it.each(['', 'abc', '-1', '0', '1.5', '9007199254740992', '1e3'])(
+  'restores the canonical quantity and announces invalid input %j without a request',
+  async (value) => {
+    const input = await draftInput();
+    const before = api.command.mock.calls.length;
+    typeQuantity(input, value);
+    input.blur();
+    fixture.detectChanges();
+    expect(input.value).toBe('1');
+    expect(api.command).toHaveBeenCalledTimes(before);
+    expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+      'quantité entière positive',
+    );
+  },
+);
+it('keeps captured versions on a typed conflict and refetches without rebasing', async () => {
+  const input = await draftInput();
+  const before = api.command.mock.calls.length;
+  api.command.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
+  typeQuantity(input, '4');
+  input.blur();
+  await settle();
+  expect(api.command).toHaveBeenCalledTimes(before + 1);
+  expect(api.command.mock.calls.at(-1)![2]).toMatchObject({
+    quantity: 4,
+    expectedVersion: 2,
+    expectedItemVersion: 1,
+  });
+  expect(page.message()).toBe('CONFLICT');
+  expect(lines[0].quantity).toBe(1);
+});
+it('blocks other quantity changes while a typed edit has an unresolved intent', async () => {
+  const input = await draftInput();
+  api.command.mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }));
+  typeQuantity(input, '5');
+  input.blur();
+  await vi.waitFor(() => expect(page.pending()?.kind).toBe('edit'));
+  await vi.waitFor(() => expect(page.busy()).toBe(false));
+  const before = api.command.mock.calls.length;
+  await page.quantity(lines[0], 1);
+  await page.commitQuantity(lines[0]);
+  expect(api.command).toHaveBeenCalledTimes(before);
+});
+it('uses labelled secondary Add and danger Remove controls and disables unavailable Add', async () => {
+  await draftInput();
+  fixture.detectChanges();
+  const add = fixture.nativeElement.querySelector(
+    'button[aria-label="Ajouter Beer"]',
+  ) as HTMLButtonElement;
+  const remove = fixture.nativeElement.querySelector(
+    'button[aria-label="Retirer Beer du brouillon"]',
+  ) as HTMLButtonElement;
+  expect(add.querySelector('mat-icon')?.textContent).toBe('add');
+  expect(add.textContent).toContain('Ajouter');
+  expect(add.classList.contains('liass-action-secondary')).toBe(true);
+  expect(remove.querySelector('mat-icon')?.textContent).toBe('delete_outline');
+  expect(remove.textContent).toContain('Retirer');
+  expect(remove.classList.contains('liass-action-danger')).toBe(true);
+  add.focus();
+  expect(document.activeElement).toBe(add);
+  menu.list.mockImplementation(async (_org, kind) => ({
+    items: kind === 'item' ? [{ ...item(), availability: 'UNAVAILABLE' }] : [row(kind)],
+  }));
+  await page.menuItemsQuery.refetch();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Ajouter Beer"]').disabled).toBe(
+      true,
+    );
+  });
+});
+it.each([
+  [fr, 'Aucune ligne', '1 ligne', '{{count}} lignes'],
+  [en, 'No lines', '1 line', '{{count}} lines'],
+])('has explicit zero, singular and plural copy in each language', (language, zero, one, many) => {
+  const copy = language.RESTAURANTS.ORDER_TAKING;
+  expect(copy.LINES_ZERO).toBe(zero);
+  expect(copy.LINES_ONE).toBe(one);
+  expect(copy.LINES_MANY).toBe(many);
+  expect(page.lineCountKey(0)).toMatch(/LINES_ZERO$/);
+  expect(page.lineCountKey(1)).toMatch(/LINES_ONE$/);
+  expect(page.lineCountKey(2)).toMatch(/LINES_MANY$/);
+});
+
+it('retains Menu, draft and Order selection through command reconciliation without context reset', async () => {
+  await draftInput();
+  const menuNode = fixture.nativeElement.querySelector('#menu-title');
+  const draftNode = fixture.nativeElement.querySelector('#draft-title');
+  const input = fixture.nativeElement.querySelector('input[aria-label="Quantité de Beer"]');
+  const selected = page.selectedId();
+  const initialRevision = revision();
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  api.orders.mockImplementationOnce(async () => {
+    await gate;
+    return { items: orders.map((o) => ({ ...o })) };
+  });
+  const action = page.quantity(lines[0], 1);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.ordersQuery.isFetching()).toBe(true);
+  });
+  expect(page.selectedId()).toBe(selected);
+  expect(page.ready()).toBe(false);
+  expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
+  expect(fixture.nativeElement.querySelector('#draft-title')).toBe(draftNode);
+  expect(fixture.nativeElement.querySelector('input[aria-label="Quantité de Beer"]')).toBe(input);
+  expect(revision()).toBe(initialRevision);
+  release();
+  await action;
+  await settle();
+  expect(fixture.componentInstance).toBe(page);
+  expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
+});
+
+it('uses non-submitting controls and search Enter never commands or navigates', async () => {
+  await draftInput();
+  const host = fixture.nativeElement as HTMLElement;
+  expect(host.querySelector('form')).toBeNull();
+  for (const button of host.querySelectorAll('button')) expect(button.type).toBe('button');
+  const before = api.command.mock.calls.length;
+  const search =
+    host.querySelector('input[formcontrolname="search"]') ??
+    host.querySelector('input:not([inputmode="numeric"])');
+  expect(search).not.toBeNull();
+  search!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  fixture.detectChanges();
+  expect(api.command).toHaveBeenCalledTimes(before);
+  expect(revision()).toBe(0);
+});
+
+it.each(['lazy', 'existing'] as const)(
+  'keeps %s Add pending local and prevents duplicate intent',
+  async (mode) => {
+    if (mode === 'existing') await draftInput();
+    else
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(page.canAddItem(item())).toBe(true);
+      });
+    const command = api.command.getMockImplementation()!;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    api.command.mockImplementationOnce(async (...args) => {
+      await gate;
+      return command(...args);
+    });
+    const menuNode = fixture.nativeElement.querySelector('#menu-title');
+    const draftNode = fixture.nativeElement.querySelector('#draft-title');
+    const before = api.command.mock.calls.length;
+    const action = page.add(item());
+    fixture.detectChanges();
+    const button = fixture.nativeElement.querySelector(
+      'button[aria-label="Ajouter Beer"]',
+    ) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
+    expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
+    expect(fixture.nativeElement.querySelector('#draft-title')).toBe(draftNode);
+    expect(page.search.enabled).toBe(true);
+    await page.add(item());
+    expect(api.command).toHaveBeenCalledTimes(before + 1);
+    release();
+    await action;
+    await settle();
+    expect(page.addingItem()).toBeNull();
+    expect(page.drafts()[0].quantity).toBe(mode === 'existing' ? 2 : 1);
+    expect(
+      fixture.nativeElement
+        .querySelector('button[aria-label="Ajouter Beer"]')
+        .getAttribute('aria-busy'),
+    ).toBe('false');
+  },
+);
+it('restores local Add pending state after failure and retains actionable feedback', async () => {
+  await draftInput();
+  api.command.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
+  await page.add(item());
+  fixture.detectChanges();
+  expect(page.addingItem()).toBeNull();
+  expect(page.message()).toBe('CONFLICT');
+  expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
+  expect(page.drafts()).toHaveLength(1);
+});
+
+it.each(['organization', 'principal'] as const)(
+  'rejects old reconciliation after %s switches',
+  async (dimension) => {
+    await draftInput();
+    const oldContext = page.ctx();
+    const oldOrder = page.selectedId();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    api.assertContext.mockImplementation((context) => {
+      if (context.org !== org() || context.user !== user() || context.revision !== revision())
+        throw new Error('Stale context');
+    });
+    api.orders.mockImplementationOnce(async () => {
+      await gate;
+      return { items: [orderFixture(oldOrder)] };
+    });
+    const action = page.quantity(lines[0], 1);
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(page.ordersQuery.isFetching()).toBe(true);
+    });
+    if (dimension === 'organization') org.set('foreign');
+    else user.set('other');
+    // The workspace invalidates its authorized session input immediately on context change.
+    fixture.componentRef.setInput('session', null);
+    fixture.detectChanges();
+    expect(page.ready()).toBe(false);
+    expect(page.selectedId()).toBe('');
+    expect(fixture.nativeElement.querySelector('[data-testid="order-taking"]')).toBeNull();
+    release();
+    await action;
+    fixture.detectChanges();
+    expect(page.selectedId()).toBe('');
+    expect(page.pending()).toBeNull();
+    expect(
+      client.getQueryData(
+        restaurantKeys.serviceOrder(
+          oldContext.org,
+          oldContext.user,
+          oldContext.outlet,
+          oldContext.session,
+          oldContext.revision,
+          'orders',
+        ),
+      ),
+    ).toBeDefined();
+    api.assertContext.mockReset();
+  },
+);

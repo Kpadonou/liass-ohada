@@ -18,6 +18,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experimental';
 import * as c from '@liass-ohada/shared/restaurants';
@@ -27,7 +30,7 @@ import { RestaurantOrdersQueries } from '../../data-access/restaurant-orders.que
 import { OrderCommand, orderCommands } from '../../data-access/restaurant-orders.api';
 import { safeMessageFromError } from '../../../../core/notifications/notification-message';
 import { NotificationService } from '../../../../core/notifications/notification.service';
-import { restaurantPrice } from '../../utils/restaurant-money';
+import { restaurantOperationalPrice } from '../../utils/restaurant-money';
 
 type Intent = { kind: OrderCommand; input: Record<string, unknown>; order?: string; item?: string };
 @Component({
@@ -42,6 +45,9 @@ type Intent = { kind: OrderCommand; input: Record<string, unknown>; order?: stri
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
+    MatButtonToggleModule,
+    MatTooltipModule,
+    LiassCardComponent,
     TranslocoModule,
   ],
   templateUrl: './restaurant-order-composer.html',
@@ -60,6 +66,14 @@ export class RestaurantOrderComposer {
   private focusTimer: ReturnType<typeof setTimeout> | undefined;
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly focusRequest = signal<string | null>(null);
+  readonly orderPanelFits = signal(false);
+  private orderRegion: HTMLElement | null = null;
+  private orderResize?: ResizeObserver;
+  private readonly measureOrderRegion = () => {
+    const region = this.orderRegion;
+    const top = region ? Number.parseFloat(getComputedStyle(region).top) || 0 : 0;
+    this.orderPanelFits.set(!!region && region.scrollHeight + top + 12 <= window.innerHeight);
+  };
   readonly ctx = computed(() => ({
     org: this.scope.scope(),
     user: this.scope.userScope(),
@@ -84,7 +98,7 @@ export class RestaurantOrderComposer {
   });
   readonly ordersQuery = injectInfiniteQuery(() => this.queries.orders(this.ctx(), this.live()));
   readonly orders = computed(() =>
-    this.ordersQuery.isSuccess() && !this.ordersQuery.isFetching()
+    this.ordersQuery.isSuccess()
       ? this.ordersQuery.data()!.pages.flatMap((page) => page.items)
       : [],
   );
@@ -104,9 +118,7 @@ export class RestaurantOrderComposer {
     this.queries.order(this.ctx(), this.selectedId(), this.live()),
   );
   readonly order = computed(() =>
-    this.orderQuery.isSuccess() &&
-    !this.orderQuery.isFetching() &&
-    this.orderQuery.data()?.orderId === this.selectedId()
+    this.orderQuery.isSuccess() && this.orderQuery.data()?.orderId === this.selectedId()
       ? this.orderQuery.data()!
       : null,
   );
@@ -114,9 +126,7 @@ export class RestaurantOrderComposer {
     this.queries.items(this.ctx(), this.selectedId(), this.live()),
   );
   readonly lines = computed(() =>
-    this.itemsQuery.isSuccess() && !this.itemsQuery.isFetching()
-      ? this.itemsQuery.data()!.pages.flatMap((page) => page.items)
-      : [],
+    this.itemsQuery.isSuccess() ? this.itemsQuery.data()!.pages.flatMap((page) => page.items) : [],
   );
   readonly drafts = computed(() => this.lines().filter((line) => line.status === 'DRAFT'));
   readonly rounds = computed(() => {
@@ -159,7 +169,6 @@ export class RestaurantOrderComposer {
     this.queries.menuPages(this.ctx(), 'item', this.category(), this.live()),
   );
   readonly orderControl = new FormControl('', { nonNullable: true });
-  readonly categoryControl = new FormControl('', { nonNullable: true });
   readonly orderOptions = computed(() =>
     this.orders().map((order) => ({
       value: order.orderId,
@@ -169,13 +178,10 @@ export class RestaurantOrderComposer {
         this.t.translate('RESTAURANTS.ORDER_TAKING.STATUS.' + order.status),
     })),
   );
-  readonly categoryOptions = computed(() =>
-    this.categories().map((category) => ({ value: category.id, label: category.name })),
-  );
   readonly search = new FormControl('', { nonNullable: true });
   readonly searchText = signal('');
   readonly menuItems = computed(() => {
-    if (!this.menuItemsQuery.isSuccess() || this.menuItemsQuery.isFetching()) return [];
+    if (!this.menuItemsQuery.isSuccess()) return [];
     const query = this.normalize(this.searchText());
     return this.menuItemsQuery
       .data()!
@@ -184,8 +190,70 @@ export class RestaurantOrderComposer {
   });
   readonly names = signal<Record<string, string>>({});
   readonly busy = signal(false);
+  readonly addingItem = signal<string | null>(null);
   readonly pending = signal<Intent | null>(null);
   readonly message = signal('');
+  readonly quantityError = signal('');
+  private readonly quantityInputs = new Map<
+    string,
+    {
+      control: FormControl<string>;
+      line: c.RestaurantOrderItem;
+      orderVersion: number;
+      context: string;
+    }
+  >();
+  readonly quantityMax = c.EditRestaurantDraftItemRequestSchema.shape.quantity.maxValue!;
+  lineCountKey(count: number) {
+    return (
+      'RESTAURANTS.ORDER_TAKING.' +
+      (count === 0 ? 'LINES_ZERO' : count === 1 ? 'LINES_ONE' : 'LINES_MANY')
+    );
+  }
+  quantityInput(line: c.RestaurantOrderItem) {
+    let entry = this.quantityInputs.get(line.itemId);
+    if (!entry || entry.context !== this.identity() || entry.line.version !== line.version) {
+      entry = {
+        control: new FormControl(String(line.quantity), {
+          nonNullable: true,
+          validators: (control) =>
+            /^\d+$/.test(control.value) &&
+            c.EditRestaurantDraftItemRequestSchema.shape.quantity.safeParse(Number(control.value))
+              .success
+              ? null
+              : { quantity: true },
+        }),
+        line: { ...line },
+        orderVersion: this.order()?.version ?? 0,
+        context: this.identity(),
+      };
+      this.quantityInputs.set(line.itemId, entry);
+    }
+    return entry.control;
+  }
+  beginQuantity(line: c.RestaurantOrderItem) {
+    this.quantityInput(line);
+    const entry = this.quantityInputs.get(line.itemId)!;
+    entry.line = { ...line };
+    entry.orderVersion = this.order()?.version ?? 0;
+    this.quantityError.set('');
+  }
+  async commitQuantity(line: c.RestaurantOrderItem) {
+    const entry = this.quantityInputs.get(line.itemId);
+    if (!entry || entry.context !== this.identity()) return;
+    const value = Number(entry.control.value);
+    if (entry.control.invalid) {
+      entry.control.setValue(String(entry.line.quantity));
+      this.quantityError.set(
+        this.t.translate('RESTAURANTS.ORDER_TAKING.INVALID_QUANTITY', { name: this.name(line) }),
+      );
+      return;
+    }
+    // Reset immediately: Enter followed by blur must never enqueue the same edit twice.
+    entry.control.setValue(String(entry.line.quantity));
+    if (value === entry.line.quantity) return;
+    await this.setQuantity(entry.line, value, entry.orderVersion);
+  }
   readonly ready = computed(
     () =>
       this.live() &&
@@ -196,6 +264,7 @@ export class RestaurantOrderComposer {
       !this.ordersQuery.hasNextPage() &&
       (!this.selectedId() ||
         (this.order() &&
+          !this.orderQuery.isFetching() &&
           this.itemsQuery.isSuccess() &&
           !this.itemsQuery.isFetching() &&
           !this.itemsQuery.hasNextPage())),
@@ -231,6 +300,16 @@ export class RestaurantOrderComposer {
   }
   constructor() {
     afterEveryRender(() => {
+      const region = this.host.nativeElement.querySelector<HTMLElement>('[data-order-region]');
+      if (region !== this.orderRegion) {
+        this.orderResize?.disconnect();
+        this.orderRegion = region;
+        if (region && typeof ResizeObserver !== 'undefined') {
+          this.orderResize = new ResizeObserver(this.measureOrderRegion);
+          this.orderResize.observe(region);
+        }
+      }
+      this.measureOrderRegion();
       clearTimeout(this.focusTimer);
       const label = this.focusRequest(),
         identity = this.identity();
@@ -254,21 +333,19 @@ export class RestaurantOrderComposer {
       }, 100);
     });
     const orderSub = this.orderControl.valueChanges.subscribe((value) => this.choose(value));
-    const categorySub = this.categoryControl.valueChanges.subscribe((value) =>
-      this.chooseCategory(value),
-    );
     effect(() => {
       this.orderControl.setValue(this.selectedId(), { emitEvent: false });
       if (this.busy() || this.pending()) this.orderControl.disable({ emitEvent: false });
       else this.orderControl.enable({ emitEvent: false });
     });
-    effect(() => this.categoryControl.setValue(this.category(), { emitEvent: false }));
     const sub = this.search.valueChanges.subscribe((value) => this.searchText.set(value));
+    window.addEventListener('resize', this.measureOrderRegion);
     inject(DestroyRef).onDestroy(() => {
+      this.orderResize?.disconnect();
+      window.removeEventListener('resize', this.measureOrderRegion);
       clearTimeout(this.focusTimer);
       sub.unsubscribe();
       orderSub.unsubscribe();
-      categorySub.unsubscribe();
       this.destroyed = true;
     });
     effect(() => {
@@ -283,9 +360,12 @@ export class RestaurantOrderComposer {
         this.categoryChoice.set(null);
         this.pending.set(null);
         this.busy.set(false);
+        this.addingItem.set(null);
         this.denied.set(false);
         this.message.set('');
         this.names.set({});
+        this.quantityInputs.clear();
+        this.quantityError.set('');
         this.search.setValue('');
         this.storageKey = this.intentStorage();
         try {
@@ -360,7 +440,12 @@ export class RestaurantOrderComposer {
     return order.status === 'DRAFT' || order.status === 'SUBMITTED';
   }
   price(amount: number, currency: string) {
-    return restaurantPrice(amount, currency, this.t.getActiveLang());
+    return restaurantOperationalPrice(
+      amount,
+      currency,
+      this.t.getActiveLang(),
+      this.session()?.currency,
+    );
   }
   name(line: c.RestaurantOrderItem) {
     return this.names()[line.itemId] || this.t.translate('RESTAURANTS.ORDER_TAKING.UNKNOWN_ITEM');
@@ -389,6 +474,7 @@ export class RestaurantOrderComposer {
   canAddItem(item: c.MenuItem) {
     const equivalent = this.equivalentDraft(item);
     return (
+      !this.addingItem() &&
       item.isActive &&
       item.availability === 'AVAILABLE' &&
       (equivalent
@@ -401,6 +487,28 @@ export class RestaurantOrderComposer {
   }
   async add(item: c.MenuItem) {
     if (!this.canAddItem(item)) return;
+    const identity = this.identity();
+    const focusLabel = document.activeElement?.getAttribute('aria-label');
+    this.addingItem.set(item.id);
+    try {
+      await this.performAdd(item);
+    } finally {
+      if (this.same(identity)) {
+        this.addingItem.set(null);
+        // A disabled Add button may lose native focus. Never steal focus from
+        // someone who continued browsing or changed category during the request.
+        if (
+          document.activeElement === document.body &&
+          focusLabel &&
+          [...this.host.nativeElement.querySelectorAll('[aria-label]')].some(
+            (el) => el.getAttribute('aria-label') === focusLabel,
+          )
+        )
+          this.focusRequest.set(focusLabel);
+      }
+    }
+  }
+  private async performAdd(item: c.MenuItem) {
     const equivalent = this.equivalentDraft(item);
     if (equivalent) {
       await this.quantity(equivalent, 1);
@@ -445,31 +553,39 @@ export class RestaurantOrderComposer {
     });
     if (created && this.same(identity)) {
       if (!added) this.message.set('PARTIAL_CREATE');
-      await this.queries.changed(ctx, order.orderId, true);
+      await this.queries.changed(ctx, order.orderId, true, true);
     }
   }
   async quantity(line: c.RestaurantOrderItem, delta: number) {
+    await this.setQuantity(line, line.quantity + delta);
+  }
+  private async setQuantity(
+    line: c.RestaurantOrderItem,
+    value: number,
+    orderVersion = this.order()?.version,
+  ) {
     const order = this.order();
     if (
       !this.ready() ||
       !order ||
       !this.editable(order) ||
+      line.orderId !== order.orderId ||
       line.status !== 'DRAFT' ||
-      line.quantity + delta < 1 ||
-      !Number.isSafeInteger(line.quantity + delta)
+      !c.EditRestaurantDraftItemRequestSchema.shape.quantity.safeParse(value).success
     )
       return;
+    this.quantityError.set('');
     await this.run({
       kind: 'edit',
       order: order.orderId,
       item: line.itemId,
       input: {
         clientRequestId: crypto.randomUUID(),
-        expectedVersion: order.version,
+        expectedVersion: orderVersion,
         expectedItemVersion: line.version,
         menuItemId: line.menuItemId,
         categoryId: line.categoryId,
-        quantity: line.quantity + delta,
+        quantity: value,
         notes: line.notes,
         expectedMenuItemVersion: line.expectedMenuItemVersion,
       },
@@ -554,6 +670,7 @@ export class RestaurantOrderComposer {
         ctx,
         intent.order ?? ('orderId' in result ? result.orderId : undefined),
         intent.kind === 'submit',
+        true,
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
       if (!this.same(identity)) return null;
@@ -589,7 +706,7 @@ export class RestaurantOrderComposer {
     } finally {
       if (this.same(identity)) {
         this.busy.set(false);
-        this.focusRequest.set(focusLabel ?? '');
+        if (!this.addingItem()) this.focusRequest.set(focusLabel ?? '');
       }
     }
   }

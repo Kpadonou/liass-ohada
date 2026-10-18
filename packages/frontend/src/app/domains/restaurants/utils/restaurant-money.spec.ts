@@ -1,5 +1,17 @@
-import { minorInput, parseMinorInput, restaurantPrice } from './restaurant-money';
+import {
+  minorInput,
+  parseMinorInput,
+  restaurantPrice,
+  restaurantOperationalPrice,
+} from './restaurant-money';
 describe('Canonical restaurant minor-unit money', () => {
+  it('omits a suffix only in matching declared operational context, preserving exact minor units', () => {
+    expect(restaurantOperationalPrice(150000, 'XOF', 'fr', 'XOF')).toMatch(/^150\s000$/);
+    expect(restaurantOperationalPrice(1025, 'EUR', 'en', 'EUR')).toBe('10.25');
+    expect(restaurantOperationalPrice(1025, 'EUR', 'en', 'XOF')).toBe('10.25 EUR');
+    expect(restaurantOperationalPrice(150000, 'XOF', 'en')).toBe('150,000 XOF');
+    expect(restaurantPrice(150000, 'XOF', 'en')).toBe('150,000 XOF');
+  });
   it.each([
     ['5 000', 'XOF', 5000],
     ['5\u202f000', 'XOF', 5000],

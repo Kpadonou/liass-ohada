@@ -76,6 +76,13 @@ beforeEach(() => {
     ],
   });
 });
+it('uses the table name in operational context and confirmation without its code', async () => {
+  data.table = { ...data.table, name: 'TEST CHRIS' };
+  data.clear = true;
+  await create();
+  expect(f.nativeElement.textContent).toContain('TEST CHRIS');
+  expect(f.nativeElement.textContent).not.toContain('T02');
+});
 afterEach(() => {
   f?.destroy();
   client.clear();

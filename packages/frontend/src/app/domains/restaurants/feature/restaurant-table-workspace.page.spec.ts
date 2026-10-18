@@ -1,3 +1,4 @@
+import { RestaurantSessionReconciliation } from '../data-access/restaurant-session-reconciliation';
 import { RestaurantOrderComposer } from '../ui/order-composer/restaurant-order-composer';
 import { Component, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -17,7 +18,7 @@ import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities
 import { RestaurantsQueries, restaurantKeys } from '../data-access/restaurants.queries';
 import { sessionFixture } from '../data-access/responsible-staff.test-fixture';
 import { rid } from '../data-access/restaurants.test-fixture';
-import { restaurantPrice } from '../utils/restaurant-money';
+import { restaurantOperationalPrice } from '../utils/restaurant-money';
 import { RestaurantTableWorkspacePage } from './restaurant-table-workspace.page';
 const org = signal('org'),
   user = signal('owner'),
@@ -119,12 +120,19 @@ it('renders the preserved header using the keyed read; composer tested independe
   expect(text()).toContain('Responsable non affecté');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
-  ).toBe(restaurantPrice(0, 'XOF', 'fr'));
+  ).toBe(restaurantOperationalPrice(0, 'XOF', 'fr', 'XOF'));
+  expect(text().match(/XOF/g)).toHaveLength(1);
   expect(text()).not.toMatch(
     /private-opener|00000000|Ajouter des articles|Encaisser|En préparation/,
   );
   expect(fixture!.nativeElement.querySelectorAll('input, table').length).toBe(0);
   // Composer orchestration is covered in its dedicated integration-style tests.
+});
+it('shows only the table name as operational heading when name and code differ', async () => {
+  api.guestSession.mockResolvedValue(sessionFixture({ tableCode: 'TC', tableName: 'TEST CHRIS' }));
+  await loaded();
+  expect(fixture!.nativeElement.querySelector('h1').textContent.trim()).toBe('TEST CHRIS');
+  expect(text()).not.toMatch(/\bTC\b/);
 });
 it.each([
   { displayName: 'Aïssatou S.', available: true },
@@ -147,7 +155,7 @@ it.each([
   expect(text()).not.toContain('Aucune commande pour le moment');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
-  ).toBe(restaurantPrice(12500, 'XOF', 'fr'));
+  ).toBe(restaurantOperationalPrice(12500, 'XOF', 'fr', 'XOF'));
 });
 it('supports a direct CLOSED session and OPEN-to-CLOSED canonical refresh', async () => {
   const page = await loaded();
@@ -334,5 +342,49 @@ it.each(['organization', 'principal'] as const)(
     expect(page.session()).toBeNull();
     expect(text()).not.toContain('Table T02');
     expect(fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]')).toBeNull();
+  },
+);
+
+it('retains authorized context only during matching command reconciliation and accepts CLOSED result', async () => {
+  const page = await loaded();
+  const header = fixture!.nativeElement.querySelector('[data-testid="workspace-context"]');
+  let resolve!: (value: ReturnType<typeof sessionFixture>) => void;
+  api.guestSession.mockImplementationOnce(() => new Promise((done) => (resolve = done)));
+  const reconciliation = TestBed.inject(RestaurantSessionReconciliation);
+  const refresh = reconciliation.run(
+    { org: 'org', user: 'owner', revision: 0, outlet: rid(2), session: rid(9) },
+    () => page.query.refetch(),
+  );
+  await vi.waitFor(() => expect(page.query.isFetching()).toBe(true));
+  fixture!.detectChanges();
+  expect(page.session()?.status).toBe('OPEN');
+  expect(fixture!.nativeElement.querySelector('[data-testid="workspace-context"]')).toBe(header);
+  resolve(sessionFixture({ status: 'CLOSED' }));
+  await refresh;
+  await vi.waitFor(() => {
+    fixture!.detectChanges();
+    expect(page.session()?.status).toBe('CLOSED');
+  });
+  expect(fixture!.nativeElement.querySelector('[data-testid="workspace-context"]')).toBeNull();
+});
+
+it.each(['organization', 'principal'] as const)(
+  'does not retain a reconciling session across %s change',
+  async (dimension) => {
+    const page = await loaded();
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const pending = TestBed.inject(RestaurantSessionReconciliation).run(
+      { org: 'org', user: 'owner', revision: 0, outlet: rid(2), session: rid(9) },
+      () => gate,
+    );
+    api.guestSession.mockImplementation(() => new Promise(() => {}));
+    if (dimension === 'organization') org.set('CLO');
+    else user.set('Chrys');
+    fixture!.detectChanges();
+    expect(page.session()).toBeNull();
+    expect(page.reconciling()).toBe(false);
+    release();
+    await pending;
   },
 );

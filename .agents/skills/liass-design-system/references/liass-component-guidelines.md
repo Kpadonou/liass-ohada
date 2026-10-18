@@ -22,6 +22,7 @@
 - Card actions should be grouped in the header or footer consistently.
 - Avoid scattering actions across a card.
 - Use icons where they clarify common actions.
+- Choose action color by semantic severity: primary/navy for the principal workflow commit; secondary/accent for constructive supporting actions; danger/error for removal or destruction; neutral for navigation, refresh and quantity +/- utilities. Reuse Material system tokens and the additive `liass-action-secondary`, `liass-action-danger`, `liass-action-neutral` treatments. Do not make every button primary or style quantity decrement as destructive. Preserve visible labels where operational clarity requires them; danger must also be conveyed by wording/icon, never color alone.
 - Disable buttons only when the reason is obvious or explained by validation.
 
 ## Cards

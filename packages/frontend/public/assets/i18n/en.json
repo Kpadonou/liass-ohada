@@ -4736,7 +4736,13 @@
     },
     "ORDER_TAKING": {
       "DRAFT": "To confirm",
-      "LINE_COUNT": "{{count}} line(s) · up to 12 per round",
+      "LINES_ZERO": "No lines",
+      "LINES_ONE": "1 line",
+      "LINES_MANY": "{{count}} lines",
+      "ROUND_LIMIT": "max. 12",
+      "MENU_HELP": "Browse the menu and add items to the order.",
+      "QUANTITY": "Quantity for {{name}}",
+      "INVALID_QUANTITY": "Enter a positive whole quantity for {{name}}. The saved quantity has been restored.",
       "MENU": "Menu",
       "CATEGORY": "Category",
       "SELECT_ORDER": "Selected order",
@@ -4775,7 +4781,7 @@
       "REJECTED": "This change was not accepted. Review the order and try again.",
       "RETRY": "The save result is uncertain. Review the order, then resume the same operation.",
       "CREATE_RETRY": "Order creation was not confirmed. Orders have been refreshed; resume the same operation to avoid duplicates, then add the item.",
-      "PARTIAL_CREATE": "The order was created, but the item addition was not confirmed. Resume the operation if necessary, or add the item to this same order.",
+      "PARTIAL_CREATE": "This item addition was not confirmed. Check the draft before trying again.",
       "RETRY_INTENT": "Check and resume",
       "REMOVAL_REASON": "Unconfirmed item removed",
       "STATUS": {

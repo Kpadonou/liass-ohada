@@ -4736,7 +4736,13 @@
     },
     "ORDER_TAKING": {
       "DRAFT": "À valider",
-      "LINE_COUNT": "{{count}} ligne(s) · 12 maximum par validation",
+      "LINES_ZERO": "Aucune ligne",
+      "LINES_ONE": "1 ligne",
+      "LINES_MANY": "{{count}} lignes",
+      "ROUND_LIMIT": "max. 12",
+      "MENU_HELP": "Parcourez la carte et ajoutez des articles à la commande.",
+      "QUANTITY": "Quantité de {{name}}",
+      "INVALID_QUANTITY": "Saisissez une quantité entière positive pour {{name}}. La quantité enregistrée a été rétablie.",
       "MENU": "Carte",
       "CATEGORY": "Catégorie",
       "SELECT_ORDER": "Commande consultée",
@@ -4775,7 +4781,7 @@
       "REJECTED": "Cette modification n’a pas été acceptée. Vérifiez la commande et réessayez.",
       "RETRY": "Le résultat de l’enregistrement est incertain. Vérifiez la commande puis reprenez la même opération.",
       "CREATE_RETRY": "La création n’a pas été confirmée. Les commandes sont actualisées ; reprenez la même opération pour éviter un doublon, puis ajoutez l’article.",
-      "PARTIAL_CREATE": "La commande a été créée, mais l’ajout n’a pas été confirmé. Reprenez l’opération si nécessaire, ou ajoutez l’article à cette même commande.",
+      "PARTIAL_CREATE": "L’ajout de cet article n’a pas été confirmé. Vérifiez le brouillon avant de réessayer.",
       "RETRY_INTENT": "Vérifier et reprendre",
       "REMOVAL_REASON": "Retrait d’un article non validé",
       "STATUS": {

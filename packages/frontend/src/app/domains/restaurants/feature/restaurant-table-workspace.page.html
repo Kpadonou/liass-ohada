@@ -1,11 +1,11 @@
-<div class="min-w-0 space-y-4">
+<div class="min-w-0 space-y-2">
   <nav
     class="flex flex-wrap items-center justify-between gap-2"
     [attr.aria-label]="'RESTAURANTS.WORKSPACE.NAV' | transloco"
   >
     <a
       mat-button
-      class="min-h-11"
+      class="liass-action-neutral min-h-11"
       routerLink="/restaurants/service"
       [queryParams]="backParams()"
       data-testid="back-floor"
@@ -16,7 +16,7 @@
     @if (allowed() && valid()) {
       <button
         mat-button
-        class="min-h-11"
+        class="liass-action-neutral min-h-11"
         type="button"
         [disabled]="query.isFetching()"
         (click)="query.refetch()"
@@ -25,99 +25,110 @@
       </button>
     }
   </nav>
-  <liass-page-header
-    class="min-w-0 break-words"
-    eyebrow=""
-    [title]="session()?.tableCode ?? ('RESTAURANTS.WORKSPACE.TITLE' | transloco)"
-    [subtitle]="
-      session() && session()!.tableName !== session()!.tableCode ? session()!.tableName : ''
-    "
-  />
-  @if (!valid() || !allowed() || query.isError()) {
-    <section
-      role="alert"
-      class="space-y-2 rounded-app-card border border-app-border bg-app-surface p-5"
-      data-testid="workspace-error"
-    >
-      <h2 class="text-base font-semibold">
-        {{ 'RESTAURANTS.WORKSPACE.ERRORS.' + errorKey() | transloco }}
-      </h2>
-      <p class="text-sm text-app-text-secondary">
-        {{ 'RESTAURANTS.WORKSPACE.RETURN_HELP' | transloco }}
-      </p>
-      @if (errorKey() === 'LOAD') {
-        <button mat-stroked-button class="min-h-11" type="button" (click)="query.refetch()">
-          {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
-        </button>
-      }
-    </section>
-  } @else if (!session()) {
-    <div role="status" aria-busy="true" class="space-y-3">
-      <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
-      <liass-skeleton variant="block" />
-    </div>
-  } @else if (session()!.status === 'CLOSED') {
-    <section
-      role="status"
-      aria-live="polite"
-      class="space-y-3 rounded-app-card border border-app-border bg-app-surface p-5"
-      data-testid="workspace-closed"
-    >
-      <liass-status-chip tone="neutral" [label]="'RESTAURANTS.WORKSPACE.CLOSED' | transloco" />
-      <h2 class="text-base font-semibold">{{ 'RESTAURANTS.WORKSPACE.TERMINATED' | transloco }}</h2>
-      <p class="text-sm text-app-text-secondary">
-        {{ 'RESTAURANTS.WORKSPACE.TERMINATED_HELP' | transloco }}
-      </p>
-    </section>
-  } @else {
-    <section
-      class="flex min-w-0 flex-col gap-4 border-b border-app-border pb-4 sm:flex-row sm:justify-between"
-      [attr.aria-label]="'RESTAURANTS.WORKSPACE.CONTEXT' | transloco"
-      data-testid="workspace-context"
-    >
-      <div class="min-w-0 space-y-3">
-        <div class="flex flex-wrap items-center gap-2">
-          <liass-status-chip
-            tone="brand"
-            [label]="'RESTAURANTS.WORKSPACE.OPEN_STATE' | transloco"
-          />
-          <span class="text-sm text-app-text-secondary tabular-nums">{{ duration() }}</span>
-        </div>
-        <p class="text-xs text-app-text-secondary">
-          {{ 'RESTAURANTS.WORKSPACE.OPENED' | transloco }}
-          <time [attr.datetime]="session()!.openedAt">{{
-            session()!.openedAt | date: 'dd/MM/yyyy HH:mm'
-          }}</time>
-        </p>
-        <p class="flex min-w-0 items-start gap-2 text-sm" data-testid="workspace-responsible">
-          <mat-icon class="shrink-0" aria-hidden="true">person_outline</mat-icon>
-          <span class="min-w-0 break-words">
-            @if (session()!.responsibleStaff) {
-              {{ responsibleName() }}
-              @if (!session()!.responsibleStaff!.available) {
-                <span class="text-app-text-secondary">
-                  · {{ 'RESTAURANTS.RESPONSIBILITY.UNAVAILABLE' | transloco }}</span
-                >
-              }
-            } @else {
-              {{ 'RESTAURANTS.RESPONSIBILITY.UNASSIGNED' | transloco }}
-            }
-          </span>
-        </p>
-      </div>
-      <div class="min-w-0 space-y-1 sm:text-right">
-        <p class="text-xs text-app-text-secondary">
-          {{ 'RESTAURANTS.WORKSPACE.AMOUNT' | transloco }}
-        </p>
-        <p
-          class="break-words text-2xl font-semibold leading-tight tabular-nums"
-          data-testid="workspace-amount"
+  <liass-card padding="sm">
+    <div class="grid min-w-0 items-center gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,4fr)]">
+      <h1 class="min-w-0 break-words text-xl font-semibold leading-tight">
+        {{ session() ? tableDisplayName(session()!) : ('RESTAURANTS.WORKSPACE.TITLE' | transloco) }}
+      </h1>
+      @if (!valid() || !allowed() || query.isError()) {
+        <section
+          role="alert"
+          class="space-y-2 rounded-app-card border border-app-border bg-app-surface p-5"
+          data-testid="workspace-error"
         >
-          {{ amount() }}
-        </p>
-      </div>
-    </section>
-  }
+          <h2 class="text-base font-semibold">
+            {{ 'RESTAURANTS.WORKSPACE.ERRORS.' + errorKey() | transloco }}
+          </h2>
+          <p class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.WORKSPACE.RETURN_HELP' | transloco }}
+          </p>
+          @if (errorKey() === 'LOAD') {
+            <button
+              mat-stroked-button
+              class="liass-action-neutral min-h-11"
+              type="button"
+              (click)="query.refetch()"
+            >
+              {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
+            </button>
+          }
+        </section>
+      } @else if (!session()) {
+        <div role="status" aria-busy="true" class="space-y-3">
+          <p class="text-sm text-app-text-secondary">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+          <liass-skeleton variant="block" />
+        </div>
+      } @else if (session()!.status === 'CLOSED') {
+        <section
+          role="status"
+          aria-live="polite"
+          class="space-y-3 rounded-app-card border border-app-border bg-app-surface p-5"
+          data-testid="workspace-closed"
+        >
+          <liass-status-chip tone="neutral" [label]="'RESTAURANTS.WORKSPACE.CLOSED' | transloco" />
+          <h2 class="text-base font-semibold">
+            {{ 'RESTAURANTS.WORKSPACE.TERMINATED' | transloco }}
+          </h2>
+          <p class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.WORKSPACE.TERMINATED_HELP' | transloco }}
+          </p>
+        </section>
+      } @else {
+        <section
+          class="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+          [attr.aria-label]="'RESTAURANTS.WORKSPACE.CONTEXT' | transloco"
+          data-testid="workspace-context"
+        >
+          <div
+            class="min-w-0 space-y-1 lg:grid lg:grid-cols-2 lg:items-center lg:gap-x-6 lg:space-y-0"
+          >
+            <div class="flex flex-wrap items-center gap-2">
+              <liass-status-chip
+                tone="brand"
+                [label]="'RESTAURANTS.WORKSPACE.OPEN_STATE' | transloco"
+              />
+              <span class="text-sm text-app-text-secondary tabular-nums">{{ duration() }}</span>
+            </div>
+            <p class="text-xs text-app-text-secondary lg:col-start-1 lg:row-start-2">
+              {{ 'RESTAURANTS.WORKSPACE.OPENED' | transloco }}
+              <time [attr.datetime]="session()!.openedAt">{{
+                session()!.openedAt | date: 'dd/MM/yyyy HH:mm'
+              }}</time>
+            </p>
+            <p
+              class="flex min-w-0 items-start gap-2 text-sm lg:col-start-2 lg:row-span-2 lg:row-start-1"
+              data-testid="workspace-responsible"
+            >
+              <mat-icon class="shrink-0" aria-hidden="true">person_outline</mat-icon>
+              <span class="min-w-0 break-words">
+                @if (session()!.responsibleStaff) {
+                  {{ responsibleName() }}
+                  @if (!session()!.responsibleStaff!.available) {
+                    <span class="text-app-text-secondary">
+                      · {{ 'RESTAURANTS.RESPONSIBILITY.UNAVAILABLE' | transloco }}</span
+                    >
+                  }
+                } @else {
+                  {{ 'RESTAURANTS.RESPONSIBILITY.UNASSIGNED' | transloco }}
+                }
+              </span>
+            </p>
+          </div>
+          <div class="min-w-0 space-y-0.5 sm:w-48 sm:shrink-0 sm:text-right">
+            <p class="text-xs text-app-text-secondary">
+              {{ 'RESTAURANTS.WORKSPACE.AMOUNT' | transloco }} · {{ session()!.currency }}
+            </p>
+            <p
+              class="break-words text-xl font-semibold leading-tight tabular-nums"
+              data-testid="workspace-amount"
+            >
+              {{ amount() }}
+            </p>
+          </div>
+        </section>
+      }
+    </div>
+  </liass-card>
   <liass-restaurant-order-composer
     [accessValid]="allowed() && valid() && (!query.isError() || errorKey() === 'LOAD')"
     [session]="session()"

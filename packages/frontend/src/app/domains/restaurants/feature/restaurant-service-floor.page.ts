@@ -27,7 +27,8 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-select/searchable-select.component';
-import { restaurantPrice } from '../utils/restaurant-money';
+import { restaurantOperationalPrice } from '../utils/restaurant-money';
+import { tableDisplayName } from '../utils/table-display-name';
 import { restaurantError } from '../utils/restaurant-errors';
 import { serviceDuration } from '../utils/service-duration';
 type FloorTable = RestaurantServiceFloorResponse['items'][number];
@@ -54,6 +55,7 @@ type FloorTable = RestaurantServiceFloorResponse['items'][number];
   styleUrl: './restaurant-service-floor.page.scss',
 })
 export class RestaurantServiceFloorPage {
+  readonly tableDisplayName = tableDisplayName;
   readonly accessState = inject(RestaurantAccessState);
   readonly queries = inject(RestaurantsQueries);
   readonly caps = inject(RestaurantsCapabilities);
@@ -304,8 +306,19 @@ export class RestaurantServiceFloorPage {
     return this.t.translate(value.key, value.values);
   }
   amount(amount: number, currency: string) {
-    return restaurantPrice(amount, currency, this.t.getActiveLang());
+    return restaurantOperationalPrice(
+      amount,
+      currency,
+      this.t.getActiveLang(),
+      this.operationalCurrency(),
+    );
   }
+  readonly operationalCurrency = computed(() => {
+    const currencies = new Set(
+      this.visibleTables().flatMap((table) => (table.state === 'OCCUPIED' ? [table.currency] : [])),
+    );
+    return currencies.size === 1 ? [...currencies][0] : null;
+  });
   canOpenTable(table: FloorTable) {
     return (
       this.allowed() &&

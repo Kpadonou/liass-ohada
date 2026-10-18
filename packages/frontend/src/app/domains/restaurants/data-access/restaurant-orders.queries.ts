@@ -1,3 +1,4 @@
+import { RestaurantSessionReconciliation } from './restaurant-session-reconciliation';
 import { Injectable, inject } from '@angular/core';
 import {
   infiniteQueryOptions,
@@ -11,6 +12,7 @@ import { RestaurantContext, RestaurantListKind } from './restaurants-model';
 @Injectable({ providedIn: 'root' })
 export class RestaurantOrdersQueries {
   readonly api = inject(RestaurantOrdersApi);
+  private readonly reconciliation = inject(RestaurantSessionReconciliation);
   private readonly menuApi = inject(RestaurantsApi);
   private readonly client = inject(QueryClient);
   key(ctx: ServiceOrderContext, kind: string, parent = '') {
@@ -133,27 +135,35 @@ export class RestaurantOrdersQueries {
       retry: false,
     });
   }
-  async changed(ctx: ServiceOrderContext, order?: string, financial = false) {
-    await Promise.all([
-      this.client.invalidateQueries({ queryKey: this.key(ctx, 'orders'), exact: true }),
-      ...(order
-        ? ['order', 'items'].map((kind) =>
-            this.client.invalidateQueries({ queryKey: this.key(ctx, kind, order), exact: true }),
-          )
-        : []),
-      ...(financial
-        ? [
-            this.client.invalidateQueries({
-              queryKey: restaurantKeys.session(ctx.org, ctx.outlet, ctx.session, ctx.user),
-              exact: true,
-            }),
-            this.client.invalidateQueries({
-              queryKey: restaurantKeys.floor(ctx.org, ctx.outlet),
-              exact: true,
-            }),
-          ]
-        : []),
-    ]);
+  async changed(
+    ctx: ServiceOrderContext,
+    order?: string,
+    financial = false,
+    retainSession = false,
+  ) {
+    const reconcile = () =>
+      Promise.all([
+        this.client.invalidateQueries({ queryKey: this.key(ctx, 'orders'), exact: true }),
+        ...(order
+          ? ['order', 'items'].map((kind) =>
+              this.client.invalidateQueries({ queryKey: this.key(ctx, kind, order), exact: true }),
+            )
+          : []),
+        ...(financial
+          ? [
+              this.client.invalidateQueries({
+                queryKey: restaurantKeys.session(ctx.org, ctx.outlet, ctx.session, ctx.user),
+                exact: true,
+              }),
+              this.client.invalidateQueries({
+                queryKey: restaurantKeys.floor(ctx.org, ctx.outlet),
+                exact: true,
+              }),
+            ]
+          : []),
+      ]);
+    if (financial && retainSession) await this.reconciliation.run(ctx, reconcile);
+    else await reconcile();
   }
   async menuChanged(ctx: ServiceOrderContext, category: string) {
     await Promise.all(

@@ -126,13 +126,44 @@ async function ready() {
   });
   return page;
 }
+it('uses names in operational cards and their accessible actions, retaining code fallback', async () => {
+  const floor = floorFixture();
+  floor.items[1] = { ...floor.items[1], name: 'TEST CHRIS' };
+  api.serviceFloor.mockResolvedValue(floor);
+  await ready();
+  const cards = fixture.nativeElement.querySelector('[data-testid="floor-grid"]');
+  expect(cards.textContent).toContain('TEST CHRIS');
+  expect(cards.textContent).not.toContain('T02');
+  expect(cards.textContent).toContain('T01');
+  expect(
+    cards.querySelector('[data-testid="open-workspace"]').getAttribute('aria-label'),
+  ).toContain('TEST CHRIS');
+});
+it('retains per-table currency when loaded operational currencies are ambiguous', async () => {
+  const floor = floorFixture();
+  const occupied = floor.items[1];
+  if (occupied.state !== 'OCCUPIED') throw new Error('Occupied fixture required');
+  floor.items.push({
+    ...occupied,
+    tableId: rid(99),
+    code: 'T99',
+    currency: 'EUR',
+    currentAmountMinor: 1025,
+  });
+  api.serviceFloor.mockResolvedValue(floor);
+  const page = await ready();
+  expect(page.operationalCurrency()).toBeNull();
+  const cards = fixture.nativeElement.querySelector('[data-testid="floor-grid"]');
+  expect(cards.textContent).toContain('XOF');
+  expect(cards.textContent).toContain('EUR');
+});
 it('renders real summaries, free/occupied cards, optional capacity and no future data', async () => {
   await ready();
   const text = fixture.nativeElement.textContent;
   expect(text).toContain('Service en salle');
   expect(text).toContain('Libre');
   expect(text).toContain('Occupée');
-  expect(text).toMatch(/12[\s\u202f\u00a0]500 XOF/);
+  expect(text).toMatch(/12[\s\u202f\u00a0]500/);
   expect(fixture.nativeElement.querySelectorAll('[data-state="FREE"]')).toHaveLength(2);
   expect(fixture.nativeElement.querySelectorAll('[data-state="OCCUPIED"]')).toHaveLength(1);
   const absent = fixture.nativeElement.querySelectorAll('[data-state="FREE"]')[1].textContent;
@@ -295,7 +326,7 @@ it('shows area context only for all areas and groups occupied status with durati
   fixture.detectChanges();
   expect(status.textContent).toContain('26 min');
   expect(occupied.querySelector('[data-testid="table-amount"]').textContent).toMatch(
-    /12[\s\u202f\u00a0]500 XOF/,
+    /12[\s\u202f\u00a0]500/,
   );
   page.selectArea(rid(3));
   fixture.detectChanges();
@@ -412,7 +443,12 @@ it.each([
     expect(!!card.querySelector('[data-testid="table-no-order"]')).toBe(noOrder);
     expect(!!card.querySelector('[data-testid="table-amount"]')).toBe(!noOrder);
     if (noOrder) expect(card.textContent).toContain('Aucune commande');
-    else expect(card.textContent).toContain('XOF');
+    else {
+      expect(card.textContent).not.toContain('XOF');
+      expect(fixture.nativeElement.querySelector('#service-floor-heading').textContent).toContain(
+        'XOF',
+      );
+    }
   },
 );
 

@@ -209,6 +209,11 @@
         <section class="space-y-3" aria-labelledby="service-floor-heading">
           <h2 id="service-floor-heading" class="text-xl font-semibold">
             {{ 'RESTAURANTS.SERVICE.FLOOR' | transloco }}
+            @if (operationalCurrency()) {
+              <span class="text-sm font-normal text-app-text-secondary"
+                >· {{ operationalCurrency() }}</span
+              >
+            }
           </h2>
           @if (floor.isFetching()) {
             <p role="status">{{ 'RESTAURANTS.SERVICE.REFRESHING' | transloco }}</p>
@@ -264,7 +269,7 @@
                   <div class="flex min-h-44 min-w-0 flex-col gap-3">
                     <div class="flex items-center justify-between gap-3">
                       <h3 class="min-w-0 break-all text-xl font-semibold leading-tight">
-                        {{ table.code }}
+                        {{ tableDisplayName(table) }}
                       </h3>
                       @if (table.state === 'OCCUPIED' && caps.canManageResponsibility()) {
                         <button
@@ -273,7 +278,8 @@
                           type="button"
                           [matMenuTriggerFor]="responsibilityMenu"
                           [attr.aria-label]="
-                            'RESTAURANTS.RESPONSIBILITY.ACTIONS' | transloco: { table: table.code }
+                            'RESTAURANTS.RESPONSIBILITY.ACTIONS'
+                              | transloco: { table: tableDisplayName(table) }
                           "
                         >
                           <mat-icon>more_vert</mat-icon>
@@ -383,9 +389,6 @@
                           <p data-testid="table-area">{{ table.areaName }}</p>
                         }
                       </div>
-                      @if (table.name && table.name !== table.code) {
-                        <p class="truncate text-app-muted" [title]="table.name">{{ table.name }}</p>
-                      }
                     </div>
                     @if (table.state === 'OCCUPIED' && caps.canReadSession()) {
                       <a
@@ -399,7 +402,8 @@
                         ]"
                         [queryParams]="{ area: areaId() }"
                         [attr.aria-label]="
-                          'RESTAURANTS.WORKSPACE.OPEN_TABLE' | transloco: { table: table.code }
+                          'RESTAURANTS.WORKSPACE.OPEN_TABLE'
+                            | transloco: { table: tableDisplayName(table) }
                         "
                         data-testid="open-workspace"
                       >
@@ -412,7 +416,7 @@
                         matButton="tonal"
                         class="service-open-action mt-auto min-h-11 w-full"
                         [attr.aria-label]="
-                          ('RESTAURANTS.SERVICE.OPEN' | transloco) + ' ' + table.code
+                          ('RESTAURANTS.SERVICE.OPEN' | transloco) + ' ' + tableDisplayName(table)
                         "
                         [disabled]="!!busy() || floor.isFetching()"
                         (click)="open(table)"
