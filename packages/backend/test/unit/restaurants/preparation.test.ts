@@ -1,5 +1,8 @@
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
+  BatchGetItemCommand,
+  BatchGetItemCommandInput,
+  GetItemCommand,
   QueryCommand,
   ScanCommand,
   TransactWriteItemsCommand,
@@ -70,17 +73,21 @@ async function person(user: string, role: string, assigned = true) {
       f.outlet.id,
     );
 }
-async function order() {
+async function order(
+  orderType: "DINE_IN" | "TAKEAWAY" | "COUNTER" = "COUNTER",
+  guestSessionId?: string,
+) {
   return c.RestaurantOrderSchema.parse(
     (
       await S.mutate(ctx(), "CREATE_ORDER", {
         clientRequestId: req(),
-        orderType: "COUNTER",
+        orderType,
+        ...(guestSessionId ? { guestSessionId } : {}),
       })
     ).data,
   );
 }
-async function add(orderId: string, index = 0) {
+async function add(orderId: string, index = 0, notes?: string) {
   const o = await S.order(ctx(), orderId),
     item = f.items[index];
   return c.RestaurantOrderItemSchema.parse(
@@ -95,6 +102,7 @@ async function add(orderId: string, index = 0) {
           categoryId: item.categoryId,
           expectedMenuItemVersion: item.version,
           quantity: 1,
+          ...(notes ? { notes } : {}),
         },
         { orderId },
       )
@@ -719,4 +727,399 @@ test("authorization revocation between read and commit rolls back all operationa
   });
   await expect(move(t, "START")).rejects.toBeDefined();
   expect(tasks()[0].state).toBe("QUEUED");
+});
+
+// PREP-1B: composition is read-only; existing task/command schemas stay unchanged.
+async function tableVisit() {
+  const table = f.tables[0];
+  const renamed = await Config.update(
+    org,
+    "owner",
+    "table",
+    { outletId: f.outlet.id, serviceAreaId: table.serviceAreaId },
+    table.id,
+    { expectedVersion: table.version, name: "Terrasse jardin" },
+  );
+  f.tables[0] = renamed;
+  return c.GuestSessionSchema.parse(
+    (
+      await S.mutate(ctx(), "OPEN_SESSION", {
+        clientRequestId: req(),
+        tableId: table.id,
+        areaId: table.serviceAreaId,
+      })
+    ).data,
+  );
+}
+const queueRead = (stationId: string, input: object = {}) =>
+  P.read(scope(), "cook", input, { stationId, state: "QUEUED" });
+const rawPatch = (
+  key: { PK: string; SK: string },
+  change: (
+    data: Record<string, unknown> & { data: Record<string, unknown> },
+  ) => void,
+) => {
+  const identity = JSON.stringify([key.PK, key.SK]);
+  const raw = unmarshall(m.rows.get(identity)!);
+  change(raw as Record<string, unknown> & { data: Record<string, unknown> });
+  m.rows.set(identity, marshall(raw, { removeUndefinedValues: true }));
+};
+const orderKey = (id: string) => ({
+  PK: K.restaurantOrderPK(org, f.outlet.id, id),
+  SK: K.restaurantTransactionMetaSK(),
+});
+const sessionKey = (id: string) => ({
+  PK: K.restaurantSessionPK(org, f.outlet.id, id),
+  SK: K.restaurantTransactionMetaSK(),
+});
+
+test("PREP-1B mixed service contexts use the session name snapshot, preserve accepted data, and never expose table code/IDs", async () => {
+  const session = await tableVisit();
+  for (const mode of ["DINE_IN", "TAKEAWAY", "COUNTER"] as const) {
+    const o = await order(
+      mode,
+      mode === "DINE_IN" ? session.guestSessionId : undefined,
+    );
+    await submit(o.orderId, [await add(o.orderId, 0, "Sans piment")]);
+  }
+  const before = tasks();
+  await Config.update(
+    org,
+    "owner",
+    "table",
+    { outletId: f.outlet.id, serviceAreaId: f.tables[0].serviceAreaId },
+    f.tables[0].id,
+    { expectedVersion: f.tables[0].version, name: "Nouveau nom" },
+  );
+  const page = await queueRead(before[0].stationId);
+  expect(page.items.map((item) => item.serviceContext)).toEqual(
+    expect.arrayContaining([
+      { mode: "DINE_IN", tableName: "Terrasse jardin" },
+      { mode: "TAKEAWAY" },
+      { mode: "COUNTER" },
+    ]),
+  );
+  for (const item of page.items) {
+    const { serviceContext, ...task } = item;
+    expect(task).toEqual(before.find((t) => t.fireId === item.fireId));
+    expect(task.notes).toBe("Sans piment");
+    expect(serviceContext).not.toHaveProperty("tableCode");
+    expect(serviceContext).not.toHaveProperty("tableId");
+  }
+  expect(tasks()).toEqual(before);
+  expect(c.PreparationListResponseSchema.parse(page)).toEqual(page);
+});
+
+test("PREP-1B deduplicates 50 tasks from 8 Orders and 4 sessions into three bounded batches", async () => {
+  const visit = await tableVisit();
+  // Additional canonical visits on the remaining configured tables.
+  const sessions = [visit];
+  for (const table of f.tables.slice(1))
+    sessions.push(
+      c.GuestSessionSchema.parse(
+        (
+          await S.mutate(ctx(), "OPEN_SESSION", {
+            clientRequestId: req(),
+            tableId: table.id,
+            areaId: table.serviceAreaId,
+          })
+        ).data,
+      ),
+    );
+  for (let i = 0; i < 8; i++) {
+    const o = await order("DINE_IN", sessions[i % 4].guestSessionId);
+    const lines = [];
+    for (let j = 0; j < (i < 2 ? 7 : 6); j++) lines.push(await add(o.orderId));
+    await submit(o.orderId, lines);
+  }
+  const station = tasks()[0].stationId;
+  m.db.resetHistory();
+  const page = await queueRead(station, { limit: 100 });
+  expect(page.items).toHaveLength(50);
+  const batches = m.db
+    .commandCalls(BatchGetItemCommand)
+    .map((call) => Object.values(call.args[0].input.RequestItems!)[0].Keys!);
+  expect(batches.map((keys) => keys.length)).toEqual([50, 8, 4]);
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+  // Fixed authorization/configuration reads, never one Get per task/Order/session.
+  expect(m.db.commandCalls(GetItemCommand)).toHaveLength(8);
+  expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
+});
+
+test("PREP-1B order preparation reuses the authorized parent and preserves closed-session context", async () => {
+  const session = await tableVisit();
+  const o = await order("DINE_IN", session.guestSessionId);
+  await submit(o.orderId, [await add(o.orderId)]);
+  rawPatch(sessionKey(session.guestSessionId), (raw) => {
+    raw.data.status = "CLOSED";
+    raw.data.closedAt = new Date().toISOString();
+    raw.data.closedBy = "owner";
+    raw.data.openOrderCount = 0;
+    raw.data.paidMinor = raw.data.dueMinor;
+  });
+  m.db.resetHistory();
+  const page = await P.read(scope(), "cook", {}, { orderId: o.orderId });
+  expect(page.items[0].serviceContext).toEqual({
+    mode: "DINE_IN",
+    tableName: "Terrasse jardin",
+  });
+  expect(m.db.commandCalls(BatchGetItemCommand)).toHaveLength(1);
+  const keys = Object.values(
+    m.db.commandCalls(BatchGetItemCommand)[0].args[0].input.RequestItems!,
+  )[0].Keys!;
+  expect(keys).toHaveLength(1);
+  expect(keys[0].PK.S).toBe(sessionKey(session.guestSessionId).PK);
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+});
+
+test.each([
+  "missing Order",
+  "missing session",
+  "foreign Order",
+  "foreign session",
+  "wrong table",
+  "blank name",
+])(
+  "PREP-1B %s fails safely without a technical identity fallback",
+  async (problem) => {
+    const session = await tableVisit();
+    const o = await order("DINE_IN", session.guestSessionId);
+    await submit(o.orderId, [await add(o.orderId)]);
+    const task = tasks()[0];
+    if (problem === "missing Order")
+      m.rows.delete(JSON.stringify(Object.values(orderKey(o.orderId))));
+    if (problem === "missing session")
+      m.rows.delete(
+        JSON.stringify(Object.values(sessionKey(session.guestSessionId))),
+      );
+    if (problem === "foreign Order")
+      rawPatch(orderKey(o.orderId), (raw) => {
+        raw.data.outletId = fixtureId(99001);
+      });
+    if (problem === "foreign session")
+      rawPatch(sessionKey(session.guestSessionId), (raw) => {
+        raw.orgId = "foreign";
+        raw.data.orgId = "foreign";
+      });
+    if (problem === "wrong table")
+      rawPatch(orderKey(o.orderId), (raw) => {
+        raw.data.tableId = fixtureId(99002);
+      });
+    if (problem === "blank name")
+      rawPatch(sessionKey(session.guestSessionId), (raw) => {
+        raw.data.tableName = "  ";
+      });
+    await expect(queueRead(task.stationId)).rejects.toMatchObject({
+      messageCode: "RESTAURANTS_TRANSACTION_INTEGRITY",
+    });
+  },
+);
+
+test("PREP-1B cursor pages preserve per-task context and empty pages add no parent batches", async () => {
+  const visit = await tableVisit();
+  const a = await order("DINE_IN", visit.guestSessionId);
+  await submit(a.orderId, [await add(a.orderId)]);
+  const b = await order("TAKEAWAY");
+  await submit(b.orderId, [await add(b.orderId)]);
+  const first = await queueRead(tasks()[0].stationId, { limit: 1 });
+  expect(first.nextCursor).toBeDefined();
+  const second = await queueRead(tasks()[0].stationId, {
+    limit: 1,
+    cursor: first.nextCursor,
+  });
+  expect(second.nextCursor).toBeUndefined();
+  expect(
+    new Set(
+      [...first.items, ...second.items].map((t) => t.serviceContext.mode),
+    ),
+  ).toEqual(new Set(["DINE_IN", "TAKEAWAY"]));
+  m.db.resetHistory();
+  const empty = await P.read(
+    scope(),
+    "cook",
+    {},
+    { stationId: tasks()[0].stationId, state: "READY" },
+  );
+  expect(empty.items).toEqual([]);
+  expect(m.db.commandCalls(BatchGetItemCommand)).toHaveLength(0);
+});
+
+test("PREP-1B parent BatchGet retries response-size/unprocessed subsets and caps retries", async () => {
+  const visit = await tableVisit();
+  const o = await order("DINE_IN", visit.guestSessionId);
+  await submit(o.orderId, [await add(o.orderId)]);
+  const t = tasks()[0];
+  let orderCalls = 0;
+  m.db.on(BatchGetItemCommand).callsFake(async (input) => {
+    const [table, request] = Object.entries(
+      (input as BatchGetItemCommandInput).RequestItems!,
+    )[0];
+    const keys = request.Keys!;
+    const isOrder = keys[0].PK.S!.includes("#ORD#") && keys[0].SK.S === "META";
+    if (isOrder && ++orderCalls === 1)
+      return { UnprocessedKeys: input.RequestItems };
+    return {
+      Responses: {
+        [table]: keys.flatMap((key) => {
+          const row = m.rows.get(JSON.stringify([key.PK.S, key.SK.S]));
+          return row ? [row] : [];
+        }),
+      },
+    };
+  });
+  expect((await queueRead(t.stationId)).items[0].serviceContext.mode).toBe(
+    "DINE_IN",
+  );
+  expect(orderCalls).toBe(2);
+  let calls = 0;
+  m.db.on(BatchGetItemCommand).callsFake(async (input) => {
+    const keys = Object.values(
+      (input as BatchGetItemCommandInput).RequestItems!,
+    )[0].Keys!;
+    if (keys[0].SK.S === "META") {
+      calls++;
+      return { UnprocessedKeys: input.RequestItems };
+    }
+    const table = Object.keys(input.RequestItems!)[0];
+    return {
+      Responses: {
+        [table]: keys.map(
+          (key) => m.rows.get(JSON.stringify([key.PK.S, key.SK.S]))!,
+        ),
+      },
+    };
+  });
+  await expect(queueRead(t.stationId)).rejects.toMatchObject({
+    statusCode: 503,
+  });
+  expect(calls).toBe(3);
+});
+
+test("PREP-1B KITCHEN reads context through Preparation but still cannot read Orders or sessions", async () => {
+  const t = await queued();
+  m.db.resetHistory();
+  const response = await restaurantPreparationHandler("station-preparation")({
+    headers: { "x-org-id": org },
+    pathParameters: {
+      outletId: f.outlet.id,
+      stationId: t.stationId,
+      state: "QUEUED",
+    },
+    requestContext: { authorizer: { jwt: { claims: { sub: "cook" } } } },
+  });
+  expect(response.statusCode).toBe(200);
+  expect(m.db.commandCalls(GetItemCommand)).toHaveLength(10);
+  expect(JSON.parse(response.body).items[0].serviceContext).toEqual({
+    mode: "COUNTER",
+  });
+  const { restaurantTransactionHandler } =
+    await import("@/lambda/domains/restaurants/transaction-handler");
+  for (const name of ["get-order", "get-session"]) {
+    const denied = await restaurantTransactionHandler(name)({
+      headers: { "x-org-id": org },
+      pathParameters: {
+        outletId: f.outlet.id,
+        ...(name === "get-order"
+          ? { orderId: t.orderId }
+          : { sessionId: fixtureId(99999) }),
+      },
+      requestContext: { authorizer: { jwt: { claims: { sub: "cook" } } } },
+    });
+    expect(denied.statusCode).toBe(403);
+  }
+  expect(Auth.permissionsForRestaurantsRole("KITCHEN")).not.toContain(
+    "RESTAURANTS_SERVICE_ORDER_READ",
+  );
+  expect(Auth.permissionsForRestaurantsRole("KITCHEN")).not.toContain(
+    "RESTAURANTS_SERVICE_SESSION_READ",
+  );
+});
+
+test("PREP-1B maximum queue page hydrates 100 distinct Orders and sessions in bounded batches", async () => {
+  const visit = await tableVisit();
+  const parent = await order("DINE_IN", visit.guestSessionId);
+  await submit(parent.orderId, [await add(parent.orderId)]);
+  const template = tasks()[0];
+  const originalOrder = c.RestaurantOrderSchema.parse(
+    (await S.order(ctx(), parent.orderId)).data,
+  );
+  const originalSession = c.GuestSessionSchema.parse(
+    (await R.get(scope(), sessionKey(visit.guestSessionId), "SESSION"))!.data,
+  );
+  for (const [key, raw] of m.rows) {
+    if (
+      ["RESTAURANT_PREPARATION", "RESTAURANT_PREPARATION_WORK"].includes(
+        raw.entityType.S!,
+      )
+    )
+      m.rows.delete(key);
+  }
+  const seed = (row: ReturnType<typeof R.row>) =>
+    m.rows.set(JSON.stringify([row.PK, row.SK]), marshall(row));
+  for (let index = 0; index < 100; index++) {
+    const orderId = fixtureId(80000 + index),
+      guestSessionId = fixtureId(81000 + index);
+    seed(
+      R.row(scope(), orderKey(orderId), "ORDER", {
+        ...originalOrder,
+        orderId,
+        guestSessionId,
+      }),
+    );
+    seed(
+      R.row(scope(), sessionKey(guestSessionId), "SESSION", {
+        ...originalSession,
+        guestSessionId,
+      }),
+    );
+    const task = { ...template, orderId };
+    seed(
+      R.row(
+        scope(),
+        {
+          PK: orderKey(orderId).PK,
+          SK: K.restaurantPreparationSK(task.itemId, task.fireId),
+        },
+        "PREPARATION",
+        task,
+      ),
+    );
+    seed(P.queueRow(scope(), task));
+  }
+  m.db.resetHistory();
+  const page = await queueRead(template.stationId, { limit: 100 });
+  expect(page.items).toHaveLength(100);
+  expect(
+    page.items.every(
+      (item) =>
+        item.serviceContext.mode === "DINE_IN" &&
+        item.serviceContext.tableName === "Terrasse jardin",
+    ),
+  ).toBe(true);
+  expect(
+    m.db
+      .commandCalls(BatchGetItemCommand)
+      .map(
+        (call) =>
+          Object.values(call.args[0].input.RequestItems!)[0].Keys!.length,
+      ),
+  ).toEqual([100, 100, 100]);
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+});
+
+test("PREP-1B strict context contract rejects table data for non-table modes", () => {
+  expect(c.PreparationServiceContextSchema.parse({ mode: "TAKEAWAY" })).toEqual(
+    { mode: "TAKEAWAY" },
+  );
+  for (const invalid of [
+    { mode: "DINE_IN" },
+    { mode: "DINE_IN", tableName: " " },
+    { mode: "COUNTER", tableName: "Fake table" },
+    { mode: "TAKEAWAY", tableId: fixtureId(1) },
+    { mode: "DELIVERY" },
+    { mode: "DINE_IN", tableName: "Terrasse", tableCode: "TC" },
+  ])
+    expect(c.PreparationServiceContextSchema.safeParse(invalid).success).toBe(
+      false,
+    );
 });

@@ -237,6 +237,81 @@ export class RestaurantPreparationService {
     });
     return access;
   }
+  /** Only called after Preparation authorization, using parents of this bounded page. */
+  private static async operationalContext(
+    scope: TransactionScope,
+    tasks: c.RestaurantPreparation[],
+    knownOrder?: c.RestaurantOrder,
+  ): Promise<c.PreparationRead[]> {
+    if (tasks.length > 100) return fail("RESTAURANTS_TRANSACTION_LIMIT");
+    const orderIds = [...new Set(tasks.map((task) => task.orderId))];
+    if (!orderIds.length) return [];
+    const orders = new Map<string, c.RestaurantOrder>();
+    if (knownOrder) orders.set(knownOrder.orderId, knownOrder);
+    const missing = orderIds.filter((id) => !orders.has(id));
+    const rows = await R.batch(
+      scope,
+      missing.map((id) => ({
+        PK: K.restaurantOrderPK(scope.orgId, scope.outletId, id),
+        SK: K.restaurantTransactionMetaSK(),
+      })),
+      "ORDER",
+    );
+    rows.forEach((row, index) => {
+      if (!row) return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+      const order = c.RestaurantOrderSchema.parse(row.data);
+      if (order.orderId !== missing[index])
+        return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+      orders.set(order.orderId, order);
+    });
+    const sessionIds = [
+      ...new Set(
+        [...orders.values()]
+          .filter((order) => order.orderType === "DINE_IN")
+          .map((order) => c.RestaurantIdSchema.parse(order.guestSessionId)),
+      ),
+    ];
+    const sessionRows = await R.batch(
+      scope,
+      sessionIds.map((id) => ({
+        PK: K.restaurantSessionPK(scope.orgId, scope.outletId, id),
+        SK: K.restaurantTransactionMetaSK(),
+      })),
+      "SESSION",
+    );
+    const sessions = new Map<string, c.GuestSession>();
+    sessionRows.forEach((row, index) => {
+      if (!row) return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+      const session = c.GuestSessionSchema.parse(row.data);
+      if (session.guestSessionId !== sessionIds[index])
+        return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+      sessions.set(session.guestSessionId, session);
+    });
+    return tasks.map((task) => {
+      const order = orders.get(task.orderId);
+      if (
+        !order ||
+        order.orgId !== scope.orgId ||
+        order.outletId !== scope.outletId
+      )
+        return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+      let serviceContext: c.PreparationRead["serviceContext"];
+      if (order.orderType === "DINE_IN") {
+        const session = sessions.get(order.guestSessionId!);
+        if (
+          !session ||
+          session.orgId !== scope.orgId ||
+          session.outletId !== scope.outletId ||
+          session.tableId !== order.tableId ||
+          !session.tableName.trim() ||
+          session.tableName.length > 160
+        )
+          return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+        serviceContext = { mode: "DINE_IN", tableName: session.tableName };
+      } else serviceContext = { mode: order.orderType };
+      return c.PreparationReadSchema.parse({ ...task, serviceContext });
+    });
+  }
   static async read(
     s: TransactionScope,
     actorId: string,
@@ -264,7 +339,11 @@ export class RestaurantPreparationService {
         page,
       );
       return c.PreparationListResponseSchema.parse({
-        items: result.rows.map((r) => r.data),
+        items: await this.operationalContext(
+          s,
+          result.rows.map((r) => c.RestaurantPreparationSchema.parse(r.data)),
+          c.RestaurantOrderSchema.parse(order.data),
+        ),
         nextCursor: result.nextCursor,
       });
     }
@@ -313,7 +392,7 @@ export class RestaurantPreparationService {
       return task;
     });
     return c.PreparationListResponseSchema.parse({
-      items,
+      items: await this.operationalContext(s, items),
       nextCursor: result.nextCursor,
     });
   }

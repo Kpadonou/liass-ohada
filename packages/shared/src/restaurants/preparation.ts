@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RestaurantOrderSchema } from "./transactions";
 const id = z.string().uuid();
 const timestamp = z.string().datetime();
 export const PreparationStateSchema = z.enum([
@@ -84,9 +85,27 @@ export const PreparationTransitionRequestSchema = z
     expectedVersion: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
   })
   .strict();
+/** Read-only composition; never persisted on tasks or command replay results. */
+export const PreparationServiceContextSchema = z.discriminatedUnion("mode", [
+  z
+    .object({
+      mode: RestaurantOrderSchema.shape.orderType.extract(["DINE_IN"]),
+      tableName: z.string().trim().min(1).max(160),
+    })
+    .strict(),
+  z
+    .object({
+      mode: RestaurantOrderSchema.shape.orderType.exclude(["DINE_IN"]),
+    })
+    .strict(),
+]);
+export const PreparationReadSchema = RestaurantPreparationSchema.safeExtend({
+  serviceContext: PreparationServiceContextSchema,
+});
+export type PreparationRead = z.infer<typeof PreparationReadSchema>;
 export const PreparationListResponseSchema = z
   .object({
-    items: z.array(RestaurantPreparationSchema).max(100),
+    items: z.array(PreparationReadSchema).max(100),
     nextCursor: z.string().optional(),
   })
   .strict();
