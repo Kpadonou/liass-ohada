@@ -35,6 +35,15 @@ export const KeyFactory = {
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#GS#${restaurantTransactionSegment(id)}`,
   restaurantOrderPK: (orgId: string, outletId: string, id: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#ORD#${restaurantTransactionSegment(id)}`,
+  restaurantPaymentPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#PAY#${restaurantTransactionSegment(id)}`,
+  restaurantPaymentResultSK: () => "RESULT",
+  restaurantPaymentAllocationPrefix: () => "ALLOC#",
+  restaurantPaymentAllocationSK: (orderId: string) =>
+    `ALLOC#${restaurantTransactionSegment(orderId)}`,
+  restaurantPaymentReferencePrefix: () => "PAY#",
+  restaurantPaymentReferenceSK: (timestamp: string, paymentId: string) =>
+    `PAY#${KeyFactory.restaurantTransactionLocatorSK(timestamp, paymentId)}`,
   restaurantOccupancyPK: (orgId: string, outletId: string, tableId: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#TABLE#${restaurantTransactionSegment(tableId)}`,
   restaurantTransactionMetaSK: () => "META",
@@ -81,7 +90,7 @@ export const KeyFactory = {
   restaurantTransactionHistoryPK: (
     orgId: string,
     outletId: string,
-    kind: "GS" | "ORD" | "ACT",
+    kind: "GS" | "ORD" | "ACT" | "PAY",
     day: string,
     tableId?: string,
   ) => {

@@ -1,5 +1,9 @@
 import { z } from "zod";
 import {
+  RestaurantPaymentSchema,
+  RestaurantPaymentResultSchema,
+  RestaurantPaymentAllocationSchema,
+  RestaurantPaymentMethodSchema,
   GuestSessionSchema,
   RestaurantOrderSchema,
   RestaurantOrderItemSchema,
@@ -34,6 +38,25 @@ const audit = z
     fromState: z.string().optional(),
     toState: z.string(),
     reason: z.string().max(500).optional(),
+    payment: z
+      .object({
+        paymentId: id,
+        guestSessionId: id,
+        method: RestaurantPaymentMethodSchema,
+        amountMinor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        paidBeforeMinor: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(Number.MAX_SAFE_INTEGER),
+        paidAfterMinor: z
+          .number()
+          .int()
+          .nonnegative()
+          .max(Number.MAX_SAFE_INTEGER),
+      })
+      .strict()
+      .optional(),
     preparation: z
       .object({ itemId: id, fireId: id, stationId: id, submissionId: id })
       .strict()
@@ -50,7 +73,63 @@ const audit = z
       .optional(),
   })
   .strict();
+const paymentLink = z
+  .object({
+    paymentId: id,
+    guestSessionId: id,
+    timestamp: z.string().datetime(),
+    orderId: id.optional(),
+    amountMinor: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  })
+  .strict();
 export const TransactionSchemas = {
+  PAYMENT: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PAYMENT"),
+      data: RestaurantPaymentSchema,
+    })
+    .strict(),
+  PAYMENT_RESULT: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PAYMENT_RESULT"),
+      data: RestaurantPaymentResultSchema,
+    })
+    .strict(),
+  PAYMENT_ALLOCATION: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PAYMENT_ALLOCATION"),
+      data: RestaurantPaymentAllocationSchema.extend({
+        paymentId: id,
+        guestSessionId: id,
+        currency: z.string().regex(/^[A-Z]{3}$/),
+      }).strict(),
+    })
+    .strict(),
+  PAYMENT_REFERENCE: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PAYMENT_REFERENCE"),
+      data: paymentLink,
+    })
+    .strict(),
+  PAYMENT_COMMAND: z
+    .object({
+      ...base,
+      entityType: z.literal("RESTAURANT_PAYMENT_COMMAND"),
+      data: z
+        .object({
+          commandId: id,
+          ownerId: id,
+          lookupHash: z.string().regex(/^[a-f0-9]{64}$/),
+          fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
+          result: RestaurantPaymentResultSchema,
+        })
+        .strict(),
+    })
+    .strict(),
   PREPARATION: z
     .object({
       ...base,

@@ -75,3 +75,7 @@ export function restaurantsPermissionsForRole(
     ? RESTAURANTS_PERMISSIONS
     : ["RESTAURANTS_READ", "RESTAURANTS_MENU_READ"];
 }
+
+export const RESTAURANTS_PAYMENT_PERMISSIONS = [
+  "RESTAURANTS_PAYMENT_CAPTURE_MANAGE",
+] as const;

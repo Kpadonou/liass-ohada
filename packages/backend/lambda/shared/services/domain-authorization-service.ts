@@ -1,4 +1,5 @@
 import {
+  RESTAURANTS_PAYMENT_PERMISSIONS,
   RESTAURANTS_CHECKOUT_PERMISSIONS,
   RESTAURANTS_STAFF_SELF_PERMISSIONS,
   RESTAURANTS_PREPARATION_PERMISSIONS,
@@ -60,6 +61,7 @@ export class DomainAuthorizationService {
           ...config,
           ...RESTAURANTS_TRANSACTION_PERMISSIONS,
           ...RESTAURANTS_CHECKOUT_PERMISSIONS,
+          ...RESTAURANTS_PAYMENT_PERMISSIONS,
           ...RESTAURANTS_SERVICE_PERMISSIONS,
           ...RESTAURANTS_PREPARATION_PERMISSIONS,
           ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
@@ -75,6 +77,7 @@ export class DomainAuthorizationService {
           ? [
               ...config,
               ...RESTAURANTS_CHECKOUT_PERMISSIONS,
+              ...RESTAURANTS_PAYMENT_PERMISSIONS,
               ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
             ]
           : role === "KITCHEN"

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RestaurantPaidByMethodSchema } from "./payments";
 import { RestaurantStaffUserIdSchema } from "./staff";
 const id = z.string().uuid();
 const version = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
@@ -16,6 +17,7 @@ const balance = {
   paidMinor: money,
   reservedMinor: money,
   pendingPaymentCount: count,
+  paidByMethodMinor: RestaurantPaidByMethodSchema.optional(),
 };
 export const GuestSessionSchema = z
   .object({
@@ -73,6 +75,8 @@ export const RestaurantOrderSchema = z
     waiterId: z.string().min(1).optional(),
     version,
     financialRevision: count,
+    paymentAttemptCount: count.max(200).optional(),
+    succeededPaymentCount: count.max(200).optional(),
     lineCount: count.max(200),
     acceptedLineCount: count.max(200),
     draftLineCount: count.max(200),

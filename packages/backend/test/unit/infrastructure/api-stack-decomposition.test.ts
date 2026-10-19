@@ -353,7 +353,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(0);
   });
 
-  test("owns all 76 configuration, transactional, staff and preparation restaurant routes in one domain stack", () => {
+  test("owns all 77 configuration, transactional, staff, preparation and payment restaurant routes in one domain stack", () => {
     const restaurants = constructs.find(
       (item) => item instanceof RestaurantsApiStack,
     )!;
@@ -364,14 +364,14 @@ describe("API stack decomposition", () => {
     const routes = owned.filter(
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
-    expect(functions).toHaveLength(76);
-    expect(routes).toHaveLength(76);
+    expect(functions).toHaveLength(77);
+    expect(routes).toHaveLength(77);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
-    ).toHaveLength(76);
+    ).toHaveLength(77);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(76);
+    ).toHaveLength(77);
     expect(routes.every((route) => route.authorizationType === "JWT")).toBe(
       true,
     );

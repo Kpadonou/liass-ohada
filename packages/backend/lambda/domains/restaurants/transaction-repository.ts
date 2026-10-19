@@ -82,6 +82,74 @@ export class RestaurantTransactionsRepository {
     )
       throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
     const data = row.data.data;
+    if (
+      (kind === "PAYMENT" ||
+        kind === "PAYMENT_RESULT" ||
+        kind === "PAYMENT_ALLOCATION") &&
+      "paymentId" in data
+    ) {
+      const sk =
+        kind === "PAYMENT"
+          ? K.restaurantTransactionMetaSK()
+          : kind === "PAYMENT_RESULT"
+            ? K.restaurantPaymentResultSK()
+            : K.restaurantPaymentAllocationSK(
+                "orderId" in data ? data.orderId! : "",
+              );
+      if (
+        key.PK !==
+          K.restaurantPaymentPK(scope.orgId, scope.outletId, data.paymentId) ||
+        key.SK !== sk
+      )
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    }
+
+    if (row.data.entityType === "RESTAURANT_PAYMENT_REFERENCE") {
+      const link = row.data.data;
+      const ownerPK = link.orderId
+        ? K.restaurantOrderPK(scope.orgId, scope.outletId, link.orderId)
+        : K.restaurantSessionPK(
+            scope.orgId,
+            scope.outletId,
+            link.guestSessionId,
+          );
+      const historyPK = K.restaurantTransactionHistoryPK(
+        scope.orgId,
+        scope.outletId,
+        "PAY",
+        link.timestamp.slice(0, 10).replace(/-/g, ""),
+      );
+      const isHistory = !link.orderId && key.PK === historyPK;
+      if (
+        (!isHistory && key.PK !== ownerPK) ||
+        key.SK !==
+          (isHistory
+            ? K.restaurantTransactionLocatorSK(link.timestamp, link.paymentId)
+            : K.restaurantPaymentReferenceSK(link.timestamp, link.paymentId))
+      )
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    }
+    if (row.data.entityType === "RESTAURANT_PAYMENT_COMMAND") {
+      const command = row.data.data;
+      if (
+        key.PK !==
+          K.restaurantTransactionCommandPK(
+            scope.orgId,
+            scope.outletId,
+            "CAPTURE_PAYMENT",
+            command.ownerId,
+            command.lookupHash,
+          ) ||
+        key.SK !==
+          K.restaurantTransactionCommandSK(
+            command.ownerId,
+            command.lookupHash,
+          ) ||
+        command.result.guestSessionId !== command.ownerId ||
+        command.fingerprint !== command.result.fingerprint
+      )
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    }
     if ((kind === "PREPARATION" || kind === "WORK") && "fireId" in data) {
       const expected =
         kind === "PREPARATION"
@@ -131,7 +199,7 @@ export class RestaurantTransactionsRepository {
     if (
       kind === "ORDER" &&
       "orderId" in data &&
-      key.PK !== K.restaurantOrderPK(scope.orgId, scope.outletId, data.orderId)
+      key.PK !== K.restaurantOrderPK(scope.orgId, scope.outletId, data.orderId!)
     )
       throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
     if (
@@ -218,6 +286,17 @@ export class RestaurantTransactionsRepository {
     row: TransactionRow,
     previous?: TransactionRow,
   ): TransactWriteItem {
+    if (
+      previous &&
+      [
+        "RESTAURANT_PAYMENT",
+        "RESTAURANT_PAYMENT_RESULT",
+        "RESTAURANT_PAYMENT_ALLOCATION",
+        "RESTAURANT_PAYMENT_REFERENCE",
+        "RESTAURANT_PAYMENT_COMMAND",
+      ].includes(row.entityType)
+    )
+      throw new AppError(409, "RESTAURANTS_TRANSACTION_STATE");
     return {
       Put: {
         TableName: restaurantsTableName(),
@@ -369,9 +448,11 @@ export class RestaurantTransactionsRepository {
               parts[2],
             );
       }
-      if (kind === "LINE") {
+      if (kind === "LINE" || kind === "PAYMENT_ALLOCATION") {
         if (timestamp) throw new Error("Unexpected cursor timestamp");
-        return K.restaurantOrderItemSK(id);
+        return kind === "LINE"
+          ? K.restaurantOrderItemSK(id)
+          : K.restaurantPaymentAllocationSK(id);
       }
       if (!timestamp) throw new Error("Missing cursor timestamp");
       if (kind === "SESSION_ORDER" || kind === "OPEN_SESSION_ORDER")
@@ -380,6 +461,11 @@ export class RestaurantTransactionsRepository {
           id,
           kind === "OPEN_SESSION_ORDER",
         );
+      if (
+        kind === "PAYMENT_REFERENCE" &&
+        prefix === K.restaurantPaymentReferencePrefix()
+      )
+        return K.restaurantPaymentReferenceSK(timestamp, id);
       if (kind === "AUDIT")
         return K.restaurantTransactionAuditSK(timestamp, id);
       return K.restaurantTransactionLocatorSK(timestamp, id);
@@ -452,8 +538,15 @@ export class RestaurantTransactionsRepository {
           id = z
             .string()
             .uuid()
-            .parse(kind === "LINE" ? logical : logical.slice(25));
-          timestamp = kind === "LINE" ? undefined : logical.slice(0, 24);
+            .parse(
+              kind === "LINE" || kind === "PAYMENT_ALLOCATION"
+                ? logical
+                : logical.slice(25),
+            );
+          timestamp =
+            kind === "LINE" || kind === "PAYMENT_ALLOCATION"
+              ? undefined
+              : logical.slice(0, 24);
         }
         if (cursorSK(id, timestamp) !== k.SK)
           throw new Error("Invalid cursor position");
