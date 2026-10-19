@@ -14,6 +14,8 @@ const calls = [],
   orders = [],
   items = [];
 let sequence = 5000;
+const preparation = [],
+  serveReplays = new Map();
 const config = () => JSON.parse(readFileSync(process.argv[2], 'utf8'));
 const reviewNames = [
   'Poulet braisé sauce maison',
@@ -37,16 +39,17 @@ if (config().presentation) {
     createdBy: 'review',
     version: 1,
     financialRevision: 0,
-    lineCount: 18,
+    lineCount: config().serving ? 8 : 18,
     acceptedLineCount: 6,
-    draftLineCount: 12,
+    draftLineCount: config().serving ? 2 : 12,
     dueMinor: 1050000,
     paidMinor: 0,
     reservedMinor: 0,
     pendingPaymentCount: 0,
   });
   orders.push(order);
-  for (let i = 0; i < 18; i++) {
+  const draftCount = config().serving ? 2 : 12;
+  for (let i = 0; i < draftCount + 6; i++) {
     const line = {
       ...owner,
       orderId: order.orderId,
@@ -55,11 +58,11 @@ if (config().presentation) {
       categoryId: id(i % 2 ? 16 : 6),
       expectedMenuItemVersion: 1,
       quantity: i === 0 ? 12 : 1,
-      status: i < 12 ? 'DRAFT' : 'ACCEPTED',
+      status: i < draftCount ? 'DRAFT' : 'ACCEPTED',
       version: 1,
       createdAt: stamp,
     };
-    if (i >= 12)
+    if (i >= draftCount)
       line.snapshot = {
         menuItemId: line.menuItemId,
         menuId: id(7),
@@ -78,9 +81,59 @@ if (config().presentation) {
         currency: 'XOF',
         acceptedAt: stamp,
         acceptedBy: 'review',
-        submissionId: id(6000 + Math.floor((i - 12) / 2)),
+        submissionId: id(6000 + Math.floor((i - draftCount) / 2)),
       };
+    if (config().serving && i >= draftCount && i < draftCount + 5) {
+      const index = i - draftCount;
+      line.snapshot.name =
+        index === 2
+          ? 'Poisson grillé accompagné d’attiéké et de légumes de saison préparés à la demande'
+          : index === 1
+            ? 'Jus d’ananas frais'
+            : 'Poulet braisé sauce maison';
+      line.snapshot.stationId = id(3);
+      line.snapshot.stationVersion = 1;
+      line.latestFireId = id(8000 + index);
+      line.notes =
+        index === 0
+          ? 'Sans piment · sauce à part'
+          : index === 2
+            ? 'Servir les accompagnements séparément et vérifier les instructions particulières de la table.'
+            : undefined;
+    }
     items.push(c.RestaurantOrderItemSchema.parse(line));
+  }
+}
+if (config().serving) {
+  for (const [index, line] of items
+    .filter((line) => line.status === 'ACCEPTED')
+    .slice(0, 5)
+    .entries()) {
+    const state = index < 3 ? 'READY' : index === 3 ? 'IN_PROGRESS' : 'QUEUED';
+    preparation.push(
+      c.PreparationReadSchema.parse({
+        orgId: org,
+        outletId: id(2),
+        schemaVersion: 1,
+        orderId: line.orderId,
+        itemId: line.itemId,
+        fireId: id(8000 + index),
+        submissionId: line.snapshot.submissionId,
+        stationId: id(3),
+        stationVersion: 1,
+        generation: 1,
+        name: line.snapshot.name,
+        quantity: line.snapshot.quantity,
+        notes: line.notes,
+        state,
+        version: 3,
+        queuedAt: stamp,
+        queuedBy: 'review',
+        ...(state !== 'QUEUED' ? { startedAt: stamp, startedBy: 'review' } : {}),
+        ...(state === 'READY' ? { readyAt: stamp, readyBy: 'review' } : {}),
+        serviceContext: { mode: 'DINE_IN', tableName: 'Terrasse jardin près de la baie vitrée' },
+      }),
+    );
   }
 }
 const server = http.createServer(async (req, res) => {
@@ -114,7 +167,7 @@ const server = http.createServer(async (req, res) => {
           role: 'OWNER',
           status: 'ACTIVE',
           accessSource: 'DIRECT',
-          productRoles: { RESTAURANTS: 'OWNER' },
+          productRoles: { RESTAURANTS: config().role ?? 'OWNER' },
         },
       ],
     });
@@ -243,6 +296,36 @@ const server = http.createServer(async (req, res) => {
       items: orders.filter((o) => o.outletId === outlet && o.guestSessionId === session),
     });
   const order = orders.find((o) => o.orderId === parts[5]);
+  if (req.method === 'GET' && path.endsWith('/preparation')) {
+    if (config().readDelay) await new Promise((resolve) => setTimeout(resolve, config().readDelay));
+    const all = preparation.filter((task) => task.orderId === parts[5]);
+    const offset = Number(url.searchParams.get('cursor') ?? 0),
+      size = config().prepPageSize ?? 50;
+    return send({
+      items: all.slice(offset, offset + size),
+      ...(offset + size < all.length ? { nextCursor: String(offset + size) } : {}),
+    });
+  }
+  if (req.method === 'POST' && path.endsWith('/serve')) {
+    let raw = '';
+    for await (const chunk of req) raw += chunk;
+    const input = JSON.parse(raw || '{}'),
+      task = preparation.find((row) => row.fireId === parts[9]);
+    if (serveReplays.has(input.clientRequestId))
+      return send(serveReplays.get(input.clientRequestId));
+    if (config().commandDelay)
+      await new Promise((resolve) => setTimeout(resolve, config().commandDelay));
+    if (!task || task.state !== 'READY' || task.version !== input.expectedVersion)
+      return send({ message: 'Cet article n’est plus prêt à servir.' }, 409);
+    task.state = 'SERVED';
+    task.version++;
+    task.servedAt = new Date().toISOString();
+    task.servedBy = 'review';
+    const { serviceContext, ...data } = task;
+    const result = c.PreparationResponseSchema.parse({ data });
+    serveReplays.set(input.clientRequestId, result);
+    return send(result);
+  }
   if (req.method === 'GET' && path.includes('/orders/'))
     return send(
       path.endsWith('/items')

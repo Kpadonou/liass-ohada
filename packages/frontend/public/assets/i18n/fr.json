@@ -4825,6 +4825,19 @@
       "EMPTY_QUEUED": "Aucune préparation en attente",
       "EMPTY_IN_PROGRESS": "Aucune préparation en cours",
       "EMPTY_READY": "Aucune préparation prête"
+    },
+    "SERVING": {
+      "TITLE": "Prêt à servir",
+      "REFRESH": "Actualiser les articles prêts à servir",
+      "LOAD_ERROR": "Les articles à servir sont indisponibles. Actualisez pour réessayer.",
+      "FAILED": "Le service n’a pas pu être confirmé. Actualisez ou réessayez.",
+      "SERVE_ITEM": "Servir : {{name}}",
+      "PENDING": "Service…",
+      "SERVE": "Servir",
+      "PARTIAL": "D’autres articles restent à vérifier.",
+      "EMPTY": "Aucun article prêt à servir.",
+      "MORE_READY": "Afficher davantage d’articles prêts",
+      "MORE": "Vérifier les articles suivants"
     }
   }
 }

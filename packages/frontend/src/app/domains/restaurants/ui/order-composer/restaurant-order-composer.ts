@@ -1,3 +1,4 @@
+import { RestaurantReadyToServeComponent } from '../restaurant-ready-to-serve.component';
 import {
   RestaurantCarteQueries,
   CarteItem,
@@ -44,6 +45,7 @@ type Intent = { kind: OrderCommand; input: Record<string, unknown>; order?: stri
   selector: 'liass-restaurant-order-composer',
   host: { class: 'block min-w-0' },
   imports: [
+    RestaurantReadyToServeComponent,
     LiassSearchableSelectComponent,
     DatePipe,
     ReactiveFormsModule,
@@ -718,6 +720,7 @@ export class RestaurantOrderComposer {
         intent.order ?? ('orderId' in result ? result.orderId : undefined),
         intent.kind === 'submit',
         true,
+        intent.kind === 'submit',
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
       if (!this.same(identity)) return null;
@@ -746,7 +749,7 @@ export class RestaurantOrderComposer {
           this.t.translate('RESTAURANTS.ORDER_TAKING.' + (this.message() || 'ACCESS')),
       );
       await Promise.allSettled([
-        this.queries.changed(ctx, intent.order, true),
+        this.queries.changed(ctx, intent.order, true, false, intent.kind === 'submit'),
         ...(this.message() === 'MENU_CONFLICT' ? [this.queries.menuChanged(ctx, '')] : []),
       ]);
       return null;

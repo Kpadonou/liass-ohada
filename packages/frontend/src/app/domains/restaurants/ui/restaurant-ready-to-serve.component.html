@@ -1,0 +1,94 @@
+@if (enabled() && order()) {
+  <liass-card padding="sm" class="min-w-0">
+    <section class="space-y-2" aria-labelledby="ready-to-serve-title" data-testid="ready-to-serve">
+      <div class="flex min-w-0 items-center justify-between gap-2">
+        <h2
+          id="ready-to-serve-title"
+          tabindex="-1"
+          data-ready-heading
+          class="flex min-w-0 items-center gap-2 text-base font-semibold"
+        >
+          <mat-icon aria-hidden="true">room_service</mat-icon>
+          {{ 'RESTAURANTS.SERVING.TITLE' | transloco }}
+          @if (ready().length) {
+            <span class="text-sm text-app-text-secondary">· {{ ready().length }}</span>
+          }
+        </h2>
+        <button
+          mat-icon-button
+          type="button"
+          class="shrink-0"
+          [attr.aria-label]="'RESTAURANTS.SERVING.REFRESH' | transloco"
+          [disabled]="query.isFetching() || busy().size > 0"
+          (click)="query.refetch()"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+      @if (query.isPending()) {
+        <p role="status" class="text-xs text-app-text-secondary">
+          {{ 'RESTAURANTS.UI.LOADING' | transloco }}
+        </p>
+      } @else if (query.isError()) {
+        <p role="alert" class="text-sm">{{ 'RESTAURANTS.SERVING.LOAD_ERROR' | transloco }}</p>
+      }
+      @for (task of ready().slice(0, display()); track task.fireId) {
+        <div
+          class="flex min-w-0 items-start justify-between gap-2 border-t border-app-border py-2"
+          [attr.aria-busy]="busy().has(key(task))"
+          data-testid="ready-task"
+        >
+          <div class="min-w-0 flex-1">
+            <p class="break-words text-sm font-medium">{{ task.quantity }} × {{ task.name }}</p>
+            @if (task.notes) {
+              <p class="break-words whitespace-pre-wrap text-sm text-app-text-secondary">
+                {{ task.notes }}
+              </p>
+            }
+            @if (errors()[key(task)]) {
+              <p role="alert" class="text-sm">{{ errors()[key(task)] }}</p>
+            }
+          </div>
+          <button
+            mat-flat-button
+            type="button"
+            class="liass-action-secondary min-h-11 shrink-0"
+            [disabled]="busy().has(key(task)) || query.isFetching()"
+            [attr.aria-busy]="busy().has(key(task))"
+            [attr.aria-label]="'RESTAURANTS.SERVING.SERVE_ITEM' | transloco: { name: task.name }"
+            (click)="serve(task)"
+          >
+            {{
+              (busy().has(key(task)) ? 'RESTAURANTS.SERVING.PENDING' : 'RESTAURANTS.SERVING.SERVE')
+                | transloco
+            }}
+          </button>
+        </div>
+      } @empty {
+        @if (!query.isPending() && !query.isError()) {
+          <p class="text-xs text-app-text-secondary">
+            {{
+              (query.hasNextPage() ? 'RESTAURANTS.SERVING.PARTIAL' : 'RESTAURANTS.SERVING.EMPTY')
+                | transloco
+            }}
+          </p>
+        }
+      }
+      @if (ready().length > display()) {
+        <button mat-button type="button" (click)="display.set(display() + 50)">
+          {{ 'RESTAURANTS.SERVING.MORE_READY' | transloco }}
+        </button>
+      }
+      @if (query.hasNextPage()) {
+        <button
+          mat-button
+          type="button"
+          [disabled]="query.isFetching() || busy().size > 0"
+          (click)="query.fetchNextPage()"
+        >
+          {{ 'RESTAURANTS.SERVING.MORE' | transloco }}
+        </button>
+      }
+    </section>
+  </liass-card>
+}

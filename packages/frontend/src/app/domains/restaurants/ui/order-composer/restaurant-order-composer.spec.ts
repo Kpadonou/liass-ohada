@@ -1,3 +1,4 @@
+import { RestaurantServicePreparationApi } from '../../data-access/restaurant-service-preparation.api';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -49,6 +50,7 @@ const api = {
   items: vi.fn(),
   command: vi.fn(),
 };
+const serving = { page: vi.fn(), serve: vi.fn() };
 const menu = { get: vi.fn(), list: vi.fn(), cartePage: vi.fn() };
 const operational = (value = item()) => ({
   id: value.id,
@@ -87,6 +89,7 @@ const settle = async () => {
 };
 beforeEach(async () => {
   vi.clearAllMocks();
+  serving.page.mockResolvedValue({ items: [] });
   orders = [];
   lines = [];
   seq = 30;
@@ -196,6 +199,10 @@ beforeEach(async () => {
         useValue: { effectiveOrgId: org, currentUserId: user, contextRevision: revision },
       },
       { provide: RestaurantsApi, useValue: menu },
+      {
+        provide: RestaurantServicePreparationApi,
+        useValue: serving,
+      },
       { provide: RestaurantOrdersApi, useValue: api },
       { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } },
     ],
@@ -1138,4 +1145,41 @@ it('keeps submit progress on its button without replacing the workspace', async 
   release();
   await promise;
   await settle();
+});
+
+it('keeps Ready DOM through draft micro-actions and refetches it only for submission', async () => {
+  await page.add(item());
+  await settle();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(serving.page).toHaveBeenCalledTimes(1);
+  });
+  const region = fixture.nativeElement.querySelector('[data-testid="ready-to-serve"]');
+  serving.page.mockClear();
+  await page.quantity(page.drafts()[0], 1);
+  await settle();
+  await page.remove(page.drafts()[0]);
+  await settle();
+  await page.add(item());
+  await settle();
+  expect(serving.page).not.toHaveBeenCalled();
+  expect(fixture.nativeElement.querySelector('[data-testid="ready-to-serve"]')).toBe(region);
+  await page.submit();
+  await settle();
+  await vi.waitFor(() => expect(serving.page).toHaveBeenCalledTimes(1));
+  expect(fixture.nativeElement.querySelector('[data-testid="ready-to-serve"]')).toBe(region);
+});
+
+it('reconciles selected Order Preparation after an ambiguous submission result', async () => {
+  await page.add(item());
+  await settle();
+  await vi.waitFor(() => expect(serving.page).toHaveBeenCalledTimes(1));
+  serving.page.mockClear();
+  api.command.mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }));
+  await page.submit();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(serving.page).toHaveBeenCalledTimes(1);
+  });
+  expect(page.pending()?.kind).toBe('submit');
 });

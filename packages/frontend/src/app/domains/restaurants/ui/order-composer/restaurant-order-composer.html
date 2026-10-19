@@ -373,6 +373,14 @@
                 }
               </div>
             </liass-card>
+            @if (live() && selectedId() && order()?.guestSessionId === sessionId()) {
+              <liass-restaurant-ready-to-serve
+                [context]="ctx()"
+                [order]="selectedId()"
+                [enabled]="live()"
+                (denied)="denied.set(true)"
+              />
+            }
             <liass-card class="min-w-0" padding="sm" aria-labelledby="accepted-title">
               <h2 id="accepted-title" class="flex items-center gap-2 text-base font-semibold">
                 <mat-icon aria-hidden="true">history</mat-icon>

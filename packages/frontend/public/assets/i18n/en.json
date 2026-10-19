@@ -4825,6 +4825,19 @@
       "EMPTY_QUEUED": "No queued preparation",
       "EMPTY_IN_PROGRESS": "No preparation in progress",
       "EMPTY_READY": "No ready preparation"
+    },
+    "SERVING": {
+      "TITLE": "Ready to serve",
+      "REFRESH": "Refresh ready-to-serve items",
+      "LOAD_ERROR": "Serving items could not be loaded. Refresh to try again.",
+      "FAILED": "Serving could not be confirmed. Refresh or retry.",
+      "SERVE_ITEM": "Serve: {{name}}",
+      "PENDING": "Serving…",
+      "SERVE": "Serve",
+      "PARTIAL": "More items remain to be checked.",
+      "EMPTY": "No items ready to serve.",
+      "MORE_READY": "Show more ready items",
+      "MORE": "Check more items"
     }
   }
 }

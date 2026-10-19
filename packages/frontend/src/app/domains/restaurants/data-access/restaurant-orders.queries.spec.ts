@@ -53,3 +53,35 @@ it.each([false, true])(
     TestBed.resetTestingModule();
   },
 );
+
+it('submission alone invalidates the exact selected Order Preparation read, never Carte or Kitchen', async () => {
+  const client = new QueryClient();
+  TestBed.configureTestingModule({
+    providers: [
+      { provide: QueryClient, useValue: client },
+      { provide: RestaurantOrdersApi, useValue: {} },
+      { provide: RestaurantsApi, useValue: {} },
+    ],
+  });
+  const queries = TestBed.inject(RestaurantOrdersQueries);
+  const invalidate = vi.spyOn(client, 'invalidateQueries');
+  await queries.changed(ctx, 'order', true, true, true);
+  expect(
+    invalidate.mock.calls
+      .filter(([filter]) => filter?.queryKey?.includes('service-preparation'))
+      .map(([filter]) => filter),
+  ).toEqual([
+    {
+      queryKey: ['restaurants', 'org', 'service-preparation', 'waiter', 3, 'outlet', 'order'],
+      exact: true,
+    },
+  ]);
+  expect(
+    invalidate.mock.calls.some(
+      ([filter]) =>
+        filter?.queryKey?.includes('kitchen') || filter?.queryKey?.includes('operational-carte'),
+    ),
+  ).toBe(false);
+  client.clear();
+  TestBed.resetTestingModule();
+});

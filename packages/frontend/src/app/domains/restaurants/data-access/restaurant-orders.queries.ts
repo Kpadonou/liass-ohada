@@ -1,3 +1,4 @@
+import { servicePreparationKey } from './restaurant-service-preparation.queries';
 import { RestaurantSessionReconciliation } from './restaurant-session-reconciliation';
 import { Injectable, inject } from '@angular/core';
 import {
@@ -141,6 +142,7 @@ export class RestaurantOrdersQueries {
     order?: string,
     financial = false,
     retainSession = false,
+    preparation = false,
   ) {
     const reconcile = () =>
       Promise.all([
@@ -149,6 +151,14 @@ export class RestaurantOrdersQueries {
           ? ['order', 'items'].map((kind) =>
               this.client.invalidateQueries({ queryKey: this.key(ctx, kind, order), exact: true }),
             )
+          : []),
+        ...(preparation && order
+          ? [
+              this.client.invalidateQueries({
+                queryKey: servicePreparationKey(ctx, order),
+                exact: true,
+              }),
+            ]
           : []),
         ...(financial
           ? [
