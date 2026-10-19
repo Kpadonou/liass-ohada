@@ -4449,6 +4449,9 @@
         "kitchen": {
           "TITLE": "Cuisine",
           "DESCRIPTION": "Préparations du poste sélectionné."
+        },
+        "checkout": {
+          "TITLE": "Caisse"
         }
       },
       "ADD": {
@@ -4838,6 +4841,63 @@
       "EMPTY": "Aucun article prêt à servir.",
       "MORE_READY": "Afficher davantage d’articles prêts",
       "MORE": "Vérifier les articles suivants"
+    },
+    "CHECKOUT": {
+      "TITLE": "Caisse",
+      "OUTLET": "Établissement",
+      "PAY": "Encaisser",
+      "METHOD": "Moyen de paiement",
+      "CASH": "Espèces",
+      "MOBILE_MONEY": "Mobile Money",
+      "CARD": "Carte bancaire",
+      "APPLIED": "Montant encaissé",
+      "TENDER": "Espèces reçues",
+      "CHANGE": "Monnaie à rendre",
+      "EXTERNAL_CONFIRM": "À enregistrer uniquement après confirmation effective du paiement auprès du prestataire.",
+      "REFERENCE": "Référence externe (facultative)",
+      "CAPTURING": "Encaissement…",
+      "RETRY": "Réessayer à l’identique",
+      "RETRY_NOTICE": "Résultat incertain. Réessayez le même encaissement avant toute nouvelle opération.",
+      "LOADING": "Chargement de la caisse…",
+      "READ_ERROR": "Les informations ne sont pas disponibles. Actualisez avant de continuer.",
+      "CANCELLED": "Annulé",
+      "MORE_LINES": "Charger les articles suivants",
+      "REFRESH": "Actualiser",
+      "DUE": "Addition",
+      "PAID": "Déjà payé",
+      "REMAINING": "Reste à payer",
+      "AVAILABLE": "Disponible à encaisser",
+      "PAYMENT_RECORDED": "Paiement enregistré. La table reste ouverte jusqu’à sa clôture explicite.",
+      "ADDITION": "Addition",
+      "ORDER": "Commande",
+      "ORDER_CLOSED": "Clôturée",
+      "MORE_ORDERS": "Charger les commandes suivantes",
+      "CLOSE": "Clôturer la table",
+      "CONFIRM_CLOSE": "Les commandes éligibles seront clôturées successivement, puis la table sera libérée. Les clôtures déjà réussies seront conservées si une étape échoue.",
+      "CONFIRM": "Confirmer la clôture",
+      "PROGRESS": "Clôture des commandes {{closed}} / {{total}}",
+      "NO_OUTLETS": "Aucun établissement actif ne vous est affecté. Contactez un responsable.",
+      "MORE_OUTLETS": "Charger les établissements suivants",
+      "SEARCH": "Rechercher une table chargée",
+      "NO_TABLES": "Aucune table occupée parmi les résultats chargés.",
+      "MORE_TABLES": "Charger les tables suivantes",
+      "SELECT_TABLE": "Sélectionnez une table occupée pour consulter son addition.",
+      "ACCESS": "Votre accès à la caisse doit être vérifié.",
+      "TABLE_CLOSED": "Table clôturée.",
+      "BLOCK_UNPAID": "Un solde reste à payer.",
+      "BLOCK_PENDING": "Un paiement est réservé ou en attente.",
+      "BLOCK_DRAFT": "Des articles doivent être validés ou retirés par le service.",
+      "BLOCK_WORK": "La préparation ou le service n’est pas terminé.",
+      "BLOCK_UNACCEPTED": "Une commande en brouillon doit être résolue par le service ou un responsable.",
+      "BLOCK_INCOMPLETE": "Chargez toutes les commandes avant de poursuivre.",
+      "INVALID_AMOUNT": "Vérifiez le montant, les espèces reçues et la limite de répartition sur dix commandes.",
+      "RESUME_CLOSE": "Reprendre la clôture",
+      "ALLOCATION_SUMMARY": "Répartition sur {{count}} commandes · maximum 10.",
+      "CONFLICT": "L’addition a changé. Les clôtures déjà réussies sont conservées. Actualisez et vérifiez avant de reprendre.",
+      "ALLOCATION_ONE": "Répartition sur 1 commande · maximum 10.",
+      "BLOCK_CLOSED": "Cette table est déjà clôturée.",
+      "REFRESH_ACCESS": "Actualiser mon accès",
+      "NO_MANAGEMENT_OUTLETS": "Aucun établissement actif n’est configuré. Créez ou activez un établissement dans la configuration."
     }
   }
 }

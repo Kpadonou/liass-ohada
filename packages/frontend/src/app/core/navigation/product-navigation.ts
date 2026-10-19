@@ -29,6 +29,7 @@ export class ShellRouteContext {
     { initialValue: this.router.url.split(/[?#]/)[0].replace(/\/$/, '') },
   );
   restaurantKey(): string {
+    if (this.url() === '/restaurants/checkout') return 'checkout';
     if (this.url() === '/restaurants/kitchen') return 'kitchen';
     if (this.url() === '/restaurants/setup/team') return 'team';
     if (this.url() === '/restaurants/service' || this.url().startsWith('/restaurants/service/'))
@@ -85,7 +86,8 @@ export class ShellProductNavigation {
       (this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
         (this.restaurants.canManageSetup() ||
           this.restaurants.canReadService() ||
-          this.restaurants.canReadKitchen?.())),
+          this.restaurants.canReadKitchen?.() ||
+          this.restaurants.canReadCheckout?.())),
   );
   readonly products = computed(() =>
     !this.auth.effectiveOrgId()

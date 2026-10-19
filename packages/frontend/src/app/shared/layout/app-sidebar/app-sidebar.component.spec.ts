@@ -40,6 +40,7 @@ class NavigationTarget {}
 const translations = {
   fr: {
     RESTAURANTS: {
+      CHECKOUT: { TITLE: 'Caisse' },
       SERVICE: { GROUP: 'Service' },
       UX: {
         NAV: {
@@ -783,7 +784,7 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelectorAll(
         '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
       ),
-    ).toHaveLength(10);
+    ).toHaveLength(11);
   });
 
   it('retains product discovery but hides all restaurant modules without read permissions', () => {
@@ -966,6 +967,23 @@ describe('AppSidebarComponent', () => {
       'Menu',
       'Équipe',
     ])
+      expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
+  });
+  it('shows only Caisse for CASHIER, preserving other product role boundaries', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'CASHIER' } },
+      'org-resto',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Caisse"]')).not.toBeNull();
+    const items = fixture.nativeElement.querySelectorAll(
+      '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
+    );
+    expect(items).toHaveLength(1);
+    for (const label of ['Service en salle', 'Cuisine', 'Restaurant', 'Équipe', 'Menu'])
       expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
   });
 });

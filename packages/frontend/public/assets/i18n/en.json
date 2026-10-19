@@ -4449,6 +4449,9 @@
         "kitchen": {
           "TITLE": "Kitchen",
           "DESCRIPTION": "Preparation work for the selected station."
+        },
+        "checkout": {
+          "TITLE": "Checkout"
         }
       },
       "ADD": {
@@ -4838,6 +4841,63 @@
       "EMPTY": "No items ready to serve.",
       "MORE_READY": "Show more ready items",
       "MORE": "Check more items"
+    },
+    "CHECKOUT": {
+      "TITLE": "Checkout",
+      "OUTLET": "Outlet",
+      "PAY": "Record payment",
+      "METHOD": "Payment method",
+      "CASH": "Cash",
+      "MOBILE_MONEY": "Mobile Money",
+      "CARD": "Card",
+      "APPLIED": "Applied amount",
+      "TENDER": "Cash tendered",
+      "CHANGE": "Change",
+      "EXTERNAL_CONFIRM": "Record only after confirming successful payment with the provider.",
+      "REFERENCE": "External reference (optional)",
+      "CAPTURING": "Recording payment…",
+      "RETRY": "Retry the same payment",
+      "RETRY_NOTICE": "The outcome is uncertain. Retry this exact payment before starting another.",
+      "LOADING": "Loading checkout…",
+      "READ_ERROR": "Information is unavailable. Refresh before continuing.",
+      "CANCELLED": "Cancelled",
+      "MORE_LINES": "Load more items",
+      "REFRESH": "Refresh",
+      "DUE": "Bill",
+      "PAID": "Paid",
+      "REMAINING": "Remaining balance",
+      "AVAILABLE": "Available to apply",
+      "PAYMENT_RECORDED": "Payment recorded. The table remains open until explicitly closed.",
+      "ADDITION": "Bill",
+      "ORDER": "Order",
+      "ORDER_CLOSED": "Closed",
+      "MORE_ORDERS": "Load more Orders",
+      "CLOSE": "Close table",
+      "CONFIRM_CLOSE": "Eligible Orders will close sequentially, then the table will be released. Successful steps remain closed if a later step fails.",
+      "CONFIRM": "Confirm closure",
+      "PROGRESS": "Closing Orders {{closed}} / {{total}}",
+      "NO_OUTLETS": "No active outlet is assigned to you. Contact a manager.",
+      "MORE_OUTLETS": "Load more outlets",
+      "SEARCH": "Search loaded tables",
+      "NO_TABLES": "No occupied table in the loaded results.",
+      "MORE_TABLES": "Load more tables",
+      "SELECT_TABLE": "Select an occupied table to review its bill.",
+      "ACCESS": "Your checkout access must be verified.",
+      "TABLE_CLOSED": "Table closed.",
+      "BLOCK_UNPAID": "An unpaid balance remains.",
+      "BLOCK_PENDING": "A payment is reserved or pending.",
+      "BLOCK_DRAFT": "Service staff must submit or remove draft items.",
+      "BLOCK_WORK": "Preparation or service is not complete.",
+      "BLOCK_UNACCEPTED": "Service staff or a manager must resolve an unaccepted draft Order.",
+      "BLOCK_INCOMPLETE": "Load all Orders before continuing.",
+      "INVALID_AMOUNT": "Check the amount, cash tendered and ten-Order allocation limit.",
+      "RESUME_CLOSE": "Resume closure",
+      "ALLOCATION_SUMMARY": "Applied across {{count}} Orders · maximum 10.",
+      "CONFLICT": "The bill has changed. Successful closures remain completed. Refresh and review before resuming.",
+      "ALLOCATION_ONE": "Applied to 1 Order · maximum 10.",
+      "BLOCK_CLOSED": "This visit is already closed.",
+      "REFRESH_ACCESS": "Refresh my access",
+      "NO_MANAGEMENT_OUTLETS": "No active outlet is configured. Create or activate an outlet in configuration."
     }
   }
 }

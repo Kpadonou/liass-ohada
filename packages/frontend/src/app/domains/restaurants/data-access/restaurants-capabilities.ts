@@ -26,6 +26,21 @@ export class RestaurantsCapabilities {
       ? RESTAURANTS_SERVICE_PERMISSIONS
       : [];
   }
+  canReadCheckout() {
+    return (
+      this.canRead() &&
+      (!this.auth.activeWorkspace()?.status || this.auth.activeWorkspace()?.status === 'ACTIVE') &&
+      ['OWNER', 'MANAGER', 'CASHIER'].includes(
+        this.auth.activeWorkspace()?.productRoles?.RESTAURANTS ?? '',
+      )
+    );
+  }
+  canCapturePayment() {
+    return this.canReadCheckout();
+  }
+  canCloseCheckout() {
+    return this.canReadCheckout();
+  }
   canReadKitchen() {
     return (
       this.canRead() &&

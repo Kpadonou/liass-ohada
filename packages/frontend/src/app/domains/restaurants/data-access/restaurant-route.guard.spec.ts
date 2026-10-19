@@ -62,14 +62,23 @@ describe('Restaurant role-aware routes', () => {
     expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe(true);
     expect(TestBed.inject(RestaurantsCapabilities).canReadStaff()).toBe(false);
   });
-  it.each([undefined, 'CASHIER'] as const)(
-    'keeps %s on its explicit current-user access state',
-    (role) => {
-      workspace.set(accessWorkspace(role));
-      expect(check('')).toBe(true);
-      expect(check('service')).toBe('/restaurants');
-      expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe('/restaurants');
-      expect(check('setup/team')).toBe('/restaurants');
-    },
-  );
+  it('allows CASHIER only checkout and denies service/management', () => {
+    workspace.set(accessWorkspace('CASHIER'));
+    expect(check('checkout')).toBe(true);
+    expect(check('')).toBe('/restaurants/checkout');
+    expect(check('service')).toBe('/restaurants/checkout');
+    expect(check('setup/team')).toBe('/restaurants/checkout');
+    expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe('/restaurants');
+  });
+  it.each(['WAITER', 'KITCHEN'] as const)('%s cannot enter checkout', (role) => {
+    workspace.set(accessWorkspace(role));
+    expect(check('checkout')).toBe('/restaurants');
+  });
+  it.each([undefined] as const)('keeps %s on its explicit current-user access state', (role) => {
+    workspace.set(accessWorkspace(role));
+    expect(check('')).toBe(true);
+    expect(check('service')).toBe('/restaurants');
+    expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe('/restaurants');
+    expect(check('setup/team')).toBe('/restaurants');
+  });
 });

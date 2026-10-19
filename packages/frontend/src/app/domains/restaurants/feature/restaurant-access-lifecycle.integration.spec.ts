@@ -13,6 +13,7 @@ import { RestaurantsPage } from '../../../core/restaurants/restaurants.page';
 import { RestaurantAccessState } from '../data-access/restaurant-access-state';
 import { restaurantRouteGuard } from '../data-access/restaurant-route.guard';
 import { RestaurantsApi } from '../data-access/restaurants.api';
+import { RestaurantCheckoutPage } from './restaurant-checkout.page';
 import { RestaurantServiceFloorPage } from './restaurant-service-floor.page';
 import { accessWorkspace } from '../data-access/restaurant-access.test-fixture';
 import { rid } from '../data-access/restaurants.test-fixture';
@@ -62,6 +63,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
             children: [
               { path: '', component: ManagementDashboard },
               { path: 'kitchen', component: KitchenWorkflow },
+              { path: 'checkout', component: RestaurantCheckoutPage },
               { path: 'service', component: RestaurantServiceFloorPage },
               { path: 'setup/team', component: ManagementDetail },
               { path: 'setup', component: ManagementDetail },
@@ -162,16 +164,34 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     expect(myOutlets).not.toHaveBeenCalled();
   });
   it.each(['CASHIER'] as const)(
-    'gives %s truthful unavailable-yet content without starting Service Floor',
+    'lands %s on the real Caisse and reads its own outlet assignments',
     async (role) => {
       workspace.set(accessWorkspace(role));
       const h = await RouterTestingHarness.create('/restaurants');
-      expect(h.routeNativeElement?.textContent).toContain(
-        'Votre espace Liass-Resto n’est pas encore disponible',
-      );
-      expect(h.routeNativeElement?.textContent).toContain('Caissier');
+      expect(TestBed.inject(Router).url).toBe('/restaurants/checkout');
+      await vi.waitFor(() => {
+        h.detectChanges();
+        expect(h.routeNativeElement?.textContent).toContain(
+          'Aucun établissement actif ne vous est affecté',
+        );
+      });
+      expect(h.routeNativeElement?.textContent).toContain('Caisse');
       expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard');
-      expect(myOutlets).not.toHaveBeenCalled();
+      expect(myOutlets).toHaveBeenCalledTimes(1);
+      expect(serviceFloor).not.toHaveBeenCalled();
     },
   );
+  it('loads the canonical occupied-table discovery in the real assigned CASHIER landing', async () => {
+    workspace.set(accessWorkspace('CASHIER'));
+    assigned = true;
+    const h = await RouterTestingHarness.create('/restaurants');
+    await vi.waitFor(() => {
+      h.detectChanges();
+      expect(serviceFloor).toHaveBeenCalledTimes(1);
+    });
+    expect(TestBed.inject(Router).url).toBe('/restaurants/checkout');
+    expect(h.routeNativeElement?.textContent).toContain('Caisse');
+    expect(h.routeNativeElement?.querySelector('liass-restaurant-service-floor')).toBeNull();
+    expect(myOutlets).toHaveBeenCalledTimes(1);
+  });
 });

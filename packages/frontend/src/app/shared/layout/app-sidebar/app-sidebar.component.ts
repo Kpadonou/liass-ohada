@@ -249,6 +249,17 @@ export class AppSidebarComponent {
       labelKey: 'RESTAURANTS.SERVICE.GROUP',
       showHeading: true,
       items: [
+        ...(this.restaurantsCapabilities.canReadCheckout?.()
+          ? [
+              {
+                icon: 'point_of_sale',
+                labelKey: 'RESTAURANTS.CHECKOUT.TITLE',
+                page: 'restaurants' as const,
+                route: '/restaurants/checkout',
+                productCode: 'RESTAURANTS' as const,
+              },
+            ]
+          : []),
         ...(this.restaurantsCapabilities.canReadKitchen?.()
           ? [
               {

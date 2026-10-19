@@ -67,7 +67,7 @@ describe('Explicit Restaurants access lifecycle', () => {
     ['OWNER', 'management'],
     ['MANAGER', 'management'],
     ['WAITER', 'service'],
-    ['CASHIER', 'unsupported'],
+    ['CASHIER', 'checkout'],
     ['KITCHEN', 'kitchen'],
     [undefined, 'configure'],
   ] as const)('resolves canonical role %s as %s', (role, expected) => {

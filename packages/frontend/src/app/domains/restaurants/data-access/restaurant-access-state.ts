@@ -15,6 +15,7 @@ export type RestaurantMemberMode =
   | 'management'
   | 'service'
   | 'kitchen'
+  | 'checkout'
   | 'unsupported'
   | 'changed'
   | 'unverified';
@@ -42,7 +43,7 @@ export function restaurantMemberMode(
     case 'KITCHEN':
       return 'kitchen';
     case 'CASHIER':
-      return 'unsupported';
+      return 'checkout';
     case undefined:
       return 'configure';
     default:
@@ -103,7 +104,7 @@ export class RestaurantAccessState {
       if (
         user &&
         this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
-        ['management', 'service', 'kitchen', 'unsupported'].includes(mode) &&
+        ['management', 'service', 'kitchen', 'checkout', 'unsupported'].includes(mode) &&
         !this.seen().has(this.identity())
       )
         this.seen.update((seen) => new Set([...seen, this.identity()]));

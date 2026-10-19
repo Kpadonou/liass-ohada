@@ -157,6 +157,15 @@ export const routes: Routes = [
         },
         children: [
           {
+            path: 'checkout',
+            canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-checkout.page').then(
+                (m) => m.RestaurantCheckoutPage,
+              ),
+            data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.CHECKOUT.TITLE' },
+          },
+          {
             path: 'kitchen',
             canActivate: [productAccessGuard],
             loadComponent: () =>
