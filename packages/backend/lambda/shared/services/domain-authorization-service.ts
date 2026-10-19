@@ -84,7 +84,13 @@ export class DomainAuthorizationService {
     grantedPermissions: readonly DomainPermission[],
     requiredPermission: DomainPermission,
   ): boolean {
-    return grantedPermissions.includes(requiredPermission);
+    // Broad Preparation readers already own the keyed read as well as queues.
+    // The reverse implication is deliberately forbidden.
+    return (
+      grantedPermissions.includes(requiredPermission) ||
+      (requiredPermission === "RESTAURANTS_SERVICE_PREPARATION_READ" &&
+        grantedPermissions.includes("RESTAURANTS_PREPARATION_READ"))
+    );
   }
 
   static assertPermission<T extends DomainPermissionContext>(

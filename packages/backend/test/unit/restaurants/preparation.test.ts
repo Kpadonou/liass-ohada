@@ -1123,3 +1123,199 @@ test("PREP-1B strict context contract rejects table data for non-table modes", (
       false,
     );
 });
+
+const serviceRead = (
+  actor: string,
+  orderId: string,
+  outletId = f.outlet.id,
+  query: Record<string, unknown> = {},
+) =>
+  restaurantPreparationHandler("order-preparation")({
+    headers: { "x-org-id": org, "accept-language": "en" },
+    pathParameters: { outletId, orderId },
+    queryStringParameters: query,
+    requestContext: { authorizer: { jwt: { claims: { sub: actor } } } },
+  });
+
+test("SERVICE-3A waiter reads distinct accepted rounds and serves READY exactly once", async () => {
+  const session = await tableVisit();
+  const o = await order("DINE_IN", session.guestSessionId);
+  await submit(o.orderId, [await add(o.orderId, 0, "Sans piment")]);
+  await submit(o.orderId, [await add(o.orderId)]);
+  let t = (await move(tasks()[0], "START")).data;
+  t = (await move(t, "READY")).data;
+  const response = await serviceRead("waiter", o.orderId);
+  expect(response.statusCode).toBe(200);
+  const page = c.PreparationListResponseSchema.parse(JSON.parse(response.body));
+  expect(page.items).toHaveLength(2);
+  expect(new Set(page.items.map((x) => x.submissionId)).size).toBe(2);
+  expect(page.items.map((x) => x.state)).toEqual(
+    expect.arrayContaining(["READY", "QUEUED"]),
+  );
+  expect(page.items.find((x) => x.fireId === t.fireId)).toMatchObject({
+    notes: "Sans piment",
+    serviceContext: { mode: "DINE_IN", tableName: "Terrasse jardin" },
+  });
+  const request = { clientRequestId: req(), expectedVersion: t.version };
+  const served = await call("serve-preparation", "waiter", t, request);
+  expect(served.statusCode).toBe(200);
+  expect(await call("serve-preparation", "waiter", t, request)).toEqual(served);
+  expect((await S.order(ctx(), o.orderId)).data.outstandingWorkCount).toBe(1);
+  expect(
+    JSON.parse((await serviceRead("waiter", o.orderId)).body).items.map(
+      (x: { state: string }) => x.state,
+    ),
+  ).toContain("SERVED");
+});
+
+test.each(["TAKEAWAY", "COUNTER"] as const)(
+  "SERVICE-3A waiter cannot discover %s work; broad readers retain it",
+  async (mode) => {
+    const o = await order(mode);
+    await submit(o.orderId, [await add(o.orderId)]);
+    expect((await serviceRead("waiter", o.orderId)).statusCode).toBe(404);
+    for (const actor of ["owner", "manager", "cook"])
+      expect((await serviceRead(actor, o.orderId)).statusCode).toBe(200);
+  },
+);
+
+test("SERVICE-3A waiter rejects mismatched, missing and wrong-outlet parents", async () => {
+  const session = await tableVisit();
+  const o = await order("DINE_IN", session.guestSessionId);
+  await submit(o.orderId, [await add(o.orderId)]);
+  rawPatch(orderKey(o.orderId), (row) => {
+    row.data.tableId = fixtureId(99000);
+  });
+  expect((await serviceRead("waiter", o.orderId)).statusCode).toBe(409);
+  expect(
+    (await serviceRead("waiter", o.orderId, fixtureId(99001))).statusCode,
+  ).toBe(403);
+  expect((await serviceRead("waiter", fixtureId(99002))).statusCode).toBe(404);
+});
+
+test("SERVICE-3A narrow permission does not imply Kitchen queue access", () => {
+  const granted = Auth.permissionsForRestaurantsRole("WAITER");
+  expect(granted).toContain("RESTAURANTS_SERVICE_PREPARATION_READ");
+  expect(Auth.hasPermission(granted, "RESTAURANTS_PREPARATION_READ")).toBe(
+    false,
+  );
+  expect(
+    Auth.hasPermission(
+      Auth.permissionsForRestaurantsRole("KITCHEN"),
+      "RESTAURANTS_SERVICE_PREPARATION_READ",
+    ),
+  ).toBe(true);
+  expect(
+    Auth.hasPermission(
+      Auth.permissionsForRestaurantsRole("CASHIER"),
+      "RESTAURANTS_SERVICE_PREPARATION_READ",
+    ),
+  ).toBe(false);
+});
+
+test.each(["staff", "assignment", "membership", "product", "role", "outlet"])(
+  "SERVICE-3A %s revocation rejects keyed waiter reads before querying tasks",
+  async (kind) => {
+    const session = await tableVisit();
+    const o = await order("DINE_IN", session.guestSessionId);
+    await submit(o.orderId, [await add(o.orderId)]);
+    expect((await serviceRead("waiter", o.orderId)).statusCode).toBe(200);
+    if (kind === "staff")
+      patch(SR.staffKey(org, "waiter"), (r) => (r.data.status = "INACTIVE"));
+    if (kind === "assignment")
+      patch(
+        SR.assignmentKeys(org, "waiter", f.outlet.id)[0],
+        (r) => (r.data.status = "INACTIVE"),
+      );
+    if (kind === "membership")
+      patch(
+        { PK: K.orgKey(org), SK: K.orgUserAccessSK("waiter") },
+        (r) => (r.status = "INACTIVE"),
+      );
+    if (kind === "role")
+      patch(
+        { PK: K.orgKey(org), SK: K.orgUserAccessSK("waiter") },
+        (r) => (r.productRoles.RESTAURANTS = "CASHIER"),
+      );
+    if (kind === "product")
+      patch(
+        { PK: K.orgKey(org), SK: K.productAccessSK("RESTAURANTS") },
+        (r) => (r.status = "INACTIVE"),
+      );
+    if (kind === "outlet")
+      patch(
+        { PK: K.orgKey(org), SK: K.restaurantOutletSK(f.outlet.id) },
+        (r) => (r.data.isActive = false),
+      );
+    m.db.resetHistory();
+    expect((await serviceRead("waiter", o.orderId)).statusCode).toBe(403);
+    expect(m.db.commandCalls(QueryCommand)).toHaveLength(0);
+  },
+);
+
+test("SERVICE-3A closed sessions exclude waiter discovery without changing broad read visibility", async () => {
+  const session = await tableVisit();
+  const o = await order("DINE_IN", session.guestSessionId);
+  await submit(o.orderId, [await add(o.orderId)]);
+  rawPatch(sessionKey(session.guestSessionId), (raw) => {
+    raw.data.status = "CLOSED";
+    raw.data.closedAt = new Date().toISOString();
+    raw.data.closedBy = "owner";
+    raw.data.openOrderCount = 0;
+    raw.data.paidMinor = raw.data.dueMinor;
+  });
+  expect((await serviceRead("waiter", o.orderId)).statusCode).toBe(404);
+  expect((await serviceRead("cook", o.orderId)).statusCode).toBe(200);
+});
+
+test("SERVICE-3A waiter cannot read station queue handlers and cashier cannot read keyed work", async () => {
+  const t = await queued();
+  m.seedAccess(org, "cashier", "CASHIER");
+  expect((await serviceRead("cashier", t.orderId)).statusCode).toBe(403);
+  const response = await restaurantPreparationHandler("station-preparation")({
+    headers: { "x-org-id": org },
+    pathParameters: {
+      outletId: f.outlet.id,
+      stationId: t.stationId,
+      state: "QUEUED",
+    },
+    requestContext: { authorizer: { jwt: { claims: { sub: "waiter" } } } },
+  });
+  expect(response.statusCode).toBe(403);
+});
+
+test("SERVICE-3A keyed pages isolate sibling Orders and retain opaque pagination with bounded reads", async () => {
+  const session = await tableVisit();
+  const o = await order("DINE_IN", session.guestSessionId);
+  const sibling = await order("DINE_IN", session.guestSessionId);
+  await submit(o.orderId, [await add(o.orderId)]);
+  await submit(o.orderId, [await add(o.orderId)]);
+  await submit(sibling.orderId, [await add(sibling.orderId)]);
+  m.db.resetHistory();
+  const first = await serviceRead("waiter", o.orderId, f.outlet.id, {
+    limit: "1",
+  });
+  expect(first.statusCode).toBe(200);
+  const page = c.PreparationListResponseSchema.parse(JSON.parse(first.body));
+  expect(page.items).toHaveLength(1);
+  expect(page.nextCursor).toBeDefined();
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+  expect(m.db.commandCalls(GetItemCommand)).toHaveLength(11);
+  expect(m.db.commandCalls(BatchGetItemCommand)).toHaveLength(1);
+  const next = await serviceRead("waiter", o.orderId, f.outlet.id, {
+    limit: "1",
+    cursor: page.nextCursor,
+  });
+  expect(next.statusCode).toBe(200);
+  const second = c.PreparationListResponseSchema.parse(JSON.parse(next.body));
+  expect(second.items[0].orderId).toBe(o.orderId);
+  expect(second.items[0].fireId).not.toBe(page.items[0].fireId);
+  expect(
+    (
+      await serviceRead("waiter", sibling.orderId, f.outlet.id, {
+        limit: "1",
+        cursor: page.nextCursor,
+      })
+    ).statusCode,
+  ).toBe(400);
+});

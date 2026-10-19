@@ -219,7 +219,7 @@ export class RestaurantTransactionQueries {
     };
   }
   /** Authorization has already validated outlet service access once for this request. */
-  private static async requireOpenOrderSession(
+  static async requireOpenOrderSession(
     scope: TransactionScope,
     order: contracts.RestaurantOrder,
   ) {

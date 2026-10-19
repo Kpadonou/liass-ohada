@@ -12,7 +12,7 @@ export const RESTAURANT_PREPARATION_ROUTES = [
     name: "order-preparation",
     method: "GET",
     path: `${base}/orders/{orderId}/preparation`,
-    permission: "RESTAURANTS_PREPARATION_READ",
+    permission: "RESTAURANTS_SERVICE_PREPARATION_READ",
     preparation: "ORDER",
   },
   {

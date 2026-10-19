@@ -4,6 +4,7 @@ import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import * as c from "@liass-ohada/shared/restaurants";
 import { AppError } from "@/lambda/shared/app-error";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
+import { RestaurantTransactionQueries } from "./transaction-queries";
 import { RestaurantServiceAccess } from "./service-access";
 import { RestaurantsRepository } from "./restaurant-repository";
 import { entityTypes } from "./restaurant-model";
@@ -197,13 +198,15 @@ export class RestaurantPreparationService {
   static async access(
     s: TransactionScope,
     actorId: string,
-    action: "READ" | "START" | "READY" | "SERVE",
+    action: "READ" | "SERVICE_READ" | "START" | "READY" | "SERVE",
   ) {
     const access = await RestaurantServiceAccess.authorize(s, actorId, true);
     const allowed =
-      action === "SERVE"
-        ? ["OWNER", "MANAGER", "WAITER"]
-        : ["OWNER", "MANAGER", "KITCHEN"];
+      action === "SERVICE_READ"
+        ? ["OWNER", "MANAGER", "KITCHEN", "WAITER"]
+        : action === "SERVE"
+          ? ["OWNER", "MANAGER", "WAITER"]
+          : ["OWNER", "MANAGER", "KITCHEN"];
     if (!allowed.includes(access.role ?? ""))
       return fail("DOMAIN_PERMISSION_REQUIRED", 403);
     const outlet = await RestaurantsRepository.get(
@@ -318,7 +321,11 @@ export class RestaurantPreparationService {
     input: unknown,
     ids: { orderId?: string; stationId?: string; state?: string },
   ) {
-    await this.access(s, actorId, "READ");
+    const access = await this.access(
+      s,
+      actorId,
+      ids.orderId ? "SERVICE_READ" : "READ",
+    );
     const page = c.RestaurantTransactionListRequestSchema.parse(input);
     if (ids.orderId) {
       const orderId = c.RestaurantIdSchema.parse(ids.orderId);
@@ -331,6 +338,11 @@ export class RestaurantPreparationService {
         "ORDER",
       );
       if (!order) return fail("RESTAURANTS_NOT_FOUND", 404);
+      if (access.role === "WAITER")
+        await RestaurantTransactionQueries.requireOpenOrderSession(
+          s,
+          c.RestaurantOrderSchema.parse(order.data),
+        );
       const result = await R.query(
         s,
         order.PK,
