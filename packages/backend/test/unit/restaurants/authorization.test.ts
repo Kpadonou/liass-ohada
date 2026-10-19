@@ -289,6 +289,7 @@ describe("RESTO-1B authoritative authorization", () => {
         ...RESTAURANTS_TRANSACTION_PERMISSIONS,
         ...RESTAURANTS_CHECKOUT_PERMISSIONS,
         "RESTAURANTS_PAYMENT_CAPTURE_MANAGE",
+        "RESTAURANTS_CHECKOUT_CLOSE_MANAGE",
         ...RESTAURANTS_SERVICE_PERMISSIONS,
         ...RESTAURANTS_PREPARATION_PERMISSIONS,
         ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
@@ -303,6 +304,7 @@ describe("RESTO-1B authoritative authorization", () => {
           ? [
               ...RESTAURANTS_CHECKOUT_PERMISSIONS,
               "RESTAURANTS_PAYMENT_CAPTURE_MANAGE",
+              "RESTAURANTS_CHECKOUT_CLOSE_MANAGE",
             ]
           : []),
         ...(role === "WAITER" ? RESTAURANTS_SERVICE_PERMISSIONS : []),

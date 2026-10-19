@@ -116,16 +116,18 @@ export function restaurantTransactionHandler(name: string) {
     {
       permission: route.permission,
       permissionAlternatives:
-        query &&
-        [
-          "SERVICE_FLOOR",
-          "GET_SESSION",
-          "SESSION_ORDERS",
-          "GET_ORDER",
-          "ORDER_ITEMS",
-        ].includes(query)
-          ? ["RESTAURANTS_CHECKOUT_READ"]
-          : undefined,
+        command && ["CLOSE_ORDER", "CLOSE_SESSION"].includes(command)
+          ? ["RESTAURANTS_CHECKOUT_CLOSE_MANAGE"]
+          : query &&
+              [
+                "SERVICE_FLOOR",
+                "GET_SESSION",
+                "SESSION_ORDERS",
+                "GET_ORDER",
+                "ORDER_ITEMS",
+              ].includes(query)
+            ? ["RESTAURANTS_CHECKOUT_READ"]
+            : undefined,
       productCode: "RESTAURANTS",
       action: route.name,
     },

@@ -302,6 +302,48 @@ export class RestaurantTransactionsService {
       "CANCEL_ITEM",
       "SUBMIT_ORDER",
     ].includes(command);
+    const closureCommand =
+      command === "CLOSE_ORDER" || command === "CLOSE_SESSION";
+    const authorizeClosure = async () => {
+      const access = await RestaurantServiceAccess.authorize(
+        ctx,
+        ctx.actorId,
+        false,
+        true,
+      );
+      if (!["OWNER", "MANAGER", "CASHIER"].includes(access.role ?? ""))
+        return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+      return access;
+    };
+    const closureAccess = closureCommand ? await authorizeClosure() : undefined;
+    let closureOrder:
+      | Awaited<ReturnType<typeof RestaurantTransactionsService.order>>
+      | undefined;
+    let closureSession:
+      | Awaited<ReturnType<typeof RestaurantTransactionsService.session>>
+      | undefined;
+    const authorizeClosureScope = async () => {
+      if (closureAccess?.role !== "CASHIER") return;
+      if (command === "CLOSE_ORDER") {
+        closureOrder = await this.order(ctx, owner);
+        if (
+          closureOrder.data.orderType !== "DINE_IN" ||
+          !closureOrder.data.guestSessionId
+        )
+          return fail("RESTAURANTS_NOT_FOUND", 404);
+        closureSession = await this.session(
+          ctx,
+          closureOrder.data.guestSessionId,
+        );
+        if (
+          closureOrder.data.tableId !== closureSession.data.tableId ||
+          closureOrder.data.currency !== closureSession.data.currency
+        )
+          return fail("RESTAURANTS_NOT_FOUND", 404);
+      } else closureSession = await this.session(ctx, owner);
+      // Do not require OPEN before replay: a lost final response must remain recoverable.
+    };
+    await authorizeClosureScope();
     const replay = async (): Promise<Business | undefined> => {
       const row = await R.get(ctx, commandKey, "COMMAND");
       if (!row) return undefined;
@@ -333,8 +375,12 @@ export class RestaurantTransactionsService {
       command === "OPEN_SESSION" || serviceCommand
         ? await RestaurantServiceAccess.authorize(ctx, ctx.actorId)
         : undefined;
-    let serviceOrder: Awaited<ReturnType<typeof this.order>> | undefined;
-    let serviceSession: Awaited<ReturnType<typeof this.session>> | undefined;
+    let serviceOrder:
+      | Awaited<ReturnType<typeof RestaurantTransactionsService.order>>
+      | undefined;
+    let serviceSession:
+      | Awaited<ReturnType<typeof RestaurantTransactionsService.session>>
+      | undefined;
     const authorizeOrderScope = async () => {
       if (!serviceAccess?.staffId || !serviceCommand) return;
       if (command === "CREATE_ORDER") {
@@ -369,15 +415,23 @@ export class RestaurantTransactionsService {
       });
       return { data: prior };
     }
+    if (
+      closureAccess?.role === "CASHIER" &&
+      closureSession?.data.status !== "OPEN"
+    )
+      return fail("RESTAURANTS_UNPAID_CLOSE");
     const now = new Date().toISOString(),
       commandId = randomUUID();
     const checks = new Map<string, RestaurantSnapshot>();
     const actions: TransactWriteItem[] = [
+      ...(closureAccess?.actions ?? []),
       ...(command === "OPEN_SESSION" || serviceAccess?.staffId
         ? (serviceAccess?.actions ?? [])
         : []),
     ];
     const serviceGuardCount = actions.length;
+    if (closureAccess?.role === "CASHIER")
+      await this.config(ctx, checks, "outlet", {}, ctx.outletId);
     if (serviceSession) {
       await this.config(ctx, checks, "outlet", {}, ctx.outletId);
       // Create and submit conditionally replace this same session below. Other
@@ -716,7 +770,7 @@ export class RestaurantTransactionsService {
       });
     } else if (command === "CLOSE_SESSION") {
       const req = contracts.CloseGuestSessionRequestSchema.parse(request),
-        session = await this.session(ctx, owner);
+        session = closureSession ?? (await this.session(ctx, owner));
       if (session.data.version !== req.expectedVersion)
         return fail("RESTAURANTS_WRITE_CONFLICT");
       if (
@@ -764,7 +818,8 @@ export class RestaurantTransactionsService {
       );
       activity = audit(result, session.data.status);
     } else {
-      const order = serviceOrder ?? (await this.order(ctx, owner));
+      const order =
+        serviceOrder ?? closureOrder ?? (await this.order(ctx, owner));
       this.editable(
         order.data,
         (request as { expectedVersion: number }).expectedVersion,
@@ -851,7 +906,9 @@ export class RestaurantTransactionsService {
           submissionId = randomUUID();
         if (menu.data.currency !== order.data.currency)
           return fail("RESTAURANTS_CURRENCY_MISMATCH", 400);
-        const prepared: Awaited<ReturnType<typeof this.prepareLine>>[] = [];
+        const prepared: Awaited<
+          ReturnType<typeof RestaurantTransactionsService.prepareLine>
+        >[] = [];
         for (let offset = 0; offset < req.items.length; offset += 4) {
           const results = await Promise.allSettled(
             req.items
@@ -1041,7 +1098,9 @@ export class RestaurantTransactionsService {
         );
       if (next.guestSessionId && (financialChanged || isTerminal)) {
         const session =
-          serviceSession ?? (await this.session(ctx, next.guestSessionId));
+          serviceSession ??
+          closureSession ??
+          (await this.session(ctx, next.guestSessionId));
         if (
           session.data.status !== "OPEN" ||
           session.data.currency !== next.currency ||
@@ -1137,6 +1196,10 @@ export class RestaurantTransactionsService {
         );
       if (serviceGuardFailed)
         throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+      if (closureAccess) {
+        await authorizeClosure();
+        await authorizeClosureScope();
+      }
       if (serviceAccess)
         await RestaurantServiceAccess.authorize(ctx, ctx.actorId);
       await authorizeOrderScope();

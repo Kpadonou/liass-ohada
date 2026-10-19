@@ -185,7 +185,7 @@ export class RestaurantStaffIdentityService {
     return this.membershipChecks(orgId, actor);
   }
 
-  /** Only keyed checkout/discovery reads may admit CASHIER; service defaults stay unchanged. */
+  /** Checkout actor scope; callers independently authorize read, capture or closure. Service defaults stay unchanged. */
   static checkoutReadChecks(
     orgId: string,
     actor: RestaurantStaffIdentity,

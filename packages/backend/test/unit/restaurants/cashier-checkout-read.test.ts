@@ -416,7 +416,7 @@ test("unknown tenant/outlet/session/Order and unassigned/missing staff fail safe
   ).toBe(403);
 });
 
-test("cashier checkout capability never authorizes real service/Preparation/closure handlers", async () => {
+test("cashier checkout capability never authorizes service/Preparation/exception handlers", async () => {
   const permissions = Auth.permissionsForRestaurantsRole("CASHIER");
   expect(permissions).toContain("RESTAURANTS_CHECKOUT_READ");
   expect(permissions).not.toContain("RESTAURANTS_SERVICE_FLOOR_READ");
@@ -459,13 +459,11 @@ test("cashier checkout capability never authorizes real service/Preparation/clos
       expectedVersion: 1,
       items: [{ itemId: id(995), expectedVersion: 1 }],
     },
-    "close-order": { clientRequestId: req(), expectedVersion: 1 },
     "cancel-order": {
       clientRequestId: req(),
       expectedVersion: 1,
       reason: "No",
     },
-    "close-session": { clientRequestId: req(), expectedVersion: 1 },
     "replace-responsible-staff": {
       clientRequestId: req(),
       expectedVersion: 1,

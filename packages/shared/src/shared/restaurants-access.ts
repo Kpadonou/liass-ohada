@@ -79,3 +79,8 @@ export function restaurantsPermissionsForRole(
 export const RESTAURANTS_PAYMENT_PERMISSIONS = [
   "RESTAURANTS_PAYMENT_CAPTURE_MANAGE",
 ] as const;
+
+/** Explicit DINE_IN checkout closure; independent from capture and service. */
+export const RESTAURANTS_CLOSURE_PERMISSIONS = [
+  "RESTAURANTS_CHECKOUT_CLOSE_MANAGE",
+] as const;

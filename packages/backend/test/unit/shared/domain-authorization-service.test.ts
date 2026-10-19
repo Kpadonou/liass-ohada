@@ -70,6 +70,7 @@ describe("DomainAuthorizationService", () => {
       "RESTAURANTS_PREPARATION_SERVE_MANAGE",
       "RESTAURANTS_CHECKOUT_READ",
       "RESTAURANTS_PAYMENT_CAPTURE_MANAGE",
+      "RESTAURANTS_CHECKOUT_CLOSE_MANAGE",
       "RESTAURANTS_STAFF_OUTLET_SELF_READ",
       "FISCAL_COMPLIANCE_READ",
       "FISCAL_COMPLIANCE_WRITE",
@@ -217,7 +218,8 @@ test.each([
           permission.startsWith("RESTAURANTS_PREPARATION_") ||
           (permission.startsWith("RESTAURANTS_") &&
             permission.endsWith("_MANAGE") &&
-            permission !== "RESTAURANTS_PAYMENT_CAPTURE_MANAGE")
+            permission !== "RESTAURANTS_PAYMENT_CAPTURE_MANAGE" &&
+            permission !== "RESTAURANTS_CHECKOUT_CLOSE_MANAGE")
         )
           expect(grants).not.toContain(permission);
       expect(grants).not.toContain("RESTAURANTS_ORDER_READ");
