@@ -12,6 +12,7 @@ export class RestaurantServiceAccess {
     scope: TransactionScope,
     actorId: string,
     preparation = false,
+    checkoutRead = false,
   ): Promise<{
     actions: TransactWriteItem[];
     staffId?: string;
@@ -25,11 +26,18 @@ export class RestaurantServiceAccess {
     });
     const actor = await Identity.get(scope.orgId, actorId);
     if (!actor) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
-    const actions = Identity.serviceChecks(scope.orgId, actor, preparation);
-    if (!["WAITER", "KITCHEN"].includes(actor.restaurantRole ?? ""))
+    const actions = checkoutRead
+      ? Identity.checkoutReadChecks(scope.orgId, actor)
+      : Identity.serviceChecks(scope.orgId, actor, preparation);
+    if (!["WAITER", "KITCHEN", "CASHIER"].includes(actor.restaurantRole ?? ""))
       return { actions, role: actor.restaurantRole! };
     try {
-      const self = await ResponsibleStaff.selfChecks(scope, actor, preparation);
+      const self = await ResponsibleStaff.selfChecks(
+        scope,
+        actor,
+        preparation,
+        checkoutRead,
+      );
       const outlet = await RestaurantsRepository.get(
         scope.orgId,
         "outlet",

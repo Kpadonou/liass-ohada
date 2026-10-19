@@ -82,6 +82,7 @@ export class RestaurantTransactionQueries {
     request: unknown,
     ids?: QueryIds,
     serviceOrderRead?: boolean,
+    checkoutRead?: boolean,
   ): Promise<QueryPage>;
   static run(
     scope: TransactionScope,
@@ -89,6 +90,7 @@ export class RestaurantTransactionQueries {
     request: unknown,
     ids?: QueryIds,
     serviceOrderRead?: boolean,
+    checkoutRead?: boolean,
   ): Promise<QueryResult>;
   static async run(
     scope: TransactionScope,
@@ -96,23 +98,22 @@ export class RestaurantTransactionQueries {
     request: unknown,
     ids: QueryIds = {},
     serviceOrderRead = false,
+    checkoutRead = false,
   ): Promise<QueryResult> {
     await RestaurantsService.get(scope.orgId, "outlet", {}, scope.outletId);
     if (query === "SERVICE_FLOOR")
       return RestaurantServiceFloor.read(scope, request);
-    if (query === "GET_SESSION")
-      return {
-        data: (
-          await ResponsibleStaff.sessions(scope, [
-            (
-              await S.session(
-                scope,
-                contracts.RestaurantIdSchema.parse(ids.sessionId),
-              )
-            ).data,
-          ])
-        )[0],
-      };
+    if (query === "GET_SESSION") {
+      const session = (
+        await S.session(
+          scope,
+          contracts.RestaurantIdSchema.parse(ids.sessionId),
+        )
+      ).data;
+      if (checkoutRead && session.status !== "OPEN")
+        throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+      return { data: (await ResponsibleStaff.sessions(scope, [session]))[0] };
+    }
     if (query === "GET_ORDER") {
       const order = (
         await S.order(scope, contracts.RestaurantIdSchema.parse(ids.orderId))
@@ -159,7 +160,12 @@ export class RestaurantTransactionQueries {
           throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
         return line;
       });
-      return { items, nextCursor: page.nextCursor };
+      return {
+        items: checkoutRead
+          ? items.filter((line) => line.snapshot !== undefined)
+          : items,
+        nextCursor: page.nextCursor,
+      };
     }
     if (query === "SESSION_ORDERS" || query === "TABLE_ORDERS") {
       const sessionId =

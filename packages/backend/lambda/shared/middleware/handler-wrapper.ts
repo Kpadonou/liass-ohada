@@ -47,6 +47,8 @@ export interface AuthenticatedHandlerContext {
 
 export interface PermissionAuthorizationMetadata {
   permission: DomainPermission;
+  /** Server-owned alternative entry grants; domain ownership checks still follow. */
+  permissionAlternatives?: readonly DomainPermission[];
 }
 
 export interface ProductAuthorizationMetadata extends PermissionAuthorizationMetadata {
@@ -137,7 +139,26 @@ const createTenantHandler = <T>(
                   productCode: authorization.productCode,
                 });
               }
-              DomainAuthorizationService.assertPermission(decision, permission);
+              const alternatives = authorization?.permissionAlternatives ?? [];
+              if (
+                alternatives.some((candidate) => !isDomainPermission(candidate))
+              )
+                throw new AppError(500, "ACCOUNTING_PERMISSION_NOT_CONFIGURED");
+              if (
+                !alternatives.some((candidate) =>
+                  DomainAuthorizationService.hasPermission(
+                    decision.permissions ??
+                      DomainAuthorizationService.permissionsForAccessMode(
+                        decision.accessMode,
+                      ),
+                    candidate,
+                  ),
+                )
+              )
+                DomainAuthorizationService.assertPermission(
+                  decision,
+                  permission,
+                );
               return {
                 accountingAccessMode: decision.accessMode,
                 accountingFramework: decision.accountingFramework,

@@ -13,6 +13,7 @@ import {
 } from "@/lambda/shared/authorization/domain-permission";
 import { DomainAuthorizationService } from "@/lambda/shared/services/domain-authorization-service";
 import {
+  RESTAURANTS_CHECKOUT_PERMISSIONS,
   RESTAURANTS_TRANSACTION_PERMISSIONS,
   RESTAURANTS_PREPARATION_PERMISSIONS,
   RESTAURANTS_STAFF_SELF_PERMISSIONS,
@@ -286,6 +287,7 @@ describe("RESTO-1B authoritative authorization", () => {
       ).toEqual([
         ...RESTAURANTS_PERMISSIONS,
         ...RESTAURANTS_TRANSACTION_PERMISSIONS,
+        ...RESTAURANTS_CHECKOUT_PERMISSIONS,
         ...RESTAURANTS_SERVICE_PERMISSIONS,
         ...RESTAURANTS_PREPARATION_PERMISSIONS,
         ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
@@ -296,6 +298,7 @@ describe("RESTO-1B authoritative authorization", () => {
       ).toEqual([
         "RESTAURANTS_READ",
         "RESTAURANTS_MENU_READ",
+        ...(role === "CASHIER" ? RESTAURANTS_CHECKOUT_PERMISSIONS : []),
         ...(role === "WAITER" ? RESTAURANTS_SERVICE_PERMISSIONS : []),
         ...(role === "WAITER"
           ? ["RESTAURANTS_PREPARATION_SERVE_MANAGE"]
@@ -306,7 +309,7 @@ describe("RESTO-1B authoritative authorization", () => {
                 "RESTAURANTS_PREPARATION_READY_MANAGE",
               ]
             : []),
-        ...(role === "WAITER" || role === "KITCHEN"
+        ...(role === "WAITER" || role === "KITCHEN" || role === "CASHIER"
           ? RESTAURANTS_STAFF_SELF_PERMISSIONS
           : []),
       ]);

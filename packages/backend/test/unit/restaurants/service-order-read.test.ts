@@ -432,15 +432,12 @@ test.each([
     expect(sessionLookup).not.toHaveBeenCalled();
   },
 );
-test.each(["CASHIER", "KITCHEN", "UNKNOWN"])(
-  "denies %s before lookup",
-  async (role) => {
-    m.seedAccess(org, "Aissa", role);
-    const lookup = jest.spyOn(S, "order");
-    for (const name of reads) expect((await read(name)).statusCode).toBe(403);
-    expect(lookup).not.toHaveBeenCalled();
-  },
-);
+test.each(["KITCHEN", "UNKNOWN"])("denies %s before lookup", async (role) => {
+  m.seedAccess(org, "Aissa", role);
+  const lookup = jest.spyOn(S, "order");
+  for (const name of reads) expect((await read(name)).statusCode).toBe(403);
+  expect(lookup).not.toHaveBeenCalled();
+});
 test("unassigned and wrong-outlet waiters fail closed; missing/foreign keys expose no data", async () => {
   await person("unassigned", false);
   const other = await Config.create(

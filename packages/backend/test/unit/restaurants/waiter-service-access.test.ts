@@ -323,7 +323,7 @@ describe("scoped keyed service session read", () => {
     },
   );
 
-  test.each(["CASHIER", "KITCHEN", "UNKNOWN", "", undefined])(
+  test.each(["KITCHEN", "UNKNOWN", "", undefined])(
     "rejects role %s before session lookup",
     async (role) => {
       const session = JSON.parse(
@@ -423,14 +423,14 @@ test.each(["OWNER", "MANAGER"])(
   },
 );
 test.each(["CASHIER", "KITCHEN"])(
-  "%s remains denied Service Floor and opening despite active staff and outlet",
+  "%s discovery preserves its separate opening boundary",
   async (role) => {
     await person("other", role);
-    expect((await call("service-floor", "other")).statusCode).toBe(403);
-    expect((await call("open-session", "other", body())).statusCode).toBe(403);
-    expect((await self("other")).statusCode).toBe(
-      role === "KITCHEN" ? 200 : 403,
+    expect((await call("service-floor", "other")).statusCode).toBe(
+      role === "CASHIER" ? 200 : 403,
     );
+    expect((await call("open-session", "other", body())).statusCode).toBe(403);
+    expect((await self("other")).statusCode).toBe(200);
   },
 );
 test.each([
@@ -467,7 +467,7 @@ test.each([
     m.rows.delete(
       JSON.stringify([K.orgKey(org), K.productAccessSK("RESTAURANTS")]),
     );
-  if (change === "role") m.seedAccess(org, "Aissa", "CASHIER");
+  if (change === "role") m.seedAccess(org, "Aissa", "KITCHEN");
   if (change === "missing-staff")
     m.rows.delete(JSON.stringify(Object.values(SR.staffKey(org, "Aissa"))));
   if (change === "inactive-outlet")

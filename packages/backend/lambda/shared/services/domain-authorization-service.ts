@@ -1,4 +1,5 @@
 import {
+  RESTAURANTS_CHECKOUT_PERMISSIONS,
   RESTAURANTS_STAFF_SELF_PERMISSIONS,
   RESTAURANTS_PREPARATION_PERMISSIONS,
   restaurantsPermissionsForRole,
@@ -58,6 +59,7 @@ export class DomainAuthorizationService {
       ? [
           ...config,
           ...RESTAURANTS_TRANSACTION_PERMISSIONS,
+          ...RESTAURANTS_CHECKOUT_PERMISSIONS,
           ...RESTAURANTS_SERVICE_PERMISSIONS,
           ...RESTAURANTS_PREPARATION_PERMISSIONS,
           ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
@@ -69,15 +71,21 @@ export class DomainAuthorizationService {
             "RESTAURANTS_PREPARATION_SERVE_MANAGE",
             ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
           ]
-        : role === "KITCHEN"
+        : role === "CASHIER"
           ? [
               ...config,
-              "RESTAURANTS_PREPARATION_READ",
-              "RESTAURANTS_PREPARATION_START_MANAGE",
-              "RESTAURANTS_PREPARATION_READY_MANAGE",
+              ...RESTAURANTS_CHECKOUT_PERMISSIONS,
               ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
             ]
-          : config;
+          : role === "KITCHEN"
+            ? [
+                ...config,
+                "RESTAURANTS_PREPARATION_READ",
+                "RESTAURANTS_PREPARATION_START_MANAGE",
+                "RESTAURANTS_PREPARATION_READY_MANAGE",
+                ...RESTAURANTS_STAFF_SELF_PERMISSIONS,
+              ]
+            : config;
   }
 
   static hasPermission(

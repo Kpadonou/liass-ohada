@@ -177,11 +177,22 @@ export class RestaurantStaffIdentityService {
   ): TransactWriteItem[] {
     if (
       !actor.active ||
-      !["OWNER", "MANAGER", "WAITER", "KITCHEN"].includes(
+      !["OWNER", "MANAGER", "WAITER", "KITCHEN", "CASHIER"].includes(
         actor.restaurantRole ?? "",
       )
     )
       throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    return this.membershipChecks(orgId, actor);
+  }
+
+  /** Only keyed checkout/discovery reads may admit CASHIER; service defaults stay unchanged. */
+  static checkoutReadChecks(
+    orgId: string,
+    actor: RestaurantStaffIdentity,
+  ): TransactWriteItem[] {
+    if (actor.restaurantRole !== "CASHIER")
+      return this.serviceChecks(orgId, actor);
+    if (!actor.active) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     return this.membershipChecks(orgId, actor);
   }
 

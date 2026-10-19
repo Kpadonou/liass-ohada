@@ -68,6 +68,7 @@ describe("DomainAuthorizationService", () => {
       "RESTAURANTS_PREPARATION_START_MANAGE",
       "RESTAURANTS_PREPARATION_READY_MANAGE",
       "RESTAURANTS_PREPARATION_SERVE_MANAGE",
+      "RESTAURANTS_CHECKOUT_READ",
       "RESTAURANTS_STAFF_OUTLET_SELF_READ",
       "FISCAL_COMPLIANCE_READ",
       "FISCAL_COMPLIANCE_WRITE",
@@ -190,3 +191,41 @@ describe("DomainAuthorizationService", () => {
     ).toThrow("CABINET_DOSSIER_READ_ONLY");
   });
 });
+
+test.each([
+  "OWNER",
+  "MANAGER",
+  "WAITER",
+  "CASHIER",
+  "KITCHEN",
+  "UNKNOWN",
+  undefined,
+])(
+  "checkout read is explicit and never implies service writes for %s",
+  (role) => {
+    const grants =
+      DomainAuthorizationService.permissionsForRestaurantsRole(role);
+    expect(grants.includes("RESTAURANTS_CHECKOUT_READ")).toBe(
+      ["OWNER", "MANAGER", "CASHIER"].includes(role ?? ""),
+    );
+    if (role === "CASHIER") {
+      expect(grants).toContain("RESTAURANTS_STAFF_OUTLET_SELF_READ");
+      for (const permission of DOMAIN_PERMISSIONS)
+        if (
+          permission.startsWith("RESTAURANTS_SERVICE_") ||
+          permission.startsWith("RESTAURANTS_PREPARATION_") ||
+          (permission.startsWith("RESTAURANTS_") &&
+            permission.endsWith("_MANAGE"))
+        )
+          expect(grants).not.toContain(permission);
+      expect(grants).not.toContain("RESTAURANTS_ORDER_READ");
+      expect(grants).not.toContain("RESTAURANTS_SESSION_READ");
+    }
+    expect(
+      DomainAuthorizationService.hasPermission(
+        ["RESTAURANTS_CHECKOUT_READ"],
+        "RESTAURANTS_SERVICE_SESSION_OPEN_MANAGE",
+      ),
+    ).toBe(false);
+  },
+);

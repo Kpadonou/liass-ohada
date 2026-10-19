@@ -67,19 +67,25 @@ export function restaurantTransactionHandler(name: string) {
             : contracts.RestaurantOrderResponseSchema.parse(result);
       }
       if (!query) throw new Error("Missing Restaurants query");
-      if (query === "SERVICE_FLOOR" || query === "GET_SESSION")
-        await RestaurantServiceAccess.authorize(scope, context.userId);
       let serviceOrderRead = false;
+      let checkoutRead = false;
       if (
-        query === "SESSION_ORDERS" ||
-        query === "GET_ORDER" ||
-        query === "ORDER_ITEMS"
+        [
+          "SERVICE_FLOOR",
+          "GET_SESSION",
+          "SESSION_ORDERS",
+          "GET_ORDER",
+          "ORDER_ITEMS",
+        ].includes(query)
       ) {
         const access = await RestaurantServiceAccess.authorize(
           scope,
           context.userId,
+          false,
+          true,
         );
         serviceOrderRead = access.staffId !== undefined;
+        checkoutRead = access.role === "CASHIER";
       }
       const result = await RestaurantTransactionQueries.run(
         scope,
@@ -87,6 +93,7 @@ export function restaurantTransactionHandler(name: string) {
         input,
         ids,
         serviceOrderRead,
+        checkoutRead,
       );
       if (query === "SERVICE_FLOOR")
         return contracts.RestaurantServiceFloorResponseSchema.parse(result);
@@ -108,6 +115,17 @@ export function restaurantTransactionHandler(name: string) {
     },
     {
       permission: route.permission,
+      permissionAlternatives:
+        query &&
+        [
+          "SERVICE_FLOOR",
+          "GET_SESSION",
+          "SESSION_ORDERS",
+          "GET_ORDER",
+          "ORDER_ITEMS",
+        ].includes(query)
+          ? ["RESTAURANTS_CHECKOUT_READ"]
+          : undefined,
       productCode: "RESTAURANTS",
       action: route.name,
     },

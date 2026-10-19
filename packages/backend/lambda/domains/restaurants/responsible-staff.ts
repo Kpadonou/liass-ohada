@@ -107,10 +107,12 @@ export class ResponsibleStaff {
     scope: TransactionScope,
     actor: RestaurantStaffIdentity,
     preparation = false,
+    checkoutRead = false,
   ) {
     if (
       actor.restaurantRole !== "WAITER" &&
-      !(preparation && actor.restaurantRole === "KITCHEN")
+      !(preparation && actor.restaurantRole === "KITCHEN") &&
+      !(checkoutRead && actor.restaurantRole === "CASHIER")
     )
       throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     const candidate = await this.candidate(
@@ -118,11 +120,14 @@ export class ResponsibleStaff {
       actor.userId,
       actor,
       preparation,
+      checkoutRead,
     );
     return {
       displayName: candidate.displayName,
       actions: [
-        ...Identity.serviceChecks(scope.orgId, actor, preparation),
+        ...(checkoutRead
+          ? Identity.checkoutReadChecks(scope.orgId, actor)
+          : Identity.serviceChecks(scope.orgId, actor, preparation)),
         ...candidate.conditions,
       ],
     };
@@ -132,6 +137,7 @@ export class ResponsibleStaff {
     userId: string,
     knownIdentity?: RestaurantStaffIdentity,
     preparation = false,
+    checkoutRead = false,
   ) {
     const [staff, assignment, subject] = await Promise.all([
       Staff.get(scope.orgId, Staff.staffKey(scope.orgId, userId), "STAFF"),
@@ -150,7 +156,8 @@ export class ResponsibleStaff {
       !subject?.active ||
       !(
         eligibleRole(subject.restaurantRole) ||
-        (preparation && subject.restaurantRole === "KITCHEN")
+        (preparation && subject.restaurantRole === "KITCHEN") ||
+        (checkoutRead && subject.restaurantRole === "CASHIER")
       )
     )
       throw new AppError(409, "RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");

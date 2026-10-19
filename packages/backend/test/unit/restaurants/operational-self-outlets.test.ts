@@ -78,13 +78,14 @@ beforeEach(async () => {
   m.seedAccess(org, "manager", "MANAGER");
   await person("cook", "KITCHEN");
   await person("waiter", "WAITER");
+  await person("cashier", "CASHIER");
 });
 afterEach(() => {
   m.db.restore();
   jest.restoreAllMocks();
 });
 
-test.each(["cook", "waiter"])(
+test.each(["cook", "waiter", "cashier"])(
   "%s discovers active assigned outlets using bounded self reads only",
   async (actor) => {
     m.db.resetHistory();
@@ -232,7 +233,7 @@ test.each([
   if (kind === "role" || kind === "missing-role")
     patch(
       { PK: K.orgKey(org), SK: K.orgUserAccessSK("cook") },
-      { productRoles: kind === "role" ? { RESTAURANTS: "CASHIER" } : {} },
+      { productRoles: kind === "role" ? { RESTAURANTS: "INVALID" } : {} },
     );
   expect((await self()).statusCode).toBe(403);
 });
@@ -255,16 +256,13 @@ test.each(["OWNER", "MANAGER"])(
     expect((await self("bound-manager")).statusCode).toBe(200);
   },
 );
-test.each(["CASHIER", "invalid"])(
-  "%s does not acquire self discovery",
-  async (role) => {
-    m.seedAccess(org, "denied", role);
-    expect((await self("denied")).statusCode).toBe(403);
-    expect(Auth.permissionsForRestaurantsRole(role)).not.toContain(permission);
-  },
-);
+test.each(["invalid"])("%s does not acquire self discovery", async (role) => {
+  m.seedAccess(org, "denied", role);
+  expect((await self("denied")).statusCode).toBe(403);
+  expect(Auth.permissionsForRestaurantsRole(role)).not.toContain(permission);
+});
 test("permission projection keeps discovery independent of every transactional capability", () => {
-  for (const role of ["OWNER", "MANAGER", "WAITER", "KITCHEN"])
+  for (const role of ["OWNER", "MANAGER", "WAITER", "KITCHEN", "CASHIER"])
     expect(Auth.permissionsForRestaurantsRole(role)).toContain(permission);
   const kitchen = Auth.permissionsForRestaurantsRole("KITCHEN");
   for (const p of RESTAURANTS_SERVICE_PERMISSIONS)
