@@ -19,15 +19,29 @@ const receipts = new Map();
 function visit(outlet, sessionId) {
   if (!sessions.has(sessionId)) {
     const count = cfg().orders ?? 1;
+    const number = Number(sessionId.slice(-12));
+    const total = cfg().opsReview
+      ? number === 19
+        ? 2100000
+        : number === 29
+          ? 60000
+          : 20000
+      : 20000;
+    const paid = cfg().opsReview ? (number === 19 ? total : number === 9 ? 8000 : 0) : 0;
     const session = c.GuestSessionReadSchema.parse({
       orgId: org,
       outletId: outlet,
       schemaVersion: 1,
       guestSessionId: sessionId,
-      tableId: id(4),
+      tableId: id(cfg().opsReview ? number - 5 : 4),
       areaId: id(3),
       tableCode: 'TECH-CODE',
-      tableName: 'Terrasse jardin près de la baie vitrée',
+      tableName:
+        cfg().opsReview && number === 19
+          ? 'Salon des grandes familles et des invités'
+          : cfg().opsReview && number === 29
+            ? 'Près de la baie vitrée'
+            : 'Terrasse jardin près de la baie vitrée',
       currency: 'XOF',
       status: 'OPEN',
       openedAt: stamp,
@@ -41,8 +55,8 @@ function visit(outlet, sessionId) {
       financialRevision: 0,
       orderCount: count,
       openOrderCount: count,
-      dueMinor: 20000,
-      paidMinor: 0,
+      dueMinor: total,
+      paidMinor: paid,
       reservedMinor: 0,
       pendingPaymentCount: 0,
     });
@@ -50,15 +64,15 @@ function visit(outlet, sessionId) {
     for (let i = 0; i < count; i++) {
       const due =
         i === count - 1
-          ? 20000 - Math.floor(20000 / count) * (count - 1)
-          : Math.floor(20000 / count);
+          ? total - Math.floor(total / count) * (count - 1)
+          : Math.floor(total / count);
       const order = c.RestaurantOrderSchema.parse({
         orgId: org,
         outletId: outlet,
         schemaVersion: 1,
-        orderId: id(100 + i),
+        orderId: id(100 + i + (cfg().opsReview ? number * 10 : 0)),
         guestSessionId: sessionId,
-        tableId: id(4),
+        tableId: id(cfg().opsReview ? number - 5 : 4),
         orderType: 'DINE_IN',
         status: 'SUBMITTED',
         currency: 'XOF',
@@ -71,7 +85,10 @@ function visit(outlet, sessionId) {
         draftLineCount: cfg().draft ? 1 : 0,
         outstandingWorkCount: 0,
         dueMinor: due,
-        paidMinor: 0,
+        paidMinor:
+          i === count - 1
+            ? paid - Math.floor(paid / count) * (count - 1)
+            : Math.floor(paid / count),
         reservedMinor: 0,
         pendingPaymentCount: 0,
       });
@@ -252,31 +269,45 @@ const server = http.createServer(async (req, res) => {
   // Read-only management presentation fixtures, using existing configuration contracts.
   if (/\/preparation-stations\/[^/]+\/work\//.test(path)) {
     const state = parts[7];
+    if (cfg().boardFailure || cfg().failLane === state)
+      return send({ message: 'Erreur interne du serveur.' }, 503);
     return send({
-      items: [
-        c.PreparationReadSchema.parse({
-          orgId: org,
-          outletId: outlet,
-          schemaVersion: 1,
-          orderId: id(100),
-          itemId: id(200),
-          fireId: id(300),
-          submissionId: id(400),
-          stationId: parts[5],
-          stationVersion: 1,
-          generation: 1,
-          name: 'Poulet braisé sauce maison',
-          quantity: 2,
-          notes: 'Sans piment',
-          state,
-          queuedAt: stamp,
-          queuedBy: 'review',
-          version: 1,
-          ...(state !== 'QUEUED' ? { startedAt: stamp, startedBy: 'review' } : {}),
-          ...(state === 'READY' ? { readyAt: stamp, readyBy: 'review' } : {}),
-          serviceContext: { mode: 'DINE_IN', tableName: 'Terrasse jardin près de la baie vitrée' },
-        }),
-      ],
+      items:
+        cfg().emptyLane === state
+          ? []
+          : Array.from({ length: cfg().opsReview ? 2 : 1 }, (_, n) =>
+              c.PreparationReadSchema.parse({
+                orgId: org,
+                outletId: outlet,
+                schemaVersion: 1,
+                orderId: id(100),
+                itemId: id(200),
+                fireId: id(300 + n + ['QUEUED', 'IN_PROGRESS', 'READY'].indexOf(state) * 10),
+                submissionId: id(400),
+                stationId: parts[5],
+                stationVersion: 1,
+                generation: 1,
+                name: n
+                  ? 'Poisson grillé accompagné d’attiéké et de légumes de saison'
+                  : 'Poulet braisé sauce maison',
+                quantity: 2,
+                notes: n
+                  ? 'Sauce à part. Sans piment, accompagnement servi séparément.'
+                  : 'Sans piment',
+                state,
+                queuedAt: stamp,
+                queuedBy: 'review',
+                version: 1,
+                ...(state !== 'QUEUED' ? { startedAt: stamp, startedBy: 'review' } : {}),
+                ...(state === 'READY' ? { readyAt: stamp, readyBy: 'review' } : {}),
+                serviceContext: {
+                  mode: 'DINE_IN',
+                  tableName: n
+                    ? 'Salon des grandes familles et des invités'
+                    : 'Terrasse jardin près de la baie vitrée',
+                },
+              }),
+            ),
     });
   }
   if (path.endsWith('/service-areas'))
@@ -333,7 +364,7 @@ const server = http.createServer(async (req, res) => {
                 id: id(15),
                 outletId: outlet,
                 name: 'Bar et boissons fraîches',
-                isActive: false,
+                isActive: !!cfg().opsReview,
               },
             ],
     });
@@ -410,6 +441,22 @@ const server = http.createServer(async (req, res) => {
               currentAmountMinor: s.dueMinor,
             }
           : { ...base, state: 'FREE' },
+        ...(cfg().opsReview
+          ? [19, 29].map((n) => {
+              const other = visit(outlet, id(n));
+              return {
+                ...base,
+                tableId: id(n - 5),
+                name: other.tableName,
+                state: 'OCCUPIED',
+                guestSessionId: other.guestSessionId,
+                openedAt: stamp,
+                openedBy: 'review',
+                currency: 'XOF',
+                currentAmountMinor: other.dueMinor,
+              };
+            })
+          : []),
         { ...base, tableId: id(5), name: 'Salle principale', state: 'FREE' },
       ],
     });
@@ -586,7 +633,13 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && parts.length === 6) return send({ data: s });
     if (path.endsWith('/orders')) {
       for (const o of orders.values())
-        o.outstandingWorkCount = cfg().ready && o.orderId === id(100) ? 1 : 0;
+        o.outstandingWorkCount = cfg().opsReview
+          ? o.guestSessionId === id(19)
+            ? 1
+            : 0
+          : cfg().ready && o.orderId === id(100)
+            ? 1
+            : 0;
       return send({
         items: [...orders.values()].filter((o) => o.guestSessionId === s.guestSessionId),
       });
@@ -677,7 +730,13 @@ const server = http.createServer(async (req, res) => {
   if (parts[4] === 'orders') {
     const o = orders.get(parent);
     if (!o) return send({ message: 'Commande indisponible' }, 404);
-    o.outstandingWorkCount = cfg().ready && parent === id(100) ? 1 : 0;
+    o.outstandingWorkCount = cfg().opsReview
+      ? o.guestSessionId === id(19)
+        ? 1
+        : 0
+      : cfg().ready && parent === id(100)
+        ? 1
+        : 0;
     if (req.method === 'GET' && parts.length === 6) return send({ data: o });
     if (path.endsWith('/items'))
       return send({

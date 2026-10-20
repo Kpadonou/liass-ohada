@@ -1,0 +1,21 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+.checkout-workspace {
+  margin-top: 1.5rem;
+}
+.checkout-visit-row[aria-pressed='true'] {
+  border-inline-start: 3px solid var(--color-brand-700);
+}
+@media (max-width: 767px) {
+  .checkout-detail {
+    display: none;
+  }
+  .checkout-show-detail .checkout-master {
+    display: none;
+  }
+  .checkout-show-detail .checkout-detail {
+    display: block;
+  }
+}

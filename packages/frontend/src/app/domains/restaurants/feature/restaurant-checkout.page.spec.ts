@@ -1,7 +1,15 @@
 import { Router, provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
-import { signal } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
+import { RestaurantCheckoutVisitComponent } from './restaurant-checkout-visit.component';
+import { ServiceOrderContext } from '../data-access/restaurant-orders.api';
+@Component({ selector: 'liass-checkout-visit', template: '<h2>Visite sélectionnée</h2>' })
+class VisitPresentationStub {
+  readonly ctx = input.required<ServiceOrderContext>();
+  readonly closed = output<void>();
+  readonly accessDenied = output<void>();
+}
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { RestaurantCheckoutPage } from './restaurant-checkout.page';
@@ -202,5 +210,48 @@ describe('Cashier occupied-table discovery and context', () => {
       ['/restaurants/outlets', rid(2), 'sessions', rid(9), 'receipt'],
       { state: { checkoutClosed: true } },
     );
+  });
+  it('groups occupied-table search and rows, with intentional detail guidance and contextual currency', async () => {
+    const fixture = create();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.occupied()).toHaveLength(1);
+    });
+    const master = fixture.nativeElement.querySelector('.checkout-master');
+    expect(master.textContent).toContain('Tables occupées');
+    expect(master.textContent).toContain('Rechercher une table');
+    expect(master.querySelector('input[type="search"]')).not.toBeNull();
+    expect(master.textContent).not.toContain('Addition ·');
+    expect(master.textContent.match(/XOF/g) ?? []).toHaveLength(1);
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="checkout-detail-empty"]').textContent,
+    ).toContain('Sélectionnez une table');
+  });
+  it('returns to the master without recreating the selected detail or discarding its retry state', async () => {
+    TestBed.overrideComponent(RestaurantCheckoutPage, {
+      remove: { imports: [RestaurantCheckoutVisitComponent] },
+      add: { imports: [VisitPresentationStub] },
+    });
+    const fixture = create();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.occupied()).toHaveLength(1);
+    });
+    const row = fixture.nativeElement.querySelector('.checkout-visit-row') as HTMLButtonElement;
+    row.click();
+    fixture.detectChanges();
+    const detail = fixture.nativeElement.querySelector('liass-checkout-visit');
+    expect(row.getAttribute('aria-pressed')).toBe('true');
+    expect(row.textContent).toContain('check_circle');
+    expect(fixture.componentInstance.detailVisible()).toBe(true);
+    fixture.componentInstance.showTables();
+    fixture.detectChanges();
+    expect(fixture.componentInstance.detailVisible()).toBe(false);
+    expect(fixture.componentInstance.sessionId()).toBe(rid(9));
+    expect(fixture.nativeElement.querySelector('liass-checkout-visit')).toBe(detail);
+    row.click();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('liass-checkout-visit')).toBe(detail);
+    expect(api.serviceFloor).toHaveBeenCalledTimes(1);
   });
 });

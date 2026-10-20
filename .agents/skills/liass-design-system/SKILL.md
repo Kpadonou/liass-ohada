@@ -80,6 +80,10 @@ Platform governance is permanent: homogeneous management collection → desktop 
 
 Desktop information architecture remains table-oriented. On narrow screens, an established compact stacked-item adaptation is allowed when it improves readability and avoids unusable horizontal scrolling. Frontend Definition of Done includes consistency with existing cross-product interaction patterns, verified in the rendered UI.
 
+## Operational surface acceptance
+
+`MASTER_DETAIL_OPERATIONAL`, `STATE_BOARD` and `SPATIAL_OPERATIONAL` must follow the permanent operational composition contracts in `references/liass-interaction-patterns.md`: shared operational header/separator rhythm, coherent local toolbar/work composition, meaningful empty states, responsive master/detail or lane navigation, and common-error aggregation without hiding independent successful work. These are information-architecture exceptions to management tables, not exceptions to page-composition quality. State the precedent and desktop/tablet/mobile contract before implementation and report technical acceptance separately from browser-backed visual/product acceptance.
+
 ## Reference priority
 
 Read only the references needed for the task, in this order:

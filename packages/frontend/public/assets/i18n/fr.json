@@ -4840,7 +4840,10 @@
       "INACTIVE_WORK": "Consulter le travail des postes inactifs",
       "EMPTY_QUEUED": "Aucune préparation en attente",
       "EMPTY_IN_PROGRESS": "Aucune préparation en cours",
-      "EMPTY_READY": "Aucune préparation prête"
+      "EMPTY_READY": "Aucune préparation prête",
+      "DESCRIPTION": "Suivez les préparations et faites-les avancer jusqu’à leur mise à disposition.",
+      "BOARD_CONTROLS": "Poste et actualisation des préparations",
+      "LOAD_ERROR": "Impossible de charger les préparations."
     },
     "SERVING": {
       "TITLE": "Prêt à servir",
@@ -4891,10 +4894,10 @@
       "PROGRESS": "Clôture des commandes {{closed}} / {{total}}",
       "NO_OUTLETS": "Aucun établissement actif ne vous est affecté. Contactez un responsable.",
       "MORE_OUTLETS": "Charger les établissements suivants",
-      "SEARCH": "Rechercher une table chargée",
+      "SEARCH": "Rechercher une table",
       "NO_TABLES": "Aucune table occupée parmi les résultats chargés.",
       "MORE_TABLES": "Charger les tables suivantes",
-      "SELECT_TABLE": "Sélectionnez une table occupée pour consulter son addition.",
+      "SELECT_TABLE": "Choisissez une table occupée pour consulter son addition et procéder à l’encaissement.",
       "ACCESS": "Votre accès à la caisse doit être vérifié.",
       "TABLE_CLOSED": "Table clôturée.",
       "BLOCK_UNPAID": "Un solde reste à payer.",
@@ -4910,7 +4913,13 @@
       "ALLOCATION_ONE": "Répartition sur 1 commande · maximum 10.",
       "BLOCK_CLOSED": "Cette table est déjà clôturée.",
       "REFRESH_ACCESS": "Actualiser mon accès",
-      "NO_MANAGEMENT_OUTLETS": "Aucun établissement actif n’est configuré. Créez ou activez un établissement dans la configuration."
+      "NO_MANAGEMENT_OUTLETS": "Aucun établissement actif n’est configuré. Créez ou activez un établissement dans la configuration.",
+      "DESCRIPTION": "Encaissez les visites et clôturez les tables lorsque le service est terminé.",
+      "TABLES": "Tables occupées",
+      "BACK_TABLES": "Retour aux tables",
+      "SELECT_TITLE": "Sélectionnez une table",
+      "CURRENCY": "Montants en {{ currency }}",
+      "PAYMENT": "Encaissement"
     },
     "RECEIPT": {
       "TITLE": "Reçu",

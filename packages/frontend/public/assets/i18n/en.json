@@ -4840,7 +4840,10 @@
       "INACTIVE_WORK": "View work at inactive stations",
       "EMPTY_QUEUED": "No queued preparation",
       "EMPTY_IN_PROGRESS": "No preparation in progress",
-      "EMPTY_READY": "No ready preparation"
+      "EMPTY_READY": "No ready preparation",
+      "DESCRIPTION": "Follow preparations through to readiness.",
+      "BOARD_CONTROLS": "Preparation station and refresh",
+      "LOAD_ERROR": "Unable to load preparations."
     },
     "SERVING": {
       "TITLE": "Ready to serve",
@@ -4891,10 +4894,10 @@
       "PROGRESS": "Closing Orders {{closed}} / {{total}}",
       "NO_OUTLETS": "No active outlet is assigned to you. Contact a manager.",
       "MORE_OUTLETS": "Load more outlets",
-      "SEARCH": "Search loaded tables",
+      "SEARCH": "Search tables",
       "NO_TABLES": "No occupied table in the loaded results.",
       "MORE_TABLES": "Load more tables",
-      "SELECT_TABLE": "Select an occupied table to review its bill.",
+      "SELECT_TABLE": "Choose an occupied table to view its bill and take payment.",
       "ACCESS": "Your checkout access must be verified.",
       "TABLE_CLOSED": "Table closed.",
       "BLOCK_UNPAID": "An unpaid balance remains.",
@@ -4910,7 +4913,13 @@
       "ALLOCATION_ONE": "Applied to 1 Order · maximum 10.",
       "BLOCK_CLOSED": "This visit is already closed.",
       "REFRESH_ACCESS": "Refresh my access",
-      "NO_MANAGEMENT_OUTLETS": "No active outlet is configured. Create or activate an outlet in configuration."
+      "NO_MANAGEMENT_OUTLETS": "No active outlet is configured. Create or activate an outlet in configuration.",
+      "DESCRIPTION": "Take payments and close tables when service is complete.",
+      "TABLES": "Occupied tables",
+      "BACK_TABLES": "Back to tables",
+      "SELECT_TITLE": "Select a table",
+      "CURRENCY": "Amounts in {{ currency }}",
+      "PAYMENT": "Payment"
     },
     "RECEIPT": {
       "TITLE": "Receipt",

@@ -9,6 +9,7 @@ import {
   signal,
   DestroyRef,
   untracked,
+  viewChildren,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
@@ -98,6 +99,19 @@ export class RestaurantKitchenPage {
   readonly stationOptions = computed(() =>
     this.activeStations().map((row) => ({ value: row.id, label: row.name })),
   );
+  readonly laneViews = viewChildren(RestaurantKitchenLaneComponent);
+  readonly commonFailure = computed(() => {
+    const views = this.laneViews();
+    if (views.length !== 3 || !views.every((lane) => lane.queue.isError())) return false;
+    const errors = views.map((lane) => lane.queue.error());
+    // Aggregate a common transport/server failure, not unrelated domain failures.
+    return errors.every(
+      (error) =>
+        error instanceof HttpErrorResponse &&
+        (error.status === 0 || error.status >= 500) &&
+        error.status === (errors[0] as HttpErrorResponse).status,
+    );
+  });
   readonly lanes: KitchenLane[] = ['QUEUED', 'IN_PROGRESS', 'READY'];
   readonly mobileLane = signal<KitchenLane>('QUEUED');
   readonly now = signal(Date.now());

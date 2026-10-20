@@ -32,6 +32,7 @@ export class RestaurantKitchenLaneComponent {
   readonly station = input.required<string>();
   readonly state = input.required<KitchenLane>();
   readonly now = input.required<number>();
+  readonly suppressReadError = input(false);
   readonly denied = output<void>();
   private readonly queries = inject(RestaurantPreparationQueries);
   private readonly t = inject(TranslocoService);

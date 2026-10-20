@@ -4,7 +4,7 @@ import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery } from '@tanstack/angular-query-experimental';
 import { RestaurantOrdersQueries } from '../data-access/restaurant-orders.queries';
 import { ServiceOrderContext } from '../data-access/restaurant-orders.api';
-import { restaurantPrice } from '../utils/restaurant-money';
+import { restaurantOperationalPrice } from '../utils/restaurant-money';
 @Component({
   selector: 'liass-checkout-lines',
   imports: [MatButtonModule, TranslocoModule],
@@ -17,7 +17,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
     @for (line of lines(); track line.itemId) {
       @if (line.snapshot; as sale) {
         <div
-          class="flex justify-between gap-3 border-b border-app-border py-2 text-sm"
+          class="flex justify-between gap-3 border-b border-app-border py-2 text-sm last:border-b-0"
           [class.opacity-60]="line.status === 'CANCELLED'"
         >
           <div class="min-w-0 break-words">
@@ -49,6 +49,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
 export class RestaurantCheckoutLinesComponent {
   readonly ctx = input.required<ServiceOrderContext>();
   readonly orderId = input.required<string>();
+  readonly currency = input<string>();
   private readonly queries = inject(RestaurantOrdersQueries);
   private readonly t = inject(TranslocoService);
   readonly query = injectInfiniteQuery(() => this.queries.items(this.ctx(), this.orderId(), true));
@@ -60,6 +61,6 @@ export class RestaurantCheckoutLinesComponent {
         .filter((line) => !!line.snapshot) ?? [],
   );
   price(amount: number, currency: string) {
-    return restaurantPrice(amount, currency, this.t.getActiveLang());
+    return restaurantOperationalPrice(amount, currency, this.t.getActiveLang(), this.currency());
   }
 }

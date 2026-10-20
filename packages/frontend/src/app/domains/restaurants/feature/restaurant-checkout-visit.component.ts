@@ -29,7 +29,7 @@ import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow'
 import { RestaurantCheckoutPaymentDialog } from './restaurant-checkout-payment.dialog';
 import { RestaurantCheckoutLinesComponent } from './restaurant-checkout-lines.component';
 import { checkoutClosureBlockers } from '../utils/restaurant-checkout';
-import { restaurantPrice } from '../utils/restaurant-money';
+import { restaurantOperationalPrice } from '../utils/restaurant-money';
 import { checkoutError } from '../utils/restaurant-checkout-error';
 @Component({
   selector: 'liass-checkout-visit',
@@ -37,27 +37,46 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
   template: `
     @if (readableSession(); as visit) {
       <header class="flex flex-wrap items-center justify-between gap-3">
-        <h2 class="text-xl font-semibold break-words">{{ visit.tableName }}</h2>
+        <div class="min-w-0 flex-1">
+          <h2 class="text-lg font-semibold break-words">{{ visit.tableName }}</h2>
+          <p class="mt-1 text-xs text-app-text-secondary">
+            {{ 'RESTAURANTS.CHECKOUT.CURRENCY' | transloco: { currency: visit.currency } }}
+          </p>
+        </div>
         <button type="button" mat-button [disabled]="busy()" (click)="refresh()">
           {{ 'RESTAURANTS.CHECKOUT.REFRESH' | transloco }}
         </button>
       </header>
-      <dl class="my-4 grid grid-cols-2 gap-3 text-sm">
+      <dl
+        class="my-4 grid grid-cols-2 gap-x-5 gap-y-3 border-y border-app-border py-4 text-sm sm:grid-cols-4"
+      >
         <div>
-          <dt>{{ 'RESTAURANTS.CHECKOUT.DUE' | transloco }}</dt>
-          <dd class="font-semibold">{{ money(visit.dueMinor) }}</dd>
+          <dt class="text-xs text-app-text-secondary">
+            {{ 'RESTAURANTS.CHECKOUT.DUE' | transloco }}
+          </dt>
+          <dd class="mt-1 font-semibold tabular-nums">{{ money(visit.dueMinor) }}</dd>
         </div>
         <div>
-          <dt>{{ 'RESTAURANTS.CHECKOUT.PAID' | transloco }}</dt>
-          <dd>{{ money(visit.paidMinor) }}</dd>
+          <dt class="text-xs text-app-text-secondary">
+            {{ 'RESTAURANTS.CHECKOUT.PAID' | transloco }}
+          </dt>
+          <dd class="mt-1 tabular-nums">{{ money(visit.paidMinor) }}</dd>
         </div>
         <div>
-          <dt>{{ 'RESTAURANTS.CHECKOUT.REMAINING' | transloco }}</dt>
-          <dd class="font-semibold">{{ money(visit.dueMinor - visit.paidMinor) }}</dd>
+          <dt class="text-xs text-app-text-secondary">
+            {{ 'RESTAURANTS.CHECKOUT.REMAINING' | transloco }}
+          </dt>
+          <dd class="mt-1 font-semibold tabular-nums">
+            {{ money(visit.dueMinor - visit.paidMinor) }}
+          </dd>
         </div>
         <div>
-          <dt>{{ 'RESTAURANTS.CHECKOUT.AVAILABLE' | transloco }}</dt>
-          <dd>{{ money(visit.dueMinor - visit.paidMinor - visit.reservedMinor) }}</dd>
+          <dt class="text-xs text-app-text-secondary">
+            {{ 'RESTAURANTS.CHECKOUT.AVAILABLE' | transloco }}
+          </dt>
+          <dd class="mt-1 tabular-nums">
+            {{ money(visit.dueMinor - visit.paidMinor - visit.reservedMinor) }}
+          </dd>
         </div>
       </dl>
       @if (visit.reservedMinor || visit.pendingPaymentCount) {
@@ -69,24 +88,11 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
       @if (error()) {
         <p role="alert" class="my-3 text-app-error">{{ error() }}</p>
       }
-      <button
-        type="button"
-        mat-flat-button
-        [disabled]="
-          !caps.canCapturePayment() ||
-          busy() ||
-          !complete() ||
-          visit.dueMinor <= visit.paidMinor + visit.reservedMinor
-        "
-        (click)="pay()"
-      >
-        {{ 'RESTAURANTS.CHECKOUT.PAY' | transloco }}
-      </button>
       <section class="my-4">
         <h3 class="font-semibold">{{ 'RESTAURANTS.CHECKOUT.ADDITION' | transloco }}</h3>
         @for (order of rows(); track order.orderId; let index = $index) {
           <details
-            class="border-b border-app-border py-2"
+            class="border-b border-app-border py-2 last:border-b-0"
             (toggle)="expand(order.orderId, $event)"
             [open]="rows().length === 1"
           >
@@ -98,7 +104,11 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
               }
             </summary>
             @if (expanded().has(order.orderId) || rows().length === 1) {
-              <liass-checkout-lines [ctx]="ctx()" [orderId]="order.orderId" />
+              <liass-checkout-lines
+                [ctx]="ctx()"
+                [orderId]="order.orderId"
+                [currency]="visit.currency"
+              />
             }
           </details>
         }
@@ -112,6 +122,27 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
             {{ 'RESTAURANTS.CHECKOUT.MORE_ORDERS' | transloco }}
           </button>
         }
+      </section>
+      <section
+        class="mb-4 border-t border-app-border pt-4"
+        aria-labelledby="checkout-payment-heading"
+      >
+        <h3 id="checkout-payment-heading" class="mb-3 font-semibold">
+          {{ 'RESTAURANTS.CHECKOUT.PAYMENT' | transloco }}
+        </h3>
+        <button
+          type="button"
+          mat-flat-button
+          [disabled]="
+            !caps.canCapturePayment() ||
+            busy() ||
+            !complete() ||
+            visit.dueMinor <= visit.paidMinor + visit.reservedMinor
+          "
+          (click)="pay()"
+        >
+          {{ 'RESTAURANTS.CHECKOUT.PAY' | transloco }}
+        </button>
       </section>
       <section class="border-t border-app-border pt-4">
         <h3 class="font-semibold">{{ 'RESTAURANTS.CHECKOUT.CLOSE' | transloco }}</h3>
@@ -222,7 +253,8 @@ export class RestaurantCheckoutVisitComponent {
     });
   }
   money(amount: number) {
-    return restaurantPrice(amount, this.session.data()!.currency, this.t.getActiveLang());
+    const currency = this.session.data()!.currency;
+    return restaurantOperationalPrice(amount, currency, this.t.getActiveLang(), currency);
   }
   private current(ctx: ServiceOrderContext) {
     try {

@@ -417,3 +417,76 @@ it('does not claim zero active stations before bounded station discovery is exha
   await settle();
   expect(api.queue).toHaveBeenCalledTimes(3);
 });
+
+it('aggregates a common server failure once and retries the same mounted queues', async () => {
+  api.queue.mockRejectedValue(
+    new HttpErrorResponse({ status: 503, error: { message: 'Erreur interne du serveur.' } }),
+  );
+  await create();
+  expect(fixture.componentInstance.commonFailure()).toBe(true);
+  const views = [...fixture.componentInstance.laneViews()];
+  expect(views).toHaveLength(3);
+  expect(fixture.nativeElement.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  expect(fixture.nativeElement.textContent).toContain('Impossible de charger les préparations.');
+  expect(fixture.nativeElement.textContent).not.toContain('Erreur interne du serveur.');
+  expect(api.queue).toHaveBeenCalledTimes(3);
+  expect(
+    [...fixture.nativeElement.querySelectorAll('button')].filter((b: any) =>
+      b.textContent.includes('Réessayer'),
+    ),
+  ).toHaveLength(1);
+  expect(
+    fixture.nativeElement.querySelector('[data-testid="kitchen-toolbar"]').textContent,
+  ).not.toContain('Actualiser');
+  api.queue.mockImplementation(async (_ctx, _station, state) => ({
+    items: tasks.filter((t) => t.state === state),
+  }));
+  await fixture.componentInstance.refresh();
+  await settle();
+  expect(fixture.componentInstance.commonFailure()).toBe(false);
+  expect(fixture.componentInstance.laneViews()).toEqual(views);
+  expect(api.queue).toHaveBeenCalledTimes(6);
+  expect(fixture.nativeElement.querySelectorAll('article')).toHaveLength(3);
+});
+
+it('keeps successful lanes usable when only READY fails and retries only that lane', async () => {
+  api.queue.mockImplementation(async (_ctx, _station, state) => {
+    if (state === 'READY') throw new HttpErrorResponse({ status: 503 });
+    return { items: tasks.filter((t) => t.state === state) };
+  });
+  await create();
+  expect(fixture.componentInstance.commonFailure()).toBe(false);
+  expect(fixture.nativeElement.querySelector('[data-testid="kitchen-common-error"]')).toBeNull();
+  expect(fixture.nativeElement.querySelectorAll('article')).toHaveLength(2);
+  expect(fixture.nativeElement.querySelectorAll('[role="alert"]')).toHaveLength(1);
+  const retry = [...fixture.nativeElement.querySelectorAll('button')].find((b: any) =>
+    b.textContent.includes('Réessayer'),
+  ) as HTMLButtonElement;
+  api.queue.mockResolvedValue({ items: [] });
+  retry.click();
+  await settle();
+  expect(api.queue).toHaveBeenCalledTimes(4);
+  expect(api.queue.mock.calls.at(-1)?.[2]).toBe('READY');
+  expect(fixture.nativeElement.querySelectorAll('article')).toHaveLength(2);
+  expect(fixture.nativeElement.textContent).toContain(fr.RESTAURANTS.KITCHEN.EMPTY_READY);
+});
+
+it('keeps local state navigation immediate and station/refresh controls in one toolbar', async () => {
+  await create();
+  const toolbar = fixture.nativeElement.querySelector('[data-testid="kitchen-toolbar"]');
+  expect(toolbar.querySelector('.kitchen-stations')).not.toBeNull();
+  expect(toolbar.textContent).toContain('Actualiser');
+  const calls = api.queue.mock.calls.length;
+  fixture.componentInstance.mobileLane.set('READY');
+  fixture.detectChanges();
+  expect(api.queue).toHaveBeenCalledTimes(calls);
+});
+
+it('does not aggregate unrelated lane failures into a common transport error', async () => {
+  api.queue.mockImplementation(async (_ctx, _station, state) => {
+    throw new HttpErrorResponse({ status: state === 'READY' ? 409 : 503 });
+  });
+  await create();
+  expect(fixture.componentInstance.commonFailure()).toBe(false);
+  expect(fixture.nativeElement.querySelectorAll('[role="alert"]')).toHaveLength(3);
+});

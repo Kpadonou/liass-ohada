@@ -2,6 +2,8 @@ import { RestaurantOutletContext } from '../data-access/restaurant-outlet-contex
 import { ActivatedRoute } from '@angular/router';
 import {
   Component,
+  Injector,
+  afterNextRender,
   DestroyRef,
   computed,
   linkedSignal,
@@ -18,6 +20,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery } from '@tanstack/angular-query-experimental';
@@ -29,7 +32,7 @@ import { ProductAccessState } from '../../../core/product-access/product-access.
 import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
 import { RestaurantCheckoutVisitComponent } from './restaurant-checkout-visit.component';
 import { tableDisplayName } from '../utils/table-display-name';
-import { restaurantPrice } from '../utils/restaurant-money';
+import { restaurantOperationalPrice } from '../utils/restaurant-money';
 @Component({
   selector: 'liass-restaurant-checkout',
   host: { class: 'block min-w-0' },
@@ -38,12 +41,18 @@ import { restaurantPrice } from '../utils/restaurant-money';
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatIconModule,
     TranslocoModule,
     LiassPageHeaderComponent,
     RestaurantCheckoutVisitComponent,
   ],
+  styleUrl: './restaurant-checkout.page.scss',
   template: `
-    <liass-page-header eyebrow="" subtitle="" [title]="'RESTAURANTS.CHECKOUT.TITLE' | transloco" />
+    <liass-page-header
+      eyebrow=""
+      [subtitle]="'RESTAURANTS.CHECKOUT.DESCRIPTION' | transloco"
+      [title]="'RESTAURANTS.CHECKOUT.TITLE' | transloco"
+    />
     @if (allowed()) {
       @if (outlets().pending) {
         <p role="status">{{ 'RESTAURANTS.CHECKOUT.LOADING' | transloco }}</p>
@@ -67,12 +76,27 @@ import { restaurantPrice } from '../utils/restaurant-money';
         </p>
       }
       @if (outletId()) {
-        <div class="grid min-w-0 gap-5 xl:grid-cols-[minmax(240px,1fr)_minmax(0,2fr)]">
-          <section class="min-w-0">
-            <mat-form-field class="w-full"
+        <div
+          class="checkout-workspace grid min-w-0 overflow-hidden rounded-app-panel border border-app-border bg-app-surface md:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]"
+          [class.checkout-show-detail]="sessionId() && detailVisible()"
+        >
+          <section
+            class="checkout-master min-w-0 border-app-border p-4 md:border-r"
+            aria-labelledby="checkout-master-heading"
+          >
+            <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="checkout-master-heading" class="text-base font-semibold">
+                {{ 'RESTAURANTS.CHECKOUT.TABLES' | transloco }}
+              </h2>
+              @if (masterCurrency(); as currency) {
+                <span class="text-xs text-app-text-secondary">{{ currency }}</span>
+              }
+            </div>
+            <mat-form-field class="w-full" subscriptSizing="dynamic"
               ><mat-label>{{ 'RESTAURANTS.CHECKOUT.SEARCH' | transloco }}</mat-label
               ><input
                 matInput
+                type="search"
                 #tableSearch
                 [ngModel]="search()"
                 (ngModelChange)="search.set($event)"
@@ -84,7 +108,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
               <p role="alert">{{ 'RESTAURANTS.CHECKOUT.READ_ERROR' | transloco }}</p>
             }
             <div
-              class="divide-y divide-app-border overflow-hidden rounded-app-panel border border-app-border"
+              class="mt-3 divide-y divide-app-border"
               role="group"
               [attr.aria-label]="'RESTAURANTS.CHECKOUT.SEARCH' | transloco"
             >
@@ -92,16 +116,22 @@ import { restaurantPrice } from '../utils/restaurant-money';
                 <button
                   type="button"
                   mat-button
-                  class="w-full !h-auto !justify-start !rounded-none !py-3 !text-left"
+                  class="checkout-visit-row !grid !grid-cols-[minmax(0,1fr)] w-full !h-auto !justify-start !rounded-none !px-3 !py-3 !text-left"
                   [class.bg-app-surface-selected]="sessionId() === table.guestSessionId"
                   [attr.aria-pressed]="sessionId() === table.guestSessionId"
-                  (click)="sessionId.set(table.guestSessionId)"
+                  (click)="selectVisit(table.guestSessionId)"
                 >
-                  <span class="block break-words">{{ displayName(table) }}</span
-                  ><span class="block text-xs"
-                    >{{ 'RESTAURANTS.CHECKOUT.ADDITION' | transloco }} ·
-                    {{ money(table.currentAmountMinor, table.currency) }}</span
-                  >
+                  <span class="flex w-full min-w-0 items-center gap-2">
+                    <mat-icon class="shrink-0" aria-hidden="true">{{
+                      sessionId() === table.guestSessionId ? 'check_circle' : 'table_restaurant'
+                    }}</mat-icon>
+                    <span class="min-w-0 flex-1 break-words font-semibold">{{
+                      displayName(table)
+                    }}</span>
+                    <span class="shrink-0 whitespace-nowrap text-right text-sm tabular-nums">{{
+                      money(table.currentAmountMinor, table.currency)
+                    }}</span>
+                  </span>
                 </button>
               }
             </div>
@@ -119,7 +149,17 @@ import { restaurantPrice } from '../utils/restaurant-money';
               </button>
             }
           </section>
-          <section class="min-w-0 rounded-app-card border border-app-border bg-app-surface p-4">
+          <section
+            #detailPanel
+            tabindex="-1"
+            class="checkout-detail min-w-0 p-4 outline-offset-4 sm:p-5"
+            [attr.aria-label]="'RESTAURANTS.CHECKOUT.ADDITION' | transloco"
+          >
+            @if (sessionId()) {
+              <button type="button" mat-button class="!mb-3 md:!hidden" (click)="showTables()">
+                <mat-icon>arrow_back</mat-icon>{{ 'RESTAURANTS.CHECKOUT.BACK_TABLES' | transloco }}
+              </button>
+            }
             @for (context of selectedContext(); track context.key) {
               <liass-checkout-visit
                 [ctx]="context.ctx"
@@ -128,9 +168,20 @@ import { restaurantPrice } from '../utils/restaurant-money';
               />
             }
             @if (!sessionId()) {
-              <p class="text-app-text-secondary">
-                {{ 'RESTAURANTS.CHECKOUT.SELECT_TABLE' | transloco }}
-              </p>
+              <div
+                class="flex min-h-64 flex-col items-center justify-center gap-2 px-4 py-8 text-center"
+                data-testid="checkout-detail-empty"
+              >
+                <mat-icon class="text-app-text-secondary" aria-hidden="true"
+                  >table_restaurant</mat-icon
+                >
+                <h2 class="text-base font-semibold">
+                  {{ 'RESTAURANTS.CHECKOUT.SELECT_TITLE' | transloco }}
+                </h2>
+                <p class="max-w-sm text-sm text-app-text-secondary">
+                  {{ 'RESTAURANTS.CHECKOUT.SELECT_TABLE' | transloco }}
+                </p>
+              </div>
             }
             @if (message()) {
               <p role="status">{{ message() }}</p>
@@ -160,6 +211,27 @@ export class RestaurantCheckoutPage {
   readonly sessionId = linkedSignal({
     source: () => [this.identity(), this.outletId()] as const,
     computation: () => '',
+  });
+  private readonly detailPanel = viewChild<ElementRef<HTMLElement>>('detailPanel');
+  private readonly injector = inject(Injector);
+  readonly detailVisible = signal(false);
+  selectVisit(id: string) {
+    this.sessionId.set(id);
+    this.detailVisible.set(true);
+    afterNextRender(() => this.detailPanel()?.nativeElement.focus({ preventScroll: true }), {
+      injector: this.injector,
+    });
+  }
+  showTables() {
+    // Presentation only: retain the selected component and any unresolved command intent.
+    this.detailVisible.set(false);
+    afterNextRender(() => this.tableSearch()?.nativeElement.focus({ preventScroll: true }), {
+      injector: this.injector,
+    });
+  }
+  readonly masterCurrency = computed(() => {
+    const currencies = new Set(this.occupied().map((row) => row.currency));
+    return currencies.size === 1 ? [...currencies][0] : null;
   });
   readonly search = signal('');
   readonly message = signal('');
@@ -290,6 +362,11 @@ export class RestaurantCheckoutPage {
       );
   }
   money(amount: number, currency: string) {
-    return restaurantPrice(amount, currency, this.t.getActiveLang());
+    return restaurantOperationalPrice(
+      amount,
+      currency,
+      this.t.getActiveLang(),
+      this.masterCurrency(),
+    );
   }
 }

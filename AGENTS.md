@@ -99,6 +99,8 @@ Accounting is the canonical management-UI precedent. Before implementing a new m
 
 Passing automated tests is not sufficient for frontend acceptance. Significant routes and presentation changes require browser visual review at 1440, 900, and 390 pixels, including shell, hierarchy, density, actions, overflow, long content, and relevant loading/empty/error states. Final reports must state the presentation classification, canonical precedent, 1440/900/390 results, table/card decision, justified card exceptions, and deviations. Substantial plans must include: Route; Classification; Canonical precedent; Desktop pattern; Tablet pattern; Mobile pattern; Search/filter pattern; Actions pattern; Card exception justification.
 
+Operational `MASTER_DETAIL_OPERATIONAL`, `STATE_BOARD` and `SPATIAL_OPERATIONAL` surfaces must follow the Design System's operational page-composition contracts, including shared header/separator rhythm, coherent controls/work surfaces, responsive list/detail or lane navigation, and aggregation of common loading failures while independent lane failures remain local. Report technical and visual/product acceptance separately; operational card exceptions do not waive composition or browser review.
+
 ## Frontend Resource Optimization
 
 Operational scope is not a page filter. For staff-scoped operational workflows, resolve the authorized active Outlet at application/product-context level; do not require repeated selection on individual operational routes. Configuration scope may remain route-local because management users intentionally administer multiple outlets. Preserve backend authorization and tenant/principal isolation; canonical collections remain in TanStack Query.
