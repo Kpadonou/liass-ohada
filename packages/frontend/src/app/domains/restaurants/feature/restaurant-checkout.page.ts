@@ -89,20 +89,28 @@ import { restaurantPrice } from '../utils/restaurant-money';
             @if (floor.isError()) {
               <p role="alert">{{ 'RESTAURANTS.CHECKOUT.READ_ERROR' | transloco }}</p>
             }
-            @for (table of occupied(); track table.tableId) {
-              <button
-                type="button"
-                mat-stroked-button
-                class="mb-2 w-full !h-auto !justify-start !py-3 !text-left"
-                (click)="sessionId.set(table.guestSessionId)"
-              >
-                <span class="block break-words">{{ displayName(table) }}</span
-                ><span class="block text-xs"
-                  >{{ 'RESTAURANTS.CHECKOUT.ADDITION' | transloco }} ·
-                  {{ money(table.currentAmountMinor, table.currency) }}</span
+            <div
+              class="divide-y divide-app-border overflow-hidden rounded-app-panel border border-app-border"
+              role="group"
+              [attr.aria-label]="'RESTAURANTS.CHECKOUT.SEARCH' | transloco"
+            >
+              @for (table of occupied(); track table.tableId) {
+                <button
+                  type="button"
+                  mat-button
+                  class="w-full !h-auto !justify-start !rounded-none !py-3 !text-left"
+                  [class.bg-app-surface-selected]="sessionId() === table.guestSessionId"
+                  [attr.aria-pressed]="sessionId() === table.guestSessionId"
+                  (click)="sessionId.set(table.guestSessionId)"
                 >
-              </button>
-            }
+                  <span class="block break-words">{{ displayName(table) }}</span
+                  ><span class="block text-xs"
+                    >{{ 'RESTAURANTS.CHECKOUT.ADDITION' | transloco }} ·
+                    {{ money(table.currentAmountMinor, table.currency) }}</span
+                  >
+                </button>
+              }
+            </div>
             @if (floor.isSuccess() && !occupied().length) {
               <p>{{ 'RESTAURANTS.CHECKOUT.NO_TABLES' | transloco }}</p>
             }

@@ -313,7 +313,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
         expect(setup.componentInstance.tables.isSuccess()).toBe(true);
       });
       for (const table of tables.filter((table) => table.serviceAreaId === area.id))
-        expect(setup.nativeElement.textContent).toContain(table.code);
+        expect(setup.nativeElement.textContent).toContain(table.name);
     }
     expect(setup.nativeElement.textContent).not.toContain(outlet.id);
     const stats = await raw('/__test/stats');
@@ -334,7 +334,11 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       });
       const manage = ['OWNER', 'MANAGER'].includes(selected);
       expect(TestBed.inject(RestaurantsCapabilities).canManageSetup()).toBe(manage);
-      expect(f.nativeElement.querySelector('[aria-haspopup="menu"]') !== null).toBe(manage);
+      // Read-only users retain contextual navigation; management authority is
+      // asserted independently below against the canonical commands.
+      expect(
+        f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]') !== null,
+      ).toBe(manage);
       const input = { expectedVersion: 1, name: 'Agla' };
       if (manage) {
         expect((await api.save('org-a', 'outlet', {}, input, outlet.id)).data.version).toBe(2);

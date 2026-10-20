@@ -1,4 +1,4 @@
-<div class="mx-auto w-full max-w-[var(--spacing-app-settings)] space-y-5">
+<div class="w-full min-w-0 space-y-6">
   <liass-page-header
     [eyebrow]="''"
     [title]="'RESTAURANTS.UX.PAGES.' + pageKey() + '.TITLE' | transloco"
@@ -66,144 +66,44 @@
       >
     }
     @if (mode === 'overview') {
-      <liass-card
-        [title]="root.data()?.name ?? null"
-        [description]="'RESTAURANTS.UI.WELCOME_HELP' | transloco"
-      >
-        <div class="mt-4 flex flex-wrap gap-3">
-          <a mat-flat-button routerLink="/restaurants/setup">{{
-            'RESTAURANTS.UI.NAV.SETUP' | transloco
-          }}</a>
-          @if (caps.canReadMenu()) {
-            <a mat-stroked-button routerLink="/restaurants/menu">{{
-              'RESTAURANTS.UX.NAV.menu' | transloco
-            }}</a>
-          }
-        </div>
-      </liass-card>
-      @if (locations.isPending()) {
-        <liass-card
-          ><p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
-          <liass-skeleton variant="block"
-        /></liass-card>
-      } @else if (locations.isError()) {
-        <liass-card
-          ><p role="alert">{{ errorText(locations.error()) }}</p>
-          <button mat-button (click)="locations.refetch()">
-            {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
-          </button></liass-card
-        >
-      } @else {
-        <div class="grid gap-4 sm:grid-cols-2">
-          <a
-            routerLink="/restaurants/setup"
-            class="liass-focus-ring group block rounded-app-card"
-            [attr.aria-label]="'RESTAURANTS.UX.NAV.restaurant' | transloco"
-            ><liass-card
-              ><div class="flex items-center justify-between gap-3">
-                <h2 class="text-sm font-semibold text-app-text-primary">
-                  {{ 'RESTAURANTS.UX.NAV.restaurant' | transloco }}
-                </h2>
-                <mat-icon
-                  class="text-app-text-secondary group-hover:text-brand-700"
-                  aria-hidden="true"
-                  >chevron_right</mat-icon
-                >
-              </div>
-              <p class="mt-3 text-sm text-app-text-secondary">
-                {{ 'RESTAURANTS.UI.CONFIGURED' | transloco }}
-              </p></liass-card
-            ></a
-          ><a
-            routerLink="/restaurants/setup/locations"
-            class="liass-focus-ring group block rounded-app-card"
-            [attr.aria-label]="'RESTAURANTS.UX.NAV.outlet' | transloco"
-            ><liass-card
-              ><div class="flex items-center justify-between gap-3">
-                <h2 class="text-sm font-semibold text-app-text-primary">
-                  {{ 'RESTAURANTS.UX.NAV.outlet' | transloco }}
-                </h2>
-                <mat-icon
-                  class="text-app-text-secondary group-hover:text-brand-700"
-                  aria-hidden="true"
-                  >chevron_right</mat-icon
-                >
-              </div>
-              <p class="mt-3 text-2xl font-semibold">
-                {{ outlets().length }}{{ locations.hasNextPage() ? '+' : '' }}
-              </p>
-              <p class="text-sm text-app-text-secondary">
-                {{
-                  (outlets().length
-                    ? 'RESTAURANTS.UI.LOCATIONS_READY'
-                    : 'RESTAURANTS.UI.EMPTY.outlet'
-                  ) | transloco
-                }}
-              </p></liass-card
-            ></a
+      <p class="text-sm text-app-text-secondary">{{ root.data()?.name }}</p>
+      <div class="grid gap-4 sm:grid-cols-3">
+        @if (locations.isSuccess()) {
+          <liass-card padding="sm"
+            ><h2 class="text-sm text-app-text-secondary">
+              {{ 'RESTAURANTS.UX.NAV.outlet' | transloco }}
+            </h2>
+            <p class="mt-2 text-2xl font-semibold">
+              {{ outlets().length }}{{ locations.hasNextPage() ? '+' : '' }}
+            </p></liass-card
           >
-        </div>
-      }
-      @if (outlet()) {
-        @if (areas.isPending() || stations.isPending()) {
-          <liass-card
-            ><p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
-            <liass-skeleton variant="block"
-          /></liass-card>
-        } @else if (areas.isError() || stations.isError()) {
-          <liass-card
-            ><p role="alert">{{ 'RESTAURANTS.UI.ERRORS.NETWORK' | transloco }}</p>
-            <button mat-button (click)="areas.refetch(); stations.refetch()">
-              {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
-            </button></liass-card
-          >
-        } @else {
-          <div class="grid gap-4 sm:grid-cols-2">
-            <a
-              routerLink="/restaurants/setup/areas"
-              [queryParams]="configurationContext()"
-              class="liass-focus-ring group block rounded-app-card"
-              [attr.aria-label]="'RESTAURANTS.UX.NAV.area' | transloco"
-              ><liass-card
-                ><div class="flex items-center justify-between gap-3">
-                  <h2 class="text-sm font-semibold text-app-text-primary">
-                    {{ 'RESTAURANTS.UX.NAV.area' | transloco }}
-                  </h2>
-                  <mat-icon
-                    class="text-app-text-secondary group-hover:text-brand-700"
-                    aria-hidden="true"
-                    >chevron_right</mat-icon
-                  >
-                </div>
-                <p class="mt-3 text-2xl font-semibold">
-                  {{ areaRows().length }}{{ areas.hasNextPage() ? '+' : '' }}
-                </p>
-                <p class="mt-1 text-sm text-app-text-secondary">{{ outlet()?.name }}</p></liass-card
-              ></a
-            ><a
-              routerLink="/restaurants/setup/stations"
-              [queryParams]="configurationContext()"
-              class="liass-focus-ring group block rounded-app-card"
-              [attr.aria-label]="'RESTAURANTS.UX.NAV.station' | transloco"
-              ><liass-card
-                ><div class="flex items-center justify-between gap-3">
-                  <h2 class="text-sm font-semibold text-app-text-primary">
-                    {{ 'RESTAURANTS.UX.NAV.station' | transloco }}
-                  </h2>
-                  <mat-icon
-                    class="text-app-text-secondary group-hover:text-brand-700"
-                    aria-hidden="true"
-                    >chevron_right</mat-icon
-                  >
-                </div>
-                <p class="mt-3 text-2xl font-semibold">
-                  {{ stationRows().length }}{{ stations.hasNextPage() ? '+' : '' }}
-                </p>
-                <p class="mt-1 text-sm text-app-text-secondary">{{ outlet()?.name }}</p></liass-card
-              ></a
-            >
-          </div>
         }
+        @if (outlet() && areas.isSuccess() && stations.isSuccess()) {
+          <liass-card padding="sm"
+            ><h2 class="text-sm text-app-text-secondary">
+              {{ 'RESTAURANTS.UX.NAV.area' | transloco }}
+            </h2>
+            <p class="mt-2 text-2xl font-semibold">
+              {{ areaRows().length }}{{ areas.hasNextPage() ? '+' : '' }}
+            </p>
+            <p class="text-xs text-app-text-secondary">{{ outlet()?.name }}</p></liass-card
+          >
+          <liass-card padding="sm"
+            ><h2 class="text-sm text-app-text-secondary">
+              {{ 'RESTAURANTS.UX.NAV.station' | transloco }}
+            </h2>
+            <p class="mt-2 text-2xl font-semibold">
+              {{ stationRows().length }}{{ stations.hasNextPage() ? '+' : '' }}
+            </p>
+            <p class="text-xs text-app-text-secondary">{{ outlet()?.name }}</p></liass-card
+          >
+        }
+      </div>
+      @if (locations.isPending() || areas.isFetching() || stations.isFetching()) {
+        <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+      }
+      @if (locations.isError() || areas.isError() || stations.isError()) {
+        <p role="alert">{{ 'RESTAURANTS.UI.ERRORS.NETWORK' | transloco }}</p>
       }
     } @else {
       @if (mode === 'menu' || section() !== 'restaurant') {
@@ -380,20 +280,26 @@
             }
           </liass-card>
         } @else {
-          <liass-card [title]="menu.data()?.name ?? null"
-            ><div class="flex flex-wrap items-center justify-between gap-3">
+          <section
+            class="flex flex-wrap items-center justify-between gap-3 border-b border-app-border pb-3"
+          >
+            <div>
+              <h2 class="text-base font-semibold">{{ menu.data()?.name }}</h2>
               <p class="text-sm text-app-text-secondary">
                 {{ menu.data()?.currency }} · {{ 'RESTAURANTS.UI.CURRENCY_FIXED' | transloco }}
               </p>
-              @if (caps.canManageMenu() && siteActive()) {
-                <button mat-button (click)="open('menu', menu.data()!)">
-                  {{ 'RESTAURANTS.UI.EDIT' | transloco }}
-                </button>
-              }
-            </div></liass-card
-          >
-          <div class="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)]">
-            <liass-card [title]="'RESTAURANTS.UI.CATEGORIES' | transloco">
+            </div>
+            @if (caps.canManageMenu() && siteActive()) {
+              <button mat-button (click)="open('menu', menu.data()!)">
+                {{ 'RESTAURANTS.UI.EDIT' | transloco }}
+              </button>
+            }
+          </section>
+          <div class="space-y-5">
+            <details class="rounded-app-panel border border-app-border p-4">
+              <summary class="cursor-pointer text-sm font-semibold">
+                {{ 'RESTAURANTS.UI.CATEGORIES' | transloco }}
+              </summary>
               @if (categories.isPending()) {
                 <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
                 <liass-skeleton variant="block" />
@@ -423,7 +329,7 @@
                     }
                   </div>
                 }
-                <ul class="space-y-2">
+                <ul class="mt-3 divide-y divide-app-border">
                   @for (row of categoryRows(); track row.id) {
                     <li class="flex items-center gap-1">
                       <button
@@ -477,7 +383,7 @@
                   </button>
                 }
               }
-            </liass-card>
+            </details>
             <ng-container *ngTemplateOutlet="collectionView" />
           </div>
         }
@@ -492,6 +398,51 @@
   }
   <ng-template #collectionView>
     <div class="min-w-0 space-y-4">
+      <div
+        class="grid items-start gap-3 sm:grid-cols-2"
+        [class.xl:grid-cols-4]="mode === 'menu'"
+        [class.xl:grid-cols-3]="mode !== 'menu'"
+      >
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'RESTAURANTS.PRESENTATION.SEARCH' | transloco }}</mat-label>
+          <mat-icon matPrefix>search</mat-icon>
+          <input matInput type="search" [ngModel]="search()" (ngModelChange)="search.set($event)" />
+        </mat-form-field>
+        @if (mode === 'menu') {
+          <liass-searchable-select
+            controlType="select"
+            labelKey="RESTAURANTS.UI.CATEGORIES"
+            [options]="categoryOptions()"
+            [ngModel]="categoryId()"
+            (ngModelChange)="selectCategory($event)"
+          />
+        }
+        <mat-form-field appearance="outline">
+          <mat-label>{{ 'RESTAURANTS.PRESENTATION.STATUS' | transloco }}</mat-label>
+          <mat-select [value]="statusFilter()" (valueChange)="statusFilter.set($event)">
+            <mat-option value="ALL">{{ 'RESTAURANTS.PRESENTATION.ALL' | transloco }}</mat-option>
+            <mat-option value="ACTIVE">{{ 'RESTAURANTS.UI.ACTIVE' | transloco }}</mat-option>
+            <mat-option value="INACTIVE">{{ 'RESTAURANTS.UI.INACTIVE' | transloco }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        @if (kind() === 'item') {
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'RESTAURANTS.PRESENTATION.AVAILABILITY' | transloco }}</mat-label>
+            <mat-select
+              [value]="availabilityFilter()"
+              (valueChange)="availabilityFilter.set($event)"
+            >
+              <mat-option value="ALL">{{ 'RESTAURANTS.PRESENTATION.ALL' | transloco }}</mat-option>
+              <mat-option value="AVAILABLE">{{
+                'RESTAURANTS.UI.AVAILABLE' | transloco
+              }}</mat-option>
+              <mat-option value="UNAVAILABLE">{{
+                'RESTAURANTS.UI.UNAVAILABLE' | transloco
+              }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+        }
+      </div>
       @if (mode === 'menu' && category()) {
         <h2 class="text-base font-semibold">{{ category()?.name }}</h2>
       }
@@ -544,18 +495,123 @@
           </div>
         </liass-card>
       } @else {
-        <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          @for (row of rows(); track row.id) {
+        <div
+          class="hidden rounded-app-card border border-app-border"
+          [class.md:block]="kind() !== 'item'"
+          [class.lg:block]="kind() === 'item'"
+        >
+          <table
+            class="liass-data-table w-full table-fixed border-collapse text-left"
+            data-testid="restaurant-management-table"
+          >
+            <thead
+              class="bg-app-surface-muted text-xs font-semibold uppercase tracking-wide text-app-text-secondary"
+            >
+              <tr>
+                <th class="px-4 py-3">{{ 'RESTAURANTS.PRESENTATION.NAME' | transloco }}</th>
+                @if (kind() === 'table') {
+                  <th class="px-4 py-3">{{ 'RESTAURANTS.IA.AREAS' | transloco }}</th>
+                  <th class="px-4 py-3">{{ 'RESTAURANTS.PRESENTATION.CAPACITY' | transloco }}</th>
+                } @else if (kind() === 'item') {
+                  <th class="px-4 py-3">{{ 'RESTAURANTS.UI.CATEGORIES' | transloco }}</th>
+                  <th class="px-4 py-3 text-right">
+                    {{ 'RESTAURANTS.PRESENTATION.PRICE' | transloco }}
+                  </th>
+                  <th class="px-4 py-3">{{ 'RESTAURANTS.IA.STATIONS' | transloco }}</th>
+                } @else if (kind() !== 'outlet') {
+                  <th class="px-4 py-3">{{ 'RESTAURANTS.UX.NAV.outlet' | transloco }}</th>
+                }
+                <th class="px-4 py-3">{{ 'RESTAURANTS.PRESENTATION.STATUS' | transloco }}</th>
+                <th class="w-20 px-4 py-3 text-right">
+                  {{ 'RESTAURANTS.TEAM.ACTIONS' | transloco }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-app-border">
+              @for (row of filteredRows(); track row.id) {
+                <tr class="bg-app-surface transition hover:bg-app-surface-muted">
+                  <td class="break-words px-4 py-3 text-sm font-semibold">
+                    {{ row.name || tableCode(row) }}
+                  </td>
+                  @if (kind() === 'table') {
+                    <td class="break-words px-4 py-3 text-sm text-app-text-secondary">
+                      {{ area()?.name }}
+                    </td>
+                    <td class="px-4 py-3 text-sm">
+                      {{ capacity(row) ?? ('RESTAURANTS.IA.CAPACITY_UNSET' | transloco) }}
+                    </td>
+                  } @else if (kind() === 'item') {
+                    <td class="break-words px-4 py-3 text-sm text-app-text-secondary">
+                      {{ category()?.name }}
+                    </td>
+                    <td class="px-4 py-3 text-right text-sm tabular-nums">{{ price(row) }}</td>
+                    <td class="break-words px-4 py-3 text-sm text-app-text-secondary">
+                      {{ stationName(row) }}
+                    </td>
+                  } @else if (kind() !== 'outlet') {
+                    <td class="break-words px-4 py-3 text-sm text-app-text-secondary">
+                      {{ outlet()?.name }}
+                    </td>
+                  }
+                  <td class="px-4 py-3">
+                    <liass-status-chip
+                      size="sm"
+                      [label]="
+                        (row.isActive ? 'RESTAURANTS.UI.ACTIVE' : 'RESTAURANTS.UI.INACTIVE')
+                          | transloco
+                      "
+                      [tone]="row.isActive ? 'success' : 'neutral'"
+                    />
+                    @if (kind() === 'item') {
+                      <div class="mt-1">
+                        <liass-status-chip
+                          size="sm"
+                          [label]="
+                            (available(row)
+                              ? 'RESTAURANTS.UI.AVAILABLE'
+                              : 'RESTAURANTS.UI.UNAVAILABLE'
+                            ) | transloco
+                          "
+                          [tone]="available(row) ? 'success' : 'warning'"
+                        />
+                      </div>
+                      <p class="mt-1 text-xs text-app-text-secondary">
+                        {{
+                          (reorder(row)
+                            ? 'RESTAURANTS.UI.REORDER_ON'
+                            : 'RESTAURANTS.UI.REORDER_OFF'
+                          ) | transloco
+                        }}
+                      </p>
+                    }
+                  </td>
+                  <td class="px-4 py-3 text-right">
+                    <ng-container *ngTemplateOutlet="recordActions; context: { $implicit: row }" />
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        @if (!filteredRows().length) {
+          <p role="status" class="p-4 text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.PRESENTATION.NO_RESULTS' | transloco }}
+          </p>
+        }
+        <div
+          class="grid gap-3"
+          [class.md:hidden]="kind() !== 'item'"
+          [class.lg:hidden]="kind() === 'item'"
+        >
+          @for (row of filteredRows(); track row.id) {
             <liass-card>
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <h3 class="break-words font-semibold">
-                    {{ kind() === 'table' ? tableCode(row) : row.name }}
+                    {{ row.name || tableCode(row) }}
                   </h3>
                   @if (kind() === 'table') {
-                    <p class="text-sm text-app-text-secondary">
-                      {{ row.name }}
-                    </p>
+                    <span class="sr-only">{{ 'RESTAURANTS.UX.NAV.table' | transloco }}</span>
                   }
                 </div>
                 @if (canManage() && row.isActive && (kind() === 'outlet' || canCreate())) {
@@ -711,5 +767,91 @@
         }
       }
     </div>
+  </ng-template>
+  <ng-template #recordActions let-row>
+    @if (kind() === 'outlet' || kind() === 'area' || (canManage() && row.isActive && canCreate())) {
+      <button
+        type="button"
+        mat-icon-button
+        [matMenuTriggerFor]="recordMenu"
+        [attr.aria-label]="'RESTAURANTS.UI.ACTIONS_FOR' | transloco: { name: row.name }"
+      >
+        <mat-icon>more_vert</mat-icon>
+      </button>
+      <mat-menu #recordMenu="matMenu" xPosition="before">
+        @if (kind() === 'outlet') {
+          <a
+            mat-menu-item
+            routerLink="/restaurants/setup/areas"
+            [queryParams]="configurationContext(row.id)"
+            ><mat-icon>grid_view</mat-icon>{{ 'RESTAURANTS.IA.AREAS' | transloco }}</a
+          >
+          <a
+            mat-menu-item
+            routerLink="/restaurants/setup/tables"
+            [queryParams]="configurationContext(row.id)"
+            ><mat-icon>table_restaurant</mat-icon>{{ 'RESTAURANTS.UX.NAV.table' | transloco }}</a
+          >
+          <a
+            mat-menu-item
+            routerLink="/restaurants/setup/stations"
+            [queryParams]="configurationContext(row.id)"
+            ><mat-icon>soup_kitchen</mat-icon>{{ 'RESTAURANTS.IA.STATIONS' | transloco }}</a
+          >
+          @if (caps.canReadMenu()) {
+            <a
+              mat-menu-item
+              routerLink="/restaurants/menu"
+              [queryParams]="configurationContext(row.id)"
+              ><mat-icon>restaurant_menu</mat-icon>{{ 'RESTAURANTS.UX.NAV.menu' | transloco }}</a
+            >
+          }
+        }
+        @if (kind() === 'area') {
+          <a
+            mat-menu-item
+            routerLink="/restaurants/setup/tables"
+            [queryParams]="configurationContext(outletId(), row.id)"
+            ><mat-icon>table_restaurant</mat-icon
+            >{{ 'RESTAURANTS.IA.CONFIGURE_TABLES' | transloco }}</a
+          >
+        }
+        @if (canManage() && row.isActive && (kind() === 'outlet' || canCreate())) {
+          <button type="button" mat-menu-item [disabled]="busy()" (click)="open(kind(), row)">
+            <mat-icon>edit</mat-icon>{{ 'RESTAURANTS.UI.EDIT' | transloco }}
+          </button>
+          @if (kind() === 'table') {
+            <button type="button" mat-menu-item (click)="showQr(row)">
+              <mat-icon>qr_code</mat-icon>{{ 'RESTAURANTS.UI.VIEW_QR' | transloco }}
+            </button>
+          }
+          @if (kind() === 'item') {
+            <button
+              type="button"
+              mat-menu-item
+              [disabled]="busy()"
+              (click)="toggleAvailability(row)"
+            >
+              <mat-icon>sync</mat-icon
+              >{{
+                (available(row) ? 'RESTAURANTS.UI.UNAVAILABLE' : 'RESTAURANTS.UI.AVAILABLE')
+                  | transloco
+              }}
+            </button>
+          }
+          <button
+            type="button"
+            mat-menu-item
+            class="text-danger-600"
+            [disabled]="busy()"
+            (click)="deactivate(row)"
+          >
+            <mat-icon>block</mat-icon>{{ 'RESTAURANTS.UI.DEACTIVATE' | transloco }}
+          </button>
+        }
+      </mat-menu>
+    } @else {
+      <span class="text-app-text-secondary">—</span>
+    }
   </ng-template>
 </div>

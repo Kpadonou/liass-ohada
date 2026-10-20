@@ -4,6 +4,9 @@ import { ActivatedRoute, Router, RouterLink, convertToParamMap } from '@angular/
 import { toSignal } from '@angular/core/rxjs-interop';
 import { of } from 'rxjs';
 import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
@@ -62,6 +65,9 @@ function collectionState(query: {
     NgTemplateOutlet,
     RouterLink,
     FormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
     MatButtonModule,
     MatIconModule,
     MatMenuModule,
@@ -188,6 +194,9 @@ export class RestaurantsWorkspacePage {
   readonly categoryRows = computed(
     () => this.categories.data()?.pages.flatMap((page) => page.items) ?? [],
   );
+  readonly categoryOptions = computed(() =>
+    this.categoryRows().map((row) => ({ value: row.id, label: row.name })),
+  );
   readonly category = computed(() =>
     this.categoryRows().find((row) => row.id === this.categoryId()),
   );
@@ -224,6 +233,26 @@ export class RestaurantsWorkspacePage {
     }
   });
   readonly rows = computed<RestaurantEntity[]>(() => this.collection().items);
+  readonly search = signal('');
+  readonly statusFilter = signal('ALL');
+  readonly availabilityFilter = signal('ALL');
+  private normalize(value: string) {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase();
+  }
+  readonly filteredRows = computed(() =>
+    this.rows().filter(
+      (row) =>
+        (!this.search().trim() ||
+          this.normalize(row.name).includes(this.normalize(this.search().trim()))) &&
+        (this.statusFilter() === 'ALL' || row.isActive === (this.statusFilter() === 'ACTIVE')) &&
+        (this.kind() !== 'item' ||
+          this.availabilityFilter() === 'ALL' ||
+          this.available(row) === (this.availabilityFilter() === 'AVAILABLE')),
+    ),
+  );
   readonly contextUnavailable = computed(
     () =>
       (this.locations.isSuccess() && !!this.outletId() && !this.outlet()) ||

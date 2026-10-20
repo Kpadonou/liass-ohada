@@ -216,6 +216,36 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       }),
     );
   });
+  it('uses a desktop management table with final Actions and network-free loaded-record filters', async () => {
+    api.list.mockImplementation(async (_org: string, kind: RestaurantKind) => ({
+      items:
+        kind === 'outlet'
+          ? [
+              row('outlet'),
+              { ...row('outlet'), id: rid(90), name: 'Café de la terrasse', isActive: false },
+            ]
+          : [row(kind)],
+    }));
+    const f = await create('setup', 'outlet');
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.rows()).toHaveLength(2);
+    });
+    const table = f.nativeElement.querySelector('[data-testid="restaurant-management-table"]');
+    expect(table).not.toBeNull();
+    expect(table.querySelector('thead tr').lastElementChild.textContent).toContain('ACTIONS');
+    const calls = api.list.mock.calls.length;
+    f.componentInstance.search.set('cafe');
+    f.detectChanges();
+    expect(f.componentInstance.filteredRows().map((row) => row.name)).toEqual([
+      'Café de la terrasse',
+    ]);
+    f.componentInstance.statusFilter.set('ACTIVE');
+    f.detectChanges();
+    expect(f.componentInstance.filteredRows()).toEqual([]);
+    expect(api.list.mock.calls).toHaveLength(calls);
+    expect(table.parentElement.classList.contains('md:block')).toBe(true);
+  });
   it('renders policy and restaurant, suppressing management for read-only staff', async () => {
     manage.set(false);
     const f = await create();
@@ -237,7 +267,8 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
         f.detectChanges();
         expect(f.componentInstance.rows().length).toBe(1);
       });
-      expect(f.nativeElement.textContent).toContain(kind === 'table' ? 'T01' : row(kind).name);
+      expect(f.nativeElement.textContent).toContain(row(kind).name);
+      if (kind === 'table') expect(f.nativeElement.textContent).not.toContain('T01');
       f.componentInstance.open(kind, row(kind));
       expect(dialog.open).toHaveBeenCalledWith(
         RestaurantEditorComponent,
@@ -424,7 +455,8 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
         setup.detectChanges();
         expect(setup.componentInstance.tables.isSuccess()).toBe(true);
       });
-      codes.forEach((code) => expect(setup.nativeElement.textContent).toContain(code));
+      codes.forEach((code) => expect(setup.nativeElement.textContent).not.toContain(code));
+      expect(setup.nativeElement.textContent).toContain('Table 1');
     }
     setup.componentInstance.section.set('station');
     await vi.waitFor(() => {
@@ -578,34 +610,27 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       expect.objectContaining({ data: expect.objectContaining({ kind: 'category' }) }),
     );
   });
-  it('uses canonical dashboard shortcuts and preserves bounded counts without a test heading', async () => {
+  it('uses true bounded dashboard summaries without duplicating sidebar navigation tiles', async () => {
     const f = await create('overview');
     await vi.waitFor(() => {
       f.detectChanges();
       expect(f.componentInstance.stations.isSuccess()).toBe(true);
     });
     const links = [...f.nativeElement.querySelectorAll('a')] as HTMLAnchorElement[];
-    expect(links.map((link) => link.getAttribute('href')?.split('?')[0])).toEqual(
-      expect.arrayContaining([
-        '/restaurants/setup',
-        '/restaurants/setup/locations',
-        '/restaurants/setup/areas',
-        '/restaurants/setup/stations',
-        '/restaurants/menu',
-      ]),
-    );
+    expect(links).toHaveLength(0);
     expect(f.nativeElement.querySelector('liass-page-header').textContent).toContain('Dashboard');
     expect(f.nativeElement.textContent).not.toContain('RESTAURANTS.UI.SITE_COUNTS');
     expect(f.nativeElement.textContent).not.toContain('Configuration de test');
     expect(f.nativeElement.textContent).not.toContain('Vue d’ensemble');
     for (const kind of ['outlet', 'area', 'station']) {
-      const link = f.nativeElement.querySelector(
-        'a[aria-label="' +
-          translations.RESTAURANTS.UX.NAV[kind as 'outlet' | 'area' | 'station'] +
-          '"]',
-      );
-      expect(link.querySelector('p').textContent.trim()).toBe('1');
-      expect(link.querySelector('mat-icon').getAttribute('aria-hidden')).toBe('true');
+      const card = [...(f.nativeElement as HTMLElement).querySelectorAll('liass-card')].find((el) =>
+        el
+          .querySelector('h2')
+          ?.textContent?.includes(
+            translations.RESTAURANTS.UX.NAV[kind as 'outlet' | 'area' | 'station'],
+          ),
+      ) as HTMLElement;
+      expect(card.querySelector('p')?.textContent?.trim()).toBe('1');
     }
   });
   it('inherits outlet/area context from a deep link and follows back/forward parameter changes', async () => {

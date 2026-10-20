@@ -132,11 +132,25 @@ const server = http.createServer(async (req, res) => {
       productAccess: [
         {
           orgId: org,
+          productCode: 'ACCOUNTING',
+          status: 'ACTIVE',
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+        {
+          orgId: org,
           productCode: 'RESTAURANTS',
           status: 'ACTIVE',
           createdAt: stamp,
           updatedAt: stamp,
         },
+      ],
+    });
+  if (path === '/journals')
+    return send({
+      data: [
+        { year: 2026, journalCode: 'VE', journalName: 'Journal des ventes', type: 'SALE' },
+        { year: 2026, journalCode: 'BQ', journalName: 'Banque et règlements', type: 'BANK' },
       ],
     });
   if (cfg().deny && path.startsWith('/restaurants'))
@@ -145,11 +159,129 @@ const server = http.createServer(async (req, res) => {
     return send({ items: [{ outletId: id(2), name: 'Restaurant jardin' }] });
   if (path === '/restaurants/outlets')
     return send({
-      items: [{ ...meta, id: id(2), restaurantId: id(1), name: 'Restaurant jardin' }],
+      items:
+        cfg().emptyKind === 'outlet'
+          ? []
+          : [{ ...meta, id: id(2), restaurantId: id(1), name: 'Restaurant jardin' }],
     });
   if (path === '/restaurants/restaurant')
     return send({
       data: { ...meta, id: id(1), name: 'Atelier Resto', guestOrderingPolicy: 'STAFF_APPROVAL' },
+    });
+  // Read-only management presentation fixtures, using existing configuration contracts.
+  if (path.endsWith('/service-areas'))
+    return send({
+      items:
+        cfg().empty || cfg().emptyKind === 'area'
+          ? []
+          : [
+              { ...meta, id: id(3), outletId: outlet, name: 'Salle principale et terrasse jardin' },
+              { ...meta, id: id(13), outletId: outlet, name: 'Salon privé', isActive: false },
+            ],
+    });
+  if (path.endsWith('/tables'))
+    return send({
+      items:
+        cfg().empty || cfg().emptyKind === 'table'
+          ? []
+          : [
+              {
+                ...meta,
+                id: id(4),
+                outletId: outlet,
+                serviceAreaId: parent,
+                code: 'TECH-01',
+                name: 'Terrasse jardin près de la baie vitrée',
+                capacity: 6,
+              },
+              {
+                ...meta,
+                id: id(14),
+                outletId: outlet,
+                serviceAreaId: parent,
+                code: 'TECH-02',
+                name: 'Salon des invités',
+                capacity: 4,
+                isActive: false,
+              },
+            ],
+    });
+  if (path.endsWith('/preparation-stations'))
+    return send({
+      items:
+        cfg().empty || cfg().emptyKind === 'station'
+          ? []
+          : [
+              {
+                ...meta,
+                id: id(5),
+                outletId: outlet,
+                name: 'Cuisine chaude — préparations et accompagnements',
+              },
+              {
+                ...meta,
+                id: id(15),
+                outletId: outlet,
+                name: 'Bar et boissons fraîches',
+                isActive: false,
+              },
+            ],
+    });
+  if (path.endsWith('/menu'))
+    return send({
+      data: {
+        ...meta,
+        id: id(7),
+        outletId: outlet,
+        name: 'Carte de la Maison des saveurs',
+        currency: 'XOF',
+      },
+    });
+  if (path.endsWith('/menu/categories'))
+    return send({
+      items: cfg().empty
+        ? []
+        : [
+            {
+              ...meta,
+              id: id(6),
+              outletId: outlet,
+              menuId: id(7),
+              name: 'Plats et accompagnements de saison',
+            },
+            { ...meta, id: id(16), outletId: outlet, menuId: id(7), name: 'Boissons' },
+          ],
+    });
+  if (path.includes('/menu/categories/') && path.endsWith('/items'))
+    return send({
+      items:
+        cfg().empty || cfg().emptyKind === 'item'
+          ? []
+          : [
+              {
+                ...meta,
+                id: id(8),
+                outletId: outlet,
+                menuId: id(7),
+                categoryId: parts[6],
+                name: 'Poisson grillé accompagné d’attiéké et de légumes de saison',
+                price: { amountMinor: 150000, currency: 'XOF' },
+                availability: 'AVAILABLE',
+                preparationStationId: id(5),
+                guestReorderEnabled: true,
+              },
+              {
+                ...meta,
+                id: id(18),
+                outletId: outlet,
+                menuId: id(7),
+                categoryId: parts[6],
+                name: 'Poulet braisé sauce maison',
+                price: { amountMinor: 8000, currency: 'XOF' },
+                availability: 'UNAVAILABLE',
+                guestReorderEnabled: false,
+              },
+            ],
     });
   if (path.endsWith('/service-floor')) {
     const s = visit(outlet, id(9));

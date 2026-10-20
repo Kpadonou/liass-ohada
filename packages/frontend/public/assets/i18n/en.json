@@ -4283,6 +4283,16 @@
     }
   },
   "RESTAURANTS": {
+    "PRESENTATION": {
+      "SEARCH": "Search loaded records",
+      "STATUS": "Status",
+      "ALL": "All",
+      "AVAILABILITY": "Availability",
+      "NAME": "Name",
+      "CAPACITY": "Capacity",
+      "PRICE": "Price",
+      "NO_RESULTS": "No loaded records match the filters."
+    },
     "PAGE": {
       "TITLE": "Liass-Resto",
       "EYEBROW": "Liass-OHADA",
