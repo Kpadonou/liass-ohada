@@ -101,6 +101,8 @@ Passing automated tests is not sufficient for frontend acceptance. Significant r
 
 ## Frontend Resource Optimization
 
+Operational scope is not a page filter. For staff-scoped operational workflows, resolve the authorized active Outlet at application/product-context level; do not require repeated selection on individual operational routes. Configuration scope may remain route-local because management users intentionally administer multiple outlets. Preserve backend authorization and tenant/principal isolation; canonical collections remain in TanStack Query.
+
 Frontend server state must use TanStack Query where applicable. Query keys must be stable, domain-specific, and include active tenant/workspace or dossier context for tenant-scoped data. Reuse shared domain query helpers instead of creating duplicate API calls in components, and avoid refetching on every component mount when cached data is still fresh. Use longer `staleTime` values for stable master/reference data such as accounting accounts and journals, and filter/pagination-aware keys for transactional data such as ledgers, entries, balances, and reports. Mutations should update or invalidate only the affected query caches; imperative component refetches should be reserved for explicit user refresh actions or cases where targeted invalidation cannot represent the change. NgRx Signal Store is for UI/client state such as active workspace, active dossier, filters, and local interaction state; it must not replace TanStack Query server-state caching.
 
 ## Frontend Cache & Read Architecture Rule

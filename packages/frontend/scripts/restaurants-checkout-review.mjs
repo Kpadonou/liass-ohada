@@ -223,19 +223,62 @@ const server = http.createServer(async (req, res) => {
   if (cfg().deny && path.startsWith('/restaurants'))
     return send({ message: 'Votre accès à cet établissement a changé.' }, 403);
   if (path === '/restaurants/me/outlets')
-    return send({ items: [{ outletId: id(2), name: 'Restaurant jardin' }] });
+    return send({
+      items: cfg().zeroOutlets
+        ? []
+        : [
+            { outletId: id(2), name: 'Restaurant jardin' },
+            ...(cfg().multipleOutlets
+              ? [{ outletId: id(12), name: 'Salle principale du Centre' }]
+              : []),
+          ],
+    });
   if (path === '/restaurants/outlets')
     return send({
       items:
-        cfg().emptyKind === 'outlet'
+        cfg().emptyKind === 'outlet' || cfg().zeroOutlets
           ? []
-          : [{ ...meta, id: id(2), restaurantId: id(1), name: 'Restaurant jardin' }],
+          : [
+              { ...meta, id: id(2), restaurantId: id(1), name: 'Restaurant jardin' },
+              ...(cfg().multipleOutlets
+                ? [{ ...meta, id: id(12), restaurantId: id(1), name: 'Salle principale du Centre' }]
+                : []),
+            ],
     });
   if (path === '/restaurants/restaurant')
     return send({
       data: { ...meta, id: id(1), name: 'Atelier Resto', guestOrderingPolicy: 'STAFF_APPROVAL' },
     });
   // Read-only management presentation fixtures, using existing configuration contracts.
+  if (/\/preparation-stations\/[^/]+\/work\//.test(path)) {
+    const state = parts[7];
+    return send({
+      items: [
+        c.PreparationReadSchema.parse({
+          orgId: org,
+          outletId: outlet,
+          schemaVersion: 1,
+          orderId: id(100),
+          itemId: id(200),
+          fireId: id(300),
+          submissionId: id(400),
+          stationId: parts[5],
+          stationVersion: 1,
+          generation: 1,
+          name: 'Poulet braisé sauce maison',
+          quantity: 2,
+          notes: 'Sans piment',
+          state,
+          queuedAt: stamp,
+          queuedBy: 'review',
+          version: 1,
+          ...(state !== 'QUEUED' ? { startedAt: stamp, startedBy: 'review' } : {}),
+          ...(state === 'READY' ? { readyAt: stamp, readyBy: 'review' } : {}),
+          serviceContext: { mode: 'DINE_IN', tableName: 'Terrasse jardin près de la baie vitrée' },
+        }),
+      ],
+    });
+  }
   if (path.endsWith('/service-areas'))
     return send({
       items:

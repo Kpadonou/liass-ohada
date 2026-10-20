@@ -1,4 +1,5 @@
 import { MatButtonModule } from '@angular/material/button';
+import { RestaurantOutletContextComponent } from '../../../domains/restaurants/ui/restaurant-outlet-context.component';
 import { MatMenuModule } from '@angular/material/menu';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import {
@@ -24,6 +25,7 @@ import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 @Component({
   selector: 'liass-app-topbar',
   imports: [
+    RestaurantOutletContextComponent,
     LanguageSelectorComponent,
     LiassDropdownComponent,
     LiassLogoComponent,

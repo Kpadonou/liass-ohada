@@ -95,7 +95,7 @@ async function create() {
           canReadSession: read,
           usesAssignedOutlets: selfService,
           canOpenSession: write,
-          canManageSetup: () => write() && !selfService(),
+          canManageSetup: () => !selfService(),
           canManageResponsibility: () => write() && !selfService(),
         },
       },
@@ -112,10 +112,8 @@ async function create() {
     expect(
       !read() ||
         (fixture.componentInstance.root.isSuccess() && !fixture.componentInstance.root.data()) ||
-        fixture.componentInstance.locations.isSuccess() ||
-        (selfService() &&
-          (fixture.componentInstance.myLocations.isSuccess() ||
-            fixture.componentInstance.myLocations.isError())),
+        fixture.componentInstance.operational.source().isSuccess() ||
+        fixture.componentInstance.operational.source().isError(),
     ).toBe(true);
   });
   return fixture.componentInstance;
@@ -342,13 +340,12 @@ it('shows area context only for all areas and groups occupied status with durati
 it('uses matching Material selects and changes area context without refetching the floor', async () => {
   const page = await ready();
   const selects = fixture.debugElement.queryAll(By.directive(MatSelect));
-  expect(selects).toHaveLength(2);
+  expect(selects).toHaveLength(1);
   expect(fixture.nativeElement.querySelector('mat-chip-listbox')).toBeNull();
-  expect(selects[0].componentInstance.value).toBe(rid(2));
-  expect(selects[1].componentInstance.value).toBe('ALL');
+  expect(selects[0].componentInstance.value).toBe('ALL');
   expect(fixture.nativeElement.textContent).toContain('Tous les espaces');
   const calls = api.serviceFloor.mock.calls.length;
-  const areaSelect = selects[1].componentInstance as MatSelect;
+  const areaSelect = selects[0].componentInstance as MatSelect;
   areaSelect.open();
   fixture.detectChanges();
   const option = [...document.querySelectorAll('mat-option')].find((o) =>
@@ -384,7 +381,7 @@ it('uses matching Material selects and changes area context without refetching t
 it('restores direct URL and history context in the area select independently of establishment', async () => {
   params.next(convertToParamMap({ outlet: rid(2), area: rid(3) }));
   const page = await ready();
-  const select = fixture.debugElement.queryAll(By.directive(MatSelect))[1]
+  const select = fixture.debugElement.queryAll(By.directive(MatSelect))[0]
     .componentInstance as MatSelect;
   expect(select.value).toBe(rid(3));
   expect(page.visibleTables()).toHaveLength(2);
@@ -418,7 +415,7 @@ it('places Material context controls after the canonical header with no KPI row'
   const context = fixture.nativeElement.querySelector('[data-testid="floor-context"]');
   expect(header.querySelector('header').classList.contains('border-b')).toBe(true);
   expect(header.querySelector('mat-select')).toBeNull();
-  expect(context.querySelectorAll('mat-select')).toHaveLength(2);
+  expect(context.querySelectorAll('mat-select')).toHaveLength(1);
   expect(header.compareDocumentPosition(context) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(fixture.nativeElement.querySelector('[data-testid="floor-summary"]')).toBeNull();
   expect(fixture.nativeElement.textContent).toContain('Tables en service');
@@ -594,7 +591,7 @@ it('does not auto-select a partial singleton and resolves an unknown deep link o
   fixture.detectChanges();
   expect(api.serviceFloor).not.toHaveBeenCalled();
   expect(fixture.nativeElement.textContent).not.toContain(rid(8));
-  expect(page.outletId()).toBe(rid(8));
+  expect(page.outletId()).toBeNull();
   expect(page.myLocations.hasNextPage()).toBe(true);
   await page.myLocations.fetchNextPage();
   await vi.waitFor(() => {
@@ -613,17 +610,19 @@ it('requires choice for one loaded outlet while further assignments remain', asy
   expect(page.outletId()).toBeNull();
   expect(api.serviceFloor).not.toHaveBeenCalled();
 });
-it('rejects an unassigned complete deep link without disclosing or reading the requested outlet', async () => {
+it('rejects an unassigned deep link and resolves only the canonical sole assignment', async () => {
   params.next(convertToParamMap({ outlet: rid(99) }));
   const page = await waiter();
   await vi.waitFor(() => {
     fixture.detectChanges();
-    expect(page.outletId()).toBeNull();
+    expect(page.outletId()).toBe(rid(2));
   });
   expect(page.contextError()).toBe(true);
-  expect(api.serviceFloor).not.toHaveBeenCalled();
+  expect(api.serviceFloor.mock.calls.every((call) => call[1] === rid(2))).toBe(true);
   expect(api.get.mock.calls.every((call) => call[1] === 'menu')).toBe(true);
-  expect(api.list).not.toHaveBeenCalled();
+  expect(
+    api.list.mock.calls.every((call) => call[1] === 'area' && call[2].outletId === rid(2)),
+  ).toBe(true);
   expect(fixture.nativeElement.textContent).not.toContain(rid(99));
 });
 it.each([
@@ -738,10 +737,13 @@ it('separates self queries and local opening intents across user changes in the 
     fixture.detectChanges();
     expect(page.myLocations.isSuccess()).toBe(true);
   });
-  expect(client.getQueryData(restaurantKeys.myOutlets('org', 'user'))).toBeDefined();
-  expect(client.getQueryData(restaurantKeys.myOutlets('org', 'other-user'))).not.toEqual(
-    client.getQueryData(restaurantKeys.myOutlets('org', 'user')),
-  );
+  const oldQueries = client.getQueriesData({ queryKey: restaurantKeys.myOutlets('org', 'user') });
+  const newQueries = client.getQueriesData({
+    queryKey: restaurantKeys.myOutlets('org', 'other-user'),
+  });
+  expect(oldQueries.some(([, data]) => data !== undefined)).toBe(true);
+  expect(newQueries.some(([, data]) => data !== undefined)).toBe(true);
+  expect(newQueries[0][0]).not.toEqual(oldQueries[0][0]);
 });
 it('does not show no-assignment while the self-context request is still loading', async () => {
   selfService.set(true);
@@ -805,7 +807,7 @@ it('fails closed immediately when RESTAURANTS ProductAccess is removed', async (
   await page.open(page.tables()[0]);
   expect(api.openSession.mock.calls.length).toBe(before);
 });
-it('after revocation offers another assigned outlet without silently choosing it', async () => {
+it('after revocation automatically resolves the sole remaining authorized outlet', async () => {
   const page = await waiter();
   await vi.waitFor(() => {
     fixture.detectChanges();
@@ -818,8 +820,11 @@ it('after revocation offers another assigned outlet without silently choosing it
     fixture.detectChanges();
     expect(page.outlets().map((o) => o.id)).toEqual([rid(8)]);
   });
-  expect(page.outletId()).toBeNull();
-  expect(api.serviceFloor.mock.calls.some((call) => call[1] === rid(8))).toBe(false);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.outletId()).toBe(rid(8));
+  });
+  expect(page.outlets().some((row) => row.id === rid(2))).toBe(false);
 });
 
 it('waiter empty floor offers operational guidance without configuration links or copy', async () => {
@@ -841,12 +846,12 @@ it('rejects a foreign establishment deep link for management without requesting 
     fixture.detectChanges();
     expect(fixture.componentInstance.contextError()).toBe(true);
   });
-  expect(fixture.componentInstance.outletId()).toBeNull();
+  expect(fixture.componentInstance.outletId()).toBe(rid(2));
   expect(fixture.componentInstance.areaId()).toBeNull();
-  expect(api.serviceFloor).not.toHaveBeenCalled();
+  expect(api.serviceFloor.mock.calls.every((call) => call[1] === rid(2))).toBe(true);
   expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(
     [],
-    expect.objectContaining({ queryParams: { outlet: null, area: null } }),
+    expect.objectContaining({ queryParams: { outlet: rid(2), area: null } }),
   );
 });
 it('opens an occupied session through an independent semantic link while secondary controls stay separate', async () => {
@@ -918,6 +923,9 @@ describe('HOTFIX-2 canonical opening and navigation', () => {
     expect(page.openingError()).toBeTruthy();
   });
   it('switches A → B → A with canonical per-outlet cards and rejects stale actions', async () => {
+    api.get.mockImplementation(async (_org, kind, ctx) =>
+      kind === 'menu' ? { ...row('menu'), outletId: ctx.outletId } : row(kind),
+    );
     api.list.mockImplementation(async (_org, kind, ctx) => ({
       items:
         kind === 'outlet'
@@ -977,7 +985,7 @@ describe('HOTFIX-2 canonical opening and navigation', () => {
       navigation.mockClear();
       if (change === 'account') user.set('other');
       if (change === 'organization') org.set('other');
-      if (change === 'outlet') page.outletId.set(rid(22));
+      if (change === 'outlet') page.selectOutlet(rid(22));
       fixture.detectChanges();
       finish({ data: { guestSessionId: rid(90) } });
       await pending;

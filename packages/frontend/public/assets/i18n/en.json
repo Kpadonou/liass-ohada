@@ -4946,6 +4946,12 @@
       "BACK": "Back to Checkout",
       "ACCESS": "Your access to this receipt needs to be verified.",
       "BUILD_PROGRESS": "{{count}} sections prepared"
+    },
+    "CONTEXT": {
+      "ACTIVE": "Active establishment",
+      "CHOOSE": "Choose an establishment",
+      "SEARCH": "Search establishments",
+      "CHOOSE_HINT": "Choose the active establishment in the top bar."
     }
   }
 }

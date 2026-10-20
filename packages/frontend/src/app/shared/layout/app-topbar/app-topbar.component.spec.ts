@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import { signal } from '@angular/core';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import type { ProductCode } from '@liass-ohada/shared/shared';
@@ -153,6 +154,7 @@ describe('AppTopbarComponent', () => {
         }),
       ],
       providers: [
+        { provide: RestaurantOutletContext, useValue: { attached: () => false } },
         provideRouter([]),
         {
           provide: ProductAccessState,

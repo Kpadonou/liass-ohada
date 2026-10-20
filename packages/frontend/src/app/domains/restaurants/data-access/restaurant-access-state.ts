@@ -134,7 +134,6 @@ export class RestaurantAccessState {
       if (!current()) return;
       await this.client.resetQueries({
         queryKey: restaurantKeys.myOutlets(org, user),
-        exact: true,
       });
     } catch {
       if (current()) this.failedScope.set(this.identity());

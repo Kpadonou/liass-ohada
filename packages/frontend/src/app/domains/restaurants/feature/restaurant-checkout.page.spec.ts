@@ -140,7 +140,10 @@ describe('Cashier occupied-table discovery and context', () => {
     });
     api.serviceFloor.mockRejectedValue(new HttpErrorResponse({ status: 403 }));
     await fixture.componentInstance.floor.refetch();
-    await vi.waitFor(() => expect(fixture.componentInstance.floorDenied()).toBe(true));
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.allowed()).toBe(false);
+    });
     fixture.componentInstance.sessionId.set(rid(9));
     expect(fixture.componentInstance.occupied()).toEqual([]);
     expect(fixture.componentInstance.selectedContext()).toEqual([]);

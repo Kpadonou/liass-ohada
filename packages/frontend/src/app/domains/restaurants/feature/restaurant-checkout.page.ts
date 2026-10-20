@@ -1,6 +1,10 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
+import { ActivatedRoute } from '@angular/router';
 import {
   Component,
+  DestroyRef,
   computed,
+  linkedSignal,
   effect,
   ElementRef,
   inject,
@@ -23,7 +27,6 @@ import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities
 import { RestaurantAccessState } from '../data-access/restaurant-access-state';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-header.component';
-import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-select/searchable-select.component';
 import { RestaurantCheckoutVisitComponent } from './restaurant-checkout-visit.component';
 import { tableDisplayName } from '../utils/table-display-name';
 import { restaurantPrice } from '../utils/restaurant-money';
@@ -37,27 +40,18 @@ import { restaurantPrice } from '../utils/restaurant-money';
     MatInputModule,
     TranslocoModule,
     LiassPageHeaderComponent,
-    LiassSearchableSelectComponent,
     RestaurantCheckoutVisitComponent,
   ],
   template: `
     <liass-page-header eyebrow="" subtitle="" [title]="'RESTAURANTS.CHECKOUT.TITLE' | transloco" />
     @if (allowed()) {
-      <div class="mt-3 max-w-md">
-        <liass-searchable-select
-          labelKey="RESTAURANTS.CHECKOUT.OUTLET"
-          [options]="outletOptions()"
-          [ngModel]="outletId()"
-          (ngModelChange)="selectOutlet($event)"
-        />
-      </div>
       @if (outlets().pending) {
         <p role="status">{{ 'RESTAURANTS.CHECKOUT.LOADING' | transloco }}</p>
       }
       @if (outlets().error) {
         <p role="alert">{{ 'RESTAURANTS.CHECKOUT.READ_ERROR' | transloco }}</p>
       }
-      @if (outlets().success && !outletOptions().length) {
+      @if (outlets().success && !outlets().next && !outletOptions().length) {
         <p>
           {{
             (caps.canManageSetup()
@@ -67,10 +61,10 @@ import { restaurantPrice } from '../utils/restaurant-money';
           }}
         </p>
       }
-      @if (outlets().next) {
-        <button mat-button type="button" (click)="outlets().fetch()">
-          {{ 'RESTAURANTS.CHECKOUT.MORE_OUTLETS' | transloco }}
-        </button>
+      @if (outletOptions().length && !outletId()) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.CONTEXT.CHOOSE_HINT' | transloco }}
+        </p>
       }
       @if (outletId()) {
         <div class="grid min-w-0 gap-5 xl:grid-cols-[minmax(240px,1fr)_minmax(0,2fr)]">
@@ -153,6 +147,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
   `,
 })
 export class RestaurantCheckoutPage {
+  readonly operational = inject(RestaurantOutletContext);
   private readonly auth = inject(AuthStore);
   private readonly router = inject(Router);
   readonly caps = inject(RestaurantsCapabilities);
@@ -161,8 +156,11 @@ export class RestaurantCheckoutPage {
   private readonly queries = inject(RestaurantsQueries);
   private readonly t = inject(TranslocoService);
   private readonly tableSearch = viewChild<ElementRef<HTMLInputElement>>('tableSearch');
-  readonly outletId = signal('');
-  readonly sessionId = signal('');
+  readonly outletId = this.operational.id;
+  readonly sessionId = linkedSignal({
+    source: () => [this.identity(), this.outletId()] as const,
+    computation: () => '',
+  });
   readonly search = signal('');
   readonly message = signal('');
   readonly identity = computed(() =>
@@ -180,35 +178,20 @@ export class RestaurantCheckoutPage {
       this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
       ['management', 'checkout'].includes(this.state.mode()),
   );
-  readonly managementOutlets = injectInfiniteQuery(() =>
-    this.queries.list('outlet', {}, this.allowed() && this.caps.canManageSetup()),
-  );
-  readonly selfOutlets = injectInfiniteQuery(() =>
-    this.queries.myOutlets(this.allowed() && !this.caps.canManageSetup()),
-  );
+  readonly managementOutlets = this.operational.managementQuery;
+  readonly selfOutlets = this.operational.selfQuery;
   readonly outlets = computed(() => {
-    const q = this.caps.canManageSetup() ? this.managementOutlets : this.selfOutlets;
+    const q = this.operational.source();
     return {
-      pending: q.status() === 'pending',
-      error: q.status() === 'error',
-      success: q.status() === 'success',
+      pending: q.isPending(),
+      error: q.isError(),
+      success: q.isSuccess(),
       next: q.hasNextPage(),
       fetch: () => q.fetchNextPage(),
     };
   });
   readonly outletOptions = computed(() =>
-    this.outlets().error
-      ? []
-      : this.caps.canManageSetup()
-        ? (this.managementOutlets
-            .data()
-            ?.pages.flatMap((page) => page.items)
-            .filter((row) => row.isActive)
-            .map((row) => ({ value: row.id, label: row.name })) ?? [])
-        : (this.selfOutlets
-            .data()
-            ?.pages.flatMap((page) => page.items)
-            .map((row) => ({ value: row.outletId, label: row.name })) ?? []),
+    this.operational.outlets().map((row) => ({ value: row.id, label: row.name })),
   );
   readonly floor = injectInfiniteQuery(() => ({
     ...this.queries.serviceFloor(
@@ -224,6 +207,7 @@ export class RestaurantCheckoutPage {
   readonly occupied = computed(
     () =>
       (this.floorDenied() ? undefined : this.floor.data())?.pages
+        .filter((page) => page.outletId === this.outletId())
         .flatMap((page) => page.items)
         .filter(
           (table): table is Extract<typeof table, { state: 'OCCUPIED' }> =>
@@ -254,28 +238,38 @@ export class RestaurantCheckoutPage {
   );
   readonly displayName = tableDisplayName;
   constructor() {
+    this.operational.use(inject(DestroyRef), inject(ActivatedRoute), () => this.allowed());
+    effect(() => {
+      if (this.allowed() && this.floorDenied()) untracked(() => this.denyCheckout());
+    });
+    let outlet = this.outletId();
+    effect(() => {
+      const next = this.outletId();
+      if (next !== outlet) {
+        outlet = next;
+        this.sessionId.set('');
+        this.message.set('');
+      }
+    });
     let identity = this.identity();
     effect(() => {
       const next = this.identity();
       if (next !== identity || !this.allowed()) {
         identity = next;
-        untracked(() => this.selectOutlet(''));
+        this.sessionId.set('');
       }
-    });
-    effect(() => {
-      const rows = this.outletOptions();
-      if (!this.outletId() && rows.length === 1 && !this.outlets().next)
-        this.outletId.set(rows[0].value);
     });
   }
   selectOutlet(id: string | null) {
-    this.outletId.set(id ?? '');
+    this.operational.select(id);
     this.sessionId.set('');
     this.message.set('');
   }
   denyCheckout() {
+    const outlet = this.outletId();
     this.deniedScope.set(this.identity());
     this.sessionId.set('');
+    if (outlet) void this.operational.revoke(outlet);
   }
   async recoverAccess() {
     const identity = this.identity();

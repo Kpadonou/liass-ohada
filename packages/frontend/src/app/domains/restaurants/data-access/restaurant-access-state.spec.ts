@@ -117,7 +117,6 @@ describe('Explicit Restaurants access lifecycle', () => {
     expect(listAccess).toHaveBeenCalledOnce();
     expect(reset).toHaveBeenCalledWith({
       queryKey: restaurantKeys.myOutlets('org-a', 'fixture-user'),
-      exact: true,
     });
     expect(state.mode()).toBe('service');
     expect(state.refreshing()).toBe(false);

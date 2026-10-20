@@ -4946,6 +4946,12 @@
       "BACK": "Retour à Caisse",
       "ACCESS": "Votre accès à ce reçu doit être vérifié.",
       "BUILD_PROGRESS": "{{count}} sections préparées"
+    },
+    "CONTEXT": {
+      "ACTIVE": "Établissement actif",
+      "CHOOSE": "Choisir un établissement",
+      "SEARCH": "Rechercher un établissement",
+      "CHOOSE_HINT": "Choisissez l’établissement actif dans la barre supérieure."
     }
   }
 }

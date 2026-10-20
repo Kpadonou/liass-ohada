@@ -41,19 +41,12 @@
         />
       }
     } @else {
+      @if (!outlet()) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.CONTEXT.CHOOSE_HINT' | transloco }}
+        </p>
+      }
       <div class="flex min-w-0 flex-wrap items-center justify-between gap-3">
-        @if (outlets().length > 1 || outletsQuery.hasNextPage()) {
-          <liass-searchable-select
-            class="block w-full min-w-0 sm:w-64"
-            controlType="select"
-            labelKey="RESTAURANTS.UI.LOCATION"
-            [options]="outletOptions()"
-            [ngModel]="outletId()"
-            (ngModelChange)="selectOutlet($event)"
-          />
-        } @else {
-          <p class="break-words text-sm font-medium">{{ outlet()?.name }}</p>
-        }
         @if (station()) {
           <button
             mat-button
@@ -66,16 +59,6 @@
           </button>
         }
       </div>
-      @if (outletsQuery.hasNextPage()) {
-        <button
-          mat-button
-          type="button"
-          [disabled]="outletsQuery.isFetchingNextPage()"
-          (click)="outletsQuery.fetchNextPage()"
-        >
-          {{ 'RESTAURANTS.KITCHEN.MORE_OUTLETS' | transloco }}
-        </button>
-      }
       @if (outlet()) {
         @if (stationsQuery.isPending()) {
           <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
@@ -180,7 +163,7 @@
                   [station]="stationId()"
                   [state]="lane"
                   [now]="now()"
-                  (denied)="denied.set(identity())"
+                  (denied)="denyKitchen()"
                 />
               }
             </div>

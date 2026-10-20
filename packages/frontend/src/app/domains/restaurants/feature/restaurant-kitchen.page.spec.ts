@@ -1,3 +1,4 @@
+import { RestaurantsApi } from '../data-access/restaurants.api';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
@@ -111,6 +112,23 @@ beforeEach(() => {
       provideRouter([]),
       { provide: QueryClient, useValue: client },
       { provide: RestaurantPreparationApi, useValue: api },
+      {
+        provide: RestaurantsApi,
+        useValue: {
+          myOutlets: async (_org: string, _user: string, cursor?: string) => {
+            const page = await api.outlets(api.context(), true, cursor);
+            return {
+              ...page,
+              items: page.items.map((row: { id: string; name: string }) => ({
+                outletId: row.id,
+                name: row.name,
+              })),
+            };
+          },
+          list: async (_org: string, _kind: string, _ctx: unknown, cursor?: string) =>
+            api.outlets(api.context(), false, cursor),
+        },
+      },
       {
         provide: AuthStore,
         useValue: {

@@ -75,22 +75,39 @@ export class RestaurantsQueries {
   userScope() {
     return this.auth.currentUserId?.() ?? '';
   }
-  myOutlets(enabled = true) {
+  myOutlets(enabled = true, revision?: number, contextToken?: string) {
     const org = this.scope(),
-      user = this.userScope();
+      user = this.userScope(),
+      capturedRevision = this.auth.contextRevision?.() ?? 0;
     return infiniteQueryOptions({
-      queryKey: restaurantKeys.myOutlets(org, user),
+      queryKey:
+        revision === undefined
+          ? restaurantKeys.myOutlets(org, user)
+          : [
+              ...restaurantKeys.myOutlets(org, user),
+              revision,
+              ...(contextToken ? [contextToken] : []),
+            ],
       initialPageParam: undefined as string | undefined,
-      queryFn: ({ pageParam }) => this.api.myOutlets(org, user, pageParam),
+      queryFn: async ({ pageParam }) => {
+        const page = await this.api.myOutlets(org, user, pageParam);
+        if (
+          org !== this.scope() ||
+          user !== this.userScope() ||
+          capturedRevision !== (this.auth.contextRevision?.() ?? 0)
+        )
+          throw new Error('Stale outlet context');
+        return { ...page, ...(contextToken ? { contextKey: contextToken } : {}) };
+      },
       getNextPageParam: (last) => last.nextCursor,
       enabled: enabled && !!org && !!user,
-      staleTime: 0,
-      refetchOnMount: 'always' as const,
+      staleTime: 60_000,
+      refetchOnMount: true,
       retry: false,
     });
   }
   async refreshMyOutlets(org: string, user: string) {
-    await this.client.resetQueries({ queryKey: restaurantKeys.myOutlets(org, user), exact: true });
+    await this.client.resetQueries({ queryKey: restaurantKeys.myOutlets(org, user) });
   }
   get<K extends RestaurantKind>(kind: K, ctx: RestaurantContext = {}, enabled = true) {
     const org = this.scope();

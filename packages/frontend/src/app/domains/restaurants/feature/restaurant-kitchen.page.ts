@@ -1,4 +1,15 @@
-import { Component, computed, effect, inject, signal, DestroyRef, untracked } from '@angular/core';
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
+import { ActivatedRoute } from '@angular/router';
+import {
+  Component,
+  linkedSignal,
+  computed,
+  effect,
+  inject,
+  signal,
+  DestroyRef,
+  untracked,
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -35,6 +46,7 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
   styleUrl: './restaurant-kitchen.page.scss',
 })
 export class RestaurantKitchenPage {
+  readonly operational = inject(RestaurantOutletContext);
   private readonly router = inject(Router);
   readonly queries = inject(RestaurantPreparationQueries);
   readonly caps = inject(RestaurantsCapabilities);
@@ -50,22 +62,17 @@ export class RestaurantKitchenPage {
   );
   readonly refreshing = signal(false);
   readonly self = computed(() => !this.caps.canManageSetup());
-  readonly outletId = signal('');
-  readonly stationId = signal('');
+  readonly outletId = this.operational.id;
+  readonly stationId = linkedSignal({
+    source: () => [this.identity(), this.outletId()] as const,
+    computation: () => '',
+  });
   readonly ctx = computed(() => ({ ...this.queries.api.context(), outlet: this.outletId() }));
-  readonly outletsQuery = injectInfiniteQuery(() =>
-    this.queries.outlets(this.queries.api.context(), this.self(), this.allowed()),
-  );
-  readonly outlets = computed(() =>
-    this.outletsQuery.isSuccess()
-      ? this.outletsQuery
-          .data()
-          .pages.filter((page) => page.contextKey === JSON.stringify(this.queries.api.context()))
-          .flatMap((page) => page.items)
-          .filter((item) => item.isActive)
-      : [],
-  );
-  readonly outlet = computed(() => this.outlets().find((item) => item.id === this.outletId()));
+  get outletsQuery() {
+    return this.operational.source();
+  }
+  readonly outlets = this.operational.outlets;
+  readonly outlet = this.operational.outlet;
   readonly stationsQuery = injectInfiniteQuery(() =>
     this.queries.stations(this.ctx(), this.allowed() && !!this.outlet()),
   );
@@ -95,30 +102,23 @@ export class RestaurantKitchenPage {
   readonly mobileLane = signal<KitchenLane>('QUEUED');
   readonly now = signal(Date.now());
   constructor() {
+    this.operational.use(inject(DestroyRef), inject(ActivatedRoute), () => this.allowed());
+    let activeOutlet = this.outletId();
+    effect(() => {
+      const next = this.outletId();
+      if (next !== activeOutlet) {
+        activeOutlet = next;
+        this.stationId.set('');
+      }
+    });
     let identity = this.identity();
     effect(() => {
       const next = this.identity();
       if (next !== identity) {
         identity = next;
         untracked(() => {
-          this.outletId.set('');
           this.stationId.set('');
         });
-      }
-    });
-    effect(() => {
-      const outlets = this.outlets();
-      const selected = this.outletId();
-      if (!selected && outlets.length === 1 && !this.outletsQuery.hasNextPage())
-        this.outletId.set(outlets[0].id);
-      else if (
-        selected &&
-        this.outletsQuery.isSuccess() &&
-        !outlets.some((row) => row.id === selected) &&
-        !this.outletsQuery.hasNextPage()
-      ) {
-        this.outletId.set('');
-        this.stationId.set('');
       }
     });
     effect(() => {
@@ -137,7 +137,7 @@ export class RestaurantKitchenPage {
       for (const query of [this.outletsQuery, this.stationsQuery]) {
         const error = query.error();
         if (error instanceof HttpErrorResponse && [401, 403].includes(error.status))
-          this.denied.set(this.identity());
+          untracked(() => this.denyKitchen());
       }
     });
     const timer = setInterval(() => {
@@ -148,7 +148,12 @@ export class RestaurantKitchenPage {
   selectOutlet(id: string) {
     if (!this.outlets().some((outlet) => outlet.id === id)) return;
     this.stationId.set('');
-    this.outletId.set(id);
+    this.operational.select(id);
+  }
+  denyKitchen() {
+    const outlet = this.outletId();
+    this.denied.set(this.identity());
+    if (outlet) void this.operational.revoke(outlet);
   }
   selectStation(id: string) {
     if (this.stations().some((station) => station.id === id)) this.stationId.set(id);

@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -129,7 +130,9 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     await TestBed.inject(RestaurantAccessState).refresh();
     await vi.waitFor(() => {
       h.detectChanges();
-      expect(h.routeNativeElement?.textContent).toContain('Établissement du Centre');
+      expect(TestBed.inject(RestaurantOutletContext).outlet()?.name).toBe(
+        'Établissement du Centre',
+      );
       expect(h.routeNativeElement?.textContent).toContain('T01');
     });
     remoteRole = undefined;

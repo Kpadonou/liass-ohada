@@ -13,14 +13,6 @@
       [attr.aria-label]="'RESTAURANTS.SERVICE.CONTEXT' | transloco"
     >
       <div class="flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap">
-        <liass-searchable-select
-          class="block w-full min-w-0 sm:w-56"
-          controlType="select"
-          labelKey="RESTAURANTS.UI.LOCATION"
-          [options]="outletOptions()"
-          [ngModel]="selfService() ? (outlet()?.id ?? null) : outletId()"
-          (ngModelChange)="selectOutlet($event)"
-        />
         @if (outlet()) {
           <liass-searchable-select
             class="block w-full min-w-0 sm:w-56"
@@ -127,48 +119,15 @@
       }
     </liass-card>
   } @else {
-    @if (selfService() && myLocations.hasNextPage()) {
-      <p class="text-sm text-app-text-secondary">
-        {{ 'RESTAURANTS.SERVICE.SELF.PARTIAL' | transloco }}
-      </p>
-      <button
-        mat-button
-        (click)="myLocations.fetchNextPage()"
-        [disabled]="myLocations.isFetchingNextPage()"
-      >
-        {{ 'RESTAURANTS.UI.MORE_LOCATIONS' | transloco }}
-      </button>
-    }
     @if (selfService() && contextError()) {
       <p role="status" class="text-sm text-app-text-secondary">
         {{ 'RESTAURANTS.SERVICE.SELF.CONTEXT' | transloco }}
       </p>
     }
-    @if (!selfService() && locations.hasNextPage()) {
-      <button
-        mat-button
-        (click)="locations.fetchNextPage()"
-        [disabled]="locations.isFetchingNextPage()"
-      >
-        {{ 'RESTAURANTS.UI.MORE_LOCATIONS' | transloco }}
-      </button>
-    }
     @if (!outlet()) {
-      <liass-card
-        ><p>
-          {{
-            (selfService()
-              ? 'RESTAURANTS.SERVICE.SELF.CHOOSE'
-              : 'RESTAURANTS.IA.CONTEXT_UNAVAILABLE'
-            ) | transloco
-          }}
-        </p>
-        @if (!selfService() || outletId()) {
-          <button mat-button (click)="selectOutlet(null)">
-            {{ 'RESTAURANTS.IA.RESET_CONTEXT' | transloco }}
-          </button>
-        }
-      </liass-card>
+      <p class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS.CONTEXT.CHOOSE_HINT' | transloco }}
+      </p>
     } @else {
       @if (areas.hasNextPage()) {
         <button mat-button (click)="areas.fetchNextPage()" [disabled]="areas.isFetchingNextPage()">

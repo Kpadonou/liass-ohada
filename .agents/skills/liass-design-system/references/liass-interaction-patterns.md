@@ -1,5 +1,9 @@
 # Liass Interaction Patterns
 
+## Operational context
+
+Operational scope is not a page filter. For staff-scoped operational workflows, resolve the authorized active Outlet at application/product-context level. Do not require repeated outlet selection on individual operational routes. A sole authorized active outlet resolves automatically with contextual name text, not a fake dropdown; several use one compact shell context switcher; zero uses a truthful blocking state. Keep subordinate area/station controls local. Configuration scope may remain route-local because management users intentionally administer multiple outlets. Follow the existing shell active dossier/exercise grammar, preserve principal/organization/access-revision isolation, and never treat frontend selection as authorization. Fetched outlets stay in TanStack Query; context state remembers only the scoped selection.
+
 ## Dialogs And Modals
 
 Use dialogs for focused temporary decisions. Good examples: picking a short option, editing a small field group, confirming a scoped action, or showing a compact preview.
