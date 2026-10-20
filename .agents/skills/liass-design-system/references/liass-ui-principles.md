@@ -4,6 +4,8 @@
 
 This existing charter is authoritative for frontend work. Inspect relevant principles/tokens, typography/spacing, shell/navigation, headers/cards/panels, form/table/list patterns, Material 3 theme, Tailwind layout and responsive/accessibility/loading/empty/error conventions before coding. Visual alignment, translated operational language, appropriate controls, coherent permission states, keyboard/focus and rendered responsive verification are part of completion; tests alone are insufficient. Avoid duplicated navigation, improvised spacing/colors/controls/cards/action placement. Canonical Angular form/control rules live in root AGENTS.md and the design-system SKILL.md.
 
+Before substantial work, classify the surface as `MANAGEMENT_COLLECTION`, `MANAGEMENT_EDITOR`, `MASTER_DETAIL_OPERATIONAL`, `SPATIAL_OPERATIONAL`, `STATE_BOARD`, `DOCUMENT`, `DASHBOARD`, or `SPECIAL_WORKFLOW`. For a management collection, inspect Accounting as the canonical implementation precedent and use a desktop table by default. Responsive card fallback does not justify desktop cards; any desktop card/grid exception needs an explicit information-architecture justification. Browser review at 1440, 900, and 390 pixels is required before PASS.
+
 ## Product Personality
 
 Liass-OHADA is a premium modular ERP platform for organizations operating in the OHADA environment. It should feel like:

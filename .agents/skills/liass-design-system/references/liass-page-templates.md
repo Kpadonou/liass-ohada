@@ -53,6 +53,8 @@ Use for dossiers, journals, entries, accounts, projects, invoices, payments, and
 - Loading, empty, no-results, and error states.
 - Bulk actions only when useful and safe.
 
+Presentation governance: classify every list page before implementation. Homogeneous management lists are `MANAGEMENT_COLLECTION` and use a desktop table by default, with Actions in the final column. Mobile may use a compact stacked/card fallback when the table no longer fits; responsive card fallback does not justify desktop cards. Compare the result with an approved Accounting collection and record the classification, precedent, 1440/900/390 results, table/card decision, and any justified exception before PASS.
+
 Inspired by Retool for operational tables and forms.
 
 ## Detail Page
