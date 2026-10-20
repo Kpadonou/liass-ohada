@@ -38,6 +38,10 @@ const audit = z
     fromState: z.string().optional(),
     toState: z.string(),
     reason: z.string().max(500).optional(),
+    receipt: z
+      .object({ receiptId: id, guestSessionId: id })
+      .strict()
+      .optional(),
     payment: z
       .object({
         paymentId: id,

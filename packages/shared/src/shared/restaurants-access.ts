@@ -84,3 +84,9 @@ export const RESTAURANTS_PAYMENT_PERMISSIONS = [
 export const RESTAURANTS_CLOSURE_PERMISSIONS = [
   "RESTAURANTS_CHECKOUT_CLOSE_MANAGE",
 ] as const;
+
+/** Immutable operational receipt authority; independent of capture/checkout history. */
+export const RESTAURANTS_RECEIPT_PERMISSIONS = [
+  "RESTAURANTS_RECEIPT_READ",
+  "RESTAURANTS_RECEIPT_MANAGE",
+] as const;

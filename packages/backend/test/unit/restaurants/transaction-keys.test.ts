@@ -96,3 +96,16 @@ test.each([
 ])("invalid ordering timestamp %p is rejected", (value) =>
   expect(() => K.restaurantTransactionLocatorSK(value, id)).toThrow(),
 );
+
+test("receipt uses frozen BILL manifest/ordered part and owner command keys", () => {
+  expect(K.restaurantBillPK(org, outlet, id)).toBe(`${scope}#BILL#${id}`);
+  expect(K.restaurantBillPartPrefix()).toBe("PART#");
+  expect(K.restaurantBillPartSK(1)).toBe("PART#000001");
+  expect(K.restaurantBillPartSK(650)).toBe("PART#000650");
+  expect(K.restaurantBillResultSK()).toBe("RESULT");
+  expect(
+    K.restaurantTransactionCommandPK(org, outlet, "PUBLISH_RECEIPT", id, hash),
+  ).toBe(`${scope}#CMD#PUBLISH_RECEIPT#${id}`);
+  for (const number of [0, -1, 1.5, 20001, NaN])
+    expect(() => K.restaurantBillPartSK(number)).toThrow();
+});

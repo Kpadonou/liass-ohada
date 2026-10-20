@@ -35,6 +35,15 @@ export const KeyFactory = {
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#GS#${restaurantTransactionSegment(id)}`,
   restaurantOrderPK: (orgId: string, outletId: string, id: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#ORD#${restaurantTransactionSegment(id)}`,
+  restaurantBillPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#BILL#${restaurantTransactionSegment(id)}`,
+  restaurantBillPartPrefix: () => "PART#",
+  restaurantBillPartSK: (number: number) => {
+    if (!Number.isSafeInteger(number) || number < 1 || number > 20000)
+      throw new Error("Invalid receipt part");
+    return `PART#${String(number).padStart(6, "0")}`;
+  },
+  restaurantBillResultSK: () => "RESULT",
   restaurantPaymentPK: (orgId: string, outletId: string, id: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#PAY#${restaurantTransactionSegment(id)}`,
   restaurantPaymentResultSK: () => "RESULT",

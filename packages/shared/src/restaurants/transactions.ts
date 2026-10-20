@@ -24,6 +24,7 @@ export const GuestSessionSchema = z
     ...owner,
     ...balance,
     guestSessionId: id,
+    finalBillId: id.optional(),
     tableId: id,
     areaId: id,
     tableCode: z.string().min(1),
