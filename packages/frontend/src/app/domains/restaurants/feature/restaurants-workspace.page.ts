@@ -106,7 +106,6 @@ export class RestaurantsWorkspacePage {
     if (
       this.mode !== 'overview' &&
       this.canCreate() &&
-      this.rows().length > 0 &&
       !this.collection().pending &&
       !this.collection().failed
     )

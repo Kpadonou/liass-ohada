@@ -52,6 +52,22 @@ True sequential gated forms use Material Stepper with Reactive Forms, per-step v
 
 ## Collection presentation
 
+### Canonical management collection surface
+
+Using the correct component is not sufficient; frontend acceptance requires the correct page composition. A `MANAGEMENT_COLLECTION` must use the canonical management collection surface, not merely a table, search and Actions column. A management table floating directly in page whitespace without the canonical collection/work surface is not Design System compliant unless an explicit platform precedent justifies it.
+
+Inspect the actual Accounting templates, components and styles (Journals, Tiers, Plan comptable; Balance/Lettrage for scoped workflows). Reuse the shared page header, work-surface and table primitives rather than duplicating route-specific wrappers or CSS. The full composition is:
+
+- **Page header:** shell breadcrumb, consistent product-section eyebrow, H1, concise description, canonical separator and vertical rhythm.
+- **Work surface:** one white/bordered platform surface (`liass-card` or established equivalent), optional collection heading/description, predictable primary action, scope/context controls, compact search/filter toolbar, desktop table or narrow record representation, continuation/pagination and contextual states.
+- Scope selectors belong inside this surface, in a compact scope row before the toolbar or one coherently wrapping toolbar. Search normally flexes; categorical filters have bounded widths. Use a neutral reset action and avoid oversized equal-width filters or excessive gaps before the table.
+- Collection creation actions (`+ Ajouter`, `Nouveau…`) belong inside the canonical white/bordered work surface, normally in its header via `liassCardActions`, following Accounting Tiers. Keep them right-aligned inside the surface on small screens too, using normal flex alignment rather than disruptive float/layout hacks. Keep this location consistent across related routes and eligible empty states. An empty-state repeat is allowed inside the same surface. Placement outside the surface is exceptional and requires a compelling workflow constraint explicitly documented before implementation and in the final report; personal preference or an older page-header action is not sufficient justification.
+- Loading, error, empty and no-results content remain inside the same work surface, with context/toolbar preserved where safe. Do not nest a separate decorative empty-state card below floating controls. Mobile records remain inside this surface too.
+
+Before PASS, perform the hard Accounting side-by-side browser comparison at 1440, 900 and 390: header/separator, bounded surface, scope grouping, toolbar widths, density, table connection, final Actions, primary-action home and mobile adaptation. Report concrete differences corrected and any justified remaining deviation. Component correctness alone cannot satisfy this gate.
+
+Before implementation and in the final report, include **Presentation contract**: classification; canonical Accounting precedent; page header pattern; collection surface pattern; scope controls; toolbar pattern; desktop table; mobile fallback; primary action location; empty-state behavior; 1440/900/390 visual results (planned before implementation, observed after); remaining deviations. A report that only says “table + search + Actions” is insufficient.
+
 Inspect approved product patterns before inventing UI. Accounting management lists are a valid reference for cross-product ERP consistency.
 
 Tables are the default for homogeneous management collections whose repeated attributes users compare, filter, sort or paginate, with actions per record (for example team members, customers, suppliers, accounts, journals and invoices). Use the existing approved Material table/list grammar, one row per entity, with row actions in the final column, labelled Actions where appropriate. Reuse established compact Material menus and semantic action styling.

@@ -337,8 +337,13 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       // Read-only users retain contextual navigation; management authority is
       // asserted independently below against the canonical commands.
       expect(
-        f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]') !== null,
+        f.nativeElement.querySelector(
+          '[data-testid="management-work-surface"] [data-testid="collection-primary-action"] button',
+        ) !== null,
       ).toBe(manage);
+      expect(
+        f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]'),
+      ).toBeNull();
       const input = { expectedVersion: 1, name: 'Agla' };
       if (manage) {
         expect((await api.save('org-a', 'outlet', {}, input, outlet.id)).data.version).toBe(2);

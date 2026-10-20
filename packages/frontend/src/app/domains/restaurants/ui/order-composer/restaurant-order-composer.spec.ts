@@ -840,6 +840,16 @@ it.each(['lazy', 'existing'] as const)(
         fixture.detectChanges();
         expect(page.canAddItem(item())).toBe(true);
       });
+    // Capability readiness can precede the asynchronous Carte's rendered rows.
+    // Exercise pending feedback only after the actual Add action is available.
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      const button = fixture.nativeElement.querySelector(
+        'button[aria-label="Ajouter Beer"]',
+      ) as HTMLButtonElement | null;
+      expect(button).not.toBeNull();
+      expect(button!.disabled).toBe(false);
+    });
     const command = api.command.getMockImplementation()!;
     let release!: () => void;
     const gate = new Promise<void>((resolve) => (release = resolve));

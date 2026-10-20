@@ -699,7 +699,7 @@ it.each([
   },
 );
 
-it('OWNER provisioning action is in the collection toolbar and genuine empty state', async () => {
+it('OWNER provisioning stays inside the surface with its toolbar and empty state', async () => {
   provision.set(true);
   api.staff.mockResolvedValue({ items: [] });
   const f = await page();
@@ -707,7 +707,15 @@ it('OWNER provisioning action is in the collection toolbar and genuine empty sta
     (button as HTMLElement).textContent?.includes('Ajouter un membre'),
   );
   expect(buttons).toHaveLength(2);
-  expect(f.nativeElement.querySelector('section')?.textContent).toContain('Ajouter un membre');
+  expect(f.nativeElement.querySelector('liass-page-header')?.textContent).not.toContain(
+    'Ajouter un membre',
+  );
+  expect(
+    f.nativeElement.querySelector('[data-testid="collection-primary-action"]')?.textContent,
+  ).toContain('Ajouter un membre');
+  const surface = f.nativeElement.querySelector('[data-testid="management-work-surface"]');
+  expect(surface.querySelector('section input[type="search"]')).not.toBeNull();
+  expect(surface.textContent).toContain('Votre équipe n’est pas encore configurée');
 });
 it('MANAGER retains row management without an Add member control', async () => {
   const f = await page();

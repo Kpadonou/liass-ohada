@@ -42,9 +42,11 @@ Inspired by Stripe for financial cards and data hierarchy, Linear for calm spaci
 
 ## List Page
 
+For `MANAGEMENT_COLLECTION`, apply the skill's **Canonical management collection surface** in full: shared page header and separator, then one bounded work surface containing scope controls, compact toolbar, collection and its states/continuation. Correct component choice is not sufficient. Keep search flexible, selectors bounded and primary actions consistently located. Compare the whole rendered composition side-by-side with Accounting before acceptance; do not treat this template as a checklist of disconnected components.
+
 Use for dossiers, journals, entries, accounts, projects, invoices, payments, and operational records.
 
-- Header with title, subtitle/context, primary action.
+- Header with title and subtitle/context. For management collections, creation belongs in the white/bordered collection surface's header (Accounting Tiers precedent), not outside it, except for an explicitly justified compelling workflow constraint.
 - Required labelled text search plus structured filters in a coherent toolbar, followed by any appropriate primary action. Filters do not replace search; disclose loaded-page scope and preserve pagination when search is local. Document concrete exceptions where text search is meaningless.
 - Default to a table for comparable management records; inspect approved Accounting lists first. Cards need a concrete workflow justification, not an aesthetic claim.
 - Put row actions in the final column using the established Material action pattern.

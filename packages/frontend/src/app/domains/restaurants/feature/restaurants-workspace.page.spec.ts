@@ -530,7 +530,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     },
   );
   it.each(['outlet', 'area', 'table', 'station', 'item'] as const)(
-    'places the only primary %s create action in its empty state',
+    'retains the %s primary action and empty state inside the canonical surface',
     async (kind) => {
       api.list.mockImplementation(async (_org: string, requested: RestaurantKind) => ({
         items: requested === kind ? [] : [row(requested)],
@@ -550,13 +550,19 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       expect(
         f.nativeElement.querySelector('liass-page-header [data-testid="page-actions"]'),
       ).toBeNull();
+      expect(
+        f.nativeElement.querySelector('[data-testid="collection-primary-action"] button'),
+      ).not.toBeNull();
       expect(f.nativeElement.querySelector('[role="tablist"]')).toBeNull();
       if (kind === 'outlet')
         expect(
           Array.from(f.nativeElement.querySelectorAll('h1,h2')).map((node) =>
             (node as HTMLElement).textContent?.trim(),
           ),
-        ).toEqual(['Locations', 'No locations yet']);
+        ).toEqual(['Locations', 'Locations', 'No locations yet']);
+      const surface = f.nativeElement.querySelector('[data-testid="management-work-surface"]');
+      expect(surface.contains(empty)).toBe(true);
+      expect(surface.querySelector('input[type="search"]')).not.toBeNull();
       empty.querySelector('liass-button button').click();
       expect(dialog.open).toHaveBeenCalledWith(
         RestaurantEditorComponent,
@@ -568,7 +574,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     },
   );
 
-  it('keeps Add location in the header for populated collections without a duplicate collection heading', async () => {
+  it('keeps Add location and the table inside the titled collection surface', async () => {
     const f = await create('setup', 'outlet');
     await vi.waitFor(() => {
       f.detectChanges();
@@ -576,9 +582,12 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     });
     expect(f.nativeElement.querySelector('[data-testid="collection-empty-state"]')).toBeNull();
     expect(f.nativeElement.querySelectorAll('h1')).toHaveLength(1);
-    expect(f.nativeElement.querySelectorAll('h2')).toHaveLength(0);
+    expect(f.nativeElement.querySelectorAll('h2')).toHaveLength(1);
+    const surface = f.nativeElement.querySelector('[data-testid="management-work-surface"]');
+    expect(surface.querySelector('table')).not.toBeNull();
+    expect(surface.querySelector('input[type="search"]')).not.toBeNull();
     const button = f.nativeElement.querySelector(
-      'liass-page-header [data-testid="page-actions"] button',
+      '[data-testid="management-work-surface"] [data-testid="collection-primary-action"] button',
     );
     expect(button.textContent).toContain('Add location');
     button.click();

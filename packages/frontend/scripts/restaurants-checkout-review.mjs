@@ -153,6 +153,73 @@ const server = http.createServer(async (req, res) => {
         { year: 2026, journalCode: 'BQ', journalName: 'Banque et règlements', type: 'BANK' },
       ],
     });
+  if (path === '/third-parties')
+    return send({
+      data: {
+        items: [
+          {
+            thirdPartyId: id(30),
+            code: 'CLI001',
+            displayName: 'Maison des saveurs et produits du jardin',
+            type: 'CUSTOMER',
+            status: 'ACTIVE',
+            createdAt: stamp,
+            updatedAt: stamp,
+          },
+          {
+            thirdPartyId: id(31),
+            code: 'CLI002',
+            displayName: 'Atelier du marché',
+            type: 'CUSTOMER',
+            status: 'ACTIVE',
+            createdAt: stamp,
+            updatedAt: stamp,
+          },
+        ],
+        hasMore: false,
+      },
+    });
+  if (path === '/restaurants/staff')
+    return send({
+      items:
+        cfg().emptyKind === 'staff'
+          ? []
+          : [
+              {
+                userId: 'review-staff',
+                displayName: 'Marie-Christine Adélaïde Kpadonou',
+                restaurantRole: 'WAITER',
+                status: 'ACTIVE',
+                organizationMembershipActive: true,
+                version: 1,
+                createdAt: stamp,
+                updatedAt: stamp,
+              },
+              {
+                userId: 'review-chef',
+                displayName: 'Moussa Dossou',
+                restaurantRole: 'KITCHEN',
+                status: 'ACTIVE',
+                organizationMembershipActive: true,
+                version: 1,
+                createdAt: stamp,
+                updatedAt: stamp,
+              },
+            ],
+    });
+  if (/^\/restaurants\/staff\/[^/]+\/outlets$/.test(path))
+    return send({
+      items: [
+        {
+          userId: path.split('/')[3],
+          outletId: id(2),
+          status: 'ACTIVE',
+          version: 1,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+    });
   if (cfg().deny && path.startsWith('/restaurants'))
     return send({ message: 'Votre accès à cet établissement a changé.' }, 403);
   if (path === '/restaurants/me/outlets')

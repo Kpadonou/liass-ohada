@@ -28,7 +28,7 @@
 ## Cards
 
 - Use cards for meaningful content groups, dashboard summaries, spatial/state-heavy visual objects and framed tools when they materially improve the workflow. Do not default comparable management collections to repeated cards merely for a premium appearance; follow the canonical skill’s Collection presentation rule.
-- Do not use cards as generic page sections when an unframed layout is clearer.
+- A single canonical management work surface is purposeful grouping, not a decorative card collection: follow the skill's full management collection surface contract. Outside that contract, do not use cards as generic page sections when an established unframed layout is clearer.
 - Keep card titles compact and content useful.
 - Place card actions consistently in header or footer.
 - Avoid nested cards except for repeated items or framed tools.
