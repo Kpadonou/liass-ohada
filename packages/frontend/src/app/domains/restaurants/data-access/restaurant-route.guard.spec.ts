@@ -81,4 +81,13 @@ describe('Restaurant role-aware routes', () => {
     expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe('/restaurants');
     expect(check('setup/team')).toBe('/restaurants');
   });
+  it.each(['OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN'] as const)(
+    '%s receipt route stays resource-scoped without a sidebar module',
+    (role) => {
+      workspace.set(accessWorkspace(role));
+      expect(check('outlets/:outletId/sessions/:sessionId/receipt')).toBe(
+        ['OWNER', 'MANAGER', 'CASHIER'].includes(role) ? true : '/restaurants',
+      );
+    },
+  );
 });

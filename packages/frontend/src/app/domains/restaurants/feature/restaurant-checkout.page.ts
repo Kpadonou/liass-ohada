@@ -8,6 +8,8 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { Router } from '@angular/router';
+import { ServiceOrderContext } from '../data-access/restaurant-orders.api';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -119,7 +121,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
             @for (context of selectedContext(); track context.key) {
               <liass-checkout-visit
                 [ctx]="context.ctx"
-                (closed)="released()"
+                (closed)="released(context.ctx)"
                 (accessDenied)="denyCheckout()"
               />
             }
@@ -144,6 +146,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
 })
 export class RestaurantCheckoutPage {
   private readonly auth = inject(AuthStore);
+  private readonly router = inject(Router);
   readonly caps = inject(RestaurantsCapabilities);
   private readonly access = inject(ProductAccessState);
   private readonly state = inject(RestaurantAccessState);
@@ -274,10 +277,15 @@ export class RestaurantCheckoutPage {
       this.deniedScope.set('');
     }
   }
-  released() {
+  released(ctx?: ServiceOrderContext) {
     this.sessionId.set('');
     this.message.set(this.t.translate('RESTAURANTS.CHECKOUT.TABLE_CLOSED'));
     this.tableSearch()?.nativeElement.focus({ preventScroll: true });
+    if (ctx)
+      void this.router.navigate(
+        ['/restaurants/outlets', ctx.outlet, 'sessions', ctx.session, 'receipt'],
+        { state: { checkoutClosed: true } },
+      );
   }
   money(amount: number, currency: string) {
     return restaurantPrice(amount, currency, this.t.getActiveLang());

@@ -29,6 +29,8 @@ export class ShellRouteContext {
     { initialValue: this.router.url.split(/[?#]/)[0].replace(/\/$/, '') },
   );
   restaurantKey(): string {
+    if (/^\/restaurants\/outlets\/[^/]+\/sessions\/[^/]+\/receipt$/.test(this.url()))
+      return 'receipt';
     if (this.url() === '/restaurants/checkout') return 'checkout';
     if (this.url() === '/restaurants/kitchen') return 'kitchen';
     if (this.url() === '/restaurants/setup/team') return 'team';

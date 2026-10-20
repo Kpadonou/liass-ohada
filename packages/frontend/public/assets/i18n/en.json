@@ -4452,6 +4452,9 @@
         },
         "checkout": {
           "TITLE": "Checkout"
+        },
+        "receipt": {
+          "TITLE": "Receipt"
         }
       },
       "ADD": {
@@ -4898,6 +4901,41 @@
       "BLOCK_CLOSED": "This visit is already closed.",
       "REFRESH_ACCESS": "Refresh my access",
       "NO_MANAGEMENT_OUTLETS": "No active outlet is configured. Create or activate an outlet in configuration."
+    },
+    "RECEIPT": {
+      "TITLE": "Receipt",
+      "OPERATIONAL": "Operational receipt · non-fiscal",
+      "OPENED": "Opened",
+      "CLOSED": "Closed",
+      "CURRENCY": "Currency",
+      "ARTICLES": "Items",
+      "UNIT": "each",
+      "CANCELLED": "Cancelled",
+      "TOTAL": "Total",
+      "PAID": "Total paid",
+      "SETTLEMENT": "Settlement",
+      "TENDER": "Cash tendered",
+      "CHANGE": "Change",
+      "STAFF_CONFIRMED": "Settlement confirmed by staff",
+      "REFERENCE": "Reference",
+      "TABLE_CLOSED": "Table closed. Checkout is complete.",
+      "PREPARING": "Preparing receipt…",
+      "RESUME_COPY": "The receipt is not ready yet. You can resume preparation.",
+      "RESUME": "Resume preparation",
+      "RETRY": "Retry",
+      "PUBLICATION_ERROR": "The table remains closed. The receipt could not be prepared yet. Please retry.",
+      "READ_ERROR": "The receipt could not be loaded. Please retry.",
+      "PRINT_ERROR": "Printing is not ready. Retry to load the rest of the receipt.",
+      "LOADING": "Loading receipt…",
+      "PRINT_PROGRESS": "Preparing print: {{loaded}} / {{total}} parts",
+      "CANCEL_PRINT": "Cancel preparation",
+      "PRINT": "Print",
+      "PRINT_PREPARING": "Preparing print",
+      "PARTIAL": "More detail remains to be displayed. Totals represent the complete receipt.",
+      "MORE": "Show more",
+      "BACK": "Back to Checkout",
+      "ACCESS": "Your access to this receipt needs to be verified.",
+      "BUILD_PROGRESS": "{{count}} sections prepared"
     }
   }
 }

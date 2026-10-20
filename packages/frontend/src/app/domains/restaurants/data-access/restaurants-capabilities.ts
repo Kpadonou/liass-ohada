@@ -35,6 +35,12 @@ export class RestaurantsCapabilities {
       )
     );
   }
+  canReadReceipt() {
+    return this.canReadCheckout();
+  }
+  canPublishReceipt() {
+    return this.canReadReceipt();
+  }
   canCapturePayment() {
     return this.canReadCheckout();
   }

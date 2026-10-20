@@ -15,6 +15,7 @@ const sessions = new Map(),
   orders = new Map(),
   replays = new Map(),
   calls = [];
+const receipts = new Map();
 function visit(outlet, sessionId) {
   if (!sessions.has(sessionId)) {
     const count = cfg().orders ?? 1;
@@ -173,6 +174,173 @@ const server = http.createServer(async (req, res) => {
   }
   if (parts[4] === 'sessions') {
     const s = visit(outlet, parent);
+    if (path.endsWith('/receipt')) {
+      if (s.status !== 'CLOSED' && !cfg().receiptDirect)
+        return send({ message: 'La table doit être clôturée.' }, 409);
+      let r = receipts.get(parent);
+      if (!r) {
+        const count = cfg().receiptParts ?? 6,
+          commercial = Math.max(1, count - 1),
+          parts = [];
+        let previous = '0'.repeat(64);
+        const due = count === 1 ? 0 : 20000;
+        for (let n = 1; n <= commercial; n++) {
+          const amount =
+            n === commercial
+              ? due - Math.floor(due / commercial) * (commercial - 1)
+              : Math.floor(due / commercial);
+          const line = {
+            orderId: id(100),
+            itemId: id(200 + n),
+            netAmountMinor: amount,
+            notes:
+              n === 1
+                ? 'Sauce maison à part. Service en terrasse, près de la baie vitrée.'
+                : undefined,
+            snapshot: {
+              menuItemId: id(300 + n),
+              menuId: id(7),
+              categoryId: id(400),
+              itemVersion: 1,
+              categoryVersion: 1,
+              menuVersion: 1,
+              name: [
+                'Poisson grillé accompagné d’attiéké et de légumes de saison',
+                'Poulet braisé sauce maison',
+                'Jus d’ananas frais',
+                'Salade de fruits de saison',
+              ][n % 4],
+              quantity: 1,
+              unitPriceMinor: amount,
+              grossMinor: amount,
+              subtotalMinor: amount,
+              discountMinor: 0,
+              taxMinor: 0,
+              lineTotalMinor: amount,
+              currency: 'XOF',
+              acceptedAt: stamp,
+              submissionId: id(600 + n),
+            },
+          };
+          const content = { kind: 'COMMERCIAL', lines: [line] };
+          if (n === 1)
+            content.lines.push({
+              ...line,
+              itemId: id(999),
+              netAmountMinor: 0,
+              cancelledAt: stamp,
+              cancellationReason: 'Article remplacé à la demande du client',
+              snapshot: {
+                ...line.snapshot,
+                name: 'Café gourmand avec assortiment de desserts maison',
+                lineTotalMinor: 2000,
+                unitPriceMinor: 2000,
+                grossMinor: 2000,
+                subtotalMinor: 2000,
+              },
+            });
+          const digest = String(n).padStart(64, 'a');
+          parts.push({ number: n, previousDigest: previous, digest, content });
+          previous = digest;
+        }
+        if (count > 1) {
+          parts.push({
+            number: count,
+            previousDigest: previous,
+            digest: 'f'.repeat(64),
+            content: {
+              kind: 'SETTLEMENT',
+              payments: [
+                {
+                  paymentId: id(800),
+                  method: 'CASH',
+                  appliedAmountMinor: 16000,
+                  cashTenderedMinor: 20000,
+                  changeMinor: 4000,
+                  committedAt: stamp,
+                  allocations: [{ orderId: id(100), amountMinor: 16000 }],
+                },
+                {
+                  paymentId: id(801),
+                  method: 'CARD',
+                  appliedAmountMinor: 4000,
+                  externalReference:
+                    'Référence externe confirmée par le personnel — terminal terrasse',
+                  committedAt: stamp,
+                  allocations: [{ orderId: id(100), amountMinor: 4000 }],
+                },
+              ],
+            },
+          });
+        }
+        const summary = c.RestaurantReceiptSummarySchema.parse({
+          receiptId: id(50),
+          guestSessionId: parent,
+          scopeKind: 'GUEST_SESSION',
+          documentKind: 'OPERATIONAL_RECEIPT',
+          schemaVersion: 1,
+          restaurantName: 'Atelier gastronomique de la Maison des saveurs',
+          outletName: 'Restaurant du jardin et de la grande terrasse',
+          tableName: s.tableName,
+          openedAt: stamp,
+          closedAt: '2026-10-19T12:00:00.000Z',
+          issuedAt: '2026-10-19T12:01:00.000Z',
+          currency: 'XOF',
+          dueMinor: due,
+          paidMinor: due,
+          paidByMethodMinor: {
+            CASH: count > 1 ? 16000 : 0,
+            MOBILE_MONEY: 0,
+            CARD: count > 1 ? 4000 : 0,
+          },
+          partCount: parts.length,
+          commercialPartCount: commercial,
+          settlementPartCount: count > 1 ? 1 : 0,
+          lineCount: commercial + 1,
+          paymentCount: count > 1 ? 2 : 0,
+          digest: parts.at(-1).digest,
+        });
+        r = { parts, summary, steps: 0, final: cfg().receiptDirect === 'FINAL', lost: false };
+        receipts.set(parent, r);
+      }
+      if (req.method === 'POST') {
+        c.PublishRestaurantReceiptRequestSchema.parse(input);
+        r.steps++;
+        if (!r.final && r.steps < (cfg().receiptBuildSteps ?? 1))
+          return send(
+            c.RestaurantReceiptPublicationResponseSchema.parse({
+              data: {
+                state: 'BUILDING',
+                receiptId: r.summary.receiptId,
+                version: r.steps,
+                partCount: Math.min(r.parts.length, r.steps),
+              },
+            }),
+          );
+        r.final = true;
+        if (cfg().loseReceiptResponse && !r.lost) {
+          r.lost = true;
+          return send({ message: 'La confirmation du reçu est incertaine. Réessayez.' }, 503);
+        }
+        return send(
+          c.RestaurantReceiptPublicationResponseSchema.parse({
+            data: { state: 'FINAL', receipt: r.summary },
+          }),
+        );
+      }
+      if (!r.final) return send({ message: 'Le reçu est en cours de préparation.' }, 404);
+      const cursor = url.searchParams.get('cursor');
+      if (cursor && cfg().failReceiptPage === cursor)
+        return send({ message: 'Le détail du reçu est temporairement indisponible.' }, 503);
+      const offset = cursor ? Number(cursor.slice(7)) : 0,
+        limit = Math.min(8, Number(url.searchParams.get('limit') ?? 4));
+      const result = {
+        data: r.summary,
+        parts: r.parts.slice(offset, offset + limit),
+        ...(offset + limit < r.parts.length ? { nextCursor: 'cursor-' + (offset + limit) } : {}),
+      };
+      return send(c.RestaurantReceiptResponseSchema.parse(result));
+    }
     if (req.method === 'GET' && parts.length === 6) return send({ data: s });
     if (path.endsWith('/orders')) {
       for (const o of orders.values())

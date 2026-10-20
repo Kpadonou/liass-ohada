@@ -4452,6 +4452,9 @@
         },
         "checkout": {
           "TITLE": "Caisse"
+        },
+        "receipt": {
+          "TITLE": "Reçu"
         }
       },
       "ADD": {
@@ -4898,6 +4901,41 @@
       "BLOCK_CLOSED": "Cette table est déjà clôturée.",
       "REFRESH_ACCESS": "Actualiser mon accès",
       "NO_MANAGEMENT_OUTLETS": "Aucun établissement actif n’est configuré. Créez ou activez un établissement dans la configuration."
+    },
+    "RECEIPT": {
+      "TITLE": "Reçu",
+      "OPERATIONAL": "Reçu opérationnel · non fiscal",
+      "OPENED": "Ouverture",
+      "CLOSED": "Clôture",
+      "CURRENCY": "Devise",
+      "ARTICLES": "Articles",
+      "UNIT": "l’unité",
+      "CANCELLED": "Annulé",
+      "TOTAL": "Total",
+      "PAID": "Total réglé",
+      "SETTLEMENT": "Règlements",
+      "TENDER": "Espèces reçues",
+      "CHANGE": "Monnaie rendue",
+      "STAFF_CONFIRMED": "Règlement confirmé par le personnel",
+      "REFERENCE": "Référence",
+      "TABLE_CLOSED": "Table clôturée. Le règlement est terminé.",
+      "PREPARING": "Préparation du reçu…",
+      "RESUME_COPY": "Le reçu n’est pas encore disponible. Vous pouvez reprendre sa préparation.",
+      "RESUME": "Reprendre la préparation",
+      "RETRY": "Réessayer",
+      "PUBLICATION_ERROR": "La table reste clôturée. Le reçu n’a pas encore pu être préparé. Réessayez.",
+      "READ_ERROR": "Le reçu n’a pas pu être chargé. Réessayez.",
+      "PRINT_ERROR": "L’impression n’est pas prête. Réessayez pour charger la suite du reçu.",
+      "LOADING": "Chargement du reçu…",
+      "PRINT_PROGRESS": "Préparation de l’impression : {{loaded}} / {{total}} parties",
+      "CANCEL_PRINT": "Annuler la préparation",
+      "PRINT": "Imprimer",
+      "PRINT_PREPARING": "Préparation de l’impression",
+      "PARTIAL": "Une partie du détail reste à afficher. Les totaux correspondent au reçu complet.",
+      "MORE": "Afficher la suite",
+      "BACK": "Retour à Caisse",
+      "ACCESS": "Votre accès à ce reçu doit être vérifié.",
+      "BUILD_PROGRESS": "{{count}} sections préparées"
     }
   }
 }

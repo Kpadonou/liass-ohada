@@ -1030,3 +1030,45 @@ liass-app-topbar .mdc-button__label {
   min-width: 0;
   width: 100%;
 }
+
+/* Native receipt print: a complete, temporary document clone lives directly under body.
+   Screen layout and authenticated shell remain unchanged outside this scoped print session. */
+.liass-receipt-print-root {
+  display: none;
+}
+@media print {
+  body.liass-receipt-printing > :not(.liass-receipt-print-root) {
+    display: none !important;
+  }
+  body.liass-receipt-printing {
+    margin: 0;
+    padding: 0;
+    overflow: visible !important;
+    background: white !important;
+  }
+  body.liass-receipt-printing > .liass-receipt-print-root {
+    display: block !important;
+    width: auto;
+    color: black;
+    background: white;
+    font:
+      10pt/1.4 Arial,
+      sans-serif;
+  }
+  .liass-receipt-print-root * {
+    color: black !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .liass-receipt-print-root .receipt-document {
+    padding: 0;
+  }
+  .liass-receipt-print-root .receipt-line,
+  .liass-receipt-print-root .receipt-totals,
+  .liass-receipt-print-root header {
+    break-inside: avoid;
+  }
+  .liass-receipt-print-root .receipt-line {
+    padding-block: 4pt;
+  }
+}

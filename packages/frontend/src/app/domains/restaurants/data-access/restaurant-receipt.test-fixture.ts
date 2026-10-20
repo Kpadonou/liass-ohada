@@ -1,0 +1,65 @@
+import { RestaurantReceiptPart, RestaurantReceiptSummary } from '@liass-ohada/shared/restaurants';
+import { rid } from './restaurants.test-fixture';
+export const receiptSummary = (count = 1): RestaurantReceiptSummary => ({
+  receiptId: rid(50),
+  guestSessionId: rid(9),
+  scopeKind: 'GUEST_SESSION',
+  documentKind: 'OPERATIONAL_RECEIPT',
+  schemaVersion: 1,
+  restaurantName: 'Atelier Resto',
+  outletName: 'Restaurant jardin',
+  tableName: 'Terrasse jardin',
+  openedAt: '2026-10-20T10:00:00.000Z',
+  closedAt: '2026-10-20T12:00:00.000Z',
+  issuedAt: '2026-10-20T12:01:00.000Z',
+  currency: 'XOF',
+  dueMinor: 20000,
+  paidMinor: 20000,
+  paidByMethodMinor: { CASH: 20000, MOBILE_MONEY: 0, CARD: 0 },
+  partCount: count,
+  commercialPartCount: count,
+  settlementPartCount: 0,
+  lineCount: count,
+  paymentCount: 0,
+  digest: 'a'.repeat(64),
+});
+export const receiptPartFixture = (number = 1): RestaurantReceiptPart => ({
+  number,
+  previousDigest: '0'.repeat(64),
+  digest: 'a'.repeat(64),
+  content: {
+    kind: 'COMMERCIAL',
+    lines: [
+      {
+        orderId: rid(100),
+        itemId: rid(number + 200),
+        netAmountMinor: 20000,
+        notes: 'Sauce à part',
+        snapshot: {
+          menuItemId: rid(300),
+          menuId: rid(7),
+          categoryId: rid(400),
+          itemVersion: 1,
+          categoryVersion: 1,
+          menuVersion: 1,
+          name: 'Poisson grillé accompagné d’attiéké',
+          quantity: 2,
+          unitPriceMinor: 10000,
+          grossMinor: 20000,
+          subtotalMinor: 20000,
+          discountMinor: 0,
+          taxMinor: 0,
+          lineTotalMinor: 20000,
+          currency: 'XOF',
+          acceptedAt: '2026-10-20T10:00:00.000Z',
+          submissionId: rid(600),
+        },
+      },
+    ],
+  },
+});
+export const receiptPageFixture = (total = 1, first = 1, count = total) => ({
+  data: receiptSummary(total),
+  parts: Array.from({ length: count }, (_, i) => receiptPartFixture(first + i)),
+  ...(first + count <= total ? { nextCursor: `cursor-${first + count}` } : {}),
+});

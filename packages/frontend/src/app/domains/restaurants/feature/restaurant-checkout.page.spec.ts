@@ -1,3 +1,4 @@
+import { Router, provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { signal } from '@angular/core';
@@ -38,6 +39,7 @@ describe('Cashier occupied-table discovery and context', () => {
       ],
       providers: [
         provideHttpClient(),
+        provideRouter([]),
         {
           provide: AuthStore,
           useValue: {
@@ -186,4 +188,16 @@ describe('Cashier occupied-table discovery and context', () => {
       expect(fixture.nativeElement.textContent).not.toContain('ne vous est affecté');
     },
   );
+  it('commits table release before separate receipt navigation with known outlet/session', () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    const fixture = create();
+    const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    fixture.componentInstance.released(ctx);
+    expect(fixture.componentInstance.sessionId()).toBe('');
+    expect(fixture.componentInstance.message()).toContain('Table clôturée');
+    expect(navigate).toHaveBeenCalledWith(
+      ['/restaurants/outlets', rid(2), 'sessions', rid(9), 'receipt'],
+      { state: { checkoutClosed: true } },
+    );
+  });
 });
