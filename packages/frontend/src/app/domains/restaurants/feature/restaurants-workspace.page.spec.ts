@@ -347,7 +347,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     f.componentInstance.showQr(row('table'));
     expect(dialog.open).toHaveBeenCalledWith(
       RestaurantQrDialogComponent,
-      expect.objectContaining({ data: expect.objectContaining({ name: 'T01' }) }),
+      expect.objectContaining({ data: expect.objectContaining({ name: 'Table 1' }) }),
     );
   });
   it('keeps network error separate from empty state and hides content after access loss', async () => {

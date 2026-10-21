@@ -16,6 +16,7 @@ import { RESTAURANT_PAYMENT_ROUTES } from "../../../lambda/domains/restaurants/p
 import { RESTAURANT_RECEIPT_ROUTES } from "../../../lambda/domains/restaurants/receipt-routes";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
+import { RestaurantsGuestEndpoints } from "./restaurants-guest-endpoints";
 
 export class RestaurantsEndpoints extends DomainConstructFactory {
   constructor(
@@ -58,6 +59,10 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
       }),
     );
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
+    new RestaurantsGuestEndpoints(this, "GuestBoundary", {
+      ...props,
+      staffRole: role,
+    });
     for (const route of [
       ...RESTAURANTS_ROUTES,
       ...RESTAURANT_TRANSACTION_ROUTES,

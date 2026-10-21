@@ -422,7 +422,10 @@ export class RestaurantsWorkspacePage {
           org: this.queries.scope(),
           context: this.tableContext(),
           id: row.id,
-          name: this.tableCode(row),
+          name: row.name,
+          restaurantName: this.root.data()?.name,
+          outletName: this.outletOptions().find((outlet) => outlet.value === this.site().outletId)
+            ?.label,
         },
       });
   }

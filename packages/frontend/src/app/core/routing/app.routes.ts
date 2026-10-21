@@ -25,6 +25,13 @@ import {
 
 export const routes: Routes = [
   {
+    path: 'g/:opaqueTableToken',
+    loadComponent: () =>
+      import('../../domains/restaurants/feature/restaurant-guest.page').then(
+        (m) => m.RestaurantGuestPage,
+      ),
+  },
+  {
     path: '',
     pathMatch: 'full',
     canMatch: [publicLandingHostGuard],

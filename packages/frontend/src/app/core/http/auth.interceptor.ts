@@ -10,6 +10,7 @@ import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { environment } from '../../../environments/environment';
 import { NotificationService } from '../notifications/notification.service';
 import { ACCOUNTING_REQUEST_PERMISSION, TENANT_REQUEST_SCOPE } from './tenant-request-context';
+import { GUEST_CAPABILITY_REQUEST } from './guest-request-context';
 
 const apiBaseUrl = environment.apiBaseUrl.replace(/\/$/, '');
 const workspacesDiscoveryUrl = `${apiBaseUrl}/me/workspaces`;
@@ -26,6 +27,25 @@ function tenantOrgIdForRequest(
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.url.startsWith(apiBaseUrl)) {
     return next(request);
+  }
+
+  if (
+    request.method === 'POST' &&
+    ['resolve', 'renew'].some(
+      (operation) => request.url === `${apiBaseUrl}/public/restaurants/guest/${operation}`,
+    )
+  ) {
+    let headers = request.headers.delete('x-org-id').delete('x-workspace-org-id');
+    const authorization = headers.get('Authorization');
+    if (
+      !request.context.get(GUEST_CAPABILITY_REQUEST) ||
+      request.url.endsWith('/resolve') ||
+      !/^Bearer [A-Za-z0-9_-]+\.[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(
+        authorization ?? '',
+      )
+    )
+      headers = headers.delete('Authorization');
+    return next(request.clone({ headers, withCredentials: false }));
   }
 
   const authStore = inject(AuthStore);

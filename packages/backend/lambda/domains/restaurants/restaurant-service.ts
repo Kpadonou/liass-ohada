@@ -443,6 +443,7 @@ export class RestaurantsService {
     );
     if (
       root?.snapshot.data.id !== lookup.restaurantId ||
+      table.qrRevoked ||
       table.qrToken !== token ||
       !table.data.isActive
     )

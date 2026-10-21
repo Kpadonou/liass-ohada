@@ -353,7 +353,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(0);
   });
 
-  test("owns all 79 configuration, transactional, staff, preparation, payment and receipt restaurant routes in one domain stack", () => {
+  test("keeps 79 staff routes and five reviewed Guest/QR routes in one domain stack", () => {
     const restaurants = constructs.find(
       (item) => item instanceof RestaurantsApiStack,
     )!;
@@ -364,20 +364,34 @@ describe("API stack decomposition", () => {
     const routes = owned.filter(
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
-    expect(functions).toHaveLength(79);
-    expect(routes).toHaveLength(79);
+    expect(functions).toHaveLength(81);
+    expect(routes).toHaveLength(84);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
-    ).toHaveLength(79);
+    ).toHaveLength(81);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(79);
-    expect(routes.every((route) => route.authorizationType === "JWT")).toBe(
-      true,
+    ).toHaveLength(84);
+    const publicRoutes = routes.filter((route) =>
+      String(route.routeKey).includes(" /public/"),
     );
+    expect(publicRoutes.map((route) => route.routeKey).sort()).toEqual([
+      "POST /public/restaurants/guest/renew",
+      "POST /public/restaurants/guest/resolve",
+    ]);
     expect(
-      routes.every((route) =>
-        String(route.routeKey).includes(" /restaurants/"),
+      publicRoutes.every((route) => route.authorizationType === "NONE"),
+    ).toBe(true);
+    expect(
+      routes
+        .filter((route) => !publicRoutes.includes(route))
+        .every((route) => route.authorizationType === "JWT"),
+    ).toBe(true);
+    expect(
+      routes.every(
+        (route) =>
+          String(route.routeKey).includes(" /restaurants/") ||
+          String(route.routeKey).includes(" /public/restaurants/guest/"),
       ),
     ).toBe(true);
     expect(
@@ -413,10 +427,27 @@ describe("API stack decomposition", () => {
     const executionRole = owned.find(
       (item): item is iam.Role => item instanceof iam.Role,
     )!;
-    for (const fn of functions)
+    for (const fn of functions.filter(
+      (fn) => !String(fn.functionName).endsWith("-guest-public"),
+    ))
       expect(cdk.Stack.of(fn).resolve(fn.role)).toEqual(
         cdk.Stack.of(fn).resolve(executionRole.roleArn),
       );
+    const publicPolicy = owned.find(
+      (item): item is iam.CfnPolicy =>
+        item instanceof iam.CfnPolicy && item.node.path.includes("PublicRole"),
+    )!;
+    const publicDocument = cdk.Stack.of(publicPolicy).resolve(
+      publicPolicy.policyDocument,
+    );
+    const publicActions = publicDocument.Statement.flatMap(
+      (entry: { Action: string | string[] }) =>
+        Array.isArray(entry.Action) ? entry.Action : [entry.Action],
+    );
+    expect(
+      publicActions.filter((action: string) => action.startsWith("dynamodb:")),
+    ).toEqual(["dynamodb:GetItem"]);
+    expect(publicActions).toContain("secretsmanager:GetSecretValue");
     const policy = owned.find(
       (item): item is iam.CfnPolicy => item instanceof iam.CfnPolicy,
     )!;

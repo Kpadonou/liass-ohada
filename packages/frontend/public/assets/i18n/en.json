@@ -4407,7 +4407,7 @@
       "VIEW_QR": "View QR identity",
       "QR_TITLE": "Table QR identity",
       "QR_HELP": "This identity is prepared for the future digital-table feature. Scanning does not yet open a customer experience. Keep it available for your manager.",
-      "QR_PREPARED": "QR identity prepared",
+      "QR_PREPARED": "Permanent table QR",
       "COPY": "Copy identity",
       "COPIED": "Identity copied.",
       "COPY_FAILED": "Copy is unavailable. Select the identity and copy it manually.",
@@ -4975,6 +4975,39 @@
       "CHOOSE": "Choose an establishment",
       "SEARCH": "Search establishments",
       "CHOOSE_HINT": "Choose the active establishment in the top bar."
+    },
+    "GUEST": {
+      "LOADING": "Identifying your table",
+      "WAIT": "Please wait…",
+      "WELCOME": "Welcome",
+      "FREE": "Your waiter will open your visit.",
+      "OCCUPIED": "Your visit is open.",
+      "CONTACT": "Please speak to your waiter for any request.",
+      "DISABLED": "Ordering from your phone is disabled.",
+      "REFRESH": "Refresh my visit",
+      "RETRY": "Try again",
+      "UNAVAILABLE": "This link is unavailable. Please speak to your waiter.",
+      "VISIT_ENDED": "Your visit has ended.",
+      "EXPIRED": "Your access expired. You can identify your table again.",
+      "NETWORK": "Unable to check your table. Check your connection and try again.",
+      "RATE_LIMITED": "Too many requests. Wait a moment before trying again.",
+      "BRAND": "Liass-Resto"
+    },
+    "QR": {
+      "HELP": "This QR remains valid between visits. Scanning does not reserve the table or open a visit.",
+      "ACTIVE": "QR active",
+      "REVOKED": "QR revoked",
+      "ALT": "QR for table {{table}}",
+      "COPY_LINK": "Copy link",
+      "DOWNLOAD": "Download",
+      "PRINT": "Print",
+      "ROTATE": "Generate a new QR",
+      "REVOKE": "Revoke QR",
+      "INSTRUCTION": "Scan to find your table",
+      "CONFIRM_ROTATE": "The printed QR and associated access will stop working. Print the new QR. Staff operations remain available.",
+      "CONFIRM_REVOKE": "The QR will be disabled. The table and its visit remain open. A new QR is required to restore this access.",
+      "CONFIRM": "Confirm",
+      "SAVED": "The table QR has been updated."
     }
   }
 }

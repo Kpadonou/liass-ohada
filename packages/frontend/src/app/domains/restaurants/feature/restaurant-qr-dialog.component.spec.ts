@@ -1,3 +1,6 @@
+vi.mock('qrcode', () => ({
+  toDataURL: vi.fn().mockResolvedValue('data:image/png;base64,aGVsbG8='),
+}));
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -13,7 +16,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 describe('Protected administrative QR identity', () => {
   const org = signal('org'),
     manage = signal(true),
-    api = { qr: vi.fn() },
+    api = { managedQr: vi.fn(), changeQr: vi.fn() },
     ref = { close: vi.fn() },
     notification = { success: vi.fn() },
     copy = vi.fn();
@@ -21,7 +24,7 @@ describe('Protected administrative QR identity', () => {
     vi.clearAllMocks();
     org.set('org');
     manage.set(true);
-    api.qr.mockResolvedValue({ token: 'x'.repeat(43) });
+    api.managedQr.mockResolvedValue({ status: 'ACTIVE', version: 1, token: 'x'.repeat(43) });
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText: copy.mockResolvedValue(undefined) },
@@ -34,7 +37,7 @@ describe('Protected administrative QR identity', () => {
             en: {
               RESTAURANTS: {
                 UI: {
-                  QR_TITLE: 'Table QR identity',
+                  QR_TITLE: 'Table QR',
                   QR_HELP: 'Prepared for future use; scanning does not open a customer experience.',
                   ERRORS: { NETWORK: 'Check connection', ACCESS: 'Access changed' },
                 },
@@ -65,31 +68,33 @@ describe('Protected administrative QR identity', () => {
       expect(f.componentInstance.token()).toBe('x'.repeat(43));
     });
     expect(f.nativeElement.textContent).not.toContain(rid(4));
-    expect(f.nativeElement.textContent).toContain('future use');
+    expect(f.nativeElement.querySelector('img')).toBeTruthy();
     await f.componentInstance.copy();
-    expect(copy).toHaveBeenCalledWith('x'.repeat(43));
+    expect(copy).toHaveBeenCalledWith(`${window.location.origin}/g/${'x'.repeat(43)}`);
   });
   it('never fetches for read-only staff', () => {
     manage.set(false);
     const f = TestBed.createComponent(RestaurantQrDialogComponent);
     f.detectChanges();
-    expect(api.qr).not.toHaveBeenCalled();
+    expect(api.managedQr).not.toHaveBeenCalled();
     expect(ref.close).toHaveBeenCalled();
   });
   it('discards delayed tokens and closes when workspace changes', async () => {
-    let resolve!: (value: { token: string }) => void;
-    api.qr.mockReturnValue(new Promise<{ token: string }>((done) => (resolve = done)));
+    let resolve!: (value: { status: string; version: number; token: string }) => void;
+    api.managedQr.mockReturnValue(
+      new Promise<{ status: string; version: number; token: string }>((done) => (resolve = done)),
+    );
     const f = TestBed.createComponent(RestaurantQrDialogComponent);
     f.detectChanges();
     org.set('other');
     f.detectChanges();
-    resolve({ token: 'x'.repeat(43) });
+    resolve({ status: 'ACTIVE', version: 1, token: 'x'.repeat(43) });
     await vi.waitFor(() => expect(f.componentInstance.loading()).toBe(false));
     expect(f.componentInstance.token()).toBeNull();
     expect(ref.close).toHaveBeenCalled();
   });
   it('keeps permission errors contextual without exposing sensitive detail', async () => {
-    api.qr.mockRejectedValue(
+    api.managedQr.mockRejectedValue(
       new HttpErrorResponse({ status: 403, error: { message: 'DynamoDB PK secret' } }),
     );
     const f = TestBed.createComponent(RestaurantQrDialogComponent);

@@ -38,6 +38,7 @@ const StoredConfigurationSchema = z
     createFingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     data: z.unknown(),
     qrToken: RestaurantTableQrResponseSchema.shape.token.optional(),
+    qrRevoked: z.boolean().optional(),
   })
   .strict();
 const QrLookupSchema = z
@@ -58,6 +59,7 @@ export interface RestaurantSnapshot<K extends RestaurantKind = RestaurantKind> {
   data: RestaurantEntities[K];
   createFingerprint: string;
   qrToken?: string;
+  qrRevoked?: boolean;
 }
 export interface ParentCheck {
   snapshot: RestaurantSnapshot;
@@ -90,6 +92,7 @@ const stored = (orgId: string, snapshot: RestaurantSnapshot) =>
     data: snapshot.data,
     createFingerprint: snapshot.createFingerprint,
     qrToken: snapshot.qrToken,
+    qrRevoked: snapshot.qrRevoked,
   });
 const writeCondition = (snapshot: RestaurantSnapshot) => ({
   ConditionExpression:
@@ -141,6 +144,7 @@ function decode<K extends RestaurantKind>(
     data: data.data as RestaurantEntities[K],
     createFingerprint: raw.data.createFingerprint,
     qrToken: raw.data.qrToken,
+    qrRevoked: raw.data.qrRevoked,
   };
 }
 export class RestaurantsRepository {

@@ -51,6 +51,7 @@
     "@aws-sdk/client-cognito-identity-provider": "3.1053.0",
     "@aws-sdk/client-dynamodb": "^3.1053.0",
     "@aws-sdk/client-s3": "^3.1129.0",
+    "@aws-sdk/client-secrets-manager": "^3.1129.0",
     "@aws-sdk/s3-request-presigner": "^3.1129.0",
     "@aws-sdk/util-dynamodb": "^3.996.2",
     "@liass-ohada/shared": "file:../shared",
@@ -58,6 +59,7 @@
     "axios": "^1.16.1",
     "constructs": "^10.0.0",
     "i18next": "^25.7.3",
+    "jose": "^6.2.12",
     "pdfkit": "^0.20.2",
     "zod": "^4.3.4"
   }

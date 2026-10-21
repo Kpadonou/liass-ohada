@@ -412,4 +412,33 @@ export class RestaurantsApi {
       ),
     );
   }
+  async managedQr(scope: string, context: RestaurantContext, id: string) {
+    this.assertScope(scope);
+    const result = c.ManagedTableQrResponseSchema.parse(
+      await firstValueFrom(
+        this.http.get<unknown>(this.base + restaurantPath('table', context, id) + '/qr/status'),
+      ),
+    );
+    this.assertScope(scope);
+    return result;
+  }
+  async changeQr(
+    scope: string,
+    context: RestaurantContext,
+    id: string,
+    operation: 'rotate' | 'revoke',
+    request: unknown,
+  ) {
+    this.assertScope(scope);
+    const result = c.ManagedTableQrResponseSchema.parse(
+      await firstValueFrom(
+        this.http.post<unknown>(
+          this.base + restaurantPath('table', context, id) + '/qr/' + operation,
+          c.ManageTableQrRequestSchema.parse(request),
+        ),
+      ),
+    );
+    this.assertScope(scope);
+    return result;
+  }
 }

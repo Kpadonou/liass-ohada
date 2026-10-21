@@ -1,17 +1,21 @@
 /** @type {import('ts-jest').JestConfigWithTsJest} */
 module.exports = {
-  preset: 'ts-jest',
-  testEnvironment: 'node',
-  rootDir: '.',
+  preset: "ts-jest",
+  testEnvironment: "node",
+  rootDir: ".",
+  roots: ["<rootDir>/test"],
   moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/$1',
+    "^@/(.*)$": "<rootDir>/$1",
   },
+  transformIgnorePatterns: ["/node_modules/(?!jose/)"],
   transform: {
-    '^.+\\.tsx?$': ['ts-jest', { tsconfig: 'tsconfig.json' }],
+    "node_modules/jose/.+\\.js$":
+      "<rootDir>/test/helpers/jose-jest-transform.cjs",
+    "^.+\\.tsx?$": ["ts-jest", { tsconfig: "tsconfig.json" }],
   },
-  testMatch: ['**/test/**/*.test.ts', '**/test/**/*.spec.ts'],
-  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  testMatch: ["**/test/**/*.test.ts", "**/test/**/*.spec.ts"],
+  moduleFileExtensions: ["ts", "tsx", "js", "jsx", "json", "node"],
   collectCoverage: false,
-  testPathIgnorePatterns: ['/node_modules/', '/dist/', '/cdk.out/'],
-  setupFiles: ['<rootDir>/jest.setup.ts'],
+  testPathIgnorePatterns: ["/node_modules/", "/dist/", "/cdk.out/"],
+  setupFiles: ["<rootDir>/jest.setup.ts"],
 };

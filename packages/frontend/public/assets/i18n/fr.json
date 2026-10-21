@@ -4407,7 +4407,7 @@
       "VIEW_QR": "Voir l’identité QR",
       "QR_TITLE": "Identité QR de la table",
       "QR_HELP": "Cette identité est prête pour la future table numérique. La lecture n’ouvre pas encore de parcours client. Conservez-la pour votre responsable.",
-      "QR_PREPARED": "Identité QR préparée",
+      "QR_PREPARED": "QR permanent de la table",
       "COPY": "Copier l’identité",
       "COPIED": "Identité copiée.",
       "COPY_FAILED": "La copie automatique est indisponible. Sélectionnez l’identité et copiez-la manuellement.",
@@ -4975,6 +4975,39 @@
       "CHOOSE": "Choisir un établissement",
       "SEARCH": "Rechercher un établissement",
       "CHOOSE_HINT": "Choisissez l’établissement actif dans la barre supérieure."
+    },
+    "GUEST": {
+      "LOADING": "Identification de votre table",
+      "WAIT": "Veuillez patienter…",
+      "WELCOME": "Bienvenue",
+      "FREE": "Votre serveur ouvrira votre visite.",
+      "OCCUPIED": "Votre visite est ouverte.",
+      "CONTACT": "Pour toute demande, adressez-vous à votre serveur.",
+      "DISABLED": "La commande depuis votre téléphone est désactivée.",
+      "REFRESH": "Actualiser ma visite",
+      "RETRY": "Réessayer",
+      "UNAVAILABLE": "Ce lien est indisponible. Adressez-vous à votre serveur.",
+      "VISIT_ENDED": "Votre visite est terminée.",
+      "EXPIRED": "Votre accès a expiré. Vous pouvez identifier à nouveau votre table.",
+      "NETWORK": "Impossible de vérifier votre table. Vérifiez votre connexion puis réessayez.",
+      "RATE_LIMITED": "Trop de demandes. Patientez quelques instants avant de réessayer.",
+      "BRAND": "Liass-Resto"
+    },
+    "QR": {
+      "HELP": "Ce QR reste valable entre les visites. Le scanner ne réserve pas la table et n’ouvre pas de visite.",
+      "ACTIVE": "QR actif",
+      "REVOKED": "QR révoqué",
+      "ALT": "QR de la table {{table}}",
+      "COPY_LINK": "Copier le lien",
+      "DOWNLOAD": "Télécharger",
+      "PRINT": "Imprimer",
+      "ROTATE": "Générer un nouveau QR",
+      "REVOKE": "Révoquer le QR",
+      "INSTRUCTION": "Scannez pour retrouver votre table",
+      "CONFIRM_ROTATE": "Le QR imprimé et les accès associés ne fonctionneront plus. Imprimez le nouveau QR. Les opérations du personnel restent disponibles.",
+      "CONFIRM_REVOKE": "Le QR sera désactivé. La table et sa visite restent ouvertes. Un nouveau QR sera nécessaire pour rétablir cet accès.",
+      "CONFIRM": "Confirmer",
+      "SAVED": "Le QR de la table a été mis à jour."
     }
   }
 }
