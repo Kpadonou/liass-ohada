@@ -50,12 +50,44 @@ describe('Focused cashier payment form', () => {
     fixture.detectChanges();
     return fixture;
   };
+  it('groups the initial CASH amount and defaults received cash to the applied amount', () => {
+    const component = create().componentInstance;
+    expect(component.form.controls.amount.value).toBe('20\u00a0000');
+    expect(component.form.controls.tender.value).toBe('20\u00a0000');
+    expect(component.change()).toBe('0');
+  });
+  it('formats the applied input and follows it with received cash until manual override', () => {
+    const fixture = create(),
+      component = fixture.componentInstance;
+    component.form.controls.amount.setValue('300000');
+    component.groupField('amount');
+    fixture.detectChanges();
+    expect(component.form.controls.amount.value).toBe('300\u00a0000');
+    expect(component.form.controls.tender.value).toBe('300\u00a0000');
+    expect(component.change()).toBe('0');
+
+    component.form.controls.amount.setValue('250000');
+    component.groupField('amount');
+    expect(component.form.controls.tender.value).toBe('250\u00a0000');
+    expect(component.change()).toBe('0');
+  });
+  it('preserves manually overridden tender and recalculates exact change', () => {
+    const component = create().componentInstance;
+    component.form.controls.tender.setValue('500000');
+    component.tenderEdited();
+    component.groupField('tender');
+    component.form.controls.amount.setValue('275000');
+    component.groupField('amount');
+    expect(component.form.controls.amount.value).toBe('275\u00a0000');
+    expect(component.form.controls.tender.value).toBe('500\u00a0000');
+    expect(component.change()).toBe('225\u00a0000');
+  });
   it('computes tender and allocation locally without network or waiting state', () => {
     const fixture = create(),
       component = fixture.componentInstance;
     component.form.patchValue({ amount: '8000', tender: '10000' });
     fixture.detectChanges();
-    expect(component.change().replaceAll('\u202f', ' ')).toContain('2 000');
+    expect(component.change()).toContain('2\u00a0000');
     expect(component.allocationCount()).toBe(1);
     expect(flow.capture).not.toHaveBeenCalled();
     expect(component.busy()).toBe(false);
@@ -101,6 +133,8 @@ describe('Focused cashier payment form', () => {
       });
       fixture.detectChanges();
       expect(fixture.nativeElement.textContent).toContain('confirmation effective');
+      expect(fixture.nativeElement.textContent).not.toContain('Espèces reçues');
+      expect(fixture.nativeElement.textContent).not.toContain('Monnaie à rendre');
       await component.submit();
       const input = flow.capture.mock.calls[0][1];
       expect(input.method).toBe(method);
@@ -119,7 +153,10 @@ describe('Focused cashier payment form', () => {
     fixture.detectChanges();
     expect(flow.capture).toHaveBeenCalledTimes(1);
     expect(component.busy()).toBe(true);
-    expect(component.form.disabled).toBe(true);
+    expect({ form: component.form.status, amount: component.form.controls.amount.status }).toEqual({
+      form: 'DISABLED',
+      amount: 'DISABLED',
+    });
     expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
     done({});
     await pending;

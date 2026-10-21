@@ -1,4 +1,5 @@
 import { Component, effect, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -15,7 +16,11 @@ import type {
 import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
 import { RestaurantOrdersApi, ServiceOrderContext } from '../data-access/restaurant-orders.api';
 import { checkoutAllocationProposal } from '../utils/restaurant-checkout';
-import { minorInput, parseMinorInput, restaurantPrice } from '../utils/restaurant-money';
+import {
+  groupedMinorInput,
+  parseMinorInput,
+  restaurantOperationalPrice,
+} from '../utils/restaurant-money';
 import { checkoutError } from '../utils/restaurant-checkout-error';
 @Component({
   selector: 'liass-checkout-payment-dialog',
@@ -44,12 +49,23 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
         </mat-form-field>
         <mat-form-field class="w-full"
           ><mat-label>{{ 'RESTAURANTS.CHECKOUT.APPLIED' | transloco }}</mat-label
-          ><input matInput inputmode="decimal" formControlName="amount"
+          ><input
+            matInput
+            type="text"
+            inputmode="decimal"
+            formControlName="amount"
+            (blur)="groupField('amount')"
         /></mat-form-field>
         @if (form.controls.method.value === 'CASH') {
           <mat-form-field class="w-full"
             ><mat-label>{{ 'RESTAURANTS.CHECKOUT.TENDER' | transloco }}</mat-label
-            ><input matInput inputmode="decimal" formControlName="tender"
+            ><input
+              matInput
+              type="text"
+              inputmode="decimal"
+              formControlName="tender"
+              (input)="tenderEdited()"
+              (blur)="groupField('tender')"
           /></mat-form-field>
           <p role="status" aria-live="polite" aria-atomic="true">
             {{ 'RESTAURANTS.CHECKOUT.CHANGE' | transloco }} : {{ change() }}
@@ -111,21 +127,31 @@ export class RestaurantCheckoutPaymentDialog {
   readonly busy = signal(false);
   readonly error = signal('');
   intent: CaptureRestaurantPaymentRequest | undefined = this.flow.pendingPayment(this.data.ctx);
+  private tenderOverridden = false;
+  private readonly outstanding =
+    this.data.session.dueMinor - this.data.session.paidMinor - this.data.session.reservedMinor;
   readonly form = inject(FormBuilder).nonNullable.group({
     method: ['CASH' as (typeof this.methods)[number], Validators.required],
     amount: [
-      minorInput(
-        this.data.session.dueMinor - this.data.session.paidMinor - this.data.session.reservedMinor,
-        this.data.session.currency,
-      ),
+      groupedMinorInput(this.outstanding, this.data.session.currency, this.t.getActiveLang()),
       Validators.required,
     ],
-    tender: [''],
+    tender: [
+      groupedMinorInput(this.outstanding, this.data.session.currency, this.t.getActiveLang()),
+    ],
     reference: [''],
   });
   constructor() {
     if (this.intent) this.form.disable();
     this.ref.disableClose = !!this.intent;
+    this.form.controls.amount.valueChanges.pipe(takeUntilDestroyed()).subscribe((amount) => {
+      if (
+        !this.form.disabled &&
+        !this.tenderOverridden &&
+        this.form.controls.method.value === 'CASH'
+      )
+        this.form.controls.tender.setValue(amount, { emitEvent: false });
+    });
     effect(() => {
       try {
         this.ordersApi.assertContext(this.data.ctx);
@@ -136,6 +162,23 @@ export class RestaurantCheckoutPaymentDialog {
   }
   failure(error: unknown) {
     return checkoutError(error, (key) => this.t.translate(key));
+  }
+  tenderEdited() {
+    this.tenderOverridden = true;
+  }
+  groupField(field: 'amount' | 'tender') {
+    const control = this.form.controls[field];
+    try {
+      control.setValue(
+        groupedMinorInput(
+          parseMinorInput(control.value, this.data.session.currency),
+          this.data.session.currency,
+          this.t.getActiveLang(),
+        ),
+      );
+    } catch {
+      // Preserve incomplete input so the cashier can finish or correct it.
+    }
   }
   allocationCount() {
     try {
@@ -153,7 +196,9 @@ export class RestaurantCheckoutPaymentDialog {
       const change =
         parseMinorInput(this.form.controls.tender.value, currency) -
         parseMinorInput(this.form.controls.amount.value, currency);
-      return change >= 0 ? restaurantPrice(change, currency, this.t.getActiveLang()) : '—';
+      return change >= 0
+        ? restaurantOperationalPrice(change, currency, this.t.getActiveLang(), currency)
+        : '—';
     } catch {
       return '—';
     }

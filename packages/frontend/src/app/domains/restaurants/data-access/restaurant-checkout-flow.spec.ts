@@ -104,6 +104,13 @@ describe('Resumable canonical checkout commands', () => {
     expect(api.capture.mock.calls[1][1]).toEqual(payment);
     expect(flow.pendingPayment(ctx)).toBeUndefined();
   });
+  it('sends a successful Payment only and never invokes Order or session closure', async () => {
+    api.capture.mockResolvedValue({ appliedAmountMinor: 8000 });
+    await flow.capture(ctx, payment);
+    expect(api.capture).toHaveBeenCalledTimes(1);
+    expect(api.closeOrder).not.toHaveBeenCalled();
+    expect(api.closeSession).not.toHaveBeenCalled();
+  });
   it('does not retry definite financial conflict, allowing explicit fresh proposal', async () => {
     api.capture.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
     await expect(flow.capture(ctx, payment)).rejects.toBeDefined();

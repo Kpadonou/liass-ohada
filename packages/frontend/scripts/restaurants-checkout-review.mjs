@@ -20,14 +20,24 @@ function visit(outlet, sessionId) {
   if (!sessions.has(sessionId)) {
     const count = cfg().orders ?? 1;
     const number = Number(sessionId.slice(-12));
-    const total = cfg().opsReview
-      ? number === 19
-        ? 2100000
-        : number === 29
-          ? 60000
-          : 20000
-      : 20000;
-    const paid = cfg().opsReview ? (number === 19 ? total : number === 9 ? 8000 : 0) : 0;
+    const total = Number.isSafeInteger(cfg().checkoutDueMinor)
+      ? cfg().checkoutDueMinor
+      : cfg().opsReview
+        ? number === 19
+          ? 2100000
+          : number === 29
+            ? 60000
+            : 20000
+        : 20000;
+    const paid = Number.isSafeInteger(cfg().checkoutPaidMinor)
+      ? cfg().checkoutPaidMinor
+      : cfg().opsReview
+        ? number === 19
+          ? total
+          : number === 9
+            ? 8000
+            : 0
+        : 0;
     const session = c.GuestSessionReadSchema.parse({
       orgId: org,
       outletId: outlet,
@@ -635,13 +645,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && parts.length === 6) return send({ data: s });
     if (path.endsWith('/orders')) {
       for (const o of orders.values())
-        o.outstandingWorkCount = cfg().opsReview
-          ? o.guestSessionId === id(19)
+        o.outstandingWorkCount = cfg().blockSessionNumber
+          ? o.guestSessionId === id(cfg().blockSessionNumber)
             ? 1
             : 0
-          : cfg().ready && o.orderId === id(100)
-            ? 1
-            : 0;
+          : cfg().opsReview
+            ? o.guestSessionId === id(19)
+              ? 1
+              : 0
+            : cfg().ready && o.orderId === id(100)
+              ? 1
+              : 0;
       return send({
         items: [...orders.values()].filter((o) => o.guestSessionId === s.guestSessionId),
       });
@@ -732,13 +746,17 @@ const server = http.createServer(async (req, res) => {
   if (parts[4] === 'orders') {
     const o = orders.get(parent);
     if (!o) return send({ message: 'Commande indisponible' }, 404);
-    o.outstandingWorkCount = cfg().opsReview
-      ? o.guestSessionId === id(19)
+    o.outstandingWorkCount = cfg().blockSessionNumber
+      ? o.guestSessionId === id(cfg().blockSessionNumber)
         ? 1
         : 0
-      : cfg().ready && parent === id(100)
-        ? 1
-        : 0;
+      : cfg().opsReview
+        ? o.guestSessionId === id(19)
+          ? 1
+          : 0
+        : cfg().ready && parent === id(100)
+          ? 1
+          : 0;
     if (req.method === 'GET' && parts.length === 6) return send({ data: o });
     if (path.endsWith('/items'))
       return send({

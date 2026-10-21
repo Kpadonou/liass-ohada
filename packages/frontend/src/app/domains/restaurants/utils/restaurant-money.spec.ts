@@ -1,10 +1,20 @@
 import {
+  groupedMinorInput,
   minorInput,
   parseMinorInput,
   restaurantPrice,
   restaurantOperationalPrice,
 } from './restaurant-money';
 describe('Canonical restaurant minor-unit money', () => {
+  it.each([
+    [300000, 'XOF', '300\u00a0000'],
+    [2100000, 'XOF', '2\u00a0100\u00a0000'],
+    [123456, 'EUR', '1\u00a0234,56'],
+  ])('groups exact %s %s entry as %s', (amount, currency, expected) => {
+    const text = groupedMinorInput(amount, currency, 'fr');
+    expect(text).toBe(expected);
+    expect(parseMinorInput(text, currency)).toBe(amount);
+  });
   it('omits a suffix only in matching declared operational context, preserving exact minor units', () => {
     expect(restaurantOperationalPrice(150000, 'XOF', 'fr', 'XOF')).toMatch(/^150\s000$/);
     expect(restaurantOperationalPrice(1025, 'EUR', 'en', 'EUR')).toBe('10.25');

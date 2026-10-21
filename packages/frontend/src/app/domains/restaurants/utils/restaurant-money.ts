@@ -12,6 +12,22 @@ export function minorInput(amount: number, currency: string): string {
       .padStart(digits + 1, '0');
   return digits ? `${value.slice(0, -digits)}.${value.slice(-digits)}` : value;
 }
+/** Formats a valid amount for human entry without using floating-point money arithmetic. */
+export function groupedMinorInput(amount: number, currency: string, locale: string): string {
+  const value = minorInput(amount, currency);
+  const [whole, fraction] = value.split('.');
+  const grouped = new Intl.NumberFormat(locale, {
+    useGrouping: true,
+    maximumFractionDigits: 0,
+  })
+    .format(BigInt(whole))
+    .replaceAll('\u202f', '\u00a0');
+  if (fraction === undefined) return grouped;
+  const decimal =
+    new Intl.NumberFormat(locale).formatToParts(1.1).find((part) => part.type === 'decimal')
+      ?.value ?? '.';
+  return `${grouped}${decimal}${fraction}`;
+}
 export function parseMinorInput(input: string, currency: string): number {
   const text = input.trim();
   if (!/^(?:\d+|\d{1,3}(?:[ \u00a0\u202f]\d{3})+)(?:[.,]\d+)?$/.test(text))
