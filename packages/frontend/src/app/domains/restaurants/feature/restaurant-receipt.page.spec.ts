@@ -85,14 +85,20 @@ describe('Receipt presentation and complete native print', () => {
     expect(f.nativeElement.textContent).not.toContain('tableCode');
   });
   it('post-close publication is separate, local and FINAL triggers canonical read', async () => {
+    api.page
+      .mockRejectedValueOnce(new HttpErrorResponse({ status: 404 }))
+      .mockResolvedValue(receiptPageFixture());
     const f = create(true);
     await loaded(f);
     expect(api.publish).toHaveBeenCalledTimes(1);
-    expect(api.page).toHaveBeenCalledTimes(1);
+    expect(api.page).toHaveBeenCalledTimes(2);
     expect(f.nativeElement.textContent).toContain('Table clôturée');
     expect(f.nativeElement.textContent).not.toContain('Enregistrement en cours');
   });
   it('publication failure preserves checkout success and same identity retry', async () => {
+    api.page
+      .mockRejectedValueOnce(new HttpErrorResponse({ status: 404 }))
+      .mockResolvedValue(receiptPageFixture());
     api.publish.mockRejectedValueOnce(new Error('lost'));
     const f = create(true);
     await vi.waitFor(() => {
@@ -103,18 +109,78 @@ describe('Receipt presentation and complete native print', () => {
     await loaded(f);
     expect(api.publish.mock.calls[0]).toEqual(api.publish.mock.calls[1]);
   });
-  it('404 on direct BUILDING offers resume and never displays partial receipt', async () => {
+  it('404 resumes BUILDING automatically and displays only canonical FINAL', async () => {
     api.page
       .mockRejectedValueOnce(new HttpErrorResponse({ status: 404 }))
       .mockResolvedValue(receiptPageFixture());
+    api.publish
+      .mockResolvedValueOnce({ state: 'BUILDING', version: 1, partCount: 1 })
+      .mockResolvedValue({ state: 'FINAL', receipt: receiptSummary() });
     const f = create();
-    await vi.waitFor(() => {
-      f.detectChanges();
-      expect(f.componentInstance.resumeNeeded()).toBe(true);
-    });
-    expect(f.nativeElement.querySelector('liass-receipt-document')).toBeNull();
-    await f.componentInstance.resume();
     await loaded(f);
+    expect(api.publish).toHaveBeenCalledTimes(2);
+    expect(api.publish.mock.calls[0]).toEqual(api.publish.mock.calls[1]);
+  });
+  it('post-close entry reuses existing FINAL without publication', async () => {
+    const f = create(true);
+    await loaded(f);
+    expect(api.publish).not.toHaveBeenCalled();
+    expect(f.nativeElement.textContent).toContain('XOF');
+    expect(f.nativeElement.textContent).toContain(receiptSummary().receiptId);
+  });
+  it('renders distinct CASH applications, tender and change from frozen settlement parts', async () => {
+    const page = receiptPageFixture(2, 1, 1);
+    page.data = {
+      ...page.data,
+      dueMinor: 13500,
+      paidMinor: 13500,
+      paidByMethodMinor: { CASH: 13500, CARD: 0, MOBILE_MONEY: 0 },
+    };
+    api.page.mockResolvedValue({
+      ...page,
+      nextCursor: undefined,
+      parts: [
+        ...page.parts,
+        {
+          number: 2,
+          previousDigest: 'a'.repeat(64),
+          digest: 'b'.repeat(64),
+          content: {
+            kind: 'SETTLEMENT',
+            payments: [
+              {
+                paymentId: rid(700),
+                method: 'CASH',
+                appliedAmountMinor: 8000,
+                cashTenderedMinor: 10000,
+                changeMinor: 2000,
+                committedAt: '2026-10-20T12:00:00.000Z',
+                allocations: [{ orderId: rid(100), amountMinor: 8000 }],
+              },
+              {
+                paymentId: rid(701),
+                method: 'CASH',
+                appliedAmountMinor: 5500,
+                committedAt: '2026-10-20T12:00:00.000Z',
+                allocations: [{ orderId: rid(100), amountMinor: 5500 }],
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const f = create();
+    await loaded(f);
+    const text = f.nativeElement.textContent;
+    for (const amount of [
+      '13\u00a0500 XOF',
+      '8\u00a0000 XOF',
+      '5\u00a0500 XOF',
+      '10\u00a0000 XOF',
+      '2\u00a0000 XOF',
+    ])
+      expect(text).toContain(amount);
+    expect(text).toContain('Monnaie rendue');
   });
   it('screen pagination loads only the requested next page and retains earlier DOM', async () => {
     api.page
@@ -200,6 +266,7 @@ describe('Receipt presentation and complete native print', () => {
   it('account/org revision change rejects late publication and never prints', async () => {
     let resolve!: (v: unknown) => void;
     api.publish.mockImplementation(() => new Promise((r) => (resolve = r)));
+    api.page.mockRejectedValueOnce(new HttpErrorResponse({ status: 404 }));
     const f = create(true);
     await vi.waitFor(() => expect(api.publish).toHaveBeenCalled());
     org.set('other');
@@ -207,7 +274,7 @@ describe('Receipt presentation and complete native print', () => {
     resolve({ state: 'FINAL', receipt: receiptSummary() });
     await Promise.resolve();
     f.detectChanges();
-    expect(api.page).not.toHaveBeenCalled();
+    expect(api.page).toHaveBeenCalledTimes(1);
     expect(printer.print).not.toHaveBeenCalled();
   });
   it('receipt work leaves unrelated application/server caches untouched', async () => {

@@ -1,7 +1,7 @@
 import { Component, ElementRef, inject, input } from '@angular/core';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { RestaurantReceiptPart, RestaurantReceiptSummary } from '@liass-ohada/shared/restaurants';
-import { restaurantOperationalPrice } from '../utils/restaurant-money';
+import { restaurantPrice } from '../utils/restaurant-money';
 @Component({
   selector: 'liass-receipt-document',
   host: { class: 'block min-w-0' },
@@ -22,21 +22,29 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
         }}</span>
       </div>
       <h2 class="mt-2 break-words font-medium">{{ summary().tableName }}</h2>
+      <p class="mt-2 break-all text-xs">
+        {{ 'RESTAURANTS.RECEIPT.REFERENCE' | transloco }}
+        <span class="block break-all">{{ summary().receiptId }}</span>
+      </p>
       <dl class="mt-2 grid gap-1 text-xs text-app-text-secondary">
         <div>
-          <dt class="inline">{{ 'RESTAURANTS.RECEIPT.OPENED' | transloco }}</dt>
+          <dt class="mr-1 inline">{{ 'RESTAURANTS.RECEIPT.OPENED' | transloco }}</dt>
           <dd class="inline">{{ date(summary().openedAt) }}</dd>
         </div>
         <div>
-          <dt class="inline">{{ 'RESTAURANTS.RECEIPT.CLOSED' | transloco }}</dt>
+          <dt class="mr-1 inline">{{ 'RESTAURANTS.RECEIPT.CLOSED' | transloco }}</dt>
           <dd class="inline">{{ date(summary().closedAt) }}</dd>
+        </div>
+        <div>
+          <dt class="mr-1 inline">{{ 'RESTAURANTS.RECEIPT.ISSUED' | transloco }}</dt>
+          <dd class="inline">{{ date(summary().issuedAt) }}</dd>
         </div>
       </dl>
       <p class="mt-2 text-xs">
         {{ 'RESTAURANTS.RECEIPT.CURRENCY' | transloco }} : {{ summary().currency }}
       </p>
     </header>
-    <section aria-labelledby="receipt-lines">
+    <section aria-labelledby="receipt-lines" role="list">
       <h2 id="receipt-lines" class="mb-2 text-sm font-semibold">
         {{ 'RESTAURANTS.RECEIPT.ARTICLES' | transloco }}
       </h2>
@@ -45,6 +53,7 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
           @for (line of part.content.lines; track line.orderId + line.itemId) {
             <div
               class="receipt-line border-b border-app-border py-2"
+              role="listitem"
               [class.receipt-cancelled]="!!line.cancelledAt"
             >
               <div class="flex min-w-0 items-start justify-between gap-3">
@@ -164,11 +173,9 @@ export class RestaurantReceiptDocument {
     );
   }
   money(amount: number) {
-    return restaurantOperationalPrice(
-      amount,
-      this.summary().currency,
-      this.lang(),
-      this.summary().currency,
+    return restaurantPrice(amount, this.summary().currency, this.lang()).replaceAll(
+      '\u202f',
+      '\u00a0',
     );
   }
 }

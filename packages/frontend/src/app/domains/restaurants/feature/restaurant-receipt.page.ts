@@ -48,6 +48,9 @@ const denied = (error: unknown) =>
     RestaurantReceiptDocument,
   ],
   template: ` @if (!rejected()) {
+    @if (!verified()) {
+      <h1 class="mb-4 text-xl font-semibold">{{ 'RESTAURANTS.RECEIPT.TITLE' | transloco }}</h1>
+    }
     @if (closed()) {
       <p role="status" class="mb-3 text-sm font-medium">
         {{ 'RESTAURANTS.RECEIPT.TABLE_CLOSED' | transloco }}
@@ -71,7 +74,7 @@ const denied = (error: unknown) =>
       <section class="mb-4">
         <p role="status">{{ 'RESTAURANTS.RECEIPT.RESUME_COPY' | transloco }}</p>
         <button mat-flat-button type="button" (click)="resume()">
-          {{ 'RESTAURANTS.RECEIPT.RESUME' | transloco }}
+          {{ (error() ? 'RESTAURANTS.RECEIPT.RETRY' : 'RESTAURANTS.RECEIPT.RESUME') | transloco }}
         </button>
       </section>
     }
@@ -178,7 +181,7 @@ export class RestaurantReceiptView {
       this.error.set('');
       return page;
     },
-    enabled: (!this.closed() || this.ready()) && !this.building() && !this.rejected(),
+    enabled: !this.building() && !this.resumeNeeded() && !this.rejected(),
     retry: false,
     staleTime: Infinity,
     refetchOnMount: 'always',
@@ -236,18 +239,11 @@ export class RestaurantReceiptView {
       this.live = false;
       this.printJob++;
     });
-    let started = false;
-    effect(() => {
-      if (this.closed() && !started) {
-        started = true;
-        void this.resume();
-      }
-    });
     effect(() => {
       const error = this.first.error() ?? this.pages.error();
       if (denied(error)) this.reject();
       else if (error instanceof HttpErrorResponse && error.status === 404 && !this.ready()) {
-        this.resumeNeeded.set(true);
+        if (!this.resumeNeeded() && !this.error()) void this.resume();
       } else if (this.first.error() && !this.error()) this.error.set('READ_ERROR');
     });
   }
@@ -377,7 +373,7 @@ export class RestaurantReceiptView {
   selector: 'liass-restaurant-receipt',
   host: { class: 'block min-w-0' },
   imports: [RestaurantReceiptView, RouterLink, MatButtonModule, TranslocoModule],
-  template: `<div class="mx-auto max-w-3xl">
+  template: `<div class="mx-auto max-w-2xl">
     <nav class="mb-3">
       <a mat-button routerLink="/restaurants/checkout">{{
         'RESTAURANTS.RECEIPT.BACK' | transloco

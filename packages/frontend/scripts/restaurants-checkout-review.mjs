@@ -472,7 +472,7 @@ const server = http.createServer(async (req, res) => {
           commercial = Math.max(1, count - 1),
           parts = [];
         let previous = '0'.repeat(64);
-        const due = count === 1 ? 0 : 20000;
+        const due = count === 1 ? 0 : 13500;
         for (let n = 1; n <= commercial; n++) {
           const amount =
             n === commercial
@@ -543,20 +543,20 @@ const server = http.createServer(async (req, res) => {
                 {
                   paymentId: id(800),
                   method: 'CASH',
-                  appliedAmountMinor: 16000,
-                  cashTenderedMinor: 20000,
-                  changeMinor: 4000,
+                  appliedAmountMinor: 8000,
+                  cashTenderedMinor: 10000,
+                  changeMinor: 2000,
                   committedAt: stamp,
-                  allocations: [{ orderId: id(100), amountMinor: 16000 }],
+                  allocations: [{ orderId: id(100), amountMinor: 8000 }],
                 },
                 {
                   paymentId: id(801),
-                  method: 'CARD',
-                  appliedAmountMinor: 4000,
+                  method: 'CASH',
+                  appliedAmountMinor: 5500,
                   externalReference:
                     'Référence externe confirmée par le personnel — terminal terrasse',
                   committedAt: stamp,
-                  allocations: [{ orderId: id(100), amountMinor: 4000 }],
+                  allocations: [{ orderId: id(100), amountMinor: 5500 }],
                 },
               ],
             },
@@ -578,9 +578,9 @@ const server = http.createServer(async (req, res) => {
           dueMinor: due,
           paidMinor: due,
           paidByMethodMinor: {
-            CASH: count > 1 ? 16000 : 0,
+            CASH: count > 1 ? 13500 : 0,
             MOBILE_MONEY: 0,
-            CARD: count > 1 ? 4000 : 0,
+            CARD: 0,
           },
           partCount: parts.length,
           commercialPartCount: commercial,
@@ -593,6 +593,8 @@ const server = http.createServer(async (req, res) => {
         receipts.set(parent, r);
       }
       if (req.method === 'POST') {
+        if (cfg().receiptDelayMs)
+          await new Promise((resolve) => setTimeout(resolve, cfg().receiptDelayMs));
         c.PublishRestaurantReceiptRequestSchema.parse(input);
         r.steps++;
         if (!r.final && r.steps < (cfg().receiptBuildSteps ?? 1))

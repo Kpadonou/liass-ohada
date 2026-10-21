@@ -199,13 +199,16 @@ describe('Cashier occupied-table discovery and context', () => {
       expect(fixture.nativeElement.textContent).not.toContain('ne vous est affecté');
     },
   );
-  it('commits table release before separate receipt navigation with known outlet/session', () => {
+  it('retains post-close receipt action independently from table discovery', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = create();
     const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
     fixture.componentInstance.released(ctx);
     expect(fixture.componentInstance.sessionId()).toBe('');
     expect(fixture.componentInstance.message()).toContain('Table clôturée');
+    expect(navigate).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.closedVisit()).toEqual(ctx);
+    fixture.componentInstance.openReceipt(ctx);
     expect(navigate).toHaveBeenCalledWith(
       ['/restaurants/outlets', rid(2), 'sessions', rid(9), 'receipt'],
       { state: { checkoutClosed: true } },

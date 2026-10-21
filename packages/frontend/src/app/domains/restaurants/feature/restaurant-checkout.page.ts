@@ -75,6 +75,22 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
           {{ 'RESTAURANTS.CONTEXT.CHOOSE_HINT' | transloco }}
         </p>
       }
+      @if (closedVisit(); as closed) {
+        <section
+          class="mb-4 rounded-app-panel border border-app-border bg-app-surface p-4"
+          aria-live="polite"
+        >
+          <p>{{ 'RESTAURANTS.RECEIPT.TABLE_CLOSED' | transloco }}</p>
+          <div class="mt-2 flex flex-wrap gap-2">
+            <button mat-flat-button type="button" (click)="openReceipt(closed)">
+              {{ 'RESTAURANTS.RECEIPT.VIEW' | transloco }}
+            </button>
+            <button mat-button type="button" (click)="closedVisit.set(null)">
+              {{ 'RESTAURANTS.RECEIPT.BACK' | transloco }}
+            </button>
+          </div>
+        </section>
+      }
       @if (outletId()) {
         <div
           class="checkout-workspace grid min-w-0 overflow-hidden rounded-app-panel border border-app-border bg-app-surface md:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]"
@@ -235,6 +251,7 @@ export class RestaurantCheckoutPage {
   });
   readonly search = signal('');
   readonly message = signal('');
+  readonly closedVisit = signal<ServiceOrderContext | null>(null);
   readonly identity = computed(() =>
     JSON.stringify({
       org: this.auth.effectiveOrgId(),
@@ -321,6 +338,7 @@ export class RestaurantCheckoutPage {
         outlet = next;
         this.sessionId.set('');
         this.message.set('');
+        this.closedVisit.set(null);
       }
     });
     let identity = this.identity();
@@ -328,6 +346,7 @@ export class RestaurantCheckoutPage {
       const next = this.identity();
       if (next !== identity || !this.allowed()) {
         identity = next;
+        this.closedVisit.set(null);
         this.sessionId.set('');
       }
     });
@@ -355,11 +374,14 @@ export class RestaurantCheckoutPage {
     this.sessionId.set('');
     this.message.set(this.t.translate('RESTAURANTS.CHECKOUT.TABLE_CLOSED'));
     this.tableSearch()?.nativeElement.focus({ preventScroll: true });
-    if (ctx)
-      void this.router.navigate(
-        ['/restaurants/outlets', ctx.outlet, 'sessions', ctx.session, 'receipt'],
-        { state: { checkoutClosed: true } },
-      );
+    this.closedVisit.set(ctx ?? null);
+  }
+  openReceipt(ctx: ServiceOrderContext) {
+    if (!this.allowed() || this.closedVisit() !== ctx) return;
+    void this.router.navigate(
+      ['/restaurants/outlets', ctx.outlet, 'sessions', ctx.session, 'receipt'],
+      { state: { checkoutClosed: true } },
+    );
   }
   money(amount: number, currency: string) {
     return restaurantOperationalPrice(

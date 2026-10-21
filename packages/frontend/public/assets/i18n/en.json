@@ -4924,6 +4924,8 @@
       "PAYMENT": "Payment"
     },
     "RECEIPT": {
+      "ISSUED": "Issued",
+      "VIEW": "View receipt",
       "TITLE": "Receipt",
       "OPERATIONAL": "Operational receipt · non-fiscal",
       "OPENED": "Opened",
