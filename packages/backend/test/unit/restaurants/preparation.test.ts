@@ -126,7 +126,36 @@ async function queued() {
   const o = await order(),
     l = await add(o.orderId);
   await submit(o.orderId, [l]);
-  return tasks()[0];
+  return legacyTask(tasks()[0]);
+}
+function legacyTask(current: c.RestaurantPreparation) {
+  const legacy = c.RestaurantPreparationSchema.parse({
+    ...current,
+    state: "QUEUED",
+    startedAt: undefined,
+    startedBy: undefined,
+  });
+  const lane = P.queueRow(scope(), current);
+  m.rows.delete(JSON.stringify([lane.PK, lane.SK]));
+  const row = R.row(
+    scope(),
+    {
+      PK: K.restaurantOrderPK(org, f.outlet.id, current.orderId),
+      SK: K.restaurantPreparationSK(current.itemId, current.fireId),
+    },
+    "PREPARATION",
+    legacy,
+  );
+  m.rows.set(
+    JSON.stringify([row.PK, row.SK]),
+    marshall(row, { removeUndefinedValues: true }),
+  );
+  const legacyLane = P.queueRow(scope(), legacy);
+  m.rows.set(
+    JSON.stringify([legacyLane.PK, legacyLane.SK]),
+    marshall(legacyLane, { removeUndefinedValues: true }),
+  );
+  return legacy;
 }
 const move = (
   t: c.RestaurantPreparation,
@@ -179,7 +208,9 @@ test("submission atomically creates snapshotted tasks/lanes, replay and later ro
   expect(task).toMatchObject({
     orderId: o.orderId,
     itemId: l.itemId,
-    state: "QUEUED",
+    state: "IN_PROGRESS",
+    startedAt: task.queuedAt,
+    startedBy: "owner",
     generation: 1,
     name: f.items[0].name,
     stationId: f.items[0].preparationStationId,
@@ -428,6 +459,7 @@ test("unassigned kitchen, foreign tenant/outlet/station and alien cursors fail c
     ),
   ).rejects.toMatchObject({ messageCode: "RESTAURANTS_NOT_FOUND" });
   await submit(t.orderId, [await add(t.orderId)]);
+  legacyTask(tasks().find((task) => task.fireId !== t.fireId)!);
   const page = await P.read(
     scope(),
     "cook",
@@ -752,7 +784,10 @@ async function tableVisit() {
   );
 }
 const queueRead = (stationId: string, input: object = {}) =>
-  P.read(scope(), "cook", input, { stationId, state: "QUEUED" });
+  P.read(scope(), "cook", input, {
+    stationId,
+    state: tasks().find((t) => t.stationId === stationId)?.state ?? "QUEUED",
+  });
 
 test("partition-only preparation lane queries omit the empty SK prefix", async () => {
   const task = await queued();
@@ -1225,7 +1260,7 @@ test("SERVICE-3A waiter reads distinct accepted rounds and serves READY exactly 
   const o = await order("DINE_IN", session.guestSessionId);
   await submit(o.orderId, [await add(o.orderId, 0, "Sans piment")]);
   await submit(o.orderId, [await add(o.orderId)]);
-  let t = (await move(tasks()[0], "START")).data;
+  let t = tasks()[0];
   t = (await move(t, "READY")).data;
   const response = await serviceRead("waiter", o.orderId);
   expect(response.statusCode).toBe(200);
@@ -1233,7 +1268,7 @@ test("SERVICE-3A waiter reads distinct accepted rounds and serves READY exactly 
   expect(page.items).toHaveLength(2);
   expect(new Set(page.items.map((x) => x.submissionId)).size).toBe(2);
   expect(page.items.map((x) => x.state)).toEqual(
-    expect.arrayContaining(["READY", "QUEUED"]),
+    expect.arrayContaining(["READY", "IN_PROGRESS"]),
   );
   expect(page.items.find((x) => x.fireId === t.fireId)).toMatchObject({
     notes: "Sans piment",
@@ -1401,4 +1436,28 @@ test("SERVICE-3A keyed pages isolate sibling Orders and retain opaque pagination
       })
     ).statusCode,
   ).toBe(400);
+});
+
+test("V1 mixed station A/B and no-station submission starts only prepared work, without START", async () => {
+  const o = await order();
+  const a = await add(o.orderId, 0),
+    b = await add(o.orderId, 2);
+  const waterIndex = f.items.findIndex((i) => !i.preparationStationId);
+  const water = await add(o.orderId, waterIndex);
+  await submit(o.orderId, [a, b, water]);
+  expect(tasks()).toHaveLength(2);
+  expect(new Set(tasks().map((t) => t.stationId)).size).toBe(2);
+  expect((await S.order(ctx(), o.orderId)).data.outstandingWorkCount).toBe(2);
+  for (const task of tasks()) {
+    expect(task.state).toBe("IN_PROGRESS");
+    expect(task.startedAt).toBe(task.queuedAt);
+    expect(task.startedBy).toBe("owner");
+    const ready = (await move(task, "READY")).data;
+    expect(ready.state).toBe("READY");
+    expect((await move(ready, "SERVE")).data.state).toBe("SERVED");
+  }
+  expect((await S.order(ctx(), o.orderId)).data.outstandingWorkCount).toBe(0);
+  expect(
+    (await S.line(ctx(), o.orderId, water.itemId)).data.latestFireId,
+  ).toBeUndefined();
 });

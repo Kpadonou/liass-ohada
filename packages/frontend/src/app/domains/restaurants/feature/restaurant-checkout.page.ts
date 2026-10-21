@@ -86,7 +86,7 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
               {{ 'RESTAURANTS.RECEIPT.VIEW' | transloco }}
             </button>
             <button mat-button type="button" (click)="closedVisit.set(null)">
-              {{ 'RESTAURANTS.RECEIPT.BACK' | transloco }}
+              {{ 'RESTAURANTS.CHECKOUT.BACK_TO_CHECKOUT' | transloco }}
             </button>
           </div>
         </section>

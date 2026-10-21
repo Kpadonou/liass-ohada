@@ -4845,7 +4845,9 @@
       "EMPTY_READY": "No ready preparation",
       "DESCRIPTION": "Follow preparations through to readiness.",
       "BOARD_CONTROLS": "Preparation station and refresh",
-      "LOAD_ERROR": "Unable to load preparations."
+      "LOAD_ERROR": "Unable to load preparations.",
+      "LEGACY": "Earlier work awaiting start",
+      "READY_SHORT": "Ready"
     },
     "SERVING": {
       "TITLE": "Ready to serve",
@@ -4858,7 +4860,13 @@
       "PARTIAL": "More items remain to be checked.",
       "EMPTY": "No items ready to serve.",
       "MORE_READY": "Show more ready items",
-      "MORE": "Check more items"
+      "MORE": "Check more items",
+      "TABLE_TITLE": "Ready to serve at this table",
+      "TABLE_INCOMPLETE": "The whole table has not been checked. Serve items individually or refresh before serving all.",
+      "BATCH_RESULT": "{{served}} served, {{remaining}} remaining",
+      "RETRY_BATCH": "Resume serving",
+      "SERVE_ALL": "Serve all ({{count}})",
+      "REVIEW_ALL": "Review all ready items"
     },
     "CHECKOUT": {
       "TITLE": "Checkout",
@@ -4921,7 +4929,9 @@
       "BACK_TABLES": "Back to tables",
       "SELECT_TITLE": "Select a table",
       "CURRENCY": "Amounts in {{ currency }}",
-      "PAYMENT": "Payment"
+      "PAYMENT": "Payment",
+      "READY_TO_CLOSE": "Ready to close",
+      "BACK_TO_CHECKOUT": "Back to checkout"
     },
     "RECEIPT": {
       "ISSUED": "Issued",

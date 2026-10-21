@@ -68,7 +68,7 @@
             >
               {{
                 'RESTAURANTS.KITCHEN.' +
-                  (pending(task) ? 'PENDING' : task.state === 'QUEUED' ? 'START' : 'READY_ACTION')
+                  (pending(task) ? 'PENDING' : task.state === 'QUEUED' ? 'START' : 'READY_SHORT')
                   | transloco
               }}
             </button>

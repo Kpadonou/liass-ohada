@@ -29,6 +29,13 @@
           {{ 'RESTAURANTS.ORDER_TAKING.MENU' | transloco }}
         </button>
       </nav>
+      <liass-restaurant-table-delivery
+        #delivery
+        [context]="ctx()"
+        [enabled]="live()"
+        [expectedOrderCount]="session()!.orderCount"
+        (denied)="denied.set(true)"
+      />
       @if (ordersQuery.isPending()) {
         <p role="status" class="py-4 text-sm text-app-text-secondary">
           {{ 'RESTAURANTS.UI.LOADING' | transloco }}
@@ -390,11 +397,17 @@
                 }
               </div>
             </liass-card>
-            @if (live() && selectedId() && order()?.guestSessionId === sessionId()) {
+            @if (
+              live() &&
+              selectedId() &&
+              order()?.guestSessionId === sessionId() &&
+              !delivery.complete() &&
+              !delivery.loading()
+            ) {
               <liass-restaurant-ready-to-serve
                 [context]="ctx()"
                 [order]="selectedId()"
-                [enabled]="live()"
+                [enabled]="live() && !delivery.busy() && !delivery.unresolved().length"
                 (denied)="denied.set(true)"
               />
             }

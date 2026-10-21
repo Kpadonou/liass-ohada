@@ -112,8 +112,9 @@ export class RestaurantKitchenPage {
         error.status === (errors[0] as HttpErrorResponse).status,
     );
   });
-  readonly lanes: KitchenLane[] = ['QUEUED', 'IN_PROGRESS', 'READY'];
-  readonly mobileLane = signal<KitchenLane>('QUEUED');
+  readonly lanes: KitchenLane[] = ['IN_PROGRESS', 'READY'];
+  readonly readLanes: KitchenLane[] = ['IN_PROGRESS', 'READY', 'QUEUED'];
+  readonly mobileLane = signal<KitchenLane>('IN_PROGRESS');
   readonly now = signal(Date.now());
   constructor() {
     this.operational.use(inject(DestroyRef), inject(ActivatedRoute), () => this.allowed());
@@ -184,7 +185,7 @@ export class RestaurantKitchenPage {
     if (!this.station() || this.refreshing()) return;
     this.refreshing.set(true);
     try {
-      await this.queries.reconcile(this.ctx(), this.stationId(), this.lanes);
+      await this.queries.reconcile(this.ctx(), this.stationId(), this.readLanes);
     } finally {
       this.refreshing.set(false);
     }

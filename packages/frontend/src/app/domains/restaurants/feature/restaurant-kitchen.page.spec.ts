@@ -490,3 +490,18 @@ it('does not aggregate unrelated lane failures into a common transport error', a
   expect(fixture.componentInstance.commonFailure()).toBe(false);
   expect(fixture.nativeElement.querySelectorAll('[role="alert"]')).toHaveLength(3);
 });
+
+it('new V1 work opens in En préparation and requires only Prêt', async () => {
+  tasks = [task('IN_PROGRESS')];
+  await create();
+  expect(fixture.componentInstance.mobileLane()).toBe('IN_PROGRESS');
+  expect(fixture.nativeElement.textContent).not.toContain('Commencer');
+  const button = fixture.nativeElement.querySelector(
+    'button[aria-label^="Marquer prêt"]',
+  ) as HTMLButtonElement;
+  expect(button).toBeTruthy();
+  button.click();
+  await settle();
+  expect(api.command).toHaveBeenCalledTimes(1);
+  expect(api.command.mock.calls[0][2]).toBe('ready');
+});

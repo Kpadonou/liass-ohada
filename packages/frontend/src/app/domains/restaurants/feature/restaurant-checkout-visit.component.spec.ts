@@ -3,6 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import { RestaurantCheckoutVisitComponent } from './restaurant-checkout-visit.component';
+import { RestaurantsQueries } from '../data-access/restaurants.queries';
 import { RestaurantsApi } from '../data-access/restaurants.api';
 import { RestaurantOrdersApi } from '../data-access/restaurant-orders.api';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
@@ -132,7 +133,26 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     const pay = [...fixture.nativeElement.querySelectorAll('button')].find(
       (button: unknown) => (button as HTMLButtonElement).textContent?.trim() === 'Encaisser',
     ) as HTMLButtonElement;
-    expect(pay.disabled).toBe(true);
+    expect(pay).toBeUndefined();
+  });
+  it('promotes explicit Close only after prepared work is served and canonical reads reconcile', async () => {
+    orders.orders.mockResolvedValue({ items: [{ ...order, outstandingWorkCount: 1 }] });
+    const fixture = create();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.blockers()).toContain('WORK');
+    });
+    expect(fixture.nativeElement.querySelector('[data-testid="ready-to-close"]')).toBeNull();
+    orders.orders.mockResolvedValue({ items: [order] });
+    await fixture.componentInstance.refresh();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.readyToClose()).toBe(true);
+    });
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="ready-to-close"]')?.textContent,
+    ).toContain('Prête à clôturer');
+    expect(flow.close).not.toHaveBeenCalled();
   });
   it('shows preparation and draft blockers without any Kitchen query', async () => {
     orders.orders.mockResolvedValue({
@@ -166,6 +186,22 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     await fixture.componentInstance.close();
     expect(released).toHaveBeenCalledTimes(1);
     expect(sessions.guestSession).not.toHaveBeenCalled();
+  });
+
+  it('keeps the receipt handoff after canonical Close even when floor reconciliation rejects', async () => {
+    const fixture = create();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.blockers()).toEqual([]);
+    });
+    const released = vi.spyOn(fixture.componentInstance.closed, 'emit');
+    flow.close.mockResolvedValue({ ...visit, status: 'CLOSED' });
+    vi.spyOn(TestBed.inject(RestaurantsQueries), 'floorChanged').mockRejectedValueOnce(
+      new Error('floor unavailable'),
+    );
+    await fixture.componentInstance.close();
+    expect(released).toHaveBeenCalledTimes(1);
+    expect(fixture.componentInstance.error()).toBe('');
   });
 
   it('does not restore cached checkout from a late session response after Order access is revoked', async () => {

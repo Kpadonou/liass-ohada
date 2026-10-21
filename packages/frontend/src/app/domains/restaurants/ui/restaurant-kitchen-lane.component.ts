@@ -28,9 +28,9 @@ import { serviceDuration } from '../utils/service-duration';
   templateUrl: './restaurant-kitchen-lane.component.html',
 })
 export class RestaurantKitchenLaneComponent {
-  readonly context = input.required<KitchenContext>();
-  readonly station = input.required<string>();
-  readonly state = input.required<KitchenLane>();
+  readonly context = input<KitchenContext>({ org: '', user: '', revision: 0, outlet: '' });
+  readonly station = input('');
+  readonly state = input<KitchenLane>('QUEUED');
   readonly now = input.required<number>();
   readonly suppressReadError = input(false);
   readonly denied = output<void>();

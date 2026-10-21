@@ -211,6 +211,29 @@
                   />
                 }
               </div>
+              <details
+                class="mt-4 border-t border-app-border pt-3"
+                [class.kitchen-board-failed]="commonFailure()"
+                [hidden]="
+                  !legacy.tasks().length &&
+                  !legacy.queue.isPending() &&
+                  !legacy.queue.isError() &&
+                  !legacy.queue.hasNextPage()
+                "
+              >
+                <summary class="cursor-pointer text-sm">
+                  {{ 'RESTAURANTS.KITCHEN.LEGACY' | transloco }}
+                </summary>
+                <liass-restaurant-kitchen-lane
+                  #legacy
+                  [context]="ctx()"
+                  [station]="stationId()"
+                  state="QUEUED"
+                  [now]="now()"
+                  [suppressReadError]="commonFailure()"
+                  (denied)="denyKitchen()"
+                />
+              </details>
             }
           }
         </section>

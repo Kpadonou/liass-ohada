@@ -1,0 +1,97 @@
+@if (enabled() && !accessBlocked()) {
+  <liass-card padding="sm">
+    <section class="space-y-2" aria-labelledby="table-delivery-title" data-testid="table-delivery">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2
+          tabindex="-1"
+          id="table-delivery-title"
+          class="flex items-center gap-2 text-base font-semibold"
+        >
+          <mat-icon aria-hidden="true">room_service</mat-icon
+          >{{ 'RESTAURANTS.SERVING.TABLE_TITLE' | transloco }}
+        </h2>
+        <button
+          mat-icon-button
+          type="button"
+          [disabled]="busy() || loading()"
+          (click)="refresh()"
+          [attr.aria-label]="'RESTAURANTS.SERVING.REFRESH' | transloco"
+        >
+          <mat-icon>refresh</mat-icon>
+        </button>
+      </div>
+      @for (order of activeOrders(); track order.orderId) {
+        <liass-order-delivery-reader [context]="context()" [order]="order.orderId" />
+      }
+      @if (loading()) {
+        <p role="status" class="text-sm">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+      }
+      @if (!complete() && !loading()) {
+        <p role="status" class="text-sm">
+          {{
+            (failed() ? 'RESTAURANTS.SERVING.LOAD_ERROR' : 'RESTAURANTS.SERVING.TABLE_INCOMPLETE')
+              | transloco
+          }}
+        </p>
+      }
+      @if (message()) {
+        <p role="status" aria-live="polite" class="text-sm">{{ message() }}</p>
+      }
+      @if (error()) {
+        <p role="alert" class="text-sm">{{ error() }}</p>
+      }
+      @if (unresolved().length) {
+        <button mat-flat-button type="button" [disabled]="busy() || loading()" (click)="retry()">
+          {{ 'RESTAURANTS.SERVING.RETRY_BATCH' | transloco }}
+        </button>
+      } @else if (ready().length > 1) {
+        <button
+          mat-flat-button
+          type="button"
+          data-testid="serve-all"
+          [disabled]="!complete() || busy() || display() < ready().length"
+          (click)="serveAll()"
+        >
+          {{ 'RESTAURANTS.SERVING.SERVE_ALL' | transloco: { count: ready().length } }}
+        </button>
+      }
+      @for (task of ready().slice(0, display()); track key(task)) {
+        <div
+          class="flex min-w-0 items-start justify-between gap-2 border-t border-app-border py-2"
+          data-testid="ready-task"
+        >
+          <div class="min-w-0">
+            <p class="break-words text-sm font-medium">{{ task.quantity }} × {{ task.name }}</p>
+            @if (task.notes) {
+              <p class="whitespace-pre-wrap break-words text-sm text-app-text-secondary">
+                {{ task.notes }}
+              </p>
+            }
+          </div>
+          <button
+            mat-flat-button
+            type="button"
+            class="min-h-11 shrink-0"
+            [class.liass-action-secondary]="ready().length > 1"
+            [disabled]="busy() || loading() || !!unresolved().length"
+            [attr.aria-label]="'RESTAURANTS.SERVING.SERVE_ITEM' | transloco: { name: task.name }"
+            (click)="serve(task)"
+          >
+            {{ 'RESTAURANTS.SERVING.SERVE' | transloco }}
+          </button>
+        </div>
+      } @empty {
+        @if (complete()) {
+          <p class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.SERVING.EMPTY' | transloco }}
+          </p>
+        }
+      }
+      @if (display() < ready().length) {
+        <button mat-button type="button" (click)="display.set(ready().length)">
+          {{ 'RESTAURANTS.SERVING.REVIEW_ALL' | transloco }}
+        </button>
+      }
+    </section>
+  </liass-card>
+}

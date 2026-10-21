@@ -70,9 +70,12 @@ export class RestaurantPreparationService {
       name: snap.name,
       quantity: snap.quantity,
       notes: line.notes,
-      state: "QUEUED",
+      // V1 starts operational preparation at acceptance; actor is the submitter, not a cook.
+      state: "IN_PROGRESS",
       queuedAt: snap.acceptedAt,
       queuedBy: actorId,
+      startedAt: snap.acceptedAt,
+      startedBy: actorId,
       version: 1,
     });
     return {

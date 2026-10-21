@@ -192,3 +192,15 @@ Explicit transactional boundaries such as Submit/Validate may expose a waiting s
 ## Immutable business documents and browser print
 
 `DOCUMENT` uses a compact, readable document surface, distinct from management collections and operational editors. FINAL documents expose no editing controls and render frozen canonical data. Screen pagination stays bounded; printing must load and render every part before calling browser print. Print styling hides the application shell, navigation, controls and non-document states and permits natural page breaks. Document publication errors remain local and recoverable; they never retroactively fail a successful payment, closure or other completed business transaction.
+
+## Restaurants DINE_IN V1 operational progression
+
+RESTO-OPS-SIMPLIFY-1A is the authoritative V1 interaction decision. Routing depends only on the accepted MenuItem's configured PreparationStation, never its category. Accepted items without a station create no Preparation, never enter Kitchen, require no separate service confirmation and remain commercial Addition/payment lines. Durable direct-service tracking is superseded for V1.
+
+Prepared items enter canonical IN_PROGRESS in the accepted submission transaction. `startedAt` equals accepted time and `startedBy` identifies the submitter, not a fictitious cook action. Kitchen's primary workflow is En préparation → Prêt (one click); READY → SERVED remains an explicit waiter action. Existing QUEUED tasks retain their original data and START command in a folded compatibility section. No historical bulk mutation is allowed.
+
+Waiter delivery stays in table/session context across Orders and rounds. Table-wide Servir tout must freeze a fully loaded, reviewed READY set, serialize existing versioned Serve commands, retain distinct retry identities, preserve partial successes and reconcile after the batch. Incomplete pagination, read failures or hydration budgets must disable table-wide All and disclose the incomplete scope; individual loaded-task service remains explicit. READY counts refer only to preparation-backed work.
+
+Payment never closes an Order/session or serves work. Unpaid visits emphasize Encaisser; paid visits with work/draft/payment blockers explain them truthfully; eligible visits emphasize Prête à clôturer / Clôturer la table. Backend guards remain authoritative, including legacy integrity checks. Explicit Close retains confirmation and sequential resumable Order → GuestSession closure. Only canonical GuestSession close releases occupancy. Immediately after success, Voir le reçu is primary and Retour à la caisse secondary; floor refresh or receipt publication failures cannot undo closure or hide the receipt action. FINAL Receipt remains immutable and printing remains explicit.
+
+V1 measures acceptance/operational preparation start → READY → SERVED. It does not measure a separate acceptance → human cook-start response interval. Preserve operationally useful states and remove redundant interactions; never automatically Serve or Close.

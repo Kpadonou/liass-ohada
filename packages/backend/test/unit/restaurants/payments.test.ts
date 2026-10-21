@@ -714,7 +714,7 @@ test("successful payment followed by service completion and explicit closure fre
     if (row.entityType !== "RESTAURANT_PREPARATION")
       throw new Error("Unexpected task");
     let task = row.data;
-    for (const command of ["START", "READY", "SERVE"] as const) {
+    for (const command of ["READY", "SERVE"] as const) {
       task = (
         await Prep.transition(
           scope(),

@@ -1,4 +1,5 @@
 import { RestaurantReadyToServeComponent } from '../restaurant-ready-to-serve.component';
+import { RestaurantTableDeliveryComponent } from '../restaurant-table-delivery.component';
 import {
   RestaurantCarteQueries,
   CarteItem,
@@ -51,6 +52,7 @@ type DraftIntent = {
   selector: 'liass-restaurant-order-composer',
   host: { class: 'block min-w-0' },
   imports: [
+    RestaurantTableDeliveryComponent,
     RestaurantReadyToServeComponent,
     LiassSearchableSelectComponent,
     DatePipe,

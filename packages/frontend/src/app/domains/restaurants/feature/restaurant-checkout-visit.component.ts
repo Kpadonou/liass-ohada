@@ -123,28 +123,35 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
           </button>
         }
       </section>
-      <section
-        class="mb-4 border-t border-app-border pt-4"
-        aria-labelledby="checkout-payment-heading"
-      >
-        <h3 id="checkout-payment-heading" class="mb-3 font-semibold">
-          {{ 'RESTAURANTS.CHECKOUT.PAYMENT' | transloco }}
-        </h3>
-        <button
-          type="button"
-          mat-flat-button
-          [disabled]="
-            !caps.canCapturePayment() ||
-            busy() ||
-            !complete() ||
-            visit.dueMinor <= visit.paidMinor + visit.reservedMinor
-          "
-          (click)="pay()"
+      @if (visit.dueMinor > visit.paidMinor + visit.reservedMinor) {
+        <section
+          class="mb-4 border-t border-app-border pt-4"
+          aria-labelledby="checkout-payment-heading"
         >
-          {{ 'RESTAURANTS.CHECKOUT.PAY' | transloco }}
-        </button>
-      </section>
-      <section class="border-t border-app-border pt-4">
+          <h3 id="checkout-payment-heading" class="mb-3 font-semibold">
+            {{ 'RESTAURANTS.CHECKOUT.PAYMENT' | transloco }}
+          </h3>
+          <button
+            type="button"
+            mat-flat-button
+            [disabled]="
+              !caps.canCapturePayment() ||
+              busy() ||
+              !complete() ||
+              visit.dueMinor <= visit.paidMinor + visit.reservedMinor
+            "
+            (click)="pay()"
+          >
+            {{ 'RESTAURANTS.CHECKOUT.PAY' | transloco }}
+          </button>
+        </section>
+      }
+      <section class="border-t border-app-border pt-4" data-testid="checkout-close-section">
+        @if (readyToClose()) {
+          <p class="mb-2 font-semibold" role="status" data-testid="ready-to-close">
+            {{ 'RESTAURANTS.CHECKOUT.READY_TO_CLOSE' | transloco }}
+          </p>
+        }
         <h3 class="font-semibold">{{ 'RESTAURANTS.CHECKOUT.CLOSE' | transloco }}</h3>
         @for (blocker of blockers(); track blocker) {
           <p class="my-1 text-sm">{{ 'RESTAURANTS.CHECKOUT.BLOCK_' + blocker | transloco }}</p>
@@ -163,6 +170,7 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
           <button
             type="button"
             mat-flat-button
+            [class.liass-action-neutral]="!readyToClose()"
             class="mt-3"
             [disabled]="!caps.canCloseCheckout() || busy() || blockers().length > 0"
             (click)="confirming.set(true)"
@@ -246,6 +254,20 @@ export class RestaurantCheckoutVisitComponent {
     this.session.data()
       ? checkoutClosureBlockers(this.session.data()!, this.rows(), this.complete())
       : ['INCOMPLETE'],
+  );
+  readonly readyToClose = computed(
+    () =>
+      !!this.readableSession() &&
+      this.complete() &&
+      !this.session.isFetching() &&
+      !this.orders.isFetching() &&
+      !this.session.isError() &&
+      !this.orders.isError() &&
+      this.blockers().length === 0 &&
+      this.rows().every(
+        (o) => ['CLOSED', 'CANCELLED'].includes(o.status) || o.outstandingWorkCount !== undefined,
+      ) &&
+      this.caps.canCloseCheckout(),
   );
   constructor() {
     effect(() => {
@@ -367,8 +389,9 @@ export class RestaurantCheckoutVisitComponent {
         },
       );
       if (!this.current(ctx)) return;
-      await this.queries.floorChanged(ctx.org, ctx.outlet);
-      if (this.current(ctx)) this.closed.emit();
+      // Canonical closure succeeded. Receipt access must survive an unrelated floor read failure.
+      this.closed.emit();
+      void this.queries.floorChanged(ctx.org, ctx.outlet).catch(() => undefined);
     } catch (error) {
       if (this.current(ctx)) {
         this.error.set(this.failure(error));

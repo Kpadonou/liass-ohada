@@ -108,7 +108,7 @@ beforeEach(async () => {
   user.set('waiter');
   revision.set(0);
   sessionStorage.clear();
-  api.orders.mockImplementation(async () => ({ items: [...orders] }));
+  api.orders.mockImplementation(async () => ({ items: structuredClone(orders) }));
   api.order.mockImplementation(async (_ctx, id) => ({ ...orders.find((o) => o.orderId === id)! }));
   api.items.mockImplementation(async (_ctx, id) => ({
     items: lines.filter((line) => line.orderId === id).map((line) => ({ ...line })),
@@ -643,15 +643,13 @@ it('persists only unresolved command intent and clears it on principal switch', 
   expect(sessionStorage.getItem(keys[0])).toBeNull();
   expect(page.pending()).toBeNull();
 });
-it('does not auto-load additional Order or item pages and blocks incomplete draft decisions', async () => {
+it('hydrates additional Order pages for complete table-wide delivery', async () => {
   api.orders.mockResolvedValueOnce({ items: [], nextCursor: 'orders-next' });
   await page.ordersQuery.refetch();
   await vi.waitFor(() => {
     fixture.detectChanges();
-    expect(page.ordersQuery.hasNextPage()).toBe(true);
+    expect(api.orders.mock.calls.some((call) => call[1] === 'orders-next')).toBe(true);
   });
-  expect(page.canAdd()).toBe(false);
-  expect(api.orders.mock.calls.some((call) => call[1] === 'orders-next')).toBe(false);
 });
 it('restores keyboard focus to the surviving draft control after a quantity mutation', async () => {
   await settle();
@@ -1384,7 +1382,7 @@ it('keeps Ready DOM through draft micro-actions and refetches it only for submis
     fixture.detectChanges();
     expect(serving.page).toHaveBeenCalledTimes(1);
   });
-  const region = fixture.nativeElement.querySelector('[data-testid="ready-to-serve"]');
+  const region = fixture.nativeElement.querySelector('[data-testid="table-delivery"]');
   serving.page.mockClear();
   await page.quantity(page.drafts()[0], 1);
   await settle();
@@ -1393,11 +1391,11 @@ it('keeps Ready DOM through draft micro-actions and refetches it only for submis
   await page.add(item());
   await settle();
   expect(serving.page).not.toHaveBeenCalled();
-  expect(fixture.nativeElement.querySelector('[data-testid="ready-to-serve"]')).toBe(region);
+  expect(fixture.nativeElement.querySelector('[data-testid="table-delivery"]')).toBe(region);
   await page.submit();
   await settle();
   await vi.waitFor(() => expect(serving.page).toHaveBeenCalledTimes(1));
-  expect(fixture.nativeElement.querySelector('[data-testid="ready-to-serve"]')).toBe(region);
+  expect(fixture.nativeElement.querySelector('[data-testid="table-delivery"]')).toBe(region);
 });
 
 it('reconciles selected Order Preparation after an ambiguous submission result', async () => {

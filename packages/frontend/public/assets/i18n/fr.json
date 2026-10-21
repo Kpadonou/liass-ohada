@@ -4845,7 +4845,9 @@
       "EMPTY_READY": "Aucune préparation prête",
       "DESCRIPTION": "Suivez les préparations et faites-les avancer jusqu’à leur mise à disposition.",
       "BOARD_CONTROLS": "Poste et actualisation des préparations",
-      "LOAD_ERROR": "Impossible de charger les préparations."
+      "LOAD_ERROR": "Impossible de charger les préparations.",
+      "LEGACY": "Travaux antérieurs à démarrer",
+      "READY_SHORT": "Prêt"
     },
     "SERVING": {
       "TITLE": "Prêt à servir",
@@ -4858,7 +4860,13 @@
       "PARTIAL": "D’autres articles restent à vérifier.",
       "EMPTY": "Aucun article prêt à servir.",
       "MORE_READY": "Afficher davantage d’articles prêts",
-      "MORE": "Vérifier les articles suivants"
+      "MORE": "Vérifier les articles suivants",
+      "TABLE_TITLE": "À servir pour cette table",
+      "TABLE_INCOMPLETE": "La vérification de toute la table est incomplète. Servez les articles individuellement ou actualisez avant de servir tout.",
+      "BATCH_RESULT": "{{served}} servis, {{remaining}} restants",
+      "RETRY_BATCH": "Reprendre le service",
+      "SERVE_ALL": "Servir tout ({{count}})",
+      "REVIEW_ALL": "Voir tous les articles prêts"
     },
     "CHECKOUT": {
       "TITLE": "Caisse",
@@ -4921,7 +4929,9 @@
       "BACK_TABLES": "Retour aux tables",
       "SELECT_TITLE": "Sélectionnez une table",
       "CURRENCY": "Montants en {{ currency }}",
-      "PAYMENT": "Encaissement"
+      "PAYMENT": "Encaissement",
+      "READY_TO_CLOSE": "Prête à clôturer",
+      "BACK_TO_CHECKOUT": "Retour à la caisse"
     },
     "RECEIPT": {
       "ISSUED": "Publication",
