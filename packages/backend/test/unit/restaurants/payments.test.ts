@@ -891,7 +891,7 @@ test("Payment contracts reject key leakage, inconsistent applied sum and cash ev
       await R.query(
         scope(),
         K.restaurantTransactionHistoryPK(org, f.outlet.id, "PAY", day),
-        "",
+        undefined,
         "PAYMENT_REFERENCE",
         { limit: 100 },
       )

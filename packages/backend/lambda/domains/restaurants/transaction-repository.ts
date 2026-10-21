@@ -406,13 +406,14 @@ export class RestaurantTransactionsRepository {
   static async query(
     scope: TransactionScope,
     pk: string,
-    prefix: string,
+    prefix: string | undefined,
     kind: TransactionKind,
     input: { limit: number; cursor?: string; direction?: "ASC" | "DESC" },
     extraScope: unknown = null,
     range?: { start: string; end: string },
   ): Promise<{ rows: TransactionRow[]; nextCursor?: string }> {
     if (
+      prefix === "" ||
       !pk.startsWith(
         K.restaurantTransactionScope(scope.orgId, scope.outletId) + "#",
       ) ||
@@ -424,7 +425,9 @@ export class RestaurantTransactionsRepository {
     const digest = transactionFingerprint([
       { orgId: scope.orgId, outletId: scope.outletId },
       pk,
-      prefix,
+      // Keep the cursor fingerprint compatible with the historical empty-prefix
+      // representation while using explicit absence for the Query expression.
+      prefix ?? "",
       kind,
       extraScope,
       input.direction ?? "ASC",
@@ -487,7 +490,7 @@ export class RestaurantTransactionsRepository {
           );
         const sk = cursorSK(cursor.id, cursor.timestamp);
         if (
-          !sk.startsWith(prefix) ||
+          (prefix !== undefined && !sk.startsWith(prefix)) ||
           (range && (sk < range.start || sk >= range.end))
         )
           throw Error();
@@ -501,7 +504,9 @@ export class RestaurantTransactionsRepository {
         TableName: restaurantsTableName(),
         KeyConditionExpression: range
           ? "PK = :pk AND SK BETWEEN :start AND :end"
-          : "PK = :pk AND begins_with(SK, :prefix)",
+          : prefix === undefined
+            ? "PK = :pk"
+            : "PK = :pk AND begins_with(SK, :prefix)",
         ExpressionAttributeValues: marshall(
           range
             ? {
@@ -509,7 +514,9 @@ export class RestaurantTransactionsRepository {
                 ":start": K.restaurantTransactionTimeBoundSK(range.start),
                 ":end": K.restaurantTransactionTimeBoundSK(range.end),
               }
-            : { ":pk": pk, ":prefix": prefix },
+            : prefix === undefined
+              ? { ":pk": pk }
+              : { ":pk": pk, ":prefix": prefix },
         ),
         ConsistentRead: true,
         ScanIndexForward: input.direction !== "DESC",
@@ -519,16 +526,24 @@ export class RestaurantTransactionsRepository {
     );
     const rows = (result.Items ?? []).map((raw) => {
       const k = unmarshall(raw);
-      if (k.PK !== pk || typeof k.SK !== "string" || !k.SK.startsWith(prefix))
+      if (
+        k.PK !== pk ||
+        typeof k.SK !== "string" ||
+        (prefix !== undefined && !k.SK.startsWith(prefix))
+      )
         throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
       return this.decode(scope, { PK: pk, SK: k.SK }, kind, raw);
     });
     let nextCursor: string | undefined;
     if (result.LastEvaluatedKey) {
       const k = unmarshall(result.LastEvaluatedKey);
-      if (k.PK !== pk || typeof k.SK !== "string" || !k.SK.startsWith(prefix))
+      if (
+        k.PK !== pk ||
+        typeof k.SK !== "string" ||
+        (prefix !== undefined && !k.SK.startsWith(prefix))
+      )
         throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
-      const logical = k.SK.slice(prefix.length);
+      const logical = prefix === undefined ? k.SK : k.SK.slice(prefix.length);
       let id: string, timestamp: string | undefined;
       try {
         if (kind === "PREPARATION" || kind === "WORK") {

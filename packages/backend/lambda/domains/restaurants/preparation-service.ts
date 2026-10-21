@@ -374,7 +374,7 @@ export class RestaurantPreparationService {
     const result = await R.query(
       s,
       K.restaurantWorkPK(s.orgId, s.outletId, stationId, state),
-      "",
+      undefined,
       "WORK",
       page,
     );

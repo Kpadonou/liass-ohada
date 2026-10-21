@@ -211,7 +211,7 @@ export class RestaurantTransactionQueries {
     const page = await R.query(
       scope,
       K.restaurantTransactionActivePK(scope.orgId, scope.outletId, kind),
-      "",
+      undefined,
       kind === "GS"
         ? "ACTIVE_SESSION"
         : kind === "ORD"
@@ -303,7 +303,7 @@ export class RestaurantTransactionQueries {
       const page = await R.query(
         scope,
         pk,
-        "",
+        undefined,
         query === "ORDER_HISTORY"
           ? "ORDER_HISTORY"
           : query === "TABLE_SESSION_HISTORY"

@@ -753,6 +753,89 @@ async function tableVisit() {
 }
 const queueRead = (stationId: string, input: object = {}) =>
   P.read(scope(), "cook", input, { stationId, state: "QUEUED" });
+
+test("partition-only preparation lane queries omit the empty SK prefix", async () => {
+  const task = await queued();
+  m.db.resetHistory();
+
+  await queueRead(task.stationId);
+
+  const laneQuery = m.db.commandCalls(QueryCommand)[0].args[0].input;
+  expect(laneQuery.KeyConditionExpression).toBe("PK = :pk");
+  expect(laneQuery.ExpressionAttributeValues).toEqual({
+    ":pk": {
+      S: K.restaurantWorkPK(org, f.outlet.id, task.stationId, "QUEUED"),
+    },
+  });
+  expect(laneQuery.ExpressionAttributeValues).not.toHaveProperty(":prefix");
+  expect(laneQuery.ExpressionAttributeValues).not.toHaveProperty(":skPrefix");
+});
+
+test("prefixed repository queries retain begins_with semantics", async () => {
+  const orderRecord = await order();
+  await add(orderRecord.orderId);
+  m.db.resetHistory();
+
+  await R.query(
+    scope(),
+    K.restaurantOrderPK(org, f.outlet.id, orderRecord.orderId),
+    K.restaurantOrderItemPrefix(),
+    "LINE",
+    { limit: 100 },
+  );
+
+  const query = m.db.commandCalls(QueryCommand)[0].args[0].input;
+  expect(query.KeyConditionExpression).toBe(
+    "PK = :pk AND begins_with(SK, :prefix)",
+  );
+  expect(query.ExpressionAttributeValues?.[":prefix"]).toEqual({ S: "OI#" });
+});
+
+test("empty repository prefix is rejected before a DynamoDB request", async () => {
+  m.db.resetHistory();
+  await expect(
+    R.query(
+      scope(),
+      K.restaurantWorkPK(org, f.outlet.id, f.stations[0].id, "QUEUED"),
+      "",
+      "WORK",
+      { limit: 50 },
+    ),
+  ).rejects.toMatchObject({ messageCode: "ERROR_INVALID_CURSOR" });
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(0);
+});
+
+test("partition-only lane reads succeed independently for every preparation state", async () => {
+  const task = await queued();
+  const readLane = (state: c.RestaurantPreparation["state"]) =>
+    P.read(
+      scope(),
+      "cook",
+      { limit: 50 },
+      { stationId: task.stationId, state },
+    );
+
+  expect((await readLane("QUEUED")).items).toHaveLength(1);
+  expect((await move(task, "START")).data.state).toBe("IN_PROGRESS");
+  expect((await readLane("IN_PROGRESS")).items).toHaveLength(1);
+  const current = tasks().find((row) => row.fireId === task.fireId)!;
+  expect((await move(current, "READY")).data.state).toBe("READY");
+  expect((await readLane("READY")).items).toHaveLength(1);
+
+  const laneQueries = m.db
+    .commandCalls(QueryCommand)
+    .filter((call) => call.args[0].input.KeyConditionExpression === "PK = :pk");
+  expect(laneQueries.length).toBeGreaterThanOrEqual(3);
+  expect(
+    laneQueries
+      .slice(-3)
+      .map((call) => call.args[0].input.ExpressionAttributeValues?.[":pk"]?.S),
+  ).toEqual([
+    K.restaurantWorkPK(org, f.outlet.id, task.stationId, "QUEUED"),
+    K.restaurantWorkPK(org, f.outlet.id, task.stationId, "IN_PROGRESS"),
+    K.restaurantWorkPK(org, f.outlet.id, task.stationId, "READY"),
+  ]);
+});
 const rawPatch = (
   key: { PK: string; SK: string },
   change: (
