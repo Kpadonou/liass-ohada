@@ -41,6 +41,12 @@ import { NotificationService } from '../../../../core/notifications/notification
 import { restaurantOperationalPrice } from '../../utils/restaurant-money';
 
 type Intent = { kind: OrderCommand; input: Record<string, unknown>; order?: string; item?: string };
+type DraftIntent = {
+  key: string;
+  target: c.RestaurantOrderItem;
+  canonical?: c.RestaurantOrderItem;
+  removed: boolean;
+};
 @Component({
   selector: 'liass-restaurant-order-composer',
   host: { class: 'block min-w-0' },
@@ -105,9 +111,7 @@ export class RestaurantOrderComposer {
   });
   readonly ordersQuery = injectInfiniteQuery(() => this.queries.orders(this.ctx(), this.live()));
   readonly orders = computed(() =>
-    this.ordersQuery.isSuccess()
-      ? this.ordersQuery.data()!.pages.flatMap((page) => page.items)
-      : [],
+    (this.ordersQuery.data()?.pages ?? []).flatMap((page) => page.items),
   );
   readonly candidates = computed(() => this.orders().filter((order) => this.editable(order)));
   readonly choice = signal<{ context: string; id: string } | null>(null);
@@ -125,17 +129,48 @@ export class RestaurantOrderComposer {
     this.queries.order(this.ctx(), this.selectedId(), this.live()),
   );
   readonly order = computed(() =>
-    this.orderQuery.isSuccess() && this.orderQuery.data()?.orderId === this.selectedId()
-      ? this.orderQuery.data()!
-      : null,
+    this.orderQuery.data()?.orderId === this.selectedId() ? this.orderQuery.data()! : null,
   );
   readonly itemsQuery = injectInfiniteQuery(() =>
     this.queries.items(this.ctx(), this.selectedId(), this.live()),
   );
   readonly lines = computed(() =>
-    this.itemsQuery.isSuccess() ? this.itemsQuery.data()!.pages.flatMap((page) => page.items) : [],
+    (this.itemsQuery.data()?.pages ?? []).flatMap((page) => page.items),
   );
-  readonly drafts = computed(() => this.lines().filter((line) => line.status === 'DRAFT'));
+  // Only unsynchronized workflow intent lives here. Query data remains canonical.
+  readonly draftIntents = signal<DraftIntent[]>([]);
+  readonly submitting = signal(false);
+  readonly syncFailed = signal(false);
+  private syncLane: Promise<void> | null = null;
+  private laneEpoch = 0;
+  private readonly lineKeys = new Map<string, string>();
+  private readonly draftPositions = new Map<string, number>();
+  readonly drafts = computed(() => {
+    const intents = this.draftIntents();
+    const canonical = this.lines().filter((line) => line.status === 'DRAFT');
+    const visible = [
+      ...canonical.flatMap((line) => {
+        const intent = intents.find((i) => i.canonical?.itemId === line.itemId);
+        return intent ? (intent.removed ? [] : [intent.target]) : [line];
+      }),
+      ...intents
+        .filter((i) => !i.removed && !canonical.some((line) => line.itemId === i.canonical?.itemId))
+        .map((i) => i.target),
+    ];
+    // Stable workflow positions survive canonical key ordering and ID reconciliation.
+    // This is presentation metadata, not a duplicate server collection.
+    for (const line of visible) {
+      const key = this.draftKey(line);
+      if (!this.draftPositions.has(key)) this.draftPositions.set(key, this.draftPositions.size);
+    }
+    return visible.sort(
+      (a, b) =>
+        this.draftPositions.get(this.draftKey(a))! - this.draftPositions.get(this.draftKey(b))!,
+    );
+  });
+  draftKey(line: c.RestaurantOrderItem) {
+    return this.lineKeys.get(line.itemId) ?? line.itemId;
+  }
   readonly rounds = computed(() => {
     const groups = new Map<string, c.RestaurantOrderItem[]>();
     for (const line of this.lines())
@@ -235,8 +270,9 @@ export class RestaurantOrderComposer {
     );
   }
   quantityInput(line: c.RestaurantOrderItem) {
-    let entry = this.quantityInputs.get(line.itemId);
-    if (!entry || entry.context !== this.identity() || entry.line.version !== line.version) {
+    const key = this.draftKey(line);
+    let entry = this.quantityInputs.get(key);
+    if (!entry || entry.context !== this.identity()) {
       entry = {
         control: new FormControl(String(line.quantity), {
           nonNullable: true,
@@ -251,19 +287,22 @@ export class RestaurantOrderComposer {
         orderVersion: this.order()?.version ?? 0,
         context: this.identity(),
       };
-      this.quantityInputs.set(line.itemId, entry);
+      this.quantityInputs.set(key, entry);
+    } else if (entry.line.quantity !== line.quantity) {
+      entry.line = { ...line };
+      entry.control.setValue(String(line.quantity));
     }
     return entry.control;
   }
   beginQuantity(line: c.RestaurantOrderItem) {
     this.quantityInput(line);
-    const entry = this.quantityInputs.get(line.itemId)!;
+    const entry = this.quantityInputs.get(this.draftKey(line))!;
     entry.line = { ...line };
     entry.orderVersion = this.order()?.version ?? 0;
     this.quantityError.set('');
   }
   async commitQuantity(line: c.RestaurantOrderItem) {
-    const entry = this.quantityInputs.get(line.itemId);
+    const entry = this.quantityInputs.get(this.draftKey(line));
     if (!entry || entry.context !== this.identity()) return;
     const value = Number(entry.control.value);
     if (entry.control.invalid) {
@@ -273,37 +312,38 @@ export class RestaurantOrderComposer {
       );
       return;
     }
-    // Reset immediately: Enter followed by blur must never enqueue the same edit twice.
-    entry.control.setValue(String(entry.line.quantity));
+    // Commit the local value once: Enter followed by blur is the same intent.
+    entry.control.setValue(String(value));
     if (value === entry.line.quantity) return;
-    await this.setQuantity(entry.line, value, entry.orderVersion);
+    const original = entry.line;
+    entry.line = { ...original, quantity: value };
+    await this.setQuantity(original, value);
   }
   readonly ready = computed(
     () =>
       this.live() &&
-      !this.busy() &&
-      !this.pending() &&
-      this.ordersQuery.isSuccess() &&
-      !this.ordersQuery.isFetching() &&
-      !this.ordersQuery.hasNextPage() &&
-      (!this.selectedId() ||
-        (this.order() &&
-          !this.orderQuery.isFetching() &&
-          this.itemsQuery.isSuccess() &&
-          !this.itemsQuery.isFetching() &&
-          !this.itemsQuery.hasNextPage())),
+      !this.submitting() &&
+      (!this.pending() || this.draftIntents().length > 0) &&
+      (this.draftIntents().length > 0 ||
+        (this.ordersQuery.isSuccess() &&
+          !this.ordersQuery.hasNextPage() &&
+          (!this.selectedId() ||
+            (!!this.order() && this.itemsQuery.isSuccess() && !this.itemsQuery.hasNextPage())))),
   );
   readonly canAdd = computed(
     () =>
       this.ready() &&
-      (this.candidates().length === 0 ||
-        (!!this.order() && this.editable(this.order()!) && this.drafts().length < 12)),
+      this.pending()?.kind !== 'submit' &&
+      this.drafts().length < 12 &&
+      (this.draftIntents().length > 0 ||
+        this.candidates().length === 0 ||
+        (!!this.order() && this.editable(this.order()!))),
   );
   readonly canSubmit = computed(
     () =>
       this.ready() &&
-      !!this.order() &&
-      this.editable(this.order()!) &&
+      this.pending()?.kind !== 'submit' &&
+      (this.draftIntents().length > 0 || !this.order() || this.editable(this.order()!)) &&
       this.drafts().length > 0 &&
       this.drafts().length <= 12,
   );
@@ -337,12 +377,11 @@ export class RestaurantOrderComposer {
       clearTimeout(this.focusTimer);
       const label = this.focusRequest(),
         identity = this.identity();
-      if (label === null || this.busy() || !this.live() || (!this.ready() && !this.pending()))
-        return;
+      if (label === null || !this.live() || (!this.ready() && !this.pending())) return;
       // Query observers can render again after invalidation resolves. Restore
       // focus only after that render burst, rather than focusing a removed node.
       this.focusTimer = setTimeout(() => {
-        if (!this.same(identity) || !this.live() || this.busy()) return;
+        if (!this.same(identity) || !this.live()) return;
         const target = label
           ? [...this.host.nativeElement.querySelectorAll<HTMLElement>('[aria-label]')].find(
               (el) => el.getAttribute('aria-label') === label && !el.matches(':disabled'),
@@ -413,6 +452,7 @@ export class RestaurantOrderComposer {
         this.names.set({});
         this.quantityInputs.clear();
         this.quantityError.set('');
+        this.clearDraftIntent();
         this.search.setValue('');
         this.storageKey = this.intentStorage();
         try {
@@ -460,6 +500,7 @@ export class RestaurantOrderComposer {
     });
     effect(() => {
       if (!this.accessValid() || this.session()?.status === 'CLOSED') {
+        this.clearDraftIntent();
         this.saveIntent(null);
         this.focusRequest.set(null);
       }
@@ -476,8 +517,11 @@ export class RestaurantOrderComposer {
         errors.some(
           (error) => error instanceof HttpErrorResponse && [401, 403, 404].includes(error.status),
         )
-      )
+      ) {
         this.denied.set(true);
+        this.saveIntent(null);
+        this.clearDraftIntent();
+      }
     });
   }
   private same(identity: string) {
@@ -495,7 +539,11 @@ export class RestaurantOrderComposer {
     );
   }
   name(line: c.RestaurantOrderItem) {
-    return this.names()[line.itemId] || this.t.translate('RESTAURANTS.ORDER_TAKING.UNKNOWN_ITEM');
+    return (
+      this.names()[this.draftKey(line)] ||
+      this.names()[line.itemId] ||
+      this.t.translate('RESTAURANTS.ORDER_TAKING.UNKNOWN_ITEM')
+    );
   }
   jump(id: 'draft-title' | 'menu-title') {
     const heading = this.host.nativeElement.querySelector<HTMLElement>('#' + id);
@@ -503,7 +551,8 @@ export class RestaurantOrderComposer {
     heading?.focus({ preventScroll: true });
   }
   choose(id: string) {
-    if (!this.busy() && !this.pending()) this.choice.set({ context: this.identity(), id });
+    if (!this.busy() && !this.pending() && !this.draftIntents().length)
+      this.choice.set({ context: this.identity(), id });
   }
   private equivalentDraft(
     item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>,
@@ -519,155 +568,262 @@ export class RestaurantOrderComposer {
   canAddItem(item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>) {
     const equivalent = this.equivalentDraft(item);
     return (
-      !this.addingItem() &&
       item.availability === 'AVAILABLE' &&
-      (equivalent
-        ? this.ready() &&
-          !!this.order() &&
-          this.editable(this.order()!) &&
-          Number.isSafeInteger(equivalent.quantity + 1)
-        : this.canAdd())
+      (equivalent ? this.ready() && equivalent.quantity < this.quantityMax : this.canAdd())
     );
   }
   async add(item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>) {
     if (!this.canAddItem(item)) return;
-    const identity = this.identity();
-    const focusLabel = document.activeElement?.getAttribute('aria-label');
-    this.addingItem.set(item.id);
-    try {
-      await this.performAdd(item);
-    } finally {
-      if (this.same(identity)) {
-        this.addingItem.set(null);
-        // A disabled Add button may lose native focus. Never steal focus from
-        // someone who continued browsing or changed category during the request.
-        if (
-          document.activeElement === document.body &&
-          focusLabel &&
-          [...this.host.nativeElement.querySelectorAll('[aria-label]')].some(
-            (el) => el.getAttribute('aria-label') === focusLabel,
-          )
-        )
-          this.focusRequest.set(focusLabel);
-      }
-    }
-  }
-  private async performAdd(
-    item: Pick<CarteItem, 'id' | 'name' | 'categoryId' | 'version' | 'availability'>,
-  ) {
     const equivalent = this.equivalentDraft(item);
     if (equivalent) {
       await this.quantity(equivalent, 1);
       return;
     }
-    let order = this.order() && this.editable(this.order()!) ? this.order() : null;
-    const ctx = this.ctx(),
-      identity = this.identity();
-    let created = false;
-    if (!order) {
-      const result = await this.run({
-        kind: 'create',
+    const key = crypto.randomUUID();
+    const target: c.RestaurantOrderItem = {
+      orgId: this.ctx().org,
+      outletId: this.outletId(),
+      schemaVersion: 1,
+      orderId: this.order() && this.editable(this.order()!) ? this.selectedId() : '',
+      itemId: key,
+      menuItemId: item.id,
+      categoryId: item.categoryId,
+      expectedMenuItemVersion: item.version,
+      quantity: 1,
+      status: 'DRAFT',
+      version: 1,
+      createdAt: new Date().toISOString(),
+    };
+    this.names.update((names) => ({ ...names, [key]: item.name }));
+    this.draftIntents.update((intents) => [...intents, { key, target, removed: false }]);
+    await this.synchronize();
+  }
+  private clearDraftIntent() {
+    this.laneEpoch++;
+    this.syncLane = null;
+    this.draftIntents.set([]);
+    this.lineKeys.clear();
+    this.draftPositions.clear();
+    this.syncFailed.set(false);
+    this.submitting.set(false);
+  }
+  private updateDraft(line: c.RestaurantOrderItem, quantity?: number) {
+    const existing = this.draftIntents().find((i) => i.target.itemId === line.itemId);
+    const intent = existing ?? {
+      key: this.draftKey(line),
+      target: line,
+      canonical: line,
+      removed: false,
+    };
+    const updated = {
+      ...intent,
+      target: { ...intent.target, quantity: quantity ?? intent.target.quantity },
+      removed: quantity === undefined,
+    };
+    this.draftIntents.update((intents) =>
+      existing ? intents.map((i) => (i === existing ? updated : i)) : [...intents, updated],
+    );
+    this.quantityInputs.get(this.draftKey(line))?.control.setValue(String(updated.target.quantity));
+  }
+  private synchronize(): Promise<void> {
+    if (this.syncLane) return this.syncLane;
+    if (this.syncFailed() || !this.live()) return Promise.resolve();
+    const epoch = this.laneEpoch;
+    const lane = this.drainDraft(epoch).finally(() => {
+      if (epoch === this.laneEpoch) this.syncLane = null;
+    });
+    this.syncLane = lane;
+    return lane;
+  }
+  private async drainDraft(epoch: number) {
+    let laneOrder = this.order();
+    while (epoch === this.laneEpoch && this.live() && !this.syncFailed()) {
+      const intent = this.draftIntents()[0];
+      if (!intent) return;
+      // Removed additions that never reached the server need no persistence command.
+      if (intent.removed && !intent.canonical && !this.pending()) {
+        this.draftIntents.update((rows) => rows.filter((i) => i.key !== intent.key));
+        continue;
+      }
+      let order = laneOrder
+        ? (this.queries.cachedOrder(this.ctx(), laneOrder.orderId) ?? laneOrder)
+        : this.order();
+      if (order && !this.editable(order) && (intent.canonical || intent.target.orderId)) {
+        this.message.set('CONFLICT');
+        this.syncFailed.set(true);
+        return;
+      }
+      if (!order || !this.editable(order) || this.pending()?.kind === 'create') {
+        const result = await this.run(
+          this.pending() ?? {
+            kind: 'create',
+            input: {
+              clientRequestId: crypto.randomUUID(),
+              orderType: 'DINE_IN',
+              guestSessionId: this.sessionId(),
+            },
+          },
+          true,
+        );
+        if (epoch !== this.laneEpoch || !this.live()) return;
+        if (!result || !('orderId' in result) || 'itemId' in result) {
+          this.syncFailed.set(true);
+          return;
+        }
+        laneOrder = result;
+        continue;
+      }
+      const baseline = intent.canonical;
+      if (baseline && !intent.removed && baseline.quantity === intent.target.quantity) {
+        this.draftIntents.update((rows) => rows.filter((i) => i.key !== intent.key));
+        continue;
+      }
+      const command: Intent = this.pending() ?? {
+        kind: !baseline ? 'add' : intent.removed ? 'remove' : 'edit',
+        order: order.orderId,
+        ...(baseline ? { item: baseline.itemId } : {}),
         input: {
           clientRequestId: crypto.randomUUID(),
-          orderType: 'DINE_IN',
-          guestSessionId: this.sessionId(),
+          expectedVersion: order.version,
+          ...(baseline ? { expectedItemVersion: baseline.version } : {}),
+          ...(intent.removed && baseline
+            ? { reason: this.t.translate('RESTAURANTS.ORDER_TAKING.REMOVAL_REASON') }
+            : {
+                menuItemId: intent.target.menuItemId,
+                categoryId: intent.target.categoryId,
+                quantity: intent.target.quantity,
+                notes: intent.target.notes,
+                expectedMenuItemVersion: intent.target.expectedMenuItemVersion,
+              }),
         },
-      });
-      if (
-        !result ||
-        !this.same(identity) ||
-        !('orderId' in result) ||
-        'itemId' in result ||
-        !this.live()
-      )
+      };
+      const result = await this.run(command, true);
+      if (epoch !== this.laneEpoch || !this.live()) return;
+      if (!result || !('itemId' in result)) {
+        this.syncFailed.set(true);
         return;
-      order = result;
-      created = true;
-      this.choice.set({ context: this.identity(), id: order.orderId });
-    }
-    const added = await this.run({
-      kind: 'add',
-      order: order.orderId,
-      input: {
-        clientRequestId: crypto.randomUUID(),
-        expectedVersion: order.version,
-        menuItemId: item.id,
-        categoryId: item.categoryId,
-        quantity: 1,
-        expectedMenuItemVersion: item.version,
-      },
-    });
-    if (created && this.same(identity)) {
-      if (!added) this.message.set('PARTIAL_CREATE');
-      await this.queries.changed(ctx, order.orderId, true, true);
+      }
+      laneOrder = this.queries.cachedOrder(this.ctx(), order.orderId) ?? order;
+      this.lineKeys.set(result.itemId, intent.key);
+      this.draftIntents.update((rows) =>
+        rows.flatMap((current) => {
+          if (current.key !== intent.key) return [current];
+          if (command.kind === 'remove') return [];
+          return [
+            {
+              ...current,
+              canonical: result,
+              target: { ...current.target, orderId: result.orderId },
+            },
+          ];
+        }),
+      );
     }
   }
   async quantity(line: c.RestaurantOrderItem, delta: number) {
-    await this.setQuantity(line, line.quantity + delta);
+    const current = this.drafts().find((row) => this.draftKey(row) === this.draftKey(line));
+    if (current) await this.setQuantity(current, current.quantity + delta);
   }
-  private async setQuantity(
-    line: c.RestaurantOrderItem,
-    value: number,
-    orderVersion = this.order()?.version,
-  ) {
-    const order = this.order();
+  private async setQuantity(line: c.RestaurantOrderItem, value: number) {
+    const current = this.drafts().find((row) => this.draftKey(row) === this.draftKey(line));
     if (
+      !current ||
       !this.ready() ||
-      !order ||
-      !this.editable(order) ||
-      line.orderId !== order.orderId ||
+      (this.order() && !this.editable(this.order()!) && !this.draftIntents().length) ||
       line.status !== 'DRAFT' ||
       !c.EditRestaurantDraftItemRequestSchema.shape.quantity.safeParse(value).success
     )
       return;
     this.quantityError.set('');
-    await this.run({
-      kind: 'edit',
-      order: order.orderId,
-      item: line.itemId,
-      input: {
-        clientRequestId: crypto.randomUUID(),
-        expectedVersion: orderVersion,
-        expectedItemVersion: line.version,
-        menuItemId: line.menuItemId,
-        categoryId: line.categoryId,
-        quantity: value,
-        notes: line.notes,
-        expectedMenuItemVersion: line.expectedMenuItemVersion,
-      },
-    });
+    this.updateDraft(current, value);
+    await this.synchronize();
   }
   async remove(line: c.RestaurantOrderItem) {
-    const order = this.order();
-    if (!this.ready() || !order || !this.editable(order) || line.status !== 'DRAFT') return;
-    await this.run({
-      kind: 'remove',
-      order: order.orderId,
-      item: line.itemId,
-      input: {
-        clientRequestId: crypto.randomUUID(),
-        expectedVersion: order.version,
-        expectedItemVersion: line.version,
-        reason: this.t.translate('RESTAURANTS.ORDER_TAKING.REMOVAL_REASON'),
-      },
-    });
+    const current = this.drafts().find((row) => this.draftKey(row) === this.draftKey(line));
+    if (!current || !this.ready() || current.status !== 'DRAFT') return;
+    if (document.activeElement?.closest('[data-testid="draft-line"]')) this.focusRequest.set('');
+    this.updateDraft(current);
+    await this.synchronize();
   }
   async submit() {
     if (!this.canSubmit()) return;
-    await this.run({
-      kind: 'submit',
-      order: this.order()!.orderId,
-      input: {
-        clientRequestId: crypto.randomUUID(),
-        expectedVersion: this.order()!.version,
-        items: this.drafts().map((line) => ({
-          itemId: line.itemId,
-          expectedVersion: line.version,
-        })),
-      },
-    });
+    const frozen = this.drafts().map((line) => ({
+      key: this.draftKey(line),
+      quantity: line.quantity,
+      menuItemId: line.menuItemId,
+      categoryId: line.categoryId,
+      notes: line.notes,
+      reviewed: line.expectedMenuItemVersion,
+    }));
+    this.submitting.set(true);
+    const epoch = this.laneEpoch;
+    try {
+      await this.synchronize();
+      if (
+        epoch !== this.laneEpoch ||
+        !this.live() ||
+        this.syncFailed() ||
+        this.draftIntents().length ||
+        !this.order() ||
+        !this.itemsQuery.isSuccess() ||
+        this.itemsQuery.hasNextPage()
+      )
+        return;
+      const canonical = this.drafts();
+      if (
+        canonical.length !== frozen.length ||
+        frozen.some(
+          (intended) =>
+            !canonical.some(
+              (line) =>
+                this.draftKey(line) === intended.key &&
+                line.quantity === intended.quantity &&
+                line.menuItemId === intended.menuItemId &&
+                line.categoryId === intended.categoryId &&
+                line.notes === intended.notes &&
+                line.expectedMenuItemVersion === intended.reviewed,
+            ),
+        )
+      ) {
+        this.message.set('CONFLICT');
+        return;
+      }
+      await this.run({
+        kind: 'submit',
+        order: this.order()!.orderId,
+        input: {
+          clientRequestId: crypto.randomUUID(),
+          expectedVersion: this.order()!.version,
+          items: this.drafts().map((line) => ({
+            itemId: line.itemId,
+            expectedVersion: line.version,
+          })),
+        },
+      });
+    } finally {
+      if (epoch === this.laneEpoch) this.submitting.set(false);
+    }
   }
   async retry() {
+    if (this.syncFailed() && this.live() && !this.busy()) {
+      const epoch = this.laneEpoch;
+      const identity = this.identity();
+      await this.queries.changed(this.ctx(), this.selectedId() || undefined, false);
+      if (epoch !== this.laneEpoch || !this.same(identity) || !this.live()) return;
+      // A definite conflict is retried only after an explicit user decision.
+      // An ambiguous command instead retains its exact original version/payload.
+      if (!this.pending())
+        this.draftIntents.update((rows) =>
+          rows.map((row) => {
+            const baseline = this.lines().find((line) => line.itemId === row.canonical?.itemId);
+            return baseline?.status === 'DRAFT' ? { ...row, canonical: baseline } : row;
+          }),
+        );
+      this.syncFailed.set(false);
+      this.message.set('');
+      await this.synchronize();
+      return;
+    }
     const intent = this.pending();
     if (!intent || this.busy() || !this.live()) return;
     const ctx = this.ctx(),
@@ -686,6 +842,12 @@ export class RestaurantOrderComposer {
       if (this.same(identity)) this.busy.set(false);
     }
   }
+  restoreDraft() {
+    if (!this.syncFailed() || this.pending() || this.busy() || !this.live()) return;
+    this.clearDraftIntent();
+    this.quantityInputs.clear();
+    this.message.set('CONFLICT');
+  }
   async refresh() {
     const ctx = this.ctx(),
       identity = this.identity();
@@ -695,7 +857,7 @@ export class RestaurantOrderComposer {
     ]);
     if (this.same(identity)) this.denied.set(false);
   }
-  private async run(intent: Intent) {
+  private async run(intent: Intent, background = false) {
     if (this.busy() || !this.live()) return null;
     const ctx = this.ctx(),
       identity = this.identity();
@@ -711,8 +873,7 @@ export class RestaurantOrderComposer {
         intent.order,
         intent.item,
       );
-      if (!this.same(identity)) return null;
-      this.saveIntent(null);
+      if (!this.same(identity) || !this.live()) return null;
       if (intent.kind === 'create' && 'orderId' in result)
         this.choice.set({ context: identity, id: result.orderId });
       await this.queries.changed(
@@ -723,7 +884,10 @@ export class RestaurantOrderComposer {
         intent.kind === 'submit',
       );
       await new Promise((resolve) => setTimeout(resolve, 0));
-      if (!this.same(identity)) return null;
+      if (!this.same(identity) || !this.live()) return null;
+      if (background && this.queries.draftReadFailed(ctx, intent.order ?? result.orderId))
+        throw new Error('Draft reconciliation failed');
+      this.saveIntent(null);
       if (intent.kind === 'submit')
         this.notifications.success(this.t.translate('RESTAURANTS.ORDER_TAKING.SUBMITTED'));
       return result;
@@ -733,6 +897,7 @@ export class RestaurantOrderComposer {
       if ([401, 403, 404].includes(status)) {
         this.denied.set(true);
         this.saveIntent(null);
+        this.clearDraftIntent();
       } else if (status >= 400 && status < 500) {
         this.saveIntent(null);
         this.message.set(
@@ -744,19 +909,26 @@ export class RestaurantOrderComposer {
             : 'REJECTED',
         );
       } else this.message.set(intent.kind === 'create' ? 'CREATE_RETRY' : 'RETRY');
-      this.notifications.error(
-        safeMessageFromError(error) ??
-          this.t.translate('RESTAURANTS.ORDER_TAKING.' + (this.message() || 'ACCESS')),
-      );
+      if (!background)
+        this.notifications.error(
+          safeMessageFromError(error) ??
+            this.t.translate('RESTAURANTS.ORDER_TAKING.' + (this.message() || 'ACCESS')),
+        );
       await Promise.allSettled([
-        this.queries.changed(ctx, intent.order, true, false, intent.kind === 'submit'),
+        this.queries.changed(
+          ctx,
+          intent.order,
+          intent.kind === 'submit',
+          true,
+          intent.kind === 'submit',
+        ),
         ...(this.message() === 'MENU_CONFLICT' ? [this.queries.menuChanged(ctx, '')] : []),
       ]);
       return null;
     } finally {
       if (this.same(identity)) {
         this.busy.set(false);
-        if (!this.addingItem()) this.focusRequest.set(focusLabel ?? '');
+        if (!background && !this.addingItem()) this.focusRequest.set(focusLabel ?? '');
       }
     }
   }

@@ -69,6 +69,18 @@ export class RestaurantOrdersQueries {
       refetchOnWindowFocus: true,
     });
   }
+  cachedOrder(ctx: ServiceOrderContext, order: string) {
+    return this.client.getQueryData<import('@liass-ohada/shared/restaurants').RestaurantOrder>(
+      this.key(ctx, 'order', order),
+    );
+  }
+  draftReadFailed(ctx: ServiceOrderContext, order: string) {
+    return ['orders', 'order', 'items'].some(
+      (kind) =>
+        this.client.getQueryState(this.key(ctx, kind, kind === 'orders' ? '' : order))?.status ===
+        'error',
+    );
+  }
   menu(ctx: ServiceOrderContext, enabled: boolean) {
     return queryOptions({
       queryKey: restaurantKeys.carteMenu(ctx.org, ctx.user, ctx.revision, ctx.outlet),

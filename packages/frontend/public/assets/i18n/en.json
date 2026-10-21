@@ -4805,6 +4805,8 @@
       "CREATE_RETRY": "Order creation was not confirmed. Orders have been refreshed; resume the same operation to avoid duplicates, then add the item.",
       "PARTIAL_CREATE": "This item addition was not confirmed. Check the draft before trying again.",
       "RETRY_INTENT": "Check and resume",
+      "SYNC_FAILED": "Some changes are not saved yet. Retry before leaving this table.",
+      "RESTORE_DRAFT": "Restore the saved draft",
       "REMOVAL_REASON": "Unconfirmed item removed",
       "STATUS": {
         "DRAFT": "Draft",

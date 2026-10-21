@@ -4805,6 +4805,8 @@
       "CREATE_RETRY": "La création n’a pas été confirmée. Les commandes sont actualisées ; reprenez la même opération pour éviter un doublon, puis ajoutez l’article.",
       "PARTIAL_CREATE": "L’ajout de cet article n’a pas été confirmé. Vérifiez le brouillon avant de réessayer.",
       "RETRY_INTENT": "Vérifier et reprendre",
+      "SYNC_FAILED": "Certaines modifications ne sont pas encore enregistrées. Réessayez avant de quitter cette table.",
+      "RESTORE_DRAFT": "Reprendre le brouillon enregistré",
       "REMOVAL_REASON": "Retrait d’un article non validé",
       "STATUS": {
         "DRAFT": "Brouillon",

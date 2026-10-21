@@ -33,7 +33,7 @@
         <p role="status" class="py-4 text-sm text-app-text-secondary">
           {{ 'RESTAURANTS.UI.LOADING' | transloco }}
         </p>
-      } @else if (ordersQuery.isError()) {
+      } @else if (ordersQuery.isError() && !ordersQuery.data()) {
         <div role="alert" class="space-y-2">
           <p>{{ 'RESTAURANTS.ORDER_TAKING.LOAD' | transloco }}</p>
           <button mat-stroked-button type="button" (click)="ordersQuery.refetch()">
@@ -62,25 +62,6 @@
           <p role="status" class="text-sm">
             {{ 'RESTAURANTS.ORDER_TAKING.CHOOSE_ORDER' | transloco }}
           </p>
-        }
-        @if (message()) {
-          <div
-            role="alert"
-            class="space-y-2 rounded-app-control border border-app-border bg-app-surface-muted p-3 text-sm"
-          >
-            <p>{{ 'RESTAURANTS.ORDER_TAKING.' + message() | transloco }}</p>
-            @if (pending()) {
-              <button
-                mat-stroked-button
-                type="button"
-                class="min-h-11"
-                [disabled]="busy()"
-                (click)="retry()"
-              >
-                {{ 'RESTAURANTS.ORDER_TAKING.RETRY_INTENT' | transloco }}
-              </button>
-            }
-          </div>
         }
         <div class="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:items-start">
           <liass-card
@@ -162,7 +143,6 @@
                           'RESTAURANTS.ORDER_TAKING.ADD_ITEM' | transloco: { name: item.name }
                         "
                         [disabled]="!canAddItem(item)"
-                        [attr.aria-busy]="addingItem() === item.id"
                         (click)="add(item)"
                       >
                         <mat-icon aria-hidden="true">add</mat-icon
@@ -233,9 +213,57 @@
                     {{ quantityError() }}
                   </p>
                 }
-                @if (selectedId() && (orderQuery.isPending() || itemsQuery.isPending())) {
+                @if (message()) {
+                  <div
+                    aria-live="polite"
+                    class="space-y-2 border-l-2 border-app-border pl-2 text-sm"
+                  >
+                    <p>
+                      {{
+                        (syncFailed()
+                          ? 'RESTAURANTS.ORDER_TAKING.SYNC_FAILED'
+                          : 'RESTAURANTS.ORDER_TAKING.' + message()
+                        ) | transloco
+                      }}
+                    </p>
+                    @if (syncFailed()) {
+                      <p class="text-xs text-app-text-secondary">
+                        {{ 'RESTAURANTS.ORDER_TAKING.' + message() | transloco }}
+                      </p>
+                    }
+                    @if (pending() || syncFailed()) {
+                      <button
+                        mat-stroked-button
+                        type="button"
+                        [disabled]="busy() || submitting()"
+                        (click)="retry()"
+                      >
+                        {{ 'RESTAURANTS.ORDER_TAKING.RETRY_INTENT' | transloco }}
+                      </button>
+                      @if (syncFailed() && !pending()) {
+                        <button
+                          mat-button
+                          type="button"
+                          class="liass-action-neutral"
+                          (click)="restoreDraft()"
+                        >
+                          {{ 'RESTAURANTS.ORDER_TAKING.RESTORE_DRAFT' | transloco }}
+                        </button>
+                      }
+                    }
+                  </div>
+                }
+                @if (
+                  !draftIntents().length &&
+                  selectedId() &&
+                  (orderQuery.isPending() || itemsQuery.isPending())
+                ) {
                   <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
-                } @else if (selectedId() && (itemsQuery.isError() || orderQuery.isError())) {
+                } @else if (
+                  selectedId() &&
+                  ((itemsQuery.isError() && !itemsQuery.data()) ||
+                    (orderQuery.isError() && !orderQuery.data()))
+                ) {
                   <p role="alert">{{ 'RESTAURANTS.ORDER_TAKING.LOAD' | transloco }}</p>
                   <button mat-stroked-button type="button" (click)="refresh()">
                     {{ 'RESTAURANTS.WORKSPACE.RETRY' | transloco }}
@@ -244,12 +272,8 @@
                   @if (order() && !editable(order()!)) {
                     <p class="text-sm">{{ 'RESTAURANTS.ORDER_TAKING.TERMINAL' | transloco }}</p>
                   }
-                  @for (line of drafts(); track line.itemId) {
-                    <div
-                      class="space-y-1 border-b border-app-border py-2"
-                      data-testid="draft-line"
-                      [attr.aria-busy]="busy() && pending()?.item === line.itemId"
-                    >
+                  @for (line of drafts(); track draftKey(line)) {
+                    <div class="space-y-1 border-b border-app-border py-2" data-testid="draft-line">
                       <p class="break-words text-sm font-medium">{{ name(line) }}</p>
                       @if (line.notes) {
                         <p class="break-words text-xs text-app-text-secondary">{{ line.notes }}</p>
@@ -265,9 +289,7 @@
                             [attr.aria-label]="
                               'RESTAURANTS.ORDER_TAKING.DECREASE' | transloco: { name: name(line) }
                             "
-                            [disabled]="
-                              !ready() || !order() || !editable(order()!) || line.quantity <= 1
-                            "
+                            [disabled]="!ready() || line.quantity <= 1"
                             (click)="quantity(line, -1)"
                           >
                             <mat-icon>remove</mat-icon>
@@ -280,7 +302,7 @@
                             autocomplete="off"
                             class="h-11 w-14 min-w-0 rounded-app-control border border-app-border bg-app-surface text-center text-sm font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
                             [formControl]="quantityInput(line)"
-                            [readOnly]="!ready() || !order() || !editable(order()!)"
+                            [readOnly]="!ready()"
                             [attr.aria-label]="
                               'RESTAURANTS.ORDER_TAKING.QUANTITY' | transloco: { name: name(line) }
                             "
@@ -296,12 +318,7 @@
                             [attr.aria-label]="
                               'RESTAURANTS.ORDER_TAKING.INCREASE' | transloco: { name: name(line) }
                             "
-                            [disabled]="
-                              !ready() ||
-                              !order() ||
-                              !editable(order()!) ||
-                              line.quantity >= quantityMax
-                            "
+                            [disabled]="!ready() || line.quantity >= quantityMax"
                             (click)="quantity(line, 1)"
                           >
                             <mat-icon>add</mat-icon>
@@ -317,7 +334,7 @@
                           [matTooltip]="
                             'RESTAURANTS.ORDER_TAKING.REMOVE_ITEM' | transloco: { name: name(line) }
                           "
-                          [disabled]="!ready() || !order() || !editable(order()!)"
+                          [disabled]="!ready()"
                           (click)="remove(line)"
                         >
                           <mat-icon aria-hidden="true">delete_outline</mat-icon
@@ -357,12 +374,12 @@
                         class="min-h-11 w-full sm:w-auto"
                         [disabled]="!canSubmit()"
                         (click)="submit()"
-                        [attr.aria-busy]="busy() && pending()?.kind === 'submit'"
+                        [attr.aria-busy]="submitting()"
                         data-testid="submit-round"
                       >
                         <mat-icon aria-hidden="true">check</mat-icon>
                         {{
-                          (busy() && pending()?.kind === 'submit'
+                          (submitting()
                             ? 'RESTAURANTS.ORDER_TAKING.SUBMIT_PENDING'
                             : 'RESTAURANTS.ORDER_TAKING.SUBMIT'
                           ) | transloco

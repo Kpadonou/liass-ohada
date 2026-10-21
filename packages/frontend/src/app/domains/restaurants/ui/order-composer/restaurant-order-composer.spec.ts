@@ -15,6 +15,17 @@ import { NotificationService } from '../../../../core/notifications/notification
 import { rid, row } from '../../data-access/restaurants.test-fixture';
 import { sessionFixture } from '../../data-access/responsible-staff.test-fixture';
 import { restaurantKeys } from '../../data-access/restaurants.queries';
+
+function holdNextCommand() {
+  const command = api.command.getMockImplementation()!;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  api.command.mockImplementationOnce(async (...args) => {
+    await gate;
+    return command(...args);
+  });
+  return () => release();
+}
 let orders: c.RestaurantOrder[], lines: c.RestaurantOrderItem[], seq: number;
 const org = signal('org'),
   user = signal('waiter'),
@@ -220,6 +231,211 @@ afterEach(() => {
   client.clear();
   TestBed.resetTestingModule();
 });
+it('projects four rapid increments immediately, ignores intermediate/refetched values and coalesces to two writes', async () => {
+  await draftInput();
+  const original = page.drafts()[0];
+  const release = holdNextCommand();
+  const before = api.command.mock.calls.length;
+  const actions = [];
+  for (let i = 2; i <= 5; i++) {
+    actions.push(page.quantity(original, 1));
+    fixture.detectChanges();
+    expect(page.drafts()[0].quantity).toBe(i);
+    expect(page.quantityInput(page.drafts()[0]).value).toBe(String(i));
+    expect(page.canSubmit()).toBe(true);
+    expect(page.canAddItem(item())).toBe(true);
+  }
+  await page.itemsQuery.refetch();
+  fixture.detectChanges();
+  expect(page.drafts()[0].quantity).toBe(5);
+  expect(api.command).toHaveBeenCalledTimes(before + 1);
+  release();
+  await Promise.all(actions);
+  await settle();
+  expect(lines[0].quantity).toBe(5);
+  expect(api.command.mock.calls.slice(before).map((call) => call[2].quantity)).toEqual([2, 5]);
+  expect(api.command.mock.calls.slice(before).map((call) => call[2].expectedVersion)).toEqual([
+    2, 3,
+  ]);
+});
+it('keeps the exact local row and control through Add then quantity before the Add response', async () => {
+  await settle();
+  orders.push(orderFixture());
+  await page.ordersQuery.refetch();
+  await settle();
+  const release = holdNextCommand();
+  const add = page.add(item());
+  fixture.detectChanges();
+  expect(page.drafts()).toHaveLength(1);
+  const local = page.drafts()[0];
+  const node = fixture.nativeElement.querySelector('[data-testid="draft-line"]');
+  const plus = [page.quantity(local, 1), page.quantity(local, 1)];
+  expect(page.drafts()[0].quantity).toBe(3);
+  release();
+  await Promise.all([add, ...plus]);
+  await settle();
+  fixture.detectChanges();
+  expect(page.drafts()).toHaveLength(1);
+  expect(lines[0].quantity).toBe(3);
+  expect(fixture.nativeElement.querySelector('[data-testid="draft-line"]')).toBe(node);
+});
+it('does not resurrect an Add removed before its response and performs one compensating removal', async () => {
+  await draftInput();
+  const release = holdNextCommand();
+  const before = api.command.mock.calls.length;
+  const add = page.add({ ...item(), id: rid(100) });
+  const local = page.drafts().find((line) => line.menuItemId === rid(100))!;
+  const remove = page.remove(local);
+  expect(page.drafts().some((line) => line.menuItemId === rid(100))).toBe(false);
+  release();
+  await Promise.all([add, remove]);
+  await settle();
+  expect(lines.find((line) => line.menuItemId === rid(100))?.status).toBe('CANCELLED');
+  expect(api.command.mock.calls.slice(before).map((call) => call[1])).toEqual(['add', 'remove']);
+});
+it('drops an unsent Add/Remove locally while another row writes', async () => {
+  await draftInput();
+  const release = holdNextCommand();
+  const before = api.command.mock.calls.length;
+  const edit = page.quantity(page.drafts()[0], 1);
+  const add = page.add({ ...item(), id: rid(100) });
+  const remove = page.remove(page.drafts().find((line) => line.menuItemId === rid(100))!);
+  release();
+  await Promise.all([edit, add, remove]);
+  expect(api.command.mock.calls.slice(before).map((call) => call[1])).toEqual(['edit']);
+});
+it('coalesces +/- reversal and direct entry, then Submit drains the frozen latest target', async () => {
+  await draftInput();
+  const release = holdNextCommand();
+  const line = page.drafts()[0];
+  const before = api.command.mock.calls.length;
+  const actions = [page.quantity(line, 1), page.quantity(line, 1), page.quantity(line, -1)];
+  expect(page.drafts()[0].quantity).toBe(2);
+  page.beginQuantity(page.drafts()[0]);
+  page.quantityInput(page.drafts()[0]).setValue('8');
+  actions.push(page.commitQuantity(page.drafts()[0]));
+  expect(page.drafts()[0].quantity).toBe(8);
+  const submit = page.submit();
+  expect(page.submitting()).toBe(true);
+  await page.quantity(page.drafts()[0], 1);
+  expect(page.drafts()[0].quantity).toBe(8);
+  expect(api.command.mock.calls.slice(before).map((call) => call[1])).toEqual(['edit']);
+  expect(page.rounds()).toHaveLength(0);
+  release();
+  await Promise.all([...actions, submit]);
+  await settle();
+  expect(api.command.mock.calls.slice(before).map((call) => call[1])).toEqual([
+    'edit',
+    'edit',
+    'submit',
+  ]);
+  expect(lines[0].snapshot?.quantity).toBe(8);
+});
+it('keeps local intent after ambiguous sync and replays exact payload before applying newer intent', async () => {
+  await draftInput();
+  const command = api.command.getMockImplementation()!;
+  let committed: c.RestaurantOrderItem | undefined;
+  let request: unknown;
+  api.command.mockImplementationOnce(async (...args) => {
+    request = args[2];
+    committed = await command(...args);
+    throw new HttpErrorResponse({ status: 0 });
+  });
+  await page.quantity(page.drafts()[0], 1);
+  expect(page.syncFailed()).toBe(true);
+  expect(page.drafts()[0].quantity).toBe(2);
+  await page.quantity(page.drafts()[0], 1);
+  expect(page.drafts()[0].quantity).toBe(3);
+  api.command.mockImplementationOnce(async (...args) => {
+    expect(args[2]).toEqual(request);
+    return committed!;
+  });
+  await page.retry();
+  await settle();
+  expect(page.syncFailed()).toBe(false);
+  expect(lines[0].quantity).toBe(3);
+});
+it('hides and clears the optimistic overlay on access revocation before a delayed response', async () => {
+  await draftInput();
+  const release = holdNextCommand();
+  const action = page.quantity(page.drafts()[0], 1);
+  fixture.componentRef.setInput('accessValid', false);
+  fixture.detectChanges();
+  expect(page.draftIntents()).toHaveLength(0);
+  expect(fixture.nativeElement.querySelector('[data-testid="order-taking"]')).toBeNull();
+  release();
+  await action;
+  expect(page.draftIntents()).toHaveLength(0);
+});
+it('does not submit a concurrently introduced draft outside the frozen submission intent', async () => {
+  await draftInput();
+  const release = holdNextCommand();
+  const edit = page.quantity(page.drafts()[0], 1);
+  const submit = page.submit();
+  lines.push({ ...lines[0], itemId: rid(101), menuItemId: rid(102) });
+  release();
+  await Promise.all([edit, submit]);
+  expect(api.command.mock.calls.some((call) => call[1] === 'submit')).toBe(false);
+  expect(page.message()).toBe('CONFLICT');
+  expect(page.rounds()).toHaveLength(0);
+});
+it('keeps sync failures local and lets the user explicitly restore canonical draft after a rejection', async () => {
+  await draftInput();
+  const invalidate = vi.spyOn(client, 'invalidateQueries');
+  api.command.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
+  await page.quantity(page.drafts()[0], 1);
+  fixture.detectChanges();
+  expect(page.drafts()[0].quantity).toBe(2);
+  expect(page.syncFailed()).toBe(true);
+  expect(invalidate).not.toHaveBeenCalledWith({
+    queryKey: restaurantKeys.session('org', rid(2), rid(9), 'waiter'),
+    exact: true,
+  });
+  expect(invalidate).not.toHaveBeenCalledWith({
+    queryKey: restaurantKeys.floor('org', rid(2)),
+    exact: true,
+  });
+  page.restoreDraft();
+  expect(page.drafts()[0].quantity).toBe(1);
+  expect(page.syncFailed()).toBe(false);
+  expect(page.message()).toBe('CONFLICT');
+});
+it('keeps optimistic row position when canonical items return in a different key order', async () => {
+  await draftInput();
+  const release = holdNextCommand();
+  const add = page.add({ ...item(), id: rid(100) });
+  fixture.detectChanges();
+  const positions = page.drafts().map((line) => line.menuItemId);
+  const nodes = [...fixture.nativeElement.querySelectorAll('[data-testid="draft-line"]')];
+  api.items.mockImplementation(async (_ctx, id) => ({
+    items: lines
+      .filter((line) => line.orderId === id)
+      .map((line) => ({ ...line }))
+      .reverse(),
+  }));
+  release();
+  await add;
+  await settle();
+  fixture.detectChanges();
+  expect(page.drafts().map((line) => line.menuItemId)).toEqual(positions);
+  expect([...fixture.nativeElement.querySelectorAll('[data-testid="draft-line"]')]).toEqual(nodes);
+});
+it('retains cached siblings and local targets when post-command reconciliation fails', async () => {
+  await draftInput();
+  const prior = page.drafts()[0];
+  await page.add({ ...item(), id: rid(100) });
+  await settle();
+  api.items.mockRejectedValue(new HttpErrorResponse({ status: 503 }));
+  const node = fixture.nativeElement.querySelector('#draft-title');
+  await page.quantity(prior, 1);
+  fixture.detectChanges();
+  expect(page.syncFailed()).toBe(true);
+  expect(page.drafts()).toHaveLength(2);
+  expect(page.drafts().find((row) => row.menuItemId === prior.menuItemId)?.quantity).toBe(2);
+  expect(fixture.nativeElement.querySelector('#draft-title')).toBe(node);
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="draft-line"]')).toHaveLength(2);
+  expect(page.canSubmit()).toBe(true);
+});
 it('does not create on load; lazily creates once then reuses the same Order across rounds', async () => {
   expect(api.command).not.toHaveBeenCalled();
   await settle();
@@ -280,10 +496,11 @@ it('recovers create success + add failure without another Order', async () => {
   await page.add(item());
   fixture.detectChanges();
   expect(orders).toHaveLength(1);
-  expect(page.message()).toBe('PARTIAL_CREATE');
+  expect(page.message()).toBe('CONFLICT');
+  expect(page.drafts()).toHaveLength(1);
   api.command.mockImplementation(command);
   await settle();
-  await page.add(item());
+  await page.retry();
   await settle();
   expect(orders).toHaveLength(1);
   expect(lines).toHaveLength(1);
@@ -294,7 +511,7 @@ it('holds an ambiguous create identity and reconciles before replay', async () =
   await page.add(item());
   const intent = page.pending()!;
   expect(intent.kind).toBe('create');
-  expect(page.canAdd()).toBe(false);
+  expect(page.canAdd()).toBe(true);
   await page.retry();
   fixture.detectChanges();
   expect(api.command.mock.calls[1][2].clientRequestId).toBe(intent.input['clientRequestId']);
@@ -403,6 +620,7 @@ it('blocks repeated submit clicks and preserves the original request identity af
   const before = api.command.mock.calls.length;
   const first = page.submit();
   await page.submit();
+  await vi.waitFor(() => expect(api.command).toHaveBeenCalledTimes(before + 1));
   expect(api.command).toHaveBeenCalledTimes(before + 1);
   reject(new HttpErrorResponse({ status: 0 }));
   await first;
@@ -803,7 +1021,7 @@ it('retains Menu, draft and Order selection through command reconciliation witho
     expect(page.ordersQuery.isFetching()).toBe(true);
   });
   expect(page.selectedId()).toBe(selected);
-  expect(page.ready()).toBe(false);
+  expect(page.ready()).toBe(true);
   expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
   expect(fixture.nativeElement.querySelector('#draft-title')).toBe(draftNode);
   expect(fixture.nativeElement.querySelector('input[aria-label="Quantité de Beer"]')).toBe(input);
@@ -832,7 +1050,7 @@ it('uses non-submitting controls and search Enter never commands or navigates', 
 });
 
 it.each(['lazy', 'existing'] as const)(
-  'keeps %s Add pending local and prevents duplicate intent',
+  'keeps %s Add immediately usable and coalesces repeated intent',
   async (mode) => {
     if (mode === 'existing') await draftInput();
     else
@@ -865,24 +1083,24 @@ it.each(['lazy', 'existing'] as const)(
     const button = fixture.nativeElement.querySelector(
       'button[aria-label="Ajouter Beer"]',
     ) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-    expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.disabled).toBe(false);
+    expect(button.hasAttribute('aria-busy')).toBe(false);
     expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
     expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
     expect(fixture.nativeElement.querySelector('#draft-title')).toBe(draftNode);
     expect(page.search.enabled).toBe(true);
-    await page.add(item());
+    const second = page.add(item());
     expect(api.command).toHaveBeenCalledTimes(before + 1);
     release();
-    await action;
+    await Promise.all([action, second]);
     await settle();
     expect(page.addingItem()).toBeNull();
-    expect(page.drafts()[0].quantity).toBe(mode === 'existing' ? 2 : 1);
+    expect(page.drafts()[0].quantity).toBe(mode === 'existing' ? 3 : 2);
     expect(
       fixture.nativeElement
         .querySelector('button[aria-label="Ajouter Beer"]')
         .getAttribute('aria-busy'),
-    ).toBe('false');
+    ).toBeNull();
   },
 );
 it('restores local Add pending state after failure and retains actionable feedback', async () => {
@@ -1094,7 +1312,9 @@ it.each(['increase', 'decrease', 'entry', 'remove'] as const)(
     });
     expect(fixture.nativeElement.textContent).not.toContain('Enregistrement en cours');
     expect(fixture.nativeElement.querySelector('#menu-title')).toBe(menuNode);
-    expect(fixture.nativeElement.querySelector('[data-testid="draft-line"]')).toBe(draftNode);
+    expect(fixture.nativeElement.querySelector('[data-testid="draft-line"]')).toBe(
+      action === 'remove' ? null : draftNode,
+    );
     expect(page.search.enabled).toBe(true);
     release();
     await promise;
