@@ -1,3 +1,5 @@
+import { Template } from "aws-cdk-lib/assertions";
+import { RestaurantsGuestEndpoints } from "../../../lib/constructs/domains/restaurants-guest-endpoints";
 import * as cdk from "aws-cdk-lib";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as cognito from "aws-cdk-lib/aws-cognito";
@@ -16,6 +18,27 @@ import {
   RestaurantsApiStack,
   TreasuryApiStack,
 } from "../../../lib/stacks/api-domain-stacks";
+
+const FROZEN_GUEST_ROUTES = [
+  ["GET", "/public/restaurants/guest/carte"],
+  ["POST", "/public/restaurants/guest/submissions"],
+  ["GET", "/public/restaurants/guest/state"],
+  ["POST", "/public/restaurants/guest/waiter-call"],
+  ["GET", "/restaurants/outlets/{outletId}/guest-activity"],
+  [
+    "GET",
+    "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests",
+  ],
+  [
+    "POST",
+    "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests/{requestId}/approve",
+  ],
+  [
+    "POST",
+    "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests/{requestId}/reject",
+  ],
+  ["POST", "/restaurants/outlets/{outletId}/waiter-calls/{callId}/acknowledge"],
+];
 
 jest.mock("aws-cdk-lib/aws-lambda-nodejs", () => {
   const lambda = jest.requireActual<typeof import("aws-cdk-lib/aws-lambda")>(
@@ -371,7 +394,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(81);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(84);
+    ).toHaveLength(81);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -433,13 +456,13 @@ describe("API stack decomposition", () => {
       expect(cdk.Stack.of(fn).resolve(fn.role)).toEqual(
         cdk.Stack.of(fn).resolve(executionRole.roleArn),
       );
-    const publicPolicy = owned.find(
-      (item): item is iam.CfnPolicy =>
-        item instanceof iam.CfnPolicy && item.node.path.includes("PublicRole"),
+    const publicRole = owned.find(
+      (item): item is iam.CfnRole =>
+        item instanceof iam.CfnRole && item.node.path.includes("PublicRole"),
     )!;
-    const publicDocument = cdk.Stack.of(publicPolicy).resolve(
-      publicPolicy.policyDocument,
-    );
+    const policies = cdk.Stack.of(publicRole).resolve(publicRole.policies);
+    expect(policies).toHaveLength(1);
+    const publicDocument = policies[0].policyDocument;
     const publicActions = publicDocument.Statement.flatMap(
       (entry: { Action: string | string[] }) =>
         Array.isArray(entry.Action) ? entry.Action : [entry.Action],
@@ -681,5 +704,235 @@ describe("API stack decomposition", () => {
             !lambdaEnvironmentVariable(fn, "CABINET_INVITATION_EXPOSE_TOKEN"),
         ),
     ).toBe(true);
+  });
+  test("bounds Guest invocation to the exact API/stage and rejects unrelated routes", () => {
+    const guest = constructs.find(
+      (item): item is RestaurantsGuestEndpoints =>
+        item instanceof RestaurantsGuestEndpoints,
+    )!;
+    const permissions = guest.node
+      .findAll()
+      .filter(
+        (item): item is lambda.CfnPermission =>
+          item instanceof lambda.CfnPermission,
+      );
+    expect(permissions).toHaveLength(2);
+    const arn = (permission: lambda.CfnPermission) => {
+      const resolved = cdk.Stack.of(permission).resolve(permission.sourceArn);
+      expect(resolved["Fn::Join"][0]).toBe("");
+      return resolved["Fn::Join"][1]
+        .map((part: unknown) =>
+          typeof part === "string"
+            ? part
+            : (part as { Ref?: string }).Ref === "AWS::Partition"
+              ? "aws"
+              : "review-api",
+        )
+        .join("");
+    };
+    const publicPermission = permissions.find(
+      (p) => p.node.id === "PublicGuestInvoke",
+    )!;
+    const staffPermission = permissions.find(
+      (p) => p.node.id === "StaffQrInvoke",
+    )!;
+    const publicArn = arn(publicPermission),
+      staffArn = arn(staffPermission);
+    expect(publicArn).toBe(
+      "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/public/restaurants/guest/*",
+    );
+    expect(staffArn).toBe(
+      "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/restaurants/outlets/*/service-areas/*/tables/*/qr/*",
+    );
+    for (const permission of permissions) {
+      expect(permission.principal).toBe("apigateway.amazonaws.com");
+      expect(permission.action).toBe("lambda:InvokeFunction");
+      expect(permission.sourceAccount).toBe("123456789012");
+    }
+    expect(
+      cdk.Stack.of(publicPermission).resolve(publicPermission.functionName),
+    ).not.toEqual(
+      cdk.Stack.of(staffPermission).resolve(staffPermission.functionName),
+    );
+    const matches = (pattern: string, candidate: string) =>
+      new RegExp(
+        "^" +
+          pattern
+            .split("*")
+            .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+            .join(".*") +
+          "$",
+      ).test(candidate);
+    const routeArn = (method: string, path: string) =>
+      `arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/${method}${path}`;
+    for (const route of constructs.filter(
+      (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+    )) {
+      const [method, path] = String(route.routeKey).split(" ");
+      expect(matches(publicArn, routeArn(method, path))).toBe(
+        path.startsWith("/public/restaurants/guest/"),
+      );
+      expect(matches(staffArn, routeArn(method, path))).toBe(
+        path.endsWith("/qr/status") ||
+          path.endsWith("/qr/rotate") ||
+          path.endsWith("/qr/revoke"),
+      );
+    }
+    for (const pattern of [publicArn, staffArn]) {
+      expect(matches(pattern, pattern.replace("review-api", "other-api"))).toBe(
+        false,
+      );
+      expect(
+        matches(pattern, pattern.replace("/$default/", "/other-stage/")),
+      ).toBe(false);
+      expect(
+        matches(
+          pattern,
+          routeArn("POST", "/restaurants/outlets/outlet/orders/order/close"),
+        ),
+      ).toBe(false);
+    }
+  });
+
+  test("synthesizes the nine frozen future routes with two existing integrations and eleven resources", () => {
+    // Projection fixture only: these routes are never registered by the deployment app.
+    const fixtureApp = new cdk.App({
+      context: { authUseSecretsManager: true },
+    });
+    const fixture = new LiassOhadaBackendStack(fixtureApp, "Projection", {
+      stage: "dev",
+      env: { account: "123456789012", region: "eu-west-3" },
+    });
+    const all = fixture.node.findAll();
+    const guest = all.find(
+      (item): item is RestaurantsGuestEndpoints =>
+        item instanceof RestaurantsGuestEndpoints,
+    )!;
+    const owner = cdk.Stack.of(guest);
+    const before = Template.fromStack(
+      constructs.find(
+        (item) => item instanceof RestaurantsApiStack,
+      ) as RestaurantsApiStack,
+    ).toJSON();
+    const firstStaff = guest.node
+      .findAll()
+      .find(
+        (item): item is apigwv2.HttpRoute =>
+          item instanceof apigwv2.HttpRoute &&
+          String(
+            (item.node.defaultChild as apigwv2.CfnRoute).routeKey,
+          ).startsWith("GET "),
+      )!;
+    const staffCfn = firstStaff.node.defaultChild as apigwv2.CfnRoute;
+    const httpApi = firstStaff.httpApi;
+    for (const [index, [method, routePath]] of FROZEN_GUEST_ROUTES.entries()) {
+      const isPublic = routePath.startsWith("/public/");
+      new apigwv2.HttpRoute(guest, `ProjectionRoute${index}`, {
+        httpApi,
+        routeKey: apigwv2.HttpRouteKey.with(
+          routePath,
+          method as apigwv2.HttpMethod,
+        ),
+        integration: isPublic
+          ? guest.publicIntegration
+          : guest.staffIntegration,
+        authorizer: isPublic
+          ? new apigwv2.HttpNoneAuthorizer()
+          : {
+              bind: () => ({
+                authorizationType: apigwv2.HttpAuthorizerType.JWT,
+                authorizerId: staffCfn.authorizerId!,
+              }),
+            },
+      });
+    }
+    const staffFunction = guest.node
+      .findAll()
+      .find(
+        (item): item is lambda.Function =>
+          item instanceof lambda.Function &&
+          (item.node.defaultChild as lambda.CfnFunction).functionName ===
+            "liass-ohada-dev-restaurants-guest-qr-staff",
+      )!;
+    for (const [index, [method, path]] of [
+      ["*", "/restaurants/outlets/*/guest-*"],
+      ["POST", "/restaurants/outlets/*/waiter-calls/*/acknowledge"],
+    ].entries())
+      staffFunction.addPermission(`FutureScope${index}`, {
+        principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+        sourceAccount: owner.account,
+        sourceArn: httpApi.arnForExecuteApi(
+          method,
+          path,
+          httpApi.defaultStage!.stageName,
+        ),
+      });
+    const futurePermissionPatterns = [
+      "*/restaurants/outlets/*/service-areas/*/tables/*/qr/*",
+      "*/restaurants/outlets/*/guest-*",
+      "POST/restaurants/outlets/*/waiter-calls/*/acknowledge",
+    ];
+    const matchesStaff = (method: string, routePath: string) =>
+      futurePermissionPatterns.some((pattern) =>
+        new RegExp(
+          "^" +
+            pattern
+              .split("*")
+              .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+              .join(".*") +
+            "$",
+        ).test(method + routePath),
+      );
+    for (const [method, routePath] of FROZEN_GUEST_ROUTES)
+      expect(matchesStaff(method, routePath)).toBe(
+        !routePath.startsWith("/public/"),
+      );
+    for (const item of constructs.filter(
+      (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+    )) {
+      const [method, path] = String(item.routeKey).split(" ");
+      expect(matchesStaff(method, path)).toBe(
+        path.endsWith("/qr/rotate") ||
+          path.endsWith("/qr/revoke") ||
+          path.endsWith("/qr/status"),
+      );
+    }
+    expect(
+      matchesStaff(
+        "GET",
+        "/restaurants/outlets/outlet/waiter-calls/call/acknowledge",
+      ),
+    ).toBe(false);
+    for (const route of guest.node
+      .findAll()
+      .filter(
+        (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+      )) {
+      const publicRoute = String(route.routeKey).includes(" /public/");
+      expect(route.authorizationType).toBe(publicRoute ? "NONE" : "JWT");
+      if (!publicRoute) expect(route.authorizerId).toBe(staffCfn.authorizerId);
+    }
+    const after = Template.fromStack(owner).toJSON();
+    expect(
+      Object.keys(after.Resources).length -
+        Object.keys(before.Resources).length,
+    ).toBe(11);
+    expect(Object.keys(after.Resources).length).toBeLessThanOrEqual(343);
+    const typeCount = (template: typeof after, type: string) =>
+      Object.values(template.Resources).filter(
+        (r) => (r as { Type: string }).Type === type,
+      ).length;
+    expect(typeCount(after, "AWS::ApiGatewayV2::Integration")).toBe(
+      typeCount(before, "AWS::ApiGatewayV2::Integration"),
+    );
+    expect(typeCount(after, "AWS::Lambda::Function")).toBe(
+      typeCount(before, "AWS::Lambda::Function"),
+    );
+    for (const type of [
+      "AWS::IAM::Role",
+      "AWS::IAM::Policy",
+      "AWS::SecretsManager::Secret",
+    ])
+      expect(typeCount(after, type)).toBe(typeCount(before, type));
   });
 });

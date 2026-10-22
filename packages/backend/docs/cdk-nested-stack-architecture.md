@@ -23,20 +23,57 @@ The purpose of nesting is not necessarily to reduce the application's total numb
 
 The following counts reflect the RESTO-1A/B local synthesis (2026-10-10); the synthesized templates and the resource-count command are the source of truth after every infrastructure change.
 
-| Owner | Current template size | Owns |
-| --- | ---: | --- |
-| API core | 278 | The single shared HTTP API, shared authorizers, Cognito User Pool and related shared identity infrastructure, the currently shared Lambda execution role, shared API configuration and outputs, shared environment references, the existing DynamoDB table reference, nested-stack declarations, and genuinely shared cross-domain resources. It is not the default destination for new domain endpoints. |
-| Accounting nested stack (`AccountingApiStack`) | 51 | Chart of accounts, journals, accounting entries and movements, general ledger, journal book, third parties, auxiliary ledger, lettering, fiscal years, accounting periods, closing, accounting reports and summaries, and future accounting-domain APIs. |
-| Identity/Cabinet nested stack (`IdentityApiStack`) | 81 | Authentication-adjacent application endpoints, workspace discovery, user profiles, onboarding, cabinet dossiers, members, roles, invitations, dossier assignments, pre-tenant invitation acceptance, and future Cabinet administration APIs. |
-| Sales nested stack (`SalesApiStack`) | 161 | Thirty-seven SALES Customer, Catalog, Invoice, Payment, Receivable, Credit Note and private commercial-document Lambdas; future SALES-owned endpoints. |
-| Restaurants nested stack (`RestaurantsApiStack`) | 153 | Thirty-eight RESTAURANTS setup/menu configuration Lambdas, JWT routes, integrations and permissions; future restaurant operational APIs. No restaurant stateful infrastructure is duplicated. |
-| Projects nested stack (`ProjectApiStack`) | 12 | Projects, SYCEBNL analytical dimensions, budgets, budget lines, funding sources, donors, project reporting, and future project-domain APIs. |
-| Treasury nested stack (`TreasuryApiStack`) | 11 | Treasury accounts and transactions, bank statement imports and lines, reconciliation and its history, treasury summaries, and future treasury-domain APIs. |
-| Fiscal Compliance nested stack (`FiscalComplianceApiStack`) | 41 | Ten local fiscal profile, connection, readiness and certification-preparation endpoints. Durable growth includes jurisdiction adapters, provider evidence and safe recovery; no provider calls or secret resources in S4B. |
-| Data stack | 4 | Existing stateful data infrastructure: the shared DynamoDB table and the retained private application document bucket with its TLS-only bucket policy. |
-| Root stack | ~1 | Top-level stack composition. |
+| Owner                                                       | Current template size | Owns                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------------------------------- | --------------------: | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API core                                                    |                   278 | The single shared HTTP API, shared authorizers, Cognito User Pool and related shared identity infrastructure, the currently shared Lambda execution role, shared API configuration and outputs, shared environment references, the existing DynamoDB table reference, nested-stack declarations, and genuinely shared cross-domain resources. It is not the default destination for new domain endpoints. |
+| Accounting nested stack (`AccountingApiStack`)              |                    51 | Chart of accounts, journals, accounting entries and movements, general ledger, journal book, third parties, auxiliary ledger, lettering, fiscal years, accounting periods, closing, accounting reports and summaries, and future accounting-domain APIs.                                                                                                                                                  |
+| Identity/Cabinet nested stack (`IdentityApiStack`)          |                    81 | Authentication-adjacent application endpoints, workspace discovery, user profiles, onboarding, cabinet dossiers, members, roles, invitations, dossier assignments, pre-tenant invitation acceptance, and future Cabinet administration APIs.                                                                                                                                                              |
+| Sales nested stack (`SalesApiStack`)                        |                   161 | Thirty-seven SALES Customer, Catalog, Invoice, Payment, Receivable, Credit Note and private commercial-document Lambdas; future SALES-owned endpoints.                                                                                                                                                                                                                                                    |
+| Restaurants nested stack (`RestaurantsApiStack`)            |                   153 | Thirty-eight RESTAURANTS setup/menu configuration Lambdas, JWT routes, integrations and permissions; future restaurant operational APIs. No restaurant stateful infrastructure is duplicated.                                                                                                                                                                                                             |
+| Projects nested stack (`ProjectApiStack`)                   |                    12 | Projects, SYCEBNL analytical dimensions, budgets, budget lines, funding sources, donors, project reporting, and future project-domain APIs.                                                                                                                                                                                                                                                               |
+| Treasury nested stack (`TreasuryApiStack`)                  |                    11 | Treasury accounts and transactions, bank statement imports and lines, reconciliation and its history, treasury summaries, and future treasury-domain APIs.                                                                                                                                                                                                                                                |
+| Fiscal Compliance nested stack (`FiscalComplianceApiStack`) |                    41 | Ten local fiscal profile, connection, readiness and certification-preparation endpoints. Durable growth includes jurisdiction adapters, provider evidence and safe recovery; no provider calls or secret resources in S4B.                                                                                                                                                                                |
+| Data stack                                                  |                     4 | Existing stateful data infrastructure: the shared DynamoDB table and the retained private application document bucket with its TLS-only bucket policy.                                                                                                                                                                                                                                                    |
+| Root stack                                                  |                    ~1 | Top-level stack composition.                                                                                                                                                                                                                                                                                                                                                                              |
 
 Domain nested stacks primarily contain stateless or safely replaceable resources: Lambda functions, API routes and integrations, Lambda permissions, domain Log Groups, stateless IAM policies, and event rules when replacement is safe.
+
+## Restaurants Guest V1 headroom gate
+
+RESTO-GUEST-INFRA-0B retains Guest infrastructure in `RestaurantsApiStack`.
+The accepted GUEST-1A checkpoint synthesizes 336 resources. Reusing its two
+integrations, explicitly bounding invocation permissions by API, account, default
+stage and route family, and embedding the public read policy in its role reduce
+that deployment template to 332 resources. The capability secret keeps its
+existing construct path, name and RETAIN policy.
+
+The frozen nine remaining routes add nine Route resources and two further staff
+invocation permissions, for a synthesized projection of **343 resources**. This
+is the reviewed 341–344 exception: seven resources remain below 350 and two
+before the 345 pressure threshold. Reaching 340 would require widening invocation
+scope, changing the explicit route contract, or optimizing unrelated resources;
+none is justified by this gate. No dedicated Guest stack is required now.
+
+The projection assumes the same two grouped handlers/integrations and existing
+IAM policies. Future Guest business permissions can extend those policies but
+must not add handlers, integrations, queues, indexes or other resources without
+rerunning the headroom gate. Projection-only routes belong in infrastructure
+tests, never in the deployment app before their implementation lot.
+
+`HttpLambdaIntegration.completeBind` normally adds a permission per route. The
+Guest-specific integration overrides only that hook; it does not use the
+API-wide `scopePermissionToRoute: false` permission. Deployed permissions cover
+`/public/restaurants/guest/*` on the public handler and
+`/restaurants/outlets/*/service-areas/*/tables/*/qr/*` on the staff handler.
+Future staff permission families are `/restaurants/outlets/*/guest-*` and
+`POST /restaurants/outlets/*/waiter-calls/*/acknowledge`. IAM wildcards match
+slashes, so the former covers both outlet guest activity and session guest
+requests. Tests must verify those patterns against all existing and frozen
+routes. Shared GET/POST families use a method wildcard in the invocation ARN;
+HTTP API routes remain explicit, method-restricted, and JWT-protected for staff.
+Lambda invocation permission never replaces Cognito, membership, entitlement or
+per-command RBAC. No table, GSI, key, persistence access pattern or frontend changes
+are part of this optimization.
 
 ## Stateful-resource safeguards
 

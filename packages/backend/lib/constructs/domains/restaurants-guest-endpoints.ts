@@ -11,8 +11,20 @@ import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import * as path from "path";
 import { DomainProps } from "./domain-constructs-factory";
 
+/** CDK's default completeBind adds one permission per route. Keep the reused
+ * integration, but grant only the reviewed API/stage/path families below.
+ * scopePermissionToRoute:false would instead grant API-wide invocation.
+ */
+class GuestRouteIntegration extends HttpLambdaIntegration {
+  protected override completeBind(): void {
+    // Invocation is granted explicitly by RestaurantsGuestEndpoints.
+  }
+}
+
 /** Two grouped entry points; staff/default authorizer remains untouched. */
 export class RestaurantsGuestEndpoints extends Construct {
+  readonly publicIntegration: HttpLambdaIntegration;
+  readonly staffIntegration: HttpLambdaIntegration;
   constructor(
     scope: Construct,
     id: string,
@@ -36,14 +48,28 @@ export class RestaurantsGuestEndpoints extends Construct {
           "service-role/AWSLambdaBasicExecutionRole",
         ),
       ],
+      // Embedded policy avoids a separate AWS::IAM::Policy resource.
+      inlinePolicies: {
+        GuestRead: new iam.PolicyDocument({
+          statements: [
+            new iam.PolicyStatement({
+              actions: ["dynamodb:GetItem"],
+              resources: [
+                props.restaurantsTable.tableArn,
+                props.table.tableArn,
+              ],
+            }),
+            new iam.PolicyStatement({
+              actions: [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+              ],
+              resources: [secret.secretArn],
+            }),
+          ],
+        }),
+      },
     });
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ["dynamodb:GetItem"],
-        resources: [props.restaurantsTable.tableArn, props.table.tableArn],
-      }),
-    );
-    secret.grantRead(role);
     const fn = (
       name: string,
       entry: string,
@@ -81,14 +107,29 @@ export class RestaurantsGuestEndpoints extends Construct {
     };
     const publicFn = fn("guest-public", "guest-public", role, true);
     const staffFn = fn("guest-qr-staff", "guest-qr-staff", props.staffRole);
-    const publicIntegration = new HttpLambdaIntegration(
-      "PublicIntegration",
-      publicFn,
-    );
-    const staffIntegration = new HttpLambdaIntegration(
+    const publicIntegration = (this.publicIntegration =
+      new GuestRouteIntegration("PublicIntegration", publicFn));
+    const staffIntegration = (this.staffIntegration = new GuestRouteIntegration(
       "StaffIntegration",
       staffFn,
-    );
+    ));
+    const stageName = props.api.defaultStage?.stageName;
+    if (!stageName)
+      throw new Error("Guest invocation requires an explicit API stage");
+    for (const [target, id, routePath] of [
+      [publicFn, "PublicGuestInvoke", "/public/restaurants/guest/*"],
+      [
+        staffFn,
+        "StaffQrInvoke",
+        "/restaurants/outlets/*/service-areas/*/tables/*/qr/*",
+      ],
+    ] as const) {
+      target.addPermission(id, {
+        principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+        sourceAccount: target.stack.account,
+        sourceArn: props.api.arnForExecuteApi("*", routePath, stageName),
+      });
+    }
     for (const operation of ["resolve", "renew"])
       new api.HttpRoute(this, `Public-${operation}`, {
         httpApi: props.api,
