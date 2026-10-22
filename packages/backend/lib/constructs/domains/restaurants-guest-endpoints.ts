@@ -154,15 +154,14 @@ export class RestaurantsGuestEndpoints extends Construct {
       });
     const stage = props.api.defaultStage?.node.defaultChild;
     if (stage instanceof api.CfnStage) {
+      // RouteSettings is an untyped CloudFormation map: CDK does not translate
+      // nested property names here, so use the CloudFormation wire casing.
       stage.routeSettings = {
-        ...(stage.routeSettings as Record<
-          string,
-          api.CfnStage.RouteSettingsProperty
-        >),
+        ...(stage.routeSettings as Record<string, unknown>),
         ...Object.fromEntries(
           ["resolve", "renew"].map((op) => [
             `POST /public/restaurants/guest/${op}`,
-            { throttlingBurstLimit: 20, throttlingRateLimit: 10 },
+            { ThrottlingBurstLimit: 20, ThrottlingRateLimit: 10 },
           ]),
         ),
       };

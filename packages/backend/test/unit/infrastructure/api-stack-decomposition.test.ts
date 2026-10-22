@@ -705,6 +705,27 @@ describe("API stack decomposition", () => {
         ),
     ).toBe(true);
   });
+  test("serializes Guest throttling with CloudFormation property casing", () => {
+    const stage = constructs.find(
+      (item): item is apigwv2.CfnStage => item instanceof apigwv2.CfnStage,
+    )!;
+    const template = Template.fromStack(cdk.Stack.of(stage));
+    const stages = Object.values(
+      template.findResources("AWS::ApiGatewayV2::Stage"),
+    );
+    expect(stages).toHaveLength(1);
+    const settings = stages[0].Properties.RouteSettings;
+    for (const operation of ["resolve", "renew"]) {
+      const entry = settings[`POST /public/restaurants/guest/${operation}`];
+      expect(entry).toEqual({
+        ThrottlingBurstLimit: 20,
+        ThrottlingRateLimit: 10,
+      });
+      expect(entry).not.toHaveProperty("throttlingBurstLimit");
+      expect(entry).not.toHaveProperty("throttlingRateLimit");
+    }
+  });
+
   test("bounds Guest invocation to the exact API/stage and rejects unrelated routes", () => {
     const guest = constructs.find(
       (item): item is RestaurantsGuestEndpoints =>
