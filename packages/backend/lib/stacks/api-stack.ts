@@ -1,5 +1,6 @@
 import * as cdk from "aws-cdk-lib";
 import * as iam from "aws-cdk-lib/aws-iam";
+import { CfnStage } from "aws-cdk-lib/aws-apigatewayv2";
 import { Stack, StackProps } from "aws-cdk-lib";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as s3 from "aws-cdk-lib/aws-s3";
@@ -131,13 +132,24 @@ export class ApiStack extends Stack {
       stage: props.stage,
     });
 
-    new RestaurantsApiStack(this, "RestaurantsApi", {
+    const restaurantsApi = new RestaurantsApiStack(this, "RestaurantsApi", {
       api: this.apiGateway.httpApi,
       authorizer: this.auth.authorizer,
       restaurantsTable: props.restaurantsTable,
       table: props.accountingTable,
       stage: props.stage,
     });
+
+    // RouteSettings belong to this stack, but their Guest routes are nested.
+    // Wait for the nested resource itself, not just construct creation order.
+    const defaultStage =
+      this.apiGateway.httpApi.defaultStage?.node.defaultChild;
+    const restaurantsResource = restaurantsApi.nestedStackResource;
+    if (!(defaultStage instanceof CfnStage) || !restaurantsResource)
+      throw new Error(
+        "Guest route settings require the parent Stage and Restaurants nested resource",
+      );
+    defaultStage.addDependency(restaurantsResource);
 
     // FUTURE: Add more modules here (Payroll, etc.)
     // new PayrollEndpoints(this, "PayrollModule", { ... });
@@ -155,7 +167,8 @@ export class ApiStack extends Stack {
 
     new cdk.CfnOutput(this, "UserPoolClientId", {
       value: this.auth.userPoolClient.userPoolClientId,
-      description: "The Cognito User Pool Client ID for the Liass-OHADA frontend",
+      description:
+        "The Cognito User Pool Client ID for the Liass-OHADA frontend",
     });
 
     new cdk.CfnOutput(this, "CognitoRegion", {
@@ -165,12 +178,14 @@ export class ApiStack extends Stack {
 
     new cdk.CfnOutput(this, "CognitoDomainPrefix", {
       value: this.auth.domainPrefix,
-      description: "The Cognito hosted UI domain prefix for Liass-OHADA authentication",
+      description:
+        "The Cognito hosted UI domain prefix for Liass-OHADA authentication",
     });
 
     new cdk.CfnOutput(this, "CognitoDomainUrl", {
       value: this.auth.domainUrl,
-      description: "The Cognito hosted UI domain URL for Liass-OHADA authentication",
+      description:
+        "The Cognito hosted UI domain URL for Liass-OHADA authentication",
     });
 
     new cdk.CfnOutput(this, "OAuthRedirectSignInUrls", {

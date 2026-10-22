@@ -705,6 +705,24 @@ describe("API stack decomposition", () => {
         ),
     ).toBe(true);
   });
+  test("orders the parent Stage after the Restaurants nested routes in CloudFormation", () => {
+    const stage = constructs.find(
+      (item): item is apigwv2.CfnStage => item instanceof apigwv2.CfnStage,
+    )!;
+    const restaurants = constructs.find(
+      (item): item is RestaurantsApiStack =>
+        item instanceof RestaurantsApiStack,
+    )!;
+    const owner = cdk.Stack.of(stage);
+    const nestedId = owner.getLogicalId(restaurants.nestedStackResource!);
+    const template = Template.fromStack(owner).toJSON();
+    const stageResource = template.Resources[owner.getLogicalId(stage)];
+    expect(template.Resources[nestedId].Type).toBe(
+      "AWS::CloudFormation::Stack",
+    );
+    expect(stageResource.DependsOn ?? []).toContain(nestedId);
+  });
+
   test("serializes Guest throttling with CloudFormation property casing", () => {
     const stage = constructs.find(
       (item): item is apigwv2.CfnStage => item instanceof apigwv2.CfnStage,
