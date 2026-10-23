@@ -8,6 +8,7 @@ import { RestaurantGuestPage } from './restaurant-guest.page';
 import { RestaurantGuestCarteApi } from '../data-access/restaurant-guest-carte.queries';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
 import { guestStorageKey, writeGuest } from '../data-access/restaurant-guest-storage';
+import { RestaurantGuestCartStore } from '../data-access/restaurant-guest-cart.store';
 
 describe('Guest entry without the staff shell', () => {
   const token = 'A'.repeat(43),
@@ -98,4 +99,31 @@ describe('Guest entry without the staff shell', () => {
       expect(sessionStorage.getItem(key)).toBeNull();
     },
   );
+  it('marks a visit-bound cart ended when initial renewal returns VISIT_ENDED', async () => {
+    const key = await guestStorageKey(token);
+    const cart = TestBed.inject(RestaurantGuestCartStore);
+    cart.activate(key, response('OCCUPIED') as never);
+    cart.add(
+      {
+        reference: 'public-item-reference',
+        selectionRef: 'selection-reference-current',
+        name: 'Eau minérale',
+        amountMinor: 1000,
+        availability: 'AVAILABLE',
+      },
+      'XOF',
+      new Date(Date.now() + 900_000).toISOString(),
+    );
+    writeGuest(key, {
+      guestHandle: 'a'.repeat(22),
+      capability: 'c'.repeat(100),
+      expiresAt: new Date().toISOString(),
+    });
+    api.renew.mockResolvedValue({ state: 'VISIT_ENDED' });
+    const fixture = TestBed.createComponent(RestaurantGuestPage);
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fixture.componentInstance.state()).toBe('VISIT_ENDED'));
+    expect(cart.contextStatus()).toBe('VISIT_ENDED');
+    expect(cart.lines()).toHaveLength(1);
+  });
 });

@@ -1,4 +1,13 @@
-import { Component, computed, inject, input, output, signal, DestroyRef } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  DestroyRef,
+} from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import {
@@ -14,6 +23,10 @@ import {
   RestaurantGuestCarteApi,
 } from '../data-access/restaurant-guest-carte.queries';
 import { writeGuest } from '../data-access/restaurant-guest-storage';
+import {
+  GuestCartResult,
+  RestaurantGuestCartStore,
+} from '../data-access/restaurant-guest-cart.store';
 
 type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
 class GuestContextEnded extends Error {}
@@ -23,9 +36,9 @@ class GuestContextEnded extends Error {}
   imports: [MatButtonModule, TranslocoModule],
   template: `
     <div class="flex items-center justify-between gap-4 pb-5">
-      <h1 id="guest-title" class="text-3xl font-semibold tracking-tight">
+      <h2 class="text-3xl font-semibold tracking-tight">
         {{ 'RESTAURANTS.GUEST.CARTE.TITLE' | transloco }}
-      </h1>
+      </h2>
       <button
         mat-button
         type="button"
@@ -50,10 +63,10 @@ class GuestContextEnded extends Error {}
       @if (query.isError()) {
         <div
           role="status"
-          class="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-app-border p-3 text-sm"
+          class="mb-3 flex flex-wrap items-center justify-between gap-1 rounded-lg border border-app-border px-3 py-2 text-xs"
         >
           <span>{{ 'RESTAURANTS.GUEST.CARTE.STALE' | transloco }}</span
-          ><button mat-button (click)="query.refetch()">
+          ><button mat-button class="!min-h-9" (click)="query.refetch()">
             {{ 'RESTAURANTS.GUEST.RETRY' | transloco }}
           </button>
         </div>
@@ -64,15 +77,27 @@ class GuestContextEnded extends Error {}
       >
         <div class="flex w-max gap-2">
           @for (category of categories(); track category.reference) {
-            <button
-              mat-stroked-button
-              type="button"
-              class="min-h-11 whitespace-nowrap"
-              [attr.aria-pressed]="selected() === category.reference"
-              (click)="select(category.reference)"
-            >
-              {{ category.name }}
-            </button>
+            @if (selected() === category.reference) {
+              <button
+                mat-flat-button
+                type="button"
+                class="!min-h-11 whitespace-nowrap !rounded-full !px-5"
+                aria-pressed="true"
+                (click)="select(category.reference)"
+              >
+                {{ category.name }}
+              </button>
+            } @else {
+              <button
+                mat-button
+                type="button"
+                class="!min-h-11 whitespace-nowrap !rounded-full !px-5"
+                aria-pressed="false"
+                (click)="select(category.reference)"
+              >
+                {{ category.name }}
+              </button>
+            }
           }
         </div>
       </nav>
@@ -87,7 +112,7 @@ class GuestContextEnded extends Error {}
           </h2>
           <ul class="grid gap-x-6 sm:grid-cols-2">
             @for (item of category.items; track item.reference) {
-              <li class="min-w-0 border-b border-app-border py-5">
+              <li class="min-w-0 border-b border-app-border py-6">
                 <div class="flex items-start justify-between gap-4">
                   <h3 class="min-w-0 break-words text-base font-medium leading-relaxed">
                     {{ item.name }}
@@ -100,6 +125,15 @@ class GuestContextEnded extends Error {}
                   <p class="mt-2 text-sm font-medium text-app-text-secondary">
                     {{ 'RESTAURANTS.GUEST.CARTE.UNAVAILABLE' | transloco }}
                   </p>
+                } @else {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="mt-3 min-h-11"
+                    (click)="add(item)"
+                  >
+                    {{ 'RESTAURANTS.GUEST.CART.ADD' | transloco }}
+                  </button>
                 }
               </li>
             }
@@ -138,6 +172,11 @@ class GuestContextEnded extends Error {}
         {{ 'RESTAURANTS.GUEST.CARTE.MORE' | transloco }}
       </button>
     }
+    @if (cartMessage()) {
+      <p role="status" aria-live="polite" class="mt-4 text-sm font-medium text-app-text-secondary">
+        {{ 'RESTAURANTS.GUEST.CART.ERRORS.' + cartMessage() | transloco }}
+      </p>
+    }
   `,
 })
 export class RestaurantGuestCarteComponent {
@@ -145,8 +184,10 @@ export class RestaurantGuestCarteComponent {
   readonly scope = input.required<string>();
   readonly ended = output<'EXPIRED' | 'VISIT_ENDED' | 'UNAVAILABLE'>();
   readonly selected = signal('');
+  readonly cartMessage = signal<GuestCartResult | ''>('');
   private readonly api = inject(RestaurantGuestCarteApi);
   private readonly guest = inject(RestaurantGuestApi);
+  private readonly cart = inject(RestaurantGuestCartStore);
   private readonly client = inject(QueryClient);
   private readonly translation = inject(TranslocoService);
   private readonly destroy = inject(DestroyRef);
@@ -239,6 +280,27 @@ export class RestaurantGuestCarteComponent {
         .data()
         ?.pages.flatMap((p) => (p.body.state === 'READY' ? [p.body.currency] : []))[0] ?? 'XOF',
   );
+  readonly referencesExpireAt = computed(
+    () =>
+      this.query
+        .data()
+        ?.pages.flatMap((p) => (p.body.state === 'READY' ? [p.body.referencesExpireAt] : []))[0] ??
+      '',
+  );
+  constructor() {
+    effect(() => {
+      this.cart.activate(this.scope(), this.context());
+      const categories = this.categories();
+      if (!this.selected() && categories[0]) this.selected.set(categories[0].reference);
+      const items = categories.flatMap((category) => category.items);
+      const expiresAt = this.referencesExpireAt();
+      if (items.length && expiresAt) this.cart.reconcile(items, this.currency(), expiresAt);
+    });
+  }
+  add(item: GuestCarte['categories'][number]['items'][number]) {
+    const result = this.cart.add(item, this.currency(), this.referencesExpireAt());
+    this.cartMessage.set(result === 'OK' ? '' : result);
+  }
   price(amount: number) {
     const digits =
       new Intl.NumberFormat('en', {

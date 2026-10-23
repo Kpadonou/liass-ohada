@@ -5,6 +5,7 @@ import fr from '../../../../../public/assets/i18n/fr.json';
 import { RestaurantGuestCarteComponent } from './restaurant-guest-carte.component';
 import { RestaurantGuestCarteApi } from '../data-access/restaurant-guest-carte.queries';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
+import { RestaurantGuestCartStore } from '../data-access/restaurant-guest-cart.store';
 
 describe('Consumer Guest Carte', () => {
   const read = vi.fn(),
@@ -26,6 +27,13 @@ describe('Consumer Guest Carte', () => {
             name: 'Poulet braisé aux épices douces et son accompagnement de saison',
             amountMinor: 3500,
             availability: 'UNAVAILABLE',
+          },
+          {
+            reference: 'available-item-public-ref',
+            selectionRef: 'encrypted-selection-available',
+            name: 'Eau minérale',
+            amountMinor: 1000,
+            availability: 'AVAILABLE',
           },
         ],
       },
@@ -57,7 +65,7 @@ describe('Consumer Guest Carte', () => {
   });
   function mount(expiresAt = new Date(Date.now() + 600000).toISOString()) {
     const f = TestBed.createComponent(RestaurantGuestCarteComponent);
-    f.componentRef.setInput('scope', 'qr-hash');
+    f.componentRef.setInput('scope', `liass-restaurants.guest.${'a'.repeat(64)}`);
     f.componentRef.setInput('context', {
       state: 'FREE',
       visitRef: null,
@@ -68,7 +76,7 @@ describe('Consumer Guest Carte', () => {
     f.detectChanges();
     return f;
   }
-  it('renders ordered categories, text-first items, prices and non-color availability with no cart', async () => {
+  it('renders ordered categories, text-first items and blocks Add for unavailable items', async () => {
     const f = mount();
     await vi.waitFor(() => {
       f.detectChanges();
@@ -76,9 +84,14 @@ describe('Consumer Guest Carte', () => {
     });
     expect(f.nativeElement.textContent).toContain('Indisponible');
     expect(f.nativeElement.textContent).toContain('XOF');
-    expect(f.nativeElement.querySelector('h1').textContent).toContain('Carte');
-    expect(f.nativeElement.querySelector('nav button').getAttribute('aria-pressed')).toBe('false');
-    expect(f.nativeElement.textContent).not.toMatch(/Ajouter|Commander|Panier/);
+    expect(f.nativeElement.querySelector('h2').textContent).toContain('Carte');
+    expect(f.nativeElement.querySelector('nav button').getAttribute('aria-pressed')).toBe('true');
+    expect(f.nativeElement.textContent).toContain('Ajouter');
+    const unavailableLine = [...f.nativeElement.querySelectorAll('li')].find((line: Element) =>
+      line.textContent?.includes('Poulet braisé'),
+    ) as Element;
+    expect(unavailableLine.textContent).not.toContain('Ajouter');
+    expect(f.nativeElement.textContent).not.toContain('Commander');
     expect(f.nativeElement.querySelector('table')).toBeNull();
   });
   it('retains canonical cached Carte when revalidation fails', async () => {
@@ -94,7 +107,7 @@ describe('Consumer Guest Carte', () => {
       expect(f.componentInstance.query.isError()).toBe(true);
     });
     expect(f.nativeElement.textContent).toContain('Poulet braisé');
-    expect(f.nativeElement.textContent).toContain('connexion');
+    expect(f.nativeElement.textContent).toContain('Hors ligne');
     expect(read).toHaveBeenCalledTimes(2);
   });
   it('shows contextual initial error and retry', async () => {
@@ -128,7 +141,12 @@ describe('Consumer Guest Carte', () => {
   it('makes zero additional reads while canonical TanStack data is fresh', async () => {
     const f = mount();
     await vi.waitFor(() => expect(f.componentInstance.query.isSuccess()).toBe(true));
-    const key = ['restaurants-guest', 'carte', 'qr-hash', 'a'.repeat(22)] as const;
+    const key = [
+      'restaurants-guest',
+      'carte',
+      `liass-restaurants.guest.${'a'.repeat(64)}`,
+      'a'.repeat(22),
+    ] as const;
     const canonical = client.getQueryCache().find({ queryKey: key });
     expect((canonical?.options as { staleTime?: number })?.staleTime).toBe(60_000);
     const accidentalRead = vi.fn();
@@ -140,6 +158,21 @@ describe('Consumer Guest Carte', () => {
     });
     expect(accidentalRead).not.toHaveBeenCalled();
     expect(read).toHaveBeenCalledTimes(1);
+  });
+  it('adds an available item locally without another API request', async () => {
+    const f = mount();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('Eau minérale');
+    });
+    const add = [...f.nativeElement.querySelectorAll('button')].find((button: Element) =>
+      button.textContent?.includes('Ajouter'),
+    ) as HTMLButtonElement;
+    add.click();
+    f.detectChanges();
+    expect(TestBed.inject(RestaurantGuestCartStore).totalUnits()).toBe(1);
+    expect(read).toHaveBeenCalledTimes(1);
+    expect(renew).not.toHaveBeenCalled();
   });
   it('does not claim an empty menu when only a partial page has been read', async () => {
     read.mockResolvedValue({

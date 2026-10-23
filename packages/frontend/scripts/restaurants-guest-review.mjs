@@ -26,7 +26,12 @@ const metadata = {
   updatedAt: stamp,
 };
 const server = http.createServer((request, response) => {
-  response.setHeader('Access-Control-Allow-Origin', 'http://localhost:4200');
+  response.setHeader(
+    'Access-Control-Allow-Origin',
+    request.headers.origin === 'http://127.0.0.1:4200'
+      ? 'http://127.0.0.1:4200'
+      : 'http://localhost:4200',
+  );
   response.setHeader(
     'Access-Control-Allow-Headers',
     'authorization,x-org-id,x-workspace-org-id,accept-language,content-type',
@@ -75,14 +80,16 @@ const server = http.createServer((request, response) => {
       {
         free: 'FREE',
         occupied: 'OCCUPIED',
+        'new-visit': 'OCCUPIED',
         expired: 'EXPIRED',
         closed: 'VISIT_ENDED',
         invalid: 'UNAVAILABLE',
-      }[phase] ?? 'UNAVAILABLE';
+        revoked: 'UNAVAILABLE',
+      }[phase] ?? 'FREE';
     if (!['FREE', 'OCCUPIED'].includes(state)) return send({ state });
     return send({
       state,
-      visitRef: state === 'OCCUPIED' ? 'v'.repeat(43) : null,
+      visitRef: state === 'OCCUPIED' ? (phase === 'new-visit' ? 'w' : 'v').repeat(43) : null,
       restaurantName: 'Héritage Bistro',
       outletName: 'Établissement du Centre',
       tableName: 'Table du jardin',
@@ -92,6 +99,70 @@ const server = http.createServer((request, response) => {
       guestHandle: 'a'.repeat(22),
       capability: 'header..iv.' + 'c'.repeat(150) + '.tag',
       expiresAt: new Date(Date.now() + 600000).toISOString(),
+    });
+  }
+  if (path === '/public/restaurants/guest/carte') {
+    if (phase === 'offline') return send({ error: { code: 'NETWORK_UNAVAILABLE' } }, 503);
+    if (phase === 'no-menu') return send({ state: 'NO_MENU' });
+    const price = phase === 'price-change' ? 3750 : 3500;
+    const missing = phase === 'missing';
+    response.setHeader('ETag', 'W/"guest-carte-review"');
+    return send({
+      state: 'READY',
+      currency: 'XOF',
+      referencesExpireAt: new Date(Date.now() + 900000).toISOString(),
+      categories: [
+        {
+          reference: 'category-grillades-public-reference',
+          name: 'Grillades',
+          position: 0,
+          items: missing
+            ? []
+            : [
+                {
+                  reference: 'item-chicken-public-reference',
+                  selectionRef: `selection-chicken-${Date.now()}`,
+                  name: 'Poulet braisé aux épices douces et son accompagnement de saison',
+                  amountMinor: price,
+                  availability: 'AVAILABLE',
+                },
+                {
+                  reference: 'item-fish-public-reference',
+                  selectionRef: `selection-fish-${Date.now()}`,
+                  name: 'Poisson grillé',
+                  amountMinor: 5000,
+                  availability: phase === 'item-unavailable' ? 'UNAVAILABLE' : 'AVAILABLE',
+                },
+              ],
+        },
+        {
+          reference: 'category-drinks-public-reference',
+          name: 'Boissons',
+          position: 1,
+          items: Array.from({ length: 10 }, (_, index) => ({
+            reference: `item-drink-${String(index).padStart(2, '0')}-public-reference`,
+            selectionRef: `selection-drink-${index}-${Date.now()}`,
+            name:
+              index === 9 ? 'Jus de gingembre maison sans sucre ajouté' : `Boisson ${index + 1}`,
+            amountMinor: 750 + index * 100,
+            availability: index === 8 ? 'UNAVAILABLE' : 'AVAILABLE',
+          })),
+        },
+        {
+          reference: 'category-desserts-public-reference',
+          name: 'Desserts',
+          position: 2,
+          items: [
+            {
+              reference: 'item-dessert-public-reference',
+              selectionRef: `selection-dessert-${Date.now()}`,
+              name: 'Salade de fruits frais',
+              amountMinor: 2000,
+              availability: 'AVAILABLE',
+            },
+          ],
+        },
+      ],
     });
   }
   if (path.endsWith('/qr/status'))

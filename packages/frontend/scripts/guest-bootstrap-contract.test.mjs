@@ -5,7 +5,9 @@ const read = (p) => readFileSync(new URL('../src/' + p, import.meta.url), 'utf8'
 test('direct Guest startup remains independent of staff initialization', () => {
   const guest = read('app/guest.bootstrap.ts'),
     main = read('main.ts'),
-    staff = read('app/staff.bootstrap.ts');
+    staff = read('app/staff.bootstrap.ts'),
+    cartStore = read('app/domains/restaurants/data-access/restaurant-guest-cart.store.ts'),
+    cartComponent = read('app/domains/restaurants/feature/restaurant-guest-cart.component.ts');
   assert.match(main, /import\('\.\/app\/guest.bootstrap'\)/);
   assert.match(main, /import\('\.\/app\/staff.bootstrap'\)/);
   assert.doesNotMatch(
@@ -22,4 +24,12 @@ test('direct Guest startup remains independent of staff initialization', () => {
     read('app/core/http/guest.interceptor.ts'),
     /AuthStore|fetchAuthSession|aws-amplify/,
   );
+  for (const source of [cartStore, cartComponent]) {
+    assert.doesNotMatch(
+      source,
+      /Amplify|Cognito|AuthStore|BrowserSessionContext|workspace|accounting|sales|HttpClient/,
+    );
+  }
+  assert.match(cartStore, /sessionStorage/);
+  assert.doesNotMatch(cartStore, /localStorage|indexedDB|document\.cookie/);
 });

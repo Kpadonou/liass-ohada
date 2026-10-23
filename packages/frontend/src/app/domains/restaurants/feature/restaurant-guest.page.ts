@@ -7,20 +7,24 @@ import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
 import { GuestQrTokenSchema } from '@liass-ohada/shared/restaurants';
 import { RestaurantGuestCarteComponent } from './restaurant-guest-carte.component';
+import { RestaurantGuestCartComponent } from './restaurant-guest-cart.component';
+import { RestaurantGuestCartStore } from '../data-access/restaurant-guest-cart.store';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
 import { guestStorageKey, readGuest, writeGuest } from '../data-access/restaurant-guest-storage';
 
 @Component({
   selector: 'liass-restaurant-guest',
   host: { class: 'block' },
-  imports: [MatButtonModule, TranslocoModule, RestaurantGuestCarteComponent],
+  imports: [
+    MatButtonModule,
+    TranslocoModule,
+    RestaurantGuestCarteComponent,
+    RestaurantGuestCartComponent,
+  ],
   template: ` <main
-    class="min-h-dvh bg-app-background px-4 py-8 text-app-text-primary sm:px-6 sm:py-12"
+    class="min-h-dvh bg-app-background px-4 pb-28 pt-8 text-app-text-primary sm:px-6 sm:pb-28 sm:pt-12"
   >
     <section class="mx-auto max-w-4xl space-y-6" aria-labelledby="guest-title">
-      <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">
-        {{ 'RESTAURANTS.GUEST.BRAND' | transloco }}
-      </p>
       @if (request.isPending()) {
         <h1 id="guest-title" class="text-2xl font-semibold">
           {{ 'RESTAURANTS.GUEST.LOADING' | transloco }}
@@ -28,9 +32,10 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
         <p role="status" aria-live="polite">{{ 'RESTAURANTS.GUEST.WAIT' | transloco }}</p>
       } @else if (context(); as c) {
         <div class="space-y-2 border-b border-app-border pb-5">
-          <p class="break-words text-app-text-secondary">
-            {{ c.restaurantName }} · {{ c.outletName }}
-          </p>
+          <h1 id="guest-title" class="break-words text-3xl font-semibold tracking-tight">
+            {{ c.restaurantName }}
+          </h1>
+          <p class="break-words text-app-text-secondary">{{ c.outletName }}</p>
           <p class="break-words text-sm text-app-text-secondary">{{ c.tableName }}</p>
         </div>
         <p class="text-sm text-app-text-secondary" role="status" aria-live="polite">
@@ -46,6 +51,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
           [scope]="request.data()!.key"
           (ended)="end($event)"
         />
+        <liass-restaurant-guest-cart [scope]="request.data()!.key" [context]="c" />
       } @else {
         <h1 id="guest-title" class="text-2xl font-semibold">
           {{ 'RESTAURANTS.GUEST.WELCOME' | transloco }}
@@ -59,7 +65,13 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
         >
           {{ 'RESTAURANTS.GUEST.RETRY' | transloco }}
         </button>
+        @if (scope()) {
+          <liass-restaurant-guest-cart [scope]="scope()" [context]="null" />
+        }
       }
+      <p class="pt-6 text-center text-xs text-app-text-secondary">
+        {{ 'RESTAURANTS.GUEST.POWERED_BY' | transloco }}
+      </p>
     </section>
   </main>`,
 })
@@ -67,10 +79,12 @@ export class RestaurantGuestPage {
   private readonly api = inject(RestaurantGuestApi);
   private readonly route = inject(ActivatedRoute);
   private readonly destroy = inject(DestroyRef);
+  private readonly cart = inject(RestaurantGuestCartStore);
   private token = '';
   private revision = 0;
   private alive = true;
   readonly fallback = signal('UNAVAILABLE');
+  readonly scope = signal('');
   readonly request = injectMutation(() => ({
     mutationKey: ['restaurants-guest', 'entry'],
     mutationFn: async ({
@@ -83,11 +97,13 @@ export class RestaurantGuestPage {
       fresh: boolean;
     }) => {
       const key = await guestStorageKey(token);
+      if (this.alive && revision === this.revision) this.scope.set(key);
       if (!this.alive || revision !== this.revision)
         return { result: { state: 'UNAVAILABLE' as const }, revision, key };
       const saved = fresh ? undefined : readGuest(key);
       const result = saved ? await this.api.renew(saved.capability) : await this.api.resolve(token);
       if (this.alive && revision === this.revision) {
+        if (result.state === 'VISIT_ENDED') this.cart.markVisitEnded();
         writeGuest(
           key,
           result.state === 'FREE' || result.state === 'OCCUPIED'
@@ -132,6 +148,7 @@ export class RestaurantGuestPage {
     });
   }
   end(state: 'EXPIRED' | 'VISIT_ENDED' | 'UNAVAILABLE') {
+    if (state === 'VISIT_ENDED') this.cart.markVisitEnded();
     this.revision++;
     this.request.reset();
     this.fallback.set(state);

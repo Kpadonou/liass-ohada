@@ -208,3 +208,9 @@ V1 measures acceptance/operational preparation start → READY → SERVED. It do
 ### Restaurants Guest Carte
 
 The permanent-table `/g/:opaqueTableToken` surface is a consumer `SPECIAL_WORKFLOW`, with text-first item lists and touch-friendly category navigation rather than management tables. Browsing is allowed for FREE or coherent OCCUPIED contexts; DISABLED disables ordering, not Carte visibility. Inventory balance never determines MenuItem availability in V1. Public Guest DTOs contain no internal identifiers. TanStack Query owns Carte server state with 60-second freshness, conditional revalidation and no polling; local signals own category selection only. Keep cached content visible on transient network failures, but canonical Guest verification remains mandatory on subsequent reads and before any future privileged action.
+
+### Restaurants Guest Cart
+
+The Guest Cart remains local workflow state in V1: Signals own interaction state and `sessionStorage` provides same-tab recovery, while TanStack Query continues to own canonical Carte data. Cart actions are instant and make no backend request. A FREE Guest may prepare a Cart without opening a GuestSession or implying submission; that Cart may bind once to the first valid OCCUPIED `visitRef` for the same QR scope. A Cart already bound to one visit must never migrate silently to another visit.
+
+Cart prices are presentation snapshots rather than commercial authority. A canonical price change requires explicit Guest acceptance, and unavailable or missing items remain visible for review instead of being silently removed. Expired selection references are rebound by the stable public item `reference` when the canonical public item still matches; expiry never erases Guest intent. Cart persistence and storage keys must contain only opaque public scope and presentation data, never internal restaurant, table, session, item, station, or DynamoDB identifiers.
