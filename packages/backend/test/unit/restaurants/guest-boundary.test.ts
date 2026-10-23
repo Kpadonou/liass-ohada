@@ -90,6 +90,7 @@ test("public resolve needs no staff JWT, performs no write, and exposes only saf
   const result = JSON.parse(response.body);
   expect(result).toMatchObject({
     state: "FREE",
+    visitRef: null,
     tableName: f.tables[0].name,
     orderingPermitted: false,
     waiterCallAvailable: true,
@@ -97,9 +98,13 @@ test("public resolve needs no staff JWT, performs no write, and exposes only saf
   expect(Object.keys(result)).not.toEqual(
     expect.arrayContaining([
       "orgId",
+      "restaurantId",
       "outletId",
       "tableId",
+      "guestSessionId",
       "sessionId",
+      "PK",
+      "SK",
       "version",
     ]),
   );
@@ -159,24 +164,55 @@ test("occupied capability binds the exact visit, renews the same handle and entr
   const opened = await occupied();
   const response = await GuestService.resolve({ token });
   if (response.state !== "OCCUPIED") throw new Error("Expected occupied");
+  expect(response.visitRef).toMatch(/^[A-Za-z0-9_-]{43}$/);
   const before = await openGuest(response.capability);
   expect(before.sessionId).toBe(
     (opened.data as { guestSessionId: string }).guestSessionId,
   );
   expect(before.exp - before.iat).toBe(1800);
+  const serialized = JSON.stringify(response);
+  for (const internal of [
+    org,
+    f.restaurant.id,
+    f.outlet.id,
+    f.tables[0].id,
+    before.sessionId!,
+  ])
+    expect(serialized).not.toContain(internal);
+  expect(Object.keys(response)).not.toEqual(
+    expect.arrayContaining([
+      "orgId",
+      "outletId",
+      "tableId",
+      "guestSessionId",
+      "PK",
+      "SK",
+      "version",
+    ]),
+  );
   const renewed = await GuestService.renew(response.capability);
   if (renewed.state !== "OCCUPIED") throw new Error("Expected occupied");
+  expect(renewed.visitRef).toBe(response.visitRef);
   expect(await openGuest(renewed.capability)).toMatchObject({
     guestHandle: before.guestHandle,
     enteredAt: before.enteredAt,
     sessionId: before.sessionId,
   });
+  const repeated = await GuestService.resolve({ token });
+  if (repeated.state !== "OCCUPIED") throw new Error("Expected occupied");
+  expect(repeated.visitRef).toBe(response.visitRef);
+  expect(repeated.capability).not.toBe(response.capability);
+  expect(repeated.guestHandle).not.toBe(response.guestHandle);
 });
 test("FREE cannot upgrade through renew", async () => {
   const response = await GuestService.resolve({ token });
   if (response.state !== "FREE") throw new Error();
+  expect(response.visitRef).toBeNull();
+  const renewed = await GuestService.renew(response.capability);
+  if (renewed.state !== "FREE") throw new Error();
+  expect(renewed.visitRef).toBeNull();
   await occupied();
-  expect(await GuestService.renew(response.capability)).toEqual({
+  expect(await GuestService.renew(renewed.capability)).toEqual({
     state: "EXPIRED",
   });
 });
@@ -220,6 +256,7 @@ test("closed visit cannot renew or retarget the next visit", async () => {
   const session = opened.data as { guestSessionId: string; version: number };
   const response = await GuestService.resolve({ token });
   if (response.state !== "OCCUPIED") throw new Error();
+  const visitA = response.visitRef;
   await Transactions.mutate(
     { orgId: org, outletId: f.outlet.id, actorId: "owner" },
     "CLOSE_SESSION",
@@ -241,6 +278,34 @@ test("closed visit cannot renew or retarget the next visit", async () => {
   expect(await GuestService.renew(response.capability)).toEqual({
     state: "VISIT_ENDED",
   });
+  const next = await GuestService.resolve({ token });
+  if (next.state !== "OCCUPIED") throw new Error();
+  expect(next.visitRef).not.toBe(visitA);
+});
+test("visit reference is bound to the canonical table context", async () => {
+  await occupied();
+  const first = await GuestService.resolve({ token });
+  if (first.state !== "OCCUPIED") throw new Error();
+  const secondTable = f.tables[1];
+  const secondToken = (
+    await Config.getTableQr(
+      org,
+      { outletId: f.outlet.id, serviceAreaId: secondTable.serviceAreaId },
+      secondTable.id,
+    )
+  ).token;
+  await Transactions.mutate(
+    { orgId: org, outletId: f.outlet.id, actorId: "owner" },
+    "OPEN_SESSION",
+    {
+      clientRequestId: fixtureId(703),
+      tableId: secondTable.id,
+      areaId: secondTable.serviceAreaId,
+    },
+  );
+  const second = await GuestService.resolve({ token: secondToken });
+  if (second.state !== "OCCUPIED") throw new Error();
+  expect(second.visitRef).not.toBe(first.visitRef);
 });
 test("tampering, staff JWT, wrong audience/environment, expiry and algorithm fail closed", async () => {
   const response = await GuestService.resolve({ token });

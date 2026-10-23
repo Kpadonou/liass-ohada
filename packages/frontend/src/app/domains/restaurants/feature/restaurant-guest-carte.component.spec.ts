@@ -60,6 +60,7 @@ describe('Consumer Guest Carte', () => {
     f.componentRef.setInput('scope', 'qr-hash');
     f.componentRef.setInput('context', {
       state: 'FREE',
+      visitRef: null,
       capability: 'guest-jwe',
       guestHandle: 'a'.repeat(22),
       expiresAt,

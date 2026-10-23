@@ -44,6 +44,22 @@ export async function publicReference(p: GuestPrincipal, value: string) {
     .update(value)
     .digest("base64url");
 }
+/** Stable public correlation for one canonical visit. Never an authorization input. */
+export async function publicVisitReference(p: GuestPrincipal) {
+  if (!p.sessionId) return null;
+  const canonicalVisit = JSON.stringify([
+    p.environment,
+    p.orgId,
+    p.restaurantId,
+    p.outletId,
+    p.areaId,
+    p.tableId,
+    p.sessionId,
+  ]);
+  return createHmac("sha256", await key("visit-scope"))
+    .update(canonicalVisit)
+    .digest("base64url");
+}
 export async function sealReference(
   p: GuestPrincipal,
   usage: "selection" | "continuation",

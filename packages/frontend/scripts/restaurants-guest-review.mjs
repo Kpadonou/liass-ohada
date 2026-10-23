@@ -82,6 +82,7 @@ const server = http.createServer((request, response) => {
     if (!['FREE', 'OCCUPIED'].includes(state)) return send({ state });
     return send({
       state,
+      visitRef: state === 'OCCUPIED' ? 'v'.repeat(43) : null,
       restaurantName: 'Héritage Bistro',
       outletName: 'Établissement du Centre',
       tableName: 'Table du jardin',

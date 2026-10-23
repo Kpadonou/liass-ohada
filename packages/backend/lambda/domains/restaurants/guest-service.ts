@@ -15,6 +15,7 @@ import {
   newGuestHandle,
   GuestCapabilityExpired,
 } from "./guest-capability";
+import { publicVisitReference } from "./guest-references";
 
 const fingerprint = (token: string) =>
   createHash("sha256").update(token).digest("hex");
@@ -163,18 +164,21 @@ export class GuestService {
       iat: now,
       exp: expires,
     };
-    return {
-      state: sessionId ? "OCCUPIED" : "FREE",
+    const common = {
       restaurantName: c.root.name,
       outletName: c.outlet.name,
       tableName: c.table.name.trim() || c.table.code,
       policy: c.root.guestOrderingPolicy,
       orderingPermitted,
-      waiterCallAvailable: true,
+      waiterCallAvailable: true as const,
       guestHandle,
       capability: await sealGuest(claims),
       expiresAt: new Date(expires * 1000).toISOString(),
     };
+    const visitRef = await publicVisitReference(claims);
+    return sessionId && visitRef
+      ? { state: "OCCUPIED", visitRef, ...common }
+      : { state: "FREE", visitRef: null, ...common };
   }
   static async resolve(input: unknown): Promise<GuestContextResponse> {
     const parsed = GuestResolveRequestSchema.safeParse(input);

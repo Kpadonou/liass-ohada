@@ -15,6 +15,7 @@ describe('Guest entry without the staff shell', () => {
   let client: QueryClient;
   const response = (state: 'FREE' | 'OCCUPIED') => ({
     state,
+    visitRef: state === 'OCCUPIED' ? 'v'.repeat(43) : null,
     restaurantName: 'Bistro',
     outletName: 'Centre',
     tableName: 'Table du jardin',
