@@ -15,6 +15,7 @@ test('direct Guest startup remains independent of staff initialization', () => {
   assert.match(guest, /guestInterceptor/);
   assert.match(guest, /guestRoutes/);
   assert.match(guest, /provideTanStackQuery/);
+  assert.match(guest, /createI18nProviders\(resolveInitialLanguage\(\)\)/);
   assert.match(staff, /import '\.\/core\/auth\/amplify.config'/);
   assert.match(staff, /bootstrapApplication\(App,\s*appConfig\)/);
   assert.doesNotMatch(

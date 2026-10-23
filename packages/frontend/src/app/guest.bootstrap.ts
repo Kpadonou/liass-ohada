@@ -3,7 +3,8 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { RouterOutlet, provideRouter } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
-import { i18nProviders } from './core/i18n/i18n.providers';
+import { createI18nProviders } from './core/i18n/i18n.providers';
+import { resolveInitialLanguage } from './core/i18n/language-preferences';
 import { guestRoutes } from './core/routing/guest.routes';
 import { guestInterceptor } from './core/http/guest.interceptor';
 @Component({ selector: 'liass-root', imports: [RouterOutlet], template: '<router-outlet />' })
@@ -14,7 +15,7 @@ export const bootstrapGuest = () =>
     providers: [
       provideBrowserGlobalErrorListeners(),
       provideRouter(guestRoutes),
-      ...i18nProviders,
+      ...createI18nProviders(resolveInitialLanguage()),
       provideHttpClient(withInterceptors([guestInterceptor])),
       provideTanStackQuery(new QueryClient()),
     ],
