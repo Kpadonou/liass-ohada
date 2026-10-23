@@ -5,6 +5,7 @@ import {
 } from "@liass-ohada/shared/restaurants";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
+import type { RestaurantSnapshot } from "./restaurant-repository";
 import { RestaurantsRepository as Config } from "./restaurant-repository";
 import { RestaurantTransactionsRepository as R } from "./transaction-repository";
 import {
@@ -17,8 +18,46 @@ import {
 
 const fingerprint = (token: string) =>
   createHash("sha256").update(token).digest("hex");
+/** Bounded to one resolve/verify call. Never survives a request or caches authorization. */
+class GuestReads {
+  private readonly tables = new Map<
+    string,
+    Promise<RestaurantSnapshot<"table"> | undefined>
+  >();
+  private readonly sessions = new Map<string, ReturnType<typeof R.get>>();
+  table(
+    orgId: string,
+    outletId: string,
+    serviceAreaId: string,
+    tableId: string,
+  ) {
+    const key = JSON.stringify([orgId, outletId, serviceAreaId, tableId]);
+    let value = this.tables.get(key);
+    if (!value) {
+      value = Config.get(orgId, "table", { outletId, serviceAreaId }, tableId);
+      this.tables.set(key, value);
+    }
+    return value;
+  }
+  session(orgId: string, outletId: string, sessionId: string) {
+    const key = JSON.stringify([orgId, outletId, sessionId]);
+    let value = this.sessions.get(key);
+    if (!value) {
+      value = R.get(
+        { orgId, outletId },
+        {
+          PK: K.restaurantSessionPK(orgId, outletId, sessionId),
+          SK: K.restaurantTransactionMetaSK(),
+        },
+        "SESSION",
+      );
+      this.sessions.set(key, value);
+    }
+    return value;
+  }
+}
 export class GuestService {
-  private static async context(token: string) {
+  private static async context(token: string, reads = new GuestReads()) {
     const lookup = await Config.getQrLookup(token);
     if (!lookup) return undefined;
     const { orgId, outletId, serviceAreaId, tableId } = lookup;
@@ -31,7 +70,7 @@ export class GuestService {
       Config.get(orgId, "restaurant", {}),
       Config.get(orgId, "outlet", {}, outletId),
       Config.get(orgId, "serviceArea", { outletId }, serviceAreaId),
-      Config.get(orgId, "table", { outletId, serviceAreaId }, tableId),
+      reads.table(orgId, outletId, serviceAreaId, tableId),
     ]);
     if (
       !root?.data.isActive ||
@@ -64,17 +103,10 @@ export class GuestService {
         occupancy.data.areaId !== serviceAreaId
       )
         return undefined;
-      const session = await R.get(
-        scope,
-        {
-          PK: K.restaurantSessionPK(
-            orgId,
-            outletId,
-            occupancy.data.guestSessionId,
-          ),
-          SK: K.restaurantTransactionMetaSK(),
-        },
-        "SESSION",
+      const session = await reads.session(
+        orgId,
+        outletId,
+        occupancy.data.guestSessionId,
       );
       if (
         session?.entityType !== "RESTAURANT_GUEST_SESSION" ||
@@ -150,7 +182,13 @@ export class GuestService {
     const c = await this.context(parsed.data.token);
     return c ? this.response(c) : { state: "UNAVAILABLE" };
   }
-  static async renew(token: string): Promise<GuestContextResponse> {
+  static async verify(token: string): Promise<
+    | {
+        principal: GuestPrincipal;
+        context: NonNullable<Awaited<ReturnType<typeof GuestService.context>>>;
+      }
+    | { state: "UNAVAILABLE" | "EXPIRED" | "VISIT_ENDED" }
+  > {
     let old: GuestPrincipal;
     try {
       old = await openGuest(token);
@@ -160,10 +198,11 @@ export class GuestService {
           error instanceof GuestCapabilityExpired ? "EXPIRED" : "UNAVAILABLE",
       };
     }
-    const table = await Config.get(
+    const reads = new GuestReads();
+    const table = await reads.table(
       old.orgId,
-      "table",
-      { outletId: old.outletId, serviceAreaId: old.areaId },
+      old.outletId,
+      old.areaId,
       old.tableId,
     );
     if (
@@ -173,26 +212,25 @@ export class GuestService {
     )
       return { state: "UNAVAILABLE" };
     if (old.sessionId) {
-      const bound = await R.get(
-        { orgId: old.orgId, outletId: old.outletId },
-        {
-          PK: K.restaurantSessionPK(old.orgId, old.outletId, old.sessionId),
-          SK: K.restaurantTransactionMetaSK(),
-        },
-        "SESSION",
-      );
+      const bound = await reads.session(old.orgId, old.outletId, old.sessionId);
       if (
         bound?.entityType === "RESTAURANT_GUEST_SESSION" &&
         bound.data.status === "CLOSED"
       )
         return { state: "VISIT_ENDED" };
     }
-    const c = await this.context(table.qrToken);
+    const c = await this.context(table.qrToken, reads);
     if (!c || c.root.id !== old.restaurantId) return { state: "UNAVAILABLE" };
     if (old.sessionId && c.sessionId !== old.sessionId)
       return { state: "VISIT_ENDED" };
     // FREE never upgrades or rebinds. A fresh resolve is required even when a visit opens.
     if (!old.sessionId && c.sessionId) return { state: "EXPIRED" };
-    return this.response(c, old);
+    return { principal: old, context: c };
+  }
+  static async renew(token: string): Promise<GuestContextResponse> {
+    const verified = await this.verify(token);
+    return "principal" in verified
+      ? this.response(verified.context, verified.principal)
+      : (verified as GuestContextResponse);
   }
 }

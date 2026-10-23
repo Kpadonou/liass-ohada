@@ -5,6 +5,7 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import fr from '../../../../../public/assets/i18n/fr.json';
 import { RestaurantGuestPage } from './restaurant-guest.page';
+import { RestaurantGuestCarteApi } from '../data-access/restaurant-guest-carte.queries';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
 import { guestStorageKey, writeGuest } from '../data-access/restaurant-guest-storage';
 
@@ -40,6 +41,10 @@ describe('Guest entry without the staff shell', () => {
       providers: [
         { provide: QueryClient, useValue: client },
         { provide: RestaurantGuestApi, useValue: api },
+        {
+          provide: RestaurantGuestCarteApi,
+          useValue: { read: vi.fn().mockResolvedValue({ body: { state: 'NO_MENU' } }) },
+        },
         {
           provide: ActivatedRoute,
           useValue: {

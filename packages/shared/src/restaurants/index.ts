@@ -1,5 +1,6 @@
 import { z } from "zod";
 export * from "./guest";
+export * from "./guest-carte";
 export * from "./transactions";
 export * from "./service-floor";
 export * from "./staff";

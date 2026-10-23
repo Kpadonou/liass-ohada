@@ -66,9 +66,9 @@ describe('Protected administrative QR identity', () => {
     await vi.waitFor(() => {
       f.detectChanges();
       expect(f.componentInstance.token()).toBe('x'.repeat(43));
+      expect(f.nativeElement.querySelector('img')).toBeTruthy();
     });
     expect(f.nativeElement.textContent).not.toContain(rid(4));
-    expect(f.nativeElement.querySelector('img')).toBeTruthy();
     await f.componentInstance.copy();
     expect(copy).toHaveBeenCalledWith(`${window.location.origin}/g/${'x'.repeat(43)}`);
   });

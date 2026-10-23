@@ -66,4 +66,29 @@ describe('Guest HTTP boundary without any staff dependencies', () => {
     req.flush({ state: 'UNAVAILABLE', orgId: 'private' });
     await expect(result).rejects.toThrow();
   });
+  it.each(['Bearer header..iv.ciphertext.tag', 'Bearer staff.jwt.token'])(
+    'isolates GET Carte with %s',
+    async (authorization) => {
+      const result = firstValueFrom(
+        TestBed.inject(HttpClient).get(base + '/carte', {
+          context: new HttpContext().set(GUEST_CAPABILITY_REQUEST, true),
+          headers: {
+            Authorization: authorization,
+            'x-org-id': 'org',
+            'x-workspace-org-id': 'workspace',
+            'If-None-Match': 'W/"content"',
+          },
+        }),
+      );
+      const req = TestBed.inject(HttpTestingController).expectOne(base + '/carte');
+      expect(req.request.headers.get('Authorization')).toBe(
+        authorization.includes('staff') ? null : authorization,
+      );
+      expect(req.request.headers.has('x-org-id')).toBe(false);
+      expect(req.request.headers.has('x-workspace-org-id')).toBe(false);
+      expect(req.request.headers.get('If-None-Match')).toBe('W/"content"');
+      req.flush({ state: 'NO_MENU' });
+      await result;
+    },
+  );
 });

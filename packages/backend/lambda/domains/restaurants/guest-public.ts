@@ -5,11 +5,16 @@ import {
   GuestContextResponseSchema,
   GuestRenewRequestSchema,
 } from "@liass-ohada/shared/restaurants";
+import { GuestCarteService } from "./guest-carte";
 import { GuestService } from "./guest-service";
 import { AppError } from "@/lambda/shared/app-error";
 
 /** Deliberately independent of Cognito/tenant staff middleware. Exact route allowlist. */
-export async function handler(event: APIGatewayProxyEventV2) {
+export async function handler(event: APIGatewayProxyEventV2): Promise<{
+  statusCode: number;
+  headers: Record<string, string>;
+  body: string;
+}> {
   const started = Date.now(),
     correlationId = event.requestContext?.requestId || randomUUID();
   const headers = {
@@ -31,6 +36,7 @@ export async function handler(event: APIGatewayProxyEventV2) {
       ![
         "POST /public/restaurants/guest/resolve",
         "POST /public/restaurants/guest/renew",
+        "GET /public/restaurants/guest/carte",
       ].includes(event.routeKey)
     )
       return send(404, { state: "UNAVAILABLE" });
@@ -39,6 +45,41 @@ export async function handler(event: APIGatewayProxyEventV2) {
       Buffer.byteLength(event.body ?? "", "utf8") > 1024
     )
       return send(400, { state: "UNAVAILABLE" });
+    if (event.routeKey === "GET /public/restaurants/guest/carte") {
+      const authorization =
+        event.headers?.authorization ?? event.headers?.Authorization;
+      const match = /^Bearer ([^\s]+)$/.exec(authorization ?? "");
+      if (!match || !GuestCapabilitySchema.safeParse(match[1]).success)
+        return send(200, { state: "UNAVAILABLE" });
+      const params = event.queryStringParameters ?? {};
+      if (
+        Object.keys(params).some((k) => k !== "cursor") ||
+        (params.cursor?.length ?? 0) > 4096
+      )
+        return send(400, { state: "UNAVAILABLE" });
+      let result;
+      try {
+        result = await GuestCarteService.read(
+          match[1],
+          params.cursor,
+          event.headers?.["if-none-match"] ?? event.headers?.["If-None-Match"],
+        );
+      } catch (error) {
+        if (params.cursor) return send(200, { state: "UNAVAILABLE" });
+        throw error;
+      }
+      const response = send(result.statusCode, result.body);
+      return {
+        ...response,
+        headers: {
+          ...response.headers,
+          ...(result.etag
+            ? { ETag: result.etag, "Cache-Control": "private, no-cache" }
+            : {}),
+        },
+        body: result.statusCode === 304 ? "" : response.body,
+      };
+    }
     let input: unknown;
     try {
       input = JSON.parse(event.body ?? "{}");

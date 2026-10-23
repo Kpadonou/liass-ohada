@@ -6,17 +6,18 @@ import { injectMutation } from '@tanstack/angular-query-experimental';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
 import { GuestQrTokenSchema } from '@liass-ohada/shared/restaurants';
+import { RestaurantGuestCarteComponent } from './restaurant-guest-carte.component';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
 import { guestStorageKey, readGuest, writeGuest } from '../data-access/restaurant-guest-storage';
 
 @Component({
   selector: 'liass-restaurant-guest',
   host: { class: 'block' },
-  imports: [MatButtonModule, TranslocoModule],
+  imports: [MatButtonModule, TranslocoModule, RestaurantGuestCarteComponent],
   template: ` <main
     class="min-h-dvh bg-app-background px-4 py-8 text-app-text-primary sm:px-6 sm:py-12"
   >
-    <section class="mx-auto max-w-lg space-y-6" aria-labelledby="guest-title">
+    <section class="mx-auto max-w-4xl space-y-6" aria-labelledby="guest-title">
       <p class="text-sm font-semibold text-brand-700 dark:text-brand-300">
         {{ 'RESTAURANTS.GUEST.BRAND' | transloco }}
       </p>
@@ -30,16 +31,21 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
           <p class="break-words text-app-text-secondary">
             {{ c.restaurantName }} · {{ c.outletName }}
           </p>
-          <h1 id="guest-title" class="break-words text-3xl font-semibold">{{ c.tableName }}</h1>
+          <p class="break-words text-sm text-app-text-secondary">{{ c.tableName }}</p>
         </div>
-        <p role="status" aria-live="polite">{{ 'RESTAURANTS.GUEST.' + c.state | transloco }}</p>
-        <p class="text-app-text-secondary">{{ 'RESTAURANTS.GUEST.CONTACT' | transloco }}</p>
+        <p class="text-sm text-app-text-secondary" role="status" aria-live="polite">
+          {{ 'RESTAURANTS.GUEST.' + c.state | transloco }}
+        </p>
         @if (c.policy === 'DISABLED') {
-          <p>{{ 'RESTAURANTS.GUEST.DISABLED' | transloco }}</p>
+          <p class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.GUEST.DISABLED' | transloco }}
+          </p>
         }
-        <button mat-stroked-button class="min-h-11" type="button" (click)="load(false)">
-          {{ 'RESTAURANTS.GUEST.REFRESH' | transloco }}
-        </button>
+        <liass-restaurant-guest-carte
+          [context]="c"
+          [scope]="request.data()!.key"
+          (ended)="end($event)"
+        />
       } @else {
         <h1 id="guest-title" class="text-2xl font-semibold">
           {{ 'RESTAURANTS.GUEST.WELCOME' | transloco }}
@@ -78,7 +84,7 @@ export class RestaurantGuestPage {
     }) => {
       const key = await guestStorageKey(token);
       if (!this.alive || revision !== this.revision)
-        return { result: { state: 'UNAVAILABLE' as const }, revision };
+        return { result: { state: 'UNAVAILABLE' as const }, revision, key };
       const saved = fresh ? undefined : readGuest(key);
       const result = saved ? await this.api.renew(saved.capability) : await this.api.resolve(token);
       if (this.alive && revision === this.revision) {
@@ -93,7 +99,7 @@ export class RestaurantGuestPage {
             : undefined,
         );
       }
-      return { result, revision };
+      return { result, revision, key };
     },
     retry: false,
     gcTime: 0,
@@ -124,6 +130,11 @@ export class RestaurantGuestPage {
       this.token = params.get('opaqueTableToken') ?? '';
       void this.load(false);
     });
+  }
+  end(state: 'EXPIRED' | 'VISIT_ENDED' | 'UNAVAILABLE') {
+    this.revision++;
+    this.request.reset();
+    this.fallback.set(state);
   }
   async load(fresh: boolean) {
     this.revision++;

@@ -1,3 +1,4 @@
+import { guestRoutes } from './guest.routes';
 import { restaurantRouteGuard } from '../../domains/restaurants/data-access/restaurant-route.guard';
 import { salesDashboardReadGuard } from '../../domains/sales/data-access/sales-dashboard-read.guard';
 import { restaurantSections } from '../navigation/product-navigation';
@@ -24,13 +25,7 @@ import {
 } from './auth.guards';
 
 export const routes: Routes = [
-  {
-    path: 'g/:opaqueTableToken',
-    loadComponent: () =>
-      import('../../domains/restaurants/feature/restaurant-guest.page').then(
-        (m) => m.RestaurantGuestPage,
-      ),
-  },
+  ...guestRoutes,
   {
     path: '',
     pathMatch: 'full',

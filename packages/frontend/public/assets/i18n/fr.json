@@ -4991,7 +4991,21 @@
       "EXPIRED": "Votre accès a expiré. Vous pouvez identifier à nouveau votre table.",
       "NETWORK": "Impossible de vérifier votre table. Vérifiez votre connexion puis réessayez.",
       "RATE_LIMITED": "Trop de demandes. Patientez quelques instants avant de réessayer.",
-      "BRAND": "Liass-Resto"
+      "BRAND": "Liass-Resto",
+      "CARTE": {
+        "TITLE": "Carte",
+        "REFRESH": "Actualiser",
+        "LOADING": "La carte arrive…",
+        "CATEGORIES": "Catégories de la carte",
+        "UNAVAILABLE": "Indisponible",
+        "STALE": "La carte reste affichée. Vérifiez votre connexion pour l’actualiser.",
+        "ERROR": "La carte n’a pas pu être chargée",
+        "ERROR_HELP": "Vérifiez votre connexion puis réessayez.",
+        "EMPTY": "La carte n’est pas encore disponible",
+        "EMPTY_HELP": "Votre serveur pourra vous renseigner.",
+        "MORE": "Voir la suite de la carte",
+        "CONTINUE": "Poursuivez la découverte de la carte."
+      }
     },
     "QR": {
       "HELP": "Ce QR reste valable entre les visites. Le scanner ne réserve pas la table et n’ouvre pas de visite.",

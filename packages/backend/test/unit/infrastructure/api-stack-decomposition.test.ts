@@ -20,7 +20,6 @@ import {
 } from "../../../lib/stacks/api-domain-stacks";
 
 const FROZEN_GUEST_ROUTES = [
-  ["GET", "/public/restaurants/guest/carte"],
   ["POST", "/public/restaurants/guest/submissions"],
   ["GET", "/public/restaurants/guest/state"],
   ["POST", "/public/restaurants/guest/waiter-call"],
@@ -376,7 +375,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(0);
   });
 
-  test("keeps 79 staff routes and five reviewed Guest/QR routes in one domain stack", () => {
+  test("keeps 79 staff routes and six reviewed Guest/QR routes in one domain stack", () => {
     const restaurants = constructs.find(
       (item) => item instanceof RestaurantsApiStack,
     )!;
@@ -388,7 +387,7 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(81);
-    expect(routes).toHaveLength(84);
+    expect(routes).toHaveLength(85);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
     ).toHaveLength(81);
@@ -399,6 +398,7 @@ describe("API stack decomposition", () => {
       String(route.routeKey).includes(" /public/"),
     );
     expect(publicRoutes.map((route) => route.routeKey).sort()).toEqual([
+      "GET /public/restaurants/guest/carte",
       "POST /public/restaurants/guest/renew",
       "POST /public/restaurants/guest/resolve",
     ]);
@@ -469,7 +469,7 @@ describe("API stack decomposition", () => {
     );
     expect(
       publicActions.filter((action: string) => action.startsWith("dynamodb:")),
-    ).toEqual(["dynamodb:GetItem"]);
+    ).toEqual(["dynamodb:GetItem", "dynamodb:Query", "dynamodb:BatchGetItem"]);
     expect(publicActions).toContain("secretsmanager:GetSecretValue");
     const policy = owned.find(
       (item): item is iam.CfnPolicy => item instanceof iam.CfnPolicy,
@@ -733,6 +733,10 @@ describe("API stack decomposition", () => {
     );
     expect(stages).toHaveLength(1);
     const settings = stages[0].Properties.RouteSettings;
+    expect(settings["GET /public/restaurants/guest/carte"]).toEqual({
+      ThrottlingBurstLimit: 20,
+      ThrottlingRateLimit: 10,
+    });
     for (const operation of ["resolve", "renew"]) {
       const entry = settings[`POST /public/restaurants/guest/${operation}`];
       expect(entry).toEqual({
@@ -833,7 +837,7 @@ describe("API stack decomposition", () => {
     }
   });
 
-  test("synthesizes the nine frozen future routes with two existing integrations and eleven resources", () => {
+  test("synthesizes the eight frozen future routes with two existing integrations and ten resources", () => {
     // Projection fixture only: these routes are never registered by the deployment app.
     const fixtureApp = new cdk.App({
       context: { authUseSecretsManager: true },
@@ -860,7 +864,7 @@ describe("API stack decomposition", () => {
           item instanceof apigwv2.HttpRoute &&
           String(
             (item.node.defaultChild as apigwv2.CfnRoute).routeKey,
-          ).startsWith("GET "),
+          ).startsWith("GET /restaurants/"),
       )!;
     const staffCfn = firstStaff.node.defaultChild as apigwv2.CfnRoute;
     const httpApi = firstStaff.httpApi;
@@ -955,7 +959,7 @@ describe("API stack decomposition", () => {
     expect(
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
-    ).toBe(11);
+    ).toBe(10);
     expect(Object.keys(after.Resources).length).toBeLessThanOrEqual(343);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(

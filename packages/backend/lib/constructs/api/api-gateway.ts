@@ -26,8 +26,10 @@ export class LiassOhadaApiGateway extends Construct {
           apigwv2.CorsHttpMethod.PATCH,
           apigwv2.CorsHttpMethod.DELETE,
         ],
+        exposeHeaders: ["ETag"],
         allowHeaders: [
           "content-type",
+          "if-none-match",
           "x-amz-date",
           "authorization",
           "x-api-key",

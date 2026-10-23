@@ -4991,7 +4991,21 @@
       "EXPIRED": "Your access expired. You can identify your table again.",
       "NETWORK": "Unable to check your table. Check your connection and try again.",
       "RATE_LIMITED": "Too many requests. Wait a moment before trying again.",
-      "BRAND": "Liass-Resto"
+      "BRAND": "Liass-Resto",
+      "CARTE": {
+        "TITLE": "Menu",
+        "REFRESH": "Refresh",
+        "LOADING": "Loading the menu…",
+        "CATEGORIES": "Menu categories",
+        "UNAVAILABLE": "Unavailable",
+        "STALE": "You can still browse this menu. Check your connection to refresh it.",
+        "ERROR": "The menu could not be loaded",
+        "ERROR_HELP": "Check your connection and try again.",
+        "EMPTY": "The menu is not available yet",
+        "EMPTY_HELP": "Your server will be happy to help.",
+        "MORE": "See more of the menu",
+        "CONTINUE": "Keep exploring the menu."
+      }
     },
     "QR": {
       "HELP": "This QR remains valid between visits. Scanning does not reserve the table or open a visit.",

@@ -60,6 +60,10 @@ export class RestaurantsGuestEndpoints extends Construct {
               ],
             }),
             new iam.PolicyStatement({
+              actions: ["dynamodb:Query", "dynamodb:BatchGetItem"],
+              resources: [props.restaurantsTable.tableArn],
+            }),
+            new iam.PolicyStatement({
               actions: [
                 "secretsmanager:GetSecretValue",
                 "secretsmanager:DescribeSecret",
@@ -140,6 +144,15 @@ export class RestaurantsGuestEndpoints extends Construct {
         authorizer: new api.HttpNoneAuthorizer(),
         integration: publicIntegration,
       });
+    new api.HttpRoute(this, "Public-carte", {
+      httpApi: props.api,
+      routeKey: api.HttpRouteKey.with(
+        "/public/restaurants/guest/carte",
+        api.HttpMethod.GET,
+      ),
+      authorizer: new api.HttpNoneAuthorizer(),
+      integration: publicIntegration,
+    });
     const base =
       "/restaurants/outlets/{outletId}/service-areas/{areaId}/tables/{tableId}/qr";
     for (const operation of ["rotate", "revoke", "status"])
@@ -158,6 +171,10 @@ export class RestaurantsGuestEndpoints extends Construct {
       // nested property names here, so use the CloudFormation wire casing.
       stage.routeSettings = {
         ...(stage.routeSettings as Record<string, unknown>),
+        "GET /public/restaurants/guest/carte": {
+          ThrottlingBurstLimit: 20,
+          ThrottlingRateLimit: 10,
+        },
         ...Object.fromEntries(
           ["resolve", "renew"].map((op) => [
             `POST /public/restaurants/guest/${op}`,
