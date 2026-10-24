@@ -15,7 +15,7 @@ import { ProductAccessState } from '../../../core/product-access/product-access.
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { RestaurantsApi } from '../data-access/restaurants.api';
-import { restaurantKeys } from '../data-access/restaurants.queries';
+import { RestaurantsQueries, restaurantKeys } from '../data-access/restaurants.queries';
 import { rid, row } from '../data-access/restaurants.test-fixture';
 import { floorFixture } from '../data-access/service-floor.test-fixture';
 import { serviceDuration } from '../utils/service-duration';
@@ -32,6 +32,8 @@ const api = {
   serviceFloor: vi.fn(),
   openSession: vi.fn(),
   myOutlets: vi.fn(),
+  guestActivity: vi.fn().mockResolvedValue({ items: [] }),
+  acknowledgeWaiterCall: vi.fn(),
 };
 let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>, client: QueryClient;
 let fixture: ReturnType<typeof TestBed.createComponent<RestaurantServiceFloorPage>>;
@@ -44,6 +46,8 @@ beforeEach(() => {
   write.set(true);
   params = new BehaviorSubject(convertToParamMap({ outlet: rid(2) }));
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  api.guestActivity.mockReset().mockResolvedValue({ items: [] });
+  api.acknowledgeWaiterCall.mockReset();
   api.myOutlets.mockReset().mockResolvedValue({ items: [{ outletId: rid(2), name: 'Agla' }] });
   api.get.mockReset().mockImplementation(async (_org, kind) => row(kind));
   api.list.mockReset().mockImplementation(async (_org, kind) => ({
@@ -1027,4 +1031,75 @@ it('keeps pending feedback local and preserves cards during unresolved opening',
   expect(api.openSession).toHaveBeenCalledTimes(1);
   finish({ data: { guestSessionId: rid(90) } });
   await pending;
+});
+
+const waiterActivity = () => [
+  {
+    waiterCallId: rid(81),
+    tableId: floorFixture().items[0].tableId,
+    tableName: 'Jardin',
+    requestedAt: new Date(Date.now() - 120000).toISOString(),
+    operationalExpiresAt: new Date(Date.now() + 480000).toISOString(),
+    hasSession: false,
+  },
+  {
+    waiterCallId: rid(82),
+    tableId: floorFixture().items[1].tableId,
+    tableName: 'Terrasse',
+    requestedAt: new Date(Date.now() - 60000).toISOString(),
+    operationalExpiresAt: new Date(Date.now() + 540000).toISOString(),
+    hasSession: true,
+  },
+];
+it('shows table waiter badge and oldest-first operational activity', async () => {
+  api.guestActivity.mockResolvedValue({ items: waiterActivity().reverse() });
+  const page = await ready();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.calls()).toHaveLength(2);
+  });
+  expect(page.calls()[0].tableName).toBe('Jardin');
+  expect(fixture.nativeElement.querySelector('[data-testid=table-waiter-call]')).toBeTruthy();
+  const text = fixture.nativeElement.querySelector('[data-testid=waiter-calls]').textContent;
+  expect(text.indexOf('Jardin')).toBeLessThan(text.indexOf('Terrasse'));
+  expect(text).toContain('Prendre en charge');
+});
+it('acknowledges and removes active presence through canonical refresh', async () => {
+  api.guestActivity.mockResolvedValue({ items: waiterActivity() });
+  const page = await ready();
+  await vi.waitFor(() => expect(page.calls()).toHaveLength(2));
+  api.acknowledgeWaiterCall.mockImplementation(async () => {
+    api.guestActivity.mockResolvedValue({ items: [] });
+    return {
+      waiterCallId: rid(81),
+      state: 'ACKNOWLEDGED',
+      acknowledgedAt: new Date().toISOString(),
+    };
+  });
+  await page.acknowledge(rid(81));
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.calls()).toHaveLength(0);
+  });
+  expect(fixture.nativeElement.querySelector('[data-testid=table-waiter-call]')).toBeNull();
+  expect(api.acknowledgeWaiterCall).toHaveBeenCalledTimes(1);
+});
+it('polling interval is fifteen seconds only for the visible active outlet', async () => {
+  const page = await ready();
+  const q = TestBed.inject(RestaurantsQueries);
+  expect(q.guestActivity(rid(2), true).refetchInterval).toBe(15000);
+  expect(q.guestActivity(rid(2), false).refetchInterval).toBe(false);
+  page.screenVisible.set(false);
+  fixture.detectChanges();
+  await vi.waitFor(() => expect(page.activity.isEnabled()).toBe(false));
+  page.screenVisible.set(true);
+  fixture.detectChanges();
+  await vi.waitFor(() => expect(page.activity.isEnabled()).toBe(true));
+});
+it('no activity actions appear without operational service permission', async () => {
+  read.set(false);
+  await create();
+  fixture.detectChanges();
+  expect(fixture.nativeElement.querySelector('[data-testid=waiter-calls]')).toBeNull();
+  expect(api.guestActivity).not.toHaveBeenCalled();
 });

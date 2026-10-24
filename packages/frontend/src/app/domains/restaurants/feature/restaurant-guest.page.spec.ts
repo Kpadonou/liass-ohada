@@ -74,7 +74,7 @@ describe('Guest entry without the staff shell', () => {
       expect(f.nativeElement.querySelector('liass-app-shell')).toBeNull();
       expect(f.nativeElement.querySelector('nav')).toBeNull();
       expect(f.nativeElement.textContent).not.toContain('Commander');
-      expect(f.nativeElement.querySelectorAll('button')).toHaveLength(1);
+      expect(f.nativeElement.querySelectorAll('button')).toHaveLength(2);
       expect(sessionStorage.length).toBe(1);
     },
   );

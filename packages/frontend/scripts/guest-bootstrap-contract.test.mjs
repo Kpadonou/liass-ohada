@@ -24,7 +24,11 @@ test('direct Guest startup remains independent of staff initialization', () => {
     read('app/core/http/guest.interceptor.ts'),
     /AuthStore|fetchAuthSession|aws-amplify/,
   );
-  for (const source of [cartStore, cartComponent]) {
+  for (const source of [
+    cartStore,
+    cartComponent,
+    read('app/domains/restaurants/feature/restaurant-guest-waiter-call.component.ts'),
+  ]) {
     assert.doesNotMatch(
       source,
       /Amplify|Cognito|AuthStore|BrowserSessionContext|workspace|accounting|sales|HttpClient/,

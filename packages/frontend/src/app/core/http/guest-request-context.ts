@@ -4,7 +4,7 @@ export const GUEST_CAPABILITY_REQUEST = new HttpContextToken<boolean>(() => fals
 export function isGuestRequest(request: HttpRequest<unknown>, base: string) {
   return (
     (request.method === 'POST' &&
-      ['resolve', 'renew'].some(
+      ['resolve', 'renew', 'waiter-call'].some(
         (op) => request.url === base + '/public/restaurants/guest/' + op,
       )) ||
     (request.method === 'GET' && request.url === base + '/public/restaurants/guest/carte')

@@ -4,6 +4,7 @@ import { firstValueFrom, timeout } from 'rxjs';
 import {
   GuestContextResponseSchema,
   GuestResolveRequestSchema,
+  GuestWaiterCallResponseSchema,
 } from '@liass-ohada/shared/restaurants';
 import { environment } from '../../../../environments/environment';
 import { GUEST_CAPABILITY_REQUEST } from '../../../core/http/guest-request-context';
@@ -19,6 +20,22 @@ export class RestaurantGuestApi {
           .post<unknown>(this.base + '/resolve', GuestResolveRequestSchema.parse({ token }), {
             context: new HttpContext().set(GUEST_CAPABILITY_REQUEST, true),
           })
+          .pipe(timeout(15_000)),
+      ),
+    );
+  }
+  async waiterCall(capability: string) {
+    return GuestWaiterCallResponseSchema.parse(
+      await firstValueFrom(
+        this.http
+          .post<unknown>(
+            this.base + '/waiter-call',
+            {},
+            {
+              context: new HttpContext().set(GUEST_CAPABILITY_REQUEST, true),
+              headers: { Authorization: `Bearer ${capability}` },
+            },
+          )
           .pipe(timeout(15_000)),
       ),
     );

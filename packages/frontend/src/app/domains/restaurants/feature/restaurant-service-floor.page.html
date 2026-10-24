@@ -173,6 +173,62 @@
           />
         </div>
       } @else {
+        <section
+          class="space-y-3 rounded-app-card border border-app-border bg-app-surface p-4"
+          aria-labelledby="waiter-calls-heading"
+          data-testid="waiter-calls"
+        >
+          <h2 id="waiter-calls-heading" class="text-lg font-semibold">
+            {{ 'RESTAURANTS.WAITER_CALL.STAFF_TITLE' | transloco }}
+          </h2>
+          @if (activity.isPending()) {
+            <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
+          } @else if (activity.isError()) {
+            <p role="status" class="text-sm text-app-text-secondary">
+              {{ 'RESTAURANTS.WAITER_CALL.ACTIVITY_ERROR' | transloco }}
+            </p>
+            <button mat-button (click)="activity.refetch()">
+              {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+            </button>
+          }
+          @if (calls().length) {
+            <ol class="divide-y divide-app-border">
+              @for (call of calls(); track call.waiterCallId) {
+                <li class="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div class="min-w-0">
+                    <p class="break-words font-medium">{{ call.tableName }}</p>
+                    <p class="text-sm text-app-text-secondary">
+                      {{ 'RESTAURANTS.WAITER_CALL.REQUESTED' | transloco }} ·
+                      {{ duration(call.requestedAt) }}
+                    </p>
+                  </div>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    class="min-h-11"
+                    [disabled]="acknowledgement.isPending()"
+                    (click)="acknowledge(call.waiterCallId)"
+                  >
+                    {{ 'RESTAURANTS.WAITER_CALL.ACK_ACTION' | transloco }}
+                  </button>
+                </li>
+              }
+            </ol>
+          } @else if (activity.isSuccess() && !activity.hasNextPage()) {
+            <p class="text-sm text-app-text-secondary">
+              {{ 'RESTAURANTS.WAITER_CALL.EMPTY' | transloco }}
+            </p>
+          }
+          @if (activity.hasNextPage()) {
+            <button
+              mat-button
+              [disabled]="activity.isFetchingNextPage()"
+              (click)="activity.fetchNextPage()"
+            >
+              {{ 'RESTAURANTS.SERVICE.MORE' | transloco }}
+            </button>
+          }
+        </section>
         <section class="space-y-3" aria-labelledby="service-floor-heading">
           <h2 id="service-floor-heading" class="text-xl font-semibold">
             {{ 'RESTAURANTS.SERVICE.FLOOR' | transloco }}
@@ -286,6 +342,13 @@
                         </div>
                       }
                     </div>
+                    @if (hasCall(table.tableId)) {
+                      <liass-status-chip
+                        tone="warning"
+                        [label]="'RESTAURANTS.WAITER_CALL.BADGE' | transloco"
+                        data-testid="table-waiter-call"
+                      />
+                    }
                     <div class="flex flex-wrap items-center gap-2" data-testid="table-status">
                       <liass-status-chip
                         size="md"

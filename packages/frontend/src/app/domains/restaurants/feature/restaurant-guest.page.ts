@@ -6,6 +6,7 @@ import { injectMutation } from '@tanstack/angular-query-experimental';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
 import { GuestQrTokenSchema } from '@liass-ohada/shared/restaurants';
+import { RestaurantGuestWaiterCallComponent } from './restaurant-guest-waiter-call.component';
 import { RestaurantGuestCarteComponent } from './restaurant-guest-carte.component';
 import { RestaurantGuestCartComponent } from './restaurant-guest-cart.component';
 import { RestaurantGuestCartStore } from '../data-access/restaurant-guest-cart.store';
@@ -19,6 +20,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
     MatButtonModule,
     TranslocoModule,
     RestaurantGuestCarteComponent,
+    RestaurantGuestWaiterCallComponent,
     RestaurantGuestCartComponent,
   ],
   template: ` <main
@@ -46,6 +48,11 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
             {{ 'RESTAURANTS.GUEST.DISABLED' | transloco }}
           </p>
         }
+        <liass-restaurant-guest-waiter-call
+          [context]="c"
+          [scope]="request.data()!.key"
+          (ended)="end($event)"
+        />
         <liass-restaurant-guest-carte
           [context]="c"
           [scope]="request.data()!.key"

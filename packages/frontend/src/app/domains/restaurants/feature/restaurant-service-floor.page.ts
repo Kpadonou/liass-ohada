@@ -1,3 +1,5 @@
+import { DOCUMENT } from '@angular/common';
+import { NotificationService } from '../../../core/notifications/notification.service';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantAccessNoticeComponent } from '../ui/restaurant-access-notice.component';
 import { RestaurantAccessState } from '../data-access/restaurant-access-state';
@@ -25,7 +27,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
-import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experimental';
+import {
+  injectInfiniteQuery,
+  injectQuery,
+  injectMutation,
+} from '@tanstack/angular-query-experimental';
 import type { RestaurantServiceFloorResponse } from '@liass-ohada/shared/restaurants';
 import { RestaurantsApi } from '../data-access/restaurants.api';
 import { RestaurantsQueries } from '../data-access/restaurants.queries';
@@ -151,6 +157,69 @@ export class RestaurantServiceFloorPage {
         (this.selfService() || !!this.root.data()?.isActive),
     ),
   );
+  private readonly document = inject(DOCUMENT);
+  private readonly notifications = inject(NotificationService);
+  readonly screenVisible = signal(this.document.visibilityState !== 'hidden');
+  readonly activity = injectInfiniteQuery(() =>
+    this.queries.guestActivity(
+      this.outletId() ?? '',
+      this.allowed() && !!this.outlet()?.isActive && !this.revoking() && this.screenVisible(),
+    ),
+  );
+  readonly calls = computed(() =>
+    this.allowed() &&
+    !(
+      this.activity.error() instanceof HttpErrorResponse &&
+      [401, 403].includes((this.activity.error() as HttpErrorResponse).status)
+    )
+      ? (this.activity.data()?.pages.flatMap((p) => p.items) ?? [])
+          .filter((c) => Date.parse(c.operationalExpiresAt) > this.now())
+          .sort((a, b) => a.requestedAt.localeCompare(b.requestedAt))
+      : [],
+  );
+  readonly acknowledgement = injectMutation(() => ({
+    mutationKey: ['restaurants', 'acknowledge-waiter-call'],
+    mutationFn: async (input: {
+      ctx: ReturnType<RestaurantsQueries['activityContext']>;
+      callId: string;
+    }) => {
+      const response = await this.api.acknowledgeWaiterCall(input.ctx, input.callId);
+      await this.queries.activityChanged(input.ctx);
+      return response;
+    },
+    retry: false,
+  }));
+  hasCall(tableId: string) {
+    return this.calls().some((c) => c.tableId === tableId);
+  }
+  async acknowledge(callId: string) {
+    if (
+      !this.allowed() ||
+      !this.outletId() ||
+      this.acknowledgement.isPending() ||
+      !this.calls().some((c) => c.waiterCallId === callId)
+    )
+      return;
+    const ctx = this.queries.activityContext(this.outletId()!);
+    try {
+      await this.acknowledgement.mutateAsync({ ctx, callId });
+      if (
+        this.queries.scope() === ctx.org &&
+        this.queries.userScope() === ctx.user &&
+        this.outletId() === ctx.outlet &&
+        this.queries.activityContext(ctx.outlet).revision === ctx.revision
+      )
+        this.notifications.success(this.t.translate('RESTAURANTS.WAITER_CALL.ACKNOWLEDGED'));
+    } catch (error) {
+      if (
+        this.queries.scope() === ctx.org &&
+        this.queries.userScope() === ctx.user &&
+        this.outletId() === ctx.outlet &&
+        this.queries.activityContext(ctx.outlet).revision === ctx.revision
+      )
+        this.notifications.error(this.errorText(error));
+    }
+  }
   readonly tables = computed(() => {
     const unique = new Map<string, FloorTable>();
     for (const table of this.floor
@@ -170,6 +239,11 @@ export class RestaurantServiceFloorPage {
   private openingContext = 0;
   private conflictRefresh = '';
   constructor() {
+    const visibility = () => this.screenVisible.set(this.document.visibilityState !== 'hidden');
+    this.document.addEventListener('visibilitychange', visibility);
+    inject(DestroyRef).onDestroy(() =>
+      this.document.removeEventListener('visibilitychange', visibility),
+    );
     const timer = setInterval(() => this.now.set(Date.now()), 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
     this.operational.use(inject(DestroyRef), this.route, () => this.allowed());
@@ -293,7 +367,7 @@ export class RestaurantServiceFloorPage {
   }
   async refresh() {
     this.conflictRefresh = '';
-    await Promise.all([this.floor.refetch(), this.menu.refetch()]);
+    await Promise.all([this.floor.refetch(), this.menu.refetch(), this.activity.refetch()]);
   }
   errorText(error: unknown) {
     return restaurantError(error, (key) => this.t.translate(key));

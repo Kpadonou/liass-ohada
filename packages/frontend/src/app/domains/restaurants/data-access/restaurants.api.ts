@@ -29,6 +29,61 @@ export class RestaurantsApi {
     if (!scope || this.auth.effectiveOrgId() !== scope)
       throw new HttpErrorResponse({ status: 409, error: { error: { code: 'WORKSPACE_CHANGED' } } });
   }
+  async guestActivity(
+    ctx: { org: string; user: string; revision: number; outlet: string },
+    cursor?: string,
+  ) {
+    const check = () => {
+      this.assertScope(ctx.org);
+      if (
+        this.auth.currentUserId() !== ctx.user ||
+        (this.auth.contextRevision?.() ?? 0) !== ctx.revision
+      )
+        throw new HttpErrorResponse({ status: 409 });
+    };
+    check();
+    const response = c.GuestActivityResponseSchema.parse(
+      await firstValueFrom(
+        this.http
+          .get<unknown>(
+            this.base +
+              `/restaurants/outlets/${c.RestaurantIdSchema.parse(ctx.outlet)}/guest-activity`,
+            { params: cursor ? { cursor } : {} },
+          )
+          .pipe(timeout(15_000)),
+      ),
+    );
+    check();
+    return response;
+  }
+  async acknowledgeWaiterCall(
+    ctx: { org: string; user: string; revision: number; outlet: string },
+    callId: string,
+  ) {
+    const check = () => {
+      this.assertScope(ctx.org);
+      if (
+        this.auth.currentUserId() !== ctx.user ||
+        (this.auth.contextRevision?.() ?? 0) !== ctx.revision
+      )
+        throw new HttpErrorResponse({ status: 409 });
+    };
+    check();
+    const response = c.AcknowledgeWaiterCallResponseSchema.parse(
+      await firstValueFrom(
+        this.http
+          .post<unknown>(
+            this.base +
+              `/restaurants/outlets/${c.RestaurantIdSchema.parse(ctx.outlet)}/waiter-calls/${c.RestaurantIdSchema.parse(callId)}/acknowledge`,
+            {},
+          )
+          .pipe(timeout(15_000)),
+      ),
+    );
+    check();
+    if (response.waiterCallId !== callId) throw new Error('Mismatched acknowledgement');
+    return response;
+  }
   async cartePage(
     ctx: { org: string; user: string; revision: number; outlet: string; menu: string },
     cursor: string | undefined,

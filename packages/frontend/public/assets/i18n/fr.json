@@ -5057,6 +5057,20 @@
       "CONFIRM_REVOKE": "Le QR sera désactivé. La table et sa visite restent ouvertes. Un nouveau QR sera nécessaire pour rétablir cet accès.",
       "CONFIRM": "Confirmer",
       "SAVED": "Le QR de la table a été mis à jour."
+    },
+    "WAITER_CALL": {
+      "ACTION": "Appeler un serveur",
+      "PENDING": "Appel en cours…",
+      "REQUESTED": "Serveur appelé",
+      "REQUESTED_HELP": "Un membre de l’équipe va prendre votre demande en charge.",
+      "ACKNOWLEDGED": "Demande prise en charge",
+      "COOLDOWN": "Vous pourrez rappeler dans {{seconds}} s.",
+      "ERROR": "L’appel n’a pas pu être confirmé. Réessayez.",
+      "STAFF_TITLE": "Appels serveur",
+      "ACK_ACTION": "Prendre en charge",
+      "ACTIVITY_ERROR": "Les appels ne peuvent pas être actualisés.",
+      "EMPTY": "Aucun appel en attente.",
+      "BADGE": "Serveur demandé"
     }
   }
 }

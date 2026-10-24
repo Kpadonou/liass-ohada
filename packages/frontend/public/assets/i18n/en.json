@@ -5057,6 +5057,20 @@
       "CONFIRM_REVOKE": "The QR will be disabled. The table and its visit remain open. A new QR is required to restore this access.",
       "CONFIRM": "Confirm",
       "SAVED": "The table QR has been updated."
+    },
+    "WAITER_CALL": {
+      "ACTION": "Call waiter",
+      "PENDING": "Calling…",
+      "REQUESTED": "Waiter called",
+      "REQUESTED_HELP": "A member of the team will acknowledge your request.",
+      "ACKNOWLEDGED": "Request acknowledged",
+      "COOLDOWN": "You can call again in {{seconds}} s.",
+      "ERROR": "Your call could not be confirmed. Please try again.",
+      "STAFF_TITLE": "Waiter calls",
+      "ACK_ACTION": "Acknowledge",
+      "ACTIVITY_ERROR": "Waiter calls could not be refreshed.",
+      "EMPTY": "No calls waiting.",
+      "BADGE": "Waiter requested"
     }
   }
 }

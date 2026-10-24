@@ -75,6 +75,41 @@ export class RestaurantsQueries {
   userScope() {
     return this.auth.currentUserId?.() ?? '';
   }
+  guestActivity(outlet: string, enabled: boolean) {
+    const ctx = {
+      org: this.scope(),
+      user: this.userScope(),
+      revision: this.auth.contextRevision?.() ?? 0,
+      outlet,
+    };
+    return infiniteQueryOptions({
+      queryKey: ['restaurants', ctx.org, 'guest-activity', ctx.user, ctx.revision, outlet] as const,
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam }) => this.api.guestActivity(ctx, pageParam),
+      getNextPageParam: (last) => last.nextCursor,
+      enabled: enabled && !!ctx.org && !!outlet,
+      staleTime: 15_000,
+      refetchInterval: enabled ? 15_000 : false,
+      refetchIntervalInBackground: false,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+      retry: false,
+    });
+  }
+  activityContext(outlet: string) {
+    return {
+      org: this.scope(),
+      user: this.userScope(),
+      revision: this.auth.contextRevision?.() ?? 0,
+      outlet,
+    };
+  }
+  activityChanged(ctx: { org: string; user: string; revision: number; outlet: string }) {
+    return this.client.invalidateQueries({
+      queryKey: ['restaurants', ctx.org, 'guest-activity', ctx.user, ctx.revision, ctx.outlet],
+      exact: true,
+    });
+  }
   myOutlets(enabled = true, revision?: number, contextToken?: string) {
     const org = this.scope(),
       user = this.userScope(),
