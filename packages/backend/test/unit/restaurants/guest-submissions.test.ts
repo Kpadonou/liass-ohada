@@ -180,7 +180,7 @@ test("rate limit is table durable and pending per Guest bounded", async () => {
     (await S.submit(cap, { ...input, clientRequestId: fixtureId(903) })).state,
   ).toBe("LIMIT_REACHED");
 });
-test.each(["DISABLED", "DIRECT"])("%s cannot submit", async (policy) => {
+test.each(["DISABLED"])("%s cannot submit", async (policy) => {
   patch(K.restaurantSK(), { guestOrderingPolicy: policy });
   expect((await S.submit(cap, await body())).state).toBe("NOT_ALLOWED");
 });
@@ -655,4 +655,423 @@ test("policy disable/re-enable cannot resurrect a pending request", async () => 
   expect(all().some((row) => row.entityType === "RESTAURANT_ORDER")).toBe(
     false,
   );
+});
+async function directBody(name?: string, n = 2200) {
+  patch(K.restaurantSK(), { guestOrderingPolicy: "DIRECT" });
+  const carte = await GuestCarteService.read(cap);
+  if (carte.body.state !== "READY") throw Error();
+  const entry = name
+    ? carte.body.categories
+        .flatMap((cat) => cat.items)
+        .find((item) => item.name === name)!
+    : carte.body.categories[0].items[0];
+  return c.GuestSubmissionRequestSchema.parse({
+    clientRequestId: fixtureId(n),
+    lines: [
+      {
+        reference: entry.reference,
+        selectionRef: entry.selectionRef,
+        quantity: 2,
+        note: "Sans piment",
+        presentedAmountMinor: entry.amountMinor,
+        currency: carte.body.currency,
+      },
+    ],
+  });
+}
+test("DIRECT accepts canonical no-station order once, without staff approval or fake preparation", async () => {
+  const input = await directBody("Chocolate Cake");
+  const a = await S.submit(cap, input);
+  expect(a.state).toBe("CONFIRMED");
+  if (a.state !== "CONFIRMED") throw Error();
+  expect(a.request.state).toBe("ACCEPTED");
+  expect(a.request.orderStatus).toBe("CONFIRMED");
+  expect(a.request.lines[0].fulfillment).toBe("CONFIRMED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    1,
+  );
+  expect(
+    all().filter((r) => r.entityType === "RESTAURANT_ORDER_ITEM"),
+  ).toHaveLength(1);
+  expect(
+    all().filter((r) => r.entityType === "RESTAURANT_PREPARATION"),
+  ).toHaveLength(0);
+  expect((await E.session(scope, scope.sessionId)).data.dueMinor).toBe(4000);
+  expect(await S.submit(cap, input)).toEqual(a);
+  expect((await S.list(scope, "owner")).requests).toHaveLength(0);
+  await expect(
+    S.review(scope, "owner", a.request.requestId, "approve"),
+  ).rejects.toBeDefined();
+});
+test("concurrent DIRECT duplicates converge on one canonical Order and effects", async () => {
+  const input = await directBody("Grilled Chicken");
+  const results = await Promise.all([
+    S.submit(cap, input),
+    S.submit(cap, input),
+  ]);
+  expect(results[0]).toEqual(results[1]);
+  if (results[0].state !== "CONFIRMED") throw Error();
+  expect(results[0].request.orderStatus).toBe("PREPARING");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    1,
+  );
+  expect(
+    all().filter((r) => r.entityType === "RESTAURANT_PREPARATION"),
+  ).toHaveLength(1);
+  expect((await E.session(scope, scope.sessionId)).data.dueMinor).toBe(10000);
+  const rows = all().filter((r) => r.entityType === "RESTAURANT_ORDER_ITEM");
+  expect(rows[0].data.quantity).toBe(2);
+  expect(rows[0].data.notes).toBe("Sans piment");
+  expect(rows[0].data.snapshot.unitPriceMinor).toBe(5000);
+});
+test("DIRECT staging has no business effects, survives uncertainty, then resumes exactly once", async () => {
+  const input = await directBody("Grilled Chicken");
+  const original = E.mutate.bind(E);
+  const spy = jest
+    .spyOn(E, "mutate")
+    .mockRejectedValueOnce(new Error("transport"));
+  await expect(S.submit(cap, input)).rejects.toThrow();
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    0,
+  );
+  expect(
+    all().filter((r) => r.entityType === "RESTAURANT_PREPARATION"),
+  ).toHaveLength(0);
+  expect((await E.session(scope, scope.sessionId)).data.dueMinor).toBe(0);
+  const staged = all().find(
+    (r) => r.entityType === "RESTAURANT_GUEST_ORDER_REQUEST",
+  )!;
+  expect(staged.data.state).toBe("PROCESSING");
+  expect(staged.directStage.order.status).toBe("DRAFT");
+  expect(staged.directStage.order.dueMinor).toBe(0);
+  spy.mockImplementation(original);
+  const result = await S.submit(cap, input);
+  expect(result.state).toBe("CONFIRMED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    1,
+  );
+});
+test("DIRECT canonical pricing and availability reject stale client snapshots", async () => {
+  const input = await directBody("Grilled Chicken");
+  expect(
+    (
+      await S.submit(cap, {
+        ...input,
+        lines: [{ ...input.lines[0], presentedAmountMinor: 1 }],
+      })
+    ).state,
+  ).toBe("REVIEW_REQUIRED");
+  const entry = f.items[0];
+  patch(K.restaurantMenuItemSK(f.outlet.id, entry.categoryId, entry.id), {
+    availability: "UNAVAILABLE",
+    version: 2,
+  });
+  expect((await S.submit(cap, input)).state).toBe("REVIEW_REQUIRED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    0,
+  );
+});
+test("DIRECT invalid/expired selection cannot create effects", async () => {
+  const input = await directBody();
+  expect(
+    (
+      await S.submit(cap, {
+        ...input,
+        lines: [{ ...input.lines[0], selectionRef: "x".repeat(200) }],
+      })
+    ).state,
+  ).toBe("REVIEW_REQUIRED");
+  jest.useFakeTimers({ now: Date.now() + 900001 });
+  expect((await S.submit(cap, input)).state).toBe("REVIEW_REQUIRED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    0,
+  );
+});
+test("DIRECT own-state never exposes another Guest or internal order references", async () => {
+  const input = await directBody();
+  await S.submit(cap, input);
+  const own = await S.own(cap);
+  expect(own.state).toBe("READY");
+  const other = await S.own(await resolve());
+  if (other.state !== "READY") throw Error();
+  expect(other.requests).toHaveLength(0);
+  for (const field of [
+    "orgId",
+    "outletId",
+    "tableId",
+    "guestSessionId",
+    "orderId",
+    "itemId",
+    "PK",
+    "SK",
+    "actorId",
+  ])
+    expect(JSON.stringify(own)).not.toContain('"' + field + '"');
+});
+test("DIRECT requires exact OPEN visit; never closes the table", async () => {
+  const input = await directBody();
+  await S.submit(cap, input);
+  const session = await E.session(scope, scope.sessionId);
+  expect(session.data.status).toBe("OPEN");
+  const second = await directBody(undefined, 2300);
+  await E.mutate(
+    { ...scope, actorId: "owner" },
+    "CLOSE_SESSION",
+    { clientRequestId: fixtureId(2301), expectedVersion: session.data.version },
+    { sessionId: scope.sessionId },
+  ).catch(() => undefined); // Accepted sale correctly prevents unpaid closure.
+  const principal =
+    await import("@/lambda/domains/restaurants/guest-capability");
+  const old = await principal.openGuest(cap);
+  const wrong = await principal.sealGuest({
+    ...old,
+    sessionId: fixtureId(2399),
+  });
+  expect((await S.submit(wrong, second)).state).not.toBe("CONFIRMED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    1,
+  );
+});
+
+test("DIRECT twelve distinct categories/stations stay within ninety operations", async () => {
+  patch(K.restaurantSK(), { guestOrderingPolicy: "DIRECT" });
+  const actor = "bounded-waiter";
+  m.seedAccess(org, actor, "WAITER");
+  const profile = {
+    PK: K.userProfilePK(actor),
+    SK: K.userProfileSK(),
+    entityType: "USER_PROFILE",
+    userId: actor,
+    email: "waiter@example.test",
+    normalizedEmail: "waiter@example.test",
+    emailVerified: true,
+    displayName: "Waiter",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    lastSyncedFromIdentityAt: new Date().toISOString(),
+  };
+  m.rows.set(JSON.stringify([profile.PK, profile.SK]), marshall(profile));
+  const { RestaurantStaffService: Staff } =
+    await import("@/lambda/domains/restaurants/staff-service");
+  await Staff.mutate(org, "owner", actor, "BIND", {
+    clientRequestId: fixtureId(1700),
+    memberUserId: actor,
+  });
+  await Staff.mutate(
+    org,
+    "owner",
+    actor,
+    "ASSIGN",
+    { clientRequestId: fixtureId(1701) },
+    f.outlet.id,
+  );
+  const ids = new Set<string>();
+  for (let i = 0; i < 12; i++) {
+    const ctx = { outletId: f.outlet.id };
+    const cat = await Config.create(org, "owner", "category", ctx, {
+      clientRequestId: fixtureId(1800 + i * 3),
+      name: "Category " + i,
+    });
+    const station = await Config.create(org, "owner", "station", ctx, {
+      clientRequestId: fixtureId(1801 + i * 3),
+      name: "Station " + i,
+    });
+    await Config.create(
+      org,
+      "owner",
+      "item",
+      { ...ctx, categoryId: cat.id },
+      {
+        clientRequestId: fixtureId(1802 + i * 3),
+        name: "Item " + i,
+        price: { amountMinor: 100, currency: "XOF" },
+        preparationStationId: station.id,
+      },
+    );
+    ids.add("Category " + i);
+  }
+  const carte = await GuestCarteService.read(cap);
+  if (carte.body.state !== "READY") throw Error();
+  const lines = carte.body.categories
+    .filter((cat) => ids.has(cat.name))
+    .flatMap((cat) =>
+      cat.items.map((entry) => ({
+        reference: entry.reference,
+        selectionRef: entry.selectionRef,
+        quantity: 1,
+        note: "",
+        presentedAmountMinor: entry.amountMinor,
+        currency: "XOF",
+      })),
+    );
+  expect(lines).toHaveLength(12);
+  const r = await S.submit(cap, { clientRequestId: fixtureId(1900), lines });
+  if (r.state !== "CONFIRMED") throw Error(r.state);
+  expect(r.request.state).toBe("ACCEPTED");
+  const tx = m.transactions.at(-1)!;
+  expect(tx.TransactItems!.length).toBeLessThanOrEqual(90);
+  expect(tx.TransactItems).toHaveLength(90);
+  expect(
+    tx.TransactItems!.some(
+      (op) => op.Put?.Item?.entityType?.S === "RESTAURANT_GUEST_ORDER_REQUEST",
+    ),
+  ).toBe(true);
+  expect(
+    tx.TransactItems!.filter(
+      (op) => op.Put?.Item?.entityType?.S === "RESTAURANT_ORDER",
+    ),
+  ).toHaveLength(1);
+});
+test("DIRECT status follows canonical preparation and no-station lines never become served", async () => {
+  const input = await directBody("Grilled Chicken");
+  const cake = (await directBody("Chocolate Cake")).lines[0];
+  input.lines.push(cake);
+  const result = await S.submit(cap, input);
+  if (result.state !== "CONFIRMED") throw Error();
+  const { RestaurantPreparationService: P } =
+    await import("@/lambda/domains/restaurants/preparation-service");
+  let task = all().find(
+    (row) => row.entityType === "RESTAURANT_PREPARATION",
+  )!.data;
+  const ids = {
+    orderId: task.orderId,
+    itemId: task.itemId,
+    fireId: task.fireId,
+  };
+  await P.transition(
+    scope,
+    "owner",
+    "READY",
+    { clientRequestId: fixtureId(2500), expectedVersion: task.version },
+    ids,
+  );
+  let state = await S.own(cap);
+  if (state.state !== "READY") throw Error();
+  expect(state.requests[0].orderStatus).toBe("READY");
+  task = all().find((row) => row.entityType === "RESTAURANT_PREPARATION")!.data;
+  await P.transition(
+    scope,
+    "owner",
+    "SERVE",
+    { clientRequestId: fixtureId(2501), expectedVersion: task.version },
+    ids,
+  );
+  state = await S.own(cap);
+  if (state.state !== "READY") throw Error();
+  expect(state.requests[0].lines.map((line) => line.fulfillment)).toEqual([
+    "SERVED",
+    "CONFIRMED",
+  ]);
+  expect(state.requests[0].orderStatus).not.toBe("SERVED");
+});
+test("DIRECT FREE and ended/replaced visits cannot submit", async () => {
+  const input = await directBody();
+  const before = await E.session(scope, scope.sessionId);
+  await E.mutate(
+    { ...scope, actorId: "owner" },
+    "CLOSE_SESSION",
+    { clientRequestId: fixtureId(2600), expectedVersion: before.data.version },
+    { sessionId: scope.sessionId },
+  );
+  expect((await S.submit(cap, input)).state).toBe("VISIT_ENDED");
+  const free = await resolve();
+  expect((await S.submit(free, input)).state).toBe("NOT_ALLOWED");
+  await E.mutate({ ...scope, actorId: "owner" }, "OPEN_SESSION", {
+    clientRequestId: fixtureId(2601),
+    tableId: f.tables[0].id,
+    areaId: f.areas[0].id,
+  });
+  expect((await S.submit(cap, input)).state).toBe("VISIT_ENDED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    0,
+  );
+});
+test("DIRECT preserves twenty-submission lifetime limit and table throttling", async () => {
+  const input = await directBody();
+  let now = Date.now();
+  jest.spyOn(Date, "now").mockImplementation(() => now);
+  for (let n = 0; n < 20; n++) {
+    const r = await S.submit(cap, {
+      ...input,
+      clientRequestId: fixtureId(2700 + n),
+    });
+    expect(r.state).toBe("CONFIRMED");
+    if (n === 0)
+      expect(
+        (await S.submit(cap, { ...input, clientRequestId: fixtureId(2799) }))
+          .state,
+      ).toBe("RATE_LIMITED");
+    now += 5001;
+  }
+  expect(
+    (await S.submit(cap, { ...input, clientRequestId: fixtureId(2800) })).state,
+  ).toBe("LIMIT_REACHED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    20,
+  );
+});
+test("DIRECT canonical change after staging demands review without sale effects", async () => {
+  const input = await directBody("Grilled Chicken");
+  const original = E.mutate.bind(E);
+  const spy = jest
+    .spyOn(E, "mutate")
+    .mockRejectedValueOnce(new Error("transport"));
+  await expect(S.submit(cap, input)).rejects.toBeDefined();
+  patch(
+    K.restaurantMenuItemSK(f.outlet.id, f.items[0].categoryId, f.items[0].id),
+    { version: 2, availability: "UNAVAILABLE" },
+  );
+  spy.mockImplementation(original);
+  expect((await S.submit(cap, input)).state).toBe("REVIEW_REQUIRED");
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    0,
+  );
+  expect(
+    all().filter((r) => r.entityType === "RESTAURANT_GUEST_ORDER_REQUEST")[0]
+      .data.state,
+  ).toBe("EXPIRED");
+  const retry = await S.submit(cap, input);
+  if (retry.state !== "CONFIRMED") throw Error();
+  expect(retry.request.state).toBe("EXPIRED");
+});
+test("DIRECT accepted retry remains reconciliation when sending is subsequently disabled", async () => {
+  const input = await directBody();
+  const original = await S.submit(cap, input);
+  patch(K.restaurantSK(), { guestOrderingPolicy: "DISABLED", version: 2 });
+  expect(await S.submit(cap, input)).toEqual(original);
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    1,
+  );
+});
+test("DIRECT unaccepted staged intent cannot outlive selection authority", async () => {
+  const input = await directBody();
+  const original = E.mutate.bind(E);
+  const spy = jest
+    .spyOn(E, "mutate")
+    .mockRejectedValueOnce(new Error("transport"));
+  await expect(S.submit(cap, input)).rejects.toBeDefined();
+  spy.mockImplementation(original);
+  jest.useFakeTimers({ now: Date.now() + 900001 });
+  const result = await S.submit(cap, input);
+  expect(result.state).toBe("CONFIRMED");
+  if (result.state !== "CONFIRMED") throw Error();
+  expect(result.request.state).toBe("EXPIRED");
+  expect(
+    all().filter((row) => row.entityType === "RESTAURANT_ORDER"),
+  ).toHaveLength(0);
+});
+test("DIRECT canonical order is discoverable by existing Table Workspace reads", async () => {
+  await S.submit(cap, await directBody());
+  const { RestaurantTransactionQueries: Q } =
+    await import("@/lambda/domains/restaurants/transaction-queries");
+  const orders = await Q.run(
+    scope,
+    "SESSION_ORDERS",
+    { limit: 50 },
+    { sessionId: scope.sessionId },
+    true,
+  );
+  expect(orders.items).toHaveLength(1);
+  expect((orders.items[0] as c.RestaurantOrder).orderType).toBe("DINE_IN");
+  expect((orders.items[0] as c.RestaurantOrder).status).toBe("SUBMITTED");
 });

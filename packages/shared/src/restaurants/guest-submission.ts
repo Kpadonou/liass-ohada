@@ -27,10 +27,21 @@ export const GuestSubmissionRequestSchema = z
 export const GuestOrderRequestSchema = z
   .object({
     requestId: z.string().uuid(),
-    state: z.enum(["PENDING_APPROVAL", "ACCEPTED", "REJECTED", "EXPIRED"]),
+    state: z.enum([
+      "PENDING_APPROVAL",
+      "PROCESSING",
+      "ACCEPTED",
+      "REJECTED",
+      "EXPIRED",
+    ]),
     submittedAt: z.string().datetime(),
     expiresAt: z.string().datetime(),
     reason: z.string().max(250).optional(),
+    clientRequestId: z.string().uuid().optional(),
+    mode: z.enum(["STAFF_APPROVAL", "DIRECT"]).optional(),
+    orderStatus: z
+      .enum(["CONFIRMED", "PREPARING", "READY", "SERVED", "CANCELLED"])
+      .optional(),
     lines: z
       .array(
         z
@@ -38,6 +49,9 @@ export const GuestOrderRequestSchema = z
             name: z.string().min(1).max(160),
             quantity: z.number().int().min(1).max(20),
             note: z.string().max(250),
+            fulfillment: z
+              .enum(["CONFIRMED", "PREPARING", "READY", "SERVED", "CANCELLED"])
+              .optional(),
             amountMinor: z.number().int().nonnegative(),
             currency: z.string().regex(/^[A-Z]{3}$/),
           })

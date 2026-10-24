@@ -1,3 +1,4 @@
+import { RestaurantTransactionsRepository as R } from "./transaction-repository";
 import { createHash } from "crypto";
 import { z } from "zod";
 import {
@@ -8,7 +9,7 @@ import {
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import * as c from "@liass-ohada/shared/restaurants";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
-import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { config, dynamoClient } from "@/lambda/shared/dynamo-client";
 import { AppError } from "@/lambda/shared/app-error";
 import { GuestService } from "./guest-service";
 import { openReference, publicReference } from "./guest-references";
@@ -40,6 +41,14 @@ const Row = z
     guestHandle: z.string(),
     fingerprint: z.string(),
     policyVersion: z.number().int().positive(),
+    mode: z.enum(["STAFF_APPROVAL", "DIRECT"]).default("STAFF_APPROVAL"),
+    directStage: z
+      .object({
+        order: c.RestaurantOrderSchema,
+        lines: z.array(c.RestaurantOrderItemSchema).min(1).max(12),
+      })
+      .strict()
+      .optional(),
     version: z.number().int().positive(),
     data: c.GuestOrderRequestSchema,
     items: z.array(item).max(12),
@@ -129,7 +138,7 @@ export class GuestSubmissions {
     return c.GuestOrderRequestSchema.parse({
       ...r.data,
       state:
-        r.data.state === "PENDING_APPROVAL" &&
+        ["PENDING_APPROVAL", "PROCESSING"].includes(r.data.state) &&
         (!valid || Date.parse(r.data.expiresAt) <= Date.now())
           ? "EXPIRED"
           : r.data.state,
@@ -150,22 +159,28 @@ export class GuestSubmissions {
     const verified = await GuestService.verify(capability);
     if (!("principal" in verified)) return verified;
     const { principal: p, context } = verified;
-    if (
-      !p.sessionId ||
-      !p.rights.includes("ORDER_SUBMIT") ||
-      context.root.guestOrderingPolicy !== "STAFF_APPROVAL"
-    )
-      return { state: "NOT_ALLOWED" as const };
+    if (!p.sessionId) return { state: "NOT_ALLOWED" as const };
+    const mode = context.root.guestOrderingPolicy;
     const s = { orgId: p.orgId, outletId: p.outletId, sessionId: p.sessionId };
     const requestId = id([s, p.guestHandle, request.clientRequestId]);
     const fingerprint = hash(request);
     const previous = await this.row(s, requestId);
+    if (
+      previous &&
+      (previous.guestHandle !== p.guestHandle ||
+        previous.fingerprint !== fingerprint)
+    )
+      return { state: "REVIEW_REQUIRED" as const };
+    if (previous?.mode === "DIRECT" && previous.data.state === "ACCEPTED")
+      return {
+        state: "CONFIRMED" as const,
+        request: await this.directStatus(previous),
+      };
+    if (!p.rights.includes("ORDER_SUBMIT") || mode === "DISABLED")
+      return { state: "NOT_ALLOWED" as const };
     if (previous) {
-      if (
-        previous.guestHandle !== p.guestHandle ||
-        previous.fingerprint !== fingerprint
-      )
-        return { state: "REVIEW_REQUIRED" as const };
+      if (previous.mode === "DIRECT")
+        return this.acceptDirect(capability, previous);
       return {
         state: "CONFIRMED" as const,
         request: this.projection(
@@ -193,15 +208,14 @@ export class GuestSubmissions {
       K.restaurantServiceAreaSK(p.outletId, p.areaId),
       area.data.version,
     );
+    let selectionExpiry = Number.MAX_SAFE_INTEGER;
     const items: z.infer<typeof item>[] = [];
     const lines: z.infer<typeof c.GuestOrderRequestSchema>["lines"] = [];
     try {
       for (const line of request.lines) {
-        const ref = item.parse(
-          JSON.parse(
-            (await openReference(p, "selection", line.selectionRef)).value,
-          ),
-        );
+        const opened = await openReference(p, "selection", line.selectionRef);
+        selectionExpiry = Math.min(selectionExpiry, opened.exp * 1000);
+        const ref = item.parse(JSON.parse(opened.value));
         const [menu, category, entry] = await Promise.all([
           Config.get(s.orgId, "menu", { outletId: s.outletId }),
           Config.get(
@@ -257,8 +271,12 @@ export class GuestSubmissions {
     for (let n = 0; n < 4; n++) {
       const old = await this.row(s, requestId);
       if (old) {
-        if (old.fingerprint !== fingerprint)
+        if (
+          old.fingerprint !== fingerprint ||
+          old.guestHandle !== p.guestHandle
+        )
           return { state: "REVIEW_REQUIRED" as const };
+        if (old.mode === "DIRECT") return this.acceptDirect(capability, old);
         return {
           state: "CONFIRMED" as const,
           request: this.projection(
@@ -271,7 +289,7 @@ export class GuestSubmissions {
       const now = Date.now();
       const pending = rows.filter(
         (r) =>
-          r.data.state === "PENDING_APPROVAL" &&
+          ["PENDING_APPROVAL", "PROCESSING"].includes(r.data.state) &&
           r.policyVersion === context.root.version &&
           Date.parse(r.data.expiresAt) > now,
       );
@@ -301,9 +319,16 @@ export class GuestSubmissions {
         return { state: "VISIT_ENDED" as const };
       const data = c.GuestOrderRequestSchema.parse({
         requestId,
-        state: "PENDING_APPROVAL",
+        state: mode === "DIRECT" ? "PROCESSING" : "PENDING_APPROVAL",
+        ...(mode === "DIRECT"
+          ? { mode, clientRequestId: request.clientRequestId }
+          : {}),
         submittedAt: new Date(now).toISOString(),
-        expiresAt: new Date(now + 900000).toISOString(),
+        expiresAt: new Date(
+          mode === "DIRECT"
+            ? Math.min(now + 900000, selectionExpiry)
+            : now + 900000,
+        ).toISOString(),
         lines,
       });
       const row: RequestRow = {
@@ -314,6 +339,25 @@ export class GuestSubmissions {
         guestHandle: p.guestHandle,
         fingerprint,
         policyVersion: context.root.version,
+        mode,
+        ...(mode === "DIRECT"
+          ? {
+              orderId: id([requestId, "order"]),
+              directStage: Engine.stageGuestOrder(
+                { ...s, actorId: "guest:" + p.guestHandle },
+                session.data,
+                id([requestId, "order"]),
+                items.map((ref, i) => ({
+                  itemId: id([requestId, "line", i]),
+                  menuItemId: ref.itemId,
+                  categoryId: ref.categoryId,
+                  quantity: lines[i].quantity,
+                  notes: lines[i].note,
+                  expectedMenuItemVersion: ref.itemVersion,
+                })),
+              ),
+            }
+          : {}),
         version: 1,
         data,
         items,
@@ -357,6 +401,25 @@ export class GuestSubmissions {
           },
         },
       ];
+      if (mode === "DIRECT")
+        actions.push({
+          ConditionCheck: {
+            TableName: config.PLATFORM_TABLE_NAME,
+            Key: marshall({
+              PK: K.orgKey(s.orgId),
+              SK: K.productAccessSK("RESTAURANTS"),
+            }),
+            ConditionExpression:
+              "entityType = :type AND orgId = :org AND productCode = :product AND #status = :active",
+            ExpressionAttributeNames: { "#status": "status" },
+            ExpressionAttributeValues: marshall({
+              ":type": "PRODUCT_ACCESS",
+              ":org": s.orgId,
+              ":product": "RESTAURANTS",
+              ":active": "ACTIVE",
+            }),
+          },
+        });
       for (const [sk, version] of guards)
         actions.push({
           ConditionCheck: {
@@ -371,12 +434,218 @@ export class GuestSubmissions {
         await dynamoClient.send(
           new TransactWriteItemsCommand({ TransactItems: actions }),
         );
+        if (mode === "DIRECT") return await this.acceptDirect(capability, row);
         return { state: "CONFIRMED" as const, request: data };
       } catch (e) {
         if (!conflict(e)) throw e;
       }
     }
     return fail();
+  }
+  private static async acceptDirect(capability: string, row: RequestRow) {
+    if (row.data.state === "EXPIRED")
+      return { state: "CONFIRMED" as const, request: this.projection(row) };
+    if (row.data.state === "ACCEPTED")
+      return {
+        state: "CONFIRMED" as const,
+        request: await this.directStatus(row),
+      };
+    const verified = await GuestService.verify(capability);
+    if (!("principal" in verified)) return verified;
+    const p = verified.principal;
+    if (
+      p.guestHandle !== row.guestHandle ||
+      p.orgId !== row.orgId ||
+      p.outletId !== row.outletId ||
+      p.sessionId !== row.sessionId ||
+      verified.context.root.guestOrderingPolicy !== "DIRECT" ||
+      verified.context.root.version !== row.policyVersion ||
+      Date.parse(row.data.expiresAt) <= Date.now()
+    )
+      return {
+        state: "CONFIRMED" as const,
+        request: this.projection(row, false),
+      };
+    if (
+      row.mode !== "DIRECT" ||
+      row.data.state !== "PROCESSING" ||
+      !row.directStage ||
+      !row.orderId
+    )
+      return fail();
+    const scope = {
+      orgId: row.orgId,
+      outletId: row.outletId,
+      sessionId: row.sessionId,
+    };
+    const accepted = {
+      ...row,
+      version: row.version + 1,
+      data: { ...row.data, state: "ACCEPTED" as const },
+    };
+    const lines = row.directStage.lines.map((line) => ({
+      itemId: line.itemId,
+      menuItemId: line.menuItemId,
+      categoryId: line.categoryId,
+      quantity: line.quantity,
+      notes: line.notes ?? "",
+      expectedMenuItemVersion: line.expectedMenuItemVersion,
+    }));
+    try {
+      await Engine.mutate(
+        { ...scope, actorId: "guest:" + p.guestHandle },
+        "SUBMIT_ORDER",
+        {
+          clientRequestId: id([row.data.requestId, "accept"]),
+          expectedVersion: 1,
+          items: lines.map((line) => ({
+            itemId: line.itemId,
+            expectedVersion: 1,
+          })),
+        },
+        { orderId: row.orderId },
+        {
+          sessionId: row.sessionId,
+          expiresAt: row.data.expiresAt,
+          policyVersion: row.policyVersion,
+          lines,
+          direct: { capability, stage: row.directStage },
+          actions: [
+            this.put(
+              this.key(scope, row.data.requestId),
+              accepted,
+              row.version,
+            ),
+          ],
+        },
+      );
+    } catch (error) {
+      const current = await this.row(scope, row.data.requestId);
+      if (current?.data.state === "ACCEPTED")
+        return {
+          state: "CONFIRMED" as const,
+          request: await this.directStatus(current),
+        };
+      if (
+        error instanceof AppError &&
+        [
+          "RESTAURANTS_CONFIGURATION_CHANGED",
+          "RESTAURANTS_PARENT_INACTIVE",
+          "RESTAURANTS_CURRENCY_MISMATCH",
+        ].includes(error.messageCode) &&
+        current?.data.state === "PROCESSING"
+      ) {
+        const expired = {
+          ...current,
+          version: current.version + 1,
+          data: { ...current.data, state: "EXPIRED" as const },
+        };
+        try {
+          await dynamoClient.send(
+            new TransactWriteItemsCommand({
+              TransactItems: [
+                this.put(
+                  this.key(scope, row.data.requestId),
+                  expired,
+                  current.version,
+                ),
+              ],
+            }),
+          );
+        } catch (race) {
+          const latest = await this.row(scope, row.data.requestId);
+          if (latest?.data.state === "ACCEPTED")
+            return {
+              state: "CONFIRMED" as const,
+              request: await this.directStatus(latest),
+            };
+          if (!conflict(race)) throw race;
+        }
+        return { state: "REVIEW_REQUIRED" as const };
+      }
+      throw error;
+    }
+    return {
+      state: "CONFIRMED" as const,
+      request: await this.directStatus(accepted),
+    };
+  }
+  private static async directStatus(row: RequestRow) {
+    if (!row.orderId || !row.directStage) return fail();
+    const scope = { orgId: row.orgId, outletId: row.outletId };
+    const order = await Engine.order(scope, row.orderId);
+    if (
+      order.data.guestSessionId !== row.sessionId ||
+      order.data.tableId !== row.tableId
+    )
+      return fail();
+    const pk = K.restaurantOrderPK(scope.orgId, scope.outletId, row.orderId);
+    const lines = (
+      await R.batch(
+        scope,
+        row.directStage.lines.map((line) => ({
+          PK: pk,
+          SK: K.restaurantOrderItemSK(line.itemId),
+        })),
+        "LINE",
+      )
+    ).map((line) => {
+      if (!line) return fail();
+      return c.RestaurantOrderItemSchema.parse(line.data);
+    });
+    const preparationKeys = lines
+      .filter((line) => line.status !== "CANCELLED" && line.snapshot?.stationId)
+      .map((line) => {
+        if (!line.latestFireId) return fail();
+        return {
+          PK: pk,
+          SK: K.restaurantPreparationSK(line.itemId, line.latestFireId),
+        };
+      });
+    const tasks = (await R.batch(scope, preparationKeys, "PREPARATION")).map(
+      (row) => {
+        if (!row) return fail();
+        return c.RestaurantPreparationSchema.parse(row.data);
+      },
+    );
+    const taskMap = new Map(tasks.map((task) => [task.itemId, task]));
+    const statuses: (
+      | "CONFIRMED"
+      | "PREPARING"
+      | "READY"
+      | "SERVED"
+      | "CANCELLED"
+    )[] = lines.map((line) => {
+      if (order.data.status === "CANCELLED" || line.status === "CANCELLED")
+        return "CANCELLED";
+      if (!line.snapshot?.stationId) return "CONFIRMED";
+      const task = taskMap.get(line.itemId);
+      if (!task || task.fireId !== line.latestFireId) return fail();
+      return task.state === "SERVED"
+        ? "SERVED"
+        : task.state === "READY"
+          ? "READY"
+          : task.state === "CANCELLED"
+            ? "CANCELLED"
+            : "PREPARING";
+    });
+    const orderStatus = statuses.every((s) => s === "CANCELLED")
+      ? "CANCELLED"
+      : statuses.every((s) => s === "SERVED")
+        ? "SERVED"
+        : statuses.includes("PREPARING")
+          ? "PREPARING"
+          : statuses.includes("READY")
+            ? "READY"
+            : "CONFIRMED";
+    return c.GuestOrderRequestSchema.parse({
+      ...row.data,
+      orderStatus,
+      lines: row.data.lines.map((line, index) => ({
+        ...line,
+        fulfillment: statuses[index],
+      })),
+    });
   }
   static async own(capability: string) {
     const v = await GuestService.verify(capability);
@@ -387,15 +656,20 @@ export class GuestSubmissions {
     const { rows } = await this.rows(s);
     return {
       state: "READY" as const,
-      requests: rows
-        .filter((r) => r.guestHandle === p.guestHandle)
-        .map((r) =>
-          this.projection(
-            r,
-            v.context.root.guestOrderingPolicy === "STAFF_APPROVAL" &&
-              r.policyVersion === v.context.root.version,
-          ),
-        ),
+      requests: await Promise.all(
+        rows
+          .filter((r) => r.guestHandle === p.guestHandle)
+          .map(async (r) => {
+            const projected = this.projection(
+              r,
+              v.context.root.guestOrderingPolicy === r.mode &&
+                r.policyVersion === v.context.root.version,
+            );
+            return r.mode === "DIRECT" && r.data.state === "ACCEPTED"
+              ? this.directStatus(r)
+              : projected;
+          }),
+      ),
     };
   }
   static async list(s: Scope, actor: string) {
@@ -403,9 +677,11 @@ export class GuestSubmissions {
     const valid = await this.policy(s);
     const root = await Config.get(s.orgId, "restaurant", {});
     return {
-      requests: (await this.rows(s)).rows.map((r) =>
-        this.projection(r, valid && r.policyVersion === root?.data.version),
-      ),
+      requests: (await this.rows(s)).rows
+        .filter((r) => r.mode === "STAFF_APPROVAL")
+        .map((r) =>
+          this.projection(r, valid && r.policyVersion === root?.data.version),
+        ),
     };
   }
   static async review(
@@ -418,7 +694,8 @@ export class GuestSubmissions {
     const access = await WaiterCalls.authorize(s, actor);
     for (let attempt = 0; attempt < 4; attempt++) {
       let row = await this.row(s, requestId);
-      if (!row) throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+      if (!row || row.mode === "DIRECT")
+        throw new AppError(404, "RESTAURANTS_NOT_FOUND");
       if (row.data.state !== "PENDING_APPROVAL")
         return { request: this.projection(row) };
       if (

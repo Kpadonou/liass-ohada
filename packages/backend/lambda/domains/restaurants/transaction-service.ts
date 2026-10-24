@@ -1,3 +1,4 @@
+import { config } from "@/lambda/shared/dynamo-client";
 import { RestaurantServiceAccess } from "./service-access";
 import { RestaurantPreparationService as Preparation } from "./preparation-service";
 import { ResponsibleStaff } from "./responsible-staff";
@@ -263,6 +264,62 @@ export class RestaurantTransactionsService {
       return fail("RESTAURANTS_WRITE_CONFLICT");
     if (order.status !== "DRAFT" && order.status !== "SUBMITTED") return fail();
   }
+  /** Technical staging only: no persistence, audit, due or preparation. */
+  static stageGuestOrder(
+    ctx: RestaurantTransactionContext,
+    session: contracts.GuestSession,
+    orderId: string,
+    lines: {
+      itemId: string;
+      menuItemId: string;
+      categoryId: string;
+      quantity: number;
+      notes: string;
+      expectedMenuItemVersion: number;
+    }[],
+    waiterId?: string,
+  ) {
+    const createdAt = new Date().toISOString();
+    const order = contracts.RestaurantOrderSchema.parse({
+      orgId: ctx.orgId,
+      outletId: ctx.outletId,
+      schemaVersion: 1,
+      orderId,
+      orderType: "DINE_IN",
+      guestSessionId: session.guestSessionId,
+      tableId: session.tableId,
+      status: "DRAFT",
+      currency: session.currency,
+      createdAt,
+      createdBy: ctx.actorId,
+      waiterId,
+      outstandingWorkCount: 0,
+      version: 1,
+      financialRevision: 0,
+      lineCount: lines.length,
+      acceptedLineCount: 0,
+      draftLineCount: lines.length,
+      dueMinor: 0,
+      paidMinor: 0,
+      reservedMinor: 0,
+      pendingPaymentCount: 0,
+    });
+    return {
+      order,
+      lines: lines.map((entry) =>
+        contracts.RestaurantOrderItemSchema.parse({
+          orgId: ctx.orgId,
+          outletId: ctx.outletId,
+          ...entry,
+          schemaVersion: 1,
+          orderId,
+          status: "DRAFT",
+          version: 1,
+          createdAt,
+        }),
+      ),
+    };
+  }
   static async mutate(
     ctx: RestaurantTransactionContext,
     command: RestaurantTransactionCommand,
@@ -270,6 +327,10 @@ export class RestaurantTransactionsService {
     ids: { sessionId?: string; orderId?: string; itemId?: string } = {},
     guestApproval?: {
       actions: TransactWriteItem[];
+      direct?: {
+        capability: string;
+        stage: ReturnType<typeof RestaurantTransactionsService.stageGuestOrder>;
+      };
       sessionId: string;
       expiresAt: string;
       policyVersion: number;
@@ -361,7 +422,30 @@ export class RestaurantTransactionsService {
       // Do not require OPEN before replay: a lost final response must remain recoverable.
     };
     await authorizeClosureScope();
+    const direct = guestApproval?.direct;
+    const directVerified = direct
+      ? await (
+          await import("./guest-service")
+        ).GuestService.verify(direct.capability)
+      : undefined;
+    if (direct) {
+      if (!directVerified || !("principal" in directVerified))
+        return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+      const p = directVerified.principal;
+      if (
+        !p.sessionId ||
+        !p.rights.includes("ORDER_SUBMIT") ||
+        directVerified.context.root.guestOrderingPolicy !== "DIRECT" ||
+        p.orgId !== ctx.orgId ||
+        p.outletId !== ctx.outletId ||
+        p.sessionId !== guestApproval!.sessionId ||
+        ctx.actorId !== "guest:" + p.guestHandle
+      )
+        return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+    }
     const replay = async (): Promise<Business | undefined> => {
+      // DIRECT's atomic submission record owns durable replay; no second command authority.
+      if (direct) return undefined;
       const row = await R.get(ctx, commandKey, "COMMAND");
       if (!row) return undefined;
       if (row.entityType !== "RESTAURANT_TRANSACTION_COMMAND")
@@ -389,7 +473,7 @@ export class RestaurantTransactionsService {
         ? await ResponsibleStaff.authorize(ctx, ctx.actorId)
         : undefined;
     const serviceAccess =
-      command === "OPEN_SESSION" || serviceCommand
+      (command === "OPEN_SESSION" || serviceCommand) && !direct
         ? await RestaurantServiceAccess.authorize(ctx, ctx.actorId)
         : undefined;
     let serviceOrder:
@@ -414,55 +498,59 @@ export class RestaurantTransactionsService {
         serviceSession.data.orderCount >= 50
       )
         return fail();
-      const createdAt = new Date().toISOString();
-      const data = contracts.RestaurantOrderSchema.parse({
-        orgId: ctx.orgId,
-        outletId: ctx.outletId,
-        schemaVersion: 1,
-        orderId: owner,
-        orderType: "DINE_IN",
-        guestSessionId: guestApproval.sessionId,
-        tableId: serviceSession.data.tableId,
-        status: "DRAFT",
-        currency: serviceSession.data.currency,
-        createdAt,
-        createdBy: ctx.actorId,
-        waiterId: serviceAccess?.staffId,
-        outstandingWorkCount: 0,
-        version: 1,
-        financialRevision: 0,
-        lineCount: guestApproval.lines.length,
-        acceptedLineCount: 0,
-        draftLineCount: guestApproval.lines.length,
-        dueMinor: 0,
-        paidMinor: 0,
-        reservedMinor: 0,
-        pendingPaymentCount: 0,
-      });
+      const staged =
+        direct?.stage ??
+        this.stageGuestOrder(
+          ctx,
+          serviceSession.data,
+          owner,
+          guestApproval.lines,
+          serviceAccess?.staffId,
+        );
+      const data = staged.order;
+      if (
+        data.orgId !== ctx.orgId ||
+        data.outletId !== ctx.outletId ||
+        data.orderId !== owner ||
+        data.guestSessionId !== guestApproval.sessionId ||
+        data.tableId !== serviceSession.data.tableId ||
+        data.status !== "DRAFT" ||
+        data.version !== 1 ||
+        data.createdBy !== ctx.actorId ||
+        data.lineCount !== guestApproval.lines.length ||
+        staged.lines.length !== guestApproval.lines.length
+      )
+        return fail();
       guestOrder = R.row(
         ctx,
         meta(K.restaurantOrderPK(ctx.orgId, ctx.outletId, owner)),
         "ORDER",
         data,
       ) as TransactionRow & { data: contracts.RestaurantOrder };
-      for (const entry of guestApproval.lines) {
-        const data = contracts.RestaurantOrderItemSchema.parse({
-          orgId: ctx.orgId,
-          outletId: ctx.outletId,
-          ...entry,
-          schemaVersion: 1,
-          orderId: owner,
-          status: "DRAFT",
-          version: 1,
-          createdAt,
-        });
+      for (let index = 0; index < staged.lines.length; index++) {
+        const line = staged.lines[index],
+          intent = guestApproval.lines[index];
+        if (
+          line.orgId !== ctx.orgId ||
+          line.outletId !== ctx.outletId ||
+          line.orderId !== owner ||
+          line.status !== "DRAFT" ||
+          line.version !== 1 ||
+          line.itemId !== intent.itemId ||
+          line.menuItemId !== intent.menuItemId ||
+          line.categoryId !== intent.categoryId ||
+          line.quantity !== intent.quantity ||
+          line.notes !== intent.notes ||
+          line.expectedMenuItemVersion !== intent.expectedMenuItemVersion
+        )
+          return fail();
         guestLines.set(
-          entry.itemId,
+          line.itemId,
           R.row(
             ctx,
-            { PK: guestOrder.PK, SK: K.restaurantOrderItemSK(entry.itemId) },
+            { PK: guestOrder.PK, SK: K.restaurantOrderItemSK(line.itemId) },
             "LINE",
-            data,
+            line,
           ) as TransactionRow & { data: contracts.RestaurantOrderItem },
         );
       }
@@ -515,7 +603,50 @@ export class RestaurantTransactionsService {
         ? (serviceAccess?.actions ?? [])
         : []),
     ];
+    if (direct) {
+      actions.push({
+        ConditionCheck: {
+          TableName: config.PLATFORM_TABLE_NAME,
+          Key: marshall({
+            PK: K.orgKey(ctx.orgId),
+            SK: K.productAccessSK("RESTAURANTS"),
+          }),
+          ConditionExpression:
+            "entityType = :type AND orgId = :org AND productCode = :product AND #status = :active",
+          ExpressionAttributeNames: { "#status": "status" },
+          ExpressionAttributeValues: marshall({
+            ":type": "PRODUCT_ACCESS",
+            ":org": ctx.orgId,
+            ":product": "RESTAURANTS",
+            ":active": "ACTIVE",
+          }),
+        },
+      });
+    }
     const serviceGuardCount = actions.length;
+    if (directVerified && "principal" in directVerified) {
+      const p = directVerified.principal;
+      await this.config(
+        ctx,
+        checks,
+        "serviceArea",
+        { outletId: ctx.outletId },
+        p.areaId,
+      );
+      const table = await this.config(
+        ctx,
+        checks,
+        "table",
+        { outletId: ctx.outletId, serviceAreaId: p.areaId },
+        p.tableId,
+      );
+      if (
+        table.data.version !== directVerified.context.table.version ||
+        table.qrRevoked ||
+        table.qrToken !== directVerified.context.tableToken
+      )
+        return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+    }
     if (closureAccess?.role === "CASHIER")
       await this.config(ctx, checks, "outlet", {}, ctx.outletId);
     if (serviceSession) {
@@ -1284,15 +1415,16 @@ export class RestaurantTransactionsService {
       },
       activity,
     );
-    put("COMMAND", commandKey, {
-      commandId,
-      commandKind: command,
-      ownerId: owner,
-      lookupHash: hash,
-      fingerprint: intent,
-      committedAt: now,
-      result,
-    });
+    if (!direct)
+      put("COMMAND", commandKey, {
+        commandId,
+        commandKind: command,
+        ownerId: owner,
+        lookupHash: hash,
+        fingerprint: intent,
+        committedAt: now,
+        result,
+      });
     if (guestApproval) {
       if (Date.parse(guestApproval.expiresAt) <= Date.now())
         return fail("RESTAURANTS_CONFIGURATION_CHANGED");
@@ -1302,7 +1434,8 @@ export class RestaurantTransactionsService {
       if (
         !root ||
         !("guestOrderingPolicy" in root.data) ||
-        root.data.guestOrderingPolicy !== "STAFF_APPROVAL" ||
+        root.data.guestOrderingPolicy !==
+          (direct ? "DIRECT" : "STAFF_APPROVAL") ||
         root.data.version !== guestApproval.policyVersion
       )
         return fail("RESTAURANTS_CONFIGURATION_CHANGED");
@@ -1330,11 +1463,17 @@ export class RestaurantTransactionsService {
           }),
         },
       });
+    if (
+      directVerified &&
+      "principal" in directVerified &&
+      directVerified.principal.exp <= Math.floor(Date.now() / 1000)
+    )
+      return fail("DOMAIN_PERMISSION_REQUIRED", 403);
     try {
       // Atomic Guest creation plus acceptance adds creation locators to the
       // established submit transaction (worst case 93 actions for 12 distinct
       // categories/stations with a WAITER). Keep headroom below DynamoDB's 100.
-      await R.commit(actions, guestApproval ? 95 : 90);
+      await R.commit(actions, direct ? 90 : guestApproval ? 95 : 90);
     } catch (error) {
       const serviceGuardFailed =
         serviceGuardCount > 0 &&

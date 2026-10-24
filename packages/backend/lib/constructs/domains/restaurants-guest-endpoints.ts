@@ -53,7 +53,7 @@ export class RestaurantsGuestEndpoints extends Construct {
         GuestRead: new iam.PolicyDocument({
           statements: [
             new iam.PolicyStatement({
-              actions: ["dynamodb:GetItem"],
+              actions: ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"],
               resources: [
                 props.restaurantsTable.tableArn,
                 props.table.tableArn,
@@ -65,7 +65,6 @@ export class RestaurantsGuestEndpoints extends Construct {
                 "dynamodb:BatchGetItem",
                 "dynamodb:PutItem",
                 "dynamodb:DeleteItem",
-                "dynamodb:ConditionCheckItem",
               ],
               resources: [props.restaurantsTable.tableArn],
             }),

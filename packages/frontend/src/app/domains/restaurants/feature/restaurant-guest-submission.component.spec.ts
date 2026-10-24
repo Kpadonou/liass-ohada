@@ -1,3 +1,4 @@
+import { GuestOrderRequestSchema } from '@liass-ohada/shared/restaurants';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule, TranslocoService } from '@ngneat/transloco';
 import fr from '../../../../../public/assets/i18n/fr.json';
@@ -8,6 +9,7 @@ describe('Guest request presentation', () => {
   const workflow = {
     cart: { context: () => ({ state: 'OCCUPIED' }) },
     canSend: () => true,
+    hasUncertain: () => false,
     submit: vi.fn(),
     identity: () => 'visit',
     send: { isPending: () => false, isError: () => false, data: () => undefined },
@@ -18,11 +20,21 @@ describe('Guest request presentation', () => {
       data: () => ({
         state: 'READY',
         requests: [
-          {
-            requestId: 'request',
+          GuestOrderRequestSchema.parse({
+            requestId: '00000000-0000-4000-8000-000000000001',
             state: 'PENDING_APPROVAL',
-            lines: [{ name: 'Poulet braisé', quantity: 2, note: 'Sans piment' }],
-          },
+            submittedAt: new Date().toISOString(),
+            expiresAt: new Date(Date.now() + 900000).toISOString(),
+            lines: [
+              {
+                name: 'Poulet braisé',
+                quantity: 2,
+                note: 'Sans piment',
+                amountMinor: 2500,
+                currency: 'XOF',
+              },
+            ],
+          }),
         ],
       }),
     },
@@ -53,5 +65,48 @@ describe('Guest request presentation', () => {
     f.detectChanges();
     expect(f.nativeElement.textContent).toContain(pending);
     expect(f.nativeElement.textContent).toContain('Sans piment');
+  });
+  afterEach(() => vi.restoreAllMocks());
+  it.each([
+    ['fr', 'CONFIRMED', 'Commande confirmée'],
+    ['en', 'CONFIRMED', 'Order confirmed'],
+    ['fr', 'PREPARING', 'En préparation'],
+    ['en', 'PREPARING', 'Preparing'],
+    ['fr', 'READY', 'Prête'],
+    ['en', 'READY', 'Ready'],
+    ['fr', 'SERVED', 'Servie'],
+    ['en', 'SERVED', 'Served'],
+    ['fr', 'CANCELLED', 'Annulée'],
+    ['en', 'CANCELLED', 'Cancelled'],
+  ])('renders canonical DIRECT %s %s progress', (lang, status, label) => {
+    TestBed.inject(TranslocoService).setActiveLang(lang);
+    vi.spyOn(workflow.state, 'data').mockReturnValue({
+      state: 'READY',
+      requests: [
+        GuestOrderRequestSchema.parse({
+          requestId: '00000000-0000-4000-8000-000000000002',
+          state: 'ACCEPTED',
+          mode: 'DIRECT',
+          orderStatus: status,
+          submittedAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 900000).toISOString(),
+          lines: [
+            {
+              name: 'Jus de gingembre',
+              quantity: 1,
+              note: 'Sans glace',
+              fulfillment: status,
+              amountMinor: 1200,
+              currency: 'XOF',
+            },
+          ],
+        }),
+      ],
+    });
+    const f = TestBed.createComponent(RestaurantGuestSubmissionComponent);
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain(label);
+    expect(f.nativeElement.textContent).not.toContain('PENDING_APPROVAL');
+    expect(f.nativeElement.textContent).not.toContain('RESTAURANTS.SUBMISSIONS.');
   });
 });

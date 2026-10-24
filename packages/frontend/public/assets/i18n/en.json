@@ -5095,7 +5095,13 @@
       "ACCEPT": "Accept",
       "REJECT": "Reject",
       "REASON": "Rejection reason",
-      "EMPTY": "No requests for this visit."
+      "EMPTY": "No requests for this visit.",
+      "PROCESSING": "Confirming order",
+      "CONFIRMED": "Order confirmed",
+      "PREPARING": "Preparing",
+      "READY": "Ready",
+      "SERVED": "Served",
+      "CANCELLED": "Cancelled"
     }
   }
 }

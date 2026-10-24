@@ -477,11 +477,11 @@ describe("API stack decomposition", () => {
       publicActions.filter((action: string) => action.startsWith("dynamodb:")),
     ).toEqual([
       "dynamodb:GetItem",
+      "dynamodb:ConditionCheckItem",
       "dynamodb:Query",
       "dynamodb:BatchGetItem",
       "dynamodb:PutItem",
       "dynamodb:DeleteItem",
-      "dynamodb:ConditionCheckItem",
     ]);
     expect(publicActions).toContain("secretsmanager:GetSecretValue");
     const policy = owned.find(

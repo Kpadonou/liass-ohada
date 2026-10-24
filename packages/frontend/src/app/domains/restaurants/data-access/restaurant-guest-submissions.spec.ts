@@ -49,7 +49,7 @@ describe('Guest submissions', () => {
     TestBed.resetTestingModule();
     client.clear();
   });
-  it.each(['FREE', 'DISABLED', 'DIRECT'])('blocks %s submission', (state) => {
+  it.each(['FREE', 'DISABLED'])('blocks %s submission', (state) => {
     store.activate('liass-restaurants.guest.' + 'a'.repeat(64), {
       ...context,
       ...(state === 'FREE' ? { state: 'FREE', visitRef: null } : { policy: state }),
@@ -109,5 +109,134 @@ describe('Guest submissions', () => {
     expect(workflow.canSend()).toBe(false);
     workflow.submit();
     expect(api.submissions).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('DIRECT Guest submission workflow', () => {
+  let client: QueryClient;
+  let store: RestaurantGuestCartStore;
+  let workflow: RestaurantGuestSubmissions;
+  const api = { submissions: vi.fn(), submissionState: vi.fn() };
+  const scope = 'liass-restaurants.guest.' + 'a'.repeat(64);
+  beforeEach(() => {
+    sessionStorage.clear();
+    client = new QueryClient();
+    api.submissions.mockReset();
+    api.submissionState.mockReset().mockResolvedValue({ state: 'READY', requests: [] });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: QueryClient, useValue: client },
+        { provide: RestaurantGuestApi, useValue: api },
+      ],
+    });
+    store = TestBed.inject(RestaurantGuestCartStore);
+    store.activate(scope, { ...context, policy: 'DIRECT' });
+    store.add(item, 'XOF', new Date(Date.now() + 900000).toISOString());
+    workflow = TestBed.inject(RestaurantGuestSubmissions);
+  });
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    client.clear();
+  });
+  it('enables DIRECT and clears only after durable ACCEPTED confirmation', async () => {
+    expect(workflow.canSend()).toBe(true);
+    let finish!: (v: unknown) => void;
+    api.submissions.mockImplementation(() => new Promise((r) => (finish = r)));
+    workflow.submit();
+    await vi.waitFor(() => expect(api.submissions).toHaveBeenCalledTimes(1));
+    expect(store.lines()).toHaveLength(1);
+    finish({
+      state: 'CONFIRMED',
+      request: {
+        requestId: 'direct',
+        mode: 'DIRECT',
+        state: 'ACCEPTED',
+        orderStatus: 'CONFIRMED',
+        lines: [],
+      },
+    });
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(store.lines()).toHaveLength(0);
+    });
+  });
+  it('keeps staged DIRECT intent and retries exactly the same command after uncertainty', async () => {
+    api.submissions.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce({
+      state: 'CONFIRMED',
+      request: {
+        requestId: 'direct',
+        mode: 'DIRECT',
+        state: 'ACCEPTED',
+        orderStatus: 'PREPARING',
+        lines: [],
+      },
+    });
+    workflow.submit();
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(workflow.send.isError()).toBe(true);
+    });
+    const body = api.submissions.mock.calls[0][1];
+    expect(store.lines()).toHaveLength(1);
+    workflow.submit();
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(workflow.send.isSuccess()).toBe(true);
+    });
+    expect(api.submissions.mock.calls[1][1]).toEqual(body);
+    expect(store.lines()).toHaveLength(0);
+  });
+  it('does not clear Cart for a technical PROCESSING result', async () => {
+    api.submissions.mockResolvedValue({
+      state: 'CONFIRMED',
+      request: { requestId: 'direct', mode: 'DIRECT', state: 'PROCESSING', lines: [] },
+    });
+    workflow.submit();
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(workflow.send.isSuccess()).toBe(true);
+    });
+    expect(store.lines()).toHaveLength(1);
+    expect(workflow.hasUncertain()).toBe(true);
+  });
+  it('reconciles durable own-status after reload even if sending policy is now disabled', async () => {
+    api.submissions.mockRejectedValue(new Error('lost response'));
+    workflow.submit();
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(workflow.send.isError()).toBe(true);
+    });
+    const body = api.submissions.mock.calls[0][1];
+    TestBed.resetTestingModule();
+    client.clear();
+    client = new QueryClient();
+    api.submissionState.mockResolvedValue({
+      state: 'READY',
+      requests: [
+        {
+          requestId: 'direct',
+          mode: 'DIRECT',
+          clientRequestId: body.clientRequestId,
+          state: 'ACCEPTED',
+          orderStatus: 'CONFIRMED',
+          lines: [],
+        },
+      ],
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: QueryClient, useValue: client },
+        { provide: RestaurantGuestApi, useValue: api },
+      ],
+    });
+    store = TestBed.inject(RestaurantGuestCartStore);
+    store.activate(scope, { ...context, policy: 'DISABLED' });
+    workflow = TestBed.inject(RestaurantGuestSubmissions);
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(store.lines()).toHaveLength(0);
+    });
+    expect(api.submissions).toHaveBeenCalledTimes(1);
+    expect(sessionStorage.getItem(scope + '.submission.v1')).toBeNull();
   });
 });

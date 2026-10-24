@@ -5095,7 +5095,13 @@
       "ACCEPT": "Accepter",
       "REJECT": "Rejeter",
       "REASON": "Motif du rejet",
-      "EMPTY": "Aucune demande pour cette visite."
+      "EMPTY": "Aucune demande pour cette visite.",
+      "PROCESSING": "Confirmation en cours",
+      "CONFIRMED": "Commande confirmée",
+      "PREPARING": "En préparation",
+      "READY": "Prête",
+      "SERVED": "Servie",
+      "CANCELLED": "Annulée"
     }
   }
 }

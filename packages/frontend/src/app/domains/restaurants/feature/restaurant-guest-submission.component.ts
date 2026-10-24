@@ -11,7 +11,7 @@ import { RestaurantGuestSubmissions } from '../data-access/restaurant-guest-subm
         mat-flat-button
         type="button"
         class="min-h-12 w-full"
-        [disabled]="!workflow.canSend() || workflow.send.isPending()"
+        [disabled]="(!workflow.canSend() && !workflow.hasUncertain()) || workflow.send.isPending()"
         (click)="workflow.submit()"
       >
         {{
@@ -21,7 +21,7 @@ import { RestaurantGuestSubmissions } from '../data-access/restaurant-guest-subm
           ) | transloco
         }}
       </button>
-      @if (workflow.send.isError()) {
+      @if (workflow.send.isError() || workflow.hasUncertain()) {
         <p role="alert">{{ 'RESTAURANTS.SUBMISSIONS.UNCERTAIN' | transloco }}</p>
         <button mat-stroked-button (click)="workflow.submit()">
           {{ 'RESTAURANTS.SUBMISSIONS.RETRY' | transloco }}
@@ -49,12 +49,19 @@ import { RestaurantGuestSubmissions } from '../data-access/restaurant-guest-subm
           @for (request of data.requests; track request.requestId) {
             <article class="space-y-2 rounded-lg border border-app-border p-3">
               <p class="font-medium">
-                {{ 'RESTAURANTS.SUBMISSIONS.' + request.state | transloco }}
+                {{
+                  'RESTAURANTS.SUBMISSIONS.' + (request.orderStatus ?? request.state) | transloco
+                }}
               </p>
               <ul>
                 @for (line of request.lines; track $index) {
                   <li class="break-words">
                     {{ line.quantity }} × {{ line.name }}
+                    @if (line.fulfillment) {
+                      <span class="mr-1 text-sm text-app-text-secondary"
+                        >· {{ 'RESTAURANTS.SUBMISSIONS.' + line.fulfillment | transloco }}</span
+                      >
+                    }
                     @if (line.note) {
                       <span class="text-sm text-app-text-secondary">· {{ line.note }}</span>
                     }

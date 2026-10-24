@@ -1,4 +1,4 @@
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, computed, inject, effect } from '@angular/core';
 import { injectMutation, injectQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { GuestSubmissionRequestSchema } from '@liass-ohada/shared/restaurants';
 import { RestaurantGuestApi } from './restaurant-guest.api';
@@ -42,7 +42,7 @@ export class RestaurantGuestSubmissions {
   readonly canSend = computed(
     () =>
       this.cart.context()?.state === 'OCCUPIED' &&
-      this.cart.context()?.policy === 'STAFF_APPROVAL' &&
+      ['STAFF_APPROVAL', 'DIRECT'].includes(this.cart.context()?.policy ?? '') &&
       this.cart.contextStatus() === 'ACTIVE_VISIT' &&
       this.cart.lines().length > 0 &&
       this.cart
@@ -70,7 +70,10 @@ export class RestaurantGuestSubmissions {
     },
     onSuccess: ({ identity, body, result }) => {
       if (identity !== this.identity()) return;
-      if (result.state === 'CONFIRMED') {
+      if (
+        result.state === 'CONFIRMED' &&
+        (result.request.mode !== 'DIRECT' || result.request.state === 'ACCEPTED')
+      ) {
         const current = this.cart.lines().map((l) => ({
           reference: l.reference,
           selectionRef: l.selectionRef,
@@ -96,17 +99,47 @@ export class RestaurantGuestSubmissions {
             ],
           }),
         );
-      } else if (['REVIEW_REQUIRED', 'NOT_ALLOWED', 'LIMIT_REACHED'].includes(result.state))
+      } else if (
+        (result.state === 'CONFIRMED' && result.request.state === 'EXPIRED') ||
+        ['REVIEW_REQUIRED', 'NOT_ALLOWED', 'LIMIT_REACHED'].includes(result.state)
+      )
         sessionStorage.removeItem(this.storageKey());
       void this.client.invalidateQueries({ queryKey: this.key() });
     },
   }));
+  hasUncertain() {
+    return !!this.restored();
+  }
+  constructor() {
+    effect(() => {
+      const state = this.state.data();
+      const body = this.restored();
+      if (!body || state?.state !== 'READY') return;
+      const confirmed = state.requests.find(
+        (r) =>
+          r.mode === 'DIRECT' &&
+          r.state === 'ACCEPTED' &&
+          r.clientRequestId === body.clientRequestId,
+      );
+      if (!confirmed) return;
+      const current = this.cart.lines().map((l) => ({
+        reference: l.reference,
+        quantity: l.quantity,
+        note: l.note,
+        presentedAmountMinor: l.presentedAmountMinor,
+        currency: l.currency,
+      }));
+      const expected = body.lines.map(({ selectionRef: _, ...line }) => line);
+      if (JSON.stringify(current) === JSON.stringify(expected)) this.cart.discard();
+      sessionStorage.removeItem(this.storageKey());
+    });
+  }
   submit() {
     if (
       !this.inFlight &&
       !this.send.isPending() &&
       this.cart.context()?.state === 'OCCUPIED' &&
-      this.cart.context()?.policy === 'STAFF_APPROVAL' &&
+      ['STAFF_APPROVAL', 'DIRECT'].includes(this.cart.context()?.policy ?? '') &&
       (this.canSend() || this.restored())
     ) {
       this.inFlight = true;
