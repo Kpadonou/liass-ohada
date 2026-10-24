@@ -5,6 +5,12 @@ import {
   GuestContextResponseSchema,
   GuestRenewRequestSchema,
 } from "@liass-ohada/shared/restaurants";
+import { GuestSubmissions } from "./guest-submissions";
+import {
+  GuestSubmissionRequestSchema,
+  GuestSubmissionResponseSchema,
+  GuestRequestStateResponseSchema,
+} from "@liass-ohada/shared/restaurants";
 import { WaiterCalls } from "./waiter-call";
 import { GuestWaiterCallRequestSchema } from "@liass-ohada/shared/restaurants";
 import { GuestCarteService } from "./guest-carte";
@@ -36,6 +42,8 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<{
   try {
     if (
       ![
+        "POST /public/restaurants/guest/submissions",
+        "GET /public/restaurants/guest/state",
         "POST /public/restaurants/guest/waiter-call",
         "POST /public/restaurants/guest/resolve",
         "POST /public/restaurants/guest/renew",
@@ -45,9 +53,46 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<{
       return send(404, { state: "UNAVAILABLE" });
     if (
       event.isBase64Encoded ||
-      Buffer.byteLength(event.body ?? "", "utf8") > 1024
+      Buffer.byteLength(event.body ?? "", "utf8") >
+        (event.routeKey === "POST /public/restaurants/guest/submissions"
+          ? 16384
+          : 1024)
     )
       return send(400, { state: "UNAVAILABLE" });
+    if (
+      [
+        "POST /public/restaurants/guest/submissions",
+        "GET /public/restaurants/guest/state",
+      ].includes(event.routeKey)
+    ) {
+      const auth = event.headers?.authorization ?? event.headers?.Authorization;
+      const match = /^Bearer ([^\s]+)$/.exec(auth ?? "");
+      if (!match || !GuestCapabilitySchema.safeParse(match[1]).success)
+        return send(200, { state: "UNAVAILABLE" });
+      if (Object.keys(event.queryStringParameters ?? {}).length)
+        return send(400, { state: "UNAVAILABLE" });
+      if (event.routeKey.startsWith("GET"))
+        return send(
+          200,
+          GuestRequestStateResponseSchema.parse(
+            await GuestSubmissions.own(match[1]),
+          ),
+        );
+      let input: unknown;
+      try {
+        input = JSON.parse(event.body ?? "{}");
+      } catch {
+        return send(400, { state: "UNAVAILABLE" });
+      }
+      const parsed = GuestSubmissionRequestSchema.safeParse(input);
+      if (!parsed.success) return send(400, { state: "REVIEW_REQUIRED" });
+      return send(
+        200,
+        GuestSubmissionResponseSchema.parse(
+          await GuestSubmissions.submit(match[1], parsed.data),
+        ),
+      );
+    }
     if (event.routeKey === "POST /public/restaurants/guest/waiter-call") {
       let input: unknown;
       try {

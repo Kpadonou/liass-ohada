@@ -5071,6 +5071,31 @@
       "ACTIVITY_ERROR": "Waiter calls could not be refreshed.",
       "EMPTY": "No calls waiting.",
       "BADGE": "Waiter requested"
+    },
+    "SUBMISSIONS": {
+      "SEND": "Send order",
+      "SENDING": "Sending…",
+      "TITLE": "Your requests",
+      "REVIEW": "Guest requests",
+      "PENDING_APPROVAL": "Awaiting approval",
+      "ACCEPTED": "Order accepted",
+      "REJECTED": "Request rejected",
+      "EXPIRED": "Request expired",
+      "VISIT_ENDED": "This visit has ended. Your selection remains available locally.",
+      "UNAVAILABLE": "This service is temporarily unavailable.",
+      "NOT_ALLOWED": "Sending is not available for this visit.",
+      "REVIEW_REQUIRED": "The menu has changed. Review your selection before trying again.",
+      "LIMIT_REACHED": "The pending request limit has been reached. Please wait for review.",
+      "RATE_LIMITED": "Please wait a few seconds before sending again.",
+      "UNCERTAIN": "Sending could not be confirmed. Retry to check the same request without duplicating it.",
+      "RETRY": "Check this submission",
+      "REFRESH": "Refresh",
+      "STATUS_ERROR": "Requests could not be refreshed. Please retry.",
+      "REVIEW_ERROR": "This action could not be confirmed. Refresh requests before retrying.",
+      "ACCEPT": "Accept",
+      "REJECT": "Reject",
+      "REASON": "Rejection reason",
+      "EMPTY": "No requests for this visit."
     }
   }
 }

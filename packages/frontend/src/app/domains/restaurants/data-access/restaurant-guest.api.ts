@@ -2,6 +2,9 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpContext } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
 import {
+  GuestSubmissionRequestSchema,
+  GuestSubmissionResponseSchema,
+  GuestRequestStateResponseSchema,
   GuestContextResponseSchema,
   GuestResolveRequestSchema,
   GuestWaiterCallResponseSchema,
@@ -13,6 +16,30 @@ import { GUEST_CAPABILITY_REQUEST } from '../../../core/http/guest-request-conte
 export class RestaurantGuestApi {
   private readonly http = inject(HttpClient);
   private readonly base = environment.apiBaseUrl.replace(/\/$/, '') + '/public/restaurants/guest';
+  async submissions(capability: string, body: unknown) {
+    return GuestSubmissionResponseSchema.parse(
+      await firstValueFrom(
+        this.http
+          .post<unknown>(this.base + '/submissions', GuestSubmissionRequestSchema.parse(body), {
+            context: new HttpContext().set(GUEST_CAPABILITY_REQUEST, true),
+            headers: { Authorization: `Bearer ${capability}` },
+          })
+          .pipe(timeout(15_000)),
+      ),
+    );
+  }
+  async submissionState(capability: string) {
+    return GuestRequestStateResponseSchema.parse(
+      await firstValueFrom(
+        this.http
+          .get<unknown>(this.base + '/state', {
+            context: new HttpContext().set(GUEST_CAPABILITY_REQUEST, true),
+            headers: { Authorization: `Bearer ${capability}` },
+          })
+          .pipe(timeout(15_000)),
+      ),
+    );
+  }
   async resolve(token: string) {
     return GuestContextResponseSchema.parse(
       await firstValueFrom(

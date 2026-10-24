@@ -13,6 +13,40 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  restaurantGuestRequestAuditKey: (
+    orgId: string,
+    outletId: string,
+    sessionId: string,
+    requestId: string,
+  ) => ({
+    PK: KeyFactory.restaurantSessionPK(orgId, outletId, sessionId),
+    SK: `GREQ_AUDIT#${restaurantTransactionSegment(requestId)}`,
+  }),
+  restaurantGuestRequestKey: (
+    orgId: string,
+    outletId: string,
+    sessionId: string,
+    requestId: string,
+  ) => ({
+    PK: KeyFactory.restaurantSessionPK(orgId, outletId, sessionId),
+    SK: `GREQ#${restaurantTransactionSegment(requestId)}`,
+  }),
+  restaurantGuestRequestCoordKey: (
+    orgId: string,
+    outletId: string,
+    sessionId: string,
+  ) => ({
+    PK: KeyFactory.restaurantSessionPK(orgId, outletId, sessionId),
+    SK: "GUEST_COORD",
+  }),
+  restaurantGuestSubmissionRateKey: (
+    orgId: string,
+    outletId: string,
+    tableId: string,
+  ) => ({
+    PK: KeyFactory.restaurantOccupancyPK(orgId, outletId, tableId),
+    SK: "GUEST_SUBMISSION_RATE",
+  }),
   restaurantWaiterSlotKey: (
     orgId: string,
     outletId: string,

@@ -1,3 +1,4 @@
+import { RestaurantGuestReviewComponent } from './restaurant-guest-review.component';
 import { RestaurantSessionReconciliation } from '../data-access/restaurant-session-reconciliation';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { RestaurantOrderComposer } from '../ui/order-composer/restaurant-order-composer';
@@ -34,6 +35,7 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
   host: { class: 'block min-w-0' },
   imports: [
     RestaurantOrderComposer,
+    RestaurantGuestReviewComponent,
     DatePipe,
     RouterLink,
     MatButtonModule,

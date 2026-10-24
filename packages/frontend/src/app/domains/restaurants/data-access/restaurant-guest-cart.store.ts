@@ -71,6 +71,8 @@ export class RestaurantGuestCartStore {
   private readonly activeContext = signal<GuestContext | null>(null);
   private readonly value = signal<GuestCartEnvelope | null>(null);
 
+  readonly context = this.activeContext.asReadonly();
+  readonly storageScope = this.activeScope.asReadonly();
   readonly cart = this.value.asReadonly();
   readonly lines = computed(() => this.value()?.lines ?? []);
   readonly distinctLines = computed(() => this.lines().length);

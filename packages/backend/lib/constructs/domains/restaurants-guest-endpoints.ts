@@ -65,6 +65,7 @@ export class RestaurantsGuestEndpoints extends Construct {
                 "dynamodb:BatchGetItem",
                 "dynamodb:PutItem",
                 "dynamodb:DeleteItem",
+                "dynamodb:ConditionCheckItem",
               ],
               resources: [props.restaurantsTable.tableArn],
             }),
@@ -202,6 +203,58 @@ export class RestaurantsGuestEndpoints extends Construct {
         "Staff-waiter-acknowledge",
         api.HttpMethod.POST,
         "/restaurants/outlets/{outletId}/waiter-calls/{waiterCallId}/acknowledge",
+        staffIntegration,
+        props.authorizer,
+      ],
+    ] as const)
+      new api.HttpRoute(this, id, {
+        httpApi: props.api,
+        routeKey: api.HttpRouteKey.with(routePath, method),
+        integration,
+        authorizer,
+      });
+    staffFn.addPermission("StaffGuestRequestsInvoke", {
+      principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+      sourceAccount: staffFn.stack.account,
+      sourceArn: props.api.arnForExecuteApi(
+        "*",
+        "/restaurants/outlets/*/sessions/*/guest-requests*",
+        stageName,
+      ),
+    });
+    for (const [id, method, routePath, integration, authorizer] of [
+      [
+        "Public-submissions",
+        api.HttpMethod.POST,
+        "/public/restaurants/guest/submissions",
+        publicIntegration,
+        new api.HttpNoneAuthorizer(),
+      ],
+      [
+        "Public-state",
+        api.HttpMethod.GET,
+        "/public/restaurants/guest/state",
+        publicIntegration,
+        new api.HttpNoneAuthorizer(),
+      ],
+      [
+        "Staff-requests",
+        api.HttpMethod.GET,
+        "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests",
+        staffIntegration,
+        props.authorizer,
+      ],
+      [
+        "Staff-approve",
+        api.HttpMethod.POST,
+        "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests/{requestId}/approve",
+        staffIntegration,
+        props.authorizer,
+      ],
+      [
+        "Staff-reject",
+        api.HttpMethod.POST,
+        "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests/{requestId}/reject",
         staffIntegration,
         props.authorizer,
       ],

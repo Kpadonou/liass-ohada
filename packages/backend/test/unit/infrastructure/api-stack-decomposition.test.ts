@@ -390,20 +390,22 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(81);
-    expect(routes).toHaveLength(88);
+    expect(routes).toHaveLength(93);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
     ).toHaveLength(81);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(83);
+    ).toHaveLength(84);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
     expect(publicRoutes.map((route) => route.routeKey).sort()).toEqual([
       "GET /public/restaurants/guest/carte",
+      "GET /public/restaurants/guest/state",
       "POST /public/restaurants/guest/renew",
       "POST /public/restaurants/guest/resolve",
+      "POST /public/restaurants/guest/submissions",
       "POST /public/restaurants/guest/waiter-call",
     ]);
     expect(
@@ -479,6 +481,7 @@ describe("API stack decomposition", () => {
       "dynamodb:BatchGetItem",
       "dynamodb:PutItem",
       "dynamodb:DeleteItem",
+      "dynamodb:ConditionCheckItem",
     ]);
     expect(publicActions).toContain("secretsmanager:GetSecretValue");
     const policy = owned.find(
@@ -769,7 +772,7 @@ describe("API stack decomposition", () => {
         (item): item is lambda.CfnPermission =>
           item instanceof lambda.CfnPermission,
       );
-    expect(permissions).toHaveLength(4);
+    expect(permissions).toHaveLength(5);
     const arn = (permission: lambda.CfnPermission) => {
       const resolved = cdk.Stack.of(permission).resolve(permission.sourceArn);
       expect(resolved["Fn::Join"][0]).toBe("");
@@ -800,6 +803,11 @@ describe("API stack decomposition", () => {
       arn(permissions.find((p) => p.node.id === "StaffAcknowledgeInvoke")!),
     ).toBe(
       "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/POST/restaurants/outlets/*/waiter-calls/*/acknowledge",
+    );
+    expect(
+      arn(permissions.find((p) => p.node.id === "StaffGuestRequestsInvoke")!),
+    ).toBe(
+      "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/restaurants/outlets/*/sessions/*/guest-requests*",
     );
     expect(publicArn).toBe(
       "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/public/restaurants/guest/*",
@@ -924,21 +932,10 @@ describe("API stack decomposition", () => {
           (item.node.defaultChild as lambda.CfnFunction).functionName ===
             "liass-ohada-dev-restaurants-guest-qr-staff",
       )!;
-    for (const [index, [method, path]] of [
-      ["*", "/restaurants/outlets/*/guest-*"],
-    ].entries())
-      staffFunction.addPermission(`FutureScope${index}`, {
-        principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
-        sourceAccount: owner.account,
-        sourceArn: httpApi.arnForExecuteApi(
-          method,
-          path,
-          httpApi.defaultStage!.stageName,
-        ),
-      });
     const futurePermissionPatterns = [
       "*/restaurants/outlets/*/service-areas/*/tables/*/qr/*",
-      "*/restaurants/outlets/*/guest-*",
+      "GET/restaurants/outlets/*/guest-activity",
+      "*/restaurants/outlets/*/sessions/*/guest-requests*",
       "POST/restaurants/outlets/*/waiter-calls/*/acknowledge",
     ];
     const matchesStaff = (method: string, routePath: string) =>
@@ -965,7 +962,8 @@ describe("API stack decomposition", () => {
           path.endsWith("/qr/revoke") ||
           path.endsWith("/qr/status") ||
           path.endsWith("/guest-activity") ||
-          path.endsWith("/acknowledge"),
+          path.endsWith("/acknowledge") ||
+          path.includes("/guest-requests"),
       );
     }
     expect(
@@ -987,7 +985,7 @@ describe("API stack decomposition", () => {
     expect(
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
-    ).toBe(6);
+    ).toBe(0);
     expect(Object.keys(after.Resources).length).toBeLessThanOrEqual(344);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(

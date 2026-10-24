@@ -129,6 +129,13 @@
       }
     </div>
   </liass-card>
+  @if (session(); as current) {
+    <liass-restaurant-guest-review
+      [outlet]="outletId()"
+      [session]="sessionId()"
+      [active]="allowed()"
+    />
+  }
   <liass-restaurant-order-composer
     [accessValid]="allowed() && valid() && (!query.isError() || errorKey() === 'LOAD')"
     [session]="session()"

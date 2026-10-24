@@ -382,14 +382,17 @@ export class RestaurantTransactionsRepository {
       },
     };
   }
-  static async commit(actions: TransactWriteItem[]): Promise<void> {
+  static async commit(
+    actions: TransactWriteItem[],
+    maximumActions: 90 | 95 = 90,
+  ): Promise<void> {
     const actualKeys = actions.map((a) => {
       const k = a.Put?.Item ?? a.Delete?.Key ?? a.ConditionCheck?.Key;
       return JSON.stringify([k?.PK, k?.SK]);
     });
     if (
       !actions.length ||
-      actions.length > 90 ||
+      actions.length > maximumActions ||
       new Set(actualKeys).size !== actions.length ||
       Buffer.byteLength(JSON.stringify(actions), "utf8") > 3 * 1024 * 1024 ||
       actions.some(

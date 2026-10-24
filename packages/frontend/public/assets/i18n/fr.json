@@ -5071,6 +5071,31 @@
       "ACTIVITY_ERROR": "Les appels ne peuvent pas être actualisés.",
       "EMPTY": "Aucun appel en attente.",
       "BADGE": "Serveur demandé"
+    },
+    "SUBMISSIONS": {
+      "SEND": "Envoyer la commande",
+      "SENDING": "Envoi en cours…",
+      "TITLE": "Vos demandes",
+      "REVIEW": "Demandes des convives",
+      "PENDING_APPROVAL": "En attente de validation",
+      "ACCEPTED": "Commande acceptée",
+      "REJECTED": "Demande rejetée",
+      "EXPIRED": "Demande expirée",
+      "VISIT_ENDED": "Cette visite est terminée. Votre sélection reste disponible localement.",
+      "UNAVAILABLE": "Ce service est momentanément indisponible.",
+      "NOT_ALLOWED": "L’envoi n’est pas disponible pour cette visite.",
+      "REVIEW_REQUIRED": "La Carte a changé. Vérifiez votre sélection avant de réessayer.",
+      "LIMIT_REACHED": "Le nombre de demandes en attente a été atteint. Attendez leur traitement.",
+      "RATE_LIMITED": "Veuillez patienter quelques secondes avant un nouvel envoi.",
+      "UNCERTAIN": "L’envoi n’a pas pu être confirmé. Réessayez pour vérifier la même demande sans doublon.",
+      "RETRY": "Vérifier cet envoi",
+      "REFRESH": "Actualiser",
+      "STATUS_ERROR": "Impossible d’actualiser les demandes. Réessayez.",
+      "REVIEW_ERROR": "Cette action n’a pas pu être confirmée. Actualisez les demandes avant de réessayer.",
+      "ACCEPT": "Accepter",
+      "REJECT": "Rejeter",
+      "REASON": "Motif du rejet",
+      "EMPTY": "Aucune demande pour cette visite."
     }
   }
 }

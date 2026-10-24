@@ -66,7 +66,10 @@ const setup = (routing = false) =>
       { provide: AuthStore, useValue: { effectiveOrgId: org, currentUserId: user } },
       { provide: QueryClient, useValue: client },
       { provide: RestaurantsApi, useValue: api },
-      { provide: RestaurantsCapabilities, useValue: { canReadSession: allowed } },
+      {
+        provide: RestaurantsCapabilities,
+        useValue: { canReadSession: allowed, canReadService: () => false },
+      },
       { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
     ],
   }).overrideComponent(RestaurantTableWorkspacePage, {

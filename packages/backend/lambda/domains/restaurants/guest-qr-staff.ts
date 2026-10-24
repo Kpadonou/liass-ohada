@@ -5,6 +5,8 @@ import {
 } from "@liass-ohada/shared/restaurants";
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { QrManagement } from "./qr-management";
+import { GuestSubmissions } from "./guest-submissions";
+import { RejectGuestRequestSchema } from "@liass-ohada/shared/restaurants";
 import { WaiterCalls } from "./waiter-call";
 import { AppError } from "@/lambda/shared/app-error";
 
@@ -94,8 +96,54 @@ const acknowledgeHandler = createHandler(
     action: "WAITER_CALL_ACKNOWLEDGE",
   },
 );
+const requestsBase =
+  "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests";
+const reviewHandler = createHandler(
+  z
+    .object({
+      outletId: z.string().uuid(),
+      sessionId: z.string().uuid(),
+      requestId: z.string().uuid().optional(),
+      reason: z.string().max(250).optional(),
+    })
+    .strict(),
+  async (input, context) => {
+    const scope = {
+      orgId: context.orgId,
+      outletId: input.outletId,
+      sessionId: input.sessionId,
+    };
+    if (context.event.routeKey === `GET ${requestsBase}`)
+      return GuestSubmissions.list(scope, context.userId);
+    const operation = context.event.routeKey.endsWith("/approve")
+      ? "approve"
+      : "reject";
+    if (operation === "reject")
+      RejectGuestRequestSchema.parse({ reason: input.reason });
+    return GuestSubmissions.review(
+      scope,
+      context.userId,
+      z.string().uuid().parse(input.requestId),
+      operation,
+      input.reason,
+    );
+  },
+  {
+    permission: "RESTAURANTS_SERVICE_FLOOR_READ",
+    productCode: "RESTAURANTS",
+    action: "GUEST_REQUEST_REVIEW",
+  },
+);
 /** Route selection precedes authorization; QR keeps its original setup permission. */
 export const handler: typeof qrHandler = async (event) => {
+  if (
+    [
+      `GET ${requestsBase}`,
+      `POST ${requestsBase}/{requestId}/approve`,
+      `POST ${requestsBase}/{requestId}/reject`,
+    ].includes(event.routeKey)
+  )
+    return reviewHandler(event);
   if (event.routeKey === `GET ${activityPath}`) return activityHandler(event);
   if (event.routeKey === `POST ${acknowledgePath}`)
     return acknowledgeHandler(event);

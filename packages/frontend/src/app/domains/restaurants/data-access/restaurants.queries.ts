@@ -75,6 +75,65 @@ export class RestaurantsQueries {
   userScope() {
     return this.auth.currentUserId?.() ?? '';
   }
+  guestRequests(outlet: string, session: string, enabled: boolean) {
+    const ctx = { ...this.activityContext(outlet), session };
+    return queryOptions({
+      queryKey: [
+        'restaurants',
+        ctx.org,
+        'guest-requests',
+        ctx.user,
+        ctx.revision,
+        outlet,
+        session,
+      ] as const,
+      queryFn: async () => {
+        const result = await this.api.guestRequests(ctx);
+        return 'requests' in result ? result : { requests: [] };
+      },
+      enabled: enabled && !!ctx.org && !!outlet && !!session,
+      staleTime: 15_000,
+      refetchInterval: enabled ? 15_000 : false,
+      refetchIntervalInBackground: false,
+      retry: false,
+    });
+  }
+  async reviewGuestRequest(
+    outlet: string,
+    session: string,
+    requestId: string,
+    operation: 'approve' | 'reject',
+    reason?: string,
+  ) {
+    const ctx = { ...this.activityContext(outlet), session };
+    const result = await this.api.guestRequests(ctx, { requestId, operation, reason });
+    await Promise.all([
+      this.client.invalidateQueries({
+        queryKey: [
+          'restaurants',
+          ctx.org,
+          'guest-requests',
+          ctx.user,
+          ctx.revision,
+          outlet,
+          session,
+        ],
+        exact: true,
+      }),
+      ...('state' in result && result.state === 'ACCEPTED'
+        ? [
+            this.client.invalidateQueries({
+              queryKey: restaurantKeys.session(ctx.org, outlet, session),
+            }),
+            this.client.invalidateQueries({ queryKey: restaurantKeys.floor(ctx.org, outlet) }),
+            this.client.invalidateQueries({
+              queryKey: ['restaurants', ctx.org, 'service-order', ctx.user, outlet, session],
+            }),
+          ]
+        : []),
+    ]);
+    return result;
+  }
   guestActivity(outlet: string, enabled: boolean) {
     const ctx = {
       org: this.scope(),

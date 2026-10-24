@@ -185,8 +185,9 @@ export class RestaurantTransactionsService {
     currency: string,
     now: string,
     submissionId: string,
+    draft?: TransactionRow & { data: contracts.RestaurantOrderItem },
   ) {
-    const line = await this.line(ctx, orderId, selected.itemId);
+    const line = draft ?? (await this.line(ctx, orderId, selected.itemId));
     if (
       line.data.status !== "DRAFT" ||
       line.data.version !== selected.expectedVersion
@@ -267,7 +268,23 @@ export class RestaurantTransactionsService {
     command: RestaurantTransactionCommand,
     input: unknown,
     ids: { sessionId?: string; orderId?: string; itemId?: string } = {},
+    guestApproval?: {
+      actions: TransactWriteItem[];
+      sessionId: string;
+      expiresAt: string;
+      policyVersion: number;
+      lines: {
+        itemId: string;
+        menuItemId: string;
+        categoryId: string;
+        quantity: number;
+        notes: string;
+        expectedMenuItemVersion: number;
+      }[];
+    },
   ): Promise<{ data: Business }> {
+    if (guestApproval && command !== "SUBMIT_ORDER")
+      throw new Error("Invalid approval boundary");
     const startedAt = Date.now();
     contracts.RestaurantIdSchema.parse(ctx.outletId);
     const request = transactionRequestSchemas[command].parse(input);
@@ -381,6 +398,75 @@ export class RestaurantTransactionsService {
     let serviceSession:
       | Awaited<ReturnType<typeof RestaurantTransactionsService.session>>
       | undefined;
+    // Guest approval stages a draft only in memory. The existing acceptance branch
+    // persists the canonical order, lines, effects and request transition together.
+    let guestOrder:
+      | (TransactionRow & { data: contracts.RestaurantOrder })
+      | undefined;
+    const guestLines = new Map<
+      string,
+      TransactionRow & { data: contracts.RestaurantOrderItem }
+    >();
+    if (guestApproval) {
+      serviceSession = await this.session(ctx, guestApproval.sessionId);
+      if (
+        serviceSession.data.status !== "OPEN" ||
+        serviceSession.data.orderCount >= 50
+      )
+        return fail();
+      const createdAt = new Date().toISOString();
+      const data = contracts.RestaurantOrderSchema.parse({
+        orgId: ctx.orgId,
+        outletId: ctx.outletId,
+        schemaVersion: 1,
+        orderId: owner,
+        orderType: "DINE_IN",
+        guestSessionId: guestApproval.sessionId,
+        tableId: serviceSession.data.tableId,
+        status: "DRAFT",
+        currency: serviceSession.data.currency,
+        createdAt,
+        createdBy: ctx.actorId,
+        waiterId: serviceAccess?.staffId,
+        outstandingWorkCount: 0,
+        version: 1,
+        financialRevision: 0,
+        lineCount: guestApproval.lines.length,
+        acceptedLineCount: 0,
+        draftLineCount: guestApproval.lines.length,
+        dueMinor: 0,
+        paidMinor: 0,
+        reservedMinor: 0,
+        pendingPaymentCount: 0,
+      });
+      guestOrder = R.row(
+        ctx,
+        meta(K.restaurantOrderPK(ctx.orgId, ctx.outletId, owner)),
+        "ORDER",
+        data,
+      ) as TransactionRow & { data: contracts.RestaurantOrder };
+      for (const entry of guestApproval.lines) {
+        const data = contracts.RestaurantOrderItemSchema.parse({
+          orgId: ctx.orgId,
+          outletId: ctx.outletId,
+          ...entry,
+          schemaVersion: 1,
+          orderId: owner,
+          status: "DRAFT",
+          version: 1,
+          createdAt,
+        });
+        guestLines.set(
+          entry.itemId,
+          R.row(
+            ctx,
+            { PK: guestOrder.PK, SK: K.restaurantOrderItemSK(entry.itemId) },
+            "LINE",
+            data,
+          ) as TransactionRow & { data: contracts.RestaurantOrderItem },
+        );
+      }
+    }
     const authorizeOrderScope = async () => {
       if (!serviceAccess?.staffId || !serviceCommand) return;
       if (command === "CREATE_ORDER") {
@@ -389,7 +475,7 @@ export class RestaurantTransactionsService {
           return fail("DOMAIN_PERMISSION_REQUIRED", 403);
         serviceSession = await this.session(ctx, req.guestSessionId);
       } else {
-        serviceOrder = await this.order(ctx, owner);
+        serviceOrder = guestOrder ?? (await this.order(ctx, owner));
         if (
           serviceOrder.data.orderType !== "DINE_IN" ||
           !serviceOrder.data.guestSessionId
@@ -819,7 +905,10 @@ export class RestaurantTransactionsService {
       activity = audit(result, session.data.status);
     } else {
       const order =
-        serviceOrder ?? closureOrder ?? (await this.order(ctx, owner));
+        guestOrder ??
+        serviceOrder ??
+        closureOrder ??
+        (await this.order(ctx, owner));
       this.editable(
         order.data,
         (request as { expectedVersion: number }).expectedVersion,
@@ -923,6 +1012,7 @@ export class RestaurantTransactionsService {
                   order.data.currency,
                   now,
                   submissionId,
+                  guestLines.get(selected.itemId),
                 ),
               ),
           );
@@ -951,7 +1041,7 @@ export class RestaurantTransactionsService {
               ...(work ? { latestFireId: work.task.fireId, fireCount: 1 } : {}),
               version: line.data.version + 1,
             },
-            line,
+            guestApproval ? undefined : line,
           );
           delta = safeMoney(BigInt(delta) + BigInt(amount));
         }
@@ -1055,7 +1145,47 @@ export class RestaurantTransactionsService {
       }
       next.dueMinor = safeMoney(BigInt(next.dueMinor) + BigInt(delta));
       if (next.dueMinor < next.paidMinor + next.reservedMinor) return fail();
-      put("ORDER", { PK: order.PK, SK: order.SK }, next, order);
+      put(
+        "ORDER",
+        { PK: order.PK, SK: order.SK },
+        next,
+        guestApproval ? undefined : order,
+      );
+      if (guestApproval) {
+        locator(
+          "ACTIVE_ORDER",
+          K.restaurantTransactionActivePK(ctx.orgId, ctx.outletId, "ORD"),
+          next,
+        );
+        locator(
+          "ORDER_HISTORY",
+          K.restaurantTransactionHistoryPK(
+            ctx.orgId,
+            ctx.outletId,
+            "ORD",
+            day(next.createdAt),
+          ),
+          next,
+        );
+        if (next.waiterId)
+          locator(
+            "WAITER",
+            K.restaurantWaiterActivePK(ctx.orgId, ctx.outletId, next.waiterId),
+            next,
+          );
+        locator(
+          "SESSION_ORDER",
+          serviceSession!.PK,
+          next,
+          K.restaurantSessionOrderSK(next.createdAt, owner),
+        );
+        locator(
+          "OPEN_SESSION_ORDER",
+          serviceSession!.PK,
+          next,
+          K.restaurantSessionOrderSK(next.createdAt, owner, true),
+        );
+      }
       const isTerminal =
         next.status === "CLOSED" || next.status === "CANCELLED";
       if (isTerminal && next.waiterId)
@@ -1110,7 +1240,11 @@ export class RestaurantTransactionsService {
         const updated = {
           ...session.data,
           dueMinor: safeMoney(BigInt(session.data.dueMinor) + BigInt(delta)),
-          openOrderCount: session.data.openOrderCount - (isTerminal ? 1 : 0),
+          openOrderCount:
+            session.data.openOrderCount -
+            (isTerminal ? 1 : 0) +
+            (guestApproval ? 1 : 0),
+          orderCount: session.data.orderCount + (guestApproval ? 1 : 0),
           financialRevision:
             session.data.financialRevision + (financialChanged ? 1 : 0),
           version: session.data.version + 1,
@@ -1159,6 +1293,21 @@ export class RestaurantTransactionsService {
       committedAt: now,
       result,
     });
+    if (guestApproval) {
+      if (Date.parse(guestApproval.expiresAt) <= Date.now())
+        return fail("RESTAURANTS_CONFIGURATION_CHANGED");
+      const root = [...checks.values()].find(
+        (row) => row.kind === "restaurant",
+      );
+      if (
+        !root ||
+        !("guestOrderingPolicy" in root.data) ||
+        root.data.guestOrderingPolicy !== "STAFF_APPROVAL" ||
+        root.data.version !== guestApproval.policyVersion
+      )
+        return fail("RESTAURANTS_CONFIGURATION_CHANGED");
+      actions.push(...guestApproval.actions);
+    }
     for (const [sk, check] of checks)
       actions.push({
         ConditionCheck: {
@@ -1182,7 +1331,10 @@ export class RestaurantTransactionsService {
         },
       });
     try {
-      await R.commit(actions);
+      // Atomic Guest creation plus acceptance adds creation locators to the
+      // established submit transaction (worst case 93 actions for 12 distinct
+      // categories/stations with a WAITER). Keep headroom below DynamoDB's 100.
+      await R.commit(actions, guestApproval ? 95 : 90);
     } catch (error) {
       const serviceGuardFailed =
         serviceGuardCount > 0 &&

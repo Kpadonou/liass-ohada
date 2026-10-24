@@ -12,7 +12,7 @@ import { RestaurantGuestCartStore } from '../data-access/restaurant-guest-cart.s
 
 describe('Guest entry without the staff shell', () => {
   const token = 'A'.repeat(43),
-    api = { resolve: vi.fn(), renew: vi.fn() };
+    api = { resolve: vi.fn(), renew: vi.fn(), submissionState: vi.fn() };
   let client: QueryClient;
   const response = (state: 'FREE' | 'OCCUPIED') => ({
     state,
@@ -29,6 +29,7 @@ describe('Guest entry without the staff shell', () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
+    api.submissionState.mockResolvedValue({ state: 'READY', requests: [] });
     sessionStorage.clear();
     client = new QueryClient({ defaultOptions: { mutations: { retry: false, gcTime: 0 } } });
     TestBed.configureTestingModule({
@@ -62,7 +63,7 @@ describe('Guest entry without the staff shell', () => {
     sessionStorage.clear();
   });
   it.each(['FREE', 'OCCUPIED'] as const)(
-    'shows %s context, no staff controls and no prematurely implemented features',
+    'shows %s context, no staff controls and only authorized Guest features',
     async (state) => {
       api.resolve.mockResolvedValue(response(state));
       const f = TestBed.createComponent(RestaurantGuestPage);
@@ -74,7 +75,7 @@ describe('Guest entry without the staff shell', () => {
       expect(f.nativeElement.querySelector('liass-app-shell')).toBeNull();
       expect(f.nativeElement.querySelector('nav')).toBeNull();
       expect(f.nativeElement.textContent).not.toContain('Commander');
-      expect(f.nativeElement.querySelectorAll('button')).toHaveLength(2);
+      expect(f.nativeElement.querySelectorAll('button')).toHaveLength(state === 'OCCUPIED' ? 3 : 2);
       expect(sessionStorage.length).toBe(1);
     },
   );

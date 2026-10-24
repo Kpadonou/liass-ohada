@@ -1,3 +1,4 @@
+import { RestaurantGuestSubmissionComponent } from './restaurant-guest-submission.component';
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -13,7 +14,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
 
 @Component({
   selector: 'liass-restaurant-guest-cart-dialog',
-  imports: [MatButtonModule, MatDialogModule, TranslocoModule],
+  imports: [MatButtonModule, MatDialogModule, TranslocoModule, RestaurantGuestSubmissionComponent],
   template: `
     <div
       class="max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain rounded-t-2xl bg-white shadow-xl dark:bg-slate-950 sm:rounded-2xl"
@@ -193,6 +194,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
           <span>{{ 'RESTAURANTS.GUEST.CART.TOTAL' | transloco }}</span>
           <span class="tabular-nums">{{ price(store.totalAmountMinor(), store.currency()) }}</span>
         </div>
+        <liass-restaurant-guest-submission [action]="true" />
       </div>
     </div>
   `,
@@ -202,6 +204,11 @@ export class RestaurantGuestCartDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<RestaurantGuestCartDialogComponent>);
   private readonly translation = inject(TranslocoService);
   readonly message = signal<GuestCartResult | ''>('');
+  constructor() {
+    effect(() => {
+      if (!this.store.lines().length) this.dialogRef.close();
+    });
+  }
 
   close() {
     this.dialogRef.close();

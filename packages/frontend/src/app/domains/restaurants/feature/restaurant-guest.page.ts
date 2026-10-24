@@ -1,3 +1,4 @@
+import { RestaurantGuestSubmissionComponent } from './restaurant-guest-submission.component';
 import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
@@ -17,6 +18,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
   selector: 'liass-restaurant-guest',
   host: { class: 'block' },
   imports: [
+    RestaurantGuestSubmissionComponent,
     MatButtonModule,
     TranslocoModule,
     RestaurantGuestCarteComponent,
@@ -58,6 +60,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
           [scope]="request.data()!.key"
           (ended)="end($event)"
         />
+        <liass-restaurant-guest-submission />
         <liass-restaurant-guest-cart [scope]="request.data()!.key" [context]="c" />
       } @else {
         <h1 id="guest-title" class="text-2xl font-semibold">

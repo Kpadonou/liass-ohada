@@ -1,3 +1,5 @@
+import { QueryClient } from '@tanstack/angular-query-experimental';
+import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
 import { TestBed } from '@angular/core/testing';
 import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 import fr from '../../../../../public/assets/i18n/fr.json';
@@ -25,6 +27,15 @@ describe('RestaurantGuestCartComponent', () => {
   beforeEach(() => {
     sessionStorage.clear();
     TestBed.configureTestingModule({
+      providers: [
+        { provide: QueryClient, useFactory: () => new QueryClient() },
+        {
+          provide: RestaurantGuestApi,
+          useValue: {
+            submissionState: vi.fn().mockResolvedValue({ state: 'READY', requests: [] }),
+          },
+        },
+      ],
       imports: [
         RestaurantGuestCartComponent,
         TranslocoTestingModule.forRoot({
