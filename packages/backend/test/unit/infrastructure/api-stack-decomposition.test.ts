@@ -36,7 +36,10 @@ const FROZEN_GUEST_ROUTES = [
     "POST",
     "/restaurants/outlets/{outletId}/sessions/{sessionId}/guest-requests/{requestId}/reject",
   ],
-  ["POST", "/restaurants/outlets/{outletId}/waiter-calls/{callId}/acknowledge"],
+  [
+    "POST",
+    "/restaurants/outlets/{outletId}/waiter-calls/{waiterCallId}/acknowledge",
+  ],
 ];
 
 jest.mock("aws-cdk-lib/aws-lambda-nodejs", () => {
@@ -375,7 +378,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(0);
   });
 
-  test("keeps 79 staff routes and six reviewed Guest/QR routes in one domain stack", () => {
+  test("keeps Restaurants routes and grouped Guest boundaries in one domain stack", () => {
     const restaurants = constructs.find(
       (item) => item instanceof RestaurantsApiStack,
     )!;
@@ -387,13 +390,13 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(81);
-    expect(routes).toHaveLength(85);
+    expect(routes).toHaveLength(88);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
     ).toHaveLength(81);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(81);
+    ).toHaveLength(83);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -401,6 +404,7 @@ describe("API stack decomposition", () => {
       "GET /public/restaurants/guest/carte",
       "POST /public/restaurants/guest/renew",
       "POST /public/restaurants/guest/resolve",
+      "POST /public/restaurants/guest/waiter-call",
     ]);
     expect(
       publicRoutes.every((route) => route.authorizationType === "NONE"),
@@ -469,7 +473,13 @@ describe("API stack decomposition", () => {
     );
     expect(
       publicActions.filter((action: string) => action.startsWith("dynamodb:")),
-    ).toEqual(["dynamodb:GetItem", "dynamodb:Query", "dynamodb:BatchGetItem"]);
+    ).toEqual([
+      "dynamodb:GetItem",
+      "dynamodb:Query",
+      "dynamodb:BatchGetItem",
+      "dynamodb:PutItem",
+      "dynamodb:DeleteItem",
+    ]);
     expect(publicActions).toContain("secretsmanager:GetSecretValue");
     const policy = owned.find(
       (item): item is iam.CfnPolicy => item instanceof iam.CfnPolicy,
@@ -759,7 +769,7 @@ describe("API stack decomposition", () => {
         (item): item is lambda.CfnPermission =>
           item instanceof lambda.CfnPermission,
       );
-    expect(permissions).toHaveLength(2);
+    expect(permissions).toHaveLength(4);
     const arn = (permission: lambda.CfnPermission) => {
       const resolved = cdk.Stack.of(permission).resolve(permission.sourceArn);
       expect(resolved["Fn::Join"][0]).toBe("");
@@ -781,6 +791,16 @@ describe("API stack decomposition", () => {
     )!;
     const publicArn = arn(publicPermission),
       staffArn = arn(staffPermission);
+    expect(
+      arn(permissions.find((p) => p.node.id === "StaffActivityInvoke")!),
+    ).toBe(
+      "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/GET/restaurants/outlets/*/guest-activity",
+    );
+    expect(
+      arn(permissions.find((p) => p.node.id === "StaffAcknowledgeInvoke")!),
+    ).toBe(
+      "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/POST/restaurants/outlets/*/waiter-calls/*/acknowledge",
+    );
     expect(publicArn).toBe(
       "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/public/restaurants/guest/*",
     );
@@ -837,7 +857,7 @@ describe("API stack decomposition", () => {
     }
   });
 
-  test("synthesizes the eight frozen future routes with two existing integrations and ten resources", () => {
+  test("projects remaining frozen routes with reused integrations below the review threshold", () => {
     // Projection fixture only: these routes are never registered by the deployment app.
     const fixtureApp = new cdk.App({
       context: { authUseSecretsManager: true },
@@ -868,7 +888,14 @@ describe("API stack decomposition", () => {
       )!;
     const staffCfn = firstStaff.node.defaultChild as apigwv2.CfnRoute;
     const httpApi = firstStaff.httpApi;
+    const existingKeys = new Set(
+      guest.node
+        .findAll()
+        .filter((x): x is apigwv2.CfnRoute => x instanceof apigwv2.CfnRoute)
+        .map((x) => String(x.routeKey)),
+    );
     for (const [index, [method, routePath]] of FROZEN_GUEST_ROUTES.entries()) {
+      if (existingKeys.has(method + " " + routePath)) continue;
       const isPublic = routePath.startsWith("/public/");
       new apigwv2.HttpRoute(guest, `ProjectionRoute${index}`, {
         httpApi,
@@ -899,7 +926,6 @@ describe("API stack decomposition", () => {
       )!;
     for (const [index, [method, path]] of [
       ["*", "/restaurants/outlets/*/guest-*"],
-      ["POST", "/restaurants/outlets/*/waiter-calls/*/acknowledge"],
     ].entries())
       staffFunction.addPermission(`FutureScope${index}`, {
         principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
@@ -937,7 +963,9 @@ describe("API stack decomposition", () => {
       expect(matchesStaff(method, path)).toBe(
         path.endsWith("/qr/rotate") ||
           path.endsWith("/qr/revoke") ||
-          path.endsWith("/qr/status"),
+          path.endsWith("/qr/status") ||
+          path.endsWith("/guest-activity") ||
+          path.endsWith("/acknowledge"),
       );
     }
     expect(
@@ -959,8 +987,8 @@ describe("API stack decomposition", () => {
     expect(
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
-    ).toBe(10);
-    expect(Object.keys(after.Resources).length).toBeLessThanOrEqual(343);
+    ).toBe(6);
+    expect(Object.keys(after.Resources).length).toBeLessThanOrEqual(344);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(
         (r) => (r as { Type: string }).Type === type,

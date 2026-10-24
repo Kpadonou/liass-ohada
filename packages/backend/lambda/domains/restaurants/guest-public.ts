@@ -5,6 +5,8 @@ import {
   GuestContextResponseSchema,
   GuestRenewRequestSchema,
 } from "@liass-ohada/shared/restaurants";
+import { WaiterCalls } from "./waiter-call";
+import { GuestWaiterCallRequestSchema } from "@liass-ohada/shared/restaurants";
 import { GuestCarteService } from "./guest-carte";
 import { GuestService } from "./guest-service";
 import { AppError } from "@/lambda/shared/app-error";
@@ -34,6 +36,7 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<{
   try {
     if (
       ![
+        "POST /public/restaurants/guest/waiter-call",
         "POST /public/restaurants/guest/resolve",
         "POST /public/restaurants/guest/renew",
         "GET /public/restaurants/guest/carte",
@@ -45,6 +48,25 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<{
       Buffer.byteLength(event.body ?? "", "utf8") > 1024
     )
       return send(400, { state: "UNAVAILABLE" });
+    if (event.routeKey === "POST /public/restaurants/guest/waiter-call") {
+      let input: unknown;
+      try {
+        input = JSON.parse(event.body ?? "{}");
+      } catch {
+        return send(400, { state: "UNAVAILABLE" });
+      }
+      if (
+        !GuestWaiterCallRequestSchema.safeParse(input).success ||
+        Object.keys(event.queryStringParameters ?? {}).length
+      )
+        return send(400, { state: "UNAVAILABLE" });
+      const authorization =
+        event.headers?.authorization ?? event.headers?.Authorization;
+      const match = /^Bearer ([^\s]+)$/.exec(authorization ?? "");
+      if (!match || !GuestCapabilitySchema.safeParse(match[1]).success)
+        return send(200, { state: "UNAVAILABLE" });
+      return send(200, await WaiterCalls.request(match[1]));
+    }
     if (event.routeKey === "GET /public/restaurants/guest/carte") {
       const authorization =
         event.headers?.authorization ?? event.headers?.Authorization;

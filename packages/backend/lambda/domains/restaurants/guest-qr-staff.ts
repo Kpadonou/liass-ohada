@@ -5,6 +5,7 @@ import {
 } from "@liass-ohada/shared/restaurants";
 import { createHandler } from "@/lambda/shared/middleware/handler-wrapper";
 import { QrManagement } from "./qr-management";
+import { WaiterCalls } from "./waiter-call";
 import { AppError } from "@/lambda/shared/app-error";
 
 const base =
@@ -13,7 +14,7 @@ export const QR_STAFF_ROUTES = ["rotate", "revoke"].map((operation) => ({
   operation: operation as "rotate" | "revoke",
   path: `${base}/${operation}`,
 }));
-export const handler = createHandler(
+const qrHandler = createHandler(
   z
     .object({
       clientRequestId: z.string().uuid().optional(),
@@ -54,3 +55,49 @@ export const handler = createHandler(
     action: "MANAGE_TABLE_QR",
   },
 );
+
+const activityPath = "/restaurants/outlets/{outletId}/guest-activity";
+const acknowledgePath =
+  "/restaurants/outlets/{outletId}/waiter-calls/{waiterCallId}/acknowledge";
+const activityHandler = createHandler(
+  z
+    .object({
+      outletId: z.string().uuid(),
+      cursor: z.string().max(2000).optional(),
+    })
+    .strict(),
+  async (input, context) =>
+    WaiterCalls.activity(
+      { orgId: context.orgId, outletId: input.outletId },
+      context.userId,
+      input.cursor,
+    ),
+  {
+    permission: "RESTAURANTS_SERVICE_FLOOR_READ",
+    productCode: "RESTAURANTS",
+    action: "GUEST_ACTIVITY_READ",
+  },
+);
+const acknowledgeHandler = createHandler(
+  z
+    .object({ outletId: z.string().uuid(), waiterCallId: z.string().uuid() })
+    .strict(),
+  async (input, context) =>
+    WaiterCalls.acknowledge(
+      { orgId: context.orgId, outletId: input.outletId },
+      context.userId,
+      input.waiterCallId,
+    ),
+  {
+    permission: "RESTAURANTS_SERVICE_FLOOR_READ",
+    productCode: "RESTAURANTS",
+    action: "WAITER_CALL_ACKNOWLEDGE",
+  },
+);
+/** Route selection precedes authorization; QR keeps its original setup permission. */
+export const handler: typeof qrHandler = async (event) => {
+  if (event.routeKey === `GET ${activityPath}`) return activityHandler(event);
+  if (event.routeKey === `POST ${acknowledgePath}`)
+    return acknowledgeHandler(event);
+  return qrHandler(event);
+};

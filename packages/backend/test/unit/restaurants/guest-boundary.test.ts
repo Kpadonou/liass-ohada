@@ -475,3 +475,185 @@ test("route allowlist, payload and encoding are closed, and logs do not contain 
     "secret-value",
   );
 });
+
+test.each(["restaurant", "outlet", "area", "table", "product"])(
+  "waiter-call revalidates inactive %s before writing",
+  async (kind) => {
+    const context = await GuestService.resolve({ token });
+    if (context.state !== "FREE") throw new Error("expected FREE");
+    const keys = {
+      restaurant: { PK: K.orgKey(org), SK: K.restaurantSK() },
+      outlet: { PK: K.orgKey(org), SK: K.restaurantOutletSK(f.outlet.id) },
+      area: {
+        PK: K.orgKey(org),
+        SK: K.restaurantServiceAreaSK(f.outlet.id, f.areas[0].id),
+      },
+      table: tableKey(),
+      product: { PK: K.orgKey(org), SK: K.productAccessSK("RESTAURANTS") },
+    };
+    const k = keys[kind as keyof typeof keys],
+      old = unmarshall(memory.rows.get(JSON.stringify([k.PK, k.SK]))!);
+    patch(
+      k,
+      kind === "product"
+        ? { status: "INACTIVE" }
+        : { data: { ...old.data, isActive: false } },
+    );
+    const writes = memory.transactions.length;
+    const result = await pub("waiter-call", {}, "Bearer " + context.capability);
+    expect(JSON.parse(result.body)).toEqual({ state: "UNAVAILABLE" });
+    expect(memory.transactions).toHaveLength(writes);
+  },
+);
+test("waiter-call rejects tampered, expired, revoked and inconsistent canonical contexts", async () => {
+  const c = await GuestService.resolve({ token });
+  if (c.state !== "FREE") throw new Error();
+  const principal = await openGuest(c.capability);
+  const expired = await sealGuest({
+    ...principal,
+    enteredAt: principal.iat - 500,
+    iat: principal.iat - 500,
+    exp: principal.iat - 1,
+  });
+  for (const capability of [
+    c.capability.slice(0, -8) + "tampered",
+    expired,
+    "staff-jwt",
+  ]) {
+    const before = memory.transactions.length;
+    const r = await pub("waiter-call", {}, "Bearer " + capability);
+    expect(["UNAVAILABLE", "EXPIRED"]).toContain(JSON.parse(r.body).state);
+    expect(memory.transactions).toHaveLength(before);
+  }
+  patch(tableKey(), { qrRevoked: true });
+  expect(
+    JSON.parse((await pub("waiter-call", {}, "Bearer " + c.capability)).body)
+      .state,
+  ).toBe("UNAVAILABLE");
+});
+test("waiter-call FREE and OCCUPIED use canonical state without creating a session", async () => {
+  const c = await GuestService.resolve({ token });
+  if (c.state !== "FREE") throw new Error();
+  const before = memory.transactions.length;
+  const response = await pub("waiter-call", {}, "Bearer " + c.capability);
+  expect(JSON.parse(response.body).state).toBe("REQUESTED");
+  const writes = memory.transactions
+    .slice(before)
+    .flatMap((t) => t.TransactItems ?? []);
+  expect(
+    writes.some(
+      (w) => w.Put?.Item?.entityType?.S === "RESTAURANT_GUEST_SESSION",
+    ),
+  ).toBe(false);
+  const json = response.body;
+  for (const v of [
+    org,
+    f.outlet.id,
+    f.tables[0].id,
+    "acknowledgedBy",
+    "PK",
+    "SK",
+    "version",
+  ])
+    expect(json).not.toContain(v);
+});
+test.each(["OWNER", "MANAGER", "WAITER", "CASHIER", "KITCHEN"])(
+  "route-specific waiter authorization for %s preserves QR management",
+  async (role) => {
+    const user = "role-" + role;
+    memory.seedAccess(org, user, role);
+    // Outlet authorization itself is already covered by service-access tests; this exercises dispatch/middleware.
+    const { WaiterCalls } =
+      await import("@/lambda/domains/restaurants/waiter-call");
+    const activity = jest
+      .spyOn(WaiterCalls, "activity")
+      .mockResolvedValue({ items: [] });
+    const ack = jest.spyOn(WaiterCalls, "acknowledge").mockResolvedValue({
+      waiterCallId: fixtureId(950),
+      state: "ACKNOWLEDGED",
+      acknowledgedAt: new Date().toISOString(),
+    });
+    const request = (
+      routeKey: string,
+      pathParameters: Record<string, string>,
+    ) =>
+      staffHandler({
+        routeKey,
+        headers: { "x-org-id": org },
+        body: "{}",
+        pathParameters,
+        requestContext: { authorizer: { jwt: { claims: { sub: user } } } },
+      } as never);
+    const allowed = ["OWNER", "MANAGER", "WAITER"].includes(role);
+    expect(
+      (
+        await request("GET /restaurants/outlets/{outletId}/guest-activity", {
+          outletId: f.outlet.id,
+        })
+      ).statusCode,
+    ).toBe(allowed ? 200 : 403);
+    expect(activity).toHaveBeenCalledTimes(allowed ? 1 : 0);
+    expect(
+      (
+        await request(
+          "POST /restaurants/outlets/{outletId}/waiter-calls/{waiterCallId}/acknowledge",
+          { outletId: f.outlet.id, waiterCallId: fixtureId(950) },
+        )
+      ).statusCode,
+    ).toBe(allowed ? 200 : 403);
+    expect(ack).toHaveBeenCalledTimes(allowed ? 1 : 0);
+    const qr = await request(
+      "GET /restaurants/outlets/{outletId}/service-areas/{areaId}/tables/{tableId}/qr/status",
+      { outletId: f.outlet.id, areaId: f.areas[0].id, tableId: f.tables[0].id },
+    );
+    expect(qr.statusCode).toBe(["OWNER", "MANAGER"].includes(role) ? 200 : 403);
+  },
+);
+
+test("waiter-call denies incoherent occupancy and Guest cannot enter new staff routes", async () => {
+  const c = await GuestService.resolve({ token });
+  if (c.state !== "FREE") throw new Error();
+  const k = {
+    PK: K.restaurantOccupancyPK(org, f.outlet.id, f.tables[0].id),
+    SK: K.restaurantOccupancySK(),
+  };
+  memory.rows.set(
+    JSON.stringify([k.PK, k.SK]),
+    marshall({
+      ...k,
+      orgId: org,
+      outletId: f.outlet.id,
+      schemaVersion: 1,
+      entityType: "RESTAURANT_TABLE_OCCUPANCY",
+      data: {
+        guestSessionId: fixtureId(999),
+        tableId: f.tables[0].id,
+        areaId: f.areas[0].id,
+      },
+    }),
+  );
+  const before = memory.transactions.length;
+  expect(
+    JSON.parse((await pub("waiter-call", {}, "Bearer " + c.capability)).body)
+      .state,
+  ).toBe("UNAVAILABLE");
+  expect(memory.transactions).toHaveLength(before);
+  for (const routeKey of [
+    "GET /restaurants/outlets/{outletId}/guest-activity",
+    "POST /restaurants/outlets/{outletId}/waiter-calls/{waiterCallId}/acknowledge",
+  ]) {
+    const r = await staffHandler({
+      routeKey,
+      headers: { "x-org-id": org, authorization: "Bearer " + c.capability },
+      body: "{}",
+      pathParameters: {
+        outletId: f.outlet.id,
+        ...(routeKey.startsWith("POST")
+          ? { waiterCallId: fixtureId(999) }
+          : {}),
+      },
+      requestContext: { authorizer: { guest: { kind: "GUEST" } } },
+    } as never);
+    expect(r.statusCode).toBe(401);
+  }
+});

@@ -60,7 +60,12 @@ export class RestaurantsGuestEndpoints extends Construct {
               ],
             }),
             new iam.PolicyStatement({
-              actions: ["dynamodb:Query", "dynamodb:BatchGetItem"],
+              actions: [
+                "dynamodb:Query",
+                "dynamodb:BatchGetItem",
+                "dynamodb:PutItem",
+                "dynamodb:DeleteItem",
+              ],
               resources: [props.restaurantsTable.tableArn],
             }),
             new iam.PolicyStatement({
@@ -134,6 +139,19 @@ export class RestaurantsGuestEndpoints extends Construct {
         sourceArn: props.api.arnForExecuteApi("*", routePath, stageName),
       });
     }
+    for (const [id, method, routePath] of [
+      ["StaffActivityInvoke", "GET", "/restaurants/outlets/*/guest-activity"],
+      [
+        "StaffAcknowledgeInvoke",
+        "POST",
+        "/restaurants/outlets/*/waiter-calls/*/acknowledge",
+      ],
+    ] as const)
+      staffFn.addPermission(id, {
+        principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+        sourceAccount: staffFn.stack.account,
+        sourceArn: props.api.arnForExecuteApi(method, routePath, stageName),
+      });
     for (const operation of ["resolve", "renew"])
       new api.HttpRoute(this, `Public-${operation}`, {
         httpApi: props.api,
@@ -164,6 +182,35 @@ export class RestaurantsGuestEndpoints extends Construct {
         ),
         authorizer: props.authorizer,
         integration: staffIntegration,
+      });
+    for (const [id, method, routePath, integration, authorizer] of [
+      [
+        "Public-waiter-call",
+        api.HttpMethod.POST,
+        "/public/restaurants/guest/waiter-call",
+        publicIntegration,
+        new api.HttpNoneAuthorizer(),
+      ],
+      [
+        "Staff-guest-activity",
+        api.HttpMethod.GET,
+        "/restaurants/outlets/{outletId}/guest-activity",
+        staffIntegration,
+        props.authorizer,
+      ],
+      [
+        "Staff-waiter-acknowledge",
+        api.HttpMethod.POST,
+        "/restaurants/outlets/{outletId}/waiter-calls/{waiterCallId}/acknowledge",
+        staffIntegration,
+        props.authorizer,
+      ],
+    ] as const)
+      new api.HttpRoute(this, id, {
+        httpApi: props.api,
+        routeKey: api.HttpRouteKey.with(routePath, method),
+        integration,
+        authorizer,
       });
     const stage = props.api.defaultStage?.node.defaultChild;
     if (stage instanceof api.CfnStage) {

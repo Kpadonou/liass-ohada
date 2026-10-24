@@ -399,3 +399,5 @@ export type MenuItemsBrowseRequest = z.infer<
 export * from "./payments";
 
 export * from "./receipts";
+
+export * from "./waiter-call";
