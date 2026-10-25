@@ -6,6 +6,7 @@ import fr from '../../../../../public/assets/i18n/fr.json';
 import en from '../../../../../public/assets/i18n/en.json';
 import { RestaurantGuestCartStore } from '../data-access/restaurant-guest-cart.store';
 import { RestaurantGuestCartComponent } from './restaurant-guest-cart.component';
+import type { GuestContextResponse } from '@liass-ohada/shared/restaurants';
 
 const scope = `liass-restaurants.guest.${'a'.repeat(64)}`;
 const context = {
@@ -18,7 +19,7 @@ const context = {
   outletName: 'Centre-ville',
   tableName: 'Terrasse 4',
   policy: 'STAFF_APPROVAL' as const,
-  orderingPermitted: false,
+  orderingPermitted: true,
   waiterCallAvailable: true as const,
 };
 
@@ -64,12 +65,28 @@ describe('RestaurantGuestCartComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  function mount() {
+  function mount(guestContext: GuestContextResponse = context) {
     const fixture = TestBed.createComponent(RestaurantGuestCartComponent);
     fixture.componentRef.setInput('scope', scope);
-    fixture.componentRef.setInput('context', context);
+    fixture.componentRef.setInput(
+      'context',
+      guestContext.state === 'FREE' || guestContext.state === 'OCCUPIED' ? guestContext : null,
+    );
     fixture.detectChanges();
     return fixture;
+  }
+
+  async function openSubmit(guestContext: GuestContextResponse = context) {
+    const fixture = mount(guestContext);
+    (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const buttons = [
+      ...document.querySelectorAll<HTMLButtonElement>('.cdk-overlay-container button'),
+    ];
+    const submit = buttons.find((button) => button.textContent?.includes('Envoyer la commande'));
+    expect(submit).toBeDefined();
+    return { fixture, submit: submit! };
   }
 
   it('offers a strong cart entry point and accessible cart controls in French', async () => {
@@ -122,5 +139,51 @@ describe('RestaurantGuestCartComponent', () => {
     ) as HTMLButtonElement;
     remove.click();
     expect(store.lines()).toEqual([]);
+  });
+
+  it.each([
+    ['FREE', 'DIRECT'],
+    ['FREE', 'STAFF_APPROVAL'],
+    ['OCCUPIED', 'DIRECT'],
+    ['OCCUPIED', 'STAFF_APPROVAL'],
+  ] as const)('enables rendered submission for %s + %s', async (state, policy) => {
+    const guestContext = {
+      ...context,
+      state,
+      policy,
+      orderingPermitted: true,
+      visitRef: state === 'OCCUPIED' ? 'v'.repeat(43) : null,
+    } as GuestContextResponse;
+    store.activate(
+      scope,
+      guestContext as Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>,
+    );
+    const { submit } = await openSubmit(guestContext);
+    expect(submit.disabled).toBe(false);
+  });
+
+  it('keeps rendered submission disabled for FREE + DISABLED', async () => {
+    const guestContext = { ...context, policy: 'DISABLED', orderingPermitted: false } as const;
+    store.activate(scope, guestContext);
+    const { submit } = await openSubmit(guestContext);
+    expect(submit.disabled).toBe(true);
+  });
+
+  it('keeps unavailable Cart intent blocked', async () => {
+    store.reconcile(
+      [
+        {
+          reference: 'available-public-reference',
+          selectionRef: 'replacement-selection-reference',
+          name: 'Poulet braisé',
+          amountMinor: 3500,
+          availability: 'UNAVAILABLE',
+        },
+      ],
+      'XOF',
+      new Date(Date.now() + 900_000).toISOString(),
+    );
+    const { submit } = await openSubmit({ ...context, policy: 'DIRECT' });
+    expect(submit.disabled).toBe(true);
   });
 });

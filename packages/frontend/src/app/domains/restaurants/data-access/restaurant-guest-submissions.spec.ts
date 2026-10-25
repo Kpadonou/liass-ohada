@@ -49,6 +49,18 @@ describe('Guest submissions', () => {
     TestBed.resetTestingModule();
     client.clear();
   });
+  it('blocks an empty Cart even when the FREE DIRECT context is eligible', () => {
+    store.discard();
+    store.activate('liass-restaurants.guest.' + 'a'.repeat(64), {
+      ...context,
+      state: 'FREE',
+      visitRef: null,
+      policy: 'DIRECT',
+    });
+    expect(workflow.canSend()).toBe(false);
+    workflow.submit();
+    expect(api.submissions).not.toHaveBeenCalled();
+  });
   it.each(['DISABLED'])('blocks %s submission', (state) => {
     store.activate('liass-restaurants.guest.' + 'a'.repeat(64), {
       ...context,
