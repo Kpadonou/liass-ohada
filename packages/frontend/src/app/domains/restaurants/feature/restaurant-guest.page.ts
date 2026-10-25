@@ -29,7 +29,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
     class="min-h-dvh bg-app-background px-4 pb-28 pt-8 text-app-text-primary sm:px-6 sm:pb-28 sm:pt-12"
   >
     <section class="mx-auto max-w-4xl space-y-6" aria-labelledby="guest-title">
-      @if (request.isPending()) {
+      @if (bootstrapping()) {
         <h1 id="guest-title" class="text-2xl font-semibold">
           {{ 'RESTAURANTS.GUEST.LOADING' | transloco }}
         </h1>
@@ -104,6 +104,9 @@ export class RestaurantGuestPage {
   private revision = 0;
   private alive = true;
   readonly fallback = signal('UNAVAILABLE');
+  // Constructor-time mutations can start before TanStack's Angular observer subscribes.
+  // Own the bootstrap lifecycle so a missed pending notification cannot show an error.
+  readonly bootstrapping = signal(true);
   readonly scope = signal('');
   readonly request = injectMutation(() => ({
     mutationKey: ['restaurants-guest', 'entry'],
@@ -142,6 +145,9 @@ export class RestaurantGuestPage {
     },
     retry: false,
     gcTime: 0,
+    onSettled: (_data, _error, variables) => {
+      if (this.alive && variables.revision === this.revision) this.bootstrapping.set(false);
+    },
   }));
   readonly state = computed(() =>
     this.request.isError()
@@ -185,14 +191,17 @@ export class RestaurantGuestPage {
   end(state: 'EXPIRED' | 'VISIT_ENDED' | 'UNAVAILABLE') {
     if (state === 'VISIT_ENDED') this.cart.markVisitEnded();
     this.revision++;
+    this.bootstrapping.set(false);
     this.request.reset();
     this.fallback.set(state);
   }
   async load(fresh: boolean) {
     this.revision++;
+    this.bootstrapping.set(true);
     this.request.reset();
     if (!GuestQrTokenSchema.safeParse(this.token).success) {
       this.fallback.set('UNAVAILABLE');
+      this.bootstrapping.set(false);
       return;
     }
     this.request.mutate({ token: this.token, revision: this.revision, fresh });

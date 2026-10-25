@@ -16,7 +16,6 @@ import {
   QueryClient,
 } from '@tanstack/angular-query-experimental';
 import { GuestCarte, GuestContextResponse } from '@liass-ohada/shared/restaurants';
-import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
 import {
   GuestCartePage,
   guestCarteKey,
@@ -186,14 +185,11 @@ export class RestaurantGuestCarteComponent {
   readonly selected = signal('');
   readonly cartMessage = signal<GuestCartResult | ''>('');
   private readonly api = inject(RestaurantGuestCarteApi);
-  private readonly guest = inject(RestaurantGuestApi);
   private readonly cart = inject(RestaurantGuestCartStore);
   private readonly client = inject(QueryClient);
   private readonly translation = inject(TranslocoService);
   private readonly destroy = inject(DestroyRef);
   private stoppedContext = '';
-  private credentialContext = '';
-  private credential: Context | undefined;
   readonly language = () => this.translation.getActiveLang() || 'fr';
   readonly query = injectInfiniteQuery(() => {
     const original = this.context(),
@@ -211,8 +207,6 @@ export class RestaurantGuestCarteComponent {
       retry: false,
       refetchOnWindowFocus: true,
       queryFn: async ({ pageParam, queryKey }) => {
-        let credential =
-          this.credential && this.credentialContext === contextKey ? this.credential : original;
         const terminal = (state: 'EXPIRED' | 'VISIT_ENDED' | 'UNAVAILABLE'): never => {
           if (current() && this.stoppedContext !== contextKey) {
             this.stoppedContext = contextKey;
@@ -222,27 +216,12 @@ export class RestaurantGuestCarteComponent {
           throw new GuestContextEnded();
         };
         if (!current() || this.stoppedContext === contextKey) throw new GuestContextEnded();
-        if (Date.parse(credential.expiresAt) - Date.now() < 60_000) {
-          const renewed = await this.guest.renew(credential.capability);
-          if (!current()) throw new GuestContextEnded();
-          if (renewed.state !== 'FREE' && renewed.state !== 'OCCUPIED')
-            return terminal(renewed.state);
-          if (renewed.guestHandle !== original.guestHandle || renewed.state !== original.state)
-            return terminal('UNAVAILABLE');
-          credential = renewed;
-          this.credential = renewed;
-          this.credentialContext = contextKey;
-          writeGuest(scope, {
-            guestHandle: renewed.guestHandle,
-            capability: renewed.capability,
-            expiresAt: renewed.expiresAt,
-          });
-        }
         const cached =
           this.client.getQueryData<InfiniteData<GuestCartePage, string | undefined>>(queryKey);
         const index = cached?.pageParams.findIndex((p) => p === pageParam) ?? -1;
         const result = await this.api.read(
-          credential.capability,
+          // The API owns bounded renew/re-resolve recovery, including on first load.
+          original.capability,
           pageParam,
           index >= 0 ? cached?.pages[index] : undefined,
         );

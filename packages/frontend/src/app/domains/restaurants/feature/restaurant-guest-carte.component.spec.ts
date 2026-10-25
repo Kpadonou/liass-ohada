@@ -129,14 +129,14 @@ describe('Consumer Guest Carte', () => {
     });
     expect(f.nativeElement.querySelector('nav')).toBeNull();
   });
-  it('renews once then ends an expired context without resolve or retry loop', async () => {
-    renew.mockResolvedValue({ state: 'EXPIRED' });
+  it('delegates expired access to the recovering read boundary and ends only on its final result', async () => {
+    read.mockResolvedValue({ body: { state: 'EXPIRED' } });
     const f = mount(new Date().toISOString());
     const ended = vi.fn();
     f.componentInstance.ended.subscribe(ended);
     await vi.waitFor(() => expect(ended).toHaveBeenCalledWith('EXPIRED'));
-    expect(renew).toHaveBeenCalledTimes(1);
-    expect(read).not.toHaveBeenCalled();
+    expect(renew).not.toHaveBeenCalled();
+    expect(read).toHaveBeenCalledTimes(1);
   });
   it('makes zero additional reads while canonical TanStack data is fresh', async () => {
     const f = mount();
