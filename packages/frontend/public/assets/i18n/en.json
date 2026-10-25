@@ -5006,7 +5006,7 @@
       "FREE": "Browse the menu and prepare your order.",
       "OCCUPIED": "Your table is being looked after.",
       "CONTACT": "Please speak to your waiter for any request.",
-      "DISABLED": "Ordering from your phone is disabled.",
+      "DISABLED": "Please order with your waiter.",
       "REFRESH": "Refresh",
       "RETRY": "Try again",
       "UNAVAILABLE": "This link is unavailable. Please speak to your waiter.",
@@ -5035,15 +5035,15 @@
         "ADD": "Add",
         "REMOVE": "Remove",
         "CLOSE": "Close",
-        "OPEN": "View cart",
+        "OPEN": "Review my order",
         "OPEN_LABEL": "Open cart, {{count}} item(s)",
         "UNIT_COUNT": "{{count}} item(s)",
-        "FREE_HELP": "Your selection stays on this device. Staff will look after your table.",
+        "FREE_HELP": "Send your order and our team will look after your table.",
         "VISIT_ENDED": "This service has ended",
         "VISIT_ENDED_HELP": "This selection remains visible, but it will never be transferred automatically to a new service.",
         "DIFFERENT_VISIT": "A new service is open",
         "DIFFERENT_VISIT_HELP": "This selection belongs to the previous service. Remove it to start a new selection.",
-        "LOCAL_ONLY": "Your selection remains available on this device. The current menu could not be verified.",
+        "LOCAL_ONLY": "Your selection is saved. Try again to reconnect to the menu.",
         "DISCARD": "Clear this selection",
         "PRICE_CHANGED": "The price changed from {{old}} to {{current}}.",
         "ACCEPT_PRICE": "Accept new price",
@@ -5062,8 +5062,18 @@
           "CONTEXT_BLOCKED": "This selection belongs to another service.",
           "INVALID_QUANTITY": "Enter a quantity between 1 and 20.",
           "NOTE_LIMIT": "The note is limited to 250 characters."
-        }
-      }
+        },
+        "REVIEW_HELP": "Review your items and prices, then refresh the menu if needed.",
+        "SERVICE_BLOCKED": "Reconnect to your table before sending this selection.",
+        "APPROVAL_HELP": "Our team will approve your order before preparation.",
+        "DIRECT_HELP": "Your order will be sent to the restaurant."
+      },
+      "REFRESHING": "Refreshing…",
+      "SERVICE_FREE": "Awaiting staff assistance",
+      "SERVICE_OCCUPIED": "Service in progress",
+      "ASSISTANCE": "Here to help",
+      "ORDERS_EMPTY": "Your orders will appear here.",
+      "ORDERS_LOADING": "Loading your orders…"
     },
     "QR": {
       "HELP": "This QR remains valid between services. Scanning does not reserve the table or open a service.",

@@ -15,6 +15,7 @@ describe('Guest request presentation', () => {
     send: { isPending: () => false, isError: () => false, data: () => undefined },
     state: {
       isFetching: () => false,
+      isPending: () => false,
       isError: () => false,
       refetch: vi.fn(),
       data: () => ({
@@ -114,14 +115,14 @@ describe('Guest request presentation', () => {
       f.detectChanges();
       const articles = f.nativeElement.querySelectorAll('article') as NodeListOf<HTMLElement>;
       expect(articles).toHaveLength(2);
-      expect(articles[0].querySelector('time')?.getAttribute('datetime')).toBe(request.submittedAt);
-      expect(articles[1].querySelector('time')?.getAttribute('datetime')).toBe(
+      expect(articles[1].querySelector('time')?.getAttribute('datetime')).toBe(request.submittedAt);
+      expect(articles[0].querySelector('time')?.getAttribute('datetime')).toBe(
         '2026-10-18T10:05:00.000Z',
       );
-      const water = articles[0].querySelectorAll('li')[1].textContent!;
+      const water = articles[1].querySelectorAll('li')[1].textContent!;
       expect(water).toContain(lang === 'fr' ? 'Confirmée' : 'Confirmed');
       expect(water).not.toContain(lang === 'fr' ? 'En préparation' : 'Preparing');
-      expect(articles[0].textContent).not.toContain('Jus de gingembre');
+      expect(articles[1].textContent).not.toContain('Jus de gingembre');
       expect(f.nativeElement.textContent).not.toContain(request.requestId);
     },
   );
@@ -183,5 +184,43 @@ describe('Guest request presentation', () => {
     expect(f.nativeElement.textContent).toContain(label);
     expect(f.nativeElement.textContent).not.toContain('PENDING_APPROVAL');
     expect(f.nativeElement.textContent).not.toContain('RESTAURANTS.SUBMISSIONS.');
+  });
+  it.each(['fr', 'en'])('shows a consumer empty state in %s', (lang) => {
+    TestBed.inject(TranslocoService).setActiveLang(lang);
+    vi.spyOn(workflow.state, 'data').mockReturnValue({ state: 'READY', requests: [] });
+    const fixture = TestBed.createComponent(RestaurantGuestSubmissionComponent);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      lang === 'fr' ? 'Vos commandes apparaîtront ici.' : 'Your orders will appear here.',
+    );
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+  });
+  it('prioritizes active work over more recent historical submissions without merging them', () => {
+    const base = workflow.state.data().requests[0];
+    vi.spyOn(workflow.state, 'data').mockReturnValue({
+      state: 'READY',
+      requests: [
+        {
+          ...base,
+          requestId: 'old',
+          state: 'ACCEPTED',
+          orderStatus: 'SERVED',
+          submittedAt: '2026-10-18T12:00:00Z',
+        },
+        {
+          ...base,
+          requestId: 'active',
+          state: 'PENDING_APPROVAL',
+          submittedAt: '2026-10-18T10:00:00Z',
+        },
+      ],
+    } as never);
+    const fixture = TestBed.createComponent(RestaurantGuestSubmissionComponent);
+    fixture.detectChanges();
+    expect(fixture.componentInstance.orderedRequests().map((r) => r.requestId)).toEqual([
+      'active',
+      'old',
+    ]);
+    expect(fixture.nativeElement.querySelectorAll('article')).toHaveLength(2);
   });
 });

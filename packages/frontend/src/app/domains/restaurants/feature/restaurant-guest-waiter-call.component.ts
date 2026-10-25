@@ -25,7 +25,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
     <button
       mat-stroked-button
       type="button"
-      class="min-h-11"
+      class="!min-h-11 liass-action-neutral"
       [disabled]="request.isPending() || waiting()"
       [attr.aria-busy]="request.isPending()"
       (click)="call()"
@@ -38,7 +38,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
     <div class="min-w-0 text-sm text-app-text-secondary" role="status" aria-live="polite">
       @if (result(); as r) {
         @if (r.state === 'REQUESTED') {
-          <p class="font-medium text-app-text-primary">
+          <p class="font-medium text-app-text">
             {{ 'RESTAURANTS.WAITER_CALL.REQUESTED' | transloco }}
           </p>
           <p>{{ 'RESTAURANTS.WAITER_CALL.REQUESTED_HELP' | transloco }}</p>

@@ -2,8 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { BehaviorSubject } from 'rxjs';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { TranslocoTestingModule } from '@ngneat/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 import fr from '../../../../../public/assets/i18n/fr.json';
+import en from '../../../../../public/assets/i18n/en.json';
 import { RestaurantGuestPage } from './restaurant-guest.page';
 import { RestaurantGuestCarteApi } from '../data-access/restaurant-guest-carte.queries';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
@@ -37,9 +38,9 @@ describe('Guest entry without the staff shell', () => {
       imports: [
         RestaurantGuestPage,
         TranslocoTestingModule.forRoot({
-          langs: { fr },
+          langs: { fr, en },
           preloadLangs: true,
-          translocoConfig: { availableLangs: ['fr'], defaultLang: 'fr' },
+          translocoConfig: { availableLangs: ['fr', 'en'], defaultLang: 'fr' },
         }),
       ],
       providers: [
@@ -76,7 +77,11 @@ describe('Guest entry without the staff shell', () => {
       expect(f.nativeElement.querySelector('liass-app-shell')).toBeNull();
       expect(f.nativeElement.querySelector('nav')).toBeNull();
       expect(f.nativeElement.textContent).not.toContain('Commander');
-      expect(f.nativeElement.querySelectorAll('button')).toHaveLength(4);
+      expect(
+        [...f.nativeElement.querySelectorAll('button')].filter(
+          (b: Element) => b.textContent?.trim() === 'Actualiser',
+        ),
+      ).toHaveLength(1);
       expect(sessionStorage.length).toBe(1);
     },
   );
@@ -176,4 +181,55 @@ describe('Guest entry without the staff shell', () => {
     expect(f.nativeElement.textContent).toContain('Actualiser');
     f.destroy();
   });
+  it.each(['fr', 'en'])(
+    'keeps the menu mounted during a single lifecycle refresh in %s',
+    async (language) => {
+      TestBed.inject(TranslocoService).setActiveLang(language);
+      api.resolve.mockResolvedValue(response('FREE'));
+      const fixture = TestBed.createComponent(RestaurantGuestPage);
+      fixture.detectChanges();
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.componentInstance.context()?.state).toBe('FREE');
+      });
+      const menu = fixture.nativeElement.querySelector('liass-restaurant-guest-carte');
+      expect(fixture.nativeElement.textContent).toContain(
+        language === 'fr' ? 'En attente de prise en charge' : 'Awaiting staff assistance',
+      );
+      let complete!: (value: unknown) => void;
+      api.renew.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            complete = resolve;
+          }),
+      );
+      const invalidate = vi.spyOn(client, 'invalidateQueries');
+      const refresh = fixture.componentInstance.refresh();
+      await vi.waitFor(() => expect(api.renew).toHaveBeenCalled());
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('liass-restaurant-guest-carte')).toBe(menu);
+      expect(fixture.nativeElement.textContent).not.toContain('RESTAURANTS.');
+      await fixture.componentInstance.refresh();
+      expect(api.renew).toHaveBeenCalledTimes(1);
+      complete(response('FREE'));
+      await refresh;
+      fixture.detectChanges();
+      expect(fixture.componentInstance.refreshing()).toBe(false);
+      expect(fixture.nativeElement.querySelector('liass-restaurant-guest-carte')).toBe(menu);
+      expect(invalidate).toHaveBeenCalledTimes(1);
+      const options = invalidate.mock.calls[0][0]!;
+      const scope = fixture.componentInstance.scope();
+      const matches = options.predicate!;
+      expect(matches({ queryKey: ['restaurants-guest', 'carte', scope] } as never)).toBe(true);
+      expect(
+        matches({ queryKey: ['restaurants-guest', 'submissions', scope + ':guest'] } as never),
+      ).toBe(true);
+      expect(
+        matches({ queryKey: ['restaurants-guest', 'submissions', 'another-scope:guest'] } as never),
+      ).toBe(false);
+      expect(fixture.nativeElement.textContent).toContain(
+        language === 'fr' ? 'Actualiser' : 'Refresh',
+      );
+    },
+  );
 });

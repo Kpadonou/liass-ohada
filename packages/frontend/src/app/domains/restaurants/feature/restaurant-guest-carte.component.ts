@@ -35,27 +35,15 @@ class GuestContextEnded extends Error {}
   imports: [MatButtonModule, TranslocoModule],
   template: `
     <div class="flex items-center justify-between gap-4 pb-5">
-      <h2 class="text-3xl font-semibold tracking-tight">
+      <h2 class="text-2xl font-semibold">
         {{ 'RESTAURANTS.GUEST.CARTE.TITLE' | transloco }}
       </h2>
-      <button
-        mat-button
-        type="button"
-        class="min-h-11"
-        (click)="query.refetch()"
-        [disabled]="query.isFetching()"
-      >
-        {{ 'RESTAURANTS.GUEST.CARTE.REFRESH' | transloco }}
-      </button>
     </div>
     @if (query.isPending()) {
       <div role="status" aria-live="polite" class="space-y-4">
         <p class="text-app-text-secondary">{{ 'RESTAURANTS.GUEST.CARTE.LOADING' | transloco }}</p>
         @for (row of [1, 2, 3]; track row) {
-          <div
-            aria-hidden="true"
-            class="h-24 animate-pulse rounded-xl border border-app-border bg-app-surface"
-          ></div>
+          <div aria-hidden="true" class="h-24 animate-pulse rounded-app-panel bg-app-surface"></div>
         }
       </div>
     } @else if (categories().length) {
@@ -71,32 +59,21 @@ class GuestContextEnded extends Error {}
         </div>
       }
       <nav
-        class="sticky top-0 z-10 -mx-4 mb-6 overflow-x-auto border-b border-app-border bg-app-background px-4 py-2"
+        class="sticky top-0 z-10 -mx-4 mb-6 overflow-x-auto border-b border-app-border bg-app-bg px-4 py-2"
         [attr.aria-label]="'RESTAURANTS.GUEST.CARTE.CATEGORIES' | transloco"
       >
         <div class="flex w-max gap-2">
           @for (category of categories(); track category.reference) {
-            @if (selected() === category.reference) {
-              <button
-                mat-flat-button
-                type="button"
-                class="!min-h-11 whitespace-nowrap !rounded-full !px-5"
-                aria-pressed="true"
-                (click)="select(category.reference)"
-              >
-                {{ category.name }}
-              </button>
-            } @else {
-              <button
-                mat-button
-                type="button"
-                class="!min-h-11 whitespace-nowrap !rounded-full !px-5"
-                aria-pressed="false"
-                (click)="select(category.reference)"
-              >
-                {{ category.name }}
-              </button>
-            }
+            <button
+              mat-button
+              type="button"
+              class="!min-h-11 whitespace-nowrap !rounded-full !px-5"
+              [class.!bg-app-surface-selected]="selected() === category.reference"
+              [attr.aria-pressed]="selected() === category.reference"
+              (click)="select(category.reference)"
+            >
+              {{ category.name }}
+            </button>
           }
         </div>
       </nav>
@@ -109,11 +86,11 @@ class GuestContextEnded extends Error {}
           <h2 class="mb-3 text-xl font-semibold" [id]="'heading-' + category.reference">
             {{ category.name }}
           </h2>
-          <ul class="grid gap-x-6 sm:grid-cols-2">
+          <ul class="grid gap-x-10 md:grid-cols-2">
             @for (item of category.items; track item.reference) {
-              <li class="min-w-0 border-b border-app-border py-6">
+              <li class="min-w-0 border-b border-app-border py-5">
                 <div class="flex items-start justify-between gap-4">
-                  <h3 class="min-w-0 break-words text-base font-medium leading-relaxed">
+                  <h3 class="min-w-0 break-words text-lg font-semibold leading-snug">
                     {{ item.name }}
                   </h3>
                   <p class="shrink-0 whitespace-nowrap pt-1 text-base font-semibold tabular-nums">
@@ -128,7 +105,7 @@ class GuestContextEnded extends Error {}
                   <button
                     mat-stroked-button
                     type="button"
-                    class="mt-3 min-h-11"
+                    class="mt-3 !min-h-11 !min-w-24"
                     (click)="add(item)"
                   >
                     {{ 'RESTAURANTS.GUEST.CART.ADD' | transloco }}
@@ -140,7 +117,7 @@ class GuestContextEnded extends Error {}
         </section>
       }
     } @else if (query.isError()) {
-      <div role="alert" class="rounded-xl border border-app-border bg-app-surface p-6">
+      <div role="alert" class="rounded-app-panel bg-app-surface p-6">
         <h2 class="text-lg font-semibold">{{ 'RESTAURANTS.GUEST.CARTE.ERROR' | transloco }}</h2>
         <p class="mt-2 text-app-text-secondary">
           {{ 'RESTAURANTS.GUEST.CARTE.ERROR_HELP' | transloco }}
@@ -154,7 +131,7 @@ class GuestContextEnded extends Error {}
         {{ 'RESTAURANTS.GUEST.CARTE.CONTINUE' | transloco }}
       </p>
     } @else {
-      <div role="status" class="rounded-xl border border-app-border bg-app-surface p-6">
+      <div role="status" class="rounded-app-panel bg-app-surface p-6">
         <h2 class="text-lg font-semibold">{{ 'RESTAURANTS.GUEST.CARTE.EMPTY' | transloco }}</h2>
         <p class="mt-2 text-app-text-secondary">
           {{ 'RESTAURANTS.GUEST.CARTE.EMPTY_HELP' | transloco }}

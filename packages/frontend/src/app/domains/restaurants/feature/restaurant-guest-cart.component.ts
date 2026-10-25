@@ -1,6 +1,8 @@
 import { RestaurantGuestSubmissionComponent } from './restaurant-guest-submission.component';
 import { Component, effect, inject, input, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { GuestContextResponse } from '@liass-ohada/shared/restaurants';
@@ -14,15 +16,22 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
 
 @Component({
   selector: 'liass-restaurant-guest-cart-dialog',
-  imports: [MatButtonModule, MatDialogModule, TranslocoModule, RestaurantGuestSubmissionComponent],
+  imports: [
+    MatButtonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    TranslocoModule,
+    RestaurantGuestSubmissionComponent,
+  ],
   template: `
     <div
-      class="max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain rounded-t-2xl bg-white shadow-xl dark:bg-slate-950 sm:rounded-2xl"
+      class="max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain rounded-app-panel bg-app-surface shadow-app-popover"
     >
       <div class="sticky top-0 z-10 border-b border-app-border bg-app-surface px-5 py-4 sm:px-6">
         <div class="flex items-start justify-between gap-4">
           <div>
-            <h2 mat-dialog-title class="!m-0 text-xl font-semibold">
+            <h2 mat-dialog-title class="!m-0 !p-0 !text-xl !font-semibold">
               {{ 'RESTAURANTS.GUEST.CART.TITLE' | transloco }}
             </h2>
             <p class="mt-1 text-sm text-app-text-secondary" aria-live="polite">
@@ -36,7 +45,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
       </div>
 
       <div class="space-y-5 px-5 py-5 sm:px-6">
-        @if (store.contextStatus() === 'FREE') {
+        @if (store.contextStatus() === 'FREE' && store.context()?.policy !== 'DISABLED') {
           <p role="status" class="rounded-lg bg-brand-50 p-3 text-sm text-brand-900">
             {{ 'RESTAURANTS.GUEST.CART.FREE_HELP' | transloco }}
           </p>
@@ -133,7 +142,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
                 </button>
                 <input
                   #quantityInput
-                  class="h-11 w-14 rounded-lg border border-app-border bg-app-surface text-center font-semibold tabular-nums"
+                  class="liass-focus-ring h-11 w-14 rounded-lg border border-app-border bg-app-surface text-center font-semibold tabular-nums"
                   type="text"
                   inputmode="numeric"
                   pattern="[0-9]*"
@@ -154,33 +163,30 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
                   +
                 </button>
               </div>
-              <button mat-button type="button" class="min-h-11" (click)="remove(line.reference)">
+              <button
+                mat-button
+                type="button"
+                class="!min-h-11 liass-action-neutral"
+                (click)="remove(line.reference)"
+              >
                 {{ 'RESTAURANTS.GUEST.CART.REMOVE' | transloco }}
               </button>
             </div>
 
-            <div class="space-y-1.5">
-              <label class="block text-sm font-medium" [for]="'cart-note-' + line.reference">
-                {{ 'RESTAURANTS.GUEST.CART.NOTE' | transloco }}
-              </label>
+            <mat-form-field appearance="outline" class="w-full" subscriptSizing="dynamic">
+              <mat-label>{{ 'RESTAURANTS.GUEST.CART.NOTE' | transloco }}</mat-label>
               <textarea
+                matInput
                 [id]="'cart-note-' + line.reference"
-                class="liass-focus-ring min-h-24 w-full resize-y rounded-lg border border-app-border bg-white px-3 py-2 text-base dark:bg-slate-950"
                 rows="2"
                 maxlength="250"
                 [disabled]="!store.canEdit()"
                 [value]="line.note"
-                [attr.aria-describedby]="'cart-note-help-' + line.reference"
                 (input)="note(line, $event)"
               ></textarea>
-              <div
-                class="flex justify-between gap-3 text-xs text-app-text-secondary"
-                [id]="'cart-note-help-' + line.reference"
-              >
-                <span>{{ 'RESTAURANTS.GUEST.CART.NOTE_HINT' | transloco }}</span>
-                <span>{{ line.note.length }}/250</span>
-              </div>
-            </div>
+              <mat-hint>{{ 'RESTAURANTS.GUEST.CART.NOTE_HINT' | transloco }}</mat-hint>
+              <mat-hint align="end">{{ line.note.length }}/250</mat-hint>
+            </mat-form-field>
           </article>
         }
 
@@ -190,11 +196,17 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
           </p>
         }
 
-        <div class="flex items-center justify-between gap-4 pb-2 text-lg font-semibold">
-          <span>{{ 'RESTAURANTS.GUEST.CART.TOTAL' | transloco }}</span>
-          <span class="tabular-nums">{{ price(store.totalAmountMinor(), store.currency()) }}</span>
+        <div
+          class="sticky bottom-0 space-y-4 bg-app-surface py-4 [padding-bottom:max(1rem,env(safe-area-inset-bottom))]"
+        >
+          <div class="flex items-center justify-between gap-4 text-lg font-semibold">
+            <span>{{ 'RESTAURANTS.GUEST.CART.TOTAL' | transloco }}</span>
+            <span class="tabular-nums">{{
+              price(store.totalAmountMinor(), store.currency())
+            }}</span>
+          </div>
+          <liass-restaurant-guest-submission [action]="true" />
         </div>
-        <liass-restaurant-guest-submission [action]="true" />
       </div>
     </div>
   `,
@@ -271,20 +283,28 @@ export class RestaurantGuestCartDialogComponent {
       <div
         class="fixed inset-x-0 bottom-0 z-30 border-t border-app-border bg-app-surface/95 px-3 pt-3 shadow-lg backdrop-blur-sm [padding-bottom:max(0.75rem,env(safe-area-inset-bottom))]"
       >
-        <div class="mx-auto max-w-2xl">
+        <div class="mx-auto max-w-[68rem] sm:flex sm:justify-end">
           <button
             #cartButton
             mat-flat-button
             type="button"
-            class="!min-h-12 w-full !rounded-xl"
+            class="!min-h-16 w-full sm:!min-h-14 sm:!w-auto sm:!min-w-80 !rounded-app-panel"
             (click)="open()"
             [attr.aria-label]="
               'RESTAURANTS.GUEST.CART.OPEN_LABEL' | transloco: { count: store.totalUnits() }
             "
           >
-            {{ 'RESTAURANTS.GUEST.CART.OPEN' | transloco }} ·
-            {{ 'RESTAURANTS.GUEST.CART.UNIT_COUNT' | transloco: { count: store.totalUnits() } }} ·
-            {{ price() }}
+            <span
+              class="flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-1 py-2 text-left"
+            >
+              <span class="text-sm font-normal"
+                >{{
+                  'RESTAURANTS.GUEST.CART.UNIT_COUNT' | transloco: { count: store.totalUnits() }
+                }}
+                · {{ price() }}</span
+              >
+              <span class="font-semibold">{{ 'RESTAURANTS.GUEST.CART.OPEN' | transloco }}</span>
+            </span>
           </button>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { QueryClient } from '@tanstack/angular-query-experimental';
-import { TranslocoTestingModule } from '@ngneat/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 import fr from '../../../../../public/assets/i18n/fr.json';
+import en from '../../../../../public/assets/i18n/en.json';
 import { RestaurantGuestCarteComponent } from './restaurant-guest-carte.component';
 import { RestaurantGuestCarteApi } from '../data-access/restaurant-guest-carte.queries';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
@@ -41,15 +42,16 @@ describe('Consumer Guest Carte', () => {
   };
   beforeEach(() => {
     vi.resetAllMocks();
+    sessionStorage.clear();
     read.mockResolvedValue({ body });
     client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     TestBed.configureTestingModule({
       imports: [
         RestaurantGuestCarteComponent,
         TranslocoTestingModule.forRoot({
-          langs: { fr },
+          langs: { fr, en },
           preloadLangs: true,
-          translocoConfig: { availableLangs: ['fr'], defaultLang: 'fr' },
+          translocoConfig: { availableLangs: ['fr', 'en'], defaultLang: 'fr' },
         }),
       ],
       providers: [
@@ -186,4 +188,47 @@ describe('Consumer Guest Carte', () => {
     expect(f.nativeElement.textContent).toContain('Voir la suite de la carte');
     expect(f.nativeElement.textContent).not.toContain('pas encore disponible');
   });
+  it.each(['fr', 'en'])(
+    'keeps category navigation and repeated Add local in %s',
+    async (language) => {
+      TestBed.inject(TranslocoService).setActiveLang(language);
+      read.mockResolvedValue({
+        body: {
+          ...body,
+          categories: [
+            {
+              ...body.categories[0],
+              reference: 'desserts',
+              name: 'Desserts',
+              position: 2,
+              items: [],
+            },
+            body.categories[0],
+          ],
+        },
+      });
+      const fixture = mount();
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelectorAll('nav button')).toHaveLength(2);
+      });
+      const categories = fixture.nativeElement.querySelectorAll('nav button');
+      expect(categories[0].textContent).toContain('Grillades');
+      const section = fixture.nativeElement.querySelector('#category-desserts');
+      section.scrollIntoView = vi.fn();
+      categories[1].focus();
+      categories[1].click();
+      fixture.detectChanges();
+      expect(categories[1].getAttribute('aria-pressed')).toBe('true');
+      expect(document.activeElement).toBe(categories[1]);
+      expect(section.scrollIntoView).toHaveBeenCalled();
+      const add = [...fixture.nativeElement.querySelectorAll('li button')][0] as HTMLButtonElement;
+      expect(add.textContent).toContain(language === 'fr' ? 'Ajouter' : 'Add');
+      add.click();
+      add.click();
+      expect(TestBed.inject(RestaurantGuestCartStore).totalUnits()).toBe(2);
+      expect(read).toHaveBeenCalledTimes(1);
+      expect(fixture.nativeElement.textContent).not.toContain('RESTAURANTS.');
+    },
+  );
 });

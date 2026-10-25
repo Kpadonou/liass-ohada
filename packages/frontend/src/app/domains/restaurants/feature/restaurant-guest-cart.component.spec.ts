@@ -91,7 +91,7 @@ describe('RestaurantGuestCartComponent', () => {
 
   it('offers a strong cart entry point and accessible cart controls in French', async () => {
     const fixture = mount();
-    expect(fixture.nativeElement.textContent).toContain('Voir le panier');
+    expect(fixture.nativeElement.textContent).toContain('Voir ma commande');
     (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
     fixture.detectChanges();
     await fixture.whenStable();
@@ -107,7 +107,7 @@ describe('RestaurantGuestCartComponent', () => {
     TestBed.inject(TranslocoService).setActiveLang('en');
     const fixture = mount();
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('View cart');
+    expect(fixture.nativeElement.textContent).toContain('Review my order');
     (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
     await fixture.whenStable();
     expect(document.querySelector('.cdk-overlay-container')?.textContent).toContain('Remove');
@@ -167,6 +167,9 @@ describe('RestaurantGuestCartComponent', () => {
     store.activate(scope, guestContext);
     const { submit } = await openSubmit(guestContext);
     expect(submit.disabled).toBe(true);
+    expect(document.querySelector('.cdk-overlay-container')?.textContent).toContain(
+      'Pour commander, adressez-vous à votre serveur.',
+    );
   });
 
   it('keeps unavailable Cart intent blocked', async () => {
@@ -185,5 +188,8 @@ describe('RestaurantGuestCartComponent', () => {
     );
     const { submit } = await openSubmit({ ...context, policy: 'DIRECT' });
     expect(submit.disabled).toBe(true);
+    expect(document.querySelector('.cdk-overlay-container')?.textContent).toContain(
+      'Vérifiez les articles et leurs prix',
+    );
   });
 });

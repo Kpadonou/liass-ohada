@@ -5006,7 +5006,7 @@
       "FREE": "Vous pouvez consulter la carte et préparer votre commande.",
       "OCCUPIED": "Votre table est prise en charge.",
       "CONTACT": "Pour toute demande, adressez-vous à votre serveur.",
-      "DISABLED": "La commande depuis votre téléphone est désactivée.",
+      "DISABLED": "Pour commander, adressez-vous à votre serveur.",
       "REFRESH": "Actualiser",
       "RETRY": "Réessayer",
       "UNAVAILABLE": "Ce lien est indisponible. Adressez-vous à votre serveur.",
@@ -5035,15 +5035,15 @@
         "ADD": "Ajouter",
         "REMOVE": "Retirer",
         "CLOSE": "Fermer",
-        "OPEN": "Voir le panier",
+        "OPEN": "Voir ma commande",
         "OPEN_LABEL": "Ouvrir le panier, {{count}} article(s)",
         "UNIT_COUNT": "{{count}} article(s)",
-        "FREE_HELP": "Votre sélection est conservée sur cet appareil. Le personnel prendra votre table en charge.",
+        "FREE_HELP": "Envoyez votre commande : notre équipe prendra votre table en charge.",
         "VISIT_ENDED": "Ce service est terminé",
         "VISIT_ENDED_HELP": "Cette sélection reste visible, mais elle ne sera jamais transférée automatiquement à un nouveau service.",
         "DIFFERENT_VISIT": "Un nouveau service est ouvert",
         "DIFFERENT_VISIT_HELP": "Cette sélection appartient au service précédent. Effacez-la pour commencer une nouvelle sélection.",
-        "LOCAL_ONLY": "Votre sélection reste disponible sur cet appareil. La carte actuelle n’a pas pu être vérifiée.",
+        "LOCAL_ONLY": "Votre sélection est conservée. Réessayez pour retrouver la carte.",
         "DISCARD": "Effacer cette sélection",
         "PRICE_CHANGED": "Le prix a changé de {{old}} à {{current}}.",
         "ACCEPT_PRICE": "Accepter le nouveau prix",
@@ -5062,8 +5062,18 @@
           "CONTEXT_BLOCKED": "Cette sélection appartient à un autre service.",
           "INVALID_QUANTITY": "Saisissez une quantité comprise entre 1 et 20.",
           "NOTE_LIMIT": "La note est limitée à 250 caractères."
-        }
-      }
+        },
+        "REVIEW_HELP": "Vérifiez les articles et leurs prix, puis actualisez la carte si nécessaire.",
+        "SERVICE_BLOCKED": "Retrouvez votre table avant d’envoyer cette sélection.",
+        "APPROVAL_HELP": "Notre équipe validera votre commande avant sa préparation.",
+        "DIRECT_HELP": "Votre commande sera transmise au restaurant."
+      },
+      "REFRESHING": "Actualisation…",
+      "SERVICE_FREE": "En attente de prise en charge",
+      "SERVICE_OCCUPIED": "Service en cours",
+      "ASSISTANCE": "À votre service",
+      "ORDERS_EMPTY": "Vos commandes apparaîtront ici.",
+      "ORDERS_LOADING": "Vos commandes arrivent…"
     },
     "QR": {
       "HELP": "Ce QR reste valable entre les services. Le scanner ne réserve pas la table et n’ouvre pas de service.",
