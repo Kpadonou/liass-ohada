@@ -231,6 +231,40 @@ afterEach(() => {
   client.clear();
   TestBed.resetTestingModule();
 });
+it('shows every canonical QR Order when multiple submitted Orders leave no editable selection', async () => {
+  await settle();
+  await page.add(item());
+  await settle();
+  await page.submit();
+  await settle();
+  orders[0].createdBy = 'guest:' + 'a'.repeat(22);
+  const second = { ...orders[0], orderId: rid(90), createdAt: '2026-10-16T12:05:00.000Z' };
+  orders.push(second);
+  lines.push({
+    ...lines[0],
+    orderId: second.orderId,
+    itemId: rid(91),
+    snapshot: { ...lines[0].snapshot!, name: 'Seconde commande QR', submissionId: rid(92) },
+  });
+  page.choice.set(null);
+  fixture.componentRef.setInput('session', {
+    ...sessionFixture(),
+    orderCount: 2,
+    dueMinor: orders.reduce((sum, order) => sum + order.dueMinor, 0),
+  });
+  await page.ordersQuery.refetch();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.selectedId()).toBe('');
+    expect(
+      fixture.nativeElement.querySelectorAll('[data-testid="service-order-line"]'),
+    ).toHaveLength(2);
+  });
+  expect(fixture.nativeElement.textContent).toContain('Nom figé');
+  expect(fixture.nativeElement.textContent).toContain('Seconde commande QR');
+  expect(fixture.nativeElement.textContent).not.toContain('Aucune commande validée');
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="service-order"]')).toHaveLength(2);
+});
 it('projects four rapid increments immediately, ignores intermediate/refetched values and coalesces to two writes', async () => {
   await draftInput();
   const original = page.drafts()[0];
@@ -320,7 +354,7 @@ it('coalesces +/- reversal and direct entry, then Submit drains the frozen lates
   await page.quantity(page.drafts()[0], 1);
   expect(page.drafts()[0].quantity).toBe(8);
   expect(api.command.mock.calls.slice(before).map((call) => call[1])).toEqual(['edit']);
-  expect(page.rounds()).toHaveLength(0);
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="accepted-round"]')).toHaveLength(0);
   release();
   await Promise.all([...actions, submit]);
   await settle();
@@ -377,7 +411,7 @@ it('does not submit a concurrently introduced draft outside the frozen submissio
   await Promise.all([edit, submit]);
   expect(api.command.mock.calls.some((call) => call[1] === 'submit')).toBe(false);
   expect(page.message()).toBe('CONFLICT');
-  expect(page.rounds()).toHaveLength(0);
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="accepted-round"]')).toHaveLength(0);
 });
 it('keeps sync failures local and lets the user explicitly restore canonical draft after a rejection', async () => {
   await draftInput();

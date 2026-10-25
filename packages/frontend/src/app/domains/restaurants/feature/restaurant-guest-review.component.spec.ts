@@ -91,6 +91,58 @@ describe('Guest review in Table Workspace', () => {
     f.componentInstance.review('request', 'approve');
     expect(review).not.toHaveBeenCalled();
   });
+  it('accepted DIRECT and completed requests are not presented as pending staff decisions', async () => {
+    client.setQueryData(['review'], {
+      requests: [
+        {
+          requestId: 'direct',
+          state: 'ACCEPTED',
+          mode: 'DIRECT',
+          lines: [{ name: 'Already ordered' }],
+        },
+        { requestId: 'rejected', state: 'REJECTED', lines: [{ name: 'Rejected item' }] },
+      ],
+    });
+    const f = await mount();
+    // Install the canonical response after the initial mount refetch.
+    client.setQueryData(['review'], {
+      requests: [
+        {
+          requestId: 'direct',
+          state: 'ACCEPTED',
+          mode: 'DIRECT',
+          lines: [{ name: 'Already ordered' }],
+        },
+        { requestId: 'rejected', state: 'REJECTED', lines: [{ name: 'Rejected item' }] },
+      ],
+    });
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('Aucune demande en attente de validation');
+    });
+    expect(f.nativeElement.textContent).not.toContain('Already ordered');
+    expect(f.nativeElement.textContent).not.toContain('Rejected item');
+    expect(f.nativeElement.textContent).not.toContain('Accepter');
+  });
+  it('keeps a failed DIRECT reconciliation diagnosable without offering approval', async () => {
+    const f = await mount();
+    client.setQueryData(['review'], {
+      requests: [
+        {
+          requestId: 'expired-direct',
+          state: 'EXPIRED',
+          mode: 'DIRECT',
+          submittedAt: '2026-10-18T10:00:00.000Z',
+          lines: [{ name: 'Commande à vérifier', quantity: 1, amountMinor: 1000, currency: 'XOF' }],
+        },
+      ],
+    });
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('Commande à vérifier');
+    });
+    expect(f.nativeElement.textContent).not.toContain('Accepter');
+  });
   it('reject requires bounded reason and submits unchanged intent', async () => {
     const f = await mount();
     f.componentInstance.reason.setValue('Cuisine fermée');

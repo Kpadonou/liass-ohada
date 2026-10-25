@@ -1127,4 +1127,23 @@ it('FREE first QR order is visible with the normal service-opening action, separ
   expect(fixture.nativeElement.textContent).toContain('Ouvrir le service');
   expect(page.calls()).toHaveLength(0);
   expect(api.acknowledgeWaiterCall).not.toHaveBeenCalled();
+  const opened = floorFixture();
+  opened.items[2] = {
+    ...opened.items[2],
+    state: 'OCCUPIED',
+    guestSessionId: rid(90),
+    openedAt: new Date().toISOString(),
+    openedBy: 'waiter',
+    currentAmountMinor: 320800,
+    currency: 'XOF',
+  };
+  api.serviceFloor.mockResolvedValue(opened);
+  await page.open(page.tables().find((table) => table.tableId === rid(6))!);
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.tables().find((table) => table.tableId === rid(6))?.state).toBe('OCCUPIED');
+  });
+  expect(fixture.nativeElement.textContent).not.toContain('Nouvelle commande QR');
+  expect(fixture.nativeElement.textContent).not.toContain('En attente d’ouverture du service');
+  expect(fixture.nativeElement.textContent).toMatch(/320\s800/);
 });

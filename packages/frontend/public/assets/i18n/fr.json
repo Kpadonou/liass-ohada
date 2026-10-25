@@ -4758,6 +4758,27 @@
       },
       "EMPTY": "Aucune commande pour le moment"
     },
+    "SERVICE_ORDERS": {
+      "TITLE": "Commandes du service",
+      "HELP": "Montants des commandes enregistrées, avant déduction des paiements. Les articles à valider ne sont pas inclus.",
+      "ORDER": "Commande du",
+      "QR": "QR",
+      "EMPTY": "Aucune commande enregistrée pour ce service.",
+      "NO_LINES": "Aucun article confirmé dans cette commande.",
+      "INCOMPLETE": "La liste est incomplète. Chargez la suite ou actualisez les commandes pour consulter tous les articles.",
+      "LOAD_ERROR": "Certains articles ou leur progression n’ont pas pu être actualisés.",
+      "MORE_LINES": "Charger les articles suivants",
+      "MORE_PROGRESS": "Charger la suite de la progression",
+      "PROGRESS": {
+        "CONFIRMED": "Confirmée",
+        "QUEUED": "En attente de préparation",
+        "PREPARING": "En préparation",
+        "READY": "Prête à servir",
+        "SERVED": "Servie",
+        "CANCELLED": "Annulée",
+        "UNKNOWN": "Progression à actualiser"
+      }
+    },
     "ORDER_TAKING": {
       "DRAFT": "À valider",
       "LINES_ZERO": "Aucune ligne",
@@ -5077,8 +5098,17 @@
     "SUBMISSIONS": {
       "SEND": "Envoyer la commande",
       "SENDING": "Envoi en cours…",
-      "TITLE": "Vos demandes",
+      "TITLE": "Vos commandes",
+      "ORDER": "Commande du",
       "REVIEW": "Demandes des convives",
+      "LINE_STATUS": {
+        "CONFIRMED": "Confirmée",
+        "PREPARING": "En préparation",
+        "READY": "Prête",
+        "SERVED": "Servie",
+        "CANCELLED": "Annulée"
+      },
+      "REVIEW_HELP": "Demandes à valider ou à vérifier. Retrouvez les commandes confirmées dans Commandes du service.",
       "PENDING_APPROVAL": "En attente de validation",
       "ACCEPTED": "Commande acceptée",
       "REJECTED": "Demande rejetée",
@@ -5097,7 +5127,7 @@
       "ACCEPT": "Accepter",
       "REJECT": "Rejeter",
       "REASON": "Motif du rejet",
-      "EMPTY": "Aucune demande pour ce service.",
+      "EMPTY": "Aucune demande en attente de validation ou de vérification pour ce service.",
       "PROCESSING": "Confirmation en cours",
       "CONFIRMED": "Commande confirmée",
       "PREPARING": "En préparation",

@@ -2,9 +2,10 @@ import { Component, inject, input } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
 import { RestaurantGuestSubmissions } from '../data-access/restaurant-guest-submissions';
+import { DatePipe } from '@angular/common';
 @Component({
   selector: 'liass-restaurant-guest-submission',
-  imports: [MatButtonModule, TranslocoModule],
+  imports: [DatePipe, MatButtonModule, TranslocoModule],
   template: ` <section class="space-y-3" aria-live="polite">
     @if (action()) {
       <button
@@ -48,6 +49,12 @@ import { RestaurantGuestSubmissions } from '../data-access/restaurant-guest-subm
         @if (data.state === 'READY') {
           @for (request of data.requests; track request.requestId) {
             <article class="space-y-2 rounded-lg border border-app-border p-3">
+              <h3 class="font-semibold">
+                {{ 'RESTAURANTS.SUBMISSIONS.ORDER' | transloco }}
+                <time [attr.datetime]="request.submittedAt">{{
+                  request.submittedAt | date: 'dd/MM HH:mm:ss'
+                }}</time>
+              </h3>
               <p class="font-medium">
                 {{
                   'RESTAURANTS.SUBMISSIONS.' + (request.orderStatus ?? request.state) | transloco
@@ -59,7 +66,10 @@ import { RestaurantGuestSubmissions } from '../data-access/restaurant-guest-subm
                     {{ line.quantity }} × {{ line.name }}
                     @if (line.fulfillment) {
                       <span class="mr-1 text-sm text-app-text-secondary"
-                        >· {{ 'RESTAURANTS.SUBMISSIONS.' + line.fulfillment | transloco }}</span
+                        >·
+                        {{
+                          'RESTAURANTS.SUBMISSIONS.LINE_STATUS.' + line.fulfillment | transloco
+                        }}</span
                       >
                     }
                     @if (line.note) {

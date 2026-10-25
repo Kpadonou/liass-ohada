@@ -23,7 +23,7 @@ describe('Guest request presentation', () => {
           GuestOrderRequestSchema.parse({
             requestId: '00000000-0000-4000-8000-000000000001',
             state: 'PENDING_APPROVAL',
-            submittedAt: new Date().toISOString(),
+            submittedAt: '2026-10-18T10:00:00.000Z',
             expiresAt: new Date(Date.now() + 900000).toISOString(),
             lines: [
               {
@@ -67,6 +67,81 @@ describe('Guest request presentation', () => {
     expect(f.nativeElement.textContent).toContain('Sans piment');
   });
   afterEach(() => vi.restoreAllMocks());
+  it.each(['fr', 'en'])(
+    'groups own submissions by timestamp and preserves mixed line truth in %s',
+    (lang) => {
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const request = GuestOrderRequestSchema.parse({
+        requestId: '00000000-0000-4000-8000-000000000002',
+        state: 'ACCEPTED',
+        mode: 'DIRECT',
+        orderStatus: 'PREPARING',
+        submittedAt: '2026-10-18T10:00:00.000Z',
+        expiresAt: '2026-10-18T10:15:00.000Z',
+        lines: [
+          {
+            name: 'Poulet',
+            quantity: 2,
+            note: '',
+            fulfillment: 'PREPARING',
+            amountMinor: 2500,
+            currency: 'XOF',
+          },
+          {
+            name: 'Eau FIFA',
+            quantity: 1,
+            note: '',
+            fulfillment: 'CONFIRMED',
+            amountMinor: 1000,
+            currency: 'XOF',
+          },
+        ],
+      });
+      vi.spyOn(workflow.state, 'data').mockReturnValue({
+        state: 'READY',
+        requests: [
+          request,
+          {
+            ...request,
+            requestId: '00000000-0000-4000-8000-000000000003',
+            submittedAt: '2026-10-18T10:05:00.000Z',
+            orderStatus: 'CONFIRMED',
+            lines: [{ ...request.lines[1], name: 'Jus de gingembre' }],
+          },
+        ],
+      });
+      const f = TestBed.createComponent(RestaurantGuestSubmissionComponent);
+      f.detectChanges();
+      const articles = f.nativeElement.querySelectorAll('article') as NodeListOf<HTMLElement>;
+      expect(articles).toHaveLength(2);
+      expect(articles[0].querySelector('time')?.getAttribute('datetime')).toBe(request.submittedAt);
+      expect(articles[1].querySelector('time')?.getAttribute('datetime')).toBe(
+        '2026-10-18T10:05:00.000Z',
+      );
+      const water = articles[0].querySelectorAll('li')[1].textContent!;
+      expect(water).toContain(lang === 'fr' ? 'Confirmée' : 'Confirmed');
+      expect(water).not.toContain(lang === 'fr' ? 'En préparation' : 'Preparing');
+      expect(articles[0].textContent).not.toContain('Jus de gingembre');
+      expect(f.nativeElement.textContent).not.toContain(request.requestId);
+    },
+  );
+  it.each(['PENDING_SERVICE', 'PENDING_APPROVAL', 'REJECTED', 'EXPIRED'] as const)(
+    'keeps %s distinct from canonical confirmation',
+    (state) => {
+      const request = GuestOrderRequestSchema.parse({
+        requestId: '00000000-0000-4000-8000-000000000002',
+        state,
+        submittedAt: new Date().toISOString(),
+        expiresAt: new Date().toISOString(),
+        lines: [{ name: 'Eau', quantity: 1, note: '', amountMinor: 1000, currency: 'XOF' }],
+      });
+      vi.spyOn(workflow.state, 'data').mockReturnValue({ state: 'READY', requests: [request] });
+      const f = TestBed.createComponent(RestaurantGuestSubmissionComponent);
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain(fr.RESTAURANTS.SUBMISSIONS[state]);
+      expect(f.nativeElement.textContent).not.toContain('Commande confirmée');
+    },
+  );
   it.each([
     ['fr', 'CONFIRMED', 'Commande confirmée'],
     ['en', 'CONFIRMED', 'Order confirmed'],

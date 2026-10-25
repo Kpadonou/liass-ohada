@@ -1,4 +1,5 @@
 import { RestaurantReadyToServeComponent } from '../restaurant-ready-to-serve.component';
+import { RestaurantServiceOrdersComponent } from '../restaurant-service-orders.component';
 import { RestaurantTableDeliveryComponent } from '../restaurant-table-delivery.component';
 import {
   RestaurantCarteQueries,
@@ -10,7 +11,6 @@ import {
   CARTE_BYTE_BUDGET,
 } from '../../data-access/restaurant-carte.queries';
 import { LiassSearchableSelectComponent } from '../../../../shared/ui/searchable-select/searchable-select.component';
-import { DatePipe } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   Component,
@@ -52,10 +52,10 @@ type DraftIntent = {
   selector: 'liass-restaurant-order-composer',
   host: { class: 'block min-w-0' },
   imports: [
+    RestaurantServiceOrdersComponent,
     RestaurantTableDeliveryComponent,
     RestaurantReadyToServeComponent,
     LiassSearchableSelectComponent,
-    DatePipe,
     ReactiveFormsModule,
     MatButtonModule,
     MatIconModule,
@@ -173,18 +173,6 @@ export class RestaurantOrderComposer {
   draftKey(line: c.RestaurantOrderItem) {
     return this.lineKeys.get(line.itemId) ?? line.itemId;
   }
-  readonly rounds = computed(() => {
-    const groups = new Map<string, c.RestaurantOrderItem[]>();
-    for (const line of this.lines())
-      if (line.status === 'ACCEPTED' && line.snapshot)
-        groups.set(line.snapshot.submissionId, [
-          ...(groups.get(line.snapshot.submissionId) ?? []),
-          line,
-        ]);
-    return [...groups.values()].sort((a, b) =>
-      a[0].snapshot!.acceptedAt.localeCompare(b[0].snapshot!.acceptedAt),
-    );
-  });
   readonly menuQuery = injectQuery(() => this.queries.menu(this.ctx(), this.live()));
   private readonly carteQueries = inject(RestaurantCarteQueries);
   readonly carteContext = computed(() => ({

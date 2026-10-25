@@ -48,6 +48,13 @@
           </button>
         </div>
       } @else {
+        <liass-restaurant-service-orders
+          [context]="ctx()"
+          [orders]="orders()"
+          [expectedCount]="session()!.orderCount"
+          [expectedAmount]="session()!.dueMinor"
+          (denied)="denied.set(true)"
+        />
         @if (ordersQuery.hasNextPage()) {
           <button
             mat-stroked-button
@@ -411,52 +418,6 @@
                 (denied)="denied.set(true)"
               />
             }
-            <liass-card class="min-w-0" padding="sm" aria-labelledby="accepted-title">
-              <h2 id="accepted-title" class="flex items-center gap-2 text-base font-semibold">
-                <mat-icon aria-hidden="true">history</mat-icon>
-                {{ 'RESTAURANTS.ORDER_TAKING.ACCEPTED' | transloco }}
-              </h2>
-              <div
-                class="mt-2 space-y-2 xl:max-h-64 xl:overflow-y-auto"
-                role="region"
-                tabindex="0"
-                [attr.aria-label]="'RESTAURANTS.ORDER_TAKING.ACCEPTED' | transloco"
-              >
-                @for (round of rounds(); track round[0].snapshot!.submissionId) {
-                  <div
-                    class="space-y-1 border-l-2 border-app-border pl-2 py-1"
-                    data-testid="accepted-round"
-                  >
-                    <h3 class="text-xs font-medium text-app-text-secondary">
-                      {{ 'RESTAURANTS.ORDER_TAKING.RECORDED' | transloco }}
-                      <time [attr.datetime]="round[0].snapshot!.acceptedAt">{{
-                        round[0].snapshot!.acceptedAt | date: 'dd/MM HH:mm'
-                      }}</time>
-                    </h3>
-                    @for (line of round; track line.itemId) {
-                      <div class="flex min-w-0 items-start justify-between gap-3 text-sm">
-                        <div class="min-w-0">
-                          <p class="break-words">
-                            {{ line.snapshot!.quantity }} × {{ line.snapshot!.name }}
-                          </p>
-                          <p class="text-xs text-app-text-secondary">
-                            {{ price(line.snapshot!.unitPriceMinor, line.snapshot!.currency) }}
-                          </p>
-                        </div>
-                        <span
-                          class="max-w-[45%] break-words text-right font-semibold tabular-nums"
-                          >{{ price(line.snapshot!.lineTotalMinor, line.snapshot!.currency) }}</span
-                        >
-                      </div>
-                    }
-                  </div>
-                } @empty {
-                  <p class="text-sm text-app-text-secondary">
-                    {{ 'RESTAURANTS.ORDER_TAKING.NO_ACCEPTED' | transloco }}
-                  </p>
-                }
-              </div>
-            </liass-card>
           </div>
         </div>
       }

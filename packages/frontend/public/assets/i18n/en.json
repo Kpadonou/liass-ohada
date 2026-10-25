@@ -4758,6 +4758,27 @@
       },
       "EMPTY": "No orders yet"
     },
+    "SERVICE_ORDERS": {
+      "TITLE": "Service orders",
+      "HELP": "Recorded order amounts before payments. Items awaiting confirmation are not included.",
+      "ORDER": "Order placed",
+      "QR": "QR",
+      "EMPTY": "No orders recorded for this service.",
+      "NO_LINES": "No confirmed items in this order.",
+      "INCOMPLETE": "This list is incomplete. Load more or refresh orders to view all items.",
+      "LOAD_ERROR": "Some items or their progress could not be refreshed.",
+      "MORE_LINES": "Load more items",
+      "MORE_PROGRESS": "Load more progress",
+      "PROGRESS": {
+        "CONFIRMED": "Confirmed",
+        "QUEUED": "Awaiting preparation",
+        "PREPARING": "Preparing",
+        "READY": "Ready to serve",
+        "SERVED": "Served",
+        "CANCELLED": "Cancelled",
+        "UNKNOWN": "Refresh progress"
+      }
+    },
     "ORDER_TAKING": {
       "DRAFT": "To confirm",
       "LINES_ZERO": "No lines",
@@ -5077,8 +5098,17 @@
     "SUBMISSIONS": {
       "SEND": "Send order",
       "SENDING": "Sending…",
-      "TITLE": "Your requests",
+      "TITLE": "Your orders",
+      "ORDER": "Order placed",
       "REVIEW": "Guest requests",
+      "LINE_STATUS": {
+        "CONFIRMED": "Confirmed",
+        "PREPARING": "Preparing",
+        "READY": "Ready",
+        "SERVED": "Served",
+        "CANCELLED": "Cancelled"
+      },
+      "REVIEW_HELP": "Requests awaiting approval or review. Confirmed orders appear under Service orders.",
       "PENDING_APPROVAL": "Awaiting approval",
       "ACCEPTED": "Order accepted",
       "REJECTED": "Request rejected",
@@ -5097,7 +5127,7 @@
       "ACCEPT": "Accept",
       "REJECT": "Reject",
       "REASON": "Rejection reason",
-      "EMPTY": "No requests for this service.",
+      "EMPTY": "No requests awaiting approval or review for this service.",
       "PROCESSING": "Confirming order",
       "CONFIRMED": "Order confirmed",
       "PREPARING": "Preparing",

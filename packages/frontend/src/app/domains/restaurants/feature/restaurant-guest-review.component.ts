@@ -18,6 +18,9 @@ import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities
       [attr.aria-label]="'RESTAURANTS.SUBMISSIONS.REVIEW' | transloco"
     >
       <h2 class="font-semibold">{{ 'RESTAURANTS.SUBMISSIONS.REVIEW' | transloco }}</h2>
+      <p class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS.SUBMISSIONS.REVIEW_HELP' | transloco }}
+      </p>
       @if (query.isError()) {
         <p role="alert">{{ 'RESTAURANTS.SUBMISSIONS.STATUS_ERROR' | transloco }}</p>
         <button mat-button (click)="query.refetch()">
@@ -25,7 +28,7 @@ import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities
         </button>
       }
       @if (query.data(); as data) {
-        @for (request of data.requests; track request.requestId) {
+        @for (request of attentionRequests(); track request.requestId) {
           <article class="space-y-3 border-t border-app-border pt-4">
             <div class="flex flex-wrap justify-between gap-2">
               <p class="font-medium">
@@ -109,6 +112,13 @@ export class RestaurantGuestReviewComponent {
   readonly allowed = computed(() => this.active() && this.caps.canReadService());
   readonly query = injectQuery(() =>
     this.queries.guestRequests(this.outlet(), this.session(), this.allowed() && this.visible()),
+  );
+  readonly attentionRequests = computed(() =>
+    (this.query.data()?.requests ?? []).filter(
+      (request) =>
+        request.state === 'PENDING_APPROVAL' ||
+        (request.mode === 'DIRECT' && request.state === 'EXPIRED'),
+    ),
   );
   readonly rejecting = signal('');
   readonly reason = new FormControl('', {
