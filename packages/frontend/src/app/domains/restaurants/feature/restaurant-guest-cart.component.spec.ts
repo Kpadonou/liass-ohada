@@ -96,7 +96,7 @@ describe('RestaurantGuestCartComponent', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const overlay = document.querySelector('.cdk-overlay-container')!;
-    expect(overlay.textContent).toContain('Votre sélection');
+    expect(overlay.textContent).toContain('Votre commande');
     expect(overlay.textContent).toContain('Retirer');
     expect(overlay.querySelector('input')?.getAttribute('aria-label')).toContain('Quantité');
     expect(overlay.querySelectorAll('button[aria-label]').length).toBeGreaterThanOrEqual(2);
@@ -191,5 +191,47 @@ describe('RestaurantGuestCartComponent', () => {
     expect(document.querySelector('.cdk-overlay-container')?.textContent).toContain(
       'Vérifiez les articles et leurs prix',
     );
+  });
+  it('shows canonical count and total, hides the empty Cart entry, and restores it after local Add', () => {
+    const fixture = mount();
+    expect(fixture.nativeElement.textContent).toContain('1 article');
+    expect(fixture.nativeElement.textContent.replace(/\s/g, '')).toContain('3500XOF');
+    expect(fixture.nativeElement.querySelector('button')?.getAttribute('aria-label')).toContain(
+      '3',
+    );
+    store.discard();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
+    store.add(
+      {
+        reference: 'second-item-reference',
+        selectionRef: 'selection-reference',
+        name: 'Eau',
+        amountMinor: 800,
+        availability: 'AVAILABLE',
+      },
+      'XOF',
+      new Date(Date.now() + 900_000).toISOString(),
+    );
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('button')).toBeTruthy();
+    expect(fixture.nativeElement.textContent.replace(/\s/g, '')).toContain('800XOF');
+  });
+  it('closes the sheet without changing quantity or notes', async () => {
+    const fixture = mount();
+    const opener = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    opener.focus();
+    opener.click();
+    await fixture.whenStable();
+    const overlay = document.querySelector('.cdk-overlay-container')!;
+    (overlay.querySelector('button[aria-label="Fermer"]') as HTMLButtonElement).click();
+    await fixture.whenStable();
+    await vi.waitFor(() =>
+      expect(document.querySelector('liass-restaurant-guest-cart-dialog')).toBeNull(),
+    );
+    expect(store.totalUnits()).toBe(1);
+    expect(store.lines()[0].note).toBe('');
+    expect(fixture.nativeElement.querySelector('button')).toBe(opener);
+    expect(document.activeElement).toBe(opener);
   });
 });

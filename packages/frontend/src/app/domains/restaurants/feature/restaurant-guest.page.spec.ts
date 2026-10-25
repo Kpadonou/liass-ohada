@@ -232,4 +232,44 @@ describe('Guest entry without the staff shell', () => {
       );
     },
   );
+  it('places owned order progress before the Carte without adding another refresh control', async () => {
+    api.resolve.mockResolvedValue(response('OCCUPIED'));
+    api.submissionState.mockResolvedValue({
+      state: 'READY',
+      requests: [
+        {
+          requestId: '00000000-0000-4000-8000-000000000001',
+          state: 'ACCEPTED',
+          orderStatus: 'PREPARING',
+          submittedAt: '2026-10-25T16:41:00Z',
+          expiresAt: '2026-10-25T16:56:00Z',
+          lines: [
+            {
+              name: 'Poulet',
+              quantity: 2,
+              fulfillment: 'PREPARING',
+              note: '',
+              amountMinor: 10000,
+              currency: 'XOF',
+            },
+          ],
+        },
+      ],
+    });
+    const fixture = TestBed.createComponent(RestaurantGuestPage);
+    fixture.detectChanges();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelector('article')).toBeTruthy();
+    });
+    const surfaces = fixture.nativeElement.querySelectorAll(
+      'liass-restaurant-guest-submission, liass-restaurant-guest-carte',
+    );
+    expect(surfaces[0].tagName.toLowerCase()).toBe('liass-restaurant-guest-submission');
+    expect(surfaces[0].textContent).toContain('En préparation');
+    expect(surfaces[1].tagName.toLowerCase()).toBe('liass-restaurant-guest-carte');
+    expect(fixture.nativeElement.querySelectorAll('button[aria-label="Actualiser"]')).toHaveLength(
+      1,
+    );
+  });
 });

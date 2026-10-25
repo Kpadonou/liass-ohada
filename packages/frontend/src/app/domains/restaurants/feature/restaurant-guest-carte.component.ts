@@ -7,7 +7,12 @@ import {
   output,
   signal,
   DestroyRef,
+  afterNextRender,
+  Injector,
 } from '@angular/core';
+import { GuestIconComponent } from '../ui/guest-icon.component';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import {
@@ -32,34 +37,33 @@ class GuestContextEnded extends Error {}
 @Component({
   selector: 'liass-restaurant-guest-carte',
   host: { class: 'block min-w-0' },
-  imports: [MatButtonModule, TranslocoModule],
+  imports: [
+    GuestIconComponent,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    TranslocoModule,
+  ],
   template: `
-    <div class="flex items-center justify-between gap-4 pb-5">
-      <h2 class="text-2xl font-semibold">
-        {{ 'RESTAURANTS.GUEST.CARTE.TITLE' | transloco }}
-      </h2>
-    </div>
+    <h2 class="mb-3 text-2xl font-bold">{{ 'RESTAURANTS.GUEST.CARTE.TITLE' | transloco }}</h2>
     @if (query.isPending()) {
       <div role="status" aria-live="polite" class="space-y-4">
         <p class="text-app-text-secondary">{{ 'RESTAURANTS.GUEST.CARTE.LOADING' | transloco }}</p>
         @for (row of [1, 2, 3]; track row) {
-          <div aria-hidden="true" class="h-24 animate-pulse rounded-app-panel bg-app-surface"></div>
+          <div
+            aria-hidden="true"
+            class="h-20 animate-pulse rounded-app-panel bg-app-surface-muted motion-reduce:animate-none"
+          ></div>
         }
       </div>
     } @else if (categories().length) {
       @if (query.isError()) {
-        <div
-          role="status"
-          class="mb-3 flex flex-wrap items-center justify-between gap-1 rounded-lg border border-app-border px-3 py-2 text-xs"
-        >
-          <span>{{ 'RESTAURANTS.GUEST.CARTE.STALE' | transloco }}</span
-          ><button mat-button class="!min-h-9" (click)="query.refetch()">
-            {{ 'RESTAURANTS.GUEST.RETRY' | transloco }}
-          </button>
-        </div>
+        <p role="status" class="mb-3 text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.GUEST.CARTE.STALE' | transloco }}
+        </p>
       }
       <nav
-        class="sticky top-0 z-10 -mx-4 mb-6 overflow-x-auto border-b border-app-border bg-app-bg px-4 py-2"
+        class="sticky top-0 z-10 -mx-4 mb-4 overflow-x-auto bg-app-surface px-4 py-2 sm:bg-app-bg"
         [attr.aria-label]="'RESTAURANTS.GUEST.CARTE.CATEGORIES' | transloco"
       >
         <div class="flex w-max gap-2">
@@ -67,8 +71,12 @@ class GuestContextEnded extends Error {}
             <button
               mat-button
               type="button"
-              class="!min-h-11 whitespace-nowrap !rounded-full !px-5"
-              [class.!bg-app-surface-selected]="selected() === category.reference"
+              class="!min-h-11 whitespace-nowrap !rounded-full !border !border-solid !border-app-border !px-5"
+              [class]="
+                selected() === category.reference
+                  ? '!bg-brand-700 !text-white dark:!bg-brand-300 dark:!text-brand-900'
+                  : ''
+              "
               [attr.aria-pressed]="selected() === category.reference"
               (click)="select(category.reference)"
             >
@@ -77,63 +85,97 @@ class GuestContextEnded extends Error {}
           }
         </div>
       </nav>
-      @for (category of categories(); track category.reference) {
+      <mat-form-field appearance="outline" class="mb-4 w-full" subscriptSizing="dynamic">
+        <mat-label>{{ 'RESTAURANTS.GUEST.CARTE.SEARCH' | transloco }}</mat-label>
+        <liass-guest-icon matPrefix name="search" class="mx-3 h-5 w-5 text-app-text-secondary" />
+        <input
+          matInput
+          type="search"
+          enterkeyhint="search"
+          autocomplete="off"
+          [value]="searchText()"
+          (input)="onSearch($event)"
+        />
+      </mat-form-field>
+      @if (searchText().trim() && query.hasNextPage()) {
+        <p role="status" class="mb-3 text-xs text-app-text-secondary">
+          {{ 'RESTAURANTS.GUEST.CARTE.SEARCH_PARTIAL' | transloco }}
+        </p>
+      }
+      @for (category of visibleCategories(); track category.reference) {
         <section
-          class="mb-8 scroll-mt-24"
+          class="mb-5 scroll-mt-20"
           [id]="'category-' + category.reference"
           [attr.aria-labelledby]="'heading-' + category.reference"
         >
-          <h2 class="mb-3 text-xl font-semibold" [id]="'heading-' + category.reference">
+          <h3
+            class="rounded-app-panel bg-app-surface-muted/70 px-3 py-2.5 text-base font-semibold"
+            [id]="'heading-' + category.reference"
+          >
             {{ category.name }}
-          </h2>
-          <ul class="grid gap-x-10 md:grid-cols-2">
+          </h3>
+          <ul class="grid gap-x-8 md:grid-cols-2">
             @for (item of category.items; track item.reference) {
-              <li class="min-w-0 border-b border-app-border py-5">
-                <div class="flex items-start justify-between gap-4">
-                  <h3 class="min-w-0 break-words text-lg font-semibold leading-snug">
-                    {{ item.name }}
-                  </h3>
-                  <p class="shrink-0 whitespace-nowrap pt-1 text-base font-semibold tabular-nums">
+              <li
+                class="flex min-w-0 items-center justify-between gap-3 border-b border-app-border py-3.5"
+              >
+                <div class="min-w-0">
+                  <h4 class="break-words text-base font-semibold leading-snug">{{ item.name }}</h4>
+                  <p class="mt-1 text-sm tabular-nums text-app-text-secondary">
                     {{ price(item.amountMinor) }}
                   </p>
+                  @if (item.availability === 'UNAVAILABLE') {
+                    <p class="mt-1 text-xs font-medium text-app-text-secondary">
+                      {{ 'RESTAURANTS.GUEST.CARTE.UNAVAILABLE' | transloco }}
+                    </p>
+                  }
                 </div>
-                @if (item.availability === 'UNAVAILABLE') {
-                  <p class="mt-2 text-sm font-medium text-app-text-secondary">
-                    {{ 'RESTAURANTS.GUEST.CARTE.UNAVAILABLE' | transloco }}
-                  </p>
-                } @else {
+                @if (item.availability !== 'UNAVAILABLE') {
                   <button
                     mat-stroked-button
                     type="button"
-                    class="mt-3 !min-h-11 !min-w-24"
+                    class="!min-h-11 shrink-0 !px-3"
                     (click)="add(item)"
+                    [attr.aria-label]="
+                      'RESTAURANTS.GUEST.CART.ADD_LABEL' | transloco: { item: item.name }
+                    "
                   >
-                    {{ 'RESTAURANTS.GUEST.CART.ADD' | transloco }}
+                    <span class="flex items-center gap-1.5"
+                      ><liass-guest-icon name="plus" class="h-4 w-4" />{{
+                        'RESTAURANTS.GUEST.CART.ADD' | transloco
+                      }}</span
+                    >
                   </button>
                 }
               </li>
             }
           </ul>
         </section>
+      } @empty {
+        <p role="status" class="py-5 text-sm text-app-text-secondary">
+          {{
+            (query.hasNextPage()
+              ? 'RESTAURANTS.GUEST.CARTE.SEARCH_PARTIAL_EMPTY'
+              : 'RESTAURANTS.GUEST.CARTE.SEARCH_EMPTY'
+            ) | transloco
+          }}
+        </p>
       }
     } @else if (query.isError()) {
-      <div role="alert" class="rounded-app-panel bg-app-surface p-6">
-        <h2 class="text-lg font-semibold">{{ 'RESTAURANTS.GUEST.CARTE.ERROR' | transloco }}</h2>
-        <p class="mt-2 text-app-text-secondary">
+      <div role="alert" class="rounded-app-panel bg-app-surface-muted p-5">
+        <h3 class="font-semibold">{{ 'RESTAURANTS.GUEST.CARTE.ERROR' | transloco }}</h3>
+        <p class="mt-2 text-sm text-app-text-secondary">
           {{ 'RESTAURANTS.GUEST.CARTE.ERROR_HELP' | transloco }}
         </p>
-        <button mat-stroked-button class="mt-4 min-h-11" (click)="query.refetch()">
-          {{ 'RESTAURANTS.GUEST.RETRY' | transloco }}
-        </button>
       </div>
     } @else if (query.hasNextPage()) {
       <p role="status" class="text-app-text-secondary">
         {{ 'RESTAURANTS.GUEST.CARTE.CONTINUE' | transloco }}
       </p>
     } @else {
-      <div role="status" class="rounded-app-panel bg-app-surface p-6">
-        <h2 class="text-lg font-semibold">{{ 'RESTAURANTS.GUEST.CARTE.EMPTY' | transloco }}</h2>
-        <p class="mt-2 text-app-text-secondary">
+      <div role="status" class="rounded-app-panel bg-app-surface-muted p-5">
+        <h3 class="font-semibold">{{ 'RESTAURANTS.GUEST.CARTE.EMPTY' | transloco }}</h3>
+        <p class="mt-2 text-sm text-app-text-secondary">
           {{ 'RESTAURANTS.GUEST.CARTE.EMPTY_HELP' | transloco }}
         </p>
       </div>
@@ -141,7 +183,7 @@ class GuestContextEnded extends Error {}
     @if (query.hasNextPage()) {
       <button
         mat-stroked-button
-        class="min-h-11"
+        class="!min-h-11"
         [disabled]="query.isFetching()"
         (click)="query.fetchNextPage()"
       >
@@ -149,7 +191,7 @@ class GuestContextEnded extends Error {}
       </button>
     }
     @if (cartMessage()) {
-      <p role="status" aria-live="polite" class="mt-4 text-sm font-medium text-app-text-secondary">
+      <p role="status" aria-live="polite" class="mt-3 text-sm text-app-text-secondary">
         {{ 'RESTAURANTS.GUEST.CART.ERRORS.' + cartMessage() | transloco }}
       </p>
     }
@@ -160,6 +202,7 @@ export class RestaurantGuestCarteComponent {
   readonly scope = input.required<string>();
   readonly ended = output<'EXPIRED' | 'VISIT_ENDED' | 'UNAVAILABLE'>();
   readonly selected = signal('');
+  readonly searchText = signal('');
   readonly cartMessage = signal<GuestCartResult | ''>('');
   private readonly api = inject(RestaurantGuestCarteApi);
   private readonly cart = inject(RestaurantGuestCartStore);
@@ -167,6 +210,7 @@ export class RestaurantGuestCarteComponent {
   private readonly translation = inject(TranslocoService);
   private readonly destroy = inject(DestroyRef);
   private stoppedContext = '';
+  private readonly injector = inject(Injector);
   readonly language = () => this.translation.getActiveLang() || 'fr';
   readonly query = injectInfiniteQuery(() => {
     const original = this.context(),
@@ -230,6 +274,18 @@ export class RestaurantGuestCarteComponent {
       (a, b) => a.position - b.position || a.name.localeCompare(b.name),
     );
   });
+  // Presentation-only projections; TanStack Query remains the canonical Carte owner.
+  readonly visibleCategories = computed(() => {
+    const search = normalizeSearch(this.searchText());
+    return search
+      ? this.categories()
+          .map((category) => ({
+            ...category,
+            items: category.items.filter((item) => normalizeSearch(item.name).includes(search)),
+          }))
+          .filter((category) => category.items.length > 0)
+      : this.categories();
+  });
   readonly currency = computed(
     () =>
       this.query
@@ -269,10 +325,28 @@ export class RestaurantGuestCarteComponent {
       currencyDisplay: 'code',
     }).format(amount / 10 ** digits);
   }
-  select(reference: string) {
-    this.selected.set(reference);
-    document
-      .getElementById('category-' + reference)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  onSearch(event: Event) {
+    this.searchText.set((event.target as HTMLInputElement).value);
   }
+  select(reference: string) {
+    const wasSearching = !!this.searchText().trim();
+    this.searchText.set('');
+    this.selected.set(reference);
+    const scroll = () => {
+      if (!this.destroy.destroyed)
+        document
+          .getElementById('category-' + reference)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+    if (wasSearching) afterNextRender(scroll, { injector: this.injector });
+    else scroll();
+  }
+}
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }

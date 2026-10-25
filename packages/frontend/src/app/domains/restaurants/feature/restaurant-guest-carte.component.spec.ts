@@ -112,14 +112,14 @@ describe('Consumer Guest Carte', () => {
     expect(f.nativeElement.textContent).toContain('Hors ligne');
     expect(read).toHaveBeenCalledTimes(2);
   });
-  it('shows contextual initial error and retry', async () => {
+  it('shows a contextual initial error recoverable through the Guest refresh', async () => {
     read.mockRejectedValue(new Error('offline'));
     const f = mount();
     await vi.waitFor(() => {
       f.detectChanges();
       expect(f.componentInstance.query.isError()).toBe(true);
     });
-    expect(f.nativeElement.textContent).toContain('Réessayer');
+    expect(f.nativeElement.textContent).toContain('Vérifiez votre connexion');
     expect(f.nativeElement.querySelector('[role=alert]')).not.toBeNull();
   });
   it('shows truthful no-menu state', async () => {
@@ -231,4 +231,72 @@ describe('Consumer Guest Carte', () => {
       expect(fixture.nativeElement.textContent).not.toContain('RESTAURANTS.');
     },
   );
+  it.each(['fr', 'en'])(
+    'filters loaded menu names immediately without extra reads in %s',
+    async (language) => {
+      TestBed.inject(TranslocoService).setActiveLang(language);
+      const fixture = mount();
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('input[type="search"]')).toBeTruthy();
+      });
+      const search = fixture.nativeElement.querySelector(
+        'input[type="search"]',
+      ) as HTMLInputElement;
+      expect(fixture.nativeElement.querySelector('mat-label').textContent).toContain(
+        language === 'fr' ? 'Rechercher un article' : 'Search menu items',
+      );
+      search.value = 'BRAISE';
+      search.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('li')).toHaveLength(1);
+      expect(fixture.nativeElement.textContent).toContain('Poulet braisé');
+      expect(fixture.nativeElement.textContent).toContain(
+        language === 'fr' ? 'Indisponible' : 'Unavailable',
+      );
+      expect(fixture.nativeElement.querySelector('li button')).toBeNull();
+      search.value = 'minerale';
+      search.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain('Eau minérale');
+      expect(fixture.nativeElement.querySelector('li button')).toBeTruthy();
+      expect(fixture.nativeElement.textContent.replace(/\s/g, '')).toContain(
+        language === 'fr' ? '1000XOF' : 'XOF1,000',
+      );
+      search.value = 'not-a-dish';
+      search.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.textContent).toContain(
+        language === 'fr' ? 'Aucun article trouvé.' : 'No menu items found.',
+      );
+      search.value = '';
+      search.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(fixture.nativeElement.querySelectorAll('li')).toHaveLength(2);
+      expect(read).toHaveBeenCalledTimes(1);
+      expect(renew).not.toHaveBeenCalled();
+      expect(fixture.nativeElement.textContent).not.toContain('RESTAURANTS.');
+    },
+  );
+  it('never presents a partial cache as an exhaustive no-match result', async () => {
+    read.mockResolvedValue({ body: { ...body, nextCursor: 'next-page-reference' } });
+    const fixture = mount();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.query.isSuccess()).toBe(true);
+    });
+    fixture.componentInstance.searchText.set('not-a-dish');
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'Aucun résultat dans les articles affichés',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Aucun article trouvé.');
+    expect(fixture.nativeElement.textContent).toContain('Voir la suite de la carte');
+    expect(read).toHaveBeenCalledTimes(1);
+  });
+  it('keeps grouped prices through the established currency formatter', async () => {
+    const fixture = mount();
+    await vi.waitFor(() => expect(fixture.componentInstance.query.isSuccess()).toBe(true));
+    expect(fixture.componentInstance.price(150000)).toMatch(/150\s000\sXOF/);
+  });
 });

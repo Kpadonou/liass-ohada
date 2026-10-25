@@ -139,13 +139,13 @@ describe('Guest request presentation', () => {
       vi.spyOn(workflow.state, 'data').mockReturnValue({ state: 'READY', requests: [request] });
       const f = TestBed.createComponent(RestaurantGuestSubmissionComponent);
       f.detectChanges();
-      expect(f.nativeElement.textContent).toContain(fr.RESTAURANTS.SUBMISSIONS[state]);
+      expect(f.nativeElement.textContent).toContain(fr.RESTAURANTS.GUEST.STATUS[state]);
       expect(f.nativeElement.textContent).not.toContain('Commande confirmée');
     },
   );
   it.each([
-    ['fr', 'CONFIRMED', 'Commande confirmée'],
-    ['en', 'CONFIRMED', 'Order confirmed'],
+    ['fr', 'CONFIRMED', 'Confirmée'],
+    ['en', 'CONFIRMED', 'Confirmed'],
     ['fr', 'PREPARING', 'En préparation'],
     ['en', 'PREPARING', 'Preparing'],
     ['fr', 'READY', 'Prête'],
@@ -223,4 +223,34 @@ describe('Guest request presentation', () => {
     ]);
     expect(fixture.nativeElement.querySelectorAll('article')).toHaveLength(2);
   });
+  it('keeps the compact Orders surface out of the menu flow when there are no orders', () => {
+    vi.spyOn(workflow.state, 'data').mockReturnValue({ state: 'READY', requests: [] });
+    const fixture = TestBed.createComponent(RestaurantGuestSubmissionComponent);
+    fixture.componentRef.setInput('compactEmpty', true);
+    fixture.detectChanges();
+    expect(fixture.nativeElement.classList.contains('hidden')).toBe(true);
+    expect(fixture.nativeElement.querySelector('h2')).toBeNull();
+  });
+  it.each(['fr', 'en'])(
+    'provides consumer labels and supporting copy for every order status in %s',
+    (lang) => {
+      const dictionary = lang === 'fr' ? fr : en;
+      for (const status of [
+        'PROCESSING',
+        'PENDING_SERVICE',
+        'PENDING_APPROVAL',
+        'ACCEPTED',
+        'CONFIRMED',
+        'PREPARING',
+        'READY',
+        'SERVED',
+        'REJECTED',
+        'EXPIRED',
+        'CANCELLED',
+      ] as const) {
+        expect(dictionary.RESTAURANTS.GUEST.STATUS[status]).toBeTruthy();
+        expect(dictionary.RESTAURANTS.GUEST.STATUS_HELP[status]).toBeTruthy();
+      }
+    },
+  );
 });

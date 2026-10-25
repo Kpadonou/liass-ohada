@@ -28,6 +28,10 @@ test('direct Guest startup remains independent of staff initialization', () => {
     cartStore,
     cartComponent,
     read('app/domains/restaurants/feature/restaurant-guest-waiter-call.component.ts'),
+    read('app/domains/restaurants/feature/restaurant-guest-carte.component.ts'),
+    read('app/domains/restaurants/feature/restaurant-guest-submission.component.ts'),
+    read('app/domains/restaurants/feature/restaurant-guest.page.ts'),
+    read('app/domains/restaurants/ui/guest-icon.component.ts'),
   ]) {
     assert.doesNotMatch(
       source,

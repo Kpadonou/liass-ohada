@@ -1,3 +1,4 @@
+import { GuestIconComponent } from '../ui/guest-icon.component';
 import { RestaurantGuestSubmissionComponent } from './restaurant-guest-submission.component';
 import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -18,6 +19,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
   selector: 'liass-restaurant-guest',
   host: { class: 'block' },
   imports: [
+    GuestIconComponent,
     RestaurantGuestSubmissionComponent,
     MatButtonModule,
     TranslocoModule,
@@ -25,8 +27,10 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
     RestaurantGuestWaiterCallComponent,
     RestaurantGuestCartComponent,
   ],
-  template: ` <main class="min-h-dvh bg-app-bg px-4 pb-32 pt-6 text-app-text sm:px-8 sm:pt-10">
-    <section class="mx-auto max-w-[68rem] space-y-10" aria-labelledby="guest-title">
+  template: ` <main
+    class="min-h-dvh bg-app-surface px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] text-app-text sm:bg-app-bg sm:px-8"
+  >
+    <section class="mx-auto max-w-[64rem] space-y-6 sm:space-y-8" aria-labelledby="guest-title">
       @if (bootstrapping()) {
         <h1 id="guest-title" class="text-2xl font-semibold">
           {{ 'RESTAURANTS.GUEST.LOADING' | transloco }}
@@ -35,38 +39,58 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
           {{ 'RESTAURANTS.GUEST.WAIT' | transloco }}
         </p>
       } @else if (context(); as c) {
-        <header class="space-y-5">
-          <div class="flex items-start justify-between gap-4">
-            <div class="min-w-0 space-y-2">
-              <p class="text-xs font-medium uppercase tracking-widest text-app-text-secondary">
-                {{ 'RESTAURANTS.GUEST.WELCOME' | transloco }}
-              </p>
-              <h1 id="guest-title" class="break-words text-3xl font-semibold sm:text-4xl">
-                {{ c.restaurantName }}
-              </h1>
-              @if (c.outletName !== c.restaurantName) {
-                <p class="break-words text-sm text-app-text-secondary">{{ c.outletName }}</p>
-              }
-            </div>
-            <button
-              mat-button
-              type="button"
-              class="!min-h-11 shrink-0 liass-action-neutral"
-              (click)="refresh()"
-              [disabled]="refreshing()"
-              [attr.aria-busy]="refreshing()"
+        <header class="space-y-3 pt-6 sm:pt-8">
+          <div
+            class="rounded-app-panel bg-gradient-to-br from-app-surface-muted via-app-surface to-app-surface px-1 pb-1 pt-4 sm:px-5 sm:pt-6"
+          >
+            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-app-text-secondary">
+              {{ 'RESTAURANTS.GUEST.WELCOME' | transloco }}
+            </p>
+            <h1
+              id="guest-title"
+              class="mt-2 break-words text-3xl font-bold leading-tight sm:text-4xl"
             >
-              {{
-                (refreshing() ? 'RESTAURANTS.GUEST.REFRESHING' : 'RESTAURANTS.GUEST.REFRESH')
-                  | transloco
-              }}
-            </button>
+              {{ c.restaurantName }}
+            </h1>
+            @if (c.outletName !== c.restaurantName) {
+              <p class="mt-1 break-words text-base text-app-text-secondary">{{ c.outletName }}</p>
+            }
+            <div class="mt-1 flex justify-end">
+              <button
+                mat-button
+                type="button"
+                class="!min-h-11 liass-action-neutral"
+                (click)="refresh()"
+                [disabled]="refreshing()"
+                [attr.aria-busy]="refreshing()"
+                [attr.aria-label]="'RESTAURANTS.GUEST.REFRESH' | transloco"
+              >
+                <span class="flex items-center gap-2">
+                  <liass-guest-icon name="refresh" class="h-4 w-4" />
+                  {{
+                    (refreshing() ? 'RESTAURANTS.GUEST.REFRESHING' : 'RESTAURANTS.GUEST.REFRESH')
+                      | transloco
+                  }}
+                </span>
+              </button>
+            </div>
           </div>
           <div
-            class="flex flex-wrap items-center justify-between gap-2 rounded-app-panel bg-app-surface px-4 py-4 sm:px-5"
+            class="flex items-center gap-3 rounded-app-panel border border-app-border bg-app-surface-muted/30 px-3 py-3 sm:px-5"
           >
-            <p class="min-w-0 break-words font-semibold">{{ c.tableName }}</p>
-            <p class="text-sm text-app-text-secondary" role="status" aria-live="polite">
+            <liass-guest-icon name="table" class="h-5 w-5 text-app-text-secondary" />
+            <p class="min-w-0 flex-1 break-words text-sm font-semibold">{{ c.tableName }}</p>
+            <p
+              class="flex max-w-[60%] items-center gap-2 border-l border-app-border pl-3 text-xs sm:text-sm"
+              role="status"
+              aria-live="polite"
+            >
+              <span
+                class="h-2 w-2 shrink-0 rounded-full"
+                [class.bg-success-600]="c.state === 'OCCUPIED'"
+                [class.bg-app-text-secondary]="c.state === 'FREE'"
+                aria-hidden="true"
+              ></span>
               {{ 'RESTAURANTS.GUEST.SERVICE_' + c.state | transloco }}
             </p>
           </div>
@@ -76,16 +100,9 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
             {{ 'RESTAURANTS.GUEST.DISABLED' | transloco }}
           </p>
         }
+        <liass-restaurant-guest-submission [compactEmpty]="true" />
         <liass-restaurant-guest-carte [context]="c" [scope]="scope()" (ended)="end($event)" />
-        <liass-restaurant-guest-submission />
-        <section class="space-y-3 border-t border-app-border pt-6">
-          <h2 class="text-base font-semibold">{{ 'RESTAURANTS.GUEST.ASSISTANCE' | transloco }}</h2>
-          <liass-restaurant-guest-waiter-call
-            [context]="c"
-            [scope]="scope()"
-            (ended)="end($event)"
-          />
-        </section>
+        <liass-restaurant-guest-waiter-call [context]="c" [scope]="scope()" (ended)="end($event)" />
         <liass-restaurant-guest-cart [scope]="scope()" [context]="c" />
       } @else {
         <h1 id="guest-title" class="text-2xl font-semibold">
@@ -106,7 +123,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
           <liass-restaurant-guest-cart [scope]="scope()" [context]="null" />
         }
       }
-      <p class="pt-6 text-center text-xs text-app-text-secondary">
+      <p class="pt-2 text-center text-xs text-app-text-secondary">
         {{ 'RESTAURANTS.GUEST.POWERED_BY' | transloco }}
       </p>
     </section>

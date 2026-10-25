@@ -8,6 +8,7 @@ import {
   output,
   signal,
 } from '@angular/core';
+import { GuestIconComponent } from '../ui/guest-icon.component';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
 import { injectMutation, injectQuery } from '@tanstack/angular-query-experimental';
@@ -17,25 +18,38 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
 @Component({
   selector: 'liass-restaurant-guest-waiter-call',
   host: { class: 'block' },
-  imports: [MatButtonModule, TranslocoModule],
+  imports: [GuestIconComponent, MatButtonModule, TranslocoModule],
   template: ` <section
-    class="flex flex-wrap items-center gap-x-4 gap-y-2"
+    class="rounded-app-panel bg-app-surface-muted/70 p-3 sm:p-4"
     aria-label="{{ 'RESTAURANTS.WAITER_CALL.ACTION' | transloco }}"
   >
-    <button
-      mat-stroked-button
-      type="button"
-      class="!min-h-11 liass-action-neutral"
-      [disabled]="request.isPending() || waiting()"
-      [attr.aria-busy]="request.isPending()"
-      (click)="call()"
-    >
-      {{
-        (request.isPending() ? 'RESTAURANTS.WAITER_CALL.PENDING' : 'RESTAURANTS.WAITER_CALL.ACTION')
-          | transloco
-      }}
-    </button>
-    <div class="min-w-0 text-sm text-app-text-secondary" role="status" aria-live="polite">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+      <h2 class="flex items-center gap-2 text-sm font-semibold">
+        <span class="flex h-9 w-9 items-center justify-center rounded-full bg-app-surface-selected"
+          ><liass-guest-icon name="bell" class="h-5 w-5"
+        /></span>
+        {{ 'RESTAURANTS.GUEST.ASSISTANCE' | transloco }}
+      </h2>
+      <button
+        mat-stroked-button
+        type="button"
+        class="!min-h-11 !px-3"
+        [disabled]="request.isPending() || waiting()"
+        [attr.aria-busy]="request.isPending()"
+        (click)="call()"
+      >
+        <span class="flex items-center gap-2"
+          ><liass-guest-icon name="phone" class="h-4 w-4" />
+          {{
+            (request.isPending()
+              ? 'RESTAURANTS.WAITER_CALL.PENDING'
+              : 'RESTAURANTS.WAITER_CALL.ACTION'
+            ) | transloco
+          }}
+        </span>
+      </button>
+    </div>
+    <div class="mt-2 min-w-0 text-sm text-app-text-secondary" role="status" aria-live="polite">
       @if (result(); as r) {
         @if (r.state === 'REQUESTED') {
           <p class="font-medium text-app-text">
