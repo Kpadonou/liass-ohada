@@ -184,7 +184,7 @@ test.each(["DISABLED"])("%s cannot submit", async (policy) => {
   patch(K.restaurantSK(), { guestOrderingPolicy: policy });
   expect((await S.submit(cap, await body())).state).toBe("NOT_ALLOWED");
 });
-test("FREE cannot submit or create a visit", async () => {
+test("FREE rejects a previous service selection and creates no session", async () => {
   const input = await body();
   const session = await E.session(scope, scope.sessionId);
   await E.mutate(
@@ -197,7 +197,7 @@ test("FREE cannot submit or create a visit", async () => {
   const before = all().filter(
     (r) => r.entityType === "RESTAURANT_GUEST_SESSION",
   ).length;
-  expect((await S.submit(cap, input)).state).toBe("NOT_ALLOWED");
+  expect((await S.submit(cap, input)).state).toBe("REVIEW_REQUIRED");
   expect(
     all().filter((r) => r.entityType === "RESTAURANT_GUEST_SESSION"),
   ).toHaveLength(before);
@@ -964,7 +964,7 @@ test("DIRECT status follows canonical preparation and no-station lines never bec
   ]);
   expect(state.requests[0].orderStatus).not.toBe("SERVED");
 });
-test("DIRECT FREE and ended/replaced visits cannot submit", async () => {
+test("DIRECT ended/replaced service selections cannot submit", async () => {
   const input = await directBody();
   const before = await E.session(scope, scope.sessionId);
   await E.mutate(
@@ -975,7 +975,7 @@ test("DIRECT FREE and ended/replaced visits cannot submit", async () => {
   );
   expect((await S.submit(cap, input)).state).toBe("VISIT_ENDED");
   const free = await resolve();
-  expect((await S.submit(free, input)).state).toBe("NOT_ALLOWED");
+  expect((await S.submit(free, input)).state).toBe("REVIEW_REQUIRED");
   await E.mutate({ ...scope, actorId: "owner" }, "OPEN_SESSION", {
     clientRequestId: fixtureId(2601),
     tableId: f.tables[0].id,
@@ -1074,4 +1074,282 @@ test("DIRECT canonical order is discoverable by existing Table Workspace reads",
   expect(orders.items).toHaveLength(1);
   expect((orders.items[0] as c.RestaurantOrder).orderType).toBe("DINE_IN");
   expect((orders.items[0] as c.RestaurantOrder).status).toBe("SUBMITTED");
+});
+
+async function freeTable(policy: "DIRECT" | "STAFF_APPROVAL" | "DISABLED") {
+  const session = await E.session(scope, scope.sessionId);
+  await E.mutate(
+    { ...scope, actorId: "owner" },
+    "CLOSE_SESSION",
+    { clientRequestId: fixtureId(3000), expectedVersion: session.data.version },
+    { sessionId: scope.sessionId },
+  );
+  patch(K.restaurantSK(), { guestOrderingPolicy: policy });
+  cap = await resolve();
+}
+async function openFreeTable(commandId = 3001) {
+  return E.mutate({ ...scope, actorId: "owner" }, "OPEN_SESSION", {
+    clientRequestId: fixtureId(commandId),
+    tableId: f.tables[0].id,
+    areaId: f.areas[0].id,
+  });
+}
+test.each(["DIRECT", "STAFF_APPROVAL"] as const)(
+  "FREE %s persists one isolated pre-service intent without commercial effects",
+  async (policy) => {
+    await freeTable(policy);
+    const input = await body(3002);
+    const before = all().filter((r) =>
+      /GUEST_SESSION|ORDER$|ORDER_ITEM|PREPARATION|PAYMENT/.test(r.entityType),
+    );
+    const [a, b] = await Promise.all([
+      S.submit(cap, input),
+      S.submit(cap, input),
+    ]);
+    expect(a).toEqual(b);
+    expect(a).toMatchObject({
+      state: "CONFIRMED",
+      request: { state: "PENDING_SERVICE" },
+    });
+    expect(
+      all().filter((r) =>
+        /GUEST_SESSION|ORDER$|ORDER_ITEM|PREPARATION|PAYMENT/.test(
+          r.entityType,
+        ),
+      ),
+    ).toEqual(before);
+    const requests = all().filter(
+      (r) => r.entityType === "RESTAURANT_GUEST_ORDER_REQUEST",
+    );
+    expect(requests).toHaveLength(1);
+    expect(requests[0].sessionId).toBeUndefined();
+    expect(requests[0].directStage).toBeUndefined();
+    expect(await S.own(await resolve())).toMatchObject({
+      state: "READY",
+      requests: [],
+    });
+    const { WaiterCalls } =
+      await import("@/lambda/domains/restaurants/waiter-call");
+    expect(await WaiterCalls.activity(scope, "owner")).toMatchObject({
+      items: [],
+      preServiceRequests: [{ tableId: f.tables[0].id }],
+    });
+  },
+);
+test("FREE DISABLED blocks new requests without effects", async () => {
+  await freeTable("DISABLED");
+  expect((await S.submit(cap, await body(3002))).state).toBe("NOT_ALLOWED");
+  expect(
+    all().filter((r) => r.entityType === "RESTAURANT_GUEST_ORDER_REQUEST"),
+  ).toHaveLength(0);
+});
+test.each(["DIRECT", "STAFF_APPROVAL"] as const)(
+  "opening binds %s to exactly one canonical service, replay is idempotent",
+  async (policy) => {
+    await freeTable(policy);
+    const oldCap = cap;
+    const input = await body(3002);
+    const submitted = await S.submit(cap, input);
+    if (submitted.state !== "CONFIRMED") throw Error();
+    const opened = c.GuestSessionSchema.parse((await openFreeTable()).data);
+    const openedScope = { ...scope, sessionId: opened.guestSessionId };
+    const row = await S.row(openedScope, submitted.request.requestId);
+    expect(row?.sessionId).toBe(opened.guestSessionId);
+    expect(row?.data.state).toBe(
+      policy === "DIRECT" ? "ACCEPTED" : "PENDING_APPROVAL",
+    );
+    expect(
+      all().filter(
+        (r) =>
+          r.entityType === "RESTAURANT_GUEST_SESSION" &&
+          r.data.status === "OPEN",
+      ),
+    ).toHaveLength(1);
+    expect(
+      all().filter((r) => r.entityType === "RESTAURANT_ORDER"),
+    ).toHaveLength(policy === "DIRECT" ? 1 : 0);
+    expect(
+      c.GuestSessionSchema.parse((await openFreeTable()).data).guestSessionId,
+    ).toBe(opened.guestSessionId);
+    const recovered = await GuestService.resolve({
+      token,
+      previousCapability: oldCap,
+    });
+    if (recovered.state !== "OCCUPIED") throw Error();
+    expect((await S.submit(recovered.capability, input)).state).toBe(
+      "CONFIRMED",
+    );
+    expect(await S.own(recovered.capability)).toMatchObject({
+      state: "READY",
+      requests: [
+        {
+          requestId: submitted.request.requestId,
+          state: policy === "DIRECT" ? "ACCEPTED" : "PENDING_APPROVAL",
+        },
+      ],
+    });
+    if (policy === "STAFF_APPROVAL")
+      await S.review(
+        openedScope,
+        "owner",
+        submitted.request.requestId,
+        "approve",
+      );
+    expect(
+      all().filter((r) => r.entityType === "RESTAURANT_ORDER"),
+    ).toHaveLength(1);
+  },
+);
+test("multiple phones bind independently to one service and keep private results", async () => {
+  await freeTable("DIRECT");
+  const firstCap = cap;
+  const a = await S.submit(cap, await body(3002));
+  cap = await resolve();
+  const secondCap = cap;
+  jest.spyOn(Date, "now").mockReturnValue(Date.now() + 6000);
+  const b = await S.submit(cap, await body(3003));
+  expect(a.state).toBe("CONFIRMED");
+  expect(b.state).toBe("CONFIRMED");
+  await openFreeTable();
+  for (const phone of [firstCap, secondCap]) {
+    const context = await GuestService.resolve({
+      token,
+      previousCapability: phone,
+    });
+    if (!("capability" in context)) throw Error();
+    const state = await S.own(context.capability);
+    if (state.state !== "READY") throw Error();
+    expect(state.requests).toHaveLength(1);
+  }
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    2,
+  );
+  expect(
+    all().filter(
+      (r) =>
+        r.entityType === "RESTAURANT_GUEST_SESSION" && r.data.status === "OPEN",
+    ),
+  ).toHaveLength(1);
+});
+test("expired pending intent cannot bind or migrate into a later service", async () => {
+  await freeTable("STAFF_APPROVAL");
+  const submitted = await S.submit(cap, await body(3002));
+  if (submitted.state !== "CONFIRMED") throw Error();
+  jest.spyOn(Date, "now").mockReturnValue(Date.now() + 900001);
+  const first = c.GuestSessionSchema.parse((await openFreeTable()).data);
+  expect(
+    (await S.rows({ ...scope, sessionId: first.guestSessionId })).rows,
+  ).toHaveLength(0);
+  const row = await S.row(
+    { orgId: org, outletId: f.outlet.id, tableId: f.tables[0].id },
+    submitted.request.requestId,
+  );
+  expect(row?.data.state).toBe("EXPIRED");
+  expect(row?.sessionId).toBeUndefined();
+  await E.mutate(
+    { ...scope, actorId: "owner" },
+    "CLOSE_SESSION",
+    { clientRequestId: fixtureId(3004), expectedVersion: first.version },
+    { sessionId: first.guestSessionId },
+  );
+  const later = c.GuestSessionSchema.parse((await openFreeTable(3005)).data);
+  expect(
+    (await S.rows({ ...scope, sessionId: later.guestSessionId })).rows,
+  ).toHaveLength(0);
+});
+test.each(["price", "availability", "policy"])(
+  "opening revalidates %s and never silently substitutes Guest intent",
+  async (change) => {
+    await freeTable("DIRECT");
+    const input = await body(3002);
+    await S.submit(cap, input);
+    if (change === "policy")
+      patch(K.restaurantSK(), {
+        guestOrderingPolicy: "STAFF_APPROVAL",
+        version: f.restaurant.version + 1,
+      });
+    else
+      for (const entry of f.items)
+        patch(K.restaurantMenuItemSK(f.outlet.id, entry.categoryId, entry.id), {
+          version: entry.version + 1,
+          ...(change === "price"
+            ? {
+                price: {
+                  ...entry.price,
+                  amountMinor: entry.price.amountMinor + 100,
+                },
+              }
+            : { availability: "UNAVAILABLE" }),
+        });
+    await openFreeTable();
+    expect(
+      all().filter((r) => r.entityType === "RESTAURANT_ORDER"),
+    ).toHaveLength(0);
+    expect(
+      all().filter((r) => r.entityType === "RESTAURANT_PREPARATION"),
+    ).toHaveLength(0);
+  },
+);
+
+test("a first submission racing an initially empty opening snapshot binds in the retried canonical opening", async () => {
+  await freeTable("DIRECT");
+  const input = await body(3100);
+  const original = S.bindOpening.bind(S);
+  jest.spyOn(S, "bindOpening").mockImplementationOnce(async (session) => {
+    const guards = await original(session);
+    expect((await S.submit(cap, input)).state).toBe("CONFIRMED");
+    return guards;
+  });
+  const session = c.GuestSessionSchema.parse((await openFreeTable()).data);
+  const rows = (await S.rows({ ...scope, sessionId: session.guestSessionId }))
+    .rows;
+  expect(rows).toHaveLength(1);
+  expect(rows[0].data.state).toBe("ACCEPTED");
+  expect(
+    all().filter(
+      (r) =>
+        r.entityType === "RESTAURANT_GUEST_SESSION" && r.data.status === "OPEN",
+    ),
+  ).toHaveLength(1);
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    1,
+  );
+});
+test("revoking QR before opening invalidates its pending pre-service intent", async () => {
+  await freeTable("STAFF_APPROVAL");
+  await S.submit(cap, await body(3100));
+  const key = JSON.stringify([
+    K.orgKey(org),
+    K.restaurantTableSK(f.outlet.id, f.areas[0].id, f.tables[0].id),
+  ]);
+  m.rows.set(
+    key,
+    marshall({ ...unmarshall(m.rows.get(key)!), qrRevoked: true }),
+  );
+  const opened = c.GuestSessionSchema.parse((await openFreeTable()).data);
+  expect(
+    (await S.rows({ ...scope, sessionId: opened.guestSessionId })).rows,
+  ).toHaveLength(0);
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    0,
+  );
+});
+
+test("lost opening acknowledgement still continues its bound DIRECT intent exactly once", async () => {
+  await freeTable("DIRECT");
+  await S.submit(cap, await body(3200));
+  const { RestaurantTransactionsRepository: Repository } =
+    await import("@/lambda/domains/restaurants/transaction-repository");
+  const original = Repository.commit.bind(Repository);
+  jest
+    .spyOn(Repository, "commit")
+    .mockImplementationOnce(async (actions, limit) => {
+      await original(actions, limit);
+      throw new Error("Lost acknowledgement");
+    });
+  await openFreeTable();
+  await openFreeTable();
+  expect(all().filter((r) => r.entityType === "RESTAURANT_ORDER")).toHaveLength(
+    1,
+  );
 });

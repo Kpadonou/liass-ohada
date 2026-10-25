@@ -361,3 +361,42 @@ describe("RESTO-1B authoritative authorization", () => {
     ).toBe(403);
   });
 });
+
+test.each(["OWNER", "MANAGER"])(
+  "%s persists all Guest ordering policies using existing restaurant settings",
+  async (role) => {
+    await acceptanceFixture();
+    memory.seedAccess(org, user, role);
+    for (const policy of ["DISABLED", "DIRECT", "STAFF_APPROVAL"]) {
+      const before = JSON.parse(
+        (await restaurantsHandler("get-restaurant")(event())).body,
+      ).data;
+      const result = await restaurantsHandler("update-restaurant")(
+        event({ expectedVersion: before.version, guestOrderingPolicy: policy }),
+      );
+      expect(result.statusCode).toBe(200);
+      expect(
+        JSON.parse((await restaurantsHandler("get-restaurant")(event())).body)
+          .data.guestOrderingPolicy,
+      ).toBe(policy);
+    }
+  },
+);
+test("unrelated settings updates preserve existing DISABLED policy", async () => {
+  await acceptanceFixture();
+  memory.seedAccess(org, user, "OWNER");
+  const before = JSON.parse(
+    (await restaurantsHandler("get-restaurant")(event())).body,
+  ).data;
+  await restaurantsHandler("update-restaurant")(
+    event({ expectedVersion: before.version, guestOrderingPolicy: "DISABLED" }),
+  );
+  const disabled = JSON.parse(
+    (await restaurantsHandler("get-restaurant")(event())).body,
+  ).data;
+  const updated = await restaurantsHandler("update-restaurant")(
+    event({ expectedVersion: disabled.version, name: "Updated name" }),
+  );
+  expect(updated.statusCode).toBe(200);
+  expect(JSON.parse(updated.body).data.guestOrderingPolicy).toBe("DISABLED");
+});

@@ -56,7 +56,9 @@ export async function handler(event: APIGatewayProxyEventV2): Promise<{
       Buffer.byteLength(event.body ?? "", "utf8") >
         (event.routeKey === "POST /public/restaurants/guest/submissions"
           ? 16384
-          : 1024)
+          : event.routeKey.endsWith("/resolve")
+            ? 6144
+            : 1024)
     )
       return send(400, { state: "UNAVAILABLE" });
     if (

@@ -140,7 +140,7 @@ export class GuestService {
     );
     if (expires <= now) return { state: "EXPIRED" };
     const orderingPermitted = Boolean(
-      sessionId && c.root.guestOrderingPolicy !== "DISABLED",
+      c.root.guestOrderingPolicy !== "DISABLED",
     );
     const guestHandle = old?.guestHandle ?? newGuestHandle();
     const claims: GuestPrincipal = {
@@ -184,7 +184,61 @@ export class GuestService {
     const parsed = GuestResolveRequestSchema.safeParse(input);
     if (!parsed.success) return { state: "UNAVAILABLE" };
     const c = await this.context(parsed.data.token);
-    return c ? this.response(c) : { state: "UNAVAILABLE" };
+    if (!c) return { state: "UNAVAILABLE" };
+    if (parsed.data.previousCapability) {
+      let old: GuestPrincipal;
+      try {
+        old = await openGuest(parsed.data.previousCapability, true);
+      } catch {
+        return { state: "UNAVAILABLE" };
+      }
+      if (
+        old.qrFingerprint !== fingerprint(parsed.data.token) ||
+        old.orgId !== c.lookup.orgId ||
+        old.tableId !== c.table.id ||
+        old.outletId !== c.outlet.id ||
+        old.areaId !== c.lookup.serviceAreaId ||
+        old.restaurantId !== c.root.id
+      )
+        return { state: "UNAVAILABLE" };
+      if (old.sessionId && old.sessionId !== c.sessionId)
+        return { state: "VISIT_ENDED" };
+      return this.response(c, {
+        ...old,
+        sessionId: c.sessionId,
+        enteredAt: old.sessionId
+          ? old.enteredAt
+          : Math.floor(Date.now() / 1000),
+      });
+    }
+    return this.response(c);
+  }
+  /** Internal continuation of a staff-bound request, never a public context selector. */
+  static async boundCapability(row: {
+    orgId: string;
+    outletId: string;
+    areaId?: string;
+    tableId: string;
+    sessionId?: string;
+    guestHandle: string;
+    qrFingerprint?: string;
+  }) {
+    if (!row.areaId || !row.sessionId) return undefined;
+    const table = await Config.get(
+      row.orgId,
+      "table",
+      { outletId: row.outletId, serviceAreaId: row.areaId },
+      row.tableId,
+    );
+    if (!table?.qrToken || fingerprint(table.qrToken) !== row.qrFingerprint)
+      return undefined;
+    const c = await this.context(table.qrToken);
+    if (!c || c.sessionId !== row.sessionId || c.lookup.orgId !== row.orgId)
+      return undefined;
+    const response = await this.response(c);
+    if (!("capability" in response)) return undefined;
+    const principal = await openGuest(response.capability);
+    return sealGuest({ ...principal, guestHandle: row.guestHandle });
   }
   static async verify(token: string): Promise<
     | {

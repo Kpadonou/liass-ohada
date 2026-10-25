@@ -96,7 +96,7 @@ export class RestaurantEditorComponent {
     policy: [
       'guestOrderingPolicy' in (this.entity ?? {})
         ? (this.entity as { guestOrderingPolicy: string }).guestOrderingPolicy
-        : 'STAFF_APPROVAL',
+        : 'DIRECT',
     ],
     active: [this.entity?.isActive ?? true],
     currency: [

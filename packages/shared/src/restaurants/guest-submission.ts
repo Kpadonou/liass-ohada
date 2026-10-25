@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { GuestWaiterCallResponseSchema } from "./waiter-call";
 export const GuestSubmissionLineSchema = z
   .object({
     reference: z.string().min(16).max(100),
@@ -28,6 +29,7 @@ export const GuestOrderRequestSchema = z
   .object({
     requestId: z.string().uuid(),
     state: z.enum([
+      "PENDING_SERVICE",
       "PENDING_APPROVAL",
       "PROCESSING",
       "ACCEPTED",
@@ -85,6 +87,7 @@ export const GuestRequestStateResponseSchema = z.discriminatedUnion("state", [
     .object({
       state: z.literal("READY"),
       requests: z.array(GuestOrderRequestSchema).max(20),
+      waiterCall: GuestWaiterCallResponseSchema.optional(),
     })
     .strict(),
   z

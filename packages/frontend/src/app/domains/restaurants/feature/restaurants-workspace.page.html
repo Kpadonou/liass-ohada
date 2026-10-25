@@ -127,6 +127,13 @@
           }
         </div>
         <div class="min-w-0 space-y-4">
+          @if (mode === 'setup' && section() !== 'restaurant' && caps.canManageSetup()) {
+            <a mat-button routerLink="/restaurants/setup">
+              <mat-icon aria-hidden="true">settings</mat-icon>
+              {{ 'RESTAURANTS.UI.POLICY' | transloco }} ·
+              {{ 'RESTAURANTS.UI.POLICIES.' + root.data()?.guestOrderingPolicy | transloco }}
+            </a>
+          }
           @if (!canManage()) {
             <p class="text-sm text-app-text-secondary">
               {{ 'RESTAURANTS.UI.READ_ONLY' | transloco }}
@@ -264,6 +271,9 @@
                 </dt>
                 <dd class="mt-1 font-medium text-app-text">
                   {{ 'RESTAURANTS.UI.POLICIES.' + root.data()?.guestOrderingPolicy | transloco }}
+                </dd>
+                <dd class="mt-2 text-sm text-app-text-secondary">
+                  {{ 'RESTAURANTS.UI.POLICY_HELP' | transloco }}
                 </dd>
               </dl>
               <a mat-button routerLink="/restaurants/setup/locations">

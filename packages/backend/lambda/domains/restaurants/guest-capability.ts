@@ -34,8 +34,7 @@ const ClaimsSchema = z
       c.exp <= c.iat ||
       c.exp - c.iat > ttl ||
       c.enteredAt > c.iat ||
-      c.exp > c.enteredAt + (c.sessionId ? 28800 : 600) ||
-      (!c.sessionId && c.rights.includes("ORDER_SUBMIT"))
+      c.exp > c.enteredAt + (c.sessionId ? 28800 : 600)
     )
       ctx.addIssue({ code: "custom", message: "Invalid capability scope" });
   });
@@ -73,7 +72,10 @@ export async function sealGuest(claims: GuestPrincipal): Promise<string> {
     .setProtectedHeader({ alg: "dir", enc: "A256GCM", typ: "resto-guest+jwt" })
     .encrypt(await capabilityKey());
 }
-export async function openGuest(token: string): Promise<GuestPrincipal> {
+export async function openGuest(
+  token: string,
+  recoverExpired = false,
+): Promise<GuestPrincipal> {
   try {
     const { payload, protectedHeader } = await jwtDecrypt(
       token,
@@ -84,6 +86,7 @@ export async function openGuest(token: string): Promise<GuestPrincipal> {
         audience: "restaurants-guest",
         typ: "resto-guest+jwt",
         requiredClaims: ["iat", "exp"],
+        ...(recoverExpired ? { currentDate: new Date(0) } : {}),
       },
     );
     if (protectedHeader.alg !== "dir" || protectedHeader.enc !== "A256GCM")
@@ -92,7 +95,9 @@ export async function openGuest(token: string): Promise<GuestPrincipal> {
     if (
       !process.env.STAGE ||
       principal.environment !== process.env.STAGE ||
-      principal.iat > Math.floor(Date.now() / 1000) + 5
+      principal.iat > Math.floor(Date.now() / 1000) + 5 ||
+      (recoverExpired &&
+        principal.enteredAt + 28800 <= Math.floor(Date.now() / 1000))
     )
       throw new Error("Invalid capability");
     return principal;

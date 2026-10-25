@@ -13,6 +13,29 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  // Same request/coordinator sort keys, scoped to the physical table before staff opening.
+  restaurantPreServiceRequestKey: (
+    orgId: string,
+    outletId: string,
+    tableId: string,
+    requestId: string,
+  ) => ({
+    PK: KeyFactory.restaurantOccupancyPK(orgId, outletId, tableId),
+    SK: KeyFactory.restaurantGuestRequestKey(
+      orgId,
+      outletId,
+      tableId,
+      requestId,
+    ).SK,
+  }),
+  restaurantPreServiceCoordKey: (
+    orgId: string,
+    outletId: string,
+    tableId: string,
+  ) => ({
+    PK: KeyFactory.restaurantOccupancyPK(orgId, outletId, tableId),
+    SK: KeyFactory.restaurantGuestRequestCoordKey(orgId, outletId, tableId).SK,
+  }),
   restaurantGuestRequestAuditKey: (
     orgId: string,
     outletId: string,

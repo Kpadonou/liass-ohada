@@ -342,6 +342,15 @@
                         </div>
                       }
                     </div>
+                    @if (table.state === 'FREE' && hasPreServiceOrder(table.tableId)) {
+                      <liass-status-chip
+                        tone="warning"
+                        [label]="'RESTAURANTS.SUBMISSIONS.NEW_QR_ORDER' | transloco"
+                      />
+                      <p class="text-sm text-app-text-secondary">
+                        {{ 'RESTAURANTS.SUBMISSIONS.AWAITING_SERVICE' | transloco }}
+                      </p>
+                    }
                     @if (hasCall(table.tableId)) {
                       <liass-status-chip
                         tone="warning"

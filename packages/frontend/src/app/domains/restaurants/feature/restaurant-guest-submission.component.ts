@@ -33,7 +33,7 @@ import { RestaurantGuestSubmissions } from '../data-access/restaurant-guest-subm
         }
       }
     }
-    @if (!action() && workflow.cart.context()?.state === 'OCCUPIED') {
+    @if (!action() && workflow.cart.context()) {
       <div class="flex items-center justify-between gap-3">
         <h2 class="font-semibold">{{ 'RESTAURANTS.SUBMISSIONS.TITLE' | transloco }}</h2>
         <button

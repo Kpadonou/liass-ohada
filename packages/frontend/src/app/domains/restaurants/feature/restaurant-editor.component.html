@@ -33,10 +33,13 @@
       <mat-form-field subscriptSizing="dynamic" class="w-full"
         ><mat-label>{{ 'RESTAURANTS.UI.POLICY' | transloco }}</mat-label
         ><mat-select formControlName="policy">
-          @for (policy of ['DISABLED', 'STAFF_APPROVAL', 'DIRECT']; track policy) {
-            <mat-option [value]="policy">{{
-              'RESTAURANTS.UI.POLICIES.' + policy | transloco
-            }}</mat-option>
+          @for (policy of ['DISABLED', 'DIRECT', 'STAFF_APPROVAL']; track policy) {
+            <mat-option [value]="policy"
+              >{{ 'RESTAURANTS.UI.POLICIES.' + policy | transloco }}
+              @if (policy === 'DIRECT') {
+                · {{ 'RESTAURANTS.UI.RECOMMENDED' | transloco }}
+              }
+            </mat-option>
           }
         </mat-select></mat-form-field
       >

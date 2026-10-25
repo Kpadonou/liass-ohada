@@ -119,7 +119,7 @@ it('renders the preserved header using the keyed read; composer tested independe
   expect(api.guestSession).toHaveBeenCalledWith('org', rid(2), rid(9));
   expect(fixture!.nativeElement.querySelector('h1').textContent).toContain('T02');
   expect(text()).toContain('Table T02');
-  expect(text()).toContain('Session ouverte');
+  expect(text()).toContain('Service en cours');
   expect(text()).toContain('Responsable non affecté');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
@@ -154,7 +154,7 @@ it.each([
   expect(text().includes(fr.RESTAURANTS.RESPONSIBILITY.UNAVAILABLE)).toBe(!person.available);
   expect(text()).not.toContain('secret-staff-id');
   expect(text()).not.toContain(fr.RESTAURANTS.RESPONSIBILITY.UNASSIGNED);
-  expect(text()).toContain('Session ouverte');
+  expect(text()).toContain('Service en cours');
   expect(text()).not.toContain('Aucune commande pour le moment');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
@@ -168,7 +168,7 @@ it('supports a direct CLOSED session and OPEN-to-CLOSED canonical refresh', asyn
     fixture!.detectChanges();
     expect(page.session()?.status).toBe('CLOSED');
   });
-  expect(text()).toContain('Cette session est terminée');
+  expect(text()).toContain('Service terminé');
   expect(fixture!.nativeElement.querySelector('[data-testid="workspace-context"]')).toBeNull();
   expect(fixture!.nativeElement.querySelector('[data-testid="workspace-content"]')).toBeNull();
 });
@@ -317,7 +317,7 @@ it('renders the header through the real keyed HTTP client independently of the c
   request.flush({ data: sessionFixture({ orderCount: 3 }) });
   await vi.waitFor(() => {
     fixture!.detectChanges();
-    expect(text()).toContain('Session ouverte');
+    expect(text()).toContain('Service en cours');
   });
   http.expectNone((r) => /orders|items|service-areas|tables|menu/.test(r.url));
   http.verify();
@@ -325,7 +325,7 @@ it('renders the header through the real keyed HTTP client independently of the c
 it('renders a direct CLOSED read and clears a previous table immediately when route identity changes', async () => {
   api.guestSession.mockResolvedValueOnce(sessionFixture({ status: 'CLOSED' }));
   const page = await loaded();
-  expect(text()).toContain('Cette session est terminée');
+  expect(text()).toContain('Service terminé');
   api.guestSession.mockImplementation(() => new Promise(() => {}));
   params.next(convertToParamMap({ outletId: rid(2), guestSessionId: rid(10) }));
   fixture!.detectChanges();

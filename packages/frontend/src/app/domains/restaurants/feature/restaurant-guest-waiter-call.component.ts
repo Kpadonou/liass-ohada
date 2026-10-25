@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
-import { injectMutation } from '@tanstack/angular-query-experimental';
+import { injectMutation, injectQuery } from '@tanstack/angular-query-experimental';
 import type { GuestContextResponse } from '@liass-ohada/shared/restaurants';
 import { RestaurantGuestApi } from '../data-access/restaurant-guest.api';
 type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
@@ -63,6 +63,7 @@ export class RestaurantGuestWaiterCallComponent {
   private inFlight = false;
   private timer: ReturnType<typeof setInterval> | undefined;
   readonly now = signal(Date.now());
+  private readonly completedAt = signal(0);
   private readonly until = signal(0);
   private readonly identity = computed(
     () => this.scope() + ':' + (this.context().visitRef ?? 'FREE'),
@@ -81,10 +82,12 @@ export class RestaurantGuestWaiterCallComponent {
     onSuccess: (result) => {
       if (!this.alive || result.identity !== this.identity()) return;
       const r = result.body;
+      if (!r) return;
       if (r.state === 'EXPIRED' || r.state === 'VISIT_ENDED' || r.state === 'UNAVAILABLE') {
         this.ended.emit(r.state);
         return;
       }
+      this.completedAt.set(Date.now());
       this.now.set(Date.now());
       this.until.set(
         r.state === 'COOLDOWN'
@@ -105,10 +108,36 @@ export class RestaurantGuestWaiterCallComponent {
       }, 1000);
     },
   }));
-  readonly result = computed(() =>
-    this.request.data()?.identity === this.identity() ? this.request.data()!.body : null,
-  );
-  readonly waiting = computed(() => !!this.result() && this.until() > this.now());
+  readonly status = injectQuery(() => ({
+    queryKey: [
+      'restaurants-guest',
+      'submissions',
+      [this.scope(), this.context().visitRef, this.context().guestHandle].join(':'),
+    ],
+    queryFn: () => this.api.submissionState(this.context().capability),
+    staleTime: 15_000,
+    retry: false,
+    gcTime: 0,
+  }));
+  readonly result = computed(() => {
+    const status = this.status.data();
+    if (
+      this.request.data()?.identity === this.identity() &&
+      this.status.dataUpdatedAt() <= this.completedAt()
+    )
+      return this.request.data()!.body;
+    return status?.state === 'READY' ? (status.waiterCall ?? null) : null;
+  });
+  readonly waiting = computed(() => {
+    const result = this.result();
+    const until =
+      result?.state === 'REQUESTED'
+        ? Date.parse(result.requestedAt) + 600_000
+        : result?.state === 'ACKNOWLEDGED'
+          ? Date.parse(result.acknowledgedAt) + 60_000
+          : this.until();
+    return !!result && until > this.now();
+  });
   readonly remaining = computed(() => Math.max(0, Math.ceil((this.until() - this.now()) / 1000)));
   constructor() {
     effect(() => {

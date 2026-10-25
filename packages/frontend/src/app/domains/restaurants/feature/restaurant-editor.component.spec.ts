@@ -273,4 +273,22 @@ describe('Restaurant configuration dialogs', () => {
     f.detectChanges();
     expect(ref.close).toHaveBeenCalled();
   });
+  it.each(['DISABLED', 'DIRECT', 'STAFF_APPROVAL'] as const)(
+    'displays and saves existing %s through the restaurant settings path',
+    async (policy) => {
+      const f = await create({
+        org: 'org',
+        kind: 'restaurant',
+        context: {},
+        entity: { ...row('restaurant'), guestOrderingPolicy: policy },
+      });
+      expect(f.componentInstance.form.controls.policy.value).toBe(policy);
+      await f.componentInstance.submit();
+      expect(api.save.mock.calls[0][3]).toMatchObject({ guestOrderingPolicy: policy });
+    },
+  );
+  it('recommends DIRECT for an intentional new configuration without changing existing DISABLED', async () => {
+    const f = await create({ org: 'org', kind: 'restaurant', context: {} });
+    expect(f.componentInstance.form.controls.policy.value).toBe('DIRECT');
+  });
 });

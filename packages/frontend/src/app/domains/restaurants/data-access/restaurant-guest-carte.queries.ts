@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpContext, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
 import { GuestCarteResponse, GuestCarteResponseSchema } from '@liass-ohada/shared/restaurants';
+import { RestaurantGuestApi } from './restaurant-guest.api';
 import { environment } from '../../../../environments/environment';
 import { GUEST_CAPABILITY_REQUEST } from '../../../core/http/guest-request-context';
 
@@ -14,7 +15,24 @@ export const guestCarteKey = (scope: string, handle: string) =>
 @Injectable({ providedIn: 'root' })
 export class RestaurantGuestCarteApi {
   private readonly http = inject(HttpClient);
+  private readonly guest = inject(RestaurantGuestApi);
   async read(
+    capability: string,
+    cursor?: string,
+    previous?: GuestCartePage,
+  ): Promise<GuestCartePage> {
+    let page: GuestCartePage | undefined;
+    const body = await this.guest.withRecovery(capability, async (next) => {
+      page = await this.rawRead(
+        next,
+        next === capability ? cursor : undefined,
+        next === capability ? previous : undefined,
+      );
+      return page.body;
+    });
+    return page?.body === body ? page : { body, etag: page?.etag };
+  }
+  private async rawRead(
     capability: string,
     cursor?: string,
     previous?: GuestCartePage,

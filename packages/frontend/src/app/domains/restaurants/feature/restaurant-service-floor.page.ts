@@ -177,6 +177,16 @@ export class RestaurantServiceFloorPage {
           .sort((a, b) => a.requestedAt.localeCompare(b.requestedAt))
       : [],
   );
+  readonly preServiceRequests = computed(() =>
+    this.allowed() && !this.activity.isError()
+      ? (this.activity.data()?.pages.flatMap((p) => p.preServiceRequests ?? []) ?? []).filter(
+          (r) => Date.parse(r.operationalExpiresAt) > this.now(),
+        )
+      : [],
+  );
+  hasPreServiceOrder(tableId: string) {
+    return this.preServiceRequests().some((r) => r.tableId === tableId);
+  }
   readonly acknowledgement = injectMutation(() => ({
     mutationKey: ['restaurants', 'acknowledge-waiter-call'],
     mutationFn: async (input: {

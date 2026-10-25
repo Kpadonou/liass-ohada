@@ -4,7 +4,10 @@ export const GuestQrTokenSchema = z
   .string()
   .regex(/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/);
 export const GuestResolveRequestSchema = z
-  .object({ token: GuestQrTokenSchema })
+  .object({
+    token: GuestQrTokenSchema,
+    previousCapability: z.string().min(100).max(4096).optional(),
+  })
   .strict();
 export const GuestRenewRequestSchema = z.object({}).strict();
 export const GuestCapabilitySchema = z.string().min(100).max(4096);

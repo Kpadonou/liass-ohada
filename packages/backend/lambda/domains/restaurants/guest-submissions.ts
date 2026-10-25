@@ -18,7 +18,12 @@ import { RestaurantTransactionsService as Engine } from "./transaction-service";
 import { WaiterCalls } from "./waiter-call";
 import { restaurantsTableName } from "./restaurant-storage";
 
-type Scope = { orgId: string; outletId: string; sessionId: string };
+type Scope = {
+  orgId: string;
+  outletId: string;
+  sessionId?: string;
+  tableId?: string;
+};
 type Key = { PK: string; SK: string };
 const item = z
   .object({
@@ -36,7 +41,10 @@ const Row = z
     schemaVersion: z.literal(1),
     orgId: z.string(),
     outletId: z.string().uuid(),
-    sessionId: z.string().uuid(),
+    sessionId: z.string().uuid().optional(),
+    areaId: z.string().uuid().optional(),
+    qrFingerprint: z.string().optional(),
+    preService: z.boolean().optional(),
     tableId: z.string().uuid(),
     guestHandle: z.string(),
     fingerprint: z.string(),
@@ -92,19 +100,29 @@ export class GuestSubmissions {
     return r.Item ? unmarshall(r.Item) : undefined;
   }
   static key(s: Scope, r: string) {
-    return K.restaurantGuestRequestKey(s.orgId, s.outletId, s.sessionId, r);
+    return s.sessionId
+      ? K.restaurantGuestRequestKey(s.orgId, s.outletId, s.sessionId, r)
+      : K.restaurantPreServiceRequestKey(s.orgId, s.outletId, s.tableId!, r);
   }
-  static async row(s: Scope, r: string) {
+  static coordKey(s: Scope) {
+    return s.sessionId
+      ? K.restaurantGuestRequestCoordKey(s.orgId, s.outletId, s.sessionId)
+      : K.restaurantPreServiceCoordKey(s.orgId, s.outletId, s.tableId!);
+  }
+  static async row(s: Scope, r: string): Promise<RequestRow | undefined> {
     const raw = await this.raw(this.key(s, r));
     if (!raw) return undefined;
     const v = Row.parse(raw);
     if (
       v.orgId !== s.orgId ||
       v.outletId !== s.outletId ||
-      v.sessionId !== s.sessionId ||
+      (s.sessionId ? v.sessionId !== s.sessionId : v.tableId !== s.tableId) ||
       v.data.requestId !== r
     )
       return fail();
+    // The original pre-service item remains an immutable ownership/idempotency link.
+    if (!s.sessionId && v.sessionId)
+      return this.row({ ...s, sessionId: v.sessionId }, r);
     return v;
   }
   static put(key: Key, value: object, version?: number): TransactWriteItem {
@@ -123,9 +141,7 @@ export class GuestSubmissions {
     };
   }
   static async rows(s: Scope) {
-    const raw = await this.raw(
-      K.restaurantGuestRequestCoordKey(s.orgId, s.outletId, s.sessionId),
-    );
+    const raw = await this.raw(this.coordKey(s));
     const coord = raw ? Coord.parse(raw) : undefined;
     return {
       coord,
@@ -138,14 +154,16 @@ export class GuestSubmissions {
     return c.GuestOrderRequestSchema.parse({
       ...r.data,
       state:
-        ["PENDING_APPROVAL", "PROCESSING"].includes(r.data.state) &&
+        ["PENDING_SERVICE", "PENDING_APPROVAL", "PROCESSING"].includes(
+          r.data.state,
+        ) &&
         (!valid || Date.parse(r.data.expiresAt) <= Date.now())
           ? "EXPIRED"
           : r.data.state,
     });
   }
   static async policy(s: Scope, policyVersion?: number) {
-    const session = await Engine.session(s, s.sessionId);
+    const session = await Engine.session(s, s.sessionId!);
     const root = await Config.get(s.orgId, "restaurant", {});
     return (
       session.data.status === "OPEN" &&
@@ -159,12 +177,35 @@ export class GuestSubmissions {
     const verified = await GuestService.verify(capability);
     if (!("principal" in verified)) return verified;
     const { principal: p, context } = verified;
-    if (!p.sessionId) return { state: "NOT_ALLOWED" as const };
     const mode = context.root.guestOrderingPolicy;
-    const s = { orgId: p.orgId, outletId: p.outletId, sessionId: p.sessionId };
-    const requestId = id([s, p.guestHandle, request.clientRequestId]);
+    const s = {
+      orgId: p.orgId,
+      outletId: p.outletId,
+      sessionId: p.sessionId,
+      tableId: p.tableId,
+    };
+    const preScope = {
+      orgId: p.orgId,
+      outletId: p.outletId,
+      tableId: p.tableId,
+    };
+    const preId = id([preScope, p.guestHandle, request.clientRequestId]);
+    const preExisting = p.sessionId
+      ? await this.row(preScope, preId)
+      : undefined;
+    if (preExisting && preExisting.sessionId !== p.sessionId)
+      return { state: "REVIEW_REQUIRED" as const };
+    const requestId = preExisting
+      ? preId
+      : p.sessionId
+        ? id([
+            { orgId: p.orgId, outletId: p.outletId, sessionId: p.sessionId },
+            p.guestHandle,
+            request.clientRequestId,
+          ])
+        : preId;
     const fingerprint = hash(request);
-    const previous = await this.row(s, requestId);
+    const previous = preExisting ?? (await this.row(s, requestId));
     if (
       previous &&
       (previous.guestHandle !== p.guestHandle ||
@@ -179,6 +220,15 @@ export class GuestSubmissions {
     if (!p.rights.includes("ORDER_SUBMIT") || mode === "DISABLED")
       return { state: "NOT_ALLOWED" as const };
     if (previous) {
+      if (previous.data.state === "PENDING_SERVICE")
+        return {
+          state: "CONFIRMED" as const,
+          request: this.projection(
+            previous,
+            previous.policyVersion === context.root.version &&
+              previous.mode === mode,
+          ),
+        };
       if (previous.mode === "DIRECT")
         return this.acceptDirect(capability, previous);
       return {
@@ -276,6 +326,8 @@ export class GuestSubmissions {
           old.guestHandle !== p.guestHandle
         )
           return { state: "REVIEW_REQUIRED" as const };
+        if (old.data.state === "PENDING_SERVICE")
+          return { state: "CONFIRMED" as const, request: this.projection(old) };
         if (old.mode === "DIRECT") return this.acceptDirect(capability, old);
         return {
           state: "CONFIRMED" as const,
@@ -289,7 +341,9 @@ export class GuestSubmissions {
       const now = Date.now();
       const pending = rows.filter(
         (r) =>
-          ["PENDING_APPROVAL", "PROCESSING"].includes(r.data.state) &&
+          ["PENDING_SERVICE", "PENDING_APPROVAL", "PROCESSING"].includes(
+            r.data.state,
+          ) &&
           r.policyVersion === context.root.version &&
           Date.parse(r.data.expiresAt) > now,
       );
@@ -314,15 +368,20 @@ export class GuestSubmissions {
             Math.ceil((5000 - now + rate.at) / 1000),
           ),
         };
-      const session = await Engine.session(s, s.sessionId);
-      if (session.data.status !== "OPEN")
+      const session = s.sessionId
+        ? await Engine.session(s, s.sessionId)
+        : undefined;
+      if (session && session.data.status !== "OPEN")
         return { state: "VISIT_ENDED" as const };
       const data = c.GuestOrderRequestSchema.parse({
         requestId,
-        state: mode === "DIRECT" ? "PROCESSING" : "PENDING_APPROVAL",
-        ...(mode === "DIRECT"
-          ? { mode, clientRequestId: request.clientRequestId }
-          : {}),
+        state: !session
+          ? "PENDING_SERVICE"
+          : mode === "DIRECT"
+            ? "PROCESSING"
+            : "PENDING_APPROVAL",
+        mode,
+        clientRequestId: request.clientRequestId,
         submittedAt: new Date(now).toISOString(),
         expiresAt: new Date(
           mode === "DIRECT"
@@ -336,11 +395,14 @@ export class GuestSubmissions {
         schemaVersion: 1,
         ...s,
         tableId: p.tableId,
+        areaId: p.areaId,
+        qrFingerprint: p.qrFingerprint,
+        ...(!session ? { preService: true } : {}),
         guestHandle: p.guestHandle,
         fingerprint,
         policyVersion: context.root.version,
         mode,
-        ...(mode === "DIRECT"
+        ...(mode === "DIRECT" && session
           ? {
               orderId: id([requestId, "order"]),
               directStage: Engine.stageGuestOrder(
@@ -365,7 +427,7 @@ export class GuestSubmissions {
       const actions: TransactWriteItem[] = [
         this.put(this.key(s, requestId), row),
         this.put(
-          K.restaurantGuestRequestCoordKey(s.orgId, s.outletId, s.sessionId),
+          this.coordKey(s),
           {
             entityType: "RESTAURANT_GUEST_REQUEST_COORD",
             ...s,
@@ -384,23 +446,55 @@ export class GuestSubmissions {
           },
           rate?.version,
         ),
-        {
-          ConditionCheck: {
-            TableName: restaurantsTableName(),
-            Key: marshall({ PK: session.PK, SK: session.SK }),
-            ConditionExpression: "#d.#v = :v AND #d.#s = :s",
-            ExpressionAttributeNames: {
-              "#d": "data",
-              "#v": "version",
-              "#s": "status",
+        session
+          ? {
+              ConditionCheck: {
+                TableName: restaurantsTableName(),
+                Key: marshall({ PK: session.PK, SK: session.SK }),
+                ConditionExpression: "#d.#v = :v AND #d.#s = :s",
+                ExpressionAttributeNames: {
+                  "#d": "data",
+                  "#v": "version",
+                  "#s": "status",
+                },
+                ExpressionAttributeValues: marshall({
+                  ":v": session.data.version,
+                  ":s": "OPEN",
+                }),
+              },
+            }
+          : {
+              ConditionCheck: {
+                TableName: restaurantsTableName(),
+                Key: marshall({
+                  PK: K.restaurantOccupancyPK(s.orgId, s.outletId, p.tableId),
+                  SK: K.restaurantOccupancySK(),
+                }),
+                ConditionExpression: "attribute_not_exists(PK)",
+              },
             },
-            ExpressionAttributeValues: marshall({
-              ":v": session.data.version,
-              ":s": "OPEN",
-            }),
-          },
-        },
       ];
+      if (!session)
+        actions.push(
+          this.put(
+            K.restaurantWaiterActivityKey(
+              s.orgId,
+              s.outletId,
+              data.submittedAt,
+              requestId,
+            ),
+            {
+              entityType: "RESTAURANT_GUEST_PRE_SERVICE_ACTIVITY",
+              orgId: s.orgId,
+              outletId: s.outletId,
+              tableId: p.tableId,
+              tableName: context.table.name.trim() || context.table.code,
+              requestId,
+              requestedAt: data.submittedAt,
+              operationalExpiresAt: data.expiresAt,
+            },
+          ),
+        );
       if (mode === "DIRECT")
         actions.push({
           ConditionCheck: {
@@ -434,7 +528,8 @@ export class GuestSubmissions {
         await dynamoClient.send(
           new TransactWriteItemsCommand({ TransactItems: actions }),
         );
-        if (mode === "DIRECT") return await this.acceptDirect(capability, row);
+        if (mode === "DIRECT" && session)
+          return await this.acceptDirect(capability, row);
         return { state: "CONFIRMED" as const, request: data };
       } catch (e) {
         if (!conflict(e)) throw e;
@@ -467,6 +562,7 @@ export class GuestSubmissions {
         request: this.projection(row, false),
       };
     if (
+      !row.sessionId ||
       row.mode !== "DIRECT" ||
       row.data.state !== "PROCESSING" ||
       !row.directStage ||
@@ -571,7 +667,7 @@ export class GuestSubmissions {
     };
   }
   private static async directStatus(row: RequestRow) {
-    if (!row.orderId || !row.directStage) return fail();
+    if (!row.orderId || !row.directStage || !row.sessionId) return fail();
     const scope = { orgId: row.orgId, outletId: row.outletId };
     const order = await Engine.order(scope, row.orderId);
     if (
@@ -647,19 +743,183 @@ export class GuestSubmissions {
       })),
     });
   }
+  /** Included in the canonical opening transaction: no orphan can migrate after opening. */
+  static async bindOpening(
+    session: c.GuestSession,
+  ): Promise<TransactWriteItem[]> {
+    const pre = {
+      orgId: session.orgId,
+      outletId: session.outletId,
+      tableId: session.tableId,
+    };
+    const { coord, rows } = await this.rows(pre);
+    if (!coord)
+      return [
+        {
+          ConditionCheck: {
+            TableName: restaurantsTableName(),
+            Key: marshall(this.coordKey(pre)),
+            ConditionExpression: "attribute_not_exists(PK)",
+          },
+        },
+      ];
+    const root = await Config.get(session.orgId, "restaurant", {});
+    const table = await Config.get(
+      session.orgId,
+      "table",
+      { outletId: session.outletId, serviceAreaId: session.areaId },
+      session.tableId,
+    );
+    const qrFingerprint =
+      table?.qrToken && !table.qrRevoked
+        ? createHash("sha256").update(table.qrToken).digest("hex")
+        : undefined;
+    const actions: TransactWriteItem[] = [];
+    const bound: string[] = [];
+    for (const row of rows) {
+      if (row.sessionId) continue;
+      const valid =
+        row.data.state === "PENDING_SERVICE" &&
+        Date.parse(row.data.expiresAt) > Date.now() &&
+        row.areaId === session.areaId &&
+        !!qrFingerprint &&
+        row.qrFingerprint === qrFingerprint &&
+        root?.data.isActive &&
+        root.data.guestOrderingPolicy === row.mode &&
+        root.data.version === row.policyVersion;
+      const next: RequestRow = {
+        ...row,
+        version: row.version + 1,
+        ...(valid ? { sessionId: session.guestSessionId } : {}),
+        data: {
+          ...row.data,
+          state: valid
+            ? row.mode === "DIRECT"
+              ? "PROCESSING"
+              : "PENDING_APPROVAL"
+            : "EXPIRED",
+        },
+      };
+      if (valid && row.mode === "DIRECT") {
+        next.orderId = id([row.data.requestId, "order"]);
+        next.directStage = Engine.stageGuestOrder(
+          { ...pre, actorId: "guest:" + row.guestHandle },
+          session,
+          next.orderId,
+          row.items.map((ref, i) => ({
+            itemId: id([row.data.requestId, "line", i]),
+            menuItemId: ref.itemId,
+            categoryId: ref.categoryId,
+            quantity: row.data.lines[i].quantity,
+            notes: row.data.lines[i].note,
+            expectedMenuItemVersion: ref.itemVersion,
+          })),
+        );
+      }
+      actions.push(
+        this.put(this.key(pre, row.data.requestId), next, row.version),
+      );
+      if (valid) {
+        bound.push(row.data.requestId);
+        actions.push(
+          this.put(
+            this.key(
+              { ...pre, sessionId: session.guestSessionId },
+              row.data.requestId,
+            ),
+            next,
+          ),
+        );
+      }
+      actions.push({
+        Delete: {
+          TableName: restaurantsTableName(),
+          Key: marshall(
+            K.restaurantWaiterActivityKey(
+              pre.orgId,
+              pre.outletId,
+              row.data.submittedAt,
+              row.data.requestId,
+            ),
+          ),
+        },
+      });
+    }
+    // Reclaim the bounded pre-service window. Old request keys stay for idempotency only.
+    actions.push(
+      this.put(
+        this.coordKey(pre),
+        {
+          entityType: "RESTAURANT_GUEST_REQUEST_COORD",
+          ...pre,
+          version: coord.version + 1,
+          ids: [],
+        },
+        coord.version,
+      ),
+    );
+    if (bound.length)
+      actions.push(
+        this.put(this.coordKey({ ...pre, sessionId: session.guestSessionId }), {
+          entityType: "RESTAURANT_GUEST_REQUEST_COORD",
+          ...pre,
+          sessionId: session.guestSessionId,
+          version: 1,
+          ids: bound,
+        }),
+      );
+    return actions;
+  }
+  /** Retryable from opening replay and owned-state reads after a lost response. */
+  static async continueOpening(session: c.GuestSession) {
+    for (const row of (
+      await this.rows({
+        orgId: session.orgId,
+        outletId: session.outletId,
+        sessionId: session.guestSessionId,
+      })
+    ).rows) {
+      if (
+        row.preService &&
+        row.mode === "DIRECT" &&
+        row.data.state === "PROCESSING"
+      )
+        await this.continueBound(row);
+    }
+  }
+  private static async continueBound(row: RequestRow) {
+    const capability = await GuestService.boundCapability(row);
+    if (!capability) return this.projection(row, false);
+    return this.acceptDirect(capability, row);
+  }
   static async own(capability: string) {
     const v = await GuestService.verify(capability);
     if (!("principal" in v)) return v;
     const p = v.principal;
-    if (!p.sessionId) return { state: "NOT_ALLOWED" as const };
-    const s = { orgId: p.orgId, outletId: p.outletId, sessionId: p.sessionId };
+
+    const s = {
+      orgId: p.orgId,
+      outletId: p.outletId,
+      sessionId: p.sessionId,
+      tableId: p.tableId,
+    };
     const { rows } = await this.rows(s);
     return {
       state: "READY" as const,
+      waiterCall: await WaiterCalls.own(capability),
       requests: await Promise.all(
         rows
           .filter((r) => r.guestHandle === p.guestHandle)
           .map(async (r) => {
+            if (
+              r.preService &&
+              r.mode === "DIRECT" &&
+              r.data.state === "PROCESSING"
+            ) {
+              const result = await this.continueBound(r);
+              if ("request" in result && result.request) return result.request;
+              return this.projection(r, false);
+            }
             const projected = this.projection(
               r,
               v.context.root.guestOrderingPolicy === r.mode &&
@@ -723,7 +983,7 @@ export class GuestSubmissions {
                   K.restaurantGuestRequestAuditKey(
                     s.orgId,
                     s.outletId,
-                    s.sessionId,
+                    s.sessionId!,
                     requestId,
                   ),
                   {
@@ -770,7 +1030,7 @@ export class GuestSubmissions {
           },
           { orderId },
           {
-            sessionId: s.sessionId,
+            sessionId: s.sessionId!,
             expiresAt: row.data.expiresAt,
             policyVersion: row.policyVersion,
             lines,

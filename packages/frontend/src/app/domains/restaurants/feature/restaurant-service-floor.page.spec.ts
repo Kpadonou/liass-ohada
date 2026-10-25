@@ -221,7 +221,7 @@ it('prevents duplicate in-flight opens without a confirmation', async () => {
   await page.open(floorFixture().items[0]);
   expect(api.openSession).toHaveBeenCalledTimes(1);
   fixture.detectChanges();
-  expect(fixture.nativeElement.textContent).toContain('Ouverture de la table');
+  expect(fixture.nativeElement.textContent).toContain('Ouverture du service');
   resolve({ data: {} });
   await pending;
 });
@@ -551,7 +551,7 @@ it('auto-selects one complete assigned outlet, reads no generic restaurant/outle
   ).toBe(true);
   expect(fixture.nativeElement.querySelector('[data-testid="floor-grid"]')).not.toBeNull();
   expect(
-    fixture.nativeElement.querySelector('button[aria-label="Ouvrir la table T01"]'),
+    fixture.nativeElement.querySelector('button[aria-label="Ouvrir le service T01"]'),
   ).not.toBeNull();
   expect(
     fixture.nativeElement.querySelector('button[aria-label^="Actions de la table"]'),
@@ -1102,4 +1102,29 @@ it('no activity actions appear without operational service permission', async ()
   fixture.detectChanges();
   expect(fixture.nativeElement.querySelector('[data-testid=waiter-calls]')).toBeNull();
   expect(api.guestActivity).not.toHaveBeenCalled();
+});
+
+it('FREE first QR order is visible with the normal service-opening action, separate from waiter calls', async () => {
+  api.guestActivity.mockResolvedValue({
+    items: [],
+    preServiceRequests: [
+      {
+        requestId: rid(96),
+        tableId: rid(6),
+        tableName: 'T01',
+        requestedAt: new Date().toISOString(),
+        operationalExpiresAt: new Date(Date.now() + 900000).toISOString(),
+      },
+    ],
+  });
+  const page = await ready();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.hasPreServiceOrder(rid(6))).toBe(true);
+  });
+  expect(fixture.nativeElement.textContent).toContain('Nouvelle commande QR');
+  expect(fixture.nativeElement.textContent).toContain('En attente d’ouverture du service');
+  expect(fixture.nativeElement.textContent).toContain('Ouvrir le service');
+  expect(page.calls()).toHaveLength(0);
+  expect(api.acknowledgeWaiterCall).not.toHaveBeenCalled();
 });

@@ -71,3 +71,31 @@ test('restaurant dashboard naming is consistent in page, navigation and breadcru
     assert.equal(translations[language].RESTAURANTS.UI.NAV.OVERVIEW, title);
   }
 });
+
+test('Restaurants service lifecycle copy never exposes Visit/Visite terminology', () => {
+  for (const language of ['fr', 'en']) {
+    for (const [key, value] of leaves(translations[language].RESTAURANTS)) {
+      assert.doesNotMatch(value, /\bvisits?\b|\bvisites?\b/i, key);
+    }
+  }
+});
+test('Guest lifecycle has manual refresh and no periodic network scheduler', () => {
+  for (const file of [
+    'feature/restaurant-guest.page.ts',
+    'data-access/restaurant-guest-submissions.ts',
+    'data-access/restaurant-guest.api.ts',
+    'data-access/restaurant-guest-carte.queries.ts',
+  ]) {
+    const source = readFileSync(
+      new URL(`../src/app/domains/restaurants/${file}`, import.meta.url),
+      'utf8',
+    );
+    assert.doesNotMatch(source, /setInterval|refetchInterval|\binterval\s*\(/);
+  }
+  const page = readFileSync(
+    new URL('../src/app/domains/restaurants/feature/restaurant-guest.page.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(page, /RESTAURANTS\.GUEST\.REFRESH/);
+  assert.doesNotMatch(page, /location\.reload/);
+});

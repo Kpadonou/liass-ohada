@@ -29,6 +29,7 @@ describe('Guest entry without the staff shell', () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
+    api.resolve.mockResolvedValue({ state: 'UNAVAILABLE' });
     api.submissionState.mockResolvedValue({ state: 'READY', requests: [] });
     sessionStorage.clear();
     client = new QueryClient({ defaultOptions: { mutations: { retry: false, gcTime: 0 } } });
@@ -75,7 +76,7 @@ describe('Guest entry without the staff shell', () => {
       expect(f.nativeElement.querySelector('liass-app-shell')).toBeNull();
       expect(f.nativeElement.querySelector('nav')).toBeNull();
       expect(f.nativeElement.textContent).not.toContain('Commander');
-      expect(f.nativeElement.querySelectorAll('button')).toHaveLength(state === 'OCCUPIED' ? 3 : 2);
+      expect(f.nativeElement.querySelectorAll('button')).toHaveLength(4);
       expect(sessionStorage.length).toBe(1);
     },
   );
@@ -94,9 +95,10 @@ describe('Guest entry without the staff shell', () => {
       await vi.waitFor(() => {
         f.detectChanges();
         expect(f.componentInstance.request.isSuccess()).toBe(true);
-        expect(f.componentInstance.state()).toBe(state);
+        expect(f.componentInstance.state()).toBe(state === 'EXPIRED' ? 'UNAVAILABLE' : state);
       });
-      expect(api.resolve).not.toHaveBeenCalled();
+      if (state === 'VISIT_ENDED') expect(api.resolve).not.toHaveBeenCalled();
+      else expect(api.resolve).toHaveBeenCalledExactlyOnceWith(token, 'c'.repeat(100));
       expect(sessionStorage.getItem(key)).toBeNull();
     },
   );
@@ -126,5 +128,52 @@ describe('Guest entry without the staff shell', () => {
     await vi.waitFor(() => expect(fixture.componentInstance.state()).toBe('VISIT_ENDED'));
     expect(cart.contextStatus()).toBe('VISIT_ENDED');
     expect(cart.lines()).toHaveLength(1);
+  });
+  it('manual lifecycle refresh reads new service and own request state while preserving Cart', async () => {
+    api.resolve.mockResolvedValue(response('FREE'));
+    const f = TestBed.createComponent(RestaurantGuestPage);
+    f.detectChanges();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.context()?.state).toBe('FREE');
+    });
+    const cart = TestBed.inject(RestaurantGuestCartStore);
+    const key = await guestStorageKey(token);
+    cart.activate(key, response('FREE') as never);
+    cart.add(
+      {
+        reference: 'r'.repeat(43),
+        selectionRef: 's'.repeat(200),
+        name: 'Eau',
+        amountMinor: 1000,
+        availability: 'AVAILABLE',
+      },
+      'XOF',
+      new Date(Date.now() + 900000).toISOString(),
+    );
+    const intent = cart.lines().map((l) => ({ name: l.name, quantity: l.quantity, note: l.note }));
+    api.renew.mockResolvedValue({ state: 'EXPIRED' });
+    api.resolve.mockResolvedValue(response('OCCUPIED'));
+    api.submissionState.mockResolvedValue({
+      state: 'READY',
+      requests: [],
+      waiterCall: {
+        state: 'ACKNOWLEDGED',
+        requestedAt: new Date().toISOString(),
+        acknowledgedAt: new Date().toISOString(),
+      },
+    });
+    api.submissionState.mockClear();
+    await f.componentInstance.refresh();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.context()?.state).toBe('OCCUPIED');
+      expect(api.submissionState).toHaveBeenCalled();
+    });
+    expect(cart.lines().map((l) => ({ name: l.name, quantity: l.quantity, note: l.note }))).toEqual(
+      intent,
+    );
+    expect(f.nativeElement.textContent).toContain('Actualiser');
+    f.destroy();
   });
 });

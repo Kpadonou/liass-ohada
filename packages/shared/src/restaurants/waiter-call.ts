@@ -37,6 +37,20 @@ export const WaiterCallActivitySchema = z
 export const GuestActivityResponseSchema = z
   .object({
     items: z.array(WaiterCallActivitySchema).max(100),
+    preServiceRequests: z
+      .array(
+        z
+          .object({
+            requestId: z.string().uuid(),
+            tableId: z.string().uuid(),
+            tableName: z.string().min(1).max(160),
+            requestedAt: z.string().datetime(),
+            operationalExpiresAt: z.string().datetime(),
+          })
+          .strict(),
+      )
+      .max(100)
+      .optional(),
     nextCursor: z.string().max(2000).optional(),
   })
   .strict();

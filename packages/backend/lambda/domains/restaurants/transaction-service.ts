@@ -343,6 +343,7 @@ export class RestaurantTransactionsService {
         expectedMenuItemVersion: number;
       }[];
     },
+    openingAttempt = 0,
   ): Promise<{ data: Business }> {
     if (guestApproval && command !== "SUBMIT_ORDER")
       throw new Error("Invalid approval boundary");
@@ -587,6 +588,12 @@ export class RestaurantTransactionsService {
         result: "REPLAYED",
         latencyMs: Date.now() - startedAt,
       });
+      if (command === "OPEN_SESSION")
+        await (
+          await import("./guest-submissions")
+        ).GuestSubmissions.continueOpening(
+          contracts.GuestSessionSchema.parse(prior),
+        );
       return { data: prior };
     }
     if (
@@ -1415,6 +1422,14 @@ export class RestaurantTransactionsService {
       },
       activity,
     );
+    if (command === "OPEN_SESSION")
+      actions.push(
+        ...(await (
+          await import("./guest-submissions")
+        ).GuestSubmissions.bindOpening(
+          contracts.GuestSessionSchema.parse(result),
+        )),
+      );
     if (!direct)
       put("COMMAND", commandKey, {
         commandId,
@@ -1495,8 +1510,31 @@ export class RestaurantTransactionsService {
         await RestaurantServiceAccess.authorize(ctx, ctx.actorId);
       await authorizeOrderScope();
       const committed = await replay();
-      if (committed) return { data: committed };
+      if (committed) {
+        if (command === "OPEN_SESSION")
+          await (
+            await import("./guest-submissions")
+          ).GuestSubmissions.continueOpening(
+            contracts.GuestSessionSchema.parse(committed),
+          );
+        return { data: committed };
+      }
       const name = error instanceof Error ? error.name : "";
+      // A first QR submission may race the opening snapshot. Retry the same canonical
+      // command with fresh coordination; occupancy/idempotency still arbitrate one session.
+      if (
+        command === "OPEN_SESSION" &&
+        openingAttempt < 2 &&
+        name === "TransactionCanceledException"
+      )
+        return this.mutate(
+          ctx,
+          command,
+          input,
+          ids,
+          undefined,
+          openingAttempt + 1,
+        );
       const reasons =
         error &&
         typeof error === "object" &&
@@ -1558,6 +1596,12 @@ export class RestaurantTransactionsService {
       commandId,
       latencyMs: Date.now() - startedAt,
     });
+    if (command === "OPEN_SESSION")
+      await (
+        await import("./guest-submissions")
+      ).GuestSubmissions.continueOpening(
+        contracts.GuestSessionSchema.parse(result),
+      );
     return { data: result };
   }
   static async allLines(

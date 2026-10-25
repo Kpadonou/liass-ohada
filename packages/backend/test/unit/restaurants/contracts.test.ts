@@ -95,3 +95,34 @@ describe("RESTO-1 strict public contracts", () => {
     ).toBe(false);
   });
 });
+
+test("pre-service contracts expose intent state without tenant/session selectors", () => {
+  const request = c.GuestOrderRequestSchema.parse({
+    requestId: "00000000-0000-4000-8000-000000000001",
+    state: "PENDING_SERVICE",
+    submittedAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 900000).toISOString(),
+    lines: [
+      { name: "Eau", quantity: 1, note: "", amountMinor: 500, currency: "XOF" },
+    ],
+  });
+  expect(request.state).toBe("PENDING_SERVICE");
+  expect(
+    c.GuestOrderRequestSchema.safeParse({
+      ...request,
+      sessionId: "00000000-0000-4000-8000-000000000002",
+    }).success,
+  ).toBe(false);
+  expect(
+    c.GuestResolveRequestSchema.safeParse({
+      token: "A".repeat(43),
+      previousCapability: "c".repeat(100),
+    }).success,
+  ).toBe(true);
+  expect(
+    c.GuestResolveRequestSchema.safeParse({
+      token: "A".repeat(43),
+      guestHandle: "a".repeat(22),
+    }).success,
+  ).toBe(false);
+});

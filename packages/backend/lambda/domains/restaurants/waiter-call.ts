@@ -124,6 +124,29 @@ export class WaiterCalls {
       sessionId: context.sessionId,
     });
   }
+  static async own(capability: string) {
+    const verified = await GuestService.verify(capability);
+    if (!("principal" in verified)) return verified;
+    const p = verified.principal;
+    const call = await this.read(
+      p,
+      K.restaurantWaiterSlotKey(p.orgId, p.outletId, p.tableId),
+    );
+    if (!call || call.tableId !== p.tableId || call.areaId !== p.areaId)
+      return undefined;
+    if (call.status === "REQUESTED" && call.operationalExpiresAt > Date.now())
+      return GuestWaiterCallResponseSchema.parse({
+        state: "REQUESTED",
+        requestedAt: call.requestedAt,
+      });
+    if (call.status === "ACKNOWLEDGED")
+      return GuestWaiterCallResponseSchema.parse({
+        state: "ACKNOWLEDGED",
+        requestedAt: call.requestedAt,
+        acknowledgedAt: call.acknowledgedAt,
+      });
+    return undefined;
+  }
   static async create(
     scope: Scope,
     table: {
@@ -226,7 +249,7 @@ export class WaiterCalls {
         KeyConditionExpression: "PK = :pk AND SK BETWEEN :lo AND :hi",
         ExpressionAttributeValues: marshall({
           ":pk": PK,
-          ":lo": new Date(now - 600000).toISOString(),
+          ":lo": new Date(now - 900000).toISOString(),
           ":hi": new Date(now).toISOString() + "~",
         }),
         Limit: 100,
@@ -234,8 +257,25 @@ export class WaiterCalls {
         ...(start ? { ExclusiveStartKey: marshall(start) } : {}),
       }),
     );
-    const items = (result.Items ?? [])
-      .map((raw) => CallSchema.parse(unmarshall(raw)))
+    const records = (result.Items ?? []).map((raw) => unmarshall(raw));
+    const preServiceRequests = records
+      .filter(
+        (r) =>
+          r.entityType === "RESTAURANT_GUEST_PRE_SERVICE_ACTIVITY" &&
+          r.orgId === scope.orgId &&
+          r.outletId === scope.outletId &&
+          Date.parse(r.operationalExpiresAt) > now,
+      )
+      .map((r) => ({
+        requestId: r.requestId,
+        tableId: r.tableId,
+        tableName: r.tableName,
+        requestedAt: r.requestedAt,
+        operationalExpiresAt: r.operationalExpiresAt,
+      }));
+    const items = records
+      .filter((r) => r.entityType === "RESTAURANT_WAITER_CALL")
+      .map((raw) => CallSchema.parse(raw))
       .filter(
         (c) =>
           c.orgId === scope.orgId &&
@@ -253,6 +293,7 @@ export class WaiterCalls {
       }));
     return GuestActivityResponseSchema.parse({
       items,
+      ...(preServiceRequests.length ? { preServiceRequests } : {}),
       ...(result.LastEvaluatedKey
         ? {
             nextCursor: Buffer.from(

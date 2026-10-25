@@ -24,7 +24,10 @@ export class RestaurantGuestSubmissions {
   private restored() {
     try {
       const value = JSON.parse(sessionStorage.getItem(this.storageKey()) ?? 'null');
-      return value?.identity === this.identity()
+      return value?.identity === this.identity() ||
+        (this.cart.context()?.state === 'OCCUPIED' &&
+          value?.identity ===
+            [this.cart.storageScope(), null, this.cart.context()?.guestHandle].join(':'))
         ? GuestSubmissionRequestSchema.parse(value.body)
         : null;
     } catch {
@@ -34,16 +37,16 @@ export class RestaurantGuestSubmissions {
   readonly state = injectQuery(() => ({
     queryKey: this.key(),
     queryFn: () => this.api.submissionState(this.cart.context()!.capability),
-    enabled: this.cart.context()?.state === 'OCCUPIED',
+    enabled: !!this.cart.context(),
     staleTime: 15_000,
     retry: false,
     gcTime: 0,
   }));
   readonly canSend = computed(
     () =>
-      this.cart.context()?.state === 'OCCUPIED' &&
+      !!this.cart.context() &&
       ['STAFF_APPROVAL', 'DIRECT'].includes(this.cart.context()?.policy ?? '') &&
-      this.cart.contextStatus() === 'ACTIVE_VISIT' &&
+      ['FREE', 'ACTIVE_VISIT'].includes(this.cart.contextStatus()) &&
       this.cart.lines().length > 0 &&
       this.cart
         .lines()
@@ -72,7 +75,9 @@ export class RestaurantGuestSubmissions {
       if (identity !== this.identity()) return;
       if (
         result.state === 'CONFIRMED' &&
-        (result.request.mode !== 'DIRECT' || result.request.state === 'ACCEPTED')
+        (result.request.state === 'PENDING_SERVICE' ||
+          result.request.mode !== 'DIRECT' ||
+          result.request.state === 'ACCEPTED')
       ) {
         const current = this.cart.lines().map((l) => ({
           reference: l.reference,
@@ -117,8 +122,7 @@ export class RestaurantGuestSubmissions {
       if (!body || state?.state !== 'READY') return;
       const confirmed = state.requests.find(
         (r) =>
-          r.mode === 'DIRECT' &&
-          r.state === 'ACCEPTED' &&
+          ['PENDING_SERVICE', 'PENDING_APPROVAL', 'ACCEPTED'].includes(r.state) &&
           r.clientRequestId === body.clientRequestId,
       );
       if (!confirmed) return;
@@ -138,7 +142,7 @@ export class RestaurantGuestSubmissions {
     if (
       !this.inFlight &&
       !this.send.isPending() &&
-      this.cart.context()?.state === 'OCCUPIED' &&
+      !!this.cart.context() &&
       ['STAFF_APPROVAL', 'DIRECT'].includes(this.cart.context()?.policy ?? '') &&
       (this.canSend() || this.restored())
     ) {

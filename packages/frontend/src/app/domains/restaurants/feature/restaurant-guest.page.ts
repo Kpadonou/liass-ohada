@@ -3,7 +3,7 @@ import { Component, computed, inject, signal, DestroyRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { injectMutation } from '@tanstack/angular-query-experimental';
+import { injectMutation, QueryClient } from '@tanstack/angular-query-experimental';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
 import { GuestQrTokenSchema } from '@liass-ohada/shared/restaurants';
@@ -45,6 +45,15 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
         <p class="text-sm text-app-text-secondary" role="status" aria-live="polite">
           {{ 'RESTAURANTS.GUEST.' + c.state | transloco }}
         </p>
+        <button
+          mat-button
+          type="button"
+          class="min-h-11"
+          (click)="refresh()"
+          [disabled]="request.isPending()"
+        >
+          {{ 'RESTAURANTS.GUEST.REFRESH' | transloco }}
+        </button>
         @if (c.policy === 'DISABLED') {
           <p class="text-sm text-app-text-secondary">
             {{ 'RESTAURANTS.GUEST.DISABLED' | transloco }}
@@ -86,6 +95,7 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
   </main>`,
 })
 export class RestaurantGuestPage {
+  private readonly queryClient = inject(QueryClient);
   private readonly api = inject(RestaurantGuestApi);
   private readonly route = inject(ActivatedRoute);
   private readonly destroy = inject(DestroyRef);
@@ -111,7 +121,10 @@ export class RestaurantGuestPage {
       if (!this.alive || revision !== this.revision)
         return { result: { state: 'UNAVAILABLE' as const }, revision, key };
       const saved = fresh ? undefined : readGuest(key);
-      const result = saved ? await this.api.renew(saved.capability) : await this.api.resolve(token);
+      this.api.configureRecovery?.(token, key);
+      let result = saved ? await this.api.renew(saved.capability) : await this.api.resolve(token);
+      if (saved && (result.state === 'EXPIRED' || result.state === 'UNAVAILABLE'))
+        result = await this.api.resolve(token, saved.capability);
       if (this.alive && revision === this.revision) {
         if (result.state === 'VISIT_ENDED') this.cart.markVisitEnded();
         writeGuest(
@@ -136,12 +149,20 @@ export class RestaurantGuestPage {
         (this.request.error() as HttpErrorResponse).status === 429
         ? 'RATE_LIMITED'
         : 'NETWORK'
-      : this.request.data()?.revision === this.revision
-        ? this.request.data()!.result.state
-        : this.fallback(),
+      : this.request.data()?.revision === this.revision &&
+          this.api.recovered?.()?.token === this.token
+        ? this.api.recovered()!.result.state
+        : this.request.data()?.revision === this.revision
+          ? this.request.data()!.result.state
+          : this.fallback(),
   );
   readonly context = computed(() => {
     const value = this.request.data();
+    const recovered = this.api.recovered?.();
+    if (value?.revision === this.revision && recovered?.token === this.token)
+      return recovered.result.state === 'FREE' || recovered.result.state === 'OCCUPIED'
+        ? recovered.result
+        : null;
     return value?.revision === this.revision &&
       (value.result.state === 'FREE' || value.result.state === 'OCCUPIED')
       ? value.result
@@ -156,6 +177,10 @@ export class RestaurantGuestPage {
       this.token = params.get('opaqueTableToken') ?? '';
       void this.load(false);
     });
+  }
+  async refresh() {
+    await this.queryClient.invalidateQueries({ queryKey: ['restaurants-guest', 'submissions'] });
+    await this.load(false);
   }
   end(state: 'EXPIRED' | 'VISIT_ENDED' | 'UNAVAILABLE') {
     if (state === 'VISIT_ENDED') this.cart.markVisitEnded();

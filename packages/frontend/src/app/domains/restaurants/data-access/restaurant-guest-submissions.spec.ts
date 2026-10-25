@@ -49,7 +49,7 @@ describe('Guest submissions', () => {
     TestBed.resetTestingModule();
     client.clear();
   });
-  it.each(['FREE', 'DISABLED'])('blocks %s submission', (state) => {
+  it.each(['DISABLED'])('blocks %s submission', (state) => {
     store.activate('liass-restaurants.guest.' + 'a'.repeat(64), {
       ...context,
       ...(state === 'FREE' ? { state: 'FREE', visitRef: null } : { policy: state }),
@@ -58,6 +58,31 @@ describe('Guest submissions', () => {
     workflow.submit();
     expect(api.submissions).not.toHaveBeenCalled();
   });
+  it.each(['DIRECT', 'STAFF_APPROVAL'] as const)(
+    'FREE %s can submit and clears Cart only after durable confirmation',
+    async (policy) => {
+      store.activate('liass-restaurants.guest.' + 'b'.repeat(64), {
+        ...context,
+        state: 'FREE',
+        visitRef: null,
+        policy,
+      });
+      store.add(item, 'XOF', new Date(Date.now() + 900000).toISOString());
+      api.submissions.mockResolvedValue({
+        state: 'CONFIRMED',
+        request: { requestId: 'pending', state: 'PENDING_SERVICE', mode: policy, lines: [] },
+      });
+      TestBed.tick();
+      expect(workflow.canSend()).toBe(true);
+      workflow.submit();
+      await vi.waitFor(() => {
+        TestBed.tick();
+        expect(workflow.send.isSuccess()).toBe(true);
+      });
+      expect(api.submissions).toHaveBeenCalledTimes(1);
+      expect(store.lines()).toHaveLength(0);
+    },
+  );
   it('retains intent on uncertainty and retries exact durable idempotency key', async () => {
     api.submissions.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({
       state: 'CONFIRMED',
@@ -238,5 +263,33 @@ describe('DIRECT Guest submission workflow', () => {
     });
     expect(api.submissions).toHaveBeenCalledTimes(1);
     expect(sessionStorage.getItem(scope + '.submission.v1')).toBeNull();
+  });
+  it('reconciles an uncertain FREE submission after the same phone enters its opened service', async () => {
+    const scope = 'liass-restaurants.guest.' + 'b'.repeat(64);
+    store.activate(scope, { ...context, state: 'FREE', visitRef: null });
+    store.add(item, 'XOF', new Date(Date.now() + 900000).toISOString());
+    TestBed.tick();
+    api.submissions.mockRejectedValueOnce(new Error('uncertain response'));
+    workflow.submit();
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(workflow.send.isError()).toBe(true);
+    });
+    const body = api.submissions.mock.calls[0][1];
+    expect(store.lines()).toHaveLength(1);
+    api.submissionState.mockResolvedValue({
+      state: 'READY',
+      requests: [
+        { requestId: 'bound', clientRequestId: body.clientRequestId, state: 'PENDING_APPROVAL' },
+      ],
+    });
+    store.activate(scope, context);
+    expect(workflow.hasUncertain()).toBe(true);
+    TestBed.tick();
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(store.lines()).toHaveLength(0);
+    });
+    expect(api.submissions).toHaveBeenCalledTimes(1);
   });
 });

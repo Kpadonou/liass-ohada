@@ -92,7 +92,7 @@ test("public resolve needs no staff JWT, performs no write, and exposes only saf
     state: "FREE",
     visitRef: null,
     tableName: f.tables[0].name,
-    orderingPermitted: false,
+    orderingPermitted: true,
     waiterCallAvailable: true,
   });
   expect(Object.keys(result)).not.toEqual(
@@ -113,7 +113,7 @@ test("public resolve needs no staff JWT, performs no write, and exposes only saf
     kind: "GUEST",
     guestHandle: result.guestHandle,
   });
-  expect(claims.rights).not.toContain("ORDER_SUBMIT");
+  expect(claims.rights).toContain("ORDER_SUBMIT");
   expect(claims.exp - claims.iat).toBe(600);
   expect(memory.transactions).toHaveLength(writes);
   expect(JSON.stringify(result)).not.toContain(org);
@@ -346,7 +346,7 @@ test("tampering, staff JWT, wrong audience/environment, expiry and algorithm fai
     state: "UNAVAILABLE",
   });
   await expect(
-    sealGuest({ ...principal, rights: ["ORDER_SUBMIT"] }),
+    sealGuest({ ...principal, exp: principal.iat + 601 }),
   ).rejects.toThrow();
 });
 test("visit renewal stays below eight hours from first entry", async () => {
@@ -464,7 +464,7 @@ test("Guest principal cannot pass staff middleware; non-management staff cannot 
 });
 test("route allowlist, payload and encoding are closed, and logs do not contain secrets", async () => {
   expect((await pub("orders", {})).statusCode).toBe(404);
-  expect((await pub("resolve", { token: "s".repeat(2000) })).statusCode).toBe(
+  expect((await pub("resolve", { token: "s".repeat(7000) })).statusCode).toBe(
     400,
   );
   await pub("renew", {}, "Bearer secret-value");
@@ -656,4 +656,85 @@ test("waiter-call denies incoherent occupancy and Guest cannot enter new staff r
     } as never);
     expect(r.statusCode).toBe(401);
   }
+});
+
+test("expired FREE access transparently re-resolves the same QR and preserves handle", async () => {
+  const response = await GuestService.resolve({ token });
+  if (response.state !== "FREE") throw Error();
+  const p = await openGuest(response.capability);
+  const now = Math.floor(Date.now() / 1000);
+  const expired = await sealGuest({
+    ...p,
+    enteredAt: now - 601,
+    iat: now - 601,
+    exp: now - 1,
+  });
+  expect(await GuestService.renew(expired)).toEqual({ state: "EXPIRED" });
+  const recovered = await GuestService.resolve({
+    token,
+    previousCapability: expired,
+  });
+  expect(recovered).toMatchObject({
+    state: "FREE",
+    guestHandle: p.guestHandle,
+  });
+  expect(
+    memory.transactions.filter((t) =>
+      t.TransactItems?.some(
+        (a) => a.Put?.Item?.entityType?.S === "RESTAURANT_GUEST_SESSION",
+      ),
+    ),
+  ).toHaveLength(0);
+});
+test("FREE recovery may bind the same phone to the first staff-opened service", async () => {
+  const response = await GuestService.resolve({ token });
+  if (response.state !== "FREE") throw Error();
+  await occupied();
+  expect(await GuestService.renew(response.capability)).toEqual({
+    state: "EXPIRED",
+  });
+  expect(
+    await GuestService.resolve({
+      token,
+      previousCapability: response.capability,
+    }),
+  ).toMatchObject({ state: "OCCUPIED", guestHandle: response.guestHandle });
+});
+test("re-resolution cannot move an occupied phone to a later unrelated service", async () => {
+  const session = (await occupied()).data as {
+    version: number;
+    guestSessionId: string;
+  };
+  const response = await GuestService.resolve({ token });
+  if (response.state !== "OCCUPIED") throw Error();
+  await Transactions.mutate(
+    { orgId: org, outletId: f.outlet.id, actorId: "owner" },
+    "CLOSE_SESSION",
+    { clientRequestId: fixtureId(6000), expectedVersion: session.version },
+    { sessionId: session.guestSessionId },
+  );
+  expect(
+    await GuestService.resolve({
+      token,
+      previousCapability: response.capability,
+    }),
+  ).toEqual({ state: "VISIT_ENDED" });
+});
+test("re-resolution still blocks revoked QR and invalid previous proof", async () => {
+  const response = await GuestService.resolve({ token });
+  if (response.state !== "FREE") throw Error();
+  expect(
+    await GuestService.resolve({ token, previousCapability: "x".repeat(100) }),
+  ).toEqual({ state: "UNAVAILABLE" });
+  const key = {
+    PK: K.orgKey(org),
+    SK: K.restaurantTableSK(f.outlet.id, f.areas[0].id, f.tables[0].id),
+  };
+  patch(key, { qrRevoked: true });
+  expect(
+    await GuestService.resolve({
+      token,
+      previousCapability: response.capability,
+    }),
+  ).toEqual({ state: "UNAVAILABLE" });
 });

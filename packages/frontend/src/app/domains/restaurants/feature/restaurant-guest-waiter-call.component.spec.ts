@@ -20,9 +20,10 @@ const context = {
 };
 describe('Guest waiter call', () => {
   let client: QueryClient;
-  const api = { waiterCall: vi.fn() };
+  const api = { waiterCall: vi.fn(), submissionState: vi.fn() };
   beforeEach(() => {
     client = new QueryClient();
+    api.submissionState.mockResolvedValue({ state: 'READY', requests: [] });
     api.waiterCall
       .mockReset()
       .mockResolvedValue({ state: 'REQUESTED', requestedAt: new Date().toISOString() });
@@ -152,5 +153,29 @@ describe('Guest waiter call', () => {
     await new Promise((r) => setTimeout(r, 10));
     f.detectChanges();
     expect(f.nativeElement.textContent).not.toContain('Serveur appelé');
+  });
+  it('manual own-state refresh replaces a previous REQUESTED result with acknowledgement', async () => {
+    const f = mount();
+    f.componentInstance.call();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.result()?.state).toBe('REQUESTED');
+    });
+    api.submissionState.mockResolvedValue({
+      state: 'READY',
+      requests: [],
+      waiterCall: {
+        state: 'ACKNOWLEDGED',
+        requestedAt: new Date().toISOString(),
+        acknowledgedAt: new Date().toISOString(),
+      },
+    });
+    await f.componentInstance.status.refetch();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.result()?.state).toBe('ACKNOWLEDGED');
+    });
+    expect(api.waiterCall).toHaveBeenCalledTimes(1);
+    f.destroy();
   });
 });
