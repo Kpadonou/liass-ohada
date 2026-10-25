@@ -327,8 +327,13 @@ export class RestaurantTransactionsService {
     ids: { sessionId?: string; orderId?: string; itemId?: string } = {},
     guestApproval?: {
       actions: TransactWriteItem[];
-      direct?: {
-        capability: string;
+      direct?: (
+        | { capability: string; bound?: never }
+        | {
+            bound: import("./guest-service").BoundGuestOrder;
+            capability?: never;
+          }
+      ) & {
         stage: ReturnType<typeof RestaurantTransactionsService.stageGuestOrder>;
       };
       sessionId: string;
@@ -425,9 +430,15 @@ export class RestaurantTransactionsService {
     await authorizeClosureScope();
     const direct = guestApproval?.direct;
     const directVerified = direct
-      ? await (
-          await import("./guest-service")
-        ).GuestService.verify(direct.capability)
+      ? direct.capability
+        ? await (
+            await import("./guest-service")
+          ).GuestService.verify(direct.capability)
+        : direct.bound
+          ? await (
+              await import("./guest-service")
+            ).GuestService.verifyBound(direct.bound)
+          : fail("RESTAURANTS_TRANSACTION_INTEGRITY")
       : undefined;
     if (direct) {
       if (!directVerified || !("principal" in directVerified))

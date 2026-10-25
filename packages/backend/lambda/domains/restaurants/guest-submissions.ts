@@ -537,7 +537,10 @@ export class GuestSubmissions {
     }
     return fail();
   }
-  private static async acceptDirect(capability: string, row: RequestRow) {
+  private static async acceptDirect(
+    capability: string | undefined,
+    row: RequestRow,
+  ) {
     if (row.data.state === "EXPIRED")
       return { state: "CONFIRMED" as const, request: this.projection(row) };
     if (row.data.state === "ACCEPTED")
@@ -545,8 +548,15 @@ export class GuestSubmissions {
         state: "CONFIRMED" as const,
         request: await this.directStatus(row),
       };
-    const verified = await GuestService.verify(capability);
-    if (!("principal" in verified)) return verified;
+    const bound = row.preService && !capability;
+    const verified = bound
+      ? await GuestService.verifyBound({
+          ...row,
+          expiresAt: row.data.expiresAt,
+        })
+      : await GuestService.verify(capability!);
+    if (!("principal" in verified))
+      return bound ? this.expireBound(row) : verified;
     const p = verified.principal;
     if (
       p.guestHandle !== row.guestHandle ||
@@ -557,10 +567,12 @@ export class GuestSubmissions {
       verified.context.root.version !== row.policyVersion ||
       Date.parse(row.data.expiresAt) <= Date.now()
     )
-      return {
-        state: "CONFIRMED" as const,
-        request: this.projection(row, false),
-      };
+      return bound
+        ? this.expireBound(row)
+        : {
+            state: "CONFIRMED" as const,
+            request: this.projection(row, false),
+          };
     if (
       !row.sessionId ||
       row.mode !== "DIRECT" ||
@@ -605,7 +617,12 @@ export class GuestSubmissions {
           expiresAt: row.data.expiresAt,
           policyVersion: row.policyVersion,
           lines,
-          direct: { capability, stage: row.directStage },
+          direct: capability
+            ? { capability, stage: row.directStage }
+            : {
+                bound: { ...row, expiresAt: row.data.expiresAt },
+                stage: row.directStage,
+              },
           actions: [
             this.put(
               this.key(scope, row.data.requestId),
@@ -631,33 +648,10 @@ export class GuestSubmissions {
         ].includes(error.messageCode) &&
         current?.data.state === "PROCESSING"
       ) {
-        const expired = {
-          ...current,
-          version: current.version + 1,
-          data: { ...current.data, state: "EXPIRED" as const },
-        };
-        try {
-          await dynamoClient.send(
-            new TransactWriteItemsCommand({
-              TransactItems: [
-                this.put(
-                  this.key(scope, row.data.requestId),
-                  expired,
-                  current.version,
-                ),
-              ],
-            }),
-          );
-        } catch (race) {
-          const latest = await this.row(scope, row.data.requestId);
-          if (latest?.data.state === "ACCEPTED")
-            return {
-              state: "CONFIRMED" as const,
-              request: await this.directStatus(latest),
-            };
-          if (!conflict(race)) throw race;
-        }
-        return { state: "REVIEW_REQUIRED" as const };
+        const reconciled = await this.expireBound(current);
+        return row.preService
+          ? reconciled
+          : { state: "REVIEW_REQUIRED" as const };
       }
       throw error;
     }
@@ -665,6 +659,47 @@ export class GuestSubmissions {
       state: "CONFIRMED" as const,
       request: await this.directStatus(accepted),
     };
+  }
+  private static async expireBound(row: RequestRow) {
+    const scope = {
+      orgId: row.orgId,
+      outletId: row.outletId,
+      sessionId: row.sessionId,
+    };
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const current = await this.row(scope, row.data.requestId);
+      if (!current) return fail();
+      if (current.data.state === "ACCEPTED")
+        return {
+          state: "CONFIRMED" as const,
+          request: await this.directStatus(current),
+        };
+      if (current.data.state === "EXPIRED")
+        return { state: "CONFIRMED" as const, request: current.data };
+      if (current.data.state !== "PROCESSING") return fail();
+      const expired = {
+        ...current,
+        version: current.version + 1,
+        data: { ...current.data, state: "EXPIRED" as const },
+      };
+      try {
+        await dynamoClient.send(
+          new TransactWriteItemsCommand({
+            TransactItems: [
+              this.put(
+                this.key(scope, row.data.requestId),
+                expired,
+                current.version,
+              ),
+            ],
+          }),
+        );
+        return { state: "CONFIRMED" as const, request: expired.data };
+      } catch (error) {
+        if (!conflict(error)) throw error;
+      }
+    }
+    return fail();
   }
   private static async directStatus(row: RequestRow) {
     if (!row.orderId || !row.directStage || !row.sessionId) return fail();
@@ -888,9 +923,7 @@ export class GuestSubmissions {
     }
   }
   private static async continueBound(row: RequestRow) {
-    const capability = await GuestService.boundCapability(row);
-    if (!capability) return this.projection(row, false);
-    return this.acceptDirect(capability, row);
+    return this.acceptDirect(undefined, row);
   }
   static async own(capability: string) {
     const v = await GuestService.verify(capability);
@@ -938,7 +971,11 @@ export class GuestSubmissions {
     const root = await Config.get(s.orgId, "restaurant", {});
     return {
       requests: (await this.rows(s)).rows
-        .filter((r) => r.mode === "STAFF_APPROVAL")
+        .filter(
+          (r) =>
+            r.mode === "STAFF_APPROVAL" ||
+            (r.preService && r.mode === "DIRECT" && r.data.state === "EXPIRED"),
+        )
         .map((r) =>
           this.projection(r, valid && r.policyVersion === root?.data.version),
         ),

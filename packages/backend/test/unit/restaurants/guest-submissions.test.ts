@@ -1151,7 +1151,14 @@ test.each(["DIRECT", "STAFF_APPROVAL"] as const)(
     const input = await body(3002);
     const submitted = await S.submit(cap, input);
     if (submitted.state !== "CONFIRMED") throw Error();
-    const opened = c.GuestSessionSchema.parse((await openFreeTable()).data);
+    const guestSecret = process.env.RESTAURANTS_GUEST_SECRET_ARN;
+    delete process.env.RESTAURANTS_GUEST_SECRET_ARN;
+    let opened: c.GuestSession;
+    try {
+      opened = c.GuestSessionSchema.parse((await openFreeTable()).data);
+    } finally {
+      process.env.RESTAURANTS_GUEST_SECRET_ARN = guestSecret;
+    }
     const openedScope = { ...scope, sessionId: opened.guestSessionId };
     const row = await S.row(openedScope, submitted.request.requestId);
     expect(row?.sessionId).toBe(opened.guestSessionId);
@@ -1200,6 +1207,153 @@ test.each(["DIRECT", "STAFF_APPROVAL"] as const)(
     ).toHaveLength(1);
   },
 );
+test("public FREE DIRECT request reaches a canonical order when staff opening has no Guest secret", async () => {
+  await freeTable("DIRECT");
+  const input = await body(3300);
+  const carte = await GuestCarteService.read(cap);
+  if (carte.body.state !== "READY") throw Error();
+  const chicken = carte.body.categories
+    .flatMap((category) => category.items)
+    .find((entry) => entry.name === "Grilled Chicken");
+  if (!chicken) throw Error();
+  input.lines.push({
+    reference: chicken.reference,
+    selectionRef: chicken.selectionRef,
+    quantity: 2,
+    note: "",
+    presentedAmountMinor: chicken.amountMinor,
+    currency: carte.body.currency,
+  });
+  expect(c.GuestSubmissionRequestSchema.safeParse(input)).toMatchObject({
+    success: true,
+  });
+  const originalCapability = cap;
+  const { handler } = await import("@/lambda/domains/restaurants/guest-public");
+  const response = await handler({
+    routeKey: "POST /public/restaurants/guest/submissions",
+    body: JSON.stringify(input),
+    headers: { authorization: "Bearer " + cap },
+    requestContext: { requestId: "free-direct-opening" },
+  } as never);
+  expect(response.statusCode).toBe(200);
+  expect(JSON.parse(response.body)).toMatchObject({
+    state: "CONFIRMED",
+    request: { state: "PENDING_SERVICE" },
+  });
+  expect(
+    all().filter((row) => row.entityType === "RESTAURANT_ORDER"),
+  ).toHaveLength(0);
+  const guestSecret = process.env.RESTAURANTS_GUEST_SECRET_ARN;
+  delete process.env.RESTAURANTS_GUEST_SECRET_ARN;
+  let opened: c.GuestSession;
+  try {
+    opened = c.GuestSessionSchema.parse((await openFreeTable()).data);
+  } finally {
+    process.env.RESTAURANTS_GUEST_SECRET_ARN = guestSecret;
+  }
+  const orders = all().filter((row) => row.entityType === "RESTAURANT_ORDER");
+  expect(orders).toHaveLength(1);
+  expect(orders[0].data.guestSessionId).toBe(opened.guestSessionId);
+  expect(orders[0].data.orderType).toBe("DINE_IN");
+  expect(orders[0].data.status).toBe("SUBMITTED");
+  expect(orders[0].data.dueMinor).toBe(14000);
+  const lines = all().filter(
+    (row) => row.entityType === "RESTAURANT_ORDER_ITEM",
+  );
+  expect(lines).toHaveLength(2);
+  expect(
+    lines
+      .map((line) => line.data.snapshot?.lineTotalMinor)
+      .sort((a, b) => a - b),
+  ).toEqual([4000, 10000]);
+  expect((await E.session(scope, opened.guestSessionId)).data).toMatchObject({
+    status: "OPEN",
+    dueMinor: 14000,
+    orderCount: 1,
+    openOrderCount: 1,
+  });
+  const preparation = all().filter(
+    (row) => row.entityType === "RESTAURANT_PREPARATION",
+  );
+  expect(preparation).toHaveLength(1);
+  expect(preparation[0].data.state).toBe("IN_PROGRESS");
+  expect(
+    lines.find((line) => line.data.snapshot?.name === "Chocolate Cake")?.data
+      .latestFireId,
+  ).toBeUndefined();
+  const recovered = await GuestService.resolve({
+    token,
+    previousCapability: originalCapability,
+  });
+  if (recovered.state !== "OCCUPIED") throw Error();
+  expect(await S.own(recovered.capability)).toMatchObject({
+    state: "READY",
+    requests: [{ state: "ACCEPTED", mode: "DIRECT", orderStatus: "PREPARING" }],
+  });
+  const { RestaurantTransactionQueries: Q } =
+    await import("@/lambda/domains/restaurants/transaction-queries");
+  expect(
+    (
+      await Q.run(
+        { orgId: org, outletId: f.outlet.id },
+        "SESSION_ORDERS",
+        { limit: 50 },
+        { sessionId: opened.guestSessionId },
+        true,
+      )
+    ).items,
+  ).toHaveLength(1);
+  const replay = c.GuestSessionSchema.parse((await openFreeTable()).data);
+  expect(replay.guestSessionId).toBe(opened.guestSessionId);
+  expect(
+    all().filter((row) => row.entityType === "RESTAURANT_ORDER"),
+  ).toHaveLength(1);
+});
+test("changed pre-service DIRECT price remains durable and visible without sale effects", async () => {
+  await freeTable("DIRECT");
+  const originalCapability = cap;
+  const submitted = await S.submit(cap, await body(3301));
+  if (submitted.state !== "CONFIRMED") throw Error();
+  for (const entry of f.items)
+    patch(K.restaurantMenuItemSK(f.outlet.id, entry.categoryId, entry.id), {
+      version: entry.version + 1,
+      price: { ...entry.price, amountMinor: entry.price.amountMinor + 100 },
+    });
+  const guestSecret = process.env.RESTAURANTS_GUEST_SECRET_ARN;
+  delete process.env.RESTAURANTS_GUEST_SECRET_ARN;
+  let opened: c.GuestSession;
+  try {
+    opened = c.GuestSessionSchema.parse((await openFreeTable()).data);
+  } finally {
+    process.env.RESTAURANTS_GUEST_SECRET_ARN = guestSecret;
+  }
+  const sessionScope = { ...scope, sessionId: opened.guestSessionId };
+  expect(
+    (await S.row(sessionScope, submitted.request.requestId))?.data.state,
+  ).toBe("EXPIRED");
+  expect(
+    all().filter((row) => row.entityType === "RESTAURANT_ORDER"),
+  ).toHaveLength(0);
+  expect(
+    all().filter((row) => row.entityType === "RESTAURANT_ORDER_ITEM"),
+  ).toHaveLength(0);
+  expect(
+    all().filter((row) => row.entityType === "RESTAURANT_PREPARATION"),
+  ).toHaveLength(0);
+  expect((await E.session(scope, opened.guestSessionId)).data.dueMinor).toBe(0);
+  const recovered = await GuestService.resolve({
+    token,
+    previousCapability: originalCapability,
+  });
+  if (recovered.state !== "OCCUPIED") throw Error();
+  expect(await S.own(recovered.capability)).toMatchObject({
+    state: "READY",
+    requests: [{ requestId: submitted.request.requestId, state: "EXPIRED" }],
+  });
+  expect((await S.list(sessionScope, "owner")).requests).toMatchObject([
+    { requestId: submitted.request.requestId, state: "EXPIRED" },
+  ]);
+});
 test("multiple phones bind independently to one service and keep private results", async () => {
   await freeTable("DIRECT");
   const firstCap = cap;
@@ -1210,7 +1364,13 @@ test("multiple phones bind independently to one service and keep private results
   const b = await S.submit(cap, await body(3003));
   expect(a.state).toBe("CONFIRMED");
   expect(b.state).toBe("CONFIRMED");
-  await openFreeTable();
+  const guestSecret = process.env.RESTAURANTS_GUEST_SECRET_ARN;
+  delete process.env.RESTAURANTS_GUEST_SECRET_ARN;
+  try {
+    await openFreeTable();
+  } finally {
+    process.env.RESTAURANTS_GUEST_SECRET_ARN = guestSecret;
+  }
   for (const phone of [firstCap, secondCap]) {
     const context = await GuestService.resolve({
       token,

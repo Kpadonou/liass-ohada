@@ -151,7 +151,8 @@ test("assigned waiter reads all outlet tables without claiming and opens atomica
     openedBy: "Aissa",
     responsibleStaffId: "Aissa",
   });
-  expect(transaction.TransactItems).toHaveLength(17);
+  // A FREE-table opening also guards the absent pre-service request coordinator.
+  expect(transaction.TransactItems).toHaveLength(18);
   expect(transaction.TransactItems!.filter((op) => op.Put)).toHaveLength(8);
   const audit = rows().find(
     (r) =>

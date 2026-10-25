@@ -5,6 +5,7 @@ import {
 } from "@liass-ohada/shared/restaurants";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { ProductAccessService } from "@/lambda/shared/services/product-access-service";
+import { AppError } from "@/lambda/shared/app-error";
 import type { RestaurantSnapshot } from "./restaurant-repository";
 import { RestaurantsRepository as Config } from "./restaurant-repository";
 import { RestaurantTransactionsRepository as R } from "./transaction-repository";
@@ -19,6 +20,16 @@ import { publicVisitReference } from "./guest-references";
 
 const fingerprint = (token: string) =>
   createHash("sha256").update(token).digest("hex");
+export type BoundGuestOrder = {
+  orgId: string;
+  outletId: string;
+  areaId?: string;
+  tableId: string;
+  sessionId?: string;
+  guestHandle: string;
+  qrFingerprint?: string;
+  expiresAt: string;
+};
 /** Bounded to one resolve/verify call. Never survives a request or caches authorization. */
 class GuestReads {
   private readonly tables = new Map<
@@ -213,32 +224,54 @@ export class GuestService {
     }
     return this.response(c);
   }
-  /** Internal continuation of a staff-bound request, never a public context selector. */
-  static async boundCapability(row: {
-    orgId: string;
-    outletId: string;
-    areaId?: string;
-    tableId: string;
-    sessionId?: string;
-    guestHandle: string;
-    qrFingerprint?: string;
-  }) {
-    if (!row.areaId || !row.sessionId) return undefined;
+  /** Canonical staff continuation uses the bound request, not a Guest secret. */
+  static async verifyBound(row: BoundGuestOrder) {
+    if (Date.parse(row.expiresAt) <= Date.now())
+      return { state: "EXPIRED" as const };
+    if (!row.areaId || !row.sessionId || !row.qrFingerprint)
+      return { state: "UNAVAILABLE" as const };
     const table = await Config.get(
       row.orgId,
       "table",
       { outletId: row.outletId, serviceAreaId: row.areaId },
       row.tableId,
     );
-    if (!table?.qrToken || fingerprint(table.qrToken) !== row.qrFingerprint)
-      return undefined;
-    const c = await this.context(table.qrToken);
-    if (!c || c.sessionId !== row.sessionId || c.lookup.orgId !== row.orgId)
-      return undefined;
-    const response = await this.response(c);
-    if (!("capability" in response)) return undefined;
-    const principal = await openGuest(response.capability);
-    return sealGuest({ ...principal, guestHandle: row.guestHandle });
+    if (
+      !table?.qrToken ||
+      table.qrRevoked ||
+      fingerprint(table.qrToken) !== row.qrFingerprint
+    )
+      return { state: "UNAVAILABLE" as const };
+    let context: Awaited<ReturnType<typeof GuestService.context>>;
+    try {
+      context = await this.context(table.qrToken);
+    } catch (error) {
+      if (error instanceof AppError && error.statusCode === 403)
+        return { state: "UNAVAILABLE" as const };
+      throw error;
+    }
+    if (
+      !context ||
+      context.lookup.orgId !== row.orgId ||
+      context.outlet.id !== row.outletId ||
+      context.lookup.serviceAreaId !== row.areaId ||
+      context.table.id !== row.tableId ||
+      context.sessionId !== row.sessionId
+    )
+      return { state: "UNAVAILABLE" as const };
+    return {
+      principal: {
+        orgId: row.orgId,
+        outletId: row.outletId,
+        areaId: row.areaId,
+        tableId: row.tableId,
+        sessionId: row.sessionId,
+        guestHandle: row.guestHandle,
+        rights: ["ORDER_SUBMIT" as const],
+        exp: Math.ceil(Date.parse(row.expiresAt) / 1000),
+      },
+      context,
+    };
   }
   static async verify(token: string): Promise<
     | {
