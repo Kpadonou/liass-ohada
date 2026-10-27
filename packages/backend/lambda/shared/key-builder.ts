@@ -13,6 +13,18 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  // Inventory Lite: outlet master data and per-item immutable history.
+  restaurantStockPK: (orgId: string, outletId: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#STOCK`,
+  restaurantStockPrefix: () => "SI#",
+  restaurantStockSK: (id: string) => `SI#${restaurantTransactionSegment(id)}`,
+  restaurantStockHistoryPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantStockPK(orgId, outletId)}#${restaurantTransactionSegment(id)}`,
+  restaurantStockMovementPrefix: () => "MOV#",
+  restaurantStockMovementSK: (timestamp: string, id: string) =>
+    `MOV#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
+  restaurantStockMappingSK: (id: string) =>
+    `MAP#${restaurantTransactionSegment(id)}`,
   // Same request/coordinator sort keys, scoped to the physical table before staff opening.
   restaurantPreServiceRequestKey: (
     orgId: string,
