@@ -110,6 +110,93 @@ afterEach(() => {
   TestBed.resetTestingModule();
 });
 describe('Inventory collection and detail', () => {
+  it('keeps inactive detail editable and readable and enables movements after canonical reactivation', async () => {
+    const inactive = stockItem({ isActive: false });
+    api.item.mockResolvedValue(inactive);
+    const f = TestBed.createComponent(RestaurantInventoryPage);
+    f.componentInstance.selected.set(inactive.id);
+    f.detectChanges();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.itemQuery.isSuccess()).toBe(true);
+      expect(f.componentInstance.historyQuery.isSuccess()).toBe(true);
+    });
+    const drawer: HTMLElement = f.nativeElement.querySelector('mat-drawer');
+    const movementButtons = () =>
+      Array.from(drawer.querySelectorAll('liass-button')).filter((b) =>
+        ['Réception', 'Perte', 'Ajustement'].includes(b.textContent!.trim()),
+      );
+    expect(movementButtons()).toHaveLength(3);
+    expect(movementButtons().every((b) => b.querySelector('button')!.disabled)).toBe(true);
+    expect(drawer.textContent).toContain(fr.RESTAURANTS_INVENTORY.INACTIVE_HINT);
+    expect(drawer.querySelector('#inventory-history-title')).toBeTruthy();
+    const edit = Array.from(drawer.querySelectorAll('liass-button')).find((b) =>
+      b.textContent!.includes('Modifier'),
+    )!;
+    expect(edit.querySelector('button')!.disabled).toBe(false);
+    const inactiveChip = Array.from(drawer.querySelectorAll('liass-status-chip')).find((c) =>
+      c.textContent!.includes('Inactif'),
+    )!;
+    expect(inactiveChip.getAttribute('tone')).toBe('neutral');
+    f.componentInstance.movement('RECEIPT', inactive);
+    expect(TestBed.inject(MatDialog).open).not.toHaveBeenCalled();
+    api.update.mockResolvedValue({
+      data: stockItem({ isActive: true, version: 3 }),
+      message: null,
+    });
+    api.item.mockResolvedValue(stockItem({ isActive: true, version: 3 }));
+    api.items.mockResolvedValue({ items: [stockItem({ isActive: true, version: 3 })] });
+    await TestBed.inject(RestaurantInventoryQueries).save(ctx, inactive.id, {
+      expectedVersion: 2,
+      isActive: true,
+    });
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(movementButtons().every((b) => !b.querySelector('button')!.disabled)).toBe(true);
+    });
+    expect(drawer.textContent).not.toContain(fr.RESTAURANTS_INVENTORY.INACTIVE_HINT);
+    expect(en.RESTAURANTS_INVENTORY.INACTIVE_HINT).toBe(
+      'Reactivate this item to record new movements.',
+    );
+  });
+  it.each([
+    [true, false, 'Actif', 'Normal'],
+    [false, false, 'Inactif', 'Normal'],
+    [true, true, 'Actif', 'Stock négatif'],
+    [false, true, 'Inactif', 'Stock négatif'],
+  ])(
+    'keeps lifecycle %s independent from negative stock %s',
+    async (isActive, isNegativeStock, lifecycle, stockStatus) => {
+      api.items.mockResolvedValue({
+        items: [
+          stockItem({ isActive, isNegativeStock, balanceMilli: isNegativeStock ? -1000 : 1000 }),
+        ],
+      });
+      const f = TestBed.createComponent(RestaurantInventoryPage);
+      f.detectChanges();
+      await vi.waitFor(() => {
+        f.detectChanges();
+        expect(f.componentInstance.itemsQuery.isSuccess()).toBe(true);
+      });
+      f.detectChanges();
+      const table: HTMLTableElement = f.nativeElement.querySelector('table');
+      const headers = Array.from(table.querySelectorAll('th')).map((cell) =>
+        cell.textContent?.trim(),
+      );
+      expect(headers).toContain('Statut');
+      expect(headers).toContain('État du stock');
+      const cells = table.querySelectorAll('tbody tr:first-child td');
+      expect(cells[0].textContent).not.toContain('Inactif');
+      expect(cells[headers.indexOf('Statut')].textContent?.trim()).toBe(lifecycle);
+      expect(cells[headers.indexOf('État du stock')].textContent?.trim()).toBe(stockStatus);
+    },
+  );
+  it('provides distinct lifecycle and stock headings in both languages', () => {
+    expect(fr.RESTAURANTS_INVENTORY.STATUS).toBe('Statut');
+    expect(fr.RESTAURANTS_INVENTORY.STOCK_STATUS).toBe('État du stock');
+    expect(en.RESTAURANTS_INVENTORY.STATUS).toBe('Status');
+    expect(en.RESTAURANTS_INVENTORY.STOCK_STATUS).toBe('Stock status');
+  });
   it('renders a bounded table/compact records with business quantity, negative and inactive states', async () => {
     const f = TestBed.createComponent(RestaurantInventoryPage);
     f.detectChanges();
@@ -252,6 +339,30 @@ describe('Stock item reactive editor', () => {
   });
 });
 describe('Focused movement forms', () => {
+  it('refreshes canonical state and prevents resubmission after stale inactive rejection', async () => {
+    data = { ctx, item: stockItem(), type: 'RECEIPT' };
+    const invalidation = vi.spyOn(client, 'invalidateQueries');
+    api.movement.mockRejectedValue(
+      new HttpErrorResponse({
+        status: 422,
+        error: { error: { code: 'RESTAURANTS_INVENTORY_INACTIVE' } },
+      }),
+    );
+    const f = TestBed.createComponent(RestaurantStockMovementDialog);
+    f.detectChanges();
+    f.componentInstance.form.controls.quantity.setValue('2');
+    await f.componentInstance.submit();
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain(fr.RESTAURANTS_INVENTORY.INACTIVE_HINT);
+    expect(f.componentInstance.inactive()).toBe(true);
+    expect(f.componentInstance.uncertain()).toBe(false);
+    expect(invalidation).toHaveBeenCalledWith({
+      queryKey: inventoryKeys.item(ctx, stockItem().id),
+      exact: true,
+    });
+    await f.componentInstance.submit();
+    expect(api.movement).toHaveBeenCalledTimes(1);
+  });
   it.each([
     ['RECEIPT', 'INCREASE', '3'],
     ['LOSS', 'INCREASE', '3'],

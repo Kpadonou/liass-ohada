@@ -180,6 +180,14 @@ export class RestaurantInventoryService {
         }
       }
       const old = await this.get(scope, input.stockItemId);
+      // Manual management only: automatic SALE semantics are deliberately unchanged.
+      // The versioned balance write below also protects against concurrent deactivation.
+      if (
+        input.source === "MANUAL" &&
+        ["RECEIPT", "LOSS", "ADJUSTMENT"].includes(input.type) &&
+        !old.isActive
+      )
+        throw new AppError(422, "RESTAURANTS_INVENTORY_INACTIVE");
       const deltaMilli = movementDelta(old.unit, input);
       const sum = BigInt(old.balanceMilli) + BigInt(deltaMilli);
       if (

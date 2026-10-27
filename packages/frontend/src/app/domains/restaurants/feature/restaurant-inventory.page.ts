@@ -108,7 +108,15 @@ export class RestaurantInventoryPage {
     ].sort((a, b) => `${b.createdAt}#${b.id}`.localeCompare(`${a.createdAt}#${a.id}`)),
   );
   readonly quantity = stockQuantity;
-  readonly columns = ['NAME', 'UNIT', 'CURRENT', 'STATUS', 'UPDATED', 'ACTIONS'].map((id) => ({
+  readonly columns = [
+    'NAME',
+    'UNIT',
+    'CURRENT',
+    'STATUS',
+    'STOCK_STATUS',
+    'UPDATED',
+    'ACTIONS',
+  ].map((id) => ({
     id,
     labelKey: 'RESTAURANTS_INVENTORY.' + id,
     required: !['UNIT', 'UPDATED'].includes(id),
@@ -170,7 +178,7 @@ export class RestaurantInventoryPage {
   }
   movement(type: InventoryMovementAction, item = this.itemQuery.data()) {
     const ctx = this.ctx();
-    if (!item || !this.queries.api.isCurrent(ctx)) return;
+    if (!item || !item.isActive || !this.queries.api.isCurrent(ctx)) return;
     this.dialog.open(RestaurantStockMovementDialog, {
       width: '460px',
       maxWidth: 'calc(100vw - 24px)',

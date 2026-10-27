@@ -1,5 +1,6 @@
 {
   "RESTAURANTS_INVENTORY": {
+    "INACTIVE_HINT": "Reactivate this item to record new movements.",
     "YOU": "You",
     "TEAM_MEMBER": "Team member",
     "TITLE": "Inventory",
@@ -9,6 +10,7 @@
     "UNIT": "Unit",
     "CURRENT": "Current stock",
     "STATUS": "Status",
+    "STOCK_STATUS": "Stock status",
     "UPDATED": "Last updated",
     "ACTIONS": "Actions",
     "NORMAL": "Normal",

@@ -63,7 +63,7 @@
       variant="solid"
       buttonType="submit"
       [loading]="pending()"
-      [disabled]="(!uncertain() && form.invalid) || !allowed()"
+      [disabled]="inactive() || (!uncertain() && form.invalid) || !allowed()"
       >{{
         (uncertain() ? 'RESTAURANTS_INVENTORY.RETRY' : 'RESTAURANTS_INVENTORY.SUBMIT.' + type)
           | transloco

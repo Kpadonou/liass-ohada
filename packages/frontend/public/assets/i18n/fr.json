@@ -1,5 +1,6 @@
 {
   "RESTAURANTS_INVENTORY": {
+    "INACTIVE_HINT": "Réactivez cet article pour enregistrer de nouveaux mouvements.",
     "YOU": "Vous",
     "TEAM_MEMBER": "Membre de l’équipe",
     "TITLE": "Stock",
@@ -8,7 +9,8 @@
     "NAME": "Article",
     "UNIT": "Unité",
     "CURRENT": "Stock actuel",
-    "STATUS": "État",
+    "STATUS": "Statut",
+    "STOCK_STATUS": "État du stock",
     "UPDATED": "Dernière modification",
     "ACTIONS": "Actions",
     "NORMAL": "Normal",

@@ -66,14 +66,24 @@
           }
           <div class="flex flex-wrap gap-2">
             @for (action of actions; track action) {
-              <liass-button size="sm" tone="brand" variant="outline" (pressed)="movement(action)">{{
-                'RESTAURANTS_INVENTORY.MOVEMENTS.' + action | transloco
-              }}</liass-button>
+              <liass-button
+                size="sm"
+                tone="brand"
+                variant="outline"
+                [disabled]="!item.isActive"
+                (pressed)="movement(action)"
+                >{{ 'RESTAURANTS_INVENTORY.MOVEMENTS.' + action | transloco }}</liass-button
+              >
             }
             <liass-button size="sm" icon="edit" (pressed)="edit(item)">{{
               'RESTAURANTS_INVENTORY.EDIT' | transloco
             }}</liass-button>
           </div>
+          @if (!item.isActive) {
+            <p class="text-sm text-app-text-secondary">
+              {{ 'RESTAURANTS_INVENTORY.INACTIVE_HINT' | transloco }}
+            </p>
+          }
         </div>
         <section aria-labelledby="inventory-history-title">
           <h3 id="inventory-history-title" class="mb-4 font-semibold text-app-text">
@@ -242,11 +252,6 @@
                           <button mat-button class="text-left" (click)="select(item)">
                             {{ item.name }}
                           </button>
-                          @if (!item.isActive) {
-                            <p class="text-xs text-app-muted">
-                              {{ 'RESTAURANTS_INVENTORY.INACTIVE' | transloco }}
-                            </p>
-                          }
                         </td>
                         @if (visibleColumns().includes('UNIT')) {
                           <td class="px-3 py-3">
@@ -259,6 +264,18 @@
                         >
                           {{ quantity(item.balanceMilli) }}
                           {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}
+                        </td>
+                        <td class="px-3 py-3">
+                          <liass-status-chip
+                            size="sm"
+                            tone="neutral"
+                            [label]="
+                              (item.isActive
+                                ? 'RESTAURANTS_INVENTORY.ACTIVE'
+                                : 'RESTAURANTS_INVENTORY.INACTIVE'
+                              ) | transloco
+                            "
+                          />
                         </td>
                         <td class="px-3 py-3">
                           <liass-status-chip
@@ -310,17 +327,28 @@
                         {{ quantity(item.balanceMilli) }}
                         {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}
                       </p>
-                      <p class="text-sm" [class.text-danger-600]="item.isNegativeStock">
-                        {{
-                          (item.isNegativeStock
-                            ? 'RESTAURANTS_INVENTORY.NEGATIVE'
-                            : 'RESTAURANTS_INVENTORY.NORMAL'
-                          ) | transloco
-                        }}
-                        @if (!item.isActive) {
-                          · {{ 'RESTAURANTS_INVENTORY.INACTIVE' | transloco }}
-                        }
-                      </p>
+                      <div class="flex flex-wrap gap-2">
+                        <liass-status-chip
+                          size="sm"
+                          tone="neutral"
+                          [label]="
+                            (item.isActive
+                              ? 'RESTAURANTS_INVENTORY.ACTIVE'
+                              : 'RESTAURANTS_INVENTORY.INACTIVE'
+                            ) | transloco
+                          "
+                        />
+                        <liass-status-chip
+                          size="sm"
+                          [tone]="item.isNegativeStock ? 'danger' : 'neutral'"
+                          [label]="
+                            (item.isNegativeStock
+                              ? 'RESTAURANTS_INVENTORY.NEGATIVE'
+                              : 'RESTAURANTS_INVENTORY.NORMAL'
+                            ) | transloco
+                          "
+                        />
+                      </div>
                     </div>
                     <button
                       mat-icon-button
@@ -367,7 +395,7 @@
       <mat-icon class="text-info-600">edit</mat-icon>{{ 'RESTAURANTS_INVENTORY.EDIT' | transloco }}
     </button>
     @for (action of actions; track action) {
-      <button mat-menu-item (click)="movement(action, item)">
+      <button mat-menu-item [disabled]="!item.isActive" (click)="movement(action, item)">
         <mat-icon class="text-brand-700">{{
           action === 'RECEIPT'
             ? 'add_circle_outline'

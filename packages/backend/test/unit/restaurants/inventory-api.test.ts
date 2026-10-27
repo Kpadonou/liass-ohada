@@ -58,6 +58,25 @@ const read = (response: { statusCode: number; body: string }, status = 200) => {
   expect(response.statusCode).toBe(status);
   return JSON.parse(response.body);
 };
+test.each(["RECEIPT", "LOSS", "ADJUSTMENT"])(
+  "inactive manual %s returns a safe business error",
+  async (type) => {
+    const stock = await item();
+    const scope = { orgId: org, outletId };
+    await Inventory.update(scope, stock.id, {
+      expectedVersion: stock.version,
+      isActive: false,
+    });
+    const result = read(
+      await handler(event("movement", movement(type), stock.id)),
+      422,
+    );
+    expect(result.error.code).toBe("RESTAURANTS_INVENTORY_INACTIVE");
+    expect(JSON.stringify(result)).toContain("Reactivate this item");
+    expect((await Inventory.get(scope, stock.id)).balanceMilli).toBe(0);
+    expect((await Inventory.history(scope, stock.id)).items).toEqual([]);
+  },
+);
 
 test.each(["OWNER", "MANAGER"])(
   "%s can execute every Inventory operation",
@@ -90,6 +109,15 @@ test.each(["OWNER", "MANAGER"])(
       version: 2,
       unit: "BOTTLE",
     });
+    read(
+      await handler(
+        event(
+          "update",
+          { expectedVersion: updated.version, isActive: true },
+          created.id,
+        ),
+      ),
+    );
     const received = read(
       await handler(event("movement", movement(), created.id)),
     ).data;

@@ -1,4 +1,5 @@
 {
+  "RESTAURANTS_INVENTORY_INACTIVE": "Reactivate this item to record new movements.",
   "RESTAURANTS_INVENTORY_QUANTITY": "Enter a non-zero quantity with at most three decimal places. Counted units require a whole quantity.",
   "RESTAURANTS_INVENTORY_CONFLICT": "The stock item changed or this request was already used for a different movement. Refresh and try again.",
   "RESTAURANTS_INVENTORY_NOT_FOUND": "The stock item was not found in this establishment.",

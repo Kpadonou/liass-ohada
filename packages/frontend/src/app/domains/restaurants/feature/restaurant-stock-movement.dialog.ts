@@ -15,7 +15,7 @@ import {
   stockQuantityValidator,
   discreteStockUnit,
 } from '../utils/inventory-quantity';
-import { inventoryError } from '../utils/inventory-errors';
+import { inventoryError, isInactiveInventoryError } from '../utils/inventory-errors';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 export type InventoryMovementAction = ManualStockMovementRequest['type'];
@@ -51,6 +51,7 @@ export class RestaurantStockMovementDialog {
   readonly pending = signal(false);
   readonly uncertain = signal(!!this.existing);
   readonly error = signal<string | null>(null);
+  readonly inactive = signal(!this.data.item.isActive);
   readonly allowed = computed(() => this.queries.api.isCurrent(this.data.ctx));
   readonly form = new FormGroup({
     quantity: new FormControl(this.existing?.quantity.replace(/^[+-]/, '') ?? '', {
@@ -76,7 +77,7 @@ export class RestaurantStockMovementDialog {
     if (!this.pending()) this.ref.close();
   }
   async submit() {
-    if (this.pending() || !this.allowed()) return;
+    if (this.pending() || !this.allowed() || this.inactive()) return;
     if (!this.uncertain() && this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -101,6 +102,7 @@ export class RestaurantStockMovementDialog {
       this.ref.close(result.data);
     } catch (error) {
       if (this.allowed()) {
+        if (isInactiveInventoryError(error)) this.inactive.set(true);
         this.uncertain.set(!!this.intent.pending(this.data.ctx, this.data.item.id));
         if (this.uncertain()) this.form.disable();
         else this.form.enable();

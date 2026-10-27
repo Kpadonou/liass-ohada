@@ -137,6 +137,66 @@ const move = (
   source: businessEventId ? "BUSINESS_EVENT" : "MANUAL",
   businessEventId,
 });
+test.each(["RECEIPT", "LOSS", "ADJUSTMENT"])(
+  "manual %s requires an active item and resumes after reactivation",
+  async (type) => {
+    const item = await create();
+    await S.applyMovement(scope, move(item.id, type));
+    const current = await S.get(scope, item.id);
+    const inactive = await S.update(scope, item.id, {
+      expectedVersion: current.version,
+      isActive: false,
+    });
+    const history = await S.history(scope, item.id);
+    const before = new Map(rows);
+    await expect(
+      S.applyMovement(scope, {
+        ...move(item.id, type),
+        businessEventId: `MANUAL:${randomUUID()}`,
+      }),
+    ).rejects.toMatchObject({
+      statusCode: 422,
+      messageCode: "RESTAURANTS_INVENTORY_INACTIVE",
+    });
+    expect(rows).toEqual(before);
+    expect(await S.get(scope, item.id)).toEqual(inactive);
+    expect(await S.history(scope, item.id)).toEqual(history);
+    await S.update(scope, item.id, {
+      expectedVersion: inactive.version,
+      isActive: true,
+    });
+    await S.applyMovement(scope, move(item.id, type));
+    expect((await S.history(scope, item.id)).items).toHaveLength(2);
+  },
+);
+test("concurrent deactivation prevents a stale manual movement write", async () => {
+  const item = await create();
+  const commit = R.commit.bind(R);
+  jest.spyOn(R, "commit").mockImplementationOnce(async (actions) => {
+    await S.update(scope, item.id, {
+      expectedVersion: item.version,
+      isActive: false,
+    });
+    return commit(actions);
+  });
+  await expect(S.applyMovement(scope, move(item.id))).rejects.toMatchObject({
+    messageCode: "RESTAURANTS_INVENTORY_INACTIVE",
+  });
+  expect((await S.get(scope, item.id)).balanceMilli).toBe(0);
+  expect((await S.history(scope, item.id)).items).toEqual([]);
+});
+test("a retry of an accepted manual event stays idempotent after deactivation", async () => {
+  const item = await create();
+  const input = { ...move(item.id), businessEventId: `MANUAL:${randomUUID()}` };
+  const movement = await S.applyMovement(scope, input);
+  const current = await S.get(scope, item.id);
+  await S.update(scope, item.id, {
+    expectedVersion: current.version,
+    isActive: false,
+  });
+  expect(await S.applyMovement(scope, input)).toEqual(movement);
+  expect((await S.history(scope, item.id)).items).toHaveLength(1);
+});
 test("create/get/list/update metadata and preserve canonical fields", async () => {
   const a = await create();
   expect(await S.get(scope, a.id)).toEqual(a);

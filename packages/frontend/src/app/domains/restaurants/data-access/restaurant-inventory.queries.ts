@@ -7,6 +7,7 @@ import {
 import { HttpErrorResponse } from '@angular/common/http';
 import * as C from '@liass-ohada/shared/restaurants';
 import { RestaurantInventoryApi, InventoryContext } from './restaurant-inventory.api';
+import { isInactiveInventoryError } from '../utils/inventory-errors';
 export const inventoryKeys = {
   root: (ctx: InventoryContext) =>
     [
@@ -87,9 +88,14 @@ export class RestaurantInventoryQueries {
     }
   }
   async movement(ctx: InventoryContext, id: string, input: C.ManualStockMovementRequest) {
-    const result = await this.api.movement(ctx, id, input);
-    this.api.assertCurrent(ctx);
-    await this.changed(ctx, id, true);
-    return result;
+    try {
+      const result = await this.api.movement(ctx, id, input);
+      this.api.assertCurrent(ctx);
+      await this.changed(ctx, id, true);
+      return result;
+    } catch (error) {
+      if (isInactiveInventoryError(error) && this.api.isCurrent(ctx)) await this.changed(ctx, id);
+      throw error;
+    }
   }
 }

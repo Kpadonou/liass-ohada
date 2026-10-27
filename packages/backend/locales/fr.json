@@ -1,4 +1,5 @@
 {
+  "RESTAURANTS_INVENTORY_INACTIVE": "Réactivez cet article pour enregistrer de nouveaux mouvements.",
   "RESTAURANTS_INVENTORY_QUANTITY": "Saisissez une quantité non nulle avec au plus trois décimales. Les unités dénombrables exigent une quantité entière.",
   "RESTAURANTS_INVENTORY_CONFLICT": "L’article de stock a changé ou cette demande a déjà servi pour un mouvement différent. Actualisez puis réessayez.",
   "RESTAURANTS_INVENTORY_NOT_FOUND": "L’article de stock est introuvable dans cet établissement.",
