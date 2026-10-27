@@ -107,3 +107,48 @@ export type ManualStockMovementRequest = z.infer<
 export type StockMovementResponseData = z.infer<
   typeof StockMovementResponseDataSchema
 >;
+export const DirectStockUnitSchema = z.enum(["UNIT", "BOTTLE", "CAN", "PACK"]);
+const trackingCommand = {
+  categoryId: z.string().uuid(),
+  expectedVersion: z.number().int().nonnegative(),
+  clientRequestId: z.string().uuid(),
+};
+export const SaveInventoryTrackingRequestSchema = z.discriminatedUnion("mode", [
+  z
+    .object({
+      ...trackingCommand,
+      mode: z.literal("CREATE"),
+      unit: DirectStockUnitSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...trackingCommand,
+      mode: z.literal("LINK"),
+      stockItemId: z.string().uuid(),
+    })
+    .strict(),
+]);
+export const RemoveInventoryTrackingRequestSchema = z
+  .object(trackingCommand)
+  .strict();
+export const InventoryTrackingResponseSchema = z
+  .object({
+    data: z
+      .object({
+        menuItemId: z.string().uuid(),
+        version: z.number().int().nonnegative(),
+        stockItem: StockItemResponseDataSchema.nullable(),
+      })
+      .strict(),
+  })
+  .strict();
+export type SaveInventoryTrackingRequest = z.infer<
+  typeof SaveInventoryTrackingRequestSchema
+>;
+export type RemoveInventoryTrackingRequest = z.infer<
+  typeof RemoveInventoryTrackingRequestSchema
+>;
+export type InventoryTracking = z.infer<
+  typeof InventoryTrackingResponseSchema
+>["data"];

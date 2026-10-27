@@ -1,5 +1,5 @@
 import { toSignal } from '@angular/core/rxjs-interop';
-import { Component, computed, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -25,6 +25,7 @@ import { NotificationService } from '../../../core/notifications/notification.se
 import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-select/searchable-select.component';
 import { minorInput, parseMinorInput } from '../utils/restaurant-money';
 import { restaurantError } from '../utils/restaurant-errors';
+import { RestaurantItemTrackingComponent } from './restaurant-item-tracking.component';
 export interface RestaurantEditorData {
   org: string;
   kind: RestaurantKind;
@@ -45,10 +46,13 @@ export interface RestaurantEditorData {
     MatButtonModule,
     TranslocoModule,
     LiassSearchableSelectComponent,
+    RestaurantItemTrackingComponent,
   ],
   templateUrl: './restaurant-editor.component.html',
 })
 export class RestaurantEditorComponent {
+  readonly tracking = viewChild(RestaurantItemTrackingComponent);
+  readonly hasStockLink = computed(() => !!this.tracking()?.query.data()?.stockItem);
   readonly data = inject<RestaurantEditorData>(MAT_DIALOG_DATA);
   private readonly ref = inject(MatDialogRef<RestaurantEditorComponent>);
   private readonly api = inject(RestaurantsApi);
@@ -66,6 +70,8 @@ export class RestaurantEditorComponent {
   readonly refreshed = signal(false);
   readonly version = signal(this.data.entity?.version);
   private readonly requestId = crypto.randomUUID();
+  // Command-stage identity only: retries after tracking failure must not recreate/resave Menu metadata.
+  readonly savedItemId = signal<string | null>(null);
   private readonly entity = this.data.entity;
   readonly form = this.fb.group({
     name: [
@@ -173,6 +179,12 @@ export class RestaurantEditorComponent {
 
   constructor() {
     effect(() => {
+      if (this.data.kind !== 'item') return;
+      if (this.tracking()?.query.data()?.stockItem)
+        this.form.controls.station.disable({ emitEvent: false });
+      else if (!this.savedItemId()) this.form.controls.station.enable({ emitEvent: false });
+    });
+    effect(() => {
       if (
         this.queries.scope() !== this.data.org ||
         this.queries.userScope() !== this.originalUser ||
@@ -253,6 +265,7 @@ export class RestaurantEditorComponent {
     if (this.pending() || !this.canManage() || (this.conflict() && !this.refreshed())) return;
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
+    if (this.data.kind === 'item' && this.tracking() && !this.tracking()!.validate()) return;
     const v = this.form.getRawValue();
     let request: Record<string, unknown> = {
       name: v.name?.trim(),
@@ -301,14 +314,30 @@ export class RestaurantEditorComponent {
     this.pending.set(true);
     this.error.set(null);
     try {
-      const result = await this.api.save(
-        this.data.org,
-        this.data.kind,
-        this.data.context,
-        parsed.data,
-        this.entity?.id,
-      );
+      const result = this.savedItemId()
+        ? {
+            data: await this.api.get(
+              this.data.org,
+              this.data.kind,
+              this.data.context,
+              this.savedItemId()!,
+            ),
+            message: null,
+          }
+        : await this.api.save(
+            this.data.org,
+            this.data.kind,
+            this.data.context,
+            parsed.data,
+            this.entity?.id,
+          );
       await this.queries.changed(this.data.org, this.data.kind, this.data.context);
+      if (!result.data) throw new HttpErrorResponse({ status: 404 });
+      if (this.data.kind === 'item') {
+        this.savedItemId.set(result.data.id);
+        this.form.disable();
+        await this.tracking()?.persist(result.data.id);
+      }
       if (
         this.queries.scope() === this.data.org &&
         this.queries.userScope() === this.originalUser

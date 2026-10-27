@@ -506,6 +506,29 @@ export class RestaurantsRepository {
         },
       },
     ];
+    // A station and a direct stock link must never become canonical concurrently.
+    if (next.kind === "item") {
+      const menuItem = entitySchemas.item.parse(next.data);
+      if (menuItem.preparationStationId)
+        transaction.push({
+          ConditionCheck: {
+            TableName: restaurantsTableName(),
+            Key: marshall({
+              PK: KeyFactory.restaurantStockPK(orgId, menuItem.outletId),
+              SK: KeyFactory.restaurantStockMappingSK(menuItem.id),
+            }),
+            ConditionExpression:
+              "attribute_not_exists(PK) OR (orgId = :org AND outletId = :out AND entityType = :type AND #d.#removed = :removed)",
+            ExpressionAttributeNames: { "#d": "data", "#removed": "removed" },
+            ExpressionAttributeValues: marshall({
+              ":org": orgId,
+              ":out": menuItem.outletId,
+              ":type": "RESTAURANT_STOCK_MAPPING",
+              ":removed": true,
+            }),
+          },
+        });
+    }
     for (const check of parents) {
       const condition = writeCondition(check.snapshot);
       transaction.push({

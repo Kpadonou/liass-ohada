@@ -8,7 +8,10 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
-import { INVENTORY_ROUTES } from "../../../lambda/domains/restaurants/inventory-routes";
+import {
+  TRACKING_PATH,
+  TRACKING_ROUTES,
+} from "../../../lambda/domains/restaurants/inventory-routes";
 import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
 import {
   AccountingApiStack,
@@ -391,13 +394,13 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(77);
-    expect(routes).toHaveLength(99);
+    expect(routes).toHaveLength(98);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
     ).toHaveLength(77);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(86);
+    ).toHaveLength(87);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -459,10 +462,12 @@ describe("API stack decomposition", () => {
     const original = routes.find(
       (route) => route.routeKey === "GET /restaurants/outlets/{outletId}",
     )!;
-    for (const entry of INVENTORY_ROUTES) {
-      const route = routes.find(
-        (r) => r.routeKey === `${entry.method} ${entry.path}`,
-      )!;
+    for (const routeKey of [
+      "ANY /restaurants/outlets/{outletId}/inventory/items",
+      "ANY /restaurants/outlets/{outletId}/inventory/items/{proxy+}",
+      ...TRACKING_ROUTES.map((method) => `${method} ${TRACKING_PATH}`),
+    ]) {
+      const route = routes.find((r) => r.routeKey === routeKey)!;
       expect(route).toBeDefined();
       expect(route.authorizationType).toBe("JWT");
       expect(restaurants.resolve(route.target)).toEqual(
@@ -491,7 +496,7 @@ describe("API stack decomposition", () => {
         (item): item is lambda.CfnPermission =>
           item instanceof lambda.CfnPermission,
       );
-    expect(permissions).toHaveLength(7);
+    expect(permissions).toHaveLength(8);
     const arns = permissions.map((permission) => {
       expect(permission.principal).toBe("apigateway.amazonaws.com");
       expect(restaurants.resolve(permission.sourceAccount)).toBe(
@@ -506,6 +511,7 @@ describe("API stack decomposition", () => {
       "/$default/*/restaurants/outlets/*/inventory/items",
     );
     expect(arns.join(" ")).not.toContain("/$default/*/*");
+    expect(arns.join(" ")).toContain("/inventory/menu-items/*/tracking");
     expect(
       Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
     ).toBeLessThanOrEqual(344);

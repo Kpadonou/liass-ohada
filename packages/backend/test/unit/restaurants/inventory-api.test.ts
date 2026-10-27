@@ -36,12 +36,18 @@ const event = (
 ) => {
   const route = INVENTORY_ROUTES.find((r) => r.operation === operation)!;
   return {
-    routeKey: `${route.method} ${route.path}`,
+    routeKey: `ANY /restaurants/outlets/{outletId}/inventory/items${id ? "/{proxy+}" : ""}`,
+    rawPath: route.path
+      .replace("{outletId}", outlet)
+      .replace("{stockItemId}", id ?? ""),
     headers: { "accept-language": "en", "x-org-id": tenant },
     body: body === undefined ? undefined : JSON.stringify(body),
     queryStringParameters: query,
     pathParameters: { outletId: outlet, ...(id ? { stockItemId: id } : {}) },
-    requestContext: { authorizer: { jwt: { claims: { sub: user } } } },
+    requestContext: {
+      http: { method: route.method },
+      authorizer: { jwt: { claims: { sub: user } } },
+    },
   };
 };
 const item = async (unit = "UNIT") =>
@@ -416,6 +422,24 @@ test("strict shared contracts reject malformed input and initial balance", async
   read(await handler({ ...event("create"), body: "{invalid" }), 400);
   expect(quantityToMilli("0.001")).toBe(1);
   expect(quantityToMilli("-1.251")).toBe(-1251);
+});
+test("bounded Inventory route groups reject unsupported methods and paths", async () => {
+  const base = event("list");
+  read(
+    await handler({
+      ...base,
+      requestContext: { ...base.requestContext, http: { method: "DELETE" } },
+    }),
+    404,
+  );
+  read(
+    await handler({
+      ...base,
+      routeKey: "ANY /restaurants/outlets/{outletId}/inventory/items/{proxy+}",
+      rawPath: `${base.rawPath}/unexpected/operation`,
+    }),
+    404,
+  );
 });
 test.each(["WAITER", "CASHIER", "KITCHEN"])(
   "consolidated Outlet routes preserve %s read/write permissions",

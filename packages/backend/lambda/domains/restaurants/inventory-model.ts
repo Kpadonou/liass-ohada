@@ -75,6 +75,8 @@ export function movementDelta(
       : amount;
 }
 export const StockMappingSchema = InventoryScopeSchema.extend({
+  version: z.number().int().positive().default(1),
+  removed: z.boolean().default(false),
   menuItemId: z.string().uuid(),
   categoryId: z.string().uuid(),
   stockItemId: z.string().uuid(),

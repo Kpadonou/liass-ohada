@@ -9,6 +9,8 @@ import * as C from '@liass-ohada/shared/restaurants';
 import { RestaurantInventoryApi, InventoryContext } from './restaurant-inventory.api';
 import { isInactiveInventoryError } from '../utils/inventory-errors';
 export const inventoryKeys = {
+  tracking: (ctx: InventoryContext, category: string, menuItem: string) =>
+    [...inventoryKeys.root(ctx), 'tracking', category, menuItem] as const,
   root: (ctx: InventoryContext) =>
     [
       'restaurants',
@@ -28,6 +30,44 @@ export const inventoryKeys = {
 export class RestaurantInventoryQueries {
   readonly api = inject(RestaurantInventoryApi);
   private readonly client = inject(QueryClient);
+  tracking(ctx: InventoryContext, category: string, menuItem: string, enabled: boolean) {
+    return queryOptions({
+      queryKey: inventoryKeys.tracking(ctx, category, menuItem),
+      queryFn: () => this.api.tracking(ctx, category, menuItem),
+      enabled: enabled && !!menuItem,
+      staleTime: 0,
+      retry: false,
+    });
+  }
+  async saveTracking(
+    ctx: InventoryContext,
+    category: string,
+    menuItem: string,
+    command: C.SaveInventoryTrackingRequest | C.RemoveInventoryTrackingRequest,
+  ) {
+    try {
+      const result = await this.api.tracking(ctx, category, menuItem, command);
+      this.api.assertCurrent(ctx);
+      this.client.setQueryData(inventoryKeys.tracking(ctx, category, menuItem), result);
+      return result;
+    } finally {
+      if (this.api.isCurrent(ctx))
+        await Promise.all([
+          this.client.invalidateQueries({
+            queryKey: inventoryKeys.tracking(ctx, category, menuItem),
+            exact: true,
+          }),
+          this.client.invalidateQueries({
+            predicate: (q) =>
+              q.queryKey[0] === 'restaurants' &&
+              q.queryKey[1] === ctx.org &&
+              q.queryKey[2] === 'inventory' &&
+              q.queryKey[6] === ctx.outlet &&
+              q.queryKey[7] === 'items',
+          }),
+        ]);
+    }
+  }
   items(ctx: InventoryContext, enabled: boolean) {
     return infiniteQueryOptions({
       queryKey: inventoryKeys.items(ctx),

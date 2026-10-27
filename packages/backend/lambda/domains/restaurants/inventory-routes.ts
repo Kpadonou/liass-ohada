@@ -1,4 +1,7 @@
 const base = "/restaurants/outlets/{outletId}/inventory/items";
+export const TRACKING_PATH =
+  "/restaurants/outlets/{outletId}/inventory/menu-items/{menuItemId}/tracking";
+export const TRACKING_ROUTES = ["GET", "PUT", "DELETE"] as const;
 export const INVENTORY_ROUTES = [
   { operation: "list", method: "GET", path: base },
   { operation: "create", method: "POST", path: base },

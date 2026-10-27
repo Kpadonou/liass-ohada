@@ -12,6 +12,7 @@ import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities
 import { RestaurantKind } from '../data-access/restaurants-model';
 import { context, row } from '../data-access/restaurants.test-fixture';
 import { RestaurantEditorComponent, RestaurantEditorData } from './restaurant-editor.component';
+import { RestaurantInventoryApi } from '../data-access/restaurant-inventory.api';
 const langs = {
   en: {
     RESTAURANTS: {
@@ -69,6 +70,22 @@ describe('Restaurant configuration dialogs', () => {
         { provide: QueryClient, useValue: client },
         { provide: RestaurantsApi, useValue: api },
         {
+          provide: RestaurantInventoryApi,
+          useValue: {
+            context: (outlet: string) => ({
+              org: 'org',
+              user: 'owner',
+              outlet,
+              revision: 1,
+              identity: 'configuration',
+            }),
+            isCurrent: () => true,
+            assertCurrent: () => undefined,
+            tracking: () => Promise.resolve({ menuItemId: 'item', version: 0, stockItem: null }),
+            items: () => Promise.resolve({ items: [] }),
+          },
+        },
+        {
           provide: RestaurantsQueries,
           useValue: {
             scope: org,
@@ -100,8 +117,30 @@ describe('Restaurant configuration dialogs', () => {
     await TestBed.compileComponents();
     const f = TestBed.createComponent(RestaurantEditorComponent);
     f.detectChanges();
+    if (data.kind === 'item' && data.entity)
+      await vi.waitFor(() => {
+        f.detectChanges();
+        expect(f.componentInstance.tracking()?.query.isSuccess()).toBe(true);
+      });
     return f;
   }
+  it('retries tracking after a MenuItem save without duplicating Menu creation or metadata updates', async () => {
+    const f = await create({ org: 'org', kind: 'item', context, currency: 'XOF' });
+    f.componentInstance.form.patchValue({ name: row('item').name, price: '5000', station: null });
+    api.save.mockResolvedValue({ data: row('item'), message: 'Saved.' });
+    api.get.mockResolvedValue(row('item'));
+    const persist = vi
+      .spyOn(f.componentInstance.tracking()!, 'persist')
+      .mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }))
+      .mockResolvedValueOnce(undefined);
+    await f.componentInstance.submit();
+    expect(api.save).toHaveBeenCalledTimes(1);
+    expect(ref.close).not.toHaveBeenCalled();
+    await f.componentInstance.submit();
+    expect(api.save).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenCalledTimes(2);
+    expect(ref.close).toHaveBeenCalledWith(row('item'));
+  });
   it.each([
     'restaurant',
     'outlet',

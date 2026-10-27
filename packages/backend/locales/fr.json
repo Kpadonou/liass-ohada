@@ -1,4 +1,6 @@
 {
+  "RESTAURANTS_INVENTORY_TRACKING_INELIGIBLE": "Le suivi direct du stock est réservé aux articles sans poste de préparation.",
+  "RESTAURANTS_INVENTORY_TRACKING_TARGET": "Sélectionnez un article de stock actif avec une unité discrète.",
   "RESTAURANTS_INVENTORY_INACTIVE": "Réactivez cet article pour enregistrer de nouveaux mouvements.",
   "RESTAURANTS_INVENTORY_QUANTITY": "Saisissez une quantité non nulle avec au plus trois décimales. Les unités dénombrables exigent une quantité entière.",
   "RESTAURANTS_INVENTORY_CONFLICT": "L’article de stock a changé ou cette demande a déjà servi pour un mouvement différent. Actualisez puis réessayez.",

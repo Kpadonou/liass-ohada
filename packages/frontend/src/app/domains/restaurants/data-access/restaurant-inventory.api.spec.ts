@@ -108,4 +108,45 @@ describe('Inventory HTTP contracts and context isolation', () => {
     await expect(api.items(ctx)).rejects.toMatchObject({ status: 409 });
     http.expectNone(() => true);
   });
+  it('reads and changes tracking in the explicit configuration outlet with strict shared contracts', async () => {
+    const configuration = api.context(crypto.randomUUID());
+    const categoryId = crypto.randomUUID(),
+      menuItemId = crypto.randomUUID();
+    const response = { data: { menuItemId, version: 0, stockItem: null } };
+    const read = api.tracking(configuration, categoryId, menuItemId);
+    let req = http.expectOne((r) => r.url.endsWith(`/inventory/menu-items/${menuItemId}/tracking`));
+    expect(req.request.params.get('categoryId')).toBe(categoryId);
+    expect(req.request.url).toContain(configuration.outlet);
+    req.flush(response);
+    await read;
+    const command = {
+      categoryId,
+      expectedVersion: 0,
+      clientRequestId: crypto.randomUUID(),
+      mode: 'CREATE' as const,
+      unit: 'BOTTLE' as const,
+    };
+    const save = api.tracking(configuration, categoryId, menuItemId, command);
+    req = http.expectOne(() => true);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual(command);
+    req.flush(response);
+    await save;
+    const remove = { categoryId, expectedVersion: 1, clientRequestId: crypto.randomUUID() };
+    const removal = api.tracking(configuration, categoryId, menuItemId, remove);
+    req = http.expectOne(() => true);
+    expect(req.request.method).toBe('DELETE');
+    req.flush(response);
+    await removal;
+  });
+  it('rejects a tracking response after the authenticated context changes', async () => {
+    const categoryId = crypto.randomUUID(),
+      menuItemId = crypto.randomUUID();
+    const response = api.tracking(api.context(ctx.outlet), categoryId, menuItemId);
+    const rejected = expect(response).rejects.toMatchObject({ status: 409 });
+    const req = http.expectOne(() => true);
+    revision.set(revision() + 1);
+    req.flush({ data: { menuItemId, version: 0, stockItem: null } });
+    await rejected;
+  });
 });

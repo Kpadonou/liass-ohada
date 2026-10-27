@@ -11,6 +11,10 @@ import * as path from "path";
 import { DomainProps } from "./domain-constructs-factory";
 import { RESTAURANTS_ROUTES } from "../../../lambda/domains/restaurants/restaurant-routes";
 import { INVENTORY_ROUTES } from "../../../lambda/domains/restaurants/inventory-routes";
+import {
+  TRACKING_PATH,
+  TRACKING_ROUTES,
+} from "../../../lambda/domains/restaurants/inventory-routes";
 
 /** Same reviewed bounded-invocation pattern as GuestRouteIntegration. */
 class ManagementIntegration extends HttpLambdaIntegration {
@@ -52,13 +56,10 @@ export function addRestaurantsManagementRoutes(
     throw new Error("Restaurants management requires an explicit API stage");
   const outlets = RESTAURANTS_ROUTES.filter((r) => r.kind === "outlet");
   // Bind the historical GET first: its existing Integration logical identity is retained.
-  for (const route of [...outlets, ...INVENTORY_ROUTES]) {
-    const routeId =
-      "name" in route
-        ? `Restaurants-${route.name}-${route.method}-${route.path}`
-            .replace(/[^A-Za-z0-9]+/g, "-")
-            .replace(/-$/g, "")
-        : `Inventory-${route.operation}`;
+  for (const route of outlets) {
+    const routeId = `Restaurants-${route.name}-${route.method}-${route.path}`
+      .replace(/[^A-Za-z0-9]+/g, "-")
+      .replace(/-$/g, "");
     new apigw.HttpRoute(scope, `${routeId}Route`, {
       httpApi: props.api,
       authorizer: props.authorizer,
@@ -69,6 +70,29 @@ export function addRestaurantsManagementRoutes(
       ),
     });
   }
+  for (const [name, inventoryPath] of [
+    ["InventoryCollection", "/restaurants/outlets/{outletId}/inventory/items"],
+    [
+      "InventoryMember",
+      "/restaurants/outlets/{outletId}/inventory/items/{proxy+}",
+    ],
+  ])
+    new apigw.HttpRoute(scope, `${name}RouteGroup`, {
+      httpApi: props.api,
+      authorizer: props.authorizer,
+      integration,
+      routeKey: apigw.HttpRouteKey.with(inventoryPath, apigw.HttpMethod.ANY),
+    });
+  for (const method of TRACKING_ROUTES)
+    new apigw.HttpRoute(scope, `InventoryTracking${method}Route`, {
+      httpApi: props.api,
+      authorizer: props.authorizer,
+      integration,
+      routeKey: apigw.HttpRouteKey.with(
+        TRACKING_PATH,
+        apigw.HttpMethod[method],
+      ),
+    });
   for (const route of outlets)
     fn.addPermission(`Outlet-${route.name}-Invoke`, {
       principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
@@ -82,6 +106,10 @@ export function addRestaurantsManagementRoutes(
   for (const [name, inventoryPath] of [
     ["InventoryCollectionInvoke", "/restaurants/outlets/*/inventory/items"],
     ["InventoryMemberInvoke", "/restaurants/outlets/*/inventory/items/*"],
+    [
+      "InventoryTrackingInvoke",
+      "/restaurants/outlets/*/inventory/menu-items/*/tracking",
+    ],
   ])
     fn.addPermission(name, {
       principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),

@@ -1,4 +1,22 @@
 {
+  "RESTAURANTS_TRACKING": {
+    "REMOVE_BEFORE_STATION": "Retirez le suivi de stock avant d'ajouter un poste de préparation.",
+    "MENU_SAVED_RETRY": "L'article du menu est enregistré. Terminez le suivi de stock ou fermez pour le configurer plus tard.",
+    "TITLE": "Suivi de stock",
+    "ENABLE": "Suivre cet article en stock",
+    "CREATE": "Créer automatiquement un article de stock",
+    "EXISTING": "Utiliser un article de stock existant",
+    "STOCK_ITEM": "Article de stock",
+    "UNIT": "Unité de stock",
+    "CHANGE": "Modifier le lien",
+    "REMOVE": "Retirer le suivi",
+    "INACTIVE": "Article de stock inactif",
+    "PRESERVED": "L'article de stock et son historique seront conservés.",
+    "STATION_HINT": "Le suivi direct du stock est réservé aux articles sans poste de préparation. Le suivi des articles préparés via les recettes sera proposé ultérieurement.",
+    "LOAD_ERROR": "Le suivi de stock ne peut pas être chargé. Actualisez puis réessayez.",
+    "SELECT_REQUIRED": "Sélectionnez un article de stock actif avec une unité discrète.",
+    "LOADED_ONLY": "La recherche porte sur les articles chargés. Affichez plus d'articles si nécessaire."
+  },
   "RESTAURANTS_INVENTORY": {
     "INACTIVE_HINT": "Réactivez cet article pour enregistrer de nouveaux mouvements.",
     "YOU": "Vous",

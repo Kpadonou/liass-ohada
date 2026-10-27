@@ -112,7 +112,8 @@ export class InventoryRepository {
       !key.PK.startsWith(
         K.restaurantTransactionScope(s.orgId, s.outletId) + "#",
       ) ||
-      (version !== undefined && type !== "RESTAURANT_STOCK_ITEM")
+      (version !== undefined &&
+        !["RESTAURANT_STOCK_ITEM", "RESTAURANT_STOCK_MAPPING"].includes(type))
     )
       throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
     return {
@@ -125,7 +126,10 @@ export class InventoryRepository {
         ConditionExpression:
           version === undefined
             ? "attribute_not_exists(PK)"
-            : "orgId = :org AND outletId = :out AND entityType = :type AND #d.#v = :v",
+            : "orgId = :org AND outletId = :out AND entityType = :type AND " +
+              (type === "RESTAURANT_STOCK_MAPPING" && version === 1
+                ? "(#d.#v = :v OR attribute_not_exists(#d.#v))"
+                : "#d.#v = :v"),
         ...(version === undefined
           ? {}
           : {

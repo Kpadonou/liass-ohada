@@ -1,4 +1,22 @@
 {
+  "RESTAURANTS_TRACKING": {
+    "REMOVE_BEFORE_STATION": "Remove inventory tracking before adding a preparation station.",
+    "MENU_SAVED_RETRY": "The menu item is saved. Complete inventory tracking or close to configure it later.",
+    "TITLE": "Inventory tracking",
+    "ENABLE": "Track this item in inventory",
+    "CREATE": "Automatically create a stock item",
+    "EXISTING": "Use existing stock item",
+    "STOCK_ITEM": "Stock item",
+    "UNIT": "Stock unit",
+    "CHANGE": "Change link",
+    "REMOVE": "Remove tracking",
+    "INACTIVE": "Inactive stock item",
+    "PRESERVED": "The stock item and its history will be preserved.",
+    "STATION_HINT": "Direct inventory tracking is reserved for items without a preparation station. Recipe-based tracking for prepared items will be available in the future.",
+    "LOAD_ERROR": "Inventory tracking could not be loaded. Refresh and try again.",
+    "SELECT_REQUIRED": "Select an active stock item with a discrete unit.",
+    "LOADED_ONLY": "Search covers loaded items. Load more items if needed."
+  },
   "RESTAURANTS_INVENTORY": {
     "INACTIVE_HINT": "Reactivate this item to record new movements.",
     "YOU": "You",

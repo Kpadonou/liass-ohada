@@ -1,0 +1,132 @@
+<section
+  class="space-y-3 border-t border-app-border pt-4"
+  [formGroup]="form"
+  aria-labelledby="tracking-title"
+>
+  <h3 id="tracking-title" class="text-sm font-semibold">
+    {{ 'RESTAURANTS_TRACKING.TITLE' | transloco }}
+  </h3>
+  @if (query.isPending() && menuItemId()) {
+    <p role="status" class="text-sm">{{ 'RESTAURANTS_INVENTORY.LOADING' | transloco }}</p>
+  } @else if (query.isError()) {
+    <p role="alert" class="text-sm">{{ 'RESTAURANTS_TRACKING.LOAD_ERROR' | transloco }}</p>
+    <button mat-button type="button" (click)="query.refetch()">
+      {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+    </button>
+  } @else {
+    @if (query.data()?.stockItem; as item) {
+      @if (!editing()) {
+        <div class="flex items-center justify-between gap-2">
+          <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+            <dt class="text-app-text-secondary">
+              {{ 'RESTAURANTS_TRACKING.STOCK_ITEM' | transloco }}
+            </dt>
+            <dd>{{ item.name }}</dd>
+            <dt class="text-app-text-secondary">{{ 'RESTAURANTS_TRACKING.UNIT' | transloco }}</dt>
+            <dd>{{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}</dd>
+            <dt class="text-app-text-secondary">
+              {{ 'RESTAURANTS_INVENTORY.CURRENT' | transloco }}
+            </dt>
+            <dd class="tabular-nums" [class.text-danger-600]="item.isNegativeStock">
+              {{ quantity(item.balanceMilli) }}
+            </dd>
+          </dl>
+          <liass-status-chip
+            size="sm"
+            tone="neutral"
+            [label]="
+              (item.isActive ? 'RESTAURANTS_INVENTORY.ACTIVE' : 'RESTAURANTS_TRACKING.INACTIVE')
+                | transloco
+            "
+          />
+        </div>
+        <button mat-button type="button" (click)="edit()" [disabled]="!allowed()">
+          {{ 'RESTAURANTS_TRACKING.CHANGE' | transloco }}
+        </button>
+        <button mat-button type="button" (click)="remove()" [disabled]="!allowed()">
+          {{ 'RESTAURANTS_TRACKING.REMOVE' | transloco }}
+        </button>
+      }
+    }
+    @if (station()) {
+      <p class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS_TRACKING.STATION_HINT' | transloco }}
+      </p>
+      @if (editing() && !enabled() && query.data()?.stockItem) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS_TRACKING.PRESERVED' | transloco }}
+        </p>
+      }
+    } @else if (!query.data()?.stockItem || editing()) {
+      <mat-checkbox formControlName="enabled">{{
+        'RESTAURANTS_TRACKING.ENABLE' | transloco
+      }}</mat-checkbox>
+      @if (enabled()) {
+        <mat-radio-group
+          formControlName="mode"
+          class="flex flex-col"
+          [attr.aria-label]="'RESTAURANTS_TRACKING.STOCK_ITEM' | transloco"
+        >
+          <mat-radio-button value="CREATE">{{
+            'RESTAURANTS_TRACKING.CREATE' | transloco
+          }}</mat-radio-button>
+          <mat-radio-button value="LINK">{{
+            'RESTAURANTS_TRACKING.EXISTING' | transloco
+          }}</mat-radio-button>
+        </mat-radio-group>
+        @if (mode() === 'CREATE') {
+          <p class="text-sm">{{ name() }}</p>
+          <mat-form-field class="w-full" subscriptSizing="dynamic">
+            <mat-label>{{ 'RESTAURANTS_TRACKING.UNIT' | transloco }}</mat-label>
+            <mat-select formControlName="unit">
+              @for (unit of units; track unit) {
+                <mat-option [value]="unit">{{
+                  'RESTAURANTS_INVENTORY.UNITS.' + unit | transloco
+                }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <p class="text-xs text-app-text-secondary">
+            {{ 'RESTAURANTS_INVENTORY.INITIAL_ZERO' | transloco }}
+          </p>
+        } @else {
+          <liass-searchable-select
+            formControlName="stockItemId"
+            labelKey="RESTAURANTS_TRACKING.STOCK_ITEM"
+            [options]="options()"
+            [loading]="items.isPending()"
+          />
+          <p class="text-xs text-app-text-secondary">
+            {{ 'RESTAURANTS_TRACKING.LOADED_ONLY' | transloco }}
+          </p>
+          @if (items.isError()) {
+            <p role="alert">{{ 'RESTAURANTS_TRACKING.LOAD_ERROR' | transloco }}</p>
+            <button mat-button type="button" (click)="items.refetch()">
+              {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+            </button>
+          }
+          @if (items.hasNextPage()) {
+            <button
+              mat-button
+              type="button"
+              [disabled]="items.isFetchingNextPage()"
+              (click)="items.fetchNextPage()"
+            >
+              {{ 'RESTAURANTS_INVENTORY.MORE' | transloco }}
+            </button>
+          }
+        }
+      } @else if (query.data()?.stockItem) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS_TRACKING.PRESERVED' | transloco }}
+        </p>
+      }
+    }
+  }
+  @if (error()) {
+    <p role="alert" class="text-sm text-danger-600">{{ error() }}</p>
+  }
+  @if (uncertain()) {
+    <p role="status" class="text-sm">{{ 'RESTAURANTS_INVENTORY.UNCERTAIN' | transloco }}</p>
+  }
+</section>

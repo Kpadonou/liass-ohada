@@ -24,17 +24,21 @@ export class RestaurantInventoryApi {
   private readonly outlet = inject(RestaurantOutletContext);
   private readonly caps = inject(RestaurantsCapabilities);
   private readonly access = inject(ProductAccessState);
-  context(): InventoryContext {
+  context(configurationOutlet?: string): InventoryContext {
     return {
       org: this.auth.effectiveOrgId() ?? '',
       user: this.auth.currentUserId() ?? '',
       revision: this.auth.contextRevision(),
-      outlet: this.outlet.id(),
-      identity: this.outlet.identity(),
+      outlet: configurationOutlet ?? this.outlet.id(),
+      identity: configurationOutlet
+        ? `configuration:${configurationOutlet}`
+        : this.outlet.identity(),
     };
   }
   isCurrent(ctx: InventoryContext) {
-    const now = this.context();
+    const now = this.context(
+      ctx.identity === `configuration:${ctx.outlet}` ? ctx.outlet : undefined,
+    );
     return (
       !!ctx.org &&
       !!ctx.outlet &&
@@ -57,7 +61,7 @@ export class RestaurantInventoryApi {
   }
   private async request<T>(
     ctx: InventoryContext,
-    method: 'GET' | 'POST' | 'PATCH',
+    method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE',
     path: string,
     schema: z.ZodType<T>,
     body?: unknown,
@@ -145,5 +149,43 @@ export class RestaurantInventoryApi {
     );
     if (r.data.data.stockItemId !== id) throw new Error('Inventory identity mismatch');
     return { data: r.data.data, message: r.message };
+  }
+  async tracking(
+    ctx: InventoryContext,
+    categoryId: string,
+    menuItemId: string,
+    command?: C.SaveInventoryTrackingRequest | C.RemoveInventoryTrackingRequest,
+  ) {
+    this.assertCurrent(ctx);
+    const path =
+      environment.apiBaseUrl.replace(/\/$/, '') +
+      `/restaurants/outlets/${C.RestaurantIdSchema.parse(ctx.outlet)}/inventory/menu-items/${C.RestaurantIdSchema.parse(menuItemId)}/tracking`;
+    try {
+      const method = !command ? 'GET' : 'mode' in command ? 'PUT' : 'DELETE';
+      const body =
+        command &&
+        ('mode' in command
+          ? C.SaveInventoryTrackingRequestSchema
+          : C.RemoveInventoryTrackingRequestSchema
+        ).parse(command);
+      const result = C.InventoryTrackingResponseSchema.parse(
+        await firstValueFrom(
+          this.http
+            .request<unknown>(method, path, {
+              ...(command
+                ? { body }
+                : { params: { categoryId: C.RestaurantIdSchema.parse(categoryId) } }),
+            })
+            .pipe(timeout(30_000)),
+        ),
+      );
+      this.assertCurrent(ctx);
+      if (result.data.menuItemId !== menuItemId)
+        throw new Error('Inventory tracking identity mismatch');
+      return result.data;
+    } catch (error) {
+      this.assertCurrent(ctx);
+      throw error;
+    }
   }
 }

@@ -295,6 +295,7 @@ export class RestaurantInventoryService {
     );
     if (
       !menu ||
+      !item.isActive ||
       menu.data.outletId !== scope.outletId ||
       menu.data.preparationStationId ||
       !discreteUnit(item.unit)
@@ -339,10 +340,10 @@ export class RestaurantInventoryService {
     ]);
     return mapping;
   }
-  static resolveMapping(scope: InventoryScope, menuItemId: string) {
+  static async resolveMapping(scope: InventoryScope, menuItemId: string) {
     InventoryScopeSchema.parse(scope);
     z.string().uuid().parse(menuItemId);
-    return R.get(
+    const mapping = await R.get(
       scope,
       {
         PK: K.restaurantStockPK(scope.orgId, scope.outletId),
@@ -351,5 +352,6 @@ export class RestaurantInventoryService {
       MAPPING,
       StockMappingSchema,
     );
+    return mapping?.removed ? undefined : mapping;
   }
 }

@@ -95,6 +95,27 @@ families are `/restaurants/outlets/*/inventory/items` and
 registered route or handler operation. No API-wide invocation grant is used.
 The retained Lambda keeps its logical identity; stateful resources do not move.
 
+RESTO-INV-1D-A retains **344 Restaurants / 278 API core** resources. The six
+logical Inventory operations now use two JWT route groups (`ANY` collection and
+`ANY` member proxy, both bounded to `/inventory/items`). The dispatcher resolves
+an exact method/path allowlist and rejects unsupported operations. Three exact
+tracking routes (`GET`, `PUT`, `DELETE` under `/inventory/menu-items/{menuItemId}/tracking`)
+reuse the same Lambda/integration with one additional bounded invocation grant.
+The route count changes 99 → 98 and invocation permissions 86 → 87; Lambdas and
+integrations remain 77 each. Outlet/Guest authorization and stateful resources
+remain unchanged. The inventory tracking resource requires the canonical
+`categoryId` (query for GET, body for writes) because MenuItem identity is
+category-scoped in the existing KeyFactory.
+
+Tracking uses existing `MAP#` stock collection keys with optimistic versions.
+Removal retains a versioned tombstone, preserving stale-write detection without
+deleting StockItems or history. Existing unversioned mappings read as version 1.
+Automatic stock creation, link, MenuItem version check and durable command receipt
+commit together (four transaction operations). Linking existing stock substitutes
+a target version check; removal needs three operations. Receipts use existing
+Restaurants command keys and do not depend on TTL. A MenuItem station assignment
+also checks that no live direct link exists in the same configuration transaction.
+
 ## Stateful-resource safeguards
 
 Ordinary feature work **MUST NOT** move resources whose replacement could destroy data or disconnect production integrations. Protected resources include:
