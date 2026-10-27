@@ -8,6 +8,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
+import { INVENTORY_ROUTES } from "../../../lambda/domains/restaurants/inventory-routes";
 import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
 import {
   AccountingApiStack,
@@ -389,14 +390,14 @@ describe("API stack decomposition", () => {
     const routes = owned.filter(
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
-    expect(functions).toHaveLength(81);
-    expect(routes).toHaveLength(93);
+    expect(functions).toHaveLength(77);
+    expect(routes).toHaveLength(99);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
-    ).toHaveLength(81);
+    ).toHaveLength(77);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(84);
+    ).toHaveLength(86);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -436,6 +437,78 @@ describe("API stack decomposition", () => {
           item instanceof apigwv2.CfnApi,
       ),
     ).toHaveLength(0);
+  });
+
+  test("Inventory reuses the original Outlet Lambda/integration with bounded JWT routes and invocation", () => {
+    const restaurants = constructs.find(
+      (item): item is RestaurantsApiStack =>
+        item instanceof RestaurantsApiStack,
+    )!;
+    const owned = restaurants.node.findAll();
+    const management = owned.find(
+      (item): item is lambda.CfnFunction =>
+        item instanceof lambda.CfnFunction &&
+        item.functionName === "liass-ohada-dev-restaurants-get-outlet",
+    )!;
+    expect(restaurants.getLogicalId(management)).toBe(
+      "RestaurantsModuleRestaurantsgetoutletGETrestaurantsoutletsoutletId915B5431",
+    );
+    const routes = owned.filter(
+      (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+    );
+    const original = routes.find(
+      (route) => route.routeKey === "GET /restaurants/outlets/{outletId}",
+    )!;
+    for (const entry of INVENTORY_ROUTES) {
+      const route = routes.find(
+        (r) => r.routeKey === `${entry.method} ${entry.path}`,
+      )!;
+      expect(route).toBeDefined();
+      expect(route.authorizationType).toBe("JWT");
+      expect(restaurants.resolve(route.target)).toEqual(
+        restaurants.resolve(original.target),
+      );
+    }
+    for (const name of [
+      "create-outlet",
+      "update-outlet",
+      "list-outlet",
+      "deactivate-outlet",
+    ])
+      expect(
+        owned
+          .filter(
+            (item): item is lambda.CfnFunction =>
+              item instanceof lambda.CfnFunction,
+          )
+          .some(
+            (fn) => fn.functionName === `liass-ohada-dev-restaurants-${name}`,
+          ),
+      ).toBe(false);
+    const permissions = management.node
+      .scope!.node.findAll()
+      .filter(
+        (item): item is lambda.CfnPermission =>
+          item instanceof lambda.CfnPermission,
+      );
+    expect(permissions).toHaveLength(7);
+    const arns = permissions.map((permission) => {
+      expect(permission.principal).toBe("apigateway.amazonaws.com");
+      expect(restaurants.resolve(permission.sourceAccount)).toBe(
+        "123456789012",
+      );
+      return JSON.stringify(restaurants.resolve(permission.sourceArn));
+    });
+    expect(arns.filter((arn) => arn.includes("/inventory/items"))).toHaveLength(
+      2,
+    );
+    expect(arns.join(" ")).toContain(
+      "/$default/*/restaurants/outlets/*/inventory/items",
+    );
+    expect(arns.join(" ")).not.toContain("/$default/*/*");
+    expect(
+      Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
+    ).toBeLessThanOrEqual(344);
   });
 
   test("isolates Restaurants write permissions and protects the new stateful table", () => {

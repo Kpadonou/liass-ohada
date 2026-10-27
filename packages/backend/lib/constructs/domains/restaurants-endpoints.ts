@@ -17,6 +17,7 @@ import { RESTAURANT_RECEIPT_ROUTES } from "../../../lambda/domains/restaurants/r
 import * as iam from "aws-cdk-lib/aws-iam";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { RestaurantsGuestEndpoints } from "./restaurants-guest-endpoints";
+import { addRestaurantsManagementRoutes } from "./restaurants-management-routes";
 
 export class RestaurantsEndpoints extends DomainConstructFactory {
   constructor(
@@ -63,6 +64,7 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
       ...props,
       staffRole: role,
     });
+    addRestaurantsManagementRoutes(this, { ...props, lambdaRole: role });
     for (const route of [
       ...RESTAURANTS_ROUTES,
       ...RESTAURANT_TRANSACTION_ROUTES,
@@ -71,6 +73,7 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
       ...RESTAURANT_PAYMENT_ROUTES,
       ...RESTAURANT_RECEIPT_ROUTES,
     ]) {
+      if ("kind" in route && route.kind === "outlet") continue;
       this.addRoute({
         ...("command" in route ||
         "query" in route ||

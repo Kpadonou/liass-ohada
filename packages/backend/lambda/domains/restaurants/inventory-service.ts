@@ -26,7 +26,7 @@ const ITEM = "RESTAURANT_STOCK_ITEM",
   RECEIPT = "RESTAURANT_INVENTORY_COMMAND",
   MAPPING = "RESTAURANT_STOCK_MAPPING";
 const conflict = (): never => {
-  throw new AppError(409, "RESTAURANTS_TRANSACTION_STATE");
+  throw new AppError(409, "RESTAURANTS_INVENTORY_CONFLICT");
 };
 const retryable = (e: unknown) =>
   e instanceof Error &&
@@ -50,7 +50,7 @@ export class RestaurantInventoryService {
       item.outletId !== scope.outletId ||
       item.id !== id
     )
-      throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+      throw new AppError(404, "RESTAURANTS_INVENTORY_NOT_FOUND");
     return item;
   }
   static async create(scope: InventoryScope, raw: unknown) {

@@ -75,6 +75,26 @@ Lambda invocation permission never replaces Cognito, membership, entitlement or
 per-command RBAC. No table, GSI, key, persistence access pattern or frontend changes
 are part of this optimization.
 
+## Inventory Lite management reuse
+
+RESTO-INV-1B keeps Restaurants at **344 resources** and API core at **278**.
+The existing `get-outlet` Lambda and its integration now own the five unchanged
+Outlet routes plus six explicit Inventory management routes. The four other
+Outlet Lambdas/integrations are removed; no new Lambda, execution role, table or
+index is introduced. Restaurants therefore has 77 Lambdas, 77 integrations,
+99 routes and 86 invocation permissions.
+
+The grouped entry point selects an exact route before applying that operation's
+original authorization. Inventory requires `RESTAURANTS_SETUP_MANAGE`, allowing
+only OWNER/MANAGER under the existing product-role projection. All management
+routes retain JWT authorization and RESTAURANTS ProductAccess enforcement.
+Five exact-method Outlet invocation grants and two Inventory path-family grants
+are restricted to the existing API, account and default stage. The Inventory
+families are `/restaurants/outlets/*/inventory/items` and
+`/restaurants/outlets/*/inventory/items/*`; unsupported methods/paths have no
+registered route or handler operation. No API-wide invocation grant is used.
+The retained Lambda keeps its logical identity; stateful resources do not move.
+
 ## Stateful-resource safeguards
 
 Ordinary feature work **MUST NOT** move resources whose replacement could destroy data or disconnect production integrations. Protected resources include:

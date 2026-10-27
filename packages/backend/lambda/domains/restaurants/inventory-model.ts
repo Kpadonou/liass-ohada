@@ -66,7 +66,7 @@ export function movementDelta(
   input: z.infer<typeof MovementInputSchema>,
 ): number {
   if (discreteUnit(unit) && input.quantityMilli % 1000 !== 0)
-    throw new AppError(400, "RESTAURANTS_TRANSACTION_STATE");
+    throw new AppError(400, "RESTAURANTS_INVENTORY_QUANTITY");
   const amount = Math.abs(input.quantityMilli);
   return input.type === "ADJUSTMENT"
     ? input.quantityMilli

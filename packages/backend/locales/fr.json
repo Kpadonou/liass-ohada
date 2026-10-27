@@ -1,4 +1,7 @@
 {
+  "RESTAURANTS_INVENTORY_QUANTITY": "Saisissez une quantité non nulle avec au plus trois décimales. Les unités dénombrables exigent une quantité entière.",
+  "RESTAURANTS_INVENTORY_CONFLICT": "L’article de stock a changé ou cette demande a déjà servi pour un mouvement différent. Actualisez puis réessayez.",
+  "RESTAURANTS_INVENTORY_NOT_FOUND": "L’article de stock est introuvable dans cet établissement.",
   "PLATFORM_PRODUCT_ROLE_CONFLICT": "Ce membre possède déjà un autre rôle pour ce produit.",
   "PLATFORM_PRODUCT_ROLE_IDEMPOTENCY_CONFLICT": "Cette demande a déjà été utilisée pour une autre opération.",
   "PLATFORM_PRODUCT_ROLE_WRITE_CONFLICT": "Les accès du membre ont changé. Actualisez puis réessayez.",
