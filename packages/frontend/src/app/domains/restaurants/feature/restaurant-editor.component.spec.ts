@@ -151,6 +151,7 @@ describe('Restaurant configuration dialogs', () => {
     'category',
     'item',
   ] as const)('creates %s using shared contracts and preserved request identity', async (kind) => {
+    api.save.mockResolvedValue({ data: row(kind), message: 'Saved.' });
     const f = await create({ org: 'org', kind, context, currency: 'XOF' });
     f.componentInstance.form.patchValue({
       name: row(kind).name,
@@ -195,6 +196,7 @@ describe('Restaurant configuration dialogs', () => {
     'category',
     'item',
   ] as const)('edits %s without changing its parent or currency', async (kind) => {
+    api.save.mockResolvedValue({ data: row(kind), message: 'Saved.' });
     const entity = row(kind),
       f = await create({ org: 'org', kind, context, entity, currency: 'XOF' });
     f.componentInstance.form.controls.name.setValue('Updated');

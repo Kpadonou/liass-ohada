@@ -26,6 +26,7 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
 import { minorInput, parseMinorInput } from '../utils/restaurant-money';
 import { restaurantError } from '../utils/restaurant-errors';
 import { RestaurantItemTrackingComponent } from './restaurant-item-tracking.component';
+import { MenuItemSchema } from '@liass-ohada/shared/restaurants';
 export interface RestaurantEditorData {
   org: string;
   kind: RestaurantKind;
@@ -313,6 +314,7 @@ export class RestaurantEditorComponent {
     }
     this.pending.set(true);
     this.error.set(null);
+    let trackingStage = false;
     try {
       const result = this.savedItemId()
         ? {
@@ -331,13 +333,18 @@ export class RestaurantEditorComponent {
             parsed.data,
             this.entity?.id,
           );
-      await this.queries.changed(this.data.org, this.data.kind, this.data.context);
       if (!result.data) throw new HttpErrorResponse({ status: 404 });
       if (this.data.kind === 'item') {
-        this.savedItemId.set(result.data.id);
+        const saved = MenuItemSchema.parse(result.data);
+        this.savedItemId.set(saved.id);
+        this.version.set(saved.version);
         this.form.disable();
-        await this.tracking()?.persist(result.data.id);
+        trackingStage = true;
+        const tracking = this.tracking();
+        if (!tracking) throw new Error('Inventory tracking editor unavailable');
+        await tracking.persist(saved);
       }
+      await this.queries.changed(this.data.org, this.data.kind, this.data.context);
       if (
         this.queries.scope() === this.data.org &&
         this.queries.userScope() === this.originalUser
@@ -348,7 +355,13 @@ export class RestaurantEditorComponent {
     } catch (error) {
       if (this.queries.scope() !== this.data.org || this.queries.userScope() !== this.originalUser)
         return;
-      this.error.set(restaurantError(error, (key) => this.t.translate(key)));
+      this.error.set(
+        trackingStage
+          ? this.tracking()?.uncertain()
+            ? null
+            : (this.tracking()?.error() ?? this.t.translate('RESTAURANTS_TRACKING.SAVE_ERROR'))
+          : restaurantError(error, (key) => this.t.translate(key)),
+      );
       if (error instanceof HttpErrorResponse && error.status === 409) {
         this.conflict.set(!!this.entity);
         this.refreshed.set(false);

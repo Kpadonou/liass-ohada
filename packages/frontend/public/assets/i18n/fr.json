@@ -1,5 +1,7 @@
 {
   "RESTAURANTS_TRACKING": {
+    "SAVE_ERROR": "Le suivi de stock n'a pas pu être configuré. Réessayez.",
+    "UNCERTAIN": "Le résultat de la configuration du suivi reste à confirmer. Réessayez pour vérifier et terminer la même opération sans la créer deux fois.",
     "REMOVE_BEFORE_STATION": "Retirez le suivi de stock avant d'ajouter un poste de préparation.",
     "MENU_SAVED_RETRY": "L'article du menu est enregistré. Terminez le suivi de stock ou fermez pour le configurer plus tard.",
     "TITLE": "Suivi de stock",

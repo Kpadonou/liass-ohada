@@ -1,5 +1,7 @@
 {
   "RESTAURANTS_TRACKING": {
+    "SAVE_ERROR": "Inventory tracking could not be configured. Please try again.",
+    "UNCERTAIN": "The tracking configuration result is still unconfirmed. Retry to verify and complete the same operation without creating it twice.",
     "REMOVE_BEFORE_STATION": "Remove inventory tracking before adding a preparation station.",
     "MENU_SAVED_RETRY": "The menu item is saved. Complete inventory tracking or close to configure it later.",
     "TITLE": "Inventory tracking",

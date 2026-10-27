@@ -11,6 +11,7 @@ import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experi
 import {
   SaveInventoryTrackingRequest,
   RemoveInventoryTrackingRequest,
+  MenuItem,
 } from '@liass-ohada/shared/restaurants';
 import { RestaurantInventoryQueries } from '../data-access/restaurant-inventory.queries';
 import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-select/searchable-select.component';
@@ -78,6 +79,7 @@ export class RestaurantItemTrackingComponent {
   private intent?: {
     key: string;
     command: SaveInventoryTrackingRequest | RemoveInventoryTrackingRequest;
+    dispatched: boolean;
   };
   readonly uncertain = signal(false);
   constructor() {
@@ -113,12 +115,17 @@ export class RestaurantItemTrackingComponent {
     this.edit();
     this.form.controls.enabled.setValue(false);
   }
-  async persist(menuItemId: string) {
+  async persist(saved: MenuItem) {
+    const menuItemId = saved.id;
+    if (saved.outletId !== this.outlet() || saved.categoryId !== this.category()) {
+      this.error.set(this.t.translate('RESTAURANTS_TRACKING.SAVE_ERROR'));
+      throw new Error('Saved MenuItem scope mismatch');
+    }
     if (!this.allowed()) throw new HttpErrorResponse({ status: 403 });
     if (this.pending()) return;
     // An existing relationship is never silently changed by ordinary Menu metadata edits.
     if (this.menuItemId() && !this.editing() && this.query.data()?.stockItem) return;
-    if (this.station()) {
+    if (saved.preparationStationId) {
       if (this.enabled() || (this.query.data()?.stockItem && !this.editing()))
         throw new Error(this.t.translate('RESTAURANTS_TRACKING.STATION_HINT'));
       if (!this.query.data()?.stockItem) return;
@@ -147,29 +154,53 @@ export class RestaurantItemTrackingComponent {
       throw new Error(this.t.translate('RESTAURANTS_TRACKING.SELECT_REQUIRED'));
     }
     const key = JSON.stringify({ menuItemId, ...payload });
-    if (!this.intent)
-      this.intent = { key, command: { ...payload, clientRequestId: crypto.randomUUID() } };
+    if (!this.intent || (!this.intent.dispatched && this.intent.key !== key))
+      this.intent = {
+        key,
+        command: { ...payload, clientRequestId: crypto.randomUUID() },
+        dispatched: false,
+      };
     this.pending.set(true);
+    this.error.set(null);
+    const intent = this.intent;
     try {
-      await this.queries.saveTracking(this.ctx(), this.category(), menuItemId, this.intent.command);
+      await this.queries.saveTracking(
+        this.ctx(),
+        saved.categoryId,
+        menuItemId,
+        intent.command,
+        () => {
+          intent.dispatched = true;
+        },
+      );
       this.intent = undefined;
       this.uncertain.set(false);
       this.editing.set(false);
+      this.form.enable();
     } catch (error) {
       // Retain request identity across uncertain retries. Edits stay locked until resolved.
-      const uncertain = !(
-        error instanceof HttpErrorResponse &&
-        error.status >= 400 &&
-        error.status < 500 &&
-        error.status !== 408
-      );
+      const uncertain =
+        intent.dispatched &&
+        !(
+          error instanceof HttpErrorResponse &&
+          error.status >= 400 &&
+          error.status < 500 &&
+          error.status !== 408
+        );
       this.uncertain.set(uncertain);
       if (uncertain) this.form.disable();
       else {
-        this.intent = undefined;
+        // A local failure can retry the same intent. A definitive rejection permits a new one.
+        if (intent.dispatched) this.intent = undefined;
         this.form.enable();
       }
-      this.error.set(inventoryError(error, (k) => this.t.translate(k)));
+      this.error.set(
+        uncertain
+          ? null
+          : error instanceof HttpErrorResponse && error.status >= 400 && error.status < 500
+            ? inventoryError(error, (k) => this.t.translate(k))
+            : this.t.translate('RESTAURANTS_TRACKING.SAVE_ERROR'),
+      );
       throw error;
     } finally {
       this.pending.set(false);

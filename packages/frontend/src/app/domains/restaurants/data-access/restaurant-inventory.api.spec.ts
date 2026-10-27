@@ -149,4 +149,26 @@ describe('Inventory HTTP contracts and context isolation', () => {
     req.flush({ data: { menuItemId, version: 0, stockItem: null } });
     await rejected;
   });
+  it('records dispatch only after local tracking contract validation succeeds', async () => {
+    const dispatched = vi.fn();
+    const categoryId = crypto.randomUUID(),
+      menuItemId = crypto.randomUUID();
+    const command = {
+      categoryId,
+      expectedVersion: 0,
+      clientRequestId: crypto.randomUUID(),
+      mode: 'CREATE' as const,
+      unit: 'BOTTLE' as const,
+    };
+    await expect(
+      api.tracking(ctx, categoryId, menuItemId, { ...command, expectedVersion: -1 }, dispatched),
+    ).rejects.toThrow();
+    expect(dispatched).not.toHaveBeenCalled();
+    http.expectNone(() => true);
+    const result = api.tracking(ctx, categoryId, menuItemId, command, dispatched);
+    const req = http.expectOne((r) => r.method === 'PUT');
+    expect(dispatched).toHaveBeenCalledTimes(1);
+    req.flush({ data: { menuItemId, version: 1, stockItem: stockItem({ balanceMilli: 0 }) } });
+    await result;
+  });
 });

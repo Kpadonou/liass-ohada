@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { firstValueFrom, timeout } from 'rxjs';
+import { HttpClient, HttpErrorResponse, HttpEventType, HttpResponse } from '@angular/common/http';
+import { firstValueFrom, timeout, tap, filter, map } from 'rxjs';
 import * as C from '@liass-ohada/shared/restaurants';
 import { z } from 'zod';
 import { AuthStore } from '../../identity/data-access/auth.store';
@@ -155,6 +155,7 @@ export class RestaurantInventoryApi {
     categoryId: string,
     menuItemId: string,
     command?: C.SaveInventoryTrackingRequest | C.RemoveInventoryTrackingRequest,
+    onDispatched?: () => void,
   ) {
     this.assertCurrent(ctx);
     const path =
@@ -175,8 +176,16 @@ export class RestaurantInventoryApi {
               ...(command
                 ? { body }
                 : { params: { categoryId: C.RestaurantIdSchema.parse(categoryId) } }),
+              observe: 'events',
             })
-            .pipe(timeout(30_000)),
+            .pipe(
+              tap((event) => {
+                if (event.type === HttpEventType.Sent) onDispatched?.();
+              }),
+              filter((event): event is HttpResponse<unknown> => event instanceof HttpResponse),
+              map((event) => event.body),
+              timeout(30_000),
+            ),
         ),
       );
       this.assertCurrent(ctx);
