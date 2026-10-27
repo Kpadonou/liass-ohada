@@ -10,10 +10,9 @@ import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import * as path from "path";
 import { DomainProps } from "./domain-constructs-factory";
 import { RESTAURANTS_ROUTES } from "../../../lambda/domains/restaurants/restaurant-routes";
-import { INVENTORY_ROUTES } from "../../../lambda/domains/restaurants/inventory-routes";
 import {
-  TRACKING_PATH,
-  TRACKING_ROUTES,
+  INVENTORY_GATEWAY_PATH,
+  INVENTORY_GATEWAY_METHODS,
 } from "../../../lambda/domains/restaurants/inventory-routes";
 
 /** Same reviewed bounded-invocation pattern as GuestRouteIntegration. */
@@ -70,26 +69,15 @@ export function addRestaurantsManagementRoutes(
       ),
     });
   }
-  for (const [name, inventoryPath] of [
-    ["InventoryCollection", "/restaurants/outlets/{outletId}/inventory/items"],
-    [
-      "InventoryMember",
-      "/restaurants/outlets/{outletId}/inventory/items/{proxy+}",
-    ],
-  ])
-    new apigw.HttpRoute(scope, `${name}RouteGroup`, {
-      httpApi: props.api,
-      authorizer: props.authorizer,
-      integration,
-      routeKey: apigw.HttpRouteKey.with(inventoryPath, apigw.HttpMethod.ANY),
-    });
-  for (const method of TRACKING_ROUTES)
-    new apigw.HttpRoute(scope, `InventoryTracking${method}Route`, {
+  // ANY captures anonymous preflight before the shared CORS responder.
+  // Five method groups replace two ANY + three tracking routes at zero net cost.
+  for (const method of INVENTORY_GATEWAY_METHODS)
+    new apigw.HttpRoute(scope, `Inventory${method}RouteGroup`, {
       httpApi: props.api,
       authorizer: props.authorizer,
       integration,
       routeKey: apigw.HttpRouteKey.with(
-        TRACKING_PATH,
+        INVENTORY_GATEWAY_PATH,
         apigw.HttpMethod[method],
       ),
     });

@@ -1,6 +1,10 @@
 import { restaurantsHandler } from "./restaurant-handler";
 import { RESTAURANTS_ROUTES } from "./restaurant-routes";
-import { INVENTORY_ROUTES } from "./inventory-routes";
+import {
+  INVENTORY_ROUTES,
+  INVENTORY_GATEWAY_PATH,
+  INVENTORY_GATEWAY_METHODS,
+} from "./inventory-routes";
 import { inventoryHandler } from "./inventory-handler";
 import {
   createHandler,
@@ -11,7 +15,13 @@ import { TRACKING_PATH, TRACKING_ROUTES } from "./inventory-routes";
 import { trackingHandler } from "./inventory-tracking-handler";
 
 const original = restaurantsHandler("get-outlet");
-const routes = new Map([
+const inventoryPaths = [
+  ...INVENTORY_ROUTES,
+  ...TRACKING_ROUTES.map(
+    (method) => ({ method, path: TRACKING_PATH }) as const,
+  ),
+];
+const routes = new Map<string, typeof original>([
   ...RESTAURANTS_ROUTES.filter((r) => r.kind === "outlet").map(
     (r) =>
       [
@@ -41,13 +51,17 @@ const unknown = createHandler(
 /** Exact route allowlist selects the original per-operation authorization before execution. */
 export const handler: typeof original = async (event) => {
   if (
+    INVENTORY_GATEWAY_METHODS.some(
+      (method) => event.routeKey === `${method} ${INVENTORY_GATEWAY_PATH}`,
+    ) ||
+    // Keep old keys during the non-atomic Lambda/API deployment transition.
     event.routeKey === "ANY /restaurants/outlets/{outletId}/inventory/items" ||
     event.routeKey ===
       "ANY /restaurants/outlets/{outletId}/inventory/items/{proxy+}"
   ) {
     const path = event.rawPath;
     const method = event.requestContext.http?.method;
-    for (const route of INVENTORY_ROUTES) {
+    for (const route of inventoryPaths) {
       const names = [...route.path.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
       const match = new RegExp(
         "^" + route.path.replace(/\{\w+\}/g, "([^/]+)") + "$",

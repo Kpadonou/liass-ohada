@@ -9,8 +9,8 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
 import {
-  TRACKING_PATH,
-  TRACKING_ROUTES,
+  INVENTORY_GATEWAY_PATH,
+  INVENTORY_GATEWAY_METHODS,
 } from "../../../lambda/domains/restaurants/inventory-routes";
 import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
 import {
@@ -462,11 +462,9 @@ describe("API stack decomposition", () => {
     const original = routes.find(
       (route) => route.routeKey === "GET /restaurants/outlets/{outletId}",
     )!;
-    for (const routeKey of [
-      "ANY /restaurants/outlets/{outletId}/inventory/items",
-      "ANY /restaurants/outlets/{outletId}/inventory/items/{proxy+}",
-      ...TRACKING_ROUTES.map((method) => `${method} ${TRACKING_PATH}`),
-    ]) {
+    for (const routeKey of INVENTORY_GATEWAY_METHODS.map(
+      (method) => `${method} ${INVENTORY_GATEWAY_PATH}`,
+    )) {
       const route = routes.find((r) => r.routeKey === routeKey)!;
       expect(route).toBeDefined();
       expect(route.authorizationType).toBe("JWT");
@@ -516,6 +514,96 @@ describe("API stack decomposition", () => {
       Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
     ).toBeLessThanOrEqual(344);
   });
+
+  test.each([
+    "/restaurants/outlets/outlet/inventory/items",
+    "/restaurants/outlets/outlet/inventory/items/item",
+    "/restaurants/outlets/outlet/inventory/items/item/movements",
+    "/restaurants/outlets/outlet/inventory/menu-items/item/tracking",
+  ])(
+    "Inventory anonymous preflight for %s remains owned by the shared HTTP API CORS responder",
+    (path) => {
+      const api = constructs.find(
+        (item): item is apigwv2.CfnApi => item instanceof apigwv2.CfnApi,
+      )!;
+      const template = Template.fromStack(cdk.Stack.of(api)).toJSON();
+      const resource = template.Resources[cdk.Stack.of(api).getLogicalId(api)];
+      expect(resource.Properties.CorsConfiguration).toEqual({
+        AllowOrigins: ["*"],
+        AllowMethods: ["GET", "POST", "OPTIONS", "PUT", "PATCH", "DELETE"],
+        AllowHeaders: [
+          "content-type",
+          "if-none-match",
+          "x-amz-date",
+          "authorization",
+          "x-api-key",
+          "accept-language",
+          "x-org-id",
+          "x-workspace-org-id",
+        ],
+        ExposeHeaders: ["ETag"],
+      });
+      const routes = constructs.filter(
+        (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+      );
+      expect(routes.some((route) => route.routeKey === "$default")).toBe(false);
+      // An ANY route (including an ancestor greedy route) would capture OPTIONS
+      // before managed CORS. Assert none can match these concrete preflight paths.
+      const matches = (pattern: string) =>
+        new RegExp(
+          "^" +
+            pattern.replace(/\{proxy\+\}/g, ".+").replace(/\{\w+\}/g, "[^/]+") +
+            "$",
+        ).test(path);
+      expect(
+        routes.filter((route) => {
+          const [method, pattern] = String(route.routeKey).split(" ");
+          return ["ANY", "OPTIONS"].includes(method) && matches(pattern);
+        }),
+      ).toEqual([]);
+      // No explicit OPTIONS route, integration, Lambda or authorizer is needed:
+      // the existing CorsConfiguration supplies the anonymous preflight response.
+    },
+  );
+
+  test.each([
+    ["GET", "items"],
+    ["POST", "items"],
+    ["GET", "items/item"],
+    ["PATCH", "items/item"],
+    ["POST", "items/item/movements"],
+    ["GET", "items/item/movements"],
+    ["GET", "menu-items/item/tracking"],
+    ["PUT", "menu-items/item/tracking"],
+    ["DELETE", "menu-items/item/tracking"],
+  ])(
+    "Inventory business request %s %s retains the original JWT authorizer",
+    (method) => {
+      const restaurants = constructs.find(
+        (item): item is RestaurantsApiStack =>
+          item instanceof RestaurantsApiStack,
+      )!;
+      const routes = restaurants.node
+        .findAll()
+        .filter(
+          (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
+        );
+      const route = routes.find(
+        (r) => r.routeKey === `${method} ${INVENTORY_GATEWAY_PATH}`,
+      )!;
+      const original = routes.find(
+        (r) => r.routeKey === "GET /restaurants/outlets/{outletId}",
+      )!;
+      expect(route).toBeDefined();
+      expect(route.authorizationType).toBe("JWT");
+      expect(restaurants.resolve(route.authorizerId)).toEqual(
+        restaurants.resolve(original.authorizerId),
+      );
+      expect(restaurants.resolve(route.target)).toEqual(
+        restaurants.resolve(original.target),
+      );
+    },
+  );
 
   test("isolates Restaurants write permissions and protects the new stateful table", () => {
     const restaurants = constructs.find(

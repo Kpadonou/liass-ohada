@@ -1,4 +1,14 @@
 const base = "/restaurants/outlets/{outletId}/inventory/items";
+// Explicit business methods leave OPTIONS to the shared HTTP API CORS responder.
+export const INVENTORY_GATEWAY_PATH =
+  "/restaurants/outlets/{outletId}/inventory/{proxy+}";
+export const INVENTORY_GATEWAY_METHODS = [
+  "GET",
+  "POST",
+  "PATCH",
+  "PUT",
+  "DELETE",
+] as const;
 export const TRACKING_PATH =
   "/restaurants/outlets/{outletId}/inventory/menu-items/{menuItemId}/tracking";
 export const TRACKING_ROUTES = ["GET", "PUT", "DELETE"] as const;

@@ -116,6 +116,16 @@ a target version check; removal needs three operations. Receipts use existing
 Restaurants command keys and do not depend on TTL. A MenuItem station assignment
 also checks that no live direct link exists in the same configuration transaction.
 
+Inventory CORS correction: the two authenticated `ANY` routes captured anonymous
+OPTIONS before managed CORS. Five explicit method groups (`GET`, `POST`, `PATCH`,
+`PUT`, `DELETE` at `/restaurants/outlets/{outletId}/inventory/{proxy+}`) replace
+the previous two ANY plus three tracking routes. The exact dispatcher allowlist,
+JWT authorizer, existing integration and three bounded invocation families remain.
+OPTIONS has no matching business route or authenticated `$default` route and is
+answered by the shared HTTP API `CorsConfiguration`, without Lambda execution.
+No explicit OPTIONS resources or duplicate CORS policy are introduced. Counts stay
+344 Restaurants / 278 API core, including 98 domain routes and 87 permissions.
+
 ## Stateful-resource safeguards
 
 Ordinary feature work **MUST NOT** move resources whose replacement could destroy data or disconnect production integrations. Protected resources include:
