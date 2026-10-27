@@ -203,14 +203,21 @@ it('retains the exact automatic-create command on uncertain retry', async () => 
 it('distinguishes pre-dispatch failure from an uncertain write and retries the same unchanged intent', async () => {
   const f = await setup(false);
   f.componentInstance.form.controls.enabled.setValue(true);
-  api.tracking.mockRejectedValueOnce(new Error('Local validation failure'));
+  const localFailure = new Error('Local validation failure');
+  const invalidate = vi.spyOn(client, 'invalidateQueries');
+  api.tracking.mockRejectedValueOnce(localFailure);
   await expect(f.componentInstance.persist(savedItem())).rejects.toThrow();
   const command = api.tracking.mock.calls[0][3];
   f.detectChanges();
   expect(f.componentInstance.uncertain()).toBe(false);
+  expect(f.componentInstance.diagnostic()).toMatchObject({
+    reason: 'UNEXPECTED_PRE_DISPATCH_ERROR',
+    cause: localFailure,
+  });
   expect(f.nativeElement.textContent).toContain(fr.RESTAURANTS_TRACKING.SAVE_ERROR);
   expect(f.nativeElement.textContent).not.toContain(fr.RESTAURANTS_TRACKING.UNCERTAIN);
   expect(f.componentInstance.form.enabled).toBe(true);
+  expect(invalidate).not.toHaveBeenCalled();
   await f.componentInstance.persist(savedItem());
   expect(api.tracking.mock.calls[1][3]).toEqual(command);
 });

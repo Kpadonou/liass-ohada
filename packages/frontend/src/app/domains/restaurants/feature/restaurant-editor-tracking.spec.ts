@@ -59,7 +59,7 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
           useValue: {
             org: 'org',
             kind: 'item',
-            context,
+            context: { ...context },
             currency: 'XOF',
             ...(existing ? { entity: { ...saved, version: 6 } } : {}),
           },
@@ -148,7 +148,16 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
       const menu = http.expectOne((r) => r.method === 'POST');
       http.expectNone((r) => r.method === 'PUT');
       menu.flush({ data: saved });
-      await vi.waitFor(() => expect(persist).toHaveBeenCalledWith(saved));
+      await vi.waitFor(() =>
+        expect(persist).toHaveBeenCalledWith(
+          saved,
+          expect.objectContaining({
+            categoryId: saved.categoryId,
+            context: expect.objectContaining({ outlet: saved.outletId }),
+            mode,
+          }),
+        ),
+      );
       const put = http.expectOne((r) => r.method === 'PUT');
       expect(put.request.url).toContain(`/menu-items/${saved.id}/tracking`);
       expect(put.request.body).toMatchObject({
@@ -193,7 +202,9 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
     const patch = http.expectOne((r) => r.method === 'PATCH');
     expect(patch.request.body.expectedVersion).toBe(6);
     patch.flush({ data: saved });
-    await vi.waitFor(() => expect(persist).toHaveBeenCalledWith(saved));
+    await vi.waitFor(() =>
+      expect(persist).toHaveBeenCalledWith(saved, expect.objectContaining({ expectedVersion: 2 })),
+    );
     const put = http.expectOne((r) => r.method === 'PUT');
     expect(put.request.body.expectedVersion).toBe(2); // Tracking concurrency token, not MenuItem version 7.
     put.flush({ data: { menuItemId: saved.id, version: 3, stockItem: stockItem() } });
@@ -266,6 +277,119 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
     http.expectOne((r) => r.method === 'POST').flush({ data: saved });
     await submitting;
     http.expectNone((r) => r.method === 'PUT' || r.method === 'DELETE');
+    expect(close).toHaveBeenCalledWith(saved);
+  });
+  it.each(['CREATE', 'LINK'] as const)(
+    'retains submitted %s context across reactive resets and delays collection refresh until after PUT success',
+    async (mode) => {
+      const f = await setup();
+      const tracking = f.componentInstance.tracking()!;
+      tracking.form.patchValue({ enabled: true, unit: 'BOTTLE', mode });
+      f.detectChanges();
+      if (mode === 'LINK') {
+        http.expectOne((r) => r.url.endsWith('/inventory/items')).flush({ items: [stockItem()] });
+        await vi.waitFor(() => {
+          f.detectChanges();
+          expect(tracking.items.isSuccess()).toBe(true);
+        });
+        tracking.form.controls.stockItemId.setValue(stockItem().id);
+      }
+      const invalidate = vi.spyOn(client, 'invalidateQueries');
+      let finishRefresh!: () => void;
+      changed.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishRefresh = resolve;
+          }),
+      );
+      const submitting = f.componentInstance.submit();
+      const menu = http.expectOne((r) => r.method === 'POST');
+      // Changes after commit must not be consulted to reconstruct the pending command.
+      tracking.form.reset();
+      const editorData = TestBed.inject(MAT_DIALOG_DATA);
+      editorData.context.outletId = '';
+      editorData.context.categoryId = '';
+      f.detectChanges();
+      expect(invalidate).not.toHaveBeenCalled();
+      expect(changed).not.toHaveBeenCalled();
+      menu.flush({ data: saved });
+      await vi.waitFor(() => expect(tracking.pending()).toBe(true));
+      const put = http.expectOne((r) => r.method === 'PUT');
+      expect(put.request.url).toContain(
+        `/outlets/${saved.outletId}/inventory/menu-items/${saved.id}/tracking`,
+      );
+      expect(put.request.body).toMatchObject({
+        categoryId: saved.categoryId,
+        mode,
+        ...(mode === 'CREATE' ? { unit: 'BOTTLE' } : { stockItemId: stockItem().id }),
+        expectedVersion: 0,
+      });
+      expect(invalidate).not.toHaveBeenCalled();
+      expect(changed).not.toHaveBeenCalled();
+      put.flush({
+        data: { menuItemId: saved.id, version: 1, stockItem: stockItem({ balanceMilli: 0 }) },
+      });
+      await vi.waitFor(() => expect(changed).toHaveBeenCalledOnce());
+      expect(close).not.toHaveBeenCalled();
+      finishRefresh();
+      await submitting;
+      expect(close).toHaveBeenCalledWith(saved);
+    },
+  );
+  it('recaptures edited tracking choices when Menu persistence itself is rejected', async () => {
+    const f = await setup();
+    const tracking = f.componentInstance.tracking()!;
+    tracking.form.patchValue({ enabled: true, unit: 'BOTTLE' });
+    const first = f.componentInstance.submit();
+    http
+      .expectOne((r) => r.method === 'POST')
+      .flush({}, { status: 400, statusText: 'Invalid metadata' });
+    await first;
+    expect(f.componentInstance.savedItemId()).toBeNull();
+    tracking.form.controls.unit.setValue('CAN');
+    const retry = f.componentInstance.submit();
+    http.expectOne((r) => r.method === 'POST').flush({ data: saved });
+    await vi.waitFor(() => expect(tracking.pending()).toBe(true));
+    const put = http.expectOne((r) => r.method === 'PUT');
+    expect(put.request.body.unit).toBe('CAN');
+    put.flush({
+      data: {
+        menuItemId: saved.id,
+        version: 1,
+        stockItem: stockItem({ unit: 'CAN', balanceMilli: 0 }),
+      },
+    });
+    await retry;
+    expect(close).toHaveBeenCalledWith(saved);
+  });
+  it('allows a corrected tracking proposal after a definitive rejection while retaining the saved MenuItem', async () => {
+    const f = await setup();
+    const tracking = f.componentInstance.tracking()!;
+    tracking.form.patchValue({ enabled: true, unit: 'BOTTLE' });
+    const first = f.componentInstance.submit();
+    http.expectOne((r) => r.method === 'POST').flush({ data: saved });
+    await vi.waitFor(() => expect(tracking.pending()).toBe(true));
+    const rejected = http.expectOne((r) => r.method === 'PUT');
+    const requestId = rejected.request.body.clientRequestId;
+    rejected.flush({}, { status: 400, statusText: 'Configuration rejected' });
+    await first;
+    expect(tracking.uncertain()).toBe(false);
+    tracking.form.controls.unit.setValue('CAN');
+    const retry = f.componentInstance.submit();
+    http.expectOne((r) => r.method === 'GET' && r.url.endsWith(saved.id)).flush({ data: saved });
+    await vi.waitFor(() => expect(tracking.pending()).toBe(true));
+    const corrected = http.expectOne((r) => r.method === 'PUT');
+    expect(corrected.request.body.unit).toBe('CAN');
+    expect(corrected.request.body.clientRequestId).not.toBe(requestId);
+    corrected.flush({
+      data: {
+        menuItemId: saved.id,
+        version: 1,
+        stockItem: stockItem({ unit: 'CAN', balanceMilli: 0 }),
+      },
+    });
+    await retry;
+    http.expectNone((r) => r.method === 'POST' || r.method === 'PATCH');
     expect(close).toHaveBeenCalledWith(saved);
   });
 });

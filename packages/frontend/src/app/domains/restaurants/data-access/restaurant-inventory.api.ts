@@ -9,6 +9,7 @@ import { RestaurantsCapabilities } from './restaurants-capabilities';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { environment } from '../../../../environments/environment';
 import { userMessageFromResponse } from '../../../core/notifications/notification-message';
+import { assertTrackingContracts } from '../utils/inventory-tracking-command';
 
 export interface InventoryContext {
   org: string;
@@ -162,6 +163,7 @@ export class RestaurantInventoryApi {
       environment.apiBaseUrl.replace(/\/$/, '') +
       `/restaurants/outlets/${C.RestaurantIdSchema.parse(ctx.outlet)}/inventory/menu-items/${C.RestaurantIdSchema.parse(menuItemId)}/tracking`;
     try {
+      assertTrackingContracts();
       const method = !command ? 'GET' : 'mode' in command ? 'PUT' : 'DELETE';
       const body =
         command &&

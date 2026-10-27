@@ -8,17 +8,19 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experimental';
-import {
-  SaveInventoryTrackingRequest,
-  RemoveInventoryTrackingRequest,
-  MenuItem,
-} from '@liass-ohada/shared/restaurants';
+import { MenuItem } from '@liass-ohada/shared/restaurants';
 import { RestaurantInventoryQueries } from '../data-access/restaurant-inventory.queries';
 import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-select/searchable-select.component';
 import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { inventoryError } from '../utils/inventory-errors';
 import { stockQuantity } from '../utils/inventory-quantity';
 import { HttpErrorResponse } from '@angular/common/http';
+import {
+  buildTrackingCommand,
+  captureTrackingDraft,
+  TrackingDraft,
+  TrackingPreDispatchError,
+} from '../utils/inventory-tracking-command';
 
 @Component({
   selector: 'liass-restaurant-item-tracking',
@@ -77,10 +79,11 @@ export class RestaurantItemTrackingComponent {
       })),
   );
   private intent?: {
-    key: string;
-    command: SaveInventoryTrackingRequest | RemoveInventoryTrackingRequest;
+    draft: TrackingDraft;
+    prepared: NonNullable<ReturnType<typeof buildTrackingCommand>>;
     dispatched: boolean;
   };
+  readonly diagnostic = signal<TrackingPreDispatchError | null>(null);
   readonly uncertain = signal(false);
   constructor() {
     effect(() => {
@@ -115,62 +118,71 @@ export class RestaurantItemTrackingComponent {
     this.edit();
     this.form.controls.enabled.setValue(false);
   }
-  async persist(saved: MenuItem) {
-    const menuItemId = saved.id;
-    if (saved.outletId !== this.outlet() || saved.categoryId !== this.category()) {
+  capture(): TrackingDraft {
+    if (this.intent) return this.intent.draft;
+    try {
+      if (this.menuItemId() && !this.query.isSuccess())
+        throw new TrackingPreDispatchError('TRACKING_STATE_RESET');
+      const v = this.form.getRawValue();
+      const current = this.query.data();
+      const unchanged =
+        (this.menuItemId() && !this.editing() && current?.stockItem) ||
+        (!v.enabled && !current?.stockItem);
+      const mode = unchanged ? 'UNCHANGED' : !v.enabled ? 'REMOVE' : v.mode;
+      if (mode === 'LINK' && !this.options().some((o) => o.value === v.stockItemId))
+        throw new TrackingPreDispatchError('INVALID_LINK_TARGET');
+      return captureTrackingDraft({
+        context: this.ctx(),
+        categoryId: this.category(),
+        expectedVersion: current?.version ?? 0,
+        clientRequestId: crypto.randomUUID(),
+        mode,
+        unit: v.unit,
+        stockItemId: v.stockItemId,
+      });
+    } catch (error) {
+      this.recordDiagnostic(error);
       this.error.set(this.t.translate('RESTAURANTS_TRACKING.SAVE_ERROR'));
-      throw new Error('Saved MenuItem scope mismatch');
+      throw error;
     }
-    if (!this.allowed()) throw new HttpErrorResponse({ status: 403 });
+  }
+  private recordDiagnostic(error: unknown) {
+    this.diagnostic.set(
+      error instanceof TrackingPreDispatchError
+        ? error
+        : new TrackingPreDispatchError('UNEXPECTED_PRE_DISPATCH_ERROR', error),
+    );
+  }
+  async persist(saved: MenuItem, draft = this.capture()) {
     if (this.pending()) return;
-    // An existing relationship is never silently changed by ordinary Menu metadata edits.
-    if (this.menuItemId() && !this.editing() && this.query.data()?.stockItem) return;
-    if (saved.preparationStationId) {
-      if (this.enabled() || (this.query.data()?.stockItem && !this.editing()))
-        throw new Error(this.t.translate('RESTAURANTS_TRACKING.STATION_HINT'));
-      if (!this.query.data()?.stockItem) return;
-    }
-    if (this.menuItemId() && !this.query.isSuccess())
-      throw new Error(this.t.translate('RESTAURANTS_TRACKING.LOAD_ERROR'));
-    const v = this.form.getRawValue();
-    const current = this.query.data();
-    if (!v.enabled && !current?.stockItem && !this.intent) return;
-    const payload = {
-      categoryId: this.category(),
-      expectedVersion: current?.version ?? 0,
-      ...(v.enabled
-        ? v.mode === 'CREATE'
-          ? { mode: 'CREATE' as const, unit: v.unit }
-          : { mode: 'LINK' as const, stockItemId: v.stockItemId! }
-        : {}),
-    };
-    if (
-      v.enabled &&
-      v.mode === 'LINK' &&
-      !this.options().some((o) => o.value === v.stockItemId) &&
-      !this.intent
-    ) {
-      this.error.set(this.t.translate('RESTAURANTS_TRACKING.SELECT_REQUIRED'));
-      throw new Error(this.t.translate('RESTAURANTS_TRACKING.SELECT_REQUIRED'));
-    }
-    const key = JSON.stringify({ menuItemId, ...payload });
-    if (!this.intent || (!this.intent.dispatched && this.intent.key !== key))
-      this.intent = {
-        key,
-        command: { ...payload, clientRequestId: crypto.randomUUID() },
-        dispatched: false,
-      };
     this.pending.set(true);
     this.error.set(null);
-    const intent = this.intent;
+    this.diagnostic.set(null);
+    let intent = this.intent;
     try {
+      if (!this.allowed()) throw new HttpErrorResponse({ status: 403 });
+      if (saved.outletId !== draft.context.outlet || saved.categoryId !== draft.categoryId)
+        throw new TrackingPreDispatchError('TRACKING_CONTEXT_MISMATCH');
+      if (saved.preparationStationId && ['CREATE', 'LINK'].includes(draft.mode))
+        throw new TrackingPreDispatchError('TRACKING_CONTEXT_MISMATCH');
+      const prepared = buildTrackingCommand(draft, saved.id);
+      if (!prepared) return;
+      if (
+        intent &&
+        (intent.prepared.menuItemId !== saved.id ||
+          intent.draft.clientRequestId !== draft.clientRequestId)
+      )
+        throw new TrackingPreDispatchError('TRACKING_CONTEXT_MISMATCH');
+      intent ??= { draft, prepared, dispatched: false };
+      this.intent = intent;
+      const attempt = intent;
       await this.queries.saveTracking(
-        this.ctx(),
-        saved.categoryId,
-        menuItemId,
-        intent.command,
+        attempt.prepared.context,
+        attempt.prepared.categoryId,
+        attempt.prepared.menuItemId,
+        attempt.prepared.command,
         () => {
-          intent.dispatched = true;
+          attempt.dispatched = true;
         },
       );
       this.intent = undefined;
@@ -180,7 +192,7 @@ export class RestaurantItemTrackingComponent {
     } catch (error) {
       // Retain request identity across uncertain retries. Edits stay locked until resolved.
       const uncertain =
-        intent.dispatched &&
+        !!intent?.dispatched &&
         !(
           error instanceof HttpErrorResponse &&
           error.status >= 400 &&
@@ -188,10 +200,11 @@ export class RestaurantItemTrackingComponent {
           error.status !== 408
         );
       this.uncertain.set(uncertain);
+      if (!intent?.dispatched) this.recordDiagnostic(error);
       if (uncertain) this.form.disable();
       else {
         // A local failure can retry the same intent. A definitive rejection permits a new one.
-        if (intent.dispatched) this.intent = undefined;
+        if (intent?.dispatched) this.intent = undefined;
         this.form.enable();
       }
       this.error.set(

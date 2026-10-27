@@ -27,6 +27,7 @@ import { minorInput, parseMinorInput } from '../utils/restaurant-money';
 import { restaurantError } from '../utils/restaurant-errors';
 import { RestaurantItemTrackingComponent } from './restaurant-item-tracking.component';
 import { MenuItemSchema } from '@liass-ohada/shared/restaurants';
+import { TrackingDraft } from '../utils/inventory-tracking-command';
 export interface RestaurantEditorData {
   org: string;
   kind: RestaurantKind;
@@ -55,6 +56,7 @@ export class RestaurantEditorComponent {
   readonly tracking = viewChild(RestaurantItemTrackingComponent);
   readonly hasStockLink = computed(() => !!this.tracking()?.query.data()?.stockItem);
   readonly data = inject<RestaurantEditorData>(MAT_DIALOG_DATA);
+  private readonly canonicalContext = Object.freeze({ ...this.data.context });
   private readonly ref = inject(MatDialogRef<RestaurantEditorComponent>);
   private readonly api = inject(RestaurantsApi);
   readonly queries = inject(RestaurantsQueries);
@@ -73,6 +75,7 @@ export class RestaurantEditorComponent {
   private readonly requestId = crypto.randomUUID();
   // Command-stage identity only: retries after tracking failure must not recreate/resave Menu metadata.
   readonly savedItemId = signal<string | null>(null);
+  private submittedTracking?: TrackingDraft;
   private readonly entity = this.data.entity;
   readonly form = this.fb.group({
     name: [
@@ -266,7 +269,13 @@ export class RestaurantEditorComponent {
     if (this.pending() || !this.canManage() || (this.conflict() && !this.refreshed())) return;
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
-    if (this.data.kind === 'item' && this.tracking() && !this.tracking()!.validate()) return;
+    if (
+      this.data.kind === 'item' &&
+      !this.submittedTracking &&
+      this.tracking() &&
+      !this.tracking()!.validate()
+    )
+      return;
     const v = this.form.getRawValue();
     let request: Record<string, unknown> = {
       name: v.name?.trim(),
@@ -316,12 +325,20 @@ export class RestaurantEditorComponent {
     this.error.set(null);
     let trackingStage = false;
     try {
+      // Capture the submitted proposal before any Menu HTTP request or reactive refresh.
+      const tracking = this.tracking();
+      if (this.data.kind === 'item') {
+        trackingStage = true;
+        if (!tracking) throw new Error('Inventory tracking editor unavailable');
+        this.submittedTracking ??= tracking.capture();
+        trackingStage = false;
+      }
       const result = this.savedItemId()
         ? {
             data: await this.api.get(
               this.data.org,
               this.data.kind,
-              this.data.context,
+              this.canonicalContext,
               this.savedItemId()!,
             ),
             message: null,
@@ -329,7 +346,7 @@ export class RestaurantEditorComponent {
         : await this.api.save(
             this.data.org,
             this.data.kind,
-            this.data.context,
+            this.canonicalContext,
             parsed.data,
             this.entity?.id,
           );
@@ -340,11 +357,9 @@ export class RestaurantEditorComponent {
         this.version.set(saved.version);
         this.form.disable();
         trackingStage = true;
-        const tracking = this.tracking();
-        if (!tracking) throw new Error('Inventory tracking editor unavailable');
-        await tracking.persist(saved);
+        await tracking!.persist(saved, this.submittedTracking);
       }
-      await this.queries.changed(this.data.org, this.data.kind, this.data.context);
+      await this.queries.changed(this.data.org, this.data.kind, this.canonicalContext);
       if (
         this.queries.scope() === this.data.org &&
         this.queries.userScope() === this.originalUser
@@ -355,6 +370,16 @@ export class RestaurantEditorComponent {
     } catch (error) {
       if (this.queries.scope() !== this.data.org || this.queries.userScope() !== this.originalUser)
         return;
+      if (
+        !this.savedItemId() ||
+        (trackingStage &&
+          error instanceof HttpErrorResponse &&
+          error.status >= 400 &&
+          error.status < 500 &&
+          error.status !== 408 &&
+          !this.tracking()?.diagnostic())
+      )
+        this.submittedTracking = undefined;
       this.error.set(
         trackingStage
           ? this.tracking()?.uncertain()

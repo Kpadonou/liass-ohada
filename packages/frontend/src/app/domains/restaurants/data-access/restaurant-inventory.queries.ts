@@ -46,13 +46,18 @@ export class RestaurantInventoryQueries {
     command: C.SaveInventoryTrackingRequest | C.RemoveInventoryTrackingRequest,
     onDispatched?: () => void,
   ) {
+    let refresh = false;
     try {
-      const result = await this.api.tracking(ctx, category, menuItem, command, onDispatched);
+      const result = await this.api.tracking(ctx, category, menuItem, command, () => {
+        refresh = true;
+        onDispatched?.();
+      });
+      refresh = true;
       this.api.assertCurrent(ctx);
       this.client.setQueryData(inventoryKeys.tracking(ctx, category, menuItem), result);
       return result;
     } finally {
-      if (this.api.isCurrent(ctx))
+      if (refresh && this.api.isCurrent(ctx))
         await Promise.all([
           this.client.invalidateQueries({
             queryKey: inventoryKeys.tracking(ctx, category, menuItem),
