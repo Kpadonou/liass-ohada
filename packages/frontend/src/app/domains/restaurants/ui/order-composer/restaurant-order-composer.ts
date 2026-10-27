@@ -115,6 +115,9 @@ export class RestaurantOrderComposer {
   readonly orders = computed(() =>
     (this.ordersQuery.data()?.pages ?? []).flatMap((page) => page.items),
   );
+  readonly hasValidatedOrders = computed(() =>
+    this.orders().some((order) => order.acceptedLineCount > 0),
+  );
   readonly candidates = computed(() => this.orders().filter((order) => this.editable(order)));
   readonly choice = signal<{ context: string; id: string } | null>(null);
   readonly selectedId = computed(() => {

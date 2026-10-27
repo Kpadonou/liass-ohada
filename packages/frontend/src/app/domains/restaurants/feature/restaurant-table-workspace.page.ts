@@ -24,7 +24,6 @@ import { RestaurantsQueries } from '../data-access/restaurants.queries';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
-import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { restaurantOperationalPrice } from '../utils/restaurant-money';
 import { serviceDuration } from '../utils/service-duration';
 import { tableDisplayName } from '../utils/table-display-name';
@@ -42,7 +41,6 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
     MatIconModule,
     TranslocoModule,
     LiassSkeletonComponent,
-    LiassStatusChipComponent,
     LiassCardComponent,
   ],
   templateUrl: './restaurant-table-workspace.page.html',
@@ -97,6 +95,21 @@ export class RestaurantTableWorkspacePage {
       ? data
       : null;
   });
+  readonly areaQuery = injectQuery(() =>
+    this.queries.detail(
+      'area',
+      { outletId: this.outletId() },
+      this.session()?.areaId ?? '',
+      this.allowed() && !!this.session(),
+    ),
+  );
+  readonly areaName = computed(() => {
+    const area = this.areaQuery.data(),
+      session = this.session();
+    return session && area?.outletId === session.outletId && area.id === session.areaId
+      ? area.name
+      : '';
+  });
   readonly backParams = computed(() => {
     const session = this.session();
     return session
@@ -121,12 +134,7 @@ export class RestaurantTableWorkspacePage {
   readonly amount = computed(() => {
     const session = this.session();
     return session
-      ? restaurantOperationalPrice(
-          session.dueMinor,
-          session.currency,
-          this.t.getActiveLang(),
-          session.currency,
-        )
+      ? restaurantOperationalPrice(session.dueMinor, session.currency, this.t.getActiveLang())
       : '';
   });
   async refresh() {

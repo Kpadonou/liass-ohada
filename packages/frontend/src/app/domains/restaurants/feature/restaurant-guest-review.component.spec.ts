@@ -1,7 +1,8 @@
 import { TestBed } from '@angular/core/testing';
-import { TranslocoTestingModule } from '@ngneat/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 import { QueryClient, queryOptions } from '@tanstack/angular-query-experimental';
 import fr from '../../../../../public/assets/i18n/fr.json';
+import en from '../../../../../public/assets/i18n/en.json';
 import { RestaurantGuestReviewComponent } from './restaurant-guest-review.component';
 import { RestaurantsQueries } from '../data-access/restaurants.queries';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
@@ -18,9 +19,9 @@ describe('Guest review in Table Workspace', () => {
       imports: [
         RestaurantGuestReviewComponent,
         TranslocoTestingModule.forRoot({
-          langs: { fr },
+          langs: { fr, en },
           preloadLangs: true,
-          translocoConfig: { availableLangs: ['fr'], defaultLang: 'fr' },
+          translocoConfig: { availableLangs: ['fr', 'en'], defaultLang: 'fr' },
         }),
       ],
       providers: [
@@ -118,7 +119,8 @@ describe('Guest review in Table Workspace', () => {
     });
     await vi.waitFor(() => {
       f.detectChanges();
-      expect(f.nativeElement.textContent).toContain('Aucune demande en attente de validation');
+      expect(f.nativeElement.querySelector('section')).toBeNull();
+      expect(f.nativeElement.classList.contains('hidden')).toBe(true);
     });
     expect(f.nativeElement.textContent).not.toContain('Already ordered');
     expect(f.nativeElement.textContent).not.toContain('Rejected item');
@@ -157,4 +159,22 @@ describe('Guest review in Table Workspace', () => {
       ),
     );
   });
+  it.each(['fr', 'en'])(
+    'renders actionable Customer requests and no empty section in %s',
+    async (lang) => {
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const f = await mount();
+      expect(f.nativeElement.textContent).toContain(
+        lang === 'fr' ? 'Demandes des clients' : 'Customer requests',
+      );
+      client.setQueryData(['review'], { requests: [] });
+      await vi.waitFor(() => {
+        f.detectChanges();
+        expect(f.nativeElement.querySelector('section')).toBeNull();
+      });
+      expect(f.nativeElement.textContent).not.toContain(
+        lang === 'fr' ? 'Aucune demande' : 'No requests',
+      );
+    },
+  );
 });

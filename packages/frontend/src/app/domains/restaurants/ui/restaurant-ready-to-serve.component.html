@@ -1,4 +1,4 @@
-@if (enabled() && order()) {
+@if (enabled() && order() && ready().length) {
   <liass-card padding="sm" class="min-w-0">
     <section class="space-y-2" aria-labelledby="ready-to-serve-title" data-testid="ready-to-serve">
       <div class="flex min-w-0 items-center justify-between gap-2">
@@ -8,7 +8,7 @@
           data-ready-heading
           class="flex min-w-0 items-center gap-2 text-base font-semibold"
         >
-          <mat-icon aria-hidden="true">room_service</mat-icon>
+          <mat-icon class="text-success-600" aria-hidden="true">room_service</mat-icon>
           {{ 'RESTAURANTS.SERVING.TITLE' | transloco }}
           @if (ready().length) {
             <span class="text-sm text-app-text-secondary">· {{ ready().length }}</span>
@@ -64,15 +64,6 @@
             }}
           </button>
         </div>
-      } @empty {
-        @if (!query.isPending() && !query.isError()) {
-          <p class="text-xs text-app-text-secondary">
-            {{
-              (query.hasNextPage() ? 'RESTAURANTS.SERVING.PARTIAL' : 'RESTAURANTS.SERVING.EMPTY')
-                | transloco
-            }}
-          </p>
-        }
       }
       @if (ready().length > display()) {
         <button mat-button type="button" (click)="display.set(display() + 50)">
@@ -91,4 +82,19 @@
       }
     </section>
   </liass-card>
+} @else if (enabled() && order() && (query.isError() || query.hasNextPage())) {
+  <p role="status" class="text-sm text-app-text-secondary">
+    {{
+      (query.isError() ? 'RESTAURANTS.SERVING.LOAD_ERROR' : 'RESTAURANTS.SERVING.PARTIAL')
+        | transloco
+    }}
+  </p>
+  <button
+    type="button"
+    mat-button
+    [disabled]="query.isFetching()"
+    (click)="query.hasNextPage() ? query.fetchNextPage() : query.refetch()"
+  >
+    {{ 'RESTAURANTS.SERVING.REFRESH' | transloco }}
+  </button>
 }

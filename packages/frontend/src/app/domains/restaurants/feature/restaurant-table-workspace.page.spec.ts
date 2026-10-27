@@ -8,9 +8,10 @@ import { Location } from '@angular/common';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { BehaviorSubject } from 'rxjs';
-import { TranslocoTestingModule } from '@ngneat/transloco';
+import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import fr from '../../../../../public/assets/i18n/fr.json';
+import en from '../../../../../public/assets/i18n/en.json';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { RestaurantsApi } from '../data-access/restaurants.api';
@@ -25,7 +26,16 @@ const org = signal('org'),
   allowed = signal(true);
 const params = new BehaviorSubject(convertToParamMap({ outletId: rid(2), guestSessionId: rid(9) }));
 const filters = new BehaviorSubject(convertToParamMap({ area: rid(3) }));
-const api = { guestSession: vi.fn() };
+const area = {
+  outletId: rid(2),
+  id: rid(3),
+  name: 'LP-3 Area',
+  isActive: true,
+  version: 1,
+  createdAt: '2026-10-15T10:00:00.000Z',
+  updatedAt: '2026-10-15T10:00:00.000Z',
+};
+const api = { guestSession: vi.fn(), get: vi.fn() };
 let client: QueryClient;
 let fixture: ReturnType<typeof TestBed.createComponent<RestaurantTableWorkspacePage>> | undefined;
 const text = () => fixture!.nativeElement.textContent as string;
@@ -34,8 +44,12 @@ const setup = (routing = false) =>
     imports: [
       RestaurantTableWorkspacePage,
       TranslocoTestingModule.forRoot({
-        langs: { fr },
-        translocoConfig: { availableLangs: ['fr'], defaultLang: 'fr' },
+        langs: { fr, en },
+        translocoConfig: {
+          availableLangs: ['fr', 'en'],
+          defaultLang: 'fr',
+          reRenderOnLangChange: true,
+        },
         preloadLangs: true,
       }),
     ],
@@ -92,6 +106,7 @@ beforeEach(() => {
   params.next(convertToParamMap({ outletId: rid(2), guestSessionId: rid(9) }));
   filters.next(convertToParamMap({ area: rid(3) }));
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  api.get.mockReset().mockResolvedValue(area);
   api.guestSession.mockReset().mockResolvedValue(sessionFixture());
 });
 afterEach(() => {
@@ -123,7 +138,7 @@ it('renders the preserved header using the keyed read; composer tested independe
   expect(text()).toContain('Responsable non affecté');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
-  ).toBe(restaurantOperationalPrice(0, 'XOF', 'fr', 'XOF'));
+  ).toBe(restaurantOperationalPrice(0, 'XOF', 'fr'));
   expect(text().match(/XOF/g)).toHaveLength(1);
   expect(text()).not.toMatch(
     /private-opener|00000000|Ajouter des articles|Encaisser|En préparation/,
@@ -158,7 +173,7 @@ it.each([
   expect(text()).not.toContain('Aucune commande pour le moment');
   expect(
     fixture!.nativeElement.querySelector('[data-testid="workspace-amount"]').textContent.trim(),
-  ).toBe(restaurantOperationalPrice(12500, 'XOF', 'fr', 'XOF'));
+  ).toBe(restaurantOperationalPrice(12500, 'XOF', 'fr'));
 });
 it('supports a direct CLOSED session and OPEN-to-CLOSED canonical refresh', async () => {
   const page = await loaded();
@@ -319,7 +334,8 @@ it('renders the header through the real keyed HTTP client independently of the c
     fixture!.detectChanges();
     expect(text()).toContain('Service en cours');
   });
-  http.expectNone((r) => /orders|items|service-areas|tables|menu/.test(r.url));
+  http.expectOne((r) => r.url.endsWith('/service-areas/' + rid(3))).flush({ data: area });
+  http.expectNone((r) => /orders|items|tables|menu/.test(r.url));
   http.verify();
 });
 it('renders a direct CLOSED read and clears a previous table immediately when route identity changes', async () => {
@@ -391,3 +407,34 @@ it.each(['organization', 'principal'] as const)(
     await pending;
   },
 );
+
+it.each(['fr', 'en'])('renders the service summary and canonical area in %s', async (lang) => {
+  const page = await loaded();
+  TestBed.inject(TranslocoService).setActiveLang(lang);
+  await vi.waitFor(() => {
+    fixture!.detectChanges();
+    expect(page.areaName()).toBe('LP-3 Area');
+  });
+  const d = lang === 'fr' ? fr : en;
+  expect(text()).toContain(d.RESTAURANTS.WORKSPACE.AMOUNT);
+  expect(text()).toContain(d.RESTAURANTS.WORKSPACE.OPEN_STATE);
+  expect(text()).toContain(d.RESTAURANTS.RESPONSIBILITY.UNASSIGNED);
+  expect(text()).toContain(page.duration());
+  expect(fixture!.nativeElement.querySelector('time').getAttribute('datetime')).toBe(
+    sessionFixture().openedAt,
+  );
+  expect(api.get).toHaveBeenCalledWith('org', 'area', { outletId: rid(2) }, rid(3));
+});
+
+it('keeps canonical service actions available when only the area label fails', async () => {
+  api.get.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+  const page = await loaded();
+  await vi.waitFor(() => {
+    fixture!.detectChanges();
+    expect(page.areaQuery.isError()).toBe(true);
+  });
+  expect(page.session()).not.toBeNull();
+  expect(text()).toContain('La salle ne peut pas être affichée');
+  expect(text()).toContain('Montant actuel');
+  expect(fixture!.nativeElement.querySelector('[data-testid="workspace-error"]')).toBeNull();
+});

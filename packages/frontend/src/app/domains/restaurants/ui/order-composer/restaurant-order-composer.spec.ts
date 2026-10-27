@@ -186,6 +186,7 @@ beforeEach(async () => {
           submissionId,
         });
       }
+      order.acceptedLineCount += input.items.length;
       order.status = 'SUBMITTED';
       order.version++;
       order.draftLineCount = 0;
@@ -1444,4 +1445,15 @@ it('reconciles selected Order Preparation after an ambiguous submission result',
     expect(serving.page).toHaveBeenCalledTimes(1);
   });
   expect(page.pending()?.kind).toBe('submit');
+});
+
+it('keeps the empty composer and Carte as permanent work areas without an empty history panel', async () => {
+  await settle();
+  fixture.detectChanges();
+  expect(fixture.nativeElement.querySelector('#draft-title')?.textContent).toContain('À valider');
+  expect(fixture.nativeElement.querySelector('#menu-title')?.textContent).toContain('Carte');
+  expect(fixture.nativeElement.textContent).toContain(
+    'Aucun article sélectionné. Ajoutez des articles depuis la Carte.',
+  );
+  expect(fixture.nativeElement.querySelector('[data-testid="validated-orders-region"]')).toBeNull();
 });

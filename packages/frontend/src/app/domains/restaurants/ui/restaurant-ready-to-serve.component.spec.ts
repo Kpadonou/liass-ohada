@@ -86,7 +86,7 @@ it('keeps an empty section compact and never claims exhaustive emptiness before 
   api.page.mockResolvedValue({ items: [] });
   await page.query.fetchNextPage();
   await settle();
-  expect(fixture.nativeElement.textContent).toContain('Aucun article prêt');
+  expect(fixture.nativeElement.querySelector('[data-testid=ready-to-serve]')).toBeNull();
 });
 it('retains rows during local Serve pending, prevents duplicates and reconciles only the exact read', async () => {
   let resolve!: () => void;

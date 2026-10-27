@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery } from '@tanstack/angular-query-experimental';
@@ -15,7 +16,7 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 @Component({
   selector: 'liass-restaurant-service-order',
   host: { class: 'block' },
-  imports: [DatePipe, MatButtonModule, TranslocoModule],
+  imports: [MatIconModule, DatePipe, MatButtonModule, TranslocoModule],
   template: `@if (!accessBlocked()) {
     <article class="space-y-3 border-t border-app-border pt-4" data-testid="service-order">
       <div class="flex flex-wrap justify-between gap-2">
@@ -27,10 +28,15 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
             }}</time>
           </h3>
           <p class="text-sm text-app-text-secondary">
-            {{ 'RESTAURANTS.ORDER_TAKING.STATUS.' + order().status | transloco }}
-            @if (fromQr()) {
-              · {{ 'RESTAURANTS.SERVICE_ORDERS.QR' | transloco }}
-            }
+            <span
+              [class.text-brand-700]="fromQr()"
+              [class.dark:text-brand-300]="fromQr()"
+              data-testid="order-source"
+              >{{
+                (fromQr() ? 'RESTAURANTS.SERVICE_ORDERS.QR' : 'RESTAURANTS.SERVICE_ORDERS.STAFF')
+                  | transloco
+              }}</span
+            >
           </p>
           @if (rounds().length) {
             <p class="text-sm">
@@ -72,15 +78,23 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
       }
       @if (items.isError() || preparation.isError()) {
         <p role="alert">{{ 'RESTAURANTS.SERVICE_ORDERS.LOAD_ERROR' | transloco }}</p>
-        <button mat-button (click)="refresh()">{{ 'RESTAURANTS.UI.REFRESH' | transloco }}</button>
+        <button type="button" mat-button (click)="refresh()">
+          {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
+        </button>
       }
       @if (items.hasNextPage()) {
-        <button mat-button [disabled]="items.isFetching()" (click)="items.fetchNextPage()">
+        <button
+          type="button"
+          mat-button
+          [disabled]="items.isFetching()"
+          (click)="items.fetchNextPage()"
+        >
           {{ 'RESTAURANTS.SERVICE_ORDERS.MORE_LINES' | transloco }}
         </button>
       }
       @if (preparation.hasNextPage()) {
         <button
+          type="button"
           mat-button
           [disabled]="preparation.isFetching()"
           (click)="preparation.fetchNextPage()"
@@ -207,41 +221,53 @@ export class RestaurantServiceOrderComponent {
 @Component({
   selector: 'liass-restaurant-service-orders',
   host: { class: 'block min-w-0' },
-  imports: [RestaurantServiceOrderComponent, LiassCardComponent, TranslocoModule, MatButtonModule],
-  template: `<liass-card padding="sm">
-    <h2 class="text-base font-semibold">{{ 'RESTAURANTS.SERVICE_ORDERS.TITLE' | transloco }}</h2>
-    <p class="mt-1 text-sm text-app-text-secondary">
-      {{ 'RESTAURANTS.SERVICE_ORDERS.HELP' | transloco }}
-    </p>
-    <div class="mt-3 space-y-4">
-      @for (order of visibleOrders(); track order.orderId) {
-        <liass-restaurant-service-order
-          [context]="context()"
-          [order]="order"
-          (denied)="denied.emit()"
-        />
-      } @empty {
-        <p role="status">
-          {{
-            (expectedCount() > 0 || expectedAmount() > 0
-              ? 'RESTAURANTS.SERVICE_ORDERS.INCOMPLETE'
-              : 'RESTAURANTS.SERVICE_ORDERS.EMPTY'
-            ) | transloco
-          }}
-        </p>
-      }
-      @if (orders().length > limit()) {
-        <button mat-button (click)="limit.set(limit() + 20)">
-          {{ 'RESTAURANTS.ORDER_TAKING.MORE_ORDERS' | transloco }}
-        </button>
-      }
-      @if (orders().length > 0 && orders().length < expectedCount()) {
-        <p role="status" class="text-sm">
-          {{ 'RESTAURANTS.SERVICE_ORDERS.INCOMPLETE' | transloco }}
-        </p>
-      }
-    </div>
-  </liass-card>`,
+  imports: [
+    MatIconModule,
+    RestaurantServiceOrderComponent,
+    LiassCardComponent,
+    TranslocoModule,
+    MatButtonModule,
+  ],
+  template: `@if (validatedOrders().length) {
+      <liass-card padding="sm">
+        <h2 class="flex items-center gap-2 text-base font-semibold">
+          <mat-icon class="text-success-600" aria-hidden="true">check_circle_outline</mat-icon
+          >{{ 'RESTAURANTS.SERVICE_ORDERS.TITLE' | transloco }}
+        </h2>
+        <div class="mt-3 space-y-4">
+          @for (order of visibleOrders(); track order.orderId) {
+            <liass-restaurant-service-order
+              [context]="context()"
+              [order]="order"
+              (denied)="denied.emit()"
+            />
+          } @empty {
+            <p role="status">
+              {{
+                (expectedCount() > 0 || expectedAmount() > 0
+                  ? 'RESTAURANTS.SERVICE_ORDERS.INCOMPLETE'
+                  : 'RESTAURANTS.SERVICE_ORDERS.EMPTY'
+                ) | transloco
+              }}
+            </p>
+          }
+          @if (validatedOrders().length > limit()) {
+            <button type="button" mat-button (click)="limit.set(limit() + 20)">
+              {{ 'RESTAURANTS.ORDER_TAKING.MORE_ORDERS' | transloco }}
+            </button>
+          }
+          @if (orders().length > 0 && orders().length < expectedCount()) {
+            <p role="status" class="text-sm">
+              {{ 'RESTAURANTS.SERVICE_ORDERS.INCOMPLETE' | transloco }}
+            </p>
+          }
+        </div>
+      </liass-card>
+    } @else if (expectedCount() > orders().length || expectedAmount() > 0) {
+      <p role="status" class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS.SERVICE_ORDERS.INCOMPLETE' | transloco }}
+      </p>
+    }`,
 })
 export class RestaurantServiceOrdersComponent {
   readonly context = input.required<ServiceOrderContext>();
@@ -250,5 +276,8 @@ export class RestaurantServiceOrdersComponent {
   readonly expectedAmount = input(0);
   readonly denied = output<void>();
   readonly limit = signal(20);
-  readonly visibleOrders = computed(() => this.orders().slice(0, this.limit()));
+  readonly validatedOrders = computed(() =>
+    this.orders().filter((order) => order.acceptedLineCount > 0),
+  );
+  readonly visibleOrders = computed(() => this.validatedOrders().slice(0, this.limit()));
 }

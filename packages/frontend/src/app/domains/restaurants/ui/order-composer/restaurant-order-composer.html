@@ -36,6 +36,20 @@
         [expectedOrderCount]="session()!.orderCount"
         (denied)="denied.set(true)"
       />
+      @if (
+        live() &&
+        selectedId() &&
+        order()?.guestSessionId === sessionId() &&
+        !delivery.complete() &&
+        !delivery.loading()
+      ) {
+        <liass-restaurant-ready-to-serve
+          [context]="ctx()"
+          [order]="selectedId()"
+          [enabled]="live() && !delivery.busy() && !delivery.unresolved().length"
+          (denied)="denied.set(true)"
+        />
+      }
       @if (ordersQuery.isPending()) {
         <p role="status" class="py-4 text-sm text-app-text-secondary">
           {{ 'RESTAURANTS.UI.LOADING' | transloco }}
@@ -48,38 +62,9 @@
           </button>
         </div>
       } @else {
-        <liass-restaurant-service-orders
-          [context]="ctx()"
-          [orders]="orders()"
-          [expectedCount]="session()!.orderCount"
-          [expectedAmount]="session()!.dueMinor"
-          (denied)="denied.set(true)"
-        />
-        @if (ordersQuery.hasNextPage()) {
-          <button
-            mat-stroked-button
-            type="button"
-            [disabled]="ordersQuery.isFetchingNextPage()"
-            (click)="ordersQuery.fetchNextPage()"
-          >
-            {{ 'RESTAURANTS.ORDER_TAKING.MORE_ORDERS' | transloco }}
-          </button>
-        }
-        @if (orders().length > 1) {
-          <liass-searchable-select
-            labelKey="RESTAURANTS.ORDER_TAKING.SELECT_ORDER"
-            [options]="orderOptions()"
-            [formControl]="orderControl"
-          />
-        }
-        @if (candidates().length > 1 && !selectedId()) {
-          <p role="status" class="text-sm">
-            {{ 'RESTAURANTS.ORDER_TAKING.CHOOSE_ORDER' | transloco }}
-          </p>
-        }
         <div class="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] xl:items-start">
           <liass-card
-            class="min-w-0 xl:col-start-1 xl:row-start-1"
+            class="order-2 min-w-0 xl:order-none xl:col-start-1 xl:row-span-2 xl:row-start-1"
             padding="sm"
             aria-labelledby="menu-title"
           >
@@ -89,7 +74,9 @@
                 tabindex="-1"
                 class="flex scroll-mt-40 items-center gap-2 text-base font-semibold"
               >
-                <mat-icon aria-hidden="true">restaurant_menu</mat-icon>
+                <mat-icon class="text-brand-700 dark:text-brand-300" aria-hidden="true"
+                  >restaurant_menu</mat-icon
+                >
                 {{ 'RESTAURANTS.ORDER_TAKING.MENU' | transloco }}
               </h2>
               @if (menuQuery.isPending()) {
@@ -198,7 +185,7 @@
           <div
             data-order-region
             [class]="
-              'min-w-0 space-y-3 xl:top-[calc(var(--spacing-app-header)+0.75rem)] xl:col-start-2 xl:row-start-1 ' +
+              'order-1 min-w-0 space-y-3 xl:order-none xl:top-[calc(var(--spacing-app-header)+0.75rem)] xl:col-start-2 xl:row-start-1 ' +
               (orderPanelFits() ? 'xl:sticky' : '')
             "
           >
@@ -208,13 +195,25 @@
               aria-labelledby="draft-title"
             >
               <div class="space-y-2">
+                @if (orders().length > 1) {
+                  <liass-searchable-select
+                    labelKey="RESTAURANTS.ORDER_TAKING.SELECT_ORDER"
+                    [options]="orderOptions()"
+                    [formControl]="orderControl"
+                  />
+                }
+                @if (candidates().length > 1 && !selectedId()) {
+                  <p role="status" class="text-sm">
+                    {{ 'RESTAURANTS.ORDER_TAKING.CHOOSE_ORDER' | transloco }}
+                  </p>
+                }
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <h2
                     id="draft-title"
                     class="flex scroll-mt-40 items-center gap-2 text-base font-semibold"
                     tabindex="-1"
                   >
-                    <mat-icon aria-hidden="true">shopping_cart</mat-icon>
+                    <mat-icon class="text-warning-600" aria-hidden="true">shopping_cart</mat-icon>
                     {{ 'RESTAURANTS.ORDER_TAKING.DRAFT' | transloco }}
                   </h2>
                   <span class="text-sm text-app-text-secondary" aria-live="polite"
@@ -404,21 +403,37 @@
                 }
               </div>
             </liass-card>
-            @if (
-              live() &&
-              selectedId() &&
-              order()?.guestSessionId === sessionId() &&
-              !delivery.complete() &&
-              !delivery.loading()
-            ) {
-              <liass-restaurant-ready-to-serve
+          </div>
+          @if (
+            hasValidatedOrders() ||
+            ordersQuery.hasNextPage() ||
+            orders().length < session()!.orderCount ||
+            session()!.dueMinor > 0
+          ) {
+            <div
+              class="order-3 min-w-0 space-y-2 xl:order-none xl:col-start-2 xl:row-start-2"
+              data-testid="validated-orders-region"
+            >
+              <liass-restaurant-service-orders
+                class="order-3 min-w-0 xl:order-none xl:col-start-2 xl:row-start-2"
                 [context]="ctx()"
-                [order]="selectedId()"
-                [enabled]="live() && !delivery.busy() && !delivery.unresolved().length"
+                [orders]="orders()"
+                [expectedCount]="session()!.orderCount"
+                [expectedAmount]="session()!.dueMinor"
                 (denied)="denied.set(true)"
               />
-            }
-          </div>
+              @if (ordersQuery.hasNextPage()) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="ordersQuery.isFetchingNextPage()"
+                  (click)="ordersQuery.fetchNextPage()"
+                >
+                  {{ 'RESTAURANTS.ORDER_TAKING.MORE_ORDERS' | transloco }}
+                </button>
+              }
+            </div>
+          }
         </div>
       }
     </div>

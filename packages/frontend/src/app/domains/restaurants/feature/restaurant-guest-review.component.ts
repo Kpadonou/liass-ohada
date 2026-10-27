@@ -3,6 +3,7 @@ import { NotificationService } from '../../../core/notifications/notification.se
 import { Component, computed, input, inject, signal, DestroyRef } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
@@ -11,89 +12,112 @@ import { RestaurantsQueries } from '../data-access/restaurants.queries';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 @Component({
   selector: 'liass-restaurant-guest-review',
-  imports: [DatePipe, ReactiveFormsModule, MatButtonModule, MatInputModule, TranslocoModule],
-  template: ` @if (allowed()) {
-    <section
-      class="space-y-4 rounded-xl border border-app-border bg-app-surface p-4 sm:p-5"
-      [attr.aria-label]="'RESTAURANTS.SUBMISSIONS.REVIEW' | transloco"
-    >
-      <h2 class="font-semibold">{{ 'RESTAURANTS.SUBMISSIONS.REVIEW' | transloco }}</h2>
-      <p class="text-sm text-app-text-secondary">
-        {{ 'RESTAURANTS.SUBMISSIONS.REVIEW_HELP' | transloco }}
-      </p>
-      @if (query.isError()) {
-        <p role="alert">{{ 'RESTAURANTS.SUBMISSIONS.STATUS_ERROR' | transloco }}</p>
-        <button mat-button (click)="query.refetch()">
-          {{ 'RESTAURANTS.SUBMISSIONS.REFRESH' | transloco }}
-        </button>
-      }
-      @if (query.data(); as data) {
-        @for (request of attentionRequests(); track request.requestId) {
-          <article class="space-y-3 border-t border-app-border pt-4">
-            <div class="flex flex-wrap justify-between gap-2">
-              <p class="font-medium">
-                {{ 'RESTAURANTS.SUBMISSIONS.' + request.state | transloco }}
-              </p>
-              <time class="text-sm text-app-text-secondary">{{
-                request.submittedAt | date: 'shortTime'
-              }}</time>
-            </div>
-            <ul class="space-y-2">
-              @for (line of request.lines; track $index) {
-                <li class="break-words">
-                  <span>{{ line.quantity }} × {{ line.name }}</span
-                  ><span class="ml-3 text-sm">{{ price(line.amountMinor, line.currency) }}</span>
-                  @if (line.note) {
-                    <p class="text-sm text-app-text-secondary">{{ line.note }}</p>
-                  }
-                </li>
-              }
-            </ul>
-            @if (request.reason) {
-              <p>{{ request.reason }}</p>
-            }
-            @if (request.state === 'PENDING_APPROVAL' && allowed()) {
-              <div class="flex flex-wrap gap-3">
-                <button
-                  mat-flat-button
-                  [disabled]="mutation.isPending()"
-                  (click)="review(request.requestId, 'approve')"
-                >
-                  {{ 'RESTAURANTS.SUBMISSIONS.ACCEPT' | transloco }}</button
-                ><button
-                  mat-stroked-button
-                  [disabled]="mutation.isPending()"
-                  (click)="rejecting.set(request.requestId)"
-                >
-                  {{ 'RESTAURANTS.SUBMISSIONS.REJECT' | transloco }}
-                </button>
-              </div>
-              @if (rejecting() === request.requestId) {
-                <mat-form-field class="w-full"
-                  ><mat-label>{{ 'RESTAURANTS.SUBMISSIONS.REASON' | transloco }}</mat-label
-                  ><textarea matInput [formControl]="reason" maxlength="250" rows="2"></textarea
-                  ><mat-hint>{{ reason.value.length }}/250</mat-hint></mat-form-field
-                ><button
-                  mat-button
-                  [disabled]="reason.invalid || !reason.value.trim() || mutation.isPending()"
-                  (click)="review(request.requestId, 'reject')"
-                >
-                  {{ 'RESTAURANTS.SUBMISSIONS.REJECT' | transloco }}
-                </button>
-              }
-            }
-          </article>
-        } @empty {
-          <p class="text-sm text-app-text-secondary">
-            {{ 'RESTAURANTS.SUBMISSIONS.EMPTY' | transloco }}
-          </p>
+  host: {
+    class: 'block min-w-0',
+    '[class.hidden]': '!allowed() || (!attentionRequests().length && !query.isError())',
+  },
+  imports: [
+    MatIconModule,
+    DatePipe,
+    ReactiveFormsModule,
+    MatButtonModule,
+    MatInputModule,
+    TranslocoModule,
+  ],
+  template: ` @if (allowed() && attentionRequests().length) {
+      <section
+        class="space-y-4 rounded-xl border border-app-border bg-app-surface p-4 sm:p-5"
+        [attr.aria-label]="'RESTAURANTS.SUBMISSIONS.REVIEW' | transloco"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="flex items-center gap-2 text-base font-semibold">
+            <mat-icon class="text-warning-600" aria-hidden="true">pending_actions</mat-icon
+            >{{ 'RESTAURANTS.SUBMISSIONS.REVIEW' | transloco }}
+          </h2>
+          <span class="text-sm text-app-text-secondary">{{
+            'RESTAURANTS.SUBMISSIONS.COUNT' | transloco: { count: attentionRequests().length }
+          }}</span>
+        </div>
+        @if (query.isError()) {
+          <p role="alert">{{ 'RESTAURANTS.SUBMISSIONS.STATUS_ERROR' | transloco }}</p>
+          <button type="button" mat-button (click)="query.refetch()">
+            {{ 'RESTAURANTS.SUBMISSIONS.REFRESH' | transloco }}
+          </button>
         }
-      }
-      @if (mutation.isError()) {
-        <p role="alert">{{ 'RESTAURANTS.SUBMISSIONS.REVIEW_ERROR' | transloco }}</p>
-      }
-    </section>
-  }`,
+        @if (query.data(); as data) {
+          @for (request of attentionRequests(); track request.requestId) {
+            <article class="space-y-3 border-t border-app-border pt-4">
+              <div class="flex flex-wrap justify-between gap-2">
+                <p class="font-medium">
+                  {{ 'RESTAURANTS.SUBMISSIONS.' + request.state | transloco }}
+                </p>
+                <time class="text-sm text-app-text-secondary">{{
+                  request.submittedAt | date: 'shortTime'
+                }}</time>
+              </div>
+              <ul class="space-y-2">
+                @for (line of request.lines; track $index) {
+                  <li class="break-words">
+                    <span>{{ line.quantity }} × {{ line.name }}</span
+                    ><span class="ml-3 text-sm">{{ price(line.amountMinor, line.currency) }}</span>
+                    @if (line.note) {
+                      <p class="text-sm text-app-text-secondary">{{ line.note }}</p>
+                    }
+                  </li>
+                }
+              </ul>
+              @if (request.reason) {
+                <p>{{ request.reason }}</p>
+              }
+              @if (request.state === 'PENDING_APPROVAL' && allowed()) {
+                <div class="flex flex-wrap justify-end gap-3">
+                  <button
+                    type="button"
+                    mat-stroked-button
+                    class="liass-action-danger"
+                    [disabled]="mutation.isPending()"
+                    (click)="rejecting.set(request.requestId)"
+                  >
+                    {{ 'RESTAURANTS.SUBMISSIONS.REJECT' | transloco }}
+                  </button>
+                  <button
+                    type="button"
+                    mat-flat-button
+                    [disabled]="mutation.isPending()"
+                    (click)="review(request.requestId, 'approve')"
+                  >
+                    {{ 'RESTAURANTS.SUBMISSIONS.ACCEPT' | transloco }}
+                  </button>
+                </div>
+                @if (rejecting() === request.requestId) {
+                  <mat-form-field class="w-full"
+                    ><mat-label>{{ 'RESTAURANTS.SUBMISSIONS.REASON' | transloco }}</mat-label
+                    ><textarea matInput [formControl]="reason" maxlength="250" rows="2"></textarea
+                    ><mat-hint>{{ reason.value.length }}/250</mat-hint></mat-form-field
+                  ><button
+                    type="button"
+                    mat-button
+                    class="liass-action-danger"
+                    [disabled]="reason.invalid || !reason.value.trim() || mutation.isPending()"
+                    (click)="review(request.requestId, 'reject')"
+                  >
+                    {{ 'RESTAURANTS.SUBMISSIONS.REJECT' | transloco }}
+                  </button>
+                }
+              }
+            </article>
+          }
+        }
+        @if (mutation.isError()) {
+          <p role="alert">{{ 'RESTAURANTS.SUBMISSIONS.REVIEW_ERROR' | transloco }}</p>
+        }
+      </section>
+    } @else if (allowed() && query.isError()) {
+      <p role="alert" class="text-sm">{{ 'RESTAURANTS.SUBMISSIONS.STATUS_ERROR' | transloco }}</p>
+      <button type="button" mat-button (click)="query.refetch()">
+        {{ 'RESTAURANTS.SUBMISSIONS.REFRESH' | transloco }}
+      </button>
+    }`,
 })
 export class RestaurantGuestReviewComponent {
   private readonly notifications = inject(NotificationService);

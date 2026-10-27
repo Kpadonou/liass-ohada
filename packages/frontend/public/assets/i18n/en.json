@@ -4737,7 +4737,7 @@
       "OPEN": "Open",
       "OPEN_TABLE": "View service at table {{table}}",
       "NAV": "Table navigation",
-      "CONTEXT": "Current session",
+      "CONTEXT": "Service context",
       "OPEN_STATE": "Service in progress",
       "CLOSED": "Service ended",
       "OPENED": "Opened on",
@@ -4752,17 +4752,18 @@
       "RETRY": "Try again",
       "ERRORS": {
         "INVALID": "This table link is invalid",
-        "ACCESS": "This session is not accessible to you",
-        "UNAVAILABLE": "This session is unavailable",
-        "LOAD": "The session cannot be loaded right now"
+        "ACCESS": "This service is not accessible to you",
+        "UNAVAILABLE": "This service is unavailable",
+        "LOAD": "The service cannot be loaded right now"
       },
-      "EMPTY": "No orders yet"
+      "EMPTY": "No orders yet",
+      "AREA_UNAVAILABLE": "The dining area cannot be displayed right now."
     },
     "SERVICE_ORDERS": {
-      "TITLE": "Service orders",
+      "TITLE": "Validated orders",
       "HELP": "Recorded order amounts before payments. Items awaiting confirmation are not included.",
       "ORDER": "Order placed",
-      "QR": "QR",
+      "QR": "Client (QR)",
       "EMPTY": "No orders recorded for this service.",
       "NO_LINES": "No confirmed items in this order.",
       "INCOMPLETE": "This list is incomplete. Load more or refresh orders to view all items.",
@@ -4777,7 +4778,8 @@
         "SERVED": "Served",
         "CANCELLED": "Cancelled",
         "UNKNOWN": "Refresh progress"
-      }
+      },
+      "STAFF": "Staff"
     },
     "ORDER_TAKING": {
       "DRAFT": "To confirm",
@@ -4806,7 +4808,7 @@
       "MORE_ITEMS": "Show more",
       "MORE_LINES": "Load more order lines",
       "LOAD_BEFORE_EDIT": "Load the remaining lines before editing or confirming this order.",
-      "NO_DRAFT": "No draft items. Choose items from the menu.",
+      "NO_DRAFT": "No items selected. Add items from the menu.",
       "NO_ACCEPTED": "No confirmed items yet.",
       "NO_ITEMS": "No items match this selection.",
       "NO_MENU": "The menu is currently unavailable.",
@@ -4884,7 +4886,7 @@
       "EMPTY": "No items ready to serve.",
       "MORE_READY": "Show more ready items",
       "MORE": "Check more items",
-      "TABLE_TITLE": "Ready to serve at this table",
+      "TABLE_TITLE": "Ready to serve",
       "TABLE_INCOMPLETE": "The whole table has not been checked. Serve items individually or refresh before serving all.",
       "BATCH_RESULT": "{{served}} served, {{remaining}} remaining",
       "RETRY_BATCH": "Resume serving",
@@ -5144,7 +5146,7 @@
       "SENDING": "Sending…",
       "TITLE": "Your orders",
       "ORDER": "Order placed",
-      "REVIEW": "Guest requests",
+      "REVIEW": "Customer requests",
       "LINE_STATUS": {
         "CONFIRMED": "Confirmed",
         "PREPARING": "Preparing",
@@ -5180,7 +5182,8 @@
       "CANCELLED": "Cancelled",
       "PENDING_SERVICE": "Order sent — awaiting staff assistance",
       "NEW_QR_ORDER": "New QR order",
-      "AWAITING_SERVICE": "Waiting for service to open"
+      "AWAITING_SERVICE": "Waiting for service to open",
+      "COUNT": "{{count}} request(s)"
     }
   }
 }

@@ -126,6 +126,9 @@ it('preserves partial success and the exact ambiguous request for retry', async 
   expect(fixture.componentInstance.ready()).toHaveLength(0);
 });
 it('replays an ambiguous commit even when canonical reconciliation no longer lists it READY', async () => {
+  tasks = tasks.slice(0, 1);
+  await fixture.componentInstance.refresh();
+  await settle();
   api.serve.mockImplementationOnce(async (_ctx, _order, task) => {
     tasks = tasks.filter((t) => t.fireId !== task.fireId);
     throw new HttpErrorResponse({ status: 0 });
@@ -133,6 +136,8 @@ it('replays an ambiguous commit even when canonical reconciliation no longer lis
   await fixture.componentInstance.serve(fixture.componentInstance.ready()[0]);
   await settle();
   expect(fixture.componentInstance.unresolved()).toHaveLength(1);
+  expect(fixture.nativeElement.querySelector('[data-testid=table-delivery]')).toBeNull();
+  expect(fixture.nativeElement.textContent).toContain(fr.RESTAURANTS.SERVING.RETRY_BATCH);
   await fixture.componentInstance.retry();
   await settle();
   expect(api.serve.mock.calls[0][3]).toBe(api.serve.mock.calls[1][3]);
@@ -183,4 +188,17 @@ it('reports three successes and two remaining without rolling back a five-task b
   await fixture.componentInstance.retry();
   await settle();
   expect(fixture.componentInstance.ready()).toHaveLength(0);
+});
+
+it('hides the empty action panel while keeping canonical readers available for new ready items', async () => {
+  tasks = [];
+  await fixture.componentInstance.refresh();
+  await settle();
+  expect(fixture.nativeElement.querySelector('[data-testid="table-delivery"]')).toBeNull();
+  expect(fixture.nativeElement.querySelectorAll('liass-order-delivery-reader')).toHaveLength(2);
+  tasks = [serviceTask()];
+  await fixture.componentInstance.refresh();
+  await settle();
+  expect(fixture.nativeElement.querySelector('[data-testid="table-delivery"]')).toBeTruthy();
+  expect(fixture.nativeElement.textContent).toContain('À servir');
 });

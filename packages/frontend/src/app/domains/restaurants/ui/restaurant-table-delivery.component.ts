@@ -74,7 +74,11 @@ export class RestaurantOrderDeliveryReader {
 
 @Component({
   selector: 'liass-restaurant-table-delivery',
-  host: { class: 'block min-w-0' },
+  host: {
+    class: 'block min-w-0',
+    '[class.hidden]':
+      'complete() && !ready().length && !unresolved().length && !message() && !error()',
+  },
   imports: [
     RestaurantOrderDeliveryReader,
     MatButtonModule,

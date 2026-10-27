@@ -4737,10 +4737,10 @@
       "OPEN": "Ouvrir",
       "OPEN_TABLE": "Consulter le service à la table {{table}}",
       "NAV": "Navigation de la table",
-      "CONTEXT": "Session en cours",
+      "CONTEXT": "Contexte du service",
       "OPEN_STATE": "Service en cours",
       "CLOSED": "Service terminé",
-      "OPENED": "Ouverte le",
+      "OPENED": "Ouvert le",
       "AMOUNT": "Montant actuel",
       "ONE_ORDER": "1 commande enregistrée",
       "ORDERS": "{{count}} commandes enregistrées",
@@ -4752,17 +4752,18 @@
       "RETRY": "Réessayer",
       "ERRORS": {
         "INVALID": "Le lien de cette table est invalide",
-        "ACCESS": "Cette session ne vous est pas accessible",
-        "UNAVAILABLE": "Cette session est indisponible",
-        "LOAD": "La session ne peut pas être chargée pour le moment"
+        "ACCESS": "Ce service ne vous est pas accessible",
+        "UNAVAILABLE": "Ce service est indisponible",
+        "LOAD": "Le service ne peut pas être chargé pour le moment"
       },
-      "EMPTY": "Aucune commande pour le moment"
+      "EMPTY": "Aucune commande pour le moment",
+      "AREA_UNAVAILABLE": "La salle ne peut pas être affichée pour le moment."
     },
     "SERVICE_ORDERS": {
-      "TITLE": "Commandes du service",
+      "TITLE": "Commandes validées",
       "HELP": "Montants des commandes enregistrées, avant déduction des paiements. Les articles à valider ne sont pas inclus.",
       "ORDER": "Commande du",
-      "QR": "QR",
+      "QR": "Client (QR)",
       "EMPTY": "Aucune commande enregistrée pour ce service.",
       "NO_LINES": "Aucun article confirmé dans cette commande.",
       "INCOMPLETE": "La liste est incomplète. Chargez la suite ou actualisez les commandes pour consulter tous les articles.",
@@ -4777,7 +4778,8 @@
         "SERVED": "Servie",
         "CANCELLED": "Annulée",
         "UNKNOWN": "Progression à actualiser"
-      }
+      },
+      "STAFF": "Staff"
     },
     "ORDER_TAKING": {
       "DRAFT": "À valider",
@@ -4806,7 +4808,7 @@
       "MORE_ITEMS": "Afficher davantage",
       "MORE_LINES": "Charger la suite de la commande",
       "LOAD_BEFORE_EDIT": "Chargez la suite avant de modifier ou valider cette commande.",
-      "NO_DRAFT": "Aucun article à valider. Choisissez des articles dans la carte.",
+      "NO_DRAFT": "Aucun article sélectionné. Ajoutez des articles depuis la Carte.",
       "NO_ACCEPTED": "Aucune commande validée pour le moment.",
       "NO_ITEMS": "Aucun article dans cette sélection.",
       "NO_MENU": "La carte n’est pas disponible pour le moment.",
@@ -4873,7 +4875,7 @@
       "READY_SHORT": "Prêt"
     },
     "SERVING": {
-      "TITLE": "Prêt à servir",
+      "TITLE": "À servir",
       "REFRESH": "Actualiser les articles prêts à servir",
       "LOAD_ERROR": "Les articles à servir sont indisponibles. Actualisez pour réessayer.",
       "FAILED": "Le service n’a pas pu être confirmé. Actualisez ou réessayez.",
@@ -4884,7 +4886,7 @@
       "EMPTY": "Aucun article prêt à servir.",
       "MORE_READY": "Afficher davantage d’articles prêts",
       "MORE": "Vérifier les articles suivants",
-      "TABLE_TITLE": "À servir pour cette table",
+      "TABLE_TITLE": "À servir",
       "TABLE_INCOMPLETE": "La vérification de toute la table est incomplète. Servez les articles individuellement ou actualisez avant de servir tout.",
       "BATCH_RESULT": "{{served}} servis, {{remaining}} restants",
       "RETRY_BATCH": "Reprendre le service",
@@ -5144,7 +5146,7 @@
       "SENDING": "Envoi en cours…",
       "TITLE": "Vos commandes",
       "ORDER": "Commande du",
-      "REVIEW": "Demandes des convives",
+      "REVIEW": "Demandes des clients",
       "LINE_STATUS": {
         "CONFIRMED": "Confirmée",
         "PREPARING": "En préparation",
@@ -5180,7 +5182,8 @@
       "CANCELLED": "Annulée",
       "PENDING_SERVICE": "Commande envoyée — en attente de prise en charge",
       "NEW_QR_ORDER": "Nouvelle commande QR",
-      "AWAITING_SERVICE": "En attente d’ouverture du service"
+      "AWAITING_SERVICE": "En attente d’ouverture du service",
+      "COUNT": "{{count}} demande(s)"
     }
   }
 }

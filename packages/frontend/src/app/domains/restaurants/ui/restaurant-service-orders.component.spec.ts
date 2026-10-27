@@ -9,6 +9,7 @@ import { RestaurantServiceOrdersComponent } from './restaurant-service-orders.co
 import { RestaurantOrdersApi } from '../data-access/restaurant-orders.api';
 import { RestaurantsApi } from '../data-access/restaurants.api';
 import { RestaurantServicePreparationApi } from '../data-access/restaurant-service-preparation.api';
+import { restaurantOperationalPrice } from '../utils/restaurant-money';
 import { rid } from '../data-access/restaurants.test-fixture';
 import { serviceContext, serviceTask } from '../data-access/service-preparation.test-fixture';
 
@@ -200,6 +201,44 @@ describe('Canonical Orders across the whole service', () => {
       f.detectChanges();
       expect(denied).toHaveBeenCalled();
     });
+    expect(f.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  });
+  it.each(['fr', 'en'])(
+    'keeps distinct canonical totals and Client (QR) / Staff sources in %s',
+    async (lang) => {
+      TestBed.inject(TranslocoService).setActiveLang(lang);
+      const f = mount([order(), { ...order(30), createdBy: 'private-staff-identifier' }]);
+      await vi.waitFor(() => {
+        f.detectChanges();
+        expect(f.nativeElement.querySelectorAll('[data-testid="service-order-line"]')).toHaveLength(
+          4,
+        );
+      });
+      const cards = f.nativeElement.querySelectorAll('[data-testid="service-order"]');
+      expect(cards).toHaveLength(2);
+      expect(cards[0].querySelector('[data-testid="order-source"]').textContent.trim()).toBe(
+        'Client (QR)',
+      );
+      expect(cards[1].querySelector('[data-testid="order-source"]').textContent.trim()).toBe(
+        'Staff',
+      );
+      for (const card of cards)
+        expect(card.textContent).toContain(restaurantOperationalPrice(6000, 'XOF', lang));
+      expect(f.nativeElement.textContent).toContain(
+        lang === 'fr' ? 'Commandes validées' : 'Validated orders',
+      );
+      expect(f.nativeElement.textContent).not.toContain('private-staff-identifier');
+    },
+  );
+  it('renders no history panel for an empty service or a draft-only canonical Order', () => {
+    const f = mount([]);
+    expect(f.nativeElement.querySelector('liass-card')).toBeNull();
+    f.componentRef.setInput('orders', [
+      { ...order(), status: 'DRAFT', acceptedLineCount: 0, dueMinor: 0 },
+    ]);
+    f.componentRef.setInput('expectedCount', 1);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('liass-card')).toBeNull();
     expect(f.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
   });
 });
