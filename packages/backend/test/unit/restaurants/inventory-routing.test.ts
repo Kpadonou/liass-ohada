@@ -74,3 +74,36 @@ test.each([
   } as never);
   expect(response.statusCode).toBe(404);
 });
+
+test.each(["PUT", "DELETE"])(
+  "Inventory exact tracking %s route reuses the existing dispatcher allowlist",
+  async (method) => {
+    const event = {
+      routeKey: `${method} ${TRACKING_PATH}`,
+      rawPath:
+        "/restaurants/outlets/outlet-id/inventory/menu-items/menu-id/tracking",
+      pathParameters: { outletId: "outlet-id", menuItemId: "menu-id" },
+      requestContext: { http: { method } },
+      body: JSON.stringify({ categoryId: "category-id" }),
+    };
+    const response = await handler(event as never);
+    const data = JSON.parse(response.body);
+    expect(data.operation).toBe(`tracking-${method}`);
+    expect(data.event).toEqual(event);
+  },
+);
+
+test.each([
+  ["POST", "menu-items/menu-id/tracking"],
+  ["PATCH", "menu-items/menu-id/tracking"],
+  ["PUT", "items"],
+  ["DELETE", "items/stock-id"],
+  ["OPTIONS", "menu-items/menu-id/tracking"],
+])("Inventory allowlist rejects unsupported %s %s", async (method, path) => {
+  const response = await handler({
+    routeKey: `${method} ${INVENTORY_GATEWAY_PATH}`,
+    rawPath: `/restaurants/outlets/outlet-id/inventory/${path}`,
+    requestContext: { http: { method } },
+  } as never);
+  expect(response.statusCode).toBe(404);
+});

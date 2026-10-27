@@ -11,6 +11,7 @@ import { Construct } from "constructs";
 import {
   INVENTORY_GATEWAY_PATH,
   INVENTORY_GATEWAY_METHODS,
+  TRACKING_PATH,
 } from "../../../lambda/domains/restaurants/inventory-routes";
 import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
 import {
@@ -463,7 +464,8 @@ describe("API stack decomposition", () => {
       (route) => route.routeKey === "GET /restaurants/outlets/{outletId}",
     )!;
     for (const routeKey of INVENTORY_GATEWAY_METHODS.map(
-      (method) => `${method} ${INVENTORY_GATEWAY_PATH}`,
+      (method) =>
+        `${method} ${method === "PUT" || method === "DELETE" ? TRACKING_PATH : INVENTORY_GATEWAY_PATH}`,
     )) {
       const route = routes.find((r) => r.routeKey === routeKey)!;
       expect(route).toBeDefined();
@@ -578,7 +580,7 @@ describe("API stack decomposition", () => {
     ["DELETE", "menu-items/item/tracking"],
   ])(
     "Inventory business request %s %s retains the original JWT authorizer",
-    (method) => {
+    (method, suffix) => {
       const restaurants = constructs.find(
         (item): item is RestaurantsApiStack =>
           item instanceof RestaurantsApiStack,
@@ -588,9 +590,22 @@ describe("API stack decomposition", () => {
         .filter(
           (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
         );
-      const route = routes.find(
-        (r) => r.routeKey === `${method} ${INVENTORY_GATEWAY_PATH}`,
-      )!;
+      const path = `/restaurants/outlets/outlet/inventory/${suffix}`;
+      const matching = routes.filter((r) => {
+        const [verb, template] = String(r.routeKey).split(" ");
+        return (
+          verb === method &&
+          new RegExp(
+            "^" +
+              template
+                .replace(/\{proxy\+\}/g, ".+")
+                .replace(/\{\w+\}/g, "[^/]+") +
+              "$",
+          ).test(path)
+        );
+      });
+      expect(matching).toHaveLength(1);
+      const route = matching[0];
       const original = routes.find(
         (r) => r.routeKey === "GET /restaurants/outlets/{outletId}",
       )!;
@@ -602,6 +617,100 @@ describe("API stack decomposition", () => {
       expect(restaurants.resolve(route.target)).toEqual(
         restaurants.resolve(original.target),
       );
+    },
+  );
+
+  test.each(["GET", "PUT", "DELETE"])(
+    "Inventory tracking %s invoke permission covers the selected Gateway route template",
+    (method) => {
+      const restaurants = constructs.find(
+        (item): item is RestaurantsApiStack =>
+          item instanceof RestaurantsApiStack,
+      )!;
+      const owned = restaurants.node.findAll();
+      const management = owned.find(
+        (item): item is lambda.CfnFunction =>
+          item instanceof lambda.CfnFunction &&
+          item.functionName === "liass-ohada-dev-restaurants-get-outlet",
+      )!;
+      const permissions = management.node
+        .scope!.node.findAll()
+        .filter(
+          (item): item is lambda.CfnPermission =>
+            item instanceof lambda.CfnPermission,
+        );
+      const arn = (permission: lambda.CfnPermission) =>
+        restaurants
+          .resolve(permission.sourceArn)
+          ["Fn::Join"][1].map((part: unknown) =>
+            typeof part === "string"
+              ? part
+              : (part as { Ref?: string }).Ref === "AWS::Partition"
+                ? "aws"
+                : "review-api",
+          )
+          .join("");
+      const matches = (pattern: string, candidate: string) =>
+        new RegExp(
+          "^" +
+            pattern
+              .split("*")
+              .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+              .join(".*") +
+            "$",
+        ).test(candidate);
+      const routeKey = `${method} ${method === "GET" ? INVENTORY_GATEWAY_PATH : TRACKING_PATH}`;
+      const route = owned.find(
+        (item): item is apigwv2.CfnRoute =>
+          item instanceof apigwv2.CfnRoute && item.routeKey === routeKey,
+      )!;
+      expect(route).toBeDefined();
+      const [verb, template] = String(route.routeKey).split(" ");
+      const routeArn = (m: string, path: string) =>
+        `arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/${m}${path}`;
+      // Regression: matching the logical browser URL alone missed the selected
+      // greedy route template used for the Lambda invocation permission check.
+      expect(
+        permissions.some((p) => matches(arn(p), routeArn(verb, template))),
+      ).toBe(true);
+      const trackingPermission = permissions.find(
+        (p) => p.node.id === "InventoryTrackingInvoke",
+      )!;
+      const trackingArn = arn(trackingPermission);
+      expect(trackingArn).toBe(
+        "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/restaurants/outlets/*/inventory/menu-items/*/tracking",
+      );
+      if (method !== "GET") {
+        expect(matches(trackingArn, routeArn(verb, template))).toBe(true);
+        expect(
+          permissions.some((p) =>
+            matches(arn(p), routeArn(verb, INVENTORY_GATEWAY_PATH)),
+          ),
+        ).toBe(false);
+        expect(
+          matches(trackingArn, routeArn(verb, INVENTORY_GATEWAY_PATH)),
+        ).toBe(false);
+      }
+      for (const path of [
+        "/restaurants/outlets/{outletId}/inventory/items",
+        "/restaurants/outlets/{outletId}/inventory/items/{stockItemId}/movements",
+        "/restaurants/outlets/{outletId}/inventory/menu-items/{menuItemId}/tracking/extra",
+        "/restaurants/outlets/{outletId}/staff",
+        "/restaurants/outlets/{outletId}/orders",
+        "/accounting/accounts",
+      ])
+        expect(matches(trackingArn, routeArn(verb, path))).toBe(false);
+      for (const mismatch of [
+        trackingArn.replace("review-api", "other-api"),
+        trackingArn.replace("/$default/", "/other-stage/"),
+        trackingArn.replace("123456789012", "999999999999"),
+        trackingArn.replace("eu-west-3", "eu-west-1"),
+      ])
+        expect(matches(trackingArn, mismatch)).toBe(false);
+      expect(trackingArn).not.toContain("/$default/*/*");
+      expect(
+        Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
+      ).toBeLessThanOrEqual(344);
     },
   );
 

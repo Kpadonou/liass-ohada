@@ -126,6 +126,16 @@ answered by the shared HTTP API `CorsConfiguration`, without Lambda execution.
 No explicit OPTIONS resources or duplicate CORS policy are introduced. Counts stay
 344 Restaurants / 278 API core, including 98 domain routes and 87 permissions.
 
+Tracking invocation correction: Lambda invocation permissions are evaluated
+against the selected Gateway route template. The logical tracking-family grant
+does not match the greedy `PUT/DELETE .../inventory/{proxy+}` template. The two
+existing PUT and DELETE route resources therefore use the exact
+`/restaurants/outlets/{outletId}/inventory/menu-items/{menuItemId}/tracking` path.
+The existing tracking-only SourceArn, integration, JWT authorizer and dispatcher
+allowlist are retained without broadening any invoke permission. GET remains on
+its existing protected Inventory group and is covered by the existing Outlet GET
+grant. Managed anonymous CORS and all resource counts above remain unchanged.
+
 ## Stateful-resource safeguards
 
 Ordinary feature work **MUST NOT** move resources whose replacement could destroy data or disconnect production integrations. Protected resources include:

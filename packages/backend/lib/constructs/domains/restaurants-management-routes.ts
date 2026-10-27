@@ -13,6 +13,7 @@ import { RESTAURANTS_ROUTES } from "../../../lambda/domains/restaurants/restaura
 import {
   INVENTORY_GATEWAY_PATH,
   INVENTORY_GATEWAY_METHODS,
+  TRACKING_PATH,
 } from "../../../lambda/domains/restaurants/inventory-routes";
 
 /** Same reviewed bounded-invocation pattern as GuestRouteIntegration. */
@@ -71,13 +72,18 @@ export function addRestaurantsManagementRoutes(
   }
   // ANY captures anonymous preflight before the shared CORS responder.
   // Five method groups replace two ANY + three tracking routes at zero net cost.
+  // Lambda invoke SourceArn is evaluated against the selected Gateway route
+  // template. Keep tracking-only writes exact so the existing tracking-family
+  // grant applies; a greedy PUT/DELETE would require a broader Inventory grant.
   for (const method of INVENTORY_GATEWAY_METHODS)
     new apigw.HttpRoute(scope, `Inventory${method}RouteGroup`, {
       httpApi: props.api,
       authorizer: props.authorizer,
       integration,
       routeKey: apigw.HttpRouteKey.with(
-        INVENTORY_GATEWAY_PATH,
+        method === "PUT" || method === "DELETE"
+          ? TRACKING_PATH
+          : INVENTORY_GATEWAY_PATH,
         apigw.HttpMethod[method],
       ),
     });
