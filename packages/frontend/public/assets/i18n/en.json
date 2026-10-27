@@ -1,4 +1,80 @@
 {
+  "RESTAURANTS_INVENTORY": {
+    "YOU": "You",
+    "TEAM_MEMBER": "Team member",
+    "TITLE": "Inventory",
+    "DESCRIPTION": "Track current quantities and stock movements for your location.",
+    "ITEMS": "Stock items",
+    "NAME": "Item",
+    "UNIT": "Unit",
+    "CURRENT": "Current stock",
+    "STATUS": "Status",
+    "UPDATED": "Last updated",
+    "ACTIONS": "Actions",
+    "NORMAL": "Normal",
+    "NEGATIVE": "Negative stock",
+    "NEGATIVE_HINT": "Stock may remain negative. Sales are not blocked.",
+    "ACTIVE": "Active",
+    "INACTIVE": "Inactive",
+    "CREATE": "Create stock item",
+    "EDIT": "Edit",
+    "DETAIL": "Stock item details",
+    "EMPTY": "No stock items",
+    "EMPTY_HINT": "Create your first item to start tracking stock coming in and going out.",
+    "INITIAL_ZERO": "Initial stock is 0. Record it afterwards with a receipt or adjustment.",
+    "UNIT_FIXED": "The unit cannot be changed after creation.",
+    "QUANTITY": "Quantity",
+    "REFERENCE": "Reference (optional)",
+    "DIRECTION": "Adjustment direction",
+    "INCREASE": "Increase stock",
+    "DECREASE": "Reduce stock",
+    "WHOLE_HINT": "Enter a positive whole quantity.",
+    "DECIMAL_HINT": "Enter a positive quantity with up to three decimal places.",
+    "LOADING": "Loading inventory…",
+    "RETRY": "Retry",
+    "MORE": "Load more",
+    "NO_OUTLET": "Set up a location to start tracking its inventory.",
+    "SAVED": "Stock item saved.",
+    "MOVEMENT_SAVED": "Stock movement saved.",
+    "CONFLICT_REOPEN": "Close this window and reopen the refreshed item before editing again.",
+    "UNCERTAIN": "The movement result is still unconfirmed. Retry to confirm and complete the same operation without counting it twice.",
+    "HISTORY": "Movement history",
+    "AFTER": "Stock after movement",
+    "NO_MOVEMENTS": "No movements recorded.",
+    "MOVEMENTS": {
+      "RECEIPT": "Receipt",
+      "LOSS": "Loss",
+      "ADJUSTMENT": "Adjustment",
+      "SALE": "Sale",
+      "SALE_REVERSAL": "Sale reversal"
+    },
+    "SUBMIT": {
+      "RECEIPT": "Record receipt",
+      "LOSS": "Record loss",
+      "ADJUSTMENT": "Record adjustment"
+    },
+    "UNITS": {
+      "UNIT": "Unit",
+      "BOTTLE": "Bottle",
+      "CAN": "Can",
+      "PACK": "Pack",
+      "KG": "kg",
+      "G": "g",
+      "L": "L",
+      "ML": "mL"
+    },
+    "SOURCES": { "MANUAL": "Manual entry", "BUSINESS_EVENT": "Automatic movement" },
+    "ERRORS": {
+      "NAME": "Enter a name between 1 and 200 characters.",
+      "QUANTITY": "Enter a positive quantity with up to three decimal places.",
+      "WHOLE": "This unit requires a positive whole quantity.",
+      "CONFLICT": "The item or movement changed. Refresh the item before continuing.",
+      "FORBIDDEN": "You do not have access to inventory management.",
+      "MISSING": "This item is no longer available at this location.",
+      "INPUT": "Check the entered information and try again.",
+      "NETWORK": "The operation could not be confirmed. Check your connection and try again."
+    }
+  },
   "COMMON": {
     "APP": {
       "BRAND": "Liass-OHADA"
@@ -4423,6 +4499,7 @@
     "UX": {
       "CONFIGURATION": "Configuration",
       "PAGES": {
+        "inventory": { "TITLE": "Inventory" },
         "overview": {
           "TITLE": "Dashboard",
           "DESCRIPTION": "Review your restaurant configuration and menu."

@@ -70,14 +70,19 @@ describe('RESTO-0 product route protection', () => {
       TestBed.inject(Router).serializeUrl((await run()) as ReturnType<Router['createUrlTree']>),
     ).toBe('/dashboard');
   });
-  it.each(['/restaurants/setup', '/restaurants/menu'])('protects direct %s entry', async (url) => {
-    fetchQuery.mockResolvedValue([access('RESTAURANTS')]);
-    expect(await run(url)).toBe(true);
-    fetchQuery.mockResolvedValue([access('SALES')]);
-    expect(
-      TestBed.inject(Router).serializeUrl((await run(url)) as ReturnType<Router['createUrlTree']>),
-    ).toBe('/dashboard');
-  });
+  it.each(['/restaurants/setup', '/restaurants/menu', '/restaurants/inventory'])(
+    'protects direct %s entry',
+    async (url) => {
+      fetchQuery.mockResolvedValue([access('RESTAURANTS')]);
+      expect(await run(url)).toBe(true);
+      fetchQuery.mockResolvedValue([access('SALES')]);
+      expect(
+        TestBed.inject(Router).serializeUrl(
+          (await run(url)) as ReturnType<Router['createUrlTree']>,
+        ),
+      ).toBe('/dashboard');
+    },
+  );
   it('waits for access loading before allowing entry', async () => {
     let resolve!: (value: ProductAccess[]) => void;
     fetchQuery.mockReturnValue(

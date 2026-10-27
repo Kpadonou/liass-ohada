@@ -41,6 +41,7 @@ describe('Restaurant role-aware routes', () => {
     workspace.set(accessWorkspace(role));
     expect(check('')).toBe(true);
     expect(check('setup/team')).toBe(true);
+    expect(check('inventory')).toBe(true);
     expect(check('kitchen')).toBe(true);
     expect(check('service')).toBe(true);
     expect(check('service/outlets/:outletId/sessions/:guestSessionId')).toBe(true);
@@ -51,11 +52,13 @@ describe('Restaurant role-aware routes', () => {
     expect(check('kitchen')).toBe(true);
     expect(check('service')).toBe('/restaurants/kitchen');
     expect(check('setup/team')).toBe('/restaurants/kitchen');
+    expect(check('inventory')).toBe('/restaurants');
   });
   it('redirects WAITER landing, reload and direct configuration to Service Floor without management access', () => {
     workspace.set(accessWorkspace('WAITER'));
     expect(check('')).toBe('/restaurants/service');
     expect(check('')).toBe('/restaurants/service');
+    expect(check('inventory')).toBe('/restaurants');
     for (const path of ['setup', 'setup/team', 'setup/tables', 'menu'])
       expect(check(path)).toBe('/restaurants/service');
     expect(check('service')).toBe(true);
@@ -65,6 +68,7 @@ describe('Restaurant role-aware routes', () => {
   it('allows CASHIER only checkout and denies service/management', () => {
     workspace.set(accessWorkspace('CASHIER'));
     expect(check('checkout')).toBe(true);
+    expect(check('inventory')).toBe('/restaurants');
     expect(check('')).toBe('/restaurants/checkout');
     expect(check('service')).toBe('/restaurants/checkout');
     expect(check('setup/team')).toBe('/restaurants/checkout');

@@ -288,6 +288,17 @@ export class AppSidebarComponent {
       labelKey: 'RESTAURANTS.UX.CONFIGURATION',
       showHeading: true,
       items: [
+        ...(this.restaurantsCapabilities.canManageInventory?.()
+          ? [
+              {
+                icon: 'inventory_2',
+                labelKey: 'RESTAURANTS_INVENTORY.TITLE',
+                page: 'restaurants' as const,
+                route: '/restaurants/inventory',
+                productCode: 'RESTAURANTS' as const,
+              },
+            ]
+          : []),
         ...(this.restaurantsCapabilities.canManageSetup()
           ? restaurantSections.map((section) => ({
               icon: section.icon,

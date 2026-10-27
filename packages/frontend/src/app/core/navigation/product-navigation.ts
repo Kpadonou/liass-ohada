@@ -32,6 +32,7 @@ export class ShellRouteContext {
     if (/^\/restaurants\/outlets\/[^/]+\/sessions\/[^/]+\/receipt$/.test(this.url()))
       return 'receipt';
     if (this.url() === '/restaurants/checkout') return 'checkout';
+    if (this.url() === '/restaurants/inventory') return 'inventory';
     if (this.url() === '/restaurants/kitchen') return 'kitchen';
     if (this.url() === '/restaurants/setup/team') return 'team';
     if (this.url() === '/restaurants/service' || this.url().startsWith('/restaurants/service/'))

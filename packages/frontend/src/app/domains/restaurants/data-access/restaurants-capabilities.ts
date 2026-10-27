@@ -96,6 +96,9 @@ export class RestaurantsCapabilities {
   canManageSetup() {
     return this.permissions().includes('RESTAURANTS_SETUP_MANAGE');
   }
+  canManageInventory() {
+    return this.canManageSetup();
+  }
   canManageMenu() {
     return this.permissions().includes('RESTAURANTS_MENU_MANAGE');
   }

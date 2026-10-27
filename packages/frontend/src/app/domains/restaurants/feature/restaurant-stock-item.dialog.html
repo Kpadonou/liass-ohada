@@ -1,0 +1,57 @@
+<h2 mat-dialog-title>
+  {{ (data.item ? 'RESTAURANTS_INVENTORY.EDIT' : 'RESTAURANTS_INVENTORY.CREATE') | transloco }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="pending()">
+  <mat-dialog-content class="space-y-4">
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'RESTAURANTS_INVENTORY.NAME' | transloco }}</mat-label>
+      <input matInput formControlName="name" autocomplete="off" maxlength="200" cdkFocusInitial />
+      @if (form.controls.name.invalid) {
+        <mat-error>{{ 'RESTAURANTS_INVENTORY.ERRORS.NAME' | transloco }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'RESTAURANTS_INVENTORY.UNIT' | transloco }}</mat-label>
+      <mat-select formControlName="unit">
+        @for (unit of units; track unit) {
+          <mat-option [value]="unit">{{
+            'RESTAURANTS_INVENTORY.UNITS.' + unit | transloco
+          }}</mat-option>
+        }
+      </mat-select>
+      @if (data.item) {
+        <mat-hint>{{ 'RESTAURANTS_INVENTORY.UNIT_FIXED' | transloco }}</mat-hint>
+      }
+    </mat-form-field>
+    @if (data.item) {
+      <mat-checkbox formControlName="isActive">{{
+        'RESTAURANTS_INVENTORY.ACTIVE' | transloco
+      }}</mat-checkbox>
+    } @else {
+      <p class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS_INVENTORY.INITIAL_ZERO' | transloco }}
+      </p>
+    }
+    @if (error()) {
+      <p role="alert" class="text-sm text-danger-600">{{ error() }}</p>
+    }
+    @if (conflict()) {
+      <p class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS_INVENTORY.CONFLICT_REOPEN' | transloco }}
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <liass-button tone="neutral" variant="ghost" [disabled]="pending()" (pressed)="cancel()">{{
+      'COMMON.ACTIONS.CANCEL' | transloco
+    }}</liass-button>
+    <liass-button
+      tone="brand"
+      variant="solid"
+      buttonType="submit"
+      [loading]="pending()"
+      [disabled]="form.invalid || conflict() || !allowed()"
+      >{{ 'COMMON.ACTIONS.SAVE' | transloco }}</liass-button
+    >
+  </mat-dialog-actions>
+</form>

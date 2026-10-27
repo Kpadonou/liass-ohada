@@ -212,6 +212,15 @@ export const routes: Routes = [
               ),
             data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.TEAM.TITLE' },
           },
+          {
+            path: 'inventory',
+            canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-inventory.page').then(
+                (m) => m.RestaurantInventoryPage,
+              ),
+            data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS_INVENTORY.TITLE' },
+          },
           ...[
             { path: '', restaurantPage: 'overview', restaurantSection: 'restaurant' },
             ...restaurantSections.map((section) => ({

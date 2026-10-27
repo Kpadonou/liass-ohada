@@ -1,0 +1,73 @@
+<h2 mat-dialog-title>{{ 'RESTAURANTS_INVENTORY.MOVEMENTS.' + type | transloco }}</h2>
+<form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="pending()">
+  <mat-dialog-content class="space-y-4">
+    <p class="mb-4 font-medium text-app-text">
+      {{ data.item.name }} · {{ 'RESTAURANTS_INVENTORY.UNITS.' + data.item.unit | transloco }}
+    </p>
+    @if (type === 'ADJUSTMENT') {
+      <mat-radio-group
+        formControlName="direction"
+        class="mb-4 flex flex-col gap-2"
+        [attr.aria-label]="'RESTAURANTS_INVENTORY.DIRECTION' | transloco"
+      >
+        <mat-radio-button value="INCREASE">{{
+          'RESTAURANTS_INVENTORY.INCREASE' | transloco
+        }}</mat-radio-button>
+        <mat-radio-button value="DECREASE">{{
+          'RESTAURANTS_INVENTORY.DECREASE' | transloco
+        }}</mat-radio-button>
+      </mat-radio-group>
+    }
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'RESTAURANTS_INVENTORY.QUANTITY' | transloco }}</mat-label>
+      <input
+        matInput
+        formControlName="quantity"
+        type="text"
+        inputmode="decimal"
+        autocomplete="off"
+        cdkFocusInitial
+      />
+      <mat-hint>{{
+        (discrete ? 'RESTAURANTS_INVENTORY.WHOLE_HINT' : 'RESTAURANTS_INVENTORY.DECIMAL_HINT')
+          | transloco
+      }}</mat-hint>
+      @if (form.controls.quantity.invalid) {
+        <mat-error>{{
+          (discrete
+            ? 'RESTAURANTS_INVENTORY.ERRORS.WHOLE'
+            : 'RESTAURANTS_INVENTORY.ERRORS.QUANTITY'
+          ) | transloco
+        }}</mat-error>
+      }
+    </mat-form-field>
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>{{ 'RESTAURANTS_INVENTORY.REFERENCE' | transloco }}</mat-label>
+      <input matInput formControlName="reference" maxlength="200" />
+    </mat-form-field>
+    @if (error()) {
+      <p role="alert" class="text-sm text-danger-600">{{ error() }}</p>
+    }
+    @if (uncertain()) {
+      <p role="status" class="text-sm text-app-text-secondary">
+        {{ 'RESTAURANTS_INVENTORY.UNCERTAIN' | transloco }}
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <liass-button tone="neutral" variant="ghost" [disabled]="pending()" (pressed)="cancel()">{{
+      'COMMON.ACTIONS.CLOSE' | transloco
+    }}</liass-button>
+    <liass-button
+      tone="brand"
+      variant="solid"
+      buttonType="submit"
+      [loading]="pending()"
+      [disabled]="(!uncertain() && form.invalid) || !allowed()"
+      >{{
+        (uncertain() ? 'RESTAURANTS_INVENTORY.RETRY' : 'RESTAURANTS_INVENTORY.SUBMIT.' + type)
+          | transloco
+      }}</liass-button
+    >
+  </mat-dialog-actions>
+</form>

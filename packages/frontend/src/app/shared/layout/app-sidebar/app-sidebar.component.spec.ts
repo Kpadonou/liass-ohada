@@ -39,6 +39,7 @@ class NavigationTarget {}
 
 const translations = {
   fr: {
+    RESTAURANTS_INVENTORY: { TITLE: 'Stock' },
     RESTAURANTS: {
       CHECKOUT: { TITLE: 'Caisse' },
       SERVICE: { GROUP: 'Service' },
@@ -784,9 +785,29 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelectorAll(
         '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
       ),
-    ).toHaveLength(11);
+    ).toHaveLength(12);
   });
 
+  it.each(['OWNER', 'MANAGER', 'WAITER', 'CASHIER', 'KITCHEN'])(
+    'Stock visibility follows the %s management role',
+    (role) => {
+      productAvailability.RESTAURANTS = 'AVAILABLE';
+      TestBed.inject(UiStore).setCurrentPage('restaurants');
+      TestBed.inject(AuthStore).setCreatedWorkspace(
+        {
+          orgId: 'org-resto',
+          workspaceType: 'COMPANY',
+          productRoles: { RESTAURANTS: role as 'OWNER' },
+        },
+        'org-resto',
+      );
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+      expect(!!fixture.nativeElement.querySelector('button[aria-label="Stock"]')).toBe(
+        ['OWNER', 'MANAGER'].includes(role),
+      );
+    },
+  );
   it('retains product discovery but hides all restaurant modules without read permissions', () => {
     productAvailability.RESTAURANTS = 'AVAILABLE';
     TestBed.inject(UiStore).setCurrentPage('restaurants');

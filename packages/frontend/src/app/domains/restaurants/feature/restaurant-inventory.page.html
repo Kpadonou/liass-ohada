@@ -1,0 +1,382 @@
+<mat-drawer-container class="min-h-[calc(100vh-9rem)] bg-transparent" [hasBackdrop]="true">
+  <mat-drawer
+    mode="over"
+    position="end"
+    class="w-full max-w-[440px] border-l border-app-border bg-app-surface"
+    [opened]="!!selected() && allowed()"
+    (closedStart)="selected.set(null)"
+    role="dialog"
+    [attr.aria-label]="'RESTAURANTS_INVENTORY.DETAIL' | transloco"
+  >
+    <div class="space-y-5 p-5">
+      <div class="flex items-start justify-between gap-3">
+        <h2 class="min-w-0 break-words text-xl font-semibold text-app-text">
+          {{ itemQuery.data()?.name || ('RESTAURANTS_INVENTORY.DETAIL' | transloco) }}
+        </h2>
+        <liass-button
+          size="icon"
+          variant="ghost"
+          icon="close"
+          [ariaLabel]="'COMMON.ACTIONS.CLOSE' | transloco"
+          (pressed)="selected.set(null)"
+        />
+      </div>
+      @if (itemQuery.isPending()) {
+        <p role="status">{{ 'RESTAURANTS_INVENTORY.LOADING' | transloco }}</p>
+        <liass-skeleton variant="block" />
+      } @else if (itemQuery.isError()) {
+        <p role="alert">{{ errorText(itemQuery.error()) }}</p>
+        <liass-button (pressed)="itemQuery.refetch()">{{
+          'RESTAURANTS_INVENTORY.RETRY' | transloco
+        }}</liass-button>
+      } @else if (itemQuery.data(); as item) {
+        <div class="space-y-3 border-b border-app-border pb-5">
+          <p class="text-xs text-app-muted">{{ 'RESTAURANTS_INVENTORY.CURRENT' | transloco }}</p>
+          <p
+            class="text-2xl font-semibold tabular-nums"
+            [class.text-danger-600]="item.isNegativeStock"
+          >
+            {{ quantity(item.balanceMilli) }}
+            {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <liass-status-chip
+              size="sm"
+              [tone]="item.isNegativeStock ? 'danger' : 'neutral'"
+              [label]="
+                (item.isNegativeStock
+                  ? 'RESTAURANTS_INVENTORY.NEGATIVE'
+                  : 'RESTAURANTS_INVENTORY.NORMAL'
+                ) | transloco
+              "
+            />
+            <liass-status-chip
+              size="sm"
+              tone="neutral"
+              [label]="
+                (item.isActive ? 'RESTAURANTS_INVENTORY.ACTIVE' : 'RESTAURANTS_INVENTORY.INACTIVE')
+                  | transloco
+              "
+            />
+          </div>
+          @if (item.isNegativeStock) {
+            <p class="text-sm text-app-text-secondary">
+              {{ 'RESTAURANTS_INVENTORY.NEGATIVE_HINT' | transloco }}
+            </p>
+          }
+          <div class="flex flex-wrap gap-2">
+            @for (action of actions; track action) {
+              <liass-button size="sm" tone="brand" variant="outline" (pressed)="movement(action)">{{
+                'RESTAURANTS_INVENTORY.MOVEMENTS.' + action | transloco
+              }}</liass-button>
+            }
+            <liass-button size="sm" icon="edit" (pressed)="edit(item)">{{
+              'RESTAURANTS_INVENTORY.EDIT' | transloco
+            }}</liass-button>
+          </div>
+        </div>
+        <section aria-labelledby="inventory-history-title">
+          <h3 id="inventory-history-title" class="mb-4 font-semibold text-app-text">
+            {{ 'RESTAURANTS_INVENTORY.HISTORY' | transloco }}
+          </h3>
+          @if (historyQuery.isPending()) {
+            <p role="status">{{ 'RESTAURANTS_INVENTORY.LOADING' | transloco }}</p>
+            <liass-skeleton variant="block" />
+          } @else {
+            @if (historyQuery.isError()) {
+              <p role="alert" class="mb-3 text-danger-600">{{ errorText(historyQuery.error()) }}</p>
+              <liass-button (pressed)="historyQuery.refetch()">{{
+                'RESTAURANTS_INVENTORY.RETRY' | transloco
+              }}</liass-button>
+            }
+            @if (movements().length) {
+              <ol class="divide-y divide-app-border">
+                @for (movement of movements(); track movement.id) {
+                  <li class="space-y-2 py-4 text-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-2">
+                      <span class="font-semibold">{{
+                        'RESTAURANTS_INVENTORY.MOVEMENTS.' + movement.type | transloco
+                      }}</span
+                      ><span
+                        class="font-semibold tabular-nums"
+                        [class.text-success-600]="movement.deltaMilli > 0"
+                        >{{ quantity(movement.deltaMilli, true) }}
+                        {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}</span
+                      >
+                    </div>
+                    <p class="text-xs text-app-muted">{{ date(movement.createdAt) }}</p>
+                    <p [class.text-danger-600]="movement.isNegativeStock">
+                      {{ 'RESTAURANTS_INVENTORY.AFTER' | transloco }}:
+                      {{ quantity(movement.resultingBalanceMilli) }}
+                      {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}
+                      @if (movement.isNegativeStock) {
+                        · {{ 'RESTAURANTS_INVENTORY.NEGATIVE' | transloco }}
+                      }
+                    </p>
+                    <p class="break-words text-xs text-app-text-secondary">
+                      {{ 'RESTAURANTS_INVENTORY.SOURCES.' + movement.source | transloco }} ·
+                      {{ actorLabel(movement.actorId) }}
+                    </p>
+                    @if (movement.sourceReference) {
+                      <p class="break-words text-app-text-secondary">
+                        {{ 'RESTAURANTS_INVENTORY.REFERENCE' | transloco }}:
+                        {{ movement.sourceReference }}
+                      </p>
+                    }
+                  </li>
+                }
+              </ol>
+            } @else if (!historyQuery.isError()) {
+              <p class="text-sm text-app-muted">
+                {{ 'RESTAURANTS_INVENTORY.NO_MOVEMENTS' | transloco }}
+              </p>
+            }
+            @if (historyQuery.hasNextPage()) {
+              <liass-button
+                [loading]="historyQuery.isFetchingNextPage()"
+                (pressed)="historyQuery.fetchNextPage()"
+                >{{ 'RESTAURANTS_INVENTORY.MORE' | transloco }}</liass-button
+              >
+            }
+          }
+        </section>
+      }
+    </div>
+  </mat-drawer>
+  <mat-drawer-content>
+    <div class="space-y-5">
+      <liass-page-header
+        [eyebrow]="'RESTAURANTS.PAGE.TITLE' | transloco"
+        [title]="'RESTAURANTS_INVENTORY.TITLE' | transloco"
+        [subtitle]="'RESTAURANTS_INVENTORY.DESCRIPTION' | transloco"
+      />
+      <liass-card [title]="'RESTAURANTS_INVENTORY.ITEMS' | transloco">
+        <div liassCardActions class="flex justify-end gap-2">
+          <liass-button
+            size="icon"
+            icon="view_column"
+            variant="ghost"
+            [ariaLabel]="'COMMON.TABLE.PREFERENCES_TITLE' | transloco"
+            (pressed)="preferences()"
+          />
+          <liass-button
+            tone="brand"
+            variant="solid"
+            icon="add"
+            [disabled]="!allowed() || !outlet.id()"
+            (pressed)="edit()"
+            >{{ 'RESTAURANTS_INVENTORY.CREATE' | transloco }}</liass-button
+          >
+        </div>
+        @if (!allowed()) {
+          <p role="alert">{{ 'RESTAURANTS_INVENTORY.ERRORS.FORBIDDEN' | transloco }}</p>
+        } @else if (outlet.source().isPending()) {
+          <p role="status">{{ 'RESTAURANTS_INVENTORY.LOADING' | transloco }}</p>
+          <liass-skeleton variant="block" />
+        } @else if (outlet.source().isError()) {
+          <p role="alert">{{ errorText(outlet.source().error()) }}</p>
+          <liass-button (pressed)="outlet.source().refetch()">{{
+            'RESTAURANTS_INVENTORY.RETRY' | transloco
+          }}</liass-button>
+        } @else if (!outlet.id()) {
+          <liass-searchable-select
+            class="w-full sm:max-w-sm"
+            labelKey="RESTAURANTS.CONTEXT.CHOOSE_HINT"
+            [options]="outletOptions()"
+            [ngModel]="outlet.id() || null"
+            (ngModelChange)="outlet.select($event)"
+          />
+          @if (outlet.source().hasNextPage()) {
+            <liass-button
+              [loading]="outlet.source().isFetchingNextPage()"
+              (pressed)="outlet.source().fetchNextPage()"
+              >{{ 'RESTAURANTS_INVENTORY.MORE' | transloco }}</liass-button
+            >
+          }
+          @if (!outlet.outlets().length && !outlet.source().hasNextPage()) {
+            <p>{{ 'RESTAURANTS_INVENTORY.NO_OUTLET' | transloco }}</p>
+          }
+        } @else {
+          <p class="mb-4 text-sm font-medium text-app-text-secondary">
+            {{ outlet.outlet()?.name }}
+          </p>
+          @if (itemsQuery.isPending()) {
+            <div role="status" aria-busy="true" class="space-y-3">
+              <p>{{ 'RESTAURANTS_INVENTORY.LOADING' | transloco }}</p>
+              @for (_ of [1, 2, 3, 4]; track _) {
+                <liass-skeleton variant="block" />
+              }
+            </div>
+          } @else {
+            @if (itemsQuery.isError()) {
+              <p role="alert" class="mb-3 text-danger-600">{{ errorText(itemsQuery.error()) }}</p>
+              <liass-button (pressed)="itemsQuery.refetch()">{{
+                'RESTAURANTS_INVENTORY.RETRY' | transloco
+              }}</liass-button>
+            }
+            @if (items().length) {
+              <div
+                class="hidden overflow-x-auto rounded-app-card border border-app-border md:block"
+              >
+                <table
+                  class="liass-data-table w-full min-w-[640px] border-collapse text-left text-sm"
+                >
+                  <caption class="sr-only">
+                    {{
+                      'RESTAURANTS_INVENTORY.ITEMS' | transloco
+                    }}
+                  </caption>
+                  <thead>
+                    <tr class="bg-app-table-header text-app-table-header-text">
+                      @for (column of visibleColumns(); track column) {
+                        <th scope="col" class="px-3 py-3">
+                          {{ 'RESTAURANTS_INVENTORY.' + column | transloco }}
+                        </th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-app-border">
+                    @for (item of items(); track item.id) {
+                      <tr class="bg-app-table-row hover:bg-app-table-row-hover">
+                        <td class="max-w-64 break-words px-3 py-3">
+                          <button mat-button class="text-left" (click)="select(item)">
+                            {{ item.name }}
+                          </button>
+                          @if (!item.isActive) {
+                            <p class="text-xs text-app-muted">
+                              {{ 'RESTAURANTS_INVENTORY.INACTIVE' | transloco }}
+                            </p>
+                          }
+                        </td>
+                        @if (visibleColumns().includes('UNIT')) {
+                          <td class="px-3 py-3">
+                            {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}
+                          </td>
+                        }
+                        <td
+                          class="whitespace-nowrap px-3 py-3 font-semibold tabular-nums"
+                          [class.text-danger-600]="item.isNegativeStock"
+                        >
+                          {{ quantity(item.balanceMilli) }}
+                          {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}
+                        </td>
+                        <td class="px-3 py-3">
+                          <liass-status-chip
+                            size="sm"
+                            [tone]="item.isNegativeStock ? 'danger' : 'neutral'"
+                            [label]="
+                              (item.isNegativeStock
+                                ? 'RESTAURANTS_INVENTORY.NEGATIVE'
+                                : 'RESTAURANTS_INVENTORY.NORMAL'
+                              ) | transloco
+                            "
+                          />
+                        </td>
+                        @if (visibleColumns().includes('UPDATED')) {
+                          <td class="px-3 py-3 text-app-muted">
+                            {{ date(item.updatedAt) }}
+                          </td>
+                        }
+                        <td class="w-12 px-2 py-3 text-right">
+                          <button
+                            mat-icon-button
+                            [matMenuTriggerFor]="rowMenu"
+                            [matMenuTriggerData]="{ item: item }"
+                            [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
+                          >
+                            <mat-icon>more_vert</mat-icon>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <ul class="divide-y divide-app-border md:hidden">
+                @for (item of items(); track item.id) {
+                  <li class="flex items-start justify-between gap-3 py-4">
+                    <div class="min-w-0 space-y-2">
+                      <button
+                        mat-button
+                        (click)="select(item)"
+                        class="max-w-full break-words text-left"
+                      >
+                        {{ item.name }}
+                      </button>
+                      <p
+                        class="font-semibold tabular-nums"
+                        [class.text-danger-600]="item.isNegativeStock"
+                      >
+                        {{ quantity(item.balanceMilli) }}
+                        {{ 'RESTAURANTS_INVENTORY.UNITS.' + item.unit | transloco }}
+                      </p>
+                      <p class="text-sm" [class.text-danger-600]="item.isNegativeStock">
+                        {{
+                          (item.isNegativeStock
+                            ? 'RESTAURANTS_INVENTORY.NEGATIVE'
+                            : 'RESTAURANTS_INVENTORY.NORMAL'
+                          ) | transloco
+                        }}
+                        @if (!item.isActive) {
+                          · {{ 'RESTAURANTS_INVENTORY.INACTIVE' | transloco }}
+                        }
+                      </p>
+                    </div>
+                    <button
+                      mat-icon-button
+                      [matMenuTriggerFor]="rowMenu"
+                      [matMenuTriggerData]="{ item: item }"
+                      [attr.aria-label]="'COMMON.TABLE.ACTION_MENU' | transloco"
+                    >
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                  </li>
+                }
+              </ul>
+            } @else if (!itemsQuery.isError()) {
+              <div class="py-8 text-center">
+                <p class="font-semibold text-app-text">
+                  {{ 'RESTAURANTS_INVENTORY.EMPTY' | transloco }}
+                </p>
+                <p class="mt-2 text-sm text-app-muted">
+                  {{ 'RESTAURANTS_INVENTORY.EMPTY_HINT' | transloco }}
+                </p>
+              </div>
+            }
+            @if (itemsQuery.hasNextPage()) {
+              <div class="mt-4 flex justify-end">
+                <liass-button
+                  [loading]="itemsQuery.isFetchingNextPage()"
+                  (pressed)="itemsQuery.fetchNextPage()"
+                  >{{ 'RESTAURANTS_INVENTORY.MORE' | transloco }}</liass-button
+                >
+              </div>
+            }
+          }
+        }
+      </liass-card>
+    </div>
+  </mat-drawer-content>
+</mat-drawer-container>
+<mat-menu #rowMenu="matMenu"
+  ><ng-template matMenuContent let-item="item">
+    <button mat-menu-item (click)="select(item)">
+      <mat-icon>visibility</mat-icon>{{ 'RESTAURANTS_INVENTORY.DETAIL' | transloco }}
+    </button>
+    <button mat-menu-item (click)="edit(item)">
+      <mat-icon class="text-info-600">edit</mat-icon>{{ 'RESTAURANTS_INVENTORY.EDIT' | transloco }}
+    </button>
+    @for (action of actions; track action) {
+      <button mat-menu-item (click)="movement(action, item)">
+        <mat-icon class="text-brand-700">{{
+          action === 'RECEIPT'
+            ? 'add_circle_outline'
+            : action === 'LOSS'
+              ? 'remove_circle_outline'
+              : 'tune'
+        }}</mat-icon
+        >{{ 'RESTAURANTS_INVENTORY.MOVEMENTS.' + action | transloco }}
+      </button>
+    }
+  </ng-template></mat-menu
+>

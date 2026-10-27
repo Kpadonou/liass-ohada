@@ -1,4 +1,80 @@
 {
+  "RESTAURANTS_INVENTORY": {
+    "YOU": "Vous",
+    "TEAM_MEMBER": "Membre de l’équipe",
+    "TITLE": "Stock",
+    "DESCRIPTION": "Suivez les quantités disponibles et les mouvements de votre établissement.",
+    "ITEMS": "Articles de stock",
+    "NAME": "Article",
+    "UNIT": "Unité",
+    "CURRENT": "Stock actuel",
+    "STATUS": "État",
+    "UPDATED": "Dernière modification",
+    "ACTIONS": "Actions",
+    "NORMAL": "Normal",
+    "NEGATIVE": "Stock négatif",
+    "NEGATIVE_HINT": "Le stock peut rester négatif. Les ventes ne sont pas bloquées.",
+    "ACTIVE": "Actif",
+    "INACTIVE": "Inactif",
+    "CREATE": "Créer un article",
+    "EDIT": "Modifier",
+    "DETAIL": "Détail de l’article",
+    "EMPTY": "Aucun article de stock",
+    "EMPTY_HINT": "Créez votre premier article pour commencer à suivre les entrées et sorties.",
+    "INITIAL_ZERO": "Le stock initial est de 0. Il pourra être enregistré ensuite avec une réception ou un ajustement.",
+    "UNIT_FIXED": "L’unité ne peut plus être modifiée après création.",
+    "QUANTITY": "Quantité",
+    "REFERENCE": "Référence (facultatif)",
+    "DIRECTION": "Sens de l’ajustement",
+    "INCREASE": "Augmenter le stock",
+    "DECREASE": "Réduire le stock",
+    "WHOLE_HINT": "Saisissez une quantité entière positive.",
+    "DECIMAL_HINT": "Saisissez une quantité positive, avec au plus trois décimales.",
+    "LOADING": "Chargement du stock…",
+    "RETRY": "Réessayer",
+    "MORE": "Afficher plus",
+    "NO_OUTLET": "Configurez un établissement pour commencer à suivre son stock.",
+    "SAVED": "Article enregistré.",
+    "MOVEMENT_SAVED": "Mouvement enregistré.",
+    "CONFLICT_REOPEN": "Fermez cette fenêtre puis rouvrez l’article actualisé avant de modifier à nouveau.",
+    "UNCERTAIN": "Le résultat du mouvement reste à confirmer. Réessayez pour vérifier et terminer la même opération, sans la compter deux fois.",
+    "HISTORY": "Historique des mouvements",
+    "AFTER": "Stock après mouvement",
+    "NO_MOVEMENTS": "Aucun mouvement enregistré.",
+    "MOVEMENTS": {
+      "RECEIPT": "Réception",
+      "LOSS": "Perte",
+      "ADJUSTMENT": "Ajustement",
+      "SALE": "Vente",
+      "SALE_REVERSAL": "Annulation de vente"
+    },
+    "SUBMIT": {
+      "RECEIPT": "Enregistrer la réception",
+      "LOSS": "Enregistrer la perte",
+      "ADJUSTMENT": "Enregistrer l’ajustement"
+    },
+    "UNITS": {
+      "UNIT": "Unité",
+      "BOTTLE": "Bouteille",
+      "CAN": "Canette",
+      "PACK": "Paquet",
+      "KG": "kg",
+      "G": "g",
+      "L": "L",
+      "ML": "mL"
+    },
+    "SOURCES": { "MANUAL": "Saisie manuelle", "BUSINESS_EVENT": "Mouvement automatique" },
+    "ERRORS": {
+      "NAME": "Saisissez un nom de 1 à 200 caractères.",
+      "QUANTITY": "Saisissez une quantité positive avec au plus trois décimales.",
+      "WHOLE": "Cette unité exige une quantité entière positive.",
+      "CONFLICT": "L’article ou le mouvement a changé. Actualisez l’article avant de poursuivre.",
+      "FORBIDDEN": "Vous ne disposez pas de l’accès nécessaire à la gestion du stock.",
+      "MISSING": "Cet article n’est plus disponible dans cet établissement.",
+      "INPUT": "Vérifiez les informations saisies puis réessayez.",
+      "NETWORK": "L’opération n’a pas pu être confirmée. Vérifiez votre connexion puis réessayez."
+    }
+  },
   "COMMON": {
     "APP": {
       "BRAND": "Liass-OHADA"
@@ -4423,6 +4499,7 @@
     "UX": {
       "CONFIGURATION": "Configuration",
       "PAGES": {
+        "inventory": { "TITLE": "Stock" },
         "overview": {
           "TITLE": "Tableau de bord",
           "DESCRIPTION": "Retrouvez la configuration de votre restaurant et de sa carte."
