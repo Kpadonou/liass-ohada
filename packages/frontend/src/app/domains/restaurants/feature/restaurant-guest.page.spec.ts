@@ -272,4 +272,79 @@ describe('Guest entry without the staff shell', () => {
       1,
     );
   });
+  it.each([
+    ['fr', 'FREE'],
+    ['fr', 'OCCUPIED'],
+    ['en', 'FREE'],
+    ['en', 'OCCUPIED'],
+  ] as const)(
+    'renders canonical app-header context and a single accessible refresh in %s / %s',
+    async (language, state) => {
+      TestBed.inject(TranslocoService).setActiveLang(language);
+      const context = response(state);
+      api.resolve.mockResolvedValue(context);
+      api.renew.mockResolvedValue(context);
+      const fixture = TestBed.createComponent(RestaurantGuestPage);
+      fixture.detectChanges();
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('header')).toBeTruthy();
+      });
+      const header = fixture.nativeElement.querySelector('header') as HTMLElement;
+      const dictionary = language === 'fr' ? fr : en;
+      expect(header.querySelector('h1')?.textContent?.trim()).toBe(context.restaurantName);
+      expect(header.textContent).toContain(context.outletName);
+      expect(header.textContent).toContain(context.tableName);
+      expect(header.textContent).toContain(dictionary.RESTAURANTS.GUEST.WELCOME);
+      expect(header.querySelector('[role="status"]')?.textContent).toContain(
+        dictionary.RESTAURANTS.GUEST[state === 'FREE' ? 'SERVICE_FREE' : 'SERVICE_OCCUPIED'],
+      );
+      const refresh = header.querySelector('button') as HTMLButtonElement;
+      expect(header.querySelectorAll('button')).toHaveLength(1);
+      expect(refresh.getAttribute('aria-label')).toBe(dictionary.RESTAURANTS.GUEST.REFRESH);
+      expect(
+        fixture.nativeElement.querySelectorAll(
+          'button[aria-label="' + dictionary.RESTAURANTS.GUEST.REFRESH + '"]',
+        ),
+      ).toHaveLength(1);
+      refresh.click();
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(api.renew).toHaveBeenCalledTimes(1);
+        expect(fixture.componentInstance.refreshing()).toBe(false);
+      });
+      expect(api.resolve).toHaveBeenCalledTimes(1);
+      expect(fixture.nativeElement.querySelector('header')).toBe(header);
+    },
+  );
+  it.each([
+    ['Restaurant Les Délices de Cotonou', 'Établissement Haie Vive', 'Terrasse extérieure 12'],
+    [
+      'Restaurant' + 'A'.repeat(120),
+      'Établissement' + 'B'.repeat(100),
+      'Terrasse' + 'C'.repeat(100),
+    ],
+  ])(
+    'retains full canonical names and an independently accessible refresh for %s',
+    async (restaurantName, outletName, tableName) => {
+      api.resolve.mockResolvedValue({
+        ...response('OCCUPIED'),
+        restaurantName,
+        outletName,
+        tableName,
+      });
+      const fixture = TestBed.createComponent(RestaurantGuestPage);
+      fixture.detectChanges();
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.nativeElement.querySelector('header')).toBeTruthy();
+      });
+      const header = fixture.nativeElement.querySelector('header') as HTMLElement;
+      expect(header.querySelector('h1')?.textContent?.trim()).toBe(restaurantName);
+      expect(header.textContent).toContain(outletName);
+      expect(header.textContent).toContain(tableName);
+      expect(header.querySelector('button')?.getAttribute('aria-label')).toBe('Actualiser');
+      expect(header.querySelector('[role="status"]')?.textContent).toContain('Service en cours');
+    },
+  );
 });

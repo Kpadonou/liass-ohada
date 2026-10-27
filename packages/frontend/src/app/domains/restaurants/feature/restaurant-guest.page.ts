@@ -39,59 +39,63 @@ import { guestStorageKey, readGuest, writeGuest } from '../data-access/restauran
           {{ 'RESTAURANTS.GUEST.WAIT' | transloco }}
         </p>
       } @else if (context(); as c) {
-        <header class="space-y-3 pt-6 sm:pt-8">
-          <div
-            class="rounded-app-panel bg-gradient-to-br from-app-surface-muted via-app-surface to-app-surface px-1 pb-1 pt-4 sm:px-5 sm:pt-6"
-          >
-            <p class="text-xs font-semibold uppercase tracking-[0.25em] text-app-text-secondary">
-              {{ 'RESTAURANTS.GUEST.WELCOME' | transloco }}
-            </p>
-            <h1
-              id="guest-title"
-              class="mt-2 break-words text-3xl font-bold leading-tight sm:text-4xl"
-            >
-              {{ c.restaurantName }}
-            </h1>
-            @if (c.outletName !== c.restaurantName) {
-              <p class="mt-1 break-words text-base text-app-text-secondary">{{ c.outletName }}</p>
-            }
-            <div class="mt-1 flex justify-end">
-              <button
-                mat-button
-                type="button"
-                class="!min-h-11 liass-action-neutral"
-                (click)="refresh()"
-                [disabled]="refreshing()"
-                [attr.aria-busy]="refreshing()"
-                [attr.aria-label]="'RESTAURANTS.GUEST.REFRESH' | transloco"
+        <header
+          class="-mx-4 !mb-5 rounded-b-app-panel bg-brand-700 px-4 py-5 text-white sm:mx-0 sm:!mb-6 sm:rounded-app-panel sm:px-5"
+        >
+          <div class="grid grid-cols-[minmax(0,1fr)_2.75rem] items-start gap-3">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+                {{ 'RESTAURANTS.GUEST.WELCOME' | transloco }}
+              </p>
+              <h1
+                id="guest-title"
+                class="mt-1.5 text-2xl font-bold leading-tight [overflow-wrap:anywhere] sm:text-3xl"
               >
-                <span class="flex items-center gap-2">
-                  <liass-guest-icon name="refresh" class="h-4 w-4" />
-                  {{
-                    (refreshing() ? 'RESTAURANTS.GUEST.REFRESHING' : 'RESTAURANTS.GUEST.REFRESH')
-                      | transloco
-                  }}
-                </span>
-              </button>
+                {{ c.restaurantName }}
+              </h1>
+              @if (c.outletName !== c.restaurantName) {
+                <p class="mt-1 text-sm text-white/90 [overflow-wrap:anywhere]">
+                  {{ c.outletName }}
+                </p>
+              }
             </div>
+            <button
+              mat-icon-button
+              type="button"
+              class="!h-11 !w-11 !text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:!text-white/60"
+              (click)="refresh()"
+              [disabled]="refreshing()"
+              [attr.aria-busy]="refreshing()"
+              [attr.aria-label]="'RESTAURANTS.GUEST.REFRESH' | transloco"
+            >
+              <liass-guest-icon name="refresh" class="h-5 w-5" />
+              <span class="sr-only">{{
+                (refreshing() ? 'RESTAURANTS.GUEST.REFRESHING' : 'RESTAURANTS.GUEST.REFRESH')
+                  | transloco
+              }}</span>
+            </button>
           </div>
           <div
-            class="flex items-center gap-3 rounded-app-panel border border-app-border bg-app-surface-muted/30 px-3 py-3 sm:px-5"
+            class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-app-control bg-white/10 px-3 py-2.5 text-sm"
           >
-            <liass-guest-icon name="table" class="h-5 w-5 text-app-text-secondary" />
-            <p class="min-w-0 flex-1 break-words text-sm font-semibold">{{ c.tableName }}</p>
+            <p class="flex min-w-0 flex-[1_1_8rem] items-start gap-2 font-medium">
+              <liass-guest-icon name="table" class="h-5 w-5 text-white/80" />
+              <span class="min-w-0 [overflow-wrap:anywhere]">{{ c.tableName }}</span>
+            </p>
             <p
-              class="flex max-w-[60%] items-center gap-2 border-l border-app-border pl-3 text-xs sm:text-sm"
+              class="flex min-w-0 flex-[1_1_10rem] items-center gap-2 text-white/90"
               role="status"
               aria-live="polite"
             >
               <span
-                class="h-2 w-2 shrink-0 rounded-full"
+                class="h-2 w-2 shrink-0 rounded-full ring-1 ring-white/60"
                 [class.bg-success-600]="c.state === 'OCCUPIED'"
-                [class.bg-app-text-secondary]="c.state === 'FREE'"
+                [class.bg-white/70]="c.state === 'FREE'"
                 aria-hidden="true"
               ></span>
-              {{ 'RESTAURANTS.GUEST.SERVICE_' + c.state | transloco }}
+              <span class="min-w-0 [overflow-wrap:anywhere]">{{
+                'RESTAURANTS.GUEST.SERVICE_' + c.state | transloco
+              }}</span>
             </p>
           </div>
         </header>
