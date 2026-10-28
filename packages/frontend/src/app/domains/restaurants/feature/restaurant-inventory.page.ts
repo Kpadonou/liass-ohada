@@ -1,3 +1,4 @@
+import { RestaurantPendingCreationComponent } from '../ui/restaurant-pending-creation.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -44,6 +45,7 @@ import {
     LiassSkeletonComponent,
     LiassStatusChipComponent,
     LiassButtonComponent,
+    RestaurantPendingCreationComponent,
   ],
   templateUrl: './restaurant-inventory.page.html',
 })

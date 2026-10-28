@@ -321,7 +321,11 @@ describe('Stock item reactive editor', () => {
     expect(Object.keys(f.componentInstance.form.controls)).not.toContain('balance');
     f.componentInstance.form.controls.name.setValue('Water');
     await f.componentInstance.save();
-    expect(api.create).toHaveBeenCalledWith(ctx, { name: 'Water', unit: 'UNIT' });
+    expect(api.create).toHaveBeenCalledWith(
+      ctx,
+      { name: 'Water', unit: 'UNIT' },
+      expect.any(Function),
+    );
     expect(ref.close).toHaveBeenCalledWith(expect.objectContaining({ balanceMilli: 0 }));
   });
   it('only updates name/active with expectedVersion and refreshes conflicts without overwrite', async () => {
@@ -371,6 +375,25 @@ describe('Focused movement forms', () => {
     });
     await f.componentInstance.submit();
     expect(api.movement).toHaveBeenCalledTimes(1);
+  });
+  it('keeps Class C movement dialog open until authoritative confirmation', async () => {
+    data = { ctx, item: stockItem(), type: 'LOSS' };
+    const f = TestBed.createComponent(RestaurantStockMovementDialog);
+    f.detectChanges();
+    f.componentInstance.form.controls.quantity.setValue('2');
+    let confirm!: (value: { data: ReturnType<typeof stockMovement>; message: null }) => void;
+    api.movement.mockReturnValueOnce(
+      new Promise((resolve) => {
+        confirm = resolve;
+      }),
+    );
+    const saving = f.componentInstance.submit();
+    expect(ref.close).not.toHaveBeenCalled();
+    expect(notification.success).not.toHaveBeenCalled();
+    expect(f.componentInstance.pending()).toBe(true);
+    confirm({ data: stockMovement(), message: null });
+    await saving;
+    expect(ref.close).toHaveBeenCalledWith(stockMovement());
   });
   it.each([
     ['RECEIPT', 'INCREASE', '3'],

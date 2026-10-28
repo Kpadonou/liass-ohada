@@ -196,6 +196,7 @@ export class RestaurantInventoryQueries {
     ctx: InventoryContext,
     id: string | null,
     input: C.CreateStockItemRequest | C.UpdateStockItemRequest,
+    onDispatched?: () => void,
   ) {
     this.api.assertCurrent(ctx);
     const parsed = id
@@ -220,8 +221,17 @@ export class RestaurantInventoryQueries {
       : undefined;
     try {
       const result = id
-        ? await this.api.update(ctx, id, C.UpdateStockItemRequestSchema.parse(input))
-        : await this.api.create(ctx, C.CreateStockItemRequestSchema.parse(input));
+        ? await this.api.update(
+            ctx,
+            id,
+            C.UpdateStockItemRequestSchema.parse(input),
+            ...(onDispatched ? [onDispatched] : []),
+          )
+        : await this.api.create(
+            ctx,
+            C.CreateStockItemRequestSchema.parse(input),
+            ...(onDispatched ? [onDispatched] : []),
+          );
       this.api.assertCurrent(ctx);
       intent?.success(result.data);
       endCreation?.();

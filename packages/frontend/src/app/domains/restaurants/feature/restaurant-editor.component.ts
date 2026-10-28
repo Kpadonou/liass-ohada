@@ -1,3 +1,4 @@
+import { EditorRecoveryService } from '../../../core/dialogs/editor-recovery.service';
 import { RestaurantPendingCreationComponent } from '../ui/restaurant-pending-creation.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
@@ -36,6 +37,7 @@ export interface RestaurantEditorData {
   entity?: RestaurantEntity;
   currency?: string;
   contextName?: string;
+  initialName?: string;
 }
 @Component({
   selector: 'liass-restaurant-editor',
@@ -61,6 +63,7 @@ export class RestaurantEditorComponent {
   private readonly canonicalContext = Object.freeze({ ...this.data.context });
   private readonly ref = inject(MatDialogRef<RestaurantEditorComponent>);
   private readonly api = inject(RestaurantsApi);
+  private readonly recovery = inject(EditorRecoveryService);
   readonly queries = inject(RestaurantsQueries);
   private readonly caps = inject(RestaurantsCapabilities);
   private readonly originalUser = this.queries.userScope();
@@ -87,7 +90,7 @@ export class RestaurantEditorComponent {
   private readonly entity = this.data.entity;
   readonly form = this.fb.group({
     name: [
-      this.entity?.name ?? '',
+      this.data.initialName ?? this.entity?.name ?? '',
       [Validators.required, Validators.pattern(/\S/), Validators.maxLength(160)],
     ],
     code: [
@@ -279,6 +282,32 @@ export class RestaurantEditorComponent {
       this.error.set(restaurantError(error, (key) => this.t.translate(key)));
     }
   }
+  private async reviewName(name: string) {
+    const current = () =>
+      this.queries.scope() === this.data.org &&
+      this.queries.userScope() === this.originalUser &&
+      (this.queries.contextRevision?.() ?? 0) === this.originalRevision &&
+      this.canManage();
+    if (!current()) return;
+    try {
+      const entity = await this.api.get(
+        this.data.org,
+        this.data.kind,
+        this.canonicalContext,
+        this.entity?.id,
+      );
+      if (!entity || !current()) return;
+      this.recovery.open(RestaurantEditorComponent, {
+        width: '560px',
+        maxWidth: 'calc(100vw - 24px)',
+        disableClose: true,
+        data: { ...this.data, entity, initialName: name },
+      });
+    } catch (error) {
+      if (current())
+        this.notification.error(restaurantError(error, (key) => this.t.translate(key)));
+    }
+  }
   async submit() {
     if (this.pending() || !this.canManage() || (this.conflict() && !this.refreshed())) return;
     this.form.markAllAsTouched();
@@ -346,6 +375,13 @@ export class RestaurantEditorComponent {
       { user: this.originalUser, revision: this.originalRevision },
     );
     let trackingStage = false;
+    let detached = false;
+    const nameOnly =
+      !!this.entity &&
+      !this.savedItemId() &&
+      Object.entries(v).every(
+        ([key, value]) => key === 'name' || value === this.originalValues[key as keyof typeof v],
+      );
     try {
       // Capture the submitted proposal before any Menu HTTP request or reactive refresh.
       const tracking = this.tracking();
@@ -355,6 +391,14 @@ export class RestaurantEditorComponent {
         this.submittedTracking ??= tracking.capture();
         trackingStage = false;
       }
+      const canDetach =
+        nameOnly && (this.data.kind !== 'item' || this.submittedTracking?.mode === 'UNCHANGED');
+      const dispatched = () => {
+        if (canDetach && !detached) {
+          detached = true;
+          this.ref.close();
+        }
+      };
       const result = this.savedItemId()
         ? {
             data: await this.api.get(
@@ -371,10 +415,11 @@ export class RestaurantEditorComponent {
             this.canonicalContext,
             parsed.data,
             this.entity?.id,
+            ...(canDetach ? [dispatched] : []),
           );
       if (!result.data) throw new HttpErrorResponse({ status: 404 });
       interaction.success(result.data);
-      if (this.data.kind === 'item') {
+      if (this.data.kind === 'item' && !detached) {
         const saved = MenuItemSchema.parse(result.data);
         this.savedItemId.set(saved.id);
         this.version.set(saved.version);
@@ -395,6 +440,7 @@ export class RestaurantEditorComponent {
         this.queries.userScope() === this.originalUser &&
         (this.queries.contextRevision?.() ?? 0) === this.originalRevision
       ) {
+        if (detached) return;
         this.notification.success(result.message ?? this.t.translate('RESTAURANTS.UI.SAVED'));
         this.ref.close(result.data);
       }
@@ -423,12 +469,11 @@ export class RestaurantEditorComponent {
             : (this.tracking()?.error() ?? this.t.translate('RESTAURANTS_TRACKING.SAVE_ERROR'))
           : restaurantError(error, (key) => this.t.translate(key)),
       );
-      if (!trackingStage && this.error()) this.notification.error(this.error()!);
       if (error instanceof HttpErrorResponse && error.status === 409) {
         this.conflict.set(!!this.entity);
         this.refreshed.set(false);
         await this.queries.changed(this.data.org, this.data.kind, this.data.context);
-        if (this.entity) await this.refreshConflict();
+        if (this.entity && !detached) await this.refreshConflict();
       }
       if (
         !trackingStage &&
@@ -440,6 +485,18 @@ export class RestaurantEditorComponent {
         this.accessDenied.set(true);
         await this.queries.denied(this.data.org);
       }
+      if (!trackingStage && this.error())
+        this.notification.error(
+          this.error()!,
+          detached
+            ? {
+                label: this.t.translate('RESTAURANTS.UI.REVIEW_EDIT'),
+                run: () => {
+                  void this.reviewName(String(parsed.data.name));
+                },
+              }
+            : undefined,
+        );
     } finally {
       this.pending.set(false);
     }

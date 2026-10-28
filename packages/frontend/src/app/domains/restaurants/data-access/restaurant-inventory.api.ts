@@ -67,6 +67,7 @@ export class RestaurantInventoryApi {
     schema: z.ZodType<T>,
     body?: unknown,
     cursor?: string,
+    onDispatched?: () => void,
   ) {
     this.assertCurrent(ctx);
     try {
@@ -74,9 +75,17 @@ export class RestaurantInventoryApi {
         this.http
           .request<unknown>(method, path, {
             body,
+            observe: 'events',
             ...(method === 'GET' ? { params: { limit: '50', ...(cursor ? { cursor } : {}) } } : {}),
           })
-          .pipe(timeout(30_000)),
+          .pipe(
+            timeout(30_000),
+            tap((event) => {
+              if (event.type === HttpEventType.Sent) onDispatched?.();
+            }),
+            filter((event): event is HttpResponse<unknown> => event instanceof HttpResponse),
+            map((event) => event.body),
+          ),
       );
       this.assertCurrent(ctx);
       return { data: schema.parse(response), message: userMessageFromResponse(response) };
@@ -119,23 +128,32 @@ export class RestaurantInventoryApi {
     if (page.items.some((m) => m.stockItemId !== id)) throw new Error('Inventory history mismatch');
     return page;
   }
-  async create(ctx: InventoryContext, input: C.CreateStockItemRequest) {
+  async create(ctx: InventoryContext, input: C.CreateStockItemRequest, onDispatched?: () => void) {
     const r = await this.request(
       ctx,
       'POST',
       this.path(ctx),
       C.StockItemResponseSchema,
       C.CreateStockItemRequestSchema.parse(input),
+      undefined,
+      onDispatched,
     );
     return { data: r.data.data, message: r.message };
   }
-  async update(ctx: InventoryContext, id: string, input: C.UpdateStockItemRequest) {
+  async update(
+    ctx: InventoryContext,
+    id: string,
+    input: C.UpdateStockItemRequest,
+    onDispatched?: () => void,
+  ) {
     const r = await this.request(
       ctx,
       'PATCH',
       this.path(ctx, id),
       C.StockItemResponseSchema,
       C.UpdateStockItemRequestSchema.parse(input),
+      undefined,
+      onDispatched,
     );
     if (r.data.data.id !== id) throw new Error('Inventory identity mismatch');
     return { data: r.data.data, message: r.message };

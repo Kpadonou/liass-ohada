@@ -1,3 +1,4 @@
+import { EditorRecoveryService } from '../../../core/dialogs/editor-recovery.service';
 import { RestaurantPendingCreationComponent } from '../ui/restaurant-pending-creation.component';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
@@ -18,6 +19,7 @@ import { LiassButtonComponent } from '../../../shared/ui/button/button.component
 export interface StockItemDialogData {
   ctx: InventoryContext;
   item?: StockItemResponseData;
+  initialValues?: { name: string; unit: StockUnit; isActive: boolean };
 }
 @Component({
   selector: 'liass-stock-item-dialog',
@@ -39,6 +41,7 @@ export class RestaurantStockItemDialog {
   readonly data = inject<StockItemDialogData>(MAT_DIALOG_DATA);
   private readonly ref = inject(MatDialogRef<RestaurantStockItemDialog>);
   readonly queries = inject(RestaurantInventoryQueries);
+  private readonly recovery = inject(EditorRecoveryService);
   private readonly t = inject(TranslocoService);
   private readonly notification = inject(NotificationService);
   readonly units = StockUnitSchema.options;
@@ -47,7 +50,7 @@ export class RestaurantStockItemDialog {
   readonly error = signal<string | null>(null);
   readonly allowed = computed(() => this.queries.api.isCurrent(this.data.ctx));
   readonly form = new FormGroup({
-    name: new FormControl(this.data.item?.name ?? '', {
+    name: new FormControl(this.data.initialValues?.name ?? this.data.item?.name ?? '', {
       nonNullable: true,
       validators: [
         Validators.required,
@@ -55,11 +58,17 @@ export class RestaurantStockItemDialog {
         (c) => (String(c.value).trim() ? null : { required: true }),
       ],
     }),
-    unit: new FormControl<StockUnit>(this.data.item?.unit ?? 'UNIT', {
-      nonNullable: true,
-      validators: Validators.required,
-    }),
-    isActive: new FormControl(this.data.item?.isActive ?? true, { nonNullable: true }),
+    unit: new FormControl<StockUnit>(
+      this.data.initialValues?.unit ?? this.data.item?.unit ?? 'UNIT',
+      {
+        nonNullable: true,
+        validators: Validators.required,
+      },
+    ),
+    isActive: new FormControl(
+      this.data.initialValues?.isActive ?? this.data.item?.isActive ?? true,
+      { nonNullable: true },
+    ),
   });
   constructor() {
     if (this.data.item) this.form.controls.unit.disable();
@@ -70,6 +79,31 @@ export class RestaurantStockItemDialog {
   cancel() {
     if (!this.pending()) this.ref.close();
   }
+  private async review(initialValues: { name: string; unit: StockUnit; isActive: boolean }) {
+    if (!this.queries.api.isCurrent(this.data.ctx)) return;
+    try {
+      const item = this.data.item
+        ? await this.queries.api.item(this.data.ctx, this.data.item.id)
+        : undefined;
+      if (!this.queries.api.isCurrent(this.data.ctx)) return;
+      this.recovery.open(RestaurantStockItemDialog, {
+        width: '440px',
+        maxWidth: 'calc(100vw - 24px)',
+        data: {
+          ctx: this.data.ctx,
+          item,
+          initialValues: {
+            ...initialValues,
+            isActive: item?.isActive ?? initialValues.isActive,
+            unit: item?.unit ?? initialValues.unit,
+          },
+        },
+      });
+    } catch (error) {
+      if (this.queries.api.isCurrent(this.data.ctx))
+        this.notification.error(inventoryError(error, (key) => this.t.translate(key)));
+    }
+  }
   async save() {
     if (this.form.invalid || this.pending() || !this.allowed() || this.conflict()) {
       this.form.markAllAsTouched();
@@ -78,8 +112,16 @@ export class RestaurantStockItemDialog {
     this.pending.set(true);
     this.ref.disableClose = true;
     this.error.set(null);
+    const value = this.form.getRawValue();
+    const earlyClose = !this.data.item || value.isActive === this.data.item.isActive;
+    let detached = false;
+    const onDispatched = () => {
+      if (earlyClose && !detached) {
+        detached = true;
+        this.ref.close(); // No synthetic canonical result for afterClosed consumers.
+      }
+    };
     try {
-      const value = this.form.getRawValue();
       const result = await this.queries.save(
         this.data.ctx,
         this.data.item?.id ?? null,
@@ -90,15 +132,32 @@ export class RestaurantStockItemDialog {
               isActive: value.isActive,
             }
           : { name: value.name.trim(), unit: value.unit },
+        ...(earlyClose ? [onDispatched] : []),
       );
       if (!this.allowed()) return;
+      if (detached) return;
       this.notification.success(result.message ?? this.t.translate('RESTAURANTS_INVENTORY.SAVED'));
       this.ref.close(result.data);
     } catch (error) {
       if (this.allowed()) {
         this.conflict.set(error instanceof HttpErrorResponse && error.status === 409);
         this.error.set(inventoryError(error, (k) => this.t.translate(k)));
-        this.notification.error(this.error()!);
+        this.notification.error(
+          this.error()!,
+          detached &&
+            (this.data.item ||
+              (error instanceof HttpErrorResponse &&
+                error.status >= 400 &&
+                error.status < 500 &&
+                error.status !== 408))
+            ? {
+                label: this.t.translate('RESTAURANTS.UI.REVIEW_EDIT'),
+                run: () => {
+                  void this.review(value);
+                },
+              }
+            : undefined,
+        );
       }
     } finally {
       this.pending.set(false);

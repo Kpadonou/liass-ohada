@@ -1,7 +1,13 @@
-import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpErrorResponse,
+  HttpParams,
+  HttpEventType,
+  HttpResponse,
+} from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import * as c from '@liass-ohada/shared/restaurants';
-import { firstValueFrom, timeout } from 'rxjs';
+import { firstValueFrom, timeout, tap, filter, map } from 'rxjs';
 import { environment } from '../../../../environments/environment';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import {
@@ -236,6 +242,7 @@ export class RestaurantsApi {
     context: RestaurantContext,
     input: unknown,
     id?: string,
+    onDispatched?: () => void,
   ): Promise<ApiMutationResult<RestaurantEntities[K]>> {
     this.assertScope(scope);
     const update = id !== undefined;
@@ -248,7 +255,15 @@ export class RestaurantsApi {
         update && !['restaurant', 'menu'].includes(kind) ? id : undefined,
       );
     const response = await firstValueFrom(
-      update ? this.http.patch<unknown>(url, request) : this.http.post<unknown>(url, request),
+      this.http
+        .request<unknown>(update ? 'PATCH' : 'POST', url, { body: request, observe: 'events' })
+        .pipe(
+          tap((event) => {
+            if (event.type === HttpEventType.Sent) onDispatched?.();
+          }),
+          filter((event): event is HttpResponse<unknown> => event instanceof HttpResponse),
+          map((event) => event.body),
+        ),
     );
     return {
       data: entityResponses[kind].parse(response).data as RestaurantEntities[K],
