@@ -113,7 +113,11 @@ export class InventoryRepository {
         K.restaurantTransactionScope(s.orgId, s.outletId) + "#",
       ) ||
       (version !== undefined &&
-        !["RESTAURANT_STOCK_ITEM", "RESTAURANT_STOCK_MAPPING"].includes(type))
+        ![
+          "RESTAURANT_STOCK_ITEM",
+          "RESTAURANT_STOCK_MAPPING",
+          "RESTAURANT_INVENTORY_EFFECT",
+        ].includes(type))
     )
       throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
     return {

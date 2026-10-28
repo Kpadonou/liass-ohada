@@ -144,7 +144,11 @@ export class RestaurantInventoryService {
       true,
     );
   }
-  static async applyMovement(scope: InventoryScope, raw: unknown) {
+  static async applyMovement(
+    scope: InventoryScope,
+    raw: unknown,
+    options: { requireDiscreteUnit?: boolean } = {},
+  ) {
     InventoryScopeSchema.parse(scope);
     const input = MovementInputSchema.parse(raw);
     const eventHash = fingerprint(input.businessEventId ?? randomUUID());
@@ -180,6 +184,8 @@ export class RestaurantInventoryService {
         }
       }
       const old = await this.get(scope, input.stockItemId);
+      if (options.requireDiscreteUnit && !discreteUnit(old.unit))
+        throw new AppError(409, "RESTAURANTS_INVENTORY_TRACKING_TARGET");
       // Manual management only: automatic SALE semantics are deliberately unchanged.
       // The versioned balance write below also protects against concurrent deactivation.
       if (

@@ -6,12 +6,12 @@ import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { AppError } from "@/lambda/shared/app-error";
 import { restaurantsTableName } from "./restaurant-storage";
 import { InventoryTrackingService } from "./inventory-tracking-service";
-import { RestaurantInventoryService as Inventory } from "./inventory-service";
-import { discreteUnit } from "./inventory-model";
+import { InventoryEffects } from "./inventory-effects";
 import {
-  RestaurantTransactionsRepository as R,
-  transactionFingerprint,
-} from "./transaction-repository";
+  inventorySaleEventId,
+  InventoryEffectReference,
+} from "./inventory-effect-model";
+import { RestaurantTransactionsRepository as R } from "./transaction-repository";
 import {
   InventorySaleTargetSchema,
   TransactionScope,
@@ -29,17 +29,12 @@ export class InventorySales {
     type = "SALE",
   ) {
     // Orders can accept several batches. Submission identity distinguishes real later sales from replays.
-    return (
-      "INVENTORY_" +
-      type +
-      ":" +
-      transactionFingerprint([
-        scope.orgId,
-        scope.outletId,
-        orderId,
-        submissionId,
-        stockItemId,
-      ])
+    return inventorySaleEventId(
+      scope,
+      orderId,
+      submissionId,
+      stockItemId,
+      type,
     );
   }
 
@@ -125,6 +120,8 @@ export class InventorySales {
   ) {
     const targets = new Map<string, Target>();
     const originals = new Set<string>();
+    const dependencies: InventoryEffectReference[] = [];
+    const originalEvents: Record<string, string[]> = {};
     for (const submissionId of new Set(
       lines.flatMap((l) =>
         l.status === "ACCEPTED" && l.snapshot ? [l.snapshot.submissionId] : [],
@@ -163,67 +160,39 @@ export class InventorySales {
         next.lines.push(...cancelled);
         targets.set(target.stockItemId, next);
         originals.add(submissionId);
+        originalEvents[target.stockItemId] = [
+          ...(originalEvents[target.stockItemId] ?? []),
+          inventorySaleEventId(
+            scope,
+            orderId,
+            submissionId,
+            target.stockItemId,
+          ),
+        ];
       }
+      if (originals.has(submissionId))
+        dependencies.push(
+          row.data.inventoryEffectRef ?? {
+            id: submissionId,
+            createdAt: row.data.committedAt,
+          },
+        );
     }
-    return { targets: [...targets.values()], originals: [...originals] };
+    return {
+      targets: [...targets.values()],
+      originals: [...originals],
+      dependencies,
+      originalEvents,
+    };
   }
 
   static async resume(scope: TransactionScope, orderId: string) {
     scope = { orgId: scope.orgId, outletId: scope.outletId };
     try {
       const submissions = await R.submissions(scope, orderId);
-      // Original sales must be durably applied before their commercial reversals.
-      submissions.sort(
-        (a, b) =>
-          Number(!!a.data.inventoryType) - Number(!!b.data.inventoryType),
-      );
       for (const row of submissions) {
-        if (!row.data.inventoryTargets?.length || row.data.inventoryCompletedAt)
-          continue;
-        try {
-          if (
-            row.data.inventoryReversalOf?.some(
-              (id) =>
-                !submissions.find((s) => s.data.submissionId === id)?.data
-                  .inventoryCompletedAt,
-            )
-          )
-            throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
-          for (const target of row.data.inventoryTargets) {
-            const item = await Inventory.get(scope, target.stockItemId);
-            if (!discreteUnit(item.unit))
-              throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
-            const quantityMilli = target.lines.reduce(
-              (n, line) => n + BigInt(line.quantity) * 1000n,
-              0n,
-            );
-            if (quantityMilli > BigInt(Number.MAX_SAFE_INTEGER))
-              throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
-            await Inventory.applyMovement(scope, {
-              stockItemId: target.stockItemId,
-              type: row.data.inventoryType ?? "SALE",
-              quantityMilli: Number(quantityMilli),
-              source: "BUSINESS_EVENT",
-              actorId: row.data.actorId,
-              sourceReference: orderId,
-              businessEventId: this.eventId(
-                scope,
-                orderId,
-                row.data.submissionId,
-                target.stockItemId,
-                row.data.inventoryType ?? "SALE",
-              ),
-            });
-          }
-          const inventoryCompletedAt = new Date().toISOString();
-          await R.commit([
-            R.put({ ...row, data: { ...row.data, inventoryCompletedAt } }, row),
-          ]);
-          row.data.inventoryCompletedAt = inventoryCompletedAt;
-        } catch (error) {
-          // The immutable submission and movement receipts retain every unfinished effect for retry.
-          this.pending(scope, orderId, error);
-        }
+        if (!row.data.inventoryEffectRef) continue;
+        await InventoryEffects.process(scope, row.data.inventoryEffectRef);
       }
     } catch (error) {
       this.pending(scope, orderId, error);

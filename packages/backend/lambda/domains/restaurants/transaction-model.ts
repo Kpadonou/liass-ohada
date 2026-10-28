@@ -264,6 +264,10 @@ export const TransactionSchemas = {
           inventoryType: z.literal("SALE_REVERSAL").optional(),
           inventoryReversalOf: z.array(id).max(200).optional(),
           inventoryCompletedAt: z.string().datetime().optional(),
+          inventoryEffectRef: z
+            .object({ id, createdAt: z.string().datetime() })
+            .strict()
+            .optional(),
         })
         .strict(),
     })

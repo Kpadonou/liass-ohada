@@ -25,6 +25,13 @@ export const KeyFactory = {
     `MOV#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
   restaurantStockMappingSK: (id: string) =>
     `MAP#${restaurantTransactionSegment(id)}`,
+  restaurantInventoryEffectPK: (orgId: string, outletId: string, day: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#INVENTORY_EFFECTS#${restaurantTransactionSegment(day)}`,
+  restaurantInventoryEffectSK: (id: string) =>
+    `EFFECT#${restaurantTransactionSegment(id)}`,
+  restaurantInventoryEffectPendingPrefix: () => "PENDING#",
+  restaurantInventoryEffectPendingSK: (createdAt: string, id: string) =>
+    `PENDING#${KeyFactory.restaurantTransactionLocatorSK(createdAt, id)}`,
   // Same request/coordinator sort keys, scoped to the physical table before staff opening.
   restaurantPreServiceRequestKey: (
     orgId: string,

@@ -1,6 +1,8 @@
 import { randomUUID } from "crypto";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { InventorySales } from "@/lambda/domains/restaurants/inventory-sales";
+import { InventoryEffects } from "@/lambda/domains/restaurants/inventory-effects";
+import { InventoryEffectsRepository as Effects } from "@/lambda/domains/restaurants/inventory-effect-repository";
 import { RestaurantInventoryService as I } from "@/lambda/domains/restaurants/inventory-service";
 import { InventoryTrackingService as T } from "@/lambda/domains/restaurants/inventory-tracking-service";
 import { InventoryRepository as IR } from "@/lambda/domains/restaurants/inventory-repository";
@@ -140,7 +142,9 @@ test.each([
       stock.id,
     ),
   );
-  expect(submission.data.inventoryCompletedAt).toBeDefined();
+  expect(
+    (await Effects.get(scope(), submission.data.inventoryEffectRef))?.state,
+  ).toBe("APPLIED");
 });
 test("inactive target accepts automatic SALE while manual loss remains forbidden", async () => {
   const s = await link();
@@ -159,6 +163,66 @@ test("inactive target accepts automatic SALE while manual loss remains forbidden
   ).rejects.toMatchObject({ statusCode: 422 });
   await (await draft()).run();
   expect(await I.get(scope(), s.id)).toMatchObject({
+    balanceMilli: -1000,
+    isActive: false,
+  });
+});
+test("commercial acceptance atomically publishes a discoverable pending effect before processing starts", async () => {
+  const stock = await link(),
+    d = await draft();
+  const process = jest
+    .spyOn(InventoryEffects, "process")
+    .mockResolvedValue(undefined);
+  expect((await d.run()).data.status).toBe("SUBMITTED");
+  const submission = rows().find(
+    (r) => r.entityType === "RESTAURANT_SUBMISSION",
+  )!;
+  expect(
+    await Effects.get(scope(), submission.data.inventoryEffectRef),
+  ).toMatchObject({ state: "PENDING", attemptCount: 0 });
+  const page = await Effects.unresolved(
+    scope(),
+    submission.data.committedAt.slice(0, 10),
+  );
+  expect(page.items).toHaveLength(1);
+  expect(sales()).toHaveLength(0);
+  process.mockRestore();
+  await InventoryEffects.process(scope(), {
+    id: page.items[0].id,
+    createdAt: page.items[0].createdAt,
+  });
+  expect((await I.get(scope(), stock.id)).balanceMilli).toBe(-1000);
+  expect(rows().find((r) => r.entityType === "RESTAURANT_SUBMISSION")).toEqual(
+    submission,
+  );
+});
+test("historical pending effect survives tracking removal and StockItem deactivation", async () => {
+  const stock = await link(),
+    d = await draft();
+  const failure = jest
+    .spyOn(I, "applyMovement")
+    .mockRejectedValue(new Error("Unavailable"));
+  await d.run();
+  await T.save(
+    scope(),
+    menu().id,
+    "owner",
+    {
+      categoryId: menu().categoryId,
+      expectedVersion: 1,
+      clientRequestId: randomUUID(),
+    },
+    true,
+  );
+  await I.update(scope(), stock.id, {
+    expectedVersion: stock.version,
+    isActive: false,
+  });
+  failure.mockRestore();
+  const ref = rows().find((r) => r.entityType === "RESTAURANT_SUBMISSION")!.data
+    .inventoryEffectRef;
+  expect((await InventoryEffects.process(scope(), ref))?.state).toBe("APPLIED");
+  expect(await I.get(scope(), stock.id)).toMatchObject({
     balanceMilli: -1000,
     isActive: false,
   });
@@ -223,7 +287,9 @@ test("committed sale survives Inventory failure; retry uses captured target afte
   const submission = rows().find(
     (r) => r.entityType === "RESTAURANT_SUBMISSION",
   )!;
-  expect(submission.data.inventoryCompletedAt).toBeUndefined();
+  expect(
+    (await Effects.get(scope(), submission.data.inventoryEffectRef))?.state,
+  ).toBe("RETRYABLE");
   const b = await I.create(scope(), {
     id: randomUUID(),
     name: "New target",
@@ -260,6 +326,13 @@ test("missing StockItem retains pending effect and accepted commercial Order", a
       .inventoryCompletedAt,
   ).toBeUndefined();
   m.rows.set(key, raw);
+  const ref = rows().find((r) => r.entityType === "RESTAURANT_SUBMISSION")!.data
+    .inventoryEffectRef;
+  expect(await Effects.get(scope(), ref)).toMatchObject({
+    state: "FAILED",
+    lastErrorCode: "STOCK_ITEM_MISSING",
+  });
+  await InventoryEffects.process(scope(), ref, { retryFailed: true });
   await E.order(scope(), d.orderId);
   expect(sales()).toHaveLength(1);
 });
@@ -338,6 +411,9 @@ test("transaction failure creates no sale snapshot or movement; mapping guard pr
   expect(
     rows().filter((r) => r.entityType === "RESTAURANT_SUBMISSION"),
   ).toHaveLength(0);
+  expect(
+    rows().filter((r) => /RESTAURANT_INVENTORY_EFFECT/.test(r.entityType)),
+  ).toHaveLength(0);
   expect((await I.get(scope(), stock.id)).balanceMilli).toBe(0);
   await d.run();
   expect(sales()).toHaveLength(0);
@@ -346,9 +422,18 @@ test("lost acknowledgement after movement commit resumes from durable receipt wi
   const stock = await link();
   const d = await draft();
   const original = IR.commit.bind(IR);
-  jest.spyOn(IR, "commit").mockImplementationOnce(async (actions) => {
+  let once = true;
+  jest.spyOn(IR, "commit").mockImplementation(async (actions) => {
     await original(actions);
-    throw new Error("Lost response");
+    if (
+      once &&
+      actions.some(
+        (a) => a.Put?.Item?.entityType?.S === "RESTAURANT_STOCK_MOVEMENT",
+      )
+    ) {
+      once = false;
+      throw new Error("Lost response");
+    }
   });
   await d.run();
   expect(sales()).toHaveLength(1);
@@ -545,7 +630,7 @@ test("twelve distinct tracked categories retain transaction headroom and apply t
         unmarshall(a.Put.Item).data.status === "SUBMITTED",
     ),
   )!;
-  expect(commercial.TransactItems).toHaveLength(59);
+  expect(commercial.TransactItems).toHaveLength(61);
   expect(sales()).toHaveLength(12);
   expect(m.transactions.every((t) => t.TransactItems!.length <= 95)).toBe(true);
   expect(

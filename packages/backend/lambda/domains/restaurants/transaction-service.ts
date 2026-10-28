@@ -3,6 +3,7 @@ import { RestaurantServiceAccess } from "./service-access";
 import { RestaurantPreparationService as Preparation } from "./preparation-service";
 import { ResponsibleStaff } from "./responsible-staff";
 import { InventorySales } from "./inventory-sales";
+import { InventoryEffects } from "./inventory-effects";
 import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
@@ -697,7 +698,19 @@ export class RestaurantTransactionsService {
     };
     const reverseInventory = async (lines: contracts.RestaurantOrderItem[]) => {
       const reversal = await InventorySales.reversal(ctx, owner, lines);
-      if (reversal.targets.length)
+      if (reversal.targets.length) {
+        actions.push(
+          ...InventoryEffects.stageSale(ctx, {
+            orderId: owner,
+            submissionId: commandId,
+            actorId: ctx.actorId,
+            committedAt: now,
+            type: "SALE_REVERSAL",
+            targets: reversal.targets,
+            dependencies: reversal.dependencies,
+            originalEvents: reversal.originalEvents,
+          }),
+        );
         put(
           "SUBMISSION",
           {
@@ -714,8 +727,10 @@ export class RestaurantTransactionsService {
             inventoryType: "SALE_REVERSAL",
             inventoryTargets: reversal.targets,
             inventoryReversalOf: reversal.originals,
+            inventoryEffectRef: { id: commandId, createdAt: now },
           },
         );
+      }
     };
     const locator = (
       kind: TransactionKind,
@@ -1208,6 +1223,15 @@ export class RestaurantTransactionsService {
           })),
         );
         actions.push(...inventory.actions);
+        actions.push(
+          ...InventoryEffects.stageSale(ctx, {
+            orderId: owner,
+            submissionId,
+            actorId: ctx.actorId,
+            committedAt: now,
+            targets: inventory.targets,
+          }),
+        );
         for (const { line, snapshot, amount } of prepared) {
           const work = Preparation.creation(
             ctx,
@@ -1248,6 +1272,9 @@ export class RestaurantTransactionsService {
             actorId: ctx.actorId,
             committedAt: now,
             inventoryTargets: inventory.targets,
+            ...(inventory.targets.length
+              ? { inventoryEffectRef: { id: submissionId, createdAt: now } }
+              : {}),
           },
         );
         result = next;
