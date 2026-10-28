@@ -11,6 +11,8 @@ import { restaurantTransactionHandler } from "@/lambda/domains/restaurants/trans
 import { RESTAURANT_TRANSACTION_ROUTES } from "@/lambda/domains/restaurants/transaction-routes";
 import { acceptanceFixture } from "./acceptance-fixture";
 import { memoryDynamo, fixtureId } from "./memory-dynamo";
+import { InventoryTrackingService } from "@/lambda/domains/restaurants/inventory-tracking-service";
+import { RestaurantInventoryService as Inventory } from "@/lambda/domains/restaurants/inventory-service";
 const org = "org-resto";
 let m: ReturnType<typeof memoryDynamo>,
   f: Awaited<ReturnType<typeof acceptanceFixture>>,
@@ -18,6 +20,39 @@ let m: ReturnType<typeof memoryDynamo>,
   order: c.RestaurantOrder,
   seq: number;
 const request = () => fixtureId(++seq);
+test("authorized staff submission uses the canonical Inventory sale engine once", async () => {
+  const inventoryScope = { orgId: org, outletId: f.outlet.id };
+  const item = f.items[4];
+  const tracking = await InventoryTrackingService.save(
+    inventoryScope,
+    item.id,
+    "owner",
+    {
+      categoryId: item.categoryId,
+      expectedVersion: 0,
+      clientRequestId: request(),
+      mode: "CREATE",
+      unit: "BOTTLE",
+    },
+  );
+  const line = await add(4);
+  const input = await submitBody(line);
+  data(await call("submit-order", "Aissa", input, ids()));
+  data(await call("submit-order", "Aissa", input, ids()));
+  expect(
+    (await Inventory.get(inventoryScope, tracking.stockItem!.id)).balanceMilli,
+  ).toBe(-1000);
+  expect(
+    (await Inventory.history(inventoryScope, tracking.stockItem!.id)).items,
+  ).toMatchObject([
+    {
+      type: "SALE",
+      deltaMilli: -1000,
+      actorId: "Aissa",
+      sourceReference: order.orderId,
+    },
+  ]);
+});
 const scope = () => ({ orgId: org, outletId: f.outlet.id, actorId: "owner" });
 function call(
   name: string,

@@ -417,11 +417,12 @@ test("invalid quantities, missing outlet, overflow, and unsupported fields fail"
     S.applyMovement(scope, move(a.id, "RECEIPT", 1)),
   ).rejects.toThrow();
 });
-test("inventory has no Scan, index, infrastructure or sales hooks", () => {
+test("inventory adapters and sales integration have no Scan, index or infrastructure imports", () => {
   for (const file of [
     "inventory-model.ts",
     "inventory-repository.ts",
     "inventory-service.ts",
+    "inventory-sales.ts",
   ]) {
     const source = readFileSync(
       resolve(__dirname, "../../../lambda/domains/restaurants", file),

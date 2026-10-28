@@ -2,6 +2,7 @@ import { config } from "@/lambda/shared/dynamo-client";
 import { RestaurantServiceAccess } from "./service-access";
 import { RestaurantPreparationService as Preparation } from "./preparation-service";
 import { ResponsibleStaff } from "./responsible-staff";
+import { InventorySales } from "./inventory-sales";
 import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
@@ -89,6 +90,8 @@ export class RestaurantTransactionsService {
     );
     if (!row || !("orderId" in row.data) || row.data.orderId !== id)
       return fail("RESTAURANTS_NOT_FOUND", 404);
+    if ("acceptedLineCount" in row.data && row.data.acceptedLineCount)
+      await InventorySales.resume(scope, id);
     return row as TransactionRow & { data: contracts.RestaurantOrder };
   }
   static async line(scope: TransactionScope, orderId: string, itemId: string) {
@@ -478,6 +481,8 @@ export class RestaurantTransactionsService {
         if (result.status !== "CANCELLED" || result.snapshot)
           return fail("DOMAIN_PERMISSION_REQUIRED", 403);
       }
+      if (["SUBMIT_ORDER", "CANCEL_ITEM", "CANCEL_ORDER"].includes(command))
+        await InventorySales.resume(ctx, owner);
       return row.data.result;
     };
     const responsibleActor =
@@ -689,6 +694,28 @@ export class RestaurantTransactionsService {
       const row = R.row(ctx, key, kind, data);
       actions.push(R.put(row, previous));
       return row;
+    };
+    const reverseInventory = async (lines: contracts.RestaurantOrderItem[]) => {
+      const reversal = await InventorySales.reversal(ctx, owner, lines);
+      if (reversal.targets.length)
+        put(
+          "SUBMISSION",
+          {
+            PK: K.restaurantOrderPK(ctx.orgId, ctx.outletId, owner),
+            SK: K.restaurantSubmissionSK(commandId),
+          },
+          {
+            orderId: owner,
+            submissionId: commandId,
+            count: 1,
+            fingerprint: intent,
+            actorId: ctx.actorId,
+            committedAt: now,
+            inventoryType: "SALE_REVERSAL",
+            inventoryTargets: reversal.targets,
+            inventoryReversalOf: reversal.originals,
+          },
+        );
     };
     const locator = (
       kind: TransactionKind,
@@ -1170,6 +1197,17 @@ export class RestaurantTransactionsService {
             prepared.push(result.value);
           }
         }
+        const inventory = await InventorySales.capture(
+          ctx,
+          prepared.map(({ line, snapshot }) => ({
+            itemId: line.data.itemId,
+            menuItemId: line.data.menuItemId,
+            categoryId: line.data.categoryId,
+            quantity: line.data.quantity,
+            stationId: snapshot.stationId,
+          })),
+        );
+        actions.push(...inventory.actions);
         for (const { line, snapshot, amount } of prepared) {
           const work = Preparation.creation(
             ctx,
@@ -1209,6 +1247,7 @@ export class RestaurantTransactionsService {
             fingerprint: intent,
             actorId: ctx.actorId,
             committedAt: now,
+            inventoryTargets: inventory.targets,
           },
         );
         result = next;
@@ -1243,6 +1282,7 @@ export class RestaurantTransactionsService {
               return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
             next.outstandingWorkCount -= work.decrement;
           }
+          await reverseInventory([line.data]);
         } else next.draftLineCount--;
         result = {
           ...line.data,
@@ -1279,6 +1319,7 @@ export class RestaurantTransactionsService {
           )
             return fail("RESTAURANTS_PREPARATION_DEFERRED");
         }
+        if (cancel) await reverseInventory(await this.allLines(ctx, owner));
         next.status = cancel ? "CANCELLED" : "CLOSED";
         next.closedAt = now;
         next.closedBy = ctx.actorId;
@@ -1607,6 +1648,8 @@ export class RestaurantTransactionsService {
       commandId,
       latencyMs: Date.now() - startedAt,
     });
+    if (["SUBMIT_ORDER", "CANCEL_ITEM", "CANCEL_ORDER"].includes(command))
+      await InventorySales.resume(ctx, owner);
     if (command === "OPEN_SESSION")
       await (
         await import("./guest-submissions")

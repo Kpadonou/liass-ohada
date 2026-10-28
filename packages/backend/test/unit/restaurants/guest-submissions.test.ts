@@ -14,6 +14,8 @@ import { RestaurantsService as Config } from "@/lambda/domains/restaurants/resta
 import { RestaurantTransactionsService as E } from "@/lambda/domains/restaurants/transaction-service";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import * as c from "@liass-ohada/shared/restaurants";
+import { InventoryTrackingService } from "@/lambda/domains/restaurants/inventory-tracking-service";
+import { RestaurantInventoryService as Inventory } from "@/lambda/domains/restaurants/inventory-service";
 let m: ReturnType<typeof memoryDynamo>,
   f: Awaited<ReturnType<typeof acceptanceFixture>>,
   cap: string,
@@ -50,6 +52,120 @@ async function body(n = 900) {
     ],
   });
 }
+async function trackedGuestBody() {
+  const item = f.items[4];
+  const tracking = await InventoryTrackingService.save(
+    { orgId: org, outletId: f.outlet.id },
+    item.id,
+    "owner",
+    {
+      categoryId: item.categoryId,
+      expectedVersion: 0,
+      clientRequestId: fixtureId(5000),
+      mode: "CREATE",
+      unit: "BOTTLE",
+    },
+  );
+  const r = await GuestCarteService.read(cap);
+  if (r.body.state !== "READY") throw Error();
+  const entry = r.body.categories
+    .flatMap((cat) => cat.items)
+    .find((i) => i.name === item.name)!;
+  return {
+    stockItemId: tracking.stockItem!.id,
+    input: c.GuestSubmissionRequestSchema.parse({
+      clientRequestId: fixtureId(5001),
+      lines: [
+        {
+          reference: entry.reference,
+          selectionRef: entry.selectionRef,
+          quantity: 2,
+          note: "",
+          presentedAmountMinor: entry.amountMinor,
+          currency: r.body.currency,
+        },
+      ],
+    }),
+  };
+}
+const inventorySales = () =>
+  all().filter((r) => r.entityType === "RESTAURANT_STOCK_MOVEMENT");
+test.each(["DIRECT", "STAFF_APPROVAL"] as const)(
+  "%s accepted replay resumes the same deterministic Inventory sale",
+  async (policy) => {
+    patch(K.restaurantSK(), { guestOrderingPolicy: policy });
+    const { stockItemId, input } = await trackedGuestBody();
+    expect(inventorySales()).toHaveLength(0);
+    const failure = jest
+      .spyOn(Inventory, "applyMovement")
+      .mockRejectedValue(new Error("Unavailable"));
+    const result = await S.submit(cap, input);
+    if (result.state !== "CONFIRMED") throw Error();
+    if (policy === "STAFF_APPROVAL") {
+      expect(result.request.state).toBe("PENDING_APPROVAL");
+      expect(inventorySales()).toHaveLength(0);
+      await S.review(scope, "owner", result.request.requestId, "approve");
+    }
+    expect(
+      all().filter((r) => r.entityType === "RESTAURANT_ORDER"),
+    ).toHaveLength(1);
+    failure.mockRestore();
+    if (policy === "DIRECT") await S.submit(cap, input);
+    else await S.review(scope, "owner", result.request.requestId, "approve");
+    if (policy === "DIRECT") await S.submit(cap, input);
+    else await S.review(scope, "owner", result.request.requestId, "approve");
+    expect(inventorySales()).toHaveLength(1);
+    expect(inventorySales()[0].data).toMatchObject({
+      type: "SALE",
+      deltaMilli: -2000,
+    });
+    expect(
+      (await Inventory.get({ orgId: org, outletId: f.outlet.id }, stockItemId))
+        .balanceMilli,
+    ).toBe(-2000);
+  },
+);
+test.each(["DIRECT", "STAFF_APPROVAL"] as const)(
+  "pre-service %s has no Inventory until canonical acceptance",
+  async (policy) => {
+    await freeTable(policy);
+    const { input } = await trackedGuestBody();
+    const result = await S.submit(cap, input);
+    expect(result).toMatchObject({
+      state: "CONFIRMED",
+      request: { state: "PENDING_SERVICE" },
+    });
+    expect(inventorySales()).toHaveLength(0);
+    const opened = c.GuestSessionSchema.parse((await openFreeTable()).data);
+    const openedScope = { ...scope, sessionId: opened.guestSessionId };
+    if (result.state !== "CONFIRMED") throw Error();
+    if (policy === "STAFF_APPROVAL") {
+      expect(inventorySales()).toHaveLength(0);
+      await S.review(openedScope, "owner", result.request.requestId, "approve");
+    }
+    expect(inventorySales()).toHaveLength(1);
+    await openFreeTable();
+    expect(inventorySales()).toHaveLength(1);
+  },
+);
+test.each(["reject", "expire"] as const)(
+  "%s pending tracked Guest request has no SALE or reversal",
+  async (outcome) => {
+    const { input } = await trackedGuestBody();
+    const result = await S.submit(cap, input);
+    if (result.state !== "CONFIRMED") throw Error();
+    if (outcome === "expire")
+      jest.spyOn(Date, "now").mockReturnValue(Date.now() + 900001);
+    await S.review(
+      scope,
+      "owner",
+      result.request.requestId,
+      outcome === "reject" ? "reject" : "approve",
+      "Unavailable",
+    );
+    expect(inventorySales()).toHaveLength(0);
+  },
+);
 beforeEach(async () => {
   m = memoryDynamo();
   m.seedAccess(org, "owner", "OWNER");

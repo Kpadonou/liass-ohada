@@ -185,6 +185,7 @@ export const KeyFactory = {
   restaurantOrderItemPrefix: () => "OI#",
   restaurantSubmissionSK: (id: string) =>
     `SUB#${restaurantTransactionSegment(id)}`,
+  restaurantSubmissionPrefix: () => "SUB#",
   restaurantTransactionLocatorSK: (timestamp: string, id: string) =>
     `${restaurantTransactionTimestamp(timestamp)}#${restaurantTransactionSegment(id)}`,
   restaurantSessionOrderSK: (timestamp: string, id: string, open = false) =>

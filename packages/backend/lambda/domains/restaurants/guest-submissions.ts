@@ -993,6 +993,8 @@ export class GuestSubmissions {
       let row = await this.row(s, requestId);
       if (!row || row.mode === "DIRECT")
         throw new AppError(404, "RESTAURANTS_NOT_FOUND");
+      if (row.data.state === "ACCEPTED" && row.orderId)
+        await Engine.order(s, row.orderId);
       if (row.data.state !== "PENDING_APPROVAL")
         return { request: this.projection(row) };
       if (

@@ -196,7 +196,11 @@ export class RestaurantInventoryService {
       )
         return conflict();
       const balanceMilli = MilliSchema.parse(Number(sum));
-      const now = new Date().toISOString();
+      // The versioned balance write also establishes causal history order when several
+      // accepted effects finish in the same clock millisecond (or the clock moves back).
+      const now = new Date(
+        Math.max(Date.now(), Date.parse(old.updatedAt) + 1),
+      ).toISOString();
       const { quantityMilli: _, ...metadata } = input;
       const movement = StockMovementSchema.parse({
         ...scope,

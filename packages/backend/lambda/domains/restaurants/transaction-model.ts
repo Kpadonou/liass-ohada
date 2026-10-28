@@ -11,6 +11,23 @@ import {
 } from "@liass-ohada/shared/restaurants";
 
 const id = z.string().uuid();
+export const InventorySaleTargetSchema = z
+  .object({
+    stockItemId: id,
+    lines: z
+      .array(
+        z
+          .object({
+            itemId: id,
+            menuItemId: id,
+            quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(200),
+  })
+  .strict();
 const base = {
   PK: z.string(),
   SK: z.string(),
@@ -240,6 +257,13 @@ export const TransactionSchemas = {
           fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
           actorId: z.string().min(1),
           committedAt: z.string().datetime(),
+          inventoryTargets: z
+            .array(InventorySaleTargetSchema)
+            .max(200)
+            .optional(),
+          inventoryType: z.literal("SALE_REVERSAL").optional(),
+          inventoryReversalOf: z.array(id).max(200).optional(),
+          inventoryCompletedAt: z.string().datetime().optional(),
         })
         .strict(),
     })

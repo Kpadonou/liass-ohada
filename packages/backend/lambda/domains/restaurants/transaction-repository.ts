@@ -39,6 +39,42 @@ export function transactionFingerprint(value: unknown): string {
     .digest("hex");
 }
 export class RestaurantTransactionsRepository {
+  /** At most 200 accepted batches and 200 corresponding commercial cancellation batches. */
+  static async submissions(scope: TransactionScope, orderId: string) {
+    const PK = K.restaurantOrderPK(scope.orgId, scope.outletId, orderId);
+    const rows: z.infer<typeof TransactionSchemas.SUBMISSION>[] = [];
+    let start: Record<string, AttributeValue> | undefined;
+    do {
+      const page = await dynamoClient.send(
+        new QueryCommand({
+          TableName: restaurantsTableName(),
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+          ExpressionAttributeValues: marshall({
+            ":pk": PK,
+            ":prefix": K.restaurantSubmissionPrefix(),
+          }),
+          ConsistentRead: true,
+          Limit: 100,
+          ExclusiveStartKey: start,
+        }),
+      );
+      for (const raw of page.Items ?? []) {
+        const row = TransactionSchemas.SUBMISSION.parse(
+          this.decode(scope, { PK, SK: unmarshall(raw).SK }, "SUBMISSION", raw),
+        );
+        if (
+          row.data.orderId !== orderId ||
+          row.SK !== K.restaurantSubmissionSK(row.data.submissionId)
+        )
+          throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+        rows.push(row);
+      }
+      if (rows.length > 400)
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+      start = page.LastEvaluatedKey;
+    } while (start);
+    return rows;
+  }
   static row(
     scope: TransactionScope,
     key: TransactionKey,
