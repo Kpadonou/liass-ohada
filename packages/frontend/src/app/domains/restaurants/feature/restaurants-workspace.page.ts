@@ -468,18 +468,24 @@ export class RestaurantsWorkspacePage {
   private async run(
     kind: RestaurantKind,
     ctx: RestaurantContext,
-    operation: () => Promise<{ message: string | null }>,
+    operation: () => Promise<{ data: RestaurantEntity; message: string | null }>,
   ) {
     if (this.busy() || !this.allowed() || !this.canManage()) return;
-    const org = this.queries.scope();
+    const org = this.queries.scope(),
+      fence = { user: this.queries.userScope(), revision: this.queries.contextRevision() };
+    const current = () =>
+      org === this.queries.scope() &&
+      fence.user === this.queries.userScope() &&
+      fence.revision === this.queries.contextRevision();
     this.busy.set(true);
     this.actionError.set(null);
     try {
       const result = await operation();
-      await this.queries.changed(org, kind, ctx);
-      if (org === this.queries.scope())
+      await this.queries.confirmed(org, kind, ctx, result.data, false, fence);
+      if (current())
         this.notification.success(result.message ?? this.t.translate('RESTAURANTS.UI.SAVED'));
     } catch (error) {
+      if (!current()) return;
       if (org === this.queries.scope())
         this.actionError.set(restaurantError(error, (key) => this.t.translate(key)));
       if (error instanceof HttpErrorResponse && error.status === 409)

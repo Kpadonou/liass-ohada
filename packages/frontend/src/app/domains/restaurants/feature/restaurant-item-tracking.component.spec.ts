@@ -107,7 +107,7 @@ it('explains station ineligibility without exposing an enabled selector', async 
   await f.componentInstance.persist(savedItem(rid(12)));
   expect(api.tracking).not.toHaveBeenCalled();
 });
-it('filters existing selection to loaded active discrete stock and links with canonical invalidation', async () => {
+it('filters existing selection to loaded active discrete stock and links with a canonical cache update', async () => {
   const f = await setup();
   f.componentInstance.form.patchValue({ enabled: true, mode: 'LINK' });
   f.detectChanges();
@@ -128,7 +128,7 @@ it('filters existing selection to loaded active discrete stock and links with ca
     expect.objectContaining({ mode: 'LINK', stockItemId: stockItem().id }),
     expect.any(Function),
   );
-  expect(invalidate).toHaveBeenCalled();
+  expect(invalidate).not.toHaveBeenCalled();
 });
 it.each([true, false])(
   'shows linked stock independently of its lifecycle (%s), permits remove without deleting stock',

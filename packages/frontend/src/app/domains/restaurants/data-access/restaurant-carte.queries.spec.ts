@@ -45,10 +45,10 @@ it('uses an outlet/Menu key independent of session, table, category and search',
   expect(queries.pages(ctx, true).queryKey).toEqual([
     'restaurants',
     'org',
-    'operational-carte',
-    'user',
-    1,
     'outlet',
+    'outlet',
+    'operational-carte',
+    { user: 'user', revision: 1 },
     'menu',
     'browse-v1',
   ]);

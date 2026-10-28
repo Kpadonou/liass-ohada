@@ -189,13 +189,14 @@ export class RestaurantOrdersQueries {
     else await reconcile();
   }
   async menuChanged(ctx: ServiceOrderContext, category: string) {
-    await this.client.invalidateQueries({
-      predicate: (query) =>
-        query.queryKey[0] === 'restaurants' &&
-        query.queryKey[1] === ctx.org &&
-        ['operational-carte', 'operational-menu'].includes(String(query.queryKey[2])) &&
-        query.queryKey[5] === ctx.outlet,
-    });
+    await Promise.all([
+      this.client.invalidateQueries({
+        queryKey: restaurantKeys.operationalMenu(ctx.org, ctx.outlet),
+      }),
+      this.client.invalidateQueries({
+        queryKey: restaurantKeys.operationalCarte(ctx.org, ctx.outlet),
+      }),
+    ]);
     await Promise.all(
       ['menu', 'category', 'item', 'draft-name'].map((kind) =>
         this.client.invalidateQueries({

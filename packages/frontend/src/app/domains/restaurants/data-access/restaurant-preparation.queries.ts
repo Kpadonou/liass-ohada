@@ -8,6 +8,7 @@ import {
 export const kitchenKeys = {
   scope: (ctx: KitchenContext) =>
     ['restaurants', ctx.org, 'kitchen', ctx.user, ctx.revision, ctx.outlet] as const,
+  stations: (ctx: KitchenContext) => [...kitchenKeys.scope(ctx), 'stations'] as const,
   station: (ctx: KitchenContext, station: string) =>
     [...kitchenKeys.scope(ctx), 'queue', station] as const,
   lane: (ctx: KitchenContext, station: string, state: KitchenLane) =>
@@ -33,7 +34,7 @@ export class RestaurantPreparationQueries {
   }
   stations(ctx: KitchenContext, enabled: boolean) {
     return infiniteQueryOptions({
-      queryKey: [...kitchenKeys.scope(ctx), 'stations'],
+      queryKey: kitchenKeys.stations(ctx),
       initialPageParam: undefined as string | undefined,
       queryFn: async ({ pageParam }) => ({
         ...(await this.api.stations(ctx, pageParam)),

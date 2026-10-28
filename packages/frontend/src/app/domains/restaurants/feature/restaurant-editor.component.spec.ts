@@ -91,6 +91,7 @@ describe('Restaurant configuration dialogs', () => {
             scope: org,
             userScope: user,
             changed,
+            confirmed: changed,
             denied,
             detail: () => ({
               queryKey: ['station-selected', org()],
@@ -182,7 +183,7 @@ describe('Restaurant configuration dialogs', () => {
       expect(payload.guestReorderEnabled).toBe(true);
       expect(payload).not.toHaveProperty('preparationStationId');
     }
-    expect(changed).toHaveBeenCalledWith('org', kind, context);
+    expect(changed).toHaveBeenCalledWith('org', kind, context, row(kind), true, expect.anything());
     expect(notification.success).toHaveBeenCalledWith('Saved.');
     expect(ref.close).toHaveBeenCalled();
   });

@@ -94,6 +94,7 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
             scope: () => 'org',
             userScope: () => 'owner',
             changed,
+            confirmed: changed,
             denied: vi.fn(),
             detail: () => ({
               queryKey: ['disabled-station'],
@@ -172,22 +173,19 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
         stockItem: stockItem({ balanceMilli: 0 }),
       };
       put.flush({ data: result });
-      if (mode === 'LINK') {
-        await vi.waitFor(() => expect(tracking.items.isFetching()).toBe(true));
-        http.expectOne((r) => r.url.endsWith('/inventory/items')).flush({ items: [stockItem()] });
-      }
       await submitting;
       const ctx = TestBed.inject(RestaurantInventoryApi).context(context.outletId);
       expect(client.getQueryData(inventoryKeys.tracking(ctx, saved.categoryId, saved.id))).toEqual(
         result,
       );
-      expect(invalidate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          exact: true,
-          queryKey: inventoryKeys.tracking(ctx, saved.categoryId, saved.id),
-        }),
-      );
-      expect(changed).toHaveBeenCalledWith('org', 'item', context);
+      expect(
+        invalidate.mock.calls.some(
+          ([filter]) =>
+            JSON.stringify(filter?.queryKey) ===
+            JSON.stringify(inventoryKeys.tracking(ctx, saved.categoryId, saved.id)),
+        ),
+      ).toBe(false);
+      expect(changed).toHaveBeenCalledWith('org', 'item', context, saved, true, expect.anything());
       expect(close).toHaveBeenCalledWith(saved);
       expect(tracking.uncertain()).toBe(false);
       http.expectNone((r) => r.method === 'PUT');
@@ -208,10 +206,9 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
     const put = http.expectOne((r) => r.method === 'PUT');
     expect(put.request.body.expectedVersion).toBe(2); // Tracking concurrency token, not MenuItem version 7.
     put.flush({ data: { menuItemId: saved.id, version: 3, stockItem: stockItem() } });
-    // Active tracking observer refreshes the canonical relationship.
+    // The canonical PUT response replaces the relationship without a second GET.
     await vi.waitFor(() => expect(tracking.query.data()?.version).toBe(3));
-    const read = http.expectOne((r) => r.url.endsWith('/tracking') && r.method === 'GET');
-    read.flush({ data: { menuItemId: saved.id, version: 3, stockItem: stockItem() } });
+    http.expectNone((r) => r.url.endsWith('/tracking') && r.method === 'GET');
     await submitting;
   });
   it('retains saved MenuItem before refresh failures and retries tracking without another Menu write', async () => {

@@ -62,6 +62,7 @@ export class RestaurantEditorComponent {
   readonly queries = inject(RestaurantsQueries);
   private readonly caps = inject(RestaurantsCapabilities);
   private readonly originalUser = this.queries.userScope();
+  private readonly originalRevision = this.queries.contextRevision?.() ?? 0;
   private readonly access = inject(ProductAccessState);
   private readonly notification = inject(NotificationService);
   private readonly t = inject(TranslocoService);
@@ -192,6 +193,7 @@ export class RestaurantEditorComponent {
       if (
         this.queries.scope() !== this.data.org ||
         this.queries.userScope() !== this.originalUser ||
+        (this.queries.contextRevision?.() ?? 0) !== this.originalRevision ||
         this.access.availability('RESTAURANTS') === 'UNAVAILABLE'
       )
         this.ref.close();
@@ -201,6 +203,7 @@ export class RestaurantEditorComponent {
     return (
       this.queries.scope() === this.data.org &&
       this.queries.userScope() === this.originalUser &&
+      (this.queries.contextRevision?.() ?? 0) === this.originalRevision &&
       !this.accessDenied() &&
       this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
       (['menu', 'category', 'item'].includes(this.data.kind)
@@ -260,7 +263,11 @@ export class RestaurantEditorComponent {
       this.version.set(current.version);
       this.refreshed.set(true);
     } catch (error) {
-      if (this.queries.scope() !== this.data.org || this.queries.userScope() !== this.originalUser)
+      if (
+        this.queries.scope() !== this.data.org ||
+        this.queries.userScope() !== this.originalUser ||
+        (this.queries.contextRevision?.() ?? 0) !== this.originalRevision
+      )
         return;
       this.error.set(restaurantError(error, (key) => this.t.translate(key)));
     }
@@ -359,16 +366,28 @@ export class RestaurantEditorComponent {
         trackingStage = true;
         await tracking!.persist(saved, this.submittedTracking);
       }
-      await this.queries.changed(this.data.org, this.data.kind, this.canonicalContext);
+      await this.queries.confirmed(
+        this.data.org,
+        this.data.kind,
+        this.canonicalContext,
+        result.data,
+        !this.entity,
+        { user: this.originalUser, revision: this.originalRevision },
+      );
       if (
         this.queries.scope() === this.data.org &&
-        this.queries.userScope() === this.originalUser
+        this.queries.userScope() === this.originalUser &&
+        (this.queries.contextRevision?.() ?? 0) === this.originalRevision
       ) {
         this.notification.success(result.message ?? this.t.translate('RESTAURANTS.UI.SAVED'));
         this.ref.close(result.data);
       }
     } catch (error) {
-      if (this.queries.scope() !== this.data.org || this.queries.userScope() !== this.originalUser)
+      if (
+        this.queries.scope() !== this.data.org ||
+        this.queries.userScope() !== this.originalUser ||
+        (this.queries.contextRevision?.() ?? 0) !== this.originalRevision
+      )
         return;
       if (
         !this.savedItemId() ||

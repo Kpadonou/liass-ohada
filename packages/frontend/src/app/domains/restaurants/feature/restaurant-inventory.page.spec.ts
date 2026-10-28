@@ -343,8 +343,7 @@ describe('Stock item reactive editor', () => {
     expect(f.componentInstance.conflict()).toBe(true);
     expect(ref.close).not.toHaveBeenCalled();
     expect(invalidation).toHaveBeenCalledWith({
-      queryKey: inventoryKeys.item(ctx, stockItem().id),
-      exact: true,
+      queryKey: inventoryKeys.itemFamily(ctx, stockItem().id),
     });
     expect(f.nativeElement.textContent).toContain(fr.RESTAURANTS_INVENTORY.CONFLICT_REOPEN);
   });
@@ -368,8 +367,7 @@ describe('Focused movement forms', () => {
     expect(f.componentInstance.inactive()).toBe(true);
     expect(f.componentInstance.uncertain()).toBe(false);
     expect(invalidation).toHaveBeenCalledWith({
-      queryKey: inventoryKeys.item(ctx, stockItem().id),
-      exact: true,
+      queryKey: inventoryKeys.itemFamily(ctx, stockItem().id),
     });
     await f.componentInstance.submit();
     expect(api.movement).toHaveBeenCalledTimes(1);

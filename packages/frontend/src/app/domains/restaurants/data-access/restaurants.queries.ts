@@ -1,3 +1,4 @@
+import { kitchenKeys } from './restaurant-preparation.queries';
 import type { InfiniteData } from '@tanstack/angular-query-experimental';
 import type { RestaurantServiceFloorResponse } from '@liass-ohada/shared/restaurants';
 import { Injectable, inject } from '@angular/core';
@@ -8,14 +9,48 @@ import {
 } from '@tanstack/angular-query-experimental';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { RestaurantsApi } from './restaurants.api';
-import { RestaurantKind, RestaurantListKind, RestaurantContext } from './restaurants-model';
+import {
+  RestaurantKind,
+  RestaurantListKind,
+  RestaurantContext,
+  RestaurantEntity,
+} from './restaurants-model';
+import {
+  compareId,
+  CursorData,
+  mergeConfirmedRow,
+  newestVersion,
+} from '../../../core/query-cache/confirmed-pages';
 import { ZodError } from 'zod';
 import { HttpErrorResponse } from '@angular/common/http';
 export const restaurantKeys = {
   carteMenu: (org: string, user: string, revision: number, outlet: string) =>
-    ['restaurants', org, 'operational-menu', user, revision, outlet] as const,
+    [
+      'restaurants',
+      org,
+      'outlet',
+      outlet,
+      'operational-menu',
+      { user, revision },
+      'detail',
+    ] as const,
   carte: (org: string, user: string, revision: number, outlet: string, menu: string) =>
-    ['restaurants', org, 'operational-carte', user, revision, outlet, menu, 'browse-v1'] as const,
+    [
+      'restaurants',
+      org,
+      'outlet',
+      outlet,
+      'operational-carte',
+      { user, revision },
+      menu,
+      'browse-v1',
+    ] as const,
+  operationalMenu: (org: string, outlet: string) =>
+    ['restaurants', org, 'outlet', outlet, 'operational-menu'] as const,
+  operationalCarte: (org: string, outlet: string) =>
+    ['restaurants', org, 'outlet', outlet, 'operational-carte'] as const,
+  detail: (org: string, kind: RestaurantKind, ctx: RestaurantContext, id: string) =>
+    [...restaurantKeys.collection(org, kind, ctx), id] as const,
   serviceOrder: (
     org: string,
     user: string,
@@ -71,6 +106,9 @@ export class RestaurantsQueries {
   private readonly client = inject(QueryClient);
   scope() {
     return this.auth.effectiveOrgId() ?? '';
+  }
+  contextRevision() {
+    return this.auth.contextRevision?.() ?? 0;
   }
   userScope() {
     return this.auth.currentUserId?.() ?? '';
@@ -228,7 +266,7 @@ export class RestaurantsQueries {
   detail<K extends RestaurantKind>(kind: K, ctx: RestaurantContext, id: string, enabled = true) {
     const org = this.scope();
     return queryOptions({
-      queryKey: [...restaurantKeys.collection(org, kind, ctx), id],
+      queryKey: restaurantKeys.detail(org, kind, ctx, id),
       queryFn: () => this.api.get(org, kind, ctx, id),
       enabled: enabled && !!org && !!id,
       staleTime: 60_000,
@@ -411,13 +449,7 @@ export class RestaurantsQueries {
   async changed(org: string, kind: RestaurantKind, ctx: RestaurantContext = {}) {
     await this.client.invalidateQueries({ queryKey: restaurantKeys.collection(org, kind, ctx) });
     if (['menu', 'category', 'item'].includes(kind) && ctx.outletId)
-      await this.client.invalidateQueries({
-        predicate: (query) =>
-          query.queryKey[0] === 'restaurants' &&
-          query.queryKey[1] === org &&
-          ['operational-carte', 'operational-menu'].includes(String(query.queryKey[2])) &&
-          query.queryKey[5] === ctx.outletId,
-      });
+      await this.refreshCarte(org, ctx.outletId);
     if (kind === 'table' || kind === 'area' || kind === 'outlet')
       await this.client.invalidateQueries({
         queryKey: ctx.outletId
@@ -426,13 +458,118 @@ export class RestaurantsQueries {
       });
   }
   async refreshCarte(org: string, outlet: string) {
-    await this.client.invalidateQueries({
-      predicate: (query) =>
-        query.queryKey[0] === 'restaurants' &&
-        query.queryKey[1] === org &&
-        ['operational-carte', 'operational-menu'].includes(String(query.queryKey[2])) &&
-        query.queryKey[5] === outlet,
-    });
+    await Promise.all([
+      this.client.invalidateQueries({ queryKey: restaurantKeys.operationalMenu(org, outlet) }),
+      this.client.invalidateQueries({ queryKey: restaurantKeys.operationalCarte(org, outlet) }),
+    ]);
+  }
+  /** Confirmed configuration entity; no speculative state and no new canonical store. */
+  async confirmed(
+    org: string,
+    kind: RestaurantKind,
+    ctx: RestaurantContext,
+    entity: RestaurantEntity,
+    created: boolean,
+    fence: { user: string; revision: number },
+  ) {
+    const current = () =>
+      org === this.scope() &&
+      fence.user === this.userScope() &&
+      fence.revision === this.contextRevision();
+    if (
+      !current() ||
+      ('outletId' in entity && entity.outletId !== ctx.outletId) ||
+      ('categoryId' in entity && entity.categoryId !== ctx.categoryId) ||
+      ('serviceAreaId' in entity && entity.serviceAreaId !== ctx.areaId)
+    )
+      return;
+    const key = restaurantKeys.collection(org, kind, ctx);
+    const singleton = kind === 'restaurant' || kind === 'menu';
+    const detail = singleton ? key : restaurantKeys.detail(org, kind, ctx, entity.id);
+    await Promise.all([
+      this.client.cancelQueries({ queryKey: detail, exact: true }),
+      ...(!singleton ? [this.client.cancelQueries({ queryKey: key, exact: true })] : []),
+    ]);
+    if (!current()) return;
+    const previous = this.client.getQueryData<RestaurantEntity | null>(detail);
+    const accessChanged = !previous || previous.isActive !== entity.isActive;
+    if (previous) entity = newestVersion(entity, previous);
+    const loaded = !singleton
+      ? this.client.getQueryData<CursorData<RestaurantEntity>>(key)
+      : undefined;
+    for (const row of loaded?.pages.flatMap((page) => page.items) ?? [])
+      if (row.id === entity.id) entity = newestVersion(entity, row);
+    this.client.setQueryData<RestaurantEntity | null>(detail, (old) =>
+      newestVersion(old ?? undefined, entity),
+    );
+    if (!singleton) {
+      const cached = this.client.getQueryState(key);
+      const old = this.client.getQueryData<CursorData<RestaurantEntity>>(key);
+      const merged = mergeConfirmedRow(old, entity, compareId, { prefer: newestVersion });
+      if (merged.data !== old) this.client.setQueryData(key, merged.data);
+      if (cached && (!old || (created && !merged.represented)))
+        await this.client.invalidateQueries({ queryKey: key, exact: true });
+    }
+    // A Menu result also fully represents the actor's operational Menu detail.
+    if (kind === 'menu' && ctx.outletId) {
+      const menuFilter = {
+        queryKey: [
+          ...restaurantKeys.operationalMenu(org, ctx.outletId),
+          { user: fence.user, revision: fence.revision },
+        ],
+      };
+      await this.client.cancelQueries(menuFilter);
+      if (!current()) return;
+      this.client.setQueriesData<RestaurantEntity | null>(menuFilter, (old) =>
+        newestVersion(old ?? undefined, entity),
+      );
+    }
+    if (kind === 'station' && ctx.outletId) {
+      const stations = kitchenKeys.stations({
+        org,
+        user: fence.user,
+        revision: fence.revision,
+        outlet: ctx.outletId,
+      });
+      await this.client.cancelQueries({ queryKey: stations, exact: true });
+      if (!current()) return;
+      const cached = this.client.getQueryState(stations);
+      const old = this.client.getQueryData<CursorData<RestaurantEntity>>(stations);
+      const merged = mergeConfirmedRow(old, entity, compareId, { prefer: newestVersion });
+      if (merged.data !== old) this.client.setQueryData(stations, merged.data);
+      if (cached && (!old || (created && !merged.represented)))
+        await this.client.invalidateQueries({ queryKey: stations, exact: true });
+    }
+    if (!current()) return;
+    // Configuration results do not contain composed Carte/Floor or access discovery.
+    const dependent: Promise<unknown>[] = [];
+    if (['menu', 'category', 'item'].includes(kind) && ctx.outletId)
+      dependent.push(
+        this.client.invalidateQueries({
+          queryKey: restaurantKeys.operationalCarte(org, ctx.outletId),
+        }),
+      );
+    if (kind === 'table' || kind === 'area') dependent.push(this.floorChanged(org, ctx.outletId!));
+    if (kind === 'restaurant' && accessChanged) {
+      dependent.push(
+        this.client.invalidateQueries({ queryKey: ['restaurants', org, 'operational-outlets'] }),
+      );
+      dependent.push(
+        this.client.invalidateQueries({ queryKey: restaurantKeys.myOutlets(org, fence.user) }),
+      );
+      dependent.push(
+        this.client.invalidateQueries({ queryKey: ['restaurants', org, 'service-floor'] }),
+      );
+    }
+    if (kind === 'outlet') {
+      const outletScope = ['restaurants', org, 'operational-outlets'] as const;
+      dependent.push(this.client.invalidateQueries({ queryKey: outletScope }));
+      dependent.push(
+        this.client.invalidateQueries({ queryKey: restaurantKeys.myOutlets(org, fence.user) }),
+      );
+      dependent.push(this.floorChanged(org, entity.id));
+    }
+    await Promise.all(dependent);
   }
   async denied(org: string) {
     await this.client.invalidateQueries({ queryKey: ['product-access', org] });

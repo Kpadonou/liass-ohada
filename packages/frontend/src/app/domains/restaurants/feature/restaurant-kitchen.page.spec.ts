@@ -1,3 +1,4 @@
+import { restaurantKeys } from '../data-access/restaurants.queries';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantsApi } from '../data-access/restaurants.api';
 import { signal } from '@angular/core';
@@ -352,7 +353,7 @@ it('conflicts reconcile only affected lanes and never invalidate application or 
     ['auth', 'current-user'],
     ['workspaces', 'cook'],
     ['product-access', 'org'],
-    ['restaurants', 'org', 'operational-carte', 'cook', 0, rid(2), 'menu'],
+    restaurantKeys.carte('org', 'cook', 0, rid(2), 'menu'),
   ];
   for (const key of unrelated) client.setQueryData(key, { stable: true });
   await create();
