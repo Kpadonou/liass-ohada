@@ -1,3 +1,4 @@
+import { OptimisticNames, beginPendingCreation } from '../../../core/query-cache/optimistic-name';
 import { kitchenKeys } from './restaurant-preparation.queries';
 import type { InfiniteData } from '@tanstack/angular-query-experimental';
 import type { RestaurantServiceFloorResponse } from '@liass-ohada/shared/restaurants';
@@ -102,6 +103,7 @@ const retry = (count: number, error: unknown) =>
 @Injectable({ providedIn: 'root' })
 export class RestaurantsQueries {
   private readonly api = inject(RestaurantsApi);
+  private readonly names = inject(OptimisticNames);
   private readonly auth = inject(AuthStore);
   private readonly client = inject(QueryClient);
   scope() {
@@ -462,6 +464,57 @@ export class RestaurantsQueries {
       this.client.invalidateQueries({ queryKey: restaurantKeys.operationalMenu(org, outlet) }),
       this.client.invalidateQueries({ queryKey: restaurantKeys.operationalCarte(org, outlet) }),
     ]);
+  }
+  beginInteraction(
+    org: string,
+    kind: RestaurantKind,
+    ctx: RestaurantContext,
+    entity: RestaurantEntity | undefined,
+    name: string,
+    fence: { user: string; revision: number },
+  ) {
+    const current = () =>
+      org === this.scope() &&
+      fence.user === this.userScope() &&
+      fence.revision === this.contextRevision();
+    const key = restaurantKeys.collection(org, kind, ctx);
+    const scope = [...key, fence];
+    const eligible = [
+      'restaurant',
+      'outlet',
+      'area',
+      'table',
+      'station',
+      'menu',
+      'category',
+      'item',
+    ].includes(kind);
+    const intent =
+      entity && eligible && current()
+        ? this.names.begin(scope, [{ queryKey: key }], entity.id, name, current)
+        : undefined;
+    const endCreation =
+      !entity && current()
+        ? beginPendingCreation(this.client, this.pendingCreationKey(org, kind, ctx, fence), name)
+        : undefined;
+    return {
+      success: (result: RestaurantEntity) => {
+        intent?.success(result);
+        endCreation?.();
+      },
+      failure: () => {
+        intent?.failure();
+        endCreation?.();
+      },
+    };
+  }
+  pendingCreationKey(
+    org: string,
+    kind: RestaurantKind,
+    ctx: RestaurantContext,
+    fence = { user: this.userScope(), revision: this.contextRevision() },
+  ) {
+    return ['restaurants', org, 'pending-creations', kind, ctx, fence] as const;
   }
   /** Confirmed configuration entity; no speculative state and no new canonical store. */
   async confirmed(

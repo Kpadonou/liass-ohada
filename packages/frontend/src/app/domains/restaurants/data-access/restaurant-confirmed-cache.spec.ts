@@ -85,13 +85,15 @@ async function loadedDetail() {
   await tick();
   return observer;
 }
-it('PATCH executes one HTTP request, updates loaded detail/list and does not speculate or GET again', async () => {
+it('PATCH executes one HTTP request, updates loaded detail/list and speculates only the name without GETs', async () => {
   await loadedItems('next');
   await loadedDetail();
   requests = [];
   const saving = queries.save(ctx, stockItem().id, { expectedVersion: 1, name: 'New name' });
   const request = http.expectOne((r) => r.method === 'PATCH');
-  expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toEqual(stockItem());
+  expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toMatchObject(
+    stockItem({ name: 'New name' }),
+  );
   const canonical = stockItem({
     name: 'New name',
     version: 2,
@@ -549,3 +551,127 @@ it('reconciles an ambiguous StockItem PATCH without inventing success or keeping
   await rejected;
   expect(requests).toHaveLength(3);
 });
+
+it('optimistic Inventory failure rolls back the name, preserves intent outside cache, and makes no extra HTTP request', async () => {
+  await loadedItems();
+  await loadedDetail();
+  requests = [];
+  const input = { expectedVersion: 1, name: 'Unsaved intent', isActive: false };
+  const saving = queries.save(ctx, stockItem().id, input);
+  const failure = expect(saving).rejects.toMatchObject({ status: 400 });
+  expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toMatchObject({
+    name: input.name,
+    isActive: true,
+    balanceMilli: 12000,
+    version: 1,
+  });
+  http.expectOne((r) => r.method === 'PATCH').flush({}, { status: 400, statusText: 'Rejected' });
+  await failure;
+  expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toEqual(stockItem());
+  expect(input.name).toBe('Unsaved intent');
+  expect(requests).toHaveLength(1);
+});
+it('two HTTP edits resolving B then A retain B canonical state and produce zero GETs', async () => {
+  await loadedItems();
+  await loadedDetail();
+  requests = [];
+  const a = queries.save(ctx, stockItem().id, { expectedVersion: 1, name: 'A' });
+  const ar = http.expectOne((r) => r.method === 'PATCH');
+  const b = queries.save(ctx, stockItem().id, { expectedVersion: 1, name: 'B' });
+  const br = http.expectOne((r) => r.method === 'PATCH');
+  expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toMatchObject({ name: 'B' });
+  br.flush({ data: stockItem({ name: 'B canonical', version: 3 }) });
+  await b;
+  ar.flush({ data: stockItem({ name: 'A canonical', version: 2 }) });
+  await a;
+  expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toEqual(
+    stockItem({ name: 'B canonical', version: 3 }),
+  );
+  expect(requests.map((r) => r.split(' ')[0])).toEqual(['PATCH', 'PATCH']);
+});
+it.each([true, false])(
+  'pending Inventory creation success=%s has no fake resource identity',
+  async (success) => {
+    await loadedItems();
+    requests = [];
+    const saving = queries.save(ctx, null, { name: 'Pending bottle', unit: 'BOTTLE' });
+    const failure = success ? undefined : expect(saving).rejects.toMatchObject({ status: 400 });
+    const key = queries.pendingCreationKey(ctx);
+    const pending =
+      client.getQueryData<{ mutationId: string; name: string; status: string }[]>(key)!;
+    expect(pending).toHaveLength(1);
+    expect(pending[0]).toMatchObject({ name: 'Pending bottle', status: 'pending' });
+    expect(pending[0]).not.toHaveProperty('id');
+    expect(
+      client.getQueryData<CursorData<StockItemResponseData>>(inventoryKeys.items(ctx))!.pages[0]
+        .items,
+    ).toEqual([stockItem()]);
+    const request = http.expectOne((r) => r.method === 'POST');
+    expect(request.request.body).not.toHaveProperty('mutationId');
+    if (success) {
+      request.flush({ data: stockItem({ id: rid(99), name: 'Canonical bottle' }) });
+      await saving;
+    } else {
+      request.flush({}, { status: 400, statusText: 'Rejected' });
+      await failure;
+    }
+    expect(client.getQueryData(key)).toEqual([]);
+    expect(requests).toHaveLength(1);
+  },
+);
+it('configuration name intent remains separate from canonical price and reconciles without exact GET', async () => {
+  const config = TestBed.inject(RestaurantsQueries),
+    api = TestBed.inject(RestaurantsApi);
+  const target = { outletId: ctx.outlet, categoryId: rid(6) };
+  const item = row('item'),
+    key = restaurantKeys.detail(ctx.org, 'item', target, item.id);
+  const list = restaurantKeys.collection(ctx.org, 'item', target);
+  client.setQueryData(key, item);
+  client.setQueryData(list, pages([item]));
+  const fence = { user: ctx.user, revision: ctx.revision };
+  const intent = config.beginInteraction(ctx.org, 'item', target, item, 'New label', fence);
+  expect(client.getQueryData(key)).toMatchObject({ ...item, name: 'New label' });
+  const saving = api.save(
+    ctx.org,
+    'item',
+    target,
+    {
+      expectedVersion: item.version,
+      name: 'New label',
+      price: { amountMinor: 9999, currency: 'XOF' },
+    },
+    item.id,
+  );
+  const canonical = { ...item, name: 'Canonical label', version: 2 };
+  http.expectOne((r) => r.method === 'PATCH').flush({ data: canonical });
+  const result = await saving;
+  intent.success(result.data);
+  await config.confirmed(ctx.org, 'item', target, result.data, false, fence);
+  expect(client.getQueryData(key)).toEqual(canonical);
+  http.expectNone((r) => r.method === 'GET');
+});
+it.each(['org', 'user', 'revision', 'outlet', 'identity'])(
+  'loaded optimistic name is withdrawn and foreign cache remains untouched after %s switch',
+  async (field) => {
+    await loadedItems();
+    await loadedDetail();
+    const foreign = { ...ctx, org: 'foreign', outlet: rid(98) };
+    client.setQueryData(inventoryKeys.item(foreign, stockItem().id), stockItem());
+    const saving = queries.save(ctx, stockItem().id, { expectedVersion: 1, name: 'Old intent' });
+    const rejected = expect(saving).rejects.toMatchObject({ status: 409 });
+    const request = http.expectOne((r) => r.method === 'PATCH');
+    expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toMatchObject({
+      name: 'Old intent',
+    });
+    if (field === 'org') org.set('other');
+    if (field === 'user') user.set('other');
+    if (field === 'revision') revision.set(99);
+    if (field === 'outlet') outlet.set(rid(99));
+    if (field === 'identity') identity.set('new');
+    TestBed.tick();
+    expect(client.getQueryData(inventoryKeys.item(ctx, stockItem().id))).toEqual(stockItem());
+    request.flush({ data: stockItem({ name: 'Old success', version: 2 }) });
+    await rejected;
+    expect(client.getQueryData(inventoryKeys.item(foreign, stockItem().id))).toEqual(stockItem());
+  },
+);

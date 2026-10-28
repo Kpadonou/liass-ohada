@@ -1,3 +1,4 @@
+import { RestaurantPendingCreationComponent } from '../ui/restaurant-pending-creation.component';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { A11yModule } from '@angular/cdk/a11y';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -30,6 +31,7 @@ export interface StockItemDialogData {
     MatCheckboxModule,
     TranslocoModule,
     LiassButtonComponent,
+    RestaurantPendingCreationComponent,
   ],
   templateUrl: './restaurant-stock-item.dialog.html',
 })
@@ -96,6 +98,7 @@ export class RestaurantStockItemDialog {
       if (this.allowed()) {
         this.conflict.set(error instanceof HttpErrorResponse && error.status === 409);
         this.error.set(inventoryError(error, (k) => this.t.translate(k)));
+        this.notification.error(this.error()!);
       }
     } finally {
       this.pending.set(false);

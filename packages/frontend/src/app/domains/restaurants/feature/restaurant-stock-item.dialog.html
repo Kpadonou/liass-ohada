@@ -3,6 +3,9 @@
 </h2>
 <form [formGroup]="form" (ngSubmit)="save()" [attr.aria-busy]="pending()">
   <mat-dialog-content class="space-y-4">
+    @if (!data.item) {
+      <liass-restaurant-pending-creation [queryKey]="queries.pendingCreationKey(data.ctx)" />
+    }
     <mat-form-field appearance="outline" class="w-full">
       <mat-label>{{ 'RESTAURANTS_INVENTORY.NAME' | transloco }}</mat-label>
       <input matInput formControlName="name" autocomplete="off" maxlength="200" cdkFocusInitial />

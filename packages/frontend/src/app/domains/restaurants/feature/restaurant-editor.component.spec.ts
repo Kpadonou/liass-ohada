@@ -36,7 +36,7 @@ describe('Restaurant configuration dialogs', () => {
     user = signal('owner'),
     manage = signal(true);
   const ref = { close: vi.fn() },
-    notification = { success: vi.fn() },
+    notification = { success: vi.fn(), error: vi.fn() },
     changed = vi.fn().mockResolvedValue(undefined),
     denied = vi.fn().mockResolvedValue(undefined);
   let client: QueryClient;
@@ -92,6 +92,8 @@ describe('Restaurant configuration dialogs', () => {
             userScope: user,
             changed,
             confirmed: changed,
+            pendingCreationKey: () => ['pending-editor'],
+            beginInteraction: vi.fn(() => ({ success: vi.fn(), failure: vi.fn() })),
             denied,
             detail: () => ({
               queryKey: ['station-selected', org()],

@@ -87,7 +87,7 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
           },
         },
         { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
-        { provide: NotificationService, useValue: { success: vi.fn() } },
+        { provide: NotificationService, useValue: { success: vi.fn(), error: vi.fn() } },
         {
           provide: RestaurantsQueries,
           useValue: {
@@ -95,6 +95,8 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
             userScope: () => 'owner',
             changed,
             confirmed: changed,
+            pendingCreationKey: () => ['pending-editor'],
+            beginInteraction: vi.fn(() => ({ success: vi.fn(), failure: vi.fn() })),
             denied: vi.fn(),
             detail: () => ({
               queryKey: ['disabled-station'],

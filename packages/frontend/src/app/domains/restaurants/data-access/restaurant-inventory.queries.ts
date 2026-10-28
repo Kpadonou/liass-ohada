@@ -1,3 +1,4 @@
+import { OptimisticNames, beginPendingCreation } from '../../../core/query-cache/optimistic-name';
 import { inject, Injectable } from '@angular/core';
 import {
   infiniteQueryOptions,
@@ -23,6 +24,7 @@ const needsReconciliation = (error: unknown) =>
 @Injectable({ providedIn: 'root' })
 export class RestaurantInventoryQueries {
   readonly api = inject(RestaurantInventoryApi);
+  private readonly names = inject(OptimisticNames);
   private readonly client = inject(QueryClient);
   tracking(ctx: InventoryContext, category: string, menuItem: string, enabled: boolean) {
     return queryOptions({
@@ -187,19 +189,47 @@ export class RestaurantInventoryQueries {
         : []),
     ]);
   }
+  pendingCreationKey(ctx: InventoryContext) {
+    return [...inventoryKeys.root(ctx), 'pending-creations'] as const;
+  }
   async save(
     ctx: InventoryContext,
     id: string | null,
     input: C.CreateStockItemRequest | C.UpdateStockItemRequest,
   ) {
+    this.api.assertCurrent(ctx);
+    const parsed = id
+      ? C.UpdateStockItemRequestSchema.parse(input)
+      : C.CreateStockItemRequestSchema.parse(input);
+    const intent =
+      id && parsed.name
+        ? this.names.begin(
+            inventoryKeys.itemsFamily(ctx),
+            [
+              { queryKey: inventoryKeys.itemsFamily(ctx) },
+              { queryKey: inventoryKeys.itemFamily(ctx, id) },
+              this.linkedTracking(ctx, id),
+            ],
+            id,
+            parsed.name,
+            () => this.api.isCurrent(ctx),
+          )
+        : undefined;
+    const endCreation = !id
+      ? beginPendingCreation(this.client, this.pendingCreationKey(ctx), parsed.name ?? '')
+      : undefined;
     try {
       const result = id
         ? await this.api.update(ctx, id, C.UpdateStockItemRequestSchema.parse(input))
         : await this.api.create(ctx, C.CreateStockItemRequestSchema.parse(input));
       this.api.assertCurrent(ctx);
+      intent?.success(result.data);
+      endCreation?.();
       await this.acceptItem(ctx, result.data, !id);
       return result;
     } catch (error) {
+      intent?.failure();
+      endCreation?.();
       if (needsReconciliation(error) && this.api.isCurrent(ctx)) await this.changed(ctx, id ?? '');
       throw error;
     }

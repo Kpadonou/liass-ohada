@@ -1,3 +1,4 @@
+import { canonicalName } from './optimistic-name';
 import type { InfiniteData } from '@tanstack/angular-query-experimental';
 
 export interface CursorPage<T> {
@@ -10,6 +11,8 @@ export function newestVersion<T extends { version: number }>(
   current: T | undefined,
   incoming: T,
 ): T {
+  current = canonicalName(current);
+  incoming = canonicalName(incoming);
   return current && current.version > incoming.version ? current : incoming;
 }
 

@@ -1,3 +1,4 @@
+import { RestaurantPendingCreationComponent } from '../ui/restaurant-pending-creation.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { Component, computed, effect, inject, signal, viewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl } from '@angular/forms';
@@ -49,6 +50,7 @@ export interface RestaurantEditorData {
     TranslocoModule,
     LiassSearchableSelectComponent,
     RestaurantItemTrackingComponent,
+    RestaurantPendingCreationComponent,
   ],
   templateUrl: './restaurant-editor.component.html',
 })
@@ -67,6 +69,11 @@ export class RestaurantEditorComponent {
   private readonly notification = inject(NotificationService);
   private readonly t = inject(TranslocoService);
   private readonly fb = inject(FormBuilder);
+  readonly pendingCreationKey = this.queries.pendingCreationKey(
+    this.data.org,
+    this.data.kind,
+    this.canonicalContext,
+  );
   readonly pending = signal(false);
   readonly error = signal<string | null>(null);
   readonly accessDenied = signal(false);
@@ -330,6 +337,14 @@ export class RestaurantEditorComponent {
     }
     this.pending.set(true);
     this.error.set(null);
+    const interaction = this.queries.beginInteraction(
+      this.data.org,
+      this.data.kind,
+      this.canonicalContext,
+      this.entity,
+      String(parsed.data.name),
+      { user: this.originalUser, revision: this.originalRevision },
+    );
     let trackingStage = false;
     try {
       // Capture the submitted proposal before any Menu HTTP request or reactive refresh.
@@ -358,6 +373,7 @@ export class RestaurantEditorComponent {
             this.entity?.id,
           );
       if (!result.data) throw new HttpErrorResponse({ status: 404 });
+      interaction.success(result.data);
       if (this.data.kind === 'item') {
         const saved = MenuItemSchema.parse(result.data);
         this.savedItemId.set(saved.id);
@@ -383,6 +399,7 @@ export class RestaurantEditorComponent {
         this.ref.close(result.data);
       }
     } catch (error) {
+      interaction.failure();
       if (
         this.queries.scope() !== this.data.org ||
         this.queries.userScope() !== this.originalUser ||
@@ -406,12 +423,19 @@ export class RestaurantEditorComponent {
             : (this.tracking()?.error() ?? this.t.translate('RESTAURANTS_TRACKING.SAVE_ERROR'))
           : restaurantError(error, (key) => this.t.translate(key)),
       );
+      if (!trackingStage && this.error()) this.notification.error(this.error()!);
       if (error instanceof HttpErrorResponse && error.status === 409) {
         this.conflict.set(!!this.entity);
         this.refreshed.set(false);
         await this.queries.changed(this.data.org, this.data.kind, this.data.context);
         if (this.entity) await this.refreshConflict();
       }
+      if (
+        !trackingStage &&
+        error instanceof HttpErrorResponse &&
+        (error.status === 0 || error.status === 408 || error.status >= 500)
+      )
+        await this.queries.changed(this.data.org, this.data.kind, this.canonicalContext);
       if (error instanceof HttpErrorResponse && error.status === 403) {
         this.accessDenied.set(true);
         await this.queries.denied(this.data.org);

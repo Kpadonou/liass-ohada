@@ -42,7 +42,7 @@ const api = {
   movement: vi.fn(),
 };
 const ref = { close: vi.fn(), disableClose: false };
-const notification = { success: vi.fn() };
+const notification = { success: vi.fn(), error: vi.fn() };
 let data: Record<string, unknown>;
 beforeEach(() => {
   vi.clearAllMocks();

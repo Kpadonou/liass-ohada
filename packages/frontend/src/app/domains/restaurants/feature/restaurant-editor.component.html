@@ -2,8 +2,11 @@
   {{ (data.entity ? 'RESTAURANTS.UI.EDIT' : 'RESTAURANTS.UI.ADD') | transloco }} ·
   {{ 'RESTAURANTS.UI.KINDS.' + data.kind | transloco }}
 </h2>
-<form [formGroup]="form" (ngSubmit)="submit()">
+<form [formGroup]="form" (ngSubmit)="submit()" [attr.aria-busy]="pending()">
   <mat-dialog-content class="space-y-4">
+    @if (!data.entity && pendingCreationKey) {
+      <liass-restaurant-pending-creation [queryKey]="pendingCreationKey" />
+    }
     @if (data.contextName) {
       <p class="text-sm text-app-text-secondary">{{ data.contextName }}</p>
     }
