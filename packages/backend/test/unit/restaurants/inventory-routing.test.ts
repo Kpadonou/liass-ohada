@@ -4,6 +4,7 @@ import {
   INVENTORY_ROUTES,
   TRACKING_PATH,
   TRACKING_ROUTES,
+  INVENTORY_BUSINESS_ROUTES,
 } from "@/lambda/domains/restaurants/inventory-routes";
 jest.mock("@/lambda/domains/restaurants/restaurant-handler", () => ({
   restaurantsHandler: (operation: string) => async () => ({
@@ -34,6 +35,42 @@ const routes = [
     operation: `tracking-${method}`,
   })),
 ];
+test.each(INVENTORY_BUSINESS_ROUTES)(
+  "Canonical exact $method $path dispatches with its original operation authorization",
+  async (route) => {
+    const expected = routes.find(
+      (r) => r.method === route.method && r.path === route.path,
+    )!;
+    const event = {
+      routeKey: `${route.method} ${route.path}`,
+      rawPath: route.path.replace(/\{\w+\}/g, "canonical-id"),
+      pathParameters: {
+        outletId: "canonical-id",
+        stockItemId: "canonical-id",
+        menuItemId: "canonical-id",
+      },
+      requestContext: { http: { method: route.method } },
+    };
+    const response = await handler(event as never);
+    expect(JSON.parse(response.body).operation).toBe(expected.operation);
+  },
+);
+
+test.each([
+  ["DELETE", "items/stock-id"],
+  ["PUT", "items"],
+  ["POST", "menu-items/menu-id/tracking"],
+  ["GET", "items/stock-id/unknown"],
+  ["OPTIONS", "items/stock-id/movements"],
+])("Exact dispatcher rejects unsupported %s %s", async (method, suffix) => {
+  const path = `/restaurants/outlets/{outletId}/inventory/${suffix}`;
+  const response = await handler({
+    routeKey: `${method} ${path}`,
+    rawPath: path,
+    requestContext: { http: { method } },
+  } as never);
+  expect(response.statusCode).toBe(404);
+});
 test.each(routes)(
   "Inventory method routing preserves exact $method $path handler and parameters",
   async (route) => {

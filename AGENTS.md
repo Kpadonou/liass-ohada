@@ -27,7 +27,7 @@ Before adding or changing backend AWS resources, inspect `packages/backend/lib/s
 - Domain endpoints, Lambdas, integrations, permissions, and Log Groups **MUST** be placed in the correct existing domain nested stack; they **MUST NOT** be added directly to the API core unless genuinely shared or foundational.
 - A new nested stack **REQUIRES** a coherent new business domain and justified expected growth. Do not create stacks per endpoint, feature, or implementation lot.
 - The shared API, DynamoDB table, Cognito resources, and authorizer **MUST NOT** be duplicated. Stateful resources **MUST NOT** move without an explicit migration plan and an inspected `cdk diff`.
-- CDK changes **REQUIRE** shared/backend builds, relevant tests, `cdk synth`, the existing resource-count npm script, `cdk diff` when credentials are available, and counts for every affected template. No application template may exceed 350 CloudFormation resources.
+- CDK changes **REQUIRE** shared/backend builds, relevant tests, `cdk synth`, the existing resource-count npm script, `cdk diff` when credentials are available, and counts for every affected template. Other application templates retain the 350-resource guard. Restaurants uses the explicitly approved policy: normal below 375; warning and architecture review at 375–399; hard internal stop at 400 or more. Thresholds must not be silently increased; approaching the hard gate requires deliberate stack-decomposition review.
 - The final report **MUST** name the owning stack, list resources added or replaced, give before/after counts, identify any stateful-resource impact, and report synth, resource-count, diff, and deployment status. A TypeScript build alone does not establish deployment safety.
 
 ## Codex skills

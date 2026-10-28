@@ -1,5 +1,5 @@
 const base = "/restaurants/outlets/{outletId}/inventory/items";
-// Explicit business methods leave OPTIONS to the shared HTTP API CORS responder.
+// Legacy dispatcher compatibility during deployment only; never register these groups.
 export const INVENTORY_GATEWAY_PATH =
   "/restaurants/outlets/{outletId}/inventory/{proxy+}";
 export const INVENTORY_GATEWAY_METHODS = [
@@ -28,3 +28,20 @@ export const INVENTORY_ROUTES = [
     path: `${base}/{stockItemId}/movements`,
   },
 ] as const;
+
+/** Canonical business surface shared by Gateway registration and dispatcher checks. */
+export const INVENTORY_BUSINESS_ROUTES = [
+  ...INVENTORY_ROUTES.map((route) => ({
+    ...route,
+    handler: "management" as const,
+    authentication: "JWT" as const,
+  })),
+  ...TRACKING_ROUTES.map((method) => ({
+    method,
+    path: TRACKING_PATH,
+    handler: "tracking" as const,
+    authentication: "JWT" as const,
+  })),
+] as const;
+/** Transport grant only; exact routes and per-operation authorization remain authoritative. */
+export const INVENTORY_INVOKE_PATH = "/restaurants/outlets/*/inventory/*";

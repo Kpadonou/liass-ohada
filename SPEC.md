@@ -150,7 +150,7 @@ The authoritative CDK resource-placement and validation rules are defined in [`p
 - A new nested stack requires a coherent durable domain boundary and justified resource growth. Do not split infrastructure per endpoint, implementation lot, or small feature.
 - Existing nested stacks must not be renamed or reorganized during ordinary migration work.
 - Existing stateful resources, including the shared DynamoDB table and Cognito resources, retain their ownership unless an explicit reviewed migration plan requires otherwise. Nested stacks consume typed references and must not duplicate the shared API, table, User Pool, or authorizer.
-- Every synthesized application template must remain at or below 350 CloudFormation resources. CDK resource changes require synthesis, the repository resource-count guard, and `cdk diff` when credentials are available.
+- Other synthesized application templates retain the 350-resource internal guard. Restaurants uses the approved internal policy: normal below 375, resource-pressure warning and architecture review at 375–399, hard stop at 400 or more. Thresholds must not be silently increased. Near the Restaurants hard gate, evaluate deliberate nested-stack decomposition rather than broadening invocation permissions, restoring greedy routes or merging unrelated handlers to save resources. No decomposition boundary is selected now. AWS service quotas remain external limits, not operating targets. CDK resource changes require synthesis, the repository resource-count guard, and `cdk diff` when credentials are available.
 - Domain separation does not require premature microservices. The existing API Gateway may remain the principal API boundary.
 
 ---

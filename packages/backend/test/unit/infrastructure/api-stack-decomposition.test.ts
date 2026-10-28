@@ -8,11 +8,7 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
-import {
-  INVENTORY_GATEWAY_PATH,
-  INVENTORY_GATEWAY_METHODS,
-  TRACKING_PATH,
-} from "../../../lambda/domains/restaurants/inventory-routes";
+import { INVENTORY_BUSINESS_ROUTES } from "../../../lambda/domains/restaurants/inventory-routes";
 import { LiassOhadaBackendStack } from "../../../lib/liass-ohada-backend-stack";
 import {
   AccountingApiStack,
@@ -395,13 +391,13 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(77);
-    expect(routes).toHaveLength(98);
+    expect(routes).toHaveLength(102);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
     ).toHaveLength(77);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(87);
+    ).toHaveLength(85);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -463,9 +459,19 @@ describe("API stack decomposition", () => {
     const original = routes.find(
       (route) => route.routeKey === "GET /restaurants/outlets/{outletId}",
     )!;
-    for (const routeKey of INVENTORY_GATEWAY_METHODS.map(
-      (method) =>
-        `${method} ${method === "PUT" || method === "DELETE" ? TRACKING_PATH : INVENTORY_GATEWAY_PATH}`,
+    const actualInventoryKeys = routes
+      .filter((r) => String(r.routeKey).includes("/inventory/"))
+      .map((r) => String(r.routeKey))
+      .sort();
+    expect(actualInventoryKeys).toEqual(
+      INVENTORY_BUSINESS_ROUTES.map((r) => `${r.method} ${r.path}`).sort(),
+    );
+    expect(actualInventoryKeys).toHaveLength(9);
+    expect(actualInventoryKeys.join(" ")).not.toContain("{proxy+}");
+    for (const route of INVENTORY_BUSINESS_ROUTES)
+      expect(route.authentication).toBe("JWT");
+    for (const routeKey of INVENTORY_BUSINESS_ROUTES.map(
+      (route) => `${route.method} ${route.path}`,
     )) {
       const route = routes.find((r) => r.routeKey === routeKey)!;
       expect(route).toBeDefined();
@@ -496,7 +502,7 @@ describe("API stack decomposition", () => {
         (item): item is lambda.CfnPermission =>
           item instanceof lambda.CfnPermission,
       );
-    expect(permissions).toHaveLength(8);
+    expect(permissions).toHaveLength(6);
     const arns = permissions.map((permission) => {
       expect(permission.principal).toBe("apigateway.amazonaws.com");
       expect(restaurants.resolve(permission.sourceAccount)).toBe(
@@ -504,17 +510,14 @@ describe("API stack decomposition", () => {
       );
       return JSON.stringify(restaurants.resolve(permission.sourceArn));
     });
-    expect(arns.filter((arn) => arn.includes("/inventory/items"))).toHaveLength(
-      2,
-    );
+    expect(arns.filter((arn) => arn.includes("/inventory/"))).toHaveLength(1);
     expect(arns.join(" ")).toContain(
-      "/$default/*/restaurants/outlets/*/inventory/items",
+      "/$default/*/restaurants/outlets/*/inventory/*",
     );
     expect(arns.join(" ")).not.toContain("/$default/*/*");
-    expect(arns.join(" ")).toContain("/inventory/menu-items/*/tracking");
     expect(
       Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-    ).toBeLessThanOrEqual(344);
+    ).toBe(345); // Unit fixture omits the deployed CDK metadata resource.
   });
 
   test.each([
@@ -620,9 +623,9 @@ describe("API stack decomposition", () => {
     },
   );
 
-  test.each(["GET", "PUT", "DELETE"])(
-    "Inventory tracking %s invoke permission covers the selected Gateway route template",
-    (method) => {
+  test.each(INVENTORY_BUSINESS_ROUTES)(
+    "Inventory $method $path invoke permission covers the exact selected Gateway route template",
+    ({ method, path }) => {
       const restaurants = constructs.find(
         (item): item is RestaurantsApiStack =>
           item instanceof RestaurantsApiStack,
@@ -659,7 +662,7 @@ describe("API stack decomposition", () => {
               .join(".*") +
             "$",
         ).test(candidate);
-      const routeKey = `${method} ${method === "GET" ? INVENTORY_GATEWAY_PATH : TRACKING_PATH}`;
+      const routeKey = `${method} ${path}`;
       const route = owned.find(
         (item): item is apigwv2.CfnRoute =>
           item instanceof apigwv2.CfnRoute && item.routeKey === routeKey,
@@ -674,27 +677,23 @@ describe("API stack decomposition", () => {
         permissions.some((p) => matches(arn(p), routeArn(verb, template))),
       ).toBe(true);
       const trackingPermission = permissions.find(
-        (p) => p.node.id === "InventoryTrackingInvoke",
+        (p) => p.node.id === "InventoryInvoke",
       )!;
       const trackingArn = arn(trackingPermission);
       expect(trackingArn).toBe(
-        "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/restaurants/outlets/*/inventory/menu-items/*/tracking",
+        "arn:aws:execute-api:eu-west-3:123456789012:review-api/$default/*/restaurants/outlets/*/inventory/*",
       );
-      if (method !== "GET") {
-        expect(matches(trackingArn, routeArn(verb, template))).toBe(true);
-        expect(
-          permissions.some((p) =>
-            matches(arn(p), routeArn(verb, INVENTORY_GATEWAY_PATH)),
-          ),
-        ).toBe(false);
-        expect(
-          matches(trackingArn, routeArn(verb, INVENTORY_GATEWAY_PATH)),
-        ).toBe(false);
-      }
+      expect(matches(trackingArn, routeArn(verb, template))).toBe(true);
+      expect(route.authorizationType).toBe("JWT");
+      expect(template).not.toContain("{proxy+");
+      expect(
+        permissions.filter(
+          (p) =>
+            arn(p).includes("/inventory/") &&
+            matches(arn(p), routeArn(verb, template)),
+        ),
+      ).toHaveLength(1);
       for (const path of [
-        "/restaurants/outlets/{outletId}/inventory/items",
-        "/restaurants/outlets/{outletId}/inventory/items/{stockItemId}/movements",
-        "/restaurants/outlets/{outletId}/inventory/menu-items/{menuItemId}/tracking/extra",
         "/restaurants/outlets/{outletId}/staff",
         "/restaurants/outlets/{outletId}/orders",
         "/accounting/accounts",
@@ -710,7 +709,7 @@ describe("API stack decomposition", () => {
       expect(trackingArn).not.toContain("/$default/*/*");
       expect(
         Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-      ).toBeLessThanOrEqual(344);
+      ).toBe(345);
     },
   );
 
@@ -1262,7 +1261,7 @@ describe("API stack decomposition", () => {
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
     ).toBe(0);
-    expect(Object.keys(after.Resources).length).toBeLessThanOrEqual(344);
+    expect(Object.keys(after.Resources).length).toBe(345);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(
         (r) => (r as { Type: string }).Type === type,

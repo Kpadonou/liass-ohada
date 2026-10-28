@@ -27,7 +27,7 @@ Welcome to the liass-ohada backend project — an AWS Cloud-Native Serverless ER
 
 Domain-specific stateless resources belong to the existing Accounting, Identity/Cabinet, Projects, or Treasury nested stack; the API core is reserved for shared and foundational infrastructure. Before changing CDK resources, read [`docs/cdk-nested-stack-architecture.md`](docs/cdk-nested-stack-architecture.md) and inspect `lib/stacks/api-domain-stacks.ts`.
 
-No synthesized application template may exceed 350 CloudFormation resources. After a CDK resource change, synthesis and resource counting are mandatory, and `cdk diff` is required when credentials are available. Use the scripts currently declared in this package rather than bypassing them:
+Other application templates retain the 350-resource internal guard. Restaurants is normal below 375, requires a resource-pressure warning and architecture review at 375–399, and stops at 400 or more; see the nested-stack architecture policy. After a CDK resource change, synthesis and resource counting are mandatory, and `cdk diff` is required when credentials are available. Use the scripts currently declared in this package rather than bypassing them:
 
 ```bash
 npm run aws:synth

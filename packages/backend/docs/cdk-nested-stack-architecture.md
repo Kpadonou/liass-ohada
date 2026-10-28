@@ -14,7 +14,7 @@ LP-2 reviewed exception: DataStack also owns the dedicated Restaurants business 
 - Existing stateful resources **MUST** remain in their current owning stacks during ordinary feature work. Nested stacks consume typed references to them.
 - A new nested stack **MAY** be introduced only for a coherent new business domain that does not fit an existing stack and whose expected resource growth justifies a separate template.
 - The application **MUST NOT** be fragmented into one nested stack per endpoint, implementation lot, or small feature. Stack boundaries **SHOULD** preserve stable business-domain cohesion.
-- Every synthesized application CloudFormation template **MUST** contain no more than **350 resources**.
+- Other application templates retain the **350-resource** internal guard. Restaurants is **NORMAL below 375**, requires an explicit pressure warning and architecture review at **375–399**, and **MUST STOP at 400 or more**. These thresholds must not be silently increased; AWS service quotas are external limits, not operating targets.
 - Any CDK resource change **REQUIRES** CDK synthesis followed by the repository resource-count guard.
 
 The purpose of nesting is not necessarily to reduce the application's total number of resources. It is to keep each independently synthesized CloudFormation template safely below its per-template limit while retaining coherent ownership.
@@ -136,6 +136,36 @@ allowlist are retained without broadening any invoke permission. GET remains on
 its existing protected Inventory group and is covered by the existing Outlet GET
 grant. Managed anonymous CORS and all resource counts above remain unchanged.
 
+## Exact Inventory routes and current Restaurants budget
+
+RESTO-INV-1D-B-FIX1-INFRA3 supersedes the historical Inventory route groups and
+344-resource target above. Nine exact JWT-protected Inventory business routes
+are generated from `INVENTORY_BUSINESS_ROUTES`; no Inventory greedy route is
+registered. The dispatcher retains exact method/path operation authorization.
+One `InventoryInvoke` grant replaces the collection/member/tracking grants,
+restricted dynamically to the existing API, account, region and `$default` stage
+at `/restaurants/outlets/*/inventory/*`. It is a transport grant: only the nine
+registered methods/paths can execute, JWT is required, and membership,
+RESTAURANTS ProductAccess, scope and OWNER/MANAGER permission remain enforced.
+OPTIONS has no business integration and remains anonymous shared Gateway CORS.
+Legacy dispatcher keys exist only to tolerate deployment transitions, not as
+registered business routes.
+
+Counts are **346 Restaurants / 278 API core**, with **77 Lambdas, 77 integrations,
+102 routes and 85 invoke permissions** (one Inventory-specific permission).
+Tests verify every canonical route against the synthesized integration,
+authorizer, selected template and Inventory grant, plus exact dispatcher behavior
+and CORS. A route change without permission coverage must fail the invariant.
+
+The previous 344 cap encouraged route compression that obscured invocation
+semantics. Correct exact routes take priority over that historical internal
+target. The resource-count script reports pressure at 375–399 and fails at 400,
+including frozen Restaurants release templates; generic threshold overrides
+cannot relax this Restaurants policy. Near 400, perform deliberate coherent
+nested-stack decomposition review rather than widening grants, restoring greedy
+routes or combining unrelated handlers solely to reduce counts. No split or
+future domain boundary is selected in this lot.
+
 ## Stateful-resource safeguards
 
 Ordinary feature work **MUST NOT** move resources whose replacement could destroy data or disconnect production integrations. Protected resources include:
@@ -196,7 +226,7 @@ git diff --check
 
 The guard is implemented by [`scripts/count-cdk-resources.cjs`](../scripts/count-cdk-resources.cjs). Commands **MUST** be confirmed against `packages/backend/package.json` before use because script names may evolve.
 
-If a domain template approaches 350 resources, do not silently continue. Audit the domain boundary and decide whether coherent, stable subdomains justify subdivision. Do not split arbitrarily by endpoint count or resource count alone.
+For Restaurants, report pressure at 375 and review deliberate decomposition before the 400-resource hard stop. Other domain templates retain the 350-resource guard. Audit coherent domain boundaries; do not split arbitrarily by endpoint count or resource count alone.
 
 ## New business domains
 

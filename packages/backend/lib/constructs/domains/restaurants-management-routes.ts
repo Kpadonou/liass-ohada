@@ -11,9 +11,8 @@ import * as path from "path";
 import { DomainProps } from "./domain-constructs-factory";
 import { RESTAURANTS_ROUTES } from "../../../lambda/domains/restaurants/restaurant-routes";
 import {
-  INVENTORY_GATEWAY_PATH,
-  INVENTORY_GATEWAY_METHODS,
-  TRACKING_PATH,
+  INVENTORY_BUSINESS_ROUTES,
+  INVENTORY_INVOKE_PATH,
 } from "../../../lambda/domains/restaurants/inventory-routes";
 
 /** Same reviewed bounded-invocation pattern as GuestRouteIntegration. */
@@ -70,23 +69,26 @@ export function addRestaurantsManagementRoutes(
       ),
     });
   }
-  // ANY captures anonymous preflight before the shared CORS responder.
-  // Five method groups replace two ANY + three tracking routes at zero net cost.
-  // Lambda invoke SourceArn is evaluated against the selected Gateway route
-  // template. Keep tracking-only writes exact so the existing tracking-family
-  // grant applies; a greedy PUT/DELETE would require a broader Inventory grant.
-  for (const method of INVENTORY_GATEWAY_METHODS)
-    new apigw.HttpRoute(scope, `Inventory${method}RouteGroup`, {
+  // Exact business routes leave anonymous OPTIONS to shared Gateway CORS.
+  for (const route of INVENTORY_BUSINESS_ROUTES) {
+    // Preserve the five existing route resource identities while removing their proxy paths.
+    const retainedGroup =
+      route.handler === "tracking"
+        ? route.method !== "GET"
+        : ["list", "create", "update"].includes(route.operation);
+    const routeId = retainedGroup
+      ? `Inventory${route.method}RouteGroup`
+      : `Inventory-${route.method}-${route.path}`;
+    new apigw.HttpRoute(scope, routeId, {
       httpApi: props.api,
       authorizer: props.authorizer,
       integration,
       routeKey: apigw.HttpRouteKey.with(
-        method === "PUT" || method === "DELETE"
-          ? TRACKING_PATH
-          : INVENTORY_GATEWAY_PATH,
-        apigw.HttpMethod[method],
+        route.path,
+        apigw.HttpMethod[route.method],
       ),
     });
+  }
   for (const route of outlets)
     fn.addPermission(`Outlet-${route.name}-Invoke`, {
       principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
@@ -97,17 +99,9 @@ export function addRestaurantsManagementRoutes(
         stage,
       ),
     });
-  for (const [name, inventoryPath] of [
-    ["InventoryCollectionInvoke", "/restaurants/outlets/*/inventory/items"],
-    ["InventoryMemberInvoke", "/restaurants/outlets/*/inventory/items/*"],
-    [
-      "InventoryTrackingInvoke",
-      "/restaurants/outlets/*/inventory/menu-items/*/tracking",
-    ],
-  ])
-    fn.addPermission(name, {
-      principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
-      sourceAccount: fn.stack.account,
-      sourceArn: props.api.arnForExecuteApi("*", inventoryPath, stage),
-    });
+  fn.addPermission("InventoryInvoke", {
+    principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+    sourceAccount: fn.stack.account,
+    sourceArn: props.api.arnForExecuteApi("*", INVENTORY_INVOKE_PATH, stage),
+  });
 }
