@@ -110,6 +110,17 @@ afterEach(() => {
   TestBed.resetTestingModule();
 });
 describe('Inventory collection and detail', () => {
+  it('has no page-level Outlet selector, including during context recovery', () => {
+    outlet.set('');
+    const f = TestBed.createComponent(RestaurantInventoryPage);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('liass-searchable-select, mat-select')).toBeNull();
+    expect(f.nativeElement.textContent).toContain(
+      fr.RESTAURANTS.CONTEXT.RESOLUTION['access-changed'],
+    );
+    expect(api.items).not.toHaveBeenCalled();
+  });
+
   it('keeps inactive detail editable and readable and enables movements after canonical reactivation', async () => {
     const inactive = stockItem({ isActive: false });
     api.item.mockResolvedValue(inactive);

@@ -1,3 +1,4 @@
+import { restaurantOutletGuard } from '../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
 import {
   appRootRedirectGuard,
@@ -387,12 +388,14 @@ describe('SALES routes', () => {
 it('keeps Setup and Menu behind RESTAURANTS ProductAccess without future modules', () => {
   const product = shellRoute()?.children?.find((route) => route.path === 'restaurants');
   expect(product?.children?.map((route) => route.path)).toEqual([
+    'context',
     'outlets/:outletId/sessions/:sessionId/receipt',
     'checkout',
     'kitchen',
     'service/outlets/:outletId/sessions/:guestSessionId',
     'service',
     'setup/team',
+    'inventory',
     '',
     'setup',
     'setup/locations',
@@ -402,7 +405,16 @@ it('keeps Setup and Menu behind RESTAURANTS ProductAccess without future modules
     'menu',
   ]);
   for (const route of product?.children ?? []) {
-    expect(route.canActivate).toHaveLength(1);
+    const operational = [
+      'service',
+      'service/outlets/:outletId/sessions/:guestSessionId',
+      'kitchen',
+      'checkout',
+      'inventory',
+      'outlets/:outletId/sessions/:sessionId/receipt',
+    ].includes(route.path ?? '');
+    expect(route.canActivate).toHaveLength(operational ? 2 : 1);
+    expect(route.canActivate?.includes(restaurantOutletGuard)).toBe(operational);
     expect(route.data?.['productCode']).toBe('RESTAURANTS');
   }
 });

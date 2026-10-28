@@ -1,15 +1,5 @@
 import { toSignal } from '@angular/core/rxjs-interop';
-import {
-  Component,
-  DestroyRef,
-  computed,
-  effect,
-  inject,
-  linkedSignal,
-  signal,
-} from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { Component, computed, effect, inject, linkedSignal, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,7 +19,6 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassSkeletonComponent } from '../../../shared/ui/skeleton/skeleton.component';
 import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
-import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-select/searchable-select.component';
 import { LiassTablePreferencesDialogComponent } from '../../../shared/ui/table-preferences/table-preferences-dialog.component';
 import {
   loadTablePreferences,
@@ -45,8 +34,6 @@ import {
   selector: 'liass-restaurant-inventory',
   host: { class: 'block' },
   imports: [
-    FormsModule,
-    LiassSearchableSelectComponent,
     TranslocoModule,
     MatButtonModule,
     MatIconModule,
@@ -122,9 +109,6 @@ export class RestaurantInventoryPage {
     required: !['UNIT', 'UPDATED'].includes(id),
   }));
   readonly visibleColumns = signal(loadTablePreferences('restaurants.inventory', this.columns));
-  readonly outletOptions = computed(() =>
-    this.outlet.outlets().map((item) => ({ value: item.id, label: item.name })),
-  );
   actorLabel(id: string) {
     return this.t.translate(
       id === this.ctx().user ? 'RESTAURANTS_INVENTORY.YOU' : 'RESTAURANTS_INVENTORY.TEAM_MEMBER',
@@ -151,7 +135,6 @@ export class RestaurantInventoryPage {
   }
   readonly actions: InventoryMovementAction[] = ['RECEIPT', 'LOSS', 'ADJUSTMENT'];
   constructor() {
-    this.outlet.use(inject(DestroyRef), inject(ActivatedRoute), () => this.allowed());
     effect(() => {
       if (!this.allowed()) this.selected.set(null);
     });

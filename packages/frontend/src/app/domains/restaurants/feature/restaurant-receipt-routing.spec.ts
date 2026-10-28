@@ -1,3 +1,4 @@
+import { RestaurantOutletRouting } from '../data-access/restaurant-outlet-routing';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
@@ -13,6 +14,7 @@ describe('Receipt direct refresh preserves cashier document route', () => {
     TestBed.configureTestingModule({
       imports: [RestaurantsPage],
       providers: [
+        { provide: RestaurantOutletRouting, useValue: { routeReady: () => true } },
         { provide: Router, useValue: router },
         { provide: RestaurantAccessState, useValue: { mode } },
       ],

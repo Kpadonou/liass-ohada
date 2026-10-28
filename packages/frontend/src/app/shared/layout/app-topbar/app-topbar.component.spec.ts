@@ -1,3 +1,4 @@
+import { RestaurantOutletRouting } from '../../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import { signal } from '@angular/core';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
@@ -154,6 +155,7 @@ describe('AppTopbarComponent', () => {
         }),
       ],
       providers: [
+        { provide: RestaurantOutletRouting, useValue: { routeReady: () => true } },
         { provide: RestaurantOutletContext, useValue: { attached: () => false } },
         provideRouter([]),
         {

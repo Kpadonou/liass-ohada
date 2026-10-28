@@ -5,7 +5,15 @@
     state.mode() === 'kitchen' ||
     state.mode() === 'checkout'
   ) {
-    <router-outlet />
+    @if (outlets.routeReady()) {
+      <router-outlet />
+    } @else {
+      <liass-card
+        ><div class="space-y-3" role="status" aria-busy="true">
+          <p>{{ 'RESTAURANTS.ACCESS.CHECKING' | transloco }}</p>
+          <liass-skeleton variant="block" /></div
+      ></liass-card>
+    }
   } @else if (state.mode() === 'checking') {
     <liass-card
       ><div class="space-y-3" role="status" aria-busy="true">

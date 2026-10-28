@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { Router, provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
@@ -70,6 +71,7 @@ describe('Cashier occupied-table discovery and context', () => {
     client.clear();
   });
   const create = () => {
+    TestBed.inject(RestaurantOutletContext).setRouteActive(true);
     const fixture = TestBed.createComponent(RestaurantCheckoutPage);
     fixture.detectChanges();
     return fixture;

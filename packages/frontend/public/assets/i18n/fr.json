@@ -85,7 +85,10 @@
       "L": "L",
       "ML": "mL"
     },
-    "SOURCES": { "MANUAL": "Saisie manuelle", "BUSINESS_EVENT": "Mouvement automatique" },
+    "SOURCES": {
+      "MANUAL": "Saisie manuelle",
+      "BUSINESS_EVENT": "Mouvement automatique"
+    },
     "ERRORS": {
       "NAME": "Saisissez un nom de 1 à 200 caractères.",
       "QUANTITY": "Saisissez une quantité positive avec au plus trois décimales.",
@@ -4521,7 +4524,9 @@
     "UX": {
       "CONFIGURATION": "Configuration",
       "PAGES": {
-        "inventory": { "TITLE": "Stock" },
+        "inventory": {
+          "TITLE": "Stock"
+        },
         "overview": {
           "TITLE": "Tableau de bord",
           "DESCRIPTION": "Retrouvez la configuration de votre restaurant et de sa carte."
@@ -5098,7 +5103,17 @@
       "ACTIVE": "Établissement actif",
       "CHOOSE": "Choisir un établissement",
       "SEARCH": "Rechercher un établissement",
-      "CHOOSE_HINT": "Choisissez l’établissement actif dans la barre supérieure."
+      "CHOOSE_HINT": "Choisissez l’établissement actif dans la barre supérieure.",
+      "ENTRY_DESCRIPTION": "Choisissez votre établissement pour accéder à vos opérations.",
+      "BACK_TO_PRODUCT": "Retour à Liass-Resto",
+      "RESOLUTION": {
+        "selection-required": "Sélectionnez un établissement accessible.",
+        "no-accessible-context": "Aucun établissement actif ne vous est accessible. Configurez un établissement ou contactez votre responsable.",
+        "invalid-selection": "L’établissement demandé n’est pas accessible. Revenez à Liass-Resto ou choisissez un établissement disponible.",
+        "access-changed": "Votre contexte de travail a changé. Actualisez vos accès pour continuer.",
+        "error": "Impossible de charger vos établissements. Réessayez."
+      },
+      "CHANGE_WORKSPACE": "Changer d’espace de travail"
     },
     "GUEST": {
       "LOADING": "Identification de votre table",

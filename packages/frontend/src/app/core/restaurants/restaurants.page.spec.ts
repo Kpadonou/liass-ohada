@@ -1,3 +1,4 @@
+import { RestaurantOutletRouting } from '../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { RestaurantAccessState } from '../../domains/restaurants/data-access/restaurant-access-state';
 import { signal, computed } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -20,11 +21,13 @@ const translations = {
 describe('Liass-Resto product navigation', () => {
   const availability = signal<ProductAvailability>('UNKNOWN'),
     read = signal(true),
-    menu = signal(true);
+    menu = signal(true),
+    outletReady = signal(true);
   beforeEach(() => {
     availability.set('UNKNOWN');
     read.set(true);
     menu.set(true);
+    outletReady.set(true);
     TestBed.configureTestingModule({
       imports: [
         RestaurantsPage,
@@ -35,6 +38,7 @@ describe('Liass-Resto product navigation', () => {
         }),
       ],
       providers: [
+        { provide: RestaurantOutletRouting, useValue: { routeReady: outletReady } },
         provideRouter([]),
         {
           provide: RestaurantAccessState,
@@ -64,6 +68,16 @@ describe('Liass-Resto product navigation', () => {
     expect(f.nativeElement.querySelector('router-outlet')).not.toBeNull();
     expect(f.nativeElement.querySelector('nav')).toBeNull();
     expect(f.nativeElement.querySelector('liass-page-header')).toBeNull();
+  });
+  it('hides operational content immediately when the resolved Outlet becomes invalid', () => {
+    availability.set('AVAILABLE');
+    const f = TestBed.createComponent(RestaurantsPage);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('router-outlet')).not.toBeNull();
+    outletReady.set(false);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('router-outlet')).toBeNull();
+    expect(f.nativeElement.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
   it('announces access loading and hides business navigation', () => {
     const f = TestBed.createComponent(RestaurantsPage);

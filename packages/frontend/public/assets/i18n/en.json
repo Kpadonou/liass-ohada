@@ -85,7 +85,10 @@
       "L": "L",
       "ML": "mL"
     },
-    "SOURCES": { "MANUAL": "Manual entry", "BUSINESS_EVENT": "Automatic movement" },
+    "SOURCES": {
+      "MANUAL": "Manual entry",
+      "BUSINESS_EVENT": "Automatic movement"
+    },
     "ERRORS": {
       "NAME": "Enter a name between 1 and 200 characters.",
       "QUANTITY": "Enter a positive quantity with up to three decimal places.",
@@ -4521,7 +4524,9 @@
     "UX": {
       "CONFIGURATION": "Configuration",
       "PAGES": {
-        "inventory": { "TITLE": "Inventory" },
+        "inventory": {
+          "TITLE": "Inventory"
+        },
         "overview": {
           "TITLE": "Dashboard",
           "DESCRIPTION": "Review your restaurant configuration and menu."
@@ -5098,7 +5103,17 @@
       "ACTIVE": "Active establishment",
       "CHOOSE": "Choose an establishment",
       "SEARCH": "Search establishments",
-      "CHOOSE_HINT": "Choose the active establishment in the top bar."
+      "CHOOSE_HINT": "Choose the active establishment in the top bar.",
+      "ENTRY_DESCRIPTION": "Choose your establishment to continue to your operations.",
+      "BACK_TO_PRODUCT": "Back to Liass-Resto",
+      "RESOLUTION": {
+        "selection-required": "Select an accessible establishment.",
+        "no-accessible-context": "No active establishment is accessible. Configure an establishment or contact your manager.",
+        "invalid-selection": "The requested establishment is unavailable. Return to Liass-Resto or choose an available establishment.",
+        "access-changed": "Your working context has changed. Refresh your access to continue.",
+        "error": "Unable to load your establishments. Try again."
+      },
+      "CHANGE_WORKSPACE": "Change workspace"
     },
     "GUEST": {
       "LOADING": "Identifying your table",

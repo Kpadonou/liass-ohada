@@ -1,3 +1,8 @@
+import {
+  RestaurantOutletRouting,
+  restaurantOutletGuard,
+} from '../data-access/restaurant-outlet-routing';
+import { RestaurantOutletResolutionPage } from './restaurant-outlet-resolution.page';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -63,9 +68,19 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
             canActivateChild: [restaurantRouteGuard],
             children: [
               { path: '', component: ManagementDashboard },
-              { path: 'kitchen', component: KitchenWorkflow },
-              { path: 'checkout', component: RestaurantCheckoutPage },
-              { path: 'service', component: RestaurantServiceFloorPage },
+              { path: 'context', component: RestaurantOutletResolutionPage },
+              { path: 'setup/locations', component: ManagementDetail },
+              { path: 'kitchen', component: KitchenWorkflow, canActivate: [restaurantOutletGuard] },
+              {
+                path: 'checkout',
+                component: RestaurantCheckoutPage,
+                canActivate: [restaurantOutletGuard],
+              },
+              {
+                path: 'service',
+                component: RestaurantServiceFloorPage,
+                canActivate: [restaurantOutletGuard],
+              },
               { path: 'setup/team', component: ManagementDetail },
               { path: 'setup', component: ManagementDetail },
             ],
@@ -120,14 +135,14 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     (h.routeNativeElement?.querySelector('button[mat-flat-button]') as HTMLButtonElement).click();
     await vi.waitFor(() => {
       h.detectChanges();
-      expect(TestBed.inject(Router).url).toBe('/restaurants/service');
+      expect(TestBed.inject(Router).url).toContain('/restaurants/context?');
       expect(h.routeNativeElement?.textContent).toContain(
-        'Aucun établissement ne vous est encore affecté',
+        fr.RESTAURANTS.CONTEXT.RESOLUTION['no-accessible-context'],
       );
     });
     expect(serviceFloor).not.toHaveBeenCalled();
     assigned = true;
-    await TestBed.inject(RestaurantAccessState).refresh();
+    await TestBed.inject(RestaurantOutletRouting).refreshAccess();
     await vi.waitFor(() => {
       h.detectChanges();
       expect(TestBed.inject(RestaurantOutletContext).outlet()?.name).toBe(
@@ -150,7 +165,10 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     expect(myOutlets).not.toHaveBeenCalled();
     workspace.set(accessWorkspace('WAITER'));
     await h.navigateByUrl('/restaurants/setup/team');
-    expect(TestBed.inject(Router).url).toBe('/restaurants/service');
+    await vi.waitFor(() => {
+      h.detectChanges();
+      expect(TestBed.inject(Router).url).toContain('/restaurants/context?');
+    });
     expect(h.routeNativeElement?.textContent).not.toContain('Protected management fixture');
   });
   it.each(['OWNER', 'MANAGER'] as const)('preserves the %s landing on reload', async (role) => {
@@ -162,23 +180,29 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
   it('lands KITCHEN on its operational route without starting Service Floor', async () => {
     workspace.set(accessWorkspace('KITCHEN'));
     const h = await RouterTestingHarness.create('/restaurants');
-    expect(TestBed.inject(Router).url).toBe('/restaurants/kitchen');
-    expect(h.routeNativeElement?.textContent).toContain('Kitchen workflow fixture');
-    expect(myOutlets).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      h.detectChanges();
+      expect(TestBed.inject(Router).url).toContain('/restaurants/context?');
+      expect(h.routeNativeElement?.textContent).toContain(
+        fr.RESTAURANTS.CONTEXT.RESOLUTION['no-accessible-context'],
+      );
+    });
+    expect(h.routeNativeElement?.textContent).not.toContain('Kitchen workflow fixture');
+    expect(myOutlets).toHaveBeenCalledTimes(1);
   });
   it.each(['CASHIER'] as const)(
     'lands %s on the real Caisse and reads its own outlet assignments',
     async (role) => {
       workspace.set(accessWorkspace(role));
       const h = await RouterTestingHarness.create('/restaurants');
-      expect(TestBed.inject(Router).url).toBe('/restaurants/checkout');
+      expect(TestBed.inject(Router).url).toContain('/restaurants/context?');
       await vi.waitFor(() => {
         h.detectChanges();
         expect(h.routeNativeElement?.textContent).toContain(
-          'Aucun établissement actif ne vous est affecté',
+          fr.RESTAURANTS.CONTEXT.RESOLUTION['no-accessible-context'],
         );
       });
-      expect(h.routeNativeElement?.textContent).toContain('Caisse');
+      expect(h.routeNativeElement?.textContent).toContain(fr.RESTAURANTS.CONTEXT.CHOOSE);
       expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard');
       expect(myOutlets).toHaveBeenCalledTimes(1);
       expect(serviceFloor).not.toHaveBeenCalled();

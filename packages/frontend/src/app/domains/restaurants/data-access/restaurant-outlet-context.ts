@@ -18,10 +18,11 @@ export class RestaurantOutletContext {
   private readonly queries = inject(RestaurantsQueries);
   private readonly api = inject(RestaurantsApi);
   private readonly consumers = signal(0);
+  private readonly routeActive = signal(false);
   private readonly accessEpoch = signal(0);
   private readonly selection = signal<{ identity: string; id: string } | null>(null);
   private readonly blocked = signal<{ identity: string; ids: ReadonlySet<string> } | null>(null);
-  readonly attached = computed(() => this.consumers() > 0);
+  readonly attached = computed(() => this.routeActive() || this.consumers() > 0);
   readonly management = computed(() => this.caps.canManageSetup());
   readonly revision = computed(() => this.auth.contextRevision?.() ?? 0);
   readonly identity = computed(() =>
@@ -165,6 +166,15 @@ export class RestaurantOutletContext {
       subscription.unsubscribe();
       handle.destroy();
     });
+  }
+  /** Route orchestration keeps discovery attached across operational page mounts. */
+  setRouteActive(active: boolean) {
+    this.routeActive.set(active);
+  }
+  /** URL values are hints only; id() still requires a discovered authorized row. */
+  hint(id: string) {
+    this.invalidHint.set(false);
+    this.selection.set({ identity: this.identity(), id });
   }
   select(id: string | null) {
     if (id && !this.outlets().some((row) => row.id === id)) return;

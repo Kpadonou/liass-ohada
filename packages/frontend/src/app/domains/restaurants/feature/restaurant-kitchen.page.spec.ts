@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantsApi } from '../data-access/restaurants.api';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -77,6 +78,9 @@ async function settle() {
   }
 }
 async function create() {
+  TestBed.inject(RestaurantOutletContext).setRouteActive(
+    ['OWNER', 'MANAGER', 'KITCHEN'].includes(role()),
+  );
   fixture = TestBed.createComponent(RestaurantKitchenPage);
   await settle();
 }

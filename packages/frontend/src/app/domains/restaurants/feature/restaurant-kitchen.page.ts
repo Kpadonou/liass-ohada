@@ -1,5 +1,4 @@
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
-import { ActivatedRoute } from '@angular/router';
 import {
   Component,
   linkedSignal,
@@ -117,7 +116,6 @@ export class RestaurantKitchenPage {
   readonly mobileLane = signal<KitchenLane>('IN_PROGRESS');
   readonly now = signal(Date.now());
   constructor() {
-    this.operational.use(inject(DestroyRef), inject(ActivatedRoute), () => this.allowed());
     let activeOutlet = this.outletId();
     effect(() => {
       const next = this.outletId();

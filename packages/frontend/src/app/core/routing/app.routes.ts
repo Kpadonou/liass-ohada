@@ -1,3 +1,4 @@
+import { restaurantOutletGuard } from '../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { guestRoutes } from './guest.routes';
 import { restaurantRouteGuard } from '../../domains/restaurants/data-access/restaurant-route.guard';
 import { salesDashboardReadGuard } from '../../domains/sales/data-access/sales-dashboard-read.guard';
@@ -159,8 +160,18 @@ export const routes: Routes = [
         },
         children: [
           {
-            path: 'outlets/:outletId/sessions/:sessionId/receipt',
+            path: 'context',
             canActivate: [productAccessGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-outlet-resolution.page').then(
+                (m) => m.RestaurantOutletResolutionPage,
+              ),
+            data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.CONTEXT.CHOOSE' },
+          },
+          {
+            path: 'outlets/:outletId/sessions/:sessionId/receipt',
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-receipt.page').then(
                 (m) => m.RestaurantReceiptPage,
@@ -169,7 +180,8 @@ export const routes: Routes = [
           },
           {
             path: 'checkout',
-            canActivate: [productAccessGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-checkout.page').then(
                 (m) => m.RestaurantCheckoutPage,
@@ -178,7 +190,8 @@ export const routes: Routes = [
           },
           {
             path: 'kitchen',
-            canActivate: [productAccessGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-kitchen.page').then(
                 (m) => m.RestaurantKitchenPage,
@@ -187,7 +200,8 @@ export const routes: Routes = [
           },
           {
             path: 'service/outlets/:outletId/sessions/:guestSessionId',
-            canActivate: [productAccessGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-table-workspace.page').then(
                 (m) => m.RestaurantTableWorkspacePage,
@@ -196,7 +210,8 @@ export const routes: Routes = [
           },
           {
             path: 'service',
-            canActivate: [productAccessGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-service-floor.page').then(
                 (m) => m.RestaurantServiceFloorPage,
@@ -214,7 +229,8 @@ export const routes: Routes = [
           },
           {
             path: 'inventory',
-            canActivate: [productAccessGuard],
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-inventory.page').then(
                 (m) => m.RestaurantInventoryPage,

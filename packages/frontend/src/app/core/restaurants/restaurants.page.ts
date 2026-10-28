@@ -1,3 +1,4 @@
+import { RestaurantOutletRouting } from '../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { RestaurantAccessState } from '../../domains/restaurants/data-access/restaurant-access-state';
 import { RestaurantAccessNoticeComponent } from '../../domains/restaurants/ui/restaurant-access-notice.component';
 import { Router, RouterOutlet } from '@angular/router';
@@ -20,12 +21,14 @@ import { LiassSkeletonComponent } from '../../shared/ui/skeleton/skeleton.compon
   templateUrl: './restaurants.page.html',
 })
 export class RestaurantsPage {
+  protected readonly outlets = inject(RestaurantOutletRouting);
   protected readonly state = inject(RestaurantAccessState);
   private readonly router = inject(Router);
   constructor() {
     effect(() => {
       const mode = this.state.mode();
       if (!this.router.url.split('?')[0].startsWith('/restaurants')) return;
+      if (this.router.url.split('?')[0] === '/restaurants/context') return;
       if (mode === 'service' && !this.router.url.split('?')[0].startsWith('/restaurants/service'))
         void this.router.navigateByUrl('/restaurants/service', { replaceUrl: true });
       else if (

@@ -1,15 +1,18 @@
+import { RestaurantOutletRouting } from '../data-access/restaurant-outlet-routing';
 import { TestBed } from '@angular/core/testing';
 import { computed, signal } from '@angular/core';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { TranslocoTestingModule } from '@ngneat/transloco';
 import fr from '../../../../../public/assets/i18n/fr.json';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantOutletContextComponent } from './restaurant-outlet-context.component';
 const rows = signal([{ id: 'a', name: 'Terrasse jardin' }]),
   selected = signal('a');
+const switchOutlet = vi.fn((id: string) => selected.set(id));
 beforeEach(() => {
   rows.set([{ id: 'a', name: 'Terrasse jardin' }]);
   selected.set('a');
+  switchOutlet.mockClear();
   TestBed.configureTestingModule({
     imports: [
       RestaurantOutletContextComponent,
@@ -21,6 +24,7 @@ beforeEach(() => {
     ],
     providers: [
       provideRouter([]),
+      { provide: RestaurantOutletRouting, useValue: { switchOutlet } },
       {
         provide: RestaurantOutletContext,
         useValue: {
@@ -57,16 +61,11 @@ it('uses one accessible shell menu for several outlets and keeps URL hints coher
     { id: 'a', name: 'Terrasse jardin' },
     { id: 'b', name: 'Salle principale' },
   ]);
-  const router = TestBed.inject(Router);
-  vi.spyOn(router, 'navigate').mockResolvedValue(true);
   const f = TestBed.createComponent(RestaurantOutletContextComponent);
   f.detectChanges();
   const button = f.nativeElement.querySelector('[data-testid="active-restaurant-outlet"]');
   expect(button.getAttribute('aria-label')).toContain('Établissement actif: Terrasse jardin');
   f.componentInstance.select('b');
   expect(selected()).toBe('b');
-  expect(router.navigate).toHaveBeenCalledWith(
-    [],
-    expect.objectContaining({ queryParams: { outlet: 'b', area: null }, replaceUrl: true }),
-  );
+  expect(switchOutlet).toHaveBeenCalledWith('b');
 });

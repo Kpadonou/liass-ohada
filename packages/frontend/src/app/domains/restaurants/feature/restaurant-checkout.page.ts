@@ -1,10 +1,8 @@
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
-import { ActivatedRoute } from '@angular/router';
 import {
   Component,
   Injector,
   afterNextRender,
-  DestroyRef,
   computed,
   linkedSignal,
   effect,
@@ -327,7 +325,6 @@ export class RestaurantCheckoutPage {
   );
   readonly displayName = tableDisplayName;
   constructor() {
-    this.operational.use(inject(DestroyRef), inject(ActivatedRoute), () => this.allowed());
     effect(() => {
       if (this.allowed() && this.floorDenied()) untracked(() => this.denyCheckout());
     });

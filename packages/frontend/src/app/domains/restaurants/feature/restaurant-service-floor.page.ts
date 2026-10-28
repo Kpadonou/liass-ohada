@@ -256,7 +256,6 @@ export class RestaurantServiceFloorPage {
     );
     const timer = setInterval(() => this.now.set(Date.now()), 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
-    this.operational.use(inject(DestroyRef), this.route, () => this.allowed());
     effect(() => {
       if (this.operational.invalidHint()) {
         this.contextError.set(true);

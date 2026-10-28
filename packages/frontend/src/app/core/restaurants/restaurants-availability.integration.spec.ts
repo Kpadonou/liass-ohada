@@ -1,3 +1,4 @@
+import { RestaurantOutletRouting } from '../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
@@ -54,6 +55,7 @@ describe('canonical restaurant availability across frontend surfaces', () => {
         }),
       ],
       providers: [
+        { provide: RestaurantOutletRouting, useValue: { routeReady: () => true } },
         provideRouter([]),
         { provide: QueryClient, useValue: client },
         {

@@ -5,7 +5,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoModule } from '@ngneat/transloco';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
-import { Router } from '@angular/router';
+import { RestaurantOutletRouting } from '../data-access/restaurant-outlet-routing';
 
 /** Shell adapter; never a page-local outlet filter. */
 @Component({
@@ -84,14 +84,9 @@ import { Router } from '@angular/router';
 })
 export class RestaurantOutletContextComponent {
   readonly context = inject(RestaurantOutletContext);
-  private readonly router = inject(Router);
+  private readonly routing = inject(RestaurantOutletRouting);
   select(id: string) {
-    this.context.select(id);
-    void this.router.navigate([], {
-      queryParams: { outlet: id, area: null },
-      queryParamsHandling: 'merge',
-      replaceUrl: true,
-    });
+    void this.routing.switchOutlet(id);
   }
   readonly search = signal('');
   readonly filtered = computed(() =>

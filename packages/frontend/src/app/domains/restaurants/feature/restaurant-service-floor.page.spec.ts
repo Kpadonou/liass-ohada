@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantAccessState } from '../data-access/restaurant-access-state';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
@@ -109,6 +110,9 @@ async function create() {
     ],
   });
   vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+  TestBed.inject(RestaurantOutletContext).setRouteActive(true);
+  const hint = params.value.get('outlet');
+  if (hint) TestBed.inject(RestaurantOutletContext).hint(hint);
   fixture = TestBed.createComponent(RestaurantServiceFloorPage);
   fixture.detectChanges();
   await vi.waitFor(() => {

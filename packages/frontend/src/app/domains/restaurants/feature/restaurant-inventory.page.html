@@ -189,23 +189,7 @@
             'RESTAURANTS_INVENTORY.RETRY' | transloco
           }}</liass-button>
         } @else if (!outlet.id()) {
-          <liass-searchable-select
-            class="w-full sm:max-w-sm"
-            labelKey="RESTAURANTS.CONTEXT.CHOOSE_HINT"
-            [options]="outletOptions()"
-            [ngModel]="outlet.id() || null"
-            (ngModelChange)="outlet.select($event)"
-          />
-          @if (outlet.source().hasNextPage()) {
-            <liass-button
-              [loading]="outlet.source().isFetchingNextPage()"
-              (pressed)="outlet.source().fetchNextPage()"
-              >{{ 'RESTAURANTS_INVENTORY.MORE' | transloco }}</liass-button
-            >
-          }
-          @if (!outlet.outlets().length && !outlet.source().hasNextPage()) {
-            <p>{{ 'RESTAURANTS_INVENTORY.NO_OUTLET' | transloco }}</p>
-          }
+          <p role="alert">{{ 'RESTAURANTS.CONTEXT.RESOLUTION.access-changed' | transloco }}</p>
         } @else {
           <p class="mb-4 text-sm font-medium text-app-text-secondary">
             {{ outlet.outlet()?.name }}
