@@ -88,7 +88,6 @@ export class RestaurantTableWorkspacePage {
     return this.allowed() &&
       this.valid() &&
       this.query.isSuccess() &&
-      (!this.query.isFetching() || this.reconciling()) &&
       data?.orgId === this.queries.scope() &&
       data.outletId === this.outletId() &&
       data.guestSessionId === this.sessionId()

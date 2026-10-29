@@ -46,7 +46,7 @@ export class RestaurantOrdersQueries {
       },
       getNextPageParam: (last) => last.nextCursor,
       enabled,
-      staleTime: kind === 'category' || kind === 'item' ? 60_000 : 0,
+      staleTime: kind === 'category' || kind === 'item' ? 60_000 : 15_000,
       retry: false,
       refetchOnWindowFocus: true,
     });
@@ -64,7 +64,7 @@ export class RestaurantOrdersQueries {
       queryKey: this.key(ctx, 'order', order),
       queryFn: () => this.api.order(ctx, order),
       enabled: enabled && !!order,
-      staleTime: 0,
+      staleTime: 15_000,
       retry: false,
       refetchOnWindowFocus: true,
     });
@@ -175,7 +175,13 @@ export class RestaurantOrdersQueries {
         ...(financial
           ? [
               this.client.invalidateQueries({
-                queryKey: restaurantKeys.session(ctx.org, ctx.outlet, ctx.session, ctx.user),
+                queryKey: restaurantKeys.session(
+                  ctx.org,
+                  ctx.outlet,
+                  ctx.session,
+                  ctx.user,
+                  ctx.revision,
+                ),
                 exact: true,
               }),
               this.client.invalidateQueries({

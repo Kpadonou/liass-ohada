@@ -70,3 +70,38 @@ describe('Restaurant query scope and invalidation', () => {
     expect(queries.get('restaurant').enabled).toBe(false);
   });
 });
+
+it('session reads fence access revisions and late old-revision completions', async () => {
+  const org = signal('org'),
+    user = signal('u'),
+    revision = signal(1);
+  let release!: (value: object) => void;
+  const api = {
+    guestSession: () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  };
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  TestBed.configureTestingModule({
+    providers: [
+      {
+        provide: AuthStore,
+        useValue: { effectiveOrgId: org, currentUserId: user, contextRevision: revision },
+      },
+      { provide: RestaurantsApi, useValue: api },
+      { provide: QueryClient, useValue: client },
+    ],
+  });
+  const queries = TestBed.inject(RestaurantsQueries),
+    options = queries.guestSession('outlet', 'visit');
+  const pending = client.fetchQuery(options);
+  const failed = expect(pending).rejects.toThrow('Stale session context');
+  revision.set(2);
+  expect(queries.guestSession('outlet', 'visit').queryKey).not.toEqual(options.queryKey);
+  release({ guestSessionId: 'visit' });
+  await failed;
+  expect(client.getQueryData(queries.guestSession('outlet', 'visit').queryKey)).toBeUndefined();
+  client.clear();
+  TestBed.resetTestingModule();
+});

@@ -1457,3 +1457,28 @@ it('keeps the empty composer and Carte as permanent work areas without an empty 
   );
   expect(fixture.nativeElement.querySelector('[data-testid="validated-orders-region"]')).toBeNull();
 });
+it('performance: empty workspace composer cold reads, selected Order increment, and fresh remount reuse', async () => {
+  await settle();
+  const reads = () => ({
+    orders: api.orders.mock.calls.length,
+    detail: api.order.mock.calls.length,
+    items: api.items.mock.calls.length,
+    menu: menu.get.mock.calls.length,
+    carte: menu.cartePage.mock.calls.length,
+    preparation: serving.page.mock.calls.length,
+  });
+  expect(reads()).toEqual({ orders: 1, detail: 0, items: 0, menu: 1, carte: 1, preparation: 0 });
+  orders.push(orderFixture());
+  await page.ordersQuery.refetch();
+  await settle();
+  expect(reads()).toEqual({ orders: 2, detail: 1, items: 1, menu: 1, carte: 1, preparation: 1 });
+  fixture.destroy();
+  fixture = TestBed.createComponent(RestaurantOrderComposer);
+  page = fixture.componentInstance;
+  fixture.componentRef.setInput('outletId', rid(2));
+  fixture.componentRef.setInput('sessionId', rid(9));
+  fixture.componentRef.setInput('session', sessionFixture());
+  fixture.detectChanges();
+  await settle();
+  expect(reads()).toEqual({ orders: 2, detail: 1, items: 1, menu: 1, carte: 1, preparation: 1 });
+});

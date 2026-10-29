@@ -216,6 +216,22 @@ export class RestaurantCashQueries {
   }
   async reconcile(s: CashContext) {
     this.assert(s);
-    await this.client.invalidateQueries({ queryKey: cashKeys.root(s) });
+    const day = this.client.getQueryData<{ data: c.RestaurantBusinessDay | null }>(
+      cashKeys.read(s, 'business-days/current'),
+    )?.data;
+    const session = this.client.getQueryData<{ data: c.RestaurantCashSession | null }>(
+      cashKeys.read(s, 'cash-sessions/current'),
+    )?.data;
+    // Payment attribution changes current totals, not manual movements or historical sessions.
+    await Promise.all(
+      [
+        'business-days/current',
+        'cash-sessions/current',
+        ...(session ? [`cash-sessions/${session.cashSessionId}`] : []),
+        ...(day ? [`business-days/${day.businessDayId}/summary`] : []),
+      ].map((path) =>
+        this.client.invalidateQueries({ queryKey: cashKeys.read(s, path), exact: true }),
+      ),
+    );
   }
 }

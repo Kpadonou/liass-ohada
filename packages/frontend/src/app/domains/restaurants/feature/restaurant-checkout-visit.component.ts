@@ -270,11 +270,16 @@ export class RestaurantCheckoutVisitComponent {
   readonly error = signal('');
   readonly progress = signal('');
   private readonly sessionsApi = inject(RestaurantsApi);
-  private readonly verifiedSession = signal(false);
   readonly readableSession = computed(() => {
     const error = this.session.error();
     const orderError = this.orders.error();
-    return !this.verifiedSession() ||
+    const data = this.session.data(),
+      ctx = this.ctx();
+    return !this.current(ctx) ||
+      !data ||
+      data.orgId !== ctx.org ||
+      data.outletId !== ctx.outlet ||
+      data.guestSessionId !== ctx.session ||
       (orderError instanceof HttpErrorResponse && [401, 403, 404].includes(orderError.status)) ||
       (error instanceof HttpErrorResponse && [401, 403, 404].includes(error.status))
       ? undefined
@@ -287,7 +292,6 @@ export class RestaurantCheckoutVisitComponent {
       queryFn: async () => {
         const visit = await this.sessionsApi.guestSession(ctx.org, ctx.outlet, ctx.session);
         this.orderQueries.api.assertContext(ctx);
-        if (this.current(ctx)) this.verifiedSession.set(true);
         return visit;
       },
     };
@@ -340,7 +344,7 @@ export class RestaurantCheckoutVisitComponent {
     const ctx = this.ctx();
     await Promise.all([
       this.client.invalidateQueries({
-        queryKey: restaurantKeys.session(ctx.org, ctx.outlet, ctx.session, ctx.user),
+        queryKey: restaurantKeys.session(ctx.org, ctx.outlet, ctx.session, ctx.user, ctx.revision),
         exact: true,
       }),
       this.client.invalidateQueries({

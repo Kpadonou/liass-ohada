@@ -25,7 +25,7 @@ class FunctionalPage {
 }
 @Component({ imports: [RouterOutlet], template: '<router-outlet />' })
 class ProductHost {}
-@Component({ template: 'Setup recovery' })
+@Component({ selector: 'test-setup-recovery', template: 'Setup recovery' })
 class SetupPage {}
 
 const org = signal('org'),
@@ -75,6 +75,8 @@ beforeEach(async () => {
               'kitchen',
               'checkout',
               'inventory',
+              'cash',
+              'cash/day',
               'service/outlets/:outletId/sessions/:guestSessionId',
               'outlets/:outletId/sessions/:sessionId/receipt',
             ].map((path) => ({
@@ -177,16 +179,18 @@ it('reuses one fresh discovery across Service → Kitchen → Checkout → Inven
   const subscription = router.events.subscribe((event) => {
     if (event instanceof NavigationEnd) destinations.push(event.urlAfterRedirects);
   });
-  for (const page of ['kitchen', 'checkout', 'inventory'])
+  for (const page of ['kitchen', 'checkout', 'inventory', 'cash', 'cash/day'])
     await h.navigateByUrl('/restaurants/' + page);
   subscription.unsubscribe();
   expect(destinations).toEqual([
     '/restaurants/kitchen',
     '/restaurants/checkout',
     '/restaurants/inventory',
+    '/restaurants/cash',
+    '/restaurants/cash/day',
   ]);
   expect(api.list).toHaveBeenCalledTimes(1);
-  expect(activated).toEqual([rid(2), rid(2), rid(2), rid(2)]);
+  expect(activated).toEqual(Array(6).fill(rid(2)));
 });
 it('still revalidates stale discovery when re-entering operations', async () => {
   await h.navigateByUrl('/restaurants/service');
@@ -317,4 +321,74 @@ it('rejects external, auxiliary, matrix and non-operational return destinations'
     '/restaurants/service(aux:other)',
   ])
     expect(routing.validDestination(url)).toBe(false);
+});
+
+it('reuses a chosen multi-Outlet context through Cash deep links and setup round trips', async () => {
+  api.list.mockResolvedValue({ items: [row('outlet'), { ...row('outlet'), id: rid(8) }] });
+  await h.navigateByUrl('/restaurants/cash/day');
+  await settled(() => expect(routing.resolution()).toBe('selection-required'));
+  expect(router.url).toContain('returnUrl=%2Frestaurants%2Fcash%2Fday');
+  routing.choose(rid(8));
+  await settled(() => expect(router.url).toBe(`/restaurants/cash/day?outlet=${rid(8)}`));
+  for (const path of ['service', 'kitchen', 'checkout', 'inventory', 'cash', 'cash/day']) {
+    await h.navigateByUrl('/restaurants/' + path);
+    expect(router.url).not.toContain('/context');
+    expect(routing.context.id()).toBe(rid(8));
+  }
+  await h.navigateByUrl('/restaurants/setup/locations');
+  await h.navigateByUrl('/restaurants/cash/day');
+  expect(router.url).toBe('/restaurants/cash/day');
+  expect(api.list).toHaveBeenCalledTimes(1);
+});
+
+it('retains authorized cached context during same-identity transport refresh failure, but fences a 403', async () => {
+  await h.navigateByUrl('/restaurants/cash/day');
+  await settled(() => expect(activated).toEqual([rid(2)]));
+  api.list.mockRejectedValueOnce(new HttpErrorResponse({ status: 503 }));
+  await routing.context.source().refetch();
+  await settled(() => expect(routing.routeReady()).toBe(true));
+  expect(routing.context.id()).toBe(rid(2));
+  await h.navigateByUrl('/restaurants/inventory');
+  expect(router.url).toBe('/restaurants/inventory');
+  api.list.mockRejectedValueOnce(new HttpErrorResponse({ status: 403 }));
+  await routing.context.source().refetch();
+  await settled(() => expect(routing.context.id()).toBe(''));
+  expect(router.url).toContain('/restaurants/context');
+});
+it.each([1, 2, 0])(
+  'revoked selection with %s accessible alternatives resolves without inventing context',
+  async (alternatives) => {
+    await h.navigateByUrl(`/restaurants/service?outlet=${rid(2)}`);
+    await settled(() => expect(activated).toHaveLength(1));
+    api.list.mockResolvedValue({
+      items: Array.from({ length: alternatives }, (_, n) => ({ ...row('outlet'), id: rid(8 + n) })),
+    });
+    await routing.context.revoke(rid(2));
+    await settled(() =>
+      expect(routing.resolution()).toBe(
+        alternatives === 1
+          ? 'ready'
+          : alternatives === 2
+            ? 'selection-required'
+            : 'no-accessible-context',
+      ),
+    );
+    expect(routing.context.id()).toBe(alternatives === 1 ? rid(8) : '');
+  },
+);
+it('exhausts a paginated multi-Outlet discovery once and reuses the chosen context through Cash', async () => {
+  api.list
+    .mockResolvedValueOnce({ items: [row('outlet')], nextCursor: 'next' })
+    .mockResolvedValueOnce({ items: [{ ...row('outlet'), id: rid(8) }] });
+  await h.navigateByUrl('/restaurants/cash/day');
+  await settled(() => expect(routing.resolution()).toBe('selection-required'));
+  expect(routing.context.id()).toBe('');
+  await routing.context.source().fetchNextPage();
+  await settled(() => expect(routing.context.outlets()).toHaveLength(2));
+  routing.choose(rid(8));
+  await settled(() => expect(routing.context.id()).toBe(rid(8)));
+  await h.navigateByUrl('/restaurants/service');
+  await h.navigateByUrl('/restaurants/cash');
+  expect(router.url).toBe('/restaurants/cash');
+  expect(api.list).toHaveBeenCalledTimes(2);
 });

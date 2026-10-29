@@ -112,6 +112,27 @@ describe('Canonical Orders across the whole service', () => {
     f.detectChanges();
     return f;
   }
+  it.each([1, 3])(
+    'performance: %s visible accepted Orders cost two reads each, fresh remount reuses them',
+    async (count) => {
+      // Keep realistic default cache lifetime for navigation; other cases deliberately test gcTime=0.
+      client.setDefaultOptions({ queries: { retry: false, gcTime: 300000 } });
+      const values = Array.from({ length: count }, (_, index) => order(20 + index));
+      let f = mount(values);
+      await vi.waitFor(() => {
+        f.detectChanges();
+        expect(api.items).toHaveBeenCalledTimes(count);
+        expect(preparation.page).toHaveBeenCalledTimes(count);
+      });
+      f.destroy();
+      f = mount(values);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      f.detectChanges();
+      expect(api.items).toHaveBeenCalledTimes(count);
+      expect(preparation.page).toHaveBeenCalledTimes(count);
+      f.destroy();
+    },
+  );
   it.each(['fr', 'en'])(
     'shows DIRECT canonical lines, amounts and truthful mixed progress in %s',
     async (lang) => {

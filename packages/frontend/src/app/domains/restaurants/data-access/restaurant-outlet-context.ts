@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { DestroyRef, Injectable, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { injectInfiniteQuery } from '@tanstack/angular-query-experimental';
@@ -90,7 +91,12 @@ export class RestaurantOutletContext {
   }));
   readonly outlets = computed(() => {
     const query = this.source();
-    if (!this.available() || !query.isSuccess()) return [];
+    const error = query.error();
+    if (
+      !this.available() ||
+      (error instanceof HttpErrorResponse && [401, 403].includes(error.status))
+    )
+      return [];
     const blocked =
       this.blocked()?.identity === this.identity() ? this.blocked()!.ids : new Set<string>();
     const rows = this.management()
@@ -180,6 +186,9 @@ export class RestaurantOutletContext {
     if (id && !this.outlets().some((row) => row.id === id)) return;
     this.invalidHint.set(false);
     this.selection.set(id ? { identity: this.identity(), id } : null);
+  }
+  isRevoked(id: string) {
+    return this.blocked()?.identity === this.identity() && this.blocked()!.ids.has(id);
   }
   async revoke(id: string) {
     const identity = this.identity();

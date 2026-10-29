@@ -1151,3 +1151,23 @@ it('FREE first QR order is visible with the normal service-opening action, separ
   expect(fixture.nativeElement.textContent).not.toContain('En attente d’ouverture du service');
   expect(fixture.nativeElement.textContent).toMatch(/320\s800/);
 });
+it('performance: six cold owner reads (including discovery), zero fresh remount reads', async () => {
+  await ready();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(api.guestActivity).toHaveBeenCalledTimes(1);
+  });
+  const counts = () => [
+    api.get.mock.calls.length,
+    api.list.mock.calls.length,
+    api.serviceFloor.mock.calls.length,
+    api.guestActivity.mock.calls.length,
+  ];
+  expect(counts()).toEqual([2, 2, 1, 1]);
+  fixture.destroy();
+  fixture = TestBed.createComponent(RestaurantServiceFloorPage);
+  fixture.detectChanges();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  fixture.detectChanges();
+  expect(counts()).toEqual([2, 2, 1, 1]);
+});

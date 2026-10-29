@@ -41,7 +41,7 @@ it.each([false, true])(
       queries.key(ctx, 'items', 'order'),
       ...(financial
         ? [
-            restaurantKeys.session('org', 'outlet', 'session', 'waiter'),
+            restaurantKeys.session('org', 'outlet', 'session', 'waiter', 3),
             restaurantKeys.floor('org', 'outlet'),
           ]
         : []),

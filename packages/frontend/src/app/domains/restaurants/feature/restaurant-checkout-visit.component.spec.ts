@@ -122,6 +122,28 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     fixture.detectChanges();
     return fixture;
   };
+  it('performance: selected visit needs four base reads, keeps cached header on fresh remount', async () => {
+    let first = create();
+    await vi.waitFor(() => {
+      first.detectChanges();
+      expect(first.componentInstance.readableSession()).toBeTruthy();
+      expect(first.componentInstance.orders.isSuccess()).toBe(true);
+    });
+    expect(sessions.guestSession).toHaveBeenCalledTimes(1);
+    expect(orders.orders).toHaveBeenCalledTimes(1);
+    expect(client.getQueryCache().find({ queryKey: ['cash-test-day'] })?.state.data).toBeDefined();
+    expect(
+      client.getQueryCache().find({ queryKey: ['cash-test-session'] })?.state.data,
+    ).toBeDefined();
+    first.destroy();
+    first = create();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    first.detectChanges();
+    expect(first.componentInstance.readableSession()).toBeTruthy();
+    expect(sessions.guestSession).toHaveBeenCalledTimes(1);
+    expect(orders.orders).toHaveBeenCalledTimes(1);
+    first.destroy();
+  });
   it('keeps authorized header DOM during ordinary background reconciliation', async () => {
     const fixture = create();
     await vi.waitFor(() => {

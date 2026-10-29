@@ -438,3 +438,40 @@ it('keeps canonical service actions available when only the area label fails', a
   expect(text()).toContain('Montant actuel');
   expect(fixture!.nativeElement.querySelector('[data-testid="workspace-error"]')).toBeNull();
 });
+
+it('performance: fresh session and Area cache survive workspace remount without GETs', async () => {
+  setup();
+  fixture = TestBed.createComponent(RestaurantTableWorkspacePage);
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture!.detectChanges();
+    expect(fixture!.componentInstance.areaName()).toBe(area.name);
+  });
+  expect(api.guestSession).toHaveBeenCalledTimes(1);
+  expect(api.get).toHaveBeenCalledTimes(1);
+  fixture.destroy();
+  fixture = TestBed.createComponent(RestaurantTableWorkspacePage);
+  fixture.detectChanges();
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  fixture.detectChanges();
+  expect(api.guestSession).toHaveBeenCalledTimes(1);
+  expect(api.get).toHaveBeenCalledTimes(1);
+});
+
+it('performance: same-context background refresh keeps the workspace header visible without enabling confirmed truth', async () => {
+  const page = await loaded();
+  const header = fixture!.nativeElement.querySelector('[data-testid="workspace-context"]');
+  let release!: (value: ReturnType<typeof sessionFixture>) => void;
+  api.guestSession.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+  );
+  const refreshing = page.query.refetch();
+  fixture!.detectChanges();
+  expect(page.session()).toBeTruthy();
+  expect(fixture!.nativeElement.querySelector('[data-testid="workspace-context"]')).toBe(header);
+  release(sessionFixture());
+  await refreshing;
+});

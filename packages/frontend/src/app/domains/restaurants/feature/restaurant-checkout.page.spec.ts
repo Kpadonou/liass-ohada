@@ -76,6 +76,23 @@ describe('Cashier occupied-table discovery and context', () => {
     fixture.detectChanges();
     return fixture;
   };
+  it('performance: two cold reads including discovery and zero fresh remount reads', async () => {
+    const first = create();
+    await vi.waitFor(() => {
+      first.detectChanges();
+      expect(first.componentInstance.floor.isSuccess()).toBe(true);
+    });
+    expect(api.myOutlets).toHaveBeenCalledTimes(1);
+    expect(api.serviceFloor).toHaveBeenCalledTimes(1);
+    first.destroy();
+    const second = create();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    second.detectChanges();
+    expect(api.myOutlets).toHaveBeenCalledTimes(1);
+    expect(api.serviceFloor).toHaveBeenCalledTimes(1);
+    expect(second.componentInstance.occupied().length).toBeGreaterThan(0);
+    second.destroy();
+  });
   it('auto-selects one assigned outlet, reuses floor query and filters occupied locally', async () => {
     const fixture = create();
     await vi.waitFor(() => {

@@ -180,6 +180,7 @@ export const routes: Routes = [
           },
           {
             path: 'cash',
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
             canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-cash.page').then(
@@ -193,6 +194,7 @@ export const routes: Routes = [
           },
           {
             path: 'cash/day',
+            runGuardsAndResolvers: 'paramsOrQueryParamsChange',
             canActivate: [productAccessGuard, restaurantOutletGuard],
             loadComponent: () =>
               import('../../domains/restaurants/feature/restaurant-cash.page').then(

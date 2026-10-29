@@ -510,3 +510,15 @@ it('new V1 work opens in En préparation and requires only Prêt', async () => {
   expect(api.command).toHaveBeenCalledTimes(1);
   expect(api.command.mock.calls[0][2]).toBe('ready');
 });
+it('performance: assigned discovery + stations + three lanes, zero fresh remount reads', async () => {
+  await create();
+  expect(api.stations).toHaveBeenCalledTimes(1);
+  expect(api.queue).toHaveBeenCalledTimes(3);
+  expect(api.outlets).toHaveBeenCalledTimes(1);
+  fixture.destroy();
+  fixture = TestBed.createComponent(RestaurantKitchenPage);
+  await settle();
+  expect(api.stations).toHaveBeenCalledTimes(1);
+  expect(api.queue).toHaveBeenCalledTimes(3);
+  expect(api.outlets).toHaveBeenCalledTimes(1);
+});

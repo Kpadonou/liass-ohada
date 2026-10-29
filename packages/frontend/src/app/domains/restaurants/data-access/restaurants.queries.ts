@@ -74,14 +74,14 @@ export const restaurantKeys = {
     outletId
       ? (['restaurants', org, 'outlet-staff', outletId] as const)
       : (['restaurants', org, 'outlet-staff'] as const),
-  session: (org: string, outletId: string, sessionId: string, user?: string) =>
+  session: (org: string, outletId: string, sessionId: string, user?: string, revision = 0) =>
     [
       'restaurants',
       org,
       'session',
       outletId,
       sessionId,
-      ...(user === undefined ? [] : [user]),
+      ...(user === undefined ? [] : [user, revision]),
     ] as const,
   floor: (org: string, outletId: string) =>
     ['restaurants', org, 'service-floor', outletId] as const,
@@ -410,13 +410,24 @@ export class RestaurantsQueries {
     ]);
   }
   guestSession(outletId: string, sessionId: string, enabled = true) {
-    const org = this.scope();
+    const org = this.scope(),
+      user = this.userScope(),
+      revision = this.contextRevision();
     return queryOptions({
-      queryKey: restaurantKeys.session(org, outletId, sessionId, this.userScope()),
-      queryFn: () => this.api.guestSession(org, outletId, sessionId),
+      queryKey: restaurantKeys.session(org, outletId, sessionId, user, revision),
+      queryFn: async () => {
+        const result = await this.api.guestSession(org, outletId, sessionId);
+        if (
+          org !== this.scope() ||
+          user !== this.userScope() ||
+          revision !== this.contextRevision()
+        )
+          throw new Error('Stale session context');
+        return result;
+      },
       enabled: enabled && !!org && !!outletId && !!sessionId,
-      staleTime: 0,
-      refetchOnMount: 'always',
+      staleTime: 15_000,
+      refetchOnMount: true,
       refetchOnWindowFocus: true,
       retry: false,
     });

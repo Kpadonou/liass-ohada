@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { QueryClient } from '@tanstack/angular-query-experimental';
+import { QueryClient, QueryObserver } from '@tanstack/angular-query-experimental';
 import { of, Subject } from 'rxjs';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { RestaurantOutletContext } from './restaurant-outlet-context';
@@ -82,6 +82,167 @@ describe('Cash authoritative cache and request counts', () => {
     client.setQueryData(cashKeys.read(initial, 'business-days/current'), { data: day });
     client.setQueryData(cashKeys.read(initial, 'cash-sessions/current'), { data: session });
   }
+  function measuredReads() {
+    const summary = {
+      businessDay: day,
+      observedAt: day.openedAt,
+      attributionCoverage: 'ATTRIBUTED_ONLY',
+      paymentCount: 1,
+      totalPaymentsMinor: 800,
+      paidByMethodMinor: session.paidByMethodMinor,
+      physicalCashPaymentsMinor: 200,
+      nonCashPaymentsMinor: 600,
+      cashInMinor: 0,
+      cashOutMinor: 0,
+      sessionCount: 1,
+      openSessionCount: 1,
+      closedSessionCount: 0,
+      closedVarianceMinor: 0,
+      sessions: [
+        {
+          session,
+          totalPaymentsMinor: 800,
+          physicalCashPaymentsMinor: 200,
+          nonCashPaymentsMinor: 600,
+        },
+      ],
+    };
+    http.get.mockImplementation((url: string) =>
+      of(
+        url.endsWith('/movements')
+          ? { items: [] }
+          : url.endsWith('/summary')
+            ? { data: summary }
+            : url.includes('business-days')
+              ? { data: day }
+              : { data: session },
+      ),
+    );
+  }
+  it.each([false, true])(
+    'performance: Cash management=%s cold/warm/remount/switch HTTP counts',
+    async (management) => {
+      measuredReads();
+      const mount = () => {
+        const options = [
+          api.day(scope),
+          api.current(scope),
+          api.movements(scope, session.cashSessionId),
+          ...(management ? [api.summary(scope, day.businessDayId, true)] : []),
+        ];
+        return options.map((option) =>
+          new QueryObserver(client, option as ReturnType<typeof api.day>).subscribe(() => {}),
+        );
+      };
+      let closes = mount();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(http.get).toHaveBeenCalledTimes(management ? 4 : 3);
+      closes.forEach((close) => close());
+      closes = mount();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(http.get).toHaveBeenCalledTimes(management ? 4 : 3);
+      expect(await api.requirePayment(scope)).toBe(true);
+      expect(await api.requirePayment(scope)).toBe(true);
+      expect(http.get).toHaveBeenCalledTimes(management ? 4 : 3);
+      closes.forEach((close) => close());
+      scope = { ...scope, outlet: rid(99) };
+      closes = mount();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(http.get).toHaveBeenCalledTimes(management ? 8 : 6);
+      closes.forEach((close) => close());
+    },
+  );
+  it('performance: mounted current-session movement revalidates one total read, close revalidates only the day', async () => {
+    measuredReads();
+    const current = new QueryObserver(client, api.current(scope));
+    const dayRead = new QueryObserver(client, api.day(scope));
+    const history = new QueryObserver(client, api.movements(scope, session.cashSessionId));
+    const closes = [
+      current.subscribe(() => {}),
+      dayRead.subscribe(() => {}),
+      history.subscribe(() => {}),
+    ];
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    http.get.mockClear();
+    const movement: c.RestaurantCashMovement = {
+      orgId: scope.org,
+      outletId: scope.outlet,
+      movementId: rid(7),
+      cashSessionId: session.cashSessionId,
+      businessDayId: day.businessDayId,
+      type: 'CASH_IN',
+      amountMinor: 50,
+      currency: 'XOF',
+      reason: 'Float',
+      actorId: scope.user,
+      occurredAt: day.openedAt,
+      createdAt: day.openedAt,
+      clientRequestId: rid(8),
+    };
+    http.post.mockReturnValue(of({ data: movement }));
+    const result = await api.command(
+      scope,
+      `cash-sessions/${session.cashSessionId}/movements`,
+      { amountMinor: 50, reason: 'Float' },
+      c.RestaurantCashMovementResponseSchema,
+    );
+    await api.confirmedMovement(scope, result.data);
+    expect(http.post).toHaveBeenCalledTimes(1);
+    expect(http.get).toHaveBeenCalledTimes(1);
+    expect(http.get.mock.calls[0][0]).toContain('/cash-sessions/current');
+    http.get.mockClear();
+    await api.confirmedSession(scope, { ...session, status: 'CLOSED', version: 2 });
+    expect(http.get).toHaveBeenCalledTimes(1);
+    expect(http.get.mock.calls[0][0]).toContain('/business-days/current');
+    http.get.mockClear();
+    await api.confirmedDay(scope, { ...day, status: 'CLOSED', openSessionCount: 0, version: 3 });
+    expect(http.get).not.toHaveBeenCalled();
+    closes.forEach((close) => close());
+  });
+  it('performance: payment reconciliation reads only current totals, preserving history and unrelated cached sessions', async () => {
+    measuredReads();
+    const options = [
+      api.day(scope),
+      api.current(scope),
+      api.movements(scope, session.cashSessionId),
+    ];
+    const closes = options.map((option) =>
+      new QueryObserver(client, option as ReturnType<typeof api.day>).subscribe(() => {}),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    http.get.mockClear();
+    const unrelated = cashKeys.read(scope, `cash-sessions/${rid(99)}`);
+    client.setQueryData(unrelated, { data: session });
+    await api.reconcile(scope);
+    expect(http.get).toHaveBeenCalledTimes(2);
+    expect(http.get.mock.calls.map(([url]) => url.split('/').slice(-2).join('/')).sort()).toEqual([
+      'business-days/current',
+      'cash-sessions/current',
+    ]);
+    expect(client.getQueryState(unrelated)?.isInvalidated).toBe(false);
+    expect(
+      client.getQueryState(cashKeys.read(scope, `cash-sessions/${session.cashSessionId}/movements`))
+        ?.isInvalidated,
+    ).toBe(false);
+    await api.requirePayment(scope);
+    expect(http.get).toHaveBeenCalledTimes(2);
+    closes.forEach((close) => close());
+  });
+  it('performance: Cash background refresh keeps cached canonical content pending confirmation', async () => {
+    seed();
+    const response = new Subject<unknown>();
+    http.get.mockReturnValue(response);
+    const observer = new QueryObserver(client, api.current(scope));
+    const close = observer.subscribe(() => {});
+    const refreshing = observer.refetch();
+    expect(observer.getCurrentResult().data).toEqual({ data: session });
+    expect(observer.getCurrentResult().isPending).toBe(false);
+    response.next({ data: { ...session, version: 2 } });
+    response.complete();
+    await refreshing;
+    expect(observer.getCurrentResult().data?.data?.version).toBe(2);
+    close();
+  });
   it('warm Checkout and remount reuse both discovery responses', async () => {
     seed();
     expect(await api.requirePayment(initial)).toBe(true);

@@ -56,7 +56,9 @@ export class RestaurantOutletRouting {
       const error = source.error();
       return error instanceof HttpErrorResponse && [401, 403].includes(error.status)
         ? 'access-changed'
-        : 'error';
+        : this.context.id()
+          ? 'ready'
+          : 'error';
     }
     if (!source.isSuccess()) return 'loading';
     const target = this.destination();
@@ -97,7 +99,9 @@ export class RestaurantOutletRouting {
       if (!navigating && operationalOutletRoute(this.path(url)) && !this.routeReady()) {
         untracked(() => {
           this.begin(url, false);
-          void this.router.navigateByUrl(this.selectionUrl(url), { replaceUrl: true });
+          void this.router.navigateByUrl(this.selectionUrl(this.destination()?.url ?? url), {
+            replaceUrl: true,
+          });
         });
       }
     });
@@ -135,7 +139,15 @@ export class RestaurantOutletRouting {
     this.context.setRouteActive(true);
     const path = this.path(url);
     const resource = this.resourceOutlet(path);
-    const hint = resource || this.router.parseUrl(url).queryParamMap.get('outlet') || '';
+    let hint = resource || this.router.parseUrl(url).queryParamMap.get('outlet') || '';
+    // An explicitly revoked active filter is obsolete navigation metadata, not a new deep-link request.
+    // Resource parent links and incoming untrusted hints still require exact authorization.
+    if (!resource && !applyHint && hint && this.context.isRevoked(hint)) {
+      const tree = this.router.parseUrl(url);
+      delete tree.queryParams['outlet'];
+      url = this.router.serializeUrl(tree);
+      hint = '';
+    }
     this.target.set({
       identity: this.context.identity(),
       principal: this.principal(),
