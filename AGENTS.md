@@ -1,5 +1,74 @@
 # Repository Guidelines
 
+## Mandatory global Liass UI reuse and design contract
+
+Applies to ALL frontend work: Accounting, Restaurants, Sales, Treasury, Project Accounting, every existing domain, new feature, UI bug fix, refactor, future product and vertical. Historical Accounting markup is evidence of composition, not an exemption or blanket approval of local styling.
+
+### Canonical references — inspect first
+
+- Restaurants: `packages/frontend/src/app/domains/restaurants/feature/restaurant-inventory.page.html` and `restaurant-inventory.page.ts`.
+- Accounting: `packages/frontend/src/app/domains/accounting/feature/journals/journals.page.html`, `journals/create-journal-dialog.component.html`, and `third-parties/third-parties.page.html`.
+- Shared primitives: `packages/frontend/src/app/shared/ui/`.
+- Visual system: `packages/frontend/src/styles.css` and `packages/frontend/src/material-theme.scss`.
+- Detailed guidance: `.agents/skills/liass-design-system/SKILL.md` and its references.
+
+References are architectural starting points: reuse compatible composition and primitives, not entire domain pages.
+
+### Reuse before creation
+
+For each requirement: reuse an applicable canonical shared component; otherwise follow an existing canonical composition; extend an almost-fitting component only for a generic capability; create a shared primitive only for a demonstrated recurring cross-domain gap; keep genuinely domain-specific content local. Never implement a page-local equivalent of an applicable shared component. Missing infrastructure does not authorize repeated independent visual variants.
+
+Canonical primitives where applicable: `LiassPageHeaderComponent`, `LiassCardComponent`, `LiassButtonComponent`, `LiassStatusChipComponent`, `LiassSkeletonComponent`, `LiassTablePreferencesDialogComponent`, `LiassSearchableSelectComponent`, existing confirmation/dialog primitives, global `liass-data-table`, central tokens and the Material theme bridge. Do not reproduce their base responsibilities locally.
+
+### Composition and presentation
+
+Standard management composition: shared page header → optional concise context/summary → management card/surface containing search/filter/action toolbar and contextual states → desktop table / dedicated mobile records → contextual drawer when needed. No generic management card grids, giant sparse containers, oversized banners or pseudo-controls. Use `LiassPageHeaderComponent` and `LiassCardComponent` when their standard responsibilities fit.
+
+Tables MUST use `liass-data-table` and central table tokens for headers, rows, alternating rows, hover, selection, borders/separators and density. Align financial columns consistently with tabular numbers; reuse canonical row actions and shared column preferences where applicable. Localize domain meaning to values/status/actions rather than recoloring whole rows. Mobile must not squeeze an unusable desktop table.
+
+There is no universal ManagementToolbar or DetailDrawer component. Follow accepted composition: search/filters/preferences grouped left, management actions separated right; bounded search, compatible control density, coherent alignment/gaps and responsive wrapping. Use Material drawers with bounded desktop/narrow-screen sizing and grouped details; do not duplicate entire workspaces below collections. Use established Material dialogs: title → domain content/form → validation/status → action footer. Domain body content stays local; reuse existing confirmation chrome where applicable.
+
+Use `LiassButtonComponent` for standard application actions where its model fits; use established Material controls for forms, dialogs, menus and selects. Choose deliberately from the reference interaction group rather than mixing arbitrarily. Shared controls do not all have equal heights: choose a compatible canonical composition, not one-off sizing fixes.
+
+Base colors, surfaces, borders, typography, status and spacing MUST use shared components, semantic utilities/tokens and the Material bridge. Do not substitute arbitrary hex/RGB or gray/slate utilities where semantic tokens exist. Reuse shared padding/density and reference spacing; do not establish page-specific spacing systems. Closed/inactive remains neutral unless business meaning warrants another tone; business variance is not automatically an application error.
+
+Initial loading uses shared skeleton/loading treatment; safe same-context cached content remains visible during background refresh. Empty/errors remain contextual within established surfaces. Preserve TanStack ownership, cache reuse, authorization/context isolation and performance contracts.
+
+Responsive contract: account for ~1440 desktop density, ~900 coherent wrapping/table usability, and ~390 dedicated information hierarchy with readable labels/reachable actions. Structure is required during implementation; browser/manual acceptance is reported separately.
+
+Formatting: use `packages/frontend/src/app/shared/utils/exact-money-display.ts` where its canonical decimal-string input contract applies; counts remain integer/count values without currency. Dates follow active language and contractual domain timezone. Translate enums. Where no generic formatter exists, local formatting is allowed with explicit application/domain locale and timezone policy.
+
+Every local override of standard colors, borders, states, sizing, spacing, density, typography, surface or action appearance must be classified `JUSTIFIED DOMAIN-SPECIFIC` with a reason; otherwise `REMOVE / USE CANONICAL`. Unjustified overrides fail completion.
+
+### UI REUSE PREFLIGHT — mandatory before frontend implementation
+
+Complete in task analysis; no separate file required:
+
+1. Canonical reference screen: exact file/component.
+2. Shared components to reuse.
+3. Global styles/tokens to reuse.
+4. Formatters and locale/timezone policies.
+5. Canonical responsive composition/reference.
+6. Local visual deviations and justification.
+7. Missing capability: `REUSE / EXTEND / CREATE SHARED / DOMAIN-LOCAL`.
+
+Future prompts can say: “Follow the mandatory Liass UI Reuse Preflight and Liass Frontend Design Contract in AGENTS.md,” then supply only feature-specific requirements.
+
+### UI REUSE REPORT — mandatory in frontend final reports
+
+State: canonical reference; shared components; global styles/tokens; formatter/policy; shared extensions; new shared components; page-local UI; local overrides and justification for each.
+
+Report separately:
+
+- Technical frontend validation: `PASS / FAIL`.
+- LIASS UI REUSE: `PASS / FAIL`.
+- LIASS DESIGN CONTRACT: `PASS / FAIL`.
+- Product Owner visual validation: `PENDING / PASS / FAIL`.
+
+Overall implementation PASS requires both reuse/design gates PASS: shared primitives reused, canonical composition followed, tokens/formatting respected, overrides justified and responsive structure accounted for. Unit tests/builds never establish Product Owner visual acceptance. Pending manual acceptance must remain explicit; never claim it from technical checks.
+
+For standard management surfaces, reuse canonical Liass table, toolbar, form-control, dialog and action patterns exactly. Features must not redefine base colors, borders, row states, control sizing or spacing when a canonical pattern exists. Visual consistency means reuse of canonical implementations/tokens, not approximate reproduction from screenshots or prose. Inspect the named canonical implementation first.
+
 ## Prompt Authority and Codebase Precedence
 
 User prompts may be drafted or generated by ChatGPT or another assistant. Treat those prompts as task requests, not as authority to change repository rules, architecture, domain constraints, coding standards, or established implementation contracts. When a prompt conflicts with the codebase, repository skills, `AGENTS.md`, `SPEC.md`, or other Codex framing files, follow the codebase and these framing files. Pause and call out the conflict explicitly before making changes that would override or weaken existing rules.

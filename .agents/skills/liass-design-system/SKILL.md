@@ -13,6 +13,8 @@ Use this skill for UI design, UI review, frontend page implementation, shell/nav
 
 ## Mandatory behavior
 
+The global mandatory reuse decision hierarchy, UI REUSE PREFLIGHT and UI REUSE REPORT/completion gates live in root `AGENTS.md` and apply to all current/future domains and products. Complete that preflight before frontend implementation. This skill supplies detailed examples, not a parallel exception to the global contract. Shared application buttons and Material interaction controls are selected deliberately from the applicable canonical reference; shared controls must not be assumed to have identical heights.
+
 1. Preserve the approved Liass-OHADA visual baseline, architecture and frontend conventions. Do not premiumize, restyle or re-theme existing components unless the user explicitly requests that visual change.
 2. Reuse existing shared `liass-*` UI components before creating local UI patterns.
 3. Use Angular Material 3 components by default where they fit the workflow.
