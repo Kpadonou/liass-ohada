@@ -1,3 +1,4 @@
+import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
 import { Construct } from "constructs";
 import { Duration } from "aws-cdk-lib";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
@@ -86,6 +87,28 @@ export function addRestaurantsManagementRoutes(
       routeKey: apigw.HttpRouteKey.with(
         route.path,
         apigw.HttpMethod[route.method],
+      ),
+    });
+  }
+  for (const route of RESTAURANT_CASH_ROUTES) {
+    new apigw.HttpRoute(scope, `Cash-${route.method}-${route.path}`, {
+      httpApi: props.api,
+      authorizer: props.authorizer,
+      integration,
+      routeKey: apigw.HttpRouteKey.with(
+        route.path,
+        apigw.HttpMethod[route.method],
+      ),
+    });
+  }
+  for (const family of ["business-days", "cash-sessions"]) {
+    fn.addPermission(`Cash-${family}-Invoke`, {
+      principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+      sourceAccount: fn.stack.account,
+      sourceArn: props.api.arnForExecuteApi(
+        "*",
+        `/restaurants/outlets/*/${family}*`,
+        stage,
       ),
     });
   }

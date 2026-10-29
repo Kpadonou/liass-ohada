@@ -404,3 +404,5 @@ export * from "./receipts";
 export * from "./waiter-call";
 
 export * from "./guest-submission";
+
+export * from "./cash";

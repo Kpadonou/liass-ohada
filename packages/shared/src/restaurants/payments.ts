@@ -82,6 +82,9 @@ export const RestaurantPaymentSchema = z
     clientRequestId: id,
     fingerprint: z.string().regex(/^[a-f0-9]{64}$/),
     actorId: z.string().min(1),
+    capturedByUserId: z.string().min(1).optional(),
+    businessDayId: id.optional(),
+    cashSessionId: id.optional(),
     attemptedAt: z.string().datetime(),
     committedAt: z.string().datetime(),
     externalReference: z.string().min(1).max(200).optional(),
@@ -90,6 +93,20 @@ export const RestaurantPaymentSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
+    const attributed = [
+      value.capturedByUserId,
+      value.businessDayId,
+      value.cashSessionId,
+    ];
+    if (
+      attributed.some((v) => v !== undefined) &&
+      (!attributed.every((v) => v !== undefined) ||
+        value.capturedByUserId !== value.actorId)
+    )
+      ctx.addIssue({
+        code: "custom",
+        message: "Incomplete capture attribution",
+      });
     if (
       value.method !== "CASH" &&
       (value.cashTenderedMinor !== undefined || value.changeMinor !== undefined)

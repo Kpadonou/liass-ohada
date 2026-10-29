@@ -1,3 +1,4 @@
+import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
 import { Template } from "aws-cdk-lib/assertions";
 import { RestaurantsGuestEndpoints } from "../../../lib/constructs/domains/restaurants-guest-endpoints";
 import * as cdk from "aws-cdk-lib";
@@ -391,13 +392,13 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(77);
-    expect(routes).toHaveLength(102);
+    expect(routes).toHaveLength(116);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
     ).toHaveLength(77);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(85);
+    ).toHaveLength(87);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -502,7 +503,7 @@ describe("API stack decomposition", () => {
         (item): item is lambda.CfnPermission =>
           item instanceof lambda.CfnPermission,
       );
-    expect(permissions).toHaveLength(6);
+    expect(permissions).toHaveLength(8);
     const arns = permissions.map((permission) => {
       expect(permission.principal).toBe("apigateway.amazonaws.com");
       expect(restaurants.resolve(permission.sourceAccount)).toBe(
@@ -517,7 +518,7 @@ describe("API stack decomposition", () => {
     expect(arns.join(" ")).not.toContain("/$default/*/*");
     expect(
       Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-    ).toBe(345); // Unit fixture omits the deployed CDK metadata resource.
+    ).toBe(361); // Unit fixture omits the deployed CDK metadata resource.
   });
 
   test.each([
@@ -709,7 +710,54 @@ describe("API stack decomposition", () => {
       expect(trackingArn).not.toContain("/$default/*/*");
       expect(
         Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-      ).toBe(345);
+      ).toBe(361);
+    },
+  );
+
+  test.each(RESTAURANT_CASH_ROUTES)(
+    "Cash $method $path reuses management integration with JWT and bounded invocation",
+    ({ method, path }) => {
+      const restaurants = constructs.find(
+        (item): item is RestaurantsApiStack =>
+          item instanceof RestaurantsApiStack,
+      )!;
+      const owned = restaurants.node.findAll();
+      const route = owned.find(
+        (item): item is apigwv2.CfnRoute =>
+          item instanceof apigwv2.CfnRoute &&
+          item.routeKey === `${method} ${path}`,
+      )!;
+      const original = owned.find(
+        (item): item is apigwv2.CfnRoute =>
+          item instanceof apigwv2.CfnRoute &&
+          item.routeKey === "GET /restaurants/outlets/{outletId}",
+      )!;
+      expect(route.authorizationType).toBe("JWT");
+      expect(path).not.toContain("proxy");
+      expect(restaurants.resolve(route.target)).toEqual(
+        restaurants.resolve(original.target),
+      );
+      const family = path.includes("/business-days")
+        ? "business-days"
+        : "cash-sessions";
+      const permission = owned.find(
+        (item): item is lambda.CfnPermission =>
+          item instanceof lambda.CfnPermission &&
+          item.node.id === `Cash-${family}-Invoke`,
+      )!;
+      expect(permission.sourceAccount).toBe("123456789012");
+      const arn = JSON.stringify(restaurants.resolve(permission.sourceArn));
+      expect(arn).toContain(`/$default/*/restaurants/outlets/*/${family}*`);
+      expect(arn).not.toContain("/$default/*/*");
+      expect(restaurants.resolve(permission.functionName)).toEqual(
+        restaurants.resolve(
+          owned.find(
+            (item): item is lambda.CfnFunction =>
+              item instanceof lambda.CfnFunction &&
+              item.functionName === "liass-ohada-dev-restaurants-get-outlet",
+          )!.attrArn,
+        ),
+      );
     },
   );
 
@@ -1261,7 +1309,7 @@ describe("API stack decomposition", () => {
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
     ).toBe(0);
-    expect(Object.keys(after.Resources).length).toBe(345);
+    expect(Object.keys(after.Resources).length).toBe(361);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(
         (r) => (r as { Type: string }).Type === type,

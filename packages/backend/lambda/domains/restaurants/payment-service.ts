@@ -1,3 +1,4 @@
+import { RestaurantCashService } from "./cash-service";
 import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
@@ -177,7 +178,7 @@ export class RestaurantPaymentService {
       version: safe(BigInt(session.data.version) + 1n),
       financialRevision: safe(BigInt(session.data.financialRevision) + 1n),
     });
-    const payment = c.RestaurantPaymentSchema.parse({
+    let payment = c.RestaurantPaymentSchema.parse({
       ...scope,
       schemaVersion: 1,
       paymentId,
@@ -201,6 +202,15 @@ export class RestaurantPaymentService {
               BigInt(request.cashTenderedMinor) - BigInt(amount),
             ),
           }),
+    });
+    const cash = await RestaurantCashService.paymentActions(
+      scope,
+      actorId,
+      payment,
+    );
+    payment = c.RestaurantPaymentSchema.parse({
+      ...payment,
+      ...cash.attribution,
     });
     const result = c.RestaurantPaymentResultSchema.parse({
       ...payment,
@@ -241,6 +251,7 @@ export class RestaurantPaymentService {
       },
     });
     const guardCount = actions.length;
+    actions.push(...cash.actions);
     const put = (
       kind: TransactionKind,
       key: TransactionKey,

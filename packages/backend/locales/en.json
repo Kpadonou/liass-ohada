@@ -1,4 +1,7 @@
 {
+  "RESTAURANTS_CASH_CONFLICT": "The business day or cash session changed, or an active opening already exists. Refresh and try again.",
+  "RESTAURANTS_CASH_SESSION_REQUIRED": "Open your cash session before capturing a payment.",
+  "RESTAURANTS_BUSINESS_DAY_REQUIRED": "Open a business day before opening a cash session.",
   "RESTAURANTS_INVENTORY_TRACKING_INELIGIBLE": "Direct inventory tracking is reserved for items without a preparation station.",
   "RESTAURANTS_INVENTORY_TRACKING_TARGET": "Select an active stock item with a discrete unit.",
   "RESTAURANTS_INVENTORY_INACTIVE": "Reactivate this item to record new movements.",

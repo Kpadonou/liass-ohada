@@ -1,3 +1,4 @@
+import { openCashFixture } from "./cash-fixture";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   GetItemCommand,
@@ -164,6 +165,7 @@ beforeEach(async () => {
   order = await newOrder(false);
   line = await add();
   order = await submit(line);
+  await openCashFixture(scope(), ["owner", "manager", "cashier", "cashier2"]);
 });
 afterEach(() => {
   m.db.restore();
@@ -328,7 +330,7 @@ test.each([1, 3, 10])(
     await capture(body);
     const actions = m.db.commandCalls(TransactWriteItemsCommand)[0].args[0]
       .input.TransactItems!;
-    expect(actions).toHaveLength(5 * n + 14);
+    expect(actions).toHaveLength(5 * n + 17);
     expect(Buffer.byteLength(JSON.stringify(actions))).toBeLessThan(
       3 * 1024 * 1024,
     );
@@ -846,7 +848,7 @@ test("1/3/10 management branches omit only Staff guards and maximum evidence sta
     await capture(body, "owner");
     const actions = m.db.commandCalls(TransactWriteItemsCommand)[0].args[0]
       .input.TransactItems!;
-    expect(actions).toHaveLength(4 * n + 12); // partial payment retains UNPAID membership
+    expect(actions).toHaveLength(4 * n + 15); // partial payment retains UNPAID membership
     expect(Buffer.byteLength(JSON.stringify(actions))).toBeLessThan(80000);
   }
 });
@@ -1021,6 +1023,6 @@ test.each([1, 3, 10])(
     expect(
       m.db.commandCalls(TransactWriteItemsCommand)[0].args[0].input
         .TransactItems,
-    ).toHaveLength(5 * n + 12);
+    ).toHaveLength(5 * n + 15);
   },
 );

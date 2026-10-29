@@ -13,6 +13,30 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  // Cash operational identity; additive keys, existing formats stay unchanged.
+  restaurantBusinessDaysPK: (orgId: string, outletId: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#BUSINESS_DAYS`,
+  restaurantBusinessDayPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#BD#${restaurantTransactionSegment(id)}`,
+  restaurantCashSessionPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#CS#${restaurantTransactionSegment(id)}`,
+  restaurantActiveCashierKey: (
+    orgId: string,
+    outletId: string,
+    userId: string,
+  ) => ({
+    PK: `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#ACTIVE#CASHIER`,
+    SK: restaurantTransactionSegment(userId),
+  }),
+  restaurantBusinessDayHistoryPrefix: () => "BD#",
+  restaurantBusinessDayHistorySK: (timestamp: string, id: string) =>
+    `BD#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
+  restaurantCashSessionPrefix: () => "CS#",
+  restaurantCashSessionSK: (timestamp: string, id: string) =>
+    `CS#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
+  restaurantCashMovementPrefix: () => "MOV#",
+  restaurantCashMovementSK: (timestamp: string, id: string) =>
+    `MOV#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
   // Inventory Lite: outlet master data and per-item immutable history.
   restaurantStockPK: (orgId: string, outletId: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#STOCK`,

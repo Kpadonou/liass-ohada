@@ -1,3 +1,4 @@
+import { openCashFixture } from "./cash-fixture";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   QueryCommand,
@@ -246,6 +247,7 @@ beforeEach(async () => {
       })
     ).data,
   );
+  await openCashFixture(scope(), ["owner", "cashier", "cashier2"]);
 });
 afterEach(() => {
   m.db.restore();

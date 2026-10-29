@@ -1,3 +1,5 @@
+import { RESTAURANT_CASH_ROUTES } from "./cash-routes";
+import { restaurantCashHandler } from "./cash-handler";
 import { restaurantsHandler } from "./restaurant-handler";
 import { RESTAURANTS_ROUTES } from "./restaurant-routes";
 import {
@@ -22,6 +24,9 @@ const inventoryPaths = [
   ),
 ];
 const routes = new Map<string, typeof original>([
+  ...RESTAURANT_CASH_ROUTES.map(
+    (r) => [`${r.method} ${r.path}`, restaurantCashHandler(r)] as const,
+  ),
   ...RESTAURANTS_ROUTES.filter((r) => r.kind === "outlet").map(
     (r) =>
       [

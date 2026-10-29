@@ -1,4 +1,7 @@
 {
+  "RESTAURANTS_CASH_CONFLICT": "La journée ou la caisse a changé, ou une ouverture existe déjà. Actualisez puis réessayez.",
+  "RESTAURANTS_CASH_SESSION_REQUIRED": "Ouvrez votre caisse avant d’enregistrer un encaissement.",
+  "RESTAURANTS_BUSINESS_DAY_REQUIRED": "Une journée doit être ouverte avant d’ouvrir une caisse.",
   "RESTAURANTS_INVENTORY_TRACKING_INELIGIBLE": "Le suivi direct du stock est réservé aux articles sans poste de préparation.",
   "RESTAURANTS_INVENTORY_TRACKING_TARGET": "Sélectionnez un article de stock actif avec une unité discrète.",
   "RESTAURANTS_INVENTORY_INACTIVE": "Réactivez cet article pour enregistrer de nouveaux mouvements.",

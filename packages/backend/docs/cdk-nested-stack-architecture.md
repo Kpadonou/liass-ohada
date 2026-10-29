@@ -281,3 +281,27 @@ Implementation prompts that may add or change CDK resources **MUST** include the
 - deployment performed or not performed.
 
 Passing a TypeScript build alone does not establish deployment safety.
+
+## RESTO-CASH-1A — Business Day and Cash Session routing
+
+The cash foundation remains owned by `RestaurantsApiStack`. Fourteen exact
+GET/POST routes reuse the existing get-outlet management Lambda and Integration.
+Two new invocation permissions are restricted to the existing API/account/default
+stage and `/restaurants/outlets/*/business-days*` or
+`/restaurants/outlets/*/cash-sessions*`. Per-route JWT and original shared managed
+CORS remain intact; no proxy/ANY/OPTIONS route or API-wide permission is added.
+
+Local synthesis changes Restaurants **346 → 362** resources (normal, below 375):
+Routes **102 → 116**, Lambda permissions **85 → 87**, Lambdas **77 → 77**,
+Integrations **77 → 77**. Unit fixtures omit CDK metadata and count 361.
+No resource is removed or replaced, no new Lambda/role/log group is created,
+and no stateful resource moves. Data remains at 5 resources; API core at 278.
+Other template counts remain Identity 103, Accounting 51, Sales 161, Projects 12,
+Treasury 11, Fiscal Compliance 41, root 1.
+
+The read-only AWS diff (`--no-change-set`) confirms the 14 Route and two Permission
+additions and no stateful change. Central KeyFactory/shared-contract additions
+also change bundled Lambda code assets across existing domains: the diff includes
+231 Lambda code updates (77 in Restaurants), plus seven nested-template updates.
+These are code asset changes with stable logical IDs, not function replacements
+or new domain infrastructure. No deployment is performed by this lot.
