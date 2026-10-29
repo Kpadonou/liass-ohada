@@ -10,7 +10,10 @@ import { AuthStore } from '../../identity/data-access/auth.store';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { RestaurantAccessState } from './restaurant-access-state';
 import { RestaurantOutletContext } from './restaurant-outlet-context';
-import { RestaurantOutletRouting, restaurantOutletGuard } from './restaurant-outlet-routing';
+import {
+  RestaurantOutletRouting,
+  restaurantProductBootstrapGuard,
+} from './restaurant-outlet-routing';
 import { RestaurantOutletResolutionPage } from '../feature/restaurant-outlet-resolution.page';
 import { RestaurantsApi } from './restaurants.api';
 import { accessWorkspace } from './restaurant-access.test-fixture';
@@ -45,6 +48,7 @@ async function settled(check: () => void) {
   });
 }
 beforeEach(async () => {
+  localStorage.clear();
   activated.length = 0;
   org.set('org');
   user.set('owner');
@@ -68,6 +72,7 @@ beforeEach(async () => {
         {
           path: 'restaurants',
           component: ProductHost,
+          canActivateChild: [restaurantProductBootstrapGuard],
           children: [
             { path: 'context', component: RestaurantOutletResolutionPage },
             ...[
@@ -82,7 +87,6 @@ beforeEach(async () => {
             ].map((path) => ({
               path,
               component: FunctionalPage,
-              canActivate: [restaurantOutletGuard],
               runGuardsAndResolvers: 'paramsOrQueryParamsChange' as const,
             })),
             { path: 'setup/locations', component: SetupPage },
@@ -211,7 +215,7 @@ it('keeps setup reachable for zero outlets without activating functional content
   expect(activated).toEqual([]);
   await h.navigateByUrl('/restaurants/setup/locations');
   expect(h.routeNativeElement?.textContent).toContain('Setup recovery');
-  expect(routing.context.attached()).toBe(false);
+  expect(routing.context.attached()).toBe(true);
 });
 it('reports transport error separately from empty context', async () => {
   api.list.mockRejectedValue(new HttpErrorResponse({ status: 500 }));

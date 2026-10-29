@@ -26,6 +26,7 @@ const refreshing = signal(false);
 const api = { myOutlets: vi.fn(), list: vi.fn() };
 let client: QueryClient, params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 beforeEach(() => {
+  localStorage.clear();
   org.set('org');
   user.set('staff');
   revision.set(0);

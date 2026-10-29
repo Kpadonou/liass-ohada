@@ -86,6 +86,7 @@ async function create() {
   await settle();
 }
 beforeEach(() => {
+  localStorage.clear();
   org.set('org');
   user.set('cook');
   revision.set(0);

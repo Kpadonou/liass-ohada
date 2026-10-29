@@ -1,6 +1,6 @@
 import {
   RestaurantOutletRouting,
-  restaurantOutletGuard,
+  restaurantProductBootstrapGuard,
 } from '../data-access/restaurant-outlet-routing';
 import { RestaurantOutletResolutionPage } from './restaurant-outlet-resolution.page';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
@@ -28,9 +28,9 @@ import fr from '../../../../../public/assets/i18n/fr.json';
 
 @Component({ template: '<h1>Management dashboard fixture</h1>' })
 class ManagementDashboard {}
-@Component({ template: 'Protected management fixture' })
+@Component({ selector: 'test-management-detail', template: 'Protected management fixture' })
 class ManagementDetail {}
-@Component({ template: 'Kitchen workflow fixture' })
+@Component({ selector: 'test-kitchen-workflow', template: 'Kitchen workflow fixture' })
 class KitchenWorkflow {}
 
 describe('Current-user Restaurants lifecycle through actual routing and Service Floor', () => {
@@ -40,6 +40,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     myOutlets = vi.fn(),
     serviceFloor = vi.fn();
   beforeEach(() => {
+    localStorage.clear();
     workspace.set(accessWorkspace());
     remoteRole = undefined;
     assigned = false;
@@ -65,21 +66,19 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
           {
             path: 'restaurants',
             component: RestaurantsPage,
-            canActivateChild: [restaurantRouteGuard],
+            canActivateChild: [restaurantRouteGuard, restaurantProductBootstrapGuard],
             children: [
               { path: '', component: ManagementDashboard },
               { path: 'context', component: RestaurantOutletResolutionPage },
               { path: 'setup/locations', component: ManagementDetail },
-              { path: 'kitchen', component: KitchenWorkflow, canActivate: [restaurantOutletGuard] },
+              { path: 'kitchen', component: KitchenWorkflow },
               {
                 path: 'checkout',
                 component: RestaurantCheckoutPage,
-                canActivate: [restaurantOutletGuard],
               },
               {
                 path: 'service',
                 component: RestaurantServiceFloorPage,
-                canActivate: [restaurantOutletGuard],
               },
               { path: 'setup/team', component: ManagementDetail },
               { path: 'setup', component: ManagementDetail },
@@ -171,12 +170,21 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     });
     expect(h.routeNativeElement?.textContent).not.toContain('Protected management fixture');
   });
-  it.each(['OWNER', 'MANAGER'] as const)('preserves the %s landing on reload', async (role) => {
-    workspace.set(accessWorkspace(role));
-    const h = await RouterTestingHarness.create('/restaurants');
-    expect(h.routeNativeElement?.textContent).toContain('Management dashboard fixture');
-    expect(TestBed.inject(Router).url).toBe('/restaurants');
-  });
+  it.each(['OWNER', 'MANAGER'] as const)(
+    'keeps zero-Outlet %s setup recovery reachable after entry bootstrap',
+    async (role) => {
+      workspace.set(accessWorkspace(role));
+      const h = await RouterTestingHarness.create('/restaurants');
+      await vi.waitFor(() => {
+        h.detectChanges();
+        expect(TestBed.inject(RestaurantOutletRouting).resolution()).toBe('no-accessible-context');
+      });
+      expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard fixture');
+      await h.navigateByUrl('/restaurants');
+      expect(h.routeNativeElement?.textContent).toContain('Management dashboard fixture');
+      expect(TestBed.inject(Router).url).toBe('/restaurants');
+    },
+  );
   it('lands KITCHEN on its operational route without starting Service Floor', async () => {
     workspace.set(accessWorkspace('KITCHEN'));
     const h = await RouterTestingHarness.create('/restaurants');

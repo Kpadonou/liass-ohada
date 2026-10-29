@@ -39,6 +39,7 @@ const api = {
 let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>, client: QueryClient;
 let fixture: ReturnType<typeof TestBed.createComponent<RestaurantServiceFloorPage>>;
 beforeEach(() => {
+  localStorage.clear();
   availability.set('AVAILABLE');
   org.set('org');
   selfService.set(false);

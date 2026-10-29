@@ -1,5 +1,5 @@
 import { DestroyRef, Injectable, computed, effect, inject, signal, untracked } from '@angular/core';
-import { CanActivateFn, NavigationEnd, PRIMARY_OUTLET, Router } from '@angular/router';
+import { CanActivateChildFn, NavigationEnd, PRIMARY_OUTLET, Router } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { RestaurantOutletContext } from './restaurant-outlet-context';
 import { RestaurantAccessState } from './restaurant-access-state';
@@ -60,7 +60,7 @@ export class RestaurantOutletRouting {
           ? 'ready'
           : 'error';
     }
-    if (!source.isSuccess()) return 'loading';
+    if (!source.isSuccess() || this.context.restoringPreference()) return 'loading';
     const target = this.destination();
     if (target?.hint && !this.context.outlets().some((row) => row.id === target.hint)) {
       if (source.hasNextPage()) return 'selection-required';
@@ -89,7 +89,7 @@ export class RestaurantOutletRouting {
       if (!(event instanceof NavigationEnd)) return;
       this.currentUrl.set(event.urlAfterRedirects);
       const path = this.path(event.urlAfterRedirects);
-      this.context.setRouteActive(operationalOutletRoute(path) || path === '/restaurants/context');
+      this.context.setRouteActive(path === '/restaurants' || path.startsWith('/restaurants/'));
       if (!operationalOutletRoute(path) && path !== '/restaurants/context') this.target.set(null);
     });
     inject(DestroyRef).onDestroy(() => subscription.unsubscribe());
@@ -119,7 +119,7 @@ export class RestaurantOutletRouting {
   }
   /** Restrict return destinations to known local operational routes, with no auxiliary outlets. */
   validDestination(url: string): boolean {
-    if (!url.startsWith('/restaurants/')) return false;
+    if (url.split(/[?#]/)[0] !== '/restaurants' && !url.startsWith('/restaurants/')) return false;
     try {
       const tree = this.router.parseUrl(url);
       const group = tree.root.children[PRIMARY_OUTLET];
@@ -128,7 +128,7 @@ export class RestaurantOutletRouting {
         !!group &&
         !Object.keys(group.children).length &&
         group.segments.every((s) => !Object.keys(s.parameters).length) &&
-        operationalOutletRoute(this.path(url))
+        (this.path(url) === '/restaurants' || operationalOutletRoute(this.path(url)))
       );
     } catch {
       return false;
@@ -137,6 +137,7 @@ export class RestaurantOutletRouting {
   begin(url: string, applyHint = true) {
     if (!this.validDestination(url)) return false;
     this.context.setRouteActive(true);
+    this.context.revalidateIfStale();
     const path = this.path(url);
     const resource = this.resourceOutlet(path);
     let hint = resource || this.router.parseUrl(url).queryParamMap.get('outlet') || '';
@@ -155,6 +156,7 @@ export class RestaurantOutletRouting {
       hint,
       resource: !!resource,
     });
+    if (!hint) this.context.restorePreference();
     if (applyHint && hint && hint !== this.context.id()) this.context.hint(hint);
     return true;
   }
@@ -231,7 +233,24 @@ export class RestaurantOutletRouting {
   }
 }
 
-export const restaurantOutletGuard: CanActivateFn = (_route, state) => {
+/** One product-level gate. Explicit setup/management scopes do not require an active Outlet. */
+export const restaurantProductBootstrapGuard: CanActivateChildFn = (route, state) => {
+  const path = route.routeConfig?.path ?? '';
+  if (path === 'context' || (path !== '' && !operationalOutletRoute(state.url.split(/[?#]/)[0])))
+    return true;
   const routing = inject(RestaurantOutletRouting);
-  return routing.canEnter(state.url) ? true : routing.selectionUrl(state.url);
+  if (
+    path === '' &&
+    ['configure', 'unsupported', 'unverified', 'changed'].includes(routing.access.mode())
+  )
+    return true;
+  if (routing.canEnter(state.url)) return true;
+  // The organization overview is also the management setup/recovery destination for zero Outlets.
+  if (
+    path === '' &&
+    routing.context.management() &&
+    routing.resolution() === 'no-accessible-context'
+  )
+    return true;
+  return routing.selectionUrl(state.url);
 };

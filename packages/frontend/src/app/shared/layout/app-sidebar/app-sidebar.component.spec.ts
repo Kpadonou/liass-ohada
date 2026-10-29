@@ -1,3 +1,5 @@
+import { signal } from '@angular/core';
+import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import { provideLocationMocks } from '@angular/common/testing';
 import { Component } from '@angular/core';
 import { Location } from '@angular/common';
@@ -37,6 +39,7 @@ vi.mock('aws-amplify/auth', () => {
 @Component({ template: '' })
 class NavigationTarget {}
 
+const activeOutlet = signal('ready-outlet');
 const translations = {
   fr: {
     RESTAURANTS_INVENTORY: { TITLE: 'Stock' },
@@ -128,6 +131,7 @@ describe('AppSidebarComponent', () => {
   let productAvailability: Record<ProductCode, ProductAvailability>;
 
   beforeEach(async () => {
+    activeOutlet.set('ready-outlet');
     TestBed.resetTestingModule();
     localStorage.clear();
     productAvailability = {
@@ -149,6 +153,7 @@ describe('AppSidebarComponent', () => {
         }),
       ],
       providers: [
+        { provide: RestaurantOutletContext, useValue: { id: activeOutlet, available: () => true } },
         provideRouter([]),
         provideLocationMocks(),
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
@@ -737,6 +742,44 @@ describe('AppSidebarComponent', () => {
     },
   );
 
+  it('hides normal operational navigation until authorized Outlet bootstrap is ready', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'MANAGER' } },
+      'org-resto',
+    );
+    activeOutlet.set('');
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    const routes = () =>
+      (
+        fixture.componentInstance as unknown as {
+          restaurantGroups: () => { items: { route: string }[] }[];
+        }
+      )
+        .restaurantGroups()
+        .flatMap((group) => group.items.map((item) => item.route));
+    const operational = [
+      '/restaurants/service',
+      '/restaurants/kitchen',
+      '/restaurants/checkout',
+      '/restaurants/cash',
+      '/restaurants/cash/day',
+      '/restaurants/inventory',
+    ];
+    expect(routes()).toContain('/restaurants/setup/locations');
+    expect(routes()).not.toContain('/restaurants');
+    for (const path of operational) expect(routes()).not.toContain(path);
+    expect(fixture.nativeElement.querySelector('button[aria-label="Caisse"]')).toBeNull();
+    activeOutlet.set('authorized-outlet');
+    fixture.detectChanges();
+    for (const path of operational) expect(routes()).toContain(path);
+    expect(fixture.nativeElement.querySelector('button[aria-label="Caisse"]')).toBeTruthy();
+    activeOutlet.set('');
+    fixture.detectChanges();
+    for (const path of operational) expect(routes()).not.toContain(path);
+  });
   it('deep-links, highlights exactly one restaurant entry, routes selections and follows history', async () => {
     productAvailability.RESTAURANTS = 'AVAILABLE';
     const ui = TestBed.inject(UiStore),
@@ -785,7 +828,7 @@ describe('AppSidebarComponent', () => {
       fixture.nativeElement.querySelectorAll(
         '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
       ),
-    ).toHaveLength(12);
+    ).toHaveLength(14);
   });
 
   it.each(['OWNER', 'MANAGER', 'WAITER', 'CASHIER', 'KITCHEN'])(
@@ -990,7 +1033,7 @@ describe('AppSidebarComponent', () => {
     ])
       expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
   });
-  it('shows only Caisse for CASHIER, preserving other product role boundaries', () => {
+  it('shows Caisse and Ma caisse for CASHIER, preserving other product role boundaries', () => {
     productAvailability.RESTAURANTS = 'AVAILABLE';
     TestBed.inject(UiStore).setCurrentPage('restaurants');
     TestBed.inject(AuthStore).setCreatedWorkspace(
@@ -1003,7 +1046,7 @@ describe('AppSidebarComponent', () => {
     const items = fixture.nativeElement.querySelectorAll(
       '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
     );
-    expect(items).toHaveLength(1);
+    expect(items).toHaveLength(2);
     for (const label of ['Service en salle', 'Cuisine', 'Restaurant', 'Équipe', 'Menu'])
       expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
   });

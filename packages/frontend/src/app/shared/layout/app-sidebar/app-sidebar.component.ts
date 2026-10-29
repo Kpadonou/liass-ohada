@@ -1,3 +1,5 @@
+import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
+import { operationalOutletRoute } from '../../../domains/restaurants/data-access/restaurant-outlet-routing';
 import {
   ShellRouteContext,
   shellProducts,
@@ -220,6 +222,7 @@ const cabinetItems: readonly ShellNavItem[] = [
   templateUrl: './app-sidebar.component.html',
 })
 export class AppSidebarComponent {
+  private readonly restaurantOutlet = inject(RestaurantOutletContext);
   protected readonly routeContext = inject(ShellRouteContext);
   private readonly restaurantsCapabilities = inject(RestaurantsCapabilities);
   private readonly productNavigation = inject(ShellProductNavigation);
@@ -229,7 +232,7 @@ export class AppSidebarComponent {
       this.productNavigation.routeProduct() ??
       'ACCOUNTING',
   );
-  protected readonly restaurantGroups = computed(() => [
+  private readonly allRestaurantGroups = computed(() => [
     {
       labelKey: 'SHELL.NAV.RESTAURANTS',
       showHeading: false,
@@ -355,6 +358,16 @@ export class AppSidebarComponent {
       ],
     },
   ]);
+  protected readonly restaurantGroups = computed(() =>
+    this.allRestaurantGroups().map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) =>
+          (!!this.restaurantOutlet.id() && this.restaurantOutlet.available()) ||
+          (item.route !== '/restaurants' && !operationalOutletRoute(item.route)),
+      ),
+    })),
+  );
   protected readonly accountingItems = accountingItems;
   protected readonly cabinetItems = cabinetItems;
   protected readonly dashboardItems = computed<readonly ShellNavItem[]>(() =>

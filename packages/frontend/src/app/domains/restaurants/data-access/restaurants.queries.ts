@@ -225,6 +225,7 @@ export class RestaurantsQueries {
       initialPageParam: undefined as string | undefined,
       queryFn: async ({ pageParam }) => {
         const page = await this.api.myOutlets(org, user, pageParam);
+        if (pageParam && page.nextCursor === pageParam) throw new Error('Repeated Outlet cursor');
         if (
           org !== this.scope() ||
           user !== this.userScope() ||
