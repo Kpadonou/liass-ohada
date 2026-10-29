@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../../domains/restaurants/data-access/restaurant-outlet-context';
 import { RestaurantsCapabilities } from '../../domains/restaurants/data-access/restaurants-capabilities';
 import type { ProductCode } from '@liass-ohada/shared/shared';
 import { UiStore, type AppPage } from '../state/ui.store';
@@ -5,7 +6,7 @@ import { ProductAccessState } from '../product-access/product-access.state';
 import { AuthStore } from '../../domains/identity/data-access/auth.store';
 import { SalesCapabilities } from '../../domains/sales/data-access/sales-capabilities';
 
-import { Injectable, computed, inject } from '@angular/core';
+import { Injectable, Injector, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs';
@@ -83,14 +84,23 @@ export class ShellProductNavigation {
   private readonly restaurants = inject(RestaurantsCapabilities);
   private readonly ui = inject(UiStore);
   readonly routeProduct = computed(() => productForPage(this.ui.currentPage()));
+  private readonly injector = inject(Injector);
+  private readonly route = inject(ShellRouteContext);
+  readonly restaurantEntry = computed(
+    () =>
+      this.route.url().startsWith('/restaurants') &&
+      (!this.injector.get(RestaurantOutletContext).id() ||
+        !this.injector.get(RestaurantOutletContext).available()),
+  );
   readonly hasSidebar = computed(
     () =>
-      this.routeProduct() !== 'RESTAURANTS' ||
-      (this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
-        (this.restaurants.canManageSetup() ||
-          this.restaurants.canReadService() ||
-          this.restaurants.canReadKitchen?.() ||
-          this.restaurants.canReadCheckout?.())),
+      !this.restaurantEntry() &&
+      (this.routeProduct() !== 'RESTAURANTS' ||
+        (this.access.availability('RESTAURANTS') === 'AVAILABLE' &&
+          (this.restaurants.canManageSetup() ||
+            this.restaurants.canReadService() ||
+            this.restaurants.canReadKitchen?.() ||
+            this.restaurants.canReadCheckout?.()))),
   );
   readonly products = computed(() =>
     !this.auth.effectiveOrgId()

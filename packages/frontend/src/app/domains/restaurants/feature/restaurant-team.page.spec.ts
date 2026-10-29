@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { of } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
@@ -86,6 +87,7 @@ beforeEach(() => {
       }),
     ],
     providers: [
+      { provide: RestaurantOutletContext, useValue: { id: () => (org() === 'org' ? rid(2) : '') } },
       provideRouter([]),
       { provide: QueryClient, useValue: client },
       { provide: AuthStore, useValue: { effectiveOrgId: org } },
@@ -215,29 +217,12 @@ it('paginates explicitly and does not claim complete totals while pages remain',
     expect(f.componentInstance.members()).toHaveLength(2);
   });
 });
-it('uses the outlet-scoped directory, excludes retained inactive relations, and applies a local status filter', async () => {
-  api.outletStaff.mockResolvedValue({
-    items: [
-      { staff: staffFixture(), assignment: assignmentFixture() },
-      {
-        staff: staffFixture('private-user-b'),
-        assignment: assignmentFixture(rid(2), { userId: 'private-user-b', status: 'INACTIVE' }),
-      },
-    ],
-  });
+it('keeps organization staff records administrable without an Active Outlet picker', async () => {
   const f = await page();
-  f.componentInstance.outletFilter.setValue(rid(2));
-  f.detectChanges();
-  await vi.waitFor(() => {
-    f.detectChanges();
-    expect(api.outletStaff).toHaveBeenCalledWith('org', rid(2), undefined);
-    expect(f.componentInstance.filtered.isSuccess()).toBe(true);
-  });
-  expect(f.componentInstance.members()).toHaveLength(1);
-  f.componentInstance.statusFilter.setValue('INACTIVE');
-  f.detectChanges();
-  expect(f.componentInstance.members()).toEqual([]);
-  expect(f.nativeElement.textContent).toContain('Aucun membre');
+  expect(f.componentInstance.outletId()).toBe(rid(2));
+  expect(api.staff).toHaveBeenCalledWith('org', undefined);
+  expect(api.outletStaff).not.toHaveBeenCalled();
+  expect(f.nativeElement.querySelector('liass-searchable-select')).toBeNull();
 });
 it('distinguishes the empty directory and a partial-page empty filter result', async () => {
   api.staff.mockResolvedValue({ items: [] });
@@ -620,31 +605,28 @@ it('shows a distinct no-match state and never searches opaque user references', 
     expect(f.nativeElement.textContent).not.toContain('private-user-a');
   }
 });
-it('intersects search, establishment and status without resetting another control', async () => {
-  api.outletStaff.mockResolvedValue({
+it('intersects search and status without changing session Outlet', async () => {
+  api.staff.mockResolvedValue({
     items: [
-      { staff: staffFixture(), assignment: assignmentFixture() },
-      {
-        staff: staffFixture('private-user-b', { displayName: 'Moussa D.', status: 'INACTIVE' }),
-        assignment: assignmentFixture(rid(2), { userId: 'private-user-b' }),
-      },
+      staffFixture(),
+      staffFixture('private-user-b', { displayName: 'Moussa D.', status: 'INACTIVE' }),
     ],
   });
   const f = await page();
   f.componentInstance.searchFilter.setValue('Moussa');
   f.componentInstance.statusFilter.setValue('INACTIVE');
-  f.componentInstance.outletFilter.setValue(rid(2));
+
   f.detectChanges();
   await vi.waitFor(() => {
     f.detectChanges();
-    expect(f.componentInstance.filtered.isSuccess()).toBe(true);
+    expect(f.componentInstance.team.isSuccess()).toBe(true);
   });
   expect(f.componentInstance.members().map((row) => row.displayName)).toEqual(['Moussa D.']);
   f.componentInstance.statusFilter.setValue('ACTIVE');
   f.detectChanges();
   expect(f.componentInstance.members()).toEqual([]);
   expect(f.componentInstance.searchFilter.value).toBe('Moussa');
-  expect(f.componentInstance.outletFilter.value).toBe(rid(2));
+  expect(f.componentInstance.outletId()).toBe(rid(2));
   f.componentInstance.searchFilter.reset('');
   f.detectChanges();
   expect(f.componentInstance.members().map((row) => row.displayName)).toEqual(['Aïssatou S.']);

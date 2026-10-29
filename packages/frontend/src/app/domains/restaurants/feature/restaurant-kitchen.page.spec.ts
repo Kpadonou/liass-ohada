@@ -87,6 +87,7 @@ async function create() {
 }
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   org.set('org');
   user.set('cook');
   revision.set(0);
@@ -221,18 +222,18 @@ it('station A/B/A reuses fresh cache and mobile lane switching stays local', asy
   await settle();
   expect(api.queue).toHaveBeenCalledTimes(6);
 });
-it('multiple outlets require selection and switching cannot flash the previous outlet', async () => {
+it('multiple outlets require entry choice and the resulting session Outlet cannot change', async () => {
   api.outlets.mockResolvedValue({ items: outlets });
   await create();
   expect(api.queue).not.toHaveBeenCalled();
-  fixture.componentInstance.selectOutlet(rid(2));
+  fixture.componentInstance.operational.select(rid(2));
   await settle();
   expect(fixture.nativeElement.textContent).toContain('Terrasse jardin');
-  fixture.componentInstance.selectOutlet(rid(12));
+  fixture.componentInstance.operational.select(rid(12));
   fixture.detectChanges();
-  expect(fixture.nativeElement.textContent).not.toContain('Terrasse jardin');
+  expect(fixture.nativeElement.textContent).toContain('Terrasse jardin');
   await settle();
-  expect(fixture.componentInstance.stations()).toEqual([]);
+  expect(fixture.componentInstance.outletId()).toBe(rid(2));
 });
 it('Start retains the board, prevents duplicate clicks, and reconciles only two lanes', async () => {
   await create();
@@ -393,20 +394,20 @@ it('late previous-station responses never attach to the selected station', async
   expect(fixture.componentInstance.stationId()).toBe(rid(4));
   expect(fixture.nativeElement.textContent).not.toContain('Terrasse jardin');
 });
-it('reuses fresh outlet queues on A/B/A with valid outlet-specific station discovery', async () => {
+it('retains fresh queues when obsolete context-switch attempts are ignored', async () => {
   api.outlets.mockResolvedValue({ items: outlets });
   api.stations.mockImplementation(async (ctx: KitchenContext) => ({
     items: stations.map((row) => ({ ...row, outletId: ctx.outlet })),
   }));
   await create();
-  fixture.componentInstance.selectOutlet(rid(2));
+  fixture.componentInstance.operational.select(rid(2));
   await settle();
-  fixture.componentInstance.selectOutlet(rid(12));
+  fixture.componentInstance.operational.select(rid(12));
   await settle();
-  expect(api.queue).toHaveBeenCalledTimes(6);
-  fixture.componentInstance.selectOutlet(rid(2));
+  expect(api.queue).toHaveBeenCalledTimes(3);
+  fixture.componentInstance.operational.select(rid(2));
   await settle();
-  expect(api.queue).toHaveBeenCalledTimes(6);
+  expect(api.queue).toHaveBeenCalledTimes(3);
   expect(fixture.nativeElement.textContent).toContain('Terrasse jardin');
 });
 it('does not claim zero active stations before bounded station discovery is exhausted', async () => {

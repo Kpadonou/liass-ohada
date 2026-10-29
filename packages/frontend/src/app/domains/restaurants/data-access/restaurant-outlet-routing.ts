@@ -14,7 +14,7 @@ export type OutletResolution =
   | 'access-changed'
   | 'error';
 
-/** Only these staff routes require an operational Outlet. Setup/Menu retain their target scope. */
+/** Operational route classification; the product gate additionally covers all management routes. */
 export function operationalOutletRoute(path: string): boolean {
   return (
     /^\/restaurants\/(service|kitchen|checkout|inventory)$/.test(path) ||
@@ -48,10 +48,14 @@ export class RestaurantOutletRouting {
   readonly resourceTarget = computed(() => this.destination()?.resource ?? false);
   readonly resolution = computed<OutletResolution>(() => {
     const source = this.context.source();
+    if (this.context.sessionInvalid()) return 'access-changed';
     if (this.target() && !this.destination()) return 'access-changed';
     if (!this.context.available()) {
       return this.access.mode() === 'checking' ? 'loading' : 'access-changed';
     }
+    const target = this.destination();
+    if (this.context.id() && target?.hint && target.hint !== this.context.id())
+      return 'invalid-selection';
     if (source.isError()) {
       const error = source.error();
       return error instanceof HttpErrorResponse && [401, 403].includes(error.status)
@@ -61,13 +65,14 @@ export class RestaurantOutletRouting {
           : 'error';
     }
     if (!source.isSuccess() || this.context.restoringPreference()) return 'loading';
-    const target = this.destination();
     if (target?.hint && !this.context.outlets().some((row) => row.id === target.hint)) {
       if (source.hasNextPage()) return 'selection-required';
       return 'invalid-selection';
     }
-    if (this.context.id()) return 'ready';
+    if (this.context.id())
+      return target?.hint && target.hint !== this.context.id() ? 'invalid-selection' : 'ready';
     if (source.isFetching()) return 'loading';
+    if (this.context.locked()) return source.hasNextPage() ? 'loading' : 'access-changed';
     if (this.context.invalidHint()) return 'invalid-selection';
     if (this.context.outlets().length === 1 && !source.hasNextPage()) return 'loading';
     return this.context.outlets().length || source.hasNextPage()
@@ -76,7 +81,7 @@ export class RestaurantOutletRouting {
   });
   readonly routeReady = computed(() => {
     const path = this.path(this.currentUrl());
-    if (!operationalOutletRoute(path)) return true;
+    if (path === '/restaurants/context' || !path.startsWith('/restaurants')) return true;
     const resourceOutlet = this.resourceOutlet(path);
     return (
       !!this.context.id() &&
@@ -96,7 +101,12 @@ export class RestaurantOutletRouting {
     effect(() => {
       const url = this.currentUrl();
       const navigating = this.router.currentNavigation();
-      if (!navigating && operationalOutletRoute(this.path(url)) && !this.routeReady()) {
+      if (
+        !navigating &&
+        this.path(url).startsWith('/restaurants') &&
+        this.path(url) !== '/restaurants/context' &&
+        !this.routeReady()
+      ) {
         untracked(() => {
           this.begin(url, false);
           void this.router.navigateByUrl(this.selectionUrl(this.destination()?.url ?? url), {
@@ -128,7 +138,11 @@ export class RestaurantOutletRouting {
         !!group &&
         !Object.keys(group.children).length &&
         group.segments.every((s) => !Object.keys(s.parameters).length) &&
-        (this.path(url) === '/restaurants' || operationalOutletRoute(this.path(url)))
+        (this.path(url) === '/restaurants' ||
+          operationalOutletRoute(this.path(url)) ||
+          /^\/restaurants\/(?:setup(?:\/(?:locations|areas|tables|stations|team))?|menu)$/.test(
+            this.path(url),
+          ))
       );
     } catch {
       return false;
@@ -140,7 +154,10 @@ export class RestaurantOutletRouting {
     this.context.revalidateIfStale();
     const path = this.path(url);
     const resource = this.resourceOutlet(path);
-    let hint = resource || this.router.parseUrl(url).queryParamMap.get('outlet') || '';
+    let hint =
+      resource ||
+      (operationalOutletRoute(path) ? this.router.parseUrl(url).queryParamMap.get('outlet') : '') ||
+      '';
     // An explicitly revoked active filter is obsolete navigation metadata, not a new deep-link request.
     // Resource parent links and incoming untrusted hints still require exact authorization.
     if (!resource && !applyHint && hint && this.context.isRevoked(hint)) {
@@ -157,7 +174,7 @@ export class RestaurantOutletRouting {
       resource: !!resource,
     });
     if (!hint) this.context.restorePreference();
-    if (applyHint && hint && hint !== this.context.id()) this.context.hint(hint);
+
     return true;
   }
   selectionUrl(url: string) {
@@ -174,40 +191,6 @@ export class RestaurantOutletRouting {
     if (!target || this.resolution() !== 'ready') return;
     await this.router.navigateByUrl(target.url, { replaceUrl: true });
   }
-  async switchOutlet(id: string) {
-    if (!this.context.outlets().some((row) => row.id === id)) return;
-    if (this.path(this.router.url) === '/restaurants/context') {
-      const target = this.destination();
-      if (target?.resource && target.hint !== id) {
-        this.context.select(id);
-        await this.router.navigate(
-          [
-            this.path(target.url).endsWith('/receipt')
-              ? '/restaurants/checkout'
-              : '/restaurants/service',
-          ],
-          { queryParams: { outlet: id }, replaceUrl: true },
-        );
-        return;
-      }
-      this.choose(id);
-      return;
-    }
-    this.context.select(id);
-    const path = this.path(this.router.url);
-    if (this.resourceOutlet(path)) {
-      await this.router.navigate(
-        [path.endsWith('/receipt') ? '/restaurants/checkout' : '/restaurants/service'],
-        { queryParams: { outlet: id }, replaceUrl: true },
-      );
-    } else {
-      await this.router.navigate([], {
-        queryParams: { outlet: id, area: null },
-        queryParamsHandling: 'merge',
-        replaceUrl: true,
-      });
-    }
-  }
   async refreshAccess() {
     const target = this.target();
     const org = this.auth.effectiveOrgId(),
@@ -222,6 +205,7 @@ export class RestaurantOutletRouting {
       this.begin(target.url);
   }
   choose(id: string) {
+    if (this.context.sessionInvalid() || this.context.id()) return;
     const target = this.destination();
     if (!target || !this.context.outlets().some((row) => row.id === id)) return;
     // Resource links cannot silently substitute a different visit's parent Outlet.
@@ -233,24 +217,9 @@ export class RestaurantOutletRouting {
   }
 }
 
-/** One product-level gate. Explicit setup/management scopes do not require an active Outlet. */
+/** Every Restaurants child is gated; only isolated entry remains available before readiness. */
 export const restaurantProductBootstrapGuard: CanActivateChildFn = (route, state) => {
-  const path = route.routeConfig?.path ?? '';
-  if (path === 'context' || (path !== '' && !operationalOutletRoute(state.url.split(/[?#]/)[0])))
-    return true;
+  if (route.routeConfig?.path === 'context') return true;
   const routing = inject(RestaurantOutletRouting);
-  if (
-    path === '' &&
-    ['configure', 'unsupported', 'unverified', 'changed'].includes(routing.access.mode())
-  )
-    return true;
-  if (routing.canEnter(state.url)) return true;
-  // The organization overview is also the management setup/recovery destination for zero Outlets.
-  if (
-    path === '' &&
-    routing.context.management() &&
-    routing.resolution() === 'no-accessible-context'
-  )
-    return true;
-  return routing.selectionUrl(state.url);
+  return routing.canEnter(state.url) ? true : routing.selectionUrl(state.url);
 };

@@ -1,5 +1,5 @@
 import { Component, computed, effect, inject, untracked } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -15,7 +15,6 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
   host: { class: 'block' },
   imports: [
     FormsModule,
-    RouterLink,
     MatButtonModule,
     TranslocoModule,
     LiassCardComponent,
@@ -24,15 +23,18 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
     LiassSearchableSelectComponent,
   ],
   template: `
-    <div class="space-y-6">
+    <div class="mx-auto w-full max-w-2xl space-y-6 py-6 sm:py-10">
       <liass-page-header
         eyebrow=""
         [title]="
-          (resolving() ? 'RESTAURANTS.PAGE.TITLE' : 'RESTAURANTS.CONTEXT.CHOOSE') | transloco
+          (canChoose() ? 'RESTAURANTS.CONTEXT.CHOOSE' : 'RESTAURANTS.PAGE.TITLE') | transloco
         "
         [subtitle]="
-          (resolving() ? 'RESTAURANTS.ACCESS.CHECKING' : 'RESTAURANTS.CONTEXT.ENTRY_DESCRIPTION')
-            | transloco
+          canChoose()
+            ? ('RESTAURANTS.CONTEXT.ENTRY_DESCRIPTION' | transloco)
+            : resolving()
+              ? ('RESTAURANTS.ACCESS.CHECKING' | transloco)
+              : ''
         "
       />
       <liass-card>
@@ -71,27 +73,6 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
                 {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
               </button>
             }
-            @if (routing.resolution() === 'access-changed') {
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="routing.access.refreshing()"
-                (click)="routing.refreshAccess()"
-              >
-                {{ 'RESTAURANTS.UI.REFRESH' | transloco }}
-              </button>
-            }
-            @if (routing.context.management()) {
-              <a mat-button routerLink="/restaurants/setup/locations">{{
-                'RESTAURANTS.UI.LOCATION' | transloco
-              }}</a>
-            }
-            <a mat-button routerLink="/restaurants">{{
-              'RESTAURANTS.CONTEXT.BACK_TO_PRODUCT' | transloco
-            }}</a>
-            <a mat-button routerLink="/select-workspace" [queryParams]="{ change: '1' }">
-              {{ 'RESTAURANTS.CONTEXT.CHANGE_WORKSPACE' | transloco }}
-            </a>
           </div>
         }
       </liass-card>
@@ -106,7 +87,10 @@ export class RestaurantOutletResolutionPage {
   );
   readonly canChoose = computed(
     () =>
-      !this.routing.resourceTarget() &&
+      !this.routing.context.sessionInvalid() &&
+      !this.routing.context.id() &&
+      (!this.routing.resourceTarget() ||
+        this.options().some((row) => row.value === this.routing.destination()?.hint)) &&
       this.options().length > 0 &&
       ['selection-required', 'invalid-selection'].includes(this.routing.resolution()),
   );

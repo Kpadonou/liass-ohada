@@ -41,6 +41,7 @@ export type ActiveDossierSummary = CabinetDossierSummary | ActiveWorkspaceSummar
 
 interface AuthState {
   contextRevision: number;
+  authenticatedSessionId: string | null;
   user: AuthUser | null;
   userAttributes: Record<string, string | undefined>;
   activeOrgId: string | null;
@@ -62,6 +63,7 @@ interface AuthState {
 
 const initialState: AuthState = {
   contextRevision: 0,
+  authenticatedSessionId: null,
   user: null,
   userAttributes: {},
   activeOrgId: readStoredTenant(),
@@ -143,25 +145,32 @@ async function loadCurrentUserProfile(
 ): Promise<{
   attributes: Record<string, string | undefined>;
   user: AuthUser;
+  sessionId: string | null;
 }> {
   const user = await getCurrentUser();
+  let sessionId: string | null = null;
   let tokenAttributes: Record<string, string | undefined> = {};
 
   try {
     const session = await fetchAuthSession({ forceRefresh: false });
     const payload = session.tokens?.idToken?.payload as Record<string, unknown> | undefined;
 
+    sessionId = payload?.['origin_jti']
+      ? String(payload['origin_jti'])
+      : payload?.['auth_time']
+        ? String(payload['auth_time'])
+        : null;
     tokenAttributes = profileAttributesFromClaims(payload);
   } catch {
     tokenAttributes = {};
   }
 
   if (hasReadableProfileAttributes(tokenAttributes)) {
-    return { user, attributes: tokenAttributes };
+    return { user, attributes: tokenAttributes, sessionId };
   }
 
   if (!options.allowUserAttributeFetch) {
-    return { user, attributes: tokenAttributes };
+    return { user, attributes: tokenAttributes, sessionId };
   }
 
   try {
@@ -170,9 +179,10 @@ async function loadCurrentUserProfile(
     return {
       user,
       attributes: { ...tokenAttributes, ...(attributes ?? {}) },
+      sessionId,
     };
   } catch {
-    return { user, attributes: tokenAttributes };
+    return { user, attributes: tokenAttributes, sessionId };
   }
 }
 
@@ -566,6 +576,14 @@ export const AuthStore = signalStore(
       queryClient = inject(QueryClient, { optional: true }),
     ) => ({
       invalidateSessionContext(): void {
+        // Product session identities are cleared without coupling auth to a domain service.
+        try {
+          for (const key of Object.keys(sessionStorage)) {
+            if (key.startsWith('liass-ohada.session.')) sessionStorage.removeItem(key);
+          }
+        } catch {
+          /* Browser storage may be unavailable. */
+        }
         void queryClient?.cancelQueries();
         queryClient?.clear();
         clearInvitationAcceptanceState();
@@ -588,11 +606,17 @@ export const AuthStore = signalStore(
         });
 
         try {
-          const { user, attributes } = await loadCurrentUserProfile();
+          const { user, attributes, sessionId } = await loadCurrentUserProfile();
           if (revision !== store.contextRevision()) return;
           if (store.currentUserId() && store.currentUserId() !== user.userId)
             this.invalidateSessionContext();
-          patchState(store, { user, userAttributes: attributes, loading: false, hydrated: true });
+          patchState(store, {
+            user,
+            userAttributes: attributes,
+            authenticatedSessionId: sessionId,
+            loading: false,
+            hydrated: true,
+          });
         } catch {
           if (revision !== store.contextRevision()) return;
           this.invalidateSessionContext();
@@ -602,12 +626,13 @@ export const AuthStore = signalStore(
       async refreshUserProfile(): Promise<void> {
         const revision = store.contextRevision();
         try {
-          const { user, attributes } = await loadCurrentUserProfile();
+          const { user, attributes, sessionId } = await loadCurrentUserProfile();
           if (revision !== store.contextRevision()) return;
           if (store.currentUserId() !== user.userId) this.invalidateSessionContext();
           patchState(store, {
             user,
             userAttributes: attributes,
+            authenticatedSessionId: sessionId,
             hydrated: true,
             error: null,
           });
@@ -646,7 +671,7 @@ export const AuthStore = signalStore(
             throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
           }
 
-          const { user, attributes } = await loadCurrentUserProfile({
+          const { user, attributes, sessionId } = await loadCurrentUserProfile({
             allowUserAttributeFetch: true,
           });
           if (revision !== store.contextRevision()) return;
@@ -654,6 +679,7 @@ export const AuthStore = signalStore(
           patchState(store, {
             user,
             userAttributes: attributes,
+            authenticatedSessionId: sessionId,
             activeOrgId: readStoredTenant(),
             activeDossierOrgId: readStoredDossier(),
             loading: false,
@@ -688,7 +714,7 @@ export const AuthStore = signalStore(
             throw new Error(`Unsupported sign-in challenge: ${result.nextStep.signInStep}`);
           }
 
-          const { user, attributes } = await loadCurrentUserProfile({
+          const { user, attributes, sessionId } = await loadCurrentUserProfile({
             allowUserAttributeFetch: true,
           });
           if (revision !== store.contextRevision()) return;
@@ -696,6 +722,7 @@ export const AuthStore = signalStore(
           patchState(store, {
             user,
             userAttributes: attributes,
+            authenticatedSessionId: sessionId,
             activeOrgId: readStoredTenant(),
             activeDossierOrgId: readStoredDossier(),
             loading: false,

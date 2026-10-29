@@ -38,10 +38,10 @@ describe('Restaurant role-aware routes', () => {
     return result === true ? true : TestBed.inject(Router).serializeUrl(result as never);
   };
   it.each(['OWNER', 'MANAGER', 'WAITER', 'KITCHEN', 'CASHIER', undefined] as const)(
-    'allows context recovery only for an implemented operational role: %s',
+    'allows isolated context/unavailable entry for every membership: %s',
     (role) => {
       workspace.set(accessWorkspace(role));
-      expect(check('context')).toBe(role ? true : '/restaurants');
+      expect(check('context')).toBe(true);
     },
   );
   it.each(['OWNER', 'MANAGER'] as const)('%s retains management dashboard and routes', (role) => {

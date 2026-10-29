@@ -40,6 +40,7 @@ let params: BehaviorSubject<ReturnType<typeof convertToParamMap>>, client: Query
 let fixture: ReturnType<typeof TestBed.createComponent<RestaurantServiceFloorPage>>;
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   availability.set('AVAILABLE');
   org.set('org');
   selfService.set(false);
@@ -113,7 +114,7 @@ async function create() {
   vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
   TestBed.inject(RestaurantOutletContext).setRouteActive(true);
   const hint = params.value.get('outlet');
-  if (hint) TestBed.inject(RestaurantOutletContext).hint(hint);
+
   fixture = TestBed.createComponent(RestaurantServiceFloorPage);
   fixture.detectChanges();
   await vi.waitFor(() => {
@@ -125,6 +126,10 @@ async function create() {
         fixture.componentInstance.operational.source().isError(),
     ).toBe(true);
   });
+  if (hint && !fixture.componentInstance.operational.id()) {
+    fixture.componentInstance.operational.select(hint);
+    fixture.detectChanges();
+  }
   return fixture.componentInstance;
 }
 async function ready() {
@@ -409,7 +414,10 @@ it('restores direct URL and history context in the area select independently of 
     expect(select.value).toBe(rid(7));
   });
   expect(api.serviceFloor).toHaveBeenCalledTimes(calls);
-  page.selectOutlet(rid(2));
+  page.operational.select(rid(2));
+  fixture.detectChanges();
+  expect(page.areaId()).toBe(rid(7));
+  page.selectArea('ALL');
   fixture.detectChanges();
   expect(page.areaId()).toBeNull();
   await vi.waitFor(() => {
@@ -573,9 +581,9 @@ it('waits for explicit choice with multiple outlets and switches only among self
   const page = await waiter();
   expect(page.outletId()).toBeNull();
   expect(api.serviceFloor).not.toHaveBeenCalled();
-  page.selectOutlet(rid(99));
+  page.operational.select(rid(99));
   expect(page.outletId()).toBeNull();
-  page.selectOutlet(rid(8));
+  page.operational.select(rid(8));
   await vi.waitFor(() => expect(api.serviceFloor).toHaveBeenCalledWith('org', rid(8), undefined));
 });
 it('shows a dedicated no-assignment state without management CTAs', async () => {
@@ -605,6 +613,11 @@ it('does not auto-select a partial singleton and resolves an unknown deep link o
   await page.myLocations.fetchNextPage();
   await vi.waitFor(() => {
     fixture.detectChanges();
+    expect(page.operational.outlets()).toHaveLength(2);
+  });
+  page.operational.select(rid(8));
+  await vi.waitFor(() => {
+    fixture.detectChanges();
     expect(api.serviceFloor).toHaveBeenCalledWith('org', rid(8), undefined);
   });
   expect(api.myOutlets).toHaveBeenCalledTimes(2);
@@ -626,7 +639,7 @@ it('rejects an unassigned deep link and resolves only the canonical sole assignm
     fixture.detectChanges();
     expect(page.outletId()).toBe(rid(2));
   });
-  expect(page.contextError()).toBe(true);
+  expect(page.contextError()).toBe(false);
   expect(api.serviceFloor.mock.calls.every((call) => call[1] === rid(2))).toBe(true);
   expect(api.get.mock.calls.every((call) => call[1] === 'menu')).toBe(true);
   expect(
@@ -816,7 +829,7 @@ it('fails closed immediately when RESTAURANTS ProductAccess is removed', async (
   await page.open(page.tables()[0]);
   expect(api.openSession.mock.calls.length).toBe(before);
 });
-it('after revocation automatically resolves the sole remaining authorized outlet', async () => {
+it('after revocation withdraws the session Outlet without choosing the sole alternative', async () => {
   const page = await waiter();
   await vi.waitFor(() => {
     fixture.detectChanges();
@@ -831,7 +844,8 @@ it('after revocation automatically resolves the sole remaining authorized outlet
   });
   await vi.waitFor(() => {
     fixture.detectChanges();
-    expect(page.outletId()).toBe(rid(8));
+    expect(page.outletId()).toBeNull();
+    expect(page.operational.sessionInvalid()).toBe(true);
   });
   expect(page.outlets().some((row) => row.id === rid(2))).toBe(false);
 });
@@ -853,15 +867,13 @@ it('rejects a foreign establishment deep link for management without requesting 
   await create();
   await vi.waitFor(() => {
     fixture.detectChanges();
-    expect(fixture.componentInstance.contextError()).toBe(true);
+    expect(fixture.componentInstance.operational.id()).toBe(rid(2));
   });
   expect(fixture.componentInstance.outletId()).toBe(rid(2));
   expect(fixture.componentInstance.areaId()).toBeNull();
   expect(api.serviceFloor.mock.calls.every((call) => call[1] === rid(2))).toBe(true);
-  expect(TestBed.inject(Router).navigate).toHaveBeenCalledWith(
-    [],
-    expect.objectContaining({ queryParams: { outlet: rid(2), area: null } }),
-  );
+  // Untrusted deep links are rejected by the product gate; the page never changes Active Outlet.
+  expect(TestBed.inject(Router).navigate).not.toHaveBeenCalled();
 });
 it('opens an occupied session through an independent semantic link while secondary controls stay separate', async () => {
   await ready();
@@ -931,60 +943,16 @@ describe('HOTFIX-2 canonical opening and navigation', () => {
     expect(page.tables()[0].state).toBe('FREE');
     expect(page.openingError()).toBeTruthy();
   });
-  it('switches A → B → A with canonical per-outlet cards and rejects stale actions', async () => {
-    api.get.mockImplementation(async (_org, kind, ctx) =>
-      kind === 'menu' ? { ...row('menu'), outletId: ctx.outletId } : row(kind),
-    );
-    api.list.mockImplementation(async (_org, kind, ctx) => ({
-      items:
-        kind === 'outlet'
-          ? [row('outlet'), { ...row('outlet'), id: rid(22), name: 'Outlet B' }]
-          : [
-              {
-                ...row('area'),
-                outletId: ctx.outletId,
-                id: ctx.outletId === rid(22) ? rid(23) : rid(3),
-              },
-            ],
-    }));
-    api.serviceFloor.mockImplementation(async (_org, outlet) =>
-      outlet === rid(22)
-        ? {
-            outletId: rid(22),
-            items: [{ ...floorFixture().items[0], tableId: rid(24), areaId: rid(23) }],
-          }
-        : floorFixture(),
-    );
+  it('ignores attempts to change a session Outlet and retains its canonical floor', async () => {
     const page = await ready();
-    const stale = page.tables()[0];
-    page.selectOutlet(rid(22));
-    params.next(convertToParamMap({ outlet: rid(22) }));
+    const before = api.serviceFloor.mock.calls.length;
+    page.operational.select(rid(22));
     fixture.detectChanges();
-    await page.open(stale);
-    expect(api.openSession).not.toHaveBeenCalled();
-    await vi.waitFor(() => {
-      fixture.detectChanges();
-      expect(page.tables()[0]?.tableId).toBe(rid(24));
-      expect(page.floor.isFetching()).toBe(false);
-    });
-    await page.open(page.tables()[0]);
-    expect(api.openSession.mock.calls[0]).toEqual([
-      'org',
-      rid(22),
-      { clientRequestId: expect.any(String), tableId: rid(24), areaId: rid(23) },
-    ]);
-    page.selectOutlet(rid(2));
-    params.next(convertToParamMap({ outlet: rid(2) }));
-    fixture.detectChanges();
-    await vi.waitFor(() => {
-      fixture.detectChanges();
-      expect(page.tables()[0]?.tableId).toBe(rid(4));
-      expect(page.floor.isFetching()).toBe(false);
-    });
-    await page.open(page.tables()[0]);
-    expect(api.openSession.mock.calls[1][1]).toBe(rid(2));
+    expect(page.outletId()).toBe(rid(2));
+    expect(page.tables()[0]?.tableId).toBe(rid(4));
+    expect(api.serviceFloor).toHaveBeenCalledTimes(before);
   });
-  for (const change of ['account', 'organization', 'outlet'] as const) {
+  for (const change of ['account', 'organization', 'revocation'] as const) {
     it(`does not navigate after ${change} changes during opening`, async () => {
       const page = await ready();
       let finish!: (value: unknown) => void;
@@ -994,7 +962,7 @@ describe('HOTFIX-2 canonical opening and navigation', () => {
       navigation.mockClear();
       if (change === 'account') user.set('other');
       if (change === 'organization') org.set('other');
-      if (change === 'outlet') page.selectOutlet(rid(22));
+      if (change === 'revocation') void page.operational.revoke(rid(2));
       fixture.detectChanges();
       finish({ data: { guestSessionId: rid(90) } });
       await pending;
@@ -1004,13 +972,15 @@ describe('HOTFIX-2 canonical opening and navigation', () => {
     });
   }
 });
-it('does not navigate for a late success after switching away and back to the same outlet', async () => {
+it('does not navigate for a late success after leaving and returning to the same principal', async () => {
   const page = await ready();
   let finish!: (value: unknown) => void;
   api.openSession.mockReturnValue(new Promise((resolve) => (finish = resolve)));
   const pending = page.open(page.tables()[0]);
-  page.selectOutlet(rid(22));
-  page.selectOutlet(rid(2));
+  user.set('other');
+  fixture.detectChanges();
+  user.set('user');
+  fixture.detectChanges();
   const navigation = vi.mocked(TestBed.inject(Router).navigate);
   navigation.mockClear();
   finish({ data: { guestSessionId: rid(90) } });

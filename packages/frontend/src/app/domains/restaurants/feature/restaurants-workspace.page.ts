@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink, convertToParamMap } from '@angular/router';
@@ -115,7 +116,11 @@ export class RestaurantsWorkspacePage {
   headerActionTriggered() {
     this.open(this.kind(), this.kind() === 'restaurant' ? this.root.data()! : undefined);
   }
-  readonly outletId = signal<string | null>(null);
+  readonly sessionOutlet = inject(RestaurantOutletContext);
+  // Explicit record links may target management objects without switching Active Outlet.
+  readonly outletId = computed(
+    () => this.contextParams().get('outlet') || this.sessionOutlet.id() || null,
+  );
   readonly areaId = signal<string | null>(null);
   readonly categoryId = signal<string | null>(null);
   readonly busy = signal(false);
@@ -289,13 +294,17 @@ export class RestaurantsWorkspacePage {
     return true;
   });
   constructor() {
+    let targetOutlet = this.outletId();
+    effect(() => {
+      const next = this.outletId();
+      if (next !== targetOutlet) {
+        targetOutlet = next;
+        this.categoryId.set(null);
+        this.actionError.set(null);
+      }
+    });
     effect(() => {
       const params = this.contextParams();
-      const outlet = params.get('outlet');
-      if (outlet !== untracked(this.outletId)) {
-        this.outletId.set(outlet);
-        this.categoryId.set(null);
-      }
       this.areaId.set(untracked(this.section) === 'table' ? params.get('area') : null);
     });
     let previous = this.queries.scope() + ':' + this.queries.userScope();
@@ -303,16 +312,11 @@ export class RestaurantsWorkspacePage {
       const scope = this.queries.scope() + ':' + this.queries.userScope();
       if (previous !== scope) {
         previous = scope;
-        this.outletId.set(null);
         this.areaId.set(null);
         this.categoryId.set(null);
         this.actionError.set(null);
         this.deniedOrg.set(null);
       }
-    });
-    effect(() => {
-      if (!this.outletId() && this.outlets().length)
-        this.outletId.set((this.outlets().find((row) => row.isActive) ?? this.outlets()[0]).id);
     });
     effect(() => {
       if (!this.areaId() && this.areaRows().length)
@@ -324,13 +328,6 @@ export class RestaurantsWorkspacePage {
           (this.categoryRows().find((row) => row.isActive) ?? this.categoryRows()[0]).id,
         );
     });
-  }
-  selectOutlet(value: string | null) {
-    this.outletId.set(value);
-    this.areaId.set(null);
-    this.categoryId.set(null);
-    this.actionError.set(null);
-    this.writeContext();
   }
   selectArea(value: string | null) {
     this.areaId.set(value);
@@ -361,7 +358,7 @@ export class RestaurantsWorkspacePage {
     if (kind === 'table' && !this.area()?.isActive) return;
     if (['category', 'item'].includes(kind) && !this.menu.data()?.isActive) return;
     if (kind === 'item' && !this.category()?.isActive) return;
-    const ref = this.dialog.open(RestaurantEditorComponent, {
+    this.dialog.open(RestaurantEditorComponent, {
       width: '560px',
       maxWidth: 'calc(100vw - 24px)',
       disableClose: true,
@@ -379,12 +376,9 @@ export class RestaurantsWorkspacePage {
           .join(' · '),
       },
     });
-    const originalOrg = this.queries.scope();
-    ref.afterClosed().subscribe((result) => {
-      if (result && this.queries.scope() === originalOrg && kind === 'outlet')
-        this.selectOutlet(result.id);
-    });
+    // Outlet records are managed without changing the session context.
   }
+
   price(row: RestaurantEntity) {
     return 'price' in row
       ? restaurantPrice(row.price.amountMinor, row.price.currency, this.t.getActiveLang())

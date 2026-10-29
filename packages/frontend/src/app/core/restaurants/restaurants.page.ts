@@ -1,6 +1,5 @@
 import { RestaurantOutletRouting } from '../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { RestaurantAccessState } from '../../domains/restaurants/data-access/restaurant-access-state';
-import { RestaurantAccessNoticeComponent } from '../../domains/restaurants/ui/restaurant-access-notice.component';
 import { Router, RouterOutlet } from '@angular/router';
 import { Component, effect, inject } from '@angular/core';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -11,13 +10,7 @@ import { LiassSkeletonComponent } from '../../shared/ui/skeleton/skeleton.compon
 @Component({
   selector: 'liass-restaurants-page',
   host: { class: 'block' },
-  imports: [
-    RouterOutlet,
-    RestaurantAccessNoticeComponent,
-    TranslocoModule,
-    LiassCardComponent,
-    LiassSkeletonComponent,
-  ],
+  imports: [RouterOutlet, TranslocoModule, LiassCardComponent, LiassSkeletonComponent],
   templateUrl: './restaurants.page.html',
 })
 export class RestaurantsPage {

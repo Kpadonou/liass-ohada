@@ -30,6 +30,7 @@ describe('Cashier occupied-table discovery and context', () => {
   const api = { myOutlets: vi.fn(), serviceFloor: vi.fn(), list: vi.fn() };
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     vi.resetAllMocks();
     org.set('org');
     user.set('cashier');

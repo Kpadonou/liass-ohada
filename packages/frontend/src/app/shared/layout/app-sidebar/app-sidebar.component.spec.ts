@@ -768,7 +768,7 @@ describe('AppSidebarComponent', () => {
       '/restaurants/cash/day',
       '/restaurants/inventory',
     ];
-    expect(routes()).toContain('/restaurants/setup/locations');
+    expect(routes()).toEqual([]);
     expect(routes()).not.toContain('/restaurants');
     for (const path of operational) expect(routes()).not.toContain(path);
     expect(fixture.nativeElement.querySelector('button[aria-label="Caisse"]')).toBeNull();

@@ -29,24 +29,29 @@ export class RestaurantOutletContext {
     origin?: 'preference';
   } | null>(null);
   private readonly blocked = signal<{ identity: string; ids: ReadonlySet<string> } | null>(null);
+  readonly sessionInvalid = signal(false);
   private readonly preferenceKey = computed(() => {
     const user = this.queries.userScope(),
       org = this.queries.scope();
     const workspace = this.auth.activeWorkspace?.()?.orgId ?? org;
     return user && org
-      ? 'liass-ohada.restaurants.activeOutletId.' +
-          encodeURIComponent(JSON.stringify([user, workspace, org]))
+      ? 'liass-ohada.session.restaurants.activeOutletId.' +
+          encodeURIComponent(
+            JSON.stringify([user, workspace, org, this.auth.authenticatedSessionId?.() ?? null]),
+          )
       : null;
   });
   private storedId(): string | null {
     try {
       const key = this.preferenceKey();
-      if (!key || typeof localStorage === 'undefined') return null;
-      const value = localStorage.getItem(key);
+      if (!key || typeof sessionStorage === 'undefined') return null;
+      const value = sessionStorage.getItem(key);
       if (!value) return null;
-      const parsed = RestaurantIdSchema.safeParse(value);
+      const invalid = value.startsWith('invalid:');
+      const parsed = RestaurantIdSchema.safeParse(invalid ? value.slice(8) : value);
+      if (invalid && parsed.success) this.sessionInvalid.set(true);
       if (parsed.success) return parsed.data;
-      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
     } catch {
       /* Unavailable browser storage must not block authorized runtime use. */
     }
@@ -55,19 +60,16 @@ export class RestaurantOutletContext {
   private persist(id: string | null) {
     try {
       const key = this.preferenceKey();
-      if (!key || typeof localStorage === 'undefined') return;
-      if (id) localStorage.setItem(key, id);
-      else localStorage.removeItem(key);
+      if (!key || typeof sessionStorage === 'undefined') return;
+      if (id) sessionStorage.setItem(key, this.sessionInvalid() ? 'invalid:' + id : id);
+      else sessionStorage.removeItem(key);
     } catch {
       /* Preference is best-effort; it never grants access. */
     }
   }
   readonly restoringPreference = computed(
     () =>
-      this.selection()?.identity === this.identity() &&
-      this.selection()?.origin === 'preference' &&
-      !this.id() &&
-      this.source().hasNextPage(),
+      this.selection()?.identity === this.identity() && !this.id() && this.source().hasNextPage(),
   );
   readonly attached = computed(() => this.routeActive() || this.consumers() > 0);
   readonly management = computed(() => this.caps.canManageSetup());
@@ -81,6 +83,7 @@ export class RestaurantOutletContext {
       this.auth.activeWorkspace?.()?.productRoles?.RESTAURANTS ?? '',
       this.management(),
       this.accessEpoch(),
+      this.auth.authenticatedSessionId?.() ?? null,
     ]),
   );
   readonly available = computed(
@@ -167,11 +170,13 @@ export class RestaurantOutletContext {
   });
   readonly id = computed(() => {
     const selected = this.selection();
-    return selected?.identity === this.identity() &&
+    return !this.sessionInvalid() &&
+      selected?.identity === this.identity() &&
       this.outlets().some((row) => row.id === selected.id)
       ? selected.id
       : '';
   });
+  readonly locked = computed(() => this.selection()?.identity === this.identity());
   readonly outlet = computed(() => this.outlets().find((row) => row.id === this.id()));
   readonly multiple = computed(() => this.outlets().length > 1 || this.source().hasNextPage());
   readonly invalidHint = signal(false);
@@ -193,7 +198,10 @@ export class RestaurantOutletContext {
       const next = this.identity();
       if (next !== identity) {
         identity = next;
+        this.selection.set(null);
+        this.blocked.set(null);
         this.invalidHint.set(false);
+        this.sessionInvalid.set(false);
       }
     });
     let restoredIdentity = '';
@@ -201,7 +209,7 @@ export class RestaurantOutletContext {
       const identity = this.identity();
       if (identity === restoredIdentity) return;
       restoredIdentity = identity;
-      // An explicit deep-link hint captured for this identity takes precedence over a preference.
+      // An existing runtime session identity takes precedence over storage restoration.
       if (this.selection()?.identity === identity) return;
       const id = this.storedId();
       if (id) this.selection.set({ identity, id, origin: 'preference' });
@@ -221,6 +229,18 @@ export class RestaurantOutletContext {
         void source.fetchNextPage();
     });
     effect(() => {
+      const error = this.source().error();
+      const selected = this.selection();
+      if (
+        selected?.identity === this.identity() &&
+        error instanceof HttpErrorResponse &&
+        [401, 403].includes(error.status)
+      ) {
+        this.sessionInvalid.set(true);
+        this.persist(selected.id);
+      }
+    });
+    effect(() => {
       const rows = this.outlets(),
         identity = this.identity(),
         selected = this.selection();
@@ -228,10 +248,12 @@ export class RestaurantOutletContext {
       const valid = selected?.identity === identity && rows.some((row) => row.id === selected.id);
       if (!this.source().hasNextPage() && !valid) {
         if (selected?.identity === identity && selected.id) {
-          if (selected.origin === 'preference') this.persist(null);
-          else this.invalidHint.set(true);
+          this.sessionInvalid.set(true);
+          this.persist(selected.id);
+          return;
         }
-        this.selection.set(rows.length === 1 ? { identity, id: rows[0].id } : null);
+        if (!this.sessionInvalid())
+          this.selection.set(rows.length === 1 ? { identity, id: rows[0].id } : null);
       }
     });
   }
@@ -241,30 +263,32 @@ export class RestaurantOutletContext {
       this.consumers.update((count) => count + 1);
       onCleanup(() => this.consumers.update((count) => count - 1));
     });
-    const subscription = route.queryParamMap.subscribe((params) => {
-      const id = params.get('outlet');
-      if (id) this.selection.set({ identity: this.identity(), id });
-    });
-    destroy.onDestroy(() => {
-      subscription.unsubscribe();
-      handle.destroy();
-    });
+    destroy.onDestroy(() => handle.destroy());
   }
+
   /** Route orchestration keeps discovery attached across operational page mounts. */
   setRouteActive(active: boolean) {
     this.routeActive.set(active);
   }
-  /** URL values are hints only; id() still requires a discovered authorized row. */
+  /** URL values never select the session context. */
   hint(id: string) {
-    this.invalidHint.set(false);
-    this.selection.set({ identity: this.identity(), id });
+    // URL context never selects or replaces the session Outlet.
+    if (this.id() && id !== this.id()) this.invalidHint.set(true);
   }
   select(id: string | null) {
-    if (id && !this.outlets().some((row) => row.id === id)) return;
+    if (
+      this.sessionInvalid() ||
+      !id ||
+      (this.selection()?.identity === this.identity() && this.selection()?.id !== id) ||
+      (this.storedId() && this.storedId() !== id)
+    )
+      return;
+    if (!this.outlets().some((row) => row.id === id)) return;
     this.invalidHint.set(false);
-    this.selection.set(id ? { identity: this.identity(), id } : null);
+    this.selection.set({ identity: this.identity(), id });
     this.persist(id);
   }
+
   restorePreference() {
     this.invalidHint.set(false);
     if (this.id()) return;
@@ -298,8 +322,10 @@ export class RestaurantOutletContext {
     const identity = this.identity();
     const ids = this.blocked()?.identity === identity ? this.blocked()!.ids : new Set<string>();
     this.blocked.set({ identity, ids: new Set([...ids, id]) });
-    this.selection.set(null);
-    if (this.storedId() === id) this.persist(null);
+    if (this.selection()?.id === id || this.storedId() === id) {
+      this.sessionInvalid.set(true);
+      this.persist(id);
+    }
     await this.source().refetch();
   }
 }

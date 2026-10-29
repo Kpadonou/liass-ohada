@@ -5109,9 +5109,9 @@
       "BACK_TO_PRODUCT": "Back to Liass-Resto",
       "RESOLUTION": {
         "selection-required": "Choose the outlet you would like to work with.",
-        "no-accessible-context": "No active establishment is accessible. Configure an establishment or contact your manager.",
+        "no-accessible-context": "No active outlet is accessible. Contact your manager.",
         "invalid-selection": "The requested establishment is unavailable. Return to Liass-Resto or choose an available establishment.",
-        "access-changed": "Your working context has changed. Refresh your access to continue.",
+        "access-changed": "Your access to this outlet is no longer available. Sign out to start a new session.",
         "error": "Unable to load your establishments. Try again."
       },
       "CHANGE_WORKSPACE": "Change workspace"

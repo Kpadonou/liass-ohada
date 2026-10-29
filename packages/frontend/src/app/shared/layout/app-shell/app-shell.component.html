@@ -1,5 +1,23 @@
 <div class="min-h-dvh bg-app-bg text-app-text">
-  <liass-app-topbar />
+  @if (productNavigation.restaurantEntry()) {
+    <header
+      class="fixed inset-x-0 top-0 z-50 flex h-[var(--spacing-app-header)] items-center justify-between bg-[#021f46] px-4 text-white"
+    >
+      <div class="flex items-center gap-3">
+        <liass-logo
+          variant="icon"
+          size="sm"
+          theme="light"
+          [alt]="'SHELL.LOGO_ALT' | transloco"
+        /><span>{{ 'SHELL.NAV.RESTAURANTS' | transloco }}</span>
+      </div>
+      <button mat-button type="button" class="!text-white" (click)="logout()">
+        {{ 'SHELL.TOPBAR.SIGN_OUT' | transloco }}
+      </button>
+    </header>
+  } @else {
+    <liass-app-topbar />
+  }
   @if (productNavigation.hasSidebar()) {
     <liass-app-sidebar />
     <liass-app-backdrop />
@@ -7,7 +25,9 @@
 
   <div [class]="contentClass()">
     <main class="mx-auto w-full max-w-[var(--spacing-app-container)] px-3 py-3 sm:px-4 lg:px-5">
-      <liass-app-context-breadcrumb />
+      @if (!productNavigation.restaurantEntry()) {
+        <liass-app-context-breadcrumb />
+      }
       <router-outlet />
     </main>
   </div>

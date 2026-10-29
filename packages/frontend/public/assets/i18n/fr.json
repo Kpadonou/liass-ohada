@@ -5109,9 +5109,9 @@
       "BACK_TO_PRODUCT": "Retour à Liass-Resto",
       "RESOLUTION": {
         "selection-required": "Choisissez l’établissement avec lequel vous souhaitez travailler.",
-        "no-accessible-context": "Aucun établissement actif ne vous est accessible. Configurez un établissement ou contactez votre responsable.",
+        "no-accessible-context": "Aucun établissement actif ne vous est accessible. Contactez votre responsable.",
         "invalid-selection": "L’établissement demandé n’est pas accessible. Revenez à Liass-Resto ou choisissez un établissement disponible.",
-        "access-changed": "Votre contexte de travail a changé. Actualisez vos accès pour continuer.",
+        "access-changed": "Votre accès à cet établissement n'est plus disponible. Déconnectez-vous pour commencer une nouvelle session.",
         "error": "Impossible de charger vos établissements. Réessayez."
       },
       "CHANGE_WORKSPACE": "Changer d’espace de travail"

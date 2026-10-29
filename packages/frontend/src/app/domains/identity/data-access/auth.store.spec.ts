@@ -50,6 +50,7 @@ describe('AuthStore', () => {
       ],
     });
     localStorage.clear();
+    sessionStorage.clear();
     vi.mocked(confirmSignIn).mockReset();
     vi.mocked(fetchAuthSession).mockReset();
     vi.mocked(fetchUserAttributes).mockReset();
@@ -843,8 +844,15 @@ describe('AuthStore', () => {
     store.setTenant('org-test');
     queryClient.setQueryData(['cabinet-settings', 'org-test', 'detail'], { version: 1 });
 
+    sessionStorage.setItem('liass-ohada.session.restaurants.activeOutletId.scope', 'outlet-a');
+    sessionStorage.setItem('unrelated', 'keep');
     await store.logout();
 
+    expect(
+      sessionStorage.getItem('liass-ohada.session.restaurants.activeOutletId.scope'),
+    ).toBeNull();
+    expect(sessionStorage.getItem('unrelated')).toBe('keep');
+    expect(store.authenticatedSessionId()).toBeNull();
     expect(store.user()).toBeNull();
     expect(store.activeOrgId()).toBeNull();
     expect(localStorage.getItem('liass-ohada.activeOrgId')).toBeNull();

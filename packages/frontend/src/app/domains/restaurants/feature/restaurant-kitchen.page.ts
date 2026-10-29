@@ -158,11 +158,6 @@ export class RestaurantKitchenPage {
     }, 60_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
-  selectOutlet(id: string) {
-    if (!this.outlets().some((outlet) => outlet.id === id)) return;
-    this.stationId.set('');
-    this.operational.select(id);
-  }
   denyKitchen() {
     const outlet = this.outletId();
     this.denied.set(this.identity());

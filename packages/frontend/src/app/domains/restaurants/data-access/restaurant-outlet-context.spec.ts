@@ -26,7 +26,7 @@ const refreshing = signal(false);
 const api = { myOutlets: vi.fn(), list: vi.fn() };
 let client: QueryClient, params: BehaviorSubject<ReturnType<typeof convertToParamMap>>;
 beforeEach(() => {
-  localStorage.clear();
+  sessionStorage.clear();
   org.set('org');
   user.set('staff');
   revision.set(0);
@@ -121,7 +121,7 @@ it('keeps zero and incomplete singleton discovery truthful', async () => {
     expect(context.id()).toBe(rid(2));
   });
 });
-it('retains a valid choice when one assignment grows to several and automatically adopts the sole remaining assignment', async () => {
+it('retains a valid session choice but never substitutes another assignment after revocation', async () => {
   const f = await open(),
     context = f.componentInstance.context;
   await vi.waitFor(() => {
@@ -144,7 +144,8 @@ it('retains a valid choice when one assignment grows to several and automaticall
   await context.source().refetch();
   await vi.waitFor(() => {
     f.detectChanges();
-    expect(context.id()).toBe(rid(8));
+    expect(context.id()).toBe('');
+    expect(context.sessionInvalid()).toBe(true);
   });
   expect(context.multiple()).toBe(false);
   api.myOutlets.mockResolvedValue({ items: [] });
@@ -219,7 +220,7 @@ it('accepts only discovered deep-link identifiers and never authorizes a foreign
     f.detectChanges();
     expect(context.id()).toBe(rid(2));
   });
-  expect(context.invalidHint()).toBe(true);
+  expect(context.invalidHint()).toBe(false);
   context.select(rid(99));
   expect(context.id()).toBe(rid(2));
   context.select(rid(2));

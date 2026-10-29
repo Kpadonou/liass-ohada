@@ -38,7 +38,10 @@ describe('Liass-Resto product navigation', () => {
         }),
       ],
       providers: [
-        { provide: RestaurantOutletRouting, useValue: { routeReady: outletReady } },
+        {
+          provide: RestaurantOutletRouting,
+          useValue: { routeReady: computed(() => outletReady() && availability() === 'AVAILABLE') },
+        },
         provideRouter([]),
         {
           provide: RestaurantAccessState,
@@ -93,7 +96,7 @@ describe('Liass-Resto product navigation', () => {
     f.detectChanges();
     availability.set('UNAVAILABLE');
     f.detectChanges();
-    expect(f.nativeElement.querySelector('[role="alert"]').textContent).toContain('Access changed');
+    expect(f.nativeElement.querySelector('[aria-busy="true"]')).not.toBeNull();
     expect(f.nativeElement.querySelector('router-outlet')).toBeNull();
   });
 });

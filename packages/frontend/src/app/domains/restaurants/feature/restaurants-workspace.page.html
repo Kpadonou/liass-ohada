@@ -174,15 +174,7 @@
                 </div>
               } @else {
                 <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start">
-                  <liass-searchable-select
-                    class="block w-full min-w-0 sm:w-64"
-                    controlType="select"
-                    unresolvedLabelKey="RESTAURANTS.UI.SELECTED_REFERENCE"
-                    labelKey="RESTAURANTS.UI.LOCATION"
-                    [options]="outletOptions()"
-                    [ngModel]="outletId()"
-                    (ngModelChange)="selectOutlet($event)"
-                  />
+                  <span class="text-sm text-app-text-secondary">{{ outlet()?.name }}</span>
                   @if (mode === 'setup' && section() === 'table') {
                     <liass-searchable-select
                       class="block w-full min-w-0 sm:w-64"
@@ -245,9 +237,6 @@
                 @if (contextUnavailable()) {
                   <div role="status" class="text-sm text-app-text-secondary">
                     {{ 'RESTAURANTS.IA.CONTEXT_UNAVAILABLE' | transloco }}
-                    <button mat-button (click)="selectOutlet(outlet()?.id ?? null)">
-                      {{ 'RESTAURANTS.IA.RESET_CONTEXT' | transloco }}
-                    </button>
                   </div>
                 }
                 @if (outlet() && !outlet()?.isActive) {

@@ -48,7 +48,7 @@ async function settled(check: () => void) {
   });
 }
 beforeEach(async () => {
-  localStorage.clear();
+  sessionStorage.clear();
   activated.length = 0;
   org.set('org');
   user.set('owner');
@@ -208,13 +208,13 @@ it('still revalidates stale discovery when re-entering operations', async () => 
   await settled(() => expect(api.list).toHaveBeenCalledTimes(2));
   expect(routing.context.id()).toBe(rid(2));
 });
-it('keeps setup reachable for zero outlets without activating functional content', async () => {
+it('gates setup for zero outlets without activating functional content', async () => {
   api.list.mockResolvedValue({ items: [] });
   await h.navigateByUrl('/restaurants/service');
   await settled(() => expect(routing.resolution()).toBe('no-accessible-context'));
   expect(activated).toEqual([]);
   await h.navigateByUrl('/restaurants/setup/locations');
-  expect(h.routeNativeElement?.textContent).toContain('Setup recovery');
+  expect(h.routeNativeElement?.textContent).not.toContain('Setup recovery');
   expect(routing.context.attached()).toBe(true);
 });
 it('reports transport error separately from empty context', async () => {
@@ -223,11 +223,13 @@ it('reports transport error separately from empty context', async () => {
   await settled(() => expect(routing.resolution()).toBe('error'));
   expect(activated).toEqual([]);
 });
-it('validates a resource deep link and adopts its authorized Outlet', async () => {
+it('requires explicit initial choice for an authorized resource deep link', async () => {
   api.list.mockResolvedValue({ items: [row('outlet'), { ...row('outlet'), id: rid(8) }] });
   const url = `/restaurants/service/outlets/${rid(8)}/sessions/${rid(20)}?area=terrace`;
   await h.navigateByUrl(url);
-  await settled(() => expect(router.url).toBe(url));
+  await settled(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(rid(8));
+  await settled(() => expect(router.url).toContain(url));
   expect(activated).toEqual([rid(8)]);
 });
 it.each(['resource', 'query'])(
@@ -245,21 +247,21 @@ it.each(['resource', 'query'])(
       expect(routing.resolution()).toBe('invalid-selection');
     } else {
       routing.choose(rid(2));
-      await settled(() => expect(activated).toEqual([rid(2)]));
+      expect(activated).toEqual([]);
     }
   },
 );
-it('clears Area on shell switch and exits old resource deep links', async () => {
+it('ignores switch attempts after the initial choice and rejects a different authorized parent', async () => {
   api.list.mockResolvedValue({ items: [row('outlet'), { ...row('outlet'), id: rid(8) }] });
-  await h.navigateByUrl(`/restaurants/service?outlet=${rid(2)}&area=terrace`);
+  await h.navigateByUrl('/restaurants/service');
+  await settled(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(rid(2));
   await settled(() => expect(activated).toHaveLength(1));
-  await routing.switchOutlet(rid(8));
-  expect(router.url).toBe(`/restaurants/service?outlet=${rid(8)}`);
-  expect(routing.context.id()).toBe(rid(8));
-  const link = `/restaurants/outlets/${rid(8)}/sessions/${rid(20)}/receipt`;
-  await h.navigateByUrl(link);
-  await routing.switchOutlet(rid(2));
-  expect(router.url).toBe(`/restaurants/checkout?outlet=${rid(2)}`);
+  routing.context.select(rid(8));
+  expect(routing.context.id()).toBe(rid(2));
+  await h.navigateByUrl(`/restaurants/outlets/${rid(8)}/sessions/${rid(20)}/receipt`);
+  await settled(() => expect(routing.resolution()).toBe('invalid-selection'));
+  expect(activated).toHaveLength(1);
   expect(api.list).toHaveBeenCalledTimes(1);
 });
 it('invalidates revoked context and leaves the operational route before reconciliation completes', async () => {
@@ -278,7 +280,7 @@ it('invalidates revoked context and leaves the operational route before reconcil
   expect(h.routeNativeElement?.textContent).not.toContain('Operational page');
   release();
   await pending;
-  await settled(() => expect(routing.resolution()).toBe('no-accessible-context'));
+  await settled(() => expect(routing.resolution()).toBe('access-changed'));
 });
 it('blocks active content immediately during access refresh and explicitly resumes the same principal', async () => {
   await h.navigateByUrl('/restaurants/service');
@@ -320,7 +322,7 @@ it('rejects external, auxiliary, matrix and non-operational return destinations'
   for (const url of [
     'https://example.com',
     '//example.com',
-    '/restaurants/setup',
+    '/restaurants/unknown',
     '/restaurants/service;outlet=foreign',
     '/restaurants/service(aux:other)',
   ])
@@ -368,16 +370,8 @@ it.each([1, 2, 0])(
       items: Array.from({ length: alternatives }, (_, n) => ({ ...row('outlet'), id: rid(8 + n) })),
     });
     await routing.context.revoke(rid(2));
-    await settled(() =>
-      expect(routing.resolution()).toBe(
-        alternatives === 1
-          ? 'ready'
-          : alternatives === 2
-            ? 'selection-required'
-            : 'no-accessible-context',
-      ),
-    );
-    expect(routing.context.id()).toBe(alternatives === 1 ? rid(8) : '');
+    await settled(() => expect(routing.resolution()).toBe('access-changed'));
+    expect(routing.context.id()).toBe('');
   },
 );
 it('exhausts a paginated multi-Outlet discovery once and reuses the chosen context through Cash', async () => {
@@ -395,4 +389,15 @@ it('exhausts a paginated multi-Outlet discovery once and reuses the chosen conte
   await h.navigateByUrl('/restaurants/cash');
   expect(router.url).toBe('/restaurants/cash');
   expect(api.list).toHaveBeenCalledTimes(2);
+});
+
+it('cannot resume a foreign resource parent while a compatible cached Outlet survives transport failure', async () => {
+  await h.navigateByUrl('/restaurants/service');
+  await settled(() => expect(activated).toEqual([rid(2)]));
+  api.list.mockRejectedValueOnce(new HttpErrorResponse({ status: 503 }));
+  await routing.context.source().refetch();
+  await h.navigateByUrl(`/restaurants/service/outlets/${rid(8)}/sessions/${rid(20)}`);
+  await settled(() => expect(routing.resolution()).toBe('invalid-selection'));
+  expect(activated).toEqual([rid(2)]);
+  expect(routing.context.id()).toBe(rid(2));
 });

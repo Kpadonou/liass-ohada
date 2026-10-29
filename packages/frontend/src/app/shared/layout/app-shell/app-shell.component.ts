@@ -1,3 +1,6 @@
+import { TranslocoModule } from '@ngneat/transloco';
+import { MatButtonModule } from '@angular/material/button';
+import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 import { ShellProductNavigation } from '../../../core/navigation/product-navigation';
 import { Component, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -116,6 +119,9 @@ export function pageFromUrl(url: string): AppPage {
 @Component({
   selector: 'liass-app-shell',
   imports: [
+    TranslocoModule,
+    MatButtonModule,
+    LiassLogoComponent,
     AppBackdropComponent,
     AppContextBreadcrumbComponent,
     AppSidebarComponent,
@@ -146,6 +152,11 @@ export class AppShellComponent {
 
   private syncCurrentPage(url: string): void {
     this.uiStore.setCurrentPage(pageFromUrl(url));
+  }
+
+  protected async logout() {
+    await this.authStore.logout();
+    await this.router.navigateByUrl('/login');
   }
 
   protected contentClass(): string {

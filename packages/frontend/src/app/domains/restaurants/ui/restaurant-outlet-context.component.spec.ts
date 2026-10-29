@@ -56,16 +56,14 @@ it('shows no empty selector for zero assignments', () => {
   f.detectChanges();
   expect(f.nativeElement.querySelector('button,mat-select,input')).toBeNull();
 });
-it('uses one accessible shell menu for several outlets and keeps URL hints coherent', () => {
+it('shows multiple-outlet session identity read-only, with no selection action', () => {
   rows.set([
     { id: 'a', name: 'Terrasse jardin' },
     { id: 'b', name: 'Salle principale' },
   ]);
   const f = TestBed.createComponent(RestaurantOutletContextComponent);
   f.detectChanges();
-  const button = f.nativeElement.querySelector('[data-testid="active-restaurant-outlet"]');
-  expect(button.getAttribute('aria-label')).toContain('Établissement actif: Terrasse jardin');
-  f.componentInstance.select('b');
-  expect(selected()).toBe('b');
-  expect(switchOutlet).toHaveBeenCalledWith('b');
+  expect(f.nativeElement.textContent).toContain('Terrasse jardin');
+  expect(f.nativeElement.querySelector('button,mat-select,input,[aria-haspopup]')).toBeNull();
+  expect(switchOutlet).not.toHaveBeenCalled();
 });

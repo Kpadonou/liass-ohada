@@ -1,5 +1,4 @@
 import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
-import { operationalOutletRoute } from '../../../domains/restaurants/data-access/restaurant-outlet-routing';
 import {
   ShellRouteContext,
   shellProducts,
@@ -359,14 +358,9 @@ export class AppSidebarComponent {
     },
   ]);
   protected readonly restaurantGroups = computed(() =>
-    this.allRestaurantGroups().map((group) => ({
-      ...group,
-      items: group.items.filter(
-        (item) =>
-          (!!this.restaurantOutlet.id() && this.restaurantOutlet.available()) ||
-          (item.route !== '/restaurants' && !operationalOutletRoute(item.route)),
-      ),
-    })),
+    this.restaurantOutlet.id() && this.restaurantOutlet.available()
+      ? this.allRestaurantGroups()
+      : [],
   );
   protected readonly accountingItems = accountingItems;
   protected readonly cabinetItems = cabinetItems;
@@ -448,7 +442,9 @@ export class AppSidebarComponent {
       ) {
         const current = this.router.parseUrl(this.router.url).queryParams;
         const target = this.router.parseUrl(item.route);
-        if (current['outlet']) target.queryParams['outlet'] = current['outlet'];
+        if (current['outlet'])
+          target.queryParams['outlet'] =
+            item.route === '/restaurants/service' ? this.restaurantOutlet.id() : current['outlet'];
         if (
           (item.route.endsWith('/tables') || item.route === '/restaurants/service') &&
           current['area']

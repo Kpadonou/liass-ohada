@@ -20,7 +20,8 @@ import { rid, row } from './restaurants.test-fixture';
 const org = signal('org'),
   user = signal('owner'),
   workspace = signal('org'),
-  revision = signal(1);
+  revision = signal(1),
+  session = signal('login-1');
 const activated: string[] = [];
 @Component({
   selector: 'bootstrap-product',
@@ -41,10 +42,10 @@ const a = row('outlet'),
 const api = { list: vi.fn(), myOutlets: vi.fn() };
 let client: QueryClient, h: RouterTestingHarness, router: Router, routing: RestaurantOutletRouting;
 const keys = () =>
-  Object.keys(localStorage).filter((key) =>
-    key.startsWith('liass-ohada.restaurants.activeOutletId.'),
+  Object.keys(sessionStorage).filter((key) =>
+    key.startsWith('liass-ohada.session.restaurants.activeOutletId.'),
   );
-const stored = () => keys().map((key) => localStorage.getItem(key));
+const stored = () => keys().map((key) => sessionStorage.getItem(key));
 async function configure() {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   TestBed.configureTestingModule({
@@ -96,6 +97,7 @@ async function configure() {
           effectiveOrgId: org,
           currentUserId: user,
           contextRevision: revision,
+          authenticatedSessionId: session,
           activeWorkspaceType: () => 'COMPANY',
           activeWorkspace: () => ({ orgId: workspace(), productRoles: { RESTAURANTS: 'OWNER' } }),
         },
@@ -119,12 +121,13 @@ async function reload() {
   await configure();
 }
 beforeEach(async () => {
-  localStorage.clear();
+  sessionStorage.clear();
   activated.length = 0;
   org.set('org');
   user.set('owner');
   workspace.set('org');
   revision.set(1);
+  session.set('login-1');
   api.list.mockReset().mockResolvedValue({ items: [a, b] });
   api.myOutlets.mockReset();
   await configure();
@@ -155,18 +158,18 @@ it('product root selects once before activation, persists an ID only, and restor
   expect(api.list).toHaveBeenCalledTimes(2);
   expect(stored()).toEqual([a.id]);
 });
-it('global switch persists B, exits an A resource safely, reuses discovery, and restores B on reload', async () => {
-  await h.navigateByUrl(`/restaurants/service/outlets/${a.id}/sessions/${rid(20)}`);
+it('locks the chosen Outlet and ignores normal switch attempts, including after reload', async () => {
+  await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
   await settle(() => expect(activated).toEqual([a.id]));
-  await routing.switchOutlet(b.id);
-  expect(router.url).toBe(`/restaurants/service?outlet=${b.id}`);
-  expect(stored()).toEqual([b.id]);
-  expect(api.list).toHaveBeenCalledTimes(1);
+  routing.context.select(b.id);
+  expect(routing.context.id()).toBe(a.id);
+  expect(stored()).toEqual([a.id]);
   await reload();
   await h.navigateByUrl('/restaurants/inventory');
-  await settle(() => expect(activated).toEqual([b.id]));
+  await settle(() => expect(activated).toEqual([a.id]));
   expect(api.list).toHaveBeenCalledTimes(2);
-  expect(router.url).toBe('/restaurants/inventory');
 });
 it.each(['/restaurants', '/restaurants/cash/day', '/restaurants/inventory'])(
   'one Outlet never requires a choice at %s, including reload/setup round-trip',
@@ -187,6 +190,8 @@ it.each(['/restaurants', '/restaurants/cash/day', '/restaurants/inventory'])(
 );
 it('a stored preference is not runtime authorization before validation completes', async () => {
   await h.navigateByUrl(`/restaurants/service?outlet=${a.id}`);
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
   await settle(() => expect(activated).toEqual([a.id]));
   await reload();
   let release!: () => void;
@@ -206,20 +211,18 @@ it.each([0, 1, 2])(
   'rejects a missing/revoked persisted Outlet with %s remaining alternatives',
   async (count) => {
     await h.navigateByUrl(`/restaurants/service?outlet=${b.id}`);
+    await settle(() => expect(routing.resolution()).toBe('selection-required'));
+    routing.choose(b.id);
     await settle(() => expect(activated).toEqual([b.id]));
     await reload();
     api.list.mockResolvedValue({ items: [a, { ...a, id: rid(9) }].slice(0, count) });
     await h.navigateByUrl('/restaurants/cash/day');
-    await settle(() =>
-      expect(routing.resolution()).toBe(
-        count === 1 ? 'ready' : count === 2 ? 'selection-required' : 'no-accessible-context',
-      ),
-    );
-    expect(routing.context.id()).toBe(count === 1 ? a.id : '');
-    expect(stored()).toEqual(count === 1 ? [a.id] : []);
+    await settle(() => expect(routing.resolution()).toBe('access-changed'));
+    expect(routing.context.id()).toBe('');
+    expect(stored()).toEqual(['invalid:' + b.id]);
     if (count === 0) {
       await h.navigateByUrl('/restaurants/setup/locations');
-      expect(h.routeNativeElement?.textContent).toContain('Setup recovery');
+      expect(h.routeNativeElement?.textContent).not.toContain('Setup recovery');
     }
   },
 );
@@ -227,6 +230,8 @@ it.each(['user', 'org', 'workspace'])(
   'does not reuse persisted preference across %s scope',
   async (dimension) => {
     await h.navigateByUrl(`/restaurants/service?outlet=${b.id}`);
+    await settle(() => expect(routing.resolution()).toBe('selection-required'));
+    routing.choose(b.id);
     await settle(() => expect(activated).toEqual([b.id]));
     await reload();
     if (dimension === 'user') user.set('other');
@@ -248,6 +253,8 @@ it.each(['user', 'org', 'workspace'])(
 );
 it('restores a saved Outlet on a later authorized page without requiring another human selection', async () => {
   await h.navigateByUrl(`/restaurants/service?outlet=${b.id}`);
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(b.id);
   await settle(() => expect(activated).toEqual([b.id]));
   await reload();
   api.list
@@ -260,6 +267,8 @@ it('restores a saved Outlet on a later authorized page without requiring another
 });
 it('does not let a persisted authorized Outlet authorize a foreign resource parent', async () => {
   await h.navigateByUrl(`/restaurants/service?outlet=${a.id}`);
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
   await settle(() => expect(activated).toEqual([a.id]));
   await reload();
   await h.navigateByUrl(`/restaurants/service/outlets/${rid(99)}/sessions/${rid(20)}`);
@@ -272,9 +281,11 @@ it('does not let a persisted authorized Outlet authorize a foreign resource pare
 });
 it('discard malformed storage without parsing or storing any canonical Outlet DTO', async () => {
   await h.navigateByUrl(`/restaurants/service?outlet=${a.id}`);
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
   await settle(() => expect(activated).toEqual([a.id]));
   const key = keys()[0];
-  localStorage.setItem(key, JSON.stringify(a));
+  sessionStorage.setItem(key, JSON.stringify(a));
   await reload();
   await h.navigateByUrl('/restaurants');
   await settle(() => expect(routing.resolution()).toBe('selection-required'));
@@ -283,6 +294,8 @@ it('discard malformed storage without parsing or storing any canonical Outlet DT
 });
 it('withdraws active context on logout and does not bootstrap without a principal', async () => {
   await h.navigateByUrl(`/restaurants/service?outlet=${a.id}`);
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
   await settle(() => expect(activated).toEqual([a.id]));
   user.set('');
   TestBed.tick();
@@ -291,12 +304,68 @@ it('withdraws active context on logout and does not bootstrap without a principa
   expect(stored()).toEqual([a.id]);
   expect(api.list).toHaveBeenCalledTimes(1);
 });
-it('rejects an inactive saved Outlet, automatically selecting the sole active alternative', async () => {
-  await h.navigateByUrl(`/restaurants/service?outlet=${b.id}`);
+it('keeps an inactive saved Outlet invalid instead of substituting the sole alternative', async () => {
+  await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(b.id);
   await settle(() => expect(activated).toEqual([b.id]));
   await reload();
   api.list.mockResolvedValue({ items: [a, { ...b, isActive: false }] });
   await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('access-changed'));
+  expect(routing.context.id()).toBe('');
+  expect(stored()).toEqual(['invalid:' + b.id]);
+});
+
+it('starts a fresh chooser for a different authenticated login even in the same tab/user/org', async () => {
+  await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
   await settle(() => expect(activated).toEqual([a.id]));
+  await reload();
+  session.set('login-2');
+  await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  expect(activated).toEqual([]);
+  expect(routing.context.id()).toBe('');
+});
+it('gates configuration before selection and permits it afterward without changing the lock', async () => {
+  await h.navigateByUrl('/restaurants/setup/locations');
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  expect(h.routeNativeElement?.textContent).not.toContain('Setup recovery');
+  expect(router.url).toContain('returnUrl=%2Frestaurants%2Fsetup%2Flocations');
+  routing.choose(a.id);
+  await settle(() => expect(router.url).toContain('/restaurants/setup/locations?outlet='));
+  expect(h.routeNativeElement?.textContent).toContain('Setup recovery');
+  expect(routing.context.id()).toBe(a.id);
+});
+
+it('never reopens a chooser when revalidation moves the locked Outlet beyond the first page', async () => {
+  await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
+  await settle(() => expect(activated).toEqual([a.id]));
+  api.list
+    .mockResolvedValueOnce({ items: [b], nextCursor: 'next' })
+    .mockResolvedValueOnce({ items: [a] });
+  await routing.context.source().refetch();
+  await settle(() => expect(api.list).toHaveBeenCalledTimes(3));
+  await settle(() => expect(routing.context.id()).toBe(a.id));
+  expect(routing.resolution()).toBe('ready');
   expect(stored()).toEqual([a.id]);
+});
+it('keeps the session invalid after an access-revision rejection and reconstruction', async () => {
+  await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('selection-required'));
+  routing.choose(a.id);
+  await settle(() => expect(activated).toEqual([a.id]));
+  api.list.mockResolvedValue({ items: [b] });
+  revision.update((value) => value + 1);
+  await settle(() => expect(routing.context.sessionInvalid()).toBe(true));
+  routing.context.select(b.id);
+  expect(routing.context.id()).toBe('');
+  await reload();
+  await h.navigateByUrl('/restaurants');
+  await settle(() => expect(routing.resolution()).toBe('access-changed'));
+  expect(activated).toEqual([]);
 });

@@ -1,3 +1,5 @@
+import { RestaurantOutletContext } from '../../domains/restaurants/data-access/restaurant-outlet-context';
+import { provideRouter } from '@angular/router';
 import { ProductAccessState } from '../product-access/product-access.state';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -8,7 +10,12 @@ import { SalesCapabilities } from '../../domains/sales/data-access/sales-capabil
 import { ProductAccessApi } from '../product-access/product-access.api';
 import { productAccessQueryKeys } from '../product-access/product-access.queries';
 import { UiStore } from '../state/ui.store';
-import { ShellProductNavigation, shellProducts, productForPage } from './product-navigation';
+import {
+  ShellProductNavigation,
+  ShellRouteContext,
+  shellProducts,
+  productForPage,
+} from './product-navigation';
 
 // Exercise the real organization-scoped ProductAccess query with local responses only.
 describe('ShellProductNavigation organization isolation', () => {
@@ -42,6 +49,11 @@ describe('ShellProductNavigation organization isolation', () => {
     };
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
+        {
+          provide: RestaurantOutletContext,
+          useValue: { id: () => 'active', available: () => true },
+        },
         { provide: QueryClient, useValue: client },
         {
           provide: AuthStore,
@@ -113,6 +125,11 @@ describe('Restaurants shell framing by implemented member role', () => {
   ])('keeps a useful sidebar only for %s when supported', (role, visible) => {
     TestBed.configureTestingModule({
       providers: [
+        provideRouter([]),
+        {
+          provide: RestaurantOutletContext,
+          useValue: { id: () => 'active', available: () => true },
+        },
         {
           provide: AuthStore,
           useValue: {
@@ -131,5 +148,36 @@ describe('Restaurants shell framing by implemented member role', () => {
       ],
     });
     expect(TestBed.inject(ShellProductNavigation).hasSidebar()).toBe(visible);
+  });
+});
+
+describe('Restaurants unresolved shell navigation', () => {
+  afterEach(() => TestBed.resetTestingModule());
+  it('hides every sidebar family for an entitled manager until Active Outlet is validated', async () => {
+    const ready = signal('');
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        { provide: RestaurantOutletContext, useValue: { id: ready, available: () => true } },
+        { provide: ShellRouteContext, useValue: { url: () => '/restaurants/context' } },
+        {
+          provide: AuthStore,
+          useValue: {
+            effectiveOrgId: () => 'org',
+            activeWorkspace: () => ({ orgId: 'org', productRoles: { RESTAURANTS: 'OWNER' } }),
+            activeWorkspaceType: () => 'COMPANY',
+          },
+        },
+        { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
+        { provide: UiStore, useValue: { currentPage: () => 'restaurants' } },
+        { provide: SalesCapabilities, useValue: {} },
+      ],
+    });
+    const navigation = TestBed.inject(ShellProductNavigation);
+    expect(navigation.restaurantEntry()).toBe(true);
+    expect(navigation.hasSidebar()).toBe(false);
+    ready.set('outlet-a');
+    expect(navigation.restaurantEntry()).toBe(false);
+    expect(navigation.hasSidebar()).toBe(true);
   });
 });

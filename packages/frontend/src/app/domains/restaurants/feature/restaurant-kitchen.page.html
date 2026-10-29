@@ -47,7 +47,12 @@
     } @else {
       @if (!outlet()) {
         <p class="text-sm text-app-text-secondary">
-          {{ 'RESTAURANTS.CONTEXT.CHOOSE_HINT' | transloco }}
+          {{
+            (operational.sessionInvalid()
+              ? 'RESTAURANTS.CONTEXT.RESOLUTION.access-changed'
+              : 'RESTAURANTS.ACCESS.CHECKING'
+            ) | transloco
+          }}
         </p>
       }
       @if (outlet()) {

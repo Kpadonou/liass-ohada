@@ -96,7 +96,6 @@ export class RestaurantServiceFloorPage {
   );
   readonly selfService = computed(() => this.caps.usesAssignedOutlets?.() ?? false);
   readonly contextError = signal(false);
-  readonly chooseOutlet = signal(false);
   readonly blockedOutlets = signal<ReadonlySet<string>>(new Set());
   readonly revoking = signal(false);
   readonly myLocations = this.operational.selfQuery;
@@ -292,7 +291,6 @@ export class RestaurantServiceFloorPage {
         previous = identity;
         this.selfAccessWasVerified.set(false);
         this.blockedOutlets.set(new Set());
-        this.chooseOutlet.set(false);
         this.contextError.set(false);
         this.revoking.set(false);
         this.areaId.set(null);
@@ -327,16 +325,6 @@ export class RestaurantServiceFloorPage {
       }
     });
   }
-  selectOutlet(value: string | null) {
-    if (this.selfService() && value && !this.outlets().some((o) => o.id === value)) return;
-    if (value !== this.outletId()) this.openingContext++;
-    this.contextError.set(false);
-    this.chooseOutlet.set(false);
-    this.operational.select(value);
-    this.areaId.set(null);
-    this.openingError.set(null);
-    this.writeContext();
-  }
   selectArea(value: string | null) {
     this.areaId.set(value === 'ALL' ? null : value);
     this.writeContext();
@@ -365,7 +353,6 @@ export class RestaurantServiceFloorPage {
       outlet = this.outletId();
     if (this.revoking()) return;
     this.revoking.set(true);
-    this.chooseOutlet.set(true);
     this.contextError.set(true);
     try {
       await Promise.all([this.operational.revoke(outlet ?? ''), this.queries.denied(org)]);

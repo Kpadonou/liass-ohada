@@ -41,6 +41,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     serviceFloor = vi.fn();
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
     workspace.set(accessWorkspace());
     remoteRole = undefined;
     assigned = false;
@@ -125,13 +126,13 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
   it('mirrors accepted membership → role → zero assignments → assigned outlet → genuine role removal without logout', async () => {
     const h = await RouterTestingHarness.create('/restaurants');
     expect(h.routeNativeElement?.textContent).toContain(
-      'Votre accès à Liass-Resto est en cours de configuration',
+      fr.RESTAURANTS.CONTEXT.RESOLUTION['access-changed'],
     );
-    expect(h.routeNativeElement?.querySelector('[role="alert"]')).toBeNull();
+    expect(h.routeNativeElement?.querySelector('[role="alert"]')).not.toBeNull();
     expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard');
     expect(myOutlets).not.toHaveBeenCalled();
     remoteRole = 'WAITER';
-    (h.routeNativeElement?.querySelector('button[mat-flat-button]') as HTMLButtonElement).click();
+    await TestBed.inject(RestaurantOutletRouting).refreshAccess();
     await vi.waitFor(() => {
       h.detectChanges();
       expect(TestBed.inject(Router).url).toContain('/restaurants/context?');
@@ -153,14 +154,16 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     await TestBed.inject(RestaurantAccessState).refresh();
     await vi.waitFor(() => {
       h.detectChanges();
-      expect(h.routeNativeElement?.textContent).toContain('Votre accès a changé');
+      expect(h.routeNativeElement?.textContent).toContain(
+        fr.RESTAURANTS.CONTEXT.RESOLUTION['access-changed'],
+      );
     });
     expect(h.routeNativeElement?.querySelector('[data-access-state="configure"]')).toBeNull();
     expect(h.routeNativeElement?.textContent).not.toContain('T01');
   });
   it('prevents direct no-role Service and WAITER Team/configuration content before activation', async () => {
     const h = await RouterTestingHarness.create('/restaurants/service');
-    expect(TestBed.inject(Router).url).toBe('/restaurants');
+    expect(TestBed.inject(Router).url).toContain('/restaurants/context?');
     expect(myOutlets).not.toHaveBeenCalled();
     workspace.set(accessWorkspace('WAITER'));
     await h.navigateByUrl('/restaurants/setup/team');
@@ -171,7 +174,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
     expect(h.routeNativeElement?.textContent).not.toContain('Protected management fixture');
   });
   it.each(['OWNER', 'MANAGER'] as const)(
-    'keeps zero-Outlet %s setup recovery reachable after entry bootstrap',
+    'keeps zero-Outlet %s inside isolated unavailable entry',
     async (role) => {
       workspace.set(accessWorkspace(role));
       const h = await RouterTestingHarness.create('/restaurants');
@@ -181,8 +184,8 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
       });
       expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard fixture');
       await h.navigateByUrl('/restaurants');
-      expect(h.routeNativeElement?.textContent).toContain('Management dashboard fixture');
-      expect(TestBed.inject(Router).url).toBe('/restaurants');
+      expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard fixture');
+      expect(TestBed.inject(Router).url).toContain('/restaurants/context?');
     },
   );
   it('lands KITCHEN on its operational route without starting Service Floor', async () => {
@@ -210,7 +213,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
           fr.RESTAURANTS.CONTEXT.RESOLUTION['no-accessible-context'],
         );
       });
-      expect(h.routeNativeElement?.textContent).toContain(fr.RESTAURANTS.CONTEXT.CHOOSE);
+      expect(h.routeNativeElement?.textContent).not.toContain(fr.RESTAURANTS.CONTEXT.CHOOSE);
       expect(h.routeNativeElement?.textContent).not.toContain('Management dashboard');
       expect(myOutlets).toHaveBeenCalledTimes(1);
       expect(serviceFloor).not.toHaveBeenCalled();

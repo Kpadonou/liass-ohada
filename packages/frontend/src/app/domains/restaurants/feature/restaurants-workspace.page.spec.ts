@@ -1,3 +1,4 @@
+import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angular/router';
@@ -169,6 +170,13 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
         }),
       ],
       providers: [
+        {
+          provide: RestaurantOutletContext,
+          useValue: {
+            id: () => (scope() === 'org' ? rid(2) : ''),
+            outlet: () => ({ name: 'Agla' }),
+          },
+        },
         provideRouter([]),
         {
           provide: ActivatedRoute,
@@ -668,7 +676,7 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
     f.detectChanges();
     expect(f.componentInstance.area()?.name).toBe('Main Room');
   });
-  it('does not query a supplied outlet until it belongs to the current loaded organization data', async () => {
+  it('never queries an unvalidated business-record target or changes the session Active Outlet', async () => {
     params.next(convertToParamMap({ outlet: 'foreign-outlet' }));
     const f = await create('setup', 'table');
     await vi.waitFor(() => {
@@ -676,15 +684,8 @@ describe('Liass-Resto frontend setup/menu surfaces', () => {
       expect(f.componentInstance.locations.isSuccess()).toBe(true);
     });
     expect(f.componentInstance.outlet()).toBeUndefined();
-    expect(f.componentInstance.contextUnavailable()).toBe(true);
+    expect(f.componentInstance.sessionOutlet.id()).toBe(rid(2));
     expect(api.list.mock.calls.map((call) => call[1])).toEqual(['outlet']);
-    expect(f.nativeElement.textContent).toContain('RESTAURANTS.IA.CONTEXT_UNAVAILABLE');
-    f.componentInstance.selectOutlet(null);
-    f.detectChanges();
-    await vi.waitFor(() => {
-      f.detectChanges();
-      expect(f.componentInstance.outlet()?.id).toBe(rid(2));
-    });
   });
   it('offers outlet child links and area-to-table links even to read-only staff', async () => {
     manage.set(false);
