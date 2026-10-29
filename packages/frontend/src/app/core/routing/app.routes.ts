@@ -179,6 +179,32 @@ export const routes: Routes = [
             data: { productCode: 'RESTAURANTS', titleKey: 'RESTAURANTS.RECEIPT.TITLE' },
           },
           {
+            path: 'cash',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-cash.page').then(
+                (m) => m.RestaurantCashPage,
+              ),
+            data: {
+              productCode: 'RESTAURANTS',
+              cashManagement: false,
+              titleKey: 'RESTAURANTS.CASH.MY_CASH',
+            },
+          },
+          {
+            path: 'cash/day',
+            canActivate: [productAccessGuard, restaurantOutletGuard],
+            loadComponent: () =>
+              import('../../domains/restaurants/feature/restaurant-cash.page').then(
+                (m) => m.RestaurantCashPage,
+              ),
+            data: {
+              productCode: 'RESTAURANTS',
+              cashManagement: true,
+              titleKey: 'RESTAURANTS.CASH.DAY_REVIEW',
+            },
+          },
+          {
             path: 'checkout',
             runGuardsAndResolvers: 'paramsOrQueryParamsChange',
             canActivate: [productAccessGuard, restaurantOutletGuard],

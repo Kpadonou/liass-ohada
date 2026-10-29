@@ -1,3 +1,5 @@
+import { provideRouter } from '@angular/router';
+import { RestaurantCashQueries } from '../data-access/restaurant-cash.queries';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -39,11 +41,41 @@ const order = {
 };
 describe('Checkout canonical reconciliation and terminal state', () => {
   let client: QueryClient;
+  let cashDay: { data: null | { businessDayId: string; status: string } };
+  let cashSession: { data: null | { businessDayId: string; status: string } };
+  let management = false;
+  let cashFailure = false;
+  let cashPending = false;
+  const cashContext = { ...ctx, identity: 'access' };
+  const cash = {
+    context: () => cashContext,
+    day: () => ({
+      queryKey: ['cash-test-day'],
+      staleTime: 30000,
+      retry: false,
+      queryFn: async () => {
+        if (cashFailure) throw new HttpErrorResponse({ status: 503 });
+        if (cashPending) return await new Promise<typeof cashDay>(() => {});
+        return cashDay;
+      },
+    }),
+    current: () => ({
+      queryKey: ['cash-test-session'],
+      staleTime: 30000,
+      retry: false,
+      queryFn: async () => cashSession,
+    }),
+  };
   const flow = { pendingClosure: vi.fn(), close: vi.fn() };
   const sessions = { guestSession: vi.fn() },
     orders = { assertContext: vi.fn(), orders: vi.fn(), items: vi.fn() };
   beforeEach(() => {
     vi.resetAllMocks();
+    cashDay = { data: { businessDayId: rid(20), status: 'OPEN' } };
+    cashSession = { data: { businessDayId: rid(20), status: 'OPEN' } };
+    management = false;
+    cashFailure = false;
+    cashPending = false;
     flow.pendingClosure.mockReturnValue(false);
     sessions.guestSession.mockResolvedValue(visit);
     orders.orders.mockResolvedValue({ items: [order] });
@@ -59,13 +91,19 @@ describe('Checkout canonical reconciliation and terminal state', () => {
         }),
       ],
       providers: [
+        provideRouter([]),
+        { provide: RestaurantCashQueries, useValue: cash },
         { provide: QueryClient, useValue: client },
         { provide: RestaurantsApi, useValue: sessions },
         { provide: RestaurantOrdersApi, useValue: orders },
         { provide: RestaurantCheckoutFlow, useValue: flow },
         {
           provide: RestaurantsCapabilities,
-          useValue: { canCapturePayment: () => true, canCloseCheckout: () => true },
+          useValue: {
+            canCapturePayment: () => true,
+            canCloseCheckout: () => true,
+            canManageSetup: () => management,
+          },
         },
         {
           provide: AuthStore,
@@ -223,5 +261,72 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     await fixture.componentInstance.close();
     expect(flow.close).not.toHaveBeenCalled();
     expect(fixture.nativeElement.querySelector('h2')).toBeNull();
+  });
+  it.each(['OWNER', 'MANAGER', 'CASHIER'])(
+    'no day: %s sees appropriate guidance and payment is unavailable',
+    async (role) => {
+      management = role !== 'CASHIER';
+      cashDay = { data: null };
+      sessions.guestSession.mockResolvedValue({ ...visit, paidMinor: 0 });
+      orders.orders.mockResolvedValue({ items: [{ ...order, paidMinor: 0 }] });
+      const fixture = create();
+      await vi.waitFor(() => {
+        fixture.detectChanges();
+        expect(fixture.componentInstance.cashState()).toBe('NO_DAY');
+        expect(fixture.nativeElement.textContent).toContain('La journée');
+      });
+      expect(fixture.nativeElement.textContent.includes('Ouvrir la journée')).toBe(management);
+      if (!management)
+        expect(fixture.nativeElement.textContent).toContain('Contactez un responsable');
+    },
+  );
+  it('no session exposes the own-session opening action', async () => {
+    cashSession = { data: null };
+    sessions.guestSession.mockResolvedValue({ ...visit, paidMinor: 0 });
+    orders.orders.mockResolvedValue({ items: [{ ...order, paidMinor: 0 }] });
+    const fixture = create();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.cashState()).toBe('NO_SESSION');
+      expect(fixture.nativeElement.textContent).toContain('Ouvrir ma caisse');
+    });
+  });
+  it('valid cached context becomes ready and survives background fetching', async () => {
+    const fixture = create();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.cashState()).toBe('READY');
+    });
+    let resolve!: (value: typeof cashDay) => void;
+    const pending = client.fetchQuery({
+      queryKey: ['cash-test-day'],
+      staleTime: 0,
+      queryFn: () => new Promise<typeof cashDay>((r) => (resolve = r)),
+    });
+    fixture.detectChanges();
+    expect(fixture.componentInstance.cashState()).toBe('READY');
+    resolve(cashDay);
+    await pending;
+  });
+
+  it('loading cash context keeps payment unavailable', () => {
+    cashPending = true;
+    const fixture = create();
+    expect(fixture.componentInstance.cashState()).toBe('LOADING');
+  });
+  it('cash context failure exposes the error state', async () => {
+    cashFailure = true;
+    const fixture = create();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.cashState()).toBe('ERROR');
+    });
+  });
+  it('a changed Outlet immediately fences the old ready context', async () => {
+    const fixture = create();
+    await vi.waitFor(() => expect(fixture.componentInstance.cashState()).toBe('READY'));
+    fixture.componentRef.setInput('ctx', { ...ctx, outlet: rid(80) });
+    fixture.detectChanges();
+    expect(fixture.componentInstance.cashState()).toBe('CHANGED');
   });
 });

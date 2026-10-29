@@ -1,3 +1,4 @@
+import { RestaurantCashQueries } from './restaurant-cash.queries';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import type {
@@ -33,6 +34,14 @@ describe('Resumable canonical checkout commands', () => {
     api.closeSession.mockResolvedValue({ ...visit, status: 'CLOSED' });
     TestBed.configureTestingModule({
       providers: [
+        {
+          provide: RestaurantCashQueries,
+          useValue: {
+            context: () => ctx,
+            requirePayment: async () => true,
+            reconcile: async () => {},
+          },
+        },
         { provide: RestaurantCheckoutApi, useValue: api },
         { provide: RestaurantOrdersApi, useValue: orders },
         { provide: RestaurantsApi, useValue: sessions },

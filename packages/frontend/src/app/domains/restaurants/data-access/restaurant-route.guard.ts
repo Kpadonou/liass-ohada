@@ -21,6 +21,10 @@ export const restaurantRouteGuard: CanActivateChildFn = (route) => {
     return caps.canReadSession() ? true : router.createUrlTree(['/restaurants']);
   if (path === 'outlets/:outletId/sessions/:sessionId/receipt')
     return caps.canReadReceipt() ? true : router.createUrlTree(['/restaurants']);
+  if (path === 'cash' || path === 'cash/day')
+    return (path === 'cash/day' ? caps.canManageSetup() : caps.canReadCheckout())
+      ? true
+      : router.createUrlTree(['/restaurants']);
   if (path === 'checkout')
     return caps.canReadCheckout() ? true : router.createUrlTree(['/restaurants']);
   if (mode === 'checkout') return router.createUrlTree(['/restaurants/checkout']);

@@ -102,3 +102,41 @@ describe('Independent scoped RESTAURANTS permissions', () => {
     expect(caps.canReadStaff()).toBe(false);
   });
 });
+
+describe('Cash navigation role matrix', () => {
+  afterEach(() => TestBed.resetTestingModule());
+  it.each(['OWNER', 'MANAGER', 'CASHIER', 'WAITER', 'KITCHEN'])(
+    '%s exposes only authorized Cash destinations',
+    (role) => {
+      TestBed.configureTestingModule({
+        providers: [
+          {
+            provide: AuthStore,
+            useValue: {
+              activeWorkspace: () => ({
+                orgId: 'org',
+                status: 'ACTIVE',
+                accessSource: 'DIRECT',
+                productRoles: { RESTAURANTS: role },
+              }),
+              effectiveOrgId: () => 'org',
+              activeWorkspaceType: () => 'COMPANY',
+            },
+          },
+        ],
+      });
+      const caps = TestBed.inject(RestaurantsCapabilities);
+      const visible = [
+        ...(caps.canReadCheckout() ? ['Encaissements', 'Ma caisse'] : []),
+        ...(caps.canManageSetup() ? ['Point de journée'] : []),
+      ];
+      expect(visible).toEqual(
+        role === 'OWNER' || role === 'MANAGER'
+          ? ['Encaissements', 'Ma caisse', 'Point de journée']
+          : role === 'CASHIER'
+            ? ['Encaissements', 'Ma caisse']
+            : [],
+      );
+    },
+  );
+});

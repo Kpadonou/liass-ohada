@@ -18,6 +18,7 @@ export type OutletResolution =
 export function operationalOutletRoute(path: string): boolean {
   return (
     /^\/restaurants\/(service|kitchen|checkout|inventory)$/.test(path) ||
+    /^\/restaurants\/cash(\/day)?$/.test(path) ||
     /^\/restaurants\/service\/outlets\/[^/]+\/sessions\/[^/]+$/.test(path) ||
     /^\/restaurants\/outlets\/[^/]+\/sessions\/[^/]+\/receipt$/.test(path)
   );

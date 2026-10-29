@@ -1,3 +1,5 @@
+import { RouterLink } from '@angular/router';
+import { RestaurantCashQueries } from '../data-access/restaurant-cash.queries';
 import {
   Component,
   computed,
@@ -33,7 +35,13 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
 import { checkoutError } from '../utils/restaurant-checkout-error';
 @Component({
   selector: 'liass-checkout-visit',
-  imports: [MatButtonModule, MatDialogModule, TranslocoModule, RestaurantCheckoutLinesComponent],
+  imports: [
+    RouterLink,
+    MatButtonModule,
+    MatDialogModule,
+    TranslocoModule,
+    RestaurantCheckoutLinesComponent,
+  ],
   template: `
     @if (readableSession(); as visit) {
       <header class="flex flex-wrap items-center justify-between gap-3">
@@ -131,10 +139,30 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
           <h3 id="checkout-payment-heading" class="mb-3 font-semibold">
             {{ 'RESTAURANTS.CHECKOUT.PAYMENT' | transloco }}
           </h3>
+          @if (cashState() !== 'READY') {
+            <p role="status">{{ 'RESTAURANTS.CASH.CONTEXT_' + cashState() | transloco }}</p>
+            @if (
+              cashState() === 'NO_SESSION' || (cashState() === 'NO_DAY' && caps.canManageSetup())
+            ) {
+              <a mat-button routerLink="/restaurants/cash">{{
+                'RESTAURANTS.CASH.' + (cashState() === 'NO_DAY' ? 'OPEN_DAY' : 'OPEN_CASH')
+                  | transloco
+              }}</a>
+            }
+            @if (cashState() === 'NO_DAY' && !caps.canManageSetup()) {
+              <p>{{ 'RESTAURANTS.CASH.CONTACT_MANAGER' | transloco }}</p>
+            }
+            @if (cashState() === 'ERROR') {
+              <button mat-button (click)="cashDay.refetch(); cashSession.refetch()">
+                {{ 'RESTAURANTS.CASH.RETRY' | transloco }}
+              </button>
+            }
+          }
           <button
             type="button"
             mat-flat-button
             [disabled]="
+              cashState() !== 'READY' ||
               !caps.canCapturePayment() ||
               busy() ||
               !complete() ||
@@ -202,6 +230,28 @@ export class RestaurantCheckoutVisitComponent {
   readonly closed = output<void>();
   readonly accessDenied = output<void>();
   readonly caps = inject(RestaurantsCapabilities);
+  readonly cash = inject(RestaurantCashQueries);
+  readonly cashDay = injectQuery(() => this.cash.day(this.cash.context()));
+  readonly cashSession = injectQuery(() => this.cash.current(this.cash.context()));
+  readonly cashState = computed(() => {
+    const context = this.cash.context(),
+      expected = this.ctx();
+    if (
+      context.org !== expected.org ||
+      context.outlet !== expected.outlet ||
+      context.user !== expected.user ||
+      context.revision !== expected.revision
+    )
+      return 'CHANGED';
+    if (this.cashDay.isPending() || this.cashSession.isPending()) return 'LOADING';
+    if (this.cashDay.isError() || this.cashSession.isError()) return 'ERROR';
+    const day = this.cashDay.data()?.data,
+      session = this.cashSession.data()?.data;
+    if (!day || day.status !== 'OPEN') return 'NO_DAY';
+    return session?.status === 'OPEN' && session.businessDayId === day.businessDayId
+      ? 'READY'
+      : 'NO_SESSION';
+  });
   private readonly destroy = inject(DestroyRef);
   private readonly queries = inject(RestaurantsQueries);
   private readonly orderQueries = inject(RestaurantOrdersQueries);
@@ -303,6 +353,7 @@ export class RestaurantCheckoutVisitComponent {
     const ctx = this.ctx(),
       session = this.readableSession();
     if (
+      this.cashState() !== 'READY' ||
       !session ||
       !this.complete() ||
       session.status !== 'OPEN' ||

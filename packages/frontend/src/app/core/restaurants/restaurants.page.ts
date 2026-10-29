@@ -34,6 +34,7 @@ export class RestaurantsPage {
       else if (
         mode === 'checkout' &&
         this.router.url.split('?')[0] !== '/restaurants/checkout' &&
+        !this.router.url.split('?')[0].startsWith('/restaurants/cash') &&
         !/^\/restaurants\/outlets\/[^/]+\/sessions\/[^/]+\/receipt$/.test(
           this.router.url.split('?')[0],
         )

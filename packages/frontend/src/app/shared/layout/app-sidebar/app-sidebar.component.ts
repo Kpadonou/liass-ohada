@@ -260,6 +260,28 @@ export class AppSidebarComponent {
               },
             ]
           : []),
+        ...(this.restaurantsCapabilities.canReadCheckout?.()
+          ? [
+              {
+                icon: 'account_balance_wallet',
+                labelKey: 'RESTAURANTS.CASH.MY_CASH',
+                page: 'restaurants' as const,
+                route: '/restaurants/cash',
+                productCode: 'RESTAURANTS' as const,
+              },
+            ]
+          : []),
+        ...(this.restaurantsCapabilities.canManageSetup()
+          ? [
+              {
+                icon: 'summarize',
+                labelKey: 'RESTAURANTS.CASH.DAY_REVIEW',
+                page: 'restaurants' as const,
+                route: '/restaurants/cash/day',
+                productCode: 'RESTAURANTS' as const,
+              },
+            ]
+          : []),
         ...(this.restaurantsCapabilities.canReadKitchen?.()
           ? [
               {

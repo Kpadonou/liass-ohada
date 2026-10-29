@@ -1,3 +1,4 @@
+import { RestaurantCashQueries } from './restaurant-cash.queries';
 import { CaptureRestaurantPaymentRequestSchema } from '@liass-ohada/shared/restaurants';
 import { Injectable, inject } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -16,6 +17,7 @@ export type CloseIntent = { clientRequestId: string; expectedVersion: number };
 @Injectable({ providedIn: 'root' })
 export class RestaurantCheckoutFlow {
   private readonly api = inject(RestaurantCheckoutApi);
+  private readonly cash = inject(RestaurantCashQueries);
   private readonly ordersApi = inject(RestaurantOrdersApi);
   private readonly sessions = inject(RestaurantsApi);
   private readonly intents = new Map<string, CloseIntent>();
@@ -35,7 +37,17 @@ export class RestaurantCheckoutFlow {
     this.payments.set(key, structuredClone(proposal));
     this.busy.add(key);
     try {
+      const cashContext = this.cash.context();
+      if (
+        cashContext.org !== ctx.org ||
+        cashContext.outlet !== ctx.outlet ||
+        cashContext.user !== ctx.user ||
+        cashContext.revision !== ctx.revision
+      )
+        throw new Error('Cash context changed');
+      if (!(await this.cash.requirePayment(cashContext))) throw new Error('Cash session required');
       const result = await this.api.capture(ctx, proposal);
+      await this.cash.reconcile(cashContext);
       this.payments.delete(key);
       return result;
     } catch (error) {
