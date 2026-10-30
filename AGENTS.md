@@ -40,6 +40,18 @@ Formatting: use `packages/frontend/src/app/shared/utils/exact-money-display.ts` 
 
 Every local override of standard colors, borders, states, sizing, spacing, density, typography, surface or action appearance must be classified `JUSTIFIED DOMAIN-SPECIFIC` with a reason; otherwise `REMOVE / USE CANONICAL`. Unjustified overrides fail completion.
 
+### Global interaction and simplicity contract — LIASS-UX-PATTERNS-1
+
+Applies to all current and future Liass frontend domains, products and verticals alongside LIASS-UI-GOVERNANCE-1. Simple first: interfaces must feel direct and lightweight despite domain complexity. Use concise labels, contextual actions, progressive disclosure and clear primary/secondary/detail hierarchy; avoid repeated text, decorative clutter and a generic dense ERP appearance while preserving useful table density.
+
+One row/item action may be direct; **more than one contextual action MUST use a vertical overflow menu `⋮` (`more_vert`)**, never side-by-side action buttons. Every menu item has a canonical semantic icon and translated label. Order: view/inspect → routine non-destructive → operational state change → high-impact/destructive last, separated or semantically styled. Respect role, authorization, state and domain rules; hide irrelevant actions, disable only when the unavailable action provides useful context. Keep routine actions available where the object is presented; details must not be a mandatory gateway.
+
+Each screen has one primary responsibility. Lists support scanning, comparison and common actions; drawers/details explain complete information/history and less-common actions. Never embed a second complete personal/detail workspace inside supervision. Prefer contextual drawers/dialogs to extra pages unless a distinct responsibility or complex workflow warrants navigation. Group sidebar entries by business responsibility, not backend modules; labels describe user intent, never internal aggregate names.
+
+Keep frequent search/filters left, compact display/settings controls secondary, and the primary management action right inside the canonical surface. Column/density/view preferences use canonical icon controls with tooltip and accessible label where supported, not large text buttons. Group page actions by responsibility and emphasis; rare actions may use overflow. Icons communicate meaning, use the canonical icon system and accessible labels; no production emoji or decorative overload. Use canonical status chips with translated labels; closed/inactive is neutral unless business semantics say otherwise. Premium/colorful means semantic colors/icons, subtle surfaces, clear tone/typography and polished hover/selection, never rainbow metrics, random colors or excessive gradients. Small screens retain overflow, readable menu labels and accessible touch targets rather than multiplying buttons.
+
+Detailed application guidance, INTERACTION PREFLIGHT, completion checks and UX INTERACTION REPORT are owned by [the design-system skill](.agents/skills/liass-design-system/SKILL.md); concrete patterns live in its [interaction reference](.agents/skills/liass-design-system/references/liass-interaction-patterns.md). For recurring interactions, inspect shared implementations first, then extend or create a generic primitive only for a demonstrated gap; never invent parallel feature variants. This contract documents no new shared component.
+
 ### UI REUSE PREFLIGHT — mandatory before frontend implementation
 
 Complete in task analysis; no separate file required:
@@ -51,6 +63,7 @@ Complete in task analysis; no separate file required:
 5. Canonical responsive composition/reference.
 6. Local visual deviations and justification.
 7. Missing capability: `REUSE / EXTEND / CREATE SHARED / DOMAIN-LOCAL`.
+8. Complete the skill’s mandatory **INTERACTION PREFLIGHT** before implementing new frontend interactions (responsibility, role/task, direct/overflow actions, details, display controls, duplication, navigation group and canonical reference).
 
 Future prompts can say: “Follow the mandatory Liass UI Reuse Preflight and Liass Frontend Design Contract in AGENTS.md,” then supply only feature-specific requirements.
 
@@ -62,10 +75,13 @@ Report separately:
 
 - Technical frontend validation: `PASS / FAIL`.
 - LIASS UI REUSE: `PASS / FAIL`.
+- LIASS UX PATTERNS: `PASS / FAIL` (all mandatory interaction checks in the skill).
 - LIASS DESIGN CONTRACT: `PASS / FAIL`.
 - Product Owner visual validation: `PENDING / PASS / FAIL`.
 
-Overall implementation PASS requires both reuse/design gates PASS: shared primitives reused, canonical composition followed, tokens/formatting respected, overrides justified and responsive structure accounted for. Unit tests/builds never establish Product Owner visual acceptance. Pending manual acceptance must remain explicit; never claim it from technical checks.
+Include the skill’s **UX INTERACTION REPORT** in every frontend implementation report.
+
+Overall implementation PASS requires LIASS UI REUSE, LIASS UX PATTERNS and LIASS DESIGN CONTRACT all PASS; LIASS UX PATTERNS = FAIL forbids overall PASS: shared primitives reused, canonical composition followed, tokens/formatting respected, overrides justified and responsive structure accounted for. Unit tests/builds never establish Product Owner visual acceptance. Pending manual acceptance must remain explicit; never claim it from technical checks.
 
 For standard management surfaces, reuse canonical Liass table, toolbar, form-control, dialog and action patterns exactly. Features must not redefine base colors, borders, row states, control sizing or spacing when a canonical pattern exists. Visual consistency means reuse of canonical implementations/tokens, not approximate reproduction from screenshots or prose. Inspect the named canonical implementation first.
 
@@ -321,7 +337,7 @@ Using the correct component is not sufficient; frontend acceptance requires the 
 
 Default to tables for comparable management collections, with row actions in the final column. Management/list tables must include text search alongside structured filters; filters do not replace search. Keep the search/filter/action toolbar coherent across products. Inspect approved cross-product patterns, including Accounting, before inventing a presentation. Cards require a workflow justification; responsive adaptation and the full collection-presentation contract belong to the canonical Design System skill.
 
-Operational ERP tables should stay dense, readable, and customizable. When a table has more than two row actions, use a compact action-menu trigger in a narrow actions column instead of laying out every action horizontally. Menu items must include an icon and a translated label, and should use restrained semantic color by intent: neutral for consultation/detail, brand for important navigation or primary business follow-up, info for edit/configuration, warning for risky-but-reversible cautions, and danger for destructive or disabling actions. Destructive actions must remain visually distinct and must still open confirmation dialogs. Keep primary page actions such as creating a new account, journal, or fiscal year visible in the page header or table toolbar. Multi-column tables should provide local table preferences, scoped by a stable table id such as `accounting.accounts` or `accounting.journals`, so users can show or hide optional columns. Required identity columns and the actions column must remain visible and non-toggleable. Do not add backend persistence for table preferences unless explicitly requested. Future data-heavy tables, especially Accounting entries, must use this pattern from the beginning.
+Operational ERP tables should stay dense, readable, and customizable. When a row/item has more than one contextual action, use a compact vertical overflow (`⋮` / `more_vert`) trigger in a narrow actions column instead of laying out every action horizontally. Menu items must include an icon and a translated label, and should use restrained semantic color by intent: neutral for consultation/detail, brand for important navigation or primary business follow-up, info for edit/configuration, warning for risky-but-reversible cautions, and danger for destructive or disabling actions. Destructive actions must remain visually distinct and must still open confirmation dialogs. Keep primary page actions such as creating a new account, journal, or fiscal year visible in the page header or table toolbar. Multi-column tables should provide local table preferences, scoped by a stable table id such as `accounting.accounts` or `accounting.journals`, so users can show or hide optional columns. Required identity columns and the actions column must remain visible and non-toggleable. Do not add backend persistence for table preferences unless explicitly requested. Future data-heavy tables, especially Accounting entries, must use this pattern from the beginning.
 
 ## Testing Guidelines
 

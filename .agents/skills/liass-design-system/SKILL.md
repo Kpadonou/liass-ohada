@@ -32,7 +32,7 @@ The global mandatory reuse decision hierarchy, UI REUSE PREFLIGHT and UI REUSE R
 14. Prefer backend-provided user-facing messages over generic frontend messages, including nested payloads such as `{ message: { code, message } }`; use translated frontend fallbacks only when backend message extraction returns no safe message.
 15. Never expose technical details such as PK/SK/GSI keys, stack traces, raw AWS errors, or internal exception names in notifications or visible UI.
 16. User-facing copy must describe business state and user action, not implementation layers; avoid terms such as backend, API, DynamoDB, Lambda, PK, SK, GSI, deployment, route, or technical keys unless the surface is explicitly for administrators/developers.
-17. For tables with more than two row actions, use a compact icon-button action menu instead of a wide inline actions column.
+17. For any row/item with more than one contextual action, use the canonical vertical overflow menu (`⋮` / `more_vert`), never side-by-side action buttons.
 18. Tables with many columns should provide local table preferences for optional visible columns; mandatory identity/action columns must remain visible.
 19. Do not copy third-party products, logos, exact layouts, or proprietary visual identity.
 20. Do not change APIs, DTOs, authentication, guards, persistence, or business logic unless the user explicitly asks.
@@ -51,6 +51,90 @@ Use the contextual sidebar for product sections and subsections. Add permission-
 Use ReactiveFormsModule and typed FormGroup/FormControl by default, with FormBuilder/NonNullableFormBuilder where appropriate, validators in the form model, translated control-state `mat-error` and useful `mat-hint`. Use `input matInput` inside mat-form-field for short single-line free text and `textarea matInput` for long/multiline text; do not force notes/descriptions into a single-line input. Standalone context selectors and simple local UI selections may use `ngModel` with Signals. Document exceptional template-driven business forms or native-control choices; do not mix form paradigms within a form unnecessarily. Material provides semantic controls; Tailwind provides layout/spacing/sizing/responsiveness. Use `mat-select` for closed enums/reference assignments, search/filter for growing options, checkbox for a form-saved boolean, toggle for immediate enable/disable, radio for appropriate small exclusive sets and datepicker for actual date selection. Existing constrained Material autocomplete primitives remain valid when justified by search/reference UX; custom pseudo-selects do not. Avoid heavy overrides or Tailwind-only control replicas.
 
 True sequential gated forms use Material Stepper with Reactive Forms, per-step validation, preserved navigation state and clearing of invalidated hidden configuration; small forms do not need cosmetic steppers. Definition of Done includes the charter, translated business language, no duplicated navigation, meaningful states, permissions/read-only presentation, responsiveness, keyboard and focus verification. Inspect rendered spacing and report visual evidence rather than relying solely on tests.
+
+## Global interaction and simplicity guidance
+
+LIASS-UX-PATTERNS-1 applies across Accounting, Restaurants, Sales, Treasury, Project Accounting and all existing/future Liass frontend work. Read [interaction patterns](references/liass-interaction-patterns.md#global-canonical-interaction-examples) before implementing interactions. It supplies concrete examples; this section owns the application workflow and report templates.
+
+### Apply simple first
+
+Define one sentence describing the screen's responsibility, the primary role and task before selecting controls. Distinguish an operation screen (execute), a personal/session screen (manage the user's active context) and supervision (monitor/manage multiple objects/users). Shared data does not justify near-duplicate pages. A supervision collection must not embed another complete personal/detail workspace: open contextual details or a dedicated page for genuinely complex work.
+
+Keep primary information visually dominant, secondary information quieter and full details progressively disclosed. Use existing typography, spacing, grouping, semantic colors and meaningful icons; adding more cards does not solve hierarchy. Replace verbose instructions for obvious states with concise labels, status chips or compact contextual help. Retain necessary guidance, validation and consequential-action explanations. Useful dense tables must still feel simple; avoid the generic dense ERP effect of equally weighted values, repeated labels and button walls.
+
+### Choose and place actions
+
+- One frequent row/item action may be direct. More than one contextual action requires the vertical `⋮` overflow (`more_vert`); do not expose several row action buttons side-by-side. Use the inspected Material menu composition, not a hypothetical shared action-menu component.
+- Each menu item includes a semantic canonical icon and a Transloco label. Order view/inspect first, routine non-destructive actions second, operational state changes third and high-impact/destructive actions last. Separate or semantically style the last group using existing treatments; retain required confirmations.
+- Derive availability from role, authorization, current state and domain rules. Hide actions irrelevant to the object/state; disable only when discovering the unavailable action helps explain a prerequisite. Visibility never replaces authoritative authorization or command checks.
+- Make safe, clear common actions available where the object is already shown. Avoid list → detail → action detours. Lists support scan/compare/common actions; a bounded Material drawer supports complete details, history and less-common actions, without copying a whole workspace. A row action may open a focused dialog when input or confirmation is needed.
+- Keep one page primary action visible in its canonical location; a high-impact primary action may remain direct with appropriate semantics/confirmation. Group routine page actions as secondary; put rare page actions in overflow where appropriate. Do not render every action with equal prominence or hide the main workflow commit.
+- Toolbar: frequent search/filters left, secondary compact display controls adjacent, primary management action right within the work surface. Use existing `LiassButtonComponent` icon mode or the applicable canonical Material icon button for columns/density/view settings, with translated tooltip and accessible label; avoid a large “Colonnes” text button. Reuse `LiassTablePreferencesDialogComponent` for applicable column settings.
+- On narrow screens preserve the same hierarchy and vertical overflow with accessible touch targets and readable menu labels. Do not multiply visible buttons or turn every action into full-width controls unless a specific workflow requires it. Verify keyboard opening, menu focus, dismissal and return focus.
+
+### Simplify navigation and visual meaning
+
+Before adding a page, ask whether it has a distinct workflow or user responsibility, whether the information exceeds a drawer/detail, and whether the page reduces complexity. Otherwise prefer contextual interaction. Sidebar groups express business responsibility rather than implementation modules: for example SERVICE for restaurant operations, CAISSE for payment/cash management and CONFIGURATION for setup. Payment management does not belong in Service just because it shares a backend domain. Use translated intent labels such as “Encaissements”, “Ma session”, “Journée de caisse”; avoid vague “Caisse” destinations, technical “CashSession” or unclear “Point de journée”. These are guidance examples, not instructions to add routes or change session/Outlet lifecycle.
+
+Icons communicate action, status, object type, navigation or significant state; they are not decoration. Use the existing Material icon system with action-appropriate glyphs and accessible names on icon-only controls; never production emoji. Prefer `LiassStatusChipComponent` with translated label and semantic tone over plain enum text. It currently exposes label/tone/size/variant, not an icon input; add an adjacent canonical Material icon only when useful, without inventing component capabilities. Closed/inactive remains neutral unless domain meaning warrants otherwise. Never convey state through color alone.
+
+“Premium and colorful” means semantic colors, meaningful icons, clear status colors, subtle surface differentiation, hierarchy through tone/typography, scannable values, restrained accents and polished canonical hover/selection. It never means random colors, rainbow cards, one color per metric, excessive gradients, decorative coloring or noisy dashboards. Color must communicate meaning, using central tokens and the Material bridge.
+
+For repeated interactions, first inspect shared implementations. Reuse the existing primitive/composition; extend an almost-fitting primitive for a generic capability, or create a shared primitive only for a demonstrated recurring cross-domain gap. Do not build independent feature versions. There is currently no universal ManagementToolbar, DetailDrawer or row-action component; reuse composition and Material controls without documenting nonexistent APIs.
+
+### INTERACTION PREFLIGHT — mandatory before new frontend interactions
+
+Complete alongside root AGENTS.md's UI REUSE PREFLIGHT in task analysis, without a separate report file:
+
+1. Page responsibility: one sentence.
+2. Primary user role: role.
+3. Primary user task: task.
+4. Direct visible actions: list.
+5. Contextual overflow actions: list.
+6. Detail behavior: drawer / dialog / page / none.
+7. Display/settings controls: icon-control strategy.
+8. Potential duplicated workflow: NONE / describe.
+9. Navigation group: section.
+10. Canonical interaction reference: exact screen/component/reference.
+
+### LIASS UX PATTERNS — mandatory frontend completion gate
+
+Report each check as PASS/FAIL for the implemented scope; explain a PASS where the pattern is not needed (for example no row actions). Inspect behavior as well as markup; technical checks do not establish visual acceptance.
+
+- Page has one clear responsibility: PASS/FAIL.
+- Unnecessary navigation avoided: PASS/FAIL.
+- Multiple row actions use canonical overflow menu: PASS/FAIL.
+- Overflow items include icon + translated label: PASS/FAIL.
+- Display controls use canonical compact treatment: PASS/FAIL.
+- Status uses semantic presentation: PASS/FAIL.
+- No duplicated workspace: PASS/FAIL.
+- Action hierarchy is clear: PASS/FAIL.
+- Text density appropriate: PASS/FAIL.
+- Semantic color/icon usage appropriate: PASS/FAIL.
+- Responsive action behavior appropriate: PASS/FAIL.
+
+Then report **LIASS UX PATTERNS: PASS / FAIL**. Any failed check fails this gate. No frontend implementation may claim overall PASS when this gate is FAIL. Preserve LIASS UI REUSE, LIASS DESIGN CONTRACT and separate Product Owner visual validation; builds/tests never imply visual approval.
+
+### UX INTERACTION REPORT — every frontend implementation final report
+
+- Page responsibility:
+- Primary user task:
+- Direct visible actions:
+- Overflow actions:
+- Detail interaction:
+- Display/settings controls:
+- Semantic statuses/icons:
+- Duplicated workflow introduced YES/NO:
+- Unnecessary navigation introduced YES/NO:
+- New local interaction pattern introduced YES/NO:
+- If YES, justification:
+
+Include the per-check completion results above, then report:
+
+- LIASS UI REUSE: PASS / FAIL.
+- LIASS UX PATTERNS: PASS / FAIL.
+- LIASS DESIGN CONTRACT: PASS / FAIL.
+- Product Owner visual validation: PENDING / PASS / FAIL.
 
 ## Collection presentation
 
@@ -160,7 +244,7 @@ Use Angular Material 3 when it improves accessibility, interaction quality, or i
 - Place primary actions predictably; make secondary actions lower emphasis.
 - Separate or clearly style destructive actions.
 - Group card actions consistently in headers or footers.
-- For tables with more than two row actions, keep the actions column narrow and use a small icon button menu, preferably vertical dots, backed by Angular Material Menu or the existing menu pattern.
+- For rows/items with more than one contextual action, keep the actions column narrow and use a vertical overflow icon button (`⋮` / `more_vert`) backed by Angular Material Menu or the existing canonical menu composition. One primary row action may be direct where appropriate.
 - Table action menu items must include an icon and a translated label. Color menu items by semantic intent with restrained contrast: neutral for consultation/detail, brand for important navigation or primary business follow-up, info for edit/configuration, warning for risky-but-reversible cautions, and danger for destructive or disabling actions.
 - Destructive menu items must be visually marked with danger styling and must still open confirmation dialogs; a menu click must not directly perform risky actions.
 - Keep important page-level primary actions such as “Nouveau compte”, “Nouveau journal”, or “Nouvel exercice” as visible toolbar/header buttons, not hidden inside row menus.
@@ -194,7 +278,7 @@ Existing approved components take precedence over external inspiration. Do not c
 1. Read `AGENTS.md` and `SPEC.md` when the UI task touches architecture, domains, or business workflow.
 2. Inspect existing nearby UI, shared `liass-*` components, Tailwind config/theme CSS, Angular Material theme files, and logo/assets.
 3. Load the relevant design-system references from the priority list.
-4. Identify the user workflow, risk level, data density, and appropriate UI component pattern.
+4. Complete UI REUSE PREFLIGHT and INTERACTION PREFLIGHT; identify the responsibility, role/task, risk level, data density and canonical action/detail/navigation patterns.
 5. Prefer existing components and tokens; add local code only when the existing system lacks the needed surface.
 6. Keep visible text in Transloco and use English for code, variables, comments, and keys.
 7. Verify adjacent vertical spacing around page headers, primary actions, cards, tables, and forms in the rendered app, especially when using custom `liass-*` elements inside Tailwind `space-y-*`, flex, or grid containers.
@@ -202,6 +286,8 @@ Existing approved components take precedence over external inspiration. Do not c
 9. Add or update focused frontend tests when behavior, routing, state, or visible UI logic changes.
 
 ## Final response requirements
+
+For frontend implementation, include the UX INTERACTION REPORT and all completion gates above alongside the existing UI REUSE REPORT and Presentation contract. For governance-only work, report documentation validation without claiming runtime or Product Owner visual acceptance.
 
 When this skill is used, summarize:
 

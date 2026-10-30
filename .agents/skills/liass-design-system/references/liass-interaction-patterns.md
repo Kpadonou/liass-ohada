@@ -1,5 +1,55 @@
 # Liass Interaction Patterns
 
+## Global canonical interaction examples
+
+LIASS-UX-PATTERNS-1 applies to every current/future Liass frontend product and domain. Use the skill's INTERACTION PREFLIGHT, completion gate and UX INTERACTION REPORT. These examples describe compositions of existing primitives, not new components or feature-change instructions. Inspect Accounting Journals/Tiers and Restaurants Inventory for actual Material menus, shared controls and drawers; historical details do not override the current contract.
+
+### A. One row action
+
+A row with only “Consulter” may show a direct action with the canonical `visibility` icon and translated label (or accessible icon-only control where the reference supports it). Keep it in the final Actions column. Do not add a menu solely to hide this one frequent action.
+
+### B. Multiple row actions
+
+Two or more contextual actions → one vertical `⋮` trigger (`mat-icon` `more_vert`) with translated accessible name → Material menu. Never several inline row buttons. Each item has a canonical Material icon plus translated label; no production emoji. Illustrative order:
+
+| Group | Icon identifier | Illustrative translated label |
+| --- | --- | --- |
+| View/inspect | `visibility` | Consulter |
+| Routine non-destructive | `edit` | Modifier |
+| Operational state change | `arrow_downward` | Entrée de caisse |
+| Operational state change | `arrow_upward` | Sortie de caisse |
+| High-impact last | `lock` | Clôturer |
+
+Only include actions relevant to role, authorization, item state and domain rules. Hide irrelevant actions; disable with useful prerequisite context only when discovery helps. Separate the high-impact group or use existing semantic menu styling, with confirmation where required. A closure is not automatically danger: select warning/danger/neutral from actual consequences. These labels illustrate hierarchy and do not define domain permissions or legal rules.
+
+### C. Column/display settings
+
+Toolbar: search + filters left → secondary icon preferences → primary management action right, all inside the canonical collection surface. Reuse `LiassButtonComponent` with `size="icon"`, `icon="view_column"` (or the reference's `settings`) and translated `ariaLabel` plus Material tooltip. Open the existing `LiassTablePreferencesDialogComponent`; required identity/Actions columns remain fixed, preferences remain local by stable table id. Do not replace this compact treatment with a large “Colonnes” button. Density/view settings follow the same icon-control principle where supported; do not invent unsupported settings.
+
+### D. Contextual detail drawer
+
+List/table: scan, compare, common actions in the row menu. “Consulter” opens a bounded Material drawer with identity/status, grouped full information and history; less-common actions may live there. A routine row command opens its focused input/confirmation dialog directly without requiring the drawer first. Preserve list context and return focus on close; no second full workspace beneath the collection. Complex workflows may warrant a dedicated page.
+
+### E. Supervision versus personal screen
+
+Supervision monitors/manages multiple people or objects; a personal/session screen manages the current user's active context; a transaction screen executes an operation. Shared data is acceptable; near-identical responsibilities/actions are a reason to reconsider the split. Supervision opens selected details in a drawer/side panel/dialog, not a complete embedded personal workspace.
+
+Before adding a destination, check distinct workflow, distinct responsibility, complexity beyond a drawer and reduced user effort. Prefer contextual interaction when these do not justify a page. Sidebar groups express business responsibility: SERVICE (service operations), CAISSE (payment/cash management), CONFIGURATION (setup). Use intent labels such as “Encaissements”, “Ma session”, “Journée de caisse”, never internal aggregate names. These examples do not change locked Active Outlet behavior below.
+
+### F. Page-level action hierarchy
+
+Keep the frequent primary management action visible at the canonical right-hand work-surface location. Group routine actions with secondary emphasis; rare page actions may use overflow. Separate high-impact/destructive actions by responsibility and semantic treatment; a primary high-impact action may stay direct with required confirmation. Avoid equally prominent button rows and mixing destructive actions into filters. Minor display controls stay compact icons.
+
+### G. Status, icons and information hierarchy
+
+Use `LiassStatusChipComponent` with translated label/tone: “Ouverte” with domain-appropriate meaning, “Clôturée” neutral, “En attente” warning when attention is warranted, “Erreur” danger. An adjacent Material icon may clarify meaning; the chip has no icon input. Labels carry meaning without color alone. Semantic icons also identify actions, object types and navigation; omit decorative repeats.
+
+Premium/colorful: meaningful status/accent tokens, subtle surfaces, tone/typography hierarchy, restrained icons and canonical hover/selection. Avoid rainbow cards, one color per metric, random decorative colors, gradients and noisy dashboards. Give identity/main value primary emphasis, supporting values secondary emphasis and history/full data in detail. Reduce repeated labels and obvious-state paragraphs; use concise contextual help only when needed. Do not add cards to compensate for unclear hierarchy.
+
+### H. Responsive actions
+
+At ~1440 keep the final Actions column narrow; at ~900 wrap toolbar groups coherently; at ~390 retain one reachable `⋮` per mobile record and full readable icon + label menu items. Preserve accessible touch targets, keyboard menu operation, focus return and primary/secondary hierarchy. Do not expand every action into full-width buttons unless the workflow requires it. Browser review at all three widths remains distinct from Product Owner visual acceptance.
+
 ## Operational context
 
 Operational scope is not a page filter. Restaurants resolves one authorized Active Outlet once per authenticated session, before operational routes activate. The Outlet is locked for that session: no normal switching or re-selection UI. Logout clears the lifecycle. A sole authorized Outlet may resolve automatically; zero uses a truthful blocking state. Keep subordinate area/station controls local. Configuration targets may remain route-local and do not change the session Active Outlet. Preserve principal/organization/access-revision isolation; cached context never substitutes for authorization. Fetched canonical outlets remain in TanStack Query.
@@ -181,7 +231,7 @@ Do not use snackbars for critical legal/accounting warnings, irreversible action
 
 ## Restaurants Service Floor review fixtures
 
-Deterministic Service Floor reviews must contain at least one FREE and one OCCUPIED table, with valid outlet/area ownership and active opening prerequisites (including the menu). Exercise outlet A → B → A, ALL-areas opening from each card's own area, confirmed-open navigation to the returned GuestSession, and return to the occupied floor. Also include missing/inactive configuration, ambiguous retry and concurrent occupancy cases; a FREE occupancy state alone does not prove configuration readiness.
+Deterministic Service Floor reviews must contain at least one FREE and one OCCUPIED table, with valid outlet/area ownership and active opening prerequisites (including the menu). Exercise outlet A → B → A across separate authenticated sessions (logout and resolve the authorized Outlet again; never in-session switching), ALL-areas opening from each card's own area, confirmed-open navigation to the returned GuestSession, and return to the occupied floor. Also include missing/inactive configuration, ambiguous retry and concurrent occupancy cases; a FREE occupancy state alone does not prove configuration readiness.
 
 ## Local work and operational micro-actions
 
