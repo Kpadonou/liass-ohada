@@ -13,6 +13,28 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  restaurantCreditNotePK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#CN#${restaurantTransactionSegment(id)}`,
+  restaurantCreditNoteLineSK: (orderId: string, itemId: string) =>
+    `LINE#${restaurantTransactionSegment(orderId)}#${restaurantTransactionSegment(itemId)}`,
+  restaurantCreditLineControlSK: (orderId: string, itemId: string) =>
+    `CREDIT_LINE#${restaurantTransactionSegment(orderId)}#${restaurantTransactionSegment(itemId)}`,
+  restaurantCreditBalanceSK: () => "CREDIT_BALANCE",
+  restaurantCreditNotePrefix: () => "CN#",
+  restaurantCreditNoteSK: (timestamp: string, id: string) =>
+    `CN#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
+  restaurantCreditNoteReferenceClaimKey: (
+    orgId: string,
+    outletId: string,
+    reference: string,
+  ) => {
+    if (!/^AV-\d{8}-[A-F0-9]{8}$/.test(reference))
+      throw new Error("Invalid Restaurants credit note reference");
+    return {
+      PK: `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#CNREF#${reference.slice(3, 11)}#${reference.slice(12, 14)}`,
+      SK: `REF#${reference}`,
+    };
+  },
   // Cash operational identity; additive keys, existing formats stay unchanged.
   restaurantBusinessDaysPK: (orgId: string, outletId: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#BUSINESS_DAYS`,

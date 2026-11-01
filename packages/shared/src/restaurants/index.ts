@@ -406,3 +406,4 @@ export * from "./waiter-call";
 export * from "./guest-submission";
 
 export * from "./cash";
+export * from "./credit-notes";
