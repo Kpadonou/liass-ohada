@@ -15,6 +15,18 @@ const signed = z
   .max(Number.MAX_SAFE_INTEGER);
 const version = money.positive();
 const timestamp = z.string().datetime();
+export const restaurantExpectedCash = (session: {
+  openingCashAmountMinor: number;
+  paidByMethodMinor: { CASH: number };
+  cashInMinor: number;
+  cashOutMinor: number;
+  refundedByMethodMinor?: { CASH: number };
+}): bigint =>
+  BigInt(session.openingCashAmountMinor) +
+  BigInt(session.paidByMethodMinor.CASH) +
+  BigInt(session.cashInMinor) -
+  BigInt(session.cashOutMinor) -
+  BigInt(session.refundedByMethodMinor?.CASH ?? 0);
 const scope = { orgId: actor, outletId: id };
 const closing = { closedAt: timestamp.optional(), closedBy: actor.optional() };
 export const RestaurantOperationalTimezoneSchema = z
@@ -69,6 +81,12 @@ export const RestaurantCashSessionSchema = z
     paymentCount: money,
     cashMovementCount: money.optional(),
     paidByMethodMinor: RestaurantPaidByMethodSchema,
+    refundedByMethodMinor: RestaurantPaidByMethodSchema.default({
+      CASH: 0,
+      CARD: 0,
+      MOBILE_MONEY: 0,
+    }),
+    refundCount: money.default(0),
     cashInMinor: money,
     cashOutMinor: money,
     countedCashAmountMinor: money.optional(),
@@ -77,11 +95,7 @@ export const RestaurantCashSessionSchema = z
   })
   .strict()
   .refine((v) => {
-    const expected =
-      BigInt(v.openingCashAmountMinor) +
-      BigInt(v.paidByMethodMinor.CASH) +
-      BigInt(v.cashInMinor) -
-      BigInt(v.cashOutMinor);
+    const expected = restaurantExpectedCash(v);
     return (
       expected === BigInt(v.expectedCashAmountMinor) &&
       (v.status === "CLOSED"

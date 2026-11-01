@@ -13,6 +13,24 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  restaurantRefundPK: (orgId: string, outletId: string, id: string) =>
+    `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#REFUND#${restaurantTransactionSegment(id)}`,
+  restaurantRefundSK: (timestamp: string, id: string) =>
+    `REFUND#${KeyFactory.restaurantTransactionLocatorSK(timestamp, id)}`,
+  restaurantRefundPrefix: () => "REFUND#",
+  restaurantRefundBalanceSK: () => "REFUND_BALANCE",
+  restaurantRefundReferenceClaimKey: (
+    orgId: string,
+    outletId: string,
+    reference: string,
+  ) => {
+    if (!/^REF-\d{8}-[A-F0-9]{8}$/.test(reference))
+      throw new Error("Invalid Restaurants refund reference");
+    return {
+      PK: `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#REFUNDREF#${reference.slice(4, 12)}#${reference.slice(13, 15)}`,
+      SK: `REF#${reference}`,
+    };
+  },
   restaurantCreditNotePK: (orgId: string, outletId: string, id: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#CN#${restaurantTransactionSegment(id)}`,
   restaurantCreditNoteLineSK: (orderId: string, itemId: string) =>

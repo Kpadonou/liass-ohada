@@ -1,4 +1,6 @@
 import { RESTAURANT_CASH_ROUTES } from "./cash-routes";
+import { RESTAURANT_REFUND_ROUTES } from "./refund-routes";
+import { restaurantRefundHandler } from "./refund-handler";
 import { RESTAURANT_CREDIT_NOTE_ROUTES } from "./credit-note-routes";
 import { restaurantCreditNoteHandler } from "./credit-note-handler";
 import { restaurantCashHandler } from "./cash-handler";
@@ -26,6 +28,9 @@ const inventoryPaths = [
   ),
 ];
 const routes = new Map<string, typeof original>([
+  ...RESTAURANT_REFUND_ROUTES.map(
+    (r) => [`${r.method} ${r.path}`, restaurantRefundHandler(r)] as const,
+  ),
   ...RESTAURANT_CREDIT_NOTE_ROUTES.map(
     (r) => [`${r.method} ${r.path}`, restaurantCreditNoteHandler(r)] as const,
   ),

@@ -230,10 +230,7 @@ export class RestaurantCashService {
       paymentCount: cashInteger(BigInt(before.paymentCount) + 1n),
       version: cashInteger(BigInt(before.version) + 1n),
       expectedCashAmountMinor: cashInteger(
-        BigInt(before.openingCashAmountMinor) +
-          BigInt(paidByMethodMinor.CASH) +
-          BigInt(before.cashInMinor) -
-          BigInt(before.cashOutMinor),
+        c.restaurantExpectedCash({ ...before, paidByMethodMinor }),
         true,
       ),
     });
@@ -600,8 +597,12 @@ export class RestaurantCashService {
             BigInt(before.data[field]) + BigInt(body.amountMinor),
           ),
           expectedCashAmountMinor: cashInteger(
-            BigInt(before.data.expectedCashAmountMinor) +
-              (body.type === "CASH_IN" ? 1n : -1n) * BigInt(body.amountMinor),
+            c.restaurantExpectedCash({
+              ...before.data,
+              [field]: cashInteger(
+                BigInt(before.data[field]) + BigInt(body.amountMinor),
+              ),
+            }),
             true,
           ),
           version: cashInteger(BigInt(before.data.version) + 1n),

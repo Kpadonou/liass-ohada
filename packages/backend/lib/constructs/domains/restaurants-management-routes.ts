@@ -1,4 +1,5 @@
 import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
+import { RESTAURANT_REFUND_ROUTES } from "../../../lambda/domains/restaurants/refund-routes";
 import { RESTAURANT_CREDIT_NOTE_ROUTES } from "../../../lambda/domains/restaurants/credit-note-routes";
 import { Construct } from "constructs";
 import { Duration } from "aws-cdk-lib";
@@ -113,8 +114,16 @@ export function addRestaurantsManagementRoutes(
       ),
     });
   }
-  for (const route of RESTAURANT_CREDIT_NOTE_ROUTES) {
-    new apigw.HttpRoute(scope, `CreditNote-${route.method}-${route.path}`, {
+  for (const route of [
+    ...RESTAURANT_CREDIT_NOTE_ROUTES,
+    ...RESTAURANT_REFUND_ROUTES,
+  ]) {
+    const family = RESTAURANT_REFUND_ROUTES.some(
+      (r) => r.path === route.path && r.method === route.method,
+    )
+      ? "Refund"
+      : "CreditNote";
+    new apigw.HttpRoute(scope, `${family}-${route.method}-${route.path}`, {
       httpApi: props.api,
       authorizer: props.authorizer,
       integration,
@@ -123,7 +132,7 @@ export function addRestaurantsManagementRoutes(
         apigw.HttpMethod[route.method],
       ),
     });
-    fn.addPermission(`CreditNote-${route.operation}-Invoke`, {
+    fn.addPermission(`${family}-${route.operation}-Invoke`, {
       principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
       sourceAccount: fn.stack.account,
       sourceArn: props.api.arnForExecuteApi(
