@@ -91,11 +91,11 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
       }
       @if (outletId()) {
         <div
-          class="checkout-workspace grid min-w-0 overflow-hidden rounded-app-panel border border-app-border bg-app-surface md:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]"
+          class="checkout-workspace grid min-w-0 overflow-hidden rounded-app-panel border border-app-border bg-app-surface lg:grid-cols-[minmax(220px,1fr)_minmax(0,2fr)]"
           [class.checkout-show-detail]="sessionId() && detailVisible()"
         >
           <section
-            class="checkout-master min-w-0 border-app-border p-4 md:border-r"
+            class="checkout-master min-w-0 border-app-border p-4 lg:border-r"
             aria-labelledby="checkout-master-heading"
           >
             <div class="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -170,7 +170,7 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
             [attr.aria-label]="'RESTAURANTS.CHECKOUT.ADDITION' | transloco"
           >
             @if (sessionId()) {
-              <button type="button" mat-button class="!mb-3 md:!hidden" (click)="showTables()">
+              <button type="button" mat-button class="!mb-3 lg:!hidden" (click)="showTables()">
                 <mat-icon>arrow_back</mat-icon>{{ 'RESTAURANTS.CHECKOUT.BACK_TABLES' | transloco }}
               </button>
             }

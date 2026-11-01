@@ -73,6 +73,10 @@ export const RestaurantPaymentSchema = z
     outletId: id,
     schemaVersion: z.literal(1),
     paymentId: id,
+    paymentReference: z
+      .string()
+      .regex(/^PAY-\d{8}-(?:[A-F0-9]{8}|[A-F0-9]{20})$/)
+      .optional(),
     guestSessionId: id,
     status: z.literal("SUCCEEDED"),
     version,

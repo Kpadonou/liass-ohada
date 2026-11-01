@@ -135,6 +135,32 @@ export class RestaurantCashService {
       return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
     return { pointer, session };
   }
+  /** Exact bounded legacy display count; GET must never persist a read repair. */
+  static async countedSession(
+    scope: Scope,
+    session: CashRow<"SESSION">,
+  ): Promise<c.RestaurantCashSession> {
+    if (session.data.cashMovementCount !== undefined) return session.data;
+    let count = 0;
+    let cursor: string | undefined;
+    do {
+      const page = await R.page(
+        scope,
+        session.PK,
+        K.restaurantCashMovementPrefix(),
+        "MOVEMENT",
+        { limit: 100, cursor },
+        "INTERNAL",
+      );
+      count += page.rows.length;
+      if (count > 1000) return fail("RESTAURANTS_TRANSACTION_LIMIT", 409);
+      cursor = page.nextCursor;
+    } while (cursor);
+    return c.RestaurantCashSessionSchema.parse({
+      ...session.data,
+      cashMovementCount: count,
+    });
+  }
   static sessionWrites(
     scope: Scope,
     next: c.RestaurantCashSession,
@@ -153,7 +179,10 @@ export class RestaurantCashService {
     scope: Scope,
     actorId: string,
     payment: c.RestaurantPayment,
+    tableDisplayName?: string,
   ) {
+    const paymentReference =
+      payment.paymentReference ?? fail("RESTAURANTS_TRANSACTION_INTEGRITY");
     const current = await this.activeSession(scope, actorId);
     if (!current) return fail("RESTAURANTS_CASH_SESSION_REQUIRED");
     const before = current.session.data;
@@ -193,11 +222,20 @@ export class RestaurantCashService {
             ...scope,
             ...attribution,
             paymentId: payment.paymentId,
+            paymentReference,
             kind: "CAPTURE",
+            tableDisplayName,
+            externalReference: payment.externalReference,
             method: payment.method,
             amountMinor: payment.appliedAmountMinor,
             currency: payment.currency,
             capturedAt: payment.committedAt,
+          }),
+        ),
+        R.put(
+          R.row(scope, "PAYMENT_REF_CLAIM", {
+            paymentReference,
+            paymentId: payment.paymentId,
           }),
         ),
       ],
@@ -295,6 +333,7 @@ export class RestaurantCashService {
       | c.RestaurantBusinessDay
       | c.RestaurantCashSession
       | c.RestaurantCashMovement;
+    let confirmedMovementSession: c.RestaurantCashSession | undefined;
     if (command === "OPEN_DAY") {
       const body = c.OpenRestaurantBusinessDayRequestSchema.parse(request);
       const menu = await RestaurantsRepository.get(scope.orgId, "menu", {
@@ -375,6 +414,7 @@ export class RestaurantCashService {
         status: "OPEN",
         version: 1,
         paymentCount: 0,
+        cashMovementCount: 0,
         paidByMethodMinor: { CASH: 0, CARD: 0, MOBILE_MONEY: 0 },
         cashInMinor: 0,
         cashOutMinor: 0,
@@ -499,8 +539,33 @@ export class RestaurantCashService {
           clientRequestId: body.clientRequestId,
         });
         const field = body.type === "CASH_IN" ? "cashInMinor" : "cashOutMinor";
+        // Legacy sessions have no counter. Seed only from a complete, bounded,
+        // strongly consistent movement page; otherwise leave the total unknown.
+        const legacyMovements =
+          before.data.cashMovementCount === undefined
+            ? await R.page(
+                scope,
+                before.PK,
+                K.restaurantCashMovementPrefix(),
+                "MOVEMENT",
+                { limit: 100 },
+                "INTERNAL",
+              )
+            : undefined;
+        const movementCountBefore =
+          before.data.cashMovementCount ??
+          (legacyMovements?.nextCursor === undefined
+            ? legacyMovements?.rows.length
+            : undefined);
         const next = c.RestaurantCashSessionSchema.parse({
           ...before.data,
+          ...(movementCountBefore === undefined
+            ? {}
+            : {
+                cashMovementCount: cashInteger(
+                  BigInt(movementCountBefore) + 1n,
+                ),
+              }),
           [field]: cashInteger(
             BigInt(before.data[field]) + BigInt(body.amountMinor),
           ),
@@ -511,6 +576,7 @@ export class RestaurantCashService {
           ),
           version: cashInteger(BigInt(before.data.version) + 1n),
         });
+        confirmedMovementSession = next;
         actions.push(
           ...this.sessionWrites(scope, next, before),
           R.put(R.row(scope, "MOVEMENT", result)),
@@ -562,7 +628,12 @@ export class RestaurantCashService {
       outcome: "COMMITTED",
       outletId: scope.outletId,
     });
-    return { data: result };
+    return {
+      data: result,
+      ...(confirmedMovementSession
+        ? { session: confirmedMovementSession }
+        : {}),
+    };
   }
   static async query(
     scope: Scope,
@@ -571,7 +642,7 @@ export class RestaurantCashService {
     input: unknown,
     targetId?: string,
   ) {
-    const list = ["DAYS", "SESSIONS", "MOVEMENTS"].includes(query);
+    const list = ["DAYS", "SESSIONS", "MOVEMENTS", "PAYMENTS"].includes(query);
     const request = list
       ? c.RestaurantCashListRequestSchema.parse(input)
       : z.object({}).strict().parse(input);
@@ -584,10 +655,12 @@ export class RestaurantCashService {
       return fail("DOMAIN_PERMISSION_REQUIRED", 403);
     if (query === "CURRENT_DAY")
       return { data: (await this.activeDay(scope))?.day.data ?? null };
-    if (query === "CURRENT_CASH")
+    if (query === "CURRENT_CASH") {
+      const active = await this.activeSession(scope, actorId);
       return {
-        data: (await this.activeSession(scope, actorId))?.session.data ?? null,
+        data: active ? await this.countedSession(scope, active.session) : null,
       };
+    }
     if (query === "DAYS") {
       const page = await R.page(
         scope,
@@ -671,6 +744,30 @@ export class RestaurantCashService {
       return fail("DOMAIN_PERMISSION_REQUIRED", 403);
     if (query === "CASH") return { data: session.data };
     if (query === "SUMMARY_CASH") return { data: this.summary(session.data) };
+    if (query === "PAYMENTS") {
+      const page = await R.page(
+        scope,
+        session.PK,
+        K.restaurantPaymentReferencePrefix(),
+        "PAYMENT",
+        c.RestaurantCashListRequestSchema.parse(request),
+        actorId,
+        true,
+      );
+      return {
+        items: page.rows.map(({ data }) => ({
+          capturedAt: data.capturedAt,
+          paymentReference: data.paymentReference,
+          method: data.method,
+          amountMinor: data.amountMinor,
+          currency: data.currency,
+          tableDisplayName: data.tableDisplayName,
+          externalReference: data.externalReference,
+          status: "CAPTURED" as const,
+        })),
+        nextCursor: page.nextCursor,
+      };
+    }
     if (query === "MOVEMENTS") {
       const page = await R.page(
         scope,

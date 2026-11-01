@@ -181,6 +181,18 @@ export const KeyFactory = {
   restaurantBillResultSK: () => "RESULT",
   restaurantPaymentPK: (orgId: string, outletId: string, id: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#PAY#${restaurantTransactionSegment(id)}`,
+  restaurantPaymentPublicReferenceClaimKey: (
+    orgId: string,
+    outletId: string,
+    reference: string,
+  ) => {
+    if (!/^PAY-\d{8}-(?:[A-F0-9]{8}|[A-F0-9]{20})$/.test(reference))
+      throw new Error("Invalid Restaurants payment reference");
+    return {
+      PK: `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#PAYREF#${reference.slice(4, 12)}#${reference.slice(13, 15)}`,
+      SK: `REF#${reference}`,
+    };
+  },
   restaurantPaymentResultSK: () => "RESULT",
   restaurantPaymentAllocationPrefix: () => "ALLOC#",
   restaurantPaymentAllocationSK: (orderId: string) =>

@@ -1832,6 +1832,9 @@
         "UNLOCKED": "Period reopened."
       },
       "MONTHS": {
+        "10": "October",
+        "11": "November",
+        "12": "December",
         "01": "January",
         "02": "February",
         "03": "March",
@@ -1840,10 +1843,7 @@
         "06": "June",
         "07": "July",
         "08": "August",
-        "09": "September",
-        "10": "October",
-        "11": "November",
-        "12": "December"
+        "09": "September"
       },
       "PERIOD_STATUS": {
         "LOCKED": "Locked",
@@ -5301,8 +5301,28 @@
       "COUNT": "{{count}} request(s)"
     },
     "CASH": {
-      "MY_CASH": "My cash session",
-      "DAY_REVIEW": "Business day review",
+      "EXTERNAL_REFERENCE": "External reference",
+      "PAYMENT_REFERENCE": "Reference",
+      "TABLE_CONTEXT": "Table",
+      "CAPTURED": "Captured",
+
+      "REASON_COLUMN": "Reason",
+      "DATE_TIME": "Date / Time",
+      "METHOD": "Method",
+      "TYPE": "Type",
+      "NO_PAYMENTS": "No payments for this session.",
+
+      "CLOSED_VARIANCE": "Closed-session variance",
+      "SESSION": "Session",
+      "CLOSED_AT": "Closed at",
+      "RECONCILIATION": "Reconciliation",
+      "OTHER_COLLECTIONS": "Other collections",
+      "NO_MOVEMENTS": "No cash movements for this session.",
+      "ACTIVITY": "Activity",
+
+      "GROUP": "Cash",
+      "MY_CASH": "My session",
+      "DAY_REVIEW": "Daily cash",
       "DAY": "Business day",
       "OPEN": "Open",
       "CLOSED": "Closed",
@@ -5317,7 +5337,7 @@
       "ERROR": "Action not confirmed. Check the current state, then retry the same request.",
       "RETRY": "Retry",
       "FLOAT": "Opening float",
-      "COLLECTIONS": "Collections",
+      "COLLECTIONS": "Payments",
       "CASH": "Cash",
       "MOBILE_MONEY": "Mobile Money",
       "CARD": "Card",
@@ -5333,6 +5353,7 @@
       "ACTIONS": "Actions",
       "DETAIL": "Inspect",
       "MOVEMENTS": "Cash movements",
+      "MOVEMENTS_SHORT": "Movements",
       "MORE": "Next",
       "OPEN_SESSIONS": "Open sessions",
       "CLOSED_SESSIONS": "Closed sessions",
@@ -5345,7 +5366,12 @@
       "OPENED_AT": "Opened at",
       "PAYMENT_COUNT": "Payment count",
       "PREVIEW": "Variance preview — awaiting confirmation",
-      "COLUMNS": "Columns"
+      "COLUMNS": "Columns",
+      "YOU": "You",
+      "IDENTITY_UNAVAILABLE": "Identity unavailable",
+      "CLOSE_OWN": "Close my session",
+      "CLOSE_NAMED": "Close {{name}}’s session",
+      "CLOSE_THIS": "Close this session"
     }
   }
 }

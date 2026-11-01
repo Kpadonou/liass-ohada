@@ -392,7 +392,10 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(77);
-    expect(routes).toHaveLength(116);
+    expect(routes).toHaveLength(117);
+    expect(routes.map((route) => route.routeKey)).toContain(
+      "GET /restaurants/outlets/{outletId}/cash-sessions/{cashSessionId}/payments",
+    );
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
     ).toHaveLength(77);
@@ -518,7 +521,7 @@ describe("API stack decomposition", () => {
     expect(arns.join(" ")).not.toContain("/$default/*/*");
     expect(
       Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-    ).toBe(361); // Unit fixture omits the deployed CDK metadata resource.
+    ).toBe(362); // Unit fixture omits the deployed CDK metadata resource.
   });
 
   test.each([
@@ -710,7 +713,7 @@ describe("API stack decomposition", () => {
       expect(trackingArn).not.toContain("/$default/*/*");
       expect(
         Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-      ).toBe(361);
+      ).toBe(362);
     },
   );
 
@@ -1309,7 +1312,7 @@ describe("API stack decomposition", () => {
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
     ).toBe(0);
-    expect(Object.keys(after.Resources).length).toBe(361);
+    expect(Object.keys(after.Resources).length).toBe(362);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(
         (r) => (r as { Type: string }).Type === type,

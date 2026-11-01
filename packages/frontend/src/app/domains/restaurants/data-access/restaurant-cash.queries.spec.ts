@@ -54,3 +54,91 @@ describe('Cash cache boundaries', () => {
     client.clear();
   });
 });
+it('loads each activity page once and reuses fresh tab history', async () => {
+  const { RestaurantCashQueries } = await import('./restaurant-cash.queries');
+  const queries = Object.create(RestaurantCashQueries.prototype) as InstanceType<
+    typeof RestaurantCashQueries
+  >;
+  const paths: string[] = [];
+  Object.assign(queries, {
+    request: async (_scope: CashContext, path: string) => {
+      paths.push(path);
+      return { items: [] };
+    },
+  });
+  const client = new QueryClient();
+  await client.fetchQuery(queries.payments(scope, 'session'));
+  await client.fetchQuery(queries.movements(scope, 'session'));
+  await client.fetchQuery(queries.payments(scope, 'session'));
+  await client.fetchQuery(queries.movements(scope, 'session'));
+  expect(paths).toEqual(['cash-sessions/session/payments', 'cash-sessions/session/movements']);
+  client.clear();
+});
+
+it('refreshes the authoritative session count after a confirmed movement', async () => {
+  const { RestaurantCashQueries } = await import('./restaurant-cash.queries');
+  const queries = Object.create(RestaurantCashQueries.prototype) as InstanceType<
+    typeof RestaurantCashQueries
+  >;
+  const client = new QueryClient();
+  Object.assign(queries, { client, assert: () => undefined });
+  const key = cashKeys.read(scope, 'cash-sessions/current');
+  client.setQueryData(key, { data: { cashMovementCount: 1 } });
+  await queries.confirmedMovement(scope, {
+    cashSessionId: 'session',
+    businessDayId: 'day',
+    movementId: 'movement',
+    occurredAt: '2026-10-30T10:00:00.000Z',
+  } as Parameters<InstanceType<typeof RestaurantCashQueries>['confirmedMovement']>[1]);
+  expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  let reads = 0;
+  const current = await client.fetchQuery({
+    queryKey: key,
+    staleTime: 30000,
+    queryFn: async () => {
+      reads++;
+      return { data: { cashMovementCount: 2 } };
+    },
+  });
+  expect(current.data.cashMovementCount).toBe(2);
+  expect(reads).toBe(1);
+  client.clear();
+});
+
+it('seeds confirmed movement count without a redundant current-session GET', async () => {
+  const { RestaurantCashQueries } = await import('./restaurant-cash.queries');
+  const queries = Object.create(RestaurantCashQueries.prototype) as InstanceType<
+    typeof RestaurantCashQueries
+  >;
+  const client = new QueryClient();
+  Object.assign(queries, { client, assert: () => undefined });
+  const key = cashKeys.read(scope, 'cash-sessions/current');
+  client.setQueryData(key, { data: { cashSessionId: 'session', cashMovementCount: 4 } });
+  await queries.confirmedMovement(
+    scope,
+    {
+      cashSessionId: 'session',
+      businessDayId: 'day',
+      movementId: 'movement',
+      occurredAt: '2026-10-30T10:00:00.000Z',
+    } as Parameters<InstanceType<typeof RestaurantCashQueries>['confirmedMovement']>[1],
+    {
+      cashSessionId: 'session',
+      businessDayId: 'day',
+      cashierUserId: 'cashier',
+      cashMovementCount: 5,
+    } as Parameters<InstanceType<typeof RestaurantCashQueries>['confirmedMovement']>[2],
+  );
+  let reads = 0;
+  const current = await client.fetchQuery({
+    queryKey: key,
+    staleTime: 30000,
+    queryFn: async () => {
+      reads++;
+      return { data: { cashSessionId: 'session', cashMovementCount: 99 } };
+    },
+  });
+  expect(current.data.cashMovementCount).toBe(5);
+  expect(reads).toBe(0);
+  client.clear();
+});

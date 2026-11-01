@@ -65,6 +65,7 @@ export const RestaurantCashSessionSchema = z
     ...closing,
     version,
     paymentCount: money,
+    cashMovementCount: money.optional(),
     paidByMethodMinor: RestaurantPaidByMethodSchema,
     cashInMinor: money,
     cashOutMinor: money,
@@ -177,6 +178,10 @@ export const RestaurantCashPaymentFactSchema = z
   .object({
     ...scope,
     paymentId: id,
+    paymentReference: z
+      .string()
+      .regex(/^PAY-\d{8}-(?:[A-F0-9]{8}|[A-F0-9]{20})$/)
+      .optional(),
     businessDayId: id,
     cashSessionId: id,
     capturedByUserId: actor,
@@ -185,6 +190,8 @@ export const RestaurantCashPaymentFactSchema = z
     currency: z.string().regex(/^[A-Z]{3}$/),
     capturedAt: timestamp,
     kind: z.literal("CAPTURE"),
+    tableDisplayName: z.string().min(1).max(200).optional(),
+    externalReference: z.string().min(1).max(200).optional(),
   })
   .strict();
 export const RestaurantBusinessDayResponseSchema = z
@@ -200,7 +207,10 @@ export const RestaurantCurrentCashSessionResponseSchema = z
   .object({ data: RestaurantCashSessionSchema.nullable() })
   .strict();
 export const RestaurantCashMovementResponseSchema = z
-  .object({ data: RestaurantCashMovementSchema })
+  .object({
+    data: RestaurantCashMovementSchema,
+    session: RestaurantCashSessionSchema.optional(),
+  })
   .strict();
 export const RestaurantBusinessDaySummaryResponseSchema = z
   .object({ data: RestaurantBusinessDaySummarySchema })
@@ -242,3 +252,22 @@ export type RestaurantCashSessionSummary = z.infer<
 export type RestaurantBusinessDaySummary = z.infer<
   typeof RestaurantBusinessDaySummarySchema
 >;
+
+export const RestaurantCashPaymentListResponseSchema = z
+  .object({
+    items: z
+      .array(
+        RestaurantCashPaymentFactSchema.pick({
+          capturedAt: true,
+          paymentReference: true,
+          method: true,
+          amountMinor: true,
+          currency: true,
+          tableDisplayName: true,
+          externalReference: true,
+        }).extend({ status: z.literal("CAPTURED").default("CAPTURED") }),
+      )
+      .max(100),
+    nextCursor: z.string().optional(),
+  })
+  .strict();

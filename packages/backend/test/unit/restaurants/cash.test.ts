@@ -284,6 +284,69 @@ test("split payments attribute independently; day summary is bounded without N+1
   expect(
     facts.rows.map((row) => row.data.amountMinor).sort((x, y) => x - y),
   ).toEqual([300, 700]);
+  const history = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { limit: 1 },
+      a.cashSessionId,
+    ),
+  );
+  expect(history.items).toHaveLength(1);
+  expect(history.nextCursor).toBeDefined();
+  await expect(
+    Cash.query(scope(), "cashier", "PAYMENTS", {}, randomUUID()),
+  ).rejects.toThrow();
+  await expect(
+    Cash.query(
+      { ...scope(), outletId: randomUUID() },
+      "cashier",
+      "PAYMENTS",
+      {},
+      a.cashSessionId,
+    ),
+  ).rejects.toThrow();
+  expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
+
+  expect(Object.keys(history.items[0]).sort()).toEqual([
+    "amountMinor",
+    "capturedAt",
+    "currency",
+    "externalReference",
+    "method",
+    "paymentReference",
+    "status",
+    "tableDisplayName",
+  ]);
+  expect(history.items[0].status).toBe("CAPTURED");
+  expect(history.items[0].paymentReference).toMatch(/^PAY-\d{8}-[A-F0-9]{8}$/);
+  const capturedGuestSession = await S.session(scope(), o.sessionId);
+  expect(history.items[0].tableDisplayName).toBe(
+    capturedGuestSession.data.tableName,
+  );
+  const next = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { limit: 1, cursor: history.nextCursor },
+      a.cashSessionId,
+    ),
+  );
+  expect(
+    [history.items[0].amountMinor, next.items[0].amountMinor].sort(
+      (x, y) => x - y,
+    ),
+  ).toEqual([300, 700]);
+  await expect(
+    Cash.query(scope(), "cashier2", "PAYMENTS", {}, a.cashSessionId),
+  ).rejects.toMatchObject({ statusCode: 403 });
+  expect(
+    c.RestaurantCashPaymentListResponseSchema.parse(
+      await Cash.query(scope(), "owner", "PAYMENTS", {}, a.cashSessionId),
+    ).items,
+  ).toHaveLength(2);
 });
 
 test.each([900, 1000, 1200])(
@@ -879,4 +942,307 @@ test("cash movement currency and day are server-owned; methods classify physical
         a.cashSessionId,
       ),
     ).rejects.toThrow();
+});
+
+test("historical payment list metadata is optional and captured status is compatible", () => {
+  const result = c.RestaurantCashPaymentListResponseSchema.parse({
+    items: [
+      {
+        capturedAt: "2026-10-30T10:00:00.000Z",
+        method: "CASH",
+        amountMinor: 471600,
+        currency: "XOF",
+      },
+    ],
+  });
+  expect(result.items[0]).toMatchObject({
+    status: "CAPTURED",
+    amountMinor: 471600,
+  });
+  expect(result.items[0].tableDisplayName).toBeUndefined();
+  expect(result.items[0].externalReference).toBeUndefined();
+  expect(result.items[0].paymentReference).toBeUndefined();
+});
+
+test("payment history reads mixed reference generations without repairing or writing", async () => {
+  await openDay();
+  const session = await open();
+  const o = await order();
+  await payment(o);
+  const current = [...m.rows.values()]
+    .map((item) => unmarshall(item))
+    .find((row) => row.entityType === "RESTAURANT_CASH_PAYMENT");
+  expect(current).toBeDefined();
+  const original = c.RestaurantCashPaymentFactSchema.parse(current!.data);
+  const longReference = "PAY-20261030-9C1B410C1163A8394290";
+  const historical = [
+    {
+      ...original,
+      paymentId: randomUUID(),
+      capturedAt: new Date(
+        Date.parse(original.capturedAt) - 1_000,
+      ).toISOString(),
+      paymentReference: longReference,
+      tableDisplayName: undefined,
+      externalReference: undefined,
+    },
+    {
+      ...original,
+      paymentId: randomUUID(),
+      capturedAt: new Date(
+        Date.parse(original.capturedAt) - 2_000,
+      ).toISOString(),
+      paymentReference: undefined,
+      tableDisplayName: undefined,
+      externalReference: undefined,
+    },
+  ];
+  for (const fact of historical) {
+    const row = CR.row(scope(), "PAYMENT", fact);
+    m.rows.set(
+      JSON.stringify([row.PK, row.SK]),
+      marshall(row, { removeUndefinedValues: true }),
+    );
+  }
+  m.db.resetHistory();
+  const history = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(scope(), "cashier", "PAYMENTS", {}, session.cashSessionId),
+  );
+  expect(history.items.map((item) => item.paymentReference)).toEqual([
+    original.paymentReference,
+    longReference,
+    undefined,
+  ]);
+  expect(history.items.map((item) => item.tableDisplayName)).toEqual([
+    original.tableDisplayName,
+    undefined,
+    undefined,
+  ]);
+  expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+});
+
+test("public Payment references are independent, unique and durable across replay", async () => {
+  await openDay();
+  await open();
+  const o = await order();
+  const body = {
+    clientRequestId: req(),
+    expectedVersion: (await S.session(scope(), o.sessionId)).data.version,
+    method: "CASH" as const,
+    currency: "XOF",
+    allocations: [{ orderId: o.orderId, amountMinor: 100 }],
+  };
+  const first = (await Pay.capture(scope(), "cashier", o.sessionId, body)).data;
+  const replay = (await Pay.capture(scope(), "cashier", o.sessionId, body))
+    .data;
+  expect(replay.paymentReference).toBe(first.paymentReference);
+  expect(first.paymentReference).toMatch(/^PAY-\d{8}-[A-F0-9]{8}$/);
+  expect(first.paymentReference?.slice(4, 12)).toBe(
+    first.committedAt.slice(0, 10).replace(/-/g, ""),
+  );
+  expect(first.paymentReference).not.toContain(first.paymentId);
+  const next = (
+    await Pay.capture(scope(), "cashier", o.sessionId, {
+      ...body,
+      clientRequestId: req(),
+      expectedVersion: (await S.session(scope(), o.sessionId)).data.version,
+    })
+  ).data;
+  expect(next.paymentReference).not.toBe(first.paymentReference);
+  const claims = [...m.rows.values()]
+    .map((item) => unmarshall(item))
+    .filter((row) => row.entityType === "RESTAURANT_CASH_PAYMENT_REF_CLAIM");
+  expect(claims).toHaveLength(2);
+  await expect(
+    R.commit([
+      CR.put(
+        CR.row(scope(), "PAYMENT_REF_CLAIM", {
+          paymentReference: first.paymentReference!,
+          paymentId: randomUUID(),
+        }),
+      ),
+    ]),
+  ).rejects.toThrow();
+  const history = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(scope(), "cashier", "PAYMENTS", {}, first.cashSessionId!),
+  );
+  expect(history.items.map((item) => item.paymentReference)).toEqual([
+    next.paymentReference,
+    first.paymentReference,
+  ]);
+});
+
+test("a public-reference collision rejects atomically and the same intent can retry", async () => {
+  await openDay();
+  await open();
+  const o = await order();
+  const random = jest.spyOn(require("crypto"), "randomBytes");
+  random.mockReturnValue(Buffer.alloc(4, 0x11));
+  const first = await payment(o);
+  expect(first.data.paymentReference).toMatch(/-11111111$/);
+  const body = {
+    clientRequestId: req(),
+    expectedVersion: (await S.session(scope(), o.sessionId)).data.version,
+    method: "CASH" as const,
+    currency: "XOF",
+    allocations: [{ orderId: o.orderId, amountMinor: 100 }],
+  };
+  const before = new Map(m.rows);
+  await expect(
+    Pay.capture(scope(), "cashier", o.sessionId, body),
+  ).rejects.toThrow();
+  expect(m.rows).toEqual(before);
+  random.mockReturnValue(Buffer.alloc(4, 0x22));
+  const retried = (await Pay.capture(scope(), "cashier", o.sessionId, body))
+    .data;
+  expect(retried.paymentReference).toMatch(/-22222222$/);
+  expect(
+    (await Pay.capture(scope(), "cashier", o.sessionId, body)).data
+      .paymentReference,
+  ).toBe(retried.paymentReference);
+});
+
+test("existing long public references remain readable without migration", () => {
+  const long = "PAY-20261030-9C1B410C1163A8394290";
+  expect(
+    c.RestaurantCashPaymentFactSchema.shape.paymentReference.parse(long),
+  ).toBe(long);
+  expect(
+    K.restaurantPaymentPublicReferenceClaimKey("org", randomUUID(), long).SK,
+  ).toBe(`REF#${long}`);
+});
+
+test("movement count is authoritative across confirmed writes and idempotent replay", async () => {
+  await openDay();
+  const session = await open();
+  expect(session.cashMovementCount).toBe(0);
+  const firstResponse = await movement(session.cashSessionId, "CASH_IN");
+  const first = c.RestaurantCashMovementSchema.parse(firstResponse.data);
+  expect(
+    c.RestaurantCashMovementResponseSchema.parse(firstResponse).session
+      ?.cashMovementCount,
+  ).toBe(1);
+  expect(
+    (await Cash.session(scope(), session.cashSessionId)).data.cashMovementCount,
+  ).toBe(1);
+  const secondResponse = await movement(session.cashSessionId, "CASH_OUT");
+  const second = c.RestaurantCashMovementSchema.parse(secondResponse.data);
+  expect(
+    c.RestaurantCashMovementResponseSchema.parse(secondResponse).session
+      ?.cashMovementCount,
+  ).toBe(2);
+  expect(
+    (await Cash.session(scope(), session.cashSessionId)).data.cashMovementCount,
+  ).toBe(2);
+  const replay = await Cash.mutate(
+    scope(),
+    "owner",
+    "MOVEMENT",
+    {
+      clientRequestId: first.clientRequestId,
+      expectedVersion: session.version,
+      type: "CASH_IN",
+      amountMinor: first.amountMinor,
+      reason: first.reason,
+    },
+    session.cashSessionId,
+  );
+  expect(replay.data).toEqual(first);
+  expect(
+    (await Cash.session(scope(), session.cashSessionId)).data.cashMovementCount,
+  ).toBe(2);
+  await expect(
+    Cash.mutate(
+      scope(),
+      "owner",
+      "MOVEMENT",
+      {
+        clientRequestId: req(),
+        expectedVersion: session.version,
+        type: "CASH_IN",
+        amountMinor: 1,
+        reason: "Stale",
+      },
+      session.cashSessionId,
+    ),
+  ).rejects.toThrow();
+  expect(
+    (await Cash.session(scope(), session.cashSessionId)).data.cashMovementCount,
+  ).toBe(2);
+  expect(second.type).toBe("CASH_OUT");
+});
+
+test("legacy current-session GET derives an exact bounded count without persisting it", async () => {
+  await openDay();
+  const session = await open();
+  await movement(session.cashSessionId, "CASH_IN");
+  for (const [key, item] of m.rows) {
+    const raw = unmarshall(item);
+    if (
+      (raw.entityType === "RESTAURANT_CASH_SESSION" ||
+        raw.entityType === "RESTAURANT_CASH_DAY_SESSION") &&
+      raw.data?.cashSessionId === session.cashSessionId
+    ) {
+      delete raw.data.cashMovementCount;
+      m.rows.set(key, marshall(raw));
+    }
+  }
+  expect(
+    (await Cash.session(scope(), session.cashSessionId)).data.cashMovementCount,
+  ).toBeUndefined();
+  m.db.resetHistory();
+  const current = c.RestaurantCurrentCashSessionResponseSchema.parse(
+    await Cash.query(scope(), "cashier", "CURRENT_CASH", {}),
+  );
+  expect(current.data?.cashMovementCount).toBe(1);
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+  expect(m.db.commandCalls(QueryCommand)[0].args[0].input.Limit).toBe(100);
+  expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  expect(
+    (await Cash.session(scope(), session.cashSessionId)).data.cashMovementCount,
+  ).toBeUndefined();
+  m.db.resetHistory();
+  await Cash.query(scope(), "cashier", "CURRENT_CASH", {});
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+  expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  await movement(session.cashSessionId, "CASH_OUT");
+  expect(
+    (await Cash.session(scope(), session.cashSessionId)).data.cashMovementCount,
+  ).toBe(2);
+  m.db.resetHistory();
+  await Cash.query(scope(), "cashier", "CURRENT_CASH", {});
+  expect(m.db.commandCalls(QueryCommand)).toHaveLength(0);
+  expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+});
+
+test("normal Cash GETs never write session, day, movement or Payment facts", async () => {
+  const day = await openDay();
+  const session = await open();
+  const o = await order();
+  await payment(o);
+  await movement(session.cashSessionId, "CASH_IN");
+  m.db.resetHistory();
+  for (const [query, target] of [
+    ["CURRENT_DAY", undefined],
+    ["DAY", day.businessDayId],
+    ["SUMMARY_DAY", day.businessDayId],
+    ["SESSIONS", day.businessDayId],
+    ["CURRENT_CASH", undefined],
+    ["CASH", session.cashSessionId],
+    ["SUMMARY_CASH", session.cashSessionId],
+    ["PAYMENTS", session.cashSessionId],
+    ["MOVEMENTS", session.cashSessionId],
+  ] as const) {
+    await Cash.query(
+      scope(),
+      query === "CURRENT_CASH" ? "cashier" : "owner",
+      query,
+      {},
+      target,
+    );
+  }
+  expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
 });

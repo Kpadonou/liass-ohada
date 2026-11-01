@@ -2,6 +2,12 @@ import type { DomainPermission } from "@/lambda/shared/authorization/domain-perm
 const base = "/restaurants/outlets/{outletId}";
 export const RESTAURANT_CASH_ROUTES = [
   {
+    method: "GET",
+    path: `${base}/cash-sessions/{cashSessionId}/payments`,
+    query: "PAYMENTS",
+    permission: "RESTAURANTS_CHECKOUT_READ",
+  },
+  {
     method: "POST",
     path: `${base}/business-days/open`,
     command: "OPEN_DAY",

@@ -1832,6 +1832,9 @@
         "UNLOCKED": "Période rouverte."
       },
       "MONTHS": {
+        "10": "Octobre",
+        "11": "Novembre",
+        "12": "Décembre",
         "01": "Janvier",
         "02": "Février",
         "03": "Mars",
@@ -1840,10 +1843,7 @@
         "06": "Juin",
         "07": "Juillet",
         "08": "Août",
-        "09": "Septembre",
-        "10": "Octobre",
-        "11": "Novembre",
-        "12": "Décembre"
+        "09": "Septembre"
       },
       "PERIOD_STATUS": {
         "LOCKED": "Verrouillée",
@@ -4568,7 +4568,7 @@
           "DESCRIPTION": "Préparations du poste sélectionné."
         },
         "checkout": {
-          "TITLE": "Caisse"
+          "TITLE": "Encaisser"
         },
         "receipt": {
           "TITLE": "Reçu"
@@ -4999,7 +4999,7 @@
       "REVIEW_ALL": "Voir tous les articles prêts"
     },
     "CHECKOUT": {
-      "TITLE": "Caisse",
+      "TITLE": "Encaisser",
       "OUTLET": "Établissement",
       "PAY": "Encaisser",
       "METHOD": "Moyen de paiement",
@@ -5301,8 +5301,28 @@
       "COUNT": "{{count}} demande(s)"
     },
     "CASH": {
-      "MY_CASH": "Ma caisse",
-      "DAY_REVIEW": "Point de journée",
+      "EXTERNAL_REFERENCE": "Référence externe",
+      "PAYMENT_REFERENCE": "Référence",
+      "TABLE_CONTEXT": "Table",
+      "CAPTURED": "Encaissé",
+
+      "REASON_COLUMN": "Motif",
+      "DATE_TIME": "Date / Heure",
+      "METHOD": "Moyen",
+      "TYPE": "Type",
+      "NO_PAYMENTS": "Aucun encaissement pour cette session.",
+
+      "CLOSED_VARIANCE": "Écart total des sessions clôturées",
+      "SESSION": "Session",
+      "CLOSED_AT": "Clôture",
+      "RECONCILIATION": "Rapprochement",
+      "OTHER_COLLECTIONS": "Autres encaissements",
+      "NO_MOVEMENTS": "Aucun mouvement de caisse pour cette session.",
+      "ACTIVITY": "Activité",
+
+      "GROUP": "Caisse",
+      "MY_CASH": "Ma session",
+      "DAY_REVIEW": "Journée de caisse",
       "DAY": "Journée du",
       "OPEN": "Ouverte",
       "CLOSED": "Clôturée",
@@ -5333,6 +5353,7 @@
       "ACTIONS": "Actions",
       "DETAIL": "Consulter",
       "MOVEMENTS": "Mouvements de caisse",
+      "MOVEMENTS_SHORT": "Mouvements",
       "MORE": "Suite",
       "OPEN_SESSIONS": "Caisses ouvertes",
       "CLOSED_SESSIONS": "Caisses clôturées",
@@ -5345,7 +5366,12 @@
       "OPENED_AT": "Ouverture",
       "PAYMENT_COUNT": "Nombre de paiements",
       "PREVIEW": "Écart prévisionnel — à confirmer",
-      "COLUMNS": "Colonnes"
+      "COLUMNS": "Colonnes",
+      "YOU": "Vous",
+      "IDENTITY_UNAVAILABLE": "Identité indisponible",
+      "CLOSE_OWN": "Clôturer ma session",
+      "CLOSE_NAMED": "Clôturer la session de {{name}}",
+      "CLOSE_THIS": "Clôturer cette session"
     }
   }
 }

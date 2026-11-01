@@ -108,6 +108,14 @@ export class RestaurantCashQueries {
       !!id,
     );
   }
+  payments(s: CashContext, id: string, cursor?: string) {
+    return this.options(
+      s,
+      `cash-sessions/${id}/payments${cursor ? '?cursor=' + encodeURIComponent(cursor) : ''}`,
+      c.RestaurantCashPaymentListResponseSchema,
+      !!id,
+    );
+  }
   async seed<T>(s: CashContext, path: string, value: T) {
     await this.client.cancelQueries({ queryKey: cashKeys.read(s, path), exact: true });
     this.assert(s);
@@ -176,7 +184,11 @@ export class RestaurantCashQueries {
     );
     if (summary) await this.seed(s, path, { data: { ...summary.data, businessDay: value } });
   }
-  async confirmedMovement(s: CashContext, value: c.RestaurantCashMovement) {
+  async confirmedMovement(
+    s: CashContext,
+    value: c.RestaurantCashMovement,
+    session?: c.RestaurantCashSession,
+  ) {
     const path = `cash-sessions/${value.cashSessionId}/movements`;
     const page = this.client.getQueryData<{
       items: c.RestaurantCashMovement[];
@@ -190,7 +202,35 @@ export class RestaurantCashQueries {
             b.occurredAt.localeCompare(a.occurredAt) || b.movementId.localeCompare(a.movementId),
         ),
       });
-    // Movement response contains no authoritative session totals/version.
+    if (session) {
+      await this.seed(s, `cash-sessions/${session.cashSessionId}`, { data: session });
+      const current = this.client.getQueryData<{ data: c.RestaurantCashSession | null }>(
+        cashKeys.read(s, 'cash-sessions/current'),
+      );
+      if (
+        session.cashierUserId === s.user &&
+        current?.data?.cashSessionId === session.cashSessionId
+      )
+        await this.seed(s, 'cash-sessions/current', { data: session });
+      const listPath = `business-days/${session.businessDayId}/cash-sessions`;
+      const list = this.client.getQueryData<{
+        items: c.RestaurantCashSession[];
+        nextCursor?: string;
+      }>(cashKeys.read(s, listPath));
+      if (list)
+        await this.seed(s, listPath, {
+          ...list,
+          items: list.items.map((row) =>
+            row.cashSessionId === session.cashSessionId ? session : row,
+          ),
+        });
+      await this.client.invalidateQueries({
+        queryKey: cashKeys.read(s, `business-days/${value.businessDayId}/summary`),
+        exact: true,
+      });
+      return;
+    }
+    // Older responses lack the confirmed session; refresh only the established reads.
     await Promise.all(
       [
         `cash-sessions/${value.cashSessionId}`,
@@ -222,6 +262,13 @@ export class RestaurantCashQueries {
     const session = this.client.getQueryData<{ data: c.RestaurantCashSession | null }>(
       cashKeys.read(s, 'cash-sessions/current'),
     )?.data;
+    if (session) {
+      const prefix = `cash-sessions/${session.cashSessionId}/payments`;
+      await this.client.invalidateQueries({
+        queryKey: cashKeys.root(s),
+        predicate: (query) => String(query.queryKey.at(-1)).startsWith(prefix),
+      });
+    }
     // Payment attribution changes current totals, not manual movements or historical sessions.
     await Promise.all(
       [

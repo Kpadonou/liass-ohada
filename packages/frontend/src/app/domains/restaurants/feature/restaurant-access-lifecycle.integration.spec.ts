@@ -228,7 +228,7 @@ describe('Current-user Restaurants lifecycle through actual routing and Service 
       expect(serviceFloor).toHaveBeenCalledTimes(1);
     });
     expect(TestBed.inject(Router).url).toBe('/restaurants/checkout');
-    expect(h.routeNativeElement?.textContent).toContain('Caisse');
+    expect(h.routeNativeElement?.textContent).toContain('Encaisser');
     expect(h.routeNativeElement?.querySelector('liass-restaurant-service-floor')).toBeNull();
     expect(myOutlets).toHaveBeenCalledTimes(1);
   });

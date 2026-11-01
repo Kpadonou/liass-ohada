@@ -44,7 +44,8 @@ const translations = {
   fr: {
     RESTAURANTS_INVENTORY: { TITLE: 'Stock' },
     RESTAURANTS: {
-      CHECKOUT: { TITLE: 'Caisse' },
+      CHECKOUT: { TITLE: 'Encaisser' },
+      CASH: { GROUP: 'Caisse', MY_CASH: 'Ma session', DAY_REVIEW: 'Journée de caisse' },
       SERVICE: { GROUP: 'Service' },
       UX: {
         NAV: {
@@ -771,11 +772,11 @@ describe('AppSidebarComponent', () => {
     expect(routes()).toEqual([]);
     expect(routes()).not.toContain('/restaurants');
     for (const path of operational) expect(routes()).not.toContain(path);
-    expect(fixture.nativeElement.querySelector('button[aria-label="Caisse"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Encaisser"]')).toBeNull();
     activeOutlet.set('authorized-outlet');
     fixture.detectChanges();
     for (const path of operational) expect(routes()).toContain(path);
-    expect(fixture.nativeElement.querySelector('button[aria-label="Caisse"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Encaisser"]')).toBeTruthy();
     activeOutlet.set('');
     fixture.detectChanges();
     for (const path of operational) expect(routes()).not.toContain(path);
@@ -887,16 +888,17 @@ describe('AppSidebarComponent', () => {
       ),
     ).toHaveLength(1);
     expect(resto.querySelectorAll('section')[0].querySelector('p')).toBeNull();
-    expect(resto.querySelectorAll('section p')).toHaveLength(2);
+    expect(resto.querySelectorAll('section p')).toHaveLength(3);
     expect(resto.querySelector('button[aria-label="Service en salle"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Restaurant"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Postes de préparation"]')).not.toBeNull();
     expect(resto.textContent).not.toContain('Configuration du restaurant');
-    expect(resto.querySelectorAll('section p')[1].textContent.trim()).toBe('Configuration');
-    const configuration = resto.querySelectorAll('section')[2];
+    expect(resto.querySelectorAll('section p')[1].textContent.trim()).toBe('Caisse');
+    expect(resto.querySelectorAll('section p')[2].textContent.trim()).toBe('Configuration');
+    const configuration = resto.querySelectorAll('section')[3];
     expect(configuration.querySelector('button[aria-label="Menu"]')).not.toBeNull();
     expect(configuration.querySelector('button[aria-label="Équipe"]')).not.toBeNull();
-    expect(resto.querySelectorAll('section')).toHaveLength(3);
+    expect(resto.querySelectorAll('section')).toHaveLength(4);
     TestBed.inject(UiStore).setSidebarCollapsed(true);
     fixture.detectChanges();
     expect(
@@ -1033,7 +1035,7 @@ describe('AppSidebarComponent', () => {
     ])
       expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
   });
-  it('shows Caisse and Ma caisse for CASHIER, preserving other product role boundaries', () => {
+  it('shows Encaissements and Ma session for CASHIER, preserving other product role boundaries', () => {
     productAvailability.RESTAURANTS = 'AVAILABLE';
     TestBed.inject(UiStore).setCurrentPage('restaurants');
     TestBed.inject(AuthStore).setCreatedWorkspace(
@@ -1042,12 +1044,44 @@ describe('AppSidebarComponent', () => {
     );
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('button[aria-label="Caisse"]')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('button[aria-label="Encaisser"]')).not.toBeNull();
     const items = fixture.nativeElement.querySelectorAll(
       '[data-testid="restaurants-navigation"] liass-sidebar-nav-item',
     );
     expect(items).toHaveLength(2);
+    expect(fixture.nativeElement.querySelector('button[aria-label="Ma session"]')).not.toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('button[aria-label="Journée de caisse"]'),
+    ).toBeNull();
     for (const label of ['Service en salle', 'Cuisine', 'Restaurant', 'Équipe', 'Menu'])
       expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
+  });
+  it('groups restaurant navigation by Service, Cash, and Configuration responsibility', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'MANAGER' } },
+      'org-resto',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+    const groups = (
+      fixture.componentInstance as unknown as {
+        restaurantGroups: () => { labelKey: string; items: { route: string }[] }[];
+      }
+    ).restaurantGroups();
+    const service = groups.find((group) => group.labelKey === 'RESTAURANTS.SERVICE.GROUP');
+    const cash = groups.find((group) => group.labelKey === 'RESTAURANTS.CASH.GROUP');
+    expect(service?.items.map((item) => item.route)).toEqual([
+      '/restaurants/kitchen',
+      '/restaurants/service',
+    ]);
+    expect(cash?.items.map((item) => item.route)).toEqual([
+      '/restaurants/checkout',
+      '/restaurants/cash',
+      '/restaurants/cash/day',
+    ]);
+    for (const label of ['Encaisser', 'Ma session', 'Journée de caisse'])
+      expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).not.toBeNull();
   });
 });

@@ -55,7 +55,13 @@ describe('canonical restaurant availability across frontend surfaces', () => {
         }),
       ],
       providers: [
-        { provide: RestaurantOutletRouting, useValue: { routeReady: () => true } },
+        {
+          provide: RestaurantOutletRouting,
+          useValue: {
+            routeReady: () =>
+              TestBed.inject(ProductAccessState).availability('RESTAURANTS') === 'AVAILABLE',
+          },
+        },
         provideRouter([]),
         { provide: QueryClient, useValue: client },
         {
@@ -79,7 +85,11 @@ describe('canonical restaurant availability across frontend surfaces', () => {
         { provide: ProductAccessApi, useValue: { listProductAccess } },
         {
           provide: RestaurantsCapabilities,
-          useValue: { canRead: () => false, canReadMenu: () => false },
+          useValue: {
+            canRead: () => false,
+            canReadMenu: () => false,
+            canManageSetup: () => false,
+          },
         },
         { provide: CabinetSettingsCapabilities, useValue: {} },
         { provide: SalesCapabilities, useValue: {} },

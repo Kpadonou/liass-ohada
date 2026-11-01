@@ -24,6 +24,7 @@ import { SalesCapabilities } from '../../sales/data-access/sales-capabilities';
 import { RestaurantsApi } from './restaurants.api';
 import { RestaurantsQueries } from './restaurants.queries';
 import { RestaurantsCapabilities } from './restaurants-capabilities';
+import { RestaurantOutletContext } from './restaurant-outlet-context';
 import {
   RestaurantContext,
   RestaurantEntities,
@@ -162,6 +163,13 @@ function configure(mode = 'menu', data?: RestaurantEditorData) {
       provideRouter([]),
       provideHttpClient(withFetch(), withInterceptors([authInterceptor, redirect])),
       { provide: QueryClient, useValue: client },
+      {
+        provide: RestaurantOutletContext,
+        useValue: {
+          id: () => (org() === 'org-a' ? (outlet?.id ?? null) : null),
+          identity: () => `${org() ?? ''}:integration-user`,
+        },
+      },
       {
         provide: AuthStore,
         useValue: {
@@ -501,11 +509,30 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       });
       const form = TestBed.createComponent(RestaurantEditorComponent);
       form.detectChanges();
+      // This RESTO-1D price test predates optional inventory tracking; its
+      // loopback server only models Menu endpoints.
+      vi.spyOn(form.componentInstance.tracking()!, 'validate').mockReturnValue(true);
+      vi.spyOn(form.componentInstance.tracking()!, 'capture').mockReturnValue({
+        context: form.componentInstance.tracking()!.ctx(),
+        categoryId: items[3].categoryId,
+        expectedVersion: 0,
+        clientRequestId: crypto.randomUUID(),
+        mode: 'UNCHANGED',
+        unit: 'UNIT',
+        stockItemId: null,
+      });
+      vi.spyOn(form.componentInstance.tracking()!, 'persist').mockResolvedValue(undefined);
       await vi.waitFor(() =>
         expect(TestBed.inject(ProductAccessState).availability('RESTAURANTS')).toBe('AVAILABLE'),
       );
       form.componentInstance.form.controls.price.setValue(text);
+      expect(
+        form.componentInstance.form.valid,
+        JSON.stringify(form.componentInstance.form.value),
+      ).toBe(true);
+      expect(form.componentInstance.canManage()).toBe(true);
       await form.componentInstance.submit();
+      expect(form.componentInstance.error()).toBeNull();
       expect((await api.get('org-a', 'item', ctx, items[3].id))?.price).toEqual({
         amountMinor: parseMinorInput(text, 'XOF'),
         currency: 'XOF',

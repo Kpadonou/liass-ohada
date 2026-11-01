@@ -137,6 +137,14 @@ it('traces V1 mixed submission → Ready → payment while unserved → serializ
   let visit = c.GuestSessionResponseSchema.parse(
     await call(base + `/sessions/${session.guestSessionId}`),
   ).data;
+  await call(base + '/business-days/open', {
+    clientRequestId: crypto.randomUUID(),
+    operationalTimezone: 'Africa/Porto-Novo',
+  });
+  await call(base + '/cash-sessions', {
+    clientRequestId: crypto.randomUUID(),
+    openingCashAmountMinor: 0,
+  });
   await call(base + `/sessions/${session.guestSessionId}/payments`, {
     clientRequestId: crypto.randomUUID(),
     expectedVersion: visit.version,

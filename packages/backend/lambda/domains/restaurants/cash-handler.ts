@@ -13,6 +13,7 @@ const querySchemas = {
   CASH: c.RestaurantCashSessionResponseSchema,
   SUMMARY_CASH: c.RestaurantCashSessionSummaryResponseSchema,
   MOVEMENTS: c.RestaurantCashMovementListResponseSchema,
+  PAYMENTS: c.RestaurantCashPaymentListResponseSchema,
 };
 export function restaurantCashHandler(
   route: (typeof RESTAURANT_CASH_ROUTES)[number],
@@ -24,7 +25,8 @@ export function restaurantCashHandler(
     ]),
   );
   const list =
-    "query" in route && ["DAYS", "SESSIONS", "MOVEMENTS"].includes(route.query);
+    "query" in route &&
+    ["DAYS", "SESSIONS", "MOVEMENTS", "PAYMENTS"].includes(route.query);
   const bodySchema =
     "command" in route ? cashCommands[route.command] : z.object({}).strict();
   const querySchema = list

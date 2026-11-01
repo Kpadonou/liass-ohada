@@ -15,6 +15,8 @@ import { RESTAURANT_TRANSACTION_ROUTES } from "@/lambda/domains/restaurants/tran
 import { RESTAURANT_PREPARATION_ROUTES } from "@/lambda/domains/restaurants/preparation-routes";
 import { RESTAURANT_PAYMENT_ROUTES } from "@/lambda/domains/restaurants/payment-routes";
 import { RESTAURANT_RECEIPT_ROUTES } from "@/lambda/domains/restaurants/receipt-routes";
+import { RESTAURANT_CASH_ROUTES } from "@/lambda/domains/restaurants/cash-routes";
+import { restaurantCashHandler } from "@/lambda/domains/restaurants/cash-handler";
 import { restaurantTransactionHandler } from "@/lambda/domains/restaurants/transaction-handler";
 import { restaurantPreparationHandler } from "@/lambda/domains/restaurants/preparation-handler";
 import { restaurantReceiptHandler } from "@/lambda/domains/restaurants/receipt-handler";
@@ -25,6 +27,7 @@ const routes = [
   ...RESTAURANT_PREPARATION_ROUTES,
   ...RESTAURANT_PAYMENT_ROUTES,
   ...RESTAURANT_RECEIPT_ROUTES,
+  ...RESTAURANT_CASH_ROUTES,
 ];
 let memory = memoryDynamo();
 let fault: string | null = null;
@@ -112,7 +115,7 @@ const server = createServer(async (request, response) => {
           (pathParameters[field[1]] = decodeURIComponent(match[index + 1])),
       );
       calls.push({
-        name: route.name,
+        name: "name" in route ? route.name : route.path,
         method: request.method!,
         path: url.pathname,
       });
@@ -142,18 +145,27 @@ const server = createServer(async (request, response) => {
       request.socket.destroy();
       return;
     }
+    const routeName = route && "name" in route ? route.name : "";
     const result = await (
       !route
         ? productAccessHandler
-        : route.name === "capture-payment"
-          ? capturePayment
-          : route.name === "get-receipt" || route.name === "publish-receipt"
-            ? restaurantReceiptHandler(route.name)
-            : RESTAURANT_PREPARATION_ROUTES.some((r) => r.name === route.name)
-              ? restaurantPreparationHandler(route.name)
-              : RESTAURANT_TRANSACTION_ROUTES.some((r) => r.name === route.name)
-                ? restaurantTransactionHandler(route.name)
-                : restaurantsHandler(route.name)
+        : RESTAURANT_CASH_ROUTES.some(
+              (r) => r.path === route.path && r.method === route.method,
+            )
+          ? restaurantCashHandler(
+              route as (typeof RESTAURANT_CASH_ROUTES)[number],
+            )
+          : routeName === "capture-payment"
+            ? capturePayment
+            : routeName === "get-receipt" || routeName === "publish-receipt"
+              ? restaurantReceiptHandler(routeName)
+              : RESTAURANT_PREPARATION_ROUTES.some((r) => r.name === routeName)
+                ? restaurantPreparationHandler(routeName)
+                : RESTAURANT_TRANSACTION_ROUTES.some(
+                      (r) => r.name === routeName,
+                    )
+                  ? restaurantTransactionHandler(routeName)
+                  : restaurantsHandler(routeName)
     )(event);
     if (route && fault === "network-after-commit") {
       fault = null;

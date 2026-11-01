@@ -156,7 +156,10 @@ describe('AppTopbarComponent', () => {
       ],
       providers: [
         { provide: RestaurantOutletRouting, useValue: { routeReady: () => true } },
-        { provide: RestaurantOutletContext, useValue: { attached: () => false } },
+        {
+          provide: RestaurantOutletContext,
+          useValue: { attached: () => false, id: () => null },
+        },
         provideRouter([]),
         {
           provide: ProductAccessState,

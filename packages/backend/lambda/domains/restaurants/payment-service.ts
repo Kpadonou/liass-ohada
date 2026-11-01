@@ -1,5 +1,5 @@
 import { RestaurantCashService } from "./cash-service";
-import { randomUUID } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import * as c from "@liass-ohada/shared/restaurants";
@@ -169,6 +169,7 @@ export class RestaurantPaymentService {
     });
     const now = new Date().toISOString(),
       paymentId = randomUUID(),
+      paymentReference = `PAY-${now.slice(0, 10).replace(/-/g, "")}-${randomBytes(4).toString("hex").toUpperCase()}`,
       commandId = randomUUID();
     const pk = K.restaurantPaymentPK(scope.orgId, scope.outletId, paymentId);
     const nextSession = c.GuestSessionSchema.parse({
@@ -182,6 +183,7 @@ export class RestaurantPaymentService {
       ...scope,
       schemaVersion: 1,
       paymentId,
+      paymentReference,
       guestSessionId: sessionId,
       status: "SUCCEEDED",
       version: 1,
@@ -207,6 +209,7 @@ export class RestaurantPaymentService {
       scope,
       actorId,
       payment,
+      session.data.tableName,
     );
     payment = c.RestaurantPaymentSchema.parse({
       ...payment,

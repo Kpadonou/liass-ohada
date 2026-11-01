@@ -22,6 +22,14 @@ export const cashSchemas = {
   DAY_SESSION: c.RestaurantCashSessionSchema,
   MOVEMENT: c.RestaurantCashMovementSchema,
   PAYMENT: c.RestaurantCashPaymentFactSchema,
+  PAYMENT_REF_CLAIM: z
+    .object({
+      paymentReference: z
+        .string()
+        .regex(/^PAY-\d{8}-(?:[A-F0-9]{8}|[A-F0-9]{20})$/),
+      paymentId: id,
+    })
+    .strict(),
   ACTIVE_DAY: z.object({ businessDayId: id }).strict(),
   ACTIVE_CASHIER: z
     .object({ cashSessionId: id, cashierUserId: z.string().min(1) })
@@ -81,6 +89,16 @@ export class RestaurantCashRepository {
         PK: K.restaurantBusinessDaysPK(scope.orgId, scope.outletId),
         SK: K.restaurantOccupancySK(),
       };
+    if (
+      kind === "PAYMENT_REF_CLAIM" &&
+      "paymentReference" in d &&
+      typeof d.paymentReference === "string"
+    )
+      return K.restaurantPaymentPublicReferenceClaimKey(
+        scope.orgId,
+        scope.outletId,
+        d.paymentReference,
+      );
     if (kind === "HISTORY" && "openedAt" in d && "businessDayId" in d)
       return {
         PK: K.restaurantBusinessDaysPK(scope.orgId, scope.outletId),
@@ -207,16 +225,29 @@ export class RestaurantCashRepository {
           : undefined;
     const targetField =
       "cashSessionId" in row.data ? "cashSessionId" : "businessDayId";
+    const isSession =
+      row.entityType === "RESTAURANT_CASH_SESSION" ||
+      row.entityType === "RESTAURANT_CASH_DAY_SESSION";
+    const movementCount =
+      "cashMovementCount" in row.data ? row.data.cashMovementCount : undefined;
     return {
       ConditionExpression:
         "entityType = :type AND orgId = :org AND outletId = :out" +
         (version === undefined ? "" : " AND #data.#version = :version") +
-        (target ? " AND #data.#target = :target" : ""),
+        (target ? " AND #data.#target = :target" : "") +
+        (isSession
+          ? movementCount === undefined
+            ? " AND attribute_not_exists(#data.#movementCount)"
+            : " AND #data.#movementCount = :movementCount"
+          : ""),
       ExpressionAttributeNames: {
         ...(version === undefined
           ? {}
           : { "#data": "data", "#version": "version" }),
         ...(target ? { "#data": "data", "#target": targetField } : {}),
+        ...(isSession
+          ? { "#data": "data", "#movementCount": "cashMovementCount" }
+          : {}),
       },
       ExpressionAttributeValues: marshall({
         ":type": row.entityType,
@@ -224,6 +255,9 @@ export class RestaurantCashRepository {
         ":out": row.outletId,
         ...(version === undefined ? {} : { ":version": version }),
         ...(target ? { ":target": target } : {}),
+        ...(isSession && movementCount !== undefined
+          ? { ":movementCount": movementCount }
+          : {}),
       }),
     };
   }

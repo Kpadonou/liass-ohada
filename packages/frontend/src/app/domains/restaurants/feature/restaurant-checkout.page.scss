@@ -8,7 +8,7 @@
 .checkout-visit-row[aria-pressed='true'] {
   border-inline-start: 3px solid var(--color-brand-700);
 }
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .checkout-detail {
     display: none;
   }
