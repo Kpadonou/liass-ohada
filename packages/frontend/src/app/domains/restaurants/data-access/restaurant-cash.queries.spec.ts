@@ -75,6 +75,30 @@ it('loads each activity page once and reuses fresh tab history', async () => {
   client.clear();
 });
 
+it('binds payment search and pagination to a stable query path', async () => {
+  const { RestaurantCashQueries } = await import('./restaurant-cash.queries');
+  const queries = Object.create(RestaurantCashQueries.prototype) as InstanceType<
+    typeof RestaurantCashQueries
+  >;
+  const paths: string[] = [];
+  Object.assign(queries, {
+    request: async (_scope: CashContext, path: string) => {
+      paths.push(path);
+      return { items: [] };
+    },
+  });
+  const client = new QueryClient();
+  await client.fetchQuery(queries.payments(scope, 'session', undefined, '0F93B571'));
+  await client.fetchQuery(queries.payments(scope, 'session', 'next page', 'Table A'));
+  await client.fetchQuery(queries.payments(scope, 'session'));
+  expect(paths).toEqual([
+    'cash-sessions/session/payments?q=0F93B571',
+    'cash-sessions/session/payments?q=Table+A&cursor=next+page',
+    'cash-sessions/session/payments',
+  ]);
+  client.clear();
+});
+
 it('refreshes the authoritative session count after a confirmed movement', async () => {
   const { RestaurantCashQueries } = await import('./restaurant-cash.queries');
   const queries = Object.create(RestaurantCashQueries.prototype) as InstanceType<

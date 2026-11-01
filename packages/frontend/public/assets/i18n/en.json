@@ -5305,13 +5305,15 @@
       "PAYMENT_REFERENCE": "Reference",
       "TABLE_CONTEXT": "Table",
       "CAPTURED": "Captured",
-
       "REASON_COLUMN": "Reason",
       "DATE_TIME": "Date / Time",
       "METHOD": "Method",
       "TYPE": "Type",
       "NO_PAYMENTS": "No payments for this session.",
-
+      "PAYMENT_SEARCH": "Search payments",
+      "CLEAR_PAYMENT_SEARCH": "Clear search",
+      "NO_PAYMENT_SEARCH_RESULTS": "No payments match this search.",
+      "PAYMENT_SEARCH_MORE_RESULTS": "More payments may match. Continue the search.",
       "CLOSED_VARIANCE": "Closed-session variance",
       "SESSION": "Session",
       "CLOSED_AT": "Closed at",
@@ -5319,7 +5321,6 @@
       "OTHER_COLLECTIONS": "Other collections",
       "NO_MOVEMENTS": "No cash movements for this session.",
       "ACTIVITY": "Activity",
-
       "GROUP": "Cash",
       "MY_CASH": "My session",
       "DAY_REVIEW": "Daily cash",
@@ -5372,6 +5373,27 @@
       "CLOSE_OWN": "Close my session",
       "CLOSE_NAMED": "Close {{name}}’s session",
       "CLOSE_THIS": "Close this session"
+    },
+    "PAYMENT_ACTIONS": {
+      "DETAIL": "View details",
+      "BILL": "View bill",
+      "RECEIPT": "View receipt",
+      "REFERENCE": "Liass reference",
+      "METHOD": "Payment method",
+      "CURRENCY": "Currency",
+      "CAPTURED_AT": "Captured at",
+      "TABLE": "Table",
+      "EXTERNAL_REFERENCE": "External reference",
+      "CAPTURED_BY": "Captured by",
+      "CASH_SESSION": "Cash session",
+      "SESSION_OPENED": "Opened {{date}}",
+      "BUSINESS_DAY": "Business day",
+      "SERVICE": "Service reference",
+      "RECEIPT_AVAILABILITY": "Receipt",
+      "AVAILABLE": "Available",
+      "UNAVAILABLE": "Unavailable",
+      "OPEN": "Open service",
+      "CLOSED": "Closed service"
     }
   }
 }

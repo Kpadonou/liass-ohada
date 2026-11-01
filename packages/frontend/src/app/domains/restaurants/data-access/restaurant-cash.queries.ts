@@ -1,6 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { QueryClient, queryOptions } from '@tanstack/angular-query-experimental';
+import {
+  QueryClient,
+  keepPreviousData,
+  queryOptions,
+  infiniteQueryOptions,
+} from '@tanstack/angular-query-experimental';
 import { firstValueFrom, timeout } from 'rxjs';
 import { z } from 'zod';
 import * as c from '@liass-ohada/shared/restaurants';
@@ -108,13 +113,51 @@ export class RestaurantCashQueries {
       !!id,
     );
   }
-  payments(s: CashContext, id: string, cursor?: string) {
-    return this.options(
-      s,
-      `cash-sessions/${id}/payments${cursor ? '?cursor=' + encodeURIComponent(cursor) : ''}`,
-      c.RestaurantCashPaymentListResponseSchema,
-      !!id,
-    );
+  payments(s: CashContext, id: string, cursor?: string, search?: string) {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (cursor) params.set('cursor', cursor);
+    const suffix = params.size ? `?${params}` : '';
+    return {
+      ...this.options(
+        s,
+        `cash-sessions/${id}/payments${suffix}`,
+        c.RestaurantCashPaymentListResponseSchema,
+        !!id,
+      ),
+      placeholderData: keepPreviousData,
+    };
+  }
+  bill(s: CashContext, row: c.RestaurantCashPaymentRow, orderId: string) {
+    return infiniteQueryOptions({
+      queryKey: [...cashKeys.root(s), 'bill', row.cashSessionId, row.billSessionId, orderId],
+      initialPageParam: undefined as string | undefined,
+      queryFn: async ({ pageParam }) => {
+        const params = new URLSearchParams({
+          paymentId: row.paymentId ?? '',
+          capturedAt: row.capturedAt,
+          limit: '50',
+        });
+        if (orderId) params.set('orderId', orderId);
+        if (pageParam) params.set('cursor', pageParam);
+        const result = await this.request(
+          s,
+          `cash-sessions/${row.cashSessionId}/payments?${params}`,
+          c.RestaurantCashBillResponseSchema,
+        );
+        if (
+          result.session.guestSessionId !== row.billSessionId ||
+          (orderId && result.orderId !== orderId) ||
+          (pageParam && pageParam === result.nextCursor)
+        )
+          throw new Error('Bill ownership mismatch');
+        return result;
+      },
+      getNextPageParam: (page) => page.nextCursor,
+      enabled: !!row.billSessionId && !!row.paymentId && !!row.cashSessionId,
+      staleTime: 30000,
+      retry: false,
+    });
   }
   async seed<T>(s: CashContext, path: string, value: T) {
     await this.client.cancelQueries({ queryKey: cashKeys.read(s, path), exact: true });

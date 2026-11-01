@@ -157,7 +157,7 @@ test('movement amount and reason retain independent padded table columns', () =>
   );
 });
 
-test('payment table has safe contextual columns and captured status without unsupported actions', () => {
+test('payment table preserves contextual columns and exposes read-only contextual actions', () => {
   const payments = page.split('data-activity-payments')[1].split('</table>')[0];
   for (const key of [
     'DATE_TIME',
@@ -179,7 +179,7 @@ test('payment table has safe contextual columns and captured status without unsu
   assert.match(payments, /formatCashAmount\(row.amountMinor, row.currency\)/);
   assert.doesNotMatch(
     payments,
-    /row\.(paymentId|cashSessionId|guestSessionId|orderId)|RESTAURANTS.CASH.ACTIONS|refund|Rembourser/,
+    /row\.(paymentId|cashSessionId|guestSessionId|orderId)|refund|Rembourser/,
   );
 });
 
@@ -206,7 +206,8 @@ test('personal activity tabs and secondary actions retain canonical semantic hie
     (payments.match(/formatCashAmount\(row.amountMinor, row.currency\)/g) ?? []).length,
     2,
   );
-  assert.doesNotMatch(payments, /RESTAURANTS.CASH.ACTIONS/);
+  assert.match(payments, /RESTAURANTS.CASH.ACTIONS/);
+  assert.equal((payments.match(/<liass-restaurant-payment-actions/g) ?? []).length, 2);
 });
 
 test('Cash activity tabs keep full desktop labels and readable compact mobile labels', () => {

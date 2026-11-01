@@ -1,3 +1,4 @@
+import { RestaurantPaymentReads } from "./payment-reads";
 import { randomUUID } from "crypto";
 import { z } from "zod";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
@@ -34,6 +35,34 @@ export const cashInteger = (value: bigint, signed = false): number => {
   return Number(value);
 };
 const manager = (role?: string) => ["OWNER", "MANAGER"].includes(role ?? "");
+const normalizePaymentSearch = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLocaleLowerCase("fr")
+    .trim();
+const paymentSearchMatches = (
+  payment: z.infer<typeof c.RestaurantCashPaymentFactSchema>,
+  search: string,
+) => {
+  const method = {
+    CASH: "cash especes",
+    MOBILE_MONEY: "mobile money mobile_money",
+    CARD: "card carte",
+  }[payment.method];
+  return normalizePaymentSearch(
+    [
+      payment.paymentReference,
+      payment.tableDisplayName,
+      payment.method,
+      method,
+      "CAPTURED captured encaisse encaissement",
+    ]
+      .filter(Boolean)
+      .join(" "),
+  ).includes(search);
+};
+const PAYMENT_SEARCH_EVALUATION_LIMIT = 1_000;
 export class RestaurantCashService {
   static async authorize(scope: Scope, actorId: string) {
     const access = await RestaurantServiceAccess.authorize(
@@ -222,6 +251,7 @@ export class RestaurantCashService {
             ...scope,
             ...attribution,
             paymentId: payment.paymentId,
+            guestSessionId: payment.guestSessionId,
             paymentReference,
             kind: "CAPTURE",
             tableDisplayName,
@@ -643,9 +673,12 @@ export class RestaurantCashService {
     targetId?: string,
   ) {
     const list = ["DAYS", "SESSIONS", "MOVEMENTS", "PAYMENTS"].includes(query);
-    const request = list
-      ? c.RestaurantCashListRequestSchema.parse(input)
-      : z.object({}).strict().parse(input);
+    const request =
+      query === "PAYMENTS"
+        ? c.RestaurantCashPaymentReadRequestSchema.parse(input)
+        : list
+          ? c.RestaurantCashListRequestSchema.parse(input)
+          : z.object({}).strict().parse(input);
     if (targetId !== undefined) c.RestaurantIdSchema.parse(targetId);
     const access = await this.authorize(scope, actorId);
     if (
@@ -745,29 +778,60 @@ export class RestaurantCashService {
     if (query === "CASH") return { data: session.data };
     if (query === "SUMMARY_CASH") return { data: this.summary(session.data) };
     if (query === "PAYMENTS") {
-      const page = await R.page(
-        scope,
-        session.PK,
-        K.restaurantPaymentReferencePrefix(),
-        "PAYMENT",
-        c.RestaurantCashListRequestSchema.parse(request),
-        actorId,
-        true,
+      const selected = c.RestaurantCashPaymentReadRequestSchema.parse(request);
+      if (selected.paymentId)
+        return RestaurantPaymentReads.bill(scope, session.data, selected);
+      if (selected.capturedAt || selected.orderId)
+        return fail("ERROR_INVALID_INPUT", 400);
+      const search = selected.q
+        ? normalizePaymentSearch(selected.q)
+        : undefined;
+      let cursor = selected.cursor;
+      let nextCursor: string | undefined;
+      let evaluated = 0;
+      const rows: CashRow<"PAYMENT">[] = [];
+      do {
+        const page = await R.page(
+          scope,
+          session.PK,
+          K.restaurantPaymentReferencePrefix(),
+          "PAYMENT",
+          {
+            limit: search
+              ? Math.min(
+                  selected.limit - rows.length,
+                  PAYMENT_SEARCH_EVALUATION_LIMIT - evaluated,
+                )
+              : selected.limit,
+            ...(cursor ? { cursor } : {}),
+          },
+          actorId,
+          true,
+          search ? { paymentSearch: search } : undefined,
+        );
+        evaluated += page.rows.length;
+        rows.push(
+          ...(search
+            ? page.rows.filter((row) => paymentSearchMatches(row.data, search))
+            : page.rows),
+        );
+        cursor = page.nextCursor;
+        nextCursor = page.nextCursor;
+      } while (
+        search &&
+        rows.length < selected.limit &&
+        cursor &&
+        evaluated < PAYMENT_SEARCH_EVALUATION_LIMIT
       );
       return {
-        items: page.rows.map(({ data }) => ({
-          capturedAt: data.capturedAt,
-          paymentReference: data.paymentReference,
-          method: data.method,
-          amountMinor: data.amountMinor,
-          currency: data.currency,
-          tableDisplayName: data.tableDisplayName,
-          externalReference: data.externalReference,
-          status: "CAPTURED" as const,
-        })),
-        nextCursor: page.nextCursor,
+        items: await RestaurantPaymentReads.history(
+          scope,
+          rows.map((row) => row.data),
+        ),
+        nextCursor,
       };
     }
+
     if (query === "MOVEMENTS") {
       const page = await R.page(
         scope,

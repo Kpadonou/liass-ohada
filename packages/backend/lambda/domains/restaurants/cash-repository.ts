@@ -318,6 +318,7 @@ export class RestaurantCashRepository {
     input: z.infer<typeof c.RestaurantCashListRequestSchema>,
     actorScope: string,
     descending = false,
+    cursorScope?: unknown,
   ) {
     const request = c.RestaurantCashListRequestSchema.parse(input);
     const digest = fingerprint([
@@ -327,6 +328,7 @@ export class RestaurantCashRepository {
       kind,
       actorScope,
       descending,
+      cursorScope,
     ]);
     let start: Key | undefined;
     const sort = (timestamp: string, id: string) =>

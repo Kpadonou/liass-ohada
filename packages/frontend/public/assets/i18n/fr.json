@@ -5305,13 +5305,15 @@
       "PAYMENT_REFERENCE": "Référence",
       "TABLE_CONTEXT": "Table",
       "CAPTURED": "Encaissé",
-
       "REASON_COLUMN": "Motif",
       "DATE_TIME": "Date / Heure",
       "METHOD": "Moyen",
       "TYPE": "Type",
       "NO_PAYMENTS": "Aucun encaissement pour cette session.",
-
+      "PAYMENT_SEARCH": "Rechercher un encaissement",
+      "CLEAR_PAYMENT_SEARCH": "Effacer la recherche",
+      "NO_PAYMENT_SEARCH_RESULTS": "Aucun encaissement ne correspond à cette recherche.",
+      "PAYMENT_SEARCH_MORE_RESULTS": "D’autres encaissements peuvent correspondre. Poursuivez la recherche.",
       "CLOSED_VARIANCE": "Écart total des sessions clôturées",
       "SESSION": "Session",
       "CLOSED_AT": "Clôture",
@@ -5319,7 +5321,6 @@
       "OTHER_COLLECTIONS": "Autres encaissements",
       "NO_MOVEMENTS": "Aucun mouvement de caisse pour cette session.",
       "ACTIVITY": "Activité",
-
       "GROUP": "Caisse",
       "MY_CASH": "Ma session",
       "DAY_REVIEW": "Journée de caisse",
@@ -5372,6 +5373,27 @@
       "CLOSE_OWN": "Clôturer ma session",
       "CLOSE_NAMED": "Clôturer la session de {{name}}",
       "CLOSE_THIS": "Clôturer cette session"
+    },
+    "PAYMENT_ACTIONS": {
+      "DETAIL": "Consulter",
+      "BILL": "Voir l’addition",
+      "RECEIPT": "Voir le reçu",
+      "REFERENCE": "Référence Liass",
+      "METHOD": "Mode de paiement",
+      "CURRENCY": "Devise",
+      "CAPTURED_AT": "Encaissé le",
+      "TABLE": "Table",
+      "EXTERNAL_REFERENCE": "Référence externe",
+      "CAPTURED_BY": "Encaissé par",
+      "CASH_SESSION": "Session de caisse",
+      "SESSION_OPENED": "Ouverte le {{date}}",
+      "BUSINESS_DAY": "Journée de caisse",
+      "SERVICE": "Référence du service",
+      "RECEIPT_AVAILABILITY": "Reçu",
+      "AVAILABLE": "Disponible",
+      "UNAVAILABLE": "Indisponible",
+      "OPEN": "Service ouvert",
+      "CLOSED": "Service clôturé"
     }
   }
 }

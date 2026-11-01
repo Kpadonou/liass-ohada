@@ -1,3 +1,10 @@
+import { AuthStore } from '../../identity/data-access/auth.store';
+import {
+  RestaurantPaymentActionsComponent,
+  PaymentAction,
+} from './restaurant-payment-actions.component';
+import { RestaurantPaymentBillComponent } from './restaurant-payment-bill.component';
+import { RestaurantReceiptView } from './restaurant-receipt.page';
 import { MatTabsModule } from '@angular/material/tabs';
 import { LiassTablePreferencesDialogComponent } from '../../../shared/ui/table-preferences/table-preferences-dialog.component';
 import {
@@ -170,6 +177,9 @@ export class RestaurantCashCommandDialog {
     MatSidenavModule,
     LiassButtonComponent,
     LiassStatusChipComponent,
+    RestaurantPaymentActionsComponent,
+    RestaurantPaymentBillComponent,
+    RestaurantReceiptView,
     LiassPageHeaderComponent,
     LiassCardComponent,
     TranslocoModule,
@@ -626,6 +636,36 @@ export class RestaurantCashCommandDialog {
                         >
                         <ng-template matTabContent>
                           <section class="space-y-3 pt-3" data-activity-payments>
+                            <mat-form-field
+                              appearance="outline"
+                              subscriptSizing="dynamic"
+                              class="w-full sm:max-w-sm"
+                              data-payment-search
+                            >
+                              <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+                              <input
+                                matInput
+                                type="search"
+                                autocomplete="off"
+                                [value]="paymentSearchInput()"
+                                [placeholder]="'RESTAURANTS.CASH.PAYMENT_SEARCH' | transloco"
+                                [attr.aria-label]="'RESTAURANTS.CASH.PAYMENT_SEARCH' | transloco"
+                                (input)="updatePaymentSearch($event)"
+                              />
+                              @if (paymentSearchInput()) {
+                                <button
+                                  mat-icon-button
+                                  matSuffix
+                                  type="button"
+                                  [attr.aria-label]="
+                                    'RESTAURANTS.CASH.CLEAR_PAYMENT_SEARCH' | transloco
+                                  "
+                                  (click)="clearPaymentSearch()"
+                                >
+                                  <mat-icon>close</mat-icon>
+                                </button>
+                              }
+                            </mat-form-field>
                             @if (payments.isPending()) {
                               <p role="status">{{ 'RESTAURANTS.CASH.LOADING' | transloco }}</p>
                             } @else if (payments.isError()) {
@@ -655,6 +695,9 @@ export class RestaurantCashCommandDialog {
                                       </th>
                                       <th scope="col" class="w-px px-3 text-left whitespace-nowrap">
                                         {{ 'RESTAURANTS.CASH.STATUS' | transloco }}
+                                      </th>
+                                      <th scope="col" class="w-px px-3">
+                                        {{ 'RESTAURANTS.CASH.ACTIONS' | transloco }}
                                       </th>
                                     </tr>
                                   </thead>
@@ -690,6 +733,12 @@ export class RestaurantCashCommandDialog {
                                             size="sm"
                                           />
                                         </td>
+                                        <td class="px-3">
+                                          <liass-restaurant-payment-actions
+                                            [row]="row"
+                                            (activate)="openPayment(row, $event)"
+                                          />
+                                        </td>
                                       </tr>
                                     }
                                   </tbody>
@@ -698,9 +747,15 @@ export class RestaurantCashCommandDialog {
                               <div class="divide-y divide-app-border lg:hidden">
                                 @for (row of payments.data()?.items; track $index) {
                                   <div class="space-y-1 py-3">
-                                    <p class="font-semibold tabular-nums">
-                                      {{ formatCashAmount(row.amountMinor, row.currency) }}
-                                    </p>
+                                    <div class="flex items-start justify-between gap-3">
+                                      <p class="font-semibold tabular-nums">
+                                        {{ formatCashAmount(row.amountMinor, row.currency) }}
+                                      </p>
+                                      <liass-restaurant-payment-actions
+                                        [row]="row"
+                                        (activate)="openPayment(row, $event)"
+                                      />
+                                    </div>
                                     <p class="flex items-center gap-2 text-sm">
                                       <mat-icon aria-hidden="true">{{
                                         paymentIcon(row.method)
@@ -729,7 +784,14 @@ export class RestaurantCashCommandDialog {
                                 <p
                                   class="rounded-app-card border border-dashed border-app-border bg-app-surface-muted p-3 text-sm text-app-muted"
                                 >
-                                  {{ 'RESTAURANTS.CASH.NO_PAYMENTS' | transloco }}
+                                  {{
+                                    (paymentSearch() && !payments.data()?.nextCursor
+                                      ? 'RESTAURANTS.CASH.NO_PAYMENT_SEARCH_RESULTS'
+                                      : paymentSearch()
+                                        ? 'RESTAURANTS.CASH.PAYMENT_SEARCH_MORE_RESULTS'
+                                        : 'RESTAURANTS.CASH.NO_PAYMENTS'
+                                    ) | transloco
+                                  }}
                                 </p>
                               }
                               @if (payments.data()?.nextCursor; as cursor) {
@@ -952,11 +1014,78 @@ export class RestaurantCashCommandDialog {
         }
       </mat-drawer>
     }
+    @if (!management) {
+      <mat-drawer
+        position="end"
+        mode="over"
+        [opened]="!!selectedPayment()"
+        (closedStart)="selectedPaymentId.set('')"
+        class="w-full max-w-[480px] border-l border-app-border bg-app-surface p-4"
+        role="dialog"
+        [attr.aria-label]="'RESTAURANTS.PAYMENT_ACTIONS.' + paymentView() | transloco"
+        data-payment-detail
+      >
+        @if (selectedPayment(); as payment) {
+          <div class="space-y-5">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-lg font-semibold">
+                {{ 'RESTAURANTS.PAYMENT_ACTIONS.' + paymentView() | transloco }}
+              </h2>
+              <liass-button
+                size="icon"
+                variant="ghost"
+                icon="close"
+                [ariaLabel]="'COMMON.ACTIONS.CLOSE' | transloco"
+                (pressed)="selectedPaymentId.set('')"
+              />
+            </div>
+            @for (key of [paymentSelectionId(payment) + paymentView()]; track key) {
+              @switch (paymentView()) {
+                @case ('DETAIL') {
+                  <liass-status-chip
+                    [label]="'RESTAURANTS.CASH.CAPTURED' | transloco"
+                    tone="success"
+                    size="sm"
+                  />
+                  <p class="text-xl font-semibold tabular-nums">
+                    {{ formatCashAmount(payment.amountMinor, payment.currency) }}
+                  </p>
+                  <dl class="space-y-3 border-t border-app-border pt-3 text-sm">
+                    @for (field of paymentFields(payment); track field.key) {
+                      <div>
+                        <dt class="text-app-muted">
+                          {{ 'RESTAURANTS.PAYMENT_ACTIONS.' + field.key | transloco }}
+                        </dt>
+                        <dd class="break-words">{{ field.value }}</dd>
+                      </div>
+                    }
+                  </dl>
+                }
+                @case ('BILL') {
+                  <liass-restaurant-payment-bill [context]="context()" [row]="payment" />
+                }
+                @case ('RECEIPT') {
+                  @if (payment.billSessionId && payment.receiptId) {
+                    <liass-receipt-view
+                      [ctx]="receiptContext(payment)"
+                      [readOnly]="true"
+                      [expectedReceiptId]="payment.receiptId"
+                      (accessDenied)="selectedPaymentId.set('')"
+                    />
+                  }
+                }
+              }
+            }
+          </div>
+        }
+      </mat-drawer>
+    }
   </mat-drawer-container>`,
 })
 export class RestaurantCashPage {
   readonly cash = inject(RestaurantCashQueries);
   readonly i18n = inject(TranslocoService);
+  readonly auth = inject(AuthStore);
   formatCashAmount(amountMinor: number, currency: string) {
     return formatExactMoney(String(amountMinor), currency, this.i18n.getActiveLang());
   }
@@ -998,6 +1127,8 @@ export class RestaurantCashPage {
   readonly management = inject(ActivatedRoute).snapshot.data['cashManagement'] === true;
   readonly activityTab = signal(0);
   readonly paymentCursor = signal<string | undefined>(undefined);
+  readonly paymentSearchInput = signal('');
+  readonly paymentSearch = signal('');
   readonly selected = signal('');
   readonly closedDay = signal('');
   readonly movementCursor = signal<string | undefined>(undefined);
@@ -1009,11 +1140,21 @@ export class RestaurantCashPage {
       if (next !== prior) {
         prior = next;
         this.selected.set('');
+        this.selectedPaymentId.set('');
         this.closedDay.set('');
         this.movementCursor.set(undefined);
         this.paymentCursor.set(undefined);
+        this.paymentSearchInput.set('');
+        this.paymentSearch.set('');
         this.activityTab.set(0);
       }
+    });
+    effect((onCleanup) => {
+      const next = this.paymentSearchInput().trim();
+      const timeout = window.setTimeout(() => {
+        this.commitPaymentSearch(next);
+      }, 250);
+      onCleanup(() => window.clearTimeout(timeout));
     });
   }
 
@@ -1048,8 +1189,90 @@ export class RestaurantCashPage {
       this.context(),
       !this.management && this.activityTab() === 0 ? (this.session()?.cashSessionId ?? '') : '',
       this.paymentCursor(),
+      this.paymentSearch(),
     ),
   );
+  readonly selectedPaymentId = signal('');
+  readonly paymentView = signal<PaymentAction>('DETAIL');
+  updatePaymentSearch(event: Event) {
+    this.paymentSearchInput.set((event.target as HTMLInputElement).value);
+  }
+  clearPaymentSearch() {
+    this.paymentSearchInput.set('');
+  }
+  commitPaymentSearch(search: string) {
+    if (search === this.paymentSearch()) return;
+    this.paymentCursor.set(undefined);
+    this.selectedPaymentId.set('');
+    this.paymentSearch.set(search);
+  }
+  readonly selectedPayment = computed(() =>
+    this.payments
+      .data()
+      ?.items.find((row) => this.paymentSelectionId(row) === this.selectedPaymentId()),
+  );
+  paymentSelectionId(row: c.RestaurantCashPaymentRow) {
+    return row.paymentId ?? 'historical:' + this.payments.data()?.items.indexOf(row);
+  }
+  openPayment(row: c.RestaurantCashPaymentRow, action: PaymentAction) {
+    if (action === 'BILL' && !row.billSessionId) return;
+    if (action === 'RECEIPT' && (!row.billSessionId || !row.receiptId)) return;
+    this.paymentView.set(action);
+    this.selectedPaymentId.set(this.paymentSelectionId(row));
+  }
+  receiptContext(row: c.RestaurantCashPaymentRow) {
+    const context = this.context();
+    return {
+      org: context.org,
+      outlet: context.outlet,
+      user: context.user,
+      revision: context.revision,
+      session: row.billSessionId!,
+    };
+  }
+  paymentFields(row: c.RestaurantCashPaymentRow) {
+    const session =
+      this.session()?.cashSessionId === row.cashSessionId ? this.session() : undefined;
+    const day =
+      this.activeDay()?.businessDayId === row.businessDayId ? this.activeDay() : undefined;
+    const capturedBy =
+      (session?.cashierUserId === row.capturedByUserId
+        ? session?.cashierDisplayName?.trim()
+        : undefined) ||
+      (row.capturedByUserId === this.auth.currentUserId()
+        ? this.auth.currentUserDisplayName()?.trim()
+        : undefined);
+    return [
+      { key: 'REFERENCE', value: row.paymentReference },
+      { key: 'METHOD', value: this.i18n.translate('RESTAURANTS.CASH.' + row.method) },
+      { key: 'CURRENCY', value: row.currency },
+      { key: 'CAPTURED_AT', value: this.timestamp(row.capturedAt) },
+      {
+        key: row.guestSessionId && row.tableDisplayName ? 'SERVICE' : 'TABLE',
+        value: row.tableDisplayName,
+      },
+      { key: 'EXTERNAL_REFERENCE', value: row.externalReference },
+      { key: 'CAPTURED_BY', value: capturedBy },
+      {
+        key: 'CASH_SESSION',
+        value: session?.openedAt
+          ? this.i18n.translate('RESTAURANTS.PAYMENT_ACTIONS.SESSION_OPENED', {
+              date: this.timestamp(session.openedAt),
+            })
+          : undefined,
+      },
+      {
+        key: 'BUSINESS_DAY',
+        value: day?.businessDate ? this.businessDate(day.businessDate) : undefined,
+      },
+      {
+        key: 'RECEIPT_AVAILABILITY',
+        value: this.i18n.translate(
+          'RESTAURANTS.PAYMENT_ACTIONS.' + (row.receiptId ? 'AVAILABLE' : 'UNAVAILABLE'),
+        ),
+      },
+    ].filter((field) => field.value !== undefined);
+  }
   readonly columns = [
     'CASHIER',
     'OPENED_AT',

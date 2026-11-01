@@ -410,6 +410,76 @@ describe('Cash authoritative cache and request counts', () => {
       });
     },
   );
+  it('history loads only metadata; selected split bills share the canonical query cache', async () => {
+    const row: c.RestaurantCashPaymentRow = {
+      paymentId: rid(20),
+      guestSessionId: rid(9),
+      billSessionId: rid(9),
+      cashSessionId: rid(4),
+      businessDayId: rid(3),
+      capturedByUserId: 'cashier',
+      capturedAt: '2026-10-29T08:00:00.000Z',
+      method: 'CASH',
+      currency: 'XOF',
+      amountMinor: 100,
+      status: 'CAPTURED',
+    };
+    const split = { ...row, paymentId: rid(21), method: 'MOBILE_MONEY' as const };
+    http.get.mockReturnValue(of({ items: [row, split] }));
+    await client.fetchQuery(api.payments(scope, rid(4)));
+    expect(http.get).toHaveBeenCalledTimes(1);
+    expect(http.post).not.toHaveBeenCalled();
+    const bill = {
+      session: {
+        guestSessionId: rid(9),
+        tableName: 'Table',
+        openedAt: row.capturedAt,
+        status: 'CLOSED',
+        currency: 'XOF',
+        dueMinor: 200,
+        paidMinor: 200,
+      },
+      orders: [],
+      lines: [],
+    };
+    http.get.mockReturnValue(of(bill));
+    const options = api.bill(scope, row, '');
+    expect(options.queryKey).toEqual(api.bill(scope, split, '').queryKey);
+    await client.fetchInfiniteQuery(options);
+    await client.fetchInfiniteQuery(api.bill(scope, split, ''));
+    expect(http.get).toHaveBeenCalledTimes(2);
+    expect(http.get.mock.calls[1][0]).toContain('paymentId=' + rid(20));
+    expect(http.post).not.toHaveBeenCalled();
+    expect(api.bill({ ...scope, user: 'other' }, row, '').queryKey).not.toEqual(options.queryKey);
+    expect(api.bill({ ...scope, outlet: rid(99) }, row, '').queryKey).not.toEqual(options.queryKey);
+    expect(api.bill(scope, row, rid(30)).queryKey).not.toEqual(options.queryKey);
+  });
+  it('selected bill rejects a response for another GuestSession', async () => {
+    const row = {
+      paymentId: rid(20),
+      billSessionId: rid(9),
+      cashSessionId: rid(4),
+      capturedAt: '2026-10-29T08:00:00.000Z',
+    } as c.RestaurantCashPaymentRow;
+    http.get.mockReturnValue(
+      of({
+        session: {
+          guestSessionId: rid(99),
+          tableName: 'Table',
+          openedAt: row.capturedAt,
+          status: 'CLOSED',
+          currency: 'XOF',
+          dueMinor: 200,
+          paidMinor: 200,
+        },
+        orders: [],
+        lines: [],
+      }),
+    );
+    await expect(client.fetchInfiniteQuery(api.bill(scope, row, ''))).rejects.toThrow(
+      'Bill ownership mismatch',
+    );
+  });
 });
 
 describe('Cash column preferences', () => {

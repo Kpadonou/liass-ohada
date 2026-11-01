@@ -1,5 +1,15 @@
 # Repository Guidelines
 
+## DEV autonomy and Product Owner acceptance
+
+Codex has broad technical autonomy in DEV. Use appropriate engineering tools for diagnosis, implementation, deployment, and validation, including browser automation, real application interaction, Network and Console inspection, DEV APIs, logs, targeted data reads, scripts, tests, and DEV deployments. Do not rule out browser or runtime investigation when it materially helps. Keep repository searches and tests proportionate to the task; run broader validation once when justified.
+
+DEV test data may be created or changed when genuinely necessary. Report any direct data mutation explicitly, and validate through the normal application workflow when that workflow is under test.
+
+Report technical validation, Codex runtime validation, and Product Owner manual acceptance separately. Codex validation alone does not close a chantier that requires Product Owner acceptance.
+
+Do not deploy to PROD, mutate PROD data, run destructive PROD tests, or modify PROD infrastructure without explicit Product Owner authorization. Task-specific restrictions still apply.
+
 ## Mandatory global Liass UI reuse and design contract
 
 Applies to ALL frontend work: Accounting, Restaurants, Sales, Treasury, Project Accounting, every existing domain, new feature, UI bug fix, refactor, future product and vertical. Historical Accounting markup is evidence of composition, not an exemption or blanket approval of local styling.

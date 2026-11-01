@@ -313,4 +313,27 @@ describe('Receipt presentation and complete native print', () => {
     expect(printer.print).not.toHaveBeenCalled();
     expect(f.componentInstance.error()).toBe('READ_ERROR');
   });
+  it('payment history read-only entry never publishes a missing receipt', async () => {
+    api.page.mockRejectedValue(new HttpErrorResponse({ status: 404 }));
+    const fixture = TestBed.createComponent(RestaurantReceiptView);
+    fixture.componentRef.setInput('ctx', ctx);
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fixture.componentInstance.error()).toBe('READ_ERROR'));
+    expect(api.publish).not.toHaveBeenCalled();
+    await fixture.componentInstance.resume();
+    expect(api.publish).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
+  it('rejects a receipt different from the selected payment target', async () => {
+    const fixture = TestBed.createComponent(RestaurantReceiptView);
+    fixture.componentRef.setInput('ctx', ctx);
+    fixture.componentRef.setInput('readOnly', true);
+    fixture.componentRef.setInput('expectedReceiptId', rid(999));
+    fixture.detectChanges();
+    await vi.waitFor(() => expect(fixture.componentInstance.error()).toBe('READ_ERROR'));
+    expect(fixture.componentInstance.verified()).toBe(false);
+    expect(api.publish).not.toHaveBeenCalled();
+    fixture.destroy();
+  });
 });

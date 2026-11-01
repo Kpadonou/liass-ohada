@@ -29,9 +29,12 @@ export function restaurantCashHandler(
     ["DAYS", "SESSIONS", "MOVEMENTS", "PAYMENTS"].includes(route.query);
   const bodySchema =
     "command" in route ? cashCommands[route.command] : z.object({}).strict();
-  const querySchema = list
-    ? c.RestaurantCashListRequestSchema
-    : z.object({}).strict();
+  const querySchema =
+    "query" in route && route.query === "PAYMENTS"
+      ? c.RestaurantCashPaymentReadRequestSchema
+      : list
+        ? c.RestaurantCashListRequestSchema
+        : z.object({}).strict();
   return createHandler(
     z
       .object({ ...bodySchema.shape, ...querySchema.shape, ...pathFields })
@@ -63,7 +66,11 @@ export function restaurantCashHandler(
               : c.RestaurantCashSessionResponseSchema;
         return schema.parse(result);
       }
-      return querySchemas[route.query].parse(
+      return (
+        route.query === "PAYMENTS" && "paymentId" in query && query.paymentId
+          ? c.RestaurantCashBillResponseSchema
+          : querySchemas[route.query]
+      ).parse(
         await S.query(
           { orgId: context.orgId, outletId },
           context.userId,

@@ -144,6 +144,8 @@ const denied = (error: unknown) =>
 export class RestaurantReceiptView {
   readonly ctx = input.required<ServiceOrderContext>();
   readonly closed = input(false);
+  readonly readOnly = input(false);
+  readonly expectedReceiptId = input<string>();
   readonly accessDenied = output<void>();
   private readonly client = inject(QueryClient);
   private readonly api = inject(RestaurantReceiptApi);
@@ -243,7 +245,8 @@ export class RestaurantReceiptView {
       const error = this.first.error() ?? this.pages.error();
       if (denied(error)) this.reject();
       else if (error instanceof HttpErrorResponse && error.status === 404 && !this.ready()) {
-        if (!this.resumeNeeded() && !this.error()) void this.resume();
+        if (!this.readOnly() && !this.resumeNeeded() && !this.error()) void this.resume();
+        else if (this.readOnly()) this.error.set('READ_ERROR');
       } else if (this.first.error() && !this.error()) this.error.set('READ_ERROR');
     });
   }
@@ -266,6 +269,8 @@ export class RestaurantReceiptView {
     this.accessDenied.emit();
   }
   private validate(page: ReceiptPage) {
+    if (this.expectedReceiptId() && page.data.receiptId !== this.expectedReceiptId())
+      throw new Error('Receipt target mismatch');
     if (page.data.partCount && !page.parts.length) throw new Error('Missing receipt parts');
     let previous = 0;
     for (const p of page.parts) {
@@ -277,7 +282,8 @@ export class RestaurantReceiptView {
       throw new Error('Incomplete receipt page');
   }
   async resume() {
-    if (this.building() || !this.current() || !this.caps.canPublishReceipt()) return;
+    if (this.readOnly() || this.building() || !this.current() || !this.caps.canPublishReceipt())
+      return;
     const ctx = this.ctx();
     this.building.set(true);
     this.error.set('');

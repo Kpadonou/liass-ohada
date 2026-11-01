@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { GuestSessionSchema, RestaurantOrderSchema } from "./transactions";
+import { RestaurantReceiptLineSchema } from "./receipts";
 import {
   RestaurantPaidByMethodSchema,
   RestaurantPaymentMethodSchema,
@@ -190,6 +192,7 @@ export const RestaurantCashPaymentFactSchema = z
     currency: z.string().regex(/^[A-Z]{3}$/),
     capturedAt: timestamp,
     kind: z.literal("CAPTURE"),
+    guestSessionId: id.optional(),
     tableDisplayName: z.string().min(1).max(200).optional(),
     externalReference: z.string().min(1).max(200).optional(),
   })
@@ -258,6 +261,11 @@ export const RestaurantCashPaymentListResponseSchema = z
     items: z
       .array(
         RestaurantCashPaymentFactSchema.pick({
+          paymentId: true,
+          guestSessionId: true,
+          businessDayId: true,
+          cashSessionId: true,
+          capturedByUserId: true,
           capturedAt: true,
           paymentReference: true,
           method: true,
@@ -265,9 +273,57 @@ export const RestaurantCashPaymentListResponseSchema = z
           currency: true,
           tableDisplayName: true,
           externalReference: true,
-        }).extend({ status: z.literal("CAPTURED").default("CAPTURED") }),
+        }).extend({
+          paymentId: id.optional(),
+          businessDayId: id.optional(),
+          cashSessionId: id.optional(),
+          capturedByUserId: actor.optional(),
+          status: z.literal("CAPTURED").default("CAPTURED"),
+          billSessionId: id.optional(),
+          receiptId: id.optional(),
+        }),
       )
       .max(100),
     nextCursor: z.string().optional(),
   })
   .strict();
+
+// Selected bill reads reuse the history transport and its cash-session authorization.
+export const RestaurantCashPaymentReadRequestSchema =
+  RestaurantCashListRequestSchema.extend({
+    q: z.string().trim().min(1).max(100).optional(),
+    paymentId: id.optional(),
+    capturedAt: timestamp
+      .refine((value) => new Date(value).toISOString() === value)
+      .optional(),
+    orderId: id.optional(),
+  }).strict();
+export const RestaurantCashBillResponseSchema = z
+  .object({
+    session: GuestSessionSchema.pick({
+      guestSessionId: true,
+      tableName: true,
+      openedAt: true,
+      status: true,
+      currency: true,
+      dueMinor: true,
+      paidMinor: true,
+      paidByMethodMinor: true,
+    }),
+    orders: z
+      .array(
+        RestaurantOrderSchema.pick({
+          orderId: true,
+          dueMinor: true,
+          status: true,
+        }),
+      )
+      .max(50),
+    orderId: id.optional(),
+    lines: z.array(RestaurantReceiptLineSchema).max(100),
+    nextCursor: z.string().optional(),
+  })
+  .strict();
+export type RestaurantCashPaymentRow = z.infer<
+  typeof RestaurantCashPaymentListResponseSchema
+>["items"][number];

@@ -1,5 +1,7 @@
+import { RestaurantReceiptService as Receipt } from "@/lambda/domains/restaurants/receipt-service";
 import { randomUUID } from "crypto";
 import {
+  BatchGetItemCommand,
   GetItemCommand,
   QueryCommand,
   ScanCommand,
@@ -309,16 +311,14 @@ test("split payments attribute independently; day summary is bounded without N+1
   ).rejects.toThrow();
   expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
 
-  expect(Object.keys(history.items[0]).sort()).toEqual([
-    "amountMinor",
-    "capturedAt",
-    "currency",
-    "externalReference",
-    "method",
-    "paymentReference",
-    "status",
-    "tableDisplayName",
-  ]);
+  expect(history.items[0]).toMatchObject({
+    paymentId: expect.any(String),
+    guestSessionId: o.sessionId,
+    billSessionId: o.sessionId,
+    cashSessionId: a.cashSessionId,
+    capturedByUserId: "cashier",
+  });
+  expect(history.items[0]).not.toHaveProperty("receiptId");
   expect(history.items[0].status).toBe("CAPTURED");
   expect(history.items[0].paymentReference).toMatch(/^PAY-\d{8}-[A-F0-9]{8}$/);
   const capturedGuestSession = await S.session(scope(), o.sessionId);
@@ -983,6 +983,7 @@ test("payment history reads mixed reference generations without repairing or wri
         Date.parse(original.capturedAt) - 1_000,
       ).toISOString(),
       paymentReference: longReference,
+      guestSessionId: undefined,
       tableDisplayName: undefined,
       externalReference: undefined,
     },
@@ -993,6 +994,7 @@ test("payment history reads mixed reference generations without repairing or wri
         Date.parse(original.capturedAt) - 2_000,
       ).toISOString(),
       paymentReference: undefined,
+      guestSessionId: undefined,
       tableDisplayName: undefined,
       externalReference: undefined,
     },
@@ -1013,6 +1015,14 @@ test("payment history reads mixed reference generations without repairing or wri
     longReference,
     undefined,
   ]);
+  expect(
+    history.items
+      .slice(1)
+      .every(
+        (item) =>
+          !item.guestSessionId && !item.billSessionId && !item.receiptId,
+      ),
+  ).toBe(true);
   expect(history.items.map((item) => item.tableDisplayName)).toEqual([
     original.tableDisplayName,
     undefined,
@@ -1021,6 +1031,114 @@ test("payment history reads mixed reference generations without repairing or wri
   expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
   expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
   expect(m.db.commandCalls(QueryCommand)).toHaveLength(1);
+});
+
+test("payment search covers the full CashSession partition with term-bound stable pagination", async () => {
+  await openDay();
+  const session = await open();
+  const o = await order();
+  await payment(o);
+  const current = [...m.rows.values()]
+    .map((item) => unmarshall(item))
+    .find((row) => row.entityType === "RESTAURANT_CASH_PAYMENT");
+  const original = c.RestaurantCashPaymentFactSchema.parse(current!.data);
+  const facts = [
+    {
+      ...original,
+      paymentId: randomUUID(),
+      paymentReference: "PAY-20261030-AAAA0001",
+      capturedAt: new Date(
+        Date.parse(original.capturedAt) - 1_000,
+      ).toISOString(),
+      tableDisplayName: "Terrasse Soleil",
+      method: "CARD" as const,
+      guestSessionId: undefined,
+    },
+    {
+      ...original,
+      paymentId: randomUUID(),
+      paymentReference: "PAY-20261030-BBBB0002",
+      capturedAt: new Date(
+        Date.parse(original.capturedAt) - 2_000,
+      ).toISOString(),
+      tableDisplayName: "Salon intérieur",
+      method: "MOBILE_MONEY" as const,
+      guestSessionId: undefined,
+    },
+  ];
+  for (const fact of facts) {
+    const row = CR.row(scope(), "PAYMENT", fact);
+    m.rows.set(
+      JSON.stringify([row.PK, row.SK]),
+      marshall(row, { removeUndefinedValues: true }),
+    );
+  }
+
+  const byReference = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { q: "aaaa0001" },
+      session.cashSessionId,
+    ),
+  );
+  expect(byReference.items.map((item) => item.paymentReference)).toEqual([
+    "PAY-20261030-AAAA0001",
+  ]);
+  const byTable = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { q: "terrasse sol" },
+      session.cashSessionId,
+    ),
+  );
+  expect(byTable.items[0].tableDisplayName).toBe("Terrasse Soleil");
+  for (const q of ["carte", "captured", "encaissé"]) {
+    const result = c.RestaurantCashPaymentListResponseSchema.parse(
+      await Cash.query(
+        scope(),
+        "cashier",
+        "PAYMENTS",
+        { q },
+        session.cashSessionId,
+      ),
+    );
+    expect(result.items.length).toBeGreaterThan(0);
+  }
+
+  const first = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { q: "captured", limit: 1 },
+      session.cashSessionId,
+    ),
+  );
+  const second = c.RestaurantCashPaymentListResponseSchema.parse(
+    await Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { q: "captured", limit: 1, cursor: first.nextCursor },
+      session.cashSessionId,
+    ),
+  );
+  expect(first.nextCursor).toBeDefined();
+  expect(second.items[0].paymentId).not.toBe(first.items[0].paymentId);
+  await expect(
+    Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { q: "card", limit: 1, cursor: first.nextCursor },
+      session.cashSessionId,
+    ),
+  ).rejects.toMatchObject({ messageCode: "ERROR_INVALID_CURSOR" });
+  expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
 });
 
 test("public Payment references are independent, unique and durable across replay", async () => {
@@ -1245,4 +1363,193 @@ test("normal Cash GETs never write session, day, movement or Payment facts", asy
   }
   expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
   expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
+});
+
+test("payment actions retain immutable split relations, batch metadata and read-only bill access after closure", async () => {
+  await openDay();
+  const cash = await open();
+  const o = await order();
+  const visit = (await S.session(scope(), o.sessionId)).data;
+  m.db.resetHistory();
+  const first = await payment(o, "cashier", "CASH", 100);
+  // One caller version read plus the existing canonical capture read; the relation needs neither a bill nor a receipt read.
+  expect(
+    m.db
+      .commandCalls(GetItemCommand)
+      .filter(
+        (call) =>
+          call.args[0].input.Key?.PK?.S ===
+          K.restaurantSessionPK(orgId, f.outlet.id, o.sessionId),
+      ),
+  ).toHaveLength(2);
+  expect(
+    m.db
+      .commandCalls(GetItemCommand)
+      .filter((call) => call.args[0].input.Key?.PK?.S?.includes("#BILL#")),
+  ).toHaveLength(0);
+  const captureItems = m.db.commandCalls(TransactWriteItemsCommand)[0].args[0]
+    .input.TransactItems!;
+  const cashWrite = captureItems.find(
+    (item) => item.Put?.Item?.entityType?.S === "RESTAURANT_CASH_PAYMENT",
+  )!;
+  expect(unmarshall(cashWrite.Put!.Item!).data.guestSessionId).toBe(
+    o.sessionId,
+  );
+  await payment(o, "cashier", "MOBILE_MONEY", visit.dueMinor - 100);
+  const history = async () =>
+    c.RestaurantCashPaymentListResponseSchema.parse(
+      await Cash.query(scope(), "cashier", "PAYMENTS", {}, cash.cashSessionId),
+    );
+  m.db.resetHistory();
+  const before = await history();
+  expect(before.items.map((p) => p.billSessionId)).toEqual([
+    o.sessionId,
+    o.sessionId,
+  ]);
+  expect(before.items.every((p) => !p.receiptId)).toBe(true);
+  expect(m.db.commandCalls(BatchGetItemCommand)).toHaveLength(1);
+  expect(
+    Object.values(
+      m.db.commandCalls(BatchGetItemCommand)[0].args[0].input.RequestItems!,
+    )[0].Keys,
+  ).toHaveLength(1);
+  const fact = [...m.rows.values()]
+    .map((raw) => unmarshall(raw))
+    .find(
+      (raw) =>
+        raw.entityType === "RESTAURANT_CASH_PAYMENT" &&
+        (raw.data as { paymentId: string }).paymentId === first.data.paymentId,
+    )!;
+  const stored = CR.decode(
+    scope(),
+    { PK: fact.PK as string, SK: fact.SK as string },
+    "PAYMENT",
+    fact,
+  );
+  expect(stored.data.guestSessionId).toBe(o.sessionId);
+  expect(() =>
+    CR.put(
+      CR.row(scope(), "PAYMENT", {
+        ...stored.data,
+        guestSessionId: randomUUID(),
+      }),
+      stored,
+    ),
+  ).toThrow();
+  const currentOrder = (await S.order(scope(), o.orderId)).data;
+  await S.mutate(
+    { ...scope(), actorId: "owner" },
+    "CLOSE_ORDER",
+    { clientRequestId: req(), expectedVersion: currentOrder.version },
+    { orderId: o.orderId },
+  );
+  await S.mutate(
+    { ...scope(), actorId: "owner" },
+    "CLOSE_SESSION",
+    {
+      clientRequestId: req(),
+      expectedVersion: (await S.session(scope(), o.sessionId)).data.version,
+    },
+    { sessionId: o.sessionId },
+  );
+  const p = before.items[0];
+  m.db.resetHistory();
+  const bill = c.RestaurantCashBillResponseSchema.parse(
+    await Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { paymentId: p.paymentId, capturedAt: p.capturedAt, limit: 1 },
+      cash.cashSessionId,
+    ),
+  );
+  expect(bill.session).toMatchObject({
+    guestSessionId: o.sessionId,
+    status: "CLOSED",
+    dueMinor: visit.dueMinor,
+    paidMinor: visit.dueMinor,
+  });
+  expect(bill.lines[0].snapshot.quantity).toBe(2);
+  const { restaurantCashHandler } =
+    await import("@/lambda/domains/restaurants/cash-handler");
+  const route = RESTAURANT_CASH_ROUTES.find(
+    (route) => "query" in route && route.query === "PAYMENTS",
+  )!;
+  const response = await restaurantCashHandler(route)({
+    headers: { "x-org-id": orgId, "accept-language": "en" },
+    pathParameters: {
+      outletId: f.outlet.id,
+      cashSessionId: cash.cashSessionId,
+    },
+    queryStringParameters: {
+      paymentId: p.paymentId!,
+      capturedAt: p.capturedAt,
+    },
+    requestContext: { authorizer: { jwt: { claims: { sub: "cashier" } } } },
+  });
+  expect(response.statusCode).toBe(200);
+  expect(
+    c.RestaurantCashBillResponseSchema.parse(JSON.parse(response.body)).session
+      .guestSessionId,
+  ).toBe(o.sessionId);
+  expect(JSON.stringify(bill)).not.toContain("acceptedBy");
+  expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  await expect(
+    Cash.query(
+      scope(),
+      "cashier2",
+      "PAYMENTS",
+      { paymentId: p.paymentId, capturedAt: p.capturedAt },
+      cash.cashSessionId,
+    ),
+  ).rejects.toThrow();
+  await expect(
+    Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      { paymentId: randomUUID(), capturedAt: p.capturedAt },
+      cash.cashSessionId,
+    ),
+  ).rejects.toThrow();
+  await expect(
+    Cash.query(
+      scope(),
+      "cashier",
+      "PAYMENTS",
+      {
+        paymentId: p.paymentId,
+        capturedAt: p.capturedAt,
+        orderId: randomUUID(),
+      },
+      cash.cashSessionId,
+    ),
+  ).rejects.toThrow();
+  let state = await Receipt.publish(scope(), "owner", o.sessionId, {
+    clientRequestId: req(),
+  });
+  for (let i = 0; state.data.state !== "FINAL" && i < 20; i++)
+    state = await Receipt.publish(scope(), "owner", o.sessionId, {
+      clientRequestId: req(),
+    });
+  expect(state.data.state).toBe("FINAL");
+  m.db.resetHistory();
+  const final = await history();
+  expect(new Set(final.items.map((row) => row.receiptId)).size).toBe(1);
+  expect(final.items[0].receiptId).toBeTruthy();
+  // A canonical receipt identifier without its finalized result is not an available receipt.
+  const receiptKey = {
+    PK: K.restaurantBillPK(orgId, f.outlet.id, final.items[0].receiptId!),
+    SK: K.restaurantBillResultSK(),
+  };
+  const identity = JSON.stringify([receiptKey.PK, receiptKey.SK]);
+  const result = m.rows.get(identity)!;
+  expect(m.db.commandCalls(BatchGetItemCommand)).toHaveLength(2);
+  expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  m.rows.delete(identity);
+  expect((await history()).items.every((row) => !row.receiptId)).toBe(true);
+  m.rows.set(identity, result);
+  expect(
+    (await Receipt.read(scope(), "cashier", o.sessionId, {})).data.receiptId,
+  ).toBe(final.items[0].receiptId);
 });
