@@ -163,6 +163,16 @@ afterEach(() => {
 test("partial then exact remaining credit, detail/list and immutable source facts", async () => {
   const before = new Map(db.rows);
   const first = await create();
+  const canonical = await Service.invoiceDetail(
+    scope,
+    "manager",
+    first.data.creditNoteId,
+  );
+  expect(canonical.data.invoiceId).toBe(billId);
+  expect(canonical.data.sourceInvoiceDigest).toBe(
+    first.data.sourceReceiptDigest,
+  );
+  expect(canonical.data).not.toHaveProperty("finalBillId");
   const second = await create();
   expect(first.data.amountMinor).toBe(100);
   expect(second.data.amountMinor).toBe(100);
@@ -293,6 +303,21 @@ test("line quantity guard rejects excess before write", async () => {
     messageCode: "RESTAURANTS_CREDIT_QUANTITY_EXCEEDED",
   });
   expect(db.transactions).toHaveLength(0);
+});
+test("legacy chain verification rejects renamed hashed fields before canonical creation", async () => {
+  const address = JSON.stringify([
+    K.restaurantBillPK(scope.orgId, scope.outletId, billId),
+    K.restaurantBillPartSK(1),
+  ]);
+  const row = unmarshall(db.rows.get(address)!);
+  row.data.content.lines[0].invoiceId = billId;
+  db.rows.set(address, marshall(row));
+  const before = new Map(db.rows);
+  await expect(create()).rejects.toMatchObject({
+    messageCode: "RESTAURANTS_CREDIT_SOURCE",
+  });
+  expect(db.transactions).toHaveLength(0);
+  expect(db.rows).toEqual(before);
 });
 
 test("normalized line order replays the same intent and duplicate source identities are rejected", async () => {

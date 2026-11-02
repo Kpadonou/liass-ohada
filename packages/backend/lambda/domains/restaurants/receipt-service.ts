@@ -45,6 +45,9 @@ export function receiptSeed(
 ) {
   return hash(["RESTAURANT_RECEIPT_V1", context, orders]);
 }
+/** V1 publication/proof compatibility engine. Canonical consumers use Invoice semantics;
+ * names and hashed payloads here deliberately retain their historical representation.
+ */
 export class RestaurantReceiptService {
   static async authorize(scope: TransactionScope, actorId: string) {
     const access = await RestaurantServiceAccess.authorize(

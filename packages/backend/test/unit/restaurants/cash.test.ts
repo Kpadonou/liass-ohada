@@ -1407,6 +1407,7 @@ test("payment actions retain immutable split relations, batch metadata and read-
     o.sessionId,
   ]);
   expect(before.items.every((p) => !p.receiptId)).toBe(true);
+  expect(new Set(before.items.map((p) => p.paymentId)).size).toBe(2);
   expect(m.db.commandCalls(BatchGetItemCommand)).toHaveLength(1);
   expect(
     Object.values(
@@ -1537,6 +1538,13 @@ test("payment actions retain immutable split relations, batch metadata and read-
   const final = await history();
   expect(new Set(final.items.map((row) => row.receiptId)).size).toBe(1);
   expect(final.items[0].receiptId).toBeTruthy();
+  const canonicalInvoiceIds = final.items.map((row) =>
+    c.invoiceIdFromLegacyAliases({ receiptId: row.receiptId }),
+  );
+  expect(new Set(canonicalInvoiceIds).size).toBe(1);
+  expect(new Set(final.items.map((p) => p.paymentId))).toEqual(
+    new Set(before.items.map((p) => p.paymentId)),
+  );
   // A canonical receipt identifier without its finalized result is not an available receipt.
   const receiptKey = {
     PK: K.restaurantBillPK(orgId, f.outlet.id, final.items[0].receiptId!),

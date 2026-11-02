@@ -5,6 +5,8 @@ export * from "./guest-carte";
 export * from "./transactions";
 export * from "./service-floor";
 export * from "./staff";
+export * from "./invoices";
+export * from "./commercial-documents";
 
 export const RestaurantIdSchema = z.string().uuid();
 export const RestaurantNameSchema = z.string().trim().min(1).max(160);

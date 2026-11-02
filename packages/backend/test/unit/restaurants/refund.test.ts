@@ -144,6 +144,14 @@ test("partial, exact remaining, canonical/detail/list/activity, no generic movem
   const original = new Map(db.rows);
   const before = await active();
   const first = await create();
+  const canonical = await Refund.invoiceDetail(
+    scope,
+    "owner",
+    first.data.refundId,
+  );
+  expect(canonical.data.invoiceId).toBe(credit.finalBillId);
+  expect(canonical.data.creditNoteId).toBe(credit.creditNoteId);
+  expect(canonical.data).not.toHaveProperty("paymentId");
   const second = await create(request(500));
   expect(first.data).toMatchObject({
     status: "CONFIRMED",

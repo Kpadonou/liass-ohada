@@ -28,6 +28,16 @@ const canonicalKey = (scope: Scope, id: string) => ({
   SK: K.restaurantTransactionMetaSK(),
 });
 export class RestaurantRefundService {
+  /** Canonical read; detail() remains the V1 transport adapter. */
+  static async invoiceDetail(scope: Scope, actor: string, id: string) {
+    const detail = await this.detail(scope, actor, id);
+    const credit = await this.creditNote(
+      scope,
+      actor,
+      detail.data.creditNoteId,
+    );
+    return { data: c.adaptRefundToInvoice(detail.data, credit.invoiceId) };
+  }
   static async authorize(scope: Scope, actor: string, create = false) {
     const access = await Cash.authorize(scope, actor);
     if (create && !["OWNER", "MANAGER"].includes(access.role ?? ""))
@@ -129,7 +139,7 @@ export class RestaurantRefundService {
     if (!raw) fail("CREDIT_NOT_FOUND", 404);
     if (raw.status !== "VALIDATED") fail("CREDIT_NOT_VALIDATED");
     try {
-      return (await CreditNotes.detail(scope, actor, id)).data;
+      return (await CreditNotes.invoiceDetail(scope, actor, id)).data;
     } catch (error) {
       if (
         error instanceof z.ZodError ||
@@ -267,7 +277,7 @@ export class RestaurantRefundService {
       refundReference,
       creditNoteId,
       guestSessionId: credit.guestSessionId,
-      finalBillId: credit.finalBillId,
+      finalBillId: credit.invoiceId,
       currency: credit.currency,
       status: "CONFIRMED",
       refundedAt,
@@ -338,7 +348,7 @@ export class RestaurantRefundService {
           ":valid": "VALIDATED",
           ":amount": credit.amountMinor,
           ":currency": credit.currency,
-          ":digest": credit.sourceReceiptDigest,
+          ":digest": credit.sourceInvoiceDigest,
         },
       ),
       R.balanceWrite(

@@ -1,4 +1,5 @@
 import { openCashFixture } from "./cash-fixture";
+import { RestaurantInvoiceService as Invoice } from "@/lambda/domains/restaurants/invoice-service";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   QueryCommand,
@@ -559,6 +560,12 @@ test("interruption preserves immutable parts, hides BUILDING and resumes without
     }),
   ).rejects.toThrow("Lost part response");
   spy.mockRestore();
+  const reservedInvoiceId = (await S.session(scope(), v.sessionId)).data
+    .finalBillId;
+  expect(reservedInvoiceId).toBeTruthy();
+  await expect(
+    Invoice.read(scope(), "owner", v.sessionId, {}),
+  ).rejects.toMatchObject({ statusCode: 404 });
   await expect(
     Receipt.read(scope(), "owner", v.sessionId, {}),
   ).rejects.toMatchObject({ statusCode: 404 });
@@ -567,6 +574,26 @@ test("interruption preserves immutable parts, hides BUILDING and resumes without
     .map((r) => JSON.stringify(r));
   const result = await finish(v.sessionId, "owner", commandId);
   expect(result.lineCount).toBe(60);
+  expect(result.receiptId).toBe(reservedInvoiceId);
+  const proofBefore = JSON.stringify(
+    [...m.rows.values()].filter((r) =>
+      ["RESTAURANT_BILL_PART", "RESTAURANT_BILL_RESULT"].includes(
+        r.entityType?.S ?? "",
+      ),
+    ),
+  );
+  const canonical = await Invoice.read(scope(), "owner", v.sessionId, {});
+  expect(canonical.data.invoiceId).toBe(reservedInvoiceId);
+  expect(canonical.data.digest).toBe(result.digest);
+  expect(
+    JSON.stringify(
+      [...m.rows.values()].filter((r) =>
+        ["RESTAURANT_BILL_PART", "RESTAURANT_BILL_RESULT"].includes(
+          r.entityType?.S ?? "",
+        ),
+      ),
+    ),
+  ).toBe(proofBefore);
   const after = [...m.rows.values()].map((r) => JSON.stringify(r));
   expect(after).toEqual(expect.arrayContaining(before));
   expect((await S.session(scope(), v.sessionId)).data.status).toBe("CLOSED");

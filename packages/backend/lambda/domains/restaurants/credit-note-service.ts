@@ -33,11 +33,20 @@ const commandSchema = z
   })
   .strict();
 type SourceLine = {
-  line: z.infer<typeof c.RestaurantReceiptLineSchema>;
+  line: c.RestaurantInvoiceLine;
   part: number;
   position: number;
 };
 export class RestaurantCreditNoteService {
+  /** Canonical read; detail() retains the strict V1 transport representation. */
+  static async invoiceDetail(
+    scope: TransactionScope,
+    actor: string,
+    id: string,
+  ) {
+    const detail = await this.detail(scope, actor, id);
+    return { ...detail, data: c.adaptCreditNoteToInvoice(detail.data) };
+  }
   private static async sourceRead<T>(read: () => Promise<T>): Promise<T> {
     try {
       return await read();
@@ -196,12 +205,13 @@ export class RestaurantCreditNoteService {
     const session = await Sessions.session(scope, sessionId);
     if (session.data.status !== "CLOSED" || !session.data.finalBillId)
       fail("NOT_FINAL");
-    const billId = session.data.finalBillId;
+    const invoiceId = c.invoiceIdFromLegacyAliases(session.data);
+    // Legacy publication/persistence boundary: verify original bytes before adaptation.
     const manifest = await this.sourceRead(() =>
-      Receipts.get(scope, billId, "META", "MANIFEST"),
+      Receipts.get(scope, invoiceId, "META", "MANIFEST"),
     );
     const result = await this.sourceRead(() =>
-      Receipts.get(scope, billId, "RESULT", "RESULT"),
+      Receipts.get(scope, invoiceId, "RESULT", "RESULT"),
     );
     if (!manifest || manifest.state !== "FINAL" || !result) fail("NOT_FINAL");
     if (
@@ -228,7 +238,7 @@ export class RestaurantCreditNoteService {
       parts = 0;
     do {
       const page = await this.sourceRead(() =>
-        Receipts.parts(scope, billId, result.digest, result.partCount, {
+        Receipts.parts(scope, invoiceId, result.digest, result.partCount, {
           limit: 8,
           cursor,
         }),
@@ -268,6 +278,8 @@ export class RestaurantCreditNoteService {
       fail("SOURCE");
     const now = new Date().toISOString(),
       creditNoteId = randomUUID();
+    // Legacy proof has been fully verified above; business values use Invoice semantics.
+    const invoice = c.adaptReceiptSummaryToInvoice(result);
     const reference = `AV-${now.slice(0, 10).replace(/-/g, "")}-${randomBytes(4).toString("hex").toUpperCase()}`;
     const lines = request.lines.map((selected) => {
       const entry = source.get(`${selected.orderId}#${selected.itemId}`);
@@ -291,7 +303,7 @@ export class RestaurantCreditNoteService {
         creditedAmountMinor: integer(
           BigInt(selected.quantity) * BigInt(line.snapshot.unitPriceMinor),
         ),
-        currency: result.currency,
+        currency: invoice.currency,
         taxMinor: line.snapshot.taxMinor,
         discountMinor: line.snapshot.discountMinor,
         note: selected.note,
@@ -299,14 +311,14 @@ export class RestaurantCreditNoteService {
         entityType: "RESTAURANT_CREDIT_NOTE_LINE",
       });
     });
-    const data = c.RestaurantCreditNoteSchema.parse({
+    const canonicalCreditNote = c.RestaurantInvoiceCreditNoteSchema.parse({
       creditNoteId,
       creditNoteReference: reference,
       ...scope,
       guestSessionId: sessionId,
-      finalBillId: billId,
-      sourceReceiptDigest: result.digest,
-      currency: result.currency,
+      invoiceId: invoice.invoiceId,
+      sourceInvoiceDigest: invoice.digest,
+      currency: invoice.currency,
       amountMinor: integer(
         lines.reduce((n, l) => n + BigInt(l.creditedAmountMinor), 0n),
       ),
@@ -320,7 +332,12 @@ export class RestaurantCreditNoteService {
       entityType: "RESTAURANT_CREDIT_NOTE",
       lineCount: lines.length,
     });
-    const billPK = K.restaurantBillPK(scope.orgId, scope.outletId, billId);
+    const data = c.creditNoteToLegacyWire(canonicalCreditNote);
+    const billPK = K.restaurantBillPK(
+      scope.orgId,
+      scope.outletId,
+      invoice.invoiceId,
+    );
     const control = async (
       key: CreditKey,
       original: number,
@@ -335,10 +352,10 @@ export class RestaurantCreditNoteService {
       );
       if (
         old &&
-        (old.finalBillId !== billId ||
-          old.sourceReceiptDigest !== result.digest ||
+        (old.finalBillId !== invoice.invoiceId ||
+          old.sourceReceiptDigest !== invoice.digest ||
           old.originalAmountMinor !== original ||
-          old.currency !== result.currency ||
+          old.currency !== invoice.currency ||
           old.originalQuantity !== quantity?.original)
       )
         fail("SOURCE");
@@ -354,9 +371,9 @@ export class RestaurantCreditNoteService {
         key,
         "RESTAURANT_CREDIT_CONTROL",
         CreditControlSchema.parse({
-          finalBillId: billId,
-          sourceReceiptDigest: result.digest,
-          currency: result.currency,
+          finalBillId: invoice.invoiceId,
+          sourceReceiptDigest: invoice.digest,
+          currency: invoice.currency,
           originalAmountMinor: original,
           creditedMinor: integer(credited),
           version: (old?.version ?? 0) + 1,
@@ -390,7 +407,7 @@ export class RestaurantCreditNoteService {
         { PK: session.PK, SK: "META" },
         "#d.#s = :closed AND #d.#b = :bill",
         { "#d": "data", "#s": "status", "#b": "finalBillId" },
-        { ":closed": "CLOSED", ":bill": billId },
+        { ":closed": "CLOSED", ":bill": invoice.invoiceId },
       ),
     );
     actions.push(
@@ -400,7 +417,7 @@ export class RestaurantCreditNoteService {
         { "#d": "data", "#s": "state", "#h": "digest", "#v": "version" },
         {
           ":final": "FINAL",
-          ":digest": result.digest,
+          ":digest": invoice.digest,
           ":version": manifest.version,
         },
       ),
@@ -410,7 +427,7 @@ export class RestaurantCreditNoteService {
         { PK: billPK, SK: "RESULT" },
         "#d.#h = :digest AND #d.#a = :amount",
         { "#d": "data", "#h": "digest", "#a": "dueMinor" },
-        { ":digest": result.digest, ":amount": result.dueMinor },
+        { ":digest": invoice.digest, ":amount": invoice.dueMinor },
       ),
     );
     const PK = K.restaurantCreditNotePK(
@@ -442,7 +459,7 @@ export class RestaurantCreditNoteService {
     actions.push(
       await control(
         { PK: billPK, SK: K.restaurantCreditBalanceSK() },
-        result.dueMinor,
+        invoice.dueMinor,
         data.amountMinor,
       ),
     );

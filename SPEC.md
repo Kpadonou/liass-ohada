@@ -389,3 +389,16 @@ Before implementing a significant feature, Codex must:
 12. Do not introduce microservices solely to demonstrate domain separation; logical ownership comes first.
 
 **FINAL OBJECTIVE**: Deliver a scalable, modular, multi-tenant, production-ready Liass-OHADA platform with one coherent user experience, secure organization and product boundaries, independently owned business domains, and uncompromised OHADA/SYSCOHADA/SYCEBNL rigor wherever those legal and accounting rules apply.
+
+### Restaurants commercial document terminology
+
+Restaurants uses the following canonical domain vocabulary: Addition = operational
+`RestaurantBill` read model; Facture = immutable FINAL `RestaurantInvoice`; Encaissement
+= immutable `Payment`; Avoir = immutable `CreditNote`; Remboursement = immutable
+`Refund`. The generic Reçu term is reserved for a future `PaymentReceipt` and is not
+the canonical name of the final commercial document. Existing `/receipt` routes,
+`finalBillId`, `receiptId`, `BILL#` storage keys and receipt manifest/part/result names
+remain explicit compatibility artifacts. Domain adapters expose their exact UUID as
+`invoiceId` and `sourceReceiptDigest` as `sourceInvoiceDigest` without rewriting
+historical facts or changing digest semantics. Invoice availability still requires a
+verified FINAL publication result.
