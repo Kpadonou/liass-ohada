@@ -363,21 +363,27 @@ test("missing/nonvalidated/inconsistent CreditNote are rejected", async () => {
   const key = keyOf(cnPK()),
     original = db.rows.get(key)!;
   db.rows.delete(key);
+  const beforeMissing = new Map(db.rows);
   await expect(create()).rejects.toMatchObject({
     messageCode: "RESTAURANTS_REFUND_CREDIT_NOT_FOUND",
   });
+  expect(db.rows).toEqual(beforeMissing);
   const row = unmarshall(original);
   row.data.status = "DRAFT";
   db.rows.set(key, marshall(row));
+  const beforeDraft = new Map(db.rows);
   await expect(create()).rejects.toMatchObject({
     messageCode: "RESTAURANTS_REFUND_CREDIT_NOT_VALIDATED",
   });
+  expect(db.rows).toEqual(beforeDraft);
   row.data.status = "VALIDATED";
   row.data.amountMinor = 899;
   db.rows.set(key, marshall(row));
+  const beforeInvalid = new Map(db.rows);
   await expect(create()).rejects.toMatchObject({
     messageCode: "RESTAURANTS_REFUND_SOURCE",
   });
+  expect(db.rows).toEqual(beforeInvalid);
 });
 test("missing active day or own session rejected", async () => {
   const ptr = keyOf(
@@ -386,13 +392,17 @@ test("missing active day or own session rejected", async () => {
   );
   const raw = db.rows.get(ptr)!;
   db.rows.delete(ptr);
+  const withoutDay = new Map(db.rows);
   await expect(create()).rejects.toMatchObject({
     messageCode: "RESTAURANTS_REFUND_DAY_REQUIRED",
   });
+  expect(db.rows).toEqual(withoutDay);
   db.rows.set(ptr, raw);
+  const withoutSession = new Map(db.rows);
   await expect(create(request(), "manager")).rejects.toMatchObject({
     messageCode: "RESTAURANTS_REFUND_SESSION_REQUIRED",
   });
+  expect(db.rows).toEqual(withoutSession);
 });
 test("MANAGER succeeds only with own open context; current day differs from historical commercial context", async () => {
   await open("manager");
@@ -456,9 +466,11 @@ test("currency mismatch rejected", async () => {
   const raw = unmarshall(db.rows.get(keyOf(state.session.PK))!);
   raw.data.currency = "USD";
   db.rows.set(keyOf(state.session.PK), marshall(raw));
+  const before = new Map(db.rows);
   await expect(create()).rejects.toMatchObject({
     messageCode: "RESTAURANTS_REFUND_CURRENCY",
   });
+  expect(db.rows).toEqual(before);
 });
 test("concurrent competing refunds cannot overconsume and loser leaves no facts, projections or proof", async () => {
   const before = new Map(db.rows);
@@ -833,6 +845,7 @@ test("existing handler dispatches all three refund routes and rejects unauthoriz
   }
   for (const role of ["CASHIER", "WAITER", "KITCHEN"]) {
     db.seedAccess(scope.orgId, role.toLowerCase(), role);
+    const beforeDenied = new Map(db.rows);
     const response = await handler({
       ...base,
       requestContext: {
@@ -846,5 +859,74 @@ test("existing handler dispatches all three refund routes and rejects unauthoriz
       body: JSON.stringify(request(1)),
     });
     expect(response.statusCode).toBe(403);
+    expect(db.rows).toEqual(beforeDenied);
   }
+});
+
+test.each(["businessDayId", "cashierUserId", "status"] as const)(
+  "Refund rejects inconsistent resolved session %s before financial mutation",
+  async (field) => {
+    const current = await active();
+    const invalid = {
+      ...current,
+      session: {
+        ...current.session,
+        data: {
+          ...current.session.data,
+          [field]: field === "status" ? "CLOSED" : randomUUID(),
+        },
+      },
+    };
+    jest
+      .spyOn(Cash, "activeSession")
+      .mockResolvedValue(invalid as typeof current);
+    const before = new Map(db.rows);
+    const writes = db.db.commandCalls(TransactWriteItemsCommand).length;
+    await expect(create()).rejects.toMatchObject({
+      messageCode: "RESTAURANTS_REFUND_CONTEXT",
+    });
+    expect(db.rows).toEqual(before);
+    expect(db.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(writes);
+  },
+);
+
+test.each(["tenant", "outlet"] as const)(
+  "Refund commands and exact reads cannot cross unauthorized %s scope",
+  async (kind) => {
+    const refund = (await create(request(1))).data;
+    const foreign =
+      kind === "tenant"
+        ? { ...scope, orgId: "org-foreign" }
+        : { ...scope, outletId: randomUUID() };
+    const before = new Map(db.rows);
+    const writes = db.db.commandCalls(TransactWriteItemsCommand).length;
+    for (const operation of [
+      () => Refund.create(foreign, "owner", credit.creditNoteId, request(1)),
+      () => Refund.detail(foreign, "owner", refund.refundId),
+    ])
+      await expect(operation()).rejects.toMatchObject({
+        statusCode: 403,
+        messageCode:
+          kind === "tenant"
+            ? "PRODUCT_ACCESS_REQUIRED"
+            : "DOMAIN_PERMISSION_REQUIRED",
+      });
+    expect(db.rows).toEqual(before);
+    expect(db.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(writes);
+  },
+);
+
+test("Refund rejects resolved BusinessDay currency mismatch without any write", async () => {
+  const day = (await Cash.activeDay(scope))!;
+  jest.spyOn(Cash, "activeDay").mockResolvedValue({
+    ...day,
+    day: { ...day.day, data: { ...day.day.data, currency: "USD" } },
+  });
+  const before = new Map(db.rows);
+  const writes = db.db.commandCalls(TransactWriteItemsCommand).length;
+  await expect(create()).rejects.toMatchObject({
+    messageCode: "RESTAURANTS_REFUND_CURRENCY",
+  });
+  expect(db.rows).toEqual(before);
+  expect(db.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(writes);
 });
