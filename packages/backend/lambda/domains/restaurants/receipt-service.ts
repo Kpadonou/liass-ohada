@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { RestaurantDocumentCollections as Documents } from "./document-collections";
 import { z } from "zod";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
@@ -660,6 +661,21 @@ export class RestaurantReceiptService {
     });
     m.state = "FINAL";
     m.result = result;
+    const documentContext = await Documents.context(scope);
+    actions.push(
+      ...documentContext.actions,
+      Documents.put(scope, "INV", now, m.receiptId, {
+        ...scope,
+        invoiceId: m.receiptId,
+        guestSessionId: m.guestSessionId,
+        issuedAt: now,
+        businessDayId: documentContext.businessDayId,
+        tableDisplayName: result.tableName,
+        totalMinor: result.dueMinor,
+        currency: result.currency,
+        status: "FINAL",
+      }),
+    );
     actions.push(
       B.put(scope, m.receiptId, K.restaurantBillResultSK(), "RESULT", result),
     );

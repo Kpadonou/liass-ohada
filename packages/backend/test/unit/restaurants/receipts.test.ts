@@ -563,6 +563,11 @@ test("interruption preserves immutable parts, hides BUILDING and resumes without
   const reservedInvoiceId = (await S.session(scope(), v.sessionId)).data
     .finalBillId;
   expect(reservedInvoiceId).toBeTruthy();
+  expect(
+    [...m.rows.values()].filter(
+      (r) => r.entityType?.S === "RESTAURANT_DOCUMENT_INV",
+    ),
+  ).toHaveLength(0);
   await expect(
     Invoice.read(scope(), "owner", v.sessionId, {}),
   ).rejects.toMatchObject({ statusCode: 404 });
@@ -575,6 +580,11 @@ test("interruption preserves immutable parts, hides BUILDING and resumes without
   const result = await finish(v.sessionId, "owner", commandId);
   expect(result.lineCount).toBe(60);
   expect(result.receiptId).toBe(reservedInvoiceId);
+  const projections = [...m.rows.values()].filter(
+    (r) => r.entityType?.S === "RESTAURANT_DOCUMENT_INV",
+  );
+  expect(projections).toHaveLength(1);
+  expect(unmarshall(projections[0]).data.invoiceId).toBe(reservedInvoiceId);
   const proofBefore = JSON.stringify(
     [...m.rows.values()].filter((r) =>
       ["RESTAURANT_BILL_PART", "RESTAURANT_BILL_RESULT"].includes(
@@ -956,7 +966,7 @@ test("CASHIER publication has bounded reservation, part and FINAL action counts"
   )!;
   expect(reservation.TransactItems).toHaveLength(8);
   expect(part.TransactItems).toHaveLength(8);
-  expect(final.TransactItems).toHaveLength(10);
+  expect(final.TransactItems).toHaveLength(13);
   console.log(
     "RECEIPT_CASHIER_TX",
     JSON.stringify({

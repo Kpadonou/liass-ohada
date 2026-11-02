@@ -1,4 +1,5 @@
 import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
+import { RESTAURANT_DOCUMENT_COLLECTION_ROUTES } from "../../../lambda/domains/restaurants/document-collection-routes";
 import { RESTAURANT_REFUND_ROUTES } from "../../../lambda/domains/restaurants/refund-routes";
 import { RESTAURANT_CREDIT_NOTE_ROUTES } from "../../../lambda/domains/restaurants/credit-note-routes";
 import { Construct } from "constructs";
@@ -115,14 +116,19 @@ export function addRestaurantsManagementRoutes(
     });
   }
   for (const route of [
+    ...RESTAURANT_DOCUMENT_COLLECTION_ROUTES,
     ...RESTAURANT_CREDIT_NOTE_ROUTES,
     ...RESTAURANT_REFUND_ROUTES,
   ]) {
-    const family = RESTAURANT_REFUND_ROUTES.some(
-      (r) => r.path === route.path && r.method === route.method,
+    const family = RESTAURANT_DOCUMENT_COLLECTION_ROUTES.some(
+      (r) => r.path === route.path,
     )
-      ? "Refund"
-      : "CreditNote";
+      ? "Documents"
+      : RESTAURANT_REFUND_ROUTES.some(
+            (r) => r.path === route.path && r.method === route.method,
+          )
+        ? "Refund"
+        : "CreditNote";
     new apigw.HttpRoute(scope, `${family}-${route.method}-${route.path}`, {
       httpApi: props.api,
       authorizer: props.authorizer,

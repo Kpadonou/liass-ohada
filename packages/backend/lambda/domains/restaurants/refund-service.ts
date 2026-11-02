@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "crypto";
+import { RestaurantDocumentCollections as Documents } from "./document-collections";
 import { z } from "zod";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
@@ -399,6 +400,15 @@ export class RestaurantRefundService {
         refundId,
       }),
     ];
+    actions.push(
+      ...(await Documents.refundWrite(
+        scope,
+        creditNoteId,
+        balance?.refundedMinor ?? 0,
+        refundedMinor,
+        credit.amountMinor,
+      )),
+    );
     R.budget(actions);
     try {
       await R.commit(actions);

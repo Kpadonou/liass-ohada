@@ -13,6 +13,13 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  restaurantDocumentsPK: (orgId: string, outletId: string, month: string) => {
+    if (!/^\d{6}$/.test(month)) throw new Error("Invalid document month");
+    return `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#DOCS#${month}`;
+  },
+  restaurantDocumentSK: (kind: "INV" | "CN", at: string, id: string) =>
+    `${kind}#${restaurantTransactionTimestamp(at)}#${restaurantTransactionSegment(id)}`,
+  restaurantCreditDocumentLocatorSK: () => "DOCUMENT_LOCATOR",
   restaurantRefundPK: (orgId: string, outletId: string, id: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#REFUND#${restaurantTransactionSegment(id)}`,
   restaurantRefundSK: (timestamp: string, id: string) =>

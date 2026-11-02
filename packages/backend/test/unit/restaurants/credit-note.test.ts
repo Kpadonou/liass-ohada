@@ -163,6 +163,16 @@ afterEach(() => {
 test("partial then exact remaining credit, detail/list and immutable source facts", async () => {
   const before = new Map(db.rows);
   const first = await create();
+  const projection = [...db.rows.values()]
+    .map((r) => unmarshall(r))
+    .find((r) => r.entityType === "RESTAURANT_DOCUMENT_CN");
+  expect(projection?.data).toMatchObject({
+    creditNoteId: first.data.creditNoteId,
+    invoiceId: billId,
+    businessDayId: null,
+    refundedMinor: 0,
+    remainingRefundableMinor: 100,
+  });
   const canonical = await Service.invoiceDetail(
     scope,
     "manager",
@@ -219,6 +229,21 @@ test("durable idempotent retry returns original and changed intent conflicts", a
   });
   expect(db.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(1);
 });
+test("concurrent same-intent CreditNotes converge to one canonical projection and locator", async () => {
+  const intent = input();
+  const outcomes = await Promise.allSettled([create(intent), create(intent)]);
+  expect(outcomes.some((o) => o.status === "fulfilled")).toBe(true);
+  const first = await create(intent);
+  const replay = await create(intent);
+  expect(replay.data).toEqual(first.data);
+  const rows = [...db.rows.values()].map((r) => unmarshall(r));
+  for (const entityType of [
+    "RESTAURANT_CREDIT_NOTE",
+    "RESTAURANT_DOCUMENT_CN",
+    "RESTAURANT_DOCUMENT_LOCATOR",
+  ])
+    expect(rows.filter((r) => r.entityType === entityType)).toHaveLength(1);
+});
 test("competing transactions cannot over-credit and loser leaves no partial facts", async () => {
   const results = await Promise.allSettled([
     create(input(2)),
@@ -273,7 +298,7 @@ test("16 lines fit the measured atomic transaction budget", async () => {
   const result = await create(input(2));
   expect(result.lines).toHaveLength(16);
   const budget = Repo.budget(db.transactions.at(-1)!.TransactItems!);
-  expect(budget.operations).toBe(40);
+  expect(budget.operations).toBe(43);
   expect(budget.serializedBytes).toBeLessThan(100_000);
   console.info("CREDIT_NOTE_16_LINE_BUDGET", budget);
 });
@@ -428,6 +453,10 @@ test("real membership/entitlement/outlet checks fit the 16-line budget and sourc
   db.seedAccess(scope.orgId, actor, "MANAGER");
   jest.mocked(Sessions.session).mockRestore();
   seed(16, false, "😀".repeat(80));
+  await Cash.mutate(scope, actor, "OPEN_DAY", {
+    clientRequestId: randomUUID(),
+    operationalTimezone: "Africa/Porto-Novo",
+  });
   const before = new Map(db.rows);
   const result = await Service.create(scope, actor, sessionId, {
     ...input(2),
@@ -436,7 +465,7 @@ test("real membership/entitlement/outlet checks fit the 16-line budget and sourc
   });
   expect(result.lines).toHaveLength(16);
   const budget = Repo.budget(db.transactions.at(-1)!.TransactItems!);
-  expect(budget.operations).toBe(43);
+  expect(budget.operations).toBe(47);
   expect(budget.serializedBytes).toBeLessThan(100_000);
   console.info("CREDIT_NOTE_16_LINE_AUTHORIZED_BUDGET", budget);
   for (const [key, value] of before) expect(db.rows.get(key)).toEqual(value);
@@ -453,6 +482,8 @@ test("real membership/entitlement/outlet checks fit the 16-line budget and sourc
         "RESTAURANT_CREDIT_NOTE_SUMMARY",
         "RESTAURANT_CREDIT_NOTE_REFERENCE",
         "RESTAURANT_CREDIT_NOTE_COMMAND",
+        "RESTAURANT_DOCUMENT_CN",
+        "RESTAURANT_DOCUMENT_LOCATOR",
       ].includes(row.entityType),
     ),
   ).toBe(true);

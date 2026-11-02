@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { RestaurantDocumentCollections as Documents } from "@/lambda/domains/restaurants/document-collections";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   ScanCommand,
@@ -140,6 +141,58 @@ async function balance() {
     RestaurantRefundBalanceSchema,
   );
 }
+test.each(["CASH", "CARD", "MOBILE_MONEY"] as const)(
+  "monthly CreditNote projection accumulates %s refunds exactly once across months",
+  async (method) => {
+    const at = "2026-01-01T10:00:00.000Z";
+    const projection = Documents.put(scope, "CN", at, credit.creditNoteId, {
+      ...scope,
+      creditNoteId: credit.creditNoteId,
+      creditNoteReference: credit.creditNoteReference,
+      invoiceId: credit.finalBillId,
+      guestSessionId: credit.guestSessionId,
+      validatedAt: at,
+      businessDayId: null,
+      tableDisplayName: "Table",
+      reason: credit.reason,
+      amountMinor: 900,
+      currency: "XOF",
+      refundedMinor: 0,
+      remainingRefundableMinor: 900,
+      status: "VALIDATED",
+    }).Put!.Item!;
+    const locator = Documents.locator(scope, credit.creditNoteId, at).Put!
+      .Item!;
+    for (const row of [projection, locator])
+      db.rows.set(JSON.stringify([row.PK.S, row.SK.S]), row);
+    const intent = { ...request(400), method };
+    await create(intent);
+    await create(intent);
+    console.log(
+      "REFUND_PROJECTED_TRANSACTION_BUDGET",
+      JSON.stringify(
+        RefundItems.budget(db.transactions.at(-1)!.TransactItems!),
+      ),
+    );
+    const row = unmarshall(
+      db.rows.get(JSON.stringify([projection.PK.S, projection.SK.S]))!,
+    );
+    expect(row.data.refundedMinor).toBe(400);
+    expect(row.data.remainingRefundableMinor).toBe(500);
+    const lastIntent = { ...request(500), method };
+    const contenders = await Promise.allSettled([
+      create(lastIntent),
+      create({ ...request(500), method }),
+    ]);
+    expect(contenders.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    await expect(create({ ...request(1), method })).rejects.toThrow();
+    const final = unmarshall(
+      db.rows.get(JSON.stringify([projection.PK.S, projection.SK.S]))!,
+    );
+    expect(final.data.refundedMinor).toBe(900);
+    expect(final.data.remainingRefundableMinor).toBe(0);
+  },
+);
 test("partial, exact remaining, canonical/detail/list/activity, no generic movement, immutable commercial and historical facts", async () => {
   const original = new Map(db.rows);
   const before = await active();
@@ -699,13 +752,40 @@ test("three explicit refund routes and measured bounded transaction payload with
     oldBalance,
   );
   db.rows.set(keyOf(balanceRow.PK, balanceRow.SK), marshall(balanceRow));
+  const documentAt = "2026-01-01T10:00:00.000Z";
+  const projected = Documents.put(
+    scope,
+    "CN",
+    documentAt,
+    credit.creditNoteId,
+    {
+      ...scope,
+      creditNoteId: credit.creditNoteId,
+      creditNoteReference: credit.creditNoteReference,
+      invoiceId: credit.finalBillId,
+      guestSessionId: credit.guestSessionId,
+      validatedAt: documentAt,
+      businessDayId: null,
+      tableDisplayName: "Table",
+      reason: credit.reason,
+      amountMinor: max,
+      currency: "XOF",
+      refundedMinor: 1,
+      remainingRefundableMinor: max - 1,
+      status: "VALIDATED",
+    },
+  ).Put!.Item!;
+  const locator = Documents.locator(scope, credit.creditNoteId, documentAt).Put!
+    .Item!;
+  for (const item of [projected, locator])
+    db.rows.set(keyOf(item.PK.S!, item.SK.S!), item);
   await create(
     { ...request(max - 1), externalReference: "😀".repeat(100) },
     actor,
   );
   const transaction = db.transactions.at(-1)!;
   const result = RefundItems.budget(transaction.TransactItems!);
-  expect(result.operations).toBe(15);
+  expect(result.operations).toBe(16);
   expect(result.serializedBytes).toBeLessThan(3 * 1024 * 1024);
   console.log("REFUND_TRANSACTION_BUDGET", JSON.stringify(result));
 });

@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from "crypto";
+import { RestaurantDocumentCollections as Documents } from "./document-collections";
 import { z } from "zod";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
@@ -464,6 +465,27 @@ export class RestaurantCreditNoteService {
       ),
     );
     actions.push(R.put(scope, { PK, SK: "META" }, data.entityType, data));
+    const documentContext = await Documents.context(scope);
+    actions.push(
+      ...documentContext.actions,
+      Documents.locator(scope, creditNoteId, now),
+      Documents.put(scope, "CN", now, creditNoteId, {
+        ...scope,
+        creditNoteId,
+        creditNoteReference: reference,
+        invoiceId: invoice.invoiceId,
+        guestSessionId: sessionId,
+        validatedAt: now,
+        businessDayId: documentContext.businessDayId,
+        tableDisplayName: invoice.tableName,
+        reason: data.reason,
+        amountMinor: data.amountMinor,
+        currency: data.currency,
+        refundedMinor: 0,
+        remainingRefundableMinor: data.amountMinor,
+        status: "VALIDATED",
+      }),
+    );
     actions.push(
       R.put(
         scope,

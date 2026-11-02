@@ -1,4 +1,6 @@
 import { RESTAURANT_CASH_ROUTES } from "./cash-routes";
+import { RESTAURANT_DOCUMENT_COLLECTION_ROUTES } from "./document-collection-routes";
+import { RestaurantDocumentCollections } from "./document-collections";
 import { RESTAURANT_REFUND_ROUTES } from "./refund-routes";
 import { restaurantRefundHandler } from "./refund-handler";
 import { RESTAURANT_CREDIT_NOTE_ROUTES } from "./credit-note-routes";
@@ -28,6 +30,27 @@ const inventoryPaths = [
   ),
 ];
 const routes = new Map<string, typeof original>([
+  ...RESTAURANT_DOCUMENT_COLLECTION_ROUTES.map(
+    (r) =>
+      [
+        `${r.method} ${r.path}`,
+        createHandler(
+          z.object({ outletId: z.string().uuid() }).passthrough(),
+          async (input, context) =>
+            RestaurantDocumentCollections.list(
+              { orgId: context.orgId, outletId: input.outletId },
+              context.userId,
+              r.kind,
+              context.event.queryStringParameters ?? {},
+            ),
+          {
+            productCode: "RESTAURANTS",
+            permission: "RESTAURANTS_CHECKOUT_READ",
+            action: r.operation,
+          },
+        ),
+      ] as const,
+  ),
   ...RESTAURANT_REFUND_ROUTES.map(
     (r) => [`${r.method} ${r.path}`, restaurantRefundHandler(r)] as const,
   ),
