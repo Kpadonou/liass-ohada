@@ -18,8 +18,8 @@ test('desktop final column and mobile records reuse exactly the same contextual 
 });
 test('FR and EN action labels follow the product contract', () => {
   for (const [lang, expected] of [
-    ['fr', ['Consulter', 'Voir l’addition', 'Voir le reçu']],
-    ['en', ['View details', 'View bill', 'View receipt']],
+    ['fr', ['Consulter', 'Voir l’addition', 'Voir la facture']],
+    ['en', ['View details', 'View bill', 'View invoice']],
   ]) {
     const labels = JSON.parse(read(`public/assets/i18n/${lang}.json`)).RESTAURANTS.PAYMENT_ACTIONS;
     assert.deepEqual([labels.DETAIL, labels.BILL, labels.RECEIPT], expected);

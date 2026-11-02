@@ -27,8 +27,12 @@ const day: c.RestaurantBusinessDay = {
   version: 1,
   sessionCount: 1,
   openSessionCount: 1,
+  invoiceCount: 6,
+  creditNoteCount: 3,
 };
 const session: c.RestaurantCashSession = {
+  refundedByMethodMinor: { CASH: 0, CARD: 0, MOBILE_MONEY: 0 },
+  refundCount: 0,
   orgId: 'org',
   outletId: rid(2),
   cashSessionId: rid(4),
@@ -82,6 +86,35 @@ describe('Cash authoritative cache and request counts', () => {
     client.setQueryData(cashKeys.read(initial, 'business-days/current'), { data: day });
     client.setQueryData(cashKeys.read(initial, 'cash-sessions/current'), { data: session });
   }
+  it('owns document totals in the BusinessDay query, including zero and legacy reads, independently of document pages', async () => {
+    const options = api.day(scope);
+    expect(client.getQueryData(options.queryKey)).toBeUndefined();
+    const legacy = { ...day } as Record<string, unknown>;
+    delete legacy['invoiceCount'];
+    delete legacy['creditNoteCount'];
+    http.get.mockReturnValue(of({ data: legacy }));
+    expect((await client.fetchQuery(options)).data).toMatchObject({
+      invoiceCount: 0,
+      creditNoteCount: 0,
+    });
+    const documents = ['restaurants', scope.org, 'outlet', scope.outlet, 'documents'];
+    client.setQueryData([...documents, 'invoices', { q: 'ALTAB', cursor: 'next', history: true }], {
+      pages: [{ items: Array(50).fill({}) }],
+    });
+    await client.invalidateQueries({ queryKey: documents });
+    expect(client.getQueryData(options.queryKey)).toMatchObject({
+      data: { invoiceCount: 0, creditNoteCount: 0 },
+    });
+    http.get.mockReturnValue(
+      of({ data: { ...day, businessDayId: rid(99), invoiceCount: 6, creditNoteCount: 3 } }),
+    );
+    await client.invalidateQueries({ queryKey: options.queryKey });
+    expect((await client.fetchQuery(options)).data).toMatchObject({
+      businessDayId: rid(99),
+      invoiceCount: 6,
+      creditNoteCount: 3,
+    });
+  });
   function measuredReads() {
     const summary = {
       businessDay: day,

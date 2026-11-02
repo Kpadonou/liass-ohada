@@ -1,4 +1,5 @@
 import { AuthStore } from '../../identity/data-access/auth.store';
+import { RestaurantDocumentCollectionComponent } from './restaurant-document-collection.component';
 import {
   RestaurantPaymentActionsComponent,
   PaymentAction,
@@ -171,6 +172,7 @@ export class RestaurantCashCommandDialog {
   selector: 'liass-restaurant-cash',
   imports: [
     MatTabsModule,
+    RestaurantDocumentCollectionComponent,
     MatMenuModule,
     MatIconModule,
     MatTooltipModule,
@@ -585,7 +587,27 @@ export class RestaurantCashCommandDialog {
                         <span class="text-sm text-app-muted">{{ timestamp(s.openedAt) }}</span>
                       </div>
                       @if (s.status === 'OPEN') {
-                        <div data-session-header-actions>
+                        <div
+                          class="flex flex-wrap items-center gap-3"
+                          data-session-header-actions
+                          data-session-actions
+                        >
+                          @if (caps.canManageSetup()) {
+                            <liass-button
+                              tone="success"
+                              variant="outline"
+                              icon="arrow_downward"
+                              (pressed)="move(s, 'CASH_IN')"
+                              >{{ 'RESTAURANTS.CASH.CASH_IN' | transloco }}</liass-button
+                            >
+                            <liass-button
+                              tone="warning"
+                              variant="outline"
+                              icon="arrow_upward"
+                              (pressed)="move(s, 'CASH_OUT')"
+                              >{{ 'RESTAURANTS.CASH.CASH_OUT' | transloco }}</liass-button
+                            >
+                          }
                           <liass-button
                             tone="brand"
                             variant="solid"
@@ -599,35 +621,16 @@ export class RestaurantCashCommandDialog {
                         </div>
                       }
                     </div>
-                    @if (s.status === 'OPEN' && caps.canManageSetup()) {
-                      <div class="flex flex-wrap items-center gap-3" data-session-actions>
-                        <liass-button
-                          tone="success"
-                          variant="outline"
-                          icon="arrow_downward"
-                          (pressed)="move(s, 'CASH_IN')"
-                          >{{ 'RESTAURANTS.CASH.CASH_IN' | transloco }}</liass-button
-                        >
-                        <liass-button
-                          tone="warning"
-                          variant="outline"
-                          icon="arrow_upward"
-                          (pressed)="move(s, 'CASH_OUT')"
-                          >{{ 'RESTAURANTS.CASH.CASH_OUT' | transloco }}</liass-button
-                        >
-                      </div>
-                    }
                     <mat-tab-group
                       [mat-stretch-tabs]="false"
-                      [disablePagination]="true"
+                      [disablePagination]="false"
                       mat-align-tabs="start"
                       [selectedIndex]="activityTab()"
                       (selectedIndexChange)="activityTab.set($event)"
                       ><mat-tab labelClass="!min-w-0 !px-2 sm:!px-6"
                         ><ng-template mat-tab-label
                           ><span class="inline-flex items-center gap-2 whitespace-nowrap"
-                            ><mat-icon class="hidden sm:inline-flex" aria-hidden="true"
-                              >payments</mat-icon
+                            ><mat-icon aria-hidden="true">payments</mat-icon
                             ><span
                               >{{ 'RESTAURANTS.CASH.COLLECTIONS' | transloco }} ·
                               {{ formatNumber(s.paymentCount) }}</span
@@ -802,11 +805,48 @@ export class RestaurantCashCommandDialog {
                             }
                           </section></ng-template
                         ></mat-tab
-                      ><mat-tab labelClass="!min-w-0 !px-2 sm:!px-6"
+                      >
+                      <mat-tab
                         ><ng-template mat-tab-label
                           ><span class="inline-flex items-center gap-2 whitespace-nowrap"
-                            ><mat-icon class="hidden sm:inline-flex" aria-hidden="true"
-                              >swap_vert</mat-icon
+                            ><mat-icon aria-hidden="true">description</mat-icon
+                            >{{ 'RESTAURANTS_DOCUMENTS.INVOICES' | transloco }}
+                            @if (day.data()?.data; as activeDay) {
+                              <span [matTooltip]="'RESTAURANTS_DOCUMENTS.COUNT_SCOPE' | transloco"
+                                >· {{ formatNumber(activeDay.invoiceCount) }}</span
+                              >
+                            }
+                          </span></ng-template
+                        ><ng-template matTabContent
+                          ><liass-restaurant-document-collection
+                            kind="invoices"
+                            (viewCredits)="viewInvoiceCredits($event)"
+                            [active]="activityTab() === 1"
+                            [day]="day.data()?.data ?? null" /></ng-template
+                      ></mat-tab>
+                      <mat-tab
+                        ><ng-template mat-tab-label
+                          ><span class="inline-flex items-center gap-2 whitespace-nowrap"
+                            ><mat-icon aria-hidden="true">assignment_return</mat-icon
+                            >{{ 'RESTAURANTS_DOCUMENTS.CREDITS' | transloco }}
+                            @if (day.data()?.data; as activeDay) {
+                              <span [matTooltip]="'RESTAURANTS_DOCUMENTS.COUNT_SCOPE' | transloco"
+                                >· {{ formatNumber(activeDay.creditNoteCount) }}</span
+                              >
+                            }
+                          </span></ng-template
+                        ><ng-template matTabContent
+                          ><liass-restaurant-document-collection
+                            kind="credit-notes"
+                            [contextualInvoice]="creditContext()"
+                            (contextCleared)="creditContext.set(null)"
+                            [active]="activityTab() === 2"
+                            [day]="day.data()?.data ?? null" /></ng-template
+                      ></mat-tab>
+                      <mat-tab labelClass="!min-w-0 !px-2 sm:!px-6"
+                        ><ng-template mat-tab-label
+                          ><span class="inline-flex items-center gap-2 whitespace-nowrap"
+                            ><mat-icon aria-hidden="true">swap_vert</mat-icon
                             ><span class="sm:hidden">{{
                               'RESTAURANTS.CASH.MOVEMENTS_SHORT' | transloco
                             }}</span>
@@ -917,6 +957,78 @@ export class RestaurantCashCommandDialog {
                   </button>
                 }
               }
+            }
+            @if (
+              !management &&
+              day.isSuccess() &&
+              (!day.data()?.data || (current.isSuccess() && !session()))
+            ) {
+              <mat-tab-group
+                [mat-stretch-tabs]="false"
+                mat-align-tabs="start"
+                [selectedIndex]="activityTab()"
+                (selectedIndexChange)="activityTab.set($event)"
+              >
+                <mat-tab
+                  ><ng-template mat-tab-label
+                    ><span class="inline-flex items-center gap-2 whitespace-nowrap"
+                      ><mat-icon aria-hidden="true">payments</mat-icon
+                      >{{ 'RESTAURANTS.CASH.COLLECTIONS' | transloco }}</span
+                    ></ng-template
+                  >
+                  <p class="py-3 text-sm">
+                    {{ 'RESTAURANTS.CASH.NO_PAYMENTS' | transloco }}
+                  </p></mat-tab
+                >
+                <mat-tab
+                  ><ng-template mat-tab-label
+                    ><span class="inline-flex items-center gap-2 whitespace-nowrap"
+                      ><mat-icon aria-hidden="true">description</mat-icon
+                      >{{ 'RESTAURANTS_DOCUMENTS.INVOICES' | transloco }}
+                      @if (day.data()?.data; as activeDay) {
+                        <span [matTooltip]="'RESTAURANTS_DOCUMENTS.COUNT_SCOPE' | transloco"
+                          >· {{ formatNumber(activeDay.invoiceCount) }}</span
+                        >
+                      }
+                    </span></ng-template
+                  ><ng-template matTabContent
+                    ><liass-restaurant-document-collection
+                      kind="invoices"
+                      (viewCredits)="viewInvoiceCredits($event)"
+                      [active]="activityTab() === 1"
+                      [day]="day.data()?.data ?? null" /></ng-template
+                ></mat-tab>
+                <mat-tab
+                  ><ng-template mat-tab-label
+                    ><span class="inline-flex items-center gap-2 whitespace-nowrap"
+                      ><mat-icon aria-hidden="true">assignment_return</mat-icon
+                      >{{ 'RESTAURANTS_DOCUMENTS.CREDITS' | transloco }}
+                      @if (day.data()?.data; as activeDay) {
+                        <span [matTooltip]="'RESTAURANTS_DOCUMENTS.COUNT_SCOPE' | transloco"
+                          >· {{ formatNumber(activeDay.creditNoteCount) }}</span
+                        >
+                      }
+                    </span></ng-template
+                  ><ng-template matTabContent
+                    ><liass-restaurant-document-collection
+                      kind="credit-notes"
+                      [contextualInvoice]="creditContext()"
+                      (contextCleared)="creditContext.set(null)"
+                      [active]="activityTab() === 2"
+                      [day]="day.data()?.data ?? null" /></ng-template
+                ></mat-tab>
+                <mat-tab
+                  ><ng-template mat-tab-label
+                    ><span class="inline-flex items-center gap-2 whitespace-nowrap"
+                      ><mat-icon aria-hidden="true">swap_vert</mat-icon
+                      >{{ 'RESTAURANTS.CASH.MOVEMENTS' | transloco }}</span
+                    ></ng-template
+                  >
+                  <p class="py-3 text-sm">
+                    {{ 'RESTAURANTS.CASH.NO_MOVEMENTS' | transloco }}
+                  </p></mat-tab
+                >
+              </mat-tab-group>
             }
           </div></liass-card
         >
@@ -1126,6 +1238,11 @@ export class RestaurantCashPage {
   readonly dialog = inject(MatDialog);
   readonly management = inject(ActivatedRoute).snapshot.data['cashManagement'] === true;
   readonly activityTab = signal(0);
+  readonly creditContext = signal<{ invoiceId: string; revision: number } | null>(null);
+  viewInvoiceCredits(invoiceId: string) {
+    this.creditContext.set({ invoiceId, revision: (this.creditContext()?.revision ?? 0) + 1 });
+    this.activityTab.set(2);
+  }
   readonly paymentCursor = signal<string | undefined>(undefined);
   readonly paymentSearchInput = signal('');
   readonly paymentSearch = signal('');
@@ -1147,6 +1264,7 @@ export class RestaurantCashPage {
         this.paymentSearchInput.set('');
         this.paymentSearch.set('');
         this.activityTab.set(0);
+        this.creditContext.set(null);
       }
     });
     effect((onCleanup) => {
@@ -1180,7 +1298,7 @@ export class RestaurantCashPage {
   readonly movements = injectQuery(() =>
     this.cash.movements(
       this.context(),
-      this.management || this.activityTab() === 1 ? (this.session()?.cashSessionId ?? '') : '',
+      this.management || this.activityTab() === 3 ? (this.session()?.cashSessionId ?? '') : '',
       this.movementCursor(),
     ),
   );

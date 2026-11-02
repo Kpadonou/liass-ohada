@@ -387,6 +387,7 @@ export class RestaurantCashService {
         version: 1,
         sessionCount: 0,
         openSessionCount: 0,
+        commercialCountsInitializedAt: now,
       });
       actions.push(
         R.put(R.row(scope, "DAY", result)),

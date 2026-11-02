@@ -123,86 +123,97 @@ export class RestaurantCreditNoteService {
   ) {
     await this.authorize(scope, actor);
     await Sessions.session(scope, c.RestaurantIdSchema.parse(sessionId));
-    return c.RestaurantCreditNoteListResponseSchema.parse(
-      await R.page(
-        scope,
-        actor,
-        K.restaurantSessionPK(scope.orgId, scope.outletId, sessionId),
-        K.restaurantCreditNotePrefix(),
-        "RESTAURANT_CREDIT_NOTE_SUMMARY",
-        c.RestaurantCreditNoteSchema,
-        c.RestaurantCreditNoteListRequestSchema.parse(input),
-      ),
-    );
-  }
-  private static commandKey(
-    scope: TransactionScope,
-    session: string,
-    request: string,
-  ) {
-    const digest = hash([scope, "CREATE_CREDIT_NOTE", session, request]);
-    return {
-      PK: K.restaurantTransactionCommandPK(
-        scope.orgId,
-        scope.outletId,
-        "CREATE_CREDIT_NOTE",
-        session,
-        digest,
-      ),
-      SK: K.restaurantTransactionCommandSK(session, digest),
-    };
-  }
-  static async create(
-    scope: TransactionScope,
-    actor: string,
-    sessionId: string,
-    input: unknown,
-  ) {
-    const access = await this.authorize(scope, actor, true);
-    c.RestaurantIdSchema.parse(sessionId);
-    const raw = input as { lines?: unknown[] };
-    if (Array.isArray(raw?.lines) && raw.lines.length > 16) fail("LIMIT", 400);
-    if (
-      Array.isArray(raw?.lines) &&
-      raw.lines.some(
-        (l) =>
-          typeof l === "object" &&
-          l !== null &&
-          "quantity" in l &&
-          (!Number.isSafeInteger(l.quantity) || Number(l.quantity) <= 0),
-      )
-    )
-      fail("QUANTITY", 400);
-    const request = c.CreateRestaurantCreditNoteRequestSchema.parse(input);
-    request.lines.sort((a, b) =>
-      `${a.orderId}#${a.itemId}`.localeCompare(`${b.orderId}#${b.itemId}`),
-    );
-    const fingerprint = hash([
+    const page = await R.page(
       scope,
-      sessionId,
       actor,
-      request.reason,
-      request.lines,
-    ]);
-    const commandKey = this.commandKey(
-      scope,
-      sessionId,
-      request.clientRequestId,
+      K.restaurantSessionPK(scope.orgId, scope.outletId, sessionId),
+      K.restaurantCreditNotePrefix(),
+      "RESTAURANT_CREDIT_NOTE_SUMMARY",
+      c.RestaurantCreditNoteSchema,
+      c.RestaurantCreditNoteListRequestSchema.parse(input),
     );
-    const replay = async () => {
-      const existing = await R.get(
+    return c.RestaurantCreditNoteListResponseSchema.parse({
+      ...page,
+      creditability: await this.creditability(scope, sessionId),
+    });
+  }
+  static async creditability(scope: TransactionScope, sessionId: string) {
+    const { billId, result, source } = await this.finalSource(scope, sessionId);
+    const PK = K.restaurantBillPK(scope.orgId, scope.outletId, billId);
+    const read = (SK: string) =>
+      R.get(
         scope,
-        commandKey,
-        "RESTAURANT_CREDIT_NOTE_COMMAND",
-        commandSchema,
+        { PK, SK },
+        "RESTAURANT_CREDIT_CONTROL",
+        CreditControlSchema,
       );
-      if (!existing) return undefined;
-      if (existing.actorId !== actor || existing.fingerprint !== fingerprint)
-        fail("IDEMPOTENCY");
-      return this.detailInternal(scope, actor, existing.creditNoteId);
-    };
-    const previous = await replay();
-    if (previous) return previous;
+    const global = await read(K.restaurantCreditBalanceSK());
+    const lines = [];
+    for (const { line } of source.values()) {
+      if (line.cancelledAt || line.netAmountMinor <= 0) continue;
+      const control = await read(
+        K.restaurantCreditLineControlSK(line.orderId, line.itemId),
+      );
+      if (
+        control &&
+        (control.finalBillId !== billId ||
+          control.currency !== result.currency ||
+          control.sourceReceiptDigest !== result.digest ||
+          control.originalQuantity !== line.snapshot.quantity ||
+          control.originalAmountMinor !== line.netAmountMinor ||
+          control.creditedQuantity === undefined ||
+          BigInt(control.creditedMinor) !==
+            BigInt(control.creditedQuantity) *
+              BigInt(line.snapshot.unitPriceMinor))
+      )
+        fail("SOURCE");
+      lines.push(
+        c.RestaurantCreditabilityLineSchema.parse({
+          orderId: line.orderId,
+          itemId: line.itemId,
+          sourceLineIdentity: `${line.orderId}#${line.itemId}`,
+          menuItemId: line.snapshot.menuItemId,
+          label: line.snapshot.name,
+          originalQuantity: line.snapshot.quantity,
+          creditedQuantity: control?.creditedQuantity ?? 0,
+          remainingQuantity: integer(
+            BigInt(line.snapshot.quantity) -
+              BigInt(control?.creditedQuantity ?? 0),
+          ),
+          unitAmountMinor: line.snapshot.unitPriceMinor,
+          originalNetAmountMinor: line.netAmountMinor,
+          creditedAmountMinor: control?.creditedMinor ?? 0,
+          remainingAmountMinor: integer(
+            BigInt(line.netAmountMinor) - BigInt(control?.creditedMinor ?? 0),
+          ),
+          currency: result.currency,
+        }),
+      );
+    }
+    const after = await read(K.restaurantCreditBalanceSK());
+    if (hash(global ?? null) !== hash(after ?? null)) fail("CONFLICT");
+    const credited = integer(
+      lines.reduce((n, l) => n + BigInt(l.creditedAmountMinor), 0n),
+    );
+    if (
+      (global?.creditedMinor ?? 0) !== credited ||
+      (global &&
+        (global.finalBillId !== billId ||
+          global.currency !== result.currency ||
+          global.sourceReceiptDigest !== result.digest ||
+          global.originalAmountMinor !== result.dueMinor))
+    )
+      fail("SOURCE");
+    return c.RestaurantCreditabilitySchema.parse({
+      finalBillId: billId,
+      currency: result.currency,
+      originalAmountMinor: result.dueMinor,
+      creditedAmountMinor: credited,
+      remainingAmountMinor: integer(BigInt(result.dueMinor) - BigInt(credited)),
+      lines,
+    });
+  }
+  private static async finalSource(scope: TransactionScope, sessionId: string) {
     const session = await Sessions.session(scope, sessionId);
     if (session.data.status !== "CLOSED" || !session.data.finalBillId)
       fail("NOT_FINAL");
@@ -277,10 +288,88 @@ export class RestaurantCreditNoteService {
       lineCount !== result.lineCount
     )
       fail("SOURCE");
+    return {
+      session,
+      billId: invoiceId,
+      manifest,
+      result: c.adaptReceiptSummaryToInvoice(result),
+      source,
+    };
+  }
+  private static commandKey(
+    scope: TransactionScope,
+    session: string,
+    request: string,
+  ) {
+    const digest = hash([scope, "CREATE_CREDIT_NOTE", session, request]);
+    return {
+      PK: K.restaurantTransactionCommandPK(
+        scope.orgId,
+        scope.outletId,
+        "CREATE_CREDIT_NOTE",
+        session,
+        digest,
+      ),
+      SK: K.restaurantTransactionCommandSK(session, digest),
+    };
+  }
+  static async create(
+    scope: TransactionScope,
+    actor: string,
+    sessionId: string,
+    input: unknown,
+  ) {
+    const access = await this.authorize(scope, actor, true);
+    c.RestaurantIdSchema.parse(sessionId);
+    const raw = input as { lines?: unknown[] };
+    if (Array.isArray(raw?.lines) && raw.lines.length > 16) fail("LIMIT", 400);
+    if (
+      Array.isArray(raw?.lines) &&
+      raw.lines.some(
+        (l) =>
+          typeof l === "object" &&
+          l !== null &&
+          "quantity" in l &&
+          (!Number.isSafeInteger(l.quantity) || Number(l.quantity) <= 0),
+      )
+    )
+      fail("QUANTITY", 400);
+    const request = c.CreateRestaurantCreditNoteRequestSchema.parse(input);
+    request.lines.sort((a, b) =>
+      `${a.orderId}#${a.itemId}`.localeCompare(`${b.orderId}#${b.itemId}`),
+    );
+    const fingerprint = hash([
+      scope,
+      sessionId,
+      actor,
+      request.reason,
+      request.lines,
+    ]);
+    const commandKey = this.commandKey(
+      scope,
+      sessionId,
+      request.clientRequestId,
+    );
+    const replay = async () => {
+      const existing = await R.get(
+        scope,
+        commandKey,
+        "RESTAURANT_CREDIT_NOTE_COMMAND",
+        commandSchema,
+      );
+      if (!existing) return undefined;
+      if (existing.actorId !== actor || existing.fingerprint !== fingerprint)
+        fail("IDEMPOTENCY");
+      return this.detailInternal(scope, actor, existing.creditNoteId);
+    };
+    const previous = await replay();
+    if (previous) return previous;
+    const { session, billId, manifest, result, source } =
+      await this.finalSource(scope, sessionId);
     const now = new Date().toISOString(),
       creditNoteId = randomUUID();
     // Legacy proof has been fully verified above; business values use Invoice semantics.
-    const invoice = c.adaptReceiptSummaryToInvoice(result);
+    const invoice = result;
     const reference = `AV-${now.slice(0, 10).replace(/-/g, "")}-${randomBytes(4).toString("hex").toUpperCase()}`;
     const lines = request.lines.map((selected) => {
       const entry = source.get(`${selected.orderId}#${selected.itemId}`);
@@ -465,7 +554,7 @@ export class RestaurantCreditNoteService {
       ),
     );
     actions.push(R.put(scope, { PK, SK: "META" }, data.entityType, data));
-    const documentContext = await Documents.context(scope);
+    const documentContext = await Documents.context(scope, "CN");
     actions.push(
       ...documentContext.actions,
       Documents.locator(scope, creditNoteId, now),

@@ -105,8 +105,12 @@ export function memoryDynamo() {
       input.ExpressionAttributeValues?.[":prefix"]?.S ??
       input.ExpressionAttributeValues?.[":skPrefix"]?.S ??
       "";
-    const lower = input.ExpressionAttributeValues?.[":start"]?.S;
-    const upper = input.ExpressionAttributeValues?.[":end"]?.S;
+    const lower =
+      input.ExpressionAttributeValues?.[":start"]?.S ??
+      input.ExpressionAttributeValues?.[":from"]?.S;
+    const upper =
+      input.ExpressionAttributeValues?.[":end"]?.S ??
+      input.ExpressionAttributeValues?.[":to"]?.S;
     const start = input.ExclusiveStartKey?.SK?.S ?? "";
     const matching = [...rows.values()]
       .filter(

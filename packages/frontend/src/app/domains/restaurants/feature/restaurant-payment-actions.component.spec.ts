@@ -53,7 +53,7 @@ describe('Payment contextual actions', () => {
     [{ ...row, billSessionId: 'visit' }, ['Consulter', 'Voir l’addition']],
     [
       { ...row, billSessionId: 'visit', receiptId: 'receipt' },
-      ['Consulter', 'Voir l’addition', 'Voir le reçu'],
+      ['Consulter', 'Voir l’addition', 'Voir la facture'],
     ],
   ])('uses one overflow with only available icon-labelled actions', async (value, labels) => {
     const fixture = setup(value);

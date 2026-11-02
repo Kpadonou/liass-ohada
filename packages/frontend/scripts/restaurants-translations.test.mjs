@@ -15,6 +15,20 @@ function leaves(object, path = '') {
     typeof value === 'string' ? [[`${path}${key}`, value]] : leaves(value, `${path}${key}.`),
   );
 }
+test('commercial collections and correction workflows have complete FR/EN vocabulary', () => {
+  for (const namespace of ['RESTAURANTS_DOCUMENTS', 'RESTAURANTS_CORRECTIONS']) {
+    const fr = leaves(translations.fr[namespace]);
+    const en = leaves(translations.en[namespace]);
+    assert.deepEqual(fr.map(([key]) => key).sort(), en.map(([key]) => key).sort());
+    for (const [key, value] of [...fr, ...en]) assert.ok(value.trim(), key);
+  }
+  assert.equal(translations.fr.RESTAURANTS_CORRECTIONS.REASON, 'Motif');
+  assert.equal(translations.en.RESTAURANTS_CORRECTIONS.REASON, 'Reason');
+  for (const language of ['fr', 'en']) {
+    for (const [, value] of leaves(translations[language].RESTAURANTS.RECEIPT))
+      assert.doesNotMatch(value, /\breçu\b|\breceipt\b/i);
+  }
+});
 test('restaurant interface translations belong to the product root and match in French and English', () => {
   const french = leaves(translations.fr.RESTAURANTS.UI);
   const english = leaves(translations.en.RESTAURANTS.UI);

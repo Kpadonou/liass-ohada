@@ -132,7 +132,8 @@ import { restaurantPrice } from '../utils/restaurant-money';
             }
             @if (payment.externalReference) {
               <p class="break-all">
-                {{ 'RESTAURANTS.RECEIPT.REFERENCE' | transloco }} : {{ payment.externalReference }}
+                {{ 'RESTAURANTS.RECEIPT.EXTERNAL_REFERENCE' | transloco }} :
+                {{ payment.externalReference }}
               </p>
             }
           </section>

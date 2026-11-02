@@ -299,7 +299,17 @@ export class RestaurantReceiptView {
       if (!this.current(ctx)) return;
       this.ready.set(done);
       this.resumeNeeded.set(!done);
-      if (done) await this.first.refetch();
+      if (done) {
+        await this.first.refetch();
+        await this.client.invalidateQueries({
+          predicate: (query) =>
+            query.queryKey[0] === 'restaurants' &&
+            query.queryKey[1] === ctx.org &&
+            query.queryKey[3] === ctx.outlet &&
+            (query.queryKey.includes('business-days/current') ||
+              (query.queryKey.includes('documents') && query.queryKey.includes('invoices'))),
+        });
+      }
     } catch (error) {
       if (this.current(ctx)) {
         if (denied(error)) this.reject();

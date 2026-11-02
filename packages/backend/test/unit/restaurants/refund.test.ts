@@ -36,6 +36,18 @@ const cnPK = () =>
   K.restaurantCreditNotePK(scope.orgId, scope.outletId, credit.creditNoteId);
 const active = async (actor = "owner") =>
   (await Cash.activeSession(scope, actor))!;
+test.each(["CASH", "CARD", "MOBILE_MONEY"] as const)(
+  "%s Refund leaves BusinessDay document counts unchanged",
+  async (method) => {
+    const before = (await Cash.activeDay(scope))!.day.data;
+    await create(request(100, method));
+    const after = (await Cash.activeDay(scope))!.day.data;
+    expect([after.invoiceCount, after.creditNoteCount]).toEqual([
+      before.invoiceCount,
+      before.creditNoteCount,
+    ]);
+  },
+);
 const open = async (actor = "owner") =>
   Cash.mutate(scope, actor, "OPEN_CASH", {
     clientRequestId: randomUUID(),

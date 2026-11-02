@@ -86,10 +86,51 @@ export const RestaurantCreditNoteListRequestSchema = z
     cursor: z.string().min(1).max(2000).optional(),
   })
   .strict();
+/** Semantic availability, never persistence-control DTOs. */
+export const RestaurantCreditabilityLineSchema = z
+  .object({
+    orderId: id,
+    itemId: id,
+    sourceLineIdentity: z.string().min(1),
+    menuItemId: id,
+    label: z.string().min(1).max(160),
+    originalQuantity: quantity,
+    creditedQuantity: money,
+    remainingQuantity: money,
+    unitAmountMinor: money,
+    originalNetAmountMinor: money.positive(),
+    creditedAmountMinor: money,
+    remainingAmountMinor: money,
+    currency: z.string().regex(/^[A-Z]{3}$/),
+  })
+  .strict()
+  .refine(
+    (v) =>
+      BigInt(v.creditedQuantity) + BigInt(v.remainingQuantity) ===
+        BigInt(v.originalQuantity) &&
+      BigInt(v.creditedAmountMinor) + BigInt(v.remainingAmountMinor) ===
+        BigInt(v.originalNetAmountMinor),
+  );
+export const RestaurantCreditabilitySchema = z
+  .object({
+    finalBillId: id,
+    currency: z.string().regex(/^[A-Z]{3}$/),
+    originalAmountMinor: money,
+    creditedAmountMinor: money,
+    remainingAmountMinor: money,
+    lines: z.array(RestaurantCreditabilityLineSchema),
+  })
+  .strict()
+  .refine(
+    (v) =>
+      BigInt(v.creditedAmountMinor) + BigInt(v.remainingAmountMinor) ===
+      BigInt(v.originalAmountMinor),
+  );
 export const RestaurantCreditNoteListResponseSchema = z
   .object({
     items: z.array(RestaurantCreditNoteSchema).max(100),
     nextCursor: z.string().optional(),
+    creditability: RestaurantCreditabilitySchema.optional(),
   })
   .strict();
 export type RestaurantCreditNote = z.infer<typeof RestaurantCreditNoteSchema>;

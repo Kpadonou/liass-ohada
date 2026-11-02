@@ -1,4 +1,5 @@
 import { openCashFixture } from "./cash-fixture";
+import { RestaurantCashService as Cash } from "@/lambda/domains/restaurants/cash-service";
 import { RestaurantInvoiceService as Invoice } from "@/lambda/domains/restaurants/invoice-service";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
@@ -563,6 +564,7 @@ test("interruption preserves immutable parts, hides BUILDING and resumes without
   const reservedInvoiceId = (await S.session(scope(), v.sessionId)).data
     .finalBillId;
   expect(reservedInvoiceId).toBeTruthy();
+  expect((await Cash.activeDay(scope()))!.day.data.invoiceCount).toBe(0);
   expect(
     [...m.rows.values()].filter(
       (r) => r.entityType?.S === "RESTAURANT_DOCUMENT_INV",
@@ -585,6 +587,9 @@ test("interruption preserves immutable parts, hides BUILDING and resumes without
   );
   expect(projections).toHaveLength(1);
   expect(unmarshall(projections[0]).data.invoiceId).toBe(reservedInvoiceId);
+  expect((await Cash.activeDay(scope()))!.day.data.invoiceCount).toBe(1);
+  await finish(v.sessionId, "owner", commandId);
+  expect((await Cash.activeDay(scope()))!.day.data.invoiceCount).toBe(1);
   const proofBefore = JSON.stringify(
     [...m.rows.values()].filter((r) =>
       ["RESTAURANT_BILL_PART", "RESTAURANT_BILL_RESULT"].includes(

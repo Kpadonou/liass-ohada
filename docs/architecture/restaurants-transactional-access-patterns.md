@@ -683,3 +683,55 @@ Frontend TanStack caching/local derivation would optimize repeat display/network
 Future organization Restaurants Dashboard aggregates Outlets only through an explicitly authorized organization query; active Outlet Dashboard consumes this daily collection contract. Collections are payments received, not sales revenue or Order totals. Charts, management UI, physical inventory, recipe/BOM and Accounting integration remain subsequent slices. Deploying this foundation must be coordinated with cash-opening UI/operator procedures: the existing payment interface alone cannot open the now-required cash session. No data backfill is required; rollback must preserve all captured facts/receipts and must not re-enable unattributed writes after adoption without an explicit transition plan.
 
 References consulted: DynamoDB access-pattern template, Liass single-table conventions and modeling principles; OHADA domain mapping and AUDCIF guidance on dated evidence, origin and chronological traceability. These inform auditability only; no new statutory rule or accounting obligation is asserted.
+
+### Active BusinessDay commercial counters — COUNTS1
+
+The existing `S#BD#businessDayId / META` DAY carries `invoiceCount` and
+`creditNoteCount` (missing legacy values decode as zero). They count projected
+FINAL Invoices / VALIDATED CreditNotes associated with that day by identity,
+including overnight activity. Null-day documents, Payments and Refunds do not
+change them. The existing current-BusinessDay response exposes them; collections,
+search, cursors and history filters never define or change the tab counts.
+
+The projection transaction replaces its DAY version ConditionCheck with a
+conditional full DAY Put, increments the relevant count and version, and retains
+the active-day pointer check. It targets DAY once, adds no transaction operation,
+and prevents lost updates against Cash commands. Projection/command uniqueness
+and canonical retry handling prevent double increments. No key, index, route,
+resource, immutable document or historical digest changes.
+
+New days have `commercialCountsInitializedAt` at opening. The explicitly invoked
+`initializeCommercialCounts` rollout operation repairs only one named existing
+active day from existing monthly projections: day age at most 31 days, ten collection
+pages per kind (at most 10,000 evaluated rows), no search, no Scan, no document
+backfill, and no write-on-read. It refuses incomplete traversal. Deploy every
+counter writer first; DAY version CAS and the active pointer check reject a
+concurrent document/Cash commit or day transition. On conflict rerun the whole
+bounded observation. A successful initialization sets the marker; subsequent
+runs are read-only. It replaces counts with the complete observed projection
+totals, rather than adding them to already counted post-deployment documents.
+It traverses complete monthly buckets from the month preceding opening through
+the current month (at most four buckets); this includes timestamps reserved just
+before a day/month boundary. Membership is filtered by BusinessDay ID, never
+inferred from issuedAt >= openedAt. Every collection call retains its 31-day cap.
+Closed historical days are never initialized. Counts are commercial activity
+metrics, not sales revenue, settlement totals or fiscal numbers.
+
+### Commercial document workspace — RESTO-REFUND-1E / TABS-1C
+
+Ma session hosts Payments, Invoices, CreditNotes and CashMovements in that order.
+Only Payments and CashMovements are CashSession-owned. Outlet document queries
+are separate TanStack collections, activated lazily, with active BusinessDay as
+the default filter, bounded history (31 days maximum), server-side search and
+opaque cursor continuation. Loaded pages never supply authoritative tab totals.
+Canonical counts come from the current BusinessDay, including during contextual
+Invoice search or historical browsing. UI signals hold only interaction intent.
+
+The accepted FINALUX keeps Invoice detail/print a clean immutable DOCUMENT:
+technical UUID labels are explicit, commercial non-fiscal wording is retained,
+and payment external references remain distinct. No CreditNote collection is
+embedded in Invoice. “Voir les avoirs” closes Invoice detail, activates Avoirs
+and sends invoiceId through server search; clearing context restores the normal
+collection. CreditNote detail opens separately with one active drawer. Existing
+OWNER/MANAGER command gates, own OPEN CashSession requirement for Refunds,
+server-confirmed Class C mutations and immutable facts remain authoritative.

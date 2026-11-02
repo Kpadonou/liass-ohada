@@ -661,7 +661,7 @@ export class RestaurantReceiptService {
     });
     m.state = "FINAL";
     m.result = result;
-    const documentContext = await Documents.context(scope);
+    const documentContext = await Documents.context(scope, "INV");
     actions.push(
       ...documentContext.actions,
       Documents.put(scope, "INV", now, m.receiptId, {

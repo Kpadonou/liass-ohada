@@ -54,7 +54,7 @@ export class RestaurantDocumentCollections {
       },
     };
   }
-  static async context(s: Scope) {
+  static async context(s: Scope, kind?: "INV" | "CN") {
     const active = await Cash.activeDay(s);
     const pointerKey = {
       PK: K.restaurantBusinessDaysPK(s.orgId, s.outletId),
@@ -82,7 +82,30 @@ export class RestaurantDocumentCollections {
         },
       },
     ];
-    if (active)
+    if (active && kind) {
+      const field = kind === "INV" ? "invoiceCount" : "creditNoteCount";
+      const data = c.RestaurantBusinessDaySchema.parse({
+        ...active.day.data,
+        [field]: (active.day.data[field] ?? 0) + 1,
+        version: active.day.data.version + 1,
+      });
+      actions.push({
+        Put: {
+          TableName: restaurantsTableName(),
+          Item: marshall({ ...active.day, data }),
+          ConditionExpression: "#d.#v = :v AND #d.#s = :s",
+          ExpressionAttributeNames: {
+            "#d": "data",
+            "#v": "version",
+            "#s": "status",
+          },
+          ExpressionAttributeValues: marshall({
+            ":v": active.day.data.version,
+            ":s": "OPEN",
+          }),
+        },
+      });
+    } else if (active)
       actions.push({
         ConditionCheck: {
           TableName: restaurantsTableName(),

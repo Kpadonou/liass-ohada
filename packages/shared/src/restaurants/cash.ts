@@ -55,6 +55,9 @@ export const RestaurantBusinessDaySchema = z
     version,
     sessionCount: money.max(100),
     openSessionCount: money.max(100),
+    invoiceCount: money.default(0),
+    creditNoteCount: money.default(0),
+    commercialCountsInitializedAt: timestamp.optional(),
   })
   .strict()
   .refine(

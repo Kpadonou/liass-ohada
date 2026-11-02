@@ -160,6 +160,43 @@ afterEach(() => {
   db.db.restore();
   jest.restoreAllMocks();
 });
+test("creditability follows full, partial and exhausted immutable receipt quantities", async () => {
+  const read = () => Service.list(scope, "manager", sessionId, { limit: 1 });
+  expect((await read()).creditability?.lines[0]).toMatchObject({
+    originalQuantity: 2,
+    creditedQuantity: 0,
+    remainingQuantity: 2,
+    remainingAmountMinor: 200,
+  });
+  await create();
+  expect((await read()).creditability).toMatchObject({
+    creditedAmountMinor: 100,
+    remainingAmountMinor: 100,
+    lines: [
+      { creditedQuantity: 1, remainingQuantity: 1, remainingAmountMinor: 100 },
+    ],
+  });
+  await create();
+  const exhausted = await read();
+  expect(exhausted.creditability).toMatchObject({
+    remainingAmountMinor: 0,
+    lines: [{ remainingQuantity: 0, remainingAmountMinor: 0 }],
+  });
+  const second = await Service.list(scope, "manager", sessionId, {
+    limit: 1,
+    cursor: exhausted.nextCursor,
+  });
+  expect(second.creditability).toEqual(exhausted.creditability);
+  expect(JSON.stringify(exhausted.creditability)).not.toMatch(
+    /CREDIT_|version|\"PK\"|\"SK\"/,
+  );
+});
+test("cancelled receipt lines never appear as creditable", async () => {
+  seed(1, true);
+  expect(
+    (await Service.list(scope, "manager", sessionId, {})).creditability?.lines,
+  ).toEqual([]);
+});
 test("partial then exact remaining credit, detail/list and immutable source facts", async () => {
   const before = new Map(db.rows);
   const first = await create();
@@ -430,6 +467,20 @@ test.each(["line", "receipt"])(
   },
 );
 
+test("creditability rejects a corrupted quantity-times-price control without clamping", async () => {
+  await create();
+  const key = JSON.stringify([
+    K.restaurantBillPK(scope.orgId, scope.outletId, billId),
+    K.restaurantCreditLineControlSK(selected[0].orderId, selected[0].itemId),
+  ]);
+  const row = unmarshall(db.rows.get(key)!);
+  row.data.creditedMinor = 101;
+  db.rows.set(key, marshall(row));
+  await expect(
+    Service.list(scope, "manager", sessionId, {}),
+  ).rejects.toMatchObject({ messageCode: "RESTAURANTS_CREDIT_SOURCE" });
+  expect(db.transactions).toHaveLength(1);
+});
 test("source chain tampering and missing parts fail without writes", async () => {
   const key = JSON.stringify([
     K.restaurantBillPK(scope.orgId, scope.outletId, billId),
@@ -468,7 +519,11 @@ test("real membership/entitlement/outlet checks fit the 16-line budget and sourc
   expect(budget.operations).toBe(47);
   expect(budget.serializedBytes).toBeLessThan(100_000);
   console.info("CREDIT_NOTE_16_LINE_AUTHORIZED_BUDGET", budget);
-  for (const [key, value] of before) expect(db.rows.get(key)).toEqual(value);
+  for (const [key, value] of before) {
+    if (unmarshall(value).entityType === "RESTAURANT_CASH_DAY") continue;
+    expect(db.rows.get(key)).toEqual(value);
+  }
+  expect((await Cash.activeDay(scope))!.day.data.creditNoteCount).toBe(1);
   const writes = db.transactions
     .at(-1)!
     .TransactItems!.filter((item) => item.Put)
@@ -484,7 +539,30 @@ test("real membership/entitlement/outlet checks fit the 16-line budget and sourc
         "RESTAURANT_CREDIT_NOTE_COMMAND",
         "RESTAURANT_DOCUMENT_CN",
         "RESTAURANT_DOCUMENT_LOCATOR",
+        "RESTAURANT_CASH_DAY",
       ].includes(row.entityType),
     ),
   ).toBe(true);
+});
+
+test("concurrent durable CreditNote retry increments active BusinessDay once", async () => {
+  jest.mocked(Cash.authorize).mockRestore();
+  jest.mocked(Sessions.session).mockRestore();
+  const fixture = await acceptanceFixture(scope.orgId);
+  scope.outletId = fixture.outlet.id;
+  db.seedAccess(scope.orgId, "manager", "MANAGER");
+  seed();
+  await Cash.mutate(scope, "manager", "OPEN_DAY", {
+    clientRequestId: randomUUID(),
+    operationalTimezone: "Africa/Porto-Novo",
+  });
+  const intent = input(1);
+  const results = await Promise.all([
+    Service.create(scope, "manager", sessionId, intent),
+    Service.create(scope, "manager", sessionId, intent),
+  ]);
+  expect(results[0].data.creditNoteId).toBe(results[1].data.creditNoteId);
+  expect((await Cash.activeDay(scope))!.day.data.creditNoteCount).toBe(1);
+  await Service.create(scope, "manager", sessionId, intent);
+  expect((await Cash.activeDay(scope))!.day.data.creditNoteCount).toBe(1);
 });

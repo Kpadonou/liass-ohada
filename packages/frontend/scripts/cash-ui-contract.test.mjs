@@ -108,12 +108,15 @@ test('Cash visual hierarchy uses canonical controls without changing accepted ac
   assert.match(page, /mat-tab-group/);
   assert.match(page, /data-activity-payments/);
   assert.match(page, /data-activity-movements/);
-  const header = page.split('data-session-header-actions')[1].split('data-session-actions')[0];
+  const header = page.split('data-session-header-actions')[1].split('<mat-tab-group')[0];
   assert.match(header, /tone="brand"[\s\S]*variant="solid"[\s\S]*icon="lock"[\s\S]*close\(s\)/);
   const actions = page.split('data-session-actions')[1].split('<mat-tab-group')[0];
   for (const icon of ['arrow_downward', 'arrow_upward'])
     assert.ok(actions.includes(`icon="${icon}"`));
-  assert.doesNotMatch(actions, /variant="solid"/);
+  assert.ok(actions.indexOf("move(s, 'CASH_IN')") < actions.indexOf("move(s, 'CASH_OUT')"));
+  assert.ok(actions.indexOf("move(s, 'CASH_OUT')") < actions.indexOf('close(s)'));
+  assert.equal((actions.match(/move\(s, 'CASH_IN'\)/g) ?? []).length, 1);
+  assert.equal((actions.match(/move\(s, 'CASH_OUT'\)/g) ?? []).length, 1);
   assert.match(page, /data-session-overflow/);
   assert.match(page, /data-session-detail/);
   assert.match(page, /loadTablePreferences\('restaurants.cash.sessions'/);
@@ -184,7 +187,7 @@ test('payment table preserves contextual columns and exposes read-only contextua
 });
 
 test('personal activity tabs and secondary actions retain canonical semantic hierarchy', () => {
-  const header = page.split('data-session-header-actions')[1].split('data-session-actions')[0];
+  const header = page.split('data-session-header-actions')[1].split('<mat-tab-group')[0];
   assert.match(header, /tone="brand"[\s\S]*variant="solid"/);
   const actions = page.split('data-session-actions')[1].split('<mat-tab-group')[0];
   assert.match(actions, /tone="success"[\s\S]*variant="outline"[\s\S]*arrow_downward/);
@@ -218,7 +221,18 @@ test('Cash activity tabs keep full desktop labels and readable compact mobile la
   assert.equal(fr.MOVEMENTS_SHORT, 'Mouvements');
   assert.equal(en.MOVEMENTS, 'Cash movements');
   assert.equal(en.MOVEMENTS_SHORT, 'Movements');
-  assert.match(tabs, /\[disablePagination\]="true"/);
+  assert.match(tabs, /\[disablePagination\]="false"/);
+  assert.match(tabs, /<mat-icon aria-hidden="true">description<\/mat-icon\s*>/);
+  assert.match(tabs, /<mat-icon aria-hidden="true">assignment_return<\/mat-icon\s*>/);
+  for (const field of ['invoiceCount', 'creditNoteCount']) {
+    assert.match(tabs, new RegExp(`formatNumber\\(activeDay\\.${field}\\)`));
+  }
+  const documents = tabs
+    .split('RESTAURANTS_DOCUMENTS.INVOICES')[1]
+    .split('data-activity-movements')[0];
+  assert.match(documents, /@if \(day\.data\(\)\?\.data; as activeDay\)/);
+  assert.match(documents, /RESTAURANTS_DOCUMENTS.COUNT_SCOPE/);
+  assert.doesNotMatch(documents, /items\.length|pages\.length|search\(\)|history\(\)/);
   assert.equal((tabs.match(/labelClass="!min-w-0 !px-2 sm:!px-6"/g) ?? []).length, 2);
   assert.match(tabs, /class="sm:hidden"[^>]*>[\s\S]*MOVEMENTS_SHORT/);
   assert.match(tabs, /class="hidden sm:inline"[^>]*>[\s\S]*RESTAURANTS.CASH.MOVEMENTS/);
