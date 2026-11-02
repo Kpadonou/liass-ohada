@@ -31,7 +31,8 @@
     "seed:accounting-test-data": "ts-node -r tsconfig-paths/register scripts/seed-accounting-test-data.ts",
     "seed:manual-lettering-test-data": "ts-node -r tsconfig-paths/register scripts/seed-manual-lettering-test-data.ts",
     "localstack:setup": "AWS_PROFILE=localstack LOCALSTACK_URL=http://localhost:4566 bash scripts/setup-localstack.sh",
-    "identity:relink": "ts-node -r tsconfig-paths/register scripts/relink-user-identity.ts"
+    "identity:relink": "ts-node -r tsconfig-paths/register scripts/relink-user-identity.ts",
+    "restaurants:dev-auth": "node scripts/dev-auth/run.mjs"
   },
   "devDependencies": {
     "@faker-js/faker": "^10.2.0",
