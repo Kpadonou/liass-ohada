@@ -1,3 +1,16 @@
+import { of } from 'rxjs';
+import { MAT_DIALOG_DATA, MatDialogRef, MatDialog } from '@angular/material/dialog';
+import { NotificationService } from '../../../core/notifications/notification.service';
+import {
+  RestaurantItemCancellation,
+  acceptedItemCancellable,
+} from '../data-access/restaurant-item-cancellation';
+import { RestaurantItemCancellationDialog } from '../feature/restaurant-item-cancellation.dialog';
+import { RestaurantOrdersQueries } from '../data-access/restaurant-orders.queries';
+import { restaurantKeys } from '../data-access/restaurants.queries';
+import { kitchenKeys } from '../data-access/restaurant-preparation.queries';
+import { inventoryKeys } from '../data-access/restaurant-inventory.keys';
+import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -15,7 +28,10 @@ import { serviceContext, serviceTask } from '../data-access/service-preparation.
 
 describe('Canonical Orders across the whole service', () => {
   let client: QueryClient;
-  const api = { assertContext: vi.fn(), items: vi.fn() };
+  const api = { assertContext: vi.fn(), items: vi.fn(), command: vi.fn() };
+  let management = false;
+  const dialogRef = { close: vi.fn(), disableClose: false };
+  const notifications = { success: vi.fn(), error: vi.fn() };
   const preparation = { page: vi.fn() };
   const order = (id = 20) =>
     RestaurantOrderSchema.parse({
@@ -78,6 +94,8 @@ describe('Canonical Orders across the whole service', () => {
     });
   beforeEach(() => {
     vi.resetAllMocks();
+    management = false;
+    dialogRef.disableClose = false;
     client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
     api.items.mockImplementation(async (_ctx, id) => ({ items: [line(id), line(id, 25, false)] }));
     preparation.page.mockImplementation(async (_ctx, id) => ({
@@ -86,6 +104,7 @@ describe('Canonical Orders across the whole service', () => {
     TestBed.configureTestingModule({
       imports: [
         RestaurantServiceOrdersComponent,
+        RestaurantItemCancellationDialog,
         TranslocoTestingModule.forRoot({
           langs: { fr, en },
           preloadLangs: true,
@@ -93,6 +112,13 @@ describe('Canonical Orders across the whole service', () => {
         }),
       ],
       providers: [
+        { provide: RestaurantsCapabilities, useValue: { canManageSetup: () => management } },
+        {
+          provide: MAT_DIALOG_DATA,
+          useFactory: () => ({ context: serviceContext, order: order(), line: line(rid(20)) }),
+        },
+        { provide: MatDialogRef, useValue: dialogRef },
+        { provide: NotificationService, useValue: notifications },
         { provide: QueryClient, useValue: client },
         { provide: RestaurantOrdersApi, useValue: api },
         { provide: RestaurantsApi, useValue: {} },
@@ -261,5 +287,269 @@ describe('Canonical Orders across the whole service', () => {
     f.detectChanges();
     expect(f.nativeElement.querySelector('liass-card')).toBeNull();
     expect(f.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  });
+  const cancelled = () => ({
+    ...line(rid(20)),
+    status: 'CANCELLED' as const,
+    version: 2,
+    cancelledAt: '2026-11-02T10:00:00.000Z',
+    cancelledBy: 'manager',
+    cancellationReason: 'Wrong selection',
+  });
+  it('shows the single accessible management action only for eligible accepted lines', async () => {
+    management = true;
+    const f = mount();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.querySelectorAll('[data-testid="cancel-accepted-item"]')).toHaveLength(
+        2,
+      );
+    });
+    const button = f.nativeElement.querySelector('[data-testid="cancel-accepted-item"] button');
+    expect(button.getAttribute('aria-label')).toBe('Annuler l’article');
+    const open = vi
+      .spyOn(TestBed.inject(MatDialog), 'open')
+      .mockReturnValue({ afterClosed: () => of(undefined), close: vi.fn() } as never);
+    button.click();
+    expect(open).toHaveBeenCalledWith(
+      RestaurantItemCancellationDialog,
+      expect.objectContaining({
+        maxWidth: 'calc(100vw - 32px)',
+        data: expect.objectContaining({
+          context: serviceContext,
+          order: order(),
+          line: line(rid(20)),
+        }),
+      }),
+    );
+    f.componentRef.setInput('orders', [{ ...order(), paidMinor: 6000 }]);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="cancel-accepted-item"]')).toBeNull();
+  });
+  it('does not expose accepted cancellation to a non-management operator', async () => {
+    const f = mount();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.querySelector('[data-testid="service-order-line"]')).not.toBeNull();
+    });
+    expect(f.nativeElement.querySelector('[data-testid="cancel-accepted-item"]')).toBeNull();
+  });
+  it('retains cancelled accepted history, reason and siblings without displaying its old charge as payable', async () => {
+    api.items.mockResolvedValue({ items: [cancelled(), line(rid(20), 25, false)] });
+    const f = mount([{ ...order(), dueMinor: 3000 }]);
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.querySelectorAll('[data-testid="service-order-line"]')).toHaveLength(
+        2,
+      );
+    });
+    const rows = f.nativeElement.querySelectorAll('[data-testid="service-order-line"]');
+    expect(rows[0].textContent).toContain('Annulée');
+    expect(rows[0].textContent).toContain('Wrong selection');
+    expect(rows[0].textContent).not.toContain('Progression à actualiser');
+    expect(rows[1].textContent).toContain('Eau FIFA');
+    expect(f.nativeElement.textContent).not.toContain('La liste est incomplète');
+  });
+  it('matches whole-line monetary protection without inventing partial quantities', () => {
+    const item = line(rid(20));
+    expect(acceptedItemCancellable({ ...order(), paidMinor: 3000 }, item)).toBe(true);
+    expect(acceptedItemCancellable({ ...order(), reservedMinor: 3001 }, item)).toBe(false);
+    expect(acceptedItemCancellable({ ...order(), paidMinor: 6000 }, item)).toBe(false);
+    expect(acceptedItemCancellable({ ...order(), status: 'CLOSED' }, item)).toBe(false);
+    expect(acceptedItemCancellable(order(), { ...item, status: 'DRAFT' })).toBe(false);
+  });
+  it('uses the existing command and versions, replaces only its canonical line and scopes reconciliation', async () => {
+    management = true;
+    client.setDefaultOptions({ queries: { retry: false, gcTime: 300000 } });
+    const queries = TestBed.inject(RestaurantOrdersQueries);
+    const flow = TestBed.inject(RestaurantItemCancellation);
+    const oldLine = line(rid(20)),
+      sibling = line(rid(20), 25, false);
+    client.setQueryData(queries.key(serviceContext, 'items', rid(20)), {
+      pages: [{ items: [oldLine, sibling] }],
+      pageParams: [undefined],
+    });
+    const other = restaurantKeys.session('foreign', rid(2), rid(9));
+    client.setQueryData(other, { untouched: true });
+    const kitchen = kitchenKeys.lane(serviceContext, rid(3), 'IN_PROGRESS');
+    client.setQueryData(kitchen, { pages: [{ items: [] }] });
+    api.command.mockResolvedValue(cancelled());
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await flow.cancel(serviceContext, order(), oldLine, 'Wrong selection');
+    expect(api.command).toHaveBeenCalledWith(
+      serviceContext,
+      'remove',
+      expect.objectContaining({
+        expectedVersion: 1,
+        expectedItemVersion: 1,
+        reason: 'Wrong selection',
+        clientRequestId: expect.any(String),
+      }),
+      rid(20),
+      rid(21),
+    );
+    expect(client.getQueryData(queries.key(serviceContext, 'items', rid(20)))).toMatchObject({
+      pages: [{ items: [cancelled(), sibling] }],
+    });
+    expect(invalidate.mock.calls.map(([v]) => v?.queryKey)).toContainEqual(
+      restaurantKeys.session('org', rid(2), rid(9), 'waiter', 1),
+    );
+    expect(client.getQueryState(queries.key(serviceContext, 'items', rid(20)))?.isInvalidated).toBe(
+      false,
+    );
+    expect(client.getQueryState(kitchen)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+    expect(flow.pending(serviceContext, rid(20), rid(21))).toBeUndefined();
+  });
+  it('marks only current actor/Outlet Inventory stale for potentially tracked non-station lines', async () => {
+    management = true;
+    client.setDefaultOptions({ queries: { retry: false, gcTime: 300000 } });
+    const flow = TestBed.inject(RestaurantItemCancellation);
+    const stock = { ...serviceContext, identity: 'operational' };
+    const target = inventoryKeys.items(stock),
+      other = inventoryKeys.items({ ...stock, outlet: rid(99) });
+    client.setQueryData(target, { items: [] });
+    client.setQueryData(other, { items: [] });
+    const water = line(rid(20), 25, false);
+    api.command.mockResolvedValue({
+      ...water,
+      status: 'CANCELLED',
+      cancelledAt: '2026-11-02T10:00:00.000Z',
+      cancelledBy: 'manager',
+      cancellationReason: 'Wrong selection',
+    });
+    await flow.cancel(serviceContext, order(), water, 'Wrong selection');
+    expect(client.getQueryState(target)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+  });
+  it('preserves the exact ambiguous intent across retry and never sends a second concurrent command', async () => {
+    management = true;
+    const flow = TestBed.inject(RestaurantItemCancellation);
+    let reject!: (e: unknown) => void;
+    api.command.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail;
+        }),
+    );
+    const first = flow.cancel(serviceContext, order(), line(rid(20)), 'Wrong selection');
+    const check = expect(first).rejects.toThrow();
+    await expect(flow.cancel(serviceContext, order(), line(rid(20)), 'Changed')).rejects.toThrow(
+      'pending',
+    );
+    reject(new HttpErrorResponse({ status: 0 }));
+    await check;
+    const original = api.command.mock.calls[0][2];
+    api.command.mockResolvedValue(cancelled());
+    await flow.cancel(serviceContext, order(), line(rid(20)), 'Changed');
+    expect(api.command.mock.calls[1][2]).toEqual(original);
+    expect(api.command).toHaveBeenCalledTimes(2);
+  });
+  it('dialog identifies the full accepted line and validates trimmed reason with the shared contract', async () => {
+    management = true;
+    const f = TestBed.createComponent(RestaurantItemCancellationDialog);
+    f.detectChanges();
+    expect(f.nativeElement.textContent).toContain('2 × Poulet braisé');
+    expect(f.nativeElement.querySelector('textarea').getAttribute('maxlength')).toBe('500');
+    for (const value of ['', '   ', 'x'.repeat(501)]) {
+      f.componentInstance.form.controls.reason.setValue(value);
+      await f.componentInstance.submit();
+      expect(f.componentInstance.form.invalid).toBe(true);
+    }
+    expect(api.command).not.toHaveBeenCalled();
+  });
+  it('dialog blocks duplicate submit, waits for confirmation and emits safe success feedback', async () => {
+    management = true;
+    const f = TestBed.createComponent(RestaurantItemCancellationDialog);
+    f.detectChanges();
+    f.componentInstance.form.controls.reason.setValue('Wrong selection');
+    let finish!: (value: unknown) => void;
+    api.command.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const first = f.componentInstance.submit();
+    await vi.waitFor(() => expect(api.command).toHaveBeenCalledTimes(1));
+    await f.componentInstance.submit();
+    expect(api.command).toHaveBeenCalledTimes(1);
+    expect(dialogRef.disableClose).toBe(true);
+    expect(dialogRef.close).not.toHaveBeenCalled();
+    finish(cancelled());
+    await first;
+    expect(dialogRef.close).toHaveBeenCalledWith(cancelled());
+    expect(notifications.success).toHaveBeenCalledWith('Article annulé.');
+  });
+  it('definite domain conflict is visible and requires fresh operator review instead of automatic retry', async () => {
+    management = true;
+    const f = TestBed.createComponent(RestaurantItemCancellationDialog);
+    f.detectChanges();
+    api.command.mockRejectedValue(new HttpErrorResponse({ status: 409 }));
+    f.componentInstance.form.controls.reason.setValue('Wrong selection');
+    await f.componentInstance.submit();
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[role="alert"]').textContent).toContain(
+      'La commande a changé',
+    );
+    expect(f.componentInstance.blocked()).toBe(true);
+    await f.componentInstance.submit();
+    expect(api.command).toHaveBeenCalledTimes(1);
+    expect(notifications.error).toHaveBeenCalled();
+  });
+  it('ambiguous dialog result locks reason, retains intent on reopen and offers the same retry', async () => {
+    management = true;
+    let f = TestBed.createComponent(RestaurantItemCancellationDialog);
+    f.detectChanges();
+    api.command.mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    f.componentInstance.form.controls.reason.setValue('Wrong selection');
+    await f.componentInstance.submit();
+    f.detectChanges();
+    expect(f.componentInstance.uncertain()).toBe(true);
+    expect(f.componentInstance.form.disabled).toBe(true);
+    expect(f.nativeElement.textContent).toContain('Réessayer la même annulation');
+    f.destroy();
+    f = TestBed.createComponent(RestaurantItemCancellationDialog);
+    f.detectChanges();
+    expect(f.componentInstance.form.getRawValue().reason).toBe('Wrong selection');
+    expect(f.componentInstance.form.disabled).toBe(true);
+    api.command.mockResolvedValue(cancelled());
+    await f.componentInstance.submit();
+    expect(api.command.mock.calls[1][2]).toEqual(api.command.mock.calls[0][2]);
+  });
+
+  it.each([1440, 900, 390, 446])(
+    'keeps the contextual action reachable with wrapping at %spx (structural)',
+    async (width) => {
+      const previous = window.innerWidth;
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      try {
+        management = true;
+        const f = mount();
+        await vi.waitFor(() => {
+          f.detectChanges();
+          expect(
+            f.nativeElement.querySelector('[data-testid="cancel-accepted-item"] button'),
+          ).not.toBeNull();
+        });
+        const row = f.nativeElement.querySelector('[data-testid="service-order-line"]');
+        expect(row.classList.contains('flex-wrap')).toBe(true);
+        expect(row.querySelector('button').disabled).toBe(false);
+        expect(row.querySelector('button').closest('[hidden]')).toBeNull();
+      } finally {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, value: previous });
+      }
+    },
+  );
+  it('rejects locally revoked management and foreign context before sending a command', async () => {
+    const flow = TestBed.inject(RestaurantItemCancellation);
+    await expect(
+      flow.cancel(serviceContext, order(), line(rid(20)), 'Reason'),
+    ).rejects.toMatchObject({ status: 403 });
+    management = true;
+    await expect(
+      flow.cancel({ ...serviceContext, session: rid(99) }, order(), line(rid(20)), 'Reason'),
+    ).rejects.toThrow('context');
+    expect(api.command).not.toHaveBeenCalled();
   });
 });

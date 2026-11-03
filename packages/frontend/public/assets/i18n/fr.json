@@ -5465,6 +5465,18 @@
       "UNAVAILABLE": "Indisponible",
       "OPEN": "Service ouvert",
       "CLOSED": "Service clôturé"
+    },
+    "ITEM_CANCELLATION": {
+      "TITLE": "Annuler l’article",
+      "CONSEQUENCE": "Toute cette ligne sera annulée. Le montant à régler et les préparations concernées seront mis à jour. Le service reste ouvert.",
+      "REASON": "Motif",
+      "REASON_INVALID": "Saisissez un motif de 1 à 500 caractères.",
+      "RETRY": "Réessayer la même annulation",
+      "SUCCESS": "Article annulé.",
+      "ACCESS": "Vous n’avez plus l’autorisation d’annuler cet article.",
+      "CONFLICT": "La commande a changé ou un paiement empêche cette annulation. Fermez ce dialogue, actualisez le service et vérifiez la ligne avant de réessayer.",
+      "REJECTED": "Cet article ne peut plus être annulé. Actualisez le service et vérifiez son état.",
+      "UNCERTAIN": "Le résultat reste à confirmer. Réessayez la même annulation ; le motif et la demande sont conservés."
     }
   }
 }

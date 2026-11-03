@@ -1,5 +1,20 @@
+import { MatDialog } from '@angular/material/dialog';
+import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
+import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
+import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
+import { acceptedItemCancellable } from '../data-access/restaurant-item-cancellation';
+import { RestaurantItemCancellationDialog } from '../feature/restaurant-item-cancellation.dialog';
 import { DatePipe } from '@angular/common';
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal,
+  DestroyRef,
+} from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,7 +31,14 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 @Component({
   selector: 'liass-restaurant-service-order',
   host: { class: 'block' },
-  imports: [MatIconModule, DatePipe, MatButtonModule, TranslocoModule],
+  imports: [
+    MatIconModule,
+    DatePipe,
+    MatButtonModule,
+    TranslocoModule,
+    LiassButtonComponent,
+    LiassStatusChipComponent,
+  ],
   template: `@if (!accessBlocked()) {
     <article class="space-y-3 border-t border-app-border pt-4" data-testid="service-order">
       <div class="flex flex-wrap justify-between gap-2">
@@ -59,19 +81,46 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
           </p>
           @for (line of round; track line.itemId) {
             <div
-              class="flex items-start justify-between gap-3 text-sm"
+              class="flex flex-wrap items-start justify-between gap-3 text-sm"
               data-testid="service-order-line"
             >
               <div class="min-w-0">
                 <p class="break-words">{{ line.snapshot!.quantity }} × {{ line.snapshot!.name }}</p>
-                <p class="text-app-text-secondary">
-                  {{ 'RESTAURANTS.SERVICE_ORDERS.PROGRESS.' + progress(line) | transloco }}
-                </p>
+                @if (line.status === 'CANCELLED') {
+                  <liass-status-chip
+                    tone="neutral"
+                    size="sm"
+                    [label]="'RESTAURANTS.SERVICE_ORDERS.PROGRESS.CANCELLED' | transloco"
+                  />
+                  <p class="break-words text-app-text-secondary">{{ line.cancellationReason }}</p>
+                } @else {
+                  <p class="text-app-text-secondary">
+                    {{ 'RESTAURANTS.SERVICE_ORDERS.PROGRESS.' + progress(line) | transloco }}
+                  </p>
+                }
                 @if (line.notes) {
                   <p class="break-words text-app-text-secondary">{{ line.notes }}</p>
                 }
               </div>
-              <span class="shrink-0 tabular-nums">{{ price(line.snapshot!.lineTotalMinor) }}</span>
+              <div class="flex flex-wrap items-center justify-end gap-2">
+                @if (line.status !== 'CANCELLED') {
+                  <span class="shrink-0 tabular-nums">{{
+                    price(line.snapshot!.lineTotalMinor)
+                  }}</span>
+                }
+                @if (canCancel(line)) {
+                  <liass-button
+                    tone="danger"
+                    variant="ghost"
+                    icon="cancel"
+                    [ariaLabel]="'RESTAURANTS.ITEM_CANCELLATION.TITLE' | transloco"
+                    (pressed)="cancel(line)"
+                    data-testid="cancel-accepted-item"
+                  >
+                    {{ 'RESTAURANTS.ITEM_CANCELLATION.TITLE' | transloco }}
+                  </liass-button>
+                }
+              </div>
             </div>
           }
         </div>
@@ -123,6 +172,9 @@ export class RestaurantServiceOrderComponent {
   readonly context = input.required<ServiceOrderContext>();
   readonly order = input.required<RestaurantOrder>();
   readonly denied = output<void>();
+  private readonly dialogs = inject(MatDialog);
+  private readonly destroy = inject(DestroyRef);
+  private readonly caps = inject(RestaurantsCapabilities);
   private readonly queries = inject(RestaurantOrdersQueries);
   private readonly preparationQueries = inject(RestaurantServicePreparationQueries);
   private readonly t = inject(TranslocoService);
@@ -148,7 +200,7 @@ export class RestaurantServiceOrderComponent {
       (this.items.data()?.pages.flatMap((p) => p.items) ?? []).map((line) => [line.itemId, line]),
     );
     for (const line of lines.values())
-      if (line.status === 'ACCEPTED' && line.snapshot)
+      if ((line.status === 'ACCEPTED' || line.status === 'CANCELLED') && line.snapshot)
         groups.set(line.snapshot.submissionId, [
           ...(groups.get(line.snapshot.submissionId) ?? []),
           line,
@@ -192,7 +244,29 @@ export class RestaurantServiceOrderComponent {
       if (this.accessBlocked()) this.denied.emit();
     });
   }
+  canCancel(line: RestaurantOrderItem) {
+    return (
+      !this.accessBlocked() &&
+      this.caps.canManageSetup() &&
+      acceptedItemCancellable(this.order(), line)
+    );
+  }
+  private tableName() {
+    const context = this.preparation.data()?.pages.flatMap((page) => page.items)[0]?.serviceContext;
+    return context?.mode === 'DINE_IN' ? context.tableName : undefined;
+  }
+  cancel(line: RestaurantOrderItem) {
+    if (!this.canCancel(line)) return;
+    const ref = this.dialogs.open(RestaurantItemCancellationDialog, {
+      width: '480px',
+      maxWidth: 'calc(100vw - 32px)',
+      data: { context: this.context(), order: this.order(), line, tableName: this.tableName() },
+    });
+    const unregister = this.destroy.onDestroy(() => ref.close());
+    ref.afterClosed().subscribe(() => unregister());
+  }
   progress(line: RestaurantOrderItem) {
+    if (line.status === 'CANCELLED') return 'CANCELLED';
     if (!line.snapshot?.stationId) return 'CONFIRMED';
     const task = this.preparation
       .data()

@@ -180,3 +180,57 @@ it('rejects foreign organization Orders and same-outlet Orders from another sess
     .flush({ data: { ...order, guestSessionId: rid(99) } });
   await rejected2;
 });
+
+it('returns a validated accepted-line cancellation from the existing route without any order/session closure', async () => {
+  const input = {
+    clientRequestId: rid(70),
+    expectedVersion: 8,
+    expectedItemVersion: 2,
+    reason: 'Wrong item',
+  };
+  const result = {
+    orgId: 'org',
+    outletId: rid(2),
+    orderId: rid(20),
+    itemId: rid(21),
+    menuItemId: rid(7),
+    categoryId: rid(6),
+    schemaVersion: 1,
+    status: 'CANCELLED',
+    quantity: 2,
+    expectedMenuItemVersion: 1,
+    version: 3,
+    createdAt: '2026-10-18T10:00:00.000Z',
+    cancelledAt: '2026-11-02T10:00:00.000Z',
+    cancelledBy: 'manager',
+    cancellationReason: 'Wrong item',
+    snapshot: {
+      menuItemId: rid(7),
+      menuId: rid(8),
+      categoryId: rid(6),
+      itemVersion: 1,
+      categoryVersion: 1,
+      menuVersion: 1,
+      name: 'Water',
+      quantity: 2,
+      unitPriceMinor: 1500,
+      grossMinor: 3000,
+      subtotalMinor: 3000,
+      discountMinor: 0,
+      taxMinor: 0,
+      lineTotalMinor: 3000,
+      currency: 'XOF',
+      acceptedAt: '2026-10-18T10:01:00.000Z',
+      acceptedBy: 'waiter',
+      submissionId: rid(40),
+    },
+  };
+  const pending = api.command(ctx, 'remove', input, rid(20), rid(21));
+  const request = http.expectOne((r) =>
+    r.url.endsWith(`/orders/${rid(20)}/items/${rid(21)}/cancel`),
+  );
+  expect(request.request.body).toEqual(input);
+  request.flush({ data: result });
+  expect(await pending).toEqual(result);
+  http.expectNone((r) => /\/close$|\/orders\/[^/]+\/cancel$/.test(r.url));
+});

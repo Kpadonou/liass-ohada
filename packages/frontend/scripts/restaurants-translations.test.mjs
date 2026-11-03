@@ -113,3 +113,15 @@ test('Guest lifecycle has manual refresh and no periodic network scheduler', () 
   assert.match(page, /RESTAURANTS\.GUEST\.REFRESH/);
   assert.doesNotMatch(page, /location\.reload/);
 });
+
+test('accepted-item cancellation has complete FR/EN operational copy and no abandonment action', () => {
+  const fr = leaves(translations.fr.RESTAURANTS.ITEM_CANCELLATION);
+  const en = leaves(translations.en.RESTAURANTS.ITEM_CANCELLATION);
+  assert.deepEqual(fr.map(([key]) => key).sort(), en.map(([key]) => key).sort());
+  for (const [, value] of [...fr, ...en]) {
+    assert.ok(value.trim());
+    assert.doesNotMatch(value, /DynamoDB|Lambda|GSI|CANCEL_ORDER/);
+  }
+  assert.equal(translations.fr.RESTAURANTS.ITEM_CANCELLATION.TITLE, 'Annuler l’article');
+  assert.equal(translations.en.RESTAURANTS.ITEM_CANCELLATION.TITLE, 'Cancel item');
+});

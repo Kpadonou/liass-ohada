@@ -1002,3 +1002,176 @@ test("management cancellation of an attributed empty Order removes its existing 
   ).toMatchObject({ status: "CANCELLED", waiterId: "Binta" });
   expect(m.rows.has(JSON.stringify([key.PK, key.SK]))).toBe(false);
 });
+
+// Operator exposure reuses this exact handler; no new cancellation domain/grant.
+test.each(["owner", "manager"])(
+  "pilot accepted-line cancellation by %s retains history, siblings and open service",
+  async (actor) => {
+    const draft = await add();
+    data(await call("submit-order", "Aissa", await submitBody(draft), ids()));
+    const sibling = await add(4);
+    data(await call("submit-order", "Aissa", await submitBody(sibling), ids()));
+    const accepted = (await S.line(scope(), order.orderId, draft.itemId)).data;
+    const siblingBefore = (await S.line(scope(), order.orderId, sibling.itemId))
+      .data;
+    const before = await current();
+    const body = {
+      clientRequestId: request(),
+      expectedVersion: before.version,
+      expectedItemVersion: accepted.version,
+      reason: "  Customer changed selection  ",
+    };
+    const lineIds = { ...ids(), itemId: accepted.itemId };
+    const cancelled = data(
+      await call("cancel-order-item", actor, body, lineIds),
+    );
+    expect(cancelled).toMatchObject({
+      status: "CANCELLED",
+      snapshot: accepted.snapshot,
+      cancellationReason: "Customer changed selection",
+      cancelledBy: actor,
+      version: accepted.version + 1,
+    });
+    expect(cancelled.cancelledAt).toBeTruthy();
+    expect(data(await call("cancel-order-item", actor, body, lineIds))).toEqual(
+      cancelled,
+    );
+    expect(await current()).toMatchObject({
+      status: "SUBMITTED",
+      dueMinor: before.dueMinor - accepted.snapshot!.lineTotalMinor,
+    });
+    expect((await S.line(scope(), order.orderId, sibling.itemId)).data).toEqual(
+      siblingBefore,
+    );
+    expect(
+      (await S.session(scope(), session.guestSessionId)).data,
+    ).toMatchObject({ status: "OPEN", openOrderCount: 1 });
+    const audit = [...m.rows.values()]
+      .map((r) => unmarshall(r))
+      .filter(
+        (r) => r.data?.action === "CANCEL_ITEM" && r.data?.actorId === actor,
+      );
+    expect(
+      audit.some((r) => r.data.reason === "Customer changed selection"),
+    ).toBe(true);
+    const later = await add(4);
+    data(await call("submit-order", "Aissa", await submitBody(later), ids()));
+  },
+);
+
+test.each(["Aissa", "cashier", "cook"])(
+  "pilot accepted cancellation denies %s without effects",
+  async (actor) => {
+    if (actor !== "Aissa")
+      m.seedAccess(org, actor, actor === "cashier" ? "CASHIER" : "KITCHEN");
+    const draft = await add();
+    data(await call("submit-order", "Aissa", await submitBody(draft), ids()));
+    const before = snapshotRows();
+    expect(
+      (
+        await call(
+          "cancel-order-item",
+          actor,
+          {
+            clientRequestId: request(),
+            expectedVersion: (await current()).version,
+            expectedItemVersion: 2,
+            reason: "Correction",
+          },
+          { ...ids(), itemId: draft.itemId },
+        )
+      ).statusCode,
+    ).toBe(403);
+    expect(snapshotRows()).toBe(before);
+  },
+);
+
+test.each(["paidMinor", "reservedMinor"] as const)(
+  "pilot cancellation protects %s at exact remaining capacity",
+  async (field) => {
+    const draft = await add();
+    data(await call("submit-order", "Aissa", await submitBody(draft), ids()));
+    const sibling = await add(4);
+    data(await call("submit-order", "Aissa", await submitBody(sibling), ids()));
+    const accepted = (await S.line(scope(), order.orderId, draft.itemId)).data;
+    const row = await S.order(scope(), order.orderId);
+    const remaining = row.data.dueMinor - accepted.snapshot!.lineTotalMinor;
+    // Existing guards are Order/session monetary capacity, not per-line paid quantities.
+    patch(
+      { PK: row.PK, SK: row.SK },
+      { data: { ...row.data, [field]: remaining + 1 } },
+    );
+    const before = snapshotRows();
+    const body = {
+      clientRequestId: request(),
+      expectedVersion: row.data.version,
+      expectedItemVersion: accepted.version,
+      reason: "Correction",
+    };
+    expect(
+      (
+        await call("cancel-order-item", "owner", body, {
+          ...ids(),
+          itemId: draft.itemId,
+        })
+      ).statusCode,
+    ).toBe(409);
+    expect(snapshotRows()).toBe(before);
+    patch(
+      { PK: row.PK, SK: row.SK },
+      { data: { ...row.data, [field]: remaining } },
+    );
+    expect(
+      (
+        await call(
+          "cancel-order-item",
+          "owner",
+          { ...body, clientRequestId: request() },
+          { ...ids(), itemId: draft.itemId },
+        )
+      ).statusCode,
+    ).toBe(200);
+    expect((await current()).dueMinor).toBe(remaining);
+  },
+);
+
+test("pilot stale versions and concurrent distinct cancellation intents cannot double apply", async () => {
+  const draft = await add();
+  data(await call("submit-order", "Aissa", await submitBody(draft), ids()));
+  const before = await current();
+  const body = {
+    clientRequestId: request(),
+    expectedVersion: before.version,
+    expectedItemVersion: 2,
+    reason: "Correction",
+  };
+  const lineIds = { ...ids(), itemId: draft.itemId };
+  const unchanged = snapshotRows();
+  for (const input of [
+    { ...body, expectedVersion: before.version - 1 },
+    { ...body, expectedItemVersion: 1 },
+  ]) {
+    expect(
+      (await call("cancel-order-item", "owner", input, lineIds)).statusCode,
+    ).toBe(409);
+    expect(snapshotRows()).toBe(unchanged);
+  }
+  const race = await Promise.all([
+    call("cancel-order-item", "owner", body, lineIds),
+    call(
+      "cancel-order-item",
+      "manager",
+      { ...body, clientRequestId: request() },
+      lineIds,
+    ),
+  ]);
+  expect(race.map((r) => r.statusCode).sort()).toEqual([200, 409]);
+  expect(await current()).toMatchObject({
+    dueMinor: 0,
+    outstandingWorkCount: 0,
+    status: "SUBMITTED",
+  });
+  expect((await S.session(scope(), session.guestSessionId)).data).toMatchObject(
+    { dueMinor: 0, status: "OPEN", openOrderCount: 1 },
+  );
+});

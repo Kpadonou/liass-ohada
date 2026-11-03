@@ -1,3 +1,4 @@
+import { RestaurantsCapabilities } from '../../data-access/restaurants-capabilities';
 import { RestaurantServicePreparationApi } from '../../data-access/restaurant-service-preparation.api';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -205,6 +206,7 @@ beforeEach(async () => {
       }),
     ],
     providers: [
+      { provide: RestaurantsCapabilities, useValue: { canManageSetup: () => false } },
       { provide: QueryClient, useValue: client },
       {
         provide: AuthStore,

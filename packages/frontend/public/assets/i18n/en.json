@@ -5465,6 +5465,18 @@
       "UNAVAILABLE": "Unavailable",
       "OPEN": "Open service",
       "CLOSED": "Closed service"
+    },
+    "ITEM_CANCELLATION": {
+      "TITLE": "Cancel item",
+      "CONSEQUENCE": "This entire line will be cancelled. The amount due and related preparation will be updated. The service stays open.",
+      "REASON": "Reason",
+      "REASON_INVALID": "Enter a reason between 1 and 500 characters.",
+      "RETRY": "Retry the same cancellation",
+      "SUCCESS": "Item cancelled.",
+      "ACCESS": "You no longer have permission to cancel this item.",
+      "CONFLICT": "The order changed or a payment prevents cancellation. Close this dialog, refresh the service and review the line before trying again.",
+      "REJECTED": "This item can no longer be cancelled. Refresh the service and review its state.",
+      "UNCERTAIN": "The result is still unconfirmed. Retry the same cancellation; the reason and request are retained."
     }
   }
 }
