@@ -122,6 +122,77 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     fixture.detectChanges();
     return fixture;
   };
+  it('keeps technical Orders in raw completeness while excluding their business rows and preserving real work blockers', async () => {
+    const technical = {
+      ...order,
+      orderId: rid(101),
+      status: 'CANCELLED',
+      resolutionKind: 'TECHNICAL_EMPTY_DRAFT',
+      dueMinor: 0,
+      paidMinor: 0,
+    };
+    sessions.guestSession.mockResolvedValue({ ...visit, orderCount: 2 });
+    orders.orders.mockResolvedValue({ items: [technical, { ...order, outstandingWorkCount: 1 }] });
+    const f = create();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.complete()).toBe(true);
+    });
+    expect(f.componentInstance.rows()).toHaveLength(2);
+    expect(f.componentInstance.businessRows()).toHaveLength(1);
+    expect(f.nativeElement.querySelectorAll('summary')).toHaveLength(1);
+    expect(f.componentInstance.blockers()).toContain('WORK');
+    expect(f.componentInstance.readyToClose()).toBe(false);
+    expect(flow.close).not.toHaveBeenCalled();
+    expect(f.componentInstance.readableSession()?.status).toBe('OPEN');
+  });
+  it('does not guess a legacy zero-value draft is technical; canonical resolution later hides only its business row', async () => {
+    const legacy = {
+      ...order,
+      status: 'DRAFT',
+      acceptedLineCount: 0,
+      financialRevision: 0,
+      dueMinor: 0,
+      paidMinor: 0,
+    };
+    sessions.guestSession.mockResolvedValue({ ...visit, dueMinor: 0, paidMinor: 0 });
+    orders.orders.mockResolvedValue({ items: [legacy] });
+    const f = create();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.complete()).toBe(true);
+    });
+    expect(f.componentInstance.businessRows()).toHaveLength(1);
+    expect(f.nativeElement.querySelectorAll('summary')).toHaveLength(1);
+    orders.orders.mockResolvedValue({
+      items: [{ ...legacy, status: 'CANCELLED', resolutionKind: 'TECHNICAL_EMPTY_DRAFT' }],
+    });
+    await f.componentInstance.orders.refetch();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.businessRows()).toHaveLength(0);
+    });
+    expect(f.componentInstance.complete()).toBe(true);
+    expect(f.componentInstance.rows()).toHaveLength(1);
+    expect(f.componentInstance.businessRows()).toHaveLength(0);
+    expect(f.nativeElement.querySelectorAll('summary')).toHaveLength(0);
+    expect(flow.close).not.toHaveBeenCalled();
+  });
+  it('keeps raw cursor exhaustion authoritative even when a loaded page contains only technical history', async () => {
+    orders.orders.mockResolvedValue({
+      items: [{ ...order, status: 'CANCELLED', resolutionKind: 'TECHNICAL_EMPTY_DRAFT' }],
+      nextCursor: 'next',
+    });
+    const f = create();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.orders.isSuccess()).toBe(true);
+    });
+    expect(f.componentInstance.businessRows()).toHaveLength(0);
+    expect(f.componentInstance.complete()).toBe(false);
+    expect(f.componentInstance.blockers()).toContain('INCOMPLETE');
+    expect(f.nativeElement.textContent).toContain(fr.RESTAURANTS.CHECKOUT.MORE_ORDERS);
+  });
   it('performance: selected visit needs four base reads, keeps cached header on fresh remount', async () => {
     let first = create();
     await vi.waitFor(() => {

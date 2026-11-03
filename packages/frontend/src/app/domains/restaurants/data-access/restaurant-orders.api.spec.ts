@@ -46,6 +46,166 @@ it('uses bounded canonical session Orders with an explicit cursor', async () => 
   req.flush({ items: [], nextCursor: 'next' });
   expect(await pending).toEqual({ items: [], nextCursor: 'next' });
 });
+it('consumes an atomic first-item response and a terminal draft-removal response without a second cleanup request', async () => {
+  const order = {
+    orgId: 'org',
+    outletId: rid(2),
+    guestSessionId: rid(9),
+    orderId: rid(20),
+    schemaVersion: 1,
+    orderType: 'DINE_IN',
+    status: 'DRAFT',
+    currency: 'XOF',
+    createdAt: '2026-10-18T10:00:00.000Z',
+    createdBy: 'waiter',
+    version: 1,
+    financialRevision: 0,
+    lineCount: 1,
+    acceptedLineCount: 0,
+    draftLineCount: 1,
+    dueMinor: 0,
+    paidMinor: 0,
+    reservedMinor: 0,
+    pendingPaymentCount: 0,
+  };
+  const line = {
+    orgId: 'org',
+    outletId: rid(2),
+    orderId: rid(20),
+    itemId: rid(21),
+    schemaVersion: 1,
+    menuItemId: rid(7),
+    categoryId: rid(6),
+    quantity: 1,
+    expectedMenuItemVersion: 1,
+    version: 1,
+    status: 'DRAFT',
+    createdAt: order.createdAt,
+  };
+  const firstItem = {
+    menuItemId: rid(7),
+    categoryId: rid(6),
+    quantity: 1,
+    expectedMenuItemVersion: 1,
+  };
+  const pending = api.command(ctx, 'create', {
+    clientRequestId: rid(70),
+    orderType: 'DINE_IN',
+    guestSessionId: rid(9),
+    firstItem,
+  });
+  const request = http.expectOne((r) => r.url.endsWith('/orders'));
+  expect(request.request.body.firstItem).toEqual(firstItem);
+  request.flush({ data: order, firstItem: line });
+  expect(await pending).toEqual({ ...line, resolvedOrder: order });
+  const removed = api.command(
+    ctx,
+    'remove',
+    {
+      clientRequestId: rid(71),
+      expectedVersion: 1,
+      expectedItemVersion: 1,
+      reason: 'Removed',
+      includeOrder: true,
+    },
+    rid(20),
+    rid(21),
+  );
+  const terminal = {
+    ...order,
+    status: 'CANCELLED',
+    resolutionKind: 'TECHNICAL_EMPTY_DRAFT',
+    version: 2,
+    draftLineCount: 0,
+    closedBy: 'waiter',
+    closedAt: order.createdAt,
+  };
+  const cancelled = {
+    ...line,
+    status: 'CANCELLED',
+    version: 2,
+    cancelledBy: 'waiter',
+    cancelledAt: order.createdAt,
+    cancellationReason: 'Removed',
+  };
+  http
+    .expectOne((r) => r.url.endsWith(`/items/${rid(21)}/cancel`))
+    .flush({ data: cancelled, order: terminal });
+  expect(await removed).toEqual({ ...cancelled, resolvedOrder: terminal });
+  http.expectNone((r) => /\/orders\/[^/]+\/cancel$|\/close$/.test(r.url));
+});
+it('uses the existing Order cancellation route and returns the owned canonical terminal Order', async () => {
+  const input = { clientRequestId: rid(70), expectedVersion: 4, reason: '  No order  ' };
+  const pending = api.abandon(ctx, rid(20), input);
+  const request = http.expectOne((r) =>
+    r.url.endsWith(`/outlets/${rid(2)}/orders/${rid(20)}/cancel`),
+  );
+  expect(request.request.method).toBe('POST');
+  expect(request.request.body).toEqual({ ...input, reason: 'No order' });
+  const terminal = {
+    orgId: 'org',
+    outletId: rid(2),
+    guestSessionId: rid(9),
+    orderId: rid(20),
+    schemaVersion: 1,
+    orderType: 'DINE_IN',
+    status: 'CANCELLED',
+    currency: 'XOF',
+    createdAt: '2026-10-18T10:00:00.000Z',
+    createdBy: 'owner',
+    version: 5,
+    financialRevision: 0,
+    lineCount: 0,
+    acceptedLineCount: 0,
+    draftLineCount: 0,
+    dueMinor: 0,
+    paidMinor: 0,
+    reservedMinor: 0,
+    pendingPaymentCount: 0,
+    closedAt: '2026-11-03T10:00:00.000Z',
+    closedBy: 'owner',
+  };
+  request.flush({ data: terminal });
+  expect(await pending).toEqual(terminal);
+  http.expectNone((r) => /\/close$|inventory/.test(r.url));
+});
+it.each(['foreign order', 'foreign session', 'nonterminal'])(
+  'rejects an invalid abandonment response: %s',
+  async (kind) => {
+    const pending = api.abandon(ctx, rid(20), {
+      clientRequestId: rid(70),
+      expectedVersion: 1,
+      reason: 'Abandoned',
+    });
+    const check = expect(pending).rejects.toThrow();
+    http
+      .expectOne((r) => r.url.endsWith('/cancel'))
+      .flush({
+        data: {
+          orgId: 'org',
+          outletId: rid(2),
+          guestSessionId: kind === 'foreign session' ? rid(99) : rid(9),
+          orderId: kind === 'foreign order' ? rid(99) : rid(20),
+          schemaVersion: 1,
+          orderType: 'DINE_IN',
+          status: kind === 'nonterminal' ? 'DRAFT' : 'CANCELLED',
+          currency: 'XOF',
+          createdAt: '2026-10-18T10:00:00.000Z',
+          createdBy: 'owner',
+          version: 2,
+          financialRevision: 0,
+          lineCount: 0,
+          acceptedLineCount: 0,
+          draftLineCount: 0,
+          dueMinor: 0,
+          paidMinor: 0,
+          reservedMinor: 0,
+          pendingPaymentCount: 0,
+        },
+      });
+    await check;
+  },
+);
 it.each(['organization', 'principal', 'revision'])(
   'rejects late %s data even for empty pages',
   async (dimension) => {

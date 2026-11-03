@@ -6,6 +6,8 @@ import {
   acceptedItemCancellable,
 } from '../data-access/restaurant-item-cancellation';
 import { RestaurantItemCancellationDialog } from '../feature/restaurant-item-cancellation.dialog';
+import { RestaurantOrderAbandonmentDialog } from '../feature/restaurant-order-abandonment.dialog';
+import { RestaurantOrderAbandonment } from '../data-access/restaurant-order-abandonment';
 import { RestaurantOrdersQueries } from '../data-access/restaurant-orders.queries';
 import { restaurantKeys } from '../data-access/restaurants.queries';
 import { kitchenKeys } from '../data-access/restaurant-preparation.queries';
@@ -28,7 +30,7 @@ import { serviceContext, serviceTask } from '../data-access/service-preparation.
 
 describe('Canonical Orders across the whole service', () => {
   let client: QueryClient;
-  const api = { assertContext: vi.fn(), items: vi.fn(), command: vi.fn() };
+  const api = { assertContext: vi.fn(), items: vi.fn(), command: vi.fn(), abandon: vi.fn() };
   let management = false;
   const dialogRef = { close: vi.fn(), disableClose: false };
   const notifications = { success: vi.fn(), error: vi.fn() };
@@ -272,12 +274,12 @@ describe('Canonical Orders across the whole service', () => {
       for (const card of cards)
         expect(card.textContent).toContain(restaurantOperationalPrice(6000, 'XOF', lang));
       expect(f.nativeElement.textContent).toContain(
-        lang === 'fr' ? 'Commandes validées' : 'Validated orders',
+        lang === 'fr' ? 'Commandes du service' : 'Service orders',
       );
       expect(f.nativeElement.textContent).not.toContain('private-staff-identifier');
     },
   );
-  it('renders no history panel for an empty service or a draft-only canonical Order', () => {
+  it('keeps another unmarked draft visible but suppresses the identified local draft', () => {
     const f = mount([]);
     expect(f.nativeElement.querySelector('liass-card')).toBeNull();
     f.componentRef.setInput('orders', [
@@ -285,8 +287,148 @@ describe('Canonical Orders across the whole service', () => {
     ]);
     f.componentRef.setInput('expectedCount', 1);
     f.detectChanges();
-    expect(f.nativeElement.querySelector('liass-card')).toBeNull();
+    expect(f.nativeElement.querySelector('[data-testid="service-order"]')).not.toBeNull();
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+    f.componentRef.setInput('activeDraftOrderId', rid(20));
+    f.detectChanges();
     expect(f.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  });
+  it.each(['OWNER', 'MANAGER'])(
+    'offers Order abandonment for %s even with accepted lines, independently of item action',
+    async () => {
+      management = true;
+      const open = vi
+        .spyOn(TestBed.inject(MatDialog), 'open')
+        .mockReturnValue({ close: vi.fn(), afterClosed: () => of(undefined) } as never);
+      const f = mount();
+      await vi.waitFor(() => {
+        f.detectChanges();
+        expect(
+          f.nativeElement.querySelector('[data-testid="abandon-order"] button'),
+        ).not.toBeNull();
+      });
+      const button = f.nativeElement.querySelector('[data-testid="abandon-order"] button');
+      expect(button.closest('[data-testid="service-order-line"]')).toBeNull();
+      button.click();
+      expect(open).toHaveBeenCalledWith(
+        RestaurantOrderAbandonmentDialog,
+        expect.objectContaining({
+          maxWidth: 'calc(100vw - 32px)',
+          disableClose: true,
+          data: expect.objectContaining({ context: serviceContext, order: order() }),
+        }),
+      );
+    },
+  );
+  it('keeps empty draft Order reachable for management, and terminal Order history without abandonment', async () => {
+    management = true;
+    api.items.mockResolvedValue({ items: [] });
+    const empty = { ...order(), status: 'DRAFT' as const, acceptedLineCount: 0, dueMinor: 0 };
+    const f = mount([empty]);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+    f.componentRef.setInput('orders', [{ ...empty, status: 'CANCELLED' }]);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+    expect(f.nativeElement.textContent).toContain('Commande annulée');
+    f.componentRef.setInput('orders', [{ ...empty, status: 'CLOSED' }]);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  });
+  it('does not expose Order abandonment to a non-management operator', () => {
+    const f = mount();
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  });
+  it.each(['DRAFT'] as const)(
+    'hides Order cancellation while %s contains draft lines',
+    (status) => {
+      management = true;
+      const f = mount([{ ...order(), status, draftLineCount: 1 }]);
+      expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+    },
+  );
+  it('does not render an action without a persisted Order', () => {
+    management = true;
+    const f = mount([]);
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  });
+  it('suppresses only the composing DRAFT card and never hides a submitted Order', () => {
+    management = true;
+    const draft = { ...order(), status: 'DRAFT' as const, acceptedLineCount: 0, dueMinor: 0 };
+    const sibling = order(30);
+    const f = mount([draft, sibling]);
+    f.componentRef.setInput('activeDraftOrderId', draft.orderId);
+    f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('[data-testid="service-order"]')).toHaveLength(1);
+    expect(f.nativeElement.querySelectorAll('[data-testid="abandon-order"]')).toHaveLength(1);
+    f.componentRef.setInput('activeDraftOrderId', sibling.orderId);
+    f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('[data-testid="service-order"]')).toHaveLength(2);
+    expect(f.nativeElement.querySelectorAll('[data-testid="abandon-order"]')).toHaveLength(0);
+    f.componentRef.setInput('activeDraftOrderId', '');
+    f.detectChanges();
+    expect(f.nativeElement.querySelectorAll('[data-testid="abandon-order"]')).toHaveLength(1);
+  });
+  it('uses the local active workflow, not a duplicated server guard, to hide cancellation during local drafting', async () => {
+    management = true;
+    api.items.mockResolvedValue({
+      items: [{ ...line(rid(20)), status: 'DRAFT', snapshot: undefined }],
+    });
+    const f = mount();
+    f.componentRef.setInput('activeDraftOrderId', rid(20));
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(api.items).toHaveBeenCalled();
+      expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+    });
+  });
+  it('hides only canonically technical Orders while preserving business-cancelled and unmarked legacy history', () => {
+    const technical = {
+      ...order(),
+      status: 'CANCELLED' as const,
+      resolutionKind: 'TECHNICAL_EMPTY_DRAFT' as const,
+    };
+    const business = {
+      ...order(30),
+      status: 'CANCELLED' as const,
+      resolutionKind: 'BUSINESS' as const,
+    };
+    const legacy = {
+      ...order(40),
+      status: 'CANCELLED' as const,
+      acceptedLineCount: 0,
+      dueMinor: 0,
+    };
+    const f = mount([technical, business, legacy]);
+    expect(f.nativeElement.querySelectorAll('[data-testid="service-order"]')).toHaveLength(2);
+    expect(f.componentInstance.orders()).toHaveLength(3);
+    expect(f.nativeElement.textContent).not.toContain('La liste est incomplète');
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  });
+  it.each([
+    ['fr', 'Annuler la commande'],
+    ['en', 'Cancel order'],
+  ])('uses the accepted %s Order action label', (lang, label) => {
+    management = true;
+    TestBed.inject(TranslocoService).setActiveLang(lang);
+    const f = mount();
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]').textContent).toContain(
+      label,
+    );
+  });
+  it('keeps an ambiguous intent reachable as retry after a terminal canonical refresh', async () => {
+    management = true;
+    api.abandon.mockRejectedValue(new HttpErrorResponse({ status: 0 }));
+    await expect(
+      TestBed.inject(RestaurantOrderAbandonment).abandon(serviceContext, order(), 'Reason'),
+    ).rejects.toThrow();
+    const f = mount([{ ...order(), status: 'CANCELLED' }]);
+    f.detectChanges();
+    expect(f.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+    expect(
+      f.nativeElement.querySelector('[data-testid="retry-abandon-order"] button'),
+    ).not.toBeNull();
+    expect(f.nativeElement.textContent).toContain('Réessayer la même annulation');
   });
   const cancelled = () => ({
     ...line(rid(20)),
@@ -533,6 +675,11 @@ describe('Canonical Orders across the whole service', () => {
           ).not.toBeNull();
         });
         const row = f.nativeElement.querySelector('[data-testid="service-order-line"]');
+        const abandon = f.nativeElement.querySelector('[data-testid="abandon-order"] button');
+        expect(abandon).not.toBeNull();
+        expect(abandon.disabled).toBe(false);
+        expect(abandon.closest('[hidden]')).toBeNull();
+        expect(abandon.closest('[data-testid="service-order-line"]')).toBeNull();
         expect(row.classList.contains('flex-wrap')).toBe(true);
         expect(row.querySelector('button').disabled).toBe(false);
         expect(row.querySelector('button').closest('[hidden]')).toBeNull();

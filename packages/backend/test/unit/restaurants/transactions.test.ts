@@ -19,6 +19,11 @@ import * as contracts from "@liass-ohada/shared/restaurants";
 import { RESTAURANTS_TRANSACTION_PERMISSIONS } from "@liass-ohada/shared/shared";
 import { acceptanceFixture } from "./acceptance-fixture";
 import { fixtureId, memoryDynamo } from "./memory-dynamo";
+import { InventorySales } from "@/lambda/domains/restaurants/inventory-sales";
+import {
+  pureEmptyDraftHeader,
+  qualifyPureEmptyDraft,
+} from "@/lambda/domains/restaurants/empty-draft";
 
 let memory: ReturnType<typeof memoryDynamo>,
   fixture: Awaited<ReturnType<typeof acceptanceFixture>>;
@@ -228,6 +233,719 @@ test("session orders increment links/counters once and prevent close", async () 
   expect(
     (await Q.run(ctx, "TABLE_ORDERS", {}, { tableId: session.tableId })).items,
   ).toHaveLength(0);
+});
+test("CANCEL_ORDER concurrent terminal mutation and replay decrement only its own session order", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const first = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const other = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const requests = [0, 1].map(() => ({
+    clientRequestId: requestId(),
+    expectedVersion: first.version,
+    reason: "Abandoned",
+  }));
+  const results = await Promise.allSettled(
+    requests.map((r) => execute("CANCEL_ORDER", r, { orderId: first.orderId })),
+  );
+  expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+  const winner = results.findIndex((r) => r.status === "fulfilled");
+  const terminal = (await S.order(ctx, first.orderId)).data;
+  expect(terminal).toMatchObject({ status: "CANCELLED", closedBy: "owner" });
+  expect(terminal.closedAt).toBeTruthy();
+  const before = rows();
+  await execute("CANCEL_ORDER", requests[winner], { orderId: first.orderId });
+  expect(rows()).toEqual(before);
+  await expect(
+    execute(
+      "CANCEL_ORDER",
+      { ...requests[winner], reason: "Different intent" },
+      { orderId: first.orderId },
+    ),
+  ).rejects.toMatchObject({ messageCode: "RESTAURANTS_IDEMPOTENCY_CONFLICT" });
+  expect((await S.session(ctx, session.guestSessionId)).data).toMatchObject({
+    status: "OPEN",
+    openOrderCount: 1,
+  });
+  expect((await S.order(ctx, other.orderId)).data).toEqual(other);
+  expect(
+    (await S.activeTable(ctx, fixture.tables[0].id)).data?.guestSessionId,
+  ).toBe(session.guestSessionId);
+  expect(
+    (await Q.run(ctx, "TABLE_ORDERS", {}, { tableId: session.tableId })).items,
+  ).toHaveLength(1);
+});
+test("CANCEL_ORDER races ADD_ITEM through the same authoritative Order version", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const order = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const item = fixture.items[4];
+  const outcomes = await Promise.allSettled([
+    execute(
+      "CANCEL_ORDER",
+      {
+        clientRequestId: requestId(),
+        expectedVersion: order.version,
+        reason: "Abandoned",
+      },
+      { orderId: order.orderId },
+    ),
+    execute(
+      "ADD_ITEM",
+      {
+        clientRequestId: requestId(),
+        expectedVersion: order.version,
+        menuItemId: item.id,
+        categoryId: item.categoryId,
+        expectedMenuItemVersion: item.version,
+        quantity: 1,
+      },
+      { orderId: order.orderId },
+    ),
+  ]);
+  expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+  const current = (await S.order(ctx, order.orderId)).data;
+  expect(current.version).toBe(order.version + 1);
+  expect(
+    (await S.session(ctx, session.guestSessionId)).data.openOrderCount,
+  ).toBe(current.status === "CANCELLED" ? 0 : 1);
+  expect(current.dueMinor).toBe(0);
+});
+test("atomic first draft creates one canonical pair and replays its exact receipt without effects", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const item = fixture.items[4];
+  const request = {
+    clientRequestId: requestId(),
+    orderType: "DINE_IN",
+    guestSessionId: session.guestSessionId,
+    firstItem: {
+      menuItemId: item.id,
+      categoryId: item.categoryId,
+      expectedMenuItemVersion: item.version,
+      quantity: 2,
+    },
+  };
+  const result = await execute("CREATE_ORDER", request);
+  const order = contracts.RestaurantOrderSchema.parse(result.data);
+  expect(order).toMatchObject({
+    status: "DRAFT",
+    version: 1,
+    lineCount: 1,
+    draftLineCount: 1,
+    acceptedLineCount: 0,
+    financialRevision: 0,
+    dueMinor: 0,
+  });
+  expect(result.firstItem).toMatchObject({
+    orderId: order.orderId,
+    status: "DRAFT",
+    quantity: 2,
+    version: 1,
+  });
+  expect((await S.session(ctx, session.guestSessionId)).data).toMatchObject({
+    openOrderCount: 1,
+    orderCount: 1,
+  });
+  const before = rows();
+  expect(await execute("CREATE_ORDER", request)).toEqual(result);
+  expect(rows()).toEqual(before);
+  await expect(
+    execute("CREATE_ORDER", {
+      ...request,
+      firstItem: { ...request.firstItem, quantity: 3 },
+    }),
+  ).rejects.toMatchObject({ messageCode: "RESTAURANTS_IDEMPOTENCY_CONFLICT" });
+  expect(
+    rows().some((r) =>
+      /^RESTAURANT_(STOCK_MOVEMENT|INVENTORY_EFFECT|PREPARATION|PAYMENT|CASH_MOVEMENT|BILL)$/.test(
+        r.entityType,
+      ),
+    ),
+  ).toBe(false);
+});
+test("atomic invalid first draft leaves no Order, item, projection or counter behind; legacy create remains callable", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const item = fixture.items[4];
+  const before = rows();
+  await expect(
+    execute("CREATE_ORDER", {
+      clientRequestId: requestId(),
+      orderType: "DINE_IN",
+      guestSessionId: session.guestSessionId,
+      firstItem: {
+        menuItemId: item.id,
+        categoryId: item.categoryId,
+        expectedMenuItemVersion: item.version + 1,
+        quantity: 1,
+      },
+    }),
+  ).rejects.toMatchObject({ messageCode: "RESTAURANTS_CONFIGURATION_CHANGED" });
+  expect(rows()).toEqual(before);
+  expect(
+    contracts.RestaurantOrderSchema.parse(
+      (await create(session.guestSessionId)).data,
+    ),
+  ).toMatchObject({ status: "DRAFT", lineCount: 0 });
+});
+test("nonfinal draft removal stays open; final removal is atomic, auditable and inventory-free on replay", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const order = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const sibling = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const first = contracts.RestaurantOrderItemSchema.parse(
+    (await add(order.orderId, 4)).data,
+  );
+  const second = contracts.RestaurantOrderItemSchema.parse(
+    (await add(order.orderId, 4)).data,
+  );
+  const remove = async (line: contracts.RestaurantOrderItem) => {
+    const request = {
+      clientRequestId: requestId(),
+      expectedVersion: (await S.order(ctx, order.orderId)).data.version,
+      expectedItemVersion: line.version,
+      reason: "Removed draft",
+    };
+    return {
+      request,
+      result: await execute("CANCEL_ITEM", request, {
+        orderId: order.orderId,
+        itemId: line.itemId,
+      }),
+    };
+  };
+  await remove(first);
+  expect((await S.order(ctx, order.orderId)).data.status).toBe("DRAFT");
+  expect(
+    (await S.session(ctx, session.guestSessionId)).data.openOrderCount,
+  ).toBe(2);
+  const resume = jest.spyOn(InventorySales, "resume");
+  const commit = R.commit.bind(R);
+  jest.spyOn(R, "commit").mockImplementationOnce(async (actions) => {
+    await commit(actions);
+    throw new Error("Lost final removal acknowledgement");
+  });
+  const final = await remove(second);
+  expect(final.result.order).toMatchObject({
+    status: "CANCELLED",
+    closedBy: "owner",
+    dueMinor: 0,
+    financialRevision: 0,
+    lineCount: 2,
+  });
+  expect(final.result.order?.closedAt).toBeTruthy();
+  expect(final.result.order?.resolutionKind).toBe("TECHNICAL_EMPTY_DRAFT");
+  expect((await S.order(ctx, order.orderId)).data.resolutionKind).toBe(
+    "TECHNICAL_EMPTY_DRAFT",
+  );
+  expect((await S.session(ctx, session.guestSessionId)).data).toMatchObject({
+    status: "OPEN",
+    openOrderCount: 1,
+    orderCount: 2,
+  });
+  expect((await S.order(ctx, sibling.orderId)).data).toEqual(sibling);
+  const before = rows();
+  expect(
+    await execute("CANCEL_ITEM", final.request, {
+      orderId: order.orderId,
+      itemId: second.itemId,
+    }),
+  ).toEqual(final.result);
+  expect(rows()).toEqual(before);
+  expect(resume).not.toHaveBeenCalled();
+  expect(
+    rows().filter(
+      (r) =>
+        r.entityType === "RESTAURANT_TRANSACTION_AUDIT" &&
+        r.data.reason === "EMPTY_DRAFT",
+    ).length,
+  ).toBeGreaterThan(0);
+  expect(
+    (await S.activeTable(ctx, fixture.tables[0].id)).data?.guestSessionId,
+  ).toBe(session.guestSessionId);
+});
+test("normal close recovers an orphan without Inventory and releases occupancy only on explicit session close", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const order = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const resume = jest.spyOn(InventorySales, "resume");
+  const request = {
+    clientRequestId: requestId(),
+    expectedVersion: order.version,
+  };
+  const result = await execute("CLOSE_ORDER", request, {
+    orderId: order.orderId,
+  });
+  expect(result.data).toMatchObject({ status: "CANCELLED", closedBy: "owner" });
+  expect(
+    (await Q.run(ctx, "TABLE_ORDERS", {}, { tableId: session.tableId })).items,
+  ).toHaveLength(0);
+  expect(
+    (
+      await Q.run(
+        ctx,
+        "SESSION_ORDERS",
+        {},
+        { sessionId: session.guestSessionId },
+      )
+    ).items,
+  ).toHaveLength(1);
+  const next = (await S.session(ctx, session.guestSessionId)).data;
+  expect(next).toMatchObject({
+    status: "OPEN",
+    openOrderCount: 0,
+    orderCount: 1,
+  });
+  expect(
+    await execute("CLOSE_ORDER", request, { orderId: order.orderId }),
+  ).toEqual(result);
+  expect(resume).not.toHaveBeenCalled();
+  expect((await S.activeTable(ctx, session.tableId)).data).not.toBeNull();
+  await execute(
+    "CLOSE_SESSION",
+    { clientRequestId: requestId(), expectedVersion: next.version },
+    { sessionId: session.guestSessionId },
+  );
+  expect((await S.activeTable(ctx, session.tableId)).data).toBeNull();
+});
+test.each(["add", "submit", "remove"])(
+  "final removal racing %s commits one coherent outcome",
+  async (kind) => {
+    const session = contracts.GuestSessionSchema.parse((await open()).data);
+    const order = contracts.RestaurantOrderSchema.parse(
+      (await create(session.guestSessionId)).data,
+    );
+    const line = contracts.RestaurantOrderItemSchema.parse(
+      (await add(order.orderId, 4)).data,
+    );
+    const current = (await S.order(ctx, order.orderId)).data;
+    const removal = {
+      clientRequestId: requestId(),
+      expectedVersion: current.version,
+      expectedItemVersion: line.version,
+      reason: "Removed",
+    };
+    const item = fixture.items[4];
+    const other =
+      kind === "add"
+        ? execute(
+            "ADD_ITEM",
+            {
+              clientRequestId: requestId(),
+              expectedVersion: current.version,
+              menuItemId: item.id,
+              categoryId: item.categoryId,
+              expectedMenuItemVersion: item.version,
+              quantity: 1,
+            },
+            { orderId: order.orderId },
+          )
+        : kind === "submit"
+          ? submit(order.orderId, line.itemId)
+          : execute(
+              "CANCEL_ITEM",
+              { ...removal, clientRequestId: requestId() },
+              { orderId: order.orderId, itemId: line.itemId },
+            );
+    const outcomes = await Promise.allSettled([
+      execute("CANCEL_ITEM", removal, {
+        orderId: order.orderId,
+        itemId: line.itemId,
+      }),
+      other,
+    ]);
+    expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    const terminal = (await S.order(ctx, order.orderId)).data;
+    expect(
+      (await S.session(ctx, session.guestSessionId)).data.openOrderCount,
+    ).toBe(terminal.status === "CANCELLED" ? 0 : 1);
+    if (terminal.status === "CANCELLED")
+      expect(terminal.resolutionKind).toBe("TECHNICAL_EMPTY_DRAFT");
+    if (terminal.status === "CANCELLED")
+      expect(
+        (await S.allLines(ctx, order.orderId)).every(
+          (l) => l.status === "CANCELLED" && !l.snapshot,
+        ),
+      ).toBe(true);
+  },
+);
+test("pure-draft header excludes accepted history, payment attempts, financial and work evidence", () => {
+  const base = {
+    status: "DRAFT",
+    draftLineCount: 0,
+    acceptedLineCount: 0,
+    financialRevision: 0,
+    dueMinor: 0,
+    paidMinor: 0,
+    reservedMinor: 0,
+    pendingPaymentCount: 0,
+  } as contracts.RestaurantOrder;
+  expect(pureEmptyDraftHeader(base)).toBe(true);
+  for (const field of [
+    "draftLineCount",
+    "acceptedLineCount",
+    "financialRevision",
+    "dueMinor",
+    "paidMinor",
+    "reservedMinor",
+    "pendingPaymentCount",
+    "outstandingWorkCount",
+    "paymentAttemptCount",
+    "succeededPaymentCount",
+  ])
+    expect(pureEmptyDraftHeader({ ...base, [field]: 1 })).toBe(false);
+  expect(pureEmptyDraftHeader({ ...base, status: "SUBMITTED" })).toBe(false);
+});
+test("canonical resolution classification rides existing Order reads without changing physical pagination or legacy decoding", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const technical = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const free = await Config.create(
+    ctx.orgId,
+    "owner",
+    "item",
+    { outletId: ctx.outletId, categoryId: fixture.items[4].categoryId },
+    {
+      clientRequestId: requestId(),
+      name: "Free business order",
+      price: { amountMinor: 0, currency: "XOF" },
+    },
+  );
+  const pair = await execute("CREATE_ORDER", {
+    clientRequestId: requestId(),
+    orderType: "DINE_IN",
+    guestSessionId: session.guestSessionId,
+    firstItem: {
+      menuItemId: free.id,
+      categoryId: free.categoryId,
+      quantity: 1,
+      expectedMenuItemVersion: free.version,
+    },
+  });
+  const business = contracts.RestaurantOrderSchema.parse(pair.data);
+  const legacy = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  expect(legacy.resolutionKind).toBeUndefined();
+  expect(contracts.RestaurantOrderSchema.safeParse(legacy).success).toBe(true);
+  expect(
+    contracts.RestaurantOrderSchema.safeParse({
+      ...legacy,
+      resolutionKind: "GUESSED",
+    }).success,
+  ).toBe(false);
+  const read = async () => {
+    const values: contracts.RestaurantOrder[] = [],
+      cursors: (string | undefined)[] = [],
+      sizes: number[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await Q.run(
+        ctx,
+        "SESSION_ORDERS",
+        { limit: 1, cursor },
+        { sessionId: session.guestSessionId },
+      );
+      values.push(
+        ...page.items.map((item) =>
+          contracts.RestaurantOrderSchema.parse(item),
+        ),
+      );
+      sizes.push(page.items.length);
+      cursors.push(page.nextCursor);
+      cursor = page.nextCursor;
+    } while (cursor);
+    return { values, cursors, sizes };
+  };
+  const before = await read();
+  const close = {
+    clientRequestId: requestId(),
+    expectedVersion: technical.version,
+  };
+  const resolved = await execute("CLOSE_ORDER", close, {
+    orderId: technical.orderId,
+  });
+  expect(resolved.data).toMatchObject({
+    status: "CANCELLED",
+    resolutionKind: "TECHNICAL_EMPTY_DRAFT",
+  });
+  expect(
+    await execute("CLOSE_ORDER", close, { orderId: technical.orderId }),
+  ).toEqual(resolved);
+  await submit(business.orderId, pair.firstItem!.itemId);
+  await execute(
+    "CANCEL_ITEM",
+    {
+      clientRequestId: requestId(),
+      expectedVersion: (await S.order(ctx, business.orderId)).data.version,
+      expectedItemVersion: (
+        await S.line(ctx, business.orderId, pair.firstItem!.itemId)
+      ).data.version,
+      reason: "Business item cancellation",
+    },
+    { orderId: business.orderId, itemId: pair.firstItem!.itemId },
+  );
+  expect(
+    (await S.order(ctx, business.orderId)).data.resolutionKind,
+  ).toBeUndefined();
+  await execute(
+    "CANCEL_ORDER",
+    {
+      clientRequestId: requestId(),
+      expectedVersion: (await S.order(ctx, business.orderId)).data.version,
+      reason: "Manager cancellation",
+    },
+    { orderId: business.orderId },
+  );
+  const get = jest.spyOn(S, "order");
+  get.mockClear();
+  const after = await read();
+  expect(get).toHaveBeenCalledTimes(3); // Existing hydration, no classification lookup.
+  expect(after.cursors).toEqual(before.cursors);
+  expect(after.sizes).toEqual(before.sizes);
+  expect(after.values.map((o) => o.orderId)).toEqual(
+    before.values.map((o) => o.orderId),
+  );
+  expect(
+    after.values.find((o) => o.orderId === technical.orderId)?.resolutionKind,
+  ).toBe("TECHNICAL_EMPTY_DRAFT");
+  expect(
+    after.values.find((o) => o.orderId === business.orderId),
+  ).toMatchObject({ status: "CANCELLED", resolutionKind: "BUSINESS" });
+  expect(
+    after.values.find((o) => o.orderId === legacy.orderId)?.resolutionKind,
+  ).toBeUndefined();
+  expect((await S.session(ctx, session.guestSessionId)).data).toMatchObject({
+    orderCount: after.values.length,
+    openOrderCount: 1,
+  });
+  expect(
+    await Q.run(ctx, "GET_ORDER", {}, { orderId: technical.orderId }),
+  ).toMatchObject({ data: { resolutionKind: "TECHNICAL_EMPTY_DRAFT" } });
+});
+test("legacy technical close racing manager cancel decrements once and preserves one audit outcome", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const order = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  const outcomes = await Promise.allSettled([
+    execute(
+      "CLOSE_ORDER",
+      { clientRequestId: requestId(), expectedVersion: 1 },
+      { orderId: order.orderId },
+    ),
+    execute(
+      "CANCEL_ORDER",
+      {
+        clientRequestId: requestId(),
+        expectedVersion: 1,
+        reason: "Manager cancel",
+      },
+      { orderId: order.orderId },
+    ),
+  ]);
+  expect(outcomes.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+  expect((await S.session(ctx, session.guestSessionId)).data).toMatchObject({
+    status: "OPEN",
+    openOrderCount: 0,
+    orderCount: 1,
+  });
+  expect((await S.order(ctx, order.orderId)).data.status).toBe("CANCELLED");
+  expect(
+    rows().filter(
+      (r) =>
+        r.entityType === "RESTAURANT_TRANSACTION_AUDIT" &&
+        r.data.targetId === order.orderId &&
+        r.data.toState === "CANCELLED",
+    ),
+  ).toHaveLength(1);
+});
+test.each([false, true])(
+  "zero-value accepted business history never qualifies for technical cleanup (item cancelled=%s)",
+  async (cancelled) => {
+    const session = contracts.GuestSessionSchema.parse((await open()).data);
+    const free = await Config.create(
+      ctx.orgId,
+      "owner",
+      "item",
+      { outletId: ctx.outletId, categoryId: fixture.items[4].categoryId },
+      {
+        clientRequestId: requestId(),
+        name: "Free business item",
+        price: { amountMinor: 0, currency: "XOF" },
+      },
+    );
+    const order = contracts.RestaurantOrderSchema.parse(
+      (await create(session.guestSessionId)).data,
+    );
+    const line = contracts.RestaurantOrderItemSchema.parse(
+      (
+        await execute(
+          "ADD_ITEM",
+          {
+            clientRequestId: requestId(),
+            expectedVersion: 1,
+            menuItemId: free.id,
+            categoryId: free.categoryId,
+            expectedMenuItemVersion: free.version,
+            quantity: 1,
+          },
+          { orderId: order.orderId },
+        )
+      ).data,
+    );
+    await submit(order.orderId, line.itemId);
+    if (cancelled)
+      await execute(
+        "CANCEL_ITEM",
+        {
+          clientRequestId: requestId(),
+          expectedVersion: (await S.order(ctx, order.orderId)).data.version,
+          expectedItemVersion: (await S.line(ctx, order.orderId, line.itemId))
+            .data.version,
+          reason: "Business cancellation",
+        },
+        { orderId: order.orderId, itemId: line.itemId },
+      );
+    const businessVersion = (await S.order(ctx, order.orderId)).data.version;
+    const extra = contracts.RestaurantOrderItemSchema.parse(
+      (
+        await execute(
+          "ADD_ITEM",
+          {
+            clientRequestId: requestId(),
+            expectedVersion: businessVersion,
+            menuItemId: free.id,
+            categoryId: free.categoryId,
+            expectedMenuItemVersion: free.version,
+            quantity: 1,
+          },
+          { orderId: order.orderId },
+        )
+      ).data,
+    );
+    await execute(
+      "CANCEL_ITEM",
+      {
+        clientRequestId: requestId(),
+        expectedVersion: businessVersion + 1,
+        expectedItemVersion: extra.version,
+        reason: "Removed last draft from business Order",
+      },
+      { orderId: order.orderId, itemId: extra.itemId },
+    );
+    const current = (await S.order(ctx, order.orderId)).data;
+    expect(current).toMatchObject({
+      status: "SUBMITTED",
+      acceptedLineCount: 1,
+      dueMinor: 0,
+    });
+    expect(
+      await qualifyPureEmptyDraft(
+        ctx,
+        current,
+        await S.allLines(ctx, order.orderId),
+      ),
+    ).toBe(false);
+    const closed = await execute(
+      "CLOSE_ORDER",
+      { clientRequestId: requestId(), expectedVersion: current.version },
+      { orderId: order.orderId },
+    );
+    expect(closed.data).toMatchObject({
+      status: "CLOSED",
+      acceptedLineCount: 1,
+    });
+  },
+);
+test("legacy qualification fails closed for missing lines and canonical submission/preparation evidence", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const order = contracts.RestaurantOrderSchema.parse(
+    (await create(session.guestSessionId)).data,
+  );
+  expect(await qualifyPureEmptyDraft(ctx, { ...order, lineCount: 1 }, [])).toBe(
+    false,
+  );
+  const submissions = jest
+    .spyOn(R, "submissions")
+    .mockResolvedValueOnce([{} as never]);
+  expect(await qualifyPureEmptyDraft(ctx, order, [])).toBe(false);
+  submissions.mockRestore();
+  const query = jest.spyOn(R, "query");
+  query.mockImplementationOnce(async () => ({ rows: [{} as never] }));
+  expect(await qualifyPureEmptyDraft(ctx, order, [])).toBe(false);
+});
+test("atomic first draft transaction failure has no partial writes and safely retries the same intent", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const item = fixture.items[4];
+  const request = {
+    clientRequestId: requestId(),
+    orderType: "DINE_IN",
+    guestSessionId: session.guestSessionId,
+    firstItem: {
+      menuItemId: item.id,
+      categoryId: item.categoryId,
+      expectedMenuItemVersion: item.version,
+      quantity: 1,
+    },
+  };
+  const before = rows();
+  jest
+    .spyOn(R, "commit")
+    .mockRejectedValueOnce(new Error("Transaction unavailable"));
+  await expect(execute("CREATE_ORDER", request)).rejects.toThrow(
+    "Transaction unavailable",
+  );
+  expect(rows()).toEqual(before);
+  expect((await execute("CREATE_ORDER", request)).firstItem).toMatchObject({
+    status: "DRAFT",
+  });
+  expect(
+    (await S.session(ctx, session.guestSessionId)).data.openOrderCount,
+  ).toBe(1);
+});
+test("lost acknowledgement of atomic creation replays the committed pair without another Order", async () => {
+  const session = contracts.GuestSessionSchema.parse((await open()).data);
+  const item = fixture.items[4];
+  const request = {
+    clientRequestId: requestId(),
+    orderType: "DINE_IN",
+    guestSessionId: session.guestSessionId,
+    firstItem: {
+      menuItemId: item.id,
+      categoryId: item.categoryId,
+      expectedMenuItemVersion: item.version,
+      quantity: 1,
+    },
+  };
+  const commit = R.commit.bind(R);
+  jest.spyOn(R, "commit").mockImplementationOnce(async (actions) => {
+    await commit(actions);
+    throw new Error("Lost acknowledgement");
+  });
+  // The existing domain re-reads its receipt after a lost commit acknowledgement.
+  const recovered = await execute("CREATE_ORDER", request);
+  expect(recovered.firstItem).toMatchObject({ status: "DRAFT" });
+  const before = rows();
+  const replay = await execute("CREATE_ORDER", request);
+  expect(replay).toEqual(recovered);
+  const order = contracts.RestaurantOrderSchema.parse(replay.data);
+  expect(replay.firstItem).toMatchObject({
+    orderId: order.orderId,
+    status: "DRAFT",
+  });
+  expect(rows()).toEqual(before);
+  expect((await S.session(ctx, session.guestSessionId)).data).toMatchObject({
+    orderCount: 1,
+    openOrderCount: 1,
+  });
 });
 test("standalone modes never create session or table state", async () => {
   for (const orderType of ["COUNTER", "TAKEAWAY"])

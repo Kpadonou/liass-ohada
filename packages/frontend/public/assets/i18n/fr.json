@@ -5466,6 +5466,20 @@
       "OPEN": "Service ouvert",
       "CLOSED": "Service clôturé"
     },
+    "ORDER_ABANDONMENT": {
+      "TITLE": "Annuler la commande",
+      "ORDERS": "Commandes du service",
+      "CANCELLED": "Commande annulée",
+      "CONSEQUENCE": "La commande sera annulée et conservée dans l’historique. Le service reste ouvert et la table reste occupée. La clôture normale du service reste une action séparée.",
+      "RETRY": "Réessayer la même annulation",
+      "SUCCESS": "Commande annulée. Le service reste ouvert.",
+      "ACCESS": "Vous n’avez plus l’autorisation d’annuler cette commande.",
+      "PREREQUISITES": "La commande ne peut pas encore être annulée. Résolvez les articles à valider, les préparations restantes et le solde. Aucun paiement, montant réservé ou paiement en cours ne doit subsister. Actualisez le service avant de réessayer.",
+      "INTENT_CONFLICT": "Cette demande a déjà été utilisée pour une autre opération. Fermez ce dialogue et actualisez le service avant de réessayer.",
+      "CONFLICT": "La commande a changé ou est déjà terminée. Fermez ce dialogue et actualisez le service avant de réessayer.",
+      "REJECTED": "Cette commande ne peut pas être annulée. Actualisez le service et vérifiez son état.",
+      "UNCERTAIN": "Le résultat reste à confirmer. Réessayez la même annulation ; le motif et la demande sont conservés."
+    },
     "ITEM_CANCELLATION": {
       "TITLE": "Annuler l’article",
       "CONSEQUENCE": "Toute cette ligne sera annulée. Le montant à régler et les préparations concernées seront mis à jour. Le service reste ouvert.",

@@ -24,6 +24,19 @@ const session = (overrides: Partial<GuestSessionRead> = {}): GuestSessionRead =>
     ...overrides,
   }) as GuestSessionRead;
 describe('Cashier proposals and closure signals', () => {
+  it('retains technical rows in physical completeness and treats an unmarked legacy row as non-classified', () => {
+    const raw = [
+      order(1, { status: 'CANCELLED', resolutionKind: 'TECHNICAL_EMPTY_DRAFT', dueMinor: 0 }),
+      order(2, { status: 'CANCELLED', resolutionKind: 'BUSINESS', dueMinor: 0 }),
+      order(3, { status: 'CANCELLED', dueMinor: 0 }),
+    ];
+    const visit = session({ orderCount: 3, dueMinor: 0, paidMinor: 0 });
+    expect(checkoutClosureBlockers(visit, raw, true)).not.toContain('INCOMPLETE');
+    expect(checkoutClosureBlockers(visit, raw.slice(1), true)).toContain('INCOMPLETE');
+    expect(raw[2].resolutionKind).toBeUndefined();
+    expect(raw).toHaveLength(3);
+    expect(visit.orderCount).toBe(3);
+  });
   it('uses stable creation/identity order regardless of loaded array order', () => {
     expect(checkoutAllocationProposal([order(2), order(1)], 8000)).toEqual([
       { orderId: '001', amountMinor: 5000 },

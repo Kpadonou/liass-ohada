@@ -15,6 +15,19 @@ function leaves(object, path = '') {
     typeof value === 'string' ? [[`${path}${key}`, value]] : leaves(value, `${path}${key}.`),
   );
 }
+test('Order abandonment copy is complete and preserves separate service closure', () => {
+  const fr = leaves(translations.fr.RESTAURANTS.ORDER_ABANDONMENT);
+  const en = leaves(translations.en.RESTAURANTS.ORDER_ABANDONMENT);
+  assert.deepEqual(fr.map(([key]) => key).sort(), en.map(([key]) => key).sort());
+  for (const [, value] of [...fr, ...en]) {
+    assert.ok(value.trim());
+    assert.doesNotMatch(value, /CANCEL_ORDER|SALE_REVERSAL|DynamoDB|Lambda|GSI/);
+  }
+  assert.equal(translations.fr.RESTAURANTS.ORDER_ABANDONMENT.TITLE, 'Annuler la commande');
+  assert.equal(translations.en.RESTAURANTS.ORDER_ABANDONMENT.TITLE, 'Cancel order');
+  for (const [, value] of [...fr, ...en]) assert.doesNotMatch(value, /abandon/i);
+  assert.match(translations.fr.RESTAURANTS.ORDER_ABANDONMENT.CONSEQUENCE, /reste ouvert/);
+});
 test('commercial collections and correction workflows have complete FR/EN vocabulary', () => {
   for (const namespace of ['RESTAURANTS_DOCUMENTS', 'RESTAURANTS_CORRECTIONS']) {
     const fr = leaves(translations.fr[namespace]);

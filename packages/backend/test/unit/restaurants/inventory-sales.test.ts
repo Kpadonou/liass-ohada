@@ -24,6 +24,44 @@ const sales = () =>
       r.entityType === "RESTAURANT_STOCK_MOVEMENT" && r.data.type === "SALE",
   );
 const menu = () => f.items[4];
+test("atomic tracked first draft and automatic final removal never create or resume Inventory effects", async () => {
+  const stock = await link();
+  const legacy = await draft([]);
+  const sessionId = (await E.order(scope(), legacy.orderId)).data
+    .guestSessionId!;
+  const resume = jest.spyOn(InventorySales, "resume");
+  const reversal = jest.spyOn(InventorySales, "reversal");
+  const stage = jest.spyOn(InventoryEffects, "stageSale");
+  const created = await E.mutate(ctx(), "CREATE_ORDER", {
+    clientRequestId: randomUUID(),
+    orderType: "DINE_IN",
+    guestSessionId: sessionId,
+    firstItem: {
+      menuItemId: menu().id,
+      categoryId: menu().categoryId,
+      expectedMenuItemVersion: menu().version,
+      quantity: 3,
+    },
+  });
+  const order = c.RestaurantOrderSchema.parse(created.data);
+  const line = created.firstItem!;
+  const request = {
+    clientRequestId: randomUUID(),
+    expectedVersion: order.version,
+    expectedItemVersion: line.version,
+    reason: "Removed",
+  };
+  const ids = { orderId: order.orderId, itemId: line.itemId };
+  expect(
+    (await E.mutate(ctx(), "CANCEL_ITEM", request, ids)).order?.status,
+  ).toBe("CANCELLED");
+  await E.mutate(ctx(), "CANCEL_ITEM", request, ids);
+  expect(resume).not.toHaveBeenCalled();
+  expect(reversal).not.toHaveBeenCalled();
+  expect(stage).not.toHaveBeenCalled();
+  expect((await I.get(scope(), stock.id)).balanceMilli).toBe(0);
+  expect((await I.history(scope(), stock.id)).items).toHaveLength(0);
+});
 beforeEach(async () => {
   m = memoryDynamo();
   m.seedAccess("org-resto", "owner", "OWNER");
@@ -482,7 +520,62 @@ test("canonical accepted-line cancellation reverses original captured sale once 
     sourceReference: d.orderId,
   });
 });
-test("zero-value canonical Order cancellation reverses still accepted tracked quantities once", async () => {
+test.each([false, true])(
+  "empty Order cancellation has no synthetic inventory effect (tracked=%s)",
+  async (tracked) => {
+    if (tracked) await link();
+    const d = await draft([]);
+    const request = {
+      clientRequestId: randomUUID(),
+      expectedVersion: 1,
+      reason: "Abandoned",
+    };
+    await E.mutate(ctx(), "CANCEL_ORDER", request, { orderId: d.orderId });
+    await E.mutate(ctx(), "CANCEL_ORDER", request, { orderId: d.orderId });
+    expect(
+      rows().filter((r) => r.entityType === "RESTAURANT_STOCK_MOVEMENT"),
+    ).toHaveLength(0);
+    expect((await E.order(scope(), d.orderId)).data.status).toBe("CANCELLED");
+  },
+);
+test.each([false, true])(
+  "prior item reversal composes with Order cancellation (pending=%s)",
+  async (pending) => {
+    const stock = await link();
+    const d = await draft([{ item: menu(), quantity: 3 }]);
+    await d.run();
+    const failure = pending
+      ? jest
+          .spyOn(I, "applyMovement")
+          .mockRejectedValue(new Error("Unavailable"))
+      : undefined;
+    const line = await E.line(scope(), d.orderId, d.req.items[0].itemId);
+    await E.mutate(
+      ctx(),
+      "CANCEL_ITEM",
+      {
+        clientRequestId: randomUUID(),
+        expectedVersion: (await E.order(scope(), d.orderId)).data.version,
+        expectedItemVersion: line.data.version,
+        reason: "Cancelled item",
+      },
+      { orderId: d.orderId, itemId: line.data.itemId },
+    );
+    const request = {
+      clientRequestId: randomUUID(),
+      expectedVersion: (await E.order(scope(), d.orderId)).data.version,
+      reason: "Abandoned",
+    };
+    await E.mutate(ctx(), "CANCEL_ORDER", request, { orderId: d.orderId });
+    failure?.mockRestore();
+    await E.mutate(ctx(), "CANCEL_ORDER", request, { orderId: d.orderId });
+    expect((await I.get(scope(), stock.id)).balanceMilli).toBe(0);
+    expect(
+      (await I.history(scope(), stock.id)).items.map((m) => m.type),
+    ).toEqual(["SALE_REVERSAL", "SALE"]);
+  },
+);
+test("mixed cancelled and accepted tracked lines reverse only the remaining quantity", async () => {
   const free = await Config.create(
     scope().orgId,
     "owner",
@@ -490,26 +583,89 @@ test("zero-value canonical Order cancellation reverses still accepted tracked qu
     { outletId: scope().outletId, categoryId: menu().categoryId },
     {
       clientRequestId: randomUUID(),
-      name: "Complimentary bottle",
+      name: "Free tracked",
       price: { amountMinor: 0, currency: "XOF" },
     },
   );
   const stock = await link(free);
-  const d = await draft([{ item: free, quantity: 2 }]);
+  const d = await draft([
+    { item: free, quantity: 2 },
+    { item: free, quantity: 3 },
+  ]);
   await d.run();
-  const order = await E.order(scope(), d.orderId);
-  const req = {
-    clientRequestId: randomUUID(),
-    expectedVersion: order.data.version,
-    reason: "Cancelled",
-  };
-  await E.mutate(ctx(), "CANCEL_ORDER", req, { orderId: d.orderId });
-  await E.mutate(ctx(), "CANCEL_ORDER", req, { orderId: d.orderId });
-  expect((await I.get(scope(), stock.id)).balanceMilli).toBe(0);
-  expect((await I.history(scope(), stock.id)).items.map((m) => m.type)).toEqual(
-    ["SALE_REVERSAL", "SALE"],
+  const line = (await E.line(scope(), d.orderId, d.req.items[0].itemId)).data;
+  await E.mutate(
+    ctx(),
+    "CANCEL_ITEM",
+    {
+      clientRequestId: randomUUID(),
+      expectedVersion: (await E.order(scope(), d.orderId)).data.version,
+      expectedItemVersion: line.version,
+      reason: "First line",
+    },
+    { orderId: d.orderId, itemId: line.itemId },
   );
+  expect((await I.get(scope(), stock.id)).balanceMilli).toBe(-3000);
+  const request = {
+    clientRequestId: randomUUID(),
+    expectedVersion: (await E.order(scope(), d.orderId)).data.version,
+    reason: "Remaining order",
+  };
+  await E.mutate(ctx(), "CANCEL_ORDER", request, { orderId: d.orderId });
+  const movements = (await I.history(scope(), stock.id)).items;
+  expect(
+    movements
+      .filter((m) => m.type === "SALE_REVERSAL")
+      .map((m) => m.deltaMilli)
+      .sort(),
+  ).toEqual([2000, 3000]);
+  expect((await I.get(scope(), stock.id)).balanceMilli).toBe(0);
+  await E.mutate(ctx(), "CANCEL_ORDER", request, { orderId: d.orderId });
+  expect((await I.history(scope(), stock.id)).items).toEqual(movements);
+  expect(
+    (await E.line(scope(), d.orderId, d.req.items[1].itemId)).data.status,
+  ).toBe("ACCEPTED");
 });
+test.each([1, 2])(
+  "zero-value canonical Order cancellation reverses still accepted tracked quantities once (%s lines)",
+  async (count) => {
+    const free = await Config.create(
+      scope().orgId,
+      "owner",
+      "item",
+      { outletId: scope().outletId, categoryId: menu().categoryId },
+      {
+        clientRequestId: randomUUID(),
+        name: "Complimentary bottle",
+        price: { amountMinor: 0, currency: "XOF" },
+      },
+    );
+    const stock = await link(free);
+    const d = await draft(
+      Array.from({ length: count }, () => ({ item: free, quantity: 2 })),
+    );
+    await d.run();
+    const order = await E.order(scope(), d.orderId);
+    const req = {
+      clientRequestId: randomUUID(),
+      expectedVersion: order.data.version,
+      reason: "Cancelled",
+    };
+    const competing = { ...req, clientRequestId: randomUUID() };
+    const attempts = await Promise.allSettled([
+      E.mutate(ctx(), "CANCEL_ORDER", req, { orderId: d.orderId }),
+      E.mutate(ctx(), "CANCEL_ORDER", competing, { orderId: d.orderId }),
+    ]);
+    expect(attempts.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    // Replay the winning intent; the losing intent is rejected by Order version/state.
+    const winner = attempts[0].status === "fulfilled" ? req : competing;
+    await E.mutate(ctx(), "CANCEL_ORDER", winner, { orderId: d.orderId });
+    expect((await I.get(scope(), stock.id)).balanceMilli).toBe(0);
+    expect(
+      (await I.history(scope(), stock.id)).items.map((m) => m.type),
+    ).toEqual(["SALE_REVERSAL", "SALE"]);
+  },
+);
 test("pending original SALE is recovered before its reversal after Inventory outage", async () => {
   const stock = await link();
   const d = await draft();

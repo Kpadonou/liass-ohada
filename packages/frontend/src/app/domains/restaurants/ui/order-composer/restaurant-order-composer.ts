@@ -1,5 +1,6 @@
 import { RestaurantReadyToServeComponent } from '../restaurant-ready-to-serve.component';
 import { RestaurantServiceOrdersComponent } from '../restaurant-service-orders.component';
+import { businessOrderVisible } from '../../utils/restaurant-order-presentation';
 import { RestaurantTableDeliveryComponent } from '../restaurant-table-delivery.component';
 import {
   RestaurantCarteQueries,
@@ -115,9 +116,7 @@ export class RestaurantOrderComposer {
   readonly orders = computed(() =>
     (this.ordersQuery.data()?.pages ?? []).flatMap((page) => page.items),
   );
-  readonly hasValidatedOrders = computed(() =>
-    this.orders().some((order) => order.acceptedLineCount > 0),
-  );
+  readonly hasServiceOrders = computed(() => this.orders().some(businessOrderVisible));
   readonly candidates = computed(() => this.orders().filter((order) => this.editable(order)));
   readonly choice = signal<{ context: string; id: string } | null>(null);
   readonly selectedId = computed(() => {
@@ -146,6 +145,16 @@ export class RestaurantOrderComposer {
   readonly draftIntents = signal<DraftIntent[]>([]);
   readonly submitting = signal(false);
   readonly syncFailed = signal(false);
+  /** Local workflow identity, not a second Order collection or an ownership claim. */
+  readonly activeDraftOrderId = computed(() =>
+    this.order()?.status === 'DRAFT' ||
+    this.drafts().length ||
+    this.draftIntents().length ||
+    this.pending() ||
+    this.submitting()
+      ? (this.pending()?.order ?? this.selectedId())
+      : '',
+  );
   private syncLane: Promise<void> | null = null;
   private laneEpoch = 0;
   private readonly lineKeys = new Map<string, string>();
@@ -641,7 +650,11 @@ export class RestaurantOrderComposer {
       let order = laneOrder
         ? (this.queries.cachedOrder(this.ctx(), laneOrder.orderId) ?? laneOrder)
         : this.order();
-      if (order && !this.editable(order) && (intent.canonical || intent.target.orderId)) {
+      if (
+        order &&
+        !this.editable(order) &&
+        (intent.canonical || (this.pending() && this.pending()?.kind !== 'create'))
+      ) {
         this.message.set('CONFLICT');
         this.syncFailed.set(true);
         return;
@@ -654,16 +667,37 @@ export class RestaurantOrderComposer {
               clientRequestId: crypto.randomUUID(),
               orderType: 'DINE_IN',
               guestSessionId: this.sessionId(),
+              firstItem: {
+                menuItemId: intent.target.menuItemId,
+                categoryId: intent.target.categoryId,
+                expectedMenuItemVersion: intent.target.expectedMenuItemVersion,
+                quantity: intent.target.quantity,
+                notes: intent.target.notes,
+              },
             },
           },
           true,
         );
         if (epoch !== this.laneEpoch || !this.live()) return;
-        if (!result || !('orderId' in result) || 'itemId' in result) {
+        if (!result || !('orderId' in result)) {
           this.syncFailed.set(true);
           return;
         }
-        laneOrder = result;
+        if ('itemId' in result) {
+          laneOrder = this.queries.cachedOrder(this.ctx(), result.orderId) ?? null;
+          this.lineKeys.set(result.itemId, intent.key);
+          this.draftIntents.update((rows) =>
+            rows.map((current) =>
+              current.key === intent.key
+                ? {
+                    ...current,
+                    canonical: result,
+                    target: { ...current.target, orderId: result.orderId },
+                  }
+                : current,
+            ),
+          );
+        } else laneOrder = result;
         continue;
       }
       const baseline = intent.canonical;
@@ -680,7 +714,10 @@ export class RestaurantOrderComposer {
           expectedVersion: order.version,
           ...(baseline ? { expectedItemVersion: baseline.version } : {}),
           ...(intent.removed && baseline
-            ? { reason: this.t.translate('RESTAURANTS.ORDER_TAKING.REMOVAL_REASON') }
+            ? {
+                reason: this.t.translate('RESTAURANTS.ORDER_TAKING.REMOVAL_REASON'),
+                includeOrder: true,
+              }
             : {
                 menuItemId: intent.target.menuItemId,
                 categoryId: intent.target.categoryId,
@@ -867,12 +904,16 @@ export class RestaurantOrderComposer {
         intent.item,
       );
       if (!this.same(identity) || !this.live()) return null;
+      if ('resolvedOrder' in result && result.resolvedOrder)
+        this.queries.confirmOrder(ctx, result.resolvedOrder);
       if (intent.kind === 'create' && 'orderId' in result)
         this.choice.set({ context: identity, id: result.orderId });
       await this.queries.changed(
         ctx,
         intent.order ?? ('orderId' in result ? result.orderId : undefined),
-        intent.kind === 'submit',
+        intent.kind === 'create' ||
+          intent.kind === 'submit' ||
+          ('resolvedOrder' in result && result.resolvedOrder?.status === 'CANCELLED'),
         true,
         intent.kind === 'submit',
       );
@@ -911,7 +952,7 @@ export class RestaurantOrderComposer {
         this.queries.changed(
           ctx,
           intent.order,
-          intent.kind === 'submit',
+          intent.kind === 'create' || intent.kind === 'remove' || intent.kind === 'submit',
           true,
           intent.kind === 'submit',
         ),

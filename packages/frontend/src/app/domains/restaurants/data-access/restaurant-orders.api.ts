@@ -101,6 +101,19 @@ export class RestaurantOrdersApi {
       ? new HttpParams().set('limit', input.limit).set('cursor', cursor)
       : new HttpParams().set('limit', input.limit);
   }
+  async abandon(ctx: ServiceOrderContext, order: string, input: unknown) {
+    c.RestaurantIdSchema.parse(order);
+    const request = c.CancelRestaurantOrderRequestSchema.parse(input);
+    const raw = await firstValueFrom(
+      this.http
+        .post<unknown>(this.path(ctx) + `/orders/${order}/cancel`, request)
+        .pipe(timeout(35_000)),
+    );
+    const result = this.owned(ctx, c.RestaurantOrderResponseSchema.parse(raw).data);
+    if (result.orderId !== order || result.status !== 'CANCELLED')
+      throw new Error('Mismatched Order cancellation');
+    return result;
+  }
   async command(
     ctx: ServiceOrderContext,
     command: OrderCommand,
@@ -129,11 +142,26 @@ export class RestaurantOrdersApi {
     );
     this.assertContext(ctx);
     if (command === 'create' || command === 'submit') {
-      const result = this.owned(ctx, c.RestaurantOrderResponseSchema.parse(raw).data);
+      const response = c.RestaurantOrderResponseSchema.parse(raw);
+      const result = this.owned(ctx, response.data);
       if (command === 'submit' && result.orderId !== order) throw new Error('Mismatched order');
+      if (command === 'create' && 'firstItem' in request && request.firstItem) {
+        const line = response.firstItem;
+        if (
+          !line ||
+          line.orgId !== ctx.org ||
+          line.outletId !== ctx.outlet ||
+          line.orderId !== result.orderId ||
+          line.status !== 'DRAFT' ||
+          result.draftLineCount !== 1
+        )
+          throw new Error('Mismatched first draft item');
+        return { ...line, resolvedOrder: result };
+      }
       return result;
     }
-    const result = c.RestaurantOrderItemResponseSchema.parse(raw).data;
+    const response = c.RestaurantOrderItemResponseSchema.parse(raw);
+    const result = response.data;
     if (
       result.orgId !== ctx.org ||
       result.outletId !== ctx.outlet ||
@@ -141,6 +169,18 @@ export class RestaurantOrdersApi {
       (item && result.itemId !== item)
     )
       throw new Error('Mismatched item');
+    if (response.order) {
+      const terminal = this.owned(ctx, response.order);
+      if (
+        command !== 'remove' ||
+        terminal.orderId !== order ||
+        terminal.status !== 'CANCELLED' ||
+        terminal.acceptedLineCount ||
+        result.snapshot
+      )
+        throw new Error('Mismatched technical resolution');
+      return { ...result, resolvedOrder: terminal };
+    }
     return result;
   }
 }

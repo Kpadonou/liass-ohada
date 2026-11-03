@@ -4,6 +4,12 @@ import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { acceptedItemCancellable } from '../data-access/restaurant-item-cancellation';
 import { RestaurantItemCancellationDialog } from '../feature/restaurant-item-cancellation.dialog';
+import {
+  RestaurantOrderAbandonment,
+  orderAbandonable,
+} from '../data-access/restaurant-order-abandonment';
+import { RestaurantOrderAbandonmentDialog } from '../feature/restaurant-order-abandonment.dialog';
+import { businessOrderVisible } from '../utils/restaurant-order-presentation';
 import { DatePipe } from '@angular/common';
 import {
   Component,
@@ -66,9 +72,40 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
             </p>
           }
         </div>
-        <p class="font-semibold tabular-nums">{{ price(order().dueMinor) }}</p>
+        <div class="flex flex-wrap items-center justify-end gap-2">
+          <p class="font-semibold tabular-nums">{{ price(order().dueMinor) }}</p>
+          @if (order().status === 'CANCELLED') {
+            <liass-status-chip
+              tone="neutral"
+              size="sm"
+              [label]="'RESTAURANTS.ORDER_ABANDONMENT.CANCELLED' | transloco"
+            />
+          }
+          @if (canAbandon()) {
+            <liass-button
+              tone="danger"
+              variant="ghost"
+              icon="cancel"
+              [ariaLabel]="'RESTAURANTS.ORDER_ABANDONMENT.TITLE' | transloco"
+              (pressed)="abandon()"
+              data-testid="abandon-order"
+            >
+              {{ 'RESTAURANTS.ORDER_ABANDONMENT.TITLE' | transloco }}
+            </liass-button>
+          } @else if (canRetryAbandonment()) {
+            <liass-button
+              tone="danger"
+              variant="ghost"
+              icon="refresh"
+              (pressed)="abandon()"
+              data-testid="retry-abandon-order"
+            >
+              {{ 'RESTAURANTS.ORDER_ABANDONMENT.RETRY' | transloco }}
+            </liass-button>
+          }
+        </div>
       </div>
-      @if (items.isPending()) {
+      @if (order().acceptedLineCount > 0 && items.isPending()) {
         <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
       }
       @for (round of rounds(); track round[0].snapshot!.submissionId) {
@@ -151,7 +188,11 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
           {{ 'RESTAURANTS.SERVICE_ORDERS.MORE_PROGRESS' | transloco }}
         </button>
       }
-      @if (items.isSuccess() && !items.hasNextPage() && !completeLines()) {
+      @if (!order().acceptedLineCount) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'RESTAURANTS.SERVICE_ORDERS.NO_LINES' | transloco }}
+        </p>
+      } @else if (items.isSuccess() && !items.hasNextPage() && !completeLines()) {
         <p role="status" class="text-sm">
           {{ 'RESTAURANTS.SERVICE_ORDERS.INCOMPLETE' | transloco }}
         </p>
@@ -170,16 +211,19 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 })
 export class RestaurantServiceOrderComponent {
   readonly context = input.required<ServiceOrderContext>();
+  readonly tableLabel = input<string>();
+  readonly composing = input(false);
   readonly order = input.required<RestaurantOrder>();
   readonly denied = output<void>();
   private readonly dialogs = inject(MatDialog);
   private readonly destroy = inject(DestroyRef);
   private readonly caps = inject(RestaurantsCapabilities);
+  private readonly abandonment = inject(RestaurantOrderAbandonment);
   private readonly queries = inject(RestaurantOrdersQueries);
   private readonly preparationQueries = inject(RestaurantServicePreparationQueries);
   private readonly t = inject(TranslocoService);
   readonly items = injectInfiniteQuery(() =>
-    this.queries.items(this.context(), this.order().orderId, true),
+    this.queries.items(this.context(), this.order().orderId, this.order().acceptedLineCount > 0),
   );
   readonly preparation = injectInfiniteQuery(() =>
     this.preparationQueries.pages(
@@ -251,6 +295,39 @@ export class RestaurantServiceOrderComponent {
       acceptedItemCancellable(this.order(), line)
     );
   }
+  canAbandon() {
+    return (
+      !this.composing() &&
+      !this.accessBlocked() &&
+      this.caps.canManageSetup() &&
+      orderAbandonable(this.order())
+    );
+  }
+  canRetryAbandonment() {
+    return (
+      this.order().status !== 'DRAFT' &&
+      businessOrderVisible(this.order()) &&
+      !this.composing() &&
+      !this.accessBlocked() &&
+      this.caps.canManageSetup() &&
+      !!this.abandonment.pending(this.context(), this.order().orderId)
+    );
+  }
+  abandon() {
+    if (!this.canAbandon() && !this.canRetryAbandonment()) return;
+    const ref = this.dialogs.open(RestaurantOrderAbandonmentDialog, {
+      width: '480px',
+      maxWidth: 'calc(100vw - 32px)',
+      disableClose: true,
+      data: {
+        context: this.context(),
+        order: this.order(),
+        tableName: this.tableLabel() ?? this.tableName(),
+      },
+    });
+    const unregister = this.destroy.onDestroy(() => ref.close());
+    ref.afterClosed().subscribe(() => unregister());
+  }
   private tableName() {
     const context = this.preparation.data()?.pages.flatMap((page) => page.items)[0]?.serviceContext;
     return context?.mode === 'DINE_IN' ? context.tableName : undefined;
@@ -305,13 +382,15 @@ export class RestaurantServiceOrderComponent {
   template: `@if (validatedOrders().length) {
       <liass-card padding="sm">
         <h2 class="flex items-center gap-2 text-base font-semibold">
-          <mat-icon class="text-success-600" aria-hidden="true">check_circle_outline</mat-icon
-          >{{ 'RESTAURANTS.SERVICE_ORDERS.TITLE' | transloco }}
+          <mat-icon class="text-app-text-secondary" aria-hidden="true">receipt_long</mat-icon
+          >{{ 'RESTAURANTS.ORDER_ABANDONMENT.ORDERS' | transloco }}
         </h2>
         <div class="mt-3 space-y-4">
           @for (order of visibleOrders(); track order.orderId) {
             <liass-restaurant-service-order
               [context]="context()"
+              [tableLabel]="tableName()"
+              [composing]="activeDraftOrderId() === order.orderId"
               [order]="order"
               (denied)="denied.emit()"
             />
@@ -345,13 +424,19 @@ export class RestaurantServiceOrderComponent {
 })
 export class RestaurantServiceOrdersComponent {
   readonly context = input.required<ServiceOrderContext>();
+  readonly tableName = input<string>();
+  readonly activeDraftOrderId = input('');
   readonly orders = input.required<RestaurantOrder[]>();
   readonly expectedCount = input.required<number>();
   readonly expectedAmount = input(0);
   readonly denied = output<void>();
   readonly limit = signal(20);
   readonly validatedOrders = computed(() =>
-    this.orders().filter((order) => order.acceptedLineCount > 0),
+    this.orders().filter(
+      (order) =>
+        businessOrderVisible(order) &&
+        !(order.status === 'DRAFT' && order.orderId === this.activeDraftOrderId()),
+    ),
   );
   readonly visibleOrders = computed(() => this.validatedOrders().slice(0, this.limit()));
 }

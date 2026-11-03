@@ -53,7 +53,18 @@ export class RestaurantCheckoutApi {
       result.outletId !== ctx.outlet ||
       result.guestSessionId !== ctx.session ||
       result.orderId !== order ||
-      result.status !== 'CLOSED'
+      !(
+        result.status === 'CLOSED' ||
+        (result.status === 'CANCELLED' &&
+          result.acceptedLineCount === 0 &&
+          result.draftLineCount === 0 &&
+          result.financialRevision === 0 &&
+          !result.dueMinor &&
+          !result.paidMinor &&
+          !result.reservedMinor &&
+          !result.pendingPaymentCount &&
+          !result.outstandingWorkCount)
+      )
     )
       throw new Error('Mismatched Order closure');
     return result;

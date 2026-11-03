@@ -59,6 +59,13 @@ export const GuestSessionReadSchema = GuestSessionSchema.omit({
   })
   .strict();
 export type GuestSessionRead = z.infer<typeof GuestSessionReadSchema>;
+export const RestaurantOrderResolutionKindSchema = z.enum([
+  "BUSINESS",
+  "TECHNICAL_EMPTY_DRAFT",
+]);
+export type RestaurantOrderResolutionKind = z.infer<
+  typeof RestaurantOrderResolutionKindSchema
+>;
 export const RestaurantOrderSchema = z
   .object({
     ...owner,
@@ -68,6 +75,7 @@ export const RestaurantOrderSchema = z
     tableId: id.optional(),
     orderType: z.enum(["DINE_IN", "TAKEAWAY", "COUNTER"]),
     status: z.enum(["DRAFT", "SUBMITTED", "CLOSED", "CANCELLED"]),
+    resolutionKind: RestaurantOrderResolutionKindSchema.optional(),
     currency,
     createdAt: timestamp,
     createdBy: z.string().min(1),
@@ -151,6 +159,16 @@ export const CreateRestaurantOrderRequestSchema = z
     ...intent,
     orderType: RestaurantOrderSchema.shape.orderType,
     guestSessionId: id.optional(),
+    firstItem: z
+      .object({
+        menuItemId: id,
+        categoryId: id,
+        quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        notes: z.string().max(1000).optional(),
+        expectedMenuItemVersion: version,
+      })
+      .strict()
+      .optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -179,6 +197,7 @@ export const CancelRestaurantItemRequestSchema = z
     ...edit,
     expectedItemVersion: version,
     reason: z.string().trim().min(1).max(500),
+    includeOrder: z.literal(true).optional(),
   })
   .strict();
 export const SubmitRestaurantOrderRequestSchema = z
@@ -216,10 +235,16 @@ export const GuestSessionResponseSchema = z
   .object({ data: GuestSessionReadSchema })
   .strict();
 export const RestaurantOrderResponseSchema = z
-  .object({ data: RestaurantOrderSchema })
+  .object({
+    data: RestaurantOrderSchema,
+    firstItem: RestaurantOrderItemSchema.optional(),
+  })
   .strict();
 export const RestaurantOrderItemResponseSchema = z
-  .object({ data: RestaurantOrderItemSchema })
+  .object({
+    data: RestaurantOrderItemSchema,
+    order: RestaurantOrderSchema.optional(),
+  })
   .strict();
 export const GuestSessionListResponseSchema = z
   .object({

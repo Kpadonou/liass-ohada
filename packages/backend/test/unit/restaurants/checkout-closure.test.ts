@@ -354,7 +354,7 @@ test("QUEUED/IN_PROGRESS/READY block closure; SERVE permits later explicit close
   expect((await closeOrder(o.orderId)).statusCode).toBe(200);
   expect((await closeSession()).statusCode).toBe(200);
 });
-test("drafts are retained and empty never-accepted draft requires existing management resolution", async () => {
+test("active drafts remain protected while normal cashier closure recovers a pure empty draft", async () => {
   const o = await create();
   await pay([o]);
   const draft = await add(o.orderId);
@@ -365,7 +365,9 @@ test("drafts are retained and empty never-accepted draft requires existing manag
     "DRAFT",
   );
   const empty = await create(4, false);
-  expect((await closeOrder(empty.orderId)).statusCode).toBe(409);
+  expect((await closeOrder(empty.orderId)).statusCode).toBe(200);
+  expect((await S.order(scope(), empty.orderId)).data.status).toBe("CANCELLED");
+  await occupied();
   const denied = await restaurantTransactionHandler("cancel-order")({
     headers: { "x-org-id": org },
     pathParameters: { outletId: f.outlet.id, orderId: empty.orderId },

@@ -46,7 +46,20 @@ export function checkoutClosureBlockers(
   for (const order of orders) {
     if (order.status === 'CLOSED' || order.status === 'CANCELLED') continue;
     if (order.draftLineCount) blockers.add('DRAFT');
-    if (order.status !== 'SUBMITTED' || !order.acceptedLineCount) blockers.add('UNACCEPTED');
+    const technicalCandidate =
+      order.status === 'DRAFT' &&
+      !order.draftLineCount &&
+      !order.acceptedLineCount &&
+      !order.financialRevision &&
+      !order.dueMinor &&
+      !order.paidMinor &&
+      !order.reservedMinor &&
+      !order.pendingPaymentCount &&
+      !order.outstandingWorkCount &&
+      !order.paymentAttemptCount &&
+      !order.succeededPaymentCount;
+    if (!technicalCandidate && (order.status !== 'SUBMITTED' || !order.acceptedLineCount))
+      blockers.add('UNACCEPTED');
     if (order.outstandingWorkCount) blockers.add('WORK');
     if (order.dueMinor !== order.paidMinor) blockers.add('UNPAID');
     if (order.reservedMinor || order.pendingPaymentCount) blockers.add('PENDING');

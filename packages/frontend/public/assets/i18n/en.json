@@ -5466,6 +5466,20 @@
       "OPEN": "Open service",
       "CLOSED": "Closed service"
     },
+    "ORDER_ABANDONMENT": {
+      "TITLE": "Cancel order",
+      "ORDERS": "Service orders",
+      "CANCELLED": "Order cancelled",
+      "CONSEQUENCE": "The order will be cancelled and retained in history. The service stays open and the table stays occupied. Normal service closure remains a separate action.",
+      "RETRY": "Retry the same cancellation",
+      "SUCCESS": "Order cancelled. The service stays open.",
+      "ACCESS": "You no longer have permission to cancel this order.",
+      "PREREQUISITES": "This order cannot be cancelled yet. Resolve draft items, remaining preparation work and the balance. No payment, reserved amount or payment in progress may remain. Refresh the service before trying again.",
+      "INTENT_CONFLICT": "This request has already been used for another operation. Close this dialog and refresh the service before trying again.",
+      "CONFLICT": "The order has changed or is already finished. Close this dialog and refresh the service before trying again.",
+      "REJECTED": "This order cannot be cancelled. Refresh the service and check its state.",
+      "UNCERTAIN": "The outcome is still unconfirmed. Retry the same cancellation; the reason and request are retained."
+    },
     "ITEM_CANCELLATION": {
       "TITLE": "Cancel item",
       "CONSEQUENCE": "This entire line will be cancelled. The amount due and related preparation will be updated. The service stays open.",

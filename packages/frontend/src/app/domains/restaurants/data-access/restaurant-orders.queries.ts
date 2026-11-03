@@ -5,6 +5,7 @@ import {
   infiniteQueryOptions,
   queryOptions,
   QueryClient,
+  type InfiniteData,
 } from '@tanstack/angular-query-experimental';
 import { RestaurantOrdersApi, ServiceOrderContext } from './restaurant-orders.api';
 import { RestaurantsApi } from './restaurants.api';
@@ -72,6 +73,24 @@ export class RestaurantOrdersQueries {
   cachedOrder(ctx: ServiceOrderContext, order: string) {
     return this.client.getQueryData<import('@liass-ohada/shared/restaurants').RestaurantOrder>(
       this.key(ctx, 'order', order),
+    );
+  }
+  confirmOrder(
+    ctx: ServiceOrderContext,
+    order: import('@liass-ohada/shared/restaurants').RestaurantOrder,
+  ) {
+    this.api.assertContext(ctx);
+    this.client.setQueryData(this.key(ctx, 'order', order.orderId), order);
+    this.client.setQueryData<InfiniteData<{ items: (typeof order)[]; nextCursor?: string }>>(
+      this.key(ctx, 'orders'),
+      (old) =>
+        old && {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            items: page.items.map((row) => (row.orderId === order.orderId ? order : row)),
+          })),
+        },
     );
   }
   draftReadFailed(ctx: ServiceOrderContext, order: string) {

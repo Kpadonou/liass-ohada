@@ -405,7 +405,7 @@
             </liass-card>
           </div>
           @if (
-            hasValidatedOrders() ||
+            hasServiceOrders() ||
             ordersQuery.hasNextPage() ||
             orders().length < session()!.orderCount ||
             session()!.dueMinor > 0
@@ -417,6 +417,8 @@
               <liass-restaurant-service-orders
                 class="order-3 min-w-0 xl:order-none xl:col-start-2 xl:row-start-2"
                 [context]="ctx()"
+                [activeDraftOrderId]="activeDraftOrderId()"
+                [tableName]="session()?.tableName"
                 [orders]="orders()"
                 [expectedCount]="session()!.orderCount"
                 [expectedAmount]="session()!.dueMinor"

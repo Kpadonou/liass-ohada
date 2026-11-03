@@ -216,6 +216,82 @@ test("only normal command routes use scoped permissions", () => {
   ]);
 });
 test.each(["owner", "manager", "Aissa"])(
+  "%s atomically creates first draft through the existing scoped HTTP route",
+  async (actor) => {
+    const item = f.items[4];
+    const response = await call("create-order", actor, {
+      ...createBody(),
+      firstItem: {
+        menuItemId: item.id,
+        categoryId: item.categoryId,
+        expectedMenuItemVersion: item.version,
+        quantity: 1,
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    const result = c.RestaurantOrderResponseSchema.parse(
+      JSON.parse(response.body),
+    );
+    expect(result.data).toMatchObject({
+      status: "DRAFT",
+      draftLineCount: 1,
+      acceptedLineCount: 0,
+    });
+    expect(result.firstItem).toMatchObject({
+      orderId: result.data.orderId,
+      status: "DRAFT",
+    });
+    const removed = await call(
+      "cancel-order-item",
+      actor,
+      {
+        clientRequestId: request(),
+        expectedVersion: result.data.version,
+        expectedItemVersion: result.firstItem!.version,
+        reason: "Removed draft",
+        includeOrder: true,
+      },
+      { orderId: result.data.orderId, itemId: result.firstItem!.itemId },
+    );
+    expect(removed.statusCode).toBe(200);
+    expect(
+      c.RestaurantOrderItemResponseSchema.parse(JSON.parse(removed.body)).order
+        ?.status,
+    ).toBe("CANCELLED");
+    const legacyCreated = c.RestaurantOrderResponseSchema.parse(
+      JSON.parse(
+        (
+          await call("create-order", actor, {
+            ...createBody(),
+            firstItem: {
+              menuItemId: item.id,
+              categoryId: item.categoryId,
+              expectedMenuItemVersion: item.version,
+              quantity: 1,
+            },
+          })
+        ).body,
+      ),
+    );
+    const legacyRemoved = await call(
+      "cancel-order-item",
+      actor,
+      {
+        clientRequestId: request(),
+        expectedVersion: legacyCreated.data.version,
+        expectedItemVersion: legacyCreated.firstItem!.version,
+        reason: "Legacy remove",
+      },
+      {
+        orderId: legacyCreated.data.orderId,
+        itemId: legacyCreated.firstItem!.itemId,
+      },
+    );
+    expect(legacyRemoved.statusCode).toBe(200);
+    expect(Object.keys(JSON.parse(legacyRemoved.body))).toEqual(["data"]);
+  },
+);
+test.each(["owner", "manager", "Aissa"])(
   "%s creates safely and durable create intent replays",
   async (actor) => {
     const body = createBody();

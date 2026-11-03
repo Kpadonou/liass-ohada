@@ -63,7 +63,14 @@ export function restaurantTransactionHandler(name: string) {
               )[0],
             })
           : ["ADD_ITEM", "EDIT_ITEM", "CANCEL_ITEM"].includes(command)
-            ? contracts.RestaurantOrderItemResponseSchema.parse(result)
+            ? contracts.RestaurantOrderItemResponseSchema.parse({
+                data: result.data,
+                ...("includeOrder" in input &&
+                input.includeOrder === true &&
+                result.order
+                  ? { order: result.order }
+                  : {}),
+              })
             : contracts.RestaurantOrderResponseSchema.parse(result);
       }
       if (!query) throw new Error("Missing Restaurants query");

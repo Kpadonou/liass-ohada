@@ -377,6 +377,9 @@ export const TransactionSchemas = {
             RestaurantOrderSchema,
             RestaurantOrderItemSchema,
           ]),
+          firstItem: RestaurantOrderItemSchema.optional(),
+          resolvedOrder: RestaurantOrderSchema.optional(),
+          technicalResolution: z.boolean().optional(),
         })
         .strict(),
     })

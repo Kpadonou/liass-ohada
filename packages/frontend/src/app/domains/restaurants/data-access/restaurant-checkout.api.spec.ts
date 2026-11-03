@@ -44,6 +44,33 @@ describe('Checkout command contract and context isolation', () => {
     request.flush({ data: { ...sessionFixture(), status: 'CLOSED' } });
     expect((await promise).status).toBe('CLOSED');
   });
+  it('accepts server-confirmed technical cancellation from normal Order close', async () => {
+    const promise = api.closeOrder(ctx, rid(20), { clientRequestId: rid(88), expectedVersion: 1 });
+    const terminal = {
+      orgId: 'org',
+      outletId: rid(2),
+      guestSessionId: rid(9),
+      orderId: rid(20),
+      schemaVersion: 1,
+      orderType: 'DINE_IN',
+      status: 'CANCELLED',
+      currency: 'XOF',
+      createdAt: '2026-10-18T10:00:00.000Z',
+      createdBy: 'waiter',
+      version: 2,
+      financialRevision: 0,
+      lineCount: 0,
+      acceptedLineCount: 0,
+      draftLineCount: 0,
+      dueMinor: 0,
+      paidMinor: 0,
+      reservedMinor: 0,
+      pendingPaymentCount: 0,
+    };
+    http.expectOne((r) => r.url.endsWith(`/orders/${rid(20)}/close`)).flush({ data: terminal });
+    expect(await promise).toEqual(terminal);
+    http.expectNone((r) => r.url.endsWith(`/sessions/${rid(9)}/close`));
+  });
   it.each(['org', 'user', 'revision'])('rejects late closure after %s change', async (field) => {
     const promise = api.closeSession(ctx, { clientRequestId: rid(88), expectedVersion: 1 });
     const assertion = expect(promise).rejects.toBeDefined();

@@ -61,6 +61,25 @@ describe('Resumable canonical checkout commands', () => {
     );
     expect(progress).toHaveBeenLastCalledWith(2, 2);
   });
+  it('continues the normal close chain after server recovery of an orphan draft', async () => {
+    const orphan = {
+      ...row('orphan'),
+      status: 'DRAFT' as const,
+      draftLineCount: 0,
+      acceptedLineCount: 0,
+    };
+    const terminal = { ...orphan, status: 'CANCELLED' as const, version: 2 };
+    orders.order.mockResolvedValue(orphan);
+    api.closeOrder.mockResolvedValue(terminal);
+    const reconciled = vi.fn();
+    await flow.close(ctx, [orphan], vi.fn(), reconciled);
+    expect(api.closeOrder).toHaveBeenCalledTimes(1);
+    expect(reconciled).toHaveBeenCalledWith(terminal);
+    expect(api.closeSession).toHaveBeenCalledTimes(1);
+    expect(api.closeOrder.mock.invocationCallOrder[0]).toBeLessThan(
+      api.closeSession.mock.invocationCallOrder[0],
+    );
+  });
   it('preserves durable partial progress and retries ambiguous Order close identically', async () => {
     api.closeOrder
       .mockResolvedValueOnce({ status: 'CLOSED' })

@@ -24,6 +24,7 @@ import type { RestaurantOrder } from '@liass-ohada/shared/restaurants';
 import { firstValueFrom } from 'rxjs';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { RestaurantOrdersQueries } from '../data-access/restaurant-orders.queries';
+import { businessOrderVisible } from '../utils/restaurant-order-presentation';
 import { RestaurantsApi } from '../data-access/restaurants.api';
 import { RestaurantsQueries, restaurantKeys } from '../data-access/restaurants.queries';
 import { ServiceOrderContext } from '../data-access/restaurant-orders.api';
@@ -98,7 +99,7 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
       }
       <section class="my-4">
         <h3 class="font-semibold">{{ 'RESTAURANTS.CHECKOUT.ADDITION' | transloco }}</h3>
-        @for (order of rows(); track order.orderId; let index = $index) {
+        @for (order of businessRows(); track order.orderId; let index = $index) {
           <details
             class="border-b border-app-border py-2 last:border-b-0"
             (toggle)="expand(order.orderId, $event)"
@@ -298,6 +299,7 @@ export class RestaurantCheckoutVisitComponent {
   });
   readonly orders = injectInfiniteQuery(() => this.orderQueries.orders(this.ctx(), true));
   readonly rows = computed(() => this.orders.data()?.pages.flatMap((page) => page.items) ?? []);
+  readonly businessRows = computed(() => this.rows().filter(businessOrderVisible));
   readonly complete = computed(
     () =>
       this.orders.isSuccess() &&

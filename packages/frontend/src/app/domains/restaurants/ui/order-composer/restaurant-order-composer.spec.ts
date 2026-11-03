@@ -28,6 +28,7 @@ function holdNextCommand() {
   return () => release();
 }
 let orders: c.RestaurantOrder[], lines: c.RestaurantOrderItem[], seq: number;
+let management = false;
 const org = signal('org'),
   user = signal('waiter'),
   revision = signal(0);
@@ -100,6 +101,7 @@ const settle = async () => {
   });
 };
 beforeEach(async () => {
+  management = false;
   vi.clearAllMocks();
   serving.page.mockResolvedValue({ items: [] });
   orders = [];
@@ -125,6 +127,23 @@ beforeEach(async () => {
     if (kind === 'create') {
       const created = orderFixture(rid(++seq));
       orders.push(created);
+      if (input.firstItem) {
+        const line = c.RestaurantOrderItemSchema.parse({
+          orgId: 'org',
+          outletId: rid(2),
+          schemaVersion: 1,
+          orderId: created.orderId,
+          itemId: rid(++seq),
+          ...input.firstItem,
+          status: 'DRAFT',
+          version: 1,
+          createdAt: '2026-10-16T12:01:00.000Z',
+        });
+        lines.push(line);
+        created.lineCount = 1;
+        created.draftLineCount = 1;
+        return { ...line, resolvedOrder: { ...created } };
+      }
       return { ...created };
     }
     const order = orders.find((o) => o.orderId === orderId)!;
@@ -157,6 +176,11 @@ beforeEach(async () => {
       else {
         line.status = 'CANCELLED';
         order.draftLineCount--;
+        if (order.status === 'DRAFT' && !order.draftLineCount && !order.acceptedLineCount) {
+          order.status = 'CANCELLED';
+          order.resolutionKind = 'TECHNICAL_EMPTY_DRAFT';
+          return { ...line, resolvedOrder: { ...order } };
+        }
       }
       return { ...line };
     }
@@ -206,7 +230,7 @@ beforeEach(async () => {
       }),
     ],
     providers: [
-      { provide: RestaurantsCapabilities, useValue: { canManageSetup: () => false } },
+      { provide: RestaurantsCapabilities, useValue: { canManageSetup: () => management } },
       { provide: QueryClient, useValue: client },
       {
         provide: AuthStore,
@@ -233,6 +257,163 @@ afterEach(() => {
   fixture.destroy();
   client.clear();
   TestBed.resetTestingModule();
+});
+it('keeps an empty local legacy draft in the composer without a management cancellation action', async () => {
+  management = true;
+  orders.push(orderFixture());
+  await page.ordersQuery.refetch();
+  await settle();
+  expect(fixture.nativeElement.querySelector('[data-testid="abandon-order"] button')).toBeNull();
+  expect(page.drafts()).toHaveLength(0);
+  expect(fixture.nativeElement.querySelector('[data-order-region]')).not.toBeNull();
+});
+it('invalidates canonical session counters after atomic create and technical removal without locally closing the service', async () => {
+  const key = restaurantKeys.session('org', rid(2), rid(9), 'waiter', 0);
+  client.setQueryData(key, sessionFixture());
+  await page.add(item());
+  await settle();
+  expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  client.setQueryData(key, { ...sessionFixture(), openOrderCount: 1 });
+  await page.remove(page.drafts()[0]);
+  await settle();
+  expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  expect(client.getQueryData(key)).toMatchObject({ status: 'OPEN', openOrderCount: 1 });
+});
+it('keeps draft editing in the composer, hides technical history, and starts a fresh atomic Order after cleanup', async () => {
+  management = true;
+  await page.add(item());
+  await settle();
+  const originalId = page.order()!.orderId;
+  await page.add({ ...item(), id: rid(100) });
+  await settle();
+  fixture.detectChanges();
+  expect(page.drafts()).toHaveLength(2);
+  expect(fixture.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  await page.remove(page.drafts()[0]);
+  await settle();
+  fixture.detectChanges();
+  expect(page.drafts()).toHaveLength(1);
+  expect(fixture.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  await page.remove(page.drafts()[0]);
+  await settle();
+  fixture.detectChanges();
+  expect(page.order()).toMatchObject({
+    status: 'CANCELLED',
+    resolutionKind: 'TECHNICAL_EMPTY_DRAFT',
+  });
+  expect(page.drafts()).toHaveLength(0);
+  expect(fixture.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  await page.add(item());
+  await settle();
+  fixture.detectChanges();
+  expect(page.order()!.orderId).not.toBe(originalId);
+  expect(page.drafts()).toHaveLength(1);
+  expect(page.orders()).toHaveLength(2);
+  expect(fixture.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  expect(api.command.mock.calls.map((call) => call[1])).toEqual([
+    'create',
+    'add',
+    'remove',
+    'remove',
+    'create',
+  ]);
+  expect(page.session()?.status).toBe('OPEN');
+});
+it('never presents the first local draft as a second empty Order while CREATE and ADD converge', async () => {
+  management = true;
+  const command = api.command.getMockImplementation()!;
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  api.command.mockImplementation(async (...args) => {
+    if (args[1] === 'create') await gate;
+    return command(...args);
+  });
+  const adding = page.add(item());
+  fixture.detectChanges();
+  expect(page.drafts()).toHaveLength(1);
+  expect(fixture.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.pending()?.kind).toBe('create');
+    expect(page.orders()).toHaveLength(0);
+    expect(page.lines()).toHaveLength(0);
+    expect(fixture.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  });
+  release();
+  await adding;
+  await settle();
+  fixture.detectChanges();
+  expect(page.order()?.draftLineCount).toBe(1);
+  expect(fixture.nativeElement.querySelector('[data-testid="draft-line"]')).not.toBeNull();
+  expect(fixture.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+});
+it('consumes the terminal Order from final-draft removal without a second cleanup command', async () => {
+  management = true;
+  await draftInput();
+  const release = holdNextCommand();
+  const removing = page.remove(page.drafts()[0]);
+  fixture.detectChanges();
+  expect(page.drafts()).toHaveLength(0);
+  expect(page.draftIntents()).toHaveLength(1);
+  expect(fixture.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  expect(fixture.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
+  release();
+  await removing;
+  await settle();
+  fixture.detectChanges();
+  expect(page.order()?.draftLineCount).toBe(0);
+  expect(page.order()?.status).toBe('CANCELLED');
+  expect(page.activeDraftOrderId()).toBe('');
+  expect(fixture.nativeElement.querySelector('[data-testid="service-order"]')).toBeNull();
+  expect(fixture.nativeElement.querySelector('[data-testid="abandon-order"] button')).toBeNull();
+});
+it('switches from the composing draft to submitted history only after confirmation without losing other Orders', async () => {
+  management = true;
+  await draftInput();
+  const sibling = { ...orderFixture(rid(90), 'SUBMITTED'), acceptedLineCount: 1 };
+  orders.push(sibling);
+  await page.ordersQuery.refetch();
+  await settle();
+  const release = holdNextCommand();
+  const submitting = page.submit();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(page.pending()?.kind).toBe('submit');
+  });
+  expect(page.submitting()).toBe(true);
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="service-order"]')).toHaveLength(1);
+  // Only the independent sibling retains its action during the active submission.
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="abandon-order"]')).toHaveLength(1);
+  release();
+  await submitting;
+  await settle();
+  fixture.detectChanges();
+  expect(orders[0].status).toBe('SUBMITTED');
+  expect(page.activeDraftOrderId()).toBe('');
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="service-order"]')).toHaveLength(2);
+  expect(fixture.nativeElement.querySelectorAll('[data-testid="abandon-order"]')).toHaveLength(2);
+});
+it('does not offer empty-Order cancellation while a failed or ambiguous removal retains unresolved intent', async () => {
+  management = true;
+  await draftInput();
+  const command = api.command.getMockImplementation()!;
+  api.command.mockImplementationOnce(async (...args) => {
+    await command(...args);
+    throw new HttpErrorResponse({ status: 0 });
+  });
+  await page.remove(page.drafts()[0]);
+  await settle();
+  fixture.detectChanges();
+  expect(page.order()?.draftLineCount).toBe(0);
+  expect(page.drafts()).toHaveLength(0);
+  expect(page.syncFailed()).toBe(true);
+  expect(page.pending()?.kind).toBe('remove');
+  expect(page.activeDraftOrderId()).toBe(orders[0].orderId);
+  expect(page.order()?.status).toBe('CANCELLED');
+  expect(fixture.nativeElement.querySelector('[data-testid="abandon-order"]')).toBeNull();
 });
 it('shows every canonical QR Order when multiple submitted Orders leave no editable selection', async () => {
   await settle();
@@ -292,7 +473,7 @@ it('projects four rapid increments immediately, ignores intermediate/refetched v
   expect(lines[0].quantity).toBe(5);
   expect(api.command.mock.calls.slice(before).map((call) => call[2].quantity)).toEqual([2, 5]);
   expect(api.command.mock.calls.slice(before).map((call) => call[2].expectedVersion)).toEqual([
-    2, 3,
+    1, 2,
   ]);
 });
 it('keeps the exact local row and control through Add then quantity before the Add response', async () => {
@@ -523,16 +704,16 @@ it('increments equivalent drafts, removes drafts only and enforces 12 distinct l
   expect(page.drafts()).toHaveLength(12);
   expect(page.canAddItem({ ...item(), id: rid(100) })).toBe(true);
 });
-it('recovers create success + add failure without another Order', async () => {
+it('recovers an atomic first-item failure without an orphan Order or compensating cleanup', async () => {
   const command = api.command.getMockImplementation()!;
   api.command.mockImplementation(async (...args) => {
-    if (args[1] === 'add') throw new HttpErrorResponse({ status: 409 });
+    if (args[1] === 'create') throw new HttpErrorResponse({ status: 409 });
     return command(...args);
   });
   await settle();
   await page.add(item());
   fixture.detectChanges();
-  expect(orders).toHaveLength(1);
+  expect(orders).toHaveLength(0);
   expect(page.message()).toBe('CONFLICT');
   expect(page.drafts()).toHaveLength(1);
   api.command.mockImplementation(command);
@@ -921,7 +1102,7 @@ it('edits multiple digits locally and commits one captured edit on Enter followe
   expect(api.command).toHaveBeenCalledTimes(before + 1);
   expect(api.command.mock.calls.at(-1)![2]).toMatchObject({
     quantity: 12,
-    expectedVersion: 2,
+    expectedVersion: 1,
     expectedItemVersion: 1,
   });
 });
@@ -976,7 +1157,7 @@ it('keeps captured versions on a typed conflict and refetches without rebasing',
   expect(api.command).toHaveBeenCalledTimes(before + 1);
   expect(api.command.mock.calls.at(-1)![2]).toMatchObject({
     quantity: 4,
-    expectedVersion: 2,
+    expectedVersion: 1,
     expectedItemVersion: 1,
   });
   expect(page.message()).toBe('CONFLICT');
@@ -1427,8 +1608,10 @@ it('keeps Ready DOM through draft micro-actions and refetches it only for submis
   await settle();
   await page.add(item());
   await settle();
-  expect(serving.page).not.toHaveBeenCalled();
+  // The old Order is now terminal; this Add creates a new canonical Order identity.
+  expect(serving.page).toHaveBeenCalledTimes(1);
   expect(fixture.nativeElement.querySelector('[data-testid="table-delivery"]')).toBe(region);
+  serving.page.mockClear();
   await page.submit();
   await settle();
   await vi.waitFor(() => expect(serving.page).toHaveBeenCalledTimes(1));

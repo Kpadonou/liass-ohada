@@ -4,6 +4,11 @@ import { RestaurantPreparationService as Preparation } from "./preparation-servi
 import { ResponsibleStaff } from "./responsible-staff";
 import { InventorySales } from "./inventory-sales";
 import { InventoryEffects } from "./inventory-effects";
+import {
+  EMPTY_DRAFT_REASON,
+  pureEmptyDraftHeader,
+  qualifyPureEmptyDraft,
+} from "./empty-draft";
 import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
@@ -353,12 +358,24 @@ export class RestaurantTransactionsService {
       }[];
     },
     openingAttempt = 0,
-  ): Promise<{ data: Business }> {
+  ): Promise<{
+    data: Business;
+    firstItem?: contracts.RestaurantOrderItem;
+    order?: contracts.RestaurantOrder;
+  }> {
     if (guestApproval && command !== "SUBMIT_ORDER")
       throw new Error("Invalid approval boundary");
     const startedAt = Date.now();
     contracts.RestaurantIdSchema.parse(ctx.outletId);
     const request = transactionRequestSchemas[command].parse(input);
+    let firstItem: contracts.RestaurantOrderItem | undefined;
+    let resolvedOrder: contracts.RestaurantOrder | undefined;
+    let technicalResolution = false;
+    const outcome = (data: Business) => ({
+      data,
+      ...(firstItem ? { firstItem } : {}),
+      ...(resolvedOrder ? { order: resolvedOrder } : {}),
+    });
     const owner =
       command === "OPEN_SESSION" || command === "CREATE_ORDER"
         ? "NEW"
@@ -482,7 +499,13 @@ export class RestaurantTransactionsService {
         if (result.status !== "CANCELLED" || result.snapshot)
           return fail("DOMAIN_PERMISSION_REQUIRED", 403);
       }
-      if (["SUBMIT_ORDER", "CANCEL_ITEM", "CANCEL_ORDER"].includes(command))
+      firstItem = row.data.firstItem;
+      resolvedOrder = row.data.resolvedOrder;
+      technicalResolution = row.data.technicalResolution ?? false;
+      if (
+        !technicalResolution &&
+        ["SUBMIT_ORDER", "CANCEL_ITEM", "CANCEL_ORDER"].includes(command)
+      )
         await InventorySales.resume(ctx, owner);
       return row.data.result;
     };
@@ -611,7 +634,11 @@ export class RestaurantTransactionsService {
         ).GuestSubmissions.continueOpening(
           contracts.GuestSessionSchema.parse(prior),
         );
-      return { data: prior };
+      return {
+        data: prior,
+        ...(firstItem ? { firstItem } : {}),
+        ...(resolvedOrder ? { order: resolvedOrder } : {}),
+      };
     }
     if (
       closureAccess?.role === "CASHIER" &&
@@ -938,6 +965,51 @@ export class RestaurantTransactionsService {
       )
         return fail();
       const orderId = randomUUID();
+      if (req.firstItem) {
+        const itemInput = req.firstItem;
+        const category = await this.config(
+          ctx,
+          checks,
+          "category",
+          { outletId: ctx.outletId },
+          itemInput.categoryId,
+        );
+        const item = await this.config(
+          ctx,
+          checks,
+          "item",
+          { outletId: ctx.outletId, categoryId: itemInput.categoryId },
+          itemInput.menuItemId,
+        );
+        if (
+          !("menuId" in category.data) ||
+          category.data.menuId !== menu.data.id ||
+          !("price" in item.data) ||
+          item.data.menuId !== menu.data.id ||
+          item.data.categoryId !== itemInput.categoryId ||
+          item.data.version !== itemInput.expectedMenuItemVersion
+        )
+          return fail("RESTAURANTS_CONFIGURATION_CHANGED");
+        firstItem = contracts.RestaurantOrderItemSchema.parse({
+          orgId: ctx.orgId,
+          outletId: ctx.outletId,
+          schemaVersion: 1,
+          orderId,
+          itemId: randomUUID(),
+          ...itemInput,
+          status: "DRAFT",
+          version: 1,
+          createdAt: now,
+        });
+        put(
+          "LINE",
+          {
+            PK: K.restaurantOrderPK(ctx.orgId, ctx.outletId, orderId),
+            SK: K.restaurantOrderItemSK(firstItem.itemId),
+          },
+          firstItem,
+        );
+      }
       result = contracts.RestaurantOrderSchema.parse({
         orgId: ctx.orgId,
         outletId: ctx.outletId,
@@ -954,9 +1026,9 @@ export class RestaurantTransactionsService {
         outstandingWorkCount: 0,
         version: 1,
         financialRevision: 0,
-        lineCount: 0,
+        lineCount: firstItem ? 1 : 0,
         acceptedLineCount: 0,
-        draftLineCount: 0,
+        draftLineCount: firstItem ? 1 : 0,
         dueMinor: 0,
         paidMinor: 0,
         reservedMinor: 0,
@@ -1105,6 +1177,22 @@ export class RestaurantTransactionsService {
         (request as { expectedVersion: number }).expectedVersion,
       );
       const next = { ...order.data, version: order.data.version + 1 };
+      const terminalize = async (status: "CANCELLED" | "CLOSED") => {
+        next.status = status;
+        next.resolutionKind = technicalResolution
+          ? "TECHNICAL_EMPTY_DRAFT"
+          : "BUSINESS";
+        next.closedAt = now;
+        next.closedBy = ctx.actorId;
+        await remove(
+          "ACTIVE_ORDER",
+          {
+            PK: K.restaurantTransactionActivePK(ctx.orgId, ctx.outletId, "ORD"),
+            SK: K.restaurantTransactionLocatorSK(next.createdAt, owner),
+          },
+          owner,
+        );
+      };
       let delta = 0;
       let financialChanged = false;
       if (command === "ADD_ITEM" || command === "EDIT_ITEM") {
@@ -1320,8 +1408,29 @@ export class RestaurantTransactionsService {
           version: line.data.version + 1,
         };
         put("LINE", { PK: line.PK, SK: line.SK }, result, line);
+        if (pureEmptyDraftHeader(next)) {
+          const lines = (await this.allLines(ctx, owner)).map((item) =>
+            item.itemId === line.data.itemId
+              ? contracts.RestaurantOrderItemSchema.parse(result)
+              : item,
+          );
+          if (!(await qualifyPureEmptyDraft(ctx, next, lines)))
+            return fail("RESTAURANTS_TRANSACTION_INTEGRITY");
+          technicalResolution = true;
+          await terminalize("CANCELLED");
+          resolvedOrder = next;
+        }
       } else {
         const cancel = command === "CANCEL_ORDER";
+        const technicalClose =
+          command === "CLOSE_ORDER" &&
+          pureEmptyDraftHeader(next) &&
+          (await qualifyPureEmptyDraft(
+            ctx,
+            next,
+            await this.allLines(ctx, owner),
+          ));
+        technicalResolution = technicalClose;
         if (
           next.dueMinor !== next.paidMinor ||
           next.reservedMinor ||
@@ -1331,10 +1440,14 @@ export class RestaurantTransactionsService {
           (cancel && next.paidMinor)
         )
           return fail("RESTAURANTS_UNPAID_CLOSE");
-        if (!cancel && (next.status !== "SUBMITTED" || !next.acceptedLineCount))
+        if (
+          !cancel &&
+          !technicalClose &&
+          (next.status !== "SUBMITTED" || !next.acceptedLineCount)
+        )
           return fail();
         // Pre-feature station sales have no canonical completion evidence.
-        if (!cancel) {
+        if (!cancel && !technicalClose) {
           const lines = await this.allLines(ctx, owner);
           if (
             lines.some(
@@ -1347,17 +1460,7 @@ export class RestaurantTransactionsService {
             return fail("RESTAURANTS_PREPARATION_DEFERRED");
         }
         if (cancel) await reverseInventory(await this.allLines(ctx, owner));
-        next.status = cancel ? "CANCELLED" : "CLOSED";
-        next.closedAt = now;
-        next.closedBy = ctx.actorId;
-        await remove(
-          "ACTIVE_ORDER",
-          {
-            PK: K.restaurantTransactionActivePK(ctx.orgId, ctx.outletId, "ORD"),
-            SK: K.restaurantTransactionLocatorSK(next.createdAt, owner),
-          },
-          owner,
-        );
+        await terminalize(cancel || technicalClose ? "CANCELLED" : "CLOSED");
         result = next;
       }
       next.dueMinor = safeMoney(BigInt(next.dueMinor) + BigInt(delta));
@@ -1468,6 +1571,13 @@ export class RestaurantTransactionsService {
         };
         if (updated.dueMinor < updated.paidMinor + updated.reservedMinor)
           return fail();
+        // A staff draft mutation previously staged a session read guard. Replace
+        // that same-item guard with this conditional write; never target it twice.
+        for (let i = actions.length - 1; i >= 0; i--) {
+          const guard = actions[i].ConditionCheck?.Key;
+          if (guard?.PK?.S === session.PK && guard?.SK?.S === session.SK)
+            actions.splice(i, 1);
+        }
         put("SESSION", { PK: session.PK, SK: session.SK }, updated, session);
         if (isTerminal)
           await remove(
@@ -1483,9 +1593,11 @@ export class RestaurantTransactionsService {
       activity = audit(
         next,
         order.data.status,
-        "reason" in request && typeof request.reason === "string"
-          ? request.reason
-          : undefined,
+        technicalResolution
+          ? EMPTY_DRAFT_REASON
+          : "reason" in request && typeof request.reason === "string"
+            ? request.reason
+            : undefined,
       );
     }
     put(
@@ -1518,6 +1630,9 @@ export class RestaurantTransactionsService {
         fingerprint: intent,
         committedAt: now,
         result,
+        ...(firstItem ? { firstItem } : {}),
+        ...(resolvedOrder ? { resolvedOrder } : {}),
+        ...(technicalResolution ? { technicalResolution: true } : {}),
       });
     if (guestApproval) {
       if (Date.parse(guestApproval.expiresAt) <= Date.now())
@@ -1596,7 +1711,7 @@ export class RestaurantTransactionsService {
           ).GuestSubmissions.continueOpening(
             contracts.GuestSessionSchema.parse(committed),
           );
-        return { data: committed };
+        return outcome(committed);
       }
       const name = error instanceof Error ? error.name : "";
       // A first QR submission may race the opening snapshot. Retry the same canonical
@@ -1675,7 +1790,10 @@ export class RestaurantTransactionsService {
       commandId,
       latencyMs: Date.now() - startedAt,
     });
-    if (["SUBMIT_ORDER", "CANCEL_ITEM", "CANCEL_ORDER"].includes(command))
+    if (
+      !technicalResolution &&
+      ["SUBMIT_ORDER", "CANCEL_ITEM", "CANCEL_ORDER"].includes(command)
+    )
       await InventorySales.resume(ctx, owner);
     if (command === "OPEN_SESSION")
       await (
@@ -1683,7 +1801,11 @@ export class RestaurantTransactionsService {
       ).GuestSubmissions.continueOpening(
         contracts.GuestSessionSchema.parse(result),
       );
-    return { data: result };
+    return {
+      data: result,
+      ...(firstItem ? { firstItem } : {}),
+      ...(resolvedOrder ? { order: resolvedOrder } : {}),
+    };
   }
   static async allLines(
     scope: TransactionScope,

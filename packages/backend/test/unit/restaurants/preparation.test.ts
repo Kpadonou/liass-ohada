@@ -562,6 +562,49 @@ test.each(["QUEUED", "IN_PROGRESS", "READY"])(
     );
   },
 );
+test.each(["IN_PROGRESS", "READY", "SERVED", "CANCELLED"])(
+  "CANCEL_ORDER respects preparation prerequisite at %s without rewriting tasks",
+  async (state) => {
+    let t = await queued();
+    t = (await move(t, "START")).data;
+    if (state === "READY" || state === "SERVED")
+      t = (await move(t, "READY")).data;
+    if (state === "SERVED") t = (await move(t, "SERVE")).data;
+    const line = (await S.line(ctx(), t.orderId, t.itemId)).data;
+    if (state === "CANCELLED")
+      await S.mutate(
+        ctx(),
+        "CANCEL_ITEM",
+        {
+          clientRequestId: req(),
+          expectedVersion: (await S.order(ctx(), t.orderId)).data.version,
+          expectedItemVersion: line.version,
+          reason: "Resolved work",
+        },
+        { orderId: t.orderId, itemId: t.itemId },
+      );
+    // Financial guard is independently satisfied to isolate the preparation prerequisite.
+    const order = await S.order(ctx(), t.orderId);
+    patch({ PK: order.PK, SK: order.SK }, (r) => {
+      Object.assign(r.data, { dueMinor: 0 });
+    });
+    const before = tasks();
+    const request = {
+      clientRequestId: req(),
+      expectedVersion: order.data.version,
+      reason: "Abandoned",
+    };
+    if (state === "IN_PROGRESS" || state === "READY") {
+      await expect(
+        S.mutate(ctx(), "CANCEL_ORDER", request, { orderId: t.orderId }),
+      ).rejects.toMatchObject({ messageCode: "RESTAURANTS_UNPAID_CLOSE" });
+    } else {
+      await S.mutate(ctx(), "CANCEL_ORDER", request, { orderId: t.orderId });
+      await S.mutate(ctx(), "CANCEL_ORDER", request, { orderId: t.orderId });
+    }
+    expect(tasks()).toEqual(before);
+  },
+);
 test("two actors starting same version have one winner", async () => {
   const t = await queued();
   const result = await Promise.allSettled([
