@@ -610,3 +610,23 @@ InvoiceNatureEnum is present but unused in InvoiceRequestDataDto; it does not au
 53. **No deployment:** no CDK/resource/stateful change, resources added/replaced zero; owning implementation stack remains FiscalComplianceApiStack. Counts/build/synth/resource-count/diff/app suites not rerun for docs-only scope; prior S4B counts are not a new deployment-safety check. No AWS credential access or deployment.
 
 S4C-0A STATUS: COMPLETE
+
+## Appendix C. S4C-0B2 read-only connector acceptance
+
+2026-11-04, Africa/Porto-Novo. **S4C-0B2 is complete for the TEST read-only transport slice.**
+
+The existing Fiscal Compliance domain now contains a Benin-specific TEST adapter for `GET /api/info/status`. The adapter uses the fixed TEST origin, accepts an explicitly injected in-memory credential, rejects `PRODUCTION` before transport selection, applies a bounded timeout, validates the pinned status response, and returns a sanitized summary. It does not create or confirm invoices, cancel invoices, certify documents, persist credentials, add routes, change ProductAccess, or add AWS resources.
+
+Acceptance evidence supplied for this milestone:
+
+- A developer-Mac execution of `BeninEMecefTestAdapter.getStatus()` succeeded against TEST.
+- Sanitized result: `environment=TEST`, `provider=BENIN_EMECEF`, `reachable=true`, `serviceAvailable=true`, `apiVersion=1.0`, `configuredDeviceCount=1`.
+- The prior independent DGI authentication smoke returned HTTP 200 for `GET /api/info/status`.
+- Automated connector and fiscal tests passed: 72/72 across five suites.
+- Backend TypeScript build, Prettier and `git diff --check` passed.
+
+This is connector/runtime acceptance evidence only. It does not close the S4C mutation, reconciliation, confirmation, cancellation, fiscal-artifact, legal-eligibility or production gates. TEST evidence does not establish production authorization or a universal Benin obligation for other jurisdictions.
+
+Credential values, raw provider responses, sensitive identifiers and terminal captures are intentionally absent from the repository. The live result was externally supplied by the developer Mac; the Codex execution environment did not perform a live provider request.
+
+**S4C-0B2 STATUS: COMPLETE — READ-ONLY TEST CONNECTOR ACCEPTED**
