@@ -1,4 +1,5 @@
 import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
+import { RESTAURANT_FISCAL_ROUTES } from "../../../lambda/domains/restaurants/fiscal-routes";
 import { Template } from "aws-cdk-lib/assertions";
 import { RestaurantsGuestEndpoints } from "../../../lib/constructs/domains/restaurants-guest-endpoints";
 import * as cdk from "aws-cdk-lib";
@@ -89,6 +90,103 @@ describe("API stack decomposition", () => {
     env: { account: "123456789012", region: "eu-west-3" },
   });
   const constructs = root.node.findAll();
+
+  test("production omits synthetic fiscal routes and permissions", () => {
+    const production = new LiassOhadaBackendStack(
+      new cdk.App({
+        context: {
+          authUseSecretsManager: true,
+          "auth.prod.callbackUrls": ["https://app.example.test/auth/callback"],
+          "auth.prod.logoutUrls": ["https://app.example.test/login"],
+        },
+      }),
+      "FiscalProduction",
+      { stage: "prod", env: { account: "123456789012", region: "eu-west-3" } },
+    );
+    const owner = production.node
+      .findAll()
+      .find((v) => v instanceof RestaurantsApiStack)!;
+    const resources = Template.fromStack(owner as RestaurantsApiStack).toJSON()
+      .Resources;
+    expect(
+      Object.values(resources).filter(
+        (v: any) =>
+          v.Type === "AWS::ApiGatewayV2::Route" &&
+          RESTAURANT_FISCAL_ROUTES.some(
+            (r) => v.Properties.RouteKey === `${r.method} ${r.path}`,
+          ),
+      ),
+    ).toHaveLength(0);
+    expect(
+      Object.keys(resources).filter((id) => id.includes("Fiscal")),
+    ).toHaveLength(0);
+  });
+
+  test("fiscal routes reuse management integration and exact method-scoped invocation permissions", () => {
+    const owner = constructs.find((v) => v instanceof RestaurantsApiStack)!;
+    const template = Template.fromStack(owner as RestaurantsApiStack).toJSON();
+    const resources = Object.entries(template.Resources) as [string, any][];
+    const routes = resources.filter(
+      ([, v]) =>
+        v.Type === "AWS::ApiGatewayV2::Route" &&
+        RESTAURANT_FISCAL_ROUTES.some(
+          (r) => v.Properties.RouteKey === `${r.method} ${r.path}`,
+        ),
+    );
+    expect(routes).toHaveLength(4);
+    const targets = new Set(
+      routes.map(([, v]) => JSON.stringify(v.Properties.Target)),
+    );
+    expect(targets.size).toBe(1);
+    const registered = RESTAURANT_FISCAL_ROUTES as unknown as Array<
+      (typeof RESTAURANT_FISCAL_ROUTES)[number]
+    >;
+    const saved = registered.splice(0);
+    try {
+      const baseline = new LiassOhadaBackendStack(
+        new cdk.App({ context: { authUseSecretsManager: true } }),
+        "TestBackend",
+        { stage: "dev", env: { account: "123456789012", region: "eu-west-3" } },
+      );
+      const baselineOwner = baseline.node
+        .findAll()
+        .find((v) => v instanceof RestaurantsApiStack)!;
+      const before = Template.fromStack(
+        baselineOwner as RestaurantsApiStack,
+      ).toJSON().Resources;
+      const added = resources.filter(([id]) => !(id in before));
+      expect(added.map(([, v]) => v.Type).sort()).toEqual(
+        [
+          ...Array(4).fill("AWS::ApiGatewayV2::Route"),
+          ...Array(4).fill("AWS::Lambda::Permission"),
+        ].sort(),
+      );
+      for (const [id, value] of Object.entries(before))
+        expect(template.Resources[id]).toEqual(value);
+      console.log("FISCAL_ROUTE_RESOURCE_DIFF", {
+        before: Object.keys(before).length,
+        after: resources.length,
+        added: added.length,
+      });
+    } finally {
+      registered.push(...saved);
+    }
+    for (const route of RESTAURANT_FISCAL_ROUTES) {
+      const matches = resources.filter(
+        ([id, v]) =>
+          id.includes("Fiscal") &&
+          v.Type === "AWS::Lambda::Permission" &&
+          v.Properties.SourceArn["Fn::Join"][1].at(-1) ===
+            `/$default/${route.method}${route.path.replace(/\{\w+\}/g, "*")}`,
+      );
+      expect(matches).toHaveLength(1);
+      expect(matches[0][1].Properties).toMatchObject({
+        Action: "lambda:InvokeFunction",
+        Principal: "apigateway.amazonaws.com",
+        SourceAccount: "123456789012",
+      });
+    }
+  });
 
   test("COMPANY invitations stay in Identity with JWT, explicit development token policy and no Scan/index IAM", () => {
     for (const [handlerName, path] of [

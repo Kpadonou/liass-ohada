@@ -1,4 +1,11 @@
 import { RESTAURANT_CASH_ROUTES } from "./cash-routes";
+import { RESTAURANT_FISCAL_ROUTES } from "./fiscal-routes";
+import { restaurantFiscalHandler } from "./fiscal-handler";
+import { RestaurantFiscalApplicationService } from "./fiscal-application-service";
+
+const fiscalService = new RestaurantFiscalApplicationService(async () => {
+  throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+});
 import { RESTAURANT_DOCUMENT_COLLECTION_ROUTES } from "./document-collection-routes";
 import { RestaurantDocumentCollections } from "./document-collections";
 import { RESTAURANT_REFUND_ROUTES } from "./refund-routes";
@@ -30,6 +37,13 @@ const inventoryPaths = [
   ),
 ];
 const routes = new Map<string, typeof original>([
+  ...RESTAURANT_FISCAL_ROUTES.map(
+    (r) =>
+      [
+        `${r.method} ${r.path}`,
+        restaurantFiscalHandler(r.name, fiscalService),
+      ] as const,
+  ),
   ...RESTAURANT_DOCUMENT_COLLECTION_ROUTES.map(
     (r) =>
       [

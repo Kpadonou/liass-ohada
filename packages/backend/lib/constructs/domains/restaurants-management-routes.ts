@@ -1,4 +1,5 @@
 import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
+import { RESTAURANT_FISCAL_ROUTES } from "../../../lambda/domains/restaurants/fiscal-routes";
 import { RESTAURANT_DOCUMENT_COLLECTION_ROUTES } from "../../../lambda/domains/restaurants/document-collection-routes";
 import { RESTAURANT_REFUND_ROUTES } from "../../../lambda/domains/restaurants/refund-routes";
 import { RESTAURANT_CREDIT_NOTE_ROUTES } from "../../../lambda/domains/restaurants/credit-note-routes";
@@ -57,6 +58,30 @@ export function addRestaurantsManagementRoutes(
   const stage = props.api.defaultStage?.stageName;
   if (!stage)
     throw new Error("Restaurants management requires an explicit API stage");
+  const addFiscalRoutes = () => {
+    if (props.stage !== "prod") {
+      for (const route of RESTAURANT_FISCAL_ROUTES) {
+        new apigw.HttpRoute(scope, `Fiscal-${route.name}`, {
+          httpApi: props.api,
+          authorizer: props.authorizer,
+          integration,
+          routeKey: apigw.HttpRouteKey.with(
+            route.path,
+            apigw.HttpMethod[route.method],
+          ),
+        });
+        fn.addPermission(`Fiscal-${route.name}-Invoke`, {
+          principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
+          sourceAccount: fn.stack.account,
+          sourceArn: props.api.arnForExecuteApi(
+            route.method,
+            route.path.replace(/\{\w+\}/g, "*"),
+            stage,
+          ),
+        });
+      }
+    }
+  };
   const outlets = RESTAURANTS_ROUTES.filter((r) => r.kind === "outlet");
   // Bind the historical GET first: its existing Integration logical identity is retained.
   for (const route of outlets) {
@@ -158,6 +183,7 @@ export function addRestaurantsManagementRoutes(
         stage,
       ),
     });
+  addFiscalRoutes();
   fn.addPermission("InventoryInvoke", {
     principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
     sourceAccount: fn.stack.account,
