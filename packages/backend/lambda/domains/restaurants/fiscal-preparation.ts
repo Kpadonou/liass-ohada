@@ -72,6 +72,7 @@ export async function prepareRestaurantFiscalInvoice(
         commercialRootDigest: evidence.proof.digest,
         issuedAt: evidence.invoice.issuedAt,
         provenance: provenance.evidence,
+        paidByMethodMinor: evidence.invoice.paidByMethodMinor,
         currency: mapping.currency,
         totalMinor: mapping.totalMinor,
         lines: mapping.lines,

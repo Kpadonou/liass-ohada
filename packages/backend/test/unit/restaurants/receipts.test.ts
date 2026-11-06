@@ -1305,31 +1305,29 @@ test.each(["revocation", "concurrent replacement", "duplicate provenance"])(
     const v = await visit();
     await settle(v);
     process.env.RESTAURANTS_SYNTHETIC_PROVENANCE = "1";
-    const prepared = jest
-      .spyOn(Provenance, "prepare")
-      .mockResolvedValue([
-        {
-          ConditionCheck: {
-            TableName: "platform",
-            Key: marshall({ PK: "synthetic-seller", SK: "CURRENT" }),
-            ConditionExpression: "attribute_exists(PK)",
-          },
+    const prepared = jest.spyOn(Provenance, "prepare").mockResolvedValue([
+      {
+        ConditionCheck: {
+          TableName: "platform",
+          Key: marshall({ PK: "synthetic-seller", SK: "CURRENT" }),
+          ConditionExpression: "attribute_exists(PK)",
         },
-        {
-          ConditionCheck: {
-            TableName: "restaurants",
-            Key: marshall({ PK: "synthetic-timezone", SK: "CURRENT" }),
-            ConditionExpression: "attribute_exists(PK)",
-          },
+      },
+      {
+        ConditionCheck: {
+          TableName: "restaurants",
+          Key: marshall({ PK: "synthetic-timezone", SK: "CURRENT" }),
+          ConditionExpression: "attribute_exists(PK)",
         },
-        {
-          Put: {
-            TableName: "restaurants",
-            Item: marshall({ PK: "synthetic-provenance", SK: "V1" }),
-            ConditionExpression: "attribute_not_exists(PK)",
-          },
+      },
+      {
+        Put: {
+          TableName: "restaurants",
+          Item: marshall({ PK: "synthetic-provenance", SK: "V1" }),
+          ConditionExpression: "attribute_not_exists(PK)",
         },
-      ]);
+      },
+    ]);
     const original = R.commit.bind(R);
     const commit = jest
       .spyOn(R, "commit")
@@ -1365,6 +1363,222 @@ test.each(["revocation", "concurrent replacement", "duplicate provenance"])(
       commit.mockRestore();
       prepared.mockRestore();
       delete process.env.RESTAURANTS_SYNTHETIC_PROVENANCE;
+    }
+  },
+);
+
+// Integrated synthetic path: actual commercial publication and source verification,
+// with only persistence transport and DGI HTTP mocked.
+test.each(["success", "uncertain-create", "uncertain-confirm"])(
+  "FINAL through Benin mapping and durable orchestration: %s",
+  async (outcome) => {
+    const { PutItemCommand } = await import("@aws-sdk/client-dynamodb");
+    const { FiscalAttemptStore } =
+      await import("@/lambda/domains/fiscal-compliance/persistence/fiscal-attempt-store");
+    const { BeninEMecefTestAdapter } =
+      await import("@/lambda/domains/fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter");
+    const { bindRestaurantIssuanceProvenance } =
+      await import("@/lambda/domains/restaurants/issuance-provenance");
+    const { provenance: fixture } = await import("./provenance-fixture");
+    const v = await visit();
+    await settle(v);
+    const invoice = await finish(v.sessionId);
+    const manifest = await B.get(
+      scope(),
+      invoice.receiptId,
+      K.restaurantTransactionMetaSK(),
+      "MANIFEST",
+    );
+    if (!manifest) throw new Error("Missing synthetic manifest");
+    const { bindingDigest: _binding, ...payload } = fixture;
+    const captured = bindRestaurantIssuanceProvenance({
+      ...payload,
+      ...scope(),
+      invoiceId: invoice.receiptId,
+      guestSessionId: v.sessionId,
+      sourceVersion: manifest.sourceVersion,
+      financialRevision: manifest.financialRevision,
+      finalManifestVersion: manifest.version,
+      issuedAt: invoice.issuedAt,
+      capturedAt: invoice.issuedAt,
+      commercialRootDigest: invoice.digest,
+      actorUserId: "owner",
+      seller: {
+        ...payload.seller,
+        orgId: org,
+        seller: {
+          name: "Synthetic seller",
+          identifiers: [
+            { scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" },
+          ],
+        },
+        factStates: [
+          ...payload.seller.factStates,
+          {
+            fieldPath: "identifiers",
+            state: "VERIFIED",
+            evidenceReference: "synthetic-review",
+          },
+        ],
+      },
+      timezone: { ...payload.timezone, orgId: org },
+    });
+    const provenanceRow = {
+      PK: K.restaurantBillPK(org, f.outlet.id, invoice.receiptId),
+      SK: K.restaurantIssuanceProvenanceSK(),
+      ...scope(),
+      invoiceId: invoice.receiptId,
+      schemaVersion: 1,
+      entityType: "RESTAURANT_INVOICE_ISSUANCE_PROVENANCE",
+      data: captured,
+    };
+    m.rows.set(
+      JSON.stringify([provenanceRow.PK, provenanceRow.SK]),
+      marshall(provenanceRow),
+    );
+    const verified = await Source.verify(
+      scope(),
+      "owner",
+      v.sessionId,
+      invoice.receiptId,
+    );
+    if (!verified.verified)
+      throw new Error("Synthetic source verification failed");
+    const classifications = verified.evidence.lines.map(({ line }) => ({
+      orderId: line.orderId,
+      itemId: line.itemId,
+      taxGroup: "B",
+      classificationEvidence: "synthetic-explicit-treatment",
+    }));
+    const mapping = {
+      environment: "TEST",
+      invoiceType: "FV",
+      priceBasis: "TTC",
+      pricingEvidence: "synthetic-price-policy",
+      commercialMinorUnitsPerFranc: 1,
+      taxGroups: ["B"],
+      taxMetadataEvidence: "synthetic-metadata",
+      operator: {
+        actorId: "owner",
+        name: "Synthetic operator",
+        evidence: "synthetic-operator-review",
+      },
+      payments: [
+        {
+          sourceMethod: "CASH",
+          providerMethod: "ESPECES",
+          evidence: "synthetic-payment-review",
+        },
+      ],
+    };
+    process.env.FISCAL_SYNTHETIC_STORAGE = "1";
+    // The existing Restaurants harness supports transactional writes; add the
+    // single-item conditional store boundary without bypassing its revision check.
+    m.db.on(PutItemCommand).callsFake(async (input) => {
+      const row = input.Item!;
+      const address = JSON.stringify([row.PK.S, row.SK.S]);
+      const prior = m.rows.get(address);
+      const expected = input.ExpressionAttributeValues?.[":version"]?.N;
+      if (
+        expected === undefined ? Boolean(prior) : prior?.version.N !== expected
+      )
+        throw Object.assign(new Error("synthetic conflict"), {
+          name: "ConditionalCheckFailedException",
+        });
+      m.rows.set(address, row);
+      return {};
+    });
+    const identity = {
+      orgId: org,
+      environment: "TEST" as const,
+      sourceDomain: "restaurants",
+      sourceDocumentType: "INVOICE",
+      sourceDocumentId: invoice.receiptId,
+      jurisdiction: "BJ",
+      obligation: "NORMALIZE",
+    };
+    const principal = { orgId: org, actorId: "owner" };
+    const syntheticSecurity = {
+      dateTime: "synthetic-date",
+      qrCode: "synthetic-qr",
+      codeMECeFDGI: "synthetic-code",
+      counters: "1/1",
+      nim: "synthetic-device",
+    };
+    const transport = jest.fn(async (request: { method: string }) => {
+      if (
+        (outcome === "uncertain-create" && request.method === "POST") ||
+        (outcome === "uncertain-confirm" && request.method === "PUT")
+      )
+        throw new Error("synthetic timeout");
+      return {
+        status: 200,
+        body: JSON.stringify(
+          request.method === "POST"
+            ? { uid: "synthetic-uid", total: invoice.dueMinor }
+            : syntheticSecurity,
+        ),
+      };
+    });
+    const authorize = async (p: { orgId: string; actorId: string }) => {
+      if (p.orgId !== org) throw new Error("foreign tenant");
+      await Receipt.authorize(scope(), p.actorId);
+    };
+    const { restaurantBeninSyntheticWorkflow } =
+      await import("@/lambda/domains/restaurants/benin-synthetic-workflow");
+    const instance = () =>
+      restaurantBeninSyntheticWorkflow({
+        outletId: f.outlet.id,
+        sessionId: v.sessionId,
+        classifications,
+        mapping,
+        adapter: new BeninEMecefTestAdapter({ transport }),
+        credential: () => "synthetic-token",
+        authorize,
+      });
+    try {
+      await instance().create(
+        principal,
+        identity,
+        "synthetic-attempt",
+        "create",
+      );
+      if (outcome !== "uncertain-create")
+        await instance().confirm(principal, identity, "confirm", {
+          confirm: true,
+        });
+      const state = await new FiscalAttemptStore().read(identity);
+      expect(state?.sourceDigest).toBe(invoice.digest);
+      expect(state?.status).toBe(
+        outcome === "success" ? "CONFIRMED" : "UNKNOWN_OUTCOME",
+      );
+      if (outcome === "success") {
+        expect(state?.security).toEqual(syntheticSecurity);
+        expect(state?.securityEvidenceOrigin).toBe("SYNTHETIC");
+        expect(state?.providerTotal).toBe(invoice.dueMinor);
+      } else expect(state?.security).toBeUndefined();
+      await expect(
+        instance().create(principal, identity, "replacement", "create-again"),
+      ).rejects.toThrow();
+      await expect(
+        instance().confirm(principal, identity, "confirm-again", {
+          confirm: true,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        instance().confirm(
+          { ...principal, orgId: "foreign" },
+          identity,
+          "foreign",
+          { confirm: true },
+        ),
+      ).rejects.toThrow();
+      expect(transport.mock.calls.map(([r]) => r.method)).toEqual(
+        outcome === "uncertain-create" ? ["POST"] : ["POST", "PUT"],
+      );
+      expect(JSON.stringify(state)).not.toContain("synthetic-token");
+    } finally {
+      delete process.env.FISCAL_SYNTHETIC_STORAGE;
     }
   },
 );

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { FiscalAttemptStore } from "../persistence/fiscal-attempt-store";
 import {
+  FiscalAttemptState,
   FiscalAttemptConflict,
   FiscalObligationIdentity,
   fiscalAttemptStateSchema,
@@ -24,11 +25,14 @@ type Security = NonNullable<
 >;
 /** Synthetic port: no credentials, transport, endpoint or provider dispatch implementation. */
 export interface MockFiscalProvider {
-  readonly kind: "MOCK";
+  readonly kind: "MOCK" | "BENIN_EMECEF_TEST";
   createInvoice(
     preparation: VerifiedFiscalPreparation,
   ): Promise<{ uid: string; total: number; reconciled: boolean }>;
-  confirmInvoice(uid: string): Promise<Security>;
+  confirmInvoice(
+    uid: string,
+    reservation?: FiscalAttemptState,
+  ): Promise<Security>;
   getInvoice(uid: string): Promise<unknown>;
 }
 export class DefiniteFiscalRejection extends Error {}
@@ -53,7 +57,7 @@ export class SyntheticFiscalOrchestrator {
   ) {
     if (
       process.env.NODE_ENV !== "test" ||
-      this.provider.kind !== "MOCK" ||
+      !["MOCK", "BENIN_EMECEF_TEST"].includes(this.provider.kind) ||
       !p.actorId ||
       p.orgId !== identity.orgId ||
       identity.environment !== "TEST"
@@ -80,7 +84,7 @@ export class SyntheticFiscalOrchestrator {
     const state = await this.store.reserve({
       identity,
       attemptId,
-      provider: "MOCK",
+      provider: this.provider.kind,
       sourceDigest: prepared.sourceDigest,
       requestDigest: prepared.requestDigest,
       expectedTotal: prepared.total,
@@ -122,7 +126,7 @@ export class SyntheticFiscalOrchestrator {
     if (authorization?.confirm !== true)
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     const state = await this.store.read(identity);
-    if (!state || state.provider !== "MOCK" || !state.uid)
+    if (!state || state.provider !== this.provider.kind || !state.uid)
       throw new FiscalAttemptConflict("UID_REQUIRED");
     const reserved = await this.store.transition(identity, state.version, {
       kind: "RESERVE_MUTATION",
@@ -132,7 +136,10 @@ export class SyntheticFiscalOrchestrator {
     });
     if (reserved.replay) throw new FiscalAttemptConflict("TRANSITION_DENIED");
     try {
-      const security = await this.provider.confirmInvoice(state.uid);
+      const security = await this.provider.confirmInvoice(
+        state.uid,
+        reserved.state,
+      );
       return await this.store.transition(identity, reserved.state.version, {
         kind: "CONFIRMED",
         commandId,
@@ -172,7 +179,7 @@ export class SyntheticFiscalOrchestrator {
   async reconcile(p: FiscalPrincipal, identity: FiscalObligationIdentity) {
     await this.access(p, identity, "READ");
     const plan = await this.store.reconciliationRead(identity);
-    if (plan.provider !== "MOCK")
+    if (plan.provider !== this.provider.kind)
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     // Observation only: no response (including error 20) alters durable status.
     try {

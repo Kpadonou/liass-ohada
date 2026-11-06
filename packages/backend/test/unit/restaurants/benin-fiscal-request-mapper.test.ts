@@ -1,0 +1,235 @@
+import {
+  mapRestaurantBeninRequest,
+  restaurantBeninPreparation,
+} from "@/lambda/domains/restaurants/benin-fiscal-request-mapper";
+import { bindRestaurantIssuanceProvenance } from "@/lambda/domains/restaurants/issuance-provenance";
+import { mapRestaurantFiscalLines } from "@/lambda/domains/restaurants/fiscal-line-mapper";
+import { DurableBeninBinding } from "@/lambda/domains/fiscal-compliance/providers/benin-emecef/durable-benin-binding";
+import { BeninEMecefTestAdapter } from "@/lambda/domains/fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter";
+import {
+  provenance,
+  scope,
+  id,
+  line,
+  digest,
+  issuedAt,
+} from "./provenance-fixture";
+const { bindingDigest: _, ...original } = provenance;
+const captured = bindRestaurantIssuanceProvenance({
+  ...original,
+  seller: {
+    ...original.seller,
+    seller: {
+      name: "Synthetic seller",
+      identifiers: [
+        { scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" },
+      ],
+    },
+    factStates: [
+      ...original.seller.factStates,
+      {
+        fieldPath: "identifiers",
+        state: "VERIFIED",
+        evidenceReference: "synthetic-ifu-review",
+      },
+    ],
+  },
+});
+const principal = { orgId: scope.orgId, actorId: "synthetic-actor" };
+const identity = {
+  orgId: scope.orgId,
+  environment: "TEST" as const,
+  sourceDomain: "restaurants",
+  sourceDocumentType: "INVOICE",
+  sourceDocumentId: id,
+  jurisdiction: "BJ",
+  obligation: "NORMALIZE",
+};
+const classification = {
+  orderId: id,
+  itemId: id,
+  taxGroup: "B",
+  classificationEvidence: "synthetic-item-review",
+};
+const preparation = () => ({
+  schemaVersion: 1 as const,
+  source: {
+    ...scope,
+    invoiceId: id,
+    guestSessionId: id,
+    sourceVersion: 1,
+    financialRevision: 1,
+  },
+  commercialRootDigest: digest,
+  issuedAt,
+  provenance: captured,
+  ...mapRestaurantFiscalLines({
+    lines: [line],
+    classifications: [classification],
+  }),
+  paidByMethodMinor: { CASH: 2000, MOBILE_MONEY: 0, CARD: 0 },
+});
+const configuration = () => ({
+  environment: "TEST",
+  invoiceType: "FV",
+  priceBasis: "TTC",
+  pricingEvidence: "synthetic-reviewed-price-policy",
+  commercialMinorUnitsPerFranc: 1,
+  taxGroups: ["B"],
+  taxMetadataEvidence: "synthetic-metadata",
+  operator: {
+    actorId: principal.actorId,
+    name: "Synthetic operator",
+    evidence: "synthetic-operator",
+  },
+  payments: [
+    {
+      sourceMethod: "CASH",
+      providerMethod: "ESPECES",
+      evidence: "synthetic-payment-review",
+    },
+  ],
+});
+test("explicit mapping preserves exact amounts and is directly consumable by durable binding", async () => {
+  const before = preparation();
+  const result = mapRestaurantBeninRequest(
+    before,
+    principal,
+    identity,
+    configuration(),
+  );
+  const transport = jest.fn(async () => ({
+    status: 200,
+    body: JSON.stringify({ uid: "uid", total: 2000 }),
+  }));
+  const binding = new DurableBeninBinding(
+    new BeninEMecefTestAdapter({ transport }),
+    () => "synthetic-secret",
+  );
+  expect(await binding.createInvoice(result)).toMatchObject({
+    reconciled: true,
+    total: 2000,
+  });
+  expect(result.payload).toMatchObject({
+    invoice: {
+      ifu: "synthetic-ifu",
+      type: "FV",
+      reference: id,
+      items: [{ price: 1000, quantity: 2, taxGroup: "B" }],
+      payment: [{ name: "ESPECES", amount: 2000 }],
+    },
+    expected: { total: 2000, itemTotals: [2000] },
+  });
+  expect(before).toEqual(preparation());
+});
+test.each([
+  { priceBasis: "HT" },
+  { pricingEvidence: "" },
+  { taxGroups: ["Z"] },
+  { taxGroups: ["A"] },
+  { taxGroups: ["B", "B"] },
+  { invoiceType: "FA" },
+  { commercialMinorUnitsPerFranc: 3 },
+  { environment: "PRODUCTION" },
+  { payments: [] },
+  {
+    payments: [
+      {
+        sourceMethod: "CARD",
+        providerMethod: "CARTEBANCAIRE",
+        evidence: "review",
+      },
+    ],
+  },
+])("rejects unsupported or unevidenced provider mapping %j", (change) => {
+  expect(() =>
+    mapRestaurantBeninRequest(preparation(), principal, identity, {
+      ...configuration(),
+      ...change,
+    }),
+  ).toThrow();
+});
+test("rejects absent verified seller IFU, payment mismatch, commercial mismatch and foreign context", () => {
+  expect(() =>
+    mapRestaurantBeninRequest(
+      { ...preparation(), provenance },
+      principal,
+      identity,
+      configuration(),
+    ),
+  ).toThrow("FISCAL_SELLER_IFU_UNVERIFIED");
+  expect(() =>
+    mapRestaurantBeninRequest(
+      {
+        ...preparation(),
+        paidByMethodMinor: { CASH: 1999, CARD: 0, MOBILE_MONEY: 0 },
+      },
+      principal,
+      identity,
+      configuration(),
+    ),
+  ).toThrow("FISCAL_MAPPING_AMOUNT_MISMATCH");
+  expect(() =>
+    mapRestaurantBeninRequest(
+      { ...preparation(), totalMinor: "1999" },
+      principal,
+      identity,
+      configuration(),
+    ),
+  ).toThrow("FISCAL_MAPPING_AMOUNT_MISMATCH");
+  expect(() =>
+    mapRestaurantBeninRequest(
+      preparation(),
+      { ...principal, orgId: "foreign" },
+      identity,
+      configuration(),
+    ),
+  ).toThrow("FISCAL_MAPPING_SCOPE_DENIED");
+});
+test("factory consumes verified FINAL preparation and explicit classifications", async () => {
+  const prepare = jest.fn(async () => ({
+    ready: true as const,
+    preparation: preparation(),
+  }));
+  const result = await restaurantBeninPreparation(
+    scope.outletId,
+    id,
+    [classification],
+    configuration(),
+    prepare,
+  )(principal, identity);
+  expect(result.total).toBe(2000);
+  expect(prepare).toHaveBeenCalledWith({
+    scope,
+    actorId: principal.actorId,
+    sessionId: id,
+    invoiceId: id,
+    classifications: [classification],
+  });
+});
+
+test("missing per-line evidence and changed source revisions fail closed", () => {
+  const p = preparation();
+  expect(() =>
+    mapRestaurantBeninRequest(
+      {
+        ...p,
+        lines: p.lines.map((v) => ({
+          ...v,
+          fiscal: { ...v.fiscal, classificationEvidence: "" },
+        })),
+      },
+      principal,
+      identity,
+      configuration(),
+    ),
+  ).toThrow();
+  expect(() =>
+    mapRestaurantBeninRequest(
+      { ...p, source: { ...p.source, sourceVersion: 2 } },
+      principal,
+      identity,
+      configuration(),
+    ),
+  ).toThrow("FISCAL_MAPPING_SOURCE_MISMATCH");
+});

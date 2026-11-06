@@ -1,3 +1,7 @@
+import {
+  fiscalAttemptStateSchema,
+  FiscalAttemptState,
+} from "../../core/fiscal-attempt-state";
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { z } from "zod";
@@ -496,6 +500,34 @@ export class BeninEMecefTestAdapter {
       ),
     );
     return { uid, ...security };
+  }
+
+  /** Internal durable binding: caller must have persisted this CONFIRM reservation.
+   * No process-local capability or invoice payload is reconstructed or resent.
+   */
+  async confirmDurableInvoice(
+    input: GetBeninEMecefStatusInput,
+    evidence: FiscalAttemptState,
+  ) {
+    const state = fiscalAttemptStateSchema.parse(evidence);
+    if (
+      input.environment !== "TEST" ||
+      state.identity.environment !== "TEST" ||
+      state.provider !== "BENIN_EMECEF_TEST" ||
+      state.status !== "CONFIRM_IN_FLIGHT" ||
+      !state.uid ||
+      state.providerTotal !== state.expectedTotal
+    )
+      throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
+    const security = await this.mutate(() =>
+      this.request(
+        input,
+        "PUT",
+        `${this.uidPath(state.uid!)}/confirm`,
+        securitySchema,
+      ),
+    );
+    return { uid: state.uid, ...security };
   }
 
   async cancelInvoice(input: GetBeninEMecefStatusInput, uid: string) {

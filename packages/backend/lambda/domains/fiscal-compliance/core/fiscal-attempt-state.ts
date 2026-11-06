@@ -58,6 +58,7 @@ export const fiscalAttemptStateSchema = z
     uid: id.optional(),
     providerTotal: z.number().int().safe().optional(),
     security: securitySchema.optional(),
+    securityEvidenceOrigin: z.literal("SYNTHETIC").optional(),
   })
   .strict()
   .superRefine((s, ctx) => {
@@ -249,6 +250,7 @@ export function transitionFiscalAttempt(
       if ((e.kind === "CONFIRMED" ? "CONFIRM" : "CANCEL") !== op) deny();
       next.status = e.kind;
       next.security = e.security;
+      next.securityEvidenceOrigin = "SYNTHETIC";
     }
   }
   next.version++;
