@@ -1,4 +1,11 @@
 {
+  "RESTO_SERVICE": {
+    "OPEN": "Open service",
+    "CLOSE": "End service",
+    "CONFIRM_CLOSE": "End this settled service and release the table?",
+    "ACTIONS": "Service actions",
+    "STAFF_ERROR": "Employees could not be loaded. Refresh and try again."
+  },
   "RESTAURANTS_DOCUMENTS": {
     "TECHNICAL_SHORT": "Technical ref.",
     "REMAINING": "Remaining",

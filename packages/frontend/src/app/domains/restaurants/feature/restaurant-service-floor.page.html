@@ -327,17 +327,6 @@
                               ) | transloco
                             }}</span>
                           </button>
-                          @if (table.responsibleStaff) {
-                            <button
-                              mat-menu-item
-                              type="button"
-                              class="liass-menu-action liass-menu-action-warning"
-                              (click)="manageResponsibility(table, true, responsibilityTrigger)"
-                            >
-                              <mat-icon>person_remove</mat-icon
-                              ><span>{{ 'RESTAURANTS.RESPONSIBILITY.CLEAR' | transloco }}</span>
-                            </button>
-                          }
                         </mat-menu>
                       } @else {
                         <div

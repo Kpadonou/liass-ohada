@@ -3,6 +3,12 @@ import { RestaurantSessionReconciliation } from '../data-access/restaurant-sessi
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { RestaurantOrderComposer } from '../ui/order-composer/restaurant-order-composer';
 import { DatePipe } from '@angular/common';
+import { firstValueFrom } from 'rxjs';
+import { MatDialog } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
+import { LiassConfirmationDialogComponent } from '../../../shared/ui/confirmation-dialog/confirmation-dialog.component';
+import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
+import { restaurantError } from '../utils/restaurant-errors';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
   afterRenderEffect,
@@ -11,6 +17,7 @@ import {
   DestroyRef,
   ElementRef,
   inject,
+  Injector,
   signal,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -39,6 +46,7 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
     RouterLink,
     MatButtonModule,
     MatIconModule,
+    MatMenuModule,
     TranslocoModule,
     LiassSkeletonComponent,
     LiassCardComponent,
@@ -49,6 +57,79 @@ export class RestaurantTableWorkspacePage {
   readonly tableDisplayName = tableDisplayName;
   readonly queries = inject(RestaurantsQueries);
   private readonly auth = inject(AuthStore);
+  private readonly dialog = inject(MatDialog);
+  private readonly injector = inject(Injector);
+  readonly closing = signal(false);
+  readonly closeError = signal<string | null>(null);
+  readonly canClose = computed(() => {
+    const session = this.session();
+    return (
+      !!session &&
+      this.allowed() &&
+      this.auth.activeWorkspace?.()?.productRoles?.RESTAURANTS === 'WAITER' &&
+      session.responsibleStaff?.staffId === this.queries.userScope() &&
+      session.responsibleStaff.available &&
+      session.status === 'OPEN' &&
+      !session.openOrderCount &&
+      session.dueMinor === session.paidMinor &&
+      !session.reservedMinor &&
+      !session.pendingPaymentCount &&
+      !this.reconciling()
+    );
+  });
+  async closeService() {
+    const session = this.session();
+    if (!session || !this.canClose() || this.closing()) return;
+    const ctx = {
+      org: this.queries.scope(),
+      user: this.queries.userScope(),
+      revision: this.auth.contextRevision?.() ?? 0,
+      outlet: this.outletId(),
+      session: this.sessionId(),
+    };
+    const approved = await firstValueFrom(
+      this.dialog
+        .open(LiassConfirmationDialogComponent, {
+          width: '480px',
+          maxWidth: 'calc(100vw - 24px)',
+          data: {
+            titleKey: 'RESTO_SERVICE.CLOSE',
+            descriptionKey: 'RESTO_SERVICE.CONFIRM_CLOSE',
+            confirmKey: 'RESTAURANTS.CHECKOUT.CONFIRM',
+            cancelKey: 'RESTAURANTS.UI.CANCEL',
+            tone: 'warning',
+          },
+        })
+        .afterClosed(),
+    );
+    if (!approved || !this.canClose() || this.session() !== session || this.closing()) return;
+    this.closing.set(true);
+    this.closeError.set(null);
+    try {
+      await this.injector.get(RestaurantCheckoutFlow).close(ctx, [], () => {});
+      if (
+        this.queries.scope() === ctx.org &&
+        this.queries.userScope() === ctx.user &&
+        (this.auth.contextRevision?.() ?? 0) === ctx.revision &&
+        this.sessionId() === ctx.session &&
+        this.outletId() === ctx.outlet
+      ) {
+        await this.query.refetch();
+        void this.queries.floorChanged(ctx.org, ctx.outlet);
+      }
+    } catch (error) {
+      if (
+        this.queries.scope() === ctx.org &&
+        this.queries.userScope() === ctx.user &&
+        (this.auth.contextRevision?.() ?? 0) === ctx.revision &&
+        this.outletId() === ctx.outlet &&
+        this.sessionId() === ctx.session
+      )
+        this.closeError.set(restaurantError(error, (key) => this.t.translate(key)));
+    } finally {
+      this.closing.set(false);
+    }
+  }
   private readonly reconciliation = inject(RestaurantSessionReconciliation);
   readonly reconciling = computed(() =>
     this.reconciliation.contains({

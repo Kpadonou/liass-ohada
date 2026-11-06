@@ -113,6 +113,9 @@ async function create() {
   });
   vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
   TestBed.inject(RestaurantOutletContext).setRouteActive(true);
+  vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+    afterClosed: () => of('Aissa'),
+  } as unknown as ReturnType<MatDialog['open']>);
   const hint = params.value.get('outlet');
 
   fixture = TestBed.createComponent(RestaurantServiceFloorPage);
@@ -140,6 +143,28 @@ async function ready() {
   });
   return page;
 }
+it('SERVICE-1 manager selection is required and is sent with the opening intent', async () => {
+  const page = await ready();
+  const table = page.floor
+    .data()!
+    .pages.flatMap((p) => p.items)
+    .find((v) => v.state === 'FREE')!;
+  await page.open(table);
+  expect(api.openSession.mock.calls[0][2].staffId).toBe('Aissa');
+});
+it('SERVICE-1 cancelling employee selection sends no opening command', async () => {
+  const page = await ready();
+  vi.mocked(TestBed.inject(MatDialog).open).mockReturnValueOnce({
+    afterClosed: () => of(undefined),
+  } as unknown as ReturnType<MatDialog['open']>);
+  await page.open(
+    page.floor
+      .data()!
+      .pages.flatMap((p) => p.items)
+      .find((v) => v.state === 'FREE')!,
+  );
+  expect(api.openSession).not.toHaveBeenCalled();
+});
 it('uses names in operational cards and their accessible actions, retaining code fallback', async () => {
   const floor = floorFixture();
   floor.items[1] = { ...floor.items[1], name: 'TEST CHRIS' };
@@ -515,7 +540,7 @@ it('keeps responsibility visible but management absent when write permission is 
   expect(fixture.nativeElement.querySelector('[aria-label^="Actions de la table"]')).toBeNull();
 });
 
-it('exposes change/clear in the occupied card menu and restores focus after the dialog', async () => {
+it('exposes reassignment without clearing and restores focus after the dialog', async () => {
   const data = floorFixture(),
     table = data.items[1];
   if (table.state !== 'OCCUPIED') throw new Error('Occupied fixture');
@@ -529,17 +554,17 @@ it('exposes change/clear in the occupied card menu and restores focus after the 
   fixture.detectChanges();
   const menu = document.querySelector('.cdk-overlay-container');
   expect(menu?.textContent).toContain('Changer le responsable');
-  expect(menu?.textContent).toContain('Retirer l’affectation');
+  expect(menu?.textContent).not.toContain('Retirer l’affectation');
   const focus = vi.spyOn(trigger, 'focus');
   const open = vi
     .spyOn(TestBed.inject(MatDialog), 'open')
     .mockReturnValue({ afterClosed: () => of(true) } as unknown as ReturnType<MatDialog['open']>);
-  page.manageResponsibility(table, true, trigger);
+  page.manageResponsibility(table, false, trigger);
   expect(open).toHaveBeenCalledWith(
     expect.anything(),
     expect.objectContaining({
       restoreFocus: false,
-      data: expect.objectContaining({ clear: true, outletId: rid(2), org: 'org' }),
+      data: expect.objectContaining({ clear: false, outletId: rid(2), org: 'org' }),
     }),
   );
   expect(focus).toHaveBeenCalledOnce();
@@ -905,6 +930,7 @@ describe('HOTFIX-2 canonical opening and navigation', () => {
     await page.open(page.visibleTables()[0]);
     expect(api.openSession).toHaveBeenCalledWith('org', rid(2), {
       clientRequestId: expect.any(String),
+      staffId: 'Aissa',
       tableId: rid(6),
       areaId: rid(7),
     });

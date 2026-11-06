@@ -1,4 +1,7 @@
 import { RestaurantSessionReconciliation } from '../data-access/restaurant-session-reconciliation';
+import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { RestaurantOrderComposer } from '../ui/order-composer/restaurant-order-composer';
 import { Component, input, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
@@ -24,6 +27,8 @@ import { RestaurantTableWorkspacePage } from './restaurant-table-workspace.page'
 const org = signal('org'),
   user = signal('owner'),
   allowed = signal(true);
+const role = signal('OWNER');
+const closeFlow = { close: vi.fn() };
 const params = new BehaviorSubject(convertToParamMap({ outletId: rid(2), guestSessionId: rid(9) }));
 const filters = new BehaviorSubject(convertToParamMap({ area: rid(3) }));
 const area = {
@@ -77,7 +82,15 @@ const setup = (routing = false) =>
             },
           ]
         : []),
-      { provide: AuthStore, useValue: { effectiveOrgId: org, currentUserId: user } },
+      {
+        provide: AuthStore,
+        useValue: {
+          effectiveOrgId: org,
+          currentUserId: user,
+          activeWorkspace: () => ({ productRoles: { RESTAURANTS: role() } }),
+        },
+      },
+      { provide: RestaurantCheckoutFlow, useValue: closeFlow },
       { provide: QueryClient, useValue: client },
       { provide: RestaurantsApi, useValue: api },
       {
@@ -100,6 +113,8 @@ class ComposerStub {
 @Component({ template: '<h1>Service en salle</h1>' })
 class FloorStub {}
 beforeEach(() => {
+  role.set('OWNER');
+  closeFlow.close.mockReset();
   org.set('org');
   user.set('owner');
   allowed.set(true);
@@ -129,6 +144,56 @@ async function loaded() {
   });
   return page;
 }
+it('SERVICE-1 only the assigned settled waiter can close; historical responsibility stays absent', async () => {
+  role.set('WAITER');
+  api.guestSession.mockResolvedValue(
+    sessionFixture({
+      responsibleStaff: { staffId: 'owner', displayName: 'Synthetic', available: true },
+    }),
+  );
+  const page = await loaded();
+  expect(page.canClose()).toBe(true);
+  role.set('OWNER');
+  expect(page.canClose()).toBe(false);
+  role.set('WAITER');
+  user.set('other');
+  expect(page.canClose()).toBe(false);
+});
+it('SERVICE-1 closure is explicitly confirmed and failures remain contextual', async () => {
+  role.set('WAITER');
+  api.guestSession.mockResolvedValue(
+    sessionFixture({
+      responsibleStaff: { staffId: 'owner', displayName: 'Synthetic', available: true },
+    }),
+  );
+  const page = await loaded();
+  vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+    afterClosed: () => of(true),
+  } as unknown as ReturnType<MatDialog['open']>);
+  closeFlow.close.mockRejectedValueOnce(new HttpErrorResponse({ status: 409 }));
+  await page.closeService();
+  expect(closeFlow.close).toHaveBeenCalledTimes(1);
+  expect(page.closeError()).toBeTruthy();
+  expect(page.closing()).toBe(false);
+});
+it.each([
+  { responsibleStaff: undefined },
+  { dueMinor: 1000, paidMinor: 0 },
+  { pendingPaymentCount: 1 },
+  { openOrderCount: 1 },
+])('SERVICE-1 cannot close missing responsibility or unsettled service %j', async (changes) => {
+  role.set('WAITER');
+  api.guestSession.mockResolvedValue(
+    sessionFixture({
+      responsibleStaff: { staffId: 'owner', displayName: 'Synthetic', available: true },
+      ...changes,
+    }),
+  );
+  const page = await loaded();
+  expect(page.canClose()).toBe(false);
+  await page.closeService();
+  expect(closeFlow.close).not.toHaveBeenCalled();
+});
 it('renders the preserved header using the keyed read; composer tested independently', async () => {
   await loaded();
   expect(api.guestSession).toHaveBeenCalledWith('org', rid(2), rid(9));

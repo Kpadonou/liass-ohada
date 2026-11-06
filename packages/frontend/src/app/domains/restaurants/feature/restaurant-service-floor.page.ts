@@ -1,4 +1,6 @@
 import { DOCUMENT } from '@angular/common';
+import { firstValueFrom } from 'rxjs';
+import { SessionResponsiblePickerDialog } from './session-responsible-picker.dialog';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantAccessNoticeComponent } from '../ui/restaurant-access-notice.component';
@@ -245,6 +247,8 @@ export class RestaurantServiceFloorPage {
   readonly busy = signal<string | null>(null);
   readonly openingError = signal<string | null>(null);
   private readonly intents = new Map<string, string>();
+  private readonly openingStaff = new Map<string, string>();
+  private choosingStaff = false;
   private openingContext = 0;
   private conflictRefresh = '';
   constructor() {
@@ -295,6 +299,7 @@ export class RestaurantServiceFloorPage {
         this.revoking.set(false);
         this.areaId.set(null);
         this.intents.clear();
+        this.openingStaff.clear();
         this.responsibilityIntents.clear();
         this.busy.set(null);
         this.denied.set(null);
@@ -418,6 +423,7 @@ export class RestaurantServiceFloorPage {
     if (
       !this.allowed() ||
       !this.caps.canManageResponsibility() ||
+      clear ||
       !outletId ||
       table.state !== 'OCCUPIED'
     )
@@ -461,11 +467,53 @@ export class RestaurantServiceFloorPage {
       !outlet ||
       table.state !== 'FREE' ||
       this.floor.isFetching() ||
-      this.busy()
+      this.busy() ||
+      this.choosingStaff
     )
       return;
     const key = org + ':' + user + ':' + outlet.id + ':' + table.tableId;
     const openingContext = this.openingContext;
+    let staffId = this.openingStaff.get(key);
+    if (!this.selfService() && !staffId) {
+      this.choosingStaff = true;
+      this.busy.set(key);
+      try {
+        staffId = await firstValueFrom(
+          this.dialog
+            .open(SessionResponsiblePickerDialog, {
+              width: '560px',
+              maxWidth: 'calc(100vw - 24px)',
+              panelClass: 'liass-dialog-panel',
+              data: {
+                outletId: outlet.id,
+                isCurrent: () =>
+                  this.allowed() &&
+                  this.caps.canManageResponsibility() &&
+                  this.openingContext === openingContext &&
+                  this.queries.scope() === org &&
+                  this.queries.userScope() === user &&
+                  this.outletId() === outlet.id,
+              },
+            })
+            .afterClosed(),
+        );
+      } finally {
+        this.choosingStaff = false;
+      }
+      if (
+        !staffId ||
+        !this.allowed() ||
+        this.openingContext !== openingContext ||
+        this.queries.scope() !== org ||
+        this.queries.userScope() !== user ||
+        this.outletId() !== outlet.id ||
+        (this.busy() && this.busy() !== key)
+      ) {
+        if (this.busy() === key) this.busy.set(null);
+        return;
+      }
+      this.openingStaff.set(key, staffId);
+    }
     const area = this.areaId();
     const id = this.intents.get(key) ?? crypto.randomUUID();
     this.intents.set(key, id);
@@ -476,8 +524,10 @@ export class RestaurantServiceFloorPage {
         clientRequestId: id,
         tableId: table.tableId,
         areaId: table.areaId,
+        ...(staffId ? { staffId } : {}),
       });
       this.intents.delete(key);
+      this.openingStaff.delete(key);
       // Floor reconciliation must not turn a confirmed opening into a failed command.
       void this.queries.floorChanged(org, outlet.id);
       if (
@@ -517,6 +567,7 @@ export class RestaurantServiceFloorPage {
       }
       if (error instanceof HttpErrorResponse && error.status === 409) {
         this.intents.delete(key);
+        this.openingStaff.delete(key);
         await this.queries.floorChanged(org, outlet.id);
       }
     } finally {

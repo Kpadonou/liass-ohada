@@ -1,4 +1,11 @@
 {
+  "RESTO_SERVICE": {
+    "OPEN": "Ouvrir le service",
+    "CLOSE": "Terminer le service",
+    "CONFIRM_CLOSE": "Terminer ce service réglé et libérer la table ?",
+    "ACTIONS": "Actions du service",
+    "STAFF_ERROR": "Impossible de charger les employés. Actualisez et réessayez."
+  },
   "RESTAURANTS_DOCUMENTS": {
     "TECHNICAL_SHORT": "Réf. technique",
     "REMAINING": "Reste",
