@@ -181,7 +181,6 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
             {{ 'RESTAURANTS.CHECKOUT.READY_TO_CLOSE' | transloco }}
           </p>
         }
-        <h3 class="font-semibold">{{ 'RESTAURANTS.CHECKOUT.CLOSE' | transloco }}</h3>
         @for (blocker of blockers(); track blocker) {
           <p class="my-1 text-sm">{{ 'RESTAURANTS.CHECKOUT.BLOCK_' + blocker | transloco }}</p>
         }

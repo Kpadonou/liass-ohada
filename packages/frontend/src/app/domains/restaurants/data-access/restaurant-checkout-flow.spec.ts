@@ -50,6 +50,19 @@ describe('Resumable canonical checkout commands', () => {
     flow = TestBed.inject(RestaurantCheckoutFlow);
   });
   afterEach(() => TestBed.resetTestingModule());
+  it('closes the paid open order before releasing the service and never requires a second waiter close', async () => {
+    const paidOrder = { ...row('paid'), dueMinor: 2122, paidMinor: 2122 };
+    api.closeOrder.mockImplementation(async () => {
+      sessions.guestSession.mockResolvedValue({ ...visit, dueMinor: 2122, paidMinor: 2122, openOrderCount: 0, version: 5 });
+      return { ...paidOrder, status: 'CLOSED' };
+    });
+    const result = await flow.close(ctx, [paidOrder], vi.fn());
+    expect(api.closeOrder).toHaveBeenCalledOnce();
+    expect(api.closeSession).toHaveBeenCalledOnce();
+    expect(api.closeSession.mock.calls[0][1].expectedVersion).toBe(5);
+    expect(result.status).toBe('CLOSED');
+    expect(api.closeOrder.mock.invocationCallOrder[0]).toBeLessThan(api.closeSession.mock.invocationCallOrder[0]);
+  });
   it('closes sequentially, skips terminal rows, obtains fresh final session version', async () => {
     const progress = vi.fn();
     await flow.close(ctx, [row('a'), { ...row('closed'), status: 'CLOSED' }, row('b')], progress);
