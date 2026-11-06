@@ -411,3 +411,5 @@ export * from "./guest-submission";
 export * from "./cash";
 export * from "./credit-notes";
 export * from "./refunds";
+
+export * from "./fiscal";
