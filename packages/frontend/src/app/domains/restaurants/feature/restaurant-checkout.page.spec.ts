@@ -1,5 +1,8 @@
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantReceiptApi } from '../data-access/restaurant-receipt.api';
+import { RestaurantReceiptFlow } from '../data-access/restaurant-receipt-flow';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { Router, provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
@@ -31,6 +34,7 @@ describe('Cashier occupied-table discovery and context', () => {
   let client: QueryClient;
   const api = { myOutlets: vi.fn(), serviceFloor: vi.fn(), list: vi.fn(), guestSession: vi.fn() };
   const receipts = { page: vi.fn() };
+  const publication = { resume: vi.fn() };
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
@@ -68,6 +72,7 @@ describe('Cashier occupied-table discovery and context', () => {
         { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
         { provide: RestaurantsApi, useValue: api },
         { provide: RestaurantReceiptApi, useValue: receipts },
+        { provide: RestaurantReceiptFlow, useValue: publication },
         { provide: QueryClient, useValue: client },
       ],
     });
@@ -256,6 +261,43 @@ describe('Cashier occupied-table discovery and context', () => {
     resolve({ data: { receiptId: rid(77) } });
     await pending;
     expect(fixture.componentInstance.invoice()).toBeNull();
+  });
+  it('explicitly publishes a completed service then opens the FINAL drawer and refreshes invoice history', async () => {
+    const fixture = create();
+    const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
+    fixture.componentInstance.released(ctx);
+    const dialog = vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
+    publication.resume.mockResolvedValue(true);
+    receipts.page.mockResolvedValue({ data: { receiptId: rid(77) } });
+    const invalidation = vi.spyOn(client, 'invalidateQueries');
+    await fixture.componentInstance.publishInvoice(ctx);
+    expect(dialog).toHaveBeenCalledOnce();
+    expect(publication.resume).toHaveBeenCalledOnce();
+    expect(fixture.componentInstance.invoiceState()).toBe('FINAL');
+    expect(fixture.componentInstance.invoice()).toEqual({ ctx, id: rid(77) });
+    expect(invalidation).toHaveBeenCalledWith({ queryKey: ['restaurants', 'org', 'outlet', rid(2), 'documents', 'invoices'] });
+    expect(fixture.componentInstance.publishing()).toBe(false);
+    await fixture.componentInstance.openAvailableInvoice(ctx);
+    expect(publication.resume).toHaveBeenCalledOnce();
+  });
+  it('keeps publication explicit and supports controlled retry after an uncertain publication result', async () => {
+    const fixture = create();
+    const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
+    fixture.componentInstance.released(ctx);
+    vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
+    publication.resume.mockRejectedValueOnce(new Error('uncertain')).mockResolvedValue(true);
+    await fixture.componentInstance.publishInvoice(ctx);
+    expect(fixture.componentInstance.invoice()).toBeNull();
+    expect(fixture.componentInstance.message()).toContain('Réessayez');
+    receipts.page.mockResolvedValue({ data: { receiptId: rid(77) } });
+    await fixture.componentInstance.publishInvoice(ctx);
+    expect(publication.resume).toHaveBeenCalledTimes(2);
+    expect(fixture.componentInstance.invoiceState()).toBe('FINAL');
+    role.set('WAITER');
+    await fixture.componentInstance.publishInvoice(ctx);
+    expect(publication.resume).toHaveBeenCalledTimes(2);
   });
   it.each(['OPEN', 'CLOSED', 'DENIED'])('distinguishes invoice lifecycle conflict from a load failure for %s', async (state) => {
     const fixture = create();

@@ -1,4 +1,5 @@
 import { openCashFixture } from "./cash-fixture";
+import { RestaurantReceiptService as Receipt } from "@/lambda/domains/restaurants/receipt-service";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   QueryCommand,
@@ -288,6 +289,29 @@ test.each(["owner", "manager", "cashier", "waiter"])(
     ).toBeUndefined();
   },
 );
+test("completed settlement and service require explicit immutable invoice publication and one history entry", async () => {
+  const o = await create();
+  await pay([o]);
+  expect((await closeOrder(o.orderId, "cashier")).statusCode).toBe(200);
+  expect((await closeSession("cashier")).statusCode).toBe(200);
+  await expect(Receipt.read(scope(), "cashier", session.guestSessionId, {})).rejects.toMatchObject({ statusCode: 404 });
+  await expect(Receipt.publish(scope(), "waiter", session.guestSessionId, { clientRequestId: req() })).rejects.toMatchObject({ statusCode: 403 });
+  const intent = { clientRequestId: req() };
+  let result = await Receipt.publish(scope(), "cashier", session.guestSessionId, intent);
+  for (let i = 0; result.data.state !== "FINAL" && i < 12; i++)
+    result = await Receipt.publish(scope(), "cashier", session.guestSessionId, intent);
+  expect(result.data.state).toBe("FINAL");
+  const final = await Receipt.read(scope(), "cashier", session.guestSessionId, {});
+  expect(final.data.dueMinor).toBe((await state()).dueMinor);
+  expect(final.data.paidMinor).toBe(final.data.dueMinor);
+  const before = new Map(m.rows);
+  await Receipt.publish(scope(), "cashier", session.guestSessionId, intent);
+  expect(await Receipt.read(scope(), "cashier", session.guestSessionId, {})).toEqual(final);
+  expect(m.rows).toEqual(before);
+  const indexed = [...m.rows.values()].map((raw) => unmarshall(raw)).filter((row) => row.entityType === "RESTAURANT_DOCUMENT_INV" && row.data.invoiceId === final.data.receiptId);
+  expect(indexed).toHaveLength(1);
+  expect(JSON.stringify(final)).not.toContain('codeMECeFDGI');
+});
 test.each(["owner", "cashier"])(
   "%s exact Order/session action counts stay bounded, including responsibility locator",
   async (actor) => {

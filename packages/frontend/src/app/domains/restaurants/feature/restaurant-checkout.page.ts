@@ -2,6 +2,10 @@ import { RestaurantOutletContext } from '../data-access/restaurant-outlet-contex
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { RestaurantReceiptApi } from '../data-access/restaurant-receipt.api';
 import { RestaurantReceiptView } from './restaurant-receipt.page';
+import { RestaurantReceiptFlow } from '../data-access/restaurant-receipt-flow';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { LiassConfirmationDialogComponent } from '../../../shared/ui/confirmation-dialog/confirmation-dialog.component';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import {
   Component,
@@ -24,7 +28,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
-import { injectInfiniteQuery } from '@tanstack/angular-query-experimental';
+import { injectInfiniteQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { RestaurantsQueries } from '../data-access/restaurants.queries';
 import { RestaurantsApi } from '../data-access/restaurants.api';
@@ -104,9 +108,16 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
         >
           <p>{{ 'RESTAURANTS.RECEIPT.TABLE_CLOSED' | transloco }}</p>
           <div class="mt-2 flex flex-wrap gap-2">
-            <button mat-flat-button type="button" (click)="openReceipt(closed)">
-              {{ 'RESTAURANTS.RECEIPT.VIEW' | transloco }}
-            </button>
+            @if (invoiceState() === 'FINAL') {
+              <button mat-flat-button type="button" [disabled]="invoiceLoading()" (click)="openReceipt(closed)">
+                {{ 'RESTAURANTS.RECEIPT.VIEW' | transloco }}
+              </button>
+            } @else {
+              <p class="w-full text-sm text-app-text-secondary" role="status">{{ 'RESTAURANTS.RECEIPT.PUBLICATION_REQUIRED' | transloco }}</p>
+              <button mat-flat-button type="button" [disabled]="publishing() || invoiceLoading()" (click)="publishInvoice(closed)">
+                {{ (publishing() ? 'RESTAURANTS.RECEIPT.PREPARING' : 'RESTAURANTS.RECEIPT.PUBLISH_COMMERCIAL') | transloco }}
+              </button>
+            }
             <button mat-button type="button" (click)="closedVisit.set(null)">
               {{ 'RESTAURANTS.CHECKOUT.BACK_TO_CHECKOUT' | transloco }}
             </button>
@@ -278,6 +289,8 @@ export class RestaurantCheckoutPage {
   readonly closedVisit = signal<ServiceOrderContext | null>(null);
   readonly invoice = signal<{ ctx: ServiceOrderContext; id: string } | null>(null);
   readonly invoiceLoading = signal(false);
+  readonly invoiceState = signal<'UNKNOWN' | 'MISSING' | 'FINAL'>('UNKNOWN');
+  readonly publishing = signal(false);
   private invoiceRequest = 0;
   readonly identity = computed(() =>
     JSON.stringify({
@@ -399,6 +412,7 @@ export class RestaurantCheckoutPage {
     }
   }
   released(ctx?: ServiceOrderContext) {
+    this.invoiceState.set('UNKNOWN');
     this.sessionId.set('');
     this.message.set(this.t.translate('RESTAURANTS.CHECKOUT.TABLE_CLOSED'));
     this.tableSearch()?.nativeElement.focus({ preventScroll: true });
@@ -407,6 +421,37 @@ export class RestaurantCheckoutPage {
   openReceipt(ctx: ServiceOrderContext) {
     if (!this.allowed() || this.closedVisit() !== ctx) return;
     void this.openAvailableInvoice(ctx);
+  }
+  async publishInvoice(ctx: ServiceOrderContext) {
+    const current = () => this.allowed() && this.caps.canPublishReceipt() && this.closedVisit() === ctx &&
+      this.auth.effectiveOrgId() === ctx.org && this.auth.currentUserId() === ctx.user &&
+      this.auth.contextRevision() === ctx.revision && this.outletId() === ctx.outlet;
+    if (!current() || this.publishing()) return;
+    this.publishing.set(true);
+    try {
+      const approved = await firstValueFrom(this.injector.get(MatDialog).open(LiassConfirmationDialogComponent, {
+        width: '480px', maxWidth: 'calc(100vw - 24px)', data: {
+          titleKey: 'RESTAURANTS.RECEIPT.PUBLISH_COMMERCIAL', descriptionKey: 'RESTAURANTS.RECEIPT.PUBLICATION_CONFIRM',
+          confirmKey: 'RESTAURANTS.RECEIPT.PUBLISH_COMMERCIAL', cancelKey: 'COMMON.ACTIONS.CANCEL', tone: 'warning',
+        },
+      }).afterClosed());
+      if (!approved || !current()) return;
+      const final = await this.injector.get(RestaurantReceiptFlow).resume(ctx, current, () => {});
+      if (!current()) return;
+      if (!final) {
+        this.message.set(this.t.translate('RESTAURANTS.RECEIPT.RESUME_COPY'));
+        return;
+      }
+      if (current()) await this.openAvailableInvoice(ctx);
+      if (current()) void Promise.all([
+        this.injector.get(QueryClient).invalidateQueries({ queryKey: ['restaurants', ctx.org, 'outlet', ctx.outlet, 'documents', 'invoices'] }),
+        this.injector.get(QueryClient).invalidateQueries({ queryKey: ['restaurants', ctx.org, 'outlet', ctx.outlet, 'cash'] }),
+      ]).catch(() => undefined);
+    } catch {
+      if (current()) this.message.set(this.t.translate('RESTAURANTS.RECEIPT.PUBLICATION_ERROR'));
+    } finally {
+      this.publishing.set(false);
+    }
   }
   async openAvailableInvoice(ctx: ServiceOrderContext) {
     const current = () => this.allowed() && this.auth.effectiveOrgId() === ctx.org &&
@@ -417,10 +462,15 @@ export class RestaurantCheckoutPage {
     this.invoiceLoading.set(true);
     try {
       const page = await this.injector.get(RestaurantReceiptApi).page(ctx);
-      if (current() && request === this.invoiceRequest) this.invoice.set({ ctx, id: page.data.receiptId });
+      if (current() && request === this.invoiceRequest) {
+        this.invoice.set({ ctx, id: page.data.receiptId });
+        this.invoiceState.set('FINAL');
+      }
     } catch (error) {
       let feedback = error instanceof HttpErrorResponse && error.status === 404
         ? 'RESTAURANTS.RECEIPT.NOT_AVAILABLE' : 'RESTAURANTS.RECEIPT.READ_ERROR';
+      if (current() && request === this.invoiceRequest && error instanceof HttpErrorResponse && error.status === 404)
+        this.invoiceState.set('MISSING');
       if (error instanceof HttpErrorResponse && [401, 403].includes(error.status))
         feedback = 'RESTAURANTS.UI.ERRORS.ACCESS';
       // Receipt GET rejects OPEN services before looking for a FINAL manifest.
