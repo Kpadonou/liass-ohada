@@ -23,6 +23,86 @@ let m: ReturnType<typeof memoryDynamo>,
 let ctx: { orgId: string; outletId: string; actorId: string };
 const req = () => fixtureId(++seq);
 
+test("OPEN-CONTRACT legacy schema reproduces the reported unknown staffId rejection", () => {
+  const payload = {
+    clientRequestId: fixtureId(7000),
+    tableId: fixtureId(7001),
+    areaId: fixtureId(7002),
+    staffId: fixtureId(7003),
+  };
+  const legacy = c.OpenGuestSessionRequestSchema.omit({
+    staffId: true,
+  }).safeParse(payload);
+  expect(legacy.success).toBe(false);
+  if (!legacy.success)
+    expect(legacy.error.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unrecognized_keys",
+          path: [],
+          keys: ["staffId"],
+        }),
+      ]),
+    );
+  expect(c.OpenGuestSessionRequestSchema.parse(payload)).toEqual(payload);
+});
+
+test.each(["owner", "manager"])(
+  "OPEN-CONTRACT %s HTTP opening accepts the selected Platform staffId",
+  async (actor) => {
+    const selected = fixtureId(7001);
+    await person(selected);
+    const response = await restaurantTransactionHandler("open-session")({
+      headers: { "x-org-id": ctx.orgId },
+      pathParameters: { outletId: ctx.outletId },
+      body: JSON.stringify({
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+        staffId: selected,
+      }),
+      requestContext: { authorizer: { jwt: { claims: { sub: actor } } } },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(JSON.parse(response.body).data.responsibleStaff.staffId).toBe(
+      selected,
+    );
+  },
+);
+
+test("OPEN-CONTRACT HTTP waiter opening needs no staffId and retains self-assignment", async () => {
+  const response = await restaurantTransactionHandler("open-session")({
+    headers: { "x-org-id": ctx.orgId },
+    pathParameters: { outletId: ctx.outletId },
+    body: JSON.stringify({
+      clientRequestId: req(),
+      tableId: f.tables[0].id,
+      areaId: f.tables[0].serviceAreaId,
+    }),
+    requestContext: { authorizer: { jwt: { claims: { sub: "Aissa" } } } },
+  });
+  expect(response.statusCode).toBe(200);
+  expect(JSON.parse(response.body).data.responsibleStaff.staffId).toBe("Aissa");
+});
+
+test.each(["invalid employee identifier", "unknown-platform-user"])(
+  "OPEN-CONTRACT rejects invalid or ineligible staff %s",
+  async (staffId) => {
+    const response = await restaurantTransactionHandler("open-session")({
+      headers: { "x-org-id": ctx.orgId },
+      pathParameters: { outletId: ctx.outletId },
+      body: JSON.stringify({
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+        staffId,
+      }),
+      requestContext: { authorizer: { jwt: { claims: { sub: "owner" } } } },
+    });
+    expect(response.statusCode).toBe(staffId.includes(" ") ? 400 : 409);
+  },
+);
+
 test("SERVICE-1 requires verified responsibility and permits assigned WAITER closure with replay", async () => {
   await expect(
     S.mutate(ctx, "OPEN_SESSION", {
