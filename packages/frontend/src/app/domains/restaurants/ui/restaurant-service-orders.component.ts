@@ -1,4 +1,5 @@
 import { MatDialog } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
@@ -44,6 +45,7 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
     TranslocoModule,
     LiassButtonComponent,
     LiassStatusChipComponent,
+    MatExpansionModule,
   ],
   template: `@if (!accessBlocked()) {
     <article class="space-y-3 border-t border-app-border pt-4" data-testid="service-order">
@@ -52,7 +54,7 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
           <h3 class="font-semibold">
             {{ 'RESTAURANTS.SERVICE_ORDERS.ORDER' | transloco }}
             <time [attr.datetime]="order().createdAt">{{
-              order().createdAt | date: 'dd/MM HH:mm:ss'
+              order().createdAt | date: 'HH:mm'
             }}</time>
           </h3>
           <p class="text-sm text-app-text-secondary">
@@ -72,6 +74,9 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
           }
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">
+          <liass-status-chip size="sm" tone="neutral"
+            [label]="'RESTAURANTS.ORDER_TAKING.STATUS.' + order().status | transloco" />
+          <span class="text-xs text-app-text-secondary">{{ order().lineCount }} {{ 'RESTO_SERVICE.ITEMS' | transloco }}</span>
           <p class="font-semibold tabular-nums">{{ price(order().dueMinor) }}</p>
           @if (order().status === 'CANCELLED') {
             <liass-status-chip
@@ -104,6 +109,8 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
           }
         </div>
       </div>
+      <mat-expansion-panel class="mat-elevation-z0">
+        <mat-expansion-panel-header><mat-panel-title>{{ 'RESTO_SERVICE.ITEM_DETAILS' | transloco }}</mat-panel-title></mat-expansion-panel-header>
       @if (order().acceptedLineCount > 0 && items.isPending()) {
         <p role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</p>
       }
@@ -205,6 +212,7 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
           }}
         </p>
       }
+      </mat-expansion-panel>
     </article>
   }`,
 })

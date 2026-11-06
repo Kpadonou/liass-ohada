@@ -1,6 +1,9 @@
 {
   "RESTO_SERVICE": {
-    "OPEN_ORDER_BLOCKER": "Open order: close it at checkout.",
+    "ITEMS": "item(s)",
+    "ITEM_DETAILS": "Item details",
+    "OPEN_ORDER_BLOCKER": "{{count}} order(s) to close at checkout",
+    "ORDER_COUNT": "{{count}} order(s)",
     "OPEN": "Open service",
     "CLOSE": "End service",
     "CONFIRM_CLOSE": "End this settled service and release the table?",

@@ -1,6 +1,9 @@
 {
   "RESTO_SERVICE": {
-    "OPEN_ORDER_BLOCKER": "Commande ouverte : clôture à effectuer en caisse.",
+    "ITEMS": "article(s)",
+    "ITEM_DETAILS": "Détail des articles",
+    "OPEN_ORDER_BLOCKER": "{{count}} commande(s) à clôturer en caisse",
+    "ORDER_COUNT": "{{count}} commande(s)",
     "OPEN": "Ouvrir le service",
     "CLOSE": "Terminer le service",
     "CONFIRM_CLOSE": "Terminer ce service réglé et libérer la table ?",
