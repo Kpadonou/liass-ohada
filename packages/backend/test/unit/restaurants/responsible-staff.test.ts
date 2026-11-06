@@ -22,6 +22,199 @@ let m: ReturnType<typeof memoryDynamo>,
   seq: number;
 let ctx: { orgId: string; outletId: string; actorId: string };
 const req = () => fixtureId(++seq);
+
+test("SERVICE-1 requires verified responsibility and permits assigned WAITER closure with replay", async () => {
+  await expect(
+    S.mutate(ctx, "OPEN_SESSION", {
+      clientRequestId: req(),
+      tableId: f.tables[0].id,
+      areaId: f.tables[0].serviceAreaId,
+    }),
+  ).rejects.toThrow();
+  const actor = { ...ctx, actorId: "Aissa" };
+  const session = c.GuestSessionSchema.parse(
+    (
+      await S.mutate(actor, "OPEN_SESSION", {
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+      })
+    ).data,
+  );
+  expect(session.responsibleStaffId).toBe("Aissa");
+  const close = { clientRequestId: req(), expectedVersion: session.version };
+  await expect(
+    S.mutate({ ...ctx, actorId: "Binta" }, "CLOSE_SESSION", close, {
+      sessionId: session.guestSessionId,
+    }),
+  ).rejects.toThrow();
+  const first = await S.mutate(actor, "CLOSE_SESSION", close, {
+    sessionId: session.guestSessionId,
+  });
+  expect(first.data).toMatchObject({ status: "CLOSED", closedBy: "Aissa" });
+  expect(
+    await S.mutate(actor, "CLOSE_SESSION", close, {
+      sessionId: session.guestSessionId,
+    }),
+  ).toEqual(first);
+});
+
+test("SERVICE-1 owner selects verified employee; missing, foreign and revoked assignments fail", async () => {
+  await expect(
+    S.mutate(ctx, "OPEN_SESSION", {
+      clientRequestId: req(),
+      tableId: f.tables[0].id,
+      areaId: f.tables[0].serviceAreaId,
+      staffId: "missing",
+    }),
+  ).rejects.toThrow();
+  const session = c.GuestSessionSchema.parse(
+    (
+      await S.mutate(ctx, "OPEN_SESSION", {
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+        staffId: "Aissa",
+      })
+    ).data,
+  );
+  await expect(
+    S.mutate(
+      { ...ctx, outletId: fixtureId(9999), actorId: "Aissa" },
+      "CLOSE_SESSION",
+      { clientRequestId: req(), expectedVersion: session.version },
+      { sessionId: session.guestSessionId },
+    ),
+  ).rejects.toThrow();
+  await expect(replace(session, null)).rejects.toThrow();
+});
+
+test("SERVICE-1 incomplete settlement blocks waiter closure without releasing occupancy", async () => {
+  const actor = { ...ctx, actorId: "Aissa" };
+  const session = c.GuestSessionSchema.parse(
+    (
+      await S.mutate(actor, "OPEN_SESSION", {
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+      })
+    ).data,
+  );
+  const key = {
+    PK: K.restaurantSessionPK(ctx.orgId, ctx.outletId, session.guestSessionId),
+    SK: K.restaurantTransactionMetaSK(),
+  };
+  const row = unmarshall(m.rows.get(JSON.stringify([key.PK, key.SK]))!);
+  put({ ...row, data: { ...row.data, dueMinor: 2000, paidMinor: 0 } });
+  await expect(
+    S.mutate(
+      actor,
+      "CLOSE_SESSION",
+      { clientRequestId: req(), expectedVersion: session.version },
+      { sessionId: session.guestSessionId },
+    ),
+  ).rejects.toThrow();
+  expect((await S.session(ctx, session.guestSessionId)).data.status).toBe(
+    "OPEN",
+  );
+});
+
+test("SERVICE-1 concurrent closure has one winner and denies unauthorized roles", async () => {
+  const actor = { ...ctx, actorId: "Aissa" };
+  const session = c.GuestSessionSchema.parse(
+    (
+      await S.mutate(actor, "OPEN_SESSION", {
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+      })
+    ).data,
+  );
+  await person("cook", "KITCHEN");
+  await expect(
+    S.mutate(
+      { ...ctx, actorId: "cook" },
+      "CLOSE_SESSION",
+      { clientRequestId: req(), expectedVersion: session.version },
+      { sessionId: session.guestSessionId },
+    ),
+  ).rejects.toThrow();
+  const outcomes = await Promise.allSettled(
+    [1, 2].map(() =>
+      S.mutate(
+        actor,
+        "CLOSE_SESSION",
+        { clientRequestId: req(), expectedVersion: session.version },
+        { sessionId: session.guestSessionId },
+      ),
+    ),
+  );
+  expect(outcomes.filter((v) => v.status === "fulfilled")).toHaveLength(1);
+});
+
+test("SERVICE-1 existing close-session HTTP route authorizes the assigned waiter", async () => {
+  const actor = { ...ctx, actorId: "Aissa" };
+  const session = c.GuestSessionSchema.parse(
+    (
+      await S.mutate(actor, "OPEN_SESSION", {
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+      })
+    ).data,
+  );
+  const response = await restaurantTransactionHandler("close-session")({
+    headers: { "x-org-id": ctx.orgId },
+    pathParameters: {
+      outletId: ctx.outletId,
+      sessionId: session.guestSessionId,
+    },
+    body: JSON.stringify({
+      clientRequestId: req(),
+      expectedVersion: session.version,
+    }),
+    requestContext: { authorizer: { jwt: { claims: { sub: "Aissa" } } } },
+  });
+  expect(response.statusCode).toBe(200);
+});
+
+test.each(["missing", "pending", "open-order"])(
+  "SERVICE-1 closure rejects %s employee or financial evidence",
+  async (reason) => {
+    const actor = { ...ctx, actorId: "Aissa" };
+    const session = c.GuestSessionSchema.parse(
+      (
+        await S.mutate(actor, "OPEN_SESSION", {
+          clientRequestId: req(),
+          tableId: f.tables[0].id,
+          areaId: f.tables[0].serviceAreaId,
+        })
+      ).data,
+    );
+    const key = {
+      PK: K.restaurantSessionPK(
+        ctx.orgId,
+        ctx.outletId,
+        session.guestSessionId,
+      ),
+      SK: K.restaurantTransactionMetaSK(),
+    };
+    const row = unmarshall(m.rows.get(JSON.stringify([key.PK, key.SK]))!);
+    const data = { ...row.data };
+    if (reason === "missing") delete data.responsibleStaffId;
+    else if (reason === "pending") data.pendingPaymentCount = 1;
+    else data.openOrderCount = 1;
+    put({ ...row, data });
+    await expect(
+      S.mutate(
+        actor,
+        "CLOSE_SESSION",
+        { clientRequestId: req(), expectedVersion: session.version },
+        { sessionId: session.guestSessionId },
+      ),
+    ).rejects.toThrow();
+  },
+);
 const put = (item: Record<string, unknown>) =>
   m.rows.set(
     JSON.stringify([item.PK, item.SK]),
@@ -70,6 +263,7 @@ const open = async (index = 0) =>
         clientRequestId: req(),
         tableId: f.tables[index].id,
         areaId: f.tables[index].serviceAreaId,
+        staffId: "Aissa",
       })
     ).data,
   );
@@ -129,8 +323,8 @@ afterEach(() => {
 
 test("assigns an active waiter, exposes current safe name on session/floor, and preserves openedBy", async () => {
   const session = await open();
-  expect(session.responsibleStaffId).toBeUndefined();
-  expect((await read(session)).responsibleStaff).toBeUndefined();
+  expect(session.responsibleStaffId).toBe("Aissa");
+  expect((await read(session)).responsibleStaff?.staffId).toBe("Aissa");
   const response = await call(session);
   expect(response.statusCode).toBe(200);
   const assigned = c.GuestSessionResponseSchema.parse(
@@ -154,7 +348,7 @@ test("assigns an active waiter, exposes current safe name on session/floor, and 
   for (const table of (await floor()).items.filter((t) => t.state === "FREE"))
     expect("responsibleStaff" in table).toBe(false);
 });
-test("reassigns atomically, audits before/after and clear retains the open session", async () => {
+test("reassigns atomically, audits before/after and rejects clearing responsibility", async () => {
   const initial = await open();
   const a = c.GuestSessionSchema.parse((await replace(initial, "Aissa")).data);
   const b = c.GuestSessionSchema.parse((await replace(a, "Binta")).data);
@@ -178,11 +372,7 @@ test("reassigns atomically, audits before/after and clear retains the open sessi
       tableId: initial.tableId,
     },
   });
-  const cleared = c.GuestSessionSchema.parse((await replace(b, null)).data);
-  expect(cleared.status).toBe("OPEN");
-  expect(cleared.version).toBe(4);
-  expect(cleared.responsibleStaffId).toBeUndefined();
-  expect((await read(cleared)).responsibleStaff).toBeUndefined();
+  await expect(replace(b, null)).rejects.toThrow();
   const sessionRows = [...m.rows.values()]
     .map((raw) => unmarshall(raw))
     .filter((row) => row.entityType === "RESTAURANT_GUEST_SESSION");
@@ -419,7 +609,7 @@ test.each(["staff", "assignment", "membership", "product", "session"])(
     });
     expect(
       (await S.session(ctx, s.guestSessionId)).data.responsibleStaffId,
-    ).toBeUndefined();
+    ).toBe("Aissa");
   },
 );
 test.each(["WAITER", "CASHIER", "KITCHEN"])(
@@ -453,7 +643,7 @@ test("rejects forged input and requires active ProductAccess", async () => {
   );
   expect((await call(s)).statusCode).toBe(403);
 });
-test("Service Floor deduplicates staff hydration in batches and handles mixed assigned/unassigned sessions", async () => {
+test("Service Floor deduplicates staff hydration across assigned sessions", async () => {
   for (let i = 0; i < 3; i++) {
     const s = await open(i);
     if (i < 2) await replace(s, "Aissa");
@@ -462,7 +652,7 @@ test("Service Floor deduplicates staff hydration in batches and handles mixed as
   const page = await floor();
   expect(
     page.items.filter((t) => t.state === "OCCUPIED" && t.responsibleStaff),
-  ).toHaveLength(2);
+  ).toHaveLength(3);
   expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
   const batches = m.db.commandCalls(BatchGetItemCommand);
   const staffReads = batches.filter((call) =>
@@ -504,10 +694,7 @@ test("inactive outlet prevents new assignment and marks retained responsibility 
   await expect(replace(s, "Binta")).rejects.toMatchObject({
     messageCode: "RESTAURANTS_PARENT_INACTIVE",
   });
-  expect(
-    c.GuestSessionSchema.parse((await replace(s, null)).data)
-      .responsibleStaffId,
-  ).toBeUndefined();
+  await expect(replace(s, null)).rejects.toThrow();
 });
 test("retains missing staff reference safely and returns no provider fallback", async () => {
   const s = c.GuestSessionSchema.parse(

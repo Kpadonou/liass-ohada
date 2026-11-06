@@ -17,6 +17,13 @@ const eligibleRole = (role: string | null | undefined) =>
 type Presentation = c.GuestSessionRead["responsibleStaff"];
 /** Restaurants-owned responsibility policy; Platform owns identities and membership guards. */
 export class ResponsibleStaff {
+  static async assignmentChecks(scope: TransactionScope, userId: string) {
+    const candidate = await this.candidate(scope, userId);
+    return [
+      ...Identity.serviceChecks(scope.orgId, candidate.subject),
+      ...candidate.conditions,
+    ];
+  }
   static async authorize(scope: TransactionScope, actorId: string) {
     await ProductAccessService.requireActiveProductAccess({
       orgId: scope.orgId,

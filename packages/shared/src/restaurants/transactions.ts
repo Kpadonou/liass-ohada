@@ -144,6 +144,7 @@ export const OpenGuestSessionRequestSchema = z
     ...intent,
     tableId: id,
     areaId: id,
+    staffId: RestaurantStaffUserIdSchema.optional(),
     partySize: z.number().int().positive().max(1000).optional(),
   })
   .strict();

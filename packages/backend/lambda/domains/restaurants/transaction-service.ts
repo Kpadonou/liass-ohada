@@ -416,7 +416,14 @@ export class RestaurantTransactionsService {
         false,
         true,
       );
-      if (!["OWNER", "MANAGER", "CASHIER"].includes(access.role ?? ""))
+      if (
+        ![
+          "OWNER",
+          "MANAGER",
+          "CASHIER",
+          ...(command === "CLOSE_SESSION" ? ["WAITER"] : []),
+        ].includes(access.role ?? "")
+      )
         return fail("DOMAIN_PERMISSION_REQUIRED", 403);
       return access;
     };
@@ -428,6 +435,11 @@ export class RestaurantTransactionsService {
       | Awaited<ReturnType<typeof RestaurantTransactionsService.session>>
       | undefined;
     const authorizeClosureScope = async () => {
+      if (closureAccess?.role === "WAITER") {
+        closureSession = await this.session(ctx, owner);
+        if (closureSession.data.responsibleStaffId !== ctx.actorId)
+          return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+      }
       if (closureAccess?.role !== "CASHIER") return;
       if (command === "CLOSE_ORDER") {
         closureOrder = await this.order(ctx, owner);
@@ -842,6 +854,28 @@ export class RestaurantTransactionsService {
     let activity: ReturnType<typeof audit>;
     if (command === "OPEN_SESSION") {
       const req = contracts.OpenGuestSessionRequestSchema.parse(request);
+      const responsibleStaffId = req.staffId ?? serviceAccess?.staffId;
+      if (!responsibleStaffId)
+        return fail("RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");
+      if (
+        serviceAccess?.role === "WAITER" &&
+        responsibleStaffId !== ctx.actorId
+      )
+        return fail("DOMAIN_PERMISSION_REQUIRED", 403);
+      for (const check of await ResponsibleStaff.assignmentChecks(
+        ctx,
+        responsibleStaffId,
+      )) {
+        if (
+          !actions.some(
+            (a) =>
+              JSON.stringify(a.ConditionCheck?.Key) ===
+                JSON.stringify(check.ConditionCheck?.Key) &&
+              a.ConditionCheck?.TableName === check.ConditionCheck?.TableName,
+          )
+        )
+          actions.push(check);
+      }
       const menu = await this.foundation(ctx, checks);
       await this.config(
         ctx,
@@ -888,7 +922,7 @@ export class RestaurantTransactionsService {
         status: "OPEN",
         openedAt: now,
         openedBy: ctx.actorId,
-        responsibleStaffId: serviceAccess?.staffId,
+        responsibleStaffId,
         version: 1,
         financialRevision: 0,
         orderCount: 0,
@@ -1089,6 +1123,8 @@ export class RestaurantTransactionsService {
           request,
         );
       const session = await this.session(ctx, owner);
+      if (req.staffId === null)
+        return fail("RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");
       if (session.data.version !== req.expectedVersion)
         return fail("RESTAURANTS_WRITE_CONFLICT");
       if (session.data.status !== "OPEN") return fail();
@@ -1120,6 +1156,22 @@ export class RestaurantTransactionsService {
     } else if (command === "CLOSE_SESSION") {
       const req = contracts.CloseGuestSessionRequestSchema.parse(request),
         session = closureSession ?? (await this.session(ctx, owner));
+      if (!session.data.responsibleStaffId)
+        return fail("RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");
+      for (const check of await ResponsibleStaff.assignmentChecks(
+        ctx,
+        session.data.responsibleStaffId,
+      )) {
+        if (
+          !actions.some(
+            (a) =>
+              JSON.stringify(a.ConditionCheck?.Key) ===
+                JSON.stringify(check.ConditionCheck?.Key) &&
+              a.ConditionCheck?.TableName === check.ConditionCheck?.TableName,
+          )
+        )
+          actions.push(check);
+      }
       if (session.data.version !== req.expectedVersion)
         return fail("RESTAURANTS_WRITE_CONFLICT");
       if (
