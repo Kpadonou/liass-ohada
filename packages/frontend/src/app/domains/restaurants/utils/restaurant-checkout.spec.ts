@@ -83,6 +83,7 @@ describe('Cashier proposals and closure signals', () => {
     (value) => expect(() => checkoutAllocationProposal([order(1)], value)).toThrow(),
   );
   it('does not mistake fully paid READY work or unresolved drafts for close eligibility', () => {
+    expect(checkoutClosureBlockers(session(), [order(1, { paidMinor: 5000, outstandingWorkCount: undefined })], true)).toContain('WORK');
     expect(
       checkoutClosureBlockers(
         session(),

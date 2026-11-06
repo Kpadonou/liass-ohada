@@ -282,7 +282,7 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     });
     expect(
       fixture.nativeElement.querySelector('[data-testid="ready-to-close"]')?.textContent,
-    ).toContain('Commandes et service prêts');
+    ).toContain('Prêt à terminer le service');
     expect(flow.close).not.toHaveBeenCalled();
   });
   it('shows preparation and draft blockers without any Kitchen query', async () => {

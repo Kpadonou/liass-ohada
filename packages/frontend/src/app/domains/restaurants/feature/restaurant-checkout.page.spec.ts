@@ -226,7 +226,7 @@ describe('Cashier occupied-table discovery and context', () => {
     const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
     fixture.componentInstance.released(ctx);
     expect(fixture.componentInstance.sessionId()).toBe('');
-    expect(fixture.componentInstance.message()).toContain('Table clôturée');
+    expect(fixture.componentInstance.message()).toContain('Service terminé');
     expect(navigate).not.toHaveBeenCalled();
     expect(fixture.componentInstance.closedVisit()).toEqual(ctx);
     fixture.componentInstance.openReceipt(ctx);

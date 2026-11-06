@@ -319,9 +319,6 @@ export class RestaurantCheckoutVisitComponent {
       !this.session.isError() &&
       !this.orders.isError() &&
       this.blockers().length === 0 &&
-      this.rows().every(
-        (o) => ['CLOSED', 'CANCELLED'].includes(o.status) || o.outstandingWorkCount !== undefined,
-      ) &&
       this.caps.canCloseCheckout(),
   );
   constructor() {

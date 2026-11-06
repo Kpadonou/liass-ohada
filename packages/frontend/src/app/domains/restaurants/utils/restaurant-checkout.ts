@@ -60,7 +60,7 @@ export function checkoutClosureBlockers(
       !order.succeededPaymentCount;
     if (!technicalCandidate && (order.status !== 'SUBMITTED' || !order.acceptedLineCount))
       blockers.add('UNACCEPTED');
-    if (order.outstandingWorkCount) blockers.add('WORK');
+    if (order.outstandingWorkCount === undefined || order.outstandingWorkCount > 0) blockers.add('WORK');
     if (order.dueMinor !== order.paidMinor) blockers.add('UNPAID');
     if (order.reservedMinor || order.pendingPaymentCount) blockers.add('PENDING');
   }

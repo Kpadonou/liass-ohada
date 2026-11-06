@@ -28,7 +28,7 @@ const org = signal('org'),
   user = signal('owner'),
   allowed = signal(true);
 const role = signal('OWNER');
-const closeFlow = { close: vi.fn() };
+const closeFlow = { close: vi.fn(), closeComplete: vi.fn() };
 const params = new BehaviorSubject(convertToParamMap({ outletId: rid(2), guestSessionId: rid(9) }));
 const filters = new BehaviorSubject(convertToParamMap({ area: rid(3) }));
 const area = {
@@ -115,6 +115,7 @@ class FloorStub {}
 beforeEach(() => {
   role.set('OWNER');
   closeFlow.close.mockReset();
+  closeFlow.closeComplete.mockReset().mockImplementation(() => closeFlow.close());
   org.set('org');
   user.set('owner');
   allowed.set(true);
@@ -176,7 +177,7 @@ it('SERVICE-1 closure is explicitly confirmed and failures remain contextual', a
   expect(page.closeError()).toBeTruthy();
   expect(page.closing()).toBe(false);
 });
-it('shows an explanation and offers disabled closure to the assigned waiter with an open order', async () => {
+it('offers full service closure to the assigned waiter even when eligible orders remain open', async () => {
   role.set('WAITER');
   api.guestSession.mockResolvedValue(sessionFixture({
     responsibleStaff: { staffId: 'owner', displayName: 'Synthetic', available: true },
@@ -184,14 +185,11 @@ it('shows an explanation and offers disabled closure to the assigned waiter with
   }));
   const page = await loaded();
   expect(page.canOfferClose()).toBe(true);
-  expect(page.canClose()).toBe(false);
-  expect(text()).toContain('1 commande(s) à clôturer en caisse');
+  expect(page.canClose()).toBe(true);
   const action = fixture!.nativeElement.querySelector('[data-testid="service-close-action"] button');
   expect(action).not.toBeNull();
-  expect(action.disabled).toBe(true);
+  expect(action.disabled).toBe(false);
   expect(action.textContent).toContain('Terminer');
-  await page.closeService();
-  expect(closeFlow.close).not.toHaveBeenCalled();
   user.set('other');
   expect(page.canOfferClose()).toBe(false);
   fixture!.detectChanges();
@@ -201,7 +199,6 @@ it.each([
   { responsibleStaff: undefined },
   { dueMinor: 1000, paidMinor: 0 },
   { pendingPaymentCount: 1 },
-  { openOrderCount: 1 },
 ])('SERVICE-1 cannot close missing responsibility or unsettled service %j', async (changes) => {
   role.set('WAITER');
   api.guestSession.mockResolvedValue(

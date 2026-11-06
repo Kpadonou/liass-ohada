@@ -92,7 +92,7 @@ describe('Receipt presentation and complete native print', () => {
     await loaded(f);
     expect(api.publish).toHaveBeenCalledTimes(1);
     expect(api.page).toHaveBeenCalledTimes(2);
-    expect(f.nativeElement.textContent).toContain('Table clôturée');
+    expect(f.nativeElement.textContent).toContain('Service terminé');
     expect(f.nativeElement.textContent).not.toContain('Enregistrement en cours');
   });
   it('publication failure preserves checkout success and same identity retry', async () => {

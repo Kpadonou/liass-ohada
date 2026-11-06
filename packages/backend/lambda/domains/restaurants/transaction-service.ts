@@ -421,7 +421,7 @@ export class RestaurantTransactionsService {
           "OWNER",
           "MANAGER",
           "CASHIER",
-          ...(command === "CLOSE_SESSION" ? ["WAITER"] : []),
+          "WAITER",
         ].includes(access.role ?? "")
       )
         return fail("DOMAIN_PERMISSION_REQUIRED", 403);
@@ -435,12 +435,7 @@ export class RestaurantTransactionsService {
       | Awaited<ReturnType<typeof RestaurantTransactionsService.session>>
       | undefined;
     const authorizeClosureScope = async () => {
-      if (closureAccess?.role === "WAITER") {
-        closureSession = await this.session(ctx, owner);
-        if (closureSession.data.responsibleStaffId !== ctx.actorId)
-          return fail("DOMAIN_PERMISSION_REQUIRED", 403);
-      }
-      if (closureAccess?.role !== "CASHIER") return;
+      if (!["CASHIER", "WAITER"].includes(closureAccess?.role ?? "")) return;
       if (command === "CLOSE_ORDER") {
         closureOrder = await this.order(ctx, owner);
         if (
@@ -458,6 +453,11 @@ export class RestaurantTransactionsService {
         )
           return fail("RESTAURANTS_NOT_FOUND", 404);
       } else closureSession = await this.session(ctx, owner);
+      if (
+        closureAccess?.role === "WAITER" &&
+        closureSession.data.responsibleStaffId !== ctx.actorId
+      )
+        return fail("DOMAIN_PERMISSION_REQUIRED", 403);
       // Do not require OPEN before replay: a lost final response must remain recoverable.
     };
     await authorizeClosureScope();
@@ -710,7 +710,7 @@ export class RestaurantTransactionsService {
       )
         return fail("DOMAIN_PERMISSION_REQUIRED", 403);
     }
-    if (closureAccess?.role === "CASHIER")
+    if (["CASHIER", "WAITER"].includes(closureAccess?.role ?? ""))
       await this.config(ctx, checks, "outlet", {}, ctx.outletId);
     if (serviceSession) {
       await this.config(ctx, checks, "outlet", {}, ctx.outletId);

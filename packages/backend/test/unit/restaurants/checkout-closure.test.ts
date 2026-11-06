@@ -244,6 +244,7 @@ beforeEach(async () => {
         clientRequestId: req(),
         tableId: f.tables[0].id,
         areaId: f.tables[0].serviceAreaId,
+        staffId: "waiter",
       })
     ).data,
   );
@@ -254,7 +255,7 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test.each(["owner", "manager", "cashier"])(
+test.each(["owner", "manager", "cashier", "waiter"])(
   "%s composes multiple canonical closes and final atomic table release",
   async (actor) => {
     const orders = [await create(), await create(), await create(0)];
@@ -316,7 +317,7 @@ test.each(["owner", "cashier"])(
     expect((await closeSession(actor)).statusCode).toBe(200);
     const actions = m.db.commandCalls(TransactWriteItemsCommand)[0].args[0]
       .input.TransactItems!;
-    expect(actions).toHaveLength(6 + (actor === "cashier" ? 5 : 2));
+    expect(actions).toHaveLength(9 + (actor === "cashier" ? 5 : 2));
     console.log("CLOSE_SESSION_BOUND", {
       actor,
       actions: actions.length,
@@ -433,14 +434,14 @@ test("fifty-Order partial progress survives failure and resumes without rollback
   expect((await closeSession()).statusCode).toBe(200);
   expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
 }, 30000);
-test("same-intent concurrent retries replay; different cashiers conflict without double decrement/release", async () => {
+test.each(["cashier2", "waiter"])("same-intent replay and concurrent %s conflict without double decrement/release", async (competitor) => {
   await zeroMenu();
   const o = await create();
   const a = await closeBody(o.orderId),
     b = await closeBody(o.orderId);
   const results = await Promise.all([
     call(o.orderId, a),
-    call(o.orderId, b, "cashier2"),
+    call(o.orderId, b, competitor),
   ]);
   expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
   expect((await state()).openOrderCount).toBe(0);
@@ -448,7 +449,7 @@ test("same-intent concurrent retries replay; different cashiers conflict without
   const first =
     results[0].statusCode === 200
       ? { body: a, actor: "cashier" }
-      : { body: b, actor: "cashier2" };
+      : { body: b, actor: competitor };
   expect((await call(o.orderId, first.body, first.actor)).statusCode).toBe(200);
   const final = await closeBody();
   const closed = await Promise.all([
@@ -538,9 +539,10 @@ test.each([
   expect(m.rows).toEqual(before);
   expect(m.db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
 });
-test.each(["waiter", "cook", "missing", "invalid"])(
+test.each(["unrelated", "cook", "missing", "invalid"])(
   "%s cannot invoke closure handlers or direct service",
   async (actor) => {
+    await person("unrelated", "WAITER");
     m.seedAccess(org, "missing", "CASHIER");
     m.seedAccess(org, "invalid", "INVALID");
     await zeroMenu();
@@ -553,6 +555,36 @@ test.each(["waiter", "cook", "missing", "invalid"])(
     ).rejects.toMatchObject({ statusCode: 403 });
   },
 );
+test("assigned waiter order closure replay is denied after responsibility changes", async () => {
+  await zeroMenu();
+  const o = await create(), body = await closeBody(o.orderId);
+  expect((await call(o.orderId, body, "waiter")).statusCode).toBe(200);
+  expect((await call(o.orderId, body, "waiter")).statusCode).toBe(200);
+  patchData(sessionKey(), { responsibleStaffId: "someone-else", version: (await state()).version + 1 });
+  const before = new Map(m.rows);
+  expect((await call(o.orderId, body, "waiter")).statusCode).toBe(403);
+  expect(m.rows).toEqual(before);
+});
+test("assigned waiter cannot close an order with unfinished preparation", async () => {
+  const o = await create(0);
+  await pay([o]);
+  expect((await closeOrder(o.orderId, "waiter")).statusCode).toBe(409);
+  expect((await state()).openOrderCount).toBe(1);
+  await occupied();
+});
+test("waiter responsibility change during order close fails atomically", async () => {
+  await zeroMenu();
+  const o = await create(), body = await closeBody(o.orderId);
+  const original = R.commit.bind(R);
+  jest.spyOn(R, "commit").mockImplementationOnce(async (actions) => {
+    patchData(sessionKey(), { responsibleStaffId: "someone-else", version: (await state()).version + 1 });
+    await original(actions);
+  });
+  expect((await call(o.orderId, body, "waiter")).statusCode).not.toBe(200);
+  expect((await state()).openOrderCount).toBe(1);
+  expect((await S.order(scope(), o.orderId)).data.status).toBe("SUBMITTED");
+  await occupied();
+});
 test("unassigned/foreign organization/outlet and malformed parent relationships fail closed", async () => {
   await person("unassigned", "CASHIER", false);
   await zeroMenu();
@@ -831,6 +863,7 @@ test("old final-close replay cannot free a newly occupied visit at the same tabl
         clientRequestId: req(),
         tableId: session.tableId,
         areaId: session.areaId,
+        staffId: "waiter",
       })
     ).data,
   );

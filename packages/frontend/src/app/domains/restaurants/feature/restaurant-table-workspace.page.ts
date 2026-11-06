@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { LiassConfirmationDialogComponent } from '../../../shared/ui/confirmation-dialog/confirmation-dialog.component';
-import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
+import { RestaurantCheckoutFlow, ServiceClosureBlockedError } from '../data-access/restaurant-checkout-flow';
 import { restaurantError } from '../utils/restaurant-errors';
 import { HttpErrorResponse } from '@angular/common/http';
 import {
@@ -80,9 +80,7 @@ export class RestaurantTableWorkspacePage {
       !this.reconciling()
     );
   });
-  readonly canClose = computed(
-    () => this.canOfferClose() && this.session()?.openOrderCount === 0,
-  );
+  readonly canClose = computed(() => this.canOfferClose());
   async closeService() {
     const session = this.session();
     if (!session || !this.canClose() || this.closing()) return;
@@ -100,7 +98,7 @@ export class RestaurantTableWorkspacePage {
           maxWidth: 'calc(100vw - 24px)',
           data: {
             titleKey: 'RESTO_SERVICE.CLOSE',
-            descriptionKey: 'RESTO_SERVICE.CONFIRM_CLOSE',
+            descriptionKey: 'RESTAURANTS.CHECKOUT.CONFIRM_CLOSE',
             confirmKey: 'RESTAURANTS.CHECKOUT.CONFIRM',
             cancelKey: 'RESTAURANTS.UI.CANCEL',
             tone: 'warning',
@@ -112,7 +110,7 @@ export class RestaurantTableWorkspacePage {
     this.closing.set(true);
     this.closeError.set(null);
     try {
-      await this.injector.get(RestaurantCheckoutFlow).close(ctx, [], () => {});
+      await this.injector.get(RestaurantCheckoutFlow).closeComplete(ctx);
       if (
         this.queries.scope() === ctx.org &&
         this.queries.userScope() === ctx.user &&
@@ -131,7 +129,9 @@ export class RestaurantTableWorkspacePage {
         this.outletId() === ctx.outlet &&
         this.sessionId() === ctx.session
       )
-        this.closeError.set(restaurantError(error, (key) => this.t.translate(key)));
+        this.closeError.set(error instanceof ServiceClosureBlockedError
+          ? error.blockers.map((blocker) => this.t.translate('RESTAURANTS.CHECKOUT.BLOCK_' + blocker)).join(' ')
+          : restaurantError(error, (key) => this.t.translate(key)));
     } finally {
       this.closing.set(false);
     }

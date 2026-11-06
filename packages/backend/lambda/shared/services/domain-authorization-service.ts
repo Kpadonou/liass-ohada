@@ -74,6 +74,7 @@ export class DomainAuthorizationService {
         ? [
             ...config,
             "RESTAURANTS_SESSION_CLOSE_MANAGE",
+            "RESTAURANTS_ORDER_CLOSE_MANAGE",
             ...RESTAURANTS_SERVICE_PERMISSIONS,
             "RESTAURANTS_PREPARATION_SERVE_MANAGE",
             ...RESTAURANTS_STAFF_SELF_PERMISSIONS,

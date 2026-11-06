@@ -23,7 +23,7 @@ const visit = {
 } as GuestSessionRead;
 describe('Resumable canonical checkout commands', () => {
   const api = { capture: vi.fn(), closeOrder: vi.fn(), closeSession: vi.fn() };
-  const orders = { assertContext: vi.fn(), order: vi.fn() };
+  const orders = { assertContext: vi.fn(), order: vi.fn(), orders: vi.fn() };
   const sessions = { guestSession: vi.fn() };
   let flow: RestaurantCheckoutFlow;
   beforeEach(() => {
@@ -50,6 +50,23 @@ describe('Resumable canonical checkout commands', () => {
     flow = TestBed.inject(RestaurantCheckoutFlow);
   });
   afterEach(() => TestBed.resetTestingModule());
+  it('uses the complete canonical collection for assigned waiter service completion', async () => {
+    const paid = { ...row('paid'), draftLineCount: 0, acceptedLineCount: 1, outstandingWorkCount: 0, dueMinor: 20000, paidMinor: 20000, reservedMinor: 0, pendingPaymentCount: 0 };
+    orders.orders.mockResolvedValue({ items: [paid] });
+    sessions.guestSession.mockResolvedValueOnce({ ...visit, orderCount: 1, openOrderCount: 1 });
+    orders.order.mockResolvedValue(paid);
+    const result = await flow.closeComplete({ ...ctx, user: 'waiter' });
+    expect(result.status).toBe('CLOSED');
+    expect(api.closeOrder).toHaveBeenCalledOnce();
+    expect(api.closeSession).toHaveBeenCalledOnce();
+  });
+  it.each([{ draftLineCount: 1 }, { outstandingWorkCount: 1 }, { paidMinor: 0 }])('blocks unfinished canonical orders before any mutation %j', async (changes) => {
+    orders.orders.mockResolvedValue({ items: [{ ...row('blocked'), draftLineCount: 0, acceptedLineCount: 1, outstandingWorkCount: 0, dueMinor: 20000, paidMinor: 20000, reservedMinor: 0, pendingPaymentCount: 0, ...changes }] });
+    sessions.guestSession.mockResolvedValue({ ...visit, orderCount: 1, openOrderCount: 1 });
+    await expect(flow.closeComplete(ctx)).rejects.toThrow('Service closure blocked');
+    expect(api.closeOrder).not.toHaveBeenCalled();
+    expect(api.closeSession).not.toHaveBeenCalled();
+  });
   it('closes the paid open order before releasing the service and never requires a second waiter close', async () => {
     const paidOrder = { ...row('paid'), dueMinor: 2122, paidMinor: 2122 };
     api.closeOrder.mockImplementation(async () => {
@@ -111,6 +128,15 @@ describe('Resumable canonical checkout commands', () => {
     await flow.close(ctx, [], vi.fn());
     expect(api.closeSession.mock.calls[1][1]).toEqual(original);
     expect(sessions.guestSession).toHaveBeenCalledTimes(1);
+  });
+  it('continues full service completion with the original final intent after an uncertain result', async () => {
+    api.closeSession.mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }));
+    await expect(flow.close(ctx, [], vi.fn())).rejects.toBeDefined();
+    const original = api.closeSession.mock.calls[0][1];
+    await flow.closeComplete(ctx);
+    expect(api.closeSession.mock.calls[1][1]).toEqual(original);
+    expect(orders.orders).not.toHaveBeenCalled();
+    expect(api.closeOrder).not.toHaveBeenCalled();
   });
   it('does not release table while canonical session has open Orders or debt', async () => {
     sessions.guestSession.mockResolvedValue({ ...visit, openOrderCount: 1 });

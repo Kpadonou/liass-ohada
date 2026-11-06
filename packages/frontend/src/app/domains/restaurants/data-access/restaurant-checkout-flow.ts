@@ -10,7 +10,13 @@ import type {
 import { RestaurantCheckoutApi } from './restaurant-checkout.api';
 import { RestaurantOrdersApi, ServiceOrderContext } from './restaurant-orders.api';
 import { RestaurantsApi } from './restaurants.api';
-import { checkoutClosureBlockers } from '../utils/restaurant-checkout';
+import { checkoutClosureBlockers, CheckoutBlocker } from '../utils/restaurant-checkout';
+
+export class ServiceClosureBlockedError extends Error {
+  constructor(readonly blockers: CheckoutBlocker[]) {
+    super('Service closure blocked');
+  }
+}
 
 export type CloseIntent = { clientRequestId: string; expectedVersion: number };
 /** Retains ambiguous command identities in memory, never financial or auth authority. */
@@ -69,6 +75,27 @@ export class RestaurantCheckoutFlow {
   }
   pendingPayment(ctx: ServiceOrderContext) {
     return this.payments.get(this.key(ctx));
+  }
+  /** Service entry uses the same eligibility and resumable close chain as checkout. */
+  async closeComplete(ctx: ServiceOrderContext) {
+    this.ordersApi.assertContext(ctx);
+    if (this.pendingClosure(ctx)) return this.close(ctx, [], () => {});
+    const rows: RestaurantOrder[] = [];
+    let cursor: string | undefined;
+    const seen = new Set<string>();
+    do {
+      const page = await this.ordersApi.orders(ctx, cursor);
+      this.ordersApi.assertContext(ctx);
+      rows.push(...page.items);
+      cursor = page.nextCursor;
+      if (cursor && seen.has(cursor)) throw new Error('Repeated cursor');
+      if (cursor) seen.add(cursor);
+    } while (cursor);
+    const session = await this.sessions.guestSession(ctx.org, ctx.outlet, ctx.session);
+    this.ordersApi.assertContext(ctx);
+    const blockers = checkoutClosureBlockers(session, rows, true);
+    if (blockers.length) throw new ServiceClosureBlockedError(blockers);
+    return this.close(ctx, rows, () => {});
   }
   private async command(
     ctx: ServiceOrderContext,
