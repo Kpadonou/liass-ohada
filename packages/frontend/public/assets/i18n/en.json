@@ -5153,6 +5153,7 @@
       "RECORDED_DISCOUNT": "Recorded discount",
       "RECORDED_TAX": "Recorded taxes",
       "NOT_AVAILABLE": "The final invoice is not available yet. It can be viewed once publication is confirmed.",
+      "AWAITING_SERVICE_END": "Payment recorded. Service is still open: the final invoice can be viewed after service completion and publication.",
       "FISCAL_UNVERIFIED": "Fiscal normalization is not evidenced: this invoice carries no DGI confirmation evidence.",
       "EXTERNAL_REFERENCE": "External reference",
       "OPENED": "Opened",

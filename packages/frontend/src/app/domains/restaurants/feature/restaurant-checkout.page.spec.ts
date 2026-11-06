@@ -29,7 +29,7 @@ const org = signal('org'),
   role = signal('CASHIER');
 describe('Cashier occupied-table discovery and context', () => {
   let client: QueryClient;
-  const api = { myOutlets: vi.fn(), serviceFloor: vi.fn(), list: vi.fn() };
+  const api = { myOutlets: vi.fn(), serviceFloor: vi.fn(), list: vi.fn(), guestSession: vi.fn() };
   const receipts = { page: vi.fn() };
   beforeEach(() => {
     localStorage.clear();
@@ -256,6 +256,29 @@ describe('Cashier occupied-table discovery and context', () => {
     resolve({ data: { receiptId: rid(77) } });
     await pending;
     expect(fixture.componentInstance.invoice()).toBeNull();
+  });
+  it.each(['OPEN', 'CLOSED', 'DENIED'])('distinguishes invoice lifecycle conflict from a load failure for %s', async (state) => {
+    const fixture = create();
+    const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
+    fixture.componentInstance.selectVisit(ctx.session);
+    receipts.page.mockRejectedValueOnce(new HttpErrorResponse({ status: 409, error: { error: { code: 'RESTAURANTS_TRANSACTION_STATE' } } }));
+    if (state === 'DENIED') api.guestSession.mockRejectedValueOnce(new HttpErrorResponse({ status: 403 }));
+    else api.guestSession.mockResolvedValueOnce({ status: state });
+    await fixture.componentInstance.openAvailableInvoice(ctx);
+    expect(fixture.componentInstance.invoice()).toBeNull();
+    expect(fixture.componentInstance.message()).toContain(state === 'OPEN' ? 'service est encore ouvert' : state === 'DENIED' ? 'accès' : 'pas pu être chargée');
+  });
+  it.each([403, 409, 500])('keeps HTTP %s as an API error rather than unavailable invoice', async (status) => {
+    const fixture = create();
+    const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
+    fixture.componentInstance.selectVisit(ctx.session);
+    receipts.page.mockRejectedValueOnce(new HttpErrorResponse({ status }));
+    await fixture.componentInstance.openAvailableInvoice(ctx);
+    expect(fixture.componentInstance.invoice()).toBeNull();
+    expect(fixture.componentInstance.message()).toContain(status === 403 ? 'accès' : 'pas pu être chargée');
+    expect(api.guestSession).not.toHaveBeenCalled();
   });
   it('groups occupied-table search and rows, with intentional detail guidance and contextual currency', async () => {
     const fixture = create();

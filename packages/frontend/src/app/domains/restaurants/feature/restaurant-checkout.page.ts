@@ -27,6 +27,7 @@ import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery } from '@tanstack/angular-query-experimental';
 import { AuthStore } from '../../identity/data-access/auth.store';
 import { RestaurantsQueries } from '../data-access/restaurants.queries';
+import { RestaurantsApi } from '../data-access/restaurants.api';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { RestaurantAccessState } from '../data-access/restaurant-access-state';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
@@ -418,10 +419,24 @@ export class RestaurantCheckoutPage {
       const page = await this.injector.get(RestaurantReceiptApi).page(ctx);
       if (current() && request === this.invoiceRequest) this.invoice.set({ ctx, id: page.data.receiptId });
     } catch (error) {
-      if (current() && request === this.invoiceRequest) this.message.set(this.t.translate(
-        error instanceof HttpErrorResponse && error.status === 404
-          ? 'RESTAURANTS.RECEIPT.NOT_AVAILABLE' : 'RESTAURANTS.RECEIPT.READ_ERROR',
-      ));
+      let feedback = error instanceof HttpErrorResponse && error.status === 404
+        ? 'RESTAURANTS.RECEIPT.NOT_AVAILABLE' : 'RESTAURANTS.RECEIPT.READ_ERROR';
+      if (error instanceof HttpErrorResponse && [401, 403].includes(error.status))
+        feedback = 'RESTAURANTS.UI.ERRORS.ACCESS';
+      // Receipt GET rejects OPEN services before looking for a FINAL manifest.
+      // Verify that precise lifecycle case; never conceal arbitrary conflicts or denials.
+      if (error instanceof HttpErrorResponse && error.status === 409 &&
+          (error.error?.error?.code ?? error.error?.message?.code) === 'RESTAURANTS_TRANSACTION_STATE' && current()) {
+        try {
+          const service = await this.injector.get(RestaurantsApi).guestSession(ctx.org, ctx.outlet, ctx.session);
+          if (service.status === 'OPEN') feedback = 'RESTAURANTS.RECEIPT.AWAITING_SERVICE_END';
+        } catch (stateError) {
+          if (stateError instanceof HttpErrorResponse && [401, 403].includes(stateError.status))
+            feedback = 'RESTAURANTS.UI.ERRORS.ACCESS';
+          // The original lookup remains an error if service state cannot be verified.
+        }
+      }
+      if (current() && request === this.invoiceRequest) this.message.set(this.t.translate(feedback));
     } finally {
       if (request === this.invoiceRequest) this.invoiceLoading.set(false);
     }

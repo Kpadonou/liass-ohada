@@ -5153,6 +5153,7 @@
       "RECORDED_DISCOUNT": "Remise enregistrée",
       "RECORDED_TAX": "Taxes enregistrées",
       "NOT_AVAILABLE": "La facture définitive n’est pas encore disponible. Vous pourrez la consulter une fois sa publication confirmée.",
+      "AWAITING_SERVICE_END": "Paiement enregistré. Le service est encore ouvert : la facture définitive sera consultable après la fin du service et sa publication.",
       "FISCAL_UNVERIFIED": "Normalisation fiscale non attestée : aucune preuve de confirmation DGI n’est fournie avec cette facture.",
       "EXTERNAL_REFERENCE": "Référence externe",
       "OPENED": "Ouverture",
