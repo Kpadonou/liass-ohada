@@ -1187,7 +1187,7 @@ it('uses labelled theme-primary Add and danger Remove controls and disables unav
   expect(add.querySelector('mat-icon')?.textContent).toBe('add');
   expect(add.textContent).toContain('Ajouter');
   expect(add.classList.contains('liass-action-secondary')).toBe(false);
-  expect(add.hasAttribute('mat-flat-button')).toBe(true);
+  expect(add.closest('liass-button')).not.toBeNull();
   expect(remove.querySelector('mat-icon')?.textContent).toBe('delete_outline');
   expect(remove.textContent).toContain('Retirer');
   expect(remove.classList.contains('liass-action-danger')).toBe(true);

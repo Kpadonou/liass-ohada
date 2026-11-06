@@ -18,7 +18,8 @@
     <header class="min-w-0 space-y-3" aria-labelledby="workspace-title">
       <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div class="min-w-0 flex-1">
-          <h1 id="workspace-title" class="break-words text-2xl font-semibold leading-tight">
+          <h1 id="workspace-title" class="flex items-center gap-2 break-words text-2xl font-semibold leading-tight">
+            <mat-icon class="shrink-0 text-brand-700 dark:text-brand-300" aria-hidden="true">table_restaurant</mat-icon>
             {{
               session() ? tableDisplayName(session()!) : ('RESTAURANTS.WORKSPACE.TITLE' | transloco)
             }}
@@ -152,7 +153,7 @@
                   <span>{{ 'RESTO_SERVICE.OPEN_ORDER_BLOCKER' | transloco }}</span>
                 </p>
               }
-              <liass-button data-testid="service-close-action" size="lg" tone="brand" variant="outline"
+              <liass-button data-testid="service-close-action" size="lg" tone="brand" variant="solid"
                 icon="done_all" [disabled]="closing() || !canClose()" [loading]="closing()"
                 (pressed)="closeService()">
                 {{ 'RESTO_SERVICE.CLOSE' | transloco }}

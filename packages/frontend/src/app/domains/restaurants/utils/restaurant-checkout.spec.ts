@@ -24,6 +24,15 @@ const session = (overrides: Partial<GuestSessionRead> = {}): GuestSessionRead =>
     ...overrides,
   }) as GuestSessionRead;
 describe('Cashier proposals and closure signals', () => {
+  it('permits checkout orchestration for a paid open order without claiming the service is already closable', () => {
+    const visit = session({ status: 'OPEN', openOrderCount: 1 });
+    const paid = order(1, { paidMinor: 5000 });
+    expect(checkoutClosureBlockers(visit, [paid], true)).toEqual([]);
+    expect(visit.openOrderCount).toBe(1);
+    expect(paid.status).toBe('SUBMITTED');
+    expect(checkoutClosureBlockers(visit, [{ ...paid, outstandingWorkCount: 1 }], true)).toContain('WORK');
+    expect(checkoutClosureBlockers({ ...visit, openOrderCount: 0 }, [{ ...paid, status: 'CLOSED' }], true)).toEqual([]);
+  });
   it('retains technical rows in physical completeness and treats an unmarked legacy row as non-classified', () => {
     const raw = [
       order(1, { status: 'CANCELLED', resolutionKind: 'TECHNICAL_EMPTY_DRAFT', dueMinor: 0 }),

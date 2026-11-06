@@ -31,6 +31,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
+import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery, injectQuery } from '@tanstack/angular-query-experimental';
 import * as c from '@liass-ohada/shared/restaurants';
@@ -64,6 +65,7 @@ type DraftIntent = {
     MatInputModule,
     MatTooltipModule,
     LiassCardComponent,
+    LiassButtonComponent,
     TranslocoModule,
   ],
   templateUrl: './restaurant-order-composer.html',

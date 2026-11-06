@@ -67,9 +67,8 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
             >
           </p>
           @if (rounds().length) {
-            <p class="text-sm">
-              {{ 'RESTAURANTS.SERVICE_ORDERS.PROGRESS.' + overall() | transloco }}
-            </p>
+            <liass-status-chip size="sm" tone="info"
+              [label]="'RESTAURANTS.SERVICE_ORDERS.PROGRESS.' + overall() | transloco" />
           }
         </div>
         <div class="flex flex-wrap items-center justify-end gap-2">

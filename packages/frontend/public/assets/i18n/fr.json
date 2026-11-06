@@ -1,6 +1,6 @@
 {
   "RESTO_SERVICE": {
-    "OPEN_ORDER_BLOCKER": "Une commande reste ouverte. Sa préparation et son service doivent être terminés, puis une personne habilitée doit clôturer la commande avant de terminer le service.",
+    "OPEN_ORDER_BLOCKER": "Commande ouverte : clôture à effectuer en caisse.",
     "OPEN": "Ouvrir le service",
     "CLOSE": "Terminer le service",
     "CONFIRM_CLOSE": "Terminer ce service réglé et libérer la table ?",
@@ -5138,7 +5138,7 @@
       "SELECT_TITLE": "Sélectionnez une table",
       "CURRENCY": "Montants en {{ currency }}",
       "PAYMENT": "Encaissement",
-      "READY_TO_CLOSE": "Prête à clôturer",
+      "READY_TO_CLOSE": "Commandes et service prêts à être clôturés en caisse",
       "BACK_TO_CHECKOUT": "Retour à la caisse"
     },
     "RECEIPT": {

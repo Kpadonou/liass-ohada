@@ -185,7 +185,7 @@ it('shows an explanation and offers disabled closure to the assigned waiter with
   const page = await loaded();
   expect(page.canOfferClose()).toBe(true);
   expect(page.canClose()).toBe(false);
-  expect(text()).toContain('Une commande reste ouverte');
+  expect(text()).toContain('Commande ouverte');
   const action = fixture!.nativeElement.querySelector('[data-testid="service-close-action"] button');
   expect(action).not.toBeNull();
   expect(action.disabled).toBe(true);

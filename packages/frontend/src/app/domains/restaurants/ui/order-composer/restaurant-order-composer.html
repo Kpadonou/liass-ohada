@@ -133,22 +133,18 @@
                       >
                         {{ price(item.price.amountMinor, item.price.currency) }}
                       </p>
-                      <button
-                        mat-flat-button
-                        type="button"
-                        class="min-h-11 shrink-0"
-                        [attr.aria-label]="
+                      <liass-button size="lg" tone="brand" variant="outline" icon="add"
+                        [ariaLabel]="
                           'RESTAURANTS.ORDER_TAKING.ADD_ITEM' | transloco: { name: item.name }
                         "
                         [matTooltip]="
                           'RESTAURANTS.ORDER_TAKING.ADD_ITEM' | transloco: { name: item.name }
                         "
                         [disabled]="!canAddItem(item)"
-                        (click)="add(item)"
+                        (pressed)="add(item)"
                       >
-                        <mat-icon aria-hidden="true">add</mat-icon
-                        >{{ 'RESTAURANTS.ORDER_TAKING.ADD' | transloco }}
-                      </button>
+                        {{ 'RESTAURANTS.ORDER_TAKING.ADD' | transloco }}
+                      </liass-button>
                     </div>
                   } @empty {
                     @if (!incomplete()) {
@@ -403,7 +399,6 @@
                 }
               </div>
             </liass-card>
-          </div>
           @if (
             hasServiceOrders() ||
             ordersQuery.hasNextPage() ||
@@ -436,6 +431,7 @@
               }
             </div>
           }
+          </div>
         </div>
       }
     </div>
