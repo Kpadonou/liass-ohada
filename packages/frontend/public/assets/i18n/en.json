@@ -1,5 +1,6 @@
 {
   "RESTO_SERVICE": {
+    "OPEN_ORDER_BLOCKER": "An order is still open. Complete its preparation and service, then ask an authorized person to close the order before closing the service.",
     "OPEN": "Open service",
     "CLOSE": "End service",
     "CONFIRM_CLOSE": "End this settled service and release the table?",

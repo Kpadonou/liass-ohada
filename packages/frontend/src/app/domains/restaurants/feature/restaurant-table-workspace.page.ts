@@ -61,7 +61,7 @@ export class RestaurantTableWorkspacePage {
   private readonly injector = inject(Injector);
   readonly closing = signal(false);
   readonly closeError = signal<string | null>(null);
-  readonly canClose = computed(() => {
+  readonly canOfferClose = computed(() => {
     const session = this.session();
     return (
       !!session &&
@@ -70,13 +70,15 @@ export class RestaurantTableWorkspacePage {
       session.responsibleStaff?.staffId === this.queries.userScope() &&
       session.responsibleStaff.available &&
       session.status === 'OPEN' &&
-      !session.openOrderCount &&
       session.dueMinor === session.paidMinor &&
       !session.reservedMinor &&
       !session.pendingPaymentCount &&
       !this.reconciling()
     );
   });
+  readonly canClose = computed(
+    () => this.canOfferClose() && this.session()?.openOrderCount === 0,
+  );
   async closeService() {
     const session = this.session();
     if (!session || !this.canClose() || this.closing()) return;

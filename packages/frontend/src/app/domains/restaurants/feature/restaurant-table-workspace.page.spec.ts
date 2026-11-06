@@ -176,6 +176,21 @@ it('SERVICE-1 closure is explicitly confirmed and failures remain contextual', a
   expect(page.closeError()).toBeTruthy();
   expect(page.closing()).toBe(false);
 });
+it('shows an explanation and offers disabled closure to the assigned waiter with an open order', async () => {
+  role.set('WAITER');
+  api.guestSession.mockResolvedValue(sessionFixture({
+    responsibleStaff: { staffId: 'owner', displayName: 'Synthetic', available: true },
+    openOrderCount: 1,
+  }));
+  const page = await loaded();
+  expect(page.canOfferClose()).toBe(true);
+  expect(page.canClose()).toBe(false);
+  expect(text()).toContain('Une commande reste ouverte');
+  await page.closeService();
+  expect(closeFlow.close).not.toHaveBeenCalled();
+  user.set('other');
+  expect(page.canOfferClose()).toBe(false);
+});
 it.each([
   { responsibleStaff: undefined },
   { dueMinor: 1000, paidMinor: 0 },

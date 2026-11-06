@@ -144,13 +144,18 @@
               >
                 <mat-icon>refresh</mat-icon>{{ 'RESTAURANTS.UI.REFRESH' | transloco }}
               </button>
-              @if (canClose()) {
-                <button mat-menu-item [disabled]="closing()" (click)="closeService()">
+              @if (canOfferClose()) {
+                <button mat-menu-item [disabled]="closing() || !canClose()" (click)="closeService()">
                   <mat-icon>done_all</mat-icon>{{ 'RESTO_SERVICE.CLOSE' | transloco }}
                 </button>
               }
             </mat-menu>
           </section>
+          @if (canOfferClose() && current.openOrderCount > 0) {
+            <p role="status" class="text-sm text-app-text-secondary">
+              {{ 'RESTO_SERVICE.OPEN_ORDER_BLOCKER' | transloco }}
+            </p>
+          }
           @if (closeError()) {
             <p role="alert" class="text-danger-600">{{ closeError() }}</p>
           }
