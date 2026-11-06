@@ -5,7 +5,7 @@ import { RestaurantOrderComposer } from '../ui/order-composer/restaurant-order-c
 import { DatePipe } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { MatDialog } from '@angular/material/dialog';
-import { MatMenuModule } from '@angular/material/menu';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { LiassConfirmationDialogComponent } from '../../../shared/ui/confirmation-dialog/confirmation-dialog.component';
 import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
 import { restaurantError } from '../utils/restaurant-errors';
@@ -48,7 +48,7 @@ import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-
     RouterLink,
     MatButtonModule,
     MatIconModule,
-    MatMenuModule,
+    MatTooltipModule,
     TranslocoModule,
     LiassSkeletonComponent,
     LiassCardComponent,

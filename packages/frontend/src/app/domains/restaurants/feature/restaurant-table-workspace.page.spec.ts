@@ -232,6 +232,18 @@ it('renders the preserved header using the keyed read; composer tested independe
   expect(fixture!.nativeElement.querySelectorAll('input, table').length).toBe(0);
   // Composer orchestration is covered in its dedicated integration-style tests.
 });
+it('offers a direct labelled refresh button and retains its loading guard', async () => {
+  const page = await loaded();
+  const refresh = fixture!.nativeElement.querySelector('[data-testid="service-refresh"]') as HTMLButtonElement;
+  expect(refresh.getAttribute('aria-label')).toBe('Actualiser');
+  expect(refresh.querySelector('mat-icon')?.textContent).toBe('refresh');
+  const handler = vi.spyOn(page, 'refresh').mockResolvedValue();
+  refresh.click();
+  expect(handler).toHaveBeenCalledOnce();
+  page.closing.set(true);
+  fixture!.detectChanges();
+  expect(refresh.disabled).toBe(true);
+});
 it('shows only the table name as operational heading when name and code differ', async () => {
   api.guestSession.mockResolvedValue(sessionFixture({ tableCode: 'TC', tableName: 'TEST CHRIS' }));
   await loaded();

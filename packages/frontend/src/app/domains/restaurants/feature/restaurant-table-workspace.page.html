@@ -134,20 +134,14 @@
               mat-icon-button
               class="liass-action-neutral min-h-11 sm:ml-auto"
               type="button"
-              [matMenuTriggerFor]="serviceMenu"
-              [attr.aria-label]="'RESTO_SERVICE.ACTIONS' | transloco"
+              data-testid="service-refresh"
+              [disabled]="query.isFetching() || closing()"
+              (click)="refresh()"
+              [matTooltip]="'RESTAURANTS.UI.REFRESH' | transloco"
+              [attr.aria-label]="'RESTAURANTS.UI.REFRESH' | transloco"
             >
-              <mat-icon aria-hidden="true">more_vert</mat-icon>
+              <mat-icon aria-hidden="true">refresh</mat-icon>
             </button>
-            <mat-menu #serviceMenu="matMenu">
-              <button
-                mat-menu-item
-                [disabled]="query.isFetching() || closing()"
-                (click)="refresh()"
-              >
-                <mat-icon>refresh</mat-icon>{{ 'RESTAURANTS.UI.REFRESH' | transloco }}
-              </button>
-            </mat-menu>
           </section>
           @if (canOfferClose()) {
             <div class="flex flex-wrap items-center justify-between gap-3 rounded-app-control bg-brand-50 p-3 dark:bg-brand-950/35">
