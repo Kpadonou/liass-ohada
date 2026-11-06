@@ -191,7 +191,7 @@ export class RestaurantReceiptRepository {
     receiptId: string,
     root: string,
     partCount: number,
-    input: { limit: number; cursor?: string },
+    input: { limit: number; cursor?: string; verifyComplete?: boolean },
   ) {
     let after = 0;
     const scopeHash = hash([scope, receiptId, root, "RECEIPT_PARTS"]);
@@ -258,6 +258,25 @@ export class RestaurantReceiptRepository {
       throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
     if (last > partCount)
       throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    // Internal complete-source consumers must prove collection exhaustion, not
+    // merely reach a caller-supplied count. Keep ordinary receipt reads unchanged.
+    if (input.verifyComplete && last === partCount && r.LastEvaluatedKey) {
+      const tail = await dynamoClient.send(
+        new QueryCommand({
+          TableName: restaurantsTableName(),
+          ConsistentRead: true,
+          KeyConditionExpression: "PK = :pk AND begins_with(SK, :prefix)",
+          ExpressionAttributeValues: marshall({
+            ":pk": pk,
+            ":prefix": K.restaurantBillPartPrefix(),
+          }),
+          Limit: 1,
+          ExclusiveStartKey: r.LastEvaluatedKey,
+        }),
+      );
+      if (tail.Items?.length || tail.LastEvaluatedKey)
+        throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
+    }
     return {
       parts,
       ...(last < partCount

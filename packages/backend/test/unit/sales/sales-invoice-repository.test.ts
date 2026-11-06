@@ -1,4 +1,8 @@
 import {
+  withIssuedAuthority,
+  opaqueChecks,
+} from "../issuance-authority/fixtures";
+import {
   ConditionalCheckFailedException,
   DynamoDBClient,
   GetItemCommand,
@@ -47,14 +51,14 @@ const invoice = {
   createdAt: timestamp,
   updatedAt: timestamp,
 };
-const issuedInvoice = {
+const issuedInvoice = withIssuedAuthority({
   ...invoice,
   status: "ISSUED" as const,
   invoiceNumber: "00000042",
   issueDate: "2026-09-08",
   issuedAt: timestamp,
   version: 3,
-};
+});
 
 describe("SalesInvoiceRepository", () => {
   beforeEach(() => dynamoMock.reset());
@@ -100,7 +104,9 @@ describe("SalesInvoiceRepository", () => {
     });
     dynamoMock.on(GetItemCommand).resolves({ Item: marshall(item) });
     const result = await SalesInvoiceRepository.get("org-123", "SINV-1");
-    expect(dynamoMock.commandCalls(GetItemCommand)[0].args[0].input).toMatchObject({
+    expect(
+      dynamoMock.commandCalls(GetItemCommand)[0].args[0].input,
+    ).toMatchObject({
       ConsistentRead: true,
       Key: { PK: { S: "ORG#org-123" }, SK: { S: "SALES_INVOICE#SINV-1" } },
     });
@@ -120,8 +126,10 @@ describe("SalesInvoiceRepository", () => {
   });
 
   test("lists summaries with an org-scoped Query, projection, and opaque cursor", async () => {
-    const { lines: _lines, ...summaryItem } =
-      SalesInvoiceRepository.buildItem("org-123", invoice);
+    const { lines: _lines, ...summaryItem } = SalesInvoiceRepository.buildItem(
+      "org-123",
+      invoice,
+    );
     const lastKey = marshall({ PK: "ORG#org-123", SK: "SALES_INVOICE#SINV-1" });
     dynamoMock.on(QueryCommand).resolves({
       Items: [marshall(summaryItem)],
@@ -169,13 +177,23 @@ describe("SalesInvoiceRepository", () => {
     const input = dynamoMock.commandCalls(PutItemCommand)[0].args[0].input;
     const item = unmarshall(input.Item ?? {});
     expect(input.ConditionExpression).toContain("#version = :expectedVersion");
-    expect(input.ExpressionAttributeValues?.[":expectedVersion"]).toEqual({ N: "1" });
-    expect(item).toMatchObject({ lines: expect.any(Array), totalMinor: "3539", lineCount: 1, version: 2 });
+    expect(input.ExpressionAttributeValues?.[":expectedVersion"]).toEqual({
+      N: "1",
+    });
+    expect(item).toMatchObject({
+      lines: expect.any(Array),
+      totalMinor: "3539",
+      lineCount: 1,
+      version: 2,
+    });
   });
 
   test("maps stale conditional writes and exposes no invoice hard-delete", async () => {
     dynamoMock.on(PutItemCommand).rejects(
-      new ConditionalCheckFailedException({ $metadata: {}, message: "stale" }),
+      new ConditionalCheckFailedException({
+        $metadata: {},
+        message: "stale",
+      }),
     );
     await expect(
       SalesInvoiceRepository.update("org-123", invoice, 1),
@@ -199,28 +217,41 @@ describe("SalesInvoiceRepository", () => {
     });
     dynamoMock.on(GetItemCommand).resolves({ Item: marshall(item) });
     const result = await SalesInvoiceRepository.get("org-123", "SINV-1");
-    expect(result).toMatchObject({ status: "ISSUED", invoiceNumber: "00000042" });
+    expect(result).toMatchObject({
+      status: "ISSUED",
+      invoiceNumber: "00000042",
+    });
     expect(result).not.toHaveProperty("issuedByUserId");
   });
 
   test("reads missing and existing sequence values consistently with exact strings", async () => {
-    dynamoMock.on(GetItemCommand).resolvesOnce({}).resolvesOnce({
-      Item: marshall({
-        PK: "ORG#org-123",
-        SK: "SALES_INVOICE_SEQUENCE#DEFAULT",
-        entityType: "SALES_INVOICE_SEQUENCE",
-        orgId: "org-123",
-        lastValue: "9007199254740993123456789",
-        updatedAt: timestamp,
-      }),
+    dynamoMock
+      .on(GetItemCommand)
+      .resolvesOnce({})
+      .resolvesOnce({
+        Item: marshall({
+          PK: "ORG#org-123",
+          SK: "SALES_INVOICE_SEQUENCE#DEFAULT",
+          entityType: "SALES_INVOICE_SEQUENCE",
+          orgId: "org-123",
+          lastValue: "9007199254740993123456789",
+          updatedAt: timestamp,
+        }),
+      });
+    await expect(
+      SalesInvoiceRepository.getSequence("org-123"),
+    ).resolves.toEqual({ exists: false, lastValue: "0" });
+    await expect(
+      SalesInvoiceRepository.getSequence("org-123"),
+    ).resolves.toEqual({
+      exists: true,
+      lastValue: "9007199254740993123456789",
     });
-    await expect(SalesInvoiceRepository.getSequence("org-123"))
-      .resolves.toEqual({ exists: false, lastValue: "0" });
-    await expect(SalesInvoiceRepository.getSequence("org-123"))
-      .resolves.toEqual({ exists: true, lastValue: "9007199254740993123456789" });
-    expect(dynamoMock.commandCalls(GetItemCommand).every(
-      (call) => call.args[0].input.ConsistentRead === true,
-    )).toBe(true);
+    expect(
+      dynamoMock
+        .commandCalls(GetItemCommand)
+        .every((call) => call.args[0].input.ConsistentRead === true),
+    ).toBe(true);
   });
 
   test("issues sequence, aggregate, and idempotency in one conditional transaction", async () => {
@@ -228,6 +259,7 @@ describe("SalesInvoiceRepository", () => {
     await SalesInvoiceRepository.issueAtomically({
       orgId: "org-123",
       invoice: issuedInvoice,
+      authorityChecks: opaqueChecks(),
       issuedByUserId: "user-123",
       clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
       originalExpectedVersion: 2,
@@ -235,8 +267,9 @@ describe("SalesInvoiceRepository", () => {
       previousSequenceValue: "41",
       nextSequenceValue: "42",
     });
-    const input = dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0].input;
-    expect(input.TransactItems).toHaveLength(3);
+    const input = dynamoMock.commandCalls(TransactWriteItemsCommand)[0].args[0]
+      .input;
+    expect(input.TransactItems).toHaveLength(5);
     const [sequence, aggregate, idempotency] = input.TransactItems ?? [];
     expect(unmarshall(sequence.Put?.Item ?? {})).toMatchObject({
       PK: "ORG#org-123",
@@ -262,24 +295,30 @@ describe("SalesInvoiceRepository", () => {
     [0, "SEQUENCE_CONTENTION"],
     [1, "INVOICE_CONFLICT"],
     [2, "IDEMPOTENCY_CONFLICT"],
-  ] as const)("classifies conditional cancellation at item %s", async (index, failure) => {
-    const reasons = Array.from({ length: 3 }, (_, reasonIndex) => ({
-      Code: reasonIndex === index ? "ConditionalCheckFailed" : "None",
-    }));
-    dynamoMock.on(TransactWriteItemsCommand).rejects({
-      name: "TransactionCanceledException",
-      message: "transaction cancelled",
-      CancellationReasons: reasons,
-    } as Error);
-    await expect(SalesInvoiceRepository.issueAtomically({
-      orgId: "org-123",
-      invoice: issuedInvoice,
-      issuedByUserId: "user-123",
-      clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
-      originalExpectedVersion: 2,
-      previousSequenceExists: true,
-      previousSequenceValue: "41",
-      nextSequenceValue: "42",
-    })).rejects.toMatchObject({ failure });
-  });
+  ] as const)(
+    "classifies conditional cancellation at item %s",
+    async (index, failure) => {
+      const reasons = Array.from({ length: 3 }, (_, reasonIndex) => ({
+        Code: reasonIndex === index ? "ConditionalCheckFailed" : "None",
+      }));
+      dynamoMock.on(TransactWriteItemsCommand).rejects({
+        name: "TransactionCanceledException",
+        message: "transaction cancelled",
+        CancellationReasons: reasons,
+      } as Error);
+      await expect(
+        SalesInvoiceRepository.issueAtomically({
+          orgId: "org-123",
+          invoice: issuedInvoice,
+          authorityChecks: opaqueChecks(),
+          issuedByUserId: "user-123",
+          clientRequestId: "243dc17a-6c2b-4e2d-87b8-2ad2ae9f12da",
+          originalExpectedVersion: 2,
+          previousSequenceExists: true,
+          previousSequenceValue: "41",
+          nextSequenceValue: "42",
+        }),
+      ).rejects.toMatchObject({ failure });
+    },
+  );
 });

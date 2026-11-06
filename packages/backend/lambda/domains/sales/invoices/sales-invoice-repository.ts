@@ -1,4 +1,11 @@
 import {
+  salesAuthorityFields,
+  SalesCalculationBinding,
+} from "@liass-ohada/shared/sales";
+import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
+import { admission } from "@/lambda/shared/authority/integrity";
+import { verifyIssuedAuthority } from "../authority/sales-issuance-authority-service";
+import {
   AttributeValue,
   ConditionalCheckFailedException,
   GetItemCommand,
@@ -39,6 +46,7 @@ const SalesInvoiceLinePersistenceSchema = SalesInvoiceLineSchema.omit({
 
 const SalesInvoiceItemBaseSchema = z
   .object({
+    ...salesAuthorityFields,
     PK: z.string().min(1),
     SK: z.string().startsWith("SALES_INVOICE#"),
     entityType: z.literal("SALES_INVOICE"),
@@ -82,27 +90,32 @@ const SalesInvoiceSummaryItemSchema = z.union([
   SalesIssuedInvoiceItemSchema.omit({ lines: true }).strict(),
 ]);
 
-const SalesInvoiceSequenceItemSchema = z.object({
-  PK: z.string().min(1),
-  SK: z.literal("SALES_INVOICE_SEQUENCE#DEFAULT"),
-  entityType: z.literal("SALES_INVOICE_SEQUENCE"),
-  orgId: z.string().min(1),
-  lastValue: z.string().regex(/^(?:0|[1-9]\d*)$/),
-  updatedAt: z.string().datetime(),
-}).strict();
+const SalesInvoiceSequenceItemSchema = z
+  .object({
+    PK: z.string().min(1),
+    SK: z.literal("SALES_INVOICE_SEQUENCE#DEFAULT"),
+    entityType: z.literal("SALES_INVOICE_SEQUENCE"),
+    orgId: z.string().min(1),
+    lastValue: z.string().regex(/^(?:0|[1-9]\d*)$/),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
 
-const SalesInvoiceIssueIdempotencyItemSchema = z.object({
-  PK: z.string().min(1),
-  SK: z.string().startsWith("SALES_INVOICE_ISSUE_IDEMPOTENCY#"),
-  entityType: z.literal("SALES_INVOICE_ISSUE_IDEMPOTENCY"),
-  orgId: z.string().min(1),
-  clientRequestId: z.string().uuid(),
-  invoiceId: z.string().min(1),
-  issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  originalExpectedVersion: z.number().int().positive(),
-  invoiceNumber: z.string().regex(/^0*[1-9]\d*$/),
-  createdAt: z.string().datetime(),
-}).strict();
+const SalesInvoiceIssueIdempotencyItemSchema = z
+  .object({
+    issuanceAuthorityDigest: salesAuthorityFields.issuanceAuthorityDigest,
+    PK: z.string().min(1),
+    SK: z.string().startsWith("SALES_INVOICE_ISSUE_IDEMPOTENCY#"),
+    entityType: z.literal("SALES_INVOICE_ISSUE_IDEMPOTENCY"),
+    orgId: z.string().min(1),
+    clientRequestId: z.string().uuid(),
+    invoiceId: z.string().min(1),
+    issueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    originalExpectedVersion: z.number().int().positive(),
+    invoiceNumber: z.string().regex(/^0*[1-9]\d*$/),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
 
 export type SalesInvoiceIssueIdempotencyRecord = z.infer<
   typeof SalesInvoiceIssueIdempotencyItemSchema
@@ -119,6 +132,7 @@ export type SalesInvoiceIssueTransactionFailure =
   | "SEQUENCE_CONTENTION"
   | "INVOICE_CONFLICT"
   | "IDEMPOTENCY_CONFLICT"
+  | "AUTHORITY_CONFLICT"
   | "UNKNOWN_TRANSACTION_CANCELLATION";
 
 export class SalesInvoiceIssueTransactionError extends Error {
@@ -136,57 +150,84 @@ const isConditionalFailure = (error: unknown): boolean =>
 const toPersistenceLine = (
   currency: string,
   line: SalesInvoice["lines"][number],
+  binding?: SalesCalculationBinding,
 ) => {
   const { subtotal, taxAmount, total, ...attributes } = line;
   return {
     ...attributes,
-    subtotalMinor: SalesInvoiceCalculator.toMinorUnits(currency, subtotal),
-    taxAmountMinor: SalesInvoiceCalculator.toMinorUnits(currency, taxAmount),
-    totalMinor: SalesInvoiceCalculator.toMinorUnits(currency, total),
+    subtotalMinor: SalesInvoiceCalculator.toMinorUnits(
+      currency,
+      subtotal,
+      binding,
+    ),
+    taxAmountMinor: SalesInvoiceCalculator.toMinorUnits(
+      currency,
+      taxAmount,
+      binding,
+    ),
+    totalMinor: SalesInvoiceCalculator.toMinorUnits(currency, total, binding),
   };
 };
 
 const toLine = (
   currency: string,
   line: z.infer<typeof SalesInvoiceLinePersistenceSchema>,
+  binding?: SalesCalculationBinding,
 ) => {
   const { subtotalMinor, taxAmountMinor, totalMinor, ...attributes } = line;
   return SalesInvoiceLineSchema.parse({
     ...attributes,
-    subtotal: SalesInvoiceCalculator.fromMinorUnits(currency, subtotalMinor),
-    taxAmount: SalesInvoiceCalculator.fromMinorUnits(currency, taxAmountMinor),
-    total: SalesInvoiceCalculator.fromMinorUnits(currency, totalMinor),
+    subtotal: SalesInvoiceCalculator.fromMinorUnits(
+      currency,
+      subtotalMinor,
+      binding,
+    ),
+    taxAmount: SalesInvoiceCalculator.fromMinorUnits(
+      currency,
+      taxAmountMinor,
+      binding,
+    ),
+    total: SalesInvoiceCalculator.fromMinorUnits(currency, totalMinor, binding),
   });
 };
 
 const toInvoice = (item: SalesInvoiceItem): SalesInvoice =>
   SalesInvoiceSchema.parse({
+    ...authorityMetadata(item),
     id: item.id,
     status: item.status,
     currency: item.currency,
     customerId: item.customerId,
     customerSnapshot: item.customerSnapshot,
     lines: item.lines
-      .map((line) => toLine(item.currency, line))
+      .map((line) => toLine(item.currency, line, item.calculationBinding))
       .sort((left, right) => left.position - right.position),
     subtotal: SalesInvoiceCalculator.fromMinorUnits(
       item.currency,
       item.subtotalMinor,
+      item.calculationBinding,
     ),
     taxTotal: SalesInvoiceCalculator.fromMinorUnits(
       item.currency,
       item.taxTotalMinor,
+      item.calculationBinding,
     ),
-    total: SalesInvoiceCalculator.fromMinorUnits(item.currency, item.totalMinor),
+    total: SalesInvoiceCalculator.fromMinorUnits(
+      item.currency,
+      item.totalMinor,
+      item.calculationBinding,
+    ),
     lineCount: item.lineCount,
     version: item.version,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    ...(item.status === "ISSUED" ? {
-      invoiceNumber: item.invoiceNumber,
-      issueDate: item.issueDate,
-      issuedAt: item.issuedAt,
-    } : {}),
+    ...(item.status === "ISSUED"
+      ? {
+          invoiceNumber: item.invoiceNumber,
+          issueDate: item.issueDate,
+          issuedAt: item.issuedAt,
+        }
+      : {}),
   });
 
 const toSummary = (
@@ -201,20 +242,28 @@ const toSummary = (
     subtotal: SalesInvoiceCalculator.fromMinorUnits(
       item.currency,
       item.subtotalMinor,
+      item.calculationBinding,
     ),
     taxTotal: SalesInvoiceCalculator.fromMinorUnits(
       item.currency,
       item.taxTotalMinor,
+      item.calculationBinding,
     ),
-    total: SalesInvoiceCalculator.fromMinorUnits(item.currency, item.totalMinor),
+    total: SalesInvoiceCalculator.fromMinorUnits(
+      item.currency,
+      item.totalMinor,
+      item.calculationBinding,
+    ),
     lineCount: item.lineCount,
     version: item.version,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt,
-    ...(item.status === "ISSUED" ? {
-      invoiceNumber: item.invoiceNumber,
-      issueDate: item.issueDate,
-    } : {}),
+    ...(item.status === "ISSUED"
+      ? {
+          invoiceNumber: item.invoiceNumber,
+          issueDate: item.issueDate,
+        }
+      : {}),
   });
 
 const decodeCursor = (
@@ -252,45 +301,57 @@ export class SalesInvoiceRepository {
     invoice: SalesInvoice,
     issuedByUserId?: string,
   ): SalesInvoiceItem {
-    return SalesInvoiceItemSchema.parse({
+    const built = SalesInvoiceItemSchema.parse({
       PK: KeyFactory.orgKey(orgId),
       SK: KeyFactory.salesInvoiceSK(invoice.id),
       entityType: "SALES_INVOICE",
       orgId,
+      ...authorityMetadata(invoice),
       id: invoice.id,
       status: invoice.status,
       currency: invoice.currency,
       customerId: invoice.customerId,
       customerSnapshot: invoice.customerSnapshot,
-      lines: invoice.lines.map((line) => toPersistenceLine(invoice.currency, line)),
+      lines: invoice.lines.map((line) =>
+        toPersistenceLine(invoice.currency, line, invoice.calculationBinding),
+      ),
       subtotalMinor: SalesInvoiceCalculator.toMinorUnits(
         invoice.currency,
         invoice.subtotal,
+        invoice.calculationBinding,
       ),
       taxTotalMinor: SalesInvoiceCalculator.toMinorUnits(
         invoice.currency,
         invoice.taxTotal,
+        invoice.calculationBinding,
       ),
       totalMinor: SalesInvoiceCalculator.toMinorUnits(
         invoice.currency,
         invoice.total,
+        invoice.calculationBinding,
       ),
       lineCount: invoice.lineCount,
       version: invoice.version,
       createdAt: invoice.createdAt,
       updatedAt: invoice.updatedAt,
-      ...(invoice.status === "ISSUED" ? {
-        invoiceNumber: invoice.invoiceNumber,
-        issueDate: invoice.issueDate,
-        issuedAt: invoice.issuedAt,
-        issuedByUserId,
-      } : {}),
+      ...(invoice.status === "ISSUED"
+        ? {
+            invoiceNumber: invoice.invoiceNumber,
+            issueDate: invoice.issueDate,
+            issuedAt: invoice.issuedAt,
+            issuedByUserId,
+          }
+        : {}),
     });
+    if (invoice.calculationBinding) admission(built, 358400);
+    return built;
   }
 
   static async create(orgId: string, invoice: SalesInvoice): Promise<void> {
-    await this.put(this.buildItem(orgId, invoice),
-      "attribute_not_exists(PK) AND attribute_not_exists(SK)");
+    await this.put(
+      this.buildItem(orgId, invoice),
+      "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+    );
   }
 
   static async get(
@@ -373,17 +434,20 @@ export class SalesInvoiceRepository {
   static async getSequence(
     orgId: string,
   ): Promise<{ exists: boolean; lastValue: string }> {
-    const result = await dynamoClient.send(new GetItemCommand({
-      TableName: config.TABLE_NAME,
-      Key: marshall({
-        PK: KeyFactory.orgKey(orgId),
-        SK: KeyFactory.salesInvoiceSequenceSK(),
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.salesInvoiceSequenceSK(),
+        }),
+        ConsistentRead: true,
       }),
-      ConsistentRead: true,
-    }));
+    );
     if (!result.Item) return { exists: false, lastValue: "0" };
     const item = SalesInvoiceSequenceItemSchema.parse(unmarshall(result.Item));
-    if (item.orgId !== orgId) throw new Error("SALES Invoice sequence tenant mismatch");
+    if (item.orgId !== orgId)
+      throw new Error("SALES Invoice sequence tenant mismatch");
     return { exists: true, lastValue: item.lastValue };
   }
 
@@ -391,14 +455,16 @@ export class SalesInvoiceRepository {
     orgId: string,
     clientRequestId: string,
   ): Promise<SalesInvoiceIssueIdempotencyRecord | undefined> {
-    const result = await dynamoClient.send(new GetItemCommand({
-      TableName: config.TABLE_NAME,
-      Key: marshall({
-        PK: KeyFactory.orgKey(orgId),
-        SK: KeyFactory.salesInvoiceIssueIdempotencySK(clientRequestId),
+    const result = await dynamoClient.send(
+      new GetItemCommand({
+        TableName: config.TABLE_NAME,
+        Key: marshall({
+          PK: KeyFactory.orgKey(orgId),
+          SK: KeyFactory.salesInvoiceIssueIdempotencySK(clientRequestId),
+        }),
+        ConsistentRead: true,
       }),
-      ConsistentRead: true,
-    }));
+    );
     if (!result.Item) return undefined;
     const record = SalesInvoiceIssueIdempotencyItemSchema.parse(
       unmarshall(result.Item),
@@ -418,7 +484,13 @@ export class SalesInvoiceRepository {
     previousSequenceExists: boolean;
     previousSequenceValue: string;
     nextSequenceValue: string;
+    authorityChecks?: TransactWriteItem[];
   }): Promise<void> {
+    {
+      verifyIssuedAuthority(input.invoice, input.orgId);
+      if (input.authorityChecks?.length !== 2)
+        throw new AppError(409, "SALES_AUTHORITY_CHECKS_REQUIRED");
+    }
     const sequence = SalesInvoiceSequenceItemSchema.parse({
       PK: KeyFactory.orgKey(input.orgId),
       SK: KeyFactory.salesInvoiceSequenceSK(),
@@ -432,6 +504,7 @@ export class SalesInvoiceRepository {
       SK: KeyFactory.salesInvoiceIssueIdempotencySK(input.clientRequestId),
       entityType: "SALES_INVOICE_ISSUE_IDEMPOTENCY",
       orgId: input.orgId,
+      issuanceAuthorityDigest: input.invoice.issuanceAuthorityDigest,
       clientRequestId: input.clientRequestId,
       invoiceId: input.invoice.id,
       issueDate: input.invoice.issueDate,
@@ -444,46 +517,67 @@ export class SalesInvoiceRepository {
       : "#entityType = :sequenceType AND lastValue = :previousValue";
 
     try {
-      await dynamoClient.send(new TransactWriteItemsCommand({
-        TransactItems: [
-          { Put: {
-            TableName: config.TABLE_NAME,
-            Item: marshall(sequence),
-            ConditionExpression: sequenceCondition,
-            ...(!input.previousSequenceExists ? {} : {
-              ExpressionAttributeNames: { "#entityType": "entityType" },
-              ExpressionAttributeValues: marshall({
-                ":sequenceType": "SALES_INVOICE_SEQUENCE",
-                ":previousValue": input.previousSequenceValue,
-              }),
-            }),
-          } },
-          { Put: {
-            TableName: config.TABLE_NAME,
-            Item: marshall(
-              this.buildItem(input.orgId, input.invoice, input.issuedByUserId),
-              { removeUndefinedValues: true },
-            ),
-            ConditionExpression:
-              "#entityType = :invoiceType AND #status = :draft AND #version = :expectedVersion",
-            ExpressionAttributeNames: {
-              "#entityType": "entityType",
-              "#status": "status",
-              "#version": "version",
+      admission(
+        this.buildItem(input.orgId, input.invoice, input.issuedByUserId),
+        358400,
+      );
+      admission(idempotency, 8192);
+      await dynamoClient.send(
+        new TransactWriteItemsCommand({
+          TransactItems: [
+            {
+              Put: {
+                TableName: config.TABLE_NAME,
+                Item: marshall(sequence),
+                ConditionExpression: sequenceCondition,
+                ...(!input.previousSequenceExists
+                  ? {}
+                  : {
+                      ExpressionAttributeNames: { "#entityType": "entityType" },
+                      ExpressionAttributeValues: marshall({
+                        ":sequenceType": "SALES_INVOICE_SEQUENCE",
+                        ":previousValue": input.previousSequenceValue,
+                      }),
+                    }),
+              },
             },
-            ExpressionAttributeValues: marshall({
-              ":invoiceType": "SALES_INVOICE",
-              ":draft": "DRAFT",
-              ":expectedVersion": input.originalExpectedVersion,
-            }),
-          } },
-          { Put: {
-            TableName: config.TABLE_NAME,
-            Item: marshall(idempotency),
-            ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-          } },
-        ],
-      }));
+            {
+              Put: {
+                TableName: config.TABLE_NAME,
+                Item: marshall(
+                  this.buildItem(
+                    input.orgId,
+                    input.invoice,
+                    input.issuedByUserId,
+                  ),
+                  { removeUndefinedValues: true },
+                ),
+                ConditionExpression:
+                  "#entityType = :invoiceType AND #status = :draft AND #version = :expectedVersion",
+                ExpressionAttributeNames: {
+                  "#entityType": "entityType",
+                  "#status": "status",
+                  "#version": "version",
+                },
+                ExpressionAttributeValues: marshall({
+                  ":invoiceType": "SALES_INVOICE",
+                  ":draft": "DRAFT",
+                  ":expectedVersion": input.originalExpectedVersion,
+                }),
+              },
+            },
+            {
+              Put: {
+                TableName: config.TABLE_NAME,
+                Item: marshall(idempotency, { removeUndefinedValues: true }),
+                ConditionExpression:
+                  "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+              },
+            },
+            ...(input.authorityChecks ?? []),
+          ],
+        }),
+      );
     } catch (error) {
       const transactionError = error as {
         name?: string;
@@ -493,13 +587,16 @@ export class SalesInvoiceRepository {
       const failedIndex = transactionError.CancellationReasons?.findIndex(
         (reason) => reason.Code === "ConditionalCheckFailed",
       );
-      const failure: SalesInvoiceIssueTransactionFailure = failedIndex === 0
-        ? "SEQUENCE_CONTENTION"
-        : failedIndex === 1
-          ? "INVOICE_CONFLICT"
-          : failedIndex === 2
-            ? "IDEMPOTENCY_CONFLICT"
-            : "UNKNOWN_TRANSACTION_CANCELLATION";
+      const failure: SalesInvoiceIssueTransactionFailure =
+        failedIndex !== undefined && failedIndex >= 3
+          ? "AUTHORITY_CONFLICT"
+          : failedIndex === 0
+            ? "SEQUENCE_CONTENTION"
+            : failedIndex === 1
+              ? "INVOICE_CONFLICT"
+              : failedIndex === 2
+                ? "IDEMPOTENCY_CONFLICT"
+                : "UNKNOWN_TRANSACTION_CANCELLATION";
       throw new SalesInvoiceIssueTransactionError(failure);
     }
   }
@@ -527,4 +624,18 @@ export class SalesInvoiceRepository {
       throw error;
     }
   }
+}
+
+function authorityMetadata(value: {
+  calculationBinding?: unknown;
+  issuanceAuthoritySnapshot?: unknown;
+  issuanceAuthorityDigest?: string;
+}) {
+  return Object.fromEntries(
+    Object.entries({
+      calculationBinding: value.calculationBinding,
+      issuanceAuthoritySnapshot: value.issuanceAuthoritySnapshot,
+      issuanceAuthorityDigest: value.issuanceAuthorityDigest,
+    }).filter(([, v]) => v !== undefined),
+  );
 }

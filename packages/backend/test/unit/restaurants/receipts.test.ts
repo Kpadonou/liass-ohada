@@ -1,6 +1,8 @@
+import { RestaurantIssuanceProvenanceRepository as Provenance } from "@/lambda/domains/restaurants/issuance-provenance-repository";
 import { openCashFixture } from "./cash-fixture";
 import { RestaurantCashService as Cash } from "@/lambda/domains/restaurants/cash-service";
 import { RestaurantInvoiceService as Invoice } from "@/lambda/domains/restaurants/invoice-service";
+import { RestaurantInvoiceSourceVerifier as Source } from "@/lambda/domains/restaurants/invoice-source-verifier";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import {
   QueryCommand,
@@ -731,6 +733,10 @@ test("accepted cancellation remains explicit and nets commercial total", async (
     dueMinor: 2000,
     paidMinor: 2000,
   });
+  expect(
+    (await Source.verify(scope(), "owner", v.sessionId, result.receiptId))
+      .verified,
+  ).toBe(true);
   const page = await Receipt.read(scope(), "owner", v.sessionId, {});
   const commercial = page.parts.flatMap((p) =>
     p.content.kind === "COMMERCIAL" ? p.content.lines : [],
@@ -788,6 +794,10 @@ test("canonical mixed payments reconcile methods, allocations and applied cash o
     paymentCount: 3,
     paidByMethodMinor: { CASH: 600, MOBILE_MONEY: 700, CARD: 700 },
   });
+  expect(
+    (await Source.verify(scope(), "owner", v.sessionId, result.receiptId))
+      .verified,
+  ).toBe(true);
   const page = await Receipt.read(scope(), "owner", v.sessionId, {});
   const payments = page.parts.flatMap((p) =>
     p.content.kind === "SETTLEMENT" ? p.content.payments : [],
@@ -986,3 +996,375 @@ test("CASHIER publication has bounded reservation, part and FINAL action counts"
     }),
   );
 });
+
+describe("complete source verification", () => {
+  const verify = (sessionId: string, invoiceId: string, actor = "owner") =>
+    Source.verify(scope(), actor, sessionId, invoiceId);
+  const stored = (kind: string) =>
+    [...m.rows.values()]
+      .map((row) => unmarshall(row))
+      .filter((row) => row.entityType === `RESTAURANT_BILL_${kind}`);
+  function replace(row: Record<string, unknown>) {
+    m.rows.set(
+      JSON.stringify([row.PK, row.SK]),
+      marshall(row, { removeUndefinedValues: true }),
+    );
+  }
+  // Rebind the existing proof after intentional corruption to test semantic
+  // verification independently of the hash-tampering rejection.
+  function rechain(change: (parts: c.RestaurantReceiptPart[]) => void) {
+    const manifestRow = stored("MANIFEST")[0];
+    const manifest =
+      manifestRow.data as import("@/lambda/domains/restaurants/receipt-model").ReceiptManifest;
+    const rows = stored("PART").sort((a, b) =>
+      String(a.SK).localeCompare(String(b.SK)),
+    );
+    const parts = rows.map((row) =>
+      c.RestaurantReceiptPartSchema.parse(row.data),
+    );
+    change(parts);
+    let previous = parts[0].previousDigest;
+    for (const [index, part] of parts.entries()) {
+      const next = receiptPart(part.number, previous, part.content);
+      rows[index].data = next;
+      replace(rows[index]);
+      previous = next.digest;
+    }
+    manifest.digest = previous;
+    manifest.verifiedDigest = previous;
+    manifest.result!.digest = previous;
+    replace(manifestRow);
+    const resultRow = stored("RESULT")[0];
+    (resultRow.data as c.RestaurantReceiptSummary).digest = previous;
+    replace(resultRow);
+  }
+  test("valid FINAL is deterministic, deeply immutable and performs no writes", async () => {
+    const v = await visit(2);
+    await settle(v);
+    const result = await finish(v.sessionId);
+    const before = JSON.stringify([...m.rows]),
+      transactions = m.transactions.length;
+    const first = await verify(v.sessionId, result.receiptId);
+    expect(first.verified).toBe(true);
+    if (!first.verified) throw new Error(JSON.stringify(first));
+    expect(first.evidence.invoice.invoiceId).toBe(result.receiptId);
+    expect(first.evidence.lines).toHaveLength(2);
+    expect(first.evidence.lines[0].coordinate).toMatchObject({
+      orderId: v.orderId,
+      partNumber: 1,
+      position: 0,
+    });
+    expect(Object.isFrozen(first.evidence.parts[0].content)).toBe(true);
+    expect(await verify(v.sessionId, result.receiptId)).toEqual(first);
+    expect(JSON.stringify([...m.rows])).toBe(before);
+    expect(m.transactions.length).toBe(transactions);
+    expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
+  });
+  test("actual multiline multipage service flow reads every part", async () => {
+    const v = await visit(130);
+    await settle(v);
+    const result = await finish(v.sessionId);
+    expect(result.partCount).toBeGreaterThan(8);
+    const read = jest.spyOn(B, "parts");
+    const verified = await verify(v.sessionId, result.receiptId);
+    expect(verified.verified).toBe(true);
+    if (!verified.verified) throw new Error(JSON.stringify(verified));
+    expect(verified.evidence.parts).toHaveLength(result.partCount);
+    expect(verified.evidence.lines).toHaveLength(130);
+    expect(read.mock.calls.length).toBeGreaterThan(1);
+  }, 60000);
+  test.each([
+    "missing",
+    "duplicate",
+    "reordered",
+    "truncated",
+    "loop",
+    "cross-page-reference",
+  ])("rejects %s pagination without partial evidence", async (defect) => {
+    const v = await synthetic(10, 130);
+    const result = await finish(v.sessionId);
+    const read = B.parts.bind(B);
+    let calls = 0;
+    jest.spyOn(B, "parts").mockImplementation(async (...args) => {
+      const page = await read(...args);
+      calls++;
+      if (defect === "truncated" && calls === 1) delete page.nextCursor;
+      if (calls === 2) {
+        if (defect === "missing") page.parts = [];
+        if (defect === "duplicate")
+          page.parts.unshift(structuredClone(page.parts[0]));
+        if (defect === "reordered") page.parts.reverse();
+        if (defect === "loop") page.nextCursor = args[4].cursor;
+        if (defect === "cross-page-reference")
+          page.parts[0] = receiptPart(
+            page.parts[0].number,
+            "0".repeat(64),
+            page.parts[0].content,
+          );
+      }
+      return page;
+    });
+    expect(await verify(v.sessionId, result.receiptId)).toEqual({
+      verified: false,
+      denial: { code: "SOURCE_INTEGRITY" },
+    });
+  });
+  test.each([
+    "digest",
+    "missing-part",
+    "extra-part",
+    "missing-result",
+    "missing-manifest",
+    "ownership",
+    "missing-snapshot",
+  ])("rejects stored %s evidence", async (defect) => {
+    const v = await visit(2);
+    await settle(v);
+    const result = await finish(v.sessionId);
+    const part = stored("PART")[0];
+    if (defect === "digest")
+      (part.data as c.RestaurantReceiptPart).digest = "a".repeat(64);
+    if (defect === "ownership") part.orgId = "foreign";
+    if (defect === "missing-snapshot") {
+      const content = (part.data as c.RestaurantReceiptPart).content;
+      if (content.kind === "COMMERCIAL")
+        delete (content.lines[0] as Partial<c.RestaurantInvoiceLine>).snapshot;
+    }
+    replace(part);
+    if (defect.startsWith("missing-") && defect !== "missing-snapshot") {
+      const row =
+        defect === "missing-part"
+          ? part
+          : stored(defect === "missing-result" ? "RESULT" : "MANIFEST")[0];
+      m.rows.delete(JSON.stringify([row.PK, row.SK]));
+    }
+    if (defect === "extra-part") {
+      const next = result.partCount + 1;
+      replace({
+        ...part,
+        SK: K.restaurantBillPartSK(next),
+        data: { ...(part.data as object), number: next },
+      });
+    }
+    const denied = await verify(v.sessionId, result.receiptId);
+    expect(denied.verified).toBe(false);
+    expect(denied).not.toHaveProperty("evidence");
+    expect(JSON.stringify(denied)).not.toMatch(
+      /PK|SK|org-resto|snapshot|stack/,
+    );
+  });
+  test.each([
+    "duplicate-coordinate",
+    "foreign-order",
+    "amount",
+    "coverage",
+    "allocation",
+    "tender",
+  ])("rejects rehashed %s corruption", async (defect) => {
+    const v = await visit(2);
+    await settle(v);
+    const result = await finish(v.sessionId);
+    rechain((parts) => {
+      const commercial = parts.flatMap((part) =>
+        part.content.kind === "COMMERCIAL" ? part.content.lines : [],
+      );
+      const payments = parts.flatMap((part) =>
+        part.content.kind === "SETTLEMENT" ? part.content.payments : [],
+      );
+      if (defect === "duplicate-coordinate")
+        commercial[1].itemId = commercial[0].itemId;
+      if (defect === "foreign-order") commercial[0].orderId = id(999);
+      if (defect === "amount") commercial[0].netAmountMinor++;
+      if (defect === "coverage") {
+        const part = parts[0];
+        if (part.content.kind === "COMMERCIAL") part.content.lines.pop();
+      }
+      if (defect === "allocation") payments[0].allocations[0].amountMinor--;
+      if (defect === "tender") payments[0].changeMinor!++;
+    });
+    expect(await verify(v.sessionId, result.receiptId)).toEqual({
+      verified: false,
+      denial: { code: "SOURCE_INTEGRITY" },
+    });
+  });
+  test("proves exhaustion when an extra part lies beyond the final page boundary", async () => {
+    const v = await synthetic(8, 8);
+    const result = await finish(v.sessionId);
+    expect(result.partCount).toBe(8);
+    const part = stored("PART")[0];
+    replace({
+      ...part,
+      SK: K.restaurantBillPartSK(9),
+      data: { ...(part.data as object), number: 9 },
+    });
+    expect(await verify(v.sessionId, result.receiptId)).toEqual({
+      verified: false,
+      denial: { code: "SOURCE_INTEGRITY" },
+    });
+  });
+  test("rejects an oversized manifest before acquiring parts", async () => {
+    const v = await visit();
+    await settle(v);
+    const result = await finish(v.sessionId);
+    const manifestRow = stored("MANIFEST")[0];
+    const manifest =
+      manifestRow.data as import("@/lambda/domains/restaurants/receipt-model").ReceiptManifest;
+    manifest.partCount =
+      manifest.verifiedCount =
+      manifest.commercialPartCount =
+        2049;
+    manifest.settlementPartCount = 0;
+    manifest.result!.partCount = manifest.result!.commercialPartCount = 2049;
+    manifest.result!.settlementPartCount = 0;
+    replace(manifestRow);
+    const resultRow = stored("RESULT")[0];
+    resultRow.data = manifest.result;
+    replace(resultRow);
+    const read = jest.spyOn(B, "parts");
+    expect(await verify(v.sessionId, result.receiptId)).toEqual({
+      verified: false,
+      denial: { code: "SOURCE_LIMIT" },
+    });
+    expect(read).not.toHaveBeenCalled();
+  });
+  test("rejects BUILDING without publishing or completing it", async () => {
+    const v = await synthetic(10, 130);
+    const original = R.commit.bind(R);
+    const stop = jest.spyOn(R, "commit").mockImplementation(async (actions) => {
+      await original(actions);
+      if (
+        actions.some(
+          (action) =>
+            action.Put?.Item?.entityType?.S === "RESTAURANT_BILL_PART",
+        )
+      )
+        throw new Error("interrupt");
+    });
+    await expect(finish(v.sessionId)).rejects.toThrow("interrupt");
+    stop.mockRestore();
+    const invoiceId = (await S.session(scope(), v.sessionId)).data.finalBillId!;
+    const before = JSON.stringify([...m.rows]);
+    expect(await verify(v.sessionId, invoiceId)).toEqual({
+      verified: false,
+      denial: { code: "NOT_FINAL" },
+    });
+    expect(JSON.stringify([...m.rows])).toBe(before);
+  });
+  test("rejects foreign tenant/outlet, wrong invoice and unauthorized role", async () => {
+    const v = await visit();
+    await settle(v);
+    const result = await finish(v.sessionId);
+    for (const foreign of [
+      { ...scope(), orgId: "foreign" },
+      { ...scope(), outletId: id(999) },
+    ]) {
+      expect(
+        (await Source.verify(foreign, "owner", v.sessionId, result.receiptId))
+          .verified,
+      ).toBe(false);
+    }
+    expect(await verify(v.sessionId, id(999))).toEqual({
+      verified: false,
+      denial: { code: "SOURCE_INTEGRITY" },
+    });
+    m.seedAccess(org, "waiter", "WAITER");
+    expect(await verify(v.sessionId, result.receiptId, "waiter")).toEqual({
+      verified: false,
+      denial: { code: "ACCESS_DENIED" },
+    });
+  });
+  test("rechecks authorization after pagination and sanitizes read failures", async () => {
+    const v = await visit();
+    await settle(v);
+    const result = await finish(v.sessionId);
+    const authorize = Receipt.authorize.bind(Receipt);
+    let calls = 0;
+    jest.spyOn(Receipt, "authorize").mockImplementation(async (...args) => {
+      if (++calls === 2)
+        throw new (await import("@/lambda/shared/app-error")).AppError(
+          403,
+          "PRIVATE_DETAIL",
+        );
+      return authorize(...args);
+    });
+    expect(await verify(v.sessionId, result.receiptId)).toEqual({
+      verified: false,
+      denial: { code: "ACCESS_DENIED" },
+    });
+    jest.spyOn(B, "get").mockRejectedValue(new Error("AWS secret PK details"));
+    expect(await verify(v.sessionId, result.receiptId)).toEqual({
+      verified: false,
+      denial: { code: "READ_UNAVAILABLE" },
+    });
+  });
+});
+
+test.each(["revocation", "concurrent replacement", "duplicate provenance"])(
+  "synthetic FINAL authority failure rolls back publication: %s",
+  async () => {
+    const v = await visit();
+    await settle(v);
+    process.env.RESTAURANTS_SYNTHETIC_PROVENANCE = "1";
+    const prepared = jest
+      .spyOn(Provenance, "prepare")
+      .mockResolvedValue([
+        {
+          ConditionCheck: {
+            TableName: "platform",
+            Key: marshall({ PK: "synthetic-seller", SK: "CURRENT" }),
+            ConditionExpression: "attribute_exists(PK)",
+          },
+        },
+        {
+          ConditionCheck: {
+            TableName: "restaurants",
+            Key: marshall({ PK: "synthetic-timezone", SK: "CURRENT" }),
+            ConditionExpression: "attribute_exists(PK)",
+          },
+        },
+        {
+          Put: {
+            TableName: "restaurants",
+            Item: marshall({ PK: "synthetic-provenance", SK: "V1" }),
+            ConditionExpression: "attribute_not_exists(PK)",
+          },
+        },
+      ]);
+    const original = R.commit.bind(R);
+    const commit = jest
+      .spyOn(R, "commit")
+      .mockImplementation(async (actions) => {
+        if (
+          actions.some(
+            (a) => a.Put?.Item?.entityType?.S === "RESTAURANT_BILL_RESULT",
+          )
+        ) {
+          expect(
+            actions.filter((a) =>
+              a.ConditionCheck?.Key?.PK.S?.startsWith("synthetic-"),
+            ),
+          ).toHaveLength(2);
+          expect(
+            actions.some((a) => a.Put?.Item?.PK.S === "synthetic-provenance"),
+          ).toBe(true);
+          throw new Error("synthetic atomic cancellation");
+        }
+        return original(actions);
+      });
+    try {
+      await expect(finish(v.sessionId)).rejects.toThrow(
+        "synthetic atomic cancellation",
+      );
+      expect(prepared).toHaveBeenCalled();
+      expect(
+        [...m.rows.values()].some(
+          (row) => row.entityType?.S === "RESTAURANT_BILL_RESULT",
+        ),
+      ).toBe(false);
+    } finally {
+      commit.mockRestore();
+      prepared.mockRestore();
+      delete process.env.RESTAURANTS_SYNTHETIC_PROVENANCE;
+    }
+  },
+);

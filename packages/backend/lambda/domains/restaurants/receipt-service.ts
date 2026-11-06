@@ -1,3 +1,7 @@
+import {
+  RestaurantIssuanceProvenanceRepository as Provenance,
+  syntheticProvenanceEnabled,
+} from "./issuance-provenance-repository";
 import { randomUUID } from "crypto";
 import { RestaurantDocumentCollections as Documents } from "./document-collections";
 import { z } from "zod";
@@ -239,6 +243,9 @@ export class RestaurantReceiptService {
         receiptId,
         guestSessionId: sessionId,
         state: "BUILDING",
+        ...(syntheticProvenanceEnabled()
+          ? { issuanceProvenanceVersion: 1 as const }
+          : {}),
         version: 1,
         sourceVersion: session.data.version + 1,
         financialRevision: session.data.financialRevision,
@@ -392,6 +399,10 @@ export class RestaurantReceiptService {
       "RESULT",
     );
     if (!result || hash(result) !== hash(m.result)) fail();
+    if (m.issuanceProvenanceVersion === 1) {
+      const provenance = await Provenance.read(scope, m);
+      if (!provenance.verified) fail("PROVENANCE_UNAVAILABLE");
+    }
     return { data: { state: "FINAL" as const, receipt: result } };
   }
   static append(
@@ -659,6 +670,8 @@ export class RestaurantReceiptService {
       digest: m.digest,
       issuedAt: now,
     });
+    if (m.issuanceProvenanceVersion === 1)
+      actions.push(...(await Provenance.prepare(scope, actorId, m, now)));
     m.state = "FINAL";
     m.result = result;
     const documentContext = await Documents.context(scope, "INV");

@@ -1,3 +1,4 @@
+import { publicSalesResponse } from "./public-sales-response";
 import {
   SalesInvoiceIdRequestSchema,
   UpdateSalesInvoiceRequestSchema,
@@ -20,7 +21,9 @@ export const handler = createHandler(
   UpdateSalesInvoiceRouteSchema,
   async ({ invoiceId, ...request }, { orgId, userId, i18n }) => ({
     message: i18n.getMessage("SUCCESS_SALES_INVOICE_UPDATED"),
-    data: await SalesInvoiceService.update(orgId, userId, invoiceId, request),
+    data: publicSalesResponse(
+      await SalesInvoiceService.update(orgId, userId, invoiceId, request),
+    ),
   }),
   {
     action: "PATCH /sales/invoices/{invoiceId}",

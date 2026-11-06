@@ -1,3 +1,4 @@
+import { publicSalesResponse } from "./public-sales-response";
 import {
   IssueSalesInvoiceRequestSchema,
   SalesInvoiceIdRequestSchema,
@@ -14,7 +15,9 @@ export const handler = createHandler(
   IssueSalesInvoiceRouteSchema,
   async ({ invoiceId, ...request }, { orgId, userId, i18n }) => ({
     message: i18n.getMessage("SUCCESS_SALES_INVOICE_ISSUED"),
-    data: await SalesInvoiceService.issue(orgId, userId, invoiceId, request),
+    data: publicSalesResponse(
+      await SalesInvoiceService.issue(orgId, userId, invoiceId, request),
+    ),
   }),
   {
     action: "POST /sales/invoices/{invoiceId}/issue",

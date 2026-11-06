@@ -226,6 +226,11 @@ export const KeyFactory = {
     return `PART#${String(number).padStart(6, "0")}`;
   },
   restaurantBillResultSK: () => "RESULT",
+  restaurantIssuanceProvenanceSK: () => "ISSUANCE_PROVENANCE#V1",
+  restaurantIssuanceTimezoneCurrentSK: () =>
+    "RESTAURANTS_ISSUANCE_TIMEZONE#CURRENT",
+  restaurantIssuanceTimezoneRevisionSK: (id: string) =>
+    `RESTAURANTS_ISSUANCE_TIMEZONE#REV#${id}`,
   restaurantPaymentPK: (orgId: string, outletId: string, id: string) =>
     `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#PAY#${restaurantTransactionSegment(id)}`,
   restaurantPaymentPublicReferenceClaimKey: (
@@ -354,6 +359,8 @@ export const KeyFactory = {
   restaurantQrSK: () => "LOOKUP",
 
   // Fiscal Compliance-owned local foundation; source keys are connection-independent.
+  fiscalAttemptEffectSK: (environment: string, obligationId: string) =>
+    `FISCAL_ATTEMPT_EFFECT#${environment}#${obligationId}`,
   fiscalProfileSK: () => "FISCAL_PROFILE#BJ",
   fiscalConnectionPrefix: (environment: string) =>
     `FISCAL_CONNECTION#BJ#BENIN_E_MECEF#${environment}#`,
@@ -421,6 +428,17 @@ export const KeyFactory = {
 
   /** SK for Sales-owned settings under the organization partition. */
   salesSettingsSK: () => "SETTINGS#SALES",
+
+  organizationLegalIdentityRevisionSK: (revisionId: string) =>
+    `PLATFORM_LEGAL_IDENTITY#REV#${revisionId}`,
+  organizationLegalIdentityCurrentSK: () => "PLATFORM_LEGAL_IDENTITY#CURRENT",
+  organizationLegalIdentitySelectionSK: (version: number) =>
+    `PLATFORM_LEGAL_IDENTITY#SELECTION#${version.toString().padStart(16, "0")}`,
+  salesIssuanceTimezoneRevisionSK: (revisionId: string) =>
+    `SALES_ISSUANCE_TIMEZONE#REV#${revisionId}`,
+  salesIssuanceTimezoneCurrentSK: () => "SALES_ISSUANCE_TIMEZONE#CURRENT",
+  salesIssuanceTimezoneSelectionSK: (version: number) =>
+    `SALES_ISSUANCE_TIMEZONE#SELECTION#${version.toString().padStart(16, "0")}`,
 
   /** SALES-owned Customer aggregate under the organization partition. */
   salesCustomerSK: (customerId: string) =>

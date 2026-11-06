@@ -1,3 +1,4 @@
+import { SalesCalculationBinding } from "@liass-ohada/shared/sales";
 import {
   SalesCreditNoteLine,
   SalesCreditNoteLineSchema,
@@ -40,22 +41,27 @@ export class SalesCreditNoteCalculator {
     position: number;
     quantity: string;
     timestamp: string;
+    calculationBinding?: SalesCalculationBinding;
   }): SalesCreditNoteLine {
     SalesInvoiceQuantitySchema.parse(input.quantity);
     if (this.compareQuantity(input.quantity, input.originalLine.quantity) > 0) {
       throw new AppError(409, "SALES_CREDIT_NOTE_QUANTITY_EXCEEDS_SOURCE");
     }
-    const calculated = SalesInvoiceCalculator.calculateLine(input.currency, {
-      id: input.id,
-      position: input.position,
-      description: input.originalLine.description,
-      unit: input.originalLine.unit,
-      quantity: input.quantity,
-      unitPrice: input.originalLine.unitPrice,
-      taxRate: input.originalLine.taxRate,
-      createdAt: input.timestamp,
-      updatedAt: input.timestamp,
-    });
+    const calculated = SalesInvoiceCalculator.calculateLine(
+      input.currency,
+      {
+        id: input.id,
+        position: input.position,
+        description: input.originalLine.description,
+        unit: input.originalLine.unit,
+        quantity: input.quantity,
+        unitPrice: input.originalLine.unitPrice,
+        taxRate: input.originalLine.taxRate,
+        createdAt: input.timestamp,
+        updatedAt: input.timestamp,
+      },
+      input.calculationBinding,
+    );
     return SalesCreditNoteLineSchema.parse({
       ...calculated,
       originalInvoiceLineId: input.originalLine.id,

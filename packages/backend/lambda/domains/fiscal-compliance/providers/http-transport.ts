@@ -1,5 +1,6 @@
 export interface FiscalHttpRequest {
-  method: "GET";
+  method: "GET" | "POST" | "PUT";
+  body?: string;
   url: string;
   headers: Readonly<Record<string, string>>;
   signal: AbortSignal;
@@ -20,6 +21,7 @@ export const nodeFetchFiscalHttpTransport: FiscalHttpTransport = async (
   const response = await fetch(request.url, {
     method: request.method,
     headers: request.headers,
+    body: request.body,
     redirect: "error",
     signal: request.signal,
   });

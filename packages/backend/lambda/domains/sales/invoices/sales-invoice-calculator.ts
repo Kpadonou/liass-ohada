@@ -1,3 +1,4 @@
+import { SalesCalculationBinding } from "@liass-ohada/shared/sales";
 import {
   SalesInvoiceLine,
   SalesInvoiceQuantitySchema,
@@ -74,8 +75,9 @@ export class SalesInvoiceCalculator {
   static calculateLine(
     currency: string,
     input: CalculateSalesInvoiceLineInput,
+    binding?: SalesCalculationBinding,
   ): SalesInvoiceLine {
-    const { minorUnits } = resolveSalesCurrency(currency);
+    const { minorUnits } = resolveSalesCurrency(currency, binding);
     const quantity = normalizeDecimal(
       SalesInvoiceQuantitySchema.parse(input.quantity),
     );
@@ -113,12 +115,15 @@ export class SalesInvoiceCalculator {
   static calculateTotals(
     currency: string,
     lines: readonly SalesInvoiceLine[],
+    binding?: SalesCalculationBinding,
   ): { subtotal: string; taxTotal: string; total: string } {
-    const { minorUnits } = resolveSalesCurrency(currency);
+    const { minorUnits } = resolveSalesCurrency(currency, binding);
     const sums = lines.reduce(
       (result, line) => ({
-        subtotal: result.subtotal + moneyToMinorUnits(line.subtotal, minorUnits),
-        taxTotal: result.taxTotal + moneyToMinorUnits(line.taxAmount, minorUnits),
+        subtotal:
+          result.subtotal + moneyToMinorUnits(line.subtotal, minorUnits),
+        taxTotal:
+          result.taxTotal + moneyToMinorUnits(line.taxAmount, minorUnits),
         total: result.total + moneyToMinorUnits(line.total, minorUnits),
       }),
       { subtotal: 0n, taxTotal: 0n, total: 0n },
@@ -130,17 +135,25 @@ export class SalesInvoiceCalculator {
     };
   }
 
-  static toMinorUnits(currency: string, value: string): string {
+  static toMinorUnits(
+    currency: string,
+    value: string,
+    binding?: SalesCalculationBinding,
+  ): string {
     return moneyToMinorUnits(
       value,
-      resolveSalesCurrency(currency).minorUnits,
+      resolveSalesCurrency(currency, binding).minorUnits,
     ).toString();
   }
 
-  static fromMinorUnits(currency: string, value: string): string {
+  static fromMinorUnits(
+    currency: string,
+    value: string,
+    binding?: SalesCalculationBinding,
+  ): string {
     return formatMinorUnits(
       BigInt(value),
-      resolveSalesCurrency(currency).minorUnits,
+      resolveSalesCurrency(currency, binding).minorUnits,
     );
   }
 }

@@ -1,3 +1,4 @@
+import { publicSalesResponse } from "./public-sales-response";
 import {
   RemoveSalesInvoiceLineRequestSchema,
   SalesInvoiceLineIdRequestSchema,
@@ -15,12 +16,14 @@ export const handler = createHandler(
   RemoveSalesInvoiceLineRouteSchema,
   async ({ invoiceId, lineId, expectedVersion }, { orgId, userId, i18n }) => ({
     message: i18n.getMessage("SUCCESS_SALES_INVOICE_LINE_REMOVED"),
-    data: await SalesInvoiceService.removeLine(
-      orgId,
-      userId,
-      invoiceId,
-      lineId,
-      expectedVersion,
+    data: publicSalesResponse(
+      await SalesInvoiceService.removeLine(
+        orgId,
+        userId,
+        invoiceId,
+        lineId,
+        expectedVersion,
+      ),
     ),
   }),
   {

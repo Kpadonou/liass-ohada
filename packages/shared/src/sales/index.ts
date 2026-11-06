@@ -8,3 +8,5 @@ export * from "./sales-payment";
 export * from "./sales-settings";
 
 export * from "./sales-fiscalizable-document";
+
+export * from "./sales-issuance-authority";

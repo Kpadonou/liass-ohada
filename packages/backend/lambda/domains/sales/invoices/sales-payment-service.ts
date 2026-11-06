@@ -71,7 +71,12 @@ export class SalesPaymentService {
       throw new AppError(409, "SALES_RECEIVABLE_REQUIRES_ISSUED");
     }
     return SalesPaymentListResponseSchema.parse(
-      await SalesPaymentRepository.list(tenantId, id, request),
+      await SalesPaymentRepository.list(
+        tenantId,
+        id,
+        request,
+        invoice.calculationBinding,
+      ),
     );
   }
 
@@ -96,7 +101,10 @@ export class SalesPaymentService {
     if (invoice.status !== "ISSUED") {
       throw new AppError(409, "SALES_RECEIVABLE_REQUIRES_ISSUED");
     }
-    const currentState = await this.loadCanonicalReceivableState(tenantId, invoice);
+    const currentState = await this.loadCanonicalReceivableState(
+      tenantId,
+      invoice,
+    );
     const current = currentState.receivable;
     if (current.balanceDue === "0") {
       throw new AppError(409, "SALES_INVOICE_ALREADY_SETTLED");
@@ -110,6 +118,7 @@ export class SalesPaymentService {
       current,
       request.amount,
       now,
+      invoice.calculationBinding,
     );
     const payment = SalesPaymentSchema.parse({
       id: `SPAY-${Date.now().toString().padStart(13, "0")}-${randomUUID()}`,
@@ -126,6 +135,7 @@ export class SalesPaymentService {
       await SalesPaymentRepository.recordAtomically({
         orgId: tenantId,
         payment,
+        calculationBinding: invoice.calculationBinding,
         receivable: calculated.receivable,
         recordedByUserId: userId,
         clientRequestId: request.clientRequestId,
@@ -141,7 +151,11 @@ export class SalesPaymentService {
       );
       if (winner) return this.resolveReplay(tenantId, id, request, winner);
 
-      const authoritative = await SalesPaymentRepository.getReceivable(tenantId, id);
+      const authoritative = await SalesPaymentRepository.getReceivable(
+        tenantId,
+        id,
+        invoice.calculationBinding,
+      );
       if ((authoritative?.version ?? 0) !== request.expectedVersion) {
         throw new AppError(409, "SALES_RECEIVABLE_VERSION_CONFLICT");
       }
@@ -184,20 +198,29 @@ export class SalesPaymentService {
     invoice: Awaited<ReturnType<typeof SalesInvoiceService.get>>,
   ): Promise<import("./sales-payment-repository").SalesReceivableState> {
     try {
-      const persisted = await SalesPaymentRepository.getReceivableState(orgId, invoice.id);
+      const persisted = await SalesPaymentRepository.getReceivableState(
+        orgId,
+        invoice.id,
+        invoice.calculationBinding,
+      );
       if (!persisted) {
-        return { receivable: SalesReceivableCalculator.synthetic({
-          invoiceId: invoice.id,
-          currency: invoice.currency,
-          invoiceAmount: invoice.total,
-          timestamp: invoice.updatedAt,
-        }), creditedLineQuantities: {} };
+        return {
+          receivable: SalesReceivableCalculator.synthetic({
+            invoiceId: invoice.id,
+            currency: invoice.currency,
+            invoiceAmount: invoice.total,
+            timestamp: invoice.updatedAt,
+            calculationBinding: invoice.calculationBinding,
+          }),
+          creditedLineQuantities: {},
+        };
       }
       const receivable = persisted.receivable;
       if (
         receivable.invoiceId !== invoice.id ||
         receivable.currency !== invoice.currency ||
-        normalizeDecimal(receivable.invoiceAmount) !== normalizeDecimal(invoice.total)
+        normalizeDecimal(receivable.invoiceAmount) !==
+          normalizeDecimal(invoice.total)
       ) {
         throw new Error("Receivable Invoice snapshot mismatch");
       }
@@ -237,7 +260,12 @@ export class SalesPaymentService {
     let receivable: SalesInvoiceReceivable;
     try {
       [payment, receivable] = await Promise.all([
-        SalesPaymentRepository.getPayment(orgId, invoiceId, record.paymentId),
+        SalesPaymentRepository.getPayment(
+          orgId,
+          invoiceId,
+          record.paymentId,
+          invoice.calculationBinding,
+        ),
         this.loadCanonicalReceivable(orgId, invoice),
       ]);
     } catch (error) {
@@ -251,7 +279,10 @@ export class SalesPaymentService {
       });
       throw new AppError(500, "SALES_PAYMENT_IDEMPOTENCY_INTEGRITY_ERROR");
     }
-    if (!payment || normalizeDecimal(payment.amount) !== normalizeDecimal(record.amount)) {
+    if (
+      !payment ||
+      normalizeDecimal(payment.amount) !== normalizeDecimal(record.amount)
+    ) {
       console.error("[SALES_RECEIVABLE_INTEGRITY]", {
         event: "IDEMPOTENCY_RECORD_MISMATCH",
         invoiceId,
@@ -280,7 +311,10 @@ export class SalesPaymentService {
     clientRequestId: string,
   ): Promise<SalesPaymentIdempotencyRecord | undefined> {
     try {
-      return await SalesPaymentRepository.getIdempotency(orgId, clientRequestId);
+      return await SalesPaymentRepository.getIdempotency(
+        orgId,
+        clientRequestId,
+      );
     } catch (error) {
       console.error("[SALES_RECEIVABLE_INTEGRITY]", {
         event: "IDEMPOTENCY_RECORD_READ_FAILED",

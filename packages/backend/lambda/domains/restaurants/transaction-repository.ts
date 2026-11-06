@@ -424,7 +424,11 @@ export class RestaurantTransactionsRepository {
   ): Promise<void> {
     const actualKeys = actions.map((a) => {
       const k = a.Put?.Item ?? a.Delete?.Key ?? a.ConditionCheck?.Key;
-      return JSON.stringify([k?.PK, k?.SK]);
+      return JSON.stringify([
+        a.Put?.TableName ?? a.Delete?.TableName ?? a.ConditionCheck?.TableName,
+        k?.PK,
+        k?.SK,
+      ]);
     });
     if (
       !actions.length ||

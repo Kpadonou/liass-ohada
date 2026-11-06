@@ -1,0 +1,455 @@
+{
+  "evidenceVersion": 1,
+  "scope": "Actual SALES services/calculators/repositories; in-memory SDK transport; synthetic business input only. Not production usage or fiscal approval.",
+  "scenarios": [
+    {
+      "scenarioId": "simple",
+      "sourceType": "SalesInvoice",
+      "sourceId": "SINV-90000000-0000-4000-8000-000000000004",
+      "sourceVersion": 3,
+      "persistedMarshalledJsonUtf8Bytes": 3939,
+      "result": {
+        "status": "BLOCKED_BY_D04",
+        "source": {
+          "documentType": "INVOICE",
+          "documentId": "SINV-90000000-0000-4000-8000-000000000004",
+          "version": 3
+        },
+        "frozenCommercialSource": {
+          "calculationBinding": {
+            "policyId": "LIASS-SALES-LINE-HT-HALFUP",
+            "policyVersion": "1",
+            "definitionBytesDigest": "440a482a247d581a1790c7f16c891acd117bbca6d28b2c28c4abfb0bd1e8e7f8",
+            "currencyRegistryId": "LIASS-SALES-CURRENCY-COMPAT-2026-11-04",
+            "currencyRegistryVersion": "1",
+            "currencyRegistryDigest": "2d36e30d0f270a52306de2e95ce3bb2b978e45b99d9a4cdb41796724c86cc1b0",
+            "calculationDefinitionFingerprint": "c8d38f0350cab6a590e67aa1a02e831b3aa2f6ad780b0d4fa595d3a3eb0882c2",
+            "currencyCode": "EUR",
+            "minorUnitScale": 2,
+            "approvalReference": "D03-2026-11-04-COMMERCIAL-COMPATIBILITY"
+          },
+          "issuanceAuthoritySnapshot": {
+            "schemaVersion": 1,
+            "orgId": "org-123",
+            "documentType": "INVOICE",
+            "documentId": "SINV-90000000-0000-4000-8000-000000000004",
+            "issuedSourceVersion": 3,
+            "issuedAt": "2026-11-04T12:00:00.000Z",
+            "issueDate": "2026-10-01",
+            "issuanceEventReference": "INVOICE:SINV-90000000-0000-4000-8000-000000000004:3",
+            "sellerAuthority": {
+              "orgId": "org-123",
+              "legalEntityReference": "synthetic-entity",
+              "authorityReference": "PLATFORM_LEGAL_IDENTITY_REVIEW",
+              "authorityVersion": "1",
+              "identityReference": "11111111-1111-4111-8111-111111111111",
+              "identityVersion": "1",
+              "identityDigest": "7517456dc4ff01971d42d7390fe91136298f21a71aa9d68a221c01219dac9724",
+              "seller": {
+                "name": "Synthetic seller",
+                "identifiers": []
+              },
+              "acceptanceReference": "acceptance",
+              "acceptanceVersion": "1",
+              "subjectBindingState": "VERIFIED",
+              "evidenceReference": "11111111-1111-4111-8111-111111111111",
+              "factStates": [
+                {
+                  "fieldPath": "name",
+                  "state": "VERIFIED",
+                  "evidenceReference": "acceptance"
+                }
+              ]
+            },
+            "timezoneAuthority": {
+              "orgId": "org-123",
+              "reference": "11111111-1111-4111-8111-111111111111",
+              "version": "1",
+              "timezone": "Africa/Porto-Novo",
+              "tzdbVersion": "2026a",
+              "tzdbArtifactDigest": "77b541725937bb53bd92bd484c0b43bec8545e2d3431ee01f04ef8f2203ba2b7",
+              "acceptedIdentifierArtifactDigest": "42c658d057c77948aa8d0208379b558cfa05a71d90708640bb48a9388a8f6bcc",
+              "approvalReference": "timezone-approval"
+            },
+            "calculationBinding": {
+              "policyId": "LIASS-SALES-LINE-HT-HALFUP",
+              "policyVersion": "1",
+              "definitionBytesDigest": "440a482a247d581a1790c7f16c891acd117bbca6d28b2c28c4abfb0bd1e8e7f8",
+              "currencyRegistryId": "LIASS-SALES-CURRENCY-COMPAT-2026-11-04",
+              "currencyRegistryVersion": "1",
+              "currencyRegistryDigest": "2d36e30d0f270a52306de2e95ce3bb2b978e45b99d9a4cdb41796724c86cc1b0",
+              "calculationDefinitionFingerprint": "c8d38f0350cab6a590e67aa1a02e831b3aa2f6ad780b0d4fa595d3a3eb0882c2",
+              "currencyCode": "EUR",
+              "minorUnitScale": 2,
+              "approvalReference": "D03-2026-11-04-COMMERCIAL-COMPATIBILITY"
+            },
+            "capturedAt": "2026-11-04T12:00:00.000Z"
+          },
+          "issuanceAuthorityDigest": "c3ffa616110bc736a022a3bb8d7b3350a851f4d5483075a2cbb5c32d63a3f6d7",
+          "id": "SINV-90000000-0000-4000-8000-000000000004",
+          "currency": "EUR",
+          "subtotal": "10",
+          "taxTotal": "0",
+          "total": "10",
+          "lineCount": 1,
+          "version": 3,
+          "createdAt": "2026-11-04T12:00:00.000Z",
+          "updatedAt": "2026-11-04T12:00:00.000Z",
+          "lines": [
+            {
+              "id": "SIL-90000000-0000-4000-8000-000000000005",
+              "position": 1,
+              "description": "Synthetic simple",
+              "quantity": "1",
+              "unitPrice": "10",
+              "taxRate": "0",
+              "subtotal": "10",
+              "taxAmount": "0",
+              "total": "10",
+              "createdAt": "2026-11-04T12:00:00.000Z",
+              "updatedAt": "2026-11-04T12:00:00.000Z"
+            }
+          ],
+          "status": "ISSUED",
+          "invoiceNumber": "00000001",
+          "issueDate": "2026-10-01",
+          "issuedAt": "2026-11-04T12:00:00.000Z"
+        },
+        "persistedAmountsMinor": {
+          "net": "1000",
+          "tax": "0",
+          "total": "1000"
+        },
+        "diagnosticSourceJsonSha256": "d31e7eb8ac5e24eda06c7ee11da656fb6c04372b4d31bbc50dfdce395269ae9a",
+        "sourceJsonUtf8Bytes": 3172,
+        "blockingRequirements": [
+          "SOURCE_PROOF_ALGORITHM_AND_PUBLICATION_BINDING",
+          "PROJECTION_VERSION_REVISION_AND_COORDINATE_EVIDENCE",
+          "LINE_KIND_AND_FISCAL_TREATMENT_EVIDENCE",
+          "COMMERCIAL_TAX_COMPONENT_IDENTITY_AND_TREATMENT"
+        ],
+        "fiscalCurrencyReadiness": "NOT_ESTABLISHED_BY_COMMERCIAL_COMPATIBILITY_POLICY"
+      },
+      "completeFiscalArtifact": null,
+      "canonicalTargetBytes": null,
+      "targetDigest": null,
+      "jcsOracle": "BLOCKED_BY_D04 — no complete V1 artifact",
+      "expected": "BLOCKED_BY_D04",
+      "sanitization": "Synthetic identities, no customer PII or credentials"
+    },
+    {
+      "scenarioId": "mixed",
+      "sourceType": "SalesInvoice",
+      "sourceId": "SINV-90000000-0000-4000-8000-000000000007",
+      "sourceVersion": 4,
+      "persistedMarshalledJsonUtf8Bytes": 4778,
+      "result": {
+        "status": "BLOCKED_BY_D04",
+        "source": {
+          "documentType": "INVOICE",
+          "documentId": "SINV-90000000-0000-4000-8000-000000000007",
+          "version": 4
+        },
+        "frozenCommercialSource": {
+          "calculationBinding": {
+            "policyId": "LIASS-SALES-LINE-HT-HALFUP",
+            "policyVersion": "1",
+            "definitionBytesDigest": "440a482a247d581a1790c7f16c891acd117bbca6d28b2c28c4abfb0bd1e8e7f8",
+            "currencyRegistryId": "LIASS-SALES-CURRENCY-COMPAT-2026-11-04",
+            "currencyRegistryVersion": "1",
+            "currencyRegistryDigest": "2d36e30d0f270a52306de2e95ce3bb2b978e45b99d9a4cdb41796724c86cc1b0",
+            "calculationDefinitionFingerprint": "c8d38f0350cab6a590e67aa1a02e831b3aa2f6ad780b0d4fa595d3a3eb0882c2",
+            "currencyCode": "EUR",
+            "minorUnitScale": 2,
+            "approvalReference": "D03-2026-11-04-COMMERCIAL-COMPATIBILITY"
+          },
+          "issuanceAuthoritySnapshot": {
+            "schemaVersion": 1,
+            "orgId": "org-123",
+            "documentType": "INVOICE",
+            "documentId": "SINV-90000000-0000-4000-8000-000000000007",
+            "issuedSourceVersion": 4,
+            "issuedAt": "2026-11-04T12:00:00.000Z",
+            "issueDate": "2026-11-04",
+            "issuanceEventReference": "INVOICE:SINV-90000000-0000-4000-8000-000000000007:4",
+            "sellerAuthority": {
+              "orgId": "org-123",
+              "legalEntityReference": "synthetic-entity",
+              "authorityReference": "PLATFORM_LEGAL_IDENTITY_REVIEW",
+              "authorityVersion": "1",
+              "identityReference": "11111111-1111-4111-8111-111111111111",
+              "identityVersion": "1",
+              "identityDigest": "7517456dc4ff01971d42d7390fe91136298f21a71aa9d68a221c01219dac9724",
+              "seller": {
+                "name": "Synthetic seller",
+                "identifiers": []
+              },
+              "acceptanceReference": "acceptance",
+              "acceptanceVersion": "1",
+              "subjectBindingState": "VERIFIED",
+              "evidenceReference": "11111111-1111-4111-8111-111111111111",
+              "factStates": [
+                {
+                  "fieldPath": "name",
+                  "state": "VERIFIED",
+                  "evidenceReference": "acceptance"
+                }
+              ]
+            },
+            "timezoneAuthority": {
+              "orgId": "org-123",
+              "reference": "11111111-1111-4111-8111-111111111111",
+              "version": "1",
+              "timezone": "Africa/Porto-Novo",
+              "tzdbVersion": "2026a",
+              "tzdbArtifactDigest": "77b541725937bb53bd92bd484c0b43bec8545e2d3431ee01f04ef8f2203ba2b7",
+              "acceptedIdentifierArtifactDigest": "42c658d057c77948aa8d0208379b558cfa05a71d90708640bb48a9388a8f6bcc",
+              "approvalReference": "timezone-approval"
+            },
+            "calculationBinding": {
+              "policyId": "LIASS-SALES-LINE-HT-HALFUP",
+              "policyVersion": "1",
+              "definitionBytesDigest": "440a482a247d581a1790c7f16c891acd117bbca6d28b2c28c4abfb0bd1e8e7f8",
+              "currencyRegistryId": "LIASS-SALES-CURRENCY-COMPAT-2026-11-04",
+              "currencyRegistryVersion": "1",
+              "currencyRegistryDigest": "2d36e30d0f270a52306de2e95ce3bb2b978e45b99d9a4cdb41796724c86cc1b0",
+              "calculationDefinitionFingerprint": "c8d38f0350cab6a590e67aa1a02e831b3aa2f6ad780b0d4fa595d3a3eb0882c2",
+              "currencyCode": "EUR",
+              "minorUnitScale": 2,
+              "approvalReference": "D03-2026-11-04-COMMERCIAL-COMPATIBILITY"
+            },
+            "capturedAt": "2026-11-04T12:00:00.000Z"
+          },
+          "issuanceAuthorityDigest": "e13f7b38035babfb9fe0cef5237ef7338707492d6962439b3895fe844de9b515",
+          "id": "SINV-90000000-0000-4000-8000-000000000007",
+          "currency": "EUR",
+          "customerId": "SC-90000000-0000-4000-8000-000000000001",
+          "customerSnapshot": {
+            "name": "Synthetic café client — 漢字",
+            "taxIdentifier": "SYNTHETIC-NOT-REAL",
+            "billingAddress": {
+              "line1": "Synthetic street",
+              "city": "Synthetic city",
+              "country": "BJ"
+            }
+          },
+          "subtotal": "33.68",
+          "taxTotal": "4.44",
+          "total": "38.12",
+          "lineCount": 2,
+          "version": 4,
+          "createdAt": "2026-11-04T12:00:00.000Z",
+          "updatedAt": "2026-11-04T12:00:00.000Z",
+          "lines": [
+            {
+              "id": "SIL-90000000-0000-4000-8000-000000000008",
+              "position": 1,
+              "catalogItemId": "SI-90000000-0000-4000-8000-000000000002",
+              "description": "Synthetic café ☕",
+              "unit": "piece",
+              "quantity": "2",
+              "unitPrice": "12.34",
+              "taxRate": "18",
+              "subtotal": "24.68",
+              "taxAmount": "4.44",
+              "total": "29.12",
+              "createdAt": "2026-11-04T12:00:00.000Z",
+              "updatedAt": "2026-11-04T12:00:00.000Z"
+            },
+            {
+              "id": "SIL-90000000-0000-4000-8000-000000000009",
+              "position": 2,
+              "catalogItemId": "SI-90000000-0000-4000-8000-000000000003",
+              "description": "Synthetic conseil — 😀",
+              "unit": "hour",
+              "quantity": "1.25",
+              "unitPrice": "7.2",
+              "taxRate": "0",
+              "subtotal": "9",
+              "taxAmount": "0",
+              "total": "9",
+              "createdAt": "2026-11-04T12:00:00.000Z",
+              "updatedAt": "2026-11-04T12:00:00.000Z"
+            }
+          ],
+          "status": "ISSUED",
+          "invoiceNumber": "00000002",
+          "issueDate": "2026-11-04",
+          "issuedAt": "2026-11-04T12:00:00.000Z"
+        },
+        "persistedAmountsMinor": {
+          "net": "3368",
+          "tax": "444",
+          "total": "3812"
+        },
+        "diagnosticSourceJsonSha256": "528c654f4d7ee5b9f498179166ccecf6893ffcf0cb27f6b0426c9a078729ab6f",
+        "sourceJsonUtf8Bytes": 3860,
+        "blockingRequirements": [
+          "SOURCE_PROOF_ALGORITHM_AND_PUBLICATION_BINDING",
+          "PROJECTION_VERSION_REVISION_AND_COORDINATE_EVIDENCE",
+          "LINE_KIND_AND_FISCAL_TREATMENT_EVIDENCE",
+          "COMMERCIAL_TAX_COMPONENT_IDENTITY_AND_TREATMENT"
+        ],
+        "fiscalCurrencyReadiness": "NOT_ESTABLISHED_BY_COMMERCIAL_COMPATIBILITY_POLICY"
+      },
+      "completeFiscalArtifact": null,
+      "canonicalTargetBytes": null,
+      "targetDigest": null,
+      "jcsOracle": "BLOCKED_BY_D04 — no complete V1 artifact",
+      "expected": "BLOCKED_BY_D04",
+      "sanitization": "Synthetic identities, no customer PII or credentials"
+    },
+    {
+      "scenarioId": "credit",
+      "sourceType": "SalesCreditNote",
+      "sourceId": "SCN-90000000-0000-4000-8000-000000000011",
+      "sourceVersion": 3,
+      "persistedMarshalledJsonUtf8Bytes": 4784,
+      "result": {
+        "status": "BLOCKED_BY_D04",
+        "source": {
+          "documentType": "CREDIT_NOTE",
+          "documentId": "SCN-90000000-0000-4000-8000-000000000011",
+          "version": 3
+        },
+        "frozenCommercialSource": {
+          "calculationBinding": {
+            "policyId": "LIASS-SALES-LINE-HT-HALFUP",
+            "policyVersion": "1",
+            "definitionBytesDigest": "440a482a247d581a1790c7f16c891acd117bbca6d28b2c28c4abfb0bd1e8e7f8",
+            "currencyRegistryId": "LIASS-SALES-CURRENCY-COMPAT-2026-11-04",
+            "currencyRegistryVersion": "1",
+            "currencyRegistryDigest": "2d36e30d0f270a52306de2e95ce3bb2b978e45b99d9a4cdb41796724c86cc1b0",
+            "calculationDefinitionFingerprint": "c8d38f0350cab6a590e67aa1a02e831b3aa2f6ad780b0d4fa595d3a3eb0882c2",
+            "currencyCode": "EUR",
+            "minorUnitScale": 2,
+            "approvalReference": "D03-2026-11-04-COMMERCIAL-COMPATIBILITY"
+          },
+          "issuanceAuthoritySnapshot": {
+            "schemaVersion": 1,
+            "orgId": "org-123",
+            "documentType": "CREDIT_NOTE",
+            "documentId": "SCN-90000000-0000-4000-8000-000000000011",
+            "issuedSourceVersion": 3,
+            "issuedAt": "2026-11-04T12:00:00.000Z",
+            "issueDate": "2026-11-04",
+            "issuanceEventReference": "CREDIT_NOTE:SCN-90000000-0000-4000-8000-000000000011:3",
+            "sellerAuthority": {
+              "orgId": "org-123",
+              "legalEntityReference": "synthetic-entity",
+              "authorityReference": "PLATFORM_LEGAL_IDENTITY_REVIEW",
+              "authorityVersion": "1",
+              "identityReference": "11111111-1111-4111-8111-111111111111",
+              "identityVersion": "1",
+              "identityDigest": "7517456dc4ff01971d42d7390fe91136298f21a71aa9d68a221c01219dac9724",
+              "seller": {
+                "name": "Synthetic seller",
+                "identifiers": []
+              },
+              "acceptanceReference": "acceptance",
+              "acceptanceVersion": "1",
+              "subjectBindingState": "VERIFIED",
+              "evidenceReference": "11111111-1111-4111-8111-111111111111",
+              "factStates": [
+                {
+                  "fieldPath": "name",
+                  "state": "VERIFIED",
+                  "evidenceReference": "acceptance"
+                }
+              ]
+            },
+            "timezoneAuthority": {
+              "orgId": "org-123",
+              "reference": "11111111-1111-4111-8111-111111111111",
+              "version": "1",
+              "timezone": "Africa/Porto-Novo",
+              "tzdbVersion": "2026a",
+              "tzdbArtifactDigest": "77b541725937bb53bd92bd484c0b43bec8545e2d3431ee01f04ef8f2203ba2b7",
+              "acceptedIdentifierArtifactDigest": "42c658d057c77948aa8d0208379b558cfa05a71d90708640bb48a9388a8f6bcc",
+              "approvalReference": "timezone-approval"
+            },
+            "calculationBinding": {
+              "policyId": "LIASS-SALES-LINE-HT-HALFUP",
+              "policyVersion": "1",
+              "definitionBytesDigest": "440a482a247d581a1790c7f16c891acd117bbca6d28b2c28c4abfb0bd1e8e7f8",
+              "currencyRegistryId": "LIASS-SALES-CURRENCY-COMPAT-2026-11-04",
+              "currencyRegistryVersion": "1",
+              "currencyRegistryDigest": "2d36e30d0f270a52306de2e95ce3bb2b978e45b99d9a4cdb41796724c86cc1b0",
+              "calculationDefinitionFingerprint": "c8d38f0350cab6a590e67aa1a02e831b3aa2f6ad780b0d4fa595d3a3eb0882c2",
+              "currencyCode": "EUR",
+              "minorUnitScale": 2,
+              "approvalReference": "D03-2026-11-04-COMMERCIAL-COMPATIBILITY"
+            },
+            "capturedAt": "2026-11-04T12:00:00.000Z",
+            "originalSellerEvidenceReference": "SINV-90000000-0000-4000-8000-000000000007:e13f7b38035babfb9fe0cef5237ef7338707492d6962439b3895fe844de9b515",
+            "originalCalculationBindingReference": "SINV-90000000-0000-4000-8000-000000000007:e13f7b38035babfb9fe0cef5237ef7338707492d6962439b3895fe844de9b515"
+          },
+          "issuanceAuthorityDigest": "85213d180173944778747b5baeb041f671b04b336e5832d20882c5f23aaf88b3",
+          "id": "SCN-90000000-0000-4000-8000-000000000011",
+          "originalInvoiceId": "SINV-90000000-0000-4000-8000-000000000007",
+          "originalInvoiceNumber": "00000002",
+          "customerSnapshot": {
+            "name": "Synthetic café client — 漢字",
+            "taxIdentifier": "SYNTHETIC-NOT-REAL",
+            "billingAddress": {
+              "line1": "Synthetic street",
+              "city": "Synthetic city",
+              "country": "BJ"
+            }
+          },
+          "currency": "EUR",
+          "reason": "Synthetic partial credit",
+          "lines": [
+            {
+              "id": "SCL-90000000-0000-4000-8000-000000000012",
+              "originalInvoiceLineId": "SIL-90000000-0000-4000-8000-000000000008",
+              "position": 1,
+              "description": "Synthetic café ☕",
+              "unit": "piece",
+              "quantity": "1",
+              "unitPrice": "12.34",
+              "taxRate": "18",
+              "subtotal": "12.34",
+              "taxAmount": "2.22",
+              "total": "14.56",
+              "createdAt": "2026-11-04T12:00:00.000Z",
+              "updatedAt": "2026-11-04T12:00:00.000Z"
+            }
+          ],
+          "subtotal": "12.34",
+          "taxTotal": "2.22",
+          "total": "14.56",
+          "lineCount": 1,
+          "version": 3,
+          "createdAt": "2026-11-04T12:00:00.000Z",
+          "updatedAt": "2026-11-04T12:00:00.000Z",
+          "status": "ISSUED",
+          "creditNoteNumber": "00000001",
+          "issueDate": "2026-11-04",
+          "issuedAt": "2026-11-04T12:00:00.000Z"
+        },
+        "persistedAmountsMinor": {
+          "net": "1234",
+          "tax": "222",
+          "total": "1456"
+        },
+        "diagnosticSourceJsonSha256": "436b13f8c147b32b90df8ef8455b671d0ab560f073349fcd596173fe36ac5454",
+        "sourceJsonUtf8Bytes": 3898,
+        "blockingRequirements": [
+          "SOURCE_PROOF_ALGORITHM_AND_PUBLICATION_BINDING",
+          "PROJECTION_VERSION_REVISION_AND_COORDINATE_EVIDENCE",
+          "LINE_KIND_AND_FISCAL_TREATMENT_EVIDENCE",
+          "COMMERCIAL_TAX_COMPONENT_IDENTITY_AND_TREATMENT",
+          "ORIGINAL_SOURCE_PROOF_BINDING"
+        ],
+        "fiscalCurrencyReadiness": "NOT_ESTABLISHED_BY_COMMERCIAL_COMPATIBILITY_POLICY"
+      },
+      "completeFiscalArtifact": null,
+      "canonicalTargetBytes": null,
+      "targetDigest": null,
+      "jcsOracle": "BLOCKED_BY_D04 — no complete V1 artifact",
+      "expected": "BLOCKED_BY_D04",
+      "sanitization": "Synthetic identities, no customer PII or credentials"
+    }
+  ]
+}

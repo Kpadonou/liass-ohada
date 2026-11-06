@@ -1,3 +1,4 @@
+import { publicSalesResponse } from "./public-sales-response";
 import {
   AddSalesInvoiceLineRequestSchema,
   SalesInvoiceIdRequestSchema,
@@ -14,7 +15,9 @@ export const handler = createHandler(
   AddSalesInvoiceLineRouteSchema,
   async ({ invoiceId, ...request }, { orgId, userId, i18n }) => ({
     message: i18n.getMessage("SUCCESS_SALES_INVOICE_LINE_ADDED"),
-    data: await SalesInvoiceService.addLine(orgId, userId, invoiceId, request),
+    data: publicSalesResponse(
+      await SalesInvoiceService.addLine(orgId, userId, invoiceId, request),
+    ),
   }),
   {
     action: "POST /sales/invoices/{invoiceId}/lines",

@@ -1,3 +1,11 @@
+import {
+  calculationBinding,
+  assertCalculationBinding,
+} from "../authority/commercial-policy";
+import {
+  SalesIssuanceAuthorityService,
+  verifyIssuedAuthority,
+} from "../authority/sales-issuance-authority-service";
 import { randomUUID } from "crypto";
 import {
   AddSalesInvoiceLineRequest,
@@ -91,7 +99,7 @@ export class SalesInvoiceService {
     const tenantId = OrganizationIdSchema.parse(orgId);
     const request = CreateSalesInvoiceRequestSchema.parse(input);
     const currency = request.currency ?? (await this.defaultCurrency(tenantId));
-    resolveSalesCurrency(currency);
+    calculationBinding(currency);
     const snapshot = request.customerId
       ? await customerSnapshot(tenantId, request.customerId)
       : undefined;
@@ -99,6 +107,7 @@ export class SalesInvoiceService {
     const invoice = SalesInvoiceSchema.parse({
       id: `SINV-${randomUUID()}`,
       status: "DRAFT",
+      calculationBinding: calculationBinding(currency),
       currency,
       ...(request.customerId && snapshot
         ? { customerId: request.customerId, customerSnapshot: snapshot }
@@ -185,17 +194,15 @@ export class SalesInvoiceService {
 
     let nextCurrency = current.currency;
     if (request.currency) {
-      resolveSalesCurrency(request.currency);
+      if (current.calculationBinding) calculationBinding(request.currency);
+      else resolveSalesCurrency(request.currency);
       if (request.currency !== current.currency && current.lineCount > 0) {
         throw new AppError(409, "INVOICE_CURRENCY_LOCKED");
       }
       nextCurrency = request.currency;
     }
 
-    if (
-      !customerWasSubmitted &&
-      nextCurrency === current.currency
-    ) {
+    if (!customerWasSubmitted && nextCurrency === current.currency) {
       return current;
     }
 
@@ -208,6 +215,9 @@ export class SalesInvoiceService {
     const next = SalesInvoiceSchema.parse({
       ...currentWithoutCustomer,
       currency: nextCurrency,
+      ...(current.calculationBinding
+        ? { calculationBinding: calculationBinding(nextCurrency) }
+        : {}),
       ...(nextCustomerId && nextSnapshot
         ? { customerId: nextCustomerId, customerSnapshot: nextSnapshot }
         : {}),
@@ -258,18 +268,23 @@ export class SalesInvoiceService {
     if (!description) throw new AppError(400, "ERROR_INVALID_INPUT");
 
     const now = new Date().toISOString();
-    const line = SalesInvoiceCalculator.calculateLine(current.currency, {
-      id: `SIL-${randomUUID()}`,
-      position: current.version,
-      catalogItemId: request.catalogItemId,
-      description,
-      unit,
-      quantity: request.quantity,
-      unitPrice: request.unitPrice,
-      taxRate: request.taxRate ?? "0",
-      createdAt: now,
-      updatedAt: now,
-    });
+    assertCalculationBinding(current.calculationBinding, current.currency);
+    const line = SalesInvoiceCalculator.calculateLine(
+      current.currency,
+      {
+        id: `SIL-${randomUUID()}`,
+        position: current.version,
+        catalogItemId: request.catalogItemId,
+        description,
+        unit,
+        quantity: request.quantity,
+        unitPrice: request.unitPrice,
+        taxRate: request.taxRate ?? "0",
+        createdAt: now,
+        updatedAt: now,
+      },
+      current.calculationBinding,
+    );
     const next = this.withLines(current, [...current.lines, line], now);
     await this.persist(tenantId, next, request.expectedVersion);
     audit({
@@ -317,18 +332,23 @@ export class SalesInvoiceService {
       else if (value !== undefined) mutable[field] = value;
     }
     const now = new Date().toISOString();
-    const updated = SalesInvoiceCalculator.calculateLine(current.currency, {
-      id: existing.id,
-      position: existing.position,
-      catalogItemId: existing.catalogItemId,
-      description: String(mutable.description),
-      unit: mutable.unit as string | undefined,
-      quantity: String(mutable.quantity),
-      unitPrice: String(mutable.unitPrice),
-      taxRate: String(mutable.taxRate),
-      createdAt: existing.createdAt,
-      updatedAt: now,
-    });
+    assertCalculationBinding(current.calculationBinding, current.currency);
+    const updated = SalesInvoiceCalculator.calculateLine(
+      current.currency,
+      {
+        id: existing.id,
+        position: existing.position,
+        catalogItemId: existing.catalogItemId,
+        description: String(mutable.description),
+        unit: mutable.unit as string | undefined,
+        quantity: String(mutable.quantity),
+        unitPrice: String(mutable.unitPrice),
+        taxRate: String(mutable.taxRate),
+        createdAt: existing.createdAt,
+        updatedAt: now,
+      },
+      current.calculationBinding,
+    );
     const lines = current.lines.map((line) =>
       line.id === targetLineId ? updated : line,
     );
@@ -399,9 +419,17 @@ export class SalesInvoiceService {
       tenantId,
       request.clientRequestId,
     );
-    if (existing) return this.resolveIssueReplay(tenantId, id, request, existing);
+    if (existing)
+      return this.resolveIssueReplay(tenantId, id, request, existing);
 
-    for (let attempt = 1; attempt <= MAX_ISSUE_SEQUENCE_ATTEMPTS; attempt += 1) {
+    let authority:
+      | Awaited<ReturnType<typeof SalesIssuanceAuthorityService.capture>>
+      | undefined;
+    for (
+      let attempt = 1;
+      attempt <= MAX_ISSUE_SEQUENCE_ATTEMPTS;
+      attempt += 1
+    ) {
       const current = await this.get(tenantId, id);
       if (current.status === "ISSUED") {
         throw new AppError(409, "SALES_INVOICE_ALREADY_ISSUED");
@@ -414,10 +442,24 @@ export class SalesInvoiceService {
       const sequence = await SalesInvoiceRepository.getSequence(tenantId);
       const nextSequenceValue = nextSalesInvoiceSequence(sequence.lastValue);
       const invoiceNumber = formatSalesInvoiceNumber(nextSequenceValue);
-      const issuedAt = new Date().toISOString();
+      const issuedAt =
+        authority?.issuanceAuthoritySnapshot.issuedAt ??
+        new Date().toISOString();
+      authority ??= await SalesIssuanceAuthorityService.capture({
+        orgId: tenantId,
+        documentType: "INVOICE",
+        documentId: id,
+        issuedSourceVersion: current.version + 1,
+        issuedAt,
+        issueDate: request.issueDate,
+        currency: current.currency,
+        calculationBinding: current.calculationBinding,
+      });
       const issued = SalesInvoiceSchema.parse({
         ...current,
         status: "ISSUED",
+        issuanceAuthoritySnapshot: authority.issuanceAuthoritySnapshot,
+        issuanceAuthorityDigest: authority.issuanceAuthorityDigest,
         invoiceNumber,
         issueDate: request.issueDate,
         issuedAt,
@@ -428,6 +470,7 @@ export class SalesInvoiceService {
       try {
         await SalesInvoiceRepository.issueAtomically({
           orgId: tenantId,
+          authorityChecks: authority.checks,
           invoice: issued,
           issuedByUserId: userId,
           clientRequestId: request.clientRequestId,
@@ -450,13 +493,22 @@ export class SalesInvoiceService {
         });
         return issued;
       } catch (error) {
-        if (!(error instanceof SalesInvoiceIssueTransactionError)) throw error;
+        if (!(error instanceof SalesInvoiceIssueTransactionError)) {
+          const receipt = await SalesInvoiceRepository.getIssueIdempotency(
+            tenantId,
+            request.clientRequestId,
+          );
+          if (receipt)
+            return this.resolveIssueReplay(tenantId, id, request, receipt);
+          throw error;
+        }
 
         const winner = await SalesInvoiceRepository.getIssueIdempotency(
           tenantId,
           request.clientRequestId,
         );
-        if (winner) return this.resolveIssueReplay(tenantId, id, request, winner);
+        if (winner)
+          return this.resolveIssueReplay(tenantId, id, request, winner);
 
         const authoritative = await SalesInvoiceRepository.get(tenantId, id);
         if (!authoritative) throw new AppError(404, "SALES_INVOICE_NOT_FOUND");
@@ -493,7 +545,11 @@ export class SalesInvoiceService {
     return SalesInvoiceSchema.parse({
       ...current,
       lines,
-      ...SalesInvoiceCalculator.calculateTotals(current.currency, lines),
+      ...SalesInvoiceCalculator.calculateTotals(
+        current.currency,
+        lines,
+        assertCalculationBinding(current.calculationBinding, current.currency),
+      ),
       lineCount: lines.length,
       version: current.version + 1,
       updatedAt: timestamp,
@@ -533,6 +589,16 @@ export class SalesInvoiceService {
         orgId,
       });
       throw new AppError(500, "SALES_INVOICE_ISSUANCE_INTEGRITY_ERROR");
+    }
+    if (
+      record.issuanceAuthorityDigest ||
+      invoice.issuanceAuthorityDigest ||
+      invoice.issuanceAuthoritySnapshot ||
+      invoice.calculationBinding
+    ) {
+      verifyIssuedAuthority(invoice, orgId);
+      if (record.issuanceAuthorityDigest !== invoice.issuanceAuthorityDigest)
+        throw new AppError(500, "SALES_INVOICE_IDEMPOTENCY_INTEGRITY_ERROR");
     }
     return invoice;
   }
