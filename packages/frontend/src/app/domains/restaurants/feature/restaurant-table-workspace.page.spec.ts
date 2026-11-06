@@ -186,10 +186,16 @@ it('shows an explanation and offers disabled closure to the assigned waiter with
   expect(page.canOfferClose()).toBe(true);
   expect(page.canClose()).toBe(false);
   expect(text()).toContain('Une commande reste ouverte');
+  const action = fixture!.nativeElement.querySelector('[data-testid="service-close-action"] button');
+  expect(action).not.toBeNull();
+  expect(action.disabled).toBe(true);
+  expect(action.textContent).toContain('Terminer');
   await page.closeService();
   expect(closeFlow.close).not.toHaveBeenCalled();
   user.set('other');
   expect(page.canOfferClose()).toBe(false);
+  fixture!.detectChanges();
+  expect(fixture!.nativeElement.querySelector('[data-testid="service-close-action"]')).toBeNull();
 });
 it.each([
   { responsibleStaff: undefined },

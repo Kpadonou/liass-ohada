@@ -35,6 +35,8 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
 import { serviceDuration } from '../utils/service-duration';
 import { tableDisplayName } from '../utils/table-display-name';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
+import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
+import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 
 @Component({
   selector: 'liass-restaurant-table-workspace',
@@ -50,6 +52,8 @@ import { LiassCardComponent } from '../../../shared/ui/card/card.component';
     TranslocoModule,
     LiassSkeletonComponent,
     LiassCardComponent,
+    LiassButtonComponent,
+    LiassStatusChipComponent,
   ],
   templateUrl: './restaurant-table-workspace.page.html',
 })

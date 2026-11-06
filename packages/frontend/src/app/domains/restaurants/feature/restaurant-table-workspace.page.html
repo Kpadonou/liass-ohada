@@ -1,4 +1,4 @@
-<div class="min-w-0 space-y-2">
+<div class="min-w-0 space-y-4">
   <nav
     class="flex flex-wrap items-center justify-between gap-2"
     [attr.aria-label]="'RESTAURANTS.WORKSPACE.NAV' | transloco"
@@ -102,10 +102,8 @@
             data-testid="workspace-context"
             [attr.aria-label]="'RESTAURANTS.WORKSPACE.CONTEXT' | transloco"
           >
-            <p class="flex items-center gap-2">
-              <span class="h-2 w-2 rounded-full bg-success-600" aria-hidden="true"></span
-              >{{ 'RESTAURANTS.WORKSPACE.OPEN_STATE' | transloco }}
-            </p>
+            <liass-status-chip tone="success"
+              [label]="'RESTAURANTS.WORKSPACE.OPEN_STATE' | transloco" />
             <p class="flex items-center gap-2 tabular-nums">
               <mat-icon class="text-app-text-secondary" aria-hidden="true">schedule</mat-icon
               >{{ duration() }}
@@ -144,17 +142,22 @@
               >
                 <mat-icon>refresh</mat-icon>{{ 'RESTAURANTS.UI.REFRESH' | transloco }}
               </button>
-              @if (canOfferClose()) {
-                <button mat-menu-item [disabled]="closing() || !canClose()" (click)="closeService()">
-                  <mat-icon>done_all</mat-icon>{{ 'RESTO_SERVICE.CLOSE' | transloco }}
-                </button>
-              }
             </mat-menu>
           </section>
-          @if (canOfferClose() && current.openOrderCount > 0) {
-            <p role="status" class="text-sm text-app-text-secondary">
-              {{ 'RESTO_SERVICE.OPEN_ORDER_BLOCKER' | transloco }}
-            </p>
+          @if (canOfferClose()) {
+            <div class="flex flex-wrap items-center justify-between gap-3 border-t border-app-border pt-3">
+              @if (current.openOrderCount > 0) {
+                <p id="service-close-blocker" role="status" class="flex min-w-0 flex-1 items-start gap-2 text-sm text-app-text-secondary">
+                  <mat-icon class="shrink-0 text-warning-600" aria-hidden="true">pending_actions</mat-icon>
+                  <span>{{ 'RESTO_SERVICE.OPEN_ORDER_BLOCKER' | transloco }}</span>
+                </p>
+              }
+              <liass-button data-testid="service-close-action" size="lg" tone="brand" variant="outline"
+                icon="done_all" [disabled]="closing() || !canClose()" [loading]="closing()"
+                (pressed)="closeService()">
+                {{ 'RESTO_SERVICE.CLOSE' | transloco }}
+              </liass-button>
+            </div>
           }
           @if (closeError()) {
             <p role="alert" class="text-danger-600">{{ closeError() }}</p>

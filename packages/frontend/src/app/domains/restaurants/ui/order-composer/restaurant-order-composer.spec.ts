@@ -1175,7 +1175,7 @@ it('blocks other quantity changes while a typed edit has an unresolved intent', 
   await page.commitQuantity(lines[0]);
   expect(api.command).toHaveBeenCalledTimes(before);
 });
-it('uses labelled secondary Add and danger Remove controls and disables unavailable Add', async () => {
+it('uses labelled theme-primary Add and danger Remove controls and disables unavailable Add', async () => {
   await draftInput();
   fixture.detectChanges();
   const add = fixture.nativeElement.querySelector(
@@ -1186,7 +1186,8 @@ it('uses labelled secondary Add and danger Remove controls and disables unavaila
   ) as HTMLButtonElement;
   expect(add.querySelector('mat-icon')?.textContent).toBe('add');
   expect(add.textContent).toContain('Ajouter');
-  expect(add.classList.contains('liass-action-secondary')).toBe(true);
+  expect(add.classList.contains('liass-action-secondary')).toBe(false);
+  expect(add.hasAttribute('mat-flat-button')).toBe(true);
   expect(remove.querySelector('mat-icon')?.textContent).toBe('delete_outline');
   expect(remove.textContent).toContain('Retirer');
   expect(remove.classList.contains('liass-action-danger')).toBe(true);
