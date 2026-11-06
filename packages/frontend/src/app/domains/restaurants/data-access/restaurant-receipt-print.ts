@@ -4,9 +4,10 @@ import { Injectable, inject } from '@angular/core';
 @Injectable({ providedIn: 'root' })
 export class RestaurantReceiptPrint {
   private readonly document = inject(DOCUMENT);
-  print(element: HTMLElement) {
+  print(element: HTMLElement, paper: 'thermal' | 'a4' = 'thermal') {
     const root = this.document.createElement('div');
     root.className = 'liass-receipt-print-root';
+    if (paper === 'thermal') root.classList.add('liass-receipt-thermal');
     root.append(element.cloneNode(true));
     this.document.body.append(root);
     this.document.body.classList.add('liass-receipt-printing');

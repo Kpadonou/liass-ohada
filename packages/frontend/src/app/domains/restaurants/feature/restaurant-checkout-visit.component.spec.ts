@@ -1,4 +1,6 @@
 import { provideRouter } from '@angular/router';
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { RestaurantCashQueries } from '../data-access/restaurant-cash.queries';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -335,6 +337,15 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     expect(fixture.componentInstance.error()).toBe('');
   });
 
+  it('announces confirmed payment for a read-only final-invoice availability check', async () => {
+    const fixture = create();
+    await vi.waitFor(() => expect(fixture.componentInstance.cashState()).toBe('READY'));
+    await vi.waitFor(() => expect(fixture.componentInstance.complete()).toBe(true));
+    vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockReturnValue({ afterClosed: () => of({ result: { allocations: [] } }), close: vi.fn() } as never);
+    const confirmed = vi.spyOn(fixture.componentInstance.paymentConfirmed, 'emit');
+    await fixture.componentInstance.pay();
+    expect(confirmed).toHaveBeenCalledOnce();
+  });
   it('does not restore cached checkout from a late session response after Order access is revoked', async () => {
     const fixture = create();
     await vi.waitFor(() => {

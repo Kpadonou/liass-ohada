@@ -228,6 +228,7 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
 export class RestaurantCheckoutVisitComponent {
   readonly ctx = input.required<ServiceOrderContext>();
   readonly closed = output<void>();
+  readonly paymentConfirmed = output<void>();
   readonly accessDenied = output<void>();
   readonly caps = inject(RestaurantsCapabilities);
   readonly cash = inject(RestaurantCashQueries);
@@ -389,6 +390,7 @@ export class RestaurantCheckoutVisitComponent {
         this.message.set(this.t.translate('RESTAURANTS.CHECKOUT.PAYMENT_RECORDED'));
       if (result?.error) this.error.set(this.failure(result.error));
       if (result) await this.refresh();
+      if (result?.result && this.current(ctx)) this.paymentConfirmed.emit();
     } finally {
       if (this.current(ctx)) this.busy.set(false);
     }

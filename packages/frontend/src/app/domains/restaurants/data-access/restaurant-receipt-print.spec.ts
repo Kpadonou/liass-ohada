@@ -12,6 +12,7 @@ describe('Native receipt printing', () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => {
       const root = document.querySelector('.liass-receipt-print-root');
       expect(root?.textContent).toBe(source.textContent);
+      expect(root?.classList.contains('liass-receipt-thermal')).toBe(true);
       expect(root?.firstChild).not.toBe(source);
       expect(document.body.classList.contains('liass-receipt-printing')).toBe(true);
     });
@@ -31,5 +32,12 @@ describe('Native receipt printing', () => {
     ).toThrow();
     expect(document.querySelector('.liass-receipt-print-root')).toBeNull();
     expect(document.body.classList.contains('liass-receipt-printing')).toBe(false);
+  });
+  it('supports full-width A4 output without changing document data', () => {
+    vi.spyOn(window, 'print').mockImplementation(() => {
+      expect(document.querySelector('.liass-receipt-print-root')?.classList.contains('liass-receipt-thermal')).toBe(false);
+    });
+    TestBed.inject(RestaurantReceiptPrint).print(document.createElement('article'), 'a4');
+    expect(document.querySelector('.liass-receipt-print-root')).toBeNull();
   });
 });

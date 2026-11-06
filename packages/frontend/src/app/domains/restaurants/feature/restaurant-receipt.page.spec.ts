@@ -83,6 +83,7 @@ describe('Receipt presentation and complete native print', () => {
     expect(f.nativeElement.textContent).toContain('20\u00a0000');
     expect(f.nativeElement.textContent).toContain('Terrasse jardin');
     expect(f.nativeElement.textContent).not.toContain('tableCode');
+    expect(f.nativeElement.textContent).toContain('aucune preuve de confirmation DGI');
   });
   it('post-close publication is separate, local and FINAL triggers canonical read', async () => {
     api.page

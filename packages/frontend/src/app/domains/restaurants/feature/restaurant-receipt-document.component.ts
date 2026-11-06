@@ -43,6 +43,9 @@ import { restaurantPrice } from '../utils/restaurant-money';
       <p class="mt-2 text-xs">
         {{ 'RESTAURANTS.RECEIPT.CURRENCY' | transloco }} : {{ summary().currency }}
       </p>
+      <p class="mt-2 text-xs text-app-text-secondary" role="status">
+        {{ 'RESTAURANTS.RECEIPT.FISCAL_UNVERIFIED' | transloco }}
+      </p>
     </header>
     <section aria-labelledby="receipt-lines" role="list">
       <h2 id="receipt-lines" class="mb-2 text-sm font-semibold">
@@ -70,6 +73,12 @@ import { restaurantPrice } from '../utils/restaurant-money';
                 {{ money(line.snapshot.unitPriceMinor) }} ·
                 {{ 'RESTAURANTS.RECEIPT.UNIT' | transloco }}
               </p>
+              @if (!line.cancelledAt && line.snapshot.discountMinor) {
+                <p class="text-xs text-app-text-secondary">{{ 'RESTAURANTS.RECEIPT.RECORDED_DISCOUNT' | transloco }} : {{ money(line.snapshot.discountMinor) }}</p>
+              }
+              @if (!line.cancelledAt && line.snapshot.taxMinor) {
+                <p class="text-xs text-app-text-secondary">{{ 'RESTAURANTS.RECEIPT.RECORDED_TAX' | transloco }} : {{ money(line.snapshot.taxMinor) }}</p>
+              }
               @if (line.notes) {
                 <p
                   class="receipt-note mt-1 whitespace-pre-wrap break-words text-xs text-app-text-secondary"

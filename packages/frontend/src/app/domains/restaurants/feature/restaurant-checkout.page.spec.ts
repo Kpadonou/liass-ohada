@@ -1,4 +1,5 @@
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
+import { RestaurantReceiptApi } from '../data-access/restaurant-receipt.api';
 import { Router, provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
@@ -9,6 +10,7 @@ import { ServiceOrderContext } from '../data-access/restaurant-orders.api';
 class VisitPresentationStub {
   readonly ctx = input.required<ServiceOrderContext>();
   readonly closed = output<void>();
+  readonly paymentConfirmed = output<void>();
   readonly accessDenied = output<void>();
 }
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -28,6 +30,7 @@ const org = signal('org'),
 describe('Cashier occupied-table discovery and context', () => {
   let client: QueryClient;
   const api = { myOutlets: vi.fn(), serviceFloor: vi.fn(), list: vi.fn() };
+  const receipts = { page: vi.fn() };
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
@@ -64,6 +67,7 @@ describe('Cashier occupied-table discovery and context', () => {
         { provide: RestaurantAccessState, useValue: { mode: () => 'checkout' } },
         { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
         { provide: RestaurantsApi, useValue: api },
+        { provide: RestaurantReceiptApi, useValue: receipts },
         { provide: QueryClient, useValue: client },
       ],
     });
@@ -220,20 +224,38 @@ describe('Cashier occupied-table discovery and context', () => {
       expect(fixture.nativeElement.textContent).not.toContain('ne vous est affecté');
     },
   );
-  it('retains post-close receipt action independently from table discovery', () => {
+  it('opens only an existing final invoice after closure without navigating or publishing', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     const fixture = create();
     const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
     fixture.componentInstance.released(ctx);
     expect(fixture.componentInstance.sessionId()).toBe('');
     expect(fixture.componentInstance.message()).toContain('Service terminé');
     expect(navigate).not.toHaveBeenCalled();
     expect(fixture.componentInstance.closedVisit()).toEqual(ctx);
-    fixture.componentInstance.openReceipt(ctx);
-    expect(navigate).toHaveBeenCalledWith(
-      ['/restaurants/outlets', rid(2), 'sessions', rid(9), 'receipt'],
-      { state: { checkoutClosed: true } },
-    );
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
+    receipts.page.mockResolvedValue({ data: { receiptId: rid(77) } });
+    await fixture.componentInstance.openAvailableInvoice(ctx);
+    expect(fixture.componentInstance.invoice()).toEqual({ ctx, id: rid(77) });
+    expect(navigate).not.toHaveBeenCalled();
+  });
+  it('does not open or create a missing final invoice and fences late tenant results', async () => {
+    const fixture = create();
+    const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
+    receipts.page.mockRejectedValueOnce(new HttpErrorResponse({ status: 404 }));
+    fixture.componentInstance.selectVisit(ctx.session);
+    await fixture.componentInstance.openAvailableInvoice(ctx);
+    expect(fixture.componentInstance.invoice()).toBeNull();
+    expect(fixture.componentInstance.message()).toContain('pas encore disponible');
+    let resolve!: (value: unknown) => void;
+    receipts.page.mockImplementationOnce(() => new Promise((done) => { resolve = done; }));
+    const pending = fixture.componentInstance.openAvailableInvoice(ctx);
+    org.set('other');
+    resolve({ data: { receiptId: rid(77) } });
+    await pending;
+    expect(fixture.componentInstance.invoice()).toBeNull();
   });
   it('groups occupied-table search and rows, with intentional detail guidance and contextual currency', async () => {
     const fixture = create();

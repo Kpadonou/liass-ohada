@@ -103,6 +103,9 @@ const denied = (error: unknown) =>
           >
             <mat-icon>print</mat-icon>{{ 'RESTAURANTS.RECEIPT.PRINT' | transloco }}
           </button>
+          <button mat-button type="button" [disabled]="pages.isFetching()" (click)="print('a4')">
+            {{ 'RESTAURANTS.RECEIPT.PRINT_A4' | transloco }}
+          </button>
         }
       </div>
       @if (printBusy()) {
@@ -342,7 +345,7 @@ export class RestaurantReceiptView {
     this.printBusy.set(false);
     this.printAll.set(false);
   }
-  async print() {
+  async print(paper: 'thermal' | 'a4' = 'thermal') {
     if (!this.current() || this.printBusy() || !this.verified() || this.pages.isFetching()) return;
     const ctx = this.ctx(),
       job = ++this.printJob;
@@ -370,7 +373,7 @@ export class RestaurantReceiptView {
         this.document() &&
         this.loadedCount() === this.first.data()!.data.partCount
       )
-        this.printer.print(this.document()!.element.nativeElement);
+        this.printer.print(this.document()!.element.nativeElement, paper);
     } catch (error) {
       if (this.current(ctx)) {
         if (denied(error)) this.reject();

@@ -1,4 +1,8 @@
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { RestaurantReceiptApi } from '../data-access/restaurant-receipt.api';
+import { RestaurantReceiptView } from './restaurant-receipt.page';
+import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import {
   Component,
   Injector,
@@ -12,7 +16,6 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Router } from '@angular/router';
 import { ServiceOrderContext } from '../data-access/restaurant-orders.api';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -43,14 +46,34 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
     TranslocoModule,
     LiassPageHeaderComponent,
     RestaurantCheckoutVisitComponent,
+    MatSidenavModule,
+    RestaurantReceiptView,
+    LiassButtonComponent,
   ],
   styleUrl: './restaurant-checkout.page.scss',
   template: `
+    <mat-drawer-container class="min-h-[75dvh] bg-transparent" [hasBackdrop]="true">
+      <mat-drawer mode="over" position="end" class="w-full max-w-[640px]" [opened]="!!invoice()"
+        (closedStart)="invoice.set(null)" role="dialog" [attr.aria-label]="'RESTAURANTS.RECEIPT.TITLE' | transloco">
+        @if (invoice(); as selected) {
+          <div class="space-y-4 p-4 sm:p-5">
+            <header class="flex items-center justify-between gap-3">
+              <h2 class="text-lg font-semibold">{{ 'RESTAURANTS.RECEIPT.TITLE' | transloco }}</h2>
+              <liass-button size="icon" variant="ghost" icon="close" [ariaLabel]="'COMMON.ACTIONS.CLOSE' | transloco" (pressed)="invoice.set(null)" />
+            </header>
+            <liass-receipt-view [ctx]="selected.ctx" [expectedReceiptId]="selected.id" [readOnly]="true" (accessDenied)="invoice.set(null)" />
+          </div>
+        }
+      </mat-drawer>
+      <mat-drawer-content>
     <liass-page-header
       eyebrow=""
       [subtitle]="'RESTAURANTS.CHECKOUT.DESCRIPTION' | transloco"
       [title]="'RESTAURANTS.CHECKOUT.TITLE' | transloco"
     />
+    @if (invoiceLoading()) {
+      <p role="status" aria-live="polite">{{ 'RESTAURANTS.RECEIPT.LOADING' | transloco }}</p>
+    }
     @if (allowed()) {
       @if (outlets().pending) {
         <p role="status">{{ 'RESTAURANTS.CHECKOUT.LOADING' | transloco }}</p>
@@ -178,6 +201,7 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
               <liass-checkout-visit
                 [ctx]="context.ctx"
                 (closed)="released(context.ctx)"
+                (paymentConfirmed)="openAvailableInvoice(context.ctx)"
                 (accessDenied)="denyCheckout()"
               />
             }
@@ -209,12 +233,13 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
         {{ 'RESTAURANTS.CHECKOUT.REFRESH_ACCESS' | transloco }}
       </button>
     }
+      </mat-drawer-content>
+    </mat-drawer-container>
   `,
 })
 export class RestaurantCheckoutPage {
   readonly operational = inject(RestaurantOutletContext);
   private readonly auth = inject(AuthStore);
-  private readonly router = inject(Router);
   readonly caps = inject(RestaurantsCapabilities);
   private readonly access = inject(ProductAccessState);
   private readonly state = inject(RestaurantAccessState);
@@ -250,6 +275,9 @@ export class RestaurantCheckoutPage {
   readonly search = signal('');
   readonly message = signal('');
   readonly closedVisit = signal<ServiceOrderContext | null>(null);
+  readonly invoice = signal<{ ctx: ServiceOrderContext; id: string } | null>(null);
+  readonly invoiceLoading = signal(false);
+  private invoiceRequest = 0;
   readonly identity = computed(() =>
     JSON.stringify({
       org: this.auth.effectiveOrgId(),
@@ -336,6 +364,7 @@ export class RestaurantCheckoutPage {
         this.sessionId.set('');
         this.message.set('');
         this.closedVisit.set(null);
+        this.invoice.set(null);
       }
     });
     let identity = this.identity();
@@ -344,6 +373,7 @@ export class RestaurantCheckoutPage {
       if (next !== identity || !this.allowed()) {
         identity = next;
         this.closedVisit.set(null);
+        this.invoice.set(null);
         this.sessionId.set('');
       }
     });
@@ -375,10 +405,26 @@ export class RestaurantCheckoutPage {
   }
   openReceipt(ctx: ServiceOrderContext) {
     if (!this.allowed() || this.closedVisit() !== ctx) return;
-    void this.router.navigate(
-      ['/restaurants/outlets', ctx.outlet, 'sessions', ctx.session, 'receipt'],
-      { state: { checkoutClosed: true } },
-    );
+    void this.openAvailableInvoice(ctx);
+  }
+  async openAvailableInvoice(ctx: ServiceOrderContext) {
+    const current = () => this.allowed() && this.auth.effectiveOrgId() === ctx.org &&
+      this.auth.currentUserId() === ctx.user && this.auth.contextRevision() === ctx.revision && this.outletId() === ctx.outlet &&
+      (this.sessionId() === ctx.session || this.closedVisit()?.session === ctx.session);
+    if (!current()) return;
+    const request = ++this.invoiceRequest;
+    this.invoiceLoading.set(true);
+    try {
+      const page = await this.injector.get(RestaurantReceiptApi).page(ctx);
+      if (current() && request === this.invoiceRequest) this.invoice.set({ ctx, id: page.data.receiptId });
+    } catch (error) {
+      if (current() && request === this.invoiceRequest) this.message.set(this.t.translate(
+        error instanceof HttpErrorResponse && error.status === 404
+          ? 'RESTAURANTS.RECEIPT.NOT_AVAILABLE' : 'RESTAURANTS.RECEIPT.READ_ERROR',
+      ));
+    } finally {
+      if (request === this.invoiceRequest) this.invoiceLoading.set(false);
+    }
   }
   money(amount: number, currency: string) {
     return restaurantOperationalPrice(
