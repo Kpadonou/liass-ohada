@@ -1,6 +1,7 @@
 import {
   RestaurantIssuanceProvenanceRepository as Provenance,
   syntheticProvenanceEnabled,
+  authenticProvenanceEnabled,
 } from "./issuance-provenance-repository";
 import { randomUUID } from "crypto";
 import { RestaurantDocumentCollections as Documents } from "./document-collections";
@@ -243,8 +244,13 @@ export class RestaurantReceiptService {
         receiptId,
         guestSessionId: sessionId,
         state: "BUILDING",
-        ...(syntheticProvenanceEnabled()
-          ? { issuanceProvenanceVersion: 1 as const }
+        ...(syntheticProvenanceEnabled() || authenticProvenanceEnabled()
+          ? {
+              issuanceProvenanceVersion: 1 as const,
+              issuanceProvenanceOrigin: syntheticProvenanceEnabled()
+                ? "SYNTHETIC" as const
+                : "AUTHENTIC" as const,
+            }
           : {}),
         version: 1,
         sourceVersion: session.data.version + 1,

@@ -65,6 +65,7 @@ async function visit(lines = 1) {
   const session = c.GuestSessionSchema.parse(
     (
       await S.mutate(ctx(), "OPEN_SESSION", {
+        staffId: "owner",
         clientRequestId: req(),
         tableId: f.tables[0].id,
         areaId: f.tables[0].serviceAreaId,
@@ -164,6 +165,7 @@ beforeEach(async () => {
   f = await acceptanceFixture();
   m.seedAccess(org, "owner", "OWNER");
   m.seedAccess(org, "manager", "MANAGER");
+  await person("owner", "OWNER");
   await openCashFixture(scope(), ["owner", "manager"]);
 });
 afterEach(() => {
@@ -830,6 +832,7 @@ test("FINAL is independent of later outlet/menu/table configuration and never re
     }
   }
   const next = await S.mutate(ctx(), "OPEN_SESSION", {
+        staffId: "owner",
     clientRequestId: req(),
     tableId: f.tables[0].id,
     areaId: f.tables[0].serviceAreaId,
@@ -1299,12 +1302,12 @@ describe("complete source verification", () => {
   });
 });
 
-test.each(["revocation", "concurrent replacement", "duplicate provenance"])(
-  "synthetic FINAL authority failure rolls back publication: %s",
-  async () => {
+test.each(["SYNTHETIC", "AUTHENTIC"] as const)(
+  "%s FINAL authority failure rolls back publication atomically",
+  async (origin) => {
     const v = await visit();
     await settle(v);
-    process.env.RESTAURANTS_SYNTHETIC_PROVENANCE = "1";
+    process.env[origin === "AUTHENTIC" ? "RESTAURANTS_AUTHENTIC_PROVENANCE" : "RESTAURANTS_SYNTHETIC_PROVENANCE"] = "1";
     const prepared = jest.spyOn(Provenance, "prepare").mockResolvedValue([
       {
         ConditionCheck: {
@@ -1363,6 +1366,7 @@ test.each(["revocation", "concurrent replacement", "duplicate provenance"])(
       commit.mockRestore();
       prepared.mockRestore();
       delete process.env.RESTAURANTS_SYNTHETIC_PROVENANCE;
+      delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
     }
   },
 );
@@ -1582,3 +1586,44 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
     }
   },
 );
+
+test("authentic FINAL atomically freezes authorities and replays without recapture", async () => {
+  const { OrganizationLegalIdentityService: Seller } = await import("@/lambda/shared/services/organization-legal-identity-service");
+  const { provenance: fixture } = await import("./provenance-fixture");
+  const v = await visit();
+  await settle(v);
+  process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = "1";
+  const timezone = { ...fixture.timezone, orgId: org };
+  const current = { PK: K.orgKey(org), SK: K.restaurantIssuanceTimezoneCurrentSK(), orgId: org,
+    entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_CURRENT", status: "ACTIVE", version: 1,
+    selectedRevisionId: timezone.reference, configurationDigest: timezone.configurationDigest,
+    approvalReference: timezone.approvalReference, approvalVersion: timezone.approvalVersion };
+  const revision = { PK: current.PK, SK: K.restaurantIssuanceTimezoneRevisionSK(timezone.reference),
+    ...timezone, revisionId: timezone.reference, recordVersion: 1,
+    entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_REVISION" };
+  for (const row of [current, revision]) m.rows.set(JSON.stringify([row.PK, row.SK]), marshall(row));
+  const sellerKey = { PK: current.PK, SK: "PLATFORM_SELLER_TEST_CURRENT" };
+  m.rows.set(JSON.stringify([sellerKey.PK, sellerKey.SK]), marshall({ ...sellerKey, version: 1 }));
+  const seller = jest.spyOn(Seller, "readSellerIssuanceAuthority").mockResolvedValue({
+    sellerAuthority: { ...fixture.seller, orgId: org },
+    check: { ConditionCheck: { TableName: "platform", Key: marshall(sellerKey),
+      ConditionExpression: "#f0 = :v0", ExpressionAttributeNames: { "#f0": "version" },
+      ExpressionAttributeValues: marshall({ ":v0": 1 }) } },
+  });
+  try {
+    const invoice = await finish(v.sessionId);
+    const verified = await Source.verify(scope(), "owner", v.sessionId, invoice.receiptId);
+    expect(verified.verified).toBe(true);
+    if (!verified.verified) throw new Error("verification failed");
+    const provenance = verified.evidence.issuanceProvenance;
+    expect(provenance.verified).toBe(true);
+    if (!provenance.verified) throw new Error("provenance missing");
+    expect(provenance.evidence.evidenceOrigin).toBe("AUTHENTIC");
+    expect(provenance.evidence.issuedAt).toBe(invoice.issuedAt);
+    expect(provenance.evidence.commercialRootDigest).toBe(invoice.digest);
+    seller.mockClear();
+    delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
+    expect(await finish(v.sessionId)).toEqual(invoice);
+    expect(seller).not.toHaveBeenCalled();
+  } finally { seller.mockRestore(); delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE; }
+});

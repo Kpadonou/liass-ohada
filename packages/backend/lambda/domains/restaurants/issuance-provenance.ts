@@ -2,7 +2,7 @@ import { z } from "zod";
 import { LegalSellerAuthoritySchema } from "@liass-ohada/shared/shared";
 import { canonical, clean, hash } from "@/lambda/shared/authority/integrity";
 
-// Pure binding only. D15 approval is required before any publication writer uses it.
+// Immutable publication-time binding; absence of origin is legacy/synthetic, never authentic.
 const ref = z.string().min(1).max(200);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const version = z.number().int().positive().safe();
@@ -22,6 +22,7 @@ export const restaurantIssuanceTimezoneSchema = z
   .strict();
 const payloadSchema = z
   .object({
+    evidenceOrigin: z.enum(["AUTHENTIC", "SYNTHETIC"]).optional(),
     schemaVersion: z.literal(1),
     captureProtocol: z.literal("RESTAURANTS-FINAL-AUTHORITY-1"),
     orgId: ref,

@@ -11,6 +11,7 @@ export const ReceiptManifestSchema = z
     receiptId: z.string().uuid(),
     guestSessionId: z.string().uuid(),
     state: z.enum(["BUILDING", "FINAL"]),
+    issuanceProvenanceOrigin: z.enum(["AUTHENTIC", "SYNTHETIC"]).optional(),
     issuanceProvenanceVersion: z.literal(1).optional(),
     version: z.number().int().positive(),
     sourceVersion: z.number().int().positive(),

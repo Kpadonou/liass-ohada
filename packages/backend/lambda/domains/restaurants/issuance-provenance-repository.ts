@@ -24,6 +24,10 @@ export const syntheticProvenanceEnabled = () =>
   process.env.NODE_ENV === "test" &&
   process.env.RESTAURANTS_SYNTHETIC_PROVENANCE === "1";
 
+/** Server-controlled publication policy; disabled unless explicitly configured. */
+export const authenticProvenanceEnabled = () =>
+  process.env.RESTAURANTS_AUTHENTIC_PROVENANCE === "1";
+
 export class RestaurantIssuanceProvenanceRepository {
   private static async get(Key: { PK: string; SK: string }) {
     const response = await dynamoClient.send(
@@ -59,6 +63,10 @@ export class RestaurantIssuanceProvenanceRepository {
     );
     if (
       !result.verified ||
+      (m.issuanceProvenanceOrigin === "AUTHENTIC" &&
+        result.evidence.evidenceOrigin !== "AUTHENTIC") ||
+      (m.issuanceProvenanceOrigin !== "AUTHENTIC" &&
+        result.evidence.evidenceOrigin === "AUTHENTIC") ||
       result.evidence.sourceVersion !== m.sourceVersion ||
       result.evidence.financialRevision !== m.financialRevision ||
       result.evidence.finalManifestVersion !== m.version
@@ -81,7 +89,8 @@ export class RestaurantIssuanceProvenanceRepository {
     m: ReceiptManifest,
     now: string,
   ): Promise<TransactWriteItem[]> {
-    if (!syntheticProvenanceEnabled()) unavailable();
+    const authentic = m.issuanceProvenanceOrigin === "AUTHENTIC";
+    if (!authentic && !syntheticProvenanceEnabled()) unavailable();
     const seller =
       await OrganizationLegalIdentityService.readSellerIssuanceAuthority(
         scope.orgId,
@@ -141,6 +150,9 @@ export class RestaurantIssuanceProvenanceRepository {
     if (!Number.isSafeInteger(sellerVersion) || sellerVersion < 1)
       unavailable();
     const data = bindRestaurantIssuanceProvenance({
+      ...(m.issuanceProvenanceOrigin
+        ? { evidenceOrigin: m.issuanceProvenanceOrigin }
+        : {}),
       schemaVersion: 1,
       captureProtocol: "RESTAURANTS-FINAL-AUTHORITY-1",
       ...scope,

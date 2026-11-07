@@ -115,3 +115,62 @@ test("replay reads frozen evidence without current authority lookup", async () =
   expect((await P.read(scope, manifest)).verified).toBe(true);
   expect(Seller.readSellerIssuanceAuthority).not.toHaveBeenCalled();
 });
+
+test("authentic preparation is independent of synthetic flags and binds explicit origin", async () => {
+  delete process.env.RESTAURANTS_SYNTHETIC_PROVENANCE;
+  authorities();
+  const actions = await P.prepare(scope, "actor", { ...manifest, issuanceProvenanceOrigin: "AUTHENTIC" }, issuedAt);
+  const data = unmarshall(actions[2].Put!.Item!).data;
+  expect(data.evidenceOrigin).toBe("AUTHENTIC");
+  expect(data.issuedAt).toBe(issuedAt);
+  expect(data.commercialRootDigest).toBe(digest);
+  expect(actions).toHaveLength(3);
+  expect(actions[2].Put?.ConditionExpression).toContain("attribute_not_exists");
+});
+
+test("authentic FINAL rejects synthetic evidence", async () => {
+  send.mockResolvedValueOnce({ Item: marshall({ ...scope, invoiceId: id,
+    entityType: "RESTAURANT_INVOICE_ISSUANCE_PROVENANCE", schemaVersion: 1, data: provenance }) });
+  await expect(P.read(scope, { ...manifest, issuanceProvenanceOrigin: "AUTHENTIC" })).rejects.toThrow();
+});
+
+test("missing seller authority fails before timezone reads or writes", async () => {
+  jest.spyOn(Seller, "readSellerIssuanceAuthority").mockRejectedValue(new Error("unavailable"));
+  await expect(P.prepare(scope, "actor", { ...manifest, issuanceProvenanceOrigin: "AUTHENTIC" }, issuedAt)).rejects.toThrow();
+  expect(send).not.toHaveBeenCalled();
+});
+
+test("inconsistent timezone revision fails closed", async () => {
+  send.mockResolvedValueOnce({ Item: marshall(current) }).mockResolvedValueOnce({ Item: marshall({
+    ...provenance.timezone, revisionId: id, recordVersion: 1,
+    entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_REVISION", approvalVersion: "changed",
+  }) });
+  await expect(P.prepare(scope, "actor", { ...manifest, issuanceProvenanceOrigin: "AUTHENTIC" }, issuedAt)).rejects.toThrow();
+});
+
+test("authentic policy is explicit, disabled by default and independent of NODE_ENV", async () => {
+  const { authenticProvenanceEnabled } = await import("@/lambda/domains/restaurants/issuance-provenance-repository");
+  const previous = process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
+  try {
+    delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
+    expect(authenticProvenanceEnabled()).toBe(false);
+    process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = "true";
+    expect(authenticProvenanceEnabled()).toBe(false);
+    process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = "1";
+    expect(authenticProvenanceEnabled()).toBe(true);
+  } finally {
+    if (previous === undefined) delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
+    else process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = previous;
+  }
+});
+
+test("timezone and seller versions are protected in the returned FINAL transaction", async () => {
+  authorities();
+  const actions = await P.prepare(scope, "actor", { ...manifest, issuanceProvenanceOrigin: "AUTHENTIC" }, issuedAt);
+  expect(actions[0].ConditionCheck?.ExpressionAttributeValues).toEqual(marshall({ ":v0": 1 }));
+  const timezoneCheck = actions[1].ConditionCheck!;
+  const names = timezoneCheck.ExpressionAttributeNames!;
+  const alias = Object.keys(names).find(key => names[key] === "version")!;
+  expect(timezoneCheck.ConditionExpression).toContain(alias + " =");
+  expect(unmarshall(actions[2].Put!.Item!).data.timezoneSelectionVersion).toBe(1);
+});
