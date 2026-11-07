@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 
 export type AppPage =
+  | 'settings.fiscality'
   | 'dashboard'
   | 'cabinet.dashboard'
   | 'cabinet.dossiers'

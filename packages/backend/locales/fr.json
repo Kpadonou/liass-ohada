@@ -1,4 +1,8 @@
 {
+  "PLATFORM_FISCAL_FORBIDDEN": "Cette action nécessite un accès direct autorisé à l’entreprise.",
+  "PLATFORM_FISCAL_CONFLICT": "La configuration a changé ou cette demande existe déjà. Actualisez avant de réessayer.",
+  "PLATFORM_FISCAL_UNAVAILABLE": "La configuration fiscale est momentanément indisponible. Réessayez avec la même demande.",
+  "PLATFORM_FISCAL_SAVED": "Configuration enregistrée. La vérification fiscale reste nécessaire.",
   "PLATFORM_IDENTITY_REQUIRED": "Une identité Platform authentifiée est requise.",
   "PLATFORM_ADMIN_REQUIRED": "Cette action nécessite une habilitation Platform active.",
   "PLATFORM_SFE_UNAVAILABLE": "Les références SFE sont momentanément indisponibles.",

@@ -103,6 +103,10 @@ export const routes: Routes = [
     canActivate: [authGuard, tenantGuard],
     children: [
       {
+        path: 'settings/fiscality',
+        loadComponent: () => import('../../domains/identity/feature/fiscality/fiscality.page').then(module => module.FiscalityPage),
+      },
+      {
         path: '',
         pathMatch: 'full',
         redirectTo: 'dashboard',

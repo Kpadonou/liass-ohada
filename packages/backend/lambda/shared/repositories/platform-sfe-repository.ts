@@ -45,7 +45,9 @@ export class PlatformSfeRepository {
     const PK = K.platformSfePK(stage), SK = K.platformSfeCurrentSK();
     const raw = await this.get(PK, SK);
     if (!raw) return { status: "UNAVAILABLE" as const, approval: null };
-    const row = approvalRecord.parse(raw);
+    const parsed = approvalRecord.safeParse(raw);
+    if (!parsed.success) throw new AppError(503, "PLATFORM_SFE_UNAVAILABLE");
+    const row = parsed.data;
     if (row.PK !== PK || row.SK !== SK) throw new AppError(503, "PLATFORM_SFE_UNAVAILABLE");
     return { status: "REGISTERED" as const, approval: row.data };
   }

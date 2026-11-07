@@ -24,14 +24,21 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
   const routes = Object.values(template.findResources("AWS::ApiGatewayV2::Route"));
   expect(routes.map(route => route.Properties.RouteKey).sort()).toEqual([
     "GET /me/organization/fiscality/sfe-approval", "PUT /platform/fiscality/sfe-approval",
-  ]);
+    "GET /me/organization/fiscality/connections", "PUT /me/organization/fiscality/connections/{connectionId}",
+    "PUT /me/organization/fiscality/connections/{connectionId}/credential", "DELETE /me/organization/fiscality/connections/{connectionId}/credential",
+  ].sort());
   expect(routes.every(route => route.Properties.AuthorizationType === "JWT")).toBe(true);
   const policy = JSON.stringify(template.findResources("AWS::IAM::Policy"));
   expect(policy).toContain("dynamodb:ConditionCheckItem");
   expect(policy).toContain("PLATFORM_SFE#dev#BJ");
   expect(policy).toContain('"Effect":"Deny"');
   expect(policy).toContain("PLATFORM_ADMIN#*");
-  expect(policy).not.toContain("ssm:");
+  expect(policy).toContain("ssm:PutParameter");
+  expect(policy).toContain("ssm:GetParameter");
+  expect(policy).toContain("ssm:Overwrite");
+  expect(policy).not.toContain("ssm:GetParametersByPath");
+  expect(policy).not.toContain("ssm:DeleteParameter");
+  expect(policy).not.toContain("secretsmanager:");
   expect(Object.keys(template.findResources("AWS::DynamoDB::Table"))).toHaveLength(1); // fixture only
   expect(Object.keys(template.findResources("AWS::Cognito::UserPool"))).toHaveLength(0);
   expect(Object.keys(template.findResources("AWS::S3::Bucket"))).toHaveLength(0);

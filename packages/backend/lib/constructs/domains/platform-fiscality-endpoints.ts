@@ -1,6 +1,7 @@
 import { HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
+import { Stack } from "aws-cdk-lib";
 import * as path from "node:path";
 import { DomainConstructFactory, DomainProps } from "./domain-constructs-factory";
 
@@ -38,6 +39,33 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         domainName: "identity", routeInDomainStack: true,
         environment: { STAGE: props.stage, PLATFORM_COGNITO_ISSUER: props.cognitoIssuer },
         handlerEntry: path.join(__dirname, "../../../lambda/domains/identity/platform-sfe-handler.ts"),
+      });
+    }
+    const enrollmentRole = new iam.Role(this, "EnrollmentRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
+    });
+    enrollmentRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["dynamodb:GetItem", "dynamodb:Query", "dynamodb:PutItem", "dynamodb:ConditionCheckItem"],
+      resources: [props.table.tableArn],
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } },
+    }));
+    const parameterArn = Stack.of(this).formatArn({ service: "ssm", resource: "parameter", resourceName: `${props.stage}/platform/fiscal/*` });
+    enrollmentRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["ssm:PutParameter"], resources: [parameterArn], conditions: { Bool: { "ssm:Overwrite": "false" } },
+    }));
+    enrollmentRole.addToPolicy(new iam.PolicyStatement({ actions: ["ssm:GetParameter"], resources: [parameterArn] }));
+    // No GetParametersByPath, DeleteParameter, SecretsManager, custom KMS key or administrator-registry access.
+    for (const [method, routePath, actionName] of [
+      [HttpMethod.GET, "/me/organization/fiscality/connections", "list-fiscal-connections"],
+      [HttpMethod.PUT, "/me/organization/fiscality/connections/{connectionId}", "configure-fiscal-connection"],
+      [HttpMethod.PUT, "/me/organization/fiscality/connections/{connectionId}/credential", "store-fiscal-credential"],
+      [HttpMethod.DELETE, "/me/organization/fiscality/connections/{connectionId}/credential", "revoke-fiscal-credential"],
+    ] as const) {
+      this.addRoute({ ...props, lambdaRole: enrollmentRole, method, routePath, actionName,
+        domainName: "identity", routeInDomainStack: true,
+        environment: { STAGE: props.stage, PLATFORM_COGNITO_ISSUER: props.cognitoIssuer },
+        handlerEntry: path.join(__dirname, "../../../lambda/domains/identity/organization-fiscal-handler.ts"),
       });
     }
   }

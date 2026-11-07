@@ -8,6 +8,7 @@ import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 
 const pageLabelKeys: Record<AppPage, string> = {
+  'settings.fiscality': 'FISCALITY.TITLE',
   administration: 'SHELL.PAGES.ADMINISTRATION',
   'accounting.auxiliaryBalance': 'SHELL.PAGES.AUXILIARY_BALANCE',
   'accounting.auxiliaryLedger': 'SHELL.PAGES.AUXILIARY_LEDGER',

@@ -1,0 +1,220 @@
+<div class="space-y-5">
+  <liass-page-header
+    [eyebrow]="'FISCALITY.EYEBROW' | transloco"
+    [title]="'FISCALITY.TITLE' | transloco"
+    [subtitle]="'FISCALITY.SUBTITLE' | transloco"
+  />
+  <liass-card [title]="'FISCALITY.SFE' | transloco">
+    @if (approvals.isPending()) {
+      <liass-skeleton [lines]="3" />
+    } @else if (approvals.isError() && !approvals.data()) {
+      <p role="alert" class="text-sm text-danger-600">{{ 'FISCALITY.ERROR' | transloco }}</p>
+    } @else if (approvals.data()?.approval; as approval) {
+      <dl class="grid gap-4 text-sm sm:grid-cols-2">
+        <div>
+          <dt class="text-app-text-secondary">{{ 'FISCALITY.APPROVAL_REFERENCE' | transloco }}</dt>
+          <dd class="break-words font-medium">{{ approval.approvalLetterReference }}</dd>
+        </div>
+        <div>
+          <dt class="text-app-text-secondary">{{ 'FISCALITY.SOFTWARE' | transloco }}</dt>
+          <dd class="break-words font-medium">
+            {{ approval.softwareName }} · {{ approval.softwareVersion }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-app-text-secondary">{{ 'FISCALITY.PUBLISHER' | transloco }}</dt>
+          <dd class="break-words">
+            {{ approval.publisher.name }} · {{ approval.publisher.email }} ·
+            {{ approval.publisher.phone }}
+          </dd>
+        </div>
+        <div>
+          <dt class="text-app-text-secondary">{{ 'FISCALITY.SUPPLIER' | transloco }}</dt>
+          <dd class="break-words">
+            {{ approval.supplier.name }} · {{ approval.supplier.email }} ·
+            {{ approval.supplier.phone }}
+          </dd>
+        </div>
+      </dl>
+    } @else {
+      <liass-status-chip [label]="'FISCALITY.SFE_PENDING' | transloco" tone="neutral" />
+    }
+    <p class="mt-4 text-sm text-app-text-secondary">
+      {{ 'FISCALITY.ENROLLMENT_HELP' | transloco }}
+    </p>
+    <a
+      href="https://sygmef.impots.bj/emcf/registration"
+      target="_blank"
+      rel="noopener noreferrer"
+      class="mt-2 inline-block text-sm text-brand-700 underline"
+      >{{ 'FISCALITY.DGI_LINK' | transloco }}</a
+    >
+  </liass-card>
+  <liass-card
+    [title]="'FISCALITY.CONNECTIONS' | transloco"
+    [description]="'FISCALITY.CONNECTIONS_HELP' | transloco"
+  >
+    <div liassCardActions>
+      @if (canManage()) {
+        <liass-button
+          icon="add"
+          tone="brand"
+          variant="solid"
+          [disabled]="busy()"
+          (pressed)="configure()"
+          >{{ 'FISCALITY.ADD' | transloco }}</liass-button
+        >
+      }
+    </div>
+    <div class="mb-4 flex flex-wrap items-center gap-3">
+      <mat-form-field appearance="outline"
+        ><mat-label>{{ 'FISCALITY.ENVIRONMENT' | transloco }}</mat-label>
+        <mat-select [value]="environment()" (valueChange)="environment.set($event)">
+          <mat-select-trigger>{{
+            'FISCALITY.ENV.' + environment() | transloco
+          }}</mat-select-trigger>
+          <mat-option value="TEST">{{ 'FISCALITY.ENV.TEST' | transloco }}</mat-option
+          ><mat-option value="PRODUCTION">{{ 'FISCALITY.ENV.PRODUCTION' | transloco }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <liass-status-chip [label]="'FISCALITY.BLOCKED' | transloco" tone="warning" />
+      <liass-button
+        size="icon"
+        icon="refresh"
+        variant="ghost"
+        [ariaLabel]="'FISCALITY.REFRESH' | transloco"
+        [matTooltip]="'FISCALITY.REFRESH' | transloco"
+        [disabled]="settings.isFetching()"
+        (pressed)="settings.refetch()"
+      />
+    </div>
+    @if (settings.isError()) {
+      <p class="mb-4 text-sm text-danger-600" role="alert">{{ 'FISCALITY.ERROR' | transloco }}</p>
+    }
+    @if (settings.isPending()) {
+      <liass-skeleton [lines]="4" />
+    } @else if (!connections().length && !settings.isError()) {
+      <p class="text-sm text-app-text-secondary">{{ 'FISCALITY.EMPTY' | transloco }}</p>
+    } @else if (connections().length) {
+      <div class="hidden overflow-x-auto md:block">
+        <table class="liass-data-table w-full">
+          <caption class="sr-only">
+            {{
+              'FISCALITY.CONNECTIONS' | transloco
+            }}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">{{ 'FISCALITY.LABEL' | transloco }}</th>
+              <th scope="col">{{ 'FISCALITY.IFU' | transloco }}</th>
+              <th scope="col">{{ 'FISCALITY.NIM' | transloco }}</th>
+              <th scope="col">{{ 'FISCALITY.CREDENTIAL_STATUS' | transloco }}</th>
+              @if (canManage()) {
+                <th scope="col">{{ 'FISCALITY.ACTIONS' | transloco }}</th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (connection of connections(); track connection.connectionId) {
+              <tr>
+                <td class="break-words">{{ connection.label }}</td>
+                <td>{{ connection.taxpayerIfu || ('FISCALITY.MISSING' | transloco) }}</td>
+                <td>{{ connection.nim || ('FISCALITY.MISSING' | transloco) }}</td>
+                <td>
+                  <liass-status-chip
+                    [label]="'FISCALITY.CREDENTIAL.' + connection.credentialStatus | transloco"
+                    [tone]="
+                      connection.credentialStatus === 'STORED_UNVERIFIED' ? 'warning' : 'neutral'
+                    "
+                    size="sm"
+                  />
+                </td>
+                @if (canManage()) {
+                  <td>
+                    <button
+                      mat-icon-button
+                      [matMenuTriggerFor]="actions"
+                      [matMenuTriggerData]="{ connection: connection }"
+                      [attr.aria-label]="'FISCALITY.ACTIONS' | transloco"
+                      [disabled]="busy()"
+                    >
+                      <mat-icon>more_vert</mat-icon>
+                    </button>
+                  </td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="space-y-4 md:hidden">
+        @for (connection of connections(); track connection.connectionId) {
+          <section class="border-b border-app-border pb-4">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="min-w-0 break-words text-sm font-semibold">{{ connection.label }}</h3>
+              @if (canManage()) {
+                <button
+                  mat-icon-button
+                  [matMenuTriggerFor]="actions"
+                  [matMenuTriggerData]="{ connection: connection }"
+                  [attr.aria-label]="'FISCALITY.ACTIONS' | transloco"
+                  [disabled]="busy()"
+                >
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+              }
+            </div>
+            <dl class="mb-3 grid gap-2 text-sm">
+              <div>
+                <dt class="text-app-text-secondary">{{ 'FISCALITY.IFU' | transloco }}</dt>
+                <dd class="break-all">
+                  {{ connection.taxpayerIfu || ('FISCALITY.MISSING' | transloco) }}
+                </dd>
+              </div>
+              <div>
+                <dt class="text-app-text-secondary">{{ 'FISCALITY.NIM' | transloco }}</dt>
+                <dd class="break-all">{{ connection.nim || ('FISCALITY.MISSING' | transloco) }}</dd>
+              </div>
+            </dl>
+            <liass-status-chip
+              [label]="'FISCALITY.CREDENTIAL.' + connection.credentialStatus | transloco"
+              [tone]="connection.credentialStatus === 'STORED_UNVERIFIED' ? 'warning' : 'neutral'"
+            />
+          </section>
+        }
+      </div>
+    }
+    @if (settings.hasNextPage()) {
+      <liass-button
+        class="mt-4"
+        [loading]="settings.isFetchingNextPage()"
+        (pressed)="settings.fetchNextPage()"
+        >{{ 'FISCALITY.MORE' | transloco }}</liass-button
+      >
+    }
+    <p class="mt-4 text-sm text-app-text-secondary">{{ 'FISCALITY.RESTRICTIONS' | transloco }}</p>
+    <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+      @for (check of readiness; track check) {
+        <div>
+          <dt class="text-app-text-secondary">{{ 'FISCALITY.CHECK.' + check | transloco }}</dt>
+          <dd>{{ 'FISCALITY.UNVERIFIED' | transloco }}</dd>
+        </div>
+      }
+    </dl>
+  </liass-card>
+</div>
+<mat-menu #actions="matMenu">
+  <ng-template matMenuContent let-connection="connection">
+    <button mat-menu-item (click)="configure(connection)">
+      <mat-icon>edit</mat-icon>{{ 'FISCALITY.CONFIGURE' | transloco }}
+    </button>
+    <button mat-menu-item (click)="configure(connection, 'STORE_CREDENTIAL')">
+      <mat-icon>key</mat-icon>{{ 'FISCALITY.TOKEN_ACTION' | transloco }}
+    </button>
+    @if (connection.credentialStatus === 'STORED_UNVERIFIED') {
+      <button mat-menu-item class="text-danger-600" (click)="revoke(connection)">
+        <mat-icon>key_off</mat-icon>{{ 'FISCALITY.REVOKE' | transloco }}
+      </button>
+    }
+  </ng-template>
+</mat-menu>

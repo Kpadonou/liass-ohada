@@ -16,6 +16,7 @@ import { AppTopbarComponent } from '../app-topbar/app-topbar.component';
 
 export function pageFromUrl(url: string): AppPage {
   const path = url.split('?')[0]?.split('#')[0] ?? '';
+  if (path.startsWith('/settings/fiscality')) return 'settings.fiscality';
 
   if (path.startsWith('/cabinet/dossiers')) {
     return 'cabinet.dossiers';

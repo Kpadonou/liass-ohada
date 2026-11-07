@@ -1,4 +1,8 @@
 {
+  "PLATFORM_FISCAL_FORBIDDEN": "Authorized direct company access is required.",
+  "PLATFORM_FISCAL_CONFLICT": "The configuration changed or this request already exists. Refresh before retrying.",
+  "PLATFORM_FISCAL_UNAVAILABLE": "Fiscal configuration is temporarily unavailable. Retry the same request.",
+  "PLATFORM_FISCAL_SAVED": "Configuration saved. Fiscal verification is still required.",
   "PLATFORM_IDENTITY_REQUIRED": "An authenticated Platform identity is required.",
   "PLATFORM_ADMIN_REQUIRED": "An active Platform authorization is required.",
   "PLATFORM_SFE_UNAVAILABLE": "SFE references are temporarily unavailable.",

@@ -394,6 +394,7 @@ export class AppSidebarComponent {
   private readonly productAccessState = inject(ProductAccessState);
   private readonly salesCapabilities = inject(SalesCapabilities);
   protected readonly uiStore = inject(UiStore);
+  protected readonly fiscalityItem: ShellNavItem = { page: 'settings.fiscality', route: '/settings/fiscality', icon: 'verified_user', labelKey: 'FISCALITY.TITLE' };
   protected readonly cabinetMode = computed(() => this.authStore.isCabinetContext());
   protected readonly visibleCabinetItems = computed(() =>
     cabinetItems.filter(
