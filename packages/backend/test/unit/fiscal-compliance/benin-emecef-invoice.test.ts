@@ -501,3 +501,41 @@ test("resume preparation rejects mismatched checkpoint or remote invoice before 
     "GET",
   ]);
 });
+
+test.each([
+  [401, {}, "AUTHENTICATION"],
+  [503, {}, "HTTP"],
+  [200, {}, "RESPONSE_VALIDATION"],
+  [200, { errorCode: "20", errorDesc: "confidential" }, "PROVIDER_REJECTION"],
+] as const)("preserves safe confirmation diagnostics for HTTP %s", async (status, body, category) => {
+  const doc = invoice();
+  const transport = jest.fn(async (request: Parameters<FiscalHttpTransport>[0]) =>
+    request.method === "POST" ? response({ uid: "uid", ...fiscalTotals }) : response(body, status));
+  const adapter = new BeninEMecefTestAdapter({ transport });
+  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected);
+  let failure: unknown;
+  try { await adapter.confirmCreatedInvoice(input, "uid", doc, expected, created, fiscalTotals); }
+  catch (error) { failure = error; }
+  expect(failure).toMatchObject({ code: "UNKNOWN_OUTCOME", mutationDiagnostic: {
+    operation: "CONFIRM_INVOICE", environment: "TEST", category, httpStatus: status,
+    sent: true, durationMs: expect.any(Number),
+  } });
+  expect(JSON.stringify(failure)).not.toContain("confidential");
+  expect(JSON.stringify(failure)).not.toContain(input.credential);
+  await expect(adapter.confirmCreatedInvoice(input, "uid", doc, expected, created, fiscalTotals))
+    .rejects.toMatchObject({ code: "RECONCILIATION_FAILED" });
+  expect(transport).toHaveBeenCalledTimes(2);
+});
+
+test("ambiguous confirmation transport failure preserves metadata and never retries", async () => {
+  const doc = invoice();
+  const transport = jest.fn(async (request: Parameters<FiscalHttpTransport>[0]) => {
+    if (request.method === "POST") return response({ uid: "uid", ...fiscalTotals });
+    throw new Error(input.credential);
+  });
+  const adapter = new BeninEMecefTestAdapter({ transport });
+  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected);
+  await expect(adapter.confirmCreatedInvoice(input, "uid", doc, expected, created, fiscalTotals))
+    .rejects.toMatchObject({ code: "UNKNOWN_OUTCOME", mutationDiagnostic: { category: "TRANSPORT", sent: true } });
+  expect(transport).toHaveBeenCalledTimes(2);
+});

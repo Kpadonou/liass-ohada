@@ -161,6 +161,7 @@ export class BeninEMecefConnectorError extends Error {
     readonly httpStatus?: number,
     readonly validationIssues?: readonly BeninEMecefValidationIssue[],
     readonly providerDiagnostic?: BeninEMecefProviderDiagnostic,
+    readonly mutationDiagnostic?: { readonly operation: "CREATE_INVOICE" | "CONFIRM_INVOICE" | "CANCEL_INVOICE"; readonly environment: "TEST"; readonly category: "TRANSPORT" | "AUTHENTICATION" | "HTTP" | "RESPONSE_VALIDATION" | "PROVIDER_REJECTION"; readonly httpStatus?: number; readonly durationMs: number; readonly providerErrorCode?: string; readonly validationPaths?: readonly string[]; readonly sent: boolean; },
   ) {
     super(safeMessages[code]);
     this.name = "BeninEMecefConnectorError";
@@ -348,20 +349,28 @@ export class BeninEMecefTestAdapter {
       dto.InvoiceDetailsDtoSchema,
     );
   }
-  private async mutate<T>(operation: () => Promise<T>): Promise<T> {
+  private async mutate<T>(
+    operation: "CREATE_INVOICE" | "CONFIRM_INVOICE" | "CANCEL_INVOICE",
+    send: () => Promise<T>,
+  ): Promise<T> {
+    const started = performance.now();
     try {
-      return await operation();
+      return await send();
     } catch (error) {
-      if (
-        error instanceof BeninEMecefConnectorError &&
-        [
-          "ENVIRONMENT_NOT_ALLOWED",
-          "MISSING_CREDENTIAL",
-          "PROVIDER_REJECTED",
-        ].includes(error.code)
-      )
-        throw error;
-      throw new BeninEMecefConnectorError("UNKNOWN_OUTCOME");
+      const failure = error instanceof BeninEMecefConnectorError ? error : undefined;
+      const category: NonNullable<BeninEMecefConnectorError["mutationDiagnostic"]>["category"] = failure?.code === "PROVIDER_REJECTED" ? "PROVIDER_REJECTION"
+        : failure?.code === "AUTHENTICATION_FAILED" || failure?.code === "ACCESS_FORBIDDEN" ? "AUTHENTICATION"
+        : failure?.code === "MALFORMED_RESPONSE" ? "RESPONSE_VALIDATION"
+        : failure?.httpStatus !== undefined ? "HTTP" : "TRANSPORT";
+      const diagnostic = {
+        operation, environment: "TEST" as const, category,
+        ...(failure?.httpStatus === undefined ? {} : { httpStatus: failure.httpStatus }),
+        durationMs: Math.round(performance.now() - started),
+        ...(failure?.providerDiagnostic ? { providerErrorCode: failure.providerDiagnostic.providerErrorCode } : {}),
+        ...(failure?.validationIssues ? { validationPaths: failure.validationIssues.map(issue => issue.path) } : {}),
+        sent: true,
+      };
+      throw new BeninEMecefConnectorError("UNKNOWN_OUTCOME", undefined, undefined, undefined, diagnostic);
     }
   }
 
@@ -384,7 +393,7 @@ export class BeninEMecefTestAdapter {
       throw new BeninEMecefConnectorError("DUPLICATE_ATTEMPT");
     attempt.claim();
     submittedInvoices.add(fingerprint);
-    const result = await this.mutate(() =>
+    const result = await this.mutate("CREATE_INVOICE", () =>
       this.request(
         input,
         "POST",
@@ -432,7 +441,7 @@ export class BeninEMecefTestAdapter {
     if (!sameInvoice(details, invoice))
       throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
     original.used = true;
-    const security = await this.mutate(() =>
+    const security = await this.mutate("CONFIRM_INVOICE", () =>
       this.request(
         input,
         "PUT",
@@ -491,7 +500,7 @@ export class BeninEMecefTestAdapter {
       throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
     }
     original.used = true;
-    const security = await this.mutate(() =>
+    const security = await this.mutate("CONFIRM_INVOICE", () =>
       this.request(
         input,
         "PUT",
@@ -519,7 +528,7 @@ export class BeninEMecefTestAdapter {
       state.providerTotal !== state.expectedTotal
     )
       throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
-    const security = await this.mutate(() =>
+    const security = await this.mutate("CONFIRM_INVOICE", () =>
       this.request(
         input,
         "PUT",
@@ -534,7 +543,7 @@ export class BeninEMecefTestAdapter {
     const path = `${this.uidPath(uid)}/cancel`;
     return {
       uid,
-      ...(await this.mutate(() =>
+      ...(await this.mutate("CANCEL_INVOICE", () =>
         this.request(input, "PUT", path, securitySchema),
       )),
     };
@@ -587,7 +596,7 @@ export class BeninEMecefTestAdapter {
       throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
     }
     prepared.used = true;
-    const security = await this.mutate(() =>
+    const security = await this.mutate("CONFIRM_INVOICE", () =>
       this.request(
         input,
         "PUT",
