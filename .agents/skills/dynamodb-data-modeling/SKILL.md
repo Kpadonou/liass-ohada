@@ -34,6 +34,12 @@ When working on DynamoDB-related features, Codex must:
 14. Do not rename PK/SK/GSI formats or introduce new key formats unless the task explicitly asks for a key model refactor.
 15. Respect domain ownership: physical co-location in the shared table does not authorize a domain to use another domain's internal key helpers, repositories, or persistence operations.
 16. Use an explicit API or versioned event for cross-domain collaboration rather than direct cross-domain persistence writes.
+17. Before constructing a transaction, verify current DynamoDB operation, item-size, and transaction-size limits; address each physical item at most once per transaction. Combine intended changes to one item into one conditional operation, or redesign the boundary without losing atomicity.
+18. Condition uniqueness reservations, versions, and state transitions on their expected prior state. Treat conditional failures and transaction conflicts as explicit concurrency outcomes; never silently overwrite or assume a failed write committed.
+19. Specify required read consistency per access pattern. A GSI is eventually consistent and cannot alone prove an immediate uniqueness, lock, or post-commit invariant; use authoritative conditional writes or base-table reads where required.
+20. Make retryable commands idempotent with durable intent/result evidence. After an ambiguous timeout or transaction outcome, resolve the authoritative outcome before retrying; never generate a new operation identity for the same intent.
+21. Assess hot-item contention, partition throughput, transaction amplification, payload size, and realistic concurrency. Validate material scalability risks with representative measurements rather than assuming fiscal-year partitioning alone removes them.
+22. For derived projections, define source-of-truth ownership, lag tolerance, reconciliation, and deterministic, repeatable rebuilding when a failure can leave the projection stale.
 
 ## Reference priority
 
@@ -69,3 +75,4 @@ When this skill is used, Codex must summarize:
 - files changed;
 - tests added or updated;
 - risks, tradeoffs, or unsupported access patterns.
+- transaction/consistency assumptions, retry and conflict behavior, and any projection-recovery or scalability risks relevant to the change.

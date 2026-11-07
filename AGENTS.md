@@ -151,6 +151,12 @@ The DynamoDB skill reference files provide design guidance and examples only. Th
 
 Codex must not rename PK/SK/GSI formats or introduce new key formats unless the task explicitly asks for a key model refactor.
 
+### Accounting integrity
+
+Use `accounting-integrity` when a task changes posting or ledger calculations; fiscal-year or period closing; balances or financial-report correctness; auxiliary accounting or lettering invariants; reconciliation or accounting recovery; cross-domain accounting generation or centralization; or financial-workflow persistence that can affect accounting integrity. This applies across products and without a direct DynamoDB code change. Unrelated UI, configuration, and ordinary database operations do not trigger it.
+
+For applicable work, also use `dynamodb-data-modeling` for persistence, transactions, and access patterns; `ohada-legal-reference` for applicable legal and accounting rules; and `liass-platform-architecture` when platform ownership or cross-domain boundaries are involved. Detailed integrity rules live in `accounting-integrity`.
+
 ### Combined OHADA and DynamoDB tasks
 
 When a task involves both business compliance and persistence modeling, Codex must use both skills:
