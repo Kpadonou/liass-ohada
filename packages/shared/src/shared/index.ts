@@ -12,3 +12,4 @@ export * from "./initial-product-role";
 export * from "./organization-invitations";
 
 export * from "./legal-identity-authority";
+export * from "./platform-sfe-approval";

@@ -65,6 +65,13 @@ export class ApiStack extends Stack {
       ],
     });
     props.accountingTable.grantReadWriteData(apiLambdaRole);
+    // The legacy application writer must never bootstrap or revoke Platform administrators.
+    apiLambdaRole.addToPolicy(new iam.PolicyStatement({
+      effect: iam.Effect.DENY,
+      actions: ["dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:DeleteItem", "dynamodb:BatchWriteItem"],
+      resources: [props.accountingTable.tableArn],
+      conditions: { "ForAnyValue:StringLike": { "dynamodb:LeadingKeys": ["PLATFORM_ADMIN#*"] } },
+    }));
 
     // -----------------------------------------------------------
     // 3. Domain Modules Initialization (Dependency Injection)
@@ -75,6 +82,7 @@ export class ApiStack extends Stack {
      * Handles authenticated user context before tenant selection.
      */
     new IdentityApiStack(this, "IdentityApi", {
+      cognitoIssuer: this.auth.userPool.userPoolProviderUrl,
       api: this.apiGateway.httpApi,
       lambdaRole: apiLambdaRole,
       table: props.accountingTable,

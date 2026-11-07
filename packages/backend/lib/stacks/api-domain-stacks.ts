@@ -28,7 +28,7 @@ interface SalesApiStackProps extends ApiDomainStackProps {
 }
 
 export class IdentityApiStack extends NestedStack {
-  constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
+  constructor(scope: Construct, id: string, props: ApiDomainStackProps & { cognitoIssuer: string }) {
     super(scope, id, props);
     new IdentityEndpoints(this, "IdentityModule", props);
   }

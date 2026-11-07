@@ -13,6 +13,15 @@ function restaurantTransactionTimestamp(value: string): string {
   return value;
 }
 export const KeyFactory = {
+  // Platform-global authority: stage plus SHA-256 of verified [issuer, sub].
+  platformAdminPK: (stage: string, principalDigest: string) =>
+    `PLATFORM_ADMIN#${stage}#${principalDigest}`,
+  platformAdminGrantSK: () => "GRANT#PLATFORM_SFE_APPROVAL_MANAGE",
+  platformAdminGrantHistorySK: (version: number) => `GRANT_HISTORY#${String(version).padStart(16, "0")}`,
+  platformSfePK: (stage: string) => `PLATFORM_SFE#${stage}#BJ`,
+  platformSfeCurrentSK: () => "CURRENT",
+  platformSfeRevisionSK: (version: number) => `REV#${String(version).padStart(16, "0")}`,
+  platformSfeCommandSK: (commandId: string) => `COMMAND#${commandId}`,
   restaurantDocumentsPK: (orgId: string, outletId: string, month: string) => {
     if (!/^\d{6}$/.test(month)) throw new Error("Invalid document month");
     return `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#DOCS#${month}`;

@@ -1,4 +1,9 @@
 {
+  "PLATFORM_IDENTITY_REQUIRED": "An authenticated Platform identity is required.",
+  "PLATFORM_ADMIN_REQUIRED": "An active Platform authorization is required.",
+  "PLATFORM_SFE_UNAVAILABLE": "SFE references are temporarily unavailable.",
+  "PLATFORM_SFE_VERSION_CONFLICT": "SFE references changed. Refresh before retrying.",
+  "PLATFORM_SFE_COMMAND_CONFLICT": "This request was already used with different content.",
   "RESTAURANTS_REFUND_CREDIT_NOT_FOUND": "The requested credit note was not found.",
   "RESTAURANTS_REFUND_CREDIT_NOT_VALIDATED": "A refund requires a validated credit note.",
   "RESTAURANTS_REFUND_AMOUNT": "The amount must be a positive integer.",

@@ -1,4 +1,9 @@
 {
+  "PLATFORM_IDENTITY_REQUIRED": "Une identité Platform authentifiée est requise.",
+  "PLATFORM_ADMIN_REQUIRED": "Cette action nécessite une habilitation Platform active.",
+  "PLATFORM_SFE_UNAVAILABLE": "Les références SFE sont momentanément indisponibles.",
+  "PLATFORM_SFE_VERSION_CONFLICT": "Les références SFE ont changé. Actualisez avant de réessayer.",
+  "PLATFORM_SFE_COMMAND_CONFLICT": "Cette demande a déjà été utilisée avec un autre contenu.",
   "RESTAURANTS_REFUND_CREDIT_NOT_FOUND": "L’avoir demandé est introuvable.",
   "RESTAURANTS_REFUND_CREDIT_NOT_VALIDATED": "Un remboursement nécessite un avoir validé.",
   "RESTAURANTS_REFUND_AMOUNT": "Le montant doit être un entier strictement positif.",

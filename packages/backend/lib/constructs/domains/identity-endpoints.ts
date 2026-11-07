@@ -2,14 +2,16 @@ import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import * as path from "path";
+import { PlatformFiscalityEndpoints } from "./platform-fiscality-endpoints";
 import {
   DomainConstructFactory,
   DomainProps,
 } from "./domain-constructs-factory";
 
 export class IdentityEndpoints extends DomainConstructFactory {
-  constructor(scope: Construct, id: string, props: DomainProps) {
+  constructor(scope: Construct, id: string, props: DomainProps & { cognitoIssuer: string }) {
     super(scope, id);
+    new PlatformFiscalityEndpoints(this, "PlatformFiscality", props);
 
     const projectRoot = path.resolve(__dirname, "..", "..", "..");
     // Platform invitations only: no product/table ownership expansion or email infrastructure.
