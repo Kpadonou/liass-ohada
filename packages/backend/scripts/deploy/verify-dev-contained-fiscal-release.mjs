@@ -4,8 +4,8 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { APPROVED_COMMITS, TARGET_FUNCTIONS, addedResources, assertContainedAdditions } from "./prepare-dev-contained-fiscal-release.mjs";
 
-const [releaseArg, baselineArg, zipArg, liveHashesArg, apiBaselineArg] = process.argv.slice(2);
-if (!releaseArg || !baselineArg || !zipArg || !liveHashesArg || !apiBaselineArg) throw new Error("Usage: verify RELEASE_DIR LIVE_IDENTITY_TEMPLATE LIVE_ZIP_DIR CURRENT_LAMBDA_HASHES LIVE_API_TEMPLATE");
+const [releaseArg, baselineArg, zipArg, liveHashesArg, apiBaselineArg, executorArg] = process.argv.slice(2);
+if (!releaseArg || !baselineArg || !zipArg || !liveHashesArg || !apiBaselineArg || !executorArg) throw new Error("Usage: verify RELEASE_DIR LIVE_IDENTITY_TEMPLATE LIVE_ZIP_DIR CURRENT_LAMBDA_HASHES LIVE_API_TEMPLATE EXECUTOR_CONFIG");
 const release = resolve(releaseArg), zipDirectory = resolve(zipArg);
 const json = (file) => { const value = JSON.parse(readFileSync(file, "utf8")); return typeof value === "string" ? JSON.parse(value) : value; };
 const hash = (bytes) => createHash("sha256").update(bytes).digest();
@@ -13,6 +13,11 @@ const manifest = json(join(release, "release-manifest.json"));
 if (manifest.mode !== "PREPARE_ONLY" || manifest.deployAuthorized !== false ||
     manifest.target.account !== "570197775998" || manifest.target.region !== "eu-west-3" || manifest.target.stage !== "dev" ||
     JSON.stringify(manifest.source.approvedCommits) !== JSON.stringify(APPROVED_COMMITS)) throw new Error("Release identity mismatch");
+const executor = json(executorArg);
+if (executor.Environment?.FISCAL_REAL_TEST_ENABLED !== "0" ||
+    manifest.desired.gates.FISCAL_CREDENTIAL_TEST_VERIFICATION_ENABLED !== "0" ||
+    manifest.desired.gates.productionProviderDispatch !== false ||
+    manifest.desired.gates.automaticFiscalActivation !== false) throw new Error("Fiscal safety gate invalid");
 const baseline = json(baselineArg);
 const identityAsset = join(release, "assets", manifest.assets.identityTemplate.key);
 const apiAsset = join(release, "assets", manifest.assets.apiTemplate.key);
