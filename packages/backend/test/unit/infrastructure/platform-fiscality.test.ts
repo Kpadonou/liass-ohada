@@ -37,6 +37,8 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
   expect(policy).toContain("ssm:PutParameter");
   expect(policy).toContain("ssm:GetParameter");
   expect(policy).toContain("ssm:Overwrite");
+  expect(policy).toContain('"StringEquals":{"ssm:Overwrite":"false"}');
+  expect(policy).not.toContain('"Bool":{"ssm:Overwrite"');
   expect(policy).not.toContain("ssm:GetParametersByPath");
   expect(policy).not.toContain("ssm:DeleteParameter");
   expect(policy).not.toContain("secretsmanager:");

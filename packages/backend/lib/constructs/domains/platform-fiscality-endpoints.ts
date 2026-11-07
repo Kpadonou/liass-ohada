@@ -52,7 +52,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
     }));
     const parameterArn = Stack.of(this).formatArn({ service: "ssm", resource: "parameter", resourceName: `${props.stage}/platform/fiscal/*` });
     enrollmentRole.addToPolicy(new iam.PolicyStatement({
-      actions: ["ssm:PutParameter"], resources: [parameterArn], conditions: { Bool: { "ssm:Overwrite": "false" } },
+      actions: ["ssm:PutParameter"], resources: [parameterArn], conditions: { StringEquals: { "ssm:Overwrite": "false" } },
     }));
     enrollmentRole.addToPolicy(new iam.PolicyStatement({ actions: ["ssm:GetParameter"], resources: [parameterArn] }));
     const verificationRole = new iam.Role(this, "VerificationRole", {
