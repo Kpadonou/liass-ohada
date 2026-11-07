@@ -261,6 +261,7 @@ export class BeninEMecefTestAdapter {
       clearTimeout(timeout);
     }
 
+    if (response.truncated) throw new BeninEMecefConnectorError("MALFORMED_RESPONSE", response.status);
     if (response.status === 401) {
       throw new BeninEMecefConnectorError("AUTHENTICATION_FAILED", 401);
     }

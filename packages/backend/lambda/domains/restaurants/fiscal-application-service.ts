@@ -1,3 +1,5 @@
+import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
+import { restaurantBeninRealTestWorkflow, RealTestConfiguration } from "./benin-real-test-workflow";
 import {
   RestaurantFiscalSourceRequestSchema as requestSchema,
   RestaurantFiscalInitiateRequestSchema as commandSchema,
@@ -13,13 +15,13 @@ import { restaurantBeninSyntheticWorkflow } from "./benin-synthetic-workflow";
 
 type Context = { orgId: string; userId: string };
 type Request = z.infer<typeof requestSchema>;
-type Settings = Pick<
+type Settings = { realConfiguration?: RealTestConfiguration } & Pick<
   Parameters<typeof restaurantBeninSyntheticWorkflow>[0],
   "classifications" | "mapping" | "adapter" | "credential"
 >;
 /** Internal application boundary only. Context comes from the authenticated
  * application, and mapping settings from trusted test composition, never a body.
- * No registered route or real-data execution is enabled.
+ * Real TEST composition is separately gated and accepts only authentic provenance.
  */
 export class RestaurantFiscalApplicationService {
   constructor(
@@ -27,6 +29,7 @@ export class RestaurantFiscalApplicationService {
       context: Context,
       request: Request,
     ) => Promise<Settings>,
+    private readonly real = false,
   ) {}
   private identity(context: Context, request: Request) {
     return {
@@ -41,15 +44,15 @@ export class RestaurantFiscalApplicationService {
   }
   private async verify(context: Context, request: Request) {
     if (
-      process.env.NODE_ENV !== "test" ||
-      process.env.FISCAL_SYNTHETIC_APPLICATION !== "1" ||
+      (this.real ? !realFiscalTestEnabled() : (process.env.NODE_ENV !== "test" ||
+      process.env.FISCAL_SYNTHETIC_APPLICATION !== "1")) ||
       !context.orgId ||
       !context.userId
     )
       throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     const scope = { orgId: context.orgId, outletId: request.outletId };
     // Existing membership, entitlement, role and outlet checks; publication roles
-    // OWNER/MANAGER/CASHIER are reused for this synthetic-only capability.
+    // OWNER/MANAGER/CASHIER remain subject to product, outlet and operator authorization.
     await RestaurantReceiptService.authorize(scope, context.userId);
     const source = await RestaurantInvoiceSourceVerifier.verify(
       scope,
@@ -58,13 +61,16 @@ export class RestaurantFiscalApplicationService {
       request.invoiceId,
     );
     if (!source.verified) throw new AppError(409, "FISCAL_SOURCE_UNAVAILABLE");
+    if (this.real && (!source.evidence.issuanceProvenance.verified ||
+      source.evidence.issuanceProvenance.evidence.evidenceOrigin !== "AUTHENTIC"))
+      throw new AppError(409, "PROVENANCE_UNAVAILABLE");
     return source.evidence;
   }
   private view(request: Request, state?: FiscalAttemptState) {
     return {
       invoiceId: request.invoiceId,
       environment: "TEST" as const,
-      execution: "SYNTHETIC" as const,
+      execution: this.real ? "REAL_TEST" as const : "SYNTHETIC" as const,
       status: state?.status ?? "NOT_STARTED",
       confirmed: state?.status === "CONFIRMED",
       legallyNormalized: false as const,
@@ -81,7 +87,7 @@ export class RestaurantFiscalApplicationService {
     const state = await new FiscalAttemptStore().read(
       this.identity(context, request),
     );
-    if (state && state.sourceDigest !== source.proof.digest)
+    if (state && ((state.execution === "REAL_TEST") !== this.real || state.sourceDigest !== source.proof.digest))
       throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
     await this.verify(context, request);
     return this.view(request, state);
@@ -91,11 +97,20 @@ export class RestaurantFiscalApplicationService {
     return {
       ...result,
       resultAvailable: result.confirmed,
-      evidenceOrigin: result.confirmed ? ("SYNTHETIC" as const) : null,
+      evidenceOrigin: result.confirmed ? (this.real ? "DGI_TEST" as const : "SYNTHETIC" as const) : null,
     };
   }
   private async workflow(context: Context, request: Request) {
     const settings = await this.settings(context, request);
+    const authorize: Parameters<typeof restaurantBeninRealTestWorkflow>[1] = async (principal) => {
+      if (principal.orgId !== context.orgId || principal.actorId !== context.userId)
+        throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+      await this.verify(context, request);
+    };
+    if (this.real) {
+      if (!settings.realConfiguration) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+      return restaurantBeninRealTestWorkflow(settings.realConfiguration, authorize);
+    }
     return restaurantBeninSyntheticWorkflow({
       ...settings,
       outletId: request.outletId,
@@ -120,6 +135,7 @@ export class RestaurantFiscalApplicationService {
     if (existing) {
       const create = existing.commands.find((c) => c.operation === "CREATE");
       if (
+        (existing.execution === "REAL_TEST") !== this.real ||
         existing.sourceDigest !== source.proof.digest ||
         existing.attemptId !== attemptId ||
         (create && create.commandId !== commandId)
@@ -144,6 +160,8 @@ export class RestaurantFiscalApplicationService {
     const state = await new FiscalAttemptStore().read(
       this.identity(context, request),
     );
+    if (state?.commands.some(c => c.operation === "CONFIRM" && c.commandId === commandId))
+      return this.confirmedResult(context, request);
     if (
       !source.issuanceProvenance.verified ||
       !state ||

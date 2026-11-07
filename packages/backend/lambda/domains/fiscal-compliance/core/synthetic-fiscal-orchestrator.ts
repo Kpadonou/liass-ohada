@@ -1,3 +1,4 @@
+import { realFiscalTestEnabled } from "./test-execution";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { FiscalAttemptStore } from "../persistence/fiscal-attempt-store";
@@ -23,12 +24,13 @@ export interface VerifiedFiscalPreparation {
 type Security = NonNullable<
   z.infer<typeof fiscalAttemptStateSchema>["security"]
 >;
-/** Synthetic port: no credentials, transport, endpoint or provider dispatch implementation. */
+/** Provider port shared by synthetic execution and explicitly gated real TEST execution. */
 export interface MockFiscalProvider {
   readonly kind: "MOCK" | "BENIN_EMECEF_TEST";
+  diagnostic?: FiscalAttemptState["diagnostic"];
   createInvoice(
     preparation: VerifiedFiscalPreparation,
-  ): Promise<{ uid: string; total: number; reconciled: boolean }>;
+  ): Promise<{ uid: string; total: number; reconciled: boolean; fiscalTotalsDigest?: string; providerContextDigest?: string }>;
   confirmInvoice(
     uid: string,
     reservation?: FiscalAttemptState,
@@ -36,6 +38,7 @@ export interface MockFiscalProvider {
   getInvoice(uid: string): Promise<unknown>;
 }
 export class DefiniteFiscalRejection extends Error {}
+/** Compatibility name retained: one durable lifecycle, with explicit real TEST mode. */
 export class SyntheticFiscalOrchestrator {
   constructor(
     private readonly store: FiscalAttemptStore,
@@ -49,6 +52,7 @@ export class SyntheticFiscalOrchestrator {
       principal: FiscalPrincipal,
       identity: FiscalObligationIdentity,
     ) => Promise<VerifiedFiscalPreparation>,
+    private readonly real = false,
   ) {}
   private async access(
     p: FiscalPrincipal,
@@ -56,8 +60,9 @@ export class SyntheticFiscalOrchestrator {
     action: "CREATE" | "CONFIRM" | "READ" | "RECOVER",
   ) {
     if (
-      process.env.NODE_ENV !== "test" ||
+      (this.real ? !realFiscalTestEnabled() : process.env.NODE_ENV !== "test") ||
       !["MOCK", "BENIN_EMECEF_TEST"].includes(this.provider.kind) ||
+      (this.real && this.provider.kind !== "BENIN_EMECEF_TEST") ||
       !p.actorId ||
       p.orgId !== identity.orgId ||
       identity.environment !== "TEST"
@@ -85,6 +90,7 @@ export class SyntheticFiscalOrchestrator {
       identity,
       attemptId,
       provider: this.provider.kind,
+      ...(this.real ? { execution: "REAL_TEST" as const } : {}),
       sourceDigest: prepared.sourceDigest,
       requestDigest: prepared.requestDigest,
       expectedTotal: prepared.total,
@@ -102,15 +108,18 @@ export class SyntheticFiscalOrchestrator {
         .object({
           uid: z.string().min(1).max(200),
           total: z.number().int().safe(),
-          reconciled: z.literal(true),
+          reconciled: this.real ? z.boolean() : z.literal(true),
+          providerContextDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+          fiscalTotalsDigest: z.string().regex(/^[a-f0-9]{64}$/).optional(),
         })
         .parse(created);
-      if (valid.total !== prepared.total) throw new Error("TOTAL_MISMATCH");
+      if (!this.real && valid.total !== prepared.total) throw new Error("TOTAL_MISMATCH");
       return await this.store.transition(identity, reserved.state.version, {
         kind: "CREATED",
         commandId,
         uid: valid.uid,
         total: valid.total,
+        ...(this.real ? { fiscalTotalsVerified: valid.reconciled, fiscalTotalsDigest: valid.fiscalTotalsDigest, providerContextDigest: valid.providerContextDigest } : {}),
       });
     } catch (error) {
       return this.uncertain(identity, reserved.state.version, commandId, error);
@@ -126,10 +135,18 @@ export class SyntheticFiscalOrchestrator {
     if (authorization?.confirm !== true)
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     const state = await this.store.read(identity);
-    if (!state || state.provider !== this.provider.kind || !state.uid)
+    if (!state || (state.execution === "REAL_TEST") !== this.real || state.provider !== this.provider.kind || !state.uid)
       throw new FiscalAttemptConflict("UID_REQUIRED");
+    if (this.real) {
+      const prepared = await this.prepare(p, identity);
+      if (state.execution !== "REAL_TEST" || prepared.sourceDigest !== state.sourceDigest ||
+        prepared.requestDigest !== state.requestDigest || prepared.total !== state.expectedTotal)
+        throw new FiscalAttemptConflict("SCOPE_DENIED");
+    }
+    const reference = createHash("sha256").update(JSON.stringify([state.obligationId, state.attemptId, commandId, state.uid])).digest("hex");
     const reserved = await this.store.transition(identity, state.version, {
       kind: "RESERVE_MUTATION",
+      ...(this.real ? { diagnosticReference: reference } : {}),
       operation: "CONFIRM",
       commandId,
       intentDigest: this.intent("CONFIRM", commandId, state.requestDigest),
@@ -144,6 +161,7 @@ export class SyntheticFiscalOrchestrator {
         kind: "CONFIRMED",
         commandId,
         security,
+        ...(this.real ? { evidenceOrigin: "DGI_TEST" as const, diagnostic: this.provider.diagnostic } : {}),
       });
     } catch (error) {
       return this.uncertain(identity, reserved.state.version, commandId, error);
@@ -163,6 +181,7 @@ export class SyntheticFiscalOrchestrator {
             ? "DEFINITE_FAILURE"
             : "UNKNOWN",
         commandId,
+        ...(this.real ? { diagnostic: this.provider.diagnostic } : {}),
       });
     } catch {
       throw new Error("FISCAL_OUTCOME_REQUIRES_RECOVERY");

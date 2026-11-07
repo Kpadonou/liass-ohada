@@ -1,3 +1,4 @@
+import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import * as c from "@liass-ohada/shared/restaurants";
 import {
   AppError,
@@ -10,12 +11,11 @@ type Service = Pick<
   RestaurantFiscalApplicationService,
   "initiate" | "confirm" | "status" | "confirmedResult"
 >;
-/** Explicit dependency injection for local tests; no default credentials, real
- * transport, deployed entrypoint or route registration is provided.
- */
+/** Shared JWT/tenant/permission boundary. Real TEST entrypoint supplies isolated dependencies. */
 export function restaurantFiscalHandler(
   name: (typeof RESTAURANT_FISCAL_ROUTES)[number]["name"],
   service: Service,
+  real = false,
 ) {
   const route = RESTAURANT_FISCAL_ROUTES.find((v) => v.name === name)!;
   const schema =
@@ -48,8 +48,8 @@ export function restaurantFiscalHandler(
   // Guard before middleware: a disabled handler cannot reach identity reads or a service.
   return async (event: Parameters<typeof handler>[0]) => {
     if (
-      process.env.NODE_ENV !== "test" ||
-      process.env.FISCAL_SYNTHETIC_APPLICATION !== "1"
+      real ? !realFiscalTestEnabled() : (process.env.NODE_ENV !== "test" ||
+      process.env.FISCAL_SYNTHETIC_APPLICATION !== "1")
     )
       return {
         statusCode: 403,

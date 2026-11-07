@@ -8,7 +8,7 @@ import { Duration } from "aws-cdk-lib";
 import * as apigw from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
-import { Runtime } from "aws-cdk-lib/aws-lambda";
+import { Runtime, IFunction, CfnPermission } from "aws-cdk-lib/aws-lambda";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
@@ -28,7 +28,7 @@ class ManagementIntegration extends HttpLambdaIntegration {
 /** Called at the original factory scope to preserve the get-outlet Lambda identity. */
 export function addRestaurantsManagementRoutes(
   scope: Construct,
-  props: DomainProps & { restaurantsTable: ITable; lambdaRole: iam.IRole },
+  props: DomainProps & { restaurantsTable: ITable; lambdaRole: iam.IRole; fiscalTestExecutor?: IFunction },
 ) {
   const id = "Restaurants-get-outlet-GET-restaurants-outlets-outletId";
   const functionName = `liass-ohada-${props.stage}-restaurants-get-outlet`;
@@ -60,17 +60,19 @@ export function addRestaurantsManagementRoutes(
     throw new Error("Restaurants management requires an explicit API stage");
   const addFiscalRoutes = () => {
     if (props.stage !== "prod") {
+      const fiscalIntegration = props.fiscalTestExecutor
+        ? new ManagementIntegration("RealTestFiscalIntegration", props.fiscalTestExecutor) : integration;
       for (const route of RESTAURANT_FISCAL_ROUTES) {
         new apigw.HttpRoute(scope, `Fiscal-${route.name}`, {
           httpApi: props.api,
           authorizer: props.authorizer,
-          integration,
+          integration: fiscalIntegration,
           routeKey: apigw.HttpRouteKey.with(
             route.path,
             apigw.HttpMethod[route.method],
           ),
         });
-        fn.addPermission(`Fiscal-${route.name}-Invoke`, {
+        const permission = {
           principal: new iam.ServicePrincipal("apigateway.amazonaws.com"),
           sourceAccount: fn.stack.account,
           sourceArn: props.api.arnForExecuteApi(
@@ -78,7 +80,12 @@ export function addRestaurantsManagementRoutes(
             route.path.replace(/\{\w+\}/g, "*"),
             stage,
           ),
+        };
+        if (props.fiscalTestExecutor) new CfnPermission(scope, `Fiscal-${route.name}-Invoke`, {
+          action: "lambda:InvokeFunction", functionName: props.fiscalTestExecutor.functionArn,
+          principal: "apigateway.amazonaws.com", sourceAccount: permission.sourceAccount, sourceArn: permission.sourceArn,
         });
+        else fn.addPermission(`Fiscal-${route.name}-Invoke`, permission);
       }
     }
   };

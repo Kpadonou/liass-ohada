@@ -7,6 +7,7 @@ export interface FiscalHttpRequest {
 }
 
 export interface FiscalHttpResponse {
+  truncated?: boolean;
   status: number;
   body: string;
 }
@@ -26,5 +27,19 @@ export const nodeFetchFiscalHttpTransport: FiscalHttpTransport = async (
     signal: request.signal,
   });
 
-  return { status: response.status, body: await response.text() };
+  const reader = response.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  let truncated = false;
+  if (reader) {
+    while (true) {
+      const next = await reader.read();
+      if (next.done) break;
+      const remaining = 64 * 1024 - length;
+      chunks.push(next.value.subarray(0, remaining));
+      length += Math.min(remaining, next.value.length);
+      if (next.value.length > remaining) { truncated = true; await reader.cancel(); break; }
+    }
+  }
+  return { status: response.status, body: Buffer.concat(chunks).toString("utf8"), ...(truncated ? { truncated } : {}) };
 };

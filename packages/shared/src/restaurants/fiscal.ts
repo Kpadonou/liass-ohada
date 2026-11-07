@@ -33,7 +33,7 @@ export const RestaurantFiscalStatusSchema = z.enum([
 const fields = {
   invoiceId: z.string().uuid(),
   environment: z.literal("TEST"),
-  execution: z.literal("SYNTHETIC"),
+  execution: z.enum(["SYNTHETIC", "REAL_TEST"]),
   status: RestaurantFiscalStatusSchema,
   confirmed: z.boolean(),
   legallyNormalized: z.literal(false),
@@ -54,15 +54,15 @@ export const RestaurantFiscalResultResponseSchema = z
   .object({
     ...fields,
     resultAvailable: z.boolean(),
-    evidenceOrigin: z.literal("SYNTHETIC").nullable(),
+    evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).nullable(),
   })
   .strict()
   .refine(
     (v) =>
       v.confirmed === (v.status === "CONFIRMED") &&
       v.resultAvailable === v.confirmed &&
-      (v.evidenceOrigin === "SYNTHETIC") === v.confirmed,
-    "Inconsistent synthetic result",
+      (v.evidenceOrigin === (v.execution === "REAL_TEST" ? "DGI_TEST" : "SYNTHETIC")) === v.confirmed,
+    "Inconsistent fiscal result",
   );
 export type RestaurantFiscalSourceRequest = z.infer<
   typeof RestaurantFiscalSourceRequestSchema

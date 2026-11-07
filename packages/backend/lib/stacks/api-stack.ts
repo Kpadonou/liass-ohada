@@ -124,7 +124,8 @@ export class ApiStack extends Stack {
       stage: props.stage,
     });
 
-    new FiscalComplianceApiStack(this, "FiscalComplianceApi", {
+    const fiscalApi = new FiscalComplianceApiStack(this, "FiscalComplianceApi", {
+      restaurantsTable: props.restaurantsTable,
       api: this.apiGateway.httpApi,
       authorizer: this.auth.authorizer,
       lambdaRole: apiLambdaRole,
@@ -133,6 +134,7 @@ export class ApiStack extends Stack {
     });
 
     const restaurantsApi = new RestaurantsApiStack(this, "RestaurantsApi", {
+      fiscalTestExecutor: fiscalApi.testExecutor,
       api: this.apiGateway.httpApi,
       authorizer: this.auth.authorizer,
       restaurantsTable: props.restaurantsTable,

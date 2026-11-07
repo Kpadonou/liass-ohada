@@ -122,7 +122,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(0);
   });
 
-  test("fiscal routes reuse management integration and exact method-scoped invocation permissions", () => {
+  test("fiscal routes use isolated execution and exact method-scoped invocation permissions", () => {
     const owner = constructs.find((v) => v instanceof RestaurantsApiStack)!;
     const template = Template.fromStack(owner as RestaurantsApiStack).toJSON();
     const resources = Object.entries(template.Resources) as [string, any][];
@@ -157,6 +157,7 @@ describe("API stack decomposition", () => {
       const added = resources.filter(([id]) => !(id in before));
       expect(added.map(([, v]) => v.Type).sort()).toEqual(
         [
+          "AWS::ApiGatewayV2::Integration",
           ...Array(4).fill("AWS::ApiGatewayV2::Route"),
           ...Array(4).fill("AWS::Lambda::Permission"),
         ].sort(),
@@ -346,7 +347,7 @@ describe("API stack decomposition", () => {
     ).toHaveLength(2);
     expect(
       constructs.filter((item) => item instanceof s3.CfnBucket),
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(
       constructs.filter((item) => item instanceof cognito.CfnUserPool),
     ).toHaveLength(1);
@@ -430,6 +431,19 @@ describe("API stack decomposition", () => {
     );
   });
 
+  test("confidential diagnostics are granted only to the isolated fiscal role", () => {
+    const policies = constructs.filter((item): item is iam.CfnPolicy => item instanceof iam.CfnPolicy);
+    const evidencePolicies = policies.filter(policy =>
+      JSON.stringify(cdk.Stack.of(policy).resolve(policy.policyDocument)).includes("s3:if-none-match"));
+    expect(evidencePolicies).toHaveLength(1);
+    expect(evidencePolicies[0].node.path).toContain("RealTestExecutor/ExecutionRole");
+    for (const policy of policies.filter(p => !p.node.path.includes("RealTestExecutor")))
+      expect(JSON.stringify(cdk.Stack.of(policy).resolve(policy.policyDocument))).not.toContain("DiagnosticResponses");
+    const executor = constructs.find((item): item is lambda.CfnFunction => item instanceof lambda.CfnFunction &&
+      item.functionName === "liass-ohada-dev-fiscal-compliance-real-test")!;
+    expect(lambdaEnvironmentVariable(executor, "FISCAL_REAL_TEST_ENABLED")).toBe("0");
+  });
+
   test("keeps all ten fiscal routes, integrations and functions in the Fiscal Compliance nested stack", () => {
     const fiscal = constructs.find(
       (item) => item instanceof FiscalComplianceApiStack,
@@ -441,7 +455,7 @@ describe("API stack decomposition", () => {
     const routes = owned.filter(
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
-    expect(functions).toHaveLength(10);
+    expect(functions).toHaveLength(11);
     expect(routes).toHaveLength(10);
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
@@ -475,7 +489,7 @@ describe("API stack decomposition", () => {
         (item) =>
           item instanceof dynamodb.CfnTable || item instanceof s3.CfnBucket,
       ),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
   });
 
   test("keeps Restaurants routes and grouped Guest boundaries in one domain stack", () => {
@@ -1038,7 +1052,7 @@ describe("API stack decomposition", () => {
     );
 
     const policies = constructs.filter(
-      (item): item is s3.CfnBucketPolicy => item instanceof s3.CfnBucketPolicy,
+      (item): item is s3.CfnBucketPolicy => item instanceof s3.CfnBucketPolicy && item.node.path.includes("DataStack"),
     );
     expect(policies).toHaveLength(1);
     expect(

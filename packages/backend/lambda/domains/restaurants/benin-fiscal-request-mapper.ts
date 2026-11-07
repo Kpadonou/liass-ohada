@@ -1,3 +1,4 @@
+import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { canonical, clean } from "@/lambda/shared/authority/integrity";
@@ -55,7 +56,7 @@ export function mapRestaurantBeninRequest(
   identity: FiscalObligationIdentity,
   configuration: unknown,
 ): VerifiedFiscalPreparation {
-  if (process.env.NODE_ENV !== "test")
+  if (process.env.NODE_ENV !== "test" && !realFiscalTestEnabled())
     throw new Error("FISCAL_MAPPING_DISABLED");
   const config = restaurantBeninMappingSchema.parse(configuration);
   const source = preparation.source;
@@ -88,6 +89,8 @@ export function mapRestaurantBeninRequest(
     provenance.evidence.financialRevision !== source.financialRevision
   )
     throw new Error("FISCAL_MAPPING_SOURCE_MISMATCH");
+  if (realFiscalTestEnabled() && provenance.evidence.evidenceOrigin !== "AUTHENTIC")
+    throw new Error("FISCAL_AUTHENTIC_PROVENANCE_REQUIRED");
   const seller = provenance.evidence.seller;
   const identifiers = seller.seller.identifiers.filter(
     (v) => v.scheme === "IFU" && v.issuingCountry === "BJ",

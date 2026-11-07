@@ -27,6 +27,12 @@ const securitySchema = z
     nim: z.string().min(1).max(500),
   })
   .strict();
+const diagnosticSchema = z.object({
+  reference: digest, captured: z.boolean(), mutationMayHaveExecuted: z.boolean().optional(), httpStatus: z.number().int().optional(),
+  category: z.enum(["TRANSPORT", "AUTHENTICATION", "HTTP", "RESPONSE_VALIDATION", "PROVIDER_REJECTION", "CAPTURE_FAILURE"]).optional(),
+  durationMs: z.number().nonnegative().optional(), providerErrorCode: z.string().regex(/^[A-Za-z0-9._-]{1,64}$/).optional(),
+  validationPaths: z.array(z.string().max(200)).max(20).optional(),
+}).strict();
 const commandSchema = z
   .object({ commandId: id, intentDigest: digest, operation })
   .strict();
@@ -36,6 +42,8 @@ export const fiscalAttemptStateSchema = z
     obligationId: digest,
     attemptId: id,
     provider: id,
+    execution: z.enum(["SYNTHETIC", "REAL_TEST"]).optional(),
+    diagnostic: diagnosticSchema.optional(),
     sourceDigest: digest,
     requestDigest: digest,
     expectedTotal: z.number().int().safe().positive(),
@@ -56,14 +64,20 @@ export const fiscalAttemptStateSchema = z
     uncertainOperation: operation.optional(),
     failedOperation: operation.optional(),
     uid: id.optional(),
+    fiscalTotalsVerified: z.boolean().optional(),
+    providerContextDigest: digest.optional(),
+    fiscalTotalsDigest: digest.optional(),
     providerTotal: z.number().int().safe().optional(),
     security: securitySchema.optional(),
-    securityEvidenceOrigin: z.literal("SYNTHETIC").optional(),
+    securityEvidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).optional(),
   })
   .strict()
   .superRefine((s, ctx) => {
     if (
       s.obligationId !== obligationIdentity(s.identity) ||
+      (s.execution === "REAL_TEST" && s.provider !== "BENIN_EMECEF_TEST") ||
+      (s.securityEvidenceOrigin === "DGI_TEST" && s.execution !== "REAL_TEST") ||
+      (s.status === "CONFIRMED" && s.execution === "REAL_TEST" && (s.securityEvidenceOrigin !== "DGI_TEST" || !s.diagnostic?.captured)) ||
       new Set(s.commands.map((c) => c.commandId)).size !== s.commands.length ||
       ([
         "CREATED",
@@ -133,6 +147,7 @@ export function reserveFiscalAttempt(input: {
   identity: FiscalObligationIdentity;
   attemptId: string;
   provider: string;
+  execution?: "SYNTHETIC" | "REAL_TEST";
   sourceDigest: string;
   requestDigest: string;
   expectedTotal: number;
@@ -147,13 +162,16 @@ export function reserveFiscalAttempt(input: {
   });
 }
 const eventSchema = z.discriminatedUnion("kind", [
-  commandSchema.extend({ kind: z.literal("RESERVE_MUTATION") }).strict(),
+  commandSchema.extend({ kind: z.literal("RESERVE_MUTATION"), diagnosticReference: digest.optional() }).strict(),
   z
     .object({
       kind: z.literal("CREATED"),
       commandId: id,
       uid: id,
       total: z.number().int().safe(),
+      fiscalTotalsVerified: z.boolean().optional(),
+      providerContextDigest: digest.optional(),
+    fiscalTotalsDigest: digest.optional(),
     })
     .strict(),
   z
@@ -161,6 +179,8 @@ const eventSchema = z.discriminatedUnion("kind", [
       kind: z.literal("CONFIRMED"),
       commandId: id,
       security: securitySchema,
+      evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).optional(),
+      diagnostic: diagnosticSchema.optional(),
     })
     .strict(),
   z
@@ -170,7 +190,7 @@ const eventSchema = z.discriminatedUnion("kind", [
       security: securitySchema,
     })
     .strict(),
-  z.object({ kind: z.literal("UNKNOWN"), commandId: id }).strict(),
+  z.object({ kind: z.literal("UNKNOWN"), commandId: id, diagnostic: diagnosticSchema.optional() }).strict(),
   z.object({ kind: z.literal("DEFINITE_FAILURE"), commandId: id }).strict(),
   z.object({ kind: z.literal("RECOVER_INTERRUPTED") }).strict(),
 ]);
@@ -211,9 +231,11 @@ export function transitionFiscalAttempt(
       deny();
     if (
       e.operation === "CONFIRM" &&
-      current.providerTotal !== current.expectedTotal
+      (current.providerTotal !== current.expectedTotal || (current.execution === "REAL_TEST" && !current.fiscalTotalsVerified))
     )
       deny();
+    if (e.diagnosticReference) next.diagnostic = { reference: e.diagnosticReference, captured: false };
+    if (e.diagnosticReference && (e.operation !== "CONFIRM" || current.execution !== "REAL_TEST")) deny();
     next.commands.push({
       commandId: e.commandId,
       intentDigest: e.intentDigest,
@@ -236,6 +258,10 @@ export function transitionFiscalAttempt(
     const op = operation.parse(current.status.replace("_IN_FLIGHT", ""));
     if (e.kind === "UNKNOWN") {
       next.status = "UNKNOWN_OUTCOME";
+      if (e.diagnostic) {
+        if (e.diagnostic.reference !== current.diagnostic?.reference) deny();
+        next.diagnostic = e.diagnostic;
+      }
       next.uncertainOperation = op;
     } else if (e.kind === "DEFINITE_FAILURE") {
       // Only authoritative definite rejection; timeout/transport errors are UNKNOWN.
@@ -245,12 +271,23 @@ export function transitionFiscalAttempt(
       if (op !== "CREATE") deny();
       next.uid = e.uid;
       next.providerTotal = e.total;
+      if (e.fiscalTotalsVerified !== undefined) next.fiscalTotalsVerified = e.fiscalTotalsVerified;
+      if (e.fiscalTotalsDigest) next.fiscalTotalsDigest = e.fiscalTotalsDigest;
+      if (e.providerContextDigest) next.providerContextDigest = e.providerContextDigest;
       next.status = "CREATED";
     } else {
       if ((e.kind === "CONFIRMED" ? "CONFIRM" : "CANCEL") !== op) deny();
       next.status = e.kind;
       next.security = e.security;
-      next.securityEvidenceOrigin = "SYNTHETIC";
+      if (e.kind === "CONFIRMED" && current.execution === "REAL_TEST") {
+        if (e.evidenceOrigin !== "DGI_TEST" || !e.diagnostic?.captured ||
+          e.diagnostic.reference !== current.diagnostic?.reference) deny();
+        next.diagnostic = e.diagnostic;
+        next.securityEvidenceOrigin = "DGI_TEST";
+      } else {
+        if (e.kind === "CONFIRMED" && e.evidenceOrigin === "DGI_TEST") deny();
+        next.securityEvidenceOrigin = "SYNTHETIC";
+      }
     }
   }
   next.version++;

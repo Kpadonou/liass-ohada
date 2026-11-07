@@ -1,3 +1,4 @@
+import { realFiscalTestEnabled } from "../core/test-execution";
 import { GetItemCommand, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { config, dynamoClient } from "@/lambda/shared/dynamo-client";
@@ -16,13 +17,13 @@ import {
 
 /** One bounded authoritative effect aggregate. Commands, UID and state share one
  * conditional item; provider changes cannot select a new reservation key.
- * Synthetic development only. No HTTP dispatch, automatic write retry or TTL.
+ * Explicit synthetic/real TEST gates. No HTTP dispatch, automatic write retry or TTL.
  */
 export class FiscalAttemptStore {
   private enabled() {
     if (
-      process.env.NODE_ENV !== "test" ||
-      process.env.FISCAL_SYNTHETIC_STORAGE !== "1"
+      !realFiscalTestEnabled() && (process.env.NODE_ENV !== "test" ||
+      process.env.FISCAL_SYNTHETIC_STORAGE !== "1")
     )
       throw new FiscalAttemptConflict("SCOPE_DENIED");
   }

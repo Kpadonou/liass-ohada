@@ -221,3 +221,16 @@ test("fresh confirmation dispatch is explicit and uncertain state blocks it", as
   ).rejects.toThrow();
   expect(confirm).toHaveBeenCalledTimes(1);
 });
+
+test.each([undefined, "SYNTHETIC", "AUTHENTIC"] as const)("real application rejects non-authentic source: %s", async origin => {
+  Object.assign(process.env, { FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: "1", STAGE: "dev" });
+  try {
+    jest.mocked(RestaurantInvoiceSourceVerifier.verify).mockResolvedValue({ verified: true, evidence: {
+      proof: { digest }, issuanceProvenance: { verified: true, evidence: { ...provenance, evidenceOrigin: origin } },
+    } } as never);
+    const real = new RestaurantFiscalApplicationService(settings, true);
+    if (origin === "AUTHENTIC") expect(await real.status(context, request)).toMatchObject({ execution: "REAL_TEST", securityElements: null });
+    else await expect(real.status(context, request)).rejects.toThrow();
+    expect(settings).not.toHaveBeenCalled();
+  } finally { delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE; }
+});

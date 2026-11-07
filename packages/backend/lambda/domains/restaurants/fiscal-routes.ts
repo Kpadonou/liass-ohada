@@ -1,7 +1,7 @@
 import type { DomainPermission } from "@/lambda/shared/authorization/domain-permission";
 const path =
   "/restaurants/outlets/{outletId}/sessions/{sessionId}/invoices/{invoiceId}/fiscal";
-/** Route contracts only; deliberately absent from CDK/dispatcher registration. */
+/** Existing JWT route contracts; dedicated real TEST integration remains disabled by default. */
 export const RESTAURANT_FISCAL_ROUTES = [
   {
     name: "initiate-fiscal",

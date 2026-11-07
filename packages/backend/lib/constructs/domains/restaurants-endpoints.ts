@@ -14,6 +14,7 @@ import { RESTAURANT_PREPARATION_ROUTES } from "../../../lambda/domains/restauran
 
 import { RESTAURANT_PAYMENT_ROUTES } from "../../../lambda/domains/restaurants/payment-routes";
 import { RESTAURANT_RECEIPT_ROUTES } from "../../../lambda/domains/restaurants/receipt-routes";
+import { IFunction } from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { ITable } from "aws-cdk-lib/aws-dynamodb";
 import { RestaurantsGuestEndpoints } from "./restaurants-guest-endpoints";
@@ -23,7 +24,7 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
   constructor(
     scope: Construct,
     id: string,
-    props: Omit<DomainProps, "lambdaRole"> & { restaurantsTable: ITable },
+    props: Omit<DomainProps, "lambdaRole"> & { restaurantsTable: ITable; fiscalTestExecutor?: IFunction },
   ) {
     super(scope, id);
     const role = new iam.Role(this, "ExecutionRole", {

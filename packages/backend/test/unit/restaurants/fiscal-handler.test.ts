@@ -193,3 +193,22 @@ test("response invoice binding and authentication are enforced", async () => {
   });
   expect((await handler(event())).statusCode).toBe(500);
 });
+
+test("actual real TEST entrypoint retains JWT authorization and default-off gate", async () => {
+  const { handler } = await import("@/lambda/domains/restaurants/real-test-fiscal-handler");
+  const { RestaurantFiscalApplicationService } = await import("@/lambda/domains/restaurants/fiscal-application-service");
+  const initiate = jest.spyOn(RestaurantFiscalApplicationService.prototype, "initiate").mockResolvedValue({ ...summary, execution: "REAL_TEST" } as never);
+  const request = { ...event({ attemptId: "attempt", commandId: "command" }),
+    routeKey: "POST /restaurants/outlets/{outletId}/sessions/{sessionId}/invoices/{invoiceId}/fiscal" };
+  expect((await handler(request as never)).statusCode).toBe(403);
+  expect(initiate).not.toHaveBeenCalled();
+  Object.assign(process.env, { FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: "1", STAGE: "dev" });
+  try {
+    expect((await handler(request as never)).statusCode).toBe(200);
+    expect(initiate).toHaveBeenCalledWith({ orgId: "tenant-a", userId: "actor" }, expect.objectContaining({ invoiceId: id }));
+    initiate.mockClear();
+    jest.mocked(EffectiveOrganizationAccessService.resolveAccess).mockResolvedValueOnce({ permissions: [], accessMode: "DIRECT" } as never);
+    expect((await handler(request as never)).statusCode).toBe(403);
+    expect(initiate).not.toHaveBeenCalled();
+  } finally { delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE; }
+});

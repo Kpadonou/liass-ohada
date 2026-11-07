@@ -1,8 +1,10 @@
+import { RealTestFiscalExecutor } from "../constructs/domains/real-test-fiscal-executor";
 import { RestaurantsEndpoints } from "../constructs/domains/restaurants-endpoints";
 import { FiscalComplianceEndpoints } from "../constructs/domains/fiscal-compliance-endpoints";
 import { NestedStack, NestedStackProps } from "aws-cdk-lib";
 import * as apigwv2 from "aws-cdk-lib/aws-apigatewayv2";
 import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import { Construct } from "constructs";
@@ -65,8 +67,11 @@ export class SalesApiStack extends NestedStack {
 
 /** Durable fiscal ownership: local configuration now, provider evidence and recovery later. */
 export class FiscalComplianceApiStack extends NestedStack {
-  constructor(scope: Construct, id: string, props: ApiDomainStackProps) {
+  public readonly testExecutor?: lambda.IFunction;
+  constructor(scope: Construct, id: string, props: ApiDomainStackProps & { restaurantsTable?: dynamodb.ITable }) {
     super(scope, id, props);
+    if (props.stage !== "prod" && props.restaurantsTable && props.authorizer)
+      this.testExecutor = new RealTestFiscalExecutor(this, "RealTestExecutor", { ...props, stage: props.stage, restaurantsTable: props.restaurantsTable, authorizer: props.authorizer }).executionFunction;
     new FiscalComplianceEndpoints(this, "FiscalComplianceModule", props);
   }
 }
@@ -78,6 +83,7 @@ export class RestaurantsApiStack extends NestedStack {
     id: string,
     props: Omit<ApiDomainStackProps, "lambdaRole"> & {
       restaurantsTable: dynamodb.ITable;
+      fiscalTestExecutor?: lambda.IFunction;
     },
   ) {
     super(scope, id, props);
