@@ -1,7 +1,7 @@
 import { HttpMethod } from "aws-cdk-lib/aws-apigatewayv2";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
-import { Stack } from "aws-cdk-lib";
+import { Duration, Stack } from "aws-cdk-lib";
 import * as path from "node:path";
 import { DomainConstructFactory, DomainProps } from "./domain-constructs-factory";
 
@@ -55,16 +55,34 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
       actions: ["ssm:PutParameter"], resources: [parameterArn], conditions: { Bool: { "ssm:Overwrite": "false" } },
     }));
     enrollmentRole.addToPolicy(new iam.PolicyStatement({ actions: ["ssm:GetParameter"], resources: [parameterArn] }));
+    const verificationRole = new iam.Role(this, "VerificationRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
+    });
+    verificationRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:ConditionCheckItem"], resources: [props.table.tableArn],
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } },
+    }));
+    verificationRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["dynamodb:GetItem"], resources: [props.table.tableArn],
+      conditions: { "ForAllValues:StringEquals": { "dynamodb:LeadingKeys": [`PLATFORM_SFE#${props.stage}#BJ`] } },
+    }));
+    const verificationParameterArn = Stack.of(this).formatArn({ service: "ssm", resource: "parameter", resourceName: `${props.stage}/platform/fiscal/*/TEST/*` });
+    verificationRole.addToPolicy(new iam.PolicyStatement({ actions: ["ssm:GetParameter"], resources: [verificationParameterArn] }));
     // No GetParametersByPath, DeleteParameter, SecretsManager, custom KMS key or administrator-registry access.
     for (const [method, routePath, actionName] of [
       [HttpMethod.GET, "/me/organization/fiscality/connections", "list-fiscal-connections"],
       [HttpMethod.PUT, "/me/organization/fiscality/connections/{connectionId}", "configure-fiscal-connection"],
       [HttpMethod.PUT, "/me/organization/fiscality/connections/{connectionId}/credential", "store-fiscal-credential"],
       [HttpMethod.DELETE, "/me/organization/fiscality/connections/{connectionId}/credential", "revoke-fiscal-credential"],
+      [HttpMethod.POST, "/me/organization/fiscality/connections/{connectionId}/verification", "verify-fiscal-connection"],
     ] as const) {
-      this.addRoute({ ...props, lambdaRole: enrollmentRole, method, routePath, actionName,
+      const verification = actionName === "verify-fiscal-connection";
+      this.addRoute({ ...props, lambdaRole: verification ? verificationRole : enrollmentRole, method, routePath, actionName,
+        ...(verification ? { timeout: Duration.seconds(30) } : {}),
         domainName: "identity", routeInDomainStack: true,
-        environment: { STAGE: props.stage, PLATFORM_COGNITO_ISSUER: props.cognitoIssuer },
+        environment: { STAGE: props.stage, PLATFORM_COGNITO_ISSUER: props.cognitoIssuer,
+          ...(verification ? { FISCAL_CREDENTIAL_TEST_VERIFICATION_ENABLED: "0" } : {}) },
         handlerEntry: path.join(__dirname, "../../../lambda/domains/identity/organization-fiscal-handler.ts"),
       });
     }

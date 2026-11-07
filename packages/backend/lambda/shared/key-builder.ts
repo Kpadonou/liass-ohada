@@ -27,6 +27,10 @@ export const KeyFactory = {
   organizationFiscalHistorySK: (environment: string, id: string, version: number) =>
     `PLATFORM_FISCAL_HISTORY#${environment}#${id}#${String(version).padStart(16, "0")}`,
   organizationFiscalCommandSK: (environment: string, id: string) => `PLATFORM_FISCAL_COMMAND#${environment}#${id}`,
+  organizationFiscalVerificationSK: (environment: string, connectionId: string, operationId: string) =>
+    `PLATFORM_FISCAL_VERIFICATION#${environment}#${connectionId}#${operationId}`,
+  organizationFiscalVerificationAuditSK: (environment: string, connectionId: string, operationId: string) =>
+    `PLATFORM_FISCAL_VERIFICATION_AUDIT#${environment}#${connectionId}#${operationId}`,
   restaurantDocumentsPK: (orgId: string, outletId: string, month: string) => {
     if (!/^\d{6}$/.test(month)) throw new Error("Invalid document month");
     return `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#DOCS#${month}`;

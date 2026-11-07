@@ -120,6 +120,22 @@ function validate(input: unknown, orgId: string) {
 }
 /** Platform-owned internal boundary. No public review/configuration route or automatic verification. */
 export class OrganizationLegalIdentityService {
+  /** Read-only fiscal identity boundary; declared connection IFU is never trusted evidence. */
+  static async readFiscalTaxpayerAuthority(orgId: string) {
+    const result = await store.current(orgId);
+    const { v } = validate(Object.fromEntries(
+      Object.keys(revisionSchema.shape).map(k => [k, result.revision[k]]),
+    ), orgId);
+    const identifiers = v.seller.identifiers.map((value, index) => ({ value, index }))
+      .filter(({ value }) => value.scheme === "IFU" && value.issuingCountry === "BJ");
+    const verified = (path: string) => v.factStates.some(f => f.fieldPath === path && f.state === "VERIFIED" && f.evidenceReference);
+    const candidate = identifiers.length === 1 ? identifiers[0] : undefined;
+    const ifu = v.seller.country === "BJ" && verified("country") && candidate &&
+      ["scheme", "issuingCountry", "value"].every(field => verified(`identifiers.${candidate.index}.${field}`))
+      ? candidate.value.value : null;
+    return { ifu, binding: { reference: v.identityReference, version: v.identityVersion,
+      digest: v.identityDigest, selectionVersion: result.selectionVersion }, check: result.check };
+  }
   static async createRevision(
     orgId: string,
     actorUserId: string,

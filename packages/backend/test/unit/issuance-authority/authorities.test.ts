@@ -14,7 +14,7 @@ import {
 } from "@/lambda/domains/sales/authority/sales-timezone-service";
 import { TenantAccessService } from "@/lambda/shared/services/tenant-access-service";
 import { KeyFactory } from "@/lambda/shared/key-builder";
-import { legal, timezone, id } from "./fixtures";
+import { legal, timezone, id, artifact } from "./fixtures";
 import {
   canonical,
   hash,
@@ -87,6 +87,23 @@ async function setupTimezone() {
   await Timezone.createRevision("org-123", "reviewer", timezone());
   await Timezone.activate("org-123", "reviewer", id, 0);
 }
+test.each([true, false])("fiscal identity consumes only an individually reviewed Beninese IFU (verified=%s)", async verified => {
+  const { identityDigest, acceptanceReference, acceptanceVersion, evidenceArtifacts, ...base } = legal();
+  const identity = { ...base, seller: { name: "Synthetic seller", country: "BJ", identifiers: [{ scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" }] },
+    factStates: ["country", "identifiers.0.issuingCountry", "identifiers.0.scheme", "identifiers.0.value", "name"].map(fieldPath => ({ fieldPath,
+      state: fieldPath === "identifiers.0.value" && !verified ? "PRESENT" as const : "VERIFIED" as const,
+      ...(fieldPath === "identifiers.0.value" && !verified ? {} : { evidenceReference: "acceptance" }) })) };
+  const proof = artifact(id, "1", identity);
+  const acceptance = artifact("acceptance", "1", { orgId: "org-123", identityReference: id, identityVersion: "1", identityDigest: proof.digest,
+    decision: "ACCEPTED", reviewedByUserId: "reviewer", selectionBaseVersion: 0 });
+  await Legal.createRevision("org-123", "reviewer", { ...identity, identityDigest: proof.digest, acceptanceReference: "acceptance", acceptanceVersion: "1", evidenceArtifacts: [proof, acceptance] });
+  await Legal.activate("org-123", "reviewer", id, 0);
+  const read = await Legal.readFiscalTaxpayerAuthority("org-123");
+  expect(read.ifu).toBe(verified ? "synthetic-ifu" : null);
+  expect(read.binding).toMatchObject({ reference: id, selectionVersion: 1, digest: proof.digest });
+  await Legal.disable("org-123", "reviewer", id, 1);
+  await expect(Legal.readFiscalTaxpayerAuthority("org-123")).rejects.toThrow();
+});
 test("Platform creates append-only accepted revision, selects it with CAS, returns owner-built current check", async () => {
   await setupLegal();
   const r = await Legal.readSellerIssuanceAuthority("org-123");

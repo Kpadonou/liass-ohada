@@ -24,6 +24,8 @@ import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory as K } from "../key-builder";
 import { AppError } from "../app-error";
 import type { PlatformPrincipal } from "../authorization/platform-admin";
+import { FiscalVerificationStateSchema, publicVerification } from "../services/fiscal-verification-model";
+import { OrganizationLegalIdentityService } from "../services/organization-legal-identity-service";
 
 const ssm = new SSMClient({ maxAttempts: 1 });
 const table = () => config.PLATFORM_TABLE_NAME;
@@ -31,7 +33,7 @@ const id = z
   .string()
   .max(200)
   .regex(/^[A-Za-z0-9_-]+$/);
-const connectionRecord = z
+export const FiscalConnectionRecordSchema = z
   .object({
     PK: z.string(),
     SK: z.string(),
@@ -39,6 +41,7 @@ const connectionRecord = z
     entityType: z.literal("PLATFORM_FISCAL_CONNECTION"),
     data: OrganizationFiscalConnectionSchema,
     secretReference: z.string().optional(),
+    verification: FiscalVerificationStateSchema.optional(),
   })
   .strict()
   .refine((row) =>
@@ -46,6 +49,10 @@ const connectionRecord = z
       ? !!row.secretReference
       : row.secretReference === undefined,
   );
+const connectionRecord = FiscalConnectionRecordSchema;
+export type FiscalConnectionRecord = z.infer<typeof FiscalConnectionRecordSchema>;
+export const fiscalConfigurationDigest = (row: FiscalConnectionRecord) => createHash("sha256")
+  .update(JSON.stringify([row.orgId, row.data, row.secretReference ?? null])).digest("hex");
 const commandRecord = z
   .object({
     PK: z.string(),
@@ -93,7 +100,7 @@ export class OrganizationFiscalRepository {
       throw new AppError(403, "PLATFORM_FISCAL_FORBIDDEN");
     return { canManage: member.role === "OWNER" };
   }
-  private static membershipCheck(orgId: string, actorId: string) {
+  static membershipCheck(orgId: string, actorId: string) {
     return {
       ConditionCheck: {
         TableName: table(),
@@ -133,6 +140,46 @@ export class OrganizationFiscalRepository {
       throw new AppError(503, "PLATFORM_FISCAL_UNAVAILABLE");
     return row;
   }
+  static readForVerification(orgId: string, environment: Environment, connectionId: string) {
+    return this.connection(orgId, environment, connectionId);
+  }
+  /** Resolve B2's immutable storage audit, not a customer-provided secret path. */
+  static async credentialBinding(orgId: string, principal: PlatformPrincipal, row: FiscalConnectionRecord) {
+    const reference = row.secretReference;
+    const match = reference?.match(new RegExp(`^/${principal.stage}/platform/fiscal/${hash(orgId)}/${row.data.environment}/([A-Fa-f0-9-]{36})$`));
+    if (!reference || !match || !z.string().uuid().safeParse(match[1]).success || row.data.credentialStatus !== "STORED_UNVERIFIED")
+      throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const commandId = match[1];
+    const raw = await this.get(K.orgKey(orgId), K.organizationFiscalCommandSK(row.data.environment, commandId));
+    const command = commandRecord.parse(raw);
+    if (command.PK !== K.orgKey(orgId) || command.SK !== K.organizationFiscalCommandSK(row.data.environment, commandId) ||
+      command.orgId !== orgId || command.status !== "COMMITTED" || !command.result || command.result.connectionId !== row.data.connectionId ||
+      command.result.environment !== row.data.environment || command.result.credentialStatus !== "STORED_UNVERIFIED" || command.result.version > row.data.version)
+      throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const historySK = K.organizationFiscalHistorySK(row.data.environment, row.data.connectionId, command.result.version);
+    const history = await this.get(K.orgKey(orgId), historySK);
+    if (!history || history.PK !== K.orgKey(orgId) || history.SK !== historySK || history.orgId !== orgId ||
+      history.entityType !== "PLATFORM_FISCAL_HISTORY" || history.action !== "STORE_CREDENTIAL" || history.commandId !== commandId || history.secretReference !== reference ||
+      JSON.stringify(OrganizationFiscalConnectionSchema.parse(history.data)) !== JSON.stringify(command.result))
+      throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    return { reference, version: 1 as const, storageVersion: command.result.version, commandId, intentDigest: command.intentDigest };
+  }
+  static async readVerificationCredential(row: FiscalConnectionRecord, binding: Awaited<ReturnType<typeof OrganizationFiscalRepository.credentialBinding>>) {
+    const stored = await ssm.send(new GetParameterCommand({ Name: `${binding.reference}:${binding.version}`, WithDecryption: true }),
+      { abortSignal: AbortSignal.timeout(5000) }).catch((error: unknown) => {
+        if (["ParameterNotFound", "ParameterVersionNotFound"].includes((error as { name: string }).name))
+          throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+        throw new AppError(503, "PLATFORM_FISCAL_UNAVAILABLE");
+      });
+    if (stored.Parameter?.Type !== "SecureString" || stored.Parameter.Version !== binding.version ||
+      (stored.Parameter.Name !== undefined && stored.Parameter.Name !== binding.reference)) throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const token = SubmitFiscalCredentialSchema.shape.token.safeParse(stored.Parameter.Value);
+    if (!token.success) throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const intent = SubmitFiscalCredentialSchema.parse({ environment: row.data.environment, connectionId: row.data.connectionId,
+      expectedVersion: binding.storageVersion - 1, commandId: binding.commandId, token: token.data });
+    if (hash(JSON.stringify(["STORE_CREDENTIAL", intent])) !== binding.intentDigest) throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    return token.data;
+  }
   static async list(orgId: string, actorId: string, input: unknown) {
     const access = await this.authorize(orgId, actorId);
     const { environment, cursor } = z
@@ -165,6 +212,9 @@ export class OrganizationFiscalRepository {
         ...(start ? { ExclusiveStartKey: marshall(start) } : {}),
       }),
     );
+    const currentIdentity = (page.Items ?? []).some(item => !!unmarshall(item).verification)
+      ? await OrganizationLegalIdentityService.readFiscalTaxpayerAuthority(orgId).catch(() => null) : null;
+    const now = new Date().toISOString();
     const connections = (page.Items ?? []).map((item) => {
       const row = connectionRecord.parse(unmarshall(item));
       if (
@@ -175,7 +225,12 @@ export class OrganizationFiscalRepository {
           K.organizationFiscalConnectionSK(environment, row.data.connectionId)
       )
         throw new AppError(503, "PLATFORM_FISCAL_UNAVAILABLE");
-      return row.data;
+      if (!row.verification) return row.data;
+      const current = { digest: fiscalConfigurationDigest(row), identity: currentIdentity?.binding ?? null };
+      const latestAttempt = publicVerification(row.verification.latest, current, now);
+      if (latestAttempt.inProgress && Date.parse(row.verification.leaseUntil) <= Date.parse(now)) latestAttempt.inProgress = false;
+      return { ...row.data, verification: { latestAttempt,
+        ...(row.verification.lastVerified ? { lastVerified: publicVerification(row.verification.lastVerified, current, now) } : {}) } };
     });
     return OrganizationFiscalSettingsSchema.parse({
       environment,

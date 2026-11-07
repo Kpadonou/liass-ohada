@@ -96,3 +96,26 @@ it('query keys isolate principal, organization, revision and environment without
   expect(fiscalityKey(api.context(), 'TEST')).not.toEqual(first);
   expect(first).toEqual(['identity', 'fiscality', 'org-a', 'owner', 1, 'TEST']);
 });
+it('verification sends only the typed command and rejects endpoint or tenant overrides before HTTP', async () => {
+  const request = {
+    connectionId,
+    environment: 'TEST',
+    expectedVersion: 2,
+    commandId: crypto.randomUUID(),
+  };
+  await expect(
+    api.verify(api.context(), { ...request, baseUrl: 'https://attacker.example' }),
+  ).rejects.toBeDefined();
+  await expect(api.verify(api.context(), { ...request, orgId: 'foreign' })).rejects.toBeDefined();
+  http.expectNone((req) => req.url.endsWith('/verification'));
+  const promise = api.verify(api.context(), request);
+  const response = http.expectOne((req) => req.url.endsWith('/verification'));
+  expect(response.request.body).toEqual({
+    environment: 'TEST',
+    expectedVersion: 2,
+    commandId: request.commandId,
+  });
+  const assertion = expect(promise).rejects.toBeDefined();
+  response.flush({ data: { token: 'must-not-escape' } });
+  await assertion;
+});

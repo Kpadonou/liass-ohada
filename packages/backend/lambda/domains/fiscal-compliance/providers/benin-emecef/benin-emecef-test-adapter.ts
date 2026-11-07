@@ -10,8 +10,8 @@ import {
   nodeFetchFiscalHttpTransport,
 } from "../http-transport";
 
-export const BENIN_EMECEF_TEST_BASE_URL =
-  "https://developper.impots.bj/sygmef-emcf";
+import { BENIN_EMECEF_BASE_URLS } from "./environments";
+export const BENIN_EMECEF_TEST_BASE_URL = BENIN_EMECEF_BASE_URLS.TEST;
 import * as dto from "./invoice-dtos";
 export { BeninInvoiceRequest } from "./invoice-dtos";
 
@@ -218,6 +218,10 @@ export class BeninEMecefTestAdapter {
       serverDateTime: parsed.data.serverDateTime ?? null,
       configuredDeviceCount: parsed.data.emcfList?.length ?? null,
     };
+  }
+  /** Backend-only, read-only evidence. Legacy getStatus remains deliberately secret/identity-free. */
+  getVerificationStatus(input: GetBeninEMecefStatusInput) {
+    return this.request(input, "GET", STATUS_PATH, statusResponseSchema);
   }
   private async request<T>(
     input: GetBeninEMecefStatusInput,

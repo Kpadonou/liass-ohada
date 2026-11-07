@@ -1,5 +1,39 @@
 {
   "FISCALITY": {
+    "VERIFICATION": {
+      "STATUS": {
+        "VERIFIED_TEST": "TEST techniquement vérifié",
+        "CREDENTIAL_EXPIRED": "Jeton expiré",
+        "AUTHENTICATION_REJECTED": "Authentification refusée",
+        "IFU_MISMATCH": "IFU différent de l’identité approuvée",
+        "EMCF_ASSOCIATION_UNVERIFIED": "Correspondance e-MCF à vérifier",
+        "PROVIDER_UNAVAILABLE": "DGI momentanément indisponible",
+        "PROVIDER_RESPONSE_INVALID": "Réponse DGI inexploitable",
+        "VERIFICATION_INCOMPLETE": "Vérification incomplète",
+        "STALE_CONFIGURATION": "Preuve liée à une ancienne configuration",
+        "VERIFICATION_NOT_ENABLED": "Vérification non activée",
+        "CREDENTIAL_CONFIGURATION_INVALID": "Configuration du jeton à corriger"
+      },
+      "DETAIL": "Consulter la vérification",
+      "VERIFY": "Vérifier la connexion",
+      "RUNNING": "Vérification en cours…",
+      "DATE": "Dernière tentative",
+      "EXPIRY": "Expiration du jeton",
+      "CURRENT": "Preuve applicable à la configuration actuelle",
+      "YES": "Oui",
+      "NO": "Non",
+      "APPROVED": "Autorité légale approuvée",
+      "AVAILABLE": "Références enregistrées ; version applicable à vérifier",
+      "LAST_SUCCESS": "Dernière réussite technique",
+      "CLOSE": "Fermer",
+      "PRODUCTION_BLOCKED": "La vérification de production reste désactivée. Aucun jeton de production ne sera envoyé à l’environnement TEST.",
+      "SAFETY": "Une réussite TEST n’active aucune émission fiscale. La correspondance NIM est technique : elle ne prouve ni l’association à un établissement, ni son autorisation d’émission. Le fuseau, les établissements et la version agréée restent à vérifier.",
+      "CORRESPONDENCE": {
+        "MATCH": "Correspondance technique établie",
+        "MISMATCH": "Différent",
+        "UNVERIFIED": "Non vérifié"
+      }
+    },
     "SETTINGS": "Paramètres · Fiscalité",
     "EYEBROW": "Fiscalité",
     "TITLE": "Facturation normalisée",
@@ -28,7 +62,7 @@
     "ACTIONS": "Actions",
     "CREDENTIAL": {
       "ABSENT": "Non configuré",
-      "STORED_UNVERIFIED": "Enregistré · non vérifié",
+      "STORED_UNVERIFIED": "Jeton enregistré",
       "REVOKED": "Accès local suspendu"
     },
     "BLOCKED": "Émission fiscale non activée",

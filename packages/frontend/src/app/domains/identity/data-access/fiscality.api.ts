@@ -9,6 +9,8 @@ import {
   PutOrganizationFiscalConnectionSchema,
   SubmitFiscalCredentialSchema,
   FiscalCredentialCommandSchema,
+  VerifyFiscalConnectionRequestSchema,
+  FiscalVerificationResultSchema,
 } from '@liass-ohada/shared/shared';
 import { AuthStore } from './auth.store';
 import { environment } from '../../../../environments/environment';
@@ -69,6 +71,30 @@ export class FiscalityApi {
     )
       throw new Error('Fiscal environment mismatch');
     return data;
+  }
+  async verify(context: FiscalityContext, input: unknown) {
+    this.assert(context);
+    const { connectionId, ...body } = VerifyFiscalConnectionRequestSchema.parse(input);
+    const response = await firstValueFrom(
+      this.http
+        .post<unknown>(
+          this.base + '/connections/' + encodeURIComponent(connectionId) + '/verification',
+          body,
+        )
+        .pipe(timeout(35_000)),
+    );
+    this.assert(context);
+    const result = z
+      .object({ data: FiscalVerificationResultSchema, message: z.unknown().optional() })
+      .strict()
+      .parse(response);
+    if (
+      result.data.environment !== body.environment ||
+      result.data.operationId !== body.commandId ||
+      result.data.configurationVersion !== body.expectedVersion
+    )
+      throw new HttpErrorResponse({ status: 409, error: { error: { code: 'WORKSPACE_CHANGED' } } });
+    return result;
   }
   /** Deliberately outside TanStack mutation variables/cache: credentials live only in this request. */
   async change(

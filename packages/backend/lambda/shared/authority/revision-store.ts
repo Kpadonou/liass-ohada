@@ -217,7 +217,7 @@ export class RevisionStore {
   }
   async current(
     orgId: string,
-  ): Promise<{ revision: Record<string, unknown>; check: TransactWriteItem }> {
+  ): Promise<{ revision: Record<string, unknown>; selectionVersion: number; check: TransactWriteItem }> {
     const p = await this.get(orgId, this.options.currentKey());
     if (
       !p ||
@@ -254,6 +254,7 @@ export class RevisionStore {
     const values = Object.fromEntries(fields.map((k, i) => [`:v${i}`, p[k]]));
     return {
       revision,
+      selectionVersion: Number(p.version),
       check: {
         ConditionCheck: {
           TableName: config.TABLE_NAME,

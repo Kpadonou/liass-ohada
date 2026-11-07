@@ -1,5 +1,39 @@
 {
   "FISCALITY": {
+    "VERIFICATION": {
+      "STATUS": {
+        "VERIFIED_TEST": "TEST technically verified",
+        "CREDENTIAL_EXPIRED": "Token expired",
+        "AUTHENTICATION_REJECTED": "Authentication rejected",
+        "IFU_MISMATCH": "IFU differs from approved identity",
+        "EMCF_ASSOCIATION_UNVERIFIED": "e-MCF correspondence unverified",
+        "PROVIDER_UNAVAILABLE": "DGI temporarily unavailable",
+        "PROVIDER_RESPONSE_INVALID": "Invalid DGI response",
+        "VERIFICATION_INCOMPLETE": "Verification incomplete",
+        "STALE_CONFIGURATION": "Evidence belongs to an earlier configuration",
+        "VERIFICATION_NOT_ENABLED": "Verification not enabled",
+        "CREDENTIAL_CONFIGURATION_INVALID": "Token configuration requires correction"
+      },
+      "DETAIL": "View verification",
+      "VERIFY": "Verify connection",
+      "RUNNING": "Verification in progress…",
+      "DATE": "Latest attempt",
+      "EXPIRY": "Token expiration",
+      "CURRENT": "Evidence applies to current configuration",
+      "YES": "Yes",
+      "NO": "No",
+      "APPROVED": "Legal authority approved",
+      "AVAILABLE": "References registered; applicable version unverified",
+      "LAST_SUCCESS": "Last technical success",
+      "CLOSE": "Close",
+      "PRODUCTION_BLOCKED": "Production verification remains disabled. No production token will be sent to TEST.",
+      "SAFETY": "TEST success does not activate fiscal issuance. NIM correspondence is technical and proves neither establishment binding nor issuance authorization. Timezone, establishments and approved version still require verification.",
+      "CORRESPONDENCE": {
+        "MATCH": "Technical correspondence established",
+        "MISMATCH": "Mismatch",
+        "UNVERIFIED": "Unverified"
+      }
+    },
     "SETTINGS": "Settings · Fiscality",
     "EYEBROW": "Fiscality",
     "TITLE": "Normalized invoicing",
@@ -28,7 +62,7 @@
     "ACTIONS": "Actions",
     "CREDENTIAL": {
       "ABSENT": "Not configured",
-      "STORED_UNVERIFIED": "Stored · unverified",
+      "STORED_UNVERIFIED": "Token stored",
       "REVOKED": "Local access suspended"
     },
     "BLOCKED": "Fiscal issuance inactive",

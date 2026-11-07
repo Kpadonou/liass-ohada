@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { FiscalVerificationSummarySchema } from "./fiscal-verification";
 
 const text = z
   .string()
@@ -50,6 +51,7 @@ export const OrganizationFiscalConnectionSchema =
     version: z.number().int().positive().safe(),
     credentialStatus: z.enum(["ABSENT", "STORED_UNVERIFIED", "REVOKED"]),
     updatedAt: z.string().datetime(),
+    verification: FiscalVerificationSummarySchema.optional(),
   }).strict();
 export const OrganizationFiscalSettingsSchema = z
   .object({

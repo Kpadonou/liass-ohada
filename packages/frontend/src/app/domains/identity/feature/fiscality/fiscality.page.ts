@@ -1,4 +1,5 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -21,6 +22,8 @@ import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.
 import { LiassConfirmationDialogComponent } from '../../../../shared/ui/confirmation-dialog/confirmation-dialog.component';
 import { FiscalityApi, fiscalityKey } from '../../data-access/fiscality.api';
 import { FiscalConnectionDialogComponent } from './fiscal-connection-dialog.component';
+import { FiscalVerificationDialogComponent } from './fiscal-verification-dialog.component';
+import { fiscalVerificationDate } from './fiscal-verification.presentation';
 import { NotificationService } from '../../../../core/notifications/notification.service';
 import {
   safeMessageFromError,
@@ -29,6 +32,7 @@ import {
 
 @Component({
   imports: [
+    NgTemplateOutlet,
     TranslocoModule,
     MatFormFieldModule,
     MatSelectModule,
@@ -52,6 +56,8 @@ export class FiscalityPage {
   private readonly transloco = inject(TranslocoService);
   readonly environment = signal<'TEST' | 'PRODUCTION'>('TEST');
   readonly busy = signal(false);
+  readonly verifying = signal<string | null>(null);
+  private readonly verificationCommands = new Map<string, { commandId: string; version: number }>();
   readonly context = computed(() => this.api.context());
   readonly approvals = injectQuery(() => {
     const context = this.context();
@@ -81,12 +87,74 @@ export class FiscalityPage {
     () => this.settings.data()?.pages.flatMap((page) => page.connections) ?? [],
   );
   readonly canManage = computed(() => this.settings.data()?.pages[0]?.canManage === true);
-  readonly readiness = ['PROVIDER', 'TAXPAYER', 'SELLER', 'TIMEZONE', 'ESTABLISHMENT'] as const;
+  readonly readiness = ['TIMEZONE', 'ESTABLISHMENT'] as const;
   constructor() {
     effect(() => {
       this.context();
       this.busy.set(false);
+      this.verifying.set(null);
+      this.verificationCommands.clear();
     });
+  }
+  verificationDetails(connection: OrganizationFiscalConnection) {
+    this.dialog.open(FiscalVerificationDialogComponent, {
+      width: '620px',
+      maxWidth: 'calc(100vw - 32px)',
+      data: connection,
+    });
+  }
+  verificationDate(value?: string) {
+    return fiscalVerificationDate(value, this.transloco.getActiveLang());
+  }
+  async verify(connection: OrganizationFiscalConnection) {
+    if (
+      !this.canManage() ||
+      this.busy() ||
+      this.verifying() ||
+      connection.environment !== 'TEST' ||
+      connection.credentialStatus !== 'STORED_UNVERIFIED'
+    )
+      return;
+    const context = this.context(),
+      environment = connection.environment;
+    const previous = this.verificationCommands.get(connection.connectionId);
+    const command =
+      previous?.version === connection.version
+        ? previous
+        : { commandId: crypto.randomUUID(), version: connection.version };
+    this.verificationCommands.set(connection.connectionId, command);
+    this.verifying.set(connection.connectionId);
+    this.busy.set(true);
+    try {
+      const response = await this.api.verify(context, {
+        environment,
+        connectionId: connection.connectionId,
+        expectedVersion: connection.version,
+        commandId: command.commandId,
+      });
+      if (this.api.current(context)) {
+        if (!response.data.inProgress) this.verificationCommands.delete(connection.connectionId);
+        const message =
+          userMessageFromResponse(response) ??
+          this.transloco.translate<string>('FISCALITY.VERIFICATION.STATUS.' + response.data.status);
+        if (response.data.status === 'VERIFIED_TEST') this.notification.success(message);
+        else this.notification.info(message);
+        await this.client.invalidateQueries({
+          queryKey: fiscalityKey(context, environment),
+          exact: true,
+        });
+      }
+    } catch (error) {
+      if (this.api.current(context))
+        this.notification.error(
+          safeMessageFromError(error) ?? this.transloco.translate<string>('FISCALITY.ERROR'),
+        );
+    } finally {
+      if (this.api.current(context)) {
+        this.verifying.set(null);
+        this.busy.set(false);
+      }
+    }
   }
   configure(
     connection?: OrganizationFiscalConnection,

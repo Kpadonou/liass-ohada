@@ -26,6 +26,7 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
     "GET /me/organization/fiscality/sfe-approval", "PUT /platform/fiscality/sfe-approval",
     "GET /me/organization/fiscality/connections", "PUT /me/organization/fiscality/connections/{connectionId}",
     "PUT /me/organization/fiscality/connections/{connectionId}/credential", "DELETE /me/organization/fiscality/connections/{connectionId}/credential",
+    "POST /me/organization/fiscality/connections/{connectionId}/verification",
   ].sort());
   expect(routes.every(route => route.Properties.AuthorizationType === "JWT")).toBe(true);
   const policy = JSON.stringify(template.findResources("AWS::IAM::Policy"));
@@ -42,4 +43,15 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
   expect(Object.keys(template.findResources("AWS::DynamoDB::Table"))).toHaveLength(1); // fixture only
   expect(Object.keys(template.findResources("AWS::Cognito::UserPool"))).toHaveLength(0);
   expect(Object.keys(template.findResources("AWS::S3::Bucket"))).toHaveLength(0);
+  const functions = Object.values(template.findResources("AWS::Lambda::Function"));
+  const verifier = functions.find(fn => fn.Properties.FunctionName.endsWith("verify-fiscal-connection"))!;
+  expect(verifier.Properties.Environment.Variables.FISCAL_CREDENTIAL_TEST_VERIFICATION_ENABLED).toBe("0");
+  expect(verifier.Properties.Timeout).toBe(30);
+  const policies = template.findResources("AWS::IAM::Policy");
+  const verificationPolicies = Object.entries(policies).filter(([name]) => name.includes("VerificationRole"));
+  expect(verificationPolicies).toHaveLength(1);
+  expect(JSON.stringify(verificationPolicies)).toContain("ssm:GetParameter");
+  expect(JSON.stringify(verificationPolicies)).toContain("/TEST/*");
+  expect(JSON.stringify(verificationPolicies)).not.toContain("ssm:PutParameter");
+  expect(JSON.stringify(verificationPolicies)).not.toContain("ssm:DeleteParameter");
 });

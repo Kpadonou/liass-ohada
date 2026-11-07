@@ -88,6 +88,11 @@
         (pressed)="settings.refetch()"
       />
     </div>
+    @if (environment() === 'PRODUCTION') {
+      <p class="mb-4 text-sm text-app-text-secondary">
+        {{ 'FISCALITY.VERIFICATION.PRODUCTION_BLOCKED' | transloco }}
+      </p>
+    }
     @if (settings.isError()) {
       <p class="mb-4 text-sm text-danger-600" role="alert">{{ 'FISCALITY.ERROR' | transloco }}</p>
     }
@@ -127,6 +132,9 @@
                       connection.credentialStatus === 'STORED_UNVERIFIED' ? 'warning' : 'neutral'
                     "
                     size="sm"
+                  />
+                  <ng-container
+                    *ngTemplateOutlet="verificationState; context: { $implicit: connection }"
                   />
                 </td>
                 @if (canManage()) {
@@ -180,6 +188,9 @@
               [label]="'FISCALITY.CREDENTIAL.' + connection.credentialStatus | transloco"
               [tone]="connection.credentialStatus === 'STORED_UNVERIFIED' ? 'warning' : 'neutral'"
             />
+            <ng-container
+              *ngTemplateOutlet="verificationState; context: { $implicit: connection }"
+            />
           </section>
         }
       </div>
@@ -205,12 +216,26 @@
 </div>
 <mat-menu #actions="matMenu">
   <ng-template matMenuContent let-connection="connection">
+    @if (connection.verification) {
+      <button mat-menu-item (click)="verificationDetails(connection)">
+        <mat-icon>visibility</mat-icon>{{ 'FISCALITY.VERIFICATION.DETAIL' | transloco }}
+      </button>
+    }
     <button mat-menu-item (click)="configure(connection)">
       <mat-icon>edit</mat-icon>{{ 'FISCALITY.CONFIGURE' | transloco }}
     </button>
     <button mat-menu-item (click)="configure(connection, 'STORE_CREDENTIAL')">
       <mat-icon>key</mat-icon>{{ 'FISCALITY.TOKEN_ACTION' | transloco }}
     </button>
+    @if (connection.environment === 'TEST' && connection.credentialStatus === 'STORED_UNVERIFIED') {
+      <button
+        mat-menu-item
+        [disabled]="busy() || connection.verification?.latestAttempt?.inProgress"
+        (click)="verify(connection)"
+      >
+        <mat-icon>fact_check</mat-icon>{{ 'FISCALITY.VERIFICATION.VERIFY' | transloco }}
+      </button>
+    }
     @if (connection.credentialStatus === 'STORED_UNVERIFIED') {
       <button mat-menu-item class="text-danger-600" (click)="revoke(connection)">
         <mat-icon>key_off</mat-icon>{{ 'FISCALITY.REVOKE' | transloco }}
@@ -218,3 +243,29 @@
     }
   </ng-template>
 </mat-menu>
+<ng-template #verificationState let-connection>
+  @if (
+    verifying() === connection.connectionId || connection.verification?.latestAttempt?.inProgress
+  ) {
+    <p class="mt-2 text-xs text-app-text-secondary" role="status">
+      {{ 'FISCALITY.VERIFICATION.RUNNING' | transloco }}
+    </p>
+  } @else if (connection.verification?.latestAttempt; as result) {
+    <div class="mt-2">
+      <liass-status-chip
+        [label]="'FISCALITY.VERIFICATION.STATUS.' + result.status | transloco"
+        [tone]="
+          result.status === 'VERIFIED_TEST'
+            ? 'info'
+            : result.status === 'VERIFICATION_NOT_ENABLED'
+              ? 'neutral'
+              : 'warning'
+        "
+        size="sm"
+      />
+    </div>
+    <p class="mt-1 text-xs text-app-text-secondary">
+      {{ verificationDate(result.completedAt ?? result.startedAt) }}
+    </p>
+  }
+</ng-template>
