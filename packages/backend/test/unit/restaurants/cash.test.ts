@@ -82,6 +82,7 @@ async function order() {
         clientRequestId: req(),
         tableId: f.tables[0].id,
         areaId: f.tables[0].serviceAreaId,
+        staffId: "waiter",
       })
     ).data,
   );

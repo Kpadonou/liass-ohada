@@ -20,6 +20,7 @@ import { RESTAURANTS_TRANSACTION_PERMISSIONS } from "@liass-ohada/shared/shared"
 import { acceptanceFixture } from "./acceptance-fixture";
 import { fixtureId, memoryDynamo } from "./memory-dynamo";
 import { InventorySales } from "@/lambda/domains/restaurants/inventory-sales";
+import { RestaurantStaffService as Staff } from "@/lambda/domains/restaurants/staff-service";
 import {
   pureEmptyDraftHeader,
   qualifyPureEmptyDraft,
@@ -39,6 +40,7 @@ const open = () =>
     clientRequestId: requestId(),
     tableId: fixture.tables[0].id,
     areaId: fixture.areas[0].id,
+    staffId: "responsible",
   });
 const create = (guestSessionId?: string) =>
   execute("CREATE_ORDER", {
@@ -87,6 +89,15 @@ beforeEach(async () => {
   ctx = { orgId: "org-resto", outletId: fixture.outlet.id, actorId: "owner" };
   memory.seedAccess("org-resto", "owner", "OWNER");
   sequence = 1000;
+  memory.seedAccess(ctx.orgId, "responsible", "WAITER");
+  await Staff.mutate(ctx.orgId, "owner", "responsible", "BIND", {
+    clientRequestId: requestId(),
+    memberUserId: "responsible",
+    operationalLabel: "Responsible waiter",
+  });
+  await Staff.mutate(ctx.orgId, "owner", "responsible", "ASSIGN", {
+    clientRequestId: requestId(),
+  }, ctx.outletId);
 });
 afterEach(() => {
   memory.db.restore();
@@ -98,6 +109,7 @@ test("table occupancy, history, distributed create replay and immutable result",
     clientRequestId: requestId(),
     tableId: fixture.tables[0].id,
     areaId: fixture.areas[0].id,
+    staffId: "responsible",
   };
   const result = await execute("OPEN_SESSION", req),
     session = contracts.GuestSessionSchema.parse(result.data),
@@ -167,6 +179,7 @@ test("different tables can open independently, wrong area and inactive table fai
     clientRequestId: requestId(),
     tableId: fixture.tables[1].id,
     areaId: fixture.areas[1].id,
+    staffId: "responsible",
   });
   expect((await Q.run(ctx, "ACTIVE_SESSIONS", {})).items).toHaveLength(2);
   await expect(
@@ -174,6 +187,7 @@ test("different tables can open independently, wrong area and inactive table fai
       clientRequestId: requestId(),
       tableId: fixture.tables[2].id,
       areaId: fixture.areas[1].id,
+      staffId: "responsible",
     }),
   ).rejects.toMatchObject({ statusCode: 404 });
   await Config.update(
@@ -190,6 +204,7 @@ test("different tables can open independently, wrong area and inactive table fai
       clientRequestId: requestId(),
       tableId: fixture.tables[2].id,
       areaId: fixture.areas[0].id,
+      staffId: "responsible",
     }),
   ).rejects.toMatchObject({ messageCode: "RESTAURANTS_PARENT_INACTIVE" });
 });
@@ -1215,7 +1230,7 @@ test.each(["OWNER", "MANAGER"])(
   },
 );
 test.each(["WAITER", "CASHIER", "KITCHEN"])(
-  "%s has no unscoped LR-TX-1 writes",
+  "%s rejects writes outside its explicit service and closure permissions",
   async (role) => {
     expect(
       DomainAuthorizationService.permissionsForRestaurantsRole(role).filter(
@@ -1224,13 +1239,17 @@ test.each(["WAITER", "CASHIER", "KITCHEN"])(
             p as (typeof RESTAURANTS_TRANSACTION_PERMISSIONS)[number],
           ),
       ),
-    ).toEqual([]);
+    ).toEqual(role === "WAITER" ? [
+      "RESTAURANTS_SESSION_CLOSE_MANAGE",
+      "RESTAURANTS_ORDER_CLOSE_MANAGE",
+    ] : []);
     memory.seedAccess(ctx.orgId, "owner", role);
     const requests: Record<string, object> = {
       OPEN_SESSION: {
         clientRequestId: requestId(),
         tableId: fixture.tables[0].id,
         areaId: fixture.areas[0].id,
+        staffId: "responsible",
       },
       CREATE_ORDER: { clientRequestId: requestId(), orderType: "COUNTER" },
       CLOSE_SESSION: { clientRequestId: requestId(), expectedVersion: 1 },
@@ -1277,6 +1296,10 @@ test.each(["WAITER", "CASHIER", "KITCHEN"])(
     const before = rows().length;
     for (const route of RESTAURANT_TRANSACTION_ROUTES)
       if ("command" in route) {
+        // Authorized service writes and scoped closure have dedicated suites.
+        const permissions = DomainAuthorizationService.permissionsForRestaurantsRole(role);
+        if (permissions.includes(route.permission) ||
+          (role === "CASHIER" && ["CLOSE_SESSION", "CLOSE_ORDER"].includes(route.command))) continue;
         const response = await restaurantTransactionHandler(route.name)({
           headers: { "x-org-id": ctx.orgId, "accept-language": "en" },
           body: JSON.stringify(requests[route.command]),
@@ -1320,6 +1343,8 @@ test("transaction guard rejects oversized/duplicate operations before AWS", asyn
   expect(memory.transactions).toHaveLength(before);
 });
 test("transaction and preparation rows have no GSI/TTL and use the dedicated business table", async () => {
+  memory.transactions.length = 0;
+  memory.db.resetHistory();
   const order = contracts.RestaurantOrderSchema.parse((await create()).data),
     line = contracts.RestaurantOrderItemSchema.parse(
       (await add(order.orderId)).data,
@@ -1571,6 +1596,7 @@ test("recent sessions sort descending and cursors bind direction", async () => {
     clientRequestId: requestId(),
     tableId: fixture.tables[1].id,
     areaId: fixture.areas[1].id,
+    staffId: "responsible",
   });
   const start = new Date(Date.now() - 7 * 86400000).toISOString(),
     end = new Date(Date.now() + 1000).toISOString();
@@ -1587,8 +1613,8 @@ test("recent sessions sort descending and cursors bind direction", async () => {
     limit: 1,
     cursor: page.nextCursor,
   });
-  const first = contracts.GuestSessionSchema.parse(page.items[0]),
-    second = contracts.GuestSessionSchema.parse(next.items[0]);
+  const first = contracts.GuestSessionReadSchema.parse(page.items[0]),
+    second = contracts.GuestSessionReadSchema.parse(next.items[0]);
   expect(
     K.restaurantTransactionLocatorSK(first.openedAt, first.guestSessionId) >=
       K.restaurantTransactionLocatorSK(second.openedAt, second.guestSessionId),
@@ -1642,6 +1668,7 @@ test("OWNER handler workflow validates public DTOs without physical keys", async
       clientRequestId: requestId(),
       tableId: fixture.tables[0].id,
       areaId: fixture.areas[0].id,
+      staffId: "responsible",
     }),
   );
   await call("get-session", {}, { sessionId: opened.data.guestSessionId });

@@ -150,6 +150,7 @@ beforeEach(async () => {
   jest.spyOn(console, "warn").mockImplementation(() => undefined);
   f = await acceptanceFixture();
   m.seedAccess(org, "owner", "OWNER");
+  await person("responsible", "WAITER");
   m.seedAccess(org, "manager", "MANAGER");
   await person("cashier", "CASHIER");
   await person("cashier2", "CASHIER");
@@ -159,6 +160,7 @@ beforeEach(async () => {
         clientRequestId: req(),
         tableId: f.tables[0].id,
         areaId: f.tables[0].serviceAreaId,
+        staffId: "responsible",
       })
     ).data,
   );
@@ -794,6 +796,7 @@ test("mixed sessions/table mismatch, Order currency and individual capacity fail
         clientRequestId: req(),
         tableId: f.tables[1].id,
         areaId: f.tables[1].serviceAreaId,
+        staffId: "responsible",
       })
     ).data,
   );
