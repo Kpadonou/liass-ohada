@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { marshall } from "@aws-sdk/util-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import * as C from "@liass-ohada/shared/restaurants";
 import { handler } from "@/lambda/domains/restaurants/get-outlet";
 import { quantityToMilli } from "@/lambda/domains/restaurants/inventory-handler";
@@ -469,6 +469,18 @@ test.each(["WAITER", "CASHIER", "KITCHEN"])(
     );
   },
 );
+test("GET /restaurants/outlets dispatches to list-outlet for a fresh organization", async () => {
+  for (const [key, row] of memory.rows) {
+    if (String(unmarshall(row).entityType).startsWith("RESTAURANT"))
+      memory.rows.delete(key);
+  }
+  const response = await handler({
+    ...event("list"),
+    routeKey: "GET /restaurants/outlets",
+    pathParameters: {},
+  });
+  expect(read(response)).toEqual({ items: [] });
+});
 test("unknown methods/routes fail closed", async () => {
   read(
     await handler({

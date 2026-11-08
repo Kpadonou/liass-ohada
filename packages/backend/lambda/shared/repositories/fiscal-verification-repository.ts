@@ -23,7 +23,10 @@ import {
   initialVerification,
   StoredFiscalVerificationSchema,
 } from "../services/fiscal-verification-model";
-import type { PlatformPrincipal } from "../authorization/platform-admin";
+import {
+  CognitoSubjectSchema,
+  type PlatformPrincipal,
+} from "../authorization/platform-admin";
 
 const operationSchema = z
   .object({
@@ -31,7 +34,7 @@ const operationSchema = z
     SK: z.string(),
     orgId: z.string(),
     entityType: z.literal("PLATFORM_FISCAL_VERIFICATION"),
-    actorId: z.string().uuid(),
+    actorId: CognitoSubjectSchema,
     actorIssuer: z.string(),
     intentDigest: z.string(),
     stage: z.enum(["dev", "test", "prod"]),

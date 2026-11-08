@@ -96,6 +96,23 @@ it('hides management actions for read-only company members', async () => {
   });
   expect(fixture.nativeElement.querySelector('button[aria-label="Actions"]')).toBeFalsy();
   expect(fixture.nativeElement.textContent).not.toContain('Ajouter une connexion');
+  expect(fixture.nativeElement.textContent).toContain(
+    'seuls les propriétaires de l’entreprise peuvent la modifier',
+  );
+});
+it('distinguishes a loading failure from read-only access while keeping actions fail-closed', async () => {
+  api.list.mockRejectedValue(new Error('private backend detail'));
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'La configuration fiscale n’a pas pu être chargée',
+    );
+  });
+  expect(fixture.nativeElement.textContent).not.toContain('Ajouter une connexion');
+  expect(fixture.nativeElement.textContent).not.toContain('seuls les propriétaires');
+  expect(fixture.nativeElement.textContent).not.toContain('private backend detail');
 });
 it('clears token before submission and never places it in query or mutation cache', async () => {
   const ref = { close: vi.fn(), disableClose: false };

@@ -23,7 +23,10 @@ import {
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory as K } from "../key-builder";
 import { AppError } from "../app-error";
-import type { PlatformPrincipal } from "../authorization/platform-admin";
+import {
+  CognitoSubjectSchema,
+  type PlatformPrincipal,
+} from "../authorization/platform-admin";
 import { FiscalVerificationStateSchema, publicVerification } from "../services/fiscal-verification-model";
 import { OrganizationLegalIdentityService } from "../services/organization-legal-identity-service";
 
@@ -59,7 +62,7 @@ const commandRecord = z
     SK: z.string(),
     orgId: id,
     entityType: z.literal("PLATFORM_FISCAL_COMMAND"),
-    actorId: z.string().uuid(),
+    actorId: CognitoSubjectSchema,
     intentDigest: z.string().regex(/^[a-f0-9]{64}$/),
     status: z.enum(["PENDING_STORAGE", "COMMITTED"]),
     result: OrganizationFiscalConnectionSchema.optional(),

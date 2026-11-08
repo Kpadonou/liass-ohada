@@ -18,7 +18,7 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer as Event } from "aws-lambd
 
 const db = mockClient(DynamoDBClient),
   secrets = mockClient(SSMClient);
-const sub = "09cd0c5c-6be7-48f9-8b72-809449883598";
+const sub = "2189c04e-00f1-702c-d8e5-c38569e8974e";
 const connectionId = "98e6dc23-3847-423b-97c4-a3f7e0d1fab5";
 const command = (n: number) =>
   `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -181,6 +181,11 @@ test("organization A cannot configure or read B", async () => {
   expect((await handler(event("PUT", "", base, "org-b"))).statusCode).toBe(403);
   expect((await handler(event("GET", "", {}, "org-b"))).statusCode).toBe(403);
   expect(db.commandCalls(QueryCommand)).toHaveLength(0);
+});
+test("authorized OWNER with a Cognito-issued subject can read fiscal connections", async () => {
+  const result = await handler(event("GET", "", {}));
+  expect(result.statusCode).toBe(200);
+  expect(parse(result).data).toMatchObject({ canManage: true, connections: [] });
 });
 test("secret submission stores Standard SecureString, exposes masked status and never implies readiness", async () => {
   await handler(event());

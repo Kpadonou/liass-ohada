@@ -26,7 +26,7 @@ import type { APIGatewayProxyEventV2WithJWTAuthorizer as Event } from "aws-lambd
 const db = mockClient(DynamoDBClient),
   ssm = mockClient(SSMClient);
 const org = "org-synthetic",
-  sub = "b82405b6-391e-42c3-a39a-5df9409b8672",
+  sub = "2189c04e-00f1-702c-d8e5-c38569e8974e",
   connectionId = "d9dc2b98-7acf-432c-854e-f9685b79657b";
 const issuer = "https://cognito-idp.eu-west-3.amazonaws.com/eu-west-3_test";
 const principal = { stage: "dev" as const, issuer, sub };

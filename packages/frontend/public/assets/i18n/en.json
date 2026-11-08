@@ -91,7 +91,9 @@
     "CANCEL": "Cancel",
     "SAVE": "Save",
     "SAVED": "Configuration saved; verification required.",
-    "ERROR": "Fiscal configuration is unavailable. Refresh and retry."
+    "ERROR": "Fiscal configuration is unavailable. Refresh and retry.",
+    "LOAD_ERROR": "Fiscal configuration could not be loaded. Refresh and retry.",
+    "READ_ONLY": "You can view the fiscal configuration, but only company owners can change it."
   },
   "RESTO_SERVICE": {
     "ITEMS": "item(s)",

@@ -91,7 +91,9 @@
     "CANCEL": "Annuler",
     "SAVE": "Enregistrer",
     "SAVED": "Configuration enregistrée ; vérifications requises.",
-    "ERROR": "La configuration fiscale est indisponible. Actualisez puis réessayez."
+    "ERROR": "La configuration fiscale est indisponible. Actualisez puis réessayez.",
+    "LOAD_ERROR": "La configuration fiscale n’a pas pu être chargée. Actualisez puis réessayez.",
+    "READ_ONLY": "Vous pouvez consulter la configuration fiscale, mais seuls les propriétaires de l’entreprise peuvent la modifier."
   },
   "RESTO_SERVICE": {
     "ITEMS": "article(s)",

@@ -4,7 +4,10 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { handler } from "@/lambda/domains/identity/platform-sfe-handler";
 import { PlatformSfeRepository as Repository } from "@/lambda/shared/repositories/platform-sfe-repository";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
-import { platformPrincipalDigest } from "@/lambda/shared/authorization/platform-admin";
+import {
+  CognitoSubjectSchema,
+  platformPrincipalDigest,
+} from "@/lambda/shared/authorization/platform-admin";
 import { platformAdminGrantPlan } from "../../../scripts/platform-admin-grant-plan";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer as Event } from "aws-lambda";
 
@@ -12,6 +15,16 @@ const db = mockClient(DynamoDBClient);
 const issuer = "https://cognito-idp.eu-west-3.amazonaws.com/eu-west-3_verified";
 const sub = "9e7e0aee-a0bf-45c5-a698-ea7f4f01bfa8";
 const principal = { stage: "dev" as const, issuer, sub };
+test.each([
+  "5169301e-90d1-7056-98ef-1b281095f036",
+  "2189c04e-00f1-702c-d8e5-c38569e8974e",
+])("accepts Cognito-issued subject %s", (value) => {
+  expect(CognitoSubjectSchema.parse(value)).toBe(value);
+});
+test.each(["", "not-a-cognito-sub", "2189c04e-00f1-702c-d8e5-c38569e8974"])(
+  "rejects malformed Cognito subject %j",
+  (value) => expect(CognitoSubjectSchema.safeParse(value).success).toBe(false),
+);
 const fields = { approvalLetterReference: "UNIT-TEST-ONLY", softwareName: "Synthetic test software", softwareVersion: "test",
   publisher: { name: "Test publisher", email: "publisher@example.test", phone: "test" },
   supplier: { name: "Test supplier", email: "supplier@example.test", phone: "test" } };

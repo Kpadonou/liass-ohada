@@ -8,7 +8,7 @@
     @if (approvals.isPending()) {
       <liass-skeleton [lines]="3" />
     } @else if (approvals.isError() && !approvals.data()) {
-      <p role="alert" class="text-sm text-danger-600">{{ 'FISCALITY.ERROR' | transloco }}</p>
+      <p role="alert" class="text-sm text-danger-600">{{ 'FISCALITY.LOAD_ERROR' | transloco }}</p>
     } @else if (approvals.data()?.approval; as approval) {
       <dl class="grid gap-4 text-sm sm:grid-cols-2">
         <div>
@@ -94,7 +94,9 @@
       </p>
     }
     @if (settings.isError()) {
-      <p class="mb-4 text-sm text-danger-600" role="alert">{{ 'FISCALITY.ERROR' | transloco }}</p>
+      <p class="mb-4 text-sm text-danger-600" role="alert">{{ 'FISCALITY.LOAD_ERROR' | transloco }}</p>
+    } @else if (settings.data() && !canManage()) {
+      <p class="mb-4 text-sm text-app-text-secondary">{{ 'FISCALITY.READ_ONLY' | transloco }}</p>
     }
     @if (settings.isPending()) {
       <liass-skeleton [lines]="4" />

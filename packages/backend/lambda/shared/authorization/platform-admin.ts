@@ -5,9 +5,14 @@ import { AppError } from "../app-error";
 
 export const PLATFORM_SFE_APPROVAL_MANAGE = "PLATFORM_SFE_APPROVAL_MANAGE" as const;
 export const PlatformStageSchema = z.enum(["dev", "test", "prod"]);
+/** Cognito subjects are UUID-shaped but are not guaranteed to satisfy RFC UUID version/variant bits. */
+export const CognitoSubjectSchema = z
+  .string()
+  .max(128)
+  .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
 export const PlatformPrincipalSchema = z.object({
   stage: PlatformStageSchema,
-  issuer: z.string().url().max(256), sub: z.string().uuid(),
+  issuer: z.string().url().max(256), sub: CognitoSubjectSchema,
 }).strict();
 export type PlatformPrincipal = z.infer<typeof PlatformPrincipalSchema>;
 export const PlatformGrantSchema = PlatformPrincipalSchema.extend({

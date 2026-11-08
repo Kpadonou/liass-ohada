@@ -59,6 +59,7 @@ export class RestaurantsService {
     kind: RestaurantKind,
     context: RestaurantParents,
     requireActive: boolean,
+    knownRoot?: RestaurantSnapshot,
   ): Promise<ParentCheck[]> {
     const checks: ParentCheck[] = [];
     const add = (snapshot: RestaurantSnapshot) => {
@@ -67,7 +68,7 @@ export class RestaurantsService {
       checks.push({ snapshot, requireActive });
     };
     if (kind === "restaurant") return checks;
-    const root = await this.load(orgId, "restaurant", {});
+    const root = knownRoot ?? (await this.load(orgId, "restaurant", {}));
     add(root);
     if (kind === "outlet") return checks;
     const outlet = await this.load(
@@ -156,7 +157,14 @@ export class RestaurantsService {
     TenantIdSchema.parse(orgId);
     const context = ParentsSchema.parse(parents);
     const request = RestaurantsListRequestSchema.parse(input);
-    const checks = await this.parents(orgId, kind, context, false);
+    const root =
+      kind === "outlet"
+        ? await RestaurantsRepository.get(orgId, "restaurant", {})
+        : undefined;
+    // A newly entitled organization has no Restaurants aggregate yet; outlet discovery is empty,
+    // not a missing-route or missing-resource error.
+    if (kind === "outlet" && !root) return { items: [] as RestaurantEntities[K][] };
+    const checks = await this.parents(orgId, kind, context, false, root);
     const page = await RestaurantsRepository.list(
       orgId,
       kind,
