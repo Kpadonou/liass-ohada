@@ -26,6 +26,49 @@ jest.mock("aws-cdk-lib/aws-lambda-nodejs", () => {
     },
   };
 });
+
+test("SFE role can read tenant membership only within organization partitions", () => {
+  const app = new App();
+  const stack = new Stack(app, "Test");
+  const issuer =
+    "https://cognito-idp.eu-west-3.amazonaws.com/eu-west-3_verified";
+  const api = new HttpApi(stack, "Api", {
+    defaultAuthorizer: new HttpJwtAuthorizer("JWT", issuer, {
+      jwtAudience: ["client"],
+    }),
+  });
+  const table = new Table(stack, "ExistingTable", {
+    partitionKey: { name: "PK", type: AttributeType.STRING },
+    sortKey: { name: "SK", type: AttributeType.STRING },
+  });
+  new PlatformFiscalityEndpoints(stack, "Fiscality", {
+    api,
+    table,
+    stage: "dev",
+    cognitoIssuer: issuer,
+  });
+
+  const policies = Template.fromStack(stack).findResources("AWS::IAM::Policy");
+  const sfePolicy = Object.entries(policies).find(([name]) =>
+    name.includes("SfeReferenceRole"),
+  )?.[1];
+  expect(sfePolicy).toBeDefined();
+  const statements = sfePolicy!.Properties.PolicyDocument.Statement;
+  expect(statements).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        Effect: "Allow",
+        Action: "dynamodb:GetItem",
+        Condition: {
+          "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": ["ORG#*"],
+          },
+        },
+      }),
+    ]),
+  );
+});
+
 test("SFE APIs reuse JWT, API and table; role can condition-check but never mutate administrator grants", () => {
   const app = new App();
   const stack = new Stack(app, "Test");

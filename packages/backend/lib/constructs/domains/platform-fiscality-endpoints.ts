@@ -30,6 +30,17 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         resources: [props.table.tableArn],
         conditions: {
           "ForAllValues:StringLike": {
+            "dynamodb:LeadingKeys": ["ORG#*"],
+          },
+        },
+      }),
+    );
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ["dynamodb:GetItem"],
+        resources: [props.table.tableArn],
+        conditions: {
+          "ForAllValues:StringLike": {
             "dynamodb:LeadingKeys": [
               `PLATFORM_SFE#${props.stage}#BJ`,
               `PLATFORM_ADMIN#${props.stage}#*`,
