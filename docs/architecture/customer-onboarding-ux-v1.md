@@ -12,7 +12,18 @@ Show a non-blocking welcome/configuration panel personalized with the active org
 
 ## Fiscal settings and e-MECeF guide
 
-Keep two cards on `/settings/fiscality`. The top card, **Obtenir votre accès e-MECeF**, guides the customer to (1) prepare the company IFU and establishment information, (2) request access from DGI using centrally managed official Liass-OHADA SFE references, and (3) return to securely register the issued token. Display approved software references as copyable values from the Platform reference, never fabricated client data or a downloadable approval certificate. Link **Effectuer ma demande auprès de la DGI** to `https://sygmef.impots.bj/emcf/registration` and **Comprendre la procédure** to `https://e-mecef.impots.bj/`. Customers already holding a token can go directly to the connection card. Commercial launch assumes genuine official SFE approval is complete; do not present speculative approval warnings or invent references. If authoritative references are absent in an environment, preserve truthful unavailable data and prevent fabricated submissions.
+Keep two cards on `/settings/fiscality`, with the enrollment guide above the connections card. The top card, **Obtenir votre accès e-MECeF**, presents the following four steps as accessible expandable sections:
+
+1. **Create your taxpayer access.** Visit the official e-MECeF portal, identify the company using its IFU, check the email address associated with the tax registration, and continue with the activation request.
+2. **Complete the e-MECeF activation form.** Explain its four sections:
+   - **Taxpayer:** IFU, company name, RCCM, registered address and contact details.
+   - **Business activity:** main activity and any secondary activities.
+   - **Outlets and invoicing mode:** declare outlets, select **e-MCF (J'ai un SFE)**, and provide Liass-OHADA's official software references.
+   - **Applicant:** identity and contact details.
+3. **Obtain DGI approval and activate the account.** Submit the application, follow the DGI confirmation and processing instructions, then follow the official activation instructions to access SyGMEF. State that DGI announces a 72-hour processing timeframe subject to verification, without guaranteeing that deadline.
+4. **Retrieve and configure the token.** Access SyGMEF and the e-MCF connection information, obtain the token and applicable NIM, then return to Liass-OHADA's **Connexions DGI** section. Select the correct environment and securely register the credentials. Token storage does not establish fiscal issuance authorization.
+
+Display official software references from the authoritative Platform registry as copyable values. Never fabricate client data, portal menu names, credentials, approval references or production authorization, and never offer the approval certificate for download. Link **Effectuer ma demande auprès de la DGI** to `https://sygmef.impots.bj/emcf/registration` and **Comprendre la procédure** to `https://e-mecef.impots.bj/`. Customers already holding a token can go directly to the connection card. Commercial launch assumes genuine official SFE approval is complete; do not present speculative approval warnings. If authoritative references are absent in an environment, preserve truthful unavailable data and prevent fabricated submissions.
 
 The bottom card, **Connexions DGI**, retains organization-scoped connection management, backend-only secret storage, TEST/PRODUCTION separation, permission checks, versioned verification and distinct technical versus issuance readiness. A saved or TEST-verified token never activates production fiscal issuance.
 
