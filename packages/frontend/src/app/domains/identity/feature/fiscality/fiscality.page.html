@@ -8,7 +8,7 @@
     <p class="mb-4 text-sm text-app-text-secondary">
       {{ 'FISCALITY.GUIDE.INTRO' | transloco }}
     </p>
-    <mat-accordion class="block" multi>
+    <mat-accordion class="block [&_.mat-expansion-panel-spacing]:my-2" multi>
       <mat-expansion-panel class="mat-elevation-z0" [expanded]="true">
         <mat-expansion-panel-header>
           <mat-panel-title>{{ 'FISCALITY.GUIDE.STEP_1.TITLE' | transloco }}</mat-panel-title>
@@ -24,10 +24,10 @@
         <mat-expansion-panel-header>
           <mat-panel-title>{{ 'FISCALITY.GUIDE.STEP_2.TITLE' | transloco }}</mat-panel-title>
         </mat-expansion-panel-header>
-        <p class="mb-3 text-sm text-app-text-secondary">
+        <p class="mb-2 text-sm text-app-text-secondary">
           {{ 'FISCALITY.GUIDE.STEP_2.INTRO' | transloco }}
         </p>
-        <dl class="space-y-3 text-sm">
+        <dl class="space-y-2 text-sm">
           <div>
             <dt class="font-medium">{{ 'FISCALITY.GUIDE.STEP_2.TAXPAYER_TITLE' | transloco }}</dt>
             <dd class="text-app-text-secondary">
@@ -72,9 +72,10 @@
         <ul class="list-disc space-y-2 pl-5 text-sm text-app-text-secondary">
           <li>{{ 'FISCALITY.GUIDE.STEP_4.ACCESS' | transloco }}</li>
           <li>{{ 'FISCALITY.GUIDE.STEP_4.CONNECTION' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_4.DETAILS' | transloco }}</li>
           <li>{{ 'FISCALITY.GUIDE.STEP_4.TOKEN' | transloco }}</li>
-          <li>{{ 'FISCALITY.GUIDE.STEP_4.SAFETY' | transloco }}</li>
         </ul>
+        <p class="mt-2 text-sm text-app-text-secondary">{{ 'FISCALITY.GUIDE.STEP_4.AFTER' | transloco }}</p>
       </mat-expansion-panel>
     </mat-accordion>
     <h3 class="mt-5 text-sm font-semibold">{{ 'FISCALITY.GUIDE.REFERENCES' | transloco }}</h3>

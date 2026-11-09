@@ -78,6 +78,12 @@ it('renders the complete accessible four-step guide and official DGI actions', a
     fixture.nativeElement.querySelector('a[href="https://sygmef.impots.bj/emcf/registration"]'),
   ).toBeTruthy();
   expect(fixture.nativeElement.querySelector('a[href="https://e-mecef.impots.bj/"]')).toBeTruthy();
+  const guide = fixture.nativeElement.querySelector('liass-card');
+  expect(fr.FISCALITY.GUIDE.STEP_2.OUTLETS).toContain('points de vente');
+  expect(fr.FISCALITY.GUIDE.STEP_2.OUTLETS).toContain('e-MCF (J’ai un SFE)');
+  expect(fr.FISCALITY.GUIDE.STEP_4.CONNECTION).toContain('Ajouter une connexion');
+  expect(fr.FISCALITY.GUIDE.STEP_4.AFTER).toContain("l'état de votre connexion");
+  expect(guide.textContent).not.toMatch(/PRODUCTION|TEST/);
 });
 it('displays and copies authoritative registered references including country of origin', async () => {
   api.approval.mockResolvedValue({
@@ -163,7 +169,7 @@ it('hides management actions for read-only company members', async () => {
     expect(fixture.componentInstance.connections().length).toBe(1);
   });
   expect(fixture.nativeElement.querySelector('button[aria-label="Actions"]')).toBeFalsy();
-  expect(fixture.nativeElement.textContent).not.toContain('Ajouter une connexion');
+  expect(fixture.nativeElement.querySelector('#fiscal-connections [liassCardActions] liass-button')).toBeFalsy();
   expect(fixture.nativeElement.textContent).toContain(
     'seuls les propriétaires de l’entreprise peuvent la modifier',
   );
@@ -178,7 +184,7 @@ it('distinguishes a loading failure from read-only access while keeping actions 
       'La configuration fiscale n’a pas pu être chargée',
     );
   });
-  expect(fixture.nativeElement.textContent).not.toContain('Ajouter une connexion');
+  expect(fixture.nativeElement.querySelector('#fiscal-connections [liassCardActions] liass-button')).toBeFalsy();
   expect(fixture.nativeElement.textContent).not.toContain('seuls les propriétaires');
   expect(fixture.nativeElement.textContent).not.toContain('private backend detail');
 });

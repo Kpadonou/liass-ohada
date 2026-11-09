@@ -43,10 +43,11 @@
       },
       "STEP_4": {
         "TITLE": "4. Retrieve the e-MCF NIM and token",
-        "ACCESS": "Access the e-MCF connection information in SyGMEF and retrieve the applicable NIM and token.",
-        "CONNECTION": "In Liass-OHADA, first create the DGI connection with the company IFU and e-MCF NIM. Commercial connections use PRODUCTION; TEST is reserved for internal development and controlled validation.",
-        "TOKEN": "Then store the DGI token separately and securely in the “DGI connections” section.",
-        "SAFETY": "Storing the token establishes neither successful fiscal verification nor authorization to issue normalized invoices."
+        "ACCESS": "Sign in to your SyGMEF Taxpayer Space to find your e-MCF information, including its NIM and your access token.",
+        "CONNECTION": "In Liass-OHADA, select “Add a connection” in the “DGI connections” section below.",
+        "DETAILS": "Enter your company's IFU and the e-MCF NIM, then save the connection.",
+        "TOKEN": "Then store your DGI token securely.",
+        "AFTER": "Once complete, you can check your connection status in Liass-OHADA."
       }
     },
     "VERIFICATION": {
@@ -93,7 +94,7 @@
     "SOFTWARE": "Software and version",
     "PUBLISHER": "Publisher",
     "SUPPLIER": "Supplier",
-    "ENROLLMENT_HELP": "Your company must obtain its own credentials from DGI. Software references do not establish your fiscal enrollment. No approval certificate is distributed here.",
+    "ENROLLMENT_HELP": "Use the information below to complete the invoicing software section of your e-MECeF activation request to DGI.",
     "DGI_LINK": "View the official DGI procedure",
     "CONNECTIONS": "DGI connections",
     "CONNECTIONS_HELP": "Each connection retains its identifiers and environment. Establishment associations still require verification.",

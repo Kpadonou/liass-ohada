@@ -29,8 +29,8 @@
         "TAXPAYER": "IFU, raison sociale, RCCM, adresse du siège et coordonnées.",
         "ACTIVITY_TITLE": "Activité professionnelle",
         "ACTIVITY": "Activité principale et éventuelles activités secondaires.",
-        "OUTLETS_TITLE": "Établissements et mode de facturation",
-        "OUTLETS": "Déclarez vos établissements, sélectionnez « e-MCF (J’ai un SFE) » et fournissez les références officielles Liass-OHADA affichées ci-dessous.",
+        "OUTLETS_TITLE": "Points de vente et mode de facturation",
+        "OUTLETS": "Déclarez vos points de vente, sélectionnez « e-MCF (J’ai un SFE) » et fournissez les références officielles Liass-OHADA affichées ci-dessous.",
         "APPLICANT_TITLE": "Demandeur",
         "APPLICANT": "Identité et coordonnées de la personne qui dépose la demande."
       },
@@ -43,10 +43,11 @@
       },
       "STEP_4": {
         "TITLE": "4. Récupérer le NIM e-MCF et le jeton",
-        "ACCESS": "Accédez dans SyGMEF aux informations de connexion e-MCF et récupérez le NIM applicable ainsi que le jeton.",
-        "CONNECTION": "Dans Liass-OHADA, créez d’abord la connexion DGI avec l’IFU de l’entreprise et le NIM e-MCF. Les connexions commerciales utilisent PRODUCTION ; TEST est réservé au développement interne et aux validations contrôlées.",
-        "TOKEN": "Enregistrez ensuite séparément le jeton DGI de manière sécurisée dans la section « Connexions DGI ».",
-        "SAFETY": "L’enregistrement du jeton ne constitue ni une vérification fiscale réussie, ni une autorisation d’émettre des factures normalisées."
+        "ACCESS": "Connectez-vous à votre Espace Contribuable SyGMEF pour retrouver les informations de votre e-MCF, notamment son NIM et votre jeton d'accès.",
+        "CONNECTION": "Dans Liass-OHADA, cliquez sur « Ajouter une connexion » dans la section « Connexions DGI » ci-dessous.",
+        "DETAILS": "Renseignez l'IFU de votre entreprise et le NIM e-MCF, puis enregistrez la connexion.",
+        "TOKEN": "Enregistrez ensuite votre jeton DGI de manière sécurisée.",
+        "AFTER": "Une fois cette opération terminée, vous pourrez consulter l'état de votre connexion dans Liass-OHADA."
       }
     },
     "VERIFICATION": {
@@ -93,7 +94,7 @@
     "SOFTWARE": "Logiciel et version",
     "PUBLISHER": "Éditeur",
     "SUPPLIER": "Fournisseur",
-    "ENROLLMENT_HELP": "Votre entreprise doit obtenir ses propres accès auprès de la DGI. Les références du logiciel ne constituent pas votre enrôlement fiscal. Aucun certificat d’agrément n’est distribué ici.",
+    "ENROLLMENT_HELP": "Utilisez les informations ci-dessous pour renseigner la partie relative au logiciel de facturation dans votre demande d'activation e-MECeF auprès de la DGI.",
     "DGI_LINK": "Consulter la procédure officielle DGI",
     "CONNECTIONS": "Connexions DGI",
     "CONNECTIONS_HELP": "Une connexion conserve ses propres identifiants et son environnement. Les associations aux établissements restent à vérifier.",
