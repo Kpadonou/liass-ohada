@@ -12,7 +12,10 @@ import {
 } from "@aws-sdk/client-ssm";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { mockClient } from "aws-sdk-client-mock";
-import { handler } from "@/lambda/domains/identity/organization-fiscal-handler";
+import {
+  fiscalEnvironmentForStage,
+  handler,
+} from "@/lambda/domains/identity/organization-fiscal-handler";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer as Event } from "aws-lambda";
 
@@ -33,6 +36,13 @@ const base = {
   commandId: command(1),
 };
 let rows: Map<string, Record<string, unknown>>, parameters: Map<string, string>;
+test.each([
+  ["dev", "TEST"],
+  ["test", "TEST"],
+  ["prod", "PRODUCTION"],
+] as const)("stage %s fixes customer fiscality to %s", (stage, expected) => {
+  expect(fiscalEnvironmentForStage(stage)).toBe(expected);
+});
 const key = (row: Record<string, unknown>) => JSON.stringify([row.PK, row.SK]);
 const member = (orgId = "org-a", overrides: Record<string, unknown> = {}) => ({
   PK: K.orgKey(orgId),
@@ -185,7 +195,10 @@ test("organization A cannot configure or read B", async () => {
 test("authorized OWNER with a Cognito-issued subject can read fiscal connections", async () => {
   const result = await handler(event("GET", "", {}));
   expect(result.statusCode).toBe(200);
-  expect(parse(result).data).toMatchObject({ canManage: true, connections: [] });
+  expect(parse(result).data).toMatchObject({
+    canManage: true,
+    connections: [],
+  });
 });
 test("secret submission stores Standard SecureString, exposes masked status and never implies readiness", async () => {
   await handler(event());
@@ -288,7 +301,7 @@ test("replacement and local revocation preserve old immutable revisions", async 
     ),
   ).toHaveLength(4);
 });
-test("TEST credential never populates PRODUCTION connection", async () => {
+test("DEV stage rejects a customer-selected PRODUCTION environment before secret storage", async () => {
   await handler(event());
   const result = await handler(
     event("PUT", "/credential", {
@@ -298,7 +311,7 @@ test("TEST credential never populates PRODUCTION connection", async () => {
       token,
     }),
   );
-  expect(result.statusCode).toBe(409);
+  expect(result.statusCode).toBe(400);
   expect(parameters.size).toBe(0);
 });
 test("stale configuration version cannot store a credential", async () => {

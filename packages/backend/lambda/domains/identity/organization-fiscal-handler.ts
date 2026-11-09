@@ -1,10 +1,25 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { z } from "zod";
 import { AppError } from "../../shared/app-error";
-import { verifiedPlatformPrincipal } from "../../shared/authorization/platform-admin";
+import {
+  verifiedPlatformPrincipal,
+  type PlatformPrincipal,
+} from "../../shared/authorization/platform-admin";
 import { I18nResolver } from "../../shared/i18n";
 import { OrganizationFiscalRepository } from "../../shared/repositories/organization-fiscal-repository";
 import { OrganizationFiscalVerificationService } from "../../shared/services/organization-fiscal-verification-service";
+export const fiscalEnvironmentForStage = (
+  stage: PlatformPrincipal["stage"],
+): "TEST" | "PRODUCTION" => (stage === "prod" ? "PRODUCTION" : "TEST");
+
+function requireStageEnvironment(
+  stage: PlatformPrincipal["stage"],
+  value: unknown,
+) {
+  if (value !== fiscalEnvironmentForStage(stage)) {
+    throw new AppError(400, "ERROR_INVALID_INPUT");
+  }
+}
 
 /** Credentials require a dedicated sanitized boundary; never use a raw-error/request logging wrapper. */
 export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
@@ -15,16 +30,40 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       ([key]) => key.toLowerCase() === "x-org-id",
     )?.[1];
     if (!orgId) throw new AppError(400, "ERROR_MISSING_ORG_ID");
-    if (event.routeKey === "POST /me/organization/fiscality/connections/{connectionId}/verification") {
-      if (Object.keys(event.queryStringParameters ?? {}).length) throw new AppError(400, "ERROR_INVALID_INPUT");
+    if (
+      event.routeKey ===
+      "POST /me/organization/fiscality/connections/{connectionId}/verification"
+    ) {
+      if (Object.keys(event.queryStringParameters ?? {}).length)
+        throw new AppError(400, "ERROR_INVALID_INPUT");
       let input: unknown;
-      try { input = JSON.parse(event.body ?? "{}"); } catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
+      try {
+        input = JSON.parse(event.body ?? "{}");
+      } catch {
+        throw new AppError(400, "ERROR_INVALID_INPUT");
+      }
       const fields = z.record(z.string(), z.unknown()).parse(input);
-      const data = await new OrganizationFiscalVerificationService().verify(orgId, principal,
-        { ...fields, connectionId: event.pathParameters?.connectionId });
-      return { statusCode: 200, body: JSON.stringify({ data, message: i18n.getMessage(`PLATFORM_FISCAL_VERIFICATION_${data.status}`) }) };
+      requireStageEnvironment(principal.stage, fields.environment);
+      const data = await new OrganizationFiscalVerificationService().verify(
+        orgId,
+        principal,
+        { ...fields, connectionId: event.pathParameters?.connectionId },
+      );
+      return {
+        statusCode: 200,
+        body: JSON.stringify({
+          data,
+          message: i18n.getMessage(
+            `PLATFORM_FISCAL_VERIFICATION_${data.status}`,
+          ),
+        }),
+      };
     }
     if (event.routeKey === "GET /me/organization/fiscality/connections") {
+      requireStageEnvironment(
+        principal.stage,
+        event.queryStringParameters?.environment,
+      );
       const data = await OrganizationFiscalRepository.list(
         orgId,
         principal.sub,
@@ -51,6 +90,7 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       throw new AppError(400, "ERROR_INVALID_INPUT");
     }
     const fields = z.record(z.string(), z.unknown()).parse(body);
+    requireStageEnvironment(principal.stage, fields.environment);
     const data = await OrganizationFiscalRepository.change(
       orgId,
       principal,

@@ -1,8 +1,7 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatSelectModule } from '@angular/material/select';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
@@ -29,13 +28,13 @@ import {
   safeMessageFromError,
   userMessageFromResponse,
 } from '../../../../core/notifications/notification-message';
+import { environment as deploymentEnvironment } from '../../../../../environments/environment';
 
 @Component({
   imports: [
     NgTemplateOutlet,
     TranslocoModule,
-    MatFormFieldModule,
-    MatSelectModule,
+    MatExpansionModule,
     MatIconModule,
     MatButtonModule,
     MatMenuModule,
@@ -54,7 +53,7 @@ export class FiscalityPage {
   private readonly client = inject(QueryClient);
   private readonly notification = inject(NotificationService);
   private readonly transloco = inject(TranslocoService);
-  readonly environment = signal<'TEST' | 'PRODUCTION'>('TEST');
+  readonly environment = signal<'TEST' | 'PRODUCTION'>(deploymentEnvironment.fiscalEnvironment);
   readonly busy = signal(false);
   readonly verifying = signal<string | null>(null);
   private readonly verificationCommands = new Map<string, { commandId: string; version: number }>();
@@ -105,6 +104,17 @@ export class FiscalityPage {
   }
   verificationDate(value?: string) {
     return fiscalVerificationDate(value, this.transloco.getActiveLang());
+  }
+  referenceContact(contact: { name: string; email: string; phone: string }) {
+    return `${contact.name} · ${contact.email} · ${contact.phone}`;
+  }
+  async copyReference(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      this.notification.success(this.transloco.translate<string>('FISCALITY.GUIDE.COPIED'));
+    } catch {
+      this.notification.error(this.transloco.translate<string>('FISCALITY.GUIDE.COPY_ERROR'));
+    }
   }
   async verify(connection: OrganizationFiscalConnection) {
     if (

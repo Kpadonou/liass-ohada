@@ -1,5 +1,54 @@
 {
   "FISCALITY": {
+    "GUIDE": {
+      "TITLE": "Obtain your e-MECeF access",
+      "INTRO": "Follow the official procedure to activate your company’s fiscal access. If you already have a token, you can go directly to DGI connections.",
+      "REFERENCES": "Official Liass-OHADA references",
+      "COUNTRY": "Country of origin",
+      "APPLY": "Submit my application to DGI",
+      "PROCEDURE": "Understand the procedure",
+      "EXISTING_TOKEN": "I already have a token",
+      "COPIED": "Reference copied.",
+      "COPY_ERROR": "The reference could not be copied.",
+      "COPY_APPROVAL": "Copy the DGI approval letter reference",
+      "COPY_SOFTWARE": "Copy the software name and version",
+      "COPY_PUBLISHER": "Copy the publisher contact details",
+      "COPY_SUPPLIER": "Copy the supplier contact details",
+      "COPY_COUNTRY": "Copy the country of origin",
+      "STEP_1": {
+        "TITLE": "1. Create your taxpayer access",
+        "PORTAL": "Visit the official e-MECeF portal.",
+        "IFU": "Identify your company using its IFU.",
+        "EMAIL": "Check the email address associated with the tax registration.",
+        "ACTIVATE": "Continue with the activation request."
+      },
+      "STEP_2": {
+        "TITLE": "2. Complete the e-MECeF activation form",
+        "INTRO": "Complete the four form sections with your company’s official information.",
+        "TAXPAYER_TITLE": "Taxpayer",
+        "TAXPAYER": "IFU, company name, RCCM, registered address and contact details.",
+        "ACTIVITY_TITLE": "Business activity",
+        "ACTIVITY": "Main activity and any secondary activities.",
+        "OUTLETS_TITLE": "Outlets and invoicing mode",
+        "OUTLETS": "Declare your outlets, select “e-MCF (J’ai un SFE)”, and provide the official Liass-OHADA references displayed below.",
+        "APPLICANT_TITLE": "Applicant",
+        "APPLICANT": "Identity and contact details of the person submitting the application."
+      },
+      "STEP_3": {
+        "TITLE": "3. Obtain DGI approval and activate the account",
+        "SUBMIT": "Submit the activation application.",
+        "PROCESS": "Follow the DGI confirmation and processing instructions.",
+        "TIMEFRAME": "DGI announces a 72-hour processing timeframe, subject to verification; this timeframe is not guaranteed.",
+        "SYGMEF": "Follow the official activation instructions to access SyGMEF."
+      },
+      "STEP_4": {
+        "TITLE": "4. Retrieve the e-MCF NIM and token",
+        "ACCESS": "Access the e-MCF connection information in SyGMEF and retrieve the applicable NIM and token.",
+        "CONNECTION": "In Liass-OHADA, first create the DGI connection with the company IFU and e-MCF NIM. Commercial connections use PRODUCTION; TEST is reserved for internal development and controlled validation.",
+        "TOKEN": "Then store the DGI token separately and securely in the “DGI connections” section.",
+        "SAFETY": "Storing the token establishes neither successful fiscal verification nor authorization to issue normalized invoices."
+      }
+    },
     "VERIFICATION": {
       "STATUS": {
         "VERIFIED_TEST": "TEST technically verified",

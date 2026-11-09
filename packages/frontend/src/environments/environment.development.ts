@@ -1,11 +1,12 @@
 export const environment = {
   production: false,
+  fiscalEnvironment: 'TEST' as const,
   apiBaseUrl: 'https://mk5jf2sco3.execute-api.eu-west-3.amazonaws.com',
   publicSite: {
     publicBaseUrl: 'http://localhost:4200',
     appBaseUrl: 'http://localhost:4200',
     contactEmail: null,
-    linkedInUrl: null
+    linkedInUrl: null,
   },
   cognito: {
     region: 'eu-west-3',
@@ -13,14 +14,10 @@ export const environment = {
     userPoolClientId: '36qnnjljg4c4qomkiaan1u4cte',
     oauth: {
       domain: 'liass-ohada-dev-auth.auth.eu-west-3.amazoncognito.com',
-      redirectSignIn: [
-        'http://localhost:4200/auth/callback'
-      ],
-      redirectSignOut: [
-        'http://localhost:4200/login'
-      ],
+      redirectSignIn: ['http://localhost:4200/auth/callback'],
+      redirectSignOut: ['http://localhost:4200/login'],
       scopes: ['openid', 'email', 'profile'],
-      providers: ['Google']
-    }
-  }
+      providers: ['Google'],
+    },
+  },
 } as const;

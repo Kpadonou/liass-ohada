@@ -1,4 +1,5 @@
-const PLACEHOLDER_PATTERN = /(?:<[^>]+>|replace(?:_with)?|placeholder|change[-_ ]?me|prod[-_ ]?api[-_ ]?id|your[-_ ](?:host|domain|id))/i;
+const PLACEHOLDER_PATTERN =
+  /(?:<[^>]+>|replace(?:_with)?|placeholder|change[-_ ]?me|prod[-_ ]?api[-_ ]?id|your[-_ ](?:host|domain|id))/i;
 const REQUIRED_PROVIDERS = ['Google', 'LinkedIn'];
 
 function required(value, label) {
@@ -22,7 +23,10 @@ function parseList(value) {
     return value.map((item) => String(item).trim()).filter(Boolean);
   }
   return typeof value === 'string'
-    ? value.split(',').map((item) => item.trim()).filter(Boolean)
+    ? value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
     : [];
 }
 
@@ -45,9 +49,7 @@ function httpsUrl(value, label, { rootOnly = false } = {}) {
 }
 
 function routeUrls(value, label, expectedUrl) {
-  const urls = parseList(value).map((item, index) =>
-    httpsUrl(item, `${label}[${index}]`)
-  );
+  const urls = parseList(value).map((item, index) => httpsUrl(item, `${label}[${index}]`));
   if (urls.length === 0) {
     throw new Error(`Missing production frontend configuration: ${label}.`);
   }
@@ -64,7 +66,9 @@ function routeUrls(value, label, expectedUrl) {
       parsed.search ||
       parsed.hash
     ) {
-      throw new Error(`${label} may only contain ${expectedUrl} without query parameters or fragments.`);
+      throw new Error(
+        `${label} may only contain ${expectedUrl} without query parameters or fragments.`,
+      );
     }
   }
   return urls;
@@ -79,10 +83,12 @@ function socialProviders(value) {
   }
   for (const provider of REQUIRED_PROVIDERS) {
     if (!providers.includes(provider)) {
-      throw new Error(`Production Cognito must enable ${provider} because the signup and login pages expose that action.`);
+      throw new Error(
+        `Production Cognito must enable ${provider} because the signup and login pages expose that action.`,
+      );
     }
   }
-  return providers.map((provider) => provider === 'Google' ? 'Google' : { custom: provider });
+  return providers.map((provider) => (provider === 'Google' ? 'Google' : { custom: provider }));
 }
 
 export function flattenCdkOutputs(document) {
@@ -112,12 +118,12 @@ export function createProductionConfig({ env = {}, cdkOutputs = {} } = {}) {
   const publicBaseUrl = httpsUrl(
     env.LIASS_PUBLIC_BASE_URL ?? 'https://liassohada.com',
     'LIASS_PUBLIC_BASE_URL',
-    { rootOnly: true }
+    { rootOnly: true },
   );
   const appBaseUrl = httpsUrl(
     env.LIASS_APP_BASE_URL ?? 'https://app.liassohada.com',
     'LIASS_APP_BASE_URL',
-    { rootOnly: true }
+    { rootOnly: true },
   );
   if (publicBaseUrl === appBaseUrl) {
     throw new Error('The production public site and application must use distinct origins.');
@@ -130,7 +136,7 @@ export function createProductionConfig({ env = {}, cdkOutputs = {} } = {}) {
 
   const userPoolId = required(
     read('LIASS_COGNITO_USER_POOL_ID', 'UserPoolId'),
-    'LIASS_COGNITO_USER_POOL_ID'
+    'LIASS_COGNITO_USER_POOL_ID',
   );
   if (!userPoolId.startsWith(`${region}_`) || !/^[\w-]+$/.test(userPoolId)) {
     throw new Error('LIASS_COGNITO_USER_POOL_ID must belong to LIASS_COGNITO_REGION.');
@@ -138,7 +144,7 @@ export function createProductionConfig({ env = {}, cdkOutputs = {} } = {}) {
 
   const userPoolClientId = required(
     read('LIASS_COGNITO_USER_POOL_CLIENT_ID', 'UserPoolClientId'),
-    'LIASS_COGNITO_USER_POOL_CLIENT_ID'
+    'LIASS_COGNITO_USER_POOL_CLIENT_ID',
   );
   if (!/^[a-z0-9]{20,128}$/i.test(userPoolClientId)) {
     throw new Error('LIASS_COGNITO_USER_POOL_CLIENT_ID has an invalid format.');
@@ -159,7 +165,7 @@ export function createProductionConfig({ env = {}, cdkOutputs = {} } = {}) {
       env.COGNITO_CALLBACK_URLS ??
       output.OAuthRedirectSignInUrls,
     'LIASS_COGNITO_REDIRECT_SIGN_IN',
-    expectedSignIn
+    expectedSignIn,
   );
   const redirectSignOut = routeUrls(
     env.LIASS_COGNITO_REDIRECT_SIGN_OUT ??
@@ -167,29 +173,26 @@ export function createProductionConfig({ env = {}, cdkOutputs = {} } = {}) {
       env.COGNITO_LOGOUT_URLS ??
       output.OAuthRedirectSignOutUrls,
     'LIASS_COGNITO_REDIRECT_SIGN_OUT',
-    expectedSignOut
+    expectedSignOut,
   );
 
-  const providers = socialProviders(
-    env.LIASS_COGNITO_PROVIDERS ?? output.EnabledSocialProviders
-  );
+  const providers = socialProviders(env.LIASS_COGNITO_PROVIDERS ?? output.EnabledSocialProviders);
   const contactEmail = optional(env.LIASS_CONTACT_EMAIL);
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) {
     throw new Error('LIASS_CONTACT_EMAIL must be a valid email address.');
   }
   const linkedInValue = optional(env.LIASS_LINKEDIN_URL);
-  const linkedInUrl = linkedInValue
-    ? httpsUrl(linkedInValue, 'LIASS_LINKEDIN_URL')
-    : null;
+  const linkedInUrl = linkedInValue ? httpsUrl(linkedInValue, 'LIASS_LINKEDIN_URL') : null;
 
   return {
     production: true,
+    fiscalEnvironment: 'PRODUCTION',
     apiBaseUrl: httpsUrl(read('LIASS_API_BASE_URL', 'ApiUrl'), 'LIASS_API_BASE_URL'),
     publicSite: {
       publicBaseUrl,
       appBaseUrl,
       contactEmail,
-      linkedInUrl
+      linkedInUrl,
     },
     cognito: {
       region,
@@ -200,9 +203,9 @@ export function createProductionConfig({ env = {}, cdkOutputs = {} } = {}) {
         redirectSignIn,
         redirectSignOut,
         scopes: ['openid', 'email', 'profile'],
-        providers
-      }
-    }
+        providers,
+      },
+    },
   };
 }
 
@@ -210,6 +213,6 @@ export function renderProductionEnvironment(config) {
   return [
     '// Generated by scripts/generate-production-environment.mjs. Do not edit or commit.',
     `export const environment = ${JSON.stringify(config, null, 2)} as const;`,
-    ''
+    '',
   ].join('\n');
 }

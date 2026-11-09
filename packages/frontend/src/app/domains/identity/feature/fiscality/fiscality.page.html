@@ -4,37 +4,161 @@
     [title]="'FISCALITY.TITLE' | transloco"
     [subtitle]="'FISCALITY.SUBTITLE' | transloco"
   />
-  <liass-card [title]="'FISCALITY.SFE' | transloco">
+  <liass-card [title]="'FISCALITY.GUIDE.TITLE' | transloco">
+    <p class="mb-4 text-sm text-app-text-secondary">
+      {{ 'FISCALITY.GUIDE.INTRO' | transloco }}
+    </p>
+    <mat-accordion class="block" multi>
+      <mat-expansion-panel class="mat-elevation-z0" [expanded]="true">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ 'FISCALITY.GUIDE.STEP_1.TITLE' | transloco }}</mat-panel-title>
+        </mat-expansion-panel-header>
+        <ul class="list-disc space-y-2 pl-5 text-sm text-app-text-secondary">
+          <li>{{ 'FISCALITY.GUIDE.STEP_1.PORTAL' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_1.IFU' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_1.EMAIL' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_1.ACTIVATE' | transloco }}</li>
+        </ul>
+      </mat-expansion-panel>
+      <mat-expansion-panel class="mat-elevation-z0">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ 'FISCALITY.GUIDE.STEP_2.TITLE' | transloco }}</mat-panel-title>
+        </mat-expansion-panel-header>
+        <p class="mb-3 text-sm text-app-text-secondary">
+          {{ 'FISCALITY.GUIDE.STEP_2.INTRO' | transloco }}
+        </p>
+        <dl class="space-y-3 text-sm">
+          <div>
+            <dt class="font-medium">{{ 'FISCALITY.GUIDE.STEP_2.TAXPAYER_TITLE' | transloco }}</dt>
+            <dd class="text-app-text-secondary">
+              {{ 'FISCALITY.GUIDE.STEP_2.TAXPAYER' | transloco }}
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium">{{ 'FISCALITY.GUIDE.STEP_2.ACTIVITY_TITLE' | transloco }}</dt>
+            <dd class="text-app-text-secondary">
+              {{ 'FISCALITY.GUIDE.STEP_2.ACTIVITY' | transloco }}
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium">{{ 'FISCALITY.GUIDE.STEP_2.OUTLETS_TITLE' | transloco }}</dt>
+            <dd class="text-app-text-secondary">
+              {{ 'FISCALITY.GUIDE.STEP_2.OUTLETS' | transloco }}
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium">{{ 'FISCALITY.GUIDE.STEP_2.APPLICANT_TITLE' | transloco }}</dt>
+            <dd class="text-app-text-secondary">
+              {{ 'FISCALITY.GUIDE.STEP_2.APPLICANT' | transloco }}
+            </dd>
+          </div>
+        </dl>
+      </mat-expansion-panel>
+      <mat-expansion-panel class="mat-elevation-z0">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ 'FISCALITY.GUIDE.STEP_3.TITLE' | transloco }}</mat-panel-title>
+        </mat-expansion-panel-header>
+        <ul class="list-disc space-y-2 pl-5 text-sm text-app-text-secondary">
+          <li>{{ 'FISCALITY.GUIDE.STEP_3.SUBMIT' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_3.PROCESS' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_3.TIMEFRAME' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_3.SYGMEF' | transloco }}</li>
+        </ul>
+      </mat-expansion-panel>
+      <mat-expansion-panel class="mat-elevation-z0">
+        <mat-expansion-panel-header>
+          <mat-panel-title>{{ 'FISCALITY.GUIDE.STEP_4.TITLE' | transloco }}</mat-panel-title>
+        </mat-expansion-panel-header>
+        <ul class="list-disc space-y-2 pl-5 text-sm text-app-text-secondary">
+          <li>{{ 'FISCALITY.GUIDE.STEP_4.ACCESS' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_4.CONNECTION' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_4.TOKEN' | transloco }}</li>
+          <li>{{ 'FISCALITY.GUIDE.STEP_4.SAFETY' | transloco }}</li>
+        </ul>
+      </mat-expansion-panel>
+    </mat-accordion>
+    <h3 class="mt-5 text-sm font-semibold">{{ 'FISCALITY.GUIDE.REFERENCES' | transloco }}</h3>
     @if (approvals.isPending()) {
       <liass-skeleton [lines]="3" />
     } @else if (approvals.isError() && !approvals.data()) {
       <p role="alert" class="text-sm text-danger-600">{{ 'FISCALITY.LOAD_ERROR' | transloco }}</p>
     } @else if (approvals.data()?.approval; as approval) {
-      <dl class="grid gap-4 text-sm sm:grid-cols-2">
+      <dl class="mt-3 grid gap-4 text-sm sm:grid-cols-2">
         <div>
           <dt class="text-app-text-secondary">{{ 'FISCALITY.APPROVAL_REFERENCE' | transloco }}</dt>
-          <dd class="break-words font-medium">{{ approval.approvalLetterReference }}</dd>
+          <dd class="flex items-start gap-2">
+            <span class="min-w-0 break-words font-medium">{{
+              approval.approvalLetterReference
+            }}</span
+            ><button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'FISCALITY.GUIDE.COPY_APPROVAL' | transloco"
+              (click)="copyReference(approval.approvalLetterReference)"
+            >
+              <mat-icon>content_copy</mat-icon>
+            </button>
+          </dd>
         </div>
         <div>
           <dt class="text-app-text-secondary">{{ 'FISCALITY.SOFTWARE' | transloco }}</dt>
-          <dd class="break-words font-medium">
-            {{ approval.softwareName }} · {{ approval.softwareVersion }}
+          <dd class="flex items-start gap-2">
+            <span class="min-w-0 break-words font-medium"
+              >{{ approval.softwareName }} · {{ approval.softwareVersion }}</span
+            ><button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'FISCALITY.GUIDE.COPY_SOFTWARE' | transloco"
+              (click)="copyReference(approval.softwareName + ' · ' + approval.softwareVersion)"
+            >
+              <mat-icon>content_copy</mat-icon>
+            </button>
           </dd>
         </div>
         <div>
           <dt class="text-app-text-secondary">{{ 'FISCALITY.PUBLISHER' | transloco }}</dt>
-          <dd class="break-words">
-            {{ approval.publisher.name }} · {{ approval.publisher.email }} ·
-            {{ approval.publisher.phone }}
+          <dd class="flex items-start gap-2">
+            <span class="min-w-0 break-words">{{ referenceContact(approval.publisher) }}</span
+            ><button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'FISCALITY.GUIDE.COPY_PUBLISHER' | transloco"
+              (click)="copyReference(referenceContact(approval.publisher))"
+            >
+              <mat-icon>content_copy</mat-icon>
+            </button>
           </dd>
         </div>
         <div>
           <dt class="text-app-text-secondary">{{ 'FISCALITY.SUPPLIER' | transloco }}</dt>
-          <dd class="break-words">
-            {{ approval.supplier.name }} · {{ approval.supplier.email }} ·
-            {{ approval.supplier.phone }}
+          <dd class="flex items-start gap-2">
+            <span class="min-w-0 break-words">{{ referenceContact(approval.supplier) }}</span
+            ><button
+              mat-icon-button
+              type="button"
+              [attr.aria-label]="'FISCALITY.GUIDE.COPY_SUPPLIER' | transloco"
+              (click)="copyReference(referenceContact(approval.supplier))"
+            >
+              <mat-icon>content_copy</mat-icon>
+            </button>
           </dd>
         </div>
+        @if (approval.countryOfOrigin) {
+          <div>
+            <dt class="text-app-text-secondary">{{ 'FISCALITY.GUIDE.COUNTRY' | transloco }}</dt>
+            <dd class="flex items-start gap-2">
+              <span class="min-w-0 break-words">{{ approval.countryOfOrigin }}</span
+              ><button
+                mat-icon-button
+                type="button"
+                [attr.aria-label]="'FISCALITY.GUIDE.COPY_COUNTRY' | transloco"
+                (click)="copyReference(approval.countryOfOrigin)"
+              >
+                <mat-icon>content_copy</mat-icon>
+              </button>
+            </dd>
+          </div>
+        }
       </dl>
     } @else {
       <liass-status-chip [label]="'FISCALITY.SFE_PENDING' | transloco" tone="neutral" />
@@ -42,15 +166,28 @@
     <p class="mt-4 text-sm text-app-text-secondary">
       {{ 'FISCALITY.ENROLLMENT_HELP' | transloco }}
     </p>
-    <a
-      href="https://sygmef.impots.bj/emcf/registration"
-      target="_blank"
-      rel="noopener noreferrer"
-      class="mt-2 inline-block text-sm text-brand-700 underline"
-      >{{ 'FISCALITY.DGI_LINK' | transloco }}</a
-    >
+    <div class="mt-4 flex flex-wrap items-center gap-3">
+      <a
+        mat-flat-button
+        href="https://sygmef.impots.bj/emcf/registration"
+        target="_blank"
+        rel="noopener noreferrer"
+        ><mat-icon>open_in_new</mat-icon>{{ 'FISCALITY.GUIDE.APPLY' | transloco }}</a
+      >
+      <a
+        mat-stroked-button
+        href="https://e-mecef.impots.bj/"
+        target="_blank"
+        rel="noopener noreferrer"
+        ><mat-icon>help_outline</mat-icon>{{ 'FISCALITY.GUIDE.PROCEDURE' | transloco }}</a
+      >
+      <a mat-button href="#fiscal-connections">{{
+        'FISCALITY.GUIDE.EXISTING_TOKEN' | transloco
+      }}</a>
+    </div>
   </liass-card>
   <liass-card
+    id="fiscal-connections"
     [title]="'FISCALITY.CONNECTIONS' | transloco"
     [description]="'FISCALITY.CONNECTIONS_HELP' | transloco"
   >
@@ -67,16 +204,7 @@
       }
     </div>
     <div class="mb-4 flex flex-wrap items-center gap-3">
-      <mat-form-field appearance="outline"
-        ><mat-label>{{ 'FISCALITY.ENVIRONMENT' | transloco }}</mat-label>
-        <mat-select [value]="environment()" (valueChange)="environment.set($event)">
-          <mat-select-trigger>{{
-            'FISCALITY.ENV.' + environment() | transloco
-          }}</mat-select-trigger>
-          <mat-option value="TEST">{{ 'FISCALITY.ENV.TEST' | transloco }}</mat-option
-          ><mat-option value="PRODUCTION">{{ 'FISCALITY.ENV.PRODUCTION' | transloco }}</mat-option>
-        </mat-select>
-      </mat-form-field>
+      <liass-status-chip [label]="'FISCALITY.ENV.' + environment() | transloco" tone="neutral" />
       <liass-status-chip [label]="'FISCALITY.BLOCKED' | transloco" tone="warning" />
       <liass-button
         size="icon"
@@ -94,7 +222,9 @@
       </p>
     }
     @if (settings.isError()) {
-      <p class="mb-4 text-sm text-danger-600" role="alert">{{ 'FISCALITY.LOAD_ERROR' | transloco }}</p>
+      <p class="mb-4 text-sm text-danger-600" role="alert">
+        {{ 'FISCALITY.LOAD_ERROR' | transloco }}
+      </p>
     } @else if (settings.data() && !canManage()) {
       <p class="mb-4 text-sm text-app-text-secondary">{{ 'FISCALITY.READ_ONLY' | transloco }}</p>
     }

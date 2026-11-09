@@ -1,5 +1,54 @@
 {
   "FISCALITY": {
+    "GUIDE": {
+      "TITLE": "Obtenir votre accès e-MECeF",
+      "INTRO": "Suivez la procédure officielle pour activer l’accès fiscal de votre entreprise. Si vous disposez déjà d’un jeton, vous pouvez accéder directement aux connexions DGI.",
+      "REFERENCES": "Références officielles Liass-OHADA",
+      "COUNTRY": "Pays d’origine",
+      "APPLY": "Effectuer ma demande auprès de la DGI",
+      "PROCEDURE": "Comprendre la procédure",
+      "EXISTING_TOKEN": "J’ai déjà un jeton",
+      "COPIED": "Référence copiée.",
+      "COPY_ERROR": "La référence n’a pas pu être copiée.",
+      "COPY_APPROVAL": "Copier la référence de la lettre DGI",
+      "COPY_SOFTWARE": "Copier le nom et la version du logiciel",
+      "COPY_PUBLISHER": "Copier les coordonnées de l’éditeur",
+      "COPY_SUPPLIER": "Copier les coordonnées du fournisseur",
+      "COPY_COUNTRY": "Copier le pays d’origine",
+      "STEP_1": {
+        "TITLE": "1. Créer votre accès contribuable",
+        "PORTAL": "Accédez au portail officiel e-MECeF.",
+        "IFU": "Identifiez votre entreprise avec son IFU.",
+        "EMAIL": "Vérifiez l’adresse e-mail associée à votre immatriculation fiscale.",
+        "ACTIVATE": "Poursuivez avec la demande d’activation."
+      },
+      "STEP_2": {
+        "TITLE": "2. Compléter le formulaire d’activation e-MECeF",
+        "INTRO": "Renseignez les quatre sections du formulaire avec les informations officielles de votre entreprise.",
+        "TAXPAYER_TITLE": "Contribuable",
+        "TAXPAYER": "IFU, raison sociale, RCCM, adresse du siège et coordonnées.",
+        "ACTIVITY_TITLE": "Activité professionnelle",
+        "ACTIVITY": "Activité principale et éventuelles activités secondaires.",
+        "OUTLETS_TITLE": "Établissements et mode de facturation",
+        "OUTLETS": "Déclarez vos établissements, sélectionnez « e-MCF (J’ai un SFE) » et fournissez les références officielles Liass-OHADA affichées ci-dessous.",
+        "APPLICANT_TITLE": "Demandeur",
+        "APPLICANT": "Identité et coordonnées de la personne qui dépose la demande."
+      },
+      "STEP_3": {
+        "TITLE": "3. Obtenir l’accord DGI et activer le compte",
+        "SUBMIT": "Soumettez la demande d’activation.",
+        "PROCESS": "Suivez les instructions de confirmation et de traitement communiquées par la DGI.",
+        "TIMEFRAME": "La DGI annonce un délai de traitement de 72 heures, sous réserve de vérification ; ce délai n’est pas garanti.",
+        "SYGMEF": "Suivez les instructions officielles d’activation pour accéder à SyGMEF."
+      },
+      "STEP_4": {
+        "TITLE": "4. Récupérer le NIM e-MCF et le jeton",
+        "ACCESS": "Accédez dans SyGMEF aux informations de connexion e-MCF et récupérez le NIM applicable ainsi que le jeton.",
+        "CONNECTION": "Dans Liass-OHADA, créez d’abord la connexion DGI avec l’IFU de l’entreprise et le NIM e-MCF. Les connexions commerciales utilisent PRODUCTION ; TEST est réservé au développement interne et aux validations contrôlées.",
+        "TOKEN": "Enregistrez ensuite séparément le jeton DGI de manière sécurisée dans la section « Connexions DGI ».",
+        "SAFETY": "L’enregistrement du jeton ne constitue ni une vérification fiscale réussie, ni une autorisation d’émettre des factures normalisées."
+      }
+    },
     "VERIFICATION": {
       "STATUS": {
         "VERIFIED_TEST": "TEST techniquement vérifié",

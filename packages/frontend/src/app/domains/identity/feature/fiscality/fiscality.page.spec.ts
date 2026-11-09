@@ -42,6 +42,10 @@ beforeEach(() => {
   client.clear();
   api.approval.mockResolvedValue({ status: 'UNAVAILABLE', approval: null });
   api.list.mockResolvedValue({ connections: [connection], canManage: true, environment: 'TEST' });
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: vi.fn().mockResolvedValue(undefined) },
+  });
   TestBed.configureTestingModule({
     imports: [
       FiscalityPage,
@@ -55,6 +59,70 @@ beforeEach(() => {
       { provide: NotificationService, useValue: notification },
     ],
   });
+});
+it('renders the complete accessible four-step guide and official DGI actions', async () => {
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelectorAll('mat-expansion-panel')).toHaveLength(4);
+  });
+  expect(
+    fixture.nativeElement
+      .querySelectorAll('mat-expansion-panel-header')[0]
+      .getAttribute('aria-expanded'),
+  ).toBe('true');
+  expect(fixture.nativeElement.textContent).toContain('Créer votre accès contribuable');
+  expect(fixture.nativeElement.textContent).toContain('Compléter le formulaire');
+  expect(
+    fixture.nativeElement.querySelector('a[href="https://sygmef.impots.bj/emcf/registration"]'),
+  ).toBeTruthy();
+  expect(fixture.nativeElement.querySelector('a[href="https://e-mecef.impots.bj/"]')).toBeTruthy();
+});
+it('displays and copies authoritative registered references including country of origin', async () => {
+  api.approval.mockResolvedValue({
+    status: 'REGISTERED',
+    approval: {
+      approvalLetterReference: 'DGI-REF',
+      softwareName: 'Liass-OHADA',
+      softwareVersion: '1.0',
+      countryOfOrigin: 'Bénin',
+      publisher: { name: 'Publisher', email: 'publisher@example.test', phone: '+229 00' },
+      supplier: { name: 'Supplier', email: 'supplier@example.test', phone: '+229 01' },
+      version: 1,
+      updatedAt: '2026-11-07T12:00:00.000Z',
+    },
+  });
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain('Bénin');
+  });
+  await fixture.componentInstance.copyReference('DGI-REF');
+  expect(navigator.clipboard.writeText).toHaveBeenCalledWith('DGI-REF');
+  expect(notification.success).toHaveBeenCalled();
+});
+it('keeps the enrollment guide available when the reference registry read fails', async () => {
+  api.approval.mockRejectedValue(new Error('private backend detail'));
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.textContent).toContain(
+      'La configuration fiscale n’a pas pu être chargée',
+    );
+  });
+  expect(fixture.nativeElement.textContent).toContain('Créer votre accès contribuable');
+  expect(fixture.nativeElement.textContent).not.toContain('private backend detail');
+});
+it('keeps DEV on TEST without exposing an environment selector', async () => {
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  await vi.waitFor(() => expect(api.list).toHaveBeenCalled());
+  expect(fixture.componentInstance.environment()).toBe('TEST');
+  expect(api.list.mock.calls[0][1]).toBe('TEST');
+  expect(fixture.nativeElement.querySelector('mat-select')).toBeFalsy();
 });
 afterEach(() => {
   TestBed.resetTestingModule();
