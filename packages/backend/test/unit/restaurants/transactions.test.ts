@@ -1366,11 +1366,15 @@ test("transaction and preparation rows have no GSI/TTL and use the dedicated bus
   ).toBe(true);
   for (const tx of memory.transactions)
     for (const op of tx.TransactItems ?? [])
-      expect((op.Put ?? op.Delete ?? op.ConditionCheck)?.TableName).toBe(
-        "liass-ohada-test-restaurants-table",
-      );
+      if (op.ConditionCheck?.Key?.SK?.S === K.organizationSK()) {
+        expect(op.ConditionCheck.TableName).toBe("liass-ohada-test-accounting-table");
+      } else {
+        expect((op.Put ?? op.Delete ?? op.ConditionCheck)?.TableName).toBe(
+          "liass-ohada-test-restaurants-table",
+        );
+      }
 });
-test("worst-case twelve-line submission atomically includes preparation within 83 actions", async () => {
+test("worst-case twelve-line submission atomically includes preparation within 84 actions", async () => {
   const session = contracts.GuestSessionSchema.parse((await open()).data),
     order = contracts.RestaurantOrderSchema.parse(
       (await create(session.guestSessionId)).data,
@@ -1429,11 +1433,11 @@ test("worst-case twelve-line submission atomically includes preparation within 8
     { orderId: order.orderId },
   );
   const tx = memory.transactions.at(-1)!;
-  expect(tx.TransactItems).toHaveLength(83);
+  expect(tx.TransactItems).toHaveLength(84);
   expect(
     Buffer.byteLength(JSON.stringify(tx.TransactItems), "utf8"),
   ).toBeLessThan(3 * 1024 * 1024);
-  expect(tx.TransactItems?.filter((a) => a.ConditionCheck)).toHaveLength(39);
+  expect(tx.TransactItems?.filter((a) => a.ConditionCheck)).toHaveLength(40);
   expect((await S.order(ctx, order.orderId)).data).toMatchObject({
     dueMinor: 12,
     acceptedLineCount: 12,
