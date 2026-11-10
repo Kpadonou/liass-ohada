@@ -194,6 +194,7 @@ beforeEach(() => {
     role: "OWNER",
     accessSource: "DIRECT",
     workspaceType: "COMPANY",
+    country: "BJ",
     status: "ACTIVE",
   });
   rows.set(key(identityKey), { ...identityKey, version: 1 });
@@ -400,6 +401,7 @@ test.each([
   { role: "MEMBER" },
   { accessSource: "CABINET" },
   { workspaceType: "ACCOUNTING_FIRM" },
+  { country: "TG" },
   { status: "DISABLED" },
 ])(
   "OWNER authorization required before secret access %j",

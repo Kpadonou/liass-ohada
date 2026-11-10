@@ -53,6 +53,7 @@ const member = (orgId = "org-a", overrides: Record<string, unknown> = {}) => ({
   status: "ACTIVE",
   role: "OWNER",
   workspaceType: "COMPANY",
+    country: "BJ",
   accessSource: "DIRECT",
   ...overrides,
 });
@@ -169,6 +170,7 @@ test.each([
   { role: "CABINET_ADMIN", accessSource: "CABINET" },
   { status: "DISABLED" },
   { workspaceType: "ACCOUNTING_FIRM" },
+  { country: "TG" },
   { accessSource: "CABINET" },
   { accessSource: undefined },
 ])(

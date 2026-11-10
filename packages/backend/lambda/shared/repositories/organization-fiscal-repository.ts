@@ -97,6 +97,7 @@ export class OrganizationFiscalRepository {
       member.userId !== actorId ||
       member.status !== "ACTIVE" ||
       member.workspaceType !== "COMPANY" ||
+      member.country !== "BJ" ||
       member.accessSource !== "DIRECT" ||
       (write && member.role !== "OWNER")
     )
@@ -109,7 +110,7 @@ export class OrganizationFiscalRepository {
         TableName: table(),
         Key: marshall({ PK: K.orgKey(orgId), SK: K.orgUserAccessSK(actorId) }),
         ConditionExpression:
-          "entityType = :type AND orgId = :org AND userId = :user AND #status = :active AND #role = :owner AND workspaceType = :company AND accessSource = :direct",
+          "entityType = :type AND orgId = :org AND userId = :user AND #status = :active AND #role = :owner AND workspaceType = :company AND country = :country AND accessSource = :direct",
         ExpressionAttributeNames: { "#status": "status", "#role": "role" },
         ExpressionAttributeValues: marshall({
           ":type": "USER_ORG_ACCESS",
@@ -118,6 +119,7 @@ export class OrganizationFiscalRepository {
           ":active": "ACTIVE",
           ":owner": "OWNER",
           ":company": "COMPANY",
+          ":country": "BJ",
           ":direct": "DIRECT",
         }),
       },

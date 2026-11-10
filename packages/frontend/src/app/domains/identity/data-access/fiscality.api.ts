@@ -1,3 +1,4 @@
+import { fiscalWorkspaceEligible } from '../../../core/routing/auth.guards';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom, timeout } from 'rxjs';
@@ -29,7 +30,7 @@ export class FiscalityApi {
   private readonly base = environment.apiBaseUrl.replace(/\/$/, '') + '/me/organization/fiscality';
   context(): FiscalityContext {
     return {
-      org: this.auth.effectiveOrgId() ?? '',
+      org: fiscalWorkspaceEligible(this.auth) ? (this.auth.effectiveOrgId() ?? '') : '',
       user: this.auth.currentUserId() ?? '',
       revision: this.auth.contextRevision(),
     };

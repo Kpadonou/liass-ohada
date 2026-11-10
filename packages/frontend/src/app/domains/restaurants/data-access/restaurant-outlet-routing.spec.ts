@@ -1,3 +1,5 @@
+import { MatDialog } from '@angular/material/dialog';
+import { of } from 'rxjs';
 import { Component, inject, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, provideRouter, Router, RouterOutlet } from '@angular/router';
@@ -37,7 +39,8 @@ const org = signal('org'),
   role = signal('OWNER');
 const availability = signal('AVAILABLE'),
   refreshing = signal(false);
-const api = { list: vi.fn(), myOutlets: vi.fn() };
+const api = { list: vi.fn(), myOutlets: vi.fn(), get: vi.fn() };
+const openEditor = vi.fn();
 let client: QueryClient, h: RouterTestingHarness;
 let routing: RestaurantOutletRouting;
 let router: Router;
@@ -56,6 +59,8 @@ beforeEach(async () => {
   role.set('OWNER');
   availability.set('AVAILABLE');
   refreshing.set(false);
+  api.get.mockReset().mockResolvedValue({ isActive: true });
+  openEditor.mockReset().mockReturnValue({ afterClosed: () => of(null) });
   api.list.mockReset().mockResolvedValue({ items: [row('outlet')] });
   api.myOutlets.mockReset().mockResolvedValue({ items: [{ outletId: rid(2), name: 'Agla' }] });
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -94,6 +99,7 @@ beforeEach(async () => {
           ],
         },
       ]),
+      { provide: MatDialog, useValue: { open: openEditor } },
       { provide: QueryClient, useValue: client },
       { provide: RestaurantsApi, useValue: api },
       { provide: ProductAccessState, useValue: { availability } },
@@ -213,6 +219,11 @@ it('gates setup for zero outlets without activating functional content', async (
   await h.navigateByUrl('/restaurants/service');
   await settled(() => expect(routing.resolution()).toBe('no-accessible-context'));
   expect(activated).toEqual([]);
+  await settled(() => expect(h.routeNativeElement?.textContent).toContain('premier établissement'));
+  h.routeNativeElement?.querySelector<HTMLButtonElement>('liass-button button')?.click();
+  expect(openEditor).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+    data: { org: 'org', kind: 'outlet', context: {} },
+  }));
   await h.navigateByUrl('/restaurants/setup/locations');
   expect(h.routeNativeElement?.textContent).not.toContain('Setup recovery');
   expect(routing.context.attached()).toBe(true);

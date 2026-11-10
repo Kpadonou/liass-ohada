@@ -266,3 +266,13 @@ export const loginRedirectGuard: CanActivateFn = async () => {
 
   return destination ? router.createUrlTree([destination]) : false;
 };
+
+export function fiscalWorkspaceEligible(auth: InstanceType<typeof AuthStore>): boolean {
+  const workspace = auth.activeWorkspace();
+  return !!workspace && workspace.orgId === auth.effectiveOrgId() &&
+    workspace.status === 'ACTIVE' && workspace.workspaceType === 'COMPANY' &&
+    workspace.country === 'BJ' && workspace.accessSource === 'DIRECT';
+}
+
+export const fiscalWorkspaceGuard: CanActivateFn = () =>
+  fiscalWorkspaceEligible(inject(AuthStore)) || inject(Router).createUrlTree(['/dashboard']);

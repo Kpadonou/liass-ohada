@@ -170,7 +170,7 @@ describe('post-onboarding welcome', () => {
     cards[2].querySelectorAll('liass-button button')[0].click();
     expect(navigate).toHaveBeenCalledWith('/accounting/fiscal-years');
     expect(navigate).toHaveBeenCalledWith('/dashboard');
-    expect(navigate).toHaveBeenCalledWith('/settings/fiscality');
+    expect(navigate).toHaveBeenCalledWith('/sales/items');
     expect(navigate).toHaveBeenCalledWith('/restaurants/setup');
   });
 

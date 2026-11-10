@@ -1,8 +1,8 @@
-<main class="min-h-dvh bg-app-bg px-4 py-8 text-app-text sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+<main class="min-h-dvh bg-app-bg bg-linear-to-b from-brand-50/70 to-app-bg dark:from-brand-950/30 px-4 py-8 text-app-text sm:px-6 sm:py-12 lg:px-8 lg:py-16">
   <div class="mx-auto w-full max-w-6xl">
     <header class="flex flex-col items-center text-center">
       <liass-logo variant="horizontal" size="lg" [alt]="'SHELL.LOGO_ALT' | transloco" />
-      <h1 class="mt-10 text-3xl font-bold text-app-text sm:text-4xl">
+      <h1 class="mt-10 text-3xl font-bold text-app-text sm:text-4xl lg:text-5xl">
         {{ 'WELCOME.TITLE' | transloco }}
       </h1>
       <p class="mt-3 max-w-2xl text-base text-app-text-secondary sm:text-lg">
@@ -13,6 +13,7 @@
           {{ workspaceName() }}
         </p>
       }
+      <span aria-hidden="true" class="mt-6 h-1 w-16 rounded-full bg-warning-600"></span>
     </header>
 
     <section class="mt-12 sm:mt-14" [attr.aria-label]="'WELCOME.APPLICATIONS' | transloco">

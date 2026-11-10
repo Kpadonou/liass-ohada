@@ -92,6 +92,8 @@ beforeEach(() => {
           status: "ACTIVE",
           role: "MEMBER",
           workspaceType: "COMPANY",
+          country: "BJ",
+          accessSource: "DIRECT",
         }),
       };
     return {};
@@ -135,6 +137,8 @@ test("legacy approval records without country of origin remain readable", async 
           status: "ACTIVE",
           role: "MEMBER",
           workspaceType: "COMPANY",
+          country: "BJ",
+          accessSource: "DIRECT",
         }),
       };
     if (key.SK === K.platformSfeCurrentSK())

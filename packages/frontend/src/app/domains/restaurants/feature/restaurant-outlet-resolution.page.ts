@@ -1,3 +1,10 @@
+import { MatDialog } from '@angular/material/dialog';
+import { injectQuery } from '@tanstack/angular-query-experimental';
+import { AuthStore } from '../../identity/data-access/auth.store';
+import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
+import { RestaurantsQueries } from '../data-access/restaurants.queries';
+import { RestaurantEditorComponent } from './restaurant-editor.component';
+import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import { Component, computed, effect, inject, untracked } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -14,6 +21,7 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
   selector: 'liass-restaurant-outlet-resolution',
   host: { class: 'block' },
   imports: [
+    LiassButtonComponent,
     FormsModule,
     MatButtonModule,
     TranslocoModule,
@@ -43,6 +51,21 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
             <p>{{ 'RESTAURANTS.ACCESS.CHECKING' | transloco }}</p>
             <liass-skeleton variant="block" />
           </div>
+        } @else if (canBootstrap()) {
+          @if (root.isPending()) {
+            <div role="status">{{ 'RESTAURANTS.UI.LOADING' | transloco }}</div>
+            <liass-skeleton variant="block" />
+          } @else if (root.isError()) {
+            <p role="alert">{{ 'RESTAURANTS.UI.ERRORS.NETWORK' | transloco }}</p>
+            <liass-button (pressed)="root.refetch()">{{ 'RESTAURANTS.UI.REFRESH' | transloco }}</liass-button>
+          } @else if (root.data() && !root.data()?.isActive) {
+            <p>{{ 'RESTAURANTS.UI.INACTIVE_ROOT' | transloco }}</p>
+          } @else {
+            <p class="mb-4">{{ (root.data() ? 'RESTAURANTS.CONTEXT.FIRST_OUTLET' : 'RESTAURANTS.UI.EMPTY_RESTAURANT') | transloco }}</p>
+            <liass-button icon="add" tone="brand" variant="solid" (pressed)="createFirst()">
+              {{ (root.data() ? 'RESTAURANTS.UI.ADD_LOCATION' : 'RESTAURANTS.UI.START') | transloco }}
+            </liass-button>
+          }
         } @else {
           <div class="space-y-4">
             <p [attr.role]="routing.resolution() === 'selection-required' ? 'status' : 'alert'">
@@ -81,6 +104,34 @@ import { LiassSearchableSelectComponent } from '../../../shared/ui/searchable-se
 })
 export class RestaurantOutletResolutionPage {
   readonly routing = inject(RestaurantOutletRouting);
+  private readonly auth = inject(AuthStore);
+  private readonly caps = inject(RestaurantsCapabilities);
+  private readonly queries = inject(RestaurantsQueries);
+  private readonly dialog = inject(MatDialog);
+  readonly canBootstrap = computed(() =>
+    this.routing.resolution() === 'no-accessible-context' &&
+    this.auth.activeWorkspace()?.productRoles?.RESTAURANTS === 'OWNER' &&
+    this.caps.canManageSetup() &&
+    this.routing.context.managementQuery.data()?.pages.every((page) => page.items.length === 0) === true,
+  );
+  readonly root = injectQuery(() => this.queries.get('restaurant', {}, this.canBootstrap()));
+  createFirst() {
+    if (!this.canBootstrap() || !this.root.isSuccess()) return;
+    const restaurant = this.root.data();
+    if (restaurant && !restaurant.isActive) return;
+    const identity = this.routing.context.identity();
+    const kind = restaurant ? 'outlet' : 'restaurant';
+    this.dialog.open(RestaurantEditorComponent, {
+      width: '560px',
+      maxWidth: 'calc(100vw - 24px)',
+      disableClose: true,
+      data: { org: this.queries.scope(), kind, context: {} },
+    }).afterClosed().subscribe((saved) => {
+      if (!saved || this.routing.context.identity() !== identity) return;
+      if (kind === 'outlet') void this.routing.context.source().refetch();
+      else void this.root.refetch();
+    });
+  }
   readonly resolving = computed(() => ['loading', 'ready'].includes(this.routing.resolution()));
   readonly options = computed(() =>
     this.routing.context.outlets().map((row) => ({ value: row.id, label: row.name })),

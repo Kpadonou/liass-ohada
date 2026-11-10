@@ -13,6 +13,7 @@ import { SelectWorkspacePage } from '../../domains/identity/feature/select-works
 import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
 import {
   accountingWriteGuard,
+  fiscalWorkspaceGuard,
   appRootRedirectGuard,
   authGuard,
   welcomeWorkspaceGuard,
@@ -111,6 +112,7 @@ export const routes: Routes = [
     children: [
       {
         path: 'settings/fiscality',
+        canActivate: [fiscalWorkspaceGuard],
         loadComponent: () =>
           import('../../domains/identity/feature/fiscality/fiscality.page').then(
             (module) => module.FiscalityPage,

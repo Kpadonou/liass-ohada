@@ -5371,6 +5371,7 @@
       "CHOOSE_HINT": "Choose the active establishment in the top bar.",
       "ENTRY_DESCRIPTION": "Choose the outlet you would like to work with.",
       "BACK_TO_PRODUCT": "Back to Liass-Resto",
+      "FIRST_OUTLET": "Create your first outlet to get started with Liass-Resto.",
       "RESOLUTION": {
         "selection-required": "Choose the outlet you would like to work with.",
         "no-accessible-context": "No active outlet is accessible. Contact your manager.",

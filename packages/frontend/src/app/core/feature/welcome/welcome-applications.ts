@@ -29,7 +29,7 @@ export const welcomeApplicationCatalog = [
     titleKey: 'WELCOME.APPLICATION.SALES.TITLE',
     descriptionKey: 'WELCOME.APPLICATION.SALES.DESCRIPTION',
     openRoute: '/sales',
-    configureRoute: '/settings/fiscality',
+    configureRoute: '/sales/items',
   },
   {
     code: 'RESTAURANTS',

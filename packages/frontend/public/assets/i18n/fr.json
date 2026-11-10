@@ -5371,6 +5371,7 @@
       "CHOOSE_HINT": "Choisissez l’établissement actif dans la barre supérieure.",
       "ENTRY_DESCRIPTION": "Choisissez l’établissement avec lequel vous souhaitez travailler.",
       "BACK_TO_PRODUCT": "Retour à Liass-Resto",
+      "FIRST_OUTLET": "Créez votre premier établissement pour commencer à utiliser Liass-Resto.",
       "RESOLUTION": {
         "selection-required": "Choisissez l’établissement avec lequel vous souhaitez travailler.",
         "no-accessible-context": "Aucun établissement actif ne vous est accessible. Contactez votre responsable.",

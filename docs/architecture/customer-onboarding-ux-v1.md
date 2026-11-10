@@ -31,7 +31,7 @@ The bottom card, **Connexions DGI**, retains organization-scoped connection mana
 
 ## Contextual entry and Restaurants first use
 
-Relevant invoicing and Restaurants workflows may link to the single fiscal settings page; they do not duplicate configuration. In Restaurants, an authorized OWNER with no outlets sees a welcome state with the first-outlet creation action. A member without access to existing outlets sees access guidance. A genuine load failure shows an actionable retry. Do not infer missing access from an empty list or a failed request.
+Fiscal settings are shared at organization level and available only to active direct members of eligible Beninese companies, independently of application entitlement. Relevant application sidebars link to the same page. Facturation setup opens its item catalog. In Restaurants, an authorized OWNER with no outlets sees a welcome state with the first-outlet creation action. A member without access to existing outlets sees access guidance. A genuine load failure shows an actionable retry. Do not infer missing access from an empty list or a failed request.
 
 ## State and presentation contracts
 

@@ -24,7 +24,9 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       throw new AppError(404, "ERROR_NOT_FOUND");
     const orgId = Object.entries(event.headers ?? {}).find(([key]) => key.toLowerCase() === "x-org-id")?.[1];
     if (!orgId) throw new AppError(400, "ERROR_MISSING_ORG_ID");
-    await TenantAccessService.assertUserCanAccessOrg({ orgId, userId: principal.sub });
+    const access = await TenantAccessService.assertUserCanAccessOrg({ orgId, userId: principal.sub });
+    if (access.country !== "BJ" || access.workspaceType !== "COMPANY" || access.accessSource !== "DIRECT")
+      throw new AppError(403, "PLATFORM_FISCAL_FORBIDDEN");
     return { statusCode: 200, body: JSON.stringify({ data: SfeApprovalViewSchema.parse(await PlatformSfeRepository.read(principal.stage)) }) };
   } catch (error) {
     const code = error instanceof AppError ? error.messageCode : error instanceof z.ZodError ? "ERROR_INVALID_INPUT" : "PLATFORM_SFE_UNAVAILABLE";
