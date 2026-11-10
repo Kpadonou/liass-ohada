@@ -12,6 +12,9 @@ import {
   FiscalCredentialCommandSchema,
   VerifyFiscalConnectionRequestSchema,
   FiscalVerificationResultSchema,
+  OrganizationFiscalProfileSettingsSchema,
+  SelectOrganizationFiscalRegimeSchema,
+  SelectedOrganizationFiscalProfileSchema,
 } from '@liass-ohada/shared/shared';
 import { AuthStore } from './auth.store';
 import { environment } from '../../../../environments/environment';
@@ -23,6 +26,8 @@ export interface FiscalityContext {
 }
 export const fiscalityKey = (context: FiscalityContext, environment: string) =>
   ['identity', 'fiscality', context.org, context.user, context.revision, environment] as const;
+export const fiscalProfileKey = (context: FiscalityContext) =>
+  ['identity', 'fiscality', context.org, context.user, context.revision, 'profile'] as const;
 @Injectable({ providedIn: 'root' })
 export class FiscalityApi {
   private readonly http = inject(HttpClient);
@@ -44,6 +49,29 @@ export class FiscalityApi {
       context.user === now.user &&
       context.revision === now.revision
     );
+  }
+  async profile(context: FiscalityContext) {
+    this.assert(context);
+    const result = await firstValueFrom(
+      this.http.get<unknown>(this.base + '/profile').pipe(timeout(35_000)),
+    );
+    this.assert(context);
+    return z
+      .object({ data: OrganizationFiscalProfileSettingsSchema })
+      .strict()
+      .parse(result).data;
+  }
+  async selectProfile(context: FiscalityContext, input: unknown) {
+    this.assert(context);
+    const body = SelectOrganizationFiscalRegimeSchema.parse(input);
+    const result = await firstValueFrom(
+      this.http.put<unknown>(this.base + '/profile', body).pipe(timeout(35_000)),
+    );
+    this.assert(context);
+    return z
+      .object({ data: SelectedOrganizationFiscalProfileSchema })
+      .strict()
+      .parse(result).data;
   }
   private assert(context: FiscalityContext) {
     if (!this.current(context))

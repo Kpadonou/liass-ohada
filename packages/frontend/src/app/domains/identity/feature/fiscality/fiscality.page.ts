@@ -6,6 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import {
   QueryClient,
@@ -19,7 +21,11 @@ import { LiassButtonComponent } from '../../../../shared/ui/button/button.compon
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 import { LiassSkeletonComponent } from '../../../../shared/ui/skeleton/skeleton.component';
 import { LiassConfirmationDialogComponent } from '../../../../shared/ui/confirmation-dialog/confirmation-dialog.component';
-import { FiscalityApi, fiscalityKey } from '../../data-access/fiscality.api';
+import {
+  FiscalityApi,
+  fiscalityKey,
+  fiscalProfileKey,
+} from '../../data-access/fiscality.api';
 import { FiscalConnectionDialogComponent } from './fiscal-connection-dialog.component';
 import { FiscalVerificationDialogComponent } from './fiscal-verification-dialog.component';
 import { fiscalVerificationDate } from './fiscal-verification.presentation';
@@ -39,6 +45,8 @@ import { environment as deploymentEnvironment } from '../../../../../environment
     MatButtonModule,
     MatMenuModule,
     MatTooltipModule,
+    MatFormFieldModule,
+    MatSelectModule,
     LiassPageHeaderComponent,
     LiassCardComponent,
     LiassButtonComponent,
@@ -55,6 +63,8 @@ export class FiscalityPage {
   private readonly transloco = inject(TranslocoService);
   readonly environment = signal<'TEST' | 'PRODUCTION'>(deploymentEnvironment.fiscalEnvironment);
   readonly busy = signal(false);
+  readonly profileBusy = signal(false);
+  readonly selectedRegime = signal<string | null>(null);
   readonly verifying = signal<string | null>(null);
   private readonly verificationCommands = new Map<string, { commandId: string; version: number }>();
   readonly context = computed(() => this.api.context());
@@ -63,6 +73,16 @@ export class FiscalityPage {
     return {
       queryKey: [...fiscalityKey(context, 'GLOBAL'), 'sfe'],
       queryFn: () => this.api.approval(context),
+      enabled: !!context.org && !!context.user,
+      staleTime: 300_000,
+      retry: false,
+    };
+  });
+  readonly profile = injectQuery(() => {
+    const context = this.context();
+    return {
+      queryKey: fiscalProfileKey(context),
+      queryFn: () => this.api.profile(context),
       enabled: !!context.org && !!context.user,
       staleTime: 300_000,
       retry: false,
@@ -94,6 +114,32 @@ export class FiscalityPage {
       this.verifying.set(null);
       this.verificationCommands.clear();
     });
+    effect(() => {
+      this.selectedRegime.set(this.profile.data()?.selected?.regime ?? null);
+    });
+  }
+  async saveProfile() {
+    const context = this.context();
+    const regime = this.selectedRegime();
+    if (!this.profile.data()?.canManage || !regime || this.profileBusy()) return;
+    this.profileBusy.set(true);
+    try {
+      await this.api.selectProfile(context, { regime });
+      if (this.api.current(context)) {
+        this.notification.success(
+          this.transloco.translate<string>('FISCALITY.PROFILE.SAVED'),
+        );
+        await this.client.invalidateQueries({ queryKey: fiscalProfileKey(context), exact: true });
+      }
+    } catch (error) {
+      if (this.api.current(context))
+        this.notification.error(
+          safeMessageFromError(error) ??
+            this.transloco.translate<string>('FISCALITY.PROFILE.ERROR'),
+        );
+    } finally {
+      if (this.api.current(context)) this.profileBusy.set(false);
+    }
   }
   verificationDetails(connection: OrganizationFiscalConnection) {
     this.dialog.open(FiscalVerificationDialogComponent, {

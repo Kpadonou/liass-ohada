@@ -112,7 +112,9 @@ from the one-invoice ordinary VAT calculation.
 A direct company owner selects a regime through
 `PUT /me/organization/fiscality/profile` with `{"regime":"ORDINARY_VAT"}`.
 The corresponding GET lists the country's governed options and selected
-revision. The selection is a declaration. Order submission guards the read
+revision. The existing Settings → Fiscality customer page exposes those options,
+but sends only the selected regime identifier and never editable tax rules. The
+selection is a declaration. Order submission guards the read
 revision in the acceptance transaction, and the commercial receipt chain
 preserves the rule, revision, digest and exact net, tax and gross.
 

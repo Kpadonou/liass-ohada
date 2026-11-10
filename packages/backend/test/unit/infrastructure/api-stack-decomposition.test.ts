@@ -524,16 +524,16 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(77);
-    expect(routes).toHaveLength(117);
+    expect(routes).toHaveLength(130);
     expect(routes.map((route) => route.routeKey)).toContain(
       "GET /restaurants/outlets/{outletId}/cash-sessions/{cashSessionId}/payments",
     );
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
-    ).toHaveLength(77);
+    ).toHaveLength(78);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(87);
+    ).toHaveLength(100);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -638,7 +638,7 @@ describe("API stack decomposition", () => {
         (item): item is lambda.CfnPermission =>
           item instanceof lambda.CfnPermission,
       );
-    expect(permissions).toHaveLength(8);
+    expect(permissions).toHaveLength(16);
     const arns = permissions.map((permission) => {
       expect(permission.principal).toBe("apigateway.amazonaws.com");
       expect(restaurants.resolve(permission.sourceAccount)).toBe(
@@ -653,7 +653,7 @@ describe("API stack decomposition", () => {
     expect(arns.join(" ")).not.toContain("/$default/*/*");
     expect(
       Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-    ).toBe(362); // Unit fixture omits the deployed CDK metadata resource.
+    ).toBe(389); // Unit fixture uses the local fiscal fallback and omits CDK metadata.
   });
 
   test.each([
@@ -845,7 +845,7 @@ describe("API stack decomposition", () => {
       expect(trackingArn).not.toContain("/$default/*/*");
       expect(
         Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-      ).toBe(362);
+      ).toBe(389);
     },
   );
 
@@ -1444,7 +1444,7 @@ describe("API stack decomposition", () => {
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
     ).toBe(0);
-    expect(Object.keys(after.Resources).length).toBe(362);
+    expect(Object.keys(after.Resources).length).toBe(389);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(
         (r) => (r as { Type: string }).Type === type,

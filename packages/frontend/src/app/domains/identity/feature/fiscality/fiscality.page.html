@@ -4,6 +4,63 @@
     [title]="'FISCALITY.TITLE' | transloco"
     [subtitle]="'FISCALITY.SUBTITLE' | transloco"
   />
+  <liass-card
+    [title]="'FISCALITY.PROFILE.TITLE' | transloco"
+    [description]="'FISCALITY.PROFILE.DESCRIPTION' | transloco"
+  >
+    @if (profile.isPending()) {
+      <liass-skeleton [lines]="2" />
+    } @else if (profile.isError()) {
+      <p role="alert" class="text-sm text-danger-600">
+        {{ 'FISCALITY.PROFILE.LOAD_ERROR' | transloco }}
+      </p>
+    } @else if (profile.data(); as fiscalProfile) {
+      @if (!fiscalProfile.country || !fiscalProfile.regimes.length) {
+        <p class="text-sm text-app-text-secondary">
+          {{ 'FISCALITY.PROFILE.UNSUPPORTED' | transloco }}
+        </p>
+      } @else {
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <mat-form-field appearance="outline" class="w-full max-w-xl">
+            <mat-label>{{ 'FISCALITY.PROFILE.REGIME' | transloco }}</mat-label>
+            <mat-select
+              [value]="selectedRegime()"
+              [disabled]="!fiscalProfile.canManage || profileBusy()"
+              (selectionChange)="selectedRegime.set($event.value)"
+            >
+              @for (regime of fiscalProfile.regimes; track regime.id) {
+                <mat-option [value]="regime.id">
+                  {{ 'FISCALITY.PROFILE.REGIMES.' + regime.id | transloco }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          @if (fiscalProfile.canManage) {
+            <liass-button
+              icon="save"
+              tone="brand"
+              variant="solid"
+              [disabled]="
+                !selectedRegime() ||
+                selectedRegime() === fiscalProfile.selected?.regime ||
+                profileBusy()
+              "
+              [loading]="profileBusy()"
+              (pressed)="saveProfile()"
+            >{{ 'FISCALITY.PROFILE.SAVE' | transloco }}</liass-button>
+          }
+        </div>
+        @if (!fiscalProfile.canManage) {
+          <p class="text-sm text-app-text-secondary">
+            {{ 'FISCALITY.READ_ONLY' | transloco }}
+          </p>
+        }
+        <p class="text-sm text-app-text-secondary">
+          {{ 'FISCALITY.PROFILE.FINAL_IMMUTABILITY' | transloco }}
+        </p>
+      }
+    }
+  </liass-card>
   <liass-card [title]="'FISCALITY.GUIDE.TITLE' | transloco">
     <p class="mb-4 text-sm text-app-text-secondary">
       {{ 'FISCALITY.GUIDE.INTRO' | transloco }}

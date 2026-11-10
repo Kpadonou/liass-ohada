@@ -29,6 +29,21 @@
     }
   },
   "FISCALITY": {
+    "PROFILE": {
+      "TITLE": "Company tax regime",
+      "DESCRIPTION": "Select the applicable regime from the platform-governed rules supported for the company country.",
+      "REGIME": "Tax regime",
+      "REGIMES": {
+        "ORDINARY_VAT": "Ordinary VAT (18%)",
+        "RESTAURANT_VAT_ON_MARGIN": "Restaurants · VAT on margin"
+      },
+      "SAVE": "Save regime",
+      "SAVED": "Tax regime saved.",
+      "ERROR": "The tax regime could not be saved.",
+      "LOAD_ERROR": "The tax regime could not be loaded.",
+      "UNSUPPORTED": "No supported tax regime is available for this company country.",
+      "FINAL_IMMUTABILITY": "Every finalized invoice retains the rules and amounts applied when it was finalized."
+    },
     "GUIDE": {
       "TITLE": "Obtain your e-MECeF access",
       "INTRO": "Follow the official procedure to activate your company’s fiscal access. If you already have a token, you can go directly to DGI connections.",

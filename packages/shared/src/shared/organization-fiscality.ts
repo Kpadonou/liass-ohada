@@ -73,9 +73,43 @@ export const OrganizationFiscalSettingsSchema = z
       .strict(),
   })
   .strict();
+const OrganizationFiscalRegimeSchema = z
+  .object({
+    id: text,
+    version: z.number().int().positive().safe(),
+    taxRateBasisPoints: z.number().int().nonnegative().max(10000),
+    basis: text,
+    marginBasisPoints: z.number().int().nonnegative().max(10000).optional(),
+    reference: text.optional(),
+  })
+  .strict();
+export const OrganizationFiscalProfileSettingsSchema = z
+  .object({
+    country: z.string().trim().length(2).nullable(),
+    selected: z
+      .object({ regime: text, revision: z.string().uuid() })
+      .strict()
+      .nullable(),
+    regimes: z.array(OrganizationFiscalRegimeSchema).max(20),
+    canManage: z.boolean(),
+  })
+  .strict();
+export const SelectOrganizationFiscalRegimeSchema = z
+  .object({ regime: text })
+  .strict();
+export const SelectedOrganizationFiscalProfileSchema = z
+  .object({
+    country: z.string().trim().length(2),
+    rule: OrganizationFiscalRegimeSchema,
+    revision: z.string().uuid(),
+  })
+  .strict();
 export type OrganizationFiscalConnection = z.infer<
   typeof OrganizationFiscalConnectionSchema
 >;
 export type OrganizationFiscalSettings = z.infer<
   typeof OrganizationFiscalSettingsSchema
+>;
+export type OrganizationFiscalProfileSettings = z.infer<
+  typeof OrganizationFiscalProfileSettingsSchema
 >;

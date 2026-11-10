@@ -24,6 +24,8 @@ const api = {
   context: () => context,
   current: () => current(),
   approval: vi.fn(),
+  profile: vi.fn(),
+  selectProfile: vi.fn(),
   list: vi.fn(),
   change: vi.fn(),
   verify: vi.fn(),
@@ -41,6 +43,32 @@ beforeEach(() => {
   current.set(true);
   client.clear();
   api.approval.mockResolvedValue({ status: 'UNAVAILABLE', approval: null });
+  api.profile.mockResolvedValue({
+    country: 'BJ',
+    selected: null,
+    regimes: [
+      {
+        id: 'ORDINARY_VAT',
+        version: 1,
+        taxRateBasisPoints: 1800,
+        basis: 'NET_SALE',
+      },
+      {
+        id: 'RESTAURANT_VAT_ON_MARGIN',
+        version: 1,
+        taxRateBasisPoints: 1800,
+        marginBasisPoints: 3310,
+        basis: 'PERIOD_NET_SALES',
+        reference: 'BJ-ARRETE-658-C-2024-03-25',
+      },
+    ],
+    canManage: true,
+  });
+  api.selectProfile.mockResolvedValue({
+    country: 'BJ',
+    rule: { id: 'ORDINARY_VAT', version: 1, taxRateBasisPoints: 1800, basis: 'NET_SALE' },
+    revision: crypto.randomUUID(),
+  });
   api.list.mockResolvedValue({ connections: [connection], canManage: true, environment: 'TEST' });
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
@@ -128,7 +156,39 @@ it('keeps DEV on TEST without exposing an environment selector', async () => {
   await vi.waitFor(() => expect(api.list).toHaveBeenCalled());
   expect(fixture.componentInstance.environment()).toBe('TEST');
   expect(api.list.mock.calls[0][1]).toBe('TEST');
-  expect(fixture.nativeElement.querySelector('mat-select')).toBeFalsy();
+  expect(fixture.nativeElement.textContent).not.toContain('Production');
+});
+it('lets an owner select an approved country regime without exposing editable tax rules', async () => {
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.profile.data()?.regimes).toHaveLength(2);
+  });
+  expect(fr.FISCALITY.PROFILE.REGIMES.ORDINARY_VAT).toBe('TVA de droit commun (18 %)');
+  expect(fr.FISCALITY.PROFILE.REGIMES.RESTAURANT_VAT_ON_MARGIN).toBe(
+    'Restauration · TVA sur marge',
+  );
+  expect(fixture.nativeElement.querySelector('input[type=number]')).toBeFalsy();
+  fixture.componentInstance.selectedRegime.set('ORDINARY_VAT');
+  await fixture.componentInstance.saveProfile();
+  expect(api.selectProfile).toHaveBeenCalledWith(context, { regime: 'ORDINARY_VAT' });
+  expect(notification.success).toHaveBeenCalledWith('Régime fiscal enregistré.');
+});
+it('keeps profile selection read-only for company members', async () => {
+  api.profile.mockResolvedValue({
+    ...(await api.profile()),
+    selected: { regime: 'ORDINARY_VAT', revision: crypto.randomUUID() },
+    canManage: false,
+  });
+  const fixture = TestBed.createComponent(FiscalityPage);
+  fixture.detectChanges();
+  await vi.waitFor(() => {
+    fixture.detectChanges();
+    expect(fixture.componentInstance.profile.data()?.canManage).toBe(false);
+  });
+  expect(fixture.nativeElement.querySelector('mat-select').classList).toContain('mat-mdc-select-disabled');
+  expect(fixture.nativeElement.textContent).not.toContain('Enregistrer le régime');
 });
 afterEach(() => {
   TestBed.resetTestingModule();

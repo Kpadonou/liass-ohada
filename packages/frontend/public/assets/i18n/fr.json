@@ -29,6 +29,21 @@
     }
   },
   "FISCALITY": {
+    "PROFILE": {
+      "TITLE": "Régime fiscal de l’entreprise",
+      "DESCRIPTION": "Sélectionnez le régime applicable parmi les règles prises en charge pour le pays de l’entreprise.",
+      "REGIME": "Régime fiscal",
+      "REGIMES": {
+        "ORDINARY_VAT": "TVA de droit commun (18 %)",
+        "RESTAURANT_VAT_ON_MARGIN": "Restauration · TVA sur marge"
+      },
+      "SAVE": "Enregistrer le régime",
+      "SAVED": "Régime fiscal enregistré.",
+      "ERROR": "Le régime fiscal n’a pas pu être enregistré.",
+      "LOAD_ERROR": "Le régime fiscal n’a pas pu être chargé.",
+      "UNSUPPORTED": "Aucun régime fiscal pris en charge n’est disponible pour le pays de cette entreprise.",
+      "FINAL_IMMUTABILITY": "Toute facture finalisée conserve les règles et montants appliqués au moment de sa finalisation."
+    },
     "GUIDE": {
       "TITLE": "Obtenir votre accès e-MECeF",
       "INTRO": "Suivez la procédure officielle pour activer l’accès fiscal de votre entreprise. Si vous disposez déjà d’un jeton, vous pouvez accéder directement aux connexions DGI.",
