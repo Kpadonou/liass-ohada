@@ -95,3 +95,30 @@ case. The review must also pin the currency scale, calculation and treatment
 artifacts, projection fingerprint and independent V1 size measurements before
 a V1 producer can be admitted. The fixture's zero commercial tax is not evidence
 of exemption. The current pilot mapper does not emit a FiscalizableDocument V1.
+
+## Group B commercial policy candidate
+
+Product direction selects one ordinary XOF sale at 18% VAT, conditional on
+verified seller eligibility for group B. The proposed offline vector uses one
+unit priced at 2,360 XOF TTC, with 2,000 XOF net, 360 XOF VAT and one CASH
+settlement of 2,360 XOF. Exact integer arithmetic makes this vector independent
+of rounding choices. A zero, negative or fractional split fails admission.
+This is a review vector rather than an applicable regime determination or a
+runtime calculation policy.
+
+The Restaurants owner and Fiscal Compliance architect must pin the TTC price
+basis and XOF scale, the exact calculation definition and treatment references,
+and the commercial admission/capture rule. Platform and qualified compliance
+reviewers must identify the verified seller-regime artifact and its applicability
+to the seller, date and transaction. An IFU, credential, or provider tax-group
+list alone cannot supply this evidence. Exempt, unknown or unsupported regimes,
+multiple lines, discounts, charges, credits and partial or mixed settlement are
+outside this case. The candidate must fail closed until the required reviews
+are recorded. D15 review remains required for the evidence lifecycle and access.
+
+The first implementation after approval must bind the seller regime and pinned
+policy to accepted commercial pricing, preserve the payable TTC amount through
+settlement, and freeze the net/tax/gross breakdown and evidence at FINAL. V1
+must resolve that breakdown from the verified FINAL chain and reject historical
+zero-tax snapshots for this case. The operator's provider configuration
+must never supply missing commercial tax facts.
