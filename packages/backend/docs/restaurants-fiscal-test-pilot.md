@@ -106,19 +106,18 @@ of rounding choices. A zero, negative or fractional split fails admission.
 This is a review vector rather than an applicable regime determination or a
 runtime calculation policy.
 
-The Restaurants owner and Fiscal Compliance architect must pin the TTC price
-basis and XOF scale, the exact calculation definition and treatment references,
-and the commercial admission/capture rule. Platform and qualified compliance
-reviewers must identify the verified seller-regime artifact and its applicability
-to the seller, date and transaction. An IFU, credential, or provider tax-group
-list alone cannot supply this evidence. Exempt, unknown or unsupported regimes,
-multiple lines, discounts, charges, credits and partial or mixed settlement are
-outside this case. The candidate must fail closed until the required reviews
-are recorded. D15 review remains required for the evidence lifecycle and access.
+The Product Owner selected a declarative profile. Platform owns the country
+catalog and the rates. A declaration supplies the regime ID only and must be
+resolved against the company's authoritative country. It carries no claim of
+independent verification. The Benin catalog distinguishes ordinary VAT from
+restaurant VAT on margin. The DGI's published ruling on Arrêté 658-C describes
+a deemed margin of 33.1% of period net sales. That period basis is excluded
+from the one-invoice ordinary VAT calculation.
 
-The first implementation after approval must bind the seller regime and pinned
-policy to accepted commercial pricing, preserve the payable TTC amount through
-settlement, and freeze the net/tax/gross breakdown and evidence at FINAL. V1
-must resolve that breakdown from the verified FINAL chain and reject historical
-zero-tax snapshots for this case. The operator's provider configuration
-must never supply missing commercial tax facts.
+The local calculator returns exact monetary facts, the full rule and calculation
+version, and its digest. It rejects unknown countries and regimes, non-XOF
+transactions, margin declarations and amounts that require rounding. The
+company selection and commercial acceptance/FINAL binding are still required.
+The V1 producer must resolve net/tax/gross from the verified FINAL chain and
+reject historical zero-tax snapshots for this case. The provider configuration
+cannot supply missing commercial facts.
