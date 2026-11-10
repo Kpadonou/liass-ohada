@@ -77,6 +77,7 @@ describe('post-onboarding welcome', () => {
             isAuthenticated: () => true,
             workspacesLoaded: () => true,
             canWriteAccounting: () => true,
+            canReadAccounting: () => true,
           },
         },
         {
@@ -106,10 +107,8 @@ describe('post-onboarding welcome', () => {
       expect(fixture.nativeElement.querySelectorAll('liass-card h3')).toHaveLength(3);
     });
     const page: HTMLElement = fixture.nativeElement;
-    expect(page.textContent).toContain('Bienvenue dans votre espace !');
-    expect(page.textContent).toContain(
-      'Votre espace est prêt. Choisissez une application pour commencer.',
-    );
+    expect(page.textContent).toContain('Choisissez votre application');
+    expect(page.textContent).toContain("Sélectionnez l'application que vous souhaitez utiliser.");
     expect(page.textContent).toContain('Applications');
     expect(page.textContent).toContain('journaux et écritures');
     expect(page.textContent).toContain('clients, articles et factures');

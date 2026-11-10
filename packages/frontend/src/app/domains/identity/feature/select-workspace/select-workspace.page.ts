@@ -7,6 +7,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { AuthStore } from '../../data-access/auth.store';
+import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
 
 @Component({
   selector: 'liass-select-workspace-page',
@@ -17,6 +18,7 @@ export class SelectWorkspacePage implements OnInit {
   protected readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly welcomeDestination = inject(WelcomeDestination);
 
   async ngOnInit(): Promise<void> {
     if (!this.authStore.workspacesLoaded()) {
@@ -29,7 +31,7 @@ export class SelectWorkspacePage implements OnInit {
       destination &&
       destination !== '/select-workspace'
     ) {
-      await this.router.navigate([destination], { replaceUrl: true });
+      await this.router.navigateByUrl(await this.welcomeDestination.resolve(), { replaceUrl: true });
     }
   }
 
@@ -48,9 +50,7 @@ export class SelectWorkspacePage implements OnInit {
     }
 
     this.authStore.setTenant(workspace.orgId);
-    await this.router.navigate([
-      workspace.workspaceType === 'ACCOUNTING_FIRM' ? '/cabinet/dashboard' : '/dashboard',
-    ]);
+    await this.router.navigateByUrl(await this.welcomeDestination.resolve());
   }
 
   protected async logout(): Promise<void> {

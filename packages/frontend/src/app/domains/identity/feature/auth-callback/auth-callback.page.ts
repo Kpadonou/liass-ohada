@@ -5,6 +5,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { fetchAuthSession } from 'aws-amplify/auth';
 
 import { environment } from '../../../../../environments/environment';
+import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
 import { AuthStore } from '../../data-access/auth.store';
 import { InvitationAcceptanceState } from '../../data-access/invitation-acceptance-state';
 
@@ -21,6 +22,7 @@ export class AuthCallbackPage implements OnInit {
   private readonly authStore = inject(AuthStore);
   private readonly invitationAcceptanceState = inject(InvitationAcceptanceState);
   private readonly router = inject(Router);
+  private readonly welcomeDestination = inject(WelcomeDestination);
 
   protected readonly errorKey = signal<CallbackErrorKey | null>(null);
   protected readonly loading = signal(true);
@@ -81,7 +83,11 @@ export class AuthCallbackPage implements OnInit {
       this.debug('selected destination', { destination });
 
       if (destination) {
-        await this.router.navigate([destination], { replaceUrl: true });
+        await this.router.navigate([
+          destination === '/select-workspace' || destination === '/onboarding'
+            ? destination
+            : await this.welcomeDestination.resolve(),
+        ], { replaceUrl: true });
         return;
       }
 

@@ -6,6 +6,7 @@ import { TranslocoModule } from '@ngneat/transloco';
 
 import { AuthStore } from '../../data-access/auth.store';
 import { InvitationAcceptanceState } from '../../data-access/invitation-acceptance-state';
+import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
 import { AuthLayoutComponent } from '../../ui/auth-layout/auth-layout.component';
 
 @Component({
@@ -19,6 +20,7 @@ export class LoginPage {
   private readonly invitationAcceptanceState = inject(InvitationAcceptanceState);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly welcomeDestination = inject(WelcomeDestination);
 
   protected hidePassword = true;
   protected hideNewPassword = true;
@@ -126,7 +128,11 @@ export class LoginPage {
     await this.authStore.loadWorkspaces(true);
     const destination = this.authStore.workspaceDestination();
     if (destination) {
-      await this.router.navigate([destination]);
+      await this.router.navigate([
+        destination === '/select-workspace' || destination === '/onboarding'
+          ? destination
+          : await this.welcomeDestination.resolve(),
+      ]);
     }
   }
 }

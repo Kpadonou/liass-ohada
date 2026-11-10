@@ -7,6 +7,8 @@ import { vi } from 'vitest';
 
 import { WorkspacesApi } from '../../data-access/workspaces.api';
 import { AuthCallbackPage } from './auth-callback.page';
+import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
+import { AuthStore } from '../../data-access/auth.store';
 
 type AuthCallbackPageHarness = AuthCallbackPage & {
   errorKey: () => string | null;
@@ -74,6 +76,7 @@ describe('AuthCallbackPage', () => {
       ],
       providers: [
         provideRouter([]),
+        { provide: WelcomeDestination, useFactory: () => ({ resolve: () => Promise.resolve(TestBed.inject(AuthStore).workspaceDestination()) }) },
         { provide: WorkspacesApi, useValue: workspacesApi },
       ],
     }).compileComponents();

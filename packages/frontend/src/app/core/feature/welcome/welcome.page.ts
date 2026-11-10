@@ -12,8 +12,8 @@ import { LiassButtonComponent } from '../../../shared/ui/button/button.component
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassLogoComponent } from '../../../shared/ui/liass-logo/liass-logo.component';
 import { ProductAccessQueries } from '../../product-access/product-access.queries';
-import { resolveProductAvailability } from '../../product-access/product-availability';
 import { welcomeApplicationCatalog, type WelcomeApplication } from './welcome-applications';
+import { WelcomeDestination } from './welcome-destination';
 
 @Component({
   selector: 'liass-welcome-page',
@@ -29,10 +29,12 @@ import { welcomeApplicationCatalog, type WelcomeApplication } from './welcome-ap
 export class WelcomePage {
   private readonly auth = inject(AuthStore);
   private readonly queries = inject(ProductAccessQueries);
+  private readonly cabinetSettings = inject(CabinetSettingsCapabilities);
   private readonly sales = inject(SalesCapabilities);
   private readonly restaurants = inject(RestaurantsCapabilities);
-  private readonly cabinetSettings = inject(CabinetSettingsCapabilities);
   private readonly router = inject(Router);
+  protected readonly justCreatedWorkspace = history.state?.justCreatedWorkspace === true;
+  private readonly destination = inject(WelcomeDestination);
   protected readonly access = injectQuery(() => this.queries.list());
   protected readonly workspaceName = this.auth.activeWorkspaceDisplayName;
   protected readonly isLoading = computed(
@@ -51,35 +53,25 @@ export class WelcomePage {
       return [];
     if (workspace.workspaceType === 'ACCOUNTING_FIRM') {
       const accounting = welcomeApplicationCatalog[0];
-      return [
-        {
+      return [{
           ...accounting,
           titleKey: 'WELCOME.APPLICATION.ACCOUNTING.FIRM_TITLE',
           descriptionKey: 'WELCOME.APPLICATION.ACCOUNTING.FIRM_DESCRIPTION',
           openRoute: '/cabinet/dashboard',
           configureRoute: '/cabinet/settings',
           canConfigure: this.cabinetSettings.canManageCabinetSettings(),
-        },
-      ];
+        }];
     }
     if (!this.access.isSuccess() || this.queries.activeOrgId() !== workspace.orgId) return [];
-    return welcomeApplicationCatalog.flatMap((application) => {
-      if (resolveProductAvailability(this.access.data(), application.code, true) !== 'AVAILABLE')
-        return [];
-      if (application.code === 'SALES' && !this.sales.canRead()) return [];
-      if (application.code === 'RESTAURANTS' && !this.restaurants.canRead()) return [];
-      return [
-        {
-          ...application,
-          canConfigure:
-            application.code === 'ACCOUNTING'
-              ? workspace.role === 'OWNER' && this.auth.canWriteAccounting()
-              : application.code === 'SALES'
-                ? this.sales.canWrite()
-                : this.restaurants.canManageSetup(),
-        },
-      ];
-    });
+    return this.destination.accessibleApplications(this.access.data() ?? []).map((application) => ({
+      ...application,
+      canConfigure:
+        application.code === 'ACCOUNTING'
+          ? workspace.role === 'OWNER' && this.auth.canWriteAccounting()
+          : application.code === 'SALES'
+            ? this.sales.canWrite()
+            : this.restaurants.canManageSetup(),
+    }));
   });
 
   protected open(application: WelcomeApplication): void {

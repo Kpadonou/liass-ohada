@@ -9,6 +9,7 @@ import { Router } from '@angular/router';
 import { CreateInitialWorkspaceRequestSchema, type ProductCode } from '@liass-ohada/shared/shared';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { productAccessQueryKeys } from '../../../../core/product-access/product-access.queries';
+import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -53,6 +54,7 @@ export class OnboardingPage implements OnInit {
   private readonly onboardingApi = inject(OnboardingApi);
   private readonly router = inject(Router);
   private readonly queryClient = inject(QueryClient);
+  private readonly welcomeDestination = inject(WelcomeDestination);
   private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly stepHeading = viewChild<ElementRef<HTMLElement>>('stepHeading');
 
@@ -336,7 +338,10 @@ export class OnboardingPage implements OnInit {
       const accessKey = productAccessQueryKeys.list(result.activeOrgId);
       if (result.productAccess) this.queryClient.setQueryData(accessKey, result.productAccess);
       else await this.queryClient.invalidateQueries({ queryKey: accessKey, exact: true });
-      await this.router.navigate(['/welcome'], { replaceUrl: true });
+      await this.router.navigate([await this.welcomeDestination.resolve()], {
+        replaceUrl: true,
+        state: { justCreatedWorkspace: true },
+      });
     } catch (error) {
       this.onboardingErrorKey.set(this.errorKeyFrom(error));
     } finally {

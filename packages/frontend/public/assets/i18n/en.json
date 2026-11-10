@@ -2,6 +2,8 @@
   "WELCOME": {
     "TITLE": "Welcome to your workspace!",
     "SUBTITLE": "Your workspace is ready. Choose an application to get started.",
+    "RETURNING_TITLE": "Choose your application",
+    "RETURNING_SUBTITLE": "Select the application you want to use.",
     "APPLICATIONS": "Applications",
     "CONFIGURE": "Configure",
     "OPEN": "Open",
@@ -493,6 +495,7 @@
       "ACTIVE_PRODUCT": "Active product"
     },
     "TOPBAR": {
+      "APPLICATIONS": "Applications",
       "COMMAND_PLACEHOLDER": "Search workspace or ask AI...",
       "COMMAND_SHORTCUT": "⌘ K",
       "CABINET_DASHBOARD": "Cabinet dashboard",

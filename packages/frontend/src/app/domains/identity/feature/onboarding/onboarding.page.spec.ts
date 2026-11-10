@@ -10,6 +10,7 @@ import {
 } from '@liass-ohada/shared/shared';
 import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
+import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
 import { vi } from 'vitest';
 import { AuthStore } from '../../data-access/auth.store';
 import { OnboardingApi } from '../../data-access/onboarding.api';
@@ -228,6 +229,7 @@ describe('multi-product onboarding', () => {
       providers: [
         provideRouter([]),
         { provide: QueryClient, useValue: queryClient },
+        { provide: WelcomeDestination, useValue: { resolve: () => Promise.resolve('/welcome') } },
         { provide: OnboardingApi, useValue: onboardingApi },
         { provide: WorkspacesApi, useValue: { listWorkspaces: vi.fn().mockResolvedValue([]) } },
         {
@@ -338,7 +340,7 @@ describe('multi-product onboarding', () => {
         products,
         ...(products.includes('ACCOUNTING') ? { accountingFramework: 'SYSCOHADA_REVISED' } : {})
       });
-      expect(router.navigate).toHaveBeenCalledWith(['/welcome'], { replaceUrl: true });
+      expect(router.navigate).toHaveBeenCalledWith(['/welcome'], { replaceUrl: true, state: { justCreatedWorkspace: true } });
       expect(TestBed.inject(AuthStore).effectiveOrgId()).toBe('org-created');
       expect(queryClient.getQueryData(productAccessQueryKeys.list('org-created'))).toEqual(
         response(products).productAccess
@@ -407,7 +409,7 @@ describe('multi-product onboarding', () => {
       country: 'BJ',
       accountingFramework: 'SYCEBNL'
     });
-    expect(router.navigate).toHaveBeenCalledWith(['/welcome'], { replaceUrl: true });
+    expect(router.navigate).toHaveBeenCalledWith(['/welcome'], { replaceUrl: true, state: { justCreatedWorkspace: true } });
     expect(TestBed.inject(AuthStore).activeWorkspace()?.cabinetId).toBe('cab-created');
   });
   it('clears product configuration when changing workspace type but preserves organization fields', () => {

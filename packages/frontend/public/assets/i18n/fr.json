@@ -2,6 +2,8 @@
   "WELCOME": {
     "TITLE": "Bienvenue dans votre espace !",
     "SUBTITLE": "Votre espace est prêt. Choisissez une application pour commencer.",
+    "RETURNING_TITLE": "Choisissez votre application",
+    "RETURNING_SUBTITLE": "Sélectionnez l'application que vous souhaitez utiliser.",
     "APPLICATIONS": "Applications",
     "CONFIGURE": "Configurer",
     "OPEN": "Ouvrir",
@@ -493,6 +495,7 @@
       "ACTIVE_PRODUCT": "Produit actif"
     },
     "TOPBAR": {
+      "APPLICATIONS": "Applications",
       "COMMAND_PLACEHOLDER": "Rechercher ou interroger l’IA...",
       "COMMAND_SHORTCUT": "⌘ K",
       "CABINET_DASHBOARD": "Tableau de bord cabinet",

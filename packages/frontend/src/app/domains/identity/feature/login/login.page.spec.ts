@@ -7,6 +7,7 @@ import { vi } from 'vitest';
 
 import { AuthStore } from '../../data-access/auth.store';
 import { LoginPage } from './login.page';
+import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
 
 const translations = {
   fr: {
@@ -112,7 +113,7 @@ describe('LoginPage', () => {
           translocoConfig: { availableLangs: ['fr', 'en'], defaultLang: 'fr', fallbackLang: 'fr', reRenderOnLangChange: true }
         })
       ],
-      providers: [provideRouter([]), { provide: AuthStore, useValue: authStore }]
+      providers: [provideRouter([]), { provide: AuthStore, useValue: authStore }, { provide: WelcomeDestination, useValue: { resolve: () => Promise.resolve('/dashboard') } }]
     }).compileComponents();
 
     transloco = TestBed.inject(TranslocoService);
