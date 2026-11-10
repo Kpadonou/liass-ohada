@@ -2,10 +2,11 @@
 import { createHash } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { APPROVED_COMMITS, TARGET_FUNCTIONS, addedResources, assertContainedAdditions } from "./prepare-dev-contained-fiscal-release.mjs";
+import { APPROVED_COMMITS, TARGET_FUNCTIONS, addedResources, assertContainedAdditions, assertIdentityParameterContract } from "./prepare-dev-contained-fiscal-release.mjs";
+import { reviewReleaseScope } from "./review-fiscal-nested-change-set.mjs";
 
-const [releaseArg, baselineArg, zipArg, liveHashesArg, apiBaselineArg, executorArg] = process.argv.slice(2);
-if (!releaseArg || !baselineArg || !zipArg || !liveHashesArg || !apiBaselineArg || !executorArg) throw new Error("Usage: verify RELEASE_DIR LIVE_IDENTITY_TEMPLATE LIVE_ZIP_DIR CURRENT_LAMBDA_HASHES LIVE_API_TEMPLATE EXECUTOR_CONFIG");
+const [releaseArg, baselineArg, zipArg, liveHashesArg, apiBaselineArg, executorArg, scopeReviewArg] = process.argv.slice(2);
+if (!releaseArg || !baselineArg || !zipArg || !liveHashesArg || !apiBaselineArg || !executorArg || !scopeReviewArg) throw new Error("Usage: verify RELEASE_DIR LIVE_IDENTITY_TEMPLATE LIVE_ZIP_DIR CURRENT_LAMBDA_HASHES LIVE_API_TEMPLATE EXECUTOR_CONFIG SCOPE_REVIEW_JSON");
 const release = resolve(releaseArg), zipDirectory = resolve(zipArg);
 const json = (file) => { const value = JSON.parse(readFileSync(file, "utf8")); return typeof value === "string" ? JSON.parse(value) : value; };
 const hash = (bytes) => createHash("sha256").update(bytes).digest();
@@ -14,6 +15,8 @@ if (manifest.mode !== "PREPARE_ONLY" || manifest.deployAuthorized !== false ||
     manifest.target.account !== "570197775998" || manifest.target.region !== "eu-west-3" || manifest.target.stage !== "dev" ||
     JSON.stringify(manifest.source.approvedCommits) !== JSON.stringify(APPROVED_COMMITS)) throw new Error("Release identity mismatch");
 const executor = json(executorArg);
+const scopeReview = json(scopeReviewArg);
+const scopeFiles = (file) => json(resolve(file));
 if (executor.Environment?.FISCAL_REAL_TEST_ENABLED !== "0" ||
     manifest.desired.gates.FISCAL_CREDENTIAL_TEST_VERIFICATION_ENABLED !== "0" ||
     manifest.desired.gates.productionProviderDispatch !== false ||
@@ -27,6 +30,21 @@ const frozen = json(identityAsset);
 const apiBaseline = json(apiBaselineArg), frozenApi = json(apiAsset);
 const apiChanged = Object.keys(apiBaseline.Resources).filter((id) => JSON.stringify(apiBaseline.Resources[id]) !== JSON.stringify(frozenApi.Resources[id]));
 if (apiChanged.length !== 1 || !apiChanged[0].includes("IdentityApiNestedStack")) throw new Error(`API parent scope changed: ${apiChanged}`);
+const parentIdentity = frozenApi.Resources[apiChanged[0]];
+const baselineIdentity = apiBaseline.Resources[apiChanged[0]];
+assertIdentityParameterContract(parentIdentity, frozen);
+const supplied = parentIdentity.Properties.Parameters ?? {};
+for (const [name, value] of Object.entries(baselineIdentity.Properties.Parameters ?? {}))
+  if (JSON.stringify(supplied[name]) !== JSON.stringify(value)) throw new Error(`Existing Identity binding changed: ${name}`);
+const addedBindings = Object.keys(supplied).filter((name) => !(name in (baselineIdentity.Properties.Parameters ?? {})));
+if (addedBindings.length !== 1) throw new Error(`Unexpected Identity parameter bindings: ${addedBindings}`);
+const providerBinding = supplied[addedBindings[0]]?.["Fn::GetAtt"];
+if (!addedBindings[0].endsWith("ProviderURL") || !Array.isArray(providerBinding) ||
+    providerBinding[1] !== "ProviderURL" || apiBaseline.Resources[providerBinding[0]]?.Type !== "AWS::Cognito::UserPool")
+  throw new Error("Identity ProviderURL must reference the existing parent Cognito user pool");
+const parentWithoutIdentity = structuredClone(frozenApi);
+parentWithoutIdentity.Resources[apiChanged[0]] = baselineIdentity;
+if (JSON.stringify(parentWithoutIdentity) !== JSON.stringify(apiBaseline)) throw new Error("Unexpected parent template change");
 if (Object.keys(baseline.Resources).length !== 103 || Object.keys(frozen.Resources).length !== 137) throw new Error("Identity resource count mismatch");
 for (const [id, resource] of Object.entries(baseline.Resources))
   if (JSON.stringify(frozen.Resources[id]) !== JSON.stringify(resource)) throw new Error(`Existing Identity resource changed: ${id}`);
@@ -99,6 +117,17 @@ for (const asset of newAssets.values()) {
   const bytes = readFileSync(join(release, "assets", asset.key));
   if (hash(bytes).toString("hex") !== asset.sha256Hex || hash(bytes).toString("base64") !== asset.codeSha256Base64) throw new Error(`New ZIP mismatch: ${asset.key}`);
 }
+reviewReleaseScope({
+  root: scopeFiles(scopeReview.rootChangeSet),
+  parentLive: scopeFiles(scopeReview.parentLive),
+  parentCandidate: scopeFiles(scopeReview.parentCandidate),
+  stacks: scopeReview.stacks.map((stack) => ({
+    ...stack,
+    liveTemplate: scopeFiles(stack.liveTemplate),
+    candidateTemplate: scopeFiles(stack.candidateTemplate),
+    childChangeSet: scopeFiles(stack.childChangeSet),
+  })),
+});
 const preserved = manifest.liveBaseline.preservedExecutables;
 if (preserved.length !== 232) throw new Error("Existing Lambda inventory incomplete");
 const current = new Map(json(liveHashesArg).map((entry) => [entry.FunctionName, entry.CodeSha256]));
