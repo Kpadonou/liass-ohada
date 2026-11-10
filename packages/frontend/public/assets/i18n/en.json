@@ -1,4 +1,31 @@
 {
+  "WELCOME": {
+    "TITLE": "Welcome to your workspace!",
+    "SUBTITLE": "Your workspace is ready. Choose an application to get started.",
+    "APPLICATIONS": "Applications",
+    "CONFIGURE": "Configure",
+    "OPEN": "Open",
+    "CONFIGURE_UNAVAILABLE": "Configuration is reserved for authorized users.",
+    "LOAD_ERROR": "Your applications could not be loaded right now.",
+    "RETRY": "Retry",
+    "NO_APPLICATIONS": "No applications are currently available in this workspace.",
+    "APPLICATION": {
+      "ACCOUNTING": {
+        "TITLE": "Accounting",
+        "FIRM_TITLE": "Accounting firm",
+        "DESCRIPTION": "Manage accounts, journals and entries, then review ledgers and trial balances.",
+        "FIRM_DESCRIPTION": "Manage client dossiers, assignments and deadlines from your firm."
+      },
+      "SALES": {
+        "TITLE": "Invoicing",
+        "DESCRIPTION": "Manage customers, items and invoices from drafting through issuance."
+      },
+      "RESTAURANTS": {
+        "TITLE": "Liass-Resto",
+        "DESCRIPTION": "Manage menus, orders, payments and stock by outlet."
+      }
+    }
+  },
   "FISCALITY": {
     "GUIDE": {
       "TITLE": "Obtain your e-MECeF access",

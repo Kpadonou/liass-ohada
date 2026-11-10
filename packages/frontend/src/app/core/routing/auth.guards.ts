@@ -21,6 +21,20 @@ export const authGuard: CanActivateFn = async () => {
   return authStore.isAuthenticated() ? true : router.createUrlTree(['/login']);
 };
 
+/** Initial workspace welcome is outside the application shell, but still needs a trusted tenant. */
+export const welcomeWorkspaceGuard: CanActivateFn = async () => {
+  const authStore = inject(AuthStore);
+  const router = inject(Router);
+  await ensureHydrated(authStore);
+  if (!authStore.isAuthenticated()) return router.createUrlTree(['/login']);
+  if (!authStore.hasActiveTenant() || !authStore.workspacesLoaded()) {
+    await authStore.loadWorkspaces();
+  }
+  return authStore.activeWorkspace()
+    ? true
+    : router.createUrlTree([authStore.workspaceDestination() ?? '/select-workspace']);
+};
+
 export const invitationAcceptanceGuard: CanActivateFn = async (route) => {
   const authStore = inject(AuthStore);
   const router = inject(Router);

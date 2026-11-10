@@ -1,4 +1,31 @@
 {
+  "WELCOME": {
+    "TITLE": "Bienvenue dans votre espace !",
+    "SUBTITLE": "Votre espace est prêt. Choisissez une application pour commencer.",
+    "APPLICATIONS": "Applications",
+    "CONFIGURE": "Configurer",
+    "OPEN": "Ouvrir",
+    "CONFIGURE_UNAVAILABLE": "La configuration est réservée aux personnes autorisées.",
+    "LOAD_ERROR": "Vos applications ne peuvent pas être chargées pour le moment.",
+    "RETRY": "Réessayer",
+    "NO_APPLICATIONS": "Aucune application n’est disponible dans cet espace pour le moment.",
+    "APPLICATION": {
+      "ACCOUNTING": {
+        "TITLE": "Comptabilité",
+        "FIRM_TITLE": "Cabinet comptable",
+        "DESCRIPTION": "Tenez vos comptes, journaux et écritures, puis consultez vos grands livres et balances.",
+        "FIRM_DESCRIPTION": "Gérez vos dossiers clients, missions et échéances depuis votre cabinet."
+      },
+      "SALES": {
+        "TITLE": "Facturation",
+        "DESCRIPTION": "Gérez vos clients, articles et factures, de la préparation à l’émission."
+      },
+      "RESTAURANTS": {
+        "TITLE": "Liass-Resto",
+        "DESCRIPTION": "Gérez vos menus, commandes, encaissements et stocks par point de vente."
+      }
+    }
+  },
   "FISCALITY": {
     "GUIDE": {
       "TITLE": "Obtenir votre accès e-MECeF",

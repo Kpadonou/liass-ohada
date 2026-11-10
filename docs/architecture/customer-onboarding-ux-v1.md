@@ -4,11 +4,13 @@ Status: Product Owner approved specification. Implementation and visual acceptan
 
 ## Scope and sequence
 
-Preserve the short signup flow: Google authentication, COMPANY or ACCOUNTING_FIRM selection, organization information, product selection, review, and workspace creation. Deliver in order: LOT 0 stabilization and visual validation; LOT 1 e-MECeF enrollment guide; LOT 2 welcome and product configuration panel; LOT 3 contextual navigation, Restaurants first-use states and error harmonization; LOT 4 end-to-end acceptance. Resume controlled DGI TEST verification and the Liass-Resto fiscal pilot afterward.
+Preserve the short signup flow: Google authentication, COMPANY or ACCOUNTING_FIRM selection, organization information, product selection, review, and workspace creation. Deliver in order: LOT 0 stabilization and visual validation; LOT 1 e-MECeF enrollment guide; LOT 2 standalone post-onboarding welcome page; LOT 3 contextual navigation, Restaurants first-use states and error harmonization; LOT 4 end-to-end acceptance. Resume controlled DGI TEST verification and the Liass-Resto fiscal pilot afterward.
 
-## First-use dashboard
+## First-use welcome page
 
-Show a non-blocking welcome/configuration panel personalized with the active organization name. Derive setup actions from enabled products and the current user's permissions; show Accounting, invoicing and Restaurants entry points only where applicable. Derive progress from existing domain data where practical, without a new DynamoDB table by default. Recompute on organization switch; respect country-specific availability and backend authority. The panel must not gate ordinary navigation.
+Immediately after successful workspace creation, show a dedicated full-page welcome experience outside the dashboard shell, without a sidebar or mandatory setup. Use the existing Liass-OHADA brand and the exact French title **Bienvenue dans votre espace !** and subtitle **Votre espace est prêt. Choisissez une application pour commencer.** Label the collection **Applications**. Show only applications accessible in the newly active workspace, using existing ProductAccess, workspace role and domain permissions. The presentation is a responsive, data-driven card grid (up to three columns on desktop, two on tablet and one on mobile), with the application icon beside its name, a short functional description and two actions: **Configurer** (uniform primary brand blue) and **Ouvrir** (uniform neutral outline). Application-specific blue, green and orange accents identify Accounting, invoicing and Liass-Resto without changing action colors. Additional applications flow into rows. Never invent access or a broken destination; unavailable configuration actions remain visibly unavailable when an application itself is accessible.
+
+**Configurer** opens an existing authorized setup route; **Ouvrir** opens the normal application route without artificial setup blocking. No skip button, dashboard CTA, checklist, completion percentage, forced redirect on returning login or new persistence is introduced. Workspace switching and country-specific availability remain governed by existing context and backend authority. ACCOUNTING_FIRM uses its supported cabinet entry and setup routes; ordinary returning-user routing is unchanged.
 
 ## Fiscal settings and e-MECeF guide
 

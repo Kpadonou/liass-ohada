@@ -338,13 +338,7 @@ describe('multi-product onboarding', () => {
         products,
         ...(products.includes('ACCOUNTING') ? { accountingFramework: 'SYSCOHADA_REVISED' } : {})
       });
-      const destination =
-        products.length === 1 && products[0] === 'RESTAURANTS'
-          ? '/restaurants'
-          : products.length === 1 && products[0] === 'SALES'
-            ? '/sales'
-            : '/dashboard';
-      expect(router.navigate).toHaveBeenCalledWith([destination], { replaceUrl: true });
+      expect(router.navigate).toHaveBeenCalledWith(['/welcome'], { replaceUrl: true });
       expect(TestBed.inject(AuthStore).effectiveOrgId()).toBe('org-created');
       expect(queryClient.getQueryData(productAccessQueryKeys.list('org-created'))).toEqual(
         response(products).productAccess
@@ -413,7 +407,7 @@ describe('multi-product onboarding', () => {
       country: 'BJ',
       accountingFramework: 'SYCEBNL'
     });
-    expect(router.navigate).toHaveBeenCalledWith(['/cabinet/dashboard'], { replaceUrl: true });
+    expect(router.navigate).toHaveBeenCalledWith(['/welcome'], { replaceUrl: true });
     expect(TestBed.inject(AuthStore).activeWorkspace()?.cabinetId).toBe('cab-created');
   });
   it('clears product configuration when changing workspace type but preserves organization fields', () => {

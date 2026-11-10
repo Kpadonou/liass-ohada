@@ -10,7 +10,8 @@ import {
   cabinetDashboardGuard,
   cabinetSettingsGuard,
   loginRedirectGuard,
-  tenantGuard
+  tenantGuard,
+  welcomeWorkspaceGuard
 } from './auth.guards';
 
 vi.mock('aws-amplify/auth', () => {
@@ -49,6 +50,7 @@ function createFakeAuthStore(state: FakeAuthState): InstanceType<typeof AuthStor
   return {
     activeDossierOrgId: () => state.activeDossierOrgId,
     activeWorkspaceType: () => state.workspaceType,
+    activeWorkspace: () => state.activeTenant ? { orgId: 'org-a' } : null,
     dossiersLoaded: () => state.dossiersLoaded,
     enterCabinetContext: vi.fn(() => {
       state.activeDossierOrgId = null;
@@ -133,6 +135,17 @@ describe('auth guards', () => {
     );
 
     expect(router.serializeUrl(result as UrlTree)).toBe('/login');
+  });
+
+  it('allows the standalone welcome only for an authenticated active workspace', async () => {
+    state.authenticated = true;
+    state.activeTenant = true;
+    state.workspaceType = 'COMPANY';
+    expect(await TestBed.runInInjectionContext(() => welcomeWorkspaceGuard({} as never, {} as never))).toBe(true);
+    state.activeTenant = false;
+    state.destination = '/select-workspace';
+    const result = await TestBed.runInInjectionContext(() => welcomeWorkspaceGuard({} as never, {} as never));
+    expect(TestBed.inject(Router).serializeUrl(result as UrlTree)).toBe('/select-workspace');
   });
 
   it('redirects unauthenticated app root access to login', async () => {

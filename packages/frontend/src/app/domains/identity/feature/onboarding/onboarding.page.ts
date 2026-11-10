@@ -336,19 +336,7 @@ export class OnboardingPage implements OnInit {
       const accessKey = productAccessQueryKeys.list(result.activeOrgId);
       if (result.productAccess) this.queryClient.setQueryData(accessKey, result.productAccess);
       else await this.queryClient.invalidateQueries({ queryKey: accessKey, exact: true });
-      const activeProducts =
-        result.productAccess
-          ?.filter((access) => access.status === 'ACTIVE')
-          .map((access) => access.productCode) ?? [];
-      const destination =
-        result.workspace.workspaceType === 'ACCOUNTING_FIRM'
-          ? '/cabinet/dashboard'
-          : activeProducts.length === 1 && activeProducts[0] === 'RESTAURANTS'
-            ? '/restaurants'
-            : activeProducts.length === 1 && activeProducts[0] === 'SALES'
-              ? '/sales'
-              : '/dashboard';
-      await this.router.navigate([destination], { replaceUrl: true });
+      await this.router.navigate(['/welcome'], { replaceUrl: true });
     } catch (error) {
       this.onboardingErrorKey.set(this.errorKeyFrom(error));
     } finally {

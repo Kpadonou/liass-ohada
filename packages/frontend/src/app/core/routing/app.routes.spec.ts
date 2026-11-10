@@ -3,6 +3,7 @@ import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/a
 import {
   appRootRedirectGuard,
   authGuard,
+  welcomeWorkspaceGuard,
   cabinetDashboardGuard,
   cabinetSettingsGuard,
   cabinetTeamGuard,
@@ -61,6 +62,15 @@ describe('routes', () => {
     expect(component).toBe(OnboardingPage);
     expect(onboardingRoute?.canActivate).toEqual([authGuard]);
     expect(onboardingRoute?.canActivate).not.toContain(tenantGuard);
+  });
+
+  it('registers a guarded standalone welcome route outside the application shell', async () => {
+    const welcomeRoute = routes.find((route) => route.path === 'welcome');
+    const component = await welcomeRoute?.loadComponent?.();
+    const { WelcomePage } = await import('../feature/welcome/welcome.page');
+    expect(component).toBe(WelcomePage);
+    expect(welcomeRoute?.canActivate).toEqual([welcomeWorkspaceGuard]);
+    expect(shellRoute()?.children?.some((route) => route.path === 'welcome')).toBe(false);
   });
 
   it('registers invitation acceptance as an authenticated pre-tenant route', async () => {

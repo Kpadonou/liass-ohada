@@ -15,6 +15,7 @@ import {
   accountingWriteGuard,
   appRootRedirectGuard,
   authGuard,
+  welcomeWorkspaceGuard,
   cabinetDashboardGuard,
   cabinetSettingsGuard,
   cabinetTeamGuard,
@@ -78,6 +79,12 @@ export const routes: Routes = [
     canActivate: [authGuard],
   },
   {
+    path: 'welcome',
+    loadComponent: () =>
+      import('../feature/welcome/welcome.page').then((module) => module.WelcomePage),
+    canActivate: [welcomeWorkspaceGuard],
+  },
+  {
     path: 'cabinet/dossiers/select',
     loadComponent: () =>
       import('../../domains/identity/feature/cabinet-dossier-select/cabinet-dossier-select.page').then(
@@ -104,7 +111,10 @@ export const routes: Routes = [
     children: [
       {
         path: 'settings/fiscality',
-        loadComponent: () => import('../../domains/identity/feature/fiscality/fiscality.page').then(module => module.FiscalityPage),
+        loadComponent: () =>
+          import('../../domains/identity/feature/fiscality/fiscality.page').then(
+            (module) => module.FiscalityPage,
+          ),
       },
       {
         path: '',

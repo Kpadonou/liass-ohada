@@ -1,0 +1,99 @@
+<main class="min-h-dvh bg-app-bg px-4 py-8 text-app-text sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+  <div class="mx-auto w-full max-w-6xl">
+    <header class="flex flex-col items-center text-center">
+      <liass-logo variant="horizontal" size="lg" [alt]="'SHELL.LOGO_ALT' | transloco" />
+      <h1 class="mt-10 text-3xl font-bold text-app-text sm:text-4xl">
+        {{ 'WELCOME.TITLE' | transloco }}
+      </h1>
+      <p class="mt-3 max-w-2xl text-base text-app-text-secondary sm:text-lg">
+        {{ 'WELCOME.SUBTITLE' | transloco }}
+      </p>
+      @if (workspaceName()) {
+        <p class="mt-4 text-sm font-medium text-brand-700 dark:text-brand-300">
+          {{ workspaceName() }}
+        </p>
+      }
+    </header>
+
+    <section class="mt-12 sm:mt-14" [attr.aria-label]="'WELCOME.APPLICATIONS' | transloco">
+      <h2 class="mb-5 text-lg font-semibold">{{ 'WELCOME.APPLICATIONS' | transloco }}</h2>
+      @if (isLoading()) {
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" role="status">
+          <liass-card state="loading" />
+          <liass-card state="loading" />
+          <liass-card state="loading" />
+        </div>
+      } @else if (hasError()) {
+        <liass-card>
+          <p role="alert" class="text-sm text-danger-600">{{ 'WELCOME.LOAD_ERROR' | transloco }}</p>
+          <liass-button
+            class="mt-4 block"
+            icon="refresh"
+            tone="brand"
+            variant="outline"
+            (pressed)="access.refetch()"
+          >
+            {{ 'WELCOME.RETRY' | transloco }}
+          </liass-button>
+        </liass-card>
+      } @else if (!applications().length) {
+        <liass-card>
+          <p class="text-sm text-app-text-secondary">{{ 'WELCOME.NO_APPLICATIONS' | transloco }}</p>
+        </liass-card>
+      } @else {
+        <div class="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          @for (application of applications(); track application.code) {
+            <liass-card
+              class="[&>article]:flex [&>article]:h-full [&>article]:flex-col"
+              padding="lg"
+            >
+              <div class="flex items-center gap-3">
+                <span
+                  class="flex size-12 shrink-0 items-center justify-center rounded-app-control"
+                  [class]="application.iconClass"
+                  aria-hidden="true"
+                >
+                  <mat-icon>{{ application.icon }}</mat-icon>
+                </span>
+                <h3 class="text-lg font-semibold">{{ application.titleKey | transloco }}</h3>
+              </div>
+              <p class="mt-5 text-sm leading-6 text-app-text-secondary">
+                {{ application.descriptionKey | transloco }}
+              </p>
+              <div class="mt-auto flex flex-wrap gap-2 pt-8">
+                <liass-button
+                  icon="settings"
+                  tone="brand"
+                  variant="solid"
+                  [disabled]="!application.canConfigure"
+                  [ariaLabel]="
+                    ('WELCOME.CONFIGURE' | transloco) + ' ' + (application.titleKey | transloco)
+                  "
+                  (pressed)="configure(application)"
+                >
+                  {{ 'WELCOME.CONFIGURE' | transloco }}
+                </liass-button>
+                <liass-button
+                  icon="arrow_forward"
+                  tone="neutral"
+                  variant="outline"
+                  [ariaLabel]="
+                    ('WELCOME.OPEN' | transloco) + ' ' + (application.titleKey | transloco)
+                  "
+                  (pressed)="open(application)"
+                >
+                  {{ 'WELCOME.OPEN' | transloco }}
+                </liass-button>
+              </div>
+              @if (!application.canConfigure) {
+                <p class="mt-2 text-xs text-app-text-secondary">
+                  {{ 'WELCOME.CONFIGURE_UNAVAILABLE' | transloco }}
+                </p>
+              }
+            </liass-card>
+          }
+        </div>
+      }
+    </section>
+  </div>
+</main>
