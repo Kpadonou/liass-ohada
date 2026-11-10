@@ -1621,6 +1621,34 @@ test("authentic FINAL atomically freezes authorities and replays without recaptu
     expect(provenance.evidence.evidenceOrigin).toBe("AUTHENTIC");
     expect(provenance.evidence.issuedAt).toBe(invoice.issuedAt);
     expect(provenance.evidence.commercialRootDigest).toBe(invoice.digest);
+    const { prepareRestaurantFiscalInvoice } = await import(
+      "@/lambda/domains/restaurants/fiscal-preparation"
+    );
+    const preparationInput = {
+      scope: scope(),
+      actorId: "owner",
+      sessionId: v.sessionId,
+      invoiceId: invoice.receiptId,
+      classifications: [{
+        orderId: v.orderId,
+        itemId: verified.evidence.lines[0].line.itemId,
+        taxGroup: "B",
+        classificationEvidence: "offline-fixture-only",
+      }],
+    };
+    expect(await prepareRestaurantFiscalInvoice(preparationInput)).toMatchObject({
+      ready: true,
+      preparation: {
+        currency: "XOF",
+        commercialRootDigest: invoice.digest,
+        totalMinor: String(verified.evidence.invoice.paidMinor),
+        providerMutationEnabled: false,
+      },
+    });
+    expect(await prepareRestaurantFiscalInvoice({ ...preparationInput, classifications: [] })).toEqual({
+      ready: false,
+      reason: "MISSING_FISCAL_CLASSIFICATION",
+    });
     seller.mockClear();
     delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
     expect(await finish(v.sessionId)).toEqual(invoice);
