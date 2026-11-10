@@ -32,7 +32,7 @@ test("full scope rejects unresolved dynamic references", () => {
   ]};
   const live = {Resources:{Keep:{Type:"AWS::ApiGatewayV2::Route",Properties:{ApiId:{Ref:"ApiId"}}}}};
   const candidate = structuredClone(live);
-  const child = {Changes:[{ResourceChange:{LogicalResourceId:"Keep",Action:"Modify",Replacement:"False"}}]};
+  const child = {Changes:[{ResourceChange:{LogicalResourceId:"Keep",Action:"Modify",Replacement:"False",Details:[{Evaluation:"Dynamic",Target:{Attribute:"Properties",Name:"ApiId"}}]}}]};
   assert.throws(() => reviewReleaseScope({root,parentLive:{Resources:{Identity:{}}},parentCandidate:{Resources:{Identity:{}}},stacks:[{
     name:"Identity",logicalId:"Identity",liveTemplate:live,candidateTemplate:candidate,childChangeSet:child,
     parameters:{},parentParameters:{},allowedAdditions:[],allowedCodeUpdates:[]
@@ -47,4 +47,31 @@ test("full scope accepts the three approved nested stacks", () => {
     childChangeSet:{Changes:[]}, parameters:{}, parentParameters:{}, allowedAdditions:[], allowedCodeUpdates:[]
   }));
   assert.equal(reviewReleaseScope({root,parentLive:{Resources:Object.fromEntries(ids.map((id) => [id,{}]))},parentCandidate:{Resources:Object.fromEntries(ids.map((id) => [id,{}]))},stacks}).status,"PASS");
+});
+
+test("full scope accepts only proven parent dynamic no-ops", () => {
+  const nested = ["Identity", "Restaurants", "Fiscal"];
+  const integration = "ExistingIntegration";
+  const permission = "ExistingPermission";
+  const resources = {
+    ...Object.fromEntries(nested.map((id) => [id,{}])),
+    [integration]: {Type:"AWS::ApiGatewayV2::Integration",Properties:{ApiId:{Ref:"ApiId"},IntegrationUri:{"Fn::GetAtt":["Identity","Outputs.HandlerArn"]}}},
+    [permission]: {Type:"AWS::Lambda::Permission",Properties:{Action:"lambda:InvokeFunction",FunctionName:{"Fn::GetAtt":["Identity","Outputs.HandlerArn"]}}},
+  };
+  const root = {Status:"CREATE_COMPLETE",ExecutionStatus:"AVAILABLE",IncludeNestedStacks:true,Changes:[
+    ...nested.map((id) => ({ResourceChange:{LogicalResourceId:id,Action:"Modify",Replacement:"False",ChangeSetId:id}})),
+    {ResourceChange:{LogicalResourceId:integration,ResourceType:"AWS::ApiGatewayV2::Integration",Action:"Modify",Replacement:"False",Details:[{Evaluation:"Dynamic",Target:{Attribute:"Properties",Name:"IntegrationUri"}}]}},
+    {ResourceChange:{LogicalResourceId:permission,ResourceType:"AWS::Lambda::Permission",Action:"Modify",Replacement:"Conditional",Details:[{Evaluation:"Dynamic",Target:{Attribute:"Properties",Name:"FunctionName"}}]}},
+  ]};
+  const stacks = nested.map((name) => ({name,logicalId:name,liveTemplate:{Resources:{}},candidateTemplate:{Resources:{}},childChangeSet:{Changes:[]},parameters:{},parentParameters:{},allowedAdditions:[],allowedCodeUpdates:[]}));
+  const result = reviewReleaseScope({root,parentLive:{Resources:resources},parentCandidate:{Resources:structuredClone(resources)},parentResolutions:{ApiId:"api-1","GetAtt:Identity.Outputs.HandlerArn":"arn:aws:lambda:eu-west-3:1:function:handler"},stacks});
+  assert.deepEqual(result,{status:"PASS",nestedStackChanges:3,resolvedParentNoops:2});
+  assert.throws(() => reviewReleaseScope({root,parentLive:{Resources:resources},parentCandidate:{Resources:structuredClone(resources)},parentResolutions:{ApiId:"api-1"},stacks}), /Unresolved GetAtt/);
+});
+
+test("full scope rejects child replacements even when template properties match", () => {
+  const root = {Status:"CREATE_COMPLETE",ExecutionStatus:"AVAILABLE",IncludeNestedStacks:true,Changes:[{ResourceChange:{LogicalResourceId:"Restaurants",Action:"Modify",Replacement:"False",ChangeSetId:"r"}}]};
+  const resource = {Type:"AWS::ApiGatewayV2::Route",Properties:{ApiId:{Ref:"ApiId"}}};
+  const stack = {name:"restaurants",logicalId:"Restaurants",liveTemplate:{Resources:{Route:resource}},candidateTemplate:{Resources:{Route:structuredClone(resource)}},childChangeSet:{Changes:[{ResourceChange:{LogicalResourceId:"Route",Action:"Modify",Replacement:"True",Details:[{Evaluation:"Dynamic",Target:{Attribute:"Properties",Name:"ApiId"}}]}}]},parameters:{ApiId:"api-1"},allowedAdditions:[],allowedCodeUpdates:[]};
+  assert.throws(() => reviewReleaseScope({root,parentLive:{Resources:{Restaurants:{}}},parentCandidate:{Resources:{Restaurants:{}}},stacks:[stack]}), /Replacement risk/);
 });

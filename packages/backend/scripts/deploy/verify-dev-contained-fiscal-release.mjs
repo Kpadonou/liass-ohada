@@ -121,6 +121,7 @@ reviewReleaseScope({
   root: scopeFiles(scopeReview.rootChangeSet),
   parentLive: scopeFiles(scopeReview.parentLive),
   parentCandidate: scopeFiles(scopeReview.parentCandidate),
+  parentResolutions: scopeReview.parentResolutions,
   stacks: scopeReview.stacks.map((stack) => ({
     ...stack,
     liveTemplate: scopeFiles(stack.liveTemplate),
