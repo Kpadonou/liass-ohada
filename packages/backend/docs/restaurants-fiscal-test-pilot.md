@@ -87,24 +87,19 @@ issuance provenance. The source verifier reconciles the full part chain and
 settlements and rejects incomplete, tampered and foreign evidence. The fixture
 tax group proves mapping mechanics only.
 
-The commercial receipt stores a zero tax component. The TEST TTC price and
-provider tax classification cannot establish the immutable V1 commercial net,
-tax and gross decomposition. Review must select either an evidenced zero-tax
-case or an approved tax calculation and source capture rule for the taxable
-case. The review must also pin the currency scale, calculation and treatment
-artifacts, projection fingerprint and independent V1 size measurements before
-a V1 producer can be admitted. The fixture's zero commercial tax is not evidence
-of exemption. The current pilot mapper does not emit a FiscalizableDocument V1.
+The ordinary VAT path uses the commercial snapshot for the V1 net, tax and
+gross amounts. The integrated test verifies the snapshot and projection
+fingerprints, independent size limits and exact DGI TEST request preparation.
+Changing the company declaration after FINAL leaves the projection identical.
 
 ## Group B commercial policy candidate
 
-Product direction selects one ordinary XOF sale at 18% VAT, conditional on
-verified seller eligibility for group B. The proposed offline vector uses one
+Product direction selects one ordinary XOF sale at 18% VAT using a company
+declaration of ordinary VAT. The offline test uses one
 unit priced at 2,360 XOF TTC, with 2,000 XOF net, 360 XOF VAT and one CASH
 settlement of 2,360 XOF. Exact integer arithmetic makes this vector independent
 of rounding choices. A zero, negative or fractional split fails admission.
-This is a review vector rather than an applicable regime determination or a
-runtime calculation policy.
+The regime selection is a company declaration.
 
 The Product Owner selected a declarative profile. Platform owns the country
 catalog and the rates. A declaration supplies the regime ID only and must be
@@ -114,10 +109,22 @@ restaurant VAT on margin. The DGI's published ruling on Arrêté 658-C describes
 a deemed margin of 33.1% of period net sales. That period basis is excluded
 from the one-invoice ordinary VAT calculation.
 
-The local calculator returns exact monetary facts, the full rule and calculation
-version, and its digest. It rejects unknown countries and regimes, non-XOF
-transactions, margin declarations and amounts that require rounding. The
-company selection and commercial acceptance/FINAL binding are still required.
-The V1 producer must resolve net/tax/gross from the verified FINAL chain and
-reject historical zero-tax snapshots for this case. The provider configuration
-cannot supply missing commercial facts.
+A direct company owner selects a regime through
+`PUT /me/organization/fiscality/profile` with `{"regime":"ORDINARY_VAT"}`.
+The corresponding GET lists the country's governed options and selected
+revision. The selection is a declaration. Order submission guards the read
+revision in the acceptance transaction, and the commercial receipt chain
+preserves the rule, revision, digest and exact net, tax and gross.
+
+The supported projection requires one quantity-one XOF line, one full CASH
+settlement, authentic FINAL provenance and a Benin seller using the pinned
+Porto-Novo timezone. Legacy zero-tax snapshots and margin declarations cannot
+enter the ordinary VAT projection. The DGI TEST preparation derives group B
+from the frozen ordinary VAT facts. Configured and returned group B totals
+must agree with the commercial net and tax.
+
+The profile routes and their restricted role belong to Identity. Restaurants
+uses the existing platform item and condition-check access. Fiscal Compliance
+reuses the isolated executor. For a scoped release, preserve unrelated Lambda
+packages and require review of the candidate nested templates and provider
+applicability before activating any gates.

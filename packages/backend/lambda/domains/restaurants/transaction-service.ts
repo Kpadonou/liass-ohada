@@ -1,3 +1,5 @@
+import { readCompanyFiscalProfile } from "@/lambda/shared/authority/fiscal-profiles/company-profile";
+import { calculateRestaurantPilotTax } from "./pilot-tax-calculation";
 import { config } from "@/lambda/shared/dynamo-client";
 import { RestaurantServiceAccess } from "./service-access";
 import { RestaurantPreparationService as Preparation } from "./preparation-service";
@@ -195,6 +197,7 @@ export class RestaurantTransactionsService {
     currency: string,
     now: string,
     submissionId: string,
+    companyTax: Awaited<ReturnType<typeof readCompanyFiscalProfile>>,
     draft?: TransactionRow & { data: contracts.RestaurantOrderItem },
   ) {
     const line = draft ?? (await this.line(ctx, orderId, selected.itemId));
@@ -240,6 +243,19 @@ export class RestaurantTransactionsService {
     const amount = safeMoney(
       BigInt(item.data.price.amountMinor) * BigInt(line.data.quantity),
     );
+    let tax: ReturnType<typeof calculateRestaurantPilotTax> | undefined;
+    if (companyTax?.profile?.rule.basis === "NET_SALE") {
+      try {
+        tax = calculateRestaurantPilotTax({
+          country: companyTax.profile.country,
+          declaration: { regime: companyTax.profile.rule.id },
+          currency,
+          grossMinor: amount,
+        });
+      } catch {
+        return fail("RESTAURANTS_PILOT_TAX_CASE_UNSUPPORTED", 422);
+      }
+    }
     const snapshot = contracts.AcceptedSaleSnapshotSchema.parse({
       menuItemId: item.data.id,
       categoryId: line.data.categoryId,
@@ -253,9 +269,14 @@ export class RestaurantTransactionsService {
       quantity: line.data.quantity,
       unitPriceMinor: item.data.price.amountMinor,
       grossMinor: amount,
-      subtotalMinor: amount,
+      subtotalMinor: tax?.netMinor ?? amount,
       discountMinor: 0,
-      taxMinor: 0,
+      taxMinor: tax?.taxMinor ?? 0,
+      ...(tax ? { ordinaryTax: {
+        profileRevision: companyTax?.selected?.revision,
+        policy: tax.policy,
+        policyDigest: tax.policyDigest,
+      } } : {}),
       lineTotalMinor: amount,
       currency: currency,
       acceptedAt: now,
@@ -1326,6 +1347,8 @@ export class RestaurantTransactionsService {
           submissionId = randomUUID();
         if (menu.data.currency !== order.data.currency)
           return fail("RESTAURANTS_CURRENCY_MISMATCH", 400);
+        const companyTax = await readCompanyFiscalProfile(ctx.orgId);
+        if (companyTax) actions.push({ ConditionCheck: companyTax.condition });
         const prepared: Awaited<
           ReturnType<typeof RestaurantTransactionsService.prepareLine>
         >[] = [];
@@ -1343,6 +1366,7 @@ export class RestaurantTransactionsService {
                   order.data.currency,
                   now,
                   submissionId,
+                  companyTax,
                   guestLines.get(selected.itemId),
                 ),
               ),

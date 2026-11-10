@@ -88,7 +88,7 @@ export class OrganizationFiscalRepository {
     );
     return result.Item ? unmarshall(result.Item) : undefined;
   }
-  static async authorize(orgId: string, actorId: string, write = false) {
+  static async authorize(orgId: string, actorId: string, write = false, requireBenin = true) {
     id.parse(orgId);
     const member = await this.get(K.orgKey(orgId), K.orgUserAccessSK(actorId));
     if (
@@ -102,7 +102,7 @@ export class OrganizationFiscalRepository {
       (write && member.role !== "OWNER")
     )
       throw new AppError(403, "PLATFORM_FISCAL_FORBIDDEN");
-    await assertFiscalOrganization(orgId);
+    if (requireBenin) await assertFiscalOrganization(orgId);
     return { canManage: member.role === "OWNER" };
   }
   static membershipCheck(orgId: string, actorId: string) {

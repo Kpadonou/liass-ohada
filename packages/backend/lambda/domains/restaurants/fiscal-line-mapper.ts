@@ -1,3 +1,4 @@
+import { validRestaurantSaleTax } from "./pilot-tax-calculation";
 import { z } from "zod";
 import { RestaurantInvoiceLineSchema } from "@liass-ohada/shared/restaurants";
 import { TaxGroupTypeEnumSchema } from "../fiscal-compliance/providers/benin-emecef/invoice-dtos";
@@ -48,8 +49,7 @@ export function mapRestaurantFiscalLines(input: {
       line.cancelledAt ||
       line.cancellationReason ||
       amount !== BigInt(snapshot.grossMinor) ||
-      snapshot.grossMinor !== snapshot.subtotalMinor ||
-      snapshot.subtotalMinor !== snapshot.lineTotalMinor ||
+      !validRestaurantSaleTax(snapshot) ||
       snapshot.lineTotalMinor !== line.netAmountMinor
     )
       throw Error("UNSUPPORTED_COMMERCIAL_LINE");

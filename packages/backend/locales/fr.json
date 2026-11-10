@@ -67,6 +67,7 @@
   "RESTAURANTS_NOT_FOUND": "La configuration demandée est introuvable dans cet établissement.",
   "RESTAURANTS_PARENT_INACTIVE": "Réactivez le parent avant de modifier cette configuration.",
   "RESTAURANTS_WRITE_CONFLICT": "La configuration a changé ou une identité existe déjà. Actualisez puis réessayez.",
+  "RESTAURANTS_PILOT_TAX_CASE_UNSUPPORTED": "Cette vente ne relève pas du cas pilote de TVA ordinaire pris en charge.",
   "RESTAURANTS_CURRENCY_MISMATCH": "La devise du prix doit correspondre à celle du menu.",
   "SUCCESS_RESTAURANTS_CONFIGURATION_SAVED": "Configuration Liass-Resto enregistrée.",
   "ERROR_INVALID_PASSWORD": "Mot de passe invalide fourni.",

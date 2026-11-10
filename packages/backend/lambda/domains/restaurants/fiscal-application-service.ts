@@ -12,6 +12,7 @@ import { FiscalAttemptConflict, type FiscalAttemptState } from "../fiscal-compli
 import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { RestaurantReceiptService } from "./receipt-service";
 import { restaurantBeninSyntheticWorkflow } from "./benin-synthetic-workflow";
+import { projectRestaurantInvoiceV1 } from "./fiscalizable-invoice-v1";
 
 type Context = { orgId: string; userId: string };
 type Request = z.infer<typeof requestSchema>;
@@ -202,6 +203,13 @@ export class RestaurantFiscalApplicationService {
       state.sourceDigest !== source.proof.digest
     )
       throw new AppError(409, "FISCAL_CONFIRMATION_UNAVAILABLE");
+    if (this.real) {
+      try {
+        projectRestaurantInvoiceV1(source);
+      } catch {
+        throw new AppError(409, "FISCAL_CONFIRMATION_UNAVAILABLE");
+      }
+    }
     await (
       await this.workflow(context, request)
     ).confirm(

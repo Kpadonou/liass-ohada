@@ -1,3 +1,4 @@
+import { validRestaurantSaleTax } from "./pilot-tax-calculation";
 import { RestaurantIssuanceProvenanceRepository as Provenance } from "./issuance-provenance-repository";
 import { z } from "zod";
 import * as c from "@liass-ohada/shared/restaurants";
@@ -209,8 +210,7 @@ export class RestaurantInvoiceSourceVerifier {
               requireEvidence(
                 snapshot.currency === context.currency &&
                   gross === BigInt(snapshot.grossMinor) &&
-                  snapshot.grossMinor === snapshot.subtotalMinor &&
-                  snapshot.subtotalMinor === snapshot.lineTotalMinor &&
+                  validRestaurantSaleTax(snapshot) &&
                   line.netAmountMinor ===
                     (line.cancelledAt ? 0 : snapshot.lineTotalMinor) &&
                   Boolean(line.cancelledAt) ===

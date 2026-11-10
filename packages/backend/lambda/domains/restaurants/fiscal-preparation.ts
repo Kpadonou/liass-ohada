@@ -1,3 +1,4 @@
+import { projectRestaurantInvoiceV1 } from "./fiscalizable-invoice-v1";
 import type { TransactionScope } from "./transaction-model";
 import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { mapRestaurantFiscalLines } from "./fiscal-line-mapper";
@@ -18,6 +19,7 @@ export async function prepareRestaurantFiscalInvoice(
     sessionId: string;
     invoiceId: string;
     classifications: unknown;
+    requireV1?: boolean;
     issuanceProvenance?: unknown;
   },
   verifySource: SourceReader = RestaurantInvoiceSourceVerifier.verify,
@@ -49,9 +51,17 @@ export async function prepareRestaurantFiscalInvoice(
     return { ready: false as const, reason: provenance.reason };
 
   try {
+    const v1 = input.requireV1 ? projectRestaurantInvoiceV1(evidence) : undefined;
     const mapping = mapRestaurantFiscalLines({
       lines: evidence.lines.map(({ line }) => line),
-      classifications: input.classifications,
+      classifications: v1
+        ? v1.document.lines.map((line) => ({
+            orderId: line.sourceCoordinates[0].orderId,
+            itemId: line.sourceCoordinates[0].itemId,
+            taxGroup: "B",
+            classificationEvidence: line.fiscalTreatmentEvidence.reference,
+          }))
+        : input.classifications,
     });
     if (
       evidence.lines.length !== evidence.invoice.lineCount ||
@@ -77,6 +87,7 @@ export async function prepareRestaurantFiscalInvoice(
         totalMinor: mapping.totalMinor,
         lines: mapping.lines,
         providerMutationEnabled: false as const,
+        ...(v1 ? { v1: v1.document } : {}),
       },
     };
   } catch (error) {
@@ -84,6 +95,8 @@ export async function prepareRestaurantFiscalInvoice(
     return {
       ready: false as const,
       reason: [
+        "RESTAURANTS_V1_CASE_UNSUPPORTED",
+        "RESTAURANTS_V1_LIMIT",
         "AMBIGUOUS_FISCAL_CLASSIFICATION",
         "DUPLICATE_COMMERCIAL_LINE",
         "MISSING_FISCAL_CLASSIFICATION",

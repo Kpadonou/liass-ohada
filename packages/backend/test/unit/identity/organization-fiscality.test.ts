@@ -512,3 +512,30 @@ test("authoritative organization country overrides a stale Benin membership", as
   organization.country = "TG";
   expect((await handler(event("GET", "", {}))).statusCode).toBe(403);
 });
+
+test("company fiscal profile lists governed choices and only the owner can declare one", async () => {
+  const profileEvent = (method: "GET" | "PUT", body?: unknown, orgId?: string) => ({
+    ...event(method, "", body, orgId),
+    routeKey: `${method} /me/organization/fiscality/profile`,
+  });
+  const listed = await handler(profileEvent("GET"));
+  expect(listed.statusCode).toBe(200);
+  expect(parse(listed).data).toMatchObject({
+    country: "BJ", selected: null, canManage: true,
+    regimes: [{ id: "ORDINARY_VAT" }, { id: "RESTAURANT_VAT_ON_MARGIN" }],
+  });
+  expect((await handler(profileEvent("PUT", { regime: "ORDINARY_VAT", country: "BJ" }))).statusCode).toBe(400);
+  expect((await handler(profileEvent("PUT", { regime: "ORDINARY_VAT" }, "foreign"))).statusCode).toBe(403);
+  rows.set(key(member()), member("org-a", { role: "MEMBER" }));
+  expect((await handler(profileEvent("PUT", { regime: "ORDINARY_VAT" }))).statusCode).toBe(403);
+  expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+  rows.set(key(member()), member());
+  const saved = await handler(profileEvent("PUT", { regime: "ORDINARY_VAT" }));
+  expect(saved.statusCode).toBe(200);
+  expect(parse(saved).data).toMatchObject({ country: "BJ", rule: { id: "ORDINARY_VAT" } });
+  const [membership, update] = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems!;
+  expect(membership.ConditionCheck?.ConditionExpression).toContain("#role = :owner");
+  expect(update.Update?.ConditionExpression).toContain("attribute_not_exists(fiscalRegime)");
+  expect(update.Update?.UpdateExpression).toBe("SET fiscalRegime = :selected");
+  expect(secrets.calls()).toHaveLength(0);
+});

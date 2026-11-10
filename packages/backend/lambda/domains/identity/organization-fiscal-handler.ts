@@ -8,6 +8,9 @@ import {
 import { I18nResolver } from "../../shared/i18n";
 import { OrganizationFiscalRepository } from "../../shared/repositories/organization-fiscal-repository";
 import { OrganizationFiscalVerificationService } from "../../shared/services/organization-fiscal-verification-service";
+import { readCompanyFiscalProfile, selectCompanyFiscalRegime } from "../../shared/authority/fiscal-profiles/company-profile";
+import { listFiscalRegimes } from "../../shared/authority/fiscal-profiles/profile";
+
 export const fiscalEnvironmentForStage = (
   stage: PlatformPrincipal["stage"],
 ): "TEST" | "PRODUCTION" => (stage === "prod" ? "PRODUCTION" : "TEST");
@@ -30,6 +33,26 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       ([key]) => key.toLowerCase() === "x-org-id",
     )?.[1];
     if (!orgId) throw new AppError(400, "ERROR_MISSING_ORG_ID");
+    if (event.routeKey === "GET /me/organization/fiscality/profile") {
+      const access = await OrganizationFiscalRepository.authorize(orgId, principal.sub, false, false);
+      const current = await readCompanyFiscalProfile(orgId);
+      return { statusCode: 200, body: JSON.stringify({ data: {
+        country: current?.country ?? null,
+        selected: current?.selected ?? null,
+        regimes: listFiscalRegimes(current?.country),
+        canManage: access.canManage,
+      } }) };
+    }
+    if (event.routeKey === "PUT /me/organization/fiscality/profile") {
+      await OrganizationFiscalRepository.authorize(orgId, principal.sub, true, false);
+      let input: unknown;
+      try { input = JSON.parse(event.body ?? "{}"); }
+      catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
+      const data = await selectCompanyFiscalRegime(
+        orgId, input, OrganizationFiscalRepository.membershipCheck(orgId, principal.sub),
+      );
+      return { statusCode: 200, body: JSON.stringify({ data }) };
+    }
     if (
       event.routeKey ===
       "POST /me/organization/fiscality/connections/{connectionId}/verification"

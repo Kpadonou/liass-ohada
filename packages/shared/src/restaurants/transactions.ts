@@ -92,6 +92,28 @@ export const RestaurantOrderSchema = z
     outstandingWorkCount: count.max(200).optional(),
   })
   .strict();
+export const RestaurantOrdinaryTaxSnapshotSchema = z.object({
+  profileRevision: z.uuid(),
+  policyDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  policy: z.object({
+    id: z.literal("RESTO-EXACT-TTC"),
+    version: z.literal(1),
+    currency: z.literal("XOF"),
+    minorUnitScale: z.literal(0),
+    priceBasis: z.literal("INCLUDING_TAX"),
+    rounding: z.literal("EXACT"),
+    profile: z.object({
+      country: z.literal("BJ"),
+      rule: z.object({
+        id: z.literal("ORDINARY_VAT"),
+        version: z.literal(1),
+        taxRateBasisPoints: z.literal(1800),
+        basis: z.literal("NET_SALE"),
+      }).strict(),
+    }).strict(),
+  }).strict(),
+}).strict();
+
 export const AcceptedSaleSnapshotSchema = z
   .object({
     menuItemId: id,
@@ -108,7 +130,8 @@ export const AcceptedSaleSnapshotSchema = z
     grossMinor: money,
     subtotalMinor: money,
     discountMinor: z.literal(0),
-    taxMinor: z.literal(0),
+    taxMinor: money,
+    ordinaryTax: RestaurantOrdinaryTaxSnapshotSchema.optional(),
     lineTotalMinor: money,
     currency,
     acceptedAt: timestamp,

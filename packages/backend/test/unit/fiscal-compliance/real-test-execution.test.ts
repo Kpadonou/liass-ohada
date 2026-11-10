@@ -41,7 +41,7 @@ beforeEach(() => {
     rows.set(key, item); return {};
   });
   jest.mocked(restaurantBeninPreparation).mockReturnValue(async () => ({ identity, sourceDigest: config.sourceDigest,
-    requestDigest: hash(canonical(payload)), total: 2000, payload }));
+    requestDigest: hash(canonical(payload)), total: 2000, ordinaryVatTotals: { net: 1695, tax: 305 }, payload }));
 });
 afterEach(() => { for (const name of ["STAGE", "FISCAL_EXECUTION_MODE", "FISCAL_REAL_TEST_ENABLED"]) delete process.env[name]; });
 function setup(body: unknown = security, status = 200) {
@@ -150,7 +150,7 @@ test("ambiguous transport failure never produces security or repeats confirmatio
 
 test("source fingerprint mismatch is rejected before reservation or provider calls", async () => {
   jest.mocked(restaurantBeninPreparation).mockReturnValueOnce(async () => ({ identity, sourceDigest: "b".repeat(64),
-    requestDigest: hash(canonical(payload)), total: 2000, payload }));
+    requestDigest: hash(canonical(payload)), total: 2000, ordinaryVatTotals: { net: 1695, tax: 305 }, payload }));
   const { flow, transport } = setup();
   await expect(create(flow)).rejects.toThrow("FISCAL_SOURCE_MISMATCH");
   expect(transport).not.toHaveBeenCalled(); expect(rows.size).toBe(0);

@@ -220,13 +220,23 @@ export function restaurantBeninPreparation(
       sessionId,
       invoiceId: identity.sourceDocumentId,
       classifications,
+      ...(realFiscalTestEnabled() ? { requireV1: true } : {}),
     });
     if (!result.ready) throw new Error("FISCAL_PREPARATION_UNAVAILABLE");
-    return mapRestaurantBeninRequest(
+    const mapped = mapRestaurantBeninRequest(
       result.preparation,
       principal,
       identity,
       configuration,
     );
+    if (!realFiscalTestEnabled()) return mapped;
+    const v1 = result.preparation.v1;
+    if (!v1 || result.preparation.lines.some((line) => line.fiscal.taxGroup !== "B") ||
+        restaurantBeninMappingSchema.parse(configuration).commercialMinorUnitsPerFranc !== 1)
+      throw new Error("FISCAL_ORDINARY_VAT_PROJECTION_REQUIRED");
+    return { ...mapped, ordinaryVatTotals: {
+      net: Number(v1.totals.netMinor),
+      tax: Number(v1.totals.taxMinor),
+    } };
   };
 }

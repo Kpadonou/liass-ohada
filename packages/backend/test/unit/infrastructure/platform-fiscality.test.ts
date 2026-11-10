@@ -97,6 +97,8 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
       "GET /me/organization/fiscality/sfe-approval",
       "PUT /platform/fiscality/sfe-approval",
       "GET /me/organization/fiscality/connections",
+      "GET /me/organization/fiscality/profile",
+      "PUT /me/organization/fiscality/profile",
       "PUT /me/organization/fiscality/connections/{connectionId}",
       "PUT /me/organization/fiscality/connections/{connectionId}/credential",
       "DELETE /me/organization/fiscality/connections/{connectionId}/credential",
@@ -141,6 +143,10 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
   ).toBe("0");
   expect(verifier.Properties.Timeout).toBe(30);
   const policies = template.findResources("AWS::IAM::Policy");
+  const profilePolicies = Object.entries(policies).filter(([name]) => name.includes("ProfileRole"));
+  expect(profilePolicies).toHaveLength(1);
+  expect(JSON.stringify(profilePolicies)).toContain("fiscalRegime");
+  expect(JSON.stringify(profilePolicies)).not.toMatch(/ssm:|secretsmanager:|dynamodb:PutItem/);
   const verificationPolicies = Object.entries(policies).filter(([name]) =>
     name.includes("VerificationRole"),
   );

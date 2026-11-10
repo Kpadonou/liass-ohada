@@ -1587,13 +1587,32 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
   },
 );
 
-test("authentic FINAL atomically freezes authorities and replays without recapture", async () => {
+test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidence", async () => {
   const { OrganizationLegalIdentityService: Seller } = await import("@/lambda/shared/services/organization-legal-identity-service");
   const { provenance: fixture } = await import("./provenance-fixture");
+  const { RestaurantsService } = await import("@/lambda/domains/restaurants/restaurant-service");
+  const { selectCompanyFiscalRegime } = await import("@/lambda/shared/authority/fiscal-profiles/company-profile");
+  const { OrganizationFiscalRepository } = await import("@/lambda/shared/repositories/organization-fiscal-repository");
+  const orgKey = JSON.stringify([K.orgKey(org), K.organizationSK()]);
+  m.rows.set(orgKey, { ...m.rows.get(orgKey)!, country: { S: "BJ" } });
+  const selectRegime = (regime: string) => selectCompanyFiscalRegime(
+    org, { regime }, OrganizationFiscalRepository.membershipCheck(org, "owner"),
+  );
+  const selection = await selectRegime("ORDINARY_VAT");
+  f.items[4] = await RestaurantsService.create(
+    org, "owner", "item", { outletId: f.outlet.id, categoryId: f.items[4].categoryId },
+    { name: "Ordinary VAT meal", clientRequestId: req(), price: { amountMinor: 2360, currency: "XOF" } },
+  );
   const v = await visit();
   await settle(v);
   process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID = org;
-  const timezone = { ...fixture.timezone, orgId: org };
+  const { tzdbDigest, identifierDigest } = await import("@/lambda/shared/authority/iana-pinned-digests");
+  const timezone = {
+    ...fixture.timezone,
+    orgId: org,
+    tzdbArtifactDigest: tzdbDigest,
+    acceptedIdentifierArtifactDigest: identifierDigest,
+  };
   const current = { PK: K.orgKey(org), SK: K.restaurantIssuanceTimezoneCurrentSK(), orgId: org,
     entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_CURRENT", status: "ACTIVE", version: 1,
     selectedRevisionId: timezone.reference, configurationDigest: timezone.configurationDigest,
@@ -1605,7 +1624,18 @@ test("authentic FINAL atomically freezes authorities and replays without recaptu
   const sellerKey = { PK: current.PK, SK: "PLATFORM_SELLER_TEST_CURRENT" };
   m.rows.set(JSON.stringify([sellerKey.PK, sellerKey.SK]), marshall({ ...sellerKey, version: 1 }));
   const seller = jest.spyOn(Seller, "readSellerIssuanceAuthority").mockResolvedValue({
-    sellerAuthority: { ...fixture.seller, orgId: org },
+    sellerAuthority: {
+      ...fixture.seller,
+      orgId: org,
+      seller: {
+        ...fixture.seller.seller,
+        country: "BJ",
+        identifiers: [{ scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" }],
+      },
+      factStates: [...fixture.seller.factStates, {
+        fieldPath: "identifiers", state: "VERIFIED", evidenceReference: "synthetic-seller-identity",
+      }],
+    },
     check: { ConditionCheck: { TableName: "platform", Key: marshall(sellerKey),
       ConditionExpression: "#f0 = :v0", ExpressionAttributeNames: { "#f0": "version" },
       ExpressionAttributeValues: marshall({ ":v0": 1 }) } },
@@ -1643,26 +1673,68 @@ test("authentic FINAL atomically freezes authorities and replays without recaptu
       actorId: "owner",
       sessionId: v.sessionId,
       invoiceId: invoice.receiptId,
-      classifications: [{
-        orderId: v.orderId,
-        itemId: verified.evidence.lines[0].line.itemId,
-        taxGroup: "B",
-        classificationEvidence: "offline-fixture-only",
-      }],
+      requireV1: true,
+      classifications: [],
     };
-    expect(await prepareRestaurantFiscalInvoice(preparationInput)).toMatchObject({
+    const result = await prepareRestaurantFiscalInvoice(preparationInput);
+    expect(result).toMatchObject({
       ready: true,
       preparation: {
         currency: "XOF",
         commercialRootDigest: invoice.digest,
         totalMinor: String(verified.evidence.invoice.paidMinor),
         providerMutationEnabled: false,
+        v1: {
+          totals: { netMinor: "2000", taxMinor: "360", totalMinor: "2360" },
+          lines: [{ fiscalTreatmentEvidence: { reference: selection.revision, version: "1" } }],
+          snapshotDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+        },
       },
     });
-    expect(await prepareRestaurantFiscalInvoice({ ...preparationInput, classifications: [] })).toEqual({
-      ready: false,
-      reason: "MISSING_FISCAL_CLASSIFICATION",
-    });
+    expect(result).toMatchObject({ preparation: { lines: [{ fiscal: {
+      taxGroup: "B", classificationEvidence: selection.revision,
+    } }] } });
+    const { projectRestaurantInvoiceV1 } = await import("@/lambda/domains/restaurants/fiscalizable-invoice-v1");
+    const { canonical, hash: sha256 } = await import("@/lambda/shared/authority/integrity");
+    const projection = projectRestaurantInvoiceV1(verified.evidence);
+    const { snapshotDigest, ...snapshot } = projection.document;
+    expect(snapshotDigest).toBe(sha256(canonical({
+      profile: "LIASS-FISCAL-C14N-1", version: 1, kind: "snapshot", payload: snapshot,
+    })));
+    expect(projection.document.projectionEvidenceDigest).toBe(sha256(canonical({
+      profile: "LIASS-FISCAL-C14N-1", version: 1, kind: "projection-evidence",
+      payload: projection.projectionEvidence,
+    })));
+    expect(projection.limits.envelopeBytes).toBeLessThanOrEqual(358400);
+    expect(projection.limits.projectionBytes).toBeLessThanOrEqual(358400);
+    expect(projection.limits.sourcePartBytes).toBeLessThanOrEqual(8 * 1024 * 1024);
+
+    const execution = await import("@/lambda/domains/fiscal-compliance/core/test-execution");
+    const { restaurantBeninPreparation } = await import("@/lambda/domains/restaurants/benin-fiscal-request-mapper");
+    const gate = jest.spyOn(execution, "realFiscalTestEnabled").mockReturnValue(true);
+    try {
+      const prepareProvider = restaurantBeninPreparation(f.outlet.id, v.sessionId, [], {
+        environment: "TEST", invoiceType: "FV", priceBasis: "TTC", pricingEvidence: "fixture",
+        commercialMinorUnitsPerFranc: 1, taxGroups: ["B"], taxMetadataEvidence: "fixture",
+        operator: { actorId: "owner", name: "Operator", evidence: "fixture" },
+        payments: [{ sourceMethod: "CASH", providerMethod: "ESPECES", evidence: "fixture" }],
+      });
+      expect(await prepareProvider({ orgId: org, actorId: "owner" }, {
+        orgId: org, environment: "TEST", sourceDomain: "restaurants", sourceDocumentType: "INVOICE",
+        sourceDocumentId: invoice.receiptId, jurisdiction: "BJ", obligation: "NORMALIZE",
+      })).toMatchObject({
+        total: 2360,
+        ordinaryVatTotals: { net: 2000, tax: 360 },
+        payload: { invoice: {
+          items: [{ price: 2360, quantity: 1, taxGroup: "B" }],
+          payment: [{ name: "ESPECES", amount: 2360 }],
+        } },
+      });
+    } finally {
+      gate.mockRestore();
+    }
+    await selectRegime("RESTAURANT_VAT_ON_MARGIN");
+    expect(await prepareRestaurantFiscalInvoice(preparationInput)).toEqual(result);
     seller.mockClear();
     delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
     expect(await finish(v.sessionId)).toEqual(invoice);

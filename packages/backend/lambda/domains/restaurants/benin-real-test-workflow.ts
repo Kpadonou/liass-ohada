@@ -35,7 +35,11 @@ export function restaurantBeninRealTestWorkflow(config: RealTestConfiguration,
         expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
       if (hash(canonical(clean(payload))) !== prepared.requestDigest ||
         prepared.sourceDigest !== config.sourceDigest || payload.invoice.ifu !== config.ifu ||
-        prepared.total !== config.expectedFiscalTotals.total) throw new Error("FISCAL_CONFIGURATION_MISMATCH");
+        prepared.total !== config.expectedFiscalTotals.total ||
+        prepared.ordinaryVatTotals?.net !== config.expectedFiscalTotals.hab ||
+        prepared.ordinaryVatTotals?.tax !== config.expectedFiscalTotals.vab ||
+        config.expectedFiscalTotals.tab !== prepared.total ||
+        config.expectedFiscalTotals.tb !== 18) throw new Error("FISCAL_CONFIGURATION_MISMATCH");
       await verifyContext();
       const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), payload.invoice, payload.expected);
       // Keep UID even when any detailed fiscal total differs. This is not permission to confirm.

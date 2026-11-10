@@ -37,3 +37,25 @@ export function calculateRestaurantPilotTax(input: {
     grossMinor: input.grossMinor,
   });
 }
+
+type SaleTaxAmounts = {
+  subtotalMinor: number;
+  grossMinor: number;
+  lineTotalMinor: number;
+  taxMinor: number;
+  currency: string;
+  ordinaryTax?: NonNullable<import("@liass-ohada/shared/restaurants").RestaurantOrderItem["snapshot"]>["ordinaryTax"];
+};
+
+/** Historical verification uses only frozen facts. */
+export function validRestaurantSaleTax(snapshot: SaleTaxAmounts): boolean {
+  if (snapshot.grossMinor !== snapshot.lineTotalMinor) return false;
+  const { ordinaryTax, subtotalMinor, taxMinor } = snapshot;
+  if (!ordinaryTax) return taxMinor === 0 && subtotalMinor === snapshot.grossMinor;
+  const { policy, policyDigest } = ordinaryTax;
+  return snapshot.currency === policy.currency &&
+    policyDigest === hash(canonical(policy)) &&
+    subtotalMinor > 0 && taxMinor > 0 &&
+    BigInt(subtotalMinor) + BigInt(taxMinor) === BigInt(snapshot.grossMinor) &&
+    BigInt(subtotalMinor) * BigInt(policy.profile.rule.taxRateBasisPoints) === BigInt(taxMinor) * 10000n;
+}

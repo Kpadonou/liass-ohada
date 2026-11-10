@@ -1,3 +1,4 @@
+import { validRestaurantSaleTax } from "./pilot-tax-calculation";
 import {
   RestaurantIssuanceProvenanceRepository as Provenance,
   syntheticProvenanceEnabled,
@@ -467,7 +468,8 @@ export class RestaurantReceiptService {
         if (item.status !== "CANCELLED") fail();
         continue;
       }
-      if (item.snapshot.currency !== m.context.currency) fail();
+      if (item.snapshot.currency !== m.context.currency ||
+          (item.snapshot.ordinaryTax && !validRestaurantSaleTax(item.snapshot))) fail();
       const cancelled = item.status === "CANCELLED";
       if (cancelled && (!item.cancelledAt || !item.cancellationReason)) fail();
       const line = c.RestaurantReceiptLineSchema.parse({

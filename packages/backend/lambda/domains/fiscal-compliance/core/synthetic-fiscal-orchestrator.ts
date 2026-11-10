@@ -18,6 +18,7 @@ export interface VerifiedFiscalPreparation {
   sourceDigest: string;
   requestDigest: string;
   total: number;
+  ordinaryVatTotals?: { net: number; tax: number };
   /** Owner-verified immutable commercial and provenance evidence; never persisted here. */
   payload: unknown;
 }

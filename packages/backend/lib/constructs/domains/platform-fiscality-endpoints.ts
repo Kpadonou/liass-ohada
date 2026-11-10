@@ -141,6 +141,25 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         },
       }),
     );
+    const profileRole = new iam.Role(this, "ProfileRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
+    });
+    profileRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"],
+      resources: [props.table.tableArn],
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } },
+    }));
+    profileRole.addToPolicy(new iam.PolicyStatement({
+      actions: ["dynamodb:UpdateItem"],
+      resources: [props.table.tableArn],
+      conditions: {
+        "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] },
+        "ForAllValues:StringEquals": {
+          "dynamodb:Attributes": ["PK", "SK", "fiscalRegime", "country", "entityType", "orgId", "status", "workspaceType"],
+        },
+      },
+    }));
     const parameterArn = Stack.of(this).formatArn({
       service: "ssm",
       resource: "parameter",
@@ -204,6 +223,8 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
     );
     // No GetParametersByPath, DeleteParameter, SecretsManager, custom KMS key or administrator-registry access.
     for (const [method, routePath, actionName] of [
+      [HttpMethod.GET, "/me/organization/fiscality/profile", "read-fiscal-profile"],
+      [HttpMethod.PUT, "/me/organization/fiscality/profile", "select-fiscal-profile"],
       [
         HttpMethod.GET,
         "/me/organization/fiscality/connections",
@@ -233,7 +254,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
       const verification = actionName === "verify-fiscal-connection";
       this.addRoute({
         ...props,
-        lambdaRole: verification ? verificationRole : enrollmentRole,
+        lambdaRole: verification ? verificationRole : routePath.endsWith("/profile") ? profileRole : enrollmentRole,
         method,
         routePath,
         actionName,
