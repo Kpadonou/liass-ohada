@@ -1592,7 +1592,7 @@ test("authentic FINAL atomically freezes authorities and replays without recaptu
   const { provenance: fixture } = await import("./provenance-fixture");
   const v = await visit();
   await settle(v);
-  process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = "1";
+  process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID = org;
   const timezone = { ...fixture.timezone, orgId: org };
   const current = { PK: K.orgKey(org), SK: K.restaurantIssuanceTimezoneCurrentSK(), orgId: org,
     entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_CURRENT", status: "ACTIVE", version: 1,
@@ -1621,6 +1621,20 @@ test("authentic FINAL atomically freezes authorities and replays without recaptu
     expect(provenance.evidence.evidenceOrigin).toBe("AUTHENTIC");
     expect(provenance.evidence.issuedAt).toBe(invoice.issuedAt);
     expect(provenance.evidence.commercialRootDigest).toBe(invoice.digest);
+    expect(verified.evidence.parts.map(({ content }) => content.kind)).toEqual([
+      "COMMERCIAL",
+      "SETTLEMENT",
+    ]);
+    expect(verified.evidence.lines).toHaveLength(1);
+    expect(verified.evidence.lines[0].coordinate).toMatchObject({
+      orderId: v.orderId,
+      partNumber: 1,
+    });
+    expect(verified.evidence.invoice.paidByMethodMinor).toEqual({
+      CASH: verified.evidence.invoice.dueMinor,
+      MOBILE_MONEY: 0,
+      CARD: 0,
+    });
     const { prepareRestaurantFiscalInvoice } = await import(
       "@/lambda/domains/restaurants/fiscal-preparation"
     );
@@ -1650,8 +1664,8 @@ test("authentic FINAL atomically freezes authorities and replays without recaptu
       reason: "MISSING_FISCAL_CLASSIFICATION",
     });
     seller.mockClear();
-    delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
+    delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
     expect(await finish(v.sessionId)).toEqual(invoice);
     expect(seller).not.toHaveBeenCalled();
-  } finally { seller.mockRestore(); delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE; }
+  } finally { seller.mockRestore(); delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID; }
 });

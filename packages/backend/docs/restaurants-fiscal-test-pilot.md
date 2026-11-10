@@ -21,9 +21,14 @@ The offline fixture classification conveys no tax approval.
    credential-verification gates at zero in the baseline release. Check JWT
    routing, tenant and role checks, conditional attempt writes, restricted
    capture access and rollback without removal of fiscal evidence.
+   The recovery route and invoke permission belong to RestaurantsApiStack and
+   target the existing FiscalComplianceApiStack executor. The synthesized
+   Restaurants stack is in the 375–399 architecture-review range. Use a scoped
+   release and preserve unrelated deployed packages and infrastructure.
 3. After separate approval to provision authorities and create the candidate,
    complete and publish it through the normal Restaurants workflow with the
-   approved provenance configuration. Verify authentic provenance and record
+   approved DEV-only CDK context `restoPilotProvenanceOrgId` on the receipt
+   publisher. Omit that context from the baseline release. Verify authentic provenance and record
    the immutable invoice identity and source digest. Stop for missing evidence.
    Never enrich a historical FINAL to make it eligible.
 4. Have the authorized release operator bind the executor configuration to the
@@ -54,12 +59,15 @@ the operator record.
 
 Stop mutations and read status. Preserve the attempt, command identity,
 version, known UID and restricted capture reference. A durable confirmed
-result can be read without sending again. If an operation remains in flight,
-the current internal recovery transition can fence it as UNKNOWN_OUTCOME
-using the authoritative version, without provider I/O. It is not exposed by
-the current JWT routes. Before rollout, approve and rehearse a scoped operator
-entry point for that transition and a restricted evidence access path. Until
-then this is a release blocker.
+result can be read without sending again. If an operation remains in flight, stop operator traffic and establish
+that the original Lambda invocation ended. Wait at least the executor's 45-second
+timeout from the last invocation if completion cannot be observed. Recheck status.
+The bound operator can then POST `/recover` with
+`{"commandId":"<interrupted command>","executionStopped":true}`. The endpoint
+compares the current version and marks the command UNKNOWN_OUTCOME without provider
+I/O. A conflict requires another status read. A repeated recovery for the same
+unknown command returns status. Recovery does not authorize retry or grant
+access to restricted evidence.
 
 For possible CREATE without a durable UID, use the approved DGI TEST support
 procedure to establish whether an invoice exists. For possible CONFIRM with a
@@ -69,3 +77,21 @@ Treat missing capture, malformed response and missing provider evidence as
 unresolved. Preserve evidence and escalate for an attributable decision. Do
 not redispatch, replace the attempt, edit the store directly or claim
 certification from an unresolved outcome.
+
+
+## D05/GB02 evidence for review
+
+The local receipt test publishes and verifies a single FINAL XOF line with
+one CASH settlement, a unique order/item/part coordinate and frozen authentic-mode
+issuance provenance. The source verifier reconciles the full part chain and
+settlements and rejects incomplete, tampered and foreign evidence. The fixture
+tax group proves mapping mechanics only.
+
+The commercial receipt stores a zero tax component. The TEST TTC price and
+provider tax classification cannot establish the immutable V1 commercial net,
+tax and gross decomposition. Review must select either an evidenced zero-tax
+case or an approved tax calculation and source capture rule for the taxable
+case. The review must also pin the currency scale, calculation and treatment
+artifacts, projection fingerprint and independent V1 size measurements before
+a V1 producer can be admitted. The fixture's zero commercial tax is not evidence
+of exemption. The current pilot mapper does not emit a FiscalizableDocument V1.

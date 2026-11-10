@@ -148,19 +148,18 @@ test("inconsistent timezone revision fails closed", async () => {
   await expect(P.prepare(scope, "actor", { ...manifest, issuanceProvenanceOrigin: "AUTHENTIC" }, issuedAt)).rejects.toThrow();
 });
 
-test("authentic policy is explicit, disabled by default and independent of NODE_ENV", async () => {
+test("authentic pilot policy is off by default and scoped to the configured organization", async () => {
   const { authenticProvenanceEnabled } = await import("@/lambda/domains/restaurants/issuance-provenance-repository");
-  const previous = process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
+  const previous = process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
   try {
-    delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
-    expect(authenticProvenanceEnabled()).toBe(false);
-    process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = "true";
-    expect(authenticProvenanceEnabled()).toBe(false);
-    process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = "1";
-    expect(authenticProvenanceEnabled()).toBe(true);
+    delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
+    expect(authenticProvenanceEnabled(scope.orgId)).toBe(false);
+    process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID = scope.orgId;
+    expect(authenticProvenanceEnabled(scope.orgId)).toBe(true);
+    expect(authenticProvenanceEnabled("other-organization")).toBe(false);
   } finally {
-    if (previous === undefined) delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
-    else process.env.RESTAURANTS_AUTHENTIC_PROVENANCE = previous;
+    if (previous === undefined) delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
+    else process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID = previous;
   }
 });
 

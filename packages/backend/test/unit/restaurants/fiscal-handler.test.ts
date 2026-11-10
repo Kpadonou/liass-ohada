@@ -21,6 +21,7 @@ const result = { ...summary, resultAvailable: false, evidenceOrigin: null };
 const service = {
   initiate: jest.fn(),
   confirm: jest.fn(),
+  recover: jest.fn(),
   status: jest.fn(),
   confirmedResult: jest.fn(),
 };
@@ -43,6 +44,7 @@ beforeEach(() => {
     .spyOn(ProductAccessService, "requireActiveProductAccess")
     .mockResolvedValue(undefined as never);
   service.initiate.mockReset().mockResolvedValue(summary);
+  service.recover.mockReset().mockResolvedValue(summary);
   service.status.mockReset().mockResolvedValue(summary);
   service.confirm.mockReset().mockResolvedValue(result);
   service.confirmedResult.mockReset().mockResolvedValue(result);
@@ -54,6 +56,7 @@ afterEach(() => {
 test.each([
   ["initiate-fiscal", "initiate", { attemptId: "a", commandId: "c" }],
   ["confirm-fiscal", "confirm", { commandId: "c", confirm: true }],
+  ["recover-fiscal", "recover", { commandId: "c", executionStopped: true }],
   ["get-fiscal-status", "status", {}],
   ["get-fiscal-result", "confirmedResult", {}],
 ] as const)(

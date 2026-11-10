@@ -234,3 +234,61 @@ test.each([undefined, "SYNTHETIC", "AUTHENTIC"] as const)("real application reje
     expect(settings).not.toHaveBeenCalled();
   } finally { delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE; }
 });
+
+test.each(["CREATE", "CONFIRM"] as const)(
+  "only the bound operator can fence an interrupted %s, with no provider call",
+  async (operation) => {
+    const gate = jest.spyOn(
+      await import("@/lambda/domains/fiscal-compliance/core/test-execution"),
+      "realFiscalTestEnabled",
+    ).mockReturnValue(true);
+    try {
+      jest.mocked(RestaurantInvoiceSourceVerifier.verify).mockResolvedValue({
+        verified: true,
+        evidence: {
+          proof: { digest },
+          issuanceProvenance: { verified: true, evidence: { ...provenance, evidenceOrigin: "AUTHENTIC" } },
+        },
+      } as never);
+      settings.mockResolvedValue({
+        realConfiguration: { ...request, orgId: context.orgId, operatorUserId: context.userId, sourceDigest: digest },
+      });
+      state = reserveFiscalAttempt({
+        identity, attemptId: "attempt", provider: "BENIN_EMECEF_TEST", execution: "REAL_TEST",
+        sourceDigest: digest, requestDigest: digest, expectedTotal: 2000,
+      });
+      state = transitionFiscalAttempt(state, identity, state.version, {
+        kind: "RESERVE_MUTATION", operation: "CREATE", commandId: "create", intentDigest: digest,
+      }).state;
+      if (operation === "CONFIRM") {
+        state = transitionFiscalAttempt(state, identity, state.version, {
+          kind: "CREATED", commandId: "create", uid: "private-uid", total: 2000, fiscalTotalsVerified: true,
+        }).state;
+        state = transitionFiscalAttempt(state, identity, state.version, {
+          kind: "RESERVE_MUTATION", operation, commandId: "confirm", intentDigest: digest,
+          diagnosticReference: digest,
+        }).state;
+      }
+      const recover = jest.spyOn(FiscalAttemptStore.prototype, "recover")
+        .mockImplementation(async (scope, version) => {
+          const result = transitionFiscalAttempt(state!, scope, version, { kind: "RECOVER_INTERRUPTED" });
+          state = result.state;
+          return result;
+        });
+      const real = new RestaurantFiscalApplicationService(settings, true);
+      const input = { ...request, commandId: operation.toLowerCase(), executionStopped: true };
+      await expect(real.recover({ ...context, userId: "other" }, input)).rejects.toMatchObject({ statusCode: 403 });
+      await expect(real.recover(context, { ...input, commandId: "other" })).rejects.toMatchObject({ statusCode: 409 });
+      expect(recover).not.toHaveBeenCalled();
+      expect(await real.recover(context, input)).toMatchObject({
+        status: "UNKNOWN_OUTCOME", uncertainOperation: operation, mutationRetryAllowed: false,
+      });
+      expect(await real.recover(context, input)).toMatchObject({ status: "UNKNOWN_OUTCOME" });
+      expect(recover).toHaveBeenCalledTimes(1);
+      expect(create).not.toHaveBeenCalled();
+      expect(confirm).not.toHaveBeenCalled();
+    } finally {
+      gate.mockRestore();
+    }
+  },
+);

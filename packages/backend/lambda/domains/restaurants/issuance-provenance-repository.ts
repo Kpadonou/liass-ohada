@@ -25,8 +25,10 @@ export const syntheticProvenanceEnabled = () =>
   process.env.RESTAURANTS_SYNTHETIC_PROVENANCE === "1";
 
 /** Server-controlled publication policy; disabled unless explicitly configured. */
-export const authenticProvenanceEnabled = () =>
-  process.env.RESTAURANTS_AUTHENTIC_PROVENANCE === "1";
+export const authenticProvenanceEnabled = (orgId: string) =>
+  process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID === orgId ||
+  (process.env.NODE_ENV === "test" &&
+    process.env.RESTAURANTS_AUTHENTIC_PROVENANCE === "1");
 
 export class RestaurantIssuanceProvenanceRepository {
   private static async get(Key: { PK: string; SK: string }) {

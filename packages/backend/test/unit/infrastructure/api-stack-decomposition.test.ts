@@ -133,7 +133,7 @@ describe("API stack decomposition", () => {
           (r) => v.Properties.RouteKey === `${r.method} ${r.path}`,
         ),
     );
-    expect(routes).toHaveLength(4);
+    expect(routes).toHaveLength(RESTAURANT_FISCAL_ROUTES.length);
     const targets = new Set(
       routes.map(([, v]) => JSON.stringify(v.Properties.Target)),
     );
@@ -158,8 +158,8 @@ describe("API stack decomposition", () => {
       expect(added.map(([, v]) => v.Type).sort()).toEqual(
         [
           "AWS::ApiGatewayV2::Integration",
-          ...Array(4).fill("AWS::ApiGatewayV2::Route"),
-          ...Array(4).fill("AWS::Lambda::Permission"),
+          ...Array(saved.length).fill("AWS::ApiGatewayV2::Route"),
+          ...Array(saved.length).fill("AWS::Lambda::Permission"),
         ].sort(),
       );
       for (const [id, value] of Object.entries(before))
@@ -186,6 +186,26 @@ describe("API stack decomposition", () => {
         Principal: "apigateway.amazonaws.com",
         SourceAccount: "123456789012",
       });
+    }
+  });
+
+  test("pilot provenance is off by default and configured only on DEV receipt publication", () => {
+    for (const orgId of [undefined, "pilot-org"]) {
+      const app = new cdk.App({ context: {
+        authUseSecretsManager: true,
+        ...(orgId ? { restoPilotProvenanceOrgId: orgId } : {}),
+      } });
+      const stack = new LiassOhadaBackendStack(app, "TestBackend", {
+        stage: "dev", env: { account: "123456789012", region: "eu-west-3" },
+      });
+      const owner = stack.node.findAll().find((node) => node instanceof RestaurantsApiStack) as RestaurantsApiStack;
+      const functions = Object.values(Template.fromStack(owner).findResources("AWS::Lambda::Function"));
+      const configured = functions.filter((fn) =>
+        fn.Properties.Environment?.Variables?.RESTAURANTS_PILOT_PROVENANCE_ORG_ID !== undefined);
+      expect(configured.map((fn) => fn.Properties.FunctionName)).toEqual(
+        orgId ? ["liass-ohada-dev-restaurants-publish-receipt"] : [],
+      );
+      if (orgId) expect(configured[0].Properties.Environment.Variables.RESTAURANTS_PILOT_PROVENANCE_ORG_ID).toBe(orgId);
     }
   });
 

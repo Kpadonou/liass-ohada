@@ -8,13 +8,17 @@ import {
 import { z } from "zod";
 import { AppError } from "@/lambda/shared/app-error";
 import { FiscalAttemptStore } from "../fiscal-compliance/persistence/fiscal-attempt-store";
-import type { FiscalAttemptState } from "../fiscal-compliance/core/fiscal-attempt-state";
+import { FiscalAttemptConflict, type FiscalAttemptState } from "../fiscal-compliance/core/fiscal-attempt-state";
 import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { RestaurantReceiptService } from "./receipt-service";
 import { restaurantBeninSyntheticWorkflow } from "./benin-synthetic-workflow";
 
 type Context = { orgId: string; userId: string };
 type Request = z.infer<typeof requestSchema>;
+export const fiscalRecoveryRequest = requestSchema.extend({
+  commandId: z.string().trim().min(1).max(200),
+  executionStopped: z.literal(true),
+}).strict();
 type Settings = { realConfiguration?: RealTestConfiguration } & Pick<
   Parameters<typeof restaurantBeninSyntheticWorkflow>[0],
   "classifications" | "mapping" | "adapter" | "credential"
@@ -99,6 +103,35 @@ export class RestaurantFiscalApplicationService {
       resultAvailable: result.confirmed,
       evidenceOrigin: result.confirmed ? (this.real ? "DGI_TEST" as const : "SYNTHETIC" as const) : null,
     };
+  }
+  /** Fence an interrupted command after the operator confirms execution has stopped. */
+  async recover(context: Context, input: unknown) {
+    const { commandId, executionStopped: _, ...request } = fiscalRecoveryRequest.parse(input);
+    if (!this.real) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    const source = await this.verify(context, request);
+    const { realConfiguration } = await this.settings(context, request);
+    if (!realConfiguration || realConfiguration.operatorUserId !== context.userId ||
+      realConfiguration.orgId !== context.orgId || realConfiguration.outletId !== request.outletId ||
+      realConfiguration.sessionId !== request.sessionId || realConfiguration.invoiceId !== request.invoiceId ||
+      realConfiguration.sourceDigest !== source.proof.digest)
+      throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    const identity = this.identity(context, request);
+    const store = new FiscalAttemptStore();
+    const state = await store.read(identity);
+    if (!state || state.execution !== "REAL_TEST" || state.sourceDigest !== source.proof.digest ||
+      state.activeCommandId !== commandId ||
+      state.uncertainOperation === "CANCEL" ||
+      !["CREATE_IN_FLIGHT", "CONFIRM_IN_FLIGHT", "UNKNOWN_OUTCOME"].includes(state.status))
+      throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
+    await this.verify(context, request);
+    if (state.status === "UNKNOWN_OUTCOME") return this.view(request, state);
+    try {
+      const recovered = await store.recover(identity, state.version);
+      return this.view(request, recovered.state);
+    } catch (error) {
+      if (error instanceof FiscalAttemptConflict) throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
+      throw error;
+    }
   }
   private async workflow(context: Context, request: Request) {
     const settings = await this.settings(context, request);

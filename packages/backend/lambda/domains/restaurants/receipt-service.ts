@@ -244,7 +244,7 @@ export class RestaurantReceiptService {
         receiptId,
         guestSessionId: sessionId,
         state: "BUILDING",
-        ...(syntheticProvenanceEnabled() || authenticProvenanceEnabled()
+        ...(syntheticProvenanceEnabled() || authenticProvenanceEnabled(scope.orgId)
           ? {
               issuanceProvenanceVersion: 1 as const,
               issuanceProvenanceOrigin: syntheticProvenanceEnabled()

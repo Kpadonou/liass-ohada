@@ -66,6 +66,10 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
       staffRole: role,
     });
     addRestaurantsManagementRoutes(this, { ...props, lambdaRole: role });
+    const provenanceOrg = this.node.tryGetContext("restoPilotProvenanceOrgId");
+    if (provenanceOrg !== undefined &&
+      (props.stage !== "dev" || typeof provenanceOrg !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(provenanceOrg)))
+      throw new Error("Restaurants pilot provenance requires an explicit DEV organization");
     for (const route of [
       ...RESTAURANTS_ROUTES,
       ...RESTAURANT_TRANSACTION_ROUTES,
@@ -98,6 +102,9 @@ export class RestaurantsEndpoints extends DomainConstructFactory {
         environment: {
           PLATFORM_TABLE_NAME: props.table.tableName,
           RESTAURANTS_TABLE_NAME: props.restaurantsTable.tableName,
+          ...(route.name === "publish-receipt" && typeof provenanceOrg === "string"
+            ? { RESTAURANTS_PILOT_PROVENANCE_ORG_ID: provenanceOrg }
+            : {}),
         },
         method: apigw.HttpMethod[route.method],
         routePath: route.path,

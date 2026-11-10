@@ -4,12 +4,12 @@ import {
   AppError,
   createHandler,
 } from "@/lambda/shared/middleware/handler-wrapper";
-import { RestaurantFiscalApplicationService } from "./fiscal-application-service";
+import { RestaurantFiscalApplicationService, fiscalRecoveryRequest } from "./fiscal-application-service";
 import { RESTAURANT_FISCAL_ROUTES } from "./fiscal-routes";
 
 type Service = Pick<
   RestaurantFiscalApplicationService,
-  "initiate" | "confirm" | "status" | "confirmedResult"
+  "initiate" | "confirm" | "recover" | "status" | "confirmedResult"
 >;
 /** Shared JWT/tenant/permission boundary. Real TEST entrypoint supplies isolated dependencies. */
 export function restaurantFiscalHandler(
@@ -23,7 +23,9 @@ export function restaurantFiscalHandler(
       ? c.RestaurantFiscalInitiateRequestSchema
       : route.operation === "confirm"
         ? c.RestaurantFiscalConfirmRequestSchema
-        : c.RestaurantFiscalSourceRequestSchema;
+        : route.operation === "recover"
+          ? fiscalRecoveryRequest
+          : c.RestaurantFiscalSourceRequestSchema;
   const handler = createHandler(
     schema,
     async (input, context) => {

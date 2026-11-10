@@ -18,6 +18,13 @@ export const RESTAURANT_FISCAL_ROUTES = [
     operation: "confirm",
   },
   {
+    name: "recover-fiscal",
+    method: "POST",
+    path: `${path}/recover`,
+    permission: "RESTAURANTS_RECEIPT_MANAGE" satisfies DomainPermission,
+    operation: "recover",
+  },
+  {
     name: "get-fiscal-status",
     method: "GET",
     path,
