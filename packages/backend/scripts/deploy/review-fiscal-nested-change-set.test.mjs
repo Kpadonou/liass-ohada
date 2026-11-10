@@ -73,5 +73,15 @@ test("full scope rejects child replacements even when template properties match"
   const root = {Status:"CREATE_COMPLETE",ExecutionStatus:"AVAILABLE",IncludeNestedStacks:true,Changes:[{ResourceChange:{LogicalResourceId:"Restaurants",Action:"Modify",Replacement:"False",ChangeSetId:"r"}}]};
   const resource = {Type:"AWS::ApiGatewayV2::Route",Properties:{ApiId:{Ref:"ApiId"}}};
   const stack = {name:"restaurants",logicalId:"Restaurants",liveTemplate:{Resources:{Route:resource}},candidateTemplate:{Resources:{Route:structuredClone(resource)}},childChangeSet:{Changes:[{ResourceChange:{LogicalResourceId:"Route",Action:"Modify",Replacement:"True",Details:[{Evaluation:"Dynamic",Target:{Attribute:"Properties",Name:"ApiId"}}]}}]},parameters:{ApiId:"api-1"},allowedAdditions:[],allowedCodeUpdates:[]};
-  assert.throws(() => reviewReleaseScope({root,parentLive:{Resources:{Restaurants:{}}},parentCandidate:{Resources:{Restaurants:{}}},stacks:[stack]}), /Replacement risk/);
+  const parentLive = {Resources:{Restaurants:{Type:"AWS::CloudFormation::Stack",Properties:{TemplateURL:"old",Parameters:{ApiId:{Ref:"Api"}}}}}};
+  const parentCandidate = {Resources:{Restaurants:{Type:"AWS::CloudFormation::Stack",Properties:{TemplateURL:"new",Parameters:{ApiId:"api-1"}}}}};
+  assert.throws(() => reviewReleaseScope({root,parentLive,parentCandidate,stacks:[stack]}), /Replacement risk/);
+});
+
+test("full scope rejects a nested parameter not frozen to live evidence", () => {
+  const root = {Status:"CREATE_COMPLETE",ExecutionStatus:"AVAILABLE",IncludeNestedStacks:true,Changes:[{ResourceChange:{LogicalResourceId:"Identity",Action:"Modify",Replacement:"False",ChangeSetId:"i"}}]};
+  const parentLive = {Resources:{Identity:{Type:"AWS::CloudFormation::Stack",Properties:{TemplateURL:"old",Parameters:{ApiId:{Ref:"Api"}}}}}};
+  const parentCandidate = {Resources:{Identity:{Type:"AWS::CloudFormation::Stack",Properties:{TemplateURL:"new",Parameters:{ApiId:"wrong"}}}}};
+  const stack = {name:"identity",logicalId:"Identity",liveTemplate:{Resources:{}},candidateTemplate:{Resources:{}},childChangeSet:{Changes:[]},parameters:{ApiId:"api-1"},allowedAdditions:[],allowedCodeUpdates:[]};
+  assert.throws(() => reviewReleaseScope({root,parentLive,parentCandidate,stacks:[stack]}), /not frozen to the live value/);
 });

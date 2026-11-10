@@ -136,9 +136,21 @@ export function reviewReleaseScope({ root, parentLive, parentCandidate, parentRe
     const parentBefore = parentLiveResources[stack.logicalId];
     const parentAfter = parentCandidateResources[stack.logicalId];
     if (!parentBefore || !parentAfter) throw new Error(`Missing parent nested stack ${stack.logicalId}`);
-    const withoutTemplateUrl = (resource) => { const copy = structuredClone(resource); delete copy.Properties?.TemplateURL; return copy; };
-    if (normalize(withoutTemplateUrl(parentBefore)) !== normalize(withoutTemplateUrl(parentAfter)))
+    const beforeStatic = structuredClone(parentBefore), afterStatic = structuredClone(parentAfter);
+    delete beforeStatic.Properties?.TemplateURL; delete afterStatic.Properties?.TemplateURL;
+    const beforeParameters = beforeStatic.Properties?.Parameters ?? {};
+    const afterParameters = afterStatic.Properties?.Parameters ?? {};
+    delete beforeStatic.Properties?.Parameters; delete afterStatic.Properties?.Parameters;
+    if (normalize(beforeStatic) !== normalize(afterStatic))
       throw new Error(`Nested-stack parent properties changed: ${stack.logicalId}`);
+    if (normalize(Object.keys(beforeParameters).sort()) !== normalize(Object.keys(afterParameters).sort()))
+      throw new Error(`Nested-stack parameter contract changed: ${stack.logicalId}`);
+    for (const [name, currentValue] of Object.entries(stack.parameters ?? {})) {
+      if (!(name in beforeParameters) || afterParameters[name] !== currentValue)
+        throw new Error(`Nested-stack parameter is not frozen to the live value: ${stack.logicalId}.${name}`);
+    }
+    if (Object.keys(afterParameters).length !== Object.keys(stack.parameters ?? {}).length)
+      throw new Error(`Nested-stack parameter evidence incomplete: ${stack.logicalId}`);
     const result = classifyResolvedChanges({
       liveTemplate: stack.liveTemplate,
       candidateTemplate: stack.candidateTemplate,
@@ -150,6 +162,24 @@ export function reviewReleaseScope({ root, parentLive, parentCandidate, parentRe
     for (const id of result.noopDynamic) if (!stack.childChangeSet.Changes.some((entry) => entry.ResourceChange.LogicalResourceId === id)) throw new Error(`Untracked dynamic change: ${id}`);
   }
   return { status: "PASS", nestedStackChanges: nestedChanges.length, resolvedParentNoops: parentNoops.length };
+}
+
+export function reviewReleaseManifest(manifest, readJson = (file) => JSON.parse(readFileSync(file, "utf8"))) {
+  return reviewReleaseScope({
+    root: readJson(manifest.rootChangeSet),
+    parentLive: readJson(manifest.parentLive),
+    parentCandidate: readJson(manifest.parentCandidate),
+    parentResolutions: readJson(manifest.parentResolutions),
+    stacks: manifest.stacks.map((stack) => ({
+      ...stack,
+      liveTemplate: readJson(stack.liveTemplate),
+      candidateTemplate: readJson(stack.candidateTemplate),
+      childChangeSet: readJson(stack.childChangeSet),
+      parameters: readJson(stack.parameters),
+      allowedAdditions: stack.allowedAdditions.map((pattern) => new RegExp(pattern)),
+      allowedCodeUpdates: stack.allowedCodeUpdates.map((pattern) => new RegExp(pattern)),
+    })),
+  });
 }
 
 export function review(root, child, expected) {
@@ -182,6 +212,7 @@ export function review(root, child, expected) {
   return { status: "PASS", parentChanges: 1, identityAdditions: 34 };
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const values = process.argv.slice(2).map(file => JSON.parse(readFileSync(file, "utf8")));
-  console.log(JSON.stringify(review(...values)));
+  const files = process.argv.slice(2);
+  if (files.length === 1) console.log(JSON.stringify(reviewReleaseManifest(JSON.parse(readFileSync(files[0], "utf8")))));
+  else console.log(JSON.stringify(review(...files.map(file => JSON.parse(readFileSync(file, "utf8"))))));
 }
