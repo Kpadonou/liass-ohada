@@ -38,3 +38,13 @@ test("full scope rejects unresolved dynamic references", () => {
     parameters:{},parentParameters:{},allowedAdditions:[],allowedCodeUpdates:[]
   }]}), /Unresolved Ref/);
 });
+
+test("full scope accepts the three approved nested stacks", () => {
+  const ids = ["Identity", "Restaurants", "Fiscal"];
+  const root = {Status:"CREATE_COMPLETE",ExecutionStatus:"AVAILABLE",IncludeNestedStacks:true,Changes:ids.map((id) => ({ResourceChange:{LogicalResourceId:id,Action:"Modify",Replacement:"False",ChangeSetId:id}}))};
+  const stacks = ids.map((name) => ({
+    name, logicalId:name, liveTemplate:{Resources:{}}, candidateTemplate:{Resources:{}},
+    childChangeSet:{Changes:[]}, parameters:{}, parentParameters:{}, allowedAdditions:[], allowedCodeUpdates:[]
+  }));
+  assert.equal(reviewReleaseScope({root,parentLive:{Resources:Object.fromEntries(ids.map((id) => [id,{}]))},parentCandidate:{Resources:Object.fromEntries(ids.map((id) => [id,{}]))},stacks}).status,"PASS");
+});
