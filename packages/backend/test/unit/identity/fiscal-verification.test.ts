@@ -194,7 +194,6 @@ beforeEach(() => {
     role: "OWNER",
     accessSource: "DIRECT",
     workspaceType: "COMPANY",
-    country: "BJ",
     status: "ACTIVE",
   });
   rows.set(key(identityKey), { ...identityKey, version: 1 });
@@ -234,6 +233,8 @@ beforeEach(() => {
     data: structuredClone(data),
     secretReference: reference,
   });
+  const organization = { PK: K.orgKey(org), SK: K.organizationSK(), entityType: "ORGANIZATION", orgId: org, status: "ACTIVE", workspaceType: "COMPANY", country: "BJ" };
+  rows.set(key(organization), organization);
   db.on(GetItemCommand).callsFake((input) => {
     const item = rows.get(key(unmarshall(input.Key)));
     return item
@@ -401,7 +402,6 @@ test.each([
   { role: "MEMBER" },
   { accessSource: "CABINET" },
   { workspaceType: "ACCOUNTING_FIRM" },
-  { country: "TG" },
   { status: "DISABLED" },
 ])(
   "OWNER authorization required before secret access %j",

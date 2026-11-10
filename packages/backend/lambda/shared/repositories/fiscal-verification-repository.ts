@@ -1,3 +1,4 @@
+import { fiscalOrganizationCheck } from "../authorization/fiscal-organization";
 import {
   GetItemCommand,
   TransactWriteItemsCommand,
@@ -167,6 +168,7 @@ export class FiscalVerificationRepository {
         new TransactWriteItemsCommand({
           TransactItems: [
             Connections.membershipCheck(orgId, principal.sub),
+            fiscalOrganizationCheck(orgId),
             {
               Put: {
                 TableName: table(),
@@ -256,6 +258,7 @@ export class FiscalVerificationRepository {
         new TransactWriteItemsCommand({
           TransactItems: [
             Connections.membershipCheck(orgId, principal.sub),
+            fiscalOrganizationCheck(orgId),
             {
               Put: {
                 TableName: table(),

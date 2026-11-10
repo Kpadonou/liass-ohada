@@ -82,6 +82,7 @@ beforeEach(() => {
   db.on(GetItemCommand).callsFake((input) => {
     const key = unmarshall(input.Key);
     if (key.SK === K.platformAdminGrantSK()) return { Item: marshall(grant()) };
+    if (key.SK === K.organizationSK()) return { Item: marshall({ ...key, entityType: "ORGANIZATION", orgId: "company-a", status: "ACTIVE", workspaceType: "COMPANY", country: "BJ" }) };
     if (key.SK === K.orgUserAccessSK(sub))
       return {
         Item: marshall({
@@ -92,7 +93,6 @@ beforeEach(() => {
           status: "ACTIVE",
           role: "MEMBER",
           workspaceType: "COMPANY",
-          country: "BJ",
           accessSource: "DIRECT",
         }),
       };
@@ -127,6 +127,7 @@ test("legacy approval records without country of origin remain readable", async 
   const legacyFields = { ...fields, countryOfOrigin: undefined };
   db.on(GetItemCommand).callsFake((input) => {
     const key = unmarshall(input.Key);
+    if (key.SK === K.organizationSK()) return { Item: marshall({ ...key, entityType: "ORGANIZATION", orgId: "company-a", status: "ACTIVE", workspaceType: "COMPANY", country: "BJ" }) };
     if (key.SK === K.orgUserAccessSK(sub))
       return {
         Item: marshall({
@@ -137,7 +138,6 @@ test("legacy approval records without country of origin remain readable", async 
           status: "ACTIVE",
           role: "MEMBER",
           workspaceType: "COMPANY",
-          country: "BJ",
           accessSource: "DIRECT",
         }),
       };

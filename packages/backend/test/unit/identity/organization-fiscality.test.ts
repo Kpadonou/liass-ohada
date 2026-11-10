@@ -53,7 +53,6 @@ const member = (orgId = "org-a", overrides: Record<string, unknown> = {}) => ({
   status: "ACTIVE",
   role: "OWNER",
   workspaceType: "COMPANY",
-    country: "BJ",
   accessSource: "DIRECT",
   ...overrides,
 });
@@ -83,6 +82,8 @@ beforeEach(() => {
   rows = new Map();
   parameters = new Map();
   rows.set(key(member()), member());
+  const organization = { PK: K.orgKey("org-a"), SK: K.organizationSK(), entityType: "ORGANIZATION", orgId: "org-a", status: "ACTIVE", workspaceType: "COMPANY", country: "BJ" };
+  rows.set(key(organization), organization);
   db.on(GetItemCommand).callsFake((input) => {
     const row = rows.get(key(unmarshall(input.Key)));
     return row ? { Item: marshall(row, { removeUndefinedValues: true }) } : {};
@@ -149,11 +150,11 @@ test("tenant creates metadata with optimistic version, immutable audit and no ap
   });
   const tx = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input
     .TransactItems!;
-  expect(tx).toHaveLength(4);
+  expect(tx).toHaveLength(5);
   expect(tx[0].ConditionCheck!.ConditionExpression).toContain(
     "accessSource = :direct",
   );
-  expect(tx[2].Put!.ConditionExpression).toBe("attribute_not_exists(PK)");
+  expect(tx[3].Put!.ConditionExpression).toBe("attribute_not_exists(PK)");
   expect(
     (
       await handler(
@@ -170,7 +171,6 @@ test.each([
   { role: "CABINET_ADMIN", accessSource: "CABINET" },
   { status: "DISABLED" },
   { workspaceType: "ACCOUNTING_FIRM" },
-  { country: "TG" },
   { accessSource: "CABINET" },
   { accessSource: undefined },
 ])(
@@ -504,4 +504,11 @@ test("lost credential-commit response resolves its durable result without anothe
   expect((await handler(request)).statusCode).toBe(200);
   expect((await handler(request)).statusCode).toBe(200);
   expect(secrets.commandCalls(PutParameterCommand)).toHaveLength(1);
+});
+
+test("authoritative organization country overrides a stale Benin membership", async () => {
+  rows.set(key(member()), member("org-a", { country: "BJ" }));
+  const organization = rows.get(key({ PK: K.orgKey("org-a"), SK: K.organizationSK() }))!;
+  organization.country = "TG";
+  expect((await handler(event("GET", "", {}))).statusCode).toBe(403);
 });

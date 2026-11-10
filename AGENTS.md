@@ -4,6 +4,8 @@
 
 Codex has broad technical autonomy in DEV. Use appropriate engineering tools for diagnosis, implementation, deployment, and validation, including browser automation, real application interaction, Network and Console inspection, DEV APIs, logs, targeted data reads, scripts, tests, and DEV deployments. Do not rule out browser or runtime investigation when it materially helps. Keep repository searches and tests proportionate to the task; run broader validation once when justified.
 
+Work from approved outcomes and acceptance criteria. Make technical decisions within the authorized scope using focused exploration, proportionate tests, and existing project conventions. Avoid repeated investigations, unnecessary clarification, duplicate documentation, and unrelated refactoring. Escalate genuine product decisions, architecture conflicts, security risks, destructive operations, and deployment authorization. Prefer controlled releases over per-feature deployments. Report concise evidence, blockers, risks, and commit references.
+
 DEV test data may be created or changed when genuinely necessary. Report any direct data mutation explicitly, and validate through the normal application workflow when that workflow is under test.
 
 Report technical validation, Codex runtime validation, and Product Owner manual acceptance separately. Codex validation alone does not close a chantier that requires Product Owner acceptance.

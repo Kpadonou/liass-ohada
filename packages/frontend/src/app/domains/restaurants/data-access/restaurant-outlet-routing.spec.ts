@@ -412,3 +412,33 @@ it('cannot resume a foreign resource parent while a compatible cached Outlet sur
   expect(activated).toEqual([rid(2)]);
   expect(routing.context.id()).toBe(rid(2));
 });
+
+it('initializes a missing restaurant before creating and resolving its first outlet', async () => {
+  api.list.mockResolvedValue({ items: [] });
+  api.get.mockResolvedValue(null);
+  await h.navigateByUrl('/restaurants/service');
+  await settled(() => expect(h.routeNativeElement?.querySelector('liass-button button')).toBeTruthy());
+  openEditor.mockImplementationOnce(() => {
+    api.get.mockResolvedValue({ isActive: true });
+    return { afterClosed: () => of({ isActive: true }) };
+  });
+  h.routeNativeElement?.querySelector<HTMLButtonElement>('liass-button button')?.click();
+  expect(openEditor.mock.calls[0][1].data.kind).toBe('restaurant');
+  await settled(() => expect(h.routeNativeElement?.textContent).toContain('premier établissement'));
+  openEditor.mockImplementationOnce(() => {
+    api.list.mockResolvedValue({ items: [row('outlet')] });
+    return { afterClosed: () => of(row('outlet')) };
+  });
+  h.routeNativeElement?.querySelector<HTMLButtonElement>('liass-button button')?.click();
+  await settled(() => expect(router.url).toBe('/restaurants/service'));
+  expect(activated).toEqual([rid(2)]);
+});
+
+it('gives unassigned staff guidance without offering first-outlet creation', async () => {
+  role.set('WAITER');
+  api.myOutlets.mockResolvedValue({ items: [] });
+  await h.navigateByUrl('/restaurants/service');
+  await settled(() => expect(h.routeNativeElement?.textContent).toContain('Contactez votre responsable'));
+  expect(openEditor).not.toHaveBeenCalled();
+  expect(api.get).not.toHaveBeenCalled();
+});
