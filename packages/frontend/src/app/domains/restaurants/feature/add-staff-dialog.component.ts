@@ -245,9 +245,14 @@ export class AddStaffDialogComponent {
     if (this.pending() || !this.ready() || this.issue() === 'role') return;
     if (!this.intent) {
       const current = this.member.data();
+      const selectedRole =
+        this.selected() === this.data.user &&
+        this.auth.activeWorkspace()?.productRoles?.RESTAURANTS === 'OWNER'
+          ? 'OWNER'
+          : this.form.controls.role.value;
       this.intent = new StaffProvisioningIntent(
         this.selected()!,
-        current?.status === 'INACTIVE' ? current.restaurantRole! : this.form.controls.role.value,
+        current?.status === 'INACTIVE' ? current.restaurantRole! : selectedRole,
         this.form.controls.outlets.value,
         current?.status === 'INACTIVE' ? current.version : undefined,
       );

@@ -90,7 +90,15 @@ beforeEach(() => {
       { provide: QueryClient, useValue: client },
       {
         provide: AuthStore,
-        useValue: { effectiveOrgId: org, currentUserId: user, loadWorkspaces: refresh },
+        useValue: {
+          effectiveOrgId: org,
+          currentUserId: user,
+          loadWorkspaces: refresh,
+          activeWorkspace: () => ({
+            orgId: org(),
+            productRoles: { RESTAURANTS: 'OWNER' },
+          }),
+        },
       },
       { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
       { provide: RestaurantsCapabilities, useValue: { canProvisionStaff: permission } },
@@ -149,6 +157,36 @@ it('blocks duplicate creation for an already ACTIVE Staff', async () => {
   expect(f.componentInstance.ready()).toBe(false);
   await f.componentInstance.submit();
   expect(identity.assignInitialRole).not.toHaveBeenCalled();
+});
+it('binds and assigns the current platform OWNER without replacing their role', async () => {
+  identity.members.mockResolvedValue({
+    items: [{ userId: 'owner', displayName: 'Clotilde H.', status: 'ACTIVE' }],
+  });
+  api.bindStaff.mockImplementation(async () => ({
+    data: (current = staffFixture('owner', { restaurantRole: 'OWNER' })),
+    message: null,
+  }));
+  const f = await dialog();
+  f.componentInstance.form.controls.member.setValue('owner');
+  f.componentInstance.form.controls.outlets.setValue([teamOutlets[0].id]);
+  f.detectChanges();
+  await vi.waitFor(() => {
+    f.detectChanges();
+    expect(f.componentInstance.ready()).toBe(true);
+  });
+  await f.componentInstance.submit();
+  expect(identity.assignInitialRole).not.toHaveBeenCalled();
+  expect(api.bindStaff).toHaveBeenCalledWith('org', {
+    memberUserId: 'owner',
+    clientRequestId: expect.any(String),
+  });
+  expect(api.staffAssignment).toHaveBeenCalledWith(
+    'org',
+    'owner',
+    teamOutlets[0].id,
+    true,
+    { clientRequestId: expect.any(String) },
+  );
 });
 it('requires explicit reactivation confirmation and uses the canonical version without a role mutation', async () => {
   current = staffFixture('member', { status: 'INACTIVE', version: 2 });

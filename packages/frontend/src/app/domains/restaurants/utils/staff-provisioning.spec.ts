@@ -34,6 +34,20 @@ it('composes role, create and zero outlets without extra assignment commands', a
   });
   expect(ports.assignments).not.toHaveBeenCalled();
 });
+it('binds an existing platform OWNER without attempting a role mutation', async () => {
+  vi.mocked(ports.bind).mockImplementation(async () =>
+    (current = staffFixture(user, { restaurantRole: 'OWNER' })),
+  );
+  await new StaffProvisioningIntent(user, 'OWNER', ['a']).run(ports);
+  expect(ports.role).not.toHaveBeenCalled();
+  expect(ports.bind).toHaveBeenCalledWith({
+    memberUserId: user,
+    clientRequestId: expect.any(String),
+  });
+  expect(ports.assign).toHaveBeenCalledWith('a', {
+    clientRequestId: expect.any(String),
+  });
+});
 it('retains role and bind request IDs after an ambiguous non-committed create', async () => {
   const intent = new StaffProvisioningIntent(user, 'WAITER', []);
   vi.mocked(ports.bind).mockRejectedValueOnce(new HttpErrorResponse({ status: 0 }));

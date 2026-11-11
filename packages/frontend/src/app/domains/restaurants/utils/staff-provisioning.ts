@@ -49,15 +49,18 @@ export class StaffProvisioningIntent {
       return result;
     };
     if (this.activationVersion === undefined) {
-      if (this.role === 'OWNER') throw new StaffProvisioningIssue('role');
-      try {
-        await execute(() =>
-          ports.role({ clientRequestId: this.roleId, role: this.role as InitialStaffRole }),
-        );
-      } catch (error) {
-        if (provisioningCode(error) === 'PLATFORM_PRODUCT_ROLE_CONFLICT')
-          throw new StaffProvisioningIssue('role');
-        throw error;
+      // OWNER is already an authoritative platform role. Binding that same member to
+      // Restaurants must not attempt to replace it with an operational role first.
+      if (this.role !== 'OWNER') {
+        try {
+          await execute(() =>
+            ports.role({ clientRequestId: this.roleId, role: this.role as InitialStaffRole }),
+          );
+        } catch (error) {
+          if (provisioningCode(error) === 'PLATFORM_PRODUCT_ROLE_CONFLICT')
+            throw new StaffProvisioningIssue('role');
+          throw error;
+        }
       }
     }
     let staff = await execute(() => ports.staff());
