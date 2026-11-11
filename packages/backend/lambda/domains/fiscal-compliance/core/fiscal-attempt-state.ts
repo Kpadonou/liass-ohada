@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { fiscalAdjudicationAuditSchema } from "./capture-adjudication";
 
 // Pure transition model only. D09/D15/G15 do not authorize a new writer.
 // A future approved owner must atomically compare version, reserve obligation and
@@ -27,12 +28,30 @@ const securitySchema = z
     nim: z.string().min(1).max(500),
   })
   .strict();
-const diagnosticSchema = z.object({
-  reference: digest, captured: z.boolean(), mutationMayHaveExecuted: z.boolean().optional(), httpStatus: z.number().int().optional(),
-  category: z.enum(["TRANSPORT", "AUTHENTICATION", "HTTP", "RESPONSE_VALIDATION", "PROVIDER_REJECTION", "CAPTURE_FAILURE"]).optional(),
-  durationMs: z.number().nonnegative().optional(), providerErrorCode: z.string().regex(/^[A-Za-z0-9._-]{1,64}$/).optional(),
-  validationPaths: z.array(z.string().max(200)).max(20).optional(),
-}).strict();
+const diagnosticSchema = z
+  .object({
+    reference: digest,
+    captured: z.boolean(),
+    mutationMayHaveExecuted: z.boolean().optional(),
+    httpStatus: z.number().int().optional(),
+    category: z
+      .enum([
+        "TRANSPORT",
+        "AUTHENTICATION",
+        "HTTP",
+        "RESPONSE_VALIDATION",
+        "PROVIDER_REJECTION",
+        "CAPTURE_FAILURE",
+      ])
+      .optional(),
+    durationMs: z.number().nonnegative().optional(),
+    providerErrorCode: z
+      .string()
+      .regex(/^[A-Za-z0-9._-]{1,64}$/)
+      .optional(),
+    validationPaths: z.array(z.string().max(200)).max(20).optional(),
+  })
+  .strict();
 const commandSchema = z
   .object({ commandId: id, intentDigest: digest, operation })
   .strict();
@@ -70,14 +89,18 @@ export const fiscalAttemptStateSchema = z
     providerTotal: z.number().int().safe().optional(),
     security: securitySchema.optional(),
     securityEvidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).optional(),
+    adjudication: fiscalAdjudicationAuditSchema.optional(),
   })
   .strict()
   .superRefine((s, ctx) => {
     if (
       s.obligationId !== obligationIdentity(s.identity) ||
       (s.execution === "REAL_TEST" && s.provider !== "BENIN_EMECEF_TEST") ||
-      (s.securityEvidenceOrigin === "DGI_TEST" && s.execution !== "REAL_TEST") ||
-      (s.status === "CONFIRMED" && s.execution === "REAL_TEST" && (s.securityEvidenceOrigin !== "DGI_TEST" || !s.diagnostic?.captured)) ||
+      (s.securityEvidenceOrigin === "DGI_TEST" &&
+        s.execution !== "REAL_TEST") ||
+      (s.status === "CONFIRMED" &&
+        s.execution === "REAL_TEST" &&
+        (s.securityEvidenceOrigin !== "DGI_TEST" || !s.diagnostic?.captured)) ||
       new Set(s.commands.map((c) => c.commandId)).size !== s.commands.length ||
       ([
         "CREATED",
@@ -162,7 +185,12 @@ export function reserveFiscalAttempt(input: {
   });
 }
 const eventSchema = z.discriminatedUnion("kind", [
-  commandSchema.extend({ kind: z.literal("RESERVE_MUTATION"), diagnosticReference: digest.optional() }).strict(),
+  commandSchema
+    .extend({
+      kind: z.literal("RESERVE_MUTATION"),
+      diagnosticReference: digest.optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal("CREATED"),
@@ -171,7 +199,7 @@ const eventSchema = z.discriminatedUnion("kind", [
       total: z.number().int().safe(),
       fiscalTotalsVerified: z.boolean().optional(),
       providerContextDigest: digest.optional(),
-    fiscalTotalsDigest: digest.optional(),
+      fiscalTotalsDigest: digest.optional(),
     })
     .strict(),
   z
@@ -190,9 +218,23 @@ const eventSchema = z.discriminatedUnion("kind", [
       security: securitySchema,
     })
     .strict(),
-  z.object({ kind: z.literal("UNKNOWN"), commandId: id, diagnostic: diagnosticSchema.optional() }).strict(),
+  z
+    .object({
+      kind: z.literal("UNKNOWN"),
+      commandId: id,
+      diagnostic: diagnosticSchema.optional(),
+    })
+    .strict(),
   z.object({ kind: z.literal("DEFINITE_FAILURE"), commandId: id }).strict(),
   z.object({ kind: z.literal("RECOVER_INTERRUPTED") }).strict(),
+  z
+    .object({
+      kind: z.literal("ADJUDICATED_CONFIRMED"),
+      security: securitySchema,
+      diagnostic: diagnosticSchema,
+      adjudication: fiscalAdjudicationAuditSchema,
+    })
+    .strict(),
 ]);
 export type FiscalAttemptEvent = z.infer<typeof eventSchema>;
 export function transitionFiscalAttempt(
@@ -231,11 +273,17 @@ export function transitionFiscalAttempt(
       deny();
     if (
       e.operation === "CONFIRM" &&
-      (current.providerTotal !== current.expectedTotal || (current.execution === "REAL_TEST" && !current.fiscalTotalsVerified))
+      (current.providerTotal !== current.expectedTotal ||
+        (current.execution === "REAL_TEST" && !current.fiscalTotalsVerified))
     )
       deny();
-    if (e.diagnosticReference) next.diagnostic = { reference: e.diagnosticReference, captured: false };
-    if (e.diagnosticReference && (e.operation !== "CONFIRM" || current.execution !== "REAL_TEST")) deny();
+    if (e.diagnosticReference)
+      next.diagnostic = { reference: e.diagnosticReference, captured: false };
+    if (
+      e.diagnosticReference &&
+      (e.operation !== "CONFIRM" || current.execution !== "REAL_TEST")
+    )
+      deny();
     next.commands.push({
       commandId: e.commandId,
       intentDigest: e.intentDigest,
@@ -249,6 +297,32 @@ export function transitionFiscalAttempt(
     next.uncertainOperation = operation.parse(
       current.status.replace("_IN_FLIGHT", ""),
     );
+  } else if (e.kind === "ADJUDICATED_CONFIRMED") {
+    if (
+      current.status !== "UNKNOWN_OUTCOME" ||
+      current.uncertainOperation !== "CONFIRM" ||
+      current.execution !== "REAL_TEST" ||
+      !current.uid ||
+      !current.diagnostic ||
+      current.diagnostic.httpStatus !== 200 ||
+      current.diagnostic.category !== "RESPONSE_VALIDATION" ||
+      current.diagnostic.mutationMayHaveExecuted !== true ||
+      current.diagnostic.reference !== e.adjudication.captureReference ||
+      e.adjudication.evidenceOrigin !== "DGI_TEST" ||
+      e.adjudication.expectedVersion !== current.version ||
+      e.adjudication.context.providerUid !== current.uid ||
+      e.adjudication.context.orgId !== current.identity.orgId ||
+      e.adjudication.context.invoiceId !== current.identity.sourceDocumentId ||
+      e.adjudication.context.expectedTotal !== current.expectedTotal ||
+      e.adjudication.context.sourceDigest !== current.sourceDigest
+    )
+      deny();
+    next.status = "CONFIRMED";
+    next.uncertainOperation = undefined;
+    next.security = e.security;
+    next.diagnostic = e.diagnostic;
+    next.securityEvidenceOrigin = "DGI_TEST";
+    next.adjudication = e.adjudication;
   } else {
     if (
       !current.status.endsWith("_IN_FLIGHT") ||
@@ -271,17 +345,23 @@ export function transitionFiscalAttempt(
       if (op !== "CREATE") deny();
       next.uid = e.uid;
       next.providerTotal = e.total;
-      if (e.fiscalTotalsVerified !== undefined) next.fiscalTotalsVerified = e.fiscalTotalsVerified;
+      if (e.fiscalTotalsVerified !== undefined)
+        next.fiscalTotalsVerified = e.fiscalTotalsVerified;
       if (e.fiscalTotalsDigest) next.fiscalTotalsDigest = e.fiscalTotalsDigest;
-      if (e.providerContextDigest) next.providerContextDigest = e.providerContextDigest;
+      if (e.providerContextDigest)
+        next.providerContextDigest = e.providerContextDigest;
       next.status = "CREATED";
     } else {
       if ((e.kind === "CONFIRMED" ? "CONFIRM" : "CANCEL") !== op) deny();
       next.status = e.kind;
       next.security = e.security;
       if (e.kind === "CONFIRMED" && current.execution === "REAL_TEST") {
-        if (e.evidenceOrigin !== "DGI_TEST" || !e.diagnostic?.captured ||
-          e.diagnostic.reference !== current.diagnostic?.reference) deny();
+        if (
+          e.evidenceOrigin !== "DGI_TEST" ||
+          !e.diagnostic?.captured ||
+          e.diagnostic.reference !== current.diagnostic?.reference
+        )
+          deny();
         next.diagnostic = e.diagnostic;
         next.securityEvidenceOrigin = "DGI_TEST";
       } else {
