@@ -47,7 +47,10 @@ test("private 30-day SSE-S3 bucket and dedicated write-only execution role", () 
     PublicAccessBlockConfiguration: { BlockPublicAcls: true, BlockPublicPolicy: true, IgnorePublicAcls: true, RestrictPublicBuckets: true },
     LifecycleConfiguration: { Rules: [{ Status: "Enabled", ExpirationInDays: 30, AbortIncompleteMultipartUpload: { DaysAfterInitiation: 1 } }] },
   });
-  template.hasResourceProperties("AWS::Lambda::Function", { Environment: { Variables: Match.objectLike({ FISCAL_REAL_TEST_ENABLED: "0" }) } });
+  template.hasResourceProperties("AWS::Lambda::Function", { Environment: { Variables: Match.objectLike({
+    FISCAL_REAL_TEST_ENABLED: "0",
+    FISCAL_ADJUDICATION_ENABLED: "0",
+  }) } });
   const json = template.toJSON();
   const policies = Object.values(json.Resources).filter((r: unknown) => (r as { Type: string }).Type === "AWS::IAM::Policy") as { Properties: { PolicyDocument: { Statement: { Action: string | string[]; Effect: string; Condition?: unknown }[] } } }[];
   const statements = policies.flatMap(r => r.Properties.PolicyDocument.Statement);
