@@ -89,21 +89,29 @@ export function mapRestaurantBeninRequest(
     provenance.evidence.financialRevision !== source.financialRevision
   )
     throw new Error("FISCAL_MAPPING_SOURCE_MISMATCH");
-  if (realFiscalTestEnabled() && provenance.evidence.evidenceOrigin !== "AUTHENTIC")
+  if (
+    realFiscalTestEnabled() &&
+    provenance.evidence.evidenceOrigin !== "AUTHENTIC"
+  )
     throw new Error("FISCAL_AUTHENTIC_PROVENANCE_REQUIRED");
   const seller = provenance.evidence.seller;
-  const identifiers = seller.seller.identifiers.filter(
-    (v) => v.scheme === "IFU" && v.issuingCountry === "BJ",
+  const identifiers = seller.seller.identifiers
+    .map((value, index) => ({ value, index }))
+    .filter(
+      ({ value }) => value.scheme === "IFU" && value.issuingCountry === "BJ",
+    );
+  const verifiedFacts = new Set(
+    seller.factStates
+      .filter((v) => v.state === "VERIFIED" && v.evidenceReference)
+      .map((v) => v.fieldPath),
   );
-  if (
-    identifiers.length !== 1 ||
-    !seller.factStates.some(
-      (v) =>
-        v.fieldPath === "identifiers" &&
-        v.state === "VERIFIED" &&
-        v.evidenceReference,
-    )
-  )
+  const identifierVerified =
+    identifiers.length === 1 &&
+    (verifiedFacts.has("identifiers") ||
+      ["scheme", "issuingCountry", "value"].every((field) =>
+        verifiedFacts.has(`identifiers.${identifiers[0].index}.${field}`),
+      ));
+  if (identifiers.length !== 1 || !identifierVerified)
     throw new Error("FISCAL_SELLER_IFU_UNVERIFIED");
   if (
     new Set(config.taxGroups).size !== config.taxGroups.length ||
@@ -182,7 +190,7 @@ export function mapRestaurantBeninRequest(
   )
     throw new Error("FISCAL_MAPPING_AMOUNT_MISMATCH");
   const invoice = InvoiceRequestDataDtoSchema.parse({
-    ifu: identifiers[0].value,
+    ifu: identifiers[0].value.value,
     type: config.invoiceType,
     reference: source.invoiceId,
     operator: { name: config.operator.name },
@@ -231,12 +239,19 @@ export function restaurantBeninPreparation(
     );
     if (!realFiscalTestEnabled()) return mapped;
     const v1 = result.preparation.v1;
-    if (!v1 || result.preparation.lines.some((line) => line.fiscal.taxGroup !== "B") ||
-        restaurantBeninMappingSchema.parse(configuration).commercialMinorUnitsPerFranc !== 1)
+    if (
+      !v1 ||
+      result.preparation.lines.some((line) => line.fiscal.taxGroup !== "B") ||
+      restaurantBeninMappingSchema.parse(configuration)
+        .commercialMinorUnitsPerFranc !== 1
+    )
       throw new Error("FISCAL_ORDINARY_VAT_PROJECTION_REQUIRED");
-    return { ...mapped, ordinaryVatTotals: {
-      net: Number(v1.totals.netMinor),
-      tax: Number(v1.totals.taxMinor),
-    } };
+    return {
+      ...mapped,
+      ordinaryVatTotals: {
+        net: Number(v1.totals.netMinor),
+        tax: Number(v1.totals.taxMinor),
+      },
+    };
   };
 }

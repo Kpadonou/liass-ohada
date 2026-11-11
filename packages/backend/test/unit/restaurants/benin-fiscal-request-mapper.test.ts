@@ -186,6 +186,43 @@ test("rejects absent verified seller IFU, payment mismatch, commercial mismatch 
     ),
   ).toThrow("FISCAL_MAPPING_SCOPE_DENIED");
 });
+test("accepts the canonical leaf-level verification of the selected IFU only", () => {
+  const value = preparation();
+  const { bindingDigest: _, ...payload } = value.provenance;
+  value.provenance = bindRestaurantIssuanceProvenance({
+    ...payload,
+    seller: {
+      ...payload.seller,
+      factStates: payload.seller.factStates
+        .filter((fact) => fact.fieldPath !== "identifiers")
+        .concat(
+          ["scheme", "issuingCountry", "value"].map((fieldPath) => ({
+            fieldPath: `identifiers.0.${fieldPath}`,
+            state: "VERIFIED" as const,
+            evidenceReference: `synthetic-${fieldPath}-review`,
+          })),
+        ),
+    },
+  });
+  expect(
+    mapRestaurantBeninRequest(value, principal, identity, configuration())
+      .payload,
+  ).toMatchObject({ invoice: { ifu: "synthetic-ifu" } });
+
+  const { bindingDigest: __, ...incomplete } = value.provenance;
+  value.provenance = bindRestaurantIssuanceProvenance({
+    ...incomplete,
+    seller: {
+      ...incomplete.seller,
+      factStates: incomplete.seller.factStates.filter(
+        (fact) => fact.fieldPath !== "identifiers.0.value",
+      ),
+    },
+  });
+  expect(() =>
+    mapRestaurantBeninRequest(value, principal, identity, configuration()),
+  ).toThrow("FISCAL_SELLER_IFU_UNVERIFIED");
+});
 test("factory consumes verified FINAL preparation and explicit classifications", async () => {
   const prepare = jest.fn(async () => ({
     ready: true as const,
@@ -234,14 +271,29 @@ test("missing per-line evidence and changed source revisions fail closed", () =>
   ).toThrow("FISCAL_MAPPING_SOURCE_MISMATCH");
 });
 
-test.each([undefined, "SYNTHETIC", "AUTHENTIC"] as const)("real mapping requires authentic origin: %s", origin => {
-  Object.assign(process.env, { FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: "1", STAGE: "dev" });
-  try {
-    const value = preparation();
-    const { bindingDigest: _, ...payload } = value.provenance;
-    value.provenance = bindRestaurantIssuanceProvenance({ ...payload, ...(origin ? { evidenceOrigin: origin } : {}) });
-    const run = () => mapRestaurantBeninRequest(value, principal, identity, configuration());
-    if (origin === "AUTHENTIC") expect(run().sourceDigest).toBe(digest);
-    else expect(run).toThrow("FISCAL_AUTHENTIC_PROVENANCE_REQUIRED");
-  } finally { delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE; }
-});
+test.each([undefined, "SYNTHETIC", "AUTHENTIC"] as const)(
+  "real mapping requires authentic origin: %s",
+  (origin) => {
+    Object.assign(process.env, {
+      FISCAL_EXECUTION_MODE: "REAL_TEST",
+      FISCAL_REAL_TEST_ENABLED: "1",
+      STAGE: "dev",
+    });
+    try {
+      const value = preparation();
+      const { bindingDigest: _, ...payload } = value.provenance;
+      value.provenance = bindRestaurantIssuanceProvenance({
+        ...payload,
+        ...(origin ? { evidenceOrigin: origin } : {}),
+      });
+      const run = () =>
+        mapRestaurantBeninRequest(value, principal, identity, configuration());
+      if (origin === "AUTHENTIC") expect(run().sourceDigest).toBe(digest);
+      else expect(run).toThrow("FISCAL_AUTHENTIC_PROVENANCE_REQUIRED");
+    } finally {
+      delete process.env.FISCAL_EXECUTION_MODE;
+      delete process.env.FISCAL_REAL_TEST_ENABLED;
+      delete process.env.STAGE;
+    }
+  },
+);
