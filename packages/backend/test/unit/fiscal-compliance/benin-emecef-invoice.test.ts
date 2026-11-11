@@ -57,7 +57,7 @@ const setup = (doc = invoice()) => {
     r.method === "POST"
       ? response({ uid: "uid", total: 2000 })
       : r.method === "PUT"
-        ? response(security)
+        ? response({ ...security, refundWithAibPayment: false })
         : response(doc),
   );
   return { doc, transport, adapter: new BeninEMecefTestAdapter({ transport }) };
@@ -73,7 +73,7 @@ test("creates, reads and confirms a reconciled restaurant TEST invoice with secu
   expect(created).toMatchObject({ uid: "uid", reconciled: true });
   expect(
     await adapter.confirmInvoice(input, "uid", doc, expected, created),
-  ).toEqual({ uid: "uid", ...security });
+  ).toEqual({ uid: "uid", ...security, refundWithAibPayment: false });
   expect(
     transport.mock.calls.map(([r]) => [r.method, r.url.split("/api/")[1]]),
   ).toEqual([
@@ -274,6 +274,7 @@ test("cancellation is explicit and returns security elements", async () => {
   expect(await adapter.cancelInvoice(input, "uid/encoded")).toEqual({
     uid: "uid/encoded",
     ...security,
+    refundWithAibPayment: false,
   });
   expect(transport.mock.calls[0][0]).toMatchObject({
     method: "PUT",
@@ -322,6 +323,7 @@ test("prepares and confirms an existing invoice without POST", async () => {
   ).resolves.toEqual({
     uid: "existing-uid",
     ...security,
+    refundWithAibPayment: false,
   });
   expect(transport.mock.calls.map(([request]) => request.method)).toEqual([
     "GET",
@@ -507,35 +509,91 @@ test.each([
   [503, {}, "HTTP"],
   [200, {}, "RESPONSE_VALIDATION"],
   [200, { errorCode: "20", errorDesc: "confidential" }, "PROVIDER_REJECTION"],
-] as const)("preserves safe confirmation diagnostics for HTTP %s", async (status, body, category) => {
-  const doc = invoice();
-  const transport = jest.fn(async (request: Parameters<FiscalHttpTransport>[0]) =>
-    request.method === "POST" ? response({ uid: "uid", ...fiscalTotals }) : response(body, status));
-  const adapter = new BeninEMecefTestAdapter({ transport });
-  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected);
-  let failure: unknown;
-  try { await adapter.confirmCreatedInvoice(input, "uid", doc, expected, created, fiscalTotals); }
-  catch (error) { failure = error; }
-  expect(failure).toMatchObject({ code: "UNKNOWN_OUTCOME", mutationDiagnostic: {
-    operation: "CONFIRM_INVOICE", environment: "TEST", category, httpStatus: status,
-    sent: true, durationMs: expect.any(Number),
-  } });
-  expect(JSON.stringify(failure)).not.toContain("confidential");
-  expect(JSON.stringify(failure)).not.toContain(input.credential);
-  await expect(adapter.confirmCreatedInvoice(input, "uid", doc, expected, created, fiscalTotals))
-    .rejects.toMatchObject({ code: "RECONCILIATION_FAILED" });
-  expect(transport).toHaveBeenCalledTimes(2);
-});
+] as const)(
+  "preserves safe confirmation diagnostics for HTTP %s",
+  async (status, body, category) => {
+    const doc = invoice();
+    const transport = jest.fn(
+      async (request: Parameters<FiscalHttpTransport>[0]) =>
+        request.method === "POST"
+          ? response({ uid: "uid", ...fiscalTotals })
+          : response(body, status),
+    );
+    const adapter = new BeninEMecefTestAdapter({ transport });
+    const created = await adapter.createInvoice(
+      input,
+      new BeninInvoiceAttempt(),
+      doc,
+      expected,
+    );
+    let failure: unknown;
+    try {
+      await adapter.confirmCreatedInvoice(
+        input,
+        "uid",
+        doc,
+        expected,
+        created,
+        fiscalTotals,
+      );
+    } catch (error) {
+      failure = error;
+    }
+    expect(failure).toMatchObject({
+      code: "UNKNOWN_OUTCOME",
+      mutationDiagnostic: {
+        operation: "CONFIRM_INVOICE",
+        environment: "TEST",
+        category,
+        httpStatus: status,
+        sent: true,
+        durationMs: expect.any(Number),
+      },
+    });
+    expect(JSON.stringify(failure)).not.toContain("confidential");
+    expect(JSON.stringify(failure)).not.toContain(input.credential);
+    await expect(
+      adapter.confirmCreatedInvoice(
+        input,
+        "uid",
+        doc,
+        expected,
+        created,
+        fiscalTotals,
+      ),
+    ).rejects.toMatchObject({ code: "RECONCILIATION_FAILED" });
+    expect(transport).toHaveBeenCalledTimes(2);
+  },
+);
 
 test("ambiguous confirmation transport failure preserves metadata and never retries", async () => {
   const doc = invoice();
-  const transport = jest.fn(async (request: Parameters<FiscalHttpTransport>[0]) => {
-    if (request.method === "POST") return response({ uid: "uid", ...fiscalTotals });
-    throw new Error(input.credential);
-  });
+  const transport = jest.fn(
+    async (request: Parameters<FiscalHttpTransport>[0]) => {
+      if (request.method === "POST")
+        return response({ uid: "uid", ...fiscalTotals });
+      throw new Error(input.credential);
+    },
+  );
   const adapter = new BeninEMecefTestAdapter({ transport });
-  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected);
-  await expect(adapter.confirmCreatedInvoice(input, "uid", doc, expected, created, fiscalTotals))
-    .rejects.toMatchObject({ code: "UNKNOWN_OUTCOME", mutationDiagnostic: { category: "TRANSPORT", sent: true } });
+  const created = await adapter.createInvoice(
+    input,
+    new BeninInvoiceAttempt(),
+    doc,
+    expected,
+  );
+  await expect(
+    adapter.confirmCreatedInvoice(
+      input,
+      "uid",
+      doc,
+      expected,
+      created,
+      fiscalTotals,
+    ),
+  ).rejects.toMatchObject({
+    code: "UNKNOWN_OUTCOME",
+    mutationDiagnostic: { category: "TRANSPORT", sent: true },
+  });
   expect(transport).toHaveBeenCalledTimes(2);
 });

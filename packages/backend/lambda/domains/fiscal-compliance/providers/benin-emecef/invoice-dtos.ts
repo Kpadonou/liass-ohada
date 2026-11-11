@@ -159,6 +159,7 @@ export const SecurityElementsDtoSchema = z
     codeMECeFDGI: z.string().nullable().optional(),
     counters: z.string().nullable().optional(),
     nim: z.string().nullable().optional(),
+    refundWithAibPayment: z.boolean().optional(),
     errorCode: z.string().nullable().optional(),
     errorDesc: z.string().nullable().optional(),
   })
