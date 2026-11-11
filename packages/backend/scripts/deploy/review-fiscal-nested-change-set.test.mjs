@@ -1,7 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { review, reviewReleaseScope } from "./review-fiscal-nested-change-set.mjs";
+import { classifyResolvedChanges, review, reviewReleaseScope } from "./review-fiscal-nested-change-set.mjs";
+
+test("semantic child changes remain explicit and fail unless separately allowlisted", () => {
+  const liveTemplate = {Resources:{Executor:{Type:"AWS::Lambda::Function",Properties:{Environment:{Variables:{GATE:"0"}}}}}};
+  const candidateTemplate = {Resources:{Executor:{Type:"AWS::Lambda::Function",Properties:{Environment:{Variables:{GATE:"1"}}}}}};
+  const childChangeSet = {Changes:[{ResourceChange:{LogicalResourceId:"Executor",Action:"Modify",Replacement:"False",Details:[{Evaluation:"Static",Target:{Attribute:"Properties",Name:"Environment"}}]}}]};
+  assert.deepEqual(classifyResolvedChanges({liveTemplate,candidateTemplate,childChangeSet}), {
+    additions:[], codeUpdates:[], semanticUpdates:["Executor"], noopDynamic:[], unexpected:[]
+  });
+});
 
 test("missing, incomplete and unexpected child changes fail closed", () => {
   const root = {Status:"CREATE_COMPLETE",ExecutionStatus:"AVAILABLE",IncludeNestedStacks:true,Changes:[{ResourceChange:{LogicalResourceId:"IdentityApiNestedStackIdentityApiNestedStackResource9538678F",Action:"Modify",Replacement:"False",ChangeSetId:"child"}}]};

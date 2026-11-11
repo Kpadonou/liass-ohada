@@ -65,6 +65,7 @@ export function classifyResolvedChanges({ liveTemplate, candidateTemplate, child
   const candidate = candidateTemplate.Resources ?? {};
   const additions = [];
   const codeUpdates = [];
+  const semanticUpdates = [];
   const noopDynamic = [];
   const unexpected = [];
   const resolutions = { ...parameters };
@@ -88,7 +89,7 @@ export function classifyResolvedChanges({ liveTemplate, candidateTemplate, child
     const afterCode = afterProperties.Code;
     const withoutCode = (properties) => { const copy = structuredClone(properties); delete copy.Code; return copy; };
     if (normalize(withoutCode(beforeProperties)) !== normalize(withoutCode(afterProperties))) {
-      unexpected.push(change.LogicalResourceId);
+      semanticUpdates.push(change.LogicalResourceId);
     } else if (normalize(beforeCode) !== normalize(afterCode)) {
       codeUpdates.push(change.LogicalResourceId);
     } else {
@@ -105,7 +106,7 @@ export function classifyResolvedChanges({ liveTemplate, candidateTemplate, child
     }
   }
   if (unexpected.length) throw new Error(`Unexpected semantic changes: ${unexpected.join(", ")}`);
-  return { additions, codeUpdates, noopDynamic, unexpected };
+  return { additions, codeUpdates, semanticUpdates, noopDynamic, unexpected };
 }
 
 /** Full release gate: parent scope plus each nested stack scope. */
@@ -159,6 +160,7 @@ export function reviewReleaseScope({ root, parentLive, parentCandidate, parentRe
     });
     for (const id of result.additions) if (!stack.allowedAdditions.some((pattern) => pattern.test(id))) throw new Error(`Unapproved ${stack.name} addition: ${id}`);
     for (const id of result.codeUpdates) if (!stack.allowedCodeUpdates.some((pattern) => pattern.test(id))) throw new Error(`Unapproved ${stack.name} code update: ${id}`);
+    for (const id of result.semanticUpdates) if (!(stack.allowedSemanticUpdates ?? []).some((pattern) => pattern.test(id))) throw new Error(`Unapproved ${stack.name} semantic update: ${id}`);
     for (const id of result.noopDynamic) if (!stack.childChangeSet.Changes.some((entry) => entry.ResourceChange.LogicalResourceId === id)) throw new Error(`Untracked dynamic change: ${id}`);
   }
   return { status: "PASS", nestedStackChanges: nestedChanges.length, resolvedParentNoops: parentNoops.length };
@@ -178,6 +180,7 @@ export function reviewReleaseManifest(manifest, readJson = (file) => JSON.parse(
       parameters: readJson(stack.parameters),
       allowedAdditions: stack.allowedAdditions.map((pattern) => new RegExp(pattern)),
       allowedCodeUpdates: stack.allowedCodeUpdates.map((pattern) => new RegExp(pattern)),
+      allowedSemanticUpdates: (stack.allowedSemanticUpdates ?? []).map((pattern) => new RegExp(pattern)),
     })),
   });
 }
