@@ -42,6 +42,11 @@ function configuration() {
 
 type Context = { orgId: string; userId: string };
 
+function deny(reason: "GATE" | "CONFIGURATION" | "BINDING"): never {
+  console.warn("[FISCAL_ADJUDICATION_DENIED]", { reason });
+  throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+}
+
 /**
  * A bounded D15 recovery writer. It can read one deployment-pinned evidence
  * object and perform one version-conditional attempt transition. It cannot
@@ -55,23 +60,19 @@ export class RestaurantFiscalAdjudicationService {
   ) {}
 
   async adjudicate(context: Context, input: unknown) {
-    if (!fiscalAdjudicationEnabled())
-      throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    if (!fiscalAdjudicationEnabled()) deny("GATE");
     const request = c.RestaurantFiscalSourceRequestSchema.parse(input);
     let config;
     try {
       config = configuration();
-    } catch {
-      throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
-    }
+    } catch { deny("CONFIGURATION"); }
     if (
       context.orgId !== config.orgId ||
       context.userId !== config.reviewerUserId ||
       request.outletId !== config.outletId ||
       request.sessionId !== config.sessionId ||
       request.invoiceId !== config.invoiceId
-    )
-      throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+    ) deny("BINDING");
 
     const scope = { orgId: context.orgId, outletId: request.outletId };
     const source = await RestaurantInvoiceSourceVerifier.verify(
