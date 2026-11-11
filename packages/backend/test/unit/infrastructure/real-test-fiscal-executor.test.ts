@@ -20,6 +20,26 @@ function synth(enabled = false) {
   new RealTestFiscalExecutor(stack, "Fiscal", { stage: "dev", api, authorizer, table, restaurantsTable });
   return Template.fromStack(stack);
 }
+function synthAdjudication() {
+  const app = new App({ context: {
+    restoFiscalAdjudicationEnabled: true,
+    restoFiscalTestOrgId: "org",
+    restoFiscalAdjudicationOutletId: "11111111-1111-4111-8111-111111111111",
+    restoFiscalAdjudicationSessionId: "22222222-2222-4222-8222-222222222222",
+    restoFiscalAdjudicationInvoiceId: "33333333-3333-4333-8333-333333333333",
+    restoFiscalAdjudicationReviewerUserId: "44444444-4444-4444-8444-444444444444",
+    restoFiscalAdjudicationSellerNim: "TS01002103",
+    restoFiscalAdjudicationCaptureReference: "a".repeat(64),
+    restoFiscalAdjudicationAuthorizationReference: "PO-DGI-TEST-ADJUDICATION",
+  } });
+  const stack = new Stack(app, "Security", { env: { account: "123456789012", region: "eu-west-3" } });
+  const api = new HttpApi(stack, "Api");
+  const authorizer = new HttpJwtAuthorizer("JWT", "https://issuer.example", { jwtAudience: ["client"] });
+  const table = new Table(stack, "Platform", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING } });
+  const restaurantsTable = new Table(stack, "Restaurants", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING } });
+  new RealTestFiscalExecutor(stack, "Fiscal", { stage: "dev", api, authorizer, table, restaurantsTable });
+  return Template.fromStack(stack);
+}
 test("private 30-day SSE-S3 bucket and dedicated write-only execution role", () => {
   const template = synth();
   template.hasResourceProperties("AWS::S3::Bucket", {
@@ -44,4 +64,14 @@ test("explicit enablement pins organization and secret without broad secret gran
   const json = JSON.stringify(template.toJSON());
   expect(json).toContain('"FISCAL_REAL_TEST_ENABLED":"1"'); expect(json).toContain('"FISCAL_TEST_ORG_ID":"org"');
   expect(json).toContain("secretsmanager:GetSecretValue"); expect(json).toContain("dynamodb:LeadingKeys");
+});
+test("adjudication has a distinct disabled-real-execution gate and one-object reader", () => {
+  const template = synthAdjudication();
+  const json = JSON.stringify(template.toJSON());
+  expect(json).toContain('"FISCAL_REAL_TEST_ENABLED":"0"');
+  expect(json).toContain('"FISCAL_ADJUDICATION_ENABLED":"1"');
+  expect(json).toContain("s3:GetObject");
+  expect(json).toContain("a".repeat(64));
+  expect(json).not.toContain("s3:ListBucket");
+  expect(json).not.toContain("secretsmanager:GetSecretValue");
 });

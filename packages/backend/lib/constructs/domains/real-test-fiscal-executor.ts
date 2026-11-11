@@ -14,11 +14,28 @@ export class RealTestFiscalExecutor extends Construct {
   constructor(scope: Construct, id: string, props: { stage: "dev" | "test"; api: api.HttpApi;
     authorizer: api.IHttpRouteAuthorizer; table: dynamodb.ITable; restaurantsTable: dynamodb.ITable }) {
     super(scope, id);
-    const enabled = this.node.tryGetContext("restoFiscalTestEnabled") === true;
+    const enabled = this.node.tryGetContext("restoFiscalTestEnabled") === true ||
+      this.node.tryGetContext("restoFiscalTestEnabled") === "true";
     const org = this.node.tryGetContext("restoFiscalTestOrgId") as string | undefined;
     const secret = this.node.tryGetContext("restoFiscalTestConfigurationSecretArn") as string | undefined;
+    const adjudicationEnabled = this.node.tryGetContext("restoFiscalAdjudicationEnabled") === true ||
+      this.node.tryGetContext("restoFiscalAdjudicationEnabled") === "true";
+    const adjudication = {
+      outletId: this.node.tryGetContext("restoFiscalAdjudicationOutletId") as string | undefined,
+      sessionId: this.node.tryGetContext("restoFiscalAdjudicationSessionId") as string | undefined,
+      invoiceId: this.node.tryGetContext("restoFiscalAdjudicationInvoiceId") as string | undefined,
+      reviewerUserId: this.node.tryGetContext("restoFiscalAdjudicationReviewerUserId") as string | undefined,
+      sellerNim: this.node.tryGetContext("restoFiscalAdjudicationSellerNim") as string | undefined,
+      captureReference: this.node.tryGetContext("restoFiscalAdjudicationCaptureReference") as string | undefined,
+      authorizationReference: this.node.tryGetContext("restoFiscalAdjudicationAuthorizationReference") as string | undefined,
+    };
     if (enabled && (!org || !secret)) throw new Error("Explicit TEST organization and configuration secret required");
+    if (enabled && adjudicationEnabled) throw new Error("Real execution and capture adjudication are mutually exclusive");
     if (org && !/^[A-Za-z0-9_-]{1,200}$/.test(org)) throw new Error("Invalid TEST organization");
+    if (adjudicationEnabled && (!org || Object.values(adjudication).some((value) => !value)))
+      throw new Error("Pinned adjudication organization, reviewer, source and capture required");
+    if (adjudicationEnabled && !/^[a-f0-9]{64}$/.test(adjudication.captureReference!))
+      throw new Error("Invalid adjudication capture reference");
     const bucket = new s3.Bucket(this, "DiagnosticResponses", {
       bucketName: `liass-ohada-${props.stage}-fiscal-test-diagnostics-${Stack.of(this).account}-${Stack.of(this).region}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL, encryption: s3.BucketEncryption.S3_MANAGED,
@@ -33,9 +50,19 @@ export class RealTestFiscalExecutor extends Construct {
       runtime: lambda.Runtime.NODEJS_24_X, role, timeout: Duration.seconds(45), memorySize: 256,
       retryAttempts: 0, bundling: { bundleAwsSDK: true },
       environment: { STAGE: props.stage, FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: enabled ? "1" : "0",
+        FISCAL_ADJUDICATION_ENABLED: adjudicationEnabled ? "1" : "0",
         FISCAL_TEST_ORG_ID: org ?? "", FISCAL_TEST_CONFIGURATION_SECRET_ARN: secret ?? "",
         FISCAL_DIAGNOSTIC_BUCKET: bucket.bucketName, TABLE_NAME: props.table.tableName,
-        RESTAURANTS_TABLE_NAME: props.restaurantsTable.tableName },
+        RESTAURANTS_TABLE_NAME: props.restaurantsTable.tableName,
+        FISCAL_ADJUDICATION_ORG_ID: adjudicationEnabled ? org! : "",
+        FISCAL_ADJUDICATION_OUTLET_ID: adjudicationEnabled ? adjudication.outletId! : "",
+        FISCAL_ADJUDICATION_SESSION_ID: adjudicationEnabled ? adjudication.sessionId! : "",
+        FISCAL_ADJUDICATION_INVOICE_ID: adjudicationEnabled ? adjudication.invoiceId! : "",
+        FISCAL_ADJUDICATION_REVIEWER_USER_ID: adjudicationEnabled ? adjudication.reviewerUserId! : "",
+        FISCAL_ADJUDICATION_SELLER_NIM: adjudicationEnabled ? adjudication.sellerNim! : "",
+        FISCAL_ADJUDICATION_CAPTURE_REFERENCE: adjudicationEnabled ? adjudication.captureReference! : "",
+        FISCAL_ADJUDICATION_AUTHORIZATION_REFERENCE: adjudicationEnabled ? adjudication.authorizationReference! : "",
+      },
     });
     role.addToPolicy(new iam.PolicyStatement({ actions: ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
       resources: [Stack.of(this).formatArn({ service: "logs", resource: "log-group", resourceName: `/aws/lambda/${functionName}:*`, arnFormat: ArnFormat.COLON_RESOURCE_NAME })] }));
@@ -47,6 +74,11 @@ export class RealTestFiscalExecutor extends Construct {
         "dynamodb:Attributes": ["PK", "SK", "orgId", "entityType", "schemaVersion", "version", "state"] } } }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["s3:PutObject"], resources: [bucket.arnForObjects("*")],
       conditions: { StringEquals: { "s3:x-amz-server-side-encryption": "AES256", "s3:if-none-match": "*" } } }));
+    if (adjudicationEnabled)
+      role.addToPolicy(new iam.PolicyStatement({
+        actions: ["s3:GetObject"],
+        resources: [bucket.arnForObjects(adjudication.captureReference!)],
+      }));
     if (secret) role.addToPolicy(new iam.PolicyStatement({ actions: ["secretsmanager:GetSecretValue"], resources: [secret] }));
     // No shared role grant, object reader, URL output, or anonymous access.
     this.executionFunction = fn;

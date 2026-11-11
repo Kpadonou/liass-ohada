@@ -6,6 +6,7 @@ import { BeninEMecefTestAdapter } from "../fiscal-compliance/providers/benin-eme
 import { realTestConfigurationSchema } from "./benin-real-test-workflow";
 import { RestaurantFiscalApplicationService } from "./fiscal-application-service";
 import { restaurantFiscalHandler } from "./fiscal-handler";
+import { restaurantFiscalAdjudicationHandler } from "./fiscal-adjudication-handler";
 import { RESTAURANT_FISCAL_ROUTES } from "./fiscal-routes";
 const secrets = new SecretsManagerClient({ maxAttempts: 1 });
 /** JWT middleware derives actor and tenant. Secret configuration is never accepted in a request. */
@@ -22,8 +23,10 @@ const service = new RestaurantFiscalApplicationService(async (context, request) 
   } catch { throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED"); }
 }, true);
 export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
-  if (!realFiscalTestEnabled()) return { statusCode: 403, body: JSON.stringify({ error: { code: "DOMAIN_PERMISSION_REQUIRED" } }) };
   const route = RESTAURANT_FISCAL_ROUTES.find(r => `${r.method} ${r.path}` === event.routeKey);
   if (!route) return { statusCode: 404, body: "{}" };
+  if (route.operation === "adjudicate")
+    return restaurantFiscalAdjudicationHandler()(event);
+  if (!realFiscalTestEnabled()) return { statusCode: 403, body: JSON.stringify({ error: { code: "DOMAIN_PERMISSION_REQUIRED" } }) };
   return restaurantFiscalHandler(route.name, service, true)(event);
 }

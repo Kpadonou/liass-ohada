@@ -25,6 +25,13 @@ export const RESTAURANT_FISCAL_ROUTES = [
     operation: "recover",
   },
   {
+    name: "adjudicate-fiscal",
+    method: "POST",
+    path: `${path}/adjudicate`,
+    permission: "RESTAURANTS_RECEIPT_MANAGE" satisfies DomainPermission,
+    operation: "adjudicate",
+  },
+  {
     name: "get-fiscal-status",
     method: "GET",
     path,

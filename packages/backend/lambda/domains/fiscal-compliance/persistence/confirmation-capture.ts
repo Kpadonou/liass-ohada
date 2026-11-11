@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type { FiscalHttpResponse } from "../providers/http-transport";
 export const CONFIRMATION_RESPONSE_LIMIT = 64 * 1024;
 /** Private diagnostic artifact only. No URL, headers, credentials or business request. */
@@ -15,5 +15,27 @@ export class ConfirmationCapture {
       await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: reference, Body: body,
         ContentType: "application/json", ServerSideEncryption: "AES256", IfNoneMatch: "*" }));
     } catch { throw new Error("FISCAL_CAPTURE_FAILED"); }
+  }
+  /** Restricted recovery read. The caller still validates the complete envelope
+   * and source binding; raw response bytes never leave the fiscal boundary. */
+  async read(reference: string): Promise<unknown> {
+    if (!this.bucket || !/^[a-f0-9]{64}$/.test(reference))
+      throw new Error("FISCAL_CAPTURE_INVALID");
+    try {
+      const result = await this.client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: reference }),
+      );
+      if (!result.Body) throw new Error();
+      const chunks: Buffer[] = [];
+      let length = 0;
+      for await (const chunk of result.Body as AsyncIterable<Uint8Array>) {
+        length += chunk.byteLength;
+        if (length > 400 * 1024) throw new Error();
+        chunks.push(Buffer.from(chunk));
+      }
+      return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+    } catch {
+      throw new Error("FISCAL_CAPTURE_UNAVAILABLE");
+    }
   }
 }

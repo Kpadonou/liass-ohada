@@ -18,6 +18,14 @@ export function restaurantFiscalHandler(
   real = false,
 ) {
   const route = RESTAURANT_FISCAL_ROUTES.find((v) => v.name === name)!;
+  // The dedicated real-test handler owns capture adjudication. The standard
+  // application handler remains incapable of invoking that recovery writer.
+  if (route.operation === "adjudicate")
+    return async () => ({
+      statusCode: 403,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ error: { code: "DOMAIN_PERMISSION_REQUIRED" } }),
+    });
   const schema =
     route.operation === "initiate"
       ? c.RestaurantFiscalInitiateRequestSchema

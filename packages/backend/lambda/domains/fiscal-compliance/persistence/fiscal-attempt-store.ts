@@ -1,4 +1,4 @@
-import { realFiscalTestEnabled } from "../core/test-execution";
+import { fiscalAdjudicationEnabled, realFiscalTestEnabled } from "../core/test-execution";
 import { GetItemCommand, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { config, dynamoClient } from "@/lambda/shared/dynamo-client";
@@ -22,7 +22,7 @@ import {
 export class FiscalAttemptStore {
   private enabled() {
     if (
-      !realFiscalTestEnabled() && (process.env.NODE_ENV !== "test" ||
+      !realFiscalTestEnabled() && !fiscalAdjudicationEnabled() && (process.env.NODE_ENV !== "test" ||
       process.env.FISCAL_SYNTHETIC_STORAGE !== "1")
     )
       throw new FiscalAttemptConflict("SCOPE_DENIED");
