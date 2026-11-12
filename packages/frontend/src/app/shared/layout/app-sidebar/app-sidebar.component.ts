@@ -468,16 +468,36 @@ export class AppSidebarComponent {
     });
   }
 
-  protected sidebarControlRowClass(): string {
-    return `flex shrink-0 items-center py-1 ${
-      this.sidebarExpanded() ? 'justify-end' : 'justify-center'
-    } hidden lg:flex`;
+  protected sidebarHeaderRowClass(): string {
+    const hasProduct = !!this.productNavigation.activeProduct();
+    const compactLayout = this.sidebarExpanded()
+      ? ''
+      : hasProduct
+        ? 'lg:gap-0'
+        : 'lg:justify-center';
+    const alignment = hasProduct ? 'gap-2' : 'justify-end';
+
+    return `flex shrink-0 items-center py-1 ${alignment} ${compactLayout}`;
   }
 
   protected productIdentityClass(): string {
-    return `mx-1 mb-3 flex min-h-11 items-center gap-2 rounded-app-control border border-brand-100 bg-brand-50/80 px-2.5 text-sm font-semibold text-brand-700 dark:border-brand-900/60 dark:bg-brand-900/20 dark:text-brand-200 ${
-      this.sidebarExpanded() ? '' : 'lg:justify-center lg:px-0'
-    }`;
+    return 'flex min-w-0 flex-1 items-center gap-2';
+  }
+
+  protected productIdentityIconClass(): string {
+    const compactSize = this.sidebarExpanded() ? '' : 'lg:size-6';
+
+    return `grid size-9 shrink-0 place-items-center rounded-app-control bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200 ${compactSize}`;
+  }
+
+  protected productIdentityLabelClass(): string {
+    return `min-w-0 flex-1 ${this.sidebarExpanded() ? '' : 'lg:sr-only'}`;
+  }
+
+  protected sidebarCollapseButtonClass(): string {
+    const size = this.sidebarExpanded() ? 'size-9' : 'size-6';
+
+    return `liass-focus-ring hidden shrink-0 place-items-center rounded-app-control text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white ${size} lg:grid`;
   }
 
   protected navigationGroupHeaderClass(hasCurrentPage: boolean): string {

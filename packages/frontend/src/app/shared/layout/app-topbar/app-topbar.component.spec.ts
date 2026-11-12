@@ -275,7 +275,11 @@ describe('AppTopbarComponent', () => {
     expect(group.className).toContain('md:gap-4');
     expect(group.className).toContain('lg:w-[var(--spacing-shell-sidebar)]');
     expect(horizontalLogoLink?.className).toContain('lg:inline-flex');
+    expect(horizontalLogoLink?.className).toContain('scale-105');
+    expect(horizontalLogoLink?.querySelector('liass-logo')?.getAttribute('size')).toBe('md');
     expect(compactLogoLink?.className).toContain('lg:hidden');
+    expect(compactLogoLink?.className).toContain('scale-105');
+    expect(compactLogoLink?.querySelector('liass-logo')?.getAttribute('size')).toBe('md');
     expect(group.nextElementSibling).toBe(brandDivider);
     expect(brandDivider.nextElementSibling).toBe(contexts);
     expect(contexts.className).toContain('lg:pl-3');
@@ -289,7 +293,10 @@ describe('AppTopbarComponent', () => {
     expect(group.className).toContain('lg:w-[var(--spacing-shell-sidebar-collapsed)]');
     expect(group.className).toContain('lg:px-2');
     expect(group.querySelector('liass-logo[variant="horizontal"]')).toBeNull();
-    expect(group.querySelector('liass-logo[variant="icon"]')).not.toBeNull();
+    const collapsedLogo = group.querySelector('liass-logo[variant="icon"]');
+    expect(collapsedLogo).not.toBeNull();
+    expect(collapsedLogo?.getAttribute('size')).toBe('md');
+    expect(collapsedLogo?.parentElement?.className).toContain('scale-105');
   });
 
   it('renders the direct company identity without the old card styling', () => {
