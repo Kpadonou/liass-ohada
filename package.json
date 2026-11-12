@@ -22,7 +22,9 @@
     "test": "npm test -w @liass-ohada/backend && npm test -w @liass-ohada/frontend",
     "backend:synth": "npm run aws:synth -w @liass-ohada/backend",
     "backend:deploy": "npm run aws:deploy -w @liass-ohada/backend",
-    "frontend:start": "rm -rf packages/frontend/.angular/cache && npm run build -w @liass-ohada/shared && npm run start -w @liass-ohada/frontend"
+    "frontend:start": "node scripts/shared-build.mjs ensure && npm run start -w @liass-ohada/frontend",
+    "frontend:start:fresh": "npm run shared:build && npm run start -w @liass-ohada/frontend",
+    "shared:build": "npm run build -w @liass-ohada/shared"
   },
   "devDependencies": {
     "handlebars": "^4.7.9",
