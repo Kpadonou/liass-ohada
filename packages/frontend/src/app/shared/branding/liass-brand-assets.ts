@@ -8,6 +8,14 @@ export const LIASS_BRAND = {
     light: '/assets/brand/liass-ohada/logos/monogram-navy-gold.png',
     dark: '/assets/brand/liass-ohada/logos/monogram-white-gold.png',
   },
+  stacked: {
+    light: '/assets/brand/liass-ohada/logos/logo-stacked-navy-gold.png',
+    dark: '/assets/brand/liass-ohada/logos/logo-stacked-white-gold.png',
+  },
   favicon: '/assets/brand/liass-ohada/icons/favicon.ico',
+  favicon16: '/assets/brand/liass-ohada/icons/favicon-16x16.png',
+  favicon32: '/assets/brand/liass-ohada/icons/favicon-32x32.png',
+  appleTouchIcon: '/assets/brand/liass-ohada/icons/apple-touch-icon.png',
   manifest: '/assets/brand/liass-ohada/site.webmanifest',
+  socialImage: '/assets/brand/liass-ohada/social/og-image-light-1200x630.png',
 } as const;

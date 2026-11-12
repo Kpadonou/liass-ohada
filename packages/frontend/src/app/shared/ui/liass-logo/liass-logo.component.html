@@ -6,29 +6,29 @@
   } @else if (theme() === 'auto') {
     <img
       [class]="imageClass() + ' dark:hidden'"
-      [src]="darkSource()"
+      [src]="lightBackgroundAsset().source"
       [alt]="alt()"
-      [width]="darkDimensions().width"
-      [height]="darkDimensions().height"
+      [width]="lightBackgroundAsset().width"
+      [height]="lightBackgroundAsset().height"
       decoding="async"
       (error)="handleImageError()"
     />
     <img
       [class]="imageClass() + ' hidden dark:block'"
-      [src]="lightSource()"
+      [src]="darkBackgroundAsset().source"
       [alt]="alt()"
-      [width]="lightDimensions().width"
-      [height]="lightDimensions().height"
+      [width]="darkBackgroundAsset().width"
+      [height]="darkBackgroundAsset().height"
       decoding="async"
       (error)="handleImageError()"
     />
   } @else {
     <img
       [class]="imageClass()"
-      [src]="singleSource()"
+      [src]="selectedAsset().source"
       [alt]="alt()"
-      [width]="singleDimensions().width"
-      [height]="singleDimensions().height"
+      [width]="selectedAsset().width"
+      [height]="selectedAsset().height"
       decoding="async"
       (error)="handleImageError()"
     />

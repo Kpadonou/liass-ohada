@@ -26,9 +26,11 @@ describe('LiassLogoComponent', () => {
     expect(logo?.className).toContain('h-12');
     expect(logo?.className).toContain('w-auto');
     expect(logo?.className).not.toContain('overflow-hidden');
-    expect(image?.getAttribute('src')).toBe('/assets/brand/logos/liass-horizontal-light.png');
-    expect(image?.getAttribute('width')).toBe('1375');
-    expect(image?.getAttribute('height')).toBe('440');
+    expect(image?.getAttribute('src')).toBe(
+      '/assets/brand/liass-ohada/logos/logo-horizontal-white-gold.png',
+    );
+    expect(image?.getAttribute('width')).toBe('2158');
+    expect(image?.getAttribute('height')).toBe('661');
     expect(image?.className).toContain('w-auto');
     expect(image?.className).toContain('max-w-none');
   });
@@ -42,6 +44,24 @@ describe('LiassLogoComponent', () => {
     const icon = host.querySelector('img');
 
     expect(host.textContent).not.toContain('Liass-Ohada');
-    expect(icon?.getAttribute('src')).toBe('/assets/brand/logos/liass-icon-dark.png');
+    expect(icon?.getAttribute('src')).toBe(
+      '/assets/brand/liass-ohada/logos/monogram-navy-gold.png',
+    );
+    expect(icon?.getAttribute('width')).toBe('1139');
+    expect(icon?.getAttribute('height')).toBe('861');
+  });
+
+  it('switches between the appropriate PNG variants for automatic theme selection', () => {
+    fixture.componentRef.setInput('theme', 'auto');
+    fixture.detectChanges();
+
+    const images = Array.from(fixture.nativeElement.querySelectorAll('img')) as HTMLImageElement[];
+
+    expect(images.map((image) => image.getAttribute('src'))).toEqual([
+      '/assets/brand/liass-ohada/logos/logo-horizontal-navy-gold.png',
+      '/assets/brand/liass-ohada/logos/logo-horizontal-white-gold.png',
+    ]);
+    expect(images[0].className).toContain('dark:hidden');
+    expect(images[1].className).toContain('dark:block');
   });
 });

@@ -9,6 +9,7 @@ import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { combineLatest } from 'rxjs';
 
 import { LanguageSelectorComponent } from '../i18n/language-selector/language-selector.component';
+import { LIASS_BRAND } from '../../shared/branding/liass-brand-assets';
 import { LiassLogoComponent } from '../../shared/ui/liass-logo/liass-logo.component';
 import { PublicProductPreviewComponent } from './public-product-preview.component';
 import { PublicRevealDirective } from './public-reveal.directive';
@@ -276,7 +277,9 @@ export class PublicLandingPage {
         this.meta.updateTag({ property: 'og:description', content: description });
         this.meta.updateTag({ property: 'og:type', content: 'website' });
         this.meta.updateTag({ property: 'og:url', content: `${publicSiteConfig.publicBaseUrl}/` });
-        this.meta.updateTag({ property: 'og:image', content: `${publicSiteConfig.publicBaseUrl}/assets/brand/logos/liass-horizontal-dark.png` });
+        const socialImage = `${publicSiteConfig.publicBaseUrl}${LIASS_BRAND.socialImage}`;
+        this.meta.updateTag({ property: 'og:image', content: socialImage });
+        this.meta.updateTag({ name: 'twitter:image', content: socialImage });
         this.meta.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
       });
 
