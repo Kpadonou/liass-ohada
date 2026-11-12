@@ -87,9 +87,11 @@ describe('AuthLayoutComponent', () => {
     const logo = brandSurface?.querySelector<HTMLImageElement>('liass-logo img');
 
     expect(brandSurface).not.toBeNull();
-    expect(logo?.getAttribute('src')).toBe('/assets/brand/logos/liass-horizontal-light.png');
-    expect(logo?.getAttribute('width')).toBe('1375');
-    expect(logo?.getAttribute('height')).toBe('440');
+    expect(logo?.getAttribute('src')).toBe(
+      '/assets/brand/liass-ohada/logos/logo-horizontal-white-gold.png',
+    );
+    expect(logo?.getAttribute('width')).toBe('2158');
+    expect(logo?.getAttribute('height')).toBe('661');
     expect(logo?.className).toContain('w-auto');
   });
 

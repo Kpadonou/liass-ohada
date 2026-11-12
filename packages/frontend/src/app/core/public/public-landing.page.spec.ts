@@ -3,6 +3,7 @@ import { TranslocoService, TranslocoTestingModule } from '@ngneat/transloco';
 
 import { PublicLandingPage } from './public-landing.page';
 import { publicSiteConfig } from './public-site.config';
+import { LIASS_BRAND } from '../../shared/branding/liass-brand-assets';
 
 const translations = {
   fr: {
@@ -308,6 +309,13 @@ describe('PublicLandingPage', () => {
     expect(document.documentElement.lang).toBe('en');
     expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toBe(
       'English description',
+    );
+    const socialImage = `${publicSiteConfig.publicBaseUrl}${LIASS_BRAND.socialImage}`;
+    expect(document.querySelector('meta[property="og:image"]')?.getAttribute('content')).toBe(
+      socialImage,
+    );
+    expect(document.querySelector('meta[name="twitter:image"]')?.getAttribute('content')).toBe(
+      socialImage,
     );
   });
 });
