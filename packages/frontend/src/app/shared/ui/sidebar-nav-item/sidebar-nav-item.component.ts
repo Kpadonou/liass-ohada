@@ -4,6 +4,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 
 @Component({
   selector: 'liass-sidebar-nav-item',
+  host: { class: 'block w-full min-w-0' },
   imports: [MatIconModule, MatTooltipModule],
   templateUrl: './sidebar-nav-item.component.html',
 })
@@ -36,7 +37,7 @@ export class LiassSidebarNavItemComponent {
       ? 'cursor-not-allowed text-slate-400 opacity-80 dark:text-slate-500'
       : '';
     const layout = this.compact()
-      ? 'gap-2.5 px-2.5 text-left lg:justify-center lg:px-0 lg:text-center'
+      ? 'gap-2.5 px-2.5 text-left lg:gap-0 lg:justify-center lg:px-0 lg:text-center'
       : 'gap-2.5 px-2.5 text-left';
 
     return `liass-focus-ring group relative flex h-9 w-full items-center rounded-app-control text-sm font-semibold transition ${layout} ${state} ${disabled}`;
