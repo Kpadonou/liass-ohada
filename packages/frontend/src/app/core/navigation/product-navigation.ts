@@ -29,6 +29,19 @@ export class ShellRouteContext {
     ),
     { initialValue: this.router.url.split(/[?#]/)[0].replace(/\/$/, '') },
   );
+  readonly shellProduct = toSignal(
+    this.router.events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => this.shellProductFromUrl(event.urlAfterRedirects)),
+    ),
+    { initialValue: this.shellProductFromUrl(this.router.url) },
+  );
+
+  private shellProductFromUrl(url: string): ProductCode | null {
+    const productCode = this.router.parseUrl(url).queryParams['shellProduct'];
+    return shellProducts.find((product) => product.code === productCode)?.code ?? null;
+  }
+
   restaurantKey(): string {
     if (/^\/restaurants\/outlets\/[^/]+\/sessions\/[^/]+\/receipt$/.test(this.url()))
       return 'receipt';
@@ -83,9 +96,27 @@ export class ShellProductNavigation {
   private readonly sales = inject(SalesCapabilities);
   private readonly restaurants = inject(RestaurantsCapabilities);
   private readonly ui = inject(UiStore);
-  readonly routeProduct = computed(() => productForPage(this.ui.currentPage()));
+  readonly products = computed(() =>
+    !this.auth.effectiveOrgId()
+      ? []
+      : shellProducts.filter(
+          (product) =>
+            this.access.availability(product.code) === 'AVAILABLE' &&
+            (product.code !== 'SALES' || this.sales.canRead()),
+        ),
+  );
   private readonly injector = inject(Injector);
   private readonly route = inject(ShellRouteContext);
+  readonly routeProduct = computed(() => {
+    const page = this.ui.currentPage();
+    if (page !== 'settings.fiscality') return productForPage(page);
+
+    const shellProduct = this.route.shellProduct();
+    return shellProduct === 'RESTAURANTS' &&
+      this.products().some((product) => product.code === shellProduct)
+      ? shellProduct
+      : null;
+  });
   readonly restaurantEntry = computed(
     () =>
       this.route.url().startsWith('/restaurants') &&
@@ -101,15 +132,6 @@ export class ShellProductNavigation {
             this.restaurants.canReadService() ||
             this.restaurants.canReadKitchen?.() ||
             this.restaurants.canReadCheckout?.()))),
-  );
-  readonly products = computed(() =>
-    !this.auth.effectiveOrgId()
-      ? []
-      : shellProducts.filter(
-          (product) =>
-            this.access.availability(product.code) === 'AVAILABLE' &&
-            (product.code !== 'SALES' || this.sales.canRead()),
-        ),
   );
   readonly activeProduct = computed(
     () =>

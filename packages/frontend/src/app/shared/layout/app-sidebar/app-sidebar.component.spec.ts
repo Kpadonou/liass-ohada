@@ -15,6 +15,7 @@ import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabine
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
 import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
+import { ShellProductNavigation } from '../../../core/navigation/product-navigation';
 import type { ProductAvailability } from '../../../core/product-access/product-availability';
 import type { ProductCode } from '@liass-ohada/shared/shared';
 import { AppSidebarComponent } from './app-sidebar.component';
@@ -43,6 +44,7 @@ const activeOutlet = signal('ready-outlet');
 const translations = {
   fr: {
     RESTAURANTS_INVENTORY: { TITLE: 'Stock' },
+    FISCALITY: { SETTINGS: 'Fiscalité', TITLE: 'Facturation normalisée' },
     RESTAURANTS: {
       CHECKOUT: { TITLE: 'Encaisser' },
       CASH: { GROUP: 'Caisse', MY_CASH: 'Ma session', DAY_REVIEW: 'Journée de caisse' },
@@ -157,7 +159,7 @@ describe('AppSidebarComponent', () => {
       ],
       providers: [
         { provide: RestaurantOutletContext, useValue: { id: activeOutlet, available: () => true } },
-        provideRouter([]),
+        provideRouter([{ path: 'settings/fiscality', component: NavigationTarget }]),
         provideLocationMocks(),
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
         { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } },
@@ -271,11 +273,73 @@ describe('AppSidebarComponent', () => {
     TestBed.inject(UiStore).setSidebarCollapsed(true);
     fixture.detectChanges();
 
-    expect([...productDivider.classList].sort()).toEqual(expectedDividerClasses);
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="sidebar-product-divider"]'),
+    ).toBeNull();
     expect(label.className).toContain('lg:sr-only');
     expect(productIcon.parentElement?.className).toContain('lg:size-6');
     expect(collapseToggle.className).toContain('size-6');
     expect(headerRow.className).toContain('lg:gap-1.5');
+  });
+
+  it('places normalized invoicing in Restaurants Configuration and preserves product context', async () => {
+    productAvailability.ACCOUNTING = 'AVAILABLE';
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    const workspaceId = 'org-resto';
+    const authStore = TestBed.inject(AuthStore);
+    const router = TestBed.inject(Router);
+
+    authStore.setCreatedWorkspace(
+      {
+        orgId: workspaceId,
+        workspaceType: 'COMPANY',
+        country: 'BJ',
+        status: 'ACTIVE',
+        accessSource: 'DIRECT',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
+      workspaceId,
+    );
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const configuration = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-panel-restaurants-configuration"]',
+    ) as HTMLElement;
+    const labels = Array.from(configuration.querySelectorAll('liass-sidebar-nav-item button')).map(
+      (button) => button.getAttribute('aria-label'),
+    );
+    const fiscalityButton = configuration.querySelector(
+      'liass-sidebar-nav-item button[aria-label="Facturation normalisée"]',
+    ) as HTMLButtonElement;
+
+    expect(labels).toEqual([
+      'Stock',
+      'Restaurant',
+      'Établissements',
+      'Espaces de restauration',
+      'Tables',
+      'Postes de préparation',
+      'Menu',
+      'Équipe',
+      'Facturation normalisée',
+    ]);
+    expect(fixture.nativeElement.textContent).not.toContain('Fiscalité');
+    expect(fiscalityButton).not.toBeNull();
+    fiscalityButton.click();
+
+    await vi.waitFor(() => {
+      expect(router.url).toBe('/settings/fiscality?shellProduct=RESTAURANTS');
+    });
+    fixture.detectChanges();
+
+    expect(TestBed.inject(UiStore).currentPage()).toBe('settings.fiscality');
+    expect(authStore.effectiveOrgId()).toBe(workspaceId);
+    expect(activeOutlet()).toBe('ready-outlet');
+    expect(TestBed.inject(ShellProductNavigation).routeProduct()).toBe('RESTAURANTS');
+    expect(TestBed.inject(ShellProductNavigation).activeProduct()?.code).toBe('RESTAURANTS');
+    expect(fiscalityButton.getAttribute('aria-current')).toBe('page');
   });
 
   it('keeps Treasury navigation unchanged while access is active or technically unknown', () => {

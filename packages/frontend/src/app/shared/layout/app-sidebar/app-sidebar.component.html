@@ -43,7 +43,7 @@
     </button>
   </div>
 
-  @if (productNavigation.activeProduct()) {
+  @if (productNavigation.activeProduct() && sidebarExpanded()) {
     <div
       [class]="navigationDividerClass()"
       data-testid="sidebar-product-divider"
@@ -255,20 +255,6 @@
             }
           </div>
         }
-      }
-      @if (showFiscality()) {
-        <section class="pt-4">
-          <p class="mb-2 px-3 text-xs font-semibold text-app-text-secondary">
-            {{ 'FISCALITY.SETTINGS' | transloco }}
-          </p>
-          <liass-sidebar-nav-item
-            [active]="uiStore.currentPage() === fiscalityItem.page"
-            [compact]="!sidebarExpanded()"
-            [icon]="fiscalityItem.icon"
-            [label]="fiscalityItem.labelKey | transloco"
-            (selected)="selectItem(fiscalityItem)"
-          />
-        </section>
       }
     </nav>
   </div>
