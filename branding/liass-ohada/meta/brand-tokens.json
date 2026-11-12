@@ -1,0 +1,16 @@
+{
+  "name": "Liass-OHADA",
+  "tagline": "L’ERP pensé pour l’OHADA.",
+  "colors": {
+    "navy": "#0B2E63",
+    "gold": "#E9A91B",
+    "white": "#FFFFFF",
+    "softBackground": "#F7F9FC"
+  },
+  "recommendedAssets": {
+    "primaryLogoLight": "assets/logos/full/logo-horizontal-navy-gold.png",
+    "primaryLogoDark": "assets/logos/full/logo-horizontal-white-gold.png",
+    "appIconLight": "app-icons/general/icon-transparent-1024x1024.png",
+    "appIconDark": "app-icons/general/icon-navy-bg-1024x1024.png"
+  }
+}

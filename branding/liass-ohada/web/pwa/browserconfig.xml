@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<browserconfig>
+  <msapplication>
+    <tile>
+      <square150x150logo src="/web/pwa/app-icon-navy-bg-192x192.png"/>
+      <TileColor>#0B2E63</TileColor>
+    </tile>
+  </msapplication>
+</browserconfig>

@@ -1,0 +1,30 @@
+{
+  "name": "Liass-OHADA",
+  "short_name": "Liass-OHADA",
+  "description": "L’ERP pensé pour l’OHADA.",
+  "display": "standalone",
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#0B2E63",
+  "theme_color": "#0B2E63",
+  "icons": [
+    {
+      "src": "/assets/brand/liass-ohada/icons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/brand/liass-ohada/icons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/brand/liass-ohada/icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
