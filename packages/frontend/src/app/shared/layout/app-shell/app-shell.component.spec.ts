@@ -41,6 +41,10 @@ describe('pageFromUrl', () => {
     expect(pageFromUrl('/accounting')).toBe('accounting.overview');
   });
 
+  it('keeps the shared fiscality page mapping when a shell product context is present', () => {
+    expect(pageFromUrl('/settings/fiscality?shellProduct=RESTAURANTS')).toBe('settings.fiscality');
+  });
+
   it('maps each implemented SALES foundation to its distinct shell page', () => {
     expect(pageFromUrl('/sales')).toBe('sales.dashboard');
     expect(pageFromUrl('/sales/?view=all')).toBe('sales.dashboard');

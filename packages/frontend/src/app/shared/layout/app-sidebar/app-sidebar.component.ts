@@ -368,6 +368,7 @@ export class AppSidebarComponent {
               },
             ]
           : []),
+        ...(this.showFiscality() ? [this.fiscalityItem] : []),
       ],
     },
   ]);
@@ -405,9 +406,10 @@ export class AppSidebarComponent {
   protected readonly showFiscality = computed(() => fiscalWorkspaceEligible(this.authStore));
   protected readonly fiscalityItem: ShellNavItem = {
     page: 'settings.fiscality',
-    route: '/settings/fiscality',
+    route: '/settings/fiscality?shellProduct=RESTAURANTS',
     icon: 'verified_user',
     labelKey: 'FISCALITY.TITLE',
+    productCode: 'RESTAURANTS',
   };
   protected readonly cabinetMode = computed(() => this.authStore.isCabinetContext());
   protected readonly visibleCabinetItems = computed(() =>
@@ -429,8 +431,10 @@ export class AppSidebarComponent {
   );
 
   protected restaurantActive(item: ShellNavItem): boolean {
+    const itemPath = item.route?.split(/[?#]/)[0];
+
     return (
-      this.routeContext.url() === item.route ||
+      this.routeContext.url() === itemPath ||
       (item.route === '/restaurants/service' &&
         this.routeContext.url().startsWith('/restaurants/service/'))
     );
