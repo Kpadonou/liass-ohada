@@ -43,11 +43,22 @@
     </button>
   </div>
 
+  @if (productNavigation.activeProduct()) {
+    <div
+      [class]="navigationDividerClass()"
+      data-testid="sidebar-product-divider"
+      aria-hidden="true"
+    ></div>
+  }
+
   <div
-    class="no-scrollbar min-h-0 flex-1 overflow-y-auto py-3"
+    class="no-scrollbar min-h-0 w-full min-w-0 flex-1 overflow-y-auto py-3"
     data-testid="sidebar-navigation-scroll"
   >
-    <nav class="grid gap-1" [attr.aria-label]="'SHELL.SIDEBAR.NAVIGATION_LABEL' | transloco">
+    <nav
+      class="grid w-full min-w-0 grid-cols-1 gap-1"
+      [attr.aria-label]="'SHELL.SIDEBAR.NAVIGATION_LABEL' | transloco"
+    >
       @if (cabinetMode()) {
         @for (item of visibleCabinetItems(); track item.page) {
           <liass-sidebar-nav-item
@@ -80,10 +91,7 @@
         @if (currentProduct() === 'ACCOUNTING') {
           <section class="pt-2.5">
             @if (!sidebarExpanded()) {
-              <div
-                class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block"
-                aria-hidden="true"
-              ></div>
+              <div [class]="navigationDividerClass(true)" aria-hidden="true"></div>
             }
             <button
               [class]="navigationGroupHeaderClass(!!currentNavigationItem(accountingItems))"
@@ -133,10 +141,7 @@
         @if (currentProduct() === 'SALES' && showSalesNavigation()) {
           <section class="pt-2.5" data-testid="sales-navigation">
             @if (!sidebarExpanded()) {
-              <div
-                class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block"
-                aria-hidden="true"
-              ></div>
+              <div [class]="navigationDividerClass(true)" aria-hidden="true"></div>
             }
             <button
               [class]="navigationGroupHeaderClass(!!currentNavigationItem(salesItems))"
@@ -186,10 +191,7 @@
                 <section>
                   @if (group.showHeading) {
                     @if (!sidebarExpanded()) {
-                      <div
-                        class="mx-auto mb-2 hidden h-px w-8 bg-slate-200 dark:bg-slate-800 lg:block"
-                        aria-hidden="true"
-                      ></div>
+                      <div [class]="navigationDividerClass(true)" aria-hidden="true"></div>
                     }
                     <button
                       [class]="navigationGroupHeaderClass(!!currentRestaurantItem(group.items))"

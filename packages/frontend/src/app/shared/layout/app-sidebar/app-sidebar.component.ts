@@ -448,6 +448,12 @@ export class AppSidebarComponent {
     return !this.collapsedNavigationGroups().has(groupId);
   }
 
+  protected navigationDividerClass(collapsedOnly = false): string {
+    const base = 'mx-auto mb-2 h-px w-8 bg-slate-200 dark:bg-slate-800';
+
+    return collapsedOnly ? `${base} hidden lg:block` : base;
+  }
+
   protected navigationGroupClass(groupId: string): string {
     if (this.navigationGroupExpanded(groupId)) {
       return 'grid gap-1';

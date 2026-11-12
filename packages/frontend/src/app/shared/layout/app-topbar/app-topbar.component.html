@@ -1,8 +1,8 @@
 <header
-  class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#021f46] text-white shadow-[0_16px_40px_rgb(2_6_23/0.18)]"
+  class="fixed inset-x-0 top-0 z-50 h-[var(--spacing-app-header)] border-b border-white/10 bg-[#021f46] text-white shadow-[0_16px_40px_rgb(2_6_23/0.18)]"
 >
   <div
-    class="flex min-h-[var(--spacing-app-header)] flex-wrap items-center gap-x-1 gap-y-2 px-3 py-1.5 sm:flex-nowrap sm:gap-2 sm:px-3.5 lg:gap-x-0 lg:px-0 lg:py-1"
+    class="flex h-full flex-wrap items-center gap-x-1 gap-y-2 px-3 py-1.5 sm:flex-nowrap sm:gap-2 sm:px-3.5 lg:gap-x-0 lg:px-0 lg:py-0"
   >
     <div [class]="brandAreaClass()" data-testid="brand-menu-group">
       @if (productNavigation.hasSidebar() && uiStore.sidebarCollapsed()) {
@@ -80,7 +80,7 @@
     }
 
     <div
-      class="order-3 flex w-full min-w-0 items-center gap-2 sm:order-none sm:w-auto sm:flex-1 lg:pl-3"
+      class="order-3 flex w-full min-w-0 items-center gap-2 sm:order-none sm:h-full sm:w-auto sm:flex-1 lg:pl-3"
       data-testid="shell-context-selectors"
     >
       @if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
@@ -280,7 +280,7 @@
       </mat-menu>
     </div>
     <div
-      class="order-2 ml-auto flex shrink-0 min-w-0 items-center justify-end gap-1 sm:order-none sm:gap-2 lg:pr-4"
+      class="order-2 ml-auto flex shrink-0 min-w-0 items-center justify-end gap-1 sm:order-none sm:gap-2 sm:h-full lg:pr-4"
     >
       @if (productNavigation.routeProduct() === 'RESTAURANTS') {
         <liass-restaurant-outlet-context />

@@ -237,6 +237,18 @@ describe('AppSidebarComponent', () => {
     const navigationScroll = fixture.nativeElement.querySelector(
       '[data-testid="sidebar-navigation-scroll"]',
     ) as HTMLElement;
+    const productDivider = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-product-divider"]',
+    ) as HTMLElement;
+    const navigation = fixture.nativeElement.querySelector('nav') as HTMLElement;
+    const expectedDividerClasses = [
+      'mx-auto',
+      'mb-2',
+      'h-px',
+      'w-8',
+      'bg-slate-200',
+      'dark:bg-slate-800',
+    ].sort();
 
     expect(identity.textContent).toContain('Application');
     expect(identity.textContent).toContain('Liass-Resto');
@@ -249,11 +261,17 @@ describe('AppSidebarComponent', () => {
     expect(identity.className).not.toMatch(/border|bg-brand|shadow|rounded/);
     expect(label.className).not.toContain('lg:sr-only');
     expect(navigationScroll.className).toContain('min-h-0');
+    expect(navigationScroll.className).toContain('w-full');
+    expect(navigationScroll.className).toContain('min-w-0');
     expect(navigationScroll.className).toContain('overflow-y-auto');
+    expect([...productDivider.classList].sort()).toEqual(expectedDividerClasses);
+    expect(navigation.className).toContain('grid-cols-1');
+    expect(navigation.className).toContain('min-w-0');
 
     TestBed.inject(UiStore).setSidebarCollapsed(true);
     fixture.detectChanges();
 
+    expect([...productDivider.classList].sort()).toEqual(expectedDividerClasses);
     expect(label.className).toContain('lg:sr-only');
     expect(productIcon.parentElement?.className).toContain('lg:size-6');
     expect(collapseToggle.className).toContain('size-6');
@@ -513,10 +531,14 @@ describe('AppSidebarComponent', () => {
       }
 
       const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
+      const navigation = fixture.nativeElement.querySelector('nav') as HTMLElement;
       const headerRow = fixture.nativeElement.querySelector(
         '[data-testid="sidebar-header-row"]',
       ) as HTMLElement;
       expect(sidebar.className).toContain('lg:px-1');
+      expect(navigation.className).toContain('grid-cols-1');
+      expect(navigation.className).toContain('w-full');
+      expect(navigation.className).toContain('min-w-0');
       expect(headerRow.className).toContain('lg:gap-1.5');
       fixture.destroy();
     },

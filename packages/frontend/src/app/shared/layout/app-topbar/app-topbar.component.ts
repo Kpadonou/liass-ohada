@@ -164,14 +164,14 @@ export class AppTopbarComponent implements OnInit {
 
   protected brandAreaClass(): string {
     if (!this.productNavigation.hasSidebar()) {
-      return 'flex shrink-0 items-center gap-3 md:gap-4';
+      return 'flex shrink-0 items-center gap-3 md:gap-4 sm:h-full';
     }
 
     const sidebarWidth = this.uiStore.sidebarCollapsed()
       ? 'lg:w-[var(--spacing-shell-sidebar-collapsed)] lg:px-2'
       : 'lg:w-[var(--spacing-shell-sidebar)] lg:px-4';
 
-    return `flex shrink-0 items-center gap-3 md:gap-4 lg:gap-0 ${sidebarWidth}`;
+    return `flex shrink-0 items-center gap-3 md:gap-4 sm:h-full lg:gap-0 ${sidebarWidth}`;
   }
 
   protected toggleCabinetMenu(): void {

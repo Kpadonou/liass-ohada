@@ -255,6 +255,8 @@ describe('AppTopbarComponent', () => {
     );
     renderText();
 
+    const header = fixture.nativeElement.querySelector('header') as HTMLElement;
+    const headerContent = header.firstElementChild as HTMLElement;
     const group: HTMLElement = fixture.nativeElement.querySelector(
       '[data-testid="brand-menu-group"]',
     );
@@ -266,11 +268,18 @@ describe('AppTopbarComponent', () => {
       '[data-testid="brand-workspace-divider"]',
     );
     const contexts = fixture.nativeElement.querySelector('[data-testid="shell-context-selectors"]');
+    const controls = headerContent.querySelector(':scope > div.order-2') as HTMLElement;
     const workspaceProductDivider = contexts.querySelector(
       '[data-testid="workspace-product-divider"]',
     );
     const product = contexts.querySelector('[data-testid="active-product"]');
 
+    expect(header.className).toContain('h-[var(--spacing-app-header)]');
+    expect(headerContent.className).toContain('h-full');
+    expect(headerContent.className).toContain('lg:py-0');
+    expect(group.className).toContain('sm:h-full');
+    expect(contexts.className).toContain('sm:h-full');
+    expect(controls.className).toContain('sm:h-full');
     expect(group.className).toContain('gap-3');
     expect(group.className).toContain('md:gap-4');
     expect(group.className).toContain('lg:w-[var(--spacing-shell-sidebar)]');
@@ -290,6 +299,9 @@ describe('AppTopbarComponent', () => {
     uiStore.setSidebarCollapsed(true);
     fixture.detectChanges();
 
+    expect(header.className).toContain('h-[var(--spacing-app-header)]');
+    expect(headerContent.className).toContain('h-full');
+    expect(group.className).toContain('sm:h-full');
     expect(group.className).toContain('lg:w-[var(--spacing-shell-sidebar-collapsed)]');
     expect(group.className).toContain('lg:px-2');
     expect(group.querySelector('liass-logo[variant="horizontal"]')).toBeNull();
