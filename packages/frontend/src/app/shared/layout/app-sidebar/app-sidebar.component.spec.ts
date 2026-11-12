@@ -226,19 +226,38 @@ describe('AppSidebarComponent', () => {
     const identity = fixture.nativeElement.querySelector(
       '[data-testid="sidebar-product-identity"]',
     ) as HTMLElement;
+    const headerRow = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-header-row"]',
+    ) as HTMLElement;
+    const collapseToggle = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-collapse-toggle"]',
+    ) as HTMLButtonElement;
     const label = identity.querySelector('[data-testid="sidebar-product-label"]') as HTMLElement;
+    const productIcon = identity.querySelector('mat-icon') as HTMLElement;
+    const navigationScroll = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-navigation-scroll"]',
+    ) as HTMLElement;
 
     expect(identity.textContent).toContain('Application');
     expect(identity.textContent).toContain('Liass-Resto');
-    expect(identity.querySelector('mat-icon')?.textContent?.trim()).toBe('restaurant');
+    expect(productIcon.textContent?.trim()).toBe('restaurant');
+    expect(productIcon.parentElement?.className).toContain('size-9');
     expect(identity.querySelector('button, a')).toBeNull();
+    expect(identity.parentElement).toBe(headerRow);
+    expect(collapseToggle.parentElement).toBe(headerRow);
+    expect(collapseToggle.className).toContain('size-9');
+    expect(identity.className).not.toMatch(/border|bg-brand|shadow|rounded/);
     expect(label.className).not.toContain('lg:sr-only');
+    expect(navigationScroll.className).toContain('min-h-0');
+    expect(navigationScroll.className).toContain('overflow-y-auto');
 
     TestBed.inject(UiStore).setSidebarCollapsed(true);
     fixture.detectChanges();
 
     expect(label.className).toContain('lg:sr-only');
-    expect(identity.className).toContain('lg:justify-center');
+    expect(productIcon.parentElement?.className).toContain('lg:size-6');
+    expect(collapseToggle.className).toContain('size-6');
+    expect(headerRow.className).toContain('lg:gap-0');
   });
 
   it('keeps Treasury navigation unchanged while access is active or technically unknown', () => {
