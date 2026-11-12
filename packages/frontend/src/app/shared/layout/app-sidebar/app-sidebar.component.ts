@@ -453,9 +453,9 @@ export class AppSidebarComponent {
   }
 
   protected navigationDividerClass(collapsedOnly = false): string {
-    const base = 'mx-auto mb-2 h-px w-8 bg-slate-200 dark:bg-slate-800';
+    const base = 'mx-auto mb-2 h-px bg-slate-200 dark:bg-slate-800';
 
-    return collapsedOnly ? `${base} hidden lg:block` : base;
+    return collapsedOnly ? `${base} hidden w-8 lg:block` : `${base} w-full`;
   }
 
   protected navigationGroupClass(groupId: string): string {

@@ -247,7 +247,7 @@ describe('AppSidebarComponent', () => {
       'mx-auto',
       'mb-2',
       'h-px',
-      'w-8',
+      'w-full',
       'bg-slate-200',
       'dark:bg-slate-800',
     ].sort();
@@ -267,6 +267,8 @@ describe('AppSidebarComponent', () => {
     expect(navigationScroll.className).toContain('min-w-0');
     expect(navigationScroll.className).toContain('overflow-y-auto');
     expect([...productDivider.classList].sort()).toEqual(expectedDividerClasses);
+    expect(productDivider.previousElementSibling).toBe(headerRow);
+    expect(productDivider.nextElementSibling).toBe(navigationScroll);
     expect(navigation.className).toContain('grid-cols-1');
     expect(navigation.className).toContain('min-w-0');
 
