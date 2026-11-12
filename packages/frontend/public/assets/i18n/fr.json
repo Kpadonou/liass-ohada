@@ -503,6 +503,7 @@
     },
     "SIDEBAR": {
       "COLLAPSE": "Réduire la barre latérale",
+      "CURRENT_PAGE": "Page active",
       "EXPAND": "Déployer la barre latérale",
       "NAVIGATION_LABEL": "Navigation principale",
       "PRODUCTS": "Changer de produit",
@@ -518,6 +519,7 @@
       "CLIENT_DOSSIERS": "Dossiers clients",
       "CREATE_DOSSIER": "Créer un dossier",
       "CLOSE_NAVIGATION": "Fermer la navigation",
+      "OPEN_NAVIGATION": "Ouvrir la navigation",
       "CURRENT_MODULE": "Module courant",
       "DARK_MODE": "Activer le mode sombre",
       "DOSSIER": "Dossier actif",

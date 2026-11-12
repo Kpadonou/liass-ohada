@@ -7,7 +7,9 @@ import {
   ShellProductNavigation,
 } from '../../../core/navigation/product-navigation';
 import { RestaurantsCapabilities } from '../../../domains/restaurants/data-access/restaurants-capabilities';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router } from '@angular/router';
 import type { ProductCode } from '@liass-ohada/shared/shared';
 import { TranslocoModule } from '@ngneat/transloco';
@@ -218,7 +220,7 @@ const cabinetItems: readonly ShellNavItem[] = [
 
 @Component({
   selector: 'liass-app-sidebar',
-  imports: [LiassSidebarNavItemComponent, TranslocoModule],
+  imports: [LiassSidebarNavItemComponent, MatIconModule, MatTooltipModule, TranslocoModule],
   templateUrl: './app-sidebar.component.html',
 })
 export class AppSidebarComponent {
@@ -226,6 +228,7 @@ export class AppSidebarComponent {
   protected readonly routeContext = inject(ShellRouteContext);
   private readonly restaurantsCapabilities = inject(RestaurantsCapabilities);
   private readonly productNavigation = inject(ShellProductNavigation);
+  private readonly collapsedNavigationGroups = signal<ReadonlySet<string>>(new Set());
   protected readonly currentProduct = computed(
     () =>
       this.productNavigation.activeProduct()?.code ??
@@ -234,6 +237,7 @@ export class AppSidebarComponent {
   );
   private readonly allRestaurantGroups = computed(() => [
     {
+      id: 'restaurants-overview',
       labelKey: 'SHELL.NAV.RESTAURANTS',
       showHeading: false,
       items: this.restaurantsCapabilities.canManageSetup()
@@ -249,6 +253,7 @@ export class AppSidebarComponent {
         : [],
     },
     {
+      id: 'restaurants-service',
       labelKey: 'RESTAURANTS.SERVICE.GROUP',
       showHeading: true,
       items: [
@@ -277,6 +282,7 @@ export class AppSidebarComponent {
       ],
     },
     {
+      id: 'restaurants-cash',
       labelKey: 'RESTAURANTS.CASH.GROUP',
       showHeading: true,
       items: [
@@ -316,6 +322,7 @@ export class AppSidebarComponent {
       ],
     },
     {
+      id: 'restaurants-configuration',
       labelKey: 'RESTAURANTS.UX.CONFIGURATION',
       showHeading: true,
       items: [
@@ -396,7 +403,12 @@ export class AppSidebarComponent {
   private readonly salesCapabilities = inject(SalesCapabilities);
   protected readonly uiStore = inject(UiStore);
   protected readonly showFiscality = computed(() => fiscalWorkspaceEligible(this.authStore));
-  protected readonly fiscalityItem: ShellNavItem = { page: 'settings.fiscality', route: '/settings/fiscality', icon: 'verified_user', labelKey: 'FISCALITY.TITLE' };
+  protected readonly fiscalityItem: ShellNavItem = {
+    page: 'settings.fiscality',
+    route: '/settings/fiscality',
+    icon: 'verified_user',
+    labelKey: 'FISCALITY.TITLE',
+  };
   protected readonly cabinetMode = computed(() => this.authStore.isCabinetContext());
   protected readonly visibleCabinetItems = computed(() =>
     cabinetItems.filter(
@@ -422,6 +434,53 @@ export class AppSidebarComponent {
       (item.route === '/restaurants/service' &&
         this.routeContext.url().startsWith('/restaurants/service/'))
     );
+  }
+
+  protected currentNavigationItem(items: readonly ShellNavItem[]): ShellNavItem | undefined {
+    return items.find((item) => this.uiStore.currentPage() === item.page);
+  }
+
+  protected currentRestaurantItem(items: readonly ShellNavItem[]): ShellNavItem | undefined {
+    return items.find((item) => this.restaurantActive(item));
+  }
+
+  protected navigationGroupExpanded(groupId: string): boolean {
+    return !this.collapsedNavigationGroups().has(groupId);
+  }
+
+  protected navigationGroupClass(groupId: string): string {
+    if (this.navigationGroupExpanded(groupId)) {
+      return 'grid gap-1';
+    }
+
+    return this.uiStore.sidebarCollapsed() ? 'grid gap-1 hidden lg:grid' : 'grid gap-1 hidden';
+  }
+
+  protected toggleNavigationGroup(groupId: string): void {
+    this.collapsedNavigationGroups.update((collapsedGroups) => {
+      const next = new Set(collapsedGroups);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  }
+
+  protected sidebarControlRowClass(): string {
+    return `flex shrink-0 items-center py-1 ${
+      this.sidebarExpanded() ? 'justify-end' : 'justify-center'
+    } hidden lg:flex`;
+  }
+
+  protected navigationGroupHeaderClass(hasCurrentPage: boolean): string {
+    const activeState = hasCurrentPage
+      ? 'text-brand-700 dark:text-brand-300'
+      : 'text-app-text-secondary';
+    const compactState = this.sidebarExpanded() ? '' : 'lg:hidden';
+
+    return `liass-focus-ring mb-2 flex min-h-9 w-full items-center justify-between rounded-app-control px-3 text-left text-xs font-semibold uppercase tracking-[0.16em] ${activeState} transition hover:bg-slate-100/80 hover:text-slate-900 dark:hover:bg-slate-800/70 dark:hover:text-white ${compactState}`;
   }
 
   protected sidebarClass(): string {

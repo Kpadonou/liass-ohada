@@ -503,6 +503,7 @@
     },
     "SIDEBAR": {
       "COLLAPSE": "Collapse sidebar",
+      "CURRENT_PAGE": "Current page",
       "EXPAND": "Expand sidebar",
       "NAVIGATION_LABEL": "Primary navigation",
       "PRODUCTS": "Switch product",
@@ -518,6 +519,7 @@
       "CLIENT_DOSSIERS": "Client dossiers",
       "CREATE_DOSSIER": "Create dossier",
       "CLOSE_NAVIGATION": "Close navigation",
+      "OPEN_NAVIGATION": "Open navigation",
       "CURRENT_MODULE": "Current module",
       "DARK_MODE": "Switch to dark mode",
       "DOSSIER": "Active dossier",
