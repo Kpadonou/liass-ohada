@@ -508,7 +508,8 @@
       "NAVIGATION_LABEL": "Primary navigation",
       "PRODUCTS": "Switch product",
       "PLATFORM": "Platform",
-      "ACTIVE_PRODUCT": "Active product"
+      "ACTIVE_PRODUCT": "Active product",
+      "APPLICATION": "Application"
     },
     "TOPBAR": {
       "APPLICATIONS": "Applications",

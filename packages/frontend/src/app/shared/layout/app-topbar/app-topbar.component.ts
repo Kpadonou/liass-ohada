@@ -162,6 +162,18 @@ export class AppTopbarComponent implements OnInit {
     this.uiStore.toggleSidebar();
   }
 
+  protected brandAreaClass(): string {
+    if (!this.productNavigation.hasSidebar()) {
+      return 'flex shrink-0 items-center gap-3 md:gap-4';
+    }
+
+    const sidebarWidth = this.uiStore.sidebarCollapsed()
+      ? 'lg:w-[var(--spacing-shell-sidebar-collapsed)] lg:px-2'
+      : 'lg:w-[var(--spacing-shell-sidebar)] lg:px-4';
+
+    return `flex shrink-0 items-center gap-3 md:gap-4 lg:gap-0 ${sidebarWidth}`;
+  }
+
   protected toggleCabinetMenu(): void {
     if (this.authStore.activeWorkspaceType() !== 'ACCOUNTING_FIRM') {
       return;

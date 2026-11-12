@@ -2,28 +2,58 @@
   class="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-[#021f46] text-white shadow-[0_16px_40px_rgb(2_6_23/0.18)]"
 >
   <div
-    class="flex min-h-[var(--spacing-app-header)] flex-wrap items-center gap-x-1 gap-y-2 px-3 py-1.5 sm:flex-nowrap sm:gap-2 sm:px-3.5 lg:px-4"
+    class="flex min-h-[var(--spacing-app-header)] flex-wrap items-center gap-x-1 gap-y-2 px-3 py-1.5 sm:flex-nowrap sm:gap-2 sm:px-3.5 lg:gap-x-0 lg:px-0"
   >
-    <div class="flex shrink-0 items-center gap-3 md:gap-4" data-testid="brand-menu-group">
-      <a
-        class="liass-focus-ring hidden rounded-app-control xl:inline-flex"
-        routerLink="/dashboard"
-        [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
-      >
-        <liass-logo
-          variant="horizontal"
-          size="sm"
-          theme="light"
-          [alt]="'SHELL.LOGO_ALT' | transloco"
-        />
-      </a>
-      <a
-        class="liass-focus-ring inline-flex rounded-app-control xl:hidden"
-        routerLink="/dashboard"
-        [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
-      >
-        <liass-logo variant="icon" size="sm" theme="light" [alt]="'SHELL.LOGO_ALT' | transloco" />
-      </a>
+    <div [class]="brandAreaClass()" data-testid="brand-menu-group">
+      @if (productNavigation.hasSidebar() && uiStore.sidebarCollapsed()) {
+        <a
+          class="liass-focus-ring inline-flex rounded-app-control"
+          routerLink="/dashboard"
+          [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
+        >
+          <liass-logo variant="icon" size="sm" theme="light" [alt]="'SHELL.LOGO_ALT' | transloco" />
+        </a>
+      } @else if (productNavigation.hasSidebar()) {
+        <a
+          class="liass-focus-ring inline-flex rounded-app-control lg:hidden"
+          routerLink="/dashboard"
+          [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
+        >
+          <liass-logo variant="icon" size="sm" theme="light" [alt]="'SHELL.LOGO_ALT' | transloco" />
+        </a>
+        <a
+          class="liass-focus-ring hidden rounded-app-control lg:inline-flex"
+          routerLink="/dashboard"
+          [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
+        >
+          <liass-logo
+            variant="horizontal"
+            size="sm"
+            theme="light"
+            [alt]="'SHELL.LOGO_ALT' | transloco"
+          />
+        </a>
+      } @else {
+        <a
+          class="liass-focus-ring hidden rounded-app-control xl:inline-flex"
+          routerLink="/dashboard"
+          [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
+        >
+          <liass-logo
+            variant="horizontal"
+            size="sm"
+            theme="light"
+            [alt]="'SHELL.LOGO_ALT' | transloco"
+          />
+        </a>
+        <a
+          class="liass-focus-ring inline-flex rounded-app-control xl:hidden"
+          routerLink="/dashboard"
+          [attr.aria-label]="'SHELL.LOGO_ALT' | transloco"
+        >
+          <liass-logo variant="icon" size="sm" theme="light" [alt]="'SHELL.LOGO_ALT' | transloco" />
+        </a>
+      }
 
       @if (productNavigation.hasSidebar()) {
         <button
@@ -41,8 +71,16 @@
       }
     </div>
 
+    @if (productNavigation.hasSidebar()) {
+      <span
+        class="hidden h-6 shrink-0 border-l border-white/20 lg:block"
+        data-testid="brand-workspace-divider"
+        aria-hidden="true"
+      ></span>
+    }
+
     <div
-      class="order-3 flex w-full min-w-0 items-center gap-2 sm:order-none sm:w-auto sm:flex-1"
+      class="order-3 flex w-full min-w-0 items-center gap-2 sm:order-none sm:w-auto sm:flex-1 lg:pl-3"
       data-testid="shell-context-selectors"
     >
       @if (authStore.activeWorkspaceType() === 'ACCOUNTING_FIRM') {
@@ -187,7 +225,11 @@
       </mat-menu>
       @if (!authStore.isCabinetContext()) {
         @if (productNavigation.activeProduct(); as product) {
-          <span class="h-5 shrink-0 border-l border-white/20" aria-hidden="true"></span>
+          <span
+            class="h-5 shrink-0 border-l border-white/20"
+            data-testid="workspace-product-divider"
+            aria-hidden="true"
+          ></span>
           @if (productNavigation.products().length > 1) {
             <button
               mat-button
@@ -238,7 +280,7 @@
       </mat-menu>
     </div>
     <div
-      class="order-2 ml-auto flex shrink-0 min-w-0 sm:order-none items-center justify-end gap-1 sm:gap-2"
+      class="order-2 ml-auto flex shrink-0 min-w-0 items-center justify-end gap-1 sm:order-none sm:gap-2 lg:pr-4"
     >
       @if (productNavigation.routeProduct() === 'RESTAURANTS') {
         <liass-restaurant-outlet-context />

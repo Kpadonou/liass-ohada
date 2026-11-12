@@ -82,6 +82,7 @@ const translations = {
       SIDEBAR: {
         PLATFORM: 'Plateforme',
         ACTIVE_PRODUCT: 'Produit actif',
+        APPLICATION: 'Application',
         COLLAPSE: 'Réduire la barre latérale',
         CURRENT_PAGE: 'Page active',
         EXPAND: 'Déployer la barre latérale',
@@ -206,6 +207,38 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('ESPACE');
     expect(text).not.toContain('Ventes');
     expect(text).not.toContain('Sales');
+  });
+
+  it('identifies the active product and compacts its label with the sidebar', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-resto',
+        workspaceType: 'COMPANY',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
+      'org-resto',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const identity = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-product-identity"]',
+    ) as HTMLElement;
+    const label = identity.querySelector('[data-testid="sidebar-product-label"]') as HTMLElement;
+
+    expect(identity.textContent).toContain('Application');
+    expect(identity.textContent).toContain('Liass-Resto');
+    expect(identity.querySelector('mat-icon')?.textContent?.trim()).toBe('restaurant');
+    expect(identity.querySelector('button, a')).toBeNull();
+    expect(label.className).not.toContain('lg:sr-only');
+
+    TestBed.inject(UiStore).setSidebarCollapsed(true);
+    fixture.detectChanges();
+
+    expect(label.className).toContain('lg:sr-only');
+    expect(identity.className).toContain('lg:justify-center');
   });
 
   it('keeps Treasury navigation unchanged while access is active or technically unknown', () => {
@@ -797,6 +830,9 @@ describe('AppSidebarComponent', () => {
       expect(!!fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]')).toBe(
         availability === 'AVAILABLE',
       );
+      expect(
+        !!fixture.nativeElement.querySelector('[data-testid="sidebar-product-identity"]'),
+      ).toBe(availability === 'AVAILABLE');
       expect(fixture.nativeElement.querySelector('[data-testid="sales-navigation"]')).toBeNull();
       expect(fixture.nativeElement.textContent).not.toContain('Grand livre');
     },
@@ -938,8 +974,9 @@ describe('AppSidebarComponent', () => {
     fixture.detectChanges();
     const resto = fixture.nativeElement.querySelector('[data-testid="restaurants-navigation"]');
     expect(fixture.nativeElement.querySelector('[data-testid="product-navigation"]')).toBeNull();
-    expect(fixture.nativeElement.querySelector('[data-testid="active-product-label"]')).toBeNull();
-    expect(fixture.nativeElement.textContent).not.toContain('Liass-Resto');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="sidebar-product-identity"]')?.textContent,
+    ).toContain('Liass-Resto');
     expect(fixture.nativeElement.textContent).not.toContain('Plateforme');
     expect(
       fixture.nativeElement.querySelectorAll(
