@@ -473,7 +473,7 @@ export class AppSidebarComponent {
     const compactLayout = this.sidebarExpanded()
       ? ''
       : hasProduct
-        ? 'lg:gap-0'
+        ? 'lg:gap-1.5'
         : 'lg:justify-center';
     const alignment = hasProduct ? 'gap-2' : 'justify-end';
 
@@ -512,7 +512,7 @@ export class AppSidebarComponent {
   protected sidebarClass(): string {
     const mobileState = this.uiStore.sidebarOpen() ? 'translate-x-0' : '-translate-x-full';
     const desktopWidth = this.uiStore.sidebarCollapsed()
-      ? 'lg:w-[var(--spacing-shell-sidebar-collapsed)] lg:px-2'
+      ? 'lg:w-[var(--spacing-shell-sidebar-collapsed)] lg:px-1'
       : 'lg:w-[var(--spacing-shell-sidebar)] lg:px-2';
 
     return `fixed left-0 top-[var(--spacing-app-header)] z-50 flex h-[calc(100dvh-var(--spacing-app-header))] w-[var(--spacing-shell-sidebar)] flex-col border-r border-slate-200/80 bg-white/96 px-2 text-slate-950 shadow-app-popover backdrop-blur-xl transition-[transform,width,padding] duration-300 ease-in-out dark:border-slate-800 dark:bg-slate-950/96 dark:text-white lg:translate-x-0 lg:shadow-none ${desktopWidth} ${mobileState}`;

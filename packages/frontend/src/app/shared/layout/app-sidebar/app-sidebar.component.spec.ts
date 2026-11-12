@@ -13,7 +13,7 @@ import { vi } from 'vitest';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabinet-dossiers.api';
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
-import { UiStore } from '../../../core/state/ui.store';
+import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import type { ProductAvailability } from '../../../core/product-access/product-availability';
 import type { ProductCode } from '@liass-ohada/shared/shared';
@@ -257,7 +257,7 @@ describe('AppSidebarComponent', () => {
     expect(label.className).toContain('lg:sr-only');
     expect(productIcon.parentElement?.className).toContain('lg:size-6');
     expect(collapseToggle.className).toContain('size-6');
-    expect(headerRow.className).toContain('lg:gap-0');
+    expect(headerRow.className).toContain('lg:gap-1.5');
   });
 
   it('keeps Treasury navigation unchanged while access is active or technically unknown', () => {
@@ -450,6 +450,9 @@ describe('AppSidebarComponent', () => {
     const dashboardLabel = dashboardButton?.querySelector(
       'span:nth-child(2)',
     ) as HTMLElement | null;
+    const dashboardNavItem = dashboardButton?.closest(
+      'liass-sidebar-nav-item',
+    ) as HTMLElement | null;
     const aiPanel = fixture.nativeElement.querySelector(
       '[data-testid="sidebar-ai-panel"]',
     ) as HTMLElement | null;
@@ -458,10 +461,66 @@ describe('AppSidebarComponent', () => {
     expect(collapseToggle.getAttribute('aria-expanded')).toBe('false');
     expect(localStorage.getItem('liass-ohada.sidebarCollapsed')).toBe('true');
     expect(sidebar.className).toContain('lg:w-[var(--spacing-shell-sidebar-collapsed)]');
+    expect(sidebar.className).toContain('lg:px-1');
     expect(dashboardButton).not.toBeNull();
+    expect(dashboardNavItem?.className).toContain('block');
+    expect(dashboardNavItem?.className).toContain('w-full');
+    expect(dashboardNavItem?.className).toContain('min-w-0');
+    expect(dashboardButton?.className).toContain('lg:gap-0');
+    expect(dashboardButton?.className).toContain('lg:justify-center');
     expect(dashboardLabel?.className).toContain('lg:sr-only');
     expect(aiPanel?.className).toContain('lg:hidden');
   });
+
+  it.each(['ACCOUNTING', 'SALES', 'RESTAURANTS'] as const)(
+    'keeps %s navigation items fully sized and centered in compact mode',
+    (product) => {
+      productAvailability[product] = 'AVAILABLE';
+      const workspaceId = `org-${product.toLowerCase()}`;
+      const workspace =
+        product === 'RESTAURANTS'
+          ? {
+              orgId: workspaceId,
+              workspaceType: 'COMPANY' as const,
+              productRoles: { RESTAURANTS: 'OWNER' as const },
+            }
+          : { orgId: workspaceId, workspaceType: 'COMPANY' as const, role: 'OWNER' as const };
+      const pages: Record<ProductCode, AppPage> = {
+        ACCOUNTING: 'accounting.overview',
+        SALES: 'sales.customers',
+        RESTAURANTS: 'restaurants',
+      };
+
+      TestBed.inject(AuthStore).setCreatedWorkspace(workspace, workspaceId);
+      TestBed.inject(UiStore).setCurrentPage(pages[product]);
+      TestBed.inject(UiStore).setSidebarCollapsed(true);
+      fixture = TestBed.createComponent(AppSidebarComponent);
+      fixture.detectChanges();
+
+      const navigationItems = Array.from(
+        fixture.nativeElement.querySelectorAll('liass-sidebar-nav-item'),
+      ) as HTMLElement[];
+
+      expect(navigationItems.length).toBeGreaterThan(0);
+      for (const item of navigationItems) {
+        const button = item.querySelector('button') as HTMLButtonElement;
+        expect(item.className).toContain('block');
+        expect(item.className).toContain('w-full');
+        expect(item.className).toContain('min-w-0');
+        expect(button.className).toContain('lg:justify-center');
+        expect(button.className).toContain('lg:gap-0');
+        expect(button.className).toContain('lg:px-0');
+      }
+
+      const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
+      const headerRow = fixture.nativeElement.querySelector(
+        '[data-testid="sidebar-header-row"]',
+      ) as HTMLElement;
+      expect(sidebar.className).toContain('lg:px-1');
+      expect(headerRow.className).toContain('lg:gap-1.5');
+      fixture.destroy();
+    },
+  );
 
   it('collapses navigation groups independently and keeps the current page announced', () => {
     const uiStore = TestBed.inject(UiStore);
