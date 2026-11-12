@@ -227,7 +227,7 @@ export class AppSidebarComponent {
   private readonly restaurantOutlet = inject(RestaurantOutletContext);
   protected readonly routeContext = inject(ShellRouteContext);
   private readonly restaurantsCapabilities = inject(RestaurantsCapabilities);
-  private readonly productNavigation = inject(ShellProductNavigation);
+  protected readonly productNavigation = inject(ShellProductNavigation);
   private readonly collapsedNavigationGroups = signal<ReadonlySet<string>>(new Set());
   protected readonly currentProduct = computed(
     () =>
@@ -472,6 +472,12 @@ export class AppSidebarComponent {
     return `flex shrink-0 items-center py-1 ${
       this.sidebarExpanded() ? 'justify-end' : 'justify-center'
     } hidden lg:flex`;
+  }
+
+  protected productIdentityClass(): string {
+    return `mx-1 mb-3 flex min-h-11 items-center gap-2 rounded-app-control border border-brand-100 bg-brand-50/80 px-2.5 text-sm font-semibold text-brand-700 dark:border-brand-900/60 dark:bg-brand-900/20 dark:text-brand-200 ${
+      this.sidebarExpanded() ? '' : 'lg:justify-center lg:px-0'
+    }`;
   }
 
   protected navigationGroupHeaderClass(hasCurrentPage: boolean): string {

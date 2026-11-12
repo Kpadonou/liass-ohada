@@ -247,7 +247,12 @@ describe('AppTopbarComponent', () => {
     expect(activeWorkspaceText()).toContain('Demo SARL');
   });
 
-  it('keeps a responsive gap between the proportional brand mark and menu button', () => {
+  it('aligns the brand area with the sidebar and preserves both workspace dividers', () => {
+    available.set(['ACCOUNTING']);
+    authStore.setCreatedWorkspace(
+      { orgId: 'org-company-123', displayName: 'Demo SARL', workspaceType: 'COMPANY' },
+      'org-company-123',
+    );
     renderText();
 
     const group: HTMLElement = fixture.nativeElement.querySelector(
@@ -257,11 +262,34 @@ describe('AppTopbarComponent', () => {
       'liass-logo[variant="horizontal"]',
     )?.parentElement;
     const compactLogoLink = group.querySelector('liass-logo[variant="icon"]')?.parentElement;
+    const brandDivider = fixture.nativeElement.querySelector(
+      '[data-testid="brand-workspace-divider"]',
+    );
+    const contexts = fixture.nativeElement.querySelector('[data-testid="shell-context-selectors"]');
+    const workspaceProductDivider = contexts.querySelector(
+      '[data-testid="workspace-product-divider"]',
+    );
+    const product = contexts.querySelector('[data-testid="active-product"]');
 
     expect(group.className).toContain('gap-3');
     expect(group.className).toContain('md:gap-4');
-    expect(horizontalLogoLink?.className).toContain('xl:inline-flex');
-    expect(compactLogoLink?.className).toContain('xl:hidden');
+    expect(group.className).toContain('lg:w-[var(--spacing-shell-sidebar)]');
+    expect(horizontalLogoLink?.className).toContain('lg:inline-flex');
+    expect(compactLogoLink?.className).toContain('lg:hidden');
+    expect(group.nextElementSibling).toBe(brandDivider);
+    expect(brandDivider.nextElementSibling).toBe(contexts);
+    expect(contexts.className).toContain('lg:pl-3');
+    expect(contexts.querySelector('[data-testid="active-workspace"]')).not.toBeNull();
+    expect(workspaceProductDivider).not.toBeNull();
+    expect(workspaceProductDivider.nextElementSibling).toBe(product);
+
+    uiStore.setSidebarCollapsed(true);
+    fixture.detectChanges();
+
+    expect(group.className).toContain('lg:w-[var(--spacing-shell-sidebar-collapsed)]');
+    expect(group.className).toContain('lg:px-2');
+    expect(group.querySelector('liass-logo[variant="horizontal"]')).toBeNull();
+    expect(group.querySelector('liass-logo[variant="icon"]')).not.toBeNull();
   });
 
   it('renders the direct company identity without the old card styling', () => {
