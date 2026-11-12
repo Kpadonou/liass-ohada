@@ -27,10 +27,12 @@
 
       @if (productNavigation.hasSidebar()) {
         <button
-          class="liass-focus-ring grid size-9 shrink-0 place-items-center rounded-app-panel border border-white/15 bg-white/[0.06] text-white transition hover:border-white/25 hover:bg-white/[0.1]"
+          class="liass-focus-ring grid size-9 shrink-0 place-items-center rounded-app-panel border border-white/15 bg-white/[0.06] text-white transition hover:border-white/25 hover:bg-white/[0.1] lg:hidden"
           type="button"
-          data-testid="sidebar-toggle"
+          data-testid="sidebar-toggle-mobile"
           [attr.aria-label]="sidebarToggleLabelKey() | transloco"
+          aria-controls="app-sidebar"
+          [attr.aria-expanded]="uiStore.sidebarOpen()"
           [matTooltip]="sidebarToggleLabelKey() | transloco"
           (click)="toggleShellNavigation()"
         >

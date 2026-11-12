@@ -67,6 +67,7 @@ const translations = {
         CABINET_DASHBOARD: 'Cabinet dashboard',
         CABINET_MENU_LABEL: 'Open cabinet menu',
         CLIENT_DOSSIERS: 'Client dossiers',
+        CLOSE_NAVIGATION: 'Close navigation',
         COMMAND_PLACEHOLDER: 'Search workspace or ask AI...',
         COMMAND_SHORTCUT: '⌘ K',
         CREATE_DOSSIER: 'Create dossier',
@@ -82,6 +83,7 @@ const translations = {
         OPEN_DOSSIER: 'Open a dossier',
         NO_WORKSPACE: 'Workspace',
         NEW_CLIENT_DOSSIER: 'New client dossier',
+        OPEN_NAVIGATION: 'Open navigation',
         PAGE_ACTIONS: 'Page actions',
         SELECT_DOSSIER: 'Select a dossier',
         SELECT_FISCAL_YEAR: 'Select fiscal year',
@@ -306,7 +308,7 @@ describe('AppTopbarComponent', () => {
     expect(text).not.toContain('General ledger');
   });
 
-  it('renders a visible sidebar toggle in the header', () => {
+  it('keeps the header navigation toggle for the mobile drawer', () => {
     authStore.setCreatedWorkspace(
       {
         orgId: 'org-company-123',
@@ -318,11 +320,21 @@ describe('AppTopbarComponent', () => {
 
     renderText();
     const toggle = fixture.nativeElement.querySelector(
-      '[data-testid="sidebar-toggle"]',
+      '[data-testid="sidebar-toggle-mobile"]',
     ) as HTMLButtonElement | null;
 
     expect(toggle).not.toBeNull();
-    expect(toggle?.getAttribute('aria-label')).toBe('Collapse sidebar');
+    expect(toggle?.className).toContain('lg:hidden');
+    expect(toggle?.getAttribute('aria-label')).toBe('Open navigation');
+    expect(toggle?.getAttribute('aria-controls')).toBe('app-sidebar');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('false');
+    toggle?.click();
+    fixture.detectChanges();
+
+    expect(uiStore.sidebarOpen()).toBe(true);
+    expect(uiStore.sidebarCollapsed()).toBe(false);
+    expect(toggle?.getAttribute('aria-label')).toBe('Close navigation');
+    expect(toggle?.getAttribute('aria-expanded')).toBe('true');
   });
 
   it('renders the active fiscal year selector on accounting pages', () => {

@@ -70,10 +70,10 @@ export class AppTopbarComponent implements OnInit {
     this.uiStore.currentPage().startsWith('accounting.'),
   );
   protected readonly sidebarToggleLabelKey = computed(() =>
-    this.uiStore.sidebarCollapsed() ? 'SHELL.SIDEBAR.EXPAND' : 'SHELL.SIDEBAR.COLLAPSE',
+    this.uiStore.sidebarOpen() ? 'SHELL.TOPBAR.CLOSE_NAVIGATION' : 'SHELL.TOPBAR.OPEN_NAVIGATION',
   );
   protected readonly sidebarToggleIcon = computed(() =>
-    this.uiStore.sidebarOpen() ? 'close' : this.uiStore.sidebarCollapsed() ? 'menu_open' : 'menu',
+    this.uiStore.sidebarOpen() ? 'close' : 'menu',
   );
   private readonly router = inject(Router);
   private readonly pendingChanges = inject(PendingChangesService);
@@ -159,11 +159,6 @@ export class AppTopbarComponent implements OnInit {
   }
 
   protected toggleShellNavigation(): void {
-    if (typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches) {
-      this.uiStore.toggleSidebarCollapsed();
-      return;
-    }
-
     this.uiStore.toggleSidebar();
   }
 

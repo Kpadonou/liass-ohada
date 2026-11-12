@@ -83,6 +83,7 @@ const translations = {
         PLATFORM: 'Plateforme',
         ACTIVE_PRODUCT: 'Produit actif',
         COLLAPSE: 'Réduire la barre latérale',
+        CURRENT_PAGE: 'Page active',
         EXPAND: 'Déployer la barre latérale',
         NAVIGATION_LABEL: 'Navigation principale',
       },
@@ -382,7 +383,12 @@ describe('AppSidebarComponent', () => {
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
 
-    uiStore.setSidebarCollapsed(true);
+    const collapseToggle = fixture.nativeElement.querySelector(
+      '[data-testid="sidebar-collapse-toggle"]',
+    ) as HTMLButtonElement;
+    expect(collapseToggle.getAttribute('aria-controls')).toBe('app-sidebar');
+    expect(collapseToggle.getAttribute('aria-expanded')).toBe('true');
+    collapseToggle.click();
     fixture.detectChanges();
 
     const sidebar = fixture.nativeElement.querySelector('aside') as HTMLElement;
@@ -397,11 +403,50 @@ describe('AppSidebarComponent', () => {
     ) as HTMLElement | null;
 
     expect(uiStore.sidebarCollapsed()).toBe(true);
+    expect(collapseToggle.getAttribute('aria-expanded')).toBe('false');
     expect(localStorage.getItem('liass-ohada.sidebarCollapsed')).toBe('true');
     expect(sidebar.className).toContain('lg:w-[var(--spacing-shell-sidebar-collapsed)]');
     expect(dashboardButton).not.toBeNull();
     expect(dashboardLabel?.className).toContain('lg:sr-only');
     expect(aiPanel?.className).toContain('lg:hidden');
+  });
+
+  it('collapses navigation groups independently and keeps the current page announced', () => {
+    const uiStore = TestBed.inject(UiStore);
+    uiStore.setCurrentPage('accounting.auxiliaryLedger');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      {
+        orgId: 'org-company',
+        displayName: 'Demo SARL',
+        workspaceType: 'COMPANY',
+      },
+      'org-company',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const toggle = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-accounting-toggle"]',
+    ) as HTMLButtonElement;
+    const panel = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-panel-accounting"]',
+    ) as HTMLElement;
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.textContent).toContain('Page active');
+    expect(toggle.textContent).toContain('Grand livre auxiliaire');
+    toggle.click();
+    fixture.detectChanges();
+
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(panel.classList.contains('hidden')).toBe(true);
+
+    uiStore.setSidebarCollapsed(true);
+    fixture.detectChanges();
+    expect(panel.classList.contains('lg:grid')).toBe(true);
+    expect(
+      panel.querySelector('liass-sidebar-nav-item button[aria-current="page"]'),
+    ).not.toBeNull();
   });
 
   it('shows cabinet navigation and hides standard accounting navigation without an active dossier', () => {
@@ -640,6 +685,20 @@ describe('AppSidebarComponent', () => {
     expect(text).toContain('Factures');
     expect(text).not.toContain('Catalog');
     expect(text).not.toContain('Invoices');
+
+    const salesToggle = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-sales-toggle"]',
+    ) as HTMLButtonElement;
+    const salesPanel = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-panel-sales"]',
+    ) as HTMLElement;
+    expect(salesToggle.textContent).toContain('Page active');
+    expect(salesToggle.textContent).toContain('Clients');
+    salesToggle.click();
+    fixture.detectChanges();
+
+    expect(salesToggle.getAttribute('aria-expanded')).toBe('false');
+    expect(salesPanel.classList.contains('hidden')).toBe(true);
   });
 
   it.each(['UNKNOWN', 'UNAVAILABLE'] as const)(
@@ -888,13 +947,26 @@ describe('AppSidebarComponent', () => {
       ),
     ).toHaveLength(1);
     expect(resto.querySelectorAll('section')[0].querySelector('p')).toBeNull();
-    expect(resto.querySelectorAll('section p')).toHaveLength(3);
+    const navigationGroupToggles = resto.querySelectorAll(
+      '[data-testid^="navigation-group-restaurants-"][data-testid$="-toggle"]',
+    );
+    expect(navigationGroupToggles).toHaveLength(3);
+    expect(
+      resto
+        .querySelector('[data-testid="navigation-group-restaurants-cash-toggle"]')
+        .textContent.trim(),
+    ).toContain('Caisse');
+    expect(
+      resto
+        .querySelector('[data-testid="navigation-group-restaurants-configuration-toggle"]')
+        .textContent.trim(),
+    ).toContain('Configuration');
     expect(resto.querySelector('button[aria-label="Service en salle"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Restaurant"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Postes de préparation"]')).not.toBeNull();
     expect(resto.textContent).not.toContain('Configuration du restaurant');
-    expect(resto.querySelectorAll('section p')[1].textContent.trim()).toBe('Caisse');
-    expect(resto.querySelectorAll('section p')[2].textContent.trim()).toBe('Configuration');
+    expect(resto.textContent).toContain('Caisse');
+    expect(resto.textContent).toContain('Configuration');
     const configuration = resto.querySelectorAll('section')[3];
     expect(configuration.querySelector('button[aria-label="Menu"]')).not.toBeNull();
     expect(configuration.querySelector('button[aria-label="Équipe"]')).not.toBeNull();
@@ -1083,5 +1155,43 @@ describe('AppSidebarComponent', () => {
     ]);
     for (const label of ['Encaisser', 'Ma session', 'Journée de caisse'])
       expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).not.toBeNull();
+  });
+
+  it('allows Restaurant Service and Cash groups to collapse independently', () => {
+    productAvailability.RESTAURANTS = 'AVAILABLE';
+    TestBed.inject(UiStore).setCurrentPage('restaurants');
+    TestBed.inject(AuthStore).setCreatedWorkspace(
+      { orgId: 'org-resto', workspaceType: 'COMPANY', productRoles: { RESTAURANTS: 'MANAGER' } },
+      'org-resto',
+    );
+    fixture = TestBed.createComponent(AppSidebarComponent);
+    fixture.detectChanges();
+
+    const serviceToggle = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-restaurants-service-toggle"]',
+    ) as HTMLButtonElement;
+    const servicePanel = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-panel-restaurants-service"]',
+    ) as HTMLElement;
+    const cashToggle = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-restaurants-cash-toggle"]',
+    ) as HTMLButtonElement;
+    const cashPanel = fixture.nativeElement.querySelector(
+      '[data-testid="navigation-group-panel-restaurants-cash"]',
+    ) as HTMLElement;
+
+    serviceToggle.click();
+    fixture.detectChanges();
+
+    expect(serviceToggle.getAttribute('aria-expanded')).toBe('false');
+    expect(servicePanel.classList.contains('hidden')).toBe(true);
+    expect(cashToggle.getAttribute('aria-expanded')).toBe('true');
+    expect(cashPanel.classList.contains('hidden')).toBe(false);
+
+    cashToggle.click();
+    fixture.detectChanges();
+    expect(cashToggle.getAttribute('aria-expanded')).toBe('false');
+    expect(servicePanel.classList.contains('hidden')).toBe(true);
+    expect(cashPanel.classList.contains('hidden')).toBe(true);
   });
 });
