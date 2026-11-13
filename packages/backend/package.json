@@ -34,6 +34,7 @@
     "identity:relink": "ts-node -r tsconfig-paths/register scripts/relink-user-identity.ts",
     "restaurants:dev-auth": "node scripts/dev-auth/run.mjs",
     "restaurants:deploy:dev:targeted": "node scripts/deploy/dev-targeted-restaurants-lambdas.mjs",
+    "lambda:code-release:dev": "node scripts/deploy/dev-immutable-lambda-code-release.mjs",
     "fiscal:release:dev:prepare": "node scripts/deploy/prepare-dev-contained-fiscal-release.mjs",
     "fiscal:release:dev:verify": "node scripts/deploy/verify-dev-contained-fiscal-release.mjs"
   },
