@@ -35,7 +35,8 @@ split settlement and legacy zero-tax snapshots remain excluded.
   baseline only.** This release creates no pilot data and sends no personal or
   fiscal evidence. Before any real DEV invoice is selected, the Product Owner
   has now personally accepted the named-operator and primary-incident-contact
-  roles for the first pilot; see the D15 decision record in
+  roles for the first pilot and approved the bounded design constraints and
+  least-privilege/stop-and-read principles; see the D15 decision record in
   `restaurants-fiscal-test-pilot.md`. Exact authenticated account/channel binding,
   data minimization, restricted evidence readers, diagnostic retention and the
   applicable deletion schedule still require the stated approvals. D15 remains
