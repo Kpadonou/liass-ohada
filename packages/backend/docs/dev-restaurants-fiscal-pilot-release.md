@@ -34,9 +34,12 @@ split settlement and legacy zero-tax snapshots remain excluded.
 - **D15 technical review — PASS for deployment preparation and gates-disabled
   baseline only.** This release creates no pilot data and sends no personal or
   fiscal evidence. Before any real DEV invoice is selected, the Product Owner
-  must approve the named operators, data minimization, restricted evidence
-  readers, 30-day diagnostic retention, incident contact and deletion/retention
-  disposition. D15 approval does not open a fiscal gate or authorize DGI TEST.
+  has now personally accepted the named-operator and primary-incident-contact
+  roles for the first pilot; see the D15 decision record in
+  `restaurants-fiscal-test-pilot.md`. Exact authenticated account/channel binding,
+  data minimization, restricted evidence readers, diagnostic retention and the
+  applicable deletion schedule still require the stated approvals. D15 remains
+  OPEN; this role decision does not open a fiscal gate or authorize DGI TEST.
 - **Fiscal Compliance review — PASS for offline qualification.** The executor
   projects only the frozen V1 document, reconciles source/projection/request
   totals and rejects unsupported or reinterpreted tax facts. Provider

@@ -6,6 +6,39 @@ settlement by one mapped payment method. Exclude credits, voids, free items,
 discounts, charges, mixed currencies and split settlements from this pilot.
 The offline fixture classification conveys no tax approval.
 
+## D15 first-pilot decision record — 2026-11-13
+
+**Recorded Product Owner decision:** The Product Owner personally serves as the
+named operator and primary incident contact for the first Liass-Resto DGI TEST
+pilot. Evidence: the Product Owner's explicit instruction in this conversation,
+“The Product Owner confirms that they will personally serve as the named
+operator and primary incident contact for the first Liass-Resto DGI TEST pilot.”
+The actual authenticated operator account and incident communication channel
+must be bound in the restricted execution record before any pilot data or
+provider mutation. This decision supplies neither personal contact details nor
+permission to disclose credentials or raw fiscal evidence.
+
+The intended candidate is one synthetic, normally published Restaurants FINAL,
+group-B FV for 2,360 XOF TTC (2,000 XOF net and 360 XOF VAT), quantity one,
+fully paid in CASH, using the existing authorized REM SI e-MECeF TEST identity.
+This is a bounded pilot proposal, not a finding that the seller is eligible for
+ordinary VAT or an authorization to publish, deploy, open a REAL_TEST gate, or
+send CREATE/CONFIRM. D05/GB02 and D15 remain OPEN.
+
+| Remaining disposition | Exact proposed approval wording; not yet approved | Evidence required before approval |
+| --- | --- | --- |
+| Product Owner — synthetic data and exact operator binding | “I approve one synthetic Restaurants FINAL matching the 2,360 XOF group-B FV cash pilot. I identify my authenticated DEV account in the restricted execution record as its sole operator and approve binding only the exact organization, outlet, session, invoice, source digest and existing REM SI TEST IFU/NIM to this attempt. No real customer or payment credential is entered.” | Restricted account and invoice binding record; synthetic-data checklist; source/settlement digest. Do not put token or personal contact details in this document. |
+| Product Owner and security/privacy owners — restricted evidence access and minimization | “I approve retaining only the invoice, source/projection/attempt identifiers, reconciled totals, DGI TEST result and security/QR elements needed for verification and recovery. Access to raw provider captures is limited to my bound operator account and separately named, authorized Fiscal Compliance incident reviewers for the exact case; guest, general staff and broad administrator access are excluded. Every exceptional read/export is purpose-bound, attributable and audited.” | Named reviewer/account register, effective tenant and source permissions, restricted capture location, access/audit review and an approved disclosure route. Security/privacy owners must approve the applicable access policy. |
+| Privacy/legal and security owners; Product Owner operational acceptance — retention and deletion | “I accept the reviewed, versioned D15 schedule for diagnostic captures, invoice/provenance proof, audit and backups, including lawful start clocks, holds, deletion exceptions and verified deletion after expiry. A 30-day diagnostic target is applied only where the reviewers confirm it is lawful and compatible with retained fiscal proof; no linked immutable evidence is deleted while required for a retained invoice.” | Current applicable legal sources, data-category schedule, backup/recovery treatment, hold and deletion procedure, attributable privacy/legal and security approvals. No statutory duration or deletion exemption is inferred from this proposal. |
+| Product Owner and Fiscal Compliance architect — seller applicability | “Having reviewed the cited seller-regime evidence for the exact REM SI TEST seller and pilot organization, I approve ordinary-VAT group-B treatment for this single synthetic FV candidate. The company declaration alone is not independent proof; any mismatch blocks publication or fiscal submission.” | Seller IFU/NIM and organization binding, ordinary-VAT eligibility evidence with reviewer/reference, frozen profile revision and independent 2,000/360/2,360 reconciliation. |
+| Product Owner and security/incident owners — incident procedure | “I will act as primary incident contact. I approve the stop-and-read procedure in this runbook: preserve command IDs, attempt and restricted capture references; stop on ambiguous CREATE/CONFIRM, identity, total or provider discrepancies; notify the authorized Fiscal Compliance and security responders through the approved private channel; require an attributable recovery decision before any further mutation. No blind retry or evidence rewrite is authorized.” | Restricted escalation channel, named authorized responders and backup contact, incident log/case reference, recovery authority and access controls. No personal contact details are recorded here. |
+| Fiscal Compliance architect — D05/GB02 | “I approve the bounded Restaurants FINAL source proof, immutable part chain, V1 projection, authoritative ordinary-VAT treatment provenance, mapping and rejection evidence for this one group-B FV pilot only. I do not approve broader scenario coverage or provider execution.” | Exact frozen fixture, independent canonical-byte verification, projection/reconciliation and denial-test references; attributable approval of the versioned contracts. |
+
+DEV deployment, authentic FINAL publication, REAL_TEST gate activation and DGI
+CREATE/CONFIRM each require their separate explicit authorizations after the
+applicable dispositions above. The three-Lambda immutable code-release package
+is technical preparation only and is not modified by this record.
+
 ## Release checklist
 
 1. Obtain the Restaurants owner and Fiscal Compliance architect reviews and
