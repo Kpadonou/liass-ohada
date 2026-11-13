@@ -175,14 +175,53 @@ function executeRelease({ releaseDirectory, evidenceDirectory, profile, approval
   return evidence;
 }
 
+function rollbackRelease({ evidenceDirectory, profile, approvalId, manifest, targets }) {
+  const evidenceFile = join(evidenceDirectory, "execution-evidence.json");
+  if (!existsSync(evidenceFile)) throw new Error("Rollback requires retained execution-evidence.json");
+  const evidence = readJson(evidenceFile);
+  assert.equal(evidence.releaseFingerprint, releaseFingerprint(manifest), "Rollback evidence is for another release");
+  assert.ok(evidence.completedAt, "Rollback requires a completed execution record");
+  const targetByName = new Map(targets.map((target) => [target.functionName, target]));
+  const rollbackByName = new Map((evidence.rollback ?? []).map((item) => [item.functionName, item]));
+  const preflightByName = new Map((evidence.items ?? []).map((item) => [item.functionName, item]));
+  const updates = [...(evidence.updates ?? [])].reverse();
+  if (!updates.length) throw new Error("Rollback evidence contains no completed updates");
+  const completed = [];
+  for (const update of updates) {
+    const target = targetByName.get(update.functionName);
+    const prior = rollbackByName.get(update.functionName);
+    const preflight = preflightByName.get(update.functionName);
+    assert.ok(target && prior && preflight, `Incomplete rollback evidence: ${update.functionName}`);
+    const rollbackPath = join(evidenceDirectory, prior.artifact);
+    const rollbackBytes = readFileSync(rollbackPath);
+    assert.equal(sha256(rollbackBytes), prior.sha256Hex, `Rollback artifact SHA-256 mismatch: ${target.functionName}`);
+    assert.equal(codeHash(rollbackBytes), prior.codeSha256, `Rollback artifact CodeSha256 mismatch: ${target.functionName}`);
+    const current = awsJson(["lambda", "get-function-configuration", "--function-name", target.functionName], profile);
+    assert.equal(configurationFingerprint(current), preflight.configurationFingerprint, `Configuration drift blocks rollback: ${target.functionName}`);
+    assert.equal(current.CodeSha256, update.codeSha256, `Code drift blocks rollback: ${target.functionName}`);
+    awsJson(["lambda", "update-function-code", "--function-name", target.functionName, "--zip-file", `fileb://${rollbackPath}`, "--no-publish", "--revision-id", current.RevisionId], profile);
+    command(["lambda", "wait", "function-updated-v2", "--function-name", target.functionName], profile, false);
+    const after = awsJson(["lambda", "get-function-configuration", "--function-name", target.functionName], profile);
+    assert.equal(configurationFingerprint(after), preflight.configurationFingerprint, `Configuration changed during rollback: ${target.functionName}`);
+    assert.equal(after.CodeSha256, prior.codeSha256, `Rollback code verification failed: ${target.functionName}`);
+    completed.push({ functionName: target.functionName, codeSha256: after.CodeSha256, revisionId: after.RevisionId, lastModified: after.LastModified });
+    writeJson(evidenceFile, { ...evidence, rollbackApprovalId: approvalId, rollbackUpdates: completed });
+  }
+  return completed;
+}
+
 function main(argv = process.argv.slice(2)) {
   const options = parseArguments(argv);
-  if (options.mode === "rollback") throw new Error("Rollback execution is intentionally withheld pending a separately approved rollback procedure");
   const releaseDirectory = resolve(options.releaseDirectory);
   const evidenceDirectory = resolve(options.evidenceDirectory);
   const manifest = readJson(options.manifestFile ? resolve(options.manifestFile) : join(releaseDirectory, "release-manifest.json"));
   const targets = validateReleaseManifest(manifest, releaseDirectory);
   const identity = awsJson(["sts", "get-caller-identity"], options.profile);
+  if (options.mode === "rollback") {
+    const completed = rollbackRelease({ ...options, evidenceDirectory, manifest, targets });
+    console.log(JSON.stringify({ mode: "ROLLBACK", targets: completed.length, evidence: join(evidenceDirectory, "execution-evidence.json"), releaseFingerprint: releaseFingerprint(manifest) }, null, 2));
+    return;
+  }
   const configurations = new Map(targets.map((target) => [target.functionName, awsJson(["lambda", "get-function-configuration", "--function-name", target.functionName], options.profile)]));
   const preflight = makePreflight(manifest, targets, configurations, identity);
   saveEvidence(evidenceDirectory, "preflight.json", preflight);
