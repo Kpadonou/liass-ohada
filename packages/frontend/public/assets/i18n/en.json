@@ -4792,7 +4792,13 @@
       "TOGGLE_AVAILABILITY": "Change availability of {{name}}",
       "SITE_COUNTS": "Configuration at {{name}}",
       "RECOMMENDED": "Recommended",
-      "POLICY_HELP": "Direct ordering is recommended. This setting applies to all restaurant outlets."
+      "POLICY_HELP": "Direct ordering is recommended. This setting applies to all restaurant outlets.",
+      "FISCAL_GROUP": "Default tax group",
+      "FISCAL_GROUP_HELP": "Used for ordinary sales. Exceptions require evidence when the sale is accepted.",
+      "FISCAL_GROUP_REQUIRED": "Choose a group allowed by the company's tax regime.",
+      "FISCAL_UNCLASSIFIED": "Needs classification",
+      "FISCAL_REGIME_REQUIRED": "Declare the company's tax regime first.",
+      "FISCAL_GROUPS": { "A": "A · Exempt", "B": "B · VAT 18%", "E": "E · TPS regime" }
     },
     "UX": {
       "CONFIGURATION": "Configuration",

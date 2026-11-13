@@ -32,21 +32,31 @@ test("membership/entitlement use Platform while every business transaction and r
   memory.db.resetHistory();
   await acceptanceFixture();
   await RestaurantsRepository.list("org-resto", "outlet", {}, { limit: 10 });
-  expect(
+  const getTables = new Set(
     memory.db
       .commandCalls(GetItemCommand)
-      .every((call) => call.args[0].input.TableName === restaurantsTableName()),
-  ).toBe(true);
+      .map((call) => call.args[0].input.TableName),
+  );
+  expect(getTables).toEqual(
+    new Set([restaurantsTableName(), config.PLATFORM_TABLE_NAME]),
+  );
   expect(
     memory.db
       .commandCalls(QueryCommand)
       .every((call) => call.args[0].input.TableName === restaurantsTableName()),
   ).toBe(true);
   for (const tx of memory.transactions)
-    for (const op of tx.TransactItems ?? [])
-      expect((op.Put ?? op.Delete ?? op.ConditionCheck)?.TableName).toBe(
-        restaurantsTableName(),
-      );
+    for (const op of tx.TransactItems ?? []) {
+      const operation = op.Put ?? op.Delete ?? op.ConditionCheck;
+      if (operation?.TableName === config.PLATFORM_TABLE_NAME) {
+        expect(op.ConditionCheck?.Key).toEqual({
+          PK: { S: "ORG#org-resto" },
+          SK: { S: "ORG#METADATA" },
+        });
+      } else {
+        expect(operation?.TableName).toBe(restaurantsTableName());
+      }
+    }
 });
 test("missing or shared business binding fails closed", () => {
   const old = process.env.RESTAURANTS_TABLE_NAME;

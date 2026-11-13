@@ -13,6 +13,7 @@ import { RestaurantKind } from '../data-access/restaurants-model';
 import { context, row } from '../data-access/restaurants.test-fixture';
 import { RestaurantEditorComponent, RestaurantEditorData } from './restaurant-editor.component';
 import { RestaurantInventoryApi } from '../data-access/restaurant-inventory.api';
+import { PlatformFiscalProfileApi } from '../../../core/fiscality/platform-fiscal-profile.api';
 const langs = {
   en: {
     RESTAURANTS: {
@@ -68,6 +69,10 @@ describe('Restaurant configuration dialogs', () => {
         { provide: MAT_DIALOG_DATA, useValue: data },
         { provide: MatDialogRef, useValue: ref },
         { provide: QueryClient, useValue: client },
+        { provide: PlatformFiscalProfileApi, useValue: {
+          context: () => ({ org: 'org', user: 'owner', revision: 1 }),
+          profile: async () => ({ country: 'BJ', selected: { regime: 'ORDINARY_VAT', revision: '00000000-0000-4000-8000-000000000001' }, regimes: [], canManage: true }),
+        } },
         { provide: RestaurantsApi, useValue: api },
         {
           provide: RestaurantInventoryApi,
@@ -120,6 +125,11 @@ describe('Restaurant configuration dialogs', () => {
     await TestBed.compileComponents();
     const f = TestBed.createComponent(RestaurantEditorComponent);
     f.detectChanges();
+    if (data.kind === 'item') await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.fiscalProfile.isSuccess()).toBe(true);
+    });
+    if (data.kind === 'item' && !data.entity) f.componentInstance.form.controls.fiscalGroup.setValue('B');
     if (data.kind === 'item' && data.entity)
       await vi.waitFor(() => {
         f.detectChanges();

@@ -86,10 +86,22 @@ export function restaurantBeninRealTestWorkflow(
         prepared.sourceDigest !== config.sourceDigest ||
         payload.invoice.ifu !== config.ifu ||
         prepared.total !== config.expectedFiscalTotals.total ||
-        prepared.ordinaryVatTotals?.net !== config.expectedFiscalTotals.hab ||
-        prepared.ordinaryVatTotals?.tax !== config.expectedFiscalTotals.vab ||
-        config.expectedFiscalTotals.tab !== prepared.total ||
-        config.expectedFiscalTotals.tb !== 18
+        !prepared.fiscalGroupTotals ||
+        config.expectedFiscalTotals.ta !== 0 ||
+        config.expectedFiscalTotals.tb !== 18 ||
+        config.expectedFiscalTotals.tc !== 0 ||
+        config.expectedFiscalTotals.td !== 18 ||
+        config.expectedFiscalTotals.taa !== (prepared.fiscalGroupTotals.A?.gross ?? 0) ||
+        config.expectedFiscalTotals.tab !== (prepared.fiscalGroupTotals.B?.gross ?? 0) ||
+        config.expectedFiscalTotals.tac !== (prepared.fiscalGroupTotals.C?.gross ?? 0) ||
+        config.expectedFiscalTotals.tad !== (prepared.fiscalGroupTotals.D?.gross ?? 0) ||
+        config.expectedFiscalTotals.tae !== (prepared.fiscalGroupTotals.E?.gross ?? 0) ||
+        config.expectedFiscalTotals.taf !== 0 ||
+        config.expectedFiscalTotals.hab !== (prepared.fiscalGroupTotals.B?.net ?? 0) ||
+        config.expectedFiscalTotals.had !== (prepared.fiscalGroupTotals.D?.net ?? 0) ||
+        config.expectedFiscalTotals.vab !== (prepared.fiscalGroupTotals.B?.tax ?? 0) ||
+        config.expectedFiscalTotals.vad !== (prepared.fiscalGroupTotals.D?.tax ?? 0) ||
+        config.expectedFiscalTotals.aib !== 0 || config.expectedFiscalTotals.ts !== 0
       )
         throw new Error("FISCAL_CONFIGURATION_MISMATCH");
       await verifyContext();
@@ -99,7 +111,7 @@ export function restaurantBeninRealTestWorkflow(
         payload.invoice,
         payload.expected,
       );
-      // Keep UID even when any detailed fiscal total differs. This is not permission to confirm.
+      // Keep UID when a detailed fiscal total differs. This does not permit confirmation.
       return {
         ...created,
         providerContextDigest: hash(

@@ -18,6 +18,7 @@ import { inventoryKeys } from '../data-access/restaurant-inventory.queries';
 import { stockItem } from '../data-access/inventory.test-fixture';
 import { context, row } from '../data-access/restaurants.test-fixture';
 import { RestaurantEditorComponent } from './restaurant-editor.component';
+import { PlatformFiscalProfileApi } from '../../../core/fiscality/platform-fiscal-profile.api';
 
 // Real editor + tracking child + query helpers + both HTTP clients. Only transport is replaced.
 describe('MenuItem save followed by inventory tracking HTTP orchestration', () => {
@@ -66,6 +67,10 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
         },
         { provide: MatDialogRef, useValue: { close } },
         { provide: QueryClient, useValue: client },
+        { provide: PlatformFiscalProfileApi, useValue: {
+          context: () => ({ org: 'org', user: 'owner', revision: 1 }),
+          profile: async () => ({ country: 'BJ', selected: { regime: 'ORDINARY_VAT', revision: '00000000-0000-4000-8000-000000000001' }, regimes: [], canManage: true }),
+        } },
         {
           provide: AuthStore,
           useValue: {
@@ -118,6 +123,10 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
     http = TestBed.inject(HttpTestingController);
     const f = TestBed.createComponent(RestaurantEditorComponent);
     f.detectChanges();
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.componentInstance.fiscalProfile.isSuccess()).toBe(true);
+    });
     if (existing) {
       http
         .expectOne((r) => r.url.endsWith('/tracking'))
@@ -127,7 +136,7 @@ describe('MenuItem save followed by inventory tracking HTTP orchestration', () =
         expect(f.componentInstance.tracking()!.query.isSuccess()).toBe(true);
       });
     }
-    f.componentInstance.form.patchValue({ name: 'PILS 66', price: '5000', station: null });
+    f.componentInstance.form.patchValue({ name: 'PILS 66', price: '5000', station: null, fiscalGroup: 'B' });
     return f;
   }
   it.each(['CREATE', 'LINK'] as const)(

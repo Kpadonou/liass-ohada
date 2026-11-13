@@ -12,6 +12,8 @@ import {
   RestaurantTableQrResponseSchema,
 } from "@liass-ohada/shared/restaurants";
 import { AppError } from "@/lambda/shared/app-error";
+import { readCompanyFiscalProfile } from "@/lambda/shared/authority/fiscal-profiles/company-profile";
+import { resolveRestaurantFiscalTreatment } from "./fiscal-treatment";
 import {
   createSchemas,
   entitySchemas,
@@ -334,6 +336,14 @@ export class RestaurantsService {
     const menu = entitySchemas.menu.parse(menuCheck?.snapshot.data);
     if (item.price.currency !== menu.currency)
       throw new AppError(400, "RESTAURANTS_CURRENCY_MISMATCH");
+    if (item.fiscalClassification) {
+      const company = await readCompanyFiscalProfile(orgId);
+      try {
+        resolveRestaurantFiscalTreatment({ classification: item.fiscalClassification, company });
+      } catch {
+        throw new AppError(422, "RESTAURANTS_FISCAL_CLASSIFICATION_INVALID");
+      }
+    }
     if (item.preparationStationId) {
       const station = await this.load(
         orgId,

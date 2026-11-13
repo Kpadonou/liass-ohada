@@ -30,6 +30,7 @@ import { restaurantError } from '../utils/restaurant-errors';
 import { RestaurantItemTrackingComponent } from './restaurant-item-tracking.component';
 import { MenuItemSchema } from '@liass-ohada/shared/restaurants';
 import { TrackingDraft } from '../utils/inventory-tracking-command';
+import { PlatformFiscalProfileApi, platformFiscalProfileKey } from '../../../core/fiscality/platform-fiscal-profile.api';
 export interface RestaurantEditorData {
   org: string;
   kind: RestaurantKind;
@@ -72,6 +73,20 @@ export class RestaurantEditorComponent {
   private readonly notification = inject(NotificationService);
   private readonly t = inject(TranslocoService);
   private readonly fb = inject(FormBuilder);
+  private readonly fiscality = inject(PlatformFiscalProfileApi);
+  readonly fiscalProfile = injectQuery(() => {
+    const context = this.fiscality.context();
+    return {
+      queryKey: platformFiscalProfileKey(context),
+      queryFn: () => this.fiscality.profile(context),
+      enabled: this.data.kind === 'item' && context.org === this.data.org,
+      staleTime: 60_000,
+    };
+  });
+  readonly fiscalGroups = computed(() => {
+    const regime = this.fiscalProfile.data()?.selected?.regime;
+    return regime === 'ORDINARY_VAT' ? ['A', 'B'] : regime === 'TPS' ? ['E'] : [];
+  });
   readonly pendingCreationKey = this.queries.pendingCreationKey(
     this.data.org,
     this.data.kind,
@@ -158,6 +173,12 @@ export class RestaurantEditorComponent {
       'guestReorderEnabled' in (this.entity ?? {})
         ? (this.entity as { guestReorderEnabled: boolean }).guestReorderEnabled
         : false,
+    ],
+    fiscalGroup: [
+      'fiscalClassification' in (this.entity ?? {})
+        ? (this.entity as { fiscalClassification?: { group: string } }).fiscalClassification?.group ?? ''
+        : '',
+      this.data.kind === 'item' ? [Validators.required] : [],
     ],
   });
   private originalValues = this.form.getRawValue();
@@ -252,6 +273,7 @@ export class RestaurantEditorComponent {
               station: current.preparationStationId ?? null,
               reorder: current.guestReorderEnabled,
               availability: current.availability,
+              fiscalGroup: current.fiscalClassification?.group ?? '',
             }
           : {}),
       };
@@ -267,6 +289,7 @@ export class RestaurantEditorComponent {
         availability: choose(baseline.availability, entered.availability, fresh.availability),
         station: choose(baseline.station, entered.station, fresh.station),
         reorder: choose(baseline.reorder, entered.reorder, fresh.reorder),
+        fiscalGroup: choose(baseline.fiscalGroup, entered.fiscalGroup, fresh.fiscalGroup),
       });
       this.originalValues = fresh;
       this.latestName.set(current.name);
@@ -343,6 +366,11 @@ export class RestaurantEditorComponent {
     }
     if (this.data.kind === 'menu' && !this.entity) request['currency'] = v.currency;
     if (this.data.kind === 'item') {
+      if (!this.fiscalGroups().includes(v.fiscalGroup ?? '')) {
+        this.form.controls.fiscalGroup.setErrors({ invalid: true });
+        return;
+      }
+      request['fiscalClassification'] = { country: 'BJ', group: v.fiscalGroup };
       try {
         request['price'] = {
           amountMinor: parseMinorInput(v.price ?? '', this.data.currency ?? 'XOF'),

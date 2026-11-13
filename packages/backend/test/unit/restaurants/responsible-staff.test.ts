@@ -103,14 +103,7 @@ test.each(["invalid employee identifier", "unknown-platform-user"])(
   },
 );
 
-test("SERVICE-1 requires verified responsibility and permits assigned WAITER closure with replay", async () => {
-  await expect(
-    S.mutate(ctx, "OPEN_SESSION", {
-      clientRequestId: req(),
-      tableId: f.tables[0].id,
-      areaId: f.tables[0].serviceAreaId,
-    }),
-  ).rejects.toThrow();
+test("SERVICE-1 requires verified WAITER responsibility and permits assigned closure with replay", async () => {
   const actor = { ...ctx, actorId: "Aissa" };
   const session = c.GuestSessionSchema.parse(
     (

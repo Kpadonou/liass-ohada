@@ -276,6 +276,7 @@ test("many-to-one aggregates a batch; tracked/untracked lines stay independent; 
       clientRequestId: randomUUID(),
       name: "Other drink",
       price: { amountMinor: 1, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" },
     },
   );
   await link(other, stock.id);
@@ -585,6 +586,7 @@ test("mixed cancelled and accepted tracked lines reverse only the remaining quan
       clientRequestId: randomUUID(),
       name: "Free tracked",
       price: { amountMinor: 0, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" },
     },
   );
   const stock = await link(free);
@@ -638,6 +640,7 @@ test.each([1, 2])(
         clientRequestId: randomUUID(),
         name: "Complimentary bottle",
         price: { amountMinor: 0, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
       },
     );
     const stock = await link(free);
@@ -703,6 +706,7 @@ test("closing a zero-value accepted Order is not a commercial reversal", async (
       clientRequestId: randomUUID(),
       name: "Free bottle",
       price: { amountMinor: 0, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" },
     },
   );
   const stock = await link(free);
@@ -732,6 +736,7 @@ test("multiple target partial progress retries each receipt without double impac
       clientRequestId: randomUUID(),
       name: "Other",
       price: { amountMinor: 1, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" },
     },
   );
   const b = await link(other);
@@ -773,6 +778,7 @@ test("twelve distinct tracked categories retain transaction headroom and apply t
         clientRequestId: randomUUID(),
         name: `Stock product ${n}`,
         price: { amountMinor: 1, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
       },
     );
     await link(item);
@@ -786,7 +792,7 @@ test("twelve distinct tracked categories retain transaction headroom and apply t
         unmarshall(a.Put.Item).data.status === "SUBMITTED",
     ),
   )!;
-  expect(commercial.TransactItems).toHaveLength(61);
+  expect(commercial.TransactItems).toHaveLength(62);
   expect(sales()).toHaveLength(12);
   expect(m.transactions.every((t) => t.TransactItems!.length <= 95)).toBe(true);
   expect(

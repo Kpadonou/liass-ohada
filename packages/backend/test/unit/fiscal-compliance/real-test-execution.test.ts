@@ -118,6 +118,7 @@ beforeEach(() => {
       requestDigest: hash(canonical(payload)),
       total: 2000,
       ordinaryVatTotals: { net: 1695, tax: 305 },
+      fiscalGroupTotals: { B: { gross: 2000, net: 1695, tax: 305 } },
       payload,
     }));
 });
@@ -331,6 +332,7 @@ test("source fingerprint mismatch is rejected before reservation or provider cal
       requestDigest: hash(canonical(payload)),
       total: 2000,
       ordinaryVatTotals: { net: 1695, tax: 305 },
+      fiscalGroupTotals: { B: { gross: 2000, net: 1695, tax: 305 } },
       payload,
     }));
   const { flow, transport } = setup();

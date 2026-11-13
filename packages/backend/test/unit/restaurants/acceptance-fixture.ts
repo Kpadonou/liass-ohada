@@ -1,7 +1,8 @@
 import { RestaurantsService as service } from "@/lambda/domains/restaurants/restaurant-service";
-import { fixtureId } from "./memory-dynamo";
+import { fixtureId, seedTestFiscalProfile } from "./memory-dynamo";
 /** Deterministic names/request IDs; QR tokens intentionally remain cryptographically random. */
 export async function acceptanceFixture(orgId = "org-resto") {
+  seedTestFiscalProfile(orgId);
   let sequence = 0;
   const request = (name: string) => ({
     name,
@@ -84,6 +85,7 @@ export async function acceptanceFixture(orgId = "org-resto") {
         {
           ...request(name),
           price: { amountMinor, currency: "XOF" },
+          fiscalClassification: { country: "BJ", group: "B" },
           guestReorderEnabled,
           ...(station === undefined
             ? {}

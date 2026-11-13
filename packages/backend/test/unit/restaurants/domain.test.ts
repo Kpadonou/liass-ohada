@@ -4,7 +4,7 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { RestaurantsService as service } from "@/lambda/domains/restaurants/restaurant-service";
 import { RestaurantsRepository } from "@/lambda/domains/restaurants/restaurant-repository";
 import { acceptanceFixture } from "./acceptance-fixture";
-import { fixtureId, memoryDynamo } from "./memory-dynamo";
+import { fixtureId, memoryDynamo, seedTestFiscalProfile } from "./memory-dynamo";
 
 let memory: ReturnType<typeof memoryDynamo>;
 const org = "org-resto";
@@ -23,6 +23,39 @@ afterEach(() => {
 });
 
 describe("RESTO-1A application/persistence acceptance", () => {
+  test("legacy unclassified items stay readable and gain classification only through versioned edit", async () => {
+    const f = await acceptanceFixture();
+    const original = f.items[0];
+    const parents = { outletId: f.outlet.id, categoryId: original.categoryId };
+    const entry = [...memory.rows.entries()].find(([, value]) => {
+      const row = unmarshall(value);
+      return row.entityType === "RESTAURANT_MENU_ITEM" && row.data?.id === original.id;
+    });
+    expect(entry).toBeDefined();
+    const [key, value] = entry!;
+    const stored = unmarshall(value);
+    delete stored.data.fiscalClassification;
+    memory.rows.set(key, marshall(stored));
+    expect((await service.get(org, "item", parents, original.id)).fiscalClassification).toBeUndefined();
+    const classified = await service.update(org, "owner", "item", parents, original.id,
+      { expectedVersion: original.version, fiscalClassification: { country: "BJ", group: "A" } });
+    expect(classified).toMatchObject({ version: original.version + 1,
+      fiscalClassification: { country: "BJ", group: "A" } });
+  });
+  test("new items require a regime-compatible platform group", async () => {
+    const f = await acceptanceFixture();
+    const parents = { outletId: f.outlet.id, categoryId: f.categories[0].id };
+    const draft = { ...command(202, "New dish"), price: { amountMinor: 1000, currency: "XOF" } };
+    await expect(service.create(org, "owner", "item", parents, draft)).rejects.toHaveProperty("name", "ZodError");
+    await expect(service.create(org, "owner", "item", parents, {
+      ...draft, fiscalClassification: { country: "BJ", group: "E" },
+    })).rejects.toMatchObject(status(422));
+    seedTestFiscalProfile(org, "TPS");
+    const tps = await service.create(org, "owner", "item", parents, {
+      ...draft, fiscalClassification: { country: "BJ", group: "E" },
+    });
+    expect(tps.fiscalClassification?.group).toBe("E");
+  });
   test("Héritage Bistro fixture is readable through every supported access pattern", async () => {
     const f = await acceptanceFixture();
     const context = { outletId: f.outlet.id };
@@ -368,6 +401,7 @@ describe("RESTO-1A application/persistence acceptance", () => {
         {
           ...command(83, "Forged"),
           price: { amountMinor: 500, currency: "XOF" },
+          fiscalClassification: { country: "BJ", group: "B" },
         },
       ),
     ).rejects.toMatchObject(status(404));
@@ -381,6 +415,7 @@ describe("RESTO-1A application/persistence acceptance", () => {
           {
             ...command(84, "Invalid station"),
             price: { amountMinor: 500, currency: "XOF" },
+            fiscalClassification: { country: "BJ", group: "B" },
             preparationStationId: stationId,
           },
         ),
@@ -402,6 +437,7 @@ describe("RESTO-1A application/persistence acceptance", () => {
         {
           ...command(86, "Cross outlet"),
           price: { amountMinor: 500, currency: "XOF" },
+          fiscalClassification: { country: "BJ", group: "B" },
           preparationStationId: secondStation.id,
         },
       ),
@@ -465,12 +501,14 @@ describe("RESTO-1A application/persistence acceptance", () => {
       service.create(org, "owner", "item", parents, {
         ...command(95, "Currency"),
         price: { amountMinor: 500, currency: "USD" },
+        fiscalClassification: { country: "BJ", group: "B" },
       }),
     ).rejects.toMatchObject(status(400));
     await expect(
       service.create(org, "owner", "item", parents, {
         ...command(96, "Negative"),
         price: { amountMinor: -1, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
       }),
     ).rejects.toHaveProperty("name", "ZodError");
     const unavailable = await service.update(

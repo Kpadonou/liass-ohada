@@ -54,14 +54,27 @@ export async function prepareRestaurantFiscalInvoice(
     const v1 = input.requireV1 ? projectRestaurantInvoiceV1(evidence) : undefined;
     const mapping = mapRestaurantFiscalLines({
       lines: evidence.lines.map(({ line }) => line),
-      classifications: v1
+      classifications: evidence.lines.every(({ line }) => line.snapshot.fiscalTreatment)
+        ? evidence.lines.map(({ line, coordinate }) => ({
+            orderId: coordinate.orderId,
+            itemId: coordinate.itemId,
+            taxGroup: line.snapshot.fiscalTreatment!.effectiveGroup,
+            classificationEvidence: line.snapshot.fiscalTreatment!.evidenceReference ??
+              line.snapshot.fiscalTreatment!.regimeRevision,
+          }))
+        : v1
         ? v1.document.lines.map((line) => ({
             orderId: line.sourceCoordinates[0].orderId,
             itemId: line.sourceCoordinates[0].itemId,
-            taxGroup: "B",
+            taxGroup: evidence.lines.find(({ coordinate }) =>
+              coordinate.orderId === line.sourceCoordinates[0].orderId &&
+              coordinate.itemId === line.sourceCoordinates[0].itemId,
+            )?.line.snapshot.fiscalTreatment?.effectiveGroup ??
+              (evidence.lines.length === 1 && evidence.lines[0].line.snapshot.ordinaryTax
+                ? "B" : undefined),
             classificationEvidence: line.fiscalTreatmentEvidence.reference,
           }))
-        : input.classifications,
+        : [],
     });
     if (
       evidence.lines.length !== evidence.invoice.lineCount ||
@@ -102,6 +115,7 @@ export async function prepareRestaurantFiscalInvoice(
         "MISSING_FISCAL_CLASSIFICATION",
         "UNSUPPORTED_COMMERCIAL_LINE",
         "UNKNOWN_CLASSIFIED_LINE",
+        "FISCAL_CLASSIFICATION_SOURCE_MISMATCH",
         "MIXED_CURRENCIES",
       ].includes(reason)
         ? reason

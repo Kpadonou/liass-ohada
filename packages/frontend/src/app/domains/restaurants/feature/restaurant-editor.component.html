@@ -93,6 +93,19 @@
       }
     }
     @if (data.kind === 'item') {
+      <mat-form-field subscriptSizing="dynamic" class="w-full">
+        <mat-label>{{ 'RESTAURANTS.UI.FISCAL_GROUP' | transloco }}</mat-label>
+        <mat-select formControlName="fiscalGroup" [disabled]="fiscalProfile.isPending() || fiscalProfile.isError()">
+          @for (group of fiscalGroups(); track group) {
+            <mat-option [value]="group">{{ 'RESTAURANTS.UI.FISCAL_GROUPS.' + group | transloco }}</mat-option>
+          }
+        </mat-select>
+        <mat-hint>{{ 'RESTAURANTS.UI.FISCAL_GROUP_HELP' | transloco }}</mat-hint>
+        <mat-error>{{ 'RESTAURANTS.UI.FISCAL_GROUP_REQUIRED' | transloco }}</mat-error>
+      </mat-form-field>
+      @if (fiscalProfile.isError() || !fiscalGroups().length) {
+        <p role="alert">{{ 'RESTAURANTS.UI.FISCAL_REGIME_REQUIRED' | transloco }}</p>
+      }
       <mat-form-field subscriptSizing="dynamic" class="w-full"
         ><mat-label>{{ 'RESTAURANTS.UI.PRICE' | transloco }} ({{ data.currency }})</mat-label
         ><input matInput formControlName="price" inputmode="decimal" /><mat-error>{{

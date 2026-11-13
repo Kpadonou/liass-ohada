@@ -184,7 +184,7 @@ it('leaves normal closure separate and gated by canonical remaining Orders', () 
     reservedMinor: 0,
     pendingPaymentCount: 0,
   } as c.GuestSessionRead;
-  expect(checkoutClosureBlockers(session, [order()], true)).toEqual([]);
+  expect(checkoutClosureBlockers(session, [order()], true)).toEqual(['WORK']);
   expect(checkoutClosureBlockers(session, [cancelled()], true)).toEqual([]);
   expect(
     checkoutClosureBlockers(

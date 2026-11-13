@@ -384,6 +384,11 @@ export class RestaurantsWorkspacePage {
       ? restaurantPrice(row.price.amountMinor, row.price.currency, this.t.getActiveLang())
       : '';
   }
+  fiscalGroup(row: RestaurantEntity) {
+    return 'price' in row && row.fiscalClassification
+      ? this.t.translate('RESTAURANTS.UI.FISCAL_GROUPS.' + row.fiscalClassification.group)
+      : this.t.translate('RESTAURANTS.UI.FISCAL_UNCLASSIFIED');
+  }
   stationName(row: RestaurantEntity) {
     if (!('preparationStationId' in row) || !row.preparationStationId)
       return this.t.translate('RESTAURANTS.UI.NO_STATION');

@@ -715,7 +715,7 @@ function validateInvoiceRequest(
   if (
     !parsed.success ||
     !invoice.ifu?.trim() ||
-    invoice.type !== "FV" ||
+    (invoice.type !== "FV" && invoice.type !== "EV") ||
     invoice.aib !== undefined ||
     !invoice.operator?.name?.trim() ||
     !invoice.items?.length ||

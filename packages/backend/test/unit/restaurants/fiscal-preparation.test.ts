@@ -30,7 +30,11 @@ const evidence = {
   lines: [
     {
       coordinate: { orderId: id, itemId: id, partNumber: 1, position: 0 },
-      line,
+      line: { ...line, snapshot: { ...line.snapshot, fiscalTreatment: {
+        country: "BJ", catalogGroup: "A", effectiveGroup: "A", regime: "ORDINARY_VAT",
+        regimeRevision: id, policyId: "BJ-RESTO-TTC", policyVersion: 1,
+        rateBasisPoints: 0, rounding: "HALF_UP_LINE",
+      } } },
     },
   ],
 };
@@ -64,8 +68,8 @@ test("binds verified FINAL source, explicit classification, immutable provenance
   expect(result.preparation.source).toEqual(evidence.source);
   expect(result.preparation.commercialRootDigest).toBe(digest);
   expect(result.preparation.totalMinor).toBe("2000");
-  expect(result.preparation.lines[0].commercial).toEqual(line);
-  expect(result.preparation.lines[0].fiscal.taxGroup).toBe("B");
+  expect(result.preparation.lines[0].commercial).toEqual(evidence.lines[0].line);
+  expect(result.preparation.lines[0].fiscal.taxGroup).toBe("A");
   expect(result.preparation.providerMutationEnabled).toBe(false);
 });
 
@@ -89,7 +93,7 @@ test("never synthesizes historical seller or timezone provenance", async () => {
   expect(result).toEqual({ ready: false, reason: "PROVENANCE_UNAVAILABLE" });
 });
 
-test("rejects missing or unsupported tax classification", async () => {
+test("ignores external classification when the FINAL line has a frozen treatment", async () => {
   for (const classifications of [
     [],
     [{ ...request.classifications[0], taxGroup: "Z" }],
@@ -98,13 +102,15 @@ test("rejects missing or unsupported tax classification", async () => {
       { ...request, classifications },
       read({ verified: true, evidence }),
     );
-    expect(result.ready).toBe(false);
-    expect(result.reason).toBe(
-      classifications.length
-        ? "INVALID_MAPPING"
-        : "MISSING_FISCAL_CLASSIFICATION",
-    );
+    expect(result.ready).toBe(true);
+    if (result.ready) expect(result.preparation.lines[0].fiscal.taxGroup).toBe("A");
   }
+});
+
+test("legacy FINAL lines without frozen treatment cannot be reclassified by settings", async () => {
+  const result = await prepareRestaurantFiscalInvoice(request,
+    read({ verified: true, evidence: { ...evidence, lines: [{ ...evidence.lines[0], line }] } }));
+  expect(result).toEqual({ ready: false, reason: "MISSING_FISCAL_CLASSIFICATION" });
 });
 
 test("rejects financial and provenance binding mismatches", async () => {

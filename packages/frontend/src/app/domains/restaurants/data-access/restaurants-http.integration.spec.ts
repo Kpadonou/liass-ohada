@@ -38,6 +38,7 @@ import {
 import { RestaurantsWorkspacePage } from '../feature/restaurants-workspace.page';
 import { restaurantErrorKey } from '../utils/restaurant-errors';
 import { parseMinorInput, restaurantPrice } from '../utils/restaurant-money';
+import { PlatformFiscalProfileApi } from '../../../core/fiscality/platform-fiscal-profile.api';
 
 declare module 'vitest' {
   interface ProvidedContext {
@@ -137,6 +138,7 @@ async function createFixture() {
           {
             ...request(name),
             price: { amountMinor: parseMinorInput(String(amount), 'XOF'), currency: 'XOF' },
+            fiscalClassification: { country: 'BJ', group: 'B' },
             guestReorderEnabled: reorder,
             ...(station === undefined ? {} : { preparationStationId: stations[station].id }),
           },
@@ -200,6 +202,13 @@ function configure(mode = 'menu', data?: RestaurantEditorData) {
       },
       { provide: MatDialogRef, useValue: close },
       { provide: SalesCapabilities, useValue: { canRead: () => false } },
+      {
+        provide: PlatformFiscalProfileApi,
+        useValue: {
+          context: () => ({ org: org() ?? '', user: 'integration-user', revision: 0 }),
+          profile: vi.fn().mockResolvedValue({ selected: { regime: 'ORDINARY_VAT' } }),
+        },
+      },
     ],
   });
   api = TestBed.inject(RestaurantsApi);
@@ -509,6 +518,7 @@ describe('RESTO-1D real Angular HTTP → production handlers/services/repository
       });
       const form = TestBed.createComponent(RestaurantEditorComponent);
       form.detectChanges();
+      await vi.waitFor(() => expect(form.componentInstance.fiscalProfile.isSuccess()).toBe(true));
       // This RESTO-1D price test predates optional inventory tracking; its
       // loopback server only models Menu endpoints.
       vi.spyOn(form.componentInstance.tracking()!, 'validate').mockReturnValue(true);

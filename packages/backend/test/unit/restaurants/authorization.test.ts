@@ -24,13 +24,18 @@ import {
   RestaurantTableQrResponseSchema,
 } from "@liass-ohada/shared/restaurants";
 import { acceptanceFixture } from "./acceptance-fixture";
-import { fixtureId, memoryDynamo } from "./memory-dynamo";
+import {
+  fixtureId,
+  memoryDynamo,
+  seedTestFiscalProfile,
+} from "./memory-dynamo";
 
 const org = "org-resto",
   user = "user-resto";
 let memory: ReturnType<typeof memoryDynamo>;
 beforeEach(() => {
   memory = memoryDynamo();
+  seedTestFiscalProfile(org);
   jest.spyOn(console, "info").mockImplementation(() => undefined);
 });
 afterEach(() => {
@@ -59,7 +64,7 @@ function routeEvent(route: (typeof RESTAURANTS_ROUTES)[number]) {
           ...(route.kind === "table" ? { code: "T01" } : {}),
           ...(route.kind === "menu" ? { currency: "XOF" } : {}),
           ...(route.kind === "item"
-            ? { price: { amountMinor: 500, currency: "XOF" } }
+            ? { price: { amountMinor: 500, currency: "XOF" }, fiscalClassification: { country: "BJ", group: "B" } }
             : {}),
         }
       : route.operation === "update"
@@ -152,6 +157,7 @@ describe("RESTO-1B authoritative authorization", () => {
             clientRequestId: fixtureId(5),
             name: "Beer",
             price: { amountMinor: 1000, currency: "XOF" },
+            fiscalClassification: { country: "BJ", group: "B" },
             guestReorderEnabled: true,
           },
           { outletId, categoryId },
@@ -309,6 +315,12 @@ describe("RESTO-1B authoritative authorization", () => {
               "RESTAURANTS_CHECKOUT_CLOSE_MANAGE",
               "RESTAURANTS_RECEIPT_READ",
               "RESTAURANTS_RECEIPT_MANAGE",
+            ]
+          : []),
+        ...(role === "WAITER"
+          ? [
+              "RESTAURANTS_SESSION_CLOSE_MANAGE",
+              "RESTAURANTS_ORDER_CLOSE_MANAGE",
             ]
           : []),
         ...(role === "WAITER" ? RESTAURANTS_SERVICE_PERMISSIONS : []),

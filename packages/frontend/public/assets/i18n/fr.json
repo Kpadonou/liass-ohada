@@ -4792,7 +4792,13 @@
       "TOGGLE_AVAILABILITY": "Changer la disponibilité de {{name}}",
       "SITE_COUNTS": "Configuration de {{name}}",
       "RECOMMENDED": "Recommandée",
-      "POLICY_HELP": "La commande directe est recommandée. Ce réglage s’applique à tous les établissements du restaurant."
+      "POLICY_HELP": "La commande directe est recommandée. Ce réglage s’applique à tous les établissements du restaurant.",
+      "FISCAL_GROUP": "Groupe fiscal par défaut",
+      "FISCAL_GROUP_HELP": "Appliqué aux ventes ordinaires. Les exceptions nécessitent un justificatif lors de la vente.",
+      "FISCAL_GROUP_REQUIRED": "Choisissez un groupe autorisé par le régime fiscal.",
+      "FISCAL_UNCLASSIFIED": "À classer",
+      "FISCAL_REGIME_REQUIRED": "Déclarez d’abord le régime fiscal de l’entreprise.",
+      "FISCAL_GROUPS": { "A": "A · Exonéré", "B": "B · TVA 18 %", "E": "E · Régime TPS" }
     },
     "UX": {
       "CONFIGURATION": "Configuration",

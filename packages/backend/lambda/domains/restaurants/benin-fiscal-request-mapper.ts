@@ -19,7 +19,7 @@ const evidence = z.string().trim().min(1).max(1000);
 export const restaurantBeninMappingSchema = z
   .object({
     environment: z.literal("TEST"),
-    invoiceType: z.literal("FV"),
+    invoiceType: z.enum(["FV", "EV"]),
     priceBasis: z.literal("TTC"),
     pricingEvidence: evidence,
     commercialMinorUnitsPerFranc: z.number().int().safe().positive(),
@@ -162,6 +162,10 @@ export function mapRestaurantBeninRequest(
       taxGroup: v.fiscal.taxGroup,
     };
   });
+  const groups = new Set(items.map((item) => item.taxGroup));
+  if ((groups.has("C") && (config.invoiceType !== "EV" || groups.size !== 1)) ||
+      (config.invoiceType === "EV" && (groups.size !== 1 || !groups.has("C"))))
+    throw new Error("UNSUPPORTED_EXPORT_TAX_COMBINATION");
   const paid = z
     .object({
       CASH: z.number().int().safe().nonnegative(),
@@ -198,6 +202,18 @@ export function mapRestaurantBeninRequest(
     payment,
   });
   const payload = { invoice, expected: { itemTotals, total } };
+  const fiscalGroupTotals: Partial<Record<"A" | "B" | "C" | "D" | "E", { gross: number; net: number; tax: number }>> = {};
+  for (const line of mapped.lines) {
+    const group = line.fiscal.taxGroup;
+    if (group === "F") throw new Error("UNSUPPORTED_PROVIDER_TAX_GROUP");
+    const snapshot = line.commercial.snapshot;
+    const previous = fiscalGroupTotals[group] ?? { gross: 0, net: 0, tax: 0 };
+    fiscalGroupTotals[group] = {
+      gross: previous.gross + snapshot.lineTotalMinor,
+      net: previous.net + snapshot.subtotalMinor,
+      tax: previous.tax + snapshot.taxMinor,
+    };
+  }
   return {
     identity,
     sourceDigest: preparation.commercialRootDigest,
@@ -205,6 +221,7 @@ export function mapRestaurantBeninRequest(
       .update(canonical(clean(payload)))
       .digest("hex"),
     total,
+    fiscalGroupTotals,
     payload,
   };
 }
@@ -239,19 +256,15 @@ export function restaurantBeninPreparation(
     );
     if (!realFiscalTestEnabled()) return mapped;
     const v1 = result.preparation.v1;
-    if (
-      !v1 ||
-      result.preparation.lines.some((line) => line.fiscal.taxGroup !== "B") ||
-      restaurantBeninMappingSchema.parse(configuration)
-        .commercialMinorUnitsPerFranc !== 1
-    )
-      throw new Error("FISCAL_ORDINARY_VAT_PROJECTION_REQUIRED");
+    if (!v1 || restaurantBeninMappingSchema.parse(configuration)
+      .commercialMinorUnitsPerFranc !== 1)
+      throw new Error("FISCAL_V1_PROJECTION_REQUIRED");
     return {
       ...mapped,
-      ordinaryVatTotals: {
+      ...(result.preparation.lines.every((line) => line.fiscal.taxGroup === "B") ? { ordinaryVatTotals: {
         net: Number(v1.totals.netMinor),
         tax: Number(v1.totals.taxMinor),
-      },
+      } } : {}),
     };
   };
 }

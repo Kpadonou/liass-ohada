@@ -17,6 +17,17 @@ import { KeyFactory } from "@/lambda/shared/key-builder";
 
 type Item = Record<string, AttributeValue>;
 const identity = (key: Item) => JSON.stringify([key.PK?.S, key.SK?.S]);
+let activeRows: Map<string, Item> | undefined;
+export function seedTestFiscalProfile(orgId: string, regime = "ORDINARY_VAT") {
+  if (!activeRows) throw new Error("Restaurant memory Dynamo is not active");
+  const key = marshall({ PK: KeyFactory.orgKey(orgId), SK: KeyFactory.organizationSK() });
+  const current = activeRows.get(identity(key));
+  const row = { ...(current ? unmarshall(current) : {}),
+    PK: KeyFactory.orgKey(orgId), SK: KeyFactory.organizationSK(),
+    orgId, entityType: "ORGANIZATION", workspaceType: "COMPANY", status: "ACTIVE",
+    country: "BJ", fiscalRegime: { regime, revision: "00000000-0000-4000-8000-000000000001" } };
+  activeRows.set(identity(key), marshall(row));
+}
 function condition(
   item: Item | undefined,
   expression: string | undefined,
@@ -69,6 +80,7 @@ function condition(
 export function memoryDynamo() {
   const db = mockClient(DynamoDBClient);
   const rows = new Map<string, Item>();
+  activeRows = rows;
   const transactions: TransactWriteItemsCommandInput[] = [];
   db.on(GetItemCommand).callsFake(async (input: GetItemCommandInput) => ({
     Item: rows.get(identity(input.Key ?? {})),

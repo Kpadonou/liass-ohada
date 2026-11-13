@@ -200,7 +200,7 @@ test.each([
   if (role === "WAITER")
     expect(
       permissions.filter((p) => p.startsWith("RESTAURANTS_ORDER_")),
-    ).toEqual([]);
+    ).toEqual(["RESTAURANTS_ORDER_CLOSE_MANAGE"]);
 });
 test("only normal command routes use scoped permissions", () => {
   expect(

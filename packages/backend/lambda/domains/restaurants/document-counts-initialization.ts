@@ -11,8 +11,8 @@ import { restaurantsTableName } from "./restaurant-storage";
 
 /** Explicit, operator-invoked rollout repair. Never called by a read or a document write.
  * Deploy both counter writers before running. At most 20 collection calls (10,000
- * evaluated rows), a 31-day window and one named active BusinessDay; abort on any
- * incomplete traversal. Version CAS rejects any concurrent day/document commit.
+ * evaluated rows), a 31-day window and one named active BusinessDay; abort on an
+ * incomplete traversal. Version CAS rejects concurrent day/document commits.
  */
 export async function initializeCommercialCounts(
   scope: TransactionScope,

@@ -1601,7 +1601,8 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
   const selection = await selectRegime("ORDINARY_VAT");
   f.items[4] = await RestaurantsService.create(
     org, "owner", "item", { outletId: f.outlet.id, categoryId: f.items[4].categoryId },
-    { name: "Ordinary VAT meal", clientRequestId: req(), price: { amountMinor: 2360, currency: "XOF" } },
+    { name: "Ordinary VAT meal", clientRequestId: req(), price: { amountMinor: 2360, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" } },
   );
   const v = await visit();
   await settle(v);

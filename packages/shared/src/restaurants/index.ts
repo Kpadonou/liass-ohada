@@ -17,6 +17,12 @@ export const GuestOrderingPolicySchema = z.enum([
   "DIRECT",
 ]);
 export const MenuItemAvailabilitySchema = z.enum(["AVAILABLE", "UNAVAILABLE"]);
+/** A catalog default is not proof of a transaction-specific exception. */
+export const RestaurantCatalogFiscalGroupSchema = z.enum(["A", "B", "E"]);
+export const RestaurantCatalogFiscalClassificationSchema = z.object({
+  country: z.literal("BJ"),
+  group: RestaurantCatalogFiscalGroupSchema,
+}).strict();
 export const RestaurantTableCodeSchema = z
   .string()
   .trim()
@@ -94,6 +100,7 @@ export const MenuItemSchema = z
     availability: MenuItemAvailabilitySchema,
     preparationStationId: RestaurantIdSchema.optional(),
     guestReorderEnabled: z.boolean(),
+    fiscalClassification: RestaurantCatalogFiscalClassificationSchema.optional(),
   })
   .strict();
 
@@ -117,6 +124,7 @@ const hasChange = (value: object) =>
       "price",
       "preparationStationId",
       "guestReorderEnabled",
+      "fiscalClassification",
     ].includes(key),
   );
 export const CreateRestaurantRequestSchema = z
@@ -184,6 +192,7 @@ export const CreateMenuItemRequestSchema = z
     availability: MenuItemAvailabilitySchema.default("AVAILABLE"),
     preparationStationId: RestaurantIdSchema.optional(),
     guestReorderEnabled: z.boolean().default(false),
+    fiscalClassification: RestaurantCatalogFiscalClassificationSchema,
   })
   .strict();
 export const UpdateMenuItemRequestSchema = z
@@ -192,6 +201,7 @@ export const UpdateMenuItemRequestSchema = z
     price: MenuPriceSchema.optional(),
     preparationStationId: RestaurantIdSchema.nullable().optional(),
     guestReorderEnabled: z.boolean().optional(),
+    fiscalClassification: RestaurantCatalogFiscalClassificationSchema.optional(),
   })
   .strict()
   .refine(hasChange);

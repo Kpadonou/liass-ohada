@@ -63,6 +63,7 @@ it('traces V1 mixed submission → Ready → payment while unserved → serializ
           {
             ...named(name),
             price: { amountMinor: 1000, currency: 'XOF' },
+            fiscalClassification: { country: 'BJ', group: 'B' },
             ...(index < 2 ? { preparationStationId: stations[index].id } : {}),
           },
           200,

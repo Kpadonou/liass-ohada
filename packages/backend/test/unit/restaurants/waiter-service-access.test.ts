@@ -525,7 +525,7 @@ test.each(["staffId", "waiterId", "responsibleStaffId"])(
     expect(
       (await call("open-session", "Aissa", { ...body(), [field]: "Binta" }))
         .statusCode,
-    ).toBe(400);
+    ).toBe(field === "staffId" ? 403 : 400);
   },
 );
 test("ignores forged user/tenant context and never impersonates another employee", async () => {
@@ -546,7 +546,7 @@ test("foreign staff persistence identity is rejected", async () => {
     200,
   );
 });
-test("legacy discovery/close/responsibility remain denied to an assigned waiter", async () => {
+test("legacy administration stays denied while assigned waiter closure is allowed", async () => {
   const s = c.GuestSessionResponseSchema.parse(
     JSON.parse((await call("open-session", "Aissa", body())).body),
   ).data;
@@ -571,7 +571,9 @@ test("legacy discovery/close/responsibility remain denied to an assigned waiter"
       route.name === "add-draft-item" ||
       route.name === "edit-draft-item" ||
       route.name === "cancel-order-item" ||
-      route.name === "submit-order"
+      route.name === "submit-order" ||
+      route.permission === "RESTAURANTS_SESSION_CLOSE_MANAGE" ||
+      route.permission === "RESTAURANTS_ORDER_CLOSE_MANAGE"
     )
       continue;
     expect(Auth.permissionsForRestaurantsRole("WAITER")).not.toContain(
@@ -632,7 +634,7 @@ test("legacy discovery/close/responsibility remain denied to an assigned waiter"
         { sessionId: s.guestSessionId },
       )
     ).statusCode,
-  ).toBe(403);
+  ).toBe(200);
   expect(
     (await call("create-order", "Aissa", writes.CREATE_ORDER)).statusCode,
   ).toBe(403);

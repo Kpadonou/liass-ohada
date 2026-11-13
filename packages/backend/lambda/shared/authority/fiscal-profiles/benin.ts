@@ -6,6 +6,12 @@ export const BENIN_FISCAL_REGIMES = Object.freeze({
     taxRateBasisPoints: 1800,
     basis: "NET_SALE",
   }),
+  TPS: Object.freeze({
+    id: "TPS",
+    version: 1,
+    taxRateBasisPoints: 0,
+    basis: "GROSS_SALE",
+  }),
   RESTAURANT_VAT_ON_MARGIN: Object.freeze({
     id: "RESTAURANT_VAT_ON_MARGIN",
     version: 1,

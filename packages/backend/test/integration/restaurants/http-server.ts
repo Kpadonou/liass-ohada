@@ -6,7 +6,10 @@ import {
   QueryCommand,
   ScanCommand,
 } from "@aws-sdk/client-dynamodb";
-import { memoryDynamo } from "../../unit/restaurants/memory-dynamo";
+import {
+  memoryDynamo,
+  seedTestFiscalProfile,
+} from "../../unit/restaurants/memory-dynamo";
 import { RESTAURANTS_ROUTES } from "@/lambda/domains/restaurants/restaurant-routes";
 import { restaurantsHandler } from "@/lambda/domains/restaurants/restaurant-handler";
 import { handler as productAccessHandler } from "@/lambda/domains/identity/get-product-access";
@@ -39,7 +42,8 @@ function reset() {
   memory.db.on(ScanCommand).callsFake(() => {
     throw new Error("Scan forbidden");
   });
-  for (const org of ["org-a", "org-b", "org-no-product"])
+  for (const org of ["org-a", "org-b", "org-no-product"]) {
+    seedTestFiscalProfile(org);
     for (const role of ["OWNER", "MANAGER", "WAITER", "CASHIER", "KITCHEN"])
       memory.seedAccess(
         org,
@@ -47,6 +51,7 @@ function reset() {
         role,
         org !== "org-no-product",
       );
+  }
   calls.length = 0;
   fault = null;
 }

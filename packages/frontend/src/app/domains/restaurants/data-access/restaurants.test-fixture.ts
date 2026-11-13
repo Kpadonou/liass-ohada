@@ -44,6 +44,7 @@ export function row(kind: RestaurantKind): RestaurantEntity {
         availability: 'AVAILABLE',
         preparationStationId: rid(5),
         guestReorderEnabled: true,
+        fiscalClassification: { country: 'BJ', group: 'B' },
       };
   }
 }

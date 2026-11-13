@@ -12,6 +12,10 @@ import { TranslocoTestingModule } from '@ngneat/transloco';
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { throwError } from 'rxjs';
 import { AuthStore } from '../../identity/data-access/auth.store';
+import {
+  PlatformFiscalProfileApi,
+  platformFiscalProfileKey,
+} from '../../../core/fiscality/platform-fiscal-profile.api';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
@@ -76,6 +80,13 @@ beforeEach(() => {
         provide: AuthStore,
         useValue: { effectiveOrgId: org, currentUserId: user, contextRevision: revision },
       },
+      {
+        provide: PlatformFiscalProfileApi,
+        useValue: {
+          context: () => ({ org: org(), user: user(), revision: revision() }),
+          profile: vi.fn().mockResolvedValue({ selected: { regime: 'ORDINARY_VAT' } }),
+        },
+      },
       { provide: RestaurantOutletContext, useValue: { id: outlet, identity } },
       { provide: ProductAccessState, useValue: { availability: () => 'AVAILABLE' } },
       {
@@ -93,6 +104,10 @@ beforeEach(() => {
   http = TestBed.inject(HttpTestingController);
   client.setQueryData(inventoryKeys.item(ctx, stockItem().id), stockItem());
   client.setQueryData(inventoryKeys.items(ctx), pages([stockItem()]));
+  client.setQueryData(
+    platformFiscalProfileKey({ org: ctx.org, user: ctx.user, revision: ctx.revision }),
+    { selected: { regime: 'ORDINARY_VAT' } },
+  );
 });
 afterEach(() => {
   http.verify();

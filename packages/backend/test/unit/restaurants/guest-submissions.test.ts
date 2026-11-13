@@ -712,6 +712,7 @@ test("twelve distinct categories/stations fit one bounded atomic acceptance", as
         clientRequestId: fixtureId(1802 + i * 3),
         name: "Item " + i,
         price: { amountMinor: 100, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
         preparationStationId: station.id,
       },
     );
@@ -740,7 +741,7 @@ test("twelve distinct categories/stations fit one bounded atomic acceptance", as
   ).toBe("ACCEPTED");
   const tx = m.transactions.at(-1)!;
   expect(tx.TransactItems!.length).toBeLessThanOrEqual(95);
-  expect(tx.TransactItems).toHaveLength(93);
+  expect(tx.TransactItems).toHaveLength(94);
   expect(
     tx.TransactItems!.some(
       (op) => op.Put?.Item?.entityType?.S === "RESTAURANT_GUEST_ORDER_REQUEST",
@@ -949,7 +950,7 @@ test("DIRECT requires exact OPEN visit; never closes the table", async () => {
   );
 });
 
-test("DIRECT twelve distinct categories/stations stay within ninety operations", async () => {
+test("DIRECT twelve distinct categories/stations stay within the guarded transaction limit", async () => {
   patch(K.restaurantSK(), { guestOrderingPolicy: "DIRECT" });
   const actor = "bounded-waiter";
   m.seedAccess(org, actor, "WAITER");
@@ -1001,6 +1002,7 @@ test("DIRECT twelve distinct categories/stations stay within ninety operations",
         clientRequestId: fixtureId(1802 + i * 3),
         name: "Item " + i,
         price: { amountMinor: 100, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
         preparationStationId: station.id,
       },
     );
@@ -1025,8 +1027,8 @@ test("DIRECT twelve distinct categories/stations stay within ninety operations",
   if (r.state !== "CONFIRMED") throw Error(r.state);
   expect(r.request.state).toBe("ACCEPTED");
   const tx = m.transactions.at(-1)!;
-  expect(tx.TransactItems!.length).toBeLessThanOrEqual(90);
-  expect(tx.TransactItems).toHaveLength(90);
+  expect(tx.TransactItems!.length).toBeLessThanOrEqual(95);
+  expect(tx.TransactItems).toHaveLength(91);
   expect(
     tx.TransactItems!.some(
       (op) => op.Put?.Item?.entityType?.S === "RESTAURANT_GUEST_ORDER_REQUEST",

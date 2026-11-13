@@ -80,21 +80,23 @@ beforeEach(async () => {
 });
 afterEach(() => memory.db.restore());
 test("dry-run maps every family without writing, across organizations and global QR partitions", async () => {
+  const eligible = source.filter((item) => transformLegacy(item));
   const report = await migrateRestaurants(store, options);
   expect(writes).toBe(0);
-  expect(report.sourceCount).toBe(source.length);
-  expect(report.mappingCount).toBe(source.length);
+  expect(report.sourceCount).toBe(eligible.length);
+  expect(report.mappingCount).toBe(eligible.length);
   expect(Object.keys(report.families)).toHaveLength(10);
   expect(report.qrCount).toBe(8);
   expect(report.validationErrorCount).toBe(0);
-  for (const item of source)
-    expect(transformLegacy(item)?.SK.S).not.toMatch(/^RESTAURANTS/);
+  for (const item of eligible)
+    expect(transformLegacy(item)!.SK.S).not.toMatch(/^RESTAURANTS/);
 });
 test("apply preserves every payload, metadata and version; verified rerun is safe", async () => {
+  const eligible = source.filter((item) => transformLegacy(item));
   const report = await migrateRestaurants(store, { ...options, apply: true });
   expect(report.verified).toBe(true);
-  expect(writes).toBe(source.length);
-  for (const old of source) {
+  expect(writes).toBe(eligible.length);
+  for (const old of eligible) {
     const target = transformLegacy(old)!;
     expect(unmarshall(destination.get(identity(target))!)).toEqual({
       ...unmarshall(old),
@@ -116,10 +118,10 @@ test("apply preserves every payload, metadata and version; verified rerun is saf
   const rerun = await migrateRestaurants(store, { ...options, apply: true });
   expect(rerun.verified).toBe(true);
   expect(rerun.createdCount).toBe(0);
-  expect(rerun.identicalCount).toBe(source.length);
+  expect(rerun.identicalCount).toBe(eligible.length);
 });
 test("preflight conflict prevents all writes", async () => {
-  const target = transformLegacy(source[0])!;
+  const target = source.map(transformLegacy).find(Boolean)!;
   destination.set(identity(target), { ...target, unexpected: { S: "value" } });
   expect(
     (await migrateRestaurants(store, { ...options, apply: true }))
@@ -161,7 +163,7 @@ test.each(["unknown", "malformed", "qr", "parent", "reservation"])(
   },
 );
 test("partial destination detects missing content and apply repairs it", async () => {
-  const target = transformLegacy(source[0])!;
+  const target = source.map(transformLegacy).find(Boolean)!;
   destination.set(identity(target), target);
   expect((await migrateRestaurants(store, options)).verified).toBe(false);
   expect(

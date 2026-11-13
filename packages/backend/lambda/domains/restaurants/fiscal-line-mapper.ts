@@ -44,6 +44,11 @@ export function mapRestaurantFiscalLines(input: {
     const classification = treatments.get(sourceLineId);
     if (!classification) throw Error("MISSING_FISCAL_CLASSIFICATION");
     const snapshot = line.snapshot;
+    if (snapshot.fiscalTreatment &&
+        (classification.taxGroup !== snapshot.fiscalTreatment.effectiveGroup ||
+         classification.classificationEvidence !==
+           (snapshot.fiscalTreatment.evidenceReference ?? snapshot.fiscalTreatment.regimeRevision)))
+      throw Error("FISCAL_CLASSIFICATION_SOURCE_MISMATCH");
     const amount = BigInt(snapshot.unitPriceMinor) * BigInt(snapshot.quantity);
     if (
       line.cancelledAt ||

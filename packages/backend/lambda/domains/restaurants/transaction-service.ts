@@ -1,5 +1,5 @@
 import { readCompanyFiscalProfile } from "@/lambda/shared/authority/fiscal-profiles/company-profile";
-import { calculateRestaurantPilotTax } from "./pilot-tax-calculation";
+import { calculateRestaurantFiscalAmounts, resolveRestaurantFiscalTreatment } from "./fiscal-treatment";
 import { config } from "@/lambda/shared/dynamo-client";
 import { RestaurantServiceAccess } from "./service-access";
 import { RestaurantPreparationService as Preparation } from "./preparation-service";
@@ -192,7 +192,7 @@ export class RestaurantTransactionsService {
     ctx: RestaurantTransactionContext,
     checks: Map<string, RestaurantSnapshot>,
     orderId: string,
-    selected: { itemId: string; expectedVersion: number },
+    selected: { itemId: string; expectedVersion: number; fiscalException?: { group: "B" | "C" | "D"; evidenceReference: string } },
     menu: RestaurantSnapshot & { data: contracts.Menu },
     currency: string,
     now: string,
@@ -243,18 +243,18 @@ export class RestaurantTransactionsService {
     const amount = safeMoney(
       BigInt(item.data.price.amountMinor) * BigInt(line.data.quantity),
     );
-    let tax: ReturnType<typeof calculateRestaurantPilotTax> | undefined;
-    if (companyTax?.profile?.rule.basis === "NET_SALE") {
-      try {
-        tax = calculateRestaurantPilotTax({
-          country: companyTax.profile.country,
-          declaration: { regime: companyTax.profile.rule.id },
-          currency,
-          grossMinor: amount,
-        });
-      } catch {
-        return fail("RESTAURANTS_PILOT_TAX_CASE_UNSUPPORTED", 422);
-      }
+    if (currency !== "XOF") return fail("RESTAURANTS_FISCAL_CURRENCY_UNSUPPORTED", 422);
+    let treatment: ReturnType<typeof resolveRestaurantFiscalTreatment>;
+    let amounts: ReturnType<typeof calculateRestaurantFiscalAmounts>;
+    try {
+      treatment = resolveRestaurantFiscalTreatment({
+        classification: item.data.fiscalClassification,
+        company: companyTax,
+        exception: selected.fiscalException,
+      });
+      amounts = calculateRestaurantFiscalAmounts(amount, treatment);
+    } catch {
+      return fail("RESTAURANTS_FISCAL_TREATMENT_UNSUPPORTED", 422);
     }
     const snapshot = contracts.AcceptedSaleSnapshotSchema.parse({
       menuItemId: item.data.id,
@@ -269,14 +269,10 @@ export class RestaurantTransactionsService {
       quantity: line.data.quantity,
       unitPriceMinor: item.data.price.amountMinor,
       grossMinor: amount,
-      subtotalMinor: tax?.netMinor ?? amount,
+      subtotalMinor: amounts.netMinor,
       discountMinor: 0,
-      taxMinor: tax?.taxMinor ?? 0,
-      ...(tax ? { ordinaryTax: {
-        profileRevision: companyTax?.selected?.revision,
-        policy: tax.policy,
-        policyDigest: tax.policyDigest,
-      } } : {}),
+      taxMinor: amounts.taxMinor,
+      fiscalTreatment: treatment,
       lineTotalMinor: amount,
       currency: currency,
       acceptedAt: now,
@@ -876,17 +872,16 @@ export class RestaurantTransactionsService {
     if (command === "OPEN_SESSION") {
       const req = contracts.OpenGuestSessionRequestSchema.parse(request);
       const responsibleStaffId = req.staffId ?? serviceAccess?.staffId;
-      if (!responsibleStaffId)
+      if (!responsibleStaffId && serviceAccess?.role === "WAITER")
         return fail("RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");
       if (
         serviceAccess?.role === "WAITER" &&
         responsibleStaffId !== ctx.actorId
       )
         return fail("DOMAIN_PERMISSION_REQUIRED", 403);
-      for (const check of await ResponsibleStaff.assignmentChecks(
-        ctx,
-        responsibleStaffId,
-      )) {
+      for (const check of responsibleStaffId
+        ? await ResponsibleStaff.assignmentChecks(ctx, responsibleStaffId)
+        : []) {
         if (
           !actions.some(
             (a) =>
@@ -1177,12 +1172,11 @@ export class RestaurantTransactionsService {
     } else if (command === "CLOSE_SESSION") {
       const req = contracts.CloseGuestSessionRequestSchema.parse(request),
         session = closureSession ?? (await this.session(ctx, owner));
-      if (!session.data.responsibleStaffId)
+      if (!session.data.responsibleStaffId && serviceAccess?.role === "WAITER")
         return fail("RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");
-      for (const check of await ResponsibleStaff.assignmentChecks(
-        ctx,
-        session.data.responsibleStaffId,
-      )) {
+      for (const check of session.data.responsibleStaffId
+        ? await ResponsibleStaff.assignmentChecks(ctx, session.data.responsibleStaffId)
+        : []) {
         if (
           !actions.some(
             (a) =>
@@ -1758,7 +1752,7 @@ export class RestaurantTransactionsService {
       // Atomic Guest creation plus acceptance adds creation locators to the
       // established submit transaction (worst case 93 actions for 12 distinct
       // categories/stations with a WAITER). Keep headroom below DynamoDB's 100.
-      await R.commit(actions, direct ? 90 : guestApproval ? 95 : 90);
+      await R.commit(actions, direct || guestApproval ? 95 : 90);
     } catch (error) {
       const serviceGuardFailed =
         serviceGuardCount > 0 &&

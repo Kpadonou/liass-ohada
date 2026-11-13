@@ -547,6 +547,7 @@
                   <th class="px-4 py-3 text-right">
                     {{ 'RESTAURANTS.PRESENTATION.PRICE' | transloco }}
                   </th>
+                  <th class="px-4 py-3">{{ 'RESTAURANTS.UI.FISCAL_GROUP' | transloco }}</th>
                   <th class="px-4 py-3">{{ 'RESTAURANTS.IA.STATIONS' | transloco }}</th>
                 } @else if (kind() !== 'outlet') {
                   <th class="px-4 py-3">{{ 'RESTAURANTS.UX.NAV.outlet' | transloco }}</th>
@@ -575,6 +576,7 @@
                       {{ category()?.name }}
                     </td>
                     <td class="px-4 py-3 text-right text-sm tabular-nums">{{ price(row) }}</td>
+                    <td class="px-4 py-3 text-sm">{{ fiscalGroup(row) }}</td>
                     <td class="break-words px-4 py-3 text-sm text-app-text-secondary">
                       {{ stationName(row) }}
                     </td>
@@ -747,6 +749,7 @@
                 }
                 @if (kind() === 'item') {
                   <p class="text-lg font-semibold">{{ price(row) }}</p>
+                  <p class="text-sm">{{ fiscalGroup(row) }}</p>
                   <p class="text-sm text-app-text-secondary">{{ stationName(row) }}</p>
                   <p class="text-sm">
                     {{

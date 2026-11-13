@@ -20,6 +20,7 @@ describe("RESTO-1 strict public contracts", () => {
       c.CreateMenuItemRequestSchema.parse({
         ...base,
         price: { amountMinor: 0, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
       }),
     ).toMatchObject({ availability: "AVAILABLE", guestReorderEnabled: false });
   });

@@ -631,6 +631,7 @@ test("canonical resolution classification rides existing Order reads without cha
       clientRequestId: requestId(),
       name: "Free business order",
       price: { amountMinor: 0, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" },
     },
   );
   const pair = await execute("CREATE_ORDER", {
@@ -795,6 +796,7 @@ test.each([false, true])(
         clientRequestId: requestId(),
         name: "Free business item",
         price: { amountMinor: 0, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
       },
     );
     const order = contracts.RestaurantOrderSchema.parse(
@@ -1404,6 +1406,7 @@ test("worst-case twelve-line submission atomically includes preparation within 8
         clientRequestId: requestId(),
         name: `Dish ${i}`,
         price: { amountMinor: 1, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
         preparationStationId: station.id,
       },
     );
@@ -1500,6 +1503,7 @@ test("complimentary no-station sale can close; routed work cannot fake completio
       ...item,
       version: 2,
       price: { amountMinor: 0, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" },
     };
     const order = contracts.RestaurantOrderSchema.parse((await create()).data),
       line = contracts.RestaurantOrderItemSchema.parse(
@@ -1579,6 +1583,7 @@ test("complimentary submission still advances the session financial revision", a
     ...item,
     version: 2,
     price: { amountMinor: 0, currency: "XOF" },
+    fiscalClassification: { country: "BJ", group: "B" },
   };
   const session = contracts.GuestSessionSchema.parse((await open()).data),
     order = contracts.RestaurantOrderSchema.parse(

@@ -159,7 +159,10 @@ test.each([
   if (role === "WAITER") {
     expect(permissions).not.toContain("RESTAURANTS_ORDER_READ");
     for (const permission of permissions)
-      if (permission.startsWith("RESTAURANTS_ORDER_"))
+      if (
+        permission.startsWith("RESTAURANTS_ORDER_") &&
+        permission !== "RESTAURANTS_ORDER_CLOSE_MANAGE"
+      )
         throw new Error("Broad order grant");
   }
 });

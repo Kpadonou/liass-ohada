@@ -393,7 +393,9 @@ test.each(["WAITER", "CASHIER", "KITCHEN"])(
       permissions.some((permission) =>
         RESTAURANTS_TRANSACTION_PERMISSIONS.includes(
           permission as (typeof RESTAURANTS_TRANSACTION_PERMISSIONS)[number],
-        ),
+        ) &&
+          permission !== "RESTAURANTS_ORDER_CLOSE_MANAGE" &&
+          permission !== "RESTAURANTS_SESSION_CLOSE_MANAGE",
       ),
     ).toBe(false);
   },

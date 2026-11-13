@@ -135,6 +135,7 @@ test("many MenuItems may share one stock item; names and lifecycle stay independ
       name: "Second",
       clientRequestId: randomUUID(),
       price: menu().price,
+      fiscalClassification: { country: "BJ", group: "B" },
       guestReorderEnabled: false,
     },
   );

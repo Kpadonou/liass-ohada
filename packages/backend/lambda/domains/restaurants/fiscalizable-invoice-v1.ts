@@ -5,6 +5,7 @@ import {
 import { canonical, clean, hash } from "@/lambda/shared/authority/integrity";
 import type { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { validRestaurantSaleTax } from "./pilot-tax-calculation";
+import { projectRestaurantClassifiedInvoice } from "./fiscalizable-classified-invoice";
 
 type VerifiedSource = Extract<
   Awaited<ReturnType<typeof RestaurantInvoiceSourceVerifier.verify>>,
@@ -19,6 +20,8 @@ function bytes(kind: string, payload: unknown) {
 /** The first V1 case is an ordinary Benin VAT invoice with one unit and one cash
  * settlement. Commercial verification precedes this read-only projection. */
 export function projectRestaurantInvoiceV1(evidence: VerifiedSource) {
+  if (evidence.lines.some(({ line }) => line.snapshot.fiscalTreatment))
+    return projectRestaurantClassifiedInvoice(evidence);
   const { invoice, source, proof, lines, parts, issuanceProvenance } = evidence;
   if (
     !issuanceProvenance.verified ||

@@ -122,6 +122,50 @@ test("explicit mapping preserves exact amounts and is directly consumable by dur
   });
   expect(before).toEqual(preparation());
 });
+
+test("mixed A/B fiscal groups are transmitted from frozen line mapping without a B fallback", () => {
+  const secondId = "22222222-2222-4222-8222-222222222222";
+  const second = { ...line, itemId: secondId, netAmountMinor: 1180,
+    snapshot: { ...line.snapshot, name: "Taxable", quantity: 1, unitPriceMinor: 1180,
+      grossMinor: 1180, subtotalMinor: 1000, taxMinor: 180, lineTotalMinor: 1180,
+      fiscalTreatment: { country: "BJ", catalogGroup: "B", effectiveGroup: "B",
+        regime: "ORDINARY_VAT", regimeRevision: id, policyId: "BJ-RESTO-TTC",
+        policyVersion: 1, rateBasisPoints: 1800, rounding: "HALF_UP_LINE" } } };
+  const first = { ...line, snapshot: { ...line.snapshot, fiscalTreatment: {
+    country: "BJ", catalogGroup: "A", effectiveGroup: "A", regime: "ORDINARY_VAT",
+    regimeRevision: id, policyId: "BJ-RESTO-TTC", policyVersion: 1,
+    rateBasisPoints: 0, rounding: "HALF_UP_LINE" } } };
+  const mapped = mapRestaurantFiscalLines({ lines: [first, second], classifications: [
+    { orderId: id, itemId: id, taxGroup: "A", classificationEvidence: id },
+    { orderId: id, itemId: secondId, taxGroup: "B", classificationEvidence: id },
+  ] });
+  const base = preparation();
+  const prepared = { ...base, ...mapped, totalMinor: "3180",
+    paidByMethodMinor: { CASH: 3180, MOBILE_MONEY: 0, CARD: 0 } };
+  const result = mapRestaurantBeninRequest(prepared, principal, identity,
+    { ...configuration(), taxGroups: ["A", "B"] });
+  expect((result.payload as { invoice: { items: { taxGroup: string }[] } }).invoice.items.map((v) => v.taxGroup)).toEqual(["A", "B"]);
+  expect(result.total).toBe(3180);
+  expect(() => mapRestaurantBeninRequest(prepared, principal, identity, configuration())).toThrow("UNSUPPORTED_PROVIDER_TAX_GROUP");
+});
+
+test("export group C requires an export invoice type and cannot mix with domestic groups", () => {
+  const exportLine = { ...line, snapshot: { ...line.snapshot,
+    fiscalTreatment: { country: "BJ", catalogGroup: "B", effectiveGroup: "C",
+      regime: "ORDINARY_VAT", regimeRevision: id, policyId: "BJ-RESTO-TTC",
+      policyVersion: 1, rateBasisPoints: 0, rounding: "HALF_UP_LINE",
+      evidenceReference: "EXPORT-CUSTOMS-1" } } };
+  const mapped = mapRestaurantFiscalLines({ lines: [exportLine], classifications: [
+    { orderId: id, itemId: id, taxGroup: "C", classificationEvidence: "EXPORT-CUSTOMS-1" },
+  ] });
+  const prepared = { ...preparation(), ...mapped };
+  expect(() => mapRestaurantBeninRequest(prepared, principal, identity,
+    { ...configuration(), taxGroups: ["C"] })).toThrow("UNSUPPORTED_EXPORT_TAX_COMBINATION");
+  const exportRequest = mapRestaurantBeninRequest(prepared, principal, identity,
+    { ...configuration(), invoiceType: "EV", taxGroups: ["C"] });
+  expect((exportRequest.payload as { invoice: { type: string; items: { taxGroup: string }[] } }).invoice)
+    .toMatchObject({ type: "EV", items: [{ taxGroup: "C" }] });
+});
 test.each([
   { priceBasis: "HT" },
   { pricingEvidence: "" },

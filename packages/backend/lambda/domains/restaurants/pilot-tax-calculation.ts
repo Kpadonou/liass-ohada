@@ -1,5 +1,6 @@
 import { resolveFiscalProfile } from "@/lambda/shared/authority/fiscal-profiles/profile";
 import { canonical, hash } from "@/lambda/shared/authority/integrity";
+import { calculateRestaurantFiscalAmounts } from "./fiscal-treatment";
 
 /** Exact TTC pilot calculation. Margin is a period basis and cannot enter this
  * ordinary invoice path. Persist the returned facts together if admitted. */
@@ -45,12 +46,21 @@ type SaleTaxAmounts = {
   taxMinor: number;
   currency: string;
   ordinaryTax?: NonNullable<import("@liass-ohada/shared/restaurants").RestaurantOrderItem["snapshot"]>["ordinaryTax"];
+  fiscalTreatment?: NonNullable<import("@liass-ohada/shared/restaurants").RestaurantOrderItem["snapshot"]>["fiscalTreatment"];
 };
 
 /** Historical verification uses only frozen facts. */
 export function validRestaurantSaleTax(snapshot: SaleTaxAmounts): boolean {
   if (snapshot.grossMinor !== snapshot.lineTotalMinor) return false;
   const { ordinaryTax, subtotalMinor, taxMinor } = snapshot;
+  const frozen = snapshot.fiscalTreatment;
+  if (frozen) {
+    if (ordinaryTax || frozen.policyId !== "BJ-RESTO-TTC" || frozen.policyVersion !== 1 ||
+        frozen.rounding !== "HALF_UP_LINE" || snapshot.currency !== "XOF" ||
+        (frozen.effectiveGroup === "B" || frozen.effectiveGroup === "D") !== (frozen.rateBasisPoints === 1800)) return false;
+    const expected = calculateRestaurantFiscalAmounts(snapshot.grossMinor, frozen);
+    return expected.netMinor === subtotalMinor && expected.taxMinor === taxMinor;
+  }
   if (!ordinaryTax) return taxMinor === 0 && subtotalMinor === snapshot.grossMinor;
   const { policy, policyDigest } = ordinaryTax;
   return snapshot.currency === policy.currency &&

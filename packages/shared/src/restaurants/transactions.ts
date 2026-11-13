@@ -113,6 +113,19 @@ export const RestaurantOrdinaryTaxSnapshotSchema = z.object({
     }).strict(),
   }).strict(),
 }).strict();
+/** Frozen sale treatment; catalog and organization changes cannot mutate this fact. */
+export const RestaurantFiscalTreatmentSchema = z.object({
+  country: z.literal("BJ"),
+  catalogGroup: z.enum(["A", "B", "E"]),
+  effectiveGroup: z.enum(["A", "B", "C", "D", "E"]),
+  regime: z.enum(["ORDINARY_VAT", "TPS"]),
+  regimeRevision: id,
+  policyId: z.literal("BJ-RESTO-TTC"),
+  policyVersion: z.literal(1),
+  rateBasisPoints: z.union([z.literal(0), z.literal(1800)]),
+  rounding: z.literal("HALF_UP_LINE"),
+  evidenceReference: z.string().trim().min(1).max(200).optional(),
+}).strict();
 
 export const AcceptedSaleSnapshotSchema = z
   .object({
@@ -132,6 +145,7 @@ export const AcceptedSaleSnapshotSchema = z
     discountMinor: z.literal(0),
     taxMinor: money,
     ordinaryTax: RestaurantOrdinaryTaxSnapshotSchema.optional(),
+    fiscalTreatment: RestaurantFiscalTreatmentSchema.optional(),
     lineTotalMinor: money,
     currency,
     acceptedAt: timestamp,
@@ -228,7 +242,14 @@ export const SubmitRestaurantOrderRequestSchema = z
   .object({
     ...edit,
     items: z
-      .array(z.object({ itemId: id, expectedVersion: version }).strict())
+      .array(z.object({
+        itemId: id,
+        expectedVersion: version,
+        fiscalException: z.object({
+          group: z.enum(["B", "C", "D"]),
+          evidenceReference: z.string().trim().min(1).max(200),
+        }).strict().optional(),
+      }).strict())
       .min(1)
       .max(12),
   })
