@@ -211,8 +211,11 @@ test("unknown line ids, duplicates and incompatible commercial/fiscal type never
   expect(aws.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
 });
 
-test("commercial credit needs the same-environment original successful fiscal certification, not its commercial number", async () => {
-  const originalInput = request(); originalInput.preparation.documentType = "FV";
+test.each([
+  { originalType: "FV" as const, creditType: "FA" as const, incompatibleType: "EA" as const },
+  { originalType: "EV" as const, creditType: "EA" as const, incompatibleType: "FA" as const },
+])("$creditType needs the same-environment certified $originalType reference, not its commercial number", async ({ originalType, creditType, incompatibleType }) => {
+  const originalInput = request(); originalInput.preparation.documentType = originalType;
   await FiscalService.prepare("org-1", "user-1", originalInput);
   const invoice = source();
   const creditSource = { ...invoice, sourceDocumentType: "CREDIT_NOTE" as const, sourceDocumentId: "credit-1",
@@ -220,19 +223,19 @@ test("commercial credit needs the same-environment original successful fiscal ce
     lines: invoice.lines.map(line => ({ ...line, originalInvoiceLineId: "line-1" })) };
   jest.mocked(SalesFiscalSourceService.getIssuedDocument).mockResolvedValue(creditSource);
   const credit = { ...request(), sourceDocumentType: "CREDIT_NOTE" as const, sourceDocumentId: "credit-1", originalInvoiceId: "invoice-1",
-    preparation: { lines: [], documentType: "FA" as const } };
+    preparation: { lines: [], documentType: creditType, tradeClassification: originalType === "EV" ? "EXPORT" as const : "DOMESTIC" as const } };
   const blocked = await FiscalService.readiness("org-1", credit);
   expect(blocked.issues).toContainEqual({ code: "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED" });
   const row = unmarshall(storedCertification());
   const zeroTotals = Object.fromEntries(["ta", "tb", "tc", "td", "taa", "tab", "tac", "tad", "tae", "taf", "hab", "had", "vab", "vad", "aib", "ts", "total"].map(k => [k, "0"]));
   row.data = FiscalCertificationInternalSchema.parse({ ...row.data, status: "CERTIFIED", totalsComparison: "MATCH",
     providerEvidence: { uid: "fixture-uid", submissionSnapshot: { schemaVersion: 1, mappingVersion: "fixture", ifu: "fixture-ifu",
-      type: "FV", items: [{ name: "fixture", price: "0", quantity: "1", taxGroup: "A" }], operator: { name: "fixture" } },
+      type: originalType, items: [{ name: "fixture", price: "0", quantity: "1", taxGroup: originalType === "EV" ? "C" : "A" }], operator: { name: "fixture" } },
       totals: zeroTotals, securityElements: { codeMECeFDGI: "ORIGINAL-CODE-UNCHANGED", dateTime: "fixture-time", qrCode: "fixture-qr", counters: "fixture-counters", nim: "fixture-nim" } } });
   rows.set(rowKey(storedCertification()), marshall(row, { removeUndefinedValues: true }));
   const prepared = await FiscalService.prepare("org-1", "user-1", credit);
-  expect(prepared.preparationSnapshot.originalCertification).toMatchObject({ codeMECeFDGI: "ORIGINAL-CODE-UNCHANGED", environment: "TEST", documentType: "FV" });
+  expect(prepared.preparationSnapshot.originalCertification).toMatchObject({ codeMECeFDGI: "ORIGINAL-CODE-UNCHANGED", environment: "TEST", documentType: originalType });
   expect(prepared.preparationSnapshot.originalCertification?.codeMECeFDGI).not.toBe("19");
   expect((await FiscalService.readiness("org-1", { ...credit, environment: "PRODUCTION" })).issues).toContainEqual({ code: "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED" });
-  await expect(FiscalService.readiness("org-1", { ...credit, preparation: { lines: [], documentType: "EA" } })).rejects.toMatchObject({ messageCode: "FISCAL_CLASSIFICATION_INVALID" });
+  await expect(FiscalService.readiness("org-1", { ...credit, preparation: { lines: [], documentType: incompatibleType } })).rejects.toMatchObject({ messageCode: "FISCAL_CLASSIFICATION_INVALID" });
 });
