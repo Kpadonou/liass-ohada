@@ -37,3 +37,9 @@ test("preflight fails closed on stale live code", () => {
   assert.throws(() => makePreflight(manifest, targets, configs, { Account: target.account }), /Live code drift/);
   assert.equal(releaseFingerprint(manifest), releaseFingerprint(structuredClone(manifest)));
 });
+
+test("the rollback procedure is documented for retained partial execution evidence", () => {
+  const source = String(process.getBuiltinModule("node:fs").readFileSync(new URL("./dev-immutable-lambda-code-release.mjs", import.meta.url)));
+  assert.match(source, /Rollback requires retained execution evidence/);
+  assert.doesNotMatch(source, /Rollback requires a completed execution record/);
+});

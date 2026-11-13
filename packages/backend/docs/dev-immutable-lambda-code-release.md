@@ -26,6 +26,6 @@ This default command is read-only against AWS. Review the preflight evidence and
 
 ## Rollback
 
-Execution captures the verified prior ZIP for each successfully updated Lambda before changing it. A separately approved `--rollback --approval-id …` invocation uses those retained ZIPs in reverse completed order, requiring the exact release fingerprint, current post-release code hash, current revision, and unchanged configuration fingerprint. Rollback is never automatic: partial releases must be assessed using the immutable execution evidence before an operator authorizes it.
+Execution captures the verified prior ZIP for each successfully updated Lambda before changing it. A separately approved `--rollback --approval-id …` invocation uses any retained completed updates in reverse order, requiring the exact release fingerprint, current post-release code hash, current revision, and unchanged configuration fingerprint. Rollback is never automatic: partial releases must be assessed using the immutable execution evidence before an operator authorizes it.
 
 After DEV validation, the normal authorized CDK release must reconcile the intended code asset references. That later release still requires its own template/change-set review; this tool does not authorize infrastructure drift.

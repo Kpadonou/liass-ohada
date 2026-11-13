@@ -180,7 +180,7 @@ function rollbackRelease({ evidenceDirectory, profile, approvalId, manifest, tar
   if (!existsSync(evidenceFile)) throw new Error("Rollback requires retained execution-evidence.json");
   const evidence = readJson(evidenceFile);
   assert.equal(evidence.releaseFingerprint, releaseFingerprint(manifest), "Rollback evidence is for another release");
-  assert.ok(evidence.completedAt, "Rollback requires a completed execution record");
+  assert.ok(evidence.startedAt, "Rollback requires retained execution evidence");
   const targetByName = new Map(targets.map((target) => [target.functionName, target]));
   const rollbackByName = new Map((evidence.rollback ?? []).map((item) => [item.functionName, item]));
   const preflightByName = new Map((evidence.items ?? []).map((item) => [item.functionName, item]));
