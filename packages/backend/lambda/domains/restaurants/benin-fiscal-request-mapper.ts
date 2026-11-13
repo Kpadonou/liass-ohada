@@ -163,8 +163,12 @@ export function mapRestaurantBeninRequest(
     };
   });
   const groups = new Set(items.map((item) => item.taxGroup));
-  if ((groups.has("C") && (config.invoiceType !== "EV" || groups.size !== 1)) ||
-      (config.invoiceType === "EV" && (groups.size !== 1 || !groups.has("C"))))
+  // DGI SFE annex 2: EV accepts C (16), A+C (17), and E (19).
+  // F remains reserved; no provider calculation is inferred for it.
+  if ((config.invoiceType === "FV" && groups.has("C")) ||
+      (config.invoiceType === "EV" &&
+        !(groups.size === 1 && (groups.has("C") || groups.has("E")) ||
+          groups.size === 2 && groups.has("A") && groups.has("C"))))
     throw new Error("UNSUPPORTED_EXPORT_TAX_COMBINATION");
   const paid = z
     .object({
