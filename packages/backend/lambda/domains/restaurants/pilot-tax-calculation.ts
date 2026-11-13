@@ -55,8 +55,16 @@ export function validRestaurantSaleTax(snapshot: SaleTaxAmounts): boolean {
   const { ordinaryTax, subtotalMinor, taxMinor } = snapshot;
   const frozen = snapshot.fiscalTreatment;
   if (frozen) {
+    const ordinary = frozen.regime === "ORDINARY_VAT" &&
+      (frozen.catalogGroup === "A" && frozen.effectiveGroup === "A" ||
+       frozen.catalogGroup === "B" && ["B", "C", "D"].includes(frozen.effectiveGroup));
+    const tps = frozen.regime === "TPS" && frozen.catalogGroup === "E" &&
+      ["E", "B"].includes(frozen.effectiveGroup);
+    const exception = frozen.effectiveGroup === "C" || frozen.effectiveGroup === "D" ||
+      frozen.regime === "TPS" && frozen.effectiveGroup === "B";
     if (ordinaryTax || frozen.policyId !== "BJ-RESTO-TTC" || frozen.policyVersion !== 1 ||
         frozen.rounding !== "HALF_UP_LINE" || snapshot.currency !== "XOF" ||
+        (!ordinary && !tps) || (exception && !frozen.evidenceReference) ||
         (frozen.effectiveGroup === "B" || frozen.effectiveGroup === "D") !== (frozen.rateBasisPoints === 1800)) return false;
     const expected = calculateRestaurantFiscalAmounts(snapshot.grossMinor, frozen);
     return expected.netMinor === subtotalMinor && expected.taxMinor === taxMinor;

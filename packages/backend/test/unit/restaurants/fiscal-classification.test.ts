@@ -1,4 +1,5 @@
 import { calculateRestaurantFiscalAmounts, resolveRestaurantFiscalTreatment } from "@/lambda/domains/restaurants/fiscal-treatment";
+import { validRestaurantSaleTax } from "@/lambda/domains/restaurants/pilot-tax-calculation";
 
 const company = (regime: "ORDINARY_VAT" | "TPS") => ({
   country: "BJ", selected: { revision: "00000000-0000-4000-8000-000000000001" },
@@ -29,4 +30,25 @@ test("export and exception regime are transaction-specific, while F requires a s
       exception: { group, evidenceReference: `DOCUMENT-${group}` } }).effectiveGroup).toBe(group);
   }
   expect(() => resolveRestaurantFiscalTreatment({ classification: classification("E"), company: company("ORDINARY_VAT") })).toThrow();
+});
+
+test("frozen FINAL treatment rejects impossible group/regime and missing exception provenance", () => {
+  const snapshot = (treatment: ReturnType<typeof resolveRestaurantFiscalTreatment>) => {
+    const { netMinor, taxMinor } = calculateRestaurantFiscalAmounts(1180, treatment);
+    return { grossMinor: 1180, lineTotalMinor: 1180, subtotalMinor: netMinor,
+      taxMinor, currency: "XOF", fiscalTreatment: treatment };
+  };
+  const exportC = resolveRestaurantFiscalTreatment({ classification: classification("B"),
+    company: company("ORDINARY_VAT"), exception: { group: "C", evidenceReference: "CUSTOMS-1" } });
+  const exportE = resolveRestaurantFiscalTreatment({ classification: classification("E"), company: company("TPS") });
+  expect(validRestaurantSaleTax(snapshot(exportC))).toBe(true);
+  expect(validRestaurantSaleTax(snapshot(exportE))).toBe(true);
+  expect(validRestaurantSaleTax(snapshot({ ...exportC, evidenceReference: undefined }))).toBe(false);
+  expect(validRestaurantSaleTax(snapshot({ ...exportE, regime: "ORDINARY_VAT" }))).toBe(false);
+  expect(validRestaurantSaleTax(snapshot({ ...exportE, effectiveGroup: "A" }))).toBe(false);
+  expect(validRestaurantSaleTax(snapshot({ ...exportC, catalogGroup: "A" }))).toBe(false);
+  const tpsB = resolveRestaurantFiscalTreatment({ classification: classification("E"), company: company("TPS"),
+    exception: { group: "B", evidenceReference: "STATE-BUYER-1" } });
+  expect(validRestaurantSaleTax(snapshot(tpsB))).toBe(true);
+  expect(validRestaurantSaleTax(snapshot({ ...tpsB, evidenceReference: undefined }))).toBe(false);
 });
