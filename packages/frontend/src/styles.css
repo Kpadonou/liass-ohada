@@ -1068,6 +1068,9 @@ liass-app-topbar .mdc-button__label {
     max-width: 100%;
     font-size: 9pt;
   }
+  .liass-receipt-print-root.liass-receipt-thermal .fiscal-security-list {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
   .liass-receipt-print-root .receipt-line,
   .liass-receipt-print-root .receipt-totals,
   .liass-receipt-print-root header {

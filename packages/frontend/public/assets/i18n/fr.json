@@ -5348,6 +5348,21 @@
       "READY_TO_CLOSE": "Prêt à terminer le service",
       "BACK_TO_CHECKOUT": "Retour à la caisse"
     },
+    "FISCAL_REVIEW": {
+      "EYEBROW": "LIASS-RESTO · REVUE LOCALE",
+      "TITLE": "Facture e-MECeF — données TEST",
+      "DESCRIPTION": "Aperçu déterministe sans appel DGI. Le document reste explicitement identifié comme TEST.",
+      "STATE": "État fiscal simulé",
+      "CONFIRMED": "Confirmée",
+      "PENDING": "En attente",
+      "FAILED": "Échec",
+      "UNCERTAIN": "Incertaine",
+      "PREVIEW": "Format d’aperçu",
+      "SCREEN": "Écran",
+      "THERMAL": "Thermique",
+      "PRINT_THERMAL": "Imprimer thermique",
+      "PRINT_A4": "Imprimer A4 / PDF"
+    },
     "RECEIPT": {
       "ISSUED": "Publication",
       "VIEW": "Voir la facture",

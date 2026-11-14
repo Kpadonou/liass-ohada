@@ -5,6 +5,7 @@ import { salesDashboardReadGuard } from '../../domains/sales/data-access/sales-d
 import { restaurantSections } from '../navigation/product-navigation';
 import { Routes } from '@angular/router';
 import { productAccessGuard } from '../product-access/product-access.guard';
+import { environment } from '../../../environments/environment';
 
 import { publicLandingHostGuard } from '../public/public-site.guard';
 import { AuthCallbackPage } from '../../domains/identity/feature/auth-callback/auth-callback.page';
@@ -29,6 +30,17 @@ import {
 
 export const routes: Routes = [
   ...guestRoutes,
+  ...(!environment.production
+    ? [
+        {
+          path: '__review/restaurants/fiscal-receipt',
+          loadComponent: () =>
+            import('../../domains/restaurants/feature/restaurant-fiscal-review.page').then(
+              (module) => module.RestaurantFiscalReviewPage,
+            ),
+        } satisfies Routes[number],
+      ]
+    : []),
   {
     path: '',
     pathMatch: 'full',

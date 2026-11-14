@@ -1,4 +1,7 @@
-import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
+import {
+  LiassStatusChipComponent,
+  LiassStatusTone,
+} from '../../../shared/ui/status-chip/status-chip.component';
 import { RestaurantFiscalResultResponse } from '@liass-ohada/shared/restaurants';
 import QRCode from 'qrcode';
 import { Component, ElementRef, effect, signal, inject, input } from '@angular/core';
@@ -51,19 +54,35 @@ import { restaurantPrice } from '../utils/restaurant-money';
           <h2 class="font-semibold">{{ 'RESTAURANTS.RECEIPT.FISCAL_TEST' | transloco }}</h2>
           <liass-status-chip
             size="sm"
-            [tone]="result.status === 'UNKNOWN_OUTCOME' ? 'warning' : 'neutral'"
+            [tone]="fiscalTone(result.status)"
             [label]="'RESTAURANTS.RECEIPT.FISCAL_STATUS.' + result.status | transloco"
           />
           @if (result.securityElements; as security) {
-            <dl class="mt-2 text-xs">
-              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_CODE' | transloco }}</dt>
-              <dd>{{ security.codeMECeFDGI }}</dd>
-              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_NIM' | transloco }}</dt>
-              <dd>{{ security.nim }}</dd>
-              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_COUNTERS' | transloco }}</dt>
-              <dd>{{ security.counters }}</dd>
-              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_DATE' | transloco }}</dt>
-              <dd>{{ security.dateTime }}</dd>
+            <dl class="fiscal-security-list mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
+              <div class="min-w-0">
+                <dt class="text-app-text-secondary">
+                  {{ 'RESTAURANTS.RECEIPT.FISCAL_CODE' | transloco }}
+                </dt>
+                <dd class="break-all font-medium">{{ security.codeMECeFDGI }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-app-text-secondary">
+                  {{ 'RESTAURANTS.RECEIPT.FISCAL_NIM' | transloco }}
+                </dt>
+                <dd class="break-all font-medium">{{ security.nim }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-app-text-secondary">
+                  {{ 'RESTAURANTS.RECEIPT.FISCAL_COUNTERS' | transloco }}
+                </dt>
+                <dd class="break-words font-medium">{{ security.counters }}</dd>
+              </div>
+              <div class="min-w-0">
+                <dt class="text-app-text-secondary">
+                  {{ 'RESTAURANTS.RECEIPT.FISCAL_DATE' | transloco }}
+                </dt>
+                <dd class="break-words font-medium">{{ security.dateTime }}</dd>
+              </div>
             </dl>
             @if (qrImage(); as qr) {
               <img
@@ -255,5 +274,18 @@ export class RestaurantReceiptDocument {
       '\u202f',
       '\u00a0',
     );
+  }
+  fiscalTone(status: RestaurantFiscalResultResponse['status']): LiassStatusTone {
+    if (status === 'CONFIRMED') return 'success';
+    if (status === 'FAILED' || status === 'CANCELLED') return 'danger';
+    if (
+      status === 'CREATED' ||
+      status === 'CREATE_IN_FLIGHT' ||
+      status === 'CONFIRM_IN_FLIGHT' ||
+      status === 'UNKNOWN_OUTCOME'
+    ) {
+      return 'warning';
+    }
+    return 'neutral';
   }
 }
