@@ -242,16 +242,13 @@
               "
             >
               <span class="flex min-w-0 items-center gap-1.5">
-                <span
-                  class="flex size-8 shrink-0 items-center justify-center rounded-app-control"
-                  [class]="product.iconClass"
+                <mat-icon
+                  class="shrink-0 text-white"
                   data-testid="active-product-icon"
                   aria-hidden="true"
                 >
-                  <mat-icon class="!m-0 !size-5 !text-xl leading-5" aria-hidden="true">{{
-                    product.icon
-                  }}</mat-icon>
-                </span>
+                  {{ product.icon }}
+                </mat-icon>
                 <span class="min-w-0 truncate">{{ product.labelKey | transloco }}</span>
                 <mat-icon class="shrink-0 text-white/70" aria-hidden="true">expand_more</mat-icon>
               </span>
@@ -266,16 +263,13 @@
               (click)="selectProduct(product)"
             >
               <span class="flex min-w-0 items-center gap-1.5">
-                <span
-                  class="flex size-8 shrink-0 items-center justify-center rounded-app-control"
-                  [class]="product.iconClass"
+                <mat-icon
+                  class="shrink-0 text-white"
                   data-testid="active-product-icon"
                   aria-hidden="true"
                 >
-                  <mat-icon class="!m-0 !size-5 !text-xl leading-5" aria-hidden="true">{{
-                    product.icon
-                  }}</mat-icon>
-                </span>
+                  {{ product.icon }}
+                </mat-icon>
                 <span class="min-w-0 truncate">{{ product.labelKey | transloco }}</span>
               </span>
             </button>
@@ -467,7 +461,7 @@
         <mat-icon>{{ uiStore.themeMode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
       </button>
 
-      <liass-language-selector />
+      <liass-language-selector inverse />
 
       <button
         class="liass-focus-ring hidden size-8 shrink-0 place-items-center rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1] sm:grid"

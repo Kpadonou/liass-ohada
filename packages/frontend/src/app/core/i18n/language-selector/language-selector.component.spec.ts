@@ -67,6 +67,19 @@ describe('LanguageSelectorComponent', () => {
     expect(button).toBeTruthy();
     expect(button.textContent?.trim()).toBe('FR');
     expect(button.getAttribute('aria-label')).toBe('Changer de langue');
+    expect(button.classList.contains('text-app-text-secondary')).toBe(true);
+  });
+
+  it('uses white trigger text when rendered on a dark shell', () => {
+    fixture.componentRef.setInput('inverse', true);
+    fixture.detectChanges();
+
+    const button = fixture.nativeElement.querySelector(
+      '[data-testid="language-trigger"]',
+    ) as HTMLButtonElement;
+
+    expect(button.classList.contains('text-white')).toBe(true);
+    expect(button.classList.contains('text-app-text-secondary')).toBe(false);
   });
 
   it('renders available languages in the menu', async () => {

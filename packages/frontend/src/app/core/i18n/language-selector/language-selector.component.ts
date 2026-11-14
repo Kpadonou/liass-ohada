@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { booleanAttribute, Component, computed, inject, input } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,6 +14,8 @@ import { saveLanguagePreference, type SupportedLanguage } from '../language-pref
 })
 export class LanguageSelectorComponent {
   private readonly translocoService = inject(TranslocoService);
+
+  readonly inverse = input(false, { transform: booleanAttribute });
 
   protected readonly languages: Array<{
     code: SupportedLanguage;
