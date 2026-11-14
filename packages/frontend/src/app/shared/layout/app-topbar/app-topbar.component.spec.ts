@@ -903,17 +903,26 @@ describe('AppTopbarComponent', () => {
     expect(
       entries.map((entry) => {
         const icon = entry.querySelector('[data-testid="product-option-icon"]');
+        const content = entry.querySelector('[data-testid="product-option-content"]');
+        const hasHorizontalNoWrapLayout =
+          !!content &&
+          content.classList.contains('flex') &&
+          content.classList.contains('items-center') &&
+          content.classList.contains('whitespace-nowrap') &&
+          entry.className.includes('!min-w-52');
         return {
           glyph: icon?.textContent?.trim(),
           hasBrandTint:
             icon?.className.includes('bg-brand-50') &&
             icon.className.includes('text-brand-700'),
+          hasHorizontalNoWrapLayout,
         };
       }),
     ).toEqual(
       shellProducts.map((product) => ({
         glyph: product.icon,
         hasBrandTint: true,
+        hasHorizontalNoWrapLayout: true,
       })),
     );
     entries.find((entry) => entry.textContent?.includes('Sales'))!.click();
@@ -944,6 +953,43 @@ describe('AppTopbarComponent', () => {
     trigger.click();
     await fixture.whenStable();
     expect(navigation).toHaveBeenCalledWith('/restaurants');
+  });
+
+  it('supports keyboard navigation through the product selector', async () => {
+    available.set(['ACCOUNTING', 'SALES', 'RESTAURANTS']);
+    authStore.setCreatedWorkspace(
+      { orgId: 'beta', workspaceType: 'COMPANY', role: 'OWNER' },
+      'beta',
+    );
+    uiStore.setCurrentPage('restaurants');
+    fixture = TestBed.createComponent(AppTopbarComponent);
+    fixture.detectChanges();
+
+    const trigger = fixture.nativeElement.querySelector(
+      '[data-testid="active-product"]',
+    ) as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const entries = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel button'),
+    );
+    expect(entries).toHaveLength(3);
+    expect(document.activeElement).toBe(entries[0]);
+
+    entries[0].dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        code: 'ArrowDown',
+        keyCode: 40,
+        which: 40,
+        bubbles: true,
+      }),
+    );
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(document.activeElement).toBe(entries[1]);
   });
 
   it('updates visible products and workspace labels when workspace context changes', () => {
