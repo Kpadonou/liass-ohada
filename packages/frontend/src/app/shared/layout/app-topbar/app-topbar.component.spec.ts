@@ -890,7 +890,7 @@ describe('AppTopbarComponent', () => {
     expect(
       fixture.nativeElement
         .querySelector('[data-testid="language-trigger"]')
-        ?.classList.contains('text-white'),
+      ?.classList.contains('!text-white'),
     ).toBe(true);
     const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     trigger.click();
@@ -909,6 +909,7 @@ describe('AppTopbarComponent', () => {
     expect(
       entries.map((entry) => {
         const icon = entry.querySelector('[data-testid="product-option-icon"]');
+        const glyph = icon?.querySelector('mat-icon');
         const content = entry.querySelector('[data-testid="product-option-content"]');
         const hasHorizontalNoWrapLayout =
           !!content &&
@@ -917,17 +918,22 @@ describe('AppTopbarComponent', () => {
           content.classList.contains('whitespace-nowrap') &&
           entry.className.includes('!min-w-52');
         return {
-          glyph: icon?.textContent?.trim(),
-          hasBrandTint:
-            icon?.className.includes('bg-brand-50') &&
-            icon.className.includes('text-brand-700'),
+          glyph: glyph?.textContent?.trim(),
+          hasPrimaryIconColor: icon?.classList.contains('text-brand-700'),
+          retainsIconSpacing: icon?.classList.contains('size-8'),
+          hasButtonLikeContainer:
+            !!icon &&
+            (icon.classList.contains('rounded-app-control') ||
+              icon.classList.contains('bg-brand-50')),
           hasHorizontalNoWrapLayout,
         };
       }),
     ).toEqual(
       shellProducts.map((product) => ({
         glyph: product.icon,
-        hasBrandTint: true,
+        hasPrimaryIconColor: true,
+        retainsIconSpacing: true,
+        hasButtonLikeContainer: false,
         hasHorizontalNoWrapLayout: true,
       })),
     );

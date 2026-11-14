@@ -78,7 +78,7 @@ describe('LanguageSelectorComponent', () => {
       '[data-testid="language-trigger"]',
     ) as HTMLButtonElement;
 
-    expect(button.classList.contains('text-white')).toBe(true);
+    expect(button.classList.contains('!text-white')).toBe(true);
     expect(button.classList.contains('text-app-text-secondary')).toBe(false);
   });
 

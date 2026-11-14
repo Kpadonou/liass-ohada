@@ -291,14 +291,13 @@
               data-testid="product-option-content"
             >
               <span
-                class="flex size-8 shrink-0 items-center justify-center rounded-app-control"
-                [class]="product.iconClass"
+                class="flex size-8 shrink-0 items-center justify-center text-brand-700"
                 data-testid="product-option-icon"
                 aria-hidden="true"
               >
-                <mat-icon class="!m-0 !size-5 !text-xl leading-5" aria-hidden="true">{{
-                  product.icon
-                }}</mat-icon>
+                <mat-icon class="!m-0 !size-5 !text-xl leading-5" aria-hidden="true">
+                  {{ product.icon }}
+                </mat-icon>
               </span>
               <span class="min-w-0 flex-1 whitespace-nowrap">
                 {{ product.labelKey | transloco }}
