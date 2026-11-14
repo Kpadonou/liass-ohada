@@ -1,4 +1,3 @@
-import { RestaurantOutletRouting } from '../../../domains/restaurants/data-access/restaurant-outlet-routing';
 import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import { signal } from '@angular/core';
 import { ProductAccessState } from '../../../core/product-access/product-access.state';
@@ -158,7 +157,6 @@ describe('AppTopbarComponent', () => {
         }),
       ],
       providers: [
-        { provide: RestaurantOutletRouting, useValue: { routeReady: () => true } },
         {
           provide: RestaurantOutletContext,
           useValue: { attached: () => false, id: () => null },
@@ -954,6 +952,7 @@ describe('AppTopbarComponent', () => {
     fixture.detectChanges();
     const trigger = fixture.nativeElement.querySelector('[data-testid="active-product"]');
     expect(trigger.textContent).toContain('Liass-Resto');
+    expect(fixture.nativeElement.querySelector('liass-restaurant-outlet-context')).toBeNull();
     expect(trigger.textContent).not.toContain('expand_more');
     expect(trigger.getAttribute('aria-haspopup')).toBeNull();
     expect(

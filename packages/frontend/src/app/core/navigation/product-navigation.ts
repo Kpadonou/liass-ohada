@@ -48,6 +48,8 @@ export class ShellRouteContext {
   restaurantKey(): string {
     if (/^\/restaurants\/outlets\/[^/]+\/sessions\/[^/]+\/receipt$/.test(this.url()))
       return 'receipt';
+    if (this.url() === '/restaurants/cash/day') return 'cashDay';
+    if (this.url() === '/restaurants/cash') return 'cash';
     if (this.url() === '/restaurants/checkout') return 'checkout';
     if (this.url() === '/restaurants/inventory') return 'inventory';
     if (this.url() === '/restaurants/kitchen') return 'kitchen';

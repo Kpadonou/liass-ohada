@@ -1,4 +1,5 @@
 import { restaurantMemberMode } from '../../../domains/restaurants/data-access/restaurant-access-state';
+import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import { ShellRouteContext } from '../../../core/navigation/product-navigation';
 import { Component, computed, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
@@ -53,8 +54,12 @@ const cabinetOperationsPages = new Set<AppPage>([
 export class AppContextBreadcrumbComponent {
   protected readonly routeContext = inject(ShellRouteContext);
   private readonly authStore = inject(AuthStore);
+  private readonly restaurantOutlet = inject(RestaurantOutletContext);
   private readonly uiStore = inject(UiStore);
 
+  protected readonly restaurantContext = computed(
+    () => this.uiStore.currentPage() === 'restaurants',
+  );
   protected readonly contextNames = computed(() => {
     if (cabinetOperationsPages.has(this.uiStore.currentPage())) {
       return [this.authStore.activeWorkspaceDisplayName()].filter(
@@ -64,22 +69,28 @@ export class AppContextBreadcrumbComponent {
 
     const workspaceName = this.authStore.activeWorkspaceDisplayName();
     const dossierName = this.authStore.activeDossierDisplayName();
+    const outletName = this.restaurantContext() ? this.restaurantOutlet.outlet()?.name : null;
 
-    return [workspaceName, this.authStore.isDossierContext() ? dossierName : null].filter(
-      (value): value is string => !!value,
-    );
+    return [
+      workspaceName,
+      this.authStore.isDossierContext() ? dossierName : null,
+      outletName,
+    ].filter((value): value is string => !!value);
   });
-  protected readonly restaurantContext = computed(
-    () => this.uiStore.currentPage() === 'restaurants',
-  );
   protected readonly salesContext = computed(() => this.uiStore.currentPage().startsWith('sales.'));
-  protected readonly pageLabelKey = computed(() =>
-    this.restaurantContext()
-      ? this.routeContext.restaurantKey() === 'overview' &&
-        restaurantMemberMode(this.authStore.activeWorkspace(), this.authStore.effectiveOrgId()) !==
-          'management'
-        ? 'RESTAURANTS.ACCESS_LIFECYCLE.BREADCRUMB'
-        : 'RESTAURANTS.UX.PAGES.' + this.routeContext.restaurantKey() + '.TITLE'
-      : pageLabelKeys[this.uiStore.currentPage()],
-  );
+  protected readonly pageLabelKey = computed(() => {
+    if (!this.restaurantContext()) return pageLabelKeys[this.uiStore.currentPage()];
+
+    const restaurantPage = this.routeContext.restaurantKey();
+    if (restaurantPage === 'cash') return 'RESTAURANTS.CASH.MY_CASH';
+    if (restaurantPage === 'cashDay') return 'RESTAURANTS.CASH.DAY_REVIEW';
+    if (
+      restaurantPage === 'overview' &&
+      restaurantMemberMode(this.authStore.activeWorkspace(), this.authStore.effectiveOrgId()) !==
+        'management'
+    )
+      return 'RESTAURANTS.ACCESS_LIFECYCLE.BREADCRUMB';
+
+    return 'RESTAURANTS.UX.PAGES.' + restaurantPage + '.TITLE';
+  });
 }

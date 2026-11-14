@@ -310,9 +310,6 @@
     <div
       class="order-2 ml-auto flex shrink-0 min-w-0 items-center justify-end gap-1 sm:order-none sm:gap-2 sm:h-full lg:pr-4"
     >
-      @if (productNavigation.routeProduct() === 'RESTAURANTS') {
-        <liass-restaurant-outlet-context />
-      }
       @if (authStore.isAccountingReadOnly()) {
         <span
           class="hidden items-center gap-1.5 rounded-app-control border border-amber-300/30 bg-amber-300/15 px-2.5 py-1.5 text-xs font-semibold text-amber-100 sm:inline-flex"

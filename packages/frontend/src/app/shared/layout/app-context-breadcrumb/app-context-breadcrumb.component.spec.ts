@@ -1,3 +1,4 @@
+import { Component, signal } from '@angular/core';
 import { Router, provideRouter } from '@angular/router';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TranslocoTestingModule } from '@ngneat/transloco';
@@ -6,14 +7,21 @@ import { UiStore } from '../../../core/state/ui.store';
 import { CabinetDossiersApi } from '../../../domains/identity/data-access/cabinet-dossiers.api';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.api';
+import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import { AppContextBreadcrumbComponent } from './app-context-breadcrumb.component';
 
+@Component({ template: '' })
+class RestaurantRouteStub {}
+
 describe('AppContextBreadcrumbComponent', () => {
+  const selectedOutlet = signal<{ name: string } | undefined>(undefined);
   let fixture: ComponentFixture<AppContextBreadcrumbComponent>;
   let authStore: InstanceType<typeof AuthStore>;
+  let router: Router;
   let uiStore: InstanceType<typeof UiStore>;
 
   beforeEach(async () => {
+    selectedOutlet.set(undefined);
     await TestBed.configureTestingModule({
       imports: [
         AppContextBreadcrumbComponent,
@@ -21,11 +29,14 @@ describe('AppContextBreadcrumbComponent', () => {
           langs: {
             en: {
               RESTAURANTS: {
+                CASH: { MY_CASH: 'My session', DAY_REVIEW: 'Cash day' },
                 UX: {
                   PAGES: {
                     table: { TITLE: 'Tables' },
                     menu: { TITLE: 'Menu' },
                     overview: { TITLE: 'Dashboard' },
+                    checkout: { TITLE: 'Collect payment' },
+                    service: { TITLE: 'Dining service' },
                   },
                 },
               },
@@ -46,13 +57,33 @@ describe('AppContextBreadcrumbComponent', () => {
         }),
       ],
       providers: [
-        provideRouter([]),
+        provideRouter([
+          {
+            path: 'restaurants',
+            children: [
+              { path: 'checkout', component: RestaurantRouteStub },
+              { path: 'service', component: RestaurantRouteStub },
+              {
+                path: 'cash',
+                children: [
+                  { path: '', component: RestaurantRouteStub },
+                  { path: 'day', component: RestaurantRouteStub },
+                ],
+              },
+            ],
+          },
+        ]),
         { provide: WorkspacesApi, useValue: { listWorkspaces: () => Promise.resolve([]) } },
         { provide: CabinetDossiersApi, useValue: { listDossiers: () => Promise.resolve([]) } },
+        {
+          provide: RestaurantOutletContext,
+          useValue: { outlet: selectedOutlet },
+        },
       ],
     }).compileComponents();
 
     authStore = TestBed.inject(AuthStore);
+    router = TestBed.inject(Router);
     uiStore = TestBed.inject(UiStore);
   });
 
@@ -168,8 +199,8 @@ describe('AppContextBreadcrumbComponent', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Overview');
   });
 
-  it('shows organization, product and exact restaurant task without a Configuration segment', () => {
-    vi.spyOn(TestBed.inject(Router), 'url', 'get').mockReturnValue('/restaurants/setup/tables');
+  it('shows the company and exact restaurant task without a product or configuration segment', () => {
+    vi.spyOn(router, 'url', 'get').mockReturnValue('/restaurants/setup/tables');
     authStore.setCreatedWorkspace(
       {
         orgId: 'beta',
@@ -183,11 +214,78 @@ describe('AppContextBreadcrumbComponent', () => {
     fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('BETA');
-    expect(fixture.nativeElement.textContent).toContain('Liass-Resto');
+    expect(fixture.nativeElement.textContent).not.toContain('Liass-Resto');
     expect(fixture.nativeElement.querySelector('[aria-current="page"]').textContent.trim()).toBe(
       'Tables',
     );
     expect(fixture.nativeElement.textContent).not.toContain('Configuration');
+  });
+
+  it('updates the restaurant breadcrumb with company, selected outlet, and navigated page', async () => {
+    await router.navigateByUrl('/restaurants/checkout');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'company-a',
+        displayName: 'REM SI',
+        workspaceType: 'COMPANY',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
+      'company-a',
+    );
+    selectedOutlet.set({ name: 'AVAKPA' });
+    uiStore.setCurrentPage('restaurants');
+
+    fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
+    fixture.detectChanges();
+
+    const labels = () =>
+      Array.from(fixture.nativeElement.querySelectorAll('nav > span'), (element: HTMLElement) =>
+        element.textContent.trim(),
+      );
+    expect(labels()).toEqual(['REM SI', 'AVAKPA', 'Collect payment']);
+    expect(fixture.nativeElement.textContent).not.toContain('Liass-Resto');
+
+    await router.navigateByUrl('/restaurants/service');
+    fixture.detectChanges();
+    expect(labels()).toEqual(['REM SI', 'AVAKPA', 'Dining service']);
+
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'company-b',
+        displayName: 'Nouvelle société',
+        workspaceType: 'COMPANY',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
+      'company-b',
+    );
+    selectedOutlet.set({ name: 'SALLE PRINCIPALE' });
+    fixture.detectChanges();
+
+    expect(labels()).toEqual(['Nouvelle société', 'SALLE PRINCIPALE', 'Dining service']);
+  });
+
+  it('uses the existing cash-route labels while retaining the selected establishment', async () => {
+    await router.navigateByUrl('/restaurants/cash/day');
+    authStore.setCreatedWorkspace(
+      {
+        orgId: 'company-a',
+        displayName: 'REM SI',
+        workspaceType: 'COMPANY',
+        productRoles: { RESTAURANTS: 'OWNER' },
+      },
+      'company-a',
+    );
+    selectedOutlet.set({ name: 'AVAKPA' });
+    uiStore.setCurrentPage('restaurants');
+
+    fixture = TestBed.createComponent(AppContextBreadcrumbComponent);
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('REM SI');
+    expect(fixture.nativeElement.textContent).toContain('AVAKPA');
+    expect(fixture.nativeElement.querySelector('[aria-current="page"]').textContent.trim()).toBe(
+      'Cash day',
+    );
   });
   it('includes the Sales product and Dashboard label on its landing route', () => {
     authStore.setCreatedWorkspace(

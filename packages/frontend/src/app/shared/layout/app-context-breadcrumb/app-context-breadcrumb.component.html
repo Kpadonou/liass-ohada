@@ -10,10 +10,6 @@
     <span class="min-w-0 truncate">{{ contextName }}</span>
   }
   <mat-icon class="shrink-0 text-base text-slate-400" aria-hidden="true">chevron_right</mat-icon>
-  @if (restaurantContext()) {
-    <span class="shrink-0">{{ 'SHELL.NAV.RESTAURANTS' | transloco }}</span>
-    <mat-icon class="shrink-0 text-base text-slate-400" aria-hidden="true">chevron_right</mat-icon>
-  }
   @if (salesContext()) {
     <span class="shrink-0">{{ 'SHELL.NAV.SALES' | transloco }}</span>
     <mat-icon class="shrink-0 text-base text-slate-400" aria-hidden="true">chevron_right</mat-icon>
