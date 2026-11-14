@@ -4823,7 +4823,7 @@
           "DESCRIPTION": "Organisez les catégories et les articles de l’établissement sélectionné."
         },
         "service": {
-          "TITLE": "Service en salle",
+          "TITLE": "Plan de salle",
           "DESCRIPTION": "Suivez en temps réel l’état de vos tables et gérez le service de vos clients."
         },
         "team": {
@@ -5118,8 +5118,8 @@
       "EMPTY_HELP": "Cet espace est dédié au service de cette table.",
       "CONTENT_HELP": "Les commandes sont enregistrées pour cette session. Leur détail sera disponible dans une prochaine étape.",
       "TERMINATED": "Service terminé",
-      "TERMINATED_HELP": "Le service de cette table est terminé. Retrouvez les tables en cours dans Service en salle.",
-      "RETURN_HELP": "Vous pouvez revenir à Service en salle pour retrouver les tables accessibles.",
+      "TERMINATED_HELP": "Le service de cette table est terminé. Retrouvez les tables en cours dans Plan de salle.",
+      "RETURN_HELP": "Vous pouvez revenir à Plan de salle pour retrouver les tables accessibles.",
       "RETRY": "Réessayer",
       "ERRORS": {
         "INVALID": "Le lien de cette table est invalide",

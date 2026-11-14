@@ -257,17 +257,6 @@ export class AppSidebarComponent {
       labelKey: 'RESTAURANTS.SERVICE.GROUP',
       showHeading: true,
       items: [
-        ...(this.restaurantsCapabilities.canReadKitchen?.()
-          ? [
-              {
-                icon: 'soup_kitchen',
-                labelKey: 'RESTAURANTS.KITCHEN.TITLE',
-                page: 'restaurants' as const,
-                route: '/restaurants/kitchen',
-                productCode: 'RESTAURANTS' as const,
-              },
-            ]
-          : []),
         ...(this.restaurantsCapabilities.canReadService?.()
           ? [
               {
@@ -275,6 +264,17 @@ export class AppSidebarComponent {
                 labelKey: 'RESTAURANTS.UX.PAGES.service.TITLE',
                 page: 'restaurants' as const,
                 route: '/restaurants/service',
+                productCode: 'RESTAURANTS' as const,
+              },
+            ]
+          : []),
+        ...(this.restaurantsCapabilities.canReadKitchen?.()
+          ? [
+              {
+                icon: 'soup_kitchen',
+                labelKey: 'RESTAURANTS.KITCHEN.TITLE',
+                page: 'restaurants' as const,
+                route: '/restaurants/kitchen',
                 productCode: 'RESTAURANTS' as const,
               },
             ]
