@@ -110,7 +110,7 @@ class ComposerStub {
   readonly outletId = input<string>();
   readonly sessionId = input<string>();
 }
-@Component({ template: '<h1>Service en salle</h1>' })
+@Component({ template: '<h1>Plan de salle</h1>' })
 class FloorStub {}
 beforeEach(() => {
   role.set('OWNER');
@@ -394,7 +394,7 @@ it('resolves direct URL, navigation back and browser Back/Forward through real r
   TestBed.inject(Location).back();
   await vi.waitFor(() => {
     harness.detectChanges();
-    expect(harness.routeNativeElement?.textContent).toContain('Service en salle');
+    expect(harness.routeNativeElement?.textContent).toContain('Plan de salle');
   });
   TestBed.inject(Location).forward();
   await vi.waitFor(() => {
@@ -408,7 +408,7 @@ it('resolves direct URL, navigation back and browser Back/Forward through real r
   back.click();
   await vi.waitFor(() => {
     harness.detectChanges();
-    expect(harness.routeNativeElement?.textContent).toContain('Service en salle');
+    expect(harness.routeNativeElement?.textContent).toContain('Plan de salle');
   });
 });
 

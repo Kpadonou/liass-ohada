@@ -63,7 +63,7 @@ const translations = {
         },
         CONFIGURATION: 'Configuration',
         PAGES: {
-          service: { TITLE: 'Service en salle' },
+          service: { TITLE: 'Plan de salle' },
           overview: { TITLE: 'Vue resto' },
           restaurant: { TITLE: 'Restaurant' },
           outlet: { TITLE: 'Établissements' },
@@ -1068,7 +1068,7 @@ describe('AppSidebarComponent', () => {
     expect(active()).toHaveLength(1);
     expect(active()[0].getAttribute('aria-label')).toBe('Tables');
     expect(
-      fixture.nativeElement.querySelector('button[aria-label="Service en salle"]'),
+      fixture.nativeElement.querySelector('button[aria-label="Plan de salle"]'),
     ).not.toBeNull();
     expect(fixture.nativeElement.querySelector('button[aria-label="Équipe"]')).not.toBeNull();
     ui.toggleSidebar();
@@ -1171,7 +1171,7 @@ describe('AppSidebarComponent', () => {
         .querySelector('[data-testid="navigation-group-restaurants-configuration-toggle"]')
         .textContent.trim(),
     ).toContain('Configuration');
-    expect(resto.querySelector('button[aria-label="Service en salle"]')).not.toBeNull();
+    expect(resto.querySelector('button[aria-label="Plan de salle"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Restaurant"]')).not.toBeNull();
     expect(resto.querySelector('button[aria-label="Postes de préparation"]')).not.toBeNull();
     expect(resto.textContent).not.toContain('Configuration du restaurant');
@@ -1192,13 +1192,13 @@ describe('AppSidebarComponent', () => {
     await router.navigateByUrl('/restaurants/service?outlet=site-a');
     fixture.detectChanges();
     expect(resto.querySelector('button[aria-current="page"]').getAttribute('aria-label')).toBe(
-      'Service en salle',
+      'Plan de salle',
     );
     await router.navigateByUrl('/restaurants/service/outlets/site-a/sessions/visit-a');
     fixture.detectChanges();
     expect(resto.querySelectorAll('button[aria-current="page"]')).toHaveLength(1);
     expect(resto.querySelector('button[aria-current="page"]').getAttribute('aria-label')).toBe(
-      'Service en salle',
+      'Plan de salle',
     );
     await router.navigateByUrl('/restaurants/setup/locations');
     fixture.detectChanges();
@@ -1293,7 +1293,7 @@ describe('AppSidebarComponent', () => {
     expect(router.url).toBe('/restaurants/menu?outlet=site-a');
   });
 
-  it('shows only Service en salle, without configuration or Team navigation for WAITER', () => {
+  it('shows only Plan de salle, without configuration or Team navigation for WAITER', () => {
     productAvailability.RESTAURANTS = 'AVAILABLE';
     TestBed.inject(UiStore).setCurrentPage('restaurants');
     TestBed.inject(AuthStore).setCreatedWorkspace(
@@ -1303,7 +1303,7 @@ describe('AppSidebarComponent', () => {
     fixture = TestBed.createComponent(AppSidebarComponent);
     fixture.detectChanges();
     expect(
-      fixture.nativeElement.querySelector('button[aria-label="Service en salle"]'),
+      fixture.nativeElement.querySelector('button[aria-label="Plan de salle"]'),
     ).not.toBeNull();
     for (const label of [
       'Tableau de bord',
@@ -1335,7 +1335,7 @@ describe('AppSidebarComponent', () => {
     expect(
       fixture.nativeElement.querySelector('button[aria-label="Journée de caisse"]'),
     ).toBeNull();
-    for (const label of ['Service en salle', 'Cuisine', 'Restaurant', 'Équipe', 'Menu'])
+    for (const label of ['Plan de salle', 'Cuisine', 'Restaurant', 'Équipe', 'Menu'])
       expect(fixture.nativeElement.querySelector(`button[aria-label="${label}"]`)).toBeNull();
   });
   it('groups restaurant navigation by Service, Cash, and Configuration responsibility', () => {
@@ -1355,8 +1355,8 @@ describe('AppSidebarComponent', () => {
     const service = groups.find((group) => group.labelKey === 'RESTAURANTS.SERVICE.GROUP');
     const cash = groups.find((group) => group.labelKey === 'RESTAURANTS.CASH.GROUP');
     expect(service?.items.map((item) => item.route)).toEqual([
-      '/restaurants/kitchen',
       '/restaurants/service',
+      '/restaurants/kitchen',
     ]);
     expect(cash?.items.map((item) => item.route)).toEqual([
       '/restaurants/checkout',

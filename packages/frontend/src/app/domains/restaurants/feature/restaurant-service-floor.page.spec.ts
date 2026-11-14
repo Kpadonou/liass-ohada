@@ -199,7 +199,7 @@ it('retains per-table currency when loaded operational currencies are ambiguous'
 it('renders real summaries, free/occupied cards, optional capacity and no future data', async () => {
   await ready();
   const text = fixture.nativeElement.textContent;
-  expect(text).toContain('Service en salle');
+  expect(text).toContain('Plan de salle');
   expect(text).toContain('Libre');
   expect(text).toContain('Occupée');
   expect(text).toMatch(/12[\s\u202f\u00a0]500/);

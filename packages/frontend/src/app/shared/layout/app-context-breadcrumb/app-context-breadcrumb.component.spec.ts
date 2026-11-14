@@ -36,7 +36,7 @@ describe('AppContextBreadcrumbComponent', () => {
                     menu: { TITLE: 'Menu' },
                     overview: { TITLE: 'Dashboard' },
                     checkout: { TITLE: 'Collect payment' },
-                    service: { TITLE: 'Dining service' },
+                    service: { TITLE: 'Floor plan' },
                   },
                 },
               },
@@ -247,7 +247,7 @@ describe('AppContextBreadcrumbComponent', () => {
 
     await router.navigateByUrl('/restaurants/service');
     fixture.detectChanges();
-    expect(labels()).toEqual(['REM SI', 'AVAKPA', 'Dining service']);
+    expect(labels()).toEqual(['REM SI', 'AVAKPA', 'Floor plan']);
 
     authStore.setCreatedWorkspace(
       {
@@ -261,7 +261,7 @@ describe('AppContextBreadcrumbComponent', () => {
     selectedOutlet.set({ name: 'SALLE PRINCIPALE' });
     fixture.detectChanges();
 
-    expect(labels()).toEqual(['Nouvelle société', 'SALLE PRINCIPALE', 'Dining service']);
+    expect(labels()).toEqual(['Nouvelle société', 'SALLE PRINCIPALE', 'Floor plan']);
   });
 
   it('uses the existing cash-route labels while retaining the selected establishment', async () => {
