@@ -71,6 +71,15 @@ describe('RestaurantGuestCartStore', () => {
     expect(store.lines()[0]).toMatchObject({ quantity: 4, note: 'Sans piment' });
   });
 
+  it('keeps decimal quantities and rounds the XOF line amount once', () => {
+    store.add(item('reference-one', 1180), 'XOF', expiresAt);
+    expect(store.setQuantity('reference-one', 3.25)).toBe('OK');
+    expect(store.lines()[0].quantity).toBe(3.25);
+    expect(store.totalUnits()).toBe(3.25);
+    expect(store.totalAmountMinor()).toBe(3835);
+    expect(store.setQuantity('reference-one', 3.2501)).toBe('INVALID_QUANTITY');
+  });
+
   it('isolates carts by non-sensitive table scope', () => {
     store.add(item('reference-one'), 'XOF', expiresAt);
     store.activate(scopeB, free());

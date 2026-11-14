@@ -1,11 +1,12 @@
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { canonical, clean } from "@/lambda/shared/authority/integrity";
+import { clean } from "@/lambda/shared/authority/integrity";
 import {
   InvoiceRequestDataDtoSchema,
   PaymentTypeEnumSchema,
   TaxGroupTypeEnumSchema,
+  canonicalBeninRequest,
 } from "../fiscal-compliance/providers/benin-emecef/invoice-dtos";
 import type {
   FiscalPrincipal,
@@ -13,6 +14,7 @@ import type {
 } from "../fiscal-compliance/core/synthetic-fiscal-orchestrator";
 import type { FiscalObligationIdentity } from "../fiscal-compliance/core/fiscal-attempt-state";
 import { prepareRestaurantFiscalInvoice } from "./fiscal-preparation";
+import { restaurantQuantityAmountMinor } from "@liass-ohada/shared/restaurant-quantity";
 import { mapRestaurantFiscalLines } from "./fiscal-line-mapper";
 import { verifyRestaurantIssuanceProvenance } from "./issuance-provenance";
 const evidence = z.string().trim().min(1).max(1000);
@@ -165,10 +167,14 @@ export function mapRestaurantBeninRequest(
   const groups = new Set(items.map((item) => item.taxGroup));
   // DGI SFE annex 2: EV accepts C (16), A+C (17), and E (19).
   // F remains reserved; no provider calculation is inferred for it.
-  if ((config.invoiceType === "FV" && groups.has("C")) ||
-      (config.invoiceType === "EV" &&
-        !(groups.size === 1 && (groups.has("C") || groups.has("E")) ||
-          groups.size === 2 && groups.has("A") && groups.has("C"))))
+  if (
+    (config.invoiceType === "FV" && groups.has("C")) ||
+    (config.invoiceType === "EV" &&
+      !(
+        (groups.size === 1 && (groups.has("C") || groups.has("E"))) ||
+        (groups.size === 2 && groups.has("A") && groups.has("C"))
+      ))
+  )
     throw new Error("UNSUPPORTED_EXPORT_TAX_COMBINATION");
   const paid = z
     .object({
@@ -193,7 +199,8 @@ export function mapRestaurantBeninRequest(
     total <= 0 ||
     payment.reduce((sum, v) => sum + BigInt(v.amount), 0n) !== BigInt(total) ||
     items.some(
-      (v, i) => BigInt(v.price) * BigInt(v.quantity) !== BigInt(itemTotals[i]),
+      (v, i) =>
+        restaurantQuantityAmountMinor(v.price, v.quantity) !== itemTotals[i],
     )
   )
     throw new Error("FISCAL_MAPPING_AMOUNT_MISMATCH");
@@ -206,7 +213,12 @@ export function mapRestaurantBeninRequest(
     payment,
   });
   const payload = { invoice, expected: { itemTotals, total } };
-  const fiscalGroupTotals: Partial<Record<"A" | "B" | "C" | "D" | "E", { gross: number; net: number; tax: number }>> = {};
+  const fiscalGroupTotals: Partial<
+    Record<
+      "A" | "B" | "C" | "D" | "E",
+      { gross: number; net: number; tax: number }
+    >
+  > = {};
   for (const line of mapped.lines) {
     const group = line.fiscal.taxGroup;
     if (group === "F") throw new Error("UNSUPPORTED_PROVIDER_TAX_GROUP");
@@ -222,9 +234,17 @@ export function mapRestaurantBeninRequest(
     identity,
     sourceDigest: preparation.commercialRootDigest,
     requestDigest: createHash("sha256")
-      .update(canonical(clean(payload)))
+      .update(canonicalBeninRequest(clean(payload)))
       .digest("hex"),
     total,
+    ...(fiscalGroupTotals.B
+      ? {
+          ordinaryVatTotals: {
+            net: fiscalGroupTotals.B.net,
+            tax: fiscalGroupTotals.B.tax,
+          },
+        }
+      : {}),
     fiscalGroupTotals,
     payload,
   };
@@ -258,8 +278,11 @@ export function restaurantBeninPreparation(
       identity,
       configuration,
     );
-    if (realFiscalTestEnabled() &&
-      restaurantBeninMappingSchema.parse(configuration).commercialMinorUnitsPerFranc !== 1)
+    if (
+      realFiscalTestEnabled() &&
+      restaurantBeninMappingSchema.parse(configuration)
+        .commercialMinorUnitsPerFranc !== 1
+    )
       throw new Error("FISCAL_V1_PROJECTION_REQUIRED");
     return mapped;
   };

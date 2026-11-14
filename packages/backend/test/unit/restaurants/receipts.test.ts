@@ -115,6 +115,66 @@ async function visit(lines = 1) {
   }
   return { sessionId: session.guestSessionId, orderId: order.orderId };
 }
+async function visitItems(
+  selections: Array<{ item: (typeof f.items)[number]; quantity: number }>,
+) {
+  const session = c.GuestSessionSchema.parse(
+    (
+      await S.mutate(ctx(), "OPEN_SESSION", {
+        staffId: "owner",
+        clientRequestId: req(),
+        tableId: f.tables[0].id,
+        areaId: f.tables[0].serviceAreaId,
+      })
+    ).data,
+  );
+  const order = c.RestaurantOrderSchema.parse(
+    (
+      await S.mutate(ctx(), "CREATE_ORDER", {
+        clientRequestId: req(),
+        orderType: "DINE_IN",
+        guestSessionId: session.guestSessionId,
+      })
+    ).data,
+  );
+  const lines: c.RestaurantOrderItem[] = [];
+  for (const { item, quantity } of selections) {
+    const current = await S.order(scope(), order.orderId);
+    lines.push(
+      c.RestaurantOrderItemSchema.parse(
+        (
+          await S.mutate(
+            ctx(),
+            "ADD_ITEM",
+            {
+              clientRequestId: req(),
+              expectedVersion: current.data.version,
+              menuItemId: item.id,
+              categoryId: item.categoryId,
+              expectedMenuItemVersion: item.version,
+              quantity,
+            },
+            { orderId: order.orderId },
+          )
+        ).data,
+      ),
+    );
+  }
+  await S.mutate(
+    ctx(),
+    "SUBMIT_ORDER",
+    {
+      clientRequestId: req(),
+      expectedVersion: (await S.order(scope(), order.orderId)).data.version,
+      items: lines.map((line) => ({
+        itemId: line.itemId,
+        expectedVersion: line.version,
+      })),
+    },
+    { orderId: order.orderId },
+  );
+  return { sessionId: session.guestSessionId, orderId: order.orderId, lines };
+}
 async function settle(v: { sessionId: string; orderId: string }) {
   const session = (await S.session(scope(), v.sessionId)).data;
   if (session.dueMinor)
@@ -832,7 +892,7 @@ test("FINAL is independent of later outlet/menu/table configuration and never re
     }
   }
   const next = await S.mutate(ctx(), "OPEN_SESSION", {
-        staffId: "owner",
+    staffId: "owner",
     clientRequestId: req(),
     tableId: f.tables[0].id,
     areaId: f.tables[0].serviceAreaId,
@@ -1307,7 +1367,11 @@ test.each(["SYNTHETIC", "AUTHENTIC"] as const)(
   async (origin) => {
     const v = await visit();
     await settle(v);
-    process.env[origin === "AUTHENTIC" ? "RESTAURANTS_AUTHENTIC_PROVENANCE" : "RESTAURANTS_SYNTHETIC_PROVENANCE"] = "1";
+    process.env[
+      origin === "AUTHENTIC"
+        ? "RESTAURANTS_AUTHENTIC_PROVENANCE"
+        : "RESTAURANTS_SYNTHETIC_PROVENANCE"
+    ] = "1";
     const prepared = jest.spyOn(Provenance, "prepare").mockResolvedValue([
       {
         ConditionCheck: {
@@ -1588,62 +1652,114 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
 );
 
 test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidence", async () => {
-  const { OrganizationLegalIdentityService: Seller } = await import("@/lambda/shared/services/organization-legal-identity-service");
+  const { OrganizationLegalIdentityService: Seller } =
+    await import("@/lambda/shared/services/organization-legal-identity-service");
   const { provenance: fixture } = await import("./provenance-fixture");
-  const { RestaurantsService } = await import("@/lambda/domains/restaurants/restaurant-service");
-  const { selectCompanyFiscalRegime } = await import("@/lambda/shared/authority/fiscal-profiles/company-profile");
-  const { OrganizationFiscalRepository } = await import("@/lambda/shared/repositories/organization-fiscal-repository");
+  const { RestaurantsService } =
+    await import("@/lambda/domains/restaurants/restaurant-service");
+  const { selectCompanyFiscalRegime } =
+    await import("@/lambda/shared/authority/fiscal-profiles/company-profile");
+  const { OrganizationFiscalRepository } =
+    await import("@/lambda/shared/repositories/organization-fiscal-repository");
   const orgKey = JSON.stringify([K.orgKey(org), K.organizationSK()]);
   m.rows.set(orgKey, { ...m.rows.get(orgKey)!, country: { S: "BJ" } });
-  const selectRegime = (regime: string) => selectCompanyFiscalRegime(
-    org, { regime }, OrganizationFiscalRepository.membershipCheck(org, "owner"),
-  );
+  const selectRegime = (regime: string) =>
+    selectCompanyFiscalRegime(
+      org,
+      { regime },
+      OrganizationFiscalRepository.membershipCheck(org, "owner"),
+    );
   const selection = await selectRegime("ORDINARY_VAT");
   f.items[4] = await RestaurantsService.create(
-    org, "owner", "item", { outletId: f.outlet.id, categoryId: f.items[4].categoryId },
-    { name: "Ordinary VAT meal", clientRequestId: req(), price: { amountMinor: 2360, currency: "XOF" },
-      fiscalClassification: { country: "BJ", group: "B" } },
+    org,
+    "owner",
+    "item",
+    { outletId: f.outlet.id, categoryId: f.items[4].categoryId },
+    {
+      name: "Ordinary VAT meal",
+      clientRequestId: req(),
+      price: { amountMinor: 2360, currency: "XOF" },
+      fiscalClassification: { country: "BJ", group: "B" },
+    },
   );
   const v = await visit();
   await settle(v);
   process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID = org;
-  const { tzdbDigest, identifierDigest } = await import("@/lambda/shared/authority/iana-pinned-digests");
+  const { tzdbDigest, identifierDigest } =
+    await import("@/lambda/shared/authority/iana-pinned-digests");
   const timezone = {
     ...fixture.timezone,
     orgId: org,
     tzdbArtifactDigest: tzdbDigest,
     acceptedIdentifierArtifactDigest: identifierDigest,
   };
-  const current = { PK: K.orgKey(org), SK: K.restaurantIssuanceTimezoneCurrentSK(), orgId: org,
-    entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_CURRENT", status: "ACTIVE", version: 1,
-    selectedRevisionId: timezone.reference, configurationDigest: timezone.configurationDigest,
-    approvalReference: timezone.approvalReference, approvalVersion: timezone.approvalVersion };
-  const revision = { PK: current.PK, SK: K.restaurantIssuanceTimezoneRevisionSK(timezone.reference),
-    ...timezone, revisionId: timezone.reference, recordVersion: 1,
-    entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_REVISION" };
-  for (const row of [current, revision]) m.rows.set(JSON.stringify([row.PK, row.SK]), marshall(row));
+  const current = {
+    PK: K.orgKey(org),
+    SK: K.restaurantIssuanceTimezoneCurrentSK(),
+    orgId: org,
+    entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_CURRENT",
+    status: "ACTIVE",
+    version: 1,
+    selectedRevisionId: timezone.reference,
+    configurationDigest: timezone.configurationDigest,
+    approvalReference: timezone.approvalReference,
+    approvalVersion: timezone.approvalVersion,
+  };
+  const revision = {
+    PK: current.PK,
+    SK: K.restaurantIssuanceTimezoneRevisionSK(timezone.reference),
+    ...timezone,
+    revisionId: timezone.reference,
+    recordVersion: 1,
+    entityType: "RESTAURANTS_ISSUANCE_TIMEZONE_REVISION",
+  };
+  for (const row of [current, revision])
+    m.rows.set(JSON.stringify([row.PK, row.SK]), marshall(row));
   const sellerKey = { PK: current.PK, SK: "PLATFORM_SELLER_TEST_CURRENT" };
-  m.rows.set(JSON.stringify([sellerKey.PK, sellerKey.SK]), marshall({ ...sellerKey, version: 1 }));
-  const seller = jest.spyOn(Seller, "readSellerIssuanceAuthority").mockResolvedValue({
-    sellerAuthority: {
-      ...fixture.seller,
-      orgId: org,
-      seller: {
-        ...fixture.seller.seller,
-        country: "BJ",
-        identifiers: [{ scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" }],
+  m.rows.set(
+    JSON.stringify([sellerKey.PK, sellerKey.SK]),
+    marshall({ ...sellerKey, version: 1 }),
+  );
+  const seller = jest
+    .spyOn(Seller, "readSellerIssuanceAuthority")
+    .mockResolvedValue({
+      sellerAuthority: {
+        ...fixture.seller,
+        orgId: org,
+        seller: {
+          ...fixture.seller.seller,
+          country: "BJ",
+          identifiers: [
+            { scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" },
+          ],
+        },
+        factStates: [
+          ...fixture.seller.factStates,
+          {
+            fieldPath: "identifiers",
+            state: "VERIFIED",
+            evidenceReference: "synthetic-seller-identity",
+          },
+        ],
       },
-      factStates: [...fixture.seller.factStates, {
-        fieldPath: "identifiers", state: "VERIFIED", evidenceReference: "synthetic-seller-identity",
-      }],
-    },
-    check: { ConditionCheck: { TableName: "platform", Key: marshall(sellerKey),
-      ConditionExpression: "#f0 = :v0", ExpressionAttributeNames: { "#f0": "version" },
-      ExpressionAttributeValues: marshall({ ":v0": 1 }) } },
-  });
+      check: {
+        ConditionCheck: {
+          TableName: "platform",
+          Key: marshall(sellerKey),
+          ConditionExpression: "#f0 = :v0",
+          ExpressionAttributeNames: { "#f0": "version" },
+          ExpressionAttributeValues: marshall({ ":v0": 1 }),
+        },
+      },
+    });
   try {
     const invoice = await finish(v.sessionId);
-    const verified = await Source.verify(scope(), "owner", v.sessionId, invoice.receiptId);
+    const verified = await Source.verify(
+      scope(),
+      "owner",
+      v.sessionId,
+      invoice.receiptId,
+    );
     expect(verified.verified).toBe(true);
     if (!verified.verified) throw new Error("verification failed");
     const provenance = verified.evidence.issuanceProvenance;
@@ -1666,9 +1782,8 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
       MOBILE_MONEY: 0,
       CARD: 0,
     });
-    const { prepareRestaurantFiscalInvoice } = await import(
-      "@/lambda/domains/restaurants/fiscal-preparation"
-    );
+    const { prepareRestaurantFiscalInvoice } =
+      await import("@/lambda/domains/restaurants/fiscal-preparation");
     const preparationInput = {
       scope: scope(),
       actorId: "owner",
@@ -1687,58 +1802,280 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
         providerMutationEnabled: false,
         v1: {
           totals: { netMinor: "2000", taxMinor: "360", totalMinor: "2360" },
-          lines: [{ fiscalTreatmentEvidence: { reference: selection.revision, version: "1" } }],
+          lines: [
+            {
+              fiscalTreatmentEvidence: {
+                reference: selection.revision,
+                version: "1",
+              },
+            },
+          ],
           snapshotDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
         },
       },
     });
-    expect(result).toMatchObject({ preparation: { lines: [{ fiscal: {
-      taxGroup: "B", classificationEvidence: selection.revision,
-    } }] } });
-    const { projectRestaurantInvoiceV1 } = await import("@/lambda/domains/restaurants/fiscalizable-invoice-v1");
-    const { canonical, hash: sha256 } = await import("@/lambda/shared/authority/integrity");
+    expect(result).toMatchObject({
+      preparation: {
+        lines: [
+          {
+            fiscal: {
+              taxGroup: "B",
+              classificationEvidence: selection.revision,
+            },
+          },
+        ],
+      },
+    });
+    const { projectRestaurantInvoiceV1 } =
+      await import("@/lambda/domains/restaurants/fiscalizable-invoice-v1");
+    const { canonical, hash: sha256 } =
+      await import("@/lambda/shared/authority/integrity");
     const projection = projectRestaurantInvoiceV1(verified.evidence);
     const { snapshotDigest, ...snapshot } = projection.document;
-    expect(snapshotDigest).toBe(sha256(canonical({
-      profile: "LIASS-FISCAL-C14N-1", version: 1, kind: "snapshot", payload: snapshot,
-    })));
-    expect(projection.document.projectionEvidenceDigest).toBe(sha256(canonical({
-      profile: "LIASS-FISCAL-C14N-1", version: 1, kind: "projection-evidence",
-      payload: projection.projectionEvidence,
-    })));
+    expect(snapshotDigest).toBe(
+      sha256(
+        canonical({
+          profile: "LIASS-FISCAL-C14N-1",
+          version: 1,
+          kind: "snapshot",
+          payload: snapshot,
+        }),
+      ),
+    );
+    expect(projection.document.projectionEvidenceDigest).toBe(
+      sha256(
+        canonical({
+          profile: "LIASS-FISCAL-C14N-1",
+          version: 1,
+          kind: "projection-evidence",
+          payload: projection.projectionEvidence,
+        }),
+      ),
+    );
     expect(projection.limits.envelopeBytes).toBeLessThanOrEqual(358400);
     expect(projection.limits.projectionBytes).toBeLessThanOrEqual(358400);
-    expect(projection.limits.sourcePartBytes).toBeLessThanOrEqual(8 * 1024 * 1024);
+    expect(projection.limits.sourcePartBytes).toBeLessThanOrEqual(
+      8 * 1024 * 1024,
+    );
 
-    const execution = await import("@/lambda/domains/fiscal-compliance/core/test-execution");
-    const { restaurantBeninPreparation } = await import("@/lambda/domains/restaurants/benin-fiscal-request-mapper");
-    const gate = jest.spyOn(execution, "realFiscalTestEnabled").mockReturnValue(true);
+    const execution =
+      await import("@/lambda/domains/fiscal-compliance/core/test-execution");
+    const { restaurantBeninPreparation } =
+      await import("@/lambda/domains/restaurants/benin-fiscal-request-mapper");
+    const gate = jest
+      .spyOn(execution, "realFiscalTestEnabled")
+      .mockReturnValue(true);
     try {
-      const prepareProvider = restaurantBeninPreparation(f.outlet.id, v.sessionId, [], {
-        environment: "TEST", invoiceType: "FV", priceBasis: "TTC", pricingEvidence: "fixture",
-        commercialMinorUnitsPerFranc: 1, taxGroups: ["B"], taxMetadataEvidence: "fixture",
-        operator: { actorId: "owner", name: "Operator", evidence: "fixture" },
-        payments: [{ sourceMethod: "CASH", providerMethod: "ESPECES", evidence: "fixture" }],
-      });
-      expect(await prepareProvider({ orgId: org, actorId: "owner" }, {
-        orgId: org, environment: "TEST", sourceDomain: "restaurants", sourceDocumentType: "INVOICE",
-        sourceDocumentId: invoice.receiptId, jurisdiction: "BJ", obligation: "NORMALIZE",
-      })).toMatchObject({
+      const prepareProvider = restaurantBeninPreparation(
+        f.outlet.id,
+        v.sessionId,
+        [],
+        {
+          environment: "TEST",
+          invoiceType: "FV",
+          priceBasis: "TTC",
+          pricingEvidence: "fixture",
+          commercialMinorUnitsPerFranc: 1,
+          taxGroups: ["B"],
+          taxMetadataEvidence: "fixture",
+          operator: { actorId: "owner", name: "Operator", evidence: "fixture" },
+          payments: [
+            {
+              sourceMethod: "CASH",
+              providerMethod: "ESPECES",
+              evidence: "fixture",
+            },
+          ],
+        },
+      );
+      expect(
+        await prepareProvider(
+          { orgId: org, actorId: "owner" },
+          {
+            orgId: org,
+            environment: "TEST",
+            sourceDomain: "restaurants",
+            sourceDocumentType: "INVOICE",
+            sourceDocumentId: invoice.receiptId,
+            jurisdiction: "BJ",
+            obligation: "NORMALIZE",
+          },
+        ),
+      ).toMatchObject({
         total: 2360,
         ordinaryVatTotals: { net: 2000, tax: 360 },
-        payload: { invoice: {
-          items: [{ price: 2360, quantity: 1, taxGroup: "B" }],
-          payment: [{ name: "ESPECES", amount: 2360 }],
-        } },
+        payload: {
+          invoice: {
+            items: [{ price: 2360, quantity: 1, taxGroup: "B" }],
+            payment: [{ name: "ESPECES", amount: 2360 }],
+          },
+        },
       });
     } finally {
       gate.mockRestore();
     }
+
+    f.items[3] = await RestaurantsService.create(
+      org,
+      "owner",
+      "item",
+      { outletId: f.outlet.id, categoryId: f.items[3].categoryId },
+      {
+        name: "Decimal taxable side",
+        clientRequestId: req(),
+        price: { amountMinor: 1180, currency: "XOF" },
+        fiscalClassification: { country: "BJ", group: "B" },
+      },
+    );
+    const decimalVisit = await visitItems([
+      { item: f.items[4], quantity: 2.5 },
+      { item: f.items[3], quantity: 3.25 },
+    ]);
+    const acceptedLines = await Promise.all(
+      decimalVisit.lines.map((line) =>
+        S.line(scope(), decimalVisit.orderId, line.itemId),
+      ),
+    );
+    expect(acceptedLines.map((line) => line.data.snapshot)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ quantity: 2.5, grossMinor: 5900 }),
+        expect.objectContaining({ quantity: 3.25, grossMinor: 3835 }),
+      ]),
+    );
+    expect((await S.order(scope(), decimalVisit.orderId)).data.dueMinor).toBe(
+      9735,
+    );
+    await settle(decimalVisit);
+    const decimalInvoice = await finish(decimalVisit.sessionId);
+    const retrieved = await Receipt.read(
+      scope(),
+      "owner",
+      decimalVisit.sessionId,
+      {},
+    );
+    expect(retrieved.data).toEqual(decimalInvoice);
+    const decimalVerified = await Source.verify(
+      scope(),
+      "owner",
+      decimalVisit.sessionId,
+      decimalInvoice.receiptId,
+    );
+    expect(decimalVerified.verified).toBe(true);
+    if (!decimalVerified.verified)
+      throw new Error("decimal verification failed");
+    expect(
+      decimalVerified.evidence.lines.map(({ line }) => line.snapshot.quantity),
+    ).toEqual(expect.arrayContaining([2.5, 3.25]));
+    const decimalPreparationInput = {
+      scope: scope(),
+      actorId: "owner",
+      sessionId: decimalVisit.sessionId,
+      invoiceId: decimalInvoice.receiptId,
+      requireV1: true,
+      classifications: [],
+    };
+    const decimalPreparation = await prepareRestaurantFiscalInvoice(
+      decimalPreparationInput,
+    );
+    expect(decimalPreparation).toMatchObject({
+      ready: true,
+      preparation: {
+        totalMinor: "9735",
+        lines: expect.arrayContaining([
+          expect.objectContaining({
+            commercial: expect.objectContaining({
+              snapshot: expect.objectContaining({
+                quantity: 2.5,
+                lineTotalMinor: 5900,
+              }),
+            }),
+          }),
+          expect.objectContaining({
+            commercial: expect.objectContaining({
+              snapshot: expect.objectContaining({
+                quantity: 3.25,
+                lineTotalMinor: 3835,
+              }),
+            }),
+          }),
+        ]),
+      },
+    });
+    const decimalGate = jest
+      .spyOn(execution, "realFiscalTestEnabled")
+      .mockReturnValue(true);
+    try {
+      const prepareDecimalProvider = restaurantBeninPreparation(
+        f.outlet.id,
+        decimalVisit.sessionId,
+        [],
+        {
+          environment: "TEST",
+          invoiceType: "FV",
+          priceBasis: "TTC",
+          pricingEvidence: "fixture",
+          commercialMinorUnitsPerFranc: 1,
+          taxGroups: ["B"],
+          taxMetadataEvidence: "fixture",
+          operator: { actorId: "owner", name: "Operator", evidence: "fixture" },
+          payments: [
+            {
+              sourceMethod: "CASH",
+              providerMethod: "ESPECES",
+              evidence: "fixture",
+            },
+          ],
+        },
+      );
+      const decimalProvider = await prepareDecimalProvider(
+        { orgId: org, actorId: "owner" },
+        {
+          orgId: org,
+          environment: "TEST",
+          sourceDomain: "restaurants",
+          sourceDocumentType: "INVOICE",
+          sourceDocumentId: decimalInvoice.receiptId,
+          jurisdiction: "BJ",
+          obligation: "NORMALIZE",
+        },
+      );
+      expect(decimalProvider).toMatchObject({
+        total: 9735,
+        payload: {
+          invoice: {
+            items: expect.arrayContaining([
+              expect.objectContaining({
+                price: 2360,
+                quantity: 2.5,
+                taxGroup: "B",
+              }),
+              expect.objectContaining({
+                price: 1180,
+                quantity: 3.25,
+                taxGroup: "B",
+              }),
+            ]),
+            payment: [{ name: "ESPECES", amount: 9735 }],
+          },
+        },
+      });
+      expect(
+        await prepareRestaurantFiscalInvoice(decimalPreparationInput),
+      ).toEqual(decimalPreparation);
+      expect(await finish(decimalVisit.sessionId)).toEqual(decimalInvoice);
+    } finally {
+      decimalGate.mockRestore();
+    }
     await selectRegime("RESTAURANT_VAT_ON_MARGIN");
-    expect(await prepareRestaurantFiscalInvoice(preparationInput)).toEqual(result);
+    expect(await prepareRestaurantFiscalInvoice(preparationInput)).toEqual(
+      result,
+    );
     seller.mockClear();
     delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
     expect(await finish(v.sessionId)).toEqual(invoice);
     expect(seller).not.toHaveBeenCalled();
-  } finally { seller.mockRestore(); delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID; }
+  } finally {
+    seller.mockRestore();
+    delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
+  }
 });

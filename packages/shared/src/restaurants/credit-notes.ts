@@ -1,8 +1,14 @@
 import { z } from "zod";
+import {
+  RestaurantNonnegativeQuantitySchema,
+  RestaurantQuantitySchema,
+  restaurantQuantityToMilli,
+} from "./quantity";
 
 const id = z.string().uuid();
 const money = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
-const quantity = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
+const quantity = RestaurantQuantitySchema;
+const partNumber = z.number().int().positive();
 const note = z.string().trim().min(1).max(500);
 export const CreateRestaurantCreditNoteRequestSchema = z
   .object({
@@ -57,7 +63,7 @@ export const RestaurantCreditNoteLineSchema = z
     creditNoteLineId: id,
     orderId: id,
     itemId: id,
-    sourcePartNumber: quantity,
+    sourcePartNumber: partNumber,
     sourcePosition: z.number().int().min(0).max(15),
     menuItemId: id,
     label: z.string().min(1).max(160),
@@ -95,8 +101,8 @@ export const RestaurantCreditabilityLineSchema = z
     menuItemId: id,
     label: z.string().min(1).max(160),
     originalQuantity: quantity,
-    creditedQuantity: money,
-    remainingQuantity: money,
+    creditedQuantity: RestaurantNonnegativeQuantitySchema,
+    remainingQuantity: RestaurantNonnegativeQuantitySchema,
     unitAmountMinor: money,
     originalNetAmountMinor: money.positive(),
     creditedAmountMinor: money,
@@ -106,8 +112,9 @@ export const RestaurantCreditabilityLineSchema = z
   .strict()
   .refine(
     (v) =>
-      BigInt(v.creditedQuantity) + BigInt(v.remainingQuantity) ===
-        BigInt(v.originalQuantity) &&
+      BigInt(restaurantQuantityToMilli(v.creditedQuantity)) +
+        BigInt(restaurantQuantityToMilli(v.remainingQuantity)) ===
+        BigInt(restaurantQuantityToMilli(v.originalQuantity)) &&
       BigInt(v.creditedAmountMinor) + BigInt(v.remainingAmountMinor) ===
         BigInt(v.originalNetAmountMinor),
   );

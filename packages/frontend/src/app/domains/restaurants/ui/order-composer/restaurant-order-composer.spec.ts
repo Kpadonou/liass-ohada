@@ -1089,8 +1089,8 @@ function typeQuantity(input: HTMLInputElement, value: string) {
 it('edits multiple digits locally and commits one captured edit on Enter followed by blur', async () => {
   const input = await draftInput();
   expect(input.value).toBe('1');
-  expect(input.inputMode).toBe('numeric');
-  expect(input.getAttribute('pattern')).toBe('[0-9]*');
+  expect(input.inputMode).toBe('decimal');
+  expect(input.getAttribute('pattern')).toBe('[0-9]+([.,][0-9]{1,3})?');
   expect(input.getAttribute('aria-label')).toContain('Beer');
   const before = api.command.mock.calls.length;
   typeQuantity(input, '1');
@@ -1132,7 +1132,17 @@ it('does not repeat an Enter edit when blur happens after the refreshed value re
   expect(api.command).toHaveBeenCalledTimes(before + 1);
   expect(lines[0].quantity).toBe(9);
 });
-it.each(['', 'abc', '-1', '0', '1.5', '9007199254740992', '1e3'])(
+it('submits a typed decimal quantity without truncation', async () => {
+  const input = await draftInput();
+  const before = api.command.mock.calls.length;
+  typeQuantity(input, '3,250');
+  input.blur();
+  await settle();
+  expect(api.command).toHaveBeenCalledTimes(before + 1);
+  expect(api.command.mock.calls.at(-1)![2].quantity).toBe(3.25);
+  expect(lines[0].quantity).toBe(3.25);
+});
+it.each(['', 'abc', '-1', '0', '1.0001', '9007199254740992', '1e3'])(
   'restores the canonical quantity and announces invalid input %j without a request',
   async (value) => {
     const input = await draftInput();
@@ -1143,7 +1153,7 @@ it.each(['', 'abc', '-1', '0', '1.5', '9007199254740992', '1e3'])(
     expect(input.value).toBe('1');
     expect(api.command).toHaveBeenCalledTimes(before);
     expect(fixture.nativeElement.querySelector('[role="alert"]').textContent).toContain(
-      'quantité entière positive',
+      'quantité positive',
     );
   },
 );

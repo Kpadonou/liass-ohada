@@ -31,6 +31,9 @@
       ],
       "restaurants": [
         "dist/restaurants/index.d.ts"
+      ],
+      "restaurant-quantity": [
+        "dist/restaurants/quantity.d.ts"
       ]
     }
   },
@@ -79,6 +82,11 @@
       "types": "./dist/restaurants/index.d.ts",
       "import": "./dist/restaurants/index.mjs",
       "require": "./dist/restaurants/index.js"
+    },
+    "./restaurant-quantity": {
+      "types": "./dist/restaurants/quantity.d.ts",
+      "import": "./dist/restaurants/quantity.mjs",
+      "require": "./dist/restaurants/quantity.js"
     }
   },
   "files": [
@@ -86,7 +94,7 @@
   ],
   "scripts": {
     "clean": "rm -rf dist",
-    "build": "node ../../scripts/shared-build.mjs build src/index.ts src/accounting/index.ts src/projects/index.ts src/treasury/index.ts src/sales/index.ts src/fiscal-compliance/index.ts src/restaurants/index.ts src/shared/index.ts src/backend.ts --format cjs,esm --dts --sourcemap --clean"
+    "build": "node ../../scripts/shared-build.mjs build src/index.ts src/accounting/index.ts src/projects/index.ts src/treasury/index.ts src/sales/index.ts src/fiscal-compliance/index.ts src/restaurants/index.ts src/restaurants/quantity.ts src/shared/index.ts src/backend.ts --format cjs,esm --dts --sourcemap --clean"
   },
   "dependencies": {
     "zod": "^4.3.4"

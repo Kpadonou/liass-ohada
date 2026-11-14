@@ -4,6 +4,7 @@ import { z } from "zod";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import * as c from "@liass-ohada/shared/restaurants";
+import * as q from "@liass-ohada/shared/restaurant-quantity";
 import { AppError } from "@/lambda/shared/app-error";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { TransactionScope } from "./transaction-model";
@@ -161,10 +162,7 @@ export class RestaurantCreditNoteService {
           control.sourceReceiptDigest !== result.digest ||
           control.originalQuantity !== line.snapshot.quantity ||
           control.originalAmountMinor !== line.netAmountMinor ||
-          control.creditedQuantity === undefined ||
-          BigInt(control.creditedMinor) !==
-            BigInt(control.creditedQuantity) *
-              BigInt(line.snapshot.unitPriceMinor))
+          control.creditedQuantity === undefined)
       )
         fail("SOURCE");
       lines.push(
@@ -176,9 +174,11 @@ export class RestaurantCreditNoteService {
           label: line.snapshot.name,
           originalQuantity: line.snapshot.quantity,
           creditedQuantity: control?.creditedQuantity ?? 0,
-          remainingQuantity: integer(
-            BigInt(line.snapshot.quantity) -
-              BigInt(control?.creditedQuantity ?? 0),
+          remainingQuantity: q.restaurantQuantityFromMilli(
+            BigInt(q.restaurantQuantityToMilli(line.snapshot.quantity)) -
+              BigInt(
+                q.restaurantQuantityToMilli(control?.creditedQuantity ?? 0),
+              ),
           ),
           unitAmountMinor: line.snapshot.unitPriceMinor,
           originalNetAmountMinor: line.netAmountMinor,
@@ -268,8 +268,10 @@ export class RestaurantCreditNoteService {
           if (
             snapshot.taxMinor !== 0 ||
             snapshot.discountMinor !== 0 ||
-            BigInt(snapshot.unitPriceMinor) * BigInt(snapshot.quantity) !==
-              BigInt(snapshot.lineTotalMinor) ||
+            q.restaurantQuantityAmountMinor(
+              snapshot.unitPriceMinor,
+              snapshot.quantity,
+            ) !== snapshot.lineTotalMinor ||
             line.netAmountMinor !==
               (line.cancelledAt ? 0 : snapshot.lineTotalMinor)
           )
@@ -330,7 +332,7 @@ export class RestaurantCreditNoteService {
           typeof l === "object" &&
           l !== null &&
           "quantity" in l &&
-          (!Number.isSafeInteger(l.quantity) || Number(l.quantity) <= 0),
+          !q.RestaurantQuantitySchema.safeParse(l.quantity).success,
       )
     )
       fail("QUANTITY", 400);
@@ -390,8 +392,9 @@ export class RestaurantCreditNoteService {
         creditedQuantity: selected.quantity,
         unitAmountMinor: line.snapshot.unitPriceMinor,
         originalNetAmountMinor: line.netAmountMinor,
-        creditedAmountMinor: integer(
-          BigInt(selected.quantity) * BigInt(line.snapshot.unitPriceMinor),
+        creditedAmountMinor: q.restaurantQuantityAmountMinor(
+          line.snapshot.unitPriceMinor,
+          selected.quantity,
         ),
         currency: invoice.currency,
         taxMinor: line.snapshot.taxMinor,
@@ -450,9 +453,14 @@ export class RestaurantCreditNoteService {
       )
         fail("SOURCE");
       const credited = BigInt(old?.creditedMinor ?? 0) + BigInt(amount);
-      const creditedQuantity =
-        BigInt(old?.creditedQuantity ?? 0) + BigInt(quantity?.requested ?? 0);
-      if (quantity && creditedQuantity > BigInt(quantity.original))
+      const creditedQuantityMilli =
+        BigInt(q.restaurantQuantityToMilli(old?.creditedQuantity ?? 0)) +
+        BigInt(q.restaurantQuantityToMilli(quantity?.requested ?? 0));
+      if (
+        quantity &&
+        creditedQuantityMilli >
+          BigInt(q.restaurantQuantityToMilli(quantity.original))
+      )
         fail("QUANTITY_EXCEEDED");
       if (credited > BigInt(original))
         fail(quantity ? "VALUE_EXCEEDED" : "CEILING");
@@ -470,7 +478,9 @@ export class RestaurantCreditNoteService {
           ...(quantity
             ? {
                 originalQuantity: quantity.original,
-                creditedQuantity: integer(creditedQuantity),
+                creditedQuantity: q.restaurantQuantityFromMilli(
+                  creditedQuantityMilli,
+                ),
               }
             : {}),
         }),

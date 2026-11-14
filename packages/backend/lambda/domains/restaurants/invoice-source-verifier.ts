@@ -2,6 +2,7 @@ import { validRestaurantSaleTax } from "./pilot-tax-calculation";
 import { RestaurantIssuanceProvenanceRepository as Provenance } from "./issuance-provenance-repository";
 import { z } from "zod";
 import * as c from "@liass-ohada/shared/restaurants";
+import { restaurantQuantityAmountMinor } from "@liass-ohada/shared/restaurant-quantity";
 import { AppError } from "@/lambda/shared/app-error";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { RestaurantReceiptRepository as Receipts } from "./receipt-repository";
@@ -205,11 +206,13 @@ export class RestaurantInvoiceSourceVerifier {
                 !coordinates.has(identity) && orders.has(line.orderId),
               );
               coordinates.add(identity);
-              const gross =
-                BigInt(snapshot.unitPriceMinor) * BigInt(snapshot.quantity);
+              const gross = restaurantQuantityAmountMinor(
+                snapshot.unitPriceMinor,
+                snapshot.quantity,
+              );
               requireEvidence(
                 snapshot.currency === context.currency &&
-                  gross === BigInt(snapshot.grossMinor) &&
+                  gross === snapshot.grossMinor &&
                   validRestaurantSaleTax(snapshot) &&
                   line.netAmountMinor ===
                     (line.cancelledAt ? 0 : snapshot.lineTotalMinor) &&

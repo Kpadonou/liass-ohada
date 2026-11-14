@@ -281,9 +281,10 @@ export class RestaurantOrderComposer {
         control: new FormControl(String(line.quantity), {
           nonNullable: true,
           validators: (control) =>
-            /^\d+$/.test(control.value) &&
-            c.EditRestaurantDraftItemRequestSchema.shape.quantity.safeParse(Number(control.value))
-              .success
+            /^\d+(?:[.,]\d{1,3})?$/.test(control.value.trim()) &&
+            c.EditRestaurantDraftItemRequestSchema.shape.quantity.safeParse(
+              Number(control.value.trim().replace(',', '.')),
+            ).success
               ? null
               : { quantity: true },
         }),
@@ -308,7 +309,7 @@ export class RestaurantOrderComposer {
   async commitQuantity(line: c.RestaurantOrderItem) {
     const entry = this.quantityInputs.get(this.draftKey(line));
     if (!entry || entry.context !== this.identity()) return;
-    const value = Number(entry.control.value);
+    const value = Number(entry.control.value.trim().replace(',', '.'));
     if (entry.control.invalid) {
       entry.control.setValue(String(entry.line.quantity));
       this.quantityError.set(

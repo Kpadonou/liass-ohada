@@ -9,6 +9,7 @@ import {
   RestaurantOrderItemSchema,
   RestaurantPreparationSchema,
 } from "@liass-ohada/shared/restaurants";
+import { RestaurantQuantitySchema } from "@liass-ohada/shared/restaurant-quantity";
 
 const id = z.string().uuid();
 export const InventorySaleTargetSchema = z
@@ -20,7 +21,7 @@ export const InventorySaleTargetSchema = z
           .object({
             itemId: id,
             menuItemId: id,
-            quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+            quantity: RestaurantQuantitySchema,
           })
           .strict(),
       )

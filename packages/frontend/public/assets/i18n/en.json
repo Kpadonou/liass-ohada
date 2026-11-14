@@ -5179,7 +5179,7 @@
       "ROUND_LIMIT": "max. 12",
       "MENU_HELP": "Browse the menu and add items to the order.",
       "QUANTITY": "Quantity for {{name}}",
-      "INVALID_QUANTITY": "Enter a positive whole quantity for {{name}}. The saved quantity has been restored.",
+      "INVALID_QUANTITY": "Enter a positive quantity (up to 3 decimal places) for {{name}}. The saved quantity has been restored.",
       "MENU": "Menu",
       "CATEGORY": "Category",
       "SELECT_ORDER": "Selected order",

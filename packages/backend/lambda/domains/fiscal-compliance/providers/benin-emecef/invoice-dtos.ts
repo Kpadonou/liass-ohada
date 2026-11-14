@@ -3,6 +3,37 @@
 // OpenAPI has no required fields; operation-level checks below tighten successful responses.
 
 import { z } from "zod";
+import { canonical } from "@/lambda/shared/authority/integrity";
+
+/** Canonical DGI request bytes. Unlike immutable LIASS authority artifacts, the
+ * official provider contract legitimately carries finite decimal quantities.
+ * Integer-only payloads remain byte-compatible with the authority canonicalizer.
+ */
+export function canonicalBeninRequest(value: unknown): string {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value) || value < 0 || Object.is(value, -0))
+      throw new Error("INVALID_BENIN_REQUEST_NUMBER");
+    return Number.isSafeInteger(value)
+      ? canonical(value)
+      : JSON.stringify(value);
+  }
+  if (value === null || typeof value === "string" || typeof value === "boolean")
+    return canonical(value);
+  if (Array.isArray(value))
+    return `[${value.map(canonicalBeninRequest).join(",")}]`;
+  if (
+    typeof value !== "object" ||
+    Object.getPrototypeOf(value) !== Object.prototype
+  )
+    throw new Error("INVALID_BENIN_REQUEST_VALUE");
+  return `{${Object.keys(value)
+    .sort()
+    .map(
+      (key) =>
+        `${canonical(key)}:${canonicalBeninRequest((value as Record<string, unknown>)[key])}`,
+    )
+    .join(",")}}`;
+}
 
 export const TaxGroupsDtoSchema = z
   .object({

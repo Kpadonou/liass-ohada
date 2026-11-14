@@ -12,6 +12,10 @@ import { restaurantsTableName } from "./restaurant-storage";
 import { TransactionScope } from "./transaction-model";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { transactionFingerprint as hash } from "./transaction-repository";
+import {
+  RestaurantNonnegativeQuantitySchema,
+  RestaurantQuantitySchema,
+} from "@liass-ohada/shared/restaurant-quantity";
 
 export type CreditKey = { PK: string; SK: string };
 export const CreditControlSchema = z
@@ -26,18 +30,8 @@ export const CreditControlSchema = z
       .max(Number.MAX_SAFE_INTEGER),
     creditedMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     version: z.number().int().positive(),
-    originalQuantity: z
-      .number()
-      .int()
-      .positive()
-      .max(Number.MAX_SAFE_INTEGER)
-      .optional(),
-    creditedQuantity: z
-      .number()
-      .int()
-      .nonnegative()
-      .max(Number.MAX_SAFE_INTEGER)
-      .optional(),
+    originalQuantity: RestaurantQuantitySchema.optional(),
+    creditedQuantity: RestaurantNonnegativeQuantitySchema.optional(),
   })
   .strict();
 export class RestaurantCreditNoteRepository {

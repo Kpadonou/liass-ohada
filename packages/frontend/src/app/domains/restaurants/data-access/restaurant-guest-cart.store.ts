@@ -1,5 +1,11 @@
 import { computed, Injectable, signal } from '@angular/core';
 import { GuestCarte, GuestContextResponse } from '@liass-ohada/shared/restaurants';
+import {
+  RestaurantQuantitySchema,
+  restaurantQuantityAmountMinor,
+  restaurantQuantityFromMilli,
+  restaurantQuantityToMilli,
+} from '@liass-ohada/shared/restaurant-quantity';
 import { z } from 'zod';
 
 type GuestContext = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
@@ -29,7 +35,7 @@ const CartLineSchema = z
     name: z.string().min(1).max(160),
     presentedAmountMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     currency: z.string().regex(/^[A-Z]{3}$/),
-    quantity: z.number().int().min(1).max(20),
+    quantity: RestaurantQuantitySchema.refine((value) => value >= 1 && value <= 20),
     note: z.string().max(250),
     availability: z.enum(['AVAILABLE', 'UNAVAILABLE']),
     status: z.enum(['READY', 'PRICE_CHANGED', 'UNAVAILABLE', 'MISSING']),
@@ -57,7 +63,10 @@ const CartEnvelopeSchema = z
   .superRefine((cart, ctx) => {
     if ((cart.scope === 'FREE') !== (cart.visitRef === null))
       ctx.addIssue({ code: 'custom', message: 'Invalid cart scope' });
-    if (cart.lines.reduce((total, line) => total + line.quantity, 0) > 100)
+    if (
+      cart.lines.reduce((total, line) => total + restaurantQuantityToMilli(line.quantity), 0) >
+      100000
+    )
       ctx.addIssue({ code: 'custom', message: 'Invalid cart quantity' });
   });
 
@@ -77,10 +86,16 @@ export class RestaurantGuestCartStore {
   readonly lines = computed(() => this.value()?.lines ?? []);
   readonly distinctLines = computed(() => this.lines().length);
   readonly totalUnits = computed(() =>
-    this.lines().reduce((total, line) => total + line.quantity, 0),
+    restaurantQuantityFromMilli(
+      this.lines().reduce((total, line) => total + restaurantQuantityToMilli(line.quantity), 0),
+    ),
   );
   readonly totalAmountMinor = computed(() =>
-    this.lines().reduce((total, line) => total + line.presentedAmountMinor * line.quantity, 0),
+    this.lines().reduce(
+      (total, line) =>
+        total + restaurantQuantityAmountMinor(line.presentedAmountMinor, line.quantity),
+      0,
+    ),
   );
   readonly currency = computed(() => this.lines()[0]?.currency ?? 'XOF');
   readonly contextStatus = computed<GuestCartContextStatus>(() => {
@@ -163,13 +178,17 @@ export class RestaurantGuestCartStore {
 
   setQuantity(reference: string, quantity: number): GuestCartResult {
     if (!this.canEdit()) return 'CONTEXT_BLOCKED';
-    if (!Number.isInteger(quantity) || quantity < 1) return 'INVALID_QUANTITY';
+    if (!RestaurantQuantitySchema.safeParse(quantity).success || quantity < 1)
+      return 'INVALID_QUANTITY';
     if (quantity > 20) return 'LINE_QUANTITY_LIMIT';
     const cart = this.value();
     const line = cart?.lines.find((candidate) => candidate.reference === reference);
     if (!cart || !line) return 'INVALID_QUANTITY';
-    const nextTotal = this.totalUnits() - line.quantity + quantity;
-    if (nextTotal > 100) return 'TOTAL_QUANTITY_LIMIT';
+    const nextTotalMilli =
+      restaurantQuantityToMilli(this.totalUnits()) -
+      restaurantQuantityToMilli(line.quantity) +
+      restaurantQuantityToMilli(quantity);
+    if (nextTotalMilli > 100000) return 'TOTAL_QUANTITY_LIMIT';
     this.commit({
       ...cart,
       lines: cart.lines.map((candidate) =>

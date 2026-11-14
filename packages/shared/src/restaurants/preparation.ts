@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RestaurantOrderSchema } from "./transactions";
+import { RestaurantQuantitySchema } from "./quantity";
 const id = z.string().uuid();
 const timestamp = z.string().datetime();
 export const PreparationStateSchema = z.enum([
@@ -23,7 +24,7 @@ export const RestaurantPreparationSchema = z
     fireId: id,
     generation: z.number().int().min(1).max(11),
     name: z.string().min(1).max(160),
-    quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    quantity: RestaurantQuantitySchema,
     notes: z.string().max(1000).optional(),
     state: PreparationStateSchema,
     queuedAt: timestamp,

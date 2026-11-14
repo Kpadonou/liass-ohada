@@ -161,7 +161,24 @@ export class BeninEMecefConnectorError extends Error {
     readonly httpStatus?: number,
     readonly validationIssues?: readonly BeninEMecefValidationIssue[],
     readonly providerDiagnostic?: BeninEMecefProviderDiagnostic,
-    readonly mutationDiagnostic?: { readonly operation: "CREATE_INVOICE" | "CONFIRM_INVOICE" | "CANCEL_INVOICE"; readonly environment: "TEST"; readonly category: "TRANSPORT" | "AUTHENTICATION" | "HTTP" | "RESPONSE_VALIDATION" | "PROVIDER_REJECTION"; readonly httpStatus?: number; readonly durationMs: number; readonly providerErrorCode?: string; readonly validationPaths?: readonly string[]; readonly sent: boolean; },
+    readonly mutationDiagnostic?: {
+      readonly operation:
+        | "CREATE_INVOICE"
+        | "CONFIRM_INVOICE"
+        | "CANCEL_INVOICE";
+      readonly environment: "TEST";
+      readonly category:
+        | "TRANSPORT"
+        | "AUTHENTICATION"
+        | "HTTP"
+        | "RESPONSE_VALIDATION"
+        | "PROVIDER_REJECTION";
+      readonly httpStatus?: number;
+      readonly durationMs: number;
+      readonly providerErrorCode?: string;
+      readonly validationPaths?: readonly string[];
+      readonly sent: boolean;
+    },
   ) {
     super(safeMessages[code]);
     this.name = "BeninEMecefConnectorError";
@@ -265,7 +282,11 @@ export class BeninEMecefTestAdapter {
       clearTimeout(timeout);
     }
 
-    if (response.truncated) throw new BeninEMecefConnectorError("MALFORMED_RESPONSE", response.status);
+    if (response.truncated)
+      throw new BeninEMecefConnectorError(
+        "MALFORMED_RESPONSE",
+        response.status,
+      );
     if (response.status === 401) {
       throw new BeninEMecefConnectorError("AUTHENTICATION_FAILED", 401);
     }
@@ -362,20 +383,48 @@ export class BeninEMecefTestAdapter {
     try {
       return await send();
     } catch (error) {
-      const failure = error instanceof BeninEMecefConnectorError ? error : undefined;
-      const category: NonNullable<BeninEMecefConnectorError["mutationDiagnostic"]>["category"] = failure?.code === "PROVIDER_REJECTED" ? "PROVIDER_REJECTION"
-        : failure?.code === "AUTHENTICATION_FAILED" || failure?.code === "ACCESS_FORBIDDEN" ? "AUTHENTICATION"
-        : failure?.code === "MALFORMED_RESPONSE" ? "RESPONSE_VALIDATION"
-        : failure?.httpStatus !== undefined ? "HTTP" : "TRANSPORT";
+      const failure =
+        error instanceof BeninEMecefConnectorError ? error : undefined;
+      const category: NonNullable<
+        BeninEMecefConnectorError["mutationDiagnostic"]
+      >["category"] =
+        failure?.code === "PROVIDER_REJECTED"
+          ? "PROVIDER_REJECTION"
+          : failure?.code === "AUTHENTICATION_FAILED" ||
+              failure?.code === "ACCESS_FORBIDDEN"
+            ? "AUTHENTICATION"
+            : failure?.code === "MALFORMED_RESPONSE"
+              ? "RESPONSE_VALIDATION"
+              : failure?.httpStatus !== undefined
+                ? "HTTP"
+                : "TRANSPORT";
       const diagnostic = {
-        operation, environment: "TEST" as const, category,
-        ...(failure?.httpStatus === undefined ? {} : { httpStatus: failure.httpStatus }),
+        operation,
+        environment: "TEST" as const,
+        category,
+        ...(failure?.httpStatus === undefined
+          ? {}
+          : { httpStatus: failure.httpStatus }),
         durationMs: Math.round(performance.now() - started),
-        ...(failure?.providerDiagnostic ? { providerErrorCode: failure.providerDiagnostic.providerErrorCode } : {}),
-        ...(failure?.validationIssues ? { validationPaths: failure.validationIssues.map(issue => issue.path) } : {}),
+        ...(failure?.providerDiagnostic
+          ? { providerErrorCode: failure.providerDiagnostic.providerErrorCode }
+          : {}),
+        ...(failure?.validationIssues
+          ? {
+              validationPaths: failure.validationIssues.map(
+                (issue) => issue.path,
+              ),
+            }
+          : {}),
         sent: true,
       };
-      throw new BeninEMecefConnectorError("UNKNOWN_OUTCOME", undefined, undefined, undefined, diagnostic);
+      throw new BeninEMecefConnectorError(
+        "UNKNOWN_OUTCOME",
+        undefined,
+        undefined,
+        undefined,
+        diagnostic,
+      );
     }
   }
 
@@ -710,7 +759,7 @@ function validateInvoiceRequest(
   invoice: dto.BeninInvoiceRequest,
   expected: { itemTotals: number[]; total: number },
 ) {
-  // Pilot supports explicit tax groups and whole-unit, tax-inclusive prices only.
+  // Pilot supports explicit tax groups and tax-inclusive integer-XOF prices.
   const parsed = dto.InvoiceRequestDataDtoSchema.safeParse(invoice);
   if (
     !parsed.success ||
@@ -725,6 +774,13 @@ function validateInvoiceRequest(
     expected.itemTotals.length !== invoice.items.length
   )
     throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
+  const quantityAmount = (price: number, quantity: number) => {
+    const fixed = quantity.toFixed(3);
+    if (Number(fixed) !== quantity)
+      throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
+    const quantityMilli = BigInt(fixed.replace(".", ""));
+    return (BigInt(price) * quantityMilli + 500n) / 1000n;
+  };
   let total = 0n;
   for (const [index, item] of invoice.items.entries()) {
     if (
@@ -733,7 +789,7 @@ function validateInvoiceRequest(
       item.quantity === undefined ||
       !item.taxGroup ||
       item.price < 0 ||
-      !Number.isSafeInteger(item.quantity) ||
+      !Number.isFinite(item.quantity) ||
       item.quantity <= 0 ||
       item.taxSpecific != null ||
       item.originalPrice != null ||
@@ -741,7 +797,7 @@ function validateInvoiceRequest(
     ) {
       throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
     }
-    const amount = BigInt(item.price) * BigInt(item.quantity);
+    const amount = quantityAmount(item.price, item.quantity);
     if (
       !Number.isSafeInteger(expected.itemTotals[index]) ||
       amount !== BigInt(expected.itemTotals[index])

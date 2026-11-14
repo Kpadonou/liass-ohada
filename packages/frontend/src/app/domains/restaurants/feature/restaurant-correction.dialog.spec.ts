@@ -92,7 +92,7 @@ it('requires reason and selected positive quantity', async () => {
   await c.submit();
   expect(api.createCredit).not.toHaveBeenCalled();
 });
-it.each([3, -1, 0.5])('rejects unavailable or non-integer quantity %s', async (quantity) => {
+it.each([3, -1, 0.0001])('rejects unavailable or over-precision quantity %s', async (quantity) => {
   const c = setup().componentInstance;
   c.form.controls.reason.setValue('Retour');
   c.form.controls.quantities.at(1).setValue(quantity);
@@ -102,11 +102,12 @@ it.each([3, -1, 0.5])('rejects unavailable or non-integer quantity %s', async (q
 it('submits only intent and closes with the canonical reference', async () => {
   const c = setup().componentInstance;
   c.form.controls.reason.setValue('Retour');
-  c.form.controls.quantities.at(1).setValue(1);
+  c.form.controls.quantities.at(1).setValue(1.5);
+  expect(c.expected()).toBe(150);
   await c.submit();
   const body = api.createCredit.mock.calls[0][2];
   expect(Object.keys(body).sort()).toEqual(['clientRequestId', 'lines', 'reason']);
-  expect(body.lines).toEqual([{ orderId: id(4), itemId: id(7), quantity: 1 }]);
+  expect(body.lines).toEqual([{ orderId: id(4), itemId: id(7), quantity: 1.5 }]);
   expect(ref.close).toHaveBeenCalledWith({ data: { creditNoteReference: 'AV-20261101-12345678' } });
 });
 it('preserves intent on concurrency error and uses the same request identity on retry', async () => {

@@ -1,10 +1,17 @@
 import { z } from "zod";
 import { GuestWaiterCallResponseSchema } from "./waiter-call";
+import {
+  RestaurantQuantitySchema,
+  restaurantQuantityToMilli,
+} from "./quantity";
+const guestQuantity = RestaurantQuantitySchema.refine(
+  (value) => value >= 1 && value <= 20,
+);
 export const GuestSubmissionLineSchema = z
   .object({
     reference: z.string().min(16).max(100),
     selectionRef: z.string().min(100).max(4096),
-    quantity: z.number().int().min(1).max(20),
+    quantity: guestQuantity,
     note: z.string().max(250),
     presentedAmountMinor: z
       .number()
@@ -22,7 +29,8 @@ export const GuestSubmissionRequestSchema = z
   .strict()
   .refine(
     (v) =>
-      v.lines.reduce((s, l) => s + l.quantity, 0) <= 100 &&
+      v.lines.reduce((s, l) => s + restaurantQuantityToMilli(l.quantity), 0) <=
+        100000 &&
       new Set(v.lines.map((l) => l.reference)).size === v.lines.length,
   );
 export const GuestOrderRequestSchema = z
@@ -49,7 +57,7 @@ export const GuestOrderRequestSchema = z
         z
           .object({
             name: z.string().min(1).max(160),
-            quantity: z.number().int().min(1).max(20),
+            quantity: guestQuantity,
             note: z.string().max(250),
             fulfillment: z
               .enum(["CONFIRMED", "PREPARING", "READY", "SERVED", "CANCELLED"])

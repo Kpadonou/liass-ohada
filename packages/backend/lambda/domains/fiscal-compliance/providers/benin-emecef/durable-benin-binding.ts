@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { canonical, clean } from "@/lambda/shared/authority/integrity";
+import { clean } from "@/lambda/shared/authority/integrity";
 import { FiscalAttemptState } from "../../core/fiscal-attempt-state";
 import {
   MockFiscalProvider,
@@ -9,7 +9,10 @@ import {
   BeninEMecefTestAdapter,
   BeninInvoiceAttempt,
 } from "./benin-emecef-test-adapter";
-import { InvoiceRequestDataDtoSchema } from "./invoice-dtos";
+import {
+  InvoiceRequestDataDtoSchema,
+  canonicalBeninRequest,
+} from "./invoice-dtos";
 import { z } from "zod";
 
 /** TEST binding only. Credentials are freshly supplied per invocation, never stored.
@@ -42,7 +45,7 @@ export class DurableBeninBinding implements MockFiscalProvider {
       .strict()
       .parse(prepared.payload);
     const digest = createHash("sha256")
-      .update(canonical(clean(payload)))
+      .update(canonicalBeninRequest(clean(payload)))
       .digest("hex");
     if (
       digest !== prepared.requestDigest ||

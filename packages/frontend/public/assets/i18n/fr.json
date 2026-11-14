@@ -5179,7 +5179,7 @@
       "ROUND_LIMIT": "max. 12",
       "MENU_HELP": "Parcourez la carte et ajoutez des articles à la commande.",
       "QUANTITY": "Quantité de {{name}}",
-      "INVALID_QUANTITY": "Saisissez une quantité entière positive pour {{name}}. La quantité enregistrée a été rétablie.",
+      "INVALID_QUANTITY": "Saisissez une quantité positive (3 décimales maximum) pour {{name}}. La quantité enregistrée a été rétablie.",
       "MENU": "Carte",
       "CATEGORY": "Catégorie",
       "SELECT_ORDER": "Commande consultée",

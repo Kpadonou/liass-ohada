@@ -1,5 +1,8 @@
 import { readCompanyFiscalProfile } from "@/lambda/shared/authority/fiscal-profiles/company-profile";
-import { calculateRestaurantFiscalAmounts, resolveRestaurantFiscalTreatment } from "./fiscal-treatment";
+import {
+  calculateRestaurantFiscalAmounts,
+  resolveRestaurantFiscalTreatment,
+} from "./fiscal-treatment";
 import { config } from "@/lambda/shared/dynamo-client";
 import { RestaurantServiceAccess } from "./service-access";
 import { RestaurantPreparationService as Preparation } from "./preparation-service";
@@ -15,6 +18,7 @@ import { randomUUID } from "crypto";
 import { TransactWriteItem } from "@aws-sdk/client-dynamodb";
 import { marshall } from "@aws-sdk/util-dynamodb";
 import * as contracts from "@liass-ohada/shared/restaurants";
+import { restaurantQuantityAmountMinor } from "@liass-ohada/shared/restaurant-quantity";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 import { AppError } from "@/lambda/shared/app-error";
 import {
@@ -192,7 +196,11 @@ export class RestaurantTransactionsService {
     ctx: RestaurantTransactionContext,
     checks: Map<string, RestaurantSnapshot>,
     orderId: string,
-    selected: { itemId: string; expectedVersion: number; fiscalException?: { group: "B" | "C" | "D"; evidenceReference: string } },
+    selected: {
+      itemId: string;
+      expectedVersion: number;
+      fiscalException?: { group: "B" | "C" | "D"; evidenceReference: string };
+    },
     menu: RestaurantSnapshot & { data: contracts.Menu },
     currency: string,
     now: string,
@@ -240,10 +248,17 @@ export class RestaurantTransactionsService {
           item.data.preparationStationId,
         )
       : undefined;
-    const amount = safeMoney(
-      BigInt(item.data.price.amountMinor) * BigInt(line.data.quantity),
-    );
-    if (currency !== "XOF") return fail("RESTAURANTS_FISCAL_CURRENCY_UNSUPPORTED", 422);
+    let amount: number;
+    try {
+      amount = restaurantQuantityAmountMinor(
+        item.data.price.amountMinor,
+        line.data.quantity,
+      );
+    } catch {
+      return fail("RESTAURANTS_TRANSACTION_MONEY", 400);
+    }
+    if (currency !== "XOF")
+      return fail("RESTAURANTS_FISCAL_CURRENCY_UNSUPPORTED", 422);
     let treatment: ReturnType<typeof resolveRestaurantFiscalTreatment>;
     let amounts: ReturnType<typeof calculateRestaurantFiscalAmounts>;
     try {
@@ -434,12 +449,7 @@ export class RestaurantTransactionsService {
         true,
       );
       if (
-        ![
-          "OWNER",
-          "MANAGER",
-          "CASHIER",
-          "WAITER",
-        ].includes(access.role ?? "")
+        !["OWNER", "MANAGER", "CASHIER", "WAITER"].includes(access.role ?? "")
       )
         return fail("DOMAIN_PERMISSION_REQUIRED", 403);
       return access;
@@ -1175,7 +1185,10 @@ export class RestaurantTransactionsService {
       if (!session.data.responsibleStaffId && serviceAccess?.role === "WAITER")
         return fail("RESTAURANTS_RESPONSIBLE_STAFF_INELIGIBLE");
       for (const check of session.data.responsibleStaffId
-        ? await ResponsibleStaff.assignmentChecks(ctx, session.data.responsibleStaffId)
+        ? await ResponsibleStaff.assignmentChecks(
+            ctx,
+            session.data.responsibleStaffId,
+          )
         : []) {
         if (
           !actions.some(

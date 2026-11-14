@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { RestaurantPaidByMethodSchema } from "./payments";
 import { RestaurantStaffUserIdSchema } from "./staff";
+import { RestaurantQuantitySchema } from "./quantity";
 const id = z.string().uuid();
 const version = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -92,40 +93,50 @@ export const RestaurantOrderSchema = z
     outstandingWorkCount: count.max(200).optional(),
   })
   .strict();
-export const RestaurantOrdinaryTaxSnapshotSchema = z.object({
-  profileRevision: z.uuid(),
-  policyDigest: z.string().regex(/^[a-f0-9]{64}$/),
-  policy: z.object({
-    id: z.literal("RESTO-EXACT-TTC"),
-    version: z.literal(1),
-    currency: z.literal("XOF"),
-    minorUnitScale: z.literal(0),
-    priceBasis: z.literal("INCLUDING_TAX"),
-    rounding: z.literal("EXACT"),
-    profile: z.object({
-      country: z.literal("BJ"),
-      rule: z.object({
-        id: z.literal("ORDINARY_VAT"),
+export const RestaurantOrdinaryTaxSnapshotSchema = z
+  .object({
+    profileRevision: z.uuid(),
+    policyDigest: z.string().regex(/^[a-f0-9]{64}$/),
+    policy: z
+      .object({
+        id: z.literal("RESTO-EXACT-TTC"),
         version: z.literal(1),
-        taxRateBasisPoints: z.literal(1800),
-        basis: z.literal("NET_SALE"),
-      }).strict(),
-    }).strict(),
-  }).strict(),
-}).strict();
+        currency: z.literal("XOF"),
+        minorUnitScale: z.literal(0),
+        priceBasis: z.literal("INCLUDING_TAX"),
+        rounding: z.literal("EXACT"),
+        profile: z
+          .object({
+            country: z.literal("BJ"),
+            rule: z
+              .object({
+                id: z.literal("ORDINARY_VAT"),
+                version: z.literal(1),
+                taxRateBasisPoints: z.literal(1800),
+                basis: z.literal("NET_SALE"),
+              })
+              .strict(),
+          })
+          .strict(),
+      })
+      .strict(),
+  })
+  .strict();
 /** Frozen sale treatment; catalog and organization changes cannot mutate this fact. */
-export const RestaurantFiscalTreatmentSchema = z.object({
-  country: z.literal("BJ"),
-  catalogGroup: z.enum(["A", "B", "E"]),
-  effectiveGroup: z.enum(["A", "B", "C", "D", "E"]),
-  regime: z.enum(["ORDINARY_VAT", "TPS"]),
-  regimeRevision: id,
-  policyId: z.literal("BJ-RESTO-TTC"),
-  policyVersion: z.literal(1),
-  rateBasisPoints: z.union([z.literal(0), z.literal(1800)]),
-  rounding: z.literal("HALF_UP_LINE"),
-  evidenceReference: z.string().trim().min(1).max(200).optional(),
-}).strict();
+export const RestaurantFiscalTreatmentSchema = z
+  .object({
+    country: z.literal("BJ"),
+    catalogGroup: z.enum(["A", "B", "E"]),
+    effectiveGroup: z.enum(["A", "B", "C", "D", "E"]),
+    regime: z.enum(["ORDINARY_VAT", "TPS"]),
+    regimeRevision: id,
+    policyId: z.literal("BJ-RESTO-TTC"),
+    policyVersion: z.literal(1),
+    rateBasisPoints: z.union([z.literal(0), z.literal(1800)]),
+    rounding: z.literal("HALF_UP_LINE"),
+    evidenceReference: z.string().trim().min(1).max(200).optional(),
+  })
+  .strict();
 
 export const AcceptedSaleSnapshotSchema = z
   .object({
@@ -138,7 +149,7 @@ export const AcceptedSaleSnapshotSchema = z
     name: z.string().min(1).max(160),
     stationId: id.optional(),
     stationVersion: version.optional(),
-    quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    quantity: RestaurantQuantitySchema,
     unitPriceMinor: money,
     grossMinor: money,
     subtotalMinor: money,
@@ -160,7 +171,7 @@ export const RestaurantOrderItemSchema = z
     itemId: id,
     menuItemId: id,
     categoryId: id,
-    quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+    quantity: RestaurantQuantitySchema,
     notes: z.string().max(1000).optional(),
     expectedMenuItemVersion: version,
     version,
@@ -201,7 +212,7 @@ export const CreateRestaurantOrderRequestSchema = z
       .object({
         menuItemId: id,
         categoryId: id,
-        quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+        quantity: RestaurantQuantitySchema,
         notes: z.string().max(1000).optional(),
         expectedMenuItemVersion: version,
       })
@@ -220,7 +231,7 @@ export const CreateRestaurantOrderRequestSchema = z
 const draft = {
   menuItemId: id,
   categoryId: id,
-  quantity: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  quantity: RestaurantQuantitySchema,
   notes: z.string().max(1000).optional(),
   expectedMenuItemVersion: version,
 };
@@ -242,14 +253,21 @@ export const SubmitRestaurantOrderRequestSchema = z
   .object({
     ...edit,
     items: z
-      .array(z.object({
-        itemId: id,
-        expectedVersion: version,
-        fiscalException: z.object({
-          group: z.enum(["B", "C", "D"]),
-          evidenceReference: z.string().trim().min(1).max(200),
-        }).strict().optional(),
-      }).strict())
+      .array(
+        z
+          .object({
+            itemId: id,
+            expectedVersion: version,
+            fiscalException: z
+              .object({
+                group: z.enum(["B", "C", "D"]),
+                evidenceReference: z.string().trim().min(1).max(200),
+              })
+              .strict()
+              .optional(),
+          })
+          .strict(),
+      )
       .min(1)
       .max(12),
   })

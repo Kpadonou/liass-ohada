@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { GuestContextResponse } from '@liass-ohada/shared/restaurants';
+import { restaurantQuantityAmountMinor } from '@liass-ohada/shared/restaurant-quantity';
 import {
   GuestCartLine,
   GuestCartResult,
@@ -107,7 +108,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
                 <h3 class="break-words font-semibold leading-snug">{{ line.name }}</h3>
               </div>
               <p class="shrink-0 font-semibold tabular-nums">
-                {{ price(line.presentedAmountMinor * line.quantity, line.currency) }}
+                {{ price(lineAmount(line), line.currency) }}
               </p>
             </div>
 
@@ -156,7 +157,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
                   mat-button
                   type="button"
                   class="!min-h-11 !min-w-11 !rounded-none !px-0 text-lg liass-action-neutral"
-                  [disabled]="!store.canEdit() || line.quantity === 1"
+                  [disabled]="!store.canEdit() || line.quantity <= 1"
                   [attr.aria-label]="minusLabel(line)"
                   (click)="change(line, line.quantity - 1)"
                 >
@@ -166,8 +167,8 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
                   #quantityInput
                   class="liass-focus-ring h-11 w-11 bg-app-surface text-center text-base font-semibold tabular-nums"
                   type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
+                  inputmode="decimal"
+                  pattern="[0-9]+([.,][0-9]{1,3})?"
                   [disabled]="!store.canEdit()"
                   [value]="line.quantity"
                   [attr.aria-label]="quantityLabel(line)"
@@ -178,7 +179,7 @@ type Context = Extract<GuestContextResponse, { state: 'FREE' | 'OCCUPIED' }>;
                   mat-button
                   type="button"
                   class="!min-h-11 !min-w-11 !rounded-none !px-0 text-lg liass-action-neutral"
-                  [disabled]="!store.canEdit() || line.quantity === 20"
+                  [disabled]="!store.canEdit() || line.quantity >= 20"
                   [attr.aria-label]="plusLabel(line)"
                   (click)="change(line, line.quantity + 1)"
                 >
@@ -262,7 +263,10 @@ export class RestaurantGuestCartDialogComponent {
     this.report(this.store.setQuantity(line.reference, quantity));
   }
   commitQuantity(line: GuestCartLine, input: HTMLInputElement) {
-    const result = this.store.setQuantity(line.reference, Number(input.value));
+    const result = this.store.setQuantity(
+      line.reference,
+      Number(input.value.trim().replace(',', '.')),
+    );
     this.report(result);
     if (result !== 'OK') input.value = String(line.quantity);
   }
@@ -284,6 +288,9 @@ export class RestaurantGuestCartDialogComponent {
     return this.translation.translate('RESTAURANTS.GUEST.CART.QUANTITY_LABEL', {
       item: line.name,
     });
+  }
+  lineAmount(line: GuestCartLine) {
+    return restaurantQuantityAmountMinor(line.presentedAmountMinor, line.quantity);
   }
   minusLabel(line: GuestCartLine) {
     return this.translation.translate('RESTAURANTS.GUEST.CART.DECREASE', { item: line.name });

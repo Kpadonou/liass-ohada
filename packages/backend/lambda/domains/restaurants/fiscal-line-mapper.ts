@@ -1,6 +1,7 @@
 import { validRestaurantSaleTax } from "./pilot-tax-calculation";
 import { z } from "zod";
 import { RestaurantInvoiceLineSchema } from "@liass-ohada/shared/restaurants";
+import { restaurantQuantityAmountMinor } from "@liass-ohada/shared/restaurant-quantity";
 import { TaxGroupTypeEnumSchema } from "../fiscal-compliance/providers/benin-emecef/invoice-dtos";
 
 const classificationSchema = z
@@ -44,21 +45,27 @@ export function mapRestaurantFiscalLines(input: {
     const classification = treatments.get(sourceLineId);
     if (!classification) throw Error("MISSING_FISCAL_CLASSIFICATION");
     const snapshot = line.snapshot;
-    if (snapshot.fiscalTreatment &&
-        (classification.taxGroup !== snapshot.fiscalTreatment.effectiveGroup ||
-         classification.classificationEvidence !==
-           (snapshot.fiscalTreatment.evidenceReference ?? snapshot.fiscalTreatment.regimeRevision)))
+    if (
+      snapshot.fiscalTreatment &&
+      (classification.taxGroup !== snapshot.fiscalTreatment.effectiveGroup ||
+        classification.classificationEvidence !==
+          (snapshot.fiscalTreatment.evidenceReference ??
+            snapshot.fiscalTreatment.regimeRevision))
+    )
       throw Error("FISCAL_CLASSIFICATION_SOURCE_MISMATCH");
-    const amount = BigInt(snapshot.unitPriceMinor) * BigInt(snapshot.quantity);
+    const amount = restaurantQuantityAmountMinor(
+      snapshot.unitPriceMinor,
+      snapshot.quantity,
+    );
     if (
       line.cancelledAt ||
       line.cancellationReason ||
-      amount !== BigInt(snapshot.grossMinor) ||
+      amount !== snapshot.grossMinor ||
       !validRestaurantSaleTax(snapshot) ||
       snapshot.lineTotalMinor !== line.netAmountMinor
     )
       throw Error("UNSUPPORTED_COMMERCIAL_LINE");
-    total += amount;
+    total += BigInt(amount);
     return {
       sourceLineId,
       commercial: structuredClone(line),

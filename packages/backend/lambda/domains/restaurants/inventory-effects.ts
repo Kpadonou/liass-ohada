@@ -4,6 +4,7 @@ import { RestaurantInventoryService as Inventory } from "./inventory-service";
 import { InventoryScope } from "./inventory-model";
 import { InventorySaleTargetSchema } from "./transaction-model";
 import { InventoryEffectsRepository as R } from "./inventory-effect-repository";
+import { restaurantQuantityToMilli } from "@liass-ohada/shared/restaurant-quantity";
 import {
   InventoryEffect,
   InventoryEffectError,
@@ -74,7 +75,11 @@ export class InventoryEffects {
         targets: fact.targets.map((target) => ({
           stockItemId: target.stockItemId,
           quantityMilli: target.lines
-            .reduce((total, line) => total + BigInt(line.quantity) * 1000n, 0n)
+            .reduce(
+              (total, line) =>
+                total + BigInt(restaurantQuantityToMilli(line.quantity)),
+              0n,
+            )
             .toString(),
           businessEventId: inventorySaleEventId(
             scope,

@@ -7,6 +7,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { z } from 'zod';
 import * as c from '@liass-ohada/shared/restaurants';
+import { restaurantQuantityAmountMinor } from '@liass-ohada/shared/restaurant-quantity';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import { RestaurantCorrectionsQueries } from '../data-access/restaurant-corrections.queries';
 import { CashContext } from '../data-access/restaurant-cash.queries';
@@ -137,10 +138,10 @@ export function creditIntent(
                     ><input
                       matInput
                       type="number"
-                      inputmode="numeric"
+                      inputmode="decimal"
                       min="0"
                       [max]="line.remainingQuantity"
-                      step="1"
+                      step="0.001"
                       [formControlName]="i"
                     /><mat-error>{{
                       'RESTAURANTS_CORRECTIONS.INVALID' | transloco
@@ -226,7 +227,12 @@ export class RestaurantCorrectionDialog {
             validators: [
               Validators.min(0),
               Validators.max(line.remainingQuantity),
-              (control) => (Number.isSafeInteger(control.value) ? null : { integer: true }),
+              (control) =>
+                c.CreateRestaurantCreditNoteRequestSchema.shape.lines.element.shape.quantity
+                  .or(z.literal(0))
+                  .safeParse(control.value).success
+                  ? null
+                  : { quantity: true },
             ],
           }),
       ),
@@ -262,8 +268,10 @@ export class RestaurantCorrectionDialog {
   expected() {
     const value = this.form.controls.quantities.getRawValue().reduce((sum, q, i) => {
       const line = this.data.creditability!.lines[i];
-      return Number.isSafeInteger(q) && q > 0 && q <= line.remainingQuantity
-        ? sum + BigInt(q) * BigInt(line.unitAmountMinor)
+      return c.CreateRestaurantCreditNoteRequestSchema.shape.lines.element.shape.quantity.safeParse(
+        q,
+      ).success && q <= line.remainingQuantity
+        ? sum + BigInt(restaurantQuantityAmountMinor(line.unitAmountMinor, q))
         : sum;
     }, 0n);
     return value <= BigInt(Number.MAX_SAFE_INTEGER) ? Number(value) : 0;

@@ -184,6 +184,37 @@ test.each([
     (await Effects.get(scope(), submission.data.inventoryEffectRef))?.state,
   ).toBe("APPLIED");
 });
+test("fractional accepted quantities fail closed for discrete inventory without truncation", async () => {
+  const stock = await link();
+  await I.applyMovement(scope(), {
+    stockItemId: stock.id,
+    type: "ADJUSTMENT",
+    quantityMilli: 10000,
+    source: "MANUAL",
+    actorId: "owner",
+  });
+  const d = await draft([{ item: menu(), quantity: 3.25 }]);
+  await d.run();
+  await d.run();
+  expect((await I.get(scope(), stock.id)).balanceMilli).toBe(10000);
+  expect(sales()).toHaveLength(0);
+  const submission = rows().find(
+    (row) => row.entityType === "RESTAURANT_SUBMISSION",
+  )!;
+  expect(
+    await Effects.get(scope(), submission.data.inventoryEffectRef),
+  ).toMatchObject({
+    state: "FAILED",
+    lastErrorCode: "INVALID_QUANTITY",
+    targets: [
+      expect.objectContaining({
+        quantityMilli: "3250",
+        state: "FAILED",
+        lastErrorCode: "INVALID_QUANTITY",
+      }),
+    ],
+  });
+});
 test("inactive target accepts automatic SALE while manual loss remains forbidden", async () => {
   const s = await link();
   await I.update(scope(), s.id, {

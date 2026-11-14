@@ -86,6 +86,33 @@ test("creates, reads and confirms a reconciled restaurant TEST invoice with secu
     adapter.confirmInvoice(input, "uid", doc, expected, created),
   ).rejects.toMatchObject({ code: "RECONCILIATION_FAILED" });
 });
+test("creates and confirms a reconciled decimal-quantity TEST invoice", async () => {
+  const doc = invoice();
+  doc.items = [
+    { name: "TEST decimal meal", price: 2360, quantity: 2.5, taxGroup: "B" },
+  ];
+  doc.payment = [{ name: "ESPECES", amount: 5900 }];
+  const decimalExpected = { itemTotals: [5900], total: 5900 };
+  const transport: jest.MockedFunction<FiscalHttpTransport> = jest.fn(
+    async (request) =>
+      request.method === "POST"
+        ? response({ uid: "decimal-uid", total: 5900 })
+        : request.method === "PUT"
+          ? response({ ...security, refundWithAibPayment: false })
+          : response(doc),
+  );
+  const adapter = new BeninEMecefTestAdapter({ transport });
+  const created = await adapter.createInvoice(
+    input,
+    new BeninInvoiceAttempt(),
+    doc,
+    decimalExpected,
+  );
+  expect(created).toMatchObject({ uid: "decimal-uid", reconciled: true });
+  await expect(
+    adapter.confirmInvoice(input, "decimal-uid", doc, decimalExpected, created),
+  ).resolves.toMatchObject({ uid: "decimal-uid", ...security });
+});
 test.each(["taxGroups", "invoiceTypes", "paymentTypes"] as const)(
   "reads %s official response",
   async (name) => {
@@ -116,7 +143,6 @@ test.each([
   "tax",
   "payment",
   "item",
-  "fraction",
   "unsafe",
 ] as const)("rejects invalid input %s before HTTP", async (kind) => {
   const { doc, transport, adapter } = setup();
@@ -129,7 +155,6 @@ test.each([
   if (kind === "tax") delete doc.items![0].taxGroup;
   if (kind === "payment") doc.payment![0].amount = 1999;
   if (kind === "item") doc.items![0].price = 999;
-  if (kind === "fraction") doc.items![0].quantity = 1.5;
   if (kind === "unsafe") doc.items![0].price = Number.MAX_SAFE_INTEGER + 1;
   await expect(
     adapter.createInvoice(auth, new BeninInvoiceAttempt(), doc, expected),

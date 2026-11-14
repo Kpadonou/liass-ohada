@@ -4,7 +4,10 @@ import {
   BeninEMecefTestAdapter,
   BeninInvoiceAttempt,
 } from "../fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter";
-import { InvoiceRequestDataDtoSchema } from "../fiscal-compliance/providers/benin-emecef/invoice-dtos";
+import {
+  InvoiceRequestDataDtoSchema,
+  canonicalBeninRequest,
+} from "../fiscal-compliance/providers/benin-emecef/invoice-dtos";
 import { FiscalAttemptStore } from "../fiscal-compliance/persistence/fiscal-attempt-store";
 import { ConfirmationCapture } from "../fiscal-compliance/persistence/confirmation-capture";
 import {
@@ -82,7 +85,8 @@ export function restaurantBeninRealTestWorkflow(
         .strict()
         .parse(prepared.payload);
       if (
-        hash(canonical(clean(payload))) !== prepared.requestDigest ||
+        hash(canonicalBeninRequest(clean(payload))) !==
+          prepared.requestDigest ||
         prepared.sourceDigest !== config.sourceDigest ||
         payload.invoice.ifu !== config.ifu ||
         prepared.total !== config.expectedFiscalTotals.total ||
@@ -91,17 +95,27 @@ export function restaurantBeninRealTestWorkflow(
         config.expectedFiscalTotals.tb !== 18 ||
         config.expectedFiscalTotals.tc !== 0 ||
         config.expectedFiscalTotals.td !== 18 ||
-        config.expectedFiscalTotals.taa !== (prepared.fiscalGroupTotals.A?.gross ?? 0) ||
-        config.expectedFiscalTotals.tab !== (prepared.fiscalGroupTotals.B?.gross ?? 0) ||
-        config.expectedFiscalTotals.tac !== (prepared.fiscalGroupTotals.C?.gross ?? 0) ||
-        config.expectedFiscalTotals.tad !== (prepared.fiscalGroupTotals.D?.gross ?? 0) ||
-        config.expectedFiscalTotals.tae !== (prepared.fiscalGroupTotals.E?.gross ?? 0) ||
+        config.expectedFiscalTotals.taa !==
+          (prepared.fiscalGroupTotals.A?.gross ?? 0) ||
+        config.expectedFiscalTotals.tab !==
+          (prepared.fiscalGroupTotals.B?.gross ?? 0) ||
+        config.expectedFiscalTotals.tac !==
+          (prepared.fiscalGroupTotals.C?.gross ?? 0) ||
+        config.expectedFiscalTotals.tad !==
+          (prepared.fiscalGroupTotals.D?.gross ?? 0) ||
+        config.expectedFiscalTotals.tae !==
+          (prepared.fiscalGroupTotals.E?.gross ?? 0) ||
         config.expectedFiscalTotals.taf !== 0 ||
-        config.expectedFiscalTotals.hab !== (prepared.fiscalGroupTotals.B?.net ?? 0) ||
-        config.expectedFiscalTotals.had !== (prepared.fiscalGroupTotals.D?.net ?? 0) ||
-        config.expectedFiscalTotals.vab !== (prepared.fiscalGroupTotals.B?.tax ?? 0) ||
-        config.expectedFiscalTotals.vad !== (prepared.fiscalGroupTotals.D?.tax ?? 0) ||
-        config.expectedFiscalTotals.aib !== 0 || config.expectedFiscalTotals.ts !== 0
+        config.expectedFiscalTotals.hab !==
+          (prepared.fiscalGroupTotals.B?.net ?? 0) ||
+        config.expectedFiscalTotals.had !==
+          (prepared.fiscalGroupTotals.D?.net ?? 0) ||
+        config.expectedFiscalTotals.vab !==
+          (prepared.fiscalGroupTotals.B?.tax ?? 0) ||
+        config.expectedFiscalTotals.vad !==
+          (prepared.fiscalGroupTotals.D?.tax ?? 0) ||
+        config.expectedFiscalTotals.aib !== 0 ||
+        config.expectedFiscalTotals.ts !== 0
       )
         throw new Error("FISCAL_CONFIGURATION_MISMATCH");
       await verifyContext();

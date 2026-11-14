@@ -3,6 +3,7 @@ import type { TransactionScope } from "./transaction-model";
 import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { mapRestaurantFiscalLines } from "./fiscal-line-mapper";
 import { verifyRestaurantIssuanceProvenance } from "./issuance-provenance";
+import { AppError } from "@/lambda/shared/app-error";
 
 type SourceResult = Awaited<
   ReturnType<typeof RestaurantInvoiceSourceVerifier.verify>
@@ -51,34 +52,56 @@ export async function prepareRestaurantFiscalInvoice(
     return { ready: false as const, reason: provenance.reason };
 
   try {
-    // Classified FINAL lines carry immutable tax treatment. Keep the historical
-    // one-line projection only for receipts issued before that treatment existed.
-    const v1 = input.requireV1 && !evidence.lines.every(({ line }) => line.snapshot.fiscalTreatment)
-      ? projectRestaurantInvoiceV1(evidence)
-      : undefined;
+    const fullyClassified = evidence.lines.every(
+      ({ line }) => line.snapshot.fiscalTreatment,
+    );
+    const hasDecimalQuantity = evidence.lines.some(
+      ({ line }) => !Number.isInteger(line.snapshot.quantity),
+    );
+    // Preserve the legacy V1 evidence for cases it can represent. Classified
+    // decimal and multiline documents continue through the classified projection.
+    let v1: ReturnType<typeof projectRestaurantInvoiceV1> | undefined;
+    if (input.requireV1) {
+      try {
+        v1 = projectRestaurantInvoiceV1(evidence);
+      } catch (error) {
+        if (
+          !fullyClassified ||
+          !hasDecimalQuantity ||
+          !(error instanceof AppError) ||
+          error.messageCode !== "AUTHORITY_INVALID_NUMBER"
+        )
+          throw error;
+      }
+    }
     const mapping = mapRestaurantFiscalLines({
       lines: evidence.lines.map(({ line }) => line),
-      classifications: evidence.lines.every(({ line }) => line.snapshot.fiscalTreatment)
+      classifications: fullyClassified
         ? evidence.lines.map(({ line, coordinate }) => ({
             orderId: coordinate.orderId,
             itemId: coordinate.itemId,
             taxGroup: line.snapshot.fiscalTreatment!.effectiveGroup,
-            classificationEvidence: line.snapshot.fiscalTreatment!.evidenceReference ??
+            classificationEvidence:
+              line.snapshot.fiscalTreatment!.evidenceReference ??
               line.snapshot.fiscalTreatment!.regimeRevision,
           }))
         : v1
-        ? v1.document.lines.map((line) => ({
-            orderId: line.sourceCoordinates[0].orderId,
-            itemId: line.sourceCoordinates[0].itemId,
-            taxGroup: evidence.lines.find(({ coordinate }) =>
-              coordinate.orderId === line.sourceCoordinates[0].orderId &&
-              coordinate.itemId === line.sourceCoordinates[0].itemId,
-            )?.line.snapshot.fiscalTreatment?.effectiveGroup ??
-              (evidence.lines.length === 1 && evidence.lines[0].line.snapshot.ordinaryTax
-                ? "B" : undefined),
-            classificationEvidence: line.fiscalTreatmentEvidence.reference,
-          }))
-        : [],
+          ? v1.document.lines.map((line) => ({
+              orderId: line.sourceCoordinates[0].orderId,
+              itemId: line.sourceCoordinates[0].itemId,
+              taxGroup:
+                evidence.lines.find(
+                  ({ coordinate }) =>
+                    coordinate.orderId === line.sourceCoordinates[0].orderId &&
+                    coordinate.itemId === line.sourceCoordinates[0].itemId,
+                )?.line.snapshot.fiscalTreatment?.effectiveGroup ??
+                (evidence.lines.length === 1 &&
+                evidence.lines[0].line.snapshot.ordinaryTax
+                  ? "B"
+                  : undefined),
+              classificationEvidence: line.fiscalTreatmentEvidence.reference,
+            }))
+          : [],
     });
     if (
       evidence.lines.length !== evidence.invoice.lineCount ||

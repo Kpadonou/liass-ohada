@@ -133,7 +133,11 @@
                       >
                         {{ price(item.price.amountMinor, item.price.currency) }}
                       </p>
-                      <liass-button size="lg" tone="brand" variant="outline" icon="add"
+                      <liass-button
+                        size="lg"
+                        tone="brand"
+                        variant="outline"
+                        icon="add"
                         [ariaLabel]="
                           'RESTAURANTS.ORDER_TAKING.ADD_ITEM' | transloco: { name: item.name }
                         "
@@ -306,8 +310,8 @@
                           <input
                             matInput
                             type="text"
-                            inputmode="numeric"
-                            pattern="[0-9]*"
+                            inputmode="decimal"
+                            pattern="[0-9]+([.,][0-9]{1,3})?"
                             autocomplete="off"
                             class="h-11 w-14 min-w-0 rounded-app-control border border-app-border bg-app-surface text-center text-sm font-medium tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
                             [formControl]="quantityInput(line)"
@@ -399,38 +403,38 @@
                 }
               </div>
             </liass-card>
-          @if (
-            hasServiceOrders() ||
-            ordersQuery.hasNextPage() ||
-            orders().length < session()!.orderCount ||
-            session()!.dueMinor > 0
-          ) {
-            <div
-              class="order-3 min-w-0 space-y-2 xl:order-none xl:col-start-2 xl:row-start-2"
-              data-testid="validated-orders-region"
-            >
-              <liass-restaurant-service-orders
-                class="order-3 min-w-0 xl:order-none xl:col-start-2 xl:row-start-2"
-                [context]="ctx()"
-                [activeDraftOrderId]="activeDraftOrderId()"
-                [tableName]="session()?.tableName"
-                [orders]="orders()"
-                [expectedCount]="session()!.orderCount"
-                [expectedAmount]="session()!.dueMinor"
-                (denied)="denied.set(true)"
-              />
-              @if (ordersQuery.hasNextPage()) {
-                <button
-                  mat-stroked-button
-                  type="button"
-                  [disabled]="ordersQuery.isFetchingNextPage()"
-                  (click)="ordersQuery.fetchNextPage()"
-                >
-                  {{ 'RESTAURANTS.ORDER_TAKING.MORE_ORDERS' | transloco }}
-                </button>
-              }
-            </div>
-          }
+            @if (
+              hasServiceOrders() ||
+              ordersQuery.hasNextPage() ||
+              orders().length < session()!.orderCount ||
+              session()!.dueMinor > 0
+            ) {
+              <div
+                class="order-3 min-w-0 space-y-2 xl:order-none xl:col-start-2 xl:row-start-2"
+                data-testid="validated-orders-region"
+              >
+                <liass-restaurant-service-orders
+                  class="order-3 min-w-0 xl:order-none xl:col-start-2 xl:row-start-2"
+                  [context]="ctx()"
+                  [activeDraftOrderId]="activeDraftOrderId()"
+                  [tableName]="session()?.tableName"
+                  [orders]="orders()"
+                  [expectedCount]="session()!.orderCount"
+                  [expectedAmount]="session()!.dueMinor"
+                  (denied)="denied.set(true)"
+                />
+                @if (ordersQuery.hasNextPage()) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    [disabled]="ordersQuery.isFetchingNextPage()"
+                    (click)="ordersQuery.fetchNextPage()"
+                  >
+                    {{ 'RESTAURANTS.ORDER_TAKING.MORE_ORDERS' | transloco }}
+                  </button>
+                }
+              </div>
+            }
           </div>
         </div>
       }
