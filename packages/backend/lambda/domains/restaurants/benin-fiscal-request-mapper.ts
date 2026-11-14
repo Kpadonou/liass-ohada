@@ -258,17 +258,9 @@ export function restaurantBeninPreparation(
       identity,
       configuration,
     );
-    if (!realFiscalTestEnabled()) return mapped;
-    const v1 = result.preparation.v1;
-    if (!v1 || restaurantBeninMappingSchema.parse(configuration)
-      .commercialMinorUnitsPerFranc !== 1)
+    if (realFiscalTestEnabled() &&
+      restaurantBeninMappingSchema.parse(configuration).commercialMinorUnitsPerFranc !== 1)
       throw new Error("FISCAL_V1_PROJECTION_REQUIRED");
-    return {
-      ...mapped,
-      ...(result.preparation.lines.every((line) => line.fiscal.taxGroup === "B") ? { ordinaryVatTotals: {
-        net: Number(v1.totals.netMinor),
-        tax: Number(v1.totals.taxMinor),
-      } } : {}),
-    };
+    return mapped;
   };
 }

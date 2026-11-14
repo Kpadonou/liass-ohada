@@ -51,7 +51,11 @@ export async function prepareRestaurantFiscalInvoice(
     return { ready: false as const, reason: provenance.reason };
 
   try {
-    const v1 = input.requireV1 ? projectRestaurantInvoiceV1(evidence) : undefined;
+    // Classified FINAL lines carry immutable tax treatment. Keep the historical
+    // one-line projection only for receipts issued before that treatment existed.
+    const v1 = input.requireV1 && !evidence.lines.every(({ line }) => line.snapshot.fiscalTreatment)
+      ? projectRestaurantInvoiceV1(evidence)
+      : undefined;
     const mapping = mapRestaurantFiscalLines({
       lines: evidence.lines.map(({ line }) => line),
       classifications: evidence.lines.every(({ line }) => line.snapshot.fiscalTreatment)

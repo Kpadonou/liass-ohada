@@ -148,6 +148,37 @@ test("mixed A/B fiscal groups are transmitted from frozen line mapping without a
   expect(result.total).toBe(3180);
   expect(() => mapRestaurantBeninRequest(prepared, principal, identity, configuration())).toThrow("UNSUPPORTED_PROVIDER_TAX_GROUP");
 });
+test.each([
+  { group: "A", catalog: "A", regime: "ORDINARY_VAT", rate: 0, net: 2000, tax: 0, evidence: undefined },
+  { group: "D", catalog: "B", regime: "ORDINARY_VAT", rate: 1800, net: 1695, tax: 305, evidence: "EXCEPTION-REVIEW" },
+  { group: "E", catalog: "E", regime: "TPS", rate: 0, net: 2000, tax: 0, evidence: undefined },
+] as const)("frozen $group treatment reaches the DGI TEST request with exact net and VAT", (caseData) => {
+  const treated = { ...line, snapshot: {
+    ...line.snapshot,
+    subtotalMinor: caseData.net,
+    taxMinor: caseData.tax,
+    fiscalTreatment: {
+      country: "BJ", catalogGroup: caseData.catalog,
+      effectiveGroup: caseData.group, regime: caseData.regime,
+      regimeRevision: id, policyId: "BJ-RESTO-TTC", policyVersion: 1,
+      rateBasisPoints: caseData.rate, rounding: "HALF_UP_LINE",
+      ...(caseData.evidence ? { evidenceReference: caseData.evidence } : {}),
+    },
+  } };
+  const mapped = mapRestaurantFiscalLines({ lines: [treated], classifications: [
+    { orderId: id, itemId: id, taxGroup: caseData.group,
+      classificationEvidence: caseData.evidence ?? id },
+  ] });
+  const result = mapRestaurantBeninRequest(
+    { ...preparation(), ...mapped }, principal, identity,
+    { ...configuration(), taxGroups: [caseData.group] },
+  );
+  expect((result.payload as { invoice: { items: { taxGroup: string }[] } }).invoice.items[0].taxGroup)
+    .toBe(caseData.group);
+  expect(result.fiscalGroupTotals?.[caseData.group]).toEqual({
+    gross: 2000, net: caseData.net, tax: caseData.tax,
+  });
+});
 
 test("export group C requires an export invoice type", () => {
   const exportLine = { ...line, snapshot: { ...line.snapshot,
@@ -328,6 +359,38 @@ test("factory consumes verified FINAL preparation and explicit classifications",
     invoiceId: id,
     classifications: [classification],
   });
+});
+test("real TEST preparation requests compatibility mode while accepting frozen classified lines", async () => {
+  Object.assign(process.env, {
+    STAGE: "dev",
+    FISCAL_EXECUTION_MODE: "REAL_TEST",
+    FISCAL_REAL_TEST_ENABLED: "1",
+  });
+  try {
+    const value = preparation();
+    const { bindingDigest: _, ...source } = value.provenance;
+    value.provenance = bindRestaurantIssuanceProvenance({
+      ...source,
+      evidenceOrigin: "AUTHENTIC",
+    });
+    const prepare = jest.fn(async () => ({ ready: true as const, preparation: value }));
+    const result = await restaurantBeninPreparation(
+      scope.outletId, id, [classification], configuration(), prepare,
+    )(principal, identity);
+    expect(result.total).toBe(2000);
+    expect(prepare).toHaveBeenCalledWith({
+      scope,
+      actorId: principal.actorId,
+      sessionId: id,
+      invoiceId: id,
+      classifications: [classification],
+      requireV1: true,
+    });
+  } finally {
+    delete process.env.STAGE;
+    delete process.env.FISCAL_EXECUTION_MODE;
+    delete process.env.FISCAL_REAL_TEST_ENABLED;
+  }
 });
 
 test("missing per-line evidence and changed source revisions fail closed", () => {

@@ -1,7 +1,7 @@
 ﻿Test DGI,Type facture,Scénario détaillé,Portée,Implémentation,Test automatisé,DGI TEST réel,Facture+QR vérifiés,Preuve/ID DGI,Décision ou écart
-01,FV,"A seul, quantité 1",Vente intérieure exonérée,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
-02,FV,"B seul, quantité 1",Vente intérieure taxable,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
-03,FV,"A+B, quantités 2 et 3",Groupes mixtes,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
+01,FV,"A seul, quantité 1",Vente intérieure exonérée,PARTIEL - traitement A gelé et mapper Restaurants TEST; émission DGI non démontrée,benin-fiscal-request-mapper.test.ts - A (PASS local),NON DÉMONTRÉ,NON DÉMONTRÉ,,Aucune transaction DGI TEST ni vérification facture/QR; parcours commercial complet à valider
+02,FV,"B seul, quantité 1",Vente intérieure taxable,PARTIEL - traitement B gelé et parcours Restaurants TEST existant; émission DGI non démontrée,benin-fiscal-request-mapper.test.ts - B; real-test-execution.test.ts - CREATE/CONFIRM simulés (PASS local),NON DÉMONTRÉ,NON DÉMONTRÉ,,Aucune transaction DGI TEST ni vérification facture/QR; parcours commercial complet à valider
+03,FV,"A+B, quantités 2 et 3",Groupes mixtes,PARTIEL - mapper A+B et parcours durable Restaurants TEST; émission DGI non démontrée,benin-fiscal-request-mapper.test.ts - A+B; real-test-execution.test.ts - CREATE/CONFIRM simulés (PASS local),NON DÉMONTRÉ,NON DÉMONTRÉ,,Aucune transaction DGI TEST ni vérification facture/QR; parcours commercial complet à valider
 04,FV,"A+B, quantités 2,5 et 3,250",Quantités décimales,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
 05,FV,"A+B, quantités 2 et 3, IFU + nom client",Client identifié,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
 06,FA,"A+B, quantités 2 et 3, IFU + nom client",Avoir référencé à une facture fiscale antérieure,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
@@ -10,9 +10,9 @@
 09,FV,"A+B, quantités 2 et 3, client IFU + nom, AIB 1 %",AIB 1 %,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
 10,FV,"A+B, quantités 2 et 3, taxe spécifique sur B, AIB 5 %",AIB + taxe spécifique,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
 11,FV,"B, quantité 2, client IFU + nom, taxe de séjour",Taxe de séjour,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
-12,FV,"D, quantité 2",Régime d’exception,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
+12,FV,"D, quantité 2",Régime d’exception,PARTIEL - traitement D gelé et mapper Restaurants TEST; émission DGI non démontrée,benin-fiscal-request-mapper.test.ts - D (PASS local),NON DÉMONTRÉ,NON DÉMONTRÉ,,Aucune transaction DGI TEST ni vérification facture/QR; parcours commercial complet à valider
 13,FV,"D, quantité 2, taxe spécifique",Régime d’exception + taxe spécifique,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
-14,FV,"E, quantité 2",Régime TPS,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
+14,FV,"E, quantité 2",Régime TPS,PARTIEL - traitement E gelé et mapper Restaurants TEST; émission DGI non démontrée,benin-fiscal-request-mapper.test.ts - E (PASS local),NON DÉMONTRÉ,NON DÉMONTRÉ,,Aucune transaction DGI TEST ni vérification facture/QR; parcours commercial complet à valider
 15,FV,"E, quantité 2, taxe spécifique",Régime TPS + taxe spécifique,À auditer,À auditer,NON DÉMONTRÉ,NON DÉMONTRÉ,,
 16,EV,"C, quantité 2",Exportation de produit taxable,PARTIEL - projection et mapper Restaurants TEST C; parcours Sales D04 bloqué,benin-fiscal-request-mapper.test.ts et fiscal-classified-projection.test.ts - C; fiscal-classification.test.ts - provenance (PASS local),NON DÉMONTRÉ,NON DÉMONTRÉ,,Projection Restaurants indépendante de D04; aucune transaction DGI TEST ni vérification fiscale
 17,EV,"A+C, quantités 2 et 3",Exportation mixte exonéré + export taxable,PARTIEL - projection et mapper Restaurants TEST A+C; parcours Sales D04 bloqué,benin-fiscal-request-mapper.test.ts et fiscal-classified-projection.test.ts - A+C; fiscal-classification.test.ts - provenance (PASS local),NON DÉMONTRÉ,NON DÉMONTRÉ,,Projection Restaurants indépendante de D04; acceptation DGI TEST inconnue

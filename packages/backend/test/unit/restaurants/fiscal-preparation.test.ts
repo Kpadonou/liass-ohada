@@ -72,6 +72,17 @@ test("binds verified FINAL source, explicit classification, immutable provenance
   expect(result.preparation.lines[0].fiscal.taxGroup).toBe("A");
   expect(result.preparation.providerMutationEnabled).toBe(false);
 });
+test("compatibility mode uses frozen classified tax without a legacy ordinary-VAT projection", async () => {
+  const result = await prepareRestaurantFiscalInvoice(
+    { ...request, requireV1: true },
+    read({ verified: true, evidence }),
+  );
+  expect(result.ready).toBe(true);
+  if (result.ready) {
+    expect(result.preparation.lines[0].fiscal.taxGroup).toBe("A");
+    expect(result.preparation.v1).toBeUndefined();
+  }
+});
 
 test("denies unverified source before mapping", async () => {
   expect(

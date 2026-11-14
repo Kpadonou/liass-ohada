@@ -130,26 +130,69 @@ afterEach(() => {
   ])
     delete process.env[name];
 });
-function setup(body: unknown = security, status = 200) {
+function setup(body: unknown = security, status = 200, options?: {
+  fiscalTotals?: typeof totals;
+  configuration?: RealTestConfiguration;
+}) {
+  const fiscalTotals = options?.fiscalTotals ?? totals;
+  const configuration = options?.configuration ?? config;
   const transport = jest.fn(async (request: { method: string }) => ({
     status: request.method === "PUT" ? status : 200,
     body: JSON.stringify(
       request.method === "POST"
-        ? { uid: "provider-uid", ...totals }
+        ? { uid: "provider-uid", ...fiscalTotals }
         : request.method === "PUT"
           ? { ...(body as object), refundWithAibPayment: false }
-          : { status: true, ifu: config.ifu, nim: config.nim },
+          : { status: true, ifu: configuration.ifu, nim: configuration.nim },
     ),
   }));
   const authorize = jest.fn(async () => undefined);
   const flow = restaurantBeninRealTestWorkflow(
-    config,
+    configuration,
     authorize,
     new ConfirmationCapture("private-bucket"),
     transport,
   );
   return { flow, transport, authorize };
 }
+test("classified A and B lines complete the durable real TEST journey without the legacy single-line projection", async () => {
+  const mixedTotals = { ...totals, taa: 1000, tab: 2000, total: 3000 };
+  const mixedPayload = {
+    invoice: {
+      ...payload.invoice,
+      items: [
+        { name: "Exempt meal", quantity: 1, price: 1000, taxGroup: "A" },
+        { name: "Taxable meal", quantity: 2, price: 1000, taxGroup: "B" },
+      ],
+      payment: [{ name: "ESPECES", amount: 3000 }],
+    },
+    expected: { itemTotals: [1000, 2000], total: 3000 },
+  };
+  jest.mocked(restaurantBeninPreparation).mockReturnValueOnce(async () => ({
+    identity,
+    sourceDigest: config.sourceDigest,
+    requestDigest: hash(canonical(mixedPayload)),
+    total: 3000,
+    fiscalGroupTotals: {
+      A: { gross: 1000, net: 1000, tax: 0 },
+      B: { gross: 2000, net: 1695, tax: 305 },
+    },
+    payload: mixedPayload,
+  }));
+  const { flow, transport } = setup(security, 200, {
+    fiscalTotals: mixedTotals,
+    configuration: { ...config, expectedFiscalTotals: mixedTotals },
+  });
+  expect((await create(flow)).state.status).toBe("CREATED");
+  await flow.confirm(principal, identity, "confirm", { confirm: true });
+  expect(await new FiscalAttemptStore().read(identity)).toMatchObject({
+    status: "CONFIRMED",
+    fiscalTotalsVerified: true,
+    securityEvidenceOrigin: "DGI_TEST",
+  });
+  expect(transport.mock.calls.filter(([request]) => request.method === "POST")).toHaveLength(1);
+  expect(transport.mock.calls.filter(([request]) => request.method === "PUT")).toHaveLength(1);
+});
 async function create(flow: ReturnType<typeof setup>["flow"]) {
   return flow.create(principal, identity, "attempt", "create");
 }
