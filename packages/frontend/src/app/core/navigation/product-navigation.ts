@@ -1,15 +1,18 @@
-import { RestaurantOutletContext } from '../../domains/restaurants/data-access/restaurant-outlet-context';
-import { RestaurantsCapabilities } from '../../domains/restaurants/data-access/restaurants-capabilities';
-import type { ProductCode } from '@liass-ohada/shared/shared';
-import { UiStore, type AppPage } from '../state/ui.store';
-import { ProductAccessState } from '../product-access/product-access.state';
-import { AuthStore } from '../../domains/identity/data-access/auth.store';
-import { SalesCapabilities } from '../../domains/sales/data-access/sales-capabilities';
-
 import { Injectable, Injector, computed, inject } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter, map } from 'rxjs';
+import type { ProductCode } from '@liass-ohada/shared/shared';
+
+import { AuthStore } from '../../domains/identity/data-access/auth.store';
+import { RestaurantOutletContext } from '../../domains/restaurants/data-access/restaurant-outlet-context';
+import { RestaurantsCapabilities } from '../../domains/restaurants/data-access/restaurants-capabilities';
+import { SalesCapabilities } from '../../domains/sales/data-access/sales-capabilities';
+import { ProductAccessState } from '../product-access/product-access.state';
+import { UiStore, type AppPage } from '../state/ui.store';
+import { shellProducts } from './shell-products';
+
+export { shellProducts, type ShellProduct } from './shell-products';
 
 export const restaurantSections = [
   { path: 'setup', kind: 'restaurant', icon: 'storefront' },
@@ -57,23 +60,6 @@ export class ShellRouteContext {
           ?.kind ?? 'overview');
   }
 }
-
-export const shellProducts = [
-  {
-    code: 'ACCOUNTING',
-    icon: 'account_balance',
-    labelKey: 'SHELL.NAV.ACCOUNTING',
-    route: '/dashboard',
-  },
-  { code: 'SALES', icon: 'storefront', labelKey: 'SHELL.NAV.SALES', route: '/sales' },
-  {
-    code: 'RESTAURANTS',
-    icon: 'restaurant',
-    labelKey: 'SHELL.NAV.RESTAURANTS',
-    route: '/restaurants',
-  },
-] as const;
-export type ShellProduct = (typeof shellProducts)[number];
 
 export function productForPage(page: AppPage): ProductCode | null {
   if (page === 'restaurants') return 'RESTAURANTS';

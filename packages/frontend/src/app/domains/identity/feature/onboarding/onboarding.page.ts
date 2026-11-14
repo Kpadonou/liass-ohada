@@ -10,6 +10,7 @@ import { CreateInitialWorkspaceRequestSchema, type ProductCode } from '@liass-oh
 import { QueryClient } from '@tanstack/angular-query-experimental';
 import { productAccessQueryKeys } from '../../../../core/product-access/product-access.queries';
 import { WelcomeDestination } from '../../../../core/feature/welcome/welcome-destination';
+import { shellProducts } from '../../../../core/navigation/shell-products';
 import { TranslocoModule } from '@ngneat/transloco';
 
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -80,31 +81,12 @@ export class OnboardingPage implements OnInit {
       descriptionKey: 'IDENTITY.ONBOARDING.INTENTS.ACCOUNTING_FIRM.DESCRIPTION'
     }
   ];
-  protected readonly productOptions: readonly {
-    code: ProductCode;
-    icon: string;
-    titleKey: string;
-    descriptionKey: string;
-  }[] = [
-    {
-      code: 'ACCOUNTING',
-      icon: 'account_balance',
-      titleKey: 'IDENTITY.ONBOARDING.PRODUCTS.ACCOUNTING.TITLE',
-      descriptionKey: 'IDENTITY.ONBOARDING.PRODUCTS.ACCOUNTING.DESCRIPTION'
-    },
-    {
-      code: 'SALES',
-      icon: 'receipt_long',
-      titleKey: 'IDENTITY.ONBOARDING.PRODUCTS.SALES.TITLE',
-      descriptionKey: 'IDENTITY.ONBOARDING.PRODUCTS.SALES.DESCRIPTION'
-    },
-    {
-      code: 'RESTAURANTS',
-      icon: 'restaurant',
-      titleKey: 'IDENTITY.ONBOARDING.PRODUCTS.RESTAURANTS.TITLE',
-      descriptionKey: 'IDENTITY.ONBOARDING.PRODUCTS.RESTAURANTS.DESCRIPTION'
-    }
-  ];
+  protected readonly productOptions = shellProducts.map(({ code, icon, labelKey }) => ({
+    code,
+    icon,
+    titleKey: labelKey,
+    descriptionKey: `IDENTITY.ONBOARDING.PRODUCTS.${code}.DESCRIPTION`
+  }));
   protected readonly selectedProducts = signal<readonly ProductCode[]>([]);
   protected readonly productsTouched = signal(false);
   protected readonly isAccountingFirm = computed(() => this.selectedIntent() === 'ACCOUNTING_FIRM');

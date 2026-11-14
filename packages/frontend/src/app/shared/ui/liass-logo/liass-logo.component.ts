@@ -2,7 +2,7 @@ import { Component, computed, input, signal } from '@angular/core';
 
 import { LIASS_BRAND } from '../../branding/liass-brand-assets';
 
-export type LiassLogoSize = 'sm' | 'md' | 'lg';
+export type LiassLogoSize = 'sm' | 'md' | 'lg' | 'xl';
 export type LiassLogoTheme = 'light' | 'dark' | 'auto';
 export type LiassLogoVariant = 'horizontal' | 'vertical' | 'icon';
 
@@ -34,16 +34,19 @@ const sizeClasses: Record<LiassLogoVariant, Record<LiassLogoSize, string>> = {
     sm: 'h-12 w-auto',
     md: 'h-14 w-auto',
     lg: 'h-20 w-auto',
+    xl: 'h-24 w-auto',
   },
   icon: {
     sm: 'size-9',
     md: 'size-11',
     lg: 'size-16',
+    xl: 'size-20',
   },
   vertical: {
     sm: 'h-12 w-14',
     md: 'h-16 w-[4.75rem]',
     lg: 'h-24 w-28',
+    xl: 'h-28 w-32',
   },
 };
 

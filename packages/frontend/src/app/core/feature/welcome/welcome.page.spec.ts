@@ -7,9 +7,9 @@ import { QueryClient } from '@tanstack/angular-query-experimental';
 
 import fr from '../../../../../public/assets/i18n/fr.json';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
-import { CabinetSettingsCapabilities } from '../../../domains/identity/data-access/cabinet-settings-capabilities';
 import { RestaurantsCapabilities } from '../../../domains/restaurants/data-access/restaurants-capabilities';
 import { SalesCapabilities } from '../../../domains/sales/data-access/sales-capabilities';
+import { shellProducts } from '../../navigation/shell-products';
 import { ProductAccessApi } from '../../product-access/product-access.api';
 import { WelcomePage } from './welcome.page';
 
@@ -24,7 +24,6 @@ const access = (orgId: string, productCode: ProductCode): ProductAccess => ({
 describe('post-onboarding welcome', () => {
   const org = signal('org-a');
   const kind = signal<'COMPANY' | 'ACCOUNTING_FIRM'>('COMPANY');
-  const canManageRestaurant = signal(true);
   const canReadRestaurant = signal(true);
   const canReadSales = signal(true);
   let records: ProductAccess[];
@@ -34,7 +33,6 @@ describe('post-onboarding welcome', () => {
   beforeEach(() => {
     org.set('org-a');
     kind.set('COMPANY');
-    canManageRestaurant.set(true);
     canReadRestaurant.set(true);
     canReadSales.set(true);
     records = [
@@ -80,17 +78,10 @@ describe('post-onboarding welcome', () => {
             canReadAccounting: () => true,
           },
         },
-        {
-          provide: CabinetSettingsCapabilities,
-          useValue: { canManageCabinetSettings: () => true },
-        },
-        { provide: SalesCapabilities, useValue: { canRead: canReadSales, canWrite: canReadSales } },
+        { provide: SalesCapabilities, useValue: { canRead: canReadSales } },
         {
           provide: RestaurantsCapabilities,
-          useValue: {
-            canRead: canReadRestaurant,
-            canManageSetup: canManageRestaurant,
-          },
+          useValue: { canRead: canReadRestaurant },
         },
       ],
     });
@@ -100,7 +91,7 @@ describe('post-onboarding welcome', () => {
     client.clear();
   });
 
-  it('shows only authorized applications with inline icons and uniform action styles', async () => {
+  it('shows authorized applications with canonical product identity and one primary action', async () => {
     const fixture = TestBed.createComponent(WelcomePage);
     await vi.waitFor(() => {
       fixture.detectChanges();
@@ -110,6 +101,7 @@ describe('post-onboarding welcome', () => {
     expect(page.textContent).toContain('Choisissez votre application');
     expect(page.textContent).toContain("Sélectionnez l'application que vous souhaitez utiliser.");
     expect(page.textContent).toContain('Applications');
+    expect(page.textContent).toContain('Ventes');
     expect(page.textContent).toContain('journaux et écritures');
     expect(page.textContent).toContain('clients, articles et factures');
     expect(page.textContent).toContain('menus, commandes, encaissements et stocks');
@@ -117,44 +109,33 @@ describe('post-onboarding welcome', () => {
     expect(page.querySelector('section > div.grid')?.className).toContain('sm:grid-cols-2');
     expect(page.querySelector('section > div.grid')?.className).toContain('lg:grid-cols-3');
     expect(page.querySelectorAll('liass-card h3')).toHaveLength(3);
+    expect(page.querySelector('liass-logo')?.getAttribute('size')).toBe('xl');
+    expect(page.querySelector('liass-logo span')?.className).toContain('h-24');
     expect(
-      page.querySelectorAll('liass-card h3')[0].parentElement?.querySelector('mat-icon')
-        ?.textContent,
-    ).toContain('calculate');
-    const configure = [...page.querySelectorAll('liass-card liass-button')].filter((button) =>
-      button.textContent?.includes('Configurer'),
-    );
+      [...page.querySelectorAll('liass-card')].map((card) =>
+        card.querySelector('mat-icon')?.textContent?.trim(),
+      ),
+    ).toEqual(shellProducts.map((product) => product.icon));
+    const actions = [...page.querySelectorAll('liass-card liass-button')];
     const open = [...page.querySelectorAll('liass-card liass-button')].filter((button) =>
       button.textContent?.includes('Ouvrir'),
     );
-    expect(configure).toHaveLength(3);
+    expect(actions).toHaveLength(3);
     expect(open).toHaveLength(3);
     expect(
-      configure.every((button) =>
-        button.querySelector('button')?.className.includes('bg-brand-700'),
-      ),
+      open.every((button) => button.querySelector('button')?.className.includes('bg-brand-700')),
     ).toBe(true);
-    expect(
-      open.every((button) =>
-        button.querySelector('button')?.className.includes('border-slate-200'),
-      ),
-    ).toBe(true);
-    expect(page.querySelectorAll('liass-card mat-icon')[0].parentElement?.className).toContain(
-      'text-brand-700',
+    expect(page.textContent).not.toContain('Configurer');
+    expect(open.every((button) => button.parentElement?.className.includes('justify-end'))).toBe(
+      true,
     );
-    expect(page.querySelectorAll('liass-card mat-icon')[3].parentElement?.className).toContain(
-      'text-success-600',
-    );
-    expect(page.querySelectorAll('liass-card mat-icon')[6].parentElement?.className).toContain(
-      'text-warning-600',
-    );
-    const firstAction = configure[0].querySelector('button')!;
+    const firstAction = open[0].querySelector('button')!;
     firstAction.focus();
     expect(document.activeElement).toBe(firstAction);
     expect(firstAction.className).toContain('liass-focus-ring');
   });
 
-  it('routes both actions to existing workflows without setup blocking', async () => {
+  it('opens each application at its existing landing destination', async () => {
     const router = TestBed.inject(Router);
     const navigate = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     const fixture = TestBed.createComponent(WelcomePage);
@@ -163,14 +144,10 @@ describe('post-onboarding welcome', () => {
       expect(fixture.nativeElement.querySelectorAll('liass-card h3')).toHaveLength(3);
     });
     const cards = fixture.nativeElement.querySelectorAll('liass-card');
-    cards[0].querySelectorAll('liass-button button')[0].click();
-    cards[0].querySelectorAll('liass-button button')[1].click();
-    cards[1].querySelectorAll('liass-button button')[0].click();
-    cards[2].querySelectorAll('liass-button button')[0].click();
-    expect(navigate).toHaveBeenCalledWith('/accounting/fiscal-years');
-    expect(navigate).toHaveBeenCalledWith('/dashboard');
-    expect(navigate).toHaveBeenCalledWith('/sales/items');
-    expect(navigate).toHaveBeenCalledWith('/restaurants/setup');
+    cards[0].querySelector('liass-button button')?.click();
+    cards[1].querySelector('liass-button button')?.click();
+    cards[2].querySelector('liass-button button')?.click();
+    expect(navigate.mock.calls).toEqual([['/dashboard'], ['/sales'], ['/restaurants']]);
   });
 
   it('updates with organization and entitlement changes and preserves a one-card layout', async () => {
@@ -184,7 +161,7 @@ describe('post-onboarding welcome', () => {
     org.set('org-b');
     await vi.waitFor(() => {
       fixture.detectChanges();
-      expect(fixture.nativeElement.textContent).toContain('Facturation');
+      expect(fixture.nativeElement.textContent).toContain('Ventes');
     });
     expect(fixture.nativeElement.textContent).not.toContain('Comptabilité');
     expect(api.listProductAccess).toHaveBeenCalledWith('org-b');
@@ -200,25 +177,22 @@ describe('post-onboarding welcome', () => {
     expect(fixture.nativeElement.textContent).not.toContain('Liass-Resto');
     expect(fixture.nativeElement.textContent).toContain('dossiers clients, missions et échéances');
     const buttons = fixture.nativeElement.querySelectorAll('liass-card liass-button button');
+    expect(buttons).toHaveLength(1);
     buttons[0].click();
-    buttons[1].click();
-    expect(navigate).toHaveBeenCalledWith('/cabinet/settings');
     expect(navigate).toHaveBeenCalledWith('/cabinet/dashboard');
   });
 
-  it('removes inaccessible apps and disables unauthorized configuration', async () => {
+  it('hides unreadable applications without restricting a readable product to setup managers', async () => {
     canReadSales.set(false);
-    canManageRestaurant.set(false);
     const fixture = TestBed.createComponent(WelcomePage);
     await vi.waitFor(() => {
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelectorAll('liass-card')).toHaveLength(2);
     });
-    expect(fixture.nativeElement.textContent).not.toContain('Facturation');
-    const restaurantButtons = fixture.nativeElement
+    expect(fixture.nativeElement.textContent).not.toContain('Ventes');
+    const restaurantButton = fixture.nativeElement
       .querySelectorAll('liass-card')[1]
-      .querySelectorAll('liass-button button');
-    expect(restaurantButtons[0].disabled).toBe(true);
-    expect(restaurantButtons[1].disabled).toBe(false);
+      .querySelector('liass-button button');
+    expect(restaurantButton.disabled).toBe(false);
   });
 });

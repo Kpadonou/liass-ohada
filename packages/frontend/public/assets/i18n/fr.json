@@ -5,25 +5,19 @@
     "RETURNING_TITLE": "Choisissez votre application",
     "RETURNING_SUBTITLE": "Sélectionnez l'application que vous souhaitez utiliser.",
     "APPLICATIONS": "Applications",
-    "CONFIGURE": "Configurer",
     "OPEN": "Ouvrir",
-    "CONFIGURE_UNAVAILABLE": "La configuration est réservée aux personnes autorisées.",
     "LOAD_ERROR": "Vos applications ne peuvent pas être chargées pour le moment.",
     "RETRY": "Réessayer",
     "NO_APPLICATIONS": "Aucune application n’est disponible dans cet espace pour le moment.",
     "APPLICATION": {
       "ACCOUNTING": {
-        "TITLE": "Comptabilité",
-        "FIRM_TITLE": "Cabinet comptable",
         "DESCRIPTION": "Tenez vos comptes, journaux et écritures, puis consultez vos grands livres et balances.",
         "FIRM_DESCRIPTION": "Gérez vos dossiers clients, missions et échéances depuis votre cabinet."
       },
       "SALES": {
-        "TITLE": "Facturation",
         "DESCRIPTION": "Gérez vos clients, articles et factures, de la préparation à l’émission."
       },
       "RESTAURANTS": {
-        "TITLE": "Liass-Resto",
         "DESCRIPTION": "Gérez vos menus, commandes, encaissements et stocks par point de vente."
       }
     }
@@ -2793,15 +2787,12 @@
         "TITLE": "Choisissez vos produits",
         "DESCRIPTION": "Sélectionnez un ou plusieurs produits. Chacun peut être utilisé indépendamment.",
         "ACCOUNTING": {
-          "TITLE": "Comptabilité",
           "DESCRIPTION": "Comptabilité générale, trésorerie et comptabilité de projets."
         },
         "SALES": {
-          "TITLE": "Facturation",
           "DESCRIPTION": "Clients, catalogue, facturation, créances et avoirs."
         },
         "RESTAURANTS": {
-          "TITLE": "Liass-Resto",
           "DESCRIPTION": "Configuration du restaurant, du menu et des tables."
         }
       },
