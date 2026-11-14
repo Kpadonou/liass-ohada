@@ -4801,7 +4801,11 @@
       "FISCAL_GROUP_REQUIRED": "Choose a group allowed by the company's tax regime.",
       "FISCAL_UNCLASSIFIED": "Needs classification",
       "FISCAL_REGIME_REQUIRED": "Declare the company's tax regime first.",
-      "FISCAL_GROUPS": { "A": "A · Exempt", "B": "B · VAT 18%", "E": "E · TPS regime" }
+      "FISCAL_GROUPS": {
+        "A": "A · Exempt",
+        "B": "B · VAT 18%",
+        "E": "E · TPS regime"
+      }
     },
     "UX": {
       "CONFIGURATION": "Configuration",
@@ -5389,7 +5393,29 @@
       "MORE": "Show more",
       "BACK": "Back to Checkout",
       "ACCESS": "Your access to this invoice needs to be verified.",
-      "BUILD_PROGRESS": "{{count}} sections prepared"
+      "BUILD_PROGRESS": "{{count}} sections prepared",
+      "FISCAL_TEST": "e-MECeF — TEST",
+      "FISCAL_CODE": "Code MECeF/DGI",
+      "FISCAL_COUNTERS": "Counters",
+      "FISCAL_DATE": "Fiscal date",
+      "FISCAL_QR": "QR e-MECeF TEST",
+      "FISCAL_STATUS": {
+        "NOT_STARTED": "Not started",
+        "RESERVED": "Not confirmed",
+        "CREATE_IN_FLIGHT": "Not confirmed",
+        "CREATED": "Awaiting confirmation",
+        "CONFIRM_IN_FLIGHT": "Confirmation in progress",
+        "CONFIRMED": "Confirmed — TEST",
+        "CANCEL_IN_FLIGHT": "Not confirmed",
+        "CANCELLED": "Cancelled",
+        "UNKNOWN_OUTCOME": "Uncertain outcome — do not resubmit",
+        "FAILED": "Fiscal processing failed"
+      },
+      "FISCAL_NIM": "NIM",
+      "FISCAL_TEST_NOTICE": "e-MECeF test document — not valid for tax purposes.",
+      "FISCAL_REFRESH": "Refresh fiscal status",
+      "FISCAL_LOADING": "Checking fiscal status…",
+      "FISCAL_READ_ERROR": "Fiscal status unavailable. Refresh to retry."
     },
     "CONTEXT": {
       "ACTIVE": "Active establishment",

@@ -1,3 +1,4 @@
+import { RestaurantFiscalApi } from '../data-access/restaurant-fiscal.api';
 import {
   Component,
   DestroyRef,
@@ -83,6 +84,26 @@ const denied = (error: unknown) =>
     }
     @if (verified() && first.data(); as receipt) {
       <div class="mb-3 flex flex-wrap items-center justify-end gap-2">
+        @if (fiscal.isPending() && fiscal.isFetching()) {
+          <p role="status" class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.RECEIPT.FISCAL_LOADING' | transloco }}
+          </p>
+        }
+        @if (fiscal.isError() && !fiscalDenied()) {
+          <p role="status" class="text-sm text-app-text-secondary">
+            {{ 'RESTAURANTS.RECEIPT.FISCAL_READ_ERROR' | transloco }}
+          </p>
+        }
+        @if (fiscal.data() || (fiscal.isError() && !fiscalDenied())) {
+          <button
+            mat-button
+            type="button"
+            [disabled]="fiscal.isFetching() || printBusy()"
+            (click)="fiscal.refetch()"
+          >
+            <mat-icon>refresh</mat-icon>{{ 'RESTAURANTS.RECEIPT.FISCAL_REFRESH' | transloco }}
+          </button>
+        }
         @if (printBusy()) {
           <p role="status" class="text-sm">
             {{
@@ -98,12 +119,17 @@ const denied = (error: unknown) =>
             #printButton
             mat-flat-button
             type="button"
-            [disabled]="pages.isFetching()"
+            [disabled]="pages.isFetching() || fiscal.isFetching()"
             (click)="print()"
           >
             <mat-icon>print</mat-icon>{{ 'RESTAURANTS.RECEIPT.PRINT' | transloco }}
           </button>
-          <button mat-button type="button" [disabled]="pages.isFetching()" (click)="print('a4')">
+          <button
+            mat-button
+            type="button"
+            [disabled]="pages.isFetching() || fiscal.isFetching()"
+            (click)="print('a4')"
+          >
             {{ 'RESTAURANTS.RECEIPT.PRINT_A4' | transloco }}
           </button>
         }
@@ -116,7 +142,11 @@ const denied = (error: unknown) =>
         />
       }
       <div class="rounded-app-card border border-app-border">
-        <liass-receipt-document [summary]="receipt.data" [parts]="visibleParts()" />
+        <liass-receipt-document
+          [summary]="receipt.data"
+          [parts]="visibleParts()"
+          [fiscal]="fiscal.data()"
+        />
       </div>
       @if (moreVisible()) {
         <div class="mt-3">
@@ -192,6 +222,26 @@ export class RestaurantReceiptView {
     refetchOnMount: 'always',
     refetchOnWindowFocus: 'always',
   }));
+  private readonly fiscalApi = inject(RestaurantFiscalApi);
+  readonly fiscal = injectQuery(() => ({
+    queryKey: [...receiptKey(this.ctx()), 'fiscal', this.first.data()?.data.receiptId],
+    queryFn: async () => {
+      const ctx = this.ctx();
+      const receipt = this.first.data()!.data;
+      const result = await this.fiscalApi.result(ctx, receipt.receiptId);
+      if (
+        !this.current(ctx) ||
+        (result.normalizedInvoice &&
+          (result.normalizedInvoice.digest !== receipt.digest || result.total !== receipt.dueMinor))
+      )
+        throw new Error('Fiscal publication mismatch');
+      return result;
+    },
+    enabled: this.verified() && !!this.first.data() && !this.rejected(),
+    retry: false,
+    staleTime: 30000,
+  }));
+  readonly fiscalDenied = computed(() => denied(this.fiscal.error()));
   readonly pages = injectInfiniteQuery(() => ({
     queryKey: [...receiptKey(this.ctx()), 'parts', this.first.data()?.data.digest ?? ''],
     initialPageParam: undefined as string | undefined,
@@ -346,7 +396,14 @@ export class RestaurantReceiptView {
     this.printAll.set(false);
   }
   async print(paper: 'thermal' | 'a4' = 'thermal') {
-    if (!this.current() || this.printBusy() || !this.verified() || this.pages.isFetching()) return;
+    if (
+      !this.current() ||
+      this.printBusy() ||
+      !this.verified() ||
+      this.pages.isFetching() ||
+      this.fiscal.isFetching()
+    )
+      return;
     const ctx = this.ctx(),
       job = ++this.printJob;
     this.error.set('');
@@ -363,6 +420,7 @@ export class RestaurantReceiptView {
       }
       if (!this.current(ctx) || job !== this.printJob) return;
       if (next) throw new Error('Receipt is incomplete');
+      await this.document()?.readyForPrint();
       this.printAll.set(true);
       await new Promise<void>((resolve) =>
         requestAnimationFrame(() => requestAnimationFrame(() => resolve())),

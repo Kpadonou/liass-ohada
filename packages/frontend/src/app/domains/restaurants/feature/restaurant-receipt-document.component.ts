@@ -1,11 +1,14 @@
-import { Component, ElementRef, inject, input } from '@angular/core';
+import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
+import { RestaurantFiscalResultResponse } from '@liass-ohada/shared/restaurants';
+import QRCode from 'qrcode';
+import { Component, ElementRef, effect, signal, inject, input } from '@angular/core';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { RestaurantReceiptPart, RestaurantReceiptSummary } from '@liass-ohada/shared/restaurants';
 import { restaurantPrice } from '../utils/restaurant-money';
 @Component({
   selector: 'liass-receipt-document',
   host: { class: 'block min-w-0' },
-  imports: [TranslocoModule],
+  imports: [TranslocoModule, LiassStatusChipComponent],
   template: ` <article
     class="receipt-document min-w-0 bg-app-surface p-4 sm:p-6"
     aria-labelledby="receipt-title"
@@ -43,8 +46,43 @@ import { restaurantPrice } from '../utils/restaurant-money';
       <p class="mt-2 text-xs">
         {{ 'RESTAURANTS.RECEIPT.CURRENCY' | transloco }} : {{ summary().currency }}
       </p>
+      @if (fiscal(); as result) {
+        <section class="mt-3 border-t border-app-border pt-3" aria-live="polite">
+          <h2 class="font-semibold">{{ 'RESTAURANTS.RECEIPT.FISCAL_TEST' | transloco }}</h2>
+          <liass-status-chip
+            size="sm"
+            [tone]="result.status === 'UNKNOWN_OUTCOME' ? 'warning' : 'neutral'"
+            [label]="'RESTAURANTS.RECEIPT.FISCAL_STATUS.' + result.status | transloco"
+          />
+          @if (result.securityElements; as security) {
+            <dl class="mt-2 text-xs">
+              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_CODE' | transloco }}</dt>
+              <dd>{{ security.codeMECeFDGI }}</dd>
+              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_NIM' | transloco }}</dt>
+              <dd>{{ security.nim }}</dd>
+              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_COUNTERS' | transloco }}</dt>
+              <dd>{{ security.counters }}</dd>
+              <dt>{{ 'RESTAURANTS.RECEIPT.FISCAL_DATE' | transloco }}</dt>
+              <dd>{{ security.dateTime }}</dd>
+            </dl>
+            @if (qrImage(); as qr) {
+              <img
+                [src]="qr"
+                width="180"
+                height="180"
+                [alt]="'RESTAURANTS.RECEIPT.FISCAL_QR' | transloco"
+              />
+            }
+          }
+        </section>
+      }
       <p class="mt-2 text-xs text-app-text-secondary" role="status">
-        {{ 'RESTAURANTS.RECEIPT.FISCAL_UNVERIFIED' | transloco }}
+        {{
+          (fiscal()?.securityElements
+            ? 'RESTAURANTS.RECEIPT.FISCAL_TEST_NOTICE'
+            : 'RESTAURANTS.RECEIPT.FISCAL_UNVERIFIED'
+          ) | transloco
+        }}
       </p>
     </header>
     <section aria-labelledby="receipt-lines" role="list">
@@ -74,10 +112,16 @@ import { restaurantPrice } from '../utils/restaurant-money';
                 {{ 'RESTAURANTS.RECEIPT.UNIT' | transloco }}
               </p>
               @if (!line.cancelledAt && line.snapshot.discountMinor) {
-                <p class="text-xs text-app-text-secondary">{{ 'RESTAURANTS.RECEIPT.RECORDED_DISCOUNT' | transloco }} : {{ money(line.snapshot.discountMinor) }}</p>
+                <p class="text-xs text-app-text-secondary">
+                  {{ 'RESTAURANTS.RECEIPT.RECORDED_DISCOUNT' | transloco }} :
+                  {{ money(line.snapshot.discountMinor) }}
+                </p>
               }
               @if (!line.cancelledAt && line.snapshot.taxMinor) {
-                <p class="text-xs text-app-text-secondary">{{ 'RESTAURANTS.RECEIPT.RECORDED_TAX' | transloco }} : {{ money(line.snapshot.taxMinor) }}</p>
+                <p class="text-xs text-app-text-secondary">
+                  {{ 'RESTAURANTS.RECEIPT.RECORDED_TAX' | transloco }} :
+                  {{ money(line.snapshot.taxMinor) }}
+                </p>
               }
               @if (line.notes) {
                 <p
@@ -169,6 +213,30 @@ import { restaurantPrice } from '../utils/restaurant-money';
   ],
 })
 export class RestaurantReceiptDocument {
+  readonly fiscal = input<RestaurantFiscalResultResponse>();
+  readonly qrImage = signal<string | undefined>(undefined);
+  private qrReady: Promise<void> = Promise.resolve();
+  async readyForPrint() {
+    await this.qrReady;
+  }
+  constructor() {
+    effect((onCleanup) => {
+      let current = true;
+      onCleanup(() => {
+        current = false;
+      });
+      this.qrImage.set(undefined);
+      const value = this.fiscal()?.securityElements?.qrCode;
+      this.qrReady = value
+        ? QRCode.toDataURL(value, { width: 360, margin: 4, errorCorrectionLevel: 'M' }).then(
+            (image) => {
+              if (current) this.qrImage.set(image);
+            },
+          )
+        : Promise.resolve();
+      void this.qrReady.catch(() => undefined);
+    });
+  }
   readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   readonly summary = input.required<RestaurantReceiptSummary>();
   readonly parts = input.required<RestaurantReceiptPart[]>();

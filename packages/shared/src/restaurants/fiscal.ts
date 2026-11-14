@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RestaurantReceiptSummarySchema } from "./receipts";
 
 export const RestaurantFiscalSourceRequestSchema = z
   .object({
@@ -30,6 +31,11 @@ export const RestaurantFiscalStatusSchema = z.enum([
   "UNKNOWN_OUTCOME",
   "FAILED",
 ]);
+export const RestaurantFiscalSecuritySchema = z.object({
+  dateTime: z.string().min(1).max(500), qrCode: z.string().min(1).max(4096),
+  codeMECeFDGI: z.string().min(1).max(500), counters: z.string().min(1).max(500),
+  nim: z.string().min(1).max(500),
+}).strict();
 const fields = {
   invoiceId: z.string().uuid(),
   environment: z.literal("TEST"),
@@ -53,6 +59,8 @@ export const RestaurantFiscalStatusResponseSchema = z
 export const RestaurantFiscalResultResponseSchema = z
   .object({
     ...fields,
+    normalizedInvoice: RestaurantReceiptSummarySchema.nullable(),
+    securityElements: RestaurantFiscalSecuritySchema.nullable(),
     resultAvailable: z.boolean(),
     evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).nullable(),
   })
@@ -61,6 +69,8 @@ export const RestaurantFiscalResultResponseSchema = z
     (v) =>
       v.confirmed === (v.status === "CONFIRMED") &&
       v.resultAvailable === v.confirmed &&
+      (!v.normalizedInvoice || !!v.securityElements && v.normalizedInvoice.receiptId === v.invoiceId && v.normalizedInvoice.dueMinor === v.total) &&
+      (!v.securityElements || v.confirmed && v.execution === "REAL_TEST" && v.evidenceOrigin === "DGI_TEST") &&
       (v.evidenceOrigin === (v.execution === "REAL_TEST" ? "DGI_TEST" : "SYNTHETIC")) === v.confirmed,
     "Inconsistent fiscal result",
   );

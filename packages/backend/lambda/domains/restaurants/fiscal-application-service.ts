@@ -86,21 +86,32 @@ export class RestaurantFiscalApplicationService {
       mutationRetryAllowed: false as const,
     };
   }
-  async status(context: Context, input: unknown) {
+  private async readResultState(context: Context, input: unknown) {
     const request = requestSchema.parse(input);
     const source = await this.verify(context, request);
-    const state = await new FiscalAttemptStore().read(
-      this.identity(context, request),
-    );
+    const state = await new FiscalAttemptStore().read(this.identity(context, request));
     if (state && ((state.execution === "REAL_TEST") !== this.real || state.sourceDigest !== source.proof.digest))
       throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
-    await this.verify(context, request);
+    const currentSource = await this.verify(context, request);
+    if (currentSource.proof.digest !== source.proof.digest)
+      throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
+    return { request, state, source: currentSource };
+  }
+  async status(context: Context, input: unknown) {
+    const { request, state } = await this.readResultState(context, input);
     return this.view(request, state);
   }
   async confirmedResult(context: Context, input: unknown) {
-    const result = await this.status(context, input);
+    const { request, state, source } = await this.readResultState(context, input);
+    const result = this.view(request, state);
+    // Only persisted, confirmed DGI TEST evidence can enter the receipt document.
+    const securityElements = result.confirmed && this.real &&
+      state?.status === "CONFIRMED" && state.execution === "REAL_TEST" &&
+      state.securityEvidenceOrigin === "DGI_TEST" ? state.security ?? null : null;
     return {
       ...result,
+      securityElements,
+      normalizedInvoice: securityElements ? source.invoice ?? null : null,
       resultAvailable: result.confirmed,
       evidenceOrigin: result.confirmed ? (this.real ? "DGI_TEST" as const : "SYNTHETIC" as const) : null,
     };

@@ -1,3 +1,7 @@
+import { RestaurantFiscalApplicationService } from "@/lambda/domains/restaurants/fiscal-application-service";
+import { RestaurantReceiptService } from "@/lambda/domains/restaurants/receipt-service";
+import { RestaurantInvoiceSourceVerifier } from "@/lambda/domains/restaurants/invoice-source-verifier";
+import { RestaurantFiscalResultResponseSchema } from "@liass-ohada/shared/restaurants";
 import { GetItemCommand, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -208,6 +212,19 @@ test("captures before validation and persists authentic security separately; rep
     security,
     diagnostic: { captured: true },
   });
+  const access = jest.spyOn(RestaurantReceiptService, "authorize").mockResolvedValue({ actions: [], role: "OWNER" });
+  const source = jest.spyOn(RestaurantInvoiceSourceVerifier, "verify").mockResolvedValue({ verified: true,
+    evidence: { proof: { digest: config.sourceDigest }, issuanceProvenance: { verified: true,
+      evidence: { evidenceOrigin: "AUTHENTIC" } } } } as never);
+  try {
+    const application = new RestaurantFiscalApplicationService(async () => { throw new Error("No provider settings needed for reads"); }, true);
+    const result = RestaurantFiscalResultResponseSchema.parse(await application.confirmedResult(
+      { orgId: config.orgId, userId: config.operatorUserId },
+      { outletId: config.outletId, sessionId: config.sessionId, invoiceId: config.invoiceId },
+    ));
+    expect(result.securityElements).toEqual(security);
+    expect(result.legallyNormalized).toBe(false);
+  } finally { access.mockRestore(); source.mockRestore(); }
   const put = s3.commandCalls(PutObjectCommand)[0].args[0].input;
   expect(put).toMatchObject({
     IfNoneMatch: "*",

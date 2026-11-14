@@ -292,3 +292,28 @@ test.each(["CREATE", "CONFIRM"] as const)(
     }
   },
 );
+
+test("authorized result retrieves durable DGI TEST security while pending evidence stays hidden", async () => {
+  await service.initiate(context, command);
+  const security = { dateTime: "2026-11-14 10:00:00", qrCode: "DGI-TEST-QR",
+    codeMECeFDGI: "DGI-CODE", counters: "1/1 FV", nim: "TEST-NIM" };
+  const base = state!;
+  Object.assign(process.env, { FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: "1", STAGE: "dev" });
+  jest.mocked(RestaurantInvoiceSourceVerifier.verify).mockResolvedValue({ verified: true, evidence: {
+    proof: { digest }, issuanceProvenance: { verified: true, evidence: { ...provenance, evidenceOrigin: "AUTHENTIC" } },
+  } } as never);
+  try {
+    const real = new RestaurantFiscalApplicationService(settings, true);
+    state = { ...base, execution: "REAL_TEST", status: "CONFIRMED", security,
+      securityEvidenceOrigin: "DGI_TEST", diagnostic: { captured: true, reference: digest } };
+    expect(await real.confirmedResult(context, request)).toMatchObject({
+      resultAvailable: true, legallyNormalized: false, securityElements: security,
+    });
+    state = { ...state, status: "UNKNOWN_OUTCOME", uncertainOperation: "CONFIRM" };
+    expect(await real.confirmedResult(context, request)).toMatchObject({
+      resultAvailable: false, securityElements: null, mutationRetryAllowed: false,
+    });
+  } finally {
+    delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE;
+  }
+});

@@ -4801,7 +4801,11 @@
       "FISCAL_GROUP_REQUIRED": "Choisissez un groupe autorisé par le régime fiscal.",
       "FISCAL_UNCLASSIFIED": "À classer",
       "FISCAL_REGIME_REQUIRED": "Déclarez d’abord le régime fiscal de l’entreprise.",
-      "FISCAL_GROUPS": { "A": "A · Exonéré", "B": "B · TVA 18 %", "E": "E · Régime TPS" }
+      "FISCAL_GROUPS": {
+        "A": "A · Exonéré",
+        "B": "B · TVA 18 %",
+        "E": "E · Régime TPS"
+      }
     },
     "UX": {
       "CONFIGURATION": "Configuration",
@@ -5389,7 +5393,29 @@
       "MORE": "Afficher la suite",
       "BACK": "Retour à Caisse",
       "ACCESS": "Votre accès à cette facture doit être vérifié.",
-      "BUILD_PROGRESS": "{{count}} sections préparées"
+      "BUILD_PROGRESS": "{{count}} sections préparées",
+      "FISCAL_TEST": "e-MECeF — TEST",
+      "FISCAL_CODE": "Code MECeF/DGI",
+      "FISCAL_COUNTERS": "Compteurs",
+      "FISCAL_DATE": "Date fiscale",
+      "FISCAL_QR": "QR e-MECeF TEST",
+      "FISCAL_STATUS": {
+        "NOT_STARTED": "Non démarrée",
+        "RESERVED": "Non confirmée",
+        "CREATE_IN_FLIGHT": "Non confirmée",
+        "CREATED": "En attente de confirmation",
+        "CONFIRM_IN_FLIGHT": "Confirmation en cours",
+        "CONFIRMED": "Confirmée — TEST",
+        "CANCEL_IN_FLIGHT": "Non confirmée",
+        "CANCELLED": "Annulée",
+        "UNKNOWN_OUTCOME": "Résultat incertain — ne pas réémettre",
+        "FAILED": "Échec de la fiscalisation"
+      },
+      "FISCAL_NIM": "NIM",
+      "FISCAL_TEST_NOTICE": "Document de test e-MECeF — sans valeur fiscale.",
+      "FISCAL_REFRESH": "Actualiser le statut fiscal",
+      "FISCAL_LOADING": "Vérification du statut fiscal…",
+      "FISCAL_READ_ERROR": "Statut fiscal indisponible. Actualisez pour réessayer."
     },
     "CONTEXT": {
       "ACTIVE": "Établissement actif",

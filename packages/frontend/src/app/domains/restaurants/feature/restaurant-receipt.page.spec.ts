@@ -1,3 +1,4 @@
+import { RestaurantFiscalApi } from '../data-access/restaurant-fiscal.api';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -19,8 +20,10 @@ describe('Receipt presentation and complete native print', () => {
     revision = signal(1);
   const api = { page: vi.fn(), publish: vi.fn(), assertContext: vi.fn() },
     printer = { print: vi.fn() };
+  const fiscalApi = { result: vi.fn() };
   beforeEach(() => {
     vi.resetAllMocks();
+    fiscalApi.result.mockRejectedValue(new Error('disabled'));
     role.set('CASHIER');
     org.set('org');
     revision.set(1);
@@ -37,6 +40,7 @@ describe('Receipt presentation and complete native print', () => {
         }),
       ],
       providers: [
+        { provide: RestaurantFiscalApi, useValue: fiscalApi },
         { provide: QueryClient, useValue: client },
         { provide: RestaurantReceiptApi, useValue: api },
         { provide: RestaurantReceiptPrint, useValue: printer },
@@ -75,6 +79,59 @@ describe('Receipt presentation and complete native print', () => {
       expect(f.componentInstance.loadedCount()).toBeGreaterThan(0);
     });
   }
+  it('renders confirmed DGI TEST evidence and includes its QR in thermal and A4 print', async () => {
+    fiscalApi.result.mockResolvedValue({
+      invoiceId: receiptSummary().receiptId,
+      environment: 'TEST',
+      execution: 'REAL_TEST',
+      status: 'CONFIRMED',
+      confirmed: true,
+      legallyNormalized: false,
+      normalizedInvoice: receiptSummary(),
+      total: receiptSummary().dueMinor,
+      uncertainOperation: null,
+      mutationRetryAllowed: false,
+      resultAvailable: true,
+      evidenceOrigin: 'DGI_TEST',
+      securityElements: {
+        dateTime: '14/11/2026 10:00:00',
+        qrCode: 'https://example.com/dgi-test',
+        codeMECeFDGI: 'TEST-CODE',
+        nim: 'TEST-NIM',
+        counters: '1/1 FV',
+      },
+    });
+    const f = create();
+    await loaded(f);
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('TEST-CODE');
+      expect(f.nativeElement.querySelector('img')?.src).toMatch(/^data:image\/png/);
+    });
+    for (const paper of ['thermal', 'a4'] as const) {
+      await f.componentInstance.print(paper);
+      expect(printer.print).toHaveBeenLastCalledWith(expect.any(HTMLElement), paper);
+      const document = printer.print.mock.calls.at(-1)![0] as HTMLElement;
+      expect(document.textContent).toContain('TEST-NIM');
+      expect(document.querySelector('img')?.src).toMatch(/^data:image\/png/);
+    }
+  });
+  it('shows an uncertain outcome without fiscal evidence or a QR', async () => {
+    fiscalApi.result.mockResolvedValue({
+      invoiceId: receiptSummary().receiptId,
+      status: 'UNKNOWN_OUTCOME',
+      securityElements: null,
+    });
+    const f = create();
+    await loaded(f);
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('Résultat incertain');
+    });
+    expect(f.nativeElement.querySelector('img')).toBeNull();
+    expect(f.nativeElement.textContent).not.toContain('TEST-CODE');
+    expect(fiscalApi.result).toHaveBeenCalledTimes(1);
+  });
   it('direct FINAL refresh reads one bounded page, canonical totals and no POST', async () => {
     const f = create();
     await loaded(f);
