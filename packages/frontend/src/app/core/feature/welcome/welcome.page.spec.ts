@@ -115,7 +115,17 @@ describe('post-onboarding welcome', () => {
       [...page.querySelectorAll('liass-card')].map((card) =>
         card.querySelector('mat-icon')?.textContent?.trim(),
       ),
-    ).toEqual(shellProducts.map((product) => product.icon));
+    ).toEqual(['calculate', 'receipt_long', 'restaurant']);
+    expect(shellProducts.map((product) => product.iconClass)).toEqual([
+      'bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300',
+      'bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300',
+      'bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300',
+    ]);
+    expect(
+      [...page.querySelectorAll('[data-testid="welcome-product-icon"]')].map((icon) =>
+        icon.classList.contains('bg-brand-50') && icon.classList.contains('text-brand-700'),
+      ),
+    ).toEqual([true, true, true]);
     const actions = [...page.querySelectorAll('liass-card liass-button')];
     const open = [...page.querySelectorAll('liass-card liass-button')].filter((button) =>
       button.textContent?.includes('Ouvrir'),

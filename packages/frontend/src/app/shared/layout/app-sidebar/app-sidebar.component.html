@@ -8,7 +8,10 @@
         [matTooltipDisabled]="sidebarExpanded()"
         matTooltipPosition="right"
       >
-        <span [class]="productIdentityIconClass()">
+        <span
+          [class]="productIdentityIconClass() + ' ' + product.iconClass"
+          data-testid="sidebar-product-icon"
+        >
           <mat-icon class="size-6 shrink-0" aria-hidden="true">{{ product.icon }}</mat-icon>
         </span>
         <span data-testid="sidebar-product-label" [class]="productIdentityLabelClass()">
