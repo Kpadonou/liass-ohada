@@ -884,8 +884,14 @@ describe('AppTopbarComponent', () => {
       '[data-testid="active-product-icon"]',
     ) as HTMLElement;
     expect(activeIcon.textContent).toContain('restaurant');
-    expect(activeIcon.className).toContain('bg-brand-50');
-    expect(activeIcon.className).toContain('text-brand-700');
+    expect(activeIcon.className).toContain('text-white');
+    expect(activeIcon.className).not.toContain('bg-brand-50');
+    expect(activeIcon.className).not.toContain('rounded-app-control');
+    expect(
+      fixture.nativeElement
+        .querySelector('[data-testid="language-trigger"]')
+        ?.classList.contains('text-white'),
+    ).toBe(true);
     const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     trigger.click();
     fixture.detectChanges();
@@ -945,9 +951,9 @@ describe('AppTopbarComponent', () => {
     expect(trigger.textContent).not.toContain('expand_more');
     expect(trigger.getAttribute('aria-haspopup')).toBeNull();
     expect(
-      trigger.querySelector('[data-testid="active-product-icon"]')?.classList.contains(
-        'bg-brand-50',
-      ),
+      trigger
+        .querySelector('[data-testid="active-product-icon"]')
+        ?.classList.contains('text-white'),
     ).toBe(true);
     const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     trigger.click();
