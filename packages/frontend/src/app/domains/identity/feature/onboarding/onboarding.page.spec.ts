@@ -109,7 +109,7 @@ const translations = {
   fr: {
     COMMON: { SELECT: { NO_RESULTS: 'Aucun résultat', SEARCH_PLACEHOLDER: 'Rechercher...' } },
     SHELL: {
-      NAV: { ACCOUNTING: 'Comptabilité', SALES: 'Ventes', RESTAURANTS: 'Liass-Resto' }
+      NAV: { ACCOUNTING: 'Comptabilité', SALES: 'Facturation', RESTAURANTS: 'Liass-Resto' }
     },
     IDENTITY: {
       ONBOARDING: {
@@ -122,7 +122,7 @@ const translations = {
         PRODUCTS: {
           ...copy.PRODUCTS,
           ACCOUNTING: { TITLE: 'Comptabilité', DESCRIPTION: 'Comptabilité et trésorerie.' },
-          SALES: { TITLE: 'Ventes', DESCRIPTION: 'Clients et facturation.' }
+          SALES: { TITLE: 'Facturation', DESCRIPTION: 'Clients et facturation.' }
         }
       }
     }
@@ -501,7 +501,7 @@ describe('multi-product onboarding', () => {
     organization();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Comptabilité');
-    expect(fixture.nativeElement.textContent).toContain('Ventes');
+    expect(fixture.nativeElement.textContent).toContain('Facturation');
     expect(fixture.nativeElement.textContent).toContain('Liass-Resto');
     expect(fixture.nativeElement.querySelector('h2').getAttribute('tabindex')).toBe('-1');
     expect(fixture.nativeElement.querySelector('[aria-current="step"]')).toBeTruthy();

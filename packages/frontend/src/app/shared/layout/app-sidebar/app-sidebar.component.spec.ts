@@ -113,7 +113,7 @@ const translations = {
         PROJECTS: 'Projets et fonds',
         REPORTS: 'États OHADA',
         RESTAURANTS: 'Liass-Resto',
-        SALES: 'Ventes',
+        SALES: 'Facturation',
         SALES_CUSTOMERS: 'Clients',
         SALES_ITEMS: 'Articles & services',
         SALES_INVOICES: 'Factures',
@@ -207,7 +207,7 @@ describe('AppSidebarComponent', () => {
     expect(text).not.toContain('POSTE ERP');
     expect(text).not.toContain('Poste ERP');
     expect(text).not.toContain('ESPACE');
-    expect(text).not.toContain('Ventes');
+    expect(text).not.toContain('Facturation');
     expect(text).not.toContain('Sales');
   });
 
@@ -885,7 +885,7 @@ describe('AppSidebarComponent', () => {
     fixture.detectChanges();
 
     const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Ventes');
+    expect(text).toContain('Facturation');
     expect(text).toContain('Clients');
     expect(text).toContain('Articles & services');
     expect(text).toContain('Factures');

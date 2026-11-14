@@ -101,10 +101,14 @@ describe('post-onboarding welcome', () => {
     expect(page.textContent).toContain('Choisissez votre application');
     expect(page.textContent).toContain("Sélectionnez l'application que vous souhaitez utiliser.");
     expect(page.textContent).toContain('Applications');
-    expect(page.textContent).toContain('Ventes');
+    expect(page.textContent).toContain('Facturation');
     expect(page.textContent).toContain('journaux et écritures');
     expect(page.textContent).toContain('clients, articles et factures');
     expect(page.textContent).toContain('menus, commandes, encaissements et stocks');
+    expect(
+      [...page.querySelectorAll('liass-card h3')].map((heading) => heading.textContent?.trim()),
+    ).toEqual(['Comptabilité', 'Facturation', 'Liass-Resto']);
+    expect(page.querySelector('header > span')?.classList.contains('bg-brand-gold')).toBe(true);
     expect(page.querySelector('liass-app-sidebar')).toBeNull();
     expect(page.querySelector('section > div.grid')?.className).toContain('sm:grid-cols-2');
     expect(page.querySelector('section > div.grid')?.className).toContain('lg:grid-cols-3');
@@ -171,7 +175,7 @@ describe('post-onboarding welcome', () => {
     org.set('org-b');
     await vi.waitFor(() => {
       fixture.detectChanges();
-      expect(fixture.nativeElement.textContent).toContain('Ventes');
+      expect(fixture.nativeElement.textContent).toContain('Facturation');
     });
     expect(fixture.nativeElement.textContent).not.toContain('Comptabilité');
     expect(api.listProductAccess).toHaveBeenCalledWith('org-b');
@@ -199,7 +203,7 @@ describe('post-onboarding welcome', () => {
       fixture.detectChanges();
       expect(fixture.nativeElement.querySelectorAll('liass-card')).toHaveLength(2);
     });
-    expect(fixture.nativeElement.textContent).not.toContain('Ventes');
+    expect(fixture.nativeElement.textContent).not.toContain('Facturation');
     const restaurantButton = fixture.nativeElement
       .querySelectorAll('liass-card')[1]
       .querySelector('liass-button button');
