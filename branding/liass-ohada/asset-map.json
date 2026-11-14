@@ -1,0 +1,92 @@
+[
+  {
+    "destination": "assets/logos/full/logo-horizontal-navy-gold.png",
+    "source": "liass_ohada_corporate_logo.png",
+    "pixel_dimensions": [
+      2172,
+      724
+    ],
+    "sha256": "2ecc4e753d5fa7707611ff117fdd1ff8f1f6af9832405e506e8fcc31ba59ad61"
+  },
+  {
+    "destination": "assets/logos/full/logo-horizontal-white-gold.png",
+    "source": "modern_liass_ohada_logo_mark.png",
+    "pixel_dimensions": [
+      2172,
+      724
+    ],
+    "sha256": "cb41da9b3de061d4981cf95a3a2b76fe833de4de55ae7f2bbe6d8bae639db447"
+  },
+  {
+    "destination": "assets/logos/stacked/logo-stacked-navy-gold.png",
+    "source": "navy_and_gold_liass_ohada_logo.png",
+    "pixel_dimensions": [
+      1448,
+      1086
+    ],
+    "sha256": "fcc0e5c8c713ac24a44ff4afb85c561cfacd752c38de3777dfdf57ca76fadd32"
+  },
+  {
+    "destination": "assets/logos/stacked/logo-stacked-white-gold.png",
+    "source": "liasse_ohada_golden_monogram_logo.png",
+    "pixel_dimensions": [
+      1448,
+      1086
+    ],
+    "sha256": "cee87dd17408c78aa2064c8f0a69f68df90f85e7ba329d26e57a2da033a6b6d8"
+  },
+  {
+    "destination": "assets/logos/monogram/monogram-navy-gold.png",
+    "source": "navy_and_gold_lo_monogram_logo.png",
+    "pixel_dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "8218db356b2c3185c78cd317470519ee02c4506ad62d250600d2b01ee6e2e8e8"
+  },
+  {
+    "destination": "assets/logos/monogram/monogram-white-gold.png",
+    "source": "minimalist_white_lo_monogram_with_gold_accent.png",
+    "pixel_dimensions": [
+      1254,
+      1254
+    ],
+    "sha256": "0b311ca02c9b79527b13aaef59b874956783b9267bf42f9ca240155be5b95153"
+  },
+  {
+    "destination": "assets/logos/wordmark/wordmark-navy-gold.png",
+    "source": "liass_ohada_corporate_wordmark.png",
+    "pixel_dimensions": [
+      2172,
+      724
+    ],
+    "sha256": "6ae35b68846508f54daa3d38476e30186b27bc801ccb77e0b41cda123eca8e15"
+  },
+  {
+    "destination": "assets/logos/wordmark/wordmark-white-gold.png",
+    "source": "liass_ohada_logo_wordmark.png",
+    "pixel_dimensions": [
+      2172,
+      724
+    ],
+    "sha256": "2c40ed9d1e00f7e25296035a1fd5127706a6bd1fa076d92cdd103fc81359d0b1"
+  },
+  {
+    "destination": "web/social/og-image-light-1200x630.png",
+    "source": "derived from liass_ohada_corporate_logo.png",
+    "pixel_dimensions": [
+      1200,
+      630
+    ],
+    "sha256": "30a3cbd56ccd6cc62cea084abb9bad948271208e3d8f66decb058cea9c353fbe"
+  },
+  {
+    "destination": "web/social/linkedin-banner-light-1200x675.png",
+    "source": "derived from liass_ohada_corporate_logo.png",
+    "pixel_dimensions": [
+      1200,
+      675
+    ],
+    "sha256": "fc416678819c8fc724eee5266cb0049f82ef7fcfcf5d5ffc8697e118fc250649"
+  }
+]
