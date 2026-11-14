@@ -36,7 +36,7 @@ export class WelcomeDestination {
       const access = await this.queryClient.ensureQueryData(this.queries.list());
       if (this.auth.effectiveOrgId() !== workspace.orgId) return '/select-workspace';
       const applications = this.accessibleApplications(access);
-      return applications.length === 1 ? applications[0].openRoute : '/welcome';
+      return applications.length === 1 ? applications[0].route : '/welcome';
     } catch {
       // The welcome page owns the retry and error state for unavailable ProductAccess.
       return '/welcome';

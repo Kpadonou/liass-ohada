@@ -22,6 +22,7 @@ import {
 import { ProductAccessApi } from '../../../../core/product-access/product-access.api';
 import { resolveProductAvailability } from '../../../../core/product-access/product-availability';
 import { productAccessGuard } from '../../../../core/product-access/product-access.guard';
+import { shellProducts } from '../../../../core/navigation/shell-products';
 import { OnboardingPage } from './onboarding.page';
 
 const copy = {
@@ -56,7 +57,7 @@ const copy = {
     TITLE: 'Choose your products',
     DESCRIPTION: 'Select one or more independent products.',
     ACCOUNTING: { TITLE: 'Accounting', DESCRIPTION: 'Accounting, treasury and projects.' },
-    SALES: { TITLE: 'Invoicing', DESCRIPTION: 'Customers, catalog and invoicing.' },
+    SALES: { TITLE: 'Sales', DESCRIPTION: 'Customers, catalog and invoicing.' },
     RESTAURANTS: { TITLE: 'Liass-Resto', DESCRIPTION: 'Restaurant setup, menu and tables.' }
   },
   CONFIGURATION: {
@@ -102,10 +103,14 @@ const copy = {
 const translations = {
   en: {
     COMMON: { SELECT: { NO_RESULTS: 'No results', SEARCH_PLACEHOLDER: 'Search...' } },
+    SHELL: { NAV: { ACCOUNTING: 'Accounting', SALES: 'Sales', RESTAURANTS: 'Liass-Resto' } },
     IDENTITY: { ONBOARDING: copy }
   },
   fr: {
     COMMON: { SELECT: { NO_RESULTS: 'Aucun résultat', SEARCH_PLACEHOLDER: 'Rechercher...' } },
+    SHELL: {
+      NAV: { ACCOUNTING: 'Comptabilité', SALES: 'Ventes', RESTAURANTS: 'Liass-Resto' }
+    },
     IDENTITY: {
       ONBOARDING: {
         ...copy,
@@ -117,7 +122,7 @@ const translations = {
         PRODUCTS: {
           ...copy.PRODUCTS,
           ACCOUNTING: { TITLE: 'Comptabilité', DESCRIPTION: 'Comptabilité et trésorerie.' },
-          SALES: { TITLE: 'Facturation', DESCRIPTION: 'Clients et facturation.' }
+          SALES: { TITLE: 'Ventes', DESCRIPTION: 'Clients et facturation.' }
         }
       }
     }
@@ -304,7 +309,10 @@ describe('multi-product onboarding', () => {
     const buttons = fixture.nativeElement.querySelectorAll('button[aria-pressed]');
     expect(buttons).toHaveLength(3);
     expect(fixture.nativeElement.textContent).toContain('Liass-Resto');
-    expect(fixture.nativeElement.textContent).toContain('Invoicing');
+    expect(fixture.nativeElement.textContent).toContain('Sales');
+    expect(
+      [...buttons].map((button) => button.querySelector('mat-icon')?.textContent?.trim())
+    ).toEqual(shellProducts.map((product) => product.icon));
     expect(fixture.nativeElement.textContent).not.toMatch(/RESTAURANTS|EMECEF|Fiscal Compliance/);
     page.continueFromProducts();
     fixture.detectChanges();
@@ -326,7 +334,7 @@ describe('multi-product onboarding', () => {
       expect(text).toContain('Benin');
       for (const [product, label] of [
         ['ACCOUNTING', 'Accounting'],
-        ['SALES', 'Invoicing'],
+        ['SALES', 'Sales'],
         ['RESTAURANTS', 'Liass-Resto']
       ] as const) {
         const summary = fixture.nativeElement.querySelector('dl').textContent;
@@ -493,7 +501,7 @@ describe('multi-product onboarding', () => {
     organization();
     fixture.detectChanges();
     expect(fixture.nativeElement.textContent).toContain('Comptabilité');
-    expect(fixture.nativeElement.textContent).toContain('Facturation');
+    expect(fixture.nativeElement.textContent).toContain('Ventes');
     expect(fixture.nativeElement.textContent).toContain('Liass-Resto');
     expect(fixture.nativeElement.querySelector('h2').getAttribute('tabindex')).toBe('-1');
     expect(fixture.nativeElement.querySelector('[aria-current="step"]')).toBeTruthy();

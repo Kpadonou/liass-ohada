@@ -51,6 +51,23 @@ describe('LiassLogoComponent', () => {
     expect(icon?.getAttribute('height')).toBe('861');
   });
 
+  it('supports a larger horizontal size without changing the logo aspect ratio', () => {
+    fixture.componentRef.setInput('variant', 'horizontal');
+    fixture.componentRef.setInput('size', 'xl');
+    fixture.componentRef.setInput('theme', 'light');
+    fixture.detectChanges();
+
+    const host: HTMLElement = fixture.nativeElement;
+    const logo = host.querySelector('span');
+    const image = host.querySelector('img');
+
+    expect(logo?.className).toContain('h-24');
+    expect(logo?.className).toContain('w-auto');
+    expect(image?.getAttribute('width')).toBe('2158');
+    expect(image?.getAttribute('height')).toBe('661');
+    expect(image?.className).toContain('object-contain');
+  });
+
   it('switches between the appropriate PNG variants for automatic theme selection', () => {
     fixture.componentRef.setInput('theme', 'auto');
     fixture.detectChanges();

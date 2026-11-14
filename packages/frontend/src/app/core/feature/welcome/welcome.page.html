@@ -1,22 +1,24 @@
-<main class="min-h-dvh bg-app-bg bg-linear-to-b from-brand-50/70 to-app-bg dark:from-brand-950/30 px-4 py-8 text-app-text sm:px-6 sm:py-12 lg:px-8 lg:py-16">
+<main
+  class="min-h-dvh bg-app-bg bg-linear-to-b from-brand-50/70 to-app-bg px-4 py-8 text-app-text dark:from-brand-950/30 sm:px-6 sm:py-10 lg:px-8 lg:py-12"
+>
   <div class="mx-auto w-full max-w-6xl">
     <header class="flex flex-col items-center text-center">
-      <liass-logo variant="horizontal" size="lg" [alt]="'SHELL.LOGO_ALT' | transloco" />
-      <h1 class="mt-10 text-3xl font-bold text-app-text sm:text-4xl lg:text-5xl">
+      <liass-logo variant="horizontal" size="xl" [alt]="'SHELL.LOGO_ALT' | transloco" />
+      <h1 class="mt-6 text-3xl font-bold text-app-text sm:text-4xl">
         {{ (justCreatedWorkspace ? 'WELCOME.TITLE' : 'WELCOME.RETURNING_TITLE') | transloco }}
       </h1>
       <p class="mt-3 max-w-2xl text-base text-app-text-secondary sm:text-lg">
         {{ (justCreatedWorkspace ? 'WELCOME.SUBTITLE' : 'WELCOME.RETURNING_SUBTITLE') | transloco }}
       </p>
       @if (workspaceName()) {
-        <p class="mt-4 text-sm font-medium text-brand-700 dark:text-brand-300">
+        <p class="mt-3 text-sm font-medium text-brand-700 dark:text-brand-300">
           {{ workspaceName() }}
         </p>
       }
-      <span aria-hidden="true" class="mt-6 h-1 w-16 rounded-full bg-warning-600"></span>
+      <span aria-hidden="true" class="mt-5 h-1 w-16 rounded-full bg-warning-600"></span>
     </header>
 
-    <section class="mt-12 sm:mt-14" [attr.aria-label]="'WELCOME.APPLICATIONS' | transloco">
+    <section class="mt-10 sm:mt-12" [attr.aria-label]="'WELCOME.APPLICATIONS' | transloco">
       <h2 class="mb-5 text-lg font-semibold">{{ 'WELCOME.APPLICATIONS' | transloco }}</h2>
       @if (isLoading()) {
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" role="status">
@@ -42,7 +44,7 @@
           <p class="text-sm text-app-text-secondary">{{ 'WELCOME.NO_APPLICATIONS' | transloco }}</p>
         </liass-card>
       } @else {
-        <div class="grid items-stretch gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="grid auto-rows-fr items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
           @for (application of applications(); track application.code) {
             <liass-card
               class="[&>article]:flex [&>article]:h-full [&>article]:flex-col"
@@ -50,47 +52,31 @@
             >
               <div class="flex items-center gap-3">
                 <span
-                  class="flex size-12 shrink-0 items-center justify-center rounded-app-control"
-                  [class]="application.iconClass"
+                  class="flex size-12 shrink-0 items-center justify-center rounded-app-control bg-brand-50 text-brand-700 dark:bg-brand-950/40 dark:text-brand-300"
                   aria-hidden="true"
                 >
                   <mat-icon>{{ application.icon }}</mat-icon>
                 </span>
-                <h3 class="text-lg font-semibold">{{ application.titleKey | transloco }}</h3>
+                <h3 class="min-w-0 text-lg font-semibold leading-6">
+                  {{ application.labelKey | transloco }}
+                </h3>
               </div>
-              <p class="mt-5 text-sm leading-6 text-app-text-secondary">
+              <p class="mt-4 flex-1 text-sm leading-6 text-app-text-secondary">
                 {{ application.descriptionKey | transloco }}
               </p>
-              <div class="mt-auto flex flex-wrap gap-2 pt-8">
-                <liass-button
-                  icon="settings"
-                  tone="brand"
-                  variant="solid"
-                  [disabled]="!application.canConfigure"
-                  [ariaLabel]="
-                    ('WELCOME.CONFIGURE' | transloco) + ' ' + (application.titleKey | transloco)
-                  "
-                  (pressed)="configure(application)"
-                >
-                  {{ 'WELCOME.CONFIGURE' | transloco }}
-                </liass-button>
+              <div class="mt-5 flex justify-end pt-2">
                 <liass-button
                   icon="arrow_forward"
-                  tone="neutral"
-                  variant="outline"
+                  tone="brand"
+                  variant="solid"
                   [ariaLabel]="
-                    ('WELCOME.OPEN' | transloco) + ' ' + (application.titleKey | transloco)
+                    ('WELCOME.OPEN' | transloco) + ' ' + (application.labelKey | transloco)
                   "
                   (pressed)="open(application)"
                 >
                   {{ 'WELCOME.OPEN' | transloco }}
                 </liass-button>
               </div>
-              @if (!application.canConfigure) {
-                <p class="mt-2 text-xs text-app-text-secondary">
-                  {{ 'WELCOME.CONFIGURE_UNAVAILABLE' | transloco }}
-                </p>
-              }
             </liass-card>
           }
         </div>

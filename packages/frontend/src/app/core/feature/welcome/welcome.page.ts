@@ -5,9 +5,6 @@ import { TranslocoModule } from '@ngneat/transloco';
 import { injectQuery } from '@tanstack/angular-query-experimental';
 
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
-import { CabinetSettingsCapabilities } from '../../../domains/identity/data-access/cabinet-settings-capabilities';
-import { RestaurantsCapabilities } from '../../../domains/restaurants/data-access/restaurants-capabilities';
-import { SalesCapabilities } from '../../../domains/sales/data-access/sales-capabilities';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import { LiassCardComponent } from '../../../shared/ui/card/card.component';
 import { LiassLogoComponent } from '../../../shared/ui/liass-logo/liass-logo.component';
@@ -29,9 +26,6 @@ import { WelcomeDestination } from './welcome-destination';
 export class WelcomePage {
   private readonly auth = inject(AuthStore);
   private readonly queries = inject(ProductAccessQueries);
-  private readonly cabinetSettings = inject(CabinetSettingsCapabilities);
-  private readonly sales = inject(SalesCapabilities);
-  private readonly restaurants = inject(RestaurantsCapabilities);
   private readonly router = inject(Router);
   protected readonly justCreatedWorkspace = history.state?.justCreatedWorkspace === true;
   private readonly destination = inject(WelcomeDestination);
@@ -53,48 +47,25 @@ export class WelcomePage {
       return [];
     if (workspace.workspaceType === 'ACCOUNTING_FIRM') {
       const accounting = welcomeApplicationCatalog[0];
-      return [{
+      return [
+        {
           ...accounting,
-          titleKey: 'WELCOME.APPLICATION.ACCOUNTING.FIRM_TITLE',
           descriptionKey: 'WELCOME.APPLICATION.ACCOUNTING.FIRM_DESCRIPTION',
-          openRoute: '/cabinet/dashboard',
-          configureRoute: '/cabinet/settings',
-          canConfigure: this.cabinetSettings.canManageCabinetSettings(),
-        }];
+          route: '/cabinet/dashboard',
+        },
+      ];
     }
     if (!this.access.isSuccess() || this.queries.activeOrgId() !== workspace.orgId) return [];
-    return this.destination.accessibleApplications(this.access.data() ?? []).map((application) => ({
-      ...application,
-      canConfigure:
-        application.code === 'ACCOUNTING'
-          ? workspace.role === 'OWNER' && this.auth.canWriteAccounting()
-          : application.code === 'SALES'
-            ? this.sales.canWrite()
-            : this.restaurants.canManageSetup(),
-    }));
+    return this.destination.accessibleApplications(this.access.data() ?? []);
   });
 
   protected open(application: WelcomeApplication): void {
     if (
       !this.applications().some(
-        (available) =>
-          available.code === application.code && available.openRoute === application.openRoute,
+        (available) => available.code === application.code && available.route === application.route,
       )
     )
       return;
-    void this.router.navigateByUrl(application.openRoute);
-  }
-
-  protected configure(application: WelcomeApplication): void {
-    if (
-      !this.applications().some(
-        (available) =>
-          available.code === application.code &&
-          available.configureRoute === application.configureRoute &&
-          available.canConfigure,
-      )
-    )
-      return;
-    void this.router.navigateByUrl(application.configureRoute);
+    void this.router.navigateByUrl(application.route);
   }
 }
