@@ -14,6 +14,7 @@ import { WorkspacesApi } from '../../../domains/identity/data-access/workspaces.
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 import { AccountingFiscalYearContextService } from '../../../domains/accounting/data-access/accounting-fiscal-year-context.service';
 import { UiStore } from '../../../core/state/ui.store';
+import { shellProducts } from '../../../core/navigation/shell-products';
 import { AppTopbarComponent } from './app-topbar.component';
 
 vi.mock('aws-amplify/auth', () => {
@@ -879,6 +880,12 @@ describe('AppTopbarComponent', () => {
     expect(trigger.textContent).toContain('restaurant');
     expect(trigger.getAttribute('aria-label')).toBe('Switch product: Liass-Resto');
     expect(trigger.getAttribute('aria-haspopup')).toBe('menu');
+    const activeIcon = trigger.querySelector(
+      '[data-testid="active-product-icon"]',
+    ) as HTMLElement;
+    expect(activeIcon.textContent).toContain('restaurant');
+    expect(activeIcon.className).toContain('bg-brand-50');
+    expect(activeIcon.className).toContain('text-brand-700');
     const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     trigger.click();
     fixture.detectChanges();
@@ -892,6 +899,22 @@ describe('AppTopbarComponent', () => {
         expect.stringContaining('Sales'),
         expect.stringContaining('Liass-Resto'),
       ]),
+    );
+    expect(
+      entries.map((entry) => {
+        const icon = entry.querySelector('[data-testid="product-option-icon"]');
+        return {
+          glyph: icon?.textContent?.trim(),
+          hasBrandTint:
+            icon?.className.includes('bg-brand-50') &&
+            icon.className.includes('text-brand-700'),
+        };
+      }),
+    ).toEqual(
+      shellProducts.map((product) => ({
+        glyph: product.icon,
+        hasBrandTint: true,
+      })),
     );
     entries.find((entry) => entry.textContent?.includes('Sales'))!.click();
     await fixture.whenStable();
@@ -912,6 +935,11 @@ describe('AppTopbarComponent', () => {
     expect(trigger.textContent).toContain('Liass-Resto');
     expect(trigger.textContent).not.toContain('expand_more');
     expect(trigger.getAttribute('aria-haspopup')).toBeNull();
+    expect(
+      trigger.querySelector('[data-testid="active-product-icon"]')?.classList.contains(
+        'bg-brand-50',
+      ),
+    ).toBe(true);
     const navigation = vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     trigger.click();
     await fixture.whenStable();

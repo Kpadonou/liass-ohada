@@ -236,6 +236,9 @@ describe('AppSidebarComponent', () => {
     ) as HTMLButtonElement;
     const label = identity.querySelector('[data-testid="sidebar-product-label"]') as HTMLElement;
     const productIcon = identity.querySelector('mat-icon') as HTMLElement;
+    const productIconContainer = identity.querySelector(
+      '[data-testid="sidebar-product-icon"]',
+    ) as HTMLElement;
     const navigationScroll = fixture.nativeElement.querySelector(
       '[data-testid="sidebar-navigation-scroll"]',
     ) as HTMLElement;
@@ -256,6 +259,8 @@ describe('AppSidebarComponent', () => {
     expect(identity.textContent).toContain('Liass-Resto');
     expect(productIcon.textContent?.trim()).toBe('restaurant');
     expect(productIcon.parentElement?.className).toContain('size-9');
+    expect(productIconContainer.className).toContain('bg-brand-50');
+    expect(productIconContainer.className).toContain('text-brand-700');
     expect(identity.querySelector('button, a')).toBeNull();
     expect(identity.parentElement).toBe(headerRow);
     expect(collapseToggle.parentElement).toBe(headerRow);
@@ -278,6 +283,8 @@ describe('AppSidebarComponent', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="sidebar-product-divider"]'),
     ).toBeNull();
+    expect(productIconContainer.className).toContain('bg-brand-50');
+    expect(productIconContainer.className).toContain('text-brand-700');
     expect(label.className).toContain('lg:sr-only');
     expect(productIcon.parentElement?.className).toContain('lg:size-6');
     expect(collapseToggle.className).toContain('size-6');

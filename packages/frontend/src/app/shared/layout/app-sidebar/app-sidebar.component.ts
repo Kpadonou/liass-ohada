@@ -497,7 +497,7 @@ export class AppSidebarComponent {
   protected productIdentityIconClass(): string {
     const compactSize = this.sidebarExpanded() ? '' : 'lg:size-6';
 
-    return `grid size-9 shrink-0 place-items-center rounded-app-control bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-200 ${compactSize}`;
+    return `grid size-9 shrink-0 place-items-center rounded-app-control ${compactSize}`;
   }
 
   protected productIdentityLabelClass(): string {
