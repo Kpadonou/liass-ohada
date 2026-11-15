@@ -45,7 +45,8 @@ export function restaurantFiscalHandler(
         route.operation === "confirmedResult" || route.operation === "confirm"
           ? c.RestaurantFiscalResultResponseSchema.safeParse(result)
           : c.RestaurantFiscalStatusResponseSchema.safeParse(result);
-      if (!response.success || response.data.invoiceId !== input.invoiceId)
+      if (!response.success || response.data.invoiceId !== input.invoiceId ||
+        response.data.creditNoteId !== input.creditNoteId)
         throw new AppError(500, "ERROR_INTERNAL_SERVER");
       return response.data;
     },

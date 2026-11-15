@@ -196,6 +196,25 @@ test("response invoice binding and authentication are enforced", async () => {
   });
   expect((await handler(event())).statusCode).toBe(500);
 });
+test("existing fiscal routes bind a credit ID from commands and read queries", async () => {
+  const creditNoteId = "22222222-2222-4222-8222-222222222222";
+  service.initiate.mockResolvedValueOnce({ ...summary, creditNoteId });
+  const created = await restaurantFiscalHandler("initiate-fiscal", service)(
+    event({ creditNoteId, attemptId: "credit-attempt", commandId: "credit-create" }));
+  expect(created.statusCode).toBe(200);
+  expect(service.initiate).toHaveBeenCalledWith(expect.anything(),
+    expect.objectContaining({ creditNoteId }));
+  service.confirmedResult.mockResolvedValueOnce({ ...result, creditNoteId,
+    originalFiscalReference: "A".repeat(24) });
+  const readEvent = { ...event(), queryStringParameters: { creditNoteId } };
+  const retrieved = await restaurantFiscalHandler("get-fiscal-result", service)(readEvent);
+  expect(retrieved.statusCode).toBe(200);
+  expect(service.confirmedResult).toHaveBeenCalledWith(expect.anything(),
+    expect.objectContaining({ creditNoteId }));
+  expect(JSON.parse(retrieved.body).originalFiscalReference).toBe("A".repeat(24));
+  service.status.mockResolvedValueOnce(summary);
+  expect((await restaurantFiscalHandler("get-fiscal-status", service)(readEvent)).statusCode).toBe(500);
+});
 
 test("actual real TEST entrypoint retains JWT authorization and default-off gate", async () => {
   const { handler } = await import("@/lambda/domains/restaurants/real-test-fiscal-handler");

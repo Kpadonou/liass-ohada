@@ -141,14 +141,17 @@ function setup(body: unknown = security, status = 200, options?: {
 }) {
   const fiscalTotals = options?.fiscalTotals ?? totals;
   const configuration = options?.configuration ?? config;
-  const transport = jest.fn(async (request: { method: string; body?: string }) => ({
+  let postedInvoice: unknown;
+  const transport = jest.fn(async (request: { method: string; body?: string; url: string }) => ({
     status: request.method === "PUT" ? status : 200,
     body: JSON.stringify(
       request.method === "POST"
-        ? { uid: "provider-uid", ...fiscalTotals }
+        ? (postedInvoice = JSON.parse(request.body!), { uid: "provider-uid", ...fiscalTotals })
         : request.method === "PUT"
           ? { ...(body as object), refundWithAibPayment: false }
-          : { status: true, ifu: configuration.ifu, nim: configuration.nim },
+          : request.url.includes("/api/invoice/")
+            ? postedInvoice
+            : { status: true, ifu: configuration.ifu, nim: configuration.nim },
     ),
   }));
   const authorize = jest.fn(async () => undefined);
@@ -173,7 +176,7 @@ test("classified A and B lines complete the durable real TEST journey without th
     },
     expected: { itemTotals: [1000, 2000], total: 3000 },
   };
-  jest.mocked(restaurantBeninPreparation).mockReturnValueOnce(async () => ({
+  jest.mocked(restaurantBeninPreparation).mockReturnValue(async () => ({
     identity,
     sourceDigest: config.sourceDigest,
     requestDigest: hash(canonical(mixedPayload)),
@@ -221,7 +224,7 @@ test.each([
     tac: groups.includes("C" as never) ? quantities[groups.indexOf("C" as never)] * 1000 : 0,
     tae: groups.includes("E" as never) ? 2000 : 0,
     total };
-  jest.mocked(restaurantBeninPreparation).mockReturnValueOnce(async () => ({
+  jest.mocked(restaurantBeninPreparation).mockReturnValue(async () => ({
     identity: { ...identity, sourceDocumentId: id },
     sourceDigest: config.sourceDigest,
     requestDigest: hash(canonical(exportPayload)),
@@ -242,6 +245,52 @@ test.each([
   });
   expect(JSON.parse(transport.mock.calls.find(([request]) => request.method === "POST")![0].body!))
     .toMatchObject(exportPayload.invoice);
+  expect(transport.mock.calls.filter(([request]) => request.method === "POST")).toHaveLength(1);
+  expect(transport.mock.calls.filter(([request]) => request.method === "PUT")).toHaveLength(1);
+});
+test.each([
+  { scenario: "06", type: "FA" as const, groups: ["A", "B"] as const,
+    quantities: [2, 3], prices: [1000, 1180], originalType: "FV" as const },
+  { scenario: "18", type: "EA" as const, groups: ["C"] as const,
+    quantities: [2], prices: [1000], originalType: "EV" as const },
+  { scenario: "20", type: "EA" as const, groups: ["E"] as const,
+    quantities: [2], prices: [1000], originalType: "EV" as const },
+])("scenario $scenario stores a distinct confirmed $type attempt and original reference", async (v) => {
+  const total = v.quantities.reduce((sum, quantity, index) => sum + quantity * v.prices[index], 0);
+  const creditIdentity = { ...identity, sourceDocumentType: "CREDIT_NOTE", sourceDocumentId: id };
+  const creditPayload = { invoice: { ifu: config.ifu, type: v.type,
+    reference: "A".repeat(24), operator: { name: "operator" },
+    client: { name: "Client identifié", ifu: "1234567890123" },
+    items: v.groups.map((group, index) => ({ name: `Credit ${group}`,
+      price: v.prices[index], quantity: v.quantities[index], taxGroup: group })) },
+    expected: { itemTotals: v.quantities.map((quantity, index) => quantity * v.prices[index]), total } };
+  const groupTotals = Object.fromEntries(v.groups.map((group, index) => {
+    const gross = v.quantities[index] * v.prices[index];
+    const tax = group === "B" ? 540 : 0;
+    return [group, { gross, net: gross - tax, tax }];
+  }));
+  const expectedFiscalTotals = { ...totals, taa: groupTotals.A?.gross ?? 0,
+    tab: groupTotals.B?.gross ?? 0, tac: groupTotals.C?.gross ?? 0,
+    tae: groupTotals.E?.gross ?? 0, hab: groupTotals.B?.net ?? 0,
+    vab: groupTotals.B?.tax ?? 0, total };
+  jest.mocked(restaurantBeninPreparation).mockReturnValue(async () => ({
+    identity: creditIdentity, sourceDigest: config.sourceDigest,
+    requestDigest: hash(canonical(creditPayload)), total, fiscalGroupTotals: groupTotals,
+    fiscalAdditionalTotals: { aib: 0, ts: 0 }, payload: creditPayload,
+  }));
+  const { flow, transport } = setup({ ...security, codeMECeFDGI: "C".repeat(24) }, 200, {
+    fiscalTotals: expectedFiscalTotals,
+    configuration: { ...config, creditNoteId: id, expectedFiscalTotals },
+  });
+  expect((await flow.create(principal, creditIdentity, `attempt-${v.scenario}`, `create-${v.scenario}`)).state)
+    .toMatchObject({ status: "CREATED", fiscalDocumentType: v.type });
+  await flow.confirm(principal, creditIdentity, `confirm-${v.scenario}`, { confirm: true });
+  expect(await new FiscalAttemptStore().read(creditIdentity)).toMatchObject({
+    status: "CONFIRMED", fiscalDocumentType: v.type,
+    securityEvidenceOrigin: "DGI_TEST", security: { codeMECeFDGI: "C".repeat(24) },
+  });
+  expect(JSON.parse(transport.mock.calls.find(([request]) => request.method === "POST")![0].body!))
+    .toMatchObject({ type: v.type, reference: "A".repeat(24), client: { ifu: "1234567890123" } });
   expect(transport.mock.calls.filter(([request]) => request.method === "POST")).toHaveLength(1);
   expect(transport.mock.calls.filter(([request]) => request.method === "PUT")).toHaveLength(1);
 });
@@ -417,7 +466,8 @@ test("ambiguous transport failure never produces security or repeats confirmatio
     if (request.method === "PUT") throw new Error("private network detail");
     return {
       status: 200,
-      body: JSON.stringify({ status: true, ifu: config.ifu, nim: config.nim }),
+      body: JSON.stringify(request.url.includes("/api/invoice/")
+        ? payload.invoice : { status: true, ifu: config.ifu, nim: config.nim }),
     };
   });
   await flow.confirm(principal, identity, "confirm", { confirm: true });

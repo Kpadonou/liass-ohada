@@ -37,6 +37,7 @@ export interface MockFiscalProvider {
   confirmInvoice(
     uid: string,
     reservation?: FiscalAttemptState,
+    preparation?: VerifiedFiscalPreparation,
   ): Promise<Security>;
   getInvoice(uid: string): Promise<unknown>;
 }
@@ -88,6 +89,9 @@ export class SyntheticFiscalOrchestrator {
     const prepared = await this.prepare(p, identity);
     if (JSON.stringify(prepared.identity) !== JSON.stringify(identity))
       throw new FiscalAttemptConflict("SCOPE_DENIED");
+    const fiscalDocumentType = (prepared.payload as { invoice?: { type?: unknown } } | null)?.invoice?.type;
+    if (this.real && !["FV", "EV", "FA", "EA"].includes(String(fiscalDocumentType)))
+      throw new FiscalAttemptConflict("INVALID_INPUT");
     // Reservation validates the closed identity, digests and exact positive total.
     const state = await this.store.reserve({
       identity,
@@ -96,6 +100,8 @@ export class SyntheticFiscalOrchestrator {
       ...(this.real ? { execution: "REAL_TEST" as const } : {}),
       sourceDigest: prepared.sourceDigest,
       requestDigest: prepared.requestDigest,
+      ...(["FV", "EV", "FA", "EA"].includes(String(fiscalDocumentType))
+        ? { fiscalDocumentType: fiscalDocumentType as "FV" | "EV" | "FA" | "EA" } : {}),
       expectedTotal: prepared.total,
     });
     const reserved = await this.store.transition(identity, state.version, {
@@ -140,8 +146,9 @@ export class SyntheticFiscalOrchestrator {
     const state = await this.store.read(identity);
     if (!state || (state.execution === "REAL_TEST") !== this.real || state.provider !== this.provider.kind || !state.uid)
       throw new FiscalAttemptConflict("UID_REQUIRED");
+    let prepared: VerifiedFiscalPreparation | undefined;
     if (this.real) {
-      const prepared = await this.prepare(p, identity);
+      prepared = await this.prepare(p, identity);
       if (state.execution !== "REAL_TEST" || prepared.sourceDigest !== state.sourceDigest ||
         prepared.requestDigest !== state.requestDigest || prepared.total !== state.expectedTotal)
         throw new FiscalAttemptConflict("SCOPE_DENIED");
@@ -159,6 +166,7 @@ export class SyntheticFiscalOrchestrator {
       const security = await this.provider.confirmInvoice(
         state.uid,
         reserved.state,
+        prepared,
       );
       return await this.store.transition(identity, reserved.state.version, {
         kind: "CONFIRMED",

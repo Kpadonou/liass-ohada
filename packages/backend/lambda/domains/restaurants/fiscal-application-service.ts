@@ -13,6 +13,7 @@ import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { RestaurantReceiptService } from "./receipt-service";
 import { restaurantBeninSyntheticWorkflow } from "./benin-synthetic-workflow";
 import { projectRestaurantInvoiceV1 } from "./fiscalizable-invoice-v1";
+import { RestaurantCreditNoteFiscalSource } from "./credit-note-fiscal-source";
 
 type Context = { orgId: string; userId: string };
 type Request = z.infer<typeof requestSchema>;
@@ -41,8 +42,8 @@ export class RestaurantFiscalApplicationService {
       orgId: context.orgId,
       environment: "TEST" as const,
       sourceDomain: "restaurants",
-      sourceDocumentType: "INVOICE",
-      sourceDocumentId: request.invoiceId,
+      sourceDocumentType: request.creditNoteId ? "CREDIT_NOTE" : "INVOICE",
+      sourceDocumentId: request.creditNoteId ?? request.invoiceId,
       jurisdiction: "BJ",
       obligation: "NORMALIZE",
     };
@@ -59,11 +60,18 @@ export class RestaurantFiscalApplicationService {
     // Existing membership, entitlement, role and outlet checks; publication roles
     // OWNER/MANAGER/CASHIER remain subject to product, outlet and operator authorization.
     await RestaurantReceiptService.authorize(scope, context.userId);
+    if (request.creditNoteId) {
+      const credit = await RestaurantCreditNoteFiscalSource.verify(scope, context.userId,
+        request.sessionId, request.invoiceId, request.creditNoteId);
+      if (this.real && (!credit.original.issuanceProvenance.verified ||
+        credit.original.issuanceProvenance.evidence.evidenceOrigin !== "AUTHENTIC"))
+        throw new AppError(409, "PROVENANCE_UNAVAILABLE");
+      return { ...credit.original,
+        proof: { ...credit.original.proof, digest: credit.sourceDigest },
+        originalFiscalReference: credit.originalFiscal.security!.codeMECeFDGI };
+    }
     const source = await RestaurantInvoiceSourceVerifier.verify(
-      scope,
-      context.userId,
-      request.sessionId,
-      request.invoiceId,
+      scope, context.userId, request.sessionId, request.invoiceId,
     );
     if (!source.verified) throw new AppError(409, "FISCAL_SOURCE_UNAVAILABLE");
     if (this.real && (!source.evidence.issuanceProvenance.verified ||
@@ -71,9 +79,11 @@ export class RestaurantFiscalApplicationService {
       throw new AppError(409, "PROVENANCE_UNAVAILABLE");
     return source.evidence;
   }
-  private view(request: Request, state?: FiscalAttemptState) {
+  private view(request: Request, state?: FiscalAttemptState, originalFiscalReference?: string) {
     return {
       invoiceId: request.invoiceId,
+      ...(request.creditNoteId ? { creditNoteId: request.creditNoteId } : {}),
+      ...(originalFiscalReference ? { originalFiscalReference } : {}),
       environment: "TEST" as const,
       execution: this.real ? "REAL_TEST" as const : "SYNTHETIC" as const,
       status: state?.status ?? "NOT_STARTED",
@@ -98,12 +108,12 @@ export class RestaurantFiscalApplicationService {
     return { request, state, source: currentSource };
   }
   async status(context: Context, input: unknown) {
-    const { request, state } = await this.readResultState(context, input);
-    return this.view(request, state);
+    const { request, state, source } = await this.readResultState(context, input);
+    return this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined);
   }
   async confirmedResult(context: Context, input: unknown) {
     const { request, state, source } = await this.readResultState(context, input);
-    const result = this.view(request, state);
+    const result = this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined);
     // Only persisted, confirmed DGI TEST evidence can enter the receipt document.
     const securityElements = result.confirmed && this.real &&
       state?.status === "CONFIRMED" && state.execution === "REAL_TEST" &&
@@ -111,7 +121,7 @@ export class RestaurantFiscalApplicationService {
     return {
       ...result,
       securityElements,
-      normalizedInvoice: securityElements ? source.invoice ?? null : null,
+      normalizedInvoice: securityElements && !request.creditNoteId ? source.invoice ?? null : null,
       resultAvailable: result.confirmed,
       evidenceOrigin: result.confirmed ? (this.real ? "DGI_TEST" as const : "SYNTHETIC" as const) : null,
     };
@@ -125,6 +135,7 @@ export class RestaurantFiscalApplicationService {
     if (!realConfiguration || realConfiguration.operatorUserId !== context.userId ||
       realConfiguration.orgId !== context.orgId || realConfiguration.outletId !== request.outletId ||
       realConfiguration.sessionId !== request.sessionId || realConfiguration.invoiceId !== request.invoiceId ||
+      realConfiguration.creditNoteId !== request.creditNoteId ||
       realConfiguration.sourceDigest !== source.proof.digest)
       throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     const identity = this.identity(context, request);
@@ -160,6 +171,7 @@ export class RestaurantFiscalApplicationService {
       ...settings,
       outletId: request.outletId,
       sessionId: request.sessionId,
+      originalInvoiceId: request.creditNoteId ? request.invoiceId : undefined,
       authorize: async (principal) => {
         if (
           principal.orgId !== context.orgId ||
@@ -214,7 +226,7 @@ export class RestaurantFiscalApplicationService {
       state.sourceDigest !== source.proof.digest
     )
       throw new AppError(409, "FISCAL_CONFIRMATION_UNAVAILABLE");
-    if (this.real) {
+    if (this.real && !request.creditNoteId) {
       try {
         projectRestaurantInvoiceV1(source);
       } catch {

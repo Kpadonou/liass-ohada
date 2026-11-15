@@ -17,7 +17,8 @@ const service = new RestaurantFiscalApplicationService(async (context, request) 
     const config = realTestConfigurationSchema.parse(JSON.parse(result.SecretString));
     if (config.orgId !== context.orgId || config.orgId !== process.env.FISCAL_TEST_ORG_ID ||
       config.operatorUserId !== context.userId || config.outletId !== request.outletId ||
-      config.sessionId !== request.sessionId || config.invoiceId !== request.invoiceId) throw new Error();
+      config.sessionId !== request.sessionId || config.invoiceId !== request.invoiceId ||
+      config.creditNoteId !== request.creditNoteId) throw new Error();
     return { realConfiguration: config, classifications: config.classifications, mapping: config.mapping,
       adapter: new BeninEMecefTestAdapter(), credential: () => config.token };
   } catch { throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED"); }

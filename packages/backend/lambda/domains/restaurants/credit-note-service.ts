@@ -14,6 +14,8 @@ import { transactionFingerprint as hash } from "./transaction-repository";
 import { RestaurantReceiptRepository as Receipts } from "./receipt-repository";
 import { receiptSeed } from "./receipt-service";
 import { restaurantsTableName } from "./restaurant-storage";
+import { validRestaurantSaleTax } from "./pilot-tax-calculation";
+import { calculateRestaurantFiscalAmounts } from "./fiscal-treatment";
 import {
   RestaurantCreditNoteRepository as R,
   CreditControlSchema,
@@ -266,7 +268,7 @@ export class RestaurantCreditNoteService {
           if (line.snapshot.currency !== result.currency) fail("CURRENCY");
           const snapshot = line.snapshot;
           if (
-            snapshot.taxMinor !== 0 ||
+            !validRestaurantSaleTax(snapshot) ||
             snapshot.discountMinor !== 0 ||
             q.restaurantQuantityAmountMinor(
               snapshot.unitPriceMinor,
@@ -397,7 +399,13 @@ export class RestaurantCreditNoteService {
           selected.quantity,
         ),
         currency: invoice.currency,
-        taxMinor: line.snapshot.taxMinor,
+        taxMinor: line.snapshot.fiscalTreatment
+          ? calculateRestaurantFiscalAmounts(
+              q.restaurantQuantityAmountMinor(line.snapshot.unitPriceMinor, selected.quantity) -
+                (selected.quantity === line.snapshot.quantity ? line.snapshot.specificTaxMinor ?? 0 : 0),
+              line.snapshot.fiscalTreatment,
+            ).taxMinor
+          : line.snapshot.taxMinor,
         discountMinor: line.snapshot.discountMinor,
         note: selected.note,
         schemaVersion: 1,

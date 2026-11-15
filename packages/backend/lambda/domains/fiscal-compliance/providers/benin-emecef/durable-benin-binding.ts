@@ -59,9 +59,14 @@ export class DurableBeninBinding implements MockFiscalProvider {
       payload.expected,
     );
   }
-  async confirmInvoice(uid: string, state?: FiscalAttemptState) {
+  async confirmInvoice(uid: string, state?: FiscalAttemptState, prepared?: VerifiedFiscalPreparation) {
     if (!state || state.uid !== uid || state.provider !== this.kind)
       throw new Error("FISCAL_RESERVATION_REQUIRED");
+    if (!prepared || prepared.requestDigest !== state.requestDigest)
+      throw new Error("FISCAL_MAPPING_MISMATCH");
+    const payload = z.object({ invoice: InvoiceRequestDataDtoSchema,
+      expected: z.object({ itemTotals: z.array(z.number().int().safe()), total: z.number().int().safe() }).strict() }).strict().parse(prepared.payload);
+    await this.adapter.verifyDurableInvoice(this.input(), uid, payload.invoice, payload.expected);
     const { uid: _uid, ...security } = await this.adapter.confirmDurableInvoice(
       this.input(),
       state,

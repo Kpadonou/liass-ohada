@@ -6,6 +6,14 @@ import {
 } from "@aws-sdk/client-dynamodb";
 import * as c from "@liass-ohada/shared/restaurants";
 import { RestaurantCreditNoteService as Service } from "@/lambda/domains/restaurants/credit-note-service";
+import { RestaurantCreditNoteFiscalSource } from "@/lambda/domains/restaurants/credit-note-fiscal-source";
+import { RestaurantInvoiceSourceVerifier } from "@/lambda/domains/restaurants/invoice-source-verifier";
+import { FiscalAttemptStore } from "@/lambda/domains/fiscal-compliance/persistence/fiscal-attempt-store";
+import { reserveFiscalAttempt, transitionFiscalAttempt, type FiscalAttemptState } from "@/lambda/domains/fiscal-compliance/core/fiscal-attempt-state";
+import { SyntheticFiscalOrchestrator, type MockFiscalProvider } from "@/lambda/domains/fiscal-compliance/core/synthetic-fiscal-orchestrator";
+import { prepareRestaurantBeninCredit } from "@/lambda/domains/restaurants/benin-credit-fiscal-preparation";
+import * as originalPreparation from "@/lambda/domains/restaurants/fiscal-preparation";
+import * as originalMapper from "@/lambda/domains/restaurants/benin-fiscal-request-mapper";
 import { RestaurantCreditNoteRepository as Repo } from "@/lambda/domains/restaurants/credit-note-repository";
 import { RestaurantCashService as Cash } from "@/lambda/domains/restaurants/cash-service";
 import { RestaurantTransactionsService as Sessions } from "@/lambda/domains/restaurants/transaction-service";
@@ -29,8 +37,8 @@ const sessionId = randomUUID(),
 const time = "2026-11-01T10:00:00.000Z";
 let db: ReturnType<typeof memoryDynamo>;
 let selected: { orderId: string; itemId: string; quantity: number }[];
-function seed(count = 1, cancelled = false, label = "Plat") {
-  const lines = Array.from({ length: count }, () => ({
+function seed(count = 1, cancelled = false, label = "Plat", classified = false) {
+  const lines = Array.from({ length: count }, (_, index) => ({
     orderId,
     itemId: randomUUID(),
     snapshot: {
@@ -41,18 +49,22 @@ function seed(count = 1, cancelled = false, label = "Plat") {
       categoryVersion: 1,
       menuVersion: 1,
       name: label,
-      quantity: 2,
-      unitPriceMinor: 100,
-      grossMinor: 200,
-      subtotalMinor: 200,
+      quantity: classified && index === 1 ? 3 : 2,
+      unitPriceMinor: classified && index === 1 ? 118 : 100,
+      grossMinor: classified && index === 1 ? 354 : 200,
+      subtotalMinor: classified && index === 1 ? 300 : 200,
       discountMinor: 0 as const,
-      taxMinor: 0 as const,
-      lineTotalMinor: 200,
+      taxMinor: classified && index === 1 ? 54 : 0,
+      lineTotalMinor: classified && index === 1 ? 354 : 200,
+      ...(classified ? { fiscalTreatment: { country: "BJ", catalogGroup: index === 1 ? "B" : "A",
+        effectiveGroup: index === 1 ? "B" : "A", regime: "ORDINARY_VAT", regimeRevision: billId,
+        policyId: "BJ-RESTO-TTC", policyVersion: 1, rateBasisPoints: index === 1 ? 1800 : 0,
+        rounding: "HALF_UP_LINE" } as const } : {}),
       currency: "XOF",
       acceptedAt: time,
       submissionId: randomUUID(),
     },
-    netAmountMinor: cancelled ? 0 : 200,
+    netAmountMinor: cancelled ? 0 : classified && index === 1 ? 354 : 200,
     ...(cancelled ? { cancelledAt: time, cancellationReason: "Annulé" } : {}),
   }));
   selected = lines.map((l) => ({
@@ -60,7 +72,7 @@ function seed(count = 1, cancelled = false, label = "Plat") {
     itemId: l.itemId,
     quantity: 1,
   }));
-  const amount = cancelled ? 0 : count * 200;
+  const amount = cancelled ? 0 : lines.reduce((sum, line) => sum + line.netAmountMinor, 0);
   const context = {
     receiptId: billId,
     guestSessionId: sessionId,
@@ -256,6 +268,146 @@ test("full line amount is server computed and monetary client input rejected", a
   await expect(
     create({ ...input(), amountMinor: 1 } as ReturnType<typeof input>),
   ).rejects.toThrow();
+});
+test("scenario 06 commercial A+B credit preserves frozen treatment and credited VAT", async () => {
+  seed(2, false, "Article", true);
+  const note = await Service.create(scope, "manager", sessionId, {
+    clientRequestId: randomUUID(), reason: "Correction facture",
+    lines: selected.map((line, index) => ({ ...line, quantity: index === 0 ? 2 : 3 })),
+  });
+  expect(note.data).toMatchObject({ finalBillId: billId, amountMinor: 554,
+    status: "VALIDATED", lineCount: 2 });
+  expect(note.lines.map(line => line.taxMinor).sort((a, b) => a - b)).toEqual([0, 54]);
+  const available = await Service.creditability(scope, sessionId);
+  expect(available.remainingAmountMinor).toBe(0);
+  expect(available.lines.every(line => line.remainingQuantity === 0)).toBe(true);
+  await expect(Service.create(scope, "manager", sessionId, {
+    clientRequestId: randomUUID(), reason: "Double avoir",
+    lines: selected.map((line, index) => ({ ...line, quantity: index === 0 ? 2 : 3 })),
+  })).rejects.toMatchObject({ messageCode: "RESTAURANTS_CREDIT_QUANTITY_EXCEEDED" });
+});
+test("scenario 06 fiscal source binds the original confirmed FV code without changing original rows", async () => {
+  seed(2, false, "Article", true);
+  const note = await Service.create(scope, "manager", sessionId, {
+    clientRequestId: randomUUID(), reason: "Correction facture",
+    lines: selected.map((line, index) => ({ ...line, quantity: index === 0 ? 2 : 3 })),
+  });
+  const originalRows = new Map(db.rows);
+  const originalLines = note.lines.map(line => ({ coordinate: { orderId: line.orderId, itemId: line.itemId },
+    line: { netAmountMinor: line.originalNetAmountMinor, snapshot: {
+      quantity: line.originalQuantity, unitPriceMinor: line.unitAmountMinor } } }));
+  jest.spyOn(RestaurantInvoiceSourceVerifier, "verify").mockResolvedValue({ verified: true,
+    evidence: { invoice: { digest: note.data.sourceReceiptDigest, currency: "XOF", dueMinor: 554 },
+      proof: { digest: "a".repeat(64) }, lines: originalLines } } as never);
+  const originalState = { status: "CONFIRMED", execution: "REAL_TEST",
+    securityEvidenceOrigin: "DGI_TEST", sourceDigest: "a".repeat(64),
+    fiscalDocumentType: "FV", obligationId: "b".repeat(64),
+    security: { codeMECeFDGI: "A".repeat(24) } };
+  jest.spyOn(FiscalAttemptStore.prototype, "read").mockResolvedValue(originalState as never);
+  const linked = await RestaurantCreditNoteFiscalSource.verify(scope, "manager", sessionId,
+    billId, note.data.creditNoteId);
+  expect(linked.originalFiscal.security!.codeMECeFDGI).toBe("A".repeat(24));
+  expect(linked.credit.data.creditNoteId).toBe(note.data.creditNoteId);
+  expect(linked.sourceDigest).toMatch(/^[a-f0-9]{64}$/);
+  for (const [key, value] of originalRows) expect(db.rows.get(key)).toEqual(value);
+  jest.mocked(FiscalAttemptStore.prototype.read).mockResolvedValueOnce({
+    ...originalState, fiscalDocumentType: "EA" } as never);
+  await expect(RestaurantCreditNoteFiscalSource.verify(scope, "manager", sessionId,
+    billId, note.data.creditNoteId)).rejects.toMatchObject({ messageCode: "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED" });
+});
+test("scenario 06 issues FA from the persisted A+B credit through durable CREATE and CONFIRM", async () => {
+  seed(2, false, "Article", true);
+  const originalDigest = "a".repeat(64), originalCode = "A".repeat(24);
+  const originalIdentity = { orgId: scope.orgId, environment: "TEST" as const,
+    sourceDomain: "restaurants", sourceDocumentType: "INVOICE", sourceDocumentId: billId,
+    jurisdiction: "BJ", obligation: "NORMALIZE" };
+  const principal = { orgId: scope.orgId, actorId: "manager" };
+  let originalState: FiscalAttemptState | undefined;
+  const originalStore = { reserve: async (input: Parameters<typeof reserveFiscalAttempt>[0]) =>
+    (originalState = reserveFiscalAttempt(input)), read: async () => originalState,
+    transition: async (scopeIdentity: typeof originalIdentity, version: number,
+      event: Parameters<typeof transitionFiscalAttempt>[3]) => {
+      const result = transitionFiscalAttempt(originalState!, scopeIdentity, version, event);
+      originalState = result.state; return result;
+    } } as unknown as FiscalAttemptStore;
+  const originalProvider: MockFiscalProvider = { kind: "BENIN_EMECEF_TEST",
+    createInvoice: async prepared => ({ uid: "original-uid", total: prepared.total, reconciled: true }),
+    confirmInvoice: async (_uid, reservation) => {
+      originalProvider.diagnostic = { reference: reservation!.diagnostic!.reference, captured: true };
+      return { codeMECeFDGI: originalCode, qrCode: "original-qr",
+        dateTime: "15/11/2026 09:00:00", counters: "1/1 FV", nim: "NIM" };
+    }, getInvoice: async () => undefined };
+  Object.assign(process.env, { STAGE: "dev", FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: "1" });
+  const originalFlow = new SyntheticFiscalOrchestrator(originalStore, originalProvider,
+    async () => undefined, async () => ({ identity: originalIdentity,
+      sourceDigest: originalDigest, requestDigest: "d".repeat(64), total: 554,
+      payload: { invoice: { type: "FV" } } }), true);
+  expect((await originalFlow.create(principal, originalIdentity, "original-attempt", "original-create")).state.status).toBe("CREATED");
+  expect((await originalFlow.confirm(principal, originalIdentity, "original-confirm", { confirm: true })).state.status).toBe("CONFIRMED");
+  const note = await Service.create(scope, "manager", sessionId, {
+    clientRequestId: randomUUID(), reason: "Correction facture",
+    lines: selected.map((line, index) => ({ ...line, quantity: index === 0 ? 2 : 3 })),
+  });
+  const originalRows = new Map(db.rows);
+  jest.spyOn(RestaurantInvoiceSourceVerifier, "verify").mockResolvedValue({ verified: true,
+    evidence: { invoice: { digest: note.data.sourceReceiptDigest, currency: "XOF", dueMinor: 554 },
+      proof: { digest: originalDigest }, lines: note.lines.map(line => ({
+        coordinate: { orderId: line.orderId, itemId: line.itemId },
+        line: { netAmountMinor: line.originalNetAmountMinor, snapshot: {
+          quantity: line.originalQuantity, unitPriceMinor: line.unitAmountMinor } } })) } } as never);
+  jest.spyOn(FiscalAttemptStore.prototype, "read").mockResolvedValue(originalState as never);
+  jest.spyOn(originalPreparation, "prepareRestaurantFiscalInvoice").mockResolvedValue({ ready: true,
+    preparation: { commercialRootDigest: originalDigest, lines: note.lines.map((line, index) => ({
+      commercial: { orderId: line.orderId, itemId: line.itemId,
+        snapshot: { fiscalTreatment: { effectiveGroup: index ? "B" : "A", rateBasisPoints: index ? 1800 : 0 } } },
+    })) } } as never);
+  jest.spyOn(originalMapper, "mapRestaurantBeninRequest").mockReturnValue({ sourceDigest: originalDigest,
+    payload: { invoice: { ifu: "1234567890123", client: { name: "Client", ifu: "9876543210123" },
+      items: note.lines.map((line, index) => ({ name: line.label, price: line.unitAmountMinor,
+        quantity: line.originalQuantity, taxGroup: index ? "B" : "A" })) } } } as never);
+  const identity = { orgId: scope.orgId, environment: "TEST" as const, sourceDomain: "restaurants",
+    sourceDocumentType: "CREDIT_NOTE", sourceDocumentId: note.data.creditNoteId,
+    jurisdiction: "BJ", obligation: "NORMALIZE" };
+  const mapping = { environment: "TEST", invoiceType: "FA", priceBasis: "TTC",
+    pricingEvidence: "frozen-price", commercialMinorUnitsPerFranc: 1,
+    taxGroups: ["A", "B"], taxMetadataEvidence: "frozen-tax",
+    operator: { actorId: "manager", name: "Manager", evidence: "staff" },
+    payments: [{ sourceMethod: "CASH", providerMethod: "ESPECES", evidence: "cash" }] };
+  let own: FiscalAttemptState | undefined;
+  const ownStore = { reserve: async (input: Parameters<typeof reserveFiscalAttempt>[0]) =>
+    (own = reserveFiscalAttempt(input)),
+    read: async () => own,
+    transition: async (scopeIdentity: typeof identity, version: number,
+      event: Parameters<typeof transitionFiscalAttempt>[3]) => {
+      const result = transitionFiscalAttempt(own!, scopeIdentity, version, event);
+      own = result.state;
+      return result;
+    } } as unknown as FiscalAttemptStore;
+  const posted: unknown[] = [];
+  const provider: MockFiscalProvider = { kind: "BENIN_EMECEF_TEST",
+    createInvoice: async prepared => { posted.push(prepared.payload); return {
+      uid: "credit-uid", total: prepared.total, reconciled: true }; },
+    confirmInvoice: async (_uid, reservation) => {
+      provider.diagnostic = { reference: reservation!.diagnostic!.reference, captured: true };
+      return { codeMECeFDGI: "C".repeat(24), qrCode: "credit-qr",
+        dateTime: "15/11/2026 10:00:00", counters: "2/2 FA", nim: "NIM" };
+    }, getInvoice: async () => posted[0] };
+  try {
+    const flow = new SyntheticFiscalOrchestrator(ownStore, provider, async () => undefined,
+      (p, i) => prepareRestaurantBeninCredit({ principal: p, identity: i,
+        outletId: scope.outletId, sessionId, invoiceId: billId, classifications: [], mapping }), true);
+    expect((await flow.create(principal, identity, "credit-attempt", "credit-create")).state.status).toBe("CREATED");
+    expect((await flow.confirm(principal, identity, "credit-confirm", { confirm: true })).state.status).toBe("CONFIRMED");
+    expect(own).toMatchObject({ fiscalDocumentType: "FA", securityEvidenceOrigin: "DGI_TEST",
+      security: { codeMECeFDGI: "C".repeat(24) } });
+    expect(posted).toHaveLength(1);
+    expect(posted[0]).toMatchObject({ invoice: { type: "FA", reference: originalCode,
+      client: { ifu: "9876543210123" }, items: [{ taxGroup: "A", quantity: 2 },
+        { taxGroup: "B", quantity: 3 }] }, expected: { total: 554 } });
+    for (const [key, value] of originalRows) expect(db.rows.get(key)).toEqual(value);
+  } finally {
+    delete process.env.STAGE; delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED;
+  }
 });
 test("durable idempotent retry returns original and changed intent conflicts", async () => {
   const body = input();

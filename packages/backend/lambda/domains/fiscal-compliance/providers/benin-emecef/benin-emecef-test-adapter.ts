@@ -593,6 +593,15 @@ export class BeninEMecefTestAdapter {
     return { uid: state.uid, ...security };
   }
 
+  /** Read-only comparison of the provider's pending invoice before durable CONFIRM. */
+  async verifyDurableInvoice(input: GetBeninEMecefStatusInput, uid: string,
+    invoice: dto.BeninInvoiceRequest, expected: { itemTotals: number[]; total: number }) {
+    const parsed = validateInvoiceRequest(invoice, expected);
+    const details = await this.getInvoiceForTestConfirmation(input, uid);
+    if (!sameInvoice(details, parsed.data, true))
+      throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
+  }
+
   async cancelInvoice(input: GetBeninEMecefStatusInput, uid: string) {
     const path = `${this.uidPath(uid)}/cancel`;
     return {
@@ -764,10 +773,11 @@ function validateInvoiceRequest(
   if (
     !parsed.success ||
     !invoice.ifu?.trim() ||
-    (invoice.type !== "FV" && invoice.type !== "EV") ||
+    !["FV", "EV", "FA", "EA"].includes(invoice.type ?? "") ||
     !invoice.operator?.name?.trim() ||
     !invoice.items?.length ||
-    !invoice.payment?.length ||
+    ((invoice.type === "FV" || invoice.type === "EV") && !invoice.payment?.length) ||
+    ((invoice.type === "FA" || invoice.type === "EA") && invoice.reference?.length !== 24) ||
     !Number.isSafeInteger(expected.total) ||
     expected.total <= 0 ||
     expected.itemTotals.length !== invoice.items.length
@@ -776,8 +786,8 @@ function validateInvoiceRequest(
   const groups = new Set(invoice.items.map((item) => item.taxGroup));
   if (
     groups.has(undefined) ||
-    (invoice.type === "FV" && groups.has("C")) ||
-    (invoice.type === "EV" && !(
+    ((invoice.type === "FV" || invoice.type === "FA") && groups.has("C")) ||
+    ((invoice.type === "EV" || invoice.type === "EA") && !(
       (groups.size === 1 && (groups.has("C") || groups.has("E"))) ||
       (groups.size === 2 && groups.has("A") && groups.has("C"))
     ))
@@ -817,7 +827,7 @@ function validateInvoiceRequest(
     }
     total += amount;
   }
-  const paid = invoice.payment.reduce((sum, payment) => {
+  const paid = (invoice.payment ?? [{ name: "ESPECES" as const, amount: expected.total }]).reduce((sum, payment) => {
     if (!payment.name || payment.amount === undefined || payment.amount < 0)
       throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
     return sum + BigInt(payment.amount);
@@ -861,6 +871,12 @@ function sameInvoice(
     ...actual
   } = details as z.infer<typeof dto.InvoiceDetailsDtoSchema>;
   const expected = structuredClone(parsed.data);
+  // The documented omitted-payment default is ESPECES. A GET may materialize it.
+  if ((expected.type === "FA" || expected.type === "EA") && expected.payment === undefined &&
+    Array.isArray(actual.payment) && actual.payment.length === 1 &&
+    actual.payment[0].name === "ESPECES" &&
+    actual.payment[0].amount === (expected.items ?? []).reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 0), 0))
+    delete actual.payment;
   // Missing GET operator evidence is never converted into a verified operator.
   // All fiscal identity, item, tax, payment and amount fields remain exact.
   if (actual.operator === undefined) delete expected.operator;

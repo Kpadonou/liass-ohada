@@ -1,6 +1,7 @@
 import { RestaurantFiscalApplicationService } from "@/lambda/domains/restaurants/fiscal-application-service";
 import { RestaurantReceiptService } from "@/lambda/domains/restaurants/receipt-service";
 import { RestaurantInvoiceSourceVerifier } from "@/lambda/domains/restaurants/invoice-source-verifier";
+import { RestaurantCreditNoteFiscalSource } from "@/lambda/domains/restaurants/credit-note-fiscal-source";
 import { FiscalAttemptStore } from "@/lambda/domains/fiscal-compliance/persistence/fiscal-attempt-store";
 import { restaurantBeninSyntheticWorkflow } from "@/lambda/domains/restaurants/benin-synthetic-workflow";
 import {
@@ -313,6 +314,40 @@ test("authorized result retrieves durable DGI TEST security while pending eviden
     expect(await real.confirmedResult(context, request)).toMatchObject({
       resultAvailable: false, securityElements: null, mutationRetryAllowed: false,
     });
+  } finally {
+    delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE;
+  }
+});
+
+test("linked FA reads its own confirmed result and the unchanged original DGI reference", async () => {
+  Object.assign(process.env, { FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: "1", STAGE: "dev" });
+  const creditNoteId = "00000000-0000-4000-8000-000000000077";
+  const creditIdentity = { ...identity, sourceDocumentType: "CREDIT_NOTE", sourceDocumentId: creditNoteId };
+  const creditDigest = "c".repeat(64);
+  const originalCode = "A".repeat(24);
+  const ownSecurity = { dateTime: "15/11/2026 10:00:00", qrCode: "credit-qr",
+    codeMECeFDGI: "C".repeat(24), counters: "2/2 FA", nim: "TEST-NIM" };
+  jest.spyOn(RestaurantCreditNoteFiscalSource, "verify").mockResolvedValue({
+    original: { proof: { digest }, issuanceProvenance: { verified: true,
+      evidence: { ...provenance, evidenceOrigin: "AUTHENTIC" } } },
+    originalFiscal: { security: { codeMECeFDGI: originalCode } }, sourceDigest: creditDigest,
+  } as never);
+  state = reserveFiscalAttempt({ identity: creditIdentity, attemptId: "credit-attempt",
+    provider: "BENIN_EMECEF_TEST", execution: "REAL_TEST", fiscalDocumentType: "FA",
+    sourceDigest: creditDigest, requestDigest: digest, expectedTotal: 554 });
+  const read = jest.mocked(FiscalAttemptStore.prototype.read);
+  read.mockImplementation(async scope => {
+    expect(scope).toMatchObject(creditIdentity);
+    return { ...state!, identity: creditIdentity, sourceDigest: creditDigest,
+      status: "CONFIRMED", execution: "REAL_TEST", fiscalDocumentType: "FA",
+      securityEvidenceOrigin: "DGI_TEST", security: ownSecurity };
+  });
+  try {
+    const real = new RestaurantFiscalApplicationService(settings, true);
+    const result = await real.confirmedResult(context, { ...request, creditNoteId });
+    expect(result).toMatchObject({ creditNoteId, originalFiscalReference: originalCode,
+      securityElements: ownSecurity, normalizedInvoice: null, resultAvailable: true });
+    expect(result.securityElements?.codeMECeFDGI).not.toBe(originalCode);
   } finally {
     delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE;
   }

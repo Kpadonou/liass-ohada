@@ -65,6 +65,9 @@ export const fiscalAttemptStateSchema = z
     diagnostic: diagnosticSchema.optional(),
     sourceDigest: digest,
     requestDigest: digest,
+    /** Frozen from the mapped request before CREATE; historical attempts without it
+     * cannot authorize an original-linked credit. */
+    fiscalDocumentType: z.enum(["FV", "EV", "FA", "EA"]).optional(),
     expectedTotal: z.number().int().safe().positive(),
     version: z.number().int().safe().positive(),
     status: z.enum([
@@ -98,6 +101,9 @@ export const fiscalAttemptStateSchema = z
       (s.execution === "REAL_TEST" && s.provider !== "BENIN_EMECEF_TEST") ||
       (s.securityEvidenceOrigin === "DGI_TEST" &&
         s.execution !== "REAL_TEST") ||
+      (s.fiscalDocumentType !== undefined &&
+        (s.identity.sourceDocumentType === "INVOICE" ? !["FV", "EV"].includes(s.fiscalDocumentType) :
+          s.identity.sourceDocumentType === "CREDIT_NOTE" ? !["FA", "EA"].includes(s.fiscalDocumentType) : true)) ||
       (s.status === "CONFIRMED" &&
         s.execution === "REAL_TEST" &&
         (s.securityEvidenceOrigin !== "DGI_TEST" || !s.diagnostic?.captured)) ||
@@ -173,6 +179,7 @@ export function reserveFiscalAttempt(input: {
   execution?: "SYNTHETIC" | "REAL_TEST";
   sourceDigest: string;
   requestDigest: string;
+  fiscalDocumentType?: "FV" | "EV" | "FA" | "EA";
   expectedTotal: number;
 }): FiscalAttemptState {
   // Pure proposal, NOT a successful durable reservation.

@@ -136,6 +136,58 @@ test.each([
   expect(transport.mock.calls.map(([request]) => request.method)).toEqual(["POST", "GET", "PUT"]);
 });
 test.each([
+  { scenario: "06", type: "FA" as const, group: "B" as const },
+  { scenario: "18", type: "EA" as const, group: "C" as const },
+  { scenario: "20", type: "EA" as const, group: "E" as const },
+])("scenario $scenario sends positive linked $type credit with original DGI code", async ({ type, group }) => {
+  const doc = invoice();
+  doc.type = type;
+  doc.reference = "A".repeat(24);
+  doc.items = [{ name: "Credit", price: 1000, quantity: 2, taxGroup: group }];
+  doc.payment = undefined;
+  const transport = jest.fn(async (request: { method: string; body?: string }) => response(
+    request.method === "POST" ? { uid: `credit-${sequence}`, total: 2000 }
+      : request.method === "PUT" ? security : doc));
+  const adapter = new BeninEMecefTestAdapter({ transport });
+  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected);
+  await expect(adapter.confirmInvoice(input, created.uid, doc, expected, created))
+    .resolves.toMatchObject({ uid: created.uid, codeMECeFDGI: security.codeMECeFDGI });
+  expect(JSON.parse(transport.mock.calls[0][0].body!)).toMatchObject({
+    type, reference: "A".repeat(24), items: [{ taxGroup: group, quantity: 2, price: 1000 }] });
+  expect(transport.mock.calls.map(([request]) => request.method)).toEqual(["POST", "GET", "PUT"]);
+});
+test("credit without an exact original 24-character DGI code cannot dispatch", async () => {
+  const doc = invoice();
+  doc.type = "FA";
+  doc.reference = "commercial-number";
+  const { adapter, transport } = setup(doc);
+  await expect(adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected))
+    .rejects.toMatchObject({ code: "INVALID_PAYLOAD" });
+  expect(transport).not.toHaveBeenCalled();
+});
+test("scenario 06 FA carries A+B quantities and customer IFU through verified GET", async () => {
+  const doc = invoice();
+  doc.type = "FA";
+  doc.reference = "B".repeat(24);
+  doc.client = { name: "Client identifié", ifu: "1234567890123" };
+  doc.items = [
+    { name: "Exonéré", price: 1000, quantity: 2, taxGroup: "A" },
+    { name: "Taxable", price: 1180, quantity: 3, taxGroup: "B" },
+  ];
+  doc.payment = undefined;
+  const total = 5540;
+  const transport = jest.fn(async (request: { method: string; body?: string }) => response(
+    request.method === "POST" ? { uid: `fa-${sequence}`, total }
+      : request.method === "PUT" ? security : doc));
+  const adapter = new BeninEMecefTestAdapter({ transport });
+  const expected = { itemTotals: [2000, 3540], total };
+  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected);
+  await adapter.confirmInvoice(input, created.uid, doc, expected, created);
+  expect(JSON.parse(transport.mock.calls[0][0].body!)).toMatchObject({ type: "FA",
+    reference: "B".repeat(24), client: { name: "Client identifié", ifu: "1234567890123" },
+    items: [{ taxGroup: "A", quantity: 2 }, { taxGroup: "B", quantity: 3 }] });
+});
+test.each([
   { type: "EV", groups: ["A"] },
   { type: "EV", groups: ["B"] },
   { type: "EV", groups: ["C", "E"] },

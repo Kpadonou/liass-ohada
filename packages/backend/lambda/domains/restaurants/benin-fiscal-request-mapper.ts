@@ -44,6 +44,9 @@ export const restaurantBeninMappingSchema = z
       .max(3),
   })
   .strict();
+export const restaurantBeninCreditMappingSchema = restaurantBeninMappingSchema.extend({
+  invoiceType: z.enum(["FA", "EA"]),
+});
 type Preparation = Extract<
   Awaited<ReturnType<typeof prepareRestaurantFiscalInvoice>>,
   { ready: true }
@@ -276,6 +279,7 @@ export function restaurantBeninPreparation(
   classifications: unknown,
   configuration: unknown,
   prepare = prepareRestaurantFiscalInvoice,
+  originalInvoiceId?: string,
 ) {
   return async (
     principal: FiscalPrincipal,
@@ -283,6 +287,12 @@ export function restaurantBeninPreparation(
   ) => {
     if (principal.orgId !== identity.orgId)
       throw new Error("FISCAL_MAPPING_SCOPE_DENIED");
+    if (identity.sourceDocumentType === "CREDIT_NOTE") {
+      if (!originalInvoiceId) throw new Error("FISCAL_ORIGINAL_REQUIRED");
+      const { prepareRestaurantBeninCredit } = await import("./benin-credit-fiscal-preparation");
+      return prepareRestaurantBeninCredit({ principal, identity, outletId, sessionId,
+        invoiceId: originalInvoiceId, classifications, mapping: configuration });
+    }
     const result = await prepare({
       scope: { orgId: principal.orgId, outletId },
       actorId: principal.actorId,

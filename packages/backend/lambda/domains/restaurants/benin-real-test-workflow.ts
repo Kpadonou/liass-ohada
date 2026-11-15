@@ -30,6 +30,7 @@ export const realTestConfigurationSchema = z
     outletId: z.string().uuid(),
     sessionId: z.string().uuid(),
     invoiceId: z.string().uuid(),
+    creditNoteId: z.string().uuid().optional(),
     token: z
       .string()
       .min(1)
@@ -141,7 +142,7 @@ export function restaurantBeninRealTestWorkflow(
           ),
       };
     },
-    async confirmInvoice(uid, state) {
+    async confirmInvoice(uid, state, prepared) {
       if (
         !state ||
         state.execution !== "REAL_TEST" ||
@@ -150,7 +151,8 @@ export function restaurantBeninRealTestWorkflow(
         state.fiscalTotalsDigest !==
           hash(canonical(config.expectedFiscalTotals)) ||
         state.providerContextDigest !==
-          hash(canonical(["TEST", config.ifu, config.nim]))
+          hash(canonical(["TEST", config.ifu, config.nim])) ||
+        !prepared || prepared.requestDigest !== state.requestDigest
       )
         throw new Error("FISCAL_REAL_RESERVATION_REQUIRED");
       active = state;
@@ -161,6 +163,9 @@ export function restaurantBeninRealTestWorkflow(
       const confirmationStarted = performance.now();
       try {
         await verifyContext();
+        const pending = z.object({ invoice: InvoiceRequestDataDtoSchema,
+          expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
+        await adapter.verifyDurableInvoice(input, uid, pending.invoice, pending.expected);
         const result = await adapter.confirmDurableInvoice(input, state);
         if (result.nim !== config.nim) {
           provider.diagnostic = {
@@ -299,6 +304,8 @@ export function restaurantBeninRealTestWorkflow(
     config.sessionId,
     config.classifications,
     config.mapping,
+    undefined,
+    config.creditNoteId ? config.invoiceId : undefined,
   );
   return new SyntheticFiscalOrchestrator(
     new FiscalAttemptStore(),

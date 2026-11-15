@@ -10,6 +10,7 @@ import { restaurantBeninPreparation } from "./benin-fiscal-request-mapper";
 export function restaurantBeninSyntheticWorkflow(input: {
   outletId: string;
   sessionId: string;
+  originalInvoiceId?: string;
   classifications: unknown;
   mapping: unknown;
   adapter: BeninEMecefTestAdapter;
@@ -27,6 +28,8 @@ export function restaurantBeninSyntheticWorkflow(input: {
       input.sessionId,
       input.classifications,
       input.mapping,
+      undefined,
+      input.originalInvoiceId,
     ),
   );
 }

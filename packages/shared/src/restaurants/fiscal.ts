@@ -6,6 +6,7 @@ export const RestaurantFiscalSourceRequestSchema = z
     outletId: z.string().uuid(),
     sessionId: z.string().uuid(),
     invoiceId: z.string().uuid(),
+    creditNoteId: z.string().uuid().optional(),
   })
   .strict();
 const command = z.string().trim().min(1).max(200);
@@ -38,6 +39,8 @@ export const RestaurantFiscalSecuritySchema = z.object({
 }).strict();
 const fields = {
   invoiceId: z.string().uuid(),
+  creditNoteId: z.string().uuid().optional(),
+  originalFiscalReference: z.string().length(24).optional(),
   environment: z.literal("TEST"),
   execution: z.enum(["SYNTHETIC", "REAL_TEST"]),
   status: RestaurantFiscalStatusSchema,

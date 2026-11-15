@@ -112,6 +112,12 @@ export class SalesFiscalizableDocumentProducer {
       if (source.lines.some((l) => /^0(?:\.0+)?$/.test(l.unitPrice)))
         return deny("ZERO_PRICE_JUSTIFICATION_AND_TREATMENT_MISSING");
       const sourceCopy = clean(source);
+      const issuedLineCoordinates = source.lines.map(line => ({
+        lineId: line.id,
+        position: line.position,
+        ...("originalInvoiceLineId" in line ? { originalInvoiceLineId: line.originalInvoiceLineId } : {}),
+        commercialTaxRate: line.taxRate,
+      }));
       return {
         status: "BLOCKED_BY_D04" as const,
         source: {
@@ -120,6 +126,14 @@ export class SalesFiscalizableDocumentProducer {
           version: source.version,
         },
         frozenCommercialSource: sourceCopy,
+        /** Source-owned coordinates and commercial rate are real issued facts.
+         * D04 still owns their fiscal projection and tax-treatment interpretation. */
+        issuedLineCoordinates,
+        issuanceEvidence: {
+          eventReference: snapshot.issuanceEventReference,
+          authorityDigest: source.issuanceAuthorityDigest,
+          ...("originalInvoiceId" in source ? { originalInvoiceId: source.originalInvoiceId } : {}),
+        },
         persistedAmountsMinor: {
           net: minor(source.subtotal),
           tax: minor(source.taxTotal),

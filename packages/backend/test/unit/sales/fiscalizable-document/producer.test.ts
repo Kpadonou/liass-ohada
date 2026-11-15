@@ -72,6 +72,15 @@ test.each(["simple", "mixed", "credit"] as const)(
       tax: minor(source.taxTotal),
       total: minor(source.total),
     });
+    expect(result.issuedLineCoordinates).toEqual(source.lines.map(line => ({
+      lineId: line.id, position: line.position,
+      ...("originalInvoiceLineId" in line ? { originalInvoiceLineId: line.originalInvoiceLineId } : {}),
+      commercialTaxRate: line.taxRate,
+    })));
+    expect(result.issuanceEvidence).toMatchObject({
+      eventReference: source.issuanceAuthoritySnapshot?.issuanceEventReference,
+      authorityDigest: source.issuanceAuthorityDigest,
+    });
     expect(
       inspect(source, name === "credit" ? "CREDIT_NOTE" : "INVOICE"),
     ).toEqual(result);
@@ -281,8 +290,14 @@ test("capture reproducible sanitized source-only evidence; no invented fiscal by
     __dirname,
     "../../../../docs/evidence/fiscalizable-document/sales-m2a-source-evidence-v1.json",
   );
-  if (existsSync(path))
-    expect(evidence).toEqual(JSON.parse(readFileSync(path, "utf8")));
+  if (existsSync(path)) {
+    const historical = { ...evidence, scenarios: evidence.scenarios.map(scenario => {
+      if (scenario.result.status !== "BLOCKED_BY_D04") return scenario;
+      const { issuedLineCoordinates: _coordinates, issuanceEvidence: _issuance, ...result } = scenario.result;
+      return { ...scenario, result };
+    }) };
+    expect(historical).toEqual(JSON.parse(readFileSync(path, "utf8")));
+  }
   // Outside the repository: permits initial evidence capture without a production writer.
   writeFileSync(
     "/tmp/liass-m2a-source-evidence-v1.json",
