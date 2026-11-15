@@ -47,6 +47,9 @@
           document.documentElement.classList.add('dark');
           document.documentElement.style.colorScheme = 'dark';
         }
+        if (localStorage.getItem('liass-ohada.fontFamily') === 'plus-jakarta-sans') {
+          document.documentElement.dataset.liassFontFamily = 'plus-jakarta-sans';
+        }
       } catch {}
     </script>
   </head>

@@ -34,16 +34,19 @@ export type AppPage =
   | 'reports'
   | 'administration';
 export type ThemeMode = 'light' | 'dark';
+export type FontFamilyPreference = 'inter' | 'plus-jakarta-sans';
 
 interface UiState {
   currentPage: AppPage;
   sidebarCollapsed: boolean;
   sidebarOpen: boolean;
   themeMode: ThemeMode;
+  fontFamily: FontFamilyPreference;
 }
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'liass-ohada.sidebarCollapsed';
 const THEME_STORAGE_KEY = 'liass-ohada.themeMode';
+const FONT_FAMILY_STORAGE_KEY = 'liass-ohada.fontFamily';
 
 function readStoredSidebarCollapsed(): boolean {
   if (typeof localStorage === 'undefined') {
@@ -73,6 +76,34 @@ function persistThemeMode(themeMode: ThemeMode): void {
   }
 }
 
+function readStoredFontFamily(): FontFamilyPreference {
+  if (typeof localStorage === 'undefined') {
+    return 'inter';
+  }
+
+  return localStorage.getItem(FONT_FAMILY_STORAGE_KEY) === 'plus-jakarta-sans'
+    ? 'plus-jakarta-sans'
+    : 'inter';
+}
+
+function persistFontFamily(fontFamily: FontFamilyPreference): void {
+  if (typeof localStorage !== 'undefined') {
+    localStorage.setItem(FONT_FAMILY_STORAGE_KEY, fontFamily);
+  }
+}
+
+function applyFontFamily(fontFamily: FontFamilyPreference): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+
+  if (fontFamily === 'plus-jakarta-sans') {
+    document.documentElement.dataset['liassFontFamily'] = fontFamily;
+  } else {
+    delete document.documentElement.dataset['liassFontFamily'];
+  }
+}
+
 function applyThemeClass(themeMode: ThemeMode, overlayElement?: HTMLElement): void {
   if (typeof document === 'undefined') {
     return;
@@ -89,6 +120,7 @@ const initialState: UiState = {
   sidebarCollapsed: readStoredSidebarCollapsed(),
   sidebarOpen: false,
   themeMode: readStoredThemeMode(),
+  fontFamily: readStoredFontFamily(),
 };
 
 export const UiStore = signalStore(
@@ -115,6 +147,11 @@ export const UiStore = signalStore(
         persistThemeMode(themeMode);
         applyThemeClass(themeMode, overlayElement);
         patchState(store, { themeMode });
+      },
+      setFontFamily(fontFamily: FontFamilyPreference): void {
+        persistFontFamily(fontFamily);
+        applyFontFamily(fontFamily);
+        patchState(store, { fontFamily });
       },
       toggleThemeMode(): void {
         const themeMode: ThemeMode = store.themeMode() === 'dark' ? 'light' : 'dark';

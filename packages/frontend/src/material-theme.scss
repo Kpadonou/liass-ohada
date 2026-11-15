@@ -78,16 +78,10 @@ html {
       ),
       typography: (
         plain-family: (
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          sans-serif,
+          var(--liass-font-family),
         ),
         brand-family: (
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          sans-serif,
+          var(--liass-font-family),
         ),
         regular-weight: 400,
         medium-weight: 500,
@@ -120,16 +114,10 @@ html.dark {
       ),
       typography: (
         plain-family: (
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          sans-serif,
+          var(--liass-font-family),
         ),
         brand-family: (
-          Inter,
-          ui-sans-serif,
-          system-ui,
-          sans-serif,
+          var(--liass-font-family),
         ),
         regular-weight: 400,
         medium-weight: 500,

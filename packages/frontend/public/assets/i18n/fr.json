@@ -1,4 +1,7 @@
 {
+  "FONT_PREVIEW": {
+    "TOGGLE": "Aperçu de la typographie"
+  },
   "WELCOME": {
     "TITLE": "Bienvenue dans votre espace !",
     "SUBTITLE": "Votre espace est prêt. Choisissez une application pour commencer.",
