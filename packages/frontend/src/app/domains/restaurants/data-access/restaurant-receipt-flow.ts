@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { RestaurantReceiptApi, ReceiptProgress } from './restaurant-receipt.api';
 import { ServiceOrderContext } from './restaurant-orders.api';
+import { RestaurantReceiptSummary } from '@liass-ohada/shared/restaurants';
 export const receiptKey = (ctx: ServiceOrderContext) =>
   [
     'restaurants',
@@ -22,6 +23,7 @@ export class RestaurantReceiptFlow {
     ctx: ServiceOrderContext,
     current: () => boolean,
     progress: (p: ReceiptProgress) => void,
+    details: { customer?: RestaurantReceiptSummary['customer']; aib?: 'A' | 'B' } = {},
   ) {
     const key = JSON.stringify(receiptKey(ctx));
     if (this.running.has(key)) return false;
@@ -34,7 +36,7 @@ export class RestaurantReceiptFlow {
       // A bounded foreground command sequence, never interval polling. Manual resume keeps the intent.
       for (let step = 0; step < 12 && current(); step++) {
         this.api.assertContext(ctx);
-        const value = await this.api.publish(ctx, id);
+        const value = await this.api.publish(ctx, id, details);
         if (!current()) return false;
         progress(value);
         if (value.state === 'FINAL') return true;

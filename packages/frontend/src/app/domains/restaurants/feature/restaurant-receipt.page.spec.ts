@@ -80,6 +80,14 @@ describe('Receipt presentation and complete native print', () => {
     });
   }
   it('renders confirmed DGI TEST evidence and includes its QR in thermal and A4 print', async () => {
+    const page = receiptPageFixture();
+    page.data.customer = { name: 'Client Test', ifu: '1234567890123', contact: '+229 01 00 00 00', address: 'Cotonou' };
+    page.data.aib = 'A';
+    page.parts[0].content.kind === 'COMMERCIAL' &&
+      (page.parts[0].content.lines[0].snapshot.specificTaxMinor = 100);
+    page.parts[0].content.kind === 'COMMERCIAL' &&
+      (page.parts[0].content.lines[0].snapshot.specificTaxKind = 'SPECIFIC');
+    api.page.mockResolvedValue(page);
     fiscalApi.result.mockResolvedValue({
       invoiceId: receiptSummary().receiptId,
       environment: 'TEST',
@@ -113,6 +121,9 @@ describe('Receipt presentation and complete native print', () => {
       expect(printer.print).toHaveBeenLastCalledWith(expect.any(HTMLElement), paper);
       const document = printer.print.mock.calls.at(-1)![0] as HTMLElement;
       expect(document.textContent).toContain('TEST-NIM');
+      expect(document.textContent).toContain('Client Test');
+      expect(document.textContent).toContain('1234567890123');
+      expect(document.textContent).toContain('Taxe spécifique');
       expect(document.querySelector('img')?.src).toMatch(/^data:image\/png/);
     }
   });

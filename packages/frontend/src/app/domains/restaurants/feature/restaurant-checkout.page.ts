@@ -27,6 +27,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { AuthStore } from '../../identity/data-access/auth.store';
@@ -47,6 +48,7 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatIconModule,
     TranslocoModule,
     LiassPageHeaderComponent,
@@ -114,6 +116,13 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
               </button>
             } @else {
               <p class="w-full text-sm text-app-text-secondary" role="status">{{ 'RESTAURANTS.RECEIPT.PUBLICATION_REQUIRED' | transloco }}</p>
+              <div class="grid w-full gap-2 sm:grid-cols-2">
+                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_NAME' | transloco }}</mat-label><input matInput [(ngModel)]="customerName" maxlength="160" /></mat-form-field>
+                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_IFU' | transloco }}</mat-label><input matInput [(ngModel)]="customerIfu" maxlength="32" /></mat-form-field>
+                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_CONTACT' | transloco }}</mat-label><input matInput [(ngModel)]="customerContact" maxlength="160" /></mat-form-field>
+                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_ADDRESS' | transloco }}</mat-label><input matInput [(ngModel)]="customerAddress" maxlength="250" /></mat-form-field>
+                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.AIB' | transloco }}</mat-label><mat-select [(ngModel)]="aibSelection"><mat-option value="">{{ 'RESTAURANTS.RECEIPT.AIB_NONE' | transloco }}</mat-option><mat-option value="A">1 %</mat-option><mat-option value="B">5 %</mat-option></mat-select></mat-form-field>
+              </div>
               <button mat-flat-button type="button" [disabled]="publishing() || invoiceLoading()" (click)="publishInvoice(closed)">
                 {{ (publishing() ? 'RESTAURANTS.RECEIPT.PREPARING' : 'RESTAURANTS.RECEIPT.PUBLISH_COMMERCIAL') | transloco }}
               </button>
@@ -250,6 +259,11 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
   `,
 })
 export class RestaurantCheckoutPage {
+  customerName = '';
+  customerIfu = '';
+  customerContact = '';
+  customerAddress = '';
+  aibSelection: '' | 'A' | 'B' = '';
   readonly operational = inject(RestaurantOutletContext);
   private readonly auth = inject(AuthStore);
   readonly caps = inject(RestaurantsCapabilities);
@@ -436,7 +450,21 @@ export class RestaurantCheckoutPage {
         },
       }).afterClosed());
       if (!approved || !current()) return;
-      const final = await this.injector.get(RestaurantReceiptFlow).resume(ctx, current, () => {});
+      const name = this.customerName.trim();
+      const customer = name ? {
+        name,
+        ...(this.customerIfu.trim() ? { ifu: this.customerIfu.trim() } : {}),
+        ...(this.customerContact.trim() ? { contact: this.customerContact.trim() } : {}),
+        ...(this.customerAddress.trim() ? { address: this.customerAddress.trim() } : {}),
+      } : undefined;
+      if (!customer && (this.customerIfu.trim() || this.customerContact.trim() || this.customerAddress.trim())) {
+        this.message.set(this.t.translate('RESTAURANTS.RECEIPT.CUSTOMER_NAME_REQUIRED'));
+        return;
+      }
+      const final = await this.injector.get(RestaurantReceiptFlow).resume(ctx, current, () => {}, {
+        ...(customer ? { customer } : {}),
+        ...(this.aibSelection ? { aib: this.aibSelection } : {}),
+      });
       if (!current()) return;
       if (!final) {
         this.message.set(this.t.translate('RESTAURANTS.RECEIPT.RESUME_COPY'));

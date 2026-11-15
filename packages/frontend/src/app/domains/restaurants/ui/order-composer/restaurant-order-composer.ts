@@ -29,6 +29,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
@@ -63,6 +64,7 @@ type DraftIntent = {
     MatIconModule,
     MatFormFieldModule,
     MatInputModule,
+    MatSelectModule,
     MatTooltipModule,
     LiassCardComponent,
     LiassButtonComponent,
@@ -257,6 +259,36 @@ export class RestaurantOrderComposer {
   readonly pending = signal<Intent | null>(null);
   readonly message = signal('');
   readonly quantityError = signal('');
+  private readonly specificTaxControls = new Map<string, FormControl<string>>();
+  private readonly specificTaxKindControls = new Map<string, FormControl<'SPECIFIC' | 'ACCOMMODATION'>>();
+  private readonly fiscalExceptionControls = new Map<string, FormControl<'' | 'B' | 'D'>>();
+  private readonly fiscalEvidenceControls = new Map<string, FormControl<string>>();
+  catalogFiscalGroup(line: c.RestaurantOrderItem) {
+    return this.indexedItems().find(row => row.item.id === line.menuItemId)?.item.fiscalClassification?.group;
+  }
+  fiscalExceptionInput(line: c.RestaurantOrderItem) {
+    const key = this.draftKey(line);
+    if (!this.fiscalExceptionControls.has(key)) this.fiscalExceptionControls.set(key,
+      new FormControl<'' | 'B' | 'D'>('', { nonNullable: true }));
+    return this.fiscalExceptionControls.get(key)!;
+  }
+  fiscalEvidenceInput(line: c.RestaurantOrderItem) {
+    const key = this.draftKey(line);
+    if (!this.fiscalEvidenceControls.has(key)) this.fiscalEvidenceControls.set(key,
+      new FormControl('', { nonNullable: true }));
+    return this.fiscalEvidenceControls.get(key)!;
+  }
+  specificTaxInput(line: c.RestaurantOrderItem) {
+    const key = this.draftKey(line);
+    if (!this.specificTaxControls.has(key)) this.specificTaxControls.set(key, new FormControl('0', { nonNullable: true }));
+    return this.specificTaxControls.get(key)!;
+  }
+  specificTaxKindInput(line: c.RestaurantOrderItem) {
+    const key = this.draftKey(line);
+    if (!this.specificTaxKindControls.has(key)) this.specificTaxKindControls.set(key,
+      new FormControl<'SPECIFIC' | 'ACCOMMODATION'>('SPECIFIC', { nonNullable: true }));
+    return this.specificTaxKindControls.get(key)!;
+  }
   private readonly quantityInputs = new Map<
     string,
     {
@@ -780,6 +812,20 @@ export class RestaurantOrderComposer {
   }
   async submit() {
     if (!this.canSubmit()) return;
+    if (this.drafts().some(line => !/^(0|[1-9]\d*)$/.test(this.specificTaxInput(line).value.trim()) ||
+        !Number.isSafeInteger(Number(this.specificTaxInput(line).value.trim())))) {
+      this.message.set('INVALID_SPECIFIC_TAX');
+      return;
+    }
+    if (this.drafts().some(line => this.fiscalExceptionInput(line).value &&
+        !this.fiscalEvidenceInput(line).value.trim())) {
+      this.message.set('FISCAL_EVIDENCE_REQUIRED');
+      return;
+    }
+    const taxSelections = new Map(this.drafts().map(line => {
+      const entered = this.specificTaxInput(line).value.trim();
+      return [this.draftKey(line), { amount: Number(entered), kind: this.specificTaxKindInput(line).value }] as const;
+    }));
     const frozen = this.drafts().map((line) => ({
       key: this.draftKey(line),
       quantity: line.quantity,
@@ -830,6 +876,14 @@ export class RestaurantOrderComposer {
           items: this.drafts().map((line) => ({
             itemId: line.itemId,
             expectedVersion: line.version,
+            ...(taxSelections.get(this.draftKey(line))?.amount ? {
+              specificTaxMinor: taxSelections.get(this.draftKey(line))!.amount,
+              specificTaxKind: taxSelections.get(this.draftKey(line))!.kind,
+            } : {}),
+            ...(this.fiscalExceptionInput(line).value ? { fiscalException: {
+              group: this.fiscalExceptionInput(line).value,
+              evidenceReference: this.fiscalEvidenceInput(line).value.trim(),
+            } } : {}),
           })),
         },
       });

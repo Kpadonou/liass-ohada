@@ -28,6 +28,15 @@ import { restaurantPrice } from '../utils/restaurant-money';
         }}</span>
       </div>
       <h2 class="mt-2 break-words font-medium">{{ summary().tableName }}</h2>
+      @if (summary().customer; as customer) {
+        <section class="mt-2 text-xs">
+          <p class="font-medium">{{ customer.name }}</p>
+          @if (customer.ifu) { <p>IFU : {{ customer.ifu }}</p> }
+          @if (customer.contact) { <p class="break-words">{{ customer.contact }}</p> }
+          @if (customer.address) { <p class="break-words">{{ customer.address }}</p> }
+        </section>
+      }
+      @if (summary().aib; as aib) { <p class="mt-1 text-xs">AIB : {{ aib === 'A' ? '1 %' : '5 %' }}</p> }
       <p class="mt-2 break-all text-xs">
         {{ 'RESTAURANTS.RECEIPT.REFERENCE' | transloco }}
         <span class="block break-all">{{ summary().receiptId }}</span>
@@ -140,6 +149,14 @@ import { restaurantPrice } from '../utils/restaurant-money';
                 <p class="text-xs text-app-text-secondary">
                   {{ 'RESTAURANTS.RECEIPT.RECORDED_TAX' | transloco }} :
                   {{ money(line.snapshot.taxMinor) }}
+                </p>
+              }
+              @if (!line.cancelledAt && line.snapshot.specificTaxMinor) {
+                <p class="text-xs text-app-text-secondary">
+                  {{ (line.snapshot.specificTaxKind === 'ACCOMMODATION' ?
+                    'RESTAURANTS.ORDER_TAKING.ACCOMMODATION_TAX' :
+                    'RESTAURANTS.ORDER_TAKING.SPECIFIC_TAX') | transloco }} :
+                  {{ money(line.snapshot.specificTaxMinor) }}
                 </p>
               }
               @if (line.notes) {

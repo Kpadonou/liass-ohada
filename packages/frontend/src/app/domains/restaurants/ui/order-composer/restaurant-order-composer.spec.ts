@@ -396,6 +396,22 @@ it('switches from the composing draft to submitted history only after confirmati
   expect(fixture.nativeElement.querySelectorAll('[data-testid="service-order"]')).toHaveLength(2);
   expect(fixture.nativeElement.querySelectorAll('[data-testid="abandon-order"]')).toHaveLength(2);
 });
+it('submits the tax for the full draft quantity with evidenced D treatment', async () => {
+  menu.cartePage.mockResolvedValue({ outletId: rid(2), menuId: rid(7),
+    items: [{ ...operational(), fiscalClassification: { country: 'BJ', group: 'B' } }] });
+  await page.menuItemsQuery.refetch();
+  await draftInput();
+  const line = page.drafts()[0];
+  page.specificTaxInput(line).setValue('150');
+  page.specificTaxKindInput(line).setValue('SPECIFIC');
+  page.fiscalExceptionInput(line).setValue('D');
+  page.fiscalEvidenceInput(line).setValue('DGI review 13');
+  await page.submit();
+  expect(api.command.mock.calls.find((call) => call[1] === 'submit')?.[2]).toMatchObject({
+    items: [{ itemId: line.itemId, specificTaxMinor: 150, specificTaxKind: 'SPECIFIC',
+      fiscalException: { group: 'D', evidenceReference: 'DGI review 13' } }],
+  });
+});
 it('does not offer empty-Order cancellation while a failed or ambiguous removal retains unresolved intent', async () => {
   management = true;
   await draftInput();

@@ -270,10 +270,19 @@ describe('Cashier occupied-table discovery and context', () => {
     const dialog = vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
     publication.resume.mockResolvedValue(true);
     receipts.page.mockResolvedValue({ data: { receiptId: rid(77) } });
+    fixture.componentInstance.customerName = 'Client Test';
+    fixture.componentInstance.customerIfu = '1234567890123';
+    fixture.componentInstance.customerContact = '+229 01 00 00 00';
+    fixture.componentInstance.customerAddress = 'Cotonou';
+    fixture.componentInstance.aibSelection = 'A';
     const invalidation = vi.spyOn(client, 'invalidateQueries');
     await fixture.componentInstance.publishInvoice(ctx);
     expect(dialog).toHaveBeenCalledOnce();
     expect(publication.resume).toHaveBeenCalledOnce();
+    expect(publication.resume.mock.calls[0][3]).toEqual({
+      customer: { name: 'Client Test', ifu: '1234567890123', contact: '+229 01 00 00 00', address: 'Cotonou' },
+      aib: 'A',
+    });
     expect(fixture.componentInstance.invoiceState()).toBe('FINAL');
     expect(fixture.componentInstance.invoice()).toEqual({ ctx, id: rid(77) });
     expect(invalidation).toHaveBeenCalledWith({ queryKey: ['restaurants', 'org', 'outlet', rid(2), 'documents', 'invoices'] });
