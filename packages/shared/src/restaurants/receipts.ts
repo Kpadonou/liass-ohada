@@ -9,8 +9,14 @@ const id = z.string().uuid();
 const amount = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const time = z.string().datetime();
+export const RestaurantInvoiceCustomerSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  ifu: z.string().trim().min(1).max(32).optional(),
+  contact: z.string().trim().min(1).max(160).optional(),
+  address: z.string().trim().min(1).max(250).optional(),
+}).strict();
 export const PublishRestaurantReceiptRequestSchema = z
-  .object({ clientRequestId: id })
+  .object({ clientRequestId: id, customer: RestaurantInvoiceCustomerSchema.optional(), aib: z.enum(["A", "B"]).optional() })
   .strict();
 export const RestaurantReceiptLineSchema = z
   .object({
@@ -77,6 +83,8 @@ export const RestaurantReceiptSummarySchema = z
     dueMinor: amount,
     paidMinor: amount,
     paidByMethodMinor: RestaurantPaidByMethodSchema,
+    customer: RestaurantInvoiceCustomerSchema.optional(),
+    aib: z.enum(["A", "B"]).optional(),
     partCount: amount,
     commercialPartCount: amount,
     settlementPartCount: amount,

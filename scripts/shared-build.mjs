@@ -186,6 +186,19 @@ async function verifyDeclaredOutputs() {
       );
     }
   }
+
+  // These fields once existed in the runtime bundle but disappeared from
+  // tsup's bundled declarations. Check the consumer entry and emitted schema.
+  const restaurantsIndex = await readFile(path.join(sharedDist, "restaurants", "index.d.ts"), "utf8");
+  const receiptDeclarations = await readFile(path.join(sharedDist, "restaurants", "receipts.d.ts"), "utf8");
+  const transactionDeclarations = await readFile(path.join(sharedDist, "restaurants", "transactions.d.ts"), "utf8");
+  if (!restaurantsIndex.includes('"./receipts"') ||
+      !/PublishRestaurantReceiptRequestSchema[\s\S]*?customer: z\.ZodOptional/.test(receiptDeclarations) ||
+      !/RestaurantReceiptSummarySchema[\s\S]*?customer: z\.ZodOptional/.test(receiptDeclarations) ||
+      !/RestaurantReceiptSummarySchema[\s\S]*?aib: z\.ZodOptional/.test(receiptDeclarations) ||
+      !/AcceptedSaleSnapshotSchema[\s\S]*?specificTaxMinor: z\.ZodOptional/.test(transactionDeclarations)) {
+    throw new Error("Shared Restaurants declarations do not expose the fiscal receipt contract.");
+  }
 }
 
 async function readBuildCache() {
@@ -286,6 +299,25 @@ async function buildSharedPackage(args) {
 
   if (status !== 0) {
     process.exitCode = status;
+    return;
+  }
+
+  // tsup's bundled DTS pass can retain an older shape of re-exported Zod
+  // schemas while its JavaScript is current. Emit declarations directly from
+  // the same source graph with TypeScript instead.
+  const typescriptPackagePath = packageRequire.resolve("typescript/package.json");
+  const typescriptPackage = JSON.parse(await readFile(typescriptPackagePath, "utf8"));
+  const tscBinary = path.resolve(
+    path.dirname(typescriptPackagePath),
+    typescriptPackage.bin.tsc,
+  );
+  const declarationsStatus = run(
+    process.execPath,
+    [tscBinary, "-p", "tsconfig.json", "--emitDeclarationOnly", "--outDir", "dist"],
+    { cwd: sharedRoot, env: childEnvironment },
+  );
+  if (declarationsStatus !== 0) {
+    process.exitCode = declarationsStatus;
     return;
   }
 

@@ -155,6 +155,9 @@ export const AcceptedSaleSnapshotSchema = z
     subtotalMinor: money,
     discountMinor: z.literal(0),
     taxMinor: money,
+    /** Included in the frozen TTC line amount; applies to the full quantity. */
+    specificTaxMinor: money.optional(),
+    specificTaxKind: z.enum(["SPECIFIC", "ACCOMMODATION"]).optional(),
     ordinaryTax: RestaurantOrdinaryTaxSnapshotSchema.optional(),
     fiscalTreatment: RestaurantFiscalTreatmentSchema.optional(),
     lineTotalMinor: money,
@@ -265,8 +268,11 @@ export const SubmitRestaurantOrderRequestSchema = z
               })
               .strict()
               .optional(),
+            specificTaxMinor: money.optional(),
+            specificTaxKind: z.enum(["SPECIFIC", "ACCOMMODATION"]).optional(),
           })
-          .strict(),
+          .strict().refine(v => (v.specificTaxMinor === undefined) === (v.specificTaxKind === undefined),
+            { message: "Specific tax amount and kind must be supplied together" }),
       )
       .min(1)
       .max(12),

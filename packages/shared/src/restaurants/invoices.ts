@@ -29,6 +29,8 @@ export const RestaurantInvoiceSummarySchema = z
     dueMinor: z.number().int().nonnegative(),
     paidMinor: z.number().int().nonnegative(),
     paidByMethodMinor: RestaurantReceiptSummarySchema.shape.paidByMethodMinor,
+    customer: RestaurantReceiptSummarySchema.shape.customer,
+    aib: RestaurantReceiptSummarySchema.shape.aib,
     partCount: z.number().int().nonnegative(),
     commercialPartCount: z.number().int().nonnegative(),
     settlementPartCount: z.number().int().nonnegative(),

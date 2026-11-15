@@ -394,6 +394,7 @@ export const OperationalMenuItemSchema = MenuItemSchema.pick({
   version: true,
   price: true,
   availability: true,
+  fiscalClassification: true,
 })
   .extend({ categoryName: RestaurantNameSchema })
   .strict();
