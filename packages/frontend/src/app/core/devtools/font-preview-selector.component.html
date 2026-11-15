@@ -1,12 +1,12 @@
 <button
   mat-icon-button
   type="button"
-  class="!h-11 !w-11 border border-app-border bg-app-surface shadow-app-xs"
+  class="!h-11 !w-11 rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1]"
   [matMenuTriggerFor]="fontMenu"
   [matTooltip]="'FONT_PREVIEW.TOGGLE' | transloco"
   [attr.aria-label]="'FONT_PREVIEW.TOGGLE' | transloco"
 >
-  <mat-icon aria-hidden="true">text_fields</mat-icon>
+  <span aria-hidden="true" class="font-sans text-sm font-bold leading-none tracking-tight">Aa</span>
 </button>
 
 <mat-menu #fontMenu="matMenu">

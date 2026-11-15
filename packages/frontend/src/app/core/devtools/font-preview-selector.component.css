@@ -1,6 +1,4 @@
 :host {
-  position: fixed;
-  inset-inline-end: var(--spacing-app-gutter);
-  inset-block-end: calc(var(--spacing-app-gutter) + 3rem);
-  z-index: 50;
+  display: inline-flex;
+  flex: none;
 }

@@ -459,6 +459,10 @@
 
       <liass-language-selector inverse />
 
+      @if (fontPreviewEnabled) {
+        <liass-font-preview-selector />
+      }
+
       <button
         class="liass-focus-ring hidden size-8 shrink-0 place-items-center rounded-app-control border border-white/15 bg-white/[0.06] text-white transition hover:bg-white/[0.1] sm:grid"
         type="button"

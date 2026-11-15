@@ -35,6 +35,7 @@ vi.mock('aws-amplify/auth', () => {
 
 const translations = {
   en: {
+    FONT_PREVIEW: { TOGGLE: 'Typography preview' },
     SHELL: {
       NAV: { ACCOUNTING: 'Accounting', SALES: 'Sales', RESTAURANTS: 'Liass-Resto' },
       SECTIONS: {
@@ -207,6 +208,50 @@ describe('AppTopbarComponent', () => {
   function userMenuTriggerText(): string {
     return fixture.nativeElement.querySelector('[data-testid="user-menu-trigger"]').textContent;
   }
+
+  it('places the development typography selector in the global topbar', () => {
+    renderText();
+
+    const selector = fixture.nativeElement.querySelector(
+      'liass-font-preview-selector',
+    ) as HTMLElement | null;
+    const languageSelector = fixture.nativeElement.querySelector('liass-language-selector');
+    const trigger = selector?.querySelector('button');
+
+    expect(selector).not.toBeNull();
+    expect(selector?.previousElementSibling).toBe(languageSelector);
+    expect(trigger?.textContent).toContain('Aa');
+    expect(trigger?.getAttribute('aria-label')).toBe('Typography preview');
+    expect(selector?.closest('header')).not.toBeNull();
+  });
+
+  it('switches and persists the font preference from the topbar menu', async () => {
+    renderText();
+
+    const trigger = fixture.nativeElement.querySelector(
+      'liass-font-preview-selector button',
+    ) as HTMLButtonElement;
+    trigger.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const options = Array.from(
+      document.querySelectorAll<HTMLButtonElement>('.mat-mdc-menu-panel [role="menuitemradio"]'),
+    );
+    const interOption = options.find((option) => option.textContent?.includes('Inter'));
+    const jakartaOption = options.find((option) =>
+      option.textContent?.includes('Plus Jakarta Sans'),
+    );
+
+    expect(interOption?.getAttribute('aria-checked')).toBe('true');
+    expect(jakartaOption?.getAttribute('aria-checked')).toBe('false');
+    jakartaOption?.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(uiStore.fontFamily()).toBe('plus-jakarta-sans');
+    expect(localStorage.getItem('liass-ohada.fontFamily')).toBe('plus-jakarta-sans');
+  });
 
   it('displays a company workspace name instead of the raw organization id', () => {
     authStore.setCreatedWorkspace(

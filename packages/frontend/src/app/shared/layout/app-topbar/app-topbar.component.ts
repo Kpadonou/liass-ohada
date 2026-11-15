@@ -13,6 +13,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 import { TranslocoModule } from '@ngneat/transloco';
 
+import { environment } from '../../../../environments/environment';
+import { FontPreviewSelectorComponent } from '../../../core/devtools/font-preview-selector.component';
 import { LanguageSelectorComponent } from '../../../core/i18n/language-selector/language-selector.component';
 import { UiStore } from '../../../core/state/ui.store';
 import { PendingChangesService } from '../../../core/routing/pending-changes.service';
@@ -24,6 +26,7 @@ import { LiassLogoComponent } from '../../ui/liass-logo/liass-logo.component';
 @Component({
   selector: 'liass-app-topbar',
   imports: [
+    FontPreviewSelectorComponent,
     LanguageSelectorComponent,
     LiassDropdownComponent,
     LiassLogoComponent,
@@ -46,6 +49,7 @@ export class AppTopbarComponent implements OnInit {
   protected readonly fiscalYearContext = inject(AccountingFiscalYearContextService);
   protected readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
+  protected readonly fontPreviewEnabled = !environment.production;
   protected readonly activeWorkspaceIcon = computed(() => 'corporate_fare');
   protected readonly activeWorkspaceLabel = computed(() => {
     return this.authStore.activeWorkspaceDisplayName();

@@ -13,6 +13,8 @@ import { AppBackdropComponent } from '../app-backdrop/app-backdrop.component';
 import { AppContextBreadcrumbComponent } from '../app-context-breadcrumb/app-context-breadcrumb.component';
 import { AppSidebarComponent } from '../app-sidebar/app-sidebar.component';
 import { AppTopbarComponent } from '../app-topbar/app-topbar.component';
+import { FontPreviewSelectorComponent } from '../../../core/devtools/font-preview-selector.component';
+import { environment } from '../../../../environments/environment';
 
 export function pageFromUrl(url: string): AppPage {
   const path = url.split('?')[0]?.split('#')[0] ?? '';
@@ -127,12 +129,14 @@ export function pageFromUrl(url: string): AppPage {
     AppContextBreadcrumbComponent,
     AppSidebarComponent,
     AppTopbarComponent,
+    FontPreviewSelectorComponent,
     RouterOutlet,
   ],
   templateUrl: './app-shell.component.html',
 })
 export class AppShellComponent {
   protected readonly productNavigation = inject(ShellProductNavigation);
+  protected readonly fontPreviewEnabled = !environment.production;
   private readonly authStore = inject(AuthStore);
   protected readonly uiStore = inject(UiStore);
   private readonly router = inject(Router);

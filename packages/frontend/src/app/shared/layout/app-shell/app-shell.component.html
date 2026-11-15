@@ -11,9 +11,14 @@
           [alt]="'SHELL.LOGO_ALT' | transloco"
         /><span>{{ 'SHELL.NAV.RESTAURANTS' | transloco }}</span>
       </div>
-      <button mat-button type="button" class="!text-white" (click)="logout()">
-        {{ 'SHELL.TOPBAR.SIGN_OUT' | transloco }}
-      </button>
+      <div class="flex items-center gap-2">
+        @if (fontPreviewEnabled) {
+          <liass-font-preview-selector />
+        }
+        <button mat-button type="button" class="!text-white" (click)="logout()">
+          {{ 'SHELL.TOPBAR.SIGN_OUT' | transloco }}
+        </button>
+      </div>
     </header>
   } @else {
     <liass-app-topbar />
