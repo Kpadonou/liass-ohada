@@ -773,6 +773,16 @@ function validateInvoiceRequest(
     expected.itemTotals.length !== invoice.items.length
   )
     throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
+  const groups = new Set(invoice.items.map((item) => item.taxGroup));
+  if (
+    groups.has(undefined) ||
+    (invoice.type === "FV" && groups.has("C")) ||
+    (invoice.type === "EV" && !(
+      (groups.size === 1 && (groups.has("C") || groups.has("E"))) ||
+      (groups.size === 2 && groups.has("A") && groups.has("C"))
+    ))
+  )
+    throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
   const quantityAmount = (price: number, quantity: number) => {
     const fixed = quantity.toFixed(3);
     if (Number(fixed) !== quantity)

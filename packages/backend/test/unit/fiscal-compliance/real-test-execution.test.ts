@@ -123,6 +123,7 @@ beforeEach(() => {
       total: 2000,
       ordinaryVatTotals: { net: 1695, tax: 305 },
       fiscalGroupTotals: { B: { gross: 2000, net: 1695, tax: 305 } },
+      fiscalAdditionalTotals: { aib: 0, ts: 0 },
       payload,
     }));
 });
@@ -140,7 +141,7 @@ function setup(body: unknown = security, status = 200, options?: {
 }) {
   const fiscalTotals = options?.fiscalTotals ?? totals;
   const configuration = options?.configuration ?? config;
-  const transport = jest.fn(async (request: { method: string }) => ({
+  const transport = jest.fn(async (request: { method: string; body?: string }) => ({
     status: request.method === "PUT" ? status : 200,
     body: JSON.stringify(
       request.method === "POST"
@@ -181,6 +182,7 @@ test("classified A and B lines complete the durable real TEST journey without th
       A: { gross: 1000, net: 1000, tax: 0 },
       B: { gross: 2000, net: 1695, tax: 305 },
     },
+    fiscalAdditionalTotals: { aib: 0, ts: 0 },
     payload: mixedPayload,
   }));
   const { flow, transport } = setup(security, 200, {
@@ -194,6 +196,52 @@ test("classified A and B lines complete the durable real TEST journey without th
     fiscalTotalsVerified: true,
     securityEvidenceOrigin: "DGI_TEST",
   });
+  expect(transport.mock.calls.filter(([request]) => request.method === "POST")).toHaveLength(1);
+  expect(transport.mock.calls.filter(([request]) => request.method === "PUT")).toHaveLength(1);
+});
+test.each([
+  { scenario: "16", groups: ["C"] as const, quantities: [2] },
+  { scenario: "17", groups: ["A", "C"] as const, quantities: [2, 3] },
+  { scenario: "19", groups: ["E"] as const, quantities: [2] },
+])("DGI scenario $scenario: EV completes durable CREATE/CONFIRM with exact groups and quantities", async ({ scenario, groups, quantities }) => {
+  const items = groups.map((group, index) => ({
+    name: `Export ${group}`,
+    quantity: quantities[index],
+    price: 1000,
+    taxGroup: group,
+  }));
+  const total = quantities.reduce((sum, quantity) => sum + quantity * 1000, 0);
+  const exportPayload = {
+    invoice: { ...payload.invoice, type: "EV", items,
+      payment: [{ name: "ESPECES", amount: total }] },
+    expected: { itemTotals: quantities.map(quantity => quantity * 1000), total },
+  };
+  const expectedFiscalTotals = { ...totals, tab: 0, hab: 0, vab: 0,
+    taa: groups.includes("A" as never) ? 2000 : 0,
+    tac: groups.includes("C" as never) ? quantities[groups.indexOf("C" as never)] * 1000 : 0,
+    tae: groups.includes("E" as never) ? 2000 : 0,
+    total };
+  jest.mocked(restaurantBeninPreparation).mockReturnValueOnce(async () => ({
+    identity: { ...identity, sourceDocumentId: id },
+    sourceDigest: config.sourceDigest,
+    requestDigest: hash(canonical(exportPayload)),
+    total,
+    fiscalGroupTotals: Object.fromEntries(groups.map((group, index) => [group,
+      { gross: quantities[index] * 1000, net: quantities[index] * 1000, tax: 0 }])),
+    fiscalAdditionalTotals: { aib: 0, ts: 0 },
+    payload: exportPayload,
+  }));
+  const { flow, transport } = setup({ ...security, counters: `1/1 EV ${scenario}` }, 200, {
+    fiscalTotals: expectedFiscalTotals,
+    configuration: { ...config, expectedFiscalTotals },
+  });
+  expect((await create(flow)).state.status).toBe("CREATED");
+  await flow.confirm(principal, identity, `confirm-${scenario}`, { confirm: true });
+  expect(await new FiscalAttemptStore().read(identity)).toMatchObject({
+    status: "CONFIRMED", fiscalTotalsVerified: true, securityEvidenceOrigin: "DGI_TEST",
+  });
+  expect(JSON.parse(transport.mock.calls.find(([request]) => request.method === "POST")![0].body!))
+    .toMatchObject(exportPayload.invoice);
   expect(transport.mock.calls.filter(([request]) => request.method === "POST")).toHaveLength(1);
   expect(transport.mock.calls.filter(([request]) => request.method === "PUT")).toHaveLength(1);
 });

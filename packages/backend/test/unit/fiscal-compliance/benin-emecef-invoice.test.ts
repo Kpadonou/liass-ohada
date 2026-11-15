@@ -113,6 +113,45 @@ test("creates and confirms a reconciled decimal-quantity TEST invoice", async ()
     adapter.confirmInvoice(input, "decimal-uid", doc, decimalExpected, created),
   ).resolves.toMatchObject({ uid: "decimal-uid", ...security });
 });
+test.each([
+  { scenario: "16", groups: ["C"], quantities: [2] },
+  { scenario: "17", groups: ["A", "C"], quantities: [2, 3] },
+  { scenario: "19", groups: ["E"], quantities: [2] },
+])("scenario $scenario preserves EV lines through CREATE, verified GET and CONFIRM", async ({ groups, quantities }) => {
+  const doc = invoice();
+  doc.type = "EV";
+  doc.items = groups.map((taxGroup, index) => ({ name: `Export ${taxGroup}`,
+    price: 1000, quantity: quantities[index], taxGroup: taxGroup as "A" | "C" | "E" }));
+  const total = quantities.reduce((sum, quantity) => sum + 1000 * quantity, 0);
+  doc.payment = [{ name: "ESPECES", amount: total }];
+  const { adapter, transport } = setup(doc);
+  transport.mockImplementation(async request => response(request.method === "POST"
+    ? { uid: `export-${sequence}`, total }
+    : request.method === "PUT" ? security : doc));
+  const expected = { itemTotals: quantities.map(quantity => quantity * 1000), total };
+  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, expected);
+  expect(created.reconciled).toBe(true);
+  await expect(adapter.confirmInvoice(input, created.uid, doc, expected, created))
+    .resolves.toMatchObject({ uid: created.uid, codeMECeFDGI: security.codeMECeFDGI });
+  expect(transport.mock.calls.map(([request]) => request.method)).toEqual(["POST", "GET", "PUT"]);
+});
+test.each([
+  { type: "EV", groups: ["A"] },
+  { type: "EV", groups: ["B"] },
+  { type: "EV", groups: ["C", "E"] },
+  { type: "FV", groups: ["C"] },
+])("rejects unsupported $type fiscal group combination $groups before mutation", async ({ type, groups }) => {
+  const doc = invoice();
+  doc.type = type as "EV" | "FV";
+  doc.items = groups.map(taxGroup => ({ name: "Item", price: 1000, quantity: 1,
+    taxGroup: taxGroup as "A" | "B" | "C" | "E" }));
+  const total = groups.length * 1000;
+  doc.payment = [{ name: "ESPECES", amount: total }];
+  const { adapter, transport } = setup(doc);
+  await expect(adapter.createInvoice(input, new BeninInvoiceAttempt(), doc,
+    { itemTotals: groups.map(() => 1000), total })).rejects.toMatchObject({ code: "INVALID_PAYLOAD" });
+  expect(transport).not.toHaveBeenCalled();
+});
 test.each(["taxGroups", "invoiceTypes", "paymentTypes"] as const)(
   "reads %s official response",
   async (name) => {
