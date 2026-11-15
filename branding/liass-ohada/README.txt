@@ -1,28 +1,23 @@
-Liass-OHADA | Correction ciblée du pack Ready for Dev (PNG)
+LIASS-OHADA — READY FOR DEV PACK
+
+Ce pack est organisé pour une intégration rapide côté web, PWA, mobile et desktop.
 
 CONTENU
-- 8 variantes de logos PNG, avec noms et géométrie correspondants
-- 2 visuels sociaux clairs regénérés depuis le vrai logo horizontal bleu/or
-- VISUAL_AUDIT.jpg : comparaison côte à côte des variantes
-- asset-map.json : traçabilité et empreintes SHA-256
+- assets/logos : logos complets, stacked, monogramme LO, wordmark
+- web/favicons : favicon prêts à l’emploi
+- web/pwa : icônes PWA, apple touch icons, manifest et browserconfig
+- web/social : images Open Graph / partage social
+- app-icons : tailles utiles pour iOS, Android, macOS et usage général
+- meta : tokens de marque JSON
+- docs : documentation d’intégration
 
-IMPORTANT
-- Ce ZIP est un correctif, pas un nouveau pack complet.
-- Conserve la transparence des 8 PNG (vérifiée), sans altération ni revectorisation.
-- Aucun SVG généré ni modifié.
-- Les icônes web (favicon, PWA) n'ont pas été retouchées : elles proviennent déjà d'un véritable monogramme.
-- Bien vérifier le visuel des 8 logos avant remplacement sur le dépôt.
+COULEURS
+- Navy: #0B2E63
+- Gold: #E9A91B
+- White: #FFFFFF
 
-MISE À JOUR DU PROJET (depuis racine du dépôt)
-1. Sauvegarder branding/liass-ohada et les éventuels changements Git.
-2. Dézipper le contenu de l'archive directement dans branding/liass-ohada/ (fusionner les sous-dossiers).
-3. Prévisualiser la synchronisation :
-  python3 scripts/sync_liass_brand.py --frontend packages/frontend --target assets
-4. Synchroniser :
-  python3 scripts/sync_liass_brand.py --frontend packages/frontend --target assets --apply
-5. Vérifier le mapping de liass-brand-assets.ts et les rendus des deux thèmes.
-6. Faire les tests ciblés et committer uniquement les fichiers voulus.
-
-Origine de la correction
-Les noms horizontal-navy-gold et stacked-navy-gold avaient été associés respectivement au logo empilé et au monogramme.
-Les sources vérifiées ont été réassociées aux bons noms.
+NOTES IMPORTANTES
+- Ce pack est “ready for dev” : noms de fichiers standardisés et assets pratiques.
+- Les SVG définitifs seront repris plus tard ; ce pack s’appuie principalement sur les PNG validés visuellement.
+- Pour les surfaces claires : privilégier le logo navy/gold.
+- Pour les surfaces sombres : privilégier le logo white/gold.
