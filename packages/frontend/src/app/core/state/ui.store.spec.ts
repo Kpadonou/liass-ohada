@@ -11,6 +11,7 @@ describe('UiStore theme behavior', () => {
     localStorage.clear();
     document.documentElement.classList.remove('dark');
     document.documentElement.style.colorScheme = '';
+    delete document.documentElement.dataset['liassFontFamily'];
     TestBed.configureTestingModule({ providers: [UiStore] });
     store = TestBed.inject(UiStore);
     overlayContainer = TestBed.inject(OverlayContainer);
@@ -20,6 +21,7 @@ describe('UiStore theme behavior', () => {
     overlayContainer.ngOnDestroy();
     document.documentElement.classList.remove('dark');
     document.documentElement.style.colorScheme = '';
+    delete document.documentElement.dataset['liassFontFamily'];
     localStorage.clear();
     TestBed.resetTestingModule();
   });
@@ -51,5 +53,19 @@ describe('UiStore theme behavior', () => {
 
     expect(store.sidebarCollapsed()).toBe(false);
     expect(localStorage.getItem('liass-ohada.sidebarCollapsed')).toBe('false');
+  });
+
+  it('persists the selected font family and applies it to the application root', () => {
+    store.setFontFamily('plus-jakarta-sans');
+
+    expect(store.fontFamily()).toBe('plus-jakarta-sans');
+    expect(localStorage.getItem('liass-ohada.fontFamily')).toBe('plus-jakarta-sans');
+    expect(document.documentElement.dataset['liassFontFamily']).toBe('plus-jakarta-sans');
+
+    store.setFontFamily('inter');
+
+    expect(store.fontFamily()).toBe('inter');
+    expect(localStorage.getItem('liass-ohada.fontFamily')).toBe('inter');
+    expect(document.documentElement.dataset['liassFontFamily']).toBeUndefined();
   });
 });

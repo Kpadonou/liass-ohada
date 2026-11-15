@@ -1,0 +1,37 @@
+<button
+  mat-icon-button
+  type="button"
+  class="!h-11 !w-11 border border-app-border bg-app-surface shadow-app-xs"
+  [matMenuTriggerFor]="fontMenu"
+  [matTooltip]="'FONT_PREVIEW.TOGGLE' | transloco"
+  [attr.aria-label]="'FONT_PREVIEW.TOGGLE' | transloco"
+>
+  <mat-icon aria-hidden="true">text_fields</mat-icon>
+</button>
+
+<mat-menu #fontMenu="matMenu">
+  <button
+    mat-menu-item
+    type="button"
+    role="menuitemradio"
+    [attr.aria-checked]="uiStore.fontFamily() === 'inter'"
+    (click)="selectFontFamily('inter')"
+  >
+    <mat-icon aria-hidden="true" [class.invisible]="uiStore.fontFamily() !== 'inter'">
+      check
+    </mat-icon>
+    <span>Inter</span>
+  </button>
+  <button
+    mat-menu-item
+    type="button"
+    role="menuitemradio"
+    [attr.aria-checked]="uiStore.fontFamily() === 'plus-jakarta-sans'"
+    (click)="selectFontFamily('plus-jakarta-sans')"
+  >
+    <mat-icon aria-hidden="true" [class.invisible]="uiStore.fontFamily() !== 'plus-jakarta-sans'">
+      check
+    </mat-icon>
+    <span>Plus Jakarta Sans</span>
+  </button>
+</mat-menu>

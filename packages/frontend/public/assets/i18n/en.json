@@ -1,4 +1,7 @@
 {
+  "FONT_PREVIEW": {
+    "TOGGLE": "Typography preview"
+  },
   "WELCOME": {
     "TITLE": "Welcome to your workspace!",
     "SUBTITLE": "Your workspace is ready. Choose an application to get started.",
