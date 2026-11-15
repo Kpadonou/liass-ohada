@@ -1,5 +1,6 @@
-import { Component, computed, effect, inject, input, output, signal } from '@angular/core';
+import { Component, computed, effect, inject, input, output, signal, viewChild } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
@@ -11,9 +12,12 @@ import {
   RestaurantBusinessDay,
 } from '@liass-ohada/shared/restaurants';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
-import { LiassStatusChipComponent } from '../../../shared/ui/status-chip/status-chip.component';
 import { NotificationService } from '../../../core/notifications/notification.service';
 import { RestaurantCashQueries } from '../data-access/restaurant-cash.queries';
+import { cashKeys } from '../data-access/restaurant-cash.queries';
+import { RestaurantFiscalApi } from '../data-access/restaurant-fiscal.api';
+import { RestaurantReceiptPrint } from '../data-access/restaurant-receipt-print';
+import { RestaurantCreditNoteDocument } from './restaurant-credit-note-document.component';
 import { RestaurantCorrectionsQueries } from '../data-access/restaurant-corrections.queries';
 import { RestaurantsCapabilities } from '../data-access/restaurants-capabilities';
 import { AuthStore } from '../../identity/data-access/auth.store';
@@ -46,7 +50,7 @@ export function refundContext(
     TranslocoModule,
     MatSidenavModule,
     LiassButtonComponent,
-    LiassStatusChipComponent,
+    RestaurantCreditNoteDocument,
   ],
   template: ` @if (detailOnly()) {
       <ng-container *ngTemplateOutlet="detailContent" />
@@ -160,32 +164,30 @@ export function refundContext(
           }}</liass-button>
         }
         @if (detail.data(); as credit) {
-          <p class="break-words font-semibold">{{ credit.data.creditNoteReference }}</p>
-          <p class="text-2xl font-semibold tabular-nums">{{ money(credit.data.amountMinor) }}</p>
-          <liass-status-chip
-            tone="neutral"
-            [label]="'RESTAURANTS_CORRECTIONS.VALIDATED' | transloco"
-          />
-          <p class="text-sm text-app-text-secondary">
-            {{ date(credit.data.validatedAt) }} · {{ summary().tableName }}
-          </p>
+          <liass-restaurant-credit-note-document [summary]="summary()" [credit]="credit"
+            [fiscal]="fiscal.data() ?? null" />
+          <div class="flex flex-wrap gap-2">
+            <liass-button icon="print" [disabled]="fiscal.isFetching()"
+              (pressed)="printCredit('thermal')">{{ 'RESTAURANTS_CORRECTIONS.PRINT' | transloco }}</liass-button>
+            <liass-button icon="print" variant="ghost" [disabled]="fiscal.isFetching()"
+              (pressed)="printCredit('a4')">{{ 'RESTAURANTS_CORRECTIONS.PRINT_A4' | transloco }}</liass-button>
+          </div>
+          @if (fiscal.isError() && !fiscalDenied()) {
+            <p role="alert" class="text-sm">{{ 'RESTAURANTS_CORRECTIONS.FISCAL_READ_ERROR' | transloco }}</p>
+            <liass-button icon="refresh" variant="ghost" (pressed)="fiscal.refetch()">{{ 'RESTAURANTS_CORRECTIONS.REFRESH' | transloco }}</liass-button>
+          }
+          @if (canManage() && fiscal.data()?.status === 'NOT_STARTED') {
+            <liass-button icon="receipt_long" tone="brand" [loading]="fiscalBusy()"
+              (pressed)="initiateFiscal()">{{ 'RESTAURANTS_CORRECTIONS.FISCAL_CREATE' | transloco }}</liass-button>
+          }
+          @if (canManage() && fiscal.data()?.status === 'CREATED') {
+            <liass-button icon="verified" tone="brand" [loading]="fiscalBusy()"
+              (pressed)="confirmFiscal()">{{ 'RESTAURANTS_CORRECTIONS.FISCAL_CONFIRM' | transloco }}</liass-button>
+          }
           @if (actorLabel(credit.data.validatedByUserId)) {
             <p class="text-sm text-app-text-secondary">
               {{ actorLabel(credit.data.validatedByUserId) }}
             </p>
-          }
-          <div>
-            <h3 class="text-sm text-app-text-secondary">
-              {{ 'RESTAURANTS_CORRECTIONS.REASON' | transloco }}
-            </h3>
-            <p class="whitespace-pre-wrap break-words">{{ credit.data.reason }}</p>
-          </div>
-          <h3 class="font-semibold">{{ 'RESTAURANTS_CORRECTIONS.LINES' | transloco }}</h3>
-          @for (line of credit.lines; track line.creditNoteLineId) {
-            <div class="flex justify-between gap-3 border-b border-app-border py-2 text-sm">
-              <span class="break-words">{{ line.creditedQuantity }} × {{ line.label }}</span
-              ><span class="shrink-0 tabular-nums">{{ money(line.creditedAmountMinor) }}</span>
-            </div>
           }
           <h3 class="font-semibold">{{ 'RESTAURANTS_CORRECTIONS.REFUNDS' | transloco }}</h3>
           @if (refunds.isPending()) {
@@ -267,6 +269,10 @@ export class RestaurantCorrectionsComponent {
   private readonly t = inject(TranslocoService);
   private readonly notification = inject(NotificationService);
   private readonly auth = inject(AuthStore);
+  private readonly fiscalApi = inject(RestaurantFiscalApi);
+  private readonly printer = inject(RestaurantReceiptPrint);
+  private readonly creditDocument = viewChild(RestaurantCreditNoteDocument);
+  readonly fiscalBusy = signal(false);
   actorLabel(id: string) {
     return id === this.auth.currentUserId() ? this.auth.currentUserDisplayName() : null;
   }
@@ -296,6 +302,19 @@ export class RestaurantCorrectionsComponent {
     ),
     enabled: !!this.selected(),
   }));
+  readonly fiscal = injectQuery(() => {
+    const scope = this.scope();
+    const creditNoteId = this.selected();
+    const invoiceId = this.summary().receiptId;
+    return { queryKey: [...cashKeys.root(scope), 'credit-note-fiscal', invoiceId, creditNoteId],
+      queryFn: () => this.fiscalApi.creditResult({ ...scope, session: this.summary().guestSessionId },
+        invoiceId, creditNoteId),
+      enabled: !!creditNoteId && !!this.detail.data(), staleTime: 30_000 };
+  });
+  readonly fiscalDenied = computed(() => {
+    const error = this.fiscal.error();
+    return error instanceof HttpErrorResponse && [401, 403].includes(error.status);
+  });
   readonly refunds = injectInfiniteQuery(() => ({
     ...this.api.refunds(this.scope(), this.selected() || '00000000-0000-4000-8000-000000000000'),
     enabled: !!this.selected(),
@@ -342,6 +361,34 @@ export class RestaurantCorrectionsComponent {
       dateStyle: 'medium',
       timeStyle: 'short',
     }).format(new Date(value));
+  }
+  async printCredit(paper: 'thermal' | 'a4') {
+    const document = this.creditDocument();
+    if (!document || this.fiscal.isFetching()) return;
+    await document.readyForPrint();
+    this.printer.print(document.element.nativeElement, paper);
+  }
+  async initiateFiscal() {
+    const credit = this.detail.data();
+    if (!credit || !this.canManage() || this.fiscal.data()?.status !== 'NOT_STARTED' || this.fiscalBusy()) return;
+    this.fiscalBusy.set(true);
+    try {
+      await this.fiscalApi.initiateCredit({ ...this.scope(), session: this.summary().guestSessionId },
+        credit.data.finalBillId, credit.data.creditNoteId, crypto.randomUUID(), crypto.randomUUID());
+      await this.fiscal.refetch();
+    } catch { await this.fiscal.refetch(); }
+    finally { this.fiscalBusy.set(false); }
+  }
+  async confirmFiscal() {
+    const credit = this.detail.data();
+    if (!credit || !this.canManage() || this.fiscal.data()?.status !== 'CREATED' || this.fiscalBusy()) return;
+    this.fiscalBusy.set(true);
+    try {
+      await this.fiscalApi.confirmCredit({ ...this.scope(), session: this.summary().guestSessionId },
+        credit.data.finalBillId, credit.data.creditNoteId, crypto.randomUUID());
+      await this.fiscal.refetch();
+    } catch { await this.fiscal.refetch(); }
+    finally { this.fiscalBusy.set(false); }
   }
   create() {
     const creditability = this.creditability();

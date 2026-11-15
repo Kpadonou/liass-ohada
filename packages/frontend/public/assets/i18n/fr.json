@@ -231,6 +231,13 @@
     "COVERAGE": "L’historique de cette liste est disponible à partir de l’activation du suivi documentaire."
   },
   "RESTAURANTS_CORRECTIONS": {
+    "ORIGINAL_INVOICE": "Facture originale",
+    "ORIGINAL_DGI": "Code MECeF/DGI original",
+    "PRINT": "Imprimer le reçu d’avoir",
+    "PRINT_A4": "Imprimer en A4",
+    "FISCAL_READ_ERROR": "Le résultat fiscal de l’avoir ne peut pas être chargé.",
+    "FISCAL_CREATE": "Demander la fiscalisation",
+    "FISCAL_CONFIRM": "Confirmer la fiscalisation",
     "REFUND_TOO_LARGE": "Le montant du remboursement ne peut pas dépasser le reste à rembourser de {{amount}}.",
     "REFUND_POSITIVE": "Le montant du remboursement doit être supérieur à zéro.",
     "REFUND_INVALID": "Vérifiez les informations du remboursement.",

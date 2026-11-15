@@ -45,4 +45,16 @@ describe('Fiscal result transport', () => {
     expect(await promise).toMatchObject({ status: 'UNKNOWN_OUTCOME', securityElements: null });
     expect(context.assertContext).toHaveBeenCalledTimes(2);
   });
+  it('reads a linked credit result through the existing invoice fiscal route', async () => {
+    const promise = TestBed.inject(RestaurantFiscalApi).creditResult(ctx, rid(3), rid(4));
+    const request = TestBed.inject(HttpTestingController).expectOne((r) =>
+      r.url.endsWith(`/invoices/${rid(3)}/fiscal/result`) && r.params.get('creditNoteId') === rid(4));
+    request.flush({ invoiceId: rid(3), creditNoteId: rid(4), originalFiscalReference: 'A'.repeat(24),
+      environment: 'TEST', execution: 'REAL_TEST', status: 'CONFIRMED', confirmed: true,
+      legallyNormalized: false, normalizedInvoice: null, total: 554, uncertainOperation: null,
+      mutationRetryAllowed: false, resultAvailable: true, evidenceOrigin: 'DGI_TEST',
+      securityElements: { dateTime: '15/11/2026 10:00:00', qrCode: 'qr',
+        codeMECeFDGI: 'C'.repeat(24), counters: '2/2 FA', nim: 'NIM' } });
+    expect(await promise).toMatchObject({ creditNoteId: rid(4), originalFiscalReference: 'A'.repeat(24) });
+  });
 });
