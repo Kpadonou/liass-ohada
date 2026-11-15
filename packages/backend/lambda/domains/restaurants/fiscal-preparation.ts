@@ -65,12 +65,10 @@ export async function prepareRestaurantFiscalInvoice(
       try {
         v1 = projectRestaurantInvoiceV1(evidence);
       } catch (error) {
-        if (
-          !fullyClassified ||
-          !hasDecimalQuantity ||
-          !(error instanceof AppError) ||
-          error.messageCode !== "AUTHORITY_INVALID_NUMBER"
-        )
+        if (!fullyClassified || !(
+          error instanceof AppError && error.messageCode === "AUTHORITY_INVALID_NUMBER" && hasDecimalQuantity ||
+          error instanceof Error && error.message === "RESTAURANTS_V1_CASE_UNSUPPORTED"
+        ))
           throw error;
       }
     }
@@ -84,6 +82,8 @@ export async function prepareRestaurantFiscalInvoice(
             classificationEvidence:
               line.snapshot.fiscalTreatment!.evidenceReference ??
               line.snapshot.fiscalTreatment!.regimeRevision,
+            ...(line.snapshot.specificTaxMinor !== undefined ?
+              { taxSpecificMinor: String(line.snapshot.specificTaxMinor) } : {}),
           }))
         : v1
           ? v1.document.lines.map((line) => ({
@@ -123,6 +123,8 @@ export async function prepareRestaurantFiscalInvoice(
         issuedAt: evidence.invoice.issuedAt,
         provenance: provenance.evidence,
         paidByMethodMinor: evidence.invoice.paidByMethodMinor,
+        ...(evidence.invoice.customer ? { customer: evidence.invoice.customer } : {}),
+        ...(evidence.invoice.aib ? { aib: evidence.invoice.aib } : {}),
         currency: mapping.currency,
         totalMinor: mapping.totalMinor,
         lines: mapping.lines,

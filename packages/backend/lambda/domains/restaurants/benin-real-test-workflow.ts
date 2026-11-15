@@ -114,8 +114,8 @@ export function restaurantBeninRealTestWorkflow(
           (prepared.fiscalGroupTotals.B?.tax ?? 0) ||
         config.expectedFiscalTotals.vad !==
           (prepared.fiscalGroupTotals.D?.tax ?? 0) ||
-        config.expectedFiscalTotals.aib !== 0 ||
-        config.expectedFiscalTotals.ts !== 0
+        config.expectedFiscalTotals.aib !== prepared.fiscalAdditionalTotals?.aib ||
+        config.expectedFiscalTotals.ts !== prepared.fiscalAdditionalTotals?.ts
       )
         throw new Error("FISCAL_CONFIGURATION_MISMATCH");
       await verifyContext();

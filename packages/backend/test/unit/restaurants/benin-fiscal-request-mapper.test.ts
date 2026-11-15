@@ -122,6 +122,48 @@ test("explicit mapping preserves exact amounts and is directly consumable by dur
   });
   expect(before).toEqual(preparation());
 });
+test("frozen specific tax and buyer AIB map to DGI request with reconciled totals", async () => {
+  const base = preparation();
+  const taxed = { ...line, snapshot: { ...line.snapshot, subtotalMinor: 1610, taxMinor: 290,
+    specificTaxMinor: 100, specificTaxKind: "SPECIFIC" as const,
+    fiscalTreatment: { country: "BJ", catalogGroup: "B", effectiveGroup: "B",
+      regime: "ORDINARY_VAT", regimeRevision: id, policyId: "BJ-RESTO-TTC",
+      policyVersion: 1, rateBasisPoints: 1800, rounding: "HALF_UP_LINE" } } };
+  const mapped = mapRestaurantFiscalLines({ lines: [taxed], classifications: [{ ...classification,
+    classificationEvidence: id, taxSpecificMinor: "100" }] });
+  const result = mapRestaurantBeninRequest({ ...base, ...mapped,
+    customer: { name: "Client Test", ifu: "1234567890123", contact: "Cotonou" },
+    aib: "A" }, principal, identity, configuration());
+  expect(result.fiscalAdditionalTotals).toEqual({ aib: 17, ts: 100 });
+  expect(result.payload).toMatchObject({ invoice: { aib: "A", client: { name: "Client Test", ifu: "1234567890123" },
+    items: [{ taxSpecific: 100, taxGroup: "B" }] }, expected: { total: 2000 } });
+  const binding = new DurableBeninBinding(new BeninEMecefTestAdapter({ transport: jest.fn(async () => ({
+    status: 200, body: JSON.stringify({ uid: "tax-uid", total: 2000 }),
+  })) }), () => "synthetic-secret");
+  await expect(binding.createInvoice(result)).resolves.toMatchObject({ reconciled: true, total: 2000 });
+});
+test("AIB 5% remains available without an IFU as in SFE scenario 08", () => {
+  const result = mapRestaurantBeninRequest({ ...preparation(), aib: "B" }, principal, identity, configuration());
+  expect(result.payload).toMatchObject({ invoice: { aib: "B" } });
+  expect(result.fiscalAdditionalTotals?.aib).toBe(100);
+});
+test.each(["D", "E"] as const)("frozen %s treatment preserves specific tax on the provider item", group => {
+  const base = preparation();
+  const taxed = { ...line, snapshot: { ...line.snapshot,
+    subtotalMinor: group === "D" ? 1610 : 1900,
+    taxMinor: group === "D" ? 290 : 0,
+    specificTaxMinor: 100, specificTaxKind: "SPECIFIC" as const,
+    fiscalTreatment: { country: "BJ", catalogGroup: group === "D" ? "B" : "E", effectiveGroup: group,
+      regime: group === "D" ? "ORDINARY_VAT" : "TPS", regimeRevision: id,
+      policyId: "BJ-RESTO-TTC", policyVersion: 1, rateBasisPoints: group === "D" ? 1800 : 0,
+      rounding: "HALF_UP_LINE", ...(group === "D" ? { evidenceReference: id } : {}) } } };
+  const mapped = mapRestaurantFiscalLines({ lines: [taxed], classifications: [{ ...classification,
+    taxGroup: group, classificationEvidence: id, taxSpecificMinor: "100" }] });
+  const result = mapRestaurantBeninRequest({ ...base, ...mapped }, principal, identity,
+    { ...configuration(), taxGroups: [group] });
+  expect(result.payload).toMatchObject({ invoice: { items: [{ taxGroup: group, taxSpecific: 100 }] } });
+  expect(result.fiscalAdditionalTotals).toEqual({ aib: 0, ts: 100 });
+});
 
 test("mixed A/B fiscal groups are transmitted from frozen line mapping without a B fallback", () => {
   const secondId = "22222222-2222-4222-8222-222222222222";

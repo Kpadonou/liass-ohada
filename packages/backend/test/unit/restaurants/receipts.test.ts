@@ -61,7 +61,7 @@ async function person(actor: string, role: string, assigned = true) {
       f.outlet.id,
     );
 }
-async function visit(lines = 1) {
+async function visit(lines = 1, tax?: { specificTaxMinor: number; specificTaxKind: "SPECIFIC" | "ACCOMMODATION" }) {
   const session = c.GuestSessionSchema.parse(
     (
       await S.mutate(ctx(), "OPEN_SESSION", {
@@ -108,7 +108,7 @@ async function visit(lines = 1) {
       {
         clientRequestId: req(),
         expectedVersion: (await S.order(scope(), order.orderId)).data.version,
-        items: [{ itemId: line.itemId, expectedVersion: line.version }],
+        items: [{ itemId: line.itemId, expectedVersion: line.version, ...(tax ?? {}) }],
       },
       { orderId: order.orderId },
     );
@@ -116,7 +116,8 @@ async function visit(lines = 1) {
   return { sessionId: session.guestSessionId, orderId: order.orderId };
 }
 async function visitItems(
-  selections: Array<{ item: (typeof f.items)[number]; quantity: number }>,
+  selections: Array<{ item: (typeof f.items)[number]; quantity: number;
+    specificTaxMinor?: number; specificTaxKind?: "SPECIFIC" | "ACCOMMODATION" }>,
 ) {
   const session = c.GuestSessionSchema.parse(
     (
@@ -169,6 +170,10 @@ async function visitItems(
       items: lines.map((line) => ({
         itemId: line.itemId,
         expectedVersion: line.version,
+        ...(selections[lines.indexOf(line)].specificTaxMinor !== undefined ? {
+          specificTaxMinor: selections[lines.indexOf(line)].specificTaxMinor,
+          specificTaxKind: selections[lines.indexOf(line)].specificTaxKind,
+        } : {}),
       })),
     },
     { orderId: order.orderId },
@@ -209,10 +214,12 @@ async function finish(
   sessionId: string,
   actor = "owner",
   clientRequestId = req(),
+  details: { customer?: c.RestaurantReceiptSummary["customer"]; aib?: "A" | "B" } = {},
 ) {
   for (let n = 0; n < 500; n++) {
     const r = await Receipt.publish(scope(), actor, sessionId, {
       clientRequestId,
+      ...details,
     });
     if (r.data.state === "FINAL") return r.data.receipt;
   }
@@ -229,6 +236,7 @@ beforeEach(async () => {
   await openCashFixture(scope(), ["owner", "manager"]);
 });
 afterEach(() => {
+  delete process.env.RESTAURANTS_SYNTHETIC_PROVENANCE;
   m.db.restore();
   jest.restoreAllMocks();
 });
@@ -269,6 +277,55 @@ test("closed canonical visit publishes immutable accepted lines and cash evidenc
   });
   expect((await S.activeTable(scope(), f.tables[0].id)).data).toBeNull();
   expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
+});
+test("customer, AIB and full-quantity specific/accommodation taxes survive the real sale and receipt path", async () => {
+  const v = await visitItems([
+    { item: f.items[4], quantity: 2, specificTaxMinor: 100, specificTaxKind: "SPECIFIC" },
+    { item: f.items[4], quantity: 1, specificTaxMinor: 50, specificTaxKind: "ACCOMMODATION" },
+  ]);
+  const accepted = await Promise.all(v.lines.map(line => S.line(scope(), v.orderId, line.itemId)));
+  expect(accepted.map(row => row.data.snapshot)).toEqual(expect.arrayContaining([
+    expect.objectContaining({ specificTaxMinor: 100, specificTaxKind: "SPECIFIC" }),
+    expect.objectContaining({ specificTaxMinor: 50, specificTaxKind: "ACCOMMODATION" }),
+  ]));
+  await settle(v);
+  const customer = { name: "Client Test", ifu: "1234567890123", contact: "+229 01 00 00 00", address: "Cotonou" };
+  const commandId = req();
+  let published = await Receipt.publish(scope(), "owner", v.sessionId, { clientRequestId: commandId, customer, aib: "A" });
+  for (let attempt = 0; published.data.state === "BUILDING" && attempt < 40; attempt++)
+    published = await Receipt.publish(scope(), "owner", v.sessionId, { clientRequestId: commandId });
+  expect(published.data.state).toBe("FINAL");
+  const read = await Receipt.read(scope(), "owner", v.sessionId, {});
+  expect(read.data).toMatchObject({ customer, aib: "A" });
+  const { provenance: fixture } = await import("./provenance-fixture");
+  const { bindRestaurantIssuanceProvenance } = await import("@/lambda/domains/restaurants/issuance-provenance");
+  const manifest = await B.get(scope(), read.data.receiptId, K.restaurantTransactionMetaSK(), "MANIFEST");
+  if (!manifest) throw new Error("Missing manifest");
+  const { bindingDigest: _binding, ...base } = fixture;
+  const captured = bindRestaurantIssuanceProvenance({ ...base, ...scope(),
+    invoiceId: read.data.receiptId, guestSessionId: v.sessionId,
+    sourceVersion: manifest.sourceVersion, financialRevision: manifest.financialRevision,
+    finalManifestVersion: manifest.version, issuedAt: read.data.issuedAt, capturedAt: read.data.issuedAt,
+    commercialRootDigest: read.data.digest, actorUserId: "owner",
+    seller: { ...base.seller, orgId: org }, timezone: { ...base.timezone, orgId: org },
+  });
+  const provenanceRow = { PK: K.restaurantBillPK(org, f.outlet.id, read.data.receiptId),
+    SK: K.restaurantIssuanceProvenanceSK(), ...scope(), invoiceId: read.data.receiptId,
+    schemaVersion: 1, entityType: "RESTAURANT_INVOICE_ISSUANCE_PROVENANCE", data: captured };
+  m.rows.set(JSON.stringify([provenanceRow.PK, provenanceRow.SK]), marshall(provenanceRow));
+  expect(read.parts.filter(part => part.content.kind === "COMMERCIAL")
+    .flatMap(part => part.content.kind === "COMMERCIAL" ? part.content.lines : [])
+    .map(line => line.snapshot.specificTaxMinor)).toEqual(expect.arrayContaining([100, 50]));
+  const verified = await Source.verify(scope(), "owner", v.sessionId, read.data.receiptId);
+  expect(verified.verified).toBe(true);
+  const { prepareRestaurantFiscalInvoice } = await import("@/lambda/domains/restaurants/fiscal-preparation");
+  const preparation = await prepareRestaurantFiscalInvoice({ scope: scope(), actorId: "owner",
+    sessionId: v.sessionId, invoiceId: read.data.receiptId, classifications: [] });
+  expect(preparation).toMatchObject({ ready: true, preparation: { customer, aib: "A",
+    lines: expect.arrayContaining([
+      expect.objectContaining({ fiscal: expect.objectContaining({ taxSpecificMinor: "100" }) }),
+      expect.objectContaining({ fiscal: expect.objectContaining({ taxSpecificMinor: "50" }) }),
+    ]) } });
 });
 test("OPEN and inconsistent CLOSED owners cannot publish", async () => {
   const v = await visit();
@@ -1448,9 +1505,11 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
     const { bindRestaurantIssuanceProvenance } =
       await import("@/lambda/domains/restaurants/issuance-provenance");
     const { provenance: fixture } = await import("./provenance-fixture");
-    const v = await visit();
+    const v = await visit(1, outcome === "success" ? { specificTaxMinor: 100, specificTaxKind: "SPECIFIC" } : undefined);
     await settle(v);
-    const invoice = await finish(v.sessionId);
+    const invoice = await finish(v.sessionId, "owner", req(), outcome === "success" ? {
+      customer: { name: "Client Test", ifu: "1234567890123", address: "Cotonou" }, aib: "B",
+    } : {});
     const manifest = await B.get(
       scope(),
       invoice.receiptId,
@@ -1573,7 +1632,7 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
       counters: "1/1",
       nim: "synthetic-device",
     };
-    const transport = jest.fn(async (request: { method: string }) => {
+    const transport = jest.fn(async (request: { method: string; body?: string }) => {
       if (
         (outcome === "uncertain-create" && request.method === "POST") ||
         (outcome === "uncertain-confirm" && request.method === "PUT")
@@ -1621,6 +1680,9 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
         outcome === "success" ? "CONFIRMED" : "UNKNOWN_OUTCOME",
       );
       if (outcome === "success") {
+        const submitted = JSON.parse(transport.mock.calls[0][0].body ?? "{}");
+        expect(submitted).toMatchObject({ aib: "B", client: { name: "Client Test", ifu: "1234567890123" },
+          items: [expect.objectContaining({ taxSpecific: 100 })] });
         expect(state?.security).toEqual(syntheticSecurity);
         expect(state?.securityEvidenceOrigin).toBe("SYNTHETIC");
         expect(state?.providerTotal).toBe(invoice.dueMinor);

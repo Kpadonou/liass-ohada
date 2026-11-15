@@ -765,7 +765,6 @@ function validateInvoiceRequest(
     !parsed.success ||
     !invoice.ifu?.trim() ||
     (invoice.type !== "FV" && invoice.type !== "EV") ||
-    invoice.aib !== undefined ||
     !invoice.operator?.name?.trim() ||
     !invoice.items?.length ||
     !invoice.payment?.length ||
@@ -791,13 +790,15 @@ function validateInvoiceRequest(
       item.price < 0 ||
       !Number.isFinite(item.quantity) ||
       item.quantity <= 0 ||
-      item.taxSpecific != null ||
+      (item.taxSpecific != null && (item.taxSpecific < 0 || !Number.isSafeInteger(item.taxSpecific))) ||
       item.originalPrice != null ||
       item.priceModification != null
     ) {
       throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
     }
     const amount = quantityAmount(item.price, item.quantity);
+    if (item.taxSpecific != null && BigInt(item.taxSpecific) >= amount)
+      throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
     if (
       !Number.isSafeInteger(expected.itemTotals[index]) ||
       amount !== BigInt(expected.itemTotals[index])

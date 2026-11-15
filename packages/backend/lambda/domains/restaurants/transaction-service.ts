@@ -200,6 +200,8 @@ export class RestaurantTransactionsService {
       itemId: string;
       expectedVersion: number;
       fiscalException?: { group: "B" | "C" | "D"; evidenceReference: string };
+      specificTaxMinor?: number;
+      specificTaxKind?: "SPECIFIC" | "ACCOMMODATION";
     },
     menu: RestaurantSnapshot & { data: contracts.Menu },
     currency: string,
@@ -267,7 +269,9 @@ export class RestaurantTransactionsService {
         company: companyTax,
         exception: selected.fiscalException,
       });
-      amounts = calculateRestaurantFiscalAmounts(amount, treatment);
+      if ((selected.specificTaxMinor ?? 0) >= amount)
+        throw new Error("INVALID_SPECIFIC_TAX");
+      amounts = calculateRestaurantFiscalAmounts(amount - (selected.specificTaxMinor ?? 0), treatment);
     } catch {
       return fail("RESTAURANTS_FISCAL_TREATMENT_UNSUPPORTED", 422);
     }
@@ -287,6 +291,10 @@ export class RestaurantTransactionsService {
       subtotalMinor: amounts.netMinor,
       discountMinor: 0,
       taxMinor: amounts.taxMinor,
+      ...(selected.specificTaxMinor !== undefined ? {
+        specificTaxMinor: selected.specificTaxMinor,
+        specificTaxKind: selected.specificTaxKind,
+      } : {}),
       fiscalTreatment: treatment,
       lineTotalMinor: amount,
       currency: currency,

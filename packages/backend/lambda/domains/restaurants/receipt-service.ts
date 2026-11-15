@@ -202,10 +202,13 @@ export class RestaurantReceiptService {
     const request = c.PublishRestaurantReceiptRequestSchema.parse(input);
     await this.authorize(scope, actorId);
     const intent = hash([scope, actorId, sessionId, request]);
+    // A continuation may omit customer details after the immutable manifest has
+    // been created. Explicitly supplied details must always match the source.
+    const continuationOnly = request.customer === undefined && request.aib === undefined;
     let command = await B.command(scope, sessionId, request.clientRequestId);
     if (
       command &&
-      (command.actorId !== actorId || command.fingerprint !== intent)
+      (command.actorId !== actorId || (!continuationOnly && command.fingerprint !== intent))
     )
       fail("RESTAURANTS_IDEMPOTENCY_CONFLICT");
     let session = await S.session(scope, sessionId);
@@ -238,6 +241,8 @@ export class RestaurantReceiptService {
           MOBILE_MONEY: 0,
           CARD: 0,
         },
+        ...(request.customer ? { customer: request.customer } : {}),
+        ...(request.aib ? { aib: request.aib } : {}),
       };
       manifest = ReceiptManifestSchema.parse({
         scopeKind: "GUEST_SESSION",
@@ -309,9 +314,13 @@ export class RestaurantReceiptService {
     if (
       !manifest ||
       manifest.receiptId !== receiptId ||
-      manifest.guestSessionId !== sessionId
+      manifest.guestSessionId !== sessionId ||
+      (!continuationOnly && (
+        hash(manifest.context.customer ?? null) !== hash(request.customer ?? null) ||
+        (manifest.context.aib ?? null) !== (request.aib ?? null)
+      ))
     )
-      fail();
+      fail("RESTAURANTS_IDEMPOTENCY_CONFLICT");
     if (!command) {
       command = await B.command(scope, sessionId, request.clientRequestId);
       if (!command) {
@@ -469,7 +478,8 @@ export class RestaurantReceiptService {
         continue;
       }
       if (item.snapshot.currency !== m.context.currency ||
-          (item.snapshot.ordinaryTax && !validRestaurantSaleTax(item.snapshot))) fail();
+          (item.snapshot.ordinaryTax && !validRestaurantSaleTax(item.snapshot)) ||
+          (item.snapshot.specificTaxMinor !== undefined && !validRestaurantSaleTax(item.snapshot))) fail();
       const cancelled = item.status === "CANCELLED";
       if (cancelled && (!item.cancelledAt || !item.cancellationReason)) fail();
       const line = c.RestaurantReceiptLineSchema.parse({

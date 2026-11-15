@@ -218,7 +218,7 @@ export class RestaurantsService {
       if (!category.isActive) return [];
       if (item.price.currency !== menuData.currency)
         throw new AppError(409, "RESTAURANTS_TRANSACTION_INTEGRITY");
-      const { id, name, version, categoryId, price, availability } = item;
+      const { id, name, version, categoryId, price, availability, fiscalClassification } = item;
       return [
         OperationalMenuItemSchema.parse({
           id,
@@ -227,6 +227,7 @@ export class RestaurantsService {
           categoryId,
           price,
           availability,
+          fiscalClassification,
           outletId,
           menuId: menuData.id,
           categoryName: category.name,

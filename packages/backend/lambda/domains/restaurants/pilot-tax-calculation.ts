@@ -44,6 +44,8 @@ type SaleTaxAmounts = {
   grossMinor: number;
   lineTotalMinor: number;
   taxMinor: number;
+  specificTaxMinor?: number;
+  specificTaxKind?: "SPECIFIC" | "ACCOMMODATION";
   currency: string;
   ordinaryTax?: NonNullable<import("@liass-ohada/shared/restaurants").RestaurantOrderItem["snapshot"]>["ordinaryTax"];
   fiscalTreatment?: NonNullable<import("@liass-ohada/shared/restaurants").RestaurantOrderItem["snapshot"]>["fiscalTreatment"];
@@ -55,6 +57,9 @@ export function validRestaurantSaleTax(snapshot: SaleTaxAmounts): boolean {
   const { ordinaryTax, subtotalMinor, taxMinor } = snapshot;
   const frozen = snapshot.fiscalTreatment;
   if (frozen) {
+    const specificTax = snapshot.specificTaxMinor ?? 0;
+    if ((snapshot.specificTaxMinor === undefined) !== (snapshot.specificTaxKind === undefined) ||
+        !Number.isSafeInteger(specificTax) || specificTax < 0 || specificTax >= snapshot.grossMinor) return false;
     const ordinary = frozen.regime === "ORDINARY_VAT" &&
       (frozen.catalogGroup === "A" && frozen.effectiveGroup === "A" ||
        frozen.catalogGroup === "B" && ["B", "C", "D"].includes(frozen.effectiveGroup));
@@ -66,9 +71,10 @@ export function validRestaurantSaleTax(snapshot: SaleTaxAmounts): boolean {
         frozen.rounding !== "HALF_UP_LINE" || snapshot.currency !== "XOF" ||
         (!ordinary && !tps) || (exception && !frozen.evidenceReference) ||
         (frozen.effectiveGroup === "B" || frozen.effectiveGroup === "D") !== (frozen.rateBasisPoints === 1800)) return false;
-    const expected = calculateRestaurantFiscalAmounts(snapshot.grossMinor, frozen);
+    const expected = calculateRestaurantFiscalAmounts(snapshot.grossMinor - specificTax, frozen);
     return expected.netMinor === subtotalMinor && expected.taxMinor === taxMinor;
   }
+  if (snapshot.specificTaxMinor !== undefined || snapshot.specificTaxKind !== undefined) return false;
   if (!ordinaryTax) return taxMinor === 0 && subtotalMinor === snapshot.grossMinor;
   const { policy, policyDigest } = ordinaryTax;
   return snapshot.currency === policy.currency &&

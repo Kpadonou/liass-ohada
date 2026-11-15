@@ -143,7 +143,7 @@ export function mapRestaurantBeninRequest(
   )
     throw new Error("FISCAL_MAPPING_AMOUNT_MISMATCH");
   const units = BigInt(config.commercialMinorUnitsPerFranc);
-  const francs = (value: string | number) => {
+  const francs = (value: string | number | bigint) => {
     const n = BigInt(value);
     if (
       n < 0n ||
@@ -162,6 +162,8 @@ export function mapRestaurantBeninRequest(
       price: francs(v.commercial.snapshot.unitPriceMinor),
       quantity: v.commercial.snapshot.quantity,
       taxGroup: v.fiscal.taxGroup,
+      ...(v.fiscal.taxSpecificMinor !== undefined ?
+        { taxSpecific: francs(v.fiscal.taxSpecificMinor) } : {}),
     };
   });
   const groups = new Set(items.map((item) => item.taxGroup));
@@ -211,6 +213,8 @@ export function mapRestaurantBeninRequest(
     operator: { name: config.operator.name },
     items,
     payment,
+    ...(preparation.customer ? { client: { ...preparation.customer } } : {}),
+    ...(preparation.aib ? { aib: preparation.aib } : {}),
   });
   const payload = { invoice, expected: { itemTotals, total } };
   const fiscalGroupTotals: Partial<
@@ -230,6 +234,21 @@ export function mapRestaurantBeninRequest(
       tax: previous.tax + snapshot.taxMinor,
     };
   }
+  const specificTotal = mapped.lines.reduce((sum, line) =>
+    sum + BigInt(line.commercial.snapshot.specificTaxMinor ?? 0), 0n);
+  const accommodationTotal = mapped.lines.reduce((sum, line) =>
+    sum + BigInt(line.commercial.snapshot.specificTaxKind === "ACCOMMODATION" ?
+      line.commercial.snapshot.specificTaxMinor ?? 0 : 0), 0n);
+  const vatTotal = mapped.lines.reduce((sum, line) =>
+    sum + BigInt(line.commercial.snapshot.taxMinor), 0n);
+  // DGI's published AIB clarification uses TTC excluding VAT and excludes
+  // accommodation tax from the withholding base.
+  const aibBase = BigInt(total) - BigInt(francs(vatTotal)) - BigInt(francs(accommodationTotal));
+  if (aibBase < 0n) throw new Error("FISCAL_MAPPING_AMOUNT_MISMATCH");
+  const aibRate = preparation.aib === "A" ? 1n : preparation.aib === "B" ? 5n : 0n;
+  const aibTotal = (aibBase * aibRate + 50n) / 100n;
+  if (aibTotal > BigInt(Number.MAX_SAFE_INTEGER))
+    throw new Error("FISCAL_MAPPING_AMOUNT_MISMATCH");
   return {
     identity,
     sourceDigest: preparation.commercialRootDigest,
@@ -246,6 +265,7 @@ export function mapRestaurantBeninRequest(
         }
       : {}),
     fiscalGroupTotals,
+    fiscalAdditionalTotals: { aib: Number(aibTotal), ts: francs(specificTotal) },
     payload,
   };
 }

@@ -47,6 +47,7 @@ test("unified page spans categories, hydrates metadata in one batch, uses only b
     );
     expect(item.version).toBe(1);
     expect(item.price.currency).toBe("XOF");
+    expect(item.fiscalClassification).toEqual({ country: "BJ", group: "B" });
     expect(item).not.toHaveProperty("PK");
     expect(item).not.toHaveProperty("entityType");
   }

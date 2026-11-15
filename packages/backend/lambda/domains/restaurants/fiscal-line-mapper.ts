@@ -10,7 +10,7 @@ const classificationSchema = z
     itemId: z.string().uuid(),
     taxGroup: TaxGroupTypeEnumSchema,
     classificationEvidence: z.string().trim().min(1).max(1000),
-    taxSpecificMinor: z.literal("0").optional(),
+    taxSpecificMinor: z.string().regex(/^(0|[1-9]\d*)$/).optional(),
   })
   .strict();
 
@@ -53,6 +53,9 @@ export function mapRestaurantFiscalLines(input: {
             snapshot.fiscalTreatment.regimeRevision))
     )
       throw Error("FISCAL_CLASSIFICATION_SOURCE_MISMATCH");
+    if (classification.taxSpecificMinor !== undefined &&
+        classification.taxSpecificMinor !== String(snapshot.specificTaxMinor ?? 0))
+      throw Error("FISCAL_CLASSIFICATION_SOURCE_MISMATCH");
     const amount = restaurantQuantityAmountMinor(
       snapshot.unitPriceMinor,
       snapshot.quantity,
@@ -73,9 +76,9 @@ export function mapRestaurantFiscalLines(input: {
         sourceLineId,
         taxGroup: classification.taxGroup,
         classificationEvidence: classification.classificationEvidence,
-        ...(classification.taxSpecificMinor === undefined
+        ...(snapshot.specificTaxMinor === undefined
           ? {}
-          : { taxSpecificMinor: "0" as const }),
+          : { taxSpecificMinor: String(snapshot.specificTaxMinor) }),
       },
     };
   });
