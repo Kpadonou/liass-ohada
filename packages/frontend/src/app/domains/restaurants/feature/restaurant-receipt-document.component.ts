@@ -17,14 +17,24 @@ import { restaurantPrice } from '../utils/restaurant-money';
     aria-labelledby="receipt-title"
   >
     <header class="mb-5 border-b border-app-border pb-4">
-      <p class="break-words text-sm font-semibold">{{ summary().restaurantName }}</p>
+      @if (fiscal()?.seller; as seller) {
+        <p class="break-words text-sm font-semibold">{{ seller.name }}</p>
+        @if (seller.address; as address) {
+          @for (line of address.lines; track line) { <p class="break-words text-xs">{{ line }}</p> }
+          @if (address.city) { <p class="break-words text-xs">{{ address.city }}</p> }
+        }
+        @for (identifier of seller.identifiers; track identifier.scheme + identifier.value) {
+          <p class="break-all text-xs">{{ identifier.scheme }} : {{ identifier.value }}</p>
+        }
+      }
+      <p class="mt-1 break-words text-sm font-semibold">{{ summary().restaurantName }}</p>
       <p class="break-words text-sm text-app-text-secondary">{{ summary().outletName }}</p>
       <div class="mt-3 flex flex-wrap items-baseline justify-between gap-2">
         <h1 id="receipt-title" class="text-xl font-semibold">
-          {{ 'RESTAURANTS.RECEIPT.TITLE' | transloco }}
+          {{ (fiscal()?.securityElements ? 'RESTAURANTS.RECEIPT.NORMALIZED_TITLE' : 'RESTAURANTS.RECEIPT.TITLE') | transloco }}
         </h1>
         <span class="text-xs text-app-text-secondary">{{
-          'RESTAURANTS.RECEIPT.OPERATIONAL' | transloco
+          (fiscal()?.securityElements ? 'RESTAURANTS.RECEIPT.NORMALIZED' : 'RESTAURANTS.RECEIPT.COMMERCIAL') | transloco
         }}</span>
       </div>
       <h2 class="mt-2 break-words font-medium">{{ summary().tableName }}</h2>
@@ -35,21 +45,21 @@ import { restaurantPrice } from '../utils/restaurant-money';
           @if (customer.contact) { <p class="break-words">{{ customer.contact }}</p> }
           @if (customer.address) { <p class="break-words">{{ customer.address }}</p> }
         </section>
+      } @else {
+        <p class="mt-2 text-xs font-medium">{{ 'RESTAURANTS.CHECKOUT.ANONYMOUS_CUSTOMER' | transloco }}</p>
       }
       @if (summary().aib; as aib) { <p class="mt-1 text-xs">AIB : {{ aib === 'A' ? '1 %' : '5 %' }}</p> }
-      <p class="mt-2 break-all text-xs">
-        {{ 'RESTAURANTS.RECEIPT.REFERENCE' | transloco }}
-        <span class="block break-all">{{ summary().receiptId }}</span>
-      </p>
       <dl class="mt-2 grid gap-1 text-xs text-app-text-secondary">
         <div>
           <dt class="mr-1 inline">{{ 'RESTAURANTS.RECEIPT.OPENED' | transloco }}</dt>
           <dd class="inline">{{ date(summary().openedAt) }}</dd>
         </div>
-        <div>
-          <dt class="mr-1 inline">{{ 'RESTAURANTS.RECEIPT.CLOSED' | transloco }}</dt>
-          <dd class="inline">{{ date(summary().closedAt) }}</dd>
-        </div>
+        @if (summary().closedAt; as closedAt) {
+          <div>
+            <dt class="mr-1 inline">{{ 'RESTAURANTS.RECEIPT.CLOSED' | transloco }}</dt>
+            <dd class="inline">{{ date(closedAt) }}</dd>
+          </div>
+        }
         <div>
           <dt class="mr-1 inline">{{ 'RESTAURANTS.RECEIPT.ISSUED' | transloco }}</dt>
           <dd class="inline">{{ date(summary().issuedAt) }}</dd>

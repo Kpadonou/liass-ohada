@@ -7,11 +7,13 @@ import { RestaurantOrdersApi } from '../data-access/restaurant-orders.api';
 import { sessionFixture } from '../data-access/responsible-staff.test-fixture';
 import { rid } from '../data-access/restaurants.test-fixture';
 import fr from '../../../../../public/assets/i18n/fr.json';
+import type { RestaurantInvoiceCustomer } from '@liass-ohada/shared/restaurants';
 const flow = { pendingPayment: vi.fn(), capture: vi.fn() },
   ref = { close: vi.fn(), disableClose: false };
 const data = {
   ctx: { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) },
   session: sessionFixture({ dueMinor: 20000 }),
+  invoiceCustomer: null as RestaurantInvoiceCustomer | null,
   orders: [
     {
       orderId: rid(100),
@@ -44,7 +46,10 @@ describe('Focused cashier payment form', () => {
       ],
     });
   });
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    data.invoiceCustomer = null;
+    TestBed.resetTestingModule();
+  });
   const create = () => {
     const fixture = TestBed.createComponent(RestaurantCheckoutPaymentDialog);
     fixture.detectChanges();
@@ -100,8 +105,16 @@ describe('Focused cashier payment form', () => {
     const input = flow.capture.mock.calls[0][1];
     expect(input.allocations).toEqual([{ orderId: rid(100), amountMinor: 8000 }]);
     expect(input.cashTenderedMinor).toBe(10000);
+    expect(input.invoiceCustomer).toBeNull();
     expect(input.expectedVersion).toBe(7);
     expect(ref.close).toHaveBeenCalledWith({ result: { appliedAmountMinor: 8000 } });
+  });
+  it('carries the identified customer into the authoritative payment command', async () => {
+    data.invoiceCustomer = { name: 'Client Test', ifu: '1234567890123' };
+    const component = create().componentInstance;
+    component.form.patchValue({ amount: '8000', tender: '8000' });
+    await component.submit();
+    expect(flow.capture.mock.calls[0][1].invoiceCustomer).toEqual(data.invoiceCustomer);
   });
   it.each(['0', '-1', '1.5', '999999999999999999999'])(
     'keeps invalid amount %s inline, without command or dialog dismissal',

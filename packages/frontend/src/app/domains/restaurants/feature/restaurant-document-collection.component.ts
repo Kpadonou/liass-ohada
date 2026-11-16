@@ -147,6 +147,12 @@ type Row = InvoiceRow | CreditRow;
                 ) | transloco
               }}
             </button>
+            @if (kind() === 'credit-notes' && contextualInvoice()) {
+              <button mat-stroked-button type="button" (click)="clearSearch()">
+                <mat-icon>close</mat-icon>
+                {{ 'RESTAURANTS_DOCUMENTS.SHOW_ALL_CREDITS' | transloco }}
+              </button>
+            }
           </div>
           @if (history()) {
             <div class="flex flex-wrap items-start gap-3">
@@ -182,16 +188,8 @@ type Row = InvoiceRow | CreditRow;
               <thead>
                 <tr class="text-left">
                   <th>{{ 'RESTAURANTS_DOCUMENTS.DATE' | transloco }}</th>
-                  <th>
-                    {{
-                      (kind() === 'invoices'
-                        ? 'RESTAURANTS_DOCUMENTS.TECHNICAL_SHORT'
-                        : 'RESTAURANTS_DOCUMENTS.REFERENCE'
-                      ) | transloco
-                    }}
-                  </th>
                   @if (kind() === 'credit-notes') {
-                    <th>{{ 'RESTAURANTS_DOCUMENTS.INVOICE' | transloco }}</th>
+                    <th>{{ 'RESTAURANTS_DOCUMENTS.REFERENCE' | transloco }}</th>
                   }
                   <th>{{ 'RESTAURANTS_DOCUMENTS.CONTEXT' | transloco }}</th>
                   <th class="text-right">{{ 'RESTAURANTS_DOCUMENTS.AMOUNT' | transloco }}</th>
@@ -209,9 +207,8 @@ type Row = InvoiceRow | CreditRow;
                 @for (row of rows(); track rowId(row)) {
                   <tr>
                     <td>{{ date(issued(row)) }}</td>
-                    <td [title]="row.invoiceId">{{ reference(row) }}</td>
                     @if (kind() === 'credit-notes') {
-                      <td [title]="row.invoiceId">{{ short(row.invoiceId) }}</td>
+                      <td>{{ reference(row) }}</td>
                     }
                     <td>{{ row.tableDisplayName }}</td>
                     <td class="text-right tabular-nums">{{ money(amount(row), row.currency) }}</td>
@@ -243,16 +240,12 @@ type Row = InvoiceRow | CreditRow;
               <article class="space-y-2 py-3">
                 <div class="flex items-start justify-between gap-3">
                   <div class="min-w-0">
-                    <p class="break-words font-medium" [title]="row.invoiceId">
-                      @if (kind() === 'invoices') {
-                        <span class="font-normal text-app-text-secondary"
-                          >{{ 'RESTAURANTS_DOCUMENTS.TECHNICAL_SHORT' | transloco }} ·
-                        </span>
-                      }
-                      {{ reference(row) }}
+                    <p class="break-words font-medium">
+                      {{ kind() === 'invoices' ? row.tableDisplayName : reference(row) }}
                     </p>
                     <p class="text-sm text-app-text-secondary">
-                      {{ date(issued(row)) }} · {{ row.tableDisplayName }}
+                      {{ date(issued(row)) }}
+                      @if (kind() === 'credit-notes') { · {{ row.tableDisplayName }} }
                     </p>
                   </div>
                   <ng-container *ngTemplateOutlet="actions; context: { $implicit: row }" />
@@ -403,7 +396,10 @@ export class RestaurantDocumentCollectionComponent {
       from: start,
       to: end,
       ...(!this.history() && this.day() ? { businessDayId: this.day()!.businessDayId } : {}),
-      q: this.search(),
+      q:
+        this.kind() === 'credit-notes' && this.contextualInvoice()
+          ? this.contextualInvoice()!.invoiceId
+          : this.search(),
     };
   });
   readonly validRange = computed(
@@ -455,8 +451,8 @@ export class RestaurantDocumentCollectionComponent {
       if (context && this.kind() === 'credit-notes') {
         this.selected.set(null);
         this.history.set(false);
-        this.searchInput.set(context.invoiceId);
-        this.search.set(context.invoiceId);
+        // The identifier remains an internal filter; it is not a business reference.
+        this.searchInput.set('');
       }
     });
     effect((onCleanup) => {
@@ -487,11 +483,8 @@ export class RestaurantDocumentCollectionComponent {
   rowId(row: Row) {
     return 'creditNoteId' in row ? row.creditNoteId : row.invoiceId;
   }
-  short(id: string) {
-    return id.slice(0, 8) + '…';
-  }
   reference(row: Row) {
-    return 'creditNoteReference' in row ? row.creditNoteReference : this.short(row.invoiceId);
+    return 'creditNoteReference' in row ? row.creditNoteReference : row.tableDisplayName;
   }
   amount(row: Row) {
     return 'amountMinor' in row ? row.amountMinor : row.totalMinor;

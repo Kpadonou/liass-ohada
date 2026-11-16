@@ -57,4 +57,27 @@ describe('Fiscal result transport', () => {
         codeMECeFDGI: 'C'.repeat(24), counters: '2/2 FA', nim: 'NIM' } });
     expect(await promise).toMatchObject({ creditNoteId: rid(4), originalFiscalReference: 'A'.repeat(24) });
   });
+  it('uses the existing durable invoice CREATE and CONFIRM routes', async () => {
+    const api = TestBed.inject(RestaurantFiscalApi);
+    const createPromise = api.initiate(ctx, rid(3), rid(5), rid(6));
+    const create = TestBed.inject(HttpTestingController).expectOne((r) =>
+      r.url.endsWith(`/invoices/${rid(3)}/fiscal`) && r.method === 'POST');
+    expect(create.request.body).toEqual({ attemptId: rid(5), commandId: rid(6) });
+    create.flush({ invoiceId: rid(3), environment: 'TEST', execution: 'REAL_TEST',
+      status: 'CREATED', confirmed: false, legallyNormalized: false, normalizedInvoice: null,
+      securityElements: null, total: 2360, mutationRetryAllowed: false, uncertainOperation: null });
+    await expect(createPromise).resolves.toMatchObject({ status: 'CREATED' });
+
+    const confirmPromise = api.confirm(ctx, rid(3), rid(7));
+    const confirm = TestBed.inject(HttpTestingController).expectOne((r) =>
+      r.url.endsWith(`/invoices/${rid(3)}/fiscal/confirm`) && r.method === 'PUT');
+    expect(confirm.request.body).toEqual({ commandId: rid(7), confirm: true });
+    confirm.flush({ invoiceId: rid(3), environment: 'TEST', execution: 'REAL_TEST',
+      status: 'CONFIRMED', confirmed: true, legallyNormalized: false, normalizedInvoice: null,
+      securityElements: { dateTime: '15/11/2026 10:00:00', qrCode: 'qr',
+        codeMECeFDGI: 'C'.repeat(24), counters: '1/1 FV', nim: 'NIM' }, total: 2360,
+      uncertainOperation: null, mutationRetryAllowed: false, resultAvailable: true,
+      evidenceOrigin: 'DGI_TEST' });
+    await expect(confirmPromise).resolves.toMatchObject({ status: 'CONFIRMED' });
+  });
 });

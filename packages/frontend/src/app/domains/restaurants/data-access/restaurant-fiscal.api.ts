@@ -58,4 +58,32 @@ export class RestaurantFiscalApi {
     if (value.invoiceId !== invoiceId) throw new Error('Fiscal invoice mismatch');
     return value;
   }
+  private path(ctx: ServiceOrderContext, invoiceId: string) {
+    this.context.assertContext(ctx);
+    return environment.apiBaseUrl.replace(/\/$/, '') +
+      `/restaurants/outlets/${ctx.outlet}/sessions/${ctx.session}/invoices/${invoiceId}/fiscal`;
+  }
+  async status(ctx: ServiceOrderContext, invoiceId: string) {
+    const value = RestaurantFiscalStatusResponseSchema.parse(await firstValueFrom(
+      this.http.get<unknown>(this.path(ctx, invoiceId)).pipe(timeout(35000))));
+    this.context.assertContext(ctx);
+    if (value.invoiceId !== invoiceId || value.creditNoteId) throw new Error('Fiscal invoice mismatch');
+    return value;
+  }
+  async initiate(ctx: ServiceOrderContext, invoiceId: string, attemptId: string, commandId: string) {
+    const value = RestaurantFiscalStatusResponseSchema.parse(await firstValueFrom(
+      this.http.post<unknown>(this.path(ctx, invoiceId), { attemptId, commandId })
+        .pipe(timeout(50000))));
+    this.context.assertContext(ctx);
+    if (value.invoiceId !== invoiceId || value.creditNoteId) throw new Error('Fiscal invoice mismatch');
+    return value;
+  }
+  async confirm(ctx: ServiceOrderContext, invoiceId: string, commandId: string) {
+    const value = RestaurantFiscalResultResponseSchema.parse(await firstValueFrom(
+      this.http.put<unknown>(this.path(ctx, invoiceId) + '/confirm', { commandId, confirm: true })
+        .pipe(timeout(50000))));
+    this.context.assertContext(ctx);
+    if (value.invoiceId !== invoiceId || value.creditNoteId) throw new Error('Fiscal invoice mismatch');
+    return value;
+  }
 }

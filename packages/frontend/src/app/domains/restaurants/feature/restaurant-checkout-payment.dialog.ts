@@ -12,6 +12,7 @@ import type {
   GuestSessionRead,
   RestaurantOrder,
   CaptureRestaurantPaymentRequest,
+  RestaurantInvoiceCustomer,
 } from '@liass-ohada/shared/restaurants';
 import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
 import { RestaurantOrdersApi, ServiceOrderContext } from '../data-access/restaurant-orders.api';
@@ -118,6 +119,7 @@ export class RestaurantCheckoutPaymentDialog {
     ctx: ServiceOrderContext;
     session: GuestSessionRead;
     orders: RestaurantOrder[];
+    invoiceCustomer: RestaurantInvoiceCustomer | null;
   }>(MAT_DIALOG_DATA);
   readonly ref = inject(MatDialogRef<RestaurantCheckoutPaymentDialog>);
   private readonly ordersApi = inject(RestaurantOrdersApi);
@@ -227,6 +229,7 @@ export class RestaurantCheckoutPaymentDialog {
           allocations: checkoutAllocationProposal(this.data.orders, applied),
           ...(tender !== undefined ? { cashTenderedMinor: tender } : {}),
           ...(value.reference.trim() ? { externalReference: value.reference.trim() } : {}),
+          invoiceCustomer: this.data.invoiceCustomer,
         };
       }
       this.intent = CaptureRestaurantPaymentRequestSchema.parse(this.intent);

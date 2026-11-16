@@ -6,6 +6,7 @@ import type {
   GuestSessionRead,
   RestaurantOrder,
   CaptureRestaurantPaymentRequest,
+  RestaurantInvoiceCustomer,
 } from '@liass-ohada/shared/restaurants';
 import { RestaurantCheckoutApi } from './restaurant-checkout.api';
 import { RestaurantOrdersApi, ServiceOrderContext } from './restaurant-orders.api';
@@ -18,7 +19,11 @@ export class ServiceClosureBlockedError extends Error {
   }
 }
 
-export type CloseIntent = { clientRequestId: string; expectedVersion: number };
+export type CloseIntent = {
+  clientRequestId: string;
+  expectedVersion: number;
+  invoiceCustomer?: RestaurantInvoiceCustomer | null;
+};
 /** Retains ambiguous command identities in memory, never financial or auth authority. */
 @Injectable({ providedIn: 'root' })
 export class RestaurantCheckoutFlow {
@@ -76,6 +81,33 @@ export class RestaurantCheckoutFlow {
   pendingPayment(ctx: ServiceOrderContext) {
     return this.payments.get(this.key(ctx));
   }
+  /** Finalizes paid commercial orders without releasing the physical table. */
+  async finalizeInvoice(ctx: ServiceOrderContext) {
+    this.ordersApi.assertContext(ctx);
+    const rows: RestaurantOrder[] = [];
+    let cursor: string | undefined;
+    const seen = new Set<string>();
+    do {
+      const page = await this.ordersApi.orders(ctx, cursor);
+      this.ordersApi.assertContext(ctx);
+      rows.push(...page.items);
+      cursor = page.nextCursor;
+      if (cursor && seen.has(cursor)) throw new Error('Repeated cursor');
+      if (cursor) seen.add(cursor);
+    } while (cursor);
+    const session = await this.sessions.guestSession(ctx.org, ctx.outlet, ctx.session);
+    this.ordersApi.assertContext(ctx);
+    const blockers = checkoutClosureBlockers(session, rows, true).filter((b) => b !== 'CLOSED');
+    if (blockers.length) throw new ServiceClosureBlockedError(blockers);
+    for (const row of rows.filter((order) => !['CLOSED', 'CANCELLED'].includes(order.status))) {
+      const current = await this.ordersApi.order(ctx, row.orderId);
+      if (!['CLOSED', 'CANCELLED'].includes(current.status)) await this.command(ctx, current);
+    }
+    const finalized = await this.sessions.guestSession(ctx.org, ctx.outlet, ctx.session);
+    this.ordersApi.assertContext(ctx);
+    if (finalized.status !== 'OPEN' || finalized.openOrderCount) throw new Error('Finalization blocked');
+    return finalized;
+  }
   /** Service entry uses the same eligibility and resumable close chain as checkout. */
   async closeComplete(ctx: ServiceOrderContext) {
     this.ordersApi.assertContext(ctx);
@@ -101,11 +133,13 @@ export class RestaurantCheckoutFlow {
     ctx: ServiceOrderContext,
     order: RestaurantOrder | null,
     session?: GuestSessionRead,
+    invoiceCustomer?: RestaurantInvoiceCustomer | null,
   ) {
     const key = this.key(ctx) + ':' + (order?.orderId ?? 'session');
     const intent = this.intents.get(key) ?? {
       clientRequestId: crypto.randomUUID(),
       expectedVersion: order?.version ?? session!.version,
+      ...(!order && invoiceCustomer !== undefined ? { invoiceCustomer } : {}),
     };
     this.intents.set(key, intent);
     try {
@@ -130,6 +164,7 @@ export class RestaurantCheckoutFlow {
     rows: readonly RestaurantOrder[],
     progress: (closed: number, total: number) => void,
     reconciled?: (order: RestaurantOrder) => void,
+    invoiceCustomer?: RestaurantInvoiceCustomer | null,
   ) {
     const key = this.key(ctx);
     this.ordersApi.assertContext(ctx);
@@ -167,7 +202,7 @@ export class RestaurantCheckoutFlow {
         checkoutClosureBlockers(session, [], false).some((b) => b !== 'INCOMPLETE')
       )
         throw new Error('Closure blocked');
-      return (await this.command(ctx, null, session)) as GuestSessionRead;
+      return (await this.command(ctx, null, session, invoiceCustomer)) as GuestSessionRead;
     } finally {
       this.busy.delete(key);
     }

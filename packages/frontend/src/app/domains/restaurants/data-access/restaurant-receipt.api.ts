@@ -22,7 +22,10 @@ export class RestaurantReceiptApi {
   assertContext(ctx: ServiceOrderContext) {
     this.context.assertContext(ctx);
   }
-  async publish(ctx: ServiceOrderContext, clientRequestId: string, details: { customer?: c.RestaurantReceiptSummary['customer']; aib?: 'A' | 'B' } = {}) {
+  async publish(ctx: ServiceOrderContext, clientRequestId: string, details: {
+    customer?: c.RestaurantReceiptSummary['customer'] | null;
+    aib?: 'A' | 'B' | null;
+  } = {}) {
     const request = c.PublishRestaurantReceiptRequestSchema.parse({ clientRequestId, ...details });
     const result = c.RestaurantReceiptPublicationResponseSchema.parse(
       await firstValueFrom(this.http.post<unknown>(this.path(ctx), request).pipe(timeout(35_000))),

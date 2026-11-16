@@ -16,19 +16,15 @@ test('Invoice is a clean immutable document; CreditNote detail never layers a dr
     /@if \(detailOnly\(\)\) \{[\s\S]*?ngTemplateOutlet="detailContent"[\s\S]*?\} @else \{/,
   );
 });
-test('Invoice UUID labels remain technical, including print, without relabeling payment references', () => {
+test('customer documents hide internal identifiers while retaining real payment references', () => {
   const document = read(base + 'restaurant-receipt-document.component.ts');
-  assert.match(document, /RESTAURANTS.RECEIPT.REFERENCE[\s\S]*summary\(\).receiptId/);
+  const collection = read(base + 'restaurant-document-collection.component.ts');
+  assert.doesNotMatch(document, /summary\(\).receiptId/);
+  assert.doesNotMatch(document, /summary\(\).outletId|summary\(\).orgId/);
+  assert.doesNotMatch(collection, /TECHNICAL_SHORT|short\(row\.invoiceId\)/);
   assert.match(document, /RESTAURANTS.RECEIPT.EXTERNAL_REFERENCE[\s\S]*payment.externalReference/);
+  assert.match(document, /fiscal\(\)\?\.seller/);
   assert.doesNotMatch(document, /invoiceReference|fiscalInvoiceNumber/);
-  for (const [lang, full, short] of [
-    ['fr', 'Référence technique', 'Réf. technique'],
-    ['en', 'Technical reference', 'Technical ref.'],
-  ]) {
-    const t = JSON.parse(read('public/assets/i18n/' + lang + '.json'));
-    assert.equal(t.RESTAURANTS.RECEIPT.REFERENCE, full);
-    assert.equal(t.RESTAURANTS_DOCUMENTS.TECHNICAL_SHORT, short);
-  }
   assert.equal(
     JSON.parse(read('public/assets/i18n/fr.json')).RESTAURANTS.RECEIPT.OPERATIONAL,
     'Facture commerciale · non fiscale',

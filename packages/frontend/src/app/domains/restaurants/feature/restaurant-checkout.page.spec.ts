@@ -1,8 +1,8 @@
 import { RestaurantOutletContext } from '../data-access/restaurant-outlet-context';
 import { RestaurantReceiptApi } from '../data-access/restaurant-receipt.api';
 import { RestaurantReceiptFlow } from '../data-access/restaurant-receipt-flow';
-import { MatDialog } from '@angular/material/dialog';
-import { of } from 'rxjs';
+import { RestaurantFiscalFlow } from '../data-access/restaurant-fiscal-flow';
+import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
 import { Router, provideRouter } from '@angular/router';
 import { TestBed } from '@angular/core/testing';
 import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
@@ -14,6 +14,7 @@ class VisitPresentationStub {
   readonly ctx = input.required<ServiceOrderContext>();
   readonly closed = output<void>();
   readonly paymentConfirmed = output<void>();
+  readonly invoiceReady = output<null>();
   readonly accessDenied = output<void>();
 }
 import { QueryClient } from '@tanstack/angular-query-experimental';
@@ -35,6 +36,8 @@ describe('Cashier occupied-table discovery and context', () => {
   const api = { myOutlets: vi.fn(), serviceFloor: vi.fn(), list: vi.fn(), guestSession: vi.fn() };
   const receipts = { page: vi.fn() };
   const publication = { resume: vi.fn() };
+  const fiscal = { resume: vi.fn() };
+  const checkout = { finalizeInvoice: vi.fn() };
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
@@ -73,6 +76,8 @@ describe('Cashier occupied-table discovery and context', () => {
         { provide: RestaurantsApi, useValue: api },
         { provide: RestaurantReceiptApi, useValue: receipts },
         { provide: RestaurantReceiptFlow, useValue: publication },
+        { provide: RestaurantFiscalFlow, useValue: fiscal },
+        { provide: RestaurantCheckoutFlow, useValue: checkout },
         { provide: QueryClient, useValue: client },
       ],
     });
@@ -262,27 +267,20 @@ describe('Cashier occupied-table discovery and context', () => {
     await pending;
     expect(fixture.componentInstance.invoice()).toBeNull();
   });
-  it('explicitly publishes a completed service then opens the FINAL drawer and refreshes invoice history', async () => {
+  it('automatically publishes a completed service, starts fiscal continuation and opens the FINAL drawer', async () => {
     const fixture = create();
     const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
     await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
-    fixture.componentInstance.released(ctx);
-    const dialog = vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
     publication.resume.mockResolvedValue(true);
     receipts.page.mockResolvedValue({ data: { receiptId: rid(77) } });
-    fixture.componentInstance.customerName = 'Client Test';
-    fixture.componentInstance.customerIfu = '1234567890123';
-    fixture.componentInstance.customerContact = '+229 01 00 00 00';
-    fixture.componentInstance.customerAddress = 'Cotonou';
-    fixture.componentInstance.aibSelection = 'A';
+    fiscal.resume.mockResolvedValue({ status: 'CONFIRMED' });
     const invalidation = vi.spyOn(client, 'invalidateQueries');
-    await fixture.componentInstance.publishInvoice(ctx);
-    expect(dialog).toHaveBeenCalledOnce();
-    expect(publication.resume).toHaveBeenCalledOnce();
-    expect(publication.resume.mock.calls[0][3]).toEqual({
-      customer: { name: 'Client Test', ifu: '1234567890123', contact: '+229 01 00 00 00', address: 'Cotonou' },
-      aib: 'A',
+    fixture.componentInstance.released(ctx);
+    await vi.waitFor(() => {
+      expect(fixture.componentInstance.invoiceState()).toBe('FINAL');
     });
+    expect(publication.resume).toHaveBeenCalledOnce();
+    expect(fiscal.resume).toHaveBeenCalledWith(ctx, rid(77));
     expect(fixture.componentInstance.invoiceState()).toBe('FINAL');
     expect(fixture.componentInstance.invoice()).toEqual({ ctx, id: rid(77) });
     expect(invalidation).toHaveBeenCalledWith({ queryKey: ['restaurants', 'org', 'outlet', rid(2), 'documents', 'invoices'] });
@@ -290,16 +288,34 @@ describe('Cashier occupied-table discovery and context', () => {
     await fixture.componentInstance.openAvailableInvoice(ctx);
     expect(publication.resume).toHaveBeenCalledOnce();
   });
-  it('keeps publication explicit and supports controlled retry after an uncertain publication result', async () => {
+  it('finalizes and publishes the invoice while preserving the selected occupied table', async () => {
     const fixture = create();
     const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
     await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
-    fixture.componentInstance.released(ctx);
-    vi.spyOn(fixture.debugElement.injector.get(MatDialog), 'open').mockReturnValue({ afterClosed: () => of(true) } as never);
+    fixture.componentInstance.selectVisit(ctx.session);
+    checkout.finalizeInvoice.mockResolvedValue(undefined);
+    publication.resume.mockResolvedValue(true);
+    receipts.page.mockResolvedValue({ data: { receiptId: rid(77) } });
+    fiscal.resume.mockResolvedValue({ status: 'CONFIRMED' });
+
+    await fixture.componentInstance.finalizeInvoice(ctx, null);
+
+    expect(checkout.finalizeInvoice).toHaveBeenCalledWith(ctx);
+    expect(publication.resume).toHaveBeenCalledWith(ctx, expect.any(Function), expect.any(Function), {
+      customer: null,
+    });
+    expect(fixture.componentInstance.sessionId()).toBe(ctx.session);
+    expect(fixture.componentInstance.closedVisit()).toBeNull();
+    expect(fixture.componentInstance.invoice()).toEqual({ ctx, id: rid(77) });
+  });
+  it('supports controlled commercial retry after an interrupted automatic publication result', async () => {
+    const fixture = create();
+    const ctx = { org: 'org', user: 'cashier', revision: 1, outlet: rid(2), session: rid(9) };
+    await vi.waitFor(() => expect(fixture.componentInstance.outletId()).toBe(rid(2)));
     publication.resume.mockRejectedValueOnce(new Error('uncertain')).mockResolvedValue(true);
-    await fixture.componentInstance.publishInvoice(ctx);
+    fixture.componentInstance.released(ctx);
+    await vi.waitFor(() => expect(fixture.componentInstance.message()).toContain('Réessayez'));
     expect(fixture.componentInstance.invoice()).toBeNull();
-    expect(fixture.componentInstance.message()).toContain('Réessayez');
     receipts.page.mockResolvedValue({ data: { receiptId: rid(77) } });
     await fixture.componentInstance.publishInvoice(ctx);
     expect(publication.resume).toHaveBeenCalledTimes(2);

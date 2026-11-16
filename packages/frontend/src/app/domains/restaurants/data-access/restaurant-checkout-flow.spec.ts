@@ -91,6 +91,11 @@ describe('Resumable canonical checkout commands', () => {
     );
     expect(progress).toHaveBeenLastCalledWith(2, 2);
   });
+  it('freezes the latest customer in the retry-safe final session command', async () => {
+    const customer = { name: 'Client final', ifu: '1234567890123' };
+    await flow.close(ctx, [], vi.fn(), undefined, customer);
+    expect(api.closeSession.mock.calls[0][1]).toMatchObject({ invoiceCustomer: customer });
+  });
   it('continues the normal close chain after server recovery of an orphan draft', async () => {
     const orphan = {
       ...row('orphan'),

@@ -3,9 +3,6 @@ import { MatSidenavModule } from '@angular/material/sidenav';
 import { RestaurantReceiptApi } from '../data-access/restaurant-receipt.api';
 import { RestaurantReceiptView } from './restaurant-receipt.page';
 import { RestaurantReceiptFlow } from '../data-access/restaurant-receipt-flow';
-import { MatDialog } from '@angular/material/dialog';
-import { firstValueFrom } from 'rxjs';
-import { LiassConfirmationDialogComponent } from '../../../shared/ui/confirmation-dialog/confirmation-dialog.component';
 import { LiassButtonComponent } from '../../../shared/ui/button/button.component';
 import {
   Component,
@@ -27,7 +24,6 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { TranslocoModule, TranslocoService } from '@ngneat/transloco';
 import { injectInfiniteQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { AuthStore } from '../../identity/data-access/auth.store';
@@ -40,6 +36,9 @@ import { LiassPageHeaderComponent } from '../../../shared/ui/page-header/page-he
 import { RestaurantCheckoutVisitComponent } from './restaurant-checkout-visit.component';
 import { tableDisplayName } from '../utils/table-display-name';
 import { restaurantOperationalPrice } from '../utils/restaurant-money';
+import { RestaurantFiscalFlow } from '../data-access/restaurant-fiscal-flow';
+import { RestaurantCheckoutFlow } from '../data-access/restaurant-checkout-flow';
+import type { RestaurantInvoiceCustomer } from '@liass-ohada/shared/restaurants';
 @Component({
   selector: 'liass-restaurant-checkout',
   host: { class: 'block min-w-0' },
@@ -48,7 +47,6 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
     MatIconModule,
     TranslocoModule,
     LiassPageHeaderComponent,
@@ -115,16 +113,11 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
                 {{ 'RESTAURANTS.RECEIPT.VIEW' | transloco }}
               </button>
             } @else {
-              <p class="w-full text-sm text-app-text-secondary" role="status">{{ 'RESTAURANTS.RECEIPT.PUBLICATION_REQUIRED' | transloco }}</p>
-              <div class="grid w-full gap-2 sm:grid-cols-2">
-                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_NAME' | transloco }}</mat-label><input matInput [(ngModel)]="customerName" maxlength="160" /></mat-form-field>
-                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_IFU' | transloco }}</mat-label><input matInput [(ngModel)]="customerIfu" maxlength="32" /></mat-form-field>
-                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_CONTACT' | transloco }}</mat-label><input matInput [(ngModel)]="customerContact" maxlength="160" /></mat-form-field>
-                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_ADDRESS' | transloco }}</mat-label><input matInput [(ngModel)]="customerAddress" maxlength="250" /></mat-form-field>
-                <mat-form-field><mat-label>{{ 'RESTAURANTS.RECEIPT.AIB' | transloco }}</mat-label><mat-select [(ngModel)]="aibSelection"><mat-option value="">{{ 'RESTAURANTS.RECEIPT.AIB_NONE' | transloco }}</mat-option><mat-option value="A">1 %</mat-option><mat-option value="B">5 %</mat-option></mat-select></mat-form-field>
-              </div>
+              <p class="w-full text-sm text-app-text-secondary" role="status">
+                {{ (publishing() ? 'RESTAURANTS.RECEIPT.PREPARING' : 'RESTAURANTS.RECEIPT.RESUME_COPY') | transloco }}
+              </p>
               <button mat-flat-button type="button" [disabled]="publishing() || invoiceLoading()" (click)="publishInvoice(closed)">
-                {{ (publishing() ? 'RESTAURANTS.RECEIPT.PREPARING' : 'RESTAURANTS.RECEIPT.PUBLISH_COMMERCIAL') | transloco }}
+                {{ (publishing() ? 'RESTAURANTS.RECEIPT.PREPARING' : 'RESTAURANTS.RECEIPT.RESUME') | transloco }}
               </button>
             }
             <button mat-button type="button" (click)="closedVisit.set(null)">
@@ -222,7 +215,7 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
               <liass-checkout-visit
                 [ctx]="context.ctx"
                 (closed)="released(context.ctx)"
-                (paymentConfirmed)="openAvailableInvoice(context.ctx)"
+                (invoiceReady)="finalizeInvoice(context.ctx, $event)"
                 (accessDenied)="denyCheckout()"
               />
             }
@@ -259,11 +252,6 @@ import { restaurantOperationalPrice } from '../utils/restaurant-money';
   `,
 })
 export class RestaurantCheckoutPage {
-  customerName = '';
-  customerIfu = '';
-  customerContact = '';
-  customerAddress = '';
-  aibSelection: '' | 'A' | 'B' = '';
   readonly operational = inject(RestaurantOutletContext);
   private readonly auth = inject(AuthStore);
   readonly caps = inject(RestaurantsCapabilities);
@@ -305,6 +293,7 @@ export class RestaurantCheckoutPage {
   readonly invoiceLoading = signal(false);
   readonly invoiceState = signal<'UNKNOWN' | 'MISSING' | 'FINAL'>('UNKNOWN');
   readonly publishing = signal(false);
+  readonly finalizing = signal(false);
   private invoiceRequest = 0;
   readonly identity = computed(() =>
     JSON.stringify({
@@ -431,46 +420,56 @@ export class RestaurantCheckoutPage {
     this.message.set(this.t.translate('RESTAURANTS.CHECKOUT.TABLE_CLOSED'));
     this.tableSearch()?.nativeElement.focus({ preventScroll: true });
     this.closedVisit.set(ctx ?? null);
+    if (ctx) void this.publishInvoice(ctx);
   }
   openReceipt(ctx: ServiceOrderContext) {
-    if (!this.allowed() || this.closedVisit() !== ctx) return;
+    if (!this.contextCurrent(ctx)) return;
     void this.openAvailableInvoice(ctx);
   }
-  async publishInvoice(ctx: ServiceOrderContext) {
-    const current = () => this.allowed() && this.caps.canPublishReceipt() && this.closedVisit() === ctx &&
+  private contextCurrent(ctx: ServiceOrderContext) {
+    return this.allowed() &&
+      (this.sessionId() === ctx.session || this.closedVisit()?.session === ctx.session) &&
       this.auth.effectiveOrgId() === ctx.org && this.auth.currentUserId() === ctx.user &&
       this.auth.contextRevision() === ctx.revision && this.outletId() === ctx.outlet;
+  }
+  async finalizeInvoice(ctx: ServiceOrderContext, customer: RestaurantInvoiceCustomer | null) {
+    if (!this.contextCurrent(ctx) || this.finalizing() || this.publishing()) return;
+    this.finalizing.set(true);
+    try {
+      await this.injector.get(RestaurantCheckoutFlow).finalizeInvoice(ctx);
+      if (this.contextCurrent(ctx)) await this.publishInvoice(ctx, customer);
+    } catch {
+      // Canonical blockers remain visible in the selected service. No commercial
+      // or fiscal success is inferred from an interrupted command.
+    } finally {
+      this.finalizing.set(false);
+    }
+  }
+  async publishInvoice(ctx: ServiceOrderContext, customer?: RestaurantInvoiceCustomer | null) {
+    const current = () => this.contextCurrent(ctx) && this.caps.canPublishReceipt();
     if (!current() || this.publishing()) return;
     this.publishing.set(true);
     try {
-      const approved = await firstValueFrom(this.injector.get(MatDialog).open(LiassConfirmationDialogComponent, {
-        width: '480px', maxWidth: 'calc(100vw - 24px)', data: {
-          titleKey: 'RESTAURANTS.RECEIPT.PUBLISH_COMMERCIAL', descriptionKey: 'RESTAURANTS.RECEIPT.PUBLICATION_CONFIRM',
-          confirmKey: 'RESTAURANTS.RECEIPT.PUBLISH_COMMERCIAL', cancelKey: 'COMMON.ACTIONS.CANCEL', tone: 'warning',
-        },
-      }).afterClosed());
-      if (!approved || !current()) return;
-      const name = this.customerName.trim();
-      const customer = name ? {
-        name,
-        ...(this.customerIfu.trim() ? { ifu: this.customerIfu.trim() } : {}),
-        ...(this.customerContact.trim() ? { contact: this.customerContact.trim() } : {}),
-        ...(this.customerAddress.trim() ? { address: this.customerAddress.trim() } : {}),
-      } : undefined;
-      if (!customer && (this.customerIfu.trim() || this.customerContact.trim() || this.customerAddress.trim())) {
-        this.message.set(this.t.translate('RESTAURANTS.RECEIPT.CUSTOMER_NAME_REQUIRED'));
-        return;
-      }
-      const final = await this.injector.get(RestaurantReceiptFlow).resume(ctx, current, () => {}, {
-        ...(customer ? { customer } : {}),
-        ...(this.aibSelection ? { aib: this.aibSelection } : {}),
-      });
+      const final = await this.injector.get(RestaurantReceiptFlow).resume(
+        ctx,
+        current,
+        () => {},
+        customer !== undefined ? { customer } : {},
+      );
       if (!current()) return;
       if (!final) {
         this.message.set(this.t.translate('RESTAURANTS.RECEIPT.RESUME_COPY'));
         return;
       }
-      if (current()) await this.openAvailableInvoice(ctx);
+      const invoiceId = current() ? await this.openAvailableInvoice(ctx) : undefined;
+      if (current() && invoiceId) {
+        try {
+          await this.injector.get(RestaurantFiscalFlow).resume(ctx, invoiceId);
+        } catch {
+          // Commercial publication remains authoritative. The receipt view reports
+          // disabled, failed and uncertain fiscal states without retrying mutations.
+        }
+      }
       if (current()) void Promise.all([
         this.injector.get(QueryClient).invalidateQueries({ queryKey: ['restaurants', ctx.org, 'outlet', ctx.outlet, 'documents', 'invoices'] }),
         this.injector.get(QueryClient).invalidateQueries({ queryKey: ['restaurants', ctx.org, 'outlet', ctx.outlet, 'cash'] }),
@@ -485,7 +484,7 @@ export class RestaurantCheckoutPage {
     const current = () => this.allowed() && this.auth.effectiveOrgId() === ctx.org &&
       this.auth.currentUserId() === ctx.user && this.auth.contextRevision() === ctx.revision && this.outletId() === ctx.outlet &&
       (this.sessionId() === ctx.session || this.closedVisit()?.session === ctx.session);
-    if (!current()) return;
+    if (!current()) return undefined;
     const request = ++this.invoiceRequest;
     this.invoiceLoading.set(true);
     try {
@@ -493,7 +492,9 @@ export class RestaurantCheckoutPage {
       if (current() && request === this.invoiceRequest) {
         this.invoice.set({ ctx, id: page.data.receiptId });
         this.invoiceState.set('FINAL');
+        return page.data.receiptId;
       }
+      return undefined;
     } catch (error) {
       let feedback = error instanceof HttpErrorResponse && error.status === 404
         ? 'RESTAURANTS.RECEIPT.NOT_AVAILABLE' : 'RESTAURANTS.RECEIPT.READ_ERROR';
@@ -515,6 +516,7 @@ export class RestaurantCheckoutPage {
         }
       }
       if (current() && request === this.invoiceRequest) this.message.set(this.t.translate(feedback));
+      return undefined;
     } finally {
       if (request === this.invoiceRequest) this.invoiceLoading.set(false);
     }

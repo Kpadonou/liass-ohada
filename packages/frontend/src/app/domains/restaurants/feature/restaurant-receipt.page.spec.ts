@@ -195,7 +195,8 @@ describe('Receipt presentation and complete native print', () => {
     await loaded(f);
     expect(api.publish).not.toHaveBeenCalled();
     expect(f.nativeElement.textContent).toContain('XOF');
-    expect(f.nativeElement.textContent).toContain(receiptSummary().receiptId);
+    expect(f.nativeElement.textContent).not.toContain(receiptSummary().receiptId);
+    expect(f.nativeElement.textContent).toContain('Facture commerciale');
   });
   it('renders distinct CASH applications, tender and change from frozen settlement parts', async () => {
     const page = receiptPageFixture(2, 1, 1);

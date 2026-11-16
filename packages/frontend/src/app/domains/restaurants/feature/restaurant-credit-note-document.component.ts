@@ -13,6 +13,16 @@ import { restaurantPrice } from '../utils/restaurant-money';
   imports: [TranslocoModule, LiassStatusChipComponent],
   template: `<article class="min-w-0 space-y-4 bg-app-surface p-4 sm:p-5">
     <header class="space-y-2 border-b border-app-border pb-4">
+      @if (fiscal()?.seller; as seller) {
+        <p class="break-words text-sm font-semibold">{{ seller.name }}</p>
+        @if (seller.address; as address) {
+          @for (line of address.lines; track line) { <p class="break-words text-xs">{{ line }}</p> }
+          @if (address.city) { <p class="break-words text-xs">{{ address.city }}</p> }
+        }
+        @for (identifier of seller.identifiers; track identifier.scheme + identifier.value) {
+          <p class="break-all text-xs">{{ identifier.scheme }} : {{ identifier.value }}</p>
+        }
+      }
       <p class="break-words text-sm font-semibold">{{ summary().restaurantName }} · {{ summary().outletName }}</p>
       <h2 class="text-xl font-semibold">{{ 'RESTAURANTS_CORRECTIONS.DETAIL' | transloco }}</h2>
       <p class="break-all font-medium">{{ credit().data.creditNoteReference }}</p>
@@ -21,8 +31,9 @@ import { restaurantPrice } from '../utils/restaurant-money';
       <p class="text-sm text-app-text-secondary">{{ date(credit().data.validatedAt) }} · {{ summary().tableName }}</p>
       @if (summary().customer; as customer) {
         <p class="break-words text-sm">{{ customer.name }} @if (customer.ifu) { · IFU {{ customer.ifu }} }</p>
+      } @else {
+        <p class="break-words text-sm">{{ 'RESTAURANTS.CHECKOUT.ANONYMOUS_CUSTOMER' | transloco }}</p>
       }
-      <p class="break-all text-xs">{{ 'RESTAURANTS_CORRECTIONS.ORIGINAL_INVOICE' | transloco }} : {{ credit().data.finalBillId }}</p>
     </header>
     <section class="space-y-2">
       <h3 class="font-semibold">{{ 'RESTAURANTS_CORRECTIONS.REASON' | transloco }}</h3>

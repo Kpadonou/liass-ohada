@@ -110,11 +110,13 @@ it('applies and clears contextual Invoice search through the server, preserving 
       request.mock.calls.some((call) => new URLSearchParams(call[1].split('?')[1]).get('q') === id),
     ).toBe(true);
   });
-  expect(component.searchInput()).toBe(id);
+  expect(component.searchInput()).toBe('');
+  expect(component.filters().q).toBe(id);
   expect(component.filters().businessDayId).toBe(id);
-  const clear = fixture.nativeElement.querySelector(
-    '[aria-label="Effacer la recherche"]',
+  const clear = [...fixture.nativeElement.querySelectorAll('button')].find((button: unknown) =>
+    (button as HTMLButtonElement).textContent?.includes('Afficher tous les avoirs'),
   ) as HTMLButtonElement;
+  expect(clear.textContent).toContain('Afficher tous les avoirs');
   const cleared = vi.fn();
   component.contextCleared.subscribe(cleared);
   clear.click();
@@ -127,7 +129,8 @@ it('applies and clears contextual Invoice search through the server, preserving 
   expect(cleared).toHaveBeenCalledOnce();
   fixture.componentRef.setInput('contextualInvoice', { invoiceId: id, revision: 2 });
   fixture.detectChanges();
-  expect(component.searchInput()).toBe(id);
+  expect(component.searchInput()).toBe('');
+  expect(component.filters().q).toBe(id);
 });
 it('uses operational BusinessDay by default and bounds intentional history in its timezone', async () => {
   const { component, fixture } = await setup('invoices', 'OWNER', false);
@@ -171,9 +174,8 @@ it.each(['invoices', 'credit-notes'] as const)(
     expect(fixture.nativeElement.querySelectorAll('tbody tr')).toHaveLength(1);
     expect(fixture.nativeElement.querySelectorAll('article')).toHaveLength(1);
     if (kind === 'invoices') {
-      expect(fixture.nativeElement.querySelector('article').textContent).toContain(
-        'Réf. technique',
-      );
+      expect(fixture.nativeElement.querySelector('article').textContent).toContain('ALTAB');
+      expect(fixture.nativeElement.querySelector('article').textContent).not.toContain(id);
     }
     if (kind === 'credit-notes') {
       expect(fixture.nativeElement.textContent).toContain('900');

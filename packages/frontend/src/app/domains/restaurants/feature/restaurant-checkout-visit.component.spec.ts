@@ -142,7 +142,7 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     });
     expect(f.componentInstance.rows()).toHaveLength(2);
     expect(f.componentInstance.businessRows()).toHaveLength(1);
-    expect(f.nativeElement.querySelectorAll('summary')).toHaveLength(1);
+    expect(f.nativeElement.querySelectorAll('[data-testid="checkout-order"]')).toHaveLength(1);
     expect(f.componentInstance.blockers()).toContain('WORK');
     expect(f.componentInstance.readyToClose()).toBe(false);
     expect(flow.close).not.toHaveBeenCalled();
@@ -165,7 +165,7 @@ describe('Checkout canonical reconciliation and terminal state', () => {
       expect(f.componentInstance.complete()).toBe(true);
     });
     expect(f.componentInstance.businessRows()).toHaveLength(1);
-    expect(f.nativeElement.querySelectorAll('summary')).toHaveLength(1);
+    expect(f.nativeElement.querySelectorAll('[data-testid="checkout-order"]')).toHaveLength(1);
     orders.orders.mockResolvedValue({
       items: [{ ...legacy, status: 'CANCELLED', resolutionKind: 'TECHNICAL_EMPTY_DRAFT' }],
     });
@@ -177,7 +177,7 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     expect(f.componentInstance.complete()).toBe(true);
     expect(f.componentInstance.rows()).toHaveLength(1);
     expect(f.componentInstance.businessRows()).toHaveLength(0);
-    expect(f.nativeElement.querySelectorAll('summary')).toHaveLength(0);
+    expect(f.nativeElement.querySelectorAll('[data-testid="checkout-order"]')).toHaveLength(0);
     expect(flow.close).not.toHaveBeenCalled();
   });
   it('keeps raw cursor exhaustion authoritative even when a loaded page contains only technical history', async () => {
@@ -284,8 +284,21 @@ describe('Checkout canonical reconciliation and terminal state', () => {
     });
     expect(
       fixture.nativeElement.querySelector('[data-testid="ready-to-close"]')?.textContent,
-    ).toContain('Prêt à terminer le service');
+    ).toContain('Prêt à facturer et à libérer la table');
     expect(flow.close).not.toHaveBeenCalled();
+  });
+  it('announces invoice readiness without closing or releasing the occupied table', async () => {
+    const fixture = create();
+    const emitted = vi.fn();
+    fixture.componentInstance.invoiceReady.subscribe(emitted);
+    await fixture.componentInstance.refresh();
+    await vi.waitFor(() => {
+      fixture.detectChanges();
+      expect(fixture.componentInstance.readyToClose()).toBe(true);
+      expect(emitted).toHaveBeenCalledWith(null);
+    });
+    expect(flow.close).not.toHaveBeenCalled();
+    expect(fixture.componentInstance.readableSession()?.status).toBe('OPEN');
   });
   it('shows preparation and draft blockers without any Kitchen query', async () => {
     orders.orders.mockResolvedValue({

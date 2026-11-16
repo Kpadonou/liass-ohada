@@ -34,12 +34,19 @@ import { RestaurantCheckoutLinesComponent } from './restaurant-checkout-lines.co
 import { checkoutClosureBlockers } from '../utils/restaurant-checkout';
 import { restaurantOperationalPrice } from '../utils/restaurant-money';
 import { checkoutError } from '../utils/restaurant-checkout-error';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import type { RestaurantInvoiceCustomer } from '@liass-ohada/shared/restaurants';
 @Component({
   selector: 'liass-checkout-visit',
   imports: [
     RouterLink,
     MatButtonModule,
     MatDialogModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
     TranslocoModule,
     RestaurantCheckoutLinesComponent,
   ],
@@ -98,9 +105,10 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
         <p role="alert" class="my-3 text-app-error">{{ error() }}</p>
       }
       <section class="my-4">
-        <h3 class="font-semibold">{{ 'RESTAURANTS.CHECKOUT.ADDITION' | transloco }}</h3>
+        <h3 class="font-semibold">{{ 'RESTAURANTS.CHECKOUT.BILL_PREVIEW' | transloco }}</h3>
         @for (order of businessRows(); track order.orderId; let index = $index) {
           <details
+            data-testid="checkout-order"
             class="border-b border-app-border py-2 last:border-b-0"
             (toggle)="expand(order.orderId, $event)"
             [open]="rows().length === 1"
@@ -132,6 +140,37 @@ import { checkoutError } from '../utils/restaurant-checkout-error';
           </button>
         }
       </section>
+      <details class="mb-4 border-y border-app-border py-3" data-testid="checkout-customer">
+        <summary class="cursor-pointer font-medium">
+          {{ 'RESTAURANTS.CHECKOUT.CUSTOMER' | transloco }} · {{ customerLabel() }}
+        </summary>
+        <form [formGroup]="customerForm" class="mt-3 grid gap-2 sm:grid-cols-2">
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_NAME' | transloco }}</mat-label>
+            <input matInput formControlName="name" maxlength="160" />
+          </mat-form-field>
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_IFU' | transloco }}</mat-label>
+            <input matInput formControlName="ifu" maxlength="32" />
+          </mat-form-field>
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_CONTACT' | transloco }}</mat-label>
+            <input matInput formControlName="contact" maxlength="160" />
+          </mat-form-field>
+          <mat-form-field subscriptSizing="dynamic">
+            <mat-label>{{ 'RESTAURANTS.RECEIPT.CUSTOMER_ADDRESS' | transloco }}</mat-label>
+            <input matInput formControlName="address" maxlength="250" />
+          </mat-form-field>
+          @if (customerError()) {
+            <p role="alert" class="text-sm text-app-error sm:col-span-2">
+              {{ 'RESTAURANTS.RECEIPT.CUSTOMER_NAME_REQUIRED' | transloco }}
+            </p>
+          }
+          <p class="text-xs text-app-text-secondary sm:col-span-2">
+            {{ 'RESTAURANTS.CHECKOUT.CUSTOMER_HINT' | transloco }}
+          </p>
+        </form>
+      </details>
       @if (visit.dueMinor > visit.paidMinor + visit.reservedMinor) {
         <section
           class="mb-4 border-t border-app-border pt-4"
@@ -229,6 +268,7 @@ export class RestaurantCheckoutVisitComponent {
   readonly ctx = input.required<ServiceOrderContext>();
   readonly closed = output<void>();
   readonly paymentConfirmed = output<void>();
+  readonly invoiceReady = output<RestaurantInvoiceCustomer | null>();
   readonly accessDenied = output<void>();
   readonly caps = inject(RestaurantsCapabilities);
   readonly cash = inject(RestaurantCashQueries);
@@ -260,6 +300,13 @@ export class RestaurantCheckoutVisitComponent {
   private readonly dialog = inject(MatDialog);
   private readonly flow = inject(RestaurantCheckoutFlow);
   private readonly t = inject(TranslocoService);
+  readonly customerError = signal(false);
+  readonly customerForm = inject(FormBuilder).nonNullable.group({
+    name: ['', [Validators.maxLength(160)]],
+    ifu: ['', [Validators.maxLength(32)]],
+    contact: ['', [Validators.maxLength(160)]],
+    address: ['', [Validators.maxLength(250)]],
+  });
   readonly expanded = signal<ReadonlySet<string>>(new Set());
   expand(id: string, event: Event) {
     if ((event.target as HTMLDetailsElement).open)
@@ -326,6 +373,66 @@ export class RestaurantCheckoutVisitComponent {
     effect(() => {
       if (this.accessRejected()) this.accessDenied.emit();
     });
+    let initializedSession = '';
+    effect(() => {
+      const session = this.readableSession();
+      if (!session || initializedSession === session.guestSessionId) return;
+      initializedSession = session.guestSessionId;
+      const customer = session.invoiceCustomer;
+      this.customerForm.reset({
+        name: customer?.name ?? '',
+        ifu: customer?.ifu ?? '',
+        contact: customer?.contact ?? '',
+        address: customer?.address ?? '',
+      });
+      this.customerError.set(false);
+    });
+    effect(() => {
+      const session = this.readableSession();
+      if (!session) return;
+      if (session.status === 'CLOSED') this.customerForm.disable({ emitEvent: false });
+      else this.customerForm.enable({ emitEvent: false });
+    });
+    let announcedVersion = 0;
+    effect(() => {
+      const session = this.readableSession();
+      if (
+        !session ||
+        session.finalBillId ||
+        session.status !== 'OPEN' ||
+        session.version === announcedVersion ||
+        this.blockers().length
+      )
+        return;
+      const customer = this.invoiceCustomer();
+      if (customer === undefined) return;
+      announcedVersion = session.version;
+      this.invoiceReady.emit(customer);
+    });
+  }
+  customerLabel() {
+    return this.customerForm.controls.name.value.trim() ||
+      this.t.translate('RESTAURANTS.CHECKOUT.ANONYMOUS_CUSTOMER');
+  }
+  private invoiceCustomer(): RestaurantInvoiceCustomer | null | undefined {
+    const value = this.customerForm.getRawValue();
+    const name = value.name.trim();
+    const ifu = value.ifu.trim();
+    const contact = value.contact.trim();
+    const address = value.address.trim();
+    if (!name && (ifu || contact || address)) {
+      this.customerError.set(true);
+      return undefined;
+    }
+    this.customerError.set(false);
+    return name
+      ? {
+          name,
+          ...(ifu ? { ifu } : {}),
+          ...(contact ? { contact } : {}),
+          ...(address ? { address } : {}),
+        }
+      : null;
   }
   money(amount: number) {
     const currency = this.session.data()!.currency;
@@ -364,13 +471,15 @@ export class RestaurantCheckoutVisitComponent {
       !this.caps.canCapturePayment()
     )
       return;
+    const invoiceCustomer = this.invoiceCustomer();
+    if (invoiceCustomer === undefined) return;
     this.busy.set(true);
     this.error.set('');
     try {
       const ref = this.dialog.open(RestaurantCheckoutPaymentDialog, {
         width: '440px',
         maxWidth: '96vw',
-        data: { ctx, session, orders: this.rows() },
+        data: { ctx, session, orders: this.rows(), invoiceCustomer },
       });
       const unregister = this.destroy.onDestroy(() => ref.close());
       const result = await firstValueFrom(ref.afterClosed());
@@ -415,6 +524,8 @@ export class RestaurantCheckoutVisitComponent {
       (!this.pendingClosure() && this.blockers().length)
     )
       return;
+    const invoiceCustomer = this.invoiceCustomer();
+    if (invoiceCustomer === undefined) return;
     this.confirming.set(false);
     this.busy.set(true);
     this.error.set('');
@@ -442,6 +553,7 @@ export class RestaurantCheckoutVisitComponent {
                 : data,
             );
         },
+        invoiceCustomer,
       );
       if (!this.current(ctx)) return;
       // Canonical closure succeeded. Receipt access must survive an unrelated floor read failure.

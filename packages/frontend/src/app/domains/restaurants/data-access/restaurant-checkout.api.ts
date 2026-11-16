@@ -71,7 +71,7 @@ export class RestaurantCheckoutApi {
   }
   async closeSession(
     ctx: ServiceOrderContext,
-    request: { clientRequestId: string; expectedVersion: number },
+    request: c.CloseGuestSessionRequest,
   ) {
     const result = c.GuestSessionResponseSchema.parse(
       await this.post(

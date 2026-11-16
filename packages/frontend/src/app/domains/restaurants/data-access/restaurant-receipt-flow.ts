@@ -23,7 +23,7 @@ export class RestaurantReceiptFlow {
     ctx: ServiceOrderContext,
     current: () => boolean,
     progress: (p: ReceiptProgress) => void,
-    details: { customer?: RestaurantReceiptSummary['customer']; aib?: 'A' | 'B' } = {},
+    details: { customer?: RestaurantReceiptSummary['customer'] | null; aib?: 'A' | 'B' | null } = {},
   ) {
     const key = JSON.stringify(receiptKey(ctx));
     if (this.running.has(key)) return false;
