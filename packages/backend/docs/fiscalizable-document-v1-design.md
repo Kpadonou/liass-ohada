@@ -2407,7 +2407,7 @@ Architecture baseline accepted with implementation blockers. M1 STATUS: COMPLETE
 
 ## 12. References and validation scope
 
-Authorities: repository `AGENTS.md`, `SPEC.md`; [Fiscal foundation](fiscal-compliance-foundation.md); [Restaurants vocabulary](restaurants-commercial-documents.md); [S4A](../../../docs/sales/benin-emecef-compliance-spec.md) §§13–16; [S4C plan](../../../docs/sales/benin-emecef-s4c-validation-plan.md) §§5–10 and acceptance Appendix C. Source paths inspected are listed in §1, plus the SALES calculator, FiscalRepository, fiscal shared DTOs and KeyFactory.
+Authorities: repository `AGENTS.md`, `SPEC.md`; [Fiscal foundation](fiscal-compliance-foundation.md); [Restaurants vocabulary](restaurants-commercial-documents.md); [S4A](fiscal-compliance/implementation/benin-emecef-compliance-spec.md) §§13–16; [S4C plan](fiscal-compliance/implementation/benin-emecef-s4c-validation-plan.md) §§5–10 and acceptance Appendix C. Source paths inspected are listed in §1, plus the SALES calculator, FiscalRepository, fiscal shared DTOs and KeyFactory.
 
 Skills consulted: platform architecture; DynamoDB access-pattern template, single-table conventions and modeling principles; OHADA domain mapping, SYSCOHADA orientation and retained commercial-law Article 59 excerpt. These references inform ownership/auditability and do not establish current national fiscal obligations. No account mapping, legal rule or statutory retention period is created.
 

@@ -4,7 +4,7 @@
 
 ## 1. Authority, evidence and inspected sources
 
-Classification: **ERP_DOMAIN**, owner Fiscal Compliance, under the existing SALES product entitlement. SPEC.md and AGENTS.md remain architectural authorities. [S4A](benin-emecef-compliance-spec.md) remains the comprehensive source audit; this plan specializes its Q1–Q16 into experiments and entry gates. [S4B foundation](../../packages/backend/docs/fiscal-compliance-foundation.md) and [delivery report](../../packages/backend/docs/fiscal-compliance-s4b-report.md) describe the implemented local foundation, not a connector.
+Classification: **ERP_DOMAIN**, owner Fiscal Compliance, under the existing SALES product entitlement. SPEC.md and AGENTS.md remain architectural authorities. [S4A](benin-emecef-compliance-spec.md) remains the comprehensive source audit; this plan specializes its Q1–Q16 into experiments and entry gates. [S4B foundation](../../fiscal-compliance-foundation.md) and [delivery report](../../fiscal-compliance-s4b-report.md) describe the implemented local foundation, not a connector.
 
 Evidence labels apply to each behavior below; an observation in TEST cannot establish a universal legal obligation or production guarantee.
 
@@ -24,7 +24,7 @@ Original PDFs were opened offline and text inspected with page boundaries: API 2
 |---|---|
 | benin-emecef/e-MECeF_API_v1.0.pdf | `45d8fa9cf87a391f1a68057bb6b1eec41c45b3ba5431720982ece875a0e6c3b7` |
 | benin-emecef/e-MECeF_Manuel_d'utilisation_v1.0.pdf | `30c355e8baa37ccd3c8c95dc742f72c025bf8795906efabc215a628eb8b9bd31` |
-| benin-emecef/Auto_declaration_de_SFE_avec_e-MECeF.docx | `7d2d9f68904124c4490c4b944b7af0d9419e4f9ad62bf71a099639c449a34120` |
+| dgi-reference/certification/Auto_declaration_de_SFE_avec_e-MECeF.docx | `7d2d9f68904124c4490c4b944b7af0d9419e4f9ad62bf71a099639c449a34120` |
 | benin-emecef-openapi-2026-10-08.json | `d9de3f90a6ed78bb1ce970e81cfbacca780a999ddc09690c9acd893e47b47438` |
 | benin-emecef-integrator-openapi-2026-10-08.json | `037c4188ac36811b5ed980f0164008d94b28a4a4eca88ffe27e08b7b8f44d3dd` |
 
@@ -605,8 +605,8 @@ InvoiceNatureEnum is present but unused in InvoiceRequestDataDto; it does not au
 48. **No provider mutation:** no submit/confirm/cancel/retry; scenario descriptions are future experiments, not executions.
 49. **OpenAPI validation:** both pinned JSON snapshots parse; nine invoice/info and eight integrator operations; all required DTO fields checked directly against snapshot; all five evidence digests unchanged.
 50. **git diff --check:** PASS after final documentation edits.
-51. **git status --short:** only `M docs/sales/benin-emecef-compliance-spec.md` and `?? docs/sales/benin-emecef-s4c-validation-plan.md` (initial working tree clean).
-52. **git diff --stat:** tracked S4A: one insertion/one deletion. New untracked plan is excluded by ordinary git diff --stat; separate `git diff --no-index --stat /dev/null docs/sales/benin-emecef-s4c-validation-plan.md` reports 612 insertions in one new file (exit 1 denotes differences, not a failed check). No staging or commit requested.
+51. **git status --short:** the S4A and S4C documents are under `packages/backend/docs/fiscal-compliance/implementation/`; the official DGI source is under `packages/backend/docs/fiscal-compliance/dgi-reference/`.
+52. **git diff --stat:** the migration preserves document contents and changes only their governed locations and references. No official source is overwritten or duplicated.
 53. **No deployment:** no CDK/resource/stateful change, resources added/replaced zero; owning implementation stack remains FiscalComplianceApiStack. Counts/build/synth/resource-count/diff/app suites not rerun for docs-only scope; prior S4B counts are not a new deployment-safety check. No AWS credential access or deployment.
 
 S4C-0A STATUS: COMPLETE

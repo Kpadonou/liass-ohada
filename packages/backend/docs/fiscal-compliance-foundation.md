@@ -1,6 +1,6 @@
 # S4B — Fiscal Compliance local foundation
 
-Fiscal Compliance is an `ERP_DOMAIN` distinct from SALES, Accounting, Treasury and Platform Core. This implementation consumes the complete [S4A specification](../../../docs/sales/benin-emecef-compliance-spec.md), including its historical/current conflicts and Q1–Q16 gates. It implements local configuration, issued-source preparation and immutable revisions. It does not establish fiscal certification or DGI approval.
+Fiscal Compliance is an `ERP_DOMAIN` distinct from SALES, Accounting, Treasury and Platform Core. This implementation consumes the complete [S4A specification](fiscal-compliance/implementation/benin-emecef-compliance-spec.md), including its historical/current conflicts and Q1–Q16 gates. It implements local configuration, issued-source preparation and immutable revisions. It does not establish fiscal certification or DGI approval.
 
 ## Authorization and tenant ownership
 

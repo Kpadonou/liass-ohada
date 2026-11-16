@@ -4,7 +4,7 @@
 
 Current prerequisite status: [M2-P2 is formally accepted](fiscalizable-document-d01-d03-implementation.md#formal-platform-architect--product-owner-acceptance--2026-11-04) with verified unrelated baseline failures. D01–D03 implementation is COMPLETE and M2-A RESUME STATUS is READY. M2-A has now resumed against that accepted implementation. Earlier prerequisite-status snapshots below remain historical evidence; they do not describe current missing implementation. B01 remains B01_BLOCKED and D04 remains OPEN. No mapping or integration is approved by this evidence task.
 
-Authority: [accepted V1 design](fiscalizable-document-v1-design.md) §§3–8, §10 D01–D04 and formal D06/D16 decisions; [fiscal foundation](fiscal-compliance-foundation.md); [S4C plan](../../../docs/sales/benin-emecef-s4c-validation-plan.md). M1 remains COMPLETE. D06/D16 remain approved with their hard gates; this audit changes no decision. Fiscal Compliance owns the shared contract/provider boundaries; SALES owns its immutable commercial projection. Classification: ERP_DOMAIN, SALES producer consuming the shared Fiscal Compliance boundary.
+Authority: [accepted V1 design](fiscalizable-document-v1-design.md) §§3–8, §10 D01–D04 and formal D06/D16 decisions; [fiscal foundation](fiscal-compliance-foundation.md); [S4C plan](fiscal-compliance/implementation/benin-emecef-s4c-validation-plan.md). M1 remains COMPLETE. D06/D16 remain approved with their hard gates; this audit changes no decision. Fiscal Compliance owns the shared contract/provider boundaries; SALES owns its immutable commercial projection. Classification: ERP_DOMAIN, SALES producer consuming the shared Fiscal Compliance boundary.
 
 ## Audited runtime evidence
 
