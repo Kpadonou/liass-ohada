@@ -4,6 +4,8 @@ import {
   TARGET_FUNCTIONS,
   addedResources,
   assertContainedAdditions,
+  bindIdentityParameters,
+  assertIdentityParameterContract,
 } from "./prepare-dev-contained-fiscal-release.mjs";
 
 test("freezes every live resource and accepts only the exact B1/B2/B3 additions", () => {
@@ -46,4 +48,18 @@ test("freezes every live resource and accepts only the exact B1/B2/B3 additions"
 
 test("refuses deletion of a live resource", () => {
   assert.throws(() => addedResources({ Resources: { Existing: {} } }, { Resources: {} }));
+});
+
+test("frozen parent supplies every Identity template parameter from synthesized bindings", () => {
+  const live = { Properties: { Parameters: { Existing: { Ref: "Api" } } } };
+  const synth = { Properties: { Parameters: { Existing: { Ref: "Api" }, ProviderURL: { "Fn::GetAtt": ["UserPool", "ProviderURL"] } } } };
+  bindIdentityParameters(live, synth, { Parameters: { Existing: {}, ProviderURL: {} } });
+  assert.deepEqual(live.Properties.Parameters.ProviderURL, { "Fn::GetAtt": ["UserPool", "ProviderURL"] });
+  assert.throws(() => assertIdentityParameterContract(
+    { Properties: { Parameters: { Existing: { Ref: "Api" } } } },
+    { Parameters: { Existing: {}, ProviderURL: {} } },
+  ), /contract incomplete/);
+  assert.throws(() => bindIdentityParameters({ Properties: { Parameters: { Existing: { Ref: "Api" } } } },
+    { Properties: { Parameters: { Existing: { Ref: "Api" } } } },
+    { Parameters: { Existing: {}, ProviderURL: {} } }), /lacks Identity parameter/);
 });

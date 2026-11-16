@@ -368,3 +368,18 @@ Recent commits use short imperative or completion-style summaries, often scoped 
 ## Security & Configuration Tips
 
 Never derive `orgId` or `userId` from client input; derive `userId` from Cognito JWT claims and derive active `orgId` from the verified `x-org-id` header for tenant-scoped routes. The pre-tenant `GET /me/workspaces` route is the explicit exception: it must be Cognito-protected but must not require `x-org-id`; it discovers active workspaces via the user workspace GSI. Do not hardcode AWS resource names in business logic. Use centralized config and environment variables such as `TABLE_NAME`. Monetary values must be integers in the smallest currency unit; avoid floating-point arithmetic in accounting code. Angular environment files are bundled into the browser and must contain only public configuration such as API base URLs, never secrets.
+
+## Test Execution and Agent Budget Policy
+
+- Run the smallest relevant test scope first.
+- Do not automatically run the entire repository test suite.
+- Apply a default 180-second timeout to individual test commands, unless a documented test category requires more.
+- Limit test-and-fix cycles to two per affected scope by default.
+- If a test hangs or exceeds its timeout, terminate the process, preserve relevant logs, and investigate the cause before retrying.
+- Never repeatedly rerun the same failing command without a meaningful change or diagnostic hypothesis.
+- Do not fix unrelated or pre-existing failures unless explicitly authorized.
+- Prefer deterministic, non-watch, CI-style test execution.
+- When tests are expensive, separate implementation, targeted verification, and full regression validation.
+- Report passed, failed, skipped, timed-out, and unexecuted checks accurately.
+- Never report unexecuted tests as passed.
+- Respect the existing repository rules for scoped commits and pushes. Clearly identify any verification gaps before delivery.

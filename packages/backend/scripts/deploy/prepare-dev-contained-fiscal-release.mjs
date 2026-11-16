@@ -90,6 +90,33 @@ export function addedResources(live, synthesized) {
   );
 }
 
+export function bindIdentityParameters(frozenResource, synthesizedResource, identityTemplate) {
+  const required = identityTemplate.Parameters ?? {};
+  const existing = frozenResource.Properties.Parameters ?? {};
+  const proposed = synthesizedResource.Properties.Parameters ?? {};
+  const parameters = { ...existing };
+  for (const name of Object.keys(required)) {
+    if (name in parameters) {
+      if (name in proposed && JSON.stringify(parameters[name]) !== JSON.stringify(proposed[name]))
+        throw new Error(`Existing Identity parameter binding changed: ${name}`);
+      continue;
+    }
+    if (!(name in proposed)) throw new Error(`Synthesized parent lacks Identity parameter: ${name}`);
+    parameters[name] = proposed[name];
+  }
+  if (Object.keys(parameters).some((name) => !(name in required)))
+    throw new Error("Frozen parent supplies an unknown Identity parameter");
+  frozenResource.Properties.Parameters = parameters;
+  assertIdentityParameterContract(frozenResource, identityTemplate);
+}
+
+export function assertIdentityParameterContract(parentResource, identityTemplate) {
+  const required = Object.keys(identityTemplate.Parameters ?? {});
+  const supplied = Object.keys(parentResource.Properties.Parameters ?? {});
+  if (required.some((name) => !supplied.includes(name)) || supplied.some((name) => !required.includes(name)))
+    throw new Error("Frozen Identity nested parameter contract incomplete");
+}
+
 export function assertContainedAdditions(resources) {
   const expected = {
     "AWS::ApiGatewayV2::Integration": 7,
@@ -157,6 +184,11 @@ function main(argv = process.argv.slice(2)) {
     "Identity nested template",
   );
   const synthesizedIdentity = JSON.parse(readFileSync(identityFile, "utf8"));
+  const synthesizedApi = JSON.parse(readFileSync(findOne(
+    synthDirectory,
+    (name) => name.includes("ApiStack") && name.endsWith(".template.json") && !name.includes(".nested."),
+    "API parent template",
+  ), "utf8"));
   const liveIdentity = parseAwsTemplate(options["live-identity-template"]);
   const liveApi = parseAwsTemplate(options["live-api-template"]);
   const additions = addedResources(liveIdentity, synthesizedIdentity);
@@ -197,11 +229,12 @@ function main(argv = process.argv.slice(2)) {
   writeFileSync(join(outputDirectory, "assets", identityKey), identityBytes);
 
   const frozenApi = structuredClone(liveApi);
-  const identityStack = Object.values(frozenApi.Resources).find(
-    (resource) => resource.Type === "AWS::CloudFormation::Stack" &&
-      JSON.stringify(resource).includes("IdentityApi"),
-  );
-  if (!identityStack) throw new Error("Live API parent has no Identity nested stack");
+  const identityId = Object.keys(frozenApi.Resources).find((id) => id.includes("IdentityApiNestedStack"));
+  const identityStack = frozenApi.Resources[identityId];
+  const synthesizedStack = synthesizedApi.Resources?.[identityId];
+  if (!identityStack || !synthesizedStack || identityStack.Type !== "AWS::CloudFormation::Stack" || synthesizedStack.Type !== "AWS::CloudFormation::Stack")
+    throw new Error("API parent has no matching Identity nested stack");
+  bindIdentityParameters(identityStack, synthesizedStack, frozenIdentity);
   identityStack.Properties.TemplateURL = templateUrl(identityKey);
   const apiBytes = Buffer.from(stableJson(frozenApi));
   const apiKey = `${sha256Hex(apiBytes)}.json`;

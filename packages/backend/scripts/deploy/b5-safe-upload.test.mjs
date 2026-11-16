@@ -1,0 +1,20 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {upload,AWS} from "./b5-safe-upload.mjs";
+import {plan} from "./b5-safe-upload.mjs";
+import {mkdtempSync,mkdirSync,writeFileSync,readFileSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {createHash} from 'node:crypto';
+test('invalid owner, missing file and checksum mismatch stop before AWS calls',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'b5-upload-test-'));mkdirSync(join(dir,'release-a/assets'),{recursive:true});
+ const assets=Array.from({length:4},(_,i)=>({key:`${i}.zip`,sha256Hex:createHash('sha256').update('a').digest('hex')}));
+ const m={target:{account:'570197775998',region:'eu-west-3',stage:'dev'},assets:{bucket:'cdk-hnb659fds-assets-570197775998-eu-west-3',executables:assets.slice(0,2),identityTemplate:assets[2],apiTemplate:assets[3]}};
+ const save=()=>writeFileSync(join(dir,'release-a/release-manifest.json'),JSON.stringify(m));save();assert.throws(()=>plan(dir));
+ for(const a of assets)writeFileSync(join(dir,'release-a/assets',a.key),'a');
+ assert.equal(plan(dir)[0].checksum,createHash('sha256').update('a').digest('base64'));
+ m.target.account='wrong';save();assert.throws(()=>plan(dir));m.target.account='570197775998';assets[0].sha256Hex='bad';save();assert.throws(()=>plan(dir));
+ const source=readFileSync(new URL('./b5-safe-upload.mjs',import.meta.url),'utf8');assert.ok(!source.includes('execute-change-set'));
+});
+test("create-only upload retains owner and checksum guards",()=>{const calls=[];let heads=0;upload([{file:"asset",key:"x.zip",checksum:"digest",bucket:"bucket"}],args=>{calls.push(args);if(args[1]==="head-object"){if(heads++===0)throw Object.assign(Error("404"),{stderr:"404"});return {ChecksumSHA256:"digest"};}return {};});assert.equal(calls.length,3);const put=calls[1];for(const flag of ["--if-none-match","--checksum-sha256","--expected-bucket-owner","--body"])assert.ok(put.includes(flag));assert.equal(put[put.indexOf("--if-none-match")+1],"*");assert.ok(AWS.startsWith("/Users/kpadonou/.local/"));});
+test("conflicting existing object stops before upload",()=>{let calls=0;assert.throws(()=>upload([{key:"x",checksum:"good"}],()=>{calls++;return {ChecksumSHA256:"bad"};}));assert.equal(calls,1);});
