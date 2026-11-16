@@ -143,6 +143,8 @@ For any task related to OHADA, SYSCOHADA, SYCEBNL, accounting, invoices, payment
 
 Codex must not invent OHADA rules, article numbers, accounting classes, or legal obligations. If the references are incomplete, it must say so clearly.
 
+For Benin e-MECeF fiscal-compliance work, Codex must also use the `benin-emecef-compliance` skill. Official DGI documentation and applicable legislation are authoritative; preserve source-to-requirement-to-implementation-to-test-to-DGI-evidence traceability, TEST/PRODUCTION isolation, fiscal/accounting integrity, RBAC, DynamoDB invariants, immutable evidence, and recovery safeguards. Do not invent tax rules or treat local tests as DGI approval.
+
 ### DynamoDB data modeling
 
 For any task related to DynamoDB persistence, single-table design, access patterns, repositories, PK/SK/GSI key design, item collections, Query vs Scan behavior, conditional writes, transactions, pagination, uniqueness, denormalization, migrations, or backend data modeling, Codex must use the `dynamodb-data-modeling` skill.

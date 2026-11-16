@@ -8,10 +8,10 @@ Les 20 scénarios de l'annexe 2 de l'auto-déclaration SFE sont les critères d'
 
 ## Sources dans ce dossier
 
-- `Auto_declaration_de_SFE_avec_e-MECeF.docx` — procédure DGI, annexe 1, annexe 2 (20 scénarios et feuilles de preuves).
-- `e-MECeF_API_v1.0.pdf` — API DGI v1.0 datée 15/01/2021 (demande, confirmation, consultation, tax group, clients, AIB, taxe spécifique, référence originale, etc.).
-- `e-MECeF_Manuel_d'utilisation_v1.0.pdf` — manuel DGI 1.0 (parcours utilisateur, acheteur, article TTC, AIB, référence de l'avoir, facture normalisée et QR).
-- `dgi-sfe-20-tests-matrix.csv` — registre initial exhaustif de l'annexe 2, à tenir à jour avec IDs de tests, preuves, état et écarts. **Aucun statut PASS n'est présumé.**
+- `certification/Auto_declaration_de_SFE_avec_e-MECeF.docx` — procédure DGI, annexe 1, annexe 2 (20 scénarios et feuilles de preuves).
+- `api/e-MECeF_API_v1.0.pdf` — API DGI v1.0 datée 15/01/2021 (demande, confirmation, consultation, tax group, clients, AIB, taxe spécifique, référence originale, etc.).
+- `manuals/e-MECeF_Manuel_d'utilisation_v1.0.pdf` — manuel DGI 1.0 (parcours utilisateur, acheteur, article TTC, AIB, référence de l'avoir, facture normalisée et QR).
+- `../compliance-matrix/dgi-sfe-20-tests-matrix.csv` — registre initial exhaustif de l'annexe 2, à tenir à jour avec IDs de tests, preuves, état et écarts. **Aucun statut PASS n'est présumé.**
 
 Les documents historiques doivent être confrontés à l'API DGI TEST actuellement disponible et à sa documentation Swagger : https://developper.impots.bj/sygmef-emcf/swagger/index.html . Consigner toute divergence, faire confirmer par TEST/autorité et ne pas inventer de comportement.
 
@@ -34,7 +34,7 @@ Les documents historiques doivent être confrontés à l'API DGI TEST actuelleme
 
 ## Processus de livraison
 
-Dans le dépôt local, conserver ces sources dans un emplacement documentaire gouverné par `AGENTS.md`, puis renseigner `dgi-sfe-20-tests-matrix.csv` depuis le code réellement existant. Implémenter les écarts, vérifier par domaines, et produire une preuve réelle TEST par cas. Ne pas compter des tests Jest comme validation DGI. Ne pas déployer sur PRODUCTION ni mettre en cause une tentative REM SI. Git commits logiques et push ciblés après tests pertinents, conformément à la gouvernance du dépôt.
+Dans le dépôt local, conserver ces sources dans un emplacement documentaire gouverné par `AGENTS.md`, puis renseigner `../compliance-matrix/dgi-sfe-20-tests-matrix.csv` depuis le code réellement existant. Implémenter les écarts, vérifier par domaines, et produire une preuve réelle TEST par cas. Ne pas compter des tests Jest comme validation DGI. Ne pas déployer sur PRODUCTION ni mettre en cause une tentative REM SI. Git commits logiques et push ciblés après tests pertinents, conformément à la gouvernance du dépôt.
 
 ## Prudence
 

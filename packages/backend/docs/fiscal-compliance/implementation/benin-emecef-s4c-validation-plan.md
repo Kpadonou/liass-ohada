@@ -20,13 +20,13 @@ Evidence labels apply to each behavior below; an observation in TEST cannot esta
 
 Original PDFs were opened offline and text inspected with page boundaries: API 24 pages, manual 16 pages. Original DOCX OOXML was inspected, including all 27 tables, sections I–III, Annexes 1–2 and individual sheets 1–20; summary quantities and sheet quantities remain distinct. S4A Appendix B retains the visual/color audit and pagination limitations. No evidence was refreshed or replaced. SHA-256 checks match S4A:
 
-| Retained file under docs/sales/sources | SHA-256 |
+| Retained file under `packages/backend/docs/fiscal-compliance/dgi-reference` | SHA-256 |
 |---|---|
-| benin-emecef/e-MECeF_API_v1.0.pdf | `45d8fa9cf87a391f1a68057bb6b1eec41c45b3ba5431720982ece875a0e6c3b7` |
-| benin-emecef/e-MECeF_Manuel_d'utilisation_v1.0.pdf | `30c355e8baa37ccd3c8c95dc742f72c025bf8795906efabc215a628eb8b9bd31` |
+| api/e-MECeF_API_v1.0.pdf | `45d8fa9cf87a391f1a68057bb6b1eec41c45b3ba5431720982ece875a0e6c3b7` |
+| manuals/e-MECeF_Manuel_d'utilisation_v1.0.pdf | `30c355e8baa37ccd3c8c95dc742f72c025bf8795906efabc215a628eb8b9bd31` |
 | dgi-reference/certification/Auto_declaration_de_SFE_avec_e-MECeF.docx | `7d2d9f68904124c4490c4b944b7af0d9419e4f9ad62bf71a099639c449a34120` |
-| benin-emecef-openapi-2026-10-08.json | `d9de3f90a6ed78bb1ce970e81cfbacca780a999ddc09690c9acd893e47b47438` |
-| benin-emecef-integrator-openapi-2026-10-08.json | `037c4188ac36811b5ed980f0164008d94b28a4a4eca88ffe27e08b7b8f44d3dd` |
+| api/benin-emecef-openapi-2026-10-08.json | `d9de3f90a6ed78bb1ce970e81cfbacca780a999ddc09690c9acd893e47b47438` |
+| api/benin-emecef-integrator-openapi-2026-10-08.json | `037c4188ac36811b5ed980f0164008d94b28a4a4eca88ffe27e08b7b8f44d3dd` |
 
 Both JSON files parse offline. Invoice OAS 3.0.1, title e-MCF, version 1.0, relative server `/sygmef-emcf`; that version does not equate the current snapshot with the historical API. Integrator has eight operations for enrollment/tokens, not invoice verification or invoice reconciliation. No integrator experiment is authorized here.
 
