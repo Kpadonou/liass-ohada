@@ -2,6 +2,7 @@ import { z } from "zod";
 import { RestaurantPaidByMethodSchema } from "./payments";
 import { RestaurantStaffUserIdSchema } from "./staff";
 import { RestaurantQuantitySchema } from "./quantity";
+import { RestaurantInvoiceCustomerSchema } from "./customer";
 const id = z.string().uuid();
 const version = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
 const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
@@ -26,6 +27,8 @@ export const GuestSessionSchema = z
     ...balance,
     guestSessionId: id,
     finalBillId: id.optional(),
+    invoiceCustomer: RestaurantInvoiceCustomerSchema.optional(),
+    invoiceAib: z.enum(["A", "B"]).optional(),
     tableId: id,
     areaId: id,
     tableCode: z.string().min(1),
@@ -199,7 +202,13 @@ export const OpenGuestSessionRequestSchema = z
     partySize: z.number().int().positive().max(1000).optional(),
   })
   .strict();
-export const CloseGuestSessionRequestSchema = z.object(edit).strict();
+export const CloseGuestSessionRequestSchema = z
+  .object({
+    ...edit,
+    invoiceCustomer: RestaurantInvoiceCustomerSchema.nullable().optional(),
+    invoiceAib: z.enum(["A", "B"]).nullable().optional(),
+  })
+  .strict();
 export const ReplaceGuestSessionResponsibleStaffRequestSchema = z
   .object({
     ...edit,
@@ -337,5 +346,6 @@ export const ActiveTableGuestSessionResponseSchema = z
   .object({ data: GuestSessionReadSchema.nullable() })
   .strict();
 export type GuestSession = z.infer<typeof GuestSessionSchema>;
+export type CloseGuestSessionRequest = z.infer<typeof CloseGuestSessionRequestSchema>;
 export type RestaurantOrder = z.infer<typeof RestaurantOrderSchema>;
 export type RestaurantOrderItem = z.infer<typeof RestaurantOrderItemSchema>;

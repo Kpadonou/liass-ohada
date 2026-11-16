@@ -111,9 +111,9 @@ export class RestaurantInvoiceSourceVerifier {
           manifest.phase === "VALIDATE" &&
           !manifest.sourceCursor &&
           manifest.orderIndex === manifest.orders.length &&
-          session.version === manifest.sourceVersion &&
+          session.version >= manifest.sourceVersion &&
           session.financialRevision === manifest.financialRevision &&
-          session.closedAt === context.closedAt &&
+          (!context.closedAt || session.closedAt === context.closedAt) &&
           session.openedAt === context.openedAt &&
           session.currency === context.currency &&
           session.dueMinor === context.dueMinor &&

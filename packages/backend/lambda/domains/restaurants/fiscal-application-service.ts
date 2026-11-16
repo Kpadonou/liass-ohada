@@ -118,9 +118,13 @@ export class RestaurantFiscalApplicationService {
     const securityElements = result.confirmed && this.real &&
       state?.status === "CONFIRMED" && state.execution === "REAL_TEST" &&
       state.securityEvidenceOrigin === "DGI_TEST" ? state.security ?? null : null;
+    const seller = securityElements && source.issuanceProvenance.verified
+      ? source.issuanceProvenance.evidence.seller?.seller ?? null
+      : null;
     return {
       ...result,
       securityElements,
+      seller,
       normalizedInvoice: securityElements && !request.creditNoteId ? source.invoice ?? null : null,
       resultAvailable: result.confirmed,
       evidenceOrigin: result.confirmed ? (this.real ? "DGI_TEST" as const : "SYNTHETIC" as const) : null,

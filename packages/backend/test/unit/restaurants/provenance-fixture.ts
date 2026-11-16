@@ -49,7 +49,11 @@ export const provenance = bindRestaurantIssuanceProvenance({
     identityReference: id,
     identityVersion: "1",
     identityDigest: digest,
-    seller: { name: "Synthetic seller", identifiers: [] },
+    seller: {
+      name: "Synthetic seller",
+      address: { lines: ["1 rue de la conformité"], city: "Cotonou" },
+      identifiers: [],
+    },
     acceptanceReference: "synthetic-acceptance",
     acceptanceVersion: "1",
     subjectBindingState: "VERIFIED",
@@ -57,6 +61,16 @@ export const provenance = bindRestaurantIssuanceProvenance({
     factStates: [
       {
         fieldPath: "name",
+        state: "VERIFIED",
+        evidenceReference: "synthetic-evidence",
+      },
+      {
+        fieldPath: "address.lines.0",
+        state: "VERIFIED",
+        evidenceReference: "synthetic-evidence",
+      },
+      {
+        fieldPath: "address.city",
         state: "VERIFIED",
         evidenceReference: "synthetic-evidence",
       },

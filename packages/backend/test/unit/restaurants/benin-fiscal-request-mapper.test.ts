@@ -21,6 +21,7 @@ const captured = bindRestaurantIssuanceProvenance({
     ...original.seller,
     seller: {
       name: "Synthetic seller",
+      address: { lines: ["1 rue de la conformité"], city: "Cotonou" },
       identifiers: [
         { scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" },
       ],
@@ -31,6 +32,21 @@ const captured = bindRestaurantIssuanceProvenance({
         fieldPath: "identifiers",
         state: "VERIFIED",
         evidenceReference: "synthetic-ifu-review",
+      },
+      {
+        fieldPath: "name",
+        state: "VERIFIED",
+        evidenceReference: "synthetic-name-review",
+      },
+      {
+        fieldPath: "address.lines.0",
+        state: "VERIFIED",
+        evidenceReference: "synthetic-address-review",
+      },
+      {
+        fieldPath: "address.city",
+        state: "VERIFIED",
+        evidenceReference: "synthetic-address-review",
       },
     ],
   },

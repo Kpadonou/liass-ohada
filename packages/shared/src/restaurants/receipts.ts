@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RestaurantInvoiceCustomerSchema } from "./customer";
 import { AcceptedSaleSnapshotSchema } from "./transactions";
 import {
   RestaurantPaidByMethodSchema,
@@ -9,14 +10,9 @@ const id = z.string().uuid();
 const amount = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const time = z.string().datetime();
-export const RestaurantInvoiceCustomerSchema = z.object({
-  name: z.string().trim().min(1).max(160),
-  ifu: z.string().trim().min(1).max(32).optional(),
-  contact: z.string().trim().min(1).max(160).optional(),
-  address: z.string().trim().min(1).max(250).optional(),
-}).strict();
+export { RestaurantInvoiceCustomerSchema } from "./customer";
 export const PublishRestaurantReceiptRequestSchema = z
-  .object({ clientRequestId: id, customer: RestaurantInvoiceCustomerSchema.optional(), aib: z.enum(["A", "B"]).optional() })
+  .object({ clientRequestId: id, customer: RestaurantInvoiceCustomerSchema.nullable().optional(), aib: z.enum(["A", "B"]).nullable().optional() })
   .strict();
 export const RestaurantReceiptLineSchema = z
   .object({
@@ -78,7 +74,9 @@ export const RestaurantReceiptSummarySchema = z
     restaurantName: z.string().min(1),
     tableName: z.string().min(1),
     openedAt: time,
-    closedAt: time,
+    // Historical invoices retain the service close time. Invoices issued while
+    // the table remains occupied intentionally omit it.
+    closedAt: time.optional(),
     currency: z.string().regex(/^[A-Z]{3}$/),
     dueMinor: amount,
     paidMinor: amount,

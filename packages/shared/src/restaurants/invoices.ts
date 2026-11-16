@@ -24,7 +24,7 @@ export const RestaurantInvoiceSummarySchema = z
     restaurantName: z.string().min(1),
     tableName: z.string().min(1),
     openedAt: z.string().datetime(),
-    closedAt: z.string().datetime(),
+    closedAt: z.string().datetime().optional(),
     currency: z.string().regex(/^[A-Z]{3}$/),
     dueMinor: z.number().int().nonnegative(),
     paidMinor: z.number().int().nonnegative(),

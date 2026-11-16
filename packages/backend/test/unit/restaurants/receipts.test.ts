@@ -327,6 +327,101 @@ test("customer, AIB and full-quantity specific/accommodation taxes survive the r
       expect.objectContaining({ fiscal: expect.objectContaining({ taxSpecificMinor: "50" }) }),
     ]) } });
 });
+test("deployed publish handler contract accepts customer and AIB instead of rejecting valid keys", async () => {
+  const v = await visit();
+  await settle(v);
+  const customer = {
+    name: "Client Contrat DEV",
+    ifu: "1234567890123",
+    contact: "+229 01 00 00 00",
+    address: "Cotonou",
+  };
+  const response = await publishHandler({
+    headers: { "x-org-id": org, "accept-language": "fr" },
+    pathParameters: { outletId: f.outlet.id, sessionId: v.sessionId },
+    body: JSON.stringify({ clientRequestId: req(), customer, aib: "A" }),
+    requestContext: { authorizer: { jwt: { claims: { sub: "owner" } } } },
+  });
+  expect(response.statusCode).toBe(200);
+  const body = c.RestaurantReceiptPublicationResponseSchema.parse(JSON.parse(response.body));
+  expect(body.data).toMatchObject({ state: "FINAL", receipt: { customer, aib: "A" } });
+});
+test("receipt publication atomically replaces the payment customer with the final pre-issuance customer", async () => {
+  const v = await visit();
+  const before = (await S.session(scope(), v.sessionId)).data;
+  const customer = { name: "Client Avant Paiement", ifu: "1234567890123" };
+  await Pay.capture(scope(), "owner", v.sessionId, {
+    clientRequestId: req(),
+    expectedVersion: before.version,
+    method: "CASH",
+    currency: "XOF",
+    allocations: [{ orderId: v.orderId, amountMinor: before.dueMinor }],
+    cashTenderedMinor: before.dueMinor,
+    invoiceCustomer: customer,
+  });
+  await S.mutate(ctx(), "CLOSE_ORDER", {
+    clientRequestId: req(),
+    expectedVersion: (await S.order(scope(), v.orderId)).data.version,
+  }, { orderId: v.orderId });
+  await S.mutate(ctx(), "CLOSE_SESSION", {
+    clientRequestId: req(),
+    expectedVersion: (await S.session(scope(), v.sessionId)).data.version,
+  }, { sessionId: v.sessionId });
+  const final = await Receipt.publish(scope(), "owner", v.sessionId, {
+    clientRequestId: req(),
+    customer: { name: "Autre Client" },
+  });
+  expect(final.data).toMatchObject({
+    state: "FINAL",
+    receipt: { customer: { name: "Autre Client" } },
+  });
+  expect((await S.session(scope(), v.sessionId)).data.invoiceCustomer).toEqual({
+    name: "Autre Client",
+  });
+});
+test("paid eligible service publishes before physical table release and later close preserves evidence", async () => {
+  const v = await visit();
+  const open = (await S.session(scope(), v.sessionId)).data;
+  await Pay.capture(scope(), "owner", v.sessionId, {
+    clientRequestId: req(),
+    expectedVersion: open.version,
+    method: "CASH",
+    currency: "XOF",
+    allocations: [{ orderId: v.orderId, amountMinor: open.dueMinor }],
+    cashTenderedMinor: open.dueMinor,
+  });
+  await S.mutate(ctx(), "CLOSE_ORDER", {
+    clientRequestId: req(),
+    expectedVersion: (await S.order(scope(), v.orderId)).data.version,
+  }, { orderId: v.orderId });
+  const customer = { name: "Client à table", address: "Cotonou" };
+  const invoice = await finish(v.sessionId, "owner", req(), { customer });
+  const occupied = (await S.session(scope(), v.sessionId)).data;
+  expect(occupied).toMatchObject({
+    status: "OPEN",
+    finalBillId: invoice.receiptId,
+    invoiceCustomer: customer,
+  });
+  expect(occupied.closedAt).toBeUndefined();
+  expect(invoice.closedAt).toBeUndefined();
+  expect((await S.activeTable(scope(), f.tables[0].id)).data?.guestSessionId).toBe(v.sessionId);
+  expect((await Source.verify(scope(), "owner", v.sessionId, invoice.receiptId)).verified).toBe(true);
+  await expect(S.mutate(ctx(), "CREATE_ORDER", {
+    clientRequestId: req(), orderType: "DINE_IN", guestSessionId: v.sessionId,
+  })).rejects.toMatchObject({ messageCode: "RESTAURANTS_TRANSACTION_STATE" });
+  const digest = invoice.digest;
+  await S.mutate(ctx(), "CLOSE_SESSION", {
+    clientRequestId: req(), expectedVersion: occupied.version,
+  }, { sessionId: v.sessionId });
+  expect((await S.activeTable(scope(), f.tables[0].id)).data).toBeNull();
+  expect((await Receipt.read(scope(), "owner", v.sessionId, {})).data).toMatchObject({
+    receiptId: invoice.receiptId,
+    digest,
+    customer,
+  });
+  const verification = await Source.verify(scope(), "owner", v.sessionId, invoice.receiptId);
+  expect(verification).toMatchObject({ verified: true });
+});
 test("OPEN and inconsistent CLOSED owners cannot publish", async () => {
   const v = await visit();
   await expect(
@@ -1535,6 +1630,7 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
         orgId: org,
         seller: {
           name: "Synthetic seller",
+          address: { lines: ["1 rue de la conformité"], city: "Cotonou" },
           identifiers: [
             { scheme: "IFU", issuingCountry: "BJ", value: "synthetic-ifu" },
           ],
@@ -1632,17 +1728,21 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
       counters: "1/1",
       nim: "synthetic-device",
     };
+    let providerInvoice: unknown;
     const transport = jest.fn(async (request: { method: string; body?: string }) => {
       if (
         (outcome === "uncertain-create" && request.method === "POST") ||
         (outcome === "uncertain-confirm" && request.method === "PUT")
       )
         throw new Error("synthetic timeout");
+      if (request.method === "POST") providerInvoice = JSON.parse(request.body ?? "{}");
       return {
         status: 200,
         body: JSON.stringify(
           request.method === "POST"
             ? { uid: "synthetic-uid", total: invoice.dueMinor }
+            : request.method === "GET"
+              ? providerInvoice
             : syntheticSecurity,
         ),
       };
@@ -1704,7 +1804,7 @@ test.each(["success", "uncertain-create", "uncertain-confirm"])(
         ),
       ).rejects.toThrow();
       expect(transport.mock.calls.map(([r]) => r.method)).toEqual(
-        outcome === "uncertain-create" ? ["POST"] : ["POST", "PUT"],
+        outcome === "uncertain-create" ? ["POST"] : ["POST", "GET", "PUT"],
       );
       expect(JSON.stringify(state)).not.toContain("synthetic-token");
     } finally {

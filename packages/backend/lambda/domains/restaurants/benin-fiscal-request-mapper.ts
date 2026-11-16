@@ -118,6 +118,23 @@ export function mapRestaurantBeninRequest(
       ));
   if (identifiers.length !== 1 || !identifierVerified)
     throw new Error("FISCAL_SELLER_IFU_UNVERIFIED");
+  if (realFiscalTestEnabled()) {
+    const address = seller.seller.address;
+    const addressPaths = address
+      ? [
+          ...address.lines.map((_, index) => `address.lines.${index}`),
+          ...(address.city ? ["address.city"] : []),
+          ...(address.postalCode ? ["address.postalCode"] : []),
+        ]
+      : [];
+    if (
+      !address ||
+      !address.lines.length ||
+      !verifiedFacts.has("name") ||
+      addressPaths.some((path) => !verifiedFacts.has(path))
+    )
+      throw new Error("FISCAL_SELLER_IDENTITY_INCOMPLETE");
+  }
   if (
     new Set(config.taxGroups).size !== config.taxGroups.length ||
     new Set(config.payments.map((v) => v.sourceMethod)).size !==

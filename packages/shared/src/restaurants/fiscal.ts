@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { RestaurantReceiptSummarySchema } from "./receipts";
+import { LegalSellerAuthoritySchema } from "../shared/legal-identity-authority";
 
 export const RestaurantFiscalSourceRequestSchema = z
   .object({
@@ -66,6 +67,7 @@ export const RestaurantFiscalResultResponseSchema = z
     securityElements: RestaurantFiscalSecuritySchema.nullable(),
     resultAvailable: z.boolean(),
     evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).nullable(),
+    seller: LegalSellerAuthoritySchema.shape.seller.nullable().optional(),
   })
   .strict()
   .refine(
@@ -74,6 +76,7 @@ export const RestaurantFiscalResultResponseSchema = z
       v.resultAvailable === v.confirmed &&
       (!v.normalizedInvoice || !!v.securityElements && v.normalizedInvoice.receiptId === v.invoiceId && v.normalizedInvoice.dueMinor === v.total) &&
       (!v.securityElements || v.confirmed && v.execution === "REAL_TEST" && v.evidenceOrigin === "DGI_TEST") &&
+      (!v.seller || !!v.securityElements) &&
       (v.evidenceOrigin === (v.execution === "REAL_TEST" ? "DGI_TEST" : "SYNTHETIC")) === v.confirmed,
     "Inconsistent fiscal result",
   );

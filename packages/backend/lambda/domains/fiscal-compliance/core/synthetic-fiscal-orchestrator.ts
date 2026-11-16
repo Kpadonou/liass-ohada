@@ -146,13 +146,14 @@ export class SyntheticFiscalOrchestrator {
     const state = await this.store.read(identity);
     if (!state || (state.execution === "REAL_TEST") !== this.real || state.provider !== this.provider.kind || !state.uid)
       throw new FiscalAttemptConflict("UID_REQUIRED");
-    let prepared: VerifiedFiscalPreparation | undefined;
-    if (this.real) {
-      prepared = await this.prepare(p, identity);
-      if (state.execution !== "REAL_TEST" || prepared.sourceDigest !== state.sourceDigest ||
-        prepared.requestDigest !== state.requestDigest || prepared.total !== state.expectedTotal)
-        throw new FiscalAttemptConflict("SCOPE_DENIED");
-    }
+    const prepared = await this.prepare(p, identity);
+    if (
+      (this.real && state.execution !== "REAL_TEST") ||
+      prepared.sourceDigest !== state.sourceDigest ||
+      prepared.requestDigest !== state.requestDigest ||
+      prepared.total !== state.expectedTotal
+    )
+      throw new FiscalAttemptConflict("SCOPE_DENIED");
     const reference = createHash("sha256").update(JSON.stringify([state.obligationId, state.attemptId, commandId, state.uid])).digest("hex");
     const reserved = await this.store.transition(identity, state.version, {
       kind: "RESERVE_MUTATION",

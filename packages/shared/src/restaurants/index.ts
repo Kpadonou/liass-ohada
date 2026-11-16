@@ -424,3 +424,4 @@ export * from "./credit-notes";
 export * from "./refunds";
 
 export * from "./fiscal";
+export * from "./customer";

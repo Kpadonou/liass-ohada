@@ -100,8 +100,8 @@ export class RestaurantReceiptService {
   }
   static eligible(s: c.GuestSession) {
     if (
-      s.status !== "CLOSED" ||
-      !s.closedAt ||
+      !["OPEN", "CLOSED"].includes(s.status) ||
+      (s.status === "CLOSED") !== Boolean(s.closedAt) ||
       s.openOrderCount ||
       s.dueMinor !== s.paidMinor ||
       s.reservedMinor ||
@@ -213,6 +213,17 @@ export class RestaurantReceiptService {
       fail("RESTAURANTS_IDEMPOTENCY_CONFLICT");
     let session = await S.session(scope, sessionId);
     this.eligible(session.data);
+    if (
+      session.data.finalBillId &&
+      ((request.customer !== undefined &&
+        hash(request.customer ?? null) !== hash(session.data.invoiceCustomer ?? null)) ||
+        (request.aib !== undefined &&
+          (request.aib ?? null) !== (session.data.invoiceAib ?? null)))
+    )
+      fail("RESTAURANTS_IDEMPOTENCY_CONFLICT");
+    const invoiceCustomer =
+      request.customer !== undefined ? request.customer ?? undefined : session.data.invoiceCustomer;
+    const invoiceAib = request.aib !== undefined ? request.aib ?? undefined : session.data.invoiceAib;
     let manifest: ReceiptManifest | undefined;
     if (!session.data.finalBillId) {
       const orders = await this.orders(scope, session.data);
@@ -232,7 +243,7 @@ export class RestaurantReceiptService {
         restaurantName: restaurant.data.name,
         tableName: session.data.tableName,
         openedAt: session.data.openedAt,
-        closedAt: session.data.closedAt!,
+        ...(session.data.closedAt ? { closedAt: session.data.closedAt } : {}),
         currency: session.data.currency,
         dueMinor: session.data.dueMinor,
         paidMinor: session.data.paidMinor,
@@ -241,8 +252,8 @@ export class RestaurantReceiptService {
           MOBILE_MONEY: 0,
           CARD: 0,
         },
-        ...(request.customer ? { customer: request.customer } : {}),
-        ...(request.aib ? { aib: request.aib } : {}),
+        ...(invoiceCustomer ? { customer: invoiceCustomer } : {}),
+        ...(invoiceAib ? { aib: invoiceAib } : {}),
       };
       manifest = ReceiptManifestSchema.parse({
         scopeKind: "GUEST_SESSION",
@@ -288,6 +299,8 @@ export class RestaurantReceiptService {
           R.put(
             R.row(scope, { PK: session.PK, SK: session.SK }, "SESSION", {
               ...c.GuestSessionSchema.parse(session.data),
+              invoiceCustomer,
+              invoiceAib,
               finalBillId: receiptId,
               version: session.data.version + 1,
             }),
@@ -316,8 +329,8 @@ export class RestaurantReceiptService {
       manifest.receiptId !== receiptId ||
       manifest.guestSessionId !== sessionId ||
       (!continuationOnly && (
-        hash(manifest.context.customer ?? null) !== hash(request.customer ?? null) ||
-        (manifest.context.aib ?? null) !== (request.aib ?? null)
+        hash(manifest.context.customer ?? null) !== hash(invoiceCustomer ?? null) ||
+        (manifest.context.aib ?? null) !== (invoiceAib ?? null)
       ))
     )
       fail("RESTAURANTS_IDEMPOTENCY_CONFLICT");

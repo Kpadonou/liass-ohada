@@ -139,11 +139,20 @@ test("table occupancy, history, distributed create replay and immutable result",
   const closeReq = {
     clientRequestId: requestId(),
     expectedVersion: session.version,
+    invoiceCustomer: {
+      name: "Client identifié",
+      ifu: "1234567890123",
+      contact: "+229 01 00 00 00",
+      address: "Cotonou",
+    },
   };
   const closed = await execute("CLOSE_SESSION", closeReq, {
     sessionId: session.guestSessionId,
   });
-  expect(closed.data.status).toBe("CLOSED");
+  expect(closed.data).toMatchObject({
+    status: "CLOSED",
+    invoiceCustomer: closeReq.invoiceCustomer,
+  });
   expect((await S.activeTable(ctx, fixture.tables[0].id)).data).toBeNull();
   expect(
     await execute("CLOSE_SESSION", closeReq, {
@@ -1146,7 +1155,7 @@ test("failed config-race submission is entirely atomic", async () => {
 test("overflow is rejected with no submission effect", async () => {
   const order = contracts.RestaurantOrderSchema.parse((await create()).data),
     line = contracts.RestaurantOrderItemSchema.parse(
-      (await add(order.orderId, 0, Number.MAX_SAFE_INTEGER)).data,
+      (await add(order.orderId, 0, 9_000_000_000_000)).data,
     );
   await expect(submit(order.orderId, line.itemId)).rejects.toMatchObject({
     messageCode: "RESTAURANTS_TRANSACTION_MONEY",

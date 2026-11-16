@@ -253,6 +253,28 @@ test("partial and multiple payments preserve due, frozen replay after later paym
     (await S.order(scope(), order.orderId)).data.paidByMethodMinor,
   ).toEqual({ CASH: 4000, MOBILE_MONEY: 0, CARD: 6000 });
 });
+test("payment freezes the invoice customer before finalization and preserves it across partial payments", async () => {
+  const customer = {
+    name: "ETS Client Identifié",
+    ifu: "1234567890123",
+    contact: "+229 01 23 45 67 89",
+    address: "Cotonou",
+  };
+  const first = await input(4000);
+  const captured = await capture({ ...first, invoiceCustomer: customer });
+  expect(captured.data.session).toMatchObject({
+    paidMinor: 4000,
+    invoiceCustomer: customer,
+  });
+  const second = await capture(await input(6000, "CARD"));
+  expect(second.data.session).toMatchObject({
+    paidMinor: 10000,
+    invoiceCustomer: customer,
+  });
+  expect((await S.session(scope(), session.guestSessionId)).data).toMatchObject({
+    invoiceCustomer: customer,
+  });
+});
 test("three Orders: exact allocation set, references, immutable result and reordered replay", async () => {
   const orders = [order, await newOrder(), await newOrder()];
   const body = await input(

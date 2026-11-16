@@ -269,7 +269,10 @@ export class RestaurantTransactionsService {
         company: companyTax,
         exception: selected.fiscalException,
       });
-      if ((selected.specificTaxMinor ?? 0) >= amount)
+      if (
+        selected.specificTaxMinor !== undefined &&
+        selected.specificTaxMinor >= amount
+      )
         throw new Error("INVALID_SPECIFIC_TAX");
       amounts = calculateRestaurantFiscalAmounts(amount - (selected.specificTaxMinor ?? 0), treatment);
     } catch {
@@ -666,6 +669,8 @@ export class RestaurantTransactionsService {
       }
       if (serviceSession.data.status !== "OPEN")
         return fail("RESTAURANTS_NOT_FOUND", 404);
+      if (serviceSession.data.finalBillId)
+        return fail("RESTAURANTS_TRANSACTION_STATE");
     };
     await authorizeOrderScope();
     const prior = await replay();
@@ -1028,6 +1033,7 @@ export class RestaurantTransactionsService {
       if (
         session &&
         (session.data.status !== "OPEN" ||
+          Boolean(session.data.finalBillId) ||
           session.data.orderCount >= 50 ||
           session.data.currency !== menu.data.currency)
       )
@@ -1218,8 +1224,27 @@ export class RestaurantTransactionsService {
         session.data.pendingPaymentCount
       )
         return fail("RESTAURANTS_UNPAID_CLOSE");
+      if (
+        session.data.finalBillId &&
+        ((req.invoiceCustomer !== undefined &&
+          fingerprint(req.invoiceCustomer ?? null) !==
+            fingerprint(session.data.invoiceCustomer ?? null)) ||
+          (req.invoiceAib !== undefined &&
+            (req.invoiceAib ?? null) !== (session.data.invoiceAib ?? null)))
+      )
+        return fail("RESTAURANTS_TRANSACTION_STATE");
       result = {
         ...session.data,
+        ...(req.invoiceCustomer !== undefined
+          ? req.invoiceCustomer
+            ? { invoiceCustomer: req.invoiceCustomer }
+            : { invoiceCustomer: undefined }
+          : {}),
+        ...(req.invoiceAib !== undefined
+          ? req.invoiceAib
+            ? { invoiceAib: req.invoiceAib }
+            : { invoiceAib: undefined }
+          : {}),
         status: "CLOSED",
         closedAt: now,
         closedBy: ctx.actorId,

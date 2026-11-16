@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RestaurantInvoiceCustomerSchema } from "./customer";
 const id = z.string().uuid();
 const count = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER);
 const positive = count.positive();
@@ -38,6 +39,8 @@ export const CaptureRestaurantPaymentRequestSchema = z
       .max(200)
       .regex(/^[^\u0000-\u001f\u007f]+$/)
       .optional(),
+    invoiceCustomer: RestaurantInvoiceCustomerSchema.nullable().optional(),
+    invoiceAib: z.enum(["A", "B"]).nullable().optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
@@ -139,6 +142,8 @@ export const RestaurantPaymentResultSchema = RestaurantPaymentSchema.safeExtend(
         paidMinor: count,
         reservedMinor: count,
         pendingPaymentCount: count,
+        invoiceCustomer: RestaurantInvoiceCustomerSchema.optional(),
+        invoiceAib: z.enum(["A", "B"]).optional(),
       })
       .strict(),
   },

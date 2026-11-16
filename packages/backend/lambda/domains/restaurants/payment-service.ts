@@ -174,6 +174,16 @@ export class RestaurantPaymentService {
     const pk = K.restaurantPaymentPK(scope.orgId, scope.outletId, paymentId);
     const nextSession = c.GuestSessionSchema.parse({
       ...session.data,
+      ...(request.invoiceCustomer !== undefined
+        ? request.invoiceCustomer
+          ? { invoiceCustomer: request.invoiceCustomer }
+          : { invoiceCustomer: undefined }
+        : {}),
+      ...(request.invoiceAib !== undefined
+        ? request.invoiceAib
+          ? { invoiceAib: request.invoiceAib }
+          : { invoiceAib: undefined }
+        : {}),
       paidMinor: safe(BigInt(session.data.paidMinor) + BigInt(amount)),
       paidByMethodMinor: totals(session.data, request.method, amount),
       version: safe(BigInt(session.data.version) + 1n),
@@ -228,6 +238,8 @@ export class RestaurantPaymentService {
         paidMinor: nextSession.paidMinor,
         reservedMinor: nextSession.reservedMinor,
         pendingPaymentCount: nextSession.pendingPaymentCount,
+        invoiceCustomer: nextSession.invoiceCustomer,
+        invoiceAib: nextSession.invoiceAib,
       },
     });
     const actions: TransactWriteItem[] = [...access.actions];
