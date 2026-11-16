@@ -403,7 +403,6 @@ it('submits the tax for the full draft quantity with evidenced D treatment', asy
   await draftInput();
   const line = page.drafts()[0];
   page.specificTaxInput(line).setValue('150');
-  page.specificTaxKindInput(line).setValue('SPECIFIC');
   page.fiscalExceptionInput(line).setValue('D');
   page.fiscalEvidenceInput(line).setValue('DGI review 13');
   await page.submit();

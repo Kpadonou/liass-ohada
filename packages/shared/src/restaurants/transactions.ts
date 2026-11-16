@@ -134,7 +134,7 @@ export const RestaurantFiscalTreatmentSchema = z
     regime: z.enum(["ORDINARY_VAT", "TPS"]),
     regimeRevision: id,
     policyId: z.literal("BJ-RESTO-TTC"),
-    policyVersion: z.literal(1),
+    policyVersion: z.union([z.literal(1), z.literal(2)]),
     rateBasisPoints: z.union([z.literal(0), z.literal(1800)]),
     rounding: z.literal("HALF_UP_LINE"),
     evidenceReference: z.string().trim().min(1).max(200).optional(),
@@ -158,7 +158,7 @@ export const AcceptedSaleSnapshotSchema = z
     subtotalMinor: money,
     discountMinor: z.literal(0),
     taxMinor: money,
-    /** Included in the frozen TTC line amount; applies to the full quantity. */
+    /** Full-line DGI additional tax; never multiply by quantity. */
     specificTaxMinor: money.optional(),
     specificTaxKind: z.enum(["SPECIFIC", "ACCOMMODATION"]).optional(),
     ordinaryTax: RestaurantOrdinaryTaxSnapshotSchema.optional(),
@@ -278,7 +278,7 @@ export const SubmitRestaurantOrderRequestSchema = z
               .strict()
               .optional(),
             specificTaxMinor: money.optional(),
-            specificTaxKind: z.enum(["SPECIFIC", "ACCOMMODATION"]).optional(),
+            specificTaxKind: z.literal("SPECIFIC").optional(),
           })
           .strict().refine(v => (v.specificTaxMinor === undefined) === (v.specificTaxKind === undefined),
             { message: "Specific tax amount and kind must be supplied together" }),

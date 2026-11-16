@@ -278,15 +278,15 @@ test("closed canonical visit publishes immutable accepted lines and cash evidenc
   expect((await S.activeTable(scope(), f.tables[0].id)).data).toBeNull();
   expect(m.db.commandCalls(ScanCommand)).toHaveLength(0);
 });
-test("customer, AIB and full-quantity specific/accommodation taxes survive the real sale and receipt path", async () => {
+test("customer, AIB and full-quantity specific tax survive the real sale and receipt path", async () => {
   const v = await visitItems([
     { item: f.items[4], quantity: 2, specificTaxMinor: 100, specificTaxKind: "SPECIFIC" },
-    { item: f.items[4], quantity: 1, specificTaxMinor: 50, specificTaxKind: "ACCOMMODATION" },
+    { item: f.items[4], quantity: 1 },
   ]);
   const accepted = await Promise.all(v.lines.map(line => S.line(scope(), v.orderId, line.itemId)));
   expect(accepted.map(row => row.data.snapshot)).toEqual(expect.arrayContaining([
     expect.objectContaining({ specificTaxMinor: 100, specificTaxKind: "SPECIFIC" }),
-    expect.objectContaining({ specificTaxMinor: 50, specificTaxKind: "ACCOMMODATION" }),
+    expect.not.objectContaining({ specificTaxMinor: expect.anything() }),
   ]));
   await settle(v);
   const customer = { name: "Client Test", ifu: "1234567890123", contact: "+229 01 00 00 00", address: "Cotonou" };
@@ -315,7 +315,7 @@ test("customer, AIB and full-quantity specific/accommodation taxes survive the r
   m.rows.set(JSON.stringify([provenanceRow.PK, provenanceRow.SK]), marshall(provenanceRow));
   expect(read.parts.filter(part => part.content.kind === "COMMERCIAL")
     .flatMap(part => part.content.kind === "COMMERCIAL" ? part.content.lines : [])
-    .map(line => line.snapshot.specificTaxMinor)).toEqual(expect.arrayContaining([100, 50]));
+    .map(line => line.snapshot.specificTaxMinor)).toEqual(expect.arrayContaining([100, undefined]));
   const verified = await Source.verify(scope(), "owner", v.sessionId, read.data.receiptId);
   expect(verified.verified).toBe(true);
   const { prepareRestaurantFiscalInvoice } = await import("@/lambda/domains/restaurants/fiscal-preparation");
@@ -324,7 +324,7 @@ test("customer, AIB and full-quantity specific/accommodation taxes survive the r
   expect(preparation).toMatchObject({ ready: true, preparation: { customer, aib: "A",
     lines: expect.arrayContaining([
       expect.objectContaining({ fiscal: expect.objectContaining({ taxSpecificMinor: "100" }) }),
-      expect.objectContaining({ fiscal: expect.objectContaining({ taxSpecificMinor: "50" }) }),
+      expect.objectContaining({ fiscal: expect.not.objectContaining({ taxSpecificMinor: expect.anything() }) }),
     ]) } });
 });
 test("deployed publish handler contract accepts customer and AIB instead of rejecting valid keys", async () => {
@@ -1968,7 +1968,7 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
             {
               fiscalTreatmentEvidence: {
                 reference: selection.revision,
-                version: "1",
+                version: "2",
               },
             },
           ],

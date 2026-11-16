@@ -1,5 +1,7 @@
 import { calculateRestaurantFiscalAmounts, resolveRestaurantFiscalTreatment } from "@/lambda/domains/restaurants/fiscal-treatment";
 import { validRestaurantSaleTax } from "@/lambda/domains/restaurants/pilot-tax-calculation";
+import { SubmitRestaurantOrderRequestSchema } from "@liass-ohada/shared/restaurants";
+import { randomUUID } from "node:crypto";
 
 const company = (regime: "ORDINARY_VAT" | "TPS") => ({
   country: "BJ", selected: { revision: "00000000-0000-4000-8000-000000000001" },
@@ -13,7 +15,7 @@ test("ordinary VAT accepts A/B defaults, rounds normal XOF prices, and freezes r
   expect(calculateRestaurantFiscalAmounts(1000, a)).toEqual({ netMinor: 1000, taxMinor: 0 });
   expect(calculateRestaurantFiscalAmounts(1000, b)).toEqual({ netMinor: 847, taxMinor: 153 });
   expect(calculateRestaurantFiscalAmounts(999 * 3, b)).toEqual({ netMinor: 2540, taxMinor: 457 });
-  expect(b).toMatchObject({ catalogGroup: "B", effectiveGroup: "B", policyVersion: 1, rounding: "HALF_UP_LINE" });
+  expect(b).toMatchObject({ catalogGroup: "B", effectiveGroup: "B", policyVersion: 2, rounding: "HALF_UP_LINE" });
 });
 
 test("TPS defaults to E and only an evidenced state buyer exception can use B", () => {
@@ -30,6 +32,24 @@ test("export and exception regime are transaction-specific, while F requires a s
       exception: { group, evidenceReference: `DOCUMENT-${group}` } }).effectiveGroup).toBe(group);
   }
   expect(() => resolveRestaurantFiscalTreatment({ classification: classification("E"), company: company("ORDINARY_VAT") })).toThrow();
+});
+
+test("standard Restaurants POS accepts specific tax but not accommodation tax", () => {
+  const base = {
+    clientRequestId: randomUUID(),
+    expectedVersion: 1,
+    items: [{
+      itemId: randomUUID(),
+      expectedVersion: 1,
+      specificTaxMinor: 1_000,
+      specificTaxKind: "SPECIFIC" as const,
+    }],
+  };
+  expect(SubmitRestaurantOrderRequestSchema.safeParse(base).success).toBe(true);
+  expect(SubmitRestaurantOrderRequestSchema.safeParse({
+    ...base,
+    items: [{ ...base.items[0], specificTaxKind: "ACCOMMODATION" }],
+  }).success).toBe(false);
 });
 
 test("frozen FINAL treatment rejects impossible group/regime and missing exception provenance", () => {

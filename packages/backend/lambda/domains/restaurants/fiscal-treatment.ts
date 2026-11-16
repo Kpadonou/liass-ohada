@@ -1,11 +1,12 @@
 import type { MenuItem, RestaurantFiscalTreatmentSchema } from "@liass-ohada/shared/restaurants";
 import type { z } from "zod";
+import { calculateBeninSpecificTaxTtcLine } from "../fiscal-compliance/providers/benin-emecef/benin-tax-calculation";
 
 type Treatment = z.infer<typeof RestaurantFiscalTreatmentSchema>;
 type Exception = { group: "B" | "C" | "D"; evidenceReference: string };
 
 /** Benin DGI groups: A exempt, B ordinary 18%, C export 0%, D exception
- * regime 18%, E TPS 0%, F special taxes (unsupported without a tax schedule).
+ * regime 18%, E TPS 0%, F reserved (never a specific-tax group).
  * Transaction exceptions require evidence, never a catalog default. */
 export function resolveRestaurantFiscalTreatment(input: {
   classification: MenuItem["fiscalClassification"];
@@ -33,7 +34,7 @@ export function resolveRestaurantFiscalTreatment(input: {
   return {
     country: "BJ", catalogGroup: classification.group, effectiveGroup: group,
     regime, regimeRevision: company.selected.revision,
-    policyId: "BJ-RESTO-TTC", policyVersion: 1,
+    policyId: "BJ-RESTO-TTC", policyVersion: 2,
     rateBasisPoints: group === "B" || group === "D" ? 1800 : 0,
     rounding: "HALF_UP_LINE",
     ...(requested ? { evidenceReference: requested.evidenceReference } : {}),
@@ -49,4 +50,23 @@ export function calculateRestaurantFiscalAmounts(grossMinor: number, treatment: 
   const denominator = 10000n + rate;
   const tax = (gross * rate * 2n + denominator) / (2n * denominator);
   return { netMinor: Number(gross - tax), taxMinor: Number(tax) };
+}
+
+/** Current Restaurants/DGI line policy. Menu prices are TTC before the full-line
+ * specific tax; the returned total is the amount commercially due. */
+export function calculateRestaurantFiscalLine(input: {
+  priceTtcMinor: number;
+  specificTaxMinor?: number;
+  treatment: Treatment;
+}) {
+  const result = calculateBeninSpecificTaxTtcLine({
+    priceTtc: input.priceTtcMinor,
+    specificTax: input.specificTaxMinor,
+    vatRateBasisPoints: input.treatment.rateBasisPoints,
+  });
+  return {
+    netMinor: result.taxableBase,
+    taxMinor: result.vat,
+    totalMinor: result.total,
+  };
 }

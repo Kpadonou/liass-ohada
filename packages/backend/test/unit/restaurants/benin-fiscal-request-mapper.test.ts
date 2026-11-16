@@ -158,6 +158,60 @@ test("frozen specific tax and buyer AIB map to DGI request with reconciled total
   })) }), () => "synthetic-secret");
   await expect(binding.createInvoice(result)).resolves.toMatchObject({ reconciled: true, total: 2000 });
 });
+test("DGI group B example preserves TTC price, taxable base, VAT and final total", () => {
+  const dgiLine = {
+    ...line,
+    netAmountMinor: 28_540,
+    snapshot: {
+      ...line.snapshot,
+      quantity: 1,
+      unitPriceMinor: 25_000,
+      grossMinor: 25_000,
+      subtotalMinor: 24_186,
+      taxMinor: 4_354,
+      specificTaxMinor: 3_000,
+      specificTaxKind: "SPECIFIC" as const,
+      lineTotalMinor: 28_540,
+      fiscalTreatment: {
+        country: "BJ" as const,
+        catalogGroup: "B" as const,
+        effectiveGroup: "B" as const,
+        regime: "ORDINARY_VAT" as const,
+        regimeRevision: id,
+        policyId: "BJ-RESTO-TTC" as const,
+        policyVersion: 2 as const,
+        rateBasisPoints: 1800 as const,
+        rounding: "HALF_UP_LINE" as const,
+      },
+    },
+  };
+  const mapped = mapRestaurantFiscalLines({
+    lines: [dgiLine],
+    classifications: [{
+      ...classification,
+      classificationEvidence: id,
+      taxSpecificMinor: "3000",
+    }],
+  });
+  const result = mapRestaurantBeninRequest({
+    ...preparation(),
+    ...mapped,
+    paidByMethodMinor: { CASH: 28_540, MOBILE_MONEY: 0, CARD: 0 },
+  }, principal, identity, configuration());
+  expect(result.payload).toMatchObject({
+    invoice: {
+      items: [{ price: 25_000, quantity: 1, taxGroup: "B", taxSpecific: 3_000 }],
+      payment: [{ amount: 28_540 }],
+    },
+    expected: { itemTotals: [28_540], total: 28_540 },
+  });
+  expect(result.fiscalGroupTotals?.B).toEqual({
+    gross: 28_540,
+    net: 24_186,
+    tax: 4_354,
+  });
+  expect(result.fiscalAdditionalTotals).toEqual({ aib: 0, ts: 3_000 });
+});
 test("AIB 5% remains available without an IFU as in SFE scenario 08", () => {
   const result = mapRestaurantBeninRequest({ ...preparation(), aib: "B" }, principal, identity, configuration());
   expect(result.payload).toMatchObject({ invoice: { aib: "B" } });

@@ -220,10 +220,10 @@ export function mapRestaurantBeninRequest(
   if (
     total <= 0 ||
     payment.reduce((sum, v) => sum + BigInt(v.amount), 0n) !== BigInt(total) ||
-    items.some(
-      (v, i) =>
-        restaurantQuantityAmountMinor(v.price, v.quantity) !== itemTotals[i],
-    )
+    items.some((v, i) =>
+      restaurantQuantityAmountMinor(v.price, v.quantity) !==
+        mapped.lines[i].commercial.snapshot.grossMinor ||
+      itemTotals[i] !== mapped.lines[i].commercial.snapshot.lineTotalMinor)
   )
     throw new Error("FISCAL_MAPPING_AMOUNT_MISMATCH");
   const invoice = InvoiceRequestDataDtoSchema.parse({

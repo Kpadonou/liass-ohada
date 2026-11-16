@@ -68,7 +68,7 @@ export function mapRestaurantFiscalLines(input: {
       snapshot.lineTotalMinor !== line.netAmountMinor
     )
       throw Error("UNSUPPORTED_COMMERCIAL_LINE");
-    total += BigInt(amount);
+    total += BigInt(snapshot.lineTotalMinor);
     return {
       sourceLineId,
       commercial: structuredClone(line),

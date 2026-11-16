@@ -1,6 +1,6 @@
 import { readCompanyFiscalProfile } from "@/lambda/shared/authority/fiscal-profiles/company-profile";
 import {
-  calculateRestaurantFiscalAmounts,
+  calculateRestaurantFiscalLine,
   resolveRestaurantFiscalTreatment,
 } from "./fiscal-treatment";
 import { config } from "@/lambda/shared/dynamo-client";
@@ -201,7 +201,7 @@ export class RestaurantTransactionsService {
       expectedVersion: number;
       fiscalException?: { group: "B" | "C" | "D"; evidenceReference: string };
       specificTaxMinor?: number;
-      specificTaxKind?: "SPECIFIC" | "ACCOMMODATION";
+      specificTaxKind?: "SPECIFIC";
     },
     menu: RestaurantSnapshot & { data: contracts.Menu },
     currency: string,
@@ -262,19 +262,18 @@ export class RestaurantTransactionsService {
     if (currency !== "XOF")
       return fail("RESTAURANTS_FISCAL_CURRENCY_UNSUPPORTED", 422);
     let treatment: ReturnType<typeof resolveRestaurantFiscalTreatment>;
-    let amounts: ReturnType<typeof calculateRestaurantFiscalAmounts>;
+    let amounts: ReturnType<typeof calculateRestaurantFiscalLine>;
     try {
       treatment = resolveRestaurantFiscalTreatment({
         classification: item.data.fiscalClassification,
         company: companyTax,
         exception: selected.fiscalException,
       });
-      if (
-        selected.specificTaxMinor !== undefined &&
-        selected.specificTaxMinor >= amount
-      )
-        throw new Error("INVALID_SPECIFIC_TAX");
-      amounts = calculateRestaurantFiscalAmounts(amount - (selected.specificTaxMinor ?? 0), treatment);
+      amounts = calculateRestaurantFiscalLine({
+        priceTtcMinor: amount,
+        specificTaxMinor: selected.specificTaxMinor,
+        treatment,
+      });
     } catch {
       return fail("RESTAURANTS_FISCAL_TREATMENT_UNSUPPORTED", 422);
     }
@@ -299,14 +298,14 @@ export class RestaurantTransactionsService {
         specificTaxKind: selected.specificTaxKind,
       } : {}),
       fiscalTreatment: treatment,
-      lineTotalMinor: amount,
+      lineTotalMinor: amounts.totalMinor,
       currency: currency,
       acceptedAt: now,
       acceptedBy: ctx.actorId,
       submissionId,
     });
 
-    return { line, snapshot, amount };
+    return { line, snapshot, amount: amounts.totalMinor };
   }
   private static editable(
     order: contracts.RestaurantOrder,

@@ -13,6 +13,7 @@ import {
 import { BENIN_EMECEF_BASE_URLS } from "./environments";
 export const BENIN_EMECEF_TEST_BASE_URL = BENIN_EMECEF_BASE_URLS.TEST;
 import * as dto from "./invoice-dtos";
+import { calculateBeninSpecificTaxTtcLine } from "./benin-tax-calculation";
 export { BeninInvoiceRequest } from "./invoice-dtos";
 
 // Single-process pilot capability. Never recreate after an unknown outcome.
@@ -817,15 +818,22 @@ function validateInvoiceRequest(
       throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
     }
     const amount = quantityAmount(item.price, item.quantity);
-    if (item.taxSpecific != null && BigInt(item.taxSpecific) >= amount)
+    if (amount > BigInt(Number.MAX_SAFE_INTEGER))
       throw new BeninEMecefConnectorError("INVALID_PAYLOAD");
+    const fiscalAmount = calculateBeninSpecificTaxTtcLine({
+      priceTtc: Number(amount),
+      specificTax: item.taxSpecific ?? undefined,
+      vatRateBasisPoints:
+        item.taxGroup === "B" || item.taxGroup === "D" ? 1800 : 0,
+    }).total;
     if (
       !Number.isSafeInteger(expected.itemTotals[index]) ||
-      amount !== BigInt(expected.itemTotals[index])
+      (fiscalAmount !== expected.itemTotals[index] &&
+        Number(amount) !== expected.itemTotals[index])
     ) {
       throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
     }
-    total += amount;
+    total += BigInt(expected.itemTotals[index]);
   }
   const paid = (invoice.payment ?? [{ name: "ESPECES" as const, amount: expected.total }]).reduce((sum, payment) => {
     if (!payment.name || payment.amount === undefined || payment.amount < 0)
@@ -875,7 +883,15 @@ function sameInvoice(
   if ((expected.type === "FA" || expected.type === "EA") && expected.payment === undefined &&
     Array.isArray(actual.payment) && actual.payment.length === 1 &&
     actual.payment[0].name === "ESPECES" &&
-    actual.payment[0].amount === (expected.items ?? []).reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 0), 0))
+    actual.payment[0].amount === (expected.items ?? []).reduce((sum, item) => {
+      const priceTtc = (item.price ?? 0) * (item.quantity ?? 0);
+      return sum + calculateBeninSpecificTaxTtcLine({
+        priceTtc,
+        specificTax: item.taxSpecific ?? undefined,
+        vatRateBasisPoints:
+          item.taxGroup === "B" || item.taxGroup === "D" ? 1800 : 0,
+      }).total;
+    }, 0))
     delete actual.payment;
   // Missing GET operator evidence is never converted into a verified operator.
   // All fiscal identity, item, tax, payment and amount fields remain exact.

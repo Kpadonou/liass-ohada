@@ -357,14 +357,15 @@ test("scenario 06 issues FA from the persisted A+B credit through durable CREATE
           quantity: line.originalQuantity, unitPriceMinor: line.unitAmountMinor } } })) } } as never);
   jest.spyOn(FiscalAttemptStore.prototype, "read").mockResolvedValue(originalState as never);
   jest.spyOn(originalPreparation, "prepareRestaurantFiscalInvoice").mockResolvedValue({ ready: true,
-    preparation: { commercialRootDigest: originalDigest, lines: note.lines.map((line, index) => ({
+    preparation: { commercialRootDigest: originalDigest, lines: note.lines.map(line => ({
       commercial: { orderId: line.orderId, itemId: line.itemId,
-        snapshot: { fiscalTreatment: { effectiveGroup: index ? "B" : "A", rateBasisPoints: index ? 1800 : 0 } } },
+        snapshot: { fiscalTreatment: { effectiveGroup: line.taxMinor ? "B" : "A",
+          rateBasisPoints: line.taxMinor ? 1800 : 0, policyVersion: 1 } } },
     })) } } as never);
   jest.spyOn(originalMapper, "mapRestaurantBeninRequest").mockReturnValue({ sourceDigest: originalDigest,
     payload: { invoice: { ifu: "1234567890123", client: { name: "Client", ifu: "9876543210123" },
-      items: note.lines.map((line, index) => ({ name: line.label, price: line.unitAmountMinor,
-        quantity: line.originalQuantity, taxGroup: index ? "B" : "A" })) } } } as never);
+      items: note.lines.map(line => ({ name: line.label, price: line.unitAmountMinor,
+        quantity: line.originalQuantity, taxGroup: line.taxMinor ? "B" : "A" })) } } } as never);
   const identity = { orgId: scope.orgId, environment: "TEST" as const, sourceDomain: "restaurants",
     sourceDocumentType: "CREDIT_NOTE", sourceDocumentId: note.data.creditNoteId,
     jurisdiction: "BJ", obligation: "NORMALIZE" };
@@ -402,8 +403,10 @@ test("scenario 06 issues FA from the persisted A+B credit through durable CREATE
       security: { codeMECeFDGI: "C".repeat(24) } });
     expect(posted).toHaveLength(1);
     expect(posted[0]).toMatchObject({ invoice: { type: "FA", reference: originalCode,
-      client: { ifu: "9876543210123" }, items: [{ taxGroup: "A", quantity: 2 },
-        { taxGroup: "B", quantity: 3 }] }, expected: { total: 554 } });
+      client: { ifu: "9876543210123" }, items: expect.arrayContaining([
+        expect.objectContaining({ taxGroup: "A", quantity: 2 }),
+        expect.objectContaining({ taxGroup: "B", quantity: 3 }),
+      ]) }, expected: { total: 554 } });
     for (const [key, value] of originalRows) expect(db.rows.get(key)).toEqual(value);
   } finally {
     delete process.env.STAGE; delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED;

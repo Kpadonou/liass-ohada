@@ -5,7 +5,10 @@ import type { FiscalPrincipal, VerifiedFiscalPreparation } from "../fiscal-compl
 import type { FiscalObligationIdentity } from "../fiscal-compliance/core/fiscal-attempt-state";
 import { InvoiceRequestDataDtoSchema, canonicalBeninRequest } from "../fiscal-compliance/providers/benin-emecef/invoice-dtos";
 import { RestaurantCreditNoteFiscalSource } from "./credit-note-fiscal-source";
-import { calculateRestaurantFiscalAmounts } from "./fiscal-treatment";
+import {
+  calculateRestaurantFiscalAmounts,
+  calculateRestaurantFiscalLine,
+} from "./fiscal-treatment";
 import { prepareRestaurantFiscalInvoice } from "./fiscal-preparation";
 import { mapRestaurantBeninRequest, restaurantBeninCreditMappingSchema } from "./benin-fiscal-request-mapper";
 
@@ -55,19 +58,28 @@ export async function prepareRestaurantBeninCredit(input: {
     const item = originalInvoice.items[index];
     if (!originalLine || !item || item.taxGroup === "F" ||
       line.unitAmountMinor !== item.price ||
-      restaurantQuantityAmountMinor(item.price, line.creditedQuantity) !== line.creditedAmountMinor ||
+      (item.taxSpecific === undefined
+        ? restaurantQuantityAmountMinor(item.price, line.creditedQuantity)
+        : originalLine.commercial.netAmountMinor) !== line.creditedAmountMinor ||
       line.creditedQuantity > item.quantity ||
       (item.taxSpecific !== undefined && line.creditedQuantity !== item.quantity))
       throw new Error("FISCAL_CREDIT_LINE_MISMATCH");
     const treatment = originalLine.commercial.snapshot.fiscalTreatment;
     if (!treatment || treatment.effectiveGroup !== item.taxGroup)
       throw new Error("FISCAL_CREDIT_TREATMENT_UNAVAILABLE");
-    const amount = line.creditedAmountMinor;
+    const amount = restaurantQuantityAmountMinor(item.price, line.creditedQuantity);
     const specific = item.taxSpecific ?? 0;
-    const split = calculateRestaurantFiscalAmounts(amount - specific, treatment);
-    if (split.taxMinor !== line.taxMinor) throw new Error("FISCAL_CREDIT_TAX_MISMATCH");
+    const split = treatment.policyVersion === 1
+      ? calculateRestaurantFiscalAmounts(amount - specific, treatment)
+      : calculateRestaurantFiscalLine({
+          priceTtcMinor: amount,
+          specificTaxMinor: item.taxSpecific,
+          treatment,
+        });
+    if (split.taxMinor !== line.taxMinor)
+      throw new Error("FISCAL_CREDIT_TAX_MISMATCH");
     const old = groupTotals[item.taxGroup] ?? { gross: 0, net: 0, tax: 0 };
-    groupTotals[item.taxGroup] = { gross: old.gross + amount,
+    groupTotals[item.taxGroup] = { gross: old.gross + line.creditedAmountMinor,
       net: old.net + split.netMinor, tax: old.tax + split.taxMinor };
     return { code: `${line.orderId}_${line.itemId}`, name: item.name,
       price: item.price, quantity: line.creditedQuantity, taxGroup: item.taxGroup,
@@ -80,7 +92,7 @@ export async function prepareRestaurantBeninCredit(input: {
       groups.size === 2 && groups.has("A") && groups.has("C")))
     throw new Error("UNSUPPORTED_EXPORT_TAX_COMBINATION");
   const total = source.credit.data.amountMinor;
-  if (items.reduce((sum, item) => sum + restaurantQuantityAmountMinor(item.price, item.quantity), 0) !== total)
+  if (source.credit.lines.reduce((sum, line) => sum + line.creditedAmountMinor, 0) !== total)
     throw new Error("FISCAL_CREDIT_AMOUNT_MISMATCH");
   const invoice = InvoiceRequestDataDtoSchema.parse({ ifu: originalInvoice.ifu,
     type: config.invoiceType, reference: source.originalFiscal.security!.codeMECeFDGI,

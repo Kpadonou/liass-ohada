@@ -260,7 +260,6 @@ export class RestaurantOrderComposer {
   readonly message = signal('');
   readonly quantityError = signal('');
   private readonly specificTaxControls = new Map<string, FormControl<string>>();
-  private readonly specificTaxKindControls = new Map<string, FormControl<'SPECIFIC' | 'ACCOMMODATION'>>();
   private readonly fiscalExceptionControls = new Map<string, FormControl<'' | 'B' | 'D'>>();
   private readonly fiscalEvidenceControls = new Map<string, FormControl<string>>();
   catalogFiscalGroup(line: c.RestaurantOrderItem) {
@@ -282,12 +281,6 @@ export class RestaurantOrderComposer {
     const key = this.draftKey(line);
     if (!this.specificTaxControls.has(key)) this.specificTaxControls.set(key, new FormControl('0', { nonNullable: true }));
     return this.specificTaxControls.get(key)!;
-  }
-  specificTaxKindInput(line: c.RestaurantOrderItem) {
-    const key = this.draftKey(line);
-    if (!this.specificTaxKindControls.has(key)) this.specificTaxKindControls.set(key,
-      new FormControl<'SPECIFIC' | 'ACCOMMODATION'>('SPECIFIC', { nonNullable: true }));
-    return this.specificTaxKindControls.get(key)!;
   }
   private readonly quantityInputs = new Map<
     string,
@@ -824,7 +817,7 @@ export class RestaurantOrderComposer {
     }
     const taxSelections = new Map(this.drafts().map(line => {
       const entered = this.specificTaxInput(line).value.trim();
-      return [this.draftKey(line), { amount: Number(entered), kind: this.specificTaxKindInput(line).value }] as const;
+      return [this.draftKey(line), Number(entered)] as const;
     }));
     const frozen = this.drafts().map((line) => ({
       key: this.draftKey(line),
@@ -876,9 +869,9 @@ export class RestaurantOrderComposer {
           items: this.drafts().map((line) => ({
             itemId: line.itemId,
             expectedVersion: line.version,
-            ...(taxSelections.get(this.draftKey(line))?.amount ? {
-              specificTaxMinor: taxSelections.get(this.draftKey(line))!.amount,
-              specificTaxKind: taxSelections.get(this.draftKey(line))!.kind,
+            ...(taxSelections.get(this.draftKey(line)) ? {
+              specificTaxMinor: taxSelections.get(this.draftKey(line))!,
+              specificTaxKind: 'SPECIFIC' as const,
             } : {}),
             ...(this.fiscalExceptionInput(line).value ? { fiscalException: {
               group: this.fiscalExceptionInput(line).value,

@@ -354,14 +354,7 @@
                           >{{ 'RESTAURANTS.ORDER_TAKING.REMOVE' | transloco }}
                         </button>
                       </div>
-                      <div class="grid gap-2 sm:grid-cols-2">
-                        <mat-form-field subscriptSizing="dynamic">
-                          <mat-label>{{ 'RESTAURANTS.ORDER_TAKING.SPECIFIC_TAX_KIND' | transloco }}</mat-label>
-                          <mat-select [formControl]="specificTaxKindInput(line)" [disabled]="!ready()">
-                            <mat-option value="SPECIFIC">{{ 'RESTAURANTS.ORDER_TAKING.SPECIFIC_TAX' | transloco }}</mat-option>
-                            <mat-option value="ACCOMMODATION">{{ 'RESTAURANTS.ORDER_TAKING.ACCOMMODATION_TAX' | transloco }}</mat-option>
-                          </mat-select>
-                        </mat-form-field>
+                      <div class="grid gap-2 sm:max-w-80">
                         <mat-form-field subscriptSizing="dynamic">
                           <mat-label>{{ 'RESTAURANTS.ORDER_TAKING.SPECIFIC_TAX_AMOUNT' | transloco }}</mat-label>
                           <input matInput type="text" inputmode="numeric" [formControl]="specificTaxInput(line)" [readOnly]="!ready()" />

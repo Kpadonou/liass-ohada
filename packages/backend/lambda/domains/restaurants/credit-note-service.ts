@@ -15,7 +15,10 @@ import { RestaurantReceiptRepository as Receipts } from "./receipt-repository";
 import { receiptSeed } from "./receipt-service";
 import { restaurantsTableName } from "./restaurant-storage";
 import { validRestaurantSaleTax } from "./pilot-tax-calculation";
-import { calculateRestaurantFiscalAmounts } from "./fiscal-treatment";
+import {
+  calculateRestaurantFiscalAmounts,
+  calculateRestaurantFiscalLine,
+} from "./fiscal-treatment";
 import {
   RestaurantCreditNoteRepository as R,
   CreditControlSchema,
@@ -394,17 +397,32 @@ export class RestaurantCreditNoteService {
         creditedQuantity: selected.quantity,
         unitAmountMinor: line.snapshot.unitPriceMinor,
         originalNetAmountMinor: line.netAmountMinor,
-        creditedAmountMinor: q.restaurantQuantityAmountMinor(
-          line.snapshot.unitPriceMinor,
-          selected.quantity,
-        ),
+        creditedAmountMinor:
+          selected.quantity === line.snapshot.quantity
+            ? line.netAmountMinor
+            : q.restaurantQuantityAmountMinor(
+                line.snapshot.unitPriceMinor,
+                selected.quantity,
+              ),
         currency: invoice.currency,
         taxMinor: line.snapshot.fiscalTreatment
-          ? calculateRestaurantFiscalAmounts(
-              q.restaurantQuantityAmountMinor(line.snapshot.unitPriceMinor, selected.quantity) -
-                (selected.quantity === line.snapshot.quantity ? line.snapshot.specificTaxMinor ?? 0 : 0),
-              line.snapshot.fiscalTreatment,
-            ).taxMinor
+          ? line.snapshot.fiscalTreatment.policyVersion === 1
+            ? calculateRestaurantFiscalAmounts(
+                q.restaurantQuantityAmountMinor(line.snapshot.unitPriceMinor, selected.quantity) -
+                  (selected.quantity === line.snapshot.quantity ? line.snapshot.specificTaxMinor ?? 0 : 0),
+                line.snapshot.fiscalTreatment,
+              ).taxMinor
+            : calculateRestaurantFiscalLine({
+                priceTtcMinor: q.restaurantQuantityAmountMinor(
+                  line.snapshot.unitPriceMinor,
+                  selected.quantity,
+                ),
+                specificTaxMinor:
+                  selected.quantity === line.snapshot.quantity
+                    ? line.snapshot.specificTaxMinor
+                    : undefined,
+                treatment: line.snapshot.fiscalTreatment,
+              }).taxMinor
           : line.snapshot.taxMinor,
         discountMinor: line.snapshot.discountMinor,
         note: selected.note,

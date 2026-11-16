@@ -5,6 +5,7 @@ import {
   BeninInvoiceRequest,
 } from "@/lambda/domains/fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter";
 import { FiscalHttpTransport } from "@/lambda/domains/fiscal-compliance/providers/http-transport";
+import { calculateBeninSpecificTaxTtcLine } from "@/lambda/domains/fiscal-compliance/providers/benin-emecef/benin-tax-calculation";
 const input = {
   environment: "TEST" as const,
   credential: "explicit-test-secret",
@@ -112,6 +113,69 @@ test("creates and confirms a reconciled decimal-quantity TEST invoice", async ()
   await expect(
     adapter.confirmInvoice(input, "decimal-uid", doc, decimalExpected, created),
   ).resolves.toMatchObject({ uid: "decimal-uid", ...security });
+});
+type CampaignItem = {
+  taxGroup: "A" | "B" | "D" | "E";
+  quantity: number;
+  price?: number;
+  taxSpecific?: number;
+};
+test.each([
+  { scenario: "01", items: [{ taxGroup: "A", quantity: 1 }] },
+  { scenario: "02", items: [{ taxGroup: "B", quantity: 1 }] },
+  { scenario: "03", items: [{ taxGroup: "A", quantity: 2 }, { taxGroup: "B", quantity: 3 }] },
+  { scenario: "04", items: [{ taxGroup: "A", quantity: 2.5 }, { taxGroup: "B", quantity: 3.25 }] },
+  { scenario: "05", items: [{ taxGroup: "A", quantity: 2 }, { taxGroup: "B", quantity: 3 }], client: true },
+  { scenario: "07", items: [{ taxGroup: "B", quantity: 3, price: 25_000, taxSpecific: 3_000 }], client: true },
+  { scenario: "08", items: [{ taxGroup: "A", quantity: 2 }, { taxGroup: "B", quantity: 3 }], aib: "B" },
+  { scenario: "09", items: [{ taxGroup: "A", quantity: 2 }, { taxGroup: "B", quantity: 3 }], client: true, aib: "A" },
+  { scenario: "10", items: [{ taxGroup: "A", quantity: 2 }, { taxGroup: "B", quantity: 3, taxSpecific: 300 }], aib: "B" },
+  // The live request has only taxSpecific; scenario 11's taxe de séjour
+  // semantics remain separately identified in the compliance matrix.
+  { scenario: "11", items: [{ taxGroup: "B", quantity: 2, taxSpecific: 1_000 }], client: true },
+  { scenario: "12", items: [{ taxGroup: "D", quantity: 2 }] },
+  { scenario: "13", items: [{ taxGroup: "D", quantity: 2, taxSpecific: 300 }] },
+  { scenario: "14", items: [{ taxGroup: "E", quantity: 2 }] },
+  { scenario: "15", items: [{ taxGroup: "E", quantity: 2, taxSpecific: 300 }] },
+] as const)("scenario $scenario reproduces the exact sale shape through CREATE, GET and CONFIRM", async campaign => {
+  const doc = invoice();
+  const items = campaign.items as readonly CampaignItem[];
+  doc.items = items.map((item, index) => ({
+    name: `Scenario ${campaign.scenario} line ${index + 1}`,
+    price: item.price ?? 1_000,
+    quantity: item.quantity,
+    taxGroup: item.taxGroup,
+    ...(item.taxSpecific === undefined ? {} : { taxSpecific: item.taxSpecific }),
+  }));
+  if ("client" in campaign && campaign.client)
+    doc.client = { name: "Client DGI TEST synthétique", ifu: "1234567890123" };
+  if ("aib" in campaign) doc.aib = campaign.aib;
+  const itemTotals = items.map(item => calculateBeninSpecificTaxTtcLine({
+    priceTtc: Math.round((item.price ?? 1_000) * item.quantity),
+    specificTax: item.taxSpecific,
+    vatRateBasisPoints: item.taxGroup === "B" || item.taxGroup === "D" ? 1800 : 0,
+  }).total);
+  const total = itemTotals.reduce((sum, value) => sum + value, 0);
+  doc.payment = [{ name: "ESPECES", amount: total }];
+  const transport = jest.fn(async (request: { method: string; body?: string }) => response(
+    request.method === "POST"
+      ? { uid: `scenario-${campaign.scenario}-${sequence}`, total }
+      : request.method === "PUT"
+        ? { ...security, refundWithAibPayment: false }
+        : doc,
+  ));
+  const adapter = new BeninEMecefTestAdapter({ transport });
+  const campaignExpected = { itemTotals, total };
+  const created = await adapter.createInvoice(input, new BeninInvoiceAttempt(), doc, campaignExpected);
+  await expect(adapter.confirmInvoice(input, created.uid, doc, campaignExpected, created))
+    .resolves.toMatchObject({ uid: created.uid, codeMECeFDGI: security.codeMECeFDGI });
+  expect(transport.mock.calls.map(([request]) => request.method)).toEqual(["POST", "GET", "PUT"]);
+  expect(JSON.parse(transport.mock.calls[0][0].body!)).toMatchObject({
+    type: "FV",
+    items: doc.items,
+    ...(doc.client ? { client: doc.client } : {}),
+    ...(doc.aib ? { aib: doc.aib } : {}),
+  });
 });
 test.each([
   { scenario: "16", groups: ["C"], quantities: [2] },
