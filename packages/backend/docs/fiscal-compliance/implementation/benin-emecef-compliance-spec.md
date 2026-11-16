@@ -239,6 +239,7 @@ Worked XOF examples are exact **Liass arithmetic**, not results of executed prov
 | Exempt | q2, price800,0% ->1600 | price800 only with explicit A exemption classification, not inferred from zero rate. |
 | Fractional | q0.5, HT1,18% -> rounded subtotal1, tax0, total1 | TTC unit1.18 cannot fit int64; choosing integer price may change provider base/VAT. No accepted rounding repair. |
 | Mixed A/B | Taxable above + exempt q2.5, price600 -> subtotal51500, tax9000,total60500 | Candidate prices29500/600; exact A/B totals, bases and VAT must all reconcile. |
+| Observed specific-tax example | Group B, TTC25000, full-line taxSpecific3000 -> displayed taxable base24186, VAT4354,total28540 | Reproduced by `benin-tax-calculation.test.ts`; this settles that exact arithmetic example only. It does not establish taxe de séjour, all specific-tax applicability rules or current DGI TEST acceptance. |
 
 No HT->TTC conversion code or final formula approved. Before mutations settle current TTC, specific tax inclusion, calculation order/rounding, supported numeric ranges/quantity precision and monetary unit. Use exact decimal/integer normalization, never floating tolerance or rounding merely to conceal mismatch. Non-XOF remains OPEN_QUESTION_DGI_CONFIRMATION_REQUIRED (Q3), not silent forced XOF or invented FX.
 
