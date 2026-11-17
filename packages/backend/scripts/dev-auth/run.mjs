@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import ts from "typescript";
 import { randomUUID } from "node:crypto";
+import { createInterface } from "node:readline/promises";
 import { pkce, listenForCode, accessToken, idToken } from "./session.mjs";
 
 // Read only the canonical DEV configuration; never accept arbitrary OAuth/API hosts.
@@ -156,6 +157,48 @@ try {
   if (!approvalResponse.ok) throw Error(`Platform authorization failed (${approvalResponse.status})`);
   const authorization = approvalPayload.data ?? approvalPayload;
   console.log(JSON.stringify({ authorizationId: authorization.authorizationId, status: authorization.status, expiresAt: authorization.expiresAt, operations: authorization.operations, remaining: authorization.remaining, connectionId }));
+  const terminal = createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    await terminal.question("Enable the approved DEV TEST fiscal gate, verify it is ON, then press Enter to execute exactly one CREATE: ");
+    stage = "fiscal-create";
+    const fiscalBase = `${config.apiBaseUrl}/restaurants/outlets/${outletId}/sessions/${sessionId}/invoices/${invoiceId}/fiscal`;
+    const createResponse = await fetch(fiscalBase, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId, "content-type": "application/json" },
+      body: JSON.stringify({ outletId, sessionId, invoiceId, attemptId: randomUUID(), commandId: randomUUID() }),
+    });
+    const createPayload = await createResponse.json();
+    console.log(JSON.stringify({ method: "POST", path: "/fiscal", status: createResponse.status, resultStatus: createPayload?.data?.status ?? createPayload?.status }));
+    if (!createResponse.ok) throw Error(`Fiscal CREATE failed (${createResponse.status})`);
+    stage = "fiscal-get-reconciliation";
+    const statusResponse = await fetch(fiscalBase, { headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId } });
+    const statusPayload = await statusResponse.json();
+    const statusData = statusPayload.data ?? statusPayload;
+    console.log(JSON.stringify({ method: "GET", path: "/fiscal", status: statusResponse.status, resultStatus: statusData.status }));
+    if (!statusResponse.ok || !["CREATED", "CONFIRMED"].includes(statusData.status)) throw Error(`Fiscal reconciliation blocked (${statusResponse.status}, ${statusData.status ?? "unknown"})`);
+    if (statusData.status === "CREATED") {
+      await terminal.question("GET reconciliation passed. Press Enter to execute exactly one CONFIRM: ");
+      stage = "fiscal-confirm";
+      const confirmResponse = await fetch(`${fiscalBase}/confirm`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId, "content-type": "application/json" },
+        body: JSON.stringify({ outletId, sessionId, invoiceId, commandId: randomUUID(), confirm: true }),
+      });
+      const confirmPayload = await confirmResponse.json();
+      const confirmData = confirmPayload.data ?? confirmPayload;
+      console.log(JSON.stringify({ method: "PUT", path: "/fiscal/confirm", status: confirmResponse.status, resultStatus: confirmData.status }));
+      if (!confirmResponse.ok || confirmData.status !== "CONFIRMED") throw Error(`Fiscal CONFIRM failed (${confirmResponse.status}, ${confirmData.status ?? "unknown"})`);
+    }
+    stage = "fiscal-result";
+    const resultResponse = await fetch(`${fiscalBase}/result`, { headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId } });
+    const resultPayload = await resultResponse.json();
+    const resultData = resultPayload.data ?? resultPayload;
+    console.log(JSON.stringify({ method: "GET", path: "/fiscal/result", status: resultResponse.status, resultStatus: resultData.status, hasQr: typeof resultData.security?.qrCode === "string", hasDgiCode: typeof resultData.security?.codeMECeFDGI === "string", hasCounters: typeof resultData.security?.counters === "string", hasNim: typeof resultData.security?.nim === "string" }));
+    if (!resultResponse.ok || resultData.status !== "CONFIRMED") throw Error(`Fiscal result verification failed (${resultResponse.status})`);
+  } finally {
+    await terminal.question("Disable the DEV TEST fiscal gate now, verify both fiscal gates are OFF, then press Enter: ");
+    terminal.close();
+  }
 } catch (error) {
   const detail = error instanceof Error ? error.message : "unknown error";
   console.error(`DEV authentication/read failed at ${stage}: ${detail}`);
