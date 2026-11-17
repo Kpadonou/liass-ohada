@@ -29,7 +29,9 @@ if (
   )
 )
   throw Error("Unexpected DEV configuration");
-const [orgId, outletId, sessionId = "62f61225-43ce-45bf-8381-8474fd9b8ab9", invoiceId = "60a509af-e385-4185-b86c-bf60be6c7b57"] = process.argv.slice(2);
+const args = process.argv.slice(2);
+const reuseExistingAuthorization = args.includes("--reuse-existing-auth");
+const [orgId, outletId, sessionId = "62f61225-43ce-45bf-8381-8474fd9b8ab9", invoiceId = "60a509af-e385-4185-b86c-bf60be6c7b57"] = args.filter((arg) => arg !== "--reuse-existing-auth");
 if (
   !orgId ||
   !outletId ||
@@ -138,7 +140,8 @@ try {
   );
   if (eligible.length !== 1) throw Error(`Expected exactly one configured TEST fiscal connection (found ${eligible.length})`);
   const connectionId = eligible[0].connectionId;
-  stage = "source-preparation";
+  if (!reuseExistingAuthorization) {
+    stage = "source-preparation";
   const preparationResponse = await fetch(`${config.apiBaseUrl}/restaurants/outlets/${outletId}/sessions/${sessionId}/invoices/${invoiceId}/fiscal/test-authorization-preparations`, {
     method: "POST",
     headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId, "content-type": "application/json" },
@@ -157,6 +160,9 @@ try {
   if (!approvalResponse.ok) throw Error(`Platform authorization failed (${approvalResponse.status})`);
   const authorization = approvalPayload.data ?? approvalPayload;
   console.log(JSON.stringify({ authorizationId: authorization.authorizationId, status: authorization.status, expiresAt: authorization.expiresAt, operations: authorization.operations, remaining: authorization.remaining, connectionId }));
+  } else {
+    console.log(JSON.stringify({ reuseExistingAuthorization: true, authorizationId: "daed4960-85a9-4342-8efb-9439ff07e80a", invoiceId, connectionId }));
+  }
   const terminal = createInterface({ input: process.stdin, output: process.stdout });
   try {
     await terminal.question("Enable the approved DEV TEST fiscal gate, verify it is ON, then press Enter to execute exactly one CREATE: ");
