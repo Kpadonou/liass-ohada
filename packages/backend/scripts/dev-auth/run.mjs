@@ -123,13 +123,18 @@ try {
   await read.body?.cancel();
   if (!read.ok) throw Error("Authenticated read did not succeed");
   stage = "fiscal-connection-discovery";
-  const connectionsResponse = await fetch(`${config.apiBaseUrl}/fiscal-compliance/benin/connections?environment=TEST`, {
+  const connectionsResponse = await fetch(`${config.apiBaseUrl}/me/organization/fiscality/connections?environment=TEST`, {
     headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId },
   });
   const connectionsPayload = await connectionsResponse.json();
   if (!connectionsResponse.ok) throw Error(`Fiscal connection discovery failed (${connectionsResponse.status})`);
   const connections = connectionsPayload.data ?? connectionsPayload;
-  const eligible = (connections.items ?? []).filter((item) => item.environment === "TEST" && item.credentialConfigured === true);
+  const eligible = (connections.connections ?? []).filter((item) =>
+    item.environment === "TEST" &&
+    item.credentialStatus === "STORED_UNVERIFIED" &&
+    item.verification?.lastVerified?.status === "VERIFIED_TEST" &&
+    item.verification?.lastVerified?.applicable === true,
+  );
   if (eligible.length !== 1) throw Error(`Expected exactly one configured TEST fiscal connection (found ${eligible.length})`);
   const connectionId = eligible[0].connectionId;
   stage = "source-preparation";
