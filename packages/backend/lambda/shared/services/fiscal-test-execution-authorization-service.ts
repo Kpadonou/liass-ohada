@@ -1,0 +1,78 @@
+import { createHash, randomUUID } from "node:crypto";
+import { GetItemCommand, TransactWriteItemsCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { z } from "zod";
+import { AppError } from "../app-error";
+import { dynamoClient, config } from "../dynamo-client";
+import { KeyFactory as K } from "../key-builder";
+import { PlatformSfeRepository } from "../repositories/platform-sfe-repository";
+import { OrganizationFiscalRepository } from "../repositories/organization-fiscal-repository";
+import type { PlatformPrincipal } from "../authorization/platform-admin";
+
+const id = z.string().uuid();
+const digest = z.string().regex(/^[a-f0-9]{64}$/);
+const operation = z.enum(["CREATE", "GET", "CONFIRM", "CANCEL"]);
+const mapping = z.unknown().refine(value => { try { const serialized = JSON.stringify(value); return typeof serialized === "string" && Buffer.byteLength(serialized) <= 32 * 1024; } catch { return false; } });
+const totals = z.object({ ta: z.number().int().nonnegative(), tb: z.number().int().nonnegative(), tc: z.number().int().nonnegative(), td: z.number().int().nonnegative(), taa: z.number().int().nonnegative(), tab: z.number().int().nonnegative(), tac: z.number().int().nonnegative(), tad: z.number().int().nonnegative(), tae: z.number().int().nonnegative(), taf: z.number().int().nonnegative(), hab: z.number().int().nonnegative(), had: z.number().int().nonnegative(), vab: z.number().int().nonnegative(), vad: z.number().int().nonnegative(), aib: z.number().int().nonnegative(), ts: z.number().int().nonnegative(), total: z.number().int().nonnegative() }).strict();
+export const FiscalTestExecutionAuthorizationInputSchema = z.object({
+  orgId: z.string().min(1).max(200).regex(/^[A-Za-z0-9_-]+$/), connectionId: z.string().min(1).max(200).regex(/^[A-Za-z0-9_-]+$/),
+  outletId: id, operatorUserId: id, sessionId: id, invoiceId: id, creditNoteId: id.optional(),
+  sourceDigest: digest, scenarioId: z.string().regex(/^([0-9]{2})$/), fiscalMapping: mapping, expectedFiscalTotals: totals,
+  operations: z.record(operation, z.number().int().positive().max(10)).refine(v => Object.keys(v).length > 0),
+  expiresAt: z.string().datetime(), commandId: id,
+}).strict().superRefine((v, ctx) => { if (Date.parse(v.expiresAt) <= Date.now()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "expiry must be future" }); });
+export type FiscalTestExecutionAuthorizationInput = z.infer<typeof FiscalTestExecutionAuthorizationInputSchema>;
+const dataSchema = FiscalTestExecutionAuthorizationInputSchema.omit({ commandId: true }).extend({ authorizationId: id, issuedAt: z.string().datetime(), issuedBy: id, status: z.enum(["ACTIVE", "REVOKED"]), remaining: z.record(operation, z.number().int().nonnegative()), revokedAt: z.string().datetime().optional() }).strict();
+export type FiscalTestExecutionAuthorization = z.infer<typeof dataSchema>;
+const recordSchema = z.object({ PK: z.string(), SK: z.string(), orgId: z.string(), entityType: z.literal("PLATFORM_FISCAL_EXECUTION_AUTHORIZATION"), data: dataSchema }).strict();
+const table = () => config.PLATFORM_TABLE_NAME;
+const keyFor = (v: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "invoiceId" | "creditNoteId">) => ({ PK: K.orgKey(v.orgId), SK: K.fiscalExecutionAuthorizationSK("TEST", v.creditNoteId ?? v.invoiceId) });
+const forbidden = () => new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+
+/** Explicit TEST-only authority. A fiscal connection is resolved only after this
+ * record passes all bindings; possessing a connection never authorizes issuance. */
+export class FiscalTestExecutionAuthorizationService {
+  private static async read(key: { PK: string; SK: string }) {
+    const out = await dynamoClient.send(new GetItemCommand({ TableName: table(), Key: marshall(key), ConsistentRead: true }));
+    return out.Item ? recordSchema.parse(unmarshall(out.Item)) : undefined;
+  }
+  static async grant(principal: PlatformPrincipal, raw: unknown) {
+    const input = FiscalTestExecutionAuthorizationInputSchema.parse(raw);
+    await PlatformSfeRepository.requireGrant(principal);
+    if (principal.stage === "prod") throw forbidden();
+    await OrganizationFiscalRepository.authorize(input.orgId, principal.sub, true);
+    const connection = await OrganizationFiscalRepository.readForVerification(input.orgId, "TEST", input.connectionId);
+    if (!connection || connection.data.credentialStatus !== "STORED_UNVERIFIED" || !connection.data.nim) throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const key = keyFor(input); const now = new Date().toISOString();
+    const data = dataSchema.parse({ ...input, authorizationId: randomUUID(), issuedAt: now, issuedBy: principal.sub, status: "ACTIVE", remaining: input.operations });
+    const record = { ...key, orgId: input.orgId, entityType: "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION" as const, data };
+    try { await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: [
+      OrganizationFiscalRepository.membershipCheck(input.orgId, principal.sub),
+      { Put: { TableName: table(), Item: marshall(record), ConditionExpression: "attribute_not_exists(PK) OR #data.#status <> :active", ExpressionAttributeNames: { "#data": "data", "#status": "status" }, ExpressionAttributeValues: marshall({ ":active": "ACTIVE" }) } },
+    ] })); } catch { throw new AppError(409, "FISCAL_COMMAND_CONFLICT"); }
+    return data;
+  }
+  static async revoke(principal: PlatformPrincipal, binding: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "invoiceId" | "creditNoteId">) {
+    await PlatformSfeRepository.requireGrant(principal); if (principal.stage === "prod" || binding.orgId.length === 0) throw forbidden();
+    await OrganizationFiscalRepository.authorize(binding.orgId, principal.sub, true);
+    const key = keyFor(binding);
+    try { await dynamoClient.send(new UpdateItemCommand({ TableName: table(), Key: marshall(key), UpdateExpression: "SET #data.#status = :revoked, #data.revokedAt = :now", ConditionExpression: "entityType = :type AND #data.#status = :active", ExpressionAttributeNames: { "#data": "data", "#status": "status" }, ExpressionAttributeValues: marshall({ ":revoked": "REVOKED", ":active": "ACTIVE", ":type": "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION", ":now": new Date().toISOString() }) })); } catch { throw new AppError(409, "FISCAL_COMMAND_CONFLICT"); }
+  }
+  static async resolveAndConsume(binding: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "outletId" | "operatorUserId" | "sessionId" | "invoiceId" | "creditNoteId" | "sourceDigest">, action: z.infer<typeof operation>) {
+    const key = keyFor(binding); const row = await this.read(key); const now = new Date().toISOString();
+    if (!row || row.orgId !== binding.orgId || row.data.status !== "ACTIVE" || Date.parse(row.data.expiresAt) <= Date.parse(now) || row.data.outletId !== binding.outletId || row.data.operatorUserId !== binding.operatorUserId || row.data.sessionId !== binding.sessionId || row.data.invoiceId !== binding.invoiceId || row.data.creditNoteId !== binding.creditNoteId || row.data.sourceDigest !== binding.sourceDigest || row.data.remaining[action] === undefined) throw forbidden();
+    const remaining = row.data.remaining[action] ?? 0; if (remaining < 1) throw forbidden();
+    try { await dynamoClient.send(new UpdateItemCommand({ TableName: table(), Key: marshall(key), UpdateExpression: "SET #data.#remaining.#action = #data.#remaining.#action - :one", ConditionExpression: "entityType = :type AND #data.#status = :active AND #data.#remaining.#action >= :one AND #data.#expiresAt > :now", ExpressionAttributeNames: { "#data": "data", "#remaining": "remaining", "#action": action, "#status": "status", "#expiresAt": "expiresAt" }, ExpressionAttributeValues: marshall({ ":one": 1, ":active": "ACTIVE", ":type": "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION", ":now": now }) })); } catch { throw forbidden(); }
+    return row.data;
+  }
+  static async resolve(binding: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "outletId" | "operatorUserId" | "sessionId" | "invoiceId" | "creditNoteId" | "sourceDigest">) {
+    // READ is deliberately budgeted: an authorization cannot become a standing provider probe capability.
+    return this.resolveAndConsume(binding, "GET");
+  }
+  static async readBound(binding: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "outletId" | "operatorUserId" | "sessionId" | "invoiceId" | "creditNoteId" | "sourceDigest">) {
+    const row = await this.read(keyFor(binding)); const now = Date.now();
+    if (!row || row.orgId !== binding.orgId || row.data.status !== "ACTIVE" || Date.parse(row.data.expiresAt) <= now || row.data.outletId !== binding.outletId || row.data.operatorUserId !== binding.operatorUserId || row.data.sessionId !== binding.sessionId || row.data.invoiceId !== binding.invoiceId || row.data.creditNoteId !== binding.creditNoteId || row.data.sourceDigest !== binding.sourceDigest) throw forbidden();
+    return row.data;
+  }
+  static mappingDigest(value: unknown) { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
+}

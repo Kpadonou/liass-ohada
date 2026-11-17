@@ -27,7 +27,7 @@ export const fiscalRecoveryRequest = z.union([
     recoveryDetermination: z.literal("VERIFIED_PENDING_TEST"),
   }).strict(),
 ]);
-type Settings = { realConfiguration?: RealTestConfiguration } & Pick<
+type Settings = { realConfiguration?: RealTestConfiguration; executionAuthorize?: (action: "CREATE" | "GET" | "CONFIRM" | "CANCEL") => Promise<void> } & Pick<
   Parameters<typeof restaurantBeninSyntheticWorkflow>[0],
   "classifications" | "mapping" | "adapter" | "credential"
 >;
@@ -39,7 +39,7 @@ export class RestaurantFiscalApplicationService {
   constructor(
     private readonly settings: (
       context: Context,
-      request: Request,
+      request: Request, sourceDigest: string,
     ) => Promise<Settings>,
     private readonly real = false,
   ) {}
@@ -148,7 +148,7 @@ export class RestaurantFiscalApplicationService {
       ? recovery.providerOperation : undefined;
     if (!this.real) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     const source = await this.verify(context, request);
-    const { realConfiguration } = await this.settings(context, request);
+    const { realConfiguration } = await this.settings(context, request, source.proof.digest);
     if (!realConfiguration || realConfiguration.operatorUserId !== context.userId ||
       realConfiguration.orgId !== context.orgId || realConfiguration.outletId !== request.outletId ||
       realConfiguration.sessionId !== request.sessionId || realConfiguration.invoiceId !== request.invoiceId ||
@@ -163,7 +163,7 @@ export class RestaurantFiscalApplicationService {
         state.sourceDigest !== source.proof.digest || !state.uid)
         throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
       try {
-        await (await this.workflow(context, request)).reconcile(
+        await (await this.workflow(context, request, source.proof.digest)).reconcile(
           { orgId: context.orgId, actorId: context.userId }, identity,
         );
         return this.view(request, state);
@@ -174,7 +174,7 @@ export class RestaurantFiscalApplicationService {
         state.sourceDigest !== source.proof.digest)
         throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
       try {
-        const result = await (await this.workflow(context, request)).cancel(
+        const result = await (await this.workflow(context, request, source.proof.digest)).cancel(
           { orgId: context.orgId, actorId: context.userId }, identity,
           recovery.commandId,
           { cancel: true, determination: recovery.recoveryDetermination },
@@ -204,12 +204,17 @@ export class RestaurantFiscalApplicationService {
       throw error;
     }
   }
-  private async workflow(context: Context, request: Request) {
-    const settings = await this.settings(context, request);
-    const authorize: Parameters<typeof restaurantBeninRealTestWorkflow>[1] = async (principal) => {
+  private async workflow(context: Context, request: Request, sourceDigest: string) {
+    const settings = await this.settings(context, request, sourceDigest);
+    const authorize: Parameters<typeof restaurantBeninRealTestWorkflow>[1] = async (principal, _identity, action) => {
       if (principal.orgId !== context.orgId || principal.actorId !== context.userId)
         throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
       await this.verify(context, request);
+      if (this.real) {
+        const operation = action === "READ" ? "GET" : action;
+        if (operation === "RECOVER" || !settings.executionAuthorize) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
+        await settings.executionAuthorize(operation);
+      }
     };
     if (this.real) {
       if (!settings.realConfiguration) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
@@ -249,7 +254,7 @@ export class RestaurantFiscalApplicationService {
       return this.status(context, request); // replay is a read, never dispatch permission
     }
     await (
-      await this.workflow(context, request)
+      await this.workflow(context, request, source.proof.digest)
     ).create(
       { orgId: context.orgId, actorId: context.userId },
       identity,
@@ -282,7 +287,7 @@ export class RestaurantFiscalApplicationService {
       }
     }
     await (
-      await this.workflow(context, request)
+      await this.workflow(context, request, source.proof.digest)
     ).confirm(
       { orgId: context.orgId, actorId: context.userId },
       this.identity(context, request),

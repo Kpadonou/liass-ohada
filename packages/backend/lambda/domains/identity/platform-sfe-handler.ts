@@ -6,6 +6,7 @@ import { AppError } from "../../shared/app-error";
 import { I18nResolver } from "../../shared/i18n";
 import { verifiedPlatformPrincipal } from "../../shared/authorization/platform-admin";
 import { PlatformSfeRepository } from "../../shared/repositories/platform-sfe-repository";
+import { FiscalTestExecutionAuthorizationInputSchema, FiscalTestExecutionAuthorizationService } from "../../shared/services/fiscal-test-execution-authorization-service";
 import { TenantAccessService } from "../../shared/services/tenant-access-service";
 
 /** Dedicated boundary: never log raw errors, requests or authorizer claims. */
@@ -13,6 +14,17 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
   const i18n = new I18nResolver(event.headers?.["accept-language"] ?? "fr");
   try {
     const principal = verifiedPlatformPrincipal(event);
+    if (event.routeKey === "POST /platform/fiscality/test-execution-authorizations") {
+      let input: unknown; try { input = JSON.parse(event.body ?? "{}"); } catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
+      const authorization = await FiscalTestExecutionAuthorizationService.grant(principal, FiscalTestExecutionAuthorizationInputSchema.parse(input));
+      return { statusCode: 201, body: JSON.stringify({ data: authorization }) };
+    }
+    if (event.routeKey === "DELETE /platform/fiscality/test-execution-authorizations") {
+      let input: unknown; try { input = JSON.parse(event.body ?? "{}"); } catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
+      const binding = z.object({ orgId: z.string().min(1).max(200), invoiceId: z.string().uuid(), creditNoteId: z.string().uuid().optional() }).strict().parse(input);
+      await FiscalTestExecutionAuthorizationService.revoke(principal, binding);
+      return { statusCode: 204, body: "" };
+    }
     if (event.routeKey === "PUT /platform/fiscality/sfe-approval") {
       let input: unknown;
       try { input = JSON.parse(event.body ?? "{}"); }

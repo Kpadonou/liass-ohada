@@ -17,7 +17,6 @@ export class RealTestFiscalExecutor extends Construct {
     const enabled = this.node.tryGetContext("restoFiscalTestEnabled") === true ||
       this.node.tryGetContext("restoFiscalTestEnabled") === "true";
     const org = this.node.tryGetContext("restoFiscalTestOrgId") as string | undefined;
-    const secret = this.node.tryGetContext("restoFiscalTestConfigurationSecretArn") as string | undefined;
     const adjudicationEnabled = this.node.tryGetContext("restoFiscalAdjudicationEnabled") === true ||
       this.node.tryGetContext("restoFiscalAdjudicationEnabled") === "true";
     const adjudication = {
@@ -29,7 +28,8 @@ export class RealTestFiscalExecutor extends Construct {
       captureReference: this.node.tryGetContext("restoFiscalAdjudicationCaptureReference") as string | undefined,
       authorizationReference: this.node.tryGetContext("restoFiscalAdjudicationAuthorizationReference") as string | undefined,
     };
-    if (enabled && (!org || !secret)) throw new Error("Explicit TEST organization and configuration secret required");
+    // Execution is generic: a source-bound, expiring authorization selects the
+    // tenant connection at runtime.  No tenant or credential is pinned in CDK.
     if (enabled && adjudicationEnabled) throw new Error("Real execution and capture adjudication are mutually exclusive");
     if (org && !/^[A-Za-z0-9_-]{1,200}$/.test(org)) throw new Error("Invalid TEST organization");
     if (adjudicationEnabled && (!org || Object.values(adjudication).some((value) => !value)))
@@ -51,7 +51,7 @@ export class RealTestFiscalExecutor extends Construct {
       retryAttempts: 0, bundling: { bundleAwsSDK: true },
       environment: { STAGE: props.stage, FISCAL_EXECUTION_MODE: "REAL_TEST", FISCAL_REAL_TEST_ENABLED: enabled ? "1" : "0",
         FISCAL_ADJUDICATION_ENABLED: adjudicationEnabled ? "1" : "0",
-        FISCAL_TEST_ORG_ID: org ?? "", FISCAL_TEST_CONFIGURATION_SECRET_ARN: secret ?? "",
+        FISCAL_TEST_ORG_ID: "", FISCAL_TEST_CONFIGURATION_SECRET_ARN: "",
         FISCAL_DIAGNOSTIC_BUCKET: bucket.bucketName, TABLE_NAME: props.table.tableName,
         RESTAURANTS_TABLE_NAME: props.restaurantsTable.tableName,
         FISCAL_ADJUDICATION_ORG_ID: adjudicationEnabled ? org! : "",
@@ -69,9 +69,8 @@ export class RealTestFiscalExecutor extends Construct {
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:GetItem", "dynamodb:BatchGetItem"],
       resources: [props.table.tableArn, props.restaurantsTable.tableArn] }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:Query"], resources: [props.restaurantsTable.tableArn] }));
-    role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:PutItem"], resources: [props.table.tableArn],
-      conditions: { "ForAllValues:StringEquals": { "dynamodb:LeadingKeys": [`ORG#${org ?? "DISABLED"}`],
-        "dynamodb:Attributes": ["PK", "SK", "orgId", "entityType", "schemaVersion", "version", "state"] } } }));
+    role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:PutItem", "dynamodb:UpdateItem"], resources: [props.table.tableArn],
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } } }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["s3:PutObject"], resources: [bucket.arnForObjects("*")],
       conditions: { StringEquals: { "s3:x-amz-server-side-encryption": "AES256", "s3:if-none-match": "*" } } }));
     if (adjudicationEnabled)
@@ -79,7 +78,8 @@ export class RealTestFiscalExecutor extends Construct {
         actions: ["s3:GetObject"],
         resources: [bucket.arnForObjects(adjudication.captureReference!)],
       }));
-    if (secret) role.addToPolicy(new iam.PolicyStatement({ actions: ["secretsmanager:GetSecretValue"], resources: [secret] }));
+    role.addToPolicy(new iam.PolicyStatement({ actions: ["ssm:GetParameter"],
+      resources: [Stack.of(this).formatArn({ service: "ssm", resource: "parameter", resourceName: `${props.stage}/platform/fiscal/*` })] }));
     // No shared role grant, object reader, URL output, or anonymous access.
     this.executionFunction = fn;
   }

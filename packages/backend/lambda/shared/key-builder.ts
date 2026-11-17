@@ -27,6 +27,10 @@ export const KeyFactory = {
   organizationFiscalHistorySK: (environment: string, id: string, version: number) =>
     `PLATFORM_FISCAL_HISTORY#${environment}#${id}#${String(version).padStart(16, "0")}`,
   organizationFiscalCommandSK: (environment: string, id: string) => `PLATFORM_FISCAL_COMMAND#${environment}#${id}`,
+  /** One bounded TEST execution grant per immutable source.  The record is an
+   * authority in its own right; it deliberately does not alter connection data. */
+  fiscalExecutionAuthorizationSK: (environment: string, sourceDocumentId: string) =>
+    `PLATFORM_FISCAL_EXECUTION_AUTHORIZATION#${environment}#${restaurantTransactionSegment(sourceDocumentId)}`,
   organizationFiscalVerificationSK: (environment: string, connectionId: string, operationId: string) =>
     `PLATFORM_FISCAL_VERIFICATION#${environment}#${connectionId}#${operationId}`,
   organizationFiscalVerificationAuditSK: (environment: string, connectionId: string, operationId: string) =>

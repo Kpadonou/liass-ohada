@@ -1,26 +1,32 @@
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
-import { GetSecretValueCommand, SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { AppError } from "@/lambda/shared/app-error";
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { BeninEMecefTestAdapter } from "../fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter";
 import { realTestConfigurationSchema } from "./benin-real-test-workflow";
+import { FiscalTestExecutionAuthorizationService } from "@/lambda/shared/services/fiscal-test-execution-authorization-service";
+import { OrganizationFiscalRepository } from "@/lambda/shared/repositories/organization-fiscal-repository";
 import { RestaurantFiscalApplicationService } from "./fiscal-application-service";
 import { restaurantFiscalHandler } from "./fiscal-handler";
 import { restaurantFiscalAdjudicationHandler } from "./fiscal-adjudication-handler";
 import { RESTAURANT_FISCAL_ROUTES } from "./fiscal-routes";
-const secrets = new SecretsManagerClient({ maxAttempts: 1 });
-/** JWT middleware derives actor and tenant. Secret configuration is never accepted in a request. */
-const service = new RestaurantFiscalApplicationService(async (context, request) => {
+/** JWT middleware derives actor and tenant. Credentials remain in Platform SSM;
+ * this handler obtains them only after an immutable source-bound authorization. */
+const service = new RestaurantFiscalApplicationService(async (context, request, sourceDigest) => {
   try {
-    const result = await secrets.send(new GetSecretValueCommand({ SecretId: process.env.FISCAL_TEST_CONFIGURATION_SECRET_ARN }));
-    if (!result.SecretString || Buffer.byteLength(result.SecretString) > 64 * 1024) throw new Error();
-    const config = realTestConfigurationSchema.parse(JSON.parse(result.SecretString));
-    if (config.orgId !== context.orgId || config.orgId !== process.env.FISCAL_TEST_ORG_ID ||
-      config.operatorUserId !== context.userId || config.outletId !== request.outletId ||
-      config.sessionId !== request.sessionId || config.invoiceId !== request.invoiceId ||
-      config.creditNoteId !== request.creditNoteId) throw new Error();
+    const binding = { orgId: context.orgId, outletId: request.outletId, operatorUserId: context.userId,
+      sessionId: request.sessionId, invoiceId: request.invoiceId, creditNoteId: request.creditNoteId, sourceDigest };
+    const authorization = await FiscalTestExecutionAuthorizationService.readBound(binding);
+    const stage = process.env.STAGE === "test" ? "test" : "dev";
+    const credential = await OrganizationFiscalRepository.readAuthorizedExecutionCredential(context.orgId, stage, authorization.connectionId);
+    if (!credential.connection.data.nim || !credential.connection.data.taxpayerIfu) throw new Error();
+    const config = realTestConfigurationSchema.parse({ orgId: context.orgId, operatorUserId: context.userId,
+      outletId: request.outletId, sessionId: request.sessionId, invoiceId: request.invoiceId,
+      ...(request.creditNoteId ? { creditNoteId: request.creditNoteId } : {}), token: credential.token,
+      ifu: credential.connection.data.taxpayerIfu, nim: credential.connection.data.nim, sourceDigest,
+      classifications: [], mapping: authorization.fiscalMapping, expectedFiscalTotals: authorization.expectedFiscalTotals });
     return { realConfiguration: config, classifications: config.classifications, mapping: config.mapping,
-      adapter: new BeninEMecefTestAdapter(), credential: () => config.token };
+      adapter: new BeninEMecefTestAdapter(), credential: () => config.token,
+      executionAuthorize: async (action) => { await FiscalTestExecutionAuthorizationService.resolveAndConsume(binding, action); } };
   } catch { throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED"); }
 }, true);
 export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {

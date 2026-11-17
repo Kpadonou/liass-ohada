@@ -44,6 +44,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
             "dynamodb:LeadingKeys": [
               `PLATFORM_SFE#${props.stage}#BJ`,
               `PLATFORM_ADMIN#${props.stage}#*`,
+              "ORG#*",
             ],
           },
         },
@@ -56,7 +57,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         resources: [props.table.tableArn],
         conditions: {
           "ForAllValues:StringEquals": {
-            "dynamodb:LeadingKeys": [`PLATFORM_SFE#${props.stage}#BJ`],
+            "dynamodb:LeadingKeys": [`PLATFORM_SFE#${props.stage}#BJ`, "ORG#*"],
           },
         },
       }),
@@ -67,11 +68,13 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         resources: [props.table.tableArn],
         conditions: {
           "ForAllValues:StringLike": {
-            "dynamodb:LeadingKeys": [`PLATFORM_ADMIN#${props.stage}#*`],
+            "dynamodb:LeadingKeys": [`PLATFORM_ADMIN#${props.stage}#*`, "ORG#*"],
           },
         },
       }),
     );
+    role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:UpdateItem"], resources: [props.table.tableArn],
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } } }));
     role.addToPolicy(
       new iam.PolicyStatement({
         effect: iam.Effect.DENY,
@@ -100,6 +103,8 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         "/platform/fiscality/sfe-approval",
         "update-sfe-approval",
       ],
+      [HttpMethod.POST, "/platform/fiscality/test-execution-authorizations", "grant-test-execution-authorization"],
+      [HttpMethod.DELETE, "/platform/fiscality/test-execution-authorizations", "revoke-test-execution-authorization"],
     ] as const) {
       this.addRoute({
         ...props,

@@ -185,6 +185,15 @@ export class OrganizationFiscalRepository {
     if (hash(JSON.stringify(["STORE_CREDENTIAL", intent])) !== binding.intentDigest) throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
     return token.data;
   }
+  /** Internal executor-only credential read. The caller must already have an
+   * independently verified, expiring execution authorization. This method does
+   * not select a connection and does not grant issuance authority. */
+  static async readAuthorizedExecutionCredential(orgId: string, stage: PlatformPrincipal["stage"], connectionId: string) {
+    const row = await this.connection(orgId, "TEST", connectionId);
+    if (!row) throw new AppError(422, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const binding = await this.credentialBinding(orgId, { stage, issuer: "https://executor.invalid", sub: "00000000-0000-0000-0000-000000000000" }, row);
+    return { connection: row, token: await this.readVerificationCredential(row, binding) };
+  }
   static async list(orgId: string, actorId: string, input: unknown) {
     const access = await this.authorize(orgId, actorId);
     const { environment, cursor } = z

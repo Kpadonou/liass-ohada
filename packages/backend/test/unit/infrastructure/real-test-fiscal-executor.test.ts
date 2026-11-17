@@ -62,11 +62,12 @@ test("private 30-day SSE-S3 bucket and dedicated write-only execution role", () 
   expect(routes).toHaveLength(0); expect(routes.every(r => r.Properties.AuthorizationType === "JWT")).toBe(true);
   expect(JSON.stringify(template.findResources("AWS::S3::BucketPolicy"))).toContain("aws:SecureTransport");
 });
-test("explicit enablement pins organization and secret without broad secret grants", () => {
+test("explicit enablement keeps the gate closed by default and grants only generic SSM credential reads", () => {
   const template = synth(true);
   const json = JSON.stringify(template.toJSON());
-  expect(json).toContain('"FISCAL_REAL_TEST_ENABLED":"1"'); expect(json).toContain('"FISCAL_TEST_ORG_ID":"org"');
-  expect(json).toContain("secretsmanager:GetSecretValue"); expect(json).toContain("dynamodb:LeadingKeys");
+  expect(json).toContain('"FISCAL_REAL_TEST_ENABLED":"1"'); expect(json).toContain('"FISCAL_TEST_ORG_ID":""');
+  expect(json).toContain("ssm:GetParameter"); expect(json).toContain("dynamodb:LeadingKeys");
+  expect(json).not.toContain("secretsmanager:GetSecretValue");
 });
 test("adjudication has a distinct disabled-real-execution gate and one-object reader", () => {
   const template = synthAdjudication();
