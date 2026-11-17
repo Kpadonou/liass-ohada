@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import ts from "typescript";
+import { randomUUID } from "node:crypto";
 import { pkce, listenForCode, accessToken, idToken } from "./session.mjs";
 
 // Read only the canonical DEV configuration; never accept arbitrary OAuth/API hosts.
@@ -27,11 +28,11 @@ if (
   )
 )
   throw Error("Unexpected DEV configuration");
-const [orgId, outletId] = process.argv.slice(2);
+const [orgId, outletId, sessionId = "62f61225-43ce-45bf-8381-8474fd9b8ab9", invoiceId = "60a509af-e385-4185-b86c-bf60be6c7b57"] = process.argv.slice(2);
 if (
   !orgId ||
   !outletId ||
-  process.argv.length !== 4 ||
+  process.argv.length < 4 || process.argv.length > 6 ||
   !/^[\w-]+$/.test(orgId) ||
   !/^[\w-]+$/.test(outletId)
 )
@@ -121,6 +122,35 @@ try {
   );
   await read.body?.cancel();
   if (!read.ok) throw Error("Authenticated read did not succeed");
+  stage = "fiscal-connection-discovery";
+  const connectionsResponse = await fetch(`${config.apiBaseUrl}/fiscal-compliance/benin/connections?environment=TEST`, {
+    headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId },
+  });
+  const connectionsPayload = await connectionsResponse.json();
+  if (!connectionsResponse.ok) throw Error(`Fiscal connection discovery failed (${connectionsResponse.status})`);
+  const connections = connectionsPayload.data ?? connectionsPayload;
+  const eligible = (connections.items ?? []).filter((item) => item.environment === "TEST" && item.credentialConfigured === true);
+  if (eligible.length !== 1) throw Error(`Expected exactly one configured TEST fiscal connection (found ${eligible.length})`);
+  const connectionId = eligible[0].connectionId;
+  stage = "source-preparation";
+  const preparationResponse = await fetch(`${config.apiBaseUrl}/restaurants/outlets/${outletId}/sessions/${sessionId}/invoices/${invoiceId}/fiscal/test-authorization-preparations`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId, "content-type": "application/json" },
+    body: JSON.stringify({ scenarioId: "02", commandId: randomUUID() }),
+  });
+  const preparationPayload = await preparationResponse.json();
+  if (!preparationResponse.ok) throw Error(`Source preparation failed (${preparationResponse.status})`);
+  const proof = preparationPayload.data ?? preparationPayload;
+  stage = "platform-authorization";
+  const approvalResponse = await fetch(`${config.apiBaseUrl}/platform/fiscality/test-execution-authorizations`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId, "content-type": "application/json" },
+    body: JSON.stringify({ proofId: proof.proofId, proofDigest: proof.proofDigest, connectionId, commandId: randomUUID() }),
+  });
+  const approvalPayload = await approvalResponse.json();
+  if (!approvalResponse.ok) throw Error(`Platform authorization failed (${approvalResponse.status})`);
+  const authorization = approvalPayload.data ?? approvalPayload;
+  console.log(JSON.stringify({ authorizationId: authorization.authorizationId, status: authorization.status, expiresAt: authorization.expiresAt, operations: authorization.operations, remaining: authorization.remaining, connectionId }));
 } catch (error) {
   const detail = error instanceof Error ? error.message : "unknown error";
   console.error(`DEV authentication/read failed at ${stage}: ${detail}`);
