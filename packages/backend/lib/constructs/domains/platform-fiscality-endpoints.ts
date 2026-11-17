@@ -50,11 +50,10 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         },
       }),
     );
-    // DynamoDB requires the transaction API action itself in addition to the
-    // constituent item actions. Keep the same tenant-scoped leading-key bound.
+    // Transaction writes are authorized by the constituent item actions.
     role.addToPolicy(
       new iam.PolicyStatement({
-        actions: ["dynamodb:PutItem", "dynamodb:TransactWriteItems"],
+        actions: ["dynamodb:PutItem"],
         resources: [props.table.tableArn],
         conditions: {
           "ForAllValues:StringEquals": {
