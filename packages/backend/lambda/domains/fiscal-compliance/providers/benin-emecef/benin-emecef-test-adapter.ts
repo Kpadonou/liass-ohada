@@ -73,6 +73,10 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 
 const optionalNullableText = z.string().nullable().optional();
+const pendingRequestSchema = z.object({
+  date: z.string().datetime({ offset: true }).optional(),
+  uid: optionalNullableText,
+}).strict();
 const emcfInfoSchema = z
   .object({
     nim: optionalNullableText,
@@ -95,6 +99,11 @@ const statusResponseSchema = z
     tokenValid: z.string().datetime({ offset: true }).optional(),
     serverDateTime: z.string().datetime({ offset: true }).optional(),
     emcfList: z.array(emcfInfoSchema).nullable().optional(),
+    pendingRequestsCount: z.number().int().safe().nonnegative().optional(),
+    pendingRequestsList: z.array(pendingRequestSchema).nullable().optional(),
+    pendingAibPaymentUid: optionalNullableText,
+    pendingAibPaymentUrl: optionalNullableText,
+    pendingAibPaymentList: z.array(pendingRequestSchema).nullable().optional(),
   })
   .strict();
 
@@ -602,6 +611,18 @@ export class BeninEMecefTestAdapter {
     if (!sameInvoice(details, parsed.data, true))
       throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
     return details;
+  }
+
+  /** Cancellation requires independent current pending-list evidence in addition
+   * to exact GET payload reconciliation. Absence or ambiguity fails closed. */
+  async verifyPendingDurableInvoice(input: GetBeninEMecefStatusInput, uid: string,
+    invoice: dto.BeninInvoiceRequest, expected: { itemTotals: number[]; total: number }) {
+    const status = await this.request(input, "GET", "/api/invoice", statusResponseSchema);
+    const matches = status.pendingRequestsList?.filter((pending) => pending.uid === uid) ?? [];
+    if (matches.length !== 1 || status.pendingRequestsCount === undefined ||
+      status.pendingRequestsCount < matches.length)
+      throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
+    return this.verifyDurableInvoice(input, uid, invoice, expected);
   }
 
   async cancelInvoice(input: GetBeninEMecefStatusInput, uid: string) {

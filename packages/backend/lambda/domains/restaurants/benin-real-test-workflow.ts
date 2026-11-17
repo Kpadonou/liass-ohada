@@ -232,7 +232,7 @@ export function restaurantBeninRealTestWorkflow(
       await verifyContext();
       const pending = z.object({ invoice: InvoiceRequestDataDtoSchema,
         expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
-      return adapter.verifyDurableInvoice(input, uid, pending.invoice, pending.expected);
+      return adapter.verifyPendingDurableInvoice(input, uid, pending.invoice, pending.expected);
     },
     async cancelInvoice(uid, state) {
       if (state.execution !== "REAL_TEST" || state.status !== "CANCEL_IN_FLIGHT" ||

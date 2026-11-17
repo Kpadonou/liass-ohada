@@ -246,8 +246,8 @@ export class SyntheticFiscalOrchestrator {
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     const state = await this.store.read(identity);
     if (!state || state.execution !== "REAL_TEST" || state.status !== "CREATED" ||
-      state.provider !== this.provider.kind || !state.uid || !state.fiscalTotalsVerified ||
-      state.providerTotal !== state.expectedTotal)
+      state.provider !== this.provider.kind || !state.uid ||
+      state.providerTotal === undefined)
       throw new FiscalAttemptConflict("TRANSITION_DENIED");
     const prepared = await this.prepare(p, identity);
     if (prepared.sourceDigest !== state.sourceDigest ||

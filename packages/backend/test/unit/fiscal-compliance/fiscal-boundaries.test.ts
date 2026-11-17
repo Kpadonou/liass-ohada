@@ -43,10 +43,16 @@ test("provider transport stays in the Benin adapter and remains TEST-only", () =
     path.join(domain, "providers/benin-emecef/benin-emecef-test-adapter.ts"),
     "utf8",
   );
+  const environments = fs.readFileSync(
+    path.join(domain, "providers/benin-emecef/environments.ts"),
+    "utf8",
+  );
   expect(nonProviders).not.toMatch(
     /fetch\(|developper\.impots\.bj|sygmef\.impots\.bj/,
   );
-  expect(adapter).toContain("https://developper.impots.bj/sygmef-emcf");
+  expect(adapter).toContain("BENIN_EMECEF_BASE_URLS.TEST");
+  expect(environments).toContain('TEST: "https://developper.impots.bj/sygmef-emcf"');
+  expect(environments).toContain('PRODUCTION: "https://sygmef.impots.bj/emcf"');
   expect(adapter).not.toContain("https://sygmef.impots.bj/emcf");
   expect(adapter).toContain('input.environment !== "TEST"');
   expect(adapter).not.toMatch(/process\.env|console\.|GetSecretValue/);

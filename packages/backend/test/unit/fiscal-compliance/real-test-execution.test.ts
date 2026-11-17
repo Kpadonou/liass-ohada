@@ -149,6 +149,10 @@ function setup(body: unknown = security, status = 200, options?: {
         ? (postedInvoice = JSON.parse(request.body!), { uid: "provider-uid", ...fiscalTotals })
         : request.method === "PUT"
           ? { ...(body as object), refundWithAibPayment: false }
+          : request.url.endsWith("/api/invoice")
+            ? { pendingRequestsCount: 1, pendingRequestsList: [
+                { date: "2026-11-17T10:00:00Z", uid: "provider-uid" },
+              ] }
           : request.url.includes("/api/invoice/")
             ? postedInvoice
             : { status: true, ifu: configuration.ifu, nim: configuration.nim },
@@ -531,12 +535,16 @@ test("authorized reconciliation verifies the owned pending UID without changing 
   });
   expect(transport.mock.calls.filter(([r]) => r.method === "GET" &&
     r.url.includes("/api/invoice/provider-uid"))).toHaveLength(1);
+  expect(transport.mock.calls.filter(([r]) => r.method === "GET" &&
+    r.url.endsWith("/api/invoice"))).toHaveLength(1);
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
 });
 test("reconciliation rejects mismatched provider details and wrong ownership without mutation", async () => {
   const { flow, transport, authorize } = setup();
   await create(flow);
   transport.mockImplementation(async (request) => ({ status: 200, body: JSON.stringify(
+    request.url.endsWith("/api/invoice") ? { pendingRequestsCount: 1,
+      pendingRequestsList: [{ date: "2026-11-17T10:00:00Z", uid: "provider-uid" }] } :
     request.url.includes("/api/invoice/") ? { ...payload.invoice, reference: "foreign" } :
       { status: true, ifu: config.ifu, nim: config.nim },
   ) }));
@@ -550,7 +558,7 @@ test("provider GET failure leaves the attempt unchanged and cannot unlock cancel
   const { flow, transport } = setup();
   await create(flow);
   transport.mockImplementation(async (request) => {
-    if (request.url.includes("/api/invoice/"))
+    if (request.url.endsWith("/api/invoice"))
       return { status: 503, body: "{}" };
     return { status: 200, body: JSON.stringify({ status: true, ifu: config.ifu, nim: config.nim }) };
   });
@@ -560,6 +568,32 @@ test("provider GET failure leaves the attempt unchanged and cannot unlock cancel
   })).rejects.toThrow();
   expect((await new FiscalAttemptStore().read(identity))?.status).toBe("CREATED");
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+});
+test("missing or ambiguous provider pending ownership blocks cancellation", async () => {
+  const { flow, transport } = setup();
+  await create(flow);
+  transport.mockImplementation(async (request) => ({ status: 200, body: JSON.stringify(
+    request.url.endsWith("/api/invoice") ? { pendingRequestsCount: 1,
+      pendingRequestsList: [{ date: "2026-11-17T10:00:00Z", uid: "foreign-uid" }] } :
+      request.url.includes("/api/invoice/") ? payload.invoice :
+      { status: true, ifu: config.ifu, nim: config.nim },
+  ) }));
+  await expect(flow.cancel(principal, identity, "cancel-not-pending", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  })).rejects.toThrow();
+  expect((await new FiscalAttemptStore().read(identity))?.status).toBe("CREATED");
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+});
+test("revoked or foreign operator ownership rejects cancellation before provider reads or mutation", async () => {
+  const { flow, transport, authorize } = setup();
+  await create(flow);
+  const calls = transport.mock.calls.length;
+  authorize.mockRejectedValueOnce(new Error("denied"));
+  await expect(flow.cancel(principal, identity, "cancel-denied", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  })).rejects.toThrow("denied");
+  expect((await new FiscalAttemptStore().read(identity))?.status).toBe("CREATED");
+  expect(transport).toHaveBeenCalledTimes(calls);
 });
 test("verified pending TEST invoice is cancelled once with captured DGI evidence", async () => {
   const { flow, transport } = setup();
@@ -576,17 +610,28 @@ test("verified pending TEST invoice is cancelled once with captured DGI evidence
   })).rejects.toThrow();
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(1);
 });
-test("cancellation rejects mismatched totals and confirmed or unknown attempts", async () => {
+test("verified owned pending invoice with provider total mismatch can be cancelled but not confirmed", async () => {
   const mismatch = setup();
   mismatch.transport.mockImplementation(async (request) => ({ status: 200,
     body: JSON.stringify(request.method === "POST" ? { uid: "provider-uid", ...totals, total: 999 } :
+      request.method === "PUT" ? { ...security, refundWithAibPayment: false } :
+      request.url.endsWith("/api/invoice") ? { pendingRequestsCount: 1,
+        pendingRequestsList: [{ date: "2026-11-17T10:00:00Z", uid: "provider-uid" }] } :
+      request.url.includes("/api/invoice/") ? payload.invoice :
       { status: true, ifu: config.ifu, nim: config.nim }) }));
   await create(mismatch.flow);
-  await expect(mismatch.flow.cancel(principal, identity, "cancel-mismatch", {
-    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  await expect(mismatch.flow.confirm(principal, identity, "confirm-mismatch", {
+    confirm: true,
   })).rejects.toThrow();
-  expect(mismatch.transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+  const cancelled = await mismatch.flow.cancel(principal, identity, "cancel-mismatch", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  });
+  expect(cancelled.state).toMatchObject({ status: "CANCELLED", providerTotal: 999,
+    expectedTotal: 2000, fiscalTotalsVerified: false, securityEvidenceOrigin: "DGI_TEST" });
+  expect(mismatch.transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(1);
+});
 
+test("cancellation rejects confirmed attempts before provider cleanup", async () => {
   rows.clear();
   payload.invoice.reference = `confirmed-before-cancel-${++sequence}`;
   const confirmed = setup();
@@ -602,8 +647,12 @@ test("uncertain cancellation is fenced as UNKNOWN_OUTCOME and never retried", as
   await create(flow);
   transport.mockImplementation(async (request) => {
     if (request.url.endsWith("/cancel")) throw new Error("private timeout");
-    return { status: 200, body: JSON.stringify(request.url.includes("/api/invoice/")
-      ? payload.invoice : { status: true, ifu: config.ifu, nim: config.nim }) };
+    return { status: 200, body: JSON.stringify(request.url.endsWith("/api/invoice")
+      ? { pendingRequestsCount: 1, pendingRequestsList: [
+          { date: "2026-11-17T10:00:00Z", uid: "provider-uid" },
+        ] }
+      : request.url.includes("/api/invoice/") ? payload.invoice
+      : { status: true, ifu: config.ifu, nim: config.nim }) };
   });
   await flow.cancel(principal, identity, "cancel-timeout", {
     cancel: true, determination: "VERIFIED_PENDING_TEST",

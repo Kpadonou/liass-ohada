@@ -91,7 +91,7 @@ function setup() {
     body: JSON.stringify(
       request.method === "POST"
         ? { uid: "synthetic-uid", total: 2000 }
-        : security,
+        : request.method === "GET" ? payload.invoice : security,
     ),
   }));
   const prepare = async () => ({
@@ -114,7 +114,7 @@ function setup() {
     );
   return { transport, instance, authorize };
 }
-test("fresh adapter and orchestrator confirm durable CREATED evidence without GET or capability", async () => {
+test("fresh adapter and orchestrator reconcile GET before confirming durable CREATED evidence", async () => {
   const f = setup();
   await f.instance().create(principal, identity, "attempt", "create");
   expect((await new FiscalAttemptStore().read(identity))?.status).toBe(
@@ -126,6 +126,7 @@ test("fresh adapter and orchestrator confirm durable CREATED evidence without GE
   );
   expect(f.transport.mock.calls.map(([r]) => r.method)).toEqual([
     "POST",
+    "GET",
     "PUT",
   ]);
   await expect(
@@ -134,14 +135,18 @@ test("fresh adapter and orchestrator confirm durable CREATED evidence without GE
   await expect(
     f.instance().create(principal, identity, "attempt", "create"),
   ).rejects.toThrow();
-  expect(f.transport.mock.calls[1][0]).toHaveProperty("body", undefined);
-  expect(f.transport).toHaveBeenCalledTimes(2);
+  expect(f.transport.mock.calls[2][0]).toHaveProperty("body", undefined);
+  expect(f.transport).toHaveBeenCalledTimes(3);
   expect(JSON.stringify([...rows.values()])).not.toContain("synthetic-token");
 });
 test("lost confirmation response blocks every subsequent PUT across restart", async () => {
   const f = setup();
   await f.instance().create(principal, identity, "attempt", "create");
-  f.transport.mockRejectedValueOnce(new Error("synthetic timeout"));
+  const original = f.transport.getMockImplementation()!;
+  f.transport.mockImplementation(async (request) => {
+    if (request.method === "PUT") throw new Error("synthetic timeout");
+    return original(request);
+  });
   await f.instance().confirm(principal, identity, "confirm", { confirm: true });
   expect((await new FiscalAttemptStore().read(identity))?.status).toBe(
     "UNKNOWN_OUTCOME",
@@ -149,7 +154,7 @@ test("lost confirmation response blocks every subsequent PUT across restart", as
   await expect(
     f.instance().confirm(principal, identity, "new-confirm", { confirm: true }),
   ).rejects.toThrow();
-  expect(f.transport).toHaveBeenCalledTimes(2);
+  expect(f.transport).toHaveBeenCalledTimes(3);
 });
 test("interrupted confirmation is recoverable only as unknown, with no HTTP", async () => {
   const f = setup();
