@@ -10,7 +10,6 @@ import { canonical } from "../authority/integrity";
 import { AppError } from "../app-error";
 import { dynamoClient, config } from "../dynamo-client";
 import { KeyFactory as K } from "../key-builder";
-import { PlatformSfeRepository } from "../repositories/platform-sfe-repository";
 import {
   fiscalConfigurationDigest,
   OrganizationFiscalRepository,
@@ -20,6 +19,8 @@ import { FiscalSourcePreparationProofService } from "./fiscal-source-preparation
 import { OrganizationLegalIdentityService } from "./organization-legal-identity-service";
 import { publicVerification } from "./fiscal-verification-model";
 import { fiscalOrganizationCheck } from "../authorization/fiscal-organization";
+import { EffectiveOrganizationAccessService } from "./effective-organization-access-service";
+import { DomainAuthorizationService } from "./domain-authorization-service";
 
 const id = z.string().uuid();
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -74,8 +75,18 @@ export class FiscalTestExecutionAuthorizationService {
     raw: unknown,
   ) {
     const request = ApproveFiscalTestExecutionAuthorizationRequestSchema.parse(raw);
-    const grant = await PlatformSfeRepository.requireGrant(principal);
     if (principal.stage === "prod") throw forbidden();
+    const access = await EffectiveOrganizationAccessService.resolveAccess({
+      orgId,
+      userId: principal.sub,
+      workspaceOrgId: orgId,
+    });
+    if (access.accessSource !== "DIRECT" || access.workspaceOrgId !== orgId)
+      throw forbidden();
+    DomainAuthorizationService.assertPermission(
+      access,
+      "FISCAL_COMPLIANCE_WRITE",
+    );
     await OrganizationFiscalRepository.authorize(orgId, principal.sub, true);
     const proof = await FiscalSourcePreparationProofService.read(orgId, request.proofId);
     if (!proof || proof.proofDigest !== request.proofDigest) throw conflict();
@@ -159,7 +170,6 @@ export class FiscalTestExecutionAuthorizationService {
     };
     try {
       await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: [
-        PlatformSfeRepository.grantCheck(grant),
         OrganizationFiscalRepository.membershipCheck(orgId, principal.sub),
         fiscalOrganizationCheck(orgId),
         OrganizationFiscalRepository.executionCondition(connection),
@@ -205,7 +215,18 @@ export class FiscalTestExecutionAuthorizationService {
     });
   }
   static async revoke(principal: PlatformPrincipal, binding: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "invoiceId" | "creditNoteId">) {
-    await PlatformSfeRepository.requireGrant(principal); if (principal.stage === "prod" || binding.orgId.length === 0) throw forbidden();
+    if (principal.stage === "prod" || binding.orgId.length === 0) throw forbidden();
+    const access = await EffectiveOrganizationAccessService.resolveAccess({
+      orgId: binding.orgId,
+      userId: principal.sub,
+      workspaceOrgId: binding.orgId,
+    });
+    if (access.accessSource !== "DIRECT" || access.workspaceOrgId !== binding.orgId)
+      throw forbidden();
+    DomainAuthorizationService.assertPermission(
+      access,
+      "FISCAL_COMPLIANCE_WRITE",
+    );
     await OrganizationFiscalRepository.authorize(binding.orgId, principal.sub, true);
     const key = keyFor(binding);
     try { await dynamoClient.send(new UpdateItemCommand({ TableName: table(), Key: marshall(key), UpdateExpression: "SET #data.#status = :revoked, #data.revokedAt = :now", ConditionExpression: "entityType = :type AND #data.#status = :active", ExpressionAttributeNames: { "#data": "data", "#status": "status" }, ExpressionAttributeValues: marshall({ ":revoked": "REVOKED", ":active": "ACTIVE", ":type": "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION", ":now": new Date().toISOString() }) })); } catch { throw new AppError(409, "FISCAL_COMMAND_CONFLICT"); }

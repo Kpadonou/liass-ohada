@@ -7,12 +7,12 @@ import { mockClient } from "aws-sdk-client-mock";
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { FiscalTestExecutionAuthorizationService as Service } from "@/lambda/shared/services/fiscal-test-execution-authorization-service";
 import { FiscalSourcePreparationProofService } from "@/lambda/shared/services/fiscal-source-preparation-proof-service";
-import { PlatformSfeRepository } from "@/lambda/shared/repositories/platform-sfe-repository";
 import {
   fiscalConfigurationDigest,
   OrganizationFiscalRepository,
 } from "@/lambda/shared/repositories/organization-fiscal-repository";
 import { OrganizationLegalIdentityService } from "@/lambda/shared/services/organization-legal-identity-service";
+import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
 
 const db = mockClient(DynamoDBClient);
@@ -128,24 +128,20 @@ const connection = () => {
     },
   };
 };
-const platformGrant = () => ({
-  PK: "PLATFORM_ADMIN#dev#digest", SK: K.platformAdminGrantSK(),
-  entityType: "PLATFORM_ADMIN_GRANT" as const,
-  data: {
-    ...principal, permission: "PLATFORM_SFE_APPROVAL_MANAGE" as const,
-    status: "ACTIVE" as const, revokedAt: null, version: 1,
-    updatedAt: "2026-11-17T09:00:00.000Z",
-    changedByIamArn: "arn:aws:iam::123456789012:role/ApprovedBootstrap",
-  },
-});
-
 beforeEach(() => {
   jest.useFakeTimers().setSystemTime(new Date("2026-11-17T10:05:00.000Z"));
   jest.restoreAllMocks();
   db.reset();
   db.on(GetItemCommand).resolves({});
   db.on(TransactWriteItemsCommand).resolves({});
-  jest.spyOn(PlatformSfeRepository, "requireGrant").mockResolvedValue(platformGrant());
+  jest.spyOn(EffectiveOrganizationAccessService, "resolveAccess").mockResolvedValue({
+    accessMode: "READ_WRITE",
+    accessSource: "DIRECT",
+    orgId,
+    permissions: ["FISCAL_COMPLIANCE_WRITE"],
+    role: "OWNER",
+    workspaceOrgId: orgId,
+  });
   jest.spyOn(OrganizationFiscalRepository, "authorize").mockResolvedValue({ canManage: true });
   jest.spyOn(OrganizationFiscalRepository, "readForVerification").mockResolvedValue(connection());
   jest.spyOn(OrganizationLegalIdentityService, "readFiscalTaxpayerAuthority").mockResolvedValue(identity());
@@ -161,10 +157,10 @@ test("atomically consumes verified Restaurants proof and creates its TEST author
     remaining: proof().operations, status: "ACTIVE",
   });
   const tx = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems!;
-  expect(tx).toHaveLength(7);
-  expect(tx.slice(0, 5).every((item) => Boolean(item.ConditionCheck))).toBe(true);
-  expect(tx[5].Update?.ConditionExpression).toContain("#data = :proof");
-  const record = unmarshall(tx[6].Put!.Item!);
+  expect(tx).toHaveLength(6);
+  expect(tx.slice(0, 4).every((item) => Boolean(item.ConditionCheck))).toBe(true);
+  expect(tx[4].Update?.ConditionExpression).toContain("#data = :proof");
+  const record = unmarshall(tx[5].Put!.Item!);
   expect(record.data).toMatchObject({
     orgId, outletId: ids.outletId, operatorUserId: ids.operatorId,
     issuedBy: ids.approverId, sourceDigest: "a".repeat(64),
@@ -175,11 +171,26 @@ test("atomically consumes verified Restaurants proof and creates its TEST author
 });
 
 test("permission or direct-organization denial produces no write", async () => {
-  jest.mocked(PlatformSfeRepository.requireGrant).mockRejectedValueOnce(new Error("denied"));
-  await expect(Service.approvePreparedProof(principal, orgId, request())).rejects.toThrow("denied");
+  jest.mocked(EffectiveOrganizationAccessService.resolveAccess).mockResolvedValueOnce({
+    accessMode: "READ_WRITE",
+    accessSource: "DIRECT",
+    orgId,
+    permissions: ["FISCAL_COMPLIANCE_READ"],
+    role: "MEMBER",
+    workspaceOrgId: orgId,
+  });
+  await expect(Service.approvePreparedProof(principal, orgId, request()))
+    .rejects.toMatchObject({ messageCode: "DOMAIN_PERMISSION_REQUIRED" });
   expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
 
-  jest.mocked(PlatformSfeRepository.requireGrant).mockResolvedValueOnce(platformGrant());
+  jest.mocked(EffectiveOrganizationAccessService.resolveAccess).mockResolvedValueOnce({
+    accessMode: "READ_WRITE",
+    accessSource: "DIRECT",
+    orgId: "org-b",
+    permissions: ["FISCAL_COMPLIANCE_WRITE"],
+    role: "OWNER",
+    workspaceOrgId: "org-b",
+  });
   jest.mocked(OrganizationFiscalRepository.authorize).mockRejectedValueOnce(new Error("foreign"));
   await expect(Service.approvePreparedProof(principal, "org-b", request())).rejects.toThrow("foreign");
   expect(FiscalSourcePreparationProofService.read).not.toHaveBeenCalledWith("org-b", ids.proofId);
@@ -240,7 +251,7 @@ test.each(["connection", "seller", "stale"])(
 
 test("exact replay returns the established result and conflicting replay is rejected", async () => {
   await Service.approvePreparedProof(principal, orgId, request());
-  const record = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems![6].Put!.Item!;
+  const record = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems![5].Put!.Item!;
   db.reset();
   db.on(GetItemCommand).resolves({ Item: record });
   const replayed = await Service.approvePreparedProof(principal, orgId, request());
@@ -253,7 +264,7 @@ test("exact replay returns the established result and conflicting replay is reje
 
 test("an ambiguous concurrent commit resolves only the exact durable authorization", async () => {
   db.on(TransactWriteItemsCommand).callsFake((input) => {
-    const record = input.TransactItems![6].Put!.Item!;
+    const record = input.TransactItems![5].Put!.Item!;
     db.on(GetItemCommand).resolves({ Item: record });
     throw new Error("timeout");
   });
