@@ -5,6 +5,7 @@ import {
   pkce,
   callback,
   accessToken,
+  idToken,
   redactHeaders,
   listenForCode,
 } from "./session.mjs";
@@ -44,6 +45,11 @@ test("token response rejects malformed, expired and wrong type", () => {
     { token_type: "Bearer", access_token: "a.b.c", expires_in: 0 },
   ])
     assert.throws(() => accessToken(d));
+});
+test("ID token response validates a JWT-shaped Cognito ID token", () => {
+  assert.equal(idToken({ id_token: "a.b.c" }), "a.b.c");
+  for (const value of [null, {}, { id_token: "secret" }, { id_token: "a.b" }])
+    assert.throws(() => idToken(value));
 });
 test("authorization and cookies are redacted", () => {
   assert.deepEqual(

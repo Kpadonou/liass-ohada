@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import ts from "typescript";
-import { pkce, listenForCode, accessToken } from "./session.mjs";
+import { pkce, listenForCode, idToken } from "./session.mjs";
 
 // Read only the canonical DEV configuration; never accept arbitrary OAuth/API hosts.
 const source = await fs.readFile(
@@ -86,7 +86,10 @@ try {
     }),
   });
   if (!response.ok) throw Error("Token exchange rejected");
-  token = accessToken(await response.json());
+  // The profile/workspace synchronization endpoint consumes Cognito claims
+  // (including email_verified) from the ID token. The access token is valid
+  // for API authorization but does not carry the profile claims required here.
+  token = idToken(await response.json());
   const path = `/restaurants/outlets/${outletId}/business-days/current`;
   const read = await fetch(config.apiBaseUrl + path, {
     redirect: "error",

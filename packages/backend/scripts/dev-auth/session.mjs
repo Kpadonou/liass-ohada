@@ -39,6 +39,15 @@ export function accessToken(data) {
     throw Error("Invalid token response");
   return data.access_token;
 }
+export function idToken(data) {
+  if (
+    !data ||
+    typeof data.id_token !== "string" ||
+    !/^[\w-]+\.[\w-]+\.[\w-]+$/.test(data.id_token)
+  )
+    throw Error("Invalid ID token response");
+  return data.id_token;
+}
 export function redactHeaders(headers) {
   return Object.fromEntries(
     new Headers(headers)
