@@ -56,7 +56,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         actions: ["dynamodb:PutItem"],
         resources: [props.table.tableArn],
         conditions: {
-          "ForAllValues:StringEquals": {
+          "ForAllValues:StringLike": {
             "dynamodb:LeadingKeys": [`PLATFORM_SFE#${props.stage}#BJ`, "ORG#*"],
           },
         },
