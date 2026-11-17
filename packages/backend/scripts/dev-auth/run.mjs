@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import ts from "typescript";
-import { pkce, listenForCode, idToken } from "./session.mjs";
+import { pkce, listenForCode, accessToken, idToken } from "./session.mjs";
 
 // Read only the canonical DEV configuration; never accept arbitrary OAuth/API hosts.
 const source = await fs.readFile(
@@ -40,7 +40,9 @@ const origin = `https://${config.cognito.oauth.domain}`;
 const redirect = "http://localhost:4200/auth/callback";
 const intent = pkce();
 let listener;
-let token;
+let access;
+let identity;
+let stage = "initialization";
 const abort = new AbortController();
 const stop = () => {
   abort.abort();
@@ -89,12 +91,25 @@ try {
   // The profile/workspace synchronization endpoint consumes Cognito claims
   // (including email_verified) from the ID token. The access token is valid
   // for API authorization but does not carry the profile claims required here.
-  token = idToken(await response.json());
+  stage = "token-validation";
+  const tokens = await response.json();
+  access = accessToken(tokens);
+  identity = idToken(tokens);
+  stage = "profile-synchronization";
+  const profile = await fetch(`${config.apiBaseUrl}/me/workspaces`, {
+    redirect: "error",
+    signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]),
+    headers: { Authorization: `Bearer ${identity}` },
+  });
+  console.log(JSON.stringify({ method: "GET", path: "/me/workspaces", status: profile.status, at: new Date().toISOString() }));
+  await profile.body?.cancel();
+  if (!profile.ok) throw Error(`Profile synchronization failed (${profile.status})`);
+  stage = "restaurant-authorization";
   const path = `/restaurants/outlets/${outletId}/business-days/current`;
   const read = await fetch(config.apiBaseUrl + path, {
     redirect: "error",
     signal: AbortSignal.any([abort.signal, AbortSignal.timeout(15000)]),
-    headers: { Authorization: `Bearer ${token}`, "x-org-id": orgId },
+    headers: { Authorization: `Bearer ${access}`, "x-org-id": orgId },
   });
   console.log(
     JSON.stringify({
@@ -106,13 +121,13 @@ try {
   );
   await read.body?.cancel();
   if (!read.ok) throw Error("Authenticated read did not succeed");
-} catch {
-  console.error(
-    "DEV authentication/read failed; no response bodies or credentials logged.",
-  );
+} catch (error) {
+  const detail = error instanceof Error ? error.message : "unknown error";
+  console.error(`DEV authentication/read failed at ${stage}: ${detail}`);
   process.exitCode = 1;
 } finally {
-  token = undefined;
+  access = undefined;
+  identity = undefined;
   intent.verifier = "";
   await listener?.close();
   process.removeListener("SIGINT", stop);
