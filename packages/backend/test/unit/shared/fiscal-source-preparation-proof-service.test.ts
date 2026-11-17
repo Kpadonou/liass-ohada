@@ -58,7 +58,8 @@ beforeEach(() => {
     const row = rows.get(rowKey) as { entityType: string; orgId: string; data: Record<string, unknown> } | undefined;
     const values = unmarshall(request.ExpressionAttributeValues!);
     if (!row || row.entityType !== values[":type"] || row.orgId !== values[":org"] ||
-      row.data.status !== values[":prepared"] || row.data.proofDigest !== values[":digest"] ||
+      row.data.status !== values[":prepared"] ||
+      JSON.stringify(row.data) !== JSON.stringify(values[":proof"]) ||
       Date.parse(String(row.data.expiresAt)) <= Date.parse(String(values[":now"])))
       throw new Error("conditional conflict");
     row.data = { ...row.data, status: values[":consumed"], consumedAt: values[":now"], consumedBy: values[":actor"] };

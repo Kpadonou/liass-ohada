@@ -10,6 +10,7 @@ import { canonical } from "../authority/integrity";
 import { AppError } from "../app-error";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory as K } from "../key-builder";
+import { CognitoSubjectSchema } from "../authorization/platform-admin";
 
 const uuid = z.string().uuid();
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
@@ -37,7 +38,7 @@ export const FiscalExpectedTotalsSchema = z.object({
 const proofInputBaseSchema = z.object({
   orgId: z.string().min(1).max(200).regex(/^[A-Za-z0-9_-]+$/),
   outletId: uuid,
-  operatorUserId: uuid,
+  operatorUserId: CognitoSubjectSchema,
   sessionId: uuid,
   invoiceId: uuid,
   sourceDigest: digest,
@@ -66,7 +67,7 @@ const proofDataSchema = proofInputBaseSchema.omit({ commandId: true }).extend({
   preparedAt: z.string().datetime(),
   status: z.enum(["PREPARED", "CONSUMED"]),
   consumedAt: z.string().datetime().optional(),
-  consumedBy: uuid.optional(),
+  consumedBy: CognitoSubjectSchema.optional(),
 }).strict();
 export type FiscalSourcePreparationProof = z.infer<typeof proofDataSchema>;
 
@@ -119,12 +120,33 @@ export class FiscalSourcePreparationProofService {
     return output.Item ? commandRecordSchema.parse(unmarshall(output.Item)) : undefined;
   }
   static async read(orgId: string, proofId: string) {
+    const key = this.proofKey(orgId, proofId);
     const output = await dynamoClient.send(new GetItemCommand({
-      TableName: table(), Key: marshall(this.proofKey(orgId, proofId)), ConsistentRead: true,
+      TableName: table(), Key: marshall(key), ConsistentRead: true,
     }));
-    return output.Item
-      ? verifyIntegrity(proofRecordSchema.parse(unmarshall(output.Item)).data)
-      : undefined;
+    if (!output.Item) return undefined;
+    const record = proofRecordSchema.parse(unmarshall(output.Item));
+    if (record.PK !== key.PK || record.SK !== key.SK || record.orgId !== orgId ||
+      record.data.orgId !== orgId || record.data.proofId !== proofId) throw conflict();
+    return verifyIntegrity(record.data);
+  }
+  static consumptionWrite(proof: FiscalSourcePreparationProof, approverUserId: string, now: string) {
+    CognitoSubjectSchema.parse(approverUserId);
+    return {
+      Update: {
+        TableName: table(),
+        Key: marshall(this.proofKey(proof.orgId, proof.proofId)),
+        UpdateExpression: "SET #data.#status = :consumed, #data.consumedAt = :now, #data.consumedBy = :actor",
+        ConditionExpression:
+          "entityType = :type AND orgId = :org AND #data = :proof AND #data.#status = :prepared AND #data.expiresAt > :now",
+        ExpressionAttributeNames: { "#data": "data", "#status": "status" },
+        ExpressionAttributeValues: marshall({
+          ":consumed": "CONSUMED", ":prepared": "PREPARED",
+          ":type": "PLATFORM_FISCAL_SOURCE_PREPARATION_PROOF",
+          ":org": proof.orgId, ":proof": proof, ":now": now, ":actor": approverUserId,
+        }),
+      },
+    };
   }
   static async create(raw: unknown) {
     const input = FiscalSourcePreparationProofInputSchema.parse(raw);
@@ -170,19 +192,15 @@ export class FiscalSourcePreparationProofService {
     }
   }
   static async consume(input: { orgId: string; proofId: string; proofDigest: string; approverUserId: string }) {
-    const parsed = z.object({ orgId: z.string().min(1), proofId: uuid, proofDigest: digest, approverUserId: uuid }).strict().parse(input);
+    const parsed = z.object({ orgId: z.string().min(1), proofId: uuid, proofDigest: digest, approverUserId: CognitoSubjectSchema }).strict().parse(input);
     const proof = await this.read(parsed.orgId, parsed.proofId);
     const now = new Date().toISOString();
     if (!proof || proof.proofDigest !== parsed.proofDigest || proof.status !== "PREPARED" || Date.parse(proof.expiresAt) <= Date.parse(now))
       throw conflict();
     try {
-      await dynamoClient.send(new UpdateItemCommand({
-        TableName: table(), Key: marshall(this.proofKey(parsed.orgId, parsed.proofId)),
-        UpdateExpression: "SET #data.#status = :consumed, #data.consumedAt = :now, #data.consumedBy = :actor",
-        ConditionExpression: "entityType = :type AND #orgId = :org AND #data.#status = :prepared AND #data.proofDigest = :digest AND #data.expiresAt > :now",
-        ExpressionAttributeNames: { "#data": "data", "#status": "status", "#orgId": "orgId" },
-        ExpressionAttributeValues: marshall({ ":consumed": "CONSUMED", ":prepared": "PREPARED", ":type": "PLATFORM_FISCAL_SOURCE_PREPARATION_PROOF", ":org": parsed.orgId, ":digest": parsed.proofDigest, ":now": now, ":actor": parsed.approverUserId }),
-      }));
+      await dynamoClient.send(new UpdateItemCommand(this.consumptionWrite(
+        proof, parsed.approverUserId, now,
+      ).Update));
       return proofDataSchema.parse({ ...proof, status: "CONSUMED", consumedAt: now, consumedBy: parsed.approverUserId });
     } catch { throw conflict(); }
   }

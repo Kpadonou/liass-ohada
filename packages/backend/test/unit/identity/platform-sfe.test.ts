@@ -13,6 +13,7 @@ import {
   platformPrincipalDigest,
 } from "@/lambda/shared/authorization/platform-admin";
 import { platformAdminGrantPlan } from "../../../scripts/platform-admin-grant-plan";
+import { FiscalTestExecutionAuthorizationService } from "@/lambda/shared/services/fiscal-test-execution-authorization-service";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer as Event } from "aws-lambda";
 
 const db = mockClient(DynamoDBClient);
@@ -240,6 +241,53 @@ test("customer OWNER and Cognito group are no substitute for a Platform grant", 
       )
     ).statusCode,
   ).toBe(403);
+});
+test("TEST execution approval route derives organization from authenticated context and accepts proof reference only", async () => {
+  const approve = jest.spyOn(FiscalTestExecutionAuthorizationService, "approvePreparedProof")
+    .mockResolvedValue({
+      authorizationId: "c26469ff-7da6-4603-bc38-956a569fc387",
+      proofId: "78345288-662a-49e7-bcc9-8bcc48f41f1e",
+      invoiceId: "60a509af-e385-4185-b86c-bf60be6c7b57",
+      scenarioId: "02",
+      connectionId: "667da1b5-150e-45d9-8860-37caef3b2287",
+      expiresAt: "2026-11-17T10:30:00.000Z",
+      operations: { CREATE: 1, GET: 2, CONFIRM: 1, CANCEL: 1 },
+      remaining: { CREATE: 1, GET: 2, CONFIRM: 1, CANCEL: 1 },
+      status: "ACTIVE",
+    });
+  const body = {
+    proofId: "78345288-662a-49e7-bcc9-8bcc48f41f1e",
+    proofDigest: "c".repeat(64),
+    connectionId: "667da1b5-150e-45d9-8860-37caef3b2287",
+    commandId: "fb7ea76f-3b16-4e45-83f2-5fbc90c2d770",
+  };
+  const result = await handler(event(
+    "POST /platform/fiscality/test-execution-authorizations", body,
+  ));
+  expect(result.statusCode).toBe(201);
+  expect(approve).toHaveBeenCalledWith(principal, "company-a", body);
+  approve.mockRestore();
+});
+test("TEST execution approval route rejects the historical client-authored fiscal payload", async () => {
+  const result = await handler(event(
+    "POST /platform/fiscality/test-execution-authorizations",
+    { orgId: "company-a", fiscalMapping: {}, expectedFiscalTotals: {}, operations: {} },
+  ));
+  expect(result.statusCode).toBe(400);
+  expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+});
+test("TEST execution approval route requires an organization context header", async () => {
+  const requestEvent = event(
+    "POST /platform/fiscality/test-execution-authorizations",
+    {
+      proofId: "78345288-662a-49e7-bcc9-8bcc48f41f1e",
+      proofDigest: "c".repeat(64),
+      connectionId: "667da1b5-150e-45d9-8860-37caef3b2287",
+      commandId: "fb7ea76f-3b16-4e45-83f2-5fbc90c2d770",
+    },
+  );
+  delete requestEvent.headers["x-org-id"];
+  expect((await handler(requestEvent)).statusCode).toBe(400);
 });
 test("certificate URLs and unknown input fields are refused", async () => {
   expect(

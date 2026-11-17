@@ -41,6 +41,20 @@ export class PlatformSfeRepository {
       return row;
     } catch { throw deny(); }
   }
+  static grantCheck(grant: z.infer<typeof grantRecord>) {
+    return {
+      ConditionCheck: {
+        TableName: table(),
+        Key: marshall({ PK: grant.PK, SK: grant.SK }),
+        ConditionExpression: "#data = :grant AND entityType = :grantType",
+        ExpressionAttributeNames: { "#data": "data" },
+        ExpressionAttributeValues: marshall({
+          ":grant": grant.data,
+          ":grantType": "PLATFORM_ADMIN_GRANT",
+        }),
+      },
+    };
+  }
   static async read(stage: PlatformPrincipal["stage"]) {
     const PK = K.platformSfePK(stage), SK = K.platformSfeCurrentSK();
     const raw = await this.get(PK, SK);
@@ -75,9 +89,7 @@ export class PlatformSfeRepository {
     try {
       await dynamoClient.send(new TransactWriteItemsCommand({
         TransactItems: [
-          { ConditionCheck: { TableName: table(), Key: marshall({ PK: grant.PK, SK: grant.SK }),
-            ConditionExpression: "#data = :grant AND entityType = :grantType", ExpressionAttributeNames: { "#data": "data" },
-            ExpressionAttributeValues: marshall({ ":grant": grant.data, ":grantType": "PLATFORM_ADMIN_GRANT" }) } },
+          this.grantCheck(grant),
           { Put: { TableName: table(), Item: marshall(current),
             ConditionExpression: expectedVersion === 0 ? "attribute_not_exists(PK)" : "#data.#version = :version AND entityType = :type",
             ...(expectedVersion === 0 ? {} : {

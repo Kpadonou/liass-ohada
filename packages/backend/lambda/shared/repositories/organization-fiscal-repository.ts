@@ -148,6 +148,26 @@ export class OrganizationFiscalRepository {
   static readForVerification(orgId: string, environment: Environment, connectionId: string) {
     return this.connection(orgId, environment, connectionId);
   }
+  static executionCondition(row: FiscalConnectionRecord) {
+    if (!row.verification || !row.secretReference)
+      throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    return {
+      ConditionCheck: {
+        TableName: table(),
+        Key: marshall({ PK: row.PK, SK: row.SK }),
+        ConditionExpression:
+          "entityType = :type AND orgId = :org AND #data = :data AND secretReference = :secret AND verification = :verification",
+        ExpressionAttributeNames: { "#data": "data" },
+        ExpressionAttributeValues: marshall({
+          ":type": "PLATFORM_FISCAL_CONNECTION",
+          ":org": row.orgId,
+          ":data": row.data,
+          ":secret": row.secretReference,
+          ":verification": row.verification,
+        }),
+      },
+    };
+  }
   /** Resolve B2's immutable storage audit, not a customer-provided secret path. */
   static async credentialBinding(orgId: string, principal: PlatformPrincipal, row: FiscalConnectionRecord) {
     const reference = row.secretReference;

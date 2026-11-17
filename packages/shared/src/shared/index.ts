@@ -15,3 +15,4 @@ export * from "./legal-identity-authority";
 export * from "./platform-sfe-approval";
 export * from "./organization-fiscality";
 export * from "./fiscal-verification";
+export * from "./fiscal-test-execution-authorization";
