@@ -104,7 +104,7 @@ export const fiscalAttemptStateSchema = z
       (s.fiscalDocumentType !== undefined &&
         (s.identity.sourceDocumentType === "INVOICE" ? !["FV", "EV"].includes(s.fiscalDocumentType) :
           s.identity.sourceDocumentType === "CREDIT_NOTE" ? !["FA", "EA"].includes(s.fiscalDocumentType) : true)) ||
-      (s.status === "CONFIRMED" &&
+      (["CONFIRMED", "CANCELLED"].includes(s.status) &&
         s.execution === "REAL_TEST" &&
         (s.securityEvidenceOrigin !== "DGI_TEST" || !s.diagnostic?.captured)) ||
       new Set(s.commands.map((c) => c.commandId)).size !== s.commands.length ||
@@ -223,6 +223,8 @@ const eventSchema = z.discriminatedUnion("kind", [
       kind: z.literal("CANCELLED"),
       commandId: id,
       security: securitySchema,
+      evidenceOrigin: z.enum(["SYNTHETIC", "DGI_TEST"]).optional(),
+      diagnostic: diagnosticSchema.optional(),
     })
     .strict(),
   z
@@ -286,10 +288,8 @@ export function transitionFiscalAttempt(
       deny();
     if (e.diagnosticReference)
       next.diagnostic = { reference: e.diagnosticReference, captured: false };
-    if (
-      e.diagnosticReference &&
-      (e.operation !== "CONFIRM" || current.execution !== "REAL_TEST")
-    )
+    if (e.diagnosticReference &&
+      (!(["CONFIRM", "CANCEL"].includes(e.operation)) || current.execution !== "REAL_TEST"))
       deny();
     next.commands.push({
       commandId: e.commandId,
@@ -362,7 +362,7 @@ export function transitionFiscalAttempt(
       if ((e.kind === "CONFIRMED" ? "CONFIRM" : "CANCEL") !== op) deny();
       next.status = e.kind;
       next.security = e.security;
-      if (e.kind === "CONFIRMED" && current.execution === "REAL_TEST") {
+      if ((e.kind === "CONFIRMED" || e.kind === "CANCELLED") && current.execution === "REAL_TEST") {
         if (
           e.evidenceOrigin !== "DGI_TEST" ||
           !e.diagnostic?.captured ||
@@ -372,7 +372,7 @@ export function transitionFiscalAttempt(
         next.diagnostic = e.diagnostic;
         next.securityEvidenceOrigin = "DGI_TEST";
       } else {
-        if (e.kind === "CONFIRMED" && e.evidenceOrigin === "DGI_TEST") deny();
+        if (e.evidenceOrigin === "DGI_TEST") deny();
         next.securityEvidenceOrigin = "SYNTHETIC";
       }
     }

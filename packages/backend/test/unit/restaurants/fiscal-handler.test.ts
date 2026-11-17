@@ -57,6 +57,9 @@ test.each([
   ["initiate-fiscal", "initiate", { attemptId: "a", commandId: "c" }],
   ["confirm-fiscal", "confirm", { commandId: "c", confirm: true }],
   ["recover-fiscal", "recover", { commandId: "c", executionStopped: true }],
+  ["recover-fiscal", "recover", { providerOperation: "RECONCILE" }],
+  ["recover-fiscal", "recover", { providerOperation: "CANCEL", commandId: "c",
+    cancel: true, recoveryDetermination: "VERIFIED_PENDING_TEST" }],
   ["get-fiscal-status", "status", {}],
   ["get-fiscal-result", "confirmedResult", {}],
 ] as const)(
@@ -93,6 +96,15 @@ test.each([
       .statusCode,
   ).toBe(400);
   expect(service.confirm).not.toHaveBeenCalled();
+});
+test.each([
+  { providerOperation: "CANCEL", commandId: "c", cancel: true },
+  { providerOperation: "CANCEL", commandId: "c", cancel: true,
+    recoveryDetermination: "VERIFIED_PENDING_TEST", uid: "client-supplied" },
+  { providerOperation: "RECONCILE", uid: "client-supplied" },
+])("rejects unsafe recovery contract %j", async (body) => {
+  expect((await restaurantFiscalHandler("recover-fiscal", service)(event(body))).statusCode).toBe(400);
+  expect(service.recover).not.toHaveBeenCalled();
 });
 test("membership, entitlement and permission failures never reach service", async () => {
   const handler = restaurantFiscalHandler("initiate-fiscal", service);

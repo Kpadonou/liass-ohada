@@ -40,6 +40,8 @@ export interface MockFiscalProvider {
     preparation?: VerifiedFiscalPreparation,
   ): Promise<Security>;
   getInvoice(uid: string): Promise<unknown>;
+  verifyInvoice?(uid: string, preparation: VerifiedFiscalPreparation): Promise<unknown>;
+  cancelInvoice?(uid: string, reservation: FiscalAttemptState): Promise<Security>;
 }
 export class DefiniteFiscalRejection extends Error {}
 /** Compatibility name retained: one durable lifecycle, with explicit real TEST mode. */
@@ -50,7 +52,7 @@ export class SyntheticFiscalOrchestrator {
     private readonly authorize: (
       principal: FiscalPrincipal,
       identity: FiscalObligationIdentity,
-      action: "CREATE" | "CONFIRM" | "READ" | "RECOVER",
+      action: "CREATE" | "CONFIRM" | "CANCEL" | "READ" | "RECOVER",
     ) => Promise<void>,
     private readonly prepare: (
       principal: FiscalPrincipal,
@@ -61,7 +63,7 @@ export class SyntheticFiscalOrchestrator {
   private async access(
     p: FiscalPrincipal,
     identity: FiscalObligationIdentity,
-    action: "CREATE" | "CONFIRM" | "READ" | "RECOVER",
+    action: "CREATE" | "CONFIRM" | "CANCEL" | "READ" | "RECOVER",
   ) {
     if (
       (this.real ? !realFiscalTestEnabled() : process.env.NODE_ENV !== "test") ||
@@ -212,14 +214,63 @@ export class SyntheticFiscalOrchestrator {
     const plan = await this.store.reconciliationRead(identity);
     if (plan.provider !== this.provider.kind)
       throw new FiscalAttemptConflict("SCOPE_DENIED");
+    const state = await this.store.read(identity);
+    const prepared = await this.prepare(p, identity);
+    if (!state || prepared.sourceDigest !== state.sourceDigest ||
+      prepared.requestDigest !== state.requestDigest ||
+      (this.real && (state.execution !== "REAL_TEST" || state.status !== "CREATED")))
+      throw new FiscalAttemptConflict("SCOPE_DENIED");
     // Observation only: no response (including error 20) alters durable status.
     try {
+      const observation = this.provider.verifyInvoice
+        ? await this.provider.verifyInvoice(plan.uid, prepared)
+        : await this.provider.getInvoice(plan.uid);
       return {
         statusChanged: false as const,
-        observation: await this.provider.getInvoice(plan.uid),
+        observation,
       };
     } catch {
       throw new Error("FISCAL_RECONCILIATION_UNAVAILABLE");
+    }
+  }
+  async cancel(
+    p: FiscalPrincipal,
+    identity: FiscalObligationIdentity,
+    commandId: string,
+    authorization: { cancel: true; determination: "VERIFIED_PENDING_TEST" },
+  ) {
+    await this.access(p, identity, "CANCEL");
+    if (!this.real || authorization?.cancel !== true ||
+      authorization.determination !== "VERIFIED_PENDING_TEST" ||
+      !this.provider.verifyInvoice || !this.provider.cancelInvoice)
+      throw new FiscalAttemptConflict("SCOPE_DENIED");
+    const state = await this.store.read(identity);
+    if (!state || state.execution !== "REAL_TEST" || state.status !== "CREATED" ||
+      state.provider !== this.provider.kind || !state.uid || !state.fiscalTotalsVerified ||
+      state.providerTotal !== state.expectedTotal)
+      throw new FiscalAttemptConflict("TRANSITION_DENIED");
+    const prepared = await this.prepare(p, identity);
+    if (prepared.sourceDigest !== state.sourceDigest ||
+      prepared.requestDigest !== state.requestDigest || prepared.total !== state.expectedTotal)
+      throw new FiscalAttemptConflict("SCOPE_DENIED");
+    await this.provider.verifyInvoice(state.uid, prepared);
+    const reference = createHash("sha256").update(JSON.stringify([
+      state.obligationId, state.attemptId, commandId, state.uid, "CANCEL",
+    ])).digest("hex");
+    const reserved = await this.store.transition(identity, state.version, {
+      kind: "RESERVE_MUTATION", operation: "CANCEL", commandId,
+      intentDigest: this.intent("CANCEL", commandId, state.requestDigest),
+      diagnosticReference: reference,
+    });
+    if (reserved.replay) throw new FiscalAttemptConflict("TRANSITION_DENIED");
+    try {
+      const security = await this.provider.cancelInvoice(state.uid, reserved.state);
+      return await this.store.transition(identity, reserved.state.version, {
+        kind: "CANCELLED", commandId, security, evidenceOrigin: "DGI_TEST",
+        diagnostic: this.provider.diagnostic,
+      });
+    } catch (error) {
+      return this.uncertain(identity, reserved.state.version, commandId, error);
     }
   }
 }

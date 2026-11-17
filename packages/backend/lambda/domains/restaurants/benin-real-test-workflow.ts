@@ -226,6 +226,41 @@ export function restaurantBeninRealTestWorkflow(
       }
     },
     getInvoice: (uid) => adapter.getInvoice(input, uid),
+    async verifyInvoice(uid, prepared) {
+      if (prepared.sourceDigest !== config.sourceDigest)
+        throw new Error("FISCAL_REAL_RESERVATION_REQUIRED");
+      await verifyContext();
+      const pending = z.object({ invoice: InvoiceRequestDataDtoSchema,
+        expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
+      return adapter.verifyDurableInvoice(input, uid, pending.invoice, pending.expected);
+    },
+    async cancelInvoice(uid, state) {
+      if (state.execution !== "REAL_TEST" || state.status !== "CANCEL_IN_FLIGHT" ||
+        state.uid !== uid || state.sourceDigest !== config.sourceDigest)
+        throw new Error("FISCAL_REAL_RESERVATION_REQUIRED");
+      active = state;
+      provider.diagnostic = { ...state.diagnostic!, mutationMayHaveExecuted: false };
+      try {
+        const result = await adapter.cancelInvoice(input, uid);
+        const { uid: _, errorCode: _code, errorDesc: _desc,
+          refundWithAibPayment: _refund, ...cancelSecurity } = result;
+        if (cancelSecurity.nim !== config.nim) {
+          provider.diagnostic = { ...provider.diagnostic!, category: "RESPONSE_VALIDATION" };
+          throw new Error("FISCAL_SECURITY_CONTEXT_MISMATCH");
+        }
+        return cancelSecurity;
+      } catch (error) {
+        const details = error instanceof Error && "mutationDiagnostic" in error
+          ? (error as import("../fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter").BeninEMecefConnectorError).mutationDiagnostic
+          : undefined;
+        if (details) {
+          const { operation: _, environment: __, sent: ___, validationPaths, ...safe } = details;
+          provider.diagnostic = { ...provider.diagnostic!, ...safe,
+            ...(validationPaths ? { validationPaths: [...validationPaths] } : {}) };
+        }
+        throw new Error("FISCAL_CANCELLATION_OUTCOME_UNKNOWN");
+      }
+    },
   };
   let context: unknown;
   const adapter = new BeninEMecefTestAdapter({
@@ -259,7 +294,8 @@ export function restaurantBeninRealTestWorkflow(
         }
       }
       if (request.method === "PUT") {
-        if (!active?.diagnostic || !request.url.endsWith("/confirm"))
+        if (!active?.diagnostic ||
+          !(request.url.endsWith("/confirm") || request.url.endsWith("/cancel")))
           throw new Error("FISCAL_CAPTURE_SCOPE_DENIED");
         try {
           await capture.save(active.diagnostic.reference, response);

@@ -601,6 +601,7 @@ export class BeninEMecefTestAdapter {
     const details = await this.getInvoiceForTestConfirmation(input, uid);
     if (!sameInvoice(details, parsed.data, true))
       throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
+    return details;
   }
 
   async cancelInvoice(input: GetBeninEMecefStatusInput, uid: string) {

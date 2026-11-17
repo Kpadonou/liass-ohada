@@ -521,6 +521,115 @@ test("detailed tax mismatch retains UID and blocks confirmation", async () => {
     0,
   );
 });
+test("authorized reconciliation verifies the owned pending UID without changing durable state", async () => {
+  const { flow, transport } = setup();
+  await create(flow);
+  const result = await flow.reconcile(principal, identity);
+  expect(result.statusChanged).toBe(false);
+  expect(await new FiscalAttemptStore().read(identity)).toMatchObject({
+    status: "CREATED", uid: "provider-uid",
+  });
+  expect(transport.mock.calls.filter(([r]) => r.method === "GET" &&
+    r.url.includes("/api/invoice/provider-uid"))).toHaveLength(1);
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+});
+test("reconciliation rejects mismatched provider details and wrong ownership without mutation", async () => {
+  const { flow, transport, authorize } = setup();
+  await create(flow);
+  transport.mockImplementation(async (request) => ({ status: 200, body: JSON.stringify(
+    request.url.includes("/api/invoice/") ? { ...payload.invoice, reference: "foreign" } :
+      { status: true, ifu: config.ifu, nim: config.nim },
+  ) }));
+  await expect(flow.reconcile(principal, identity)).rejects.toThrow("FISCAL_RECONCILIATION_UNAVAILABLE");
+  authorize.mockRejectedValueOnce(new Error("denied"));
+  await expect(flow.reconcile(principal, identity)).rejects.toThrow("denied");
+  expect((await new FiscalAttemptStore().read(identity))?.status).toBe("CREATED");
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+});
+test("provider GET failure leaves the attempt unchanged and cannot unlock cancellation", async () => {
+  const { flow, transport } = setup();
+  await create(flow);
+  transport.mockImplementation(async (request) => {
+    if (request.url.includes("/api/invoice/"))
+      return { status: 503, body: "{}" };
+    return { status: 200, body: JSON.stringify({ status: true, ifu: config.ifu, nim: config.nim }) };
+  });
+  await expect(flow.reconcile(principal, identity)).rejects.toThrow("FISCAL_RECONCILIATION_UNAVAILABLE");
+  await expect(flow.cancel(principal, identity, "cancel-after-read-error", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  })).rejects.toThrow();
+  expect((await new FiscalAttemptStore().read(identity))?.status).toBe("CREATED");
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+});
+test("verified pending TEST invoice is cancelled once with captured DGI evidence", async () => {
+  const { flow, transport } = setup();
+  await create(flow);
+  const result = await flow.cancel(principal, identity, "cancel", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  });
+  expect(result.state).toMatchObject({ status: "CANCELLED", uid: "provider-uid",
+    securityEvidenceOrigin: "DGI_TEST", diagnostic: { captured: true }, security });
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT" &&
+    r.url.endsWith("/cancel"))).toHaveLength(1);
+  await expect(flow.cancel(principal, identity, "cancel", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  })).rejects.toThrow();
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(1);
+});
+test("cancellation rejects mismatched totals and confirmed or unknown attempts", async () => {
+  const mismatch = setup();
+  mismatch.transport.mockImplementation(async (request) => ({ status: 200,
+    body: JSON.stringify(request.method === "POST" ? { uid: "provider-uid", ...totals, total: 999 } :
+      { status: true, ifu: config.ifu, nim: config.nim }) }));
+  await create(mismatch.flow);
+  await expect(mismatch.flow.cancel(principal, identity, "cancel-mismatch", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  })).rejects.toThrow();
+  expect(mismatch.transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+
+  rows.clear();
+  payload.invoice.reference = `confirmed-before-cancel-${++sequence}`;
+  const confirmed = setup();
+  await create(confirmed.flow);
+  await confirmed.flow.confirm(principal, identity, "confirm-first", { confirm: true });
+  await expect(confirmed.flow.cancel(principal, identity, "cancel-confirmed", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  })).rejects.toThrow();
+  expect(confirmed.transport.mock.calls.filter(([r]) => r.url.endsWith("/cancel"))).toHaveLength(0);
+});
+test("uncertain cancellation is fenced as UNKNOWN_OUTCOME and never retried", async () => {
+  const { flow, transport } = setup();
+  await create(flow);
+  transport.mockImplementation(async (request) => {
+    if (request.url.endsWith("/cancel")) throw new Error("private timeout");
+    return { status: 200, body: JSON.stringify(request.url.includes("/api/invoice/")
+      ? payload.invoice : { status: true, ifu: config.ifu, nim: config.nim }) };
+  });
+  await flow.cancel(principal, identity, "cancel-timeout", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  });
+  expect(await new FiscalAttemptStore().read(identity)).toMatchObject({
+    status: "UNKNOWN_OUTCOME", uncertainOperation: "CANCEL",
+    diagnostic: { captured: false, mutationMayHaveExecuted: true, category: "TRANSPORT" },
+  });
+  const mutations = transport.mock.calls.filter(([r]) => r.method === "PUT").length;
+  await expect(flow.cancel(principal, identity, "cancel-timeout", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  })).rejects.toThrow();
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(mutations);
+});
+test("provider cancellation error is captured and remains an uncertain non-retryable outcome", async () => {
+  const { flow, transport } = setup({}, 503);
+  await create(flow);
+  await flow.cancel(principal, identity, "cancel-provider-error", {
+    cancel: true, determination: "VERIFIED_PENDING_TEST",
+  });
+  expect(await new FiscalAttemptStore().read(identity)).toMatchObject({
+    status: "UNKNOWN_OUTCOME", uncertainOperation: "CANCEL",
+    diagnostic: { captured: true, httpStatus: 503, category: "HTTP" },
+  });
+  expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(1);
+});
 test("security from a different NIM is captured but never certified", async () => {
   const { flow } = setup({ ...security, nim: "foreign-device" });
   await create(flow);

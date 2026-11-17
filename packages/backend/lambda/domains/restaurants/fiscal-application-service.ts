@@ -17,10 +17,16 @@ import { RestaurantCreditNoteFiscalSource } from "./credit-note-fiscal-source";
 
 type Context = { orgId: string; userId: string };
 type Request = z.infer<typeof requestSchema>;
-export const fiscalRecoveryRequest = requestSchema.extend({
-  commandId: z.string().trim().min(1).max(200),
-  executionStopped: z.literal(true),
-}).strict();
+const recoveryCommandId = z.string().trim().min(1).max(200);
+export const fiscalRecoveryRequest = z.union([
+  requestSchema.extend({ commandId: recoveryCommandId, executionStopped: z.literal(true) }).strict(),
+  requestSchema.extend({ providerOperation: z.literal("RECONCILE") }).strict(),
+  requestSchema.extend({
+    providerOperation: z.literal("CANCEL"), commandId: recoveryCommandId,
+    cancel: z.literal(true),
+    recoveryDetermination: z.literal("VERIFIED_PENDING_TEST"),
+  }).strict(),
+]);
 type Settings = { realConfiguration?: RealTestConfiguration } & Pick<
   Parameters<typeof restaurantBeninSyntheticWorkflow>[0],
   "classifications" | "mapping" | "adapter" | "credential"
@@ -132,7 +138,14 @@ export class RestaurantFiscalApplicationService {
   }
   /** Fence an interrupted command after the operator confirms execution has stopped. */
   async recover(context: Context, input: unknown) {
-    const { commandId, executionStopped: _, ...request } = fiscalRecoveryRequest.parse(input);
+    const recovery = fiscalRecoveryRequest.parse(input);
+    const request: Request = {
+      outletId: recovery.outletId, sessionId: recovery.sessionId,
+      invoiceId: recovery.invoiceId,
+      ...(recovery.creditNoteId ? { creditNoteId: recovery.creditNoteId } : {}),
+    };
+    const providerOperation = "providerOperation" in recovery
+      ? recovery.providerOperation : undefined;
     if (!this.real) throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
     const source = await this.verify(context, request);
     const { realConfiguration } = await this.settings(context, request);
@@ -145,6 +158,37 @@ export class RestaurantFiscalApplicationService {
     const identity = this.identity(context, request);
     const store = new FiscalAttemptStore();
     const state = await store.read(identity);
+    if (providerOperation === "RECONCILE") {
+      if (!state || state.execution !== "REAL_TEST" || state.status !== "CREATED" ||
+        state.sourceDigest !== source.proof.digest || !state.uid)
+        throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
+      try {
+        await (await this.workflow(context, request)).reconcile(
+          { orgId: context.orgId, actorId: context.userId }, identity,
+        );
+        return this.view(request, state);
+      } catch { throw new AppError(409, "FISCAL_RECONCILIATION_UNAVAILABLE"); }
+    }
+    if (providerOperation === "CANCEL" && "recoveryDetermination" in recovery) {
+      if (!state || state.execution !== "REAL_TEST" || state.status !== "CREATED" ||
+        state.sourceDigest !== source.proof.digest)
+        throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
+      try {
+        const result = await (await this.workflow(context, request)).cancel(
+          { orgId: context.orgId, actorId: context.userId }, identity,
+          recovery.commandId,
+          { cancel: true, determination: recovery.recoveryDetermination },
+        );
+        return this.view(request, result.state);
+      } catch (error) {
+        if (error instanceof FiscalAttemptConflict)
+          throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
+        throw new AppError(409, "FISCAL_RECONCILIATION_UNAVAILABLE");
+      }
+    }
+    if (!("executionStopped" in recovery))
+      throw new AppError(409, "FISCAL_COMMAND_CONFLICT");
+    const commandId = recovery.commandId;
     if (!state || state.execution !== "REAL_TEST" || state.sourceDigest !== source.proof.digest ||
       state.activeCommandId !== commandId ||
       state.uncertainOperation === "CANCEL" ||
