@@ -14,15 +14,16 @@ const digest = z.string().regex(/^[a-f0-9]{64}$/);
 const operation = z.enum(["CREATE", "GET", "CONFIRM", "CANCEL"]);
 const mapping = z.unknown().refine(value => { try { const serialized = JSON.stringify(value); return typeof serialized === "string" && Buffer.byteLength(serialized) <= 32 * 1024; } catch { return false; } });
 const totals = z.object({ ta: z.number().int().nonnegative(), tb: z.number().int().nonnegative(), tc: z.number().int().nonnegative(), td: z.number().int().nonnegative(), taa: z.number().int().nonnegative(), tab: z.number().int().nonnegative(), tac: z.number().int().nonnegative(), tad: z.number().int().nonnegative(), tae: z.number().int().nonnegative(), taf: z.number().int().nonnegative(), hab: z.number().int().nonnegative(), had: z.number().int().nonnegative(), vab: z.number().int().nonnegative(), vad: z.number().int().nonnegative(), aib: z.number().int().nonnegative(), ts: z.number().int().nonnegative(), total: z.number().int().nonnegative() }).strict();
-export const FiscalTestExecutionAuthorizationInputSchema = z.object({
+const authorizationInputBaseSchema = z.object({
   orgId: z.string().min(1).max(200).regex(/^[A-Za-z0-9_-]+$/), connectionId: z.string().min(1).max(200).regex(/^[A-Za-z0-9_-]+$/),
   outletId: id, operatorUserId: id, sessionId: id, invoiceId: id, creditNoteId: id.optional(),
   sourceDigest: digest, scenarioId: z.string().regex(/^([0-9]{2})$/), fiscalMapping: mapping, expectedFiscalTotals: totals,
   operations: z.record(operation, z.number().int().positive().max(10)).refine(v => Object.keys(v).length > 0),
   expiresAt: z.string().datetime(), commandId: id,
-}).strict().superRefine((v, ctx) => { if (Date.parse(v.expiresAt) <= Date.now()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "expiry must be future" }); });
+}).strict();
+export const FiscalTestExecutionAuthorizationInputSchema = authorizationInputBaseSchema.superRefine((v, ctx) => { if (Date.parse(v.expiresAt) <= Date.now()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "expiry must be future" }); });
 export type FiscalTestExecutionAuthorizationInput = z.infer<typeof FiscalTestExecutionAuthorizationInputSchema>;
-const dataSchema = FiscalTestExecutionAuthorizationInputSchema.omit({ commandId: true }).extend({ authorizationId: id, issuedAt: z.string().datetime(), issuedBy: id, status: z.enum(["ACTIVE", "REVOKED"]), remaining: z.record(operation, z.number().int().nonnegative()), revokedAt: z.string().datetime().optional() }).strict();
+const dataSchema = authorizationInputBaseSchema.omit({ commandId: true }).extend({ authorizationId: id, issuedAt: z.string().datetime(), issuedBy: id, status: z.enum(["ACTIVE", "REVOKED"]), remaining: z.record(operation, z.number().int().nonnegative()), revokedAt: z.string().datetime().optional() }).strict();
 export type FiscalTestExecutionAuthorization = z.infer<typeof dataSchema>;
 const recordSchema = z.object({ PK: z.string(), SK: z.string(), orgId: z.string(), entityType: z.literal("PLATFORM_FISCAL_EXECUTION_AUTHORIZATION"), data: dataSchema }).strict();
 const table = () => config.PLATFORM_TABLE_NAME;

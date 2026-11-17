@@ -8,6 +8,7 @@ export * from "./staff";
 export * from "./invoices";
 export * from "./commercial-documents";
 export * from "./document-collections";
+export * from "./fiscal-authorization";
 
 export const RestaurantIdSchema = z.string().uuid();
 export const RestaurantNameSchema = z.string().trim().min(1).max(160);

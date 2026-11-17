@@ -246,3 +246,35 @@ test("actual real TEST entrypoint retains JWT authorization and default-off gate
     expect(initiate).not.toHaveBeenCalled();
   } finally { delete process.env.FISCAL_EXECUTION_MODE; delete process.env.FISCAL_REAL_TEST_ENABLED; delete process.env.STAGE; }
 });
+
+test("source-preparation command remains authenticated but independent of the fiscal execution gate", async () => {
+  const { handler } = await import("@/lambda/domains/restaurants/real-test-fiscal-handler");
+  const { RestaurantFiscalAuthorizationPreparationService } = await import(
+    "@/lambda/domains/restaurants/fiscal-authorization-preparation-service"
+  );
+  const prepare = jest.spyOn(RestaurantFiscalAuthorizationPreparationService, "prepare")
+    .mockResolvedValue({
+      proofId: "22222222-2222-4222-8222-222222222222", proofDigest: "a".repeat(64),
+      invoiceId: id, scenarioId: "02", fiscalGroups: ["B"],
+      expectedFiscalTotals: { ta: 0, tb: 18, tc: 0, td: 18, taa: 0, tab: 2360,
+        tac: 0, tad: 0, tae: 0, taf: 0, hab: 2000, had: 0, vab: 360, vad: 0,
+        aib: 0, ts: 0, total: 2360 },
+      operations: { CREATE: 1, GET: 2, CONFIRM: 1, CANCEL: 1 },
+      expiresAt: "2026-11-17T10:30:00.000Z", status: "PREPARED",
+    });
+  const request = {
+    ...event({ scenarioId: "02", commandId: "fb7ea76f-3b16-4e45-83f2-5fbc90c2d770" }),
+    routeKey: "POST /restaurants/outlets/{outletId}/sessions/{sessionId}/invoices/{invoiceId}/fiscal/test-authorization-preparations",
+  };
+  delete process.env.FISCAL_REAL_TEST_ENABLED;
+  expect((await handler(request as never)).statusCode).toBe(200);
+  expect(prepare).toHaveBeenCalledWith(expect.objectContaining({
+    orgId: "tenant-a", actorId: "actor", outletId: id, sessionId: id,
+    invoiceId: id, scenarioId: "02",
+  }));
+  prepare.mockClear();
+  jest.mocked(EffectiveOrganizationAccessService.resolveAccess)
+    .mockResolvedValueOnce({ permissions: [], accessMode: "DIRECT" } as never);
+  expect((await handler(request as never)).statusCode).toBe(403);
+  expect(prepare).not.toHaveBeenCalled();
+});

@@ -9,6 +9,8 @@ import { RestaurantFiscalApplicationService } from "./fiscal-application-service
 import { restaurantFiscalHandler } from "./fiscal-handler";
 import { restaurantFiscalAdjudicationHandler } from "./fiscal-adjudication-handler";
 import { RESTAURANT_FISCAL_ROUTES } from "./fiscal-routes";
+import { RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE } from "./fiscal-authorization-preparation-routes";
+import { restaurantFiscalAuthorizationPreparationHandler } from "./fiscal-authorization-preparation-handler";
 /** JWT middleware derives actor and tenant. Credentials remain in Platform SSM;
  * this handler obtains them only after an immutable source-bound authorization. */
 const service = new RestaurantFiscalApplicationService(async (context, request, sourceDigest) => {
@@ -30,6 +32,8 @@ const service = new RestaurantFiscalApplicationService(async (context, request, 
   } catch { throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED"); }
 }, true);
 export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+  if (event.routeKey === `${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.method} ${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.path}`)
+    return restaurantFiscalAuthorizationPreparationHandler(event);
   const route = RESTAURANT_FISCAL_ROUTES.find(r => `${r.method} ${r.path}` === event.routeKey);
   if (!route) return { statusCode: 404, body: "{}" };
   if (route.operation === "adjudicate")

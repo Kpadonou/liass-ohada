@@ -60,8 +60,9 @@ export function mapRestaurantBeninRequest(
   principal: FiscalPrincipal,
   identity: FiscalObligationIdentity,
   configuration: unknown,
+  purpose: "EXECUTION" | "AUTHORIZATION_PROOF" = "EXECUTION",
 ): VerifiedFiscalPreparation {
-  if (process.env.NODE_ENV !== "test" && !realFiscalTestEnabled())
+  if (purpose === "EXECUTION" && process.env.NODE_ENV !== "test" && !realFiscalTestEnabled())
     throw new Error("FISCAL_MAPPING_DISABLED");
   const config = restaurantBeninMappingSchema.parse(configuration);
   const source = preparation.source;

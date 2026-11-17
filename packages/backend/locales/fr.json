@@ -503,5 +503,9 @@
   "SALES_TIMEZONE_AUTHORITY_INVALID": "Les informations faisant autorité sont indisponibles ou incohérentes. Vérifiez leur configuration approuvée avant de réessayer.",
   "SALES_TIMEZONE_EVIDENCE_MISMATCH": "Les informations faisant autorité sont indisponibles ou incohérentes. Vérifiez leur configuration approuvée avant de réessayer.",
   "SALES_AUTHORITY_CHECKS_REQUIRED": "Complétez les informations approuvées du vendeur et les paramètres d’émission avant d’émettre ce document.",
-  "SALES_INVOICE_IDEMPOTENCY_INTEGRITY_ERROR": "Le résultat d’émission enregistré est incohérent. Vérifiez le document avant de réessayer."
+  "SALES_INVOICE_IDEMPOTENCY_INTEGRITY_ERROR": "Le résultat d’émission enregistré est incohérent. Vérifiez le document avant de réessayer.",
+  "FISCAL_SCENARIO_UNSUPPORTED": "Ce scénario DGI ne peut pas être préparé depuis une facture Restaurants.",
+  "FISCAL_SCENARIO_SOURCE_MISMATCH": "Les groupes fiscaux de la facture ne correspondent pas au scénario DGI sélectionné.",
+  "FISCAL_PREPARATION_UNAVAILABLE": "La facture finale ne fournit pas toutes les preuves fiscales requises.",
+  "PROVENANCE_UNAVAILABLE": "La provenance authentique de cette facture finale ne peut pas être vérifiée."
 }

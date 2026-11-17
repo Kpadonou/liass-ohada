@@ -502,5 +502,9 @@
   "SALES_TIMEZONE_AUTHORITY_INVALID": "The document authority is unavailable or inconsistent. Review its approved configuration before retrying.",
   "SALES_TIMEZONE_EVIDENCE_MISMATCH": "The document authority is unavailable or inconsistent. Review its approved configuration before retrying.",
   "SALES_AUTHORITY_CHECKS_REQUIRED": "Complete the approved seller and issuance settings before issuing this document.",
-  "SALES_INVOICE_IDEMPOTENCY_INTEGRITY_ERROR": "The recorded issuance result is inconsistent. Review the document before retrying."
+  "SALES_INVOICE_IDEMPOTENCY_INTEGRITY_ERROR": "The recorded issuance result is inconsistent. Review the document before retrying.",
+  "FISCAL_SCENARIO_UNSUPPORTED": "This DGI scenario cannot be prepared from a Restaurants invoice.",
+  "FISCAL_SCENARIO_SOURCE_MISMATCH": "The invoice fiscal groups do not match the selected DGI scenario.",
+  "FISCAL_PREPARATION_UNAVAILABLE": "The final invoice does not provide all required fiscal evidence.",
+  "PROVENANCE_UNAVAILABLE": "The authentic provenance of this final invoice cannot be verified."
 }

@@ -1,5 +1,6 @@
 import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
 import { RESTAURANT_FISCAL_ROUTES } from "../../../lambda/domains/restaurants/fiscal-routes";
+import { RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE } from "../../../lambda/domains/restaurants/fiscal-authorization-preparation-routes";
 import { RESTAURANT_DOCUMENT_COLLECTION_ROUTES } from "../../../lambda/domains/restaurants/document-collection-routes";
 import { RESTAURANT_REFUND_ROUTES } from "../../../lambda/domains/restaurants/refund-routes";
 import { RESTAURANT_CREDIT_NOTE_ROUTES } from "../../../lambda/domains/restaurants/credit-note-routes";
@@ -86,6 +87,24 @@ export function addRestaurantsManagementRoutes(
           principal: "apigateway.amazonaws.com", sourceAccount: permission.sourceAccount, sourceArn: permission.sourceArn,
         });
         else fn.addPermission(`Fiscal-${route.name}-Invoke`, permission);
+      }
+      if (props.fiscalTestExecutor) {
+        const route = RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE;
+        new apigw.HttpRoute(scope, "Fiscal-prepare-test-authorization", {
+          httpApi: props.api,
+          authorizer: props.authorizer,
+          integration: new ManagementIntegration("FiscalAuthorizationPreparationIntegration", props.fiscalTestExecutor),
+          routeKey: apigw.HttpRouteKey.with(route.path, apigw.HttpMethod.POST),
+        });
+        new CfnPermission(scope, "Fiscal-prepare-test-authorization-Invoke", {
+          action: "lambda:InvokeFunction",
+          functionName: props.fiscalTestExecutor.functionArn,
+          principal: "apigateway.amazonaws.com",
+          sourceAccount: fn.stack.account,
+          sourceArn: props.api.arnForExecuteApi(
+            route.method, route.path.replace(/\{\w+\}/g, "*"), stage,
+          ),
+        });
       }
     }
   };

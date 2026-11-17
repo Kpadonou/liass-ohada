@@ -1,5 +1,6 @@
 import { RESTAURANT_CASH_ROUTES } from "../../../lambda/domains/restaurants/cash-routes";
 import { RESTAURANT_FISCAL_ROUTES } from "../../../lambda/domains/restaurants/fiscal-routes";
+import { RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE } from "../../../lambda/domains/restaurants/fiscal-authorization-preparation-routes";
 import { Template } from "aws-cdk-lib/assertions";
 import { RestaurantsGuestEndpoints } from "../../../lib/constructs/domains/restaurants-guest-endpoints";
 import * as cdk from "aws-cdk-lib";
@@ -120,6 +121,10 @@ describe("API stack decomposition", () => {
     expect(
       Object.keys(resources).filter((id) => id.includes("Fiscal")),
     ).toHaveLength(0);
+    expect(Object.values(resources).some((value: any) =>
+      value.Type === "AWS::ApiGatewayV2::Route" &&
+      value.Properties.RouteKey === `${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.method} ${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.path}`,
+    )).toBe(false);
   });
 
   test("fiscal routes use isolated execution and exact method-scoped invocation permissions", () => {
@@ -134,6 +139,10 @@ describe("API stack decomposition", () => {
         ),
     );
     expect(routes).toHaveLength(RESTAURANT_FISCAL_ROUTES.length);
+    expect(resources.some(([, value]) =>
+      value.Type === "AWS::ApiGatewayV2::Route" &&
+      value.Properties.RouteKey === `${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.method} ${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.path}`,
+    )).toBe(true);
     const targets = new Set(
       routes.map(([, v]) => JSON.stringify(v.Properties.Target)),
     );
@@ -524,16 +533,16 @@ describe("API stack decomposition", () => {
       (item): item is apigwv2.CfnRoute => item instanceof apigwv2.CfnRoute,
     );
     expect(functions).toHaveLength(77);
-    expect(routes).toHaveLength(130);
+    expect(routes).toHaveLength(132);
     expect(routes.map((route) => route.routeKey)).toContain(
       "GET /restaurants/outlets/{outletId}/cash-sessions/{cashSessionId}/payments",
     );
     expect(
       owned.filter((item) => item instanceof apigwv2.CfnIntegration),
-    ).toHaveLength(78);
+    ).toHaveLength(79);
     expect(
       owned.filter((item) => item instanceof lambda.CfnPermission),
-    ).toHaveLength(100);
+    ).toHaveLength(102);
     const publicRoutes = routes.filter((route) =>
       String(route.routeKey).includes(" /public/"),
     );
@@ -653,7 +662,7 @@ describe("API stack decomposition", () => {
     expect(arns.join(" ")).not.toContain("/$default/*/*");
     expect(
       Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-    ).toBe(389); // Unit fixture uses the local fiscal fallback and omits CDK metadata.
+    ).toBe(394); // Includes the contained TEST source-preparation route; remains below 400.
   });
 
   test.each([
@@ -845,7 +854,7 @@ describe("API stack decomposition", () => {
       expect(trackingArn).not.toContain("/$default/*/*");
       expect(
         Object.keys(Template.fromStack(restaurants).toJSON().Resources).length,
-      ).toBe(389);
+      ).toBe(394);
     },
   );
 
@@ -1444,7 +1453,7 @@ describe("API stack decomposition", () => {
       Object.keys(after.Resources).length -
         Object.keys(before.Resources).length,
     ).toBe(0);
-    expect(Object.keys(after.Resources).length).toBe(389);
+    expect(Object.keys(after.Resources).length).toBe(394);
     const typeCount = (template: typeof after, type: string) =>
       Object.values(template.Resources).filter(
         (r) => (r as { Type: string }).Type === type,
