@@ -11,13 +11,50 @@ const rowSchema = z.object({
   PK: z.string(), SK: z.string(), orgId: z.string(), outletId: z.string(),
   entityType: z.literal("RESTAURANT_FISCAL_WORK"), schemaVersion: z.literal(1),
   invoiceId: z.string().uuid(), sessionId: z.string().uuid(),
-  createdAt: z.string().datetime(), state: z.enum(["PENDING", "CLAIMED", "BLOCKED"]),
+  createdAt: z.string().datetime(), state: z.enum(["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED"]),
   claimToken: z.string().uuid().optional(), claimVersion: z.number().int().nonnegative().optional(),
   claimUntil: z.string().datetime().optional(),
 }).strict();
 
 /** One tenant/outlet/day partition per bounded page. The caller advances days explicitly. */
 export class RestaurantFiscalWorkRepository {
+  /** Called only after the fiscal service returns persisted authentic confirmation.
+   * This repairs a crash between fiscal confirmation and work completion. */
+  static async settleConfirmed(input: { orgId: string; outletId: string; invoiceId: string;
+    sessionId: string; createdAt: string }) {
+    const keys = [
+      { key: { PK: K.restaurantBillPK(input.orgId, input.outletId, input.invoiceId), SK: K.restaurantFiscalIntentSK() }, type: "RESTAURANT_FISCAL_INTENT" },
+      { key: { PK: K.restaurantFiscalWorkPK(input.orgId, input.outletId, input.createdAt.slice(0, 10).replace(/-/g, "")),
+        SK: K.restaurantFiscalWorkSK(input.createdAt, input.invoiceId) }, type: "RESTAURANT_FISCAL_WORK" },
+    ];
+    await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: keys.map(({ key, type }) => ({ Update: {
+      TableName: restaurantsTableName(), Key: marshall(key),
+      UpdateExpression: "SET #state = :confirmed",
+      ConditionExpression: "entityType = :type AND orgId = :org AND outletId = :outlet AND invoiceId = :invoice AND sessionId = :session AND createdAt = :created",
+      ExpressionAttributeNames: { "#state": "state" },
+      ExpressionAttributeValues: marshall({ ":confirmed": "CONFIRMED", ":type": type,
+        ":org": input.orgId, ":outlet": input.outletId, ":invoice": input.invoiceId,
+        ":session": input.sessionId, ":created": input.createdAt }),
+    } })) }));
+  }
+  static async complete(input: { orgId: string; outletId: string; invoiceId: string;
+    sessionId: string; createdAt: string }, claim: { token: string; version: number }) {
+    const keys = [
+      { key: { PK: K.restaurantBillPK(input.orgId, input.outletId, input.invoiceId), SK: K.restaurantFiscalIntentSK() }, type: "RESTAURANT_FISCAL_INTENT" },
+      { key: { PK: K.restaurantFiscalWorkPK(input.orgId, input.outletId, input.createdAt.slice(0, 10).replace(/-/g, "")),
+        SK: K.restaurantFiscalWorkSK(input.createdAt, input.invoiceId) }, type: "RESTAURANT_FISCAL_WORK" },
+    ];
+    await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: keys.map(({ key, type }) => ({ Update: {
+      TableName: restaurantsTableName(), Key: marshall(key),
+      UpdateExpression: "SET #state = :confirmed",
+      ConditionExpression: "entityType = :type AND orgId = :org AND outletId = :outlet AND invoiceId = :invoice AND sessionId = :session AND createdAt = :created AND #state = :claimed AND claimToken = :token AND claimVersion = :version",
+      ExpressionAttributeNames: { "#state": "state" },
+      ExpressionAttributeValues: marshall({ ":confirmed": "CONFIRMED", ":type": type,
+        ":org": input.orgId, ":outlet": input.outletId, ":invoice": input.invoiceId,
+        ":session": input.sessionId, ":created": input.createdAt,
+        ":claimed": "CLAIMED", ":token": claim.token, ":version": claim.version }),
+    } })) }));
+  }
   /** Only the current claimant may mark a configuration or authorization block. */
   static async block(input: { orgId: string; outletId: string; invoiceId: string;
     sessionId: string; createdAt: string }, claim: { token: string; version: number }) {
@@ -64,7 +101,8 @@ export class RestaurantFiscalWorkRepository {
       intent?.state !== row.state || intent?.claimVersion !== row.claimVersion ||
       intent?.claimToken !== row.claimToken || intent?.claimUntil !== row.claimUntil)
       throw new Error("Fiscal intent binding mismatch");
-    if (row.state === "CLAIMED" && (!row.claimUntil || Date.parse(row.claimUntil) > now.getTime()))
+    if (row.state === "CONFIRMED" ||
+      (row.state === "CLAIMED" && (!row.claimUntil || Date.parse(row.claimUntil) > now.getTime())))
       return undefined;
     const token = randomUUID(), version = (row.claimVersion ?? 0) + 1;
     const until = new Date(now.getTime() + 60_000).toISOString();
@@ -125,7 +163,7 @@ export class RestaurantFiscalWorkRepository {
       if (row.PK !== PK || row.SK !== K.restaurantFiscalWorkSK(row.createdAt, row.invoiceId) ||
         row.orgId !== orgId || row.outletId !== outletId) throw new Error("Fiscal work scope mismatch");
       return row;
-    });
+    }).filter((row) => row.state !== "CONFIRMED");
     const next = page.LastEvaluatedKey && unmarshall(page.LastEvaluatedKey);
     return { items, nextCursor: next ? Buffer.from(JSON.stringify({ PK: next.PK, SK: next.SK })).toString("base64url") : undefined };
   }

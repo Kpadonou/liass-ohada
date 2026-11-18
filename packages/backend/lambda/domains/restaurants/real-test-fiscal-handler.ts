@@ -13,7 +13,7 @@ import { RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE } from "./fiscal-auth
 import { restaurantFiscalAuthorizationPreparationHandler } from "./fiscal-authorization-preparation-handler";
 /** JWT middleware derives actor and tenant. Credentials remain in Platform SSM;
  * this handler obtains them only after an immutable source-bound authorization. */
-const service = new RestaurantFiscalApplicationService(async (context, request, sourceDigest) => {
+export const realTestFiscalService = new RestaurantFiscalApplicationService(async (context, request, sourceDigest) => {
   try {
     const binding = { orgId: context.orgId, outletId: request.outletId, operatorUserId: context.userId,
       sessionId: request.sessionId, invoiceId: request.invoiceId, creditNoteId: request.creditNoteId, sourceDigest };
@@ -39,5 +39,5 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
   if (route.operation === "adjudicate")
     return restaurantFiscalAdjudicationHandler()(event);
   if (!realFiscalTestEnabled()) return { statusCode: 403, body: JSON.stringify({ error: { code: "DOMAIN_PERMISSION_REQUIRED" } }) };
-  return restaurantFiscalHandler(route.name, service, true)(event);
+  return restaurantFiscalHandler(route.name, realTestFiscalService, true)(event);
 }
