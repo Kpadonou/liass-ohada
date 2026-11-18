@@ -253,6 +253,7 @@ export const KeyFactory = {
     return `PART#${String(number).padStart(6, "0")}`;
   },
   restaurantBillResultSK: () => "RESULT",
+  restaurantFiscalIntentSK: () => "FISCAL_INTENT#V1",
   restaurantIssuanceProvenanceSK: () => "ISSUANCE_PROVENANCE#V1",
   restaurantIssuanceTimezoneCurrentSK: () =>
     "RESTAURANTS_ISSUANCE_TIMEZONE#CURRENT",

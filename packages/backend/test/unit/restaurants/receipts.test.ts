@@ -269,6 +269,7 @@ test("closed canonical visit publishes immutable accepted lines and cash evidenc
   expect(await Receipt.publish(scope(), "owner", v.sessionId, request)).toEqual(
     result,
   );
+  expect([...m.rows.values()].filter((row) => row.entityType?.S === "RESTAURANT_FISCAL_INTENT")).toHaveLength(0);
   expect(m.rows.size).toBe(count);
   expect((await S.session(scope(), v.sessionId)).data).toMatchObject({
     ...financial,
@@ -1916,6 +1917,17 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
     });
   try {
     const invoice = await finish(v.sessionId);
+    const intentKey = JSON.stringify([
+      K.restaurantBillPK(org, f.outlet.id, invoice.receiptId),
+      K.restaurantFiscalIntentSK(),
+    ]);
+    expect(m.rows.get(intentKey)).toMatchObject({
+      entityType: { S: "RESTAURANT_FISCAL_INTENT" },
+      state: { S: "PENDING" },
+      invoiceId: { S: invoice.receiptId },
+    });
+    await finish(v.sessionId);
+    expect([...m.rows.keys()].filter((key) => key === intentKey)).toHaveLength(1);
     const verified = await Source.verify(
       scope(),
       "owner",

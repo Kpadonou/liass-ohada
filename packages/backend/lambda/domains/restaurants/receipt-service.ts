@@ -723,6 +723,22 @@ export class RestaurantReceiptService {
     actions.push(
       B.put(scope, m.receiptId, K.restaurantBillResultSK(), "RESULT", result),
     );
+    if (m.issuanceProvenanceVersion === 1 && m.issuanceProvenanceOrigin === "AUTHENTIC" &&
+      result.currency === "XOF" &&
+      result.dueMinor > 0 && result.paidMinor === result.dueMinor) {
+      actions.push({ Put: {
+        TableName: restaurantsTableName(),
+        Item: marshall({
+          PK: K.restaurantBillPK(scope.orgId, scope.outletId, m.receiptId),
+          SK: K.restaurantFiscalIntentSK(),
+          orgId: scope.orgId, outletId: scope.outletId,
+          entityType: "RESTAURANT_FISCAL_INTENT", schemaVersion: 1,
+          state: "PENDING", invoiceId: m.receiptId,
+          sessionId: m.guestSessionId, actorId, createdAt: now,
+        }),
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      } });
+    }
     const commandId = randomUUID();
     const evidence = {
       commandId,
