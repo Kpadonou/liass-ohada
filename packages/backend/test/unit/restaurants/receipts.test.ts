@@ -1937,6 +1937,48 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
     const page = await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day, undefined, 1);
     expect(page.items.map((item) => item.invoiceId)).toEqual([invoice.receiptId]);
     expect(page.nextCursor).toBeUndefined();
+    const claimInput = { orgId: org, outletId: f.outlet.id, invoiceId: invoice.receiptId,
+      sessionId: v.sessionId, createdAt: work[0].createdAt!.S! };
+    const [firstClaim, competingClaim] = await Promise.all([
+      RestaurantFiscalWorkRepository.claim(claimInput),
+      RestaurantFiscalWorkRepository.claim(claimInput),
+    ]);
+    expect([firstClaim, competingClaim].filter(Boolean)).toHaveLength(1);
+    expect(await RestaurantFiscalWorkRepository.claim(claimInput)).toBeUndefined();
+    const winning = (firstClaim ?? competingClaim)!;
+    await expect(RestaurantFiscalWorkRepository.block(claimInput,
+      { token: "00000000-0000-4000-8000-000000000000", version: winning.version })).rejects.toThrow();
+    await RestaurantFiscalWorkRepository.block(claimInput, winning);
+    expect((await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day)).items[0].state).toBe("BLOCKED");
+    const resumed = await RestaurantFiscalWorkRepository.claim(claimInput);
+    expect(resumed?.version).toBe(winning.version + 1);
+    const { obligationIdentity } = await import("@/lambda/domains/fiscal-compliance/core/fiscal-attempt-state");
+    const attemptKey = { PK: K.orgKey(org), SK: K.fiscalAttemptEffectSK("TEST", obligationIdentity({
+      orgId: org, environment: "TEST", sourceDomain: "restaurants", sourceDocumentType: "INVOICE",
+      sourceDocumentId: invoice.receiptId, jurisdiction: "BJ", obligation: "NORMALIZE",
+    })) };
+    m.rows.set(JSON.stringify([attemptKey.PK, attemptKey.SK]), marshall({ ...attemptKey,
+      entityType: "FISCAL_ATTEMPT_EFFECT", status: "UNKNOWN_OUTCOME" }));
+    expect(await RestaurantFiscalWorkRepository.claim(claimInput,
+      new Date(Date.parse(resumed!.until) + 1))).toBeUndefined();
+    m.rows.delete(JSON.stringify([attemptKey.PK, attemptKey.SK]));
+    const recovered = await RestaurantFiscalWorkRepository.claim(claimInput,
+      new Date(Date.parse(resumed!.until) + 1));
+    expect(recovered?.version).toBe(resumed!.version + 1);
+    const otherId = "00000000-0000-4000-8000-000000000001";
+    const later = new Date(Date.parse(claimInput.createdAt) + 1).toISOString();
+    const otherKey = { PK: K.restaurantFiscalWorkPK(org, f.outlet.id, day),
+      SK: K.restaurantFiscalWorkSK(later, otherId) };
+    m.rows.set(JSON.stringify([otherKey.PK, otherKey.SK]), marshall({
+      ...otherKey, orgId: org, outletId: f.outlet.id, entityType: "RESTAURANT_FISCAL_WORK",
+      schemaVersion: 1, invoiceId: otherId, sessionId: v.sessionId,
+      createdAt: later, state: "PENDING",
+    }));
+    const firstWorkPage = await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day, undefined, 1);
+    expect(firstWorkPage.nextCursor).toBeTruthy();
+    const secondWorkPage = await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day, firstWorkPage.nextCursor, 1);
+    expect(new Set([...firstWorkPage.items, ...secondWorkPage.items].map((item) => item.invoiceId)).size).toBe(2);
+    m.rows.delete(JSON.stringify([otherKey.PK, otherKey.SK]));
     await finish(v.sessionId);
     expect([...m.rows.keys()].filter((key) => key === intentKey)).toHaveLength(1);
     expect([...m.rows.values()].filter((row) => row.entityType?.S === "RESTAURANT_FISCAL_WORK")).toHaveLength(1);
