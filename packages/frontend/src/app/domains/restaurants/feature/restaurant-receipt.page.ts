@@ -362,7 +362,12 @@ export class RestaurantReceiptView {
   constructor() {
     effect(() => {
       const invoiceId = this.first.data()?.data.receiptId;
-      if (invoiceId) this.fiscalConfirmLocked.set(this.locked());
+      if (!invoiceId) return;
+      const status = this.fiscal.data()?.status;
+      if (status === 'CONFIRMED' || status === 'FAILED') {
+        try { localStorage.removeItem(this.fiscalLockKey()); } catch { /* keep local lock on storage failure */ }
+      }
+      this.fiscalConfirmLocked.set(this.locked());
     });
     this.destroy.onDestroy(() => {
       this.live = false;
