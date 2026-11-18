@@ -1478,6 +1478,9 @@ describe("complete source verification", () => {
         (await Source.verify(foreign, "owner", v.sessionId, result.receiptId))
           .verified,
       ).toBe(false);
+      expect([...m.rows.values()].filter((row) =>
+        ["RESTAURANT_FISCAL_INTENT", "RESTAURANT_FISCAL_WORK"].includes(row.entityType?.S ?? ""),
+      )).toHaveLength(0);
     }
     expect(await verify(v.sessionId, id(999))).toEqual({
       verified: false,
@@ -1926,8 +1929,16 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
       state: { S: "PENDING" },
       invoiceId: { S: invoice.receiptId },
     });
+    const work = [...m.rows.values()].filter((row) => row.entityType?.S === "RESTAURANT_FISCAL_WORK");
+    expect(work).toHaveLength(1);
+    expect(work[0].invoiceId?.S).toBe(invoice.receiptId);
+    const { RestaurantFiscalWorkRepository } = await import("@/lambda/domains/restaurants/fiscal-work-repository");
+    const day = work[0].createdAt!.S!.slice(0, 10).replace(/-/g, "");
+    const page = await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day, undefined, 1);
+    expect(page.items.map((item) => item.invoiceId)).toEqual([invoice.receiptId]);
     await finish(v.sessionId);
     expect([...m.rows.keys()].filter((key) => key === intentKey)).toHaveLength(1);
+    expect([...m.rows.values()].filter((row) => row.entityType?.S === "RESTAURANT_FISCAL_WORK")).toHaveLength(1);
     const verified = await Source.verify(
       scope(),
       "owner",

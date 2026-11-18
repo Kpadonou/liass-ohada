@@ -738,6 +738,18 @@ export class RestaurantReceiptService {
         }),
         ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
       } });
+      actions.push({ Put: {
+        TableName: restaurantsTableName(),
+        Item: marshall({
+          PK: K.restaurantFiscalWorkPK(scope.orgId, scope.outletId, now.slice(0, 10).replace(/-/g, "")),
+          SK: K.restaurantFiscalWorkSK(now, m.receiptId),
+          orgId: scope.orgId, outletId: scope.outletId,
+          entityType: "RESTAURANT_FISCAL_WORK", schemaVersion: 1,
+          invoiceId: m.receiptId, sessionId: m.guestSessionId,
+          createdAt: now, state: "PENDING",
+        }),
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
+      } });
     }
     const commandId = randomUUID();
     const evidence = {

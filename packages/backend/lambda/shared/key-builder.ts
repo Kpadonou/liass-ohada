@@ -254,6 +254,12 @@ export const KeyFactory = {
   },
   restaurantBillResultSK: () => "RESULT",
   restaurantFiscalIntentSK: () => "FISCAL_INTENT#V1",
+  restaurantFiscalWorkPK: (orgId: string, outletId: string, day: string) => {
+    if (!/^\d{8}$/.test(day)) throw new Error("Invalid fiscal work day");
+    return `${KeyFactory.restaurantTransactionScope(orgId, outletId)}#FISCAL_WORK#${day}`;
+  },
+  restaurantFiscalWorkSK: (createdAt: string, invoiceId: string) =>
+    `PENDING#${restaurantTransactionTimestamp(createdAt)}#${restaurantTransactionSegment(invoiceId)}`,
   restaurantIssuanceProvenanceSK: () => "ISSUANCE_PROVENANCE#V1",
   restaurantIssuanceTimezoneCurrentSK: () =>
     "RESTAURANTS_ISSUANCE_TIMEZONE#CURRENT",
