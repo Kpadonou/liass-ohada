@@ -1936,6 +1936,7 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
     const day = work[0].createdAt!.S!.slice(0, 10).replace(/-/g, "");
     const page = await RestaurantFiscalWorkRepository.pending(org, f.outlet.id, day, undefined, 1);
     expect(page.items.map((item) => item.invoiceId)).toEqual([invoice.receiptId]);
+    expect(page.nextCursor).toBeUndefined();
     await finish(v.sessionId);
     expect([...m.rows.keys()].filter((key) => key === intentKey)).toHaveLength(1);
     expect([...m.rows.values()].filter((row) => row.entityType?.S === "RESTAURANT_FISCAL_WORK")).toHaveLength(1);
