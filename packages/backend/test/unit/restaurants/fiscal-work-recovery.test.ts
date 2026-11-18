@@ -1,0 +1,49 @@
+import { GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { KeyFactory as K } from "@/lambda/shared/key-builder";
+import { RestaurantFiscalWorkProcessor } from "@/lambda/domains/restaurants/fiscal-work-processor";
+import { recoverBlockedFiscalWork } from "@/lambda/domains/restaurants/fiscal-work-recovery";
+import { handler } from "@/lambda/domains/restaurants/real-test-fiscal-handler";
+
+const request = { type: "RECOVER_FISCAL_WORK_V1", orgId: "org",
+  outletId: "00000000-0000-4000-8000-000000000001",
+  sessionId: "00000000-0000-4000-8000-000000000002",
+  invoiceId: "00000000-0000-4000-8000-000000000003" } as const;
+const row = { ...request, PK: K.restaurantBillPK(request.orgId, request.outletId, request.invoiceId),
+  SK: K.restaurantFiscalIntentSK(), entityType: "RESTAURANT_FISCAL_INTENT", schemaVersion: 1,
+  actorId: "original-actor", createdAt: "2026-11-18T10:00:00.000Z", state: "BLOCKED" };
+let readSpy: jest.SpyInstance, processSpy: jest.SpyInstance;
+beforeEach(() => {
+  process.env.RESTAURANTS_TABLE_NAME = "restaurants";
+  readSpy = jest.spyOn(dynamoClient, "send").mockResolvedValue({ Item: marshall(row) } as never);
+  processSpy = jest.spyOn(RestaurantFiscalWorkProcessor, "process").mockResolvedValue({ state: "CONFIRMED" });
+});
+afterEach(() => { jest.restoreAllMocks(); delete process.env.RESTAURANTS_TABLE_NAME; });
+
+test("one BLOCKED intent resumes using persisted actor and creation identity", async () => {
+  expect(await handler(request)).toEqual({ state: "CONFIRMED" });
+  expect(readSpy.mock.calls[0][0]).toBeInstanceOf(GetItemCommand);
+  expect(readSpy.mock.calls[0][0].input.ConsistentRead).toBe(true);
+  expect(processSpy).toHaveBeenCalledWith({ orgId: request.orgId, outletId: request.outletId,
+    sessionId: request.sessionId, invoiceId: request.invoiceId,
+    actorId: row.actorId, createdAt: row.createdAt });
+});
+test("wrong session, tenant binding or non-BLOCKED state never invokes processor", async () => {
+  await expect(recoverBlockedFiscalWork({ ...request, sessionId: "00000000-0000-4000-8000-000000000004" }))
+    .rejects.toThrow("identity mismatch");
+  readSpy.mockResolvedValueOnce({ Item: marshall({ ...row, state: "UNKNOWN_OUTCOME" }) });
+  await expect(recoverBlockedFiscalWork(request)).rejects.toThrow();
+  expect(processSpy).not.toHaveBeenCalled();
+});
+test("missing persisted intent cannot be recovered", async () => {
+  readSpy.mockResolvedValueOnce({});
+  await expect(recoverBlockedFiscalWork(request)).rejects.toThrow("not found");
+  expect(processSpy).not.toHaveBeenCalled();
+});
+test("duplicate recovery delegates to processor fencing without a second mutation path", async () => {
+  processSpy.mockResolvedValueOnce({ state: "BLOCKED" }).mockResolvedValueOnce({ state: "NOT_CLAIMED" });
+  expect(await Promise.all([recoverBlockedFiscalWork(request), recoverBlockedFiscalWork(request)]))
+    .toEqual([{ state: "BLOCKED" }, { state: "NOT_CLAIMED" }]);
+  expect(processSpy).toHaveBeenCalledTimes(2);
+});
