@@ -15,6 +15,12 @@ export const DEV_ACCOUNT = "570197775998";
 export const DEV_REGION = "eu-west-3";
 export const DEV_STAGE = "dev";
 export const RESTAURANTS_PREFIX = "liass-ohada-dev-restaurants-";
+export const FISCAL_EXECUTOR_RELEASE = Object.freeze({
+  profile: "FISCAL_EXECUTOR_SINGLE_TARGET",
+  commit: "91b0a87877bf534fc5d492fc59e3cff197a363ec",
+  functionName: "liass-ohada-dev-fiscal-compliance-real-test",
+  logicalId: "RealTestExecutorA6E6815D",
+});
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..", "..", "..");
@@ -64,18 +70,28 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   assert.equal(manifest?.target?.account, DEV_ACCOUNT, "Release is not for DEV account");
   assert.equal(manifest?.target?.region, DEV_REGION, "Release is not for DEV region");
   assert.equal(manifest?.target?.stage, DEV_STAGE, "Release is not for DEV stage");
-  assert.equal(manifest?.commit, "a4f5b225b4fce4424a85b1ea18ff96b03c97207e", "Release commit is not approved");
-  assert.ok(Array.isArray(manifest.artifacts) && manifest.artifacts.length === 77, "Expected exactly 77 immutable artifacts");
+  const fiscalExecutor = manifest?.releaseProfile === FISCAL_EXECUTOR_RELEASE.profile;
+  const expectedCommit = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE.commit : "a4f5b225b4fce4424a85b1ea18ff96b03c97207e";
+  const expectedArtifacts = fiscalExecutor ? 1 : 77;
+  assert.equal(manifest?.commit, expectedCommit, "Release commit is not approved");
+  assert.ok(Array.isArray(manifest.artifacts) && manifest.artifacts.length === expectedArtifacts,
+    `Expected exactly ${expectedArtifacts} immutable artifacts`);
   const names = new Set();
   for (const item of manifest.artifacts) {
     assert.equal(typeof item.functionName, "string");
-    assert.ok(item.functionName.startsWith(RESTAURANTS_PREFIX), `Out-of-scope target ${item.functionName}`);
+    assert.ok(fiscalExecutor
+      ? item.functionName === FISCAL_EXECUTOR_RELEASE.functionName
+      : item.functionName.startsWith(RESTAURANTS_PREFIX), `Out-of-scope target ${item.functionName}`);
     assert.ok(!names.has(item.functionName), `Duplicate target ${item.functionName}`);
     names.add(item.functionName);
-    assert.equal(typeof item.logicalId, "string");
+    if (fiscalExecutor) assert.equal(item.logicalId, FISCAL_EXECUTOR_RELEASE.logicalId,
+      `Unexpected logical target ${item.functionName}`);
+    else assert.equal(typeof item.logicalId, "string");
     assert.equal(typeof item.liveCodeSha256, "string");
     assert.equal(typeof item.codeSha256, "string");
-    assert.match(item.artifact, /^artifacts\/liass-ohada-dev-restaurants-[a-z0-9-]+\.zip$/);
+    assert.match(item.artifact, fiscalExecutor
+      ? /^artifacts\/liass-ohada-dev-fiscal-compliance-real-test\.zip$/
+      : /^artifacts\/liass-ohada-dev-restaurants-[a-z0-9-]+\.zip$/);
     const bytes = readFileSync(join(releaseDirectory, item.artifact));
     assert.equal(sha256(bytes), item.sha256Hex, `Artifact SHA-256 mismatch: ${item.functionName}`);
     assert.equal(codeHash(bytes), item.codeSha256, `Artifact CodeSha256 mismatch: ${item.functionName}`);

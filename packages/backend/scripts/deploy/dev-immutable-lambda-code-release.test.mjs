@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, FISCAL_EXECUTOR_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -20,6 +20,21 @@ test("validates exact immutable DEV Restaurants artifact inventory", () => {
   const { directory, manifest } = fixture();
   assert.equal(validateReleaseManifest(manifest, directory).length, 77);
   manifest.artifacts[0].functionName = "liass-ohada-dev-accounting-post-entry";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+
+test("validates only the approved fiscal executor in its single-target release profile", () => {
+  const { directory } = fixture();
+  const item = entry(FISCAL_EXECUTOR_RELEASE.functionName, Buffer.from("fiscal-zip"));
+  const bytes = Buffer.from("fiscal-zip"), crypto = awaitableHash(bytes);
+  item.logicalId = FISCAL_EXECUTOR_RELEASE.logicalId;
+  item.artifact = `artifacts/${FISCAL_EXECUTOR_RELEASE.functionName}.zip`;
+  item.sha256Hex = crypto.hex; item.codeSha256 = crypto.base64;
+  writeFileSync(join(directory, item.artifact), bytes);
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false, releaseProfile: FISCAL_EXECUTOR_RELEASE.profile,
+    target, commit: FISCAL_EXECUTOR_RELEASE.commit, artifacts: [item] };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 1);
+  manifest.artifacts[0].functionName = "liass-ohada-dev-restaurants-publish-receipt";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
 
