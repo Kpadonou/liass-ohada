@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, FISCAL_EXECUTOR_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -35,6 +35,24 @@ test("validates only the approved fiscal executor in its single-target release p
     target, commit: FISCAL_EXECUTOR_RELEASE.commit, artifacts: [item] };
   assert.equal(validateReleaseManifest(manifest, directory).length, 1);
   manifest.artifacts[0].functionName = "liass-ohada-dev-restaurants-publish-receipt";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+
+test("validates the immutable FINAL publisher artifact and exact target", () => {
+  const { directory } = fixture();
+  const bytes = Buffer.from("publisher-zip"), hashes = awaitableHash(bytes);
+  const name = FINAL_PUBLISHER_RELEASE.functionName;
+  writeFileSync(join(directory, "artifacts", `${name}.zip`), bytes);
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false,
+    releaseProfile: FINAL_PUBLISHER_RELEASE.profile, commit: FINAL_PUBLISHER_RELEASE.commit,
+    target: { ...target, functionName: name, logicalId: FINAL_PUBLISHER_RELEASE.logicalId },
+    artifact: { path: `artifacts/${name}.zip`, sha256Hex: hashes.hex,
+      codeSha256: hashes.base64, liveCodeSha256: "old" } };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 1);
+  manifest.artifact.sha256Hex = "wrong";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Artifact SHA-256 mismatch/);
+  manifest.artifact.sha256Hex = hashes.hex;
+  manifest.target.functionName = "liass-ohada-dev-restaurants-capture-payment";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
 
