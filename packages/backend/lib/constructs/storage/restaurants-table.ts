@@ -4,10 +4,11 @@ import {
   BillingMode,
   Table,
   TableEncryption,
+  StreamViewType,
 } from "aws-cdk-lib/aws-dynamodb";
 import { Construct } from "constructs";
 
-/** Reviewed LP-2 stateful owner; no speculative indexes, TTL or streams. */
+/** Reviewed LP-2 stateful owner. Keys suffice for the fiscal INSERT trigger. */
 export class RestaurantsTable extends Construct {
   public readonly table: Table;
   constructor(scope: Construct, id: string, props: { tableName: string }) {
@@ -21,6 +22,7 @@ export class RestaurantsTable extends Construct {
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
       deletionProtection: true,
       removalPolicy: RemovalPolicy.RETAIN,
+      stream: StreamViewType.KEYS_ONLY,
     });
   }
 }

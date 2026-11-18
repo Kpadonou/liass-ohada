@@ -8,6 +8,7 @@ import * as api from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpLambdaIntegration } from "aws-cdk-lib/aws-apigatewayv2-integrations";
 import { Construct } from "constructs";
 import * as path from "node:path";
+import { DynamoEventSource } from "aws-cdk-lib/aws-lambda-event-sources";
 import { RESTAURANT_FISCAL_ROUTES } from "../../../lambda/domains/restaurants/fiscal-routes";
 export class RealTestFiscalExecutor extends Construct {
   public readonly executionFunction: lambda.IFunction;
@@ -69,6 +70,8 @@ export class RealTestFiscalExecutor extends Construct {
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:GetItem", "dynamodb:BatchGetItem"],
       resources: [props.table.tableArn, props.restaurantsTable.tableArn] }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:Query"], resources: [props.restaurantsTable.tableArn] }));
+    role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:UpdateItem"], resources: [props.restaurantsTable.tableArn],
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*#OUTLET#*"] } } }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:PutItem", "dynamodb:UpdateItem"], resources: [props.table.tableArn],
       conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } } }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["s3:PutObject"], resources: [bucket.arnForObjects("*")],
@@ -80,6 +83,17 @@ export class RealTestFiscalExecutor extends Construct {
       }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["ssm:GetParameter"],
       resources: [Stack.of(this).formatArn({ service: "ssm", resource: "parameter", resourceName: `${props.stage}/platform/fiscal/*` })] }));
+    props.restaurantsTable.grantStreamRead(fn);
+    fn.addEventSource(new DynamoEventSource(props.restaurantsTable, {
+      startingPosition: lambda.StartingPosition.LATEST,
+      batchSize: 10,
+      enabled: false,
+      reportBatchItemFailures: true,
+      filters: [lambda.FilterCriteria.filter({
+        eventName: lambda.FilterRule.isEqual("INSERT"),
+        dynamodb: { Keys: { SK: { S: lambda.FilterRule.isEqual("FISCAL_INTENT#V1") } } },
+      })],
+    }));
     // No shared role grant, object reader, URL output, or anonymous access.
     this.executionFunction = fn;
   }

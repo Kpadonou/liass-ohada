@@ -1,4 +1,5 @@
-import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
+import type { APIGatewayProxyEventV2WithJWTAuthorizer, DynamoDBStreamEvent } from "aws-lambda";
+import { processFiscalIntentStream } from "./fiscal-intent-stream";
 import { AppError } from "@/lambda/shared/app-error";
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { BeninEMecefTestAdapter } from "../fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter";
@@ -31,7 +32,10 @@ export const realTestFiscalService = new RestaurantFiscalApplicationService(asyn
       executionAuthorize: async (action) => { await FiscalTestExecutionAuthorizationService.resolveAndConsume(binding, action); } };
   } catch { throw new AppError(403, "DOMAIN_PERMISSION_REQUIRED"); }
 }, true);
-export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
+export function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer): Promise<{ statusCode: number; body: string }>;
+export function handler(event: DynamoDBStreamEvent): Promise<{ batchItemFailures: { itemIdentifier: string }[] }>;
+export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer | DynamoDBStreamEvent) {
+  if ("Records" in event) return processFiscalIntentStream(event);
   if (event.routeKey === `${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.method} ${RESTAURANT_FISCAL_AUTHORIZATION_PREPARATION_ROUTE.path}`)
     return restaurantFiscalAuthorizationPreparationHandler(event);
   const route = RESTAURANT_FISCAL_ROUTES.find(r => `${r.method} ${r.path}` === event.routeKey);

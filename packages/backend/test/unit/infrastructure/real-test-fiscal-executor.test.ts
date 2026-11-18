@@ -2,7 +2,7 @@ import { App, Stack } from "aws-cdk-lib";
 import { Template, Match } from "aws-cdk-lib/assertions";
 import { HttpApi } from "aws-cdk-lib/aws-apigatewayv2";
 import { HttpJwtAuthorizer } from "aws-cdk-lib/aws-apigatewayv2-authorizers";
-import { Table, AttributeType } from "aws-cdk-lib/aws-dynamodb";
+import { Table, AttributeType, StreamViewType } from "aws-cdk-lib/aws-dynamodb";
 import { RealTestFiscalExecutor } from "../../../lib/constructs/domains/real-test-fiscal-executor";
 jest.mock("aws-cdk-lib/aws-lambda-nodejs", () => {
   const lambda = jest.requireActual<typeof import("aws-cdk-lib/aws-lambda")>("aws-cdk-lib/aws-lambda");
@@ -16,7 +16,7 @@ function synth(enabled = false) {
   const api = new HttpApi(stack, "Api");
   const authorizer = new HttpJwtAuthorizer("JWT", "https://issuer.example", { jwtAudience: ["client"] });
   const table = new Table(stack, "Platform", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING } });
-  const restaurantsTable = new Table(stack, "Restaurants", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING } });
+  const restaurantsTable = new Table(stack, "Restaurants", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING }, stream: StreamViewType.KEYS_ONLY });
   new RealTestFiscalExecutor(stack, "Fiscal", { stage: "dev", api, authorizer, table, restaurantsTable });
   return Template.fromStack(stack);
 }
@@ -36,7 +36,7 @@ function synthAdjudication() {
   const api = new HttpApi(stack, "Api");
   const authorizer = new HttpJwtAuthorizer("JWT", "https://issuer.example", { jwtAudience: ["client"] });
   const table = new Table(stack, "Platform", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING } });
-  const restaurantsTable = new Table(stack, "Restaurants", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING } });
+  const restaurantsTable = new Table(stack, "Restaurants", { partitionKey: { name: "PK", type: AttributeType.STRING }, sortKey: { name: "SK", type: AttributeType.STRING }, stream: StreamViewType.KEYS_ONLY });
   new RealTestFiscalExecutor(stack, "Fiscal", { stage: "dev", api, authorizer, table, restaurantsTable });
   return Template.fromStack(stack);
 }
@@ -68,6 +68,14 @@ test("explicit enablement keeps the gate closed by default and grants only gener
   expect(json).toContain('"FISCAL_REAL_TEST_ENABLED":"1"'); expect(json).toContain('"FISCAL_TEST_ORG_ID":""');
   expect(json).toContain("ssm:GetParameter"); expect(json).toContain("dynamodb:LeadingKeys");
   expect(json).not.toContain("secretsmanager:GetSecretValue");
+});
+test("fiscal stream mapping is disabled and filters only inserted intent keys", () => {
+  const template = synth();
+  template.hasResourceProperties("AWS::DynamoDB::Table", { StreamSpecification: { StreamViewType: "KEYS_ONLY" } });
+  template.hasResourceProperties("AWS::Lambda::EventSourceMapping", {
+    Enabled: false, StartingPosition: "LATEST", FunctionResponseTypes: ["ReportBatchItemFailures"],
+    FilterCriteria: { Filters: [{ Pattern: '{"eventName":["INSERT"],"dynamodb":{"Keys":{"SK":{"S":["FISCAL_INTENT#V1"]}}}}' }] },
+  });
 });
 test("adjudication has a distinct disabled-real-execution gate and one-object reader", () => {
   const template = synthAdjudication();
