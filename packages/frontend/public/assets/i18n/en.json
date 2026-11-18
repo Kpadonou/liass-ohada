@@ -5456,6 +5456,10 @@
       "FISCAL_NIM": "NIM",
       "FISCAL_TEST_NOTICE": "e-MECeF test document — not valid for tax purposes.",
       "FISCAL_REFRESH": "Refresh fiscal status",
+      "FISCAL_CREATE": "Normalize invoice",
+      "FISCAL_CONFIRM": "Confirm normalization",
+      "FISCAL_WORKING": "Normalization in progress…",
+      "FISCAL_ACTION_ERROR": "The fiscal operation is uncertain or failed. Refresh status before taking action.",
       "FISCAL_LOADING": "Checking fiscal status…",
       "FISCAL_READ_ERROR": "Fiscal status unavailable. Refresh to retry."
     },

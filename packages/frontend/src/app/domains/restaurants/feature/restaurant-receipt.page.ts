@@ -94,6 +94,18 @@ const denied = (error: unknown) =>
             {{ 'RESTAURANTS.RECEIPT.FISCAL_READ_ERROR' | transloco }}
           </p>
         }
+        @if (canFiscalize() && fiscal.data()?.status === 'NOT_STARTED') {
+          <button mat-flat-button type="button" [disabled]="fiscalBusy()" (click)="initiateFiscal()">
+            <mat-icon>receipt_long</mat-icon>{{ 'RESTAURANTS.RECEIPT.FISCAL_CREATE' | transloco }}
+          </button>
+        }
+        @if (canFiscalize() && fiscal.data()?.status === 'CREATED') {
+          <button mat-flat-button type="button" [disabled]="fiscalBusy() || fiscalConfirmLocked()" (click)="confirmFiscal()">
+            <mat-icon>verified</mat-icon>{{ 'RESTAURANTS.RECEIPT.FISCAL_CONFIRM' | transloco }}
+          </button>
+        }
+        @if (fiscalBusy()) { <p role="status">{{ 'RESTAURANTS.RECEIPT.FISCAL_WORKING' | transloco }}</p> }
+        @if (fiscalActionError()) { <p role="alert">{{ 'RESTAURANTS.RECEIPT.FISCAL_ACTION_ERROR' | transloco }}</p> }
         @if (fiscal.data() || (fiscal.isError() && !fiscalDenied())) {
           <button
             mat-button
@@ -200,6 +212,21 @@ export class RestaurantReceiptView {
   readonly rejected = signal(false);
   readonly error = signal('');
   readonly printBusy = signal(false);
+  readonly fiscalBusy = signal(false);
+  readonly fiscalActionError = signal(false);
+  private fiscalLockKey(ctx = this.ctx(), invoiceId = this.first.data()?.data.receiptId) {
+    return invoiceId ? `liass:restaurants:fiscal-confirm:${ctx.org}:${invoiceId}` : '';
+  }
+  private fiscalAttemptKey(ctx = this.ctx(), invoiceId = this.first.data()?.data.receiptId) {
+    return invoiceId ? `liass:restaurants:fiscal-attempt:${ctx.org}:${invoiceId}` : '';
+  }
+  private locked() {
+    const key = this.fiscalLockKey();
+    try { return !!key && !!localStorage.getItem(key); } catch { return true; }
+  }
+  readonly fiscalConfirmLocked = signal(false);
+  readonly canFiscalize = computed(() => this.verified() && !this.readOnly() &&
+    this.caps.canPublishReceipt() && this.current() && !this.fiscal.isPending() && !this.fiscal.isError());
   readonly printAll = signal(false);
   readonly visiblePages = signal(1);
   readonly first = injectQuery(() => ({
@@ -242,6 +269,49 @@ export class RestaurantReceiptView {
     staleTime: 30000,
   }));
   readonly fiscalDenied = computed(() => denied(this.fiscal.error()));
+  async initiateFiscal() {
+    if (!this.canFiscalize() || this.fiscalBusy() || this.fiscal.data()?.status !== 'NOT_STARTED') return;
+    const ctx = this.ctx(), invoiceId = this.first.data()!.data.receiptId;
+    this.fiscalBusy.set(true);
+    this.fiscalActionError.set(false);
+    try {
+      const attemptId = crypto.randomUUID();
+      localStorage.setItem(this.fiscalAttemptKey(ctx, invoiceId), attemptId);
+      await this.fiscalApi.initiate(ctx, invoiceId, attemptId, crypto.randomUUID());
+    } catch {
+      if (this.current(ctx)) this.fiscalActionError.set(true);
+    } finally {
+      if (this.current(ctx)) await this.fiscal.refetch();
+      this.fiscalBusy.set(false);
+    }
+  }
+  async confirmFiscal() {
+    if (!this.canFiscalize() || this.fiscalBusy() || this.fiscalConfirmLocked() ||
+      this.locked() || this.fiscal.data()?.status !== 'CREATED') return;
+    const ctx = this.ctx(), invoiceId = this.first.data()!.data.receiptId;
+    const key = this.fiscalLockKey(ctx, invoiceId);
+    try { localStorage.setItem(key, JSON.stringify({ attemptId: localStorage.getItem(this.fiscalAttemptKey(ctx, invoiceId)) ?? 'SERVER_OWNED', commandId: crypto.randomUUID(), state: 'UNCERTAIN' })); }
+    catch { this.fiscalActionError.set(true); return; }
+    this.fiscalConfirmLocked.set(true);
+    this.fiscalBusy.set(true);
+    this.fiscalActionError.set(false);
+    try {
+      const status = await this.fiscalApi.status(ctx, invoiceId);
+      if (status.status !== 'CREATED') return;
+      await this.fiscalApi.confirm(ctx, invoiceId, JSON.parse(localStorage.getItem(key)!).commandId);
+    } catch {
+      if (this.current(ctx)) this.fiscalActionError.set(true);
+    } finally {
+      if (this.current(ctx)) {
+        const result = await this.fiscal.refetch();
+        if (result.data?.status === 'CONFIRMED' || result.data?.status === 'FAILED') {
+          localStorage.removeItem(key);
+          this.fiscalConfirmLocked.set(false);
+        }
+      }
+      this.fiscalBusy.set(false);
+    }
+  }
   readonly pages = injectInfiniteQuery(() => ({
     queryKey: [...receiptKey(this.ctx()), 'parts', this.first.data()?.data.digest ?? ''],
     initialPageParam: undefined as string | undefined,
@@ -290,6 +360,10 @@ export class RestaurantReceiptView {
     () => this.visiblePages() < (this.pages.data()?.pages.length ?? 0) || this.pages.hasNextPage(),
   );
   constructor() {
+    effect(() => {
+      const invoiceId = this.first.data()?.data.receiptId;
+      if (invoiceId) this.fiscalConfirmLocked.set(this.locked());
+    });
     this.destroy.onDestroy(() => {
       this.live = false;
       this.printJob++;

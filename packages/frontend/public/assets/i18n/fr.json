@@ -5456,6 +5456,10 @@
       "FISCAL_NIM": "NIM",
       "FISCAL_TEST_NOTICE": "Document de test e-MECeF — sans valeur fiscale.",
       "FISCAL_REFRESH": "Actualiser le statut fiscal",
+      "FISCAL_CREATE": "Normaliser la facture",
+      "FISCAL_CONFIRM": "Confirmer la normalisation",
+      "FISCAL_WORKING": "Normalisation en cours…",
+      "FISCAL_ACTION_ERROR": "L’opération fiscale est incertaine ou a échoué. Actualisez le statut avant toute action.",
       "FISCAL_LOADING": "Vérification du statut fiscal…",
       "FISCAL_READ_ERROR": "Statut fiscal indisponible. Actualisez pour réessayer."
     },

@@ -20,7 +20,7 @@ describe('Receipt presentation and complete native print', () => {
     revision = signal(1);
   const api = { page: vi.fn(), publish: vi.fn(), assertContext: vi.fn() },
     printer = { print: vi.fn() };
-  const fiscalApi = { result: vi.fn() };
+  const fiscalApi = { result: vi.fn(), status: vi.fn(), initiate: vi.fn(), confirm: vi.fn() };
   beforeEach(() => {
     vi.resetAllMocks();
     fiscalApi.result.mockRejectedValue(new Error('disabled'));
@@ -142,6 +142,32 @@ describe('Receipt presentation and complete native print', () => {
     expect(f.nativeElement.querySelector('img')).toBeNull();
     expect(f.nativeElement.textContent).not.toContain('TEST-CODE');
     expect(fiscalApi.result).toHaveBeenCalledTimes(1);
+  });
+  it('keeps confirmation locked after a transport failure and a later CREATED status, including reload', async () => {
+    const invoiceId = receiptSummary().receiptId;
+    const key = `liass:restaurants:fiscal-confirm:${ctx.org}:${invoiceId}`;
+    localStorage.removeItem(key);
+    fiscalApi.result.mockResolvedValue({ invoiceId, environment: 'TEST', execution: 'REAL_TEST',
+      status: 'CREATED', confirmed: false, legallyNormalized: false, normalizedInvoice: null,
+      securityElements: null, total: null, uncertainOperation: null, mutationRetryAllowed: false,
+      resultAvailable: false, evidenceOrigin: null });
+    fiscalApi.status.mockResolvedValue({ status: 'CREATED' });
+    fiscalApi.confirm.mockRejectedValue(new TypeError('network'));
+    const first = create();
+    await loaded(first);
+    await vi.waitFor(() => expect(first.componentInstance.fiscal.data()?.status).toBe('CREATED'));
+    await first.componentInstance.confirmFiscal();
+    expect(fiscalApi.confirm).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(key)).toBeTruthy();
+    await first.componentInstance.confirmFiscal();
+    expect(fiscalApi.confirm).toHaveBeenCalledTimes(1);
+    first.destroy();
+    const reloaded = create();
+    await loaded(reloaded);
+    await vi.waitFor(() => expect(reloaded.componentInstance.fiscalConfirmLocked()).toBe(true));
+    await reloaded.componentInstance.confirmFiscal();
+    expect(fiscalApi.confirm).toHaveBeenCalledTimes(1);
+    localStorage.removeItem(key);
   });
   it('direct FINAL refresh reads one bounded page, canonical totals and no POST', async () => {
     const f = create();
