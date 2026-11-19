@@ -77,6 +77,23 @@ test("fiscal stream mapping is disabled and filters only inserted intent keys", 
     FilterCriteria: { Filters: [{ Pattern: '{"eventName":["INSERT"],"dynamodb":{"Keys":{"SK":{"S":["FISCAL_INTENT#V1"]}}}}' }] },
   });
 });
+test("fiscal claim IAM matches Restaurants keys and guards Accounting attempts", () => {
+  const resources = synth().toJSON().Resources;
+  const statements = Object.values(resources).filter((r: any) => r.Type === "AWS::IAM::Policy")
+    .flatMap((r: any) => r.Properties.PolicyDocument.Statement);
+  const restaurantUpdate = statements.find((s: any) => s.Action === "dynamodb:UpdateItem");
+  expect(restaurantUpdate.Condition).toEqual({ "ForAllValues:StringLike": {
+    "dynamodb:LeadingKeys": ["ORG#*#OUT#*"],
+  } });
+  expect(JSON.stringify(restaurantUpdate.Resource)).toContain("Restaurants");
+  expect(JSON.stringify(statements)).not.toContain("ORG#*#OUTLET#*");
+  const attemptGuard = statements.find((s: any) => s.Action === "dynamodb:ConditionCheckItem");
+  expect(attemptGuard.Condition).toEqual({ "ForAllValues:StringLike": {
+    "dynamodb:LeadingKeys": ["ORG#*"],
+  } });
+  expect(JSON.stringify(attemptGuard.Resource)).toContain("Platform");
+  expect(JSON.stringify(attemptGuard.Resource)).not.toContain("Restaurants");
+});
 test("adjudication has a distinct disabled-real-execution gate and one-object reader", () => {
   const template = synthAdjudication();
   const json = JSON.stringify(template.toJSON());

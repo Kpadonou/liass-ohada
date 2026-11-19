@@ -71,7 +71,9 @@ export class RealTestFiscalExecutor extends Construct {
       resources: [props.table.tableArn, props.restaurantsTable.tableArn] }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:Query"], resources: [props.restaurantsTable.tableArn] }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:UpdateItem"], resources: [props.restaurantsTable.tableArn],
-      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*#OUTLET#*"] } } }));
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*#OUT#*"] } } }));
+    role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:ConditionCheckItem"], resources: [props.table.tableArn],
+      conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } } }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["dynamodb:PutItem", "dynamodb:UpdateItem"], resources: [props.table.tableArn],
       conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } } }));
     role.addToPolicy(new iam.PolicyStatement({ actions: ["s3:PutObject"], resources: [bucket.arnForObjects("*")],
