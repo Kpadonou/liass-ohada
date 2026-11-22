@@ -76,6 +76,11 @@
           />
         }
       } @else {
+        @if (showOrganization() && currentProduct() !== 'RESTAURANTS') {
+          <section class="pt-2.5"><p class="px-3 text-xs font-semibold">{{ 'ORG_PROFILE.CONFIGURATION' | transloco }}</p>
+            <liass-sidebar-nav-item [active]="uiStore.currentPage() === 'settings.organization'" [compact]="!sidebarExpanded()" icon="business" [label]="'ORG_PROFILE.TITLE' | transloco" (selected)="selectItem(organizationItem)" />
+          </section>
+        }
         @if (currentProduct() !== 'RESTAURANTS') {
           @for (item of dashboardItems(); track item.page) {
             <liass-sidebar-nav-item

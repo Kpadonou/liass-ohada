@@ -5785,5 +5785,38 @@
       "REJECTED": "Cet article ne peut plus être annulé. Actualisez le service et vérifiez son état.",
       "UNCERTAIN": "Le résultat reste à confirmer. Réessayez la même annulation ; le motif et la demande sont conservés."
     }
+  },
+  "ORG_PROFILE": {
+    "CONFIGURATION": "Configuration",
+    "TITLE": "Organisation",
+    "SUBTITLE": "Profil et coordonnées de votre organisation",
+    "GENERAL": "Informations générales",
+    "NAME": "Nom",
+    "COUNTRY": "Pays",
+    "CONTACT": "Coordonnées",
+    "CONTACT_HINT": "Ces coordonnées ne modifient pas l’identité légale vérifiée.",
+    "email": "Adresse e-mail",
+    "phone": "Téléphone",
+    "address": "Adresse de contact",
+    "city": "Ville",
+    "postalCode": "Code postal",
+    "INVALID": "Vérifiez la valeur saisie.",
+    "SAVE": "Enregistrer",
+    "SAVED": "Coordonnées enregistrées.",
+    "SAVE_ERROR": "Enregistrement impossible. Actualisez le profil et réessayez.",
+    "ERROR": "Le profil est indisponible.",
+    "RETRY": "Réessayer",
+    "LEGAL": "Identité légale et fiscale",
+    "READONLY": "Les faits légaux sont en lecture seule et nécessitent une révision contrôlée.",
+    "INCOMPLETE": "Preuves incomplètes",
+    "VERIFIED": "Faits vérifiés",
+    "VERSION": "Version",
+    "IFU": "IFU vérifié",
+    "LEGAL_ADDRESS": "Adresse légale",
+    "MISSING": "Non renseigné",
+    "NO_IDENTITY": "Aucune identité légale sélectionnée.",
+    "MISSING_name": "Le nom légal nécessite une preuve vérifiée.",
+    "MISSING_ifu": "L’IFU nécessite une preuve vérifiée.",
+    "MISSING_address": "L’adresse légale nécessite une preuve vérifiée."
   }
 }

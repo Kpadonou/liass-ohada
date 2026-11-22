@@ -15,6 +15,7 @@ import { SignupPage } from '../../domains/identity/feature/signup/signup.page';
 import {
   accountingWriteGuard,
   fiscalWorkspaceGuard,
+  organizationWorkspaceGuard,
   appRootRedirectGuard,
   authGuard,
   welcomeWorkspaceGuard,
@@ -122,6 +123,11 @@ export const routes: Routes = [
       ),
     canActivate: [authGuard, tenantGuard],
     children: [
+      {
+        path: 'settings/organization',
+        canActivate: [organizationWorkspaceGuard],
+        loadComponent: () => import('../../domains/identity/feature/organization-profile/organization-profile.page').then(m => m.OrganizationProfilePage),
+      },
       {
         path: 'settings/fiscality',
         canActivate: [fiscalWorkspaceGuard],

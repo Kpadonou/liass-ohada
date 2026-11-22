@@ -1,3 +1,4 @@
+import { OrganizationProfileService } from "../../shared/services/organization-profile-service";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { z } from "zod";
 import { AppError } from "../../shared/app-error";
@@ -33,6 +34,13 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       ([key]) => key.toLowerCase() === "x-org-id",
     )?.[1];
     if (!orgId) throw new AppError(400, "ERROR_MISSING_ORG_ID");
+    if (event.routeKey === "GET /me/organization/profile")
+      return { statusCode: 200, body: JSON.stringify({ data: await OrganizationProfileService.read(orgId, principal.sub) }) };
+    if (event.routeKey === "PUT /me/organization/profile") {
+      let input: unknown;
+      try { input = JSON.parse(event.body ?? "{}"); } catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
+      return { statusCode: 200, body: JSON.stringify({ data: await OrganizationProfileService.update(orgId, principal.sub, input) }) };
+    }
     if (event.routeKey === "GET /me/organization/fiscality/profile") {
       const access = await OrganizationFiscalRepository.authorize(orgId, principal.sub, false, false);
       const current = await readCompanyFiscalProfile(orgId);

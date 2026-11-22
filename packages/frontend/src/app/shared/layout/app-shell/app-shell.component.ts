@@ -18,6 +18,7 @@ import { environment } from '../../../../environments/environment';
 
 export function pageFromUrl(url: string): AppPage {
   const path = url.split('?')[0]?.split('#')[0] ?? '';
+  if (path.startsWith('/settings/organization')) return 'settings.organization';
   if (path.startsWith('/settings/fiscality')) return 'settings.fiscality';
 
   if (path.startsWith('/cabinet/dossiers')) {

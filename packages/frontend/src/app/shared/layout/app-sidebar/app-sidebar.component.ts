@@ -326,6 +326,7 @@ export class AppSidebarComponent {
       labelKey: 'RESTAURANTS.UX.CONFIGURATION',
       showHeading: true,
       items: [
+        ...(this.showOrganization() ? [this.organizationItem] : []),
         ...(this.restaurantsCapabilities.canManageInventory?.()
           ? [
               {
@@ -404,6 +405,10 @@ export class AppSidebarComponent {
   private readonly salesCapabilities = inject(SalesCapabilities);
   protected readonly uiStore = inject(UiStore);
   protected readonly showFiscality = computed(() => fiscalWorkspaceEligible(this.authStore));
+  protected readonly showOrganization = computed(() => {
+    const w = this.authStore.activeWorkspace(); return !!w && w.orgId === this.authStore.effectiveOrgId() && w.status === 'ACTIVE' && w.workspaceType === 'COMPANY' && w.accessSource === 'DIRECT';
+  });
+  protected readonly organizationItem: ShellNavItem = {page: 'settings.organization', route: '/settings/organization', icon: 'business', labelKey: 'ORG_PROFILE.TITLE'};
   protected readonly fiscalityItem: ShellNavItem = {
     page: 'settings.fiscality',
     route: '/settings/fiscality?shellProduct=RESTAURANTS',
@@ -538,6 +543,8 @@ export class AppSidebarComponent {
 
     if (item.route) {
       let destination = item.route;
+      if (item.page === 'settings.organization' && this.currentProduct())
+        destination += '?shellProduct=' + this.currentProduct();
       if (
         item.page === 'restaurants' &&
         (item.route.includes('/setup/') ||

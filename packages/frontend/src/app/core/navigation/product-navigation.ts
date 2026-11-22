@@ -97,7 +97,7 @@ export class ShellProductNavigation {
   private readonly route = inject(ShellRouteContext);
   readonly routeProduct = computed(() => {
     const page = this.ui.currentPage();
-    if (page !== 'settings.fiscality') return productForPage(page);
+    if (page !== 'settings.fiscality' && page !== 'settings.organization') return productForPage(page);
 
     const shellProduct = this.route.shellProduct();
     return shellProduct === 'RESTAURANTS' &&

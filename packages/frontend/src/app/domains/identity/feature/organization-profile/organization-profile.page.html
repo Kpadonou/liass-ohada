@@ -1,0 +1,23 @@
+<div class="space-y-5">
+  <liass-page-header [eyebrow]="'ORG_PROFILE.CONFIGURATION' | transloco" [title]="'ORG_PROFILE.TITLE' | transloco" [subtitle]="'ORG_PROFILE.SUBTITLE' | transloco" />
+  @if (query.isPending()) { <liass-card state="loading" /> }
+  @else if (query.isError()) { <liass-card><p role="alert">{{ 'ORG_PROFILE.ERROR' | transloco }}</p><liass-button (pressed)="query.refetch()">{{ 'ORG_PROFILE.RETRY' | transloco }}</liass-button></liass-card> }
+  @else if (query.data(); as profile) {
+    <liass-card><h2 class="text-lg font-semibold">{{ 'ORG_PROFILE.GENERAL' | transloco }}</h2><dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt>{{ 'ORG_PROFILE.NAME' | transloco }}</dt><dd>{{ profile.organization.name }}</dd></div><div><dt>{{ 'ORG_PROFILE.COUNTRY' | transloco }}</dt><dd>{{ profile.organization.country }}</dd></div></dl></liass-card>
+    <liass-card><h2 class="text-lg font-semibold">{{ 'ORG_PROFILE.CONTACT' | transloco }}</h2><p class="mt-2 text-sm">{{ 'ORG_PROFILE.CONTACT_HINT' | transloco }}</p>
+      <form [formGroup]="form" (ngSubmit)="save()" class="mt-4 space-y-4">
+        <div class="grid gap-4 sm:grid-cols-2">@for (field of fields; track field) { <mat-form-field class="w-full"><mat-label>{{ ('ORG_PROFILE.' + field) | transloco }}</mat-label><input matInput [formControlName]="field" [type]="field === 'email' ? 'email' : 'text'" /><mat-error>{{ 'ORG_PROFILE.INVALID' | transloco }}</mat-error></mat-form-field> }</div>
+        @if (mutation.isError()) { <p role="alert">{{ 'ORG_PROFILE.SAVE_ERROR' | transloco }}</p> }
+        @if (isSaved()) { <p role="status">{{ 'ORG_PROFILE.SAVED' | transloco }}</p> }
+        @if (profile.canManage) { <div class="flex justify-end"><liass-button type="submit" tone="brand" variant="solid" [disabled]="form.invalid || form.pristine || mutation.isPending()">{{ 'ORG_PROFILE.SAVE' | transloco }}</liass-button></div> }
+      </form>
+    </liass-card>
+    <liass-card><h2 class="text-lg font-semibold">{{ 'ORG_PROFILE.LEGAL' | transloco }}</h2><p class="mt-2 text-sm">{{ 'ORG_PROFILE.READONLY' | transloco }}</p>
+      @if (profile.legalIdentity; as legal) {
+        <div class="mt-4"><liass-status-chip [label]="(legal.missingEvidence.length ? 'ORG_PROFILE.INCOMPLETE' : 'ORG_PROFILE.VERIFIED') | transloco" [tone]="legal.missingEvidence.length ? 'warning' : 'success'" /></div>
+        <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt>{{ 'ORG_PROFILE.NAME' | transloco }}</dt><dd>{{ legal.name }}</dd></div><div><dt>{{ 'ORG_PROFILE.VERSION' | transloco }}</dt><dd>{{ legal.version }}</dd></div><div><dt>{{ 'ORG_PROFILE.IFU' | transloco }}</dt><dd>{{ legal.ifu || ('ORG_PROFILE.MISSING' | transloco) }}</dd></div><div><dt>{{ 'ORG_PROFILE.LEGAL_ADDRESS' | transloco }}</dt><dd>{{ legal.address || ('ORG_PROFILE.MISSING' | transloco) }}</dd></div></dl>
+        @for (missing of legal.missingEvidence; track missing) { <p class="mt-2">{{ ('ORG_PROFILE.MISSING_' + missing) | transloco }}</p> }
+      } @else { <p class="mt-4">{{ 'ORG_PROFILE.NO_IDENTITY' | transloco }}</p> }
+    </liass-card>
+  }
+</div>

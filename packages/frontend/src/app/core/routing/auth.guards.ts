@@ -276,3 +276,9 @@ export function fiscalWorkspaceEligible(auth: InstanceType<typeof AuthStore>): b
 
 export const fiscalWorkspaceGuard: CanActivateFn = () =>
   fiscalWorkspaceEligible(inject(AuthStore)) || inject(Router).createUrlTree(['/dashboard']);
+
+export const organizationWorkspaceGuard: CanActivateFn = () => {
+  const auth = inject(AuthStore); const workspace = auth.activeWorkspace();
+  return (!!workspace && workspace.orgId === auth.effectiveOrgId() && workspace.status === 'ACTIVE' &&
+    workspace.workspaceType === 'COMPANY' && workspace.accessSource === 'DIRECT') || inject(Router).createUrlTree(['/dashboard']);
+};

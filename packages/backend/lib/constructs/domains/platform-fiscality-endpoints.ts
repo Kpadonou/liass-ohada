@@ -161,7 +161,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
       conditions: {
         "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] },
         "ForAllValues:StringEquals": {
-          "dynamodb:Attributes": ["PK", "SK", "fiscalRegime", "country", "entityType", "orgId", "status", "workspaceType"],
+          "dynamodb:Attributes": ["PK", "SK", "fiscalRegime", "country", "entityType", "orgId", "status", "workspaceType", "contact", "contactVersion"],
         },
       },
     }));
@@ -228,6 +228,8 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
     );
     // No GetParametersByPath, DeleteParameter, SecretsManager, custom KMS key or administrator-registry access.
     for (const [method, routePath, actionName] of [
+      [HttpMethod.GET, "/me/organization/profile", "read-organization-profile"],
+      [HttpMethod.PUT, "/me/organization/profile", "update-organization-profile"],
       [HttpMethod.GET, "/me/organization/fiscality/profile", "read-fiscal-profile"],
       [HttpMethod.PUT, "/me/organization/fiscality/profile", "select-fiscal-profile"],
       [
