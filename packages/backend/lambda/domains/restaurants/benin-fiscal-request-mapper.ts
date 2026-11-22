@@ -119,7 +119,9 @@ export function mapRestaurantBeninRequest(
       ));
   if (identifiers.length !== 1 || !identifierVerified)
     throw new Error("FISCAL_SELLER_IFU_UNVERIFIED");
-  if (realFiscalTestEnabled()) {
+  // The source-bound proof must enforce the same seller evidence as execution.
+  // Otherwise an authorization can be consumed for an invoice that cannot be reserved.
+  if (realFiscalTestEnabled() || purpose === "AUTHORIZATION_PROOF") {
     const address = seller.seller.address;
     const addressPaths = address
       ? [

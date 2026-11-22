@@ -124,6 +124,32 @@ test("durable CREATE then explicit CONFIRM saves UID and security after reserved
   ).rejects.toThrow();
   expect(f.provider.confirmInvoice).toHaveBeenCalledTimes(1);
 });
+test("read-only preparation failure does not consume CREATE authorization or reserve an attempt", async () => {
+  const f = setup();
+  f.prepare.mockRejectedValueOnce(new Error("FISCAL_SELLER_IDENTITY_INCOMPLETE"));
+  await expect(f.orchestration.create(principal, identity, "attempt", "create"))
+    .rejects.toThrow("FISCAL_SELLER_IDENTITY_INCOMPLETE");
+  expect(f.authorize).not.toHaveBeenCalled();
+  expect(rows.size).toBe(0);
+  expect(f.provider.createInvoice).not.toHaveBeenCalled();
+});
+test("conditional reservation failure keeps provider untouched", async () => {
+  const f = setup();
+  send.mockImplementationOnce(async () => { throw Object.assign(new Error("private"),
+    { name: "AccessDeniedException" }); });
+  await expect(f.orchestration.create(principal, identity, "attempt", "create"))
+    .rejects.toThrow("FISCAL_STORAGE_OUTCOME_UNKNOWN");
+  expect(f.authorize).toHaveBeenCalledTimes(1);
+  expect(f.provider.createInvoice).not.toHaveBeenCalled();
+});
+test("conditional reservation conflict never dispatches provider CREATE", async () => {
+  const f = setup();
+  send.mockImplementationOnce(async () => { throw Object.assign(new Error("private"),
+    { name: "ConditionalCheckFailedException" }); });
+  await expect(f.orchestration.create(principal, identity, "attempt", "create"))
+    .rejects.toThrow("VERSION_CONFLICT");
+  expect(f.provider.createInvoice).not.toHaveBeenCalled();
+});
 test("concurrent and replayed CREATE never dispatch twice", async () => {
   const f = setup();
   await Promise.allSettled([

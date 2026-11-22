@@ -89,6 +89,28 @@ test("interrupted provider command does not retry inside the processor", async (
   expect(initiateSpy).toHaveBeenCalledTimes(1);
   expect(confirmSpy).not.toHaveBeenCalled();
 });
+test("known pre-reservation seller failure is fenced BLOCKED with safe diagnostic", async () => {
+  const log = jest.spyOn(console, "error").mockImplementation(() => undefined);
+  initiateSpy.mockRejectedValue(new Error("FISCAL_SELLER_IDENTITY_INCOMPLETE"));
+  expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({ state: "BLOCKED" });
+  expect(blockSpy).toHaveBeenCalledWith(work, claim);
+  expect(confirmSpy).not.toHaveBeenCalled();
+  expect(log).toHaveBeenCalledWith(expect.stringContaining("FISCAL_SELLER_IDENTITY_INCOMPLETE"));
+});
+test("ambiguous reservation or IAM failure remains unresolved without provider retry", async () => {
+  const log = jest.spyOn(console, "error").mockImplementation(() => undefined);
+  initiateSpy.mockRejectedValue(new Error("private AccessDeniedException details"));
+  expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({ state: "UNRESOLVED" });
+  expect(blockSpy).not.toHaveBeenCalled();
+  expect(confirmSpy).not.toHaveBeenCalled();
+  expect(JSON.stringify(log.mock.calls)).not.toContain("private");
+});
+test("a seller error after CREATE cannot downgrade an existing attempt to BLOCKED", async () => {
+  jest.spyOn(console, "error").mockImplementation(() => undefined);
+  confirmSpy.mockRejectedValue(new Error("FISCAL_SELLER_IDENTITY_INCOMPLETE"));
+  expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({ state: "UNRESOLVED" });
+  expect(blockSpy).not.toHaveBeenCalled();
+});
 test("uncertain CONFIRM leaves work unresolved for authoritative recovery", async () => {
   confirmSpy.mockResolvedValue({ status: "UNKNOWN_OUTCOME" } as never);
   expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({ state: "UNKNOWN_OUTCOME" });

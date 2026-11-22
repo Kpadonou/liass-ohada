@@ -5,6 +5,12 @@ import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { projectRestaurantInvoiceV1 } from "./fiscalizable-invoice-v1";
 import { realTestFiscalService } from "./real-test-fiscal-handler";
 
+const knownPreReservationFailure = new Set([
+  "FISCAL_SELLER_IDENTITY_INCOMPLETE", "FISCAL_SELLER_IFU_UNVERIFIED",
+  "FISCAL_PREPARATION_UNAVAILABLE", "FISCAL_SOURCE_MISMATCH",
+  "FISCAL_MAPPING_EVIDENCE_MISSING", "FISCAL_MAPPING_SOURCE_MISMATCH",
+]);
+
 type Work = { orgId: string; outletId: string; sessionId: string;
   invoiceId: string; actorId: string; createdAt: string };
 
@@ -42,12 +48,15 @@ export class RestaurantFiscalWorkProcessor {
       return { state: "BLOCKED" as const };
     }
     const attemptId = `AUTO#${work.invoiceId}`;
+    let phase: "INITIATE" | "RECONCILE" | "CONFIRM" = "INITIATE";
     try {
       const created = await realTestFiscalService.initiate(context, {
         ...request, attemptId, commandId: `${attemptId}#CREATE`,
       });
       if (created.status !== "CREATED") return { state: created.status };
+      phase = "RECONCILE";
       await realTestFiscalService.recover(context, { ...request, providerOperation: "RECONCILE" });
+      phase = "CONFIRM";
       const confirmed = await realTestFiscalService.confirm(context, {
         ...request, commandId: `${attemptId}#CONFIRM`, confirm: true,
       });
@@ -58,7 +67,19 @@ export class RestaurantFiscalWorkProcessor {
         return { state: "UNRESOLVED" as const };
       }
       return { state: confirmed.status };
-    } catch {
+    } catch (error) {
+      const code = error instanceof Error && knownPreReservationFailure.has(error.message)
+        ? error.message : "FISCAL_EXECUTION_UNRESOLVED";
+      // Only these mapping failures occur before reservation. Never infer safety
+      // from an absent attempt after a timeout or conditional write failure.
+      if (phase === "INITIATE" && code !== "FISCAL_EXECUTION_UNRESOLVED") {
+        console.error(JSON.stringify({ event: "FISCAL_WORK_PRE_RESERVATION_BLOCKED",
+          orgId: work.orgId, invoiceId: work.invoiceId, code }));
+        await RestaurantFiscalWorkRepository.block(work, claim);
+        return { state: "BLOCKED" as const };
+      }
+      console.error(JSON.stringify({ event: "FISCAL_WORK_UNRESOLVED",
+        orgId: work.orgId, invoiceId: work.invoiceId, code }));
       // The fiscal attempt is authoritative. Never retry a provider mutation here.
       return { state: "UNRESOLVED" as const };
     }

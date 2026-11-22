@@ -414,6 +414,18 @@ test("rejects absent verified seller IFU, payment mismatch, commercial mismatch 
     ),
   ).toThrow("FISCAL_MAPPING_SCOPE_DENIED");
 });
+test("authorization proof rejects the same missing seller address as real execution", () => {
+  const value = preparation();
+  const { bindingDigest: _, ...payload } = value.provenance;
+  value.provenance = bindRestaurantIssuanceProvenance({
+    ...payload,
+    seller: { ...payload.seller,
+      seller: { ...payload.seller.seller, address: undefined } },
+  });
+  expect(() => mapRestaurantBeninRequest(value, principal, identity,
+    configuration(), "AUTHORIZATION_PROOF"))
+    .toThrow("FISCAL_SELLER_IDENTITY_INCOMPLETE");
+});
 test("accepts the canonical leaf-level verification of the selected IFU only", () => {
   const value = preparation();
   const { bindingDigest: _, ...payload } = value.provenance;

@@ -87,13 +87,15 @@ export class SyntheticFiscalOrchestrator {
     attemptId: string,
     commandId: string,
   ) {
-    await this.access(p, identity, "CREATE");
     const prepared = await this.prepare(p, identity);
     if (JSON.stringify(prepared.identity) !== JSON.stringify(identity))
       throw new FiscalAttemptConflict("SCOPE_DENIED");
     const fiscalDocumentType = (prepared.payload as { invoice?: { type?: unknown } } | null)?.invoice?.type;
     if (this.real && !["FV", "EV", "FA", "EA"].includes(String(fiscalDocumentType)))
       throw new FiscalAttemptConflict("INVALID_INPUT");
+    // Read-only preparation must succeed before consuming the one-use CREATE budget.
+    // Access is still required before any durable reservation or provider mutation.
+    await this.access(p, identity, "CREATE");
     // Reservation validates the closed identity, digests and exact positive total.
     const state = await this.store.reserve({
       identity,
