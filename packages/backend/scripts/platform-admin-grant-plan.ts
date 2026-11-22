@@ -9,6 +9,7 @@ import { PlatformGrantSchema, PlatformPrincipalSchema, platformPrincipalDigest, 
 import { KeyFactory as K } from "../lambda/shared/key-builder";
 
 export const GrantPlanInputSchema = PlatformPrincipalSchema.extend({
+  permission: z.enum([PLATFORM_SFE_APPROVAL_MANAGE, "PLATFORM_LEGAL_IDENTITY_REVIEW"]).default(PLATFORM_SFE_APPROVAL_MANAGE),
   tableName: z.string().min(3).max(255),
   expectedVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER - 1),
   action: z.enum(["GRANT", "REVOKE"]),
@@ -20,14 +21,14 @@ export function platformAdminGrantPlan(input: unknown) {
   if (request.action === "REVOKE" && request.expectedVersion === 0) throw new Error("Existing grant version required");
   const data = PlatformGrantSchema.parse({
     stage: request.stage, issuer: request.issuer, sub: request.sub,
-    permission: PLATFORM_SFE_APPROVAL_MANAGE, status: request.action === "GRANT" ? "ACTIVE" : "REVOKED",
+    permission: request.permission, status: request.action === "GRANT" ? "ACTIVE" : "REVOKED",
     revokedAt: request.action === "GRANT" ? null : request.changedAt,
     version: request.expectedVersion + 1, updatedAt: request.changedAt, changedByIamArn: request.changedByIamArn,
   });
   const PK = K.platformAdminPK(request.stage, platformPrincipalDigest(data));
   return { TransactItems: [
     { Put: { TableName: request.tableName,
-      Item: marshall({ PK, SK: K.platformAdminGrantSK(), entityType: "PLATFORM_ADMIN_GRANT", data }),
+      Item: marshall({ PK, SK: request.permission === "PLATFORM_LEGAL_IDENTITY_REVIEW" ? K.platformLegalReviewGrantSK() : K.platformAdminGrantSK(), entityType: "PLATFORM_ADMIN_GRANT", data }),
       ConditionExpression: request.expectedVersion === 0 ? "attribute_not_exists(PK)" : "#data.#version = :version AND entityType = :type",
       ...(request.expectedVersion === 0 ? {} : {
         ExpressionAttributeNames: { "#data": "data", "#version": "version" },
@@ -35,7 +36,7 @@ export function platformAdminGrantPlan(input: unknown) {
       }),
     } },
     { Put: { TableName: request.tableName,
-      Item: marshall({ PK, SK: K.platformAdminGrantHistorySK(data.version), entityType: "PLATFORM_ADMIN_GRANT_HISTORY", data }),
+      Item: marshall({ PK, SK: request.permission === "PLATFORM_LEGAL_IDENTITY_REVIEW" ? K.platformLegalReviewGrantHistorySK(data.version) : K.platformAdminGrantHistorySK(data.version), entityType: "PLATFORM_ADMIN_GRANT_HISTORY", data }),
       ConditionExpression: "attribute_not_exists(PK)",
     } },
   ] };

@@ -1,3 +1,4 @@
+import * as legalReview from "@/lambda/shared/authorization/legal-review";
 /** Offline real domain path: only SDK transport and authenticated principal are substituted. */
 import { mockClient } from "aws-sdk-client-mock";
 import {
@@ -101,6 +102,8 @@ export function installStore() {
   });
 }
 export async function realSources() {
+  jest.spyOn(legalReview,"requireLegalReviewer").mockResolvedValue({actor:"reviewer",check:{ConditionCheck:{TableName:"test",Key:marshall({PK:"grant",SK:"review"}),ConditionExpression:"entityType = :type",ExpressionAttributeValues:marshall({":type":"GRANT"})}}} as never);
+  records.set("grant|review", {PK:"grant",SK:"review",entityType:"GRANT"});
   await Legal.createRevision(orgId, "reviewer", legal());
   await Legal.activate(orgId, "reviewer", id, 0);
   await Timezone.createRevision(orgId, "reviewer", timezone());

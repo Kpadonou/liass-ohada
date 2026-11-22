@@ -1,3 +1,4 @@
+import { LegalIdentityProposalService as Legal } from "../../shared/services/legal-identity-proposal-service";
 import { OrganizationProfileService } from "../../shared/services/organization-profile-service";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
 import { z } from "zod";
@@ -32,8 +33,24 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
     const principal = verifiedPlatformPrincipal(event);
     const orgId = Object.entries(event.headers ?? {}).find(
       ([key]) => key.toLowerCase() === "x-org-id",
-    )?.[1];
-    if (!orgId) throw new AppError(400, "ERROR_MISSING_ORG_ID");
+    )?.[1] ?? "";
+    if (!orgId && !event.routeKey.includes("/platform/organizations/")) throw new AppError(400, "ERROR_MISSING_ORG_ID");
+    if (event.routeKey.includes("/legal-identity/proposals")) {
+      const admin = event.routeKey.includes("/platform/");
+      const targetOrg = admin ? z.string().min(1).max(200).parse(event.pathParameters?.orgId) : orgId!;
+      const proposalId = event.pathParameters?.proposalId;
+      let raw: unknown = {};
+      try { raw = JSON.parse(event.body ?? "{}"); } catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
+      let data: unknown;
+      if (event.routeKey === "POST /me/organization/legal-identity/proposals") data = await Legal.submit(targetOrg,principal.sub,raw);
+      else if (event.routeKey.startsWith("GET ")) data = await Legal.read(targetOrg,principal.sub,z.string().uuid().parse(proposalId),admin ? principal : undefined);
+      else if (admin && event.routeKey.endsWith("/review")) data = await Legal.review(targetOrg,principal,z.string().uuid().parse(proposalId),raw);
+      else if (admin && event.routeKey.endsWith("/activation")) {
+        const input = z.object({expectedVersion:z.number().int().nonnegative()}).strict().parse(raw);
+        data = await Legal.activate(targetOrg,principal,z.string().uuid().parse(proposalId),input.expectedVersion);
+      } else throw new AppError(404,"ERROR_NOT_FOUND");
+      return {statusCode:200,body:JSON.stringify({data})};
+    }
     if (event.routeKey === "GET /me/organization/profile")
       return { statusCode: 200, body: JSON.stringify({ data: await OrganizationProfileService.read(orgId, principal.sub) }) };
     if (event.routeKey === "PUT /me/organization/profile") {

@@ -1,0 +1,42 @@
+import { GetItemCommand,TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
+import { marshall } from '@aws-sdk/util-dynamodb';
+import { dynamoClient } from '@/lambda/shared/dynamo-client';
+import { LegalIdentityProposalService as Service } from '@/lambda/shared/services/legal-identity-proposal-service';
+import { OrganizationFiscalRepository as Access } from '@/lambda/shared/repositories/organization-fiscal-repository';
+import { OrganizationLegalIdentityService as Identity } from '@/lambda/shared/services/organization-legal-identity-service';
+import { requireLegalReviewer } from '@/lambda/shared/authorization/legal-review';
+import { PlatformPrincipal, platformPrincipalDigest } from '@/lambda/shared/authorization/platform-admin';
+import { KeyFactory as K } from '@/lambda/shared/key-builder';
+import { artifact,legal,id } from '../issuance-authority/fixtures';
+const principal:PlatformPrincipal={stage:'dev',issuer:'https://cognito-idp.eu-west-3.amazonaws.com/pool',sub:'11111111-1111-4111-8111-111111111111'};
+const proposal={proposalId:id,seller:legal().seller,legalEntityReference:'synthetic-entity',evidenceArtifacts:[artifact('support','1',{genuine:'test evidence'})]};
+let rows:Map<string,Record<string,unknown>>;
+beforeEach(()=>{rows=new Map();jest.spyOn(Access,'authorize').mockResolvedValue({canManage:true});
+ jest.spyOn(dynamoClient,'send').mockImplementation((async(c:unknown)=>{
+ if(c instanceof GetItemCommand)return {Item: rows.get(c.input.Key!.SK.S!)?marshall(rows.get(c.input.Key!.SK.S!)!):undefined};
+ if(c instanceof TransactWriteItemsCommand)for(const op of c.input.TransactItems??[])if(op.Put){const row=(await import('@aws-sdk/util-dynamodb')).unmarshall(op.Put.Item!);if(rows.has(row.SK))throw Object.assign(new Error(),{name:'TransactionCanceledException'});rows.set(row.SK,row);}return {};
+ }) as never);
+});
+afterEach(()=>jest.restoreAllMocks());
+function grant(){rows.set(K.platformLegalReviewGrantSK(),{PK:K.platformAdminPK('dev',platformPrincipalDigest(principal)),SK:K.platformLegalReviewGrantSK(),entityType:'PLATFORM_ADMIN_GRANT',data:{...principal,permission:'PLATFORM_LEGAL_IDENTITY_REVIEW',status:'ACTIVE',revokedAt:null,version:1,updatedAt:new Date().toISOString(),changedByIamArn:'arn:aws:iam::123456789012:role/test'}});}
+test('owner submits immutable unverified proposal without changing selected identity',async()=>{expect(await Service.submit('org-123','owner',proposal)).toEqual({proposalId:id,version:1});expect(rows.has(K.organizationLegalIdentityCurrentSK())).toBe(false);await expect(Service.submit('org-123','owner',{...proposal,seller:{...proposal.seller,name:'changed'}})).rejects.toThrow();});
+test('owner and ungranted Platform user cannot review or activate',async()=>{await Service.submit('org-123','owner',proposal);await expect(Service.review('org-123',principal,id,{decision:'REJECTED',reason:'no'})).rejects.toMatchObject({statusCode:403});await expect(Identity.createRevision('org-123','owner',legal())).rejects.toMatchObject({statusCode:403});await expect(Identity.activate('org-123','owner',id,0)).rejects.toMatchObject({statusCode:403});});
+test('grant is permission-specific and revoked grants fail',async()=>{grant();await expect(requireLegalReviewer(principal)).resolves.toMatchObject({actor:principal.sub});(rows.get(K.platformLegalReviewGrantSK())!.data as Record<string,unknown>).permission='PLATFORM_SFE_APPROVAL_MANAGE';await expect(requireLegalReviewer(principal)).rejects.toThrow();});
+test('self-review and tenant substitution fail',async()=>{grant();await Service.submit('org-123',principal.sub,proposal);await expect(Service.review('org-123',principal,id,{decision:'REJECTED',reason:'no'})).rejects.toMatchObject({statusCode:403});await expect(Service.read('other','owner',id)).rejects.toThrow();});
+test('reviewer rejects with immutable decision and cannot activate rejection',async()=>{grant();await Service.submit('org-123','owner',proposal);await Service.review('org-123',principal,id,{decision:'REJECTED',reason:'missing legal address'});await expect(Service.review('org-123',principal,id,{decision:'REJECTED',reason:'again'})).rejects.toThrow();await expect(Service.activate('org-123',principal,id,0)).rejects.toThrow();});
+test('missing evidence fails before persistence',async()=>{await expect(Service.submit('org-123','owner',{...proposal,evidenceArtifacts:[]})).rejects.toThrow();expect(rows.size).toBe(0);});
+test('authorized acceptance and selection reuse validated immutable revision',async()=>{
+ grant();await Service.submit('org-123','owner',proposal);
+ const r=legal();r.evidenceArtifacts.push(proposal.evidenceArtifacts[0]);
+ const accepted=artifact('acceptance','1',{orgId:'org-123',identityReference:id,identityVersion:'1',identityDigest:r.identityDigest,decision:'ACCEPTED',reviewedByUserId:principal.sub,selectionBaseVersion:0});
+ r.evidenceArtifacts=r.evidenceArtifacts.map(a=>a.reference==='acceptance'?accepted:a);
+ await Service.review('org-123',principal,id,{decision:'ACCEPTED',revision:r});
+ await Service.activate('org-123',principal,id,0);
+ expect(rows.get(K.organizationLegalIdentityCurrentSK())?.selectedRevisionId).toBe(id);
+ await expect(Service.activate('org-123',principal,id,0)).rejects.toThrow();
+ const result=await Identity.readSellerIssuanceAuthority('org-123');expect(result.sellerAuthority.seller.name).toBe(r.seller.name);
+});
+test('revoked reviewer cannot review',async()=>{grant();const data=rows.get(K.platformLegalReviewGrantSK())!.data as Record<string,unknown>;data.status='REVOKED';data.revokedAt=new Date().toISOString();await expect(requireLegalReviewer(principal)).rejects.toThrow();});
+test('acceptance cannot drop submitted supporting evidence',async()=>{grant();await Service.submit('org-123','owner',proposal);await expect(Service.review('org-123',principal,id,{decision:'ACCEPTED',revision:legal()})).rejects.toMatchObject({messageCode:'AUTHORITY_FACT_PROOF_MISSING'});expect(rows.has(K.organizationLegalIdentityCurrentSK())).toBe(false);});
+test('unauthorized organization actor cannot submit',async()=>{jest.mocked(Access.authorize).mockRejectedValue(new Error('denied'));await expect(Service.submit('org-123','member',proposal)).rejects.toThrow();expect(rows.size).toBe(0);});
+test('concurrent decisions have exactly one durable winner',async()=>{grant();await Service.submit('org-123','owner',proposal);const results=await Promise.allSettled([Service.review('org-123',principal,id,{decision:'REJECTED',reason:'first'}),Service.review('org-123',principal,id,{decision:'REJECTED',reason:'second'})]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);expect(rows.has(K.organizationLegalDecisionSK(id))).toBe(true);});

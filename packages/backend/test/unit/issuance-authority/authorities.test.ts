@@ -1,3 +1,4 @@
+import * as reviewAuthorization from "@/lambda/shared/authorization/legal-review";
 import { dynamoClient } from "@/lambda/shared/dynamo-client";
 import {
   DynamoDBClient,
@@ -27,6 +28,8 @@ beforeEach(() => {
   jest.restoreAllMocks();
   mock.reset();
   records.clear();
+  records.set("grant|review", {PK:"grant",SK:"review",entityType:"GRANT"});
+  jest.spyOn(reviewAuthorization,"requireLegalReviewer").mockResolvedValue({actor:"reviewer",check:{ConditionCheck:{TableName:"test",Key:marshall({PK:"grant",SK:"review"}),ConditionExpression:"entityType = :type",ExpressionAttributeValues:marshall({":type":"GRANT"})}}} as never);
   jest.spyOn(TenantAccessService, "assertUserCanAccessOrg").mockResolvedValue({
     role: "OWNER",
     workspaceType: "COMPANY",
@@ -110,8 +113,8 @@ test("Platform creates append-only accepted revision, selects it with CAS, retur
   expect(r.sellerAuthority.seller.name).toBe("Synthetic seller");
   expect(r.check.ConditionCheck!.ConditionExpression).toContain("#f");
   expect(
-    mock.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems,
-  ).toHaveLength(3);
+    mock.commandCalls(TransactWriteItemsCommand)[1].args[0].input.TransactItems,
+  ).toHaveLength(4);
   expect(
     mock
       .commandCalls(GetItemCommand)
@@ -181,7 +184,8 @@ test("wrong stored org and unapproved selection never resolve via Organization.n
       ),
   ).toBe(true);
 });
-test("only an authenticated owning review boundary may create evidence", async () => {
+test("only an authenticated Platform review boundary may create evidence", async () => {
+  jest.mocked(reviewAuthorization.requireLegalReviewer).mockRejectedValue(new (await import("@/lambda/shared/app-error")).AppError(403,"AUTHORITY_REVIEW_NOT_AUTHORIZED"));
   jest
     .mocked(TenantAccessService.assertUserCanAccessOrg)
     .mockResolvedValue({ role: "MEMBER", workspaceType: "COMPANY" } as never);

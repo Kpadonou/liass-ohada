@@ -71,6 +71,7 @@ export class RevisionStore {
     id: string,
     data: Record<string, unknown>,
     actorUserId: string,
+    checks: TransactWriteItem[] = [],
   ): Promise<void> {
     const item = clean({
       ...data,
@@ -94,16 +95,12 @@ export class RevisionStore {
     });
     admission(item, this.options.cap);
     try {
-      await dynamoClient.send(
-        new PutItemCommand({
-          TableName: config.TABLE_NAME,
-          Item: marshall(item),
-          ConditionExpression:
-            "attribute_not_exists(PK) AND attribute_not_exists(SK)",
-        }),
-      );
+      const put = { TableName: config.TABLE_NAME, Item: marshall(item),
+        ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" };
+      if (checks.length) await dynamoClient.send(new TransactWriteItemsCommand({TransactItems: [...checks, {Put: put}]}));
+      else await dynamoClient.send(new PutItemCommand(put));
     } catch (e) {
-      if ((e as Error).name !== "ConditionalCheckFailedException") throw e;
+      if (!["ConditionalCheckFailedException", "TransactionCanceledException"].includes((e as Error).name)) throw e;
       const old = await this.revision(orgId, id);
       const { createdAt, createdByUserId, ...a } = old;
       const { createdAt: _a, createdByUserId: _b, ...b } = item;
@@ -118,6 +115,7 @@ export class RevisionStore {
     actorUserId: string,
     status: "ACTIVE" | "DISABLED",
     facts: Record<string, unknown>,
+    checks: TransactWriteItem[] = [],
   ): Promise<void> {
     z.number()
       .int()
@@ -169,6 +167,7 @@ export class RevisionStore {
     await dynamoClient.send(
       new TransactWriteItemsCommand({
         TransactItems: [
+          ...checks,
           {
             ConditionCheck: {
               TableName: config.TABLE_NAME,

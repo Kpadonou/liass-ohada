@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AppError } from "../app-error";
 
 export const PLATFORM_SFE_APPROVAL_MANAGE = "PLATFORM_SFE_APPROVAL_MANAGE" as const;
+export const PLATFORM_LEGAL_IDENTITY_REVIEW = "PLATFORM_LEGAL_IDENTITY_REVIEW" as const;
 export const PlatformStageSchema = z.enum(["dev", "test", "prod"]);
 /** Cognito subjects are UUID-shaped but are not guaranteed to satisfy RFC UUID version/variant bits. */
 export const CognitoSubjectSchema = z
@@ -16,7 +17,7 @@ export const PlatformPrincipalSchema = z.object({
 }).strict();
 export type PlatformPrincipal = z.infer<typeof PlatformPrincipalSchema>;
 export const PlatformGrantSchema = PlatformPrincipalSchema.extend({
-  permission: z.literal(PLATFORM_SFE_APPROVAL_MANAGE),
+  permission: z.enum([PLATFORM_SFE_APPROVAL_MANAGE, PLATFORM_LEGAL_IDENTITY_REVIEW]),
   status: z.enum(["ACTIVE", "REVOKED"]),
   revokedAt: z.string().datetime().nullable(),
   version: z.number().int().positive().safe(),

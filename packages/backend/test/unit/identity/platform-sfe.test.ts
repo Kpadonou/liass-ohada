@@ -367,3 +367,9 @@ test("bootstrap/revocation planner is offline, stage-separated and version condi
   ).not.toBe(unmarshall(plan.TransactItems[0].Put.Item).PK);
   expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
 });
+test('legal-review grant plans use a distinct permission and immutable history namespace',()=>{
+ const plan=platformAdminGrantPlan({...principal,permission:'PLATFORM_LEGAL_IDENTITY_REVIEW',tableName:'test-table',expectedVersion:0,action:'GRANT',changedByIamArn:grant().data.changedByIamArn,changedAt:grant().data.updatedAt});
+ expect(unmarshall(plan.TransactItems[0].Put.Item).SK).toBe(K.platformLegalReviewGrantSK());
+ expect(unmarshall(plan.TransactItems[1].Put.Item).SK).toBe(K.platformLegalReviewGrantHistorySK(1));
+ expect(unmarshall(plan.TransactItems[0].Put.Item).data.permission).toBe('PLATFORM_LEGAL_IDENTITY_REVIEW');
+});

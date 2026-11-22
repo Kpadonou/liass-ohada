@@ -37,7 +37,7 @@ export class PlatformSfeRepository {
       const row = grantRecord.parse(await this.get(PK, SK));
       if (row.PK !== PK || row.SK !== SK || row.data.stage !== principal.stage ||
         row.data.issuer !== principal.issuer || row.data.sub !== principal.sub ||
-        row.data.status !== "ACTIVE" || row.data.revokedAt !== null) throw deny();
+        row.data.permission !== "PLATFORM_SFE_APPROVAL_MANAGE" || row.data.status !== "ACTIVE" || row.data.revokedAt !== null) throw deny();
       return row;
     } catch { throw deny(); }
   }

@@ -165,6 +165,12 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         },
       },
     }));
+    const legalRole = new iam.Role(this, "LegalIdentityRole", {
+      assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
+      managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
+    });
+    legalRole.addToPolicy(new iam.PolicyStatement({actions:["dynamodb:GetItem","dynamodb:PutItem","dynamodb:ConditionCheckItem"],resources:[props.table.tableArn],conditions:{"ForAllValues:StringLike":{"dynamodb:LeadingKeys":["ORG#*"]}}}));
+    legalRole.addToPolicy(new iam.PolicyStatement({actions:["dynamodb:GetItem","dynamodb:ConditionCheckItem"],resources:[props.table.tableArn],conditions:{"ForAllValues:StringLike":{"dynamodb:LeadingKeys":[`PLATFORM_ADMIN#${props.stage}#*`]}}}));
     const parameterArn = Stack.of(this).formatArn({
       service: "ssm",
       resource: "parameter",
@@ -228,6 +234,11 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
     );
     // No GetParametersByPath, DeleteParameter, SecretsManager, custom KMS key or administrator-registry access.
     for (const [method, routePath, actionName] of [
+      [HttpMethod.POST, "/me/organization/legal-identity/proposals", "propose-legal-identity"],
+      [HttpMethod.GET, "/me/organization/legal-identity/proposals/{proposalId}", "read-legal-proposal"],
+      [HttpMethod.GET, "/platform/organizations/{orgId}/legal-identity/proposals/{proposalId}", "review-legal-proposal"],
+      [HttpMethod.POST, "/platform/organizations/{orgId}/legal-identity/proposals/{proposalId}/review", "decide-legal-proposal"],
+      [HttpMethod.POST, "/platform/organizations/{orgId}/legal-identity/proposals/{proposalId}/activation", "activate-legal-proposal"],
       [HttpMethod.GET, "/me/organization/profile", "read-organization-profile"],
       [HttpMethod.PUT, "/me/organization/profile", "update-organization-profile"],
       [HttpMethod.GET, "/me/organization/fiscality/profile", "read-fiscal-profile"],
@@ -261,7 +272,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
       const verification = actionName === "verify-fiscal-connection";
       this.addRoute({
         ...props,
-        lambdaRole: verification ? verificationRole : routePath.endsWith("/profile") ? profileRole : enrollmentRole,
+        lambdaRole: routePath.includes("/legal-identity/") ? legalRole : verification ? verificationRole : routePath.endsWith("/profile") ? profileRole : enrollmentRole,
         method,
         routePath,
         actionName,

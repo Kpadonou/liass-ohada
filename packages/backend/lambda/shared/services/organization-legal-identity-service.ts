@@ -7,7 +7,8 @@ import { KeyFactory } from "../key-builder";
 import { AppError } from "../app-error";
 import { RevisionStore } from "../authority/revision-store";
 import { assertArtifact, canonical, clean } from "../authority/integrity";
-import { TenantAccessService } from "./tenant-access-service";
+import { requireLegalReviewer } from "../authorization/legal-review";
+import type { PlatformPrincipal } from "../authorization/platform-admin";
 
 const store = new RevisionStore({
   type: "ORGANIZATION_LEGAL_IDENTITY",
@@ -20,18 +21,6 @@ const store = new RevisionStore({
 const revisionSchema = LegalSellerAuthoritySchema.extend({
   evidenceArtifacts: z.array(AuthorityArtifactSchema).min(2).max(64),
 }).strict();
-async function reviewer(orgId: string, actor: string) {
-  const a = await TenantAccessService.assertUserCanAccessOrg({
-    orgId,
-    userId: actor,
-  });
-  if (
-    a.role !== "OWNER" ||
-    a.workspaceType !== "COMPANY" ||
-    a.accessSource === "CABINET"
-  )
-    throw new AppError(403, "AUTHORITY_REVIEW_NOT_AUTHORIZED");
-}
 function validate(input: unknown, orgId: string) {
   const v = revisionSchema.parse(input);
   if (
@@ -118,7 +107,8 @@ function validate(input: unknown, orgId: string) {
   }
   return { v, acceptance };
 }
-/** Platform-owned internal boundary. No public review/configuration route or automatic verification. */
+/** Platform-owned reviewed identity boundary. Mutations require an explicit Platform grant;
+ * organization ownership alone never permits verification or selection. */
 export class OrganizationLegalIdentityService {
   /** Read-only fiscal identity boundary; declared connection IFU is never trusted evidence. */
   static async readFiscalTaxpayerAuthority(orgId: string) {
@@ -138,22 +128,24 @@ export class OrganizationLegalIdentityService {
   }
   static async createRevision(
     orgId: string,
-    actorUserId: string,
+    actorUserId: string | PlatformPrincipal,
     input: unknown,
   ) {
-    await reviewer(orgId, actorUserId);
+    const grant = await requireLegalReviewer(actorUserId);
+    const actor = grant.actor;
     const { v, acceptance } = validate(input, orgId);
-    if (acceptance.reviewedByUserId !== actorUserId)
+    if (acceptance.reviewedByUserId !== actor)
       throw new AppError(403, "AUTHORITY_REVIEW_ACTOR_MISMATCH");
-    await store.create(orgId, v.identityReference, v, actorUserId);
+    await store.create(orgId, v.identityReference, v, actor, [grant.check]);
   }
   static async activate(
     orgId: string,
-    actorUserId: string,
+    actorUserId: string | PlatformPrincipal,
     revisionId: string,
     expectedVersion: number,
   ) {
-    await reviewer(orgId, actorUserId);
+    const grant = await requireLegalReviewer(actorUserId);
+    const actor = grant.actor;
     const r = await store.revision(orgId, revisionId);
     const { v, acceptance } = validate(
       Object.fromEntries(
@@ -167,7 +159,7 @@ export class OrganizationLegalIdentityService {
       orgId,
       revisionId,
       expectedVersion,
-      actorUserId,
+      actor,
       "ACTIVE",
       {
         identityDigest: v.identityDigest,
@@ -175,21 +167,23 @@ export class OrganizationLegalIdentityService {
         acceptanceVersion: v.acceptanceVersion,
         legalEntityReference: v.legalEntityReference,
       },
+      [grant.check],
     );
   }
   static async disable(
     orgId: string,
-    actorUserId: string,
+    actorUserId: string | PlatformPrincipal,
     revisionId: string,
     expectedVersion: number,
   ) {
-    await reviewer(orgId, actorUserId);
+    const grant = await requireLegalReviewer(actorUserId);
+    const actor = grant.actor;
     const r = await store.revision(orgId, revisionId);
     await store.select(
       orgId,
       revisionId,
       expectedVersion,
-      actorUserId,
+      actor,
       "DISABLED",
       {
         identityDigest: r.identityDigest,
@@ -197,6 +191,7 @@ export class OrganizationLegalIdentityService {
         acceptanceVersion: r.acceptanceVersion,
         legalEntityReference: r.legalEntityReference,
       },
+      [grant.check],
     );
   }
   static async readSellerIssuanceAuthority(orgId: string) {

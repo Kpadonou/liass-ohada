@@ -16,6 +16,10 @@ export const KeyFactory = {
   // Platform-global authority: stage plus SHA-256 of verified [issuer, sub].
   platformAdminPK: (stage: string, principalDigest: string) =>
     `PLATFORM_ADMIN#${stage}#${principalDigest}`,
+  platformLegalReviewGrantHistorySK: (version: number) => `LEGAL_REVIEW_GRANT_HISTORY#${String(version).padStart(16, "0")}`,
+  platformLegalReviewGrantSK: () => "GRANT#PLATFORM_LEGAL_IDENTITY_REVIEW",
+  organizationLegalProposalSK: (id: string) => `PLATFORM_LEGAL_IDENTITY#PROPOSAL#${id}`,
+  organizationLegalDecisionSK: (id: string) => `PLATFORM_LEGAL_IDENTITY#DECISION#${id}`,
   platformAdminGrantSK: () => "GRANT#PLATFORM_SFE_APPROVAL_MANAGE",
   platformAdminGrantHistorySK: (version: number) => `GRANT_HISTORY#${String(version).padStart(16, "0")}`,
   platformSfePK: (stage: string) => `PLATFORM_SFE#${stage}#BJ`,
