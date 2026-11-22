@@ -110,6 +110,7 @@ function validate(input: unknown, orgId: string) {
 /** Platform-owned reviewed identity boundary. Mutations require an explicit Platform grant;
  * organization ownership alone never permits verification or selection. */
 export class OrganizationLegalIdentityService {
+  static async readSelectionVersion(orgId: string) { return store.selectionVersion(orgId); }
   /** Read-only fiscal identity boundary; declared connection IFU is never trusted evidence. */
   static async readFiscalTaxpayerAuthority(orgId: string) {
     const result = await store.current(orgId);
@@ -203,6 +204,6 @@ export class OrganizationLegalIdentityService {
       orgId,
     );
     const { evidenceArtifacts, ...sellerAuthority } = v;
-    return { sellerAuthority, check: result.check };
+    return { sellerAuthority, selectionVersion: result.selectionVersion, check: result.check };
   }
 }

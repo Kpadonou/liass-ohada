@@ -1889,6 +1889,7 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
   const seller = jest
     .spyOn(Seller, "readSellerIssuanceAuthority")
     .mockResolvedValue({
+      selectionVersion: 1,
       sellerAuthority: {
         ...fixture.seller,
         orgId: org,

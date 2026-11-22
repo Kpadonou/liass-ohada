@@ -169,7 +169,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
       assumedBy: new iam.ServicePrincipal("lambda.amazonaws.com"),
       managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
     });
-    legalRole.addToPolicy(new iam.PolicyStatement({actions:["dynamodb:GetItem","dynamodb:PutItem","dynamodb:ConditionCheckItem"],resources:[props.table.tableArn],conditions:{"ForAllValues:StringLike":{"dynamodb:LeadingKeys":["ORG#*"]}}}));
+    legalRole.addToPolicy(new iam.PolicyStatement({actions:["dynamodb:GetItem","dynamodb:Query","dynamodb:PutItem","dynamodb:ConditionCheckItem"],resources:[props.table.tableArn],conditions:{"ForAllValues:StringLike":{"dynamodb:LeadingKeys":["ORG#*"]}}}));
     legalRole.addToPolicy(new iam.PolicyStatement({actions:["dynamodb:GetItem","dynamodb:ConditionCheckItem"],resources:[props.table.tableArn],conditions:{"ForAllValues:StringLike":{"dynamodb:LeadingKeys":[`PLATFORM_ADMIN#${props.stage}#*`]}}}));
     const parameterArn = Stack.of(this).formatArn({
       service: "ssm",
@@ -234,6 +234,10 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
     );
     // No GetParametersByPath, DeleteParameter, SecretsManager, custom KMS key or administrator-registry access.
     for (const [method, routePath, actionName] of [
+      [HttpMethod.GET, "/platform/legal-identity/capability", "legal-review-capability"],
+      [HttpMethod.GET, "/platform/organizations/{orgId}/legal-identity/context", "legal-review-context"],
+      [HttpMethod.GET, "/me/organization/legal-identity/proposals", "list-legal-proposals"],
+      [HttpMethod.GET, "/platform/organizations/{orgId}/legal-identity/proposals", "list-review-proposals"],
       [HttpMethod.POST, "/me/organization/legal-identity/proposals", "propose-legal-identity"],
       [HttpMethod.GET, "/me/organization/legal-identity/proposals/{proposalId}", "read-legal-proposal"],
       [HttpMethod.GET, "/platform/organizations/{orgId}/legal-identity/proposals/{proposalId}", "review-legal-proposal"],

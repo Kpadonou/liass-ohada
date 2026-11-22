@@ -214,6 +214,13 @@ export class RevisionStore {
       }),
     );
   }
+  async selectionVersion(orgId: string): Promise<number> {
+    const row = await this.get(orgId, this.options.currentKey());
+    if (!row) return 0;
+    if (row.entityType !== `${this.options.type}_CURRENT` || !Number.isSafeInteger(row.version) || Number(row.version) < 1)
+      throw new AppError(409, "AUTHORITY_SELECTION_CONFLICT");
+    return Number(row.version);
+  }
   async current(
     orgId: string,
   ): Promise<{ revision: Record<string, unknown>; selectionVersion: number; check: TransactWriteItem }> {

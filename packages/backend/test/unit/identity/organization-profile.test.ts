@@ -1,3 +1,4 @@
+import { legal } from '../issuance-authority/fixtures';
 import { GetItemCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
 import { marshall } from '@aws-sdk/util-dynamodb';
 import { OrganizationProfileService as Service } from '@/lambda/shared/services/organization-profile-service';
@@ -42,6 +43,7 @@ test('stale concurrent update fails without overwriting',async()=>{
  await expect(Service.update('org','actor',{contact,expectedVersion:1})).rejects.toMatchObject({statusCode:409});
 });
 test('selected identity exposes version and missing legal address without contact fallback',async()=>{
- jest.mocked(OrganizationLegalIdentityService.readSellerIssuanceAuthority).mockResolvedValue({sellerAuthority:{identityVersion:'2',seller:{name:'Legal company',identifiers:[]},factStates:[{fieldPath:'name',state:'VERIFIED',evidenceReference:'proof'}]}} as never);
- expect((await Service.read('org','actor')).legalIdentity).toEqual({version:'2',name:'Legal company',ifu:null,address:null,missingEvidence:['ifu','address']});
+ const {evidenceArtifacts,...authority}=legal('org');
+ jest.mocked(OrganizationLegalIdentityService.readSellerIssuanceAuthority).mockResolvedValue({sellerAuthority:authority,selectionVersion:1,check:{}} as never);
+ expect((await Service.read('org','actor')).legalIdentity).toMatchObject({version:'1',name:'Synthetic seller',ifu:null,address:null,missingEvidence:['ifu','address'],selectionVersion:1,authority});
 });

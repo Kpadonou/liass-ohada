@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { GetItemCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
+import { GetItemCommand, QueryCommand, TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { LegalSellerAuthoritySchema, AuthorityArtifactSchema } from '@liass-ohada/shared/shared';
 import { config, dynamoClient } from '../dynamo-client';
@@ -26,6 +26,19 @@ async function get(orgId:string,sk:string) {
  return row;
 }
 export class LegalIdentityProposalService {
+ static async context(orgId:string,principal:PlatformPrincipal) {
+  await requireLegalReviewer(principal);
+  try {const selected=await Identity.readSellerIssuanceAuthority(orgId);return {authority:selected.sellerAuthority,selectionVersion:selected.selectionVersion};}
+  catch(e){if(e instanceof AppError && e.messageCode==='AUTHORITY_UNAVAILABLE')return {authority:null,selectionVersion:await Identity.readSelectionVersion(orgId)};throw e;}
+ }
+ static async list(orgId:string,actor:string,cursor?:string,principal?:PlatformPrincipal) {
+  if(principal)await requireLegalReviewer(principal);else await Access.authorize(orgId,actor,false,false);
+  let start: {PK:string;SK:string}|undefined;
+  if(cursor){try {z.string().max(4096).parse(cursor);start=z.object({PK:z.literal(K.orgKey(orgId)),SK:z.string().startsWith(K.organizationLegalProposalSK(''))}).strict().parse(JSON.parse(Buffer.from(cursor,'base64url').toString()));}catch{throw new AppError(400,'ERROR_INVALID_INPUT');}}
+  const result=await dynamoClient.send(new QueryCommand({TableName:table(),KeyConditionExpression:'PK = :pk AND begins_with(SK, :prefix)',ExpressionAttributeValues:marshall({':pk':K.orgKey(orgId),':prefix':K.organizationLegalProposalSK('')}),ConsistentRead:true,Limit:20,...(start?{ExclusiveStartKey:marshall(start)}:{})}));
+  const items=await Promise.all((result.Items??[]).map(async item=>{const p=unmarshall(item);return this.read(orgId,actor,String(p.proposalId),principal);}));
+  return {items,nextCursor:result.LastEvaluatedKey?Buffer.from(JSON.stringify(unmarshall(result.LastEvaluatedKey))).toString('base64url'):null};
+ }
  static async submit(orgId:string,actor:string,raw:unknown) {
   await Access.authorize(orgId,actor,true,false);
   const input=LegalProposalRequestSchema.parse(raw);

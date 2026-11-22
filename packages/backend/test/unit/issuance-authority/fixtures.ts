@@ -91,6 +91,7 @@ export function mockAuthorities() {
       const { evidenceArtifacts, ...sellerAuthority } = legal(orgId);
       return {
         sellerAuthority,
+        selectionVersion: 1,
         check: {
           ConditionCheck: {
             TableName: "test",

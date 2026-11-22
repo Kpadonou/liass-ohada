@@ -1,3 +1,4 @@
+import { requireLegalReviewer } from "../../shared/authorization/legal-review";
 import { LegalIdentityProposalService as Legal } from "../../shared/services/legal-identity-proposal-service";
 import { OrganizationProfileService } from "../../shared/services/organization-profile-service";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer } from "aws-lambda";
@@ -34,6 +35,12 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
     const orgId = Object.entries(event.headers ?? {}).find(
       ([key]) => key.toLowerCase() === "x-org-id",
     )?.[1] ?? "";
+    if (event.routeKey === "GET /platform/legal-identity/capability") {
+      try {await requireLegalReviewer(principal);return {statusCode:200,body:JSON.stringify({data:{canReview:true}})};}
+      catch(e){if(e instanceof AppError && e.statusCode===403)return {statusCode:200,body:JSON.stringify({data:{canReview:false}})};throw e;}
+    }
+    if (event.routeKey === "GET /platform/organizations/{orgId}/legal-identity/context")
+      return {statusCode:200,body:JSON.stringify({data:await Legal.context(z.string().min(1).parse(event.pathParameters?.orgId),principal)})};
     if (!orgId && !event.routeKey.includes("/platform/organizations/")) throw new AppError(400, "ERROR_MISSING_ORG_ID");
     if (event.routeKey.includes("/legal-identity/proposals")) {
       const admin = event.routeKey.includes("/platform/");
@@ -43,6 +50,7 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       try { raw = JSON.parse(event.body ?? "{}"); } catch { throw new AppError(400, "ERROR_INVALID_INPUT"); }
       let data: unknown;
       if (event.routeKey === "POST /me/organization/legal-identity/proposals") data = await Legal.submit(targetOrg,principal.sub,raw);
+      else if (event.routeKey.startsWith("GET ") && !proposalId) data = await Legal.list(targetOrg,principal.sub,event.queryStringParameters?.cursor,admin ? principal : undefined);
       else if (event.routeKey.startsWith("GET ")) data = await Legal.read(targetOrg,principal.sub,z.string().uuid().parse(proposalId),admin ? principal : undefined);
       else if (admin && event.routeKey.endsWith("/review")) data = await Legal.review(targetOrg,principal,z.string().uuid().parse(proposalId),raw);
       else if (admin && event.routeKey.endsWith("/activation")) {

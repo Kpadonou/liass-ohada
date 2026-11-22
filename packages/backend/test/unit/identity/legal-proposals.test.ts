@@ -1,4 +1,5 @@
-import { GetItemCommand,TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
+import { GetItemCommand,QueryCommand,TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
+import { AppError } from '@/lambda/shared/app-error';
 import { marshall } from '@aws-sdk/util-dynamodb';
 import { dynamoClient } from '@/lambda/shared/dynamo-client';
 import { LegalIdentityProposalService as Service } from '@/lambda/shared/services/legal-identity-proposal-service';
@@ -40,3 +41,11 @@ test('revoked reviewer cannot review',async()=>{grant();const data=rows.get(K.pl
 test('acceptance cannot drop submitted supporting evidence',async()=>{grant();await Service.submit('org-123','owner',proposal);await expect(Service.review('org-123',principal,id,{decision:'ACCEPTED',revision:legal()})).rejects.toMatchObject({messageCode:'AUTHORITY_FACT_PROOF_MISSING'});expect(rows.has(K.organizationLegalIdentityCurrentSK())).toBe(false);});
 test('unauthorized organization actor cannot submit',async()=>{jest.mocked(Access.authorize).mockRejectedValue(new Error('denied'));await expect(Service.submit('org-123','member',proposal)).rejects.toThrow();expect(rows.size).toBe(0);});
 test('concurrent decisions have exactly one durable winner',async()=>{grant();await Service.submit('org-123','owner',proposal);const results=await Promise.allSettled([Service.review('org-123',principal,id,{decision:'REJECTED',reason:'first'}),Service.review('org-123',principal,id,{decision:'REJECTED',reason:'second'})]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);expect(rows.has(K.organizationLegalDecisionSK(id))).toBe(true);});
+test('bounded query advances a tenant-bound cursor without duplicate proposals',async()=>{
+ const second='22222222-2222-4222-8222-222222222222';await Service.submit('org-123','owner',proposal);await Service.submit('org-123','owner',{...proposal,proposalId:second});
+ const original=jest.mocked(dynamoClient.send).getMockImplementation()!;const queries:QueryCommand[]=[];
+ jest.mocked(dynamoClient.send).mockImplementation((async(c:unknown)=>{if(c instanceof QueryCommand){queries.push(c);const first=!c.input.ExclusiveStartKey;const selected=rows.get(K.organizationLegalProposalSK(first?id:second))!;return {Items:[marshall(selected)],...(first?{LastEvaluatedKey:marshall({PK:K.orgKey('org-123'),SK:K.organizationLegalProposalSK(id)})}:{})};}return (original as Function)(c);}) as never);
+ const a=await Service.list('org-123','owner');const b=await Service.list('org-123','owner',a.nextCursor!);expect([a.items[0].proposal.proposalId,b.items[0].proposal.proposalId]).toEqual([id,second]);expect(b.nextCursor).toBeNull();expect(queries.every(q=>q.input.Limit===20&&q.input.ConsistentRead===true)).toBe(true);
+ await expect(Service.list('other-org','owner',a.nextCursor!)).rejects.toMatchObject({statusCode:400});expect(queries).toHaveLength(2);
+});
+test('disabled selected identity retains the real concurrency version in review context',async()=>{grant();jest.spyOn(Identity,'readSellerIssuanceAuthority').mockRejectedValue(new AppError(409,'AUTHORITY_UNAVAILABLE'));jest.spyOn(Identity,'readSelectionVersion').mockResolvedValue(3);expect(await Service.context('org-123',principal)).toEqual({authority:null,selectionVersion:3});});

@@ -17,14 +17,14 @@ export class OrganizationProfileService {
     const row = result.Item ? unmarshall(result.Item) : {};
     let legalIdentity = null;
     try {
-      const { sellerAuthority: s } = await OrganizationLegalIdentityService.readSellerIssuanceAuthority(orgId);
+      const { sellerAuthority: s, selectionVersion } = await OrganizationLegalIdentityService.readSellerIssuanceAuthority(orgId);
       const verified = (p: string) => s.factStates.some(f => f.fieldPath === p && f.state === 'VERIFIED' && f.evidenceReference);
       const selectedIfu = s.seller.identifiers.find((v, i) => v.scheme === 'IFU' && v.issuingCountry === 'BJ' &&
         (verified('identifiers') || ['scheme', 'issuingCountry', 'value'].every(f => verified(`identifiers.${i}.${f}`))));
       const a = s.seller.address;
       const addressVerified = !!a?.lines.length && a.lines.every((_, i) => verified(`address.lines.${i}`)) &&
         (!a.city || verified('address.city')) && (!a.postalCode || verified('address.postalCode'));
-      legalIdentity = { version: s.identityVersion, name: s.seller.name,
+      legalIdentity = { authority: s, selectionVersion, version: s.identityVersion, name: s.seller.name,
         ifu: selectedIfu?.value ?? null, address: a ? [...a.lines, a.city, a.postalCode].filter(Boolean).join(', ') : null,
         missingEvidence: [...(!verified('name') ? ['name' as const] : []),
           ...(!selectedIfu ? ['ifu' as const] : []), ...(!addressVerified ? ['address' as const] : [])] };

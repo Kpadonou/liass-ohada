@@ -38,6 +38,7 @@ beforeEach(() => {
     .spyOn(Seller, "readSellerIssuanceAuthority")
     .mockResolvedValue({
       sellerAuthority: provenance.seller,
+      selectionVersion: 1,
       check: {
         ConditionCheck: {
           TableName: "platform",
