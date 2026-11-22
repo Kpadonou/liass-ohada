@@ -1,0 +1,6 @@
+import { webcrypto } from 'node:crypto';
+import { vi } from 'vitest';
+import { artifact,parseEvidence,reviewedRevision } from './legal-evidence';
+beforeEach(()=>vi.stubGlobal('crypto',webcrypto));afterEach(()=>vi.unstubAllGlobals());
+it('accepts existing hash-verified artifacts and rejects tampering or missing evidence',async()=>{const a=await artifact('genuine-reference',{document:'test'});expect(await parseEvidence(JSON.stringify([a]))).toEqual([a]);await expect(parseEvidence(JSON.stringify([{...a,bytes:'changed'}]))).rejects.toThrow();await expect(parseEvidence('[]')).rejects.toThrow();});
+it('review requires explicit name verification and subject evidence',async()=>{const a=await artifact('source',{document:'test'});const input={orgId:'org',actor:'reviewer',seller:{name:'Legal name',identifiers:[]},legalEntityReference:'entity',evidence:[a],facts:[{fieldPath:'name',state:'PRESENT' as const}],subjectEvidence:a.reference,selectionVersion:3};await expect(reviewedRevision(input)).rejects.toThrow();const r=await reviewedRevision({...input,facts:[{fieldPath:'name',state:'VERIFIED',evidenceReference:a.reference}]});expect(r.evidenceArtifacts).toHaveLength(3);expect(JSON.parse(r.evidenceArtifacts[2].bytes)).toMatchObject({reviewedByUserId:'reviewer',selectionBaseVersion:3});expect(r.seller.address).toBeUndefined();});

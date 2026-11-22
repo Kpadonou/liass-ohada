@@ -1,3 +1,4 @@
+import { LegalProposalsComponent } from '../../ui/legal-proposals.component';
 import { Component, effect, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,7 +11,7 @@ import { LiassCardComponent } from '../../../../shared/ui/card/card.component';
 import { LiassButtonComponent } from '../../../../shared/ui/button/button.component';
 import { LiassStatusChipComponent } from '../../../../shared/ui/status-chip/status-chip.component';
 @Component({selector: 'liass-organization-profile', templateUrl: './organization-profile.page.html',
-  imports: [ReactiveFormsModule, MatFormFieldModule, MatInputModule, TranslocoModule,
+  imports: [LegalProposalsComponent, ReactiveFormsModule, MatFormFieldModule, MatInputModule, TranslocoModule,
     LiassPageHeaderComponent, LiassCardComponent, LiassButtonComponent, LiassStatusChipComponent]})
 export class OrganizationProfilePage {
   readonly api = inject(OrganizationProfileApi);

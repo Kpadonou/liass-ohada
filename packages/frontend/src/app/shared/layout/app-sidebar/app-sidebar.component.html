@@ -62,6 +62,7 @@
       class="grid w-full min-w-0 grid-cols-1 gap-1"
       [attr.aria-label]="'SHELL.SIDEBAR.NAVIGATION_LABEL' | transloco"
     >
+      @if(legalCapability.data()?.canReview){<liass-sidebar-nav-item [active]="uiStore.currentPage() === 'platform.legal-review'" [compact]="!sidebarExpanded()" icon="fact_check" [label]="'LEGAL_UI.REVIEW_TITLE' | transloco" (selected)="selectItem(legalReviewItem)"/>}
       @if (cabinetMode()) {
         @for (item of visibleCabinetItems(); track item.page) {
           <liass-sidebar-nav-item

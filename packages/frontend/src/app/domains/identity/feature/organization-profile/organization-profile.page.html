@@ -16,8 +16,10 @@
       @if (profile.legalIdentity; as legal) {
         <div class="mt-4"><liass-status-chip [label]="(legal.missingEvidence.length ? 'ORG_PROFILE.INCOMPLETE' : 'ORG_PROFILE.VERIFIED') | transloco" [tone]="legal.missingEvidence.length ? 'warning' : 'success'" /></div>
         <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt>{{ 'ORG_PROFILE.NAME' | transloco }}</dt><dd>{{ legal.name }}</dd></div><div><dt>{{ 'ORG_PROFILE.VERSION' | transloco }}</dt><dd>{{ legal.version }}</dd></div><div><dt>{{ 'ORG_PROFILE.IFU' | transloco }}</dt><dd>{{ legal.ifu || ('ORG_PROFILE.MISSING' | transloco) }}</dd></div><div><dt>{{ 'ORG_PROFILE.LEGAL_ADDRESS' | transloco }}</dt><dd>{{ legal.address || ('ORG_PROFILE.MISSING' | transloco) }}</dd></div></dl>
+        @for (identifier of legal.authority?.seller?.identifiers; track $index) { <p class="mt-2 text-sm">{{identifier.scheme}} · {{identifier.issuingCountry}} · {{identifier.value}}</p> }
         @for (missing of legal.missingEvidence; track missing) { <p class="mt-2">{{ ('ORG_PROFILE.MISSING_' + missing) | transloco }}</p> }
       } @else { <p class="mt-4">{{ 'ORG_PROFILE.NO_IDENTITY' | transloco }}</p> }
     </liass-card>
+    <liass-legal-proposals [org]="profile.organization.orgId" [owner]="profile.canManage" [authority]="profile.legalIdentity?.authority ?? null" [selectionVersion]="profile.legalIdentity?.selectionVersion ?? 0" />
   }
 </div>

@@ -124,6 +124,10 @@ export const routes: Routes = [
     canActivate: [authGuard, tenantGuard],
     children: [
       {
+        path: 'platform/legal-review',
+        loadComponent: () => import('../../domains/identity/feature/legal-review/legal-review.page').then(m => m.LegalReviewPage),
+      },
+      {
         path: 'settings/organization',
         canActivate: [organizationWorkspaceGuard],
         loadComponent: () => import('../../domains/identity/feature/organization-profile/organization-profile.page').then(m => m.OrganizationProfilePage),

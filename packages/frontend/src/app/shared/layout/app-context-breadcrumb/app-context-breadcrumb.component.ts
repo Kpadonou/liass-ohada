@@ -9,6 +9,7 @@ import { UiStore, type AppPage } from '../../../core/state/ui.store';
 import { AuthStore } from '../../../domains/identity/data-access/auth.store';
 
 const pageLabelKeys: Record<AppPage, string> = {
+  'platform.legal-review': 'LEGAL_UI.REVIEW_TITLE',
   'settings.organization': 'ORG_PROFILE.TITLE',
   'settings.fiscality': 'FISCALITY.TITLE',
   administration: 'SHELL.PAGES.ADMINISTRATION',

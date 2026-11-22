@@ -1,3 +1,5 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideTanStackQuery, QueryClient } from '@tanstack/angular-query-experimental';
 import { signal } from '@angular/core';
 import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import { provideLocationMocks } from '@angular/common/testing';
@@ -158,6 +160,7 @@ describe('AppSidebarComponent', () => {
         }),
       ],
       providers: [
+        provideHttpClient(), provideTanStackQuery(new QueryClient({defaultOptions:{queries:{retry:false}}})),
         { provide: RestaurantOutletContext, useValue: { id: activeOutlet, available: () => true } },
         provideRouter([{ path: 'settings/fiscality', component: NavigationTarget }]),
         provideLocationMocks(),
@@ -324,6 +327,7 @@ describe('AppSidebarComponent', () => {
     ) as HTMLButtonElement;
 
     expect(labels).toEqual([
+      'ORG_PROFILE.TITLE',
       'Stock',
       'Restaurant',
       'Établissements',

@@ -1,3 +1,5 @@
+import { injectQuery } from '@tanstack/angular-query-experimental';
+import { LegalIdentityApi } from '../../../domains/identity/data-access/legal-identity.api';
 import { fiscalWorkspaceEligible } from '../../../core/routing/auth.guards';
 import { RestaurantOutletContext } from '../../../domains/restaurants/data-access/restaurant-outlet-context';
 import {
@@ -408,6 +410,9 @@ export class AppSidebarComponent {
   protected readonly showOrganization = computed(() => {
     const w = this.authStore.activeWorkspace(); return !!w && w.orgId === this.authStore.effectiveOrgId() && w.status === 'ACTIVE' && w.workspaceType === 'COMPANY' && w.accessSource === 'DIRECT';
   });
+  private readonly legalApi = inject(LegalIdentityApi);
+  protected readonly legalCapability = injectQuery(() => ({queryKey:['identity','legal-review-capability',...this.legalApi.context()], queryFn:()=>this.legalApi.capability(), enabled:!!this.authStore.currentUserId(), staleTime:60000}));
+  protected readonly legalReviewItem: ShellNavItem = {page:'platform.legal-review',route:'/platform/legal-review',icon:'fact_check',labelKey:'LEGAL_UI.REVIEW_TITLE'};
   protected readonly organizationItem: ShellNavItem = {page: 'settings.organization', route: '/settings/organization', icon: 'business', labelKey: 'ORG_PROFILE.TITLE'};
   protected readonly fiscalityItem: ShellNavItem = {
     page: 'settings.fiscality',
@@ -543,7 +548,7 @@ export class AppSidebarComponent {
 
     if (item.route) {
       let destination = item.route;
-      if (item.page === 'settings.organization' && this.currentProduct())
+      if ((item.page === 'settings.organization' || item.page === 'platform.legal-review') && this.currentProduct())
         destination += '?shellProduct=' + this.currentProduct();
       if (
         item.page === 'restaurants' &&

@@ -1,0 +1,11 @@
+import { TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting,HttpTestingController } from '@angular/common/http/testing';
+import { LegalIdentityApi } from './legal-identity.api';
+import { AuthStore } from './auth.store';
+let api:LegalIdentityApi,http:HttpTestingController,org:string;
+beforeEach(()=>{org='org';TestBed.configureTestingModule({providers:[provideHttpClient(),provideHttpClientTesting(),{provide:AuthStore,useValue:{currentUserId:()=> 'owner',effectiveOrgId:()=>org,contextRevision:()=>1}}]});api=TestBed.inject(LegalIdentityApi);http=TestBed.inject(HttpTestingController);});afterEach(()=>http.verify());
+it('rejects owner tenant substitution before request',async()=>{expect(()=>api.list('other')).toThrow('WORKSPACE_CHANGED');http.expectNone(()=>true);});
+it('rejects stale tenant responses',async()=>{const promise=api.list('org');const request=http.expectOne(r=>r.url.endsWith('/me/organization/legal-identity/proposals'));org='other';request.flush({data:{items:[],nextCursor:null}});await expect(promise).rejects.toThrow('WORKSPACE_CHANGED');});
+it('reads bounded proposal page and sends opaque cursor',async()=>{const promise=api.list('org',false,'opaque');http.expectOne(r=>r.url.endsWith('/proposals?cursor=opaque')).flush({data:{items:[],nextCursor:'next'}});await expect(promise).resolves.toEqual({items:[],nextCursor:'next'});});
+it('authorization denial cannot become reviewer capability',async()=>{const promise=api.capability();http.expectOne(r=>r.url.endsWith('/platform/legal-identity/capability')).flush({data:{canReview:false}});await expect(promise).resolves.toEqual({canReview:false});});
