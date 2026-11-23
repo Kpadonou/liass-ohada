@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, ORGANIZATION_PROFILE_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -53,6 +53,22 @@ test("validates the immutable FINAL publisher artifact and exact target", () => 
   assert.throws(() => validateReleaseManifest(manifest, directory), /Artifact SHA-256 mismatch/);
   manifest.artifact.sha256Hex = hashes.hex;
   manifest.target.functionName = "liass-ohada-dev-restaurants-capture-payment";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+
+test("validates only the exact Organization profile Lambda pair", () => {
+  const { directory } = fixture();
+  const artifacts = ORGANIZATION_PROFILE_RELEASE.functions.map((target) => {
+    const bytes = Buffer.from(target.functionName), hashes = awaitableHash(bytes);
+    writeFileSync(join(directory, "artifacts", `${target.functionName}.zip`), bytes);
+    return { ...entry(target.functionName, bytes), logicalId: target.logicalId,
+      sha256Hex: hashes.hex, codeSha256: hashes.base64 };
+  });
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false,
+    releaseProfile: ORGANIZATION_PROFILE_RELEASE.profile, target,
+    commit: ORGANIZATION_PROFILE_RELEASE.commit, artifacts };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 2);
+  manifest.artifacts[0].functionName = "liass-ohada-dev-identity-read-fiscal-profile";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
 

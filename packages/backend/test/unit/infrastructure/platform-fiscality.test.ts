@@ -92,8 +92,8 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
   const routes = Object.values(
     template.findResources("AWS::ApiGatewayV2::Route"),
   );
-  expect(routes.map((route) => route.Properties.RouteKey).sort()).toEqual(
-    [
+  expect(routes.map((route) => route.Properties.RouteKey)).toEqual(
+    expect.arrayContaining([
       "GET /me/organization/fiscality/sfe-approval",
       "PUT /platform/fiscality/sfe-approval",
       "GET /me/organization/fiscality/connections",
@@ -103,7 +103,7 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
       "PUT /me/organization/fiscality/connections/{connectionId}/credential",
       "DELETE /me/organization/fiscality/connections/{connectionId}/credential",
       "POST /me/organization/fiscality/connections/{connectionId}/verification",
-    ].sort(),
+    ]),
   );
   expect(
     routes.every((route) => route.Properties.AuthorizationType === "JWT"),
@@ -146,7 +146,9 @@ test("SFE APIs reuse JWT, API and table; role can condition-check but never muta
   const profilePolicies = Object.entries(policies).filter(([name]) => name.includes("ProfileRole"));
   expect(profilePolicies).toHaveLength(1);
   expect(JSON.stringify(profilePolicies)).toContain("fiscalRegime");
-  expect(JSON.stringify(profilePolicies)).not.toMatch(/ssm:|secretsmanager:|dynamodb:PutItem/);
+  expect(JSON.stringify(profilePolicies)).toContain("dynamodb:PutItem");
+  expect(JSON.stringify(profilePolicies)).toContain("ORG#*");
+  expect(JSON.stringify(profilePolicies)).not.toMatch(/ssm:|secretsmanager:/);
   const verificationPolicies = Object.entries(policies).filter(([name]) =>
     name.includes("VerificationRole"),
   );

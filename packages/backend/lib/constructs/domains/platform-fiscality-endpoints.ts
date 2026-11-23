@@ -151,7 +151,7 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
       managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName("service-role/AWSLambdaBasicExecutionRole")],
     });
     profileRole.addToPolicy(new iam.PolicyStatement({
-      actions: ["dynamodb:GetItem", "dynamodb:ConditionCheckItem"],
+      actions: ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:ConditionCheckItem"],
       resources: [props.table.tableArn],
       conditions: { "ForAllValues:StringLike": { "dynamodb:LeadingKeys": ["ORG#*"] } },
     }));
