@@ -35,6 +35,15 @@ export const ORGANIZATION_PROFILE_RELEASE = Object.freeze({
     Object.freeze({ functionName: "liass-ohada-dev-identity-update-organization-profile", logicalId: "IdentityModulePlatformFiscalityorganizationfiscalhandlerPUTmeorganizationprofileF690C0E5" }),
   ]),
 });
+export const RESTAURANTS_ATTESTED_FISCAL_RELEASE = Object.freeze({
+  profile: "RESTAURANTS_ATTESTED_FISCAL_PATH",
+  commit: "26766a1",
+  functions: Object.freeze([
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-publish-receipt", logicalId: "RestaurantsModuleRestaurantspublishreceiptPOSTrestaurantsoutletsoutletIdsessionssessionIdreceiptBCCD2165" }),
+    Object.freeze({ functionName: "liass-ohada-dev-fiscal-compliance-real-test", logicalId: "RealTestExecutorA6E6815D" }),
+    Object.freeze({ functionName: "liass-ohada-dev-identity-grant-test-execution-authorization", logicalId: "IdentityModulePlatformFiscalityplatformsfehandlerPOSTplatformfiscalitytestexecutionauthorizations96E68A13" }),
+  ]),
+});
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..", "..", "..");
@@ -87,10 +96,13 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const fiscalExecutor = manifest?.releaseProfile === FISCAL_EXECUTOR_RELEASE.profile;
   const finalPublisher = manifest?.releaseProfile === FINAL_PUBLISHER_RELEASE.profile;
   const organizationProfile = manifest?.releaseProfile === ORGANIZATION_PROFILE_RELEASE.profile;
+  const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
   const singleTarget = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
-  const fixedRelease = organizationProfile ? ORGANIZATION_PROFILE_RELEASE : singleTarget;
+  const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
+    : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE : undefined;
+  const fixedRelease = multiTarget ?? singleTarget;
   const expectedCommit = fixedRelease?.commit ?? "a4f5b225b4fce4424a85b1ea18ff96b03c97207e";
-  const expectedArtifacts = organizationProfile ? ORGANIZATION_PROFILE_RELEASE.functions.length : singleTarget ? 1 : 77;
+  const expectedArtifacts = multiTarget ? multiTarget.functions.length : singleTarget ? 1 : 77;
   assert.equal(manifest?.commit, expectedCommit, "Release commit is not approved");
   const artifacts = finalPublisher && manifest.artifact ? [{
     functionName: manifest.target.functionName,
@@ -105,8 +117,8 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const names = new Set();
   for (const item of artifacts) {
     assert.equal(typeof item.functionName, "string");
-    const identityTarget = organizationProfile
-      ? ORGANIZATION_PROFILE_RELEASE.functions.find((target) => target.functionName === item.functionName)
+    const identityTarget = multiTarget
+      ? multiTarget.functions.find((target) => target.functionName === item.functionName)
       : undefined;
     assert.ok(identityTarget || (singleTarget
       ? item.functionName === singleTarget.functionName
