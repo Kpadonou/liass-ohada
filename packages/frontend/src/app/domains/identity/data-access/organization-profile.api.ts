@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { z } from 'zod';
-import { OrganizationProfileSchema, OrganizationContactUpdateSchema } from '@liass-ohada/shared/shared';
+import { OrganizationProfileSchema, OrganizationContactUpdateSchema, OrganizationLegalAddressSaveSchema } from '@liass-ohada/shared/shared';
 import { environment } from '../../../../environments/environment';
 import { AuthStore } from './auth.store';
 @Injectable({providedIn: 'root'})
@@ -15,7 +15,7 @@ export class OrganizationProfileApi {
     return this.request(context, () => firstValueFrom(this.http.get<unknown>(this.url)));
   }
   async update(context: ReturnType<OrganizationProfileApi['context']>, input: unknown) {
-    const body = OrganizationContactUpdateSchema.parse(input);
+    const body = z.union([OrganizationContactUpdateSchema, z.object({legalAddress: OrganizationLegalAddressSaveSchema}).strict()]).parse(input);
     return this.request(context, () => firstValueFrom(this.http.put<unknown>(this.url, body)));
   }
   private async request(context: ReturnType<OrganizationProfileApi['context']>, call: () => Promise<unknown>) {

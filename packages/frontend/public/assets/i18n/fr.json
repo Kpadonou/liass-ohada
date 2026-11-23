@@ -2801,9 +2801,11 @@
           "DESCRIPTION": "Comptabilité générale, trésorerie et comptabilité de projets."
         },
         "SALES": {
+          "TITLE": "Facturation",
           "DESCRIPTION": "Clients, catalogue, facturation, créances et avoirs."
         },
         "RESTAURANTS": {
+          "TITLE": "Liass-Resto",
           "DESCRIPTION": "Configuration du restaurant, du menu et des tables."
         }
       },
@@ -5807,7 +5809,11 @@
     "ERROR": "Le profil est indisponible.",
     "RETRY": "Réessayer",
     "LEGAL": "Identité légale et fiscale",
-    "READONLY": "Les faits légaux sont en lecture seule et nécessitent une révision contrôlée.",
+    "READONLY": "L’adresse légale peut être mise à jour avec votre attestation.",
+    "ATTEST_ADDRESS": "J’atteste l’exactitude de cette adresse légale pour mon organisation.",
+    "ATTESTED": "Adresse attestée par l’organisation",
+    "CONFLICT": "Les informations ont changé. Rechargez la fiche avant de réessayer.",
+    "FORBIDDEN": "Votre accès ne permet pas de modifier ces informations.",
     "INCOMPLETE": "Preuves incomplètes",
     "VERIFIED": "Faits vérifiés",
     "VERSION": "Version",

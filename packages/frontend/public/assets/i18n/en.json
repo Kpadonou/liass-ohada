@@ -2801,9 +2801,11 @@
           "DESCRIPTION": "General accounting, treasury and project accounting."
         },
         "SALES": {
+          "TITLE": "Invoicing",
           "DESCRIPTION": "Customers, catalog, invoicing, receivables and credit notes."
         },
         "RESTAURANTS": {
+          "TITLE": "Liass-Resto",
           "DESCRIPTION": "Restaurant setup, menu and table configuration."
         }
       },
@@ -5807,7 +5809,11 @@
     "ERROR": "Profile unavailable.",
     "RETRY": "Retry",
     "LEGAL": "Legal and fiscal identity",
-    "READONLY": "Legal facts are read-only and require a controlled revision.",
+    "READONLY": "You can update the legal address with your attestation.",
+    "ATTEST_ADDRESS": "I attest that this legal address is accurate for my organization.",
+    "ATTESTED": "Address attested by the organization",
+    "CONFLICT": "The information has changed. Reload the profile before trying again.",
+    "FORBIDDEN": "Your access does not allow these changes.",
     "INCOMPLETE": "Incomplete evidence",
     "VERIFIED": "Verified facts",
     "VERSION": "Version",
