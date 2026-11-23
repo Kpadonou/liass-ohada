@@ -2,6 +2,7 @@ import { hash, canonical, clean } from "@/lambda/shared/authority/integrity";
 import { z } from "zod";
 import {
   BeninEMecefTestAdapter,
+  BeninEMecefConnectorError,
   BeninInvoiceAttempt,
 } from "../fiscal-compliance/providers/benin-emecef/benin-emecef-test-adapter";
 import {
@@ -232,7 +233,18 @@ export function restaurantBeninRealTestWorkflow(
       await verifyContext();
       const pending = z.object({ invoice: InvoiceRequestDataDtoSchema,
         expected: z.object({ total: integer, itemTotals: z.array(integer) }).strict() }).strict().parse(prepared.payload);
-      return adapter.verifyPendingDurableInvoice(input, uid, pending.invoice, pending.expected);
+      try {
+        return await adapter.verifyPendingDurableInvoice(input, uid, pending.invoice, pending.expected);
+      } catch (error) {
+        // Allowlisted metadata only: never log the response, message, token or request.
+        const failure = error instanceof BeninEMecefConnectorError ? error : undefined;
+        console.error(JSON.stringify({ event: "FISCAL_TEST_RECONCILIATION_FAILED",
+          invoiceId: config.invoiceId, environment: "TEST",
+          code: failure?.code ?? "INTERNAL",
+          httpStatus: failure?.httpStatus,
+        }));
+        throw error;
+      }
     },
     async cancelInvoice(uid, state) {
       if (state.execution !== "REAL_TEST" || state.status !== "CANCEL_IN_FLIGHT" ||

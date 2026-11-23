@@ -555,6 +555,7 @@ test("reconciliation rejects mismatched provider details and wrong ownership wit
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
 });
 test("provider GET failure leaves the attempt unchanged and cannot unlock cancellation", async () => {
+  const diagnostic = jest.spyOn(console, "error").mockImplementation(() => {});
   const { flow, transport } = setup();
   await create(flow);
   transport.mockImplementation(async (request) => {
@@ -563,11 +564,16 @@ test("provider GET failure leaves the attempt unchanged and cannot unlock cancel
     return { status: 200, body: JSON.stringify({ status: true, ifu: config.ifu, nim: config.nim }) };
   });
   await expect(flow.reconcile(principal, identity)).rejects.toThrow("FISCAL_RECONCILIATION_UNAVAILABLE");
+  expect(diagnostic).toHaveBeenCalledWith(JSON.stringify({
+    event: "FISCAL_TEST_RECONCILIATION_FAILED", invoiceId: config.invoiceId,
+    environment: "TEST", code: "UNEXPECTED_HTTP_STATUS", httpStatus: 503,
+  }));
   await expect(flow.cancel(principal, identity, "cancel-after-read-error", {
     cancel: true, determination: "VERIFIED_PENDING_TEST",
   })).rejects.toThrow();
   expect((await new FiscalAttemptStore().read(identity))?.status).toBe("CREATED");
   expect(transport.mock.calls.filter(([r]) => r.method === "PUT")).toHaveLength(0);
+  diagnostic.mockRestore();
 });
 test("missing or ambiguous provider pending ownership blocks cancellation", async () => {
   const { flow, transport } = setup();
