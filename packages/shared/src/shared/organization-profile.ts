@@ -13,6 +13,7 @@ export const OrganizationProfileSchema = z.object({
   organization: OrganizationSchema, contact: OrganizationContactSchema,
   version: z.number().int().nonnegative(), canManage: z.boolean(),
   legalIdentity: z.object({
+    addressTrust: z.enum(['ORGANIZATION_ATTESTED', 'VERIFIED', 'UNVERIFIED']).optional(),
     authority: LegalSellerAuthoritySchema.optional(), selectionVersion: z.number().int().nonnegative().optional(),
     version: z.string(), name: z.string(), ifu: z.string().nullable(),
     address: z.string().nullable(), missingEvidence: z.array(z.enum(['name', 'ifu', 'address'])),

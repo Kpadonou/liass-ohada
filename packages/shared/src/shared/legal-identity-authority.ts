@@ -1,6 +1,15 @@
 import { z } from "zod";
 const ref = z.string().min(1).max(200);
 const digest = z.string().regex(/^[a-f0-9]{64}$/);
+export const OrganizationLegalAddressSaveSchema = z.object({
+  expectedSelectionVersion: z.number().int().nonnegative().safe(),
+  address: z.object({
+    lines: z.array(z.string().trim().min(1).max(300)).min(1).max(3),
+    city: z.string().trim().min(1).max(160).optional(),
+    postalCode: z.string().trim().min(1).max(32).optional(),
+  }).strict(),
+  attested: z.literal(true),
+}).strict();
 export const AuthorityArtifactSchema = z
   .object({
     reference: ref,

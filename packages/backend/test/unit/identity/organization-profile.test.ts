@@ -9,6 +9,7 @@ import { dynamoClient } from '@/lambda/shared/dynamo-client';
 import { AppError } from '@/lambda/shared/app-error';
 const contact = {email:'a@example.com',phone:'123',address:'Contact only',city:'Cotonou',postalCode:''};
 beforeEach(() => {
+ jest.spyOn(OrganizationLegalIdentityService,'readSelectedIdentity').mockResolvedValue({revision:{},selectionVersion:1,check:{}});
  jest.spyOn(Access,'authorize').mockResolvedValue({canManage:true});
  jest.spyOn(Access,'membershipCheck').mockReturnValue({ConditionCheck:{TableName:'table',Key:{},ConditionExpression:'owner',ExpressionAttributeNames:{'#status':'status','#role':'role'},ExpressionAttributeValues:{}}});
  jest.spyOn(OrganizationService,'getOrganization').mockResolvedValue({orgId:'org',name:'Company',country:'BJ',workspaceType:'COMPANY',status:'ACTIVE',createdAt:'2026-01-01T00:00:00.000Z',updatedAt:'2026-01-01T00:00:00.000Z'});

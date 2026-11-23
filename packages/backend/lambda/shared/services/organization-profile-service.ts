@@ -17,6 +17,16 @@ export class OrganizationProfileService {
     const row = result.Item ? unmarshall(result.Item) : {};
     let legalIdentity = null;
     try {
+      const selected = await OrganizationLegalIdentityService.readSelectedIdentity(orgId);
+      if (selected.revision.authorityReference === 'ORGANIZATION_ADMIN_ATTESTATION') {
+        const { LegalSellerAuthoritySchema } = await import('@liass-ohada/shared/shared');
+        const seller = LegalSellerAuthoritySchema.shape.seller.parse(selected.revision.seller);
+        legalIdentity = { version: String(selected.revision.identityVersion), name: seller.name,
+          ifu: seller.identifiers.find(i => i.scheme === 'IFU' && i.issuingCountry === 'BJ')?.value ?? null,
+          address: seller.address ? [...seller.address.lines, seller.address.city, seller.address.postalCode].filter(Boolean).join(', ') : null,
+          addressTrust: 'ORGANIZATION_ATTESTED' as const,
+          missingEvidence: ['address' as const], selectionVersion: selected.selectionVersion };
+      } else {
       const { sellerAuthority: s, selectionVersion } = await OrganizationLegalIdentityService.readSellerIssuanceAuthority(orgId);
       const verified = (p: string) => s.factStates.some(f => f.fieldPath === p && f.state === 'VERIFIED' && f.evidenceReference);
       const selectedIfu = s.seller.identifiers.find((v, i) => v.scheme === 'IFU' && v.issuingCountry === 'BJ' &&
@@ -28,12 +38,20 @@ export class OrganizationProfileService {
         ifu: selectedIfu?.value ?? null, address: a ? [...a.lines, a.city, a.postalCode].filter(Boolean).join(', ') : null,
         missingEvidence: [...(!verified('name') ? ['name' as const] : []),
           ...(!selectedIfu ? ['ifu' as const] : []), ...(!addressVerified ? ['address' as const] : [])] };
+      }
     } catch (e) { if (!(e instanceof AppError && e.messageCode === 'AUTHORITY_UNAVAILABLE')) throw e; }
     return OrganizationProfileSchema.parse({ organization, canManage: access.canManage,
       contact: row.contact ?? { email: '', phone: '', address: '', city: '', postalCode: '' },
       version: row.contactVersion ?? 0, legalIdentity });
   }
   static async update(orgId: string, actor: string, raw: unknown) {
+    if (raw && typeof raw === 'object' && 'legalAddress' in raw) {
+      const { z } = await import('zod');
+      const { OrganizationLegalAddressSaveSchema } = await import('@liass-ohada/shared/shared');
+      const input = z.object({ legalAddress: OrganizationLegalAddressSaveSchema }).strict().parse(raw);
+      await OrganizationLegalIdentityService.saveLegalAddress(orgId, actor, input.legalAddress);
+      return this.read(orgId, actor);
+    }
     await Access.authorize(orgId, actor, true, false);
     const { expectedVersion, contact } = OrganizationContactUpdateSchema.parse(raw);
     try {

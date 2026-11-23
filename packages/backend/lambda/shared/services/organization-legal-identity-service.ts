@@ -1,4 +1,11 @@
 import { z } from "zod";
+import { randomUUID } from 'node:crypto';
+import { TransactWriteItemsCommand } from '@aws-sdk/client-dynamodb';
+import { marshall } from '@aws-sdk/util-dynamodb';
+import { OrganizationLegalAddressSaveSchema } from '@liass-ohada/shared/shared';
+import { config, dynamoClient } from '../dynamo-client';
+import { OrganizationFiscalRepository as Access } from '../repositories/organization-fiscal-repository';
+import { hash, admission } from '../authority/integrity';
 import {
   AuthorityArtifactSchema,
   LegalSellerAuthoritySchema,
@@ -110,6 +117,74 @@ function validate(input: unknown, orgId: string) {
 /** Platform-owned reviewed identity boundary. Mutations require an explicit Platform grant;
  * organization ownership alone never permits verification or selection. */
 export class OrganizationLegalIdentityService {
+  /** Configuration read: attested revisions are deliberately not fiscal issuance authority. */
+  static async readSelectedIdentity(orgId: string) {
+    return store.current(orgId);
+  }
+  static async saveLegalAddress(orgId: string, actor: string, raw: unknown) {
+    await Access.authorize(orgId, actor, true, false);
+    const input = OrganizationLegalAddressSaveSchema.parse(raw);
+    const current = await store.current(orgId);
+    if (current.selectionVersion !== input.expectedSelectionVersion)
+      throw new AppError(409, 'AUTHORITY_SELECTION_CONFLICT');
+    const old = current.revision;
+    const seller = LegalSellerAuthoritySchema.shape.seller.parse(old.seller);
+    const now = new Date().toISOString(), id = randomUUID();
+    const previousStates = z.array(z.object({fieldPath: z.string(),
+      state: z.enum(['PRESENT', 'VERIFIED', 'AUTHORITY_UNKNOWN', 'ORGANIZATION_ATTESTED']),
+      evidenceReference: z.string().optional()}).strict()).parse(old.factStates);
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    const oldAddress = seller.address;
+    const addressValue = (address: typeof oldAddress, path: string) => {
+      if (path.startsWith('address.lines.')) return address?.lines[Number(path.slice(14))];
+      return path === 'address.city' ? address?.city : address?.postalCode;
+    };
+    const addressPaths = [...input.address.lines.map((_, i) => `address.lines.${i}`),
+      ...(input.address.city ? ['address.city'] : []), ...(input.address.postalCode ? ['address.postalCode'] : [])];
+    const addressFacts = addressPaths.map(fieldPath => {
+      const prior = previousStates.find(f => f.fieldPath === fieldPath);
+      return prior && same(addressValue(oldAddress, fieldPath), addressValue(input.address, fieldPath))
+        ? prior : { fieldPath, state: 'ORGANIZATION_ATTESTED' };
+    });
+    const attestation = { actorUserId: actor, orgId, occurredAt: now,
+      declaration: 'ORGANIZATION_LEGAL_ADDRESS_ATTESTATION_V1',
+      previousRevisionId: old.revisionId, previousSelectionVersion: current.selectionVersion,
+      changedValues: { address: input.address } };
+    const identity: Record<string, unknown> = clean({ ...old, seller: { ...seller, address: input.address },
+      identityReference: id, identityVersion: String(current.selectionVersion + 1),
+      authorityReference: 'ORGANIZATION_ADMIN_ATTESTATION', authorityVersion: '1',
+      factStates: [...previousStates.filter(f => !f.fieldPath.startsWith('address.')), ...addressFacts]
+        .sort((a,b) => a.fieldPath.localeCompare(b.fieldPath)), attestation });
+    const { PK: _pk, SK: _sk, identityDigest: _digest, createdAt: _at,
+      createdByUserId: _by, revisionId: _id, ...digestInput } = identity;
+    const identityDigest = hash(canonical(digestInput));
+    const revision = { ...identity, PK: KeyFactory.orgKey(orgId),
+      SK: KeyFactory.organizationLegalIdentityRevisionSK(id), revisionId: id,
+      identityDigest, createdAt: now, createdByUserId: actor };
+    const version = current.selectionVersion + 1;
+    const pointer = { PK: KeyFactory.orgKey(orgId), SK: KeyFactory.organizationLegalIdentityCurrentSK(),
+      entityType: 'ORGANIZATION_LEGAL_IDENTITY_CURRENT', orgId, version, status: 'ACTIVE',
+      selectedRevisionId: id, identityDigest, legalEntityReference: old.legalEntityReference,
+      updatedAt: now, updatedByUserId: actor };
+    const history = { ...pointer, SK: KeyFactory.organizationLegalIdentitySelectionSK(version),
+      entityType: 'ORGANIZATION_LEGAL_IDENTITY_SELECTION', previousVersion: current.selectionVersion,
+      actorUserId: actor, occurredAt: now };
+    admission(revision, 131072);
+    try {
+      await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: [Access.membershipCheck(orgId, actor),
+        { Put: { TableName: config.TABLE_NAME, Item: marshall(revision), ConditionExpression: 'attribute_not_exists(PK)' } },
+        { Put: { TableName: config.TABLE_NAME, Item: marshall(pointer),
+          ConditionExpression: '#version = :version AND selectedRevisionId = :id AND identityDigest = :digest',
+          ExpressionAttributeNames: { '#version': 'version' }, ExpressionAttributeValues: marshall({
+            ':version': current.selectionVersion, ':id': old.revisionId, ':digest': old.identityDigest }) } },
+        { Put: { TableName: config.TABLE_NAME, Item: marshall(history), ConditionExpression: 'attribute_not_exists(PK)' } },
+      ] }));
+    } catch (e) {
+      if ((e as Error).name === 'TransactionCanceledException') throw new AppError(409, 'AUTHORITY_SELECTION_CONFLICT');
+      throw e;
+    }
+    return this.readSelectedIdentity(orgId);
+  }
   static async readSelectionVersion(orgId: string) { return store.selectionVersion(orgId); }
   /** Read-only fiscal identity boundary; declared connection IFU is never trusted evidence. */
   static async readFiscalTaxpayerAuthority(orgId: string) {
