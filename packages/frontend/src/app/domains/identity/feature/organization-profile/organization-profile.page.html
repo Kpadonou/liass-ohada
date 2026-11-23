@@ -9,30 +9,31 @@
         <div class="grid gap-4 sm:grid-cols-2">@for (field of fields; track field) { <mat-form-field class="w-full"><mat-label>{{ ('ORG_PROFILE.' + field) | transloco }}</mat-label><input matInput [formControlName]="field" [type]="field === 'email' ? 'email' : 'text'" /><mat-error>{{ 'ORG_PROFILE.INVALID' | transloco }}</mat-error></mat-form-field> }</div>
         @if (mutation.isError()) { <p role="alert">{{ 'ORG_PROFILE.SAVE_ERROR' | transloco }}</p> }
         @if (isSaved()) { <p role="status">{{ 'ORG_PROFILE.SAVED' | transloco }}</p> }
-        @if (profile.canManage) { <div class="flex justify-end"><liass-button type="submit" tone="brand" variant="solid" [disabled]="form.invalid || form.pristine || mutation.isPending()">{{ 'ORG_PROFILE.SAVE' | transloco }}</liass-button></div> }
+        @if (profile.canManage) { <div class="flex justify-end"><liass-button buttonType="submit" tone="brand" variant="solid" [disabled]="form.invalid || form.pristine || mutation.isPending()" [loading]="mutation.isPending()">{{ 'ORG_PROFILE.SAVE' | transloco }}</liass-button></div> }
       </form>
     </liass-card>
     <liass-card><h2 class="text-lg font-semibold">{{ 'ORG_PROFILE.LEGAL' | transloco }}</h2><p class="mt-2 text-sm">{{ 'ORG_PROFILE.READONLY' | transloco }}</p>
       @if (profile.legalIdentity; as legal) {
         @if (legal.addressTrust === 'ORGANIZATION_ATTESTED') { <liass-status-chip [label]="'ORG_PROFILE.ATTESTED' | transloco" tone="info" /> }
-        <div class="mt-4"><liass-status-chip [label]="(legal.missingEvidence.length ? 'ORG_PROFILE.INCOMPLETE' : 'ORG_PROFILE.VERIFIED') | transloco" [tone]="legal.missingEvidence.length ? 'warning' : 'success'" /></div>
+        <div class="mt-4"><liass-status-chip [label]="(visibleMissingEvidence(legal).length ? 'ORG_PROFILE.INCOMPLETE' : 'ORG_PROFILE.VERIFIED') | transloco" [tone]="visibleMissingEvidence(legal).length ? 'warning' : 'success'" /></div>
         <dl class="mt-4 grid gap-4 sm:grid-cols-2"><div><dt>{{ 'ORG_PROFILE.NAME' | transloco }}</dt><dd>{{ legal.name }}</dd></div><div><dt>{{ 'ORG_PROFILE.VERSION' | transloco }}</dt><dd>{{ legal.version }}</dd></div><div><dt>{{ 'ORG_PROFILE.IFU' | transloco }}</dt><dd>{{ legal.ifu || ('ORG_PROFILE.MISSING' | transloco) }}</dd></div><div><dt>{{ 'ORG_PROFILE.LEGAL_ADDRESS' | transloco }}</dt><dd>{{ legal.address || ('ORG_PROFILE.MISSING' | transloco) }}</dd></div></dl>
         @for (identifier of legal.authority?.seller?.identifiers; track $index) { <p class="mt-2 text-sm">{{identifier.scheme}} · {{identifier.issuingCountry}} · {{identifier.value}}</p> }
-        @for (missing of legal.missingEvidence; track missing) { <p class="mt-2">{{ ('ORG_PROFILE.MISSING_' + missing) | transloco }}</p> }
+        @for (missing of visibleMissingEvidence(legal); track missing) { <p class="mt-2">{{ ('ORG_PROFILE.MISSING_' + missing) | transloco }}</p> }
       } @else { <p class="mt-4">{{ 'ORG_PROFILE.NO_IDENTITY' | transloco }}</p> }
     </liass-card>
     @if (profile.canManage && profile.legalIdentity?.selectionVersion) {
       <liass-card><h2 class="text-lg font-semibold">{{ 'ORG_PROFILE.LEGAL_ADDRESS' | transloco }}</h2>
         <form [formGroup]="legalForm" (ngSubmit)="saveLegal()" class="mt-4 space-y-4">
           <div class="grid gap-4 sm:grid-cols-2">
-            <mat-form-field class="w-full"><mat-label>{{ 'ORG_PROFILE.LEGAL_ADDRESS' | transloco }}</mat-label><textarea matInput formControlName="line1" rows="3"></textarea><mat-error>{{ 'ORG_PROFILE.INVALID' | transloco }}</mat-error></mat-form-field>
-            <mat-form-field class="w-full"><mat-label>{{ 'ORG_PROFILE.city' | transloco }}</mat-label><input matInput formControlName="city" /></mat-form-field>
-            <mat-form-field class="w-full"><mat-label>{{ 'ORG_PROFILE.postalCode' | transloco }}</mat-label><input matInput formControlName="postalCode" /></mat-form-field>
+            <mat-form-field class="w-full"><mat-label>{{ 'ORG_PROFILE.LEGAL_ADDRESS' | transloco }}</mat-label><textarea matInput formControlName="line1" rows="3"></textarea>@if (legalForm.controls.line1.touched && legalForm.controls.line1.invalid) { <mat-error>{{ 'ORG_PROFILE.INVALID' | transloco }}</mat-error> }</mat-form-field>
+            <mat-form-field class="w-full"><mat-label>{{ 'ORG_PROFILE.city' | transloco }}</mat-label><input matInput formControlName="city" />@if (legalForm.controls.city.touched && legalForm.controls.city.invalid) { <mat-error>{{ 'ORG_PROFILE.INVALID' | transloco }}</mat-error> }</mat-form-field>
+            <mat-form-field class="w-full"><mat-label>{{ 'ORG_PROFILE.postalCode' | transloco }}</mat-label><input matInput formControlName="postalCode" />@if (legalForm.controls.postalCode.touched && legalForm.controls.postalCode.invalid) { <mat-error>{{ 'ORG_PROFILE.INVALID' | transloco }}</mat-error> }</mat-form-field>
           </div>
           <mat-checkbox formControlName="attested">{{ 'ORG_PROFILE.ATTEST_ADDRESS' | transloco }}</mat-checkbox>
+          @if (legalValidationVisible() && legalForm.invalid) { <p role="alert" class="text-sm text-danger-600">{{ 'ORG_PROFILE.LEGAL_VALIDATION' | transloco }}</p> }
           @if (legalMutation.isError()) { <p role="alert">{{ legalErrorKey() | transloco }}</p><liass-button (pressed)="query.refetch()">{{ 'ORG_PROFILE.RETRY' | transloco }}</liass-button> }
-          @if (legalMutation.isSuccess()) { <p role="status">{{ 'ORG_PROFILE.SAVED' | transloco }}</p> }
-          <div class="flex justify-end"><liass-button type="submit" tone="brand" variant="solid" [disabled]="legalForm.invalid || legalForm.pristine || legalMutation.isPending()">{{ 'ORG_PROFILE.SAVE' | transloco }}</liass-button></div>
+          @if (legalMutation.isSuccess()) { <p role="status">{{ 'ORG_PROFILE.LEGAL_SAVED' | transloco }}</p> }
+          <div class="flex justify-end"><liass-button buttonType="submit" tone="brand" variant="solid" [disabled]="legalForm.pristine || legalMutation.isPending()" [loading]="legalMutation.isPending()">{{ 'ORG_PROFILE.SAVE' | transloco }}</liass-button></div>
         </form>
       </liass-card>
     }

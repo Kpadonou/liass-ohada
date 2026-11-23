@@ -18,9 +18,11 @@ export class OrganizationProfilePage {
   readonly api = inject(OrganizationProfileApi);
   private readonly client = inject(QueryClient);
   readonly saved = signal<string | null>(null);
+  readonly legalValidationVisible = signal(false);
   private legalSubmitting = false;
   legalErrorKey() { const error = this.legalMutation.error(); const status = error instanceof HttpErrorResponse ? error.status : 0;
-    return status === 409 ? 'ORG_PROFILE.CONFLICT' : status === 403 ? 'ORG_PROFILE.FORBIDDEN' : 'ORG_PROFILE.SAVE_ERROR'; }
+    return status === 409 ? 'ORG_PROFILE.CONFLICT' : status === 403 ? 'ORG_PROFILE.FORBIDDEN'
+      : status === 400 || status === 422 ? 'ORG_PROFILE.LEGAL_VALIDATION' : 'ORG_PROFILE.SAVE_ERROR'; }
   isSaved() { return this.saved() === JSON.stringify(this.api.context()); }
   readonly fields = ['email', 'phone', 'address', 'city', 'postalCode'] as const;
   readonly form = new FormGroup({ email: new FormControl('', {nonNullable: true, validators: [Validators.email, Validators.maxLength(254)]}),
@@ -28,7 +30,7 @@ export class OrganizationProfilePage {
     address: new FormControl('', {nonNullable: true, validators: Validators.maxLength(500)}),
     city: new FormControl('', {nonNullable: true, validators: Validators.maxLength(500)}),
     postalCode: new FormControl('', {nonNullable: true, validators: Validators.maxLength(500)}) });
-  readonly legalForm = new FormGroup({line1: new FormControl('', {nonNullable:true,validators:[Validators.required,Validators.maxLength(300)]}),
+  readonly legalForm = new FormGroup({line1: new FormControl('', {nonNullable:true,validators:[Validators.required,Validators.pattern(/\S/),Validators.maxLength(300)]}),
     city: new FormControl('', {nonNullable:true,validators:Validators.maxLength(160)}),
     postalCode: new FormControl('', {nonNullable:true,validators:Validators.maxLength(32)}),
     attested: new FormControl(false,{nonNullable:true,validators:Validators.requiredTrue})});
@@ -40,8 +42,12 @@ export class OrganizationProfilePage {
       if (JSON.stringify(input.context) === JSON.stringify(this.api.context())) this.form.reset(data.contact); } }));
   readonly legalMutation = injectMutation(() => ({mutationFn: (input: {context: ReturnType<OrganizationProfileApi['context']>; body: unknown}) => this.api.update(input.context,input.body),
     onSettled: () => { this.legalSubmitting = false; },
-    onSuccess: (data,input) => { this.client.setQueryData(['identity','organization-profile',...input.context],data);
-      if (JSON.stringify(input.context) === JSON.stringify(this.api.context())) { this.legalForm.markAsPristine(); this.legalForm.controls.attested.setValue(false); } }}));
+    onSuccess: async (data,input) => { const queryKey = ['identity','organization-profile',...input.context] as const;
+      this.client.setQueryData(queryKey,data);
+      if (JSON.stringify(input.context) === JSON.stringify(this.api.context())) {
+        this.legalValidationVisible.set(false); this.legalForm.markAsPristine(); this.legalForm.controls.attested.setValue(false);
+      }
+      await this.client.invalidateQueries({queryKey}); }}));
   private formContext = "";
   constructor() { effect(() => { const data = this.query.data(); const context = JSON.stringify(this.api.context());
     const changedContext = context !== this.formContext;
@@ -53,9 +59,18 @@ export class OrganizationProfilePage {
     if (data?.canManage) this.form.enable(); else this.form.disable(); }); }
   save() { const data = this.query.data(); if (!data?.canManage || this.form.invalid || this.mutation.isPending()) return;
     this.saved.set(null); this.mutation.mutate({context: this.api.context(), body: {expectedVersion: data.version, contact: this.form.getRawValue()}}); }
-  saveLegal() { const data = this.query.data(); if (!data?.canManage || !data.legalIdentity?.selectionVersion || this.legalForm.invalid || this.legalSubmitting || this.legalMutation.isPending()) return;
+  visibleMissingEvidence(legal: {addressTrust?: string; missingEvidence: Array<'name' | 'ifu' | 'address'>}) {
+    return legal.addressTrust === 'ORGANIZATION_ATTESTED'
+      ? legal.missingEvidence.filter(item => item !== 'address')
+      : legal.missingEvidence;
+  }
+  saveLegal() { const data = this.query.data();
+    if (this.legalForm.invalid) { this.legalValidationVisible.set(true); this.legalForm.markAllAsTouched(); return; }
+    if (!data?.canManage || !data.legalIdentity?.selectionVersion || this.legalSubmitting || this.legalMutation.isPending()) return;
+    this.legalValidationVisible.set(false);
     this.legalSubmitting = true;
     const value = this.legalForm.getRawValue();
+    const lines = value.line1.split('\n').map(v=>v.trim()).filter(Boolean);
     this.legalMutation.mutate({context:this.api.context(),body:{legalAddress:{expectedSelectionVersion:data.legalIdentity.selectionVersion,
-      address:{lines:value.line1.split('\n').map(v=>v.trim()).filter(Boolean),...(value.city?{city:value.city}:{}),...(value.postalCode?{postalCode:value.postalCode}:{})},attested:true}}}); }
+      address:{lines,...(value.city.trim()?{city:value.city.trim()}:{}),...(value.postalCode.trim()?{postalCode:value.postalCode.trim()}:{})},attested:true}}}); }
 }

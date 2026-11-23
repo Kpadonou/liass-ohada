@@ -5811,6 +5811,8 @@
     "LEGAL": "Identité légale et fiscale",
     "READONLY": "L’adresse légale peut être mise à jour avec votre attestation.",
     "ATTEST_ADDRESS": "J’atteste l’exactitude de cette adresse légale pour mon organisation.",
+    "LEGAL_VALIDATION": "Renseignez une adresse légale valide et confirmez votre attestation.",
+    "LEGAL_SAVED": "Adresse légale enregistrée.",
     "ATTESTED": "Adresse attestée par l’organisation",
     "CONFLICT": "Les informations ont changé. Rechargez la fiche avant de réessayer.",
     "FORBIDDEN": "Votre accès ne permet pas de modifier ces informations.",
@@ -5823,7 +5825,7 @@
     "NO_IDENTITY": "Aucune identité légale sélectionnée.",
     "MISSING_name": "Le nom légal nécessite une preuve vérifiée.",
     "MISSING_ifu": "L’IFU nécessite une preuve vérifiée.",
-    "MISSING_address": "L’adresse légale nécessite une preuve vérifiée."
+    "MISSING_address": "L’adresse légale n’est pas renseignée."
   },
   "LEGAL_UI": {
     "PROPOSALS": "Propositions légales",

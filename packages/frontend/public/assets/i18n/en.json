@@ -5811,6 +5811,8 @@
     "LEGAL": "Legal and fiscal identity",
     "READONLY": "You can update the legal address with your attestation.",
     "ATTEST_ADDRESS": "I attest that this legal address is accurate for my organization.",
+    "LEGAL_VALIDATION": "Enter a valid legal address and confirm your attestation.",
+    "LEGAL_SAVED": "Legal address saved.",
     "ATTESTED": "Address attested by the organization",
     "CONFLICT": "The information has changed. Reload the profile before trying again.",
     "FORBIDDEN": "Your access does not allow these changes.",
@@ -5823,7 +5825,7 @@
     "NO_IDENTITY": "No selected legal identity.",
     "MISSING_name": "Legal name requires verified evidence.",
     "MISSING_ifu": "IFU requires verified evidence.",
-    "MISSING_address": "Legal address requires verified evidence."
+    "MISSING_address": "Legal address has not been provided."
   },
   "LEGAL_UI": {
     "PROPOSALS": "Legal proposals",
