@@ -48,12 +48,21 @@ export const restaurantIssuanceProvenanceSchema = payloadSchema.extend({
 });
 type Payload = z.infer<typeof payloadSchema>;
 function validateBinding(payload: Payload) {
+  const attestedFacts = payload.seller.factStates.filter(
+    (fact) => fact.state === "ORGANIZATION_ATTESTED",
+  );
   if (
     payload.orgId !== payload.seller.orgId ||
     payload.orgId !== payload.timezone.orgId ||
     payload.issuedAt !== payload.capturedAt ||
-    payload.seller.authorityReference !== "PLATFORM_LEGAL_IDENTITY_REVIEW" ||
+    ![
+      "PLATFORM_LEGAL_IDENTITY_REVIEW",
+      "ORGANIZATION_ADMIN_ATTESTATION",
+    ].includes(payload.seller.authorityReference) ||
     payload.seller.authorityVersion !== "1" ||
+    attestedFacts.some((fact) => !fact.fieldPath.startsWith("address.")) ||
+    (payload.seller.authorityReference === "PLATFORM_LEGAL_IDENTITY_REVIEW" &&
+      attestedFacts.length > 0) ||
     !payload.seller.factStates.some(
       (f) =>
         f.fieldPath === "name" && f.state === "VERIFIED" && f.evidenceReference,

@@ -426,6 +426,23 @@ test("authorization proof rejects the same missing seller address as real execut
     configuration(), "AUTHORIZATION_PROOF"))
     .toThrow("FISCAL_SELLER_IDENTITY_INCOMPLETE");
 });
+test('authorization proof accepts genuine organization-attested address but keeps name and IFU verified',()=>{
+  const value=preparation();
+  const {bindingDigest: _,...payload}=value.provenance;
+  value.provenance=bindRestaurantIssuanceProvenance({...payload,
+    seller:{...payload.seller,authorityReference:'ORGANIZATION_ADMIN_ATTESTATION',
+      factStates:payload.seller.factStates.map(f=>f.fieldPath.startsWith('address.')
+        ? {fieldPath:f.fieldPath,state:'ORGANIZATION_ATTESTED' as const}:f)}});
+  expect(mapRestaurantBeninRequest(value,principal,identity,configuration(),'AUTHORIZATION_PROOF').payload)
+    .toMatchObject({invoice:{ifu:'synthetic-ifu'}});
+
+  const {bindingDigest: __,...untrusted}=value.provenance;
+  value.provenance=bindRestaurantIssuanceProvenance({...untrusted,
+    seller:{...untrusted.seller,factStates:untrusted.seller.factStates.map(f=>
+      f.fieldPath==='address.lines.0'?{fieldPath:f.fieldPath,state:'PRESENT' as const}:f)}});
+  expect(()=>mapRestaurantBeninRequest(value,principal,identity,configuration(),'AUTHORIZATION_PROOF'))
+    .toThrow('FISCAL_SELLER_IDENTITY_INCOMPLETE');
+});
 test("accepts the canonical leaf-level verification of the selected IFU only", () => {
   const value = preparation();
   const { bindingDigest: _, ...payload } = value.provenance;

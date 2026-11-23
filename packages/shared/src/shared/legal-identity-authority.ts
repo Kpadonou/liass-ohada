@@ -69,7 +69,12 @@ export const LegalSellerAuthoritySchema = z
         z
           .object({
             fieldPath: ref,
-            state: z.enum(["PRESENT", "VERIFIED", "AUTHORITY_UNKNOWN"]),
+            state: z.enum([
+              "PRESENT",
+              "VERIFIED",
+              "AUTHORITY_UNKNOWN",
+              "ORGANIZATION_ATTESTED",
+            ]),
             evidenceReference: ref.optional(),
           })
           .strict(),

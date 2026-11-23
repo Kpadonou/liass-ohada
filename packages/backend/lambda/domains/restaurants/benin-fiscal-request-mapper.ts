@@ -111,6 +111,11 @@ export function mapRestaurantBeninRequest(
       .filter((v) => v.state === "VERIFIED" && v.evidenceReference)
       .map((v) => v.fieldPath),
   );
+  const attestedFacts = new Set(
+    seller.factStates
+      .filter((v) => v.state === "ORGANIZATION_ATTESTED")
+      .map((v) => v.fieldPath),
+  );
   const identifierVerified =
     identifiers.length === 1 &&
     (verifiedFacts.has("identifiers") ||
@@ -134,7 +139,9 @@ export function mapRestaurantBeninRequest(
       !address ||
       !address.lines.length ||
       !verifiedFacts.has("name") ||
-      addressPaths.some((path) => !verifiedFacts.has(path))
+      addressPaths.some(
+        (path) => !verifiedFacts.has(path) && !attestedFacts.has(path),
+      )
     )
       throw new Error("FISCAL_SELLER_IDENTITY_INCOMPLETE");
   }

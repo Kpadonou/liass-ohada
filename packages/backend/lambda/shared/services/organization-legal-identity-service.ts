@@ -28,14 +28,51 @@ const store = new RevisionStore({
 const revisionSchema = LegalSellerAuthoritySchema.extend({
   evidenceArtifacts: z.array(AuthorityArtifactSchema).min(2).max(64),
 }).strict();
-function validate(input: unknown, orgId: string) {
-  const v = revisionSchema.parse(input);
+const attestationSchema = z.object({
+  actorUserId: z.string().min(1).max(200),
+  orgId: z.string().min(1).max(200),
+  occurredAt: z.string().datetime({ offset: true }),
+  declaration: z.literal('ORGANIZATION_LEGAL_ADDRESS_ATTESTATION_V1'),
+  previousRevisionId: z.string().uuid(),
+  previousSelectionVersion: z.number().int().positive().safe(),
+  changedValues: z.object({
+    address: LegalSellerAuthoritySchema.shape.seller.shape.address.unwrap(),
+  }).strict(),
+}).strict();
+function validateFacts(v: z.infer<typeof revisionSchema>) {
+  const paths = v.factStates.map((f) => f.fieldPath);
   if (
-    v.authorityReference !== "PLATFORM_LEGAL_IDENTITY_REVIEW" ||
-    v.authorityVersion !== "1"
+    new Set(paths).size !== paths.length ||
+    paths.some((p, i) => i > 0 && p <= paths[i - 1])
   )
-    throw new AppError(409, "AUTHORITY_UNAVAILABLE");
-  if (v.orgId !== orgId) throw new AppError(409, "AUTHORITY_TENANT_MISMATCH");
+    throw new AppError(422, "AUTHORITY_INVALID_FACT_STATES");
+  if (
+    !v.factStates.some(
+      (f) =>
+        f.fieldPath === "name" && f.state === "VERIFIED" && f.evidenceReference,
+    )
+  )
+    throw new AppError(422, "AUTHORITY_NAME_NOT_VERIFIED");
+  const leaves = (o: unknown, p = ""): string[] =>
+    o !== null && typeof o === "object"
+      ? Object.entries(o).flatMap(([k, value]) => leaves(value, p ? `${p}.${k}` : k))
+      : [p];
+  const actual = leaves(v.seller);
+  if (paths.length !== actual.length || paths.some((p) => !actual.includes(p)))
+    throw new AppError(422, "AUTHORITY_INVALID_FACT_STATES");
+  for (const f of v.factStates) {
+    if (
+      f.state === "VERIFIED" &&
+      (!f.evidenceReference ||
+        !v.evidenceArtifacts.some((a) => a.reference === f.evidenceReference))
+    )
+      throw new AppError(422, "AUTHORITY_FACT_PROOF_MISSING");
+    if (f.state === "ORGANIZATION_ATTESTED" &&
+      (f.evidenceReference || !f.fieldPath.startsWith('address.')))
+      throw new AppError(422, "AUTHORITY_ATTESTATION_INVALID");
+  }
+}
+function validateArtifacts(v: z.infer<typeof revisionSchema>) {
   for (const a of v.evidenceArtifacts) {
     if (a.format !== "LIASS-AUTHORITY-JSON-1")
       throw new AppError(422, "AUTHORITY_ARTIFACT_FORMAT_UNSUPPORTED");
@@ -46,6 +83,16 @@ function validate(input: unknown, orgId: string) {
     v.evidenceArtifacts.length
   )
     throw new AppError(422, "AUTHORITY_DUPLICATE_ARTIFACT");
+}
+function validateReviewed(input: unknown, orgId: string) {
+  const v = revisionSchema.parse(input);
+  if (
+    v.authorityReference !== "PLATFORM_LEGAL_IDENTITY_REVIEW" ||
+    v.authorityVersion !== "1"
+  )
+    throw new AppError(409, "AUTHORITY_UNAVAILABLE");
+  if (v.orgId !== orgId) throw new AppError(409, "AUTHORITY_TENANT_MISMATCH");
+  validateArtifacts(v);
   const {
     identityDigest,
     acceptanceReference,
@@ -84,40 +131,83 @@ function validate(input: unknown, orgId: string) {
     })
     .strict()
     .parse(JSON.parse(accepted.bytes));
-  const paths = v.factStates.map((f) => f.fieldPath);
-  if (
-    new Set(paths).size !== paths.length ||
-    paths.some((p, i) => i > 0 && p <= paths[i - 1])
-  )
-    throw new AppError(422, "AUTHORITY_INVALID_FACT_STATES");
-  if (
-    !v.factStates.some(
-      (f) =>
-        f.fieldPath === "name" && f.state === "VERIFIED" && f.evidenceReference,
-    )
-  )
-    throw new AppError(422, "AUTHORITY_NAME_NOT_VERIFIED");
-  const leaves = (o: unknown, p = ""): string[] =>
-    o !== null && typeof o === "object"
-      ? Object.entries(o).flatMap(([k, v]) => leaves(v, p ? `${p}.${k}` : k))
-      : [p];
-  const actual = leaves(v.seller);
-  if (paths.length !== actual.length || paths.some((p) => !actual.includes(p)))
-    throw new AppError(422, "AUTHORITY_INVALID_FACT_STATES");
-  for (const f of v.factStates) {
-    if (
-      f.state === "VERIFIED" &&
-      (!f.evidenceReference ||
-        !v.evidenceArtifacts.some((a) => a.reference === f.evidenceReference))
-    )
-      throw new AppError(422, "AUTHORITY_FACT_PROOF_MISSING");
-  }
+  validateFacts(v);
   return { v, acceptance };
+}
+function attestedDigest(input: Record<string, unknown>) {
+  const { PK: _pk, SK: _sk, identityDigest: _digest, createdAt: _at,
+    createdByUserId: _by, revisionId: _id, ...digestInput } = input;
+  return hash(canonical(clean(digestInput)));
+}
+function stableAttestedFacts(v: z.infer<typeof revisionSchema>) {
+  const { authorityReference: _authority, identityReference: _reference,
+    identityVersion: _version, identityDigest: _digest, seller, factStates,
+    ...stable } = v;
+  const { address: _address, ...sellerWithoutAddress } = seller;
+  return clean({ ...stable, seller: sellerWithoutAddress,
+    factStates: factStates.filter((fact) => !fact.fieldPath.startsWith('address.')) });
+}
+const revisionPayload = (input: Record<string, unknown>) => Object.fromEntries(
+  Object.keys(revisionSchema.shape).map((key) => [key, input[key]]),
+);
+async function validateSelectedRevision(
+  orgId: string,
+  input: Record<string, unknown>,
+  selectionVersion: number,
+  visited = new Set<string>(),
+): Promise<z.infer<typeof revisionSchema>> {
+  if (input.authorityReference === 'PLATFORM_LEGAL_IDENTITY_REVIEW')
+    return validateReviewed(revisionPayload(input), orgId).v;
+  if (input.authorityReference !== 'ORGANIZATION_ADMIN_ATTESTATION' || input.authorityVersion !== '1')
+    throw new AppError(409, 'AUTHORITY_UNAVAILABLE');
+  const v = revisionSchema.parse(revisionPayload(input));
+  if (v.orgId !== orgId) throw new AppError(409, 'AUTHORITY_TENANT_MISMATCH');
+  validateArtifacts(v);
+  validateFacts(v);
+  const revisionId = z.string().uuid().parse(input.revisionId);
+  if (visited.has(revisionId)) throw new AppError(409, 'AUTHORITY_ATTESTATION_INVALID');
+  visited.add(revisionId);
+  const attestation = attestationSchema.parse(input.attestation);
+  if (
+    revisionId !== v.identityReference ||
+    v.identityVersion !== String(selectionVersion) ||
+    input.identityDigest !== attestedDigest(input) ||
+    input.createdByUserId !== attestation.actorUserId ||
+    input.createdAt !== attestation.occurredAt ||
+    attestation.orgId !== orgId ||
+    attestation.previousSelectionVersion + 1 !== selectionVersion ||
+    canonical(attestation.changedValues.address) !== canonical(v.seller.address)
+  )
+    throw new AppError(409, 'AUTHORITY_ATTESTATION_INVALID');
+  const previousRaw = await store.revision(orgId, attestation.previousRevisionId);
+  const previous = await validateSelectedRevision(
+    orgId,
+    previousRaw,
+    attestation.previousSelectionVersion,
+    visited,
+  );
+  if (canonical(stableAttestedFacts(v)) !== canonical(stableAttestedFacts(previous)))
+    throw new AppError(409, 'AUTHORITY_ATTESTATION_INVALID');
+  const addressValue = (authority: z.infer<typeof revisionSchema>, path: string) => {
+    const address = authority.seller.address;
+    if (path.startsWith('address.lines.')) return address?.lines[Number(path.slice(14))];
+    return path === 'address.city' ? address?.city : address?.postalCode;
+  };
+  for (const fact of v.factStates.filter(({ fieldPath }) => fieldPath.startsWith('address.'))) {
+    const prior = previous.factStates.find(({ fieldPath }) => fieldPath === fact.fieldPath);
+    if (fact.state !== 'ORGANIZATION_ATTESTED' && (
+      !prior ||
+      canonical(fact) !== canonical(prior) ||
+      canonical(addressValue(v, fact.fieldPath)) !== canonical(addressValue(previous, fact.fieldPath))
+    ))
+      throw new AppError(409, 'AUTHORITY_ATTESTATION_INVALID');
+  }
+  return v;
 }
 /** Platform-owned reviewed identity boundary. Mutations require an explicit Platform grant;
  * organization ownership alone never permits verification or selection. */
 export class OrganizationLegalIdentityService {
-  /** Configuration read: attested revisions are deliberately not fiscal issuance authority. */
+  /** Configuration read; fiscal consumers must use the validated authority boundary below. */
   static async readSelectedIdentity(orgId: string) {
     return store.current(orgId);
   }
@@ -189,9 +279,7 @@ export class OrganizationLegalIdentityService {
   /** Read-only fiscal identity boundary; declared connection IFU is never trusted evidence. */
   static async readFiscalTaxpayerAuthority(orgId: string) {
     const result = await store.current(orgId);
-    const { v } = validate(Object.fromEntries(
-      Object.keys(revisionSchema.shape).map(k => [k, result.revision[k]]),
-    ), orgId);
+    const v = await validateSelectedRevision(orgId, result.revision, result.selectionVersion);
     const identifiers = v.seller.identifiers.map((value, index) => ({ value, index }))
       .filter(({ value }) => value.scheme === "IFU" && value.issuingCountry === "BJ");
     const verified = (path: string) => v.factStates.some(f => f.fieldPath === path && f.state === "VERIFIED" && f.evidenceReference);
@@ -209,7 +297,7 @@ export class OrganizationLegalIdentityService {
   ) {
     const grant = await requireLegalReviewer(actorUserId);
     const actor = grant.actor;
-    const { v, acceptance } = validate(input, orgId);
+    const { v, acceptance } = validateReviewed(input, orgId);
     if (acceptance.reviewedByUserId !== actor)
       throw new AppError(403, "AUTHORITY_REVIEW_ACTOR_MISMATCH");
     await store.create(orgId, v.identityReference, v, actor, [grant.check]);
@@ -223,10 +311,8 @@ export class OrganizationLegalIdentityService {
     const grant = await requireLegalReviewer(actorUserId);
     const actor = grant.actor;
     const r = await store.revision(orgId, revisionId);
-    const { v, acceptance } = validate(
-      Object.fromEntries(
-        Object.keys(revisionSchema.shape).map((k) => [k, r[k]]),
-      ),
+    const { v, acceptance } = validateReviewed(
+      revisionPayload(r),
       orgId,
     );
     if (acceptance.selectionBaseVersion !== expectedVersion)
@@ -272,12 +358,7 @@ export class OrganizationLegalIdentityService {
   }
   static async readSellerIssuanceAuthority(orgId: string) {
     const result = await store.current(orgId);
-    const { v } = validate(
-      Object.fromEntries(
-        Object.keys(revisionSchema.shape).map((k) => [k, result.revision[k]]),
-      ),
-      orgId,
-    );
+    const v = await validateSelectedRevision(orgId, result.revision, result.selectionVersion);
     const { evidenceArtifacts, ...sellerAuthority } = v;
     return { sellerAuthority, selectionVersion: result.selectionVersion, check: result.check };
   }
