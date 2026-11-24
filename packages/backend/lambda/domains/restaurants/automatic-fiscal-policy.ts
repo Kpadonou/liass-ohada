@@ -1,9 +1,10 @@
 import { z } from "zod";
+import { CognitoSubjectSchema } from "@/lambda/shared/authorization/platform-admin";
 import { randomUUID } from "node:crypto";
 import { FiscalTestExecutionAuthorizationService } from "@/lambda/shared/services/fiscal-test-execution-authorization-service";
 import { RestaurantFiscalAuthorizationPreparationService } from "./fiscal-authorization-preparation-service";
 const schema = z.object({ orgId: z.string().min(1), outletId: z.string().uuid(),
-  connectionId: z.string().uuid(), delegatedBy: z.string().uuid(), activatedAt: z.string().datetime() }).strict();
+  connectionId: z.string().uuid(), delegatedBy: CognitoSubjectSchema, activatedAt: z.string().datetime() }).strict();
 export function automaticFiscalPolicy() {
   if (process.env.STAGE !== "dev" || !process.env.FISCAL_AUTOMATIC_POLICY) return undefined;
   return schema.parse(JSON.parse(process.env.FISCAL_AUTOMATIC_POLICY));

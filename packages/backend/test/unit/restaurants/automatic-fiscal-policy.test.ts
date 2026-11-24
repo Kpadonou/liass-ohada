@@ -27,3 +27,7 @@ test("mismatching immutable FINAL time cannot prepare authorization", async () =
   await expect(prepareAutomaticFiscalAuthorization(work, policy.activatedAt)).rejects.toThrow("SCOPE_DENIED");
   expect(prepare).not.toHaveBeenCalled();
 });
+test("policy accepts genuine Cognito subjects without assuming RFC UUID variant bits", () => {
+  process.env.FISCAL_AUTOMATIC_POLICY = JSON.stringify({...policy, delegatedBy: "2189c04e-00f1-702c-d8e5-c38569e8974e"});
+  expect(automaticFiscalPolicy()?.delegatedBy).toBe("2189c04e-00f1-702c-d8e5-c38569e8974e");
+});
