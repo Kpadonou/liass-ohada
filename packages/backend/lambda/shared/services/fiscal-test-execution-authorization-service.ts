@@ -20,7 +20,7 @@ import {
 import { CognitoSubjectSchema, type PlatformPrincipal } from "../authorization/platform-admin";
 import { FiscalSourcePreparationProofService } from "./fiscal-source-preparation-proof-service";
 import { OrganizationLegalIdentityService } from "./organization-legal-identity-service";
-import { publicVerification } from "./fiscal-verification-model";
+import { addressOnlyVerificationSuccessor, publicVerification } from "./fiscal-verification-model";
 import { fiscalOrganizationCheck } from "../authorization/fiscal-organization";
 import { EffectiveOrganizationAccessService } from "./effective-organization-access-service";
 import { DomainAuthorizationService } from "./domain-authorization-service";
@@ -280,10 +280,14 @@ export class FiscalTestExecutionAuthorizationService {
       !connection.data.nim || !connection.secretReference || !connection.verification?.lastVerified)
       throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
     const configurationDigest = fiscalConfigurationDigest(connection);
+    const addressOnlySuccessor = await addressOnlyVerificationSuccessor(
+      orgId, connection.verification.lastVerified, identity.binding,
+    );
     const verification = publicVerification(
       connection.verification.lastVerified,
       { digest: configurationDigest, identity: identity.binding },
       now,
+      addressOnlySuccessor,
     );
     const verifiedBinding = connection.verification.lastVerified.binding;
     if (
@@ -295,7 +299,7 @@ export class FiscalTestExecutionAuthorizationService {
       verifiedBinding.environment !== "TEST" ||
       verifiedBinding.configurationVersion !== connection.data.version ||
       verifiedBinding.configurationDigest !== configurationDigest ||
-      verifiedBinding.identity?.digest !== proof.sellerAuthorityDigest
+      (verifiedBinding.identity?.digest !== proof.sellerAuthorityDigest && !addressOnlySuccessor)
     ) throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
     const input = FiscalTestExecutionAuthorizationInputSchema.parse({
       orgId, connectionId: request.connectionId,

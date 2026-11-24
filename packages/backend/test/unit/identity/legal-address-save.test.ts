@@ -72,6 +72,20 @@ test('save and reload selects immutable attested address, preserves verified fac
   expect(second.selectionVersion).toBe(3);
   expect(second.revision.factStates).toContainEqual({fieldPath:'address.lines.0',state:'ORGANIZATION_ATTESTED'});
 });
+test('connection binding survives only a validated chain of address attestations', async () => {
+  const old = await Service.readFiscalTaxpayerAuthority('org');
+  expect(old.ifu).toBe('0202113816157');
+  await Service.saveLegalAddress('org', 'owner', input);
+  await Service.saveLegalAddress('org', 'owner', {...input, expectedSelectionVersion: 2,
+    address: {lines: ['Another genuine address'], city: 'Cotonou'}});
+  expect(await Service.isAddressOnlySuccessor('org', old.binding)).toBe(true);
+  expect(await Service.isAddressOnlySuccessor('other-org', old.binding)).toBe(false);
+  expect(await Service.isAddressOnlySuccessor('org', {...old.binding, digest: '0'.repeat(64)})).toBe(false);
+  const selected = await Service.readSelectedIdentity('org');
+  const raw = rows.get(`${K.orgKey('org')}/${K.organizationLegalIdentityRevisionSK(selected.revision.revisionId as string)}`)!;
+  raw.seller = {...raw.seller as object, name: 'Different seller'};
+  expect(await Service.isAddressOnlySuccessor('org', old.binding)).toBe(false);
+});
 test('rejects tampered attestation and cannot upgrade declared address facts to verified',async()=>{
   const selected=await Service.saveLegalAddress('org','owner',input);
   const revision=rows.get(`${K.orgKey('org')}/${K.organizationLegalIdentityRevisionSK(selected.revision.revisionId as string)}`)!;

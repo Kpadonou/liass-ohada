@@ -28,7 +28,7 @@ import {
   CognitoSubjectSchema,
   type PlatformPrincipal,
 } from "../authorization/platform-admin";
-import { FiscalVerificationStateSchema, publicVerification } from "../services/fiscal-verification-model";
+import { FiscalVerificationStateSchema, addressOnlyVerificationSuccessor, publicVerification } from "../services/fiscal-verification-model";
 import { OrganizationLegalIdentityService } from "../services/organization-legal-identity-service";
 
 const ssm = new SSMClient({ maxAttempts: 1 });
@@ -249,7 +249,7 @@ export class OrganizationFiscalRepository {
     const currentIdentity = (page.Items ?? []).some(item => !!unmarshall(item).verification)
       ? await OrganizationLegalIdentityService.readFiscalTaxpayerAuthority(orgId).catch(() => null) : null;
     const now = new Date().toISOString();
-    const connections = (page.Items ?? []).map((item) => {
+    const connections = await Promise.all((page.Items ?? []).map(async (item) => {
       const row = connectionRecord.parse(unmarshall(item));
       if (
         row.PK !== PK ||
@@ -261,11 +261,14 @@ export class OrganizationFiscalRepository {
         throw new AppError(503, "PLATFORM_FISCAL_UNAVAILABLE");
       if (!row.verification) return row.data;
       const current = { digest: fiscalConfigurationDigest(row), identity: currentIdentity?.binding ?? null };
-      const latestAttempt = publicVerification(row.verification.latest, current, now);
+      const latestCompatible = await addressOnlyVerificationSuccessor(orgId, row.verification.latest, current.identity);
+      const lastCompatible = row.verification.lastVerified
+        ? await addressOnlyVerificationSuccessor(orgId, row.verification.lastVerified, current.identity) : false;
+      const latestAttempt = publicVerification(row.verification.latest, current, now, latestCompatible);
       if (latestAttempt.inProgress && Date.parse(row.verification.leaseUntil) <= Date.parse(now)) latestAttempt.inProgress = false;
       return { ...row.data, verification: { latestAttempt,
-        ...(row.verification.lastVerified ? { lastVerified: publicVerification(row.verification.lastVerified, current, now) } : {}) } };
-    });
+        ...(row.verification.lastVerified ? { lastVerified: publicVerification(row.verification.lastVerified, current, now, lastCompatible) } : {}) } };
+    }));
     return OrganizationFiscalSettingsSchema.parse({
       environment,
       connections,

@@ -207,6 +207,29 @@ async function validateSelectedRevision(
 /** Platform-owned reviewed identity boundary. Mutations require an explicit Platform grant;
  * organization ownership alone never permits verification or selection. */
 export class OrganizationLegalIdentityService {
+  /** A verified connection remains bound to the same seller when later selected
+   * revisions only attest address corrections. Every link is validated against
+   * its immutable predecessor; a reviewed or seller-critical change stops the walk. */
+  static async isAddressOnlySuccessor(orgId: string, prior: {
+    reference: string; version: string; digest: string; selectionVersion: number;
+  }): Promise<boolean> {
+    try {
+      const current = await store.current(orgId);
+      if (prior.selectionVersion >= current.selectionVersion) return false;
+      let raw = current.revision;
+      let revision = await validateSelectedRevision(orgId, raw, current.selectionVersion);
+      let version = current.selectionVersion;
+      while (version > prior.selectionVersion) {
+        if (revision.authorityReference !== 'ORGANIZATION_ADMIN_ATTESTATION') return false;
+        const attestation = attestationSchema.parse(raw.attestation);
+        raw = await store.revision(orgId, attestation.previousRevisionId);
+        revision = await validateSelectedRevision(orgId, raw, version - 1);
+        version -= 1;
+      }
+      return revision.identityReference === prior.reference &&
+        revision.identityVersion === prior.version && revision.identityDigest === prior.digest;
+    } catch { return false; }
+  }
   /** Configuration read; fiscal consumers must use the validated authority boundary below. */
   static async readSelectedIdentity(orgId: string) {
     return store.current(orgId);

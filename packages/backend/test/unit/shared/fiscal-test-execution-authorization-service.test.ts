@@ -170,6 +170,28 @@ test("atomically consumes verified Restaurants proof and creates its TEST author
   });
   expect(record.data.operatorUserId).not.toBe(record.data.issuedBy);
 });
+test("address-only selected successor keeps verified TEST connection applicable to a current source proof", async () => {
+  const current = {...identity(), binding: {...identity().binding,
+    reference: "5e303274-425b-4ff8-9022-833cb2169f58", version: "5",
+    digest: "d".repeat(64), selectionVersion: 5}};
+  jest.mocked(OrganizationLegalIdentityService.readFiscalTaxpayerAuthority).mockResolvedValue(current);
+  jest.mocked(FiscalSourcePreparationProofService.read).mockResolvedValue({...proof(), sellerAuthorityDigest: current.binding.digest} as never);
+  jest.spyOn(OrganizationLegalIdentityService, "isAddressOnlySuccessor").mockResolvedValue(true);
+  await expect(Service.approvePreparedProof(principal, orgId, request())).resolves.toMatchObject({status:"ACTIVE"});
+  expect(OrganizationLegalIdentityService.isAddressOnlySuccessor).toHaveBeenCalledWith(orgId, identity().binding);
+  const tx = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems!;
+  expect(unmarshall(tx[5].Put!.Item!).data.sellerAuthorityDigest).toBe(current.binding.digest);
+});
+test("changed selected seller without an address-only lineage cannot consume proof", async () => {
+  const current = {...identity(), binding: {...identity().binding,
+    digest: "d".repeat(64), selectionVersion: 5}};
+  jest.mocked(OrganizationLegalIdentityService.readFiscalTaxpayerAuthority).mockResolvedValue(current);
+  jest.mocked(FiscalSourcePreparationProofService.read).mockResolvedValue({...proof(), sellerAuthorityDigest: current.binding.digest} as never);
+  jest.spyOn(OrganizationLegalIdentityService, "isAddressOnlySuccessor").mockResolvedValue(false);
+  await expect(Service.approvePreparedProof(principal, orgId, request()))
+    .rejects.toMatchObject({messageCode:"PLATFORM_FISCAL_CREDENTIAL_INVALID"});
+  expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+});
 
 test("permission or direct-organization denial produces no write", async () => {
   jest.mocked(EffectiveOrganizationAccessService.resolveAccess).mockResolvedValueOnce({

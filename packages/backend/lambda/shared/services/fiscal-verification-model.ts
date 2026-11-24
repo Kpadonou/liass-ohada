@@ -160,10 +160,11 @@ export function publicVerification(
   stored: z.infer<typeof StoredFiscalVerificationSchema>,
   current: { digest: string; identity: FiscalVerificationBinding["identity"] },
   now: string,
+  addressOnlySuccessor = false,
 ) {
   const identityMatches =
     JSON.stringify(stored.binding.identity) ===
-    JSON.stringify(current.identity);
+    JSON.stringify(current.identity) || addressOnlySuccessor;
   const applicable =
     stored.binding.configurationDigest === current.digest && identityMatches;
   const result = structuredClone(stored.result);
@@ -180,4 +181,15 @@ export function publicVerification(
       result.status = "CREDENTIAL_EXPIRED";
   }
   return FiscalVerificationResultSchema.parse(result);
+}
+/** Historical verification may remain applicable only across validated address attestations. */
+export async function addressOnlyVerificationSuccessor(
+  orgId: string,
+  stored: z.infer<typeof StoredFiscalVerificationSchema>,
+  current: FiscalVerificationBinding["identity"],
+): Promise<boolean> {
+  if (!stored.binding.identity || !current ||
+    stored.binding.identity.selectionVersion >= current.selectionVersion) return false;
+  const { OrganizationLegalIdentityService } = await import("./organization-legal-identity-service");
+  return OrganizationLegalIdentityService.isAddressOnlySuccessor(orgId, stored.binding.identity);
 }

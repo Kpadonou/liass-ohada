@@ -12,6 +12,7 @@ import { OrganizationLegalIdentityService } from "./organization-legal-identity-
 import { PlatformSfeRepository } from "../repositories/platform-sfe-repository";
 import {
   FiscalVerificationBindingSchema,
+  addressOnlyVerificationSuccessor,
   evaluateDgiStatus,
   publicVerification,
   verificationOutcome,
@@ -53,10 +54,13 @@ export class OrganizationFiscalVerificationService {
     const digest = fiscalConfigurationDigest(source);
     const previous = await Attempts.read(orgId, principal, request);
     if (previous) {
+      const addressOnlySuccessor = await addressOnlyVerificationSuccessor(orgId,
+        { binding: previous.binding, result: previous.result }, identity?.binding ?? null);
       const view = publicVerification(
         { binding: previous.binding, result: previous.result },
         { digest, identity: identity?.binding ?? null },
         this.clock(),
+        addressOnlySuccessor,
       );
       if (
         view.inProgress &&
@@ -122,6 +126,8 @@ export class OrganizationFiscalVerificationService {
         await OrganizationLegalIdentityService.readFiscalTaxpayerAuthority(
           orgId,
         ).catch(() => null);
+      const addressOnlySuccessor = await addressOnlyVerificationSuccessor(orgId,
+        { binding: reservation.operation.binding, result: reservation.operation.result }, currentIdentity?.binding ?? null);
       const view = publicVerification(
         {
           binding: reservation.operation.binding,
@@ -132,6 +138,7 @@ export class OrganizationFiscalVerificationService {
           identity: currentIdentity?.binding ?? null,
         },
         this.clock(),
+        addressOnlySuccessor,
       );
       if (
         view.inProgress &&

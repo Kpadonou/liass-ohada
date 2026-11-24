@@ -4,6 +4,7 @@ import { beninStatusEndpoint } from "@/lambda/domains/fiscal-compliance/provider
 import {
   evaluateDgiStatus,
   initialVerification,
+  publicVerification,
 } from "@/lambda/shared/services/fiscal-verification-model";
 import type { FiscalHttpTransport } from "@/lambda/domains/fiscal-compliance/providers/http-transport";
 
@@ -26,6 +27,17 @@ const binding = {
 };
 const base = () =>
   initialVerification("35802d57-0418-4825-82ae-c3bf681bcb60", binding, now);
+test("address-only successor preserves credential applicability without changing recorded verification", () => {
+  const verified = {...base(), status: "VERIFIED_TEST" as const, inProgress: false,
+    applicable: true, tokenValidUntil: "2026-11-30T00:00:00.000Z"};
+  const stored = {binding, result: verified};
+  const current = {digest: binding.configurationDigest,
+    identity: {...binding.identity, reference: "9c46ca60-e931-4e4f-b08c-11449d9a4f07", version: "2",
+      digest: "c".repeat(64), selectionVersion: 2}};
+  expect(publicVerification(stored, current, now).status).toBe("STALE_CONFIGURATION");
+  expect(publicVerification(stored, current, now, true).applicable).toBe(true);
+  expect(publicVerification(stored, {...current, digest: "d".repeat(64)}, now, true).status).toBe("STALE_CONFIGURATION");
+});
 const evidence = {
   status: true,
   ifu: "synthetic-ifu",
