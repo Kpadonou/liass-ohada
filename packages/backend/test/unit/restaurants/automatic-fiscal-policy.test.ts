@@ -1,3 +1,5 @@
+import { prepareRestaurantFiscalInvoice } from "@/lambda/domains/restaurants/fiscal-preparation";
+jest.mock("@/lambda/domains/restaurants/fiscal-preparation", () => ({prepareRestaurantFiscalInvoice: jest.fn()}));
 import { automaticFiscalEligible, automaticFiscalPolicy, prepareAutomaticFiscalAuthorization } from "@/lambda/domains/restaurants/automatic-fiscal-policy";
 import { RestaurantFiscalAuthorizationPreparationService as Preparation } from "@/lambda/domains/restaurants/fiscal-authorization-preparation-service";
 import { FiscalTestExecutionAuthorizationService as Authorization } from "@/lambda/shared/services/fiscal-test-execution-authorization-service";
@@ -6,7 +8,7 @@ const policy = { orgId: "org", outletId: "11111111-1111-4111-8111-111111111111",
   activatedAt: "2026-11-24T12:00:00.000Z" };
 const work = { ...policy, sessionId: policy.outletId, invoiceId: policy.connectionId,
   actorId: policy.delegatedBy, createdAt: "2026-11-24T12:01:00.000Z" };
-beforeEach(() => { process.env.STAGE = "dev"; process.env.FISCAL_AUTOMATIC_POLICY = JSON.stringify(policy); });
+beforeEach(() => { jest.mocked(prepareRestaurantFiscalInvoice).mockResolvedValue({ready: true, preparation: {lines: [{fiscal: {taxGroup: "A"}}, {fiscal: {taxGroup: "B"}}]}} as never); process.env.STAGE = "dev"; process.env.FISCAL_AUTOMATIC_POLICY = JSON.stringify(policy); });
 afterEach(() => { delete process.env.STAGE; delete process.env.FISCAL_AUTOMATIC_POLICY; jest.restoreAllMocks(); });
 test("only post-cutoff invoices in the exact tenant and outlet are eligible", () => {
   expect(automaticFiscalEligible(work)).toBe(true);
@@ -20,6 +22,7 @@ test("authorized preparation reuses proof and existing scoped approval", async (
   jest.spyOn(Preparation, "prepare").mockResolvedValue({ proofId: policy.outletId, proofDigest: "a".repeat(64) } as never);
   const approve = jest.spyOn(Authorization, "approveAutomaticProof").mockResolvedValue({} as never);
   await prepareAutomaticFiscalAuthorization(work, work.createdAt);
+  expect(Preparation.prepare).toHaveBeenCalledWith(expect.objectContaining({scenarioId: "03"}));
   expect(approve).toHaveBeenCalledWith(policy, expect.objectContaining({ connectionId: policy.connectionId }), work.createdAt);
 });
 test("mismatching immutable FINAL time cannot prepare authorization", async () => {

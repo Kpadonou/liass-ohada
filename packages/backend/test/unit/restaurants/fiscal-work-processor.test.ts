@@ -1,3 +1,4 @@
+jest.mock("@/lambda/domains/restaurants/fiscal-preparation", () => ({prepareRestaurantFiscalInvoice: jest.fn(async () => ({ready: true, preparation: {lines: [{fiscal: {taxGroup: "A"}}, {fiscal: {taxGroup: "B"}}]}}))}));
 import { RestaurantFiscalAuthorizationPreparationService as AutomaticPreparation } from "@/lambda/domains/restaurants/fiscal-authorization-preparation-service";
 import { RestaurantFiscalWorkProcessor } from "@/lambda/domains/restaurants/fiscal-work-processor";
 import { RestaurantFiscalWorkRepository } from "@/lambda/domains/restaurants/fiscal-work-repository";
