@@ -111,22 +111,30 @@ export class FiscalTestExecutionAuthorizationService {
     const original = await this.read(originalKey);
     if (!original || original.data.authorizationId !== request.authorizationId ||
       original.data.invoiceId !== request.invoiceId || original.data.status !== "ACTIVE" ||
-      original.data.remaining.CREATE !== 0 || original.data.remaining.GET !== 0) throw conflict();
+      original.data.remaining.CREATE !== 0 || original.data.remaining.GET !== 0) {
+      console.error(JSON.stringify({ event: "FISCAL_GET_AUTHORIZATION_EXTENSION_REJECTED", reason: "BASE_AUTHORIZATION" }));
+      throw conflict();
+    }
     const intentDigest = createHash("sha256").update(canonical({
       orgId, issuedBy: principal.sub, ...request,
     })).digest("hex");
     const existing = await this.readExtension(orgId, request.invoiceId);
     if (existing) {
       if (existing.data.authorizationId !== request.authorizationId ||
-        existing.data.issuedBy !== principal.sub) throw conflict();
+        existing.data.issuedBy !== principal.sub) {
+        console.error(JSON.stringify({ event: "FISCAL_GET_AUTHORIZATION_EXTENSION_REJECTED", reason: "AUDIT_BINDING" }));
+        throw conflict();
+      }
       if (existing.data.commandId === request.commandId) {
         if (existing.data.intentDigest !== intentDigest)
           throw conflict();
         return extensionView(existing.data);
       }
       if (existing.data.status !== "ACTIVE" || existing.data.remaining !== 1 ||
-        Date.parse(existing.data.expiresAt) > Date.now() || (existing.history?.length ?? 0) >= 10)
+        Date.parse(existing.data.expiresAt) > Date.now() || (existing.history?.length ?? 0) >= 10) {
+        console.error(JSON.stringify({ event: "FISCAL_GET_AUTHORIZATION_EXTENSION_REJECTED", reason: "RENEWAL_STATE" }));
         throw conflict();
+      }
     }
     const identity = { orgId, environment: "TEST" as const, sourceDomain: "restaurants",
       sourceDocumentType: "INVOICE" as const, sourceDocumentId: request.invoiceId,
@@ -141,8 +149,10 @@ export class FiscalTestExecutionAuthorizationService {
     if (attemptRow.entityType !== "FISCAL_ATTEMPT_EFFECT" || attemptRow.orgId !== orgId ||
       attemptRow.version !== request.expectedAttemptVersion || !attempt.success ||
       attempt.data.version !== request.expectedAttemptVersion || attempt.data.status !== "CREATED" ||
-      attempt.data.uid !== request.providerUid || attempt.data.sourceDigest !== original.data.sourceDigest)
+      attempt.data.uid !== request.providerUid || attempt.data.sourceDigest !== original.data.sourceDigest) {
+      console.error(JSON.stringify({ event: "FISCAL_GET_AUTHORIZATION_EXTENSION_REJECTED", reason: "ATTEMPT_FENCE" }));
       throw conflict();
+    }
     const issuedAt = new Date().toISOString();
     const data = extensionDataSchema.parse({ extensionId: randomUUID(),
       authorizationId: request.authorizationId, orgId, outletId: original.data.outletId,
