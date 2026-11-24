@@ -1,4 +1,3 @@
-import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { restaurantBeninRealTestWorkflow, RealTestConfiguration } from "./benin-real-test-workflow";
 import {
   RestaurantFiscalSourceRequestSchema as requestSchema,
@@ -56,7 +55,7 @@ export class RestaurantFiscalApplicationService {
   }
   private async verify(context: Context, request: Request) {
     if (
-      (this.real ? !realFiscalTestEnabled() : (process.env.NODE_ENV !== "test" ||
+      (!this.real && (process.env.NODE_ENV !== "test" ||
       process.env.FISCAL_SYNTHETIC_APPLICATION !== "1")) ||
       !context.orgId ||
       !context.userId

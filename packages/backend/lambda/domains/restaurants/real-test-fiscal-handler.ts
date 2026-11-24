@@ -45,6 +45,6 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer | D
   if (!route) return { statusCode: 404, body: "{}" };
   if (route.operation === "adjudicate")
     return restaurantFiscalAdjudicationHandler()(event);
-  if (!realFiscalTestEnabled()) return { statusCode: 403, body: JSON.stringify({ error: { code: "DOMAIN_PERMISSION_REQUIRED" } }) };
+  if (!realFiscalTestEnabled() && route.operation !== "status" && route.operation !== "confirmedResult") return { statusCode: 403, body: JSON.stringify({ error: { code: "DOMAIN_PERMISSION_REQUIRED" } }) };
   return restaurantFiscalHandler(route.name, realTestFiscalService, true)(event);
 }

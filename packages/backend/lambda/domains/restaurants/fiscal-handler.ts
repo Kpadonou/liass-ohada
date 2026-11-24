@@ -59,7 +59,7 @@ export function restaurantFiscalHandler(
   // Guard before middleware: a disabled handler cannot reach identity reads or a service.
   return async (event: Parameters<typeof handler>[0]) => {
     if (
-      real ? !realFiscalTestEnabled() : (process.env.NODE_ENV !== "test" ||
+      real ? (!realFiscalTestEnabled() && route.operation !== "status" && route.operation !== "confirmedResult") : (process.env.NODE_ENV !== "test" ||
       process.env.FISCAL_SYNTHETIC_APPLICATION !== "1")
     )
       return {
