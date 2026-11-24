@@ -150,6 +150,8 @@ export interface BeninEMecefReconciliationDiagnostic {
     | "PENDING_UID_MISSING"
     | "PENDING_UID_DUPLICATE"
     | "PENDING_COUNT_INCONSISTENT"
+    | "PENDING_UID_MISSING_DETAILS_MATCH"
+    | "PENDING_UID_MISSING_DETAILS_MISMATCH"
     | "LOCAL_EXPECTED_INVALID"
     | "INVOICE_DETAIL_MISMATCH";
   readonly mismatchFields: readonly string[];
@@ -632,8 +634,18 @@ export class BeninEMecefTestAdapter {
     invoice: dto.BeninInvoiceRequest, expected: { itemTotals: number[]; total: number }) {
     const status = await this.request(input, "GET", "/api/invoice", statusResponseSchema);
     const matches = status.pendingRequestsList?.filter((pending) => pending.uid === uid) ?? [];
-    if (matches.length === 0)
-      throw reconciliationFailure("PENDING_UID_MISSING", ["pendingRequestsList.uid"]);
+    if (matches.length === 0) {
+      try {
+        await this.verifyDurableInvoice(input, uid, invoice, expected);
+        throw reconciliationFailure("PENDING_UID_MISSING_DETAILS_MATCH", ["pendingRequestsList.uid"]);
+      } catch (error) {
+        if (error instanceof BeninEMecefConnectorError &&
+          error.reconciliationDiagnostic?.classification === "INVOICE_DETAIL_MISMATCH")
+          throw reconciliationFailure("PENDING_UID_MISSING_DETAILS_MISMATCH",
+            ["pendingRequestsList.uid", ...error.reconciliationDiagnostic.mismatchFields]);
+        throw error;
+      }
+    }
     if (matches.length > 1)
       throw reconciliationFailure("PENDING_UID_DUPLICATE", ["pendingRequestsList.uid"]);
     if (status.pendingRequestsCount === undefined || status.pendingRequestsCount < matches.length)

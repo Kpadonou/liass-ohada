@@ -244,6 +244,8 @@ export function restaurantBeninRealTestWorkflow(
           httpStatus: failure?.httpStatus,
           classification: failure?.reconciliationDiagnostic?.classification,
           mismatchFields: failure?.reconciliationDiagnostic?.mismatchFields,
+          providerOperation: failure?.providerDiagnostic?.operation,
+          providerErrorCode: failure?.providerDiagnostic?.providerErrorCode,
         }));
         throw error;
       }
