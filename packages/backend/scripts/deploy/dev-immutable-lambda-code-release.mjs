@@ -15,6 +15,12 @@ export const DEV_ACCOUNT = "570197775998";
 export const DEV_REGION = "eu-west-3";
 export const DEV_STAGE = "dev";
 export const RESTAURANTS_PREFIX = "liass-ohada-dev-restaurants-";
+export const AUTOMATIC_FISCAL_RELEASE = Object.freeze({
+  profile: "AUTOMATIC_FISCAL_SCOPED_TEST_SINGLE_TARGET",
+  commit: "389dbea4281e5c9af32bebd607d70a86c0917f0d",
+  functionName: "liass-ohada-dev-fiscal-compliance-real-test",
+  logicalId: "RealTestExecutorA6E6815D",
+});
 export const FISCAL_EXECUTOR_RELEASE = Object.freeze({
   profile: "FISCAL_EXECUTOR_SINGLE_TARGET",
   commit: "91b0a87877bf534fc5d492fc59e3cff197a363ec",
@@ -127,7 +133,7 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const organizationProfile = manifest?.releaseProfile === ORGANIZATION_PROFILE_RELEASE.profile;
   const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
   const fiscalGetExtension = manifest?.releaseProfile === FISCAL_GET_EXTENSION_RELEASE.profile;
-  const singleTarget = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
+  const singleTarget = manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE : undefined;
