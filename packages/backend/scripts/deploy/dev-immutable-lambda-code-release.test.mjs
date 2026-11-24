@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, RESTAURANTS_RECEIPT_READ_RELEASE, FISCAL_STATUS_GATE_OFF_RELEASE, FISCAL_GET_EXTENSION_RELEASE, FISCAL_ADDRESS_ATTESTATION_RELEASE, FISCAL_OPTIONAL_FIELDS_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -155,6 +155,21 @@ test("address compatibility release accepts only its four pinned DEV Lambdas", (
     commit: FISCAL_ADDRESS_ATTESTATION_RELEASE.commit, artifacts };
   assert.equal(validateReleaseManifest(manifest, directory).length, 4);
   manifest.artifacts[0].functionName = "liass-ohada-dev-accounting-post-entry";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+test("optional DGI fields release accepts only the fiscal executor", () => {
+  const { directory } = fixture();
+  const bytes = Buffer.from(FISCAL_OPTIONAL_FIELDS_RELEASE.functionName);
+  const hashes = awaitableHash(bytes);
+  const artifact = { ...entry(FISCAL_OPTIONAL_FIELDS_RELEASE.functionName, bytes),
+    logicalId: FISCAL_OPTIONAL_FIELDS_RELEASE.logicalId,
+    sha256Hex: hashes.hex, codeSha256: hashes.base64 };
+  writeFileSync(join(directory, artifact.artifact), bytes);
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false,
+    releaseProfile: FISCAL_OPTIONAL_FIELDS_RELEASE.profile, target,
+    commit: FISCAL_OPTIONAL_FIELDS_RELEASE.commit, artifacts: [artifact] };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 1);
+  manifest.artifacts[0].functionName = "liass-ohada-dev-identity-verify-fiscal-connection";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
 
