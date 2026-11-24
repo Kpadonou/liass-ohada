@@ -242,6 +242,8 @@ export function restaurantBeninRealTestWorkflow(
           invoiceId: config.invoiceId, environment: "TEST",
           code: failure?.code ?? "INTERNAL",
           httpStatus: failure?.httpStatus,
+          classification: failure?.reconciliationDiagnostic?.classification,
+          mismatchFields: failure?.reconciliationDiagnostic?.mismatchFields,
         }));
         throw error;
       }

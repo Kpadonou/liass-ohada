@@ -130,8 +130,10 @@ export class FiscalTestExecutionAuthorizationService {
           throw conflict();
         return extensionView(existing.data);
       }
-      if (existing.data.status !== "ACTIVE" || existing.data.remaining !== 1 ||
-        Date.parse(existing.data.expiresAt) > Date.now() || (existing.history?.length ?? 0) >= 10) {
+      const renewableExpired = existing.data.status === "ACTIVE" && existing.data.remaining === 1 &&
+        Date.parse(existing.data.expiresAt) <= Date.now();
+      const renewableConsumed = existing.data.status === "CONSUMED" && existing.data.remaining === 0;
+      if ((!renewableExpired && !renewableConsumed) || (existing.history?.length ?? 0) >= 10) {
         console.error(JSON.stringify({ event: "FISCAL_GET_AUTHORIZATION_EXTENSION_REJECTED", reason: "RENEWAL_STATE" }));
         throw conflict();
       }
@@ -180,11 +182,12 @@ export class FiscalTestExecutionAuthorizationService {
             ":uid": request.providerUid, ":source": original.data.sourceDigest }) } },
         existing ? { Update: { TableName: table(), Key: marshall(extensionKeyFor(orgId, request.invoiceId)),
           UpdateExpression: "SET #data = :data, #history = list_append(if_not_exists(#history, :empty), :previous)",
-          ConditionExpression: "entityType = :type AND #data.commandId = :priorCommand AND #data.#status = :active AND #data.#remaining = :one AND #data.expiresAt <= :now AND (attribute_not_exists(#history) OR size(#history) < :maxHistory)",
+          ConditionExpression: "entityType = :type AND #data.commandId = :priorCommand AND ((#data.#status = :active AND #data.#remaining = :one AND #data.expiresAt <= :now) OR (#data.#status = :consumed AND #data.#remaining = :zero)) AND (attribute_not_exists(#history) OR size(#history) < :maxHistory)",
           ExpressionAttributeNames: { "#data": "data", "#history": "history", "#status": "status", "#remaining": "remaining" },
           ExpressionAttributeValues: marshall({ ":data": data, ":empty": [], ":previous": [existing.data],
             ":type": "PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION", ":priorCommand": existing.data.commandId,
-            ":active": "ACTIVE", ":one": 1, ":now": issuedAt, ":maxHistory": 10 }) } }
+            ":active": "ACTIVE", ":consumed": "CONSUMED", ":one": 1, ":zero": 0,
+            ":now": issuedAt, ":maxHistory": 10 }) } }
           : { Put: { TableName: table(), Item: marshall(record),
             ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } },
       ] }));

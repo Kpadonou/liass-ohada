@@ -403,6 +403,34 @@ test("renews an unused expired GET extension while preserving its audit history"
   expect(values[":data"].commandId).toBe("bfda4655-a443-41cd-87a5-0cd10d4804c0");
 });
 
+test("issues a new audited GET credit after the prior extension was consumed", async () => {
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk.startsWith("FISCAL_ATTEMPT_EFFECT#")) return { Item: createdAttemptRecord() };
+    return {};
+  });
+  await Service.extendGetReconciliation(principal, orgId, extensionRequest());
+  const prior = unmarshall(db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems![4].Put!.Item!);
+  prior.data.status = "CONSUMED"; prior.data.remaining = 0;
+  db.reset();
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId)) return { Item: exhaustedAuthorizationRecord() };
+    if (sk === K.fiscalGetAuthorizationExtensionSK("TEST", ids.invoiceId)) return { Item: marshall(prior) };
+    if (sk.startsWith("FISCAL_ATTEMPT_EFFECT#")) return { Item: createdAttemptRecord() };
+    return {};
+  });
+  await expect(Service.extendGetReconciliation(principal, orgId, {
+    ...extensionRequest(), commandId: "cb84f6c5-80ed-46a1-82a6-7ed552e5baad",
+  })).resolves.toMatchObject({ operation: "GET", remaining: 1, status: "ACTIVE" });
+  const values = unmarshall(db.commandCalls(TransactWriteItemsCommand)[0].args[0]
+    .input.TransactItems![4].Update!.ExpressionAttributeValues!);
+  expect(values[":previous"]).toEqual([prior.data]);
+  expect(values[":zero"]).toBe(0);
+});
+
 test("rejects an extension when CREATED attempt UID or version does not match", async () => {
   db.on(GetItemCommand).callsFake((input) => {
     const sk = unmarshall(input.Key!).SK;

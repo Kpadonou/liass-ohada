@@ -145,6 +145,15 @@ export interface BeninEMecefProviderDiagnostic {
   readonly providerErrorCode: string;
   readonly rejectionCategory: "PROVIDER_ERROR_CODE";
 }
+export interface BeninEMecefReconciliationDiagnostic {
+  readonly classification:
+    | "PENDING_UID_MISSING"
+    | "PENDING_UID_DUPLICATE"
+    | "PENDING_COUNT_INCONSISTENT"
+    | "LOCAL_EXPECTED_INVALID"
+    | "INVOICE_DETAIL_MISMATCH";
+  readonly mismatchFields: readonly string[];
+}
 
 const safeMessages: Record<BeninEMecefConnectorErrorCode, string> = {
   INVALID_PAYLOAD: "The TEST invoice input is invalid or unsupported.",
@@ -189,6 +198,7 @@ export class BeninEMecefConnectorError extends Error {
       readonly validationPaths?: readonly string[];
       readonly sent: boolean;
     },
+    readonly reconciliationDiagnostic?: BeninEMecefReconciliationDiagnostic,
   ) {
     super(safeMessages[code]);
     this.name = "BeninEMecefConnectorError";
@@ -606,10 +616,13 @@ export class BeninEMecefTestAdapter {
   /** Read-only comparison of the provider's pending invoice before durable CONFIRM. */
   async verifyDurableInvoice(input: GetBeninEMecefStatusInput, uid: string,
     invoice: dto.BeninInvoiceRequest, expected: { itemTotals: number[]; total: number }) {
-    const parsed = validateInvoiceRequest(invoice, expected);
+    let parsed: ReturnType<typeof validateInvoiceRequest>;
+    try { parsed = validateInvoiceRequest(invoice, expected); }
+    catch { throw reconciliationFailure("LOCAL_EXPECTED_INVALID", ["preparedInvoice"]); }
     const details = await this.getInvoiceForTestConfirmation(input, uid);
-    if (!sameInvoice(details, parsed.data, true))
-      throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
+    const mismatchFields = invoiceMismatchFields(details, parsed.data, true);
+    if (mismatchFields.length)
+      throw reconciliationFailure("INVOICE_DETAIL_MISMATCH", mismatchFields);
     return details;
   }
 
@@ -619,9 +632,12 @@ export class BeninEMecefTestAdapter {
     invoice: dto.BeninInvoiceRequest, expected: { itemTotals: number[]; total: number }) {
     const status = await this.request(input, "GET", "/api/invoice", statusResponseSchema);
     const matches = status.pendingRequestsList?.filter((pending) => pending.uid === uid) ?? [];
-    if (matches.length !== 1 || status.pendingRequestsCount === undefined ||
-      status.pendingRequestsCount < matches.length)
-      throw new BeninEMecefConnectorError("RECONCILIATION_FAILED");
+    if (matches.length === 0)
+      throw reconciliationFailure("PENDING_UID_MISSING", ["pendingRequestsList.uid"]);
+    if (matches.length > 1)
+      throw reconciliationFailure("PENDING_UID_DUPLICATE", ["pendingRequestsList.uid"]);
+    if (status.pendingRequestsCount === undefined || status.pendingRequestsCount < matches.length)
+      throw reconciliationFailure("PENDING_COUNT_INCONSISTENT", ["pendingRequestsCount"]);
     return this.verifyDurableInvoice(input, uid, invoice, expected);
   }
 
@@ -874,13 +890,19 @@ const securitySchema = dto.SecurityElementsDtoSchema.extend({
   counters: z.string().min(1),
   nim: z.string().min(1),
 });
-function sameInvoice(
+function reconciliationFailure(classification: BeninEMecefReconciliationDiagnostic["classification"],
+  mismatchFields: readonly string[]) {
+  return new BeninEMecefConnectorError("RECONCILIATION_FAILED", undefined, undefined,
+    undefined, undefined, { classification, mismatchFields: Object.freeze([...mismatchFields].slice(0, 20)) });
+}
+
+function invoiceMismatchFields(
   details: unknown,
   invoice: dto.BeninInvoiceRequest,
   allowTestNa = false,
-): boolean {
+): readonly string[] {
   const parsed = dto.InvoiceRequestDataDtoSchema.safeParse(invoice);
-  if (!parsed.success || !details || typeof details !== "object") return false;
+  if (!parsed.success || !details || typeof details !== "object") return ["invoice"];
   const canonical = (value: unknown): string => {
     if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
     if (value && typeof value === "object")
@@ -926,5 +948,26 @@ function sameInvoice(
     delete actual.type;
     delete expected.type;
   }
-  return canonical(actual) === canonical(expected);
+  const fields = new Set<string>();
+  const compare = (a: unknown, e: unknown, path: string) => {
+    if (canonical(a) === canonical(e)) return;
+    if (Array.isArray(a) && Array.isArray(e)) {
+      if (a.length !== e.length) fields.add(`${path}.length`);
+      for (let index = 0; index < Math.min(a.length, e.length); index += 1)
+        compare(a[index], e[index], `${path}[${index}]`);
+      return;
+    }
+    if (a && e && typeof a === "object" && typeof e === "object") {
+      for (const key of new Set([...Object.keys(a), ...Object.keys(e)]))
+        compare((a as Record<string, unknown>)[key], (e as Record<string, unknown>)[key], path ? `${path}.${key}` : key);
+      return;
+    }
+    fields.add(path || "invoice");
+  };
+  compare(actual, expected, "");
+  return [...fields].sort().slice(0, 20);
+}
+
+function sameInvoice(details: unknown, invoice: dto.BeninInvoiceRequest, allowTestNa = false): boolean {
+  return invoiceMismatchFields(details, invoice, allowTestNa).length === 0;
 }
