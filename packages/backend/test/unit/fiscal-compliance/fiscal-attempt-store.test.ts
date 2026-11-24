@@ -65,6 +65,22 @@ test("concurrent provider-independent reservation allows exactly one winner", as
   expect(outcomes.filter((v) => v.status === "fulfilled")).toHaveLength(1);
   expect(rows.size).toBe(1);
 });
+test("status read remains available with execution gates off while mutation reads stay fenced", async () => {
+  const store = new FiscalAttemptStore();
+  await store.reserve(input);
+  process.env.FISCAL_SYNTHETIC_STORAGE = "0";
+  process.env.FISCAL_REAL_TEST_ENABLED = "0";
+  process.env.FISCAL_ADJUDICATION_ENABLED = "0";
+  try {
+    expect((await store.readForStatus(identity))?.status).toBe("RESERVED");
+    await expect(store.read(identity)).rejects.toMatchObject({ code: "SCOPE_DENIED" });
+    await expect(store.transition(identity, 1, command)).rejects.toMatchObject({ code: "SCOPE_DENIED" });
+    expect([...rows.values()].map((row) => unmarshall(row))).toHaveLength(1);
+  } finally {
+    delete process.env.FISCAL_REAL_TEST_ENABLED;
+    delete process.env.FISCAL_ADJUDICATION_ENABLED;
+  }
+});
 test("command intent survives restart; replay never grants dispatch", async () => {
   const store = new FiscalAttemptStore();
   await store.reserve(input);

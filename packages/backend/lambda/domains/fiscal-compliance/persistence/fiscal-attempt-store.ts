@@ -38,6 +38,14 @@ export class FiscalAttemptStore {
   }
   async read(scope: FiscalObligationIdentity) {
     this.enabled();
+    return this.readItem(scope);
+  }
+  /** Authenticated fiscal status/result routes may inspect an attempt while
+   * execution is disabled. Mutation entry points continue to use gated read(). */
+  async readForStatus(scope: FiscalObligationIdentity) {
+    return this.readItem(scope);
+  }
+  private async readItem(scope: FiscalObligationIdentity) {
     const key = this.key(scope);
     try {
       const response = await dynamoClient.send(

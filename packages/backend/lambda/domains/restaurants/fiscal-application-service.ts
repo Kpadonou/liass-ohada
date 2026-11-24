@@ -109,7 +109,7 @@ export class RestaurantFiscalApplicationService {
   private async readResultState(context: Context, input: unknown) {
     const request = requestSchema.parse(input);
     const source = await this.verify(context, request);
-    const state = await new FiscalAttemptStore().read(this.identity(context, request));
+    const state = await new FiscalAttemptStore().readForStatus(this.identity(context, request));
     if (state && ((state.execution === "REAL_TEST") !== this.real || state.sourceDigest !== source.proof.digest))
       throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
     const currentSource = await this.verify(context, request);

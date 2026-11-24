@@ -53,6 +53,9 @@ beforeEach(() => {
   jest
     .spyOn(FiscalAttemptStore.prototype, "read")
     .mockImplementation(async () => state);
+  jest
+    .spyOn(FiscalAttemptStore.prototype, "readForStatus")
+    .mockImplementation(async () => state);
   (restaurantBeninSyntheticWorkflow as jest.Mock).mockReturnValue({
     create,
     confirm,
@@ -349,7 +352,7 @@ test("linked FA reads its own confirmed result and the unchanged original DGI re
   state = reserveFiscalAttempt({ identity: creditIdentity, attemptId: "credit-attempt",
     provider: "BENIN_EMECEF_TEST", execution: "REAL_TEST", fiscalDocumentType: "FA",
     sourceDigest: creditDigest, requestDigest: digest, expectedTotal: 554 });
-  const read = jest.mocked(FiscalAttemptStore.prototype.read);
+  const read = jest.mocked(FiscalAttemptStore.prototype.readForStatus);
   read.mockImplementation(async scope => {
     expect(scope).toMatchObject(creditIdentity);
     return { ...state!, identity: creditIdentity, sourceDigest: creditDigest,
