@@ -146,6 +146,7 @@ describe('Receipt presentation and complete native print', () => {
   it.each([
     ['PENDING', 'Fiscalisation en attente'],
     ['CLAIMED', 'Fiscalisation en cours'],
+    ['INTERRUPTED', 'Traitement fiscal interrompu — confirmation non établie'],
     ['BLOCKED', 'Fiscalisation en attente d’autorisation'],
   ])('shows durable %s work without inventing a DGI result', async (workState, label) => {
     fiscalApi.result.mockResolvedValue({

@@ -5446,6 +5446,7 @@
       "FISCAL_STATUS": {
         "PENDING": "Fiscal processing pending",
         "PROCESSING": "Fiscal processing in progress",
+        "INTERRUPTED": "Fiscal processing interrupted — confirmation not established",
         "BLOCKED": "Fiscal processing awaiting authorization",
         "NOT_STARTED": "Not started",
         "RESERVED": "Not confirmed",

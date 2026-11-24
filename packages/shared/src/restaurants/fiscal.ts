@@ -45,7 +45,7 @@ const fields = {
   environment: z.literal("TEST"),
   execution: z.enum(["SYNTHETIC", "REAL_TEST"]),
   status: RestaurantFiscalStatusSchema,
-  workState: z.enum(["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED"]).nullable().optional(),
+  workState: z.enum(["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED", "INTERRUPTED"]).nullable().optional(),
   confirmed: z.boolean(),
   legallyNormalized: z.literal(false),
   normalizedInvoice: z.null(),

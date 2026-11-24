@@ -94,6 +94,15 @@ test("reads a durable pending intent with a consistent, tenant-scoped key", asyn
   expect(send.mock.calls.at(-1)?.[0]).toBeInstanceOf(GetItemCommand);
   expect((send.mock.calls.at(-1)?.[0] as GetItemCommand).input.ConsistentRead).toBe(true);
 });
+test("projects an expired claim as interrupted without changing the intent", async () => {
+  const send = jest.spyOn(dynamoClient, "send").mockResolvedValue({ Item: marshall({
+    entityType: "RESTAURANT_FISCAL_INTENT", orgId: context.orgId,
+    outletId: request.outletId, sessionId: request.sessionId,
+    invoiceId: request.invoiceId, state: "CLAIMED", claimUntil: "2020-01-01T00:00:00.000Z",
+  }) } as never);
+  expect(await service.status(context, request)).toMatchObject({ workState: "INTERRUPTED" });
+  expect(send.mock.calls.every(([command]) => command instanceof GetItemCommand)).toBe(true);
+});
 afterEach(() => {
   delete process.env.FISCAL_SYNTHETIC_APPLICATION;
   jest.restoreAllMocks();

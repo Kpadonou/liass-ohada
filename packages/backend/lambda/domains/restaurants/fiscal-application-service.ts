@@ -127,7 +127,10 @@ export class RestaurantFiscalApplicationService {
       throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
     if (intent && !["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED"].includes(intent.state))
       throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
-    const workState = intent ? intent.state as "PENDING" | "CLAIMED" | "BLOCKED" | "CONFIRMED" : null;
+    const workState = intent?.state === "CLAIMED" &&
+      (!intent.claimUntil || !Number.isFinite(Date.parse(intent.claimUntil)) || Date.parse(intent.claimUntil) <= Date.now())
+      ? "INTERRUPTED" as const
+      : intent ? intent.state as "PENDING" | "CLAIMED" | "BLOCKED" | "CONFIRMED" : null;
     return { request, state, source: currentSource, workState };
   }
   async status(context: Context, input: unknown) {

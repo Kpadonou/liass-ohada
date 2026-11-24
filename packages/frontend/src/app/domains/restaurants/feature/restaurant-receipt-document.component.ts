@@ -307,6 +307,7 @@ export class RestaurantReceiptDocument {
   fiscalDisplayStatus(status: RestaurantFiscalResultResponse['status'], workState: RestaurantFiscalResultResponse['workState']) {
     if (status === 'CONFIRMED' || status === 'UNKNOWN_OUTCOME' || status === 'FAILED' || status === 'CANCELLED') return status;
     if (workState === 'BLOCKED') return 'BLOCKED';
+    if (workState === 'INTERRUPTED') return 'INTERRUPTED';
     if (workState === 'PENDING' && status === 'NOT_STARTED') return 'PENDING';
     if (workState === 'CLAIMED' && status === 'NOT_STARTED') return 'PROCESSING';
     return status;

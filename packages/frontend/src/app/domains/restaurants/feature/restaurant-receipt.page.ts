@@ -272,7 +272,7 @@ export class RestaurantReceiptView {
       const result = this.client.getQueryData<RestaurantFiscalResultResponse>([...receiptKey(this.ctx()), 'fiscal', this.first.data()?.data.receiptId]);
       if (!result) return false;
       if (result.status === 'UNKNOWN_OUTCOME' || result.status === 'CONFIRMED' ||
-        result.status === 'FAILED' || result.status === 'CANCELLED' || result.workState === 'BLOCKED') return false;
+        result.status === 'FAILED' || result.status === 'CANCELLED' || result.workState === 'BLOCKED' || result.workState === 'INTERRUPTED') return false;
       return result.workState === 'PENDING' || result.workState === 'CLAIMED' ||
         ['RESERVED', 'CREATE_IN_FLIGHT', 'CONFIRM_IN_FLIGHT', 'CANCEL_IN_FLIGHT'].includes(result.status)
         ? 5000 : false;
