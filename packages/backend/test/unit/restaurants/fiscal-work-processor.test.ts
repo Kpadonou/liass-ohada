@@ -118,3 +118,15 @@ test("uncertain CONFIRM leaves work unresolved for authoritative recovery", asyn
   expect(completeSpy).not.toHaveBeenCalled();
   expect(blockSpy).not.toHaveBeenCalled();
 });
+test("configured pilot discards historical Stream backlog before any claim or provider operation", async () => {
+  process.env.FISCAL_AUTOMATIC_POLICY = JSON.stringify({orgId: work.orgId,
+    outletId: work.outletId, connectionId: work.invoiceId,
+    delegatedBy: work.sessionId, activatedAt: "2026-11-24T13:00:00.000Z"});
+  try {
+    expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({state: "NOT_CLAIMED"});
+    expect(claimSpy).not.toHaveBeenCalled();
+    expect(initiateSpy).not.toHaveBeenCalled();
+    expect(reconcileSpy).not.toHaveBeenCalled();
+    expect(confirmSpy).not.toHaveBeenCalled();
+  } finally { delete process.env.FISCAL_AUTOMATIC_POLICY; }
+});
