@@ -40,6 +40,7 @@ const authorizationInputBaseSchema = z.object({
 export const FiscalTestExecutionAuthorizationInputSchema = authorizationInputBaseSchema.superRefine((v, ctx) => { if (Date.parse(v.expiresAt) <= Date.now()) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "expiry must be future" }); });
 export type FiscalTestExecutionAuthorizationInput = z.infer<typeof FiscalTestExecutionAuthorizationInputSchema>;
 const dataSchema = authorizationInputBaseSchema.omit({ commandId: true }).extend({
+  automaticPolicy: z.object({ orgId: z.string(), outletId: id, connectionId: id, delegatedBy: CognitoSubjectSchema, activatedAt: z.string().datetime() }).strict().optional(),
   authorizationId: id, issuedAt: z.string().datetime(), issuedBy: CognitoSubjectSchema,
   status: z.enum(["ACTIVE", "REVOKED"]),
   remaining: z.record(operation, z.number().int().nonnegative()),
@@ -211,6 +212,20 @@ export class FiscalTestExecutionAuthorizationService {
     orgId: string,
     raw: unknown,
   ) {
+    return this.approveForActor(principal, orgId, raw);
+  }
+  /** Internal policy delegation; no JWT or Platform identity is fabricated. */
+  static async approveAutomaticProof(policy: { orgId: string; outletId: string; connectionId: string;
+    delegatedBy: string; activatedAt: string }, raw: unknown, issuedAt: string) {
+    if (process.env.STAGE !== "dev" || process.env.FISCAL_AUTOMATIC_POLICY !== JSON.stringify(policy) ||
+      Date.parse(issuedAt) <= Date.parse(policy.activatedAt)) throw forbidden();
+    const request = ApproveFiscalTestExecutionAuthorizationRequestSchema.parse(raw);
+    const proof = await FiscalSourcePreparationProofService.read(policy.orgId, request.proofId);
+    if (!proof || proof.outletId !== policy.outletId || request.connectionId !== policy.connectionId)
+      throw forbidden();
+    return this.approveForActor({ sub: policy.delegatedBy, stage: "dev" }, policy.orgId, raw, policy);
+  }
+  private static async approveForActor(principal: Pick<PlatformPrincipal, "sub" | "stage">, orgId: string, raw: unknown, automaticPolicy?: { orgId: string; outletId: string; connectionId: string; delegatedBy: string; activatedAt: string }) {
     const request = ApproveFiscalTestExecutionAuthorizationRequestSchema.parse(raw);
     if (principal.stage === "prod") throw forbidden();
     const access = await EffectiveOrganizationAccessService.resolveAccess({
@@ -294,7 +309,7 @@ export class FiscalTestExecutionAuthorizationService {
     });
     const { commandId: _commandId, ...authorizationInput } = input;
     const data = dataSchema.parse({
-      ...authorizationInput, authorizationId: randomUUID(), issuedAt: now,
+      ...authorizationInput, ...(automaticPolicy ? { automaticPolicy } : {}), authorizationId: randomUUID(), issuedAt: now,
       issuedBy: principal.sub, status: "ACTIVE", remaining: input.operations,
       preparationProofId: proof.proofId,
       preparationProofDigest: proof.proofDigest,

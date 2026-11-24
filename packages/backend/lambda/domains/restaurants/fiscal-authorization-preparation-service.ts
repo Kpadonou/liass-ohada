@@ -35,7 +35,7 @@ const fail = (code: string, status = 409): never => { throw new AppError(status,
 export class RestaurantFiscalAuthorizationPreparationService {
   static async prepare(input: {
     orgId: string; actorId: string; outletId: string; sessionId: string; invoiceId: string;
-    scenarioId: string; commandId: string;
+    scenarioId: string; commandId: string; automaticPolicy?: boolean;
   }) {
     const request = c.RestaurantFiscalAuthorizationPreparationRequestSchema.parse({
       scenarioId: input.scenarioId, commandId: input.commandId,
@@ -113,7 +113,7 @@ export class RestaurantFiscalAuthorizationPreparationService {
         BigInt(line.fiscal.taxSpecificMinor ?? 0) > 0n,
     );
     if (
-      canonical(actualQuantities) !== canonical(expectedQuantities) ||
+      (!input.automaticPolicy && canonical(actualQuantities) !== canonical(expectedQuantities)) ||
       (requiresCustomer && !hasRequiredCustomer) ||
       !hasRequiredSpecific ||
       prepared.preparation.aib !== expectedAib

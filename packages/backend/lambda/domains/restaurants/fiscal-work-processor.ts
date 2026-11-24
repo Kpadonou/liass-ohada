@@ -1,3 +1,4 @@
+import { automaticFiscalPolicy, automaticFiscalEligible, prepareAutomaticFiscalAuthorization } from "./automatic-fiscal-policy";
 import { realFiscalTestEnabled } from "../fiscal-compliance/core/test-execution";
 import { FiscalTestExecutionAuthorizationService } from "@/lambda/shared/services/fiscal-test-execution-authorization-service";
 import { RestaurantFiscalWorkRepository } from "./fiscal-work-repository";
@@ -17,6 +18,7 @@ type Work = { orgId: string; outletId: string; sessionId: string;
 /** One committed intent. All provider commands remain owned by the fiscal service. */
 export class RestaurantFiscalWorkProcessor {
   static async process(work: Work) {
+    if (automaticFiscalPolicy() && !automaticFiscalEligible(work)) return { state: "NOT_CLAIMED" as const };
     const claim = await RestaurantFiscalWorkRepository.claim(work);
     const context = { orgId: work.orgId, userId: work.actorId };
     const request = { outletId: work.outletId, sessionId: work.sessionId, invoiceId: work.invoiceId };
@@ -38,6 +40,9 @@ export class RestaurantFiscalWorkProcessor {
       if (!source.verified) throw new Error("FISCAL_SOURCE_UNAVAILABLE");
       projectRestaurantInvoiceV1(source.evidence);
       if (!realFiscalTestEnabled()) throw new Error("FISCAL_GATE_DISABLED");
+      if (automaticFiscalPolicy()) {
+        await prepareAutomaticFiscalAuthorization(work, source.evidence.invoice.issuedAt);
+      }
       await FiscalTestExecutionAuthorizationService.readBound({
         orgId: work.orgId, outletId: work.outletId, operatorUserId: work.actorId,
         sessionId: work.sessionId, invoiceId: work.invoiceId,
