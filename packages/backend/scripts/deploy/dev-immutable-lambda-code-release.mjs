@@ -33,6 +33,12 @@ export const RESTAURANTS_RECEIPT_READ_RELEASE = Object.freeze({
   functionName: "liass-ohada-dev-restaurants-get-receipt",
   logicalId: "RestaurantsModuleRestaurantsgetreceiptGETrestaurantsoutletsoutletIdsessionssessionIdreceipt0D1DB7A1",
 });
+export const FISCAL_STATUS_GATE_OFF_RELEASE = Object.freeze({
+  profile: "FISCAL_STATUS_GATE_OFF_SINGLE_TARGET",
+  commit: "e47f2c272e442eee7d5ee9464ba2f1d50ed6418b",
+  functionName: "liass-ohada-dev-fiscal-compliance-real-test",
+  logicalId: "RealTestExecutorA6E6815D",
+});
 export const FINAL_PUBLISHER_RELEASE = Object.freeze({
   profile: "RESTAURANTS_FINAL_PUBLISHER_SINGLE_TARGET",
   commit: "c89adb962ebd8685185a388d7ae239528c3e70d9",
@@ -116,11 +122,12 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const fiscalExecutor = manifest?.releaseProfile === FISCAL_EXECUTOR_RELEASE.profile;
   const fiscalReceiptStatus = manifest?.releaseProfile === FISCAL_RECEIPT_STATUS_RELEASE.profile;
   const receiptRead = manifest?.releaseProfile === RESTAURANTS_RECEIPT_READ_RELEASE.profile;
+  const fiscalGateOffRead = manifest?.releaseProfile === FISCAL_STATUS_GATE_OFF_RELEASE.profile;
   const finalPublisher = manifest?.releaseProfile === FINAL_PUBLISHER_RELEASE.profile;
   const organizationProfile = manifest?.releaseProfile === ORGANIZATION_PROFILE_RELEASE.profile;
   const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
   const fiscalGetExtension = manifest?.releaseProfile === FISCAL_GET_EXTENSION_RELEASE.profile;
-  const singleTarget = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
+  const singleTarget = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE : undefined;
