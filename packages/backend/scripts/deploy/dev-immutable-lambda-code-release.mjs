@@ -46,7 +46,7 @@ export const RESTAURANTS_ATTESTED_FISCAL_RELEASE = Object.freeze({
 });
 export const FISCAL_GET_EXTENSION_RELEASE = Object.freeze({
   profile: "FISCAL_GET_EXTENSION_PAIR",
-  commit: "72ab70ab53ab3aaf93430327885512a0b8cf1917",
+  commit: "fcaab299c05722188dde0a861c8f06338a995759",
   functions: Object.freeze([
     Object.freeze({ functionName: "liass-ohada-dev-fiscal-compliance-real-test", logicalId: "RealTestExecutorA6E6815D" }),
     Object.freeze({ functionName: "liass-ohada-dev-identity-grant-test-execution-authorization", logicalId: "IdentityModulePlatformFiscalityplatformsfehandlerPOSTplatformfiscalitytestexecutionauthorizations96E68A13" }),
