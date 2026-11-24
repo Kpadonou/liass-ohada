@@ -1,4 +1,6 @@
 import { RestaurantIssuanceProvenanceRepository as Provenance } from "@/lambda/domains/restaurants/issuance-provenance-repository";
+import { bindRestaurantIssuanceProvenance } from "@/lambda/domains/restaurants/issuance-provenance";
+import { provenance as sellerProvenance } from "./provenance-fixture";
 import { openCashFixture } from "./cash-fixture";
 import { RestaurantCashService as Cash } from "@/lambda/domains/restaurants/cash-service";
 import { RestaurantInvoiceService as Invoice } from "@/lambda/domains/restaurants/invoice-service";
@@ -453,6 +455,39 @@ test.each(["owner", "manager", "cashier"])(
     );
   },
 );
+test("FINAL receipt remains readable with immutable organization-attested address provenance", async () => {
+  const v = await visit();
+  await settle(v);
+  const summary = await finish(v.sessionId);
+  const manifestKey = { PK: K.restaurantBillPK(org, f.outlet.id, summary.receiptId),
+    SK: K.restaurantTransactionMetaSK() };
+  const manifest = unmarshall(m.rows.get(JSON.stringify([manifestKey.PK, manifestKey.SK]))!);
+  manifest.data.issuanceProvenanceVersion = 1;
+  manifest.data.issuanceProvenanceOrigin = "AUTHENTIC";
+  m.rows.set(JSON.stringify([manifestKey.PK, manifestKey.SK]), marshall(manifest));
+  const { bindingDigest: _bindingDigest, ...base } = sellerProvenance;
+  const evidence = bindRestaurantIssuanceProvenance({ ...base,
+    evidenceOrigin: "AUTHENTIC", orgId: org, outletId: f.outlet.id,
+    invoiceId: summary.receiptId, guestSessionId: v.sessionId,
+    sourceVersion: manifest.data.sourceVersion, financialRevision: manifest.data.financialRevision,
+    finalManifestVersion: manifest.data.version, issuedAt: summary.issuedAt,
+    capturedAt: summary.issuedAt, commercialRootDigest: manifest.data.digest,
+    seller: { ...base.seller, orgId: org, authorityReference: "ORGANIZATION_ADMIN_ATTESTATION",
+      factStates: base.seller.factStates.map((fact) => fact.fieldPath.startsWith("address.")
+        ? { fieldPath: fact.fieldPath, state: "ORGANIZATION_ATTESTED" as const } : fact) },
+    timezone: { ...base.timezone, orgId: org },
+  });
+  const key = { PK: manifestKey.PK, SK: K.restaurantIssuanceProvenanceSK() };
+  m.rows.set(JSON.stringify([key.PK, key.SK]), marshall({ ...key, orgId: org,
+    outletId: f.outlet.id, invoiceId: summary.receiptId,
+    entityType: "RESTAURANT_INVOICE_ISSUANCE_PROVENANCE", schemaVersion: 1, data: evidence }));
+  const page = await Receipt.read(scope(), "owner", v.sessionId, { limit: 4 });
+  expect(page.data.receiptId).toBe(summary.receiptId);
+  expect(page.parts).toHaveLength(summary.partCount);
+  expect(evidence.seller.factStates).toContainEqual({
+    fieldPath: "address.city", state: "ORGANIZATION_ATTESTED",
+  });
+});
 test.each(["WAITER", "KITCHEN", "CASHIER"])(
   "%s without current assigned authority denied",
   async (role) => {
