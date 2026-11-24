@@ -178,7 +178,13 @@ export class FiscalTestExecutionAuthorizationService {
           : { Put: { TableName: table(), Item: marshall(record),
             ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } },
       ] }));
-    } catch {
+    } catch (error) {
+      const cancellationReasons = error && typeof error === "object" && "CancellationReasons" in error &&
+        Array.isArray(error.CancellationReasons)
+        ? error.CancellationReasons.map((reason) => reason && typeof reason === "object" && "Code" in reason
+          ? String(reason.Code) : "UNKNOWN") : undefined;
+      console.error(JSON.stringify({ event: "FISCAL_GET_AUTHORIZATION_EXTENSION_WRITE_FAILED",
+        errorName: error instanceof Error ? error.name : "UNKNOWN", cancellationReasons }));
       const committed = await this.readExtension(orgId, request.invoiceId);
       if (committed && committed.data.commandId === request.commandId &&
         committed.data.intentDigest === intentDigest && committed.data.issuedBy === principal.sub)
