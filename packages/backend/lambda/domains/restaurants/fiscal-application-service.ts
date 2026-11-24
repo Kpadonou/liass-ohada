@@ -5,6 +5,11 @@ import {
   RestaurantFiscalConfirmRequestSchema,
 } from "@liass-ohada/shared/restaurants";
 import { z } from "zod";
+import { GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { KeyFactory as K } from "@/lambda/shared/key-builder";
+import { restaurantsTableName } from "./restaurant-storage";
 import { AppError } from "@/lambda/shared/app-error";
 import { FiscalAttemptStore } from "../fiscal-compliance/persistence/fiscal-attempt-store";
 import { FiscalAttemptConflict, type FiscalAttemptState } from "../fiscal-compliance/core/fiscal-attempt-state";
@@ -110,14 +115,27 @@ export class RestaurantFiscalApplicationService {
     const currentSource = await this.verify(context, request);
     if (currentSource.proof.digest !== source.proof.digest)
       throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
-    return { request, state, source: currentSource };
+    const intentResponse = await dynamoClient.send(new GetItemCommand({
+      TableName: restaurantsTableName(),
+      Key: marshall({ PK: K.restaurantBillPK(context.orgId, request.outletId, request.invoiceId),
+        SK: K.restaurantFiscalIntentSK() }), ConsistentRead: true,
+    }));
+    const intent = intentResponse.Item ? unmarshall(intentResponse.Item) : undefined;
+    if (intent && (intent.entityType !== "RESTAURANT_FISCAL_INTENT" ||
+      intent.orgId !== context.orgId || intent.outletId !== request.outletId ||
+      intent.sessionId !== request.sessionId || intent.invoiceId !== request.invoiceId))
+      throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
+    if (intent && !["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED"].includes(intent.state))
+      throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
+    const workState = intent ? intent.state as "PENDING" | "CLAIMED" | "BLOCKED" | "CONFIRMED" : null;
+    return { request, state, source: currentSource, workState };
   }
   async status(context: Context, input: unknown) {
-    const { request, state, source } = await this.readResultState(context, input);
-    return this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined);
+    const { request, state, source, workState } = await this.readResultState(context, input);
+    return { ...this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined), workState };
   }
   async confirmedResult(context: Context, input: unknown) {
-    const { request, state, source } = await this.readResultState(context, input);
+    const { request, state, source, workState } = await this.readResultState(context, input);
     const result = this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined);
     // Only persisted, confirmed DGI TEST evidence can enter the receipt document.
     const securityElements = result.confirmed && this.real &&
@@ -128,6 +146,7 @@ export class RestaurantFiscalApplicationService {
       : null;
     return {
       ...result,
+      workState,
       securityElements,
       seller,
       normalizedInvoice: securityElements && !request.creditNoteId ? source.invoice ?? null : null,

@@ -69,12 +69,13 @@ import { restaurantPrice } from '../utils/restaurant-money';
         {{ 'RESTAURANTS.RECEIPT.CURRENCY' | transloco }} : {{ summary().currency }}
       </p>
       @if (fiscal(); as result) {
+        @if (result.workState || result.status !== 'NOT_STARTED') {
         <section class="mt-3 border-t border-app-border pt-3" aria-live="polite">
           <h2 class="font-semibold">{{ 'RESTAURANTS.RECEIPT.FISCAL_TEST' | transloco }}</h2>
           <liass-status-chip
             size="sm"
-            [tone]="fiscalTone(result.status)"
-            [label]="'RESTAURANTS.RECEIPT.FISCAL_STATUS.' + result.status | transloco"
+            [tone]="fiscalTone(result.status, result.workState)"
+            [label]="'RESTAURANTS.RECEIPT.FISCAL_STATUS.' + fiscalDisplayStatus(result.status, result.workState) | transloco"
           />
           @if (result.securityElements; as security) {
             <dl class="fiscal-security-list mt-2 grid gap-x-4 gap-y-1 text-xs sm:grid-cols-2">
@@ -113,6 +114,7 @@ import { restaurantPrice } from '../utils/restaurant-money';
             }
           }
         </section>
+        }
       }
       <p class="mt-2 text-xs text-app-text-secondary" role="status">
         {{
@@ -302,9 +304,17 @@ export class RestaurantReceiptDocument {
       '\u00a0',
     );
   }
-  fiscalTone(status: RestaurantFiscalResultResponse['status']): LiassStatusTone {
+  fiscalDisplayStatus(status: RestaurantFiscalResultResponse['status'], workState: RestaurantFiscalResultResponse['workState']) {
+    if (status === 'CONFIRMED' || status === 'UNKNOWN_OUTCOME' || status === 'FAILED' || status === 'CANCELLED') return status;
+    if (workState === 'BLOCKED') return 'BLOCKED';
+    if (workState === 'PENDING' && status === 'NOT_STARTED') return 'PENDING';
+    if (workState === 'CLAIMED' && status === 'NOT_STARTED') return 'PROCESSING';
+    return status;
+  }
+  fiscalTone(status: RestaurantFiscalResultResponse['status'], workState?: RestaurantFiscalResultResponse['workState']): LiassStatusTone {
     if (status === 'CONFIRMED') return 'success';
     if (status === 'FAILED' || status === 'CANCELLED') return 'danger';
+    if (workState === 'BLOCKED') return 'warning';
     if (
       status === 'CREATED' ||
       status === 'CREATE_IN_FLIGHT' ||

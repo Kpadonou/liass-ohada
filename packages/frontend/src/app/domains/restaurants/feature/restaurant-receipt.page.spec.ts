@@ -143,6 +143,35 @@ describe('Receipt presentation and complete native print', () => {
     expect(f.nativeElement.textContent).not.toContain('TEST-CODE');
     expect(fiscalApi.result).toHaveBeenCalledTimes(1);
   });
+  it.each([
+    ['PENDING', 'Fiscalisation en attente'],
+    ['CLAIMED', 'Fiscalisation en cours'],
+    ['BLOCKED', 'Fiscalisation en attente d’autorisation'],
+  ])('shows durable %s work without inventing a DGI result', async (workState, label) => {
+    fiscalApi.result.mockResolvedValue({
+      invoiceId: receiptSummary().receiptId, status: 'NOT_STARTED', workState,
+      securityElements: null, normalizedInvoice: null,
+    });
+    const f = create();
+    await loaded(f);
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain(label);
+    });
+    expect(f.nativeElement.querySelector('img')).toBeNull();
+  });
+  it('does not invent fiscal work or a QR for a receipt without an intent', async () => {
+    fiscalApi.result.mockResolvedValue({
+      invoiceId: receiptSummary().receiptId, status: 'NOT_STARTED', workState: null,
+      securityElements: null, normalizedInvoice: null,
+    });
+    const f = create();
+    await loaded(f);
+    await vi.waitFor(() => expect(f.componentInstance.fiscal.data()?.status).toBe('NOT_STARTED'));
+    f.detectChanges();
+    expect(f.nativeElement.textContent).not.toContain('Fiscalisation en attente');
+    expect(f.nativeElement.querySelector('img')).toBeNull();
+  });
   it('keeps confirmation locked after a transport failure and a later CREATED status, including reload', async () => {
     const invoiceId = receiptSummary().receiptId;
     const key = `liass:restaurants:fiscal-confirm:${ctx.org}:${invoiceId}`;

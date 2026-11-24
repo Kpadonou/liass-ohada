@@ -10,6 +10,9 @@ import {
   FiscalAttemptState,
 } from "@/lambda/domains/fiscal-compliance/core/fiscal-attempt-state";
 import { scope, id, digest, provenance } from "./provenance-fixture";
+import { dynamoClient } from "@/lambda/shared/dynamo-client";
+import { GetItemCommand } from "@aws-sdk/client-dynamodb";
+import { marshall } from "@aws-sdk/util-dynamodb";
 jest.mock("@/lambda/domains/restaurants/benin-synthetic-workflow", () => ({
   restaurantBeninSyntheticWorkflow: jest.fn(),
 }));
@@ -31,6 +34,7 @@ const confirm = jest.fn();
 const settings = jest.fn();
 let service: RestaurantFiscalApplicationService;
 beforeEach(() => {
+  jest.spyOn(dynamoClient, "send").mockResolvedValue({} as never);
   process.env.FISCAL_SYNTHETIC_APPLICATION = "1";
   state = undefined;
   create.mockReset();
@@ -76,6 +80,16 @@ beforeEach(() => {
     }).state;
   });
   service = new RestaurantFiscalApplicationService(settings);
+});
+test("reads a durable pending intent with a consistent, tenant-scoped key", async () => {
+  const send = jest.spyOn(dynamoClient, "send").mockResolvedValue({ Item: marshall({
+    entityType: "RESTAURANT_FISCAL_INTENT", orgId: context.orgId,
+    outletId: request.outletId, sessionId: request.sessionId,
+    invoiceId: request.invoiceId, state: "PENDING",
+  }) } as never);
+  expect(await service.status(context, request)).toMatchObject({ status: "NOT_STARTED", workState: "PENDING" });
+  expect(send.mock.calls.at(-1)?.[0]).toBeInstanceOf(GetItemCommand);
+  expect((send.mock.calls.at(-1)?.[0] as GetItemCommand).input.ConsistentRead).toBe(true);
 });
 afterEach(() => {
   delete process.env.FISCAL_SYNTHETIC_APPLICATION;

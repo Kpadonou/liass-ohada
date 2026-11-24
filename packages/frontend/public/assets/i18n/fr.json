@@ -5444,6 +5444,9 @@
       "FISCAL_DATE": "Date fiscale",
       "FISCAL_QR": "QR e-MECeF TEST",
       "FISCAL_STATUS": {
+        "PENDING": "Fiscalisation en attente",
+        "PROCESSING": "Fiscalisation en cours",
+        "BLOCKED": "Fiscalisation en attente d’autorisation",
         "NOT_STARTED": "Non démarrée",
         "RESERVED": "Non confirmée",
         "CREATE_IN_FLIGHT": "Non confirmée",

@@ -1,4 +1,5 @@
 import { RestaurantFiscalApi } from '../data-access/restaurant-fiscal.api';
+import type { RestaurantFiscalResultResponse } from '@liass-ohada/shared/restaurants';
 import {
   Component,
   DestroyRef,
@@ -94,12 +95,12 @@ const denied = (error: unknown) =>
             {{ 'RESTAURANTS.RECEIPT.FISCAL_READ_ERROR' | transloco }}
           </p>
         }
-        @if (canFiscalize() && fiscal.data()?.status === 'NOT_STARTED') {
+        @if (canFiscalize() && !fiscal.data()?.workState && fiscal.data()?.status === 'NOT_STARTED') {
           <button mat-flat-button type="button" [disabled]="fiscalBusy()" (click)="initiateFiscal()">
             <mat-icon>receipt_long</mat-icon>{{ 'RESTAURANTS.RECEIPT.FISCAL_CREATE' | transloco }}
           </button>
         }
-        @if (canFiscalize() && fiscal.data()?.status === 'CREATED') {
+        @if (canFiscalize() && !fiscal.data()?.workState && fiscal.data()?.status === 'CREATED') {
           <button mat-flat-button type="button" [disabled]="fiscalBusy() || fiscalConfirmLocked()" (click)="confirmFiscal()">
             <mat-icon>verified</mat-icon>{{ 'RESTAURANTS.RECEIPT.FISCAL_CONFIRM' | transloco }}
           </button>
@@ -252,7 +253,7 @@ export class RestaurantReceiptView {
   private readonly fiscalApi = inject(RestaurantFiscalApi);
   readonly fiscal = injectQuery(() => ({
     queryKey: [...receiptKey(this.ctx()), 'fiscal', this.first.data()?.data.receiptId],
-    queryFn: async () => {
+    queryFn: async (): Promise<RestaurantFiscalResultResponse> => {
       const ctx = this.ctx();
       const receipt = this.first.data()!.data;
       const result = await this.fiscalApi.result(ctx, receipt.receiptId);
@@ -266,11 +267,20 @@ export class RestaurantReceiptView {
     },
     enabled: this.verified() && !!this.first.data() && !this.rejected(),
     retry: false,
-    staleTime: 30000,
+    staleTime: 5000,
+    refetchInterval: () => {
+      const result = this.client.getQueryData<RestaurantFiscalResultResponse>([...receiptKey(this.ctx()), 'fiscal', this.first.data()?.data.receiptId]);
+      if (!result) return false;
+      if (result.status === 'UNKNOWN_OUTCOME' || result.status === 'CONFIRMED' ||
+        result.status === 'FAILED' || result.status === 'CANCELLED' || result.workState === 'BLOCKED') return false;
+      return result.workState === 'PENDING' || result.workState === 'CLAIMED' ||
+        ['RESERVED', 'CREATE_IN_FLIGHT', 'CONFIRM_IN_FLIGHT', 'CANCEL_IN_FLIGHT'].includes(result.status)
+        ? 5000 : false;
+    },
   }));
   readonly fiscalDenied = computed(() => denied(this.fiscal.error()));
   async initiateFiscal() {
-    if (!this.canFiscalize() || this.fiscalBusy() || this.fiscal.data()?.status !== 'NOT_STARTED') return;
+    if (!this.canFiscalize() || this.fiscalBusy() || this.fiscal.data()?.workState || this.fiscal.data()?.status !== 'NOT_STARTED') return;
     const ctx = this.ctx(), invoiceId = this.first.data()!.data.receiptId;
     this.fiscalBusy.set(true);
     this.fiscalActionError.set(false);
@@ -287,7 +297,7 @@ export class RestaurantReceiptView {
   }
   async confirmFiscal() {
     if (!this.canFiscalize() || this.fiscalBusy() || this.fiscalConfirmLocked() ||
-      this.locked() || this.fiscal.data()?.status !== 'CREATED') return;
+      this.locked() || this.fiscal.data()?.workState || this.fiscal.data()?.status !== 'CREATED') return;
     const ctx = this.ctx(), invoiceId = this.first.data()!.data.receiptId;
     const key = this.fiscalLockKey(ctx, invoiceId);
     try { localStorage.setItem(key, JSON.stringify({ attemptId: localStorage.getItem(this.fiscalAttemptKey(ctx, invoiceId)) ?? 'SERVER_OWNED', commandId: crypto.randomUUID(), state: 'UNCERTAIN' })); }
