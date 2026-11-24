@@ -5466,7 +5466,8 @@
       "FISCAL_WORKING": "Normalisation en cours…",
       "FISCAL_ACTION_ERROR": "L’opération fiscale est incertaine ou a échoué. Actualisez le statut avant toute action.",
       "FISCAL_LOADING": "Vérification du statut fiscal…",
-      "FISCAL_READ_ERROR": "Statut fiscal indisponible. Actualisez pour réessayer."
+      "FISCAL_READ_ERROR": "Statut fiscal indisponible. Actualisez pour réessayer.",
+      "FISCAL_NO_PROVENANCE": "Cette facture ne contient pas les informations fiscales nécessaires à sa normalisation."
     },
     "CONTEXT": {
       "ACTIVE": "Établissement actif",

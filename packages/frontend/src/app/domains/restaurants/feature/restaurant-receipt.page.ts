@@ -92,7 +92,7 @@ const denied = (error: unknown) =>
         }
         @if (fiscal.isError() && !fiscalDenied()) {
           <p role="status" class="text-sm text-app-text-secondary">
-            {{ 'RESTAURANTS.RECEIPT.FISCAL_READ_ERROR' | transloco }}
+            {{ (fiscalProvenanceUnavailable() ? 'RESTAURANTS.RECEIPT.FISCAL_NO_PROVENANCE' : 'RESTAURANTS.RECEIPT.FISCAL_READ_ERROR') | transloco }}
           </p>
         }
         @if (canFiscalize() && !fiscal.data()?.workState && fiscal.data()?.status === 'NOT_STARTED') {
@@ -279,6 +279,11 @@ export class RestaurantReceiptView {
     },
   }));
   readonly fiscalDenied = computed(() => denied(this.fiscal.error()));
+  readonly fiscalProvenanceUnavailable = computed(() => {
+    const error = this.fiscal.error();
+    return error instanceof HttpErrorResponse && error.status === 409 &&
+      error.error?.error?.code === 'PROVENANCE_UNAVAILABLE';
+  });
   async initiateFiscal() {
     if (!this.canFiscalize() || this.fiscalBusy() || this.fiscal.data()?.workState || this.fiscal.data()?.status !== 'NOT_STARTED') return;
     const ctx = this.ctx(), invoiceId = this.first.data()!.data.receiptId;

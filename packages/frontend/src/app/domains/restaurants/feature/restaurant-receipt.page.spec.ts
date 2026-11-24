@@ -172,6 +172,18 @@ describe('Receipt presentation and complete native print', () => {
     expect(f.nativeElement.textContent).not.toContain('Fiscalisation en attente');
     expect(f.nativeElement.querySelector('img')).toBeNull();
   });
+  it('explains missing fiscal provenance without implying provider processing', async () => {
+    fiscalApi.result.mockRejectedValue(new HttpErrorResponse({ status: 409,
+      error: { error: { code: 'PROVENANCE_UNAVAILABLE' } } }));
+    const f = create();
+    await loaded(f);
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('informations fiscales nécessaires');
+    });
+    expect(f.nativeElement.textContent).not.toContain('Fiscalisation en cours');
+    expect(f.nativeElement.querySelector('img')).toBeNull();
+  });
   it('keeps confirmation locked after a transport failure and a later CREATED status, including reload', async () => {
     const invoiceId = receiptSummary().receiptId;
     const key = `liass:restaurants:fiscal-confirm:${ctx.org}:${invoiceId}`;

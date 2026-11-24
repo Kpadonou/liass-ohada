@@ -5466,7 +5466,8 @@
       "FISCAL_WORKING": "Normalization in progress…",
       "FISCAL_ACTION_ERROR": "The fiscal operation is uncertain or failed. Refresh status before taking action.",
       "FISCAL_LOADING": "Checking fiscal status…",
-      "FISCAL_READ_ERROR": "Fiscal status unavailable. Refresh to retry."
+      "FISCAL_READ_ERROR": "Fiscal status unavailable. Refresh to retry.",
+      "FISCAL_NO_PROVENANCE": "This invoice does not contain the fiscal information required for normalization."
     },
     "CONTEXT": {
       "ACTIVE": "Active establishment",
