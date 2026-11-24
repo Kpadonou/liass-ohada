@@ -59,6 +59,12 @@ export const FISCAL_RECEIPT_STATUS_RELEASE = Object.freeze({
   functionName: "liass-ohada-dev-fiscal-compliance-real-test",
   logicalId: "RealTestExecutorA6E6815D",
 });
+export const FISCAL_INTERRUPTED_RECEIPT_RELEASE = Object.freeze({
+  profile: "FISCAL_INTERRUPTED_RECEIPT_SINGLE_TARGET",
+  commit: "6c73572af22e39b6594fde0e83b4cee8d6f82f8e",
+  functionName: "liass-ohada-dev-fiscal-compliance-real-test",
+  logicalId: "RealTestExecutorA6E6815D",
+});
 export const RESTAURANTS_RECEIPT_READ_RELEASE = Object.freeze({
   profile: "RESTAURANTS_RECEIPT_READ_SINGLE_TARGET",
   commit: "72ba3a6e81adf708408fcf5fc3dd9f3ea7aa83ec",
@@ -160,7 +166,7 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
   const fiscalGetExtension = manifest?.releaseProfile === FISCAL_GET_EXTENSION_RELEASE.profile;
   const fiscalAddressAttestation = manifest?.releaseProfile === FISCAL_ADDRESS_ATTESTATION_RELEASE.profile;
-  const singleTarget = manifest?.releaseProfile === FISCAL_OPTIONAL_FIELDS_RELEASE.profile ? FISCAL_OPTIONAL_FIELDS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_GROUPS_RELEASE.profile ? AUTOMATIC_FISCAL_GROUPS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
+  const singleTarget = manifest?.releaseProfile === FISCAL_INTERRUPTED_RECEIPT_RELEASE.profile ? FISCAL_INTERRUPTED_RECEIPT_RELEASE : manifest?.releaseProfile === FISCAL_OPTIONAL_FIELDS_RELEASE.profile ? FISCAL_OPTIONAL_FIELDS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_GROUPS_RELEASE.profile ? AUTOMATIC_FISCAL_GROUPS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE
