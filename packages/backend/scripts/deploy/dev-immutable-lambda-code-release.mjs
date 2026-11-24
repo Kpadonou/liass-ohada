@@ -26,6 +26,11 @@ export const AUTOMATIC_FISCAL_SUBJECT_RELEASE = Object.freeze({
   profile: "AUTOMATIC_FISCAL_SCOPED_SUBJECT_SINGLE_TARGET",
   commit: "fabf088f22e7c11c0fc0781128976bba4afb1505",
 });
+export const AUTOMATIC_FISCAL_GROUPS_RELEASE = Object.freeze({
+  ...AUTOMATIC_FISCAL_RELEASE,
+  profile: "AUTOMATIC_FISCAL_GROUPS_SINGLE_TARGET",
+  commit: "93251e6bbf73949ef4c75db6a9e773d055f14ee7",
+});
 export const FISCAL_EXECUTOR_RELEASE = Object.freeze({
   profile: "FISCAL_EXECUTOR_SINGLE_TARGET",
   commit: "91b0a87877bf534fc5d492fc59e3cff197a363ec",
@@ -138,7 +143,7 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const organizationProfile = manifest?.releaseProfile === ORGANIZATION_PROFILE_RELEASE.profile;
   const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
   const fiscalGetExtension = manifest?.releaseProfile === FISCAL_GET_EXTENSION_RELEASE.profile;
-  const singleTarget = manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
+  const singleTarget = manifest?.releaseProfile === AUTOMATIC_FISCAL_GROUPS_RELEASE.profile ? AUTOMATIC_FISCAL_GROUPS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE : undefined;
