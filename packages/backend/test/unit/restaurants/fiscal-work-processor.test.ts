@@ -1,3 +1,4 @@
+import { RestaurantFiscalAuthorizationPreparationService as AutomaticPreparation } from "@/lambda/domains/restaurants/fiscal-authorization-preparation-service";
 import { RestaurantFiscalWorkProcessor } from "@/lambda/domains/restaurants/fiscal-work-processor";
 import { RestaurantFiscalWorkRepository } from "@/lambda/domains/restaurants/fiscal-work-repository";
 import { RestaurantInvoiceSourceVerifier } from "@/lambda/domains/restaurants/invoice-source-verifier";
@@ -128,5 +129,23 @@ test("configured pilot discards historical Stream backlog before any claim or pr
     expect(initiateSpy).not.toHaveBeenCalled();
     expect(reconcileSpy).not.toHaveBeenCalled();
     expect(confirmSpy).not.toHaveBeenCalled();
+  } finally { delete process.env.FISCAL_AUTOMATIC_POLICY; }
+});
+
+test("post-cutoff automatic work prepares delegated authority then completes the existing workflow", async () => {
+  process.env.FISCAL_AUTOMATIC_POLICY = JSON.stringify({orgId: work.orgId,
+    outletId: work.outletId, connectionId: work.invoiceId,
+    delegatedBy: work.sessionId, activatedAt: "2026-11-18T09:00:00.000Z"});
+  jest.mocked(RestaurantInvoiceSourceVerifier.verify).mockResolvedValue({verified: true,
+    evidence: {proof: {digest: "a".repeat(64)}, invoice: {issuedAt: work.createdAt}}} as never);
+  jest.spyOn(AutomaticPreparation, "prepare").mockResolvedValue({proofId: work.invoiceId, proofDigest: "a".repeat(64)} as never);
+  const approve = jest.spyOn(FiscalTestExecutionAuthorizationService, "approveAutomaticProof").mockResolvedValue({} as never);
+  try {
+    expect(await RestaurantFiscalWorkProcessor.process(work)).toEqual({state: "CONFIRMED"});
+    expect(approve).toHaveBeenCalledTimes(1);
+    expect(initiateSpy).toHaveBeenCalledTimes(1);
+    expect(reconcileSpy).toHaveBeenCalledTimes(1);
+    expect(confirmSpy).toHaveBeenCalledTimes(1);
+    expect(completeSpy).toHaveBeenCalledWith(work, claim);
   } finally { delete process.env.FISCAL_AUTOMATIC_POLICY; }
 });
