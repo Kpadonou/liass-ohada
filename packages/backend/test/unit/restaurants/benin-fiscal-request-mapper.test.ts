@@ -130,12 +130,12 @@ test("explicit mapping preserves exact amounts and is directly consumable by dur
     invoice: {
       ifu: "synthetic-ifu",
       type: "FV",
-      reference: id,
       items: [{ price: 1000, quantity: 2, taxGroup: "B" }],
       payment: [{ name: "ESPECES", amount: 2000 }],
     },
     expected: { total: 2000, itemTotals: [2000] },
   });
+  expect((result.payload as { invoice: object }).invoice).not.toHaveProperty("reference");
   expect(before).toEqual(preparation());
 });
 test("frozen specific tax and buyer AIB map to DGI request with reconciled totals", async () => {

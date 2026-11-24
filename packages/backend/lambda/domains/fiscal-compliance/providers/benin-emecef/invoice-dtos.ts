@@ -90,6 +90,13 @@ export const ClientDtoSchema = z
   })
   .strict();
 
+const optionalClient = z.preprocess((value) => {
+  if (value === null) return undefined;
+  if (value && typeof value === "object" && !Array.isArray(value) &&
+    Object.values(value).every((field) => field == null)) return undefined;
+  return value;
+}, ClientDtoSchema.optional());
+
 export const OperatorDtoSchema = z
   .object({
     id: z.string().nullable().optional(),
@@ -167,16 +174,20 @@ export const InvoiceDetailsDtoSchema = z
       InvoiceTypeEnumSchema.optional(),
     ),
     items: z.array(ItemDtoSchema).nullable().optional(),
-    client: z.preprocess(
-      (value) => (value === null ? undefined : value),
-      ClientDtoSchema.optional(),
-    ),
+    // TEST GET may materialize an omitted buyer as either null or a DTO whose
+    // optional members are all null. Both mean absence; any buyer value remains exact.
+    client: optionalClient,
     operator: z.preprocess(
       (value) => (value === null ? undefined : value),
       OperatorDtoSchema.optional(),
     ),
     payment: z.array(PaymentDtoSchema).nullable().optional(),
-    reference: z.string().nullable().optional(),
+    // FV/EV omit the original-invoice reference. TEST GET may materialize that
+    // optional property as null; FA/EA references remain exact non-null strings.
+    reference: z.preprocess(
+      (value) => (value === null ? undefined : value),
+      z.string().optional(),
+    ),
     errorCode: z.string().nullable().optional(),
     errorDesc: z.string().nullable().optional(),
     paymentUrl: z.string().nullable().optional(),

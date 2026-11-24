@@ -522,12 +522,14 @@ test("prepares and confirms an existing invoice without POST", async () => {
 
 test("normalizes nullable optional GET fields and preserves strict invoice reconciliation", async () => {
   const doc = invoice();
+  delete doc.reference;
   const sanitizedProviderFixture = {
     ...doc,
     aib: null,
-    client: null,
+    client: { ifu: null, name: null, contact: null, address: null },
     operator: null,
     type: " FV ",
+    reference: null,
     paymentUrl: null,
     errorCode: null,
     errorDesc: null,
@@ -553,6 +555,25 @@ test("normalizes nullable optional GET fields and preserves strict invoice recon
   });
   expect(transport).toHaveBeenCalledTimes(1);
   expect(transport.mock.calls[0][0].method).toBe("GET");
+});
+
+test("does not erase a materialized buyer or credit reference during GET reconciliation", async () => {
+  const doc = invoice();
+  delete doc.reference;
+  const adapterWithBuyer = new BeninEMecefTestAdapter({ transport: jest.fn(async () =>
+    response({ ...doc, client: { name: "Different buyer" }, reference: null })) });
+  await expect(adapterWithBuyer.verifyDurableInvoice(input, "uid", doc, expected))
+    .rejects.toMatchObject({ reconciliationDiagnostic: {
+      classification: "INVOICE_DETAIL_MISMATCH", mismatchFields: ["client"],
+    } });
+
+  const credit = { ...doc, type: "FA" as const, reference: "A".repeat(24) };
+  const adapterWithChangedReference = new BeninEMecefTestAdapter({ transport: jest.fn(async () =>
+    response({ ...credit, reference: "B".repeat(24) })) });
+  await expect(adapterWithChangedReference.verifyDurableInvoice(input, "uid", credit, expected))
+    .rejects.toMatchObject({ reconciliationDiagnostic: {
+      classification: "INVOICE_DETAIL_MISMATCH", mismatchFields: ["reference"],
+    } });
 });
 
 test("does not convert an unknown GET invoice type to FV", async () => {

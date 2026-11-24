@@ -239,7 +239,6 @@ export function mapRestaurantBeninRequest(
   const invoice = InvoiceRequestDataDtoSchema.parse({
     ifu: identifiers[0].value.value,
     type: config.invoiceType,
-    reference: source.invoiceId,
     operator: { name: config.operator.name },
     items,
     payment,
