@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_GET_EXTENSION_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_RECEIPT_STATUS_RELEASE, FISCAL_GET_EXTENSION_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -35,6 +35,19 @@ test("validates only the approved fiscal executor in its single-target release p
     target, commit: FISCAL_EXECUTOR_RELEASE.commit, artifacts: [item] };
   assert.equal(validateReleaseManifest(manifest, directory).length, 1);
   manifest.artifacts[0].functionName = "liass-ohada-dev-accounting-post-entry";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+test("receipt status release targets only the existing fiscal executor", () => {
+  const { directory } = fixture();
+  const bytes = Buffer.from("receipt-status-zip"), hashes = awaitableHash(bytes);
+  const item = { ...entry(FISCAL_RECEIPT_STATUS_RELEASE.functionName, bytes),
+    logicalId: FISCAL_RECEIPT_STATUS_RELEASE.logicalId, sha256Hex: hashes.hex, codeSha256: hashes.base64 };
+  writeFileSync(join(directory, item.artifact), bytes);
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false,
+    releaseProfile: FISCAL_RECEIPT_STATUS_RELEASE.profile, target,
+    commit: FISCAL_RECEIPT_STATUS_RELEASE.commit, artifacts: [item] };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 1);
+  manifest.artifacts[0].functionName = "liass-ohada-dev-restaurants-publish-receipt";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
 

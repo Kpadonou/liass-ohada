@@ -21,6 +21,12 @@ export const FISCAL_EXECUTOR_RELEASE = Object.freeze({
   functionName: "liass-ohada-dev-fiscal-compliance-real-test",
   logicalId: "RealTestExecutorA6E6815D",
 });
+export const FISCAL_RECEIPT_STATUS_RELEASE = Object.freeze({
+  profile: "FISCAL_RECEIPT_STATUS_SINGLE_TARGET",
+  commit: "ae879820301e9fed49399a13459e2db97b60def6",
+  functionName: "liass-ohada-dev-fiscal-compliance-real-test",
+  logicalId: "RealTestExecutorA6E6815D",
+});
 export const FINAL_PUBLISHER_RELEASE = Object.freeze({
   profile: "RESTAURANTS_FINAL_PUBLISHER_SINGLE_TARGET",
   commit: "c89adb962ebd8685185a388d7ae239528c3e70d9",
@@ -102,11 +108,12 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   assert.equal(manifest?.target?.region, DEV_REGION, "Release is not for DEV region");
   assert.equal(manifest?.target?.stage, DEV_STAGE, "Release is not for DEV stage");
   const fiscalExecutor = manifest?.releaseProfile === FISCAL_EXECUTOR_RELEASE.profile;
+  const fiscalReceiptStatus = manifest?.releaseProfile === FISCAL_RECEIPT_STATUS_RELEASE.profile;
   const finalPublisher = manifest?.releaseProfile === FINAL_PUBLISHER_RELEASE.profile;
   const organizationProfile = manifest?.releaseProfile === ORGANIZATION_PROFILE_RELEASE.profile;
   const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
   const fiscalGetExtension = manifest?.releaseProfile === FISCAL_GET_EXTENSION_RELEASE.profile;
-  const singleTarget = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
+  const singleTarget = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE : undefined;
