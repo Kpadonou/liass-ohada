@@ -7,6 +7,7 @@ import { I18nResolver } from "../../shared/i18n";
 import { verifiedPlatformPrincipal } from "../../shared/authorization/platform-admin";
 import { PlatformSfeRepository } from "../../shared/repositories/platform-sfe-repository";
 import { FiscalTestExecutionAuthorizationService } from "../../shared/services/fiscal-test-execution-authorization-service";
+import { ExtendFiscalTestGetAuthorizationRequestSchema } from "@liass-ohada/shared/shared";
 import { TenantAccessService } from "../../shared/services/tenant-access-service";
 
 /** Dedicated boundary: never log raw errors, requests or authorizer claims. */
@@ -19,9 +20,9 @@ export async function handler(event: APIGatewayProxyEventV2WithJWTAuthorizer) {
       const orgId = Object.entries(event.headers ?? {})
         .find(([key]) => key.toLowerCase() === "x-org-id")?.[1];
       if (!orgId) throw new AppError(400, "ERROR_MISSING_ORG_ID");
-      const authorization = await FiscalTestExecutionAuthorizationService.approvePreparedProof(
-        principal, orgId, input,
-      );
+      const authorization = ExtendFiscalTestGetAuthorizationRequestSchema.safeParse(input).success
+        ? await FiscalTestExecutionAuthorizationService.extendGetReconciliation(principal, orgId, input)
+        : await FiscalTestExecutionAuthorizationService.approvePreparedProof(principal, orgId, input);
       return { statusCode: 201, body: JSON.stringify({ data: authorization }) };
     }
     if (event.routeKey === "DELETE /platform/fiscality/test-execution-authorizations") {

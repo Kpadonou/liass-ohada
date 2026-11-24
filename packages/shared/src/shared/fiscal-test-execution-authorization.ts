@@ -11,6 +11,28 @@ export const ApproveFiscalTestExecutionAuthorizationRequestSchema = z.object({
   commandId: id,
 }).strict();
 
+export const ExtendFiscalTestGetAuthorizationRequestSchema = z.object({
+  kind: z.literal("GET_RECONCILIATION_EXTENSION"),
+  authorizationId: id,
+  invoiceId: id,
+  providerUid: z.string().trim().min(1).max(256),
+  expectedAttemptVersion: z.number().int().positive(),
+  commandId: id,
+}).strict();
+
+export const FiscalTestGetAuthorizationExtensionViewSchema = z.object({
+  extensionId: id,
+  authorizationId: id,
+  invoiceId: id,
+  providerUid: z.string().min(1).max(256),
+  expectedAttemptVersion: z.number().int().positive(),
+  operation: z.literal("GET"),
+  remaining: z.number().int().min(0).max(1),
+  issuedAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
+  status: z.enum(["ACTIVE", "CONSUMED"]),
+}).strict();
+
 export const FiscalTestExecutionAuthorizationViewSchema = z.object({
   authorizationId: id,
   proofId: id,
@@ -32,6 +54,9 @@ export const FiscalTestExecutionAuthorizationViewSchema = z.object({
 
 export type ApproveFiscalTestExecutionAuthorizationRequest = z.infer<
   typeof ApproveFiscalTestExecutionAuthorizationRequestSchema
+>;
+export type ExtendFiscalTestGetAuthorizationRequest = z.infer<
+  typeof ExtendFiscalTestGetAuthorizationRequestSchema
 >;
 export type FiscalTestExecutionAuthorizationView = z.infer<
   typeof FiscalTestExecutionAuthorizationViewSchema

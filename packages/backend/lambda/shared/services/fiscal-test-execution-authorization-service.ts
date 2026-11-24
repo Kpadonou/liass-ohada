@@ -4,8 +4,11 @@ import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
 import { z } from "zod";
 import {
   ApproveFiscalTestExecutionAuthorizationRequestSchema,
+  ExtendFiscalTestGetAuthorizationRequestSchema,
+  FiscalTestGetAuthorizationExtensionViewSchema,
   FiscalTestExecutionAuthorizationViewSchema,
 } from "@liass-ohada/shared/shared";
+import { fiscalAttemptStateSchema, obligationIdentity } from "@/lambda/domains/fiscal-compliance/core/fiscal-attempt-state";
 import { canonical } from "../authority/integrity";
 import { AppError } from "../app-error";
 import { dynamoClient, config } from "../dynamo-client";
@@ -47,8 +50,29 @@ const dataSchema = authorizationInputBaseSchema.omit({ commandId: true }).extend
 }).strict();
 export type FiscalTestExecutionAuthorization = z.infer<typeof dataSchema>;
 const recordSchema = z.object({ PK: z.string(), SK: z.string(), orgId: z.string(), entityType: z.literal("PLATFORM_FISCAL_EXECUTION_AUTHORIZATION"), data: dataSchema }).strict();
+const extensionDataSchema = z.object({
+  extensionId: id, authorizationId: id, orgId: z.string(), outletId: id,
+  operatorUserId: CognitoSubjectSchema, sessionId: id, invoiceId: id,
+  sourceDigest: digest, providerUid: z.string().min(1).max(256),
+  expectedAttemptVersion: z.number().int().positive(), operation: z.literal("GET"),
+  issuedAt: z.string().datetime(), issuedBy: CognitoSubjectSchema,
+  expiresAt: z.string().datetime(), remaining: z.number().int().min(0).max(1),
+  status: z.enum(["ACTIVE", "CONSUMED"]), commandId: id, intentDigest: digest,
+}).strict();
+const extensionRecordSchema = z.object({ PK: z.string(), SK: z.string(), orgId: z.string(),
+  entityType: z.literal("PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION"), data: extensionDataSchema }).strict();
+const extensionView = (data: z.infer<typeof extensionDataSchema>) =>
+  FiscalTestGetAuthorizationExtensionViewSchema.parse({
+    extensionId: data.extensionId, authorizationId: data.authorizationId,
+    invoiceId: data.invoiceId, providerUid: data.providerUid,
+    expectedAttemptVersion: data.expectedAttemptVersion, operation: data.operation,
+    remaining: data.remaining, issuedAt: data.issuedAt, expiresAt: data.expiresAt,
+    status: data.status,
+  });
 const table = () => config.PLATFORM_TABLE_NAME;
 const keyFor = (v: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "invoiceId" | "creditNoteId">) => ({ PK: K.orgKey(v.orgId), SK: K.fiscalExecutionAuthorizationSK("TEST", v.creditNoteId ?? v.invoiceId) });
+const extensionKeyFor = (orgId: string, invoiceId: string) => ({ PK: K.orgKey(orgId),
+  SK: K.fiscalGetAuthorizationExtensionSK("TEST", invoiceId) });
 const forbidden = () => new AppError(403, "DOMAIN_PERMISSION_REQUIRED");
 const conflict = () => new AppError(409, "FISCAL_COMMAND_CONFLICT");
 const proofScenarios = new Set([
@@ -68,6 +92,87 @@ export class FiscalTestExecutionAuthorizationService {
   private static async read(key: { PK: string; SK: string }) {
     const out = await dynamoClient.send(new GetItemCommand({ TableName: table(), Key: marshall(key), ConsistentRead: true }));
     return out.Item ? recordSchema.parse(unmarshall(out.Item)) : undefined;
+  }
+  private static async readExtension(orgId: string, invoiceId: string) {
+    const out = await dynamoClient.send(new GetItemCommand({ TableName: table(),
+      Key: marshall(extensionKeyFor(orgId, invoiceId)), ConsistentRead: true }));
+    return out.Item ? extensionRecordSchema.parse(unmarshall(out.Item)) : undefined;
+  }
+  static async extendGetReconciliation(principal: PlatformPrincipal, orgId: string, raw: unknown) {
+    const request = ExtendFiscalTestGetAuthorizationRequestSchema.parse(raw);
+    if (principal.stage === "prod") throw forbidden();
+    const access = await EffectiveOrganizationAccessService.resolveAccess({ orgId,
+      userId: principal.sub, workspaceOrgId: orgId });
+    if (access.accessSource !== "DIRECT" || access.workspaceOrgId !== orgId) throw forbidden();
+    DomainAuthorizationService.assertPermission(access, "FISCAL_COMPLIANCE_WRITE");
+    await OrganizationFiscalRepository.authorize(orgId, principal.sub, true);
+    const originalKey = keyFor({ orgId, invoiceId: request.invoiceId });
+    const original = await this.read(originalKey);
+    if (!original || original.data.authorizationId !== request.authorizationId ||
+      original.data.invoiceId !== request.invoiceId || original.data.status !== "ACTIVE" ||
+      original.data.remaining.CREATE !== 0 || original.data.remaining.GET !== 0) throw conflict();
+    const intentDigest = createHash("sha256").update(canonical({
+      orgId, issuedBy: principal.sub, ...request,
+    })).digest("hex");
+    const existing = await this.readExtension(orgId, request.invoiceId);
+    if (existing) {
+      if (existing.data.authorizationId !== request.authorizationId ||
+        existing.data.commandId !== request.commandId ||
+        existing.data.intentDigest !== intentDigest || existing.data.issuedBy !== principal.sub)
+        throw conflict();
+      return extensionView(existing.data);
+    }
+    const identity = { orgId, environment: "TEST" as const, sourceDomain: "restaurants",
+      sourceDocumentType: "INVOICE" as const, sourceDocumentId: request.invoiceId,
+      jurisdiction: "BJ", obligation: "NORMALIZE" };
+    const attemptKey = { PK: K.orgKey(orgId),
+      SK: K.fiscalAttemptEffectSK("TEST", obligationIdentity(identity)) };
+    const attemptOut = await dynamoClient.send(new GetItemCommand({ TableName: table(),
+      Key: marshall(attemptKey), ConsistentRead: true }));
+    if (!attemptOut.Item) throw conflict();
+    const attemptRow = unmarshall(attemptOut.Item);
+    const attempt = fiscalAttemptStateSchema.safeParse(attemptRow.state);
+    if (attemptRow.entityType !== "FISCAL_ATTEMPT_EFFECT" || attemptRow.orgId !== orgId ||
+      attemptRow.version !== request.expectedAttemptVersion || !attempt.success ||
+      attempt.data.version !== request.expectedAttemptVersion || attempt.data.status !== "CREATED" ||
+      attempt.data.uid !== request.providerUid || attempt.data.sourceDigest !== original.data.sourceDigest)
+      throw conflict();
+    const issuedAt = new Date().toISOString();
+    const data = extensionDataSchema.parse({ extensionId: randomUUID(),
+      authorizationId: request.authorizationId, orgId, outletId: original.data.outletId,
+      operatorUserId: original.data.operatorUserId, sessionId: original.data.sessionId,
+      invoiceId: request.invoiceId, sourceDigest: original.data.sourceDigest,
+      providerUid: request.providerUid, expectedAttemptVersion: request.expectedAttemptVersion,
+      operation: "GET", issuedAt, issuedBy: principal.sub,
+      expiresAt: new Date(Date.parse(issuedAt) + 30 * 60 * 1000).toISOString(),
+      remaining: 1, status: "ACTIVE", commandId: request.commandId, intentDigest });
+    const record = { ...extensionKeyFor(orgId, request.invoiceId), orgId,
+      entityType: "PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION" as const, data };
+    try {
+      await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: [
+        OrganizationFiscalRepository.membershipCheck(orgId, principal.sub),
+        fiscalOrganizationCheck(orgId),
+        { ConditionCheck: { TableName: table(), Key: marshall(originalKey),
+          ConditionExpression: "entityType = :type AND #data.authorizationId = :authorization AND #data.#status = :active AND #data.#remaining.#create = :zero AND #data.#remaining.#get = :zero",
+          ExpressionAttributeNames: { "#data": "data", "#status": "status", "#remaining": "remaining", "#create": "CREATE", "#get": "GET" },
+          ExpressionAttributeValues: marshall({ ":type": "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION", ":authorization": request.authorizationId, ":active": "ACTIVE", ":zero": 0 }) } },
+        { ConditionCheck: { TableName: table(), Key: marshall(attemptKey),
+          ConditionExpression: "entityType = :type AND orgId = :org AND #version = :version AND #state.#status = :created AND #state.uid = :uid AND #state.sourceDigest = :source",
+          ExpressionAttributeNames: { "#version": "version", "#state": "state", "#status": "status" },
+          ExpressionAttributeValues: marshall({ ":type": "FISCAL_ATTEMPT_EFFECT", ":org": orgId,
+            ":version": request.expectedAttemptVersion, ":created": "CREATED",
+            ":uid": request.providerUid, ":source": original.data.sourceDigest }) } },
+        { Put: { TableName: table(), Item: marshall(record),
+          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } },
+      ] }));
+    } catch {
+      const committed = await this.readExtension(orgId, request.invoiceId);
+      if (committed && committed.data.commandId === request.commandId &&
+        committed.data.intentDigest === intentDigest && committed.data.issuedBy === principal.sub)
+        return extensionView(committed.data);
+      throw conflict();
+    }
+    return extensionView(data);
   }
   static async approvePreparedProof(
     principal: PlatformPrincipal,
@@ -231,9 +336,49 @@ export class FiscalTestExecutionAuthorizationService {
     const key = keyFor(binding);
     try { await dynamoClient.send(new UpdateItemCommand({ TableName: table(), Key: marshall(key), UpdateExpression: "SET #data.#status = :revoked, #data.revokedAt = :now", ConditionExpression: "entityType = :type AND #data.#status = :active", ExpressionAttributeNames: { "#data": "data", "#status": "status" }, ExpressionAttributeValues: marshall({ ":revoked": "REVOKED", ":active": "ACTIVE", ":type": "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION", ":now": new Date().toISOString() }) })); } catch { throw new AppError(409, "FISCAL_COMMAND_CONFLICT"); }
   }
+  private static async consumeGetExtension(binding: Pick<FiscalTestExecutionAuthorizationInput,
+    "orgId" | "outletId" | "operatorUserId" | "sessionId" | "invoiceId" | "creditNoteId" | "sourceDigest">,
+    original: FiscalTestExecutionAuthorization) {
+    if (binding.creditNoteId) throw forbidden();
+    const extension = await this.readExtension(binding.orgId, binding.invoiceId);
+    const now = new Date().toISOString();
+    if (!extension || extension.orgId !== binding.orgId || extension.data.status !== "ACTIVE" ||
+      Date.parse(extension.data.expiresAt) <= Date.parse(now) || extension.data.remaining !== 1 ||
+      extension.data.authorizationId !== original.authorizationId ||
+      extension.data.outletId !== binding.outletId ||
+      extension.data.operatorUserId !== binding.operatorUserId ||
+      extension.data.sessionId !== binding.sessionId || extension.data.invoiceId !== binding.invoiceId ||
+      extension.data.sourceDigest !== binding.sourceDigest) throw forbidden();
+    const identity = { orgId: binding.orgId, environment: "TEST" as const,
+      sourceDomain: "restaurants", sourceDocumentType: "INVOICE" as const,
+      sourceDocumentId: binding.invoiceId, jurisdiction: "BJ", obligation: "NORMALIZE" };
+    const attemptKey = { PK: K.orgKey(binding.orgId),
+      SK: K.fiscalAttemptEffectSK("TEST", obligationIdentity(identity)) };
+    try {
+      await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: [
+        { Update: { TableName: table(), Key: marshall(extensionKeyFor(binding.orgId, binding.invoiceId)),
+          UpdateExpression: "SET #data.#remaining = :zero, #data.#status = :consumed",
+          ConditionExpression: "entityType = :type AND #data.#status = :active AND #data.#remaining = :one AND #data.expiresAt > :now AND #data.authorizationId = :authorization",
+          ExpressionAttributeNames: { "#data": "data", "#remaining": "remaining", "#status": "status" },
+          ExpressionAttributeValues: marshall({ ":type": "PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION",
+            ":active": "ACTIVE", ":consumed": "CONSUMED", ":one": 1, ":zero": 0,
+            ":now": now, ":authorization": original.authorizationId }) } },
+        { ConditionCheck: { TableName: table(), Key: marshall(attemptKey),
+          ConditionExpression: "entityType = :type AND orgId = :org AND #version = :version AND #state.#status = :created AND #state.uid = :uid AND #state.sourceDigest = :source",
+          ExpressionAttributeNames: { "#version": "version", "#state": "state", "#status": "status" },
+          ExpressionAttributeValues: marshall({ ":type": "FISCAL_ATTEMPT_EFFECT", ":org": binding.orgId,
+            ":version": extension.data.expectedAttemptVersion, ":created": "CREATED",
+            ":uid": extension.data.providerUid, ":source": binding.sourceDigest }) } },
+      ] }));
+    } catch { throw forbidden(); }
+    return original;
+  }
   static async resolveAndConsume(binding: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "outletId" | "operatorUserId" | "sessionId" | "invoiceId" | "creditNoteId" | "sourceDigest">, action: z.infer<typeof operation>) {
     const key = keyFor(binding); const row = await this.read(key); const now = new Date().toISOString();
-    if (!row || row.orgId !== binding.orgId || row.data.status !== "ACTIVE" || Date.parse(row.data.expiresAt) <= Date.parse(now) || row.data.outletId !== binding.outletId || row.data.operatorUserId !== binding.operatorUserId || row.data.sessionId !== binding.sessionId || row.data.invoiceId !== binding.invoiceId || row.data.creditNoteId !== binding.creditNoteId || row.data.sourceDigest !== binding.sourceDigest || row.data.remaining[action] === undefined) throw forbidden();
+    if (!row || row.orgId !== binding.orgId || row.data.status !== "ACTIVE" || row.data.outletId !== binding.outletId || row.data.operatorUserId !== binding.operatorUserId || row.data.sessionId !== binding.sessionId || row.data.invoiceId !== binding.invoiceId || row.data.creditNoteId !== binding.creditNoteId || row.data.sourceDigest !== binding.sourceDigest || row.data.remaining[action] === undefined) throw forbidden();
+    if (action === "GET" && (Date.parse(row.data.expiresAt) <= Date.parse(now) || (row.data.remaining.GET ?? 0) < 1))
+      return this.consumeGetExtension(binding, row.data);
+    if (Date.parse(row.data.expiresAt) <= Date.parse(now)) throw forbidden();
     const remaining = row.data.remaining[action] ?? 0; if (remaining < 1) throw forbidden();
     try { await dynamoClient.send(new UpdateItemCommand({ TableName: table(), Key: marshall(key), UpdateExpression: "SET #data.#remaining.#action = #data.#remaining.#action - :one", ConditionExpression: "entityType = :type AND #data.#status = :active AND #data.#remaining.#action >= :one AND #data.#expiresAt > :now", ExpressionAttributeNames: { "#data": "data", "#remaining": "remaining", "#action": action, "#status": "status", "#expiresAt": "expiresAt" }, ExpressionAttributeValues: marshall({ ":one": 1, ":active": "ACTIVE", ":type": "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION", ":now": now }) })); } catch { throw forbidden(); }
     return row.data;
@@ -244,7 +389,19 @@ export class FiscalTestExecutionAuthorizationService {
   }
   static async readBound(binding: Pick<FiscalTestExecutionAuthorizationInput, "orgId" | "outletId" | "operatorUserId" | "sessionId" | "invoiceId" | "creditNoteId" | "sourceDigest">) {
     const row = await this.read(keyFor(binding)); const now = Date.now();
-    if (!row || row.orgId !== binding.orgId || row.data.status !== "ACTIVE" || Date.parse(row.data.expiresAt) <= now || row.data.outletId !== binding.outletId || row.data.operatorUserId !== binding.operatorUserId || row.data.sessionId !== binding.sessionId || row.data.invoiceId !== binding.invoiceId || row.data.creditNoteId !== binding.creditNoteId || row.data.sourceDigest !== binding.sourceDigest) throw forbidden();
+    if (!row || row.orgId !== binding.orgId || row.data.status !== "ACTIVE" || row.data.outletId !== binding.outletId || row.data.operatorUserId !== binding.operatorUserId || row.data.sessionId !== binding.sessionId || row.data.invoiceId !== binding.invoiceId || row.data.creditNoteId !== binding.creditNoteId || row.data.sourceDigest !== binding.sourceDigest) throw forbidden();
+    if (Date.parse(row.data.expiresAt) <= now) {
+      if (binding.creditNoteId) throw forbidden();
+      const extension = await this.readExtension(binding.orgId, binding.invoiceId);
+      if (!extension || extension.data.status !== "ACTIVE" || extension.data.remaining !== 1 ||
+        Date.parse(extension.data.expiresAt) <= now ||
+        extension.data.authorizationId !== row.data.authorizationId ||
+        extension.data.outletId !== binding.outletId ||
+        extension.data.operatorUserId !== binding.operatorUserId ||
+        extension.data.sessionId !== binding.sessionId ||
+        extension.data.invoiceId !== binding.invoiceId ||
+        extension.data.sourceDigest !== binding.sourceDigest) throw forbidden();
+    }
     return row.data;
   }
   static mappingDigest(value: unknown) { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }

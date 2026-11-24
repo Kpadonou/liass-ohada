@@ -268,6 +268,33 @@ test("TEST execution approval route derives organization from authenticated cont
   expect(approve).toHaveBeenCalledWith(principal, "company-a", body);
   approve.mockRestore();
 });
+test("TEST execution approval route dispatches an audited GET-only extension", async () => {
+  const approve = jest.spyOn(FiscalTestExecutionAuthorizationService, "approvePreparedProof");
+  const extend = jest.spyOn(FiscalTestExecutionAuthorizationService, "extendGetReconciliation")
+    .mockResolvedValue({
+      extensionId: "16fa65d4-a4a5-43b9-b6e5-fb6282ddbfe1",
+      authorizationId: "2f4d3917-7e43-45b7-8c90-73c1bb1de569",
+      invoiceId: "42cd9090-bc53-4c81-94a3-af1559d113e1",
+      providerUid: "2cb8c7af-e179-49fd-8435-1a5aedf195c2",
+      expectedAttemptVersion: 3, operation: "GET", remaining: 1,
+      issuedAt: "2026-11-24T10:00:00.000Z", expiresAt: "2026-11-24T10:30:00.000Z",
+      status: "ACTIVE",
+    });
+  const body = { kind: "GET_RECONCILIATION_EXTENSION",
+    authorizationId: "2f4d3917-7e43-45b7-8c90-73c1bb1de569",
+    invoiceId: "42cd9090-bc53-4c81-94a3-af1559d113e1",
+    providerUid: "2cb8c7af-e179-49fd-8435-1a5aedf195c2",
+    expectedAttemptVersion: 3,
+    commandId: "9b66a7dd-a0e0-49af-a188-c87f0dad31c6" };
+  const result = await handler(event(
+    "POST /platform/fiscality/test-execution-authorizations", body,
+  ));
+  expect(result.statusCode).toBe(201);
+  expect(extend).toHaveBeenCalledWith(principal, "company-a", body);
+  expect(FiscalTestExecutionAuthorizationService.approvePreparedProof).not.toHaveBeenCalled();
+  extend.mockRestore();
+  approve.mockRestore();
+});
 test("TEST execution approval route rejects the historical client-authored fiscal payload", async () => {
   const result = await handler(event(
     "POST /platform/fiscality/test-execution-authorizations",

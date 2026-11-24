@@ -35,6 +35,9 @@ export const KeyFactory = {
    * authority in its own right; it deliberately does not alter connection data. */
   fiscalExecutionAuthorizationSK: (environment: string, sourceDocumentId: string) =>
     `PLATFORM_FISCAL_EXECUTION_AUTHORIZATION#${environment}#${restaurantTransactionSegment(sourceDocumentId)}`,
+  /** One immutable, separately audited GET-only extension for a CREATED TEST attempt. */
+  fiscalGetAuthorizationExtensionSK: (environment: string, sourceDocumentId: string) =>
+    `PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION#${environment}#${restaurantTransactionSegment(sourceDocumentId)}`,
   /** Short-lived Restaurants-produced evidence consumed by Platform authorization. */
   fiscalSourcePreparationProofSK: (environment: string, proofId: string) =>
     `PLATFORM_FISCAL_SOURCE_PROOF#${environment}#${restaurantTransactionSegment(proofId)}`,

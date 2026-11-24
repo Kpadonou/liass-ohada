@@ -14,6 +14,7 @@ import {
 import { OrganizationLegalIdentityService } from "@/lambda/shared/services/organization-legal-identity-service";
 import { EffectiveOrganizationAccessService } from "@/lambda/shared/services/effective-organization-access-service";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
+import { fiscalAttemptStateSchema, obligationIdentity } from "@/lambda/domains/fiscal-compliance/core/fiscal-attempt-state";
 
 const db = mockClient(DynamoDBClient);
 const ids = {
@@ -277,6 +278,149 @@ test("unknown failure without a committed authorization remains unavailable", as
   db.on(TransactWriteItemsCommand).rejects(new Error("timeout"));
   await expect(Service.approvePreparedProof(principal, orgId, request()))
     .rejects.toMatchObject({ statusCode: 503, messageCode: "PLATFORM_FISCAL_UNAVAILABLE" });
+});
+
+const exhaustedAuthorizationRecord = () => marshall({
+  PK: K.orgKey(orgId), SK: K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId), orgId,
+  entityType: "PLATFORM_FISCAL_EXECUTION_AUTHORIZATION",
+  data: {
+    orgId, connectionId: ids.connectionId, outletId: ids.outletId,
+    operatorUserId: ids.operatorId, sessionId: ids.sessionId, invoiceId: ids.invoiceId,
+    sourceDigest: "a".repeat(64), scenarioId: "02", fiscalMapping: proof().fiscalMapping,
+    expectedFiscalTotals: totals, operations: proof().operations,
+    expiresAt: "2026-11-17T10:00:00.000Z",
+    authorizationId: "2f4d3917-7e43-45b7-8c90-73c1bb1de569",
+    issuedAt: "2026-11-17T09:30:00.000Z",
+    issuedBy: ids.approverId, status: "ACTIVE",
+    remaining: { CREATE: 0, GET: 0, CONFIRM: 1, CANCEL: 1 },
+    preparationProofId: ids.proofId, preparationProofDigest: "c".repeat(64),
+  },
+}, { removeUndefinedValues: true });
+const createdAttemptRecord = () => {
+  const identity = { orgId, environment: "TEST" as const, sourceDomain: "restaurants",
+    sourceDocumentType: "INVOICE" as const, sourceDocumentId: ids.invoiceId,
+    jurisdiction: "BJ", obligation: "NORMALIZE" };
+  const state = fiscalAttemptStateSchema.parse({ identity,
+    obligationId: obligationIdentity(identity), attemptId: `AUTO#${ids.invoiceId}`,
+    execution: "REAL_TEST", provider: "BENIN_EMECEF_TEST",
+    sourceDigest: "a".repeat(64), requestDigest: "d".repeat(64), expectedTotal: 1000,
+    fiscalDocumentType: "FV", version: 3, status: "CREATED",
+    commands: [{ commandId: `AUTO#${ids.invoiceId}#CREATE`, intentDigest: "e".repeat(64), operation: "CREATE" }],
+    activeCommandId: `AUTO#${ids.invoiceId}#CREATE`, uid: "2cb8c7af-e179-49fd-8435-1a5aedf195c2",
+    providerTotal: 1000, fiscalTotalsVerified: true,
+    providerContextDigest: "f".repeat(64), fiscalTotalsDigest: "1".repeat(64),
+  });
+  return marshall({ PK: K.orgKey(orgId),
+    SK: K.fiscalAttemptEffectSK("TEST", obligationIdentity(identity)), orgId,
+    entityType: "FISCAL_ATTEMPT_EFFECT", schemaVersion: 1, version: 3, state });
+};
+const extensionRequest = () => ({ kind: "GET_RECONCILIATION_EXTENSION" as const,
+  authorizationId: "2f4d3917-7e43-45b7-8c90-73c1bb1de569", invoiceId: ids.invoiceId,
+  providerUid: "2cb8c7af-e179-49fd-8435-1a5aedf195c2", expectedAttemptVersion: 3,
+  commandId: "9b66a7dd-a0e0-49af-a188-c87f0dad31c6" });
+
+test("creates one audited GET-only extension without changing exhausted budgets", async () => {
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk === K.fiscalAttemptEffectSK("TEST", obligationIdentity({ orgId,
+      environment: "TEST", sourceDomain: "restaurants", sourceDocumentType: "INVOICE",
+      sourceDocumentId: ids.invoiceId, jurisdiction: "BJ", obligation: "NORMALIZE" })))
+      return { Item: createdAttemptRecord() };
+    return {};
+  });
+  const view = await Service.extendGetReconciliation(principal, orgId, extensionRequest());
+  expect(view).toMatchObject({ authorizationId: extensionRequest().authorizationId,
+    invoiceId: ids.invoiceId, providerUid: extensionRequest().providerUid,
+    expectedAttemptVersion: 3, operation: "GET", remaining: 1, status: "ACTIVE" });
+  const tx = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems!;
+  expect(tx).toHaveLength(5);
+  expect(tx[2].ConditionCheck?.ConditionExpression).toContain("#data.#remaining.#get = :zero");
+  expect(tx[3].ConditionCheck?.ConditionExpression).toContain("#state.uid = :uid");
+  const extension = unmarshall(tx[4].Put!.Item!);
+  expect(extension.entityType).toBe("PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION");
+  expect(extension.data).toMatchObject({ operation: "GET", remaining: 1,
+    authorizationId: extensionRequest().authorizationId, issuedBy: principal.sub });
+  expect(unmarshall(exhaustedAuthorizationRecord()).data.remaining).toEqual(
+    { CREATE: 0, GET: 0, CONFIRM: 1, CANCEL: 1 });
+});
+
+test("replays the same GET extension command without creating another audit record", async () => {
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk.startsWith("FISCAL_ATTEMPT_EFFECT#")) return { Item: createdAttemptRecord() };
+    return {};
+  });
+  const first = await Service.extendGetReconciliation(principal, orgId, extensionRequest());
+  const extension = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems![4].Put!.Item!;
+  db.reset();
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk === K.fiscalGetAuthorizationExtensionSK("TEST", ids.invoiceId))
+      return { Item: extension };
+    return {};
+  });
+  await expect(Service.extendGetReconciliation(principal, orgId, extensionRequest()))
+    .resolves.toEqual(first);
+  expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+});
+
+test("rejects an extension when CREATED attempt UID or version does not match", async () => {
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk.startsWith("FISCAL_ATTEMPT_EFFECT#")) return { Item: createdAttemptRecord() };
+    return {};
+  });
+  await expect(Service.extendGetReconciliation(principal, orgId, {
+    ...extensionRequest(), providerUid: "f50de72d-6964-41c4-8bce-17fd75fce284",
+  })).rejects.toMatchObject({ messageCode: "FISCAL_COMMAND_CONFLICT" });
+  await expect(Service.extendGetReconciliation(principal, orgId, {
+    ...extensionRequest(), expectedAttemptVersion: 4,
+  })).rejects.toMatchObject({ messageCode: "FISCAL_COMMAND_CONFLICT" });
+  expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
+});
+
+test("consumes the extension only for GET and fences it against the exact CREATED attempt", async () => {
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk.startsWith("FISCAL_ATTEMPT_EFFECT#")) return { Item: createdAttemptRecord() };
+    return {};
+  });
+  await Service.extendGetReconciliation(principal, orgId, extensionRequest());
+  const extension = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems![4].Put!.Item!;
+  db.reset();
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk === K.fiscalGetAuthorizationExtensionSK("TEST", ids.invoiceId))
+      return { Item: extension };
+    return {};
+  });
+  const binding = { orgId, outletId: ids.outletId, operatorUserId: ids.operatorId,
+    sessionId: ids.sessionId, invoiceId: ids.invoiceId, sourceDigest: "a".repeat(64) };
+  await expect(Service.resolveAndConsume(binding, "GET")).resolves.toMatchObject({
+    authorizationId: extensionRequest().authorizationId,
+    remaining: { CREATE: 0, GET: 0, CONFIRM: 1, CANCEL: 1 },
+  });
+  const consume = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems!;
+  expect(consume).toHaveLength(2);
+  expect(consume[0].Update?.UpdateExpression).toContain("#data.#remaining = :zero");
+  expect(consume[1].ConditionCheck?.ConditionExpression).toContain("#state.uid = :uid");
+  expect(unmarshall(exhaustedAuthorizationRecord()).data.remaining.GET).toBe(0);
+  db.resetHistory();
+  await expect(Service.resolveAndConsume(binding, "CONFIRM"))
+    .rejects.toMatchObject({ messageCode: "DOMAIN_PERMISSION_REQUIRED" });
+  expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
 });
 
 test("live-condition failure cannot expose a partial authorization", async () => {
