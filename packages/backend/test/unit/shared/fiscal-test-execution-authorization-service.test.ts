@@ -370,6 +370,39 @@ test("replays the same GET extension command without creating another audit reco
   expect(db.commandCalls(TransactWriteItemsCommand)).toHaveLength(0);
 });
 
+test("renews an unused expired GET extension while preserving its audit history", async () => {
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk.startsWith("FISCAL_ATTEMPT_EFFECT#")) return { Item: createdAttemptRecord() };
+    return {};
+  });
+  await Service.extendGetReconciliation(principal, orgId, extensionRequest());
+  const firstItem = unmarshall(db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems![4].Put!.Item!);
+  firstItem.data.expiresAt = "2020-01-01T00:00:00.000Z";
+  db.reset();
+  db.on(GetItemCommand).callsFake((input) => {
+    const sk = unmarshall(input.Key!).SK;
+    if (sk === K.fiscalExecutionAuthorizationSK("TEST", ids.invoiceId))
+      return { Item: exhaustedAuthorizationRecord() };
+    if (sk === K.fiscalGetAuthorizationExtensionSK("TEST", ids.invoiceId))
+      return { Item: marshall(firstItem) };
+    if (sk.startsWith("FISCAL_ATTEMPT_EFFECT#")) return { Item: createdAttemptRecord() };
+    return {};
+  });
+  const renewed = await Service.extendGetReconciliation(principal, orgId, {
+    ...extensionRequest(), commandId: "bfda4655-a443-41cd-87a5-0cd10d4804c0",
+  });
+  expect(renewed).toMatchObject({ operation: "GET", remaining: 1, status: "ACTIVE" });
+  expect(renewed.extensionId).not.toBe(firstItem.data.extensionId);
+  const renewal = db.commandCalls(TransactWriteItemsCommand)[0].args[0].input.TransactItems![4].Update!;
+  expect(renewal.UpdateExpression).toContain("list_append");
+  const values = unmarshall(renewal.ExpressionAttributeValues!);
+  expect(values[":previous"]).toEqual([firstItem.data]);
+  expect(values[":data"].commandId).toBe("bfda4655-a443-41cd-87a5-0cd10d4804c0");
+});
+
 test("rejects an extension when CREATED attempt UID or version does not match", async () => {
   db.on(GetItemCommand).callsFake((input) => {
     const sk = unmarshall(input.Key!).SK;

@@ -60,7 +60,8 @@ const extensionDataSchema = z.object({
   status: z.enum(["ACTIVE", "CONSUMED"]), commandId: id, intentDigest: digest,
 }).strict();
 const extensionRecordSchema = z.object({ PK: z.string(), SK: z.string(), orgId: z.string(),
-  entityType: z.literal("PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION"), data: extensionDataSchema }).strict();
+  entityType: z.literal("PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION"), data: extensionDataSchema,
+  history: z.array(extensionDataSchema).max(10).optional() }).strict();
 const extensionView = (data: z.infer<typeof extensionDataSchema>) =>
   FiscalTestGetAuthorizationExtensionViewSchema.parse({
     extensionId: data.extensionId, authorizationId: data.authorizationId,
@@ -117,10 +118,15 @@ export class FiscalTestExecutionAuthorizationService {
     const existing = await this.readExtension(orgId, request.invoiceId);
     if (existing) {
       if (existing.data.authorizationId !== request.authorizationId ||
-        existing.data.commandId !== request.commandId ||
-        existing.data.intentDigest !== intentDigest || existing.data.issuedBy !== principal.sub)
+        existing.data.issuedBy !== principal.sub) throw conflict();
+      if (existing.data.commandId === request.commandId) {
+        if (existing.data.intentDigest !== intentDigest)
+          throw conflict();
+        return extensionView(existing.data);
+      }
+      if (existing.data.status !== "ACTIVE" || existing.data.remaining !== 1 ||
+        Date.parse(existing.data.expiresAt) > Date.now() || (existing.history?.length ?? 0) >= 10)
         throw conflict();
-      return extensionView(existing.data);
     }
     const identity = { orgId, environment: "TEST" as const, sourceDomain: "restaurants",
       sourceDocumentType: "INVOICE" as const, sourceDocumentId: request.invoiceId,
@@ -162,8 +168,15 @@ export class FiscalTestExecutionAuthorizationService {
           ExpressionAttributeValues: marshall({ ":type": "FISCAL_ATTEMPT_EFFECT", ":org": orgId,
             ":version": request.expectedAttemptVersion, ":created": "CREATED",
             ":uid": request.providerUid, ":source": original.data.sourceDigest }) } },
-        { Put: { TableName: table(), Item: marshall(record),
-          ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } },
+        existing ? { Update: { TableName: table(), Key: marshall(extensionKeyFor(orgId, request.invoiceId)),
+          UpdateExpression: "SET #data = :data, #history = list_append(if_not_exists(#history, :empty), :previous)",
+          ConditionExpression: "entityType = :type AND #data.commandId = :priorCommand AND #data.#status = :active AND #data.#remaining = :one AND #data.expiresAt <= :now AND (attribute_not_exists(#history) OR size(#history) < :maxHistory)",
+          ExpressionAttributeNames: { "#data": "data", "#history": "history", "#status": "status", "#remaining": "remaining" },
+          ExpressionAttributeValues: marshall({ ":data": data, ":empty": [], ":previous": [existing.data],
+            ":type": "PLATFORM_FISCAL_GET_AUTHORIZATION_EXTENSION", ":priorCommand": existing.data.commandId,
+            ":active": "ACTIVE", ":one": 1, ":now": issuedAt, ":maxHistory": 10 }) } }
+          : { Put: { TableName: table(), Item: marshall(record),
+            ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)" } },
       ] }));
     } catch {
       const committed = await this.readExtension(orgId, request.invoiceId);
