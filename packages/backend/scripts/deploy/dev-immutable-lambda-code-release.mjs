@@ -44,6 +44,14 @@ export const RESTAURANTS_ATTESTED_FISCAL_RELEASE = Object.freeze({
     Object.freeze({ functionName: "liass-ohada-dev-identity-grant-test-execution-authorization", logicalId: "IdentityModulePlatformFiscalityplatformsfehandlerPOSTplatformfiscalitytestexecutionauthorizations96E68A13" }),
   ]),
 });
+export const FISCAL_GET_EXTENSION_RELEASE = Object.freeze({
+  profile: "FISCAL_GET_EXTENSION_PAIR",
+  commit: "b798567c9de6165e97554b3da55b104fda7045d6",
+  functions: Object.freeze([
+    Object.freeze({ functionName: "liass-ohada-dev-fiscal-compliance-real-test", logicalId: "RealTestExecutorA6E6815D" }),
+    Object.freeze({ functionName: "liass-ohada-dev-identity-grant-test-execution-authorization", logicalId: "IdentityModulePlatformFiscalityplatformsfehandlerPOSTplatformfiscalitytestexecutionauthorizations96E68A13" }),
+  ]),
+});
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..", "..", "..");
@@ -97,9 +105,11 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const finalPublisher = manifest?.releaseProfile === FINAL_PUBLISHER_RELEASE.profile;
   const organizationProfile = manifest?.releaseProfile === ORGANIZATION_PROFILE_RELEASE.profile;
   const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
+  const fiscalGetExtension = manifest?.releaseProfile === FISCAL_GET_EXTENSION_RELEASE.profile;
   const singleTarget = fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
-    : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE : undefined;
+    : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
+    : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE : undefined;
   const fixedRelease = multiTarget ?? singleTarget;
   const expectedCommit = fixedRelease?.commit ?? "a4f5b225b4fce4424a85b1ea18ff96b03c97207e";
   const expectedArtifacts = multiTarget ? multiTarget.functions.length : singleTarget ? 1 : 77;

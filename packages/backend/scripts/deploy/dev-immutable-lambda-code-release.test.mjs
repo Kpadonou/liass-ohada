@@ -4,7 +4,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
+import { configurationFingerprint, FINAL_PUBLISHER_RELEASE, FISCAL_EXECUTOR_RELEASE, FISCAL_GET_EXTENSION_RELEASE, ORGANIZATION_PROFILE_RELEASE, RESTAURANTS_ATTESTED_FISCAL_RELEASE, makePreflight, releaseFingerprint, validateReleaseManifest } from "./dev-immutable-lambda-code-release.mjs";
 
 const target = { account: "570197775998", region: "eu-west-3", stage: "dev" };
 const entry = (name, bytes) => ({ functionName: name, logicalId: "L", artifact: `artifacts/${name}.zip`, sha256Hex: "", codeSha256: "", liveCodeSha256: "old", liveLastModified: "2026-11-11T00:00:00.000+0000" });
@@ -34,7 +34,7 @@ test("validates only the approved fiscal executor in its single-target release p
   const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false, releaseProfile: FISCAL_EXECUTOR_RELEASE.profile,
     target, commit: FISCAL_EXECUTOR_RELEASE.commit, artifacts: [item] };
   assert.equal(validateReleaseManifest(manifest, directory).length, 1);
-  manifest.artifacts[0].functionName = "liass-ohada-dev-restaurants-publish-receipt";
+  manifest.artifacts[0].functionName = "liass-ohada-dev-accounting-post-entry";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
 
@@ -85,6 +85,22 @@ test("validates only the attested Restaurants fiscal path", () => {
     commit: RESTAURANTS_ATTESTED_FISCAL_RELEASE.commit, artifacts };
   assert.equal(validateReleaseManifest(manifest, directory).length, 3);
   manifest.artifacts[0].functionName = "liass-ohada-dev-identity-update-organization-profile";
+  assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
+});
+
+test("validates only the fiscal GET extension Lambda pair", () => {
+  const { directory } = fixture();
+  const artifacts = FISCAL_GET_EXTENSION_RELEASE.functions.map((target) => {
+    const bytes = Buffer.from(target.functionName), hashes = awaitableHash(bytes);
+    writeFileSync(join(directory, "artifacts", `${target.functionName}.zip`), bytes);
+    return { ...entry(target.functionName, bytes), logicalId: target.logicalId,
+      sha256Hex: hashes.hex, codeSha256: hashes.base64 };
+  });
+  const manifest = { mode: "PREPARE_ONLY", deploymentExecuted: false,
+    releaseProfile: FISCAL_GET_EXTENSION_RELEASE.profile, target,
+    commit: FISCAL_GET_EXTENSION_RELEASE.commit, artifacts };
+  assert.equal(validateReleaseManifest(manifest, directory).length, 2);
+  manifest.artifacts[0].functionName = "liass-ohada-dev-accounting-post-entry";
   assert.throws(() => validateReleaseManifest(manifest, directory), /Out-of-scope/);
 });
 
