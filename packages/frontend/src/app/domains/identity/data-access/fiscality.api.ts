@@ -79,7 +79,7 @@ export class FiscalityApi {
   }
   async issuancePolicy(context: FiscalityContext, issuancePointId: string) {
     this.assert(context);
-    const params = new HttpParams().set('issuancePointId', issuancePointId);
+    const params = issuancePointId ? new HttpParams().set('issuancePointId', issuancePointId) : new HttpParams();
     const result = await firstValueFrom(this.http.get<unknown>(this.base + '/issuance-policy', { params }).pipe(timeout(35_000)));
     this.assert(context);
     return z.object({ data: FiscalIssuancePolicySchema.nullable() }).strict().parse(result).data;

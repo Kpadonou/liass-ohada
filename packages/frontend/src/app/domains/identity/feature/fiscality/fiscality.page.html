@@ -65,12 +65,17 @@
     <div class="flex flex-wrap items-start gap-3">
       <mat-form-field appearance="outline" class="w-full max-w-sm">
         <mat-label>{{ 'FISCALITY.POLICY.POINT' | transloco }}</mat-label>
-        <input matInput [formControl]="policyPoint" autocomplete="off" />
+        <mat-select [formControl]="policyPoint">
+          <mat-option value="">{{ 'FISCALITY.POLICY.ORGANIZATION' | transloco }}</mat-option>
+          @for (point of issuancePoints(); track point.id) { <mat-option [value]="point.id">{{ point.name }}</mat-option> }
+        </mat-select>
         @if (policyPoint.touched && policyPoint.invalid) { <mat-error>{{ 'FISCALITY.POLICY.POINT_ERROR' | transloco }}</mat-error> }
       </mat-form-field>
       <liass-button icon="search" variant="outline" (pressed)="loadPolicy()">{{ 'FISCALITY.POLICY.LOAD' | transloco }}</liass-button>
     </div>
-    @if (policyPointId()) {
+    @if (points.hasNextPage()) { <liass-button variant="outline" (pressed)="points.fetchNextPage()">{{ 'FISCALITY.POLICY.MORE_POINTS' | transloco }}</liass-button> }
+    @if (points.isError()) { <p role="status" class="text-sm text-app-text-secondary">{{ 'FISCALITY.POLICY.POINTS_ERROR' | transloco }}</p> }
+    @if (policyLoaded()) {
       @if (issuancePolicy.isPending()) { <liass-skeleton [lines]="2" /> }
       @else if (issuancePolicy.isError()) { <p role="alert" class="text-sm text-danger-600">{{ 'FISCALITY.POLICY.LOAD_ERROR' | transloco }}</p> }
       @else {
@@ -88,7 +93,7 @@
           <mat-checkbox [formControl]="policyEnabled">{{ 'FISCALITY.POLICY.ENABLED' | transloco }}</mat-checkbox>
           @if (canManage()) {
             <liass-button icon="save" tone="brand" variant="solid" [loading]="policyBusy()"
-              [disabled]="policyConnection.invalid || policyBusy()" (pressed)="savePolicy()">{{ 'FISCALITY.POLICY.SAVE' | transloco }}</liass-button>
+              [disabled]="policyConnection.invalid || policyBusy() || policyPoint.value !== policyPointId()" (pressed)="savePolicy()">{{ 'FISCALITY.POLICY.SAVE' | transloco }}</liass-button>
           }
         </div>
       }

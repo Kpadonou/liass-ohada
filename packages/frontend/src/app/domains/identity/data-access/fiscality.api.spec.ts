@@ -184,3 +184,18 @@ it('verification sends only the typed command and rejects endpoint or tenant ove
   response.flush({ data: { token: 'must-not-escape' } });
   await assertion;
 });
+
+it('loads organization policy without a point and preserves expected version on update', async () => {
+  const read = api.issuancePolicy(api.context(), '');
+  const req = http.expectOne(r => r.url.endsWith('/issuance-policy'));
+  expect(req.request.params.has('issuancePointId')).toBe(false);
+  const policy = { environment: 'TEST', connectionId, enabled: false, version: 2,
+    updatedAt: '2026-11-25T00:00:00.000Z', updatedBy: 'owner' };
+  req.flush({ data: policy });
+  await expect(read).resolves.toEqual(policy);
+  const save = api.saveIssuancePolicy(api.context(), { environment: 'TEST', connectionId, enabled: false, expectedVersion: 2 });
+  const put = http.expectOne(r => r.method === 'PUT' && r.url.endsWith('/issuance-policy'));
+  expect(put.request.body).toEqual({ environment: 'TEST', connectionId, enabled: false, expectedVersion: 2 });
+  put.flush({ data: { ...policy, version: 3 } });
+  await expect(save).resolves.toMatchObject({ version: 3 });
+});

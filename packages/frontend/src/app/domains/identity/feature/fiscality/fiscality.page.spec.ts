@@ -1,3 +1,4 @@
+import { FiscalIssuancePoints } from '../../../../core/fiscality/fiscal-issuance-points';
 import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { MatDialog, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
@@ -86,6 +87,7 @@ beforeEach(() => {
     ],
     providers: [
       { provide: FiscalityApi, useValue: api },
+      { provide: FiscalIssuancePoints, useValue: { list: async () => ({ items: [] }) } },
       { provide: QueryClient, useValue: client },
       { provide: NotificationService, useValue: notification },
     ],

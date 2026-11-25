@@ -1,3 +1,4 @@
+import { FiscalIssuancePoints } from '../../../../core/fiscality/fiscal-issuance-points';
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { MatDialog } from '@angular/material/dialog';
@@ -64,6 +65,7 @@ import { environment as deploymentEnvironment } from '../../../../../environment
 })
 export class FiscalityPage {
   private readonly api = inject(FiscalityApi);
+  private readonly pointsApi = inject(FiscalIssuancePoints);
   private readonly dialog = inject(MatDialog);
   private readonly client = inject(QueryClient);
   private readonly notification = inject(NotificationService);
@@ -72,8 +74,16 @@ export class FiscalityPage {
   readonly busy = signal(false);
   readonly profileBusy = signal(false);
   readonly policyBusy = signal(false);
-  readonly policyPoint = new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)] });
+  readonly policyPoint = new FormControl('', { nonNullable: true, validators: [Validators.pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)] });
   readonly policyPointId = signal('');
+  readonly policyLoaded = signal(false);
+  readonly points = injectInfiniteQuery(() => {
+    const context = this.context();
+    return { queryKey: [...fiscalPolicyKey(context, ''), 'points'], initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam }) => this.pointsApi.list(context.org, pageParam),
+      getNextPageParam: (page) => page.nextCursor, enabled: !!context.org && !!context.user, retry: false, staleTime: 300_000 };
+  });
+  readonly issuancePoints = computed(() => this.points.data()?.pages.flatMap(page => page.items) ?? []);
   readonly policyConnection = new FormControl('', { nonNullable: true, validators: Validators.required });
   readonly policyEnabled = new FormControl(false, { nonNullable: true });
   readonly selectedRegime = signal<string | null>(null);
@@ -120,7 +130,7 @@ export class FiscalityPage {
   readonly issuancePolicy = injectQuery(() => {
     const context = this.context(), point = this.policyPointId();
     return { queryKey: fiscalPolicyKey(context, point), queryFn: () => this.api.issuancePolicy(context, point),
-      enabled: !!context.org && !!context.user && !!point, retry: false, staleTime: 30_000 };
+      enabled: !!context.org && !!context.user && this.policyLoaded(), retry: false, staleTime: 30_000 };
   });
   readonly canManage = computed(() => this.settings.data()?.pages[0]?.canManage === true);
   readonly readiness = ['TIMEZONE', 'ESTABLISHMENT'] as const;
@@ -128,6 +138,9 @@ export class FiscalityPage {
     effect(() => {
       this.context();
       this.busy.set(false);
+      this.policyLoaded.set(false);
+      this.policyPointId.set('');
+      this.policyPoint.setValue('');
       this.verifying.set(null);
       this.verificationCommands.clear();
     });
@@ -136,7 +149,7 @@ export class FiscalityPage {
     });
     effect(() => {
       const policy = this.issuancePolicy.data();
-      if (this.policyPointId()) {
+      if (this.policyLoaded()) {
         this.policyConnection.setValue(policy?.connectionId ?? '');
         this.policyEnabled.setValue(policy?.enabled ?? false);
       }
@@ -146,13 +159,14 @@ export class FiscalityPage {
     this.policyPoint.markAsTouched();
     if (this.policyPoint.invalid) return;
     this.policyPointId.set(this.policyPoint.value.toLowerCase());
+    this.policyLoaded.set(true);
   }
   async savePolicy() {
     const context = this.context(), issuancePointId = this.policyPointId();
-    if (!this.canManage() || !issuancePointId || this.policyConnection.invalid || this.policyBusy() || this.issuancePolicy.isPending() || this.issuancePolicy.isError()) return;
+    if (this.policyPoint.value !== issuancePointId || !this.canManage() || !this.policyLoaded() || this.policyConnection.invalid || this.policyBusy() || this.issuancePolicy.isPending() || this.issuancePolicy.isError()) return;
     this.policyBusy.set(true);
     try {
-      await this.api.saveIssuancePolicy(context, { issuancePointId, connectionId: this.policyConnection.value,
+      await this.api.saveIssuancePolicy(context, { ...(issuancePointId ? { issuancePointId } : {}), connectionId: this.policyConnection.value,
         environment: this.environment(), enabled: this.policyEnabled.value,
         expectedVersion: this.issuancePolicy.data()?.version ?? 0 });
       if (this.api.current(context)) {

@@ -280,7 +280,8 @@ export class PlatformFiscalityEndpoints extends DomainConstructFactory {
         method,
         routePath,
         actionName,
-        ...(verification ? { timeout: Duration.seconds(30) } : {}),
+        ...(actionName === "list-fiscal-connections" ? { memorySize: 256 } : {}),
+        ...((verification || actionName === "list-fiscal-connections") ? { timeout: Duration.seconds(30) } : {}),
         domainName: "identity",
         routeInDomainStack: true,
         environment: {

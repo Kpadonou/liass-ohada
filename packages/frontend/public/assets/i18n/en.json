@@ -188,7 +188,7 @@
     "POLICY": {
       "TITLE": "Fiscal issuance policy",
       "DESCRIPTION": "Bind an issuance point to a verified fiscal connection. Future invoices will use this policy version.",
-      "POINT": "Issuance point ID",
+      "POINT": "Policy scope",
       "POINT_ERROR": "Enter a valid issuance point ID.",
       "LOAD": "Load",
       "LOAD_ERROR": "The fiscal policy could not be loaded.",
@@ -198,7 +198,10 @@
       "ENABLED": "Automatic fiscalization enabled",
       "SAVE": "Save",
       "SAVED": "Fiscal policy saved.",
-      "ERROR": "The fiscal policy could not be saved."
+      "ERROR": "The fiscal policy could not be saved.",
+      "ORGANIZATION": "Whole organization",
+      "MORE_POINTS": "More establishments",
+      "POINTS_ERROR": "Establishments are unavailable. Organization policy remains available."
     }
   },
   "RESTO_SERVICE": {

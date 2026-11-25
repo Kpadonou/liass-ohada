@@ -188,7 +188,7 @@
     "POLICY": {
       "TITLE": "Politique de fiscalisation",
       "DESCRIPTION": "Associez un point d’émission à une connexion fiscale vérifiée. Les futures factures utiliseront cette version de politique.",
-      "POINT": "Identifiant du point d’émission",
+      "POINT": "Portée de la politique",
       "POINT_ERROR": "Saisissez un identifiant de point d’émission valide.",
       "LOAD": "Charger",
       "LOAD_ERROR": "La politique fiscale n’a pas pu être chargée.",
@@ -198,7 +198,10 @@
       "ENABLED": "Fiscalisation automatique active",
       "SAVE": "Enregistrer",
       "SAVED": "Politique fiscale enregistrée.",
-      "ERROR": "La politique fiscale n’a pas pu être enregistrée."
+      "ERROR": "La politique fiscale n’a pas pu être enregistrée.",
+      "ORGANIZATION": "Toute l’organisation",
+      "MORE_POINTS": "Autres établissements",
+      "POINTS_ERROR": "Les établissements ne sont pas disponibles. La politique de l’organisation reste accessible."
     }
   },
   "RESTO_SERVICE": {
