@@ -108,6 +108,18 @@ afterEach(() => {
   delete process.env.FISCAL_SYNTHETIC_APPLICATION;
   jest.restoreAllMocks();
 });
+test("bound receipt reads reject an intent from a different policy revision", async () => {
+  const fiscalBinding = { environment: "TEST", connectionId: id, policyVersion: 2 };
+  jest.mocked(RestaurantInvoiceSourceVerifier.verify).mockResolvedValue({ verified: true, evidence: {
+    proof: { digest }, issuanceProvenance: { verified: true, evidence: { ...provenance, fiscalBinding } },
+  } } as never);
+  const row = { entityType: "RESTAURANT_FISCAL_INTENT", orgId: context.orgId,
+    ...request, state: "PENDING", fiscalBinding };
+  const send = jest.spyOn(dynamoClient, "send").mockResolvedValue({ Item: marshall(row) } as never);
+  await expect(service.status(context, request)).resolves.toMatchObject({ fiscalBinding, workState: "PENDING" });
+  send.mockResolvedValue({ Item: marshall({ ...row, fiscalBinding: { ...fiscalBinding, policyVersion: 3 } }) } as never);
+  await expect(service.status(context, request)).rejects.toThrow("FISCAL_SOURCE_MISMATCH");
+});
 test("initiate and same-command replay dispatch once, while changed intent conflicts", async () => {
   expect((await service.initiate(context, command)).status).toBe("CREATED");
   expect((await service.initiate(context, command)).status).toBe("CREATED");

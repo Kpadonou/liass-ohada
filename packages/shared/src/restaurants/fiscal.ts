@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { RestaurantReceiptSummarySchema } from "./receipts";
 import { LegalSellerAuthoritySchema } from "../shared/legal-identity-authority";
+import { FiscalIssuanceBindingSchema } from "../shared/organization-fiscality";
 
 export const RestaurantFiscalSourceRequestSchema = z
   .object({
@@ -42,7 +43,8 @@ const fields = {
   invoiceId: z.string().uuid(),
   creditNoteId: z.string().uuid().optional(),
   originalFiscalReference: z.string().length(24).optional(),
-  environment: z.literal("TEST"),
+  environment: z.enum(["TEST", "PRODUCTION"]),
+  fiscalBinding: FiscalIssuanceBindingSchema.optional(),
   execution: z.enum(["SYNTHETIC", "REAL_TEST"]),
   status: RestaurantFiscalStatusSchema,
   workState: z.enum(["PENDING", "CLAIMED", "BLOCKED", "CONFIRMED", "INTERRUPTED"]).nullable().optional(),
@@ -58,7 +60,8 @@ export const RestaurantFiscalStatusResponseSchema = z
   .object(fields)
   .strict()
   .refine(
-    (v) => v.confirmed === (v.status === "CONFIRMED"),
+    (v) => (!v.fiscalBinding || v.fiscalBinding.environment === v.environment) &&
+      v.confirmed === (v.status === "CONFIRMED"),
     "Inconsistent fiscal status",
   );
 export const RestaurantFiscalResultResponseSchema = z
@@ -73,6 +76,8 @@ export const RestaurantFiscalResultResponseSchema = z
   .strict()
   .refine(
     (v) =>
+      (!v.fiscalBinding || v.fiscalBinding.environment === v.environment) &&
+      (v.environment === "TEST" || !v.confirmed && !v.securityElements) &&
       v.confirmed === (v.status === "CONFIRMED") &&
       v.resultAvailable === v.confirmed &&
       (!v.normalizedInvoice || !!v.securityElements && v.normalizedInvoice.receiptId === v.invoiceId && v.normalizedInvoice.dueMinor === v.total) &&

@@ -122,6 +122,16 @@ export class RestaurantFiscalApplicationService {
         SK: K.restaurantFiscalIntentSK() }), ConsistentRead: true,
     }));
     const intent = intentResponse.Item ? unmarshall(intentResponse.Item) : undefined;
+    const fiscalBinding = !request.creditNoteId && currentSource.issuanceProvenance.verified
+      ? currentSource.issuanceProvenance.evidence.fiscalBinding : undefined;
+    if (!request.creditNoteId && (fiscalBinding || intent?.fiscalBinding) &&
+      (!fiscalBinding || !intent?.fiscalBinding ||
+        fiscalBinding.environment !== intent.fiscalBinding.environment ||
+        fiscalBinding.connectionId !== intent.fiscalBinding.connectionId ||
+        fiscalBinding.policyVersion !== intent.fiscalBinding.policyVersion ||
+        fiscalBinding.issuancePointId !== intent.fiscalBinding.issuancePointId ||
+        state)) // Legacy attempts carry no policy/connection binding and cannot supply evidence here.
+      throw new AppError(409, "FISCAL_SOURCE_MISMATCH");
     if (intent && (intent.entityType !== "RESTAURANT_FISCAL_INTENT" ||
       intent.orgId !== context.orgId || intent.outletId !== request.outletId ||
       intent.sessionId !== request.sessionId || intent.invoiceId !== request.invoiceId))
@@ -132,14 +142,15 @@ export class RestaurantFiscalApplicationService {
       (!intent.claimUntil || !Number.isFinite(Date.parse(intent.claimUntil)) || Date.parse(intent.claimUntil) <= Date.now())
       ? "INTERRUPTED" as const
       : intent ? intent.state as "PENDING" | "CLAIMED" | "BLOCKED" | "CONFIRMED" : null;
-    return { request, state, source: currentSource, workState };
+    return { request, state, source: currentSource, workState,
+      bindingView: fiscalBinding ? { environment: fiscalBinding.environment, fiscalBinding } : {} };
   }
   async status(context: Context, input: unknown) {
-    const { request, state, source, workState } = await this.readResultState(context, input);
-    return { ...this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined), workState };
+    const { request, state, source, workState, bindingView } = await this.readResultState(context, input);
+    return { ...this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined), ...bindingView, workState };
   }
   async confirmedResult(context: Context, input: unknown) {
-    const { request, state, source, workState } = await this.readResultState(context, input);
+    const { request, state, source, workState, bindingView } = await this.readResultState(context, input);
     const result = this.view(request, state, "originalFiscalReference" in source ? source.originalFiscalReference : undefined);
     // Only persisted, confirmed DGI TEST evidence can enter the receipt document.
     const securityElements = result.confirmed && this.real &&
@@ -150,6 +161,7 @@ export class RestaurantFiscalApplicationService {
       : null;
     return {
       ...result,
+      ...bindingView,
       workState,
       securityElements,
       seller,

@@ -75,6 +75,16 @@ const event = (
     requestContext: { authorizer: { jwt: { claims: { iss: issuer, sub } } } },
   }) as unknown as Event;
 const parse = (result: { body: string }) => JSON.parse(result.body);
+test("bound execution rejects PRODUCTION before storage and rejects an unknown policy revision", async () => {
+  await expect(OrganizationFiscalRepository.resolveBoundIssuanceConnection("org-a", {
+    environment: "PRODUCTION", connectionId, policyVersion: 1,
+  })).rejects.toMatchObject({ statusCode: 403 });
+  expect(db.commandCalls(GetItemCommand)).toHaveLength(0);
+  await expect(OrganizationFiscalRepository.resolveBoundIssuanceConnection("org-a", {
+    environment: "TEST", connectionId, policyVersion: 1,
+  })).rejects.toMatchObject({ statusCode: 403 });
+  expect(secrets.commandCalls(GetParameterCommand)).toHaveLength(0);
+});
 test("issuance policy reads are tenant-owned and scoped to the exact issuance point", async () => {
   const data = { issuancePointId: command(9), environment: "TEST", connectionId,
     version: 1, enabled: false, updatedAt: "2026-11-25T00:00:00Z", updatedBy: sub };

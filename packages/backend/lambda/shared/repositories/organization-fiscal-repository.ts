@@ -23,6 +23,7 @@ import {
   FiscalIssuanceContextSchema,
   FiscalIssuancePolicySchema,
   PutFiscalIssuancePolicySchema,
+  FiscalIssuanceBindingSchema,
 } from "@liass-ohada/shared/shared";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory as K } from "../key-builder";
@@ -220,6 +221,35 @@ export class OrganizationFiscalRepository {
       ExpressionAttributeNames: { "#data": "data" }, ExpressionAttributeValues: marshall({ ":org": orgId, ":data": policy }),
     } }, ...(point !== undefined && !policy.issuancePointId ? [{ ConditionCheck: { TableName: table(), Key: policyKey(point),
       ConditionExpression: "attribute_not_exists(PK)" } }] : [])] };
+  }
+  /** Resolve the immutable revision, then revalidate the live credential separately. */
+  static async resolveBoundIssuanceConnection(orgId: string, input: unknown) {
+    const binding = FiscalIssuanceBindingSchema.parse(input);
+    if (binding.environment !== "TEST" || !["dev", "test"].includes(process.env.STAGE ?? ""))
+      throw new AppError(403, "PLATFORM_FISCAL_FORBIDDEN");
+    await assertFiscalOrganization(orgId);
+    const PK = K.orgKey(orgId);
+    const SK = K.organizationFiscalIssuancePolicyHistorySK(binding.issuancePointId, binding.policyVersion);
+    const row = await this.get(PK, SK);
+    const policy = FiscalIssuancePolicySchema.safeParse(row?.data);
+    if (row?.PK !== PK || row.SK !== SK || row.orgId !== orgId ||
+      row.entityType !== "PLATFORM_FISCAL_ISSUANCE_POLICY_REVISION" || !policy.success ||
+      !policy.data.enabled || policy.data.version !== binding.policyVersion ||
+      policy.data.connectionId !== binding.connectionId || policy.data.environment !== binding.environment ||
+      policy.data.issuancePointId !== binding.issuancePointId)
+      throw new AppError(403, "PLATFORM_FISCAL_FORBIDDEN");
+    const connection = await this.connection(orgId, binding.environment, binding.connectionId);
+    const verified = connection?.verification?.lastVerified;
+    if (!connection?.secretReference || connection.data.credentialStatus !== "STORED_UNVERIFIED" || !verified)
+      throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const identity = await OrganizationLegalIdentityService.readFiscalTaxpayerAuthority(orgId);
+    const compatible = await addressOnlyVerificationSuccessor(orgId, verified, identity.binding);
+    const evidence = publicVerification(verified, { digest: fiscalConfigurationDigest(connection),
+      identity: identity.binding }, new Date().toISOString(), compatible);
+    if (!identity.ifu || identity.ifu !== connection.data.taxpayerIfu ||
+      evidence.status !== "VERIFIED_TEST" || !evidence.applicable || !evidence.checks.technicallyVerified)
+      throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    return connection;
   }
   static executionCondition(row: FiscalConnectionRecord) {
     if (!row.verification || !row.secretReference)
