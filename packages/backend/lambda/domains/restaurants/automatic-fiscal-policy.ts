@@ -1,3 +1,4 @@
+import { selectBeninSfeScenario } from "../fiscal-compliance/providers/benin-emecef/sfe-scenarios";
 import { prepareRestaurantFiscalInvoice } from "./fiscal-preparation";
 import { z } from "zod";
 import { CognitoSubjectSchema } from "@/lambda/shared/authorization/platform-admin";
@@ -24,8 +25,16 @@ export async function prepareAutomaticFiscalAuthorization(work: {orgId: string; 
   const prepared = await prepareRestaurantFiscalInvoice({scope: {orgId: work.orgId, outletId: work.outletId},
     actorId: work.actorId, sessionId: work.sessionId, invoiceId: work.invoiceId, classifications: [], requireV1: true});
   if (!prepared.ready) throw new Error("FISCAL_PREPARATION_UNAVAILABLE");
-  const groups = [...new Set(prepared.preparation.lines.map(line => line.fiscal.taxGroup))].sort().join(",");
-  const scenarioId = ({A: "01", B: "02", "A,B": "03"} as Record<string, string>)[groups];
+  const scenarioId = selectBeninSfeScenario({
+    // C is an explicit frozen export classification. TPS E alone remains
+    // domestic: EV/E needs an independently supplied export intent.
+    type: prepared.preparation.lines.some(line => line.fiscal.taxGroup === "C") ? "EV" : "FV",
+    items: prepared.preparation.lines.map(line => ({
+      taxGroup: line.fiscal.taxGroup, quantity: line.commercial.snapshot.quantity,
+      taxSpecific: line.fiscal.taxSpecificMinor,
+    })),
+    customer: prepared.preparation.customer, aib: prepared.preparation.aib,
+  });
   if (!scenarioId) throw new Error("FISCAL_SCENARIO_UNSUPPORTED");
   const proof = await RestaurantFiscalAuthorizationPreparationService.prepare({
     ...work, scenarioId, commandId: randomUUID(), automaticPolicy: true,

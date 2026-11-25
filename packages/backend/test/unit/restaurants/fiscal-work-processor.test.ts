@@ -1,4 +1,4 @@
-jest.mock("@/lambda/domains/restaurants/fiscal-preparation", () => ({prepareRestaurantFiscalInvoice: jest.fn(async () => ({ready: true, preparation: {lines: [{fiscal: {taxGroup: "A"}}, {fiscal: {taxGroup: "B"}}]}}))}));
+jest.mock("@/lambda/domains/restaurants/fiscal-preparation", () => ({prepareRestaurantFiscalInvoice: jest.fn(async () => ({ready: true, preparation: {lines: [{fiscal: {taxGroup: "A"}, commercial: {snapshot: {quantity: 2}}}, {fiscal: {taxGroup: "B"}, commercial: {snapshot: {quantity: 3}}}]}}))}));
 import { RestaurantFiscalAuthorizationPreparationService as AutomaticPreparation } from "@/lambda/domains/restaurants/fiscal-authorization-preparation-service";
 import { RestaurantFiscalWorkProcessor } from "@/lambda/domains/restaurants/fiscal-work-processor";
 import { RestaurantFiscalWorkRepository } from "@/lambda/domains/restaurants/fiscal-work-repository";

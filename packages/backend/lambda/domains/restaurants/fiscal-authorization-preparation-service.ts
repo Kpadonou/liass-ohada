@@ -8,25 +8,7 @@ import { prepareRestaurantFiscalInvoice } from "./fiscal-preparation";
 import { RestaurantInvoiceSourceVerifier } from "./invoice-source-verifier";
 import { RestaurantStaffService } from "./staff-service";
 
-const scenario = {
-  "01": { type: "FV", quantities: { A: [1] } },
-  "02": { type: "FV", quantities: { B: [1] } },
-  "03": { type: "FV", quantities: { A: [2], B: [3] } },
-  "04": { type: "FV", quantities: { A: [2.5], B: [3.25] } },
-  "05": { type: "FV", quantities: { A: [2], B: [3] }, customer: true },
-  "07": { type: "FV", quantities: { B: [3] }, customer: true, specific: "B" },
-  "08": { type: "FV", quantities: { A: [2], B: [3] }, aib: "B" },
-  "09": { type: "FV", quantities: { A: [2], B: [3] }, customer: true, aib: "A" },
-  "10": { type: "FV", quantities: { A: [2], B: [3] }, specific: "B", aib: "B" },
-  "12": { type: "FV", quantities: { D: [2] } },
-  "13": { type: "FV", quantities: { D: [2] }, specific: "D" },
-  "14": { type: "FV", quantities: { E: [2] } },
-  "15": { type: "FV", quantities: { E: [2] }, specific: "E" },
-  "16": { type: "EV", quantities: { C: [2] } },
-  "17": { type: "EV", quantities: { A: [2], C: [3] } },
-  "19": { type: "EV", quantities: { E: [2] } },
-} as const;
-type EligibleScenario = keyof typeof scenario;
+import { beninSfeScenarios, matchesBeninSfeScenario, type BeninSfeScenarioId, type SfeScenario } from "../fiscal-compliance/providers/benin-emecef/sfe-scenarios";
 const providerPayment = {
   CASH: "ESPECES", MOBILE_MONEY: "MOBILEMONEY", CARD: "CARTEBANCAIRE",
 } as const;
@@ -40,8 +22,8 @@ export class RestaurantFiscalAuthorizationPreparationService {
     const request = c.RestaurantFiscalAuthorizationPreparationRequestSchema.parse({
       scenarioId: input.scenarioId, commandId: input.commandId,
     });
-    const policy = scenario[request.scenarioId as EligibleScenario];
-    if (!policy) return fail("FISCAL_SCENARIO_UNSUPPORTED", 400);
+    const policy: SfeScenario | undefined = beninSfeScenarios[request.scenarioId as BeninSfeScenarioId];
+    if (!policy || policy.stayTax || !["FV", "EV"].includes(policy.type)) return fail("FISCAL_SCENARIO_UNSUPPORTED", 400);
     const scope = { orgId: input.orgId, outletId: c.RestaurantIdSchema.parse(input.outletId) };
     const verified = await RestaurantInvoiceSourceVerifier.verify(
       scope, input.actorId, c.RestaurantIdSchema.parse(input.sessionId),
@@ -93,31 +75,16 @@ export class RestaurantFiscalAuthorizationPreparationService {
     const mapped = mapRestaurantBeninRequest(
       prepared.preparation, principal, identity, mapping, "AUTHORIZATION_PROOF",
     );
-    const actualQuantities = Object.fromEntries(groups.map((group) => [
-      group,
-      prepared.preparation.lines
-        .filter((line) => line.fiscal.taxGroup === group)
-        .map((line) => line.commercial.snapshot.quantity)
-        .sort((a, b) => a - b),
-    ]));
-    const expectedQuantities = Object.fromEntries(Object.entries(policy.quantities)
-      .map(([group, quantities]) => [group, [...quantities].sort((a, b) => a - b)]));
-    const requiresCustomer = "customer" in policy && policy.customer;
-    const requiresSpecific = "specific" in policy ? policy.specific : undefined;
-    const expectedAib = "aib" in policy ? policy.aib : undefined;
-    const hasRequiredCustomer = Boolean(
-      prepared.preparation.customer?.name && prepared.preparation.customer.ifu,
-    );
-    const hasRequiredSpecific = requiresSpecific === undefined || prepared.preparation.lines.some(
-      (line) => line.fiscal.taxGroup === requiresSpecific &&
-        BigInt(line.fiscal.taxSpecificMinor ?? 0) > 0n,
-    );
-    if (
-      (!input.automaticPolicy && canonical(actualQuantities) !== canonical(expectedQuantities)) ||
-      (requiresCustomer && !hasRequiredCustomer) ||
-      !hasRequiredSpecific ||
-      prepared.preparation.aib !== expectedAib
-    ) fail("FISCAL_SCENARIO_SOURCE_MISMATCH");
+    if (!matchesBeninSfeScenario(request.scenarioId, {
+      type: policy.type,
+      items: prepared.preparation.lines.map(line => ({
+        taxGroup: line.fiscal.taxGroup,
+        quantity: line.commercial.snapshot.quantity,
+        taxSpecific: line.fiscal.taxSpecificMinor,
+      })),
+      customer: prepared.preparation.customer,
+      aib: prepared.preparation.aib,
+    }, !input.automaticPolicy)) fail("FISCAL_SCENARIO_SOURCE_MISMATCH");
     const fiscal = mapped.fiscalGroupTotals ?? {};
     const expectedFiscalTotals = {
       ta: 0, tb: 18, tc: 0, td: 18,

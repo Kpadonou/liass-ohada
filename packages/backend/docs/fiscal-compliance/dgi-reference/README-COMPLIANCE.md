@@ -39,3 +39,36 @@ Dans le dépôt local, conserver ces sources dans un emplacement documentaire go
 ## Prudence
 
 Les noms et descriptions des 20 tests sont retranscrits de l'annexe 2 du document fourni ; vérifier l'annexe originale (détails précis) avant de créer les jeux de données. L'approbation DGI reste une procédure officielle distincte des tests locaux et TEST.
+
+## Réconciliation du 25 novembre 2026
+
+Les 20 feuilles individuelles du DOCX ont été relues directement dans le OOXML;
+les divergences du résumé restent ouvertes (spécification §18, C1/C2). Le registre
+exécutable des exigences est désormais dans Fiscal Compliance :
+`lambda/domains/fiscal-compliance/providers/benin-emecef/sfe-scenarios.ts`.
+Le rapprochement exact d'un cas est distinct de la sélection de forme utilisée
+pour le traitement automatique de documents commerciaux de quantités différentes.
+
+Une lecture bornée par tenant des tentatives TEST existantes a trouvé cinq
+confirmations DGI_TEST, quatre CREATED et un UNKNOWN_OUTCOME. Les cinq sources
+confirmées examinées sont B, quantité 1, TTC 1000 XOF : elles ne constituent pas
+cinq cas différents. La vérification web DGI du code
+`TEST-PRXJ-LKWL-HYMQ-PXGO-MH5Z` / NIM `TS01002103` a retourné « Facture trouvée »,
+HT 847, TVA 153, total 1000 et contenu QR identique à la preuve persistée.
+La matrice distingue cette observation réelle du rapprochement de l'impression
+Liass, du décodage indépendant du QR et du VISA DGI encore manquants. Aucune
+ancienne tentative n'a été rejouée ni modifiée lors de cette réconciliation.
+
+Sources officielles supplémentaires consultées en ligne le 25 novembre 2026
+(sans remplacement des sources historiques ni prétention d'archivage local) :
+
+- [CGI Bénin 2026, articles 291–293](https://apisiteweb.impots.bj/media/6adcbd46ab83b_B%C3%A9nin-Code%20G%C3%A9n%C3%A9ral%20des%20Imp%C3%B4ts%202026.pdf) :
+  taxe de séjour par jour/nuit selon tarif; exclusion de la base TVA. Ce texte
+  ne définit pas le mapping API e-MECeF du cas 11.
+- [Rescrit DGI, lettre 2487 du 17 juillet 2024](https://rescrits.impots.bj/questionreponse.php?categorie=Retenue+%C3%A0+la+Source+%28RS%29&nature=IMPOTS+SUR+LE+REVENU&rescrit=Base+d%E2%80%99imposition+de+l%E2%80%99AIB+%E2%80%93+Taxe+de+s%C3%A9jour+et+contribution+sur+services+de+communications+%C3%A9lectroniques) :
+  exclusion de la taxe de séjour de la base AIB.
+
+Conséquence : le calcul existant de taxe spécifique avec TVA ne doit pas être
+réutilisé aveuglément pour le cas 11. Le mapping fournisseur et le parcours
+applicatif dédiés restent à établir; une simulation wire `taxSpecific` ne les
+valide pas. Aucun agrément DGI ni conformité 20/20 n'est revendiqué.
