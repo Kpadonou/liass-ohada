@@ -73,3 +73,14 @@ test("wrong original type fails before any provider request", async () => {
     sessionId, invoiceId, classifications: [], mapping: config("FA") }))
     .rejects.toThrow("FISCAL_ORIGINAL_TYPE_MISMATCH");
 });
+
+test("authentic formatted original remains blocked before mapping or provider reservation", async () => {
+  arrange("FV", ["A", "B"]);
+  const source = await RestaurantCreditNoteFiscalSource.verify({ orgId: "org", outletId }, "manager", sessionId, invoiceId, creditNoteId);
+  source.originalFiscal.security!.codeMECeFDGI = "FK3J-EFIN-FDZQ-NEBN-PSAI-UAZV";
+  jest.mocked(RestaurantCreditNoteFiscalSource.verify).mockResolvedValue(source);
+  await expect(prepareRestaurantBeninCredit({ principal, identity, outletId, sessionId, invoiceId,
+    classifications: [], mapping: config("FA") })).rejects.toThrow("FISCAL_ORIGINAL_REFERENCE_MAPPING_REQUIRED");
+  expect(originalPreparation.prepareRestaurantFiscalInvoice).not.toHaveBeenCalled();
+  expect(originalMapper.mapRestaurantBeninRequest).not.toHaveBeenCalled();
+});
