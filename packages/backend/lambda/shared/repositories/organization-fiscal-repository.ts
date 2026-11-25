@@ -20,6 +20,9 @@ import {
   FiscalCredentialCommandSchema,
   SubmitFiscalCredentialSchema,
   EnrollmentEnvironmentSchema,
+  FiscalIssuanceContextSchema,
+  FiscalIssuancePolicySchema,
+  PutFiscalIssuancePolicySchema,
 } from "@liass-ohada/shared/shared";
 import { config, dynamoClient } from "../dynamo-client";
 import { KeyFactory as K } from "../key-builder";
@@ -147,6 +150,52 @@ export class OrganizationFiscalRepository {
   }
   static readForVerification(orgId: string, environment: Environment, connectionId: string) {
     return this.connection(orgId, environment, connectionId);
+  }
+  static async readIssuancePolicy(orgId: string, actorId: string, input: unknown) {
+    await this.authorize(orgId, actorId);
+    const { issuancePointId } = FiscalIssuanceContextSchema.parse(input);
+    const row = await this.get(K.orgKey(orgId), K.organizationFiscalIssuancePolicySK(issuancePointId));
+    if (!row) return null;
+    const policy = FiscalIssuancePolicySchema.parse(row.data);
+    if (row.entityType !== "PLATFORM_FISCAL_ISSUANCE_POLICY" || row.orgId !== orgId ||
+      policy.issuancePointId !== issuancePointId)
+      throw new AppError(503, "PLATFORM_FISCAL_UNAVAILABLE");
+    return policy;
+  }
+  static async putIssuancePolicy(orgId: string, actorId: string, input: unknown) {
+    const { expectedVersion, ...change } = PutFiscalIssuancePolicySchema.parse(input);
+    await this.authorize(orgId, actorId, true);
+    const connection = await this.connection(orgId, change.environment, change.connectionId);
+    if (!connection || (change.enabled && change.environment !== "TEST"))
+      throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    const policy = FiscalIssuancePolicySchema.parse({ ...change, version: expectedVersion + 1,
+      updatedAt: new Date().toISOString(), updatedBy: actorId });
+    if (policy.enabled) {
+      const verified = connection.verification?.lastVerified;
+      const identity = await OrganizationLegalIdentityService.readFiscalTaxpayerAuthority(orgId);
+      if (!verified || !identity) throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+      const compatible = await addressOnlyVerificationSuccessor(orgId, verified, identity.binding);
+      const evidence = publicVerification(verified, { digest: fiscalConfigurationDigest(connection),
+        identity: identity.binding }, policy.updatedAt, compatible);
+      if (evidence.status !== "VERIFIED_TEST" || !evidence.applicable || !evidence.checks.technicallyVerified)
+        throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
+    }
+    const PK = K.orgKey(orgId);
+    const SK = K.organizationFiscalIssuancePolicySK(policy.issuancePointId);
+    const item = { PK, SK, orgId, entityType: "PLATFORM_FISCAL_ISSUANCE_POLICY", data: policy };
+    await dynamoClient.send(new TransactWriteItemsCommand({ TransactItems: [
+      this.membershipCheck(orgId, actorId), fiscalOrganizationCheck(orgId),
+      ...(policy.enabled ? [this.executionCondition(connection)] : []),
+      { Put: { TableName: table(), Item: marshall(item),
+        ConditionExpression: expectedVersion === 0 ? "attribute_not_exists(PK)" :
+          "entityType = :type AND orgId = :org AND #data.#version = :version",
+        ...(expectedVersion === 0 ? {} : { ExpressionAttributeNames: { "#data": "data", "#version": "version" },
+          ExpressionAttributeValues: marshall({ ":type": item.entityType, ":org": orgId, ":version": expectedVersion }) }) } },
+      { Put: { TableName: table(), Item: marshall({ ...item, entityType: "PLATFORM_FISCAL_ISSUANCE_POLICY_REVISION",
+        SK: K.organizationFiscalIssuancePolicyHistorySK(policy.issuancePointId, policy.version) }),
+        ConditionExpression: "attribute_not_exists(PK)" } },
+    ] }));
+    return policy;
   }
   static executionCondition(row: FiscalConnectionRecord) {
     if (!row.verification || !row.secretReference)

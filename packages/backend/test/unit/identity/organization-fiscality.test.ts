@@ -17,6 +17,7 @@ import {
   handler,
 } from "@/lambda/domains/identity/organization-fiscal-handler";
 import { KeyFactory as K } from "@/lambda/shared/key-builder";
+import { OrganizationFiscalRepository } from "@/lambda/shared/repositories/organization-fiscal-repository";
 import type { APIGatewayProxyEventV2WithJWTAuthorizer as Event } from "aws-lambda";
 
 const db = mockClient(DynamoDBClient),
@@ -74,6 +75,24 @@ const event = (
     requestContext: { authorizer: { jwt: { claims: { iss: issuer, sub } } } },
   }) as unknown as Event;
 const parse = (result: { body: string }) => JSON.parse(result.body);
+test("issuance policy reads are tenant-owned and scoped to the exact issuance point", async () => {
+  const data = { issuancePointId: command(9), environment: "TEST", connectionId,
+    version: 1, enabled: false, updatedAt: "2026-11-25T00:00:00Z", updatedBy: sub };
+  const row = { PK: K.orgKey("org-a"), SK: K.organizationFiscalIssuancePolicySK(data.issuancePointId),
+    entityType: "PLATFORM_FISCAL_ISSUANCE_POLICY", orgId: "org-a", data };
+  rows.set(key(row), row);
+  await expect(OrganizationFiscalRepository.readIssuancePolicy("org-a", sub,
+    { issuancePointId: data.issuancePointId })).resolves.toEqual(data);
+  await expect(OrganizationFiscalRepository.readIssuancePolicy("org-a", sub, {})).resolves.toBeNull();
+  await expect(OrganizationFiscalRepository.readIssuancePolicy("org-b", sub, {})).rejects.toThrow();
+});
+test("an issuance policy cannot select a connection from another environment", async () => {
+  expect((await handler(event())).statusCode).toBeLessThan(300);
+  await expect(OrganizationFiscalRepository.putIssuancePolicy("org-a", sub,
+    { environment: "TEST", connectionId, enabled: false, expectedVersion: 0 })).resolves.toMatchObject({ version: 1, updatedBy: sub });
+  await expect(OrganizationFiscalRepository.putIssuancePolicy("org-a", sub,
+    { environment: "PRODUCTION", connectionId, enabled: false, expectedVersion: 0 })).rejects.toThrow();
+});
 beforeEach(() => {
   process.env.STAGE = "dev";
   process.env.PLATFORM_COGNITO_ISSUER = issuer;

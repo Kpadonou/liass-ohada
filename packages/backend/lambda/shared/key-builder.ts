@@ -27,6 +27,9 @@ export const KeyFactory = {
   platformSfeRevisionSK: (version: number) => `REV#${String(version).padStart(16, "0")}`,
   platformSfeCommandSK: (commandId: string) => `COMMAND#${commandId}`,
   organizationFiscalConnectionPrefix: (environment: string) => `PLATFORM_FISCAL_CONNECTION#${environment}#`,
+  organizationFiscalIssuancePolicySK: (point?: string) => `PLATFORM_FISCAL_ISSUANCE_POLICY#${point ?? "DEFAULT"}`,
+  organizationFiscalIssuancePolicyHistorySK: (point: string | undefined, version: number) =>
+    `${KeyFactory.organizationFiscalIssuancePolicySK(point)}#REV#${String(version).padStart(16, "0")}`,
   organizationFiscalConnectionSK: (environment: string, id: string) => `${KeyFactory.organizationFiscalConnectionPrefix(environment)}${id}`,
   organizationFiscalHistorySK: (environment: string, id: string, version: number) =>
     `PLATFORM_FISCAL_HISTORY#${environment}#${id}#${String(version).padStart(16, "0")}`,

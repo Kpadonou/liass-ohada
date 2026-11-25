@@ -13,6 +13,20 @@ const version = z
   .int()
   .nonnegative()
   .max(Number.MAX_SAFE_INTEGER - 1);
+export const FiscalIssuanceContextSchema = z.object({
+  issuancePointId: z.string().uuid().optional(),
+}).strict();
+export const FiscalIssuancePolicySchema = FiscalIssuanceContextSchema.extend({
+  environment: EnrollmentEnvironmentSchema,
+  connectionId: z.string().uuid(),
+  enabled: z.boolean(),
+  version: version.positive(),
+  updatedAt: z.string().datetime(),
+  updatedBy: z.string().min(1),
+}).strict();
+export const PutFiscalIssuancePolicySchema = FiscalIssuancePolicySchema.omit({
+  version: true, updatedAt: true, updatedBy: true,
+}).extend({ expectedVersion: version }).strict();
 export const FiscalConnectionFieldsSchema = z
   .object({
     environment: EnrollmentEnvironmentSchema,
