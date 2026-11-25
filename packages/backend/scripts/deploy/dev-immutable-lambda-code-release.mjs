@@ -113,6 +113,14 @@ export const FISCAL_GET_EXTENSION_RELEASE = Object.freeze({
     Object.freeze({ functionName: "liass-ohada-dev-identity-grant-test-execution-authorization", logicalId: "IdentityModulePlatformFiscalityplatformsfehandlerPOSTplatformfiscalitytestexecutionauthorizations96E68A13" }),
   ]),
 });
+export const UNIFIED_FISCAL_BINDING_RELEASE = Object.freeze({
+  profile: "UNIFIED_FISCAL_BINDING_PAIR",
+  commit: "a8edcfe",
+  functions: Object.freeze([
+    Object.freeze({ functionName: "liass-ohada-dev-restaurants-publish-receipt", logicalId: "RestaurantsModuleRestaurantspublishreceiptPOSTrestaurantsoutletsoutletIdsessionssessionIdreceiptBCCD2165" }),
+    Object.freeze({ functionName: "liass-ohada-dev-fiscal-compliance-real-test", logicalId: "RealTestExecutorA6E6815D" }),
+  ]),
+});
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..", "..", "..");
@@ -172,11 +180,13 @@ export function validateReleaseManifest(manifest, releaseDirectory) {
   const organizationProfile = manifest?.releaseProfile === ORGANIZATION_PROFILE_RELEASE.profile;
   const attestedFiscal = manifest?.releaseProfile === RESTAURANTS_ATTESTED_FISCAL_RELEASE.profile;
   const fiscalGetExtension = manifest?.releaseProfile === FISCAL_GET_EXTENSION_RELEASE.profile;
+  const unifiedFiscalBinding = manifest?.releaseProfile === UNIFIED_FISCAL_BINDING_RELEASE.profile;
   const fiscalAddressAttestation = manifest?.releaseProfile === FISCAL_ADDRESS_ATTESTATION_RELEASE.profile;
   const singleTarget = manifest?.releaseProfile === FISCAL_EXACT_UID_RELEASE.profile ? FISCAL_EXACT_UID_RELEASE : manifest?.releaseProfile === FISCAL_INTERRUPTED_RECEIPT_RELEASE.profile ? FISCAL_INTERRUPTED_RECEIPT_RELEASE : manifest?.releaseProfile === FISCAL_OPTIONAL_FIELDS_RELEASE.profile ? FISCAL_OPTIONAL_FIELDS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_GROUPS_RELEASE.profile ? AUTOMATIC_FISCAL_GROUPS_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_SUBJECT_RELEASE.profile ? AUTOMATIC_FISCAL_SUBJECT_RELEASE : manifest?.releaseProfile === AUTOMATIC_FISCAL_RELEASE.profile ? AUTOMATIC_FISCAL_RELEASE : fiscalExecutor ? FISCAL_EXECUTOR_RELEASE : fiscalReceiptStatus ? FISCAL_RECEIPT_STATUS_RELEASE : receiptRead ? RESTAURANTS_RECEIPT_READ_RELEASE : fiscalGateOffRead ? FISCAL_STATUS_GATE_OFF_RELEASE : finalPublisher ? FINAL_PUBLISHER_RELEASE : undefined;
   const multiTarget = organizationProfile ? ORGANIZATION_PROFILE_RELEASE
     : attestedFiscal ? RESTAURANTS_ATTESTED_FISCAL_RELEASE
     : fiscalGetExtension ? FISCAL_GET_EXTENSION_RELEASE
+    : unifiedFiscalBinding ? UNIFIED_FISCAL_BINDING_RELEASE
     : fiscalAddressAttestation ? FISCAL_ADDRESS_ATTESTATION_RELEASE : undefined;
   const fixedRelease = multiTarget ?? singleTarget;
   const expectedCommit = manifest?.releaseProfile === "FISCAL_LOCAL_COMPLETION_SINGLE_TARGET"
