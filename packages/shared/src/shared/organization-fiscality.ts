@@ -16,6 +16,12 @@ const version = z
 export const FiscalIssuanceContextSchema = z.object({
   issuancePointId: z.string().uuid().optional(),
 }).strict();
+export const FiscalIssuanceBindingSchema = FiscalIssuanceContextSchema.extend({
+  environment: EnrollmentEnvironmentSchema,
+  connectionId: z.string().uuid(),
+  policyVersion: version.positive(),
+}).strict();
+export type FiscalIssuanceBinding = z.infer<typeof FiscalIssuanceBindingSchema>;
 export const FiscalIssuancePolicySchema = FiscalIssuanceContextSchema.extend({
   environment: EnrollmentEnvironmentSchema,
   connectionId: z.string().uuid(),

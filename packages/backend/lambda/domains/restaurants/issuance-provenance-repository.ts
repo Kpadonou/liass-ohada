@@ -15,6 +15,7 @@ import {
 } from "./issuance-provenance";
 import type { TransactionScope } from "./transaction-model";
 import type { ReceiptManifest } from "./receipt-model";
+import type { FiscalIssuanceBinding } from "@liass-ohada/shared/shared";
 
 function unavailable(): never {
   throw new AppError(409, "PROVENANCE_UNAVAILABLE");
@@ -90,6 +91,8 @@ export class RestaurantIssuanceProvenanceRepository {
     actorId: string,
     m: ReceiptManifest,
     now: string,
+    fiscalBinding?: FiscalIssuanceBinding,
+    expectedSellerSelectionVersion?: number,
   ): Promise<TransactWriteItem[]> {
     const authentic = m.issuanceProvenanceOrigin === "AUTHENTIC";
     if (!authentic && !syntheticProvenanceEnabled()) unavailable();
@@ -151,6 +154,7 @@ export class RestaurantIssuanceProvenanceRepository {
     );
     if (!Number.isSafeInteger(sellerVersion) || sellerVersion < 1)
       unavailable();
+    if (fiscalBinding && sellerVersion !== expectedSellerSelectionVersion) unavailable();
     const data = bindRestaurantIssuanceProvenance({
       ...(m.issuanceProvenanceOrigin
         ? { evidenceOrigin: m.issuanceProvenanceOrigin }
@@ -168,6 +172,7 @@ export class RestaurantIssuanceProvenanceRepository {
       capturedAt: now,
       actorUserId: actorId,
       commercialRootDigest: m.digest,
+      ...(fiscalBinding ? { fiscalBinding } : {}),
       seller: seller.sellerAuthority,
       timezone,
       sellerSelectionVersion: sellerVersion,

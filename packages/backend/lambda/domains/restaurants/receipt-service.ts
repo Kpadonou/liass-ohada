@@ -2,7 +2,6 @@ import { validRestaurantSaleTax } from "./pilot-tax-calculation";
 import {
   RestaurantIssuanceProvenanceRepository as Provenance,
   syntheticProvenanceEnabled,
-  authenticProvenanceEnabled,
 } from "./issuance-provenance-repository";
 import { randomUUID } from "crypto";
 import { RestaurantDocumentCollections as Documents } from "./document-collections";
@@ -23,6 +22,7 @@ import { ReceiptManifest, ReceiptManifestSchema } from "./receipt-model";
 import { TransactionScope } from "./transaction-model";
 import { RestaurantsRepository } from "./restaurant-repository";
 import { restaurantsTableName } from "./restaurant-storage";
+import { OrganizationFiscalRepository } from "@/lambda/shared/repositories/organization-fiscal-repository";
 function fail(code = "RESTAURANTS_TRANSACTION_INTEGRITY", status = 409): never {
   throw new AppError(status, code);
 }
@@ -261,12 +261,10 @@ export class RestaurantReceiptService {
         receiptId,
         guestSessionId: sessionId,
         state: "BUILDING",
-        ...(syntheticProvenanceEnabled() || authenticProvenanceEnabled(scope.orgId)
+        ...(syntheticProvenanceEnabled()
           ? {
               issuanceProvenanceVersion: 1 as const,
-              issuanceProvenanceOrigin: syntheticProvenanceEnabled()
-                ? "SYNTHETIC" as const
-                : "AUTHENTIC" as const,
+              issuanceProvenanceOrigin: "SYNTHETIC" as const,
             }
           : {}),
         version: 1,
@@ -701,7 +699,29 @@ export class RestaurantReceiptService {
       digest: m.digest,
       issuedAt: now,
     });
-    if (m.issuanceProvenanceVersion === 1)
+    let policy = result.currency === "XOF" && result.dueMinor > 0 && result.paidMinor === result.dueMinor
+      ? await OrganizationFiscalRepository.resolveIssuancePolicy(scope.orgId, actorId, scope.outletId).catch((error) => {
+          if ((error instanceof AppError && [403, 409].includes(error.statusCode)) || error instanceof z.ZodError) return null;
+          throw error;
+        }) : null;
+    if (policy) {
+      m.issuanceProvenanceVersion = 1;
+      m.issuanceProvenanceOrigin = "AUTHENTIC";
+      try {
+        const provenance = await Provenance.prepare(scope, actorId, m, now,
+          policy.binding, policy.sellerSelectionVersion);
+        actions.push(...policy.checks, ...provenance);
+      } catch (error) {
+        if (!(error instanceof AppError) || error.message !== "PROVENANCE_UNAVAILABLE") throw error;
+        policy = null;
+        delete m.issuanceProvenanceVersion;
+        delete m.issuanceProvenanceOrigin;
+      }
+    } else if (m.issuanceProvenanceOrigin === "AUTHENTIC") {
+      delete m.issuanceProvenanceVersion;
+      delete m.issuanceProvenanceOrigin;
+    }
+    if (m.issuanceProvenanceOrigin === "SYNTHETIC")
       actions.push(...(await Provenance.prepare(scope, actorId, m, now)));
     m.state = "FINAL";
     m.result = result;
@@ -723,9 +743,7 @@ export class RestaurantReceiptService {
     actions.push(
       B.put(scope, m.receiptId, K.restaurantBillResultSK(), "RESULT", result),
     );
-    if (m.issuanceProvenanceVersion === 1 && m.issuanceProvenanceOrigin === "AUTHENTIC" &&
-      result.currency === "XOF" &&
-      result.dueMinor > 0 && result.paidMinor === result.dueMinor) {
+    if (policy) {
       actions.push({ Put: {
         TableName: restaurantsTableName(),
         Item: marshall({
@@ -735,6 +753,7 @@ export class RestaurantReceiptService {
           entityType: "RESTAURANT_FISCAL_INTENT", schemaVersion: 1,
           state: "PENDING", invoiceId: m.receiptId,
           sessionId: m.guestSessionId, actorId, createdAt: now,
+          fiscalBinding: policy.binding,
         }),
         ConditionExpression: "attribute_not_exists(PK) AND attribute_not_exists(SK)",
       } });

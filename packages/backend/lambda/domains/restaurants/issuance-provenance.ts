@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LegalSellerAuthoritySchema } from "@liass-ohada/shared/shared";
+import { FiscalIssuanceBindingSchema, LegalSellerAuthoritySchema } from "@liass-ohada/shared/shared";
 import { canonical, clean, hash } from "@/lambda/shared/authority/integrity";
 
 // Immutable publication-time binding; absence of origin is legacy/synthetic, never authentic.
@@ -37,6 +37,7 @@ const payloadSchema = z
     capturedAt: z.string().datetime({ offset: true }),
     actorUserId: ref,
     commercialRootDigest: digest,
+    fiscalBinding: FiscalIssuanceBindingSchema.optional(),
     seller: LegalSellerAuthoritySchema,
     timezone: restaurantIssuanceTimezoneSchema,
     sellerSelectionVersion: version,
@@ -107,6 +108,8 @@ export function verifyRestaurantIssuanceProvenance(
     validateBinding(payload);
     if (
       hash(canonical(clean(payload))) !== bindingDigest ||
+      (payload.fiscalBinding?.issuancePointId !== undefined &&
+        payload.fiscalBinding.issuancePointId !== expected.outletId) ||
       Object.entries(expected).some(
         ([key, value]) => payload[key as keyof Payload] !== value,
       )

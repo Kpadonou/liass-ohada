@@ -267,6 +267,8 @@ export class RestaurantFiscalApplicationService {
     const source = await this.verify(context, request);
     if (!source.issuanceProvenance.verified)
       throw new AppError(409, "PROVENANCE_UNAVAILABLE");
+    if (source.issuanceProvenance.evidence.fiscalBinding)
+      throw new AppError(409, "FISCAL_EXECUTION_UNAVAILABLE");
     const identity = this.identity(context, request);
     const existing = await new FiscalAttemptStore().read(identity);
     if (existing) {

@@ -37,6 +37,15 @@ test("duplicate delivery reaches the idempotent processor without mutating in th
   expect(await processFiscalIntentStream(event(record("1"), record("2")))).toEqual({ batchItemFailures: [] });
   expect(processorSpy).toHaveBeenCalledTimes(2);
 });
+test("a policy-bound intent cannot fall back to the legacy processor", async () => {
+  jest.mocked(dynamoClient.send).mockResolvedValueOnce({ Item: marshall({
+    PK, SK: K.restaurantFiscalIntentSK(), ...work,
+    entityType: "RESTAURANT_FISCAL_INTENT", schemaVersion: 1, state: "PENDING",
+    fiscalBinding: { environment: "TEST", connectionId: work.outletId, policyVersion: 1 },
+  }) } as never);
+  expect(await processFiscalIntentStream(event(record("1")))).toEqual({ batchItemFailures: [] });
+  expect(processorSpy).not.toHaveBeenCalled();
+});
 test("a failed record is reported for retry while later records continue", async () => {
   processorSpy.mockRejectedValueOnce(new Error("storage unavailable"));
   expect(await processFiscalIntentStream(event(record("1"), record("2")))).toEqual({

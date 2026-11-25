@@ -541,7 +541,7 @@ test("company fiscal profile lists governed choices and only the owner can decla
   expect(listed.statusCode).toBe(200);
   expect(parse(listed).data).toMatchObject({
     country: "BJ", selected: null, canManage: true,
-    regimes: [{ id: "ORDINARY_VAT" }, { id: "RESTAURANT_VAT_ON_MARGIN" }],
+    regimes: [{ id: "ORDINARY_VAT" }, { id: "TPS" }, { id: "RESTAURANT_VAT_ON_MARGIN" }],
   });
   expect((await handler(profileEvent("PUT", { regime: "ORDINARY_VAT", country: "BJ" }))).statusCode).toBe(400);
   expect((await handler(profileEvent("PUT", { regime: "ORDINARY_VAT" }, "foreign"))).statusCode).toBe(403);

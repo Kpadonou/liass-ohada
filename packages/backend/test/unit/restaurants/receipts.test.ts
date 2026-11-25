@@ -1558,6 +1558,10 @@ test.each(["SYNTHETIC", "AUTHENTIC"] as const)(
   async (origin) => {
     const v = await visit();
     await settle(v);
+    const { OrganizationFiscalRepository } = await import("@/lambda/shared/repositories/organization-fiscal-repository");
+    const fiscalPolicy = jest.spyOn(OrganizationFiscalRepository, "resolveIssuancePolicy").mockResolvedValue(
+      origin === "AUTHENTIC" ? { binding: { environment: "TEST", connectionId: f.outlet.id, policyVersion: 1 }, sellerSelectionVersion: 1, checks: [] } : null,
+    );
     process.env[
       origin === "AUTHENTIC"
         ? "RESTAURANTS_AUTHENTIC_PROVENANCE"
@@ -1622,6 +1626,7 @@ test.each(["SYNTHETIC", "AUTHENTIC"] as const)(
       prepared.mockRestore();
       delete process.env.RESTAURANTS_SYNTHETIC_PROVENANCE;
       delete process.env.RESTAURANTS_AUTHENTIC_PROVENANCE;
+      fiscalPolicy.mockRestore();
     }
   },
 );
@@ -1885,7 +1890,9 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
   );
   const v = await visit();
   await settle(v);
-  process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID = org;
+  const binding = { environment: "TEST" as const, connectionId: f.outlet.id, policyVersion: 2 };
+  const policy = jest.spyOn(OrganizationFiscalRepository, "resolveIssuancePolicy")
+    .mockResolvedValue({ binding, sellerSelectionVersion: 1, checks: [] });
   const { tzdbDigest, identifierDigest } =
     await import("@/lambda/shared/authority/iana-pinned-digests");
   const timezone = {
@@ -1964,6 +1971,7 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
       entityType: { S: "RESTAURANT_FISCAL_INTENT" },
       state: { S: "PENDING" },
       invoiceId: { S: invoice.receiptId },
+      fiscalBinding: { M: marshall(binding) },
     });
     const work = [...m.rows.values()].filter((row) => row.entityType?.S === "RESTAURANT_FISCAL_WORK");
     expect(work).toHaveLength(1);
@@ -2032,6 +2040,7 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
     expect(provenance.verified).toBe(true);
     if (!provenance.verified) throw new Error("provenance missing");
     expect(provenance.evidence.evidenceOrigin).toBe("AUTHENTIC");
+    expect(provenance.evidence.fiscalBinding).toEqual(binding);
     expect(provenance.evidence.issuedAt).toBe(invoice.issuedAt);
     expect(provenance.evidence.commercialRootDigest).toBe(invoice.digest);
     expect(verified.evidence.parts.map(({ content }) => content.kind)).toEqual([
@@ -2341,6 +2350,7 @@ test("ordinary VAT sale produces authentic FINAL and immutable V1 fiscal evidenc
     expect(await finish(v.sessionId)).toEqual(invoice);
     expect(seller).not.toHaveBeenCalled();
   } finally {
+    policy.mockRestore();
     seller.mockRestore();
     delete process.env.RESTAURANTS_PILOT_PROVENANCE_ORG_ID;
   }

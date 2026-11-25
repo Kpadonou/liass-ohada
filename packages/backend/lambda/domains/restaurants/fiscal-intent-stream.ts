@@ -34,6 +34,8 @@ export async function processFiscalIntentStream(event: DynamoDBStreamEvent) {
       const row = intent.parse(unmarshall(response.Item));
       if (row.PK !== PK || row.PK !== K.restaurantBillPK(row.orgId, row.outletId, row.invoiceId))
         throw new Error("Fiscal intent scope mismatch");
+      // Bound intents require the upcoming shared processor. Never use the legacy TEST pilot.
+      if (Object.hasOwn(row, "fiscalBinding")) continue;
       await RestaurantFiscalWorkProcessor.process({
         orgId: row.orgId, outletId: row.outletId, invoiceId: row.invoiceId,
         sessionId: row.sessionId, actorId: row.actorId, createdAt: row.createdAt,

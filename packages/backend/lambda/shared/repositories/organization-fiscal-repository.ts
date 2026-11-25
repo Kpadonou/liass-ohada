@@ -197,6 +197,30 @@ export class OrganizationFiscalRepository {
     ] }));
     return policy;
   }
+  static async resolveIssuancePolicy(orgId: string, actorId: string, point?: string) {
+    const scoped = point === undefined ? null : await this.readIssuancePolicy(orgId, actorId, { issuancePointId: point });
+    const policy = scoped ??
+      await this.readIssuancePolicy(orgId, actorId, {});
+    if (!policy?.enabled || policy.environment !== "TEST") return null;
+    const connection = await this.connection(orgId, policy.environment, policy.connectionId);
+    const verified = connection?.verification?.lastVerified;
+    const identity = await OrganizationLegalIdentityService.readFiscalTaxpayerAuthority(orgId);
+    if (!connection?.secretReference || !verified || !identity.ifu || identity.ifu !== connection.data.taxpayerIfu) return null;
+    const compatible = await addressOnlyVerificationSuccessor(orgId, verified, identity.binding);
+    const evidence = publicVerification(verified, { digest: fiscalConfigurationDigest(connection),
+      identity: identity.binding }, new Date().toISOString(), compatible);
+    if (!evidence.applicable || evidence.status !== "VERIFIED_TEST" || !evidence.checks.technicallyVerified) return null;
+    const binding = { environment: policy.environment, connectionId: policy.connectionId,
+      policyVersion: policy.version, ...(policy.issuancePointId ? { issuancePointId: policy.issuancePointId } : {}) };
+    const policyKey = (issuancePointId?: string) => marshall({ PK: K.orgKey(orgId),
+      SK: K.organizationFiscalIssuancePolicySK(issuancePointId) });
+    return { binding, sellerSelectionVersion: identity.binding.selectionVersion,
+      checks: [this.executionCondition(connection), { ConditionCheck: {
+      TableName: table(), Key: policyKey(policy.issuancePointId), ConditionExpression: "orgId = :org AND #data = :data",
+      ExpressionAttributeNames: { "#data": "data" }, ExpressionAttributeValues: marshall({ ":org": orgId, ":data": policy }),
+    } }, ...(point !== undefined && !policy.issuancePointId ? [{ ConditionCheck: { TableName: table(), Key: policyKey(point),
+      ConditionExpression: "attribute_not_exists(PK)" } }] : [])] };
+  }
   static executionCondition(row: FiscalConnectionRecord) {
     if (!row.verification || !row.secretReference)
       throw new AppError(409, "PLATFORM_FISCAL_CREDENTIAL_INVALID");
