@@ -29,8 +29,11 @@ export class RestaurantCreditNoteFiscalSource {
       sourceDocumentId: invoiceId, jurisdiction: "BJ", obligation: "NORMALIZE" };
     const originalFiscal = await new FiscalAttemptStore().read(fiscalIdentity);
     if (!originalFiscal) throw new AppError(409, "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED");
-    const fiscalOriginal = confirmedCreditOriginal(originalFiscal, { orgId: scope.orgId,
-      sourceDomain: "restaurants", sourceDocumentId: invoiceId, sourceDigest: source.proof.digest });
+    let fiscalOriginal: ReturnType<typeof confirmedCreditOriginal>;
+    try {
+      fiscalOriginal = confirmedCreditOriginal(originalFiscal, { orgId: scope.orgId,
+        sourceDomain: "restaurants", sourceDocumentId: invoiceId, sourceDigest: source.proof.digest });
+    } catch { throw new AppError(409, "ORIGINAL_FISCAL_CERTIFICATION_REQUIRED"); }
     const controls = await RestaurantCreditNoteService.creditability(scope, sessionId);
     if (controls.finalBillId !== invoiceId || controls.currency !== note.currency ||
       controls.originalAmountMinor !== source.invoice.dueMinor ||
