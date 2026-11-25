@@ -161,6 +161,21 @@ describe('Receipt presentation and complete native print', () => {
     });
     expect(f.nativeElement.querySelector('img')).toBeNull();
   });
+  it('stops automatic polling for interrupted CREATED work', async () => {
+    fiscalApi.result.mockResolvedValue({
+      invoiceId: receiptSummary().receiptId, status: 'CREATED', workState: 'INTERRUPTED',
+      securityElements: null, normalizedInvoice: null,
+    });
+    const f = create();
+    await loaded(f);
+    await vi.waitFor(() => {
+      f.detectChanges();
+      expect(f.nativeElement.textContent).toContain('Traitement fiscal interrompu — confirmation non établie');
+    });
+    await new Promise(resolve => setTimeout(resolve, 5500));
+    expect(fiscalApi.result).toHaveBeenCalledTimes(1);
+    expect(f.nativeElement.querySelector('img')).toBeNull();
+  }, 10000);
   it('does not invent fiscal work or a QR for a receipt without an intent', async () => {
     fiscalApi.result.mockResolvedValue({
       invoiceId: receiptSummary().receiptId, status: 'NOT_STARTED', workState: null,
